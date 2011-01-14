@@ -1,0 +1,1 @@
+#define FUNFROG_VERSION "0.1"

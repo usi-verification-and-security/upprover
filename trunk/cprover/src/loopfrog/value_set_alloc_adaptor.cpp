@@ -94,7 +94,7 @@ void value_set_alloc_adaptort::replace_dynamic_objects(exprt &expr)
 
       typet type("array");
 
-      symbolst::const_iterator s_it =
+      contextt::symbolst::const_iterator s_it =
         context.symbols.find(ad_prefix+new_name);
 
       if(s_it!=context.symbols.end())
