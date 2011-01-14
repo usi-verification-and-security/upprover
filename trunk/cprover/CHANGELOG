@@ -1,0 +1,204 @@
+Jul 20 2009
+ - ANSI-C: Now ignores the following MS constructs:
+     [source_annotation_attribute...],
+     [returnvalue...]
+     [SA_Pre...] [SA_Post...] [SA_FormatString...]
+
+Dec 4 2006
+ - ANSI-C: Fixed the type of enum constants
+
+Dec 2 2006
+ - CBMC source release
+
+Apr 27 2004
+ - implemented counterexample beautification using greedy heuristic
+
+Feb 13 2004
+ - fixed union initializers
+ - fixed nested anonymous structs
+
+Jan 19 2004
+ - added overflow-check option to CBMC
+
+Dec 10 2003
+ - fixes for large unbounded arrays
+
+Dec 05 2003
+ - rename variables in blocks when unwinding
+
+Oct 03 2003
+ - simplifier eliminates strict inequalities
+ - symex now simplifies assumptions
+ - released CBMC 1.1
+
+Aug 04 2003
+ - released CBMC 1.0
+ - implemented fixed point for float and double
+ - fix for switch
+
+Oct 31 2002
+ - implemented GUI interface
+
+Sep 24 2002
+ - implemented Verilog preprocessor
+
+Aug 09 2002
+ - cbmc now shows program traces as counter example
+
+Aug 02 2002
+ - implemented sequent caching
+
+July 22 2002
+ - added automated ordering of type checking using dependancies
+
+June 29 2002
+ - fixed segfault with K&R style function definitions
+ - fixed operator types for modulo operator
+
+June 13 2002
+ - cleaned up directories
+
+June 6 2002
+ - added b2cnf
+ - new arithmetic library
+
+May 27 2002
+ - implemented ANSI-C structs
+ - implemented ANSI-C dynamic types
+
+Apr 17
+ - added labels
+
+Apr 16 2002
+ - added goto, break, continue
+
+Apr 2 2002
+ - started c2pvs
+
+Mar 13 2002
+ - type casts implemented
+ - array initialization implemented
+ - added comma operator
+ - added pointer arithmetic for assignments
+
+Mar 11 2002
+ - assert now much more performant
+ - sequents now use lists
+ - irep now uses mappings
+
+Mar 08 2002
+ - assume/assert are only moved into pre/postcondition if side effect free
+ - now does function call side effects
+
+Mar 06 2002
+ - added cbmc
+
+Feb 22 2002
+ - propositional decision procedures now cache literals
+ - fixed side effects
+
+Feb 20 2002
+ - ANSI-C is now preprocessed
+ - added PVS parser
+ - added VHDL parser
+ - recursion without prototype
+ - function call assignments
+ - returns in functions
+ - function call parameters are typechecked
+ - better auto heuristic
+
+Dec 19 2001
+ - implemented lift-if
+ - flatten now uses new interface
+ - moved ansi-c and PVS language code into subdirectories
+
+Dec 18 2001
+ - implemented split rule
+ - added more PVS language conversion
+
+Dec 17 2001
+ - fixed initializers
+ - added support for enum constants
+ - added support for array types
+ - added support for implies operator
+ - added support for quantifiers
+ - added skolem rule
+ - added inst rule
+ - added if rule
+
+Dec 14 2001
+ - added verbosity to message class
+ - sat now distinguishes expensive and cheap operands
+ - implemented auto rule
+ - symex now uses new interface
+
+Dec 12 2001
+ - fixed type of argument of if
+ - added simplification for multiplication
+ - added simplification for addition
+ - added simplification for typecasts
+
+Dec 11 2001
+ - implemented transitivity of equality for assert_dec
+ - implemented *&x == x for assert_dec
+
+Dec 10 2001
+ - function parameters are now local variables
+ - made canonicalization stable
+ - implemented congruence closure
+
+Dec 09 2001
+ - added support for local variables
+
+Dec 08 2001
+ - fixed integer to binary conversion
+ - added simplification of equalities
+ - added constant propagation to simplification
+ - while rule removes empty program rest
+
+Dec 07 2001
+ - assume/assert at beginning/end of function is made pre/post-condition
+ - fixed manual while rule
+ - one can now add comments to sequents
+ - "unsigned a;" and "signed b;" now works
+ - fixed inequality on unsigned bitvectors
+ - implemented signed bitvector multiplication
+ - fixed substraction in simplifier
+ - global bitvector variables are now correctly initialized
+ - simplify now simplifies typecasts from naturals to integers
+ - simplify now simplifies unary minus
+
+Dec 06 2001
+ - added class interface to decision procedures
+ - split now uses new interface
+ - added composition as manual inference rule
+ - added consequence as manual inference rule
+ - added generic boolean propositional formula
+   decision procedure interface
+ - equivalence based decision procedure implemented
+ - internal representation can now be annotated
+ - constants are no longer lvalues
+
+Dec 05 2001
+ - implemented canonicalizer within simplification rule
+ - code is no longer operand of Hoare triple
+ - started CVS tree
+ - started equivalence based decision procedure
+ - added three valued logic type
+
+Dec 04 2001
+ - "char" can now be both signed and unsigned
+ - variable renaming now also affects the conditions in "if" statements
+ - updated to cln 1.1.3
+ - now compiles with g++ 3.x (i.e., on the new servers)
+ - merged changes from ctool 2.09 to 2.10
+ - function call expressions are now correctly typed
+ - ifthenelse simplification now works even if the else part is NIL
+ - symex no longer adds an empty premise for functioncalls without guard
+ - implemented a?b:c for SAT-checking
+
+Dec 03 2001
+ - fixed symex translation from for(a;b;c) to while(): c is no longer lost
+ - fixed symex for while loops
+ - added automated and efficient variable renaming for symex of assignments
+ - implemented new symbol lookup code

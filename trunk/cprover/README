@@ -1,0 +1,51 @@
+COMPILATION
+-----------
+
+For compilation, you need an aditional package:
+
+a) Zchaff (a SAT checker), available from Princeton at
+
+   http://www.ee.princeton.edu/~chaff/zchaff.php
+
+b) Alternatively, use Minisat or Booleforce
+
+For compilation, you need a recent g++ compiler and the usual parser/lexer
+tools.
+
+USAGE
+-----
+
+After compilation, there are six binaries in corresponding subdirectories:
+
+1) abs
+
+   This is a tool for the abstraction of ANSI-C programs
+
+2) b2cnf
+
+   This is a translator from SMV language to CNF
+
+3) c2pvs
+
+   A translator from C to PVS language
+
+4) ebmc
+
+   This is an enhanced version of BMC, using a sorting network for the
+   diameter test
+
+5) cbmc
+
+   This is the Bounded Model Checker for ANSI-C. cbmc is a command line
+   tool. You pass the name of the input files as parameters.
+
+6) cprover
+
+   This is the theorem prover. The theorem prover interfaces with SyMP, so
+   to use it, you need to get Sergey Berezin's SyMP from the CMU
+   Model-Checking homepage.
+
+All tools are likely to have bugs and missing features. Let me know if you
+find anything of that sort and I will fix it as soon as possible. We are
+always looking for interesting applications and challenge examples. If you
+have one, we would love to try to solve it.

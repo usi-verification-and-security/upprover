@@ -1,0 +1,87 @@
+<!--#include virtual="header.inc" -->
+
+<p><a href="./">CPROVER Manual TOC</a></p>
+
+<h2>Installing the Eclipse Plugin</h2>
+
+<h3>Requirements</h3>
+
+<p class="justified">
+We provide a graphical user interface to CBMC and SATABS, which is
+realized as a plugin to the Eclipse framework.  Eclipse is available at <a
+href="http://www.eclipse.org">http://www.eclipse.org</a>.  We do not provide
+installation instructions for Eclipse (basically, you only have to download
+the current version and extract the files to your hard-disk) and assume that
+you have already installed the current version.  You need version 3.2 or
+better; the plugin does not work with version 3.1.</p>
+
+<p class="justified">
+CBMC and SATABS have their own requirements.  As an example, both CBMC
+and SATABS require a suitable preprocessor and a set of header files.  As
+first step, you should therefore follow the installation instructions for <a
+href="installation-cbmc.shtml">CBMC</a> and <a
+href="installation-satabs.shtml">SATABS</a>.
+
+<p class="justified">
+<u>Important note for Windows users</u>: Visual Studio's
+<code>cl.exe</code> relies on a
+complex set of environment variables to identify the target architecture and
+the directories that contain the header files.
+<font color=red>You must run Eclipse from within the
+<i>Visual Studio Command Prompt</i>.</font>
+</p>
+
+<h3>Installing the Eclipse Plugin</h3>
+
+<p class="justified">
+To install the CPROVER Eclipse plugin, perform following steps:</p>
+
+<ol>
+
+<li>In Eclipse, open the menu <i>Help</i>&rarr;
+    <i>Software Updates</i>&rarr;<i>Find and Install</i>.
+</li>
+
+<li>
+Select the radio button <i>Search for new features to install</i>.
+</li>
+
+<li>In the window that pops up, select <i>New remote site</i> and 
+enter the URL
+<a href="http://www.cprover.org/satabs/plugin/lin/">http://www.cprover.org/satabs/plugin/lin/
+</a> (for Linux) or
+<a href="http://www.cprover.org/satabs/plugin/win/">http://www.cprover.org/satabs/plugin/win/</a>
+(for Windows) or
+<a href="http://www.cprover.org/satabs/plugin/osx/">http://www.cprover.org/satabs/plugin/osx/</a>
+(for MacOS X) into the URL field. Provide a name for the update site of the plugin,
+e.g., <i>CPROVER plugin</i>.
+</li>
+
+<li>Select the newly added update site, and press <i>Finish</i>.</li>
+    
+<li>Select the feature <code>org.feature.CProver_<i>version</i></code>, and
+    click <i>Next</i>.  Read the license thoroughly before you agree,
+    and install the plugin by clicking <i>Finish</i>.
+    You will see a warning that the plugin is not digitally
+    signed; confirm with <i>Install</i>.  The plugin will be downloaded
+    automatically. It contains the Windows and Linux executables for
+    CBMC and SATABS.
+</li>
+
+<li>Unless you have already added the model checker of your choice 
+    (e.g., SMV) to your PATH, you should do so now.
+    In the Eclipse window, select the menu point 
+    <i>Windows</i>&rarr;<i>Preferences</i>, choose the
+    <i>CBMC and SATABS</i> preferences and add the corresponding
+    PATH environment variable.
+</li>
+
+</ol>
+
+<p class="justified">
+A small tutorial on how to use the Eclipse plugin is provided 
+TODO <!-- <a href="">here</a>. -->
+</p>
+
+<!--#include virtual="footer.inc" -->
+

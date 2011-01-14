@@ -1,0 +1,26 @@
+#!/bin/bash
+make
+strip satabs
+
+VERSION=`./satabs --version`
+VERSION_FILE=`echo $VERSION | sed "y/./-/"`
+
+(cd ../goto-cc; make; strip goto-cc)
+(cd ../goto-instrument; make; strip goto-instrument)
+
+echo $VERSION_FILE
+
+mkdir /tmp/satabs-dist
+cp satabs /tmp/satabs-dist/
+cp ../goto-cc/goto-cc /tmp/satabs-dist/
+cp ../goto-instrument/goto-instrument /tmp/satabs-dist/
+cp ../../LICENSE /tmp/satabs-dist/
+cd /tmp/satabs-dist
+tar cfz satabs-${VERSION_FILE}-mac.tgz satabs goto-cc \
+  goto-instrument LICENSE
+
+echo Copying.
+scp satabs-${VERSION_FILE}-mac.tgz kroening@dkr0.inf.ethz.ch:/home/www/cprover.org/satabs/download/
+
+cd /tmp
+rm -R /tmp/satabs-dist
