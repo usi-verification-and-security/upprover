@@ -4,7 +4,8 @@ SRC = main.cpp \
       check_claims.cpp \
       symex_assertion_sum.cpp \
       summarizing_checker.cpp \
-      inlined_claims.cpp
+      inlined_claims.cpp \
+      interpolation/opensmt_solver.cpp
 
 OBJ = $(SRC:.cpp=.o) \
       ../loopfrog/languages.o \
