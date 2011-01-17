@@ -9,3 +9,10 @@
 \*******************************************************************/
 
 #include "summary_info.h"
+
+void
+call_summaryt::set_inline()
+{
+  precision = INLINE;
+  // TODO:fill summary_info with call_sites
+}
