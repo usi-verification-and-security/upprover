@@ -8,11 +8,66 @@
 
 \*******************************************************************/
 
+#include <std_expr.h>
 #include "summary_info.h"
 
 void
-call_summaryt::set_inline()
+call_summaryt::set_inline(const summarization_contextt &summarization_context,
+        const irep_idt& target_function,
+        const assertion_infot &assertion,
+        size_t stack_depth)
 {
   precision = INLINE;
-  // TODO:fill summary_info with call_sites
+
+  const goto_programt &function_body = 
+    summarization_context.functions.function_map.at(target_function).body;
+  
+  summary_info.initialize(summarization_context, function_body, assertion,
+          stack_depth++);
+}
+
+void
+summary_infot::initialize(const summarization_contextt& summarization_context,
+        const goto_programt& code, const assertion_infot& assertion,
+        size_t stack_depth)
+{
+  bool will_inline = stack_depth < assertion.get_target_stack().size();
+  goto_programt::const_targett call_pos;
+
+  if (will_inline) {
+    call_pos = assertion.get_target_stack().at(stack_depth);
+  }
+  
+  // Find all call-sites and initialize them to a NONDET summary.
+  // An exception are functions on the path to the target 
+  // assertion.
+  for(goto_programt::const_targett inst=code.instructions.begin();
+      inst!=code.instructions.end(); ++inst)
+  {
+    if (inst->type == FUNCTION_CALL) {
+
+      // NOTE: Expects the function call to by a standard symbol call
+      const code_function_callt& function_call = to_code_function_call(inst->code);
+      const irep_idt &target_function = to_symbol_expr(
+        function_call.function()).get_identifier();
+
+      // Mark the call site
+      call_summaryt& call_summary = call_sites.insert(
+              std::pair<goto_programt::const_targett, call_summaryt>(inst,
+              call_summaryt())).first->second;
+
+      // Is the call on the call stack leading to the target assertion?
+      if (will_inline && inst == call_pos) {
+#       if 0
+        std::cout << "Inlining a call: " << target_function << std::endl;
+#       endif
+        call_summary.set_inline(summarization_context, target_function,
+                assertion, stack_depth+1);
+      } else {
+#       if 0
+        std::cout << "Havocing a call." << target_function << std::endl;
+#       endif
+      }
+    }
+  }
 }

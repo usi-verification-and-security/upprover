@@ -184,6 +184,7 @@ claim_statst check_claims(
     if(!claim_map[ass_ptr].first || claim_map[ass_ptr].second)       
       pass = assertion_holds_sum(ns.get_context(),
           leaping_program,
+          goto_functions,
           assertion_infot(stack, ass_ptr),
           out,
           res.max_mem_used,

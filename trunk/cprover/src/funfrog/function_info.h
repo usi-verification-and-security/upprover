@@ -12,6 +12,7 @@
 
 #include <irep.h>
 #include <expr.h>
+#include <hash_cont.h>
 
 // Collected summarization info for a single function
 class function_infot {
@@ -25,6 +26,8 @@ private:
   // TODO: We will need some mapping of parameters...
   std::vector<exprt> summaries;
 };
+
+typedef hash_map_cont<irep_idt, function_infot> function_infost;
 
 #endif /*FUNCTION_INFO_H_*/
 

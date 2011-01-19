@@ -13,7 +13,6 @@
 #include <find_symbols.h>
 #include <ansi-c/expr2c.h>
 #include <time_stopping.h>
-#include <pointer-analysis/value_set_analysis.h>
 #include <solvers/sat/satcheck.h>
 #include <solvers/smt1/smt1_dec.h>
 
@@ -38,7 +37,7 @@ fine_timet global_sat_conversion_time;
 
 bool symex_assertion_sumt::assertion_holds(
   const goto_programt &goto_program,
-  goto_programt::const_targett &assertion,
+  const assertion_infot &assertion,
   std::ostream &out,
   unsigned long &max_memory_used,
   bool use_smt)
@@ -46,39 +45,35 @@ bool symex_assertion_sumt::assertion_holds(
   stream_message_handlert message_handler(out);
 
   // these are quick...
-  if(assertion->guard.is_true())
+  if(assertion.get_location()->guard.is_true())
   {
     out << std::endl << "ASSERTION IS TRUE" << std::endl;
     return true;
   }
 
-  goto_programt::const_targett last = assertion; last++;
+  goto_programt::const_targett last = assertion.get_location(); last++;
 
   // Print out the initial goto-program
+  // FIXME: Does not print all the functions recursively --> it is useless
   if(out.good())
   {
     out << std::endl << "GOTO-PROGRAM:" << std::endl;
     for (goto_programt::instructionst::const_iterator it=
            goto_program.instructions.begin();
-         it!=last;
+         it != last && it != goto_program.instructions.end();
          it++)
       goto_program.output_instruction(ns, "", out, it);
   }
 
-  #if 1
-  // sanity check
+# ifndef NDEBUG
+  // sanity check, we expect loop-free programs, this should be done for all 
+  // functions
   forall_goto_program_instructions(it, goto_program)
-    assert(!it->is_backwards_goto() && it->type!=FUNCTION_CALL);
-  #endif
-
-  #if 0
-  // Sanity Check,
-  // warning: this check only works with assume-guarantee reasoning off.
-  for(goto_programt::const_targett it=goto_program.instructions.begin();
-      it!=assertion;
-      it++)
-    assert(it->type!=ASSERT);
-  #endif
+    assert(!it->is_backwards_goto());
+  forall_goto_functions(it, summarization_context.functions)
+    forall_goto_program_instructions(it2, it->second.body)
+      assert(!it2->is_backwards_goto());
+# endif
 
   // Proceed with symbolic execution
   fine_timet before, after;
@@ -87,14 +82,13 @@ bool symex_assertion_sumt::assertion_holds(
   goto_symext::statet state;
 
 //  state.value_set = value_sets;
-  goto_functionst temp;
-  for(state.source.pc=goto_program.instructions.begin();
-      state.source.pc!=last;
+  for(state.source.pc = goto_program.instructions.begin();
+      state.source.pc != last && 
+      state.source.pc != goto_program.instructions.end();
       )
   {
-    // goto_program.output_instruction(ns, "", std::cout, state.source.pc);
-    std::cout << state.source.pc->location.get_bool("BAF") << std::endl;
-    symex_step(temp, state);
+    goto_program.output_instruction(ns, "", std::cout, state.source.pc);
+    symex_step(summarization_context.functions, state);
     // state.value_set.output(ns, std::cout);
   }
   after=current_time();
@@ -167,7 +161,7 @@ bool symex_assertion_sumt::assertion_holds(
 
     unsigned int nondet_counter=0;
     std::set<exprt> lhs_symbols;
-    find_symbols(assertion->guard, lhs_symbols);
+    find_symbols(assertion.get_location()->guard, lhs_symbols);
 
     if (lhs_symbols.size()>0)
     {
@@ -253,6 +247,186 @@ bool symex_assertion_sumt::is_satisfiable(
       throw "unexpected result from dec_solve()";
   }
 }
+
+/*******************************************************************\
+
+Function: symex_assertion_sumt::symex_step
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Perform a single symex step. The implementation is based 
+ on the goto_symex, but it handles function calls differently. 
+ Creation of expressions representing the calls is postponed, so that
+ the formulas representing the function bodies can be passed to 
+ an interpolating solver as separate conjuncts.
+
+\*******************************************************************/
+
+void symex_assertion_sumt::symex_step(
+  const goto_functionst &goto_functions,
+  statet &state)
+{
+  assert(!state.call_stack.empty());
+
+  const goto_programt::instructiont &instruction=*state.source.pc;
+  
+  merge_gotos(state);
+
+  // depth exceeded?
+  {
+    unsigned max_depth=atoi(options.get_option("depth").c_str());
+    if(max_depth!=0 && state.depth>max_depth)
+      state.guard.add(false_exprt());
+    state.depth++;
+  }
+
+  // actually do instruction
+  switch(instruction.type)
+  {
+  case SKIP:
+    // really ignore
+    state.source.pc++;
+    break;
+
+  case END_FUNCTION:
+    symex_end_of_function(state);
+    state.source.pc++;
+    break;
+  
+  case LOCATION:
+    target.location(state.guard, state.source);
+    state.source.pc++;
+    break;
+  
+  case GOTO:
+    symex_goto(state);
+    break;
+    
+  case ASSUME:
+    if(!state.guard.is_false())
+    {
+      exprt tmp=instruction.guard;
+      clean_expr(tmp, state, false);
+      state.rename(tmp, ns);
+      do_simplify(tmp);
+
+      if(!tmp.is_true())
+      {
+        exprt tmp2=tmp;
+        state.guard.guard_expr(tmp2);
+        target.assumption(state.guard, tmp2, state.source);
+
+        #if 0      
+        // we also add it to the state guard
+        state.guard.add(tmp);
+        #endif
+      }
+    }
+
+    state.source.pc++;
+    break;
+
+  case ASSERT:
+    if(!state.guard.is_false())
+      if(options.get_bool_option("assertions") ||
+         !state.source.pc->location.get_bool("user-provided"))
+      {
+        std::string msg=id2string(state.source.pc->location.get_comment());
+        if(msg=="") msg="assertion";
+        exprt tmp(instruction.guard);
+        clean_expr(tmp, state, false);
+        claim(tmp, msg, state);
+      }
+
+    state.source.pc++;
+    break;
+    
+  case RETURN:
+    if(!state.guard.is_false())
+      symex_return(state);
+
+    state.source.pc++;
+    break;
+
+  case ASSIGN:
+    if(!state.guard.is_false())
+    {
+      code_assignt deref_code=to_code_assign(instruction.code);
+
+      clean_expr(deref_code.lhs(), state, true);
+      clean_expr(deref_code.rhs(), state, false);
+
+      basic_symext::symex_assign(state, deref_code);
+    }
+
+    state.source.pc++;
+    break;
+
+  case FUNCTION_CALL:
+    if(!state.guard.is_false())
+    {
+      code_function_callt deref_code=
+        to_code_function_call(instruction.code);
+
+      if(deref_code.lhs().is_not_nil())
+        clean_expr(deref_code.lhs(), state, true);
+
+      clean_expr(deref_code.function(), state, false);
+
+      Forall_expr(it, deref_code.arguments())
+        clean_expr(*it, state, false);
+    
+      symex_function_call(goto_functions, state, deref_code);
+    }
+    else
+      state.source.pc++;
+    break;
+
+  case OTHER:
+    if(!state.guard.is_false())
+      symex_other(goto_functions, state);
+
+    state.source.pc++;
+    break;
+
+  case DECL:
+    if(!state.guard.is_false())
+      symex_decl(state);
+
+    state.source.pc++;
+    break;
+
+  case DEAD:
+    // ignore for now
+    state.source.pc++;
+    break;
+
+  case START_THREAD:
+    throw "START_THREAD not yet implemented";
+  
+  case END_THREAD:
+    {
+      // behaves like assume(0);
+      state.guard.add(false_exprt());
+      exprt tmp=state.guard.as_expr();
+      target.assumption(state.guard, tmp, state.source);
+    }
+    state.source.pc++;
+    break;
+  
+  case ATOMIC_BEGIN:
+  case ATOMIC_END:
+    // these don't have path semantics
+    state.source.pc++;
+    break;
+  
+  default:
+    assert(false);
+  }
+}
+
 
 /*******************************************************************
 

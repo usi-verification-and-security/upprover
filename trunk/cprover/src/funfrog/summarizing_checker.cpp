@@ -19,6 +19,8 @@
 #include <loopfrog/memstat.h>
 
 #include "summarizing_checker.h"
+#include "summary_info.h"
+#include "symex_assertion_sum.h"
 
 /*******************************************************************
 
@@ -38,15 +40,17 @@ bool last_assertion_holds_sum(
   const value_setst &value_sets,
   goto_programt::const_targett &head,
   const goto_programt &goto_program,
+  const goto_functionst &goto_functions,
   std::ostream &out,
   unsigned long &max_memory_used,
   bool use_smt)
 {
   contextt temp_context;
   namespacet ns(context, temp_context);
-  summarizing_checkert symex(value_sets, head, loopstoret(), loopstoret(), ns, temp_context);
+  summarizing_checkert sum_checker(value_sets, head,
+          goto_functions, loopstoret(), loopstoret(), ns, temp_context);
 
-  return symex.last_assertion_holds(goto_program, out,
+  return sum_checker.last_assertion_holds(goto_program, out,
                                     max_memory_used, use_smt);
 }
 
@@ -96,6 +100,7 @@ bool summarizing_checkert::last_assertion_holds(
 bool assertion_holds_sum(
   const contextt &context,
   const goto_programt &goto_program,
+  const goto_functionst &goto_functions,
   const assertion_infot& assertion,
   std::ostream &out,
   unsigned long &max_memory_used,
@@ -104,11 +109,11 @@ bool assertion_holds_sum(
   contextt temp_context;
   namespacet ns(context, temp_context);
   goto_programt::const_targett first = goto_program.instructions.begin();
-  summarizing_checkert symex(value_set_analysist(ns),
-                         first, loopstoret(), loopstoret(),
+  summarizing_checkert sum_checker(value_set_analysist(ns),
+                         first, goto_functions, loopstoret(), loopstoret(),
                          ns, temp_context);
 
-  return symex.assertion_holds(goto_program, assertion, out,
+  return sum_checker.assertion_holds(goto_program, assertion, out,
                                max_memory_used, use_smt);
 }
 
@@ -130,6 +135,7 @@ bool assertion_holds_sum(
   const value_setst &value_sets,
   goto_programt::const_targett &head,
   const goto_programt &goto_program,
+  const goto_functionst &goto_functions,
   const assertion_infot& assertion,
   std::ostream &out,
   unsigned long &max_memory_used,
@@ -137,10 +143,10 @@ bool assertion_holds_sum(
 {
   contextt temp_context;
   namespacet ns(context, temp_context);
-  summarizing_checkert symex(value_sets, head, loopstoret(), loopstoret(), 
-          ns, temp_context);
+  summarizing_checkert sum_checker(value_sets, head, goto_functions,
+          loopstoret(), loopstoret(), ns, temp_context);
 
-  return symex.assertion_holds(goto_program, assertion, out,
+  return sum_checker.assertion_holds(goto_program, assertion, out,
                                max_memory_used, use_smt);
 }
 
@@ -170,12 +176,31 @@ bool summarizing_checkert::assertion_holds(
     return true;
   }
 
-  // TODO: Prepare summary_info, start with lazy variant
+  // Prepare the summarization context
+  summarization_contextt summarization_context(goto_functions, value_sets,
+          imprecise_loops, precise_loops);
+
+  // Prepare summary_info, start with the lazy variant, i.e.,
+  // all summaries are initialized as NONDET except those on the way
+  // to the target assertion, which are marked INLINE.
+  summary_infot summary_info;
+  summary_info.initialize(summarization_context, goto_program, assertion);
 
   // TODO: In loop call symex_assertion_sum, with refining 
   // the summary_info based on the spurious counter-examples 
   // (or ad hoc at first)
+  symex_target_equationt equation(ns);
+  symex_assertion_sumt symex = symex_assertion_sumt(
+          summarization_context,
+          summary_info,
+          original_loop_head,
+          ns,
+          context,
+          equation
+          );
 
-  return false;
+  // FIXME: The refinement loop should be here!
+  return symex.assertion_holds(goto_program, assertion, 
+          std::cout /* FIXME: out */, max_memory_used, use_smt);
 }
 
