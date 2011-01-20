@@ -8,19 +8,21 @@ Author: Ondrej Sery
 
 #include "opensmt_solver.h"
 
-void
+int
 opensmt_solvert::push_partition(/* TODO: partition id */)
 {
+  throw std::string(__func__) + " not yet implemented.";
 }
 
 void
 opensmt_solvert::pop_partition()
 {
+  throw std::string(__func__) + " not yet implemented.";
 }
 
 exprt
-opensmt_solvert::get_interpolant(/* TODO: partition id */) const
+opensmt_solvert::get_interpolant(int partition_id) const
 {
-  throw "Not yet implemented";
+  throw std::string(__func__) + " not yet implemented.";
 }
 
