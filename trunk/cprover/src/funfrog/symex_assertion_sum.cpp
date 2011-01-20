@@ -60,7 +60,7 @@ bool symex_assertion_sumt::assertion_holds(
     out << std::endl << "GOTO-PROGRAM:" << std::endl;
     for (goto_programt::instructionst::const_iterator it=
            goto_program.instructions.begin();
-         it != last && it != goto_program.instructions.end();
+         /*it != last &&*/ it != goto_program.instructions.end();
          it++)
       goto_program.output_instruction(ns, "", out, it);
   }
@@ -80,10 +80,12 @@ bool symex_assertion_sumt::assertion_holds(
   before=current_time();
 
   goto_symext::statet state;
+  // Prepare for the pc++ after returning from the last END_FUNCTION
+  state.top().calling_location = --goto_program.instructions.end();
 
 //  state.value_set = value_sets;
   for(state.source.pc = goto_program.instructions.begin();
-      state.source.pc != last && 
+      //state.source.pc != last &&
       state.source.pc != goto_program.instructions.end();
       )
   {
@@ -336,7 +338,10 @@ void symex_assertion_sumt::symex_step(
         std::string msg=id2string(state.source.pc->location.get_comment());
         if(msg=="") msg="assertion";
         exprt tmp(instruction.guard);
+
+        std::cout << tmp << std::endl;
         clean_expr(tmp, state, false);
+        std::cout << tmp << std::endl;
         claim(tmp, msg, state);
       }
 
