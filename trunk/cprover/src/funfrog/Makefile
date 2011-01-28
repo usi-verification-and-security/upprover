@@ -5,6 +5,7 @@ SRC = main.cpp \
       symex_assertion_sum.cpp \
       summarizing_checker.cpp \
       inlined_claims.cpp \
+      expr_pretty_print.cpp \
       interpolation/opensmt_solver.cpp
 
 OBJ = $(SRC:.cpp=.o) \

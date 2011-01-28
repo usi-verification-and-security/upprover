@@ -1,7 +1,7 @@
 /*******************************************************************
 
  Module: Symbolic execution and deciding of a given goto-program
- using and generating function summaries. Based on symex_asserion.h
+ using and generating function summaries. Based on symex_asserion.cpp
 
  Author: Ondrej Sery
 
@@ -18,6 +18,7 @@
 
 #include "symex_assertion_sum.h"
 #include "../loopfrog/memstat.h"
+#include "expr_pretty_print.h"
 
 fine_timet global_satsolver_time;
 fine_timet global_sat_conversion_time;
@@ -83,10 +84,14 @@ bool symex_assertion_sumt::assertion_holds(
   // Prepare for the pc++ after returning from the last END_FUNCTION
   state.top().calling_location = --goto_program.instructions.end();
 
-//  state.value_set = value_sets;
+  defer_function(deferred_functiont(summary_info));
+
+  // Old: ??? state.value_set = value_sets;
+
+  // FIXME: If we care only about a single assertion, we should stop 
+  // as soon as it is reached.
   for(state.source.pc = goto_program.instructions.begin();
-      //state.source.pc != last &&
-      state.source.pc != goto_program.instructions.end();
+      has_more_steps(state);
       )
   {
     goto_program.output_instruction(ns, "", std::cout, state.source.pc);
@@ -124,7 +129,9 @@ bool symex_assertion_sumt::assertion_holds(
   if(remaining_claims!=0)
   {
     before=current_time();
-    slice(equation);
+    // FIXME: Slicer does not expect deferring of function inlining
+    // and removes also important parts of the code.
+    // slice(equation);
     after=current_time();
 
     if (out.good())
@@ -293,8 +300,9 @@ void symex_assertion_sumt::symex_step(
     break;
 
   case END_FUNCTION:
-    symex_end_of_function(state);
-    state.source.pc++;
+
+    store_return_value(state, get_current_deferred_function());
+    dequeue_deferred_function(state);
     break;
   
   case LOCATION:
@@ -318,6 +326,7 @@ void symex_assertion_sumt::symex_step(
       {
         exprt tmp2=tmp;
         state.guard.guard_expr(tmp2);
+
         target.assumption(state.guard, tmp2, state.source);
 
         #if 0      
@@ -339,9 +348,8 @@ void symex_assertion_sumt::symex_step(
         if(msg=="") msg="assertion";
         exprt tmp(instruction.guard);
 
-        std::cout << tmp << std::endl;
         clean_expr(tmp, state, false);
-        std::cout << tmp << std::endl;
+
         claim(tmp, msg, state);
       }
 
@@ -375,18 +383,10 @@ void symex_assertion_sumt::symex_step(
       code_function_callt deref_code=
         to_code_function_call(instruction.code);
 
-      if(deref_code.lhs().is_not_nil())
-        clean_expr(deref_code.lhs(), state, true);
-
-      clean_expr(deref_code.function(), state, false);
-
-      Forall_expr(it, deref_code.arguments())
-        clean_expr(*it, state, false);
-    
-      symex_function_call(goto_functions, state, deref_code);
+      // Process the function call according to the call_sumamry
+      handle_function_call(state, deref_code);
     }
-    else
-      state.source.pc++;
+    state.source.pc++;
     break;
 
   case OTHER:
@@ -537,4 +537,396 @@ void symex_assertion_sumt::slice_equation(
 
   if (out.good())
     out << "SLICER TIME: "<< time2string(after-before) << std::endl;
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::dequeue_deferred_function
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Take a deferred function from the queue and prepare it for 
+ symex processing. This would also mark a corresponding partition in
+ the target equation.
+
+\*******************************************************************/
+void symex_assertion_sumt::dequeue_deferred_function(statet& state)
+{
+  // Dequeue the previous deferred function
+  deferred_functions.pop();
+
+  if (deferred_functions.empty()) {
+    // No more deferred functions, we are done
+    current_summary_info = NULL;
+    return;
+  }
+
+  // Set the current summary info to one of the deferred functions
+  deferred_functiont &deferred_function = deferred_functions.front();
+  current_summary_info = &deferred_function.summary_info;
+  const irep_idt& function_id = current_summary_info->get_function_id();
+
+  std::cout << "Processing a deferred function: " << function_id;
+
+  // Prepare (and empty) the current state
+  // NOTE: Here, we expect having the function body available
+  const goto_programt& body = 
+    summarization_context.functions.function_map.at(function_id).body;
+
+  // Set pc to function entry point
+  state.source.pc = body.instructions.begin();
+
+  // Setup temporary store for return value
+  if (deferred_function.returns_value) {
+    state.top().return_value = deferred_function.retval_tmp;
+  }
+
+  // Add an assumption of the function call_site symbol
+  state.guard.make_true();
+  state.guard.add(deferred_function.callsite_symbol);
+
+  // Mark the partition in the target equation
+  // TODO
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::assign_function_arguments
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Assigns function arguments to new symbols, also makes
+ assignement of the new symbol of return value to the lhs of
+ the call site (if any)
+
+\*******************************************************************/
+void symex_assertion_sumt::assign_function_arguments(
+        statet &state,
+        code_function_callt &function_call,
+        deferred_functiont &deferred_function)
+{
+  const irep_idt &identifier=
+    to_symbol_expr(function_call.function()).get_identifier();
+
+  // find code in function map
+  goto_functionst::function_mapt::const_iterator it =
+    summarization_context.functions.function_map.find(identifier);
+
+  if(it == summarization_context.functions.function_map.end())
+    throw "failed to find `"+id2string(identifier)+"' in function_map";
+
+  const goto_functionst::goto_functiont &goto_function=it->second;
+
+  // Add parameters assignment
+  argument_assignments(goto_function.type, state, function_call.arguments());
+  // Store the argument renamed symbols somewhere (so that we can use
+  // them later, when processing the deferred function).
+  mark_argument_symbols(goto_function.type, state, deferred_function);
+
+  if (function_call.lhs().is_not_nil()) {
+    // Add return value assignment from a temporary variable and
+    // store the temporary return value symbol somewhere (so that we can
+    // use it later, when processing the deferred function).
+    return_assignment_and_mark(goto_function.type, state, function_call.lhs(),
+            deferred_function);
+  }
+  // FIXME: Add also new assignments to all modified global variables
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::mark_argument_symbols
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Marks the SSA symbols of function arguments
+
+\*******************************************************************/
+void symex_assertion_sumt::mark_argument_symbols(
+        const code_typet &function_type,
+        statet &state,
+        deferred_functiont &deferred_function)
+{
+  const code_typet::argumentst &argument_types=function_type.arguments();
+
+  for(code_typet::argumentst::const_iterator
+      it=argument_types.begin();
+      it!=argument_types.end();
+      it++)
+  {
+    const code_typet::argumentt &argument=*it;
+    const irep_idt &identifier=argument.get_identifier();
+
+    symbol_exprt symbol(state.current_name(identifier), argument.type());
+
+    deferred_function.argument_symbols.push_back(symbol);
+
+    expr_pretty_print(std::cout << "Marking argument symbol: ", symbol);
+  }
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::return_assignment_and_mark
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Assigns return value from a new SSA symbols to the lhs at
+ call site. Marks the SSA symbol of the return value temporary
+ variable for later use when processing the deferred function
+
+\*******************************************************************/
+void symex_assertion_sumt::return_assignment_and_mark(
+        const code_typet &function_type,
+        statet &state,
+        const exprt &lhs,
+        deferred_functiont &deferred_function)
+{
+  assert(function_type.return_type().is_not_nil());
+
+  const irep_idt &function_id = deferred_function.summary_info.get_function_id();
+  std::string retval_symbol_id(
+          "funfrog::" + function_id.as_string() + "::\\retval");
+  std::string retval_tmp_id(
+          "funfrog::" + function_id.as_string() + "::\\retval_tmp");
+  symbol_exprt retval_symbol(
+          get_new_symbol_version(retval_symbol_id, state),
+          function_type.return_type());
+  symbol_exprt retval_tmp(
+          retval_tmp_id,
+          function_type.return_type());
+
+  code_assignt assignment(lhs, retval_symbol);
+  assert( ns.follow(assignment.lhs().type()) ==
+          ns.follow(assignment.rhs().type()));
+
+  basic_symext::symex_assign(state, assignment);
+
+  deferred_function.retval_symbol = retval_symbol;
+  deferred_function.retval_tmp = retval_tmp;
+  deferred_function.returns_value = true;
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::store_return_value
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Assigns return value to the corresponding temporary SSA
+ symbol
+
+\*******************************************************************/
+void symex_assertion_sumt::store_return_value(
+        statet &state,
+        const deferred_functiont &deferred_function)
+{
+  if (!deferred_function.returns_value)
+    return;
+  
+  code_assignt assignment(
+          deferred_function.retval_symbol,
+          deferred_function.retval_tmp);
+  
+  assert( ns.follow(assignment.lhs().type()) ==
+          ns.follow(assignment.rhs().type()));
+
+  // Emit the assignment
+  raw_assignment(state, assignment.lhs(), assignment.rhs(), ns, false);
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::handle_function_call
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Processes a function call based on the corresponding
+ summary type
+
+\*******************************************************************/
+void symex_assertion_sumt::handle_function_call(
+        statet &state,
+        code_function_callt &function_call)
+{
+  // What are we supposed to do with this precise function call?
+  const call_summaryt &call_summary =
+          current_summary_info->get_call_sites().find(state.source.pc)->second;
+  deferred_functiont deferred_function(call_summary.get_summary_info());
+  const irep_idt& function_id = function_call.function().get(ID_identifier);
+
+  // Clean expressions in the arguments, function name, and lhs (if any)
+  if (function_call.lhs().is_not_nil())
+    clean_expr(function_call.lhs(), state, true);
+
+  clean_expr(function_call.function(), state, false);
+
+  Forall_expr(it, function_call.arguments())
+  clean_expr(*it, state, false);
+
+  // Assign function parameters and return value
+  assign_function_arguments(state, function_call, deferred_function);
+
+  switch (call_summary.get_precision()) {
+  case call_summaryt::NONDET:
+    // We should treat the function as nondeterministic, havocing
+    // all data it touches.
+
+    // FIXME: We need some static analysis of the function for this
+    std::cout << "*** NONDET abstraction used for function: " <<
+            function_id << std::endl;
+    break;
+  case call_summaryt::SUMMARY:
+    // We should use an already computed summary as an abstraction
+    // of the function body
+
+    // FIXME: Implement this
+    std::cout << "*** SUMMARY abstraction used for function: " <<
+            function_id << std::endl;
+    break;
+  case call_summaryt::INLINE:
+  {
+    // We should inline the body --> defer this for later
+
+    std::cout << "*** INLINING function: " <<
+            function_id << std::endl;
+
+    // Add assumption for the function symbol
+    std::string callsite_symbol_id(
+            "funfrog::" + function_id.as_string() + "::\\callsite_symbol");
+
+    symbol_exprt callsite_symbol(
+            get_new_symbol_version(callsite_symbol_id, state),
+            typet(ID_bool));
+    deferred_function.callsite_symbol = callsite_symbol;
+
+    state.guard.guard_expr(callsite_symbol);
+    target.assumption(state.guard, callsite_symbol, state.source);
+
+    defer_function(deferred_function);
+    break;
+  }
+  default:
+    assert(false);
+    break;
+  }
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::get_new_symbol_version
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Helper function for renaming of an identifier without
+ assigning to it.
+
+\*******************************************************************/
+std::string symex_assertion_sumt::get_new_symbol_version(
+        const std::string &identifier,
+        statet &state)
+{
+  //--8<--- Taken from goto_symex_statt::assignment()
+  // identifier should be l0 or l1, make sure it's l1
+  const std::string l1_identifier=state.top().level1(identifier);
+  // do the l2 renaming
+  statet::level2t::valuet &entry=state.level2.current_names[l1_identifier];
+  entry.count++;
+  state.level2.rename(l1_identifier, entry.count);
+  return state.level2.name(l1_identifier, entry.count);
+  //--8<---
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::raw_assignment
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Makes an assignment without increasing the version of the
+ lhs symbol (make sure that lhs symbol is not assigned elsewhere)
+
+\*******************************************************************/
+void symex_assertion_sumt::raw_assignment(
+        statet &state,
+        exprt &lhs,
+        const exprt &rhs,
+        const namespacet &ns,
+        bool record_value)
+{
+  symbol_exprt rhs_symbol = to_symbol_expr(rhs);
+  rhs_symbol.set(ID_identifier, state.current_name(rhs_symbol.get_identifier()));
+
+  // FIXME: Check that this does not mess (too much) with the value sets
+  // and constant propagation
+  //--8<--- Taken from goto_symex_statt::assignment()
+  assert(lhs.id()==ID_symbol);
+
+  // the type might need renaming
+  state.rename(lhs.type(), ns);
+
+  const irep_idt &identifier=
+    lhs.get(ID_identifier);
+
+  // identifier should be l0 or l1, make sure it's l1
+
+  const std::string l1_identifier=state.top().level1(identifier);
+
+  // do the l2 renaming
+  statet::level2t::valuet &entry=state.level2.current_names[l1_identifier];
+
+  // We do not want the new version!
+  // OLD:
+  //
+  // entry.count++;
+  //
+  // state.level2.rename(l1_identifier, entry.count);
+  //
+  // lhs.set(ID_identifier, level2.name(l1_identifier, entry.count));
+
+  if(record_value)
+  {
+    // for constant propagation
+
+    if(state.constant_propagation(rhs_symbol))
+      entry.constant=rhs_symbol;
+    else
+      entry.constant.make_nil();
+  }
+  else
+    entry.constant.make_nil();
+
+  // update value sets
+  exprt l1_rhs(rhs_symbol);
+  state.level2.get_original_name(l1_rhs);
+  exprt l1_lhs(lhs);
+  state.level2.get_original_name(l1_lhs);
+
+  state.value_set.assign(l1_lhs, l1_rhs, ns);
+  //--8<---
+
+  guardt empty_guard;
+
+  target.assignment(
+    empty_guard,
+    lhs, l1_lhs,
+    rhs_symbol,
+    state.source,
+    symex_targett::STATE);
 }

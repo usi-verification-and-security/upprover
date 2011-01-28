@@ -13,7 +13,7 @@
 
 void
 call_summaryt::set_inline(const summarization_contextt &summarization_context,
-        const irep_idt& target_function,
+        const irep_idt &target_function,
         const assertion_infot &assertion,
         size_t stack_depth)
 {
@@ -56,6 +56,8 @@ summary_infot::initialize(const summarization_contextt& summarization_context,
               std::pair<goto_programt::const_targett, call_summaryt>(inst,
               call_summaryt())).first->second;
 
+      call_summary.initialize(target_function);
+
       // Is the call on the call stack leading to the target assertion?
       if (will_inline && inst == call_pos) {
 #       if 0
@@ -64,6 +66,9 @@ summary_infot::initialize(const summarization_contextt& summarization_context,
         call_summary.set_inline(summarization_context, target_function,
                 assertion, stack_depth+1);
       } else {
+        call_summary.set_inline(summarization_context, target_function,
+                assertion, stack_depth+1);
+        // call_summary.set_nondet();
 #       if 0
         std::cout << "Havocing a call." << target_function << std::endl;
 #       endif

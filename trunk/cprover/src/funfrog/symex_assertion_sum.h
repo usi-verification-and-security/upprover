@@ -9,7 +9,7 @@
 #ifndef SYMEX_ASSERTION_SUM_H_
 #define SYMEX_ASSERTION_SUM_H_
 
-#include <stack>
+#include <queue>
 
 #include <solvers/flattening/sat_minimizer.h>
 #include <goto-programs/goto_program.h>
@@ -17,6 +17,7 @@
 #include <goto-symex/goto_symex.h>
 #include <goto-symex/symex_target_equation.h>
 #include <namespace.h>
+#include <symbol.h>
 
 #include <base_type.h>
 #include <time_stopping.h>
@@ -46,6 +47,7 @@ public:
           goto_symext(_ns, _context, _target),
           summarization_context(_summarization_context),
           summary_info(_summary_info),
+          current_summary_info(&_summary_info),
           equation(_target),
           original_loop_head(original_head) {};
 
@@ -66,20 +68,112 @@ public:
     symex_target_equationt &target,
     std::ostream &out) const;
 
-protected:
-  // Shared information about the program and sumamries to be used during
+private:
+  class deferred_functiont {
+  public:
+    deferred_functiont(const summary_infot &_summary_info) :
+      summary_info(_summary_info), returns_value (false) {}
+
+    const summary_infot& summary_info;
+    std::vector<symbol_exprt> argument_symbols;
+    symbol_exprt retval_symbol;
+    symbol_exprt retval_tmp;
+    symbol_exprt callsite_symbol;
+    bool returns_value;
+  };
+
+  // Shared information about the program and summaries to be used during
   // analysis
   const summarization_contextt &summarization_context;
 
-  // Which functions should be summarized, abstracted from, and which inlined.
+  // Which functions should be summarized, abstracted from, and which inlined
   const summary_infot &summary_info;
+
+  // Summary info of the function being currently processed. Set to NULL when
+  // no deferred function are left
+  const summary_infot *current_summary_info;
+
+  // Wait queue for the deferred functions (for other partitions)
+  std::queue<deferred_functiont> deferred_functions;
   
+  // Store for the symex result
   symex_target_equationt &equation;
+
+  // FIXME: Garbage?
   goto_programt::const_targett &original_loop_head;
 
   bool is_satisfiable(
     decision_proceduret &decision_procedure,
     std::ostream &out);
-};
 
+  // Add function to the wait queue to be processed by symex later and to
+  // create a separate partition for interpolation
+  void defer_function(const deferred_functiont &deferred_function) {
+    deferred_functions.push(deferred_function);
+  }
+
+  // Are there any more instructions in the current function or at least
+  // a deferred function to dequeue?
+  bool has_more_steps(const statet &state) {
+    return current_summary_info != NULL;
+  }
+
+  // Take a deferred function from the queue and prepare it for symex
+  // processing. This would also mark a corresponding partition in
+  // the target equation.
+  void dequeue_deferred_function(statet &state);
+
+  // The currently processed deferred function
+  const deferred_functiont& get_current_deferred_function() const {
+    return deferred_functions.front();
+  }
+
+  // Processes a function call based on the corresponding
+  // summary type
+  void handle_function_call(statet &state,
+    code_function_callt &function_call);
+
+  // Assigns function arguments to new SSA symbols, also makes
+  // assignement of the new SSA symbol of return value to the lhs of
+  // the call site (if any)
+  void assign_function_arguments(statet &state,
+    code_function_callt &function_call,
+    deferred_functiont &deferred_function);
+  
+  // Marks the SSA symbols of function arguments
+  void mark_argument_symbols(
+    const code_typet &function_type,
+    statet &state,
+    deferred_functiont &deferred_function);
+
+  // Assigns return value from a new SSA symbols to the lhs at
+  // call site. Marks the SSA symbol of the return value temporary
+  // variable for later use when processing the deferred function
+  void return_assignment_and_mark(
+    const code_typet &function_type,
+    statet &state,
+    const exprt &lhs,
+    deferred_functiont &deferred_function);
+
+  // Assigns return value to the corresponding temporary SSA symbol
+  void store_return_value(
+    statet &state,
+    const deferred_functiont &deferred_function);
+
+  // Purpose: Helper function for renaming of an identifier without
+  // assigning to it.
+  std::string get_new_symbol_version(
+        const std::string &identifier,
+        statet &state);
+
+  // Makes an assignment without increasing the version of the
+  // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
+  void raw_assignment(
+        statet &state,
+        exprt &lhs,
+        const exprt &rhs,
+        const namespacet &ns,
+        bool record_value);
+
+};
 #endif /*SYMEX_ASSERTION_SUM_H_*/
