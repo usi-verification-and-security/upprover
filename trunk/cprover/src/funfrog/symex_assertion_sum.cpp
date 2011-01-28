@@ -570,6 +570,10 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 
   std::cout << "Processing a deferred function: " << function_id;
 
+  // Select symex target equation to produce formulas into the corresponding
+  // partition
+  equation.select_partition(deferred_function.partition_id);
+
   // Prepare (and empty) the current state
   // NOTE: Here, we expect having the function body available
   const goto_programt& body = 

@@ -8,8 +8,8 @@
 
 \*******************************************************************/
 
-#ifndef SUMMARY_INFO_H_
-#define SUMMARY_INFO_H_
+#ifndef CPROVER_SUMMARY_INFO_H
+#define CPROVER_SUMMARY_INFO_H
 
 #include <map>
 #include <goto-programs/goto_program.h>
@@ -75,5 +75,4 @@ private:
   friend class summary_infot;
 };
 
-#endif /*SUMMARY_INFO_H_*/
-
+#endif

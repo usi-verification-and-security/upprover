@@ -7,8 +7,8 @@
 
 \*******************************************************************/
 
-#ifndef SUMMARIZATION_CONTEXT_H_
-#define SUMMARIZATION_CONTEXT_H_
+#ifndef CPROVER_SUMMARIZATION_CONTEXT_H
+#define CPROVER_SUMMARIZATION_CONTEXT_H
 
 #include <pointer-analysis/value_set_analysis.h>
 #include <goto-programs/goto_functions.h>
@@ -36,4 +36,4 @@ public:
   function_infost function_infos;
 };
 
-#endif /*SUMMARIZATION_CONTEXT_H_*/
+#endif

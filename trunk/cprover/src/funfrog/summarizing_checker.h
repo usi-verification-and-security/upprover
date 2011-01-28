@@ -7,8 +7,8 @@
 
 \*******************************************************************/
 
-#ifndef SUMMARIZING_CHECKER_H_
-#define SUMMARIZING_CHECKER_H_
+#ifndef CPROVER_SUMMARIZING_CHECKER_H
+#define CPROVER_SUMMARIZING_CHECKER_H
 
 #include <pointer-analysis/value_set_analysis.h>
 
@@ -100,5 +100,4 @@ bool assertion_holds_sum(
   unsigned long &max_memory_used,
   bool use_smt=false);
 
-#endif /*SUMMARIZING_CHECKER_H_*/
-
+#endif

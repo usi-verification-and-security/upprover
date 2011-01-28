@@ -189,7 +189,7 @@ bool summarizing_checkert::assertion_holds(
   // TODO: In loop call symex_assertion_sum, with refining 
   // the summary_info based on the spurious counter-examples 
   // (or ad hoc at first)
-  symex_target_equationt equation(ns);
+  partitioning_target_equationt equation(ns);
   symex_assertion_sumt symex = symex_assertion_sumt(
           summarization_context,
           summary_info,

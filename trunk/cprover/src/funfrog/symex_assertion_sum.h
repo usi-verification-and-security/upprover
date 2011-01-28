@@ -6,8 +6,8 @@
 
  \*******************************************************************/
 
-#ifndef SYMEX_ASSERTION_SUM_H_
-#define SYMEX_ASSERTION_SUM_H_
+#ifndef CPROVER_SYMEX_ASSERTION_SUM_H
+#define CPROVER_SYMEX_ASSERTION_SUM_H
 
 #include <queue>
 
@@ -15,7 +15,6 @@
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
 #include <goto-symex/goto_symex.h>
-#include <goto-symex/symex_target_equation.h>
 #include <namespace.h>
 #include <symbol.h>
 
@@ -29,6 +28,7 @@
 #include "assertion_info.h"
 #include "summary_info.h"
 #include "summarization_context.h"
+#include "partitioning_target_equation.h"
 
 extern fine_timet global_satsolver_time;
 extern fine_timet global_sat_conversion_time;
@@ -42,7 +42,7 @@ public:
           goto_programt::const_targett &original_head,
           const namespacet &_ns,
           contextt &_context,
-          symex_target_equationt &_target
+          partitioning_target_equationt &_target
           ) :
           goto_symext(_ns, _context, _target),
           summarization_context(_summarization_context),
@@ -69,10 +69,14 @@ public:
     std::ostream &out) const;
 
 private:
+
   class deferred_functiont {
   public:
+
     deferred_functiont(const summary_infot &_summary_info) :
-      summary_info(_summary_info), returns_value (false) {}
+            summary_info(_summary_info), returns_value(false),
+            partition_id(partitioning_target_equationt::NO_PARTITION) {
+    }
 
     const summary_infot& summary_info;
     std::vector<symbol_exprt> argument_symbols;
@@ -80,6 +84,7 @@ private:
     symbol_exprt retval_tmp;
     symbol_exprt callsite_symbol;
     bool returns_value;
+    partition_idt partition_id;
   };
 
   // Shared information about the program and summaries to be used during
@@ -97,7 +102,7 @@ private:
   std::queue<deferred_functiont> deferred_functions;
   
   // Store for the symex result
-  symex_target_equationt &equation;
+  partitioning_target_equationt &equation;
 
   // FIXME: Garbage?
   goto_programt::const_targett &original_loop_head;
@@ -110,6 +115,7 @@ private:
   // create a separate partition for interpolation
   void defer_function(const deferred_functiont &deferred_function) {
     deferred_functions.push(deferred_function);
+    deferred_functions.back().partition_id = equation.reserve_partition();
   }
 
   // Are there any more instructions in the current function or at least
@@ -176,4 +182,4 @@ private:
         bool record_value);
 
 };
-#endif /*SYMEX_ASSERTION_SUM_H_*/
+#endif

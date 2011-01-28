@@ -7,8 +7,8 @@
 
 \*******************************************************************/
 
-#ifndef FUNCTION_INFO_H_
-#define FUNCTION_INFO_H_
+#ifndef CPROVER_FUNCTION_INFO_H
+#define CPROVER_FUNCTION_INFO_H
 
 #include <irep.h>
 #include <expr.h>
@@ -29,5 +29,4 @@ private:
 
 typedef hash_map_cont<irep_idt, function_infot> function_infost;
 
-#endif /*FUNCTION_INFO_H_*/
-
+#endif

@@ -8,8 +8,8 @@
 
 \*******************************************************************/
 
-#ifndef ASSERTION_INFO_H_
-#define ASSERTION_INFO_H_
+#ifndef CPROVER_ASSERTION_INFO_H
+#define CPROVER_ASSERTION_INFO_H
 
 #include <loopfrog/call_stack.h>
 
@@ -28,5 +28,5 @@ private:
   goto_programt::const_targett location;
 };
 
-#endif /*ASSERTION_INFO_H_*/
+#endif
 

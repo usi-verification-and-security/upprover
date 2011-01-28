@@ -6,6 +6,7 @@ SRC = main.cpp \
       summarizing_checker.cpp \
       inlined_claims.cpp \
       expr_pretty_print.cpp \
+      partitioning_target_equation.cpp \
       interpolation/opensmt_solver.cpp
 
 OBJ = $(SRC:.cpp=.o) \

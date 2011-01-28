@@ -6,8 +6,8 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
-#ifndef EXPR_PRETTY_PRINT_H
-#define EXPR_PRETTY_PRINT_H
+#ifndef CPROVER_EXPR_PRETTY_PRINT_H
+#define CPROVER_EXPR_PRETTY_PRINT_H
 
 #include <expr.h>
 

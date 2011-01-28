@@ -6,8 +6,8 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
-#ifndef OPENSMT_SOLVER_H_
-#define OPENSMT_SOLVER_H_
+#ifndef CPROVER_OPENSMT_SOLVER_H
+#define CPROVER_OPENSMT_SOLVER_H
 
 #include "interpolating_solver.h"
 
@@ -20,22 +20,17 @@ public:
   }
 
   // Begins a partition of formula for latter reference during 
-  // interpolation extraction. The partitions can be nested.
-  // All assertions made until the corresponding call of
-  // pop_partition() will be part of this partition.
+  // interpolation extraction. All assertions made until
+  // next call of new_partition() will be part of this partition.
   //
   // returns a unique partition id
-  virtual int push_partition();
+  virtual fle_part_idt new_partition();
 
-  // Ends a partition of formula for latter interpolation
-  virtual void pop_partition();
-
-  // Extracts the symmetric interpolant of the specified 
-  // partition. This method can be called only after previous
-  // call to dec_solve(), returning the result
-  // decision_proceduret::D_UNSATISFIABLE
-  virtual exprt get_interpolant(int partition_id) const;
+  // Extracts the symmetric interpolant of the specified set of
+  // partitions. This method can be called only after previous
+  // call to dec_solve(), returning the decision_proceduret::D_UNSATISFIABLE
+  // result
+  virtual exprt get_interpolant(const fle_part_idst& partition_ids) const;
 };
 
 #endif
-
