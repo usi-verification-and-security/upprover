@@ -57,12 +57,13 @@ expr_pretty_printt::visit(const exprt& expr) {
 }
 
 void
-expr_pretty_print(std::ostream& out, const exprt& expr)
+expr_pretty_print(std::ostream& out, const exprt& expr, int _indent)
 {
   expr_pretty_printt pp(out);
 
+  if (_indent > 0)
+    pp.set_indent(_indent);
   pp.visit(expr);
-  out << std::endl;
 }
 
  

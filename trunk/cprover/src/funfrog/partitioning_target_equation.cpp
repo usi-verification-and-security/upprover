@@ -86,7 +86,7 @@ void partitioning_target_equationt::convert_partition_assignments(
     {
       exprt tmp(it->cond_expr);
 
-      expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp);
+      expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);
 
       prop_conv.set_to_true(tmp);
     }
@@ -117,7 +117,7 @@ void partitioning_target_equationt::convert_partition_guards(
     {
       exprt tmp(it->guard_expr);
 
-      expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp);
+      expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
 
       it->guard_literal=prop_conv.convert(tmp);
     }
@@ -150,7 +150,7 @@ void partitioning_target_equationt::convert_partition_assumptions(
       {
         exprt tmp(it->cond_expr);
 
-        expr_pretty_print(std::cout << "ASSUME-OUT:" << std::endl, tmp);
+        expr_pretty_print(std::cout << "ASSUME-OUT:" << std::endl, tmp, 2);
 
         it->cond_literal=prop_conv.convert(tmp);
       }
@@ -175,6 +175,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 {
   unsigned number_of_assertions = count_partition_assertions(partition);
 
+  unsigned number_of_assumptions = 0;
 # if 0
   // FIXME: This is unsound since also assumptions in the partitions without
   // any assertions may be important.
@@ -194,7 +195,7 @@ void partitioning_target_equationt::convert_partition_assertions(
       {
         prop_conv.set_to_false(it->cond_expr);
 
-        expr_pretty_print(std::cout << "ASSERT-OUT:" << std::endl, it->cond_expr);
+        expr_pretty_print(std::cout << "ASSERT-OUT:" << std::endl, it->cond_expr, 2);
 
         it->cond_literal=prop_conv.convert(it->cond_expr);
         return; // prevent further assumptions!
@@ -217,7 +218,7 @@ void partitioning_target_equationt::convert_partition_assertions(
     if (it->is_assert())
     {
 
-      expr_pretty_print(std::cout << "ASSERT-OUT:" << std::endl, it->cond_expr);
+      expr_pretty_print(std::cout << "ASSERT-OUT:" << std::endl, it->cond_expr, 2);
 
       // do the expression
       literalt tmp_literal=prop_conv.convert(it->cond_expr);
@@ -229,7 +230,7 @@ void partitioning_target_equationt::convert_partition_assertions(
     else if (it->is_assume()) {
       // If it is a call end symbol, we need to emit the assumption propagation
       // formula for the given callsite.
-      if (it->cond_expr.id() == ID_symbol) {
+      if (number_of_assumptions > 0 && it->cond_expr.id() == ID_symbol) {
         partition_mapt::iterator pit =
                 partition_map.find(it->cond_expr.get(ID_identifier));
 
@@ -256,6 +257,7 @@ void partitioning_target_equationt::convert_partition_assertions(
       // Collect this assumption
       assumption_literal=
         prop_conv.prop.land(assumption_literal, it->cond_literal);
+      number_of_assumptions++;
     }
   }
 
@@ -263,7 +265,7 @@ void partitioning_target_equationt::convert_partition_assertions(
   if (!bv.empty())
     prop_conv.prop.lcnf(bv);
 
-  if (partition.parent_id != NO_PARTITION) {
+  if (partition.parent_id != NO_PARTITION && number_of_assumptions > 0) {
     // Assert the assumption propagation formula for the partition
     literalt tmp = prop_conv.prop.limplies(partition.callend_literal,
             assumption_literal);
