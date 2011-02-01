@@ -84,7 +84,9 @@ bool symex_assertion_sumt::assertion_holds(
   // Prepare for the pc++ after returning from the last END_FUNCTION
   state.top().calling_location = --goto_program.instructions.end();
 
+  // Prepare the partitions and deferred functions
   defer_function(deferred_functiont(summary_info));
+  equation.select_partition(deferred_functions.front().partition_id);
 
   // Old: ??? state.value_set = value_sets;
 
@@ -560,6 +562,8 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   if (deferred_functions.empty()) {
     // No more deferred functions, we are done
     current_summary_info = NULL;
+    // Prepare the equation for further processing
+    equation.prepare_partitions();
     return;
   }
 
@@ -575,11 +579,12 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   equation.select_partition(deferred_function.partition_id);
 
   // Prepare (and empty) the current state
+  state.guard.make_true();
+
+  // Set pc to function entry point
   // NOTE: Here, we expect having the function body available
   const goto_programt& body = 
     summarization_context.functions.function_map.at(function_id).body;
-
-  // Set pc to function entry point
   state.source.pc = body.instructions.begin();
 
   // Setup temporary store for return value
@@ -588,11 +593,8 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   }
 
   // Add an assumption of the function call_site symbol
-  state.guard.make_true();
-  state.guard.add(deferred_function.callsite_symbol);
-
-  // Mark the partition in the target equation
-  // TODO
+  target.assumption(state.guard, deferred_function.callstart_symbol,
+          state.source);
 }
 
 /*******************************************************************
@@ -807,17 +809,13 @@ void symex_assertion_sumt::handle_function_call(
     std::cout << "*** INLINING function: " <<
             function_id << std::endl;
 
-    // Add assumption for the function symbol
-    std::string callsite_symbol_id(
-            "funfrog::" + function_id.as_string() + "::\\callsite_symbol");
+    produce_callsite_symbols(deferred_function, state, function_id);
 
-    symbol_exprt callsite_symbol(
-            get_new_symbol_version(callsite_symbol_id, state),
-            typet(ID_bool));
-    deferred_function.callsite_symbol = callsite_symbol;
+    // Add assumption for the function call end symbol
+    exprt tmp(deferred_function.callend_symbol);
 
-    state.guard.guard_expr(callsite_symbol);
-    target.assumption(state.guard, callsite_symbol, state.source);
+    state.guard.guard_expr(tmp);
+    target.assumption(state.guard, tmp, state.source);
 
     defer_function(deferred_function);
     break;
@@ -826,6 +824,30 @@ void symex_assertion_sumt::handle_function_call(
     assert(false);
     break;
   }
+}
+/*******************************************************************
+
+ Function: symex_assertion_sumt::handle_function_call
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Creates new call site (start & end) symbols for the given
+ deferred function
+
+\*******************************************************************/
+void symex_assertion_sumt::produce_callsite_symbols(
+        deferred_functiont& deferred_function,
+        statet& state,
+        const irep_idt& function_id)
+{
+  deferred_function.callstart_symbol.set_identifier(
+          get_new_symbol_version("funfrog::" + function_id.as_string() +
+          "::\\callstart_symbol", state));
+  deferred_function.callend_symbol.set_identifier(
+          get_new_symbol_version("funfrog::" + function_id.as_string() +
+          "::\\callend_symbol", state));
 }
 
 /*******************************************************************

@@ -74,7 +74,10 @@ private:
   public:
 
     deferred_functiont(const summary_infot &_summary_info) :
-            summary_info(_summary_info), returns_value(false),
+            summary_info(_summary_info), 
+            callstart_symbol(typet(ID_bool)),
+            callend_symbol(typet(ID_bool)),
+            returns_value(false),
             partition_id(partitioning_target_equationt::NO_PARTITION) {
     }
 
@@ -82,7 +85,8 @@ private:
     std::vector<symbol_exprt> argument_symbols;
     symbol_exprt retval_symbol;
     symbol_exprt retval_tmp;
-    symbol_exprt callsite_symbol;
+    symbol_exprt callstart_symbol;
+    symbol_exprt callend_symbol;
     bool returns_value;
     partition_idt partition_id;
   };
@@ -115,7 +119,9 @@ private:
   // create a separate partition for interpolation
   void defer_function(const deferred_functiont &deferred_function) {
     deferred_functions.push(deferred_function);
-    deferred_functions.back().partition_id = equation.reserve_partition();
+    deferred_functions.back().partition_id = equation.reserve_partition(
+            deferred_function.callstart_symbol,
+            deferred_function.callend_symbol);
   }
 
   // Are there any more instructions in the current function or at least
@@ -165,6 +171,12 @@ private:
   void store_return_value(
     statet &state,
     const deferred_functiont &deferred_function);
+
+  // Creates new call site (start & end) symbols for the given
+  // deferred function
+  void produce_callsite_symbols(deferred_functiont& deferred_function,
+    statet& state,
+    const irep_idt& function_id);
 
   // Purpose: Helper function for renaming of an identifier without
   // assigning to it.

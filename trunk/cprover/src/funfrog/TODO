@@ -5,23 +5,14 @@ TODO list for funfrog
 HIGH PRIORITY
 -------------
 
-- Make sure that assumptions from inlined functions are included in the assertion check...somehow (but in a way that still allows separation into A & B)
-- How to handle assertions inside deferred functions? (should contain assertion with the callsite_start_symbol)
-    - We may have two callsite symbols: callstart_symbol and callend_symbol such that
-      callstart_symbol is used as a guard for the function body and
-      callend_symbol is used to imply all assumptions in the function (which fortunately includes also assumption 
-      of callend_symbols of the inner calls)
-
-
 
 LOW PRIORITY
 ------------
 
-- Leave choice of assertion for later (we might want to generate the SSA form only once and then use it for a number of checks)
+- symex_assertion_sum.cpp: Leave the choice of the concrete assertion for later (we might want to generate the SSA form only once and then use it for a number of checks)
   - Maybe we could use the already generated SSA parts while refining certain callsites (and not generate it again and again...)
 - Aliasing
-- Partitioning (new target_equation)
 - OpenSMT wrapper
-- Slicing (does not work due to deferring of functions = reordering of SSA steps)
+- Slicing (does not work due to deferring of functions and partitioning = reordering of SSA steps)
 - Error trace fixing
 

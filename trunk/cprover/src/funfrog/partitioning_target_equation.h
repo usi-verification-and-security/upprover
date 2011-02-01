@@ -11,6 +11,7 @@ Author: Ondrej Sery
 #define CPROVER_PARTITIONING_TARGET_EQUATION_H
 
 #include <goto-symex/symex_target_equation.h>
+#include <symbol.h>
 
 #include "interpolation/interpolating_solver.h"
 
@@ -32,11 +33,22 @@ public:
 
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
-  partition_idt reserve_partition() {
+  partition_idt reserve_partition(
+    const symbol_exprt& callstart_symbol,
+    const symbol_exprt& callend_symbol)
+  {
     partition_idt new_id = partitions.size();
 
     partitions.push_back(partitiont(current_partition_id));
-    get_current_partition().add_child_partition(new_id);
+    partitiont& new_partition = partitions.back();
+
+    new_partition.callstart_symbol = callstart_symbol;
+    new_partition.callend_symbol = callend_symbol;
+    partition_map.insert(partition_mapt::value_type(
+      callend_symbol.get_identifier(), new_id));
+
+    if (current_partition_id != NO_PARTITION)
+      get_current_partition().add_child_partition(new_id);
 
     return new_id;
   }
@@ -45,9 +57,10 @@ public:
   // The follwoing SSA statements will be part of the given partition until
   // a different partition is selected.
   void select_partition(partition_idt partition_id) {
-    get_current_partition().end_idx = SSA_steps.size() - 1;
-
-    assert(!partitions.at(partition_id).filled);
+    if (current_partition_id != NO_PARTITION) {
+      get_current_partition().end_idx = SSA_steps.size();
+      assert(!partitions.at(partition_id).filled);
+    }
 
     // Select the new partition
     current_partition_id = partition_id;
@@ -55,6 +68,10 @@ public:
     new_partition.filled = true;
     new_partition.start_idx = SSA_steps.size();
   }
+  
+  // Collects information about the specified partions for later
+  // processing and conversion
+  void prepare_partitions();
 
 private:
   
@@ -74,28 +91,61 @@ private:
 
     bool filled;
     int start_idx;
+    // Index after the last SSA coresponding to this partition
     int end_idx;
-
-  private:
+    SSA_stepst::iterator start_it;
+    // Iterator after the last SSA coresponding to this partition
+    SSA_stepst::iterator end_it;
+    symbol_exprt callstart_symbol;
+    symbol_exprt callend_symbol;
+    literalt callstart_literal;
+    literalt callend_literal;
     fle_part_idt fle_part_id;
     partition_idt parent_id;
     partition_idst child_ids;
   };
 
+  // Convert a specific partition of SSA steps
+  void convert_partition(prop_convt &prop_conv,
+    partitiont& partition);
+  // Convert a specific partition guards of SSA steps
+  void convert_partition_guards(prop_convt &prop_conv,
+    partitiont& partition);
+  // Convert a specific partition assignments of SSA steps
+  void convert_partition_assignments(prop_convt &prop_conv,
+    partitiont& partition) const;
+  // Convert a specific partition assumptions of SSA steps
+  void convert_partition_assumptions(prop_convt &prop_conv,
+    partitiont& partition);
+  // Convert a specific partition assertions of SSA steps
+  void convert_partition_assertions(prop_convt &prop_conv,
+    partitiont& partition);
+  // Convert a specific partition io of SSA steps
+  void convert_partition_io(prop_convt &prop_conv,
+    partitiont& partition);
+
+  unsigned count_partition_assertions(partitiont& partition) const
+  {
+    unsigned i=0;
+    for(SSA_stepst::const_iterator
+        it = partition.start_it;
+        it != partition.end_it; it++)
+      if(it->is_assert()) i++;
+    return i;
+  }
+
   // Safe getter for the current partition
   partitiont& get_current_partition() {
-    if (partitions.empty()) {
-      // If there is no partition yet, we will create a dummy one. There will
-      // be no means for getting the corresponding interpolant.
-      select_partition(reserve_partition());
-    }
-
     return partitions[current_partition_id];
   }
 
   typedef std::vector<partitiont> partitionst;
+  typedef std::map<irep_idt, partition_idt> partition_mapt;
   // Collection of all the partitions
   partitionst partitions;
+  // Mapping between callend symbol and the corresponding parititon
+  // This is used to emit assumption propagation constraints.
+  partition_mapt partition_map;
   
   // Id of the currently selected partition
   partition_idt current_partition_id;
