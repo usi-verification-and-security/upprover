@@ -15,10 +15,11 @@
 #include <time_stopping.h>
 #include <solvers/sat/satcheck.h>
 #include <solvers/smt1/smt1_dec.h>
+#include <loopfrog/memstat.h>
 
 #include "symex_assertion_sum.h"
-#include "../loopfrog/memstat.h"
 #include "expr_pretty_print.h"
+#include "solvers/satcheck_opensmt.h"
 
 fine_timet global_satsolver_time;
 fine_timet global_sat_conversion_time;
@@ -107,7 +108,7 @@ bool symex_assertion_sumt::assertion_holds(
 
   bool sat=false;
 
-  std::auto_ptr<satcheckt> sat_solver;
+  std::auto_ptr<propt> sat_solver;
   std::auto_ptr<prop_convt> deciderp;
 
   if (use_smt)
@@ -117,7 +118,8 @@ bool symex_assertion_sumt::assertion_holds(
   }
   else
   {
-    sat_solver = std::auto_ptr<satcheckt>(new satcheckt());
+    // sat_solver.reset(new satcheckt());
+    sat_solver.reset(new satcheck_opensmtt());
     bv_pointerst *p= new bv_pointerst(ns, *sat_solver);
     p->unbounded_array = bv_pointerst::U_AUTO;
     deciderp=std::auto_ptr<prop_convt>(p);

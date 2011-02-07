@@ -20,16 +20,18 @@ public:
 
   void visit(const exprt& expr);
 
-  void set_indent(int _indent) {
+  void set_indent(unsigned _indent) {
+    orig_indent = _indent;
     indent.assign(_indent, ' ');
   }
 
 private:
   std::ostream& out;
   std::string indent;
+  unsigned orig_indent;
   bool last;
 };
 
-void expr_pretty_print(std::ostream& out, const exprt& expr, int _indent = 0);
+void expr_pretty_print(std::ostream& out, const exprt& expr, unsigned _indent = 0);
 
 #endif

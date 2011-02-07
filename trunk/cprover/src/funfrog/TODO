@@ -13,6 +13,8 @@ LOW PRIORITY
   - Maybe we could use the already generated SSA parts while refining certain callsites (and not generate it again and again...)
 - Aliasing
 - OpenSMT wrapper
+  - Propositional flattening vs. SMT encoding?
 - Slicing (does not work due to deferring of functions and partitioning = reordering of SSA steps)
 - Error trace fixing
+- Check that the *_conv cache does not interfere with formula partitioning
 

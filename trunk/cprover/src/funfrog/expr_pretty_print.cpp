@@ -42,8 +42,9 @@ expr_pretty_printt::visit(const exprt& expr) {
 
   (*this)(expr);
 
-  if (indent.length() > 1) {
-    indent = indent.substr(0, indent.length()-2) + (last ? "  +-" : "| +-");
+  if (indent.length() > orig_indent + 1) {
+    indent = indent.substr(0, indent.length()-2) + 
+            (last ? "  +-" : "| +-");
   } else indent += "+-";
 
   last = false;
@@ -57,7 +58,7 @@ expr_pretty_printt::visit(const exprt& expr) {
 }
 
 void
-expr_pretty_print(std::ostream& out, const exprt& expr, int _indent)
+expr_pretty_print(std::ostream& out, const exprt& expr, unsigned _indent)
 {
   expr_pretty_printt pp(out);
 

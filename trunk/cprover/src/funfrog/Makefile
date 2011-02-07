@@ -7,7 +7,8 @@ SRC = main.cpp \
       inlined_claims.cpp \
       expr_pretty_print.cpp \
       partitioning_target_equation.cpp \
-      interpolation/opensmt_solver.cpp
+      interpolation/opensmt_solver.cpp \
+      solvers/satcheck_opensmt.cpp
 
 OBJ = $(SRC:.cpp=.o) \
       ../loopfrog/languages.o \
@@ -23,9 +24,9 @@ OBJ = $(SRC:.cpp=.o) \
       ../langapi/langapi.o \
       ../ansi-c/ansi-c.o
 
-INCLUDES= -I ../$(CHAFF) -I .. -I ../util
+INCLUDES= $(OPENSMT_INCLUDE) -I ../$(CHAFF) -I .. -I ../util
 
-LIBS =
+LIBS = -L $(OPENSMT_LIBDIR) -lopensmt-1.0 -lgmpxx -lgmp
 
 all: funfrog
 
