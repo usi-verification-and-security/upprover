@@ -17,14 +17,9 @@ Author: Ondrej Sery
 typedef int fle_part_idt;
 typedef std::vector<fle_part_idt> fle_part_idst;
 
-class interpolating_solvert:public decision_proceduret
+class interpolating_solvert
 {
 public:
-  explicit interpolating_solvert(const namespacet &_ns) : 
-        decision_proceduret(_ns)
-  {
-  }
-
   // Begins a partition of formula for latter reference during 
   // interpolation extraction. All assertions made until
   // next call of new_partition() will be part of this partition.
@@ -33,9 +28,8 @@ public:
   virtual fle_part_idt new_partition()=0;
 
   // Extracts the symmetric interpolant of the specified set of
-  // partitions. This method can be called only after previous
-  // call to dec_solve(), returning the decision_proceduret::D_UNSATISFIABLE
-  // result
+  // partitions. This method can be called only after solving the
+  // the formula with an UNSAT result
   virtual exprt get_interpolant(const fle_part_idst& partition_ids) const=0;
 };
 

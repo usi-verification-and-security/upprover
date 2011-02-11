@@ -1,9 +1,18 @@
 
+
 TODO list for funfrog
 =====================
 
 HIGH PRIORITY
 -------------
+
+- OpenSMT wrapper - propositional flattening
+  - interpolant back propagation
+  - OpneSMT as a reasonable library (solve the include mess)
+- UFLIA encoding
+  - choose solver, create wrapper, interpolant back propagation
+- Bit-vectors encoding
+  - examine wolverine's interpolation engine
 
 
 LOW PRIORITY
@@ -12,8 +21,6 @@ LOW PRIORITY
 - symex_assertion_sum.cpp: Leave the choice of the concrete assertion for later (we might want to generate the SSA form only once and then use it for a number of checks)
   - Maybe we could use the already generated SSA parts while refining certain callsites (and not generate it again and again...)
 - Aliasing
-- OpenSMT wrapper
-  - Propositional flattening vs. SMT encoding?
 - Slicing (does not work due to deferring of functions and partitioning = reordering of SSA steps)
 - Error trace fixing
 - Check that the *_conv cache does not interfere with formula partitioning

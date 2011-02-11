@@ -26,13 +26,13 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 void partitioning_target_equationt::convert(
-  prop_convt &prop_conv)
+  prop_convt &prop_conv, interpolating_solvert &interpolator)
 {
   int part_id = partitions.size();
   for (partitionst::reverse_iterator it = partitions.rbegin();
           it != partitions.rend(); ++it) {
     std::cout << "XXX Partition: " << --part_id << std::endl;
-    convert_partition(prop_conv, *it);
+    convert_partition(prop_conv, interpolator, *it);
   }
 }
 
@@ -48,9 +48,10 @@ void partitioning_target_equationt::convert(
 
 \*******************************************************************/
 void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
-  partitiont& partition)
+  interpolating_solvert &interpolator, partitiont& partition)
 {
-  // TODO: Tell the prop_conv about the new partition.
+  // Tell the interpolator about the new partition.
+  partition.fle_part_id = interpolator.new_partition();
 
   // Convert the assumption propagation symbols
   partition.callstart_literal = prop_conv.convert(partition.callstart_symbol);

@@ -20,6 +20,8 @@ Author: Ondrej Sery
 //#error "Expected HAVE_OPENSMT"
 #endif
 
+#define MAX_OPENSMT_PARTITIONS 63
+
 /*******************************************************************\
 
 Function: satcheck_opensmtt::convert
@@ -49,6 +51,56 @@ Enode* satcheck_opensmtt::convert(const bvt &bv)
   }
 
   return tmp;
+}
+
+/*******************************************************************\
+
+Function: satcheck_opensmtt::new_partition
+
+  Inputs:
+
+ Outputs: returns a unique partition id
+
+ Purpose: Begins a partition of formula for latter reference during
+ interpolation extraction. All assertions made until
+ next call of new_partition() will be part of this partition.
+
+\*******************************************************************/
+fle_part_idt satcheck_opensmtt::new_partition()
+{
+  assert(partition_count == 0 || partition_root_enode != NULL);
+  
+  // Finish the previous partition if any
+  if (partition_count > 0)
+    close_partition();
+
+  if (partition_count == MAX_OPENSMT_PARTITIONS) {
+    std::string s =
+            "OpenSMT does not support more than " +
+            i2string(MAX_OPENSMT_PARTITIONS) + "partitions so far.";
+    throw s.c_str();
+  }
+
+  return partition_count++;
+}
+
+
+/*******************************************************************\
+
+Function: satcheck_opensmtt::get_interpolant
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Extracts the symmetric interpolant of the specified set of
+ partitions. This method can be called only after solving the
+ the formula with an UNSAT result.
+
+\*******************************************************************/
+exprt satcheck_opensmtt::get_interpolant(const fle_part_idst& partition_ids) const
+{
+  throw "Unsupported operation";
 }
 
 /*******************************************************************\
@@ -188,9 +240,7 @@ propt::resultt satcheck_opensmtt::prop_solve() {
   add_variables();
 
   if (partition_root_enode != NULL) {
-    partition_root_enode = opensmt_ctx->mkAnd(partition_root_enode);
-    opensmt_ctx->Assert(partition_root_enode);
-    partition_root_enode = NULL;
+    close_partition();
   }
 
   std::string msg;
@@ -228,7 +278,7 @@ Function: satcheck_opensmtt::set_assignment
 
 void satcheck_opensmtt::set_assignment(literalt a, bool value)
 {
-  throw "Unsupported oparation";
+  throw "Unsupported operation";
 }
 
 /*******************************************************************\
@@ -245,7 +295,7 @@ Function: satcheck_opensmtt::is_in_conflict
 
 bool satcheck_opensmtt::is_in_conflict(literalt a) const
 {
-  throw "Unsupported oparation";
+  throw "Unsupported operation";
 }
 
 /*******************************************************************\
@@ -262,7 +312,7 @@ Function: satcheck_opensmtt::set_assumptions
 
 void satcheck_opensmtt::set_assumptions(const bvt &bv)
 {
-  throw "Unsupported oparation";
+  throw "Unsupported operation";
 }
 
 /*******************************************************************\
@@ -290,4 +340,24 @@ void satcheck_opensmtt::increase_id()
   } else {
     id_str.append("a");
   }
+}
+
+/*******************************************************************\
+
+Function: satcheck_opensmtt::close_partition
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Closes the interpolation partition by passing its CNF form
+ (collected in partition_root_enode) to the solver.
+
+\*******************************************************************/
+
+void satcheck_opensmtt::close_partition()
+{
+  partition_root_enode = opensmt_ctx->mkAnd(partition_root_enode);
+  opensmt_ctx->Assert(partition_root_enode);
+  partition_root_enode = NULL;
 }

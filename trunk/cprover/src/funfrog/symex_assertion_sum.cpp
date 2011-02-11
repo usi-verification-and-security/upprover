@@ -110,6 +110,7 @@ bool symex_assertion_sumt::assertion_holds(
 
   std::auto_ptr<propt> sat_solver;
   std::auto_ptr<prop_convt> deciderp;
+  interpolating_solvert* interpolator = NULL;
 
   if (use_smt)
   {
@@ -119,10 +120,12 @@ bool symex_assertion_sumt::assertion_holds(
   else
   {
     // sat_solver.reset(new satcheckt());
-    sat_solver.reset(new satcheck_opensmtt());
+    satcheck_opensmtt* opensmt = new satcheck_opensmtt();
+    interpolator = opensmt;
+    sat_solver.reset(opensmt);
     bv_pointerst *p= new bv_pointerst(ns, *sat_solver);
     p->unbounded_array = bv_pointerst::U_AUTO;
-    deciderp=std::auto_ptr<prop_convt>(p);
+    deciderp.reset(p);
   }
 
   prop_convt &decider=*deciderp;
@@ -143,7 +146,7 @@ bool symex_assertion_sumt::assertion_holds(
 
     fine_timet before,after;
     before=current_time();
-    equation.convert(decider);
+    equation.convert(decider, *interpolator);
     after=current_time();
     global_sat_conversion_time += (after-before);
 

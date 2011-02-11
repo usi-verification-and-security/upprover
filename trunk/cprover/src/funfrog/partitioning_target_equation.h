@@ -13,7 +13,7 @@ Author: Ondrej Sery
 #include <goto-symex/symex_target_equation.h>
 #include <symbol.h>
 
-#include "interpolation/interpolating_solver.h"
+#include "solvers/interpolating_solver.h"
 
 typedef int partition_idt;
 typedef std::vector<partition_idt> partition_idst;
@@ -29,7 +29,7 @@ public:
 
   // Convert all the SSA steps into the corresponding formulas in
   // the corresoponding partitions
-  void convert(prop_convt &prop_conv);
+  void convert(prop_convt &prop_conv, interpolating_solvert &interpolator);
 
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
@@ -107,7 +107,7 @@ private:
 
   // Convert a specific partition of SSA steps
   void convert_partition(prop_convt &prop_conv,
-    partitiont& partition);
+    interpolating_solvert &interpolator, partitiont& partition);
   // Convert a specific partition guards of SSA steps
   void convert_partition_guards(prop_convt &prop_conv,
     partitiont& partition);
