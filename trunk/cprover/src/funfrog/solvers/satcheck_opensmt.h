@@ -11,7 +11,6 @@ Author: Ondrej Sery
 #define CPROVER_SATCHECK_OPENSMT_H
 
 #include <vector>
-#include <set>
 
 #include <solvers/sat/cnf.h>
 
@@ -29,8 +28,7 @@ public:
 
     SMTConfig& config = opensmt_ctx->getConfig();
     config.setProduceModels();
-    // config.setProduceProofs();
-    // config.setProduceInter();
+    config.setProduceInter();
 
     sbool = opensmt_ctx->mkSortBool();
   }
@@ -63,7 +61,8 @@ public:
   // Extracts the symmetric interpolant of the specified set of
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
-  virtual exprt get_interpolant(const fle_part_idst& partition_ids) const;
+  virtual void get_interpolant(const interpolation_taskt& partition_ids,
+    std::vector<prop_itpt>& interpolants) const;
   
 protected:
   // OpenSMT API entry point
@@ -79,6 +78,14 @@ protected:
   vector<Enode*> enodes;
   // Helper string for mangling the variable names
   std::string id_str;
+
+  // Extract interpolant form OpenSMT Egraph
+  void extract_itp(const Enode* enode, prop_itpt& target_itp) const;
+  // Cache of already visited interpolant Enodes
+  typedef std::map<enodeid_t, literalt> enode_cachet;
+  // Simple recursive extraction of clauses from OpenSMT Egraph
+  literalt extract_itp_rec(const Enode* enode, prop_itpt& target_itp, 
+    enode_cachet enode_cache) const;
 
   void add_variables();
   void increase_id();

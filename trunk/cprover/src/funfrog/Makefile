@@ -7,7 +7,8 @@ SRC = main.cpp \
       inlined_claims.cpp \
       expr_pretty_print.cpp \
       partitioning_target_equation.cpp \
-      solvers/satcheck_opensmt.cpp
+      solvers/satcheck_opensmt.cpp \
+      solvers/prop_itp.cpp
 
 OBJ = $(SRC:.cpp=.o) \
       ../loopfrog/languages.o \
@@ -47,3 +48,4 @@ funfrog: $(OBJ)
 
 clean:
 	rm -f *.o *.d funfrog
+	rm -f solvers/*.o solvers/*.d

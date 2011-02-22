@@ -42,6 +42,8 @@ public:
           goto_programt::const_targett &original_head,
           const namespacet &_ns,
           contextt &_context,
+          prop_convt& _decider,
+          interpolating_solvert& _interpolator,
           partitioning_target_equationt &_target
           ) :
           goto_symext(_ns, _context, _target),
@@ -49,6 +51,8 @@ public:
           summary_info(_summary_info),
           current_summary_info(&_summary_info),
           equation(_target),
+          decider(_decider),
+          interpolator(_interpolator),
           original_loop_head(original_head) {};
 
   bool assertion_holds(
@@ -108,6 +112,12 @@ private:
   // Store for the symex result
   partitioning_target_equationt &equation;
 
+  // The decision procedure to be used for symex-evaluation
+  prop_convt& decider;
+
+  // The interpolation procedure to be used for symex-partitioning
+  interpolating_solvert& interpolator;
+
   // FIXME: Garbage?
   goto_programt::const_targett &original_loop_head;
 
@@ -117,11 +127,14 @@ private:
 
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
-  void defer_function(const deferred_functiont &deferred_function) {
+  void defer_function(const deferred_functiont &deferred_function, 
+    irep_idt function_id)
+  {
     deferred_functions.push(deferred_function);
     deferred_functions.back().partition_id = equation.reserve_partition(
             deferred_function.callstart_symbol,
-            deferred_function.callend_symbol);
+            deferred_function.callend_symbol,
+            function_id);
   }
 
   // Are there any more instructions in the current function or at least

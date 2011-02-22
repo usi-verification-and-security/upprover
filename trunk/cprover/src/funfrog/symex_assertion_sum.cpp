@@ -19,7 +19,6 @@
 
 #include "symex_assertion_sum.h"
 #include "expr_pretty_print.h"
-#include "solvers/satcheck_opensmt.h"
 
 fine_timet global_satsolver_time;
 fine_timet global_sat_conversion_time;
@@ -86,7 +85,7 @@ bool symex_assertion_sumt::assertion_holds(
   state.top().calling_location = --goto_program.instructions.end();
 
   // Prepare the partitions and deferred functions
-  defer_function(deferred_functiont(summary_info));
+  defer_function(deferred_functiont(summary_info), ID_nil);
   equation.select_partition(deferred_functions.front().partition_id);
 
   // Old: ??? state.value_set = value_sets;
@@ -108,28 +107,6 @@ bool symex_assertion_sumt::assertion_holds(
 
   bool sat=false;
 
-  std::auto_ptr<propt> sat_solver;
-  std::auto_ptr<prop_convt> deciderp;
-  interpolating_solvert* interpolator = NULL;
-
-  if (use_smt)
-  {
-    deciderp = std::auto_ptr<prop_convt>(
-        new smt1_dect(ns, "loop.smt", "", "QF_AUFBV", smt1_dect::BOOLECTOR));
-  }
-  else
-  {
-    // sat_solver.reset(new satcheckt());
-    satcheck_opensmtt* opensmt = new satcheck_opensmtt();
-    interpolator = opensmt;
-    sat_solver.reset(opensmt);
-    bv_pointerst *p= new bv_pointerst(ns, *sat_solver);
-    p->unbounded_array = bv_pointerst::U_AUTO;
-    deciderp.reset(p);
-  }
-
-  prop_convt &decider=*deciderp;
-
   decider.set_message_handler(message_handler);
   decider.set_verbosity(10);
 
@@ -146,7 +123,7 @@ bool symex_assertion_sumt::assertion_holds(
 
     fine_timet before,after;
     before=current_time();
-    equation.convert(decider, *interpolator);
+    equation.convert(decider, interpolator);
     after=current_time();
     global_sat_conversion_time += (after-before);
 
@@ -822,7 +799,7 @@ void symex_assertion_sumt::handle_function_call(
     state.guard.guard_expr(tmp);
     target.assumption(state.guard, tmp, state.source);
 
-    defer_function(deferred_function);
+    defer_function(deferred_function, function_id);
     break;
   }
   default:

@@ -369,3 +369,65 @@ void partitioning_target_equationt::prepare_partitions()
     it->end_it = ssa_it;
   }
 }
+
+/*******************************************************************\
+
+Function: partitioning_target_equationt::extract_interpolants
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Extract interpolants corresponding to the created partitions
+
+\*******************************************************************/
+void partitioning_target_equationt::extract_interpolants(
+  interpolating_solvert& interpolator, interpolant_mapt& interpolant_map)
+{
+  // Prepare the interpolation task. NOTE: ignore the root partition!
+  const unsigned valid_partitons = partitions.size()-1;
+  interpolation_taskt itp_task(valid_partitons);
+
+  for (unsigned i = 0; i < valid_partitons; ++i) {
+    fill_partition_ids(i+1, itp_task[i]);
+  }
+
+  // Interpolate...
+  std::vector<prop_itpt> itp_result;
+  itp_result.reserve(valid_partitons);
+  interpolator.get_interpolant(itp_task, itp_result);
+
+  // Interpret the result
+  interpolant_map.reserve(valid_partitons);
+  for (unsigned i = 0; i < valid_partitons; ++i) {
+    interpolant_map.push_back(std::pair<irep_idt, prop_itpt>(
+      partitions[i+1].function_id, prop_itpt()));
+    interpolant_map.back().second.swap(itp_result[i]);
+  }
+}
+
+/*******************************************************************\
+
+Function: partitioning_target_equationt::fill_partition_ids
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Fill in ids of all the child partitions
+
+\*******************************************************************/
+void partitioning_target_equationt::fill_partition_ids(
+  partition_idt partition_id, fle_part_idst& part_ids)
+{
+  partitiont& partition = partitions[partition_id];
+
+  // Current partition id
+  part_ids.push_back(partition.fle_part_id);
+
+  // Child partition ids
+  for (partition_idst::iterator it = partition.child_ids.begin()++;
+          it != partition.child_ids.end(); ++it) {
+    fill_partition_ids(*it, part_ids);
+  }
+}

@@ -9,9 +9,6 @@ Author: Ondrej Sery
 
 #include <assert.h>
 
-#include <stack>
-#include <literal.h>
-
 #include <i2string.h>
 
 #include "satcheck_opensmt.h"
@@ -98,9 +95,31 @@ Function: satcheck_opensmtt::get_interpolant
  the formula with an UNSAT result.
 
 \*******************************************************************/
-exprt satcheck_opensmtt::get_interpolant(const fle_part_idst& partition_ids) const
+void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids,
+    std::vector<prop_itpt>& interpolants) const
 {
-  throw "Unsupported operation";
+  std::vector<Enode*> itp_enodes;
+  itp_enodes.reserve(partition_ids.size());
+
+  opensmt_ctx->GetInterpolants(partition_ids, itp_enodes);
+
+  for (std::vector<Enode*>::iterator it = itp_enodes.begin();
+          it != itp_enodes.end(); ++it) {
+    Enode* node = (*it);
+
+    std::cout << "OpenSMT interpolant: ";
+    node->print(std::cout);
+    std::cout << std::endl;
+
+    prop_itpt itp;
+    extract_itp(node, itp);
+
+    std::cout << "CProver stored interpolant: ";
+    itp.print(std::cout);
+
+    interpolants.push_back(prop_itpt());
+    interpolants.back().swap(itp);
+  }
 }
 
 /*******************************************************************\
@@ -215,6 +234,7 @@ void satcheck_opensmtt::lcnf(const bvt &bv)
 
   clause_counter++;
 }
+
 /*******************************************************************\
 
 Function: satcheck_opensmtt::prop_solve
@@ -360,4 +380,89 @@ void satcheck_opensmtt::close_partition()
   partition_root_enode = opensmt_ctx->mkAnd(partition_root_enode);
   opensmt_ctx->Assert(partition_root_enode);
   partition_root_enode = NULL;
+}
+
+/*******************************************************************\
+
+Function: satcheck_opensmtt::extract_itp
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Extracts the propositional interpolant from the OpenSMT
+ E-node representation.
+
+\*******************************************************************/
+
+void satcheck_opensmtt::extract_itp(const Enode* enode,
+  prop_itpt& target_itp) const
+{
+  enode_cachet cache;
+  target_itp.root_literal = extract_itp_rec(enode, target_itp, cache);
+}
+
+/*******************************************************************\
+
+Function: satcheck_opensmtt::extract_itp_rec
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Extracts the propositional interpolant from the OpenSMT
+ E-node representation. Simple recursive implementation.
+
+\*******************************************************************/
+
+literalt satcheck_opensmtt::extract_itp_rec(const Enode* enode,
+  prop_itpt& target_itp, enode_cachet enode_cache) const
+{
+  enode_cachet::const_iterator cached_it = enode_cache.find(enode->getId());
+  literalt result;
+
+  if (cached_it != enode_cache.end()) {
+    return cached_it->second;
+  }
+
+  if (enode->isTerm()) {
+    switch (enode->getCar()->getId()) {
+    case ENODE_ID_TRUE:
+      result = const_literal(true);
+      break;
+    case ENODE_ID_FALSE:
+      result = const_literal(false);
+      break;
+    case ENODE_ID_AND:
+      assert(enode->getArity() == 2);
+      result = target_itp.land(
+              extract_itp_rec(enode->get1st(), target_itp, enode_cache),
+              extract_itp_rec(enode->get2nd(), target_itp, enode_cache));
+      break;
+    case ENODE_ID_OR:
+      assert(enode->getArity() == 2);
+      result = target_itp.lor(
+              extract_itp_rec(enode->get1st(), target_itp, enode_cache),
+              extract_itp_rec(enode->get2nd(), target_itp, enode_cache));
+      break;
+    case ENODE_ID_NOT:
+      assert(enode->getArity() == 1);
+      result = target_itp.lnot(
+              extract_itp_rec(enode->get1st(), target_itp, enode_cache));
+      break;
+    default:
+      if (enode->isAtom()) {
+        // Atom must be a prop. variable
+        assert(enode->getArity() == 0 && enode->getCar()->isSymb());
+        result = target_itp.new_variable();
+      } else {
+        throw "Unexpected Enode term type in the interpolant.";
+      }
+    }
+  } else {
+    throw "Unexpected Enode type in the interpolant.";
+  }
+
+  enode_cache.insert(enode_cachet::value_type(enode->getId(), result));
+  return result;
 }

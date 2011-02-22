@@ -22,6 +22,8 @@
 #include "summary_info.h"
 #include "symex_assertion_sum.h"
 
+#include "solvers/satcheck_opensmt.h"
+
 /*******************************************************************
 
  Function: last_assertion_holds
@@ -186,6 +188,17 @@ bool summarizing_checkert::assertion_holds(
   summary_infot summary_info;
   summary_info.initialize(summarization_context, goto_program, assertion);
 
+  // Prepare the decision and interpolation procedures
+  std::auto_ptr<prop_convt> decider;
+  std::auto_ptr<interpolating_solvert> interpolator;
+  {
+    satcheck_opensmtt* opensmt = new satcheck_opensmtt();
+    bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
+    deciderp->unbounded_array = bv_pointerst::U_AUTO;
+    decider.reset(deciderp);
+    interpolator.reset(opensmt);
+  }
+
   // TODO: In loop call symex_assertion_sum, with refining 
   // the summary_info based on the spurious counter-examples 
   // (or ad hoc at first)
@@ -196,11 +209,27 @@ bool summarizing_checkert::assertion_holds(
           original_loop_head,
           ns,
           context,
+          *decider,
+          *interpolator,
           equation
           );
 
   // FIXME: The refinement loop should be here!
-  return symex.assertion_holds(goto_program, assertion, 
+  bool result = symex.assertion_holds(goto_program, assertion,
           std::cout /* FIXME: out */, max_memory_used, use_smt);
+
+  if (result) {
+    // Extract the interpolation summaries here...
+    interpolant_mapt itp_map;
+    equation.extract_interpolants(*interpolator, itp_map);
+
+    for (interpolant_mapt::iterator it = itp_map.begin();
+            it != itp_map.end(); ++it) {
+      irep_idt& function_id = it->first;
+      summarization_context.function_infos[function_id].add_summary(it->second);
+    }
+  }
+
+  return result;
 }
 

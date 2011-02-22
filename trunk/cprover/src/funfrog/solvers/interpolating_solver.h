@@ -14,12 +14,17 @@ Author: Ondrej Sery
 
 #include <decision_procedure.h>
 
+#include "prop_itp.h"
+
 typedef int fle_part_idt;
 typedef std::vector<fle_part_idt> fle_part_idst;
+typedef std::vector<fle_part_idst> interpolation_taskt;
 
 class interpolating_solvert
 {
 public:
+  virtual ~interpolating_solvert() {};
+
   // Begins a partition of formula for latter reference during 
   // interpolation extraction. All assertions made until
   // next call of new_partition() will be part of this partition.
@@ -30,7 +35,8 @@ public:
   // Extracts the symmetric interpolant of the specified set of
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
-  virtual exprt get_interpolant(const fle_part_idst& partition_ids) const=0;
+  virtual void get_interpolant(const interpolation_taskt& partition_ids,
+    std::vector<prop_itpt>& interpolants) const=0;
 };
 
 #endif

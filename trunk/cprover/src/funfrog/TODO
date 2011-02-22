@@ -7,12 +7,13 @@ HIGH PRIORITY
 -------------
 
 - OpenSMT wrapper - propositional flattening
-  - interpolant back propagation
-  - OpneSMT as a reasonable library (solve the include mess)
+  - mapping between prop. variables and symbols (params + ret_val)
+  - OpenSMT as a reasonable library (solve the include mess)
 - UFLIA encoding
   - choose solver, create wrapper, interpolant back propagation
 - Bit-vectors encoding
   - examine wolverine's interpolation engine
+- Merge deferred_functiont & partitiont <-- too close concepts
 
 
 LOW PRIORITY

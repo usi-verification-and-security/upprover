@@ -17,6 +17,7 @@ Author: Ondrej Sery
 
 typedef int partition_idt;
 typedef std::vector<partition_idt> partition_idst;
+typedef std::vector<std::pair<irep_idt, prop_itpt> > interpolant_mapt;
 
 class partitioning_target_equationt:public symex_target_equationt
 {
@@ -35,7 +36,8 @@ public:
   // will be dependent on the currently processed partition (if there is any).
   partition_idt reserve_partition(
     const symbol_exprt& callstart_symbol,
-    const symbol_exprt& callend_symbol)
+    const symbol_exprt& callend_symbol,
+    irep_idt function_id)
   {
     partition_idt new_id = partitions.size();
 
@@ -44,6 +46,7 @@ public:
 
     new_partition.callstart_symbol = callstart_symbol;
     new_partition.callend_symbol = callend_symbol;
+    new_partition.function_id = function_id;
     partition_map.insert(partition_mapt::value_type(
       callend_symbol.get_identifier(), new_id));
 
@@ -72,6 +75,10 @@ public:
   // Collects information about the specified partions for later
   // processing and conversion
   void prepare_partitions();
+
+  // Extract interpolants corresponding to the created partitions
+  void extract_interpolants(interpolating_solvert& interpolator,
+    interpolant_mapt& interpolant_map);
 
 private:
   
@@ -103,6 +110,7 @@ private:
     fle_part_idt fle_part_id;
     partition_idt parent_id;
     partition_idst child_ids;
+    irep_idt function_id;
   };
 
   // Convert a specific partition of SSA steps
@@ -138,6 +146,9 @@ private:
   partitiont& get_current_partition() {
     return partitions[current_partition_id];
   }
+
+  // Fill in ids of all the child partitions
+  void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
 
   typedef std::vector<partitiont> partitionst;
   typedef std::map<irep_idt, partition_idt> partition_mapt;
