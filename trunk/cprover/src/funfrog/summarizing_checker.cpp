@@ -221,7 +221,7 @@ bool summarizing_checkert::assertion_holds(
   if (result) {
     // Extract the interpolation summaries here...
     interpolant_mapt itp_map;
-    equation.extract_interpolants(*interpolator, itp_map);
+    equation.extract_interpolants(*interpolator, *decider, itp_map);
 
     for (interpolant_mapt::iterator it = itp_map.begin();
             it != itp_map.end(); ++it) {

@@ -37,6 +37,9 @@ public:
   partition_idt reserve_partition(
     const symbol_exprt& callstart_symbol,
     const symbol_exprt& callend_symbol,
+    const std::vector<symbol_exprt>& argument_symbols,
+    const symbol_exprt& retval_symbol,
+    bool returns_value,
     irep_idt function_id)
   {
     partition_idt new_id = partitions.size();
@@ -46,6 +49,9 @@ public:
 
     new_partition.callstart_symbol = callstart_symbol;
     new_partition.callend_symbol = callend_symbol;
+    new_partition.argument_symbols = argument_symbols;
+    new_partition.retval_symbol = retval_symbol;
+    new_partition.returns_value = returns_value;
     new_partition.function_id = function_id;
     partition_map.insert(partition_mapt::value_type(
       callend_symbol.get_identifier(), new_id));
@@ -77,7 +83,8 @@ public:
   void prepare_partitions();
 
   // Extract interpolants corresponding to the created partitions
-  void extract_interpolants(interpolating_solvert& interpolator,
+  void extract_interpolants(
+    interpolating_solvert& interpolator, const prop_convt& decider,
     interpolant_mapt& interpolant_map);
 
 private:
@@ -105,6 +112,9 @@ private:
     SSA_stepst::iterator end_it;
     symbol_exprt callstart_symbol;
     symbol_exprt callend_symbol;
+    std::vector<symbol_exprt> argument_symbols;
+    symbol_exprt retval_symbol;
+    bool returns_value;
     literalt callstart_literal;
     literalt callend_literal;
     fle_part_idt fle_part_id;

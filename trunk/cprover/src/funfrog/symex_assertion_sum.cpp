@@ -416,82 +416,6 @@ void symex_assertion_sumt::symex_step(
   }
 }
 
-
-/*******************************************************************
-
- Function: symex_assertion_sumt::convert
-
- Inputs:
-
- Outputs:
-
- Purpose: Converts the equation to CNF (obsolete)
-
-\*******************************************************************/
-
-//void symex_assertion_sumt::convert(
-//  namespacet &ns,
-//  prop_convt &prop_conv,
-//  symex_target_equationt &equation,
-//  symex_target_equationt::statest::iterator last,
-//  std::ostream &out)
-//{
-//  symex_target_equationt::statest::iterator end = last;
-//  end++;
-//
-//  if (out.good())
-//    out<<std::endl<<"CONSTRAINTS:"<<std::endl;
-//
-//  for (symex_target_equationt::statest::iterator it=equation.states.begin();
-//      it!=end; it++)
-//  {
-//    it->guard_literal=const_literal(true);
-//    switch (it->type)
-//    {
-//      case goto_trace_stept::ASSIGNMENT:
-//      case goto_trace_stept::ASSUME:
-//      {
-//        exprt tmp(it->cond);
-//        ::base_type(tmp, ns);
-//        prop_conv.set_to_true(tmp);
-//        it->cond_literal=const_literal(true);
-//
-//        if(out.good())
-//        out << "CONSTRAINT: " << from_expr(ns, "", tmp) << std::endl;
-//      }
-//      break;
-//
-//      case goto_trace_stept::ASSERT:
-//      {
-//        if (it!=last)
-//        {
-//          exprt tmp(it->cond);
-//          ::base_type(tmp, ns);
-//          prop_conv.set_to_true(tmp);
-//          it->cond_literal=const_literal(true);
-//          if(out.good())
-//          out << "CONSTRAINT: " << from_expr(ns, "", tmp) << std::endl;
-//        }
-//        else
-//        {
-//          exprt tmp(it->cond);
-//          ::base_type(tmp, ns);
-//          prop_conv.set_to_false(tmp);
-//          it->cond_literal=const_literal(false);
-//          if(out.good())
-//          out << "CONSTRAINT: NOT " << from_expr(ns, "", tmp) << std::endl;
-//        }
-//      }
-//      break;
-//
-//      case goto_trace_stept::LOCATION: break;
-//
-//      default:
-//      assert(false);
-//    }
-//  }
-//}
-
 /*******************************************************************
 
  Function: symex_assertion_sumt::slice_equation
@@ -621,6 +545,8 @@ void symex_assertion_sumt::assign_function_arguments(
     // use it later, when processing the deferred function).
     return_assignment_and_mark(goto_function.type, state, function_call.lhs(),
             deferred_function);
+  } else {
+    deferred_function.retval_symbol = symbol_exprt();
   }
   // FIXME: Add also new assignments to all modified global variables
 }
@@ -795,7 +721,6 @@ void symex_assertion_sumt::handle_function_call(
 
     // Add assumption for the function call end symbol
     exprt tmp(deferred_function.callend_symbol);
-
     state.guard.guard_expr(tmp);
     target.assumption(state.guard, tmp, state.source);
 

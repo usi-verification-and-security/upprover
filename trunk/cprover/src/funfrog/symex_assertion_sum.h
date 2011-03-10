@@ -134,6 +134,9 @@ private:
     deferred_functions.back().partition_id = equation.reserve_partition(
             deferred_function.callstart_symbol,
             deferred_function.callend_symbol,
+            deferred_function.argument_symbols,
+            deferred_function.retval_symbol,
+            deferred_function.returns_value,
             function_id);
   }
 

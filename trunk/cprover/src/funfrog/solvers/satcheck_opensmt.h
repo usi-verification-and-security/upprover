@@ -89,6 +89,7 @@ protected:
 
   void add_variables();
   void increase_id();
+  unsigned decode_id(const char* id) const;
   void close_partition();
   Enode* convert(const bvt &bv);
 };

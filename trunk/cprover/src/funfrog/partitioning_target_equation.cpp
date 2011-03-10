@@ -382,7 +382,8 @@ Function: partitioning_target_equationt::extract_interpolants
 
 \*******************************************************************/
 void partitioning_target_equationt::extract_interpolants(
-  interpolating_solvert& interpolator, interpolant_mapt& interpolant_map)
+  interpolating_solvert& interpolator, const prop_convt& decider,
+  interpolant_mapt& interpolant_map)
 {
   // Prepare the interpolation task. NOTE: ignore the root partition!
   const unsigned valid_partitons = partitions.size()-1;
@@ -398,11 +399,35 @@ void partitioning_target_equationt::extract_interpolants(
   interpolator.get_interpolant(itp_task, itp_result);
 
   // Interpret the result
+  std::vector<symbol_exprt> common_symbs;
   interpolant_map.reserve(valid_partitons);
   for (unsigned i = 0; i < valid_partitons; ++i) {
+    // Store the intepolant
+    partitiont& partition = partitions[i+1];
     interpolant_map.push_back(std::pair<irep_idt, prop_itpt>(
-      partitions[i+1].function_id, prop_itpt()));
-    interpolant_map.back().second.swap(itp_result[i]);
+      partition.function_id, prop_itpt()));
+    prop_itpt& interpolant = interpolant_map.back().second;
+    interpolant.swap(itp_result[i]);
+
+    // Generalize the interpolant
+    common_symbs.clear();
+    common_symbs.reserve(partition.argument_symbols.size()+3);
+    common_symbs.assign(partition.argument_symbols.begin(),
+            partition.argument_symbols.end());
+    common_symbs.push_back(partition.callstart_symbol);
+    std::cout << partition.callstart_literal.var_no() << ", " <<
+            partition.callend_literal.var_no() << std::endl;
+    common_symbs.push_back(partition.callend_symbol);
+    if (partition.returns_value) {
+      common_symbs.push_back(partition.retval_symbol);
+    }
+
+    std::cout << "Common symbols (" << common_symbs.size() << "):" << std::endl;
+    for (std::vector<symbol_exprt>::iterator it = common_symbs.begin();
+            it != common_symbs.end(); ++it)
+      std::cout << it->get_identifier() << std::endl;
+
+    interpolant.generalize(decider, common_symbs);
   }
 }
 

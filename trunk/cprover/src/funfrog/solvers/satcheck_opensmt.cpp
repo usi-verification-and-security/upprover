@@ -196,6 +196,7 @@ void satcheck_opensmtt::add_variables()
     opensmt_ctx->DeclareFun(vid, NULL, sbool);
     Enode* tmp = opensmt_ctx->mkVar(vid, true);
     enodes.push_back(tmp);
+    assert (decode_id(vid) == enodes.size()-1);
   }
 }
 
@@ -360,6 +361,32 @@ void satcheck_opensmtt::increase_id()
   } else {
     id_str.append("a");
   }
+
+  std::cout << id_str << std::endl;
+}
+
+/*******************************************************************\
+
+Function: satcheck_opensmtt::decode_id
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+unsigned satcheck_opensmtt::decode_id(const char* id) const
+{
+  unsigned base = 1;
+  unsigned i = 0;
+
+  while (*id != 0) {
+    i += base * (*id++ - 'a' + 1);
+    base *= 'z'-'a'+1;
+  }
+  return i-1;
 }
 
 /*******************************************************************\
@@ -399,6 +426,7 @@ void satcheck_opensmtt::extract_itp(const Enode* enode,
   prop_itpt& target_itp) const
 {
   enode_cachet cache;
+  target_itp.set_no_original_variables(_no_variables);
   target_itp.root_literal = extract_itp_rec(enode, target_itp, cache);
 }
 
@@ -454,7 +482,7 @@ literalt satcheck_opensmtt::extract_itp_rec(const Enode* enode,
       if (enode->isAtom()) {
         // Atom must be a prop. variable
         assert(enode->getArity() == 0 && enode->getCar()->isSymb());
-        result = target_itp.new_variable();
+        result.set(decode_id(enode->getCar()->getNameFullC()), false);
       } else {
         throw "Unexpected Enode term type in the interpolant.";
       }
