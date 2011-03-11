@@ -797,8 +797,6 @@ void symex_assertion_sumt::havoc_function_call(
 
   produce_callsite_symbols(deferred_function, state, function_id);
   produce_callend_assumption(deferred_function, state);
-
-  throw "Function symex_assertion_sumt::havoc_function_call() not yet implemented";
 }
 
 /*******************************************************************
