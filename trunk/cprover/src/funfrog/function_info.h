@@ -30,12 +30,13 @@ public:
     summaries.back().swap(summary);
   }
 
+  const interpolantst& get_summaries() const { return summaries; }
+
 private:
   // Id of the function
   irep_idt function;
   // The collected summaries
-  // TODO: We will need some mapping of parameters...
-  std::vector<prop_itpt> summaries;
+  interpolantst summaries;
 };
 
 typedef hash_map_cont<irep_idt, function_infot, irep_id_hash> function_infost;

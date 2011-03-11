@@ -161,6 +161,25 @@ private:
   void handle_function_call(statet &state,
     code_function_callt &function_call);
 
+  // Summarizes the given function call
+  void summarize_function_call(
+        deferred_functiont& deferred_function,
+        statet& state,
+        const irep_idt& function_id);
+
+  // Inlines the given function call
+  void inline_function_call(
+        deferred_functiont& deferred_function,
+        statet& state,
+        const irep_idt& function_id);
+
+  // Abstract from the given function call (nondeterministic assignment to
+  // all the possibly modified variables)
+  void havoc_function_call(
+        deferred_functiont& deferred_function,
+        statet& state,
+        const irep_idt& function_id);
+
   // Assigns function arguments to new SSA symbols, also makes
   // assignement of the new SSA symbol of return value to the lhs of
   // the call site (if any)
@@ -193,6 +212,11 @@ private:
   void produce_callsite_symbols(deferred_functiont& deferred_function,
     statet& state,
     const irep_idt& function_id);
+
+  // Inserts assumption that a given call ended (i.e., an assumption of
+  // the callend symbol)
+  void produce_callend_assumption(
+        const deferred_functiont& deferred_function, statet& state);
 
   // Purpose: Helper function for renaming of an identifier without
   // assigning to it.

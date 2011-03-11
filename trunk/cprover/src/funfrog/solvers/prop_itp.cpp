@@ -167,8 +167,9 @@ Function: prop_itpt::generalize
 void prop_itpt::generalize(const prop_convt& decider,
     const std::vector<symbol_exprt>& symbols)
 {
-  if (root_literal.is_constant())
+  if (root_literal.is_constant()) {
     return;
+  }
 
   // FIXME: Dirty cast.
   const boolbv_mapt::mappingt& mapping =
@@ -225,7 +226,7 @@ void prop_itpt::generalize(const prop_convt& decider,
 #endif
 
   // Fill the renaming table
-  unsigned cannon_var_no = 0;
+  unsigned cannon_var_no = 1;
   for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
           it != symbols.end();
           ++it) {
@@ -236,14 +237,17 @@ void prop_itpt::generalize(const prop_convt& decider,
       if (it->type().id() == ID_bool) {
         literalt l;
         if (!decider.literal(*it, l)) {
-          ++cannon_var_no;
           // NOTE: We assume that the variables are unsigned and there are
           // no duplicates. This migh not hold if some optimizations are added
           // to the flattening process
           assert (!l.sign());
+          // TODO: We need unique prop. variables only for the input parameters,
+          // if there is duplication among output variables (due to unification
+          // in symex), we just need to explicitly assert the unification by
+          // adding new clauses.
           assert (renaming[l.var_no() - min_var] == UINT_MAX);
 
-          renaming[l.var_no() - min_var] = cannon_var_no;
+          renaming[l.var_no() - min_var] = cannon_var_no++;
 
           std::cout << l.var_no() << " ";
         }
@@ -255,7 +259,6 @@ void prop_itpt::generalize(const prop_convt& decider,
     for (boolbv_mapt::literal_mapt::const_iterator it2 = entry.literal_map.begin();
             it2 != entry.literal_map.end();
             ++it2) {
-      ++cannon_var_no;
       if (!it2->is_set) {
         std::cout << "- ";
         continue;
@@ -267,7 +270,7 @@ void prop_itpt::generalize(const prop_convt& decider,
       assert (!it2->l.sign());
       assert (renaming[it2->l.var_no() - min_var] == UINT_MAX);
       
-      renaming[it2->l.var_no() - min_var] = cannon_var_no;
+      renaming[it2->l.var_no() - min_var] = cannon_var_no++;
 
       std::cout << it2->l.var_no() << " ";
     }
@@ -309,6 +312,7 @@ void prop_itpt::generalize(const prop_convt& decider,
       it2->set(renaming[it2->var_no() - min_var], it2->sign());
     }
   }
+  root_literal.set(root_literal.var_no() - shift, root_literal.sign());
 
   _no_variables -= shift;
   _no_orig_variables = cannon_var_no;
@@ -336,9 +340,69 @@ Function: prop_itpt::substitute
 \*******************************************************************/
 
 void prop_itpt::substitute(prop_convt& decider,
-    const std::vector<symbol_exprt>& symbols)
+    const std::vector<symbol_exprt>& symbols) const
 {
-  throw "Unimplemented method prop_itpt::substitute()";
+  assert(!root_literal.is_constant());
+
+  // FIXME: Dirty cast.
+  boolbv_mapt& map = dynamic_cast<boolbvt&>(decider).get_literal_map();
+  literalt renaming[_no_variables];
+
+  // Fill the renaming table
+  unsigned cannon_var_no = 1;
+  for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
+          it != symbols.end();
+          ++it) {
+
+    // Bool symbols are not in the boolbv_map and have to be treated separatelly
+    if (it->type().id() == ID_bool) {
+      literalt l = decider.convert(*it);
+      renaming[cannon_var_no++] = l;
+      std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
+      continue;
+    }
+
+    for (unsigned i = 0;
+            i < map.get_map_entry(it->get_identifier(), it->type()).width;
+            ++i) {
+      literalt l = map.get_literal(it->get_identifier(), i, it->type());
+
+      renaming[cannon_var_no++] = l;
+      std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
+    }
+    std::cout << std::endl;
+  }
+
+  // Allocate new variables for the auxiliary ones (present due to the Tseitin
+  // encoding to CNF)
+  for (unsigned i = _no_orig_variables; i < _no_variables; ++i) {
+    renaming[i] = decider.prop.new_variable();
+  }
+
+  // Rename and output the clauses
+  bvt tmp_clause;
+  for (clausest::const_iterator it = clauses.begin();
+          it != clauses.end();
+          ++it) {
+    tmp_clause = *it;
+
+    for (bvt::iterator it2 = tmp_clause.begin();
+            it2 != tmp_clause.end();
+            ++it2) {
+      // Rename
+      bool sign = it2->sign();
+      *it2 = renaming[it2->var_no()];
+      if (sign)
+        it2->invert();
+    }
+    
+    print_clause(std::cout, tmp_clause);
+    std::cout << std::endl;
+
+    // Assert the clause
+    decider.prop.lcnf(tmp_clause);
+  }
+  decider.prop.l_set_to_true(root_literal);
 }
 
 /*******************************************************************\
@@ -359,12 +423,28 @@ void prop_itpt::print(std::ostream& out) const
   
   for (clausest::const_iterator it = clauses.begin();
           it != clauses.end(); ++it) {
-    for (bvt::const_iterator it2 = it->begin();
-            it2 != it->end(); ++it2) {
-      if (it2 != it->begin())
-        out << " ";
-      out << it2->dimacs();
-    }
+    print_clause(out, *it);
     out << std::endl;
+  }
+}
+
+/*******************************************************************\
+
+Function: prop_itpt::print
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void prop_itpt::print_clause(std::ostream& out, const bvt& clause) const {
+  for (bvt::const_iterator it2 = clause.begin();
+          it2 != clause.end(); ++it2) {
+    if (it2 != clause.begin())
+      out << " ";
+    out << it2->dimacs();
   }
 }

@@ -76,6 +76,7 @@ public:
   mp_integer get_value(const bvt &bv, unsigned offset, unsigned width);
 
   const boolbv_mapt& get_literal_map() const { return map; }
+  boolbv_mapt& get_literal_map() { return map; }
 
 protected:
   bv_utilst bv_utils;

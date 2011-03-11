@@ -96,7 +96,7 @@ Function: satcheck_opensmtt::get_interpolant
 
 \*******************************************************************/
 void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids,
-    std::vector<prop_itpt>& interpolants) const
+    interpolantst& interpolants) const
 {
   std::vector<Enode*> itp_enodes;
   itp_enodes.reserve(partition_ids.size());
@@ -361,8 +361,6 @@ void satcheck_opensmtt::increase_id()
   } else {
     id_str.append("a");
   }
-
-  std::cout << id_str << std::endl;
 }
 
 /*******************************************************************\

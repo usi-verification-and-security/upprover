@@ -36,7 +36,7 @@ public:
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
-    std::vector<prop_itpt>& interpolants) const=0;
+    interpolantst& interpolants) const=0;
 };
 
 #endif

@@ -17,7 +17,6 @@ Author: Ondrej Sery
 
 typedef int partition_idt;
 typedef std::vector<partition_idt> partition_idst;
-typedef std::vector<std::pair<irep_idt, prop_itpt> > interpolant_mapt;
 
 class partitioning_target_equationt:public symex_target_equationt
 {
@@ -62,6 +61,18 @@ public:
     return new_id;
   }
 
+  // Fill the (reserved) partition with the given summaries.
+  void fill_summary_partition(partition_idt partition_id,
+    const interpolantst* summaries)
+  {
+    partitiont& sum_partition = partitions.at(partition_id);
+    assert(!sum_partition.filled);
+
+    sum_partition.filled = true;
+    sum_partition.is_summary = true;
+    sum_partition.summaries = summaries;
+  }
+
   // Begin processing of the given (previously reserved) partition.
   // The follwoing SSA statements will be part of the given partition until
   // a different partition is selected.
@@ -93,7 +104,7 @@ private:
   class partitiont {
   public:
     partitiont(partition_idt _parent_id) : 
-            filled(false), parent_id(_parent_id) {}
+            filled(false), is_summary(false), parent_id(_parent_id) {}
 
     void add_child_partition(partition_idt child_id) {
       child_ids.push_back(child_id);
@@ -115,6 +126,8 @@ private:
     std::vector<symbol_exprt> argument_symbols;
     symbol_exprt retval_symbol;
     bool returns_value;
+    bool is_summary;
+    const interpolantst* summaries;
     literalt callstart_literal;
     literalt callend_literal;
     fle_part_idt fle_part_id;
@@ -141,6 +154,9 @@ private:
   // Convert a specific partition io of SSA steps
   void convert_partition_io(prop_convt &prop_conv,
     partitiont& partition);
+  // Convert a summary partition (i.e., assert its summary)
+  void convert_partition_summary(prop_convt &prop_conv,
+    partitiont& partition);
 
   unsigned count_partition_assertions(partitiont& partition) const
   {
@@ -155,6 +171,23 @@ private:
   // Safe getter for the current partition
   partitiont& get_current_partition() {
     return partitions[current_partition_id];
+  }
+
+  // Fills in the list of symbols that the partition has in common with its
+  // environment
+  void fill_common_symbols(const partitiont& partition,
+    std::vector<symbol_exprt>& common_symbols) const
+  {
+    common_symbols.clear();
+    common_symbols.reserve(partition.argument_symbols.size()+3);
+    common_symbols = partition.argument_symbols;
+    common_symbols.push_back(partition.callstart_symbol);
+    std::cout << partition.callstart_literal.var_no() << ", " <<
+            partition.callend_literal.var_no() << std::endl;
+    common_symbols.push_back(partition.callend_symbol);
+    if (partition.returns_value) {
+      common_symbols.push_back(partition.retval_symbol);
+    }
   }
 
   // Fill in ids of all the child partitions

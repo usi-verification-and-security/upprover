@@ -27,7 +27,12 @@ public:
           functions(_functions),
           value_sets(_value_sets),
           imprecise_loops(_imprecise_loops),
-          precise_loops(_precise_loops) {}
+          precise_loops(_precise_loops) {
+  }
+
+  const interpolantst& get_summaries(irep_idt function_id) const {
+    return function_infos.find(function_id)->second.get_summaries();
+  }
 
   const goto_functionst &functions;
   const value_setst &value_sets;

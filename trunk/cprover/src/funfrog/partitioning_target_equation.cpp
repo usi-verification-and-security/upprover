@@ -57,12 +57,43 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   partition.callstart_literal = prop_conv.convert(partition.callstart_symbol);
   partition.callend_literal = prop_conv.convert(partition.callend_symbol);
 
+  // If this is a summary partition, apply the summary
+  if (partition.is_summary) {
+    convert_partition_summary(prop_conv, partition);
+    return;
+  }
+
   // Convert the corresponding SSA steps
   convert_partition_guards(prop_conv, partition);
   convert_partition_assignments(prop_conv, partition);
   convert_partition_assumptions(prop_conv, partition);
   convert_partition_assertions(prop_conv, partition);
   convert_partition_io(prop_conv, partition);
+}
+/*******************************************************************\
+
+Function: partitioning_target_equationt::convert_partition_summary
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Convert a summary partition (i.e., assert its summary)
+
+\*******************************************************************/
+
+void partitioning_target_equationt::convert_partition_summary(
+  prop_convt &prop_conv, partitiont& partition)
+{
+  std::vector<symbol_exprt> common_symbs;
+  fill_common_symbols(partition, common_symbs);
+
+  for (interpolantst::const_iterator it = partition.summaries->begin();
+          it != partition.summaries->end();
+          ++it) {
+    std::cout << "Substituting interpolant" << std::endl;
+    it->substitute(prop_conv, common_symbs);
+  }
 }
 
 /*******************************************************************\
@@ -394,7 +425,7 @@ void partitioning_target_equationt::extract_interpolants(
   }
 
   // Interpolate...
-  std::vector<prop_itpt> itp_result;
+  interpolantst itp_result;
   itp_result.reserve(valid_partitons);
   interpolator.get_interpolant(itp_task, itp_result);
 
@@ -404,29 +435,20 @@ void partitioning_target_equationt::extract_interpolants(
   for (unsigned i = 0; i < valid_partitons; ++i) {
     // Store the intepolant
     partitiont& partition = partitions[i+1];
-    interpolant_map.push_back(std::pair<irep_idt, prop_itpt>(
-      partition.function_id, prop_itpt()));
-    prop_itpt& interpolant = interpolant_map.back().second;
+    interpolant_map.push_back(interpolant_mapt::value_type(
+      partition.function_id, interpolantst::value_type()));
+    interpolantst::reference interpolant = interpolant_map.back().second;
     interpolant.swap(itp_result[i]);
 
     // Generalize the interpolant
-    common_symbs.clear();
-    common_symbs.reserve(partition.argument_symbols.size()+3);
-    common_symbs.assign(partition.argument_symbols.begin(),
-            partition.argument_symbols.end());
-    common_symbs.push_back(partition.callstart_symbol);
-    std::cout << partition.callstart_literal.var_no() << ", " <<
-            partition.callend_literal.var_no() << std::endl;
-    common_symbs.push_back(partition.callend_symbol);
-    if (partition.returns_value) {
-      common_symbs.push_back(partition.retval_symbol);
-    }
+    fill_common_symbols(partition, common_symbs);
 
     std::cout << "Common symbols (" << common_symbs.size() << "):" << std::endl;
     for (std::vector<symbol_exprt>::iterator it = common_symbs.begin();
             it != common_symbs.end(); ++it)
       std::cout << it->get_identifier() << std::endl;
 
+    std::cout << "Generalizing interpolant" << std::endl;
     interpolant.generalize(decider, common_symbs);
   }
 }

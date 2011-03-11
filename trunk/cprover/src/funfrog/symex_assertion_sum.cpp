@@ -695,46 +695,115 @@ void symex_assertion_sumt::handle_function_call(
 
   switch (call_summary.get_precision()) {
   case call_summaryt::NONDET:
-    // We should treat the function as nondeterministic, havocing
-    // all data it touches.
-
-    // FIXME: We need some static analysis of the function for this
-    std::cout << "*** NONDET abstraction used for function: " <<
-            function_id << std::endl;
+    havoc_function_call(deferred_function, state, function_id);
     break;
   case call_summaryt::SUMMARY:
-    // We should use an already computed summary as an abstraction
-    // of the function body
-
-    // FIXME: Implement this
-    std::cout << "*** SUMMARY abstraction used for function: " <<
-            function_id << std::endl;
+    summarize_function_call(deferred_function, state, function_id);
     break;
   case call_summaryt::INLINE:
-  {
-    // We should inline the body --> defer this for later
-
-    std::cout << "*** INLINING function: " <<
-            function_id << std::endl;
-
-    produce_callsite_symbols(deferred_function, state, function_id);
-
-    // Add assumption for the function call end symbol
-    exprt tmp(deferred_function.callend_symbol);
-    state.guard.guard_expr(tmp);
-    target.assumption(state.guard, tmp, state.source);
-
-    defer_function(deferred_function, function_id);
+    inline_function_call(deferred_function, state, function_id);
     break;
-  }
   default:
     assert(false);
     break;
   }
 }
+
 /*******************************************************************
 
- Function: symex_assertion_sumt::handle_function_call
+ Function: symex_assertion_sumt::summarize_function_call
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Summarizes the given function call
+
+\*******************************************************************/
+void symex_assertion_sumt::summarize_function_call(
+        deferred_functiont& deferred_function,
+        statet& state,
+        const irep_idt& function_id)
+{
+  // We should use an already computed summary as an abstraction
+  // of the function body
+  std::cout << "*** SUMMARY abstraction used for function: " <<
+          function_id << std::endl;
+
+  produce_callsite_symbols(deferred_function, state, function_id);
+  produce_callend_assumption(deferred_function, state);
+
+  std::cout << "Substituting interpolant" << std::endl;
+
+  partition_idt partition_id = equation.reserve_partition(
+          deferred_function.callstart_symbol,
+          deferred_function.callend_symbol,
+          deferred_function.argument_symbols,
+          deferred_function.retval_symbol,
+          deferred_function.returns_value,
+          function_id);
+  equation.fill_summary_partition(partition_id,
+          &summarization_context.get_summaries(function_id));
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::summarize_function_call
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Inlines the given function call
+
+\*******************************************************************/
+void symex_assertion_sumt::inline_function_call(
+        deferred_functiont& deferred_function,
+        statet& state,
+        const irep_idt& function_id)
+{
+  // We should inline the body --> defer evaluation of the body for later
+  std::cout << "*** INLINING function: " <<
+          function_id << std::endl;
+
+  produce_callsite_symbols(deferred_function, state, function_id);
+  produce_callend_assumption(deferred_function, state);
+
+  defer_function(deferred_function, function_id);
+}
+/*******************************************************************
+
+ Function: symex_assertion_sumt::summarize_function_call
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Abstract from the given function call (nondeterministic assignment
+ to all the possibly modified variables)
+
+\*******************************************************************/
+void symex_assertion_sumt::havoc_function_call(
+        deferred_functiont& deferred_function,
+        statet& state,
+        const irep_idt& function_id)
+{
+  // We should treat the function as nondeterministic, havocing
+  // all data it touches.
+
+  // FIXME: We need some static analysis of the function for this
+  std::cout << "*** NONDET abstraction used for function: " <<
+          function_id << std::endl;
+
+  produce_callsite_symbols(deferred_function, state, function_id);
+  produce_callend_assumption(deferred_function, state);
+
+  throw "Function symex_assertion_sumt::havoc_function_call() not yet implemented";
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::produce_callsite_symbols
 
  Inputs:
 
@@ -756,6 +825,27 @@ void symex_assertion_sumt::produce_callsite_symbols(
           get_new_symbol_version("funfrog::" + function_id.as_string() +
           "::\\callend_symbol", state));
 }
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::produce_callsite_symbols
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Inserts assumption that a given call ended (i.e., an assumption of
+ the callend symbol)
+
+\*******************************************************************/
+void symex_assertion_sumt::produce_callend_assumption(
+        const deferred_functiont& deferred_function, statet& state)
+{
+  exprt tmp(deferred_function.callend_symbol);
+  state.guard.guard_expr(tmp);
+  target.assumption(state.guard, tmp, state.source);
+}
+
 
 /*******************************************************************
 

@@ -62,7 +62,7 @@ public:
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
-    std::vector<prop_itpt>& interpolants) const;
+    interpolantst& interpolants) const;
   
 protected:
   // OpenSMT API entry point

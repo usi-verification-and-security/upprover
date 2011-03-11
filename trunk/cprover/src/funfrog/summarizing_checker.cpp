@@ -226,7 +226,9 @@ bool summarizing_checkert::assertion_holds(
     for (interpolant_mapt::iterator it = itp_map.begin();
             it != itp_map.end(); ++it) {
       irep_idt& function_id = it->first;
-      summarization_context.function_infos[function_id].add_summary(it->second);
+      if (!it->second.is_trivial()) {
+        summarization_context.function_infos[function_id].add_summary(it->second);
+      }
     }
   }
 
