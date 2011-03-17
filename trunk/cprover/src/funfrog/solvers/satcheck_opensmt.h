@@ -75,9 +75,12 @@ protected:
   // prop_solve occurs)
   unsigned partition_count;
   // Mapping from variable indices to their E-nodes in OpenSMT
-  vector<Enode*> enodes;
+  std::vector<Enode*> enodes;
   // Helper string for mangling the variable names
   std::string id_str;
+# ifndef NDEBUG
+  std::vector<Enode*> partition_enodes;
+# endif
 
   // Extract interpolant form OpenSMT Egraph
   void extract_itp(const Enode* enode, prop_itpt& target_itp) const;

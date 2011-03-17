@@ -42,6 +42,9 @@ public:
     return literalt(_no_variables++, false);
   }
 
+  static void reserve_variables(prop_convt& decider,
+    const std::vector<symbol_exprt>& symbols);
+
   void generalize(const prop_convt& mapping,
     const std::vector<symbol_exprt>& symbols);
 
@@ -68,6 +71,7 @@ protected:
   void print_clause(std::ostream& out, const bvt& clause) const;
 };
 
+typedef prop_itpt interpolantt;
 typedef std::vector<prop_itpt> interpolantst;
 typedef std::vector<std::pair<irep_idt, prop_itpt> > interpolant_mapt;
 

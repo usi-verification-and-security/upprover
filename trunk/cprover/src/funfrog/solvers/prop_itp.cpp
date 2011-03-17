@@ -167,7 +167,7 @@ Function: prop_itpt::generalize
 void prop_itpt::generalize(const prop_convt& decider,
     const std::vector<symbol_exprt>& symbols)
 {
-  if (root_literal.is_constant()) {
+  if (is_trivial()) {
     return;
   }
 
@@ -312,7 +312,13 @@ void prop_itpt::generalize(const prop_convt& decider,
       it2->set(renaming[it2->var_no() - min_var], it2->sign());
     }
   }
-  root_literal.set(root_literal.var_no() - shift, root_literal.sign());
+  if (root_literal.var_no() > max_var) {
+    root_literal.set(root_literal.var_no() - shift, root_literal.sign());
+  } else {
+      // Sanity check, all variables used in the interpolant should be mapped.
+      assert(renaming[root_literal.var_no() - min_var] != UINT_MAX);
+      root_literal.set(renaming[root_literal.var_no() - min_var], root_literal.sign());
+  }
 
   _no_variables -= shift;
   _no_orig_variables = cannon_var_no;
@@ -342,7 +348,7 @@ Function: prop_itpt::substitute
 void prop_itpt::substitute(prop_convt& decider,
     const std::vector<symbol_exprt>& symbols) const
 {
-  assert(!root_literal.is_constant());
+  assert(!is_trivial());
 
   // FIXME: Dirty cast.
   boolbv_mapt& map = dynamic_cast<boolbvt&>(decider).get_literal_map();
@@ -402,7 +408,52 @@ void prop_itpt::substitute(prop_convt& decider,
     // Assert the clause
     decider.prop.lcnf(tmp_clause);
   }
-  decider.prop.l_set_to_true(root_literal);
+  // Handle the root
+  bool sign = root_literal.sign();
+  literalt new_root_literal = renaming[root_literal.var_no()];
+  if (sign)
+    new_root_literal.invert();
+
+  decider.prop.l_set_to_true(new_root_literal);
+}
+
+
+/*******************************************************************\
+
+Function: prop_itpt::substitute
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Forces the given decider to use fresh variables for
+ the partition (future interpolant) boundary.
+
+\*******************************************************************/
+
+void prop_itpt::reserve_variables(prop_convt& decider,
+    const std::vector<symbol_exprt>& symbols)
+{
+  // FIXME: Dirty cast.
+  boolbv_mapt& map = dynamic_cast<boolbvt&>(decider).get_literal_map();
+
+  // Force existence of the variables
+  for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
+          it != symbols.end();
+          ++it) {
+
+    // Bool symbols are not in the boolbv_map and have to be treated separatelly
+    if (it->type().id() == ID_bool) {
+      literalt l = decider.convert(*it);
+      continue;
+    }
+
+    for (unsigned i = 0;
+            i < map.get_map_entry(it->get_identifier(), it->type()).width;
+            ++i) {
+      literalt l = map.get_literal(it->get_identifier(), i, it->type());
+    }
+  }
 }
 
 /*******************************************************************\
@@ -419,12 +470,17 @@ Function: prop_itpt::print
 
 void prop_itpt::print(std::ostream& out) const
 {
-  out << "Prop. interpolant (#vars: " << _no_variables << ", #clauses: " << no_clauses() << "):" << std::endl;
-  
-  for (clausest::const_iterator it = clauses.begin();
-          it != clauses.end(); ++it) {
-    print_clause(out, *it);
-    out << std::endl;
+  if (is_trivial()) {
+    out << "Prop. interpolant: trivial" << std::endl;
+  } else {
+    out << "Prop. interpolant (#v: " << _no_variables << ", #c: " << no_clauses() <<
+            ",root: " << root_literal.dimacs() << "):" << std::endl;
+
+    for (clausest::const_iterator it = clauses.begin();
+            it != clauses.end(); ++it) {
+      print_clause(out, *it);
+      out << std::endl;
+    }
   }
 }
 

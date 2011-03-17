@@ -492,6 +492,8 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   const goto_programt& body = 
     summarization_context.functions.function_map.at(function_id).body;
   state.source.pc = body.instructions.begin();
+  state.top().end_of_function = --body.instructions.end();
+  state.top().goto_state_map.clear();
 
   // Setup temporary store for return value
   if (deferred_function.returns_value) {
@@ -534,7 +536,10 @@ void symex_assertion_sumt::assign_function_arguments(
   const goto_functionst::goto_functiont &goto_function=it->second;
 
   // Add parameters assignment
+  bool old_cp = constant_propagation;
+  constant_propagation = false;
   argument_assignments(goto_function.type, state, function_call.arguments());
+
   // Store the argument renamed symbols somewhere (so that we can use
   // them later, when processing the deferred function).
   mark_argument_symbols(goto_function.type, state, deferred_function);
@@ -549,6 +554,7 @@ void symex_assertion_sumt::assign_function_arguments(
     deferred_function.retval_symbol = symbol_exprt();
   }
   // FIXME: Add also new assignments to all modified global variables
+  constant_propagation = old_cp;
 }
 
 /*******************************************************************
@@ -618,11 +624,24 @@ void symex_assertion_sumt::return_assignment_and_mark(
           retval_tmp_id,
           function_type.return_type());
 
+  // TODO: This is extremely ugly, fix it!
+  symbolt s;
+  s.base_name = retval_tmp_id;
+  s.name = retval_tmp_id;
+  s.type = function_type.return_type();
+  ((contextt&)ns.get_context()).add(s);
+
   code_assignt assignment(lhs, retval_symbol);
   assert( ns.follow(assignment.lhs().type()) ==
           ns.follow(assignment.rhs().type()));
 
+  bool old_cp = constant_propagation;
+  constant_propagation = false;
   basic_symext::symex_assign(state, assignment);
+  constant_propagation = old_cp;
+
+  expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
+  expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
 
   deferred_function.retval_symbol = retval_symbol;
   deferred_function.retval_tmp = retval_tmp;
@@ -656,7 +675,10 @@ void symex_assertion_sumt::store_return_value(
           ns.follow(assignment.rhs().type()));
 
   // Emit the assignment
+  bool old_cp = constant_propagation;
+  constant_propagation = false;
   raw_assignment(state, assignment.lhs(), assignment.rhs(), ns, false);
+  constant_propagation = old_cp;
 }
 
 /*******************************************************************

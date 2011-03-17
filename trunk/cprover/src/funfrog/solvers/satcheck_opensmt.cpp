@@ -10,6 +10,9 @@ Author: Ondrej Sery
 #include <assert.h>
 
 #include <i2string.h>
+#include <vector>
+#include <iosfwd>
+#include <ios>
 
 #include "satcheck_opensmt.h"
 
@@ -107,9 +110,11 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
           it != itp_enodes.end(); ++it) {
     Enode* node = (*it);
 
+#   if 0
     std::cout << "OpenSMT interpolant: ";
     node->print(std::cout);
     std::cout << std::endl;
+#   endif
 
     prop_itpt itp;
     extract_itp(node, itp);
@@ -257,12 +262,30 @@ propt::resultt satcheck_opensmtt::prop_solve() {
             i2string(clause_counter) + " clauses";
     messaget::status(msg);
   }
+  std::cout << "OpenSMT - CNF formula (" << _no_variables << " vars., " <<
+          clause_counter << " cl.)" << std::endl;
 
   add_variables();
 
   if (partition_root_enode != NULL) {
     close_partition();
   }
+
+  // Store the SAT queries
+# ifndef NDEBUG
+  std::ofstream out;
+  int part_id = partition_enodes.size();
+
+  out.open("__sat_query.smt");
+  for (std::vector<Enode*>::iterator it = partition_enodes.begin();
+          it != partition_enodes.end();
+          ++it) {
+    out << "# Partition " << --part_id << std::endl;
+    (*it)->print(out);
+    out << std::endl;
+  }
+  out.close();
+# endif
 
   std::string msg;
 
@@ -404,6 +427,9 @@ void satcheck_opensmtt::close_partition()
 {
   partition_root_enode = opensmt_ctx->mkAnd(partition_root_enode);
   opensmt_ctx->Assert(partition_root_enode);
+# ifndef NDEBUG
+  partition_enodes.push_back(partition_root_enode);
+# endif
   partition_root_enode = NULL;
 }
 

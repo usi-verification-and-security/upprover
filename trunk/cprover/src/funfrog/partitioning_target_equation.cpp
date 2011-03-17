@@ -63,6 +63,11 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
     return;
   }
 
+  // Reserve fresh variables for the partition boundary
+  std::vector<symbol_exprt> common_symbs;
+  fill_common_symbols(partition, common_symbs);
+  interpolantt::reserve_variables(prop_conv, common_symbs);
+          
   // Convert the corresponding SSA steps
   convert_partition_guards(prop_conv, partition);
   convert_partition_assignments(prop_conv, partition);
