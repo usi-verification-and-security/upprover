@@ -1011,8 +1011,7 @@ void symex_assertion_sumt::phi_function(
        dest_state.level2.current_number(*it))
       continue; // not at all changed
 
-    assert(original_identifier == *it);
-    std::cout << "Phi: " << original_identifier.as_string() << "[" <<
+    std::cout << "Phi: " << it->as_string() << "[" <<
             goto_state.level2.current_number(*it) << ", " <<
             dest_state.level2.current_number(*it) << "]" << std::endl;
 
