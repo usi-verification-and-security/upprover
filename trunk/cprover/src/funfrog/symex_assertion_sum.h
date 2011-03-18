@@ -118,6 +118,9 @@ private:
   // The interpolation procedure to be used for symex-partitioning
   interpolating_solvert& interpolator;
 
+  // Artificial identifiers for which we do not need Phi function
+  std::set<irep_idt> dead_identifiers;
+
   // FIXME: Garbage?
   goto_programt::const_targett &original_loop_head;
 
@@ -221,7 +224,7 @@ private:
   // Purpose: Helper function for renaming of an identifier without
   // assigning to it.
   std::string get_new_symbol_version(
-        const std::string &identifier,
+        const irep_idt& identifier,
         statet &state);
 
   // Makes an assignment without increasing the version of the
@@ -233,5 +236,31 @@ private:
         const namespacet &ns,
         bool record_value);
 
+  // Adds the given symbol to the current context. If dead, the identifier
+  // is only marked as dead (it is not added as a new symbol).
+  void add_symbol(const irep_idt& id, const typet& type, bool dead) {
+    if (dead) {
+      dead_identifiers.insert(id);
+    } else if (!new_context.has_symbol(id)) {
+      symbolt s;
+      s.base_name = id;
+      s.name = id;
+      s.type = type;
+      new_context.add(s);
+    }
+  }
+
+  // Dead identifiers do not need to be considered in Phi function generation
+  bool is_dead_identifier(const irep_idt& identifier) {
+    if (identifier == guard_identifier)
+      return true;
+
+    return dead_identifiers.find(identifier) != dead_identifiers.end();
+  }
+
+protected:
+  virtual void phi_function(
+    const statet::goto_statet &goto_state,
+    statet &state);
 };
 #endif

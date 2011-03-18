@@ -21,17 +21,7 @@ Author: Ondrej Sery
 class satcheck_opensmtt:public cnf_solvert, public interpolating_solvert
 {
 public:
-  satcheck_opensmtt() : partition_root_enode(NULL), partition_count(0)
-  {
-    opensmt_ctx = new OpenSMTContext();
-    opensmt_ctx->SetLogic("QF_BOOL");
-
-    SMTConfig& config = opensmt_ctx->getConfig();
-    config.setProduceModels();
-    config.setProduceInter();
-
-    sbool = opensmt_ctx->mkSortBool();
-  }
+  satcheck_opensmtt();
   
   virtual ~satcheck_opensmtt() {
     delete opensmt_ctx;

@@ -22,6 +22,30 @@ Author: Ondrej Sery
 
 #define MAX_OPENSMT_PARTITIONS 63
 
+satcheck_opensmtt::satcheck_opensmtt() :
+  partition_root_enode(NULL), partition_count(0)
+{
+  opensmt_ctx = new OpenSMTContext();
+  opensmt_ctx->SetLogic("QF_BOOL");
+
+  SMTConfig& config = opensmt_ctx->getConfig();
+  config.setProduceModels();
+  config.setProduceInter();
+  /*
+  config.sat_reduce_proof = 1;
+  config.sat_ratio_red_time_solv_time = .5;
+  config.sat_reorder_pivots = 1;
+   */
+  config.proof_num_graph_traversals = 5;
+  config.proof_red_trans = 5;
+  config.proof_reduce = 1;
+  config.proof_reorder_pivots = 1;
+  config.proof_reduce_while_reordering = 1;
+  config.proof_set_inter_algo = 2;
+
+  sbool = opensmt_ctx->mkSortBool();
+}
+
 /*******************************************************************\
 
 Function: satcheck_opensmtt::convert

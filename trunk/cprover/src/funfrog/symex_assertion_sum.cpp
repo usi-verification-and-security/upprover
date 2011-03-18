@@ -16,6 +16,7 @@
 #include <solvers/sat/satcheck.h>
 #include <solvers/smt1/smt1_dec.h>
 #include <loopfrog/memstat.h>
+#include <expr_util.h>
 
 #include "symex_assertion_sum.h"
 #include "expr_pretty_print.h"
@@ -613,27 +614,21 @@ void symex_assertion_sumt::return_assignment_and_mark(
   assert(function_type.return_type().is_not_nil());
 
   const irep_idt &function_id = deferred_function.summary_info.get_function_id();
+  const typet& type = function_type.return_type();
   std::string retval_symbol_id(
           "funfrog::" + function_id.as_string() + "::\\retval");
   std::string retval_tmp_id(
           "funfrog::" + function_id.as_string() + "::\\retval_tmp");
-  symbol_exprt retval_symbol(
-          get_new_symbol_version(retval_symbol_id, state),
-          function_type.return_type());
-  symbol_exprt retval_tmp(
-          retval_tmp_id,
-          function_type.return_type());
+  symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state),
+          type);
+  symbol_exprt retval_tmp(retval_tmp_id, type);
 
-  // TODO: This is extremely ugly, fix it!
-  symbolt s;
-  s.base_name = retval_tmp_id;
-  s.name = retval_tmp_id;
-  s.type = function_type.return_type();
-  ((contextt&)ns.get_context()).add(s);
+  add_symbol(retval_tmp_id, type, false);
+  add_symbol(retval_symbol_id, type, true);
 
   code_assignt assignment(lhs, retval_symbol);
   assert( ns.follow(assignment.lhs().type()) ==
-          ns.follow(assignment.rhs().type()));
+          ns.follow(type));
 
   bool old_cp = constant_propagation;
   constant_propagation = false;
@@ -838,12 +833,18 @@ void symex_assertion_sumt::produce_callsite_symbols(
         statet& state,
         const irep_idt& function_id)
 {
+  irep_idt callstart_id = "funfrog::" + function_id.as_string() +
+          "::\\callstart_symbol";
+  irep_idt callend_id = "funfrog::" + function_id.as_string() +
+          "::\\callend_symbol";
+
   deferred_function.callstart_symbol.set_identifier(
-          get_new_symbol_version("funfrog::" + function_id.as_string() +
-          "::\\callstart_symbol", state));
+          get_new_symbol_version(callstart_id, state));
   deferred_function.callend_symbol.set_identifier(
-          get_new_symbol_version("funfrog::" + function_id.as_string() +
-          "::\\callend_symbol", state));
+          get_new_symbol_version(callend_id, state));
+
+  add_symbol(callstart_id, typet(ID_bool), true);
+  add_symbol(callend_id, typet(ID_bool), true);
 }
 
 /*******************************************************************
@@ -880,7 +881,7 @@ void symex_assertion_sumt::produce_callend_assumption(
 
 \*******************************************************************/
 std::string symex_assertion_sumt::get_new_symbol_version(
-        const std::string &identifier,
+        const irep_idt& identifier,
         statet &state)
 {
   //--8<--- Taken from goto_symex_statt::assignment()
@@ -972,4 +973,93 @@ void symex_assertion_sumt::raw_assignment(
     rhs_symbol,
     state.source,
     symex_targett::STATE);
+}
+
+/*******************************************************************\
+
+Function: symex_assertion_sumt::phi_function
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Modification of the goto_symext version. In contrast, we
+ do not generate Phi functions for dead identifiers.
+
+\*******************************************************************/
+void symex_assertion_sumt::phi_function(
+  const statet::goto_statet &goto_state,
+  statet &dest_state)
+{
+  // go over all variables to see what changed
+  std::set<irep_idt> variables;
+
+  goto_state.level2.get_variables(variables);
+  dest_state.level2.get_variables(variables);
+
+  for(std::set<irep_idt>::const_iterator
+      it=variables.begin();
+      it!=variables.end();
+      it++)
+  {
+    irep_idt original_identifier = dest_state.get_original_name(*it);
+
+    if (is_dead_identifier(original_identifier))
+      continue;
+
+    if(goto_state.level2.current_number(*it)==
+       dest_state.level2.current_number(*it))
+      continue; // not at all changed
+
+    assert(original_identifier == *it);
+    std::cout << "Phi: " << original_identifier.as_string() << "[" <<
+            goto_state.level2.current_number(*it) << ", " <<
+            dest_state.level2.current_number(*it) << "]" << std::endl;
+
+    // changed!
+    const symbolt &symbol=ns.lookup(original_identifier);
+
+    typet type(symbol.type);
+
+    // type may need renaming
+    dest_state.rename(type, ns);
+
+    exprt rhs;
+
+    if(dest_state.guard.is_false())
+    {
+      rhs=symbol_exprt(dest_state.current_name(goto_state, symbol.name), type);
+    }
+    else if(goto_state.guard.is_false())
+    {
+      rhs=symbol_exprt(dest_state.current_name(symbol.name), type);
+    }
+    else
+    {
+      guardt tmp_guard(goto_state.guard);
+
+      // this gets the diff between the guards
+      tmp_guard-=dest_state.guard;
+
+      rhs=if_exprt();
+      rhs.type()=type;
+      rhs.op0()=tmp_guard.as_expr();
+      rhs.op1()=symbol_exprt(dest_state.current_name(goto_state, symbol.name), type);
+      rhs.op2()=symbol_exprt(dest_state.current_name(symbol.name), type);
+    }
+
+    exprt lhs(symbol_expr(symbol));
+    exprt new_lhs(lhs);
+
+    dest_state.assignment(new_lhs, rhs, ns, false);
+
+    guardt true_guard;
+
+    target.assignment(
+      true_guard,
+      new_lhs, lhs,
+      rhs,
+      dest_state.source,
+      symex_targett::HIDDEN);
+  }
 }

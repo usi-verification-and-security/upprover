@@ -476,11 +476,13 @@ void prop_itpt::print(std::ostream& out) const
     out << "Prop. interpolant (#v: " << _no_variables << ", #c: " << no_clauses() <<
             ",root: " << root_literal.dimacs() << "):" << std::endl;
 
+#   if 0
     for (clausest::const_iterator it = clauses.begin();
             it != clauses.end(); ++it) {
       print_clause(out, *it);
       out << std::endl;
     }
+#   endif
   }
 }
 
