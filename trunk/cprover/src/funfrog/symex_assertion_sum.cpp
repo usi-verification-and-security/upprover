@@ -490,8 +490,9 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 
   // Set pc to function entry point
   // NOTE: Here, we expect having the function body available
-  const goto_programt& body = 
-    summarization_context.functions.function_map.at(function_id).body;
+  const goto_functionst::goto_functiont& function =
+    summarization_context.functions.function_map.at(function_id);
+  const goto_programt& body = function.body;
   state.source.pc = body.instructions.begin();
   state.top().end_of_function = --body.instructions.end();
   state.top().goto_state_map.clear();
@@ -504,6 +505,20 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   // Add an assumption of the function call_site symbol
   target.assumption(state.guard, deferred_function.callstart_symbol,
           state.source);
+
+  // NOTE: In order to prevent name clashes with argument SSA versions,
+  // we renew them all here.
+  std::vector<symbol_exprt>::const_iterator it1 =
+          deferred_function.argument_symbols.begin();
+  for (code_typet::argumentst::const_iterator it2 =
+          function.type.arguments().begin();
+          it2 != function.type.arguments().end();
+          ++it2) {
+    guardt guard;
+    symbol_exprt lhs(it2->get_identifier(), it2->type());
+    symex_assign_symbol(state, lhs, *it1, guard, VISIBLE);
+    ++it1;
+  }
 }
 
 /*******************************************************************
