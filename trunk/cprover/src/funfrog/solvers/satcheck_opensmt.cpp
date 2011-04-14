@@ -20,7 +20,7 @@ Author: Ondrej Sery
 //#error "Expected HAVE_OPENSMT"
 #endif
 
-#define MAX_OPENSMT_PARTITIONS 63
+//#define MAX_OPENSMT_PARTITIONS 63
 
 satcheck_opensmtt::satcheck_opensmtt() :
   partition_root_enode(NULL), partition_count(0)
@@ -98,12 +98,14 @@ fle_part_idt satcheck_opensmtt::new_partition()
   if (partition_count > 0)
     close_partition();
 
+# ifdef MAX_OPENSMT_PARTITIONS
   if (partition_count == MAX_OPENSMT_PARTITIONS) {
     std::string s =
             "OpenSMT does not support more than " +
             i2string(MAX_OPENSMT_PARTITIONS) + "partitions so far.";
     throw s.c_str();
   }
+# endif
 
   return partition_count++;
 }
@@ -399,14 +401,14 @@ void satcheck_opensmtt::increase_id()
 {
   unsigned i = 0;
 
-  while (i < id_str.length() && id_str[i] == 'z') {
-    id_str[i++] = 'a';
+  while (i < id_str.length() && id_str[i] == 'Z') {
+    id_str[i++] = 'A';
   }
 
   if (i < id_str.length()) {
     id_str[i]++;
   } else {
-    id_str.append("a");
+    id_str.append("A");
   }
 }
 
@@ -428,8 +430,8 @@ unsigned satcheck_opensmtt::decode_id(const char* id) const
   unsigned i = 0;
 
   while (*id != 0) {
-    i += base * (*id++ - 'a' + 1);
-    base *= 'z'-'a'+1;
+    i += base * (*id++ - 'A' + 1);
+    base *= 'Z'-'A'+1;
   }
   return i-1;
 }

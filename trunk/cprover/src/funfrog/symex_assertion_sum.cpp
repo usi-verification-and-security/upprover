@@ -73,8 +73,12 @@ bool symex_assertion_sumt::assertion_holds(
   forall_goto_program_instructions(it, goto_program)
     assert(!it->is_backwards_goto());
   forall_goto_functions(it, summarization_context.functions)
-    forall_goto_program_instructions(it2, it->second.body)
-      assert(!it2->is_backwards_goto());
+    forall_goto_program_instructions(it2, it->second.body) {
+      if (!it2->is_backwards_goto()) {
+        goto_program.output_instruction(ns, "", out, it2);
+        assert(!it2->is_backwards_goto());
+      }
+  }
 # endif
 
   // Proceed with symbolic execution
@@ -1025,10 +1029,6 @@ void symex_assertion_sumt::phi_function(
     if(goto_state.level2.current_number(*it)==
        dest_state.level2.current_number(*it))
       continue; // not at all changed
-
-    std::cout << "Phi: " << it->as_string() << "[" <<
-            goto_state.level2.current_number(*it) << ", " <<
-            dest_state.level2.current_number(*it) << "]" << std::endl;
 
     // changed!
     const symbolt &symbol=ns.lookup(original_identifier);
