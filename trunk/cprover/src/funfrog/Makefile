@@ -1,5 +1,6 @@
 SRC = main.cpp \
       summary_info.cpp \
+      function_info.cpp \
       parseoptions.cpp \
       check_claims.cpp \
       symex_assertion_sum.cpp \

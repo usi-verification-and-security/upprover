@@ -104,7 +104,8 @@ private:
   class partitiont {
   public:
     partitiont(partition_idt _parent_id) : 
-            filled(false), is_summary(false), parent_id(_parent_id) {}
+            filled(false), is_summary(false), summaries(NULL),
+            parent_id(_parent_id) {}
 
     void add_child_partition(partition_idt child_id) {
       child_ids.push_back(child_id);

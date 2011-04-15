@@ -78,7 +78,7 @@ protected:
   typedef std::map<enodeid_t, literalt> enode_cachet;
   // Simple recursive extraction of clauses from OpenSMT Egraph
   literalt extract_itp_rec(const Enode* enode, prop_itpt& target_itp, 
-    enode_cachet enode_cache) const;
+    enode_cachet& enode_cache) const;
 
   void add_variables();
   void increase_id();

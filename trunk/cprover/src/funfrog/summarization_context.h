@@ -27,7 +27,15 @@ public:
           functions(_functions),
           value_sets(_value_sets),
           imprecise_loops(_imprecise_loops),
-          precise_loops(_precise_loops) {
+          precise_loops(_precise_loops) 
+  {
+    for (goto_functionst::function_mapt::const_iterator it =
+            functions.function_map.begin();
+            it != functions.function_map.end();
+            ++it) {
+      function_infos.insert(function_infost::value_type(
+        it->first, function_infot(it->first)));
+    }
   }
 
   const interpolantst& get_summaries(irep_idt function_id) const {

@@ -182,6 +182,9 @@ bool summarizing_checkert::assertion_holds(
   summarization_contextt summarization_context(goto_functions, value_sets,
           imprecise_loops, precise_loops);
 
+  // Load older summaries
+  function_infot::deserialize_infos("__summaries", summarization_context.function_infos);
+
   // Prepare summary_info, start with the lazy variant, i.e.,
   // all summaries are initialized as NONDET except those on the way
   // to the target assertion, which are marked INLINE.
@@ -230,6 +233,9 @@ bool summarizing_checkert::assertion_holds(
         summarization_context.function_infos[function_id].add_summary(it->second);
       }
     }
+
+    // Store the summaries
+    function_infot::serialize_infos("__summaries", summarization_context.function_infos);
   }
 
   return result;

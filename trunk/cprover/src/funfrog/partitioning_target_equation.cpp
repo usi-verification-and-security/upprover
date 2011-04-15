@@ -384,7 +384,7 @@ void partitioning_target_equationt::prepare_partitions()
 
   // The last partition has an undefined end, fix it!
   if (!partitions.empty()) {
-    partitions.rbegin()->end_idx = SSA_steps.size();
+    partitions[current_partition_id].end_idx = SSA_steps.size();
   }
 
   for (partitionst::iterator it = partitions.begin();
@@ -396,6 +396,9 @@ void partitioning_target_equationt::prepare_partitions()
 
     std::cout << idx << ", " << it->start_idx << ", " << it->end_idx << std::endl;
     std::cout << partitions.size() << std::endl;
+
+    if (it->is_summary)
+      continue;
 
     while (idx != it->end_idx) {
       assert(ssa_it != SSA_steps.end());

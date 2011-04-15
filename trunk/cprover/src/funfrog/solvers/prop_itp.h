@@ -51,6 +51,10 @@ public:
   void substitute(prop_convt& decider,
     const std::vector<symbol_exprt>& symbols) const;
 
+  // Serialization
+  void serialize(std::ostream& out) const;
+  void deserialize(std::istream& out);
+
   // Literal equivalent to the interpolant root
   literalt root_literal;
 protected:

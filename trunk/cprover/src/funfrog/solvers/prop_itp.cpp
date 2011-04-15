@@ -506,3 +506,89 @@ void prop_itpt::print_clause(std::ostream& out, const bvt& clause) const {
     out << it2->dimacs();
   }
 }
+
+/*******************************************************************\
+
+Function: prop_itpt::serialize
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void prop_itpt::serialize(std::ostream& out) const
+{
+  out << _no_orig_variables << " ";
+  out << _no_variables << " ";
+  out << root_literal.get() << " ";
+  out << clauses.size() << std::endl;
+
+  for (clausest::const_iterator it = clauses.begin();
+          it != clauses.end();
+          ++it) {
+    out << it->size();
+
+    for (bvt::const_iterator it2 = it->begin();
+            it2 != it->end();
+            ++it2) {
+      out << " " << it2->get();
+    }
+    out << std::endl;
+  }
+}
+
+/*******************************************************************\
+
+Function: prop_itpt::deserialize
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void prop_itpt::deserialize(std::istream& in)
+{
+  unsigned raw_root;
+  unsigned nclauses;
+
+  in >> _no_orig_variables;
+  in >> _no_variables;
+  in >> raw_root;
+  root_literal.set(raw_root);
+  in >> nclauses;
+
+  if (in.fail())
+    return;
+
+  unsigned lits;
+  unsigned raw_lit;
+  literalt lit;
+
+  clauses.clear();
+  clauses.reserve(nclauses);
+
+  for (unsigned i = 0; i < nclauses; ++i)
+  {
+    in >> lits;
+
+    if (in.fail())
+      return;
+
+    clauses.push_back(bvt());
+    bvt& bv = clauses.back();
+    bv.reserve(lits);
+
+    for (unsigned j = 0; j < lits; ++j) {
+      in >> raw_lit;
+      lit.set(raw_lit);
+
+      bv.push_back(lit);
+    }
+  }
+}

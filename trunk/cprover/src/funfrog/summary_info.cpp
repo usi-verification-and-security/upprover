@@ -66,8 +66,14 @@ summary_infot::initialize(const summarization_contextt& summarization_context,
         call_summary.set_inline(summarization_context, target_function,
                 assertion, stack_depth+1);
       } else {
-        call_summary.set_inline(summarization_context, target_function,
+        const interpolantst& summaries = 
+          summarization_context.get_summaries(target_function);
+        if (summaries.size() > 0) {
+          call_summary.set_summary();
+        } else {
+          call_summary.set_inline(summarization_context, target_function,
                 assertion, stack_depth+1);
+        }
         // call_summary.set_nondet();
 #       if 0
         std::cout << "Havocing a call." << target_function << std::endl;
