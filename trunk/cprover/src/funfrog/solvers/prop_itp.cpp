@@ -364,7 +364,7 @@ void prop_itpt::substitute(prop_convt& decider,
     if (it->type().id() == ID_bool) {
       literalt l = decider.convert(*it);
       renaming[cannon_var_no++] = l;
-      std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
+      //std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
       continue;
     }
 
@@ -374,9 +374,9 @@ void prop_itpt::substitute(prop_convt& decider,
       literalt l = map.get_literal(it->get_identifier(), i, it->type());
 
       renaming[cannon_var_no++] = l;
-      std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
+      //std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
     }
-    std::cout << std::endl;
+    //std::cout << std::endl;
   }
 
   // Allocate new variables for the auxiliary ones (present due to the Tseitin
@@ -402,8 +402,8 @@ void prop_itpt::substitute(prop_convt& decider,
         it2->invert();
     }
     
-    print_clause(std::cout, tmp_clause);
-    std::cout << std::endl;
+    //print_clause(std::cout, tmp_clause);
+    //std::cout << std::endl;
 
     // Assert the clause
     decider.prop.lcnf(tmp_clause);

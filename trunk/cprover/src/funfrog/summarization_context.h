@@ -12,6 +12,7 @@
 
 #include <pointer-analysis/value_set_analysis.h>
 #include <goto-programs/goto_functions.h>
+#include <loopfrog/loopstore.h>
 
 #include "function_info.h"
 
@@ -40,6 +41,10 @@ public:
 
   const interpolantst& get_summaries(irep_idt function_id) const {
     return function_infos.find(function_id)->second.get_summaries();
+  }
+
+  void analyze_functions(const namespacet& ns) {
+    function_infos.find(functions.main_id())->second.analyze_globals(*this, ns);
   }
 
   const goto_functionst &functions;

@@ -17,6 +17,7 @@
 #include "solvers/interpolating_solver.h"
 
 class function_infot;
+class summarization_contextt;
 typedef hash_map_cont<irep_idt, function_infot, irep_id_hash> function_infost;
 
 // Collected summarization info for a single function
@@ -45,11 +46,35 @@ public:
   static void serialize_infos(const std::string& file, const function_infost& infos);
   static void deserialize_infos(const std::string& file, function_infost& infos);
 
+  void analyze_globals(summarization_contextt& context, const namespacet& ns);
+
 private:
   // Id of the function
   irep_idt function;
   // The collected summaries
   interpolantst summaries;
+
+  // Helper struct with lexicographical ordering for dstring
+  struct dstring_lex_ordering
+  {
+    bool operator()(const dstring& s1, const dstring& s2) const
+    {
+      return s1.compare(s2) < 0;
+    }
+  };
+
+  typedef std::set<irep_idt, dstring_lex_ordering> lex_sorted_idst;
+  // Gloabls modified in the function
+  lex_sorted_idst globals_modified;
+  // Globals accessed (read, modified or both) in the function
+  lex_sorted_idst globals_accessed;
+
+  void analyze_globals_rec(summarization_contextt& context,
+    const namespacet& ns, std::set<irep_idt>& functions_analyzed);
+
+  static void add_objects_to_set(const namespacet& ns,
+        const expr_listt& exprs, lex_sorted_idst& set);
 };
+
 
 #endif

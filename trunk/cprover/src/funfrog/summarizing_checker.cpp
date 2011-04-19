@@ -181,6 +181,7 @@ bool summarizing_checkert::assertion_holds(
   // Prepare the summarization context
   summarization_contextt summarization_context(goto_functions, value_sets,
           imprecise_loops, precise_loops);
+  summarization_context.analyze_functions(ns);
 
   // Load older summaries
   function_infot::deserialize_infos("__summaries", summarization_context.function_infos);

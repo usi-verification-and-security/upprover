@@ -33,6 +33,7 @@ class value_set_alloc_adaptort;
   "(save-transformed-program)(save-inlined-program)" \
   "(show-claimed-program)(show-abstracted-program)" \
   "(save-claimed-program)(save-abstracted-program)" \
+  "(save-summaries):(load-summaries):" \
   "(show-symbol-table)(save-stats)(show-value-sets)" \
   "(save-claims)" \
   "(pointer-check)(bounds-check)(assertions)(use-smt)" \
