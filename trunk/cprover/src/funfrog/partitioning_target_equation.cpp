@@ -425,28 +425,37 @@ void partitioning_target_equationt::extract_interpolants(
   interpolant_mapt& interpolant_map)
 {
   // Prepare the interpolation task. NOTE: ignore the root partition!
-  const unsigned valid_partitons = partitions.size()-1;
-  interpolation_taskt itp_task(valid_partitons);
+  unsigned valid_tasks = 0;
 
-  for (unsigned i = 0; i < valid_partitons; ++i) {
-    fill_partition_ids(i+1, itp_task[i]);
+  for (unsigned i = 1; i < partitions.size(); ++i) {
+    if (!partitions[i].is_summary)
+      valid_tasks++;
+  }
+
+  interpolation_taskt itp_task(valid_tasks);
+
+  for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
+    if (!partitions[pid].is_summary)
+      fill_partition_ids(pid, itp_task[tid++]);
   }
 
   // Interpolate...
   interpolantst itp_result;
-  itp_result.reserve(valid_partitons);
+  itp_result.reserve(valid_tasks);
   interpolator.get_interpolant(itp_task, itp_result);
 
   // Interpret the result
   std::vector<symbol_exprt> common_symbs;
-  interpolant_map.reserve(valid_partitons);
-  for (unsigned i = 0; i < valid_partitons; ++i) {
+  interpolant_map.reserve(valid_tasks);
+  for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
+    if (partitions[pid].is_summary)
+      continue;
     // Store the intepolant
-    partitiont& partition = partitions[i+1];
+    partitiont& partition = partitions[pid];
     interpolant_map.push_back(interpolant_mapt::value_type(
       partition.function_id, interpolantst::value_type()));
     interpolantst::reference interpolant = interpolant_map.back().second;
-    interpolant.swap(itp_result[i]);
+    interpolant.swap(itp_result[tid++]);
 
     // Generalize the interpolant
     fill_common_symbols(partition, common_symbs);

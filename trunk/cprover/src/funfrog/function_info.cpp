@@ -196,7 +196,7 @@ void function_infot::deserialize_infos(const std::string& file, function_infost&
   in.open(file.c_str());
 
   if (in.fail()) {
-    std::cerr << "Failed to serialize function summaries (file: " << file <<
+    std::cerr << "Failed to deserialize function summaries (file: " << file <<
             " cannot be read)" << std::endl;
     return;
   }
