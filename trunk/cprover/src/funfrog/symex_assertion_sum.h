@@ -196,6 +196,12 @@ private:
     statet &state,
     deferred_functiont &deferred_function);
 
+  // Marks the SSA symbols of accessed globals
+  void mark_accessed_global_symbols(
+    const code_typet &function_type,
+    statet &state,
+    deferred_functiont &deferred_function);
+
   // Assigns return value from a new SSA symbols to the lhs at
   // call site. Marks the SSA symbol of the return value temporary
   // variable for later use when processing the deferred function

@@ -9,6 +9,7 @@
 
 #include "function_info.h"
 #include "summarization_context.h"
+#include "expr_pretty_print.h"
 #include <fstream>
 
 /*******************************************************************\
@@ -326,7 +327,11 @@ void function_infot::add_objects_to_set(const namespacet& ns,
         const expr_listt& exprs, lex_sorted_idst& set)
 {
   forall_expr_list(ex, exprs) {
-    assert(ex->id() == ID_symbol);
+    if (ex->id() != ID_symbol) {
+      expr_pretty_print(std::cerr << "Ignoring object: ", *ex);
+      std::cerr << std::endl;
+      continue;
+    }
     const irep_idt& id = to_symbol_expr(*ex).get_identifier();
     const symbolt& symbol = ns.lookup(id);
 

@@ -17,6 +17,7 @@
 #include <solvers/smt1/smt1_dec.h>
 #include <loopfrog/memstat.h>
 #include <expr_util.h>
+#include <i2string.h>
 
 #include "symex_assertion_sum.h"
 #include "expr_pretty_print.h"
@@ -68,16 +69,17 @@ bool symex_assertion_sumt::assertion_holds(
   }
 
 # ifndef NDEBUG
-  // sanity check, we expect loop-free programs, this should be done for all 
-  // functions
+  // sanity check, we expect loop-free programs only.
   forall_goto_program_instructions(it, goto_program)
     assert(!it->is_backwards_goto());
-  forall_goto_functions(it, summarization_context.functions)
+  forall_goto_functions(it, summarization_context.functions) {
     forall_goto_program_instructions(it2, it->second.body) {
-      if (!it2->is_backwards_goto()) {
+      if (it2->is_backwards_goto()) {
+        std::cerr << "ERROR: Backward goto (i.e., a loop) in function: " << it->first << std::endl;
         goto_program.output_instruction(ns, "", out, it2);
         assert(!it2->is_backwards_goto());
       }
+    }
   }
 # endif
 
@@ -372,7 +374,7 @@ void symex_assertion_sumt::symex_step(
       code_function_callt deref_code=
         to_code_function_call(instruction.code);
 
-      // Process the function call according to the call_sumamry
+      // Process the function call according to the call_summary
       handle_function_call(state, deref_code);
     }
     state.source.pc++;
@@ -504,6 +506,8 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   // Setup temporary store for return value
   if (deferred_function.returns_value) {
     state.top().return_value = deferred_function.retval_tmp;
+  } else {
+    state.top().return_value.make_nil();
   }
 
   // Add an assumption of the function call_site symbol
@@ -564,6 +568,9 @@ void symex_assertion_sumt::assign_function_arguments(
   // them later, when processing the deferred function).
   mark_argument_symbols(goto_function.type, state, deferred_function);
 
+  // TODO: Mark accessed global variables as well
+  //mark_accessed_global_symbols(goto_function.type, state, deferred_function);
+
   if (function_call.lhs().is_not_nil()) {
     // Add return value assignment from a temporary variable and
     // store the temporary return value symbol somewhere (so that we can
@@ -574,6 +581,8 @@ void symex_assertion_sumt::assign_function_arguments(
     deferred_function.retval_symbol = symbol_exprt();
   }
   // FIXME: Add also new assignments to all modified global variables
+  // assign_modified_global_symbols(goto_function.type, state, deferred_function);
+  
   constant_propagation = old_cp;
 }
 
@@ -716,6 +725,8 @@ void symex_assertion_sumt::handle_function_call(
           current_summary_info->get_call_sites().find(state.source.pc)->second;
   deferred_functiont deferred_function(call_summary.get_summary_info());
   const irep_idt& function_id = function_call.function().get(ID_identifier);
+  const goto_functionst::goto_functiont &goto_function =
+    summarization_context.functions.function_map.find(function_id)->second;
 
   // Clean expressions in the arguments, function name, and lhs (if any)
   if (function_call.lhs().is_not_nil())
@@ -725,6 +736,25 @@ void symex_assertion_sumt::handle_function_call(
 
   Forall_expr(it, function_call.arguments())
   clean_expr(*it, state, false);
+
+  // Do we have the body?
+  if(!goto_function.body_available)
+  {
+    no_body(function_id);
+
+    if(function_call.lhs().is_not_nil())
+    {
+      exprt rhs = exprt("nondet_symbol", function_call.lhs().type());
+      rhs.set(ID_identifier, "symex::" + i2string(nondet_count++));
+      rhs.location() = function_call.location();
+      code_assignt code(function_call.lhs(), rhs);
+      basic_symext::symex(state, code);
+    }
+
+    state.source.pc++;
+    return;
+  }
+
 
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);
