@@ -42,11 +42,36 @@ public:
   const interpolantst& get_summaries(irep_idt function_id) const {
     return function_infos.find(function_id)->second.get_summaries();
   }
+  
+  const goto_functionst& get_functions() const { return functions; }
+  
+  const goto_functionst::goto_functiont& get_function(
+    const irep_idt& function_id) const 
+  {
+    return functions.function_map.find(function_id)->second;
+  }
+  
+  const function_infot& get_function_info(const irep_idt& function_id) const {
+    return function_infos.find(function_id)->second;
+  }
+  
+  function_infot& get_function_info(const irep_idt& function_id) {
+    return function_infos.find(function_id)->second;
+  }
 
   void analyze_functions(const namespacet& ns) {
     function_infos.find(functions.main_id())->second.analyze_globals(*this, ns);
   }
+  
+  void deserialize_infos(const std::string& file) {
+    function_infot::deserialize_infos(file, function_infos);
+  }
+  
+  void serialize_infos(const std::string& file) {
+    function_infot::serialize_infos(file, function_infos);
+  }
 
+private:
   const goto_functionst &functions;
   const value_setst &value_sets;
   const loopstoret &imprecise_loops;

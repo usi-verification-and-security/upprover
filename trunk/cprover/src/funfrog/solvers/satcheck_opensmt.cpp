@@ -299,18 +299,7 @@ propt::resultt satcheck_opensmtt::prop_solve() {
 
   // Store the SAT queries
 # ifndef NDEBUG
-  std::ofstream out;
-  int part_id = partition_enodes.size();
-
-  out.open("__sat_query.smt");
-  for (std::vector<Enode*>::iterator it = partition_enodes.begin();
-          it != partition_enodes.end();
-          ++it) {
-    out << "# Partition " << --part_id << std::endl;
-    (*it)->print(out);
-    out << std::endl;
-  }
-  out.close();
+  opensmt_ctx->DumpAssertionsToFile("__sat_query.smt2");
 # endif
 
   std::string msg;

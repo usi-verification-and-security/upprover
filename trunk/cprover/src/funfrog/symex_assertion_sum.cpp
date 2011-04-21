@@ -72,7 +72,7 @@ bool symex_assertion_sumt::assertion_holds(
   // sanity check, we expect loop-free programs only.
   forall_goto_program_instructions(it, goto_program)
     assert(!it->is_backwards_goto());
-  forall_goto_functions(it, summarization_context.functions) {
+  forall_goto_functions(it, summarization_context.get_functions()) {
     forall_goto_program_instructions(it2, it->second.body) {
       if (it2->is_backwards_goto()) {
         std::cerr << "ERROR: Backward goto (i.e., a loop) in function: " << it->first << std::endl;
@@ -104,7 +104,7 @@ bool symex_assertion_sumt::assertion_holds(
       )
   {
     goto_program.output_instruction(ns, "", std::cout, state.source.pc);
-    symex_step(summarization_context.functions, state);
+    symex_step(summarization_context.get_functions(), state);
     // state.value_set.output(ns, std::cout);
   }
   after=current_time();
@@ -497,7 +497,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   // Set pc to function entry point
   // NOTE: Here, we expect having the function body available
   const goto_functionst::goto_functiont& function =
-    summarization_context.functions.function_map.at(function_id);
+    summarization_context.get_function(function_id);
   const goto_programt& body = function.body;
   state.source.pc = body.instructions.begin();
   state.top().end_of_function = --body.instructions.end();
@@ -538,7 +538,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
  Outputs:
 
  Purpose: Assigns function arguments to new symbols, also makes
- assignement of the new symbol of return value to the lhs of
+ assignment of the new symbol of return value to the lhs of
  the call site (if any)
 
 \*******************************************************************/
@@ -552,9 +552,9 @@ void symex_assertion_sumt::assign_function_arguments(
 
   // find code in function map
   goto_functionst::function_mapt::const_iterator it =
-    summarization_context.functions.function_map.find(identifier);
+    summarization_context.get_functions().function_map.find(identifier);
 
-  if(it == summarization_context.functions.function_map.end())
+  if(it == summarization_context.get_functions().function_map.end())
     throw "failed to find `"+id2string(identifier)+"' in function_map";
 
   const goto_functionst::goto_functiont &goto_function=it->second;
@@ -569,7 +569,7 @@ void symex_assertion_sumt::assign_function_arguments(
   mark_argument_symbols(goto_function.type, state, deferred_function);
 
   // TODO: Mark accessed global variables as well
-  //mark_accessed_global_symbols(goto_function.type, state, deferred_function);
+  mark_accessed_global_symbols(identifier, state, deferred_function);
 
   if (function_call.lhs().is_not_nil()) {
     // Add return value assignment from a temporary variable and
@@ -581,7 +581,7 @@ void symex_assertion_sumt::assign_function_arguments(
     deferred_function.retval_symbol = symbol_exprt();
   }
   // FIXME: Add also new assignments to all modified global variables
-  // assign_modified_global_symbols(goto_function.type, state, deferred_function);
+  modified_globals_assignment_and_mark(identifier, state, deferred_function);
   
   constant_propagation = old_cp;
 }
@@ -618,6 +618,61 @@ void symex_assertion_sumt::mark_argument_symbols(
 
     expr_pretty_print(std::cout << "Marking argument symbol: ", symbol);
   }
+}
+
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::mark_accessed_global_symbols
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Marks the SSA symbols of accessed globals
+
+\*******************************************************************/
+void symex_assertion_sumt::mark_accessed_global_symbols(
+    const irep_idt &function_id,
+    statet &state,
+    deferred_functiont &deferred_function) 
+{
+  const function_infot::lex_sorted_idst& globals_accessed = 
+    summarization_context.get_function_info(function_id).get_accessed_globals();
+  
+  if (globals_accessed.empty())
+    return;
+  
+  std::cerr << "WARNING: Handling accessed global variables is not "
+          "implemented yet!" << std::endl;
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::modified_globals_assignment_and_mark
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Assigns values from the modified global variables. Marks the SSA 
+ symbol of the global variables for later use when processing the deferred 
+ function
+
+\*******************************************************************/
+void symex_assertion_sumt::modified_globals_assignment_and_mark(
+    const irep_idt &function_id,
+    statet &state,
+    deferred_functiont &deferred_function)
+{
+  const function_infot::lex_sorted_idst& globals_modified = 
+    summarization_context.get_function_info(function_id).get_modified_globals();
+  
+  if (globals_modified.empty())
+    return;
+  
+  std::cerr << "WARNING: Handling modified global variables is not "
+          "implemented yet!" << std::endl;
 }
 
 /*******************************************************************
@@ -726,7 +781,7 @@ void symex_assertion_sumt::handle_function_call(
   deferred_functiont deferred_function(call_summary.get_summary_info());
   const irep_idt& function_id = function_call.function().get(ID_identifier);
   const goto_functionst::goto_functiont &goto_function =
-    summarization_context.functions.function_map.find(function_id)->second;
+    summarization_context.get_function(function_id);
 
   // Clean expressions in the arguments, function name, and lhs (if any)
   if (function_call.lhs().is_not_nil())

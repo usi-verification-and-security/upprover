@@ -20,7 +20,7 @@ call_summaryt::set_inline(const summarization_contextt &summarization_context,
   precision = INLINE;
 
   const goto_programt &function_body = 
-    summarization_context.functions.function_map.at(target_function).body;
+    summarization_context.get_function(target_function).body;
   
   summary_info.initialize(summarization_context, function_body, assertion,
           stack_depth++);

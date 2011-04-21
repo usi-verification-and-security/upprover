@@ -48,12 +48,6 @@ public:
 
   void analyze_globals(summarization_contextt& context, const namespacet& ns);
 
-private:
-  // Id of the function
-  irep_idt function;
-  // The collected summaries
-  interpolantst summaries;
-
   // Helper struct with lexicographical ordering for dstring
   struct dstring_lex_ordering
   {
@@ -64,7 +58,16 @@ private:
   };
 
   typedef std::set<irep_idt, dstring_lex_ordering> lex_sorted_idst;
-  // Gloabls modified in the function
+  
+  const lex_sorted_idst& get_accessed_globals() const { return globals_modified; }
+  const lex_sorted_idst& get_modified_globals() const { return globals_accessed; }
+  
+private:
+  // Id of the function
+  irep_idt function;
+  // The collected summaries
+  interpolantst summaries;
+  // Globals modified in the function
   lex_sorted_idst globals_modified;
   // Globals accessed (read, modified or both) in the function
   lex_sorted_idst globals_accessed;

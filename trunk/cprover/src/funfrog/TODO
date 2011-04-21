@@ -6,9 +6,9 @@ TODO list for funfrog
 HIGH PRIORITY
 -------------
 
-- OpenSMT wrapper - propositional flattening
-  - mapping between prop. variables and symbols (params + ret_val)
-  - OpenSMT as a reasonable library (solve the include mess)
+- Mapping for global variables
+- Integration with loop handling tool
+  - CBMC: basically, we only need
 - UFLIA encoding
   - choose solver, create wrapper, interpolant back propagation
 - Bit-vectors encoding
@@ -20,9 +20,7 @@ LOW PRIORITY
 ------------
 
 - symex_assertion_sum.cpp: Leave the choice of the concrete assertion for later (we might want to generate the SSA form only once and then use it for a number of checks)
-  - Maybe we could use the already generated SSA parts while refining certain callsites (and not generate it again and again...)
+  - Maybe we could use the already generated SSA parts while refining certain callsites (and not generate it again and again..., OpenSMT in interactive mode?)
 - Aliasing
 - Slicing (does not work due to deferring of functions and partitioning = reordering of SSA steps)
 - Error trace fixing
-- Check that the *_conv cache does not interfere with formula partitioning
-

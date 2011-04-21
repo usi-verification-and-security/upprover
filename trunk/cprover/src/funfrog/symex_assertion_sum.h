@@ -184,7 +184,7 @@ private:
         const irep_idt& function_id);
 
   // Assigns function arguments to new SSA symbols, also makes
-  // assignement of the new SSA symbol of return value to the lhs of
+  // assignment of the new SSA symbol of return value to the lhs of
   // the call site (if any)
   void assign_function_arguments(statet &state,
     code_function_callt &function_call,
@@ -198,7 +198,14 @@ private:
 
   // Marks the SSA symbols of accessed globals
   void mark_accessed_global_symbols(
-    const code_typet &function_type,
+    const irep_idt &function_id,
+    statet &state,
+    deferred_functiont &deferred_function);
+
+  // Assigns values from the modified global variables. Marks the SSA symbol 
+  // of the global variables for later use when processing the deferred function
+  void modified_globals_assignment_and_mark(
+    const irep_idt &function_id,
     statet &state,
     deferred_functiont &deferred_function);
 

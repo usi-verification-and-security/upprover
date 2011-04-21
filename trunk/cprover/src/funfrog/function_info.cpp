@@ -249,19 +249,15 @@ void function_infot::analyze_globals_rec(summarization_contextt& context,
   const namespacet& ns, std::set<irep_idt>& functions_analyzed)
 {
   // FIXME: Handle also recursion using fixpoint calculation!
-  goto_functionst::function_mapt::const_iterator it =
-          context.functions.function_map.find(function);
-  assert (it != context.functions.function_map.end());
-
-  const goto_programt& body = it->second.body;
+  const goto_programt& body = context.get_function(function).body;
   std::list<exprt> read_list;
   std::list<exprt> write_list;
 
   forall_goto_program_instructions(inst, body) {
-    const std::list<exprt>& tmp_r = objects_read(*inst);
+    const expr_listt& tmp_r = objects_read(*inst);
     read_list.insert(read_list.begin(), tmp_r.begin(), tmp_r.end());
     
-    const std::list<exprt>& tmp_w = objects_written(*inst);
+    const expr_listt& tmp_w = objects_written(*inst);
     write_list.insert(write_list.begin(), tmp_w.begin(), tmp_w.end());
   }
 
@@ -271,7 +267,7 @@ void function_infot::analyze_globals_rec(summarization_contextt& context,
   // Modified ids
   add_objects_to_set(ns, write_list, globals_modified);
 
-  // Mark this function as analuzed
+  // Mark this function as analyzed
   functions_analyzed.insert(function);
 
   forall_goto_program_instructions(inst, body) {
@@ -280,8 +276,7 @@ void function_infot::analyze_globals_rec(summarization_contextt& context,
       // NOTE: Expects the function call to be a standard symbol call
       const irep_idt &target_function = to_symbol_expr(
               to_code_function_call(inst->code).function()).get_identifier();
-      function_infot& target_info =
-              context.function_infos.find(target_function)->second;
+      function_infot& target_info = context.get_function_info(target_function);
 
       if (functions_analyzed.find(target_function) == functions_analyzed.end()) {
         target_info.analyze_globals_rec(context, ns, functions_analyzed);

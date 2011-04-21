@@ -184,7 +184,7 @@ bool summarizing_checkert::assertion_holds(
   summarization_context.analyze_functions(ns);
 
   // Load older summaries
-  function_infot::deserialize_infos("__summaries", summarization_context.function_infos);
+  summarization_context.deserialize_infos("__summaries");
 
   // Prepare summary_info, start with the lazy variant, i.e.,
   // all summaries are initialized as NONDET except those on the way
@@ -231,12 +231,12 @@ bool summarizing_checkert::assertion_holds(
             it != itp_map.end(); ++it) {
       irep_idt& function_id = it->first;
       if (!it->second.is_trivial()) {
-        summarization_context.function_infos[function_id].add_summary(it->second);
+        summarization_context.get_function_info(function_id).add_summary(it->second);
       }
     }
 
     // Store the summaries
-    function_infot::serialize_infos("__summaries", summarization_context.function_infos);
+    summarization_context.serialize_infos("__summaries");
   }
 
   return result;
