@@ -1040,7 +1040,7 @@ void symex_assertion_sumt::produce_callend_assumption(
  Outputs:
 
  Purpose: Helper function for renaming of an identifier without
- assigning to it.
+ assigning to it. Constant propagation is stopped for the given symbol.
 
 \*******************************************************************/
 std::string symex_assertion_sumt::get_new_symbol_version(
@@ -1053,6 +1053,8 @@ std::string symex_assertion_sumt::get_new_symbol_version(
   // do the l2 renaming
   statet::level2t::valuet &entry=state.level2.current_names[l1_identifier];
   entry.count++;
+  // Break constant propagation for this new symbol
+  entry.constant.make_nil();
   state.level2.rename(l1_identifier, entry.count);
   return state.level2.name(l1_identifier, entry.count);
   //--8<---

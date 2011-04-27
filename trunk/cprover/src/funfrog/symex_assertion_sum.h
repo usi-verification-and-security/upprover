@@ -243,8 +243,8 @@ private:
   void produce_callend_assumption(
         const deferred_functiont& deferred_function, statet& state);
 
-  // Purpose: Helper function for renaming of an identifier without
-  // assigning to it.
+  // Helper function for renaming of an identifier without
+  // assigning to it. Constant propagation is stopped for the given symbol.
   std::string get_new_symbol_version(
         const irep_idt& identifier,
         statet &state);
