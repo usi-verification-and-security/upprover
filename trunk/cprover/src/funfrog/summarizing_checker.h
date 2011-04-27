@@ -11,11 +11,13 @@
 #define CPROVER_SUMMARIZING_CHECKER_H
 
 #include <pointer-analysis/value_set_analysis.h>
+#include <options.h>
 
 #include <loopfrog/loopstore.h>
 #include <loopfrog/call_stack.h>
 
 #include "assertion_info.h"
+#include "symex_assertion_sum.h"
 
 class summarizing_checkert
 {
@@ -40,6 +42,7 @@ public:
     const goto_programt &goto_program,
     std::ostream &out,
     unsigned long &max_memory_used,
+    const optionst& options,
     bool use_smt=false);
 
   bool assertion_holds(
@@ -47,6 +50,7 @@ public:
     const assertion_infot& assertion,
     std::ostream &out,
     unsigned long &max_memory_used,
+    const optionst& options,
     bool use_smt=false);
 
 protected:
@@ -68,6 +72,8 @@ protected:
 
   // ???
   goto_programt::const_targett &original_loop_head;
+  
+  void setup_unwind(symex_assertion_sumt& symex, const optionst& options);
 };
 
 bool assertion_holds_sum(
@@ -79,6 +85,7 @@ bool assertion_holds_sum(
   const assertion_infot& assertion,
   std::ostream &out,
   unsigned long &max_memory_used,
+  const optionst& options,
   bool use_smt=false);
 
 bool last_assertion_holds_sum(
@@ -89,6 +96,7 @@ bool last_assertion_holds_sum(
   const goto_functionst &goto_functions,
   std::ostream &out,
   unsigned long &max_memory_used,
+  const optionst& options,
   bool use_smt=false);
 
 bool assertion_holds_sum(
@@ -98,6 +106,7 @@ bool assertion_holds_sum(
   const assertion_infot& assertion,
   std::ostream &out,
   unsigned long &max_memory_used,
+  const optionst& options,
   bool use_smt=false);
 
 #endif

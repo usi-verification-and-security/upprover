@@ -105,7 +105,7 @@ int funfrog_parseoptionst::doit()
   
   register_languages();
   set_options(cmdline);  
-
+  
   stream_message_handlert mh(std::cout);  
   set_message_handler(mh);
 
@@ -759,6 +759,7 @@ bool funfrog_parseoptionst::check_loop_summarization(
                                     stats_dir,
                                     claim_map,
                                     claim_numbers,
+                                    options,
                                     claim_nr,
                                     cmdline.isset("show-pass"),
                                     !cmdline.isset("suppress-fail"),

@@ -23,7 +23,8 @@ OBJ = $(SRC:.cpp=.o) \
       ../solvers/solvers.o \
       ../util/util.o \
       ../langapi/langapi.o \
-      ../ansi-c/ansi-c.o
+      ../ansi-c/ansi-c.o \
+      ../cbmc/symex_bmc.o
 
 INCLUDES= $(OPENSMT_INCLUDE) -I ../$(CHAFF) -I .. -I ../util
 

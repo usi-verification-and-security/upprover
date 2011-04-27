@@ -9,6 +9,7 @@
 #ifndef _CPROVER_LOOPFROG_CHECK_CLAIMS_H_
 #define _CPROVER_LOOPFROG_CHECK_CLAIMS_H_
 
+#include <options.h>
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
 
@@ -60,6 +61,7 @@ claim_statst check_claims(
   const std::string &stats_dir,
   claim_mapt &claim_map,
   claim_numberst &claim_numbers,
+  const optionst& options,
   unsigned claim_nr = 0,
   bool show_pass = false,
   bool show_fail = true,

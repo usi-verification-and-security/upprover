@@ -15,6 +15,7 @@
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
 #include <goto-symex/goto_symex.h>
+#include <cbmc/symex_bmc.h>
 #include <namespace.h>
 #include <symbol.h>
 
@@ -33,7 +34,7 @@
 extern fine_timet global_satsolver_time;
 extern fine_timet global_sat_conversion_time;
 
-class symex_assertion_sumt : public goto_symext
+class symex_assertion_sumt : public symex_bmct //goto_symext
 {
 public:
   symex_assertion_sumt(
@@ -46,7 +47,8 @@ public:
           interpolating_solvert& _interpolator,
           partitioning_target_equationt &_target
           ) :
-          goto_symext(_ns, _context, _target),
+          // goto_symext(_ns, _context, _target),
+          symex_bmct(_ns, _context, _target),
           summarization_context(_summarization_context),
           summary_info(_summary_info),
           current_summary_info(&_summary_info),

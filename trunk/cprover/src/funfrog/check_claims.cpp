@@ -113,6 +113,7 @@ claim_statst check_claims(
   const std::string &stats_dir,
   claim_mapt &claim_map,
   claim_numberst &claim_numbers,
+  const optionst& options,
   unsigned claim_nr,
   bool show_pass,
   bool show_fail,
@@ -188,6 +189,7 @@ claim_statst check_claims(
           assertion_infot(stack, ass_ptr),
           out,
           res.max_mem_used,
+          options,
           use_smt);
     else 
       pass = true;

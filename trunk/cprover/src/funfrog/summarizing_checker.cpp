@@ -45,6 +45,7 @@ bool last_assertion_holds_sum(
   const goto_functionst &goto_functions,
   std::ostream &out,
   unsigned long &max_memory_used,
+  const optionst& options,
   bool use_smt)
 {
   contextt temp_context;
@@ -53,7 +54,7 @@ bool last_assertion_holds_sum(
           goto_functions, loopstoret(), loopstoret(), ns, temp_context);
 
   return sum_checker.last_assertion_holds(goto_program, out,
-                                    max_memory_used, use_smt);
+                                    max_memory_used, options, use_smt);
 }
 
 /*******************************************************************
@@ -73,6 +74,7 @@ bool summarizing_checkert::last_assertion_holds(
   const goto_programt &goto_program,
   std::ostream &out,
   unsigned long &max_memory_used,
+  const optionst& options,
   bool use_smt)
 {
   assert(!goto_program.empty() &&
@@ -83,7 +85,7 @@ bool summarizing_checkert::last_assertion_holds(
   assertion_infot assertion(empty_stack, last);
 
   return assertion_holds(goto_program, assertion, 
-          out, max_memory_used, use_smt);
+          out, max_memory_used, options, use_smt);
 }
 
 /*******************************************************************
@@ -106,6 +108,7 @@ bool assertion_holds_sum(
   const assertion_infot& assertion,
   std::ostream &out,
   unsigned long &max_memory_used,
+  const optionst& options,
   bool use_smt)
 {
   contextt temp_context;
@@ -116,7 +119,7 @@ bool assertion_holds_sum(
                          ns, temp_context);
 
   return sum_checker.assertion_holds(goto_program, assertion, out,
-                               max_memory_used, use_smt);
+                               max_memory_used, options, use_smt);
 }
 
 /*******************************************************************
@@ -141,6 +144,7 @@ bool assertion_holds_sum(
   const assertion_infot& assertion,
   std::ostream &out,
   unsigned long &max_memory_used,
+  const optionst& options,
   bool use_smt)
 {
   contextt temp_context;
@@ -149,7 +153,7 @@ bool assertion_holds_sum(
           loopstoret(), loopstoret(), ns, temp_context);
 
   return sum_checker.assertion_holds(goto_program, assertion, out,
-                               max_memory_used, use_smt);
+                               max_memory_used, options, use_smt);
 }
 
 /*******************************************************************
@@ -169,6 +173,7 @@ bool summarizing_checkert::assertion_holds(
   const assertion_infot& assertion,
   std::ostream &out,
   unsigned long &max_memory_used,
+  const optionst& options,
   bool use_smt)
 {
   // Trivial case
@@ -217,6 +222,8 @@ bool summarizing_checkert::assertion_holds(
           *interpolator,
           equation
           );
+  
+  setup_unwind(symex, options);
 
   // FIXME: The refinement loop should be here!
   bool result = symex.assertion_holds(goto_program, assertion,
@@ -242,3 +249,39 @@ bool summarizing_checkert::assertion_holds(
   return result;
 }
 
+/*******************************************************************\
+
+Function: summarizing_checkert::setup_unwind
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Setup the unwind bounds.
+
+\*******************************************************************/
+
+void summarizing_checkert::setup_unwind(symex_assertion_sumt& symex, 
+        const optionst& options)
+{
+  const std::string &set=options.get_option("unwindset");
+  unsigned int length=set.length();
+
+  for(unsigned int idx=0; idx<length; idx++)
+  {
+    std::string::size_type next=set.find(",", idx);
+    std::string val=set.substr(idx, next-idx);
+
+    if(val.rfind(":")!=std::string::npos)
+    {
+      std::string id=val.substr(0, val.rfind(":"));
+      unsigned long uw=atol(val.substr(val.rfind(":")+1).c_str());
+      symex.unwind_set[id]=uw;
+    }
+    
+    if(next==std::string::npos) break;
+    idx=next;
+  }
+
+  symex.max_unwind=options.get_int_option("unwind");
+}
