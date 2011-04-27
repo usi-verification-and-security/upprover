@@ -36,9 +36,13 @@ satcheck_opensmtt::satcheck_opensmtt() :
   config.sat_ratio_red_time_solv_time = .5;
   config.sat_reorder_pivots = 1;
    */
+  /*
   config.proof_num_graph_traversals = 10;
   config.proof_red_trans = 10;
-  config.proof_reduce = 0;
+  */
+  config.proof_red_trans = 1;
+  config.proof_ratio_red_solv = 0.5;
+  config.proof_reduce = 1;
   config.proof_reorder_pivots = 1;
   config.proof_reduce_while_reordering = 1;
   config.proof_set_inter_algo = 1;

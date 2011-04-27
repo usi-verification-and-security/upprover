@@ -59,8 +59,8 @@ public:
 
   typedef std::set<irep_idt, dstring_lex_ordering> lex_sorted_idst;
   
-  const lex_sorted_idst& get_accessed_globals() const { return globals_modified; }
-  const lex_sorted_idst& get_modified_globals() const { return globals_accessed; }
+  const lex_sorted_idst& get_accessed_globals() const { return globals_accessed; }
+  const lex_sorted_idst& get_modified_globals() const { return globals_modified; }
   
 private:
   // Id of the function

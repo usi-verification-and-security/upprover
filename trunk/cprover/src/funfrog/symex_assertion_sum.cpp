@@ -293,6 +293,7 @@ void symex_assertion_sumt::symex_step(
   case END_FUNCTION:
 
     store_return_value(state, get_current_deferred_function());
+    store_modified_globals(state, get_current_deferred_function());
     dequeue_deferred_function(state);
     break;
   
@@ -485,7 +486,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   current_summary_info = &deferred_function.summary_info;
   const irep_idt& function_id = current_summary_info->get_function_id();
 
-  std::cout << "Processing a deferred function: " << function_id;
+  std::cout << "Processing a deferred function: " << function_id << std::endl;
 
   // Select symex target equation to produce formulas into the corresponding
   // partition
@@ -516,16 +517,13 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 
   // NOTE: In order to prevent name clashes with argument SSA versions,
   // we renew them all here.
-  std::vector<symbol_exprt>::const_iterator it1 =
+  for (std::vector<symbol_exprt>::const_iterator it1 =
           deferred_function.argument_symbols.begin();
-  for (code_typet::argumentst::const_iterator it2 =
-          function.type.arguments().begin();
-          it2 != function.type.arguments().end();
-          ++it2) {
+          it1 != deferred_function.argument_symbols.end();
+          ++it1) {
     guardt guard;
-    symbol_exprt lhs(it2->get_identifier(), it2->type());
+    symbol_exprt lhs(state.get_original_name(it1->get_identifier()), ns.follow(it1->type()));
     symex_assign_symbol(state, lhs, *it1, guard, VISIBLE);
-    ++it1;
   }
 }
 
@@ -642,9 +640,19 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
   
   if (globals_accessed.empty())
     return;
-  
-  std::cerr << "WARNING: Handling accessed global variables is not "
-          "implemented yet!" << std::endl;
+
+  for (function_infot::lex_sorted_idst::const_iterator it =
+          globals_accessed.begin();
+          it != globals_accessed.end();
+          ++it) 
+  {
+    const symbolt& symbol = ns.lookup(*it);
+    symbol_exprt symb_ex(state.current_name(*it), symbol.type);
+    
+    deferred_function.argument_symbols.push_back(symb_ex);
+
+    expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex);
+  }
 }
 
 /*******************************************************************
@@ -671,8 +679,18 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
   if (globals_modified.empty())
     return;
   
-  std::cerr << "WARNING: Handling modified global variables is not "
-          "implemented yet!" << std::endl;
+  for (function_infot::lex_sorted_idst::const_iterator it =
+          globals_modified.begin();
+          it != globals_modified.end();
+          ++it) 
+  {
+    const symbolt& symbol = ns.lookup(*it);
+    symbol_exprt symb_ex(get_new_symbol_version(*it, state), symbol.type);
+    
+    deferred_function.out_arg_symbols.push_back(symb_ex);
+
+    expr_pretty_print(std::cout << "Marking modified global symbol: ", symb_ex);
+  }
 }
 
 /*******************************************************************
@@ -724,6 +742,46 @@ void symex_assertion_sumt::return_assignment_and_mark(
   deferred_function.retval_symbol = retval_symbol;
   deferred_function.retval_tmp = retval_tmp;
   deferred_function.returns_value = true;
+}
+
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::store_modified_globals
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Assigns modified globals to the corresponding temporary SSA 
+ symbols.
+
+\*******************************************************************/
+void symex_assertion_sumt::store_modified_globals(
+        statet &state,
+        const deferred_functiont &deferred_function)
+{
+  // Emit the assignment
+  bool old_cp = constant_propagation;
+  constant_propagation = false;
+  
+  for (std::vector<symbol_exprt>::const_iterator it = 
+          deferred_function.out_arg_symbols.begin();
+          it != deferred_function.out_arg_symbols.end();
+          ++it) {
+    
+    symbol_exprt rhs(state.get_original_name(it->get_identifier()), 
+            ns.follow(it->type()));
+    code_assignt assignment(
+            *it,
+            rhs);
+  
+    assert( ns.follow(assignment.lhs().type()) ==
+            ns.follow(assignment.rhs().type()));
+
+    raw_assignment(state, assignment.lhs(), assignment.rhs(), ns, false);
+  }
+  constant_propagation = old_cp;
 }
 
 /*******************************************************************
@@ -860,6 +918,7 @@ void symex_assertion_sumt::summarize_function_call(
           deferred_function.callstart_symbol,
           deferred_function.callend_symbol,
           deferred_function.argument_symbols,
+          deferred_function.out_arg_symbols,
           deferred_function.retval_symbol,
           deferred_function.returns_value,
           function_id);

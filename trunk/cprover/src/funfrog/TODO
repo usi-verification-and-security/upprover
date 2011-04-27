@@ -6,7 +6,9 @@ TODO list for funfrog
 HIGH PRIORITY
 -------------
 
-- Mapping for global variables
+- Mapping for global variables, refactor:
+  - unify accessed globals and arguments
+  - unify modified globals and return value (the extra temp. variable is probably not needed - check it!).
 - Integration with loop handling tool
   - CBMC: basically, we only need
 - UFLIA encoding

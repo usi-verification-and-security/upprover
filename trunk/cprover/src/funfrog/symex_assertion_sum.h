@@ -86,7 +86,10 @@ private:
     }
 
     const summary_infot& summary_info;
+    // TODO: Deprecate it! Split into iface vars and in_arg_symbols
     std::vector<symbol_exprt> argument_symbols;
+    std::vector<symbol_exprt> in_arg_symbols;
+    std::vector<symbol_exprt> out_arg_symbols;
     symbol_exprt retval_symbol;
     symbol_exprt retval_tmp;
     symbol_exprt callstart_symbol;
@@ -138,6 +141,7 @@ private:
             deferred_function.callstart_symbol,
             deferred_function.callend_symbol,
             deferred_function.argument_symbols,
+            deferred_function.out_arg_symbols,
             deferred_function.retval_symbol,
             deferred_function.returns_value,
             function_id);
@@ -217,6 +221,11 @@ private:
     statet &state,
     const exprt &lhs,
     deferred_functiont &deferred_function);
+
+  // Assigns modified globals to the corresponding temporary SSA symbols
+  void store_modified_globals(
+    statet &state,
+    const deferred_functiont &deferred_function);
 
   // Assigns return value to the corresponding temporary SSA symbol
   void store_return_value(

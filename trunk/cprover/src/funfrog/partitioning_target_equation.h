@@ -37,6 +37,7 @@ public:
     const symbol_exprt& callstart_symbol,
     const symbol_exprt& callend_symbol,
     const std::vector<symbol_exprt>& argument_symbols,
+    const std::vector<symbol_exprt>& out_arg_symbols,
     const symbol_exprt& retval_symbol,
     bool returns_value,
     irep_idt function_id)
@@ -49,6 +50,7 @@ public:
     new_partition.callstart_symbol = callstart_symbol;
     new_partition.callend_symbol = callend_symbol;
     new_partition.argument_symbols = argument_symbols;
+    new_partition.out_arg_symbols = out_arg_symbols;
     new_partition.retval_symbol = retval_symbol;
     new_partition.returns_value = returns_value;
     new_partition.function_id = function_id;
@@ -125,6 +127,8 @@ private:
     symbol_exprt callstart_symbol;
     symbol_exprt callend_symbol;
     std::vector<symbol_exprt> argument_symbols;
+    std::vector<symbol_exprt> in_arg_symbols;
+    std::vector<symbol_exprt> out_arg_symbols;
     symbol_exprt retval_symbol;
     bool returns_value;
     bool is_summary;
@@ -180,11 +184,13 @@ private:
     std::vector<symbol_exprt>& common_symbols) const
   {
     common_symbols.clear();
-    common_symbols.reserve(partition.argument_symbols.size()+3);
+    common_symbols.reserve(partition.argument_symbols.size() + 
+      partition.out_arg_symbols.size()+3);
     common_symbols = partition.argument_symbols;
+    common_symbols.insert(common_symbols.end(), 
+      partition.out_arg_symbols.begin(),
+      partition.out_arg_symbols.end());
     common_symbols.push_back(partition.callstart_symbol);
-    std::cout << partition.callstart_literal.var_no() << ", " <<
-            partition.callend_literal.var_no() << std::endl;
     common_symbols.push_back(partition.callend_symbol);
     if (partition.returns_value) {
       common_symbols.push_back(partition.retval_symbol);
