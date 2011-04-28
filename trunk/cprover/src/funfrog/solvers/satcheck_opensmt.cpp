@@ -23,7 +23,7 @@ Author: Ondrej Sery
 //#define MAX_OPENSMT_PARTITIONS 63
 
 satcheck_opensmtt::satcheck_opensmtt() :
-  partition_root_enode(NULL), partition_count(0)
+  partition_root_enode(NULL), partition_count(0), ready_to_interpolate(false)
 {
   opensmt_ctx = new OpenSMTContext();
   opensmt_ctx->SetLogic("QF_BOOL");
@@ -131,6 +131,8 @@ Function: satcheck_opensmtt::get_interpolant
 void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids,
     interpolantst& interpolants) const
 {
+  assert(ready_to_interpolate);
+  
   std::vector<Enode*> itp_enodes;
   itp_enodes.reserve(partition_ids.size());
 
@@ -155,6 +157,23 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
     interpolants.push_back(prop_itpt());
     interpolants.back().swap(itp);
   }
+}
+
+/*******************************************************************\
+
+Function: satcheck_opensmtt::can_interpolate
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Is the solver ready for interpolation? I.e., the solver was used to 
+ decide a problem and the result was UNSAT
+
+\*******************************************************************/
+bool satcheck_opensmtt::can_interpolate() const 
+{
+  return ready_to_interpolate;
 }
 
 /*******************************************************************\
@@ -285,6 +304,7 @@ Function: satcheck_opensmtt::prop_solve
 
 propt::resultt satcheck_opensmtt::prop_solve() {
   assert(status != ERROR);
+  ready_to_interpolate = false;
 
   {
     std::string msg =
@@ -317,6 +337,7 @@ propt::resultt satcheck_opensmtt::prop_solve() {
     status = SAT;
     return P_SATISFIABLE;
   } else if (opensmt_ctx->getStatus() == l_False) {
+    ready_to_interpolate = true;
     msg = "SAT checker: negated claim is UNSATISFIABLE, i.e., holds";
     messaget::status(msg);
   } else {

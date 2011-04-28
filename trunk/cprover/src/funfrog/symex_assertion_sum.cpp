@@ -77,7 +77,7 @@ bool symex_assertion_sumt::assertion_holds(
       if (it2->is_backwards_goto()) {
         std::cerr << "ERROR: Backward goto (i.e., a loop) in function: " << it->first << std::endl;
         goto_program.output_instruction(ns, "", out, it2);
-        assert(!it2->is_backwards_goto());
+        // assert(!it2->is_backwards_goto());
       }
     }
   }
@@ -136,6 +136,8 @@ bool symex_assertion_sumt::assertion_holds(
 
     // Decides the equation
     sat = is_satisfiable(decider, out);
+  } else {
+      out << "Assertion(s) are trivially ureachable." << std::endl;
   }
 
   unsigned long this_mem = current_memory();

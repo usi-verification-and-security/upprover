@@ -37,6 +37,10 @@ public:
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
     interpolantst& interpolants) const=0;
+  
+  // Is the solver ready for interpolation? I.e., the solver was used to decide
+  // a problem and the result was UNSAT
+  virtual bool can_interpolate() const=0;
 };
 
 #endif

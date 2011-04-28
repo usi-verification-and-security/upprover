@@ -179,7 +179,7 @@ bool summarizing_checkert::assertion_holds(
   // Trivial case
   if(assertion.get_location()->guard.is_true())
   {
-    out << std::endl << "ASSERTION IS TRUE" << std::endl;
+    out << std::endl << "ASSERTION IS TRIVIALLY TRUE" << std::endl;
     return true;
   }
 
@@ -189,7 +189,12 @@ bool summarizing_checkert::assertion_holds(
   summarization_context.analyze_functions(ns);
 
   // Load older summaries
-  summarization_context.deserialize_infos("__summaries");
+  {
+    const std::string& summary_file = options.get_option("load-summaries");
+    if (!summary_file.empty()) {
+      summarization_context.deserialize_infos(summary_file);
+    }
+  }
 
   // Prepare summary_info, start with the lazy variant, i.e.,
   // all summaries are initialized as NONDET except those on the way
@@ -229,7 +234,7 @@ bool summarizing_checkert::assertion_holds(
   bool result = symex.assertion_holds(goto_program, assertion,
           std::cout /* FIXME: out */, max_memory_used, use_smt);
 
-  if (result) {
+  if (result && interpolator->can_interpolate()) {
     // Extract the interpolation summaries here...
     interpolant_mapt itp_map;
     equation.extract_interpolants(*interpolator, *decider, itp_map);
@@ -243,7 +248,10 @@ bool summarizing_checkert::assertion_holds(
     }
 
     // Store the summaries
-    summarization_context.serialize_infos("__summaries");
+    const std::string& summary_file = options.get_option("save-summaries");
+    if (!summary_file.empty()) {
+      summarization_context.serialize_infos(summary_file);
+    }
   }
 
   return result;

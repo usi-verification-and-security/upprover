@@ -539,6 +539,9 @@ void funfrog_parseoptionst::help()
   "--assertions                   add user supplied assertions\n"
   "--claim <int>                  check a specific claim\n"
   "--testclaim <label>            check a labelled claim\n"
+  "--unwind <bound>               loop unwind bound\n"
+  "--unwindset <label:bound,...>  set of loop unwind bound for specific\n"
+  "                               loops\n"
   "\n";
 }
 
@@ -812,4 +815,20 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("bounds-check", cmdline.isset("bounds-check"));
   options.set_option("pointer-check", cmdline.isset("pointer-check"));
   options.set_option("assertions", cmdline.isset("assertions"));
+  if (cmdline.isset("unwind")) {
+    options.set_option("unwind", cmdline.getval("unwind"));
+  }
+  if (cmdline.isset("unwindset")) {
+    options.set_option("unwindset", cmdline.getval("unwindset"));
+  }
+  if (cmdline.isset("save-summaries")) {
+    options.set_option("save-summaries", cmdline.getval("save-summaries"));
+  } else {
+    options.set_option("save-summaries", "__summaries");
+  }
+  if (cmdline.isset("load-summaries")) {
+    options.set_option("load-summaries", cmdline.getval("load-summaries"));
+  } else {
+    options.set_option("load-summaries", "__summaries");
+  }
 }
