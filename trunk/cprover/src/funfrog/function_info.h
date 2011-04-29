@@ -26,12 +26,29 @@ public:
   function_infot() : function(ID_nil) {}
   function_infot(const irep_idt& _function) : function(_function) {}
 
-  // Adds the given summary if it is not already included or implied
-  // the original parameter is cleared
-  void add_summary(prop_itpt& summary) {
+  // Adds the given summary if it is not already included or implied.
+  // The original parameter is cleared
+  void add_summary(interpolantt& summary) {
     // FIXME: Filter the new summaries!
-    summaries.push_back(prop_itpt());
+    summaries.push_back(interpolantt());
     summaries.back().swap(summary);
+  }
+
+  // Adds the given list of summaries. The original list is cleared
+  void add_summaries(interpolantst& new_summaries) {
+    summaries.reserve(summaries.size() + new_summaries.size());
+    
+    for (interpolantst::iterator it = new_summaries.begin();
+            it != new_summaries.end();
+            ++it) {
+      add_summary(*it);
+    }
+    new_summaries.clear();
+  }
+
+  // Removes all summaries
+  void clear_summaries() {
+    summaries.clear();
   }
 
   const interpolantst& get_summaries() const { return summaries; }

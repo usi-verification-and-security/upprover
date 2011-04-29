@@ -75,10 +75,6 @@ protected:
   // Can we interpolate?
   bool ready_to_interpolate;
   
-# ifndef NDEBUG
-  std::vector<Enode*> partition_enodes;
-# endif
-
   // Extract interpolant form OpenSMT Egraph
   void extract_itp(const Enode* enode, prop_itpt& target_itp) const;
   // Cache of already visited interpolant Enodes

@@ -122,6 +122,7 @@ Function: function_infot::deserialize_infos
 void function_infot::deserialize_infos(std::istream& in, function_infost& infos)
 {
   unsigned nfunctions;
+  std::list<function_infot> add_list;
 
   in >> nfunctions;
 
@@ -136,14 +137,25 @@ void function_infot::deserialize_infos(std::istream& in, function_infost& infos)
     irep_idt f_id(f_name);
     function_infost::iterator it = infos.find(f_id);
 
+    // If the function is unknown - we postpone the addition (otherwise, 
+    // we could break the iterator)
     if (it == infos.end()) {
       function_infot tmp(f_id);
 
       tmp.deserialize(in);
+      add_list.push_back(tmp);
       continue;
     }
 
     it->second.deserialize(in);
+  }
+  
+  // Add the postponed summaries
+  while (!add_list.empty()) {
+    const function_infot& tmp = add_list.front();
+    infos.insert(function_infost::value_type(tmp.function, tmp));
+    
+    add_list.pop_front();
   }
 }
 

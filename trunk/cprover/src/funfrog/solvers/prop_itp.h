@@ -51,6 +51,8 @@ public:
   void substitute(prop_convt& decider,
     const std::vector<symbol_exprt>& symbols) const;
 
+  literalt raw_assert(propt& decider) const;
+
   // Serialization
   void serialize(std::ostream& out) const;
   void deserialize(std::istream& out);
@@ -63,7 +65,7 @@ protected:
   // Number of all used variables
   unsigned _no_variables;
   // Upper bound on the number of variables in the interpolant. Variables with
-  // a higher number are due tu Tseitin encoding
+  // a higher number are due to Tseitin encoding
   unsigned _no_orig_variables;
 
   // Clauses of the interpolant representation

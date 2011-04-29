@@ -402,9 +402,6 @@ void prop_itpt::substitute(prop_convt& decider,
         it2->invert();
     }
     
-    print_clause(std::cout, tmp_clause);
-    std::cout << std::endl;
-
     // Assert the clause
     decider.prop.lcnf(tmp_clause);
   }
@@ -420,7 +417,76 @@ void prop_itpt::substitute(prop_convt& decider,
 
 /*******************************************************************\
 
-Function: prop_itpt::substitute
+Function: prop_itpt::raw_assert
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Asserts the encoding of the interpolant and returns the root
+ literal. Fresh variables are used for auxiliary variables, but 
+ the "interface" variables are used as they are. This is to be used for
+ interpolant comparison.
+
+\*******************************************************************/
+
+literalt prop_itpt::raw_assert(propt& prop_decider) const
+{
+  assert(!is_trivial());
+
+  literalt renaming[_no_variables - _no_orig_variables];
+
+  // Make sure, the original variables are allocated
+  while (prop_decider.no_variables() < _no_orig_variables) {
+    prop_decider.new_variable();
+  }
+  // Allocate new variables for the auxiliary ones (present due to the Tseitin
+  // encoding to CNF)
+  for (unsigned i = 0; i < _no_variables - _no_orig_variables; ++i) {
+    renaming[i] = prop_decider.new_variable();
+  }
+
+  // Rename and output the clauses
+  bvt tmp_clause;
+  for (clausest::const_iterator it = clauses.begin();
+          it != clauses.end();
+          ++it) {
+    tmp_clause = *it;
+
+    for (bvt::iterator it2 = tmp_clause.begin();
+            it2 != tmp_clause.end();
+            ++it2) {
+      if (it2->var_no() >= _no_orig_variables) {
+        // Rename
+        bool sign = it2->sign();
+        *it2 = renaming[it2->var_no() - _no_orig_variables];
+        if (sign)
+          it2->invert();
+      }
+    }
+    
+    // print_clause(std::cout, tmp_clause);
+    // std::cout << std::endl;
+
+    // Assert the clause
+    prop_decider.lcnf(tmp_clause);
+  }
+  // Handle the root
+  if (root_literal.var_no() < _no_orig_variables)
+    return root_literal;
+  
+  bool sign = root_literal.sign();
+  literalt new_root_literal = 
+          renaming[root_literal.var_no() - _no_orig_variables];
+  if (sign)
+    new_root_literal.invert();
+
+  return new_root_literal;
+}
+
+/*******************************************************************\
+
+Function: prop_itpt::reserve_variables
 
   Inputs:
 

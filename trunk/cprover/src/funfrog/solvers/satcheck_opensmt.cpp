@@ -467,9 +467,6 @@ void satcheck_opensmtt::close_partition()
 {
   partition_root_enode = opensmt_ctx->mkAnd(partition_root_enode);
   opensmt_ctx->Assert(partition_root_enode);
-# ifndef NDEBUG
-  partition_enodes.push_back(partition_root_enode);
-# endif
   partition_root_enode = NULL;
 }
 
