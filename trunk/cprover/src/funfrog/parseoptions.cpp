@@ -529,6 +529,7 @@ void funfrog_parseoptionst::help()
   "--load-summaries <filename>    load function summaries\n"
   "                               from the given file\n"
   "--no-progress                  turn off progress display\n"
+  "--save-queries                 save SAT queries and configuration\n"
   "\nProof Engine options:\n"
   "--show-claims                  output the claims list\n"
   "--show-pass                    report passed claims\n"
