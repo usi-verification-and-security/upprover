@@ -13,6 +13,8 @@ Author: Ondrej Sery
 #include "partitioning_target_equation.h"
 #include "expr_pretty_print.h"
 
+//#define DEBUG_SSA
+
 /*******************************************************************\
 
  Function: partitioning_target_equationt::convert
@@ -22,7 +24,7 @@ Author: Ondrej Sery
  Outputs:
 
  Purpose: Convert all the SSA steps into the corresponding formulas in
- the corresoponding partitions
+ the corresponding partitions
 
 \*******************************************************************/
 void partitioning_target_equationt::convert(
@@ -96,7 +98,9 @@ void partitioning_target_equationt::convert_partition_summary(
   for (interpolantst::const_iterator it = partition.summaries->begin();
           it != partition.summaries->end();
           ++it) {
+#   ifdef DEBUG_SSA      
     std::cout << "Substituting interpolant" << std::endl;
+#   endif
     it->substitute(prop_conv, common_symbs);
   }
 }
@@ -123,7 +127,9 @@ void partitioning_target_equationt::convert_partition_assignments(
     {
       exprt tmp(it->cond_expr);
 
+#     ifdef DEBUG_SSA      
       expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);
+#     endif
 
       prop_conv.set_to_true(tmp);
     }
@@ -154,7 +160,9 @@ void partitioning_target_equationt::convert_partition_guards(
     {
       exprt tmp(it->guard_expr);
 
+#     ifdef DEBUG_SSA      
       expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
+#     endif
 
       it->guard_literal=prop_conv.convert(tmp);
     }
@@ -187,7 +195,9 @@ void partitioning_target_equationt::convert_partition_assumptions(
       {
         exprt tmp(it->cond_expr);
 
+#       ifdef DEBUG_SSA      
         expr_pretty_print(std::cout << "ASSUME-OUT:" << std::endl, tmp, 2);
+#       endif
 
         it->cond_literal=prop_conv.convert(tmp);
       }
@@ -255,7 +265,9 @@ void partitioning_target_equationt::convert_partition_assertions(
     if (it->is_assert())
     {
 
+#     ifdef DEBUG_SSA      
       expr_pretty_print(std::cout << "ASSERT-OUT:" << std::endl, it->cond_expr, 2);
+#     endif
 
       // do the expression
       literalt tmp_literal=prop_conv.convert(it->cond_expr);
@@ -279,7 +291,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 
           prop_conv.prop.l_set_to_true(tmp);
 
-#         if 1
+#         ifdef DEBUG_SSA      
           expr_pretty_print(std::cout << "XXX Call START implication: ",
                   target_partition.callstart_symbol);
           for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
@@ -307,7 +319,7 @@ void partitioning_target_equationt::convert_partition_assertions(
     literalt tmp = prop_conv.prop.limplies(partition.callend_literal,
             assumption_literal);
 
-#   if 1
+#   ifdef DEBUG_SSA      
     expr_pretty_print(std::cout << "XXX Call END implication: ", partition.callend_symbol);
     for (SSA_stepst::iterator it2 = partition.start_it; it2 != partition.end_it; ++it2) {
       if (it2->is_assume()) {
@@ -394,8 +406,11 @@ void partitioning_target_equationt::prepare_partitions()
 
     it->start_it = ssa_it;
 
-    std::cout << idx << ", " << it->start_idx << ", " << it->end_idx << std::endl;
-    std::cout << partitions.size() << std::endl;
+#   ifdef DEBUG_SSA      
+    std::cout << "Partition SSA indices: " << idx << ", " << 
+            it->start_idx << ", " << it->end_idx << 
+            " size: " << partitions.size() << std::endl;
+#   endif
 
     if (it->is_summary)
       continue;

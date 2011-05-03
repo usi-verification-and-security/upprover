@@ -8,6 +8,8 @@ Author: Ondrej Sery
 #include <limits.h>
 #include "prop_itp.h"
 
+//#define DEBUG_ITP
+
 /*******************************************************************\
 
 Function: prop_itpt::gate_and
@@ -191,8 +193,10 @@ void prop_itpt::generalize(const prop_convt& decider,
         if (!decider.literal(*it, l)) {
           unsigned var_no = l.var_no();
 
+#         ifdef DEBUG_ITP
           std::cout << " -> '" << it->get_identifier().as_string() <<
                   "' - bool (" << var_no << ")" << std::endl;
+#         endif
 
           if (min_var > var_no) min_var = var_no;
           if (max_var < var_no) max_var = var_no;
@@ -202,7 +206,9 @@ void prop_itpt::generalize(const prop_convt& decider,
     }
     const boolbv_mapt::map_entryt& entry = pos->second;
     
+#   ifdef DEBUG_ITP
     std::cout << " -> '" << it->get_identifier().as_string() << "' - " << entry.width << std::endl;
+#   endif
 
     for (boolbv_mapt::literal_mapt::const_iterator it2 = entry.literal_map.begin();
             it2 != entry.literal_map.end();
@@ -218,12 +224,14 @@ void prop_itpt::generalize(const prop_convt& decider,
   assert (min_var < UINT_MAX && max_var > 0);
   
   unsigned renaming[max_var - min_var + 1];
+# ifdef DEBUG_ITP
   std::cout << " = " << min_var << " - " << max_var << std::endl;
+# endif
 
-#ifndef NDEBUG
+# ifndef NDEBUG
   for (unsigned i = 0; i < max_var - min_var + 1; ++i)
     renaming[i] = UINT_MAX;
-#endif
+# endif
 
   // Fill the renaming table
   unsigned cannon_var_no = 1;
@@ -249,7 +257,9 @@ void prop_itpt::generalize(const prop_convt& decider,
 
           renaming[l.var_no() - min_var] = cannon_var_no++;
 
+#         ifdef DEBUG_ITP
           std::cout << l.var_no() << " ";
+#         endif
         }
       }
       continue;
@@ -260,7 +270,9 @@ void prop_itpt::generalize(const prop_convt& decider,
             it2 != entry.literal_map.end();
             ++it2) {
       if (!it2->is_set) {
+#       ifdef DEBUG_ITP
         std::cout << "- ";
+#       endif
         continue;
       }
 
@@ -272,11 +284,16 @@ void prop_itpt::generalize(const prop_convt& decider,
       
       renaming[it2->l.var_no() - min_var] = cannon_var_no++;
 
+#     ifdef DEBUG_ITP
       std::cout << it2->l.var_no() << " ";
+#     endif
     }
+#   ifdef DEBUG_ITP
     std::cout << std::endl;
+#   endif
   }
 
+# ifdef DEBUG_ITP
   std::cout << "Renaming:" << std::endl;
   for (unsigned i = 0; i < max_var - min_var + 1; ++i) {
     if (i % 16 == 0) {
@@ -286,9 +303,9 @@ void prop_itpt::generalize(const prop_convt& decider,
     }
     std::cout << (renaming[i] == UINT_MAX ? -1 : (int)renaming[i]);
   }
-
   std::cout << "Before generalization: " << std::endl;
   print(std::cout);
+# endif
 
   // Do the renaming itself
   unsigned shift = _no_orig_variables - cannon_var_no;
@@ -299,7 +316,7 @@ void prop_itpt::generalize(const prop_convt& decider,
             it2 != it->end();
             ++it2) {
 
-      // Only shift the artifitial variables (present due to the Tseitin
+      // Only shift the artificial variables (present due to the Tseitin
       // encoding to CNF)
       if (it2->var_no() > max_var) {
         it2->set(it2->var_no() - shift, it2->sign());
@@ -326,8 +343,10 @@ void prop_itpt::generalize(const prop_convt& decider,
   // TODO: Should we force mapping of common symbols to fresh prop. variables
   // in order to prevent unification?
 
+# ifdef DEBUG_ITP
   std::cout << "After generalization: " << std::endl;
   print(std::cout);
+# endif
 }
 
 
@@ -364,7 +383,9 @@ void prop_itpt::substitute(prop_convt& decider,
     if (it->type().id() == ID_bool) {
       literalt l = decider.convert(*it);
       renaming[cannon_var_no++] = l;
+#     ifdef DEBUG_ITP
       std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
+#     endif
       continue;
     }
 
@@ -374,9 +395,13 @@ void prop_itpt::substitute(prop_convt& decider,
       literalt l = map.get_literal(it->get_identifier(), i, it->type());
 
       renaming[cannon_var_no++] = l;
+#     ifdef DEBUG_ITP
       std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
+#     endif
     }
+#   ifdef DEBUG_ITP
     std::cout << std::endl;
+#   endif
   }
 
   // Allocate new variables for the auxiliary ones (present due to the Tseitin
@@ -465,8 +490,10 @@ literalt prop_itpt::raw_assert(propt& prop_decider) const
       }
     }
     
-    // print_clause(std::cout, tmp_clause);
-    // std::cout << std::endl;
+#   ifdef DEBUG_ITP
+    print_clause(std::cout, tmp_clause);
+    std::cout << std::endl;
+#   endif
 
     // Assert the clause
     prop_decider.lcnf(tmp_clause);
@@ -542,7 +569,7 @@ void prop_itpt::print(std::ostream& out) const
     out << "Prop. interpolant (#v: " << _no_variables << ", #c: " << no_clauses() <<
             ",root: " << root_literal.dimacs() << "):" << std::endl;
 
-#   if 0
+#   ifdef DEBUG_ITP
     for (clausest::const_iterator it = clauses.begin();
             it != clauses.end(); ++it) {
       print_clause(out, *it);

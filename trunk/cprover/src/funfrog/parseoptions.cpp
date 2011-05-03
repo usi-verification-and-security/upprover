@@ -815,6 +815,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("bounds-check", cmdline.isset("bounds-check"));
   options.set_option("pointer-check", cmdline.isset("pointer-check"));
   options.set_option("assertions", cmdline.isset("assertions"));
+  options.set_option("save-queries", cmdline.isset("save-queries"));
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.getval("unwind"));
   }

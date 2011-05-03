@@ -12,6 +12,8 @@
 #include "expr_pretty_print.h"
 #include <fstream>
 
+//#define DEBUG_GLOBALS
+
 /*******************************************************************\
 
 Function: function_infot::serialize
@@ -301,7 +303,7 @@ void function_infot::analyze_globals_rec(summarization_contextt& context,
     }
   }
 
-# if 1
+# ifdef DEBUG_GLOBALS
   std::cerr << "Function: " << function << std::endl;
   std::cerr << "GLOBALs accessed" << std::endl;
   for (lex_sorted_idst::const_iterator it = globals_accessed.begin();
@@ -352,8 +354,10 @@ void function_infot::add_objects_to_set(const namespacet& ns,
         set.insert(id);
       }
     } else {
+#     ifdef DEBUG_GLOBALS
       expr_pretty_print(std::cerr << "Ignoring object: ", *ex);
       std::cerr << std::endl;
+#     endif
     }
   }
 }

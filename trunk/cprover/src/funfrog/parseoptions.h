@@ -39,6 +39,7 @@ class value_set_alloc_adaptort;
   "(pointer-check)(bounds-check)(assertions)(use-smt)" \
   "(show-pass)(suppress-fail)(no-progress)" \
   "(save-summaries)(show-claims)(claim):" \
+  "(save-queries)" \
   "(unwind):(unwindset):" \
   "(inlining-limit):(testclaim):" \
   "(pobj)(eq)(neq)(ineq)"

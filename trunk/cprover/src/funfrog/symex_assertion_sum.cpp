@@ -25,6 +25,7 @@
 fine_timet global_satsolver_time;
 fine_timet global_sat_conversion_time;
 
+//#define DEBUG_PARTITIONING
 
 /*******************************************************************
 
@@ -55,18 +56,6 @@ bool symex_assertion_sumt::assertion_holds(
   }
 
   goto_programt::const_targett last = assertion.get_location(); last++;
-
-  // Print out the initial goto-program
-  // FIXME: Does not print all the functions recursively --> it is useless
-  if(out.good())
-  {
-    out << std::endl << "GOTO-PROGRAM:" << std::endl;
-    for (goto_programt::instructionst::const_iterator it=
-           goto_program.instructions.begin();
-         /*it != last &&*/ it != goto_program.instructions.end();
-         it++)
-      goto_program.output_instruction(ns, "", out, it);
-  }
 
 # ifndef NDEBUG
   // sanity check, we expect loop-free programs only.
@@ -103,7 +92,9 @@ bool symex_assertion_sumt::assertion_holds(
       has_more_steps(state);
       )
   {
+#   if 0
     goto_program.output_instruction(ns, "", std::cout, state.source.pc);
+#   endif
     symex_step(summarization_context.get_functions(), state);
     // state.value_set.output(ns, std::cout);
   }
@@ -133,6 +124,9 @@ bool symex_assertion_sumt::assertion_holds(
     equation.convert(decider, interpolator);
     after=current_time();
     global_sat_conversion_time += (after-before);
+
+    if (out.good())
+      out << "CONVERSION TIME: "<< time2string(after-before) << std::endl;
 
     // Decides the equation
     sat = is_satisfiable(decider, out);
@@ -616,7 +610,9 @@ void symex_assertion_sumt::mark_argument_symbols(
 
     deferred_function.argument_symbols.push_back(symbol);
 
+#   ifdef DEBUG_PARTITIONING
     expr_pretty_print(std::cout << "Marking argument symbol: ", symbol);
+#   endif
   }
 }
 
@@ -653,7 +649,9 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     
     deferred_function.argument_symbols.push_back(symb_ex);
 
+#   ifdef DEBUG_PARTITIONING
     expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex);
+#   endif
   }
 }
 
@@ -691,7 +689,9 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     
     deferred_function.out_arg_symbols.push_back(symb_ex);
 
+#   ifdef DEBUG_PARTITIONING
     expr_pretty_print(std::cout << "Marking modified global symbol: ", symb_ex);
+#   endif
   }
 }
 
@@ -738,8 +738,10 @@ void symex_assertion_sumt::return_assignment_and_mark(
   basic_symext::symex_assign(state, assignment);
   constant_propagation = old_cp;
 
+# ifdef DEBUG_PARTITIONING
   expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
   expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
+# endif
 
   deferred_function.retval_symbol = retval_symbol;
   deferred_function.retval_tmp = retval_tmp;

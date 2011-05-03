@@ -21,7 +21,7 @@ Author: Ondrej Sery
 class satcheck_opensmtt:public cnf_solvert, public interpolating_solvert
 {
 public:
-  satcheck_opensmtt();
+  satcheck_opensmtt(bool _dump_queries = false);
   
   virtual ~satcheck_opensmtt() {
     delete opensmt_ctx;
@@ -59,6 +59,8 @@ public:
   virtual bool can_interpolate() const;
   
 protected:
+  // Dump all queries?
+  bool dump_queries;
   // OpenSMT API entry point
   OpenSMTContext* opensmt_ctx;
   // Shortcut for the bool sort;

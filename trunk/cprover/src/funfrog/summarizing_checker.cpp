@@ -206,7 +206,8 @@ bool summarizing_checkert::assertion_holds(
   std::auto_ptr<prop_convt> decider;
   std::auto_ptr<interpolating_solvert> interpolator;
   {
-    satcheck_opensmtt* opensmt = new satcheck_opensmtt();
+    satcheck_opensmtt* opensmt = new satcheck_opensmtt(
+            options.get_bool_option("save-queries"));
     bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
     deciderp->unbounded_array = bv_pointerst::U_AUTO;
     decider.reset(deciderp);

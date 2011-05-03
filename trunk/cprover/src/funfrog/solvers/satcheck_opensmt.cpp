@@ -22,8 +22,11 @@ Author: Ondrej Sery
 
 //#define MAX_OPENSMT_PARTITIONS 63
 
-satcheck_opensmtt::satcheck_opensmtt() :
-  partition_root_enode(NULL), partition_count(0), ready_to_interpolate(false)
+static unsigned dump_count = 0;
+
+satcheck_opensmtt::satcheck_opensmtt(bool _dump_queries) :
+  dump_queries (_dump_queries), partition_root_enode(NULL), partition_count(0),
+  ready_to_interpolate(false)
 {
   opensmt_ctx = new OpenSMTContext();
   opensmt_ctx->SetLogic("QF_BOOL");
@@ -321,10 +324,22 @@ propt::resultt satcheck_opensmtt::prop_solve() {
     close_partition();
   }
 
-  // Store the SAT queries
-# ifndef NDEBUG
-  opensmt_ctx->DumpAssertionsToFile("__sat_query.smt2");
-# endif
+  // Dump the SAT query and configuration
+  if (dump_queries)
+  {
+    std::string dump_file("__sat_query");
+    dump_file += i2string(dump_count);
+    dump_file += ".smt2";
+    opensmt_ctx->DumpAssertionsToFile(dump_file.c_str());
+    dump_file = "__sat_config";
+    dump_file += i2string(dump_count);
+    dump_file += ".cfg";
+    std::ofstream os;
+    os.open(dump_file.c_str());
+    opensmt_ctx->PrintConfig(os);
+    os.close();
+    ++dump_count;
+  }
 
   std::string msg;
 
