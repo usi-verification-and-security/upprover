@@ -346,8 +346,18 @@ void function_infot::add_objects_to_set(const namespacet& ns,
     } else if (ex->id() == ID_index) {
       // FIXME: This catches only simple indexing, any more involved array 
       // accesses will not be matched here.
-      assert(to_index_expr(*ex).array().id() == ID_symbol);
-      const irep_idt& id = to_symbol_expr(to_index_expr(*ex).array()).get_identifier();
+      irep_idt id;
+      if (to_index_expr(*ex).array().id() == ID_symbol) 
+      {
+        id = to_symbol_expr(to_index_expr(*ex).array()).get_identifier();
+      } else if (to_index_expr(*ex).array().id() == ID_member && 
+              to_member_expr(to_index_expr(*ex).array()).struct_op().id() == ID_symbol) 
+      {
+        id = to_symbol_expr(to_member_expr(
+                to_index_expr(*ex).array()).struct_op()).get_identifier();
+      } else {
+        throw "Unsupported indexing scheme.";
+      }
       const symbolt& symbol = ns.lookup(id);
 
       if (symbol.static_lifetime && symbol.lvalue) {
