@@ -45,7 +45,8 @@ bool symex_assertion_sumt::assertion_holds(
   const assertion_infot &assertion,
   std::ostream &out,
   unsigned long &max_memory_used,
-  bool use_smt)
+  bool use_smt,
+  bool use_slicing)
 {
   stream_message_handlert message_handler(out);
 
@@ -111,16 +112,16 @@ bool symex_assertion_sumt::assertion_holds(
 
   if(remaining_claims!=0)
   {
-    if (!options.get_bool_option("no-slicing")) {
+    if (use_slicing) {
       before=current_time();
       std::cout << "All SSA steps: " << equation.SSA_steps.size() << std::endl;
       partitioning_slice(equation);
       std::cout << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << std::endl;
       after=current_time();
+      if (out.good())
+        out << "SLICER TIME: "<< time2string(after-before) << std::endl;
     }
 
-    if (out.good())
-      out << "SLICER TIME: "<< time2string(after-before) << std::endl;
 
     fine_timet before,after;
     before=current_time();

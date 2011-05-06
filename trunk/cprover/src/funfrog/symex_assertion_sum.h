@@ -61,7 +61,8 @@ public:
     const assertion_infot &assertion,
     std::ostream &out,
     unsigned long &max_memory_used,
-    bool use_smt=false);
+    bool use_smt=false,
+    bool use_slicing=true);
   
   virtual void symex_step(
     const goto_functionst &goto_functions,

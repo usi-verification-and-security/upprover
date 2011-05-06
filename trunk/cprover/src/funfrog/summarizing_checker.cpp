@@ -233,7 +233,8 @@ bool summarizing_checkert::assertion_holds(
 
   // FIXME: The refinement loop should be here!
   bool result = symex.assertion_holds(goto_program, assertion,
-          std::cout /* FIXME: out */, max_memory_used, use_smt);
+          std::cout /* FIXME: out */, max_memory_used, use_smt, 
+          !options.get_bool_option("no-slicing"));
 
   if (result && interpolator->can_interpolate()) {
     // Extract the interpolation summaries here...
