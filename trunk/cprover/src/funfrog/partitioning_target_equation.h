@@ -16,7 +16,9 @@ Author: Ondrej Sery
 #include "solvers/interpolating_solver.h"
 
 typedef int partition_idt;
-typedef std::vector<partition_idt> partition_idst;
+typedef std::list<partition_idt> partition_idst;
+typedef std::list<unsigned> partition_locst;
+typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 
 class partitioning_target_equationt:public symex_target_equationt
 {
@@ -28,7 +30,7 @@ public:
   }
 
   // Convert all the SSA steps into the corresponding formulas in
-  // the corresoponding partitions
+  // the corresponding partitions
   void convert(prop_convt &prop_conv, interpolating_solvert &interpolator);
 
   // Reserve a partition id for later use. The newly reserved partition
@@ -57,8 +59,9 @@ public:
     partition_map.insert(partition_mapt::value_type(
       callend_symbol.get_identifier(), new_id));
 
-    if (current_partition_id != NO_PARTITION)
-      get_current_partition().add_child_partition(new_id);
+    if (current_partition_id != NO_PARTITION) {
+      get_current_partition().add_child_partition(new_id, SSA_steps.size());
+    }
 
     return new_id;
   }
@@ -76,7 +79,7 @@ public:
   }
 
   // Begin processing of the given (previously reserved) partition.
-  // The follwoing SSA statements will be part of the given partition until
+  // The following SSA statements will be part of the given partition until
   // a different partition is selected.
   void select_partition(partition_idt partition_id) {
     if (current_partition_id != NO_PARTITION) {
@@ -91,7 +94,7 @@ public:
     new_partition.start_idx = SSA_steps.size();
   }
   
-  // Collects information about the specified partions for later
+  // Collects information about the specified partitions for later
   // processing and conversion
   void prepare_partitions();
 
@@ -99,7 +102,21 @@ public:
   void extract_interpolants(
     interpolating_solvert& interpolator, const prop_convt& decider,
     interpolant_mapt& interpolant_map);
-
+  
+  // Returns SSA steps ordered in the order of program execution (i.e., as they 
+  // would be normally ordered in symex_target_equation).
+  const SSA_steps_orderingt& get_steps_exec_order() {
+    if (SSA_steps_exec_order.size() != SSA_steps.size()) {
+      // Prepare SSA ordering according to the program execution order.
+      assert(!partitions.empty());
+      SSA_steps_exec_order.clear();
+      SSA_steps_exec_order.reserve(SSA_steps.size());
+      prepare_SSA_exec_order(partitions[0]);
+      assert(SSA_steps_exec_order.size() == SSA_steps.size());
+    }
+    return SSA_steps_exec_order;
+  }
+  
 private:
   
   // Represents nesting of partitions
@@ -109,20 +126,20 @@ private:
             filled(false), is_summary(false), summaries(NULL),
             parent_id(_parent_id) {}
 
-    void add_child_partition(partition_idt child_id) {
+    void add_child_partition(partition_idt child_id, unsigned callsite) {
       child_ids.push_back(child_id);
+      child_locs.push_back(callsite);
     }
     void set_fle_part_id(fle_part_idt _fle_part_id) {
       fle_part_id = _fle_part_id;
     }
-    const partition_idst& get_partition_ids() const { return child_ids; }
 
     bool filled;
-    int start_idx;
-    // Index after the last SSA coresponding to this partition
-    int end_idx;
+    unsigned start_idx;
+    // Index after the last SSA corresponding to this partition
+    unsigned end_idx;
     SSA_stepst::iterator start_it;
-    // Iterator after the last SSA coresponding to this partition
+    // Iterator after the last SSA corresponding to this partition
     SSA_stepst::iterator end_it;
     symbol_exprt callstart_symbol;
     symbol_exprt callend_symbol;
@@ -138,6 +155,7 @@ private:
     fle_part_idt fle_part_id;
     partition_idt parent_id;
     partition_idst child_ids;
+    partition_locst child_locs;
     irep_idt function_id;
   };
 
@@ -200,16 +218,31 @@ private:
   // Fill in ids of all the child partitions
   void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
 
+  // Fills in the SSA_steps_exec_order holding pointers to SSA steps ordered
+  // in the order of program execution (i.e., as they would be normally 
+  // ordered in symex_target_equation).
+  void prepare_SSA_exec_order(const partitiont& partition);
+  
   typedef std::vector<partitiont> partitionst;
   typedef std::map<irep_idt, partition_idt> partition_mapt;
+  
   // Collection of all the partitions
   partitionst partitions;
-  // Mapping between callend symbol and the corresponding parititon
+  
+  // Mapping between callend symbol and the corresponding partition
   // This is used to emit assumption propagation constraints.
   partition_mapt partition_map;
   
   // Id of the currently selected partition
   partition_idt current_partition_id;
+
+  // Ordering of SSA steps according to the program execution order, this is
+  // filled in by prepare_SSA_exec_order and can be used for simple slicing
+  // and error trace generation.
+  // NOTE: Currently, the order is slightly broken by the glue variables
+  SSA_steps_orderingt SSA_steps_exec_order;
+  
+  friend class partitioning_slicet;
 };
 
 #endif

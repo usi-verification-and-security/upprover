@@ -99,10 +99,14 @@ Function: satcheck_opensmtt::new_partition
 \*******************************************************************/
 fle_part_idt satcheck_opensmtt::new_partition()
 {
-  assert(partition_count == 0 || partition_root_enode != NULL);
+  // assert(partition_count == 0 || partition_root_enode != NULL);
+  if (partition_count != 0 && partition_root_enode == NULL) {
+    std::cerr << "WARNING: last partition was empty (probably due to slicing)." <<
+            std::endl;
+  }
   
   // Finish the previous partition if any
-  if (partition_count > 0)
+  if (partition_root_enode != NULL)
     close_partition();
 
 # ifdef MAX_OPENSMT_PARTITIONS
@@ -154,8 +158,10 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
     prop_itpt itp;
     extract_itp(node, itp);
 
+#   if 0
     std::cout << "CProver stored interpolant: ";
     itp.print(std::cout);
+#   endif
 
     interpolants.push_back(prop_itpt());
     interpolants.back().swap(itp);

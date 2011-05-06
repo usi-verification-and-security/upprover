@@ -57,7 +57,7 @@ expr_pretty_printt::visit(const exprt& expr) {
   indent = old_indent;
 }
 
-void
+std::ostream&
 expr_pretty_print(std::ostream& out, const exprt& expr, unsigned _indent)
 {
   expr_pretty_printt pp(out);
@@ -65,6 +65,8 @@ expr_pretty_print(std::ostream& out, const exprt& expr, unsigned _indent)
   if (_indent > 0)
     pp.set_indent(_indent);
   pp.visit(expr);
+  
+  return out;
 }
 
  

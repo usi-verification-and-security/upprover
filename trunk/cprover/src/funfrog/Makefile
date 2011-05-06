@@ -6,6 +6,7 @@ SHARED_SRC := \
 
 FUNFROG_SRC := \
       partitioning_target_equation.cpp \
+      partitioning_slice.cpp \
       summary_info.cpp \
       parseoptions.cpp \
       check_claims.cpp \
@@ -41,7 +42,7 @@ SUMO_OBJ := \
       $(SHARED_OBJ) \
       $(SUMO_SRC:.cpp=.o)
 
-all: funfrog sumo
+all: funfrog
 
 include ../config.inc
 include ../common

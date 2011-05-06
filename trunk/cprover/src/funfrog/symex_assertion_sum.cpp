@@ -19,6 +19,7 @@
 #include <expr_util.h>
 #include <i2string.h>
 
+#include "partitioning_slice.h"
 #include "symex_assertion_sum.h"
 #include "expr_pretty_print.h"
 
@@ -110,11 +111,13 @@ bool symex_assertion_sumt::assertion_holds(
 
   if(remaining_claims!=0)
   {
-    before=current_time();
-    // FIXME: Slicer does not expect deferring of function inlining
-    // and removes also important parts of the code.
-    // slice(equation);
-    after=current_time();
+    if (!options.get_bool_option("no-slicing")) {
+      before=current_time();
+      std::cout << "All SSA steps: " << equation.SSA_steps.size() << std::endl;
+      partitioning_slice(equation);
+      std::cout << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << std::endl;
+      after=current_time();
+    }
 
     if (out.good())
       out << "SLICER TIME: "<< time2string(after-before) << std::endl;
@@ -131,7 +134,7 @@ bool symex_assertion_sumt::assertion_holds(
     // Decides the equation
     sat = is_satisfiable(decider, out);
   } else {
-      out << "Assertion(s) are trivially ureachable." << std::endl;
+      out << "Assertion(s) are trivially unreachable." << std::endl;
   }
 
   unsigned long this_mem = current_memory();
@@ -564,6 +567,10 @@ void symex_assertion_sumt::assign_function_arguments(
 
   // TODO: Mark accessed global variables as well
   mark_accessed_global_symbols(identifier, state, deferred_function);
+  
+  // FIXME: We need to store the SSA_steps.size() here, so that 
+  // SSA_exec_order is correctly ordered.
+  // NOTE: The exec_order is not used now.
 
   if (function_call.lhs().is_not_nil()) {
     // Add return value assignment from a temporary variable and

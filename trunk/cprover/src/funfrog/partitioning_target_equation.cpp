@@ -14,6 +14,7 @@ Author: Ondrej Sery
 #include "expr_pretty_print.h"
 
 //#define DEBUG_SSA
+//#define DEBUG_ITP
 
 /*******************************************************************\
 
@@ -121,7 +122,7 @@ void partitioning_target_equationt::convert_partition_assignments(
   prop_convt &prop_conv, partitiont& partition) const
 {
   for(SSA_stepst::const_iterator it = partition.start_it;
-      it != partition.end_it; it++)
+      it != partition.end_it; ++it)
   {
     if(it->is_assignment() && !it->ignore)
     {
@@ -152,7 +153,7 @@ void partitioning_target_equationt::convert_partition_guards(
   prop_convt &prop_conv, partitiont& partition)
 {
   for(SSA_stepst::iterator it = partition.start_it;
-      it != partition.end_it; it++)
+      it != partition.end_it; ++it)
   {
     if(it->ignore)
       it->guard_literal=const_literal(false);
@@ -185,7 +186,7 @@ void partitioning_target_equationt::convert_partition_assumptions(
   prop_convt &prop_conv, partitiont& partition)
 {
   for(SSA_stepst::iterator it = partition.start_it;
-      it != partition.end_it; it++)
+      it != partition.end_it; ++it)
   {
     if(it->is_assume())
     {
@@ -237,7 +238,7 @@ void partitioning_target_equationt::convert_partition_assertions(
     // FIXME: Without slicing, this is unsound, since some subsequent,
     // but unsilced, assumptions may hide the assertion violation.
     for(SSA_stepst::iterator it = partition.start_it;
-        it != partition.end_it; it++)
+        it != partition.end_it; ++it)
       if(it->is_assert())
       {
         prop_conv.set_to_false(it->cond_expr);
@@ -261,7 +262,7 @@ void partitioning_target_equationt::convert_partition_assertions(
   literalt assumption_literal=const_literal(true);
 
   for (SSA_stepst::iterator it = partition.start_it;
-      it != partition.end_it; it++) {
+      it != partition.end_it; ++it) {
     if (it->is_assert())
     {
 
@@ -276,7 +277,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 
       bv.push_back(prop_conv.prop.lnot(it->cond_literal));
     }
-    else if (it->is_assume()) {
+    else if (it->is_assume() && !it->ignore) {
       // If it is a call end symbol, we need to emit the assumption propagation
       // formula for the given callsite.
       if (number_of_assumptions > 0 && it->cond_expr.id() == ID_symbol) {
@@ -295,7 +296,7 @@ void partitioning_target_equationt::convert_partition_assertions(
           expr_pretty_print(std::cout << "XXX Call START implication: ",
                   target_partition.callstart_symbol);
           for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
-            if (it2->is_assume()) {
+            if (it2->is_assume() && !it2->ignore) {
               expr_pretty_print(std::cout << "  => ", it2->cond_expr);
             }
           }
@@ -350,13 +351,13 @@ void partitioning_target_equationt::convert_partition_io(
   unsigned io_count=0;
 
   for(SSA_stepst::iterator it = partition.start_it;
-      it != partition.end_it; it++)
+      it != partition.end_it; ++it)
     if(!it->ignore)
     {
       for(std::list<exprt>::const_iterator
           o_it=it->io_args.begin();
           o_it!=it->io_args.end();
-          o_it++)
+          ++o_it)
       {
         exprt tmp=*o_it;
         if(tmp.is_constant() ||
@@ -391,7 +392,7 @@ void partitioning_target_equationt::prepare_partitions()
 {
   // Fill in the partition start and end iterator for easier access during
   // the conversion process
-  int idx = 0;
+  unsigned idx = 0;
   SSA_stepst::iterator ssa_it = SSA_steps.begin();
 
   // The last partition has an undefined end, fix it!
@@ -421,6 +422,54 @@ void partitioning_target_equationt::prepare_partitions()
       ++idx;
     }
     it->end_it = ssa_it;
+  }
+}  
+
+/*******************************************************************\
+
+Function: partitioning_target_equationt::prepare_SSA_exec_order_rec
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Fills in the SSA_steps_exec_order holding pointers to SSA steps 
+ ordered in the order of program execution (i.e., as they would be normally 
+ ordered in symex_target_equation).
+
+\*******************************************************************/
+void partitioning_target_equationt::prepare_SSA_exec_order(
+        const partitiont& partition)
+{
+  partition_locst::const_iterator loc_it = partition.child_locs.begin();
+  partition_idst::const_iterator id_it = partition.child_ids.begin();
+  unsigned SSA_idx = partition.start_idx;
+  
+  for(SSA_stepst::iterator it = partition.start_it;
+      it != partition.end_it; ++it, ++SSA_idx)
+  {
+    while (loc_it != partition.child_locs.end() && *loc_it == SSA_idx) {
+      // Process the call first
+      const partitiont& partition = partitions[*id_it];
+      
+      if (!partition.is_summary)
+        prepare_SSA_exec_order(partition);
+      
+      ++loc_it;
+      ++id_it;
+    }
+    // Add current step
+    SSA_steps_exec_order.push_back(&*it);
+  }
+  while (loc_it != partition.child_locs.end() && *loc_it == SSA_idx) {
+    // Process the call first
+    const partitiont& partition = partitions[*id_it];
+
+    if (!partition.is_summary)
+      prepare_SSA_exec_order(partition);
+
+    ++loc_it;
+    ++id_it;
   }
 }
 
@@ -475,12 +524,14 @@ void partitioning_target_equationt::extract_interpolants(
     // Generalize the interpolant
     fill_common_symbols(partition, common_symbs);
 
+#   ifdef DEBUG_ITP
     std::cout << "Common symbols (" << common_symbs.size() << "):" << std::endl;
     for (std::vector<symbol_exprt>::iterator it = common_symbs.begin();
             it != common_symbs.end(); ++it)
       std::cout << it->get_identifier() << std::endl;
 
     std::cout << "Generalizing interpolant" << std::endl;
+#   endif
     interpolant.generalize(decider, common_symbs);
   }
 }

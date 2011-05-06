@@ -543,6 +543,8 @@ void funfrog_parseoptionst::help()
   "--unwind <bound>               loop unwind bound\n"
   "--unwindset <label:bound,...>  set of loop unwind bound for specific\n"
   "                               loops\n"
+  "--no-slicing                   no slicing of the SSA program form (slower\n"
+  "                               computation, more dependable result)\n"
   "\n";
 }
 
@@ -817,6 +819,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("pointer-check", cmdline.isset("pointer-check"));
   options.set_option("assertions", cmdline.isset("assertions"));
   options.set_option("save-queries", cmdline.isset("save-queries"));
+  options.set_option("no-slicing", cmdline.isset("no-slicing"));
+  
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.getval("unwind"));
   }

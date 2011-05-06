@@ -32,6 +32,7 @@ private:
   bool last;
 };
 
-void expr_pretty_print(std::ostream& out, const exprt& expr, unsigned _indent = 0);
+std::ostream& expr_pretty_print(std::ostream& out, const exprt& expr, 
+        unsigned _indent = 0);
 
 #endif

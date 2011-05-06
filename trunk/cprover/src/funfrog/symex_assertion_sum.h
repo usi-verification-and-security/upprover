@@ -22,7 +22,6 @@
 #include <base_type.h>
 #include <time_stopping.h>
 #include <fstream>
-#include <goto-symex/slice.h>
 
 #include <loopfrog/loopstore.h>
 

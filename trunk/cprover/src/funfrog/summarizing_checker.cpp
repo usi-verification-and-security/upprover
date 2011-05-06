@@ -238,8 +238,13 @@ bool summarizing_checkert::assertion_holds(
   if (result && interpolator->can_interpolate()) {
     // Extract the interpolation summaries here...
     interpolant_mapt itp_map;
+    
+    fine_timet before, after;
+    before=current_time();
     equation.extract_interpolants(*interpolator, *decider, itp_map);
-
+    after=current_time();
+    std::cout /* FIXME: out */ << "INTERPOLATION TIME: "<< time2string(after-before) << std::endl;
+    
     for (interpolant_mapt::iterator it = itp_map.begin();
             it != itp_map.end(); ++it) {
       irep_idt& function_id = it->first;
