@@ -267,7 +267,8 @@ bool summarizing_checkert::assertion_holds(
             it != itp_map.end(); ++it) {
       irep_idt& function_id = it->first;
       if (!it->second.is_trivial()) {
-        summarization_context.get_function_info(function_id).add_summary(it->second);
+        summarization_context.get_function_info(function_id).add_summary(it->second,
+                !options.get_bool_option("no-summary-optimization"));
       }
     }
 

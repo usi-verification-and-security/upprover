@@ -547,6 +547,8 @@ void funfrog_parseoptionst::help()
   "                               computation, more dependable result)\n"
   "--no-assert-grouping           do not group checks for the same assertion\n"
   "                               with different call stack\n"
+  "--no-summary-optimization      do not attempt to remove superfluous\n"
+  "                               summaries (saves few cheap SAT calls)\n"
   "--reduce-proof <fraction>      use up to <fraction> of SAT solving time\n"
   "                               to reduce proof --> smaller summaries\n"
   "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
@@ -830,6 +832,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
+  options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
   
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.getval("unwind"));

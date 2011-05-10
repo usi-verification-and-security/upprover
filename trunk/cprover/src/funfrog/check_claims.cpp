@@ -145,17 +145,12 @@ claim_statst check_claims(
   {
     // Next assertion (or next occurrence of the same assertion)
     ass_ptr = find_assertion(ass_ptr, goto_functions, stack);
-    if(claim_nr != 0) // If we care only about a specific assertion
+    while(ass_ptr != leaping_program.instructions.end() && 
+            (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
     {
-      while(ass_ptr != leaping_program.instructions.end() &&
-              claim_numbers[ass_ptr] != claim_nr) 
-      {
-        ass_ptr = find_assertion(ass_ptr,
-                                 goto_functions,
-                                 stack);
-      }
-      if (assert_grouping)
-        claim_numbers[ass_ptr] = 0;
+      ass_ptr = find_assertion(ass_ptr,
+                               goto_functions,
+                               stack);
     }
     if (ass_ptr == leaping_program.instructions.end()) 
       break;
@@ -164,10 +159,13 @@ claim_statst check_claims(
     {
       seen_claims++;
       std::cout << "\r    Checking Claim #" << claim_numbers[ass_ptr] << " (";
-      std::cout << (int)(100*seen_claims/(double)inlined_claims);
+      std::cout << (int)(100*seen_claims/(double)(assert_grouping ? claim_numbers.size() : inlined_claims));
       std::cout << "%) ...";
       std::cout.flush();
     }
+    
+    if (assert_grouping)
+      claim_numbers[ass_ptr] = 0;
 
     std::ofstream out;
 

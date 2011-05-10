@@ -10,9 +10,51 @@
 #include "function_info.h"
 #include "summarization_context.h"
 #include "expr_pretty_print.h"
+#include "solvers/satcheck_opensmt.h"
+#include "time_stopping.h"
 #include <fstream>
 
 //#define DEBUG_GLOBALS
+
+/*******************************************************************\
+
+Function: function_infot::add_summary
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Adds the given summary if it is not already included or implied.
+ The original parameter is cleared
+
+\*******************************************************************/
+
+void function_infot::add_summary(interpolantt& summary, bool filter) {
+  // Filter the new summary
+  if (filter && !summaries.empty()) {
+    // Is implied by any older summary?
+    for (interpolantst::const_iterator it = summaries.begin();
+            it != summaries.end();
+            ++it) {
+      if (check_implies(*it, summary))
+        return; // Implied by an already present summary --> skip it
+    }
+    
+    // Is implies any older summary?
+    unsigned used = 0;
+    for (unsigned i = 0; i < summaries.size(); ++i) {
+      if (check_implies(summary, summaries[i])) {
+        // Remove it --> no operation needed
+      } else if (used != i){
+        // Shift needed
+        summaries[used].swap(summaries[i]);
+      }
+    }
+    summaries.resize(used);
+  }
+  summaries.push_back(interpolantt());
+  summaries.back().swap(summary);
+}
 
 /*******************************************************************\
 
@@ -318,7 +360,6 @@ void function_infot::analyze_globals_rec(summarization_contextt& context,
 # endif
 }
 
-
 /*******************************************************************\
 
 Function: function_infot::add_objects_to_set
@@ -372,4 +413,143 @@ void function_infot::add_objects_to_set(const namespacet& ns,
   }
 }
 
+/*******************************************************************\
 
+Function: function_infot::check_implies
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Check (using a SAT call) that the first interpolant implies
+ the second one (i.e., the second one is superfluous).
+
+\*******************************************************************/
+
+bool function_infot::check_implies(const interpolantt& first, 
+        const interpolantt& second)
+{
+  satcheck_opensmtt prop_solver;
+  contextt ctx;
+  namespacet ns(ctx);
+
+  literalt first_root;
+  literalt second_root;
+  literalt root;
+  
+  first_root = first.raw_assert(prop_solver);
+  second_root = second.raw_assert(prop_solver);
+  
+  root = prop_solver.land(first_root, second_root.negation());
+  
+  prop_solver.l_set_to_true(root);
+
+  fine_timet before, after;
+  before = current_time();
+  
+  propt::resultt res = prop_solver.prop_solve();
+  
+  after = current_time();
+  std::cerr << "SOLVER TIME: "<< time2string(after-before) << std::endl;
+  
+  if (res == propt::P_UNSATISFIABLE) {
+    std::cerr << "UNSAT" << std::endl;
+    return true;
+  }
+  std::cerr << "SAT" << std::endl;
+  return false;
+}
+
+/*******************************************************************\
+
+Function: function_infot::optimize_summaries
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Finds out weather some of the given summaries are 
+ superfluous, if so the second list will not contain them.
+
+\*******************************************************************/
+
+bool function_infot::optimize_summaries(const interpolantst& itps_in, 
+        interpolantst& itps_out) 
+{
+  unsigned n = itps_in.size();
+  bool changed = false;
+  bool itps_map[n];
+  
+  // Clear the map first (i.e., no summary has been removed yet)
+  for (unsigned i = 0; i < n; ++i) {
+    itps_map[i] = true;
+  }
+
+  // Remove summaries which are implied by other ones
+  for (unsigned i = 0; i < n; ++i) {
+    // Skip already removed ones
+    if (!itps_map[i])
+      continue;
+    
+    for (unsigned j = 0; j < n; ++j) {
+      if (i == j || !itps_map[j])
+        continue;
+      
+      // Do the check
+      if (check_implies(itps_in[i], itps_in[j])) {
+        std::cerr << "Removing summary #" << j << 
+                " (implied by summary #" << i << ")" << std::endl;
+        itps_map[j] = false;
+        changed = true;
+      }
+    }
+  }
+  
+  if (!changed)
+    return false;
+  
+  // Prepare the new set
+  for (unsigned i = 0; i < n; ++i) {
+    if (itps_map[i])
+      itps_out.push_back(itps_in[i]);
+  }
+  return true;
+}
+
+/*******************************************************************\
+
+Function: function_infot::optimize_all_summaries
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Removes all superfluous summaries.
+
+\*******************************************************************/
+void function_infot::optimize_all_summaries(function_infost& f_infos) 
+{
+  interpolantst itps_new;
+  
+  for (function_infost::iterator it = f_infos.begin();
+          it != f_infos.end();
+          ++it) {
+    const interpolantst& itps = it->second.get_summaries();
+
+    std::cerr << "--- function \"" << it->first.c_str() << "\", #summaries: " << itps.size() << std::endl;
+
+    if (itps.size() <= 1) {
+      std::cerr << std::endl;
+      continue;
+    }
+
+    itps_new.reserve(itps.size());
+    if (optimize_summaries(itps, itps_new)) {
+      it->second.clear_summaries();
+      it->second.add_summaries(itps_new, false);
+      itps_new.clear();
+    }
+    
+    std::cerr << std::endl;
+  }
+}

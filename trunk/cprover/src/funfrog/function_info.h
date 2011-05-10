@@ -28,20 +28,16 @@ public:
 
   // Adds the given summary if it is not already included or implied.
   // The original parameter is cleared
-  void add_summary(interpolantt& summary) {
-    // FIXME: Filter the new summaries!
-    summaries.push_back(interpolantt());
-    summaries.back().swap(summary);
-  }
+  void add_summary(interpolantt& summary, bool filter);
 
   // Adds the given list of summaries. The original list is cleared
-  void add_summaries(interpolantst& new_summaries) {
+  void add_summaries(interpolantst& new_summaries, bool filter) {
     summaries.reserve(summaries.size() + new_summaries.size());
     
     for (interpolantst::iterator it = new_summaries.begin();
             it != new_summaries.end();
             ++it) {
-      add_summary(*it);
+      add_summary(*it, filter);
     }
     new_summaries.clear();
   }
@@ -79,6 +75,9 @@ public:
   const lex_sorted_idst& get_accessed_globals() const { return globals_accessed; }
   const lex_sorted_idst& get_modified_globals() const { return globals_modified; }
   
+  // Removes all superfluous summaries.
+  static void optimize_all_summaries(function_infost& f_infos);
+
 private:
   // Id of the function
   irep_idt function;
@@ -94,6 +93,17 @@ private:
 
   static void add_objects_to_set(const namespacet& ns,
         const expr_listt& exprs, lex_sorted_idst& set);
+  
+  // Check (using a SAT call) that the first interpolant implies
+  // the second one (i.e., the second one is superfluous).
+  static bool check_implies(const interpolantt& first, 
+        const interpolantt& second);
+  
+  // Finds out weather some of the given summaries are 
+  // superfluous, if so the second list will not contain them.
+  static bool optimize_summaries(const interpolantst& itps_in, 
+        interpolantst& itps_out);
+
 };
 
 
