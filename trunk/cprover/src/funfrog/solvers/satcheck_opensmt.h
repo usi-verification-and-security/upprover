@@ -21,7 +21,7 @@ Author: Ondrej Sery
 class satcheck_opensmtt:public cnf_solvert, public interpolating_solvert
 {
 public:
-  satcheck_opensmtt(bool _dump_queries = false);
+  satcheck_opensmtt(int verbosity = 0, bool _dump_queries = false);
   
   virtual ~satcheck_opensmtt() {
     delete opensmt_ctx;
@@ -52,7 +52,7 @@ public:
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
-    interpolantst& interpolants) const;
+    interpolantst& interpolants, double reduction_timeout) const;
 
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT

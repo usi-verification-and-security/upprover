@@ -54,7 +54,9 @@ public:
           equation(_target),
           decider(_decider),
           interpolator(_interpolator),
-          original_loop_head(original_head) {};
+          original_loop_head(original_head),
+          solving_time (0)
+          {};
 
   bool assertion_holds(
     const goto_programt &goto_program,
@@ -73,6 +75,8 @@ public:
     contextt &temp_context,
     symex_target_equationt &target,
     std::ostream &out) const;
+  
+  const fine_timet& get_solving_time() { return solving_time; }
 
 private:
 
@@ -128,6 +132,9 @@ private:
 
   // FIXME: Garbage?
   goto_programt::const_targett &original_loop_head;
+  
+  // SAT solving time
+  fine_timet solving_time;
 
   bool is_satisfiable(
     decision_proceduret &decision_procedure,

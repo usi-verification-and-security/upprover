@@ -545,6 +545,9 @@ void funfrog_parseoptionst::help()
   "                               loops\n"
   "--no-slicing                   no slicing of the SSA program form (slower\n"
   "                               computation, more dependable result)\n"
+  "--reduce-proof <fraction>      use up to <fraction> of SAT solving time\n"
+  "                               to reduce proof --> smaller summaries\n"
+  "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
   "\n";
 }
 
@@ -836,5 +839,11 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("load-summaries", cmdline.getval("load-summaries"));
   } else {
     options.set_option("load-summaries", "__summaries");
+  }
+  if (cmdline.isset("reduce-proof")) {
+    options.set_option("reduce-proof", cmdline.getval("reduce-proof"));
+  }
+  if (cmdline.isset("verbose-solver")) {
+    options.set_option("verbose-solver", cmdline.getval("verbose-solver"));
   }
 }

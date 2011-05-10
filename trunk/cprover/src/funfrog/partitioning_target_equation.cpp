@@ -486,7 +486,7 @@ Function: partitioning_target_equationt::extract_interpolants
 \*******************************************************************/
 void partitioning_target_equationt::extract_interpolants(
   interpolating_solvert& interpolator, const prop_convt& decider,
-  interpolant_mapt& interpolant_map)
+  interpolant_mapt& interpolant_map, double reduction_timeout)
 {
   // Prepare the interpolation task. NOTE: ignore the root partition!
   unsigned valid_tasks = 0;
@@ -506,7 +506,7 @@ void partitioning_target_equationt::extract_interpolants(
   // Interpolate...
   interpolantst itp_result;
   itp_result.reserve(valid_tasks);
-  interpolator.get_interpolant(itp_task, itp_result);
+  interpolator.get_interpolant(itp_task, itp_result, reduction_timeout);
 
   // Interpret the result
   std::vector<symbol_exprt> common_symbs;
@@ -514,7 +514,7 @@ void partitioning_target_equationt::extract_interpolants(
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
     if (partitions[pid].is_summary)
       continue;
-    // Store the intepolant
+    // Store the interpolant
     partitiont& partition = partitions[pid];
     interpolant_map.push_back(interpolant_mapt::value_type(
       partition.function_id, interpolantst::value_type()));

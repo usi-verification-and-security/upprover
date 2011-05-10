@@ -225,6 +225,7 @@ bool symex_assertion_sumt::is_satisfiable(
   if (out.good())
     out << "SOLVER TIME: "<< time2string(after-before) << std::endl;
 
+  solving_time += (after-before);
   global_satsolver_time += (after-before);
 
   // solve it

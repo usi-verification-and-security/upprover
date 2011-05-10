@@ -24,7 +24,7 @@ Author: Ondrej Sery
 
 static unsigned dump_count = 0;
 
-satcheck_opensmtt::satcheck_opensmtt(bool _dump_queries) :
+satcheck_opensmtt::satcheck_opensmtt(int verbosity, bool _dump_queries) :
   dump_queries (_dump_queries), partition_root_enode(NULL), partition_count(0),
   ready_to_interpolate(false)
 {
@@ -34,21 +34,15 @@ satcheck_opensmtt::satcheck_opensmtt(bool _dump_queries) :
   SMTConfig& config = opensmt_ctx->getConfig();
   config.setProduceModels();
   config.setProduceInter();
-  /*
-  config.sat_reduce_proof = 1;
-  config.sat_ratio_red_time_solv_time = .5;
-  config.sat_reorder_pivots = 1;
-   */
-  /*
-  config.proof_num_graph_traversals = 10;
-  config.proof_red_trans = 10;
-  */
+  
+  config.verbosity = verbosity;
+  config.print_proofs_dotty = 0;
   config.proof_red_trans = 1;
-  config.proof_ratio_red_solv = 0.5;
-  config.proof_reduce = 1;
-  config.proof_reorder_pivots = 1;
-  config.proof_reduce_while_reordering = 1;
-  config.proof_set_inter_algo = 1;
+  config.proof_red_time = 0; // <-- timeout
+  config.proof_reduce = 0;
+  config.proof_reorder_pivots = 0;
+  config.proof_reduce_while_reordering = 0;
+  config.proof_set_inter_algo = 0; // McMillan -- the strongest interpolant
 
   sbool = opensmt_ctx->mkSortBool();
 }
@@ -136,13 +130,19 @@ Function: satcheck_opensmtt::get_interpolant
 
 \*******************************************************************/
 void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids,
-    interpolantst& interpolants) const
+    interpolantst& interpolants, double reduction_timeout) const
 {
   assert(ready_to_interpolate);
   
   std::vector<Enode*> itp_enodes;
   itp_enodes.reserve(partition_ids.size());
 
+  // Setup proof reduction
+  if (reduction_timeout > 0) {
+  SMTConfig& config = opensmt_ctx->getConfig();
+    config.proof_red_time = reduction_timeout;
+    config.proof_reduce = 1;
+  }
   opensmt_ctx->GetInterpolants(partition_ids, itp_enodes);
 
   for (std::vector<Enode*>::iterator it = itp_enodes.begin();

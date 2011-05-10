@@ -207,6 +207,7 @@ bool summarizing_checkert::assertion_holds(
   std::auto_ptr<interpolating_solvert> interpolator;
   {
     satcheck_opensmtt* opensmt = new satcheck_opensmtt(
+            options.get_int_option("verbose-solver"),
             options.get_bool_option("save-queries"));
     bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
     deciderp->unbounded_array = bv_pointerst::U_AUTO;
@@ -237,12 +238,28 @@ bool summarizing_checkert::assertion_holds(
           !options.get_bool_option("no-slicing"));
 
   if (result && interpolator->can_interpolate()) {
+    // Compute the reduction time
+    double red_timeout = 0;
+    const char* red_timeout_str = options.get_option("reduce-proof").c_str();
+    
+    if (strlen(red_timeout_str)) {
+      char* result;
+      red_timeout = strtod(red_timeout_str, &result);
+      
+      if (result == red_timeout_str) {
+        std::cerr << "WARNING: Invalid value of reduction time fraction \"" <<
+                red_timeout_str << "\". No reduction will be applied." << std::endl;
+      } else {
+        red_timeout = ((double)symex.get_solving_time()) / 1000 * red_timeout;
+      }
+    }
+    
     // Extract the interpolation summaries here...
     interpolant_mapt itp_map;
     
     fine_timet before, after;
     before=current_time();
-    equation.extract_interpolants(*interpolator, *decider, itp_map);
+    equation.extract_interpolants(*interpolator, *decider, itp_map, red_timeout);
     after=current_time();
     std::cout /* FIXME: out */ << "INTERPOLATION TIME: "<< time2string(after-before) << std::endl;
     
