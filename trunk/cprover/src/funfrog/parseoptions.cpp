@@ -545,6 +545,8 @@ void funfrog_parseoptionst::help()
   "                               loops\n"
   "--no-slicing                   no slicing of the SSA program form (slower\n"
   "                               computation, more dependable result)\n"
+  "--no-assert-grouping           do not group checks for the same assertion\n"
+  "                               with different call stack\n"
   "--reduce-proof <fraction>      use up to <fraction> of SAT solving time\n"
   "                               to reduce proof --> smaller summaries\n"
   "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
@@ -733,17 +735,18 @@ bool funfrog_parseoptionst::check_loop_summarization(
     }
     f.close();
   }
+  */
   
-  get_claims(leaping_functions, precise_loops, claim_map, claim_numbers);
+  get_claims(goto_functions, claim_map, claim_numbers);
   
   if(cmdline.isset("show-claims"))
   {
     show_claims(ns, claim_map, claim_numbers);    
     return true;
   }
-  */
+  
   // Stage 10: Finally checking some claims.
-  status("#11: Checking claims in leaping program...");
+  status("#10: Checking claims in program...");
   
   unsigned claim_nr=0;
   
@@ -754,8 +757,11 @@ bool funfrog_parseoptionst::check_loop_summarization(
                                claim_numbers);
     if(claim_nr==(unsigned) -1)
     {
-      error("Testclaim not found.");
-      return 1;
+      claim_nr = atoi(cmdline.getval("testclaim"));
+      if (claim_nr == 0 || claim_nr > claim_numbers.size()) {
+        error("Testclaim not found.");
+        return 1;
+      }
     }
   }
   else if(cmdline.isset("claim"))
@@ -823,6 +829,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("assertions", cmdline.isset("assertions"));
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
+  options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.getval("unwind"));

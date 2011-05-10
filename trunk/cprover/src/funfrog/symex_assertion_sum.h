@@ -55,7 +55,8 @@ public:
           decider(_decider),
           interpolator(_interpolator),
           original_loop_head(original_head),
-          solving_time (0)
+          solving_time (0),
+          current_assertion(NULL)
           {};
 
   bool assertion_holds(
@@ -70,12 +71,6 @@ public:
     const goto_functionst &goto_functions,
     statet &state);
 
-  void slice_equation(
-    const contextt &context,
-    contextt &temp_context,
-    symex_target_equationt &target,
-    std::ostream &out) const;
-  
   const fine_timet& get_solving_time() { return solving_time; }
 
 private:
@@ -88,7 +83,9 @@ private:
             callstart_symbol(typet(ID_bool)),
             callend_symbol(typet(ID_bool)),
             returns_value(false),
-            partition_id(partitioning_target_equationt::NO_PARTITION) {
+            partition_id(partitioning_target_equationt::NO_PARTITION),
+            assert_stack_match(false)
+            {
     }
 
     const summary_infot& summary_info;
@@ -102,6 +99,8 @@ private:
     symbol_exprt callend_symbol;
     bool returns_value;
     partition_idt partition_id;
+    call_stackt::const_iterator assert_stack_it;
+    bool assert_stack_match;
   };
 
   // Shared information about the program and summaries to be used during
@@ -135,6 +134,9 @@ private:
   
   // SAT solving time
   fine_timet solving_time;
+  
+  // Current assertion
+  const assertion_infot* current_assertion;
 
   bool is_satisfiable(
     decision_proceduret &decision_procedure,
@@ -143,18 +145,7 @@ private:
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
   void defer_function(const deferred_functiont &deferred_function, 
-    irep_idt function_id)
-  {
-    deferred_functions.push(deferred_function);
-    deferred_functions.back().partition_id = equation.reserve_partition(
-            deferred_function.callstart_symbol,
-            deferred_function.callend_symbol,
-            deferred_function.argument_symbols,
-            deferred_function.out_arg_symbols,
-            deferred_function.retval_symbol,
-            deferred_function.returns_value,
-            function_id);
-  }
+    irep_idt function_id);
 
   // Are there any more instructions in the current function or at least
   // a deferred function to dequeue?

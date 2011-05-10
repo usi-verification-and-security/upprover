@@ -49,6 +49,7 @@ bool symex_assertion_sumt::assertion_holds(
   bool use_slicing)
 {
   stream_message_handlert message_handler(out);
+  current_assertion = &assertion;
 
   // these are quick...
   if(assertion.get_location()->guard.is_true())
@@ -114,9 +115,9 @@ bool symex_assertion_sumt::assertion_holds(
   {
     if (use_slicing) {
       before=current_time();
-      std::cout << "All SSA steps: " << equation.SSA_steps.size() << std::endl;
+      out << "All SSA steps: " << equation.SSA_steps.size() << std::endl;
       partitioning_slice(equation);
-      std::cout << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << std::endl;
+      out << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << std::endl;
       after=current_time();
       if (out.good())
         out << "SLICER TIME: "<< time2string(after-before) << std::endl;
@@ -337,13 +338,19 @@ void symex_assertion_sumt::symex_step(
       if(options.get_bool_option("assertions") ||
          !state.source.pc->location.get_bool("user-provided"))
       {
-        std::string msg=id2string(state.source.pc->location.get_comment());
-        if(msg=="") msg="assertion";
-        exprt tmp(instruction.guard);
+        // Is it the current assertion?
+        if (current_assertion->get_location() == state.source.pc && (
+                !options.get_bool_option("no-assert-grouping") ||
+                get_current_deferred_function().assert_stack_match)) {
+                  
+          std::string msg=id2string(state.source.pc->location.get_comment());
+          if(msg=="") msg="assertion";
+          exprt tmp(instruction.guard);
 
-        clean_expr(tmp, state, false);
+          clean_expr(tmp, state, false);
 
-        claim(tmp, msg, state);
+          claim(tmp, msg, state);
+        }
       }
 
     state.source.pc++;
@@ -427,33 +434,60 @@ void symex_assertion_sumt::symex_step(
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::slice_equation
+ Function: symex_assertion_sumt::defer_function
 
  Inputs:
 
  Outputs:
 
- Purpose:
+ Purpose: Add function to the wait queue to be processed by symex later and to
+ create a separate partition for interpolation.
 
 \*******************************************************************/
-
-void symex_assertion_sumt::slice_equation(
-  const contextt &context,
-  contextt &temp_context,
-  symex_target_equationt &target,
-  std::ostream &out) const
+void symex_assertion_sumt::defer_function(
+        const deferred_functiont &deferred_function,
+        irep_idt function_id) 
 {
-  fine_timet before, after;
+  bool first = deferred_functions.size() == 0;
 
-  namespacet ns(context, temp_context);
+  deferred_functions.push(deferred_function);
+  deferred_functiont& fresh = deferred_functions.back();
+  fresh.partition_id = equation.reserve_partition(
+          deferred_function.callstart_symbol,
+          deferred_function.callend_symbol,
+          deferred_function.argument_symbols,
+          deferred_function.out_arg_symbols,
+          deferred_function.retval_symbol,
+          deferred_function.returns_value,
+          function_id);
 
-  before=current_time();
-  goto_symext goto_symex(ns, temp_context, target);
-  slice(target);
-  after=current_time();
+  // Keep track of the stack match
+  const deferred_functiont& parent = get_current_deferred_function();
+  const call_stackt& stack = current_assertion->get_target_stack();
 
-  if (out.good())
-    out << "SLICER TIME: "<< time2string(after-before) << std::endl;
+  if (first) {
+    fresh.assert_stack_it = stack.begin();
+    fresh.assert_stack_match = stack.size() == 1;
+    return;
+  }
+
+  if (parent.assert_stack_it != stack.end()) 
+  {
+    const symbol_exprt& func_symb = to_symbol_expr(to_code_function_call(
+            (*parent.assert_stack_it)->code).function());
+    
+    if (func_symb.get_identifier() == function_id) 
+    {
+      fresh.assert_stack_it = parent.assert_stack_it;
+      fresh.assert_stack_it++;
+
+      if (fresh.assert_stack_it == stack.end())
+        fresh.assert_stack_match = true;
+    
+      return;
+    }
+  }
+  fresh.assert_stack_it = stack.end();
 }
 
 /*******************************************************************

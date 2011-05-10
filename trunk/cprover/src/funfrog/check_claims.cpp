@@ -127,34 +127,39 @@ claim_statst check_claims(
   unsigned inlined_claims = count_inlined_claims(leaping_program,
                                                  goto_functions);
   unsigned seen_claims = 0;
+  bool assert_grouping = !options.get_bool_option("no-assert-grouping");
   
   res.total_claims = claim_map.size();
   
   std::string fname;
-
   call_stackt stack;
-  goto_programt::const_targett ass_ptr=
-    find_assertion(leaping_program.instructions.begin(),
-                     goto_functions,
-                     stack);
+  goto_programt::const_targett ass_ptr = leaping_program.instructions.begin();
   
-  if(claim_nr!=0)
-  {
-    while(claim_numbers[ass_ptr]!=claim_nr && 
-          ass_ptr!=leaping_program.instructions.end())
-      ass_ptr=find_assertion(ass_ptr,
-                             goto_functions,
-                             stack);
-  }
-
   // NOTE: Not reimplemented yet
   // show_inlined_claimst show_inlined_claims(goto_functions,
   //                                          imprecise_loops,
   //                                          precise_loops,
   //                                          ns);
 
-  while(ass_ptr!=leaping_program.instructions.end())
+  while(true)
   {
+    // Next assertion (or next occurrence of the same assertion)
+    ass_ptr = find_assertion(ass_ptr, goto_functions, stack);
+    if(claim_nr != 0) // If we care only about a specific assertion
+    {
+      while(ass_ptr != leaping_program.instructions.end() &&
+              claim_numbers[ass_ptr] != claim_nr) 
+      {
+        ass_ptr = find_assertion(ass_ptr,
+                                 goto_functions,
+                                 stack);
+      }
+      if (assert_grouping)
+        claim_numbers[ass_ptr] = 0;
+    }
+    if (ass_ptr == leaping_program.instructions.end()) 
+      break;
+    
     if(show_progress)
     {
       seen_claims++;
@@ -221,13 +226,6 @@ claim_statst check_claims(
 
     if(save_files)
       out.close();
-
-    if(claim_nr!=0) break; // bail out
-
-    // get the next assertion     
-    ass_ptr = find_assertion(ass_ptr,
-                             goto_functions,
-                             stack);
   }
   
   if(show_progress)
@@ -279,22 +277,6 @@ void get_claims(
         }
       }
   }
-  
-  /*
-  for(loopstoret::const_iterator lit=precise_loops.begin();
-      lit!=precise_loops.end();
-      lit++)
-  {
-    forall_goto_program_instructions(it, lit->second)
-    {
-      if(it->type==ASSERT)
-      {
-        claim_map[it] = std::make_pair(false, true);
-        claim_numbers[it] = claim_map.size();
-      }
-    }
-  }
-  */
 }
 
 /*******************************************************************\
