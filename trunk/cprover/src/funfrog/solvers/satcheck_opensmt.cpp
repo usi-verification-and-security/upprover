@@ -30,6 +30,7 @@ satcheck_opensmtt::satcheck_opensmtt(int verbosity, bool _dump_queries) :
 {
   opensmt_ctx = new OpenSMTContext();
   opensmt_ctx->SetLogic("QF_BOOL");
+  //opensmt_ctx->SetOption(":verbosity", "1"); //GF:
 
   SMTConfig& config = opensmt_ctx->getConfig();
   config.setProduceModels();
@@ -150,9 +151,9 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
     Enode* node = (*it);
 
 #   if 0
-    std::cout << "OpenSMT interpolant: ";
-    node->print(std::cout);
-    std::cout << std::endl;
+    //std::cout << "OpenSMT interpolant: ";
+    //node->print(std::cout);
+    //std::cout << std::endl;
 #   endif
 
     prop_itpt itp;
@@ -288,6 +289,7 @@ void satcheck_opensmtt::lcnf(const bvt &bv)
   {
     tmp = opensmt_ctx->mkFalse();
     partition_root_enode = opensmt_ctx->mkCons(tmp, partition_root_enode);
+//	  std::cout << partition_root_enode << "\n\n"; // GF
     return;
   }
 
@@ -295,6 +297,7 @@ void satcheck_opensmtt::lcnf(const bvt &bv)
   tmp = convert(new_bv);
   tmp = opensmt_ctx->mkOr(tmp);
   partition_root_enode = opensmt_ctx->mkCons(tmp, partition_root_enode);
+//	std::cout << partition_root_enode << "\n\n"; // GF
 
   clause_counter++;
 }
@@ -329,7 +332,6 @@ propt::resultt satcheck_opensmtt::prop_solve() {
   if (partition_root_enode != NULL) {
     close_partition();
   }
-
   // Dump the SAT query and configuration
   if (dump_queries)
   {
@@ -351,7 +353,6 @@ propt::resultt satcheck_opensmtt::prop_solve() {
 
   opensmt_ctx->addCheckSAT();
   opensmt_ctx->executeCommands();
-
   if (opensmt_ctx->getStatus() == l_True) {
     msg = "SAT checker: negated claim is SATISFIABLE, i.e., does not hold";
     messaget::status(msg);
@@ -445,6 +446,8 @@ void satcheck_opensmtt::increase_id()
   } else {
     id_str.append("A");
   }
+
+  //std::cout << id_str << std::endl;
 }
 
 /*******************************************************************\
@@ -487,6 +490,7 @@ Function: satcheck_opensmtt::close_partition
 void satcheck_opensmtt::close_partition()
 {
   partition_root_enode = opensmt_ctx->mkAnd(partition_root_enode);
+	//std::cout << partition_root_enode << "\n\n"; // GF
   opensmt_ctx->Assert(partition_root_enode);
   partition_root_enode = NULL;
 }

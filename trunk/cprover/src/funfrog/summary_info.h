@@ -32,8 +32,8 @@ public:
   void clear() { call_sites.clear(); }
 
   void initialize(const summarization_contextt &summarization_context,
-      const goto_programt &code,
-      const assertion_infot &assertion, size_t stack_depth = 0);
+      const goto_programt &code, const assertion_infot &assertion,
+      unsigned int& summaries_inlined, size_t stack_depth = 0, bool force_inlining = 0);
 
   void set_function_id(const irep_idt& _function_id) { function_id = _function_id; }
 
@@ -70,7 +70,7 @@ private:
     { summary_info.set_function_id(target_function);}
   void set_inline(const summarization_contextt &summarization_context,
     const irep_idt &target_function, const assertion_infot &assertion,
-    size_t stack_depth);
+    unsigned int& summaries_inlined, size_t stack_depth, bool force_inlining);
 
   friend class summary_infot;
 };
