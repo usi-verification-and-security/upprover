@@ -54,7 +54,7 @@ bool symex_assertion_sumt::assertion_holds(
   // these are quick...
   if(assertion.get_location()->guard.is_true())
   {
-    out << std::endl << "TRUE THAT" << std::endl;
+    out << std::endl << "ASSERTION IS TRUE" << std::endl;
     return true;
   }
 

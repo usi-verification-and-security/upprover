@@ -42,7 +42,7 @@ SUMO_OBJ := \
       $(SHARED_OBJ) \
       $(SUMO_SRC:.cpp=.o)
 
-all: funfrog sumo
+all: funfrog
 
 include ../config.inc
 include ../common
