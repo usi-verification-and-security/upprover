@@ -45,9 +45,12 @@ void function_infot::add_summary(interpolantt& summary, bool filter) {
     for (unsigned i = 0; i < summaries.size(); ++i) {
       if (check_implies(summary, summaries[i])) {
         // Remove it --> no operation needed
-      } else if (used != i){
-        // Shift needed
-        summaries[used].swap(summaries[i]);
+      } else {
+        if (used != i) {
+          // Shift needed
+          summaries[used].swap(summaries[i]);
+        }
+        used++;
       }
     }
     summaries.resize(used);
