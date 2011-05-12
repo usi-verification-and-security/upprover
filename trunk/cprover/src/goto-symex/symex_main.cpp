@@ -52,11 +52,14 @@ void goto_symext::claim(
 
   exprt expr=claim_expr;
   state.rename(expr, ns);
-  
+
   // first try simplifier on it
   do_simplify(expr);
 
-  if(expr.is_true()) return;
+  if(expr.is_true()) {
+    std::cout << "Claim is trivially true - ignoring." << std::endl;
+    return;
+  }
     
   state.guard.guard_expr(expr);
   

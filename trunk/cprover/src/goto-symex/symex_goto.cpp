@@ -108,8 +108,10 @@ void goto_symext::symex_goto(statet &state)
   statet::goto_state_listt &goto_state_list=
     state.top().goto_state_map[new_state_pc];
 
-  goto_state_list.push_back(statet::goto_statet(state));
+  goto_state_list.push_back(statet::goto_statet());
   statet::goto_statet &new_state=goto_state_list.back();
+  statet::goto_statet tmp_state(state);
+  new_state.swap(tmp_state);
   
   // adjust guards
   if(new_guard.is_true())

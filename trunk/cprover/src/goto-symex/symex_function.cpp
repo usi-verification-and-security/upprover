@@ -453,7 +453,9 @@ void goto_symext::symex_return(statet &state)
   statet::goto_state_listt &goto_state_list=
     state.top().goto_state_map[state.top().end_of_function];
 
-  goto_state_list.push_back(statet::goto_statet(state));
+  goto_state_list.push_back(statet::goto_statet());
+  statet::goto_statet tmp_state(state);
+  goto_state_list.back().swap(tmp_state);
 
   // kill this one
   state.guard.make_false();

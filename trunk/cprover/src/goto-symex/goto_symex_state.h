@@ -118,6 +118,12 @@ public:
     typedef std::map<irep_idt, valuet> current_namest;
     current_namest current_names;
     
+    void swap(level2t& other)
+    {
+      original_identifiers.swap(other.original_identifiers);
+      current_names.swap(other.current_names);
+    }
+    
     void rename(const irep_idt &identifier, unsigned count)
     {
       valuet &entry=current_names[identifier];
@@ -190,6 +196,15 @@ public:
       value_set(s.value_set),
       guard(s.guard)
     {
+    }
+    
+    explicit goto_statet() {}
+    
+    void swap(goto_statet& other) {
+      std::swap(depth, other.depth);
+      level2.swap(other.level2),
+      value_set.swap(other.value_set),
+      guard.swap(other.guard);
     }
   };
 

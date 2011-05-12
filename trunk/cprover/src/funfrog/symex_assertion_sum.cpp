@@ -296,6 +296,37 @@ void symex_assertion_sumt::symex_step(
 
     store_return_value(state, get_current_deferred_function());
     store_modified_globals(state, get_current_deferred_function());
+    
+    /* FIXME: This l2 cache is probably broken
+    if (current_summary_info->get_function_id() != ID_nil)
+    { 
+      // Clear locals from l2 cache
+      std::set<irep_idt> local_identifiers;
+      
+      get_local_identifiers(
+              summarization_context.get_function(current_summary_info->get_function_id()),
+              local_identifiers);
+      
+      // unsigned &frame_nr = function_frame[current_summary_info->get_function_id()];
+      
+      for (std::set<irep_idt>::const_iterator
+        it = local_identifiers.begin();
+              it != local_identifiers.end();
+              ++it) {
+        
+        // state.top().level1.rename(*it, frame_nr);
+        irep_idt l1_name = state.top().level1(*it);
+       
+        // std::cerr << "Removing local:" << l1_name << " (" << *it << "): " <<
+        //        (state.level2.current_names.find(l1_name) !=
+        //        state.level2.current_names.end()) << std::endl;
+
+        state.level2.remove(l1_name);
+      }
+      
+      // std::cerr << "Level2 size: " << state.level2.current_names.size() << std::endl;
+    } */
+
     dequeue_deferred_function(state);
     break;
   

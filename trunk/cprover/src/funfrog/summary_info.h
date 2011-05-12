@@ -27,7 +27,7 @@ class call_summaryt;
 class summary_infot {
 public:
 
-  summary_infot() {}
+  summary_infot() : function_id(ID_nil) {}
 
   void clear() { call_sites.clear(); }
 
