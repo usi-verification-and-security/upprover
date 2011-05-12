@@ -1203,6 +1203,81 @@ void symex_assertion_sumt::phi_function(
   const statet::goto_statet &goto_state,
   statet &dest_state)
 {
+  // FIXME: The variables get cumulated in level2 cache,
+  // we need to get rid of the old ones...
+  
+  // go over all variables to see what changed
+  for(goto_symex_statet::level2t::current_namest::const_iterator
+      it = goto_state.level2.current_names.begin();
+      it != goto_state.level2.current_names.end();
+      ++it)
+  {
+    goto_symex_statet::level2t::current_namest::const_iterator d_it =
+            dest_state.level2.current_names.find(it->first);
+            
+    if(d_it == dest_state.level2.current_names.end()) {
+      // Only present in the new state. No assignment needed, just reuse the 
+      // count
+      dest_state.level2.current_names[it->first] = it->second;
+      continue;
+    }
+    
+    if (it->second.count == d_it->second.count)
+      continue; // not at all changed
+
+    irep_idt original_identifier = dest_state.get_original_name(it->first);
+
+    if (is_dead_identifier(original_identifier))
+      continue;
+
+    // changed!
+    const symbolt &symbol=ns.lookup(original_identifier);
+
+    typet type(symbol.type);
+
+    // type may need renaming
+    dest_state.rename(type, ns);
+
+    exprt rhs;
+
+    if(dest_state.guard.is_false())
+    {
+      rhs=symbol_exprt(dest_state.current_name(goto_state, symbol.name), type);
+    }
+    else if(goto_state.guard.is_false())
+    {
+      rhs=symbol_exprt(dest_state.current_name(symbol.name), type);
+    }
+    else
+    {
+      guardt tmp_guard(goto_state.guard);
+
+      // this gets the diff between the guards
+      tmp_guard-=dest_state.guard;
+
+      rhs=if_exprt();
+      rhs.type()=type;
+      rhs.op0()=tmp_guard.as_expr();
+      rhs.op1()=symbol_exprt(dest_state.current_name(goto_state, symbol.name), type);
+      rhs.op2()=symbol_exprt(dest_state.current_name(symbol.name), type);
+    }
+
+    exprt lhs(symbol_expr(symbol));
+    exprt new_lhs(lhs);
+
+    dest_state.assignment(new_lhs, rhs, ns, false);
+
+    guardt true_guard;
+
+    target.assignment(
+      true_guard,
+      new_lhs, lhs,
+      rhs,
+      dest_state.source,
+      symex_targett::HIDDEN);
+  }
+  
+  /*
   // go over all variables to see what changed
   std::set<irep_idt> variables;
 
@@ -1212,7 +1287,7 @@ void symex_assertion_sumt::phi_function(
   for(std::set<irep_idt>::const_iterator
       it=variables.begin();
       it!=variables.end();
-      it++)
+      ++it)
   {
     irep_idt original_identifier = dest_state.get_original_name(*it);
 
@@ -1269,4 +1344,5 @@ void symex_assertion_sumt::phi_function(
       dest_state.source,
       symex_targett::HIDDEN);
   }
+  */
 }
