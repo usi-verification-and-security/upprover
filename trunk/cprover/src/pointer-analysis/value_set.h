@@ -59,6 +59,12 @@ public:
   
   typedef reference_counting<object_map_dt> object_mapt;
   
+  void swap(value_sett& other) 
+  {
+    std::swap(location_number, other.location_number);
+    values.swap(other.values);
+  }
+  
   void set(object_mapt &dest, object_map_dt::const_iterator it) const
   {
     dest.write()[it->first]=it->second;
