@@ -54,6 +54,10 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   interpolating_solvert &interpolator, partitiont& partition)
 {
   if (partition.ignore || partition.processed) {
+    if (partition.ignore)
+      std::cout << "  partition sliced out." << std::endl;
+    else
+      std::cout << "  partition already processed." << std::endl;
     return;
   }
   
@@ -102,13 +106,17 @@ void partitioning_target_equationt::convert_partition_summary(
   std::vector<symbol_exprt> common_symbs;
   fill_common_symbols(partition, common_symbs);
 
-  for (interpolantst::const_iterator it = partition.summaries->begin();
-          it != partition.summaries->end();
+#   ifdef DEBUG_SSA      
+    std::cout << "Candidate summaries: " << partition.summaries->size() << std::endl;
+#   endif
+  for (hash_set_cont<unsigned>::const_iterator it = 
+          partition.applicable_summaries.begin();
+          it != partition.applicable_summaries.end();
           ++it) {
 #   ifdef DEBUG_SSA      
-    std::cout << "Substituting interpolant" << std::endl;
+    std::cout << "Substituting summary #" << *it << std::endl;
 #   endif
-    it->substitute(prop_conv, common_symbs);
+    partition.summaries->at(*it).substitute(prop_conv, common_symbs);
   }
 }
 

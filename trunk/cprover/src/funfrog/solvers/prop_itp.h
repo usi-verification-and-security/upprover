@@ -54,7 +54,7 @@ public:
 
   literalt raw_assert(propt& decider) const;
   
-  const std::vector<bool> get_symbol_mask() const { return symbol_mask; }
+  const std::vector<bool>& get_symbol_mask() const { return symbol_mask; }
 
   // Serialization
   void serialize(std::ostream& out) const;

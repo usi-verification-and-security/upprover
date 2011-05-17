@@ -152,6 +152,7 @@ private:
     bool ignore;
     bool processed;
     const interpolantst* summaries;
+    hash_set_cont<unsigned> applicable_summaries;
     literalt callstart_literal;
     literalt callend_literal;
     fle_part_idt fle_part_id;

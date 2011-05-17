@@ -21,7 +21,7 @@ public:
 protected:
   typedef hash_map_cont<irep_idt, symex_target_equationt::SSA_stept*,
     irep_id_hash> def_mapt;
-  typedef hash_map_cont<irep_idt, partitioning_target_equationt::partitiont*,
+  typedef hash_map_cont<irep_idt, std::pair<partitioning_target_equationt::partitiont*, unsigned>,
     irep_id_hash> partition_mapt;
   typedef std::multimap<irep_idt, symex_target_equationt::SSA_stept*> assume_mapt;
 
@@ -40,8 +40,6 @@ protected:
   
   void get_symbols(const typet &type, symbol_sett& symbols);
   void get_symbols(const exprt &expr, symbol_sett& symbols);
-
-  void slice(symex_target_equationt::SSA_stept &SSA_step);
 };
 
 // Slice an equation with respect to the assertions contained therein

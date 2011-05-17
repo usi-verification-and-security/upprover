@@ -78,6 +78,14 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation)
     if (it->is_assignment() || it->is_assume())
       it->ignore = true;
   }
+  for (partitioning_target_equationt::partitionst::iterator it = 
+          equation.partitions.begin();
+          it != equation.partitions.end();
+          ++it)
+  {
+    if (it->is_summary)
+      it->ignore = true;
+  }
 
   // Prepare necessary maps
   prepare_maps(equation);
@@ -117,60 +125,36 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation)
     // Is constrained by a summary?
     partition_mapt::iterator sum_it = summary_map.find(id);
     if (sum_it != summary_map.end()) {
-      for (std::vector<symbol_exprt>::iterator it = 
-              sum_it->second->argument_symbols.begin();
-              it != sum_it->second->argument_symbols.end();
-              ++it) {
-        get_symbols(*it, depends);
-        // TODO: Mark the summary as not ignored
+      partitioning_target_equationt::partitiont& partition =
+              *(sum_it->second.first);
+      const interpolantst& itps = *partition.summaries;
+      unsigned symbol_idx = sum_it->second.second;
+
+      // Any of the summaries can match, we need to go through all of them
+      // (this may be optimized by precomputation)
+      for (unsigned i = 0; i < itps.size(); ++i) {
+        // Already used summary
+        if (partition.applicable_summaries.find(i) != partition.applicable_summaries.end())
+          continue;
+        
+        // Does not restrict the given symbol
+        if (!itps[i].get_symbol_mask()[symbol_idx])
+          continue;
+        
+        // Yes it is relevant, add only symbols constrained by the summary
+        unsigned idx = 0;
+        partition.applicable_summaries.insert(i);
+        for (std::vector<symbol_exprt>::iterator it = 
+                partition.argument_symbols.begin();
+                it != partition.argument_symbols.end();
+                ++it, ++idx) {
+          if (itps[i].get_symbol_mask()[idx])
+            get_symbols(*it, depends);
+        }
       }
+      partition.ignore = false;
     }
   }
-}
-
-/*******************************************************************\
-
-Function: partitioning_slicet::slice
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void partitioning_slicet::slice(symex_target_equationt::SSA_stept &SSA_step)
-{
-  throw "Not implemented yet";
-  /*
-  get_symbols(SSA_step.guard_expr);
-
-  switch(SSA_step.type)
-  {
-  case goto_trace_stept::ASSERT:
-    get_symbols(SSA_step.cond_expr);
-    break;
-
-  case goto_trace_stept::ASSUME:
-    get_symbols(SSA_step.cond_expr);
-    break;
-
-  case goto_trace_stept::LOCATION:
-    // ignore
-    break;
-
-  case goto_trace_stept::ASSIGNMENT:
-    slice_assignment(SSA_step);
-    break;
-
-  case goto_trace_stept::OUTPUT:
-    break;
-
-  default:
-    assert(false);  
-  }
-  */
 }
 
 /*******************************************************************\
@@ -325,14 +309,19 @@ void partitioning_slicet::prepare_partition(
   if (partition.is_summary) {
     if (partition.returns_value) {
       summary_map.insert(partition_mapt::value_type(
-              partition.retval_symbol.get_identifier(), &partition));
+              partition.retval_symbol.get_identifier(), 
+              partition_mapt::value_type::second_type(&partition,
+              partition.argument_symbols.size() + 
+              partition.out_arg_symbols.size() + 2)));
     }
+    unsigned symbol_idx = partition.argument_symbols.size();
     for (std::vector<symbol_exprt>::iterator it2 =
             partition.out_arg_symbols.begin();
             it2 != partition.out_arg_symbols.end();
-            ++it2) {
+            ++it2, ++symbol_idx) {
       summary_map.insert(partition_mapt::value_type(
-              it2->get_identifier(), &partition));
+              it2->get_identifier(), 
+              partition_mapt::value_type::second_type(&partition, symbol_idx)));
     }
   }
   // All call start symbols to dependencies (we need all their assumptions 
