@@ -123,8 +123,8 @@ private:
   class partitiont {
   public:
     partitiont(partition_idt _parent_id) : 
-            filled(false), is_summary(false), summaries(NULL),
-            parent_id(_parent_id) {}
+            filled(false), is_summary(false), ignore(false), processed(false), 
+            summaries(NULL), parent_id(_parent_id) {}
 
     void add_child_partition(partition_idt child_id, unsigned callsite) {
       child_ids.push_back(child_id);
@@ -149,6 +149,8 @@ private:
     symbol_exprt retval_symbol;
     bool returns_value;
     bool is_summary;
+    bool ignore;
+    bool processed;
     const interpolantst* summaries;
     literalt callstart_literal;
     literalt callend_literal;

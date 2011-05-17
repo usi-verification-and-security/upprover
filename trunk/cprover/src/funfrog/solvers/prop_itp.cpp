@@ -6,6 +6,7 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 #include <limits.h>
+#include <string.h>
 #include "prop_itp.h"
 
 //#define DEBUG_ITP
@@ -169,6 +170,7 @@ Function: prop_itpt::generalize
 void prop_itpt::generalize(const prop_convt& decider,
     const std::vector<symbol_exprt>& symbols)
 {
+  symbol_mask.clear();
   if (is_trivial()) {
     return;
   }
@@ -223,21 +225,24 @@ void prop_itpt::generalize(const prop_convt& decider,
   }
   assert (min_var < UINT_MAX && max_var > 0);
   
-  unsigned renaming[max_var - min_var + 1];
 # ifdef DEBUG_ITP
   std::cout << " = " << min_var << " - " << max_var << std::endl;
 # endif
+  unsigned renaming[max_var - min_var + 1];
+  unsigned represented_symbol[max_var - min_var + 1];
 
 # ifndef NDEBUG
-  for (unsigned i = 0; i < max_var - min_var + 1; ++i)
-    renaming[i] = UINT_MAX;
+  // This is not exactly clean, but it should do for debugging purposes
+  memset(renaming, UCHAR_MAX, sizeof(renaming));
+  memset(represented_symbol, UCHAR_MAX, sizeof(represented_symbol));
 # endif
-
+  
   // Fill the renaming table
   unsigned cannon_var_no = 1;
+  unsigned current_symbol = 0;
   for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
           it != symbols.end();
-          ++it) {
+          ++it, ++current_symbol) {
     boolbv_mapt::mappingt::const_iterator pos = mapping.find(
             it->get_identifier());
     if (pos == mapping.end()) {
@@ -253,9 +258,10 @@ void prop_itpt::generalize(const prop_convt& decider,
           // if there is duplication among output variables (due to unification
           // in symex), we just need to explicitly assert the unification by
           // adding new clauses.
-          assert (renaming[l.var_no() - min_var] == UINT_MAX);
-
-          renaming[l.var_no() - min_var] = cannon_var_no++;
+          unsigned idx = l.var_no() - min_var;
+          assert (renaming[idx] == UINT_MAX);
+          renaming[idx] = cannon_var_no++;
+          represented_symbol[idx] = current_symbol;
 
 #         ifdef DEBUG_ITP
           std::cout << l.var_no() << " ";
@@ -277,12 +283,13 @@ void prop_itpt::generalize(const prop_convt& decider,
       }
 
       // NOTE: We assume that the variables are unsigned and there are
-      // no duplicates. This migh not hold if some optimizations are added
+      // no duplicates. This might not hold if some optimizations are added
       // to the flattening process
+      unsigned idx = it2->l.var_no() - min_var;
       assert (!it2->l.sign());
-      assert (renaming[it2->l.var_no() - min_var] == UINT_MAX);
-      
-      renaming[it2->l.var_no() - min_var] = cannon_var_no++;
+      assert (renaming[idx] == UINT_MAX);
+      renaming[idx] = cannon_var_no++;
+      represented_symbol[idx] = current_symbol;
 
 #     ifdef DEBUG_ITP
       std::cout << it2->l.var_no() << " ";
@@ -308,6 +315,9 @@ void prop_itpt::generalize(const prop_convt& decider,
 # endif
 
   // Do the renaming itself
+  bool used_symbols[symbols.size()];
+  memset(&used_symbols, 0, sizeof(used_symbols));
+  
   unsigned shift = _no_orig_variables - cannon_var_no;
   for (clausest::iterator it = clauses.begin();
           it != clauses.end();
@@ -323,22 +333,30 @@ void prop_itpt::generalize(const prop_convt& decider,
         continue;
       }
 
+      unsigned idx = it2->var_no() - min_var;
       // Sanity check, all variables used in the interpolant should be mapped.
-      assert(renaming[it2->var_no() - min_var] != UINT_MAX);
-
-      it2->set(renaming[it2->var_no() - min_var], it2->sign());
+      assert(renaming[idx] != UINT_MAX);
+      it2->set(renaming[idx], it2->sign());
+      used_symbols[represented_symbol[idx]] = true;
     }
   }
   if (root_literal.var_no() > max_var) {
     root_literal.set(root_literal.var_no() - shift, root_literal.sign());
   } else {
-      // Sanity check, all variables used in the interpolant should be mapped.
-      assert(renaming[root_literal.var_no() - min_var] != UINT_MAX);
-      root_literal.set(renaming[root_literal.var_no() - min_var], root_literal.sign());
+    unsigned idx = root_literal.var_no() - min_var;
+    // Sanity check, all variables used in the interpolant should be mapped.
+    assert(renaming[idx] != UINT_MAX);
+    root_literal.set(renaming[idx], root_literal.sign());
+    used_symbols[represented_symbol[idx]] = true;
   }
 
   _no_variables -= shift;
   _no_orig_variables = cannon_var_no;
+  
+  symbol_mask.reserve(symbols.size());
+  for (unsigned i = 0; i < symbols.size(); ++i) {
+    symbol_mask.push_back(used_symbols[i]);
+  }
 
   // TODO: Should we force mapping of common symbols to fresh prop. variables
   // in order to prevent unification?
@@ -618,7 +636,15 @@ void prop_itpt::serialize(std::ostream& out) const
   out << _no_variables << " ";
   out << root_literal.get() << " ";
   out << clauses.size() << std::endl;
+  out << symbol_mask.size() << std::endl;
 
+  for (std::vector<bool>::const_iterator it = symbol_mask.begin();
+          it != symbol_mask.end();
+          ++it) {
+    out << (*it ? '1' : '0');
+  }
+  out << std::endl;
+    
   for (clausest::const_iterator it = clauses.begin();
           it != clauses.end();
           ++it) {
@@ -649,15 +675,30 @@ void prop_itpt::deserialize(std::istream& in)
 {
   unsigned raw_root;
   unsigned nclauses;
+  unsigned nsymbols;
 
   in >> _no_orig_variables;
   in >> _no_variables;
   in >> raw_root;
   root_literal.set(raw_root);
   in >> nclauses;
+  in >> nsymbols;
 
   if (in.fail())
     return;
+
+  symbol_mask.clear();
+  symbol_mask.reserve(nsymbols);
+  
+  for (unsigned i = 0; i < nsymbols; ++i) 
+  {
+    char ch;
+    in >> ch;
+    symbol_mask.push_back(ch == '1');
+  }
+
+  if (in.fail())
+  return;
 
   unsigned lits;
   unsigned raw_lit;
@@ -665,7 +706,7 @@ void prop_itpt::deserialize(std::istream& in)
 
   clauses.clear();
   clauses.reserve(nclauses);
-
+  
   for (unsigned i = 0; i < nclauses; ++i)
   {
     in >> lits;

@@ -53,6 +53,10 @@ void partitioning_target_equationt::convert(
 void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   interpolating_solvert &interpolator, partitiont& partition)
 {
+  if (partition.ignore || partition.processed) {
+    return;
+  }
+  
   // Tell the interpolator about the new partition.
   partition.fle_part_id = interpolator.new_partition();
 
@@ -63,6 +67,7 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   // If this is a summary partition, apply the summary
   if (partition.is_summary) {
     convert_partition_summary(prop_conv, partition);
+    partition.processed = true;
     return;
   }
 
@@ -77,6 +82,7 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   convert_partition_assumptions(prop_conv, partition);
   convert_partition_assertions(prop_conv, partition);
   convert_partition_io(prop_conv, partition);
+  partition.processed = true;
 }
 /*******************************************************************\
 
@@ -383,7 +389,7 @@ Function: partitioning_target_equationt::partitioning_target_equationt
 
  Outputs:
 
- Purpose: Collects information about the specified partions for later
+ Purpose: Collects information about the specified partitions for later
  processing and conversion
 
 \*******************************************************************/
@@ -404,10 +410,11 @@ void partitioning_target_equationt::prepare_partitions()
           it != partitions.end(); ++it) {
 
     assert(it->filled);
+    bool ignore = true;
 
     it->start_it = ssa_it;
 
-#   ifdef DEBUG_SSA      
+#   ifdef DEBUG_SSA
     std::cout << "Partition SSA indices: " << idx << ", " << 
             it->start_idx << ", " << it->end_idx << 
             " size: " << partitions.size() << std::endl;
@@ -418,10 +425,12 @@ void partitioning_target_equationt::prepare_partitions()
 
     while (idx != it->end_idx) {
       assert(ssa_it != SSA_steps.end());
+      ignore &= ssa_it->ignore;
       ++ssa_it;
       ++idx;
     }
     it->end_it = ssa_it;
+    it->ignore = ignore;
   }
 }  
 
@@ -492,15 +501,18 @@ void partitioning_target_equationt::extract_interpolants(
   unsigned valid_tasks = 0;
 
   for (unsigned i = 1; i < partitions.size(); ++i) {
-    if (!partitions[i].is_summary)
-      valid_tasks++;
+    if (partitions[i].is_summary || partitions[i].ignore)
+      continue;
+    
+    valid_tasks++;
   }
 
   interpolation_taskt itp_task(valid_tasks);
 
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
-    if (!partitions[pid].is_summary)
-      fill_partition_ids(pid, itp_task[tid++]);
+    if (partitions[pid].is_summary || partitions[pid].ignore)
+      continue;
+    fill_partition_ids(pid, itp_task[tid++]);
   }
 
   // Interpolate...
@@ -512,7 +524,7 @@ void partitioning_target_equationt::extract_interpolants(
   std::vector<symbol_exprt> common_symbs;
   interpolant_map.reserve(valid_tasks);
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
-    if (partitions[pid].is_summary)
+    if (partitions[pid].is_summary || partitions[pid].ignore)
       continue;
     // Store the interpolant
     partitiont& partition = partitions[pid];

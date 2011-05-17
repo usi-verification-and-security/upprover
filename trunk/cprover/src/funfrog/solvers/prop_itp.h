@@ -36,6 +36,7 @@ public:
     std::swap(_no_variables, other._no_variables);
     std::swap(_no_orig_variables, other._no_orig_variables);
     std::swap(root_literal, other.root_literal);
+    std::swap(symbol_mask, other.symbol_mask);
   }
 
   literalt new_variable() {
@@ -52,6 +53,8 @@ public:
     const std::vector<symbol_exprt>& symbols) const;
 
   literalt raw_assert(propt& decider) const;
+  
+  const std::vector<bool> get_symbol_mask() const { return symbol_mask; }
 
   // Serialization
   void serialize(std::ostream& out) const;
@@ -70,6 +73,9 @@ protected:
 
   // Clauses of the interpolant representation
   clausest clauses;
+  
+  // Mask for used symbols
+  std::vector<bool> symbol_mask;
 
   void gate_and(literalt a, literalt b, literalt o);
   void gate_or(literalt a, literalt b, literalt o);
