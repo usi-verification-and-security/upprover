@@ -37,5 +37,6 @@ the right summary as well as making slicing more efficient.
 BUGS
 ----
 
+- Too many symbols in the renaming tables (remove locals and the special call start and call end symbols)
 - Slicing can remove "unrelated" assumptions that, however, make an error reaching trace unfeasible (thus reporting a nonexistent error).
 - Error trace computation is broken - segfault on trace computation (not addapted to partitioning symex target yet)
