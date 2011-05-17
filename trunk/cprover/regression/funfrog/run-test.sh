@@ -136,7 +136,7 @@ function test_dir {
     fi
   done
   for DIR in $1/* ; do
-    if [[ -d ${DIR} ]]; then
+    if [[ -d ${DIR} ]] && [[ ! "$1/${OUTPUT_DIR}" == ${DIR} ]] && [[ ! ${DIR} == "$1/.*" ]] ; then
       test_dir ${DIR}
     fi
   done
@@ -147,7 +147,7 @@ if [[ -z $1 ]]; then
   # Test all files in all subdirectories
   info "Testing all files in all subdirectories"
   for x in * ; do
-    if [[ -d $x ]] && [[ ! ${OUTPUT_DIR} == $x ]] && [[ ! ${OUTPUT_DIR} == ".*" ]] ; then
+    if [[ -d $x ]] && [[ ! ${OUTPUT_DIR} == $x ]] && [[ ! $x == ".*" ]] ; then
       test_dir $x
     fi
   done
