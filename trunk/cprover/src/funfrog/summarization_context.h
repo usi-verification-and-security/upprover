@@ -71,6 +71,10 @@ public:
     function_infot::serialize_infos(file, function_infos);
   }
 
+  // self-explanatory
+  bool force_inlining;
+  bool enable_refinement;
+
 private:
   const goto_functionst &functions;
   const value_setst &value_sets;

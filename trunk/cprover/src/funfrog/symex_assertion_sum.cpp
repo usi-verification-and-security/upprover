@@ -48,6 +48,7 @@ bool symex_assertion_sumt::assertion_holds(
   bool use_smt,
   bool use_slicing)
 {
+  sum_count = 0;
   stream_message_handlert message_handler(out);
   current_assertion = &assertion;
 
@@ -76,8 +77,8 @@ bool symex_assertion_sumt::assertion_holds(
 # endif
 
   // Proceed with symbolic execution
-  fine_timet before, after;
-  before=current_time();
+  fine_timet initial, before, after;
+  initial=current_time();
 
   goto_symext::statet state;
   // Prepare for the pc++ after returning from the last END_FUNCTION
@@ -104,7 +105,7 @@ bool symex_assertion_sumt::assertion_holds(
   after=current_time();
 
   if(out.good())
-    out << "SYMEX TIME: "<< time2string(after-before) << std::endl;
+    out << "SYMEX TIME: "<< time2string(after-initial) << std::endl;
 
   bool sat=false;
 
@@ -123,8 +124,20 @@ bool symex_assertion_sumt::assertion_holds(
         out << "SLICER TIME: "<< time2string(after-before) << std::endl;
     }
 
+    if (summarization_context.enable_refinement){
+		after=current_time();
+		if (equation.any_applicable_summaries()){
+			out << "During the refinement summaries were found.\nANALYSIS TIME (overall): "
+					<< time2string(after-initial) << "\nTrying to substitute them.\n";
+			if (summarization_context.force_inlining){
+				summarization_context.force_inlining = false;
+				return false;
+			}
+		} else {
+			out << "Function summaries neither valid for current goal nor exist. Continuing inlining everything.\n";
+		}
+    }
 
-    fine_timet before,after;
     before=current_time();
     equation.convert(decider, interpolator);
     after=current_time();
@@ -196,6 +209,14 @@ bool symex_assertion_sumt::assertion_holds(
     if (out.good())
       out << "Total nondet:" << nondet_counter << std::endl;
 
+    if (!summarization_context.enable_refinement){             // in case of "stupid" 2-stages refinement
+    	if (!summarization_context.force_inlining){            // after unsuccessful attempt of substituting summaries
+    		summarization_context.force_inlining = true;       // try inlining everything at next step
+    	}
+    } else {                                                   // in case of dependency analysis,
+    	summarization_context.enable_refinement = false;       // after unsuccessful 2nd attempt
+    	summarization_context.force_inlining = true;           // try inlining everything at next step
+    }
     return false;
   }
 }
@@ -950,13 +971,21 @@ void symex_assertion_sumt::handle_function_call(
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);
 
-  switch (call_summary.get_precision()) {
+  switch (call_summary.get_precision()){
   case call_summaryt::NONDET:
     havoc_function_call(deferred_function, state, function_id);
     break;
   case call_summaryt::SUMMARY:
-    summarize_function_call(deferred_function, state, function_id);
-    break;
+	if (summarization_context.force_inlining){
+		inline_function_call(deferred_function, state, function_id);
+	} else {
+		if (equation.any_applicable_summaries()){
+			sum_count++;
+			summarize_function_call(deferred_function, state, function_id);
+		} else {
+			inline_function_call(deferred_function, state, function_id);
+		}
+	}
   case call_summaryt::INLINE:
     inline_function_call(deferred_function, state, function_id);
     break;

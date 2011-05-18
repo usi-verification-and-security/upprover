@@ -202,16 +202,23 @@ bool summarizing_checkert::assertion_holds(
 	}
   }
 
-  unsigned int count = 0;
-  unsigned int start_interp = 1;
-  unsigned int summaries_inlined = 0;
-  while (!end && count < 2) // hardcoded (for a while) bound for inline - tries (but it's actually needed just 2 times for trivial case)
+  unsigned count = 0;
+
+  // Prepare summary_info, start with the lazy variant, i.e.,
+  // all summaries are initialized as NONDET except those on the way
+  // to the target assertion, which are marked INLINE.
+  summary_infot summary_info;
+  summary_info.initialize(summarization_context, goto_program, assertion);
+
+  summarization_context.enable_refinement = true; //FIXME: options.get_bool_option("enable-refinement");
+  if (summarization_context.enable_refinement){
+	  summarization_context.force_inlining = true;
+  } else {
+	  summarization_context.force_inlining = false;
+  }
+
+  while (!end && count < 5) // FIXME: hardcoded (for a while) bound for inline - tries (but it's actually needed just 2 times for trivial case)
   {
-	  // Prepare summary_info, start with the lazy variant, i.e.,
-	  // all summaries are initialized as NONDET except those on the way
-	  // to the target assertion, which are marked INLINE.
-	  summary_infot summary_info;
-	  summary_info.initialize(summarization_context, goto_program, assertion, summaries_inlined, 0, count == 0 ? 0 : 1);
 	  // Prepare the decision and interpolation procedures
 	  std::auto_ptr<prop_convt> decider;
 	  std::auto_ptr<interpolating_solvert> interpolator;
@@ -246,24 +253,24 @@ bool summarizing_checkert::assertion_holds(
 			  std::cout /* FIXME: out */, max_memory_used, use_smt,
 			  slicing_option);
 
-	  if (end && interpolator->can_interpolate() /*if summaries are already substituted, then do not generate new ones*/)
+	  if (end && interpolator->can_interpolate())
 	  {
-		if (summaries_inlined == 0)
-		{
+		if (symex.sum_count == 0)   // if none of summaries are substituted then do generate new/alternative ones
+		{                           // otherwise, even generated once again, they will be weaker then existing ones
 			// Compute the reduction time
 			double red_timeout = 0;
 			const char* red_timeout_str = options.get_option("reduce-proof").c_str();
 			if (strlen(red_timeout_str)) {
-			char* result;
-			red_timeout = strtod(red_timeout_str, &result);
+				char* result;
+				red_timeout = strtod(red_timeout_str, &result);
 
-			if (result == red_timeout_str) {
-				std::cerr << "WARNING: Invalid value of reduction time fraction \"" <<
-						red_timeout_str << "\". No reduction will be applied." << std::endl;
-			} else {
-				red_timeout = ((double)symex.get_solving_time()) / 1000 * red_timeout;
+				if (result == red_timeout_str) {
+					std::cerr << "WARNING: Invalid value of reduction time fraction \"" <<
+							red_timeout_str << "\". No reduction will be applied." << std::endl;
+				} else {
+					red_timeout = ((double)symex.get_solving_time()) / 1000 * red_timeout;
+				}
 			}
-		}
     
 		// Extract the interpolation summaries here...
 		interpolant_mapt itp_map;
@@ -286,18 +293,16 @@ bool summarizing_checkert::assertion_holds(
 			if (!summary_file.empty()) {
 			  summarization_context.serialize_infos(summary_file);
 			}
-			std::cout /* FIXME: out */ << "ASSERTIONS HOLD AFTER INLINING." << std::endl;
+			std::cout /* FIXME: out */ << "ASSERTION(S) HOLD(S) AFTER INLINING.\n";
 		} else {
-			std::cout /* FIXME: out */ << "FUNCTION SUMMARIES (for " << summaries_inlined << " calls) WERE SUBSTITUTED SUCCESSFULLY." << std::endl;
+			std::cout /* FIXME: out */ << "FUNCTION SUMMARIES (for " << symex.sum_count << " calls) WERE SUBSTITUTED SUCCESSFULLY.\n";
 		}
-	  } else if (count == 0 && summaries_inlined != 0){
-		  std::cout /* FIXME: out */ << "FUNCTION SUMMARIES (for " << summaries_inlined << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION.\nTry to inline everything then.\n" << std::endl;
-	  } else {
-		  std::cout /* FIXME: out */ << "ASSERTIONS DON'T HOLD AFTER INLINING.\nA real bug found." << std::endl;
+	  } else if (count == 0 && symex.sum_count != 0){
+		  std::cout /* FIXME: out */ << "FUNCTION SUMMARIES (for " << symex.sum_count << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION.\nTry to inline everything then.\n";
 	  }
-	  summaries_inlined = 0;
 	  count++;
   }
+  std::cout << "\nTotal amount of steps: " << count << ".";
   return end;
 }
 

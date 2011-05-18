@@ -37,7 +37,7 @@ class symex_assertion_sumt : public symex_bmct //goto_symext
 {
 public:
   symex_assertion_sumt(
-          const summarization_contextt &_summarization_context,
+          summarization_contextt &_summarization_context,
           const summary_infot &_summary_info,
           goto_programt::const_targett &original_head,
           const namespacet &_ns,
@@ -73,6 +73,8 @@ public:
 
   const fine_timet& get_solving_time() { return solving_time; }
 
+  unsigned sum_count;
+
 private:
 
   class deferred_functiont {
@@ -105,7 +107,7 @@ private:
 
   // Shared information about the program and summaries to be used during
   // analysis
-  const summarization_contextt &summarization_context;
+  summarization_contextt &summarization_context;
 
   // Which functions should be summarized, abstracted from, and which inlined
   const summary_infot &summary_info;

@@ -15,7 +15,7 @@ void
 call_summaryt::set_inline(const summarization_contextt &summarization_context,
         const irep_idt &target_function,
         const assertion_infot &assertion,
-        unsigned int& summaries_inlined, size_t stack_depth, bool force_inlining)
+        size_t stack_depth)
 {
   precision = INLINE;
 
@@ -23,13 +23,13 @@ call_summaryt::set_inline(const summarization_contextt &summarization_context,
     summarization_context.get_function(target_function).body;
   
   summary_info.initialize(summarization_context, function_body, assertion,
-		  summaries_inlined, stack_depth++, force_inlining);
+		  stack_depth++);
 }
 
 void
 summary_infot::initialize(const summarization_contextt& summarization_context,
         const goto_programt& code, const assertion_infot& assertion,
-        unsigned int& summaries_inlined, size_t stack_depth, bool force_inlining)
+        size_t stack_depth)
 {
   bool will_inline = stack_depth < assertion.get_target_stack().size();
   goto_programt::const_targett call_pos;
@@ -59,16 +59,15 @@ summary_infot::initialize(const summarization_contextt& summarization_context,
         std::cout << "Inlining a call: " << target_function << std::endl;
 #       endif
         call_summary.set_inline(summarization_context, target_function,
-                assertion, summaries_inlined, stack_depth+1, force_inlining);
+                assertion, stack_depth+1);
       } else {
         const interpolantst& summaries = 
           summarization_context.get_summaries(target_function);
-        if (summaries.size() > 0 && !force_inlining) {              // !force_inlining is used for inlining a function after substituting by a summary is failed
+        if (summaries.size() > 0) {
           call_summary.set_summary();
-          summaries_inlined++;
         } else {
           call_summary.set_inline(summarization_context, target_function,
-                assertion, summaries_inlined, stack_depth+1, force_inlining);
+                assertion, stack_depth+1);
         }
         // call_summary.set_nondet();
 #       if 0
