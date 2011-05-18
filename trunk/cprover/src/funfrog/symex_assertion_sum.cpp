@@ -124,20 +124,6 @@ bool symex_assertion_sumt::assertion_holds(
         out << "SLICER TIME: "<< time2string(after-before) << std::endl;
     }
 
-    if (summarization_context.enable_refinement){
-		after=current_time();
-		if (equation.any_applicable_summaries()){
-			out << "During the refinement summaries were found.\nANALYSIS TIME (overall): "
-					<< time2string(after-initial) << "\nTrying to substitute them.\n";
-			if (summarization_context.force_inlining){
-				summarization_context.force_inlining = false;
-				return false;
-			}
-		} else {
-			out << "Function summaries neither valid for current goal nor exist. Continuing inlining everything.\n";
-		}
-    }
-
     before=current_time();
     equation.convert(decider, interpolator);
     after=current_time();
@@ -209,12 +195,10 @@ bool symex_assertion_sumt::assertion_holds(
     if (out.good())
       out << "Total nondet:" << nondet_counter << std::endl;
 
-    if (!summarization_context.enable_refinement){             // in case of "stupid" 2-stages refinement
-    	if (!summarization_context.force_inlining){            // after unsuccessful attempt of substituting summaries
-    		summarization_context.force_inlining = true;       // try inlining everything at next step
-    	}
-    } else {                                                   // in case of dependency analysis,
-    	summarization_context.enable_refinement = false;       // after unsuccessful 2nd attempt
+    if (!summarization_context.enable_refinement){             // after unsuccessful attempt of substituting summaries
+    		summarization_context.enable_refinement = true;    // try inlining everything at next step
+    } else {
+    	summarization_context.enable_refinement = false;       // after unsuccessful attempt
     	summarization_context.force_inlining = true;           // try inlining everything at next step
     }
     return false;
@@ -979,13 +963,10 @@ void symex_assertion_sumt::handle_function_call(
 	if (summarization_context.force_inlining){
 		inline_function_call(deferred_function, state, function_id);
 	} else {
-		if (equation.any_applicable_summaries()){
-			sum_count++;
-			summarize_function_call(deferred_function, state, function_id);
-		} else {
-			inline_function_call(deferred_function, state, function_id);
-		}
+		sum_count++;
+		summarize_function_call(deferred_function, state, function_id);
 	}
+	break;
   case call_summaryt::INLINE:
     inline_function_call(deferred_function, state, function_id);
     break;

@@ -117,14 +117,13 @@ public:
     return SSA_steps_exec_order;
   }
 
-  bool any_applicable_summaries() { /* FIXME:
+  bool any_applicable_summaries() {
 	  for (unsigned i = 0; i < partitions.size(); i++) {
 		  if (!partitions[i].applicable_summaries.empty()) {
 			  return true;
 		  }
 	  }
-	  return false;*/
-	  return true;
+	  return false;
   }
 
 private:

@@ -210,12 +210,12 @@ bool summarizing_checkert::assertion_holds(
   summary_infot summary_info;
   summary_info.initialize(summarization_context, goto_program, assertion);
 
-  summarization_context.enable_refinement = true; //FIXME: options.get_bool_option("enable-refinement");
-  if (summarization_context.enable_refinement){
-	  summarization_context.force_inlining = true;
-  } else {
+  summarization_context.enable_refinement = false; //FIXME: options.get_int_option("enable-refinement"); - with different types of refinement available
+  //if (summarization_context.enable_refinement){
+  //	  summarization_context.force_inlining = true;
+  //} else {
 	  summarization_context.force_inlining = false;
-  }
+  //}
 
   while (!end && count < 5) // FIXME: hardcoded (for a while) bound for inline - tries (but it's actually needed just 2 times for trivial case)
   {
