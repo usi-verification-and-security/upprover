@@ -1,3 +1,3 @@
 #!/bin/bash
 
-grep "^ASSERTION"
+grep "^ASSERTION\|^SAT\|^UNSAT"

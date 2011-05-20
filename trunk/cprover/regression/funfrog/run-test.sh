@@ -37,7 +37,7 @@ function check_result {
   cat $1 | diff - $2 > /dev/null
   RESULT="$?"
   
-  if [[ $? -gt 0 ]]; then
+  if [[ ${RESULT} -gt 0 ]]; then
     info "The test result differs from the expected result"
     echo "<<<<<< PRODUCED RESULT"
     cat $1
