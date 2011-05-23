@@ -11,7 +11,6 @@
 
 #include <queue>
 
-#include <solvers/flattening/sat_minimizer.h>
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
 #include <goto-symex/goto_symex.h>
@@ -21,17 +20,11 @@
 
 #include <base_type.h>
 #include <time_stopping.h>
-#include <fstream>
-
-#include <loopfrog/loopstore.h>
 
 #include "assertion_info.h"
 #include "summary_info.h"
 #include "summarization_context.h"
 #include "partitioning_target_equation.h"
-
-extern fine_timet global_satsolver_time;
-extern fine_timet global_sat_conversion_time;
 
 class symex_assertion_sumt : public symex_bmct //goto_symext
 {
@@ -39,12 +32,12 @@ public:
   symex_assertion_sumt(
           summarization_contextt &_summarization_context,
           const summary_infot &_summary_info,
-          goto_programt::const_targett &original_head,
           const namespacet &_ns,
           contextt &_context,
-          prop_convt& _decider,
-          interpolating_solvert& _interpolator,
-          partitioning_target_equationt &_target
+          partitioning_target_equationt &_target,
+          std::ostream &_out,
+          const goto_programt &_goto_program,
+          bool _use_slicing=true
           ) :
           // goto_symext(_ns, _context, _target),
           symex_bmct(_ns, _context, _target),
@@ -52,26 +45,17 @@ public:
           summary_info(_summary_info),
           current_summary_info(&_summary_info),
           equation(_target),
-          decider(_decider),
-          interpolator(_interpolator),
-          original_loop_head(original_head),
-          solving_time (0),
-          current_assertion(NULL)
+          current_assertion(NULL),
+          out(_out),
+          goto_program(_goto_program),
+          use_slicing(_use_slicing)
           {};
 
-  bool assertion_holds(
-    const goto_programt &goto_program,
-    const assertion_infot &assertion,
-    std::ostream &out,
-    unsigned long &max_memory_used,
-    bool use_smt=false,
-    bool use_slicing=true);
+  bool prepare_SSA(const assertion_infot &assertion);
   
   virtual void symex_step(
     const goto_functionst &goto_functions,
     statet &state);
-
-  const fine_timet& get_solving_time() { return solving_time; }
 
   unsigned sum_count;
 
@@ -118,31 +102,22 @@ private:
 
   // Wait queue for the deferred functions (for other partitions)
   std::queue<deferred_functiont> deferred_functions;
-  
+
   // Store for the symex result
   partitioning_target_equationt &equation;
-
-  // The decision procedure to be used for symex-evaluation
-  prop_convt& decider;
-
-  // The interpolation procedure to be used for symex-partitioning
-  interpolating_solvert& interpolator;
 
   // Artificial identifiers for which we do not need Phi function
   std::set<irep_idt> dead_identifiers;
 
-  // FIXME: Garbage?
-  goto_programt::const_targett &original_loop_head;
-  
-  // SAT solving time
-  fine_timet solving_time;
-  
   // Current assertion
   const assertion_infot* current_assertion;
 
-  bool is_satisfiable(
-    decision_proceduret &decision_procedure,
-    std::ostream &out);
+  std::ostream &out;
+
+  const goto_programt &goto_program;
+
+
+  bool use_slicing;
 
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation

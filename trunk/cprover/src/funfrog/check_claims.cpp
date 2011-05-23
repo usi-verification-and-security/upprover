@@ -118,8 +118,7 @@ claim_statst check_claims(
   bool show_pass,
   bool show_fail,
   bool show_progress,
-  bool save_files,
-  bool use_smt)
+  bool save_files)
 {
   // precondition: the leaping program must be numbered correctly.
   claim_statst res;  
@@ -140,6 +139,13 @@ claim_statst check_claims(
   //                                          imprecise_loops,
   //                                          precise_loops,
   //                                          ns);
+
+
+  contextt temp_context;                          // FIXME: it was previously here
+  //namespacet ns1(ns.get_context(), temp_context); // FIXME: if some bug will be found, replace ns by ns1
+  summarizing_checkert sum_checker(leaping_program, value_set_analysist(ns),
+                         goto_functions, loopstoret(), loopstoret(),
+                         ns, temp_context, options, std::cout, res.max_mem_used);
 
   while(true)
   {
@@ -184,16 +190,8 @@ claim_statst check_claims(
     //  res.max_instruction_count=inlined_program.instructions.size();
 
     bool pass=false;
-    
-    if(!claim_map[ass_ptr].first || claim_map[ass_ptr].second)       
-      pass = assertion_holds_sum(ns.get_context(),
-          leaping_program,
-          goto_functions,
-          assertion_infot(stack, ass_ptr),
-          out,
-          res.max_mem_used,
-          options,
-          use_smt);
+    if(!claim_map[ass_ptr].first || claim_map[ass_ptr].second)
+      pass = sum_checker.assertion_holds(assertion_infot(stack, ass_ptr));
     else 
       pass = true;
       

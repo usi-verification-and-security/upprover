@@ -10,6 +10,8 @@ FUNFROG_SRC := \
       summary_info.cpp \
       parseoptions.cpp \
       check_claims.cpp \
+      refiner_assertion_sum.cpp \
+      prop_assertion_sum.cpp \
       symex_assertion_sum.cpp \
       summarizing_checker.cpp \
       inlined_claims.cpp \

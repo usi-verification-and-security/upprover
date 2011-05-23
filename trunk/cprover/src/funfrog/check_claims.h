@@ -66,7 +66,6 @@ claim_statst check_claims(
   bool show_pass = false,
   bool show_fail = true,
   bool show_progress = true,
-  bool save_files=false,
-  bool use_smt=false);
+  bool save_files=false);
 
 #endif /*_CPROVER_LOOPFROG_CHECK_CLAIMS_H_*/

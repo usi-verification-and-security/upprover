@@ -781,8 +781,7 @@ bool funfrog_parseoptionst::check_loop_summarization(
                                     cmdline.isset("show-pass"),
                                     !cmdline.isset("suppress-fail"),
                                     !cmdline.isset("no-progress"),
-                                    cmdline.isset("save-claims"),
-                                    cmdline.isset("use-smt"));
+                                    cmdline.isset("save-claims"));
   after=current_time();
   /*
   if(!cmdline.isset("no-progress")) std::cout << "\r";

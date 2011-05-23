@@ -24,7 +24,8 @@ class partitioning_target_equationt:public symex_target_equationt
 {
 public:
   static const int NO_PARTITION = -1;
-
+  // Id of the currently selected partition
+  partition_idt current_partition_id;
   partitioning_target_equationt(const namespacet &_ns) :
           symex_target_equationt(_ns), current_partition_id(NO_PARTITION) {
   }
@@ -86,7 +87,6 @@ public:
       get_current_partition().end_idx = SSA_steps.size();
       assert(!partitions.at(partition_id).filled);
     }
-
     // Select the new partition
     current_partition_id = partition_id;
     partitiont& new_partition = get_current_partition();
@@ -118,12 +118,12 @@ public:
   }
 
   bool any_applicable_summaries() {
-	  for (unsigned i = 0; i < partitions.size(); i++) {
-		  if (!partitions[i].applicable_summaries.empty()) {
-			  return true;
-		  }
-	  }
-	  return false;
+    for (unsigned i = 0; i < partitions.size(); i++) {
+      if (!partitions[i].applicable_summaries.empty()) {
+              return true;
+      }
+    }
+    return false;
   }
 
 private:
@@ -245,8 +245,7 @@ private:
   // This is used to emit assumption propagation constraints.
   partition_mapt partition_map;
   
-  // Id of the currently selected partition
-  partition_idt current_partition_id;
+
 
   // Ordering of SSA steps according to the program execution order, this is
   // filled in by prepare_SSA_exec_order and can be used for simple slicing

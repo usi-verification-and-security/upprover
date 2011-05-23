@@ -9,13 +9,7 @@
     
 #include <memory>
 
-#include <goto-symex/build_goto_trace.h>
-#include <find_symbols.h>
-#include <ansi-c/expr2c.h>
 #include <time_stopping.h>
-#include <solvers/sat/satcheck.h>
-#include <solvers/smt1/smt1_dec.h>
-#include <loopfrog/memstat.h>
 #include <expr_util.h>
 #include <i2string.h>
 
@@ -23,33 +17,24 @@
 #include "symex_assertion_sum.h"
 #include "expr_pretty_print.h"
 
-fine_timet global_satsolver_time;
-fine_timet global_sat_conversion_time;
-
 //#define DEBUG_PARTITIONING
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::assertion_holds
+ Function: symex_assertion_sumt::prepare_SSA
 
  Inputs:
 
  Outputs:
 
- Purpose: Checks if the given assertion of the GP holds
+ Purpose: Checks trivial cases (assertion is not reachable, is constant),
+          and constructs the SSA form for goto-program otherwise
 
 \*******************************************************************/
 
-bool symex_assertion_sumt::assertion_holds(
-  const goto_programt &goto_program,
-  const assertion_infot &assertion,
-  std::ostream &out,
-  unsigned long &max_memory_used,
-  bool use_smt,
-  bool use_slicing)
+bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 {
   sum_count = 0;
-  stream_message_handlert message_handler(out);
   current_assertion = &assertion;
 
   // these are quick...
@@ -77,8 +62,8 @@ bool symex_assertion_sumt::assertion_holds(
 # endif
 
   // Proceed with symbolic execution
-  fine_timet initial, before, after;
-  initial=current_time();
+  fine_timet before, after;
+  before=current_time();
 
   goto_symext::statet state;
   // Prepare for the pc++ after returning from the last END_FUNCTION
@@ -97,20 +82,15 @@ bool symex_assertion_sumt::assertion_holds(
       )
   {
 #   if 0
-    goto_program.output_instruction(ns, "", std::cout, state.source.pc);
+    goto_program.output_instruction(ns, "", out, state.source.pc);
 #   endif
     symex_step(summarization_context.get_functions(), state);
-    // state.value_set.output(ns, std::cout);
+    // state.value_set.output(ns, out);
   }
   after=current_time();
 
   if(out.good())
-    out << "SYMEX TIME: "<< time2string(after-initial) << std::endl;
-
-  bool sat=false;
-
-  decider.set_message_handler(message_handler);
-  decider.set_verbosity(10);
+    out << "SYMEX TIME: "<< time2string(after-before) << std::endl;
 
   if(remaining_claims!=0)
   {
@@ -123,136 +103,11 @@ bool symex_assertion_sumt::assertion_holds(
       if (out.good())
         out << "SLICER TIME: "<< time2string(after-before) << std::endl;
     }
-
-    before=current_time();
-    equation.convert(decider, interpolator);
-    after=current_time();
-    global_sat_conversion_time += (after-before);
-
-    if (out.good())
-      out << "CONVERSION TIME: "<< time2string(after-before) << std::endl;
-
-    // Decides the equation
-    sat = is_satisfiable(decider, out);
   } else {
       out << "Assertion(s) are trivially unreachable." << std::endl;
-  }
-
-  unsigned long this_mem = current_memory();
-  if (this_mem > max_memory_used)
-    max_memory_used = this_mem;
-
-  if (!sat)
-  {
-    if (out.good())
-      out << std::endl << "ASSERTION IS TRUE" << std::endl;
-    return true;
-  }
-  else
-  {
-    // Builds the trace if it is SAT
-    goto_tracet trace;
-    build_goto_trace(equation, decider, trace);
-    if (out.good())
-      show_goto_trace(out, ns, trace);
-
-    if (out.good())
-      out << std::endl << "NONDET assigns:" << std::endl;
-
-    unsigned int nondet_counter=0;
-    std::set<exprt> lhs_symbols;
-    find_symbols(assertion.get_location()->guard, lhs_symbols);
-
-    if (lhs_symbols.size()>0)
-    {
-      for (goto_tracet::stepst::reverse_iterator it=
-             trace.steps.rbegin();
-           it!=trace.steps.rend();
-           it++)
-      {
-        if (it->type==goto_trace_stept::ASSIGNMENT &&
-            lhs_symbols.find(it->pc->code.op0())!=lhs_symbols.end())
-        {
-          const codet &code = to_code(it->pc->code);
-
-          goto_programt::instructiont::labelst::const_iterator lit =
-              find(it->pc->labels.begin(), it->pc->labels.end(),
-                   irep_idt("VARIANT"));
-
-          if (code.op1().get("statement")=="nondet" &&
-              lit!=it->pc->labels.end())
-          {
-            if (out.good())
-              out <<std::endl<<expr2c(code, ns)<<std::endl;
-            nondet_counter++;
-          }
-          else
-            find_symbols(code.op1(), lhs_symbols);
-        }
-      }
-    }
-
-    if (out.good())
-      out << "Total nondet:" << nondet_counter << std::endl;
-
-    if (!summarization_context.enable_refinement){             // after unsuccessful attempt of substituting summaries
-    		summarization_context.enable_refinement = true;    // try inlining everything at next step
-    } else {
-    	summarization_context.enable_refinement = false;       // after unsuccessful attempt
-    	summarization_context.force_inlining = true;           // try inlining everything at next step
-    }
-    return false;
-  }
-}
-
-/*******************************************************************
-
- Function: symex_assertion_sumt::is_satisfiable
-
- Inputs:
-
- Outputs:
-
- Purpose: Checks if prepared formula is SAT
-
-\*******************************************************************/
-
-bool symex_assertion_sumt::is_satisfiable(
-  decision_proceduret &decision_procedure,
-  std::ostream &out)
-{
-  if (out.good())
-    out <<std::endl<<"RESULT:"<<std::endl;
-
-  fine_timet before, after;
-  before=current_time();
-  decision_proceduret::resultt r = decision_procedure.dec_solve();
-  after=current_time();
-  if (out.good())
-    out << "SOLVER TIME: "<< time2string(after-before) << std::endl;
-
-  solving_time += (after-before);
-  global_satsolver_time += (after-before);
-
-  // solve it
-  switch (r)
-  {
-    case decision_proceduret::D_UNSATISFIABLE:
-    {
-      if (out.good())
-        out<<"UNSAT - it holds!"<<std::endl;
-      return false;
-    }
-    case decision_proceduret::D_SATISFIABLE:
-    {
-      if (out.good())
-        out<<"SAT - doesn't hold"<<std::endl;
       return true;
-    }
-
-    default:
-      throw "unexpected result from dec_solve()";
   }
+  return false;
 }
 
 /*******************************************************************\
@@ -557,7 +412,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   current_summary_info = &deferred_function.summary_info;
   const irep_idt& function_id = current_summary_info->get_function_id();
 
-  std::cout << "Processing a deferred function: " << function_id << std::endl;
+  out << "Processing a deferred function: " << function_id << std::endl;
 
   // Select symex target equation to produce formulas into the corresponding
   // partition
@@ -690,7 +545,7 @@ void symex_assertion_sumt::mark_argument_symbols(
     deferred_function.argument_symbols.push_back(symbol);
 
 #   ifdef DEBUG_PARTITIONING
-    expr_pretty_print(std::cout << "Marking argument symbol: ", symbol);
+    expr_pretty_print(out << "Marking argument symbol: ", symbol);
 #   endif
   }
 }
@@ -729,7 +584,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     deferred_function.argument_symbols.push_back(symb_ex);
 
 #   ifdef DEBUG_PARTITIONING
-    expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex);
+    expr_pretty_print(out << "Marking accessed global symbol: ", symb_ex);
 #   endif
   }
 }
@@ -769,7 +624,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     deferred_function.out_arg_symbols.push_back(symb_ex);
 
 #   ifdef DEBUG_PARTITIONING
-    expr_pretty_print(std::cout << "Marking modified global symbol: ", symb_ex);
+    expr_pretty_print(out << "Marking modified global symbol: ", symb_ex);
 #   endif
   }
 }
@@ -818,8 +673,8 @@ void symex_assertion_sumt::return_assignment_and_mark(
   constant_propagation = old_cp;
 
 # ifdef DEBUG_PARTITIONING
-  expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
-  expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
+  expr_pretty_print(out << "Marking return symbol: ", retval_symbol);
+  expr_pretty_print(out << "Marking return tmp symbol: ", retval_tmp);
 # endif
 
   deferred_function.retval_symbol = retval_symbol;
@@ -960,13 +815,13 @@ void symex_assertion_sumt::handle_function_call(
     havoc_function_call(deferred_function, state, function_id);
     break;
   case call_summaryt::SUMMARY:
-	if (summarization_context.force_inlining){
-		inline_function_call(deferred_function, state, function_id);
-	} else {
-		sum_count++;
-		summarize_function_call(deferred_function, state, function_id);
-	}
-	break;
+    if (summarization_context.force_inlining){
+      inline_function_call(deferred_function, state, function_id);
+    } else {
+      sum_count++;
+      summarize_function_call(deferred_function, state, function_id);
+    }
+    break;
   case call_summaryt::INLINE:
     inline_function_call(deferred_function, state, function_id);
     break;
@@ -994,13 +849,13 @@ void symex_assertion_sumt::summarize_function_call(
 {
   // We should use an already computed summary as an abstraction
   // of the function body
-  std::cout << "*** SUMMARY abstraction used for function: " <<
+  out << "*** SUMMARY abstraction used for function: " <<
           function_id << std::endl;
 
   produce_callsite_symbols(deferred_function, state, function_id);
   produce_callend_assumption(deferred_function, state);
 
-  std::cout << "Substituting interpolant" << std::endl;
+  out << "Substituting interpolant" << std::endl;
 
   partition_idt partition_id = equation.reserve_partition(
           deferred_function.callstart_symbol,
@@ -1031,7 +886,7 @@ void symex_assertion_sumt::inline_function_call(
         const irep_idt& function_id)
 {
   // We should inline the body --> defer evaluation of the body for later
-  std::cout << "*** INLINING function: " <<
+  out << "*** INLINING function: " <<
           function_id << std::endl;
 
   produce_callsite_symbols(deferred_function, state, function_id);
@@ -1060,7 +915,7 @@ void symex_assertion_sumt::havoc_function_call(
   // all data it touches.
 
   // FIXME: We need some static analysis of the function for this
-  std::cout << "*** NONDET abstraction used for function: " <<
+  out << "*** NONDET abstraction used for function: " <<
           function_id << std::endl;
 
   produce_callsite_symbols(deferred_function, state, function_id);

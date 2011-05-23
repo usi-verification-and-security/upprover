@@ -10,11 +10,8 @@
 #ifndef CPROVER_SUMMARIZING_CHECKER_H
 #define CPROVER_SUMMARIZING_CHECKER_H
 
-#include <pointer-analysis/value_set_analysis.h>
+#include <memory>
 #include <options.h>
-
-#include <loopfrog/loopstore.h>
-#include <loopfrog/call_stack.h>
 
 #include "assertion_info.h"
 #include "symex_assertion_sum.h"
@@ -23,90 +20,50 @@ class summarizing_checkert
 {
 public:
   summarizing_checkert(
-    const value_setst &original_value_sets,
-    goto_programt::const_targett &original_head,
+    const goto_programt &_goto_program,
+    const value_setst &_value_sets,
     const goto_functionst &_goto_functions,
     const loopstoret &_imprecise_loops,
     const loopstoret &_precise_loops,
     const namespacet &_ns,
-    contextt &_context) :
-      imprecise_loops(_imprecise_loops),
-      precise_loops(_precise_loops),
-      goto_functions(_goto_functions),
-      value_sets(original_value_sets),
+    contextt &_context,
+    const optionst& _options,
+    std::ostream &_out,
+    unsigned long &_max_memory_used
+    ) :
+      goto_program(_goto_program),
       ns(_ns),
       context(_context),
-      original_loop_head(original_head) {};
+      options(_options),
+      summarization_context(
+                _goto_functions,
+                _value_sets,
+                _imprecise_loops,
+                _precise_loops),
+      out(_out),
+      max_memory_used(_max_memory_used),
+      equation(_ns)
+  {};
 
-  bool last_assertion_holds(
-    const goto_programt &goto_program,
-    std::ostream &out,
-    unsigned long &max_memory_used,
-    const optionst& options,
-    bool use_smt=false);
-
-  bool assertion_holds(
-    const goto_programt &goto_program,
-    const assertion_infot& assertion,
-    std::ostream &out,
-    unsigned long &max_memory_used,
-    const optionst& options,
-    bool use_smt=false);
+  bool last_assertion_holds();
+  bool assertion_holds(const assertion_infot& assertion);
 
 protected:
-  // Loop summaries to apply in the analysis
-  const loopstoret &imprecise_loops;
-  const loopstoret &precise_loops;
 
-  // Functions of the original program
-  const goto_functionst &goto_functions;
-
-  // Results of pointer aliasing analysis
-  const value_setst &value_sets;
-
-  // Namespace
+  const goto_programt &goto_program;
   const namespacet &ns;
-
-  // Context
   contextt &context;
-
-  // ???
-  goto_programt::const_targett &original_loop_head;
+  const optionst &options;
+  summarization_contextt summarization_context;
+  std::ostream &out;
+  unsigned long &max_memory_used;
+  std::auto_ptr<prop_convt> decider;
+  std::auto_ptr<interpolating_solvert> interpolator;
+  partitioning_target_equationt equation;
   
-  void setup_unwind(symex_assertion_sumt& symex, const optionst& options);
+  void setup_unwind(symex_assertion_sumt& symex);
+  double compute_reduction_timeout(double solving_time);
+  void extract_interpolants (partitioning_target_equationt& equation, double red_timeout);
 };
-
-bool assertion_holds_sum(
-  const contextt &context,
-  const value_setst &value_sets,
-  goto_programt::const_targett &head,
-  const goto_programt &goto_program,
-  const goto_functionst &goto_functions,
-  const assertion_infot& assertion,
-  std::ostream &out,
-  unsigned long &max_memory_used,
-  const optionst& options,
-  bool use_smt=false);
-
-bool last_assertion_holds_sum(
-  const contextt &context,
-  const value_setst &value_sets,
-  goto_programt::const_targett &head,
-  const goto_programt &goto_program,
-  const goto_functionst &goto_functions,
-  std::ostream &out,
-  unsigned long &max_memory_used,
-  const optionst& options,
-  bool use_smt=false);
-
-bool assertion_holds_sum(
-  const contextt &context,
-  const goto_programt &goto_program,
-  const goto_functionst &goto_functions,
-  const assertion_infot& assertion,
-  std::ostream &out,
-  unsigned long &max_memory_used,
-  const optionst& options,
-  bool use_smt=false);
 
 #endif
