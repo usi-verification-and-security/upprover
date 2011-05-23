@@ -24,7 +24,7 @@ public:
   satcheck_opensmtt(int verbosity = 0, bool _dump_queries = false);
   
   virtual ~satcheck_opensmtt() {
-    delete opensmt_ctx;
+    freeSolver();
   }
   
   virtual resultt prop_solve();
@@ -58,6 +58,9 @@ public:
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const;
   
+  // Clears the state of the solver
+  virtual void reset_solver() { initializeSolver(); }
+  
 protected:
   // Dump all queries?
   bool dump_queries;
@@ -84,6 +87,11 @@ protected:
   // Simple recursive extraction of clauses from OpenSMT Egraph
   literalt extract_itp_rec(const Enode* enode, prop_itpt& target_itp, 
     enode_cachet& enode_cache) const;
+  
+  // Initialize the OpenSMT context
+  void initializeSolver();
+  // Free all resources related to OpenSMT
+  void freeSolver();
 
   void add_variables();
   void increase_id();

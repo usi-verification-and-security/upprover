@@ -25,9 +25,20 @@ Author: Ondrej Sery
 static unsigned dump_count = 0;
 
 satcheck_opensmtt::satcheck_opensmtt(int verbosity, bool _dump_queries) :
-  dump_queries (_dump_queries), partition_root_enode(NULL), partition_count(0),
-  ready_to_interpolate(false)
+  dump_queries (_dump_queries), opensmt_ctx(NULL), partition_root_enode(NULL), 
+  partition_count(0), ready_to_interpolate(false)
 {
+  initializeSolver();
+}
+
+  
+// Initialize the OpenSMT context
+void satcheck_opensmtt::initializeSolver() 
+{
+  if (opensmt_ctx != NULL) {
+    freeSolver();
+  }
+  
   opensmt_ctx = new OpenSMTContext();
   opensmt_ctx->SetLogic("QF_BOOL");
   //opensmt_ctx->SetOption(":verbosity", "1");
@@ -46,6 +57,14 @@ satcheck_opensmtt::satcheck_opensmtt(int verbosity, bool _dump_queries) :
   config.proof_set_inter_algo = 0; // McMillan -- the strongest interpolant
 
   sbool = opensmt_ctx->mkSortBool();
+}
+
+// Free all resources related to OpenSMT
+void satcheck_opensmtt::freeSolver()
+{
+    delete opensmt_ctx;
+    opensmt_ctx = NULL;
+    sbool = NULL;
 }
 
 /*******************************************************************\
