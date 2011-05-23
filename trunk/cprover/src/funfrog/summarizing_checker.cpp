@@ -7,15 +7,7 @@
 
 \*******************************************************************/
 
-#include <time_stopping.h>
-
 #include "summarizing_checker.h"
-#include "summary_info.h"
-#include "symex_assertion_sum.h"    //
-#include "prop_assertion_sum.h"     //
-#include "refiner_assertion_sum.h"  // move to .h
-
-#include "solvers/satcheck_opensmt.h"
 
 /*******************************************************************
 
@@ -39,8 +31,6 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   }
 
   const bool no_slicing_option = options.get_bool_option("no-slicing");
-  const bool queries_option = options.get_bool_option("save-queries");
-  const int verbose_option = options.get_int_option("verbose-solver");
 
   // Prepare the summarization context
 
@@ -69,11 +59,11 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   bool end = false;
   while (!end && count < 5) // FIXME: hardcoded (for a while) limit of refinement tries
   {
-    satcheck_opensmtt* opensmt = new satcheck_opensmtt(verbose_option,queries_option);
     bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
     deciderp->unbounded_array = bv_pointerst::U_AUTO;
     decider.reset(deciderp);
     interpolator.reset(opensmt);
+    opensmt->reset_solver();
 
     partitioning_target_equationt equation(ns);
 

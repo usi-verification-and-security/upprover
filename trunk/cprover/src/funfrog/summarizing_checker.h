@@ -13,8 +13,10 @@
 #include <memory>
 #include <options.h>
 
-#include "assertion_info.h"
 #include "symex_assertion_sum.h"
+#include "prop_assertion_sum.h"
+#include "refiner_assertion_sum.h"
+#include "solvers/satcheck_opensmt.h"
 
 class summarizing_checkert
 {
@@ -43,7 +45,11 @@ public:
       out(_out),
       max_memory_used(_max_memory_used),
       equation(_ns)
-  {};
+  {
+    opensmt = new satcheck_opensmtt(
+        options.get_int_option("verbose-solver"),
+        options.get_bool_option("save-queries"));
+  };
 
   bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion);
@@ -60,6 +66,7 @@ protected:
   std::auto_ptr<prop_convt> decider;
   std::auto_ptr<interpolating_solvert> interpolator;
   partitioning_target_equationt equation;
+  satcheck_opensmtt* opensmt;
   
   void setup_unwind(symex_assertion_sumt& symex);
   double compute_reduction_timeout(double solving_time);
