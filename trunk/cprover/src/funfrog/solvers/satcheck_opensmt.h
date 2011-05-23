@@ -62,6 +62,8 @@ public:
   virtual void reset_solver() { initializeSolver(); }
   
 protected:
+  // Solver verbosity
+  unsigned solver_verbosity;
   // Dump all queries?
   bool dump_queries;
   // OpenSMT API entry point

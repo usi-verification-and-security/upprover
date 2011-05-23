@@ -25,8 +25,8 @@ Author: Ondrej Sery
 static unsigned dump_count = 0;
 
 satcheck_opensmtt::satcheck_opensmtt(int verbosity, bool _dump_queries) :
-  dump_queries (_dump_queries), opensmt_ctx(NULL), partition_root_enode(NULL), 
-  partition_count(0), ready_to_interpolate(false)
+  solver_verbosity(verbosity), dump_queries (_dump_queries), opensmt_ctx(NULL), 
+  partition_root_enode(NULL), partition_count(0), ready_to_interpolate(false)
 {
   initializeSolver();
 }
@@ -47,7 +47,7 @@ void satcheck_opensmtt::initializeSolver()
   config.setProduceModels();
   config.setProduceInter();
   
-  config.verbosity = verbosity;
+  config.verbosity = solver_verbosity;
   config.print_proofs_dotty = 0;
   config.proof_red_trans = 1;
   config.proof_red_time = 0; // <-- timeout
