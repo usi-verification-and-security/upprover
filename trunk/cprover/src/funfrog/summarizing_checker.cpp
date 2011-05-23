@@ -109,6 +109,9 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
           }
         } else if (count == 0 && symex.sum_count != 0){
           out << "FUNCTION SUMMARIES (for " << symex.sum_count << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION.\nTry to inline everything then.\n";
+        } else if (symex.sum_count == 0){
+          out << "ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.\nA real bug found.\n";
+          break;
         }
       }
     }

@@ -141,11 +141,11 @@ claim_statst check_claims(
   //                                          ns);
 
 
-  contextt temp_context;                          // FIXME: it was previously here
-  //namespacet ns1(ns.get_context(), temp_context); // FIXME: if some bug will be found, replace ns by ns1
-  summarizing_checkert sum_checker(leaping_program, value_set_analysist(ns),
+  contextt temp_context;
+  namespacet ns1(ns.get_context(), temp_context);
+  summarizing_checkert sum_checker(leaping_program, value_set_analysist(ns1),
                          goto_functions, loopstoret(), loopstoret(),
-                         ns, temp_context, options, std::cout, res.max_mem_used);
+                         ns1, temp_context, options, std::cout, res.max_mem_used);
 
   while(true)
   {

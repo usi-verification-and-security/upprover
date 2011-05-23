@@ -1,2 +1,5 @@
-ASSERTIONS DON'T HOLD AFTER INLINING.
-ASSERTIONS DON'T HOLD AFTER INLINING.
+Violated property:
+  file 03_simple/main3.c line 19 function main
+  assertion
+  i == j
+ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.
