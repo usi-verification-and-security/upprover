@@ -93,21 +93,25 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
           {                           // otherwise, even generated once again, they will be weaker then existing ones
             double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
             extract_interpolants(equation, red_timeout);
-            out << "ASSERTION(S) HOLD(S) AFTER INLINING.\n";
+            out << "ASSERTION(S) HOLD(S) AFTER INLINING." << std::endl;
           } else {
-            out << "FUNCTION SUMMARIES (for " << symex.sum_count << " calls) WERE SUBSTITUTED SUCCESSFULLY.\n";
+            out << "FUNCTION SUMMARIES (for " << symex.sum_count << 
+                    " calls) WERE SUBSTITUTED SUCCESSFULLY." << std::endl;
           }
         } else if (count == 0 && symex.sum_count != 0){
-          out << "FUNCTION SUMMARIES (for " << symex.sum_count << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION.\nTry to inline everything then.\n";
+          out << "FUNCTION SUMMARIES (for " << symex.sum_count << 
+                  " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << std::endl <<
+                  "Try to inline everything then." << std::endl;
         } else if (symex.sum_count == 0){
-          out << "ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.\nA real bug found.\n";
+          out << "ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING."  << std::endl <<
+                  "A real bug found." << std::endl;
           break;
         }
       }
     }
     count++;
   }
-  out << "\nTotal amount of steps: " << count << ".";
+  out << std::endl<< "Total number of steps: " << count << ".";
   return end;
 }
 
