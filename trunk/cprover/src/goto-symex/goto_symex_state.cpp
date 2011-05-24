@@ -71,7 +71,7 @@ Function: goto_symex_statet::name_frame
 
 \*******************************************************************/
 
-std::string goto_symex_statet::level1t::name(
+irep_idt goto_symex_statet::level1t::name(
   const irep_idt &identifier,
   unsigned frame) const
 {
@@ -90,7 +90,7 @@ Function: goto_symex_statet::name_count
 
 \*******************************************************************/
 
-std::string goto_symex_statet::level2t::name(
+irep_idt goto_symex_statet::level2t::name(
   const irep_idt &identifier,
   unsigned count) const
 {
@@ -129,14 +129,14 @@ Function: goto_symex_statet::level1t::operator()
 
 \*******************************************************************/
 
-std::string goto_symex_statet::level1t::operator()(
+irep_idt goto_symex_statet::level1t::operator()(
   const irep_idt &identifier) const
 {
   current_namest::const_iterator it=
     current_names.find(identifier);
 
   if(it==current_names.end())
-    return id2string(identifier);
+    return identifier;
 
   return name(identifier, it->second);
 }
@@ -153,7 +153,7 @@ Function: goto_symex_statet::level2t::operator()
 
 \*******************************************************************/
 
-std::string goto_symex_statet::level2t::operator()(
+irep_idt goto_symex_statet::level2t::operator()(
   const irep_idt &identifier) const
 {
   current_namest::const_iterator it=
@@ -299,7 +299,7 @@ void goto_symex_statet::assignment(
     
   // identifier should be l0 or l1, make sure it's l1
   
-  const std::string l1_identifier=top().level1(identifier);
+  const irep_idt l1_identifier=top().level1(identifier);
 
   // do the l2 renaming 
   level2t::valuet &entry=level2.current_names[l1_identifier];
@@ -495,7 +495,7 @@ void goto_symex_statet::level2t::rename(exprt &expr)
     }
     else
     {
-      std::string new_identifier=name(identifier, 0);
+      irep_idt new_identifier=name(identifier, 0);
       original_identifiers[new_identifier]=identifier;
       expr.set(ID_identifier, new_identifier);
     }
@@ -697,7 +697,7 @@ void goto_symex_statet::level1t::print(std::ostream &out) const
       it!=current_names.end();
       it++)
     out << it->first << " --> "
-        << name(it->first, it->second) << std::endl;
+        << name(it->first, it->second).c_str() << std::endl;
 }
 
 /*******************************************************************\
@@ -719,6 +719,6 @@ void goto_symex_statet::level2t::print(std::ostream &out) const
       it!=current_names.end();
       it++)
     out << it->first << " --> "
-        << name(it->first, it->second.count) << std::endl;
+        << name(it->first, it->second.count).c_str() << std::endl;
 }
 

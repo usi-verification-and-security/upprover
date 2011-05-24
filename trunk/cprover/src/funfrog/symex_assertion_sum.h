@@ -209,6 +209,9 @@ private:
     statet &state,
     const deferred_functiont &deferred_function);
 
+  // Clear local symbols from the l2 cache.
+  void clear_locals_versions(statet &state);
+  
   // Creates new call site (start & end) symbols for the given
   // deferred function
   void produce_callsite_symbols(deferred_functiont& deferred_function,
@@ -222,7 +225,7 @@ private:
 
   // Helper function for renaming of an identifier without
   // assigning to it. Constant propagation is stopped for the given symbol.
-  std::string get_new_symbol_version(
+  irep_idt get_new_symbol_version(
         const irep_idt& identifier,
         statet &state);
 

@@ -49,7 +49,7 @@ public:
     virtual void rename(typet &type);
     virtual void remove(const irep_idt &identifier)=0;
 
-    virtual std::string operator()(const irep_idt &identifier) const=0;
+    virtual irep_idt operator()(const irep_idt &identifier) const=0;
     
     virtual ~renaming_levelt() { }
     
@@ -65,7 +65,7 @@ public:
   struct level1t:public renaming_levelt
   {
   public:
-    std::string name(
+    irep_idt name(
       const irep_idt &identifier,
       unsigned frame) const;
       
@@ -74,7 +74,7 @@ public:
 
     virtual void rename(exprt &expr);
     virtual void rename(typet &type) { renaming_levelt::rename(type); }
-    virtual std::string operator()(const irep_idt &identifier) const;
+    virtual irep_idt operator()(const irep_idt &identifier) const;
     virtual void remove(const irep_idt &identifier) { current_names.erase(identifier); }
     
     void rename(const irep_idt &identifier, unsigned frame)
@@ -96,10 +96,10 @@ public:
   public:
     virtual void rename(exprt &expr);
     virtual void rename(typet &type) { renaming_levelt::rename(type); }
-    virtual std::string operator()(const irep_idt &identifier) const;
+    virtual irep_idt operator()(const irep_idt &identifier) const;
     virtual void remove(const irep_idt &identifier) { current_names.erase(identifier); }
 
-    std::string name(
+    irep_idt name(
       const irep_idt &identifier,
       unsigned count) const;
 
@@ -166,12 +166,12 @@ public:
   void get_original_name(exprt &expr) const;
   
   // does both levels of renaming
-  std::string current_name(const irep_idt &identifier) const
+  irep_idt current_name(const irep_idt &identifier) const
   {
     return current_name(level2, identifier);
   }
 
-  std::string current_name(
+  irep_idt current_name(
     const level2t &level2,
     const irep_idt &identifier) const
   {
@@ -208,7 +208,7 @@ public:
     }
   };
 
-  std::string current_name(
+  irep_idt current_name(
     const goto_statet &goto_state,
     const irep_idt &identifier) const
   {

@@ -156,36 +156,7 @@ void symex_assertion_sumt::symex_step(
 
     store_return_value(state, get_current_deferred_function());
     store_modified_globals(state, get_current_deferred_function());
-    
-    /* FIXME: This l2 cache is probably broken
-    if (current_summary_info->get_function_id() != ID_nil)
-    { 
-      // Clear locals from l2 cache
-      std::set<irep_idt> local_identifiers;
-      
-      get_local_identifiers(
-              summarization_context.get_function(current_summary_info->get_function_id()),
-              local_identifiers);
-      
-      // unsigned &frame_nr = function_frame[current_summary_info->get_function_id()];
-      
-      for (std::set<irep_idt>::const_iterator
-        it = local_identifiers.begin();
-              it != local_identifiers.end();
-              ++it) {
-        
-        // state.top().level1.rename(*it, frame_nr);
-        irep_idt l1_name = state.top().level1(*it);
-       
-        // std::cerr << "Removing local:" << l1_name << " (" << *it << "): " <<
-        //        (state.level2.current_names.find(l1_name) !=
-        //        state.level2.current_names.end()) << std::endl;
-
-        state.level2.remove(l1_name);
-      }
-      
-      // std::cerr << "Level2 size: " << state.level2.current_names.size() << std::endl;
-    } */
+    clear_locals_versions(state);
 
     dequeue_deferred_function(state);
     break;
@@ -404,6 +375,26 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     current_summary_info = NULL;
     // Prepare the equation for further processing
     equation.prepare_partitions();
+   
+#   ifdef DEBUG_PARTITIONING    
+    std::cerr << std::endl << "Current names L2 (" << 
+            state.level2.current_names.size() << "):" << std::endl;
+    for (statet::level2t::current_namest::const_iterator it =
+            state.level2.current_names.begin();
+            it != state.level2.current_names.end();
+            ++it) {
+      std::cerr << it->first.c_str() << " : " << it->second.count << std::endl;
+    }
+    std::cerr << std::endl << "Current names L1 (" << 
+            state.top().level1.current_names.size() << "):" << std::endl;
+    for (statet::level1t::current_namest::const_iterator it =
+            state.top().level1.current_names.begin();
+            it != state.top().level1.current_names.end();
+            ++it) {
+      std::cerr << it->first.c_str() << " : " << it->second << std::endl;
+    }
+    std::cerr << std::endl;
+#   endif
     return;
   }
 
@@ -429,6 +420,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   state.source.pc = body.instructions.begin();
   state.top().end_of_function = --body.instructions.end();
   state.top().goto_state_map.clear();
+  state.top().local_variables.clear();
 
   // Setup temporary store for return value
   if (deferred_function.returns_value) {
@@ -492,7 +484,7 @@ void symex_assertion_sumt::assign_function_arguments(
   // them later, when processing the deferred function).
   mark_argument_symbols(goto_function.type, state, deferred_function);
 
-  // TODO: Mark accessed global variables as well
+  // Mark accessed global variables as well
   mark_accessed_global_symbols(identifier, state, deferred_function);
   
   // FIXME: We need to store the SSA_steps.size() here, so that 
@@ -579,8 +571,16 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
           ++it) 
   {
     const symbolt& symbol = ns.lookup(*it);
+    // The symbol is not yet in l2 renaming
+    if (state.level2.current_names.find(*it) == state.level2.current_names.end()) {
+      state.level2.rename(*it, 0);
+#     ifdef DEBUG_PARTITIONING
+      std::cerr << " * WARNING: Forcing '" << *it << 
+              "' into l2 renaming." << std::endl;
+#     endif
+    }
+
     symbol_exprt symb_ex(state.current_name(*it), symbol.type);
-    
     deferred_function.argument_symbols.push_back(symb_ex);
 
 #   ifdef DEBUG_PARTITIONING
@@ -650,12 +650,19 @@ void symex_assertion_sumt::return_assignment_and_mark(
 {
   assert(function_type.return_type().is_not_nil());
 
-  const irep_idt &function_id = deferred_function.summary_info.get_function_id();
   const typet& type = function_type.return_type();
-  std::string retval_symbol_id(
+//# ifndef DEBUG_PARTITIONING
+  const irep_idt &function_id = deferred_function.summary_info.get_function_id();
+  irep_idt retval_symbol_id(
           "funfrog::" + function_id.as_string() + "::\\retval");
-  std::string retval_tmp_id(
+  irep_idt retval_tmp_id(
           "funfrog::" + function_id.as_string() + "::\\retval_tmp");
+/* FIXME: This possibly breaks typing of return values
+# else
+  irep_idt retval_symbol_id("funfrog::\\retval");
+  irep_idt retval_tmp_id("funfrog::\\retval_tmp");
+# endif
+ */
   symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state),
           type);
   symbol_exprt retval_tmp(retval_tmp_id, type);
@@ -753,6 +760,42 @@ void symex_assertion_sumt::store_return_value(
   constant_propagation = false;
   raw_assignment(state, assignment.lhs(), assignment.rhs(), ns, false);
   constant_propagation = old_cp;
+}
+/*******************************************************************
+
+ Function: symex_assertion_sumt::clear_locals_versions
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Clear local symbols from the l2 cache.
+
+\*******************************************************************/
+void symex_assertion_sumt::clear_locals_versions(statet &state)
+{
+  if (current_summary_info->get_function_id() != ID_nil) {
+    // Clear locals from l2 cache
+    const std::set<irep_idt>& local_identifiers = state.top().local_variables;
+
+#   ifdef DEBUG_PARTITIONING
+    std::cerr << "Level2 size: " << state.level2.current_names.size() << std::endl;
+#   endif
+    for (std::set<irep_idt>::const_iterator
+      it = local_identifiers.begin();
+            it != local_identifiers.end();
+            ++it) {
+
+#     ifdef DEBUG_PARTITIONING
+      std::cerr << "Removing local:" << *it << " (" << 
+              state.top().level1.get_original_name(*it) << "): " <<
+              (state.level2.current_names.find(*it) !=
+              state.level2.current_names.end()) << std::endl;
+#     endif
+
+      state.level2.remove(*it);
+    }
+  }
 }
 
 /*******************************************************************
@@ -939,10 +982,15 @@ void symex_assertion_sumt::produce_callsite_symbols(
         statet& state,
         const irep_idt& function_id)
 {
+# ifdef DEBUG_PARTITIONING
   irep_idt callstart_id = "funfrog::" + function_id.as_string() +
           "::\\callstart_symbol";
   irep_idt callend_id = "funfrog::" + function_id.as_string() +
           "::\\callend_symbol";
+# else
+  irep_idt callstart_id = "funfrog::\\callstart_symbol";
+  irep_idt callend_id = "funfrog::\\callend_symbol";
+# endif
 
   deferred_function.callstart_symbol.set_identifier(
           get_new_symbol_version(callstart_id, state));
@@ -986,13 +1034,13 @@ void symex_assertion_sumt::produce_callend_assumption(
  assigning to it. Constant propagation is stopped for the given symbol.
 
 \*******************************************************************/
-std::string symex_assertion_sumt::get_new_symbol_version(
+irep_idt symex_assertion_sumt::get_new_symbol_version(
         const irep_idt& identifier,
         statet &state)
 {
-  //--8<--- Taken from goto_symex_statt::assignment()
+  //--8<--- Taken from goto_symex_statet::assignment()
   // identifier should be l0 or l1, make sure it's l1
-  const std::string l1_identifier=state.top().level1(identifier);
+  irep_idt l1_identifier=state.top().level1(identifier);
   // do the l2 renaming
   statet::level2t::valuet &entry=state.level2.current_names[l1_identifier];
   entry.count++;
@@ -1027,7 +1075,7 @@ void symex_assertion_sumt::raw_assignment(
 
   // FIXME: Check that this does not mess (too much) with the value sets
   // and constant propagation
-  //--8<--- Taken from goto_symex_statt::assignment()
+  //--8<--- Taken from goto_symex_statet::assignment()
   assert(lhs.id()==ID_symbol);
 
   // the type might need renaming
@@ -1036,10 +1084,20 @@ void symex_assertion_sumt::raw_assignment(
   const irep_idt &identifier=
     lhs.get(ID_identifier);
 
+  // -->8---
+  assert(state.level2.current_names.find(state.level2.get_original_name(identifier)) != 
+          state.level2.current_names.end());
+  
+  statet::level2t::valuet &entry=state.level2.current_names[
+          state.level2.get_original_name(identifier)];
+  entry.constant.make_nil();
+  
+  // --8<---
+  /*
   // identifier should be l0 or l1, make sure it's l1
 
-  const std::string l1_identifier=state.top().level1(identifier);
-
+  const irep_idt l1_identifier=state.top().level1(identifier);
+  
   // do the l2 renaming
   statet::level2t::valuet &entry=state.level2.current_names[l1_identifier];
 
@@ -1063,6 +1121,7 @@ void symex_assertion_sumt::raw_assignment(
   }
   else
     entry.constant.make_nil();
+  */
 
   // update value sets
   exprt l1_rhs(rhs_symbol);
@@ -1172,73 +1231,4 @@ void symex_assertion_sumt::phi_function(
       dest_state.source,
       symex_targett::HIDDEN);
   }
-  
-  /*
-  // go over all variables to see what changed
-  std::set<irep_idt> variables;
-
-  goto_state.level2.get_variables(variables);
-  dest_state.level2.get_variables(variables);
-
-  for(std::set<irep_idt>::const_iterator
-      it=variables.begin();
-      it!=variables.end();
-      ++it)
-  {
-    irep_idt original_identifier = dest_state.get_original_name(*it);
-
-    if (is_dead_identifier(original_identifier))
-      continue;
-
-    if(goto_state.level2.current_number(*it)==
-       dest_state.level2.current_number(*it))
-      continue; // not at all changed
-
-    // changed!
-    const symbolt &symbol=ns.lookup(original_identifier);
-
-    typet type(symbol.type);
-
-    // type may need renaming
-    dest_state.rename(type, ns);
-
-    exprt rhs;
-
-    if(dest_state.guard.is_false())
-    {
-      rhs=symbol_exprt(dest_state.current_name(goto_state, symbol.name), type);
-    }
-    else if(goto_state.guard.is_false())
-    {
-      rhs=symbol_exprt(dest_state.current_name(symbol.name), type);
-    }
-    else
-    {
-      guardt tmp_guard(goto_state.guard);
-
-      // this gets the diff between the guards
-      tmp_guard-=dest_state.guard;
-
-      rhs=if_exprt();
-      rhs.type()=type;
-      rhs.op0()=tmp_guard.as_expr();
-      rhs.op1()=symbol_exprt(dest_state.current_name(goto_state, symbol.name), type);
-      rhs.op2()=symbol_exprt(dest_state.current_name(symbol.name), type);
-    }
-
-    exprt lhs(symbol_expr(symbol));
-    exprt new_lhs(lhs);
-
-    dest_state.assignment(new_lhs, rhs, ns, false);
-
-    guardt true_guard;
-
-    target.assignment(
-      true_guard,
-      new_lhs, lhs,
-      rhs,
-      dest_state.source,
-      symex_targett::HIDDEN);
-  }
-  */
 }
