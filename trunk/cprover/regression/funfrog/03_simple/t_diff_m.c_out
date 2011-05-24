@@ -1,16 +1,17 @@
 UNSAT - it holds!
 ASSERTION IS TRUE
 ASSERTION(S) HOLD(S) AFTER INLINING.
+SAT - doesn't hold
 Violated property:
   file 03_simple/t_diff_m.c line 27 function main
   assertion
   b < 1
 FUNCTION SUMMARIES (for 3 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+SAT - doesn't hold
 Violated property:
   file 03_simple/t_diff_m.c line 27 function main
   assertion
   b < 1
 UNSAT - it holds!
 ASSERTION IS TRUE
-UNSAT
 ASSERTION(S) HOLD(S) AFTER INLINING.
