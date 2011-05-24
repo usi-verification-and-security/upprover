@@ -68,9 +68,12 @@ private:
 
   void initialize(const irep_idt &target_function)
     { summary_info.set_function_id(target_function);}
-  void set_inline(const summarization_contextt &summarization_context,
-    const irep_idt &target_function, const assertion_infot &assertion,
-    size_t stack_depth);
+  void set_precision_deep(
+          summary_precisiont _precision,
+          const summarization_contextt &summarization_context,
+          const irep_idt &target_function,
+          const assertion_infot &assertion,
+          size_t stack_depth);
 
   friend class summary_infot;
 };

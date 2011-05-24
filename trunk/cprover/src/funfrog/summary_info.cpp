@@ -11,13 +11,14 @@
 #include <std_expr.h>
 #include "summary_info.h"
 
-void
-call_summaryt::set_inline(const summarization_contextt &summarization_context,
+void call_summaryt::set_precision_deep(
+        summary_precisiont _precision,
+        const summarization_contextt &summarization_context,
         const irep_idt &target_function,
         const assertion_infot &assertion,
         size_t stack_depth)
 {
-  precision = INLINE;
+  precision = _precision;
 
   const goto_programt &function_body = 
     summarization_context.get_function(target_function).body;
@@ -58,15 +59,16 @@ summary_infot::initialize(const summarization_contextt& summarization_context,
 #       if 0
         std::cout << "Inlining a call: " << target_function << std::endl;
 #       endif
-        call_summary.set_inline(summarization_context, target_function,
+        call_summary.set_precision_deep(call_summaryt::INLINE, summarization_context, target_function,
                 assertion, stack_depth+1);
       } else {
         const interpolantst& summaries = 
           summarization_context.get_summaries(target_function);
         if (summaries.size() > 0) {
-          call_summary.set_summary();
+          call_summary.set_precision_deep(call_summaryt::SUMMARY, summarization_context, target_function,
+              assertion, stack_depth+1);
         } else {
-          call_summary.set_inline(summarization_context, target_function,
+          call_summary.set_precision_deep(call_summaryt::INLINE, summarization_context, target_function,
                 assertion, stack_depth+1);
         }
         // call_summary.set_nondet();
