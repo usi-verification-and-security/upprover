@@ -166,7 +166,7 @@ claim_statst check_claims(
       seen_claims++;
       std::cout << "\r    Checking Claim #" << claim_numbers[ass_ptr] << " (";
       std::cout << (int)(100*seen_claims/(double)(assert_grouping ? claim_numbers.size() : inlined_claims));
-      std::cout << "%) ...";
+      std::cout << "%) ..." << std::endl;
       std::cout.flush();
     }
     

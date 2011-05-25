@@ -67,11 +67,13 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
 
     partitioning_target_equationt equation(ns);
 
+    // FIXME: move constructor, setup_unwind, and loop_free_check away from the loop
     symex_assertion_sumt symex = symex_assertion_sumt(
               summarization_context, summary_info, ns, context,
               equation, out, goto_program, !no_slicing_option);
 
     setup_unwind(symex);
+    symex.loop_free_check();
 
     end = symex.prepare_SSA(assertion);
 

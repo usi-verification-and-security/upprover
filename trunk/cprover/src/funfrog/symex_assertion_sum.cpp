@@ -21,6 +21,34 @@
 
 /*******************************************************************
 
+ Function: symex_assertion_sumt::loop_free_check
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Sanity check, we expect loop-free programs only.
+
+\*******************************************************************/
+
+void symex_assertion_sumt::loop_free_check(){
+# ifndef NDEBUG
+  forall_goto_program_instructions(it, goto_program)
+    assert(!it->is_backwards_goto());
+  forall_goto_functions(it, summarization_context.get_functions()) {
+    forall_goto_program_instructions(it2, it->second.body) {
+      if (it2->is_backwards_goto()) {
+        std::cerr << "ERROR: Backward goto (i.e., a loop) in function: " << it->first << std::endl;
+        goto_program.output_instruction(ns, "", out, it2);
+        // assert(!it2->is_backwards_goto());
+      }
+    }
+  }
+# endif
+}
+
+/*******************************************************************
+
  Function: symex_assertion_sumt::prepare_SSA
 
  Inputs:
@@ -45,21 +73,6 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   }
 
   goto_programt::const_targett last = assertion.get_location(); last++;
-
-# ifndef NDEBUG
-  // sanity check, we expect loop-free programs only.
-  forall_goto_program_instructions(it, goto_program)
-    assert(!it->is_backwards_goto());
-  forall_goto_functions(it, summarization_context.get_functions()) {
-    forall_goto_program_instructions(it2, it->second.body) {
-      if (it2->is_backwards_goto()) {
-        std::cerr << "ERROR: Backward goto (i.e., a loop) in function: " << it->first << std::endl;
-        goto_program.output_instruction(ns, "", out, it2);
-        // assert(!it2->is_backwards_goto());
-      }
-    }
-  }
-# endif
 
   // Proceed with symbolic execution
   fine_timet before, after;

@@ -51,6 +51,8 @@ public:
           use_slicing(_use_slicing)
           {};
 
+  void loop_free_check();
+
   bool prepare_SSA(const assertion_infot &assertion);
   
   virtual void symex_step(
