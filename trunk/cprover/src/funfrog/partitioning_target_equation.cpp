@@ -65,8 +65,11 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   partition.fle_part_id = interpolator.new_partition();
 
   // Convert the assumption propagation symbols
-  partition.callstart_literal = prop_conv.convert(partition.callstart_symbol);
-  partition.callend_literal = prop_conv.convert(partition.callend_symbol);
+  partition_ifacet &partition_iface = partition.get_iface();
+  partition_iface.callstart_literal = 
+          prop_conv.convert(partition_iface.callstart_symbol);
+  partition_iface.callend_literal = 
+          prop_conv.convert(partition_iface.callend_symbol);
 
   // If this is a summary partition, apply the summary
   if (partition.is_summary) {
@@ -301,7 +304,8 @@ void partitioning_target_equationt::convert_partition_assertions(
         if (pit != partition_map.end()) {
           partitiont& target_partition = partitions[pit->second];
           // Emit the assumption propagation formula
-          literalt tmp = prop_conv.prop.limplies(target_partition.callstart_literal,
+          literalt tmp = prop_conv.prop.limplies(
+                  target_partition.get_iface().callstart_literal,
                   assumption_literal);
 
           prop_conv.prop.l_set_to_true(tmp);
@@ -331,7 +335,8 @@ void partitioning_target_equationt::convert_partition_assertions(
 
   if (partition.parent_id != NO_PARTITION && number_of_assumptions > 0) {
     // Assert the assumption propagation formula for the partition
-    literalt tmp = prop_conv.prop.limplies(partition.callend_literal,
+    literalt tmp = prop_conv.prop.limplies(
+            partition.get_iface().callend_literal,
             assumption_literal);
 
 #   ifdef DEBUG_SSA      
@@ -537,7 +542,7 @@ void partitioning_target_equationt::extract_interpolants(
     // Store the interpolant
     partitiont& partition = partitions[pid];
     interpolant_map.push_back(interpolant_mapt::value_type(
-      partition.function_id, interpolantst::value_type()));
+      partition.get_iface().function_id, interpolantst::value_type()));
     interpolantst::reference interpolant = interpolant_map.back().second;
     interpolant.swap(itp_result[tid++]);
 

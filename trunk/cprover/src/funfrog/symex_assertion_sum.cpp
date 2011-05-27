@@ -21,6 +21,26 @@
 
 /*******************************************************************
 
+ Function: symex_assertion_sumt::~symex_assertion_sumt
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Delete all allocated partition_ifaces
+
+\*******************************************************************/
+
+symex_assertion_sumt::~symex_assertion_sumt() {
+  for (partition_iface_ptrst::iterator it = partition_ifaces.begin();
+          it != partition_ifaces.end();
+          ++it) {
+    delete (*it);
+  }
+}
+
+/*******************************************************************
+
  Function: symex_assertion_sumt::loop_free_check
 
  Inputs:
@@ -55,8 +75,8 @@ void symex_assertion_sumt::loop_free_check(){
 
  Outputs:
 
- Purpose: Checks trivial cases (assertion is not reachable, is constant),
-          and constructs the SSA form for goto-program otherwise
+ Purpose: Generate SSA statements for the program starting from the root 
+ stored in goto_program.
 
 \*******************************************************************/
 
@@ -72,18 +92,16 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
     return true;
   }
 
-  goto_programt::const_targett last = assertion.get_location(); last++;
-
   // Proceed with symbolic execution
   fine_timet before, after;
   before=current_time();
 
-  goto_symext::statet state;
-  // Prepare for the pc++ after returning from the last END_FUNCTION
-  state.top().calling_location = --goto_program.instructions.end();
+  // Clear the state
+  state = goto_symext::statet();
 
   // Prepare the partitions and deferred functions
-  defer_function(deferred_functiont(summary_info), ID_nil);
+  defer_function(deferred_functiont(summary_info, new_partition_iface(
+          summary_info.get_function_id())));
   equation.select_partition(deferred_functions.front().partition_id);
 
   // Old: ??? state.value_set = value_sets;
@@ -99,6 +117,83 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 #   endif
     symex_step(summarization_context.get_functions(), state);
     // state.value_set.output(ns, out);
+  }
+  after=current_time();
+
+  if(out.good())
+    out << "SYMEX TIME: "<< time2string(after-before) << std::endl;
+
+  if(remaining_claims!=0)
+  {
+    if (use_slicing) {
+      before=current_time();
+      out << "All SSA steps: " << equation.SSA_steps.size() << std::endl;
+      partitioning_slice(equation);
+      out << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << std::endl;
+      after=current_time();
+      if (out.good())
+        out << "SLICER TIME: "<< time2string(after-before) << std::endl;
+    }
+  } else {
+      out << "Assertion(s) are trivially unreachable." << std::endl;
+      return true;
+  }
+  return false;
+}
+
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::refine_SSA
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Generate SSA statements for the refined program starting from 
+ the given function.
+
+\*******************************************************************/
+
+bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion, 
+          summary_infot& refined_function)
+{
+  current_assertion = &assertion;
+
+  // these are quick...
+  if(assertion.get_location()->guard.is_true())
+  {
+    out << std::endl << "ASSERTION IS TRUE" << std::endl;
+    return true;
+  }
+
+  // Proceed with symbolic execution
+  fine_timet before, after;
+  before=current_time();
+  
+  // TODO: Defer the function
+  throw "Not implemented yet!";
+  
+  // Prepare the partitions and deferred functions
+  //partition_idt partition_id = refined_function.get_partition_id();
+  //equation.select_partition(deferred_functions.front().partition_id);
+  // TODO: Process the function
+  
+  /* OLD */
+
+
+  // Old: ??? state.value_set = value_sets;
+
+  // FIXME: If we care only about a single assertion, we should stop 
+  // as soon as it is reached.
+  for(state.source.pc = goto_program.instructions.begin();
+      has_more_steps(state);
+      )
+  {
+#   if 0
+    goto_program.output_instruction(ns, "", out, state.source.pc);
+#   endif
+    symex_step(summarization_context.get_functions(), state);
   }
   after=current_time();
 
@@ -320,21 +415,14 @@ void symex_assertion_sumt::symex_step(
 
 \*******************************************************************/
 void symex_assertion_sumt::defer_function(
-        const deferred_functiont &deferred_function,
-        irep_idt function_id) 
+        const deferred_functiont &deferred_function) 
 {
   bool first = deferred_functions.size() == 0;
 
   deferred_functions.push(deferred_function);
   deferred_functiont& fresh = deferred_functions.back();
   fresh.partition_id = equation.reserve_partition(
-          deferred_function.callstart_symbol,
-          deferred_function.callend_symbol,
-          deferred_function.argument_symbols,
-          deferred_function.out_arg_symbols,
-          deferred_function.retval_symbol,
-          deferred_function.returns_value,
-          function_id);
+          deferred_function.partition_iface);
 
   // Keep track of the stack match
   const deferred_functiont& parent = get_current_deferred_function();
@@ -351,7 +439,7 @@ void symex_assertion_sumt::defer_function(
     const symbol_exprt& func_symb = to_symbol_expr(to_code_function_call(
             (*parent.assert_stack_it)->code).function());
     
-    if (func_symb.get_identifier() == function_id) 
+    if (func_symb.get_identifier() == deferred_function.partition_iface.function_id) 
     {
       fresh.assert_stack_it = parent.assert_stack_it;
       fresh.assert_stack_it++;
@@ -413,6 +501,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 
   // Set the current summary info to one of the deferred functions
   deferred_functiont &deferred_function = deferred_functions.front();
+  partition_ifacet &partition_iface = deferred_function.partition_iface;
   current_summary_info = &deferred_function.summary_info;
   const irep_idt& function_id = current_summary_info->get_function_id();
 
@@ -436,21 +525,21 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   state.top().local_variables.clear();
 
   // Setup temporary store for return value
-  if (deferred_function.returns_value) {
-    state.top().return_value = deferred_function.retval_tmp;
+  if (partition_iface.returns_value) {
+    state.top().return_value = partition_iface.retval_tmp;
   } else {
     state.top().return_value.make_nil();
   }
 
   // Add an assumption of the function call_site symbol
-  target.assumption(state.guard, deferred_function.callstart_symbol,
+  target.assumption(state.guard, partition_iface.callstart_symbol,
           state.source);
 
   // NOTE: In order to prevent name clashes with argument SSA versions,
   // we renew them all here.
   for (std::vector<symbol_exprt>::const_iterator it1 =
-          deferred_function.argument_symbols.begin();
-          it1 != deferred_function.argument_symbols.end();
+          partition_iface.argument_symbols.begin();
+          it1 != partition_iface.argument_symbols.end();
           ++it1) {
     guardt guard;
     symbol_exprt lhs(state.get_original_name(it1->get_identifier()), ns.follow(it1->type()));
@@ -478,6 +567,7 @@ void symex_assertion_sumt::assign_function_arguments(
 {
   const irep_idt &identifier=
     to_symbol_expr(function_call.function()).get_identifier();
+  partition_ifacet &partition_iface = deferred_function.partition_iface;
 
   // find code in function map
   goto_functionst::function_mapt::const_iterator it =
@@ -495,10 +585,10 @@ void symex_assertion_sumt::assign_function_arguments(
 
   // Store the argument renamed symbols somewhere (so that we can use
   // them later, when processing the deferred function).
-  mark_argument_symbols(goto_function.type, state, deferred_function);
+  mark_argument_symbols(goto_function.type, state, partition_iface);
 
   // Mark accessed global variables as well
-  mark_accessed_global_symbols(identifier, state, deferred_function);
+  mark_accessed_global_symbols(identifier, state, partition_iface);
   
   // FIXME: We need to store the SSA_steps.size() here, so that 
   // SSA_exec_order is correctly ordered.
@@ -509,12 +599,12 @@ void symex_assertion_sumt::assign_function_arguments(
     // store the temporary return value symbol somewhere (so that we can
     // use it later, when processing the deferred function).
     return_assignment_and_mark(goto_function.type, state, function_call.lhs(),
-            deferred_function);
+            partition_iface);
   } else {
-    deferred_function.retval_symbol = symbol_exprt();
+    partition_iface.retval_symbol = symbol_exprt();
   }
   // FIXME: Add also new assignments to all modified global variables
-  modified_globals_assignment_and_mark(identifier, state, deferred_function);
+  modified_globals_assignment_and_mark(identifier, state, partition_iface);
   
   constant_propagation = old_cp;
 }
@@ -533,7 +623,7 @@ void symex_assertion_sumt::assign_function_arguments(
 void symex_assertion_sumt::mark_argument_symbols(
         const code_typet &function_type,
         statet &state,
-        deferred_functiont &deferred_function)
+        partition_ifacet &partition_iface)
 {
   const code_typet::argumentst &argument_types=function_type.arguments();
 
@@ -547,7 +637,7 @@ void symex_assertion_sumt::mark_argument_symbols(
 
     symbol_exprt symbol(state.current_name(identifier), argument.type());
 
-    deferred_function.argument_symbols.push_back(symbol);
+    partition_iface.argument_symbols.push_back(symbol);
 
 #   ifdef DEBUG_PARTITIONING
     expr_pretty_print(out << "Marking argument symbol: ", symbol);
@@ -570,7 +660,7 @@ void symex_assertion_sumt::mark_argument_symbols(
 void symex_assertion_sumt::mark_accessed_global_symbols(
     const irep_idt &function_id,
     statet &state,
-    deferred_functiont &deferred_function) 
+    partition_ifacet &partition_iface) 
 {
   const function_infot::lex_sorted_idst& globals_accessed = 
     summarization_context.get_function_info(function_id).get_accessed_globals();
@@ -594,7 +684,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     }
 
     symbol_exprt symb_ex(state.current_name(*it), symbol.type);
-    deferred_function.argument_symbols.push_back(symb_ex);
+    partition_iface.argument_symbols.push_back(symb_ex);
 
 #   ifdef DEBUG_PARTITIONING
     expr_pretty_print(out << "Marking accessed global symbol: ", symb_ex);
@@ -618,7 +708,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
 void symex_assertion_sumt::modified_globals_assignment_and_mark(
     const irep_idt &function_id,
     statet &state,
-    deferred_functiont &deferred_function)
+    partition_ifacet &partition_iface)
 {
   const function_infot::lex_sorted_idst& globals_modified = 
     summarization_context.get_function_info(function_id).get_modified_globals();
@@ -634,7 +724,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     const symbolt& symbol = ns.lookup(*it);
     symbol_exprt symb_ex(get_new_symbol_version(*it, state), symbol.type);
     
-    deferred_function.out_arg_symbols.push_back(symb_ex);
+    partition_iface.out_arg_symbols.push_back(symb_ex);
 
 #   ifdef DEBUG_PARTITIONING
     expr_pretty_print(out << "Marking modified global symbol: ", symb_ex);
@@ -659,13 +749,13 @@ void symex_assertion_sumt::return_assignment_and_mark(
         const code_typet &function_type,
         statet &state,
         const exprt &lhs,
-        deferred_functiont &deferred_function)
+        partition_ifacet &partition_iface)
 {
   assert(function_type.return_type().is_not_nil());
 
   const typet& type = function_type.return_type();
 //# ifndef DEBUG_PARTITIONING
-  const irep_idt &function_id = deferred_function.summary_info.get_function_id();
+  const irep_idt &function_id = partition_iface.function_id;
   irep_idt retval_symbol_id(
           "funfrog::" + function_id.as_string() + "::\\retval");
   irep_idt retval_tmp_id(
@@ -697,9 +787,9 @@ void symex_assertion_sumt::return_assignment_and_mark(
   expr_pretty_print(out << "Marking return tmp symbol: ", retval_tmp);
 # endif
 
-  deferred_function.retval_symbol = retval_symbol;
-  deferred_function.retval_tmp = retval_tmp;
-  deferred_function.returns_value = true;
+  partition_iface.retval_symbol = retval_symbol;
+  partition_iface.retval_tmp = retval_tmp;
+  partition_iface.returns_value = true;
 }
 
 
@@ -722,10 +812,11 @@ void symex_assertion_sumt::store_modified_globals(
   // Emit the assignment
   bool old_cp = constant_propagation;
   constant_propagation = false;
+  partition_ifacet &partition_iface = deferred_function.partition_iface;
   
   for (std::vector<symbol_exprt>::const_iterator it = 
-          deferred_function.out_arg_symbols.begin();
-          it != deferred_function.out_arg_symbols.end();
+          partition_iface.out_arg_symbols.begin();
+          it != partition_iface.out_arg_symbols.end();
           ++it) {
     
     symbol_exprt rhs(state.get_original_name(it->get_identifier()), 
@@ -758,12 +849,14 @@ void symex_assertion_sumt::store_return_value(
         statet &state,
         const deferred_functiont &deferred_function)
 {
-  if (!deferred_function.returns_value)
+  partition_ifacet &partition_iface = deferred_function.partition_iface;
+  
+  if (!partition_iface.returns_value)
     return;
   
   code_assignt assignment(
-          deferred_function.retval_symbol,
-          deferred_function.retval_tmp);
+          partition_iface.retval_symbol,
+          partition_iface.retval_tmp);
   
   assert( ns.follow(assignment.lhs().type()) ==
           ns.follow(assignment.rhs().type()));
@@ -828,9 +921,11 @@ void symex_assertion_sumt::handle_function_call(
         code_function_callt &function_call)
 {
   // What are we supposed to do with this precise function call?
-  const call_summaryt &call_summary =
-          current_summary_info->get_call_sites().find(state.source.pc)->second;
-  deferred_functiont deferred_function(call_summary.get_summary_info());
+  const call_summaryt &call_summary = current_summary_info->get_call_sites().find(
+          state.source.pc)->second;
+  const summary_infot &summary_info = call_summary.get_summary_info();
+  deferred_functiont deferred_function(summary_info, 
+          new_partition_iface(summary_info.get_function_id()));
   const irep_idt& function_id = function_call.function().get(ID_identifier);
   const goto_functionst::goto_functiont &goto_function =
     summarization_context.get_function(function_id);
@@ -907,20 +1002,16 @@ void symex_assertion_sumt::summarize_function_call(
   // of the function body
   out << "*** SUMMARY abstraction used for function: " <<
           function_id << std::endl;
+  
+  partition_ifacet &partition_iface = deferred_function.partition_iface;
 
-  produce_callsite_symbols(deferred_function, state, function_id);
-  produce_callend_assumption(deferred_function, state);
+  produce_callsite_symbols(partition_iface, state);
+  produce_callend_assumption(partition_iface, state);
 
   out << "Substituting interpolant" << std::endl;
 
   partition_idt partition_id = equation.reserve_partition(
-          deferred_function.callstart_symbol,
-          deferred_function.callend_symbol,
-          deferred_function.argument_symbols,
-          deferred_function.out_arg_symbols,
-          deferred_function.retval_symbol,
-          deferred_function.returns_value,
-          function_id);
+          partition_iface);
   equation.fill_summary_partition(partition_id,
           &summarization_context.get_summaries(function_id));
 }
@@ -945,10 +1036,12 @@ void symex_assertion_sumt::inline_function_call(
   out << "*** INLINING function: " <<
           function_id << std::endl;
 
-  produce_callsite_symbols(deferred_function, state, function_id);
-  produce_callend_assumption(deferred_function, state);
+  partition_ifacet &partition_iface = deferred_function.partition_iface;
 
-  defer_function(deferred_function, function_id);
+  produce_callsite_symbols(partition_iface, state);
+  produce_callend_assumption(partition_iface, state);
+
+  defer_function(deferred_function);
 }
 /*******************************************************************
 
@@ -969,13 +1062,13 @@ void symex_assertion_sumt::havoc_function_call(
 {
   // We should treat the function as nondeterministic, havocing
   // all data it touches.
-
-  // FIXME: We need some static analysis of the function for this
   out << "*** NONDET abstraction used for function: " <<
           function_id << std::endl;
 
-  produce_callsite_symbols(deferred_function, state, function_id);
-  produce_callend_assumption(deferred_function, state);
+  partition_ifacet &partition_iface = deferred_function.partition_iface;
+  
+  produce_callsite_symbols(partition_iface, state);
+  produce_callend_assumption(partition_iface, state);
 }
 
 /*******************************************************************
@@ -991,23 +1084,22 @@ void symex_assertion_sumt::havoc_function_call(
 
 \*******************************************************************/
 void symex_assertion_sumt::produce_callsite_symbols(
-        deferred_functiont& deferred_function,
-        statet& state,
-        const irep_idt& function_id)
+        partition_ifacet& partition_iface,
+        statet& state)
 {
 # ifdef DEBUG_PARTITIONING
-  irep_idt callstart_id = "funfrog::" + function_id.as_string() +
+  irep_idt callstart_id = "funfrog::" + partition_iface.function_id.as_string() +
           "::\\callstart_symbol";
-  irep_idt callend_id = "funfrog::" + function_id.as_string() +
+  irep_idt callend_id = "funfrog::" + partition_iface.function_id.as_string() +
           "::\\callend_symbol";
 # else
   irep_idt callstart_id = "funfrog::\\callstart_symbol";
   irep_idt callend_id = "funfrog::\\callend_symbol";
 # endif
 
-  deferred_function.callstart_symbol.set_identifier(
+  partition_iface.callstart_symbol.set_identifier(
           get_new_symbol_version(callstart_id, state));
-  deferred_function.callend_symbol.set_identifier(
+  partition_iface.callend_symbol.set_identifier(
           get_new_symbol_version(callend_id, state));
 
   add_symbol(callstart_id, typet(ID_bool), true);
@@ -1027,9 +1119,9 @@ void symex_assertion_sumt::produce_callsite_symbols(
 
 \*******************************************************************/
 void symex_assertion_sumt::produce_callend_assumption(
-        const deferred_functiont& deferred_function, statet& state)
+        const partition_ifacet& partition_iface, statet& state)
 {
-  exprt tmp(deferred_function.callend_symbol);
+  exprt tmp(partition_iface.callend_symbol);
   state.guard.guard_expr(tmp);
   target.assumption(state.guard, tmp, state.source);
 }

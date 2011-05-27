@@ -125,8 +125,8 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation)
     // Is constrained by a summary?
     partition_mapt::iterator sum_it = summary_map.find(id);
     if (sum_it != summary_map.end()) {
-      partitioning_target_equationt::partitiont& partition =
-              *(sum_it->second.first);
+      partitiont& partition = *(sum_it->second.first);
+      partition_ifacet& partition_iface = partition.get_iface();
       const interpolantst& itps = *partition.summaries;
       unsigned symbol_idx = sum_it->second.second;
 
@@ -145,8 +145,8 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation)
         unsigned idx = 0;
         partition.applicable_summaries.insert(i);
         for (std::vector<symbol_exprt>::iterator it = 
-                partition.argument_symbols.begin();
-                it != partition.argument_symbols.end();
+                partition_iface.argument_symbols.begin();
+                it != partition_iface.argument_symbols.end();
                 ++it, ++idx) {
           if (itps[i].get_symbol_mask()[idx])
             get_symbols(*it, depends);
@@ -274,18 +274,18 @@ void partitioning_slicet::prepare_assumption(
             equation.partition_map.find(sid);
 
     if (p_it != equation.partition_map.end()) {
-      partitioning_target_equationt::partitiont& partition =
-              equation.partitions[p_it->second];
+      partitiont& partition = equation.partitions[p_it->second];
+      partition_ifacet &partition_iface = partition.get_iface();
 
       for (std::vector<symbol_exprt>::iterator it =
-              partition.out_arg_symbols.begin();
-              it != partition.out_arg_symbols.end();
+              partition_iface.out_arg_symbols.begin();
+              it != partition_iface.out_arg_symbols.end();
               ++it) {
         assume_map.insert(assume_mapt::value_type(it->get_identifier(), &SSA_step));
       }
-      if (partition.returns_value) {
+      if (partition_iface.returns_value) {
         assume_map.insert(assume_mapt::value_type(
-                partition.retval_symbol.get_identifier(), &SSA_step));
+                partition_iface.retval_symbol.get_identifier(), &SSA_step));
       }
     }
   }
@@ -302,22 +302,22 @@ Function: partitioning_slicet::prepare_partition
 
 \*******************************************************************/
 
-void partitioning_slicet::prepare_partition(
-        partitioning_target_equationt::partitiont &partition) 
+void partitioning_slicet::prepare_partition(partitiont &partition) 
 {
+  partition_ifacet & partition_iface = partition.get_iface();
   // Fill summary table
   if (partition.is_summary) {
-    if (partition.returns_value) {
+    if (partition_iface.returns_value) {
       summary_map.insert(partition_mapt::value_type(
-              partition.retval_symbol.get_identifier(), 
+              partition_iface.retval_symbol.get_identifier(), 
               partition_mapt::value_type::second_type(&partition,
-              partition.argument_symbols.size() + 
-              partition.out_arg_symbols.size() + 2)));
+              partition_iface.argument_symbols.size() + 
+              partition_iface.out_arg_symbols.size() + 2)));
     }
-    unsigned symbol_idx = partition.argument_symbols.size();
+    unsigned symbol_idx = partition_iface.argument_symbols.size();
     for (std::vector<symbol_exprt>::iterator it2 =
-            partition.out_arg_symbols.begin();
-            it2 != partition.out_arg_symbols.end();
+            partition_iface.out_arg_symbols.begin();
+            it2 != partition_iface.out_arg_symbols.end();
             ++it2, ++symbol_idx) {
       summary_map.insert(partition_mapt::value_type(
               it2->get_identifier(), 
@@ -326,7 +326,7 @@ void partitioning_slicet::prepare_partition(
   }
   // All call start symbols to dependencies (we need all their assumptions 
   // for constraint call symbols constraints propagation)
-  get_symbols(partition.callstart_symbol, depends);
+  get_symbols(partition_iface.callstart_symbol, depends);
 }
 
 /*******************************************************************\

@@ -23,15 +23,16 @@
 
 #include "assertion_info.h"
 #include "summary_info.h"
+#include "partition_iface.h"
 #include "summarization_context.h"
 #include "partitioning_target_equation.h"
 
-class symex_assertion_sumt : public symex_bmct //goto_symext
+class symex_assertion_sumt : public symex_bmct
 {
 public:
   symex_assertion_sumt(
           summarization_contextt &_summarization_context,
-          const summary_infot &_summary_info,
+          summary_infot &_summary_info,
           const namespacet &_ns,
           contextt &_context,
           partitioning_target_equationt &_target,
@@ -39,7 +40,6 @@ public:
           const goto_programt &_goto_program,
           bool _use_slicing=true
           ) :
-          // goto_symext(_ns, _context, _target),
           symex_bmct(_ns, _context, _target),
           summarization_context(_summarization_context),
           summary_info(_summary_info),
@@ -50,10 +50,19 @@ public:
           goto_program(_goto_program),
           use_slicing(_use_slicing)
           {};
+          
+  virtual ~symex_assertion_sumt();
 
   void loop_free_check();
 
+  // Generate SSA statements for the program starting from the root 
+  // stored in goto_program.
   bool prepare_SSA(const assertion_infot &assertion);
+
+  // Generate SSA statements for the refined program starting from the given 
+  // function.
+  bool refine_SSA(const assertion_infot &assertion, 
+          summary_infot& refined_function);
   
   virtual void symex_step(
     const goto_functionst &goto_functions,
@@ -62,30 +71,24 @@ public:
   unsigned sum_count;
 
 private:
+  
+  // Symex state holding the renaming levels
+  goto_symext::statet state;
+  // Allocated partition interfaces
+  partition_iface_ptrst partition_ifaces;
 
   class deferred_functiont {
   public:
 
-    deferred_functiont(const summary_infot &_summary_info) :
-            summary_info(_summary_info), 
-            callstart_symbol(typet(ID_bool)),
-            callend_symbol(typet(ID_bool)),
-            returns_value(false),
+    deferred_functiont(const summary_infot &_summary_info, 
+            partition_ifacet& _partition_iface) : summary_info(_summary_info),
+            partition_iface(_partition_iface),
             partition_id(partitioning_target_equationt::NO_PARTITION),
-            assert_stack_match(false)
-            {
+            assert_stack_match(false) {
     }
 
     const summary_infot& summary_info;
-    // TODO: Deprecate it! Split into iface vars and in_arg_symbols
-    std::vector<symbol_exprt> argument_symbols;
-    std::vector<symbol_exprt> in_arg_symbols;
-    std::vector<symbol_exprt> out_arg_symbols;
-    symbol_exprt retval_symbol;
-    symbol_exprt retval_tmp;
-    symbol_exprt callstart_symbol;
-    symbol_exprt callend_symbol;
-    bool returns_value;
+    partition_ifacet& partition_iface;
     partition_idt partition_id;
     call_stackt::const_iterator assert_stack_it;
     bool assert_stack_match;
@@ -123,8 +126,7 @@ private:
 
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
-  void defer_function(const deferred_functiont &deferred_function, 
-    irep_idt function_id);
+  void defer_function(const deferred_functiont &deferred_function);
 
   // Are there any more instructions in the current function or at least
   // a deferred function to dequeue?
@@ -177,20 +179,20 @@ private:
   void mark_argument_symbols(
     const code_typet &function_type,
     statet &state,
-    deferred_functiont &deferred_function);
+    partition_ifacet &partition_iface);
 
   // Marks the SSA symbols of accessed globals
   void mark_accessed_global_symbols(
     const irep_idt &function_id,
     statet &state,
-    deferred_functiont &deferred_function);
+    partition_ifacet &partition_iface);
 
   // Assigns values from the modified global variables. Marks the SSA symbol 
   // of the global variables for later use when processing the deferred function
   void modified_globals_assignment_and_mark(
     const irep_idt &function_id,
     statet &state,
-    deferred_functiont &deferred_function);
+    partition_ifacet &partition_iface);
 
   // Assigns return value from a new SSA symbols to the lhs at
   // call site. Marks the SSA symbol of the return value temporary
@@ -199,7 +201,7 @@ private:
     const code_typet &function_type,
     statet &state,
     const exprt &lhs,
-    deferred_functiont &deferred_function);
+    partition_ifacet &partition_iface);
 
   // Assigns modified globals to the corresponding temporary SSA symbols
   void store_modified_globals(
@@ -216,14 +218,13 @@ private:
   
   // Creates new call site (start & end) symbols for the given
   // deferred function
-  void produce_callsite_symbols(deferred_functiont& deferred_function,
-    statet& state,
-    const irep_idt& function_id);
+  void produce_callsite_symbols(partition_ifacet& partition_iface,
+    statet& state);
 
   // Inserts assumption that a given call ended (i.e., an assumption of
   // the callend symbol)
   void produce_callend_assumption(
-        const deferred_functiont& deferred_function, statet& state);
+        const partition_ifacet& partition_iface, statet& state);
 
   // Helper function for renaming of an identifier without
   // assigning to it. Constant propagation is stopped for the given symbol.
@@ -260,6 +261,13 @@ private:
       return true;
 
     return dead_identifiers.find(identifier) != dead_identifiers.end();
+  }
+
+  // Allocate new partition_interface
+  partition_ifacet& new_partition_iface(const irep_idt& identifier) {
+    partition_ifacet* item = new partition_ifacet(identifier);
+    partition_ifaces.push_back(item);
+    return *item;
   }
 
 protected:
