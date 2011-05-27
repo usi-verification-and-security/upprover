@@ -333,7 +333,7 @@ void partitioning_target_equationt::convert_partition_assertions(
   if (!bv.empty())
     prop_conv.prop.lcnf(bv);
 
-  if (partition.parent_id != NO_PARTITION && number_of_assumptions > 0) {
+  if (partition.parent_id != partitiont::NO_PARTITION && number_of_assumptions > 0) {
     // Assert the assumption propagation formula for the partition
     literalt tmp = prop_conv.prop.limplies(
             partition.get_iface().callend_literal,

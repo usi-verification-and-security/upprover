@@ -13,18 +13,18 @@ Author: Ondrej Sery
 #include <goto-symex/symex_target_equation.h>
 #include <symbol.h>
 
-#include "partition.h"
+#include "partition_iface.h"
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 
 class partitioning_target_equationt:public symex_target_equationt
 {
 public:
-  static const int NO_PARTITION = -1;
   // Id of the currently selected partition
   partition_idt current_partition_id;
   partitioning_target_equationt(const namespacet &_ns) :
-          symex_target_equationt(_ns), current_partition_id(NO_PARTITION) {
+          symex_target_equationt(_ns), 
+          current_partition_id(partitiont::NO_PARTITION) {
   }
 
   // Convert all the SSA steps into the corresponding formulas in
@@ -42,7 +42,7 @@ public:
     partition_map.insert(partition_mapt::value_type(
       partition_iface.callend_symbol.get_identifier(), new_id));
 
-    if (current_partition_id != NO_PARTITION) {
+    if (current_partition_id != partitiont::NO_PARTITION) {
       get_current_partition().add_child_partition(new_id, SSA_steps.size());
     }
 
@@ -65,7 +65,7 @@ public:
   // The following SSA statements will be part of the given partition until
   // a different partition is selected.
   void select_partition(partition_idt partition_id) {
-    if (current_partition_id != NO_PARTITION) {
+    if (current_partition_id != partitiont::NO_PARTITION) {
       get_current_partition().end_idx = SSA_steps.size();
       assert(!partitions.at(partition_id).filled);
     }
@@ -98,6 +98,8 @@ public:
     }
     return SSA_steps_exec_order;
   }
+  
+  partitionst& get_partitions() { return partitions; }
 
   bool any_applicable_summaries() {
     for (unsigned i = 0; i < partitions.size(); i++) {
@@ -187,9 +189,6 @@ private:
   // in the order of program execution (i.e., as they would be normally 
   // ordered in symex_target_equation).
   void prepare_SSA_exec_order(const partitiont& partition);
-  
-  typedef std::vector<partitiont> partitionst;
-  typedef std::map<irep_idt, partition_idt> partition_mapt;
   
   // Collection of all the partitions
   partitionst partitions;

@@ -22,13 +22,13 @@ protected:
   typedef hash_map_cont<irep_idt, symex_target_equationt::SSA_stept*,
     irep_id_hash> def_mapt;
   typedef hash_map_cont<irep_idt, std::pair<partitiont*, unsigned>,
-    irep_id_hash> partition_mapt;
+    irep_id_hash> summary_mapt;
   typedef std::multimap<irep_idt, symex_target_equationt::SSA_stept*> assume_mapt;
 
   symbol_sett processed;
   symbol_sett depends;
   def_mapt def_map;
-  partition_mapt summary_map;
+  summary_mapt summary_map;
   assume_mapt assume_map;
 
   void prepare_maps(partitioning_target_equationt &equation);

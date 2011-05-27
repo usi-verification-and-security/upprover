@@ -78,9 +78,8 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation)
     if (it->is_assignment() || it->is_assume())
       it->ignore = true;
   }
-  for (partitioning_target_equationt::partitionst::iterator it = 
-          equation.partitions.begin();
-          it != equation.partitions.end();
+  for (partitionst::iterator it = equation.get_partitions().begin();
+          it != equation.get_partitions().end();
           ++it)
   {
     if (it->is_summary)
@@ -123,7 +122,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation)
     }
     
     // Is constrained by a summary?
-    partition_mapt::iterator sum_it = summary_map.find(id);
+    summary_mapt::iterator sum_it = summary_map.find(id);
     if (sum_it != summary_map.end()) {
       partitiont& partition = *(sum_it->second.first);
       partition_ifacet& partition_iface = partition.get_iface();
@@ -193,9 +192,8 @@ void partitioning_slicet::prepare_maps(partitioning_target_equationt &equation)
   }
   
   // Analyze the partitions
-  for (partitioning_target_equationt::partitionst::iterator it = 
-          equation.partitions.begin();
-          it != equation.partitions.end();
+  for (partitionst::iterator it = equation.get_partitions().begin();
+          it != equation.get_partitions().end();
           ++it)
   {
     prepare_partition(*it);
@@ -270,11 +268,10 @@ void partitioning_slicet::prepare_assumption(
   // If it is a call_end assumption --> add dependency on out args + ret_val
   if (SSA_step.cond_expr.id() == ID_symbol) {
     const irep_idt& sid = to_symbol_expr(SSA_step.cond_expr).get_identifier();
-    partitioning_target_equationt::partition_mapt::iterator p_it =
-            equation.partition_map.find(sid);
+    partition_mapt::iterator p_it = equation.partition_map.find(sid);
 
     if (p_it != equation.partition_map.end()) {
-      partitiont& partition = equation.partitions[p_it->second];
+      partitiont& partition = equation.get_partitions()[p_it->second];
       partition_ifacet &partition_iface = partition.get_iface();
 
       for (std::vector<symbol_exprt>::iterator it =
@@ -308,9 +305,9 @@ void partitioning_slicet::prepare_partition(partitiont &partition)
   // Fill summary table
   if (partition.is_summary) {
     if (partition_iface.returns_value) {
-      summary_map.insert(partition_mapt::value_type(
+      summary_map.insert(summary_mapt::value_type(
               partition_iface.retval_symbol.get_identifier(), 
-              partition_mapt::value_type::second_type(&partition,
+              summary_mapt::value_type::second_type(&partition,
               partition_iface.argument_symbols.size() + 
               partition_iface.out_arg_symbols.size() + 2)));
     }
@@ -319,9 +316,9 @@ void partitioning_slicet::prepare_partition(partitiont &partition)
             partition_iface.out_arg_symbols.begin();
             it2 != partition_iface.out_arg_symbols.end();
             ++it2, ++symbol_idx) {
-      summary_map.insert(partition_mapt::value_type(
+      summary_map.insert(summary_mapt::value_type(
               it2->get_identifier(), 
-              partition_mapt::value_type::second_type(&partition, symbol_idx)));
+              summary_mapt::value_type::second_type(&partition, symbol_idx)));
     }
   }
   // All call start symbols to dependencies (we need all their assumptions 

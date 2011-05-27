@@ -12,15 +12,19 @@
 
 #include <goto-symex/symex_target_equation.h>
 
-#include "partition_iface.h"
 #include "solvers/interpolating_solver.h"
 
 typedef int partition_idt;
 typedef std::list<partition_idt> partition_idst;
+typedef std::map<irep_idt, partition_idt> partition_mapt;
 typedef std::list<unsigned> partition_locst;
+
+class partition_ifacet;
 
 class partitiont {
 public:
+  static const int NO_PARTITION = -1;
+  
   partitiont(partition_idt _parent_id, partition_ifacet& _partition_iface) :
           filled(false), is_summary(false), ignore(false), processed(false),
           summaries(NULL), parent_id(_parent_id),
@@ -59,6 +63,7 @@ private:
   partition_ifacet* partition_iface;
 };
 
+typedef std::vector<partitiont> partitionst;
 
 #endif	/* CPROVER_PARTITION_H */
 

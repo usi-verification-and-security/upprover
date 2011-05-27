@@ -49,7 +49,7 @@ public:
           out(_out),
           goto_program(_goto_program),
           use_slicing(_use_slicing)
-          {};
+          {}
           
   virtual ~symex_assertion_sumt();
 
@@ -67,6 +67,14 @@ public:
   virtual void symex_step(
     const goto_functionst &goto_functions,
     statet &state);
+  
+  const partition_ifacet* get_partition_iface(summary_infot &summary_info) { 
+    partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
+    
+    if (it == partition_iface_map.end())
+      return NULL;
+    return it->second;
+  };
 
   unsigned sum_count;
 
@@ -77,19 +85,21 @@ private:
   // Allocated partition interfaces
   partition_iface_ptrst partition_ifaces;
 
+  // Mapping from summary_info to the corresponding partition_iface
+  typedef hash_map_cont<const summary_infot*,partition_ifacet*> partition_iface_mapt;
+  partition_iface_mapt partition_iface_map;
+
   class deferred_functiont {
   public:
 
     deferred_functiont(summary_infot &_summary_info,
             partition_ifacet& _partition_iface) : summary_info(_summary_info),
             partition_iface(_partition_iface),
-            partition_id(partitioning_target_equationt::NO_PARTITION),
             assert_stack_match(false) {
     }
 
     summary_infot& summary_info;
     partition_ifacet& partition_iface;
-    partition_idt partition_id;
     call_stackt::const_iterator assert_stack_it;
     bool assert_stack_match;
   };
@@ -264,9 +274,10 @@ private:
   }
 
   // Allocate new partition_interface
-  partition_ifacet& new_partition_iface(const irep_idt& identifier) {
-    partition_ifacet* item = new partition_ifacet(identifier);
+  partition_ifacet& new_partition_iface(const summary_infot& sumamry_info) {
+    partition_ifacet* item = new partition_ifacet(sumamry_info.get_function_id());
     partition_ifaces.push_back(item);
+    partition_iface_map[&summary_info] = item;
     return *item;
   }
 

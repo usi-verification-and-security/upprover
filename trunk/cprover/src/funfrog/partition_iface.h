@@ -15,13 +15,17 @@
 #include <type.h>
 #include <symbol.h>
 
+#include "partition.h"
+
 class partition_ifacet {
 public:
 
   partition_ifacet(irep_idt _function_id) : function_id(_function_id),
           callstart_symbol(typet(ID_bool)),
           callend_symbol(typet(ID_bool)),
-          returns_value(false) {}
+          returns_value(false),
+          partition_id(partitiont::NO_PARTITION)
+  {}
 
   // Represented function
   irep_idt function_id;
@@ -40,6 +44,9 @@ public:
   // Filled during conversion
   literalt callstart_literal;
   literalt callend_literal;
+  
+  // Connection with the corresponding partition
+  partition_idt partition_id;
 };
 
 typedef std::list<partition_ifacet*> partition_iface_ptrst;

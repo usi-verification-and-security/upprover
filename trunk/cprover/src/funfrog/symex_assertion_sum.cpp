@@ -100,9 +100,9 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   state = goto_symext::statet();
 
   // Prepare the partitions and deferred functions
-  defer_function(deferred_functiont(summary_info, new_partition_iface(
-          summary_info.get_function_id())));
-  equation.select_partition(deferred_functions.front().partition_id);
+  partition_ifacet &partition_iface = new_partition_iface(summary_info);
+  defer_function(deferred_functiont(summary_info, partition_iface));
+  equation.select_partition(partition_iface.partition_id);
 
   // Old: ??? state.value_set = value_sets;
 
@@ -421,7 +421,7 @@ void symex_assertion_sumt::defer_function(
 
   deferred_functions.push(deferred_function);
   deferred_functiont& fresh = deferred_functions.back();
-  fresh.partition_id = equation.reserve_partition(
+  fresh.partition_iface.partition_id = equation.reserve_partition(
           deferred_function.partition_iface);
 
   // Keep track of the stack match
@@ -509,7 +509,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 
   // Select symex target equation to produce formulas into the corresponding
   // partition
-  equation.select_partition(deferred_function.partition_id);
+  equation.select_partition(deferred_function.partition_iface.partition_id);
 
   // Prepare (and empty) the current state
   state.guard.make_true();
@@ -924,8 +924,7 @@ void symex_assertion_sumt::handle_function_call(
   call_summaryt &call_summary = current_summary_info->get_call_sites().find(
           state.source.pc)->second;
   summary_infot &summary_info = call_summary.get_summary_info();
-  deferred_functiont deferred_function(summary_info, 
-          new_partition_iface(summary_info.get_function_id()));
+  deferred_functiont deferred_function(summary_info, new_partition_iface(summary_info));
   const irep_idt& function_id = function_call.function().get(ID_identifier);
   const goto_functionst::goto_functiont &goto_function =
     summarization_context.get_function(function_id);
