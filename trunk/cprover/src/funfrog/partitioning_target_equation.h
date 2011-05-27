@@ -102,10 +102,23 @@ public:
   bool any_applicable_summaries() {
     for (unsigned i = 0; i < partitions.size(); i++) {
       if (!partitions[i].applicable_summaries.empty()) {
-              return true;
+        return true;
       }
     }
     return false;
+  }
+
+  std::map<irep_idt, std::vector<bool> > get_functions(){
+    std::map<irep_idt, std::vector<bool> > functs;
+    for (unsigned i = 0; i < partitions.size(); i++) {
+      std::vector<bool> f_pars;
+      f_pars.push_back(partitions[i].is_summary);
+      f_pars.push_back(partitions[i].applicable_summaries.empty());
+      f_pars.push_back(partitions[i].ignore);
+
+      functs[partitions[i].get_iface().function_id] = f_pars;
+    }
+    return functs;
   }
 
 private:

@@ -80,14 +80,14 @@ private:
   class deferred_functiont {
   public:
 
-    deferred_functiont(const summary_infot &_summary_info, 
+    deferred_functiont(summary_infot &_summary_info,
             partition_ifacet& _partition_iface) : summary_info(_summary_info),
             partition_iface(_partition_iface),
             partition_id(partitioning_target_equationt::NO_PARTITION),
             assert_stack_match(false) {
     }
 
-    const summary_infot& summary_info;
+    summary_infot& summary_info;
     partition_ifacet& partition_iface;
     partition_idt partition_id;
     call_stackt::const_iterator assert_stack_it;
@@ -99,11 +99,11 @@ private:
   summarization_contextt &summarization_context;
 
   // Which functions should be summarized, abstracted from, and which inlined
-  const summary_infot &summary_info;
+  summary_infot &summary_info;
 
   // Summary info of the function being currently processed. Set to NULL when
   // no deferred function are left
-  const summary_infot *current_summary_info;
+  summary_infot *current_summary_info;
 
   // Wait queue for the deferred functions (for other partitions)
   std::queue<deferred_functiont> deferred_functions;

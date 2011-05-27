@@ -44,7 +44,8 @@ class value_set_alloc_adaptort;
   "(reduce-proof):(verbose-solver):" \
   "(unwind):(unwindset):" \
   "(inlining-limit):(testclaim):" \
-  "(pobj)(eq)(neq)(ineq)"
+  "(pobj)(eq)(neq)(ineq)" \
+  "(havoc-unimportant)(refine-mode):(init-mode):(steps):"
 class funfrog_parseoptionst:
   public parseoptions_baset,
   public language_uit

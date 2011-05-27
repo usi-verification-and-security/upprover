@@ -921,9 +921,9 @@ void symex_assertion_sumt::handle_function_call(
         code_function_callt &function_call)
 {
   // What are we supposed to do with this precise function call?
-  const call_summaryt &call_summary = current_summary_info->get_call_sites().find(
+  call_summaryt &call_summary = current_summary_info->get_call_sites().find(
           state.source.pc)->second;
-  const summary_infot &summary_info = call_summary.get_summary_info();
+  summary_infot &summary_info = call_summary.get_summary_info();
   deferred_functiont deferred_function(summary_info, 
           new_partition_iface(summary_info.get_function_id()));
   const irep_idt& function_id = function_call.function().get(ID_identifier);
@@ -957,23 +957,16 @@ void symex_assertion_sumt::handle_function_call(
     return;
   }
 
-
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);
-
   switch (call_summary.get_precision()){
-  case call_summaryt::NONDET:
+  case NONDET:
     havoc_function_call(deferred_function, state, function_id);
     break;
-  case call_summaryt::SUMMARY:
-    if (summarization_context.force_inlining){
-      inline_function_call(deferred_function, state, function_id);
-    } else {
-      sum_count++;
-      summarize_function_call(deferred_function, state, function_id);
-    }
+  case SUMMARY:
+    summarize_function_call(deferred_function, state, function_id);
     break;
-  case call_summaryt::INLINE:
+  case INLINE:
     inline_function_call(deferred_function, state, function_id);
     break;
   default:
@@ -1003,6 +996,8 @@ void symex_assertion_sumt::summarize_function_call(
   out << "*** SUMMARY abstraction used for function: " <<
           function_id << std::endl;
   
+  sum_count++;
+
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
   produce_callsite_symbols(partition_iface, state);

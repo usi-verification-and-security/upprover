@@ -552,6 +552,26 @@ void funfrog_parseoptionst::help()
   "--reduce-proof <fraction>      use up to <fraction> of SAT solving time\n"
   "                               to reduce proof --> smaller summaries\n"
   "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
+
+  "\nRefinement options:\n"
+  "--refine-mode <mode>:\n"
+  "  0 | \"force-inlining\"         inline every function call\n"
+  "                               after an unsuccessful attempt\n"
+  "                               of summary substitution\n"
+  "  1 | \"random-substitution\"    try to randomly choose function calls\n"
+  "                               to be inlined\n"
+  "  2 | \"slicing-result\"         try to choose function calls to be inlined\n"
+  "                               based on slicing results\n"
+  "\nOptions of first refinement iteration:\n"
+  "--init-mode <mode>\n"
+  "  0 | \"havoc-all\"              start with nondeterministic assignments\n"
+  "                               for all function calls\n"
+  "  1 | \"use-summaries\"          start with substituting all existent summaries\n"
+  "                               for all function calls\n"
+  "--havoc-unimportant            try assign nondeterministic values for\n"
+  "                               function calls considered unimportant\n"
+//  "                               is being disabled by \"force-inlining\"\n"
+  "--steps <bound>                number of refinement steps\n"
   "\n";
 }
 
@@ -854,5 +874,17 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("verbose-solver")) {
     options.set_option("verbose-solver", cmdline.getval("verbose-solver"));
+  }
+  if (cmdline.isset("refine-mode")) {
+    options.set_option("refine-mode", cmdline.getval("refine-mode"));
+  }
+  if (cmdline.isset("init-mode")) {
+    options.set_option("init-mode", cmdline.getval("init-mode"));
+  }
+  options.set_option("havoc-unimportant", cmdline.isset("havoc-unimportant"));
+  if (cmdline.isset("steps")) {
+    options.set_option("steps", cmdline.getval("steps"));
+  } else {
+    options.set_option("steps", "5");
   }
 }

@@ -16,6 +16,21 @@
 
 #include "function_info.h"
 
+typedef enum {
+  FORCE_INLINING,
+  RANDOM_SUBSTITUTION,
+  SLICING_RESULT
+  // anything else?
+}
+  refinement_modet;
+
+typedef enum {
+  ALL_SUBSTITUTING,
+  ALL_HAVOCING
+  // anything else?
+}
+  init_modet;
+
 // Information shared by a single summarization task.
 class summarization_contextt {
 public:
@@ -70,10 +85,6 @@ public:
   void serialize_infos(const std::string& file) {
     function_infot::serialize_infos(file, function_infos);
   }
-
-  // self-explanatory
-  bool force_inlining;
-  bool enable_refinement;
 
 private:
   const goto_functionst &functions;

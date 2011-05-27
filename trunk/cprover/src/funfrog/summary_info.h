@@ -20,6 +20,9 @@
 #include "assertion_info.h"
 #include "summarization_context.h"
 
+// Type of summarization applied at a specific call-site
+typedef enum {NONDET, SUMMARY, INLINE} summary_precisiont;
+
 // Forward def.
 class call_summaryt;
 
@@ -37,34 +40,37 @@ public:
 
   void set_function_id(const irep_idt& _function_id) { function_id = _function_id; }
 
-  const std::map<goto_programt::const_targett,call_summaryt>& get_call_sites() const { return call_sites; }
+  std::map<goto_programt::const_targett,call_summaryt>& get_call_sites() { return call_sites; }
 
   const irep_idt& get_function_id() const { return function_id; }
 
+  void set_default_precision(init_modet init);
+
 private:
-  std::map<goto_programt::const_targett,call_summaryt> call_sites;
+  std::map<goto_programt::const_targett, call_summaryt> call_sites;
   irep_idt function_id;
+  static summary_precisiont default_precision;
 };
 
 // Summary information for a specific call site
 class call_summaryt {
 public:
-  // Type of summarization applied at a specific call-site
-  typedef enum {NONDET, SUMMARY, INLINE} summary_precisiont;
-
   call_summaryt() : precision(NONDET) {}
 
-  void set_inline(const summarization_contextt&);
+  void set_inline() { precision = INLINE; }
   void set_summary() { precision = SUMMARY; }
   void set_nondet() { precision = NONDET; }
 
-  summary_precisiont get_precision() const { return precision; }
+  bool is_in_call_stack() { return call_stack; }
 
-  const summary_infot& get_summary_info() const { return summary_info; }
+  summary_precisiont get_precision() { return precision; }
+
+  summary_infot& get_summary_info() { return summary_info; }
 
 private:
   summary_precisiont precision;
   summary_infot summary_info;
+  bool call_stack;
 
   void initialize(const irep_idt &target_function)
     { summary_info.set_function_id(target_function);}
@@ -73,7 +79,8 @@ private:
           const summarization_contextt &summarization_context,
           const irep_idt &target_function,
           const assertion_infot &assertion,
-          size_t stack_depth);
+          size_t stack_depth,
+          bool _call_stack = false);
 
   friend class summary_infot;
 };

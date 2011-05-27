@@ -11,20 +11,35 @@
 #include <std_expr.h>
 #include "summary_info.h"
 
+summary_precisiont summary_infot::default_precision = INLINE;
+
 void call_summaryt::set_precision_deep(
         summary_precisiont _precision,
         const summarization_contextt &summarization_context,
         const irep_idt &target_function,
         const assertion_infot &assertion,
-        size_t stack_depth)
+        size_t stack_depth,
+        bool _call_stack)
 {
   precision = _precision;
+  call_stack = _call_stack;
 
-  const goto_programt &function_body = 
+  const goto_programt &function_body =
     summarization_context.get_function(target_function).body;
   
   summary_info.initialize(summarization_context, function_body, assertion,
 		  stack_depth++);
+}
+
+void summary_infot::set_default_precision(init_modet init)
+{
+  if (init == ALL_HAVOCING){
+     summary_infot::default_precision = NONDET;
+   } else if (init == ALL_SUBSTITUTING){
+     summary_infot::default_precision = INLINE;
+   } else {
+     assert(false);
+   }
 }
 
 void
@@ -56,25 +71,18 @@ summary_infot::initialize(const summarization_contextt& summarization_context,
 
       // Is the call on the call stack leading to the target assertion?
       if (will_inline && inst == call_pos) {
-#       if 0
-        std::cout << "Inlining a call: " << target_function << std::endl;
-#       endif
-        call_summary.set_precision_deep(call_summaryt::INLINE, summarization_context, target_function,
-                assertion, stack_depth+1);
+        call_summary.set_precision_deep(INLINE, summarization_context, target_function,
+                assertion, stack_depth+1, true);
       } else {
         const interpolantst& summaries = 
           summarization_context.get_summaries(target_function);
         if (summaries.size() > 0) {
-          call_summary.set_precision_deep(call_summaryt::SUMMARY, summarization_context, target_function,
+          call_summary.set_precision_deep(SUMMARY, summarization_context, target_function,
               assertion, stack_depth+1);
         } else {
-          call_summary.set_precision_deep(call_summaryt::INLINE, summarization_context, target_function,
+          call_summary.set_precision_deep(default_precision, summarization_context, target_function,
                 assertion, stack_depth+1);
         }
-        // call_summary.set_nondet();
-#       if 0
-        std::cout << "Havocing a call." << target_function << std::endl;
-#       endif
       }
     }
   }

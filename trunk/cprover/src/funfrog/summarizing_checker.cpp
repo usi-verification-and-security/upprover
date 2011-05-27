@@ -31,9 +31,9 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   }
 
   const bool no_slicing_option = options.get_bool_option("no-slicing");
+  const init_modet init = get_init_mode(options.get_option("init-mode"));
 
   // Prepare the summarization context
-
   summarization_context.analyze_functions(ns);
 
   // Load older summaries
@@ -46,18 +46,14 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
 
   // Prepare summary_info, start with the lazy variant, i.e.,
   // all summaries are initialized as NONDET except those on the way
-  // to the target assertion, which are marked INLINE.
+  // to the target assertion, which are marked depending on initial mode.
   summary_infot summary_info;
+  summary_info.set_default_precision(init);
   summary_info.initialize(summarization_context, goto_program, assertion);
 
-
-  summarization_context.enable_refinement = false;
-            //FIXME: options.get_int_option("enable-refinement"); - with different types of refinement available
-  summarization_context.force_inlining = false;
-            //FIXME: move force_inlining to the refinement schema
   unsigned count = 0;
   bool end = false;
-  while (!end && count < 5) // FIXME: hardcoded (for a while) limit of refinement tries
+  while (!end && count < (unsigned)options.get_int_option("steps"))
   {
     bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
     deciderp->unbounded_array = bv_pointerst::U_AUTO;
@@ -67,7 +63,10 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
 
     partitioning_target_equationt equation(ns);
 
-    // FIXME: move constructor, setup_unwind, and loop_free_check away from the loop
+    // FIXME: move constructor, setup_unwind, and loop_free_check
+    //        (as well as constructors for equation, prop, refiner)
+    //        away from the loop
+
     symex_assertion_sumt symex = symex_assertion_sumt(
               summarization_context, summary_info, ns, context,
               equation, out, goto_program, !no_slicing_option);
@@ -79,32 +78,40 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
 
     if (!end){
 
-      refiner_assertion_sumt refiner = refiner_assertion_sumt(
-                  summarization_context, equation, out);
-      end = refiner.refine();
+      prop_assertion_sumt prop = prop_assertion_sumt(
+            *decider, *interpolator, equation, out, max_memory_used);
+      end = prop.assertion_holds(assertion, ns);
 
-      if (!end){
-
-        prop_assertion_sumt prop = prop_assertion_sumt(
-              *decider, *interpolator, equation, out, max_memory_used);
-        end = prop.assertion_holds(assertion, ns);
-
-        if (end && interpolator->can_interpolate())
-        {
-          if (symex.sum_count == 0)   // if none of summaries are substituted then do generate new/alternative ones
-          {                           // otherwise, even generated once again, they will be weaker then existing ones
-            double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
-            extract_interpolants(equation, red_timeout);
-            out << "ASSERTION(S) HOLD(S) AFTER INLINING." << std::endl;
-          } else {
-            out << "FUNCTION SUMMARIES (for " << symex.sum_count << 
-                    " calls) WERE SUBSTITUTED SUCCESSFULLY." << std::endl;
-          }
-        } else if (count == 0 && symex.sum_count != 0){
+      if (end && interpolator->can_interpolate())
+      {
+        if (symex.sum_count == 0)   // if none of summaries are substituted then do generate new/alternative ones
+        {                           // otherwise, even generated once again, they will be weaker then existing ones
+          double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
+          extract_interpolants(equation, red_timeout);
+          out << "ASSERTION(S) HOLD(S) AFTER INLINING." << std::endl;
+        } else {
           out << "FUNCTION SUMMARIES (for " << symex.sum_count << 
-                  " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << std::endl <<
-                  "Try to inline everything then." << std::endl;
-        } else if (symex.sum_count == 0){
+                  " calls) WERE SUBSTITUTED SUCCESSFULLY." << std::endl;
+        }
+      } else {
+        if (symex.sum_count != 0 || init == ALL_HAVOCING) {
+          if (init == ALL_HAVOCING){
+            // FIXME: refiner then works correct. next iteration step also works correct until we store interpolants:
+            //        funfrog: sat/cnf.cpp:673: bool cnft::process_clause(const bvt&, bvt&): Assertion `l.var_no()!=0' failed.
+            out << "NONDETERMINISTIC ASSIGNMENTS FOR ALL FUNCTION CALLS ";
+          } else {
+            out << "FUNCTION SUMMARIES (for " << symex.sum_count << " calls) ";
+          }
+          out << "AREN'T SUITABLE FOR CHECKING ASSERTION." << std::endl <<
+              "Try to refine then." << std::endl;
+
+          refiner_assertion_sumt refiner = refiner_assertion_sumt(
+                      summarization_context, summary_info, equation,
+                      get_refine_mode(options.get_option("refine-mode")),
+                      options.get_bool_option("havoc-unimportant"), out);
+          refiner.refine();
+
+        } else {
           out << "ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING."  << std::endl <<
                   "A real bug found." << std::endl;
           break;
@@ -116,6 +123,18 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   out << std::endl<< "Total number of steps: " << count << ".";
   return end;
 }
+
+/*******************************************************************\
+
+Function: summarizing_checkert::compute_reduction_timeout
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Compute reduction timeout
+
+\*******************************************************************/
 
 double summarizing_checkert::compute_reduction_timeout(double solving_time)
 {
@@ -135,6 +154,17 @@ double summarizing_checkert::compute_reduction_timeout(double solving_time)
   return red_timeout;
 }
 
+/*******************************************************************\
+
+Function: summarizing_checkert::extract_interpolants
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Extract and store the interpolation summaries
+
+\*******************************************************************/
 
 void summarizing_checkert::extract_interpolants (partitioning_target_equationt& equation, double red_timeout)
 {
@@ -145,7 +175,7 @@ void summarizing_checkert::extract_interpolants (partitioning_target_equationt& 
   equation.extract_interpolants(*interpolator, *decider, itp_map, red_timeout);
   after=current_time();
   out << "INTERPOLATION TIME: "<< time2string(after-before) << std::endl;
-  // Extract the interpolation summaries here...
+
   for (interpolant_mapt::iterator it = itp_map.begin();
                   it != itp_map.end(); ++it) {
     irep_idt& function_id = it->first;
@@ -195,3 +225,54 @@ void summarizing_checkert::setup_unwind(symex_assertion_sumt& symex)
 
   symex.max_unwind=options.get_int_option("unwind");
 }
+
+
+/*******************************************************************\
+
+Function: get_refine_mode
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Determining the refinement mode from a string.
+
+\*******************************************************************/
+
+refinement_modet get_refine_mode(const std::string& str)
+{
+  if (str == "force-inlining" || str == "0"){
+    return FORCE_INLINING;
+  } else if (str == "random-substitution" || str == "1"){
+    return RANDOM_SUBSTITUTION;
+  } else if (str == "slicing-result" || str == "2"){
+    return SLICING_RESULT;
+  } else {
+    // by default
+    return FORCE_INLINING;
+  }
+};
+
+/*******************************************************************\
+
+Function: get_initial_mode
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Determining the initial mode from a string.
+
+\*******************************************************************/
+
+init_modet get_init_mode(const std::string& str)
+{
+  if (str == "havoc-all" || str == "0"){
+    return ALL_HAVOCING;
+  } else if (str == "use-summaries" || str == "1"){
+    return ALL_SUBSTITUTING;
+  } else {
+    // by default
+    return ALL_SUBSTITUTING;
+  }
+};
