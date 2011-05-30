@@ -171,32 +171,33 @@ Function: partitioning_slicet::prepare_maps
 \*******************************************************************/
 void partitioning_slicet::prepare_maps(partitioning_target_equationt &equation) 
 {
-  // Analyze the SSA steps
-  for (symex_target_equationt::SSA_stepst::iterator it = 
-          equation.SSA_steps.begin();
-          it != equation.SSA_steps.end();
-          ++it) 
-  {
-    if (it->is_assignment())
-    {  
-      prepare_assignment(*it);
-    } 
-    else if (it->is_assume())
-    {
-      prepare_assumption(equation, *it);
-    } 
-    else if (it->is_assert())
-    {
-      prepare_assertion(*it);
-    }
-  }
-  
   // Analyze the partitions
   for (partitionst::iterator it = equation.get_partitions().begin();
           it != equation.get_partitions().end();
           ++it)
   {
+    if (it->invalid)
+      continue;
+
     prepare_partition(*it);
+    
+    if (it->is_summary)
+      continue;
+
+    // Analyze the SSA steps
+    for (symex_target_equationt::SSA_stepst::iterator it2 = it->start_it;
+            it2 != it->end_it;
+            ++it2) {
+      if (it2->is_assignment()) {
+        prepare_assignment(*it2);
+      }
+      else if (it2->is_assume()) {
+        prepare_assumption(equation, *it2);
+      }
+      else if (it2->is_assert()) {
+        prepare_assertion(*it2);
+      }
+    }
   }
 }
 

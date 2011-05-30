@@ -68,12 +68,21 @@ public:
     const goto_functionst &goto_functions,
     statet &state);
   
-  const partition_ifacet* get_partition_iface(summary_infot &summary_info) { 
+  partition_ifacet* get_partition_iface(summary_infot &summary_info) { 
     partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
     
     if (it == partition_iface_map.end())
       return NULL;
     return it->second;
+  };
+
+  const partitiont* get_partition(summary_infot &summary_info) { 
+    partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
+    
+    if (it == partition_iface_map.end() || 
+            it->second->partition_id == partitiont::NO_PARTITION)
+      return NULL;
+    return &equation.get_partitions()[it->second->partition_id];
   };
 
   unsigned sum_count;
@@ -136,13 +145,18 @@ private:
 
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
-  void defer_function(const deferred_functiont &deferred_function);
+  void defer_function(const deferred_functiont &deferred_function,
+        partition_idt parent_id);
 
   // Are there any more instructions in the current function or at least
   // a deferred function to dequeue?
   bool has_more_steps(const statet &state) {
     return current_summary_info != NULL;
   }
+  
+  // Processes current code (pointed to by the state member variable) as well
+  // as all the deferred functions
+  bool process_planned(statet &state);
 
   // Take a deferred function from the queue and prepare it for symex
   // processing. This would also mark a corresponding partition in

@@ -53,11 +53,13 @@ void partitioning_target_equationt::convert(
 void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   interpolating_solvert &interpolator, partitiont& partition)
 {
-  if (partition.ignore || partition.processed) {
+  if (partition.ignore || partition.processed || partition.invalid) {
     if (partition.ignore)
       std::cout << "  partition sliced out." << std::endl;
-    else
+    else if (partition.processed)
       std::cout << "  partition already processed." << std::endl;
+    else
+      std::cout << "  partition invalidated (refined)." << std::endl;
     return;
   }
   
@@ -74,7 +76,8 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   // If this is a summary partition, apply the summary
   if (partition.is_summary) {
     convert_partition_summary(prop_conv, partition);
-    partition.processed = true;
+    // FIXME: Only use in the incremental solver mode (not yet implemented)
+    // partition.processed = true;
     return;
   }
 
@@ -89,7 +92,8 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   convert_partition_assumptions(prop_conv, partition);
   convert_partition_assertions(prop_conv, partition);
   convert_partition_io(prop_conv, partition);
-  partition.processed = true;
+  // FIXME: Only use in the incremental solver mode (not yet implemented)
+  // partition.processed = true;
 }
 /*******************************************************************\
 

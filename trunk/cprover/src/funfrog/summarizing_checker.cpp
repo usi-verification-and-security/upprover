@@ -47,7 +47,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   // Prepare summary_info, start with the lazy variant, i.e.,
   // all summaries are initialized as NONDET except those on the way
   // to the target assertion, which are marked depending on initial mode.
-  summary_infot summary_info;
+  summary_infot summary_info(NULL);
   summary_info.set_default_precision(init);
   summary_info.initialize(summarization_context, goto_program, assertion);
 

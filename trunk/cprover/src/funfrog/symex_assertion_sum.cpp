@@ -92,55 +92,20 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
     return true;
   }
 
-  // Proceed with symbolic execution
-  fine_timet before, after;
-  before=current_time();
-
   // Clear the state
   state = goto_symext::statet();
 
   // Prepare the partitions and deferred functions
   partition_ifacet &partition_iface = new_partition_iface(summary_info);
-  defer_function(deferred_functiont(summary_info, partition_iface));
+  defer_function(deferred_functiont(summary_info, partition_iface), 
+          partitiont::NO_PARTITION);
   equation.select_partition(partition_iface.partition_id);
 
   // Old: ??? state.value_set = value_sets;
-
-  // FIXME: If we care only about a single assertion, we should stop 
-  // as soon as it is reached.
-  for(state.source.pc = goto_program.instructions.begin();
-      has_more_steps(state);
-      )
-  {
-#   if 0
-    goto_program.output_instruction(ns, "", out, state.source.pc);
-#   endif
-    symex_step(summarization_context.get_functions(), state);
-    // state.value_set.output(ns, out);
-  }
-  after=current_time();
-
-  if(out.good())
-    out << "SYMEX TIME: "<< time2string(after-before) << std::endl;
-
-  if(remaining_claims!=0)
-  {
-    if (use_slicing) {
-      before=current_time();
-      out << "All SSA steps: " << equation.SSA_steps.size() << std::endl;
-      partitioning_slice(equation);
-      out << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << std::endl;
-      after=current_time();
-      if (out.good())
-        out << "SLICER TIME: "<< time2string(after-before) << std::endl;
-    }
-  } else {
-      out << "Assertion(s) are trivially unreachable." << std::endl;
-      return true;
-  }
-  return false;
+  state.source.pc = goto_program.instructions.begin();
+  
+  return process_planned(state);
 }
-
 
 /*******************************************************************
 
@@ -167,28 +132,47 @@ bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
     return true;
   }
 
+  // Defer the function
+  partition_ifacet* partition_iface = get_partition_iface(refined_function);
+  assert (partition_iface);
+  assert (!refined_function.is_root());
+  partition_idt parent_id = 
+          get_partition_iface(refined_function.get_parent())->partition_id;
+  if (partition_iface->partition_id != partitiont::NO_PARTITION) {
+    equation.invalidate_partition(partition_iface->partition_id);
+  }
+
+  defer_function(deferred_functiont(refined_function, *partition_iface),
+          parent_id);
+  
+  // Plan the function for processing
+  dequeue_deferred_function(state);
+  
+  return process_planned(state);
+}
+
+/*******************************************************************\
+
+Function: symex_assertion_sumt::symex_step
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Processes current code (pointed to by the state member variable) 
+ as well as all the deferred functions
+
+\*******************************************************************/
+ 
+bool symex_assertion_sumt::process_planned(statet &state)
+{
   // Proceed with symbolic execution
   fine_timet before, after;
   before=current_time();
-  
-  // TODO: Defer the function
-  throw "Not implemented yet!";
-  
-  // Prepare the partitions and deferred functions
-  //partition_idt partition_id = refined_function.get_partition_id();
-  //equation.select_partition(deferred_functions.front().partition_id);
-  // TODO: Process the function
-  
-  /* OLD */
-
-
-  // Old: ??? state.value_set = value_sets;
 
   // FIXME: If we care only about a single assertion, we should stop 
   // as soon as it is reached.
-  for(state.source.pc = goto_program.instructions.begin();
-      has_more_steps(state);
-      )
+  while (has_more_steps(state))
   {
 #   if 0
     goto_program.output_instruction(ns, "", out, state.source.pc);
@@ -265,6 +249,8 @@ void symex_assertion_sumt::symex_step(
     store_return_value(state, get_current_deferred_function());
     store_modified_globals(state, get_current_deferred_function());
     clear_locals_versions(state);
+    // Dequeue the current deferred function
+    deferred_functions.pop();
 
     dequeue_deferred_function(state);
     break;
@@ -415,15 +401,19 @@ void symex_assertion_sumt::symex_step(
 
 \*******************************************************************/
 void symex_assertion_sumt::defer_function(
-        const deferred_functiont &deferred_function) 
+        const deferred_functiont &deferred_function,
+        partition_idt parent_id) 
 {
+  /* FIXME: -no-assert-grouping option is broken anyway...
   bool first = deferred_functions.size() == 0;
+   */ 
 
   deferred_functions.push(deferred_function);
   deferred_functiont& fresh = deferred_functions.back();
   fresh.partition_iface.partition_id = equation.reserve_partition(
-          deferred_function.partition_iface);
+          deferred_function.partition_iface, parent_id);
 
+  /* FIXME: -no-assert-grouping option is broken anyway...
   // Keep track of the stack match
   const deferred_functiont& parent = get_current_deferred_function();
   const call_stackt& stack = current_assertion->get_target_stack();
@@ -451,6 +441,7 @@ void symex_assertion_sumt::defer_function(
     }
   }
   fresh.assert_stack_it = stack.end();
+   */
 }
 
 /*******************************************************************
@@ -468,9 +459,6 @@ void symex_assertion_sumt::defer_function(
 \*******************************************************************/
 void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 {
-  // Dequeue the previous deferred function
-  deferred_functions.pop();
-
   if (deferred_functions.empty()) {
     // No more deferred functions, we are done
     current_summary_info = NULL;
@@ -1004,8 +992,8 @@ void symex_assertion_sumt::summarize_function_call(
 
   out << "Substituting interpolant" << std::endl;
 
-  partition_idt partition_id = equation.reserve_partition(
-          partition_iface);
+  partition_idt partition_id = equation.reserve_partition(partition_iface, 
+          get_current_deferred_function().partition_iface.partition_id);
   equation.fill_summary_partition(partition_id,
           &summarization_context.get_summaries(function_id));
 }
@@ -1035,7 +1023,8 @@ void symex_assertion_sumt::inline_function_call(
   produce_callsite_symbols(partition_iface, state);
   produce_callend_assumption(partition_iface, state);
 
-  defer_function(deferred_function);
+  defer_function(deferred_function, 
+          get_current_deferred_function().partition_iface.partition_id);
 }
 /*******************************************************************
 

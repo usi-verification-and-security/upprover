@@ -30,7 +30,7 @@ class call_summaryt;
 class summary_infot {
 public:
 
-  summary_infot() : function_id(ID_nil) {}
+  summary_infot(summary_infot *_parent) : function_id(ID_nil), parent(_parent) {}
 
   void clear() { call_sites.clear(); }
 
@@ -45,17 +45,22 @@ public:
   const irep_idt& get_function_id() const { return function_id; }
 
   void set_default_precision(init_modet init);
+  
+  bool is_root() { return parent == NULL; }
+  
+  summary_infot& get_parent() { return *parent; }
 
 private:
   std::map<goto_programt::const_targett, call_summaryt> call_sites;
   irep_idt function_id;
   static summary_precisiont default_precision;
+  summary_infot *parent;
 };
 
 // Summary information for a specific call site
 class call_summaryt {
 public:
-  call_summaryt() : precision(NONDET) {}
+  call_summaryt(summary_infot *parent) : precision(NONDET), summary_info(parent) {}
 
   void set_inline() { precision = INLINE; }
   void set_summary() { precision = SUMMARY; }

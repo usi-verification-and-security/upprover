@@ -33,20 +33,35 @@ public:
 
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
-  partition_idt reserve_partition(partition_ifacet& partition_iface)
+  partition_idt reserve_partition(partition_ifacet& partition_iface, 
+          partition_idt parent_id)
   {
     partition_idt new_id = partitions.size();
 
-    partitions.push_back(partitiont(current_partition_id, partition_iface));
+    partitions.push_back(partitiont(parent_id, partition_iface));
 
     partition_map.insert(partition_mapt::value_type(
       partition_iface.callend_symbol.get_identifier(), new_id));
 
-    if (current_partition_id != partitiont::NO_PARTITION) {
-      get_current_partition().add_child_partition(new_id, SSA_steps.size());
+    if (parent_id != partitiont::NO_PARTITION) {
+      partitions[parent_id].add_child_partition(new_id, SSA_steps.size());
     }
 
     return new_id;
+  }
+  
+  // Marks the given partition as invalid. This is used in incremental SSA
+  // generation to replace previously summarized partitions
+  void invalidate_partition(partition_idt partition_id)
+  {
+    partitiont& partition = partitions[partition_id];
+    
+    partition.invalid = true;
+    partition_map.erase(partition.get_iface().callend_symbol.get_identifier());
+    
+    if (partition.parent_id != partitiont::NO_PARTITION) {
+      partitions[partition.parent_id].remove_child_partition(partition_id);
+    }
   }
 
   // Fill the (reserved) partition with the given summaries.

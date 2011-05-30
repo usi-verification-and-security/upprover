@@ -66,7 +66,7 @@ summary_infot::initialize(const summarization_contextt& summarization_context,
       // Mark the call site
       call_summaryt& call_summary = call_sites.insert(
               std::pair<goto_programt::const_targett, call_summaryt>(inst,
-              call_summaryt())).first->second;
+              call_summaryt(this))).first->second;
       call_summary.initialize(target_function);
 
       // Is the call on the call stack leading to the target assertion?

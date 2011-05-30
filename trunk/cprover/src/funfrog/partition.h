@@ -27,12 +27,26 @@ public:
   
   partitiont(partition_idt _parent_id, partition_ifacet& _partition_iface) :
           filled(false), is_summary(false), ignore(false), processed(false),
-          summaries(NULL), parent_id(_parent_id),
+          invalid(false), summaries(NULL), parent_id(_parent_id),
           partition_iface(&_partition_iface) { }
           
   void add_child_partition(partition_idt child_id, unsigned callsite) {
     child_ids.push_back(child_id);
     child_locs.push_back(callsite);
+  }
+          
+  // NOTE: This call is potentially slow: O(n)
+  void remove_child_partition(partition_idt child_id) {
+    assert (child_ids.size() == child_locs.size());
+    partition_idst::iterator it1 = child_ids.begin();
+    partition_locst::iterator it2 = child_locs.begin();
+    
+    while (*it1 != child_id) {
+      ++it1;
+      ++it2;
+    }
+    child_ids.erase(it1);
+    child_locs.erase(it2);
   }
 
   void set_fle_part_id(fle_part_idt _fle_part_id) {
@@ -52,6 +66,7 @@ public:
   bool is_summary;
   bool ignore;
   bool processed;
+  bool invalid;
   const interpolantst* summaries;
   hash_set_cont<unsigned> applicable_summaries;
   fle_part_idt fle_part_id;
