@@ -121,7 +121,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 \*******************************************************************/
 
 bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion, 
-          summary_infot& refined_function)
+          summary_infot *refined_function)
 {
   current_assertion = &assertion;
 
@@ -133,17 +133,65 @@ bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
   }
 
   // Defer the function
-  partition_ifacet* partition_iface = get_partition_iface(refined_function);
+  partition_ifacet* partition_iface = get_partition_iface(*refined_function);
   assert (partition_iface);
-  assert (!refined_function.is_root());
+  assert (!refined_function->is_root());
   partition_idt parent_id = 
-          get_partition_iface(refined_function.get_parent())->partition_id;
+          get_partition_iface(refined_function->get_parent())->partition_id;
   if (partition_iface->partition_id != partitiont::NO_PARTITION) {
     equation.invalidate_partition(partition_iface->partition_id);
   }
 
-  defer_function(deferred_functiont(refined_function, *partition_iface),
+  defer_function(deferred_functiont(*refined_function, *partition_iface),
           parent_id);
+  
+  // Plan the function for processing
+  dequeue_deferred_function(state);
+  
+  return process_planned(state);
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::refine_SSA
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Generate SSA statements for the refined program starting from 
+ the given set of functions.
+
+\*******************************************************************/
+
+bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion, 
+          const std::list<summary_infot*> &refined_functions)
+{
+  current_assertion = &assertion;
+
+  // these are quick...
+  if(assertion.get_location()->guard.is_true())
+  {
+    out << std::endl << "ASSERTION IS TRUE" << std::endl;
+    return true;
+  }
+
+  // Defer the functions
+  for (std::list<summary_infot*>::const_iterator it = refined_functions.begin();
+          it != refined_functions.end();
+          ++it) {
+    partition_ifacet* partition_iface = get_partition_iface(**it);
+    assert(partition_iface);
+    assert(!(*it)->is_root());
+    partition_idt parent_id =
+            get_partition_iface((*it)->get_parent())->partition_id;
+    if (partition_iface->partition_id != partitiont::NO_PARTITION) {
+      equation.invalidate_partition(partition_iface->partition_id);
+    }
+
+    defer_function(deferred_functiont(**it, *partition_iface),
+            parent_id);
+  }
   
   // Plan the function for processing
   dequeue_deferred_function(state);

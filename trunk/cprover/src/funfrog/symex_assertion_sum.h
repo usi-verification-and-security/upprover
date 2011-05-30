@@ -62,7 +62,12 @@ public:
   // Generate SSA statements for the refined program starting from the given 
   // function.
   bool refine_SSA(const assertion_infot &assertion, 
-          summary_infot& refined_function);
+          summary_infot* refined_function);
+
+  // Generate SSA statements for the refined program starting from the given 
+  // set of functions.
+  bool refine_SSA(const assertion_infot &assertion, 
+          const std::list<summary_infot*> &refined_function);
   
   virtual void symex_step(
     const goto_functionst &goto_functions,
