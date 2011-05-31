@@ -293,8 +293,8 @@ private:
   }
 
   // Allocate new partition_interface
-  partition_ifacet& new_partition_iface(const summary_infot& sumamry_info) {
-    partition_ifacet* item = new partition_ifacet(sumamry_info.get_function_id());
+  partition_ifacet& new_partition_iface(const summary_infot& summary_info) {
+    partition_ifacet* item = new partition_ifacet(summary_info.get_function_id());
     partition_ifaces.push_back(item);
     partition_iface_map[&summary_info] = item;
     return *item;

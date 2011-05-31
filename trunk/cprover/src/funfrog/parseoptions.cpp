@@ -568,8 +568,6 @@ void funfrog_parseoptionst::help()
   "                               for all function calls\n"
   "  1 | \"use-summaries\"          start with substituting all existent summaries\n"
   "                               for all function calls\n"
-  "--havoc-unimportant            try assign nondeterministic values for\n"
-  "                               function calls considered unimportant\n"
 //  "                               is being disabled by \"force-inlining\"\n"
   "--steps <bound>                number of refinement steps\n"
   "\n";
@@ -881,7 +879,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   if (cmdline.isset("init-mode")) {
     options.set_option("init-mode", cmdline.getval("init-mode"));
   }
-  options.set_option("havoc-unimportant", cmdline.isset("havoc-unimportant"));
   if (cmdline.isset("steps")) {
     options.set_option("steps", cmdline.getval("steps"));
   } else {

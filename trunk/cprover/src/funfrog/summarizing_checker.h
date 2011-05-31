@@ -44,7 +44,6 @@ public:
                 _precise_loops),
       out(_out),
       max_memory_used(_max_memory_used),
-      equation(_ns),
       summary_info(NULL)
   {};
 
@@ -63,7 +62,6 @@ protected:
   unsigned long &max_memory_used;
   std::auto_ptr<prop_convt> decider;
   std::auto_ptr<interpolating_solvert> interpolator;
-  partitioning_target_equationt equation;
   satcheck_opensmtt* opensmt;
   summary_infot summary_info;
   init_modet init;

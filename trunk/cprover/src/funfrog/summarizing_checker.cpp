@@ -60,6 +60,19 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   const bool no_slicing_option = options.get_bool_option("no-slicing");
   summary_info.set_initial_precision(summarization_context, assertion);
 
+  partitioning_target_equationt equation(ns);
+
+  symex_assertion_sumt symex = symex_assertion_sumt(
+            summarization_context, summary_info, ns, context,
+            equation, out, goto_program, !no_slicing_option);
+
+  setup_unwind(symex);
+  symex.loop_free_check();
+
+  refiner_assertion_sumt refiner = refiner_assertion_sumt(
+              summarization_context, summary_infot::get_call_summaries(), equation,
+              get_refine_mode(options.get_option("refine-mode")), out);
+
   unsigned count = 0;
   bool end = false;
   while (!end && count < (unsigned)options.get_int_option("steps"))
@@ -70,23 +83,11 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
     interpolator.reset(opensmt);
     opensmt->reset_solver();
 
-    partitioning_target_equationt equation(ns);
-
-    // FIXME: move constructor, setup_unwind, and loop_free_check
-    //        (as well as constructors for equation, prop, refiner)
-    //        away from the loop
-
-    symex_assertion_sumt symex = symex_assertion_sumt(
-              summarization_context, summary_info, ns, context,
-              equation, out, goto_program, !no_slicing_option);
-
-    setup_unwind(symex);
-    symex.loop_free_check();
-
-    end = symex.prepare_SSA(assertion);
+    end = (count == 0) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
 
     if (!end){
 
+      // FIXME: move prop away from the loop
       prop_assertion_sumt prop = prop_assertion_sumt(
             *decider, *interpolator, equation, out, max_memory_used);
       end = prop.assertion_holds(assertion, ns);
@@ -114,10 +115,6 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
           out << "AREN'T SUITABLE FOR CHECKING ASSERTION." << std::endl <<
               "Try to refine then." << std::endl;
 
-          refiner_assertion_sumt refiner = refiner_assertion_sumt(
-                      summarization_context, summary_info, equation,
-                      get_refine_mode(options.get_option("refine-mode")),
-                      options.get_bool_option("havoc-unimportant"), out);
           refiner.refine();
 
         } else {

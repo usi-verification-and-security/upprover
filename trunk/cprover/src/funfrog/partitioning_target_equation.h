@@ -125,19 +125,6 @@ public:
     return false;
   }
 
-  std::map<irep_idt, std::vector<bool> > get_functions(){
-    std::map<irep_idt, std::vector<bool> > functs;
-    for (unsigned i = 0; i < partitions.size(); i++) {
-      std::vector<bool> f_pars;
-      f_pars.push_back(partitions[i].is_summary);
-      f_pars.push_back(partitions[i].applicable_summaries.empty());
-      f_pars.push_back(partitions[i].ignore);
-
-      functs[partitions[i].get_iface().function_id] = f_pars;
-    }
-    return functs;
-  }
-
 private:
   
   // Convert a specific partition of SSA steps

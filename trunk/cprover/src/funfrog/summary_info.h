@@ -55,6 +55,8 @@ public:
 
   static void setup_default_precision(init_modet init);
 
+  static std::vector<call_summaryt*>& get_call_summaries() {return functions; }
+
 private:
   std::map<goto_programt::const_targett, call_summaryt> call_sites;
   irep_idt function_id;
