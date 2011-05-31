@@ -147,6 +147,8 @@ claim_statst check_claims(
                          goto_functions, loopstoret(), loopstoret(),
                          ns1, temp_context, options, std::cout, res.max_mem_used);
 
+  sum_checker.initialize();
+
   while(true)
   {
     // Next assertion (or next occurrence of the same assertion)

@@ -44,13 +44,11 @@ public:
                 _precise_loops),
       out(_out),
       max_memory_used(_max_memory_used),
-      equation(_ns)
-  {
-    opensmt = new satcheck_opensmtt(
-        options.get_int_option("verbose-solver"),
-        options.get_bool_option("save-queries"));
-  };
+      equation(_ns),
+      summary_info(NULL)
+  {};
 
+  void initialize();
   bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion);
 
@@ -67,6 +65,8 @@ protected:
   std::auto_ptr<interpolating_solvert> interpolator;
   partitioning_target_equationt equation;
   satcheck_opensmtt* opensmt;
+  summary_infot summary_info;
+  init_modet init;
   
   void setup_unwind(symex_assertion_sumt& symex);
   double compute_reduction_timeout(double solving_time);

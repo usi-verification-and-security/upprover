@@ -9,6 +9,33 @@
 
 #include "summarizing_checker.h"
 
+void summarizing_checkert::initialize()
+{
+  opensmt = new satcheck_opensmtt(
+      options.get_int_option("verbose-solver"),
+      options.get_bool_option("save-queries"));
+
+  // Prepare the summarization context
+  summarization_context.analyze_functions(ns);
+
+  // Load older summaries
+  {
+    const std::string& summary_file = options.get_option("load-summaries");
+    if (!summary_file.empty()) {
+      summarization_context.deserialize_infos(summary_file);
+    }
+  }
+  // Prepare summary_info, start with the lazy variant, i.e.,
+  // all summaries are initialized as NONDET except those on the way
+  // to the target assertion, which are marked depending on initial mode.
+  summary_info.initialize(summarization_context, goto_program);
+  if (true){
+    summary_info.process_goto_locations();
+  }
+  init = get_init_mode(options.get_option("init-mode"));
+  summary_infot::setup_default_precision(init);
+}
+
 /*******************************************************************
 
  Function: summarizing_checkert::assertion_holds
@@ -31,25 +58,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   }
 
   const bool no_slicing_option = options.get_bool_option("no-slicing");
-  const init_modet init = get_init_mode(options.get_option("init-mode"));
-
-  // Prepare the summarization context
-  summarization_context.analyze_functions(ns);
-
-  // Load older summaries
-  {
-    const std::string& summary_file = options.get_option("load-summaries");
-    if (!summary_file.empty()) {
-      summarization_context.deserialize_infos(summary_file);
-    }
-  }
-
-  // Prepare summary_info, start with the lazy variant, i.e.,
-  // all summaries are initialized as NONDET except those on the way
-  // to the target assertion, which are marked depending on initial mode.
-  summary_infot summary_info(NULL);
-  summary_info.set_default_precision(init);
-  summary_info.initialize(summarization_context, goto_program, assertion);
+  summary_info.set_initial_precision(summarization_context, assertion);
 
   unsigned count = 0;
   bool end = false;

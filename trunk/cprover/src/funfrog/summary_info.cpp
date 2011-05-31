@@ -12,26 +12,10 @@
 #include "summary_info.h"
 
 summary_precisiont summary_infot::default_precision = INLINE;
+std::vector<call_summaryt*> summary_infot::functions (NULL);
+std::vector<std::pair<unsigned, unsigned> > summary_infot::goto_ranges (NULL);
 
-void call_summaryt::set_precision_deep(
-        summary_precisiont _precision,
-        const summarization_contextt &summarization_context,
-        const irep_idt &target_function,
-        const assertion_infot &assertion,
-        size_t stack_depth,
-        bool _call_stack)
-{
-  precision = _precision;
-  call_stack = _call_stack;
-
-  const goto_programt &function_body =
-    summarization_context.get_function(target_function).body;
-  
-  summary_info.initialize(summarization_context, function_body, assertion,
-		  stack_depth++);
-}
-
-void summary_infot::set_default_precision(init_modet init)
+void summary_infot::setup_default_precision(init_modet init)
 {
   if (init == ALL_HAVOCING){
      summary_infot::default_precision = NONDET;
@@ -42,47 +26,138 @@ void summary_infot::set_default_precision(init_modet init)
    }
 }
 
-void
-summary_infot::initialize(const summarization_contextt& summarization_context,
-        const goto_programt& code, const assertion_infot& assertion,
-        size_t stack_depth)
+void call_summaryt::initialize(
+        const summarization_contextt &summarization_context,
+        const irep_idt &target_function,
+        size_t stack_depth){
+  summary_info.set_function_id(target_function);
+
+  const goto_programt &function_body =
+      summarization_context.get_function(target_function).body;
+  summary_info.initialize(summarization_context, function_body,
+                  stack_depth++);
+}
+
+void summary_infot::initialize(
+    const summarization_contextt& summarization_context, const goto_programt& code,
+    size_t stack_depth)
 {
-  bool will_inline = stack_depth < assertion.get_target_stack().size();
-  goto_programt::const_targett call_pos;
-  if (will_inline) {
-    call_pos = assertion.get_target_stack().at(stack_depth);
-  }
-  // Find all call-sites and initialize them to a NONDET summary.
-  // An exception are functions on the path to the target 
-  // assertion.
   for(goto_programt::const_targett inst=code.instructions.begin();
       inst!=code.instructions.end(); ++inst)
   {
-    if (inst->type == FUNCTION_CALL) {
+    if (inst->type == GOTO){
+      unsigned tmp_location = inst->location_number;
+      unsigned max_location = tmp_location;
+      unsigned min_location = tmp_location;
+
+      for(goto_programt::targetst::const_iterator it = inst->targets.begin();
+          it!=inst->targets.end();
+          it++)
+      {
+        unsigned tgt_location = (*it)->location_number;
+        if(tgt_location < min_location){
+          min_location = tgt_location;
+        }
+        if(tgt_location > max_location){
+          max_location = tgt_location;
+        }
+      }
+
+      goto_ranges.push_back(std::make_pair(min_location, max_location));
+    }
+
+    else if (inst->type == FUNCTION_CALL) {
       // NOTE: Expects the function call to by a standard symbol call
       const code_function_callt& function_call = to_code_function_call(inst->code);
       const irep_idt &target_function = to_symbol_expr(
         function_call.function()).get_identifier();
+
       // Mark the call site
       call_summaryt& call_summary = call_sites.insert(
               std::pair<goto_programt::const_targett, call_summaryt>(inst,
-              call_summaryt(this))).first->second;
-      call_summary.initialize(target_function);
+              call_summaryt(this, stack_depth+1, inst->location_number))).first->second;
+      functions.push_back(&call_summary);
 
-      // Is the call on the call stack leading to the target assertion?
-      if (will_inline && inst == call_pos) {
-        call_summary.set_precision_deep(INLINE, summarization_context, target_function,
-                assertion, stack_depth+1, true);
+      call_summary.initialize(summarization_context, target_function,
+                      stack_depth++);
+    }
+  }
+}
+
+void summary_infot::process_goto_locations()
+{
+  const unsigned goto_sz = goto_ranges.size();
+  if (goto_sz == 0){
+    return;
+  }
+  for (unsigned i = 0; i < goto_sz; i++){
+    std::pair<unsigned, unsigned>& r = goto_ranges[i];
+    for (unsigned j = 0; j < goto_sz; j++){
+      std::pair<unsigned, unsigned>& q = goto_ranges[j];
+      if (r.first < q.first){
+        std::pair<unsigned, unsigned> t = r;
+        r = q;
+        q = t;
+      }
+    }
+  }
+
+  unsigned min = goto_ranges[0].first;
+  unsigned max = goto_ranges[0].second;
+
+  for (unsigned i = 1; i < goto_sz; i++){
+    if (goto_ranges[i].first <= max) {
+      if (goto_ranges[i].second > max) {
+        max = goto_ranges[i].second;
+      }
+    } else {
+      goto_ranges.push_back(std::make_pair(min, max));
+      min = goto_ranges[i].first;
+      max = goto_ranges[i].second;
+    }
+  }
+  goto_ranges.push_back(std::make_pair(min, max));
+
+  for (unsigned i = 0; i < functions.size(); i++){
+    unsigned loc = (*functions[i]).call_location;
+    for (unsigned j = 0; j < goto_ranges.size(); j++){
+      std::pair<unsigned, unsigned> r = goto_ranges[j];
+      if (r.first<= loc && loc <= r.second){
+        loc = r.first;
+      }
+    }
+    (*functions[i]).call_location = loc;
+  }
+
+  goto_ranges.clear();
+}
+
+void summary_infot::set_initial_precision(
+    const summarization_contextt& summarization_context,
+    const assertion_infot& assertion)
+{
+  const unsigned assertion_location = assertion.get_location()->location_number;
+  const unsigned assertion_stack_size = assertion.get_target_stack().size();
+
+  for (unsigned i = 0; i < functions.size(); i++){
+    bool will_inline = (*functions[i]).stack_depth < assertion_stack_size;
+//    FIXME: it was here before..
+//    goto_programt::const_targett call_pos;
+//    if (will_inline) {
+//      call_pos = assertion.get_target_stack().at(call_summary.stack_depth);
+//    }
+    (*functions[i]).call_stack = will_inline; // && inst == call_pos
+    if ((*functions[i]).call_stack){
+      (*functions[i]).set_inline();
+    } else {
+      const interpolantst& summaries =
+        summarization_context.get_summaries((*functions[i]).get_summary_info().get_function_id());
+      if (summaries.size() > 0) {
+        (*functions[i]).set_summary();
+      } else if ((*functions[i]).call_location > assertion_location) {
+        (*functions[i]).set_nondet();
       } else {
-        const interpolantst& summaries = 
-          summarization_context.get_summaries(target_function);
-        if (summaries.size() > 0) {
-          call_summary.set_precision_deep(SUMMARY, summarization_context, target_function,
-              assertion, stack_depth+1);
-        } else {
-          call_summary.set_precision_deep(default_precision, summarization_context, target_function,
-                assertion, stack_depth+1);
-        }
+        (*functions[i]).precision = default_precision;
       }
     }
   }

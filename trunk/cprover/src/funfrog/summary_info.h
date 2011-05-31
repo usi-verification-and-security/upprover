@@ -35,32 +35,45 @@ public:
   void clear() { call_sites.clear(); }
 
   void initialize(const summarization_contextt &summarization_context,
-      const goto_programt &code, const assertion_infot &assertion,
-      size_t stack_depth = 0);
+      const goto_programt &code, size_t stack_depth = 0);
 
   void set_function_id(const irep_idt& _function_id) { function_id = _function_id; }
 
-  std::map<goto_programt::const_targett,call_summaryt>& get_call_sites() { return call_sites; }
+  std::map<goto_programt::const_targett, call_summaryt>& get_call_sites() { return call_sites; }
 
   const irep_idt& get_function_id() const { return function_id; }
 
-  void set_default_precision(init_modet init);
+  void set_initial_precision(
+      const summarization_contextt& summarization_context,
+      const assertion_infot& assertion);
   
   bool is_root() { return parent == NULL; }
   
   summary_infot& get_parent() { return *parent; }
 
+  static void process_goto_locations();
+
+  static void setup_default_precision(init_modet init);
+
 private:
   std::map<goto_programt::const_targett, call_summaryt> call_sites;
   irep_idt function_id;
-  static summary_precisiont default_precision;
   summary_infot *parent;
+
+  static std::vector<call_summaryt*> functions;
+  static std::vector<std::pair<unsigned, unsigned> > goto_ranges;
+  static summary_precisiont default_precision;
 };
 
 // Summary information for a specific call site
 class call_summaryt {
 public:
-  call_summaryt(summary_infot *parent) : precision(NONDET), summary_info(parent) {}
+  call_summaryt(summary_infot *_parent, size_t _stack_depth, unsigned _call_location) :
+     precision(NONDET),
+     summary_info(_parent),
+     stack_depth(_stack_depth),
+     call_location(_call_location)
+  {}
 
   void set_inline() { precision = INLINE; }
   void set_summary() { precision = SUMMARY; }
@@ -75,17 +88,12 @@ public:
 private:
   summary_precisiont precision;
   summary_infot summary_info;
+  size_t stack_depth;
   bool call_stack;
+  unsigned call_location;
 
-  void initialize(const irep_idt &target_function)
-    { summary_info.set_function_id(target_function);}
-  void set_precision_deep(
-          summary_precisiont _precision,
-          const summarization_contextt &summarization_context,
-          const irep_idt &target_function,
-          const assertion_infot &assertion,
-          size_t stack_depth,
-          bool _call_stack = false);
+  void initialize(const summarization_contextt &summarization_context,
+          const irep_idt &target_function, size_t stack_depth);
 
   friend class summary_infot;
 };
