@@ -35,7 +35,7 @@ void call_summaryt::initialize(
   const goto_programt &function_body =
       summarization_context.get_function(target_function).body;
   summary_info.initialize(summarization_context, function_body,
-                  stack_depth++);
+                  stack_depth);
 }
 
 void summary_infot::initialize(
@@ -75,11 +75,11 @@ void summary_infot::initialize(
       // Mark the call site
       call_summaryt& call_summary = call_sites.insert(
               std::pair<goto_programt::const_targett, call_summaryt>(inst,
-              call_summaryt(this, stack_depth+1, inst->location_number))).first->second;
+              call_summaryt(this, stack_depth, inst->location_number))).first->second;
       functions.push_back(&call_summary);
 
       call_summary.initialize(summarization_context, target_function,
-                      stack_depth++);
+                      stack_depth+1);
     }
   }
 }
