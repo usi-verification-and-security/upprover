@@ -76,7 +76,8 @@ public:
      precision(NONDET),
      summary_info(_parent),
      stack_depth(_stack_depth),
-     call_location(_call_location)
+     call_location(_call_location),
+     call_stack(0)
   {}
 
   void set_inline() { precision = INLINE; }
@@ -93,8 +94,8 @@ private:
   summary_precisiont precision;
   summary_infot summary_info;
   size_t stack_depth;
-  bool call_stack;
   unsigned call_location;
+  bool call_stack;
 
   void initialize(const summarization_contextt &summarization_context,
           const irep_idt &target_function, size_t stack_depth);

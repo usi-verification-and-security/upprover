@@ -6,7 +6,7 @@ Violated property:
   file 07_loops/main2.c line 60 function main
   assertion
   (int)test == 1
-FUNCTION SUMMARIES (for 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+FUNCTION SUMMARIES (for 2 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
 UNSAT - it holds!
 ASSERTION IS TRUE
 ASSERTION(S) HOLD(S) AFTER INLINING.

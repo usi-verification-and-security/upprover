@@ -6,7 +6,7 @@ Violated property:
   file 09_refinement/t_diff_a.c line 157 function main1
   assertion
   b < 10
-FUNCTION SUMMARIES (for 7 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+FUNCTION SUMMARIES (for 8 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
 UNSAT - it holds!
 ASSERTION IS TRUE
 ASSERTION(S) HOLD(S) AFTER INLINING.

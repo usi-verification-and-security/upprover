@@ -46,7 +46,7 @@ void summary_infot::initialize(
       inst!=code.instructions.end(); ++inst)
   {
     if (inst->type == GOTO){
-      unsigned tmp_location = inst->location_number;
+      unsigned tmp_location = atoi(inst->location.get_line().c_str());
       unsigned max_location = tmp_location;
       unsigned min_location = tmp_location;
 
@@ -54,7 +54,7 @@ void summary_infot::initialize(
           it!=inst->targets.end();
           it++)
       {
-        unsigned tgt_location = (*it)->location_number;
+        unsigned tgt_location = atoi((*it)->location.get_line().c_str());
         if(tgt_location < min_location){
           min_location = tgt_location;
         }
@@ -75,7 +75,8 @@ void summary_infot::initialize(
       // Mark the call site
       call_summaryt& call_summary = call_sites.insert(
               std::pair<goto_programt::const_targett, call_summaryt>(inst,
-              call_summaryt(this, stack_depth, inst->location_number))).first->second;
+              call_summaryt(this, stack_depth, atoi(inst->location.get_line().c_str()))
+              )).first->second;
       functions.push_back(&call_summary);
 
       call_summary.initialize(summarization_context, target_function,
@@ -136,22 +137,27 @@ void summary_infot::set_initial_precision(
     const summarization_contextt& summarization_context,
     const assertion_infot& assertion)
 {
-  const unsigned assertion_location = assertion.get_location()->location_number;
+  const unsigned assertion_location = atoi(assertion.get_location()->location.get_line().c_str());
   const unsigned assertion_stack_size = assertion.get_target_stack().size();
 
   for (unsigned i = 0; i < functions.size(); i++){
-    bool will_inline = (*functions[i]).stack_depth < assertion_stack_size;
-//    FIXME: it was here before..
-//    goto_programt::const_targett call_pos;
-//    if (will_inline) {
-//      call_pos = assertion.get_target_stack().at(call_summary.stack_depth);
-//    }
-    (*functions[i]).call_stack = will_inline; // && inst == call_pos
+
+    const irep_idt &function_id = (*functions[i]).get_summary_info().get_function_id();
+    const size_t function_depth = (*functions[i]).stack_depth;
+
+    bool will_inline = function_depth < assertion_stack_size;
+    if (will_inline) {
+      const code_function_callt &call =
+        to_code_function_call(to_code(assertion.get_target_stack().at(function_depth)->code));
+
+      const irep_idt &ass_stack_call_id = call.function().get("identifier");
+      (*functions[i]).call_stack = (will_inline && (ass_stack_call_id  == function_id));
+    }
     if ((*functions[i]).call_stack){
       (*functions[i]).set_inline();
     } else {
       const interpolantst& summaries =
-        summarization_context.get_summaries((*functions[i]).get_summary_info().get_function_id());
+        summarization_context.get_summaries(function_id);
       if (summaries.size() > 0) {
         (*functions[i]).set_summary();
       } else if ((*functions[i]).call_location > assertion_location) {
