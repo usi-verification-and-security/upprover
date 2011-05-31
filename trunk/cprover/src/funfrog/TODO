@@ -40,3 +40,8 @@ BUGS
 - Too many symbols in the renaming tables (remove locals and the special call start and call end symbols)
 - Slicing can remove "unrelated" assumptions that, however, make an error reaching trace unfeasible (thus reporting a nonexistent error).
 - Error trace computation is broken - segfault on trace computation (not addapted to partitioning symex target yet)
+
+BUGGY TEST CASES:
+----------------
+- /03_simple/t_diff_m.c (temporary ignored) - gets stuck after solver's UNSAT result
+- /09_refinement/t_diff_z.c (out file is not created because of Segmentation Fault): funfrog: sat/cnf.cpp:673: bool cnft::process_clause(const bvt&, bvt&): Assertion `l.var_no()!=0' failed.

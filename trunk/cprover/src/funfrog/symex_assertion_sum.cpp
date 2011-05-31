@@ -82,7 +82,6 @@ void symex_assertion_sumt::loop_free_check(){
 
 bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 {
-  sum_count = 0;
   current_assertion = &assertion;
 
   // these are quick...
@@ -1038,8 +1037,6 @@ void symex_assertion_sumt::summarize_function_call(
   out << "*** SUMMARY abstraction used for function: " <<
           function_id << std::endl;
   
-  sum_count++;
-
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
   produce_callsite_symbols(partition_iface, state);

@@ -34,8 +34,7 @@ public:
   void refine();
   std::list<summary_infot*>& get_refined_functions(){ return refined_functions; }
 
-private:
-
+protected:
   // Shared information about the program and summaries to be used during
   // analysis
   summarization_contextt &summarization_context;
@@ -56,6 +55,8 @@ private:
   void reset_inline();
   void reset_random();
   void reset_depend();
+
+  void set_inline_sum(int i);
 };
 
 #endif

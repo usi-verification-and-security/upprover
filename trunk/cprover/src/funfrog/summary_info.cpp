@@ -162,3 +162,13 @@ void summary_infot::set_initial_precision(
     }
   }
 }
+
+unsigned summary_infot::get_summaries_count(){
+  unsigned count = 0;
+  for (unsigned i = 0; i < functions.size(); i++){
+    if ((*functions[i]).get_precision() == SUMMARY){
+      count++;
+    }
+  }
+  return count;
+}

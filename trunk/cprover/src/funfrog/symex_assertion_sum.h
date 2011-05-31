@@ -90,8 +90,6 @@ public:
     return &equation.get_partitions()[it->second->partition_id];
   };
 
-  unsigned sum_count;
-
 private:
   
   // Symex state holding the renaming levels
