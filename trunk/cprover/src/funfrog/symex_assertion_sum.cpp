@@ -181,22 +181,17 @@ bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
           ++it) {
     partition_ifacet* partition_iface = get_partition_iface(**it);
 
-    // if there was no corresponding partition in the previous run,
-    // but it was added by refinement,
-    // then it's more likely, then this call was "hidden"
-    // in the body of some function, substituted by summary,
-    if (!partition_iface){
-      partition_iface = &new_partition_iface(**it);
-    };
-    assert(!(*it)->is_root());
-    partition_idt parent_id =
-            get_partition_iface((*it)->get_parent())->partition_id;
-    if (partition_iface->partition_id != partitiont::NO_PARTITION) {
-      equation.invalidate_partition(partition_iface->partition_id);
-    }
+    if (partition_iface){
+      assert(!(*it)->is_root());
+      partition_idt parent_id =
+              get_partition_iface((*it)->get_parent())->partition_id;
+      if (partition_iface->partition_id != partitiont::NO_PARTITION) {
+        equation.invalidate_partition(partition_iface->partition_id);
+      }
 
-    defer_function(deferred_functiont(**it, *partition_iface),
-            parent_id);
+      defer_function(deferred_functiont(**it, *partition_iface),
+              parent_id);
+      }
   }
   
   // Plan the function for processing
