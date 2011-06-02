@@ -90,7 +90,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
       prop_assertion_sumt prop = prop_assertion_sumt(
             *decider, *interpolator, equation, out, max_memory_used);
       end = prop.assertion_holds(assertion, ns);
-      int summaries_count = summary_infot::get_summaries_count();
+      unsigned summaries_count = summary_infot::get_summaries_count();
       if (end && interpolator->can_interpolate())
       {
         if (summaries_count == 0)   // if none of summaries are substituted then do generate new/alternative ones
@@ -105,8 +105,6 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
       } else {
         if (summaries_count != 0 || init == ALL_HAVOCING) {
           if (init == ALL_HAVOCING){
-            // FIXME: refiner then works correct. next iteration step also works correct until we store interpolants:
-            //        funfrog: sat/cnf.cpp:673: bool cnft::process_clause(const bvt&, bvt&): Assertion `l.var_no()!=0' failed.
             out << "NONDETERMINISTIC ASSIGNMENTS FOR ALL FUNCTION CALLS ";
           } else {
             out << "FUNCTION SUMMARIES (for " << summaries_count << " calls) ";

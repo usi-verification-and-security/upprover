@@ -1,0 +1,26 @@
+SAT - doesn't hold
+Violated property:
+  file 09_refinement/t_diff_z.c line 155 function main1
+  assertion
+  a > 4
+NONDETERMINISTIC ASSIGNMENTS FOR ALL FUNCTION CALLS AREN'T SUITABLE FOR CHECKING ASSERTION.
+UNSAT - it holds!
+ASSERTION IS TRUE
+ASSERTION(S) HOLD(S) AFTER INLINING.
+SAT - doesn't hold
+Violated property:
+  file 09_refinement/t_diff_z.c line 157 function main1
+  assertion
+  b < 10
+NONDETERMINISTIC ASSIGNMENTS FOR ALL FUNCTION CALLS AREN'T SUITABLE FOR CHECKING ASSERTION.
+UNSAT - it holds!
+ASSERTION IS TRUE
+UNSAT
+UNSAT
+UNSAT
+SAT
+SAT
+SAT
+SAT
+UNSAT
+ASSERTION(S) HOLD(S) AFTER INLINING.
