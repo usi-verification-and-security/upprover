@@ -33,10 +33,10 @@ public:
 
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
-  partition_idt reserve_partition(partition_ifacet& partition_iface, 
-          partition_idt parent_id)
+  partition_idt reserve_partition(partition_ifacet& partition_iface)
   {
     partition_idt new_id = partitions.size();
+    partition_idt parent_id = partition_iface.parent_id;
 
     partitions.push_back(partitiont(parent_id, partition_iface));
 
@@ -46,6 +46,7 @@ public:
     if (parent_id != partitiont::NO_PARTITION) {
       partitions[parent_id].add_child_partition(new_id, SSA_steps.size());
     }
+    partition_iface.partition_id = new_id;
 
     return new_id;
   }

@@ -17,7 +17,7 @@ Author: Ondrej Sery
 class prop_itpt
 {
 public:
-  prop_itpt() : _no_variables(1) {}
+  prop_itpt() : _no_variables(1), _no_orig_variables(1) {}
 
   bool is_trivial() const { return root_literal.is_constant(); };
 

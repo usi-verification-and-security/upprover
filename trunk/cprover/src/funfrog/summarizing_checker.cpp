@@ -11,10 +11,6 @@
 
 void summarizing_checkert::initialize()
 {
-  opensmt = new satcheck_opensmtt(
-      options.get_int_option("verbose-solver"),
-      options.get_bool_option("save-queries"));
-
   // Prepare the summarization context
   summarization_context.analyze_functions(ns);
 
@@ -78,11 +74,13 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
 
   while (!end && count < (unsigned)options.get_int_option("steps"))
   {
+    opensmt = new satcheck_opensmtt(
+      options.get_int_option("verbose-solver"),
+      options.get_bool_option("save-queries"));
+    interpolator.reset(opensmt);
     bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
     deciderp->unbounded_array = bv_pointerst::U_AUTO;
     decider.reset(deciderp);
-    interpolator.reset(opensmt);
-    opensmt->reset_solver();
 
     end = (count == 0) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
 

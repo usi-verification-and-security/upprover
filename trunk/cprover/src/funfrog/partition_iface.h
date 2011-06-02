@@ -20,11 +20,12 @@
 class partition_ifacet {
 public:
 
-  partition_ifacet(irep_idt _function_id) : function_id(_function_id),
+  partition_ifacet(irep_idt _function_id, partition_idt _parent_id) : function_id(_function_id),
           callstart_symbol(typet(ID_bool)),
           callend_symbol(typet(ID_bool)),
           returns_value(false),
-          partition_id(partitiont::NO_PARTITION)
+          partition_id(partitiont::NO_PARTITION),
+          parent_id(_parent_id)
   {}
 
   // Represented function
@@ -47,6 +48,7 @@ public:
   
   // Connection with the corresponding partition
   partition_idt partition_id;
+  partition_idt parent_id;
 };
 
 typedef std::list<partition_ifacet*> partition_iface_ptrst;

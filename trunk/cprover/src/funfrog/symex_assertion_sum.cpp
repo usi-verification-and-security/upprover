@@ -95,9 +95,8 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   state = goto_symext::statet();
 
   // Prepare the partitions and deferred functions
-  partition_ifacet &partition_iface = new_partition_iface(summary_info);
-  defer_function(deferred_functiont(summary_info, partition_iface), 
-          partitiont::NO_PARTITION);
+  partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION);
+  defer_function(deferred_functiont(summary_info, partition_iface));
   equation.select_partition(partition_iface.partition_id);
 
   // Old: ??? state.value_set = value_sets;
@@ -122,32 +121,9 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion, 
           summary_infot *refined_function)
 {
-  current_assertion = &assertion;
-
-  // these are quick...
-  if(assertion.get_location()->guard.is_true())
-  {
-    out << std::endl << "ASSERTION IS TRUE" << std::endl;
-    return true;
-  }
-
-  // Defer the function
-  partition_ifacet* partition_iface = get_partition_iface(*refined_function);
-  assert (partition_iface);
-  assert (!refined_function->is_root());
-  partition_idt parent_id = 
-          get_partition_iface(refined_function->get_parent())->partition_id;
-  if (partition_iface->partition_id != partitiont::NO_PARTITION) {
-    equation.invalidate_partition(partition_iface->partition_id);
-  }
-
-  defer_function(deferred_functiont(*refined_function, *partition_iface),
-          parent_id);
-  
-  // Plan the function for processing
-  dequeue_deferred_function(state);
-  
-  return process_planned(state);
+  std::list<summary_infot*> list;
+  list.push_back(refined_function);
+  return refine_SSA(assertion, list);
 }
 
 /*******************************************************************
@@ -179,19 +155,29 @@ bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
   for (std::list<summary_infot*>::const_iterator it = refined_functions.begin();
           it != refined_functions.end();
           ++it) {
-    partition_ifacet* partition_iface = get_partition_iface(**it);
+    const partition_iface_ptrst* partition_ifaces = get_partition_ifaces(**it);
+    assert(!(*it)->is_root());
 
-    if (partition_iface){
-      assert(!(*it)->is_root());
-      partition_idt parent_id =
-              get_partition_iface((*it)->get_parent())->partition_id;
-      if (partition_iface->partition_id != partitiont::NO_PARTITION) {
-        equation.invalidate_partition(partition_iface->partition_id);
-      }
+    if (partition_ifaces) {
+      for (partition_iface_ptrst::const_iterator it2 = partition_ifaces->begin();
+              it2 != partition_ifaces->end();
+              ++it2) {
 
-      defer_function(deferred_functiont(**it, *partition_iface),
-              parent_id);
+        partition_ifacet* partition_iface = *it2;
+
+        if (partition_iface->partition_id != partitiont::NO_PARTITION) {
+          // assert(equation.get_partitions()[partition_iface->partition_id].is_summary);
+          std::cerr << "Invalidating partition: " << partition_iface->partition_id << std::endl;
+          equation.invalidate_partition(partition_iface->partition_id);
+        }
+
+        defer_function(deferred_functiont(**it, *partition_iface));
       }
+    } else {
+      std::cerr << "WARNING: Invalid call to refine_SSA <- " << 
+              "refining previously unseen call \"" << 
+              (*it)->get_function_id().c_str() << "\" (skipped)" << std::endl;
+    }
   }
   
   // Plan the function for processing
@@ -450,17 +436,15 @@ void symex_assertion_sumt::symex_step(
 
 \*******************************************************************/
 void symex_assertion_sumt::defer_function(
-        const deferred_functiont &deferred_function,
-        partition_idt parent_id) 
+        const deferred_functiont &deferred_function) 
 {
   /* FIXME: -no-assert-grouping option is broken anyway...
   bool first = deferred_functions.size() == 0;
    */ 
 
   deferred_functions.push(deferred_function);
-  deferred_functiont& fresh = deferred_functions.back();
-  fresh.partition_iface.partition_id = equation.reserve_partition(
-          deferred_function.partition_iface, parent_id);
+  //deferred_functiont& fresh = deferred_functions.back();
+  equation.reserve_partition(deferred_function.partition_iface);
 
   /* FIXME: -no-assert-grouping option is broken anyway...
   // Keep track of the stack match
@@ -961,7 +945,10 @@ void symex_assertion_sumt::handle_function_call(
   call_summaryt &call_summary = current_summary_info->get_call_sites().find(
           state.source.pc)->second;
   summary_infot &summary_info = call_summary.get_summary_info();
-  deferred_functiont deferred_function(summary_info, new_partition_iface(summary_info));
+  assert(get_current_deferred_function().partition_iface.partition_id != partitiont::NO_PARTITION);
+  deferred_functiont deferred_function(summary_info, 
+          new_partition_iface(summary_info, 
+          get_current_deferred_function().partition_iface.partition_id));
   const irep_idt& function_id = function_call.function().get(ID_identifier);
   const goto_functionst::goto_functiont &goto_function =
     summarization_context.get_function(function_id);
@@ -1039,8 +1026,7 @@ void symex_assertion_sumt::summarize_function_call(
 
   out << "Substituting interpolant" << std::endl;
 
-  partition_idt partition_id = equation.reserve_partition(partition_iface, 
-          get_current_deferred_function().partition_iface.partition_id);
+  partition_idt partition_id = equation.reserve_partition(partition_iface);
   equation.fill_summary_partition(partition_id,
           &summarization_context.get_summaries(function_id));
 }
@@ -1070,8 +1056,7 @@ void symex_assertion_sumt::inline_function_call(
   produce_callsite_symbols(partition_iface, state);
   produce_callend_assumption(partition_iface, state);
 
-  defer_function(deferred_function, 
-          get_current_deferred_function().partition_iface.partition_id);
+  defer_function(deferred_function);
 }
 /*******************************************************************
 

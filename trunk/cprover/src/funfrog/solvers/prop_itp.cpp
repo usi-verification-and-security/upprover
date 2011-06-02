@@ -9,7 +9,7 @@ Author: Ondrej Sery
 #include <string.h>
 #include "prop_itp.h"
 
-//#define DEBUG_ITP
+#define DEBUG_ITP
 
 /*******************************************************************\
 
@@ -286,6 +286,7 @@ void prop_itpt::generalize(const prop_convt& decider,
       // no duplicates. This might not hold if some optimizations are added
       // to the flattening process
       unsigned idx = it2->l.var_no() - min_var;
+      assert (it2->l.var_no() >= min_var);
       assert (!it2->l.sign());
       assert (renaming[idx] == UINT_MAX);
       renaming[idx] = cannon_var_no++;
@@ -335,6 +336,7 @@ void prop_itpt::generalize(const prop_convt& decider,
 
       unsigned idx = it2->var_no() - min_var;
       // Sanity check, all variables used in the interpolant should be mapped.
+      assert (it2->var_no() >= min_var);
       assert(renaming[idx] != UINT_MAX);
       it2->set(renaming[idx], it2->sign());
       used_symbols[represented_symbol[idx]] = true;

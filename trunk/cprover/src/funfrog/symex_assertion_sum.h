@@ -73,21 +73,12 @@ public:
     const goto_functionst &goto_functions,
     statet &state);
   
-  partition_ifacet* get_partition_iface(summary_infot &summary_info) { 
+  const partition_iface_ptrst* get_partition_ifaces(summary_infot &summary_info) { 
     partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
     
     if (it == partition_iface_map.end())
       return NULL;
-    return it->second;
-  };
-
-  const partitiont* get_partition(summary_infot &summary_info) { 
-    partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
-    
-    if (it == partition_iface_map.end() || 
-            it->second->partition_id == partitiont::NO_PARTITION)
-      return NULL;
-    return &equation.get_partitions()[it->second->partition_id];
+    return &(it->second);
   };
 
 private:
@@ -98,7 +89,7 @@ private:
   partition_iface_ptrst partition_ifaces;
 
   // Mapping from summary_info to the corresponding partition_iface
-  typedef hash_map_cont<const summary_infot*,partition_ifacet*> partition_iface_mapt;
+  typedef hash_map_cont<const summary_infot*,partition_iface_ptrst> partition_iface_mapt;
   partition_iface_mapt partition_iface_map;
 
   class deferred_functiont {
@@ -148,8 +139,7 @@ private:
 
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
-  void defer_function(const deferred_functiont &deferred_function,
-        partition_idt parent_id);
+  void defer_function(const deferred_functiont &deferred_function);
 
   // Are there any more instructions in the current function or at least
   // a deferred function to dequeue?
@@ -291,10 +281,20 @@ private:
   }
 
   // Allocate new partition_interface
-  partition_ifacet& new_partition_iface(const summary_infot& summary_info) {
-    partition_ifacet* item = new partition_ifacet(summary_info.get_function_id());
+  partition_ifacet& new_partition_iface(const summary_infot& summary_info,
+          partition_idt parent_id) {
+    partition_ifacet* item = new partition_ifacet(
+            summary_info.get_function_id(), parent_id);
     partition_ifaces.push_back(item);
-    partition_iface_map[&summary_info] = item;
+    
+    partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
+    
+    if (it == partition_iface_map.end()) {
+      it = partition_iface_map.insert(partition_iface_mapt::value_type(
+              &summary_info, partition_iface_ptrst())).first;
+    }
+    
+    it->second.push_back(item);
     return *item;
   }
 

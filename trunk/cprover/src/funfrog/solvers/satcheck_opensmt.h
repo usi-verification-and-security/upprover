@@ -58,9 +58,6 @@ public:
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const;
   
-  // Clears the state of the solver
-  virtual void reset_solver() { initializeSolver(); }
-  
 protected:
   // Solver verbosity
   unsigned solver_verbosity;

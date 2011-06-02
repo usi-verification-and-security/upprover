@@ -518,7 +518,7 @@ void partitioning_target_equationt::extract_interpolants(
   unsigned valid_tasks = 0;
 
   for (unsigned i = 1; i < partitions.size(); ++i) {
-    if (partitions[i].is_summary || partitions[i].ignore)
+    if (partitions[i].is_summary || partitions[i].ignore || partitions[i].invalid)
       continue;
     
     valid_tasks++;
@@ -527,7 +527,7 @@ void partitioning_target_equationt::extract_interpolants(
   interpolation_taskt itp_task(valid_tasks);
 
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
-    if (partitions[pid].is_summary || partitions[pid].ignore)
+    if (partitions[pid].is_summary || partitions[pid].ignore || partitions[pid].invalid)
       continue;
     fill_partition_ids(pid, itp_task[tid++]);
   }
@@ -541,7 +541,7 @@ void partitioning_target_equationt::extract_interpolants(
   std::vector<symbol_exprt> common_symbs;
   interpolant_map.reserve(valid_tasks);
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
-    if (partitions[pid].is_summary || partitions[pid].ignore)
+    if (partitions[pid].is_summary || partitions[pid].ignore || partitions[pid].invalid)
       continue;
     // Store the interpolant
     partitiont& partition = partitions[pid];
@@ -549,6 +549,13 @@ void partitioning_target_equationt::extract_interpolants(
       partition.get_iface().function_id, interpolantst::value_type()));
     interpolantst::reference interpolant = interpolant_map.back().second;
     interpolant.swap(itp_result[tid++]);
+    
+    if (interpolant.is_trivial()) {
+#     ifdef DEBUG_ITP
+      std::cout << "Trivial interpolant." << std::endl;
+#     endif
+      continue;
+    }
 
     // Generalize the interpolant
     fill_common_symbols(partition, common_symbs);
