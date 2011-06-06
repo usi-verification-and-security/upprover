@@ -61,13 +61,34 @@ void refiner_assertion_sumt::reset_inline()
 
 void refiner_assertion_sumt::reset_random()
 {
+  unsigned summs_size = 0;
+  //unsigned havoc_size = 0;       // maybe, it will be useful
   for (unsigned i = 0; i < summs.size(); i++){
-    if ((*summs[i]).get_precision() != INLINE){
-      if (rand() % 1000 < 300 || rand() % 1000 > 800){
-        set_inline_sum(i);
-      }
-    }
+    summary_precisiont precision = (*summs[i]).get_precision();
+    if (precision == SUMMARY){
+      summs_size++;
+    }/* else if (precision == NONDET){
+      havoc_size++;
+    }*/
   }
+
+  unsigned reset_size = 0;
+
+  while (reset_size == 0){
+    // just in case if random function returns false for every function call
+    for (unsigned i = 0; i < summs.size(); i++){
+      summary_precisiont precision = (*summs[i]).get_precision();
+      if ((precision == SUMMARY) ||    // if there were some summaries,
+                                       // try to inline them first
+          (precision == NONDET && summs_size == 0)){ // and if there were not
+                                                     // then refine havoced calls
+        if (rand() % 1000 < 300 || rand() % 1000 > 800){
+          set_inline_sum(i);
+          reset_size++;
+        }
+      }                                // TODO: we can actually try do it vice-versa
+    }                                  // but due to more sophisticated choice of nondets in s_info init
+  }                                    // there are more chances that the reason of SAT was in 2weak summaries
 }
 
 void refiner_assertion_sumt::reset_depend()
