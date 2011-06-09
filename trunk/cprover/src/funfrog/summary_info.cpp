@@ -121,7 +121,7 @@ void summary_infot::process_goto_locations()
 
   for (unsigned i = 0; i < functions.size(); i++){
     unsigned loc = (*functions[i]).call_location;
-    for (unsigned j = 0; j < goto_ranges.size(); j++){
+    for (unsigned j = goto_sz; j < goto_ranges.size(); j++){
       std::pair<unsigned, unsigned> r = goto_ranges[j];
       if (r.first<= loc && loc <= r.second){
         loc = r.first;

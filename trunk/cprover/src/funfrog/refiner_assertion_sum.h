@@ -31,7 +31,7 @@ public:
           out(_out)
           {};
 
-  void refine();
+  void refine(prop_convt& decider);
   std::list<summary_infot*>& get_refined_functions(){ return refined_functions; }
 
 protected:
@@ -54,7 +54,7 @@ protected:
 
   void reset_inline();
   void reset_random();
-  void reset_depend();
+  void reset_depend(prop_convt& decider);
 
   void set_inline_sum(int i);
 };

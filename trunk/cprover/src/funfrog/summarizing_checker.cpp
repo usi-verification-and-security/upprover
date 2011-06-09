@@ -25,9 +25,7 @@ void summarizing_checkert::initialize()
   // all summaries are initialized as NONDET except those on the way
   // to the target assertion, which are marked depending on initial mode.
   summary_info.initialize(summarization_context, goto_program);
-  if (true){
-    summary_info.process_goto_locations();
-  }
+  summary_info.process_goto_locations();
   init = get_init_mode(options.get_option("init-mode"));
   summary_infot::setup_default_precision(init);
 }
@@ -46,6 +44,8 @@ void summarizing_checkert::initialize()
 
 bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
 {
+  fine_timet initial, final;
+  initial=current_time();
   // Trivial case
   if(assertion.get_location()->guard.is_true())
   {
@@ -69,6 +69,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
               summarization_context, summary_infot::get_call_summaries(), equation,
               get_refine_mode(options.get_option("refine-mode")), out);
 
+  prop_assertion_sumt prop = prop_assertion_sumt(
+        /**decider, *interpolator,*/ equation, out, max_memory_used);
   unsigned count = 0;
   bool end = false;
 
@@ -86,10 +88,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
 
     if (!end){
 
-      // FIXME: move prop away from the loop
-      prop_assertion_sumt prop = prop_assertion_sumt(
-            *decider, *interpolator, equation, out, max_memory_used);
-      end = prop.assertion_holds(assertion, ns);
+      end = prop.assertion_holds(assertion, ns, *decider, *interpolator);
       unsigned summaries_count = summary_infot::get_summaries_count();
       if (end && interpolator->can_interpolate())
       {
@@ -112,7 +111,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
           out << "AREN'T SUITABLE FOR CHECKING ASSERTION." << std::endl <<
               "Try to refine then." << std::endl;
 
-          refiner.refine();
+          refiner.refine(*decider);
 
         } else {
           out << "ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING."  << std::endl <<
@@ -123,7 +122,10 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
     }
     count++;
   }
-  out << std::endl<< "Total number of steps: " << count << ".";
+  final = current_time();
+
+  out << std::endl<< "Total number of steps: " << count << "." << std::endl <<
+        "TOTAL TIME FOR CHECKING THIS CLAIM: "<< time2string(final - initial) << std::endl;
   return end;
 }
 

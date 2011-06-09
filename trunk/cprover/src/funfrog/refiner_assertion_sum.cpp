@@ -24,7 +24,7 @@
 
 \*******************************************************************/
 
-void refiner_assertion_sumt::refine()
+void refiner_assertion_sumt::refine(prop_convt& decider)
 {
   refined_functions.clear();
   switch (mode){
@@ -35,7 +35,7 @@ void refiner_assertion_sumt::refine()
       reset_random();
       break;
     case SLICING_RESULT:
-      reset_depend();
+      reset_depend(decider);
       break;
     default:
       assert(false);
@@ -91,25 +91,34 @@ void refiner_assertion_sumt::reset_random()
   }                                    // there are more chances that the reason of SAT was in 2weak summaries
 }
 
-void refiner_assertion_sumt::reset_depend()
+void refiner_assertion_sumt::reset_depend(prop_convt& decider)
 {
-  std::vector<irep_idt*> tmp;
+  std::vector<irep_idt> tmp;
+
   partitionst& parts = equation.get_partitions();
   for (unsigned i = 0; i < parts.size(); i++) {
-    if (parts[i].applicable_summaries.empty()) {
-      tmp.push_back(&parts[i].get_iface().function_id);
+    partitiont part = parts[i];
+    if (!part.ignore && part.is_summary) {
+      partition_ifacet ipart = part.get_iface();
+      if (part.applicable_summaries.empty()) {
+        tmp.push_back(ipart.function_id);
+      }
+      else if (!decider.prop.l_get(ipart.callend_literal).is_true()){
+        tmp.push_back(ipart.function_id);
+      }
     }
   }
 
   if (tmp.size() == 0) {
-    // all summaries are applicable. try randomization then
+    out << "Checking of the error trace didn't detect any dependencies." << std::endl
+                  << "Try random for this iteration." << std::endl;
     reset_random();
   } else {
     // inline all calls without applicable summaries
     for (unsigned i = 0; i < summs.size(); i++){
       if ((*summs[i]).get_precision() != INLINE){
         for (unsigned j = 0; j < tmp.size(); j++){
-          if ((*tmp[j]) == (*summs[i]).get_summary_info().get_function_id()){
+          if (tmp[j] == (*summs[i]).get_summary_info().get_function_id()){
             set_inline_sum(i);
             break;
           }
@@ -117,5 +126,4 @@ void refiner_assertion_sumt::reset_depend()
       }
     }
   }
-  mode = RANDOM_SUBSTITUTION;
 }
