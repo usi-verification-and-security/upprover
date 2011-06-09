@@ -133,9 +133,9 @@ bool bmc_baset::decide_bv_refinement()
   satcheck.set_message_handler(get_message_handler());
   satcheck.set_verbosity(get_verbosity());
 
-  bv_refinement_loopt bv_refinement_loop(ns, satcheck);
+  //bv_refinement_loopt bv_refinement_loop(ns, satcheck);
   
-  return decide(bv_refinement_loop);
+  return false; //decide(bv_refinement_loop);
   #else
   throw "bv refinement not linked in";
   #endif

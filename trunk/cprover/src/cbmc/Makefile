@@ -24,10 +24,6 @@ all: cbmc
 include ../config.inc
 include ../common
 
-ifdef MODULE_BV_REFINEMENT
-  OBJ += ../bv_refinement/bv_refinement.o
-  CPLUSFLAGS += -DHAVE_BV_REFINEMENT
-endif
 
 ifdef MODULE_CPP
   OBJ += ../cpp/cpp.o

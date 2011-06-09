@@ -450,7 +450,7 @@ void basic_symext::symex_assign_member(
       // remove the type cast, we assume that the member is there
       exprt tmp(lhs_struct.op0());
       struct_type=ns.follow(tmp.type());
-      assert(struct_type.id()==ID_struct || struct_type.id()==ID_union);
+      //assert(struct_type.id()==ID_struct || struct_type.id()==ID_union);
       lhs_struct=tmp;
     }
   }

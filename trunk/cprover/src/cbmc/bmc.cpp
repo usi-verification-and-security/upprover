@@ -295,6 +295,8 @@ Function: bmc_baset::run
 
 bool bmc_baset::run(const goto_functionst &goto_functions)
 {
+  fine_timet initial, final;
+  initial=current_time();
   //symex.total_claims=0;
   symex.set_message_handler(get_message_handler());
   symex.set_verbosity(get_verbosity());
@@ -310,6 +312,8 @@ bool bmc_baset::run(const goto_functionst &goto_functions)
     setup_unwind();
 
     symex(goto_functions);
+    final = current_time();
+    print(8, "TOTAL TIME FOR CHECKING: "+ time2string(final - initial));
   }
 
   catch(std::string &error_str)
