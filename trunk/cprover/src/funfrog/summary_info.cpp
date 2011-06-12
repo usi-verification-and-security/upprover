@@ -63,7 +63,9 @@ void summary_infot::initialize(
         }
       }
 
-      goto_ranges.push_back(std::make_pair(min_location, max_location));
+      if (min_location != 0){
+        goto_ranges.push_back(std::make_pair(min_location, max_location));
+      }
     }
 
     else if (inst->type == FUNCTION_CALL) {
