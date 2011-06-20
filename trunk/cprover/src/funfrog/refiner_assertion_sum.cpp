@@ -91,7 +91,7 @@ void refiner_assertion_sumt::reset_random()
   }                                    // there are more chances that the reason of SAT was in 2weak summaries
 }
 
-void refiner_assertion_sumt::reset_depend(prop_convt& decider)
+void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callend)
 {
   std::vector<irep_idt> tmp;
 
@@ -100,11 +100,27 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider)
     partitiont part = parts[i];
     if (!part.ignore && part.is_summary) {
       partition_ifacet ipart = part.get_iface();
+#     ifdef DEBUG_ITP
+      out<< "*** checking " << ipart.function_id << ":" << std::endl;
+#     endif
       if (part.applicable_summaries.empty()) {
+#       ifdef DEBUG_ITP
+        out<< "    -- no applicable summaries" << std::endl;
+#       endif
         tmp.push_back(ipart.function_id);
       }
-      else if (!decider.prop.l_get(ipart.callend_literal).is_true()){
-        tmp.push_back(ipart.function_id);
+      if (decider.prop.l_get(ipart.callend_literal).is_true()){
+#       ifdef DEBUG_ITP
+        out<< "    -- callend literal is true" << std::endl;
+#       endif
+        if (do_callend){
+          tmp.push_back(ipart.function_id);
+        }
+      }
+      if (decider.prop.l_get(ipart.callstart_literal).is_true()){
+#       ifdef DEBUG_ITP
+        out<< "    -- callstart literal is true" << std::endl;
+#       endif
       }
     }
   }
@@ -126,4 +142,5 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider)
       }
     }
   }
+  tmp.clear();
 }

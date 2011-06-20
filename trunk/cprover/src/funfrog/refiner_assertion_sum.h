@@ -54,7 +54,7 @@ protected:
 
   void reset_inline();
   void reset_random();
-  void reset_depend(prop_convt& decider);
+  void reset_depend(prop_convt& decider, bool do_callend = true);
 
   void set_inline_sum(int i);
 };
