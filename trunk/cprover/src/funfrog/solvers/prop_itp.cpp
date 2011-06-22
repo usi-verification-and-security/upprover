@@ -9,7 +9,7 @@ Author: Ondrej Sery
 #include <string.h>
 #include "prop_itp.h"
 
-#define DEBUG_ITP
+// #define DEBUG_ITP
 
 /*******************************************************************\
 

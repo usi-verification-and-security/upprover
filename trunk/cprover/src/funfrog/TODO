@@ -6,9 +6,7 @@ HIGH PRIORITY
 -------------
 
 - Interactive mode of:
-  - SSA generation - share one instance throughout check_claims
   - OpenSMT session - share one instance during checking of a single assertion
-  - this may require a major redesign... (especially the crappy "*_info" classes and storage of the deferred functions & partitions)
 - When checking multiple instances of the same assertion, forced inlining works only for the first instance (its call stack)
 - Summaries are generated again and again for functions that are on the assertion call stacks (what is their semantics anyway?)
 
@@ -16,7 +14,6 @@ HIGH PRIORITY
 LOW PRIORITY
 ------------
 
-- Merge deferred_functiont & partitiont <-- too close concepts
 - Mapping for global variables, refactor:
   - unify accessed globals and arguments
   - unify modified globals and return value (the extra temp. variable is probably not needed - check it!).
@@ -25,13 +22,6 @@ LOW PRIORITY
   - choose solver, create wrapper, interpolant back propagation
 - Bit-vectors encoding
   - examine wolverine's interpolation engine
-
-
-IDEAS
------
-
-- record variables really constrained and referred to in each summary, this should help in choosing
-the right summary as well as making slicing more efficient.
 
 
 BUGS

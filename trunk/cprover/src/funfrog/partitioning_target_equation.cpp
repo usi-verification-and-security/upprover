@@ -54,12 +54,12 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   interpolating_solvert &interpolator, partitiont& partition)
 {
   if (partition.ignore || partition.processed || partition.invalid) {
-    if (partition.ignore)
+    if (partition.invalid)
+      std::cout << "  partition invalidated (refined)." << std::endl;
+    else if (partition.ignore)
       std::cout << "  partition sliced out." << std::endl;
     else if (partition.processed)
       std::cout << "  partition already processed." << std::endl;
-    else
-      std::cout << "  partition invalidated (refined)." << std::endl;
     return;
   }
   
@@ -257,7 +257,7 @@ void partitioning_target_equationt::convert_partition_assertions(
   if(number_of_assertions==1)
   {
     // FIXME: Without slicing, this is unsound, since some subsequent,
-    // but unsilced, assumptions may hide the assertion violation.
+    // but unsliced, assumptions may hide the assertion violation.
     for(SSA_stepst::iterator it = partition.start_it;
         it != partition.end_it; ++it)
       if(it->is_assert())
@@ -301,25 +301,33 @@ void partitioning_target_equationt::convert_partition_assertions(
     else if (it->is_assume() && !it->ignore) {
       // If it is a call end symbol, we need to emit the assumption propagation
       // formula for the given callsite.
-      if (number_of_assumptions > 0 && it->cond_expr.id() == ID_symbol) {
+      if (it->cond_expr.id() == ID_symbol || 
+              (it->cond_expr.id() == ID_implies && it->cond_expr.op1().id() == ID_symbol)) {
+        irep_idt id = it->cond_expr.id() == ID_symbol ?
+          it->cond_expr.get(ID_identifier) :
+          it->cond_expr.op1().get(ID_identifier);
         partition_mapt::iterator pit =
-                partition_map.find(it->cond_expr.get(ID_identifier));
+                partition_map.find(id);
 
         if (pit != partition_map.end()) {
           partitiont& target_partition = partitions[pit->second];
+          
+          assert (!target_partition.invalid && !target_partition.processed);
+          if (target_partition.ignore)
+            continue;
+          
           // Emit the assumption propagation formula
-          literalt tmp = prop_conv.prop.limplies(
-                  target_partition.get_iface().callstart_literal,
-                  assumption_literal);
+          literalt tmp = prop_conv.prop.land(assumption_literal, it->guard_literal);
 
-          prop_conv.prop.l_set_to_true(tmp);
+          prop_conv.prop.set_equal(tmp, target_partition.get_iface().callstart_literal);
 
 #         ifdef DEBUG_SSA      
-          expr_pretty_print(std::cout << "XXX Call START implication: ",
-                  target_partition.callstart_symbol);
+          expr_pretty_print(std::cout << "XXX Call START equality: ",
+                  target_partition.get_iface().callstart_symbol);
+          expr_pretty_print(std::cout << "  = ", it->guard_expr);
           for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
             if (it2->is_assume() && !it2->ignore) {
-              expr_pretty_print(std::cout << "  => ", it2->cond_expr);
+              expr_pretty_print(std::cout << "  & ", it2->cond_expr);
             }
           }
 #         endif
@@ -344,7 +352,7 @@ void partitioning_target_equationt::convert_partition_assertions(
             assumption_literal);
 
 #   ifdef DEBUG_SSA      
-    expr_pretty_print(std::cout << "XXX Call END implication: ", partition.callend_symbol);
+    expr_pretty_print(std::cout << "XXX Call END implication: ", partition.get_iface().callend_symbol);
     for (SSA_stepst::iterator it2 = partition.start_it; it2 != partition.end_it; ++it2) {
       if (it2->is_assume()) {
         expr_pretty_print(std::cout << "  => ", it2->cond_expr);

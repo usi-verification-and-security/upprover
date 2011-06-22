@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include "refiner_assertion_sum.h"
 
+// #define DEBUG_REFINER
+
 /*******************************************************************
 
  Function: refiner_assertion_sumt::refine
@@ -91,7 +93,7 @@ void refiner_assertion_sumt::reset_random()
   }                                    // there are more chances that the reason of SAT was in 2weak summaries
 }
 
-void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callend)
+void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart)
 {
   std::vector<irep_idt> tmp;
 
@@ -100,32 +102,30 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callend)
     partitiont part = parts[i];
     if (!part.ignore && part.is_summary) {
       partition_ifacet ipart = part.get_iface();
-#     ifdef DEBUG_ITP
+#     ifdef DEBUG_REFINER
       out<< "*** checking " << ipart.function_id << ":" << std::endl;
 #     endif
       if (part.applicable_summaries.empty()) {
-#       ifdef DEBUG_ITP
+#       ifdef DEBUG_REFINER
         out<< "    -- no applicable summaries" << std::endl;
 #       endif
         tmp.push_back(ipart.function_id);
       }
-      if (decider.prop.l_get(ipart.callend_literal).is_true()){
-#       ifdef DEBUG_ITP
-        out<< "    -- callend literal is true" << std::endl;
-#       endif
-        if (do_callend){
-          tmp.push_back(ipart.function_id);
-        }
-      }
       if (decider.prop.l_get(ipart.callstart_literal).is_true()){
-#       ifdef DEBUG_ITP
+#       ifdef DEBUG_REFINER
         out<< "    -- callstart literal is true" << std::endl;
 #       endif
+        if (do_callstart){
+          tmp.push_back(ipart.function_id);
+        }
       }
     }
   }
 
   if (tmp.size() == 0) {
+    // NOTE: If there is no bug in FunFrog ;-), this means that the assertion 
+    // violation is real!
+    assert(false);
     out << "Checking of the error trace didn't detect any dependencies." << std::endl
                   << "Try random for this iteration." << std::endl;
     reset_random();
