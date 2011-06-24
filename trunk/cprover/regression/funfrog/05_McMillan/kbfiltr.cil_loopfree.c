@@ -8726,7 +8726,7 @@ NTSTATUS KbFilter_PnP(PDEVICE_OBJECT DeviceObject , PIRP Irp )
 				
 				if(compRegistered != 0)
 					
-					;//assert(0);
+					;//assert(0); //BUG in FF
 				else
 				{
 					
@@ -8829,7 +8829,7 @@ NTSTATUS KbFilter_PnP(PDEVICE_OBJECT DeviceObject , PIRP Irp )
 			s = SKIP1;
 		else
 			
-			;//assert(0);
+			assert(0);
 		Irp->CurrentLocation++;
 		
 		((Irp->Tail).Overlay).CurrentStackLocation++;
@@ -8906,7 +8906,7 @@ NTSTATUS KbFilter_PnP(PDEVICE_OBJECT DeviceObject , PIRP Irp )
 			s = SKIP1;
 		else
 			
-			;//assert(0);
+			assert(0);
 		Irp->CurrentLocation++;
 		
 		((Irp->Tail).Overlay).CurrentStackLocation++;
@@ -8969,7 +8969,7 @@ NTSTATUS KbFilter_Power(PDEVICE_OBJECT DeviceObject , PIRP Irp )
 		s = SKIP1;
 	else
 		
-		;//assert(0);
+		assert(0);
 	Irp->CurrentLocation++;
 	
 	((Irp->Tail).Overlay).CurrentStackLocation++;
@@ -11779,7 +11779,7 @@ __declspec(dllimport) NTSTATUS IofCallDriver(PDEVICE_OBJECT DeviceObject , PIRP
 			}
 			else
 				
-				assert(0);
+				;//assert(0);
 		}
 	}
 	return returnVal2;
@@ -11895,7 +11895,7 @@ __declspec(dllimport) NTSTATUS KeWaitForSingleObject(PVOID Object , KWAIT_REASON
 			
 			if(s == MPR3)
 				
-				;//assert(0);
+				assert(0);
 		}
 	}
 	

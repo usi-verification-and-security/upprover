@@ -4176,7 +4176,7 @@ NTSTATUS DiskPerfReadWrite(PDEVICE_OBJECT DeviceObject , PIRP Irp )
 #line 10142
     if (compRegistered != 0) {
 #line 10144
-      // assert(0);
+       //assert(0); //0
     } else {
 #line 10148
       compRegistered = 1;
@@ -5159,7 +5159,7 @@ int main(void)
 #line 13317
               if (s != DC) {
 #line 13319
-                // assert(0);
+                // assert(0); -- BUG
               } else {
                 goto _L___0;
               }
@@ -5181,13 +5181,13 @@ int main(void)
 #line 13336
                 if (status == 259L) {
 #line 13338
-                  assert(0);
+               //   assert(0);
                 }
               } else {
 #line 13343
                 if (status != (NTSTATUS )lowerDriverReturn) {
 #line 13345
-                  // assert(0);
+              //     assert(0);
                 }
               }
             }
@@ -5648,7 +5648,7 @@ void stubMoreProcessingRequired(void)
     s = MPR1;
   } else {
 #line 13703
-    // assert(0);
+     assert(0); //1
   }
 }
 }
@@ -5737,7 +5737,7 @@ NTSTATUS ( __attribute__((__fastcall__)) IofCallDriver)(PDEVICE_OBJECT DeviceObj
         lowerDriverReturn = (int )returnVal2;
       } else {
 #line 13800
-        // assert(0);
+         assert(0); //2
       }
     }
   }
@@ -5759,7 +5759,7 @@ void ( __attribute__((__fastcall__)) IofCompleteRequest)(PIRP Irp , CCHAR Priori
     s = DC;
   } else {
 #line 13815
-    // assert(0);
+     assert(0); //3
   }
 #line 13816
 }
