@@ -122,15 +122,7 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart
     }
   }
 
-  if (tmp.size() == 0) {
-    // NOTE: If there is no bug in FunFrog ;-), this means that the assertion 
-    // violation is real!
-    assert(false);
-    out << "Checking of the error trace didn't detect any dependencies." << std::endl
-                  << "Try random for this iteration." << std::endl;
-    reset_random();
-  } else {
-    // inline all calls without applicable summaries
+  if (tmp.size() > 0) {
     for (unsigned i = 0; i < summs.size(); i++){
       if ((*summs[i]).get_precision() != INLINE){
         for (unsigned j = 0; j < tmp.size(); j++){
@@ -141,6 +133,6 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart
         }
       }
     }
-  }
-  tmp.clear();
+    tmp.clear();
+  } // else the assertion violation is real
 }

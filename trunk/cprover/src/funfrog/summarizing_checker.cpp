@@ -76,6 +76,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
 
   while (!end && count < (unsigned)options.get_int_option("steps"))
   {
+    count++;
     opensmt = new satcheck_opensmtt(
       options.get_int_option("verbose-solver"),
       options.get_bool_option("save-queries"));
@@ -84,7 +85,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
     deciderp->unbounded_array = bv_pointerst::U_AUTO;
     decider.reset(deciderp);
 
-    end = (count == 0) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
+    end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
 
     if (!end){
 
@@ -108,19 +109,24 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
           } else {
             out << "FUNCTION SUMMARIES (for " << summaries_count << " calls) ";
           }
-          out << "AREN'T SUITABLE FOR CHECKING ASSERTION." << std::endl <<
-              "Try to refine then." << std::endl;
-
+          out << "AREN'T SUITABLE FOR CHECKING ASSERTION." << std::endl;
           refiner.refine(*decider);
+
+          if (refiner.get_refined_functions().size() == 0){
+            out << "A real bug found." << std::endl;
+            break;
+          } else {
+            out << "Counterexample is spurious."  << std::endl <<
+                   "Got to next iteration." << std::endl;
+          }
 
         } else {
           out << "ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING."  << std::endl <<
-                  "A real bug found." << std::endl;
+                 "A real bug found." << std::endl;
           break;
         }
       }
     }
-    count++;
   }
   final = current_time();
 
