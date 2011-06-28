@@ -55,9 +55,11 @@ public:
 
   static void setup_default_precision(init_modet init);
 
-  static std::vector<call_summaryt*>& get_call_summaries() {return functions; }
+  static std::vector<call_summaryt*>& get_call_summaries() { return functions; }
 
-  static unsigned get_summaries_count();
+  static unsigned get_summaries_count(){ return get_precision_count(SUMMARY); }
+
+  static unsigned get_nondets_count(){ return get_precision_count(NONDET); };
 
 private:
   std::map<goto_programt::const_targett, call_summaryt> call_sites;
@@ -66,7 +68,11 @@ private:
 
   static std::vector<call_summaryt*> functions;
   static std::vector<std::pair<unsigned, unsigned> > goto_ranges;
+  static std::map<goto_programt::const_targett, unsigned> assertion_locs;
   static summary_precisiont default_precision;
+  static unsigned global_loc;
+
+  static unsigned get_precision_count(summary_precisiont precision);
 };
 
 // Summary information for a specific call site

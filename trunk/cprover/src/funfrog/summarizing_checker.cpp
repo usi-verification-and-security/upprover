@@ -119,7 +119,11 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
             out << "Counterexample is spurious."  << std::endl <<
                    "Got to next iteration." << std::endl;
           }
-
+        } else if (summary_infot::get_nondets_count() != 0) {
+              // if there are still some havoced function calls, do force inlining for them
+          refiner.set_refine_mode(FORCE_INLINING);
+          refiner.refine(*decider);
+          out << "Got to next iteration." << std::endl;
         } else {
           out << "ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING."  << std::endl <<
                  "A real bug found." << std::endl;

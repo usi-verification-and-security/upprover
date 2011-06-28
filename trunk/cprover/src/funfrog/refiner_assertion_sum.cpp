@@ -63,17 +63,7 @@ void refiner_assertion_sumt::reset_inline()
 
 void refiner_assertion_sumt::reset_random()
 {
-  unsigned summs_size = 0;
-  //unsigned havoc_size = 0;       // maybe, it will be useful
-  for (unsigned i = 0; i < summs.size(); i++){
-    summary_precisiont precision = (*summs[i]).get_precision();
-    if (precision == SUMMARY){
-      summs_size++;
-    }/* else if (precision == NONDET){
-      havoc_size++;
-    }*/
-  }
-
+  unsigned summs_size = summary_infot::get_summaries_count();
   unsigned reset_size = 0;
 
   while (reset_size == 0){

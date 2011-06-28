@@ -33,6 +33,7 @@ public:
 
   void refine(prop_convt& decider);
   std::list<summary_infot*>& get_refined_functions(){ return refined_functions; }
+  void set_refine_mode(refinement_modet _mode){ mode = _mode; }
 
 protected:
   // Shared information about the program and summaries to be used during

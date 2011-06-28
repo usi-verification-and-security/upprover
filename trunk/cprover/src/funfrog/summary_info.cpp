@@ -14,6 +14,8 @@
 summary_precisiont summary_infot::default_precision = INLINE;
 std::vector<call_summaryt*> summary_infot::functions (NULL);
 std::vector<std::pair<unsigned, unsigned> > summary_infot::goto_ranges (NULL);
+std::map<goto_programt::const_targett, unsigned> summary_infot::assertion_locs;
+unsigned summary_infot::global_loc = 0;
 
 void summary_infot::setup_default_precision(init_modet init)
 {
@@ -45,8 +47,9 @@ void summary_infot::initialize(
   for(goto_programt::const_targett inst=code.instructions.begin();
       inst!=code.instructions.end(); ++inst)
   {
+    global_loc++;
     if (inst->type == GOTO){
-      unsigned tmp_location = atoi(inst->location.get_line().c_str());
+      unsigned tmp_location = inst->location_number;
       unsigned max_location = tmp_location;
       unsigned min_location = tmp_location;
 
@@ -54,7 +57,7 @@ void summary_infot::initialize(
           it!=inst->targets.end();
           it++)
       {
-        unsigned tgt_location = atoi((*it)->location.get_line().c_str());
+        unsigned tgt_location = (*it)->location_number;
         if(tgt_location < min_location){
           min_location = tgt_location;
         }
@@ -63,8 +66,10 @@ void summary_infot::initialize(
         }
       }
 
-      if (min_location != 0){
-        goto_ranges.push_back(std::make_pair(min_location, max_location));
+      if (min_location != max_location){
+        goto_ranges.push_back(std::make_pair(
+             global_loc - (tmp_location - min_location),
+             global_loc + (max_location - tmp_location)));
       }
     }
 
@@ -77,12 +82,17 @@ void summary_infot::initialize(
       // Mark the call site
       call_summaryt& call_summary = call_sites.insert(
               std::pair<goto_programt::const_targett, call_summaryt>(inst,
-              call_summaryt(this, stack_depth, atoi(inst->location.get_line().c_str()))
+              call_summaryt(this, stack_depth, global_loc)
               )).first->second;
       functions.push_back(&call_summary);
 
       call_summary.initialize(summarization_context, target_function,
                       stack_depth+1);
+    }
+    else if (inst->type == ASSERT){
+      if (assertion_locs[inst] > global_loc || assertion_locs[inst] == 0){
+        assertion_locs[inst] = global_loc;
+      }
     }
   }
 }
@@ -139,9 +149,8 @@ void summary_infot::set_initial_precision(
     const summarization_contextt& summarization_context,
     const assertion_infot& assertion)
 {
-  const unsigned assertion_location = atoi(assertion.get_location()->location.get_line().c_str());
+  const unsigned assertion_location = assertion_locs[assertion.get_location()];
   const unsigned assertion_stack_size = assertion.get_target_stack().size();
-
   for (unsigned i = 0; i < functions.size(); i++){
 
     const irep_idt &function_id = (*functions[i]).get_summary_info().get_function_id();
@@ -171,10 +180,10 @@ void summary_infot::set_initial_precision(
   }
 }
 
-unsigned summary_infot::get_summaries_count(){
+unsigned summary_infot::get_precision_count(summary_precisiont precision){
   unsigned count = 0;
   for (unsigned i = 0; i < functions.size(); i++){
-    if ((*functions[i]).get_precision() == SUMMARY){
+    if ((*functions[i]).get_precision() == precision){
       count++;
     }
   }
