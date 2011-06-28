@@ -2,6 +2,10 @@ UNSAT - it holds!
 ASSERTION IS TRUE
 ASSERTION(S) HOLD(S) AFTER INLINING.
 SAT - doesn't hold
+Violated property:
+  file 05_McMillan/kbfiltr.cil_loopfree.c line 11797 function IofCompleteRequest
+  assertion
+  FALSE
 FUNCTION SUMMARIES (for 25 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
 UNSAT - it holds!
 ASSERTION IS TRUE
