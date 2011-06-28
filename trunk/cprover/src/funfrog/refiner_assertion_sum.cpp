@@ -124,5 +124,11 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart
       }
     }
     tmp.clear();
+  } else if (summary_infot::get_nondets_count != 0){
+    for (unsigned i = 0; i < summs.size(); i++){
+      if ((*summs[i]).get_precision() == NONDET){
+        set_inline_sum(i);
+      }
+    }
   } // else the assertion violation is real
 }
