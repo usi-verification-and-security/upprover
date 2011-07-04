@@ -45,7 +45,7 @@ public:
 
   void set_initial_precision(
       const summarization_contextt& summarization_context,
-      const assertion_infot& assertion);
+      const assertion_infot& assertion, unsigned i);
   
   bool is_root() { return parent == NULL; }
   
@@ -59,7 +59,7 @@ public:
 
   static unsigned get_summaries_count(){ return get_precision_count(SUMMARY); }
 
-  static unsigned get_nondets_count(){ return get_precision_count(NONDET); };
+  static unsigned get_nondets_count(){ return get_precision_count(NONDET); }
 
 private:
   std::map<goto_programt::const_targett, call_summaryt> call_sites;
@@ -68,7 +68,7 @@ private:
 
   static std::vector<call_summaryt*> functions;
   static std::vector<std::pair<unsigned, unsigned> > goto_ranges;
-  static std::map<goto_programt::const_targett, unsigned> assertion_locs;
+  static std::map<goto_programt::const_targett, std::vector<unsigned> > assertion_locs;
   static summary_precisiont default_precision;
   static unsigned global_loc;
 

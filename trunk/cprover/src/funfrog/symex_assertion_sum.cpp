@@ -80,9 +80,10 @@ void symex_assertion_sumt::loop_free_check(){
 
 \*******************************************************************/
 
-bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
+bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion, unsigned ass_number)
 {
   current_assertion = &assertion;
+  current_ass_number = ass_number;
 
   // these are quick...
   if(assertion.get_location()->guard.is_true())
@@ -118,7 +119,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 
 \*******************************************************************/
 
-bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion, 
+bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
           summary_infot *refined_function)
 {
   std::list<summary_infot*> list;
@@ -139,10 +140,11 @@ bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
 
 \*******************************************************************/
 
-bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion, 
+bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
           const std::list<summary_infot*> &refined_functions)
 {
   current_assertion = &assertion;
+  assertion_number = 0;
 
   // these are quick...
   if(assertion.get_location()->guard.is_true())
@@ -333,14 +335,14 @@ void symex_assertion_sumt::symex_step(
         if (current_assertion->get_location() == state.source.pc && (
                 !options.get_bool_option("no-assert-grouping") ||
                 get_current_deferred_function().assert_stack_match)) {
-                  
-          std::string msg=id2string(state.source.pc->location.get_comment());
-          if(msg=="") msg="assertion";
-          exprt tmp(instruction.guard);
-
-          clean_expr(tmp, state, false);
-
-          claim(tmp, msg, state);
+          if (current_ass_number == assertion_number){
+            std::string msg=id2string(state.source.pc->location.get_comment());
+            if(msg=="") msg="assertion";
+            exprt tmp(instruction.guard);
+            clean_expr(tmp, state, false);
+            claim(tmp, msg, state);
+          }
+          assertion_number++;
         }
       }
 

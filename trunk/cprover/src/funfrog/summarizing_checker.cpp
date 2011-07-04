@@ -42,7 +42,7 @@ void summarizing_checkert::initialize()
 
 \*******************************************************************/
 
-bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
+bool summarizing_checkert::assertion_holds(const assertion_infot& assertion, unsigned i)
 {
   fine_timet initial, final;
   initial=current_time();
@@ -52,9 +52,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
     out << std::endl << "ASSERTION IS TRIVIALLY TRUE" << std::endl;
     return true;
   }
-
   const bool no_slicing_option = options.get_bool_option("no-slicing");
-  summary_info.set_initial_precision(summarization_context, assertion);
+  summary_info.set_initial_precision(summarization_context, assertion, i);
 
   partitioning_target_equationt equation(ns);
 
@@ -85,7 +84,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
     deciderp->unbounded_array = bv_pointerst::U_AUTO;
     decider.reset(deciderp);
 
-    end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
+    end = (count == 1) ? symex.prepare_SSA(assertion, i) : symex.refine_SSA (assertion, refiner.get_refined_functions());
 
     if (!end){
 
@@ -138,18 +137,6 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
         "TOTAL TIME FOR CHECKING THIS CLAIM: "<< time2string(final - initial) << std::endl;
   return end;
 }
-
-/*******************************************************************\
-
-Function: summarizing_checkert::compute_reduction_timeout
-
-  Inputs:
-
- Outputs:
-
- Purpose: Compute reduction timeout
-
-\*******************************************************************/
 
 double summarizing_checkert::compute_reduction_timeout(double solving_time)
 {

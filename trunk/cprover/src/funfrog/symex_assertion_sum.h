@@ -48,7 +48,9 @@ public:
           current_assertion(NULL),
           out(_out),
           goto_program(_goto_program),
-          use_slicing(_use_slicing)
+          use_slicing(_use_slicing),
+          current_ass_number(0),
+          assertion_number(0)
           {}
           
   virtual ~symex_assertion_sumt();
@@ -57,16 +59,16 @@ public:
 
   // Generate SSA statements for the program starting from the root 
   // stored in goto_program.
-  bool prepare_SSA(const assertion_infot &assertion);
+  bool prepare_SSA(const assertion_infot &assertion, unsigned ass_number);
 
   // Generate SSA statements for the refined program starting from the given 
   // function.
-  bool refine_SSA(const assertion_infot &assertion, 
+  bool refine_SSA(const assertion_infot &assertion,
           summary_infot* refined_function);
 
   // Generate SSA statements for the refined program starting from the given 
   // set of functions.
-  bool refine_SSA(const assertion_infot &assertion, 
+  bool refine_SSA(const assertion_infot &assertion,
           const std::list<summary_infot*> &refined_function);
   
   virtual void symex_step(
@@ -134,8 +136,11 @@ private:
 
   const goto_programt &goto_program;
 
-
   bool use_slicing;
+
+  unsigned current_ass_number;
+
+  unsigned assertion_number;
 
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation

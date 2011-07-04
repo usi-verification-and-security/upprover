@@ -14,7 +14,7 @@
 summary_precisiont summary_infot::default_precision = INLINE;
 std::vector<call_summaryt*> summary_infot::functions (NULL);
 std::vector<std::pair<unsigned, unsigned> > summary_infot::goto_ranges (NULL);
-std::map<goto_programt::const_targett, unsigned> summary_infot::assertion_locs;
+std::map<goto_programt::const_targett, std::vector<unsigned> > summary_infot::assertion_locs;
 unsigned summary_infot::global_loc = 0;
 
 void summary_infot::setup_default_precision(init_modet init)
@@ -90,9 +90,7 @@ void summary_infot::initialize(
                       stack_depth+1);
     }
     else if (inst->type == ASSERT){
-      if (assertion_locs[inst] > global_loc || assertion_locs[inst] == 0){
-        assertion_locs[inst] = global_loc;
-      }
+      assertion_locs[inst].push_back(global_loc);
     }
   }
 }
@@ -147,10 +145,11 @@ void summary_infot::process_goto_locations()
 
 void summary_infot::set_initial_precision(
     const summarization_contextt& summarization_context,
-    const assertion_infot& assertion)
+    const assertion_infot& assertion, unsigned i)
 {
-  const unsigned assertion_location = assertion_locs[assertion.get_location()];
+  const unsigned assertion_location = assertion_locs[assertion.get_location()].at(i);
   const unsigned assertion_stack_size = assertion.get_target_stack().size();
+
   for (unsigned i = 0; i < functions.size(); i++){
 
     const irep_idt &function_id = (*functions[i]).get_summary_info().get_function_id();
@@ -162,7 +161,7 @@ void summary_infot::set_initial_precision(
         to_code_function_call(to_code(assertion.get_target_stack().at(function_depth)->code));
 
       const irep_idt &ass_stack_call_id = call.function().get("identifier");
-      (*functions[i]).call_stack = (will_inline && (ass_stack_call_id  == function_id));
+      (*functions[i]).call_stack = (will_inline && (ass_stack_call_id == function_id));
     }
     if ((*functions[i]).call_stack){
       (*functions[i]).set_inline();

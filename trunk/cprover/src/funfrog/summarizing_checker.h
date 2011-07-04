@@ -49,7 +49,7 @@ public:
 
   void initialize();
   bool last_assertion_holds();
-  bool assertion_holds(const assertion_infot& assertion);
+  bool assertion_holds(const assertion_infot& assertion, unsigned i);
 
 protected:
 
