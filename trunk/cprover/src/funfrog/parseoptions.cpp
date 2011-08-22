@@ -504,7 +504,7 @@ void funfrog_parseoptionst::help()
   std::cout <<"\n"
     "* * *                FUNFROG "FUNFROG_VERSION
   " - Copyright (C) 2011               * * *\n"
-  "                                Ondrej Sery, ...\n\n"
+  "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
   "                based on LOOPFROG "LOOPFROG_VERSION
   " - Copyright (C) 2008\n"
   "          Daniel Kroening, Natasha Sharygina, Aliaksei Tsitovich,\n"
