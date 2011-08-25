@@ -40,7 +40,7 @@ void function_infot::add_summary(interpolantt& summary, bool filter) {
         return; // Implied by an already present summary --> skip it
     }
     
-    // Is implies any older summary?
+    // It implies any older summary?
     unsigned used = 0;
     for (unsigned i = 0; i < summaries.size(); ++i) {
       if (check_implies(summary, summaries[i])) {

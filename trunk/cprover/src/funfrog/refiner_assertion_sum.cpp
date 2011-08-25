@@ -72,7 +72,7 @@ void refiner_assertion_sumt::reset_random()
       summary_precisiont precision = (*summs[i]).get_precision();
       if ((precision == SUMMARY) ||    // if there were some summaries,
                                        // try to inline them first
-          (precision == NONDET && summs_size == 0)){ // and if there were not
+          (precision == HAVOC && summs_size == 0)){ // and if there were not
                                                      // then refine havoced calls
         if (rand() % 1000 < 300 || rand() % 1000 > 800){
           set_inline_sum(i);
@@ -126,7 +126,7 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart
     tmp.clear();
   } else if (summary_infot::get_nondets_count != 0){
     for (unsigned i = 0; i < summs.size(); i++){
-      if ((*summs[i]).get_precision() == NONDET){
+      if ((*summs[i]).get_precision() == HAVOC){
         set_inline_sum(i);
       }
     }

@@ -20,7 +20,7 @@ unsigned summary_infot::global_loc = 0;
 void summary_infot::setup_default_precision(init_modet init)
 {
   if (init == ALL_HAVOCING){
-     summary_infot::default_precision = NONDET;
+     summary_infot::default_precision = HAVOC;
    } else if (init == ALL_SUBSTITUTING){
      summary_infot::default_precision = INLINE;
    } else {

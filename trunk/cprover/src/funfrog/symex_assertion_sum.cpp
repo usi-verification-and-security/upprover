@@ -985,7 +985,7 @@ void symex_assertion_sumt::handle_function_call(
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);
   switch (call_summary.get_precision()){
-  case NONDET:
+  case HAVOC:
     havoc_function_call(deferred_function, state, function_id);
     break;
   case SUMMARY:

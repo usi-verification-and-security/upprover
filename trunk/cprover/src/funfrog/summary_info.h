@@ -21,7 +21,7 @@
 #include "summarization_context.h"
 
 // Type of summarization applied at a specific call-site
-typedef enum {NONDET, SUMMARY, INLINE} summary_precisiont;
+typedef enum {HAVOC, SUMMARY, INLINE} summary_precisiont;
 
 // Forward def.
 class call_summaryt;
@@ -59,7 +59,7 @@ public:
 
   static unsigned get_summaries_count(){ return get_precision_count(SUMMARY); }
 
-  static unsigned get_nondets_count(){ return get_precision_count(NONDET); }
+  static unsigned get_nondets_count(){ return get_precision_count(HAVOC); }
 
 private:
   std::map<goto_programt::const_targett, call_summaryt> call_sites;
@@ -79,7 +79,7 @@ private:
 class call_summaryt {
 public:
   call_summaryt(summary_infot *_parent, size_t _stack_depth, unsigned _call_location) :
-     precision(NONDET),
+     precision(HAVOC),
      summary_info(_parent),
      stack_depth(_stack_depth),
      call_location(_call_location),
@@ -88,7 +88,7 @@ public:
 
   void set_inline() { precision = INLINE; }
   void set_summary() { precision = SUMMARY; }
-  void set_nondet() { precision = NONDET; }
+  void set_nondet() { precision = HAVOC; }
 
   bool is_in_call_stack() { return call_stack; }
 
