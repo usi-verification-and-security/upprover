@@ -1,0 +1,38 @@
+
+TODO list for funfrog
+=====================
+
+HIGH PRIORITY
+-------------
+
+- Interactive mode of:
+  - OpenSMT session - share one instance during checking of a single assertion
+- When checking multiple instances of the same assertion, forced inlining works only for the first instance (its call stack)
+- Summaries are generated again and again for functions that are on the assertion call stacks (what is their semantics anyway?)
+
+
+LOW PRIORITY
+------------
+
+- Mapping for global variables, refactor:
+  - unify accessed globals and arguments
+  - unify modified globals and return value (the extra temp. variable is probably not needed - check it!).
+- Aliasing
+- UFLIA encoding
+  - choose solver, create wrapper, interpolant back propagation
+- Bit-vectors encoding
+  - examine wolverine's interpolation engine
+
+
+BUGS
+----
+
+- Too many symbols in the renaming tables (remove locals and the special call start and call end symbols)
+- Slicing can remove "unrelated" assumptions that, however, make an error reaching trace unfeasible (thus reporting a nonexistent error).
+- Error trace computation is broken - segfault on trace computation (not addapted to partitioning symex target yet)
+- Unsufficient loop unwinding (k times, if there are loops with n>k iterations) leads to "assertion is trivially unreachable" if the assertion is in the same function, or to SAT if the loop is separated to different function.
+- "--unwind n" in fact unwinds (n-1) times. The bug is came from cbmc..
+
+BUGGY TEST CASES:
+----------------
+
