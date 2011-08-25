@@ -1,0 +1,1 @@
+#define LOOPFROG_VERSION "0.9"

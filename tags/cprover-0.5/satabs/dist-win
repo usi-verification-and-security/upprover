@@ -1,0 +1,27 @@
+#!/bin/bash
+
+make
+strip satabs.exe
+
+VERSION=`./satabs.exe --version`
+VERSION_FILE=`echo $VERSION | sed "y/./-/"`
+
+(cd ../goto-cc; make; strip goto-cc.exe)
+(cd ../goto-instrument; make; strip goto-instrument.exe)
+
+echo $VERSION_FILE
+
+mkdir /tmp/satabs-dist
+cp satabs.exe /tmp/satabs-dist/
+cp ../goto-cc/goto-cc.exe /tmp/satabs-dist/
+cp ../goto-instrument/goto-instrument.exe /tmp/satabs-dist/
+cp ../../LICENSE /tmp/satabs-dist/
+cd /tmp/satabs-dist
+zip -9 satabs-${VERSION_FILE}-win.zip satabs.exe \
+  goto-instrument.exe goto-cc.exe LICENSE
+
+echo Copying.
+scp satabs-${VERSION_FILE}-win.zip kroening@dkr0.inf.ethz.ch:/home/www/cprover.org/satabs/download/
+
+cd /tmp
+rm -R /tmp/satabs-dist
