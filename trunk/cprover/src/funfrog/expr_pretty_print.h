@@ -24,6 +24,11 @@ public:
     orig_indent = _indent;
     indent.assign(_indent, ' ');
   }
+  
+  void set_indent(const std::string& indent_str) {
+    orig_indent = indent_str.length();
+    indent = indent_str;
+  }
 
 private:
   std::ostream& out;
@@ -34,5 +39,8 @@ private:
 
 std::ostream& expr_pretty_print(std::ostream& out, const exprt& expr, 
         unsigned _indent = 0);
+
+std::ostream& expr_pretty_print(std::ostream& out, const exprt& expr, 
+        const std::string& indent_str);
 
 #endif

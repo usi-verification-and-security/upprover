@@ -309,16 +309,16 @@ literalt cnft::land(const bvt &bv)
 
   literalt literal=new_variable();
 
+  bvt lits;
   for(unsigned int i=0; i<new_bv.size(); ++i)
   {
-    bvt lits;
     lits.reserve(2);
     lits.push_back(pos(new_bv[i]));
     lits.push_back(neg(literal));
     lcnf(lits);
+    lits.clear();
   }
 
-  bvt lits;
   lits.reserve(new_bv.size()+1);
 
   for(unsigned int i=0; i<new_bv.size(); ++i)
@@ -361,16 +361,16 @@ literalt cnft::lor(const bvt &bv)
 
   literalt literal=new_variable();
 
+  bvt lits;
   for(unsigned int i=0; i<new_bv.size(); ++i)
   {
-    bvt lits;
     lits.reserve(2);
     lits.push_back(neg(new_bv[i]));
     lits.push_back(pos(literal));
     lcnf(lits);
+    lits.clear();
   }
 
-  bvt lits;
   lits.reserve(new_bv.size()+1);
 
   for(unsigned int i=0; i<new_bv.size(); ++i)

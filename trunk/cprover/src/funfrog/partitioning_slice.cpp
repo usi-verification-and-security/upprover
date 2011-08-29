@@ -82,8 +82,10 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation)
           it != equation.get_partitions().end();
           ++it)
   {
-    if (it->is_summary)
+    if (it->is_summary) {
+      assert (!it->get_iface().assertion_in_subtree);
       it->ignore = true;
+    }
   }
 
   // Prepare necessary maps

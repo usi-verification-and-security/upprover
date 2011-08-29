@@ -149,7 +149,6 @@ claim_statst check_claims(
 
   sum_checker.initialize();
 
-  std::map <goto_programt::const_targett, unsigned> claim_total;
   while(true)
   {
     // Next assertion (or next occurrence of the same assertion)
@@ -194,11 +193,10 @@ claim_statst check_claims(
 
     bool pass=false;
     if(!claim_map[ass_ptr].first || claim_map[ass_ptr].second)
-      pass = sum_checker.assertion_holds(assertion_infot(stack, ass_ptr), claim_total[ass_ptr]);
+      pass = sum_checker.assertion_holds(assertion_infot(stack, ass_ptr));
     else 
       pass = true;
 
-    claim_total[ass_ptr]++;
     claim_map[ass_ptr].first = true;
     
     if (pass)

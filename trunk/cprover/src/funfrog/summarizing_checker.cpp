@@ -42,7 +42,7 @@ void summarizing_checkert::initialize()
 
 \*******************************************************************/
 
-bool summarizing_checkert::assertion_holds(const assertion_infot& assertion, unsigned i)
+bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
 {
   fine_timet initial, final;
   initial=current_time();
@@ -53,7 +53,9 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion, uns
     return true;
   }
   const bool no_slicing_option = options.get_bool_option("no-slicing");
-  summary_info.set_initial_precision(summarization_context, assertion, i);
+  const bool assert_grouping = !options.get_bool_option("no-assert-grouping");
+  summary_info.set_initial_precision(summarization_context, assertion,
+          assert_grouping);
 
   partitioning_target_equationt equation(ns);
 
@@ -84,7 +86,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion, uns
     deciderp->unbounded_array = bv_pointerst::U_AUTO;
     decider.reset(deciderp);
 
-    end = (count == 1) ? symex.prepare_SSA(assertion, i) : symex.refine_SSA (assertion, refiner.get_refined_functions());
+    end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
 
     if (!end){
 

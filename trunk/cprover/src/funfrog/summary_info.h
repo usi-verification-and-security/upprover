@@ -25,29 +25,37 @@ typedef enum {HAVOC, SUMMARY, INLINE} summary_precisiont;
 
 // Forward def.
 class call_summaryt;
+typedef std::map<goto_programt::const_targett, call_summaryt> call_sitest;
+typedef std::set<goto_programt::const_targett> locationst;
+typedef std::map<goto_programt::const_targett, unsigned> location_mapt;
 
 // Summary information for a body of a function
 class summary_infot {
 public:
 
-  summary_infot(summary_infot *_parent) : function_id(ID_nil), parent(_parent) {}
+  summary_infot(summary_infot *_parent)
+          : function_id(ID_nil), parent(_parent), assertion_in_subtree(false) { }
 
   void clear() { call_sites.clear(); }
 
   void initialize(const summarization_contextt &summarization_context,
-      const goto_programt &code, size_t stack_depth = 0);
+      const goto_programt &code);
 
   void set_function_id(const irep_idt& _function_id) { function_id = _function_id; }
 
-  std::map<goto_programt::const_targett, call_summaryt>& get_call_sites() { return call_sites; }
+  call_sitest& get_call_sites() { return call_sites; }
 
   const irep_idt& get_function_id() const { return function_id; }
 
   void set_initial_precision(
       const summarization_contextt& summarization_context,
-      const assertion_infot& assertion, unsigned i);
+      const assertion_infot& assertion, bool assert_grouping);
   
-  bool is_root() { return parent == NULL; }
+  bool is_root() const { return parent == NULL; }
+  bool has_assertion_in_subtree() const { return assertion_in_subtree; }
+  bool is_assertion_enabled(const goto_programt::const_targett& assertion) const {
+    return enabled_assertions.find(assertion) != enabled_assertions.end();
+  }
   
   summary_infot& get_parent() { return *parent; }
 
@@ -57,18 +65,31 @@ public:
 
   static std::vector<call_summaryt*>& get_call_summaries() { return functions; }
 
-  static unsigned get_summaries_count(){ return get_precision_count(SUMMARY); }
-
-  static unsigned get_nondets_count(){ return get_precision_count(HAVOC); }
+  static unsigned get_summaries_count() { return get_precision_count(SUMMARY); }
+  static unsigned get_nondets_count() { return get_precision_count(HAVOC); }
 
 private:
-  std::map<goto_programt::const_targett, call_summaryt> call_sites;
+  call_sitest call_sites;
+  location_mapt assertions;
+  locationst enabled_assertions;
   irep_idt function_id;
   summary_infot *parent;
+  bool assertion_in_subtree;
+  
+  void set_initial_precision(
+        const summarization_contextt& summarization_context,
+        const assertion_infot& assertion, unsigned last_assertion_loc);
+  
+  bool mark_enabled_assertions(
+        const summarization_contextt& summarization_context,
+        const assertion_infot& assertion, unsigned depth, 
+        bool parent_stack_matches, bool assert_grouping,
+        unsigned& last_assertion_loc);
 
+  // FIXME: Get rid of these static data - we will need multiple trees for
+  // update checking... static is evil anyway...
   static std::vector<call_summaryt*> functions;
   static std::vector<std::pair<unsigned, unsigned> > goto_ranges;
-  static std::map<goto_programt::const_targett, std::vector<unsigned> > assertion_locs;
   static summary_precisiont default_precision;
   static unsigned global_loc;
 
@@ -78,33 +99,27 @@ private:
 // Summary information for a specific call site
 class call_summaryt {
 public:
-  call_summaryt(summary_infot *_parent, size_t _stack_depth, unsigned _call_location) :
+  call_summaryt(summary_infot *_parent, unsigned _call_location) :
      precision(HAVOC),
      summary_info(_parent),
-     stack_depth(_stack_depth),
-     call_location(_call_location),
-     call_stack(0)
+     call_location(_call_location)
   {}
 
   void set_inline() { precision = INLINE; }
   void set_summary() { precision = SUMMARY; }
   void set_nondet() { precision = HAVOC; }
 
-  bool is_in_call_stack() { return call_stack; }
-
-  summary_precisiont get_precision() { return precision; }
+  summary_precisiont get_precision() const { return precision; }
 
   summary_infot& get_summary_info() { return summary_info; }
 
 private:
   summary_precisiont precision;
   summary_infot summary_info;
-  size_t stack_depth;
   unsigned call_location;
-  bool call_stack;
 
   void initialize(const summarization_contextt &summarization_context,
-          const irep_idt &target_function, size_t stack_depth);
+          const irep_idt &target_function);
 
   friend class summary_infot;
 };

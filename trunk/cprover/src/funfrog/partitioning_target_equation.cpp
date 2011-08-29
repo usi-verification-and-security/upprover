@@ -34,7 +34,13 @@ void partitioning_target_equationt::convert(
   int part_id = partitions.size();
   for (partitionst::reverse_iterator it = partitions.rbegin();
           it != partitions.rend(); ++it) {
-    std::cout << "XXX Partition: " << --part_id << std::endl;
+#   ifdef DEBUG_SSA
+    std::cout << "XXX" << std::string(77, '=') << std::endl;
+#   endif
+    std::cout << "XXX Partition: " << --part_id << 
+            " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
+            " - " << it->get_iface().function_id.c_str() <<
+            std::endl;
     convert_partition(prop_conv, interpolator, *it);
   }
 }
@@ -54,12 +60,14 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   interpolating_solvert &interpolator, partitiont& partition)
 {
   if (partition.ignore || partition.processed || partition.invalid) {
-    if (partition.invalid)
+    if (partition.invalid) {
       std::cout << "  partition invalidated (refined)." << std::endl;
-    else if (partition.ignore)
+    } else if (partition.ignore) {
+      assert (!partition.get_iface().assertion_in_subtree);
       std::cout << "  partition sliced out." << std::endl;
-    else if (partition.processed)
+    } else if (partition.processed) {
       std::cout << "  partition already processed." << std::endl;
+    }
     return;
   }
   
@@ -72,6 +80,10 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
           prop_conv.convert(partition_iface.callstart_symbol);
   partition_iface.callend_literal = 
           prop_conv.convert(partition_iface.callend_symbol);
+  if (partition_iface.assertion_in_subtree) {
+    partition_iface.error_literal = 
+            prop_conv.convert(partition_iface.error_symbol);
+  }
 
   // If this is a summary partition, apply the summary
   if (partition.is_summary) {
@@ -243,42 +255,13 @@ void partitioning_target_equationt::convert_partition_assertions(
   prop_convt &prop_conv, partitiont& partition)
 {
   unsigned number_of_assertions = count_partition_assertions(partition);
-
   unsigned number_of_assumptions = 0;
-# if 0
-  // FIXME: This is unsound since also assumptions in the partitions without
-  // any assertions may be important.
-  if(number_of_assertions==0)
-    return;
-
-  // we find out if there is only _one_ assertion,
-  // which allows for a simpler formula
-
-  if(number_of_assertions==1)
-  {
-    // FIXME: Without slicing, this is unsound, since some subsequent,
-    // but unsliced, assumptions may hide the assertion violation.
-    for(SSA_stepst::iterator it = partition.start_it;
-        it != partition.end_it; ++it)
-      if(it->is_assert())
-      {
-        prop_conv.set_to_false(it->cond_expr);
-
-        expr_pretty_print(std::cout << "ASSERT-OUT:" << std::endl, it->cond_expr, 2);
-
-        it->cond_literal=prop_conv.convert(it->cond_expr);
-        return; // prevent further assumptions!
-      }
-      else if(it->is_assume())
-        prop_conv.set_to_true(it->cond_expr);
-
-    assert(false); // unreachable
-  }
-# endif
+  const partition_ifacet& partition_iface = partition.get_iface();
 
   bvt bv;
-
-  bv.reserve(number_of_assertions);
+  if (partition_iface.assertion_in_subtree) {
+    bv.reserve(number_of_assertions + partition.child_ids.size());
+  }
 
   literalt assumption_literal=const_literal(true);
 
@@ -288,79 +271,155 @@ void partitioning_target_equationt::convert_partition_assertions(
     {
 
 #     ifdef DEBUG_SSA      
-      expr_pretty_print(std::cout << "ASSERT-OUT:" << std::endl, it->cond_expr, 2);
+      expr_pretty_print(std::cout << "ASSERT-OUT:" << std::endl, it->cond_expr);
 #     endif
 
-      // do the expression
-      literalt tmp_literal=prop_conv.convert(it->cond_expr);
-
-      it->cond_literal=prop_conv.prop.limplies(assumption_literal, tmp_literal);
+      // Collect ass \in assertions(f) in bv
+      literalt tmp_literal = prop_conv.convert(it->cond_expr);
+      it->cond_literal = prop_conv.prop.limplies(assumption_literal, tmp_literal);
 
       bv.push_back(prop_conv.prop.lnot(it->cond_literal));
     }
     else if (it->is_assume() && !it->ignore) {
-      // If it is a call end symbol, we need to emit the assumption propagation
-      // formula for the given callsite.
-      if (it->cond_expr.id() == ID_symbol || 
-              (it->cond_expr.id() == ID_implies && it->cond_expr.op1().id() == ID_symbol)) {
-        irep_idt id = it->cond_expr.id() == ID_symbol ?
-          it->cond_expr.get(ID_identifier) :
-          it->cond_expr.op1().get(ID_identifier);
-        partition_mapt::iterator pit =
-                partition_map.find(id);
+      // If the assumption represents a call of the function g, 
+      // encode callstart_g propagation formula:
+      //
+      // callstart_g <=>
+      //     path_cond \land 
+      //     (\land_{ass \in {assumptions(f)}} ass)
+      //
+      const partitiont* target_partition = find_target_partition(*it);
 
-        if (pit != partition_map.end()) {
-          partitiont& target_partition = partitions[pit->second];
-          
-          assert (!target_partition.invalid && !target_partition.processed);
-          if (target_partition.ignore)
-            continue;
-          
-          // Emit the assumption propagation formula
-          literalt tmp = prop_conv.prop.land(assumption_literal, it->guard_literal);
+      if (target_partition && !target_partition->ignore) {
+        const partition_ifacet& target_partition_iface = target_partition->get_iface();
+        assert(!target_partition->invalid && !target_partition->processed);
 
-          prop_conv.prop.set_equal(tmp, target_partition.get_iface().callstart_literal);
-
-#         ifdef DEBUG_SSA      
-          expr_pretty_print(std::cout << "XXX Call START equality: ",
-                  target_partition.get_iface().callstart_symbol);
-          expr_pretty_print(std::cout << "  = ", it->guard_expr);
-          for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
-            if (it2->is_assume() && !it2->ignore) {
-              expr_pretty_print(std::cout << "  & ", it2->cond_expr);
-            }
+        literalt tmp = prop_conv.prop.land(assumption_literal, it->guard_literal);
+        prop_conv.prop.set_equal(tmp, target_partition_iface.callstart_literal);
+        
+        #ifdef DEBUG_SSA      
+        expr_pretty_print(std::cout << "XXX Call START equality: ",
+                target_partition_iface.callstart_symbol);
+        expr_pretty_print(std::cout << "  = ", it->guard_expr);
+        for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
+          if (it2->is_assume() && !it2->ignore) {
+            expr_pretty_print(std::cout << "  & ", it2->cond_expr);
           }
-#         endif
         }
+        #endif
       }
-
-      // Collect this assumption
-      assumption_literal=
-        prop_conv.prop.land(assumption_literal, it->cond_literal);
+      
+      // Collect this assumption as:
+      //
+      //     assumption_literal = \land_{ass \in assumptions(f)} ass
+      //
+      assumption_literal = prop_conv.prop.land(assumption_literal, it->cond_literal);
       number_of_assumptions++;
-    }
+    } 
+  }
+  
+  for (partition_idst::const_iterator it = partition.child_ids.begin();
+          it != partition.child_ids.end(); ++it) {
+      const partitiont& target_partition = partitions[*it];
+
+      if (target_partition.get_iface().assertion_in_subtree) {
+        // Collect error_g, where g \in children(f) in bv
+        bv.push_back(target_partition.get_iface().error_literal);
+      }
   }
 
-  // Assert the collected assertions
-  if (!bv.empty())
-    prop_conv.prop.lcnf(bv);
+  // Encode the collected assertions:
+  //
+  // error_f <=> 
+  //     (\lor_{g \in children(f)} error_g) \lor 
+  //     (\lor_{ass \in assertions(f)} ass)
+  //
+  if (!bv.empty()) {
+    assert(partition_iface.assertion_in_subtree);
+    
+    if (partition.parent_id == partitiont::NO_PARTITION) 
+    {
+      prop_conv.prop.lcnf(bv);
+      
+      #ifdef DEBUG_SSA
+      std::cout << "XXX Encoding error in ROOT: " << std::endl;
+      for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
+        if (it->is_assert() && !it->ignore) {
+          expr_pretty_print(std::cout << "  | ", it->cond_expr);
+        }
+      }
+      for (partition_idst::const_iterator it = partition.child_ids.begin(); 
+              it != partition.child_ids.end();
+              ++it) {
+        const partitiont& target_partition = partitions[*it];
+        const partition_ifacet& target_partition_iface = target_partition.get_iface();
 
-  if (partition.parent_id != partitiont::NO_PARTITION && number_of_assumptions > 0) {
-    // Assert the assumption propagation formula for the partition
-    literalt tmp = prop_conv.prop.limplies(
-            partition.get_iface().callend_literal,
+        if (!target_partition.ignore && 
+                target_partition_iface.assertion_in_subtree) {
+          expr_pretty_print(std::cout << "  | ", target_partition_iface.error_symbol);
+        }
+      }
+      #endif
+    } 
+    else 
+    {
+      literalt tmp = prop_conv.prop.lor(bv);
+      prop_conv.prop.set_equal(tmp, partition_iface.error_literal);
+      
+      #ifdef DEBUG_SSA
+      expr_pretty_print(std::cout << "XXX Encoding error_f: ",
+              partition_iface.error_symbol);
+      for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
+        if (it->is_assert() && !it->ignore) {
+          expr_pretty_print(std::cout << "  | ", it->cond_expr);
+        }
+      }
+      for (partition_idst::const_iterator it = partition.child_ids.begin(); 
+              it != partition.child_ids.end();
+              ++it) {
+        const partitiont& target_partition = partitions[*it];
+        const partition_ifacet& target_partition_iface = target_partition.get_iface();
+
+        if (!target_partition.ignore && 
+                target_partition_iface.assertion_in_subtree) {
+          expr_pretty_print(std::cout << "  | ", target_partition_iface.error_symbol);
+        }
+      }
+      #endif
+    }
+    
+  }
+
+//  // Emit error_root = true for the ROOT partition
+//  if (partition.parent_id == partitiont::NO_PARTITION) {
+//    prop_conv.prop.l_set_to_true(partition_iface.error_literal);
+//    #ifdef DEBUG_SSA
+//    expr_pretty_print(std::cout << "XXX Asserting error_root: ",
+//            partition_iface.error_symbol);
+//    #endif
+//  }
+
+  if (partition.parent_id != partitiont::NO_PARTITION) {  
+    assert(number_of_assumptions > 0);
+    // Encode callend propagation formula for the partition:
+    //
+    // callend_f => 
+    //     (\land_{ass \in assumptions(f)} ass)
+    //
+    // NOTE: callstart_f \in assumptions(f)
+    //
+    literalt tmp = prop_conv.prop.limplies(partition_iface.callend_literal,
             assumption_literal);
+    prop_conv.prop.l_set_to_true(tmp);
 
 #   ifdef DEBUG_SSA      
-    expr_pretty_print(std::cout << "XXX Call END implication: ", partition.get_iface().callend_symbol);
+    expr_pretty_print(std::cout << "XXX Call END implication: ", partition_iface.callend_symbol);
     for (SSA_stepst::iterator it2 = partition.start_it; it2 != partition.end_it; ++it2) {
       if (it2->is_assume()) {
         expr_pretty_print(std::cout << "  => ", it2->cond_expr);
       }
     }
 #   endif
-
-    prop_conv.prop.l_set_to_true(tmp);
   }
 }
 
@@ -455,9 +514,9 @@ void partitioning_target_equationt::prepare_partitions()
       ++idx;
     }
     it->end_it = ssa_it;
-    it->ignore = ignore;
+    it->ignore = ignore & !it->get_iface().assertion_in_subtree;
   }
-}  
+}
 
 /*******************************************************************\
 
@@ -509,6 +568,37 @@ void partitioning_target_equationt::prepare_SSA_exec_order(
 
 /*******************************************************************\
 
+Function: partitioning_target_equationt::find_target_partition
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Find partition corresponding to the function call. 
+ If the given SSA step is a callend assumption, the corresponding target 
+ partition is returned. If not, NULL is returned.
+
+\*******************************************************************/
+const partitiont* partitioning_target_equationt::find_target_partition(
+  const SSA_stept& step) 
+{
+  if (step.cond_expr.id() == ID_symbol ||
+          (step.cond_expr.id() == ID_implies && step.cond_expr.op1().id() == ID_symbol)) {
+    irep_idt id = step.cond_expr.id() == ID_symbol ?
+            step.cond_expr.get(ID_identifier) :
+            step.cond_expr.op1().get(ID_identifier);
+    partition_mapt::iterator pit =
+            partition_map.find(id);
+
+    if (pit != partition_map.end()) {
+      return &partitions[pit->second];
+    }
+  }
+  return NULL;
+}
+
+/*******************************************************************\
+
 Function: partitioning_target_equationt::extract_interpolants
 
   Inputs:
@@ -526,7 +616,8 @@ void partitioning_target_equationt::extract_interpolants(
   unsigned valid_tasks = 0;
 
   for (unsigned i = 1; i < partitions.size(); ++i) {
-    if (partitions[i].is_summary || partitions[i].ignore || partitions[i].invalid)
+    if (partitions[i].is_summary || partitions[i].ignore || partitions[i].invalid ||
+            partitions[i].get_iface().assertion_in_subtree)
       continue;
     
     valid_tasks++;
@@ -535,7 +626,8 @@ void partitioning_target_equationt::extract_interpolants(
   interpolation_taskt itp_task(valid_tasks);
 
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
-    if (partitions[pid].is_summary || partitions[pid].ignore || partitions[pid].invalid)
+    if (partitions[pid].is_summary || partitions[pid].ignore || partitions[pid].invalid ||
+            partitions[pid].get_iface().assertion_in_subtree)
       continue;
     fill_partition_ids(pid, itp_task[tid++]);
   }
@@ -549,7 +641,8 @@ void partitioning_target_equationt::extract_interpolants(
   std::vector<symbol_exprt> common_symbs;
   interpolant_map.reserve(valid_tasks);
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
-    if (partitions[pid].is_summary || partitions[pid].ignore || partitions[pid].invalid)
+    if (partitions[pid].is_summary || partitions[pid].ignore || partitions[pid].invalid || 
+            partitions[pid].get_iface().assertion_in_subtree)
       continue;
     // Store the interpolant
     partitiont& partition = partitions[pid];

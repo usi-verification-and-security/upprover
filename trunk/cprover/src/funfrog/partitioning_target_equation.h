@@ -40,8 +40,9 @@ public:
 
     partitions.push_back(partitiont(parent_id, partition_iface));
 
-    partition_map.insert(partition_mapt::value_type(
-      partition_iface.callend_symbol.get_identifier(), new_id));
+    bool check = partition_map.insert(partition_mapt::value_type(
+      partition_iface.callend_symbol.get_identifier(), new_id)).second;
+    assert(check);
 
     if (parent_id != partitiont::NO_PARTITION) {
       partitions[parent_id].add_child_partition(new_id, SSA_steps.size());
@@ -173,13 +174,16 @@ private:
     common_symbols.clear();
     const partition_ifacet& iface = partition.get_iface();
     common_symbols.reserve(iface.argument_symbols.size() + 
-      iface.out_arg_symbols.size()+3);
+      iface.out_arg_symbols.size()+4);
     common_symbols = iface.argument_symbols;
     common_symbols.insert(common_symbols.end(), 
       iface.out_arg_symbols.begin(),
       iface.out_arg_symbols.end());
     common_symbols.push_back(iface.callstart_symbol);
     common_symbols.push_back(iface.callend_symbol);
+    if (iface.assertion_in_subtree) {
+      common_symbols.push_back(iface.error_symbol);
+    }
     if (iface.returns_value) {
       common_symbols.push_back(iface.retval_symbol);
     }
@@ -192,6 +196,11 @@ private:
   // in the order of program execution (i.e., as they would be normally 
   // ordered in symex_target_equation).
   void prepare_SSA_exec_order(const partitiont& partition);
+  
+  // Find partition corresponding to the function call. 
+  // If the given SSA step is a callend assumption, the corresponding target 
+  // partition is returned. If not, NULL is returned.
+  const partitiont* find_target_partition(const SSA_stept& step);
   
   // Collection of all the partitions
   partitionst partitions;

@@ -20,9 +20,12 @@
 class partition_ifacet {
 public:
 
-  partition_ifacet(irep_idt _function_id, partition_idt _parent_id) : function_id(_function_id),
+  partition_ifacet(irep_idt _function_id, partition_idt _parent_id, 
+          bool _assertion_in_subtree) : function_id(_function_id),
           callstart_symbol(typet(ID_bool)),
           callend_symbol(typet(ID_bool)),
+          error_symbol(typet(ID_bool)),
+          assertion_in_subtree(_assertion_in_subtree),
           returns_value(false),
           partition_id(partitiont::NO_PARTITION),
           parent_id(_parent_id)
@@ -40,11 +43,14 @@ public:
   symbol_exprt retval_tmp;
   symbol_exprt callstart_symbol;
   symbol_exprt callend_symbol;
+  symbol_exprt error_symbol;
+  bool assertion_in_subtree;
   bool returns_value;
   
   // Filled during conversion
   literalt callstart_literal;
   literalt callend_literal;
+  literalt error_literal;
   
   // Connection with the corresponding partition
   partition_idt partition_id;

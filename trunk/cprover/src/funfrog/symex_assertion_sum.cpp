@@ -80,10 +80,9 @@ void symex_assertion_sumt::loop_free_check(){
 
 \*******************************************************************/
 
-bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion, unsigned ass_number)
+bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 {
   current_assertion = &assertion;
-  current_ass_number = ass_number;
 
   // these are quick...
   if(assertion.get_location()->guard.is_true())
@@ -144,7 +143,6 @@ bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
           const std::list<summary_infot*> &refined_functions)
 {
   current_assertion = &assertion;
-  assertion_number = 0;
 
   // these are quick...
   if(assertion.get_location()->guard.is_true())
@@ -331,18 +329,13 @@ void symex_assertion_sumt::symex_step(
       if(options.get_bool_option("assertions") ||
          !state.source.pc->location.get_bool("user-provided"))
       {
-        // Is it the current assertion?
-        if (current_assertion->get_location() == state.source.pc && (
-                !options.get_bool_option("no-assert-grouping") ||
-                get_current_deferred_function().assert_stack_match)) {
-          if (current_ass_number == assertion_number){
-            std::string msg=id2string(state.source.pc->location.get_comment());
-            if(msg=="") msg="assertion";
-            exprt tmp(instruction.guard);
-            clean_expr(tmp, state, false);
-            claim(tmp, msg, state);
-          }
-          assertion_number++;
+        // Is the assertion enabled?
+        if (get_current_deferred_function().summary_info.is_assertion_enabled(state.source.pc)) {
+          std::string msg = id2string(state.source.pc->location.get_comment());
+          if (msg == "") msg = "assertion";
+          exprt tmp(instruction.guard);
+          clean_expr(tmp, state, false);
+          claim(tmp, msg, state);
         }
       }
 
@@ -440,43 +433,8 @@ void symex_assertion_sumt::symex_step(
 void symex_assertion_sumt::defer_function(
         const deferred_functiont &deferred_function) 
 {
-  /* FIXME: -no-assert-grouping option is broken anyway...
-  bool first = deferred_functions.size() == 0;
-   */ 
-
   deferred_functions.push(deferred_function);
-  //deferred_functiont& fresh = deferred_functions.back();
   equation.reserve_partition(deferred_function.partition_iface);
-
-  /* FIXME: -no-assert-grouping option is broken anyway...
-  // Keep track of the stack match
-  const deferred_functiont& parent = get_current_deferred_function();
-  const call_stackt& stack = current_assertion->get_target_stack();
-
-  if (first) {
-    fresh.assert_stack_it = stack.begin();
-    fresh.assert_stack_match = stack.size() == 1;
-    return;
-  }
-
-  if (parent.assert_stack_it != stack.end()) 
-  {
-    const symbol_exprt& func_symb = to_symbol_expr(to_code_function_call(
-            (*parent.assert_stack_it)->code).function());
-    
-    if (func_symb.get_identifier() == deferred_function.partition_iface.function_id) 
-    {
-      fresh.assert_stack_it = parent.assert_stack_it;
-      fresh.assert_stack_it++;
-
-      if (fresh.assert_stack_it == stack.end())
-        fresh.assert_stack_match = true;
-    
-      return;
-    }
-  }
-  fresh.assert_stack_it = stack.end();
-   */
 }
 
 /*******************************************************************
@@ -566,7 +524,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
           ++it1) {
     guardt guard;
     symbol_exprt lhs(state.get_original_name(it1->get_identifier()), ns.follow(it1->type()));
-    symex_assign_symbol(state, lhs, *it1, guard, VISIBLE);
+    symex_assign_symbol(state, lhs, *it1, guard, HIDDEN);
   }
 }
 
@@ -1109,9 +1067,12 @@ void symex_assertion_sumt::produce_callsite_symbols(
           "::\\callstart_symbol";
   irep_idt callend_id = "funfrog::" + partition_iface.function_id.as_string() +
           "::\\callend_symbol";
+  irep_idt error_id = "funfrog::" + partition_iface.function_id.as_string() +
+          "::\\error_symbol";
 # else
   irep_idt callstart_id = "funfrog::\\callstart_symbol";
   irep_idt callend_id = "funfrog::\\callend_symbol";
+  irep_idt error_id = "funfrog::\\error_symbol";
 # endif
 
   partition_iface.callstart_symbol.set_identifier(
@@ -1121,6 +1082,12 @@ void symex_assertion_sumt::produce_callsite_symbols(
 
   add_symbol(callstart_id, typet(ID_bool), true);
   add_symbol(callend_id, typet(ID_bool), true);
+
+  if (partition_iface.assertion_in_subtree) {
+    partition_iface.error_symbol.set_identifier(
+          get_new_symbol_version(error_id, state));
+    add_symbol(error_id, typet(ID_bool), true);
+  }
 }
 
 /*******************************************************************

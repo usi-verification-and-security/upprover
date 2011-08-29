@@ -28,6 +28,7 @@
 
 void refiner_assertion_sumt::refine(prop_convt& decider)
 {
+  // FIXME: We should not inline things after the last assertion (OS).
   refined_functions.clear();
   switch (mode){
     case FORCE_INLINING:
@@ -100,7 +101,7 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart
         out<< "    -- no applicable summaries" << std::endl;
 #       endif
         tmp.push_back(ipart.function_id);
-      }
+      } 
       if (decider.prop.l_get(ipart.callstart_literal).is_true()){
 #       ifdef DEBUG_REFINER
         out<< "    -- callstart literal is true" << std::endl;
@@ -112,6 +113,8 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart
     }
   }
 
+  // FIXME: This inlines all the occurrences of the same function - we need only
+  // the precise ones identified by the callstart symbols (OS)
   if (tmp.size() > 0) {
     for (unsigned i = 0; i < summs.size(); i++){
       if ((*summs[i]).get_precision() != INLINE){
@@ -125,6 +128,9 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart
     }
     tmp.clear();
   } else if (summary_infot::get_nondets_count != 0){
+    // FIXME: This should work the same as with the summaries, i.e., the call
+    // start symbols should be remembered and used above. 
+    // Unfortunately, we don't have the corresponding partitions now (OS)
     for (unsigned i = 0; i < summs.size(); i++){
       if ((*summs[i]).get_precision() == HAVOC){
         set_inline_sum(i);

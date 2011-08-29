@@ -69,4 +69,15 @@ expr_pretty_print(std::ostream& out, const exprt& expr, unsigned _indent)
   return out;
 }
 
- 
+
+std::ostream&
+expr_pretty_print(std::ostream& out, const exprt& expr, 
+        const std::string& indent_str)
+{
+  expr_pretty_printt pp(out);
+
+  pp.set_indent(indent_str);
+  pp.visit(expr);
+  
+  return out;
+}

@@ -5,15 +5,14 @@ TODO list for funfrog
 HIGH PRIORITY
 -------------
 
-- Interactive mode of:
-  - OpenSMT session - share one instance during checking of a single assertion
-- When checking multiple instances of the same assertion, forced inlining works only for the first instance (its call stack)
-- Summaries are generated again and again for functions that are on the assertion call stacks (what is their semantics anyway?)
-
+- Refinement has several flaws - marked by FIXME in refiner_assertion_sum.cpp
+- Static data in summary_info is a blocker for multiple trees, we may need a substitution_scenario class to encapsulate this data
 
 LOW PRIORITY
 ------------
 
+- Interactive mode of:
+  - OpenSMT session - share one instance during checking of a single assertion
 - Mapping for global variables, refactor:
   - unify accessed globals and arguments
   - unify modified globals and return value (the extra temp. variable is probably not needed - check it!).
@@ -31,7 +30,7 @@ BUGS
 - Slicing can remove "unrelated" assumptions that, however, make an error reaching trace unfeasible (thus reporting a nonexistent error).
 - Error trace computation is broken - segfault on trace computation (not addapted to partitioning symex target yet)
 - Unsufficient loop unwinding (k times, if there are loops with n>k iterations) leads to "assertion is trivially unreachable" if the assertion is in the same function, or to SAT if the loop is separated to different function.
-- "--unwind n" in fact unwinds (n-1) times. The bug is came from cbmc..
+- "--unwind n" in fact unwinds (n-1) times. The bug came from cbmc..
 
 BUGGY TEST CASES:
 ----------------

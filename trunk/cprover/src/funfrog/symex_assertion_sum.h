@@ -48,9 +48,7 @@ public:
           current_assertion(NULL),
           out(_out),
           goto_program(_goto_program),
-          use_slicing(_use_slicing),
-          current_ass_number(0),
-          assertion_number(0)
+          use_slicing(_use_slicing)
           {}
           
   virtual ~symex_assertion_sumt();
@@ -59,7 +57,7 @@ public:
 
   // Generate SSA statements for the program starting from the root 
   // stored in goto_program.
-  bool prepare_SSA(const assertion_infot &assertion, unsigned ass_number);
+  bool prepare_SSA(const assertion_infot &assertion);
 
   // Generate SSA statements for the refined program starting from the given 
   // function.
@@ -99,14 +97,10 @@ private:
 
     deferred_functiont(summary_infot &_summary_info,
             partition_ifacet& _partition_iface) : summary_info(_summary_info),
-            partition_iface(_partition_iface),
-            assert_stack_match(false) {
-    }
+            partition_iface(_partition_iface) { }
 
     summary_infot& summary_info;
     partition_ifacet& partition_iface;
-    call_stackt::const_iterator assert_stack_it;
-    bool assert_stack_match;
   };
 
   // Shared information about the program and summaries to be used during
@@ -137,10 +131,6 @@ private:
   const goto_programt &goto_program;
 
   bool use_slicing;
-
-  unsigned current_ass_number;
-
-  unsigned assertion_number;
 
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
@@ -289,7 +279,8 @@ private:
   partition_ifacet& new_partition_iface(const summary_infot& summary_info,
           partition_idt parent_id) {
     partition_ifacet* item = new partition_ifacet(
-            summary_info.get_function_id(), parent_id);
+            summary_info.get_function_id(), parent_id, 
+            summary_info.has_assertion_in_subtree());
     partition_ifaces.push_back(item);
     
     partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);

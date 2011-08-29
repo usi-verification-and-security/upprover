@@ -83,6 +83,11 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
            it!=trace.steps.rend();
            it++)
       {
+        // FIXME: Work around for a broken error_trace
+        if (it->type==goto_trace_stept::ASSIGNMENT &&
+                !it->pc->code.has_operands())
+          continue;
+        
         if (it->type==goto_trace_stept::ASSIGNMENT &&
             lhs_symbols.find(it->pc->code.op0())!=lhs_symbols.end())
         {
