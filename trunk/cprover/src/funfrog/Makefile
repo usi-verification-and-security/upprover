@@ -20,6 +20,9 @@ FUNFROG_SRC := \
 SUMO_SRC := \
       sumo.cpp
 
+DIFF_SRC := \
+      diff.cpp
+
 SHARED_OBJ := \
       $(SHARED_SRC:.cpp=.o) \
       ../util/util.o \
@@ -44,6 +47,10 @@ SUMO_OBJ := \
       $(SHARED_OBJ) \
       $(SUMO_SRC:.cpp=.o)
 
+DIFF_OBJ := \
+      $(SHARED_OBJ) \
+      $(DIFF_SRC:.cpp=.o)
+
 all: funfrog
 
 include ../config.inc
@@ -67,6 +74,9 @@ funfrog: $(FUNFROG_OBJ)
 
 sumo: $(SUMO_OBJ)
 	$(CPLUS) $(LINKFLAGS) -o sumo $(SUMO_OBJ) $(LIBS)
+
+diff: $(DIFF_OBJ)
+	$(CPLUS) $(LINKFLAGS) -o diff $(DIFF_OBJ) $(LIBS)
 
 clean:
 	rm -f *.o *.d funfrog sumo
