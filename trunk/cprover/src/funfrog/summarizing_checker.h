@@ -44,7 +44,7 @@ public:
                 _precise_loops),
       out(_out),
       max_memory_used(_max_memory_used),
-      summary_info(NULL)
+      omega(summarization_context, goto_program)
   {};
 
   void initialize();
@@ -63,7 +63,7 @@ protected:
   std::auto_ptr<prop_convt> decider;
   std::auto_ptr<interpolating_solvert> interpolator;
   satcheck_opensmtt* opensmt;
-  summary_infot summary_info;
+  subst_scenariot omega;
   init_modet init;
   
   void setup_unwind(symex_assertion_sumt& symex);

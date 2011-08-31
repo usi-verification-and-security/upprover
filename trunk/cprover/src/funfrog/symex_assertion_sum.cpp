@@ -188,7 +188,7 @@ bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
 
 /*******************************************************************\
 
-Function: symex_assertion_sumt::symex_step
+Function: symex_assertion_sumt::process_planned
 
   Inputs:
 

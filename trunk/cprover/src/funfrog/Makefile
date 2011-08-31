@@ -8,6 +8,7 @@ FUNFROG_SRC := \
       partitioning_target_equation.cpp \
       partitioning_slice.cpp \
       summary_info.cpp \
+      subst_scenario.cpp \
       parseoptions.cpp \
       check_claims.cpp \
       refiner_assertion_sum.cpp \
@@ -79,7 +80,7 @@ diff: $(DIFF_OBJ)
 	$(CPLUS) $(LINKFLAGS) -o diff $(DIFF_OBJ) $(LIBS)
 
 clean:
-	rm -f *.o *.d funfrog sumo
+	rm -f *.o *.d funfrog sumo diff
 	rm -f solvers/*.o solvers/*.d
 
 re: clean all

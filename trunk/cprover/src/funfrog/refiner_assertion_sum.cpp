@@ -64,7 +64,7 @@ void refiner_assertion_sumt::reset_inline()
 
 void refiner_assertion_sumt::reset_random()
 {
-  unsigned summs_size = summary_infot::get_summaries_count();
+  unsigned summs_size = omega.get_summaries_count();
   unsigned reset_size = 0;
 
   while (reset_size == 0){
@@ -127,7 +127,7 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart
       }
     }
     tmp.clear();
-  } else if (summary_infot::get_nondets_count != 0){
+  } else if (omega.get_nondets_count() != 0){
     // FIXME: This should work the same as with the summaries, i.e., the call
     // start symbols should be remembered and used above. 
     // Unfortunately, we don't have the corresponding partitions now (OS)

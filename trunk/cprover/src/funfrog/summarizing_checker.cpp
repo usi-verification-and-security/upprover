@@ -21,13 +21,14 @@ void summarizing_checkert::initialize()
       summarization_context.deserialize_infos(summary_file);
     }
   }
-  // Prepare summary_info, start with the lazy variant, i.e.,
-  // all summaries are initialized as NONDET except those on the way
+
+  // Prepare summary_info (incapsulated in omega), start with the lazy variant,
+  // i.e., all summaries are initialized as HAVOC, except those on the way
   // to the target assertion, which are marked depending on initial mode.
-  summary_info.initialize(summarization_context, goto_program);
-  summary_info.process_goto_locations();
+
+  omega.process_goto_locations();
   init = get_init_mode(options.get_option("init-mode"));
-  summary_infot::setup_default_precision(init);
+  omega.setup_default_precision(init);
 }
 
 /*******************************************************************
@@ -54,11 +55,11 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   }
   const bool no_slicing_option = options.get_bool_option("no-slicing");
   const bool assert_grouping = !options.get_bool_option("no-assert-grouping");
-  summary_info.set_initial_precision(summarization_context, assertion,
-          assert_grouping);
+  omega.set_initial_precision(assertion, assert_grouping);
 
   partitioning_target_equationt equation(ns);
 
+  summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, context,
             equation, out, goto_program, !no_slicing_option);
@@ -67,7 +68,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   symex.loop_free_check();
 
   refiner_assertion_sumt refiner = refiner_assertion_sumt(
-              summarization_context, summary_infot::get_call_summaries(), equation,
+              summarization_context, omega, equation,
               get_refine_mode(options.get_option("refine-mode")), out);
 
   prop_assertion_sumt prop = prop_assertion_sumt(
@@ -91,7 +92,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
     if (!end){
 
       end = prop.assertion_holds(assertion, ns, *decider, *interpolator);
-      unsigned summaries_count = summary_infot::get_summaries_count();
+      unsigned summaries_count = omega.get_summaries_count();
       if (end && interpolator->can_interpolate())
       {
         if (summaries_count == 0)   // if none of summaries are substituted then do generate new/alternative ones
@@ -120,7 +121,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
             out << "Counterexample is spurious."  << std::endl <<
                    "Got to next iteration." << std::endl;
           }
-        } else if (summary_infot::get_nondets_count() != 0) {
+        } else if (omega.get_nondets_count() != 0) {
               // if there are still some havoced function calls, do force inlining for them
           refiner.set_refine_mode(FORCE_INLINING);
           refiner.refine(*decider);

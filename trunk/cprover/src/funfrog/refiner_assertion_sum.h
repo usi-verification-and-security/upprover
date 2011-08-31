@@ -10,6 +10,7 @@
 #define CPROVER_REFINER_ASSERTION_SUM_H
 
 #include "assertion_info.h"
+#include "subst_scenario.h"
 #include "summary_info.h"
 #include "summarization_context.h"
 #include "partitioning_target_equation.h"
@@ -19,13 +20,14 @@ class refiner_assertion_sumt
 public:
   refiner_assertion_sumt(
           summarization_contextt &_summarization_context,
-          std::vector<call_summaryt*>& _summs,
+          subst_scenariot &_omega,
           partitioning_target_equationt &_target,
           refinement_modet _mode,
           std::ostream &_out
           ) :
           summarization_context(_summarization_context),
-          summs(_summs),
+          omega(_omega),
+          summs(omega.get_call_summaries()),
           equation(_target),
           mode(_mode),
           out(_out)
@@ -40,8 +42,12 @@ protected:
   // analysis
   summarization_contextt &summarization_context;
 
+  // substituting scenario
+  subst_scenariot &omega;
+
   // Which functions should be summarized, abstracted from, and which inlined
   std::vector<call_summaryt*>& summs;
+
 
   // Store for the symex result
   partitioning_target_equationt &equation;

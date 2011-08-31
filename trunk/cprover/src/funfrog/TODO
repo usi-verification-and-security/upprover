@@ -6,7 +6,6 @@ HIGH PRIORITY
 -------------
 
 - Refinement has several flaws - marked by FIXME in refiner_assertion_sum.cpp
-- Static data in summary_info is a blocker for multiple trees, we may need a substitution_scenario class to encapsulate this data
 
 LOW PRIORITY
 ------------
