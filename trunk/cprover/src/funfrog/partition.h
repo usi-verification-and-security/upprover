@@ -13,6 +13,7 @@
 #include <goto-symex/symex_target_equation.h>
 
 #include "solvers/interpolating_solver.h"
+#include "summary_store.h"
 
 typedef int partition_idt;
 typedef std::list<partition_idt> partition_idst;
@@ -67,7 +68,7 @@ public:
   bool ignore;
   bool processed;
   bool invalid;
-  const interpolantst* summaries;
+  const summariest* summaries;
   hash_set_cont<unsigned> applicable_summaries;
   fle_part_idt fle_part_id;
   partition_idt parent_id;

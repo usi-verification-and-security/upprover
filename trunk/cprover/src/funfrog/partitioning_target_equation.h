@@ -14,6 +14,7 @@ Author: Ondrej Sery
 #include <symbol.h>
 
 #include "partition_iface.h"
+#include "summarization_context.h"
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 
@@ -29,7 +30,9 @@ public:
 
   // Convert all the SSA steps into the corresponding formulas in
   // the corresponding partitions
-  void convert(prop_convt &prop_conv, interpolating_solvert &interpolator);
+  void convert(prop_convt &prop_conv, 
+          summarization_contextt& summarization_context,
+          interpolating_solvert &interpolator);
 
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
@@ -68,7 +71,7 @@ public:
 
   // Fill the (reserved) partition with the given summaries.
   void fill_summary_partition(partition_idt partition_id,
-    const interpolantst* summaries)
+    const summariest* summaries)
   {
     partitiont& sum_partition = partitions.at(partition_id);
     assert(!sum_partition.filled);
@@ -130,7 +133,8 @@ public:
 private:
   
   // Convert a specific partition of SSA steps
-  void convert_partition(prop_convt &prop_conv,
+  void convert_partition(prop_convt &prop_conv, 
+    summarization_contextt& summarization_context,
     interpolating_solvert &interpolator, partitiont& partition);
   // Convert a specific partition guards of SSA steps
   void convert_partition_guards(prop_convt &prop_conv,
@@ -149,6 +153,7 @@ private:
     partitiont& partition);
   // Convert a summary partition (i.e., assert its summary)
   void convert_partition_summary(prop_convt &prop_conv,
+    summarization_contextt& summarization_context,
     partitiont& partition);
 
   unsigned count_partition_assertions(partitiont& partition) const

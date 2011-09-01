@@ -16,7 +16,8 @@ Author: Ondrej Sery
 class partitioning_slicet
 {
 public:
-  void slice(partitioning_target_equationt &equation);
+  void slice(partitioning_target_equationt &equation,
+        summary_storet& summary_store);
 
 protected:
   typedef hash_map_cont<irep_idt, symex_target_equationt::SSA_stept*,
@@ -43,6 +44,7 @@ protected:
 };
 
 // Slice an equation with respect to the assertions contained therein
-void partitioning_slice(partitioning_target_equationt &equation);
+void partitioning_slice(partitioning_target_equationt &equation,
+        summary_storet& summary_store);
 
 #endif

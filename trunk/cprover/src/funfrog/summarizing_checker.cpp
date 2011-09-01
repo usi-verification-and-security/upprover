@@ -71,8 +71,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
               summarization_context, omega, equation,
               get_refine_mode(options.get_option("refine-mode")), out);
 
-  prop_assertion_sumt prop = prop_assertion_sumt(
-        /**decider, *interpolator,*/ equation, out, max_memory_used);
+  prop_assertion_sumt prop = prop_assertion_sumt(summarization_context,
+          equation, out, max_memory_used);
   unsigned count = 0;
   bool end = false;
 
@@ -173,6 +173,7 @@ Function: summarizing_checkert::extract_interpolants
 
 void summarizing_checkert::extract_interpolants (partitioning_target_equationt& equation, double red_timeout)
 {
+  summary_storet& summary_store = summarization_context.get_summary_store();
   interpolant_mapt itp_map;
 
   fine_timet before, after;
@@ -185,14 +186,18 @@ void summarizing_checkert::extract_interpolants (partitioning_target_equationt& 
                   it != itp_map.end(); ++it) {
     irep_idt& function_id = it->first;
     if (!it->second.is_trivial()) {
-          summarization_context.get_function_info(function_id).add_summary(it->second,
-                                                          !options.get_bool_option("no-summary-optimization"));
+      function_infot& function_info = 
+              summarization_context.get_function_info(function_id);
+      
+      function_info.add_summary(summary_store, it->second,
+                  !options.get_bool_option("no-summary-optimization"));
     }
   }
   // Store the summaries
   const std::string& summary_file = options.get_option("save-summaries");
   if (!summary_file.empty()) {
-    summarization_context.serialize_infos(summary_file);
+    summarization_context.serialize_infos(summary_file, 
+            omega.get_summary_info());
   }
 }
 /*******************************************************************\

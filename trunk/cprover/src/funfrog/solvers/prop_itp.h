@@ -58,7 +58,7 @@ public:
 
   // Serialization
   void serialize(std::ostream& out) const;
-  void deserialize(std::istream& out);
+  void deserialize(std::istream& in);
 
   // Literal equivalent to the interpolant root
   literalt root_literal;

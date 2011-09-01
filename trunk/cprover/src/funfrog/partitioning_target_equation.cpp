@@ -28,8 +28,9 @@ Author: Ondrej Sery
  the corresponding partitions
 
 \*******************************************************************/
-void partitioning_target_equationt::convert(
-  prop_convt &prop_conv, interpolating_solvert &interpolator)
+void partitioning_target_equationt::convert(prop_convt &prop_conv, 
+          summarization_contextt& summarization_context,
+          interpolating_solvert &interpolator)
 {
   int part_id = partitions.size();
   for (partitionst::reverse_iterator it = partitions.rbegin();
@@ -41,7 +42,7 @@ void partitioning_target_equationt::convert(
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             std::endl;
-    convert_partition(prop_conv, interpolator, *it);
+    convert_partition(prop_conv, summarization_context, interpolator, *it);
   }
 }
 
@@ -56,8 +57,9 @@ void partitioning_target_equationt::convert(
  Purpose: Convert a specific partition of SSA steps
 
 \*******************************************************************/
-void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
-  interpolating_solvert &interpolator, partitiont& partition)
+void partitioning_target_equationt::convert_partition(prop_convt &prop_conv, 
+    summarization_contextt& summarization_context,
+    interpolating_solvert &interpolator, partitiont& partition)
 {
   if (partition.ignore || partition.processed || partition.invalid) {
     if (partition.invalid) {
@@ -87,7 +89,7 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
 
   // If this is a summary partition, apply the summary
   if (partition.is_summary) {
-    convert_partition_summary(prop_conv, partition);
+    convert_partition_summary(prop_conv, summarization_context, partition);
     // FIXME: Only use in the incremental solver mode (not yet implemented)
     // partition.processed = true;
     return;
@@ -120,9 +122,12 @@ Function: partitioning_target_equationt::convert_partition_summary
 \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_summary(
-  prop_convt &prop_conv, partitiont& partition)
+    prop_convt &prop_conv,
+    summarization_contextt& summarization_context,
+    partitiont& partition)
 {
   std::vector<symbol_exprt> common_symbs;
+  summary_storet& summary_store = summarization_context.get_summary_store();
   fill_common_symbols(partition, common_symbs);
 
 #   ifdef DEBUG_SSA      
@@ -135,7 +140,10 @@ void partitioning_target_equationt::convert_partition_summary(
 #   ifdef DEBUG_SSA      
     std::cout << "Substituting summary #" << *it << std::endl;
 #   endif
-    partition.summaries->at(*it).substitute(prop_conv, common_symbs);
+    summary_idt summary_id = partition.summaries->at(*it);
+    summaryt& summary = summary_store.find_summary(summary_id);
+    
+    summary.substitute(prop_conv, common_symbs);
   }
 }
 

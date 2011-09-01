@@ -29,34 +29,41 @@ Function: function_infot::add_summary
 
 \*******************************************************************/
 
-void function_infot::add_summary(interpolantt& summary, bool filter) {
+void function_infot::add_summary(summary_storet& summary_store, 
+        interpolantt& summary, bool filter) 
+{
   // Filter the new summary
   if (filter && !summaries.empty()) {
     // Is implied by any older summary?
-    for (interpolantst::const_iterator it = summaries.begin();
+    for (summariest::const_iterator it = summaries.begin();
             it != summaries.end();
             ++it) {
-      if (check_implies(*it, summary))
+      if (check_implies(summary_store.find_summary(*it), summary))
         return; // Implied by an already present summary --> skip it
     }
+    
+    summary_idt summary_id = summary_store.insert_summary(summary);
+    summaryt& new_summary = summary_store.find_summary(summary_id);
     
     // It implies any older summary?
     unsigned used = 0;
     for (unsigned i = 0; i < summaries.size(); ++i) {
-      if (check_implies(summary, summaries[i])) {
-        // Remove it --> no operation needed
+      if (check_implies(new_summary, summary_store.find_summary(summaries[i]))) {
+        // Replace it
+        summary_store.replace_summary(summaries[i], summary_id);
       } else {
         if (used != i) {
           // Shift needed
-          summaries[used].swap(summaries[i]);
+          std::swap(summaries[used], summaries[i]);
         }
         used++;
       }
     }
     summaries.resize(used);
+    summaries.push_back(summary_id);
+  } else {
+    summaries.push_back(summary_store.insert_summary(summary));
   }
-  summaries.push_back(interpolantt());
-  summaries.back().swap(summary);
 }
 
 /*******************************************************************\
@@ -73,14 +80,15 @@ Function: function_infot::serialize
 
 void function_infot::serialize(std::ostream& out) const
 {
-  out << summaries.size() << std::endl;
+  out << summaries.size();
 
-  for (interpolantst::const_iterator it = summaries.begin();
+  for (summariest::const_iterator it = summaries.begin();
           it != summaries.end();
           ++it) {
 
-    it->serialize(out);
+    out << " " << *it;
   }
+  out << std::endl;
 }
 
 /*******************************************************************\
@@ -109,10 +117,9 @@ void function_infot::deserialize(std::istream& in)
 
   for (unsigned i = 0; i < nsummaries; ++i)
   {
-    summaries.push_back(interpolantt());
-    interpolantt& itp = summaries.back();
-
-    itp.deserialize(in);
+    summary_idt id;
+    in >> id;
+    summaries.push_back(id);
   }
 }
 
@@ -187,22 +194,10 @@ void function_infot::deserialize_infos(std::istream& in, function_infost& infos)
     // If the function is unknown - we postpone the addition (otherwise, 
     // we could break the iterator)
     if (it == infos.end()) {
-      function_infot tmp(f_id);
-
-      tmp.deserialize(in);
-      add_list.push_back(tmp);
-      continue;
+      it = infos.insert(function_infost::value_type(f_id, function_infot(f_id))).first;
     }
 
     it->second.deserialize(in);
-  }
-  
-  // Add the postponed summaries
-  while (!add_list.empty()) {
-    const function_infot& tmp = add_list.front();
-    infos.insert(function_infost::value_type(tmp.function, tmp));
-    
-    add_list.pop_front();
   }
 }
 
@@ -476,8 +471,8 @@ Function: function_infot::optimize_summaries
 
 \*******************************************************************/
 
-bool function_infot::optimize_summaries(const interpolantst& itps_in, 
-        interpolantst& itps_out) 
+bool function_infot::optimize_summaries(summary_storet& summary_store, 
+        const summariest& itps_in, summariest& itps_out)
 {
   unsigned n = itps_in.size();
   bool changed = false;
@@ -499,9 +494,12 @@ bool function_infot::optimize_summaries(const interpolantst& itps_in,
         continue;
       
       // Do the check
-      if (check_implies(itps_in[i], itps_in[j])) {
+      if (check_implies(
+              summary_store.find_summary(itps_in[i]), 
+              summary_store.find_summary(itps_in[j]))) {
         std::cerr << "Removing summary #" << j << 
                 " (implied by summary #" << i << ")" << std::endl;
+        summary_store.replace_summary(itps_in[j], itps_in[i]);
         itps_map[j] = false;
         changed = true;
       }
@@ -530,14 +528,15 @@ Function: function_infot::optimize_all_summaries
  Purpose: Removes all superfluous summaries.
 
 \*******************************************************************/
-void function_infot::optimize_all_summaries(function_infost& f_infos) 
+void function_infot::optimize_all_summaries(summary_storet& summary_store, 
+        function_infost& f_infos) 
 {
-  interpolantst itps_new;
+  summariest itps_new;
   
   for (function_infost::iterator it = f_infos.begin();
           it != f_infos.end();
           ++it) {
-    const interpolantst& itps = it->second.get_summaries();
+    const summariest& itps = it->second.get_summaries();
 
     std::cerr << "--- function \"" << it->first.c_str() << "\", #summaries: " << itps.size() << std::endl;
 
@@ -546,11 +545,10 @@ void function_infot::optimize_all_summaries(function_infost& f_infos)
       continue;
     }
 
+    itps_new.clear();
     itps_new.reserve(itps.size());
-    if (optimize_summaries(itps, itps_new)) {
-      it->second.clear_summaries();
-      it->second.add_summaries(itps_new, false);
-      itps_new.clear();
+    if (optimize_summaries(summary_store, itps, itps_new)) {
+      it->second.set_summaries(itps_new);
     }
     
     std::cerr << std::endl;

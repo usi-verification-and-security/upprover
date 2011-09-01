@@ -68,7 +68,8 @@ Function: partitioning_slicet::slice
 
 \*******************************************************************/
 
-void partitioning_slicet::slice(partitioning_target_equationt &equation)
+void partitioning_slicet::slice(partitioning_target_equationt &equation,
+        summary_storet& summary_store)
 {
   // Mark assignments and assumptions as ignored
   for(symex_target_equationt::SSA_stepst::iterator it = 
@@ -128,7 +129,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation)
     if (sum_it != summary_map.end()) {
       partitiont& partition = *(sum_it->second.first);
       partition_ifacet& partition_iface = partition.get_iface();
-      const interpolantst& itps = *partition.summaries;
+      const summariest& itps = *partition.summaries;
       unsigned symbol_idx = sum_it->second.second;
 
       // Any of the summaries can match, we need to go through all of them
@@ -138,8 +139,9 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation)
         if (partition.applicable_summaries.find(i) != partition.applicable_summaries.end())
           continue;
         
+        summaryt& summary = summary_store.find_summary(itps[i]);
         // Does not restrict the given symbol
-        if (!itps[i].get_symbol_mask()[symbol_idx])
+        if (!summary.get_symbol_mask()[symbol_idx])
           continue;
         
         // Yes it is relevant, add only symbols constrained by the summary
@@ -149,7 +151,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation)
                 partition_iface.argument_symbols.begin();
                 it != partition_iface.argument_symbols.end();
                 ++it, ++idx) {
-          if (itps[i].get_symbol_mask()[idx])
+          if (summary.get_symbol_mask()[idx])
             get_symbols(*it, depends);
         }
       }
@@ -341,8 +343,9 @@ Function: partitioning_slice
 
 \*******************************************************************/
 
-void partitioning_slice(partitioning_target_equationt &equation)
+void partitioning_slice(partitioning_target_equationt &equation,
+        summary_storet& summary_store)
 {
   partitioning_slicet slice;
-  slice.slice(equation);
+  slice.slice(equation, summary_store);
 }

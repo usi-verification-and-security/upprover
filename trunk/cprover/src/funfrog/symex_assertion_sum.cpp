@@ -224,7 +224,7 @@ bool symex_assertion_sumt::process_planned(statet &state)
     if (use_slicing) {
       before=current_time();
       out << "All SSA steps: " << equation.SSA_steps.size() << std::endl;
-      partitioning_slice(equation);
+      partitioning_slice(equation, summarization_context.get_summary_store());
       out << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << std::endl;
       after=current_time();
       if (out.good())

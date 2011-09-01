@@ -26,15 +26,13 @@ class prop_assertion_sumt
 {
 public:
   prop_assertion_sumt(
-//          prop_convt& _decider,
-//          interpolating_solvert& _interpolator,
+          summarization_contextt& _summarization_context,
           partitioning_target_equationt &_target,
           std::ostream &_out,
           unsigned long &_max_memory_used
           ) :
+          summarization_context(_summarization_context),
           equation(_target),
-//          decider(_decider),
-//          interpolator(_interpolator),
           solving_time(0),
           out(_out),
           max_memory_used(_max_memory_used)
@@ -45,15 +43,11 @@ public:
   const fine_timet& get_solving_time() { return solving_time; };
 
 private:
+  // Summarizing context (summary_store needed)
+  summarization_contextt& summarization_context;
 
   // Store for the symex result
   partitioning_target_equationt &equation;
-
-  // The decision procedure to be used for symex-evaluation
-  // prop_convt& decider;
-
-  // The interpolation procedure to be used for symex-partitioning
-  //interpolating_solvert& interpolator;
 
   // SAT solving time
   fine_timet solving_time;

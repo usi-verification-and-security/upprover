@@ -1,6 +1,7 @@
 SHARED_SRC := \
       expr_pretty_print.cpp \
       function_info.cpp \
+      summary_store.cpp \
       solvers/satcheck_opensmt.cpp \
       solvers/prop_itp.cpp
 
@@ -52,7 +53,7 @@ DIFF_OBJ := \
       $(SHARED_OBJ) \
       $(DIFF_SRC:.cpp=.o)
 
-all: funfrog
+all: funfrog sumo
 
 include ../config.inc
 include ../common

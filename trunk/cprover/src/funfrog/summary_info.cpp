@@ -51,7 +51,7 @@ void summary_infot::set_initial_precision(
     }
     else 
     {
-      const interpolantst& summaries =
+      const summariest& summaries =
               summarization_context.get_summaries(function_id);
 
       if (summaries.size() > 0) {

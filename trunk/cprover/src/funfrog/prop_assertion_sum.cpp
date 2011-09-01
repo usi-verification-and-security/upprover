@@ -41,7 +41,7 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 
   fine_timet before, after;
   before=current_time();
-  equation.convert(decider, interpolator);
+  equation.convert(decider, summarization_context, interpolator);
   after=current_time();
   global_sat_conversion_time += (after-before);
 

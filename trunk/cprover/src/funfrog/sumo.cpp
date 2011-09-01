@@ -13,20 +13,22 @@ Author: Ondrej Sery
 #include "function_info.h"
 #include "solvers/satcheck_opensmt.h"
 
-void list_summaries(const function_infost& f_infos) {
+void list_summaries(summary_storet& summary_store, 
+        const function_infost& f_infos) 
+{
   for (function_infost::const_iterator it = f_infos.begin();
           it != f_infos.end();
           ++it) {
-    const interpolantst& itps = it->second.get_summaries();
+    const summariest& itps = it->second.get_summaries();
 
     std::cout << "--- function \"" << it->first.c_str() << "\", #summaries: " << itps.size() << std::endl;
 
     int n = 1;
-    for (interpolantst::const_iterator it2 = itps.begin();
+    for (summariest::const_iterator it2 = itps.begin();
             it2 != itps.end();
             ++it2) {
       std::cout << "    summary #" << n++ << ":" << std::endl;
-      it2->print(std::cout);
+      summary_store.find_summary(*it2).print(std::cout);
     }
     std::cout << std::endl;
   }
@@ -58,9 +60,12 @@ int main(int argc, const char** argv) {
   
   // Load summaries
   function_infost f_infos;
+  summary_storet summary_store;
   std::ifstream in;
   
   in.open(argv[2]);
+  
+  summary_store.deserialize(in);
   function_infot::deserialize_infos(in, f_infos);
 
   if (in.fail()) {
@@ -72,7 +77,7 @@ int main(int argc, const char** argv) {
   // Do the job
   if (do_list) {
     // Only list summaries
-    list_summaries(f_infos);
+    list_summaries(summary_store, f_infos);
     return 0;
     
   } else if (do_optimize) {
@@ -80,12 +85,22 @@ int main(int argc, const char** argv) {
     fine_timet before, after;
     before=current_time();
   
-    function_infot::optimize_all_summaries(f_infos);
+    function_infot::optimize_all_summaries(summary_store, f_infos);
     
     after=current_time();
     std::cerr << "TOTAL OPTIMIZATION TIME: "<< time2string(after-before) << std::endl;
     
-    function_infot::serialize_infos(argv[2], f_infos);
+    std::ofstream out;
+  
+    out.open(argv[2]);
+    summary_store.serialize(out);
+    function_infot::serialize_infos(out, f_infos);
+    if (out.fail()) {
+      std::cerr << "ERROR: failed to save the summary file" << std::endl;
+      return 1;
+    }
+    out.close();
+    
     return 0;
     
   } else {

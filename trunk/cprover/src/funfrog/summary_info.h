@@ -40,6 +40,8 @@ public:
 
   call_sitest& get_call_sites() { return call_sites; }
 
+  summariest& get_used_summaries() { return used_summaries; }
+
   const irep_idt& get_function_id() const { return function_id; }
 
   void set_initial_precision(
@@ -63,6 +65,7 @@ private:
   locationst enabled_assertions;
   irep_idt function_id;
   summary_infot *parent;
+  summariest used_summaries;
   bool assertion_in_subtree;
   
   void set_initial_precision(
