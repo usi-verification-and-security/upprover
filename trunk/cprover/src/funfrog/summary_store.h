@@ -65,6 +65,12 @@ private:
     
     ~nodet() { if (summary != NULL) delete summary; }
     
+    void operator=(nodet& other) {
+      repr_id = other.repr_id;
+      summary = other.summary;
+      other.summary = NULL;
+    }
+    
     bool is_repr() const { return summary != NULL; }
     
     void update_repr(summary_idt _repr_id) {
@@ -83,8 +89,8 @@ private:
   };
   
   nodet& find_repr(summary_idt id);
-  void mark_used_summaries(summary_infot& summary_info, bool used_mask[]);
-  void remap_used_summaries(summary_infot& summary_info, summary_idt remap[]);
+  void mark_used_summaries(summary_infot& summary_info, bool *used_mask);
+  void remap_used_summaries(summary_infot& summary_info, summary_idt *remap);
   
   // Maximal used id
   summary_idt max_id;

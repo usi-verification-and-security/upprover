@@ -620,7 +620,7 @@ void partitioning_target_equationt::extract_interpolants(
   summary_storet& summary_store = summarization_context.get_summary_store();
 
   // Clear the used summaries
-  for (unsigned i = 1; i < partitions.size(); ++i)
+  for (unsigned i = 0; i < partitions.size(); ++i)
     partitions[i].get_iface().summary_info.clear_used_summaries();
 
   // Find partitions suitable for summary extraction

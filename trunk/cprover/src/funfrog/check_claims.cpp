@@ -163,6 +163,9 @@ claim_statst check_claims(
     if (ass_ptr == leaping_program.instructions.end()) 
       break;
     
+    if (assert_grouping && claim_map[ass_ptr].first)
+      continue;
+    
     if(show_progress)
     {
       seen_claims++;
@@ -171,9 +174,6 @@ claim_statst check_claims(
       std::cout << "%) ..." << std::endl;
       std::cout.flush();
     }
-
-    if (assert_grouping)
-      claim_numbers[ass_ptr] = 0;
 
     std::ofstream out;
 
@@ -191,11 +191,7 @@ claim_statst check_claims(
     // if(inlined_program.instructions.size()>res.max_instruction_count)
     //  res.max_instruction_count=inlined_program.instructions.size();
 
-    bool pass=false;
-    if(!claim_map[ass_ptr].first || claim_map[ass_ptr].second)
-      pass = sum_checker.assertion_holds(assertion_infot(stack, ass_ptr));
-    else 
-      pass = true;
+    bool pass = sum_checker.assertion_holds(assertion_infot(stack, ass_ptr));
 
     claim_map[ass_ptr].first = true;
     
@@ -208,6 +204,8 @@ claim_statst check_claims(
         // show_inlined_claims.show_claim(inlined_assertion, stack,
         //                                claim_numbers[ass_ptr], std::cout);
       }
+
+      claim_map[ass_ptr].second = true;
     }
     else
     {      

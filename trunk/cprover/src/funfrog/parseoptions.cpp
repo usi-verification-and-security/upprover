@@ -784,8 +784,13 @@ bool funfrog_parseoptionst::check_loop_summarization(
       }
     }
   }
-  else if(cmdline.isset("claim"))
+  else if(cmdline.isset("claim")) {
     claim_nr=atoi(cmdline.getval("claim"));
+    if (claim_nr == 0 || claim_nr > claim_numbers.size()) {
+      error("Testclaim not found.");
+      return 1;
+    }
+  }
   
   before=current_time();
   claim_statst stats = check_claims(ns,

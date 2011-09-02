@@ -40,8 +40,10 @@ bool function_infot::add_summary(summary_storet& summary_store,
     for (summary_idst::const_iterator it = summaries.begin();
             it != summaries.end();
             ++it) {
-      if (check_implies(summary_store.find_summary(*it), new_summary))
+      if (check_implies(summary_store.find_summary(*it), new_summary)) {
+        summary_store.replace_summary(summary_id, *it);
         return false; // Implied by an already present summary --> skip it
+      }
     }
     
     // It implies any older summary?

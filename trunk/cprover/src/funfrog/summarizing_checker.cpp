@@ -97,6 +97,9 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
       {
         if (summaries_count == 0)   // if none of summaries are substituted then do generate new/alternative ones
         {                           // otherwise, even generated once again, they will be weaker then existing ones
+          // FIXME: We should interpolate also when there are summaries used.
+          // The reason above is not true. The summaries would be either equal 
+          // or stronger.
           double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
           extract_interpolants(equation, red_timeout);
           out << "ASSERTION(S) HOLD(S) AFTER INLINING." << std::endl;
@@ -192,7 +195,7 @@ void summarizing_checkert::extract_interpolants (partitioning_target_equationt& 
 
     function_info.add_summary(summary_store, it->second,
             !options.get_bool_option("no-summary-optimization"));
-
+    
     summary_info.add_used_summary(it->second);
   }
   // Store the summaries

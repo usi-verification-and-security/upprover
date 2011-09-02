@@ -158,10 +158,13 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
   itp_enodes.reserve(partition_ids.size());
 
   // Setup proof reduction
-  if (reduction_timeout > 0) {
   SMTConfig& config = opensmt_ctx->getConfig();
+  if (reduction_timeout > 0) {
     config.proof_red_time = reduction_timeout;
     config.proof_reduce = 1;
+  } else {
+    config.proof_red_time = 0;
+    config.proof_reduce = 0;
   }
   opensmt_ctx->GetInterpolants(partition_ids, itp_enodes);
 
