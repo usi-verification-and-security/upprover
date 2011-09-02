@@ -129,24 +129,26 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
     if (sum_it != summary_map.end()) {
       partitiont& partition = *(sum_it->second.first);
       partition_ifacet& partition_iface = partition.get_iface();
-      const summariest& itps = *partition.summaries;
+      const summary_idst& itps = *partition.summaries;
       unsigned symbol_idx = sum_it->second.second;
 
       // Any of the summaries can match, we need to go through all of them
       // (this may be optimized by precomputation)
       for (unsigned i = 0; i < itps.size(); ++i) {
+        summary_idt summary_id = itps[i];
         // Already used summary
-        if (partition.applicable_summaries.find(i) != partition.applicable_summaries.end())
+        if (partition.applicable_summaries.find(summary_id) != 
+                partition.applicable_summaries.end())
           continue;
         
-        summaryt& summary = summary_store.find_summary(itps[i]);
+        summaryt& summary = summary_store.find_summary(summary_id);
         // Does not restrict the given symbol
         if (!summary.get_symbol_mask()[symbol_idx])
           continue;
         
         // Yes it is relevant, add only symbols constrained by the summary
         unsigned idx = 0;
-        partition.applicable_summaries.insert(i);
+        partition.applicable_summaries.insert(summary_id);
         for (std::vector<symbol_exprt>::iterator it = 
                 partition_iface.argument_symbols.begin();
                 it != partition_iface.argument_symbols.end();

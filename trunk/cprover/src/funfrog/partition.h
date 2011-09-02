@@ -68,8 +68,8 @@ public:
   bool ignore;
   bool processed;
   bool invalid;
-  const summariest* summaries;
-  hash_set_cont<unsigned> applicable_summaries;
+  const summary_idst* summaries;
+  summary_ids_sett applicable_summaries;
   fle_part_idt fle_part_id;
   partition_idt parent_id;
   partition_idst child_ids;

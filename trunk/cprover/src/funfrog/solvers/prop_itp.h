@@ -85,6 +85,5 @@ protected:
 
 typedef prop_itpt interpolantt;
 typedef std::vector<prop_itpt> interpolantst;
-typedef std::vector<std::pair<irep_idt, prop_itpt> > interpolant_mapt;
 
 #endif

@@ -40,7 +40,12 @@ public:
 
   call_sitest& get_call_sites() { return call_sites; }
 
-  summariest& get_used_summaries() { return used_summaries; }
+  const summary_ids_sett& get_used_summaries() const { return used_summaries; }
+  void set_used_summaries(summary_ids_sett& other)  { 
+    used_summaries.swap(other); 
+  }
+  void add_used_summary(summary_idt id) { used_summaries.insert(id); }
+  void clear_used_summaries() { used_summaries.clear(); }
 
   const irep_idt& get_function_id() const { return function_id; }
 
@@ -65,7 +70,7 @@ private:
   locationst enabled_assertions;
   irep_idt function_id;
   summary_infot *parent;
-  summariest used_summaries;
+  summary_ids_sett used_summaries;
   bool assertion_in_subtree;
   
   void set_initial_precision(

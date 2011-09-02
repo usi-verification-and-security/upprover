@@ -19,12 +19,12 @@ void list_summaries(summary_storet& summary_store,
   for (function_infost::const_iterator it = f_infos.begin();
           it != f_infos.end();
           ++it) {
-    const summariest& itps = it->second.get_summaries();
+    const summary_idst& itps = it->second.get_summaries();
 
     std::cout << "--- function \"" << it->first.c_str() << "\", #summaries: " << itps.size() << std::endl;
 
     int n = 1;
-    for (summariest::const_iterator it2 = itps.begin();
+    for (summary_idst::const_iterator it2 = itps.begin();
             it2 != itps.end();
             ++it2) {
       std::cout << "    summary #" << n++ << ":" << std::endl;
@@ -55,7 +55,7 @@ int main(int argc, const char** argv) {
   
   if (!do_optimize && !do_list) {
     print_help();
-    return strcmp(argv[1], "--help") != 0;
+    return argc < 2 || strcmp(argv[1], "--help") != 0;
   }
   
   // Load summaries

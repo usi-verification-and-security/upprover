@@ -25,25 +25,24 @@ Function: function_infot::add_summary
  Outputs:
 
  Purpose: Adds the given summary if it is not already included or implied.
- The original parameter is cleared
+ The original parameter is cleared. Returns true if the summary was really 
+ added, false if it was filtered.
 
 \*******************************************************************/
 
-void function_infot::add_summary(summary_storet& summary_store, 
-        interpolantt& summary, bool filter) 
+bool function_infot::add_summary(summary_storet& summary_store,
+        summary_idt summary_id, bool filter) 
 {
   // Filter the new summary
   if (filter && !summaries.empty()) {
+    summaryt& new_summary = summary_store.find_summary(summary_id);
     // Is implied by any older summary?
-    for (summariest::const_iterator it = summaries.begin();
+    for (summary_idst::const_iterator it = summaries.begin();
             it != summaries.end();
             ++it) {
-      if (check_implies(summary_store.find_summary(*it), summary))
-        return; // Implied by an already present summary --> skip it
+      if (check_implies(summary_store.find_summary(*it), new_summary))
+        return false; // Implied by an already present summary --> skip it
     }
-    
-    summary_idt summary_id = summary_store.insert_summary(summary);
-    summaryt& new_summary = summary_store.find_summary(summary_id);
     
     // It implies any older summary?
     unsigned used = 0;
@@ -60,10 +59,11 @@ void function_infot::add_summary(summary_storet& summary_store,
       }
     }
     summaries.resize(used);
-    summaries.push_back(summary_id);
-  } else {
-    summaries.push_back(summary_store.insert_summary(summary));
   }
+  
+  summaries.push_back(summary_id);
+  
+  return true;
 }
 
 /*******************************************************************\
@@ -82,7 +82,7 @@ void function_infot::serialize(std::ostream& out) const
 {
   out << summaries.size();
 
-  for (summariest::const_iterator it = summaries.begin();
+  for (summary_idst::const_iterator it = summaries.begin();
           it != summaries.end();
           ++it) {
 
@@ -472,7 +472,7 @@ Function: function_infot::optimize_summaries
 \*******************************************************************/
 
 bool function_infot::optimize_summaries(summary_storet& summary_store, 
-        const summariest& itps_in, summariest& itps_out)
+        const summary_idst& itps_in, summary_idst& itps_out)
 {
   unsigned n = itps_in.size();
   bool changed = false;
@@ -531,12 +531,12 @@ Function: function_infot::optimize_all_summaries
 void function_infot::optimize_all_summaries(summary_storet& summary_store, 
         function_infost& f_infos) 
 {
-  summariest itps_new;
+  summary_idst itps_new;
   
   for (function_infost::iterator it = f_infos.begin();
           it != f_infos.end();
           ++it) {
-    const summariest& itps = it->second.get_summaries();
+    const summary_idst& itps = it->second.get_summaries();
 
     std::cerr << "--- function \"" << it->first.c_str() << "\", #summaries: " << itps.size() << std::endl;
 

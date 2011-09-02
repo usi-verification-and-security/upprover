@@ -56,7 +56,7 @@ public:
     }
   }
 
-  const summariest& get_summaries(irep_idt function_id) const {
+  const summary_idst& get_summaries(irep_idt function_id) const {
     return function_infos.find(function_id)->second.get_summaries();
   }
   

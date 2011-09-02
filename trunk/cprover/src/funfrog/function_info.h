@@ -26,11 +26,12 @@ public:
   function_infot(const irep_idt& _function) : function(_function) {}
 
   // Adds the given summary if it is not already included or implied.
-  // The original parameter is cleared
-  void add_summary(summary_storet& summary_store, 
-          interpolantt& summary, bool filter);
+  // The original parameter is cleared. Returns true if the summary was really 
+  // added, false if it was filtered.
+  bool add_summary(summary_storet& summary_store, summary_idt summary, 
+          bool filter);
 
-  const summariest& get_summaries() const { return summaries; }
+  const summary_idst& get_summaries() const { return summaries; }
 
   // Serialization of summaries
   void serialize(std::ostream& out) const;
@@ -66,7 +67,7 @@ private:
   // Id of the function
   irep_idt function;
   // The collected summaries
-  summariest summaries;
+  summary_idst summaries;
   // Globals modified in the function
   lex_sorted_idst globals_modified;
   // Globals accessed (read, modified or both) in the function
@@ -86,11 +87,11 @@ private:
   // Finds out weather some of the given summaries are 
   // superfluous, if so the second list will not contain them.
   static bool optimize_summaries(summary_storet& summary_store, 
-        const summariest& itps_in, summariest& itps_out);
+        const summary_idst& itps_in, summary_idst& itps_out);
 
   // Set of summaries is assigned the given set. The input set is assigned the
   // old set of summaries.
-  void set_summaries(summariest& new_summaries)
+  void set_summaries(summary_idst& new_summaries)
   {
     summaries.swap(new_summaries);
   }

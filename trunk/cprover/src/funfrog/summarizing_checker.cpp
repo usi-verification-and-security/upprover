@@ -57,7 +57,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   const bool assert_grouping = !options.get_bool_option("no-assert-grouping");
   omega.set_initial_precision(assertion, assert_grouping);
 
-  partitioning_target_equationt equation(ns);
+  partitioning_target_equationt equation(ns, summarization_context);
 
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
@@ -184,14 +184,16 @@ void summarizing_checkert::extract_interpolants (partitioning_target_equationt& 
 
   for (interpolant_mapt::iterator it = itp_map.begin();
                   it != itp_map.end(); ++it) {
-    irep_idt& function_id = it->first;
-    if (!it->second.is_trivial()) {
-      function_infot& function_info = 
-              summarization_context.get_function_info(function_id);
-      
-      function_info.add_summary(summary_store, it->second,
-                  !options.get_bool_option("no-summary-optimization"));
-    }
+    summary_infot& summary_info = it->first->summary_info;
+
+    function_infot& function_info =
+            summarization_context.get_function_info(
+            summary_info.get_function_id());
+
+    function_info.add_summary(summary_store, it->second,
+            !options.get_bool_option("no-summary-optimization"));
+
+    summary_info.add_used_summary(it->second);
   }
   // Store the summaries
   const std::string& summary_file = options.get_option("save-summaries");

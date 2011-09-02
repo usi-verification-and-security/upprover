@@ -276,11 +276,9 @@ private:
   }
 
   // Allocate new partition_interface
-  partition_ifacet& new_partition_iface(const summary_infot& summary_info,
+  partition_ifacet& new_partition_iface(summary_infot& summary_info,
           partition_idt parent_id) {
-    partition_ifacet* item = new partition_ifacet(
-            summary_info.get_function_id(), parent_id, 
-            summary_info.has_assertion_in_subtree());
+    partition_ifacet* item = new partition_ifacet(summary_info, parent_id);
     partition_ifaces.push_back(item);
     
     partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);

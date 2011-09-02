@@ -15,17 +15,19 @@
 #include <type.h>
 #include <symbol.h>
 
+#include "summary_info.h"
 #include "partition.h"
 
 class partition_ifacet {
 public:
 
-  partition_ifacet(irep_idt _function_id, partition_idt _parent_id, 
-          bool _assertion_in_subtree) : function_id(_function_id),
+  partition_ifacet(summary_infot& _summary_info, partition_idt _parent_id) : 
+          function_id(_summary_info.get_function_id()),
+          summary_info(_summary_info),
           callstart_symbol(typet(ID_bool)),
           callend_symbol(typet(ID_bool)),
           error_symbol(typet(ID_bool)),
-          assertion_in_subtree(_assertion_in_subtree),
+          assertion_in_subtree(_summary_info.has_assertion_in_subtree()),
           returns_value(false),
           partition_id(partitiont::NO_PARTITION),
           parent_id(_parent_id)
@@ -33,6 +35,8 @@ public:
 
   // Represented function
   irep_idt function_id;
+  // Represented function node in substitution scenario
+  summary_infot& summary_info;
   
   // Filled during function call processing
   // TODO: Deprecate it! Split into iface vars and in_arg_symbols
@@ -58,6 +62,7 @@ public:
 };
 
 typedef std::list<partition_ifacet*> partition_iface_ptrst;
+typedef std::vector<std::pair<partition_ifacet*, summary_idt> > interpolant_mapt;
 
 #endif	/* CPROVER_PARTITION_IFACE_H */
 

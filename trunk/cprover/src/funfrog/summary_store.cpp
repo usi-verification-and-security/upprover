@@ -111,12 +111,12 @@ void summary_storet::mark_used_summaries(summary_infot& summary_info,
   for (call_sitest::iterator it = call_sites.begin();
           it != call_sites.end(); ++it)
   {
-    const summariest& summaries = 
+    const summary_ids_sett& summaries = 
       it->second.get_summary_info().get_used_summaries();
   
     // Collect the used summaries
     if (it->second.get_precision() != HAVOC) {
-      for (summariest::const_iterator it = summaries.begin();
+      for (summary_ids_sett::const_iterator it = summaries.begin();
               it != summaries.end(); ++it)
       {
         used_mask[find_repr(*it).repr_id] = true;
@@ -138,16 +138,19 @@ void summary_storet::remap_used_summaries(summary_infot& summary_info,
   for (call_sitest::iterator it = call_sites.begin();
           it != call_sites.end(); ++it)
   {
-    summariest& summaries = 
-      it->second.get_summary_info().get_used_summaries();
-  
     // Collect the used summaries
     if (it->second.get_precision() != HAVOC) {
-      for (summariest::iterator it = summaries.begin();
-              it != summaries.end(); ++it)
+      summary_ids_sett new_summaries;
+      const summary_ids_sett& old_summaries =
+              it->second.get_summary_info().get_used_summaries();
+      
+      for (summary_ids_sett::const_iterator it = old_summaries.begin();
+              it != old_summaries.end(); ++it)
       {
-        *it = remap[*it];
+        new_summaries.insert(remap[*it]);
       }
+      
+      it->second.get_summary_info().set_used_summaries(new_summaries);
     }
     
     // Propagate the call
@@ -181,9 +184,9 @@ void summary_storet::compact_store(summary_infot& summary_info,
   mark_used_summaries(summary_info, used_mask);
   for (function_infost::iterator it = function_infos.begin();
           it != function_infos.end(); ++it) {
-    const summariest& summaries = it->second.get_summaries();
+    const summary_idst& summaries = it->second.get_summaries();
     
-    for (summariest::const_iterator it2 = summaries.begin();
+    for (summary_idst::const_iterator it2 = summaries.begin();
             it2 != summaries.end(); ++it2)
     {
       used_mask[*it2] = true;
@@ -219,10 +222,10 @@ void summary_storet::compact_store(summary_infot& summary_info,
   remap_used_summaries(summary_info, remap);
   for (function_infost::iterator it = function_infos.begin();
           it != function_infos.end(); ++it) {
-    summariest summaries;
+    summary_idst summaries;
     it->second.set_summaries(summaries);
     
-    for (summariest::iterator it2 = summaries.begin();
+    for (summary_idst::iterator it2 = summaries.begin();
             it2 != summaries.end(); ++it2)
     {
       *it2 = remap[*it2];

@@ -14,7 +14,8 @@ Author: Ondrej Sery
 
 typedef prop_itpt summaryt;
 typedef long unsigned summary_idt;
-typedef std::vector<summary_idt> summariest;
+typedef std::vector<summary_idt> summary_idst;
+typedef hash_set_cont<summary_idt> summary_ids_sett;
 class summary_infot;
 class function_infot;
 typedef hash_map_cont<irep_idt, function_infot, irep_id_hash> function_infost;

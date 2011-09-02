@@ -29,7 +29,6 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 void partitioning_target_equationt::convert(prop_convt &prop_conv, 
-          summarization_contextt& summarization_context,
           interpolating_solvert &interpolator)
 {
   int part_id = partitions.size();
@@ -42,7 +41,7 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             std::endl;
-    convert_partition(prop_conv, summarization_context, interpolator, *it);
+    convert_partition(prop_conv, interpolator, *it);
   }
 }
 
@@ -58,7 +57,6 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
 
 \*******************************************************************/
 void partitioning_target_equationt::convert_partition(prop_convt &prop_conv, 
-    summarization_contextt& summarization_context,
     interpolating_solvert &interpolator, partitiont& partition)
 {
   if (partition.ignore || partition.processed || partition.invalid) {
@@ -89,7 +87,7 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
 
   // If this is a summary partition, apply the summary
   if (partition.is_summary) {
-    convert_partition_summary(prop_conv, summarization_context, partition);
+    convert_partition_summary(prop_conv, partition);
     // FIXME: Only use in the incremental solver mode (not yet implemented)
     // partition.processed = true;
     return;
@@ -122,9 +120,7 @@ Function: partitioning_target_equationt::convert_partition_summary
 \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_summary(
-    prop_convt &prop_conv,
-    summarization_contextt& summarization_context,
-    partitiont& partition)
+    prop_convt &prop_conv, partitiont& partition)
 {
   std::vector<symbol_exprt> common_symbs;
   summary_storet& summary_store = summarization_context.get_summary_store();
@@ -133,15 +129,14 @@ void partitioning_target_equationt::convert_partition_summary(
 #   ifdef DEBUG_SSA      
     std::cout << "Candidate summaries: " << partition.summaries->size() << std::endl;
 #   endif
-  for (hash_set_cont<unsigned>::const_iterator it = 
+  for (summary_ids_sett::const_iterator it = 
           partition.applicable_summaries.begin();
           it != partition.applicable_summaries.end();
           ++it) {
 #   ifdef DEBUG_SSA      
     std::cout << "Substituting summary #" << *it << std::endl;
 #   endif
-    summary_idt summary_id = partition.summaries->at(*it);
-    summaryt& summary = summary_store.find_summary(summary_id);
+    summaryt& summary = summary_store.find_summary(*it);
     
     summary.substitute(prop_conv, common_symbs);
   }
@@ -622,10 +617,27 @@ void partitioning_target_equationt::extract_interpolants(
 {
   // Prepare the interpolation task. NOTE: ignore the root partition!
   unsigned valid_tasks = 0;
+  summary_storet& summary_store = summarization_context.get_summary_store();
 
+  // Clear the used summaries
+  for (unsigned i = 1; i < partitions.size(); ++i)
+    partitions[i].get_iface().summary_info.clear_used_summaries();
+
+  // Find partitions suitable for summary extraction
   for (unsigned i = 1; i < partitions.size(); ++i) {
-    if (partitions[i].is_summary || partitions[i].ignore || partitions[i].invalid ||
-            partitions[i].get_iface().assertion_in_subtree)
+    partitiont& partition = partitions[i];
+
+    // Mark the used summaries
+    if (partition.is_summary && !(partition.ignore || partition.invalid)) {
+      for (summary_ids_sett::const_iterator it = 
+              partition.applicable_summaries.begin();
+              it != partition.applicable_summaries.end(); ++it) {
+        partition.get_iface().summary_info.add_used_summary(*it);
+      }
+    }
+    
+    if (partition.is_summary || partition.ignore || partition.invalid ||
+            partition.get_iface().assertion_in_subtree)
       continue;
     
     valid_tasks++;
@@ -634,9 +646,12 @@ void partitioning_target_equationt::extract_interpolants(
   interpolation_taskt itp_task(valid_tasks);
 
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
-    if (partitions[pid].is_summary || partitions[pid].ignore || partitions[pid].invalid ||
-            partitions[pid].get_iface().assertion_in_subtree)
+    partitiont& partition = partitions[pid];
+    
+    if (partition.is_summary || partition.ignore || partition.invalid ||
+            partition.get_iface().assertion_in_subtree)
       continue;
+    
     fill_partition_ids(pid, itp_task[tid++]);
   }
 
@@ -649,23 +664,21 @@ void partitioning_target_equationt::extract_interpolants(
   std::vector<symbol_exprt> common_symbs;
   interpolant_map.reserve(valid_tasks);
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
-    if (partitions[pid].is_summary || partitions[pid].ignore || partitions[pid].invalid || 
-            partitions[pid].get_iface().assertion_in_subtree)
-      continue;
-    // Store the interpolant
     partitiont& partition = partitions[pid];
-    interpolant_map.push_back(interpolant_mapt::value_type(
-      partition.get_iface().function_id, interpolantst::value_type()));
-    interpolantst::reference interpolant = interpolant_map.back().second;
-    interpolant.swap(itp_result[tid++]);
+
+    if (partition.is_summary || partition.ignore || partition.invalid || 
+            partition.get_iface().assertion_in_subtree)
+      continue;
     
-    if (interpolant.is_trivial()) {
+    interpolantt& itp = itp_result[tid++];
+            
+    if (itp.is_trivial()) {
 #     ifdef DEBUG_ITP
       std::cout << "Trivial interpolant." << std::endl;
 #     endif
       continue;
     }
-
+    
     // Generalize the interpolant
     fill_common_symbols(partition, common_symbs);
 
@@ -677,7 +690,14 @@ void partitioning_target_equationt::extract_interpolants(
 
     std::cout << "Generalizing interpolant" << std::endl;
 #   endif
-    interpolant.generalize(decider, common_symbs);
+    
+    itp.generalize(decider, common_symbs);
+
+    // Store the interpolant
+    summary_idt summary_id = summary_store.insert_summary(itp);
+    
+    interpolant_map.push_back(interpolant_mapt::value_type(
+      &partition.get_iface(), summary_id));
   }
 }
 

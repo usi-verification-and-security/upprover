@@ -21,18 +21,16 @@ typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 class partitioning_target_equationt:public symex_target_equationt
 {
 public:
-  // Id of the currently selected partition
-  partition_idt current_partition_id;
-  partitioning_target_equationt(const namespacet &_ns) :
+  partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
+          _summarization_context) :
           symex_target_equationt(_ns), 
+          summarization_context(_summarization_context),
           current_partition_id(partitiont::NO_PARTITION) {
   }
 
   // Convert all the SSA steps into the corresponding formulas in
   // the corresponding partitions
-  void convert(prop_convt &prop_conv, 
-          summarization_contextt& summarization_context,
-          interpolating_solvert &interpolator);
+  void convert(prop_convt &prop_conv, interpolating_solvert &interpolator);
 
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
@@ -71,7 +69,7 @@ public:
 
   // Fill the (reserved) partition with the given summaries.
   void fill_summary_partition(partition_idt partition_id,
-    const summariest* summaries)
+    const summary_idst* summaries)
   {
     partitiont& sum_partition = partitions.at(partition_id);
     assert(!sum_partition.filled);
@@ -131,10 +129,14 @@ public:
   }
 
 private:
+  // Current summarization context
+  summarization_contextt& summarization_context;
+  
+  // Id of the currently selected partition
+  partition_idt current_partition_id;
   
   // Convert a specific partition of SSA steps
   void convert_partition(prop_convt &prop_conv, 
-    summarization_contextt& summarization_context,
     interpolating_solvert &interpolator, partitiont& partition);
   // Convert a specific partition guards of SSA steps
   void convert_partition_guards(prop_convt &prop_conv,
@@ -153,7 +155,6 @@ private:
     partitiont& partition);
   // Convert a summary partition (i.e., assert its summary)
   void convert_partition_summary(prop_convt &prop_conv,
-    summarization_contextt& summarization_context,
     partitiont& partition);
 
   unsigned count_partition_assertions(partitiont& partition) const
@@ -214,8 +215,6 @@ private:
   // This is used to emit assumption propagation constraints.
   partition_mapt partition_map;
   
-
-
   // Ordering of SSA steps according to the program execution order, this is
   // filled in by prepare_SSA_exec_order and can be used for simple slicing
   // and error trace generation.
