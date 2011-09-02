@@ -71,9 +71,6 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
     return;
   }
   
-  // Tell the interpolator about the new partition.
-  partition.fle_part_id = interpolator.new_partition();
-
   // Convert the assumption propagation symbols
   partition_ifacet &partition_iface = partition.get_iface();
   partition_iface.callstart_literal = 
@@ -84,7 +81,15 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
     partition_iface.error_literal = 
             prop_conv.convert(partition_iface.error_symbol);
   }
+  
+  if (partition.is_summary && partition.applicable_summaries.empty()) {
+    std::cout << "  no applicable summary." << std::endl;
+    return;
+  }
 
+  // Tell the interpolator about the new partition.
+  partition.fle_part_id = interpolator.new_partition();
+  
   // If this is a summary partition, apply the summary
   if (partition.is_summary) {
     convert_partition_summary(prop_conv, partition);
@@ -642,6 +647,10 @@ void partitioning_target_equationt::extract_interpolants(
     
     valid_tasks++;
   }
+  
+  // Only do the interpolation if there are some interpolation tasks
+  if (valid_tasks == 0)
+    return;
 
   interpolation_taskt itp_task(valid_tasks);
 
@@ -683,6 +692,8 @@ void partitioning_target_equationt::extract_interpolants(
     fill_common_symbols(partition, common_symbs);
 
 #   ifdef DEBUG_ITP
+    std::cout << "Interpolant for function: " << 
+            partition.get_iface().function_id.c_str() << std::endl;
     std::cout << "Common symbols (" << common_symbs.size() << "):" << std::endl;
     for (std::vector<symbol_exprt>::iterator it = common_symbs.begin();
             it != common_symbs.end(); ++it)
@@ -716,9 +727,18 @@ void partitioning_target_equationt::fill_partition_ids(
   partition_idt partition_id, fle_part_idst& part_ids)
 {
   partitiont& partition = partitions[partition_id];
+  
+  assert(!partition.invalid && !partition.get_iface().assertion_in_subtree);
+  
+  if (partition.ignore) {
+    assert(partition.child_ids.empty());
+    return;
+  }
 
   // Current partition id
   part_ids.push_back(partition.fle_part_id);
+  
+  assert(!partition.is_summary || partition.child_ids.empty());
 
   // Child partition ids
   for (partition_idst::iterator it = partition.child_ids.begin()++;

@@ -113,10 +113,13 @@ Function: satcheck_opensmtt::new_partition
 \*******************************************************************/
 fle_part_idt satcheck_opensmtt::new_partition()
 {
-  // assert(partition_count == 0 || partition_root_enode != NULL);
+  assert(partition_count == 0 || partition_root_enode != NULL);
   if (partition_count != 0 && partition_root_enode == NULL) {
     std::cerr << "WARNING: last partition was empty (probably due to slicing)." <<
             std::endl;
+    // NOTE: The index is reused for the next partition, outer context must 
+    // ensure that the previously returned index is not used.
+    partition_count--;
   }
   
   // Finish the previous partition if any

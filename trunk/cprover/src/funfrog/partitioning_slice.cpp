@@ -162,6 +162,30 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
       partition.ignore = false;
     }
   }
+  
+  // Mark sliced out partitions
+  for(partitionst::iterator it = 
+          equation.get_partitions().begin();
+          it != equation.get_partitions().end();
+          ++it) {
+    // Only care about real partitions
+    if (it->is_summary || it->invalid || it->ignore || 
+            it->get_iface().assertion_in_subtree)
+      continue;
+    
+    bool ignore = true;
+    for(symex_target_equationt::SSA_stepst::iterator it2 = it->start_it;
+          it2 != it->end_it; ++it2) {
+      if (!it2->ignore) {
+        ignore = false;
+        break;
+      }
+    }
+    if (ignore) {
+      std::cout << "Ignoring partition: " << it->parent_id << std::endl;
+      it->ignore = ignore;
+    }
+  }
 }
 
 /*******************************************************************\

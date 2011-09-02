@@ -19,8 +19,6 @@ summary_storet::nodet& summary_storet::find_repr(summary_idt id)
     return node;
   }
 
-  std::cerr << "XXX Looking for summary " << id << std::endl;
-  
   assert(node.repr_id != id);
   
   summary_storet::nodet& repr_node = find_repr(node.repr_id);
@@ -54,9 +52,6 @@ void summary_storet::replace_summary(summary_idt old_summary_id,
   
   node.update_repr(replacement_id);
 
-  std::cerr << "XXX Replaced summary " << old_summary_id << " by " <<
-          replacement_id << std::endl;
-  
   repr_count--;
 }
 
@@ -77,8 +72,6 @@ summary_idt summary_storet::insert_summary(summaryt& summary)
   summary_idt id = max_id++;
   store.push_back(nodet(id, summary));
   repr_count++;
-  
-  std::cerr << "XXX Inserted summary " << id << std::endl;
   
   return id;
 }
@@ -119,7 +112,6 @@ void summary_storet::mark_used_summaries(summary_infot& summary_info,
       for (summary_ids_sett::const_iterator it2 = summaries.begin();
               it2 != summaries.end(); ++it2)
       {
-        std::cerr << "+++ Used summary: " << find_repr(*it2).repr_id << std::endl;
         used_mask[find_repr(*it2).repr_id] = true;
       }
     }
@@ -189,7 +181,6 @@ void summary_storet::compact_store(summary_infot& summary_info,
             it2 != summaries.end(); ++it2)
     {
       assert (store[*it2].is_repr());
-      std::cerr << "+++ Used summary: " << *it2 << std::endl;
       used_mask[*it2] = true;
     }
   }
