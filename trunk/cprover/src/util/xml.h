@@ -26,10 +26,6 @@ public:
   typedef std::list<xmlt> elementst;
   typedef std::map<std::string, std::string> attributest;
 
-  static std::string escape(const std::string &s);
-  static std::string escape_attribute(const std::string &s);
-  static std::string unescape(const std::string &s);
-
   std::string name, data;
 
   attributest attributes;
@@ -114,6 +110,10 @@ protected:
   static void do_indent(
     std::ostream &out,
     unsigned indent);
+
+  static void escape(const std::string &s, std::ostream &out);
+  static void escape_attribute(const std::string &s, std::ostream &out);
+  static std::string unescape(const std::string &s);
 };
 
 #endif

@@ -173,6 +173,8 @@ bvt bv_utilst::extension(
   unsigned old_size=bv.size();
   bvt result=bv;
   result.resize(new_size);
+  
+  assert(old_size!=0);
 
   literalt extend_with=
     (rep==SIGNED && bv.size()!=0)?bv[old_size-1]:
@@ -897,7 +899,7 @@ bvt bv_utilst::cond_negate(const bvt &bv, const literalt cond)
   result.resize(bv.size());
 
   for(unsigned i=0; i<bv.size(); i++)
-    result[i]=(prop.lselect(cond, neg_bv[i], bv[i]));
+    result[i]=prop.lselect(cond, neg_bv[i], bv[i]);
 
   return result;
 }
@@ -916,6 +918,7 @@ Function: bv_utilst::absolute_value
 
 bvt bv_utilst::absolute_value(const bvt &bv)
 {
+  assert(!bv.empty());
   return cond_negate(bv, bv[bv.size()-1]);
 }
 

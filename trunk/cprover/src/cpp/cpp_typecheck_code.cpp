@@ -42,6 +42,10 @@ void cpp_typecheckt::typecheck_code(codet &code)
     code.type()=code_typet();
     typecheck_member_initializer(code);
   }
+  else if(statement==ID_msc_if_exists ||
+          statement==ID_msc_if_not_exists)
+  {
+  }
   else
     c_typecheck_baset::typecheck_code(code);
 }
@@ -76,56 +80,60 @@ Function: cpp_typecheckt::typecheck_member_initializer
 
 void cpp_typecheckt::typecheck_member_initializer(codet &code)
 {
-  std::string identifier, base_name;
-  const cpp_namet &member=static_cast<cpp_namet &>(code.add(ID_member));
-
-#if 0
-  member.convert(identifier, base_name);
-
-  if(identifier!=base_name)
-  {
-    err_location(code);
-    str << "only simple member identifiers allowed here";
-    throw 0;
-  }
-
-  if(cpp_scopes.current_scope().this_expr.is_nil())
-  {
-    err_location(code);
-    str << "no member initializer expected here";
-    throw 0;
-  }
-#endif
-
-  // The initializer may be a data member
-  // or a parent class
-  exprt symbol_expr;
+  const cpp_namet &member=
+    to_cpp_name(code.find(ID_member));
+    
+  // Let's first typecheck the operands.
+  Forall_operands(it, code)
+    typecheck_expr(*it);
+    
+  // The initializer may be a data member (non-type)
+  // or a parent class (type).
+  // We ask for VAR only, as we get the parent classes via their
+  // constructor!
   cpp_typecheck_fargst fargs;
-  resolve(member, cpp_typecheck_resolvet::BOTH, fargs, symbol_expr);
+  fargs.in_use=true;
+  fargs.operands=code.operands();
 
-  if(symbol_expr.id()==ID_type &&
-     follow(symbol_expr.type()).id()==ID_struct)
+  // We should only really resolve in qualified mode,
+  // no need to look into the parent.
+  // Plus, this should happen in class scope, not the scope of
+  // the constructor because of the constructor arguments.
+  exprt symbol_expr=
+    resolve(member, cpp_typecheck_resolvet::VAR, fargs);
+
+  if(symbol_expr.type().id()==ID_code)
   {
-    // it's a constructor
+    const code_typet &code_type=to_code_type(symbol_expr.type());
+    
+    assert(code_type.arguments().size()>=1);
+  
+    // It's a parent. Call the constructor that we got.
     side_effect_expr_function_callt function_call;
-    function_call.location() = code.location();
-    cpp_namet func_name = member;
-    function_call.function().swap(func_name);
-
+    
+    function_call.function()=symbol_expr;
+    function_call.location()=code.location();
     function_call.arguments().reserve(code.operands().size()+1);
-    function_call.arguments().insert(function_call.arguments().begin(),code.operands().begin(),code.operands().end());
 
-    // disbale access control
-    bool old_access_control = disable_access_control;
-    disable_access_control = true;
-    typecheck_expr(function_call);
-    disable_access_control = old_access_control;
+    // we have to add 'this'
+    exprt this_expr = cpp_scopes.current_scope().this_expr;
+    assert(this_expr.is_not_nil());
+  
+    make_ptr_typecast(
+      this_expr,
+      code_type.arguments().front().type());
 
-    assert(function_call.get(ID_statement) == ID_temporary_object);
+    function_call.arguments().push_back(this_expr);
+    
+    forall_operands(it, code)
+      function_call.arguments().push_back(*it);
+      
+    // done building the expression, check the argument types
+    typecheck_function_call_arguments(function_call);
 
-    if(function_call.get_bool("#not_accessible"))
+    if(symbol_expr.get_bool("#not_accessible"))
     {
-      irep_idt access = function_call.get(ID_C_access);
+      irep_idt access = symbol_expr.get(ID_C_access);
 
       assert(access==ID_private ||
              access==ID_protected ||
@@ -133,40 +141,35 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
 
       if(access==ID_private || access=="noaccess")
       {
+        #if 0
         err_location(code.location());
         str << "error: constructor of `"
-            << symbol_expr.type().get(ID_identifier).as_string()
+            << to_string(symbol_expr)
             << "' is not accessible";
         throw 0;
+        #endif
       }
     }
+    
+    code_expressiont code_expression;
+    code_expression.expression()=function_call;
 
-    // replace the temporary with the current object
-    side_effect_expr_function_callt& initializer =
-      to_side_effect_expr_function_call(
-           static_cast<exprt&>(function_call.add(ID_initializer)).op0());
-
-    exprt& tmp_this = initializer.arguments().front();
-    exprt this_expr = cpp_scopes.current_scope().this_expr;
-    assert(this_expr.is_not_nil());
-
-    make_ptr_typecast(this_expr,tmp_this.type());
-    tmp_this.swap(this_expr);
-    code = code_expressiont();
-    code.op0()=initializer;
+    code.swap(code_expression);
   }
   else
   {
+    // a reference member
     if(symbol_expr.id() == ID_dereference &&
-          symbol_expr.op0().id() == ID_member &&
-          symbol_expr.get_bool(ID_C_implicit) == true)
+       symbol_expr.op0().id() == ID_member &&
+       symbol_expr.get_bool(ID_C_implicit) == true)
     {
       // treat references as normal pointers
       exprt tmp = symbol_expr.op0();
       symbol_expr.swap(tmp);
     }
 
-    if(symbol_expr.id() == ID_symbol && symbol_expr.type().id() != ID_code)
+    if(symbol_expr.id() == ID_symbol &&
+       symbol_expr.type().id()!=ID_code)
     {
       // maybe the name of the member collides with a parameter of the constructor
       symbol_expr.make_nil();
@@ -178,7 +181,7 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
       {
         cpp_save_scopet cpp_saved_scope(cpp_scopes);
         cpp_scopes.go_to(*(cpp_scopes.id_map[cpp_scopes.current_scope().class_identifier]));
-        resolve(member, cpp_typecheck_resolvet::VAR, fargs, symbol_expr);
+        symbol_expr=resolve(member, cpp_typecheck_resolvet::VAR, fargs);
       }
 
       if(symbol_expr.id() == ID_dereference &&
@@ -191,21 +194,21 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
       }
     }
 
-    if (symbol_expr.id() == ID_member &&
-        symbol_expr.op0().id() == ID_dereference &&
-        symbol_expr.op0().op0() == cpp_scopes.current_scope().this_expr)
+    if(symbol_expr.id() == ID_member &&
+       symbol_expr.op0().id() == ID_dereference &&
+       symbol_expr.op0().op0() == cpp_scopes.current_scope().this_expr)
     {
       if(is_reference(symbol_expr.type()))
       {
         // it's a reference member
-        if(code.operands().size() != 1)
+        if(code.operands().size()!= 1)
         {
           err_location(code);
-          str << " reference `" + base_name + "' expects one initializer";
+          str << " reference `"+to_string(symbol_expr)+"' expects one initializer";
           throw 0;
         }
-        typecheck_expr(code.op0());
-        reference_initializer(code.op0(),symbol_expr.type());
+
+        reference_initializer(code.op0(), symbol_expr.type());
 
         // assign the pointers
         symbol_expr.type().remove("#reference");
@@ -224,6 +227,10 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
       {
         // it's a data member
         already_typechecked(symbol_expr);
+        
+        Forall_operands(it, code)
+          already_typechecked(*it);
+
         exprt call=
           cpp_constructor(code.location(), symbol_expr, code.operands());
 
@@ -239,7 +246,7 @@ void cpp_typecheckt::typecheck_member_initializer(codet &code)
     else
     {
       err_location(code);
-      str << "invalid member initializer `" << base_name << "'";
+      str << "invalid member initializer `" << to_string(symbol_expr) << "'";
       throw 0;
     }
   }
@@ -265,16 +272,17 @@ void cpp_typecheckt::typecheck_decl(codet &code)
     throw "declaration expected to have 1 operand";
   }
 
-  assert(code.op0().id()=="cpp-declaration");
+  assert(code.op0().id()==ID_cpp_declaration);
 
   cpp_declarationt &declaration=
     to_cpp_declaration(code.op0());
-
+    
   bool is_typedef=
     convert_typedef(declaration.type());
 
   typecheck_type(declaration.type());
-
+  assert(declaration.type().is_not_nil());
+  
   if(declaration.declarators().empty() &&
      follow(declaration.type()).get_bool("#is_anonymous"))
   {
@@ -294,7 +302,7 @@ void cpp_typecheckt::typecheck_decl(codet &code)
   // do the declarators (optional)
   Forall_cpp_declarators(it, declaration)
   {
-    cpp_declaratort& declarator = *it;
+    cpp_declaratort &declarator = *it;
     cpp_declarator_convertert cpp_declarator_converter(*this);
 
     cpp_declarator_converter.is_typedef=is_typedef;
@@ -316,12 +324,11 @@ void cpp_typecheckt::typecheck_decl(codet &code)
       if(symbol.value.id()!=ID_code)
       {
         decl_statement.copy_to_operands(symbol.value);
-        assert(follow(decl_statement.op1().type()) == follow(symbol.type));
+        assert(follow(decl_statement.op1().type())==follow(symbol.type));
       }
     }
-
+    
     new_code.move_to_operands(decl_statement);
-
 
     // is there a constructor to be called?
     if(symbol.value.is_not_nil())
@@ -332,10 +339,14 @@ void cpp_typecheckt::typecheck_decl(codet &code)
     }
     else
     {
+      exprt object_expr=cpp_symbol_expr(symbol);
+
+      already_typechecked(object_expr);
+      
       exprt constructor_call=
         cpp_constructor(
           symbol.location,
-          cpp_symbol_expr(symbol),
+          object_expr,
           declarator.init_args().operands());
 
       if(constructor_call.is_not_nil())

@@ -35,16 +35,16 @@ exprt gen_zero(const typet &type)
      type_id==ID_real ||
      type_id==ID_integer ||
      type_id==ID_natural ||
-     type_id==ID_complex)
+     type_id==ID_complex ||
+     type_id==ID_c_enum)
   {
     result.set(ID_value, ID_0);
   }
   else if(type_id==ID_unsignedbv ||
           type_id==ID_signedbv ||
-          type_id=="verilogbv" ||
+          type_id==ID_verilogbv ||
           type_id==ID_floatbv ||
-          type_id==ID_fixedbv ||
-          type_id==ID_c_enum)
+          type_id==ID_fixedbv)
   {
     std::string value;
     unsigned width=bv_width(type);

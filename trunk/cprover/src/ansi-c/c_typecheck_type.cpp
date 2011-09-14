@@ -118,11 +118,15 @@ void c_typecheck_baset::typecheck_array_type(array_typet &type)
   exprt &size=type.size();
   locationt location=size.find_location();
 
-  typecheck_expr(size);
+  // check subtype
   typecheck_type(type.subtype());
+
+  // check size  
+  typecheck_expr(size);
   make_index_type(size);
   
-  // simplify it
+  // the size need not be a constant!
+  // we simplify it, for the benefit of array initialisation
   simplify(size, *this);
 
   if(size.is_constant())
@@ -130,7 +134,7 @@ void c_typecheck_baset::typecheck_array_type(array_typet &type)
     mp_integer s;
     if(to_integer(size, s))
     {
-      err_location(size);
+      err_location(location);
       str << "failed to convert constant: "
           << size.pretty();
       throw 0;
@@ -262,6 +266,23 @@ void c_typecheck_baset::typecheck_compound_type(struct_union_typet &type)
 
     it->set_name("$anon"+i2string(anon_member_counter++));
     it->set_anonymous(true);
+  }
+
+  // scan for duplicate members
+
+  {
+    hash_set_cont<irep_idt, irep_id_hash> members;
+
+    for(struct_union_typet::componentst::iterator
+        it=components.begin();
+        it!=components.end();
+        it++)
+    {
+      if(!members.insert(it->get_name()).second)
+      {
+        // we do nothing (as gcc won't complain)
+      }
+    }
   }
   
   // we may add some minimal padding inside structs (not unions)
@@ -653,3 +674,109 @@ void c_typecheck_baset::adjust_function_argument(typet &type) const
     type=int_type(); // the default is integer!
   }
 }
+
+/*******************************************************************\
+
+Function: c_typecheck_baset::clean_type
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void c_typecheck_baset::clean_type(
+  const symbolt &base_symbol,
+  typet &type)
+{
+  if(type.id()==ID_symbol)
+  {
+    // we need to follow for structs and such, but only once
+    irep_idt identifier=to_symbol_type(type).get_identifier();
+    if(already_cleaned.insert(identifier).second)
+    {
+      contextt::symbolst::iterator s_it=context.symbols.find(identifier);
+      assert(s_it!=context.symbols.end());
+      clean_type(base_symbol, s_it->second.type);
+    }
+  }
+  else if(type.id()==ID_array)
+  {
+    array_typet &array_type=to_array_type(type);
+  
+    clean_type(base_symbol, array_type.subtype());
+
+    // the size need not be a constant!
+    // this was simplified already by typecheck_array_type
+    
+    exprt &size=array_type.size();
+    
+    if(!size.is_constant() &&
+       size.id()!=ID_infinity)
+    {
+      // Need to pull out! We insert new symbol.
+      unsigned count=0;
+      irep_idt temp_identifier;
+      std::string suffix;
+      do
+      {
+        suffix="#array_size"+i2string(count);
+        temp_identifier=id2string(base_symbol.name)+suffix;
+        count++;
+      }
+      while(context.symbols.find(temp_identifier)!=context.symbols.end());
+
+      // add the symbol to context
+      symbolt new_symbol;
+      new_symbol.name=temp_identifier;
+      new_symbol.pretty_name=id2string(base_symbol.pretty_name)+suffix;
+      new_symbol.base_name=id2string(base_symbol.base_name)+suffix;
+      new_symbol.type=size.type();
+      new_symbol.file_local=true;
+      new_symbol.is_type=false;
+      new_symbol.value.make_nil();
+      context.add(new_symbol);
+
+      // produce the code that initializes the symbol      
+      symbol_exprt symbol_expr;
+      symbol_expr.set_identifier(temp_identifier);
+      symbol_expr.type()=size.type();
+      code_assignt assignment;
+      assignment.lhs()=symbol_expr;
+      assignment.rhs()=size;
+      assignment.location()=array_type.size().location();
+
+      // store the code
+
+      // fix type
+      size=symbol_expr;
+    }
+  }
+  else if(type.id()==ID_struct ||
+          type.id()==ID_union)
+  {
+    struct_union_typet::componentst &components=
+      to_struct_union_type(type).components();
+
+    for(struct_union_typet::componentst::iterator
+        it=components.begin();
+        it!=components.end();
+        it++)
+      clean_type(base_symbol, it->type());
+  }
+  else if(type.id()==ID_code)
+  {
+    // done, can't contain arrays
+  }
+  else if(type.id()==ID_pointer)
+  {
+    clean_type(base_symbol, type.subtype());
+  }
+  else if(type.id()==ID_vector)
+  {
+    // should be clean
+  }
+}
+

@@ -332,6 +332,12 @@ void goto_symex_statet::assignment(
 
     value_set.assign(l1_lhs, l1_rhs, ns);  
   }
+  
+  #if 0
+  std::cout << "Assigning " << identifier << std::endl;
+  value_set.output(ns, std::cout);
+  std::cout << "**********************" << std::endl;
+  #endif
 }
 
 /*******************************************************************\
@@ -392,18 +398,33 @@ void goto_symex_statet::rename_address(
 
   if(expr.id()==ID_symbol)
   {
-    // only do L1
+    // only do L1!
     top().level1.rename(expr);
   }
   else if(expr.id()==ID_index)
   {
     assert(expr.operands().size()==2);
     rename_address(expr.op0(), ns);
+    
+    // the index is not an address
     rename(expr.op1(), ns);
+  }
+  else if(expr.id()==ID_if)
+  {
+    // the condition is not an address
+    if_exprt &if_expr=to_if_expr(expr);
+    rename(if_expr.cond(), ns);
+    rename_address(if_expr.true_case(), ns);
+    rename_address(if_expr.false_case(), ns);
+  }
+  else if(expr.id()==ID_member)
+  {
+    rename_address(to_member_expr(expr).struct_op(), ns);
   }
   else
   {
-    // do this recursively
+    // do this recursively; we assume here
+    // that all the operands are addresses
     Forall_operands(it, expr)
       rename_address(*it, ns);
   }

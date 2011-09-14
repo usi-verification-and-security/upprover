@@ -5,8 +5,36 @@ Module: C++ Language Type Checking
 Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
+
+#include <iostream>
+
 #include "cpp_typecheck.h"
 #include "cpp_scope.h"
+
+/*******************************************************************\
+
+Function: cpp_scopet::operator <<
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+std::ostream &operator << (std::ostream &out, cpp_scopet::lookup_kindt kind)
+{
+  switch(kind)
+  {
+  case cpp_scopet::QUALIFIED: return out << "QUALIFIED";
+  case cpp_scopet::SCOPE_ONLY: return out << "SCOPE_ONLY";
+  case cpp_scopet::RECURSIVE: return out << "RECURSIVE";
+  default: assert(false);
+  }
+  
+  return out;
+}
 
 /*******************************************************************\
 
@@ -22,6 +50,7 @@ Function: cpp_scopet::lookup
 
 void cpp_scopet::lookup(
   const irep_idt &base_name,
+  lookup_kindt kind,
   id_sett &id_set)
 {
   cpp_id_mapt::iterator
@@ -37,58 +66,46 @@ void cpp_scopet::lookup(
       id_set.insert(&n_it->second);
   }
 
-  if(this->base_name == base_name)
+  if(this->base_name==base_name)
     id_set.insert(this);
+    
+  if(kind==SCOPE_ONLY) return; // done  
 
-  for(unsigned i =0; i< parents_size(); i++)
+  // using scopes
+  for(scope_listt::iterator
+      it=using_scopes.begin();
+      it!=using_scopes.end();
+      it++)
   {
-    cpp_idt& parent= get_parent(i);
-    if(parent.base_name == base_name)
-      id_set.insert(&parent);
+    cpp_scopet &other_scope=static_cast<cpp_scopet &>(**it);
+
+    // Recursive call.
+    // Note the different kind!
+    other_scope.lookup(base_name, QUALIFIED, id_set);
   }
 
-  // using directives
-  for(id_sett::iterator it = using_set.begin();
-      it != using_set.end(); it++)
-  {
-    cpp_idt& using_id = **it;
-    if(using_id.base_name == base_name)
-      id_set.insert(*it);
+  if(!id_set.empty()) return; // done, upwards scopes are hidden
 
-    if(using_id.is_scope)
-    {
-      ((cpp_scopet&)using_id).lookup(base_name,id_set);
-    }
+  // secondary scopes
+  for(scope_listt::iterator
+      it=secondary_scopes.begin();
+      it!=secondary_scopes.end();
+      it++)
+  {
+    cpp_scopet &other_scope=static_cast<cpp_scopet &>(**it);
+
+    // Recursive call.
+    // Note the different kind!
+    other_scope.lookup(base_name, QUALIFIED, id_set);
   }
+  
+  if(kind==QUALIFIED) return; // done  
+  if(!id_set.empty()) return; // done
+
+  // ask parent, recursive call
+  if(!is_root_scope())
+    get_parent().lookup(base_name, kind, id_set);
 }
-
-/*******************************************************************\
-
-Function: cpp_scopet::recursive_lookup
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void cpp_scopet::recursive_lookup(
-  const irep_idt &base_name,
-  id_sett &id_set)
-{
-  lookup(base_name, id_set);
-
-  // found nothing? Ask parent
-  if(id_set.empty())
-  {
-    for(unsigned i= 0; i < parents_size(); i++)
-      get_parent(i).recursive_lookup(base_name, id_set); // recursive call
-  }
-}
-
-
 
 /*******************************************************************\
 
@@ -104,9 +121,21 @@ Function: cpp_scopet::lookup
 
 void cpp_scopet::lookup(
   const irep_idt &base_name,
+  lookup_kindt kind,
   cpp_idt::id_classt id_class,
   id_sett &id_set)
 {
+  // we have a hack to do full search in case we
+  // are looking for templates!
+
+  #if 0
+  std::cout << "B: " << base_name <<  std::endl;
+  std::cout << "K: " << kind << std::endl;
+  std::cout << "I: " << id_class << std::endl;
+  std::cout << "THIS: " << this->base_name << " " << this->id_class 
+            << " " << this->identifier << std::endl;
+  #endif
+  
   cpp_id_mapt::iterator
     lower_it=sub.lower_bound(base_name);
 
@@ -123,36 +152,54 @@ void cpp_scopet::lookup(
     }
   }
 
-  if(this->base_name == base_name
-     && this->id_class == id_class)
+  if(this->base_name == base_name &&
+     this->id_class == id_class)
     id_set.insert(this);
 
-  for(unsigned i =0; i< parents_size(); i++)
+  if(kind==SCOPE_ONLY) return; // done  
+
+  // using scopes
+  for(scope_listt::iterator
+      it=using_scopes.begin();
+      it!=using_scopes.end();
+      it++)
   {
-    cpp_idt& parent= get_parent(i);
-    if(parent.base_name == base_name
-       && parent.id_class == id_class)
-        id_set.insert(&parent);
+    cpp_scopet &other_scope=static_cast<cpp_scopet &>(**it);
+
+    // Recursive call.
+    // Note the different kind!
+    other_scope.lookup(base_name, QUALIFIED, id_class, id_set);
   }
 
-  // using directives
-  for(id_sett::iterator it = using_set.begin();
-      it != using_set.end(); it++)
-  {
-    cpp_idt& using_id = **it;
-    if(using_id.base_name == base_name)
-      id_set.insert(*it);
+  if(!id_set.empty() &&
+     id_class!=TEMPLATE) return; // done, upwards scopes are hidden
 
-    if(using_id.is_scope)
-    {
-      ((cpp_scopet&)using_id).lookup(base_name,id_set);
-    }
+  // secondary scopes
+  for(scope_listt::iterator
+      it=secondary_scopes.begin();
+      it!=secondary_scopes.end();
+      it++)
+  {
+    cpp_scopet &other_scope=static_cast<cpp_scopet &>(**it);
+
+    // Recursive call.
+    // Note the different kind!
+    other_scope.lookup(base_name, QUALIFIED, id_class, id_set);
   }
+  
+  if(kind==QUALIFIED) return; // done  
+
+  if(!id_set.empty() &&
+     id_class!=TEMPLATE) return; // done, upwards scopes are hidden
+
+  // ask parent, recursive call
+  if(!is_root_scope())
+    get_parent().lookup(base_name, kind, id_class, id_set);
 }
 
 /*******************************************************************\
 
-Function: cpp_scopet::recursive_lookup
+Function: cpp_scopet::lookup_identifier
 
   Inputs:
 
@@ -162,31 +209,7 @@ Function: cpp_scopet::recursive_lookup
 
 \*******************************************************************/
 
-void cpp_scopet::recursive_lookup(
-  const irep_idt &base_name,
-  cpp_idt::id_classt id_class,
-  id_sett &id_set)
-{
-  lookup(base_name, id_class, id_set);
-
-  // found nothing? Ask parent
-  if(id_set.empty() && parents_size())
-      get_parent().recursive_lookup(base_name, id_class, id_set); // recursive call
-}
-
-/*******************************************************************\
-
-Function: cpp_scopet::lookup_id
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void cpp_scopet::lookup_id(
+void cpp_scopet::lookup_identifier(
   const irep_idt &identifier,
   cpp_idt::id_classt id_class,
   id_sett &id_set)
@@ -203,16 +226,16 @@ void cpp_scopet::lookup_id(
      && this->id_class == id_class)
     id_set.insert(this);
 
-  for(unsigned i =0; i< parents_size(); i++)
+  #if 0
+  for(unsigned i=0; i<parents_size(); i++)
   {
     cpp_idt& parent= get_parent(i);
     if(parent.identifier == identifier
        && parent.id_class == id_class)
         id_set.insert(&parent);
   }
+  #endif
 }
-
-
 
 /*******************************************************************\
 
@@ -250,9 +273,9 @@ Function: cpp_scopet::contains
 
 \*******************************************************************/
 
-bool cpp_scopet::contains(const irep_idt& base_name)
+bool cpp_scopet::contains(const irep_idt &base_name)
 {
   id_sett id_set;
-  lookup(base_name,id_set);
+  lookup(base_name, SCOPE_ONLY, id_set);
   return !id_set.empty();
 }

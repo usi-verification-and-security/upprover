@@ -52,14 +52,11 @@ void goto_symext::claim(
 
   exprt expr=claim_expr;
   state.rename(expr, ns);
-
+  
   // first try simplifier on it
   do_simplify(expr);
 
-  if(expr.is_true()) {
-    std::cout << "Claim is trivially true - ignoring." << std::endl;
-    return;
-  }
+  if(expr.is_true()) return;
     
   state.guard.guard_expr(expr);
   
@@ -92,10 +89,9 @@ void goto_symext::operator()(
   while(state.source.pc!=goto_program.instructions.end())
   {
     #if 0
-    goto_program.output_instruction(ns, "", std::cout,state.source.pc);
-    std::cout << "\ninstruction type is " << state.source.pc->type << std::endl;
-    std::cout << state.source.pc->code.pretty(0, 100) << std::endl;
+    goto_program.output_instruction(ns, "", std::cout, state.source.pc);
     #endif
+
     symex_step(goto_functions, state);
   }
 }
@@ -165,6 +161,11 @@ void goto_symext::symex_step(
   const goto_functionst &goto_functions,
   statet &state)
 {
+  #if 0
+  std::cout << "\ninstruction type is " << state.source.pc->type << std::endl;
+  std::cout << state.source.pc->code.pretty(0, 100) << std::endl;
+  #endif
+
   assert(!state.call_stack.empty());
 
   const goto_programt::instructiont &instruction=*state.source.pc;

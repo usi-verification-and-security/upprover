@@ -68,7 +68,11 @@ literalt prop_convt::get_literal(const irep_idt &identifier)
   if(!result.second)
     return result.first->second;
 
+  // produce new variable
   literalt literal=prop.new_variable();
+  
+  // set the name of the new variable
+  prop.set_variable_name(literal, id2string(identifier));
 
   // insert
   result.first->second=literal;

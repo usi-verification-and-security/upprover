@@ -11,6 +11,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <arith_tools.h>
 #include <std_types.h>
 #include <math.h>
+#include <stdint.h>
+#include <limits>
 
 #include "ieee_float.h"
 
@@ -777,6 +779,25 @@ ieee_floatt &ieee_floatt::operator += (const ieee_floatt &other)
     sign=other.sign;
     return *this;
   }
+
+  if(is_zero() && other.is_zero())
+  { 
+    if(get_sign() == other.get_sign())
+      return *this;
+    else 
+    {
+      if(rounding_mode == ROUND_TO_MINUS_INF)
+      {
+        set_sign(true);
+        return *this;      
+      } 
+      else
+      {
+        set_sign(false);
+        return *this;
+      }
+    }
+  }
   
   // get smaller exponent
   if(_other.exponent<exponent)
@@ -971,7 +992,7 @@ bool operator ==(const ieee_floatt &a, const ieee_floatt &b)
   else if(a.infinity || b.infinity)
     return false;
 
-  if(a.is_zero() && b.is_zero()) return true;
+  //if(a.is_zero() && b.is_zero()) return true;
 
   return a.exponent==b.exponent &&
          a.fraction==b.fraction &&
@@ -1235,8 +1256,8 @@ Function: ieee_floatt::make_fltmax
 
 void ieee_floatt::make_fltmax()
 {
-  make_plus_infinity();
-  decrement();
+  mp_integer bit_pattern = power(2,spec.e + spec.f)-1 - power(2,spec.f);
+  unpack(bit_pattern);
 }
 
 /*******************************************************************\
@@ -1253,8 +1274,7 @@ Function: ieee_floatt::make_fltmin
 
 void ieee_floatt::make_fltmin()
 {
-  make_minus_infinity();
-  increment();
+  unpack(power(2,spec.f));
 }
 
 /*******************************************************************\
@@ -1292,12 +1312,8 @@ Function: ieee_floatt::make_minus_infinity
 
 void ieee_floatt::make_minus_infinity()
 {
-  NaN=false;
+  make_plus_infinity();
   sign=true;
-  exponent=0;
-  fraction=0;
-  infinity=true;
-
 }
 
 /*******************************************************************\
@@ -1349,24 +1365,22 @@ Function: ieee_floatt::to_double
 
 double ieee_floatt::to_double() const
 {
-  if(sizeof(unsigned long) != sizeof(double))
-  {
-    throw "ieee_floatt::to_double not supported on this architecture";
-  }
-
-  union { double f; unsigned long i; } a;
+  union { double f; uint64_t i; } a;
 
   if(infinity)
   {
-    double f = sign ? -1.0 : 1.0;
-    return f / 0.0;
+    if(sign) 
+      return -std::numeric_limits<double>::infinity();
+    else
+      return std::numeric_limits<double>::infinity();
   }
 
   if(NaN)
   {
-    a.f = (1.0 / 0.0) + (-1.0 / 0.0);
-    a.i = ((a.i << 1) >> 1) | 
-            ((sign ? 1ul : 0ul) << (sizeof(unsigned long)*8 - 1));
+    if(sign) 
+      return -std::numeric_limits<double>::quiet_NaN();
+    else
+      return std::numeric_limits<double>::quiet_NaN();
   }
 
   mp_integer i = pack();
@@ -1396,25 +1410,27 @@ float ieee_floatt::to_float() const
     throw "ieee_floatt::to_float not supported on this architecture";
   }
 
-  union { float f; unsigned i; } a;
+  union { float f; uint32_t i; } a;
 
   if(infinity)
   {
-    float f = sign ? -1.0f : 1.0f;
-    return f / 0.0f;
+    if(sign) 
+      return -std::numeric_limits<float>::infinity();
+    else
+      return std::numeric_limits<float>::infinity();
   }
 
   if(NaN)
   {
-    a.f = (1.0f / 0.0f) + (-1.0f / 0.0f);
-    a.i = ((a.i << 1u) >> 1) | 
-            ((sign ? 1u : 0) << (sizeof(unsigned)*8 - 1));
+    if(sign) 
+      return -std::numeric_limits<float>::quiet_NaN();
+    else
+      return std::numeric_limits<float>::quiet_NaN();
   }
 
   mp_integer i = pack();
   assert(i.is_ulong());
-  
-  
+    
   a.i = (unsigned) i.to_ulong();
   return a.f;
 }
@@ -1435,27 +1451,43 @@ Function: ieee_floatt::next_representable
 
 void ieee_floatt::next_representable(bool greater)
 {
-  if(NaN)
+  if(is_NaN())
     return;
+  
+  bool old_sign = get_sign();
 
-  if(is_float())
+  if(is_infinity())
   {
-    float f = to_float();
-    f = nextafterf(f, (greater ? 1.0f : -1.0f)/0.0f);
-    from_float(f);
-  } else if(is_double())
-  {
-    double d = to_double();
-    d = nextafter(d, (greater ? 1.0 : -1.0)/0.0);
-    from_double(d);
-  } else 
-  {
-    std::string error = "ieee_floatt::next_representable_inc not supported ";
-    error += " for f = ";
-    error += spec.f;
-    error += ", e = ";
-    error += spec.e;
-    throw error;
+    if(get_sign() == greater)
+    {
+      make_fltmax();
+      set_sign(old_sign);
+    } 
+    return;
   }
+  
+  int dir;
+  if(greater)
+  {
+    if(get_sign())
+      dir = -1;
+    else
+      dir = 1;
+  } 
+  else
+  {
+    if(get_sign())
+      dir = 1;
+    else
+      dir = -1;
+  }
+
+  mp_integer new_exp = exponent;
+  mp_integer new_frac = fraction + dir;
+  
+  if(get_sign())
+    new_frac.negate();
+
+  build(new_frac, new_exp);
 }
 

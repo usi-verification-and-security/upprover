@@ -11,6 +11,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "cnf.h"
 
+// CNF given as a list of clauses
+
 class cnf_clause_listt:public cnft
 {
 public:
@@ -67,6 +69,9 @@ protected:
   clausest clauses;
 };
 
+// CNF given as a list of clauses
+// PLUS an assignment to the variables
+
 class cnf_clause_list_assignmentt:public cnf_clause_listt
 {
 public:
@@ -79,6 +84,9 @@ public:
   
   virtual tvt l_get(literalt literal) const
   {
+    if(literal.is_true()) return tvt(true);
+    if(literal.is_false()) return tvt(false);
+    
     unsigned v=literal.var_no();
 
     if(v==0 || v>=assignment.size())

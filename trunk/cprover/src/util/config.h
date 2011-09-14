@@ -49,15 +49,23 @@ public:
     
     // minimum alignment (in structs) measured in bytes
     unsigned alignment;
+
+    // maximum minimum size of the operands for a machine 
+    // instruction (in bytes)
+    unsigned memory_operand_size;
     
-    typedef enum { NO_ENDIANESS, IS_LITTLE_ENDIAN, IS_BIG_ENDIAN } endianesst;
-    endianesst endianess;
+    typedef enum { NO_ENDIANNESS, IS_LITTLE_ENDIAN, IS_BIG_ENDIAN } endiannesst;
+    endiannesst endianness;
 
     typedef enum { NO_OS, OS_LINUX, OS_MACOS, OS_WIN } ost;
     ost os;
 
     typedef enum { NO_ARCH, ARCH_I386, ARCH_PPC, ARCH_X86_64 } archt;
     archt arch;
+    
+    typedef enum { NO_MODE, MODE_ANSI, MODE_GCC, MODE_VISUAL_STUDIO,
+                   MODE_CODEWARRIOR, MODE_ARM } modet;
+    modet mode;
 
     std::list<std::string> defines;
     std::list<std::string> undefines;
@@ -78,6 +86,7 @@ public:
     std::list<std::string> include_paths;
   } verilog;
 
+  // this is the function to start executing
   std::string main;
   
   bool set(const cmdlinet &cmdline);

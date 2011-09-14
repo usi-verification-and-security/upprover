@@ -65,6 +65,19 @@ void bmc_baset::error_trace(const prop_convt &prop_conv)
   goto_tracet goto_trace;
   build_goto_trace(equation, prop_conv, goto_trace);
   
+  #if 0
+  if(options.get_option("vcd")!="")
+  {
+    if(options.get_option("vcd")=="-")
+      output_vcd(ns, goto_trace, std::cout);
+    else
+    {
+      std::ofstream out(options.get_option("vcd").c_str());
+      output_vcd(ns, goto_trace, out);
+    }
+  }
+  #endif
+  
   switch(ui)
   {
   case ui_message_handlert::PLAIN:
@@ -268,6 +281,14 @@ void bmc_baset::show_program()
       std::string string_value;
       languages.from_expr(it->cond_expr, string_value);
       std::cout << "(" << count << ") " << string_value << std::endl;
+
+      if(!it->guard_expr.is_true())
+      {
+        languages.from_expr(it->guard_expr, string_value);
+        std::cout << std::string(i2string(count).size()+3, ' ');
+        std::cout << "guard: " << string_value << std::endl;
+      }
+      
       count++;
     }
     else if(it->is_assert())
@@ -276,6 +297,14 @@ void bmc_baset::show_program()
       languages.from_expr(it->cond_expr, string_value);
       std::cout << "(" << count << ") ASSERT("
                 << string_value <<") " << std::endl;
+
+      if(!it->guard_expr.is_true())
+      {
+        languages.from_expr(it->guard_expr, string_value);
+        std::cout << std::string(i2string(count).size()+3, ' ');
+        std::cout << "guard: " << string_value << std::endl;
+      }
+
       count++;
     }  
   }

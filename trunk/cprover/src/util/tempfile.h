@@ -11,6 +11,8 @@ Author: Daniel Kroening
 
 #include <string>
 
-std::string get_temporary_file(const std::string &prefix, const std::string &suffix);
+std::string get_temporary_file(
+  const std::string &prefix,
+  const std::string &suffix);
 
 #endif

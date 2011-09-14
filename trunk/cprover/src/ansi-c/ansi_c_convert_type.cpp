@@ -64,6 +64,10 @@ void ansi_c_convert_typet::read_rec(const typet &type)
     c_qualifiers.is_ptr64=true;
   else if(type.id()==ID_volatile)
     c_qualifiers.is_volatile=true;
+  else if(type.id()==ID_asm)
+  {
+    // ignore for now
+  }
   else if(type.id()==ID_const)
     c_qualifiers.is_constant=true;
   else if(type.id()==ID_restricted)
@@ -80,6 +84,30 @@ void ansi_c_convert_typet::read_rec(const typet &type)
     int32_cnt++;
   else if(type.id()==ID_int64)
     int64_cnt++;
+  else if(type.id()==ID_bv)
+  {
+    bv_cnt++;
+    const exprt &size_expr=
+      static_cast<const exprt &>(type.find(ID_size));
+
+    mp_integer size_int;
+    if(to_integer(size_expr, size_int))
+    {
+      err_location(location);
+      error("bit vector width has to be constant");
+      std::cout << type.pretty() << std::endl;
+      throw 0;
+    }
+    
+    if(size_int<1 || size_int>1024)
+    {
+      err_location(location);
+      error("bit vector width invalid");
+      throw 0;
+    }
+    
+    bv_width=integer2long(size_int);
+  }
   else if(type.id()==ID_short)
     short_cnt++;
   else if(type.id()==ID_long)
@@ -90,6 +118,8 @@ void ansi_c_convert_typet::read_rec(const typet &type)
     float_cnt++;
   else if(type.id()==ID_bool)
     bool_cnt++;
+  else if(type.id()==ID_complex)
+    complex_cnt++;
   else if(type.id()==ID_static)
     c_storage_spec.is_static=true;
   else if(type.id()==ID_thread_local)
@@ -114,7 +144,14 @@ void ansi_c_convert_typet::read_rec(const typet &type)
     transparent_union=true;
   else if(type.id()==ID_vector)
     vector_size=to_vector_type(type).size();
-  else 
+  else if(type.id()==ID_void)
+  {
+    // we store 'void' as 'empty'
+    typet tmp=type;
+    tmp.id(ID_empty);
+    other.push_back(tmp);
+  }
+  else
     other.push_back(type);
 }
 
@@ -140,9 +177,9 @@ void ansi_c_convert_typet::write(typet &type)
   {
     if(double_cnt || float_cnt || signed_cnt ||
        unsigned_cnt || int_cnt || bool_cnt ||
-       short_cnt || char_cnt ||
+       short_cnt || char_cnt || complex_cnt || long_cnt ||
        int8_cnt || int16_cnt || int32_cnt || int64_cnt ||
-       long_cnt)
+       bv_cnt)
     {
       err_location(location);
       error("illegal type modifier for defined type");
@@ -158,14 +195,15 @@ void ansi_c_convert_typet::write(typet &type)
 
     type.swap(other.front());
   }
-  else if(double_cnt || float_cnt)
+  else if(double_cnt || float_cnt || complex_cnt)
   {
     if(signed_cnt || unsigned_cnt || int_cnt || bool_cnt ||
        int8_cnt || int16_cnt || int32_cnt || int64_cnt ||
+       bv_cnt ||
        short_cnt || char_cnt)
     {
       err_location(location);
-      error("cannot combine integer type with float");
+      error("cannot combine integer type with float or complex");
       throw 0;
     }
 
@@ -197,7 +235,7 @@ void ansi_c_convert_typet::write(typet &type)
     else
     {
       err_location(location);
-      error("illegal type modifier for float");
+      error("illegal type modifier for float or complex");
       throw 0;
     }
   }
@@ -205,6 +243,7 @@ void ansi_c_convert_typet::write(typet &type)
   {
     if(signed_cnt || unsigned_cnt || int_cnt || short_cnt ||
        int8_cnt || int16_cnt || int32_cnt || int64_cnt ||
+       bv_cnt ||
        char_cnt || long_cnt)
     {
       err_location(location);
@@ -240,7 +279,7 @@ void ansi_c_convert_typet::write(typet &type)
 
     unsigned width;
 
-    if(int8_cnt || int16_cnt || int32_cnt || int64_cnt)
+    if(int8_cnt || int16_cnt || int32_cnt || int64_cnt || bv_cnt)
     {
       if(long_cnt || char_cnt || short_cnt)
       {
@@ -257,6 +296,8 @@ void ansi_c_convert_typet::write(typet &type)
         width=4*8;
       else if(int64_cnt)
         width=8*8;
+      else if(bv_cnt)
+        width=bv_width;
       else
         assert(false);
     }

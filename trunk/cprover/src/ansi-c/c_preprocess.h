@@ -14,8 +14,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <message.h>
 
 bool c_preprocess(
-  std::istream &instream,
   const std::string &path,
+  std::ostream &outstream,
+  message_handlert &message_handler);
+ 
+bool c_preprocess(
+  std::istream &instream,
   std::ostream &outstream,
   message_handlert &message_handler);
  

@@ -14,7 +14,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 class cpp_storage_spect:public irept
 {
 public:
-  cpp_storage_spect():irept("cpp-storage-spec")
+  cpp_storage_spect():irept(ID_cpp_storage_spec)
   {
   }
   

@@ -57,18 +57,90 @@ void goto_convertt::remove_assignment(
   side_effect_exprt &expr,
   goto_programt &dest)
 {
-  codet assignment_statement(ID_expression);
-  assignment_statement.copy_to_operands(expr);
-  assignment_statement.location()=expr.location();
+  const irep_idt statement=expr.get_statement();
 
-  if(expr.operands().size()!=2)
-    throw "assignment must have two operands";
+  if(statement==ID_assign)
+  {
+    exprt tmp=expr;
+    tmp.id(ID_code);
+    // just interpret as code
+    convert(to_code(tmp), dest);
+  }
+  else if(statement==ID_assign_plus ||
+          statement==ID_assign_minus ||
+          statement==ID_assign_mult ||
+          statement==ID_assign_div ||
+          statement==ID_assign_mod ||
+          statement==ID_assign_shl ||
+          statement==ID_assign_ashr ||
+          statement==ID_assign_lshr ||
+          statement==ID_assign_bitand ||
+          statement==ID_assign_bitxor ||
+          statement==ID_assign_bitor)
+  {
+    if(expr.operands().size()!=2)
+    {
+      err_location(expr);
+      str << statement << " takes two arguments";
+      throw 0;
+    }
 
+    exprt rhs;
+
+    if(statement==ID_assign_plus)
+      rhs.id(ID_plus);
+    else if(statement==ID_assign_minus)
+      rhs.id(ID_minus);
+    else if(statement==ID_assign_mult)
+      rhs.id(ID_mult);
+    else if(statement==ID_assign_div)
+      rhs.id(ID_div);
+    else if(statement==ID_assign_mod)
+      rhs.id(ID_mod);
+    else if(statement==ID_assign_shl)
+      rhs.id(ID_shl);
+    else if(statement==ID_assign_ashr)
+      rhs.id(ID_ashr);
+    else if(statement==ID_assign_lshr)
+      rhs.id(ID_lshr);
+    else if(statement==ID_assign_bitand)
+      rhs.id(ID_bitand);
+    else if(statement==ID_assign_bitxor)
+      rhs.id(ID_bitxor);
+    else if(statement==ID_assign_bitor)
+      rhs.id(ID_bitor);
+    else
+    {
+      err_location(expr);
+      str << "assignment `" << statement << "' not yet supproted";
+      throw 0;
+    }
+
+    rhs.copy_to_operands(expr.op0(), expr.op1());
+    rhs.type()=expr.op0().type();
+    
+    if(rhs.op0().type().id()==ID_bool)
+    {
+      rhs.op0().make_typecast(int_type());
+      rhs.op1().make_typecast(int_type());
+      rhs.type()=int_type();
+      rhs.make_typecast(typet(ID_bool));
+    }
+    
+    exprt lhs=expr.op0();
+    
+    code_assignt assignment(lhs, rhs);
+    assignment.location()=expr.location();
+    
+    convert(assignment, dest);
+  }
+  else
+    assert(false);
+
+  // revert assignment in the expression to its LHS
   exprt lhs;
   lhs.swap(expr.op0());
   expr.swap(lhs);
-
-  convert(assignment_statement, dest);
 }
 
 /*******************************************************************\
@@ -87,17 +159,67 @@ void goto_convertt::remove_pre(
   side_effect_exprt &expr,
   goto_programt &dest)
 {
-  codet pre_statement(ID_expression);
-  pre_statement.copy_to_operands(expr);
-
   if(expr.operands().size()!=1)
     throw "preincrement/predecrement must have one operand";
 
-  exprt op;
-  op.swap(expr.op0());
-  expr.swap(op);
+  const irep_idt statement=expr.get_statement();
 
-  convert(pre_statement, dest);
+  assert(statement==ID_preincrement ||
+         statement==ID_predecrement);
+
+  exprt rhs;
+
+  if(statement==ID_preincrement)
+    rhs.id(ID_plus);
+  else
+    rhs.id(ID_minus);
+      
+  const typet &op_type=ns.follow(expr.op0().type());
+      
+  if(op_type.id()==ID_bool)
+  {
+    rhs.copy_to_operands(expr.op0(), gen_one(int_type()));
+    rhs.op0().make_typecast(int_type());
+    rhs.type()=int_type();
+    rhs.make_typecast(typet(ID_bool));
+  }
+  else if(op_type.id()==ID_c_enum ||
+          op_type.id()==ID_incomplete_c_enum)
+  {
+    rhs.copy_to_operands(expr.op0(), gen_one(int_type()));
+    rhs.op0().make_typecast(int_type());
+    rhs.type()=int_type();
+    rhs.make_typecast(op_type);
+  }
+  else
+  {
+    typet constant_type;
+
+    if(op_type.id()==ID_pointer)
+      constant_type=index_type();
+    else if(is_number(op_type))
+      constant_type=op_type;
+    else
+    {
+      err_location(expr);
+      throw "no constant one of type "+op_type.to_string();
+    }
+
+    exprt constant=gen_one(constant_type);
+
+    rhs.copy_to_operands(expr.op0());
+    rhs.move_to_operands(constant);
+    rhs.type()=expr.op0().type();
+  }
+
+  code_assignt assignment(expr.op0(), rhs);
+  assignment.location()=expr.find_location();
+  
+  convert(assignment, dest);
+
+  // revert to argument of pre-inc/pre-dec
+  exprt op=expr.op0();
+  expr.swap(op);
 }
 
 /*******************************************************************\
@@ -117,26 +239,81 @@ void goto_convertt::remove_post(
   goto_programt &dest,
   bool result_is_used)
 {
+  goto_programt tmp1, tmp2;
+
   // we have ...(op++)...
-  codet post_statement(ID_expression);
-  post_statement.copy_to_operands(expr);
 
   if(expr.operands().size()!=1)
     throw "postincrement/postdecrement must have one operand";
 
+  const irep_idt statement=expr.get_statement();
+
+  assert(statement==ID_postincrement ||
+         statement==ID_postdecrement);
+
+  exprt rhs;
+
+  if(statement==ID_postincrement)
+    rhs.id(ID_plus);
+  else
+    rhs.id(ID_minus);
+    
+  const typet &op_type=ns.follow(expr.op0().type());
+    
+  if(op_type.id()==ID_bool)
+  {
+    rhs.copy_to_operands(expr.op0(), gen_one(int_type()));
+    rhs.op0().make_typecast(int_type());
+    rhs.type()=int_type();
+    rhs.make_typecast(typet(ID_bool));
+  }
+  else if(op_type.id()==ID_c_enum ||
+          op_type.id()==ID_incomplete_c_enum)
+  {
+    rhs.copy_to_operands(expr.op0(), gen_one(int_type()));
+    rhs.op0().make_typecast(int_type());
+    rhs.type()=int_type();
+    rhs.make_typecast(op_type);
+  }
+  else
+  {
+    typet constant_type;
+
+    if(op_type.id()==ID_pointer)
+      constant_type=index_type();
+    else if(is_number(op_type))
+      constant_type=op_type;
+    else
+    {
+      err_location(expr);
+      throw "no constant one of type "+op_type.to_string();
+    }
+
+    exprt constant=gen_one(constant_type);
+
+    rhs.copy_to_operands(expr.op0());
+    rhs.move_to_operands(constant);
+    rhs.type()=expr.op0().type();
+  }
+
+  code_assignt assignment(expr.op0(), rhs);
+  assignment.location()=expr.find_location();
+  
+  convert(assignment, tmp2);
+
+  // fix up the expression, if needed
+
   if(result_is_used)
   {
-    exprt tmp;
-    tmp.swap(expr.op0());
+    exprt tmp=expr.op0();
     make_temp_symbol(tmp, "post", dest);
     expr.swap(tmp);
   }
   else
-  {
     expr.make_nil();
-  }
 
-  convert(post_statement, dest);
+  dest.destructive_append(tmp1);
+  dest.destructive_append(tmp2);
 }
 
 /*******************************************************************\
@@ -158,9 +335,14 @@ void goto_convertt::remove_function_call(
 {
   if(!result_is_used)
   {
-    code_expressiont call;
-    call.expression()=expr;
-    convert(call, dest);
+    assert(expr.operands().size()==2);
+    code_function_callt call;
+    call.function()=expr.op0();
+    call.arguments()=expr.op1().operands();
+    call.location()=expr.location();
+    call.lhs().make_nil();
+    convert_function_call(call, dest);
+    expr.make_nil();
     return;
   }
 
@@ -207,14 +389,17 @@ void goto_convertt::remove_function_call(
     code_declt decl;
     decl.symbol()=symbol_expr(new_symbol);
     decl.location()=new_symbol.location;
-    convert(decl, dest);
+    convert_decl(decl, dest);
   }
 
   {
     goto_programt tmp_program2;
-    code_assignt assignment(symbol_expr(new_symbol), expr);
-    assignment.location()=new_symbol.location;
-    convert(assignment, dest);
+    code_function_callt call;
+    call.lhs()=symbol_expr(new_symbol);
+    call.function()=expr.op0();
+    call.arguments()=expr.op1().operands();
+    call.location()=new_symbol.location;
+    convert_function_call(call, dest);
   }
 
   static_cast<exprt &>(expr)=symbol_expr(new_symbol);
@@ -262,29 +447,55 @@ void goto_convertt::remove_cpp_new(
 {
   codet call;
 
+  symbolt new_symbol;
+
+  new_symbol.base_name="new_ptr$"+i2string(++temporary_counter);
+  new_symbol.lvalue=true;
+  new_symbol.type=expr.type();
+  new_symbol.name=tmp_symbol_prefix+id2string(new_symbol.base_name);
+
+  new_name(new_symbol);
+  tmp_symbols.push_back(new_symbol.name);
+
+  call=code_assignt(symbol_expr(new_symbol), expr);
+
   if(result_is_used)
-  {
-    symbolt new_symbol;
-
-    new_symbol.base_name="new_value$"+i2string(++temporary_counter);
-    new_symbol.lvalue=true;
-    new_symbol.type=expr.type();
-    new_symbol.name=tmp_symbol_prefix+id2string(new_symbol.base_name);
-
-    new_name(new_symbol);
-    tmp_symbols.push_back(new_symbol.name);
-
-    call=code_assignt(symbol_expr(new_symbol), expr);
-
     static_cast<exprt &>(expr)=symbol_expr(new_symbol);
-  }
   else
-  {
-    call=codet(ID_expression);
-    call.move_to_operands(expr);
-  }
+    expr.make_nil();
 
   convert(call, dest);
+}
+
+/*******************************************************************\
+
+Function: goto_convertt::remove_cpp_delete
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void goto_convertt::remove_cpp_delete(
+  side_effect_exprt &expr,
+  goto_programt &dest,
+  bool result_is_used)
+{
+  assert(expr.operands().size()==1);
+
+  codet tmp;
+  
+  tmp.set_statement(expr.get_statement());
+  tmp.location()=expr.location();
+  tmp.copy_to_operands(expr.op0());
+  tmp.set(ID_destructor, expr.find(ID_destructor));
+
+  convert_cpp_delete(tmp, dest);
+  
+  expr.make_nil();  
 }
 
 /*******************************************************************\
@@ -432,20 +643,27 @@ void goto_convertt::remove_statement_expression(
   }
 
   codet old_last=*last;
-  last->set_statement(ID_skip);
+  if(last->get(ID_statement)==ID_expression)
+    last->set_statement(ID_skip);
   
   convert(code, dest);
 
   {
     clean_expr(old_last, dest, true);
 
-    if(old_last.get(ID_statement)==ID_expression &&
-       old_last.operands().size()==1)
+    if((old_last.get(ID_statement)==ID_expression &&
+       old_last.operands().size()==1) || (old_last.get(ID_statement)==ID_assign))
       static_cast<exprt &>(expr)=old_last.op0();
     else
-      throw "statement_expression expects expression as "
+    {
+      std::stringstream str;
+      str << "statement_expression expects expression as "
             "last statement, but got `"+
             id2string(old_last.get(ID_statement))+"'";
+      if(dest.instructions.size() > 0)
+    	str << " - error may be at: " << dest.instructions.back().location;
+      throw str.str();
+    }
   }
 }
 
@@ -466,8 +684,8 @@ void goto_convertt::remove_side_effect(
   goto_programt &dest,
   bool result_is_used)
 {
-  const irep_idt &statement=expr.get(ID_statement);
-
+  const irep_idt &statement=expr.get_statement();
+  
   if(statement==ID_function_call)
     remove_function_call(expr, dest, result_is_used);
   else if(statement==ID_assign ||
@@ -492,15 +710,27 @@ void goto_convertt::remove_side_effect(
   else if(statement==ID_cpp_new ||
           statement=="cpp_new[]")
     remove_cpp_new(expr, dest, result_is_used);
+  else if(statement==ID_cpp_delete ||
+          statement=="cpp_delete[]")
+    remove_cpp_delete(expr, dest, result_is_used);
   else if(statement==ID_malloc)
     remove_malloc(expr, dest, result_is_used);
-  else if(statement=="temporary_object")
+  else if(statement==ID_temporary_object)
     remove_temporary_object(expr, dest, result_is_used);
   else if(statement==ID_statement_expression)
     remove_statement_expression(expr, dest, result_is_used);
   else if(statement==ID_nondet)
   {
     // these are fine
+  }
+  else if(statement==ID_throw)
+  {
+    // the result can't be used, these are void
+    goto_programt::targett t=dest.add_instruction(THROW);
+    t->code=codet(ID_throw);
+    t->code.operands().swap(expr.operands());
+    t->code.location()=expr.location();
+    t->location=expr.location();
   }
   else
   {

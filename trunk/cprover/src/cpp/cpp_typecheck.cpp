@@ -41,6 +41,7 @@ const struct_typet &cpp_typecheckt::this_struct_type()
   assert(this_expr.type().id()==ID_pointer);
 
   const typet &t=follow(this_expr.type().subtype());
+  assert(t.id()==ID_struct);
   return to_struct_type(t);
 }
 
@@ -117,40 +118,10 @@ Function: cpp_typecheckt::convert
 
 \*******************************************************************/
 
-void cpp_typecheckt::convert(cpp_linkage_spect &linkage_spec)
-{
-  irep_idt old_mode;
-  old_mode.swap(current_mode);
-
-  current_mode=linkage_spec.linkage().get(ID_value);
-
-  // do the declarations
-  for(cpp_linkage_spect::itemst::iterator
-      it=linkage_spec.items().begin();
-      it!=linkage_spec.items().end();
-      it++)
-    convert(*it);
-
-  // back to previous linkage spec
-  old_mode.swap(current_mode);
-}
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cpp_typecheckt::convert(cpp_itemt &item)
 {
   if(item.is_declaration())
-    convert(item.get_declaration());
+    convert(to_cpp_declaration(item));
   else if(item.is_linkage_spec())
     convert(item.get_linkage_spec());
   else if(item.is_namespace_spec())
@@ -419,46 +390,49 @@ Function: cpp_typecheckt::do_not_typechecked
 void cpp_typecheckt::do_not_typechecked()
 {
   bool cont;
+
   do
   {
     cont = false;
+
     Forall_symbols(s_it, context.symbols)
     {
-        symbolt &symbol=s_it->second;
+      symbolt &symbol=s_it->second;
 
-        if(symbol.value.id()=="cpp_not_typechecked"
-          && symbol.value.get_bool("is_used"))
+      if(symbol.value.id()=="cpp_not_typechecked"
+        && symbol.value.get_bool("is_used"))
+      {
+        assert(symbol.type.id()==ID_code);
+
+        if(symbol.base_name =="operator=")
         {
-            assert(symbol.type.id()==ID_code);
-
-            if(symbol.base_name =="operator=")
-            {
-              cpp_declaratort declarator;
-              declarator.location() = symbol.location;
-              default_assignop_value(
-                lookup(symbol.type.get("#member_name")),declarator);
-              symbol.value.swap(declarator.value());
-              convert_function(symbol);
-              cont = true;
-            }
-            else if(symbol.value.operands().size() == 1)
-            {
-              exprt tmp = symbol.value.operands()[0];
-              symbol.value.swap(tmp);
-              convert_function(symbol);
-              cont = true;
-            }
-            else assert(0); // Don't know what to do!
+          cpp_declaratort declarator;
+          declarator.location() = symbol.location;
+          default_assignop_value(
+            lookup(symbol.type.get("#member_name")),declarator);
+          symbol.value.swap(declarator.value());
+          convert_function(symbol);
+          cont = true;
         }
+        else if(symbol.value.operands().size() == 1)
+        {
+          exprt tmp = symbol.value.operands()[0];
+          symbol.value.swap(tmp);
+          convert_function(symbol);
+          cont = true;
+        }
+        else
+          assert(0); // Don't know what to do!
+      }
     }
   }
   while(cont);
 
   Forall_symbols(s_it, context.symbols)
   {
-      symbolt &symbol=s_it->second;
-      if(symbol.value.id()=="cpp_not_typechecked")
-        symbol.value.make_nil();
+    symbolt &symbol=s_it->second;
+    if(symbol.value.id()=="cpp_not_typechecked")
+      symbol.value.make_nil();
   }
 }
 
@@ -478,12 +452,12 @@ void cpp_typecheckt::clean_up()
 {
   contextt::symbolst::iterator it=context.symbols.begin();
   
-  while(it != context.symbols.end())
+  while(it!=context.symbols.end())
   {
     contextt::symbolst::iterator cur_it = it;
     it++;
 
-    symbolt& symbol = cur_it->second;
+    symbolt &symbol = cur_it->second;
 
     if(symbol.type.get_bool(ID_is_template))
     {
@@ -494,7 +468,7 @@ void cpp_typecheckt::clean_up()
             symbol.type.id()==ID_union)
     {
       struct_union_typet &struct_union_type=
-        to_struct_type(symbol.type);
+        to_struct_union_type(symbol.type);
 
       const struct_union_typet::componentst &components=
         struct_union_type.components();

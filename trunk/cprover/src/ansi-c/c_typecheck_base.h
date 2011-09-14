@@ -162,12 +162,13 @@ protected:
   virtual void typecheck_break(codet &code);
   virtual void typecheck_continue(codet &code);
   virtual void typecheck_decl(codet &code);
+  virtual void typecheck_decl_type(codet &code);
   virtual void typecheck_decl_block(codet &code);
   virtual void typecheck_expression(codet &code);
   virtual void typecheck_for(codet &code);
   virtual void typecheck_goto(codet &code);
   virtual void typecheck_computed_goto(codet &code);
-  virtual void typecheck_ifthenelse(codet &code);
+  virtual void typecheck_ifthenelse(code_ifthenelset &code);
   virtual void typecheck_label(code_labelt &code);
   virtual void typecheck_return(codet &code);
   virtual void typecheck_switch(codet &code);
@@ -198,7 +199,6 @@ protected:
   virtual void typecheck_expr_address_of(exprt &expr);
   virtual void typecheck_expr_dereference(exprt &expr);
   virtual void typecheck_expr_member(exprt &expr);
-  bool has_component_rec(const typet &type, const irep_idt &component_name);
   virtual void typecheck_expr_ptrmember(exprt &expr);
   virtual void typecheck_expr_rel(exprt &expr);
   virtual void adjust_float_rel(exprt &expr);
@@ -231,6 +231,19 @@ protected:
   virtual void adjust_function_argument(typet &type) const;
   virtual void add_padding(struct_typet &type);
   virtual unsigned alignment(const typet &type) const;
+  virtual bool is_complete_type(const typet &type) const;
+
+  // this cleans expressions in array types
+  virtual void clean_type(
+    const symbolt &base_symbol,
+    typet &type);
+  
+  typedef hash_set_cont<irep_idt, irep_id_hash> already_cleanedt;
+  already_cleanedt already_cleaned;
+
+  // this is for storing side-effects found in types  
+  typedef hash_map_cont<irep_idt, codet, irep_id_hash> clean_codet;
+  clean_codet clean_code;
   
   void make_index_type(exprt &expr);
 

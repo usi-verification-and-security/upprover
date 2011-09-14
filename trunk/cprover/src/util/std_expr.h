@@ -349,6 +349,8 @@ extern inline mod_exprt &to_mod_expr(exprt &expr)
   return static_cast<mod_exprt &>(expr);
 }
 
+// WILL GO AWAY
+
 class equality_exprt:public binary_relation_exprt
 {
 public:
@@ -372,6 +374,33 @@ extern inline equality_exprt &to_equality_expr(exprt &expr)
 {
   assert(expr.id()==ID_equal && expr.operands().size()==2);
   return static_cast<equality_exprt &>(expr);
+}
+
+// USE THIS ONE
+
+class equal_exprt:public binary_relation_exprt
+{
+public:
+  inline equal_exprt():binary_relation_exprt(ID_equal)
+  {
+  }
+
+  inline equal_exprt(const exprt &_lhs, const exprt &_rhs):
+    binary_relation_exprt(_lhs, ID_equal, _rhs)
+  {
+  }
+};
+
+extern inline const equal_exprt &to_equal_expr(const exprt &expr)
+{
+  assert(expr.id()==ID_equal && expr.operands().size()==2);
+  return static_cast<const equal_exprt &>(expr);
+}
+
+extern inline equal_exprt &to_equal_expr(exprt &expr)
+{
+  assert(expr.id()==ID_equal && expr.operands().size()==2);
+  return static_cast<equal_exprt &>(expr);
 }
 
 class index_exprt:public exprt
@@ -1249,5 +1278,51 @@ public:
     set_value(ID_NULL);
   }
 };
+
+class function_application_exprt:public exprt
+{
+public:
+  function_application_exprt():exprt(ID_function_application)
+  {
+    operands().resize(2);
+  }
+
+  exprt &function()
+  {
+    return op0();
+  }
+
+  const exprt &function() const
+  {
+    return op0();
+  }
+
+  typedef exprt::operandst argumentst;
+
+  argumentst &arguments()
+  {
+    return op1().operands();
+  }
+
+  const argumentst &arguments() const
+  {
+    return op1().operands();
+  }
+
+  friend inline const function_application_exprt &to_function_application_expr(const exprt &expr)
+  {
+    assert(expr.id()==ID_function_application && expr.operands().size()==2);
+    return static_cast<const function_application_exprt &>(expr);
+  }
+
+  friend inline function_application_exprt &to_function_application_expr(exprt &expr)
+  {
+    assert(expr.id()==ID_function_application && expr.operands().size()==2);
+    return static_cast<function_application_exprt &>(expr);
+  }
+};
+
+const function_application_exprt &to_function_application_expr(const exprt &expr);
+function_application_exprt &to_function_application_expr(exprt &expr);
 
 #endif

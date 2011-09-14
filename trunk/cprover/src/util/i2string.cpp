@@ -69,7 +69,7 @@ std::string i2string(signed long int i)
 {
   #ifdef USE_SPRINTF
   char buffer[100];
-  #if WIN32
+  #ifdef _WIN32
   #ifdef __MINGW32_VERSION
   snprintf(buffer, sizeof(buffer), "%ld", i);
   #else

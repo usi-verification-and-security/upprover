@@ -1,20 +1,25 @@
+first_target: all
+
 CFLAGS+=$(GCCFLAGS) $(INCLUDES)
-CPLUSFLAGS+=$(GCCFLAGS) $(INCLUDES)
+CXXFLAGS+=$(GCCFLAGS) $(INCLUDES)
 
 .SUFFIXES:	.C .d .cpp
 
 .C.o:
-	$(CPLUS) -c $(CPLUSFLAGS) -o $@ $<
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 .cpp.o:
-	$(CPLUS) -c $(CPLUSFLAGS) -o $@ $<
+	$(CXX) -c $(CXXFLAGS) -o $@ $<
 
 .c.o:
 	$(CC) -c $(CFLAGS) -o $@ $<
 
 # this one is for Visual Studio's compiler:
 %.obj:%.cpp
-	$(CPLUS) $(INCLUDES) /nologo /c /GF /EHsc $< /Fo$@
+	$(CXX) $(CXXFLAGS) /nologo /c /GF /EHsc $< /Fo$@
+
+%.obj:%.cc
+	$(CXX) $(CXXFLAGS) /nologo /c /GF /EHsc $< /Fo$@
 
 %.obj:%.c
 	$(CC) $(INCLUDES) /nologo /c /GF /EHsc $< /Fo$@

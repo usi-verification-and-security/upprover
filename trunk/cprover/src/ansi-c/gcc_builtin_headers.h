@@ -58,11 +58,36 @@
   "long double __builtin_cosl(long double x);\n" \
   "long double __builtin_sqrtl(long double x);\n" \
   "long double __builtin_fabsl(long double x);\n" \
+  "int __builtin_popcount(unsigned int x);\n" \
+  "int __builtin_popcountll(unsigned long long int x);\n" \
+  "float __builtin_huge_valf();\n" \
+  "double __builtin_huge_val();\n" \
   "float __builtin_inff();\n" \
   "double __builtin_inf();\n" \
+  "float __builtin_nanf(const char *);\n" \
+  "double __builtin_nan(const char *);\n" \
+  "float __builtin_nansf(const char *);\n" \
+  "double __builtin_nans(const char *);\n" \
   "long double __builtin_infl();\n" \
   "unsigned __builtin_object_size();\n" \
   "void *__builtin_return_address(unsigned level);\n" \
   "void *__builtin_extract_return_addr(void *);\n" \
   "int __builtin_choose_expr(_Bool, ...);\n" \
+  "int __sync_fetch_and_add(volatile void *, int, ...);\n" \
+  "int __sync_fetch_and_sub(volatile void *, int, ...);\n" \
+  "int __sync_fetch_and_or(volatile void *, int, ...);\n" \
+  "int __sync_fetch_and_and(volatile void *, int, ...);\n" \
+  "int __sync_fetch_and_xor(volatile void *, int, ...);\n" \
+  "int __sync_fetch_and_nand(volatile void *, int, ...);\n" \
+  "int __sync_add_and_fetch(volatile void *, int, ...);\n" \
+  "int __sync_sub_and_fetch(volatile void *, int, ...);\n" \
+  "int __sync_or_and_fetch(volatile void *, int, ...);\n" \
+  "int __sync_and_and_fetch(volatile void *, int, ...);\n" \
+  "int __sync_xor_and_fetch(volatile void *, int, ...);\n" \
+  "int __sync_nand_and_fetch(volatile void *, int, ...);\n" \
+  "_Bool __sync_bool_compare_and_swap(volatile void *, int oldval, int newval, ...);\n" \
+  "int __sync_val_compare_and_swap(volatile void *, int oldval, int newval, ...);\n" \
+  "void __sync_synchronize();\n" \
+  "int __sync_lock_test_and_set(volatile void *, ...);\n" \
+  "void __sync_lock_release(volatile void *, ...);\n" \
   "\n\n"

@@ -76,7 +76,7 @@ digit		[0-9]
 bindigit	[01]
 octdigit	[0-7]
 hexdigit	[0-9a-fA-F]
-identifier	(({letter}|"_")({letter}|{digit}|"_"|"$")*)
+identifier	(({letter}|"_"|"$")({letter}|{digit}|"_"|"$")*)
 integer		{digit}+
 binary		{bindigit}+
 iw_suffix       ("i8"|"i16"|"i32"|"i64"|"i128")
@@ -132,8 +132,8 @@ s_char [^"\\\n]|{escape_sequence}
 %x GRAMMAR
 %x COMMENT1
 %x COMMENT2
-%x MSC_ASM1
-%x MSC_ASM2
+%x ASM_BLOCK
+%x MSC_ASM
 %x MSC_DECLSPEC
 %x MSC_PRAGMA
 %x MSC_ANNOTATION
@@ -142,6 +142,11 @@ s_char [^"\\\n]|{escape_sequence}
 %x GCC_ATTRIBUTE3
 %x GCC_ATTRIBUTE4
 %x GCC_ATTRIBUTE5
+%x GCC_ASM
+%x GCC_ASM_VOLATILE
+%x GCC_ASM_BLOCK1
+%x GCC_ASM_BLOCK2
+%x GCC_ASM_PAREN
 
 %{
 void ansi_c_scanner_init()
@@ -184,7 +189,7 @@ void ansi_c_scanner_init()
 
 <GRAMMAR>"L"?[']{c_char}+['] {
                   newstack(yyansi_clval);
-                  stack(yyansi_clval)=convert_character_literal(yytext);
+                  stack(yyansi_clval)=convert_character_literal(yytext, true);
                   PARSER.set_location(stack(yyansi_clval));
                   return TOK_CHARACTER;
                 }
@@ -229,6 +234,7 @@ void ansi_c_scanner_init()
 "break"		{ loc(); return TOK_BREAK; }
 "case"		{ loc(); return TOK_CASE; }
 "char"		{ loc(); return TOK_CHAR; }
+"_Complex"	{ loc(); return TOK_COMPLEX; }
 "const"		{ loc(); return TOK_CONST; }
 "continue"	{ loc(); return TOK_CONTINUE; }
 "default"	{ loc(); return TOK_DEFAULT; }
@@ -275,7 +281,9 @@ void ansi_c_scanner_init()
                   else
                     return make_identifier();
                 }
-"__int64"       { if(PARSER.mode==ansi_c_parsert::MSC)
+"__int64"       { if(PARSER.mode==ansi_c_parsert::MSC ||
+                     PARSER.mode==ansi_c_parsert::ARM ||
+                     PARSER.mode==ansi_c_parsert::CW)
                     { loc(); return TOK_INT64; }
                   else
                     return make_identifier();
@@ -291,12 +299,34 @@ void ansi_c_scanner_init()
                     return make_identifier();
                 }
 
+"__complex__"	{ if(PARSER.mode==ansi_c_parsert::GCC ||
+                        PARSER.mode==ansi_c_parsert::ARM)
+                    { loc(); return TOK_COMPLEX; }
+                  else
+                    return make_identifier();
+                }
+
+"__real__"	{ if(PARSER.mode==ansi_c_parsert::GCC ||
+                        PARSER.mode==ansi_c_parsert::ARM)
+                    { loc(); return TOK_REAL; }
+                  else
+                    return make_identifier();
+                }
+
+"__imag__"	{ if(PARSER.mode==ansi_c_parsert::GCC ||
+                        PARSER.mode==ansi_c_parsert::ARM)
+                    { loc(); return TOK_IMAG; }
+                  else
+                    return make_identifier();
+                }
+
 %{
 /* note: "wchar_t" should be in the list above, but it is left out */
 /*       because it is a 'typedef' in some standard header files   */
 %}
 
-"__builtin_va_arg" { if(PARSER.mode==ansi_c_parsert::GCC)
+"__builtin_va_arg" { if(PARSER.mode==ansi_c_parsert::GCC ||
+                        PARSER.mode==ansi_c_parsert::ARM)
                     { loc(); return TOK_BUILTIN_VA_ARG; }
                   else
                     return make_identifier();
@@ -304,47 +334,83 @@ void ansi_c_scanner_init()
 
 "__builtin_offsetof" |
 "__offsetof__" |
-"offsetof"      { loc(); return TOK_OFFSETOF; }
+"offsetof"      { if(PARSER.mode==ansi_c_parsert::GCC ||
+                     PARSER.mode==ansi_c_parsert::ARM)
+                    { loc(); return TOK_OFFSETOF; }
+                  else
+                    return make_identifier();
+                }
 
 "__builtin_types_compatible_p" {
-                  if(PARSER.mode==ansi_c_parsert::GCC)
+                  if(PARSER.mode==ansi_c_parsert::GCC ||
+                     PARSER.mode==ansi_c_parsert::ARM)
                     { loc(); return TOK_GCC_BUILTIN_TYPES_COMPATIBLE_P; }
                   else
                     return make_identifier();
                 }
 
-"__alignof__" |
-"__builtin_alignof" { loc(); return TOK_ALIGNOF; }
-
-"__asm"         { if(PARSER.mode==ansi_c_parsert::MSC)
-                  {
-                    loc();
-                    BEGIN(MSC_ASM1);
-                    return TOK_MSC_ASM;
-                  }
-                  else
-                  {
-                    loc();
-                    return TOK_GCC_ASM;
-                  }
-                }
-
-"asm"           { if(PARSER.mode==ansi_c_parsert::GCC)
-                    { loc(); return TOK_GCC_ASM; }
+"__alignof__"   { if(PARSER.mode==ansi_c_parsert::GCC ||
+                     PARSER.mode==ansi_c_parsert::ARM)
+                    { loc(); return TOK_ALIGNOF; }
                   else
                     return make_identifier();
                 }
 
-"__asm__"       { loc(); return TOK_GCC_ASM; }
+"__ALIGNOF__"   { if(PARSER.mode==ansi_c_parsert::ARM)
+                    { loc(); return TOK_ALIGNOF; }
+                  else
+                    return make_identifier();
+                }
 
-"[repeatable"   { BEGIN(MSC_ANNOTATION); }
-"[source_annotation_attribute" { BEGIN(MSC_ANNOTATION); }
-"[returnvalue"  { BEGIN(MSC_ANNOTATION); }
-"[SA_Pre"       { BEGIN(MSC_ANNOTATION); }
-"[SA_Post"      { BEGIN(MSC_ANNOTATION); }
-"[SA_FormatString" { BEGIN(MSC_ANNOTATION); }
+"__builtin_alignof" { if(PARSER.mode==ansi_c_parsert::GCC ||
+                         PARSER.mode==ansi_c_parsert::ARM)
+                    { loc(); return TOK_ALIGNOF; }
+                  else
+                    return make_identifier();
+                }
 
-"__declspec"    { if(PARSER.mode==ansi_c_parsert::MSC)
+"__asm"         { if(PARSER.mode==ansi_c_parsert::MSC)
+                  {
+                    loc();
+                    BEGIN(MSC_ASM);
+                    return TOK_MSC_ASM;
+                  }
+                  else
+                    BEGIN(GCC_ASM);
+                }
+
+"asm"           { if(PARSER.mode==ansi_c_parsert::GCC ||
+                     PARSER.mode==ansi_c_parsert::CW)
+                    BEGIN(GCC_ASM);
+                  else
+                    return make_identifier();
+                }
+
+"__asm__"       { if(PARSER.mode==ansi_c_parsert::GCC ||
+                     PARSER.mode==ansi_c_parsert::CW ||
+                     PARSER.mode==ansi_c_parsert::ARM)
+                    BEGIN(GCC_ASM);
+                  else
+                    return make_identifier();
+                }
+
+"["{ws}"repeatable"   { BEGIN(MSC_ANNOTATION); }
+"["{ws}"source_annotation_attribute" { BEGIN(MSC_ANNOTATION); }
+"["{ws}"returnvalue"  { BEGIN(MSC_ANNOTATION); }
+"["{ws}"SA_Pre"       { BEGIN(MSC_ANNOTATION); }
+"["{ws}"SA_Post"      { BEGIN(MSC_ANNOTATION); }
+"["{ws}"SA_FormatString" { BEGIN(MSC_ANNOTATION); }
+"["{ws}"SA_Success"   { BEGIN(MSC_ANNOTATION); }
+"["{ws}"uuid"         { BEGIN(MSC_ANNOTATION); }
+"["{ws}"emitidl"      { BEGIN(MSC_ANNOTATION); }
+"["{ws}"module"       { BEGIN(MSC_ANNOTATION); }
+"["{ws}"export"       { BEGIN(MSC_ANNOTATION); }
+
+
+"__declspec" |
+"_declspec"     { if(PARSER.mode==ansi_c_parsert::MSC ||
+                     PARSER.mode==ansi_c_parsert::CW ||
+                     PARSER.mode==ansi_c_parsert::ARM)
                   {
                     BEGIN(MSC_DECLSPEC);
                     PARSER.parenthesis_counter=0;
@@ -363,7 +429,9 @@ void ansi_c_scanner_init()
                 }
 
 "__attribute__" |
-"__attribute"   { if(PARSER.mode==ansi_c_parsert::GCC)
+"__attribute"   { if(PARSER.mode==ansi_c_parsert::GCC ||
+                     PARSER.mode==ansi_c_parsert::CW ||
+                     PARSER.mode==ansi_c_parsert::ARM)
                     BEGIN(GCC_ATTRIBUTE1);
                   else
                     return make_identifier();
@@ -394,11 +462,158 @@ void ansi_c_scanner_init()
 "__volatile"    { loc(); return TOK_VOLATILE; }
 "__volatile__"  { loc(); return TOK_VOLATILE; }
 
-"typeof"        { loc(); return TOK_TYPEOF; }
-"__typeof"      { loc(); return TOK_TYPEOF; }
+"__pure"        { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    // ignore
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__align"       { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    BEGIN(MSC_DECLSPEC);
+                    PARSER.parenthesis_counter=0;
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__smc"         { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    BEGIN(MSC_DECLSPEC);
+                    PARSER.parenthesis_counter=0;
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__INTADDR__"   { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    // ignore
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__irq"         { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    // ignore
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__packed"      { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    // ignore
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__value_in_regs" { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    // ignore
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__weak"        { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    // ignore
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__writeonly"   { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    // ignore
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__global_reg"  { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    BEGIN(MSC_DECLSPEC);
+                    PARSER.parenthesis_counter=0;
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__svc"         { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    BEGIN(MSC_DECLSPEC);
+                    PARSER.parenthesis_counter=0;
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__svc_indirect" { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    BEGIN(MSC_DECLSPEC);
+                    PARSER.parenthesis_counter=0;
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__svc_indirect_r7" { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    BEGIN(MSC_DECLSPEC);
+                    PARSER.parenthesis_counter=0;
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"__softfp"      { /* an ARM extension */
+                  if(PARSER.mode==ansi_c_parsert::ARM)
+                  {
+                    // ignore
+                  }
+                  else
+                    return make_identifier();
+                }
+
+"typeof"        { if(PARSER.mode==ansi_c_parsert::GCC ||
+                     PARSER.mode==ansi_c_parsert::ICC ||
+                     PARSER.mode==ansi_c_parsert::CW ||
+                     PARSER.mode==ansi_c_parsert::ARM)
+                    { loc(); return TOK_TYPEOF; }
+                  else
+                    return make_identifier();
+                }
+"__typeof"      { if(PARSER.mode==ansi_c_parsert::GCC ||
+                     PARSER.mode==ansi_c_parsert::ICC ||
+                     PARSER.mode==ansi_c_parsert::ARM)
+                    { loc(); return TOK_TYPEOF; }
+                  else
+                    return make_identifier();
+                }
+
 "__typeof__"    { loc(); return TOK_TYPEOF; }
 
-"__forceinline" { if(PARSER.mode==ansi_c_parsert::MSC)
+"__forceinline" { if(PARSER.mode==ansi_c_parsert::MSC ||
+                     PARSER.mode==ansi_c_parsert::ARM)
                     { loc(); return TOK_INLINE; }
                   else
                     return make_identifier();
@@ -406,7 +621,8 @@ void ansi_c_scanner_init()
 "__inline"	{ loc(); return TOK_INLINE; }
 "__inline__"	{ loc(); return TOK_INLINE; }
 
-"__label__"     { if(PARSER.mode==ansi_c_parsert::GCC)
+"__label__"     { if(PARSER.mode==ansi_c_parsert::GCC ||
+                     PARSER.mode==ansi_c_parsert::ARM)
                     { loc(); return TOK_GCC_LABEL; }
                   else
                     return make_identifier();
@@ -444,13 +660,17 @@ void ansi_c_scanner_init()
 "__CPROVER_exists" { loc(); return TOK_EXISTS; }
 "__CPROVER_array_of" { loc(); return TOK_ARRAY_OF; }
 "__CPROVER_thread_local" { loc(); return TOK_THREAD_LOCAL; }
+"__CPROVER_bitvector" { loc(); return TOK_CPROVER_BITVECTOR; }
 
-"__thread"      { if(PARSER.mode==ansi_c_parsert::GCC)
+"__thread"      { if(PARSER.mode==ansi_c_parsert::GCC ||
+                     PARSER.mode==ansi_c_parsert::ARM)
                     { loc(); return TOK_THREAD_LOCAL; }
                   else
                     return make_identifier();
                 }
 }
+
+  /* operands following */
 
 <GRAMMAR>{
 "->"		{ loc(); return TOK_ARROW; }
@@ -537,23 +757,39 @@ void ansi_c_scanner_init()
 		  return TOK_FLOATING;
 		}
 
+"{"             { 
+                  PARSER.tag_following=false;
+                  if(PARSER.asm_block_following) { BEGIN(ASM_BLOCK); }
+                  loc();
+                  return yytext[0];
+                }
+
+";"             { PARSER.asm_block_following=false;
+                  PARSER.tag_following=false;
+                  loc();
+                  return yytext[0];
+                }
+
 .		{ loc(); PARSER.tag_following=false; return yytext[0]; }
 }
 
 <MSC_ANNOTATION>"]" { BEGIN(GRAMMAR); }
 <MSC_ANNOTATION>. { /* ignore */ }
 
-<MSC_ASM1>{ws}"{" { BEGIN(MSC_ASM2); return '{'; }
-<MSC_ASM1>[^{^}]* { loc();
+<MSC_ASM>{ws}"{" { BEGIN(ASM_BLOCK); loc(); return '{'; }
+<MSC_ASM>[^{^}^\n]* { loc();
                   stack(yyansi_clval).set(ID_value, yytext);
+                  stack(yyansi_clval).id(ID_string_constant);
                   BEGIN(GRAMMAR);
-                  return TOK_STRING;
+                  return TOK_ASM_STRING;
                 }
 
-<MSC_ASM2>[^}]* { loc();
+<ASM_BLOCK>[^}]* { loc();
                   stack(yyansi_clval).set(ID_value, yytext);
-                  return TOK_STRING; }
-<MSC_ASM2>"}"   { BEGIN(GRAMMAR); return '}'; }
+                  stack(yyansi_clval).id(ID_string_constant);
+                  return TOK_ASM_STRING; }
+<ASM_BLOCK>"}"  { PARSER.asm_block_following=false;
+                  BEGIN(GRAMMAR); loc(); return '}'; }
 
 <MSC_DECLSPEC>")"    { PARSER.parenthesis_counter--;
                         if(PARSER.parenthesis_counter==0)
@@ -567,6 +803,18 @@ void ansi_c_scanner_init()
 <MSC_PRAGMA>"("    { PARSER.parenthesis_counter++; }
 <MSC_PRAGMA>.      { /* Throw away */ }
 
+  /* The following ugly stuff avoids two-token lookahead in the parser;
+     e.g., asm void f()  vs.  asm ("xyz") or asm { ... } */
+<GCC_ASM>{
+{ws}            { /* ignore */ }
+{newline}       { /* ignore */ }
+"{"             { yyless(0); BEGIN(GRAMMAR); loc(); PARSER.asm_block_following=true; return TOK_GCC_ASM_PAREN; }
+"("             { yyless(0); BEGIN(GRAMMAR); loc(); return TOK_GCC_ASM_PAREN; }
+"volatile"      { yyless(0); BEGIN(GRAMMAR); loc(); return TOK_GCC_ASM_PAREN; }
+"__volatile__"  { yyless(0); BEGIN(GRAMMAR); loc(); return TOK_GCC_ASM_PAREN; }
+.               { yyless(0); BEGIN(GRAMMAR); loc(); PARSER.asm_block_following=true; return TOK_GCC_ASM; }
+}
+
 <GCC_ATTRIBUTE1>{
 "("{ws}"("      { BEGIN(GCC_ATTRIBUTE2); PARSER.parenthesis_counter=0; }
 {ws}            { /* ignore */ }
@@ -575,12 +823,19 @@ void ansi_c_scanner_init()
 }
 
 <GCC_ATTRIBUTE2>{ // an attribute is following -- these may be keywords!
-"vector_size"       { BEGIN(GCC_ATTRIBUTE3); loc(); return TOK_GCC_ATTRIBUTE_VECTOR_SIZE; }
-"__vector_size__"   { BEGIN(GCC_ATTRIBUTE3); loc(); return TOK_GCC_ATTRIBUTE_VECTOR_SIZE; }
-"packed"            { BEGIN(GCC_ATTRIBUTE3); loc(); return TOK_GCC_ATTRIBUTE_PACKED; }
+
+"aligned" |
+"__aligned__"       { BEGIN(GCC_ATTRIBUTE3); loc(); return TOK_GCC_ATTRIBUTE_ALIGNED; }
+
+"packed" |
 "__packed__"        { BEGIN(GCC_ATTRIBUTE3); loc(); return TOK_GCC_ATTRIBUTE_PACKED; }
+
+"transparent_union" |
 "__transparent_union__" { BEGIN(GCC_ATTRIBUTE3); loc(); return TOK_GCC_ATTRIBUTE_TRANSPARENT_UNION; }
-"transparent_union" { BEGIN(GCC_ATTRIBUTE3); loc(); return TOK_GCC_ATTRIBUTE_TRANSPARENT_UNION; }
+
+"vector_size" |
+"__vector_size__"   { BEGIN(GCC_ATTRIBUTE3); loc(); return TOK_GCC_ATTRIBUTE_VECTOR_SIZE; }
+
 {ws}                { /* ignore */ }
 {newline}           { /* ignore */ }
 {identifier}        { BEGIN(GCC_ATTRIBUTE4); }
@@ -591,7 +846,11 @@ void ansi_c_scanner_init()
 <GCC_ATTRIBUTE3>{ // an attribute we do process
 "("             { PARSER.parenthesis_counter++; loc(); return '('; }
 ")"             { if(PARSER.parenthesis_counter==0)
+                  {
                     BEGIN(GCC_ATTRIBUTE5);
+                    loc();
+                    return TOK_GCC_ATTRIBUTE_END;
+                  }
                   else
                   {
                     PARSER.parenthesis_counter--;
@@ -600,7 +859,11 @@ void ansi_c_scanner_init()
                   }
                 }
 ","             { if(PARSER.parenthesis_counter==0)
+                  {
                     BEGIN(GCC_ATTRIBUTE2);
+                    loc();
+                    return TOK_GCC_ATTRIBUTE_END;
+                  }
                   else
                   {
                     loc();
@@ -621,6 +884,14 @@ void ansi_c_scanner_init()
                 }
 {ws}            { /* ignore */ }
 {newline}       { /* ignore */ }
+"<<"		{ loc(); return TOK_SHIFTLEFT; }
+">>"		{ loc(); return TOK_SHIFTRIGHT; }
+"<="		{ loc(); return TOK_LE; }
+">="		{ loc(); return TOK_GE; }
+"=="		{ loc(); return TOK_EQ; }
+"!="		{ loc(); return TOK_NE; }
+"&&"		{ loc(); return TOK_ANDAND; }
+"||"		{ loc(); return TOK_OROR; }
 .               { loc(); return yytext[0]; }
 }
 

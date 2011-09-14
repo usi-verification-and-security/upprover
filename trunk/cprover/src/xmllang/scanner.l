@@ -18,8 +18,7 @@ static int isatty(int) { return 0; }
 
 //static int keep;			/* To store start condition */
 
-
-static char* word(char *s)
+static char *word(char *s)
 {
   char *buf;
   int i, k;
@@ -63,20 +62,20 @@ string		\"([^"&]|{esc})*\"|\'([^'&]|{esc})*\'
 <INITIAL>"/"		{return SLASH;}
 <INITIAL>"="		{return EQ;}
 <INITIAL>{close}	{BEGIN(CONTENT); return CLOSE;}
-<INITIAL>{name}		{yyxmllval.s = strdup(yytext); return NAME;}
-<INITIAL>{string}	{yyxmllval.s = strdup(yytext); return VALUE;}
+<INITIAL>{name}		{yyxmllval.s=strdup(yytext); return NAME;}
+<INITIAL>{string}	{yyxmllval.s=strdup(yytext); return VALUE;}
 <INITIAL>"?"{close}	{BEGIN(INITIAL); return ENDPI;}
 
-{open}{ws}?{name}	{BEGIN(INITIAL); yyxmllval.s= word(yytext); return START;}
+{open}{ws}?{name}	{BEGIN(INITIAL); yyxmllval.s=word(yytext); return START;}
 {open}{ws}?"/"		{BEGIN(INITIAL); return END;}
 {open}"?xml"		{BEGIN(INITIAL); return STARTXMLDECL;}
-{open}"?"		{BEGIN(PI); yyxmllval.s= word(yytext); return STARTPI;}
-{comment}		{yyxmllval.s = strdup(yytext); return COMMENT;}
+{open}"?"		{BEGIN(PI); yyxmllval.s=word(yytext); return STARTPI;}
+{comment}		{yyxmllval.s=strdup(yytext); return COMMENT;}
 
 <PI>"?"{close}		{BEGIN(INITIAL); return ENDPI;}
-<PI>{data}		{yyxmllval.s = strdup(yytext); return DATA;}
+<PI>{data}		{yyxmllval.s=strdup(yytext); return DATA;}
 
-<CONTENT>{data}		{yyxmllval.s = strdup(yytext); return DATA;}
+<CONTENT>{data}		{yyxmllval.s=strdup(yytext); return DATA;}
 
 .			{ yyxmlerror("unexpected charater"); }
 {nl}			{/* skip, must be an extra one at EOF */;}

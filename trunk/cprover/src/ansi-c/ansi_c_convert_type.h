@@ -20,14 +20,16 @@ class ansi_c_convert_typet:public message_streamt
 public:
   unsigned unsigned_cnt, signed_cnt, char_cnt,
            int_cnt, short_cnt, long_cnt,
-           double_cnt, float_cnt, bool_cnt;
+           double_cnt, float_cnt, bool_cnt,
+           complex_cnt;
   
   // extensions
   unsigned int8_cnt, int16_cnt, int32_cnt, int64_cnt,
-           ptr32_cnt, ptr64_cnt;
+           ptr32_cnt, ptr64_cnt,
+           bv_cnt, bv_width;
            
   bool transparent_union, packed, aligned;
-  exprt vector_size;
+  exprt vector_size, alignment;
 
   // storage spec
   c_storage_spect c_storage_spec;
@@ -50,10 +52,13 @@ public:
   void clear()
   {
     unsigned_cnt=signed_cnt=char_cnt=int_cnt=short_cnt=
-    long_cnt=double_cnt=float_cnt=bool_cnt=
+    long_cnt=double_cnt=float_cnt=bool_cnt=complex_cnt=
     int8_cnt=int16_cnt=int32_cnt=int64_cnt=
-    ptr32_cnt=ptr64_cnt=0;
+    ptr32_cnt=ptr64_cnt=
+    bv_cnt=0;
     vector_size.make_nil();
+    alignment.make_nil();
+    bv_width=0;
     
     packed=aligned=transparent_union=false;
 

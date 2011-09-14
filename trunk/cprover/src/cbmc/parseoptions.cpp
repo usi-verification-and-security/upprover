@@ -23,6 +23,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/string_abstraction.h>
 #include <goto-programs/string_instrumentation.h>
 #include <goto-programs/loop_numbers.h>
+#include <goto-programs/link_to_library.h>
 
 #include <pointer-analysis/value_set_analysis.h>
 #include <pointer-analysis/goto_program_dereference.h>
@@ -420,6 +421,12 @@ bool cbmc_parseoptionst::get_goto_program(
         show_symbol_table();
         return true;
       }
+      
+      if(context.symbols.find(ID_main)==context.symbols.end())
+      {
+        error("The goto binary has no entry point; please complete linking");
+        return true;
+      }
     }
     else
     {
@@ -437,11 +444,22 @@ bool cbmc_parseoptionst::get_goto_program(
         return true;
       }
 
+      if(context.symbols.find(ID_main)==context.symbols.end())
+      {
+        error("No entry point; please provide a main function");
+        return true;
+      }
+
       status("Generating GOTO Program");
 
       goto_convert(
         context, bmc.options, goto_functions,
         ui_message_handler);
+        
+      // finally add the library
+      status("Adding CPROVER library");      
+      link_to_library(
+        context, goto_functions, bmc.options, ui_message_handler);
     }
 
     if(cmdline.isset("interpreter"))
@@ -752,7 +770,6 @@ void cbmc_parseoptionst::help()
     " --round-to-minus-inf         IEEE floating point rounding mode\n"
     " --round-to-zero              IEEE floating point rounding mode\n"
     " --interpreter                do concrete execution\n"
-    " --binary                     read goto program instead of source code\n"
     "\n"
     "Program instrumentation options:\n"
     " --bounds-check               enable array bounds checks\n"
@@ -790,7 +807,7 @@ void cbmc_parseoptionst::help()
     " --yices                      use Yices (experimental)\n"
     " --z3                         use Z3 (experimental)\n"
     " --refine                     use refinement procedure (experimental)\n"
-    " --outfile Filename           output to given file\n"
+    " --outfile filename           output formula to given file\n"
     " --arrays-uf-never            never turn arrays into uninterpreted functions\n"
     " --arrays-uf-always           always turn arrays into uninterpreted functions\n"
     "\n"

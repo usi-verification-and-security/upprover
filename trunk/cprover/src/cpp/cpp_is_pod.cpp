@@ -52,36 +52,41 @@ bool cpp_typecheckt::cpp_is_pod(const typet &type) const
     // * private/protected, unless static
     // * overloading assignment operator
     // * Base classes
+    
+    const struct_typet &struct_type=to_struct_type(type);
 
     if(!type.find(ID_bases).get_sub().empty())
       return false;
 
-    const irept::subt &components=
-      type.find(ID_components).get_sub();
+    const struct_typet::componentst &components=
+      struct_type.components();
 
-    forall_irep(it, components)
+    for(struct_typet::componentst::const_iterator
+        it=components.begin();
+        it!=components.end();
+        it++)
     {
       if(it->get_bool(ID_is_type))
         continue;
 
-      if(it->get(ID_base_name)=="operator=")
+      if(it->get_base_name()=="operator=")
         return false;
 
       if(it->get_bool(ID_is_virtual))
         return false;
       
-      const typet &sub_type=(typet &)it->find(ID_type);
+      const typet &sub_type=it->type();
 
       if(sub_type.id()==ID_code)
       {
         if(it->get_bool(ID_is_virtual))
           return false;
 
-        const typet &return_type=(typet &)sub_type.find(ID_return_type);
+        const typet &return_type=to_code_type(sub_type).return_type();
+
         if(return_type.id()==ID_constructor ||
            return_type.id()==ID_destructor)
           return false;
-
       }
       else if(it->get(ID_access)!=ID_public &&
               !it->get_bool(ID_is_static))
@@ -102,7 +107,7 @@ bool cpp_typecheckt::cpp_is_pod(const typet &type) const
     if(is_reference(type)) // references are not PODs
       return false;
 
-    // pointers are PODs!
+    // but pointers are PODs!
     return true;
   }
   else if(type.id()==ID_symbol)
@@ -112,5 +117,6 @@ bool cpp_typecheckt::cpp_is_pod(const typet &type) const
     return cpp_is_pod(symb.type);
   }
 
+  // everything else is POD
   return true;
 }

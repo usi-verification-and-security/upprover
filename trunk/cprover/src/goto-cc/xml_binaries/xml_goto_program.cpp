@@ -25,8 +25,9 @@ Function: convert
           and the namespace into the given xml object.
  
 \*******************************************************************/
-void convert( const goto_programt& goto_program,
-              xmlt& xml)
+
+void convert(const goto_programt &goto_program,
+             xmlt &xml)
 {
   std::stringstream tmp;
   // std::cout << "TNO: " << goto_program.target_numbers.size() << std::endl;
@@ -52,7 +53,7 @@ void convert( const goto_programt& goto_program,
           l_it!=ins_it->labels.end();
           l_it++)
       {
-        lbl.new_element("label").set_attribute("name", xmlt::escape(id2string(*l_it)));
+        lbl.new_element("label").set_attribute("name", id2string(*l_it));
       }
     }
 
@@ -97,7 +98,7 @@ void convert( const goto_programt& goto_program,
           const irep_idt &comment=ins_it->location.get("comment");
 
           if(comment!="")
-            ins.new_element("comment").data = xmlt::escape(id2string(comment));
+            ins.new_element("comment").data=id2string(comment);
 
           break;
         }
@@ -110,7 +111,7 @@ void convert( const goto_programt& goto_program,
           const irep_idt &comment=ins_it->location.get("comment");
 
           if(comment!="")
-            ins.new_element("comment").data = xmlt::escape(id2string(comment));
+            ins.new_element("comment").data=id2string(comment);
 
           break;
         }
@@ -313,7 +314,7 @@ void convert( const xmlt& xml,
           if (lit->name=="label")
           {
             std::string ls = lit->get_attribute("name");
-            inst->labels.push_back(xmlt::unescape(ls));
+            inst->labels.push_back(ls);
           }
           else
           {
@@ -337,7 +338,7 @@ void convert( const xmlt& xml,
       }
       else if (eit->name=="comment")
       {
-        inst->location.set("comment",xmlt::unescape(eit->data));
+        inst->location.set("comment", eit->data);
       }
       else if (eit->name=="function")
       {

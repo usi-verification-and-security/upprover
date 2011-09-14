@@ -153,7 +153,8 @@ protected:
 
   virtual std::string convert(const exprt &src, unsigned &precedence);
 
-  std::string convert_function_call(const exprt &src, unsigned &precedence);
+  std::string convert_function_application(const function_application_exprt &src, unsigned &precedence);
+  std::string convert_side_effect_expr_function_call(const side_effect_expr_function_callt &src, unsigned &precedence);
   std::string convert_malloc(const exprt &src, unsigned &precedence);
   std::string convert_nondet(const exprt &src, unsigned &precedence);
   std::string convert_prob_coin(const exprt &src, unsigned &precedence);

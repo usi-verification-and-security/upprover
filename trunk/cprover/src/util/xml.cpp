@@ -74,15 +74,17 @@ void xmlt::output(std::ostream &out, unsigned indent) const
       it=attributes.begin();
       it!=attributes.end();
       it++)
+  {
     out << ' ' << it->first
-    << '=' << '"'
-    << it->second
-    << '"';
+        << '=' << '"';
+    escape_attribute(it->second, out);
+    out << '"';
+  }
 
   out << '>';
 
   if(elements.empty())
-    out << data;
+    escape(data, out);
   else
   {
     out << std::endl;
@@ -111,10 +113,8 @@ Function: xmlt::escape
 
 \*******************************************************************/
 
-std::string xmlt::escape(const std::string &s)
+void xmlt::escape(const std::string &s, std::ostream &out)
 {
-  std::string result;
-
   for(unsigned i=0; i<s.size(); i++)
   {
     const char ch=s[i];
@@ -122,26 +122,24 @@ std::string xmlt::escape(const std::string &s)
     switch(ch)
     {
     case '&':
-      result+="&amp;";
+      out << "&amp;";
       break;
 
     case '<':
-      result+="&lt;";
+      out << "&lt;";
       break;
 
     case '>':
-      result+="&gt;";
+      out << "&gt;";
       break;
 
     default:
-      if(ch<' ')
-        result+="&#"+i2string((unsigned char)ch)+";";
+      if(ch<' ' || ch>=127)
+        out << "&#"+i2string((unsigned char)ch)+";";
       else
-        result+=ch;
+        out << ch;
     }
   }
-
-  return result;
 }
 
 /*******************************************************************\
@@ -156,10 +154,8 @@ Function: xmlt::escape_attribute
 
 \*******************************************************************/
 
-std::string xmlt::escape_attribute(const std::string &s)
+void xmlt::escape_attribute(const std::string &s, std::ostream &out)
 {
-  std::string result;
-
   for(unsigned i=0; i<s.size(); i++)
   {
     const char ch=s[i];
@@ -167,27 +163,25 @@ std::string xmlt::escape_attribute(const std::string &s)
     switch(ch)
     {
     case '&':
-      result+="&amp;";
+      out << "&amp;";
       break;
 
     case '<':
-      result+="&lt;";
+      out << "&lt;";
       break;
 
     case '>':
-      result+="&gt;";
+      out << "&gt;";
       break;
 
     case '"':
-      result+="&quot;";
+      out << "&quot;";
       break;
 
     default:
-      result+=ch;
+      out << ch;
     }
   }
-
-  return result;
 }
 
 /*******************************************************************\
@@ -335,7 +329,7 @@ std::string xmlt::unescape(const std::string &str)
       else if(tmp=="amp") result+='&';
       else if(tmp[0]=='#' && tmp[1]!='x')
       {
-        char c = atoi(tmp.substr(1, tmp.size()-1).c_str());
+        char c=atoi(tmp.substr(1, tmp.size()-1).c_str());
         result+=c;
       }
       else

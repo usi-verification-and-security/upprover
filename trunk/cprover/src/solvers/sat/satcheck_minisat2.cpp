@@ -7,6 +7,7 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <assert.h>
+#include <inttypes.h>
 
 #include <stack>
 
@@ -14,8 +15,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "satcheck_minisat2.h"
 
-#include <Solver.h>
-#include <SimpSolver.h>
+#include <core/Solver.h>
+#include <simp/SimpSolver.h>
 
 #ifndef HAVE_MINISAT2
 #error "Expected HAVE_MINISAT2"
@@ -33,12 +34,12 @@ Function: convert
 
 \*******************************************************************/
 
-void convert(const bvt &bv, vec<Lit> &dest)
+void convert(const bvt &bv, Minisat::vec<Minisat::Lit> &dest)
 {
   dest.growTo(bv.size());
   
   for(unsigned i=0; i<bv.size(); i++)
-    dest[i]=Lit(bv[i].var_no(), bv[i].sign());
+    dest[i]=Minisat::mkLit(bv[i].var_no(), bv[i].sign());
 }
 
 /*******************************************************************\
@@ -64,6 +65,8 @@ tvt satcheck_minisat_baset::l_get(literalt a) const
 
   if(a.var_no()>=(unsigned)solver->model.size())
     return tvt(tvt::TV_UNKNOWN);
+
+  using Minisat::lbool;
 
   if(solver->model[a.var_no()]==l_True)
     result=tvt(true);
@@ -96,7 +99,7 @@ const std::string satcheck_minisat_baset::solver_text()
 
 /*******************************************************************\
 
-Function: satcheck_minisatt::solver_text
+Function: satcheck_minisat_coret::solver_text
 
   Inputs:
 
@@ -106,7 +109,7 @@ Function: satcheck_minisatt::solver_text
 
 \*******************************************************************/
 
-const std::string satcheck_minisatt::solver_text()
+const std::string satcheck_minisat_coret::solver_text()
 {
   return "MiniSAT2 without simplifier";
 }
@@ -174,7 +177,7 @@ void satcheck_minisat_baset::lcnf(const bvt &bv)
 
   add_variables();
 
-  vec<Lit> c;
+  Minisat::vec<Minisat::Lit> c;
   convert(new_bv, c);
 
   for(unsigned i=0; i<new_bv.size(); i++)
@@ -224,7 +227,7 @@ propt::resultt satcheck_minisat_baset::prop_solve()
   }
   else
   {
-    vec<Lit> MiniSat_assumptions;
+    Minisat::vec<Minisat::Lit> MiniSat_assumptions;
     convert(assumptions, MiniSat_assumptions);
 
     if(solver->solve(MiniSat_assumptions))
@@ -268,12 +271,12 @@ void satcheck_minisat_baset::set_assignment(literalt a, bool value)
   // MiniSat2 kills the model in case of UNSAT
   solver->model.growTo(v+1);
   value^=sign;
-  solver->model[v]=lbool(value);
+  solver->model[v]=Minisat::lbool(value);
 }
 
 /*******************************************************************\
 
-Function: satcheck_minisatt::satcheck_minisatt
+Function: satcheck_minisat_coret::satcheck_minisatt
 
   Inputs:
 
@@ -283,14 +286,14 @@ Function: satcheck_minisatt::satcheck_minisatt
 
 \*******************************************************************/
 
-satcheck_minisatt::satcheck_minisatt()
+satcheck_minisat_coret::satcheck_minisat_coret()
 {
-  solver=new Solver;
+  solver=new Minisat::Solver;
 }
 
 /*******************************************************************\
 
-Function: satcheck_minisatt::satcheck_minisat_simpt
+Function: satcheck_minisat_simpt::satcheck_minisat_simpt
 
   Inputs:
 
@@ -302,7 +305,7 @@ Function: satcheck_minisatt::satcheck_minisat_simpt
 
 satcheck_minisat_simpt::satcheck_minisat_simpt()
 {
-  solver=new SimpSolver;
+  solver=new Minisat::SimpSolver;
 }
 
 /*******************************************************************\

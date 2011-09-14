@@ -64,20 +64,21 @@ inline void *calloc(size_t nmemb, size_t size)
 
 #undef malloc
 
-inline void *malloc(size_t size)
+inline void *malloc(size_t malloc_size)
 {
   // realistically, malloc may return NULL,
   // and __CPROVER_malloc doesn't, but no one cares
   __CPROVER_HIDE:;
   void *res;
-  res=__CPROVER_malloc(size);
+  res=__CPROVER_malloc(malloc_size);
 
   // make sure it's not recorded as deallocated
   __CPROVER_deallocated=(res==__CPROVER_deallocated)?0:__CPROVER_deallocated;
   
   // record the object size for non-determistic bounds checking
-  __CPROVER_bounds_check=res;
-  __CPROVER_malloc_size=size;
+  _Bool record_malloc;
+  __CPROVER_malloc_object=record_malloc?res:__CPROVER_malloc_object;
+  __CPROVER_malloc_size=record_malloc?malloc_size:__CPROVER_malloc_size;
   
   return res;
 }

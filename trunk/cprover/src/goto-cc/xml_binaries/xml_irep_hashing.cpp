@@ -29,8 +29,8 @@ void xml_irep_convertt::convert(
   const irept &irep,
   xmlt &xml)
 {  
-  if (irep.id()!="nil")
-    xml.new_element("id").data = xmlt::escape(irep.id_string());
+  if(irep.id()!="nil")
+    xml.new_element("id").data=irep.id_string();
     
   forall_irep(it, irep.get_sub())
   { 
@@ -79,7 +79,7 @@ void xml_irep_convertt::convert(
     } 
     else if (it->name=="id")
     {
-      irep.id(xmlt::unescape(it->data));
+      irep.id(it->data);
     }
     else if (it->name=="ns")
     {

@@ -89,6 +89,9 @@ bool cpp_languaget::preprocess(
   std::ostream &outstream,
   message_handlert &message_handler)
 {
+  if(path=="")
+    return c_preprocess(instream, outstream, message_handler);
+
   // check extension
 
   const char *ext=strrchr(path.c_str(), '.');
@@ -104,7 +107,7 @@ bool cpp_languaget::preprocess(
     return false;
   }
 
-  return c_preprocess(instream, path, outstream, message_handler);
+  return c_preprocess(path, outstream, message_handler);
 }
 
 /*******************************************************************\
@@ -287,7 +290,10 @@ void cpp_languaget::show_parse(
   {
     const cpp_usingt &cpp_using=item.get_using();
 
-    out << "USING " << cpp_using.name() << std::endl;
+    out << "USING ";
+    if(cpp_using.get_namespace())
+      out << "NAMESPACE ";
+    out << cpp_using.name() << std::endl;
     out << std::endl;
   }
   else if(item.is_declaration())

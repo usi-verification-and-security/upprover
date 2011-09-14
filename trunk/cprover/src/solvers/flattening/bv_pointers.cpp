@@ -51,16 +51,15 @@ literalt bv_pointerst::convert_rest(const exprt &expr)
         encode(pointer_logic.get_null_object(),    null_bv);
 
         bvt equal_invalid_bv, equal_null_bv;
-        equal_invalid_bv.resize(addr_bits);
-        equal_null_bv.resize(addr_bits);
+        equal_invalid_bv.resize(object_bits);
+        equal_null_bv.resize(object_bits);
 
-        for(unsigned i=0; i<addr_bits; i++)
+        for(unsigned i=0; i<object_bits; i++)
         {
           equal_invalid_bv[i]=prop.lequal(bv[offset_bits+i],
                                           invalid_bv[offset_bits+i]);
           equal_null_bv[i]   =prop.lequal(bv[offset_bits+i],
                                           null_bv[offset_bits+i]);
-
         }
 
         literalt equal_invalid=prop.land(equal_invalid_bv);
@@ -104,9 +103,9 @@ literalt bv_pointerst::convert_rest(const exprt &expr)
 
       {
         bvt equal_bv;
-        equal_bv.resize(addr_bits);
+        equal_bv.resize(object_bits);
 
-        for(unsigned i=0; i<addr_bits; i++)
+        for(unsigned i=0; i<object_bits; i++)
           equal_bv[i]=prop.lequal(bv0[offset_bits+i],
                                   bv1[offset_bits+i]);
 
@@ -159,9 +158,9 @@ bv_pointerst::bv_pointerst(
   boolbvt(_ns, _prop),
   pointer_logic(_ns)
 {
-  addr_bits=BV_ADDR_BITS;
-  offset_bits=config.ansi_c.pointer_width;
-  bits=addr_bits+offset_bits;
+  object_bits=BV_ADDR_BITS;
+  offset_bits=config.ansi_c.pointer_width-object_bits;
+  bits=config.ansi_c.pointer_width;
 }
 
 /*******************************************************************\
@@ -335,21 +334,17 @@ void bv_pointerst::convert_pointer_type(const exprt &expr, bvt &bv)
       return convert_pointer_type(op, bv);
     else if(op_type.id()==ID_signedbv ||
             op_type.id()==ID_unsignedbv ||
-            op_type.id()==ID_bool)
+            op_type.id()==ID_bool ||
+            op_type.id()==ID_c_enum)
     {
-      // we need to be able to convert the integer 0 to NULL
-      // everything else gets to be NULL+offset
-      bvt null_bv;
-      encode(pointer_logic.get_null_object(), null_bv);
+      // Cast from integer to pointer.
+      // We need to be able to convert the integer 0 to NULL.
+      // We just do a zero extension.
       
       bvt op_bv;
       convert_bv(op, op_bv);
       
-      bv=null_bv;
-      
-      for(unsigned i=0; i<offset_bits; i++)
-        if(i<op_bv.size())
-          bv[i]=op_bv[i];
+      bv=bv_utils.zero_extension(op_bv, bits);
 
       return;
     }
@@ -388,6 +383,8 @@ void bv_pointerst::convert_pointer_type(const exprt &expr, bvt &bv)
   }
   else if(expr.id()==ID_plus)
   {
+    // this has to be pointer plus integer
+    
     if(expr.operands().size()<2)
       throw "operator + takes at least two operands";
 
@@ -406,11 +403,11 @@ void bv_pointerst::convert_pointer_type(const exprt &expr, bvt &bv)
     }
 
     if(count==0)
-      throw "found no pointer in pointer type sum";
+      throw "found no pointer in pointer-type sum";
     else if(count!=1)
       throw "found more than one pointer in sum";
 
-    bvt sum=bv_utils.build_constant(0, offset_bits);
+    bvt sum=bv_utils.build_constant(0, bits);
 
     forall_operands(it, expr)
     {
@@ -428,10 +425,15 @@ void bv_pointerst::convert_pointer_type(const exprt &expr, bvt &bv)
 
       convert_bv(*it, op);
 
-      if(op.size()>offset_bits || op.size()==0)
+      if(op.size()==0)
         throw "unexpected pointer arithmetic operand width";
+      
+      // we cut any extra bits off
 
-      op=bv_utils.extension(op, offset_bits, rep);
+      if(op.size()>bits)
+        op.resize(bits);
+      else if(op.size()<bits)
+        op=bv_utils.extension(op, bits, rep);
       
       sum=bv_utils.add(sum, op);
     }
@@ -489,6 +491,7 @@ void bv_pointerst::convert_bitvector(const exprt &expr, bvt &bv)
      expr.op0().type().id()==ID_pointer &&
      expr.op1().type().id()==ID_pointer)
   {
+    // pointer minus pointer
     bvt op0, op1;
 
     convert_bv(expr.op0(), op0);
@@ -499,11 +502,9 @@ void bv_pointerst::convert_bitvector(const exprt &expr, bvt &bv)
     if(width==0)
       return conversion_failed(expr, bv);
 
-    if(width>offset_bits)
-      throw "no sign extension on pointer differences";
-
-    op0.resize(width);
-    op1.resize(width);
+    // we do a zero extension
+    op0=bv_utils.zero_extension(op0, width);
+    op1=bv_utils.zero_extension(op1, width);
 
     bv=bv_utils.sub(op0, op1);
     
@@ -531,15 +532,12 @@ void bv_pointerst::convert_bitvector(const exprt &expr, bvt &bv)
 
     if(width==0)
       return conversion_failed(expr, bv);
+      
+    // we need to strip off the object part
+    op0.resize(offset_bits);
 
-    if(width>offset_bits)
-      throw "no sign extension on pointer offsets";
-
-    assert(op0.size()>=width);
-
-    op0.resize(width);
-
-    bv=op0;
+    // we add zeros if needed
+    bv=bv_utils.zero_extension(op0, width);
 
     return;
   }
@@ -568,6 +566,7 @@ void bv_pointerst::convert_bitvector(const exprt &expr, bvt &bv)
           expr.operands().size()==1 &&
           expr.op0().type().id()==ID_pointer)
   {
+    // pointer to int
     bvt op0;
     convert_pointer_type(expr.op0(), op0);
   
@@ -578,21 +577,7 @@ void bv_pointerst::convert_bitvector(const exprt &expr, bvt &bv)
     if(width==0)
       return conversion_failed(expr, bv);
 
-    bv.resize(width);
-    
-    // too small?
-    if(width<addr_bits)
-      return conversion_failed(expr, bv);
-
-    for(unsigned i=0; i<width; i++)
-    {
-      if(i>=width-addr_bits)
-        bv[i]=op0[i-(width-addr_bits)+offset_bits];
-      else if(i>=offset_bits)
-        bv[i]=const_literal(false);
-      else
-        bv[i]=op0[i];
-    }
+    bv=bv_utils.zero_extension(op0, width);
 
     return;
   }
@@ -621,7 +606,7 @@ exprt bv_pointerst::bv_get_rec(
   if(!is_ptr(type))
     return SUB::bv_get_rec(bv, unknown, offset, type);
 
-  std::string value_addr, value_offset;
+  std::string value_addr, value_offset, value;
 
   for(unsigned i=0; i<bits; i++)
   {
@@ -638,18 +623,30 @@ exprt bv_pointerst::bv_get_rec(
        case tvt::TV_UNKNOWN: ch='0'; break;
        default: assert(false);
       }
+      
+    value=ch+value;
 
     if(i<offset_bits)
       value_offset=ch+value_offset;
     else
       value_addr=ch+value_addr;
   }
+  
+  // we treat these like bit-vector constants, but with
+  // some additional annotation
+
+  constant_exprt result(type);
+  result.set_value(value);
 
   pointer_logict::pointert pointer;
   pointer.object=integer2long(binary2integer(value_addr, false));
   pointer.offset=binary2integer(value_offset, true);
+  
+  // we add the elaborated expression as operand
+  result.copy_to_operands(
+    pointer_logic.pointer_expr(pointer, type));
 
-  return pointer_logic.pointer_expr(pointer, type);
+  return result;
 }
 
 /*******************************************************************\
@@ -673,7 +670,7 @@ void bv_pointerst::encode(unsigned addr, bvt &bv)
     bv[i]=const_literal(false);
 
   // set variable part
-  for(unsigned i=0; i<addr_bits; i++)
+  for(unsigned i=0; i<object_bits; i++)
     bv[offset_bits+i]=const_literal(addr&(1<<i));
 }
 
@@ -749,15 +746,13 @@ void bv_pointerst::offset_arithmetic(
   const mp_integer &factor,
   const bvt &index)
 {
-  assert(index.size()==offset_bits);
-  
   bvt bv_index;
   
   if(factor==1)
     bv_index=index;
   else
   {
-    bvt bv_factor=bv_utils.build_constant(factor, offset_bits);
+    bvt bv_factor=bv_utils.build_constant(factor, index.size());
     bv_index=bv_utils.unsigned_multiplier(index, bv_factor);
   }
 
@@ -786,7 +781,7 @@ void bv_pointerst::add_addr(const exprt &expr, bvt &bv)
 {
   unsigned a=pointer_logic.add_object(expr);
 
-  if(a==(unsigned(1)>>addr_bits))
+  if(a==(unsigned(1)>>object_bits))
     throw "too many variables";
 
   encode(a, bv);

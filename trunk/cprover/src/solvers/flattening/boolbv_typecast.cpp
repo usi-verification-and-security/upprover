@@ -356,9 +356,11 @@ void boolbvt::convert_typecast(const exprt &expr, bvt &bv)
   default:
     if(expr_type.id()==ID_array)
     {
-      assert(op_width==dest_width);
-      bv=op_bv;
-      return;
+      if(op_width==dest_width)
+      {
+        bv=op_bv;
+        return;
+      }
     }
     else if(expr_type.id()==ID_struct)
     {

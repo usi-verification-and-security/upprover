@@ -53,7 +53,7 @@ Function: smt1_temp_filet::smt1_temp_filet
 
 smt1_temp_filet::smt1_temp_filet()
 {
-  temp_out_filename=get_temporary_file("smt1_dec_out_", ".tmp");
+  temp_out_filename=get_temporary_file("smt1_dec_out_", "");
 
   temp_out.open(
     temp_out_filename.c_str(),
@@ -105,7 +105,7 @@ decision_proceduret::resultt smt1_dect::dec_solve()
   temp_out.close();
 
   temp_result_filename=
-    get_temporary_file("smt1_dec_result_", ".tmp");
+    get_temporary_file("smt1_dec_result_", "");
 
   std::string command;
 
@@ -364,10 +364,13 @@ bool smt1_dect::string_to_expr_z3(
     std::string binary=integer2binary(string2integer(v,10),
                                       string2integer(w,10).to_ulong());
 
-    if(type.id()==ID_struct ||
-       type.id()==ID_union)
+    if(type.id()==ID_struct)
     {
-      e=binary2struct(to_struct_union_type(type), binary);
+      e=binary2struct(to_struct_type(type), binary);
+    }
+    else if(type.id()==ID_union)
+    {
+      e=binary2union(to_union_type(type), binary);
     }
     else
     {

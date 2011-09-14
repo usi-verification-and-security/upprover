@@ -319,6 +319,16 @@ void boolbvt::convert_bitvector(const exprt &expr, bvt &bv)
     return convert_lambda(expr, bv);
   else if(expr.id()==ID_array_of)
     return convert_array_of(expr, bv);
+  else if(expr.id()==ID_function_application)
+  {
+    // make it free bits
+    bv=prop.new_variables(boolbv_width(expr.type()));
+
+    // record
+    functions.record(to_function_application_expr(expr));
+    
+    return;
+  }
 
   return conversion_failed(expr, bv);
 }

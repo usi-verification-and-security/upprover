@@ -26,9 +26,9 @@ protected:
 
   typedef boolbvt SUB;
 
-  unsigned addr_bits, offset_bits, bits;
+  unsigned object_bits, offset_bits, bits;
   
-  void encode(unsigned addr, bvt &bv);
+  void encode(unsigned object, bvt &bv);
   
   virtual void convert_pointer_type(const exprt &expr, bvt &bv);
   

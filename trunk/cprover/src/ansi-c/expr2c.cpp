@@ -198,6 +198,10 @@ std::string expr2ct::convert_rec(
       if(is_signed) sign_str="";
       return q+sign_str+"long long int";
     }
+    else
+    {
+      return q+sign_str+"__CPROVER_bitvector["+integer2string(width)+"]";
+    }
   }
   else if(src.id()==ID_floatbv ||
           src.id()==ID_fixedbv)
@@ -229,7 +233,8 @@ std::string expr2ct::convert_rec(
 
     return dest;
   }
-  else if(src.id()==ID_union)
+  else if(src.id()==ID_union ||
+          src.id()==ID_incomplete_union)
   {
     std::string dest=q+"union";
 
@@ -1494,7 +1499,11 @@ std::string expr2ct::convert_object_descriptor(
   result+=", ";
   result+=convert(src.op1());
   result+=", ";
-  result+=convert(src.type());
+  
+  if(src.type().is_nil())
+    result+="?";
+  else
+    result+=convert(src.type());
 
   result+=">";
 
@@ -1548,9 +1557,10 @@ std::string expr2ct::convert_constant(
 
       const exprt &v=
         static_cast<const exprt &>(it->find(ID_value));
-
+        
       if(v.is_not_nil())
-        assert(!to_integer(v, i));
+        if(to_integer(v, i))
+          break;
 
       ++i;
     }
@@ -1576,6 +1586,9 @@ std::string expr2ct::convert_constant(
   {
     mp_integer int_value=binary2integer(id2string(value), type.id()==ID_signedbv);
     dest=integer2string(int_value);
+    
+    if(src.find("#c_sizeof_type").is_not_nil())
+      dest+=" [["+convert(static_cast<const typet &>(src.find("#c_sizeof_type")))+"]]";
   }
   else if(type.id()==ID_floatbv)
   {
@@ -1623,14 +1636,28 @@ std::string expr2ct::convert_constant(
   }
   else if(type.id()==ID_pointer)
   {
-    if(value==ID_NULL)
+    if(src.is_zero())
       dest="NULL";
-    else if(value=="INVALID" ||
-            has_prefix(id2string(value), "INVALID-") ||
-            value=="NULL+offset")
-      dest=id2string(value);
     else
-      return convert_norep(src, precedence);
+    {
+      // we prefer the annotation
+      if(src.operands().size()!=1)
+        return convert_norep(src, precedence);
+
+      if(src.op0().id()==ID_constant)
+      {        
+        const irep_idt &op_value=src.op0().get(ID_value);
+    
+        if(op_value=="INVALID" ||
+           has_prefix(id2string(op_value), "INVALID-") ||
+           op_value=="NULL+offset")
+          dest=id2string(op_value);
+        else
+          return convert_norep(src, precedence);
+      }
+      else
+        return convert(src.op0(), precedence);
+    }
   }
   else
     return convert_norep(src, precedence);
@@ -2016,7 +2043,7 @@ std::string expr2ct::convert_designated_initializer(
 
 /*******************************************************************\
 
-Function: expr2ct::convert_function_call
+Function: expr2ct::convert_function_application
 
   Inputs:
 
@@ -2026,21 +2053,15 @@ Function: expr2ct::convert_function_call
 
 \*******************************************************************/
 
-std::string expr2ct::convert_function_call(
-  const exprt &src,
+std::string expr2ct::convert_function_application(
+  const function_application_exprt &src,
   unsigned &precedence)
 {
-  if(src.operands().size()!=2)
-  {
-    unsigned precedence;
-    return convert_norep(src, precedence);
-  }
-
   std::string dest;
 
   {
     unsigned p;
-    std::string function_str=convert(src.op0(), p);
+    std::string function_str=convert(src.function(), p);
     dest+=function_str;
   }
 
@@ -2048,7 +2069,52 @@ std::string expr2ct::convert_function_call(
 
   unsigned i=0;
 
-  forall_operands(it, src.op1())
+  forall_expr(it, src.arguments())
+  {
+    unsigned p;
+    std::string arg_str=convert(*it, p);
+
+    if(i>0) dest+=", ";
+    // TODO: ggf. Klammern je nach p
+    dest+=arg_str;
+
+    i++;
+  }
+
+  dest+=")";
+
+  return dest;
+}
+
+/*******************************************************************\
+
+Function: expr2ct::convert_side_effect_expr_function_call
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+std::string expr2ct::convert_side_effect_expr_function_call(
+  const side_effect_expr_function_callt &src,
+  unsigned &precedence)
+{
+  std::string dest;
+
+  {
+    unsigned p;
+    std::string function_str=convert(src.function(), p);
+    dest+=function_str;
+  }
+
+  dest+="(";
+
+  unsigned i=0;
+
+  forall_expr(it, src.arguments())
   {
     unsigned p;
     std::string arg_str=convert(*it, p);
@@ -2138,7 +2204,10 @@ std::string expr2ct::convert_code_asm(
   unsigned indent)
 {
   std::string dest=indent_str(indent);
-  dest+="asm();\n";
+  dest+="asm(";
+  if(src.operands().size()==1)
+    dest+=convert(src.op0());
+  dest+=");\n";
   return dest;
 }
 
@@ -3427,6 +3496,9 @@ std::string expr2ct::convert(
   else if(src.id()=="struct-member-value")
     return convert_struct_member_value(src, precedence=16);
 
+  else if(src.id()==ID_function_application)
+    return convert_function_application(to_function_application_expr(src), precedence);
+    
   else if(src.id()==ID_sideeffect)
   {
     const irep_idt &statement=src.get(ID_statement);
@@ -3461,7 +3533,7 @@ std::string expr2ct::convert(
     else if(statement==ID_assign)
       return convert_binary(src, "=", precedence=2, true);
     else if(statement==ID_function_call)
-      return convert_function_call(src, precedence);
+      return convert_side_effect_expr_function_call(to_side_effect_expr_function_call(src), precedence);
     else if(statement==ID_malloc)
       return convert_malloc(src, precedence=15);
     else if(statement==ID_printf)
@@ -3560,7 +3632,7 @@ std::string expr2ct::convert(
     return convert_quantifier(src, "LAMBDA", precedence=2);
 
   else if(src.id()==ID_with)
-    return convert_with(src, precedence=2);
+    return convert_with(src, precedence=15);
 
   else if(src.id()==ID_symbol)
     return convert_symbol(src, precedence);

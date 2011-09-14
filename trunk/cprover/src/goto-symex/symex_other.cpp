@@ -145,6 +145,10 @@ void goto_symext::symex_other(
     assignment.rhs()=array_of_exprt(clean_code.op1(), clean_code.op0().type());
     basic_symext::symex_assign(state, assignment);    
   }
+  else if(statement==ID_user_specified_predicate)
+  {
+	  // like skip
+  }
   else
     throw "unexpected statement: "+id2string(statement);
 }

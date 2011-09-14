@@ -713,7 +713,13 @@ void goto_program_templatet<codeT, guardT>::compute_incoming_edges()
 }
 
 template <class codeT, class guardT>
-bool operator<(const typename goto_program_templatet<codeT, guardT>::const_targett i1,
-               const typename goto_program_templatet<codeT, guardT>::const_targett i2);
+inline bool order_const_target(
+  const typename goto_program_templatet<codeT, guardT>::const_targett i1,
+  const typename goto_program_templatet<codeT, guardT>::const_targett i2)
+{
+  const typename goto_program_templatet<codeT, guardT>::instructiont &_i1=*i1;
+  const typename goto_program_templatet<codeT, guardT>::instructiont &_i2=*i2;
+  return &_i1<&_i2;
+}
 
 #endif

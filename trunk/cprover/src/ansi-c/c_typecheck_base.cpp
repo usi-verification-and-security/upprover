@@ -109,9 +109,9 @@ Function: c_typecheck_baset::typecheck_symbol
 
 void c_typecheck_baset::typecheck_symbol(symbolt &symbol)
 {
-  // first of all, we do the type
+  // first of all, we typecheck the type
   typecheck_type(symbol.type);
-  
+
   bool is_function=symbol.type.id()==ID_code;
 
   const typet &final_type=follow(symbol.type);
@@ -174,6 +174,11 @@ void c_typecheck_baset::typecheck_symbol(symbolt &symbol)
     id_replace_map[symbol.name]=new_name;
     symbol.name=new_name;
   }
+
+  // and now that we have the proper name
+  // we clean the type of any side-effects
+  // (needs to be done before next symbol)
+  clean_type(symbol, symbol.type);
   
   // set the pretty name
   if(symbol.is_type &&

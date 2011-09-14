@@ -46,6 +46,11 @@ public:
   {
     return find(ID_body).is_not_nil();
   }
+
+  bool get_tag_only_declaration() const
+  {
+    return get_bool(ID_C_tag_only_declaration);
+  }
 };
 
 extern inline const cpp_enum_typet &to_cpp_enum_type(const irept &irep)

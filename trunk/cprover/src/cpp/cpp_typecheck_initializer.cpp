@@ -32,6 +32,7 @@ Function: cpp_typecheckt::convert_initializer
 void cpp_typecheckt::convert_initializer(symbolt &symbol)
 {
   // this is needed for template arguments that are types
+
   if(symbol.is_type)
   {
     if(symbol.value.is_nil()) return;
@@ -77,7 +78,7 @@ void cpp_typecheckt::convert_initializer(symbolt &symbol)
     if(symbol.type.id() == ID_pointer &&
        symbol.type.subtype().id() == ID_code &&
        symbol.value.id() == ID_address_of &&
-       symbol.value.op0().id() == "cpp-name")
+       symbol.value.op0().id() == ID_cpp_name)
     {
       // initialization of a function pointer with
       // the address of a function: use pointer type information
@@ -106,11 +107,9 @@ void cpp_typecheckt::convert_initializer(symbolt &symbol)
         fargs.operands.push_back(new_object);
       }
 
-      exprt resolved_expr;
-
-      resolve(
-        static_cast<cpp_namet &>(static_cast<irept &>(symbol.value.op0())),
-        cpp_typecheck_resolvet::BOTH, fargs, resolved_expr);
+      exprt resolved_expr=resolve(
+        to_cpp_name(static_cast<irept &>(symbol.value.op0())),
+        cpp_typecheck_resolvet::BOTH, fargs);
 
       assert(symbol.type.subtype() == resolved_expr.type());
 
@@ -142,7 +141,7 @@ void cpp_typecheckt::convert_initializer(symbolt &symbol)
     }
 
     typecheck_expr(symbol.value);
-
+    
     if(symbol.value.id()==ID_initializer_list ||
        symbol.value.id()==ID_string_constant)
     {
@@ -163,7 +162,8 @@ void cpp_typecheckt::convert_initializer(symbolt &symbol)
   {
     // we need a constructor
 
-    symbol_exprt expr_symbol(symbol.name);
+    symbol_exprt expr_symbol(symbol.name, symbol.type);
+    already_typechecked(expr_symbol);
 
     exprt::operandst ops;
     ops.push_back(symbol.value);
@@ -193,7 +193,6 @@ void cpp_typecheckt::zero_initializer(
   const locationt &location,
   exprt::operandst &ops)
 {
-
   const typet &final_type=follow(type);
 
   if(final_type.id()==ID_struct)
@@ -231,9 +230,9 @@ void cpp_typecheckt::zero_initializer(
       exprt obj=object;
       typecheck_expr(obj);
 
-      codet assign;
-      assign.set(ID_statement, ID_assign);
-      assign.copy_to_operands(obj, value);
+      code_assignt assign;
+      assign.lhs()=obj;
+      assign.rhs()=value;
       assign.location()=location;
       ops.push_back(assign);
     }
@@ -296,6 +295,8 @@ void cpp_typecheckt::zero_initializer(
     {
       irept name(ID_name);
       name.set(ID_identifier, comp.get(ID_base_name));
+      name.set(ID_C_location, location);
+      
       cpp_namet cpp_name;
       cpp_name.move_to_sub(name);
 
@@ -314,30 +315,37 @@ void cpp_typecheckt::zero_initializer(
     zero.make_typecast(type);
     already_typechecked(zero);
 
-    codet assign;
-    assign.set(ID_statement, ID_assign);
-    assign.copy_to_operands(object, zero);
+    code_assignt assign;
+    assign.lhs()=object;
+    assign.rhs()=zero;
     assign.location()=location;
 
-    typecheck_expr(assign.op0());
-    assign.op0().type().set(ID_C_constant, false);
-    already_typechecked(assign.op0());
+    typecheck_expr(assign.lhs());
+    assign.lhs().type().set(ID_C_constant, false);
+    already_typechecked(assign.lhs());
 
     typecheck_code(assign);
     ops.push_back(assign);
+  }
+  else if(final_type.id()==ID_incomplete_struct ||
+          final_type.id()==ID_incomplete_union)
+  {
+    err_location(location);
+    str << "cannot zero-initialize incomplete compound";
+    throw 0;
   }
   else
   {
     assert(gen_zero(final_type).is_not_nil());
 
-    codet assign;
-    assign.set(ID_statement, ID_assign);
-    assign.copy_to_operands(object, gen_zero(final_type));
+    code_assignt assign;
+    assign.lhs()=object;
+    assign.rhs()=gen_zero(final_type);
     assign.location()=location;
 
     typecheck_expr(assign.op0());
-    assign.op0().type().set(ID_C_constant, false);
-    already_typechecked(assign.op0());
+    assign.lhs().type().set(ID_C_constant, false);
+    already_typechecked(assign.lhs());
 
     typecheck_code(assign);
     ops.push_back(assign);

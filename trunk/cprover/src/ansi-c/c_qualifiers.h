@@ -9,6 +9,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_ANSI_C_C_QUALIFIERS_H
 #define CPROVER_ANSI_C_C_QUALIFIERS_H
 
+#include <iostream>
+
 #include <expr.h>
 
 class c_qualifierst
@@ -19,7 +21,7 @@ public:
     clear();
   }
   
-  c_qualifierst(const typet &src)
+  explicit c_qualifierst(const typet &src)
   {
     clear();
     read(src);
@@ -36,7 +38,7 @@ public:
   // standard ones
   bool is_constant, is_volatile, is_restricted;
   
-  // various extensions
+  // MS Visual Studio extension
   bool is_ptr32, is_ptr64;
   
   std::string as_string() const;
@@ -95,5 +97,7 @@ public:
            !is_ptr32 && !is_ptr64;
   }
 };
+
+std::ostream &operator << (std::ostream &, const c_qualifierst &);
 
 #endif

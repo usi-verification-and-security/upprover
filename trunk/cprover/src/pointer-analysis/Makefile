@@ -3,22 +3,23 @@ SRC = value_set.cpp goto_program_dereference.cpp value_set_analysis.cpp \
       show_value_sets.cpp value_set_domain.cpp rewrite_index.cpp \
       value_set_analysis_fi.cpp value_set_fi.cpp value_set_domain_fi.cpp \
       value_set_analysis_fivr.cpp value_set_fivr.cpp value_set_domain_fivr.cpp \
-      value_set_analysis_fivrns.cpp value_set_fivrns.cpp value_set_domain_fivrns.cpp
+      value_set_analysis_fivrns.cpp value_set_fivrns.cpp \
+      value_set_domain_fivrns.cpp
 
-OBJ = $(SRC:.cpp=.o)
+OBJ = $(SRC:.cpp=$(OBJEXT))
 
 INCLUDES= -I .. -I ../util
-
-all: pointer-analysis.o
 
 include ../config.inc
 include ../common
 
+all: pointer-analysis$(LIBEXT)
+
 ###############################################################################
 
-pointer-analysis.o: $(OBJ)
-	$(LD) $(LDFLAGS) -o pointer-analysis.o $(OBJ)
+pointer-analysis$(LIBEXT): $(OBJ)
+	$(LINKLIB)
 
 clean:
-	rm -f *.o
+	rm -f $(OBJ) pointer-analysis$(LIBEXT)
 

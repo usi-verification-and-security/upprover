@@ -39,8 +39,11 @@ public:
   for(goto_programt::instructionst::iterator it=(program).instructions.begin(); \
       it!=(program).instructions.end(); it++)
  
-bool operator<(const goto_programt::const_targett i1,
-               const goto_programt::const_targett i2);
+extern inline bool operator<(const goto_programt::const_targett i1,
+                             const goto_programt::const_targett i2)
+{
+  return order_const_target<codet, exprt>(i1, i2);
+}
 
 std::list<exprt> objects_read(const goto_programt::instructiont &);
 std::list<exprt> objects_written(const goto_programt::instructiont &);

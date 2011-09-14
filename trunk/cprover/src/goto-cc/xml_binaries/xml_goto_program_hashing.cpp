@@ -26,8 +26,9 @@ Function: xml_goto_program_convertt::convert
           and the namespace into the given xml object.
  
 \*******************************************************************/
-void xml_goto_program_convertt::convert( const goto_programt& goto_program,
-              xmlt& xml)
+
+void xml_goto_program_convertt::convert(const goto_programt &goto_program,
+                                        xmlt &xml)
 {
   std::stringstream tmp;
   // std::cout << "TNO: " << goto_program.target_numbers.size() << std::endl;
@@ -52,7 +53,7 @@ void xml_goto_program_convertt::convert( const goto_programt& goto_program,
           l_it!=ins_it->labels.end();
           l_it++)
       {
-        lbl.new_element("label").set_attribute("name", xmlt::escape(id2string(*l_it)));
+        lbl.new_element("label").set_attribute("name", id2string(*l_it));
       }
     }
 
@@ -67,116 +68,131 @@ void xml_goto_program_convertt::convert( const goto_programt& goto_program,
 
     switch(ins_it->type)
     {
-        case GOTO:
+    case GOTO:
+      {
+        ins.name = "goto";
+        if (!ins_it->guard.is_true())
         {
-          ins.name = "goto";
-          if (!ins_it->guard.is_true())
-          {
-            xmlt &g = ins.new_element("guard");
-            irepconverter.reference_convert(ins_it->guard, g);
-          }
-          xmlt &tgt = ins.new_element("targets");
-          for(goto_programt::instructiont::targetst::const_iterator
-              gt_it=ins_it->targets.begin();
-              gt_it!=ins_it->targets.end();
-              gt_it++)
-          {
-            tmp.str("");
-            tmp << (*gt_it)->target_number;
-            tgt.new_element("target").data = tmp.str();
-          }
-          break;
-        }
-        case ASSUME:
-        {
-          ins.name = "assume";
           xmlt &g = ins.new_element("guard");
           irepconverter.reference_convert(ins_it->guard, g);
-          const irep_idt &comment=ins_it->location.get("comment");
-          if(comment!="")
-            ins.new_element("comment").data = xmlt::escape(id2string(comment));
-          break;
         }
-        case ASSERT:
+        xmlt &tgt = ins.new_element("targets");
+        for(goto_programt::instructiont::targetst::const_iterator
+            gt_it=ins_it->targets.begin();
+            gt_it!=ins_it->targets.end();
+            gt_it++)
         {
-          ins.name = "assert";
-          xmlt &g = ins.new_element("guard");
-          irepconverter.reference_convert(ins_it->guard, g);
-          const irep_idt &comment=ins_it->location.get("comment");
-          if(comment!="")
-            ins.new_element("comment").data = xmlt::escape(id2string(comment));
-          break;
+          tmp.str("");
+          tmp << (*gt_it)->target_number;
+          tgt.new_element("target").data = tmp.str();
         }
-        case SKIP:
-        ins.name = "skip";
         break;
-        case END_FUNCTION:
-        ins.name = "end_function";
+      }
+
+    case ASSUME:
+      {
+        ins.name = "assume";
+        xmlt &g = ins.new_element("guard");
+        irepconverter.reference_convert(ins_it->guard, g);
+        const irep_idt &comment=ins_it->location.get("comment");
+        if(comment!="")
+          ins.new_element("comment").data=id2string(comment);
         break;
-        case LOCATION:
-        ins.name = "location";
+      }
+
+    case ASSERT:
+      {
+        ins.name = "assert";
+        xmlt &g = ins.new_element("guard");
+        irepconverter.reference_convert(ins_it->guard, g);
+        const irep_idt &comment=ins_it->location.get("comment");
+        if(comment!="")
+          ins.new_element("comment").data=id2string(comment);
         break;
-        case DEAD:
-        ins.name = "dead";
+      }
+
+    case SKIP:
+      ins.name = "skip";
+      break;
+
+    case END_FUNCTION:
+      ins.name = "end_function";
+      break;
+
+    case LOCATION:
+      ins.name = "location";
+      break;
+
+    case DEAD:
+      ins.name = "dead";
+      break;
+
+    case ATOMIC_BEGIN:
+      ins.name = "atomic_begin";
+      break;
+
+    case ATOMIC_END:
+      ins.name = "atomic_end";
+      break;
+
+    case RETURN:
+      {
+        ins.name = "return";
+        xmlt &c = ins.new_element("code");
+        irepconverter.reference_convert(ins_it->code, c);
         break;
-        case ATOMIC_BEGIN:
-        ins.name = "atomic_begin";
+      }
+
+    case OTHER:
+      {
+        ins.name = "instruction";
+        xmlt &c = ins.new_element("code");
+        irepconverter.reference_convert(ins_it->code, c);
         break;
-        case ATOMIC_END:
-        ins.name = "atomic_end";
+      }
+
+    case ASSIGN:
+      {
+        ins.name = "assign";
+        xmlt &c = ins.new_element("code");
+        irepconverter.reference_convert(ins_it->code, c);
         break;
-        case RETURN:
+      }
+
+    case FUNCTION_CALL:
+      {
+        ins.name = "functioncall";
+        xmlt &c = ins.new_element("code");
+        irepconverter.reference_convert(ins_it->code, c);
+        break;
+      }
+
+    case START_THREAD:
+      {
+        ins.name = "thread_start";
+        xmlt &tgt = ins.new_element("targets");
+        if(ins_it->targets.size()==1)
         {
-          ins.name = "return";
-          xmlt &c = ins.new_element("code");
-          irepconverter.reference_convert(ins_it->code, c);
-          break;
+          tmp.str("");
+          tmp << ins_it->targets.front()->target_number;
+          tgt.new_element("target").data = tmp.str();
         }
-        case OTHER:
-        {
-          ins.name = "instruction";
-          xmlt &c = ins.new_element("code");
-          irepconverter.reference_convert(ins_it->code, c);
-          break;
-        }
-        case ASSIGN:
-        {
-          ins.name = "assign";
-          xmlt &c = ins.new_element("code");
-          irepconverter.reference_convert(ins_it->code, c);
-          break;
-        }
-        case FUNCTION_CALL:
-        {
-          ins.name = "functioncall";
-          xmlt &c = ins.new_element("code");
-          irepconverter.reference_convert(ins_it->code, c);
-          break;
-        }
-        case START_THREAD:
-        {
-          ins.name = "thread_start";
-          xmlt &tgt = ins.new_element("targets");
-          if(ins_it->targets.size()==1)
-          {
-            tmp.str("");
-            tmp << ins_it->targets.front()->target_number;
-            tgt.new_element("target").data = tmp.str();
-          }
-          break;
-        }
-        case END_THREAD:
-        ins.name = "thread_end";
         break;
-        default:
-        ins.name = "unknown";
-        break;
+      }
+
+    case END_THREAD:
+      ins.name = "thread_end";
+      break;
+
+    default:
+      ins.name = "unknown";
+      break;
     }
     
-    if (ins_it->function!="")
+    if(ins_it->function!="")
     {
-      xmlt &fnc = ins.new_element("function");
-      fnc.data = xmlt::escape(ins_it->function.as_string());       
+      xmlt &fnc=ins.new_element("function");
+      fnc.data=ins_it->function.as_string();
     }
   }
 }
@@ -293,7 +309,7 @@ void xml_goto_program_convertt::convert( const xmlt& xml,
           if (lit->name=="label")
           {
             std::string ls = lit->get_attribute("name");
-            inst->labels.push_back(xmlt::unescape(ls));
+            inst->labels.push_back(ls);
           }
           else
           {
@@ -319,11 +335,11 @@ void xml_goto_program_convertt::convert( const xmlt& xml,
       }
       else if (eit->name=="comment")
       {
-        inst->location.set("comment",xmlt::unescape(eit->data));
+        inst->location.set("comment", eit->data);
       }
       else if (eit->name=="function")
       {
-        inst->function = xmlt::unescape(eit->data);
+        inst->function=eit->data;
       }
     }
   }

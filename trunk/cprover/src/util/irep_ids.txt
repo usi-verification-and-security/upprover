@@ -124,6 +124,9 @@ from
 to
 module
 module_instance
+module_items
+module_source
+parameter_decl
 component_name
 component_number
 tag
@@ -160,6 +163,7 @@ extractbit
 extractbits
 reference
 C_reference #reference
+C_rvalue_reference #rvalue_reference
 true
 false
 address_of
@@ -173,6 +177,8 @@ free
 malloc
 cpp_new
 cpp_delete
+cpp_new_array cpp_new[]
+cpp_delete_array cpp_delete[]
 printf
 input
 output
@@ -211,6 +217,7 @@ auto
 register
 thread_local
 mutable
+void
 int8
 int16
 int32
@@ -223,9 +230,21 @@ long
 longlong
 float
 double
+long_double
+signed_char
+unsigned_char
+signed_int
+unsigned_int
+signed_long_int
+unsigned_long_int
+signed_short_int
+unsigned_short_int
+signed_long_long_int
+unsigned_long_long_int
 case
 casex
 casez
+case_item
 C_inlined #inlined
 C_hide #hide
 abs
@@ -273,6 +292,7 @@ builtin_offsetof
 128
 sizeof
 type_arg
+expr_arg
 expression_list
 initializer_list
 gcc_conditional_expression
@@ -295,6 +315,7 @@ div /
 component
 pretty_name
 C_class #class
+C_interface #interface
 targets
 location
 labels
@@ -347,6 +368,7 @@ is_register
 is_typedef
 is_static
 is_template
+is_static_assert
 is_virtual
 literal
 member_initializers
@@ -361,12 +383,16 @@ operator
 template
 template_type
 template_args
+template_parameter
+C_template #template
+C_template_arguments #template_arguments
 typename
 C
 cpp
 SpecC
 SystemC
 decl_block
+decl_type
 genvar
 cmos
 nmos
@@ -408,6 +434,7 @@ set
 storage
 friend
 explicit
+storage_spec
 member_spec
 gcc_attribute
 packed
@@ -415,3 +442,68 @@ transparent_union
 aligned
 vector
 abstract
+bit
+logic
+chandle
+reg
+wire
+tri
+tri1
+supply0
+wand
+triand
+tri0
+supply1
+wor
+trior
+trireg
+function_application
+cpp_declarator
+cpp_linkage_spec
+cpp_namespace_spec
+cpp_storage_spec
+cpp_using
+cpp_declaration
+cpp_member_spec
+C_cpp_type #cpp_type
+namespace
+linkage
+decltype
+buf
+bufif0
+bufif1
+notif0
+notif1
+task
+C_little_endian #little_endian
+C_offset #offset
+C_tag_only_declaration #tag_only_declaration
+tag_symbol
+generate_block
+generate_case
+generate_if
+generate_for
+delay
+hierarchical_identifier
+named_port_connection
+verilog_primitive_module
+verilog_module
+event_guard
+posedge
+negedge
+task_enable
+pointer_and_address_pair
+user_specified_predicate
+unassigned
+new_object
+complex_real
+complex_imag
+msc_try_except
+msc_try_finally
+msc_leave
+msc_uuidof
+msc_if_exists
+msc_if_not_exists
+alias
+auto_object
+C_c_sizeof_type #c_sizeof_type

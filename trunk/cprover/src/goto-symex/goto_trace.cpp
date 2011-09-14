@@ -148,9 +148,14 @@ std::string counterexample_value_binary(
        type.id()==ID_signedbv ||
        type.id()==ID_bv ||
        type.id()==ID_fixedbv ||
-       type.id()==ID_floatbv)
+       type.id()==ID_floatbv ||
+       type.id()==ID_pointer)
     {
       return expr.get_string(ID_value);
+    }
+    else if(type.id()==ID_bool)
+    {
+      return expr.is_true()?"1":"0";
     }
   }
   else if(expr.id()==ID_array)
@@ -215,8 +220,7 @@ void counterexample_value(
     value_string=from_expr(ns, identifier, value);
 
     // the binary representation
-    if(value.type().id()!=ID_pointer)
-      value_string+=" ("+counterexample_value_binary(value, ns)+")";
+    value_string+=" ("+counterexample_value_binary(value, ns)+")";
   }
 
   #if 1  
@@ -435,6 +439,7 @@ void show_goto_trace(
     case goto_trace_stept::ASSIGNMENT:
       if(it->pc->is_assign() ||
          it->pc->is_return() || // lhs!
+         it->pc->is_function_call() ||
          (it->pc->is_other() && it->lhs.is_not_nil()))
       {
         if(prev_step_nr!=it->step_nr || first_step)
@@ -466,7 +471,13 @@ void show_goto_trace(
             l_it=it->io_args.begin();
             l_it!=it->io_args.end();
             l_it++)
+        {
+          if(l_it!=it->io_args.begin()) out << ";";
           out << " " << from_expr(ns, "", *l_it);
+
+          // the binary representation
+          out << " (" << counterexample_value_binary(*l_it, ns) << ")";
+        }
       
         out << std::endl;
       }
@@ -480,7 +491,13 @@ void show_goto_trace(
           l_it=it->io_args.begin();
           l_it!=it->io_args.end();
           l_it++)
+      {
+        if(l_it!=it->io_args.begin()) out << ";";
         out << " " << from_expr(ns, "", *l_it);
+
+        // the binary representation
+        out << " (" << counterexample_value_binary(*l_it, ns) << ")";
+      }
       
       out << std::endl;
       break;

@@ -13,6 +13,8 @@ Author: Daniel Kroening
 #include <xml_irep.h>
 #include <i2string.h>
 #include <arith_tools.h>
+#include <ieee_float.h>
+#include <fixedbv.h>
 
 #include <ansi-c/printf_formatter.h>
 #include <langapi/language_util.h>
@@ -44,29 +46,31 @@ xmlt convert(
        type.id()==ID_signedbv ||
        type.id()==ID_bv)
     {
+      result.name="integer";
+      result.set_attribute("binary", expr.get_string(ID_value));
+
       mp_integer i;
       if(!to_integer(expr, i))
-      {
-        result.name="integer";
-        result.data=xmlt::escape(integer2string(i));
-        result.set_attribute("binary", xmlt::escape_attribute(expr.get_string(ID_value)));
-      }
+        result.data=integer2string(i);
     }
     else if(type.id()==ID_fixedbv)
     {
       result.name="fixed";
-      result.data=xmlt::escape(expr.get_string(ID_value));
+      result.set_attribute("binary", expr.get_string(ID_value));
+      result.data=fixedbvt(expr).to_ansi_c_string();
     }
     else if(type.id()==ID_floatbv)
     {
       result.name="float";
-      result.data=xmlt::escape(expr.get_string(ID_value));
+      result.set_attribute("binary", expr.get_string(ID_value));
+      result.data=ieee_floatt(expr).to_ansi_c_string();
     }
     else if(type.id()==ID_pointer)
     {
       result.name="pointer";
+      result.set_attribute("binary", expr.get_string(ID_value));
       if(expr.get(ID_value)==ID_NULL)
-        result.data=xmlt::escape("NULL");
+        result.data="NULL";
     }
   }
   else if(expr.id()==ID_array)
@@ -141,8 +145,8 @@ void convert(
     xmlt xml_location;
     if(location.is_not_nil() && location.get_file()!="")
     {
-      xml_location.new_element("file").data=xmlt::escape(id2string(location.get_file()));
-      xml_location.new_element("line").data=xmlt::escape(id2string(location.get_line()));
+      xml_location.new_element("file").data=id2string(location.get_file());
+      xml_location.new_element("line").data=id2string(location.get_line());
       xml_location.name="location";
     }
     
@@ -152,7 +156,7 @@ void convert(
       if(!it->cond_value)
       {
         xmlt &xml_failure=xml.new_element("failure");
-        xml_failure.new_element("reason").data=xmlt::escape(id2string(it->comment));
+        xml_failure.new_element("reason").data=id2string(it->comment);
         
         xml_failure.new_element("thread").data=i2string(it->thread_nr);
 
@@ -193,15 +197,15 @@ void convert(
           if(type_string=="")
             type_string=from_type(ns, identifier, symbol->type);
 
-          xml_assignment.new_element("mode").data=xmlt::escape(id2string(symbol->mode));
+          xml_assignment.new_element("mode").data=id2string(symbol->mode);
         }
 
         xml_assignment.new_element("thread").data=i2string(it->thread_nr);
-        xml_assignment.new_element("identifier").data=xmlt::escape(id2string(identifier));
-        xml_assignment.new_element("base_name").data=xmlt::escape(id2string(base_name));
-        xml_assignment.new_element("display_name").data=xmlt::escape(id2string(display_name));
-        xml_assignment.new_element("value").data=xmlt::escape(id2string(value_string));
-        xml_assignment.new_element("type").data=xmlt::escape(id2string(type_string));
+        xml_assignment.new_element("identifier").data=id2string(identifier);
+        xml_assignment.new_element("base_name").data=id2string(base_name);
+        xml_assignment.new_element("display_name").data=id2string(display_name);
+        xml_assignment.new_element("value").data=id2string(value_string);
+        xml_assignment.new_element("type").data=id2string(type_string);
         xml_assignment.new_element("step_nr").data=i2string(it->step_nr);
 
         if(it->value.is_not_nil())
@@ -217,15 +221,25 @@ void convert(
         xmlt &xml_output=xml.new_element("output");
         xml_output.new_element("step_nr").data=i2string(it->step_nr);
         xml_output.new_element("thread").data=i2string(it->thread_nr);
-        xml_output.new_element("text").data=xmlt::escape(text);
+        xml_output.new_element("text").data=text;
         xml_output.new_element().swap(xml_location);
+
+        for(std::list<exprt>::const_iterator
+            l_it=it->io_args.begin();
+            l_it!=it->io_args.end();
+            l_it++)
+        {
+          xml_output.new_element("value").data=from_expr(ns, "", *l_it);
+          xml_output.new_element("value_expression").
+            new_element(convert(*l_it, ns));
+        }
       }
       break;
       
     case goto_trace_stept::INPUT:
       {
         xmlt &xml_output=xml.new_element("input");
-        xml_output.new_element("input_id").data=xmlt::escape(id2string(it->io_id));
+        xml_output.new_element("input_id").data=id2string(it->io_id);
         xml_output.new_element("step_nr").data=i2string(it->step_nr);
         xml_output.new_element("thread").data=i2string(it->thread_nr);
         
@@ -234,8 +248,9 @@ void convert(
             l_it!=it->io_args.end();
             l_it++)
         {
-          xml_output.new_element("value").data=
-            xmlt::escape(from_expr(ns, "", *l_it));
+          xml_output.new_element("value").data=from_expr(ns, "", *l_it);
+          xml_output.new_element("value_expression").
+            new_element(convert(*l_it, ns));
         }
             
         xml_output.new_element().swap(xml_location);

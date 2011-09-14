@@ -1,3 +1,28 @@
+/* FUNCTION: __builtin___strcpy_chk */
+
+inline char *__builtin___strcpy_chk(char *dst, const char *src, __CPROVER_size_t s)
+{
+  __CPROVER_HIDE:;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_assert(__CPROVER_is_zero_string(src), "strcpy zero-termination of 2nd argument");
+  __CPROVER_assert(__CPROVER_buffer_size(dst)>__CPROVER_zero_string_length(src), "strcpy buffer overflow");
+  dst[__CPROVER_zero_string_length(src)]=0;
+  __CPROVER_is_zero_string(dst)=1;
+  __CPROVER_zero_string_length(dst)=__CPROVER_zero_string_length(src);
+  #else
+  size_t i=0;
+  char ch;
+  do
+  {
+    ch=src[i];
+    dst[i]=ch;
+    i++;
+  }
+  while(ch!=(char)0);
+  #endif
+  return dst;
+}
+
 /* FUNCTION: strcpy */
 
 #ifndef __CPROVER_STRING_H_INCLUDED
@@ -71,7 +96,7 @@ inline char *strncpy(char *dst, const char *src, size_t n)
 
 inline char *strcat(char *dst, const char *src)
 {
-  __CPROVER_HIDE:
+  __CPROVER_HIDE:;
   #ifdef __CPROVER_STRING_ABSTRACTION
   size_t new_size;
   __CPROVER_assert(__CPROVER_is_zero_string(dst), "strcat zero-termination of 1st argument");
@@ -114,7 +139,7 @@ inline char *strcat(char *dst, const char *src)
 
 inline char *strncat(char *dst, const char *src, size_t n)
 {
-  __CPROVER_HIDE:
+  __CPROVER_HIDE:;
   #ifdef __CPROVER_STRING_ABSTRACTION
   size_t additional, new_size;
   __CPROVER_assert(__CPROVER_is_zero_string(dst), "strncat zero-termination of 1st argument");
@@ -184,7 +209,7 @@ inline int strcmp(const char *s1, const char *s2)
 
 inline int strncmp(const char *s1, const char *s2, size_t n)
 {
-  __CPROVER_HIDE:
+  __CPROVER_HIDE:;
   if(s1!=0 && s1==s2) return 0;
   #ifdef __CPROVER_STRING_ABSTRACTION
   __CPROVER_assert(__CPROVER_is_zero_string(s1) || __CPROVER_buffer_size(s1)>=n, "strncmp zero-termination of 1st argument");
@@ -204,7 +229,7 @@ inline int strncmp(const char *s1, const char *s2, size_t n)
 
 inline size_t strlen(const char *s)
 {
-  __CPROVER_HIDE:
+  __CPROVER_HIDE:;
   #ifdef __CPROVER_STRING_ABSTRACTION
   __CPROVER_assert(__CPROVER_is_zero_string(s), "strlen zero-termination");
   return __CPROVER_zero_string_length(s);
@@ -391,7 +416,8 @@ inline char *strchr(const char *src, int c)
   return found?src+i:0;
   #else
   for(size_t i=0; src[i]!=0; i++)
-    if(src[i]==(char)c) return ((char *)src)+i;
+    if(src[i]==(char)c)
+      return ((char *)src)+i; // cast away const-ness
 
   return 0;
   #endif

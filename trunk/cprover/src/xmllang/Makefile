@@ -1,18 +1,19 @@
 SRC = xml_language.cpp xml_parser.cpp y.tab.cpp lex.yy.cpp xml_typecheck.cpp \
       xml_parse_tree.cpp
-OBJ = $(SRC:.cpp=.o)
+
+OBJ = $(SRC:.cpp=$(OBJEXT))
 
 INCLUDES= -I .. -I ../util
-
-all: xmllang.o
 
 include ../config.inc
 include ../common
 
+all: xmllang$(LIBEXT)
+
 ###############################################################################
 
-xmllang.o: $(OBJ)
-	$(LD) $(LDFLAGS) -o xmllang.o $(OBJ)
+xmllang$(LIBEXT): $(OBJ)
+	$(LINKLIB)
 
 y.tab.cpp: parser.y
 	$(YACC) $(YFLAGS) $$flags -pyyxml -d parser.y -o y.tab.cpp
@@ -25,10 +26,12 @@ lex.yy.cpp: scanner.l
 	$(LEX) -Pyyxml -olex.yy.cpp scanner.l
 
 # extra dependencies
-y.tab.o: y.tab.cpp y.tab.h
-lex.yy.o: y.tab.cpp lex.yy.cpp y.tab.h
+y.tab$(OBJEXT): y.tab.cpp y.tab.h
+lex.yy$(OBJEXT): y.tab.cpp lex.yy.cpp y.tab.h
 
 clean:
-	rm -f $(OBJ) *.o y.tab.h y.tab.cpp lex.yy.cpp y.tab.cpp.output y.output
+	rm -f $(OBJ) \
+	      y.tab.h y.tab.cpp lex.yy.cpp y.tab.cpp.output y.output \
+	      xmllang$(LIBEXT)
 
 dep: y.tab.cpp y.tab.h lex.yy.cpp

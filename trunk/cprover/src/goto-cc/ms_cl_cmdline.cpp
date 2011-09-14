@@ -11,6 +11,7 @@ Author: Daniel Kroening
 #include <stdlib.h>
 
 #include <iostream>
+#include <fstream>
 
 #include "ms_cl_cmdline.h"
 
@@ -46,6 +47,8 @@ const char *non_ms_cl_options[]=
   "--no-arch",            
   "--help",
   "--xml",
+  "--partial-inlining",
+  "--verbosity",
   NULL
 };
 
@@ -65,46 +68,27 @@ bool ms_cl_cmdlinet::parse(int argc, const char **argv)
       while(ptr[cnt]!=0 && ptr[cnt]!=' ') cnt++;
       
       std::string tmp=std::string(ptr, 0, cnt);
-      process_option(tmp);
+      process_cl_option(tmp);
     }
   }
 
   for(int i=1; i<argc; i++)
   {
-    cmdlinet::optiont option;
-    option.isset=true;
-    
+    // is it a non-cl option?
     if(strncmp(argv[i], "--", 2)==0)
     {
-      option.islong=true;
-      option.optstring=argv[i]+2;
-      option.optchar=0;
+      process_non_cl_option(argv[i]);
 
-      int optnr=getoptnr(option.optstring);
-
-      if(optnr==-1)
-      {
-        options.push_back(option);
-        optnr=options.size()-1;
-      }
-
-      options[optnr].isset=true;
-
-      bool found=false;      
-      for(unsigned j=0; non_ms_cl_options[j]!=NULL; j++)
-        if(strcmp(argv[i], non_ms_cl_options[j])==0)
+      if(std::string(argv[i])=="--verbosity")
+        if(i<argc-1)
         {
-          found=true;
-          break;
+          set("verbosity", argv[i+1]);
+          i++; // skip ahead
         }
-
-      if(!found)
-      { // unrecognized option
-        std::cout << "Warning: uninterpreted option `" << argv[i] << "'" << std::endl;
-      }
     }
     else if(argv[i][0]=='@')
     {
+      process_response_file(argv[i]+1);
     }
     else if(strcmp(argv[i], "/link")==0 ||
             strcmp(argv[i], "-link")==0)
@@ -113,7 +97,7 @@ bool ms_cl_cmdlinet::parse(int argc, const char **argv)
       i=argc-1;
     }
     else
-      process_option(argv[i]);
+      process_cl_option(argv[i]);
   }
 
   return false;
@@ -121,7 +105,7 @@ bool ms_cl_cmdlinet::parse(int argc, const char **argv)
 
 /*******************************************************************\
  
-Function: ms_cl_cmdlinet::process_option
+Function: ms_cl_cmdlinet::process_non_cl_option
  
   Inputs: 
  
@@ -130,6 +114,81 @@ Function: ms_cl_cmdlinet::process_option
  Purpose: 
  
 \*******************************************************************/
+
+void ms_cl_cmdlinet::process_response_file(const std::string &file)
+{
+  std::ifstream infile(file.c_str());
+  
+  if(!infile)
+  {
+    std::cerr << "failed to open response file `" << file << "'"
+              << std::endl;
+    return;
+  }
+  
+  std::string line;
+  while(getline(infile, line))
+    process_cl_option(line);
+}
+
+/*******************************************************************\
+ 
+Function: ms_cl_cmdlinet::process_non_cl_option
+ 
+  Inputs: 
+ 
+ Outputs: none
+ 
+ Purpose: 
+ 
+\*******************************************************************/
+
+void ms_cl_cmdlinet::process_non_cl_option(
+  const std::string &s)
+{
+  cmdlinet::optiont option;
+
+  option.isset=true;
+  option.islong=true;
+  option.optstring=std::string(s, 2, std::string::npos);
+  option.optchar=0;
+
+  int optnr=getoptnr(option.optstring);
+
+  if(optnr==-1)
+  {
+    options.push_back(option);
+    optnr=options.size()-1;
+  }
+
+  options[optnr].isset=true;
+      
+  for(unsigned j=0; non_ms_cl_options[j]!=NULL; j++)
+    if(s==non_ms_cl_options[j])
+      return;
+
+  // unrecognized option
+  std::cout << "Warning: uninterpreted non-CL option `" 
+            << s << "'" << std::endl;
+}
+
+/*******************************************************************\
+ 
+Function: ms_cl_cmdlinet::process_cl_option
+ 
+  Inputs: 
+ 
+ Outputs: none
+ 
+ Purpose: 
+ 
+\*******************************************************************/
+
+const char *ms_cl_flags[]=
+{
+  "c", // compile only
+  NULL
+};
 
 const char *ms_cl_prefixes[]=
 {
@@ -247,7 +306,7 @@ const char *ms_cl_prefixes[]=
   NULL
 };
 
-void ms_cl_cmdlinet::process_option(const std::string &s)
+void ms_cl_cmdlinet::process_cl_option(const std::string &s)
 {
   if(s=="") return;
 
@@ -257,40 +316,75 @@ void ms_cl_cmdlinet::process_option(const std::string &s)
     return;
   }
 
-  cmdlinet::optiont option;
+  for(unsigned j=0; ms_cl_flags[j]!=NULL; j++)
+  {
+    if(std::string(s, 1, std::string::npos)==ms_cl_flags[j])
+    {
+      cmdlinet::optiont option;
 
-  bool found=false;
-  unsigned length=0;
+      if(s.size()==2)
+      {
+        option.islong=false;
+        option.optstring="";
+        option.optchar=s[1];
+      }
+      else
+      {
+        option.islong=true;
+        option.optstring=std::string(s, 1, std::string::npos);
+        option.optchar=0;
+      }
+
+      int optnr=getoptnr(option.optstring);
+
+      if(optnr==-1)
+      {
+        options.push_back(option);
+        optnr=options.size()-1;
+      }
+
+      options[optnr].isset=true;
+      return;
+    }
+  }
   
   for(unsigned j=0; ms_cl_prefixes[j]!=NULL; j++)
   {
-    length=strlen(ms_cl_prefixes[j]);
+    unsigned length=strlen(ms_cl_prefixes[j]);
     if(std::string(s, 1, length)==ms_cl_prefixes[j])
     {
-      found=true;
-      break;
+      cmdlinet::optiont option;
+      
+      int optnr;
+
+      if(length==1)
+      {
+        option.islong=false;
+        option.optstring="";
+        option.optchar=ms_cl_prefixes[j][0];
+        optnr=getoptnr(option.optchar);
+      }
+      else
+      {
+        option.islong=true;
+        option.optstring=std::string(s, 1, length);
+        option.optchar=0;
+        optnr=getoptnr(option.optstring);
+      }
+
+      if(optnr==-1)
+      {
+        options.push_back(option);
+        optnr=options.size()-1;
+      }
+
+      options[optnr].isset=true;
+      options[optnr].values.push_back(std::string(s, length+1, std::string::npos));
+      return;
     }
   }
 
-  if(found)
-  {
-    option.islong=true;
-    option.optstring=std::string(s, 1, length);
-    option.optchar=0;
-
-    int optnr=getoptnr(option.optstring);
-
-    if(optnr==-1)
-    {
-      options.push_back(option);
-      optnr=options.size()-1;
-    }
-
-    options[optnr].isset=true;
-    options[optnr].values.push_back(std::string(s, length, std::string::npos));
-  }
-  else
-  { // unrecognized option
-    std::cout << "Warning: uninterpreted option `" << s << "'" << std::endl;
-  }
+  // unrecognized option
+  std::cout << "Warning: uninterpreted CL option `" 
+            << s << "'" << std::endl;
 }

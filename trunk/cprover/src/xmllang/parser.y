@@ -70,7 +70,7 @@ empty_or_content
  ;
 
 content
- : content DATA			{ xml_parser.current().data+=$2; free($2); }
+ : content DATA			{ xml_parser.current().data+=xml_parsert::unescape($2); free($2); }
  | content misc
  | content
    { xml_parser.new_level(); }
@@ -80,8 +80,8 @@ content
  ;
 
 name_opt
- : NAME				{ $$ = $1; }
- | /*empty*/			{ $$ = strdup(""); }
+ : NAME				{ $$=$1; }
+ | /*empty*/			{ $$=strdup(""); }
  ;
 
 attribute_seq_opt
@@ -90,7 +90,8 @@ attribute_seq_opt
  ;
 
 attribute
- : NAME EQ VALUE		{ xml_parser.current().set_attribute($1, $3);
+ : NAME EQ VALUE		{ xml_parser.current().set_attribute(
+                                    xml_parsert::unescape($1), xml_parsert::unescape($3));
                                   free($1); free($3);}
  ;
 

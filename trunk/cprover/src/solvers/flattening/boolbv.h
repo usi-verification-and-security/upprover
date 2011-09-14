@@ -24,6 +24,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "boolbv_width.h"
 #include "boolbv_map.h"
 #include "arrays.h"
+#include "functions.h"
 
 class boolbvt:public arrayst
 {
@@ -35,6 +36,7 @@ public:
     unbounded_array(U_NONE),
     bv_utils(_prop),
     boolbv_width(_ns),
+    functions(*this),
     map(_prop, _ns, boolbv_width)
   {
   }
@@ -56,6 +58,7 @@ public:
   virtual void post_process()
   {
     post_process_quantifiers();
+    functions.post_process();
     SUB::post_process();
   }
 
@@ -74,13 +77,18 @@ public:
   }
   
   mp_integer get_value(const bvt &bv, unsigned offset, unsigned width);
-
-  const boolbv_mapt& get_literal_map() const { return map; }
-  boolbv_mapt& get_literal_map() { return map; }
+  
+  const boolbv_mapt &get_map() const
+  {
+    return map;
+  }
 
 protected:
   bv_utilst bv_utils;
   boolbv_widtht boolbv_width;
+  
+  // uninterpreted functions
+  functionst functions;
 
   // the mapping from identifiers to literals
   boolbv_mapt map;  

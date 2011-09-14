@@ -75,7 +75,7 @@ protected:
     exprt &expr,
     goto_programt &dest,
     bool result_is_used=true);
-    
+
   static bool needs_cleaning(const exprt &expr);
   
   void make_temp_symbol(
@@ -98,19 +98,25 @@ protected:
   void remove_post(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
   void remove_function_call(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
   void remove_cpp_new(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
+  void remove_cpp_delete(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
   void remove_malloc(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
   void remove_temporary_object(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
   void remove_statement_expression(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
   void remove_gcc_conditional_expression(exprt &expr, goto_programt &dest);
 
-  virtual void do_cpp_new(exprt &lhs, exprt &rhs, goto_programt &dest);
+  virtual void do_cpp_new(
+    const exprt &lhs,
+    const side_effect_exprt &rhs,
+    goto_programt &dest);
 
   static void replace_new_object(
     const exprt &object,
-    exprt &dest);                            
+    exprt &dest);
 
   void cpp_new_initializer(
-    const exprt &lhs, exprt &rhs, goto_programt &dest);
+    const exprt &lhs,
+    const side_effect_exprt &rhs,
+    goto_programt &dest);
 
   //
   // function calls  
@@ -147,17 +153,17 @@ protected:
   //
   // conversion
   //
-  void convert_sideeffect(exprt &expr, goto_programt &dest);
   void convert_block(const codet &code, goto_programt &dest);
   void convert_decl(const code_declt &code, goto_programt &dest);
+  void convert_decl_type(const codet &code, goto_programt &dest);
   void convert_expression(const code_expressiont &code, goto_programt &dest);
   void convert_assign(const code_assignt &code, goto_programt &dest);
   void convert_cpp_delete(const codet &code, goto_programt &dest);
   void convert_for(const codet &code, goto_programt &dest);
   void convert_while(const codet &code, goto_programt &dest);
   void convert_dowhile(const codet &code, goto_programt &dest);
-  void convert_assume(const codet &code, goto_programt &dest);
-  void convert_assert(const codet &code, goto_programt &dest);
+  void convert_assume(const code_assumet &code, goto_programt &dest);
+  void convert_assert(const code_assertt &code, goto_programt &dest);
   void convert_switch(const codet &code, goto_programt &dest);
   void convert_break(const code_breakt &code, goto_programt &dest);
   void convert_return(const code_returnt &code, goto_programt &dest);
@@ -181,6 +187,9 @@ protected:
   void convert_atomic_end(const codet &code, goto_programt &dest);
   void convert_bp_enforce(const codet &code, goto_programt &dest);
   void convert_bp_abortif(const codet &code, goto_programt &dest);
+  void convert_msc_try_finally(const codet &code, goto_programt &dest);
+  void convert_msc_try_except(const codet &code, goto_programt &dest);
+  void convert_msc_leave(const codet &code, goto_programt &dest);
   void convert(const codet &code, goto_programt &dest);
   void copy(const codet &code, goto_program_instruction_typet type, goto_programt &dest);
 

@@ -67,14 +67,18 @@ bool bmc_baset::write_dimacs(std::ostream &out)
 
   dimacs_cnf.write_dimacs_cnf(out);
 
-  // dump propositionals
+  // we dump the propositionals
   for(prop_convt::symbolst::const_iterator
       s_it=bv_cbmc.get_symbols().begin();
       s_it!=bv_cbmc.get_symbols().end();
       s_it++)
   {
-    out << "c " << s_it->second.dimacs() << " "
-        << s_it->first << std::endl;
+    if(s_it->second.is_constant())
+      out << "c " << (s_it->second.is_true()?"TRUE":"FALSE") << " "
+          << s_it->first << std::endl;
+    else
+      out << "c " << s_it->second.dimacs() << " "
+          << s_it->first << std::endl;
   }
   
   return false;

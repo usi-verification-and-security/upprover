@@ -1,22 +1,27 @@
 #include <stdlib.h>
+#include <time.h>
+#include <limits>
+#include <float.h>
+#include <math.h>
 
 #ifdef _WIN32
 #define random() rand()
+#define nextafterf(a, b) (throw "no nextafterf", 0);
 #endif
 
 #include "ieee_float.h"
 
+#define PINF (std::numeric_limits<float>::infinity())
+#define NINF (-std::numeric_limits<float>::infinity())
+#ifndef NZERO
+#define NZERO (-0.0f)
+#endif
+#define PZERO (0.0f)
+
 #ifndef NAN
-#  define PINF (1.0f/0.0f)
-#  define NINF (-1.0f/0.0f)
-#  define NZERO (-0.0f)
-#  define NAN (PINF + NINF)
-#else
-#  define PINF INFINITY
-#  define NINF -INFINITY
+#  define NAN (std::numeric_limits<float>::quiet_NaN())
 #endif
 
-#define PZERO (0.0f)
 
 float random_float()
 {
@@ -205,14 +210,59 @@ void check_conversion(int i)
   }
 }
 
+void check_nextafter(int i)
+{
+  float f1 = random_float();
+  float f2 = nextafterf(f1, PINF);
+  float f3 = nextafterf(f1, NINF);
+  
+  ieee_floatt i1, i2, i3;
+  
+  i1.from_float(f1);
+  i2.from_float(f2);
+  i3.from_float(f3);
+
+  if((f1 != i1.to_float() && !(f1 != f1 && i1.is_NaN())) ||
+     (f2 != i2.to_float() && !(f2 != f2 && i2.is_NaN())) ||
+     (f3 != i3.to_float() && !(f3 != f3 && i3.is_NaN())))
+  {
+    std::cout << "Incorrect nextafter: " << std::endl 
+              << "float: " << f1 << " " << f2 << " " << f3 << std::endl
+              << "ieee_float: " << i1.to_float() << " " 
+                  << i2.to_float() << " " << i3.to_float() << std::endl;
+  }
+
+}
+
+void check_minmax()
+{
+  float f = 0;
+  ieee_floatt t;
+  t.from_float(f);
+
+  t.make_fltmax();
+  if(t.to_float() != FLT_MAX)
+    std::cout << "make_fltmax is broken" << std::endl;
+
+  t.make_fltmin();
+  if(t.to_float() != FLT_MIN)
+    std::cout << "make_fltmin is broken:"
+             << std::endl << " machine float: " << FLT_MIN 
+            << ", ieee_floatt: " << t.to_float() << "(" 
+            << (t.to_float() == FLT_MIN) <<  ")" << std::endl;
+}
+
 int main()
 {
   srand(time(0));
+  check_minmax();
+
   for(unsigned i=0; i<100000000; i++)
   {
     if(i%100000==0) std::cout << "*********** " << i << std::endl;
     check_arithmetic(i);
     check_comparison(i);
     check_conversion(i);
+    check_nextafter(i);
   }
 }

@@ -46,6 +46,7 @@ public:
     // scanner
     string_literal.clear();
     tag_following=false;
+    asm_block_following=false;
     parenthesis_counter=0;
     
     // setup global scope
@@ -55,18 +56,21 @@ public:
     scopes.push_back(scopet());
   }
 
-  // internal state scanner
+  // internal state of the scanner
   std::string string_literal;
   bool tag_following;
+  bool asm_block_following;
   unsigned parenthesis_counter;
   
   enum { LANGUAGE, EXPRESSION } grammar;
 
-  enum { ANSI, GCC, MSC, ICC } mode;
+  enum { ANSI, GCC, MSC, ICC, CW, ARM } mode;
   // ANSI is strict ANSI-C
   // GCC is, well, gcc
   // MSC is Microsoft Visual Studio
   // ICC is Intel's C compiler
+  // CW is CodeWarrior (with GCC extensions enabled)
+  // ARM is ARM's RealView
 
   class identifiert
   {

@@ -82,22 +82,11 @@ bool ansi_c_languaget::preprocess(
   std::ostream &outstream,
   message_handlert &message_handler)
 {
-  // check extensions
+  // stdin?
+  if(path=="")
+    return c_preprocess(instream, outstream, message_handler);
 
-  const char *ext=strrchr(path.c_str(), '.');
-  if(ext!=NULL && std::string(ext)==".i")
-  {
-    std::ifstream infile(path.c_str());
-
-    char ch;
-
-    while(infile.read(&ch, 1))
-      outstream << ch;
-
-    return false;
-  }
-
-  return c_preprocess(instream, path, outstream, message_handler);
+  return c_preprocess(path, outstream, message_handler);  
 }
              
 /*******************************************************************\
@@ -142,10 +131,31 @@ bool ansi_c_languaget::parse(
   ansi_c_parser.set_message_handler(message_handler);
   ansi_c_parser.grammar=ansi_c_parsert::LANGUAGE;
 
-  if(config.ansi_c.os==configt::ansi_ct::OS_WIN)
+  switch(config.ansi_c.mode)
+  {
+  case configt::ansi_ct::MODE_CODEWARRIOR:
+    ansi_c_parser.mode=ansi_c_parsert::CW;
+    break;
+   
+  case configt::ansi_ct::MODE_VISUAL_STUDIO:
     ansi_c_parser.mode=ansi_c_parsert::MSC;
-  else
+    break;
+    
+  case configt::ansi_ct::MODE_ANSI:
+    ansi_c_parser.mode=ansi_c_parsert::ANSI;
+    break;
+    
+  case configt::ansi_ct::MODE_GCC:
     ansi_c_parser.mode=ansi_c_parsert::GCC;
+    break;
+    
+  case configt::ansi_ct::MODE_ARM:
+    ansi_c_parser.mode=ansi_c_parsert::ARM;
+    break;
+    
+  default:
+    assert(false);
+  }
 
   ansi_c_scanner_init();
 

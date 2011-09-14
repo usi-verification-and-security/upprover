@@ -332,6 +332,8 @@ void goto_convertt::convert(
     convert_block(code, dest);
   else if(statement==ID_decl)
     convert_decl(to_code_decl(code), dest);
+  else if(statement==ID_decl_type)
+    convert_decl_type(code, dest);
   else if(statement==ID_expression)
     convert_expression(to_code_expression(code), dest);
   else if(statement==ID_assign)
@@ -339,9 +341,9 @@ void goto_convertt::convert(
   else if(statement==ID_init)
     convert_init(code, dest);
   else if(statement==ID_assert)
-    convert_assert(code, dest);
+    convert_assert(to_code_assert(code), dest);
   else if(statement==ID_assume)
-    convert_assume(code, dest);
+    convert_assume(to_code_assume(code), dest);
   else if(statement==ID_function_call)
     convert_function_call(to_code_function_call(code), dest);
   else if(statement==ID_label)
@@ -391,6 +393,12 @@ void goto_convertt::convert(
   else if(statement==ID_cpp_delete ||
           statement=="cpp_delete[]")
     convert_cpp_delete(code, dest);
+  else if(statement==ID_msc_try_except)
+    convert_msc_try_except(code, dest);
+  else if(statement==ID_msc_try_finally)
+    convert_msc_try_finally(code, dest);
+  else if(statement==ID_msc_leave)
+    convert_msc_leave(code, dest);
   else
     copy(code, OTHER, dest);
 
@@ -473,213 +481,6 @@ void goto_convertt::convert_block(
 
 /*******************************************************************\
 
-Function: goto_convertt::convert_sideeffect
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void goto_convertt::convert_sideeffect(
-  exprt &expr,
-  goto_programt &dest)
-{
-  const irep_idt &statement=expr.get(ID_statement);
-
-  if(statement==ID_postincrement ||
-     statement==ID_postdecrement ||
-     statement==ID_preincrement ||
-     statement==ID_predecrement)
-  {
-    if(expr.operands().size()!=1)
-    {
-      err_location(expr);
-      str << statement << " takes one argument";
-      throw 0;
-    }
-
-    exprt rhs;
-
-    if(statement==ID_postincrement ||
-       statement==ID_preincrement)
-      rhs.id(ID_plus);
-    else
-      rhs.id(ID_minus);
-      
-    const typet &op_type=ns.follow(expr.op0().type());
-      
-    if(op_type.id()==ID_bool)
-    {
-      rhs.copy_to_operands(expr.op0(), gen_one(int_type()));
-      rhs.op0().make_typecast(int_type());
-      rhs.type()=int_type();
-      rhs.make_typecast(typet(ID_bool));
-    }
-    else if(op_type.id()==ID_c_enum ||
-            op_type.id()==ID_incomplete_c_enum)
-    {
-      rhs.copy_to_operands(expr.op0(), gen_one(int_type()));
-      rhs.op0().make_typecast(int_type());
-      rhs.type()=int_type();
-      rhs.make_typecast(op_type);
-    }
-    else
-    {
-      typet constant_type;
-
-      if(op_type.id()==ID_pointer)
-        constant_type=index_type();
-      else if(is_number(op_type))
-        constant_type=op_type;
-      else
-      {
-        err_location(expr);
-        throw "no constant one of type "+op_type.to_string();
-      }
-
-      exprt constant=gen_one(constant_type);
-
-      rhs.copy_to_operands(expr.op0());
-      rhs.move_to_operands(constant);
-      rhs.type()=expr.op0().type();
-    }
-
-    code_assignt assignment(expr.op0(), rhs);
-    assignment.location()=expr.find_location();
-    
-    convert(assignment, dest);
-  }
-  else if(statement==ID_assign)
-  {
-    exprt tmp;
-    tmp.swap(expr);
-    tmp.id(ID_code);
-    convert(to_code(tmp), dest);
-  }
-  else if(statement==ID_assign_plus ||
-          statement==ID_assign_minus ||
-          statement==ID_assign_mult ||
-          statement==ID_assign_div ||
-          statement==ID_assign_mod ||
-          statement==ID_assign_shl ||
-          statement==ID_assign_ashr ||
-          statement==ID_assign_lshr ||
-          statement==ID_assign_bitand ||
-          statement==ID_assign_bitxor ||
-          statement==ID_assign_bitor)
-  {
-    if(expr.operands().size()!=2)
-    {
-      err_location(expr);
-      str << statement << " takes two arguments";
-      throw 0;
-    }
-
-    exprt rhs;
-
-    if(statement==ID_assign_plus)
-      rhs.id(ID_plus);
-    else if(statement==ID_assign_minus)
-      rhs.id(ID_minus);
-    else if(statement==ID_assign_mult)
-      rhs.id(ID_mult);
-    else if(statement==ID_assign_div)
-      rhs.id(ID_div);
-    else if(statement==ID_assign_mod)
-      rhs.id(ID_mod);
-    else if(statement==ID_assign_shl)
-      rhs.id(ID_shl);
-    else if(statement==ID_assign_ashr)
-      rhs.id(ID_ashr);
-    else if(statement==ID_assign_lshr)
-      rhs.id(ID_lshr);
-    else if(statement==ID_assign_bitand)
-      rhs.id(ID_bitand);
-    else if(statement==ID_assign_bitxor)
-      rhs.id(ID_bitxor);
-    else if(statement==ID_assign_bitor)
-      rhs.id(ID_bitor);
-    else
-    {
-      err_location(expr);
-      str << statement << " not yet supproted";
-      throw 0;
-    }
-
-    rhs.copy_to_operands(expr.op0(), expr.op1());
-    rhs.type()=expr.op0().type();
-    
-    if(rhs.op0().type().id()==ID_bool)
-    {
-      rhs.op0().make_typecast(int_type());
-      rhs.op1().make_typecast(int_type());
-      rhs.type()=int_type();
-      rhs.make_typecast(typet(ID_bool));
-    }
-    
-    exprt lhs(expr.op0());
-    
-    code_assignt assignment(lhs, rhs);
-    assignment.location()=expr.location();
-    
-    convert(assignment, dest);
-  }
-  else if(statement==ID_cpp_delete ||
-          statement=="cpp_delete[]")
-  {
-    exprt tmp;
-    tmp.swap(expr);
-    tmp.id(ID_code);
-    convert(to_code(tmp), dest);
-  }
-  else if(statement==ID_function_call)
-  {
-    if(expr.operands().size()!=2)
-    {
-      err_location(expr);
-      str << "function_call sideeffect takes two arguments, but got "
-          << expr.operands().size();
-      throw 0;
-    }
-
-    code_function_callt function_call;
-    function_call.location()=expr.location();
-    function_call.function()=expr.op0();
-    function_call.arguments()=expr.op1().operands();
-    convert_function_call(function_call, dest);
-  }
-  else if(statement==ID_statement_expression)
-  {
-    if(expr.operands().size()!=1)
-    {
-      err_location(expr);
-      str << "statement_expression sideeffect takes one argument";
-      throw 0;
-    }
-    
-    convert(to_code(expr.op0()), dest);
-  }
-  else if(statement==ID_gcc_conditional_expression)
-  {
-    clean_expr(expr, dest, false);
-  }
-  else if(statement==ID_temporary_object)
-  {
-    clean_expr(expr, dest, false);
-  }
-  else
-  {
-    err_location(expr);
-    str << "sideeffect " << statement << " not supported";
-    throw 0;
-  }
-}
-
-/*******************************************************************\
-
 Function: goto_convertt::convert_expression
 
   Inputs:
@@ -721,23 +522,15 @@ void goto_convertt::convert_expression(
     assert(expr.operands().size()==1);
     convert(to_code(expr.op0()), dest);
   }
-  else if(expr.id()==ID_sideeffect)
-  {
-    Forall_operands(it, expr)
-      clean_expr(*it, dest);
-
-    goto_programt tmp;
-    convert_sideeffect(expr, tmp);
-    dest.destructive_append(tmp);
-  }
   else
   {
-    clean_expr(expr, dest, false); // result not used
+    clean_expr(expr, dest, false); // result _not_ used
 
     if(expr.is_not_nil())
     {
-      codet tmp(code);
+      codet tmp=code;
       tmp.op0()=expr;
+      tmp.location()=expr.location();
       copy(tmp, OTHER, dest);
     }
   }
@@ -783,7 +576,7 @@ void goto_convertt::convert_decl(
   {
     exprt initializer;
   
-    codet tmp(code);
+    codet tmp=code;
     initializer=code.op1();
     tmp.operands().resize(1);
     
@@ -799,6 +592,25 @@ void goto_convertt::convert_decl(
     
     copy(assign, ASSIGN, dest);
   }
+}
+
+/*******************************************************************\
+
+Function: goto_convertt::convert_decl_type
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void goto_convertt::convert_decl_type(
+  const codet &code,
+  goto_programt &dest)
+{
+  // we remove these
 }
 
 /*******************************************************************\
@@ -843,7 +655,7 @@ void goto_convertt::convert_assign(
     Forall_operands(it, rhs)
       clean_expr(*it, dest);
 
-    do_cpp_new(lhs, rhs, dest);
+    do_cpp_new(lhs, to_side_effect_expr(rhs), dest);
   }
   else if(rhs.id()==ID_sideeffect &&
           rhs.get(ID_statement)==ID_malloc)
@@ -934,10 +746,59 @@ void goto_convertt::convert_cpp_delete(
     throw "cpp_delete statement takes one operand";
   }
   
-  codet tmp(code);
+  exprt tmp_op=code.op0();
   
-  clean_expr(tmp.op0(), dest);
-  copy(tmp, OTHER, dest);
+  clean_expr(tmp_op, dest);
+  
+  // we call the destructor, and then free
+  const exprt &destructor=
+    static_cast<const exprt &>(code.find(ID_destructor));
+    
+  irep_idt delete_identifier;
+  
+  if(code.get_statement()==ID_cpp_delete_array)
+    delete_identifier="c::__delete_array";
+  else if(code.get_statement()==ID_cpp_delete)
+    delete_identifier="c::__delete";
+  else
+    assert(false);
+  
+  if(destructor.is_not_nil())
+  {
+    if(code.get_statement()==ID_cpp_delete_array)
+    {
+      // build loop
+
+    }
+    else if(code.get_statement()==ID_cpp_delete)
+    {
+      // just one object
+      exprt deref_op(ID_dereference, tmp_op.type().subtype());
+      deref_op.copy_to_operands(tmp_op);
+      
+      codet tmp_code=to_code(destructor);
+      replace_new_object(deref_op, tmp_code);
+      convert(tmp_code, dest);
+    }
+    else
+      assert(false);
+  }
+  
+  // now do "free"
+  exprt delete_symbol=symbol_expr(ns.lookup(delete_identifier));
+  
+  assert(to_code_type(delete_symbol.type()).arguments().size()==1);
+
+  typet arg_type=
+    to_code_type(delete_symbol.type()).arguments().front().type();
+  
+  code_function_callt delete_call;
+  delete_call.function()=delete_symbol;
+  delete_call.arguments().push_back(typecast_exprt(tmp_op, arg_type));
+  delete_call.lhs().make_nil();
+  delete_call.location()=code.location();
+  
+  convert(delete_call, dest);  
 }
 
 /*******************************************************************\
@@ -953,16 +814,10 @@ Function: goto_convertt::convert_assert
 \*******************************************************************/
 
 void goto_convertt::convert_assert(
-  const codet &code,
+  const code_assertt &code,
   goto_programt &dest)
 {
-  if(code.operands().size()!=1)
-  {
-    err_location(code);
-    throw "assert statement takes one operand";
-  }
-  
-  exprt cond=code.op0();
+  exprt cond=code.assertion();
 
   clean_expr(cond, dest);
   
@@ -1010,16 +865,10 @@ Function: goto_convertt::convert_assert
 \*******************************************************************/
 
 void goto_convertt::convert_assume(
-  const codet &code,
+  const code_assumet &code,
   goto_programt &dest)
 {
-  if(code.operands().size()!=1)
-  {
-    err_location(code);
-    throw "assume statement takes one operand";
-  }
-  
-  exprt op=code.op0();
+  exprt op=code.assumption();
 
   clean_expr(op, dest);
 
@@ -1964,6 +1813,79 @@ void goto_convertt::convert_bp_abortif(
 
 /*******************************************************************\
 
+Function: goto_convertt::convert_msc_try_finally
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void goto_convertt::convert_msc_try_finally(
+  const codet &code,
+  goto_programt &dest)
+{
+  if(code.operands().size()!=2)
+  {
+    err_location(code);
+    throw "msc_try_finally expects two arguments";
+  }
+
+  convert(to_code(code.op0()), dest);
+  
+  // todo: generate exception tracking
+}
+
+/*******************************************************************\
+
+Function: goto_convertt::convert_msc_try_except
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void goto_convertt::convert_msc_try_except(
+  const codet &code,
+  goto_programt &dest)
+{
+  if(code.operands().size()!=3)
+  {
+    err_location(code);
+    throw "msc_try_except expects three arguments";
+  }
+
+  convert(to_code(code.op0()), dest);
+  
+  // todo: generate exception tracking
+}
+
+/*******************************************************************\
+
+Function: goto_convertt::convert_msc_leave
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void goto_convertt::convert_msc_leave(
+  const codet &code,
+  goto_programt &dest)
+{
+  // todo: should throw (silent) exception
+}
+
+/*******************************************************************\
+
 Function: goto_convertt::convert_ifthenelse
 
   Inputs:
@@ -2179,10 +2101,13 @@ void goto_convertt::generate_conditional_branch(
   else
   {
     // simple branch
+    exprt cond=guard;
+    clean_expr(cond, dest);
+  
     goto_programt tmp;
     goto_programt::targett g=tmp.add_instruction();
     g->make_goto(target_true);
-    g->guard=guard;
+    g->guard=cond;
     g->location=location;
     dest.destructive_append(tmp);
   }
@@ -2305,10 +2230,11 @@ const irep_idt goto_convertt::get_string_constant(
   
     if(index_op.id()==ID_string_constant)
       return index_op.get(ID_value);
-
-    if(index_op.id()==ID_symbol)
+    else if(index_op.id()==ID_symbol)
     {
-      const symbolt &symbol=ns.lookup(index_op.get(ID_identifier));
+//      const symbolt &symbol=
+//        ns.lookup(to_symbol_expr(index_op));
+        
       return "";
     }
   }

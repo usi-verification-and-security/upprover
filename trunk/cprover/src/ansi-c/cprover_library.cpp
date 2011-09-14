@@ -35,6 +35,7 @@ struct cprover_library_entryt
 #include "cprover_library.inc"
 
 void add_cprover_library(
+  const std::set<irep_idt> &functions,
   contextt &context,
   message_handlert &message_handler)
 {
@@ -45,25 +46,7 @@ void add_cprover_library(
 
   library_text <<
     "#line 1 \"<builtin-library>\"\n"
-    "#undef inline\n"
-    "void __CPROVER_atomic_begin();\n"
-    "void __CPROVER_atomic_end();\n";
-
-  // this is for the pthread locks
-  switch(config.ansi_c.os)
-  {
-  case configt::ansi_ct::OS_MACOS:
-    library_text << "#define __CPROVER_mutex_lock_field(a) ((a).__opaque[0])\n";
-    library_text << "#define __CPROVER_rwlock_field(a) ((a).__opaque[0])\n";
-    break;
-
-  case configt::ansi_ct::OS_LINUX:
-    library_text << "#define __CPROVER_mutex_lock_field(a) ((a).__data.__lock)\n";
-    library_text << "#define __CPROVER_rwlock_field(a) ((a).__data.__lock)\n";
-    break;
-    
-  default:;
-  }
+    "#undef inline\n";
 
   if(config.ansi_c.string_abstraction)
     library_text << "#define __CPROVER_STRING_ABSTRACTION\n";
@@ -76,14 +59,17 @@ void add_cprover_library(
   {
     irep_idt id=e->function;
     
-    contextt::symbolst::const_iterator old=
-      context.symbols.find(id);
-
-    if(old!=context.symbols.end() &&
-       old->second.value.is_nil())
+    if(functions.find(id)!=functions.end())
     {
-      count++;
-      library_text << e->model << std::endl;
+      contextt::symbolst::const_iterator old=
+        context.symbols.find(id);
+
+      if(old!=context.symbols.end() &&
+         old->second.value.is_nil())
+      {
+        count++;
+        library_text << e->model << std::endl;
+      }
     }
   }
 

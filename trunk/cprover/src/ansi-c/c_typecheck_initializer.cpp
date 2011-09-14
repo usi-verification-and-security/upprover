@@ -19,6 +19,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "c_types.h"
 #include "c_typecheck_base.h"
 #include "string_constant.h"
+#include "anonymous_member.h"
 
 /*******************************************************************\
 
@@ -699,7 +700,8 @@ Function: c_typecheck_baset::make_designator
 \*******************************************************************/
 
 designatort c_typecheck_baset::make_designator(
-  const typet &src_type, const exprt &src)
+  const typet &src_type,
+  const exprt &src)
 {
   assert(!src.operands().empty());
 
@@ -747,9 +749,9 @@ designatort c_typecheck_baset::make_designator(
       entry.size=integer2long(size);
       entry.subtype=follow(type.subtype());
     }
-    else if(type.id()==ID_struct)
+    else if(type.id()==ID_struct || type.id()==ID_union)
     {
-      const struct_typet &struct_type=to_struct_type(type);
+      const struct_union_typet &struct_union_type=to_struct_union_type(type);
     
       if(d_op.id()!=ID_member)
       {
@@ -759,41 +761,66 @@ designatort c_typecheck_baset::make_designator(
 
       const irep_idt &component_name=d_op.get(ID_component_name);
 
-      if(!struct_type.has_component(component_name))
+      if(struct_union_type.has_component(component_name))
       {
-        err_location(d_op);
-        str << "failed to find struct component `" << component_name 
-            << "' in initialization of `" << to_string(struct_type) << "'";
-        throw 0;
+        // a direct member
+        entry.index=struct_union_type.component_number(component_name);
+        entry.size=struct_union_type.components().size();
+        entry.subtype=follow(struct_union_type.components()[entry.index].type());
       }
-
-      entry.index=struct_type.component_number(component_name);
-      entry.size=struct_type.components().size();
-      entry.subtype=follow(struct_type.components()[entry.index].type());
-    }
-    else if(type.id()==ID_union)
-    {
-      if(d_op.id()!=ID_member)
+      else
       {
-        err_location(d_op);
-        throw "expected member designator";
-      }
+        // We will search for anonymous members,
+        // in a loop. This isn't supported by gcc, but icc does allow it.
+        
+        bool found=false, repeat;
+        struct_union_typet tmp_type=struct_union_type;
+        
+        do
+        {
+          repeat=false;
+          unsigned number=0;        
+          const struct_union_typet::componentst &components=
+            tmp_type.components();
 
-      irep_idt component_name=d_op.get(ID_component_name);
+          for(struct_union_typet::componentst::const_iterator
+              c_it=components.begin();
+              c_it!=components.end();
+              c_it++, number++)
+          {
+            if(c_it->get_name()==component_name)
+            {
+              // done!
+              entry.index=number;
+              entry.size=components.size();
+              entry.subtype=follow(components[entry.index].type());
+              entry.type=tmp_type;
+            }
+            else if(c_it->get_anonymous() &&
+                    has_component_rec(
+                      c_it->type(), component_name, *this))
+            {
+              entry.index=number;
+              entry.size=components.size();
+              entry.subtype=follow(c_it->type());
+              entry.type=tmp_type;
+              tmp_type=to_struct_union_type(entry.subtype);
+              designator.push_entry(entry);
+              found=repeat=true;
+              break;
+            }
+          }
+        }
+        while(repeat);
       
-      const union_typet &union_type=to_union_type(type);
-
-      if(!union_type.has_component(component_name))
-      {
-        err_location(d_op);
-        str << "failed to find component `" << component_name 
-            << "' in initialization of `" << to_string(type) << "'";
-        throw 0;
+        if(!found)
+        {
+          err_location(d_op);
+          str << "failed to find struct component `" << component_name 
+              << "' in initialization of `" << to_string(struct_union_type) << "'";
+          throw 0;
+        }
       }
-      
-      entry.index=union_type.component_number(component_name);
-      entry.size=union_type.components().size();
-      entry.subtype=follow(union_type.components()[entry.index].type());
     }
     else
     {

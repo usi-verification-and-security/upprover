@@ -189,7 +189,7 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
   else if(type.id()==ID_pointer ||
           type.id()==ID_reference)
   {
-    entry.total_width=config.ansi_c.pointer_width+BV_ADDR_BITS;
+    entry.total_width=config.ansi_c.pointer_width;
   }
   else if(type.id()==ID_symbol)
     entry=get_entry(ns.follow(type));

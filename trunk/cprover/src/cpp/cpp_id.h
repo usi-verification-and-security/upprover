@@ -22,6 +22,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 typedef std::multimap<irep_idt, class cpp_idt> cpp_id_mapt;
 
+class cpp_scopet;
+
 class cpp_idt
 {
 public:
@@ -36,24 +38,25 @@ public:
 
   bool is_member, is_method, is_static_member,
        is_scope, is_constructor;
+
   id_classt id_class;
 
-  bool is_class() const
+  inline bool is_class() const
   {
     return id_class==CLASS;
   }
 
-  bool is_enum() const
+  inline bool is_enum() const
   {
     return id_class==ENUM;
   }
 
-  bool is_namespace() const
+  inline bool is_namespace() const
   {
     return id_class==NAMESPACE;
   }
 
-  bool is_typedef() const
+  inline bool is_typedef() const
   {
     return id_class==TYPEDEF;
   }
@@ -67,50 +70,43 @@ public:
   // scope data
   std::string prefix;
   unsigned compound_counter;
-  bool use_parent;
-
-  // the scope this one originally belonged in
-  class cpp_scopet *original_scope;
-
-  cpp_idt &insert(const irep_idt &base_name)
+  
+  cpp_idt &insert(const irep_idt &_base_name)
   {
-    if(use_parent)
-    {
-      assert(!parents.empty());
-      cpp_idt &new_id=get_parent().insert(base_name);
-      new_id.original_scope=(cpp_scopet *)(this);
-      return new_id;
-    }
-
     cpp_id_mapt::iterator it=
       sub.insert(std::pair<irep_idt, cpp_idt>
-        (base_name, cpp_idt()));
+        (_base_name, cpp_idt()));
 
-    it->second.base_name=base_name;
-    it->second.add_parent(*this);
-    it->second.original_scope=NULL;
+    it->second.base_name=_base_name;
+    it->second.set_parent(*this);
 
     return it->second;
   }
 
-  cpp_idt &get_parent(unsigned i=0) const
+  cpp_idt &insert(const cpp_idt &cpp_id)
   {
-    assert(i<parents_size());
-    assert(parents[i]!=NULL);
-    return *parents[i];
+    cpp_id_mapt::iterator it=
+      sub.insert(std::pair<irep_idt, cpp_idt>
+        (cpp_id.base_name, cpp_id));
+
+    it->second.set_parent(*this);
+
+    return it->second;
   }
 
-  void add_parent(cpp_idt &cpp_id)
+  inline cpp_idt &get_parent() const
   {
-    parents.push_back(&cpp_id);
+    assert(parent!=NULL);
+    return *parent;
   }
 
-  unsigned parents_size() const
+  inline void set_parent(cpp_idt &_parent)
   {
-    return parents.size();
+    assert(_parent.is_scope);
+    parent=&_parent;
   }
 
-  void clear()
+  inline void clear()
   {
     *this=cpp_idt();
   }
@@ -120,15 +116,14 @@ public:
 
   friend class cpp_scopet;
 
-public:
-  std::set<cpp_idt *> using_set;
-
 protected:
   cpp_id_mapt sub;
 
 private:
-  typedef std::vector<cpp_idt *> parentst;
-  parentst parents;
+  // These are used for base classes and 'using' clauses.
+  typedef std::vector<cpp_idt *> scope_listt;
+  scope_listt using_scopes, secondary_scopes;
+  cpp_idt *parent;
 };
 
 std::ostream &operator<<(std::ostream &out, const cpp_idt &cpp_id);

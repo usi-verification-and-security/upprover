@@ -13,7 +13,7 @@ Date: June 2006
 
 #include "goto_cc_cmdline.h"
 
-class gcc_cmdlinet: public goto_cc_cmdlinet
+class gcc_cmdlinet:public goto_cc_cmdlinet
 {
 public:
   virtual bool parse(int, const char**);
@@ -24,4 +24,4 @@ public:
   }
 };
 
-#endif /*GCC_CMDLINE_H_*/
+#endif /* GOTO_CC_GCC_CMDLINE_H */

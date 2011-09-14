@@ -7,6 +7,7 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <simplify_expr.h>
+#include <expr_util.h>
 
 #include <pointer-analysis/dereference.h>
 #include <pointer-analysis/rewrite_index.h>
@@ -14,10 +15,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_symex.h"
 #include "renaming_ns.h"
+#include "symex_dereference_state.h"
 
 /*******************************************************************\
 
-   Class: symex_dereference_statet
+Function: goto_symext::dereference_rec_address_of
 
   Inputs:
 
@@ -27,127 +29,44 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-class symex_dereference_statet:
-  public dereference_callbackt
+void goto_symext::dereference_rec_address_of(
+  exprt &expr,
+  statet &state,
+  guardt &guard)
 {
-public:
-  symex_dereference_statet(
-    goto_symext &_goto_symex,
-    goto_symext::statet &_state):
-    goto_symex(_goto_symex),
-    state(_state)
+  // Could be member, could be if, could be index.
+
+  if(expr.id()==ID_member)
+    dereference_rec_address_of(
+      to_member_expr(expr).struct_op(), state, guard);
+  else if(expr.id()==ID_if)
   {
+    // the condition is not an address
+    dereference_rec(
+      to_if_expr(expr).cond(), state, guard, false);
+
+    // add to guard?
+    dereference_rec_address_of(
+      to_if_expr(expr).true_case(), state, guard);
+    dereference_rec_address_of(
+      to_if_expr(expr).false_case(), state, guard);
   }
-  
-protected:
-  goto_symext &goto_symex;
-  goto_symext::statet &state;
-
-  virtual void dereference_failure(
-    const std::string &property,
-    const std::string &msg,
-    const guardt &guard);
-          
-  virtual void get_value_set(
-    const exprt &expr,
-    value_setst::valuest &value_set);
-
-  virtual bool has_failed_symbol(
-    const exprt &expr,
-    const symbolt *&symbol);
-};
-
-/*******************************************************************\
-
-Function: symex_dereference_statet::dereference_failure
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void symex_dereference_statet::dereference_failure(
-  const std::string &property,
-  const std::string &msg,
-  const guardt &guard)
-{
-}
-
-/*******************************************************************\
-
-Function: symex_dereference_statet::has_failed_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-bool symex_dereference_statet::has_failed_symbol(
-  const exprt &expr,
-  const symbolt *&symbol)
-{
-  renaming_nst renaming_ns(goto_symex.ns, state);
-
-  if(expr.id()==ID_symbol)
+  else if(expr.id()==ID_index)
   {
-    const symbolt &ptr_symbol=
-      renaming_ns.lookup(to_symbol_expr(expr).get_identifier());
+    // the index is not an address
+    dereference_rec(
+      to_index_expr(expr).index(), state, guard, false);
 
-    const irep_idt &failed_symbol=
-      ptr_symbol.type.get("#failed_symbol");    
-      
-    if(failed_symbol=="") return false;
-
-    return !renaming_ns.lookup(failed_symbol, symbol);
+    // the array _is_ an address
+    dereference_rec_address_of(
+      to_index_expr(expr).array(), state, guard);
   }
-  
-  return false;
-}
-
-/*******************************************************************\
-
-Function: symex_dereference_statet::get_value_set
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void symex_dereference_statet::get_value_set(
-  const exprt &expr,
-  value_setst::valuest &value_set)
-{
-  renaming_nst renaming_ns(goto_symex.ns, state);
-
-  state.value_set.get_value_set(expr, value_set, renaming_ns);
-  
-  #if 0
-  std::cout << "**************************\n";
-  state.value_set.output(std::cout, renaming_ns);
-  std::cout << "**************************\n";
-  #endif
-  
-  #if 0
-  std::cout << "E: " << expr.pretty() << std::endl;
-  #endif
-  
-  #if 0
-  std::cout << "**************************\n";
-  for(expr_sett::const_iterator it=value_set.begin();
-      it!=value_set.end();
-      it++)
-    std::cout << from_expr(renaming_ns, "", *it) << std::endl;
-  std::cout << "**************************\n";
-  #endif
+  else
+  {
+    // give up and dereference
+    
+    dereference_rec(expr, state, guard, false);
+  }
 }
 
 /*******************************************************************\
@@ -164,8 +83,8 @@ Function: goto_symext::dereference_rec
 
 void goto_symext::dereference_rec(
   exprt &expr,
+  statet &state,
   guardt &guard,
-  dereferencet &dereference,
   const bool write)
 {
   if(expr.id()==ID_dereference)
@@ -175,14 +94,27 @@ void goto_symext::dereference_rec(
 
     exprt tmp1;
     tmp1.swap(expr.op0());
-
+    
     // first make sure there are no dereferences in there
-    dereference_rec(tmp1, guard, dereference, false);
+    dereference_rec(tmp1, state, guard, false);
+
+    // we need to set up some elaborate call-backs
+    symex_dereference_statet symex_dereference_state(*this, state);
+    renaming_nst renaming_ns(ns, state);
+
+    dereferencet dereference(
+      renaming_ns,
+      new_context,
+      options,
+      symex_dereference_state);      
     
     exprt tmp2=dereference.dereference(
       tmp1, guard, write?dereferencet::WRITE:dereferencet::READ);
 
     expr.swap(tmp2);
+    
+    // this may yield a new auto-object
+    trigger_auto_object(expr, state);
   }
   else if(expr.id()=="implicit_dereference")
   {
@@ -190,17 +122,36 @@ void goto_symext::dereference_rec(
     assert(false);
   }
   else if(expr.id()==ID_index &&
+          to_index_expr(expr).array().id()==ID_member &&
+          to_array_type(ns.follow(to_index_expr(expr).array().type())).
+            size().is_zero())
+  {
+    // This is an expression of the form x.a[i],
+    // where a is a zero-sized array. This gets
+    // re-written into *(&x.a+i)
+    
+    index_exprt index_expr=to_index_expr(expr);
+    
+    address_of_exprt address_of_expr(index_expr.array());
+    address_of_expr.type()=pointer_typet(expr.type());
+
+    dereference_exprt tmp;
+    tmp.pointer()=plus_exprt(address_of_expr, index_expr.index());
+    tmp.type()=expr.type();
+    tmp.location()=expr.location();
+
+    // recursive call
+    dereference_rec(tmp, state, guard, write);
+
+    expr.swap(tmp);
+  }
+  else if(expr.id()==ID_index &&
           expr.operands().size()==2 &&
           expr.op0().type().id()==ID_pointer)
   {
-    // old stuff, will go away
-  
+    // old stuff, will go away  
     exprt tmp=rewrite_index(to_index_expr(expr)).pointer();
-
-    // first make sure there are no dereferences in there
-    dereference_rec(tmp, guard, dereference, false);
-
-    dereference.dereference(tmp, guard, write?dereferencet::WRITE:dereferencet::READ);
+    dereference_rec(tmp, state, guard, write);
     tmp.swap(expr);
   }
   else if(expr.id()==ID_address_of)
@@ -217,19 +168,18 @@ void goto_symext::dereference_rec(
       exprt tmp=object.op0();
       expr.swap(tmp);
     
-      // do rec. call, as p might have dereferencing in it
-      dereference_rec(expr, guard, dereference, false);
+      // do rec. call, as p itself might have dereferencing in it
+      dereference_rec(expr, state, guard, false);
     }
     else
     {
-      // Could be member, could be if, could be index.
       // We first try the simplifier: this is to support stuff like
       // ((char *)&((type *) 0)->mem - (char *)((type *) 0)))
       // If this fails, we simply dereference.
 
       exprt tmp_copy=expr;
       simplify(tmp_copy, ns);
-      
+
       if(tmp_copy.is_constant() ||
          (tmp_copy.id()==ID_typecast &&
           tmp_copy.operands().size()==1 &&
@@ -239,13 +189,13 @@ void goto_symext::dereference_rec(
         expr=tmp_copy;
       }
       else
-        dereference_rec(object, guard, dereference, false);
+        dereference_rec_address_of(object, state, guard);
     }
   }
   else
   {
     Forall_operands(it, expr)
-      dereference_rec(*it, guard, dereference, write);
+      dereference_rec(*it, state, guard, write);
   }
 }
 
@@ -266,19 +216,11 @@ void goto_symext::dereference(
   statet &state,
   const bool write)
 {
-  symex_dereference_statet symex_dereference_state(*this, state);
-  renaming_nst renaming_ns(ns, state);
-
-  dereferencet dereference(
-    renaming_ns,
-    new_context,
-    options,
-    symex_dereference_state);
-    
   // needs to be renamed to level 1
   assert(!state.call_stack.empty());
   state.top().level1.rename(expr);
 
+  // start the recursion!
   guardt guard;  
-  dereference_rec(expr, guard, dereference, write);
+  dereference_rec(expr, state, guard, write);
 }

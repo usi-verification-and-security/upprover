@@ -66,11 +66,6 @@ public:
     const guardt &guard,
     const modet mode);
     
-  virtual void add_checks(
-    const exprt &pointer,
-    const guardt &guard,
-    const modet mode);
-
   bool has_dereference(const exprt &expr) const;
 
   typedef hash_set_cont<exprt, irep_hash> expr_sett;
@@ -89,14 +84,23 @@ private:
   void offset_sum(
     exprt &dest,
     const exprt &offset) const;
+    
+  class valuet
+  {
+  public:
+    exprt value;
+    exprt pointer_guard;
+    
+    valuet():value(nil_exprt()), pointer_guard(false_exprt())
+    {
+    }
+  };
   
-  void build_reference_to(
+  valuet build_reference_to(
     const exprt &what, 
     const modet mode,
     const exprt &pointer,
-    const guardt &guard,
-    exprt &value,
-    exprt &pointer_guard);
+    const guardt &guard);
 
   bool get_value_guard(
     const exprt &symbol,
@@ -107,6 +111,8 @@ private:
   
   void bounds_check(const class index_exprt &expr, const guardt &guard);
   void valid_check(const exprt &expr, const guardt &guard, const modet mode);
+  
+  void invalid_pointer(const exprt &expr, const guardt &guard);
 
   bool memory_model(
     exprt &value,

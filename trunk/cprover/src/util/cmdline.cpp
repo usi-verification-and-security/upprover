@@ -117,8 +117,8 @@ Function: cmdlinet::getval
 const char *cmdlinet::getval(char option) const
 {
   int i=getoptnr(option);
-  if(i<0) return (const char *)NULL;
-  if(options[i].values.empty()) return (const char *)NULL;
+  if(i<0) return "";
+  if(options[i].values.empty()) return "";
   return options[i].values.front().c_str();
 }
 
@@ -195,8 +195,8 @@ Function: cmdlinet::getval
 const char *cmdlinet::getval(const char *option) const
 {
   int i=getoptnr(option);
-  if(i<0) return (const char *)NULL;
-  if(options[i].values.empty()) return (const char *)NULL;
+  if(i<0) return "";
+  if(options[i].values.empty()) return "";
   return options[i].values.front().c_str();
 }
 
@@ -341,7 +341,7 @@ bool cmdlinet::parse(int argc, const char **argv, const char *optstring)
         {
           i++;
           if(i==argc) return true;
-          if(argv[i][0]=='-') return true;
+          if(argv[i][0]=='-' && argv[i][1]!=0) return true;
           options[optnr].values.push_back(argv[i]);
         }
         else

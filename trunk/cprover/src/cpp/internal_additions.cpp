@@ -63,7 +63,19 @@ Function: cpp_interal_additions
 void cpp_internal_additions(std::ostream &out)
 {
   out << "# 1 \"<built-in>\"" << std::endl;
+  
+  // new and delete are in the root namespace!
+  out << "void operator delete(void *);" << std::endl;
+  out << "void *operator new(__typeof__(sizeof(int)));" << std::endl;  
 
+  // auxiliaries for new/delete
+  out << "extern \"C\" void *__new(__typeof__(sizeof(int)));" << std::endl;  
+  out << "extern \"C\" void *__new_array(__typeof__(sizeof(int)), __typeof__(sizeof(int)));" << std::endl;  
+  out << "extern \"C\" void *__placement_new(__typeof__(sizeof(int)), void *);" << std::endl;  
+  out << "extern \"C\" void *__placement_new_array(__typeof__(sizeof(int)), __typeof__(sizeof(int)), void *);" << std::endl;
+  out << "extern \"C\" void __delete(void *);" << std::endl;  
+  out << "extern \"C\" void __delete_array(void *);" << std::endl;  
+  
   // __CPROVER namespace
   out << "namespace __CPROVER { }" << std::endl;
   
@@ -75,18 +87,28 @@ void cpp_internal_additions(std::ostream &out)
   out << "extern \"C\" void __CPROVER_assume(bool assumption);" << std::endl;
   out << "extern \"C\" void __CPROVER_assert("
          "bool assertion, const char *description);" << std::endl;
-  out << "void __CPROVER::assume(bool assumption);" << std::endl;
-  out << "void __CPROVER::assert("
+  out << "extern \"C\" void __CPROVER::assume(bool assumption);" << std::endl;
+  out << "extern \"C\" void __CPROVER::assert("
          "bool assertion, const char *description);" << std::endl;
 
   // CPROVER extensions
   out << "extern \"C\" const unsigned __CPROVER::constant_infinity_uint;" << std::endl;
   out << "extern \"C\" void __CPROVER_initialize();" << std::endl;
-  out << "extern \"C\" void __CPROVER_input(const char *id, ...);" << std::endl;
+  out << "extern \"C\" void __CPROVER::input(const char *id, ...);" << std::endl;
+  out << "extern \"C\" void __CPROVER::output(const char *id, ...);" << std::endl;
+  out << "extern \"C\" void __CPROVER::cover(bool condition);" << std::endl;
 
-  // for dynamic objects
-  out << "extern \"C\" bool __CPROVER_alloc[__CPROVER::constant_infinity_uint];" << std::endl;
-  out << "extern \"C\" __CPROVER::size_t __CPROVER_alloc_size[__CPROVER::constant_infinity_uint];" << std::endl;
+  // pointers
+  out << "extern \"C\" unsigned __CPROVER_POINTER_OBJECT(const void *p);" << std::endl;
+  out << "extern \"C\" signed __CPROVER_POINTER_OFFSET(const void *p);" << std::endl;
+  out << "extern \"C\" bool __CPROVER_DYNAMIC_OBJECT(const void *p);" << std::endl;
+  out << "extern \"C\" extern unsigned char __CPROVER_memory[__CPROVER::constant_infinity_uint];" << std::endl;
+    
+  // malloc
+  out << "extern \"C\" void *__CPROVER_malloc(__CPROVER::size_t size);" << std::endl;
+  out << "extern \"C\" const void *__CPROVER_deallocated=0;" << std::endl;
+  out << "extern \"C\" const void *__CPROVER_malloc_object=0;" << std::endl;
+  out << "extern \"C\" __CPROVER::size_t __CPROVER_malloc_size;" << std::endl;
 
   // float
   out << "extern \"C\" int __CPROVER_rounding_mode;" << std::endl;      
@@ -94,6 +116,7 @@ void cpp_internal_additions(std::ostream &out)
   // arrays
   out << "bool __CPROVER::array_equal(const void array1[], const void array2[]);" << std::endl;
   out << "void __CPROVER::array_copy(const void dest[], const void src[]);" << std::endl;
+  out << "void __CPROVER::array_set(const void dest[], ...);" << std::endl;
             
   // GCC stuff
   out << "extern \"C\" {" << std::endl;
@@ -109,5 +132,26 @@ void cpp_internal_additions(std::ostream &out)
   out << "extern \"C\" {" << std::endl;
   out << architecture_strings;
   out << "}" << std::endl;
+  
+  // Microsoft stuff
+
+  if(config.ansi_c.mode==configt::ansi_ct::MODE_VISUAL_STUDIO)
+  {
+    // type_info infrastructure -- the standard wants this to be in the
+    // std:: namespace, but MS has it in the root namespace
+    out << "class type_info;" << std::endl;
+    
+    // this is the return type of __uuidof(...),
+    // in the root namespace
+    out << "struct _GUID;" << std::endl;
+  }
+    
+  // MS ATL-related stuff
+  if(config.ansi_c.mode==configt::ansi_ct::MODE_VISUAL_STUDIO)
+  {
+    out << "namespace ATL; " << std::endl;
+    out << "void ATL::AtlThrowImpl(long);" << std::endl;  
+    out << "void __stdcall ATL::AtlThrowLastWin32();" << std::endl;  
+  }
 }
 

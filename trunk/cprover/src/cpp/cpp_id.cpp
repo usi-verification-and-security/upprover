@@ -30,8 +30,7 @@ cpp_idt::cpp_idt():
   id_class(UNKNOWN),
   this_expr(static_cast<const exprt &>(get_nil_irep())),
   compound_counter(0),
-  use_parent(false),
-  original_scope(NULL)
+  parent(NULL)
 {
 }
 
@@ -88,23 +87,34 @@ void cpp_idt::print_fields(std::ostream &out, unsigned indent) const
   for(unsigned i=0; i<indent; i++) out << ' ';
   out << "  method=" << is_method << std::endl;
 
-  if(original_scope!=NULL)
+  for(unsigned i=0; i<indent; i++) out << ' ';
+  out << "  class_identifier=" << class_identifier << std::endl;
+
+  for(scope_listt::const_iterator
+      it=secondary_scopes.begin();
+      it!=secondary_scopes.end();
+      it++)
   {
     for(unsigned i=0; i<indent; i++) out << ' ';
-    out << "  original_scope=" << original_scope->identifier << std::endl;
+    out << "  secondary_scope=" << (*it)->identifier << std::endl;
+  }
+
+  for(scope_listt::const_iterator
+      it=using_scopes.begin();
+      it!=using_scopes.end();
+      it++)
+  {
+    for(unsigned i=0; i<indent; i++) out << ' ';
+    out << "  using_scope=" << (*it)->identifier << std::endl;
   }
 
   for(unsigned i=0; i<indent; i++) out << ' ';
-  out << "  is_static_member=" << is_static_member << std::endl;
-
-  for(unsigned i=0; i<indent; i++) out << ' ';
-  out << "  is_scope=" << is_scope << std::endl;
-
-  for(unsigned i=0; i<indent; i++) out << ' ';
-  out << "  is_constructor=" << is_constructor << std::endl;
-
-  for(unsigned i=0; i<indent; i++) out << ' ';
-  out << "  class_identifier=" << class_identifier << std::endl;
+  out << "  flags:";
+  if(is_constructor) out << " constructor";
+  if(is_scope) out << " scope";
+  if(is_member) out << " member";
+  if(is_static_member) out << " static_member";
+  out << std::endl;
 
   for(unsigned i=0; i<indent; i++) out << ' ';
   out << "  id_class=" << id_class << std::endl;
@@ -152,6 +162,7 @@ std::ostream &operator<<(std::ostream &out, const cpp_idt::id_classt &id_class)
    case cpp_idt::TEMPLATE_ARGUMENT: out << "TEMPLATE_ARGUMENT"; break;
    case cpp_idt::ROOT_SCOPE:        out << "ROOT_SCOPE"; break;
    case cpp_idt::BLOCK_SCOPE:       out << "BLOCK_SCOPE"; break;
+   case cpp_idt::TEMPLATE_SCOPE:    out << "TEMPLATE_SCOPE"; break;
    case cpp_idt::NAMESPACE:         out << "NAMESPACE"; break;
 
    default:

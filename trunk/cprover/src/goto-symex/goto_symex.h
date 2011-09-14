@@ -69,18 +69,26 @@ protected:
     exprt &expr, statet &state, bool write);
     
   void replace_array_equal(exprt &expr);
+  void trigger_auto_object(const exprt &expr, statet &state);
+  void initialize_auto_object(const exprt &expr, statet &state);
   void process_array_expr(exprt &expr);
+  exprt make_auto_object(const typet &type);
 
-  void dereference(
+  virtual void dereference(
     exprt &expr,
     statet &state,
     const bool write);
   
   void dereference_rec(
     exprt &expr,
+    statet &state,
     guardt &guard,
-    class dereferencet &dereference,
     const bool write);
+  
+  void dereference_rec_address_of(
+    exprt &expr,
+    statet &state,
+    guardt &guard);
   
   // guards
   

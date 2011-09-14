@@ -25,7 +25,8 @@ class cpp_convert_typet
 public:
   unsigned unsigned_cnt, signed_cnt, char_cnt, int_cnt, short_cnt,
            long_cnt, const_cnt, typedef_cnt, volatile_cnt,
-           double_cnt, float_cnt, bool_cnt, extern_cnt, wchar_t_cnt,
+           double_cnt, float_cnt, complex_cnt, bool_cnt,
+           extern_cnt, wchar_t_cnt,
            int8_cnt, int16_cnt, int32_cnt, int64_cnt, ptr32_cnt, ptr64_cnt;
 
   void read(const typet &type);
@@ -58,11 +59,15 @@ void cpp_convert_typet::read(const typet &type)
 {
   unsigned_cnt=signed_cnt=char_cnt=int_cnt=short_cnt=
   long_cnt=const_cnt=typedef_cnt=volatile_cnt=
-  double_cnt=float_cnt=bool_cnt=extern_cnt=
+  double_cnt=float_cnt=complex_cnt=bool_cnt=extern_cnt=
   wchar_t_cnt=int8_cnt=int16_cnt=int32_cnt=
   int64_cnt=ptr32_cnt=ptr64_cnt=0;
 
   other.clear();
+  
+  #if 0
+  std::cout << "cpp_convert_typet::read: " << type.pretty() << std::endl;
+  #endif
 
   read_rec(type);
 }
@@ -109,6 +114,8 @@ void cpp_convert_typet::read_rec(const typet &type)
     double_cnt++;
   else if(type.id()==ID_float)
     float_cnt++;
+  else if(type.id()=="__complex__" || type.id()=="_Complex")
+    complex_cnt++;
   else if(type.id()==ID_bool)
     bool_cnt++;
   else if(type.id()==ID_wchar_t)
@@ -139,7 +146,7 @@ void cpp_convert_typet::read_rec(const typet &type)
   {
     // from arguments
   }
-  else if(type.id()=="cpp-name")
+  else if(type.id()==ID_cpp_name)
   {
     // from typedefs
     other.push_back(type);
@@ -152,6 +159,13 @@ void cpp_convert_typet::read_rec(const typet &type)
   else if(type.id()==ID_template)
   {
     read_template(type);
+  }
+  else if(type.id()==ID_void)
+  {
+    // we store 'void' as 'empty'
+    typet tmp=type;
+    tmp.id(ID_empty);
+    other.push_back(tmp);
   }
   else
   {
@@ -180,9 +194,9 @@ void cpp_convert_typet::read_template(const typet &type)
 
   irept &arguments=t.add(ID_arguments);
 
-  forall_irep(it, arguments.get_sub())
+  Forall_irep(it, arguments.get_sub())
   {
-    exprt &decl=(exprt &)*it;
+    exprt &decl=static_cast<exprt &>(*it);
 
     // may be type or expression
     bool is_type=decl.get_bool(ID_is_type);
@@ -242,7 +256,7 @@ void cpp_convert_typet::read_function_type(const typet &type)
   {
     exprt &argument_expr=static_cast<exprt &>(*it);
 
-    if(argument_expr.id()=="cpp-declaration")
+    if(argument_expr.id()==ID_cpp_declaration)
     {
       cpp_declarationt &declaration=to_cpp_declaration(argument_expr);
       locationt type_location=declaration.type().location();
@@ -264,7 +278,7 @@ void cpp_convert_typet::read_function_type(const typet &type)
       else
       {
         const cpp_namet &cpp_name=declarator.name();
-        typet final_type=declarator.convert(declaration.type());
+        typet final_type=declarator.merge_type(declaration.type());
 
         // see if it's an array type
         if(final_type.id()==ID_array || final_type.id()==ID_incomplete_array)
@@ -322,7 +336,7 @@ Function: cpp_convert_typet::write
 void cpp_convert_typet::write(typet &type)
 {
   type.clear();
-
+  
   // first, do "other"
 
   if(!other.empty())
@@ -332,32 +346,45 @@ void cpp_convert_typet::write(typet &type)
        short_cnt || char_cnt || wchar_t_cnt ||
        int8_cnt || int16_cnt || int32_cnt ||
        int64_cnt)
-      throw "illegal type modifier";
+      throw "type modifier not applicable";
 
     if(other.size()!=1)
       throw "illegal combination of types";
 
     type.swap(other.front());
   }
-  else if(double_cnt || float_cnt)
+  else if(double_cnt)
   {
     if(signed_cnt || unsigned_cnt || int_cnt || bool_cnt ||
-       short_cnt || char_cnt || wchar_t_cnt ||
+       short_cnt || char_cnt || wchar_t_cnt || float_cnt ||
        int8_cnt || int16_cnt || int32_cnt ||
        int64_cnt || ptr32_cnt || ptr64_cnt)
-      throw "illegal type modifier";
+      throw "illegal type modifier for double";
 
-    if(double_cnt && float_cnt)
-      throw "cannot use both float and double";
-
-    if(float_cnt)
+    if(long_cnt)
     {
-      type = float_type();
+      type=long_double_type();
+      type.set(ID_C_cpp_type, ID_long_double);
     }
     else
     {
-      type = double_type();
+      type=double_type();
+      type.set(ID_C_cpp_type, ID_double);
     }
+  }
+  else if(float_cnt)
+  {
+    if(signed_cnt || unsigned_cnt || int_cnt || bool_cnt ||
+       short_cnt || char_cnt || wchar_t_cnt || double_cnt ||
+       int8_cnt || int16_cnt || int32_cnt ||
+       int64_cnt || ptr32_cnt || ptr64_cnt)
+      throw "illegal type modifier for float";
+
+    if(long_cnt)
+      throw "float can't be long";
+
+    type=float_type();
+    type.set(ID_C_cpp_type, ID_float);      
   }
   else if(bool_cnt)
   {
@@ -365,99 +392,204 @@ void cpp_convert_typet::write(typet &type)
        char_cnt || wchar_t_cnt ||
        int8_cnt || int16_cnt || int32_cnt ||
        int64_cnt || ptr32_cnt || ptr64_cnt)
-      throw "illegal type modifier";
+      throw "illegal type modifier for bool";
 
     type.id(ID_bool);
   }
-  else
+  else if(char_cnt)
   {
-    // it is integer -- signed or unsigned?
+    if(int_cnt || short_cnt || wchar_t_cnt || long_cnt ||
+       int8_cnt || int16_cnt || int32_cnt ||
+       int64_cnt || ptr32_cnt || ptr64_cnt)
+      throw "illegal type modifier for char";
 
-    if(signed_cnt && unsigned_cnt)
-      throw "illegal type modifier";
-    else if(unsigned_cnt)
+    // there are really three distinct char types in C++
+    if(unsigned_cnt)
+    {
       type.id(ID_unsignedbv);
+      type.set(ID_width, config.ansi_c.char_width);
+      type.set(ID_C_cpp_type, ID_unsigned_char);
+    }
     else if(signed_cnt)
+    {
       type.id(ID_signedbv);
+      type.set(ID_width, config.ansi_c.char_width);
+      type.set(ID_C_cpp_type, ID_signed_char);
+    }
     else
     {
-      if(char_cnt)
-        type.id(config.ansi_c.char_is_unsigned?ID_unsignedbv:ID_signedbv);
-      else if(wchar_t_cnt)
-        type.id(ID_signedbv);
-      else
-        type.id(ID_signedbv);
+      type.id(config.ansi_c.char_is_unsigned?ID_unsignedbv:ID_signedbv);
+      type.set(ID_C_cpp_type, ID_char);
+      type.set(ID_width, config.ansi_c.char_width);
     }
+  }
+  else if(wchar_t_cnt)
+  {
+    // This is a distinct type, and can't be made signed/unsigned.
+    // This is tolerated by most compilers, however.
 
-    // get width
+    if(int_cnt || short_cnt || char_cnt || long_cnt ||
+       int8_cnt || int16_cnt || int32_cnt ||
+       int64_cnt || ptr32_cnt || ptr64_cnt)
+      throw "illegal type modifier for wchar_t";
 
-    unsigned width;
+    type.id(ID_signedbv);
+    type.set(ID_width, config.ansi_c.wchar_t_width);
+    type.set(ID_C_cpp_type, ID_wchar_t);
+  }
+  else
+  {
+    // it must be integer -- signed or unsigned?
+
+    if(signed_cnt && unsigned_cnt)
+      throw "integer cannot be both signed and unsigned";
 
     if(short_cnt)
     {
-      if(long_cnt || char_cnt)
-        throw "illegal type modifier";
-
-      width=config.ansi_c.short_int_width;
-    }
-    else if(char_cnt)
-    {
       if(long_cnt)
-        throw "illegal type modifier";
+        throw "cannot combine short and long";
 
-      width=config.ansi_c.char_width;
-    }
-    else if(wchar_t_cnt)
-    {
-      if(long_cnt)
-        throw "illegal type modifier";
+      if(unsigned_cnt)
+      {
+        type.id(ID_unsignedbv);
+        type.set(ID_C_cpp_type, ID_unsigned_short_int);
+      }
+      else
+      {
+        type.id(ID_signedbv);
+        type.set(ID_C_cpp_type, ID_signed_short_int);
+      }
 
-      width=config.ansi_c.wchar_t_width;
+      type.set(ID_width, config.ansi_c.short_int_width);
     }
     else if(int8_cnt)
     {
       if(long_cnt)
-        throw "illegal type modifier";
+        throw "illegal type modifier for __int8";
 
-      width=1*8;
+      // in terms of overloading, this behaves like "char"
+      if(unsigned_cnt)
+      {
+        type.id(ID_unsignedbv);
+        type.set(ID_C_cpp_type, ID_unsigned_char);
+      }
+      else if(signed_cnt)
+      {
+        type.id(ID_signedbv);
+        type.set(ID_C_cpp_type, ID_signed_char);
+      }
+      else
+      {
+        type.id(ID_signedbv);
+        type.set(ID_C_cpp_type, ID_char);
+      }
+
+      type.set(ID_width, 8);
     }
     else if(int16_cnt)
     {
       if(long_cnt)
-        throw "illegal type modifier";
+        throw "illegal type modifier for __int16";
 
-      width=2*8;
+      // in terms of overloading, this behaves like "short"
+      if(unsigned_cnt)
+      {
+        type.id(ID_unsignedbv);
+        type.set(ID_C_cpp_type, ID_unsigned_short_int);
+      }
+      else
+      {
+        type.id(ID_signedbv);
+        type.set(ID_C_cpp_type, ID_signed_short_int);
+      }
+
+      type.set(ID_width, 16);
     }
     else if(int32_cnt)
     {
       if(long_cnt)
-        throw "illegal type modifier";
+        throw "illegal type modifier for __int32";
 
-      width=4*8;
+      // in terms of overloading, this behaves like "int"
+      if(unsigned_cnt)
+      {
+        type.id(ID_unsignedbv);
+        type.set(ID_C_cpp_type, ID_unsigned_int);
+      }
+      else
+      {
+        type.id(ID_signedbv);
+        type.set(ID_C_cpp_type, ID_signed_int);
+      }
+
+      type.set(ID_width, 32);
     }
     else if(int64_cnt)
     {
       if(long_cnt)
-        throw "illegal type modifier";
+        throw "illegal type modifier for __int64";
 
-      width=8*8;
+      // in terms of overloading, this behaves like "long long"
+      if(unsigned_cnt)
+      {
+        type.id(ID_unsignedbv);
+        type.set(ID_C_cpp_type, ID_unsigned_long_long_int);
+      }
+      else
+      {
+        type.id(ID_signedbv);
+        type.set(ID_C_cpp_type, ID_signed_long_long_int);
+      }
+
+      type.set(ID_width, 64);
     }
-    else if(!long_cnt)
+    else if(long_cnt==0)
     {
-      width=config.ansi_c.int_width;
+      if(unsigned_cnt)
+      {
+        type.set(ID_C_cpp_type, ID_unsigned_int);
+        type.id(ID_unsignedbv);
+      }
+      else
+      {
+        type.set(ID_C_cpp_type, ID_signed_int);
+        type.id(ID_signedbv);
+      }
+
+      type.set(ID_width, config.ansi_c.int_width);
     }
     else if(long_cnt==1)
     {
-      width=config.ansi_c.long_int_width;
+      if(unsigned_cnt)
+      {
+        type.set(ID_C_cpp_type, ID_unsigned_long_int);
+        type.id(ID_unsignedbv);
+      }
+      else
+      {
+        type.set(ID_C_cpp_type, ID_signed_long_int);
+        type.id(ID_signedbv);
+      }
+      
+      type.set(ID_width, config.ansi_c.long_int_width);
     }
     else if(long_cnt==2)
     {
-      width=config.ansi_c.long_long_int_width;
+      if(unsigned_cnt)
+      {
+        type.set(ID_C_cpp_type, ID_unsigned_long_long_int);
+        type.id(ID_unsignedbv);
+      }
+      else
+      {
+        type.set(ID_C_cpp_type, ID_signed_long_long_int);
+        type.id(ID_signedbv);
+      }
+      
+      type.set(ID_width, config.ansi_c.long_long_int_width);
     }
     else
-      throw "illegal type modifier";
-
-    type.set(ID_width, width);
+      throw "illegal combination of type modifiers";
   }
 
   // is it constant?
@@ -483,7 +615,7 @@ Function: cpp_convert_plain_type
 
 void cpp_convert_plain_type(typet &type)
 {
-  if(type.id()=="cpp-name" ||
+  if(type.id()==ID_cpp_name ||
      type.id()==ID_struct ||
      type.id()==ID_union ||
      type.id()==ID_pointer ||
@@ -495,10 +627,15 @@ void cpp_convert_plain_type(typet &type)
      type.id()==ID_floatbv ||
      type.id()==ID_empty ||
      type.id()==ID_symbol ||
-     type.id()==ID_c_enum ||
      type.id()==ID_constructor ||
      type.id()==ID_destructor)
   {
+  }
+  else if(type.id()==ID_c_enum)
+  {
+    // add width -- we use int, but the standard
+    // doesn't guarantee that
+    type.set(ID_width, config.ansi_c.int_width);
   }
   else
   {

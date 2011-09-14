@@ -73,14 +73,9 @@ void show_claims(
         l.new_element("file").data=id2string(location.get_file());
         l.new_element("function").data=id2string(location.get_function());
         
-        xml.new_element("description").data=
-          xmlt::escape(id2string(description));
-        
-        xml.new_element("property").data=
-          xmlt::escape(id2string(property));
-        
-        xml.new_element("expression").data=
-          xmlt::escape(from_expr(ns, identifier, it->guard));
+        xml.new_element("description").data=id2string(description);        
+        xml.new_element("property").data=id2string(property);        
+        xml.new_element("expression").data=from_expr(ns, identifier, it->guard);
           
         std::cout << xml << std::endl;
       }

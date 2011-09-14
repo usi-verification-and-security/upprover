@@ -12,7 +12,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 class cpp_linkage_spect:public exprt
 {
 public:
-  cpp_linkage_spect():exprt("cpp-linkage-spec")
+  cpp_linkage_spect():exprt(ID_cpp_linkage_spec)
   {
   }
   
@@ -30,12 +30,12 @@ public:
   
   irept &linkage()
   {
-    return add("linkage");
+    return add(ID_linkage);
   }
 
   const irept &linkage() const
   {
-    return find("linkage");
+    return find(ID_linkage);
   }
 };
 

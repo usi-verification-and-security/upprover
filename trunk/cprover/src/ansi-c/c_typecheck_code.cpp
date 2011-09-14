@@ -56,7 +56,7 @@ void c_typecheck_baset::typecheck_code(codet &code)
   else if(statement==ID_block)
     typecheck_block(code);
   else if(statement==ID_ifthenelse)
-    typecheck_ifthenelse(code);
+    typecheck_ifthenelse(to_code_ifthenelse(code));
   else if(statement==ID_while ||
           statement==ID_dowhile)
     typecheck_while(code);
@@ -76,6 +76,8 @@ void c_typecheck_baset::typecheck_code(codet &code)
     typecheck_return(code);
   else if(statement==ID_decl)
     typecheck_decl(code);
+  else if(statement==ID_decl_type)
+    typecheck_decl_type(code);
   else if(statement==ID_decl_block)
     typecheck_decl_block(code);
   else if(statement==ID_assign)
@@ -89,6 +91,24 @@ void c_typecheck_baset::typecheck_code(codet &code)
     typecheck_start_thread(code);
   else if(statement==ID_gcc_local_label)
   {
+  }
+  else if(statement==ID_msc_try_finally)
+  {
+    assert(code.operands().size()==2);
+    typecheck_code(to_code(code.op0()));
+    typecheck_code(to_code(code.op1()));
+  }
+  else if(statement==ID_msc_try_except)
+  {
+    assert(code.operands().size()==3);
+    typecheck_code(to_code(code.op0()));
+    typecheck_expr(code.op1());
+    typecheck_code(to_code(code.op2()));
+  }
+  else if(statement==ID_msc_leave)
+  {
+    // fine as is, but should check that we
+    // are in a 'try' block
   }
   else
   {
@@ -279,13 +299,33 @@ Function: c_typecheck_baset::typecheck_decl
 
 \*******************************************************************/
 
+void c_typecheck_baset::typecheck_decl_type(codet &code)
+{
+  assert(code.operands().size()==0);
+  // type only!
+}
+
+/*******************************************************************\
+
+Function: c_typecheck_baset::typecheck_decl
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
 void c_typecheck_baset::typecheck_decl(codet &code)
 {
+  // this may have 1 or 2 operands
+  
   if(code.operands().size()!=1 &&
      code.operands().size()!=2)
   {
     err_location(code);
-    throw "decl expected to have one or two arguments";
+    throw "decl expected to have 0-2 arguments";
   }
 
   // op0 must be symbol
@@ -339,15 +379,51 @@ void c_typecheck_baset::typecheck_decl(codet &code)
   // set type now (might be changed by initializer)
   code.op0().type()=symbol.type;
 
-  const typet &type=follow(code.op0().type());
-
   // this must not be an incomplete type
-  if(type.id()==ID_incomplete_struct ||
-     type.id()==ID_incomplete_array)
+  if(!is_complete_type(code.op0().type()))
   {
     err_location(code);
     throw "incomplete type not permitted here";
   }
+}
+
+/*******************************************************************\
+
+Function: c_typecheck_baset::is_complete_type
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+bool c_typecheck_baset::is_complete_type(const typet &type) const
+{
+  if(type.id()==ID_incomplete_struct ||
+     type.id()==ID_incomplete_union ||
+     type.id()==ID_incomplete_array)
+    return false;
+  else if(type.id()==ID_array)
+    return is_complete_type(type.subtype());
+  else if(type.id()==ID_struct || type.id()==ID_union)
+  {
+    const struct_union_typet::componentst &components=
+      to_struct_union_type(type).components();
+    for(struct_union_typet::componentst::const_iterator
+        it=components.begin();
+        it!=components.end();
+        it++)
+      if(!is_complete_type(it->type()))
+        return false;
+  }
+  else if(type.id()==ID_vector)
+    return is_complete_type(type.subtype());
+  else if(type.id()==ID_symbol)
+    return is_complete_type(follow(type));
+  
+  return true;
 }
 
 /*******************************************************************\
@@ -455,11 +531,12 @@ void c_typecheck_baset::typecheck_for(codet &code)
     if(code.op3().is_not_nil())
     {
       // save & set flags
-      bool old_break_is_allowed(break_is_allowed);
-      bool old_continue_is_allowed(continue_is_allowed);
+      bool old_break_is_allowed=break_is_allowed;
+      bool old_continue_is_allowed=continue_is_allowed;
 
       break_is_allowed=continue_is_allowed=true;
 
+      // recursive call
       typecheck_code(to_code(code.op3()));
 
       // restore flags
@@ -592,13 +669,13 @@ Function: c_typecheck_baset::typecheck_ifthenelse
 
 \*******************************************************************/
 
-void c_typecheck_baset::typecheck_ifthenelse(codet &code)
+void c_typecheck_baset::typecheck_ifthenelse(code_ifthenelset &code)
 {
   if(code.operands().size()!=2 &&
      code.operands().size()!=3)
     throw "ifthenelse expected to have two or three operands";
 
-  exprt &cond=code.op0();
+  exprt &cond=code.cond();
 
   typecheck_expr(cond);
 
@@ -613,11 +690,11 @@ void c_typecheck_baset::typecheck_ifthenelse(codet &code)
 
   implicit_typecast_bool(cond);
 
-  typecheck_code(to_code(code.op1()));
+  typecheck_code(to_code(code.then_case()));
 
   if(code.operands().size()==3 &&
-     !code.op2().is_nil())
-    typecheck_code(to_code(code.op2()));
+     !code.else_case().is_nil())
+    typecheck_code(to_code(code.else_case()));
 }
 
 /*******************************************************************\

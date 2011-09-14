@@ -27,7 +27,7 @@ void convert(
   xmlt &xml)
 {  
   if(irep.id()!=ID_nil)
-    xml.new_element("id").data = xmlt::escape(irep.id_string());
+    xml.new_element("id").data=irep.id_string();
 
   forall_irep(it, irep.get_sub())
   {
@@ -73,7 +73,7 @@ void convert(
   {
     if(it->name=="id")
     {
-      irep.id(xmlt::unescape(it->data));
+      irep.id(it->data);
     }
     else if(it->name=="named_sub")
     {

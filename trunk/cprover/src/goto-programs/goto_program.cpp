@@ -111,7 +111,7 @@ std::ostream& goto_programt::output_instruction(
       
     out << std::endl;
     break;
-    
+
   case SKIP:
     out << "SKIP" << std::endl;
     break;
@@ -189,26 +189,6 @@ void goto_programt::get_decl_identifiers(
 
 /*******************************************************************\
 
-Function: operator<
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-bool operator<(const goto_programt::const_targett i1,
-               const goto_programt::const_targett i2)
-{
-  const goto_programt::instructiont &_i1=*i1;
-  const goto_programt::instructiont &_i2=*i2;
-  return &_i1<&_i2;
-}
-
-/*******************************************************************\
-
 Function: parse_lhs_read
 
   Inputs:
@@ -272,7 +252,8 @@ std::list<exprt> expressions_read(
     break;
   
   case RETURN:
-    if(to_code_return(instruction.code).has_return_value())
+    if(to_code_return(instruction.code).has_return_value() &&
+        to_code_return(instruction.code).return_value().is_not_nil())
       dest.push_back(to_code_return(instruction.code).return_value());
     break;
   

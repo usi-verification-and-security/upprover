@@ -96,7 +96,7 @@ inline int pthread_rwlock_destroy(pthread_rwlock_t *lock)
 
 inline int pthread_rwlock_init(pthread_rwlock_t *lock, 
   const pthread_rwlockattr_t *attr)
-{ __CPROVER_HIDE: __CPROVER_rwlock_field(*lock)=0; }
+{ __CPROVER_HIDE: (*(char *)lock)=0; }
 
 /* FUNCTION: pthread_rwlock_rdlock */
 
@@ -128,8 +128,8 @@ inline int pthread_rwlock_tryrdlock(pthread_rwlock_t *lock)
 inline int pthread_rwlock_trywrlock(pthread_rwlock_t *lock)
 { __CPROVER_HIDE:
   __CPROVER_atomic_begin();
-  if(__CPROVER_rwlock_field(*lock)) { __CPROVER_atomic_end(); return 1; }
-  __CPROVER_rwlock_field(*lock)=1;
+  if(*(char *)lock) { __CPROVER_atomic_end(); return 1; }
+  (*(char *)lock)=1;
   __CPROVER_atomic_end();
   return 0;
 }
@@ -142,7 +142,7 @@ inline int pthread_rwlock_trywrlock(pthread_rwlock_t *lock)
 #endif
 
 inline int pthread_rwlock_unlock(pthread_rwlock_t *lock)
-{ __CPROVER_HIDE: __CPROVER_rwlock_field(*lock)=0; }
+{ __CPROVER_HIDE: (*(char *)lock)=0; }
 
 /* FUNCTION: pthread_rwlock_wrlock */
 
@@ -154,8 +154,8 @@ inline int pthread_rwlock_unlock(pthread_rwlock_t *lock)
 inline int pthread_rwlock_wrlock(pthread_rwlock_t *lock)
 { __CPROVER_HIDE:
   __CPROVER_atomic_begin();
-  __CPROVER_assume(!__CPROVER_rwlock_field(*lock));
-  __CPROVER_rwlock_field(*lock)=1;
+  __CPROVER_assume(!(*(char *)lock));
+  (*(char *)lock)=1;
   __CPROVER_atomic_end();
   return 0; // we never fail
 }

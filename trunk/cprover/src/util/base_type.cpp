@@ -261,8 +261,9 @@ bool base_type_eqt::base_type_eq_rec(
   {
     if(!base_type_eq_rec(type1.subtype(), type2.subtype()))
       return false;
-      
-    // TODO: check size
+
+    if(to_array_type(type1).size()!=to_array_type(type2).size())
+      return false;
       
     return true;
   }

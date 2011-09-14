@@ -20,6 +20,12 @@ Date: June 2006
 #include <dirent.h>
 #endif
 
+#ifdef __CYGWIN__
+#include <unistd.h>
+#include <errno.h>
+#include <dirent.h>
+#endif
+
 #include <fstream>
 #include <sstream>
 
@@ -28,6 +34,7 @@ Date: June 2006
 #include <replace_symbol.h>
 #include <base_type.h>
 #include <xml.h>
+#include <i2string.h>
 
 #include <ansi-c/ansi_c_language.h>
 #include <ansi-c/c_link_class.h>
@@ -59,13 +66,10 @@ Date: June 2006
 #include <windows.h>
 #include <direct.h>
 #include <errno.h>
-#include <dirent.h>
 #define chdir _chdir
 #define popen _popen
 #define pclose _pclose
 #endif
-
-#define OBJFILEEXT "o"
 
 #define DOTGRAPHSETTINGS  "color=black;" \
                           "orientation=portrait;" \
@@ -75,22 +79,6 @@ Date: June 2006
                           "ratio=compress;"
 
 unsigned compilet::subgraphscount;
-
-std::string to_string(unsigned long l) {
-  std::string res = "";
-  char x[20];
-  sprintf(x, "%ld", l);
-  res = x;
-  return res;
-}
-
-std::string to_string(long l) {
-  std::string res = "";
-  char x[20];
-  sprintf(x, "%ld", l);
-  res = x;
-  return res;
-}
 
 /*******************************************************************\
 
@@ -142,10 +130,10 @@ bool compilet::doit()
 
   // Work through the given source files
   print(8, "No. of source files: " +
-    to_string((unsigned long) source_files.size()));
+    i2string((unsigned long) source_files.size()));
 
   print(8, "No. of object files: " +
-    to_string((unsigned long) object_files.size()));
+    i2string((unsigned long) object_files.size()));
 
   if(source_files.size()==0 && object_files.size()==0)
   {
@@ -193,12 +181,13 @@ Function: compilet::add_input_file
 
 bool compilet::add_input_file(const std::string &filename)
 {
-  size_t r = filename.rfind('.', filename.length()-1);
+  size_t r=filename.rfind('.', filename.length()-1);
 
-  if (r != std::string::npos)
+  if(r!=std::string::npos)
   {
     std::string ext = filename.substr(r+1, filename.length());
-    if (ext=="a")
+
+    if(ext=="a")
     {
       #ifdef _WIN32
       char td[MAX_PATH];
@@ -303,7 +292,8 @@ bool compilet::add_input_file(const std::string &filename)
           object_files.push_back(filename);
       }
     }
-    else if (ext==OBJFILEEXT || ext=="la" || ext=="lo") // Object file recognized
+    else if(ext==object_file_extension ||
+            ext=="la" || ext=="lo") // Object file recognized
       object_files.push_back(filename);
     else // assume source file
       source_files.push_back(filename);
@@ -344,25 +334,26 @@ bool compilet::find_library(const std::string &name)
     tmp = *it + "/lib";
     #endif
     std::ifstream in((tmp+name+".a").c_str());
-    if (in.is_open())
+    if(in.is_open())
       add_input_file(tmp+name+".a");
     else
     {
       std::string libname = tmp+name+".so";
-      if (is_elf_file(libname))
-          std::cout << "Warning: Cannot read ELF library " << libname << "."
-            << std::endl;
 
-      if (cmdline.isset("xml"))
+      if(is_elf_file(libname))
+          std::cout << "Warning: Cannot read ELF library " << libname << "."
+                    << std::endl;
+
+      if(cmdline.isset("xml"))
       {
-        if (is_xml_file(libname))
+        if(is_xml_file(libname))
           add_input_file(libname);
         else
           return false;
       }
       else
       {
-        if (is_binary_file(libname))
+        if(is_binary_file(libname))
           add_input_file(libname);
         else
           return false;
@@ -483,13 +474,17 @@ bool compilet::link()
   print(8, "Compiling functions");
   convert_symbols(compiled_functions);
 
-
-  // inline those functions marked as "inlined"
-  print(8, "Partial inlining");
-  goto_partial_inline(
-    compiled_functions,
-    ns,
-    get_message_handler());
+  if(cmdline.isset("partial-inlining"))
+  {
+    // inline those functions marked as "inlined"
+    // we no longer do partial inlining by default -- can just as
+    // well be done in the backend
+    print(8, "Partial inlining");
+    goto_partial_inline(
+      compiled_functions,
+      ns,
+      get_message_handler());
+  }
 
   // parse object files
   while(object_files.size()>0)
@@ -526,9 +521,7 @@ bool compilet::link()
     {
       const symbolt &symbol = it->second;
       if (symbol.mode!="" &&
-            find(  seen_modes.begin(),
-                   seen_modes.end(),
-                   symbol.mode)
+            find(seen_modes.begin(), seen_modes.end(), symbol.mode)
             == seen_modes.end())
       {
         seen_modes.push_back(symbol.mode);
@@ -548,16 +541,19 @@ bool compilet::link()
       // Hackfix for C++
       std::list<irep_idt>::iterator cpp =
         find(seen_modes.begin(), seen_modes.end(), "cpp");
+
       std::list<irep_idt>::iterator c =
         find(seen_modes.begin(), seen_modes.end(), "C");
-      if (c!=seen_modes.end() && cpp!=seen_modes.end()) {
+
+      if (c!=seen_modes.end() && cpp!=seen_modes.end())
         seen_modes.erase(c);
-      }
 
       std::list<irep_idt>::iterator it = seen_modes.begin();
-      for (; it!=seen_modes.end(); it++) {
+      for (; it!=seen_modes.end(); it++)
+      {
         languaget *language=get_language_from_mode(*it);
-        if (language) {
+        if (language)
+        {
           if (language->final(context, ui_message_handler))
             return true;
         }
@@ -583,7 +579,7 @@ bool compilet::link()
     convert_symbols(compiled_functions);
   }
 
-  if(write_object_file(output_file, context, compiled_functions))
+  if(write_object_file(output_file_executable, context, compiled_functions))
     return true;
 
   return false;
@@ -613,63 +609,42 @@ bool compilet::compile()
 
     if(!r && !doLink && !only_preprocess)
     {
-      if(cmdline.isset('o'))
+      // output an object file for every source file
+
+      // "compile" functions
+      convert_symbols(compiled_functions);
+
+      if(cmdline.isset("show-symbol-table"))
       {
-        if(source_files.size()==0)
-        { // only output after the last source is parsed
-          // "compile" functions
+        show_symbol_table();
+        return true;
+      }
 
-          convert_symbols(compiled_functions);
+      if(cmdline.isset("show-function-table"))
+      {
+        show_function_table();
+        return true;
+      }
 
-          if(cmdline.isset("show-function-table"))
-          {
-            show_function_table();
-            return true;
-          }
-
-          if(cmdline.isset("show-symbol-table"))
-          {
-            show_symbol_table();
-            return true;
-          }
-
-          if(write_object_file(output_file, context, compiled_functions))
-            return true;
-
-          context.clear(); // clean symbol table for next source file.
-          compiled_functions.clear();
-        }
+      std::string cfn;
+      
+      if(output_file_object=="")
+      {
+        if(cmdline.isset('S')) // compile, but don't assemble
+          cfn=get_base_name(filename) + ".s";
+        else
+          cfn=get_base_name(filename) + "." + object_file_extension;
       }
       else
-      { // output an object file for every source file
-        // "compile" functions
-
-        convert_symbols(compiled_functions);
-
-        if(cmdline.isset("show-symbol-table"))
-        {
-          show_symbol_table();
-          return true;
-        }
-
-        if(cmdline.isset("show-function-table"))
-        {
-          show_function_table();
-          return true;
-        }
-
-        std::string cfn;
-        if(cmdline.isset('S'))
-          cfn = get_base_name(filename) + ".s";
-        else
-          cfn = get_base_name(filename) + "." + OBJFILEEXT;
-
-        if(write_object_file(cfn, context, compiled_functions))
-          return true;
-
-        context.clear(); // clean symbol table for next source file.
-        compiled_functions.clear();
+      {
+        cfn=output_file_object;
       }
+
+      if(write_object_file(cfn, context, compiled_functions))
+        return true;
+
+      context.clear(); // clean symbol table for next source file.
+      compiled_functions.clear();
     }
     
     if(r) return true; // parser/typecheck error
@@ -728,14 +703,15 @@ bool compilet::parse(const std::string &filename)
     std::ostream *os = &std::cout;
     std::ofstream ofs;
 
-    if(cmdline.isset("o"))
+    if(cmdline.isset('o'))
     {
-      ofs.open(output_file.c_str());
+      ofs.open(cmdline.getval('o'));
       os = &ofs;
 
       if(!ofs.is_open())
       {
-        error("failed to open output file", output_file);
+        error(std::string("failed to open output file `")+
+              cmdline.getval('o')+"'");
         return true;
       }
     }
@@ -779,14 +755,15 @@ bool compilet::parse_stdin()
     std::ostream *os = &std::cout;
     std::ofstream ofs;
 
-    if(cmdline.isset("o"))
+    if(cmdline.isset('o'))
     {
-      ofs.open(output_file.c_str());
+      ofs.open(cmdline.getval('o'));
       os = &ofs;
 
       if(!ofs.is_open())
       {
-        error("failed to open output file", output_file);
+        error(std::string("failed to open output file `")+
+              cmdline.getval('o'));
         return true;
       }
     }
@@ -848,30 +825,29 @@ bool compilet::write_bin_object_file(
   const contextt &lcontext,
   goto_functionst &functions)
 {
-  print(8, "Writing binary format object " + filename);
+  print(8, "Writing binary format object `" + filename + "'");
 
   // symbols
-  print(8, "Symbols in table: " +
-           to_string((unsigned long) lcontext.symbols.size()));
+  print(8, "Symbols in table: "+
+           i2string((unsigned long)lcontext.symbols.size()));
 
-  std::ofstream f(filename.c_str(), std::ios::binary);
-  if (!f.is_open())
+  std::ofstream outfile(filename.c_str(), std::ios::binary);
+
+  if(!outfile.is_open())
   {
-    error("Error opening file " + filename);
+    error("Error opening file `"+filename+"'");
     return true;
   }
 
-  if(write_goto_binary(f, lcontext, functions))
+  if(write_goto_binary(outfile, lcontext, functions))
     return true;
 
-  unsigned cnt = function_body_count(functions);
-  if (verbosity>=9)
-  {
-    std::cout << "Functions: " << functions.function_map.size() << "; ";
-    std::cout << cnt << " have a body." << std::endl;
-  }
+  unsigned cnt=function_body_count(functions);
 
-  f.close();
+  debug("Functions: "+i2string(functions.function_map.size())+"; "+
+        i2string(cnt)+" have a body.");
+
+  outfile.close();
 
   if(cmdline.isset("dot"))
   {
@@ -932,7 +908,7 @@ bool compilet::write_xml_object_file(
   xml_goto_function_convertt gfconverter(irepc);
 
   xmlt syms("symbols");
-  print(8, "Symbols in table: " + to_string((unsigned long) lcontext.symbols.size()));
+  print(8, "Symbols in table: " + i2string((unsigned long) lcontext.symbols.size()));
   forall_symbols(it, lcontext.symbols)
   {
     const symbolt &sym = it->second;
@@ -1277,8 +1253,6 @@ Function: compilet::escape
 
 std::string &compilet::escape(std::string &str)
 {
-  char last = '\0';
-
   for(unsigned i=0; i<str.size(); i++)
   {
     if(str[i]=='\n')
@@ -1297,7 +1271,6 @@ std::string &compilet::escape(std::string &str)
       str.insert(i, "\\");
       i++;
     }
-    last = str[i];
   }
 
   return str;
@@ -1462,7 +1435,6 @@ compilet::compilet(cmdlinet &_cmdline):
   ns(context),
   cmdline(_cmdline)
 {
-  output_file = "a.out";
   doLink = false;
   act_as_ld = false;
   only_preprocess = false;
@@ -1495,20 +1467,40 @@ Function: compilet::~compilet
 compilet::~compilet()
 {
   // clean up temp dirs
+
   for (std::list<std::string>::const_iterator it = tmp_dirs.begin();
        it!=tmp_dirs.end();
        it++)
   {
-    DIR * dir = opendir(it->c_str());
-    if (dir!=NULL)
+    #ifdef _WIN32
+    
+    std::string pattern=*it+"\\*";
+    
+    struct _finddata_t info;
+    
+    intptr_t handle=_findfirst(pattern.c_str(), &info);
+    
+    if(handle!=-1)
+    {
+      unlink(info.name);
+      
+      while(_findnext(handle, &info)!=-1)
+        unlink(info.name);
+    }
+    #else
+    DIR *dir=opendir(it->c_str());
+
+    if(dir!=NULL)
     {
       struct dirent *ent;
-      while ((ent = readdir(dir))!=NULL)
-      {
+
+      while((ent=readdir(dir))!=NULL)
         remove((*it + "/" + ent->d_name).c_str());
-      }
+
       closedir(dir);
     }
+    #endif
+
     rmdir(it->c_str());
   }
 }
@@ -1694,7 +1686,7 @@ Function: compilet::add_compiler_specific_defines
 
 void compilet::add_compiler_specific_defines(configt &config) const
 {
-  config.ansi_c.defines.push_back("__VERSION__=" GOTOCC_VERSION);
+  config.ansi_c.defines.push_back("__GOTO_CC_VERSION__=" GOTOCC_VERSION);
 }
 
 /*******************************************************************\

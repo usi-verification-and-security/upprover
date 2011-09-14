@@ -28,7 +28,9 @@ Function: convert_character_literal
 
 \*******************************************************************/
 
-exprt convert_character_literal(const std::string &src)
+exprt convert_character_literal(
+  const std::string &src,
+  bool force_integer_type)
 {
   assert(src.size()>=2);
   
@@ -45,7 +47,26 @@ exprt convert_character_literal(const std::string &src)
     if(value.size()==0)
       throw "empty wide character literal";
     else if(value.size()==1)
-      result=from_integer(value[0], wchar_t_type());
+    {
+      typet type=force_integer_type?int_type():wchar_t_type();
+      result=from_integer(value[0], type);
+    }
+    else if(value.size()>=2 && value.size()<=4)
+    {
+      // TODO: need to double-check. GCC seems to say that each
+      // character is wchar_t wide.
+      mp_integer x=0;
+
+      for(unsigned i=0; i<value.size(); i++)
+      {
+        mp_integer z=(unsigned char)(value[i]);
+        z=z<<((value.size()-i-1)*8);
+        x+=z;
+      }
+
+      // always wchar_t
+      result=from_integer(x, wchar_t_type());
+    }
     else
       throw "wide literals with "+i2string(value.size())+
             " characters are not supported";
@@ -61,7 +82,10 @@ exprt convert_character_literal(const std::string &src)
     if(value.size()==0)
       throw "empty character literal";
     else if(value.size()==1)
-      result=from_integer(value[0], char_type());
+    {
+      typet type=force_integer_type?int_type():char_type();
+      result=from_integer(value[0], type);
+    }
     else if(value.size()>=2 && value.size()<=4)
     {
       mp_integer x=0;
@@ -73,6 +97,7 @@ exprt convert_character_literal(const std::string &src)
         x+=z;
       }
 
+      // always integer, never char!
       result=from_integer(x, int_type());
     }
     else

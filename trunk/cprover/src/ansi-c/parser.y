@@ -29,6 +29,7 @@ extern char *yyansi_ctext;
 
 %token	TOK_AUTO      "auto"
 %token  TOK_BOOL      "bool"
+%token  TOK_COMPLEX   "complex"
 %token	TOK_BREAK     "break"
 %token	TOK_CASE      "case"
 %token	TOK_CHAR      "char"
@@ -98,6 +99,7 @@ extern char *yyansi_ctext;
 %token	TOK_FLOATING
 %token	TOK_CHARACTER
 %token	TOK_STRING
+%token  TOK_ASM_STRING
 
 /*** extensions ***/
 
@@ -109,10 +111,12 @@ extern char *yyansi_ctext;
 %token	TOK_PTR64       "__ptr64"
 %token  TOK_TYPEOF      "typeof"
 %token  TOK_GCC_ASM     "__asm__"
-%token  TOK_GCC_ATTRIBUTE_ALIGNED "__attribute__((aligned))"
-%token  TOK_GCC_ATTRIBUTE_TRANSPARENT_UNION "__attribute__((transparent_union))"
-%token  TOK_GCC_ATTRIBUTE_PACKED "__attribute__((packed))"
-%token  TOK_GCC_ATTRIBUTE_VECTOR_SIZE "__attribute__((vector_size))"
+%token  TOK_GCC_ASM_PAREN "__asm__ (with parentheses)"
+%token  TOK_GCC_ATTRIBUTE_ALIGNED "aligned"
+%token  TOK_GCC_ATTRIBUTE_TRANSPARENT_UNION "transparent_union"
+%token  TOK_GCC_ATTRIBUTE_PACKED "packed"
+%token  TOK_GCC_ATTRIBUTE_VECTOR_SIZE "vector_size"
+%token  TOK_GCC_ATTRIBUTE_END ")"
 %token  TOK_GCC_LABEL   "__label__"
 %token  TOK_MSC_ASM     "__asm"
 %token	TOK_BUILTIN_VA_ARG "__builtin_va_arg"
@@ -127,6 +131,9 @@ extern char *yyansi_ctext;
 %token  TOK_EXISTS      "exists"
 %token  TOK_THREAD_LOCAL "thread_local"
 %token  TOK_ARRAY_OF    "array_of"
+%token  TOK_CPROVER_BITVECTOR "__CPROVER_bitvector"
+%token  TOK_REAL        "__real__"
+%token  TOK_IMAG        "__imag__"
 
 /*** special scanner reports ***/
 
@@ -470,6 +477,16 @@ unary_expression:
 	  set($$, ID_sizeof);
 	  stack($$).add(ID_type_arg).swap(stack($3));
 	}
+	| TOK_REAL unary_expression
+	{ $$=$1;
+	  set($$, ID_complex_real);
+	  mto($$, $2);
+	}
+	| TOK_IMAG unary_expression
+	{ $$=$1;
+	  set($$, ID_complex_imag);
+	  mto($$, $2);
+	}
 	;
 
 cast_expression:
@@ -648,11 +665,19 @@ comma_expression_opt:
 declaration:
 	  declaration_specifier ';'
 	{
+	  // type only!
+	  codet decl(ID_decl_type);
+	  decl.add(ID_type_arg).swap(stack($1));
 	  init($$);
+	  stack($$).move_to_operands(decl);
 	}
 	| type_specifier ';'
 	{
+	  // type only!
+	  codet decl(ID_decl_type);
+	  decl.add(ID_type_arg).swap(stack($1));
 	  init($$);
+	  stack($$).move_to_operands(decl);
 	}
 	| declaring_list ';'
 	| default_declaring_list ';'
@@ -698,7 +723,7 @@ default_declaring_list:
 	;
 
 post_declarator_attributes:
-          TOK_GCC_ASM volatile_opt '(' gcc_asm_commands ')'
+          TOK_GCC_ASM_PAREN volatile_opt '(' gcc_asm_commands ')'
         {
         }
         ;
@@ -1002,6 +1027,7 @@ storage_class:
 	| TOK_REGISTER     { $$=$1; set($$, ID_register); }
 	| TOK_INLINE       { $$=$1; set($$, ID_inline); }
 	| TOK_THREAD_LOCAL { $$=$1; set($$, ID_thread_local); }
+	| TOK_GCC_ASM      { $$=$1; set($$, ID_asm); }
 	;
 
 basic_type_name:
@@ -1017,8 +1043,15 @@ basic_type_name:
 	| TOK_DOUBLE   { $$=$1; set($$, ID_double); }
 	| TOK_SIGNED   { $$=$1; set($$, ID_signed); }
 	| TOK_UNSIGNED { $$=$1; set($$, ID_unsigned); }
-	| TOK_VOID     { $$=$1; set($$, ID_empty); }
+	| TOK_VOID     { $$=$1; set($$, ID_void); }
 	| TOK_BOOL     { $$=$1; set($$, ID_bool); }
+	| TOK_COMPLEX  { $$=$1; set($$, ID_complex); }
+	| TOK_CPROVER_BITVECTOR '[' comma_expression ']'
+        {
+	  $$=$1;
+          set($$, ID_bv);
+          stack($$).add(ID_size).swap(stack($3));
+        }
 	;
 
 elaborated_type_name:
@@ -1113,18 +1146,28 @@ gcc_type_attribute_opt:
         {
           init($$);
         }
-        | gcc_type_attribute
+        | gcc_type_attribute_list
+        ;
+
+gcc_type_attribute_list:
+          gcc_type_attribute
+        | gcc_type_attribute_list gcc_type_attribute
+        {
+          merge_types($1, $2);
+        }
         ;
 
 gcc_type_attribute:
-          TOK_GCC_ATTRIBUTE_PACKED
+          TOK_GCC_ATTRIBUTE_PACKED TOK_GCC_ATTRIBUTE_END
         { $$=$1; set($$, ID_packed); }
-        | TOK_GCC_ATTRIBUTE_TRANSPARENT_UNION
+        | TOK_GCC_ATTRIBUTE_TRANSPARENT_UNION TOK_GCC_ATTRIBUTE_END
         { $$=$1; set($$, ID_transparent_union); }
-        | TOK_GCC_ATTRIBUTE_ALIGNED
-        { $$=$1; set($$, ID_aligned); }
-        | TOK_GCC_ATTRIBUTE_VECTOR_SIZE '(' comma_expression ')'
+        | TOK_GCC_ATTRIBUTE_VECTOR_SIZE '(' comma_expression ')' TOK_GCC_ATTRIBUTE_END
         { $$=$1; set($$, ID_vector); stack($$).add(ID_size)=stack($3); }
+        | TOK_GCC_ATTRIBUTE_ALIGNED TOK_GCC_ATTRIBUTE_END
+        { $$=$1; set($$, ID_aligned); }
+        | TOK_GCC_ATTRIBUTE_ALIGNED '(' comma_expression')' TOK_GCC_ATTRIBUTE_END
+        { $$=$1; set($$, ID_aligned); mto($$, $3); }
         ;
 
 member_declaration_list_opt:
@@ -1705,6 +1748,14 @@ compound_statement:
 	  stack($$).set(ID_C_end_location, stack($4).location());
 	  PARSER.pop_scope();
 	}
+	| compound_scope '{' TOK_ASM_STRING '}'
+	{
+	  init($$);
+	  stack($$).location()=stack($2).location();
+	  stack($$).set(ID_statement, ID_asm);
+	  mto($$, $3);
+	  PARSER.pop_scope();
+	}
 	;
 
 compound_scope:
@@ -1842,50 +1893,58 @@ gcc_local_label_statement:
 	;
 
 gcc_asm_statement:
-	TOK_GCC_ASM volatile_opt '(' gcc_asm_commands ')' ';'
+          TOK_GCC_ASM_PAREN volatile_opt '(' gcc_asm_commands ')' ';'
 	{ $$=$1;
 	  statement($$, ID_asm);
-	  stack($$).set(ID_flavor, ID_gcc); }
+	  stack($$).set(ID_flavor, ID_gcc);
+	  stack($$).operands().swap(stack($4).operands());
+        }
+        | TOK_GCC_ASM_PAREN '{' TOK_ASM_STRING '}'
+        {
+          $$=$1;
+          statement($$, ID_asm);
+	  stack($$).set(ID_flavor, ID_gcc);
+	  mto($$, $3);
+        }
 	;
 
 msc_asm_statement:
-	TOK_MSC_ASM '{' TOK_STRING '}'
+	TOK_MSC_ASM '{' TOK_ASM_STRING '}'
 	{ $$=$1;
 	  statement($$, ID_asm);
-	  stack($$).set(ID_flavor, ID_msc); }
-	| TOK_MSC_ASM TOK_STRING
+	  stack($$).set(ID_flavor, ID_msc);
+	  mto($$, $3);
+        }
+	| TOK_MSC_ASM TOK_ASM_STRING
 	{ $$=$1;
 	  statement($$, ID_asm);
-	  stack($$).set(ID_flavor, ID_msc); }
+	  stack($$).set(ID_flavor, ID_msc);
+	  mto($$, $2);
+        }
 	;
 
 msc_seh_statement:
           TOK_MSC_TRY compound_statement
           TOK_MSC_EXCEPT '(' comma_expression ')' compound_statement
         {
-          $$=$2; /* EXCEPT-Block is ignored */
-          to_code(stack($$)).make_block();
-          code_labelt l;
-          l.set_label("try-exit");
-          l.operands()[0] = code_skipt();
-          stack($$).move_to_operands(l);
+          $$=$1;
+          statement($$, ID_msc_try_except);
+          mto($$, $2);
+          mto($$, $5);
+          mto($$, $7);
         }
         | TOK_MSC_TRY compound_statement
           TOK_MSC_FINALLY compound_statement
         {
-          $$=$2;
-          to_code(stack($$)).make_block();
-          code_labelt l;
-          l.set_label("try-exit");
-          l.operands()[0] = code_skipt();
-          stack($$).move_to_operands(l);
-          mto($$, $4); /* FINALLY is added to the block */
+          $$=$1;
+          statement($$, ID_msc_try_finally);
+          mto($$, $2);
+          mto($$, $4);
         }
         | TOK_MSC_LEAVE
         {
           $$=$1;
-          statement($$, ID_goto);
-          stack($$).set(ID_destination, "try-exit");
+          statement($$, ID_msc_leave);
         }
         ;
 
@@ -1903,9 +1962,25 @@ volatile_opt:
 
 gcc_asm_commands:
           gcc_asm_assembler_template
+          {
+            init($$);
+            mto($$, $1);
+          }
         | gcc_asm_assembler_template gcc_asm_outputs
+          {
+            init($$);
+            mto($$, $1);
+          }
         | gcc_asm_assembler_template gcc_asm_outputs gcc_asm_inputs
+          {
+            init($$);
+            mto($$, $1);
+          }
         | gcc_asm_assembler_template gcc_asm_outputs gcc_asm_inputs gcc_asm_clobbered_registers
+          {
+            init($$);
+            mto($$, $1);
+          }
 	;
 
 gcc_asm_assembler_template: string_literal_list
@@ -1980,7 +2055,7 @@ external_definition:
 	;
 	
 asm_definition:
-          TOK_GCC_ASM '(' string_literal_list ')' ';'
+          TOK_GCC_ASM_PAREN '(' string_literal_list ')' ';'
         ;
 
 function_definition:
@@ -1991,7 +2066,7 @@ function_definition:
 	  to_ansi_c_declaration(stack($1)).value().make_nil();
           PARSER.copy_item(to_ansi_c_declaration(stack($1)));
         }
-	  compound_statement
+	  function_body
 	{
 	  // we now present the body as initializer
           to_ansi_c_declaration(stack($1)).value().swap(stack($3));
@@ -2002,6 +2077,10 @@ function_definition:
           PARSER.function=irep_idt();
 	}
 	;
+	
+function_body:
+          compound_statement
+        ;
 
 KnR_parameter_header_opt:
           /* empty */
@@ -2180,11 +2259,8 @@ paren_postfix_typedef_declarator:	/* Declarator */
 
 simple_paren_typedef_declarator:
 	  typedef_name
-	{
-	  assert(0);
-	}
 	| '(' simple_paren_typedef_declarator ')'
-	{ $$ = $3; }
+	{ $$ = $2; }
 	;
 
 identifier_declarator:

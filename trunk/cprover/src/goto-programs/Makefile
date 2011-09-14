@@ -13,28 +13,29 @@ SRC = goto_convert.cpp goto_function.cpp goto_main.cpp goto_sideeffects.cpp \
       goto_program_template.cpp write_goto_binary.cpp remove_unreachable.cpp \
       remove_unused_functions.cpp dynamic_memory.cpp dump_c.cpp \
       wp.cpp goto_rw.cpp goto_clean_expr.cpp safety_checker.cpp \
-      control_flow_graph.cpp depth_first_spanning_tree.cpp dominator_info.cpp \
-      loops.cpp
+      compute_called_functions.cpp link_to_library.cpp
 
-OBJ = $(SRC:.cpp=.o)
+OBJ = $(SRC:.cpp=$(OBJEXT))
 
 INCLUDES= -I .. -I ../util
-
-all: goto-programs.o
 
 include ../config.inc
 include ../common
 
+all: goto-programs$(LIBEXT)
+
 ###############################################################################
 
-goto-programs.o: $(OBJ)
-	$(LD) $(LDFLAGS) -o goto-programs.o $(OBJ)
+goto-programs$(LIBEXT): $(OBJ)
+	$(LINKLIB)
 
-test_wp: test_wp.o goto-programs.o
-	$(CPLUS) $(LINKFLAGS) test_wp.o -o test_wp \
-	../ansi-c/ansi-c.o  ../util/util.o  ../big-int/bigint.o goto-programs.o \
-	../pointer-analysis/pointer-analysis.o ../langapi/langapi.o
+test_wp$(EXEEXT): test_wp$(OBJEXT) goto-programs$(LIBEXT)
+	$(CXX) $(LINKFLAGS) test_wp$(OBJEXT) -o test_wp$(EXEEXT) \
+	../ansi-c/ansi-c$(LIBEXT)  ../util/util$(LIBEXT) \
+	../big-int/bigint$(OBJEXT) goto-programs$(LIBEXT) \
+	../pointer-analysis/pointer-analysis$(LIBEXT) \
+	../langapi/langapi$(LIBEXT)
 
 clean:
-	rm -f *.o
+	rm -f $(OBJ) goto-programs$(LIBEXT) test_wp$(EXEEXT)
 

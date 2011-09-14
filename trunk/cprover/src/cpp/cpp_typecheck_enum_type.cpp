@@ -30,35 +30,36 @@ void cpp_typecheckt::typecheck_enum_body(symbolt &enum_symbol)
 {
   typet &type=enum_symbol.type;
   
-  exprt &body=(exprt &)type.add("body");
+  exprt &body=static_cast<exprt &>(type.add(ID_body));
   irept::subt &components=body.get_sub();
   
-  typet enum_type("symbol");
-  enum_type.set("identifier", enum_symbol.name);
+  typet enum_type(ID_symbol);
+  enum_type.set(ID_identifier, enum_symbol.name);
   
   mp_integer i=0;
   
   Forall_irep(it, components)
   {
-    const irep_idt &name=it->get("name");
+    const irep_idt &name=it->get(ID_name);
     
-    if(it->find("value").is_not_nil())
+    if(it->find(ID_value).is_not_nil())
     {
-      exprt &value=(exprt &)it->add("value");
+      exprt &value=static_cast<exprt &>(it->add(ID_value));
       typecheck_expr(value);
       make_constant_index(value);
-      assert(!to_integer(value, i));
+      if(to_integer(value, i))
+        throw "failed to produce integer for enum";
     }
     
-    exprt final_value("constant", enum_type);
-    final_value.set("value", integer2string(i));
+    exprt final_value(ID_constant, enum_type);
+    final_value.set(ID_value, integer2string(i));
     
     symbolt symbol;
 
     symbol.name=id2string(enum_symbol.name)+"::"+id2string(name);
     symbol.base_name=name;
     symbol.value.swap(final_value);
-    symbol.location=(const locationt &)it->find("#location");
+    symbol.location=static_cast<const locationt &>(it->find(ID_C_location));
     symbol.mode=current_mode;
     symbol.module=module;
     symbol.type=enum_type;
@@ -104,12 +105,16 @@ void cpp_typecheckt::typecheck_enum_type(typet &type)
   bool has_body=enum_type.has_body();
   std::string base_name=id2string(enum_type.get_name());
   bool anonymous=base_name.empty();
+  bool tag_only_declaration=enum_type.get_tag_only_declaration();
 
   if(anonymous)
     base_name="#anon"+i2string(anon_counter++);
-  
+
+  cpp_scopet &dest_scope=
+    tag_scope(base_name, base_name, has_body, tag_only_declaration);
+
   const irep_idt symbol_name=
-    compound_identifier(base_name, base_name, has_body);
+    dest_scope.prefix+"tag."+base_name;
 
   // check if we have it
   
@@ -157,7 +162,7 @@ void cpp_typecheckt::typecheck_enum_type(typet &type)
 
     // put into scope
     cpp_idt &scope_identifier=
-      cpp_scopes.put_into_scope(*new_symbol);
+      cpp_scopes.put_into_scope(*new_symbol, dest_scope);
     
     scope_identifier.id_class=cpp_idt::CLASS;
 
@@ -172,7 +177,7 @@ void cpp_typecheckt::typecheck_enum_type(typet &type)
   }
 
   // create type symbol
-  type=typet("symbol");
-  type.set("identifier", symbol_name);
+  type=typet(ID_symbol);
+  type.set(ID_identifier, symbol_name);
   qualifiers.write(type);
 }

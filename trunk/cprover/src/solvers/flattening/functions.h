@@ -11,26 +11,30 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <set>
 
-#include "equality.h"
+#include <solvers/prop/prop_conv.h>
 
-class functionst:public equalityt
+class functionst
 {
 public:
-  functionst(const namespacet &_ns, propt &_prop):
-    equalityt(_ns, _prop) { }
+  explicit functionst(prop_conv_baset &_prop_conv):
+    prop_conv(_prop_conv) { }
+    
+  virtual ~functionst()
+  {
+  }
 
-  void record_function_application(const exprt &index_expr);
+  void record(
+    const class function_application_exprt &function_application);
 
   virtual void post_process()
   {
     add_function_constraints();
-    SUB::post_process();
   }
   
-  typedef equalityt SUB;
-                 
 protected:
-  typedef std::set<exprt> applicationst;
+  prop_conv_baset &prop_conv;
+
+  typedef std::set<function_application_exprt> applicationst;
   
   struct function_infot
   {
@@ -42,6 +46,9 @@ protected:
   
   virtual void add_function_constraints();
   virtual void add_function_constraints(const function_infot &info);
+
+  literalt arguments_equal(const exprt::operandst &o1,
+                           const exprt::operandst &o2);
 };
 
 #endif

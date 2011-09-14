@@ -14,6 +14,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "cnf.h"
 
+namespace Minisat
+{
+  class Solver;
+}
+
 class satcheck_minisat_baset:public cnf_solvert
 {
 public:
@@ -39,16 +44,16 @@ public:
   virtual bool has_is_in_conflict() const { return true; }
   
 protected:
-  class Solver *solver;
+  Minisat::Solver *solver;
   void add_variables();
   bvt assumptions;
   bool empty_clause_added;
 };
 
-class satcheck_minisatt:public satcheck_minisat_baset
+class satcheck_minisat_coret:public satcheck_minisat_baset
 {
 public:
-  satcheck_minisatt();
+  satcheck_minisat_coret();
   virtual const std::string solver_text();
 };
 

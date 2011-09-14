@@ -133,3 +133,22 @@ void c_qualifierst::clear(typet &dest)
   dest.remove(ID_C_ptr64);
 }
 
+/*******************************************************************\
+
+Function: operator <<
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: pretty-print the qualifiers
+
+\*******************************************************************/
+
+std::ostream &operator << (
+  std::ostream &out,
+  const c_qualifierst &c_qualifiers)
+{
+  return out << c_qualifiers.as_string();
+}
+

@@ -18,7 +18,15 @@ Author: Daniel Kroening, kroening@kroening.com
 class bool_typet:public typet
 {
 public:
-  bool_typet():typet(ID_bool)
+  inline bool_typet():typet(ID_bool)
+  {
+  }
+};
+
+class nil_typet:public typet
+{
+public:
+  inline nil_typet():typet(static_cast<const typet &>(get_nil_irep()))
   {
   }
 };
@@ -26,7 +34,7 @@ public:
 class empty_typet:public typet
 {
 public:
-  empty_typet():typet(ID_empty)
+  inline empty_typet():typet(ID_empty)
   {
   }
 };
@@ -34,7 +42,7 @@ public:
 class integer_typet:public typet
 {
 public:
-  integer_typet():typet(ID_integer)
+  inline integer_typet():typet(ID_integer)
   {
   }
 };
@@ -42,7 +50,7 @@ public:
 class rational_typet:public typet
 {
 public:
-  rational_typet():typet(ID_rational)
+  inline rational_typet():typet(ID_rational)
   {
   }
 };
@@ -50,7 +58,7 @@ public:
 class real_typet:public typet
 {
 public:
-  real_typet():typet(ID_real)
+  inline real_typet():typet(ID_real)
   {
   }
 };
@@ -58,21 +66,21 @@ public:
 class symbol_typet:public typet
 {
 public:
-  symbol_typet():typet(ID_symbol)
+  inline symbol_typet():typet(ID_symbol)
   {
   }
   
-  explicit symbol_typet(const irep_idt &identifier):typet(ID_symbol)
+  inline explicit symbol_typet(const irep_idt &identifier):typet(ID_symbol)
   {
     set_identifier(identifier);
   }
 
-  void set_identifier(const irep_idt &identifier)
+  inline void set_identifier(const irep_idt &identifier)
   {
     set(ID_identifier, identifier);
   }
 
-  const irep_idt &get_identifier() const
+  inline const irep_idt &get_identifier() const
   {
     return get(ID_identifier);
   }  
@@ -95,69 +103,69 @@ extern inline symbol_typet &to_symbol_type(typet &type)
 class struct_union_typet:public typet
 {
 public:
-  explicit struct_union_typet(const irep_idt &_id):typet(_id)
+  inline explicit struct_union_typet(const irep_idt &_id):typet(_id)
   {
   }
 
   class componentt:public exprt
   {
   public:
-    const irep_idt &get_name() const
+    inline const irep_idt &get_name() const
     {
       return get(ID_name);
     }
 
-    void set_name(const irep_idt &name)
+    inline void set_name(const irep_idt &name)
     {
       return set(ID_name, name);
     }
 
-    const irep_idt &get_base_name() const
+    inline const irep_idt &get_base_name() const
     {
       return get(ID_base_name);
     }
 
-    void set_base_name(const irep_idt &base_name)
+    inline void set_base_name(const irep_idt &base_name)
     {
       return set(ID_base_name, base_name);
     }
 
-    const irep_idt &get_access() const
+    inline const irep_idt &get_access() const
     {
       return get(ID_access);
     }
 
-    void set_access(const irep_idt &access)
+    inline void set_access(const irep_idt &access)
     {
       return set(ID_access, access);
     }
 
-    const irep_idt &get_pretty_name() const
+    inline const irep_idt &get_pretty_name() const
     {
       return get(ID_pretty_name);
     }
 
-    void set_pretty_name(const irep_idt &name)
+    inline void set_pretty_name(const irep_idt &name)
     {
       return set(ID_pretty_name, name);
     }
 
-    const bool get_anonymous() const
+    inline const bool get_anonymous() const
     {
       return get_bool(ID_anonymous);
     }
 
-    void set_anonymous(bool anonymous)
+    inline void set_anonymous(bool anonymous)
     {
       return set(ID_anonymous, anonymous);
     }
 
-    const bool get_is_padding() const
+    inline const bool get_is_padding() const
     {
       return get_bool(ID_C_is_padding);
     }
 
-    void set_is_padding(bool is_padding)
+    inline void set_is_padding(bool is_padding)
     {
       return set(ID_C_is_padding, is_padding);
     }
@@ -165,17 +173,17 @@ public:
 
   typedef std::vector<componentt> componentst;
   
-  const componentst &components() const
+  inline const componentst &components() const
   {
     return (const componentst &)(find(ID_components).get_sub());
   }
   
-  componentst &components()
+  inline componentst &components()
   {
     return (componentst &)(add(ID_components).get_sub());
   }
   
-  bool has_component(const irep_idt &component_name) const
+  inline bool has_component(const irep_idt &component_name) const
   {
     return get_component(component_name).is_not_nil();
   }
@@ -254,95 +262,95 @@ extern inline union_typet &to_union_type(typet &type)
 class code_typet:public typet
 {
 public:
-  code_typet():typet(ID_code)
+  inline code_typet():typet(ID_code)
   {
   }
   
   class argumentt:public exprt
   {
   public:
-    argumentt():exprt(ID_argument)
+    inline argumentt():exprt(ID_argument)
     {
     }
     
-    argumentt(const typet &type):exprt(ID_argument, type)
+    inline argumentt(const typet &type):exprt(ID_argument, type)
     {
     }
     
-    const exprt &default_value() const
+    inline const exprt &default_value() const
     {
       return find_expr(ID_C_default_value);
     }
 
-    bool has_default_value() const
+    inline bool has_default_value() const
     {
       return default_value().is_not_nil();
     }
 
-    exprt &default_value()
+    inline exprt &default_value()
     {
       return add_expr(ID_C_default_value);
     }
     
-    void set_identifier(const irep_idt &identifier)
+    inline void set_identifier(const irep_idt &identifier)
     {
       set(ID_C_identifier, identifier);
     }
 
-    void set_base_name(const irep_idt &name)
+    inline void set_base_name(const irep_idt &name)
     {
       set(ID_C_base_name, name);
     }
 
-    const irep_idt &get_identifier() const
+    inline const irep_idt &get_identifier() const
     {
       return get(ID_C_identifier);
     }
 
-    const irep_idt &get_base_name() const
+    inline const irep_idt &get_base_name() const
     {
       return get(ID_C_base_name);
     }
   };
   
-  bool has_ellipsis() const
+  inline bool has_ellipsis() const
   {
     return find(ID_arguments).get_bool(ID_ellipsis);
   }
 
-  void make_ellipsis()
+  inline void make_ellipsis()
   {
     add(ID_arguments).set(ID_ellipsis, true);
   }
 
   typedef std::vector<argumentt> argumentst;
 
-  const typet &return_type() const
+  inline const typet &return_type() const
   {
     return find_type(ID_return_type);
   }
 
-  typet &return_type()
+  inline typet &return_type()
   {
     return add_type(ID_return_type);
   }
 
-  const argumentst &arguments() const
+  inline const argumentst &arguments() const
   {
     return (const argumentst &)find(ID_arguments).get_sub();
   }
 
-  argumentst &arguments()
+  inline argumentst &arguments()
   {
     return (argumentst &)add(ID_arguments).get_sub();
   }
   
-  bool get_inlined() const
+  inline bool get_inlined() const
   {
     return get_bool(ID_C_inlined);
   }
 
-  void set_inlined(bool value)
+  inline void set_inlined(bool value)
   {
     set(ID_C_inlined, value);
   }
@@ -363,23 +371,23 @@ extern inline code_typet &to_code_type(typet &type)
 class array_typet:public typet
 {
 public:
-  array_typet():typet(ID_array)
+  inline array_typet():typet(ID_array)
   {
   }
   
-  array_typet(const typet &_subtype,
-              const exprt &_size):typet(ID_array)
+  inline array_typet(const typet &_subtype,
+                     const exprt &_size):typet(ID_array)
   {
     size()=_size;
     subtype()=_subtype;
   }
   
-  const exprt &size() const
+  inline const exprt &size() const
   {
     return static_cast<const exprt &>(find(ID_size));
   }
   
-  exprt &size()
+  inline exprt &size()
   {
     return static_cast<exprt &>(add(ID_size));
   }
@@ -398,16 +406,44 @@ extern inline array_typet &to_array_type(typet &type)
   return static_cast<array_typet &>(type);
 }
 
-class pointer_typet:public typet
+// generic base class
+class bitvector_typet:public typet
 {
 public:
-  pointer_typet():typet(ID_pointer)
+  inline explicit bitvector_typet(const irep_idt &_id):typet(_id)
   {
   }
 
-  explicit pointer_typet(const typet &_subtype):typet(ID_pointer)
+  unsigned get_width() const;
+
+  inline void set_width(unsigned width)
+  {
+    set(ID_width, width);
+  }
+};
+
+inline const bitvector_typet &to_bitvector_type(const typet &type)
+{
+  return static_cast<const bitvector_typet &>(type);
+}
+
+class pointer_typet:public bitvector_typet
+{
+public:
+  inline pointer_typet():bitvector_typet(ID_pointer)
+  {
+  }
+
+  inline explicit pointer_typet(const typet &_subtype):bitvector_typet(ID_pointer)
   {
     subtype()=_subtype;
+  }
+
+  inline explicit pointer_typet(const typet &_subtype, unsigned width):
+    bitvector_typet(ID_pointer)
+  {
+    subtype()=_subtype;
+    set_width(width);
   }
 };
 
@@ -433,27 +469,7 @@ public:
 };
 
 bool is_reference(const typet &type);
-
-// generic base class
-class bitvector_typet:public typet
-{
-public:
-  explicit bitvector_typet(const irep_idt &_id):typet(_id)
-  {
-  }
-
-  unsigned get_width() const;
-
-  void set_width(unsigned width)
-  {
-    set(ID_width, width);
-  }
-};
-
-inline const bitvector_typet &to_bitvector_type(const typet &type)
-{
-  return static_cast<const bitvector_typet &>(type);
-}
+bool is_rvalue_reference(const typet &type);
 
 class bv_typet:public bitvector_typet
 {

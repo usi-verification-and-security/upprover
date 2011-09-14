@@ -26,7 +26,7 @@ Function: convert
 void convert(const symbolt& sym, xmlt &root)
 {
   xmlt &xmlsym = root.new_element("symbol");
-  xmlsym.set_attribute("name", xmlt::escape(id2string(sym.name)));
+  xmlsym.set_attribute("name", id2string(sym.name));
 
   xmlt &xmltype = xmlsym.new_element("type");
   convert(sym.type, xmltype);
@@ -57,11 +57,11 @@ void convert(const symbolt& sym, xmlt &root)
   xmlt &mode = flags.new_element("mode");
   mode.data = id2string(sym.mode);
 
-  flags.new_element("base_name").data = xmlt::escape(id2string(sym.base_name));
-  flags.new_element("module").data = xmlt::escape(id2string(sym.module));
+  flags.new_element("base_name").data=id2string(sym.base_name);
+  flags.new_element("module").data=id2string(sym.module);
 
   if (sym.pretty_name.size()>0)
-    flags.new_element("pretty_name").data = xmlt::escape(id2string(sym.pretty_name));
+    flags.new_element("pretty_name").data=id2string(sym.pretty_name);
 
   xmlt &xmlloc = xmlsym.new_element("location");
   convert(sym.location, xmlloc);
@@ -127,11 +127,11 @@ void convert(const xmlt &xmlsym, symbolt& symbol)
           fit++)
       {
         if(fit->name=="mode")
-          symbol.mode = xmlt::unescape(fit->data);
+          symbol.mode=fit->data;
         else if(fit->name=="base_name")
-          symbol.base_name = xmlt::unescape(fit->data);
+          symbol.base_name=fit->data;
         else if(fit->name=="module")
-          symbol.module = xmlt::unescape(fit->data);
+          symbol.module=fit->data;
       }
     }
     else if(it->name=="location")

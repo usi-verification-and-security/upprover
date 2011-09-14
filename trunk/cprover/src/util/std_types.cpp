@@ -204,7 +204,25 @@ Function: is_reference
 bool is_reference(const typet &type)
 {
   return type.id()==ID_pointer &&
-         type.get_bool("#reference");
+         type.get_bool(ID_C_reference);
+}
+
+/*******************************************************************\
+
+Function: is_rvalue_reference
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+bool is_rvalue_reference(const typet &type)
+{
+  return type.id()==ID_pointer &&
+         type.get_bool(ID_C_rvalue_reference);
 }
 
 /*******************************************************************\

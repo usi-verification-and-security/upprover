@@ -1,6 +1,6 @@
 /*******************************************************************\
 
-Module: C++ Language Type Checking
+Module: ANSI-C Language Type Checking
 
 Author: Daniel Kroening, kroening@kroening.com
 
@@ -25,6 +25,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "c_typecheck_base.h"
 #include "c_sizeof.h"
 #include "string_constant.h"
+#include "anonymous_member.h"
 
 /*******************************************************************\
 
@@ -122,7 +123,11 @@ void c_typecheck_baset::typecheck_expr_main(exprt &expr)
   else if(expr.id()==ID_if)
     typecheck_expr_trinary(to_if_expr(expr));
   else if(expr.id()==ID_code)
-    typecheck_code(to_code(expr));
+  {
+    err_location(expr);
+    str << "typecheck_expr_main got code: " << expr.pretty();
+    throw 0;
+  }
   else if(expr.id()==ID_gcc_builtin_va_arg)
     typecheck_expr_builtin_va_arg(expr);
   else if(expr.id()==ID_gcc_builtin_types_compatible_p)
@@ -204,8 +209,7 @@ void c_typecheck_baset::typecheck_expr_comma(exprt &expr)
   if(expr.operands().size()!=2)
   {
     err_location(expr);
-    str << "operator `" << expr.id()
-        << "' expects two operands";
+    str << "comma operator expects two operands";
     throw 0;
   }
 
@@ -293,7 +297,7 @@ void c_typecheck_baset::typecheck_expr_builtin_offsetof(exprt &expr)
         const struct_union_typet &struct_union_type=
           to_struct_union_type(type);
         
-        if(!has_component_rec(struct_union_type, component_name))
+        if(!has_component_rec(struct_union_type, component_name, *this))
         {
           err_location(expr);    
           throw "offset-of of member failed to find component `"+
@@ -317,7 +321,7 @@ void c_typecheck_baset::typecheck_expr_builtin_offsetof(exprt &expr)
           }
           else if(c_it->get_anonymous())
           {
-            if(has_component_rec(c_it->type(), component_name))
+            if(has_component_rec(c_it->type(), component_name, *this))
             {
               typet tmp=follow(c_it->type());
               type=tmp;
@@ -1162,52 +1166,6 @@ Function: c_typecheck_baset::typecheck_expr_member
 
 \*******************************************************************/
 
-bool c_typecheck_baset::has_component_rec(
-  const typet &type,
-  const irep_idt &component_name)
-{
-  if(type.id()==ID_symbol)
-    return has_component_rec(follow(type), component_name);
-  else if(type.id()==ID_struct || type.id()==ID_union)
-  {
-    const struct_union_typet &struct_union_type=
-      to_struct_union_type(type);
-    
-    const struct_union_typet::componentst &components=
-      struct_union_type.components();
-
-    for(struct_union_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
-    {
-      if(it->get_name()==component_name)
-        return true;
-      else if(it->get_anonymous())
-      {
-        if(has_component_rec(it->type(), component_name))
-          return true;
-      }
-    }
-    
-    return false;
-  }
-  else
-    return false;
-}
-
-/*******************************************************************\
-
-Function: c_typecheck_baset::typecheck_expr_member
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void c_typecheck_baset::typecheck_expr_member(exprt &expr)
 {
   if(expr.operands().size()!=1)
@@ -1246,58 +1204,44 @@ void c_typecheck_baset::typecheck_expr_member(exprt &expr)
   const irep_idt &component_name=
     expr.get(ID_component_name);
 
-  const struct_union_typet::componentst &components=
-    struct_union_type.components();
-
-  struct_union_typet::componentt component;
-
-  component.make_nil();
-
   // first try to find directly
-
-  for(struct_union_typet::componentst::const_iterator
-      it=components.begin();
-      it!=components.end();
-      it++)
-  {
-    if(it->get_name()==component_name)
-    {
-      component=*it;
-      break;
-    }
-  }
+  struct_union_typet::componentt component=
+    struct_union_type.get_component(component_name);
 
   // if that fails, search the anonymous members
 
   if(component.is_nil())
   {
-    for(struct_union_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
-    {
-      // look into anonymous members, possibly recursively
-      if(it->get_anonymous() &&
-         has_component_rec(it->type(), component_name))
-      {
-        // re-write
-        member_exprt tmp;
-        tmp.set_component_name(it->get_name());
-        tmp.op0()=expr.op0();
-        typecheck_expr_member(tmp);
-        expr.op0().swap(tmp);
-        typecheck_expr_member(expr);
-        return;
-      }
-    }
+    exprt tmp=get_component_rec(op0, component_name, *this);
 
-    // give up
-    err_location(expr);
-    str << "member `" << component_name
-        << "' not found in `"
-        << to_string(type) << "'";
-    throw 0;
+    if(tmp.is_nil())
+    {
+      // give up
+      err_location(expr);
+      str << "member `" << component_name
+          << "' not found in `"
+          << to_string(type) << "'";
+      throw 0;
+    }
+    
+    // done!
+    expr.swap(tmp);
+    return;
   }
+
+  expr.type()=component.type();
+
+  if(op0.get_bool(ID_C_lvalue))
+    expr.set(ID_C_lvalue, true);
+
+  if(op0.get_bool(ID_C_constant) || type.get_bool(ID_C_constant))
+    expr.set(ID_C_constant, true);
+
+  // copy method identifier
+  const irep_idt &identifier=component.get(ID_C_identifier);
+
+  if(identifier!=irep_idt())
+    expr.set(ID_C_identifier, identifier);
 
   const irep_idt &access=component.get_access();
 
@@ -1308,20 +1252,6 @@ void c_typecheck_baset::typecheck_expr_member(exprt &expr)
         << "' is " << access;
     throw 0;
   }
-
-  expr.type()=component.type();
-
-  if(op0.get_bool(ID_C_lvalue))
-    expr.set(ID_C_lvalue, true);
-
-  if(op0.get_bool(ID_C_constant))
-    expr.set(ID_C_constant, true);
-
-  // copy method identifier
-  const irep_idt &identifier=component.get(ID_C_identifier);
-
-  if(identifier!=irep_idt())
-    expr.set(ID_C_identifier, identifier);
 }
 
 /*******************************************************************\
@@ -1368,16 +1298,25 @@ void c_typecheck_baset::typecheck_expr_trinary(if_exprt &expr)
     implicit_typecast(operands[2], expr.type());
   }
 
-  if(follow(operands[1].type())==follow(operands[2].type()))
-  {
-    expr.type()=operands[1].type();
-    return;
-  }
-
   if(operands[1].type().id()==ID_empty ||
      operands[2].type().id()==ID_empty)
   {
     expr.type()=empty_typet();
+    return;
+  }
+
+  if(follow(operands[1].type())==follow(operands[2].type()))
+  {
+    expr.type()=operands[1].type();
+    
+    // GCC says: "A conditional expression is a valid lvalue
+    // if its type is not void and the true and false branches
+    // are both valid lvalues."
+    
+    if(operands[1].get_bool(ID_C_lvalue) &&
+       operands[2].get_bool(ID_C_lvalue))
+      expr.set(ID_C_lvalue, true);
+    
     return;
   }
 
@@ -1554,7 +1493,8 @@ void c_typecheck_baset::typecheck_expr_dereference(exprt &expr)
   {
     err_location(expr);
     str << "operand of unary * `" << to_string(op)
-        << "' is not a pointer";
+        << "' is not a pointer, but got `"
+        << to_string(op_type) << "'";
     throw 0;
   }
 
@@ -1699,8 +1639,8 @@ void c_typecheck_baset::typecheck_side_effect_function_call(
 
   exprt &f_op=expr.function();
 
-  // f_op is not yet typechecked, in contrast to the other arguments
-  // this is a big special case
+  // f_op is not yet typechecked, in contrast to the other arguments.
+  // This is a big special case!
 
   if(f_op.id()==ID_symbol)
   {
@@ -1708,9 +1648,17 @@ void c_typecheck_baset::typecheck_side_effect_function_call(
 
     if(context.symbols.find(f_op.get(ID_identifier))==context.symbols.end())
     {
-      // maybe this is an undeclared function
-      // let's just add it
+      // This is an undeclared function. Let's just add it.
       const irep_idt &identifier=f_op.get(ID_identifier);
+
+      // We do a bit of return-type guessing, but just a bit
+      typet return_type=int_type();
+      
+      if(identifier=="c::malloc" ||
+         identifier=="c::realloc" ||
+         identifier=="c::reallocf" ||
+         identifier=="c::valloc")
+        return_type=pointer_typet(empty_typet()); // void *
 
       symbolt new_symbol;
 
@@ -1719,8 +1667,9 @@ void c_typecheck_baset::typecheck_side_effect_function_call(
       new_symbol.location=expr.location();
       new_symbol.type=code_typet();
       new_symbol.type.set("#incomplete", true);
-      new_symbol.type.add(ID_return_type)=int_type();
-      // TODO: should add arguments
+      new_symbol.type.add(ID_return_type)=return_type;
+
+      // TODO: should also guess some argument types
 
       symbolt *symbol_ptr;
       move_symbol(new_symbol, symbol_ptr);
@@ -1964,7 +1913,29 @@ void c_typecheck_baset::do_special_functions(
 
       exprt sign_expr(ID_sign, bool_typet());
       sign_expr.operands()=expr.arguments();
+      sign_expr.location()=expr.location();
       expr.swap(sign_expr);
+    }
+    else if(identifier==CPROVER_PREFIX "equal")
+    {
+      if(expr.arguments().size()!=2)
+      {
+        err_location(f_op);
+        throw "equal expects two operands";
+      }
+      
+      equality_exprt equality_expr;
+      equality_expr.operands()=expr.arguments();
+      equality_expr.location()=expr.location();
+      
+      if(!base_type_eq(equality_expr.lhs().type(),
+                       equality_expr.rhs().type(), *this))
+      {
+        err_location(f_op);
+        throw "equal expects two operands of same type";
+      }
+
+      expr.swap(equality_expr);
     }
     else if(identifier=="c::__builtin_expect")
     {
@@ -2023,9 +1994,9 @@ void c_typecheck_baset::do_special_functions(
 
 Function: c_typecheck_baset::typecheck_function_call_arguments
 
-  Inputs:
+  Inputs: type-checked arguments, type-checked function
 
- Outputs:
+ Outputs: type-adjusted function arguments
 
  Purpose:
 
@@ -2051,13 +2022,13 @@ void c_typecheck_baset::typecheck_function_call_arguments(
     if(argument_types.size()>arguments.size())
     {
       err_location(expr);
-      throw "not enough arguments";
+      throw "not enough function arguments";
     }
   }
   else if(argument_types.size()!=arguments.size())
   {
     err_location(expr);
-    str << "wrong number of arguments: "
+    str << "wrong number of function arguments: "
         << "expected " << argument_types.size()
         << ", but got " << arguments.size();
     throw 0;
@@ -2271,6 +2242,8 @@ void c_typecheck_baset::typecheck_expr_binary_arithmetic(exprt &expr)
   }
   else
   {
+    // promote!
+    
     implicit_typecast_arithmetic(op0, op1);
 
     const typet &type0=follow(op0.type());
@@ -2310,6 +2283,19 @@ void c_typecheck_baset::typecheck_expr_binary_arithmetic(exprt &expr)
       {
         if(is_number(type0))
         {
+          expr.type()=type0;
+          return;
+        }
+        else if(type0.id()==ID_bool)
+        {
+          if(expr.id()==ID_bitand)
+            expr.id(ID_and);
+          else if(expr.id()==ID_bitor)
+            expr.id(ID_or);
+          else if(expr.id()==ID_bitxor)
+            expr.id(ID_xor);
+          else
+            assert(false);
           expr.type()=type0;
           return;
         }
@@ -2497,7 +2483,6 @@ void c_typecheck_baset::typecheck_side_effect_assignment(exprt &expr)
 
   const typet &type0=op0.type();
   const typet &final_type0=follow(type0);
-  //const typet &type1=op1.type();
 
   expr.type()=type0;
 

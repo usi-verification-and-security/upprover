@@ -14,6 +14,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <expr.h>
 #include <numbering.h>
 
+#define BV_ADDR_BITS 8
+
 class pointer_logict
 {
 public:

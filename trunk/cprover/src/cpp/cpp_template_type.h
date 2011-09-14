@@ -11,22 +11,41 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include <type.h>
 
+#include "cpp_template_parameter.h"
+
+class template_parametert:public exprt
+{
+public:
+  inline exprt &default_parameter()
+  {
+    return static_cast<exprt &>(add("#default"));
+  }
+
+  inline const exprt &default_parameter() const
+  {
+    return static_cast<const exprt &>(find("#default"));
+  }
+};
+
 class template_typet:public typet
 {
 public:
-  template_typet()
+  inline template_typet():typet(ID_template)
   {
-    id(ID_template);
   }
 
-  irept &arguments()
+  typedef std::vector<template_parametert> parameterst;
+
+  inline parameterst &parameters()
   {
-    return add(ID_arguments);
+    // todo: will change to 'parameters'
+    return (parameterst &)add(ID_arguments).get_sub();
   }
 
-  const irept &arguments() const
+  inline const parameterst &parameters() const
   {
-    return find(ID_arguments);
+    // todo: will change to 'parameters'
+    return (const parameterst &)find(ID_arguments).get_sub();
   }
 };
 
@@ -36,7 +55,7 @@ inline template_typet &to_template_type(typet &type)
   return static_cast<template_typet &>(type);
 }
 
-inline const template_typet& to_template_type(const typet &type)
+inline const template_typet &to_template_type(const typet &type)
 {
   assert(type.id()==ID_template);
   return static_cast<const template_typet &>(type);

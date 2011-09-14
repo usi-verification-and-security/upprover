@@ -24,41 +24,6 @@ unsigned basic_symext::dynamic_counter=0;
 
 /*******************************************************************\
 
-Function: basic_symext::assignment
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-#if 0
-void basic_symext::assignment(
-  statet &state,
-  const exprt &lhs,
-  exprt &rhs)
-{
-  exprt original_lhs=lhs;
-  state.get_original_name(original_lhs);
-  
-  exprt new_lhs=lhs;
-  replace_nondet(rhs);
-
-  state.assignment(new_lhs, rhs, ns, constant_propagation);
-  
-  target.assignment(
-    state.guard,
-    new_lhs, original_lhs,
-    rhs,
-    state.source,
-    symex_targett::STATE);
-}
-#endif
-
-/*******************************************************************\
-
 Function: basic_symext::do_simplify
 
   Inputs:
@@ -115,7 +80,7 @@ void basic_symext::symex(statet &state, const codet &code)
   {
     // ignore
   }
-  else if(statement=="cpp_delete" ||
+  else if(statement==ID_cpp_delete ||
           statement=="cpp_delete[]")
     symex_cpp_delete(state, code);
   else if(statement==ID_free)
@@ -205,7 +170,7 @@ void basic_symext::symex_assign(statet &state, const code_assignt &code)
     else if(statement==ID_printf)
       symex_printf(state, lhs, side_effect_expr);
     else
-      throw "symex_assign: unexpected sideeffect: "+id2string(statement);
+      throw "symex_assign: unexpected side effect: "+id2string(statement);
   }
   else
   {
@@ -267,8 +232,8 @@ void basic_symext::symex_assign_rec(
   {
     // ignore
   }
-  else if(lhs.id()=="byte_extract_little_endian" ||
-          lhs.id()=="byte_extract_big_endian")
+  else if(lhs.id()==ID_byte_extract_little_endian ||
+          lhs.id()==ID_byte_extract_big_endian)
     symex_assign_byte_extract(state, lhs, rhs, guard, visibility);
   else
     throw "assignment to `"+lhs.id_string()+"' not handled";
@@ -314,7 +279,7 @@ void basic_symext::symex_assign_symbol(
 
   exprt new_lhs=lhs;
   state.assignment(new_lhs, new_rhs, ns, constant_propagation);
-  
+
   guardt tmp_guard(state.guard);
   tmp_guard.append(guard);
   
@@ -443,15 +408,20 @@ void basic_symext::symex_assign_member(
     
     if(lhs_struct.op0().id()=="NULL-object")
     {
-      // ignore
+      // ignore, and give up
+      return;
     }
     else
     {
       // remove the type cast, we assume that the member is there
-      exprt tmp(lhs_struct.op0());
+      exprt tmp=lhs_struct.op0();
       struct_type=ns.follow(tmp.type());
-      //assert(struct_type.id()==ID_struct || struct_type.id()==ID_union);
-      lhs_struct=tmp;
+
+      if(struct_type.id()==ID_struct ||
+         struct_type.id()==ID_union)
+        lhs_struct=tmp;
+      else
+        return; // ignore and give up
     }
   }
 
@@ -488,22 +458,25 @@ void basic_symext::symex_assign_if(
 {
   // we have (c?a:b)=e;
 
-  if(lhs.operands().size()!=3)
-    throw "if must have three operands";
-
   unsigned old_guard_size=guard.size();
   
-  exprt condition(lhs.op0());
+  exprt renamed_guard=lhs.cond();
+  state.rename(renamed_guard, ns);
+  do_simplify(renamed_guard);
 
-  guard.add(condition);
-  symex_assign_rec(state, lhs.op1(), rhs, guard, visibility);
-  guard.resize(old_guard_size);
-    
-  condition.make_not();
-  
-  guard.add(condition);
-  symex_assign_rec(state, lhs.op2(), rhs, guard, visibility);
-  guard.resize(old_guard_size);
+  if(!renamed_guard.is_false())  
+  {
+    guard.add(renamed_guard);
+    symex_assign_rec(state, lhs.true_case(), rhs, guard, visibility);
+    guard.resize(old_guard_size);
+  }
+   
+  if(!renamed_guard.is_true())
+  { 
+    guard.add(gen_not(renamed_guard));
+    symex_assign_rec(state, lhs.false_case(), rhs, guard, visibility);
+    guard.resize(old_guard_size);
+  }
 }
 
 /*******************************************************************\

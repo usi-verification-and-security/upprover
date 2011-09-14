@@ -86,7 +86,7 @@ Function: goto_convertt::rewrite_boolean
 
  Outputs:
 
- Purpose:
+ Purpose: re-write boolean operators into ?:
 
 \*******************************************************************/
 
@@ -162,7 +162,10 @@ void goto_convertt::clean_expr(
 
   if(expr.id()==ID_and || expr.id()==ID_or)
   {
+    // rewrite into ?:
     rewrite_boolean(expr);
+    
+    // recursive call
     clean_expr(expr, dest, result_is_used);
     return;
   }
@@ -175,13 +178,17 @@ void goto_convertt::clean_expr(
       throw "first argument of `if' must be boolean, but got "
         +expr.op0().to_string();
 
-    clean_expr(expr.op0(), dest);
+    // first pull out condition -- we need to prevent
+    // this getting destroyed by the side-effects in the other
+    // operands
+    make_temp_symbol(expr.op0(), "condition", dest);
 
+    // now clean arguments    
     goto_programt tmp_true, tmp_false;
-    
     clean_expr(expr.op1(), tmp_true, result_is_used);
     clean_expr(expr.op2(), tmp_false, result_is_used);
-    
+
+    // generate guard for argument side-effects    
     generate_ifthenelse(
       expr.op0(), tmp_true, tmp_false,
       expr.location(), dest);
@@ -219,12 +226,24 @@ void goto_convertt::clean_expr(
     
     return;
   }
-  else if(expr.id()==ID_sideeffect &&
-          expr.get(ID_statement)==ID_gcc_conditional_expression)
+  else if(expr.id()==ID_sideeffect)
   {
-    // need to do separately
-    remove_gcc_conditional_expression(expr, dest);
-    return;
+    // some of the side-effects need special treatment!
+    const irep_idt statement=expr.get(ID_statement);
+    
+    if(statement==ID_gcc_conditional_expression)
+    {
+      // need to do separately
+      remove_gcc_conditional_expression(expr, dest);
+      return;
+    }
+    else if(statement==ID_statement_expression)
+    {
+      // need to do separately to prevent that
+      // the operands of expr get 'cleaned'
+      remove_statement_expression(to_side_effect_expr(expr), dest, result_is_used);
+      return;
+    }
   }
 
   // TODO: evaluation order

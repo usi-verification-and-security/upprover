@@ -45,6 +45,8 @@ public:
     stack.clear();
     stack.push_back(&parse_tree.element);
   }
+  
+  static std::string unescape(const char *s);
 };
 
 extern xml_parsert xml_parser;

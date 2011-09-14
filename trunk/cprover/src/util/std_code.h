@@ -156,6 +156,16 @@ public:
     return op0();
   }
   
+  exprt &initializer()
+  {
+    return op0();
+  }
+
+  const exprt &initializer() const
+  {
+    return op0();
+  }
+  
   const irep_idt &get_identifier() const;
 
   friend inline const code_declt &to_code_decl(const codet &code)
@@ -166,7 +176,7 @@ public:
 
   friend inline code_declt &to_code_decl(codet &code)
   {
-    assert(code.get_statement()==ID_decl && code.operands().size()==1);
+    assert(code.get_statement()==ID_decl && code.operands().size()>=1);
     return static_cast<code_declt &>(code);
   }
 

@@ -48,9 +48,8 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
   }
   else if(type.id()==ID_pointer)
   {
-    if(type.get_bool(ID_C_reference))
-      return sizeof_rec(type.subtype());
-    
+    // references fall into this category as well!
+  
     // the following is an MS extension
     if(type.get_bool(ID_C_ptr32))
       return from_integer(4, size_type());
@@ -67,9 +66,9 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
   else if(type.id()==ID_array)
   {
     const exprt &size_expr=
-      static_cast<const exprt &>(type.find(ID_size));
+      to_array_type(type).size();
 
-    exprt tmp_dest(sizeof_rec(type.subtype()));
+    exprt tmp_dest=sizeof_rec(type.subtype());
 
     if(tmp_dest.is_nil())
       return tmp_dest;
@@ -98,21 +97,27 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
   }
   else if(type.id()==ID_struct)
   {
-    const irept::subt &components=
-      type.find(ID_components).get_sub();
+    const struct_typet::componentst &components=
+      to_struct_type(type).components();
 
     dest=from_integer(0, size_type());
 
-    forall_irep(it, components)
+    for(struct_typet::componentst::const_iterator
+        it=components.begin();
+        it!=components.end();
+        it++)
     {
-      const typet &sub_type=static_cast<const typet &>(it->find(ID_type));
+      if(it->get_bool(ID_is_type))
+        continue;
+      
+      const typet &sub_type=it->type();
 
       if(sub_type.id()==ID_code)
       {
       }
       else
       {
-        exprt tmp(sizeof_rec(sub_type));
+        exprt tmp=sizeof_rec(sub_type);
 
         if(tmp.is_nil())
           return tmp;
@@ -131,6 +136,9 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
 
     forall_irep(it, components)
     {
+      if(it->get_bool(ID_is_type))
+        continue;
+
       const typet &sub_type=static_cast<const typet &>(it->find(ID_type));
 
       if(sub_type.id()==ID_code)
@@ -138,7 +146,7 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
       }
       else
       {
-        exprt tmp(sizeof_rec(sub_type));
+        exprt tmp=sizeof_rec(sub_type);
 
         if(tmp.is_nil())
           return tmp;
@@ -159,6 +167,11 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
   else if(type.id()==ID_symbol)
   {
     return sizeof_rec(ns.follow(type));
+  }
+  else if(type.id()==ID_empty)
+  {
+    // gcc says that sizeof(void)==1, ISO C doesn't
+    dest=from_integer(1, size_type());
   }
   else
     dest.make_nil();

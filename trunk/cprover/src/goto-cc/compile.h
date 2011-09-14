@@ -35,7 +35,8 @@ public:
   std::list<std::string> tmp_dirs;
   std::list<irep_idt> seen_modes;
 
-  std::string output_file;
+  std::string object_file_extension;
+  std::string output_file_object, output_file_executable;
   bool doLink;
 
   compilet(cmdlinet &_cmdline);

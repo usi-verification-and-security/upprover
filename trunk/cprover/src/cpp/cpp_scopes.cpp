@@ -32,63 +32,6 @@ cpp_scopet &cpp_scopest::new_block_scope()
 
 /*******************************************************************\
 
-Function: cpp_scopest::get_ids
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void cpp_scopest::get_ids(
-  const irep_idt &base_name,
-  id_sett &id_set,
-  bool current_only)
-{
-  id_set.clear();
-
-  if(current_only)
-  {
-    current_scope().lookup(base_name, id_set);
-    return;
-  }
-
-  current_scope().recursive_lookup(base_name, id_set);
-}
-
-/*******************************************************************\
-
-Function: cpp_scopest::get_ids
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void cpp_scopest::get_ids(
-  const irep_idt &base_name,
-  cpp_idt::id_classt id_class,
-  id_sett &id_set,
-  bool current_only)
-{
-  id_set.clear();
-
-  if(current_only)
-  {
-    current_scope().lookup(base_name,id_class ,id_set);
-    return;
-  }
-
-  current_scope().recursive_lookup(base_name, id_class, id_set);
-}
-
-/*******************************************************************\
-
 Function: cpp_scopest::put_into_scope
 
   Inputs:
@@ -108,7 +51,7 @@ cpp_idt &cpp_scopest::put_into_scope(
   assert(!symbol.base_name.empty());
 
   // functions are also scopes
-  if(symbol.type.id()=="code")
+  if(symbol.type.id()==ID_code)
   {
     cpp_scopest::id_mapt::iterator id_it = id_map.find(symbol.name);
     if(id_it == id_map.end())
@@ -123,6 +66,7 @@ cpp_idt &cpp_scopest::put_into_scope(
     }
   }
 
+  // should go away, and be replaced by the 'tag only declaration' rule
   if(is_friend)
   {
     cpp_save_scopet saved_scope(*this);

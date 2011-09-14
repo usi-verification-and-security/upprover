@@ -12,6 +12,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <string>
 #include <expr.h>
 
-exprt convert_character_literal(const std::string &src);
+// Ugh. Characters have type 'int' in C, but type
+// 'char' in C++.
+
+exprt convert_character_literal(
+  const std::string &src,
+  bool force_integer_type);
 
 #endif

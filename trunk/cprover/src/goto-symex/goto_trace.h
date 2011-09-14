@@ -30,7 +30,7 @@ public:
   bool is_output() const     { return type==OUTPUT; }
   bool is_input() const      { return type==INPUT; }
 
-  typedef enum { ASSIGNMENT, ASSUME, ASSERT,
+  typedef enum { NONE, ASSIGNMENT, ASSUME, ASSERT,
                  LOCATION, INPUT, OUTPUT } typet;
   typet type;
     
@@ -70,6 +70,7 @@ public:
     
   goto_trace_stept():
     step_nr(0),
+    type(NONE),
     thread_nr(0),
     cond_value(false),
     formatted(false)

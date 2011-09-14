@@ -14,7 +14,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 class cpp_usingt:public irept
 {
 public:
-  cpp_usingt():irept("cpp-using")
+  cpp_usingt():irept(ID_cpp_using)
   {
   }
   
@@ -26,6 +26,16 @@ public:
   const cpp_namet &name() const 
   {
     return (cpp_namet &)find(ID_name);
+  }
+  
+  bool get_namespace() const
+  {
+    return get_bool(ID_namespace);
+  }
+
+  void set_namespace(bool value)
+  {
+    set(ID_namespace, value);
   }
 };
 

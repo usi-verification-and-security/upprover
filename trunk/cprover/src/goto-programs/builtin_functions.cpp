@@ -71,6 +71,7 @@ Function: get_alloc_type
 
 \*******************************************************************/
 
+#if 0
 static void get_alloc_type(
   const exprt &src,
   typet &type,
@@ -102,6 +103,7 @@ static void get_alloc_type(
       size.make_typecast(size_type());
   }
 }
+#endif
 
 /*******************************************************************\
 
@@ -503,52 +505,111 @@ Function: goto_convertt::do_cpp_new
 \*******************************************************************/
 
 void goto_convertt::do_cpp_new(
-  exprt &lhs,
-  exprt &rhs,
+  const exprt &lhs,
+  const side_effect_exprt &rhs,
   goto_programt &dest)
 {
   if(lhs.is_nil())
-  {
-    // TODO
-    assert(0);
-  }
+    throw "do_cpp_new without lhs is yet to be implemented";
   
+  // build size expression
+  exprt object_size=
+    static_cast<const exprt &>(rhs.find(ID_sizeof));
+
+  bool new_array=rhs.get(ID_statement)==ID_cpp_new_array;
+  
+  exprt count;
+
+  if(new_array)
+  {
+    count=static_cast<const exprt &>(rhs.find(ID_size));
+
+    if(count.type()!=object_size.type())
+      count.make_typecast(object_size.type());
+
+    // might have side-effect
+    clean_expr(count, dest);
+  }
+
+  exprt tmp_symbol_expr;
+
+  // is this a placement new?
+  if(rhs.operands().size()==0) // no, "regular" one
+  {
+    // call __new or __new_array
+    exprt new_symbol=symbol_expr(
+      ns.lookup(new_array?"c::__new_array":"c::__new"));
+    
+    const code_typet &code_type=
+      to_code_type(new_symbol.type());
+
+    const typet &return_type=
+      code_type.return_type();
+
+    assert(code_type.arguments().size()==1 ||
+           code_type.arguments().size()==2);
+
+    const symbolt &tmp_symbol=
+      new_tmp_symbol(return_type, "new", dest, rhs.location());
+    
+    tmp_symbol_expr=symbol_expr(tmp_symbol);
+    
+    code_function_callt new_call;
+    new_call.function()=new_symbol;
+    if(new_array) new_call.arguments().push_back(count);
+    new_call.arguments().push_back(object_size);
+    new_call.set("#type", lhs.type().subtype());
+    new_call.lhs()=tmp_symbol_expr;
+    new_call.location()=rhs.location();
+    
+    convert(new_call, dest);
+  }
+  else if(rhs.operands().size()==1)
+  {
+    // call __placement_new
+    exprt new_symbol=symbol_expr(
+      ns.lookup(new_array?"c::__placement_new_array":"c::__placement_new"));
+    
+    const code_typet &code_type=
+      to_code_type(new_symbol.type());
+
+    const typet &return_type=code_type.return_type();
+    
+    assert(code_type.arguments().size()==2 ||
+           code_type.arguments().size()==3);
+
+    const symbolt &tmp_symbol=
+      new_tmp_symbol(return_type, "new", dest, rhs.location());
+
+    tmp_symbol_expr=symbol_expr(tmp_symbol);
+
+    code_function_callt new_call;
+    new_call.function()=new_symbol;
+    if(new_array) new_call.arguments().push_back(count);
+    new_call.arguments().push_back(object_size);
+    new_call.arguments().push_back(rhs.op0()); // memory location
+    new_call.set("#type", lhs.type().subtype());
+    new_call.lhs()=tmp_symbol_expr;
+    new_call.location()=rhs.location();
+
+    for(unsigned i=0; i<code_type.arguments().size(); i++)
+      if(new_call.arguments()[i].type()!=code_type.arguments()[i].type())
+        new_call.arguments()[i].make_typecast(code_type.arguments()[i].type());
+    
+    convert(new_call, dest);
+  }
+  else
+    throw "cpp_new expected to have 0 or 1 operands";
+
+  goto_programt::targett t_n=dest.add_instruction(ASSIGN);
+  t_n->code=code_assignt(
+    lhs, typecast_exprt(tmp_symbol_expr, lhs.type()));
+  t_n->location=rhs.find_location();
+    
   // grab initializer
   goto_programt tmp_initializer;
   cpp_new_initializer(lhs, rhs, tmp_initializer);
 
-  // produce new object
-  goto_programt::targett t_n=dest.add_instruction(ASSIGN);  
-  t_n->code=code_assignt(lhs, rhs);
-  t_n->location=rhs.find_location();
-
-  // first assume that it's available
-  goto_programt::targett t_a=dest.add_instruction(ASSUME);
-
-  t_a->guard=gen_not(valid_object(ns, lhs));
-  
-  exprt alloc_size;
-  
-  if(rhs.get(ID_statement)=="cpp_new[]")
-  {
-    alloc_size=static_cast<const exprt &>(rhs.find(ID_size));
-    if(alloc_size.type()!=size_type())
-      alloc_size.make_typecast(size_type());
-  }
-  else
-    alloc_size=from_integer(1, size_type());
-                
-  // set size
-  goto_programt::targett t_s_s=dest.add_instruction(ASSIGN);
-  t_s_s->code=code_assignt(dynamic_size(ns, lhs), alloc_size);
-  t_s_s->location=rhs.find_location();
-                
-  // now set alloc bit
-  goto_programt::targett t_s_a=dest.add_instruction(ASSIGN);
-  t_s_a->code=code_assignt(valid_object(ns, lhs), true_exprt());
-  t_s_a->location=rhs.find_location();
-  
-  // run initializer
   dest.destructive_append(tmp_initializer);
 }
 
@@ -560,39 +621,36 @@ Function: goto_convertt::cpp_new_initializer
 
  Outputs:
 
- Purpose:
+ Purpose: builds a goto program for object initialization
+          after new
 
 \*******************************************************************/
 
 void goto_convertt::cpp_new_initializer(
   const exprt &lhs,
-  exprt &rhs,
+  const side_effect_exprt &rhs,
   goto_programt &dest)
 {
-  // grab initializer
-  exprt initializer;
-  
-  if(rhs.find(ID_initializer).is_nil())
-    initializer.make_nil();
-  else
-  {
-    initializer.make_nil();
-    rhs.add(ID_initializer).swap(initializer);
-  }
+  exprt initializer=
+    static_cast<const exprt &>(rhs.find(ID_initializer));
 
   if(initializer.is_not_nil())
   {
-    if(rhs.id()=="cpp_new[]")
+    if(rhs.get_statement()=="cpp_new[]")
     {
       // build loop
     }
-    else // cpp_new
+    else if(rhs.get_statement()==ID_cpp_new)
     {
-      exprt deref_new(ID_dereference, rhs.type().subtype());
-      deref_new.copy_to_operands(lhs);
-      replace_new_object(deref_new, initializer);
+      // just one object
+      exprt deref_lhs(ID_dereference, rhs.type().subtype());
+      deref_lhs.copy_to_operands(lhs);
+      
+      replace_new_object(deref_lhs, initializer);
       convert(to_code(initializer), dest);
     }
+    else
+      assert(false);
   }
 }
 
@@ -800,12 +858,26 @@ void goto_convertt::do_function_call_symbol(
   bool is_assert=identifier=="c::assert" ||
                  identifier=="specc::assert";
 
-  if(is_assume || is_assert)
+  bool is_predicate=identifier==CPROVER_PREFIX "predicate" ||
+                 identifier=="specc::__CPROVER_predicate";
+
+  if(is_assume || is_assert || is_predicate)
   {
     if(arguments.size()!=1)
     {
       err_location(function);
       throw "`"+id2string(identifier)+"' expected to have one argument";
+    }
+
+    if(is_predicate) {
+    	goto_programt::targett t = dest.add_instruction(OTHER);
+    	t->guard = arguments.front();
+    	t->location = function.location();
+    	t->location.set("user-provided", true);
+    	t->code = ID_user_specified_predicate;
+		t->code.set_statement(ID_user_specified_predicate);
+	  return;
+
     }
 
     if(is_assume && !options.get_bool_option("assumptions"))
@@ -901,6 +973,21 @@ void goto_convertt::do_function_call_symbol(
     assignment.location()=function.location();
     copy(assignment, ASSIGN, dest);
   }
+  else if(has_prefix(id2string(identifier), CPROVER_PREFIX "uninterpreted_"))
+  {
+    // make it a side effect if there is an LHS
+    if(lhs.is_nil()) return;
+
+    function_application_exprt rhs;
+    rhs.type()=lhs.type();
+    rhs.location()=function.location();
+    rhs.function()=function;
+    rhs.arguments()=arguments;
+
+    code_assignt assignment(lhs, rhs);
+    assignment.location()=function.location();
+    copy(assignment, ASSIGN, dest);
+  }
   else if(has_prefix(id2string(identifier), CPROVER_PREFIX "array_set"))
   {
     do_array_set(lhs, function, arguments, dest);
@@ -920,10 +1007,11 @@ void goto_convertt::do_function_call_symbol(
   {
     do_printf(lhs, function, arguments, dest);
   }
-  else if(identifier=="c::__assert_rtn" ||
-          identifier=="c::__assert_fail")
+  else if(identifier=="c::__assert_fail")
   {
     // __assert_fail is Linux
+    // These take four arguments:
+    // "expression", "file.c", line, __func__
 
     if(arguments.size()!=4)
     {
@@ -947,7 +1035,9 @@ void goto_convertt::do_function_call_symbol(
   }
   else if(identifier=="c::__assert_rtn")
   {
-    // __assert_rtn is MACOS
+    // __assert_rtn has been seen on MacOS    
+    // It takes four arguments:
+    // __func__, "file.c", line, "expression"
 
     if(arguments.size()!=4)
     {
@@ -966,12 +1056,13 @@ void goto_convertt::do_function_call_symbol(
     t->location=function.location();
     t->location.set("user-provided", true);
     t->location.set(ID_property, ID_assertion);
-    t->location.set("comment", description);
+    t->location.set(ID_comment, description);
     // we ignore any LHS
   }
   else if(identifier=="c::_wassert")
   {
-    // this is Windows
+    // This is Windows. The arguments are
+    // L"expression", L"file.c", line
 
     if(arguments.size()!=3)
     {

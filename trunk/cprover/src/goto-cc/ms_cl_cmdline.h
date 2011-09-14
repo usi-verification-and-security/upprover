@@ -20,11 +20,13 @@ public:
 
   ms_cl_cmdlinet()
   {
-    mode=MS;
+    mode=VISUAL_STUDIO;
   }
   
 protected:
-  void process_option(const std::string &s);
+  void process_non_cl_option(const std::string &s);
+  void process_cl_option(const std::string &s);
+  void process_response_file(const std::string &file);
 };
 
 #endif /*MS_CL_CMDLINE_H_*/

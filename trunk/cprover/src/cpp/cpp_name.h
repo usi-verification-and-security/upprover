@@ -14,7 +14,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 class cpp_namet:public irept
 {
 public:
-  cpp_namet():irept("cpp-name")
+  cpp_namet():irept(ID_cpp_name)
   {
   }
 
@@ -56,29 +56,18 @@ public:
     return false;
   }
 
-  void to_string(std::string& str) const
-  {
-    forall_irep(it, get_sub())
-    {
-      if(it->id()=="::")
-        str += "::";
-      else if(it->id()==ID_template_args)
-        str += "<...>";
-      else
-        str+=it->get_string(ID_identifier);
-    }
-  }
+  std::string to_string() const;
 };
 
 inline cpp_namet &to_cpp_name(irept &cpp_name)
 {
-  assert(cpp_name.id() == "cpp-name");
+  assert(cpp_name.id() == ID_cpp_name);
   return static_cast<cpp_namet &>(cpp_name);
 }
 
 inline const cpp_namet &to_cpp_name(const irept &cpp_name)
 {
-  assert(cpp_name.id() == "cpp-name");
+  assert(cpp_name.id() == ID_cpp_name);
   return static_cast<const cpp_namet &>(cpp_name);
 }
 

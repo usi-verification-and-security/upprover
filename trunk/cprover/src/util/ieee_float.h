@@ -82,6 +82,9 @@ public:
     sign=!sign;
   }
 
+  void set_sign(bool _sign)
+  { sign = _sign; }
+
   void make_zero()
   {
     sign=false;
@@ -96,9 +99,13 @@ public:
   void make_minus_infinity();
 
   // set to next representable number towards plus or minus infinity
-  void increment() { return next_representable(true); }
-  void decrement() { return next_representable(false); }
   void next_representable(bool greater);
+  void increment(bool distinguish_zero=false) { 
+    if(is_zero() && get_sign() && distinguish_zero) negate();
+    else next_representable(true); }
+  void decrement(bool distinguish_zero=false) { 
+    if(is_zero() && !get_sign() && distinguish_zero) negate();
+    else next_representable(false); }
 
   void make_fltmax();
   void make_fltmin();

@@ -23,7 +23,7 @@ public:
   
   cpp_declarationt &make_declaration()
   {
-    id("cpp-declaration");
+    id(ID_cpp_declaration);
     return (cpp_declarationt &)*this;
   }
   
@@ -41,14 +41,14 @@ public:
   
   bool is_declaration() const
   {
-    return id()=="cpp-declaration";
+    return id()==ID_cpp_declaration;
   }
   
   // linkage spec
 
   cpp_linkage_spect &make_linkage_spec()
   {
-    id("cpp-linkage-spec");
+    id(ID_cpp_linkage_spec);
     return (cpp_linkage_spect &)*this;
   }
 
@@ -66,14 +66,14 @@ public:
 
   bool is_linkage_spec() const
   {
-    return id()=="cpp-linkage-spec";
+    return id()==ID_cpp_linkage_spec;
   }
   
   // namespace
   
   cpp_namespace_spect &make_namespace_spec()
   {
-    id("cpp-namespace-spec");
+    id(ID_cpp_namespace_spec);
     return (cpp_namespace_spect &)*this;
   }
 
@@ -91,14 +91,14 @@ public:
 
   bool is_namespace_spec() const
   {
-    return id()=="cpp-namespace-spec";
+    return id()==ID_cpp_namespace_spec;
   }
 
   // using
   
   cpp_usingt &make_using()
   {
-    id("cpp-using");
+    id(ID_cpp_using);
     return (cpp_usingt &)*this;
   }
 
@@ -116,7 +116,7 @@ public:
 
   bool is_using() const
   {
-    return id()=="cpp-using";
+    return id()==ID_cpp_using;
   }
 };
 

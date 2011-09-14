@@ -28,17 +28,6 @@ public:
   typedef std::set<cpp_scopet *> scope_sett;
   typedef std::set<cpp_idt *> id_sett;
 
-  void get_ids(
-    const irep_idt &base_name,
-    id_sett &id_set,
-    bool current_only);
-
-  void get_ids(
-     const irep_idt &base_name,
-     cpp_idt::id_classt id_class,
-     id_sett &id_set,
-     bool current_only);
-
   cpp_scopet &current_scope()
   {
     return *current_scope_ptr;
@@ -149,7 +138,7 @@ public:
 
   void restore()
   {
-      cpp_scopes.current_scope_ptr=saved_scope;
+    cpp_scopes.current_scope_ptr=saved_scope;
   }
 
 protected:

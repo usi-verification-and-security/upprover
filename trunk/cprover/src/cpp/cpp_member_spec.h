@@ -14,7 +14,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 class cpp_member_spect:public irept
 {
 public:
-  cpp_member_spect():irept("cpp-member-spec")
+  cpp_member_spect():irept(ID_cpp_member_spec)
   {
   }
 

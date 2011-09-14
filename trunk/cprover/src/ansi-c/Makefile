@@ -7,7 +7,7 @@ SRC = c_typecast.cpp y.tab.cpp lex.yy.cpp ansi_c_parser.cpp \
       c_typecheck_expr.cpp c_typecheck_type.cpp string_constant.cpp \
       c_qualifiers.cpp c_typecheck_argc_argv.cpp ansi_c_parse_tree.cpp \
       preprocessor_line.cpp ansi_c_convert.cpp ansi_c_convert_type.cpp \
-      type2name.cpp cprover_library.cpp \
+      type2name.cpp cprover_library.cpp anonymous_member.cpp \
       printf_formatter.cpp internal_additions.cpp \
       ansi_c_declaration.cpp designator.cpp concatenate_strings.cpp \
       literals/parse_float.cpp literals/unescape_string.cpp \
@@ -16,14 +16,14 @@ SRC = c_typecast.cpp y.tab.cpp lex.yy.cpp ansi_c_parser.cpp \
       literals/convert_integer_literal.cpp \
       literals/convert_string_literal.cpp 
 
-OBJ = $(SRC:.cpp=.o)
+OBJ = $(SRC:.cpp=$(OBJEXT))
 
 INCLUDES= -I .. -I ../util
 
-all: ansi-c.o library/converter
-
 include ../config.inc
 include ../common
+
+all: ansi-c$(LIBEXT) library/converter$(EXEEXT)
 
 ###############################################################################
 
@@ -35,26 +35,29 @@ y.tab.h: y.tab.cpp
         mv y.tab.cpp.h y.tab.h ; fi
 
 lex.yy.cpp: scanner.l
-	$(LEX) -Pyyansi_c -olex.yy.cpp scanner.l
+	$(LEX) -Pyyansi_c -o$@ scanner.l
 
 # extra dependencies
-y.tab.o: y.tab.cpp y.tab.h
-lex.yy.o: y.tab.cpp lex.yy.cpp y.tab.h
-cprover_library.o: cprover_library.inc
+y.tab$(OBJEXT): y.tab.cpp y.tab.h
+lex.yy$(OBJEXT): y.tab.cpp lex.yy.cpp y.tab.h
+cprover_library$(OBJEXT): cprover_library.inc
 
 ###############################################################################
 
-library/converter:
-	$(CPLUS) $(LINKFLAGS) -o library/converter library/converter.cpp
+library/converter$(EXEEXT):
+	$(CXX) $(LINKFLAGS) -o $@ library/converter.cpp
 	
 cprover_library.inc: library/converter library/*.c
-	cat library/*.c | library/converter > cprover_library.inc
+	cat library/*.c | library/converter > $@
+
+cprover_library.cpp: cprover_library.inc
 
 ###############################################################################
 
-ansi-c.o: cprover_library.inc $(OBJ) 
-	$(LD) $(LDFLAGS) -o $@ $(OBJ)
+ansi-c$(LIBEXT): $(OBJ) 
+	$(LINKLIB)
 
 clean:
-	rm -f $(OBJ) *.o y.tab.h y.tab.cpp lex.yy.cpp y.tab.cpp.output y.output
-	rm -f library/converter cprover_library.inc
+	rm -f $(OBJ) ansi-c$(LIBEXT)
+	rm -f y.tab.h y.tab.cpp lex.yy.cpp y.tab.cpp.output y.output
+	rm -f library/converter$(EXEEXT) cprover_library.inc

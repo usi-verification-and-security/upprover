@@ -99,6 +99,7 @@ bool gcc_cmdlinet::parse(int argc, const char **argv)
       strcmp(argv[i], "--unsigned-char")==0 || // NON-GCC
       strcmp(argv[i], "--no-arch")==0 || // NON-GCC            
       strcmp(argv[i], "--xml")==0 || // NON-GCC
+      strcmp(argv[i], "--partial-inlining")==0 || // NON-GCC
       strcmp(argv[i], "-h")==0 || strcmp(argv[i], "--help")==0 || // NON-GCC
       strcmp(argv[i], "-?")==0 || // NON-GCC
       strcmp(argv[i], "-r")==0 || // for ld mimicking
@@ -178,12 +179,14 @@ bool gcc_cmdlinet::parse(int argc, const char **argv)
     else if(strncmp(argv[i], "-m", 2)==0) // m-options
     {
     }
-    else if( // options that have a separated or concatenated argument
+    else if( // options that have a separated _or_ concatenated argument
         strncmp(argv[i], "-o", 2)==0 ||
         strncmp(argv[i], "-x", 2)==0 ||
         strncmp(argv[i], "-I", 2)==0 ||
         strncmp(argv[i], "-V", 2)==0 ||
-        strncmp(argv[i], "-L", 2)==0
+        strncmp(argv[i], "-D", 2)==0 ||
+        strncmp(argv[i], "-L", 2)==0 ||
+        strncmp(argv[i], "-MF", 3)==0
     )
     {
       options[optnr].hasval=true;
@@ -192,8 +195,12 @@ bool gcc_cmdlinet::parse(int argc, const char **argv)
         options[optnr].optstring="";
         options[optnr].optchar=argv[i][1];
         if(i!=argc-1)
+        {
           options[optnr].values.push_back(argv[i+1]);
-        i++;
+          i++;
+        }
+        else
+          options[optnr].values.push_back("");
       }
       else
       {
@@ -245,7 +252,6 @@ bool gcc_cmdlinet::parse(int argc, const char **argv)
       strncmp(argv[i], "-d", 2)==0 ||
       strncmp(argv[i], "-g", 2)==0 ||
       strncmp(argv[i], "-A", 2)==0 ||
-      strncmp(argv[i], "-D", 2)==0 ||
       strncmp(argv[i], "-U", 2)==0 ||
       strncmp(argv[i], "-l", 2)==0
     )
@@ -294,7 +300,7 @@ bool gcc_cmdlinet::parse(int argc, const char **argv)
     }
     else
     { // unrecognized option
-      std::cout << "Warning: uninterpreted option '" << argv[i] << "'" << std::endl;
+      std::cout << "Warning: uninterpreted gcc option '" << argv[i] << "'" << std::endl;
     }
   }
 

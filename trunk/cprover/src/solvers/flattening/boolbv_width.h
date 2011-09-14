@@ -12,8 +12,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <std_types.h>
 #include <namespace.h>
 
-#define BV_ADDR_BITS 8
-
 class boolbv_widtht
 {
 public:

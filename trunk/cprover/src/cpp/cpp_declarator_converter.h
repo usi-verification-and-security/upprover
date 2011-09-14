@@ -15,6 +15,10 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include "cpp_declaration.h"
 #include "cpp_scope.h"
 
+// converts a cpp_declator plus some
+// additional information stored in the class
+// into a symbol
+
 class cpp_declarator_convertert
 {
 public:
@@ -28,7 +32,7 @@ public:
   irep_idt mode;
 
   symbolt &convert(
-    const typet &type,
+    const typet &type, // already typechecked
     const cpp_storage_spect &storage_spec,
     const cpp_member_spect &member_spec,
     cpp_declaratort &declarator);
@@ -38,8 +42,10 @@ public:
     cpp_declaratort &declarator)
   {
     return convert(
-      declaration.type(),  declaration.storage_spec(),
-      declaration.member_spec(), declarator);
+      declaration.type(),
+      declaration.storage_spec(),
+      declaration.member_spec(),
+      declarator);
   }
 
   class cpp_typecheckt &cpp_typecheck;
@@ -74,8 +80,8 @@ protected:
 
   bool is_code_type(const typet &type) const
   {
-    return type.id()=="code" ||
-           (type.id()=="template" && type.subtype().id()=="code");
+    return type.id()==ID_code ||
+           (type.id()==ID_template && type.subtype().id()==ID_code);
   }
 
   void combine_types(

@@ -35,10 +35,15 @@ ui_message_handlert::ui_message_handlert(
     break;
     
   case XML_UI:
-    std::cout << "<cprover>" << std::endl
-              << "<program>" << xmlt::escape(program)
-              << "</program>" << std::endl
-              << std::endl;  
+    std::cout << "<cprover>" << std::endl;
+    
+    {
+      xmlt program_xml;
+      program_xml.name="program";
+      program_xml.data=program;
+      
+      std::cout << program_xml;
+    }
     break;
     
   case PLAIN:
@@ -236,8 +241,8 @@ void ui_message_handlert::xml_ui_msg(
     l.name="location";
   }
 
-  xml.new_element("text").data=xmlt::escape(msg1);
-  xml.set_attribute("type", xmlt::escape_attribute(type));
+  xml.new_element("text").data=msg1;
+  xml.set_attribute("type", type);
   
   std::cout << xml;
   std::cout << std::endl;

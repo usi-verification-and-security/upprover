@@ -1,19 +1,20 @@
 SRC = mode.cpp language_ui.cpp languages.cpp language_util.cpp
 
-OBJ = $(SRC:.cpp=.o)
+OBJ = $(SRC:.cpp=$(OBJEXT))
 
 INCLUDES= -I .. -I ../util
-
-all: langapi.o
 
 include ../config.inc
 include ../common
 
+all: langapi$(LIBEXT)
+
 ###############################################################################
 
-langapi.o: $(OBJ)
-	$(LD) $(LDFLAGS) -o langapi.o $(OBJ)
+langapi$(LIBEXT): $(OBJ)
+	$(LINKLIB)
 	
 clean:
-	rm -f *.o
+	rm -f $(OBJ) langapi$(LIBEXT)
+	
 

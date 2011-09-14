@@ -40,8 +40,7 @@ void show_loop_numbers(
       if(ui==ui_message_handlert::XML_UI)
       {
         xmlt xml("loop");
-        xml.new_element("loop-id").data=
-          xmlt::escape(id2string(it->function)+"."+i2string(loop_id));
+        xml.new_element("loop-id").data=id2string(it->function)+"."+i2string(loop_id);
         
         xmlt &l=xml.new_element();
         convert(it->location, l);

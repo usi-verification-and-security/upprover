@@ -1,3 +1,6 @@
+include ../config.inc
+include ../common
+
 SHARED_SRC := \
       expr_pretty_print.cpp \
       function_info.cpp \
@@ -26,59 +29,58 @@ DIFF_SRC := \
       diff.cpp
 
 SHARED_OBJ := \
-      $(SHARED_SRC:.cpp=.o) \
-      ../util/util.o \
-      ../big-int/bigint.o \
-      ../goto-programs/goto-programs.o \
-      ../pointer-analysis/pointer-analysis.o \
-      ../langapi/langapi.o \
-      ../ansi-c/ansi-c.o \
-      ../solvers/solvers.o
+      $(SHARED_SRC:.cpp=$(OBJEXT)) \
+      ../util/util$(LIBEXT) \
+      ../big-int/bigint$(OBJEXT) \
+      ../goto-programs/goto-programs$(LIBEXT) \
+      ../pointer-analysis/pointer-analysis$(LIBEXT) \
+      ../langapi/langapi$(LIBEXT) \
+      ../ansi-c/ansi-c$(LIBEXT) \
+      ../solvers/solvers$(LIBEXT)
 
 FUNFROG_OBJ := \
-	    $(SHARED_OBJ) \
-      $(FUNFROG_SRC:.cpp=.o) \
-      ../loopfrog/languages.o \
-      ../loopfrog/memstat.o \
-      ../loopfrog/value_set_alloc_adaptor.o \
-      ../loopfrog/replace_malloc.o \
-      ../goto-symex/goto-symex.o \
-      ../cbmc/symex_bmc.o
+      $(FUNFROG_SRC:.cpp=$(OBJEXT)) \
+      ../loopfrog/languages$(OBJEXT) \
+      ../loopfrog/memstat$(OBJEXT) \
+      ../loopfrog/value_set_alloc_adaptor$(OBJEXT) \
+      ../loopfrog/replace_malloc$(OBJEXT) \
+      ../goto-symex/goto-symex$(LIBEXT) \
+      ../cbmc/symex_bmc$(OBJEXT) \
+	    $(SHARED_OBJ)
 
 SUMO_OBJ := \
-      $(SHARED_OBJ) \
-      $(SUMO_SRC:.cpp=.o)
+      $(SUMO_SRC:.cpp=$(OBJEXT)) \
+      $(SHARED_OBJ)
 
 DIFF_OBJ := \
-      $(SHARED_OBJ) \
-      $(DIFF_SRC:.cpp=.o)
+      $(DIFF_SRC:.cpp=$(OBJEXT)) \
+      $(SHARED_OBJ)
 
-all: funfrog sumo
+all: funfrog$(EXEEXT) sumo$(EXEEXT)
 
-include ../config.inc
-include ../common
+INCLUDES := $(OPENSMT_INCLUDE) -I .. -I ../util
+LIBS := -L $(OPENSMT_LIBDIR)
 
-INCLUDES := $(OPENSMT_INCLUDE) -I ../$(CHAFF) -I .. -I ../util
-LIBS := -L $(OPENSMT_LIBDIR) -lopensmt-1.0 -lgmpxx -lgmp
-
-ifdef MODULE_CPP
-  OBJ += ../cpp/cpp.o
+ifdef MODULE_BV_REFINEMENT
+  FUNFROG_OBJ += ../bv_refinement/bv_refinement$(LIBEXT)
+  CXXFLAGS += -DHAVE_BV_REFINEMENT
 endif
 
-ifdef MODULE_SPECC
-	OBJ += ../specc/specc.o
+ifdef MODULE_CPP
+  FUNFROG_OBJ += ../cpp/cpp$(LIBEXT)
+  CXXFLAGS += -DHAVE_CPP
 endif
 
 ###############################################################################
 
-funfrog: $(FUNFROG_OBJ)
-	$(CPLUS) $(LINKFLAGS) -o funfrog $(FUNFROG_OBJ) $(LIBS)
+funfrog$(EXEEXT): $(FUNFROG_OBJ)
+	$(LINKBIN) $(FUNFROG_OBJ) -lopensmt-1.0 -lgmpxx -lgmp
 
-sumo: $(SUMO_OBJ)
-	$(CPLUS) $(LINKFLAGS) -o sumo $(SUMO_OBJ) $(LIBS)
+sumo$(EXEEXT): $(SUMO_OBJ)
+	$(LINKBIN) $(SUMO_OBJ) -lopensmt-1.0 -lgmpxx -lgmp
 
-diff: $(DIFF_OBJ)
-	$(CPLUS) $(LINKFLAGS) -o diff $(DIFF_OBJ) $(LIBS)
+diff$(EXEEXT): $(DIFF_OBJ)
+	$(LINKBIN) $(DIFF_OBJ)
 
 clean:
 	rm -f *.o *.d funfrog sumo diff

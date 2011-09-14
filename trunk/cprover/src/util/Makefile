@@ -8,7 +8,7 @@ SRC = arith_tools.cpp base_type.cpp cmdline.cpp config.cpp context.cpp \
       get_module.cpp string_hash.cpp string_container.cpp identifier.cpp \
       rational.cpp options.cpp c_misc.cpp simplify_expr.cpp dstring.cpp \
       find_symbols.cpp rational_tools.cpp ui_message.cpp simplify_utils.cpp \
-      time_stopping.cpp symbol.cpp \
+      time_stopping.cpp symbol.cpp irep_hash_container.cpp \
       type_eq.cpp guard.cpp array_name.cpp gcd.cpp message_stream.cpp \
       substitute.cpp decision_procedure.cpp union_find.cpp pretty_names.cpp \
       xml.cpp xml_irep.cpp std_types.cpp std_code.cpp \
@@ -18,40 +18,48 @@ SRC = arith_tools.cpp base_type.cpp cmdline.cpp config.cpp context.cpp \
       bv_arithmetic.cpp tempdir.cpp tempfile.cpp timer.cpp \
       irep_ids.cpp
 
-OBJ = $(SRC:.cpp=.o)
+OBJ = $(SRC:.cpp=$(OBJEXT))
 
 INCLUDES= -I .. -I .
-
-all: util.o ieee_float_test
 
 include ../config.inc
 include ../common
 
+all: util$(LIBEXT) ieee_float_test$(EXEEXT)
+
 ifdef MODULE_FLOATBV
-  CPLUSFLAGS += -DHAVE_FLOATBV
+  CXXFLAGS += -DHAVE_FLOATBV
 endif
 
-###############################################################################
-irep_ids.h: irep_ids_convert irep_ids.txt
-	./irep_ids_convert header < irep_ids.txt > irep_ids.h
+# all the others will need irep_ids.h,
+# which we first need to generate
+.NOTPARALLEL:
 
-irep_ids.inc: irep_ids_convert irep_ids.txt
-	./irep_ids_convert table < irep_ids.txt > irep_ids.inc
+###############################################################################
+
+irep_ids.h: irep_ids_convert$(EXEEXT) irep_ids.txt
+	./irep_ids_convert header < irep_ids.txt > $@
+
+irep_ids.inc: irep_ids_convert$(EXEEXT) irep_ids.txt
+	./irep_ids_convert table < irep_ids.txt > $@
 
 irep_ids.cpp: irep_ids.inc irep_ids.h
 
-irep_ids_convert: irep_ids_convert.o
-	$(CPLUS) $(LINKFLAGS) -o irep_ids_convert irep_ids_convert.o
+irep_ids_convert$(EXEEXT): irep_ids_convert$(OBJEXT)
+	$(LINKBIN) irep_ids_convert$(OBJEXT)
 
 $(OBJ): irep_ids.h
 
-util.o: $(OBJ)
-	$(LD) $(LDFLAGS) -o util.o $(OBJ)
+util$(LIBEXT): $(OBJ)
+	$(LINKLIB)
 
 clean:
-	rm -f *.o ieee_float_test irep_ids.h irep_ids.inc irep_ids_convert
+	rm -f $(OBJ) util$(LIBEXT)
+	rm -f irep_ids.h irep_ids.inc
+	rm -f ieee_float_test$(EXEEXT) ieee_float_test$(OBJEXT)
+	rm -f irep_ids_convert$(EXEEXT) irep_ids_convert$(OBJEXT)          
 
-ieee_float_test.o: irep_ids.h  
+ieee_float_test$(OBJEXT): irep_ids.h  
 
-ieee_float_test: ieee_float_test.o ieee_float.o util.o
-	$(CPLUS) $(LINKFLAGS) -o ieee_float_test util.o ieee_float_test.o ../big-int/bigint.o
+ieee_float_test$(EXEEXT): ieee_float_test$(OBJEXT) ieee_float$(OBJEXT) util$(LIBEXT)
+	$(LINKBIN) util$(LIBEXT) ieee_float_test$(OBJEXT) ../big-int/bigint$(OBJEXT)

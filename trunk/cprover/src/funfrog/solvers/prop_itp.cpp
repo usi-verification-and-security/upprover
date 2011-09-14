@@ -177,7 +177,7 @@ void prop_itpt::generalize(const prop_convt& decider,
 
   // FIXME: Dirty cast.
   const boolbv_mapt::mappingt& mapping =
-          dynamic_cast<const boolbvt&>(decider).get_literal_map().mapping;
+          dynamic_cast<const boolbvt&>(decider).get_map().mapping;
 
   unsigned min_var = UINT_MAX;
   unsigned max_var = 0;
@@ -390,7 +390,7 @@ void prop_itpt::substitute(prop_convt& decider,
   assert(!is_trivial());
 
   // FIXME: Dirty cast.
-  boolbv_mapt& map = dynamic_cast<boolbvt&>(decider).get_literal_map();
+  boolbv_mapt& map = const_cast<boolbv_mapt&>(dynamic_cast<boolbvt&>(decider).get_map());
   literalt renaming[_no_variables];
 
   // Fill the renaming table
@@ -548,7 +548,7 @@ void prop_itpt::reserve_variables(prop_convt& decider,
     const std::vector<symbol_exprt>& symbols)
 {
   // FIXME: Dirty cast.
-  boolbv_mapt& map = dynamic_cast<boolbvt&>(decider).get_literal_map();
+  boolbv_mapt& map = const_cast<boolbv_mapt&>(dynamic_cast<boolbvt&>(decider).get_map());
 
   // Force existence of the variables
   for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();

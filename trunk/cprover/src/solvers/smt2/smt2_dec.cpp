@@ -53,7 +53,7 @@ Function: smt2_temp_filet::smt2_temp_filet
 
 smt2_temp_filet::smt2_temp_filet()
 {
-  temp_out_filename=get_temporary_file("smt2_dec_out_", ".tmp");
+  temp_out_filename=get_temporary_file("smt2_dec_out_", "");
 
   temp_out.open(
     temp_out_filename.c_str(),
@@ -105,7 +105,7 @@ decision_proceduret::resultt smt2_dect::dec_solve()
   temp_out.close();
 
   temp_result_filename=
-    get_temporary_file("smt2_dec_result_", ".tmp");
+    get_temporary_file("smt2_dec_result_", "");
 
   std::string command;
 
