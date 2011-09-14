@@ -105,7 +105,7 @@ void summary_storet::mark_used_summaries(summary_infot& summary_info,
           it != call_sites.end(); ++it)
   {
     const summary_ids_sett& summaries = 
-      it->second.get_summary_info().get_used_summaries();
+      it->second.get_used_summaries();
   
     // Collect the used summaries
     if (it->second.get_precision() != HAVOC) {
@@ -118,7 +118,7 @@ void summary_storet::mark_used_summaries(summary_infot& summary_info,
     
     // Propagate the call
     if (it->second.get_precision() == INLINE) {
-      mark_used_summaries(it->second.get_summary_info(), used_mask);
+      mark_used_summaries(it->second, used_mask);
     }
   }
 }
@@ -135,7 +135,7 @@ void summary_storet::remap_used_summaries(summary_infot& summary_info,
     if (it->second.get_precision() != HAVOC) {
       summary_ids_sett new_summaries;
       const summary_ids_sett& old_summaries =
-              it->second.get_summary_info().get_used_summaries();
+              it->second.get_used_summaries();
       
       for (summary_ids_sett::const_iterator it2 = old_summaries.begin();
               it2 != old_summaries.end(); ++it2)
@@ -143,12 +143,12 @@ void summary_storet::remap_used_summaries(summary_infot& summary_info,
         new_summaries.insert(remap[*it2]);
       }
       
-      it->second.get_summary_info().set_used_summaries(new_summaries);
+      it->second.set_used_summaries(new_summaries);
     }
     
     // Propagate the call
     if (it->second.get_precision() == INLINE) {
-      remap_used_summaries(it->second.get_summary_info(), remap);
+      remap_used_summaries(it->second, remap);
     }
   }
 }

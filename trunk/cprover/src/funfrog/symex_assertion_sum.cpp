@@ -902,9 +902,8 @@ void symex_assertion_sumt::handle_function_call(
         code_function_callt &function_call)
 {
   // What are we supposed to do with this precise function call?
-  call_summaryt &call_summary = current_summary_info->get_call_sites().find(
-          state.source.pc)->second;
-  summary_infot &summary_info = call_summary.get_summary_info();
+  summary_infot &summary_info = current_summary_info->get_call_sites().find(
+      state.source.pc)->second;
   assert(get_current_deferred_function().partition_iface.partition_id != partitiont::NO_PARTITION);
   deferred_functiont deferred_function(summary_info, 
           new_partition_iface(summary_info, 
@@ -942,7 +941,7 @@ void symex_assertion_sumt::handle_function_call(
 
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);
-  switch (call_summary.get_precision()){
+  switch (summary_info.get_precision()){
   case HAVOC:
     havoc_function_call(deferred_function, state, function_id);
     break;

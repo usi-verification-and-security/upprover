@@ -21,9 +21,7 @@
 // Type of summarization applied at a specific call-site
 typedef enum {HAVOC, SUMMARY, INLINE} summary_precisiont;
 
-// Forward def.
-class call_summaryt;
-typedef std::map<goto_programt::const_targett, call_summaryt> call_sitest;
+typedef std::map<goto_programt::const_targett, summary_infot> call_sitest;
 typedef std::map<goto_programt::const_targett, unsigned> location_mapt;
 typedef std::set<goto_programt::const_targett> locationst;
 
@@ -31,8 +29,9 @@ typedef std::set<goto_programt::const_targett> locationst;
 class summary_infot {
 public:
 
-  summary_infot(summary_infot *_parent)
-          : function_id(ID_nil), parent(_parent), assertion_in_subtree(false) { }
+  summary_infot(summary_infot *_parent, unsigned _call_location)
+          : function_id(ID_nil), parent(_parent), assertion_in_subtree(false),
+            precision(HAVOC), call_location(_call_location){ }
 
   void clear() { call_sites.clear(); }
 
@@ -64,6 +63,16 @@ public:
   summary_infot& get_parent() { return *parent; }
   location_mapt& get_assertions() { return assertions; };
 
+  void set_inline() { precision = INLINE; }
+  void set_summary() { precision = SUMMARY; }
+  void set_nondet() { precision = HAVOC; }
+  void set_precision(summary_precisiont _precision) { precision = _precision; }
+  void set_call_location(unsigned loc) { call_location = loc; }
+
+  summary_precisiont get_precision() const { return precision; }
+  unsigned get_call_location() { return call_location; }
+
+
 private:
   call_sitest call_sites;
   location_mapt assertions;
@@ -72,6 +81,8 @@ private:
   summary_infot *parent;
   summary_ids_sett used_summaries;
   bool assertion_in_subtree;
+  summary_precisiont precision;
+  unsigned call_location;
   
   void set_initial_precision(
         summary_precisiont default_precision,
@@ -86,31 +97,4 @@ private:
         bool parent_stack_matches, bool assert_grouping,
         unsigned& last_assertion_loc);
 };
-
-// Summary information for a specific call site
-class call_summaryt {
-public:
-  call_summaryt(summary_infot *_parent, unsigned _call_location) :
-     precision(HAVOC),
-     summary_info(_parent),
-     call_location(_call_location)
-  {}
-
-  void set_inline() { precision = INLINE; }
-  void set_summary() { precision = SUMMARY; }
-  void set_nondet() { precision = HAVOC; }
-  void set_call_location(unsigned loc) { call_location = loc; }
-
-  summary_precisiont get_precision() const { return precision; }
-  summary_infot& get_summary_info() { return summary_info; }
-  unsigned get_call_location() { return call_location; }
-
-private:
-  summary_precisiont precision;
-  summary_infot summary_info;
-  unsigned call_location;
-
-  friend class summary_infot;
-};
-
 #endif

@@ -48,9 +48,9 @@ void refiner_assertion_sumt::refine(prop_convt& decider)
 
 void refiner_assertion_sumt::set_inline_sum(int i)
 {
-  out << "*** REFINING function: " << (*summs[i]).get_summary_info().get_function_id() << std::endl;
+  out << "*** REFINING function: " << (*summs[i]).get_function_id() << std::endl;
   (*summs[i]).set_inline();
-  refined_functions.push_back(&(*summs[i]).get_summary_info());
+  refined_functions.push_back(&(*summs[i]));
 }
 
 void refiner_assertion_sumt::reset_inline()
@@ -119,7 +119,7 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart
     for (unsigned i = 0; i < summs.size(); i++){
       if ((*summs[i]).get_precision() != INLINE){
         for (unsigned j = 0; j < tmp.size(); j++){
-          if (tmp[j] == (*summs[i]).get_summary_info().get_function_id()){
+          if (tmp[j] == (*summs[i]).get_function_id()){
             set_inline_sum(i);
             break;
           }

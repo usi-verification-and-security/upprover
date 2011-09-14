@@ -21,17 +21,6 @@ void subst_scenariot::setup_default_precision(init_modet init)
    }
 }
 
-void subst_scenariot::initialize_call(
-        call_summaryt& call_summary,
-        const irep_idt &target_function)
-{
-  call_summary.get_summary_info().set_function_id(target_function);
-
-  const goto_programt &function_body =
-      summarization_context.get_function(target_function).body;
-  initialize_summary_info(call_summary.get_summary_info(), function_body);
-}
-
 void subst_scenariot::initialize_summary_info(
     summary_infot& summary_info, const goto_programt& code)
 {
@@ -75,13 +64,17 @@ void subst_scenariot::initialize_summary_info(
         function_call.function()).get_identifier();
 
       // Mark the call site
-      call_summaryt& call_summary = summary_info.get_call_sites().insert(
-              std::pair<goto_programt::const_targett, call_summaryt>(inst,
-              call_summaryt(&summary_info, global_loc)
-              )).first->second;  //ToDo: refactor
-      functions.push_back(&call_summary);
+      summary_infot& call_site = summary_info.get_call_sites().insert(
+              std::pair<goto_programt::const_targett, summary_infot>(inst,
+              summary_infot(&summary_info, global_loc)
+              )).first->second;
+      functions.push_back(&call_site);
 
-      initialize_call(call_summary, target_function);
+      call_site.set_function_id(target_function);
+
+      const goto_programt &function_body =
+          summarization_context.get_function(target_function).body;
+      initialize_summary_info(call_site, function_body);
     }
     else if (inst->type == ASSERT){
       summary_info.get_assertions()[inst] = global_loc;

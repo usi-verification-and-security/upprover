@@ -46,7 +46,7 @@ protected:
   subst_scenariot &omega;
 
   // Which functions should be summarized, abstracted from, and which inlined
-  std::vector<call_summaryt*>& summs;
+  std::vector<summary_infot*>& summs;
 
 
   // Store for the symex result

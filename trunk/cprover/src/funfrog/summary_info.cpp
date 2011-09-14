@@ -36,10 +36,10 @@ void summary_infot::set_initial_precision(
   for (call_sitest::iterator it = call_sites.begin();
           it != call_sites.end(); ++it) 
   {
-    call_summaryt& function = it->second;
-    const irep_idt& function_id = function.get_summary_info().get_function_id();
+    summary_infot& function = it->second;
+    const irep_idt& function_id = function.get_function_id();
     
-    if (function.summary_info.has_assertion_in_subtree()) {
+    if (function.has_assertion_in_subtree()) {
       // If assertion is in the subtree, we need to inline the call.
       function.set_inline();
     } 
@@ -60,12 +60,12 @@ void summary_infot::set_initial_precision(
       }
       else {
         // Otherwise, we use the initial substitution scenario
-        function.precision = default_precision;
+        function.set_precision(default_precision);
       }
     }
     
     // Recursive traversal
-    function.get_summary_info().set_initial_precision(
+    function.set_initial_precision(
             default_precision, //assertions,
             summarization_context, assertion, last_assertion_loc);
   }
@@ -120,13 +120,13 @@ bool summary_infot::mark_enabled_assertions(
   for (call_sitest::iterator it = call_sites.begin();
           it != call_sites.end(); ++it) 
   {
-    call_summaryt& function = it->second;
-    const irep_idt& function_id = function.get_summary_info().get_function_id();
+    summary_infot& function = it->second;
+    const irep_idt& function_id = function.get_function_id();
     bool current_stack_matches = stack_matches(assertion, function_id, depth,
             parent_stack_matches, assert_grouping);
     
     // Recursive traversal
-    assertion_in_subtree |= function.get_summary_info().mark_enabled_assertions(
+    assertion_in_subtree |= function.mark_enabled_assertions(
             /*assertions,*/ summarization_context, assertion, depth+1,
             current_stack_matches, assert_grouping, last_assertion_loc);
   }

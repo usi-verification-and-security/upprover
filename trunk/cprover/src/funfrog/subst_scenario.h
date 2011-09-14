@@ -24,7 +24,7 @@ public:
       const summarization_contextt &_summarization_context,
       const goto_programt &goto_program):
         summarization_context (_summarization_context),
-        functions_root (NULL),
+        functions_root (NULL, 0),
         default_precision (INLINE),
         functions (NULL),
         goto_ranges (NULL),
@@ -37,12 +37,9 @@ public:
 
   void process_goto_locations();
   void setup_default_precision(init_modet init);
-  std::vector<call_summaryt*>& get_call_summaries() { return functions; }
+  std::vector<summary_infot*>& get_call_summaries() { return functions; }
   unsigned get_summaries_count() { return get_precision_count(SUMMARY); }
   unsigned get_nondets_count() { return get_precision_count(HAVOC); }
-
-  void initialize_call
-      (call_summaryt& call_summary, const irep_idt &target_function);
 
   void initialize_summary_info
       (summary_infot& summary_info, const goto_programt& code);
@@ -60,7 +57,7 @@ private:
   summary_precisiont default_precision;
 //  location_mapt assertions;
 
-  std::vector<call_summaryt*> functions;
+  std::vector<summary_infot*> functions;
   std::vector<std::pair<unsigned, unsigned> > goto_ranges;
   unsigned global_loc;
 
