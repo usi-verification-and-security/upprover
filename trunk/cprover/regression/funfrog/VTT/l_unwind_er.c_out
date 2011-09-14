@@ -1,0 +1,6 @@
+SAT - doesn't hold
+Violated property:
+  file VTT/l_unwind_er.c line 14 function main
+  assertion
+  i < 10
+ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.

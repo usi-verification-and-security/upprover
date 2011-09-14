@@ -1,0 +1,9 @@
+UNSAT - it holds!
+ASSERTION IS TRUE
+ASSERTION(S) HOLD(S) AFTER INLINING.
+SAT - doesn't hold
+Violated property:
+  file VTT/a3.c line 43 function main
+  assertion c >= 0
+  FALSE
+ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.

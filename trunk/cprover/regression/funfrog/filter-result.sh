@@ -1,6 +1,6 @@
 #!/bin/bash
 
-awk '/^SAT|^UNSAT|SUMMARIES|ASSERTION|SUITABLE/{
+awk '/^SAT|^UNSAT|SUMMARIES|ASSERTION|SUITABLE|trivial/{
  print
 }
 { a[++d]=$0}
