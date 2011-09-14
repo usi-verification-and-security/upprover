@@ -231,7 +231,7 @@ bool symex_assertion_sumt::process_planned(statet &state)
         out << "SLICER TIME: "<< time2string(after-before) << std::endl;
     }
   } else {
-      out << "Assertion(s) are trivially unreachable." << std::endl;
+      out << "Assertion(s) hold trivially." << std::endl;
       return true;
   }
   return false;

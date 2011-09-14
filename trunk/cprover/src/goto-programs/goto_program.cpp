@@ -272,7 +272,7 @@ std::list<exprt> expressions_read(
     break;
   
   case RETURN:
-    if(to_code_return(instruction.code).return_value().is_not_nil())
+    if(to_code_return(instruction.code).has_return_value())
       dest.push_back(to_code_return(instruction.code).return_value());
     break;
   
