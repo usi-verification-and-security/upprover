@@ -10,13 +10,11 @@ std::vector<std::pair<const irep_idt*, bool> > functions;
 std::string form(const exprt &expr)
 {
   if (expr.has_operands()){
-    if (expr.type().id()==ID_signedbv){
-      std::string res = expr.id_string();
-      for (unsigned i = 0; i < expr.operands().size(); i++){
-        res = res + " " + form(expr.operands()[i]);
-      }
-      return res;
+    std::string res = expr.id_string();
+    for (unsigned i = 0; i < expr.operands().size(); i++){
+      res = res + " " + form(expr.operands()[i]);
     }
+    return res;
   }
 
   if(expr.is_constant())
@@ -53,16 +51,15 @@ std::string cmd_str (goto_programt::const_targett &it)
   std::string res;
   switch(it->type)
     {
-      case SKIP: break;
-      case END_FUNCTION: break;
-      case LOCATION:  break;
-      case GOTO: break;
-      case ASSUME:  break;
-      case ASSERT:  break;
+      case SKIP:  { res = "skip"; } break;
+      case END_FUNCTION: { res = "end_f"; } break;
+      case LOCATION:   { res = "loc + ?"; } break;      // TODO
+      case GOTO:  { res = "goto _ ?"; } break;          // TODO
+      case ASSUME:   { res = "assume ?"; } break;       // TODO
+      case ASSERT:  { res = "assert ?"; }  break;       // TODO
       case RETURN: {
-          const code_returnt &ret =
-            to_code_return(it->code);
-          res = form(ret.return_value());
+          const code_returnt &ret = to_code_return(it->code);
+          res = "return " + form(ret.return_value());
         }
         break;
       case ASSIGN: {
@@ -72,20 +69,25 @@ std::string cmd_str (goto_programt::const_targett &it)
         }
         break;
       case FUNCTION_CALL: {
-          const code_function_callt &call =
-              to_code_function_call(to_code(it->code));
-
-          // TODO: add arguments here
+          const code_function_callt &call = to_code_function_call(to_code(it->code));
           res = call.function().get("identifier").as_string();
+
+          for (unsigned i = 0; i < call.arguments().size(); i++){
+            res = res + " (" + form (call.arguments()[i]) + ")";
+          }
       }
-      case OTHER:  break;
-      case DECL:  break;
-      case DEAD:  break;
+      case OTHER:   { res = "other ?"; } break;         // TODO
+      case DECL: {
+          const code_declt &decl = to_code_decl(it->code);
+          res = form (decl);
+        }
+        break;
+      case DEAD:  { res = "dead ?"; }  break;           // TODO
       case START_THREAD:
         throw "START_THREAD not yet implemented";
-      case END_THREAD:  break;
-      case ATOMIC_BEGIN:
-      case ATOMIC_END:  break;
+      case END_THREAD:  { res = "end_th"; }  break;     // TODO
+      case ATOMIC_BEGIN: { res = "atomic_beg"; }        // TODO
+      case ATOMIC_END: { res = "atomic_end"; }   break; // TODO
       default:
         assert(false);
       }
@@ -105,9 +107,7 @@ void collect_functions(const goto_functionst &goto_functions, const goto_program
 
        const irep_idt &name = call.function().get("identifier");
 
-       std::pair<const irep_idt*, bool> p = std::make_pair(&name, true);
-
-       functions.push_back(p);
+       functions.push_back(std::make_pair(&name, true));
 
        goto_functionst::function_mapt::const_iterator f_it =
            goto_functions.function_map.find(name);
@@ -158,6 +158,39 @@ bool unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
   return true;
 }
 
+void do_diff(std::vector<std::string > &goto_unrolled_1,
+             std::vector<std::string > &goto_unrolled_2,
+             std::vector<std::string > &goto_common)
+{
+  // sizes
+  unsigned size_1 = goto_unrolled_1.size();
+  unsigned size_2 = goto_unrolled_2.size();
+  unsigned size_c = goto_common.size();
+
+  // iterators
+  unsigned i_1 = 0;
+  unsigned i_2 = 0;
+  unsigned i_c = size_c;
+  while (i_2 < size_2){
+    while(i_1 < size_1 && i_c > 0 && goto_unrolled_1[i_1] != goto_common[i_c - 1]){
+      std::cout << "    [-] " << goto_unrolled_1[i_1] << "\n";
+      i_1++;
+    }
+    while(i_c > 0 && goto_unrolled_2[i_2] != goto_common[i_c - 1]){
+      std::cout << "    [+] " << goto_unrolled_2[i_2] << "\n";
+      i_2++;
+    }
+    std::cout << "    [v] " << goto_unrolled_2[i_2] << "\n";
+    if (i_1 < size_1){
+      i_1++;
+    }
+    i_2++;
+    if (i_c > 0){
+      i_c--;
+    }
+  }
+}
+
 void copy(std::vector<std::string > &goto_1,
     std::vector<std::string > &goto_2){
   for (unsigned i = 0; i < goto_2.size(); i++){
@@ -172,45 +205,44 @@ bool compare_str_vecs(std::vector<std::string > &goto_unrolled_1,
 
   if (size_1 == 0 && size_2 == 0){
     return true;
-  } else if (size_1 == 0 || size_2 == 0){
-    return false;
   }
 
-  std::vector<std::string > **goto_common_s =
-      new std::vector<std::string >*[size_1 + 1];
-  for (unsigned i = 0; i <= size_1; ++i){
-    goto_common_s[i] = new std::vector<std::string >[size_2 + 1];
-  }
-  for (unsigned i = 1; i <= size_1; i++){
-    for (unsigned j = 1; j <= size_2; j++){
-      std::vector<std::string >& tmp_i_j = goto_common_s[i][j];
-      if (goto_unrolled_1[i-1] == goto_unrolled_2[j-1]){
-        tmp_i_j.push_back(goto_unrolled_1[i-1]);
-        copy(tmp_i_j, goto_common_s[i-1][j-1]);
-      } else {
-        std::vector<std::string >& tmp_i_1_j = goto_common_s[i-1][j];
-        std::vector<std::string >& tmp_i_j_1 = goto_common_s[i][j-1];
+  std::vector<std::string > goto_common;
 
-        if (tmp_i_j_1.size() > tmp_i_1_j.size()){
-          copy(tmp_i_j, tmp_i_j_1);
+  if (size_1 != 0 && size_2 != 0){
+    std::vector<std::string > **goto_common_s =
+        new std::vector<std::string >*[size_1 + 1];
+    for (unsigned i = 0; i <= size_1; ++i){
+      goto_common_s[i] = new std::vector<std::string >[size_2 + 1];
+    }
+    for (unsigned i = 1; i <= size_1; i++){
+      for (unsigned j = 1; j <= size_2; j++){
+        std::vector<std::string >& tmp_i_j = goto_common_s[i][j];
+        if (goto_unrolled_1[i-1] == goto_unrolled_2[j-1]){
+          tmp_i_j.push_back(goto_unrolled_1[i-1]);
+          copy(tmp_i_j, goto_common_s[i-1][j-1]);
         } else {
-          copy(tmp_i_j, tmp_i_1_j);
+          std::vector<std::string >& tmp_i_1_j = goto_common_s[i-1][j];
+          std::vector<std::string >& tmp_i_j_1 = goto_common_s[i][j-1];
+
+          if (tmp_i_j_1.size() > tmp_i_1_j.size()){
+            copy(tmp_i_j, tmp_i_j_1);
+          } else {
+            copy(tmp_i_j, tmp_i_1_j);
+          }
         }
       }
     }
+    goto_common = goto_common_s[size_1][size_2];
   }
-
-  std::vector<std::string > goto_common = goto_common_s[size_1][size_2];
   unsigned size_c = goto_common.size();
+
   bool res = size_1 == size_2 && size_c == size_1 && size_c == size_2;
 
-//  if (!res){
-//    std::cout << "Finally: "
-//              << size_1 << " " << size_2 << " " << size_c << "\n";
-//    for (unsigned i = 0; i < size_c; i++){
-//      std::cout <<"[" <<i<< "]" << goto_common[i] <<"\n";
-//    }
-//  }
+  if (!res)
+  {
+    do_diff(goto_unrolled_1, goto_unrolled_2, goto_common);
+  }
 
   return res;
 }
@@ -257,9 +289,10 @@ int main(int argc, const char** argv) {
   std::vector<std::string > goto_unrolled_1;
   std::vector<std::string > goto_unrolled_2;
 
+  // stop iterating at the second function call (since the first one is "__CPROVER_initialize")
   for (unsigned i = functions.size() - 1; i > 0; i--)
   {
-    std::cout << "is \"" << (*functions[i].first);
+    std::cout << "checking \"" << (*functions[i].first) <<"\":..\n";
 
     bool pre_res_1 = unroll_goto(goto_functions_1, (*functions[i].first), goto_unrolled_1, false);
     bool pre_res_2 = unroll_goto(goto_functions_2, (*functions[i].first), goto_unrolled_2, false);
@@ -275,7 +308,7 @@ int main(int argc, const char** argv) {
       functions[i].second = false;
     }
 
-    std::cout << "\" untouched? (0 = no / 1 = yes): " << functions[i].second << "\n";
+    std::cout << " --- " << (functions[i].second ? "" : "UN") << "preserved.\n";
     goto_unrolled_1.clear();
     goto_unrolled_2.clear();
   }
