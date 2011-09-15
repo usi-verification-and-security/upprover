@@ -191,7 +191,8 @@ claim_statst check_claims(
     // if(inlined_program.instructions.size()>res.max_instruction_count)
     //  res.max_instruction_count=inlined_program.instructions.size();
 
-    bool pass = sum_checker.assertion_holds(assertion_infot(stack, ass_ptr));
+    bool pass = sum_checker.assertion_holds(assert_grouping ? 
+            assertion_infot(ass_ptr) : assertion_infot(stack, ass_ptr));
 
     claim_map[ass_ptr].first = true;
     

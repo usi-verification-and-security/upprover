@@ -56,6 +56,7 @@
 #include "../loopfrog/replace_malloc.h"
 #include "../loopfrog/program_compression.h"
 #include "check_claims.h"
+#include "upgrade_checker.h"
 #include "inlined_claims.h"
 #include "../loopfrog/languages.h"
 
@@ -530,6 +531,10 @@ void funfrog_parseoptionst::help()
   "                               from the given file\n"
   "--no-progress                  turn off progress display\n"
   "--save-queries                 save SAT queries and configuration\n"
+  "\nUpgrade options:\n"
+  "--init-upgrade-check           prepare for upgrade checking\n"
+  "--do-upgrade-check <filename>  incremental upgrade check with the specified\n"
+  "                               file containing a difference tree\n"
   "\nProof Engine options:\n"
   "--show-claims                  output the claims list\n"
   "--show-pass                    report passed claims\n"
@@ -757,12 +762,42 @@ bool funfrog_parseoptionst::check_loop_summarization(
   }
   */
   
+  bool init_upg_check = cmdline.isset("init-upgrade-check");
+  bool upg_check = cmdline.isset("do-upgrade-check") || init_upg_check;
+  
   get_claims(goto_functions, claim_map, claim_numbers);
   
   if(cmdline.isset("show-claims"))
   {
     show_claims(ns, claim_map, claim_numbers);    
     return true;
+  }
+  
+  if (upg_check) {
+    // Stage 10: Finally checking some claims.
+    status("#10: Checking claims in program... (upgrade mode)");
+    
+    if(cmdline.isset("testclaim") || cmdline.isset("claim"))
+    {
+      error("Upgrade checking mode does not allow checking specific claims.");
+      return 1;
+    }
+    
+    if (init_upg_check) {
+      check_initial(ns, goto_functions.function_map[ID_main].body,
+              goto_functions, options, !cmdline.isset("no-progress"));
+    } else {
+      // TODO: In what form shall we have the input?
+      assert(false);
+      check_upgrade(ns, 
+              // OLD!
+              goto_functions.function_map[ID_main].body, goto_functions,
+              // NEW!
+              goto_functions.function_map[ID_main].body, goto_functions, 
+              options, !cmdline.isset("no-progress"));
+    }
+    
+    return 0;
   }
   
   // Stage 10: Finally checking some claims.
@@ -794,7 +829,7 @@ bool funfrog_parseoptionst::check_loop_summarization(
   
   before=current_time();
   claim_statst stats = check_claims(ns,
-                                    goto_functions.function_map["main"].body,
+                                    goto_functions.function_map[ID_main].body,
                                     goto_functions,
                                     stats_dir,
                                     claim_map,
@@ -855,12 +890,16 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
+  options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
   
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.getval("unwind"));
   }
   if (cmdline.isset("unwindset")) {
     options.set_option("unwindset", cmdline.getval("unwindset"));
+  }
+  if (cmdline.isset("do-upgrade-check")) {
+    options.set_option("do-upgrade-check", cmdline.getval("do-upgrade-check"));
   }
   if (cmdline.isset("save-summaries")) {
     options.set_option("save-summaries", cmdline.getval("save-summaries"));

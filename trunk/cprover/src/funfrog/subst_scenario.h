@@ -45,10 +45,10 @@ public:
       (summary_infot& summary_info, const goto_programt& code);
 
   void set_initial_precision
-      (const assertion_infot& assertion, bool assert_grouping)
+      (const assertion_infot& assertion)
   {
       functions_root.set_initial_precision(default_precision,// assertions,
-          summarization_context, assertion, assert_grouping);
+          summarization_context, assertion);
   }
 
 private:

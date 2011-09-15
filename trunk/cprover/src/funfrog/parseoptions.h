@@ -36,6 +36,7 @@ class value_set_alloc_adaptort;
   "(save-summaries):(load-summaries):" \
   "(show-symbol-table)(save-stats)(show-value-sets)" \
   "(save-claims)" \
+  "(init-upgrade-check)(do-upgrade-check):" \
   "(no-slicing)(no-assert-grouping)(no-summary-optimization)" \
   "(pointer-check)(bounds-check)(assertions)" \
   "(show-pass)(suppress-fail)(no-progress)" \

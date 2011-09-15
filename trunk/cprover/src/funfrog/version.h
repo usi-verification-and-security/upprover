@@ -1,1 +1,1 @@
-#define FUNFROG_VERSION "0.5"
+#define FUNFROG_VERSION "0.6"

@@ -85,7 +85,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   current_assertion = &assertion;
 
   // these are quick...
-  if(assertion.get_location()->guard.is_true())
+  if(assertion.is_trivially_true())
   {
     out << std::endl << "ASSERTION IS TRUE" << std::endl;
     return true;

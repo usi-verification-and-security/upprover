@@ -52,7 +52,7 @@ public:
       const summary_precisiont default_precision,
       //location_mapt& assertions,
       const summarization_contextt& summarization_context,
-      const assertion_infot& assertion, bool assert_grouping);
+      const assertion_infot& assertion);
 
   bool is_root() const { return parent == NULL; }
   bool has_assertion_in_subtree() const { return assertion_in_subtree; }
@@ -94,7 +94,6 @@ private:
         //location_mapt& assertions,
         const summarization_contextt& summarization_context,
         const assertion_infot& assertion, unsigned depth, 
-        bool parent_stack_matches, bool assert_grouping,
-        unsigned& last_assertion_loc);
+        bool parent_stack_matches, unsigned& last_assertion_loc);
 };
 #endif

@@ -48,14 +48,13 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   fine_timet initial, final;
   initial=current_time();
   // Trivial case
-  if(assertion.get_location()->guard.is_true())
+  if(assertion.is_trivially_true())
   {
     out << std::endl << "ASSERTION IS TRIVIALLY TRUE" << std::endl;
     return true;
   }
   const bool no_slicing_option = options.get_bool_option("no-slicing");
-  const bool assert_grouping = !options.get_bool_option("no-assert-grouping");
-  omega.set_initial_precision(assertion, assert_grouping);
+  omega.set_initial_precision(assertion);
 
   partitioning_target_equationt equation(ns, summarization_context);
 
