@@ -6,7 +6,7 @@
  Author: Ondrej Sery
 
 \*******************************************************************/
-
+#include <i2string.h>
 #include "summarizing_checker.h"
 
 void summarizing_checkert::initialize()
@@ -54,6 +54,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
     return true;
   }
   const bool no_slicing_option = options.get_bool_option("no-slicing");
+
   omega.set_initial_precision(assertion);
 
   partitioning_target_equationt equation(ns, summarization_context);
@@ -96,6 +97,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
       {
         double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
         extract_interpolants(equation, red_timeout);
+        omega.serialize("__omega_" + i2string(omega.get_assertion_location(assertion.get_location())));
         if (summaries_count == 0)
         {
           out << "ASSERTION(S) HOLD(S) AFTER INLINING." << std::endl;

@@ -9,6 +9,7 @@
 \*******************************************************************/
 
 #include "subst_scenario.h"
+#include <stdlib.h>
 
 void subst_scenariot::setup_default_precision(init_modet init)
 {
@@ -71,6 +72,7 @@ void subst_scenariot::initialize_summary_info(
       functions.push_back(&call_site);
 
       call_site.set_function_id(target_function);
+//      call_site.set_order(functions.size());
 
       const goto_programt &function_body =
           summarization_context.get_function(target_function).body;
@@ -78,6 +80,7 @@ void subst_scenariot::initialize_summary_info(
     }
     else if (inst->type == ASSERT){
       summary_info.get_assertions()[inst] = global_loc;
+      assertions[inst] = global_loc;                    //TODO: avoid duplication
     }
   }
 }
@@ -140,4 +143,97 @@ void subst_scenariot::process_goto_locations()
   }
 
   goto_ranges.clear();
+}
+
+void subst_scenariot::serialize(const std::string& file)
+{
+  std::ofstream out;
+  out.open(file.c_str());
+
+  if (out.fail()) {
+    std::cerr << "Failed to serialize the substituting scenario (file: "
+        << file << " cannot be accessed)." << std::endl;
+    return;
+  }
+
+  for (unsigned i = 0; i < functions.size(); i++){
+    out    <<  (*functions[i]).get_function_id() << std::endl
+           <<  (*functions[i]).get_call_location() << std::endl
+           <<  (*functions[i]).get_precision() << std::endl
+           <<  (*functions[i]).is_preserved_node() << std::endl
+           <<  (*functions[i]).is_preserved_edge() << std::endl
+           <<  (*functions[i]).has_assertion_in_subtree() << std::endl;
+//    call_sitest call_sites = (*functions[i]).get_call_sites();
+//    for (call_sitest::iterator it = call_sites.begin();
+//            it != call_sites.end(); ++it)
+//    {
+//      out << " " << it->second.get_order();
+//    }
+  }
+
+  if (out.fail()) {
+    throw "Failed to serialize the substituting scenario.";
+  }
+
+  out.close();
+}
+
+void subst_scenariot::deserialize(
+    const std::string& file, const goto_programt& code)
+{
+  std::vector<std::string> tmp;
+  std::ifstream in;
+  in.open(file.c_str());
+  while (!in.eof()){
+    std::string str;
+    in >> str;
+    tmp.push_back(str);
+  }
+  in.close();
+  global_loc = 0;
+  functions.clear();
+  assertions.clear();
+  restore_summary_info(functions_root, code, tmp);
+}
+
+void subst_scenariot::restore_summary_info(
+    summary_infot& summary_info, const goto_programt& code, std::vector<std::string>& data)
+{
+  summary_info.get_assertions().clear();
+
+  for(goto_programt::const_targett inst=code.instructions.begin();
+      inst!=code.instructions.end(); ++inst)
+  {
+    global_loc++;
+
+    if (inst->type == FUNCTION_CALL)
+    {
+      summary_infot& call_site = summary_info.get_call_sites().insert(
+              std::pair<goto_programt::const_targett, summary_infot>(inst,
+              summary_infot(&summary_info, atoi(data[(functions.size())*6+1].c_str()))
+              )).first->second;
+
+      functions.push_back(&call_site);
+
+      const irep_idt &target_function = data[(functions.size()-1)*6];
+      call_site.set_function_id(target_function);
+      switch (atoi(data[(functions.size()-1)*6+2].c_str())){
+        case 0: {call_site.set_precision(HAVOC);} break;
+        case 1: {call_site.set_precision(SUMMARY);} break;
+        case 2: {call_site.set_precision(INLINE);} break;
+      }
+
+      if (data[(functions.size()-1)*6+3] == "1") { call_site.set_preserved_node(); }
+      if (data[(functions.size()-1)*6+4] == "1") { call_site.set_preserved_edge(); }
+      if (data[(functions.size()-1)*6+5] == "1") { call_site.set_assertion_in_subtree(); }
+
+      const goto_programt &function_body =
+          summarization_context.get_function(target_function).body;
+      restore_summary_info(call_site, function_body, data);
+    }
+    else if (inst->type == ASSERT){
+      summary_info.get_assertions()[inst] = global_loc;
+      assertions[inst] = global_loc;                    //TODO: avoid duplication
+    }
+  }
 }

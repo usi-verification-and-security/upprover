@@ -51,11 +51,20 @@ public:
           summarization_context, assertion);
   }
 
+  void serialize(const std::string& file);
+  void deserialize(const std::string& file, const goto_programt& code);
+
+  void restore_summary_info(
+      summary_infot& summary_info, const goto_programt& code, std::vector<std::string>& data);
+
+  unsigned get_assertion_location(goto_programt::const_targett ass)
+                        { return assertions[ass]; }
+
 private:
   const summarization_contextt &summarization_context;
   summary_infot functions_root;
   summary_precisiont default_precision;
-//  location_mapt assertions;
+  location_mapt assertions;
 
   std::vector<summary_infot*> functions;
   std::vector<std::pair<unsigned, unsigned> > goto_ranges;
