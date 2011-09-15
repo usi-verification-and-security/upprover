@@ -555,16 +555,24 @@ void prop_itpt::reserve_variables(prop_convt& decider,
           it != symbols.end();
           ++it) {
 
-    // Bool symbols are not in the boolbv_map and have to be treated separatelly
+    // Bool symbols are not in the boolbv_map and have to be treated separately
     if (it->type().id() == ID_bool) {
       literalt l = decider.convert(*it);
       continue;
     }
 
+    boolbv_mapt::map_entryt& m_entry = 
+            map.get_map_entry(it->get_identifier(), it->type());
+    
     for (unsigned i = 0;
-            i < map.get_map_entry(it->get_identifier(), it->type()).width;
+            i < m_entry.width;
             ++i) {
-      literalt l = map.get_literal(it->get_identifier(), i, it->type());
+      // Copied from boolbv_map to speedup the query
+      assert(i < m_entry.literal_map.size());
+      if(!m_entry.literal_map[i].is_set) {
+        m_entry.literal_map[i].is_set = true;
+        m_entry.literal_map[i].l = decider.prop.new_variable();
+      }
     }
   }
 }
