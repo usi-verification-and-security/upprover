@@ -4,6 +4,9 @@
 #include "arith_tools.h"
 #include "fixedbv.h"
 #include "ieee_float.h"
+#include <cstring>
+#include <iostream>
+#include <fstream>
 
 std::vector<std::pair<const irep_idt*, bool> > functions;
 
@@ -28,6 +31,8 @@ std::string form(const exprt &expr)
       if(to_integer(expr, i)) return "(number conversion failed)";
 
       return integer2string(i);
+    } else if (expr.type().id()==ID_bool){
+      return (expr.is_true() ? "true" : "false");
     }
 //    else if(expr.type().id()==ID_fixedbv)
 //    {
@@ -54,7 +59,9 @@ std::string cmd_str (goto_programt::const_targett &it)
       case SKIP:  { res = "skip"; } break;
       case END_FUNCTION: { res = "end_f"; } break;
       case LOCATION:   { res = "loc + ?"; } break;      // TODO
-      case GOTO:  { res = "goto _ ?"; } break;          // TODO
+      case GOTO:  {
+          res = "if (" + form(it->guard) + ")";
+        } break;
       case ASSUME:   { res = "assume ?"; } break;       // TODO
       case ASSERT:  { res = "assert ?"; }  break;       // TODO
       case RETURN: {
@@ -75,7 +82,8 @@ std::string cmd_str (goto_programt::const_targett &it)
           for (unsigned i = 0; i < call.arguments().size(); i++){
             res = res + " (" + form (call.arguments()[i]) + ")";
           }
-      }
+        }
+        break;
       case OTHER:   { res = "other ?"; } break;         // TODO
       case DECL: {
           const code_declt &decl = to_code_decl(it->code);
@@ -107,6 +115,7 @@ void collect_functions(const goto_functionst &goto_functions, const goto_program
 
        const irep_idt &name = call.function().get("identifier");
 
+
        functions.push_back(std::make_pair(&name, true));
 
        goto_functionst::function_mapt::const_iterator f_it =
@@ -134,72 +143,47 @@ bool is_untouched(const irep_idt &name)
 }
 
 bool unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
-      std::vector<std::string > &goto_unrolled, bool inherit_change)
+      std::vector<std::pair<std::string, unsigned> > &goto_unrolled, unsigned init, bool inherit_change)
 {
-  if (!is_untouched (name)){
-    return false;
-  }
+//  if (!is_untouched (name)){
+//    return false;
+//  }
+
+  unsigned loc = init;
   const goto_programt& program = goto_functions.function_map[name].body;
   for(goto_programt::const_targett it = program.instructions.begin();
       it!=program.instructions.end(); ++it)
   {
-    if(it->type == FUNCTION_CALL && inherit_change){
-      const code_function_callt &call =
-        to_code_function_call(to_code(it->code));
+    unsigned tmp = 0;
+    if(it->type == FUNCTION_CALL){
+      loc++;
+      tmp = loc;
+      if(inherit_change){
+        const code_function_callt &call =
+          to_code_function_call(to_code(it->code));
 
-      const irep_idt &name_child = call.function().get("identifier");
+        const irep_idt &name_child = call.function().get("identifier");
 
-      if (!is_untouched(name_child)){
-        return false;   // the nested function was modified => this function is also modified
+        if (!is_untouched(name_child)){
+          return false;   // the nested function was modified => this function is also modified
+        }
       }
     }
-    goto_unrolled.push_back(cmd_str(it));
+    goto_unrolled.push_back(std::make_pair(cmd_str(it), tmp));
   }
   return true;
 }
 
-void do_diff(std::vector<std::string > &goto_unrolled_1,
-             std::vector<std::string > &goto_unrolled_2,
-             std::vector<std::string > &goto_common)
-{
-  // sizes
-  unsigned size_1 = goto_unrolled_1.size();
-  unsigned size_2 = goto_unrolled_2.size();
-  unsigned size_c = goto_common.size();
-
-  // iterators
-  unsigned i_1 = 0;
-  unsigned i_2 = 0;
-  unsigned i_c = size_c;
-  while (i_2 < size_2){
-    while(i_1 < size_1 && i_c > 0 && goto_unrolled_1[i_1] != goto_common[i_c - 1]){
-      std::cout << "    [-] " << goto_unrolled_1[i_1] << "\n";
-      i_1++;
-    }
-    while(i_c > 0 && goto_unrolled_2[i_2] != goto_common[i_c - 1]){
-      std::cout << "    [+] " << goto_unrolled_2[i_2] << "\n";
-      i_2++;
-    }
-    std::cout << "    [v] " << goto_unrolled_2[i_2] << "\n";
-    if (i_1 < size_1){
-      i_1++;
-    }
-    i_2++;
-    if (i_c > 0){
-      i_c--;
-    }
-  }
-}
-
-void copy(std::vector<std::string > &goto_1,
-    std::vector<std::string > &goto_2){
+void copy(std::vector<std::pair<std::string, unsigned> > &goto_1,
+    std::vector<std::pair<std::string, unsigned> > &goto_2){
   for (unsigned i = 0; i < goto_2.size(); i++){
     goto_1.push_back(goto_2[i]);
   }
 }
 
-bool compare_str_vecs(std::vector<std::string > &goto_unrolled_1,
-                      std::vector<std::string > &goto_unrolled_2){
+bool compare_str_vecs(std::vector<std::pair<std::string, unsigned> > &goto_unrolled_1,
+                      std::vector<std::pair<std::string, unsigned> > &goto_unrolled_2,
+                      std::vector<std::pair<std::string, unsigned> > &goto_common){
   unsigned size_1 = goto_unrolled_1.size();
   unsigned size_2 = goto_unrolled_2.size();
 
@@ -207,23 +191,21 @@ bool compare_str_vecs(std::vector<std::string > &goto_unrolled_1,
     return true;
   }
 
-  std::vector<std::string > goto_common;
-
   if (size_1 != 0 && size_2 != 0){
-    std::vector<std::string > **goto_common_s =
-        new std::vector<std::string >*[size_1 + 1];
+    std::vector<std::pair<std::string, unsigned> > **goto_common_s =
+        new std::vector<std::pair<std::string, unsigned> >*[size_1 + 1];
     for (unsigned i = 0; i <= size_1; ++i){
-      goto_common_s[i] = new std::vector<std::string >[size_2 + 1];
+      goto_common_s[i] = new std::vector<std::pair<std::string, unsigned> >[size_2 + 1];
     }
     for (unsigned i = 1; i <= size_1; i++){
       for (unsigned j = 1; j <= size_2; j++){
-        std::vector<std::string >& tmp_i_j = goto_common_s[i][j];
-        if (goto_unrolled_1[i-1] == goto_unrolled_2[j-1]){
+        std::vector<std::pair<std::string, unsigned> >& tmp_i_j = goto_common_s[i][j];
+        if (goto_unrolled_1[i-1].first == goto_unrolled_2[j-1].first){
           tmp_i_j.push_back(goto_unrolled_1[i-1]);
           copy(tmp_i_j, goto_common_s[i-1][j-1]);
         } else {
-          std::vector<std::string >& tmp_i_1_j = goto_common_s[i-1][j];
-          std::vector<std::string >& tmp_i_j_1 = goto_common_s[i][j-1];
+          std::vector<std::pair<std::string, unsigned> >& tmp_i_1_j = goto_common_s[i-1][j];
+          std::vector<std::pair<std::string, unsigned> >& tmp_i_j_1 = goto_common_s[i][j-1];
 
           if (tmp_i_j_1.size() > tmp_i_1_j.size()){
             copy(tmp_i_j, tmp_i_j_1);
@@ -239,15 +221,94 @@ bool compare_str_vecs(std::vector<std::string > &goto_unrolled_1,
 
   bool res = size_1 == size_2 && size_c == size_1 && size_c == size_2;
 
-  if (!res)
-  {
-    do_diff(goto_unrolled_1, goto_unrolled_2, goto_common);
-  }
-
   return res;
 }
 
+void do_diff(std::vector<std::pair<std::string, unsigned> > &goto_unrolled_1,
+             std::vector<std::pair<std::string, unsigned> > &goto_unrolled_2,
+             std::vector<std::pair<std::string, unsigned> > &goto_common,
+             std::vector<std::string > &summs)
+{
+  bool do_write = true;
+  if (summs.size() == 0){
+    do_write = false;
+  }
+
+  // sizes
+  unsigned size_1 = goto_unrolled_1.size();
+  unsigned size_2 = goto_unrolled_2.size();
+  unsigned size_c = goto_common.size();
+
+  // iterators
+  unsigned i_1 = 0;
+  unsigned i_2 = 0;
+  unsigned i_c = size_c;
+  while (i_1 < size_2){
+    while(i_c > 0 && goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){
+      std::cout << "    [-] " << goto_unrolled_2[i_2].first << "\n";
+      i_2++;
+    }
+    while(i_1 < size_1 && i_c > 0 && goto_unrolled_1[i_1].first != goto_common[i_c - 1].first){
+      std::cout << "    [+] " << goto_unrolled_1[i_1].first << "\n";
+      i_1++;
+    }
+    std::cout << "    [v] " << goto_unrolled_1[i_1].first << "\n";
+
+    if (do_write && goto_unrolled_1[i_1].second > 0){
+      summs[goto_unrolled_1[i_1].second * 6 + 4] = "1";
+    }
+
+    if (i_2 < size_1){
+      i_2++;
+    }
+    i_1++;
+    if (i_c > 0){
+      i_c--;
+    }
+  }
+}
+
+//void write_change(const irep_idt &name, std::vector<std::string > &summs)
+//{
+//  for (unsigned i = 0; i < summs.size(); i = i + 6){
+//    if (summs[i] == name.as_string()){
+//      summs[i+3] = "1";
+//    }
+//  }
+//}
+
+void print_help() {
+  std::cout <<
+    "goto-diff by Grigory Fedyukovich (grigory.fedyukovich@usi.ch)" << std::endl <<
+    std::endl <<
+    "Expected usage:" << std::endl <<
+    "> ./diff goto-src goto-upg [call-tree]" << std::endl << std::endl <<
+    "where (*) goto-s are the binaries to be compared;" << std::endl <<
+    "      (*) call-tree is the file contained the storage of" << std::endl <<
+    "          substituting scenario. changed function calls are to be marked there." << std::endl <<
+    "          only std::cout if not specified." <<
+    std::endl << std::endl;
+}
+
+
 int main(int argc, const char** argv) {
+
+  std::vector<std::string> summs;
+
+  if (argc < 3 || argc > 4){
+    print_help();
+    return 1;
+  } else if (argc == 4){
+    // Load substituting scenario
+    std::ifstream in;
+    in.open(argv[3]);
+    while (!in.eof()){
+      std::string str;
+      in >> str;
+      summs.push_back(str);
+    }
+    in.close();
+  }
 
   fine_timet before, after;
   stream_message_handlert mh(std::cout);
@@ -255,7 +316,7 @@ int main(int argc, const char** argv) {
   goto_functionst goto_functions_1;
   goto_functionst goto_functions_2;
 
-  // Stage 1: Load file 1
+  // Load file 1
 
   contextt context_1;
   std::cout << "#1: Loading " << argv[1] << " ...\n";
@@ -268,7 +329,7 @@ int main(int argc, const char** argv) {
   after=current_time();
   std::cout << "    LOAD Time: " << time2string(after-before) << " sec.\n";
   
-  // Stage 2: Load file 2
+  // Load file 2
 
   contextt context_2;
   std::cout << "#2: Loading " << argv[2] << "' ...\n";
@@ -281,37 +342,53 @@ int main(int argc, const char** argv) {
   after=current_time();
   std::cout << "    LOAD Time: " << time2string(after-before) << " sec.\n";
 
-  // Stage 3: Analyze both files
+  // Analyze both files
 
   before=current_time();
-  collect_functions(goto_functions_2, goto_functions_2.function_map["main"].body, functions);
+  collect_functions(goto_functions_1, goto_functions_1.function_map["main"].body, functions);
 
-  std::vector<std::string > goto_unrolled_1;
-  std::vector<std::string > goto_unrolled_2;
+  std::vector<std::pair<std::string, unsigned> > goto_unrolled_1;
+  std::vector<std::pair<std::string, unsigned> > goto_unrolled_2;
+  std::vector<std::pair<std::string, unsigned> > goto_common;
 
   // stop iterating at the second function call (since the first one is "__CPROVER_initialize")
-  for (unsigned i = functions.size() - 1; i > 0; i--)
+  for (unsigned i = 1; i < functions.size(); i++)
   {
     std::cout << "checking \"" << (*functions[i].first) <<"\":..\n";
 
-    bool pre_res_1 = unroll_goto(goto_functions_1, (*functions[i].first), goto_unrolled_1, false);
-    bool pre_res_2 = unroll_goto(goto_functions_2, (*functions[i].first), goto_unrolled_2, false);
+    bool pre_res_1 = unroll_goto(goto_functions_1, (*functions[i].first), goto_unrolled_1, i, false);
+    bool pre_res_2 = unroll_goto(goto_functions_2, (*functions[i].first), goto_unrolled_2, i, false);
 
     bool pre_res_3 = false;
     if (pre_res_1 && pre_res_2){
-      if (compare_str_vecs (goto_unrolled_1, goto_unrolled_2)){
+      if (compare_str_vecs (goto_unrolled_1, goto_unrolled_2, goto_common)){
         pre_res_3 = true;
       }
     }
 
     if (pre_res_3 == false){
       functions[i].second = false;
+      do_diff(goto_unrolled_1, goto_unrolled_2, goto_common, summs);
+    } else if (summs.size() > i*6+3) {
+      summs[i*6+3] = "1";
+      //write_change((*functions[i].first), summs);
     }
 
     std::cout << " --- " << (functions[i].second ? "" : "UN") << "preserved.\n";
     goto_unrolled_1.clear();
     goto_unrolled_2.clear();
+    goto_common.clear();
   }
+
+  if(argc == 4){
+    std::ofstream out;
+    out.open(argv[3]);
+    for (unsigned i = 0; i < summs.size(); i++){
+      out << summs[i] << std::endl;
+    }
+    out.close();
+  }
+
   after=current_time();
   std::cout << "    PROCESSING Time: " << time2string(after-before) << " sec.\n";
 }

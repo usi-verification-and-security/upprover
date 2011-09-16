@@ -55,7 +55,12 @@ SUMO_OBJ := \
 
 DIFF_OBJ := \
       $(DIFF_SRC:.cpp=$(OBJEXT)) \
-      $(SHARED_OBJ)
+      ../util/util$(LIBEXT) \
+      ../big-int/bigint$(OBJEXT) \
+      ../goto-programs/goto-programs$(LIBEXT) \
+      ../pointer-analysis/pointer-analysis$(LIBEXT) \
+      ../langapi/langapi$(LIBEXT) \
+      ../ansi-c/ansi-c$(LIBEXT)
 
 all: funfrog$(EXEEXT) sumo$(EXEEXT)
 
@@ -84,7 +89,7 @@ diff$(EXEEXT): $(DIFF_OBJ)
 	$(LINKBIN) $(DIFF_OBJ)
 
 clean:
-	rm -f *.o *.d funfrog sumo diff
+	rm -f *.o *.d funfrog sumo diff __omega_*
 	rm -f solvers/*.o solvers/*.d
 
 re: clean all
