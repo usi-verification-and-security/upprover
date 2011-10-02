@@ -47,6 +47,13 @@ std::string form(const exprt &expr)
     return expr.get_string(ID_value);
   } else if (expr.id()==ID_symbol){
     return expr.get("identifier").as_string();
+  } else if(expr.id()==ID_sideeffect){
+    if (expr.get(ID_statement)==ID_function_call){
+      return expr.op0().to_string();
+    }
+    else {
+      return expr.get("statement").as_string();
+    }
   }
   return "(not supported yet: "+expr.id_string()+")";
 }
@@ -62,8 +69,8 @@ std::string cmd_str (goto_programt::const_targett &it)
       case GOTO:  {
           res = "if (" + form(it->guard) + ")";
         } break;
-      case ASSUME:   { res = "assume ?"; } break;       // TODO
-      case ASSERT:  { res = "assert ?"; }  break;       // TODO
+      case ASSUME:   { res = "assume " + form(it->guard); } break;
+      case ASSERT:  { res = "assert " + form(it->guard); }  break;
       case RETURN: {
           const code_returnt &ret = to_code_return(it->code);
           res = "return " + form(ret.return_value());
