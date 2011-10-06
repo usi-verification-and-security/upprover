@@ -68,6 +68,8 @@ public:
   bool ignore;
   bool processed;
   bool invalid;
+  unsigned clauses;
+  unsigned vars;
   const summary_idst* summaries;
   summary_ids_sett applicable_summaries;
   fle_part_idt fle_part_id;

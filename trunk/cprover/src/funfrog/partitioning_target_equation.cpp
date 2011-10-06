@@ -12,6 +12,7 @@ Author: Ondrej Sery
 
 #include "partitioning_target_equation.h"
 #include "expr_pretty_print.h"
+#include "solvers/sat/cnf.h"
 
 //#define DEBUG_SSA
 //#define DEBUG_ITP
@@ -37,11 +38,34 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
 #   ifdef DEBUG_SSA
     std::cout << "XXX" << std::string(77, '=') << std::endl;
 #   endif
+    unsigned vars_before = prop_conv.prop.no_variables();
+    unsigned clauses_before = dynamic_cast<cnf_solvert&>(prop_conv.prop).no_clauses();
     std::cout << "XXX Partition: " << --part_id << 
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             std::endl;
     convert_partition(prop_conv, interpolator, *it);
+    unsigned vars_after = prop_conv.prop.no_variables();
+    unsigned clauses_after = dynamic_cast<cnf_solvert&>(prop_conv.prop).no_clauses();
+    it->clauses = clauses_after - clauses_before;
+    it->vars = vars_after - vars_before;
+    std::cout << "    vars: " << it->vars << std::endl <<
+            "    clauses: " << it->clauses << std::endl;
+    
+    unsigned clauses_total = it->clauses;
+    unsigned vars_total = it->vars;
+    
+    for (partition_idst::const_iterator it2 = it->child_ids.begin();
+            it2 != it->child_ids.end(); ++it2) {
+      clauses_total += partitions[*it2].clauses;
+      vars_total += partitions[*it2].vars;
+    }
+    
+    std::cout << "    vars in subtree: " << vars_total << std::endl <<
+            "    clauses in subtree: " << clauses_total << std::endl;
+    
+    it->clauses = clauses_total;
+    it->vars = vars_total;
   }
 }
 
