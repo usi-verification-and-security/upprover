@@ -97,7 +97,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
       {
         double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
         extract_interpolants(equation, red_timeout);
-        omega.serialize("__omega_" + i2string(omega.get_assertion_location(assertion.get_location())));
+        //omega.serialize("__omega_" + i2string(omega.get_assertion_location(assertion.get_location())));
         if (summaries_count == 0)
         {
           out << "ASSERTION(S) HOLD(S) AFTER INLINING." << std::endl;
@@ -262,7 +262,7 @@ refinement_modet get_refine_mode(const std::string& str)
     return SLICING_RESULT;
   } else {
     // by default
-    return FORCE_INLINING;
+    return SLICING_RESULT;
   }
 };
 
