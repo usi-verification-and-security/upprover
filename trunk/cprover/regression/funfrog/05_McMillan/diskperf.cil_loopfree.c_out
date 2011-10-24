@@ -1,9 +1,82 @@
 UNSAT - it holds!
 ASSERTION IS TRUE
+UNSAT
+UNSAT
+SAT
+SAT
+UNSAT
+SAT
+SAT
+SAT
+SAT
+SAT
+SAT
+UNSAT
+UNSAT
+SAT
+UNSAT
+UNSAT
+UNSAT
+SAT
+UNSAT
+UNSAT
+SAT
+SAT
+SAT
+SAT
+SAT
+SAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
+UNSAT
 ASSERTION(S) HOLD(S) AFTER INLINING.
+SAT - doesn't hold
+Violated property:
+  file diskperf2.i line 13703 function stubMoreProcessingRequired
+  assertion
+  FALSE
+FUNCTION SUMMARIES (for 41 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+SAT - doesn't hold
+Violated property:
+  file diskperf2.i line 13703 function stubMoreProcessingRequired
+  assertion
+  FALSE
+FUNCTION SUMMARIES (for 35 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+SAT - doesn't hold
+Violated property:
+  file diskperf2.i line 13703 function stubMoreProcessingRequired
+  assertion
+  FALSE
+FUNCTION SUMMARIES (for 27 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+SAT - doesn't hold
+Violated property:
+  file diskperf2.i line 13703 function stubMoreProcessingRequired
+  assertion
+  FALSE
+FUNCTION SUMMARIES (for 26 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+SAT - doesn't hold
+Violated property:
+  file diskperf2.i line 13703 function stubMoreProcessingRequired
+  assertion
+  FALSE
+FUNCTION SUMMARIES (for 25 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
 UNSAT - it holds!
 ASSERTION IS TRUE
-FUNCTION SUMMARIES (for 7 calls) WERE SUBSTITUTED SUCCESSFULLY.
-UNSAT - it holds!
-ASSERTION IS TRUE
-FUNCTION SUMMARIES (for 7 calls) WERE SUBSTITUTED SUCCESSFULLY.
+FUNCTION SUMMARIES (for 51 calls) WERE SUBSTITUTED SUCCESSFULLY.

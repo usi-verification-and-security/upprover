@@ -86,7 +86,7 @@ void refiner_assertion_sumt::reset_random()
 
 void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart)
 {
-  std::vector<irep_idt> tmp;
+  std::vector<summary_infot*> tmp;
 
   partitionst& parts = equation.get_partitions();
   for (unsigned i = 0; i < parts.size(); i++) {
@@ -100,26 +100,24 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart
 #       ifdef DEBUG_REFINER
         out<< "    -- no applicable summaries" << std::endl;
 #       endif
-        tmp.push_back(ipart.function_id);
+        tmp.push_back(&ipart.summary_info);
       } 
       if (decider.prop.l_get(ipart.callstart_literal).is_true()){
 #       ifdef DEBUG_REFINER
         out<< "    -- callstart literal is true" << std::endl;
 #       endif
         if (do_callstart){
-          tmp.push_back(ipart.function_id);
+          tmp.push_back(&ipart.summary_info);
         }
       }
     }
   }
 
-  // FIXME: This inlines all the occurrences of the same function - we need only
-  // the precise ones identified by the callstart symbols (OS)
   if (tmp.size() > 0) {
     for (unsigned i = 0; i < summs.size(); i++){
       if ((*summs[i]).get_precision() != INLINE){
         for (unsigned j = 0; j < tmp.size(); j++){
-          if (tmp[j] == (*summs[i]).get_function_id()){
+          if (tmp[j] == summs[i]){
             set_inline_sum(i);
             break;
           }

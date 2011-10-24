@@ -5,13 +5,13 @@ SAT
 ASSERTION(S) HOLD(S) AFTER INLINING.
 SAT - doesn't hold
 Violated property:
-  file 07_loops/t_mult_loop.c line 64 function do_if_assert_a
+  file 07_loops/craft4.c line 65 function do_if_assert_a
   assertion
   a > q
 FUNCTION SUMMARIES (for 2 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
 SAT - doesn't hold
 Violated property:
-  file 07_loops/t_mult_loop.c line 64 function do_if_assert_a
+  file 07_loops/craft4.c line 65 function do_if_assert_a
   assertion
   a > q
 FUNCTION SUMMARIES (for 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
@@ -31,13 +31,13 @@ SAT
 FUNCTION SUMMARIES (for 1 calls) WERE SUBSTITUTED SUCCESSFULLY.
 SAT - doesn't hold
 Violated property:
-  file 07_loops/t_mult_loop.c line 72 function do_if_assert_b
+  file 07_loops/craft4.c line 73 function do_if_assert_b
   assertion
   b > q
 FUNCTION SUMMARIES (for 3 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
 SAT - doesn't hold
 Violated property:
-  file 07_loops/t_mult_loop.c line 72 function do_if_assert_b
+  file 07_loops/craft4.c line 73 function do_if_assert_b
   assertion
   b > q
 FUNCTION SUMMARIES (for 2 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
@@ -50,3 +50,6 @@ UNSAT
 SAT
 UNSAT
 FUNCTION SUMMARIES (for 1 calls) WERE SUBSTITUTED SUCCESSFULLY.
+UNSAT - it holds!
+ASSERTION IS TRUE
+FUNCTION SUMMARIES (for 4 calls) WERE SUBSTITUTED SUCCESSFULLY.
