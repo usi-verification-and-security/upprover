@@ -106,6 +106,6 @@ private:
   bool mark_enabled_assertions(
         const summarization_contextt& summarization_context,
         const assertion_infot& assertion, unsigned depth, 
-        bool parent_stack_matches);
+        bool parent_stack_matches, unsigned last_assertion_loc);
 };
 #endif

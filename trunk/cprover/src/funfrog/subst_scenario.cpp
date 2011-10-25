@@ -96,7 +96,6 @@ unsigned subst_scenariot::get_precision_count(summary_precisiont precision)
   return count;
 }
 
-// FIXME: This optimization seems to be broken for checking multiple assertions!
 void subst_scenariot::process_goto_locations()
 {
   const unsigned goto_sz = goto_ranges.size();
@@ -105,9 +104,9 @@ void subst_scenariot::process_goto_locations()
   }
   for (unsigned i = 0; i < goto_sz; i++){
     std::pair<unsigned, unsigned>& r = goto_ranges[i];
-    for (unsigned j = 0; j < goto_sz; j++){
+    for (unsigned j = i + 1; j < goto_sz; j++){
       std::pair<unsigned, unsigned>& q = goto_ranges[j];
-      if (r.first < q.first){
+      if (r.first > q.first){
         std::pair<unsigned, unsigned> t = r;
         r = q;
         q = t;
@@ -135,7 +134,7 @@ void subst_scenariot::process_goto_locations()
     unsigned loc = (*functions[i]).get_call_location();
     for (unsigned j = goto_sz; j < goto_ranges.size(); j++){
       std::pair<unsigned, unsigned> r = goto_ranges[j];
-      if (r.first<= loc && loc <= r.second){
+      if (r.first <= loc && loc <= r.second){
         loc = r.first;
       }
     }

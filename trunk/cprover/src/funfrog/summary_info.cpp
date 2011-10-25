@@ -42,7 +42,7 @@ void summary_infot::set_initial_precision(
     }
   }
 
-  mark_enabled_assertions(summarization_context, assertion, 0, true);
+  mark_enabled_assertions(summarization_context, assertion, 0, true, last_assertion_loc);
   set_initial_precision(default_precision,
       summarization_context, assertion, last_assertion_loc);
 }
@@ -59,7 +59,7 @@ void summary_infot::set_initial_precision(
   {
     summary_infot& function = it->second;
     const irep_idt& function_id = function.get_function_id();
-    
+
     if (function.has_assertion_in_subtree()) {
       // If assertion is in the subtree, we need to inline the call.
       function.set_inline();
@@ -94,8 +94,11 @@ void summary_infot::set_initial_precision(
 bool summary_infot::mark_enabled_assertions(
         const summarization_contextt& summarization_context,
         const assertion_infot& assertion, unsigned depth,
-        bool parent_stack_matches)
+        bool parent_stack_matches, unsigned last_assertion_loc)
 {
+  if (last_assertion_loc < call_location){
+    return false;
+  }
   assertion_in_subtree = false;
 
   for (call_sitest::iterator it = call_sites.begin();
@@ -109,7 +112,7 @@ bool summary_infot::mark_enabled_assertions(
     // Recursive traversal
     assertion_in_subtree |= function.mark_enabled_assertions(
             summarization_context, assertion, depth+1,
-            current_stack_matches);
+            current_stack_matches, last_assertion_loc);
   }
 
   enabled_assertions.clear();
