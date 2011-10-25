@@ -81,6 +81,15 @@ public:
     }
   }
 
+  bool is_assert_grouping() const
+  {
+    if (matching_type == NO_ASSERT_GROUPING){
+      return false;
+    } else {
+      return true;
+    }
+  }
+
 private:
   typedef enum {ANY, ASSERT_GROUPING, NO_ASSERT_GROUPING} matching_typet;
   

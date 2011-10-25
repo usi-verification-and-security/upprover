@@ -80,7 +80,7 @@ void subst_scenariot::initialize_summary_info(
     }
     else if (inst->type == ASSERT){
       summary_info.get_assertions()[inst] = global_loc;
-      assertions[inst] = global_loc;                    //TODO: avoid duplication
+      assertions_visited[inst][global_loc] = false;
     }
   }
 }
@@ -192,7 +192,7 @@ void subst_scenariot::deserialize(
   in.close();
   global_loc = 0;
   functions.clear();
-  assertions.clear();
+  assertions_visited.clear();
   restore_summary_info(functions_root, code, tmp);
 }
 
@@ -233,7 +233,7 @@ void subst_scenariot::restore_summary_info(
     }
     else if (inst->type == ASSERT){
       summary_info.get_assertions()[inst] = global_loc;
-      assertions[inst] = global_loc;                    //TODO: avoid duplication
+      assertions_visited[inst][global_loc] = false;
     }
   }
 }

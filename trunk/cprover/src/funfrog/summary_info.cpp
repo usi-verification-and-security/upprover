@@ -13,15 +13,37 @@
 
 void summary_infot::set_initial_precision(
     summary_precisiont default_precision,
-//    location_mapt& assertions,
+    location_visitedt& assertions_visited,
     const summarization_contextt& summarization_context,
     const assertion_infot& assertion)
 {
   assert(is_root());
+  std::map<unsigned, bool> &vis = assertions_visited[assertion.get_location()];
   unsigned last_assertion_loc = 0;
-  mark_enabled_assertions(/*assertions,*/ summarization_context, assertion, 0, true,
-          last_assertion_loc);
-  set_initial_precision(default_precision,// assertions,
+
+  if (!assertion.is_assert_grouping()){
+    for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
+        // if no-grouping, every time we search for single instance of
+        // the assertion, not visited before (with min location)
+        if (it-> second == false){
+          if (it->first < last_assertion_loc || last_assertion_loc == 0){
+            last_assertion_loc = it->first;
+            vis[last_assertion_loc] = true;
+          }
+        }
+    }
+  } else {
+    for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
+      // if grouping, we must include all instances of the assertion,
+      // so therefore we search for the max location
+      if (it->first > last_assertion_loc){
+        last_assertion_loc = it->first;
+      }
+    }
+  }
+
+  mark_enabled_assertions(summarization_context, assertion, 0, true);
+  set_initial_precision(default_precision,
       summarization_context, assertion, last_assertion_loc);
 }
 
@@ -29,7 +51,6 @@ void summary_infot::set_initial_precision(
 // to mark_enabled_assertions()
 void summary_infot::set_initial_precision(
     summary_precisiont default_precision,
-//    location_mapt& assertions,
     const summarization_contextt& summarization_context,
     const assertion_infot& assertion, unsigned last_assertion_loc)
 {
@@ -43,7 +64,7 @@ void summary_infot::set_initial_precision(
       // If assertion is in the subtree, we need to inline the call.
       function.set_inline();
     } 
-    else if (function.call_location > last_assertion_loc) 
+    else if (function.get_call_location() > last_assertion_loc)
     {
       // If the call is after the last assertion (including also backward gotos)
       // we can safely ignore it
@@ -66,17 +87,14 @@ void summary_infot::set_initial_precision(
     
     // Recursive traversal
     function.set_initial_precision(
-            default_precision, //assertions,
-            summarization_context, assertion, last_assertion_loc);
+            default_precision, summarization_context, assertion, last_assertion_loc);
   }
 }
 
 bool summary_infot::mark_enabled_assertions(
-        //location_mapt& assertions,
         const summarization_contextt& summarization_context,
         const assertion_infot& assertion, unsigned depth,
-        bool parent_stack_matches,
-        unsigned& last_assertion_loc)
+        bool parent_stack_matches)
 {
   assertion_in_subtree = false;
 
@@ -90,19 +108,16 @@ bool summary_infot::mark_enabled_assertions(
     
     // Recursive traversal
     assertion_in_subtree |= function.mark_enabled_assertions(
-            /*assertions,*/ summarization_context, assertion, depth+1,
-            current_stack_matches, last_assertion_loc);
+            summarization_context, assertion, depth+1,
+            current_stack_matches);
   }
-  
+
   enabled_assertions.clear();
   for (location_mapt::const_iterator it = assertions.begin();
           it != assertions.end(); ++it) 
   {
     if (assertion.assertion_matches(depth, it->first)) {
       enabled_assertions.insert(it->first);
-      if (it->second > last_assertion_loc) {
-        last_assertion_loc = it->second;
-      }
       assertion_in_subtree = true;
     }
   }

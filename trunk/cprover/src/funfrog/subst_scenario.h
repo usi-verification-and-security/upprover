@@ -47,7 +47,7 @@ public:
   void set_initial_precision
       (const assertion_infot& assertion)
   {
-      functions_root.set_initial_precision(default_precision,// assertions,
+      functions_root.set_initial_precision(default_precision, assertions_visited,
           summarization_context, assertion);
   }
 
@@ -58,13 +58,13 @@ public:
       summary_infot& summary_info, const goto_programt& code, std::vector<std::string>& data);
 
   unsigned get_assertion_location(goto_programt::const_targett ass)
-                        { return assertions[ass]; }
+                        { return (assertions_visited[ass]).begin()->first; }
 
 private:
   const summarization_contextt &summarization_context;
   summary_infot functions_root;
   summary_precisiont default_precision;
-  location_mapt assertions;
+  location_visitedt assertions_visited;
 
   std::vector<summary_infot*> functions;
   std::vector<std::pair<unsigned, unsigned> > goto_ranges;

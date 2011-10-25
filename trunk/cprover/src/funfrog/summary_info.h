@@ -23,6 +23,7 @@ typedef enum {HAVOC, SUMMARY, INLINE} summary_precisiont;
 
 typedef std::map<goto_programt::const_targett, summary_infot> call_sitest;
 typedef std::map<goto_programt::const_targett, unsigned> location_mapt;
+typedef std::map<goto_programt::const_targett, std::map<unsigned, bool> > location_visitedt;
 typedef std::set<goto_programt::const_targett> locationst;
 
 // Summary information for a body of a function
@@ -51,7 +52,7 @@ public:
 
   void set_initial_precision(
       const summary_precisiont default_precision,
-      //location_mapt& assertions,
+      location_visitedt& assertions_visited,
       const summarization_contextt& summarization_context,
       const assertion_infot& assertion);
 
@@ -99,14 +100,12 @@ private:
   
   void set_initial_precision(
         summary_precisiont default_precision,
-        //location_mapt& assertions,
         const summarization_contextt& summarization_context,
         const assertion_infot& assertion, unsigned last_assertion_loc);
   
   bool mark_enabled_assertions(
-        //location_mapt& assertions,
         const summarization_contextt& summarization_context,
         const assertion_infot& assertion, unsigned depth, 
-        bool parent_stack_matches, unsigned& last_assertion_loc);
+        bool parent_stack_matches);
 };
 #endif
