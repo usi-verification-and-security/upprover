@@ -67,10 +67,13 @@ std::string cmd_str (goto_programt::const_targett &it)
       case END_FUNCTION: { res = "end_f"; } break;
       case LOCATION:   { res = "loc + ?"; } break;      // TODO
       case GOTO:  {
-          res = "if (" + form(it->guard) + ")";
+        goto_programt::targetst::const_iterator it2 = it->targets.begin();
+        unsigned tgt_location = (*it2)->location_number;
+
+          res = "if (" + form(it->guard) + ") goto " + integer2string(tgt_location);
         } break;
-      case ASSUME:   { res = "assume " + form(it->guard); } break;
-      case ASSERT:  { res = "assert " + form(it->guard); }  break;
+      case ASSUME:   { res = "assume (" + form(it->guard) + ")"; } break;
+      case ASSERT:  { res = "assert (" + form(it->guard) + ")"; }  break;
       case RETURN: {
           const code_returnt &ret = to_code_return(it->code);
           res = "return " + form(ret.return_value());
@@ -106,7 +109,7 @@ std::string cmd_str (goto_programt::const_targett &it)
       default:
         assert(false);
       }
-  return res;
+  return /*integer2string(it->location_number) + ": " +*/ res;
 }
 
 void collect_functions(const goto_functionst &goto_functions, const goto_programt &program,
