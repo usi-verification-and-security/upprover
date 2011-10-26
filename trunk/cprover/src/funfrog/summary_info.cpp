@@ -96,9 +96,6 @@ bool summary_infot::mark_enabled_assertions(
         const assertion_infot& assertion, unsigned depth,
         bool parent_stack_matches, unsigned last_assertion_loc)
 {
-  if (last_assertion_loc < call_location){
-    return false;
-  }
   assertion_in_subtree = false;
 
   for (call_sitest::iterator it = call_sites.begin();
@@ -116,12 +113,14 @@ bool summary_infot::mark_enabled_assertions(
   }
 
   enabled_assertions.clear();
-  for (location_mapt::const_iterator it = assertions.begin();
-          it != assertions.end(); ++it) 
-  {
-    if (assertion.assertion_matches(depth, it->first)) {
-      enabled_assertions.insert(it->first);
-      assertion_in_subtree = true;
+  if (last_assertion_loc >= call_location) {
+    for (location_mapt::const_iterator it = assertions.begin();
+            it != assertions.end(); ++it)
+    {
+      if (assertion.assertion_matches(depth, it->first)) {
+        enabled_assertions.insert(it->first);
+        assertion_in_subtree = true;
+      }
     }
   }
   
