@@ -144,6 +144,33 @@ void subst_scenariot::process_goto_locations()
   goto_ranges.clear();
 }
 
+void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion){
+  std::map<unsigned, bool> &vis = assertions_visited[assertion.get_location()];
+  last_assertion_loc = 0;
+
+  if (!assertion.is_assert_grouping()){
+    for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
+        // if no-grouping, every time we search for single instance of
+        // the assertion, not visited before (with min location)
+        if (it-> second == false){
+          if (it->first < last_assertion_loc || last_assertion_loc == 0){
+            last_assertion_loc = it->first;
+            vis[last_assertion_loc] = true;
+          }
+        }
+    }
+  } else {
+    for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
+      // if grouping, we must include all instances of the assertion,
+      // so therefore we search for the max location
+      if (it->first > last_assertion_loc){
+        last_assertion_loc = it->first;
+      }
+    }
+  }
+  std::cout << "Last assertion location: " << last_assertion_loc << std::endl;
+}
+
 void subst_scenariot::serialize(const std::string& file)
 {
   std::ofstream out;

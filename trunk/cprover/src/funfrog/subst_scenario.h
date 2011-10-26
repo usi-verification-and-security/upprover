@@ -47,7 +47,8 @@ public:
   void set_initial_precision
       (const assertion_infot& assertion)
   {
-      functions_root.set_initial_precision(default_precision, assertions_visited,
+      setup_last_assertion_loc(assertion);
+      functions_root.set_initial_precision(default_precision, last_assertion_loc,
           summarization_context, assertion);
   }
 
@@ -60,6 +61,10 @@ public:
   unsigned get_assertion_location(goto_programt::const_targett ass)
                         { return (assertions_visited[ass]).begin()->first; }
 
+  unsigned get_last_assertion_loc(){
+    return last_assertion_loc;
+  }
+
 private:
   const summarization_contextt &summarization_context;
   summary_infot functions_root;
@@ -69,7 +74,9 @@ private:
   std::vector<summary_infot*> functions;
   std::vector<std::pair<unsigned, unsigned> > goto_ranges;
   unsigned global_loc;
+  unsigned last_assertion_loc;
 
+  void setup_last_assertion_loc(const assertion_infot& assertion);
   unsigned get_precision_count(summary_precisiont precision);
 };
 

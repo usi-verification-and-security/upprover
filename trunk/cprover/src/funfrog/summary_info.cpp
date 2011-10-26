@@ -13,38 +13,14 @@
 
 void summary_infot::set_initial_precision(
     summary_precisiont default_precision,
-    location_visitedt& assertions_visited,
+    const unsigned last_assertion_loc,
     const summarization_contextt& summarization_context,
     const assertion_infot& assertion)
 {
   assert(is_root());
-  std::map<unsigned, bool> &vis = assertions_visited[assertion.get_location()];
-  unsigned last_assertion_loc = 0;
-
-  if (!assertion.is_assert_grouping()){
-    for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
-        // if no-grouping, every time we search for single instance of
-        // the assertion, not visited before (with min location)
-        if (it-> second == false){
-          if (it->first < last_assertion_loc || last_assertion_loc == 0){
-            last_assertion_loc = it->first;
-            vis[last_assertion_loc] = true;
-          }
-        }
-    }
-  } else {
-    for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
-      // if grouping, we must include all instances of the assertion,
-      // so therefore we search for the max location
-      if (it->first > last_assertion_loc){
-        last_assertion_loc = it->first;
-      }
-    }
-  }
-
-  mark_enabled_assertions(summarization_context, assertion, 0, true, last_assertion_loc);
+  mark_enabled_assertions(assertion, 0, true, last_assertion_loc);
   set_initial_precision(default_precision,
-      summarization_context, assertion, last_assertion_loc);
+      summarization_context, last_assertion_loc);
 }
 
 // This method should when enabled assertions are filled in, i.e., after a call
@@ -52,7 +28,7 @@ void summary_infot::set_initial_precision(
 void summary_infot::set_initial_precision(
     summary_precisiont default_precision,
     const summarization_contextt& summarization_context,
-    const assertion_infot& assertion, unsigned last_assertion_loc)
+    const unsigned last_assertion_loc)
 {
   for (call_sitest::iterator it = call_sites.begin();
           it != call_sites.end(); ++it) 
@@ -87,14 +63,13 @@ void summary_infot::set_initial_precision(
     
     // Recursive traversal
     function.set_initial_precision(
-            default_precision, summarization_context, assertion, last_assertion_loc);
+            default_precision, summarization_context, last_assertion_loc);
   }
 }
 
 bool summary_infot::mark_enabled_assertions(
-        const summarization_contextt& summarization_context,
         const assertion_infot& assertion, unsigned depth,
-        bool parent_stack_matches, unsigned last_assertion_loc)
+        bool parent_stack_matches, const unsigned last_assertion_loc)
 {
   assertion_in_subtree = false;
 
@@ -108,8 +83,7 @@ bool summary_infot::mark_enabled_assertions(
     
     // Recursive traversal
     assertion_in_subtree |= function.mark_enabled_assertions(
-            summarization_context, assertion, depth+1,
-            current_stack_matches, last_assertion_loc);
+            assertion, depth+1, current_stack_matches, last_assertion_loc);
   }
 
   enabled_assertions.clear();
@@ -118,8 +92,12 @@ bool summary_infot::mark_enabled_assertions(
             it != assertions.end(); ++it)
     {
       if (assertion.assertion_matches(depth, it->first)) {
-        enabled_assertions.insert(it->first);
-        assertion_in_subtree = true;
+        if (assertion.is_assert_grouping() || parent_stack_matches){
+          // FIXME: it is still not the most precise way to determine
+          //        different the call stack of current assertion instance
+          enabled_assertions.insert(it->first);
+          assertion_in_subtree = true;
+        }
       }
     }
   }

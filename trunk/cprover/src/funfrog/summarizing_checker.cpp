@@ -56,6 +56,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   const bool no_slicing_option = options.get_bool_option("no-slicing");
 
   omega.set_initial_precision(assertion);
+  const unsigned last_assertion_loc = omega.get_last_assertion_loc();
 
   partitioning_target_equationt equation(ns, summarization_context);
 
@@ -69,7 +70,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
 
   refiner_assertion_sumt refiner = refiner_assertion_sumt(
               summarization_context, omega, equation,
-              get_refine_mode(options.get_option("refine-mode")), out);
+              get_refine_mode(options.get_option("refine-mode")),
+              out, last_assertion_loc);
 
   prop_assertion_sumt prop = prop_assertion_sumt(summarization_context,
           equation, out, max_memory_used);

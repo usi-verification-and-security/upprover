@@ -23,14 +23,16 @@ public:
           subst_scenariot &_omega,
           partitioning_target_equationt &_target,
           refinement_modet _mode,
-          std::ostream &_out
+          std::ostream &_out,
+          const unsigned _last_assertion_loc
           ) :
           summarization_context(_summarization_context),
           omega(_omega),
           summs(omega.get_call_summaries()),
           equation(_target),
           mode(_mode),
-          out(_out)
+          out(_out),
+          last_assertion_loc(_last_assertion_loc)
           {};
 
   void refine(prop_convt& decider);
@@ -48,7 +50,6 @@ protected:
   // Which functions should be summarized, abstracted from, and which inlined
   std::vector<summary_infot*>& summs;
 
-
   // Store for the symex result
   partitioning_target_equationt &equation;
 
@@ -56,6 +57,8 @@ protected:
   refinement_modet mode;
 
   std::ostream &out;
+
+  const unsigned last_assertion_loc;
 
   std::list<summary_infot*> refined_functions;
 

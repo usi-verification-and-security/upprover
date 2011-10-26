@@ -52,7 +52,7 @@ public:
 
   void set_initial_precision(
       const summary_precisiont default_precision,
-      location_visitedt& assertions_visited,
+      const unsigned last_assertion_loc,
       const summarization_contextt& summarization_context,
       const assertion_infot& assertion);
 
@@ -101,11 +101,10 @@ private:
   void set_initial_precision(
         summary_precisiont default_precision,
         const summarization_contextt& summarization_context,
-        const assertion_infot& assertion, unsigned last_assertion_loc);
+        const unsigned last_assertion_loc);
   
   bool mark_enabled_assertions(
-        const summarization_contextt& summarization_context,
         const assertion_infot& assertion, unsigned depth, 
-        bool parent_stack_matches, unsigned last_assertion_loc);
+        bool parent_stack_matches, const unsigned last_assertion_loc);
 };
 #endif

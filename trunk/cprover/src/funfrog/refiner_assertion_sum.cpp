@@ -28,7 +28,6 @@
 
 void refiner_assertion_sumt::refine(prop_convt& decider)
 {
-  // FIXME: We should not inline things after the last assertion (OS).
   refined_functions.clear();
   switch (mode){
     case FORCE_INLINING:
@@ -48,9 +47,11 @@ void refiner_assertion_sumt::refine(prop_convt& decider)
 
 void refiner_assertion_sumt::set_inline_sum(int i)
 {
-  out << "*** REFINING function: " << (*summs[i]).get_function_id() << std::endl;
-  (*summs[i]).set_inline();
-  refined_functions.push_back(&(*summs[i]));
+  if ((*summs[i]).get_call_location() <= last_assertion_loc){
+    out << "*** REFINING function: " << (*summs[i]).get_function_id() << std::endl;
+    (*summs[i]).set_inline();
+    refined_functions.push_back(&(*summs[i]));
+  }
 }
 
 void refiner_assertion_sumt::reset_inline()
