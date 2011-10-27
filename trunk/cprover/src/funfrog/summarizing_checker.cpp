@@ -196,6 +196,7 @@ void summarizing_checkert::extract_interpolants (partitioning_target_equationt& 
             !options.get_bool_option("no-summary-optimization"));
     
     summary_info.add_used_summary(it->second);
+    summary_info.set_summary();           // helpful flag for omega's (de)serialization
   }
   // Store the summaries
   const std::string& summary_file = options.get_option("save-summaries");

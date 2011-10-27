@@ -81,6 +81,7 @@ bool check_upgrade(const namespacet &ns,
     return 0;
   }
 
+
   unsigned long max_mem_used;
   contextt temp_context;
   namespacet ns1(ns.get_context(), temp_context);
@@ -118,9 +119,23 @@ bool upgrade_checkert::check_upgrade()
   omega.deserialize("__omega", goto_program);
 
   // 3. Mark summaries as
-  //     - valid: the function was not changed
-  //     - invalid: interface change / ass_in_subtree change
-  //     - unknown: function body changed
+  //     - valid: the function was not changed                  => summary_info.preserved_node == true
+  //     - invalid: interface change                            [TBD], for now, all of them are 'unknown'
+  //                                / ass_in_subtree change     [TBD], suppose, every ass_in_subtree preserved
+  //     - unknown: function body changed                       => summary_info.preserved_node == false
+
+  std::vector<summary_infot*>& summs = omega.get_call_summaries();
+  for (unsigned i = summs.size() - 1; i > 0; i--){
+    // backward search, from the summary with the largest call location
+
+    bool res = true;
+    upward_traverse_call_tree((*summs[i]), res);
+    if (!res) {
+      return false;
+    }
+    // TODO: mark somehow already verified summaries, to avoid duplicate actions
+  }
+
   // 3. From the bottom of the tree, reverify all changed nodes
   //    a. If the edge is unchanged, check implication of previously 
   //       used summaries
@@ -131,8 +146,100 @@ bool upgrade_checkert::check_upgrade()
   //
   // NOTE: call check_summary to do the check \phi_f => I_f.
   
-  assert(false);
-  return false;
+  return true;
+}
+
+/*******************************************************************\
+
+Function: upgrade_checkert::upward_traverse_call_tree
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Traverses the function call stack to check the change,
+          if the down-more attempt failed (pre == false)
+          or from scratch (pre == true)
+
+\*******************************************************************/
+void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bool& pre)
+{
+  std::cout << "checking function: " << summary_info.get_function_id() << "\n";
+  if (!summary_info.is_preserved_node() || !pre){
+    std::cout << "  -- the body is changed;";
+    if (summary_info.get_precision() == 1 || !pre){
+      std::cout << " and there was a summary. ";
+      // prepare subst. scenario for reverification
+      downward_traverse_call_tree (summary_info);
+
+      //TODO: then do the real check + refinement, if needed
+      //      in case of refinement, subst scenario will be renewed
+      //pre = check_summary(assertion_infot(), summary_info);
+      if (pre){
+        std::cout << "  summary was verified. go to the next check\n"; // here is the actual exit of the method
+        // TODO: renew summaries at the store:
+        //       the new one may be either strengthening of the old one, or inconsistent
+      } else {
+        std::cout << "  summary is out-of-date. ";
+        if (summary_info.is_root()){
+          std::cout << "and cannot be renewed. A real bug found. ";
+        } else {
+          std::cout << "check the parent.\n";
+          upward_traverse_call_tree(summary_info.get_parent(), pre);  // pre == false currently
+        }
+      }
+
+    } else {
+      std::cout << "  it's probably ok for a while. we will return to here, it will be required from higher calls;";
+    }
+  } else {
+    std::cout << "  preserved. go to the next check\n";
+  }
+}
+
+
+/*******************************************************************\
+
+Function: upgrade_checkert::downward_traverse_call_tree
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Traverses the function call tree in order to re-configure
+          subst. scenario for re-verifying a summary
+
+\*******************************************************************/
+void upgrade_checkert::downward_traverse_call_tree(summary_infot& summary_info)
+{
+  call_sitest call_sites = summary_info.get_call_sites();
+  for (call_sitest::iterator it = call_sites.begin();
+          it != call_sites.end(); ++it)
+  {
+    std::cout << "    -- the function call of " << (it->second).get_function_id();
+
+    if (it->second.is_preserved_edge()){
+      std::cout << " is preserved;";
+      if ((it->second).get_precision() == 1){
+        std::cout << " has summary => can be kept ";
+      } else if ((it->second).get_precision() == 0){
+        std::cout << " was havoced (probably, out of las_assertion_loc) => can be kept ";
+      } else {
+        if ((it->second).has_assertion_in_subtree()){
+          std::cout << " was inlined (since has assertion) can be kept" ;
+          // if inline, then do recursive traverse downward
+          downward_traverse_call_tree(it->second);
+        } else {
+          std::cout << " was inlined (irrelevant for proof) => can be havoced";
+          (it->second).set_nondet();
+        }
+      }
+
+    } else {
+      std::cout << " not preserved => its summary has to be already reverified";
+    }
+    std::cout <<"\n";
+  }
 }
 
 /*******************************************************************\
