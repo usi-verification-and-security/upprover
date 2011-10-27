@@ -385,7 +385,8 @@ Function: prop_itpt::substitute
 \*******************************************************************/
 
 void prop_itpt::substitute(prop_convt& decider,
-    const std::vector<symbol_exprt>& symbols) const
+    const std::vector<symbol_exprt>& symbols,
+    bool inverted) const
 {
   assert(!is_trivial());
 
@@ -454,6 +455,9 @@ void prop_itpt::substitute(prop_convt& decider,
   bool sign = root_literal.sign();
   literalt new_root_literal = renaming[root_literal.var_no()];
   if (sign)
+    new_root_literal.invert();
+  
+  if (inverted)
     new_root_literal.invert();
 
   decider.prop.l_set_to_true(new_root_literal);

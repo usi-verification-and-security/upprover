@@ -59,10 +59,9 @@ public:
   // stored in goto_program.
   bool prepare_SSA(const assertion_infot &assertion);
 
-  // Generate SSA statements for the refined program starting from the given 
-  // function.
-  bool refine_SSA(const assertion_infot &assertion,
-          summary_infot* refined_function);
+  // Generate SSA statements for the subtree of a specific function and
+  // compare to its summary
+  bool prepare_subtree_SSA(const assertion_infot &assertion);
 
   // Generate SSA statements for the refined program starting from the given 
   // set of functions.

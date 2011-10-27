@@ -30,8 +30,9 @@ public:
     _max_memory_used)
   {};
   
-  bool check_initial();
   bool check_upgrade();
+  bool check_summary(const assertion_infot& assertion, 
+          summary_infot& summary_info);
 
 protected:
 

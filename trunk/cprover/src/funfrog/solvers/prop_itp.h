@@ -50,7 +50,8 @@ public:
     const std::vector<symbol_exprt>& symbols);
 
   void substitute(prop_convt& decider,
-    const std::vector<symbol_exprt>& symbols) const;
+    const std::vector<symbol_exprt>& symbols,
+    bool inverted = false) const;
 
   literalt raw_assert(propt& decider) const;
   

@@ -28,8 +28,8 @@ public:
   
   partitiont(partition_idt _parent_id, partition_ifacet& _partition_iface) :
           filled(false), is_summary(false), ignore(false), processed(false),
-          invalid(false), summaries(NULL), parent_id(_parent_id),
-          partition_iface(&_partition_iface) { }
+          invalid(false), inverted_summary(false), summaries(NULL), 
+          parent_id(_parent_id), partition_iface(&_partition_iface) { }
           
   void add_child_partition(partition_idt child_id, unsigned callsite) {
     child_ids.push_back(child_id);
@@ -68,6 +68,7 @@ public:
   bool ignore;
   bool processed;
   bool invalid;
+  bool inverted_summary;
   unsigned clauses;
   unsigned vars;
   const summary_idst* summaries;

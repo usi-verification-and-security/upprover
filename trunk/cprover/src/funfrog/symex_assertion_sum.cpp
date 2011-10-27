@@ -107,23 +107,20 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::refine_SSA
+ Function: symex_assertion_sumt::prepare_subtree_SSA
 
  Inputs:
 
  Outputs:
 
- Purpose: Generate SSA statements for the refined program starting from 
- the given function.
+ Purpose: Generate SSA statements for the subtree of a specific function and
+ compare to its summary
 
 \*******************************************************************/
 
-bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
-          summary_infot *refined_function)
+bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
 {
-  std::list<summary_infot*> list;
-  list.push_back(refined_function);
-  return refine_SSA(assertion, list);
+  assert(false);
 }
 
 /*******************************************************************
