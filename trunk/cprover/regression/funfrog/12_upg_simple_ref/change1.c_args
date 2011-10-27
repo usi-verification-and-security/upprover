@@ -1,0 +1,1 @@
+--init-upgrade-check --do-upgrade-check 12_upg_simple_ref/change2.out
