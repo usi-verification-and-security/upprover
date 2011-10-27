@@ -225,6 +225,11 @@ claim_statst check_claims(
       out.close();
   }
 
+  // temporarily here
+  if (options.get_bool_option("init-upgrade-check")){
+    sum_checker.serialize();
+  }
+
   if(show_progress)
   {
     std::cout << "\r" << std::string(80, ' ');

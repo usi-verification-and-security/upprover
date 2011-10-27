@@ -50,6 +50,9 @@ public:
   void initialize();
   bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion);
+  void serialize(){
+    omega.serialize("__omega"/* + i2string(omega.get_assertion_location(assertion.get_location()))*/);
+  };
 
 protected:
 

@@ -9,6 +9,7 @@ SHARED_SRC := \
       solvers/prop_itp.cpp
 
 FUNFROG_SRC := \
+      diff.cpp \
       partitioning_target_equation.cpp \
       partitioning_slice.cpp \
       summary_info.cpp \
@@ -27,7 +28,8 @@ SUMO_SRC := \
       sumo.cpp
 
 DIFF_SRC := \
-      diff.cpp
+      diff.cpp \
+      diff_main.cpp
 
 SHARED_OBJ := \
       $(SHARED_SRC:.cpp=$(OBJEXT)) \

@@ -99,7 +99,6 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
       {
         double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
         extract_interpolants(equation, red_timeout);
-        //omega.serialize("__omega_" + i2string(omega.get_assertion_location(assertion.get_location())));
         if (summaries_count == 0)
         {
           out << "ASSERTION(S) HOLD(S) AFTER INLINING." << std::endl;

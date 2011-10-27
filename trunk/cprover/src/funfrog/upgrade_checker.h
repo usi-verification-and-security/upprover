@@ -45,9 +45,9 @@ bool check_initial(const namespacet &ns,
 
 bool check_upgrade(const namespacet &ns,
   goto_programt &program_old,
-  const goto_functionst &goto_functions_old,
+  goto_functionst &goto_functions_old,
   goto_programt &program_new,
-  const goto_functionst &goto_functions_new,
+  goto_functionst &goto_functions_new,
   const optionst& options,
   bool show_progress = true);
 

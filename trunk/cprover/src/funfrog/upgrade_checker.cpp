@@ -7,7 +7,16 @@
 \*******************************************************************/
 
 #include "upgrade_checker.h"
+#include "diff.h"
+#include <string>
 
+
+bool upgrade_checkert::check_upgrade(){
+  // here we suppose that "__omega" already contains information about changes
+  omega.deserialize("__omega", goto_program);
+  assert(0);
+  return true;
+}
 /*******************************************************************\
 
 Function: check_initial
@@ -45,8 +54,7 @@ bool check_initial(const namespacet &ns,
   // Check all the assertions
   bool result = sum_checker.assertion_holds(assertion_infot());
   
-  // TODO: Serialize the information needed for incremental verification.
-  assert(false);
+  sum_checker.serialize();
   
   return result;
 }
@@ -64,14 +72,39 @@ Function: check_upgrade
 \*******************************************************************/
 bool check_upgrade(const namespacet &ns,
   goto_programt &program_old,
-  const goto_functionst &goto_functions_old,
+  goto_functionst &goto_functions_old,
   goto_programt &program_new,
-  const goto_functionst &goto_functions_new,
+  goto_functionst &goto_functions_new,
   const optionst& options,
   bool show_progress) 
 {
   // 1. Make diff
-  // 2. Construct changed summary_info tree
+  // 2. Construct changed summary_info tree -> write back to "__omega"
+
+  bool res = difft().do_diff(goto_functions_old, goto_functions_new, "__omega");
+
+  if (res){
+    std::cout<< "The programs are trivially identical." << std::endl;
+    return 0;
+  }
+
+  unsigned long max_mem_used;
+  contextt temp_context;
+  namespacet ns1(ns.get_context(), temp_context);
+  upgrade_checkert upg_checker(program_old, value_set_analysist(ns1),
+                         goto_functions_old, loopstoret(), loopstoret(),
+                         ns1, temp_context, options, std::cout, max_mem_used);
+
+  //upg_checker.initialize();
+
+  if(show_progress)
+  {
+    std::cout << std::endl << "    Checking all claims" << std::endl;
+    std::cout.flush();
+  }
+
+  upg_checker.check_upgrade();
+
   // 3. Mark summaries as
   //     - valid: the function was not changed
   //     - invalid: interface change / ass_in_subtree change

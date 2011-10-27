@@ -1,14 +1,5 @@
-#include <time_stopping.h>
-#include <goto-programs/read_goto_binary.h>
+#include "diff.h"
 
-#include "arith_tools.h"
-#include "fixedbv.h"
-#include "ieee_float.h"
-#include <cstring>
-#include <iostream>
-#include <fstream>
-
-std::vector<std::pair<const irep_idt*, bool> > functions;
 
 std::string form(const exprt &expr)
 {
@@ -140,7 +131,7 @@ void collect_functions(const goto_functionst &goto_functions, const goto_program
 }
 
 
-bool is_untouched(const irep_idt &name)
+bool difft :: is_untouched(const irep_idt &name)
 {
   for (unsigned i = 0; i < functions.size(); i++){
     if ((*functions[i].first) == name){
@@ -152,7 +143,7 @@ bool is_untouched(const irep_idt &name)
   return true;
 }
 
-bool unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
+bool difft :: unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
       std::vector<std::pair<std::string, unsigned> > &goto_unrolled, unsigned init, bool inherit_change)
 {
 //  if (!is_untouched (name)){
@@ -234,7 +225,7 @@ bool compare_str_vecs(std::vector<std::pair<std::string, unsigned> > &goto_unrol
   return res;
 }
 
-void do_diff(std::vector<std::pair<std::string, unsigned> > &goto_unrolled_1,
+void do_proper_diff(std::vector<std::pair<std::string, unsigned> > &goto_unrolled_1,
              std::vector<std::pair<std::string, unsigned> > &goto_unrolled_2,
              std::vector<std::pair<std::string, unsigned> > &goto_common,
              std::vector<std::string > &summs)
@@ -287,74 +278,21 @@ void do_diff(std::vector<std::pair<std::string, unsigned> > &goto_unrolled_1,
 //  }
 //}
 
-void print_help() {
-  std::cout <<
-    "goto-diff by Grigory Fedyukovich (grigory.fedyukovich@usi.ch)" << std::endl <<
-    std::endl <<
-    "Expected usage:" << std::endl <<
-    "> ./diff goto-src goto-upg [call-tree]" << std::endl << std::endl <<
-    "where (*) goto-s are the binaries to be compared;" << std::endl <<
-    "      (*) call-tree is the file contained the storage of" << std::endl <<
-    "          substituting scenario. changed function calls are to be marked there." << std::endl <<
-    "          only std::cout if not specified." <<
-    std::endl << std::endl;
-}
 
-
-int main(int argc, const char** argv) {
+bool difft :: do_diff(goto_functionst &goto_functions_1, goto_functionst &goto_functions_2, const char* file3){
 
   std::vector<std::string> summs;
 
-  if (argc < 3 || argc > 4){
-    print_help();
-    return 1;
-  } else if (argc == 4){
-    // Load substituting scenario
-    std::ifstream in;
-    in.open(argv[3]);
-    while (!in.eof()){
-      std::string str;
-      in >> str;
-      summs.push_back(str);
-    }
-    in.close();
+  // Load substituting scenario
+  std::ifstream in;
+  in.open(file3);
+  while (!in.eof()){
+    std::string str;
+    in >> str;
+    summs.push_back(str);
   }
-
-  fine_timet before, after;
-  stream_message_handlert mh(std::cout);
-
-  goto_functionst goto_functions_1;
-  goto_functionst goto_functions_2;
-
-  // Load file 1
-
-  contextt context_1;
-  std::cout << "#1: Loading " << argv[1] << " ...\n";
-  before=current_time();
-  if(read_goto_binary(argv[1], context_1, goto_functions_1, mh))
-  {
-    std::cerr << "Error reading file " << argv[1] << ".\n";
-    return 1;
-  }
-  after=current_time();
-  std::cout << "    LOAD Time: " << time2string(after-before) << " sec.\n";
+  in.close();
   
-  // Load file 2
-
-  contextt context_2;
-  std::cout << "#2: Loading " << argv[2] << "' ...\n";
-  before=current_time();
-  if(read_goto_binary(argv[2], context_2, goto_functions_2, mh))
-  {
-    std::cerr << "Error reading file " << argv[2] << ".\n";
-    return 1;
-  }
-  after=current_time();
-  std::cout << "    LOAD Time: " << time2string(after-before) << " sec.\n";
-
-  // Analyze both files
-
-  before=current_time();
   collect_functions(goto_functions_1, goto_functions_1.function_map["main"].body, functions);
 
   std::vector<std::pair<std::string, unsigned> > goto_unrolled_1;
@@ -378,7 +316,7 @@ int main(int argc, const char** argv) {
 
     if (pre_res_3 == false){
       functions[i].second = false;
-      do_diff(goto_unrolled_1, goto_unrolled_2, goto_common, summs);
+      do_proper_diff(goto_unrolled_1, goto_unrolled_2, goto_common, summs);
     } else if (summs.size() > i*6+3) {
       summs[i*6+3] = "1";
       //write_change((*functions[i].first), summs);
@@ -390,15 +328,16 @@ int main(int argc, const char** argv) {
     goto_common.clear();
   }
 
-  if(argc == 4){
     std::ofstream out;
-    out.open(argv[3]);
+    out.open(file3);
     for (unsigned i = 0; i < summs.size(); i++){
       out << summs[i] << std::endl;
     }
     out.close();
-  }
 
-  after=current_time();
-  std::cout << "    PROCESSING Time: " << time2string(after-before) << " sec.\n";
+    bool res = true;
+    for (unsigned i = 1; i < functions.size(); i++){
+      res &= functions[i].second;
+    }
+    return res;
 }
