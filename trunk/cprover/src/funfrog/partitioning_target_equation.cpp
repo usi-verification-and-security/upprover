@@ -684,6 +684,7 @@ void partitioning_target_equationt::extract_interpolants(
     partitiont& partition = partitions[pid];
     
     if (partition.is_summary || partition.ignore || partition.invalid ||
+            // FIXME: Drop this condition for UPGRADE checker
             partition.get_iface().assertion_in_subtree)
       continue;
     

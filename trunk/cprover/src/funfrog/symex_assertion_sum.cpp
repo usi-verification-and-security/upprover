@@ -1243,7 +1243,7 @@ void symex_assertion_sumt::phi_function(
   const statet::goto_statet &goto_state,
   statet &dest_state)
 {
-  // FIXME: The variables get cumulated in level2 cache,
+  // FIXME: The variables get cumulated in level2 renaming,
   // we need to get rid of the old ones...
   
   // go over all variables to see what changed
