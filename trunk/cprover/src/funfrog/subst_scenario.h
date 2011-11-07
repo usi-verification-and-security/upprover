@@ -65,6 +65,10 @@ public:
     return last_assertion_loc;
   }
 
+  bool is_single_assertion_check(){
+    return single_assertion_check;
+  }
+
 private:
   const summarization_contextt &summarization_context;
   summary_infot functions_root;
@@ -75,6 +79,7 @@ private:
   std::vector<std::pair<unsigned, unsigned> > goto_ranges;
   unsigned global_loc;
   unsigned last_assertion_loc;
+  bool single_assertion_check;
 
   void setup_last_assertion_loc(const assertion_infot& assertion);
   unsigned get_precision_count(summary_precisiont precision);

@@ -64,7 +64,6 @@ void subst_scenariot::initialize_summary_info(
       const code_function_callt& function_call = to_code_function_call(inst->code);
       const irep_idt &target_function = to_symbol_expr(
         function_call.function()).get_identifier();
-
       // Mark the call site
       summary_infot& call_site = summary_info.get_call_sites().insert(
               std::pair<goto_programt::const_targett, summary_infot>(inst,
@@ -131,16 +130,16 @@ void subst_scenariot::process_goto_locations()
   }
   goto_ranges.push_back(std::make_pair(min, max));
 
-  for (unsigned i = 0; i < functions.size(); i++){
-    unsigned loc = (*functions[i]).get_call_location();
-    for (unsigned j = goto_sz; j < goto_ranges.size(); j++){
-      std::pair<unsigned, unsigned> r = goto_ranges[j];
-      if (r.first <= loc && loc <= r.second){
-        loc = r.first;
-      }
-    }
-    (*functions[i]).set_call_location(loc);
-  }
+//  for (unsigned i = 0; i < functions.size(); i++){
+//    unsigned loc = (*functions[i]).get_call_location();
+//    for (unsigned j = goto_sz; j < goto_ranges.size(); j++){
+//      std::pair<unsigned, unsigned> r = goto_ranges[j];
+//      if (r.first <= loc && loc <= r.second){
+//        loc = r.first;
+//      }
+//    }
+//    (*functions[i]).set_call_location(loc);
+//  }
 
   goto_ranges.clear();
 }
@@ -154,6 +153,7 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
         // if no-grouping, every time we search for single instance of
         // the assertion, not visited before (with min location)
         if (it-> second == false){
+
           if (it->first < last_assertion_loc || last_assertion_loc == 0){
             last_assertion_loc = it->first;
             vis[last_assertion_loc] = true;
@@ -169,7 +169,17 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
       }
     }
   }
-  std::cout << "Last assertion location: " << last_assertion_loc << std::endl;
+
+  for (unsigned j = 0; j < goto_ranges.size(); j++){
+    std::pair<unsigned, unsigned> r = goto_ranges[j];
+    if (r.first <= last_assertion_loc && last_assertion_loc <= r.second){
+      last_assertion_loc = r.second;
+    }
+  }
+  std::cout << vis.size() << " instances of the assertion found." << std::endl
+            << "Last assertion location: " << last_assertion_loc << std::endl;
+
+  single_assertion_check = vis.size() == 1 || !assertion.is_assert_grouping();
 }
 
 void serialize_used_summaries(std::ofstream& out, 

@@ -284,12 +284,14 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   const bool no_slicing_option = options.get_bool_option("no-slicing");
 
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
+  const bool single_assertion_check = omega.is_single_assertion_check();
 
   partitioning_target_equationt equation(ns, summarization_context, true);
 
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, context,
-            equation, out, goto_program, !no_slicing_option);
+            equation, out, goto_program, last_assertion_loc,
+            single_assertion_check, !no_slicing_option);
 
   setup_unwind(symex);
   symex.loop_free_check();

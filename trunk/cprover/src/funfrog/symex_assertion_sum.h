@@ -38,6 +38,8 @@ public:
           partitioning_target_equationt &_target,
           std::ostream &_out,
           const goto_programt &_goto_program,
+          unsigned _last_assertion_loc,
+          bool _single_assertion_check,
           bool _use_slicing=true
           ) :
           symex_bmct(_ns, _context, _target),
@@ -48,6 +50,9 @@ public:
           current_assertion(NULL),
           out(_out),
           goto_program(_goto_program),
+          last_assertion_loc(_last_assertion_loc),
+          loc(0),
+          single_assertion_check(_single_assertion_check),
           use_slicing(_use_slicing)
           {}
           
@@ -129,6 +134,12 @@ private:
   std::ostream &out;
 
   const goto_programt &goto_program;
+
+  unsigned last_assertion_loc;
+
+  unsigned loc;
+
+  bool single_assertion_check;
 
   bool use_slicing;
 

@@ -84,6 +84,16 @@ public:
   void set_preserved_node() { preserved_node = true; } // false by default
   void set_preserved_edge() { preserved_edge = true; } // false by default
 
+  unsigned get_subtree_size(const summarization_contextt& summarization_context){
+    unsigned res = summarization_context.get_function(function_id).body.instructions.size();
+    for (call_sitest::iterator it = call_sites.begin();
+            it != call_sites.end(); ++it)
+    {
+      res += it->second.get_subtree_size(summarization_context);
+    }
+    return res;
+  }
+
 private:
   call_sitest call_sites;
   location_mapt assertions;

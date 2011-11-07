@@ -102,6 +102,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   // Old: ??? state.value_set = value_sets;
   state.source.pc = goto_program.instructions.begin();
   
+  loc = 0;
   return process_planned(state);
 }
 
@@ -231,8 +232,6 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
   fine_timet before, after;
   before=current_time();
 
-  // FIXME: If we care only about a single assertion, we should stop 
-  // as soon as it is reached.
   while (has_more_steps(state))
   {
 #   if 0
@@ -286,7 +285,7 @@ void symex_assertion_sumt::symex_step(
   assert(!state.call_stack.empty());
 
   const goto_programt::instructiont &instruction=*state.source.pc;
-  
+  loc++;
   merge_gotos(state);
 
   // depth exceeded?
@@ -362,6 +361,12 @@ void symex_assertion_sumt::symex_step(
           exprt tmp(instruction.guard);
           clean_expr(tmp, state, false);
           claim(tmp, msg, state);
+          if ((single_assertion_check) ||
+              (loc >= last_assertion_loc && max_unwind <= 1)){
+            deferred_functions.pop();
+            dequeue_deferred_function(state);
+            return;
+          }
         }
       }
 
@@ -511,6 +516,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   partition_ifacet &partition_iface = deferred_function.partition_iface;
   current_summary_info = &deferred_function.summary_info;
   const irep_idt& function_id = current_summary_info->get_function_id();
+  loc = current_summary_info->get_call_location();
 
   out << "Processing a deferred function: " << function_id << std::endl;
 
@@ -986,6 +992,7 @@ void symex_assertion_sumt::handle_function_call(
         code_function_callt &function_call)
 {
   // What are we supposed to do with this precise function call?
+
   summary_infot &summary_info = current_summary_info->get_call_sites().find(
       state.source.pc)->second;
   assert(get_current_deferred_function().partition_iface.partition_id != partitiont::NO_PARTITION);
@@ -995,6 +1002,8 @@ void symex_assertion_sumt::handle_function_call(
   const irep_idt& function_id = function_call.function().get(ID_identifier);
   const goto_functionst::goto_functiont &goto_function =
     summarization_context.get_function(function_id);
+
+  loc += summary_info.get_subtree_size(summarization_context);
 
   // Clean expressions in the arguments, function name, and lhs (if any)
   if (function_call.lhs().is_not_nil())
