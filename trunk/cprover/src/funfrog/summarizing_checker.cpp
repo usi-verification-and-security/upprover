@@ -58,7 +58,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   omega.set_initial_precision(assertion);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
 
-  partitioning_target_equationt equation(ns, summarization_context);
+  partitioning_target_equationt equation(ns, summarization_context, false);
 
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(

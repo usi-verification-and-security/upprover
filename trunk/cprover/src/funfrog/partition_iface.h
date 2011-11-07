@@ -17,6 +17,7 @@
 
 #include "summary_info.h"
 #include "partition.h"
+#include "expr_pretty_print.h"
 
 class partition_ifacet {
 public:
@@ -59,6 +60,54 @@ public:
   // Connection with the corresponding partition
   partition_idt partition_id;
   partition_idt parent_id;
+  
+  void share_symbols(const partition_ifacet& other) {
+    argument_symbols = other.argument_symbols;
+    in_arg_symbols = other.in_arg_symbols;
+    out_arg_symbols = other.out_arg_symbols;
+    retval_symbol = other.retval_symbol;
+    retval_tmp = other.retval_tmp;
+    callstart_symbol = other.callstart_symbol;
+    callend_symbol = other.callend_symbol;
+    error_symbol = other.error_symbol;
+    returns_value = other.returns_value;
+    
+#   if 0
+    std::cerr << " === Sharing symbols:" << std::endl;
+    std::cerr << " = Argument symbols:" << std::endl;
+    {
+      const std::vector<symbol_exprt>& symbols = argument_symbols;
+      for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
+              it != symbols.end(); ++it) {
+        expr_pretty_print(std::cerr, *it);
+      }
+      std::cerr << std::endl;
+    }
+    std::cerr << " = Input argument symbols:" << std::endl;
+    {
+      const std::vector<symbol_exprt>& symbols = in_arg_symbols;
+      for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
+              it != symbols.end(); ++it) {
+        expr_pretty_print(std::cerr, *it);
+      }
+      std::cerr << std::endl;
+    }
+    std::cerr << " = Output argument symbols:" << std::endl;
+    {
+      const std::vector<symbol_exprt>& symbols = out_arg_symbols;
+      for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
+              it != symbols.end(); ++it) {
+        expr_pretty_print(std::cerr, *it);
+      }
+      std::cerr << std::endl;
+    }
+    expr_pretty_print(std::cerr << "Ret val: ", retval_symbol);
+    expr_pretty_print(std::cerr << "Ret tmp: ", retval_tmp);
+    expr_pretty_print(std::cerr << "Callstart: ", callstart_symbol);
+    expr_pretty_print(std::cerr << "Callend: ", callend_symbol);
+    expr_pretty_print(std::cerr << "Error: ", error_symbol);
+#   endif
+  }
 };
 
 typedef std::list<partition_ifacet*> partition_iface_ptrst;

@@ -22,10 +22,11 @@ class partitioning_target_equationt:public symex_target_equationt
 {
 public:
   partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
-          _summarization_context) :
+          _summarization_context, bool _upgrade_checking) :
           symex_target_equationt(_ns), 
           summarization_context(_summarization_context),
-          current_partition_id(partitiont::NO_PARTITION) {
+          current_partition_id(partitiont::NO_PARTITION),
+          upgrade_checking(_upgrade_checking) {
   }
 
   // Convert all the SSA steps into the corresponding formulas in
@@ -238,6 +239,9 @@ private:
   // and error trace generation.
   // NOTE: Currently, the order is slightly broken by the glue variables
   SSA_steps_orderingt SSA_steps_exec_order;
+  
+  // Mode of encoding. Are we doing upgrade check?
+  bool upgrade_checking;
   
   friend class partitioning_slicet;
 };

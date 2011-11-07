@@ -132,18 +132,18 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
   // Clear the state
   state = goto_symext::statet();
 
-  // TODO: make all the interface symbols shared between 
-  // the inverted summary and the function.
-  assert(false); 
-  
-  // Prepare a partition for the inverted SUMMARY
-  fill_inverted_summary(summary_info, state);
-
-  // Prepare a partitions for the ROOT function and defer
+  // Prepare a partition for the ROOT function and defer
   partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION);
   summary_info.set_inline();
   defer_function(deferred_functiont(summary_info, partition_iface));
   equation.select_partition(partition_iface.partition_id);
+  
+  // Make all the interface symbols shared between 
+  // the inverted summary and the function.
+  prepare_fresh_arg_symbols(state, partition_iface);
+  
+  // Prepare a partition for the inverted SUMMARY
+  fill_inverted_summary(summary_info, state, partition_iface);
 
   // Old: ??? state.value_set = value_sets;
   state.source.pc = summarization_context.get_function(
@@ -556,6 +556,61 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 
 /*******************************************************************
 
+ Function: symex_assertion_sumt::prepare_fresh_arg_symbols
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Creates fresh symbols for all the arguments, accessed globals 
+ and return value. This is used in upgrade checking to unify symbols 
+ of the inverted summary and the function subtree.
+
+\*******************************************************************/
+
+void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
+        partition_ifacet& partition_iface)
+{
+  const irep_idt &identifier = partition_iface.function_id;
+
+  // find code in function map
+  goto_functionst::function_mapt::const_iterator it =
+    summarization_context.get_functions().function_map.find(identifier);
+
+  if(it == summarization_context.get_functions().function_map.end())
+    throw "failed to find `"+id2string(identifier)+"' in function_map";
+
+  const goto_functionst::goto_functiont &goto_function=it->second;
+
+  // Callsite symbols
+  produce_callsite_symbols(partition_iface, state);
+
+  // Store the argument renamed symbols somewhere (so that we can use
+  // them later, when processing the deferred function).
+  mark_argument_symbols(goto_function.type, state, partition_iface);
+
+  // Mark accessed global variables as well
+  mark_accessed_global_symbols(identifier, state, partition_iface);
+  
+  // FIXME: We need to store the SSA_steps.size() here, so that 
+  // SSA_exec_order is correctly ordered.
+  // NOTE: The exec_order is not used now.
+  
+  if (goto_function.type.return_type().is_not_nil()) {
+    // Add return value assignment from a temporary variable and
+    // store the temporary return value symbol somewhere (so that we can
+    // use it later, when processing the deferred function).
+    return_assignment_and_mark(goto_function.type, state, NULL,
+            partition_iface, true);
+  } else {
+    partition_iface.retval_symbol = symbol_exprt();
+  }
+  // Add also new assignments to all modified global variables
+  modified_globals_assignment_and_mark(identifier, state, partition_iface);
+}
+
+/*******************************************************************
+
  Function: symex_assertion_sumt::assign_function_arguments
 
  Inputs:
@@ -600,17 +655,17 @@ void symex_assertion_sumt::assign_function_arguments(
   // FIXME: We need to store the SSA_steps.size() here, so that 
   // SSA_exec_order is correctly ordered.
   // NOTE: The exec_order is not used now.
-
+  
   if (function_call.lhs().is_not_nil()) {
     // Add return value assignment from a temporary variable and
     // store the temporary return value symbol somewhere (so that we can
     // use it later, when processing the deferred function).
-    return_assignment_and_mark(goto_function.type, state, function_call.lhs(),
+    return_assignment_and_mark(goto_function.type, state, &(function_call.lhs()),
             partition_iface);
   } else {
     partition_iface.retval_symbol = symbol_exprt();
   }
-  // FIXME: Add also new assignments to all modified global variables
+  // Add also new assignments to all modified global variables
   modified_globals_assignment_and_mark(identifier, state, partition_iface);
   
   constant_propagation = old_cp;
@@ -755,8 +810,9 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
 void symex_assertion_sumt::return_assignment_and_mark(
         const code_typet &function_type,
         statet &state,
-        const exprt &lhs,
-        partition_ifacet &partition_iface)
+        const exprt *lhs,
+        partition_ifacet &partition_iface,
+        bool skip_assignment)
 {
   assert(function_type.return_type().is_not_nil());
 
@@ -779,15 +835,17 @@ void symex_assertion_sumt::return_assignment_and_mark(
 
   add_symbol(retval_tmp_id, type, false);
   add_symbol(retval_symbol_id, type, true);
+  
+  if (!skip_assignment) {
+    code_assignt assignment(*lhs, retval_symbol);
+    assert( ns.follow(assignment.lhs().type()) ==
+            ns.follow(type));
 
-  code_assignt assignment(lhs, retval_symbol);
-  assert( ns.follow(assignment.lhs().type()) ==
-          ns.follow(type));
-
-  bool old_cp = constant_propagation;
-  constant_propagation = false;
-  basic_symext::symex_assign(state, assignment);
-  constant_propagation = old_cp;
+    bool old_cp = constant_propagation;
+    constant_propagation = false;
+    basic_symext::symex_assign(state, assignment);
+    constant_propagation = old_cp;
+  }
 
 # ifdef DEBUG_PARTITIONING
   expr_pretty_print(out << "Marking return symbol: ", retval_symbol);
@@ -1030,7 +1088,8 @@ void symex_assertion_sumt::summarize_function_call(
 \*******************************************************************/
 void symex_assertion_sumt::fill_inverted_summary(
         summary_infot& summary_info,
-        statet& state)
+        statet& state,
+        partition_ifacet& inlined_iface)
 {
   // We should use an already computed summary as an abstraction
   // of the function body
@@ -1040,9 +1099,9 @@ void symex_assertion_sumt::fill_inverted_summary(
           function_id << std::endl;
   
   partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION);
-  produce_callsite_symbols(partition_iface, state);
-  produce_callend_assumption(partition_iface, state);
-
+  
+  partition_iface.share_symbols(inlined_iface);
+      
   partition_idt partition_id = equation.reserve_partition(partition_iface);
 
   out << "Substituting interpolant (part:" << partition_id << ")" << std::endl;

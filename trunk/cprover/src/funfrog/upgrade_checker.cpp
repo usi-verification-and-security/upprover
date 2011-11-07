@@ -12,6 +12,9 @@
 
 void upgrade_checkert::initialize()
 {
+    // Prepare the summarization context
+  summarization_context.analyze_functions(ns);
+
   // Load older summaries
   {
     const std::string& summary_file = options.get_option("load-summaries");
@@ -282,7 +285,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
 
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
 
-  partitioning_target_equationt equation(ns, summarization_context);
+  partitioning_target_equationt equation(ns, summarization_context, true);
 
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, context,

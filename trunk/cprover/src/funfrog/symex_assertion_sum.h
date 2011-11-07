@@ -170,7 +170,7 @@ private:
   // Prepares a partition with an inverted summary. This is used
   // to verify that a function still implies its summary (in upgrade check).
   void fill_inverted_summary(summary_infot& summary_info,
-        statet& state);
+        statet& state, partition_ifacet& inlined_iface);
 
   // Inlines the given function call
   void inline_function_call(
@@ -185,6 +185,12 @@ private:
         statet& state,
         const irep_idt& function_id);
 
+  // Creates fresh symbols for all the arguments, accessed globals and return
+  // value. This is used in upgrade checking to unify symbols of the inverted
+  // summary and the function subtree.
+  void prepare_fresh_arg_symbols(statet& state,
+          partition_ifacet& partition_iface);
+  
   // Assigns function arguments to new SSA symbols, also makes
   // assignment of the new SSA symbol of return value to the lhs of
   // the call site (if any)
@@ -217,8 +223,9 @@ private:
   void return_assignment_and_mark(
     const code_typet &function_type,
     statet &state,
-    const exprt &lhs,
-    partition_ifacet &partition_iface);
+    const exprt *lhs,
+    partition_ifacet &partition_iface,
+    bool skip_assignment = false);
 
   // Assigns modified globals to the corresponding temporary SSA symbols
   void store_modified_globals(

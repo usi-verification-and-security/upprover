@@ -12,6 +12,8 @@ Author: Ondrej Sery
 
 #include "partitioning_slice.h"
 
+//#define DEBUG_SLICER
+
 /*******************************************************************\
 
 Function: partitioning_slicet::get_symbols
@@ -34,6 +36,9 @@ void partitioning_slicet::get_symbols(const exprt &expr, symbol_sett& symbols)
   if(expr.id()==ID_symbol) {
     const irep_idt& id = to_symbol_expr(expr).get_identifier();
     if (processed.find(id) == processed.end()) {
+#     ifdef DEBUG_SLICER
+      std::cerr << "Marking: '" << id << "'" << std::endl;
+#     endif
       symbols.insert(id);
     }
   }
@@ -402,6 +407,7 @@ void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store,
             partition.used_summaries.find(summary_id) ==
             partition.used_summaries.end()) {
       
+#     ifdef DEBUG_SLICER      
       std::cerr << "Unused summary in inverted summary: " << summary_id << " (used: ";
       for (summary_ids_sett::const_iterator it2 = partition.used_summaries.begin();
               it2 != partition.used_summaries.end();
@@ -409,6 +415,7 @@ void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store,
         std::cerr << *it2;
       }
       std::cerr << ")" << std::endl;
+#     endif
       
       continue;
     }
@@ -418,12 +425,26 @@ void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store,
     // Add only symbols constrained by the summary
     unsigned idx = 0;
     partition.applicable_summaries.insert(summary_id);
+    // Input argument symbols
     for (std::vector<symbol_exprt>::iterator it2 =
             partition_iface.argument_symbols.begin();
             it2 != partition_iface.argument_symbols.end();
             ++it2, ++idx) {
       if (summary.get_symbol_mask()[idx])
         get_symbols(*it2, depends);
+    }
+    // Output argument symbols
+    for (std::vector<symbol_exprt>::iterator it2 =
+            partition_iface.out_arg_symbols.begin();
+            it2 != partition_iface.out_arg_symbols.end();
+            ++it2, ++idx) {
+      if (summary.get_symbol_mask()[idx])
+        get_symbols(*it2, depends);
+    }
+    // Return value symbol
+    if (partition_iface.returns_value) {
+      if (summary.get_symbol_mask()[idx])
+        get_symbols(partition_iface.retval_symbol, depends);
     }
   }
 }

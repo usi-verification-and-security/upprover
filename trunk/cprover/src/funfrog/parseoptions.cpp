@@ -848,7 +848,8 @@ bool funfrog_parseoptionst::check_loop_summarization(
           return 1;
         }
 
-        check_upgrade(ns,
+        namespacet ns_new(context);
+        check_upgrade(ns_new,
                 // OLD!
                 goto_functions.function_map[ID_main].body, goto_functions,
                 // NEW!
