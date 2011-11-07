@@ -71,8 +71,12 @@ public:
   bool inverted_summary;
   unsigned clauses;
   unsigned vars;
+  // All summaries for the associated function
   const summary_idst* summaries;
+  // Summaries that are applicable after slicing
   summary_ids_sett applicable_summaries;
+  // Summaries used in the previous verification
+  summary_ids_sett used_summaries;
   fle_part_idt fle_part_id;
   partition_idt parent_id;
   partition_idst child_ids;

@@ -66,7 +66,8 @@ public:
   // Generate SSA statements for the refined program starting from the given 
   // set of functions.
   bool refine_SSA(const assertion_infot &assertion,
-          const std::list<summary_infot*> &refined_function);
+          const std::list<summary_infot*> &refined_function,
+          bool force_check = false);
   
   virtual void symex_step(
     const goto_functionst &goto_functions,
@@ -143,7 +144,7 @@ private:
   
   // Processes current code (pointed to by the state member variable) as well
   // as all the deferred functions
-  bool process_planned(statet &state);
+  bool process_planned(statet &state, bool force_check = false);
 
   // Take a deferred function from the queue and prepare it for symex
   // processing. This would also mark a corresponding partition in
@@ -165,6 +166,11 @@ private:
         deferred_functiont& deferred_function,
         statet& state,
         const irep_idt& function_id);
+  
+  // Prepares a partition with an inverted summary. This is used
+  // to verify that a function still implies its summary (in upgrade check).
+  void fill_inverted_summary(summary_infot& summary_info,
+        statet& state);
 
   // Inlines the given function call
   void inline_function_call(

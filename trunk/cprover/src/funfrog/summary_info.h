@@ -73,13 +73,13 @@ public:
   void set_assertion_in_subtree() { assertion_in_subtree = true; } // false by default
 
   summary_precisiont get_precision() const { return precision; }
-  unsigned get_call_location() { return call_location; }
+  unsigned get_call_location() const { return call_location; }
 
 //  unsigned get_order() { return order; }
 //  void set_order(unsigned _order) { order = _order; }
 
-  bool is_preserved_node() { return preserved_node; }
-  bool is_preserved_edge() { return preserved_edge; }
+  bool is_preserved_node() const { return preserved_node; }
+  bool is_preserved_edge() const { return preserved_edge; }
 
   void set_preserved_node() { preserved_node = true; } // false by default
   void set_preserved_edge() { preserved_edge = true; } // false by default

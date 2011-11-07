@@ -10,6 +10,7 @@
 
 #include "subst_scenario.h"
 #include <stdlib.h>
+#include <string.h>
 
 void subst_scenariot::setup_default_precision(init_modet init)
 {
@@ -171,6 +172,54 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
   std::cout << "Last assertion location: " << last_assertion_loc << std::endl;
 }
 
+void serialize_used_summaries(std::ofstream& out, 
+        const summary_ids_sett& used_summaries) 
+{
+  if (used_summaries.empty()) {
+    out << "-" << std::endl;
+    return;
+  }
+  
+  bool first = true;
+  for (summary_ids_sett::const_iterator it = used_summaries.begin();
+          it != used_summaries.end(); ++it) {
+    if (first) first = false;
+    else {
+      out << ",";
+    }
+    out << *it;
+  }
+  out << std::endl;
+}
+
+void deserialize_used_summaries(const std::string& line, 
+        summary_ids_sett& used_summaries) 
+{
+  used_summaries.clear();
+  
+  if (line.length() == 0)
+    return;
+  
+  char bfr[line.length()+1];
+  char *start, *end = bfr;
+  strcpy(bfr, line.c_str());
+  
+  for (;;) {
+    start = end;
+    
+    while (*end != ',' && *end != 0) end++;
+    bool last = *end == 0;
+    
+    *end++ = 0;
+    summary_idt sid = atoi(start);
+    
+    used_summaries.insert(sid);
+    
+    if (last)
+      break;
+  }
+}
+
 void subst_scenariot::serialize(const std::string& file)
 {
   std::ofstream out;
@@ -182,13 +231,15 @@ void subst_scenariot::serialize(const std::string& file)
     return;
   }
 
-  for (unsigned i = 0; i < functions.size(); i++){
-    out    <<  (*functions[i]).get_function_id() << std::endl
-           <<  (*functions[i]).get_call_location() << std::endl
-           <<  (*functions[i]).get_precision() << std::endl
-           <<  (*functions[i]).is_preserved_node() << std::endl
-           <<  (*functions[i]).is_preserved_edge() << std::endl
-           <<  (*functions[i]).has_assertion_in_subtree() << std::endl;
+  for (unsigned i = 0; i < functions.size(); i++) {
+    const summary_infot& info = *functions[i];
+    out << info.get_function_id() << std::endl;
+    out << info.get_call_location() << std::endl;
+    out << info.get_precision() << std::endl;
+    out << info.is_preserved_node() << std::endl;
+    out << info.is_preserved_edge() << std::endl;
+    out << info.has_assertion_in_subtree() << std::endl;
+    serialize_used_summaries(out, info.get_used_summaries());
 //    call_sitest call_sites = (*functions[i]).get_call_sites();
 //    for (call_sitest::iterator it = call_sites.begin();
 //            it != call_sites.end(); ++it)
@@ -210,15 +261,16 @@ void subst_scenariot::deserialize(
   std::vector<std::string> tmp;
   std::ifstream in;
   in.open(file.c_str());
-  while (!in.eof()){
+  while (!in.eof() && !in.fail()){
     std::string str;
     in >> str;
-    tmp.push_back(str);
+    if (!str.empty()) tmp.push_back(str);
   }
   in.close();
   global_loc = 0;
   functions.clear();
   assertions_visited.clear();
+  assert(tmp.size() % 7 == 0);
   restore_summary_info(functions_root, code, tmp);
 }
 
@@ -236,22 +288,28 @@ void subst_scenariot::restore_summary_info(
     {
       summary_infot& call_site = summary_info.get_call_sites().insert(
               std::pair<goto_programt::const_targett, summary_infot>(inst,
-              summary_infot(&summary_info, atoi(data[(functions.size())*6+1].c_str()))
+              summary_infot(&summary_info, atoi(data[(functions.size())*7+1].c_str()))
               )).first->second;
 
       functions.push_back(&call_site);
 
-      const irep_idt &target_function = data[(functions.size()-1)*6];
+      const irep_idt &target_function = data[(functions.size()-1)*7];
       call_site.set_function_id(target_function);
-      switch (atoi(data[(functions.size()-1)*6+2].c_str())){
+      switch (atoi(data[(functions.size()-1)*7+2].c_str())){
         case 0: {call_site.set_precision(HAVOC);} break;
         case 1: {call_site.set_precision(SUMMARY);} break;
         case 2: {call_site.set_precision(INLINE);} break;
       }
 
-      if (data[(functions.size()-1)*6+3] == "1") { call_site.set_preserved_node(); }
-      if (data[(functions.size()-1)*6+4] == "1") { call_site.set_preserved_edge(); }
-      if (data[(functions.size()-1)*6+5] == "1") { call_site.set_assertion_in_subtree(); }
+      if (data[(functions.size()-1)*7+3] == "1") { call_site.set_preserved_node(); }
+      if (data[(functions.size()-1)*7+4] == "1") { call_site.set_preserved_edge(); }
+      if (data[(functions.size()-1)*7+5] == "1") { call_site.set_assertion_in_subtree(); }
+      
+      if (data[(functions.size()-1)*7+6] != "-") {
+        summary_ids_sett used_summaries;
+        deserialize_used_summaries(data[(functions.size()-1)*7+6], used_summaries);
+        call_site.set_used_summaries(used_summaries);
+      }
 
       const goto_programt &function_body =
           summarization_context.get_function(target_function).body;

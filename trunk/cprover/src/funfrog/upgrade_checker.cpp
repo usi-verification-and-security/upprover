@@ -10,6 +10,17 @@
 #include "diff.h"
 #include <string>
 
+void upgrade_checkert::initialize()
+{
+  // Load older summaries
+  {
+    const std::string& summary_file = options.get_option("load-summaries");
+    if (!summary_file.empty()) {
+      summarization_context.deserialize_infos(summary_file);
+    }
+  }
+}
+
 /*******************************************************************\
 
 Function: check_initial
@@ -85,11 +96,12 @@ bool check_upgrade(const namespacet &ns,
   unsigned long max_mem_used;
   contextt temp_context;
   namespacet ns1(ns.get_context(), temp_context);
-  upgrade_checkert upg_checker(program_old, value_set_analysist(ns1),
-                         goto_functions_old, loopstoret(), loopstoret(),
+  upgrade_checkert upg_checker(program_new, value_set_analysist(ns1),
+                         goto_functions_new, loopstoret(), loopstoret(),
                          ns1, temp_context, options, std::cout, max_mem_used);
 
-  //upg_checker.initialize();
+  // Load older summaries
+  upg_checker.initialize();
 
   if(show_progress)
   {
@@ -174,7 +186,7 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
 
       //TODO: then do the real check + refinement, if needed
       //      in case of refinement, subst scenario will be renewed
-      //pre = check_summary(assertion_infot(), summary_info);
+      pre = check_summary(assertion_infot(), summary_info);
       if (pre){
         std::cout << "  summary was verified. go to the next check\n"; // here is the actual exit of the method
         // TODO: renew summaries at the store:
@@ -258,8 +270,6 @@ Function: upgrade_checkert::check_summary
 bool upgrade_checkert::check_summary(const assertion_infot& assertion,
         summary_infot& summary_info)
 {
-  assert(false);
-  
   fine_timet initial, final;
   initial=current_time();
   // Trivial case

@@ -39,6 +39,9 @@ protected:
           symex_target_equationt::SSA_stept &SSA_step);
   void prepare_partition(partitiont &partition);
   
+  void mark_summary_symbols(summary_storet& summary_store, 
+        partitiont &partition);
+  
   void get_symbols(const typet &type, symbol_sett& symbols);
   void get_symbols(const exprt &expr, symbol_sett& symbols);
 };

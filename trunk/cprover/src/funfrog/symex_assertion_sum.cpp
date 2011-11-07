@@ -120,7 +120,36 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 
 bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
 {
-  assert(false);
+  current_assertion = &assertion;
+
+  // these are quick...
+  if(assertion.is_trivially_true())
+  {
+    out << std::endl << "ASSERTION IS TRUE" << std::endl;
+    return true;
+  }
+
+  // Clear the state
+  state = goto_symext::statet();
+
+  // TODO: make all the interface symbols shared between 
+  // the inverted summary and the function.
+  assert(false); 
+  
+  // Prepare a partition for the inverted SUMMARY
+  fill_inverted_summary(summary_info, state);
+
+  // Prepare a partitions for the ROOT function and defer
+  partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION);
+  summary_info.set_inline();
+  defer_function(deferred_functiont(summary_info, partition_iface));
+  equation.select_partition(partition_iface.partition_id);
+
+  // Old: ??? state.value_set = value_sets;
+  state.source.pc = summarization_context.get_function(
+          partition_iface.function_id).body.instructions.begin();
+  
+  return process_planned(state, true);
 }
 
 /*******************************************************************
@@ -137,7 +166,7 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
 \*******************************************************************/
 
 bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
-          const std::list<summary_infot*> &refined_functions)
+          const std::list<summary_infot*> &refined_functions, bool force_check)
 {
   current_assertion = &assertion;
 
@@ -180,7 +209,7 @@ bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
   // Plan the function for processing
   dequeue_deferred_function(state);
   
-  return process_planned(state);
+  return process_planned(state, force_check);
 }
 
 /*******************************************************************\
@@ -196,7 +225,7 @@ Function: symex_assertion_sumt::process_planned
 
 \*******************************************************************/
  
-bool symex_assertion_sumt::process_planned(statet &state)
+bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
 {
   // Proceed with symbolic execution
   fine_timet before, after;
@@ -216,7 +245,7 @@ bool symex_assertion_sumt::process_planned(statet &state)
   if(out.good())
     out << "SYMEX TIME: "<< time2string(after-before) << std::endl;
 
-  if(remaining_claims!=0)
+  if(remaining_claims!=0 || force_check)
   {
     if (use_slicing) {
       before=current_time();
@@ -989,7 +1018,48 @@ void symex_assertion_sumt::summarize_function_call(
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::summarize_function_call
+ Function: symex_assertion_sumt::fill_inverted_summary
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Prepares a partition with an inverted summary. This is used
+ to verify that a function still implies its summary (in upgrade check).
+
+\*******************************************************************/
+void symex_assertion_sumt::fill_inverted_summary(
+        summary_infot& summary_info,
+        statet& state)
+{
+  // We should use an already computed summary as an abstraction
+  // of the function body
+  const irep_idt& function_id = summary_info.get_function_id();
+  
+  out << "*** INVERTED SUMMARY used for function: " <<
+          function_id << std::endl;
+  
+  partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION);
+  produce_callsite_symbols(partition_iface, state);
+  produce_callend_assumption(partition_iface, state);
+
+  partition_idt partition_id = equation.reserve_partition(partition_iface);
+
+  out << "Substituting interpolant (part:" << partition_id << ")" << std::endl;
+
+# ifdef DEBUG_PARTITIONING
+  out << "   summaries available: " << summarization_context.get_summaries(function_id).size() << std::endl;
+  out << "   summaries used: " << summary_info.get_used_summaries().size() << std::endl;
+# endif
+
+  equation.fill_inverted_summary_partition(partition_id,
+          &summarization_context.get_summaries(function_id), 
+          summary_info.get_used_summaries());
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::inline_function_call
 
  Inputs:
 

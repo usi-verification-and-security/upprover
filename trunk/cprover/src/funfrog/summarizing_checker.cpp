@@ -22,7 +22,7 @@ void summarizing_checkert::initialize()
     }
   }
 
-  // Prepare summary_info (incapsulated in omega), start with the lazy variant,
+  // Prepare summary_info (encapsulated in omega), start with the lazy variant,
   // i.e., all summaries are initialized as HAVOC, except those on the way
   // to the target assertion, which are marked depending on initial mode.
 

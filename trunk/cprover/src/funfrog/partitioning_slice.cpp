@@ -76,16 +76,23 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
           equation.SSA_steps.begin();
           it!=equation.SSA_steps.end();
           ++it) {
-    if (it->is_assignment() || it->is_assume())
-      it->ignore = true;
+    // We can only slice assignments and assumptions
+    it->ignore = it->is_assignment() || it->is_assume();
   }
   for (partitionst::iterator it = equation.get_partitions().begin();
           it != equation.get_partitions().end();
           ++it)
   {
     if (it->is_summary) {
-      assert (!it->get_iface().assertion_in_subtree);
-      it->ignore = true;
+      it->applicable_summaries.clear();
+      // We can only slice standard summaries, not inverted and not summaries
+      // with assertion in subtree
+      if (it->inverted_summary || it->get_iface().assertion_in_subtree) {
+        mark_summary_symbols(summary_store, *it);
+        it->ignore = false;
+      } else {
+        it->ignore = true;
+      }
     }
   }
 
@@ -335,28 +342,90 @@ Function: partitioning_slicet::prepare_partition
 void partitioning_slicet::prepare_partition(partitiont &partition) 
 {
   partition_ifacet & partition_iface = partition.get_iface();
-  // Fill summary table
+  // For a standard summary without assertion_in_subtree, fill the summary table
   if (partition.is_summary) {
-    if (partition_iface.returns_value) {
-      summary_map.insert(summary_mapt::value_type(
-              partition_iface.retval_symbol.get_identifier(), 
-              summary_mapt::value_type::second_type(&partition,
-              partition_iface.argument_symbols.size() + 
-              partition_iface.out_arg_symbols.size() + 2)));
-    }
-    unsigned symbol_idx = partition_iface.argument_symbols.size();
-    for (std::vector<symbol_exprt>::iterator it2 =
-            partition_iface.out_arg_symbols.begin();
-            it2 != partition_iface.out_arg_symbols.end();
-            ++it2, ++symbol_idx) {
-      summary_map.insert(summary_mapt::value_type(
-              it2->get_identifier(), 
-              summary_mapt::value_type::second_type(&partition, symbol_idx)));
+    if (!partition.inverted_summary &&
+            !partition_iface.assertion_in_subtree) {
+      if (partition_iface.returns_value) {
+        summary_map.insert(summary_mapt::value_type(
+                partition_iface.retval_symbol.get_identifier(),
+                summary_mapt::value_type::second_type(&partition,
+                partition_iface.argument_symbols.size() +
+                partition_iface.out_arg_symbols.size() +
+                // Yes, this cannot happen in this branch, but just in case...
+                partition_iface.assertion_in_subtree ? 3 : 2)));
+      }
+      unsigned symbol_idx = partition_iface.argument_symbols.size();
+      for (std::vector<symbol_exprt>::iterator it2 =
+              partition_iface.out_arg_symbols.begin();
+              it2 != partition_iface.out_arg_symbols.end();
+              ++it2, ++symbol_idx) {
+        summary_map.insert(summary_mapt::value_type(
+                it2->get_identifier(),
+                summary_mapt::value_type::second_type(&partition, symbol_idx)));
+      }
     }
   }
   // All call start symbols to dependencies (we need all their assumptions 
   // for constraint call symbols constraints propagation)
   get_symbols(partition_iface.callstart_symbol, depends);
+  if (partition_iface.assertion_in_subtree) {
+    get_symbols(partition_iface.error_symbol, depends);
+  }
+}
+
+/*******************************************************************\
+
+Function: partitioning_slicet::mark_summary_symbols
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: 
+
+\*******************************************************************/
+
+void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store, 
+        partitiont &partition) {
+  // Mark all used symbols as directly as dependent
+  partition_ifacet& partition_iface = partition.get_iface();
+  const summary_idst& itps = *partition.summaries;
+
+  // Mark all the used symbols in all summaries
+  for (summary_idst::const_iterator it = itps.begin();
+          it != itps.end(); ++it) {
+    summary_idt summary_id = *it;
+    
+    // Skip summaries that were not used in the last verification run
+    if (partition.inverted_summary &&
+            partition.used_summaries.find(summary_id) ==
+            partition.used_summaries.end()) {
+      
+      std::cerr << "Unused summary in inverted summary: " << summary_id << " (used: ";
+      for (summary_ids_sett::const_iterator it2 = partition.used_summaries.begin();
+              it2 != partition.used_summaries.end();
+              ++it2) {
+        std::cerr << *it2;
+      }
+      std::cerr << ")" << std::endl;
+      
+      continue;
+    }
+
+    summaryt& summary = summary_store.find_summary(summary_id);
+
+    // Add only symbols constrained by the summary
+    unsigned idx = 0;
+    partition.applicable_summaries.insert(summary_id);
+    for (std::vector<symbol_exprt>::iterator it2 =
+            partition_iface.argument_symbols.begin();
+            it2 != partition_iface.argument_symbols.end();
+            ++it2, ++idx) {
+      if (summary.get_symbol_mask()[idx])
+        get_symbols(*it2, depends);
+    }
+  }
 }
 
 /*******************************************************************\

@@ -11,7 +11,7 @@
 
 #include "summarizing_checker.h"
 
-class upgrade_checkert : summarizing_checkert
+class upgrade_checkert : public summarizing_checkert
 {
 public:
   upgrade_checkert(
@@ -30,6 +30,7 @@ public:
     _max_memory_used)
   {};
   
+  void initialize();
   bool check_upgrade();
   bool check_summary(const assertion_infot& assertion, 
           summary_infot& summary_info);

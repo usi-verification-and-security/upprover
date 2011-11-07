@@ -107,8 +107,9 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
             prop_conv.convert(partition_iface.error_symbol);
   }
   
-  if (!partition.inverted_summary && partition.is_summary && 
+  if (partition.is_summary && 
           partition.applicable_summaries.empty()) {
+    assert(!partition.inverted_summary);
     std::cout << "  no applicable summary." << std::endl;
     return;
   }

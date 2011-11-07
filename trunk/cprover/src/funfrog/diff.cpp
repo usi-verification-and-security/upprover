@@ -256,7 +256,7 @@ void do_proper_diff(std::vector<std::pair<std::string, unsigned> > &goto_unrolle
     std::cout << "    [v] " << goto_unrolled_1[i_1].first << "\n";
 
     if (do_write && goto_unrolled_1[i_1].second > 0){
-      summs[goto_unrolled_1[i_1].second * 6 + 4] = "1";
+      summs[goto_unrolled_1[i_1].second * 7 + 4] = "1";
     }
 
     if (i_2 < size_1){
@@ -317,8 +317,8 @@ bool difft :: do_diff(goto_functionst &goto_functions_1, goto_functionst &goto_f
     if (pre_res_3 == false){
       functions[i].second = false;
       do_proper_diff(goto_unrolled_1, goto_unrolled_2, goto_common, summs);
-    } else if (summs.size() > i*6+3) {
-      summs[i*6+3] = "1";
+    } else if (summs.size() > i*7+3) {
+      summs[i*7+3] = "1";
       //write_change((*functions[i].first), summs);
     }
 
