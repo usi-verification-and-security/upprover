@@ -1,1 +1,1 @@
---init-upgrade-check --do-upgrade-check 11_upg_simple_bug/change_not_valid_2.out
+--init-upgrade-check --do-upgrade-check 13_upg_simple_holds/change_valid_2.out
