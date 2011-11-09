@@ -480,7 +480,7 @@ int funfrog_parseoptionst::doit()
     f.close();
   }
 
-  if(check_loop_summarization(ns, adaptor, goto_functions, stats_dir))
+  if(check_function_summarization(ns, adaptor, goto_functions, stats_dir))
     return 1;
 
   status("#X: Done.");
@@ -681,7 +681,7 @@ unsigned long funfrog_parseoptionst::report_max_mem(unsigned long mem) const
 
 \*******************************************************************/
 
-bool funfrog_parseoptionst::check_loop_summarization(
+bool funfrog_parseoptionst::check_function_summarization(
   namespacet &ns,
   value_set_alloc_adaptort &adaptor,
   goto_functionst &goto_functions,
@@ -764,101 +764,92 @@ bool funfrog_parseoptionst::check_loop_summarization(
   
   // Stage 10: Finally checking some claims.
   status("#10: Checking claims in program...");
-  
-  unsigned claim_nr=0;
-  
-  get_claims(goto_functions, claim_map, claim_numbers);
 
-  if(cmdline.isset("testclaim"))
+  if(cmdline.isset("show-claims"))
   {
-    claim_nr=find_marked_claim(goto_functions,                               
-                               cmdline.getval("testclaim"),
-                               claim_numbers);
-    if(claim_nr==(unsigned) -1)
+    show_claims(ns, claim_map, claim_numbers);
+    return 0;
+  }
+
+  bool init_upg_check = cmdline.isset("init-upgrade-check");
+  bool upg_check = cmdline.isset("do-upgrade-check");
+
+  if (upg_check || init_upg_check){
+    // perform the upgrade check (or preparation to it)
+    if(cmdline.isset("testclaim") || cmdline.isset("claim"))
     {
-      claim_nr = atoi(cmdline.getval("testclaim"));
+      error("Upgrade checking mode does not allow checking specific claims.");
+      return 1;
+    }
+
+    if (init_upg_check){
+      check_initial(ns, goto_functions.function_map[ID_main].body,
+              goto_functions, options, !cmdline.isset("no-progress"));
+    }
+
+    if (upg_check){
+      goto_functionst goto_functions_new;
+      stream_message_handlert mh(std::cout);
+      contextt context;
+
+      // TODO: the same analysis of new goto_functions, as for old ones
+      if(read_goto_binary(cmdline.getval("do-upgrade-check"), context, goto_functions_new, mh))
+      {
+        error(std::string("Error reading file `")+cmdline.args[0]+"'.");
+        return 1;
+      }
+
+      namespacet ns_new(context);
+      check_upgrade(ns_new,
+              // OLD!
+              goto_functions.function_map[ID_main].body, goto_functions,
+              // NEW!
+              goto_functions_new.function_map[ID_main].body, goto_functions_new,
+              options, !cmdline.isset("no-progress"));
+    }
+  } else {
+    // perform standalone check (all the functionality remains the same)
+    unsigned claim_nr=0;
+
+    get_claims(goto_functions, claim_map, claim_numbers);
+  
+    if(cmdline.isset("testclaim"))
+    {
+      claim_nr=find_marked_claim(goto_functions,
+                                 cmdline.getval("testclaim"),
+                                 claim_numbers);
+      if(claim_nr==(unsigned) -1)
+      {
+        claim_nr = atoi(cmdline.getval("testclaim"));
+        if (claim_nr == 0 || claim_nr > claim_numbers.size()) {
+          error("Testclaim not found.");
+          return 1;
+        }
+      }
+    }
+    else if(cmdline.isset("claim")) {
+      claim_nr=atoi(cmdline.getval("claim"));
       if (claim_nr == 0 || claim_nr > claim_numbers.size()) {
         error("Testclaim not found.");
         return 1;
       }
     }
-  }
-  else if(cmdline.isset("claim")) {
-    claim_nr=atoi(cmdline.getval("claim"));
-    if (claim_nr == 0 || claim_nr > claim_numbers.size()) {
-      error("Testclaim not found.");
-      return 1;
-    }
-  }
   
-  if(cmdline.isset("show-claims"))
-  {
-    show_claims(ns, claim_map, claim_numbers);
-    return true;
+    before=current_time();
+    claim_statst stats = check_claims(ns,
+                                      goto_functions.function_map[ID_main].body,
+                                      goto_functions,
+                                      stats_dir,
+                                      claim_map,
+                                      claim_numbers,
+                                      options,
+                                      claim_nr,
+                                      cmdline.isset("show-pass"),
+                                      !cmdline.isset("suppress-fail"),
+                                      !cmdline.isset("no-progress"),
+                                      cmdline.isset("save-claims"));
+    after=current_time();
   }
-
-  before=current_time();
-  claim_statst stats = check_claims(ns,
-                                    goto_functions.function_map[ID_main].body,
-                                    goto_functions,
-                                    stats_dir,
-                                    claim_map,
-                                    claim_numbers,
-                                    options,
-                                    claim_nr,
-                                    cmdline.isset("show-pass"),
-                                    !cmdline.isset("suppress-fail"),
-                                    !cmdline.isset("no-progress"),
-                                    cmdline.isset("save-claims"));
-  after=current_time();
-
-  //  bool init_upg_check = cmdline.isset("init-upgrade-check");
-  //  if (init_upg_check){
-  //    options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
-  //  }
-
-    bool upg_check = cmdline.isset("do-upgrade-check");// || init_upg_check;
-
-
-
-    if (upg_check) {
-      // Stage 10: Finally checking some claims.
-      status("#10: Checking claims in program... (upgrade mode)");
-
-      if(cmdline.isset("testclaim") || cmdline.isset("claim"))
-      {
-        error("Upgrade checking mode does not allow checking specific claims.");
-        return 1;
-      }
-
-  //    if (init_upg_check) {
-  //      check_initial(ns, goto_functions.function_map[ID_main].body,
-  //              goto_functions, options, !cmdline.isset("no-progress"));
-  //    } else {
-  //      options.set_option("do-upgrade-check", cmdline.getval("do-upgrade-check"));
-
-        goto_functionst goto_functions_new;
-        stream_message_handlert mh(std::cout);
-        contextt context;
-
-        // TODO: the same analysis of new goto_functions, as for old ones
-        if(read_goto_binary(cmdline.getval("do-upgrade-check"), context, goto_functions_new, mh))
-        {
-          error(std::string("Error reading file `")+cmdline.args[0]+"'.");
-          return 1;
-        }
-
-        namespacet ns_new(context);
-        check_upgrade(ns_new,
-                // OLD!
-                goto_functions.function_map[ID_main].body, goto_functions,
-                // NEW!
-                goto_functions_new.function_map[ID_main].body, goto_functions_new,
-                options, !cmdline.isset("no-progress"));
-  //    }
-
-      return 0;
-    }
   /*
   if(!cmdline.isset("no-progress")) std::cout << "\r";
   status(std::string("    PASS: ")+i2string(stats.claims_passed +

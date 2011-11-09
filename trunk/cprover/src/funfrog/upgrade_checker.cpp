@@ -59,7 +59,6 @@ bool check_initial(const namespacet &ns,
   }
 
   // Check all the assertions
-  std::cout<< "should I believe?\n";
   bool result = sum_checker.assertion_holds(assertion_infot());
   
   sum_checker.serialize();

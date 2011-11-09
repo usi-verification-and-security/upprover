@@ -147,25 +147,36 @@ void subst_scenariot::process_goto_locations()
 void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion){
   std::map<unsigned, bool> &vis = assertions_visited[assertion.get_location()];
   last_assertion_loc = 0;
-
-  if (!assertion.is_assert_grouping()){
-    for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
-        // if no-grouping, every time we search for single instance of
-        // the assertion, not visited before (with min location)
-        if (it-> second == false){
-
-          if (it->first < last_assertion_loc || last_assertion_loc == 0){
-            last_assertion_loc = it->first;
-            vis[last_assertion_loc] = true;
-          }
+  if (vis.size() == 0){
+    for (location_visitedt::iterator it = assertions_visited.begin(); it != assertions_visited.end(); ++it){
+      for (std::map<unsigned, bool>::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2){
+        if (last_assertion_loc < it2->first){
+          last_assertion_loc = it2->first;
         }
+      }
     }
+    std::cout << "Assertion not specified. Check whole program. " << std::endl;
   } else {
-    for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
-      // if grouping, we must include all instances of the assertion,
-      // so therefore we search for the max location
-      if (it->first > last_assertion_loc){
-        last_assertion_loc = it->first;
+    std::cout << vis.size() << " instances of the assertion found." << std::endl;
+    if (!assertion.is_assert_grouping()){
+      for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
+          // if no-grouping, every time we search for single instance of
+          // the assertion, not visited before (with min location)
+          if (it-> second == false){
+
+            if (it->first < last_assertion_loc || last_assertion_loc == 0){
+              last_assertion_loc = it->first;
+              vis[last_assertion_loc] = true;
+            }
+          }
+      }
+    } else {
+      for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
+        // if grouping, we must include all instances of the assertion,
+        // so therefore we search for the max location
+        if (it->first > last_assertion_loc){
+          last_assertion_loc = it->first;
+        }
       }
     }
   }
@@ -176,10 +187,10 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
       last_assertion_loc = r.second;
     }
   }
-  std::cout << vis.size() << " instances of the assertion found." << std::endl
-            << "Last assertion location: " << last_assertion_loc << std::endl;
+  std::cout << "Last assertion location: " << last_assertion_loc << std::endl;
 
-  single_assertion_check = vis.size() == 1 || !assertion.is_assert_grouping();
+  single_assertion_check = vis.size() > 0 &&
+      (vis.size() == 1 || !assertion.is_assert_grouping());
 }
 
 void serialize_used_summaries(std::ofstream& out, 
