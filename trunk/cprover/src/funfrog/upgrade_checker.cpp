@@ -59,6 +59,7 @@ bool check_initial(const namespacet &ns,
   }
 
   // Check all the assertions
+  std::cout<< "should I believe?\n";
   bool result = sum_checker.assertion_holds(assertion_infot());
   
   sum_checker.serialize();
@@ -196,7 +197,7 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
         //       the new one may be either strengthening of the old one, or inconsistent
       } else {
         std::cout << "  summary is out-of-date. ";
-        if (summary_info.is_root()){
+        if (summary_info.get_parent().is_root()){
           std::cout << "and cannot be renewed. A real bug found. ";
         } else {
           std::cout << "check the parent.\n";
@@ -231,7 +232,7 @@ void upgrade_checkert::downward_traverse_call_tree(summary_infot& summary_info)
   for (call_sitest::iterator it = call_sites.begin();
           it != call_sites.end(); ++it)
   {
-    std::cout << "    -- the function call of " << (it->second).get_function_id();
+    std::cout << "\n    -- the function call of " << (it->second).get_function_id();
 
     if (it->second.is_preserved_edge()){
       std::cout << " is preserved;";
@@ -328,25 +329,26 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
         double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
         extract_interpolants(equation, red_timeout);
         //omega.serialize("__omega_" + i2string(omega.get_assertion_location(assertion.get_location())));
+        out << "Old summary is still valid";
         if (summaries_count == 0)
         {
-          out << "ASSERTION(S) HOLD(S) AFTER INLINING." << std::endl;
+          out << " (after inlining)." << std::endl;
         } else {
-          out << "FUNCTION SUMMARIES (for " << summaries_count <<
-                  " calls) WERE SUBSTITUTED SUCCESSFULLY." << std::endl;
+          out << " (after " << summaries_count <<
+                  " successful sub-summaries substitutions)." << std::endl;
         }
       } else {
         if (summaries_count != 0 || init == ALL_HAVOCING) {
-          if (init == ALL_HAVOCING){
-            out << "NONDETERMINISTIC ASSIGNMENTS FOR ALL FUNCTION CALLS ";
-          } else {
-            out << "FUNCTION SUMMARIES (for " << summaries_count << " calls) ";
-          }
-          out << "AREN'T SUITABLE FOR CHECKING ASSERTION." << std::endl;
+//          if (init == ALL_HAVOCING){
+//            out << "NONDETERMINISTIC ASSIGNMENTS FOR ALL FUNCTION CALLS ";
+//          } else {
+            out << "Function summaries (for " << summaries_count << " calls) ";
+//        }
+          out << "are not suitable for re-verification the summary." << std::endl;
           refiner.refine(*decider);
 
           if (refiner.get_refined_functions().size() == 0){
-            out << "A real bug found." << std::endl;
+            out << "Old summary is no more valid." << std::endl;
             break;
           } else {
             out << "Counterexample is spurious."  << std::endl <<
@@ -358,8 +360,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
           refiner.refine(*decider);
           out << "Got to next iteration." << std::endl;
         } else {
-          out << "ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING."  << std::endl <<
-                 "A real bug found." << std::endl;
+          out << "Old summary is no more valid."  << std::endl;
           break;
         }
       }
