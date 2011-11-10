@@ -41,6 +41,9 @@ public:
   unsigned get_summaries_count() { return get_precision_count(SUMMARY); }
   unsigned get_nondets_count() { return get_precision_count(HAVOC); }
 
+  unsigned get_summaries_count(summary_infot& summary) { return get_precision_count(summary, SUMMARY); }
+  unsigned get_nondets_count(summary_infot& summary) { return get_precision_count(summary, HAVOC); }
+
   void initialize_summary_info
       (summary_infot& summary_info, const goto_programt& code);
 
@@ -83,6 +86,7 @@ private:
 
   void setup_last_assertion_loc(const assertion_infot& assertion);
   unsigned get_precision_count(summary_precisiont precision);
+  unsigned get_precision_count(summary_infot& summary, summary_precisiont precision);
 };
 
 #endif

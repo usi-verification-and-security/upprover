@@ -138,11 +138,11 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
   summary_info.set_inline();
   defer_function(deferred_functiont(summary_info, partition_iface));
   equation.select_partition(partition_iface.partition_id);
-  
+
   // Make all the interface symbols shared between 
   // the inverted summary and the function.
   prepare_fresh_arg_symbols(state, partition_iface);
-  
+
   // Prepare a partition for the inverted SUMMARY
   fill_inverted_summary(summary_info, state, partition_iface);
 
@@ -1103,14 +1103,14 @@ void symex_assertion_sumt::fill_inverted_summary(
   // We should use an already computed summary as an abstraction
   // of the function body
   const irep_idt& function_id = summary_info.get_function_id();
-  
+
   out << "*** INVERTED SUMMARY used for function: " <<
           function_id << std::endl;
   
   partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION);
   
   partition_iface.share_symbols(inlined_iface);
-      
+
   partition_idt partition_id = equation.reserve_partition(partition_iface);
 
   out << "Substituting interpolant (part:" << partition_id << ")" << std::endl;
@@ -1121,7 +1121,7 @@ void symex_assertion_sumt::fill_inverted_summary(
 # endif
 
   equation.fill_inverted_summary_partition(partition_id,
-          &summarization_context.get_summaries(function_id), 
+          &summarization_context.get_summaries(function_id),
           summary_info.get_used_summaries());
 }
 

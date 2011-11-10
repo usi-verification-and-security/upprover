@@ -96,6 +96,22 @@ unsigned subst_scenariot::get_precision_count(summary_precisiont precision)
   return count;
 }
 
+unsigned subst_scenariot::get_precision_count(summary_infot& summary, summary_precisiont precision)
+{
+  unsigned res = 0;
+  if (!summary.is_root()){
+    for (call_sitest::iterator it = summary.get_call_sites().begin();
+            it != summary.get_call_sites().end(); ++it)
+    {
+      if ((it->second).get_precision() == precision){
+        res++;
+      }
+      res += get_precision_count(it->second, precision);
+    }
+  }
+  return res;
+}
+
 void subst_scenariot::process_goto_locations()
 {
   const unsigned goto_sz = goto_ranges.size();

@@ -1,5 +1,14 @@
+/*******************************************************************
+
+ Module: Diff utility for 2 goto-binaries
+
+ Author: Grigory Fedyukovich
+
+\*******************************************************************/
+
 #include "diff.h"
 
+#define DEBUG_DIFF
 
 std::string form(const exprt &expr)
 {
@@ -62,6 +71,7 @@ std::string cmd_str (goto_programt::const_targett &it)
         unsigned tgt_location = (*it2)->location_number;
 
           res = "if (" + form(it->guard) + ") goto " + integer2string(tgt_location);
+          // FIXME: change the absolute target location to relative one
         } break;
       case ASSUME:   { res = "assume (" + form(it->guard) + ")"; } break;
       case ASSERT:  { res = "assert (" + form(it->guard) + ")"; }  break;
@@ -225,16 +235,10 @@ bool compare_str_vecs(std::vector<std::pair<std::string, unsigned> > &goto_unrol
   return res;
 }
 
-void do_proper_diff(std::vector<std::pair<std::string, unsigned> > &goto_unrolled_1,
+void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &goto_unrolled_1,
              std::vector<std::pair<std::string, unsigned> > &goto_unrolled_2,
-             std::vector<std::pair<std::string, unsigned> > &goto_common,
-             std::vector<std::string > &summs)
+             std::vector<std::pair<std::string, unsigned> > &goto_common)
 {
-  bool do_write = true;
-  if (summs.size() == 0){
-    do_write = false;
-  }
-
   // sizes
   unsigned size_1 = goto_unrolled_1.size();
   unsigned size_2 = goto_unrolled_2.size();
@@ -244,25 +248,33 @@ void do_proper_diff(std::vector<std::pair<std::string, unsigned> > &goto_unrolle
   unsigned i_1 = 0;
   unsigned i_2 = 0;
   unsigned i_c = size_c;
-  while (i_1 < size_2){
-    while(i_c > 0 && goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){
-      std::cout << "    [-] " << goto_unrolled_2[i_2].first << "\n";
+
+  while (i_2 < size_2){
+    while(i_c >= 0 && goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){
+#     ifdef DEBUG_DIFF
+      std::cout << "    [+] " << goto_unrolled_2[i_2].first << "\n";
+#     endif
       i_2++;
+
     }
-    while(i_1 < size_1 && i_c > 0 && goto_unrolled_1[i_1].first != goto_common[i_c - 1].first){
-      std::cout << "    [+] " << goto_unrolled_1[i_1].first << "\n";
+    while(i_1 < size_1 && i_c >= 0 && goto_unrolled_1[i_1].first != goto_common[i_c - 1].first){
+#     ifdef DEBUG_DIFF
+      std::cout << "    [-] " << goto_unrolled_1[i_1].first << "\n";
+#     endif
       i_1++;
     }
+#   ifdef DEBUG_DIFF
     std::cout << "    [v] " << goto_unrolled_1[i_1].first << "\n";
+#   endif
 
     if (do_write && goto_unrolled_1[i_1].second > 0){
       summs[goto_unrolled_1[i_1].second * 7 + 4] = "1";
     }
 
-    if (i_2 < size_1){
-      i_2++;
+    if (i_1 < size_1){
+      i_1++;
     }
-    i_1++;
+    i_2++;
     if (i_c > 0){
       i_c--;
     }
@@ -279,20 +291,20 @@ void do_proper_diff(std::vector<std::pair<std::string, unsigned> > &goto_unrolle
 //}
 
 
-bool difft :: do_diff(goto_functionst &goto_functions_1, goto_functionst &goto_functions_2, const char* file3){
-
-  std::vector<std::string> summs;
-
-  // Load substituting scenario
-  std::ifstream in;
-  in.open(file3);
-  while (!in.eof()){
-    std::string str;
-    in >> str;
-    summs.push_back(str);
+bool difft :: do_diff()
+{
+  if (do_write){
+    // Load substituting scenario
+    std::ifstream in;
+    in.open(output);
+    while (!in.eof()){
+      std::string str;
+      in >> str;
+      summs.push_back(str);
+    }
+    in.close();
   }
-  in.close();
-  
+
   collect_functions(goto_functions_1, goto_functions_1.function_map["main"].body, functions);
 
   std::vector<std::pair<std::string, unsigned> > goto_unrolled_1;
@@ -316,10 +328,9 @@ bool difft :: do_diff(goto_functionst &goto_functions_1, goto_functionst &goto_f
 
     if (pre_res_3 == false){
       functions[i].second = false;
-      do_proper_diff(goto_unrolled_1, goto_unrolled_2, goto_common, summs);
+      do_proper_diff(goto_unrolled_1, goto_unrolled_2, goto_common);
     } else if (summs.size() > i*7+3) {
       summs[i*7+3] = "1";
-      //write_change((*functions[i].first), summs);
     }
 
     std::cout << " --- " << (functions[i].second ? "" : "UN") << "preserved.\n";
@@ -328,16 +339,18 @@ bool difft :: do_diff(goto_functionst &goto_functions_1, goto_functionst &goto_f
     goto_common.clear();
   }
 
+  if (do_write){
     std::ofstream out;
-    out.open(file3);
+    out.open(output);
     for (unsigned i = 0; i < summs.size(); i++){
       out << summs[i] << std::endl;
     }
     out.close();
+  }
 
-    bool res = true;
-    for (unsigned i = 1; i < functions.size(); i++){
-      res &= functions[i].second;
-    }
-    return res;
+  bool res = true;
+  for (unsigned i = 1; i < functions.size(); i++){
+    res &= functions[i].second;
+  }
+  return res;
 }

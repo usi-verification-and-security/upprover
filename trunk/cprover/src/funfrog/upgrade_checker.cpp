@@ -62,7 +62,12 @@ bool check_initial(const namespacet &ns,
   bool result = sum_checker.assertion_holds(assertion_infot());
   
   sum_checker.serialize();
-  
+
+  if (!result){
+    std::cout << "Upgrade checking is not possible." << std::endl
+        << "Try standalone verification." << std::endl;
+  }
+
   return result;
 }
 
@@ -88,7 +93,7 @@ bool check_upgrade(const namespacet &ns,
   // 1. Make diff
   // 2. Construct changed summary_info tree -> write back to "__omega"
 
-  bool res = difft().do_diff(goto_functions_old, goto_functions_new, "__omega");
+  bool res = difft(goto_functions_old, goto_functions_new, "__omega").do_diff();
 
   if (res){
     std::cout<< "The programs are trivially identical." << std::endl;
@@ -322,7 +327,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
     if (!end){
 
       end = prop.assertion_holds(assertion, ns, *decider, *interpolator);
-      unsigned summaries_count = omega.get_summaries_count();
+      unsigned summaries_count = omega.get_summaries_count(summary_info);
       if (end && interpolator->can_interpolate())
       {
         double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
@@ -368,6 +373,6 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   final = current_time();
 
   out << std::endl<< "Total number of steps: " << count << "." << std::endl <<
-        "TOTAL TIME FOR CHECKING THIS CLAIM: "<< time2string(final - initial) << std::endl;
+        "TOTAL TIME FOR CHECKING THIS SUMMARY: "<< time2string(final - initial) << std::endl;
   return end;
 }

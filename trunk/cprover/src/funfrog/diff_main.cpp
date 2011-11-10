@@ -1,3 +1,11 @@
+/*******************************************************************
+
+ Module: Diff utility for 2 goto-binaries. cmd wrapper
+
+ Author: Grigory Fedyukovich
+
+\*******************************************************************/
+
 #include "diff.h"
 
 void print_help() {
@@ -13,59 +21,50 @@ void print_help() {
     std::endl << std::endl;
 }
 
-void do_it(const char* file1, const char* file2, const char* file3) {
+void read(const char* file, goto_functionst& goto_functions) {
 
-  fine_timet before, after;
   stream_message_handlert mh(std::cout);
-
-  goto_functionst goto_functions_1;
-  goto_functionst goto_functions_2;
-
-  // Load file 1
-
-  contextt context_1;
-  std::cout << "#1: Loading " << file1 << " ...\n";
-  before=current_time();
-  if(read_goto_binary(file1, context_1, goto_functions_1, mh))
+  contextt context;
+  if(read_goto_binary(file, context, goto_functions, mh))
   {
-    std::cerr << "Error reading file " << file1 << ".\n";
+    std::cerr << "Error reading file " << file << ".\n";
     return;
   }
-  after=current_time();
-  std::cout << "    LOAD Time: " << time2string(after-before) << " sec.\n";
-
-  // Load file 2
-
-  contextt context_2;
-  std::cout << "#2: Loading " << file2 << "' ...\n";
-  before=current_time();
-  if(read_goto_binary(file2, context_2, goto_functions_2, mh))
-  {
-    std::cerr << "Error reading file " << file2 << ".\n";
-    return;
-  }
-  after=current_time();
-  std::cout << "    LOAD Time: " << time2string(after-before) << " sec.\n";
-
-  // Analyze both files
-
-  before=current_time();
-
-  difft().do_diff(goto_functions_1, goto_functions_2, file3);
-
-  after=current_time();
-  std::cout << "    PROCESSING Time: " << time2string(after-before) << " sec.\n";
 }
 
 int main(int argc, const char** argv) {
 
+  fine_timet before, after;
   if (argc < 3 || argc > 4){
     print_help();
     return 1;
-  } else if (argc == 4){
-    do_it(argv[1], argv[2], argv[3]);
-  } else {
-    do_it(argv[1], argv[2], "");
   }
+
+  goto_functionst goto_functions_1;
+  goto_functionst goto_functions_2;
+
+  before=current_time();
+
+  read(argv[1], goto_functions_1);
+  read(argv[2], goto_functions_2);
+
+  after=current_time();
+  std::cout << "    LOAD Binaries Time: " << time2string(after-before) << " sec.\n";
+
+  // Analyze both files
+
+  difft diff(goto_functions_1, goto_functions_2);
+
+  if (argc == 4){
+    diff.set_output(argv[4]);
+    std::cout<<"after";
+  }
+
+  before=current_time();
+
+  diff.do_diff();
+
+  after=current_time();
+  std::cout << "    PROCESSING Time: " << time2string(after-before) << " sec.\n";
 
 }

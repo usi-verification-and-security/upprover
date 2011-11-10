@@ -782,12 +782,13 @@ bool funfrog_parseoptionst::check_function_summarization(
       return 1;
     }
 
+    bool init_ready = true; // the checks of existence of __omega and upg. version will be later
     if (init_upg_check){
-      check_initial(ns, goto_functions.function_map[ID_main].body,
+      init_ready = check_initial(ns, goto_functions.function_map[ID_main].body,
               goto_functions, options, !cmdline.isset("no-progress"));
     }
 
-    if (upg_check){
+    if (upg_check && init_ready){
       goto_functionst goto_functions_new;
       stream_message_handlert mh(std::cout);
       contextt context;
