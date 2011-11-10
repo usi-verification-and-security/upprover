@@ -57,7 +57,6 @@ int main(int argc, const char** argv) {
 
   if (argc == 4){
     diff.set_output(argv[4]);
-    std::cout<<"after";
   }
 
   before=current_time();

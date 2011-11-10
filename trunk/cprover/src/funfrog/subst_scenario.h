@@ -72,6 +72,8 @@ public:
     return single_assertion_check;
   }
 
+  void setup_last_assertion_loc(const assertion_infot& assertion);
+
 private:
   const summarization_contextt &summarization_context;
   summary_infot functions_root;
@@ -84,7 +86,6 @@ private:
   unsigned last_assertion_loc;
   bool single_assertion_check;
 
-  void setup_last_assertion_loc(const assertion_infot& assertion);
   unsigned get_precision_count(summary_precisiont precision);
   unsigned get_precision_count(summary_infot& summary, summary_precisiont precision);
 };

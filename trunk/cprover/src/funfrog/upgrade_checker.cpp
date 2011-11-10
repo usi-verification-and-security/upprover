@@ -137,6 +137,8 @@ bool upgrade_checkert::check_upgrade()
   // Here we suppose that "__omega" already contains information about changes
   // TODO: Maybe omega should be passed internally, not as a file.
   omega.deserialize("__omega", goto_program);
+  omega.process_goto_locations();
+  omega.setup_last_assertion_loc(assertion_infot());
 
   // 3. Mark summaries as
   //     - valid: the function was not changed                  => summary_info.preserved_node == true

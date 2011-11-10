@@ -44,7 +44,7 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             " (loc: " << it->get_iface().summary_info.get_call_location() << ", " <<
-            ((it->is_summary) ? "SUM" : "INL") << ")" <<
+            ((it->is_summary) ? ((it->inverted_summary) ? "INV" : "SUM") : "INL") << ")" <<
             std::endl;
     convert_partition(prop_conv, interpolator, *it);
     unsigned vars_after = prop_conv.prop.no_variables();
