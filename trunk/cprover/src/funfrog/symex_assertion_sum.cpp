@@ -123,13 +123,6 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
 {
   current_assertion = &assertion;
 
-  // these are quick...
-  if(assertion.is_trivially_true())
-  {
-    out << std::endl << "ASSERTION IS TRUE" << std::endl;
-    return true;
-  }
-
   // Clear the state
   state = goto_symext::statet();
 
@@ -169,15 +162,6 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
 bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
           const std::list<summary_infot*> &refined_functions, bool force_check)
 {
-  current_assertion = &assertion;
-
-  // these are quick...
-  if(assertion.get_location()->guard.is_true())
-  {
-    out << std::endl << "ASSERTION IS TRUE" << std::endl;
-    return true;
-  }
-
   // Defer the functions
   for (std::list<summary_infot*>::const_iterator it = refined_functions.begin();
           it != refined_functions.end();
