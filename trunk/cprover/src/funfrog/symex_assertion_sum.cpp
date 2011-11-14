@@ -1439,3 +1439,33 @@ void symex_assertion_sumt::phi_function(
       symex_targett::HIDDEN);
   }
 }
+
+/*******************************************************************\
+
+Function: symex_assertion_sumt::claim
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void symex_assertion_sumt::claim(
+  const exprt &claim_expr,
+  const std::string &msg,
+  statet &state)
+{
+  total_claims++;
+
+  exprt expr=claim_expr;
+  state.rename(expr, ns);
+
+  if(expr.is_true()) return;
+
+  state.guard.guard_expr(expr);
+
+  remaining_claims++;
+  target.assertion(state.guard, expr, msg, state.source);
+}

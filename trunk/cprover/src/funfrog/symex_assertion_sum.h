@@ -319,5 +319,10 @@ protected:
   virtual void phi_function(
     const statet::goto_statet &goto_state,
     statet &state);
+
+  virtual void claim(
+    const exprt &claim_expr,
+    const std::string &msg,
+    statet &state);
 };
 #endif

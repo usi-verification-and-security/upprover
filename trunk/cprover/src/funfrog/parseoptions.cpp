@@ -765,6 +765,10 @@ bool funfrog_parseoptionst::check_function_summarization(
   // Stage 10: Finally checking some claims.
   status("#10: Checking claims in program...");
 
+  unsigned claim_nr=0;
+
+  get_claims(goto_functions, claim_map, claim_numbers);
+
   if(cmdline.isset("show-claims"))
   {
     show_claims(ns, claim_map, claim_numbers);
@@ -810,9 +814,6 @@ bool funfrog_parseoptionst::check_function_summarization(
     }
   } else {
     // perform standalone check (all the functionality remains the same)
-    unsigned claim_nr=0;
-
-    get_claims(goto_functions, claim_map, claim_numbers);
   
     if(cmdline.isset("testclaim"))
     {

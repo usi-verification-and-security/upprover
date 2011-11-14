@@ -188,9 +188,15 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
 {
   std::cout << "checking function: " << summary_info.get_function_id() << "\n";
   if (!summary_info.is_preserved_node() || !pre){
-    std::cout << "  -- the body is changed;";
+    if (!summary_info.is_preserved_node()){
+      std::cout << "  -- the body is changed;";
+    }
     if (summary_info.get_precision() == 1 || !pre){
-      std::cout << " and there was a summary. ";
+      if (summary_info.get_precision() == 1){
+        std::cout << " and there was a summary. ";
+      } else {
+        std::cout << "   [parent check] do inlining.\n";
+      }
       // prepare subst. scenario for reverification
       downward_traverse_call_tree (summary_info);
 
@@ -258,7 +264,7 @@ void upgrade_checkert::downward_traverse_call_tree(summary_infot& summary_info)
       }
 
     } else {
-      std::cout << " not preserved => its summary has to be already reverified";
+      std::cout << " not preserved => do inlining";
     }
     std::cout <<"\n";
   }
@@ -324,7 +330,8 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
     deciderp->unbounded_array = bv_pointerst::U_AUTO;
     decider.reset(deciderp);
 
-    end = (count == 1) ? symex.prepare_subtree_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
+    end = (count == 1) ? symex.prepare_subtree_SSA(assertion) :
+          symex.refine_SSA (assertion, refiner.get_refined_functions(), true);
 
     if (!end){
 

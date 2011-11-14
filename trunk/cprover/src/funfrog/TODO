@@ -34,23 +34,24 @@ BUGS
 
 BUGGY TEST CASES:
 ----------------
-12_upg_simple_ref/change5.c: while checking the summary for c::f1, the inlined formula is empty.
+13_upg_simple_holds/change11.c : trivial case, consists just only of 1 function main and assertions inside. the changes are minimal, and it's expected, that the summary will be valid... but:
 
-checking function: c::f1
-  -- the body is changed; and there was a summary. *** INVERTED SUMMARY used for function: c::f1
-Substituting interpolant (part:1)
-SYMEX TIME: 0
-All SSA steps: 2
-Ignored SSA steps after slice: 1
-SLICER TIME: 0
-XXX Partition: 1 (ass_in_subtree: 0) - c::f1 (loc: 20, INV)
-    vars: 528
-    clauses: 1387
-    vars in subtree: 528
-    clauses in subtree: 1387
-XXX Partition: 0 (ass_in_subtree: 0) - c::f1 (loc: 20, INL)
+XXX Partition: 1 (ass_in_subtree: 1) - c::main (loc: 8, INV)
+    vars: 3
+    clauses: 1
+    vars in subtree: 3
+    clauses in subtree: 1
+XXX Partition: 0 (ass_in_subtree: 1) - c::main (loc: 8, INL)
+warning: ignoring symbol
+  * type: empty
+      * #location: 
+        * file: tests/diff/change12.c
+        * line: 1
+  * identifier: funfrog::c::main::\retval_tmp#0
     vars: 0
     clauses: 0
     vars in subtree: 0
     clauses in subtree: 0
-CONVERSION TIME: 0.007
+CONVERSION TIME: 0
+
+... which leads to SAT again.
