@@ -59,7 +59,7 @@ bool check_initial(const namespacet &ns,
   }
 
   // Check all the assertions
-  bool result = sum_checker.assertion_holds(assertion_infot());
+  bool result = sum_checker.assertion_holds(assertion_infot(), true);
   
   sum_checker.serialize();
 
@@ -293,7 +293,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
 
-  partitioning_target_equationt equation(ns, summarization_context, true);
+  partitioning_target_equationt equation(ns, summarization_context, true, true);
 
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, context,

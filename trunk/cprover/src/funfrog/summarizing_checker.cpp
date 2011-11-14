@@ -43,7 +43,8 @@ void summarizing_checkert::initialize()
 
 \*******************************************************************/
 
-bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
+bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
+        bool store_summaries_with_assertion)
 {
   fine_timet initial, final;
   initial=current_time();
@@ -59,7 +60,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion)
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
 
-  partitioning_target_equationt equation(ns, summarization_context, false);
+  partitioning_target_equationt equation(ns, summarization_context, false, store_summaries_with_assertion);
 
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(

@@ -20,7 +20,7 @@ public:
   difft(
     goto_functionst &_goto_functions_1,
     goto_functionst &_goto_functions_2,
-    char* _output) :
+    const char* _output) :
       goto_functions_1(_goto_functions_1),
       goto_functions_2(_goto_functions_2),
       output(_output),

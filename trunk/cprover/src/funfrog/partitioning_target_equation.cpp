@@ -670,7 +670,7 @@ void partitioning_target_equationt::extract_interpolants(
     }
     
     if (partition.is_summary || partition.ignore || partition.invalid ||
-            partition.get_iface().assertion_in_subtree)
+            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion))
       continue;
     
     valid_tasks++;
@@ -686,8 +686,7 @@ void partitioning_target_equationt::extract_interpolants(
     partitiont& partition = partitions[pid];
     
     if (partition.is_summary || partition.ignore || partition.invalid ||
-            // FIXME: Drop this condition for UPGRADE checker
-            partition.get_iface().assertion_in_subtree)
+            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion))
       continue;
     
     fill_partition_ids(pid, itp_task[tid++]);
@@ -705,7 +704,7 @@ void partitioning_target_equationt::extract_interpolants(
     partitiont& partition = partitions[pid];
 
     if (partition.is_summary || partition.ignore || partition.invalid || 
-            partition.get_iface().assertion_in_subtree)
+            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion))
       continue;
     
     interpolantt& itp = itp_result[tid++];
@@ -757,7 +756,8 @@ void partitioning_target_equationt::fill_partition_ids(
 {
   partitiont& partition = partitions[partition_id];
   
-  assert(!partition.invalid && !partition.get_iface().assertion_in_subtree);
+  assert(!partition.invalid && 
+          (!partition.get_iface().assertion_in_subtree || store_summaries_with_assertion));
   
   if (partition.ignore) {
     assert(partition.child_ids.empty());

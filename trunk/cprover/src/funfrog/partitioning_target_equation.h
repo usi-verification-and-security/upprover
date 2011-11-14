@@ -22,11 +22,13 @@ class partitioning_target_equationt:public symex_target_equationt
 {
 public:
   partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
-          _summarization_context, bool _upgrade_checking) :
+          _summarization_context, bool _upgrade_checking, 
+          bool _store_summaries_with_assertion) :
           symex_target_equationt(_ns), 
           summarization_context(_summarization_context),
           current_partition_id(partitiont::NO_PARTITION),
-          upgrade_checking(_upgrade_checking) {
+          upgrade_checking(_upgrade_checking),
+          store_summaries_with_assertion(_store_summaries_with_assertion) {
   }
 
   // Convert all the SSA steps into the corresponding formulas in
@@ -242,6 +244,9 @@ private:
   
   // Mode of encoding. Are we doing upgrade check?
   bool upgrade_checking;
+  // Should we store summaries with assertion in subtree? 
+  // This is used in upgrade checking.
+  bool store_summaries_with_assertion;
   
   friend class partitioning_slicet;
 };
