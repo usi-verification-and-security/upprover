@@ -80,6 +80,13 @@ public:
     sum_partition.filled = true;
     sum_partition.is_summary = true;
     sum_partition.summaries = summaries;
+    
+    sum_partition.applicable_summaries.clear();
+    for (summary_idst::const_iterator it = summaries->begin();
+            it != summaries->end();
+            ++it) {
+      sum_partition.applicable_summaries.insert(*it);
+    }
   }
 
   // Fill the (reserved) partition with the given summaries.
