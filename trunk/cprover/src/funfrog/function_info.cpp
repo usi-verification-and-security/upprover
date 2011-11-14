@@ -401,6 +401,7 @@ void function_infot::add_objects_to_set(const namespacet& ns,
 #       ifdef DEBUG_GLOBALS
         throw "Unsupported indexing scheme.";
 #       endif
+        continue;
       }
       const symbolt& symbol = ns.lookup(id);
 
@@ -426,6 +427,7 @@ void function_infot::add_objects_to_set(const namespacet& ns,
 #       ifdef DEBUG_GLOBALS
         throw "Unsupported member scheme.";
 #       endif
+        continue;
       }
       const symbolt& symbol = ns.lookup(id);
 
