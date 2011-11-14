@@ -94,6 +94,7 @@ public:
     sum_partition.inverted_summary = true;
     sum_partition.summaries = summaries;
     sum_partition.used_summaries = used_summaries;
+    sum_partition.applicable_summaries = used_summaries;
     
     std::cerr << "  --- (" << partition_id << 
             ") sums: " << sum_partition.summaries->size() <<
