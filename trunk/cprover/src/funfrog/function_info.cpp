@@ -14,7 +14,7 @@
 #include "time_stopping.h"
 #include <fstream>
 
-//#define DEBUG_GLOBALS
+#define DEBUG_GLOBALS
 
 /*******************************************************************\
 
@@ -398,6 +398,28 @@ void function_infot::add_objects_to_set(const namespacet& ns,
                 to_index_expr(*ex).array()).struct_op()).get_identifier();
       } else {
         throw "Unsupported indexing scheme.";
+      }
+      const symbolt& symbol = ns.lookup(id);
+
+      if (symbol.static_lifetime && symbol.lvalue) {
+        set.insert(id);
+      }
+    } else if (ex->id() == ID_member) {
+      // FIXME: This catches only simple indexing, any more involved array 
+      // accesses will not be matched here.
+      irep_idt id;
+      if (to_member_expr(*ex).struct_op().id() == ID_symbol) 
+      {
+        id = to_symbol_expr(to_member_expr(*ex).struct_op()).get_identifier();
+      } 
+      else if (to_member_expr(*ex).struct_op().id() == ID_index &&
+              to_index_expr(to_member_expr(*ex).struct_op()).array().id() == ID_symbol) 
+      {
+        id = to_symbol_expr(to_index_expr(to_member_expr(*ex).struct_op()).array()).get_identifier();
+      } 
+      
+      else {
+        throw "Unsupported member scheme.";
       }
       const symbolt& symbol = ns.lookup(id);
 

@@ -373,8 +373,10 @@ void partitioning_slicet::prepare_partition(partitiont &partition)
   }
   // All call start symbols to dependencies (we need all their assumptions 
   // for constraint call symbols constraints propagation)
-  get_symbols(partition_iface.callstart_symbol, depends);
-  if (partition_iface.assertion_in_subtree) {
+  if (partition_iface.callstart_symbol.get_identifier() != ID_nil) {
+    get_symbols(partition_iface.callstart_symbol, depends);
+  }
+  if (partition_iface.error_symbol.get_identifier() != ID_nil) {
     get_symbols(partition_iface.error_symbol, depends);
   }
 }

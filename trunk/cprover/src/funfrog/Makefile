@@ -1,5 +1,4 @@
 include ../config.inc
-include ../common
 
 SHARED_SRC := \
       expr_pretty_print.cpp \
@@ -63,6 +62,10 @@ DIFF_OBJ := \
       ../pointer-analysis/pointer-analysis$(LIBEXT) \
       ../langapi/langapi$(LIBEXT) \
       ../ansi-c/ansi-c$(LIBEXT)
+
+SRC := ${FUNFROG_SRC} ${SUMO_SRC} ${DIFF_SRC}
+
+include ../common
 
 all: funfrog$(EXEEXT) sumo$(EXEEXT)
 

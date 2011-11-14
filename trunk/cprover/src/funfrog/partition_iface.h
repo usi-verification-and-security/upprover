@@ -25,9 +25,9 @@ public:
   partition_ifacet(summary_infot& _summary_info, partition_idt _parent_id) : 
           function_id(_summary_info.get_function_id()),
           summary_info(_summary_info),
-          callstart_symbol(typet(ID_bool)),
-          callend_symbol(typet(ID_bool)),
-          error_symbol(typet(ID_bool)),
+          callstart_symbol(ID_nil, typet(ID_bool)),
+          callend_symbol(ID_nil, typet(ID_bool)),
+          error_symbol(ID_nil, typet(ID_bool)),
           assertion_in_subtree(_summary_info.has_assertion_in_subtree()),
           returns_value(false),
           partition_id(partitiont::NO_PARTITION),
