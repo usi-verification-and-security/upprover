@@ -90,6 +90,15 @@ public:
     }
   }
 
+  bool is_all_assert() const
+  {
+    if (matching_type == ANY){
+      return true;
+    } else {
+      return false;
+    }
+  }
+
 private:
   typedef enum {ANY, ASSERT_GROUPING, NO_ASSERT_GROUPING} matching_typet;
   

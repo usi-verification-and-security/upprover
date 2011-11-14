@@ -161,18 +161,20 @@ void subst_scenariot::process_goto_locations()
 }
 
 void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion){
-  std::map<unsigned, bool> &vis = assertions_visited[assertion.get_location()];
   last_assertion_loc = 0;
-  if (vis.size() == 0){
+  int count = 0;
+  if (assertion.is_all_assert()){
     for (location_visitedt::iterator it = assertions_visited.begin(); it != assertions_visited.end(); ++it){
       for (std::map<unsigned, bool>::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2){
         if (last_assertion_loc < it2->first){
           last_assertion_loc = it2->first;
+          count++;
         }
       }
     }
     std::cout << "Assertion not specified. Check whole program. " << std::endl;
   } else {
+    std::map<unsigned, bool> &vis = assertions_visited[assertion.get_location()];
     std::cout << vis.size() << " instances of the assertion found." << std::endl;
     if (!assertion.is_assert_grouping()){
       for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
@@ -183,6 +185,7 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
             if (it->first < last_assertion_loc || last_assertion_loc == 0){
               last_assertion_loc = it->first;
               vis[last_assertion_loc] = true;
+              count = 1;
             }
           }
       }
@@ -192,6 +195,7 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
         // so therefore we search for the max location
         if (it->first > last_assertion_loc){
           last_assertion_loc = it->first;
+          count++;
         }
       }
     }
@@ -205,8 +209,7 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
   }
   std::cout << "Last assertion location: " << last_assertion_loc << std::endl;
 
-  single_assertion_check = vis.size() > 0 &&
-      (vis.size() == 1 || !assertion.is_assert_grouping());
+  single_assertion_check = count == 1;
 }
 
 void serialize_used_summaries(std::ofstream& out, 
