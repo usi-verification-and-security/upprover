@@ -74,7 +74,8 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 
     unsigned int nondet_counter=0;
     std::set<exprt> lhs_symbols;
-    find_symbols(assertion.get_location()->guard, lhs_symbols);
+    if (!assertion.is_all_assert())
+      find_symbols(assertion.get_location()->guard, lhs_symbols);
 
     if (lhs_symbols.size()>0)
     {
