@@ -14,7 +14,7 @@
 #include "time_stopping.h"
 #include <fstream>
 
-#define DEBUG_GLOBALS
+//#define DEBUG_GLOBALS
 
 /*******************************************************************\
 
@@ -397,7 +397,10 @@ void function_infot::add_objects_to_set(const namespacet& ns,
         id = to_symbol_expr(to_member_expr(
                 to_index_expr(*ex).array()).struct_op()).get_identifier();
       } else {
+        std::cerr << "WARNING: Unsupported indexing scheme - ignoring.";
+#       ifdef DEBUG_GLOBALS
         throw "Unsupported indexing scheme.";
+#       endif
       }
       const symbolt& symbol = ns.lookup(id);
 
@@ -419,7 +422,10 @@ void function_infot::add_objects_to_set(const namespacet& ns,
       } 
       
       else {
+        std::cerr << "WARNING: Unsupported member scheme - ignoring.";
+#       ifdef DEBUG_GLOBALS
         throw "Unsupported member scheme.";
+#       endif
       }
       const symbolt& symbol = ns.lookup(id);
 
