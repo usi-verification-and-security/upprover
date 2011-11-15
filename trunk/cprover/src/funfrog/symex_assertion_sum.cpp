@@ -130,7 +130,6 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
   partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION);
   summary_info.set_inline();
   defer_function(deferred_functiont(summary_info, partition_iface));
-  equation.select_partition(partition_iface.partition_id);
 
   // Make all the interface symbols shared between 
   // the inverted summary and the function.
@@ -142,6 +141,9 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
   // Old: ??? state.value_set = value_sets;
   state.source.pc = summarization_context.get_function(
           partition_iface.function_id).body.instructions.begin();
+  
+  // Plan the function for processing
+  dequeue_deferred_function(state);
   
   return process_planned(state, true);
 }
