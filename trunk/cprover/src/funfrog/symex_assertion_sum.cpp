@@ -586,7 +586,7 @@ void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
   // SSA_exec_order is correctly ordered.
   // NOTE: The exec_order is not used now.
   
-  if (goto_function.type.return_type().is_not_nil()) {
+  if (goto_function.type.return_type().id() != ID_empty) {
     // Add return value assignment from a temporary variable and
     // store the temporary return value symbol somewhere (so that we can
     // use it later, when processing the deferred function).
