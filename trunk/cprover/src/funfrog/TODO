@@ -5,7 +5,9 @@ TODO list for funfrog
 HIGH PRIORITY
 -------------
 
-- (sort of done) Refinement has several flaws - marked by FIXME in refiner_assertion_sum.cpp
+- Refinement: callstart symbols analysis for havoced partitions
+- Upgrade check: marking valid/non-valid summaries; contradiction check (?)
+- Conversion: phi-functions profiling
 
 LOW PRIORITY
 ------------
@@ -34,6 +36,4 @@ BUGS
 
 BUGGY TEST CASES:
 ----------------
-11_upg_simple_bug/change_not_valid_3.c: (simplified a lot) wrong result. modified program is erroneously considered safe (most likely, due to summaries  implication check)
 
-11_upg_simple_bug/change_not_valid_1.c: the same, but more complicated example

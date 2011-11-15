@@ -9,25 +9,25 @@ int getchar() {
 
 int a;
 int b;
+int c;
 
 void f1(){
-  a--;
+  a++;
+  b--;
 }
 
-void f2(){
-  f1();
-  //sa++;
-}
-
-void change(){
-  f2();
-}
-
-void main(void){
+void main1(void){
   a = getchar();
   b = a;
 
-  change();
-  assert(a == b);
+  f1();
+
+  c = b + 1;
+}
+
+void main(void){
+  main1();
+
+  assert(a == c + 1);
 }
 
