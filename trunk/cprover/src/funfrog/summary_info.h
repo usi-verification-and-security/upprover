@@ -56,6 +56,10 @@ public:
       const summarization_contextt& summarization_context,
       const assertion_infot& assertion);
 
+  bool mark_enabled_assertions(
+        const assertion_infot& assertion, unsigned depth,
+        bool parent_stack_matches, const unsigned last_assertion_loc);
+
   bool is_root() const { return parent == NULL; }
   bool has_assertion_in_subtree() const { return assertion_in_subtree; }
   bool is_assertion_enabled(const goto_programt::const_targett& assertion) const {
@@ -112,9 +116,5 @@ private:
         summary_precisiont default_precision,
         const summarization_contextt& summarization_context,
         const unsigned last_assertion_loc);
-  
-  bool mark_enabled_assertions(
-        const assertion_infot& assertion, unsigned depth, 
-        bool parent_stack_matches, const unsigned last_assertion_loc);
 };
 #endif

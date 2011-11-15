@@ -18,7 +18,6 @@ void summary_infot::set_initial_precision(
     const assertion_infot& assertion)
 {
   assert(is_root());
-  mark_enabled_assertions(assertion, 0, true, last_assertion_loc);
   set_initial_precision(default_precision,
       summarization_context, last_assertion_loc);
 }

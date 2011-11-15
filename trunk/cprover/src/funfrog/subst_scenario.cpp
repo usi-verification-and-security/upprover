@@ -210,6 +210,8 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
   std::cout << "Last assertion location: " << last_assertion_loc << std::endl;
 
   single_assertion_check = count == 1;
+
+  functions_root.mark_enabled_assertions(assertion, 0, true, last_assertion_loc);
 }
 
 void serialize_used_summaries(std::ofstream& out, 
