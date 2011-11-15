@@ -205,6 +205,7 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
       pre = check_summary(assertion_infot(), summary_info);
       if (pre){
         std::cout << "  summary was verified. go to the next check\n"; // here is the actual exit of the method
+        summary_info.set_summary();
         // TODO: renew summaries at the store:
         //       the new one may be either strengthening of the old one, or inconsistent
       } else {
@@ -213,6 +214,8 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
           std::cout << "and cannot be renewed. A real bug found. ";
         } else {
           std::cout << "check the parent.\n";
+          summary_info.set_inline();
+          // TODO: delete old summary (mark as invalid)
           upward_traverse_call_tree(summary_info.get_parent(), pre);  // pre == false currently
         }
       }
@@ -248,6 +251,7 @@ void upgrade_checkert::downward_traverse_call_tree(summary_infot& summary_info)
 
     if (it->second.is_preserved_edge()){
       std::cout << " is preserved;";
+      // FIXME: a summary that was being verified (both, valid or not) is INL now
       if ((it->second).get_precision() == 1){
         std::cout << " has summary => can be kept ";
       } else if ((it->second).get_precision() == 0){

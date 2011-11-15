@@ -34,24 +34,6 @@ BUGS
 
 BUGGY TEST CASES:
 ----------------
-13_upg_simple_holds/change11.c : trivial case, consists just only of 1 function main and assertions inside. the changes are minimal, and it's expected, that the summary will be valid... but:
+11_upg_simple_bug/change_not_valid_3.c: (simplified a lot) wrong result. modified program is erroneously considered safe (most likely, due to summaries  implication check)
 
-XXX Partition: 1 (ass_in_subtree: 1) - c::main (loc: 8, INV)
-    vars: 3
-    clauses: 1
-    vars in subtree: 3
-    clauses in subtree: 1
-XXX Partition: 0 (ass_in_subtree: 1) - c::main (loc: 8, INL)
-warning: ignoring symbol
-  * type: empty
-      * #location: 
-        * file: tests/diff/change12.c
-        * line: 1
-  * identifier: funfrog::c::main::\retval_tmp#0
-    vars: 0
-    clauses: 0
-    vars in subtree: 0
-    clauses in subtree: 0
-CONVERSION TIME: 0
-
-... which leads to SAT again.
+11_upg_simple_bug/change_not_valid_1.c: the same, but more complicated example
