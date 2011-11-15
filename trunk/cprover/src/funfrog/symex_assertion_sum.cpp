@@ -293,12 +293,7 @@ void symex_assertion_sumt::symex_step(
   case END_FUNCTION:
 
     store_return_value(state, get_current_deferred_function());
-    store_modified_globals(state, get_current_deferred_function());
-    clear_locals_versions(state);
-    // Dequeue the current deferred function
-    deferred_functions.pop();
-
-    dequeue_deferred_function(state);
+    end_symex(state);
     break;
   
   case LOCATION:
@@ -349,8 +344,7 @@ void symex_assertion_sumt::symex_step(
           claim(tmp, msg, state);
           if ((single_assertion_check) ||
               (loc >= last_assertion_loc && max_unwind <= 1)){
-            deferred_functions.pop();
-            dequeue_deferred_function(state);
+            end_symex(state);
             return;
           }
         }
@@ -1470,4 +1464,14 @@ void symex_assertion_sumt::claim(
 
   remaining_claims++;
   target.assertion(state.guard, expr, msg, state.source);
+}
+
+void symex_assertion_sumt::end_symex(statet &state)
+{
+  store_modified_globals(state, get_current_deferred_function());
+  clear_locals_versions(state);
+  // Dequeue the current deferred function
+  deferred_functions.pop();
+
+  dequeue_deferred_function(state);
 }

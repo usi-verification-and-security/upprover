@@ -93,6 +93,8 @@ private:
   // Allocated partition interfaces
   partition_iface_ptrst partition_ifaces;
 
+  void end_symex(statet &state);
+
   // Mapping from summary_info to the corresponding partition_iface
   typedef hash_map_cont<const summary_infot*,partition_iface_ptrst> partition_iface_mapt;
   partition_iface_mapt partition_iface_map;
