@@ -209,14 +209,13 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
         // TODO: renew summaries at the store:
         //       the new one may be either strengthening of the old one, or inconsistent
       } else {
-        std::cout << "  summary is out-of-date. ";
         if (summary_info.get_parent().is_root()){
-          std::cout << "and cannot be renewed. A real bug found. ";
+          std::cout << "summary cannot be renewed. A real bug found. ";
         } else {
           std::cout << "check the parent.\n";
           summary_info.set_inline();
-          // TODO: delete old summary (mark as invalid)
-          upward_traverse_call_tree(summary_info.get_parent(), pre);  // pre == false currently
+          summarization_context.set_valid_summaries(summary_info.get_function_id(), false);
+          upward_traverse_call_tree(summary_info.get_parent(), pre);
         }
       }
 
@@ -316,7 +315,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   refiner_assertion_sumt refiner = refiner_assertion_sumt(
               summarization_context, omega, equation,
               get_refine_mode(options.get_option("refine-mode")),
-              out, last_assertion_loc);
+              out, last_assertion_loc, false);
 
   prop_assertion_sumt prop = prop_assertion_sumt(summarization_context,
           equation, out, max_memory_used);

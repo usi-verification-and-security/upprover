@@ -170,8 +170,9 @@ void partitioning_target_equationt::convert_partition_summary(
     std::cout << "Substituting summary #" << *it << std::endl;
 #   endif
     summaryt& summary = summary_store.find_summary(*it);
-    
-    summary.substitute(prop_conv, common_symbs, partition.inverted_summary);
+    if (summary.is_valid()){
+      summary.substitute(prop_conv, common_symbs, partition.inverted_summary);
+    }
   }
 }
 

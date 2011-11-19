@@ -124,6 +124,16 @@ public:
     out.close();
   }
 
+  void set_valid_summaries(const irep_idt& function_id, bool value){
+    const function_infot& fun_info = get_function_info(function_id);
+    const summary_idst& itps = fun_info.get_summaries();
+    for (summary_idst::const_iterator it2 = itps.begin();
+            it2 != itps.end(); ++it2) {
+      summaryt& sum = summary_store.find_summary(*it2);
+      sum.set_valid(value);
+    }
+  }
+
 private:
   const goto_functionst &functions;
   const value_setst &value_sets;

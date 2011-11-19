@@ -27,8 +27,9 @@ void list_summaries(summary_storet& summary_store,
     for (summary_idst::const_iterator it2 = itps.begin();
             it2 != itps.end();
             ++it2) {
-      std::cout << "    summary #" << n++ << ":" << std::endl;
-      summary_store.find_summary(*it2).print(std::cout);
+      summaryt& sum = summary_store.find_summary(*it2);
+      std::cout << "    summary #" << n++ << " (" << (sum.is_valid() ? "" : "IN") << "valid):" << std::endl;
+      sum.print(std::cout);
     }
     std::cout << std::endl;
   }

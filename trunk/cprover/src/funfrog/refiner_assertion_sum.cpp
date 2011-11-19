@@ -52,6 +52,7 @@ void refiner_assertion_sumt::set_inline_sum(int i)
     (*summs[i]).set_inline();
     refined_functions.push_back(&(*summs[i]));
   }
+  summarization_context.set_valid_summaries((*summs[i]).get_function_id(), valid);
 }
 
 void refiner_assertion_sumt::reset_inline()

@@ -74,7 +74,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   refiner_assertion_sumt refiner = refiner_assertion_sumt(
               summarization_context, omega, equation,
               get_refine_mode(options.get_option("refine-mode")),
-              out, last_assertion_loc);
+              out, last_assertion_loc, true);
 
   prop_assertion_sumt prop = prop_assertion_sumt(summarization_context,
           equation, out, max_memory_used);

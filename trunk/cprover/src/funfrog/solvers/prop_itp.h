@@ -37,6 +37,7 @@ public:
     std::swap(_no_orig_variables, other._no_orig_variables);
     std::swap(root_literal, other.root_literal);
     std::swap(symbol_mask, other.symbol_mask);
+    std::swap(valid, other.valid);
   }
 
   literalt new_variable() {
@@ -63,7 +64,14 @@ public:
 
   // Literal equivalent to the interpolant root
   literalt root_literal;
+
+  bool is_valid(){ return valid; };
+
+  void set_valid(bool _valid){ valid = _valid; };
+
 protected:
+  bool valid;
+
   typedef std::vector<bvt> clausest;
 
   // Number of all used variables

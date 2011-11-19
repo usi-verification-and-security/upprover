@@ -24,7 +24,8 @@ public:
           partitioning_target_equationt &_target,
           refinement_modet _mode,
           std::ostream &_out,
-          const unsigned _last_assertion_loc
+          const unsigned _last_assertion_loc,
+          bool _valid
           ) :
           summarization_context(_summarization_context),
           omega(_omega),
@@ -32,7 +33,8 @@ public:
           equation(_target),
           mode(_mode),
           out(_out),
-          last_assertion_loc(_last_assertion_loc)
+          last_assertion_loc(_last_assertion_loc),
+          valid (_valid)
           {};
 
   void refine(prop_convt& decider);
@@ -56,9 +58,14 @@ protected:
   // Mode of refinement
   refinement_modet mode;
 
+  // Default output
   std::ostream &out;
 
+  // Location of the last assertion to be checked
   const unsigned last_assertion_loc;
+
+  // Mode of changing the summaries validity
+  bool valid;
 
   std::list<summary_infot*> refined_functions;
 
