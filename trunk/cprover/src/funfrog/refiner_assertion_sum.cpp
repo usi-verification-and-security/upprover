@@ -26,18 +26,18 @@
 
 \*******************************************************************/
 
-void refiner_assertion_sumt::refine(prop_convt& decider)
+void refiner_assertion_sumt::refine(prop_convt& decider, summary_infot& summary)
 {
   refined_functions.clear();
   switch (mode){
     case FORCE_INLINING:
-      reset_inline();
+      reset_inline(summary);
       break;
     case RANDOM_SUBSTITUTION:
-      reset_random();
+      reset_random(summary);
       break;
     case SLICING_RESULT:
-      reset_depend(decider);
+      reset_depend(decider, summary);
       break;
     default:
       assert(false);
@@ -45,48 +45,50 @@ void refiner_assertion_sumt::refine(prop_convt& decider)
   }
 }
 
-void refiner_assertion_sumt::set_inline_sum(int i)
+void refiner_assertion_sumt::set_inline_sum(summary_infot& summary)
 {
-  if ((*summs[i]).get_call_location() <= last_assertion_loc){
-    out << "*** REFINING function: " << (*summs[i]).get_function_id() << std::endl;
-    (*summs[i]).set_inline();
-    refined_functions.push_back(&(*summs[i]));
+  if (summary.get_call_location() <= last_assertion_loc){
+    out << "*** REFINING function: " << summary.get_function_id() << std::endl;
+    summary.set_inline();
+    refined_functions.push_back(&summary);
   }
-  summarization_context.set_valid_summaries((*summs[i]).get_function_id(), valid);
+  summarization_context.set_valid_summaries(summary.get_function_id(), valid);
 }
 
-void refiner_assertion_sumt::reset_inline()
+void refiner_assertion_sumt::reset_inline(summary_infot& summary)
 {
-  for (unsigned i = 0; i < summs.size(); i++){
-    if ((*summs[i]).get_precision() != INLINE){
-      set_inline_sum(i);
+  for (call_sitest::iterator it = summary.get_call_sites().begin();
+          it != summary.get_call_sites().end(); ++it)
+  {
+    if ((it->second).get_precision() != INLINE){
+      set_inline_sum(it->second);
+      reset_inline(it->second);
     }
   }
 }
 
-void refiner_assertion_sumt::reset_random()
+void refiner_assertion_sumt::reset_random(summary_infot& summary)
 {
   unsigned summs_size = omega.get_summaries_count();
-  unsigned reset_size = 0;
-
-  while (reset_size == 0){
-    // just in case if random function returns false for every function call
-    for (unsigned i = 0; i < summs.size(); i++){
-      summary_precisiont precision = (*summs[i]).get_precision();
+    for (call_sitest::iterator it = summary.get_call_sites().begin();
+            it != summary.get_call_sites().end(); ++it)
+    {
+      summary_precisiont precision = (it->second).get_precision();
       if ((precision == SUMMARY) ||    // if there were some summaries,
                                        // try to inline them first
-          (precision == HAVOC && summs_size == 0)){ // and if there were not
+          (precision == HAVOC && summs_size == 0)){  // and if there were not
                                                      // then refine havoced calls
         if (rand() % 1000 < 300 || rand() % 1000 > 800){
-          set_inline_sum(i);
-          reset_size++;
+          set_inline_sum(it->second);
         }
-      }                                // TODO: we can actually try do it vice-versa
+      }
+      reset_random(it->second);
+                                       // TODO: we can actually try do it vice-versa
     }                                  // but due to more sophisticated choice of nondets in s_info init
-  }                                    // there are more chances that the reason of SAT was in 2weak summaries
+                                       // there are more chances that the reason of SAT was in 2weak summaries
 }
 
-void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart)
+void refiner_assertion_sumt::reset_depend(prop_convt& decider, summary_infot& summary, bool do_callstart)
 {
   std::vector<summary_infot*> tmp;
 
@@ -116,25 +118,29 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, bool do_callstart
   }
 
   if (tmp.size() > 0) {
-    for (unsigned i = 0; i < summs.size(); i++){
-      if ((*summs[i]).get_precision() != INLINE){
-        for (unsigned j = 0; j < tmp.size(); j++){
-          if (tmp[j] == summs[i]){
-            set_inline_sum(i);
-            break;
-          }
-        }
-      }
-    }
+    reset_depend_rec(tmp, summary);
     tmp.clear();
   } else if (omega.get_nondets_count() != 0){
     // FIXME: This should work the same as with the summaries, i.e., the call
     // start symbols should be remembered and used above. 
     // Unfortunately, we don't have the corresponding partitions now (OS)
-    for (unsigned i = 0; i < summs.size(); i++){
-      if ((*summs[i]).get_precision() == HAVOC){
-        set_inline_sum(i);
+    reset_inline(summary);
+  } // else the assertion violation is real
+}
+
+void refiner_assertion_sumt::reset_depend_rec(std::vector<summary_infot*>& dep, summary_infot& summary)
+{
+  for (call_sitest::iterator it = summary.get_call_sites().begin();
+          it != summary.get_call_sites().end(); ++it)
+  {
+    if ((it->second).get_precision() != INLINE){
+      for (unsigned j = 0; j < dep.size(); j++){
+        if (dep[j] == &(it->second)){
+          set_inline_sum(it->second);
+          break;
+        }
       }
     }
-  } // else the assertion violation is real
+    reset_depend_rec(dep, it->second);
+  }
 }

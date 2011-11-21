@@ -29,7 +29,6 @@ public:
           ) :
           summarization_context(_summarization_context),
           omega(_omega),
-          summs(omega.get_call_summaries()),
           equation(_target),
           mode(_mode),
           out(_out),
@@ -37,7 +36,7 @@ public:
           valid (_valid)
           {};
 
-  void refine(prop_convt& decider);
+  void refine(prop_convt& decider, summary_infot& summary);
   std::list<summary_infot*>& get_refined_functions(){ return refined_functions; }
   void set_refine_mode(refinement_modet _mode){ mode = _mode; }
 
@@ -48,9 +47,6 @@ protected:
 
   // substituting scenario
   subst_scenariot &omega;
-
-  // Which functions should be summarized, abstracted from, and which inlined
-  std::vector<summary_infot*>& summs;
 
   // Store for the symex result
   partitioning_target_equationt &equation;
@@ -69,11 +65,12 @@ protected:
 
   std::list<summary_infot*> refined_functions;
 
-  void reset_inline();
-  void reset_random();
-  void reset_depend(prop_convt& decider, bool do_callstart = true);
+  void reset_inline(summary_infot& summary);
+  void reset_random(summary_infot& summary);
+  void reset_depend(prop_convt& decider, summary_infot& summary, bool do_callstart = true);
+  void reset_depend_rec(std::vector<summary_infot*>& dep, summary_infot& summary);
 
-  void set_inline_sum(int i);
+  void set_inline_sum(summary_infot& summary);
 };
 
 #endif

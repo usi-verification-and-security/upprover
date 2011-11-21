@@ -361,7 +361,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
             out << "Function summaries (for " << summaries_count << " calls) ";
 //        }
           out << "are not suitable for re-verification the summary." << std::endl;
-          refiner.refine(*decider);
+          refiner.refine(*decider, summary_info);
 
           if (refiner.get_refined_functions().size() == 0){
             out << "Old summary is no more valid." << std::endl;
@@ -373,7 +373,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
         } else if (omega.get_nondets_count() != 0) {
               // if there are still some havoced function calls, do force inlining for them
           refiner.set_refine_mode(FORCE_INLINING);
-          refiner.refine(*decider);
+          refiner.refine(*decider, summary_info);
           out << "Got to next iteration." << std::endl;
         } else {
           out << "Old summary is no more valid."  << std::endl;

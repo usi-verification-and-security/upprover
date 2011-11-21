@@ -117,7 +117,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
             out << "FUNCTION SUMMARIES (for " << summaries_count << " calls) ";
           }
           out << "AREN'T SUITABLE FOR CHECKING ASSERTION." << std::endl;
-          refiner.refine(*decider);
+          refiner.refine(*decider, omega.get_summary_info());
 
           if (refiner.get_refined_functions().size() == 0){
             out << "A real bug found." << std::endl;
@@ -129,7 +129,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
         } else if (omega.get_nondets_count() != 0) {
               // if there are still some havoced function calls, do force inlining for them
           refiner.set_refine_mode(FORCE_INLINING);
-          refiner.refine(*decider);
+          refiner.refine(*decider, omega.get_summary_info());
           out << "Got to next iteration." << std::endl;
         } else {
           out << "ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING."  << std::endl <<
