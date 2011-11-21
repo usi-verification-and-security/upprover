@@ -517,23 +517,26 @@ bool function_infot::optimize_summaries(summary_storet& summary_store,
 
   // Remove summaries which are implied by other ones
   for (unsigned i = 0; i < n; ++i) {
-    // Skip already removed ones
-    if (!itps_map[i])
+
+    summaryt s1 = summary_store.find_summary(itps_in[i]);
+    // Skip already removed and invalid ones
+    if (!itps_map[i])// || !s1.is_valid())
       continue;
-    
+
     for (unsigned j = 0; j < n; ++j) {
-      if (i == j || !itps_map[j])
+      summaryt s2 = summary_store.find_summary(itps_in[j]);
+      if (i == j || !itps_map[j])// || !s2.is_valid())
         continue;
       
       // Do the check
-      if (check_implies(
-              summary_store.find_summary(itps_in[i]), 
-              summary_store.find_summary(itps_in[j]))) {
-        std::cerr << "Removing summary #" << j << 
-                " (implied by summary #" << i << ")" << std::endl;
-        summary_store.replace_summary(itps_in[j], itps_in[i]);
-        itps_map[j] = false;
-        changed = true;
+      if (s1.is_valid() == s2.is_valid()) {
+        if (check_implies(s1, s2)) {
+          std::cerr << "Removing summary #" << j <<
+                  " (implied by summary #" << i << ")" << std::endl;
+          summary_store.replace_summary(itps_in[j], itps_in[i]);
+          itps_map[j] = false;
+          changed = true;
+        }
       }
     }
   }
