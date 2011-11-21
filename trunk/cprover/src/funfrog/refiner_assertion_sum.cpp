@@ -62,8 +62,8 @@ void refiner_assertion_sumt::reset_inline(summary_infot& summary)
   {
     if ((it->second).get_precision() != INLINE){
       set_inline_sum(it->second);
-      reset_inline(it->second);
     }
+    reset_inline(it->second);
   }
 }
 
