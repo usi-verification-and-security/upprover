@@ -36,4 +36,6 @@ BUGS
 
 BUGGY TEST CASES:
 ----------------
-
+05_McMillan/kbfiltr.cil_loopfree.c, run with the flags "funfrog --init-upgrade-check --no-slicing a.out":
+funfrog: solvers/prop_itp.cpp:340: void prop_itpt::generalize(const prop_convt&, const std::vector<symbol_exprt, std::allocator<symbol_exprt> >&): Assertion `renaming[idx] != (2147483647 * 2U + 1U)' failed.
+with slicing, it works.

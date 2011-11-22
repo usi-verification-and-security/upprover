@@ -249,15 +249,15 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
   unsigned i_2 = 0;
   unsigned i_c = size_c;
 
-  while (i_2 < size_2){
-    while(i_c >= 0 && goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){
+  while (i_c > 0){
+    std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
+    while(goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){
 #     ifdef DEBUG_DIFF
       std::cout << "    [+] " << goto_unrolled_2[i_2].first << "\n";
 #     endif
       i_2++;
-
     }
-    while(i_1 < size_1 && i_c >= 0 && goto_unrolled_1[i_1].first != goto_common[i_c - 1].first){
+    while(goto_unrolled_1[i_1].first != goto_common[i_c - 1].first){
 #     ifdef DEBUG_DIFF
       std::cout << "    [-] " << goto_unrolled_1[i_1].first << "\n";
 #     endif
@@ -274,11 +274,28 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
     if (i_1 < size_1){
       i_1++;
     }
-    i_2++;
-    if (i_c > 0){
-      i_c--;
+    if (i_2 < size_2){
+      i_2++;
     }
+    i_c--;
   }
+
+  while (i_2 < size_2){
+    std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
+#   ifdef DEBUG_DIFF
+    std::cout << "    [+] " << goto_unrolled_2[i_2].first << "\n";
+#   endif
+    i_2++;
+  }
+
+  while (i_1 < size_1){
+    std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
+#   ifdef DEBUG_DIFF
+    std::cout << "    [+] " << goto_unrolled_1[i_1].first << "\n";
+#   endif
+    i_1++;
+  }
+
 }
 
 //void write_change(const irep_idt &name, std::vector<std::string > &summs)
