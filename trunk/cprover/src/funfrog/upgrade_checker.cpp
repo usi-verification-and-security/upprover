@@ -368,13 +368,13 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
             break;
           } else {
             out << "Counterexample is spurious."  << std::endl <<
-                   "Got to next iteration." << std::endl;
+                   "Go to next iteration." << std::endl;
           }
         } else if (omega.get_nondets_count() != 0) {
               // if there are still some havoced function calls, do force inlining for them
           refiner.set_refine_mode(FORCE_INLINING);
           refiner.refine(*decider, summary_info);
-          out << "Got to next iteration." << std::endl;
+          out << "Go to next iteration." << std::endl;
         } else {
           out << "Old summary is no more valid."  << std::endl;
           break;
