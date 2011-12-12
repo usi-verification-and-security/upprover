@@ -15,7 +15,7 @@ std::string form(const exprt &expr)
   if (expr.has_operands()){
     std::string res = expr.id_string();
     for (unsigned i = 0; i < expr.operands().size(); i++){
-      res = res + " " + form(expr.operands()[i]);
+      res += res + " " + form(expr.operands()[i]);
     }
     return res;
   }
@@ -88,11 +88,11 @@ std::string cmd_str (goto_programt::const_targett &it)
         break;
       case FUNCTION_CALL: {
           const code_function_callt &call = to_code_function_call(to_code(it->code));
-          res = call.function().get("identifier").as_string();
-
+          res = call.lhs().get("identifier").as_string() + " = " + call.function().get("identifier").as_string() + "(";
           for (unsigned i = 0; i < call.arguments().size(); i++){
-            res = res + " (" + form (call.arguments()[i]) + ")";
+            res += " (" + form (call.arguments()[i]) + ")";
           }
+          res += ")";
         }
         break;
       case OTHER:   { res = "other ?"; } break;         // TODO
