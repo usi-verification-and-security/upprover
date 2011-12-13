@@ -5,13 +5,16 @@ TODO list for funfrog
 HIGH PRIORITY
 -------------
 
-- Refinement: callstart symbols analysis for havoced partitions
-- Upgrade check: marking valid/non-valid summaries; contradiction check (?)
-- Conversion: phi-functions profiling
+- PINCETTE stuff: xml-interface for output
+- PINCETTE stuff: xml-output of resulting subst scenario after upgrade check
+- Diff: mapping between 2 call trees
+- Goto-binaries: proper handling of switches (wait for reply from Michael)
 
 LOW PRIORITY
 ------------
 
+- Refinement: callstart symbols analysis for havoced partitions
+- Conversion: phi-functions profiling
 - Interactive mode of:
   - OpenSMT session - share one instance during checking of a single assertion
 - Mapping for global variables, refactor:
