@@ -204,7 +204,8 @@ protected:
   typedef std::list<goto_programt::targett> gotost;
   typedef std::list<goto_programt::targett> computed_gotost;
   typedef exprt::operandst caset;
-  typedef std::map<goto_programt::targett, caset> casest;
+  typedef std::list<std::pair<goto_programt::targett, caset> > casest;
+  typedef std::map<goto_programt::targett, casest::iterator> cases_mapt;
   
   struct break_continue_targetst
   {
@@ -259,6 +260,7 @@ protected:
     goto_programt::targett default_target;
     bool default_set;
     casest cases;
+    cases_mapt cases_map;
   };
 
   struct targetst:public break_continue_switch_targetst
@@ -292,6 +294,7 @@ protected:
       targets.labels.swap(labels);
       targets.gotos.swap(gotos);
       targets.cases.swap(cases);
+      targets.cases_map.swap(cases_map);
     }
   } targets;
   
