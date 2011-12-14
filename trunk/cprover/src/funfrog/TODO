@@ -7,7 +7,8 @@ HIGH PRIORITY
 
 - PINCETTE stuff: xml-interface for output
 - PINCETTE stuff: xml-output of resulting subst scenario after upgrade check
-- Diff: mapping between 2 call trees
+- Upgrade check: optimize upward propagation (in case of multiple changes, change the root of common subtree), e.g. for 12_upg_simple_ref/change_15.c
+- Repair slicing for upgrade check (e.g. 12_upg_simple_ref/change_13.c doesn't work without "--no-slicing")
 
 LOW PRIORITY
 ------------

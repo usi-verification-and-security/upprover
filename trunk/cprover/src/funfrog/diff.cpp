@@ -77,7 +77,7 @@ std::string cmd_str (goto_programt::const_targett &it)
       case ASSERT:  { res = "assert (" + form(it->guard) + ")"; }  break;
       case RETURN: {
           const code_returnt &ret = to_code_return(it->code);
-          res = "return " + form(ret.return_value());
+          res = "return (" + form(ret.return_value()) + ")";
         }
         break;
       case ASSIGN: {
@@ -113,39 +113,61 @@ std::string cmd_str (goto_programt::const_targett &it)
   return /*integer2string(it->location_number) + ": " +*/ res;
 }
 
+void difft :: stub_new_summs(unsigned loc){
+  if (loc != 0){
+    new_summs.push_back("-");
+    new_summs.push_back(integer2string(loc)); // wrong, but working
+    new_summs.push_back("2");
+    new_summs.push_back("0");
+    new_summs.push_back("0");
+    new_summs.push_back("0");
+    new_summs.push_back("-");
+  }
+  std::vector <unsigned> calls = calltree_new[loc];
+  for (unsigned i = 0; i < calls.size(); i++){
+    stub_new_summs(calls[i]);
+  }
+}
+
 void collect_functions(const goto_functionst &goto_functions, const goto_programt &program,
-    std::vector<std::pair<const irep_idt*, bool> >  &functions)
+    std::vector<std::pair<const irep_idt*, bool> > &functions,
+    std::map<unsigned, std::vector<unsigned> > &calltree, unsigned& global_loc)
 {
+  unsigned initial_loc = global_loc;
+  std::vector<unsigned> current_children;
+
   for(goto_programt::const_targett it = program.instructions.begin();
       it!=program.instructions.end(); ++it)
   {
     if(it->type == FUNCTION_CALL)
     {
+       global_loc++;
        const code_function_callt &call =
          to_code_function_call(to_code(it->code));
 
        const irep_idt &name = call.function().get("identifier");
 
-
-       functions.push_back(std::make_pair(&name, true));
+       current_children.push_back(global_loc);
+       functions.push_back(std::make_pair(&name, false));
 
        goto_functionst::function_mapt::const_iterator f_it =
            goto_functions.function_map.find(name);
 
        if(f_it!=goto_functions.function_map.end())
        {
-         collect_functions(goto_functions, f_it->second.body, functions);
+         collect_functions(goto_functions, f_it->second.body, functions, calltree, global_loc);
        }
     }
   }
+  calltree[initial_loc] = current_children;
 }
 
 
 bool difft :: is_untouched(const irep_idt &name)
 {
-  for (unsigned i = 0; i < functions.size(); i++){
-    if ((*functions[i].first) == name){
-      if (functions[i].second == false){
+  for (unsigned i = 0; i < functions_old.size(); i++){
+    if ((*functions_old[i].first) == name){
+      if (functions_old[i].second == false){
         return false;
       }
     }
@@ -154,21 +176,21 @@ bool difft :: is_untouched(const irep_idt &name)
 }
 
 bool difft :: unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
-      std::vector<std::pair<std::string, unsigned> > &goto_unrolled, unsigned init, bool inherit_change)
+      std::vector<std::pair<std::string, unsigned> > &goto_unrolled,
+      std::map<unsigned,std::vector<unsigned> > &calltree, unsigned init, bool inherit_change)
 {
 //  if (!is_untouched (name)){
 //    return false;
 //  }
 
-  unsigned loc = init;
+  unsigned loc = 0;
   const goto_programt& program = goto_functions.function_map[name].body;
   for(goto_programt::const_targett it = program.instructions.begin();
       it!=program.instructions.end(); ++it)
   {
     unsigned tmp = 0;
     if(it->type == FUNCTION_CALL){
-      loc++;
-      tmp = loc;
+      tmp = (calltree[init])[loc];
       if(inherit_change){
         const code_function_callt &call =
           to_code_function_call(to_code(it->code));
@@ -250,16 +272,22 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
   unsigned i_c = size_c;
 
   while (i_c > 0){
-    std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
+    //std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
     while(goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){
 #     ifdef DEBUG_DIFF
       std::cout << "    [+] " << goto_unrolled_2[i_2].first << "\n";
+      if (goto_unrolled_2[i_2].second > 0){
+        std::cout << " --- function call UNpreserved.\n";
+      }
 #     endif
       i_2++;
     }
     while(goto_unrolled_1[i_1].first != goto_common[i_c - 1].first){
 #     ifdef DEBUG_DIFF
       std::cout << "    [-] " << goto_unrolled_1[i_1].first << "\n";
+      if (goto_unrolled_1[i_1].second > 0){
+        std::cout << " --- function call UNpreserved.\n";
+      }
 #     endif
       i_1++;
     }
@@ -267,9 +295,15 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
     std::cout << "    [v] " << goto_unrolled_1[i_1].first << "\n";
 #   endif
 
-    if (do_write && goto_unrolled_1[i_1].second > 0){
-      summs[goto_unrolled_1[i_1].second * 7 + 4] = "1";
+    if (do_write && goto_unrolled_2[i_2].second > 0){
+      new_summs[(goto_unrolled_2[i_2].second-1) * 7 + 4] = "1";
     }
+
+#   ifdef DEBUG_DIFF
+    if (goto_unrolled_1[i_1].second > 0){
+      std::cout << " --- function call preserved.\n";
+    }
+#   endif
 
     if (i_1 < size_1){
       i_1++;
@@ -295,18 +329,16 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
 #   endif
     i_1++;
   }
-
 }
 
-//void write_change(const irep_idt &name, std::vector<std::string > &summs)
-//{
-//  for (unsigned i = 0; i < summs.size(); i = i + 6){
-//    if (summs[i] == name.as_string()){
-//      summs[i+3] = "1";
-//    }
-//  }
-//}
-
+int get_call_loc(const irep_idt& name, std::vector<std::pair<const irep_idt*, bool> >& functions){
+  for (unsigned i = 0; i < functions.size(); i++){
+    if ((*functions[i].first) == name){
+      return i;
+    }
+  }
+  return -1;
+}
 
 bool difft :: do_diff()
 {
@@ -317,24 +349,46 @@ bool difft :: do_diff()
     while (!in.eof()){
       std::string str;
       in >> str;
-      summs.push_back(str);
+      old_summs.push_back(str);
     }
     in.close();
   }
 
-  collect_functions(goto_functions_1, goto_functions_1.function_map["main"].body, functions);
+  unsigned loc = 0;
+  collect_functions(goto_functions_1, goto_functions_1.function_map["main"].body, functions_old, calltree_old, loc);
+  loc = 0;
+  collect_functions(goto_functions_2, goto_functions_2.function_map["main"].body, functions_new, calltree_new, loc);
+
+  if (do_write){
+    stub_new_summs(0);
+  }
 
   std::vector<std::pair<std::string, unsigned> > goto_unrolled_1;
   std::vector<std::pair<std::string, unsigned> > goto_unrolled_2;
   std::vector<std::pair<std::string, unsigned> > goto_common;
 
-  // stop iterating at the second function call (since the first one is "__CPROVER_initialize")
-  for (unsigned i = 1; i < functions.size(); i++)
+  for (unsigned i = 0; i < functions_new.size(); i++)
   {
-    std::cout << "checking \"" << (*functions[i].first) <<"\":..\n";
+    const irep_idt& call_name = (*functions_new[i].first);
+    std::cout << "checking \"" << call_name <<"\":..\n";
 
-    bool pre_res_1 = unroll_goto(goto_functions_1, (*functions[i].first), goto_unrolled_1, i, false);
-    bool pre_res_2 = unroll_goto(goto_functions_2, (*functions[i].first), goto_unrolled_2, i, false);
+    int call_loc = get_call_loc(call_name, functions_old);
+
+    if (do_write){
+      if (call_loc != -1){
+        for (unsigned j = 0; j < 7; j++)
+          if (j != 4)
+            new_summs[i * 7 + j] = old_summs[call_loc * 7 + j];
+      } else {
+        new_summs[i * 7] = call_name.c_str();
+      }
+    }
+
+    bool pre_res_1 = unroll_goto(goto_functions_1, call_name, goto_unrolled_1,
+        calltree_old, functions_old[i].second, false);
+
+    bool pre_res_2 = unroll_goto(goto_functions_2, call_name, goto_unrolled_2,
+        calltree_new, functions_new[i].second, false);
 
     bool pre_res_3 = false;
     if (pre_res_1 && pre_res_2){
@@ -344,13 +398,16 @@ bool difft :: do_diff()
     }
 
     if (pre_res_3 == false){
-      functions[i].second = false;
+      functions_new[i].second = 0;
       do_proper_diff(goto_unrolled_1, goto_unrolled_2, goto_common);
-    } else if (summs.size() > i*7+3) {
-      summs[i*7+3] = "1";
+    } else {
+      functions_new[i].second = 1;
+      if (do_write) {
+        new_summs[i*7 + 3] = "1";
+      }
     }
 
-    std::cout << " --- " << (functions[i].second ? "" : "UN") << "preserved.\n";
+    std::cout << " --- " << (functions_new[i].second ? "" : "UN") << "preserved.\n";
     goto_unrolled_1.clear();
     goto_unrolled_2.clear();
     goto_common.clear();
@@ -359,15 +416,15 @@ bool difft :: do_diff()
   if (do_write){
     std::ofstream out;
     out.open(output);
-    for (unsigned i = 0; i < summs.size(); i++){
-      out << summs[i] << std::endl;
+    for (unsigned i = 0; i < new_summs.size(); i++){
+      out << new_summs[i] << std::endl;
     }
     out.close();
   }
 
   bool res = true;
-  for (unsigned i = 1; i < functions.size(); i++){
-    res &= functions[i].second;
+  for (unsigned i = 1; i < functions_old.size(); i++){
+    res &= functions_new[i].second;
   }
   return res;
 }

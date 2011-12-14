@@ -25,7 +25,8 @@ public:
       goto_functions_2(_goto_functions_2),
       output(_output),
       do_write(true),
-      summs(0)
+      old_summs(0),
+      new_summs(0)
   {};
 
   difft(
@@ -35,7 +36,8 @@ public:
       goto_functions_2(_goto_functions_2),
       output("__omega"),
       do_write(false),
-      summs(0)
+      old_summs(0),
+      new_summs(0)
   {};
 
   bool do_diff();
@@ -48,7 +50,9 @@ public:
 
   
 private:
-  std::vector<std::pair<const irep_idt*, bool> > functions;
+  std::vector<std::pair<const irep_idt*, bool> > functions_old;
+
+  std::vector<std::pair<const irep_idt*, bool> > functions_new;
 
   goto_functionst &goto_functions_1;
 
@@ -58,12 +62,21 @@ private:
 
   bool do_write;
 
-  std::vector<std::string > summs;
+  std::vector<std::string > old_summs;
+
+  std::vector<std::string > new_summs;
+
+  std::map<unsigned,std::vector<unsigned> > calltree_old;
+
+  std::map<unsigned,std::vector<unsigned> > calltree_new;
+
+  void stub_new_summs(unsigned loc);
 
   bool is_untouched(const irep_idt &name);
 
   bool unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
-        std::vector<std::pair<std::string, unsigned> > &goto_unrolled, unsigned init, bool inherit_change);
+        std::vector<std::pair<std::string, unsigned> > &goto_unrolled,
+        std::map<unsigned,std::vector<unsigned> > &calltree, unsigned init, bool inherit_change);
 
   void do_proper_diff(std::vector<std::pair<std::string, unsigned> > &goto_unrolled_1,
                std::vector<std::pair<std::string, unsigned> > &goto_unrolled_2,
