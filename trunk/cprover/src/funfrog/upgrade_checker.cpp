@@ -168,6 +168,7 @@ bool upgrade_checkert::check_upgrade()
   //
   // NOTE: call check_summary to do the check \phi_f => I_f.
   
+  omega.serialize_xml(options.get_option("save-change-impact"));
   return true;
 }
 
@@ -215,6 +216,7 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
           std::cout << "check the parent.\n";
           summary_info.set_inline();
           summarization_context.set_valid_summaries(summary_info.get_function_id(), false);
+          std::cout << "invalidating summary: " << summary_info.get_function_id() << "\n";
           upward_traverse_call_tree(summary_info.get_parent(), pre);
         }
       }

@@ -134,6 +134,20 @@ public:
     }
   }
 
+  bool any_invalid_summaries(const irep_idt& function_id){
+    const function_infot& fun_info = get_function_info(function_id);
+    const summary_idst& itps = fun_info.get_summaries();
+    for (summary_idst::const_iterator it2 = itps.begin();
+            it2 != itps.end(); ++it2) {
+      summaryt& sum = summary_store.find_summary(*it2);
+      if (!sum.is_valid()){
+        return true;
+      }
+    }
+    return false;
+  }
+
+
 private:
   const goto_functionst &functions;
   const value_setst &value_sets;

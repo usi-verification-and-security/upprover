@@ -363,3 +363,26 @@ void subst_scenariot::restore_summary_info(
     }
   }
 }
+
+void subst_scenariot::construct_xml_tree(xmlt& call, summary_infot& summary)
+{
+  for (call_sitest::iterator it = summary.get_call_sites().begin();
+          it != summary.get_call_sites().end(); ++it)
+  {
+    xmlt sub_call("function");
+    sub_call.set_attribute("id", (it->second).get_function_id().c_str());
+    sub_call.set_attribute_bool("old_summary",
+         !summarization_context.any_invalid_summaries((it->second).get_function_id()));
+    construct_xml_tree(sub_call, it->second);
+    call.new_element(sub_call);
+  }
+}
+
+void subst_scenariot::serialize_xml(const std::string& file)
+{
+  xmlt xml_head("program");
+  construct_xml_tree(xml_head, functions_root);
+  std::ofstream out;
+  out.open(file.c_str());
+  xml_head.output(out);
+}

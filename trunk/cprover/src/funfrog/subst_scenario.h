@@ -14,6 +14,7 @@
 #include <map>
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
+#include <util/xml.h>
 
 #include "summary_info.h"
 #include "summarization_context.h"
@@ -21,7 +22,7 @@
 class subst_scenariot {
 public:
   subst_scenariot(
-      const summarization_contextt &_summarization_context,
+      summarization_contextt &_summarization_context,
       const goto_programt &goto_program):
         summarization_context (_summarization_context),
         functions_root (NULL, 0),
@@ -55,6 +56,7 @@ public:
           summarization_context, assertion);
   }
 
+  void serialize_xml(const std::string& file);
   void serialize(const std::string& file);
   void deserialize(const std::string& file, const goto_programt& code);
 
@@ -75,7 +77,7 @@ public:
   void setup_last_assertion_loc(const assertion_infot& assertion);
 
 private:
-  const summarization_contextt &summarization_context;
+  summarization_contextt &summarization_context;
   summary_infot functions_root;
   summary_precisiont default_precision;
   location_visitedt assertions_visited;
@@ -86,6 +88,7 @@ private:
   unsigned last_assertion_loc;
   bool single_assertion_check;
 
+  void construct_xml_tree(xmlt& xml, summary_infot& summary);
   unsigned get_precision_count(summary_precisiont precision);
   unsigned get_precision_count(summary_infot& summary, summary_precisiont precision);
 };

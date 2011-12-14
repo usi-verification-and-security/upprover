@@ -922,6 +922,11 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   } else {
     options.set_option("load-summaries", "__summaries");
   }
+  if (cmdline.isset("save-change-impact")) {
+    options.set_option("save-change-impact", cmdline.getval("save-change-impact"));
+  } else {
+    options.set_option("save-change-impact", "__calltree.xml");
+  }
   if (cmdline.isset("reduce-proof")) {
     options.set_option("reduce-proof", cmdline.getval("reduce-proof"));
   }
