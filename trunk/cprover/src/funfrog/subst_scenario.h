@@ -30,9 +30,7 @@ public:
         functions (NULL),
         goto_ranges (NULL),
         global_loc (0)
-  {
-    initialize_summary_info (functions_root, goto_program);
-  };
+  {};
 
   summary_infot& get_summary_info(){ return functions_root; };
 

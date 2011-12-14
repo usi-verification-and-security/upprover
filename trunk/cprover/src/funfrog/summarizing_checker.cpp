@@ -26,6 +26,7 @@ void summarizing_checkert::initialize()
   // i.e., all summaries are initialized as HAVOC, except those on the way
   // to the target assertion, which are marked depending on initial mode.
 
+  omega.initialize_summary_info (omega.get_summary_info(), goto_program);
   omega.process_goto_locations();
   init = get_init_mode(options.get_option("init-mode"));
   omega.setup_default_precision(init);
