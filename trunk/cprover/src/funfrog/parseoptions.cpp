@@ -40,6 +40,7 @@
 #include <goto-programs/slicer.h>
 #include <goto-programs/show_claims.h>
 #include <goto-programs/remove_unused_functions.h>
+#include <goto-programs/link_to_library.h>
 
 #include <pointer-analysis/add_failed_symbols.h>
 #include <pointer-analysis/value_set_analysis.h>
@@ -78,6 +79,174 @@ funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
 {
 }
 
+bool funfrog_parseoptionst::process_goto_program(
+  namespacet& ns,
+  optionst& options,
+  goto_functionst &goto_functions)
+{
+  try
+  {
+    // TODO: add "string-abstraction", to parameters
+    if(cmdline.isset("string-abstraction"))
+      string_instrumentation(
+        context, get_message_handler(), goto_functions);
+
+    status("Function Pointer Removal");
+    remove_function_pointers(ns, goto_functions);
+
+    status("Partial Inlining");
+    // do partial inlining
+    goto_partial_inline(goto_functions, ns, ui_message_handler);
+
+    status("Generic Property Instrumentation");
+    // add generic checks
+    goto_check(ns, options, goto_functions);
+
+    if(cmdline.isset("string-abstraction"))
+    {
+      status("String Abstraction");
+      string_abstraction(context,
+        get_message_handler(), goto_functions);
+    }
+
+    // add failed symbols
+    // needs to be done before pointer analysis
+    add_failed_symbols(context);
+
+    if(cmdline.isset("pointer-check"))
+    {
+      status("Pointer Analysis");
+      value_set_analysist value_set_analysis(ns);
+      value_set_analysis(goto_functions);
+
+
+      status("Adding Pointer Checks");
+
+      // add pointer checks
+      pointer_checks(
+        goto_functions, ns, options, value_set_analysis);
+    }
+
+    // recalculate numbers, etc.
+    goto_functions.update();
+
+    // add loop ids
+    goto_functions.compute_loop_numbers();
+  }
+
+  catch(const char *e)
+  {
+    error(e);
+    return true;
+  }
+
+  catch(const std::string e)
+  {
+    error(e);
+    return true;
+  }
+
+  catch(int)
+  {
+    return true;
+  }
+
+  catch(std::bad_alloc)
+  {
+    error("Out of memory");
+    return true;
+  }
+
+  return false;
+}
+
+bool funfrog_parseoptionst::get_goto_program(
+  const std::string &filename,
+  namespacet& ns,
+  optionst& options,
+  goto_functionst &goto_functions)
+{
+  if(cmdline.args.size()==0)
+  {
+    error("Please provide a program to verify");
+    return true;
+  }
+
+  try
+  {
+    if(cmdline.args.size()==1 &&
+       is_goto_binary(filename))
+    {
+      status("Reading GOTO program from file");
+
+      if(read_goto_binary(filename,
+           context, goto_functions, get_message_handler()))
+        return true;
+
+      config.ansi_c.set_from_context(context);
+
+      if(context.symbols.find(ID_main)==context.symbols.end())
+      {
+        error("The goto binary has no entry point; please complete linking");
+        return true;
+      }
+    }
+    else
+    {
+      if(parse()) return true;
+      if(typecheck()) return true;
+      if(final()) return true;
+
+      // we no longer need any parse trees or language files
+      clear_parse();
+
+      if(context.symbols.find(ID_main)==context.symbols.end())
+      {
+        error("No entry point; please provide a main function");
+        return true;
+      }
+
+      status("Generating GOTO Program");
+
+      goto_convert(
+        context, options, goto_functions,
+        ui_message_handler);
+
+      // finally add the library
+      status("Adding CPROVER library");
+      link_to_library(
+        context, goto_functions, options, ui_message_handler);
+    }
+
+    if(process_goto_program(ns, options, goto_functions))
+      return true;
+  }
+
+  catch(const char *e)
+  {
+    error(e);
+    return true;
+  }
+
+  catch(const std::string e)
+  {
+    error(e);
+    return true;
+  }
+
+  catch(int)
+  {
+    return true;
+  }
+
+  catch(std::bad_alloc)
+  {
+    error("Out of memory");
+    return true;
+  }
+
+  return false;
+}
 /*******************************************************************
 
  Function: funfrog_parseoptionst::doit
@@ -163,29 +332,20 @@ int funfrog_parseoptionst::doit()
     std::ofstream g("summaries_precise"); g.close();
   }
 
-  // Stage 1: Load file
+  register_languages();
+
   goto_functionst goto_functions;
   namespacet ns(context);
   fine_timet before, after;
 
-  status(std::string("#1: Loading `")+cmdline.args[0]+"' ...");
+  status(std::string("Loading `")+cmdline.args[0]+"' ...");
   before=current_time();
-  if(read_goto_binary(cmdline.args[0], context, goto_functions, mh))
-  {
-    error(std::string("Error reading file `")+cmdline.args[0]+"'.");
-    return 1;
-  }
+  
+  if(get_goto_program(cmdline.args[0], ns, options, goto_functions))
+    return 6;
+
   after=current_time();
   status(std::string("    LOAD Time: ") + time2string(after-before) + " sec.");
-  unsigned long mem = report_mem();
-  unsigned inst = count(goto_functions);
-  
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << "LOAD;" << time2string(after-before) << ";" << mem << ";" <<
-      inst << ";";
-    statfile.flush();
-  }
 
   if (cmdline.isset("show-symbol-table"))
   {
@@ -193,295 +353,15 @@ int funfrog_parseoptionst::doit()
     return true;
   }
 
-  if (cmdline.isset("show-program"))
+  if(cmdline.isset("show-program"))
   {
     goto_functions.output(ns, std::cout);
     return true;
   }
 
-  if(cmdline.isset("save-program"))
-  {
-    std::ofstream f("goto_program");
-    goto_functions.output(ns, f);
-    f.close();
-  }
-
-  // Stage 2: Loop transformations
-  /*
-  status("#2: Transforming Loops...");
-  before=current_time();
-  transform_loops(goto_functions, context, mh);
-  after=current_time();
-  status(std::string("    TRANS Time: ") + time2string(after-before) + " sec.");
-  mem = report_mem();
-  inst = count(goto_functions);
-
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << "TRANS;" << time2string(after-before) << ";" << mem << ";" <<
-      inst << ";";
-    statfile.flush();
-  }
-
-  if(cmdline.isset("show-transformed-program"))
-  {
-    goto_functions.output(ns, std::cout);
-    return true;
-  }
-
-  if(cmdline.isset("save-transformed-program"))
-  {
-    std::ofstream f((stats_dir+"goto_program_trans").c_str());
-    goto_functions.output(ns, f);
-    f.close();
-  }
-  */
-
-  // Stage 3: Inline marked functions
-  status(std::string("#3: Partial Inlining ..."));
-  unsigned limit = 1;
-  if(cmdline.isset("inlining-limit"))
-    limit = atoi(cmdline.getval("inlining-limit"));
-  before=current_time();
-  goto_partial_inline(goto_functions, ns, mh, limit);
-  after=current_time();
-  status(std::string("    INL Time: ") + time2string(after-before) + " sec.");
-  mem = report_mem();
-  inst = count(goto_functions);
-
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << "INL;" << time2string(after-before) << ";" << mem << ";" <<
-      inst << ";";
-    statfile.flush();
-  }
-
-  if(cmdline.isset("show-inlined-program"))
-  {
-    goto_functions.output(ns, std::cout);
-    return true;
-  }
-
-  if(cmdline.isset("save-inlined-program"))
-  {
-    std::ofstream f((stats_dir+"goto_program_inlined").c_str());
-    goto_functions.output(ns, f);
-    f.close();
-  }
-
-  // Stage 4: Function pointer removal
-  status("#4: Removing function pointers...");
-  before=current_time();
-//  unsigned max_it;
-  remove_function_pointers(ns, goto_functions);
-  remove_unused_functions(goto_functions, get_message_handler());
-  after=current_time();
-//  status(std::string("    Max. Iterations: ") + i2string(max_it));
-  status(std::string("    RFP Time: ") + time2string(after-before) + " sec.");
-  mem=report_mem();
-  inst=count(goto_functions);
-
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << "RFP;" << time2string(after-before) << ";" << mem << ";" << inst
-      << ";" ; // << i2string(max_it) << ";";
-    statfile.flush();
-  }
-
-  if(cmdline.isset("show-fpfreed-program"))
-  {
-    goto_functions.output(ns, std::cout);
-    return true;
-  }
-
-  if(cmdline.isset("save-fpfreed-program"))
-  {
-    std::ofstream f((stats_dir+"goto_program_fpfreed").c_str());
-    goto_functions.output(ns, f);
-    f.close();
-  }
-
-  // Stage 5: String Instrumentation
-  status("#5: String instrumentation...");
-  before=current_time();
-  string_instrumentation(context, mh, goto_functions);
-  after=current_time();
-  status(std::string("    STRINS Time: ") + time2string(after-before) + " sec.");
-  mem=report_mem();
-  inst=count(goto_functions);
-
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << "STRINS;" << time2string(after-before) << ";" << mem << ";" <<
-    inst << ";";
-    statfile.flush();
-  }
-
-  if(cmdline.isset("show-instrumented-program"))
-  {
-    Forall_goto_functions(it, goto_functions)
-      it->second.body.update();
-    goto_functions.output(ns, std::cout);
-    return true;
-  }
-
-  if(cmdline.isset("save-instrumented-program"))
-  {
-    std::ofstream f((stats_dir+"goto_program_instrumented").c_str());
-    goto_functions.output(ns, f);
-    f.close();
-  }
-
-  // Stage 6: Add generic claims
-  status("#6: Adding generic claims...");
-  before=current_time();
-  goto_check(ns, options, goto_functions);
-  after=current_time();
-  mem=report_mem();
-  inst=count(goto_functions);
-  status(std::string("    AGC Time: ") + time2string(after-before) + " sec.");
-
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << "GCL;" << time2string(after-before) << ";" << mem << ";" <<
-      inst << ";";
-    statfile.flush();
-  }
-
-  if(cmdline.isset("show-claimed-program"))
-  {
-    goto_functions.output(ns, std::cout);
-    return true;
-  }
-
-  if(cmdline.isset("save-claimed-program"))
-  {
-    std::ofstream f((stats_dir+"goto_program_claimed").c_str());
-    goto_functions.output(ns, f);
-    f.close();
-  }
-
-  Forall_goto_functions(it, goto_functions)
-  {
-    it->second.body.update();
-
-    // HACKFIX: reset function information.
-    Forall_goto_program_instructions(i_it, it->second.body)
-      i_it->function = it->first;
-  }
-
-  // Stage 7: String abstraction
-  status("#7: String abstraction...");
-  before=current_time();
-  string_abstraction(context, mh, goto_functions);
-  after=current_time();
-  status(std::string("    STRABS Time: ") + time2string(after-before));
-  mem=report_mem();
-  inst=count(goto_functions);
-
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << "STRABS;" << time2string(after-before) << ";" << mem << ";" <<
-    inst << ";";
-    statfile.flush();
-  }
-
-  if(cmdline.isset("show-abstracted-program"))
-  {
-    Forall_goto_functions(it, goto_functions)
-      it->second.body.update();
-    goto_functions.output(ns, std::cout);
-    return true;
-  }
-
-  if(cmdline.isset("save-abstracted-program"))
-  {
-    std::ofstream f((stats_dir+"goto_program_abstracted").c_str());
-    goto_functions.output(ns, f);
-    f.close();
-  }
-
-  // Stage 8: Pointer Analysis
-  status("#8: Value set propagation...");
-  before=current_time();
-  value_set_analysis_fit pointer_analysis(ns);
-  pointer_analysis(goto_functions);
-  after=current_time();
-  status(std::string("    VSP Time: ") + time2string(after-before) + " sec.");
-  mem=report_mem();
-  inst=count(goto_functions);
-
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << "VSP;" << time2string(after-before) << ";" << mem << ";" <<
-      inst << ";";
-    statfile.flush();
-  }
-
-  if(cmdline.isset("show-value-sets"))
-  {
-    forall_goto_functions(it, goto_functions)
-    {
-      std::cout << "////" << std::endl;
-      std::cout << "//// Function: " << it->first << std::endl;
-      std::cout << "////" << std::endl;
-      std::cout << std::endl;
-
-      pointer_analysis.output(it->second.body, std::cout);
-      std::cout << std::endl;
-    }
-    return true;
-  }
-
-  unsigned total=0;
-  for (std::map<goto_programt::const_targett, unsigned>::const_iterator it =
-        pointer_analysis.statistics.begin();
-       it!=pointer_analysis.statistics.end();
-       it++)
-    if (it->second>total) total=it->second;
-
-  status(std::string("    Max. Iterations: ") + integer2string(total));
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << integer2string(total) << ";";
-    statfile.flush();
-  }
-
-  value_set_alloc_adaptort adaptor(context, pointer_analysis);
-
-  // Stage 9: Dereference
-  status("#9: Pointer dereferencing...");
-  before=current_time();
-  replace_malloc( context, goto_functions, adaptor );
-  Forall_goto_functions(it, goto_functions)
-    remove_pointers( it->second.body, context, options, adaptor );
-  after=current_time();
-  status(std::string("    DEREF Time: ") + time2string(after-before));
-  mem=report_mem();
-  inst=count(goto_functions);
-
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << "DEREF;" << time2string(after-before) << ";" << mem << ";" <<
-      inst << ";";
-    statfile.flush();
-  }
-
-  if(cmdline.isset("show-dereferenced-program"))
-  {
-    goto_functions.output(ns, std::cout);
-    return true;
-  }
-
-  if(cmdline.isset("save-dereferenced-program"))
-  {
-    std::ofstream f((stats_dir+"goto_program_dereferenced").c_str());
-    goto_functions.output(ns, f);
-    f.close();
-  }
-
-  if(check_function_summarization(ns, adaptor, goto_functions, stats_dir))
+  if(check_function_summarization(ns, goto_functions, stats_dir))
     return 1;
+
 
   status("#X: Done.");
 
@@ -685,7 +565,6 @@ unsigned long funfrog_parseoptionst::report_max_mem(unsigned long mem) const
 
 bool funfrog_parseoptionst::check_function_summarization(
   namespacet &ns,
-  value_set_alloc_adaptort &adaptor,
   goto_functionst &goto_functions,
   std::string &stats_dir)
 {
@@ -764,8 +643,7 @@ bool funfrog_parseoptionst::check_function_summarization(
   }
   */
   
-  // Stage 10: Finally checking some claims.
-  status("#10: Checking claims in program...");
+  status("Checking claims in program...");
 
   unsigned claim_nr=0;
 
@@ -796,18 +674,16 @@ bool funfrog_parseoptionst::check_function_summarization(
 
     if (upg_check && init_ready){
       goto_functionst goto_functions_new;
-      stream_message_handlert mh(std::cout);
-      contextt context;
+      status(std::string("Loading `")+cmdline.getval("do-upgrade-check")+"' ...");
+      before=current_time();
 
-      // TODO: the same analysis of new goto_functions, as for old ones
-      if(read_goto_binary(cmdline.getval("do-upgrade-check"), context, goto_functions_new, mh))
-      {
-        error(std::string("Error reading file `")+cmdline.args[0]+"'.");
-        return 1;
-      }
+      if(get_goto_program(cmdline.getval("do-upgrade-check"), ns, options, goto_functions_new))
+        return 6;
 
-      namespacet ns_new(context);
-      check_upgrade(ns_new,
+      after=current_time();
+      status(std::string("    LOAD Time: ") + time2string(after-before) + " sec.");
+
+      check_upgrade(ns,
               // OLD!
               goto_functions.function_map[ID_main].body, goto_functions,
               // NEW!

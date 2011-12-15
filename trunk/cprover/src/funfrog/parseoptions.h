@@ -61,8 +61,16 @@ protected:
   unsigned count(const goto_functionst &goto_functions) const;
   unsigned count(const goto_programt &goto_program) const;
 
+  bool process_goto_program(
+    namespacet& ns,
+    optionst& options,
+    goto_functionst &goto_functions);
+  bool get_goto_program(
+    const std::string &filename,
+    namespacet& ns,
+    optionst& options,
+    goto_functionst &goto_functions);
   bool check_function_summarization(namespacet &ns,
-                                value_set_alloc_adaptort &adaptor,
                                 goto_functionst &goto_functions,
                                 std::string &stats_dir);
 
