@@ -330,7 +330,7 @@ void subst_scenariot::restore_summary_info(
     {
       summary_infot& call_site = summary_info.get_call_sites().insert(
               std::pair<goto_programt::const_targett, summary_infot>(inst,
-              summary_infot(&summary_info, atoi(data[(functions.size())*7+1].c_str()))
+              summary_infot(&summary_info, global_loc)
               )).first->second;
 
       functions.push_back(&call_site);

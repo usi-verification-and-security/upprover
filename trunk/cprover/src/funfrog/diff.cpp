@@ -70,7 +70,7 @@ std::string cmd_str (goto_programt::const_targett &it)
         goto_programt::targetst::const_iterator it2 = it->targets.begin();
         unsigned tgt_location = (*it2)->location_number;
 
-          res = "if (" + form(it->guard) + ") goto " + integer2string(tgt_location);
+          res = "if (" + form(it->guard) + ") goto " ;//+ integer2string(tgt_location);
           // FIXME: change the absolute target location to relative one
         } break;
       case ASSUME:   { res = "assume (" + form(it->guard) + ")"; } break;

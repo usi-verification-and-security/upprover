@@ -86,7 +86,6 @@ bool funfrog_parseoptionst::process_goto_program(
 {
   try
   {
-    // TODO: add "string-abstraction", to parameters
     if(cmdline.isset("string-abstraction"))
       string_instrumentation(
         context, get_message_handler(), goto_functions);
@@ -774,6 +773,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 {
   options.set_option("bounds-check", cmdline.isset("bounds-check"));
   options.set_option("pointer-check", cmdline.isset("pointer-check"));
+  options.set_option("string-abstraction", cmdline.isset("string-abstraction"));
   options.set_option("assertions", cmdline.isset("assertions"));
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));

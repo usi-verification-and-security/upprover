@@ -38,7 +38,7 @@ class value_set_alloc_adaptort;
   "(save-claims)" \
   "(init-upgrade-check)(do-upgrade-check):" \
   "(no-slicing)(no-assert-grouping)(no-summary-optimization)" \
-  "(pointer-check)(bounds-check)(assertions)" \
+  "(pointer-check)(bounds-check)(string-abstraction)(assertions)" \
   "(show-pass)(suppress-fail)(no-progress)" \
   "(save-summaries)(show-claims)(claim):" \
   "(save-queries)(save-change-impact):" \

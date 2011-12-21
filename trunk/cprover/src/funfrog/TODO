@@ -6,7 +6,6 @@ HIGH PRIORITY
 -------------
 
 - PINCETTE stuff: xml-interface for output
-- PINCETTE stuff: xml-output of resulting subst scenario after upgrade check
 - Upgrade check: optimize upward propagation (in case of multiple changes, change the root of common subtree), e.g. for 12_upg_simple_ref/change_15.c
 - Repair slicing for upgrade check (e.g. 12_upg_simple_ref/change_13.c doesn't work without "--no-slicing")
 
@@ -39,6 +38,4 @@ BUGS
 
 BUGGY TEST CASES:
 ----------------
-05_McMillan/kbfiltr.cil_loopfree.c, run with the flags "funfrog --init-upgrade-check --no-slicing a.out":
-funfrog: solvers/prop_itp.cpp:340: void prop_itpt::generalize(const prop_convt&, const std::vector<symbol_exprt, std::allocator<symbol_exprt> >&): Assertion `renaming[idx] != (2147483647 * 2U + 1U)' failed.
-with slicing, it works.
+13_upg_simple_holds/change19.c: (l.var_no()=2147483646 _no_variables=1052) Segm. fault in command line, but OK in Eclipse.

@@ -93,7 +93,13 @@ bool check_upgrade(const namespacet &ns,
   // 1. Make diff
   // 2. Construct changed summary_info tree -> write back to "__omega"
 
+  fine_timet initial, final;
+  initial=current_time();
+
   bool res = difft(goto_functions_old, goto_functions_new, "__omega").do_diff();
+
+  final = current_time();
+  std::cout << std::endl<< "DIFF TIME: " << time2string(final - initial) << std::endl;
 
   if (res){
     std::cout<< "The programs are trivially identical." << std::endl;
@@ -151,11 +157,15 @@ bool upgrade_checkert::check_upgrade()
     // backward search, from the summary with the largest call location
 
     bool res = true;
-    upward_traverse_call_tree((*summs[i]), res);
+    if (omega.get_last_assertion_loc() >= (*summs[i]).get_call_location()){
+      upward_traverse_call_tree((*summs[i]), res);
+    } else {
+      std::cout << "ignoring function: " << (*summs[i]).get_function_id()
+            << " (loc. number " << (*summs[i]).get_call_location() << " is out of assertion scope)\n";
+    }
     if (!res) {
       return false;
     }
-    // TODO: mark somehow already verified summaries, to avoid duplicate actions
   }
 
   // 3. From the bottom of the tree, reverify all changed nodes
