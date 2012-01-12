@@ -77,7 +77,10 @@ std::string cmd_str (goto_programt::const_targett &it)
       case ASSERT:  { res = "assert (" + form(it->guard) + ")"; }  break;
       case RETURN: {
           const code_returnt &ret = to_code_return(it->code);
-          res = "return (" + form(ret.return_value()) + ")";
+          res = "return";
+          if (ret.has_return_value()){
+            res += " (" + form(ret.return_value()) + ")";
+          }
         }
         break;
       case ASSIGN: {
@@ -190,7 +193,7 @@ bool difft :: unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
   {
     unsigned tmp = 0;
     if(it->type == FUNCTION_CALL){
-      tmp = (calltree[init])[loc];
+      tmp = (calltree[init + 1])[loc];
       if(inherit_change){
         const code_function_callt &call =
           to_code_function_call(to_code(it->code));
@@ -201,6 +204,7 @@ bool difft :: unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
           return false;   // the nested function was modified => this function is also modified
         }
       }
+      loc++;
     }
     goto_unrolled.push_back(std::make_pair(cmd_str(it), tmp));
   }
@@ -384,24 +388,27 @@ bool difft :: do_diff()
       }
     }
 
-    bool pre_res_1 = unroll_goto(goto_functions_1, call_name, goto_unrolled_1,
-        calltree_old, functions_old[i].second, false);
-
-    bool pre_res_2 = unroll_goto(goto_functions_2, call_name, goto_unrolled_2,
-        calltree_new, functions_new[i].second, false);
-
     bool pre_res_3 = false;
-    if (pre_res_1 && pre_res_2){
-      if (compare_str_vecs (goto_unrolled_1, goto_unrolled_2, goto_common)){
-        pre_res_3 = true;
+
+    if (i == 0){
+      pre_res_3 = true;
+    } else { // dirty hack for __CPROVER_initialize (sometimes it exceeds memory, but never is changed)
+      bool pre_res_1 = unroll_goto(goto_functions_1, call_name, goto_unrolled_1,
+          calltree_old, i, false);
+
+      bool pre_res_2 = unroll_goto(goto_functions_2, call_name, goto_unrolled_2,
+          calltree_new, i, false);
+
+      if (pre_res_1 && pre_res_2){
+        if (compare_str_vecs (goto_unrolled_1, goto_unrolled_2, goto_common)){
+          pre_res_3 = true;
+        }
       }
     }
-
+    functions_new[i].second = pre_res_3;
     if (pre_res_3 == false){
-      functions_new[i].second = 0;
       do_proper_diff(goto_unrolled_1, goto_unrolled_2, goto_common);
     } else {
-      functions_new[i].second = 1;
       if (do_write) {
         new_summs[i*7 + 3] = "1";
       }
