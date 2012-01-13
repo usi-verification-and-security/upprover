@@ -122,7 +122,7 @@ void difft :: stub_new_summs(unsigned loc){
     new_summs.push_back(integer2string(loc)); // wrong, but working
     new_summs.push_back("2");
     new_summs.push_back("0");
-    new_summs.push_back("0");
+    new_summs.push_back("1");
     new_summs.push_back("0");
     new_summs.push_back("-");
   }
@@ -282,6 +282,9 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
       std::cout << "    [+] " << goto_unrolled_2[i_2].first << "\n";
       if (goto_unrolled_2[i_2].second > 0){
         std::cout << " --- function call UNpreserved.\n";
+        if (do_write){
+          new_summs[(goto_unrolled_2[i_2].second-1) * 7 + 4] = "0";
+        }
       }
 #     endif
       i_2++;
@@ -298,10 +301,6 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
 #   ifdef DEBUG_DIFF
     std::cout << "    [v] " << goto_unrolled_1[i_1].first << "\n";
 #   endif
-
-    if (do_write && goto_unrolled_2[i_2].second > 0){
-      new_summs[(goto_unrolled_2[i_2].second-1) * 7 + 4] = "1";
-    }
 
 #   ifdef DEBUG_DIFF
     if (goto_unrolled_1[i_1].second > 0){

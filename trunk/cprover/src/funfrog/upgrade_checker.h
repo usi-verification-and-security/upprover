@@ -39,6 +39,7 @@ protected:
 
   void upward_traverse_call_tree(summary_infot& summary_info, bool &pre);
   void downward_traverse_call_tree(summary_infot& summary_info);
+  std::set<const irep_idt*> checked_functions;
 };
 
 bool check_initial(const namespacet &ns,
