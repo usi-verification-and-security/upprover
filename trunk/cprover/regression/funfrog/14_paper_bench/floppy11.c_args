@@ -1,0 +1,1 @@
+--init-upgrade-check --do-upgrade-check 14_paper_bench/floppy12.out --no-slicing

@@ -38,4 +38,27 @@ BUGS
 
 BUGGY TEST CASES:
 ----------------
-13_upg_simple_holds/change19.c: (l.var_no()=2147483646 _no_variables=1052) Segm. fault in command line, but OK in Eclipse.
+- 13_upg_simple_holds/change19.c: (l.var_no()=2147483646 _no_variables=1052
+	funfrog: ../../../src/egraph/EgraphStore.C:465: Enode* Egraph::cons(Enode*, Enode*): Assertion `car' failed.)
+
+- floppy5.c: Segm fault in prop_itpt::is_valid() .. or actually if call any method of this object at that state
+
+- floppy7.c: Segm fault in prop_itpt::substitute(prop_convt&, std::vector<symbol_exprt, std::allocator<symbol_exprt> > const&, bool) const().
+	bug occurs only if uncomment "status = FloppyPnp(& devobj, pirp)" at main function
+
+- floppy9.c: funfrog: ../../../src/proof/ProofGraphBuild.C:99: void ProofGraph::buildProofGraph(Proof&, std::set<int, std::less<int>, 			std::allocator<int> >&, int, clauseid_t, int): Assertion `currClause!=__null' failed.
+	bug occurs only if uncomment "status = FloppyPower(& devobj, pirp);" at main function
+
+- floppy11.c: with slicing, the following interpolants are generated (after initial check):
+              -* c::main
+              -* c::stub_driver_init
+              -* c::FloppyCreateClose
+              -* c::FloppyPnp
+              -* c::IofCompleteRequest
+              -* c::IofCompleteRequest
+	with no-slicing, all the interpolants are trivial.
+	Moreover, if comment "status = FloppyPnp(& devobj, pirp);", the following interpolants are generated, even with no-slicing.
+              -* c::main
+              -* c::stub_driver_init
+              -* c::FloppyCreateClose
+              -* c::IofCompleteRequest
