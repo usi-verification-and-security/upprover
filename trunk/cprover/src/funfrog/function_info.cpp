@@ -395,6 +395,13 @@ void function_infot::add_to_set_if_global(const namespacet& ns,
     // Structure member scheme
     add_to_set_if_global(ns, to_dereference_expr(ex).pointer(), set);
 
+  } else if (ex.id() == ID_typecast) {
+    // Typecast
+    add_to_set_if_global(ns, to_typecast_expr(ex).op(), set);
+
+  } else if (ex.id() == ID_constant) {
+    // Ignore constants
+
   } else {
     std::cerr << "WARNING: Unsupported index/member scheme - ignoring." << std::endl;
 #ifdef DEBUG_GLOBALS

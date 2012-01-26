@@ -46,6 +46,7 @@ BUGGY TEST CASES:
 	bug occurs only if uncomment "status = FloppyPnp(& devobj, pirp)" at main function
 
 - floppy9.c: funfrog: ../../../src/proof/ProofGraphBuild.C:99: void ProofGraph::buildProofGraph(Proof&, std::set<int, std::less<int>, 			std::allocator<int> >&, int, clauseid_t, int): Assertion `currClause!=__null' failed.
+  PROBLEM is due to pointers - no fix for the moment :-(
 	bug occurs only if uncomment "status = FloppyPower(& devobj, pirp);" at main function
 
 - floppy11.c: with slicing, the following interpolants are generated (after initial check):

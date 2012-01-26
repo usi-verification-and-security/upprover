@@ -312,6 +312,7 @@ void satcheck_opensmtt::lcnf(const bvt &bv)
   // Shortcut for an empty clause
   if(new_bv.empty())
   {
+    std::cerr << "WARNING: Outputing an empty clause -> most probably an error due to pointers." << std::endl;
     tmp = opensmt_ctx->mkFalse();
     partition_root_enode = opensmt_ctx->mkCons(tmp, partition_root_enode);
     return;
@@ -510,6 +511,7 @@ Function: satcheck_opensmtt::close_partition
 
 void satcheck_opensmtt::close_partition()
 {
+  assert(partition_root_enode != NULL);
   partition_root_enode = opensmt_ctx->mkAnd(partition_root_enode);
   opensmt_ctx->Assert(partition_root_enode);
   partition_root_enode = NULL;
