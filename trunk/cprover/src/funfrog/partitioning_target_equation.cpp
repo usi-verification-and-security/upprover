@@ -16,6 +16,8 @@ Author: Ondrej Sery
 
 //#define DEBUG_SSA
 //#define DEBUG_ITP
+//#define DEBUG_ENCODING
+#include "solvers/satcheck_opensmt.h"
 
 /*******************************************************************\
 
@@ -53,7 +55,10 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
     it->vars = vars_after - vars_before;
     std::cout << "    vars: " << it->vars << std::endl <<
             "    clauses: " << it->clauses << std::endl;
-    
+#   ifdef DEBUG_ENCODING
+    std::cout << "    last_var: " << dynamic_cast<satcheck_opensmtt&>(prop_conv.prop).get_last_var() << std::endl;
+#   endif
+            
     unsigned clauses_total = it->clauses;
     unsigned vars_total = it->vars;
     

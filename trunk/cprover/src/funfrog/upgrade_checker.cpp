@@ -333,7 +333,6 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
             single_assertion_check, !no_slicing_option);
 
   setup_unwind(symex);
-  symex.loop_free_check();
 
   refiner_assertion_sumt refiner = refiner_assertion_sumt(
               summarization_context, omega, equation,

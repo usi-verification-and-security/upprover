@@ -29,7 +29,6 @@ LOW PRIORITY
 BUGS
 ----
 
-- Not all accesses to global variables are detected in function_info.cpp (set DEBUG_GLOBALS on McMillan's examples!)
 - Too many symbols in the renaming tables (remove locals and the special call start and call end symbols)
 - Slicing can remove "unrelated" assumptions that, however, make an error reaching trace unfeasible (thus reporting a nonexistent error).
 - Error trace computation is broken - segfault on trace computation (not addapted to partitioning symex target yet)
@@ -50,6 +49,7 @@ BUGGY TEST CASES:
 	bug occurs only if uncomment "status = FloppyPower(& devobj, pirp);" at main function
 
 - floppy11.c: with slicing, the following interpolants are generated (after initial check):
+  PROBLEM is due to pointers - no fix for the moment :-(
               -* c::main
               -* c::stub_driver_init
               -* c::FloppyCreateClose
