@@ -362,6 +362,50 @@ void function_infot::analyze_globals_rec(summarization_contextt& context,
 
 /*******************************************************************\
 
+Function: function_infot::add_to_set_if_global
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Add global variables to the set
+
+\*******************************************************************/
+
+void function_infot::add_to_set_if_global(const namespacet& ns,
+        const exprt& ex, lex_sorted_idst& set) 
+{
+  if (ex.id() == ID_symbol) {
+    // Directly a symbol - add to set if it is a static variable
+    irep_idt id = to_symbol_expr(ex).get_identifier();
+    const symbolt& symbol = ns.lookup(id);
+    if (symbol.static_lifetime && symbol.lvalue) {
+      set.insert(id);
+    }
+  } else if (ex.id() == ID_index) {
+    // Indexing scheme
+    add_to_set_if_global(ns, to_index_expr(ex).array(), set);
+    add_to_set_if_global(ns, to_index_expr(ex).index(), set);
+
+  } else if (ex.id() == ID_member) {
+    // Structure member scheme
+    add_to_set_if_global(ns, to_member_expr(ex).struct_op(), set);
+
+  } else if (ex.id() == ID_dereference) {
+    // Structure member scheme
+    add_to_set_if_global(ns, to_dereference_expr(ex).pointer(), set);
+
+  } else {
+    std::cerr << "WARNING: Unsupported index/member scheme - ignoring." << std::endl;
+#ifdef DEBUG_GLOBALS
+    expr_pretty_print(std::cerr << "Expr: ", ex);
+    throw "Unsupported indexing scheme.";
+#endif
+  }
+}
+
+/*******************************************************************\
+
 Function: function_infot::add_objects_to_set
 
   Inputs:
@@ -377,69 +421,7 @@ void function_infot::add_objects_to_set(const namespacet& ns,
         const expr_listt& exprs, lex_sorted_idst& set)
 {
   forall_expr_list(ex, exprs) {
-    if (ex->id() == ID_symbol) {
-      const irep_idt& id = to_symbol_expr(*ex).get_identifier();
-      const symbolt& symbol = ns.lookup(id);
-
-      if (symbol.static_lifetime && symbol.lvalue) {
-        set.insert(id);
-      }
-    } else if (ex->id() == ID_index) {
-      // FIXME: This catches only simple indexing, any more involved array 
-      // accesses will not be matched here.
-      irep_idt id;
-      if (to_index_expr(*ex).array().id() == ID_symbol) 
-      {
-        id = to_symbol_expr(to_index_expr(*ex).array()).get_identifier();
-      } else if (to_index_expr(*ex).array().id() == ID_member && 
-              to_member_expr(to_index_expr(*ex).array()).struct_op().id() == ID_symbol) 
-      {
-        id = to_symbol_expr(to_member_expr(
-                to_index_expr(*ex).array()).struct_op()).get_identifier();
-      } else {
-        std::cerr << "WARNING: Unsupported indexing scheme - ignoring.";
-#       ifdef DEBUG_GLOBALS
-        throw "Unsupported indexing scheme.";
-#       endif
-        continue;
-      }
-      const symbolt& symbol = ns.lookup(id);
-
-      if (symbol.static_lifetime && symbol.lvalue) {
-        set.insert(id);
-      }
-    } else if (ex->id() == ID_member) {
-      // FIXME: This catches only simple indexing, any more involved array 
-      // accesses will not be matched here.
-      irep_idt id;
-      if (to_member_expr(*ex).struct_op().id() == ID_symbol) 
-      {
-        id = to_symbol_expr(to_member_expr(*ex).struct_op()).get_identifier();
-      } 
-      else if (to_member_expr(*ex).struct_op().id() == ID_index &&
-              to_index_expr(to_member_expr(*ex).struct_op()).array().id() == ID_symbol) 
-      {
-        id = to_symbol_expr(to_index_expr(to_member_expr(*ex).struct_op()).array()).get_identifier();
-      } 
-      
-      else {
-        std::cerr << "WARNING: Unsupported member scheme - ignoring.";
-#       ifdef DEBUG_GLOBALS
-        throw "Unsupported member scheme.";
-#       endif
-        continue;
-      }
-      const symbolt& symbol = ns.lookup(id);
-
-      if (symbol.static_lifetime && symbol.lvalue) {
-        set.insert(id);
-      }
-    } else {
-#     ifdef DEBUG_GLOBALS
-      expr_pretty_print(std::cerr << "Ignoring object: ", *ex);
-      std::cerr << std::endl;
-#     endif
-    }
+    add_to_set_if_global(ns, *ex, set);
   }
 }
 

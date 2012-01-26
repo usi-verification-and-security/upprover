@@ -76,6 +76,10 @@ private:
   void analyze_globals_rec(summarization_contextt& context,
     const namespacet& ns, std::set<irep_idt>& functions_analyzed);
 
+  // Add global variables to the set
+  static void add_to_set_if_global(const namespacet& ns,
+        const exprt& ex, lex_sorted_idst& set);
+  
   static void add_objects_to_set(const namespacet& ns,
         const expr_listt& exprs, lex_sorted_idst& set);
   

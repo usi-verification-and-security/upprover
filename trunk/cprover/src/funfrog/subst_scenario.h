@@ -27,8 +27,6 @@ public:
         summarization_context (_summarization_context),
         functions_root (NULL, 0),
         default_precision (INLINE),
-        functions (NULL),
-        goto_ranges (NULL),
         global_loc (0)
   {};
 
