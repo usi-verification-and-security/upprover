@@ -58,6 +58,8 @@ public:
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const;
   
+  const std::string& get_last_var() { return id_str; }
+  
 protected:
   // Solver verbosity
   unsigned solver_verbosity;
