@@ -99,7 +99,7 @@ summaryt& summary_storet::find_summary(summary_idt new_id)
 void summary_storet::mark_used_summaries(summary_infot& summary_info, 
         bool *used_mask)
 {
-  call_sitest call_sites = summary_info.get_call_sites();
+  call_sitest& call_sites = summary_info.get_call_sites();
   
   for (call_sitest::iterator it = call_sites.begin();
           it != call_sites.end(); ++it)
@@ -114,10 +114,8 @@ void summary_storet::mark_used_summaries(summary_infot& summary_info,
       {
         used_mask[find_repr(*it2).repr_id] = true;
       }
-    }
-    
-    // Propagate the call
-    if (it->second.get_precision() == INLINE) {
+      
+      // Propagate the call
       mark_used_summaries(it->second, used_mask);
     }
   }
@@ -126,7 +124,7 @@ void summary_storet::mark_used_summaries(summary_infot& summary_info,
 void summary_storet::remap_used_summaries(summary_infot& summary_info, 
         summary_idt *remap) 
 {
-  call_sitest call_sites = summary_info.get_call_sites();
+  call_sitest& call_sites = summary_info.get_call_sites();
   
   for (call_sitest::iterator it = call_sites.begin();
           it != call_sites.end(); ++it)
@@ -144,10 +142,8 @@ void summary_storet::remap_used_summaries(summary_infot& summary_info,
       }
       
       it->second.set_used_summaries(new_summaries);
-    }
-    
-    // Propagate the call
-    if (it->second.get_precision() == INLINE) {
+      
+      // Propagate the call
       remap_used_summaries(it->second, remap);
     }
   }

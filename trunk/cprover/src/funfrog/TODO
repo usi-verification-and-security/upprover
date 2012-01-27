@@ -42,9 +42,6 @@ BUGGY TEST CASES:
 
 - floppy5.c: Segm fault in prop_itpt::is_valid() .. or actually if call any method of this object at that state
 
-- floppy7.c: Segm fault in prop_itpt::substitute(prop_convt&, std::vector<symbol_exprt, std::allocator<symbol_exprt> > const&, bool) const().
-	bug occurs only if uncomment "status = FloppyPnp(& devobj, pirp)" at main function
-
 - floppy9.c: funfrog: ../../../src/proof/ProofGraphBuild.C:99: void ProofGraph::buildProofGraph(Proof&, std::set<int, std::less<int>, 			std::allocator<int> >&, int, clauseid_t, int): Assertion `currClause!=__null' failed.
   PROBLEM is due to pointers - no fix for the moment :-(
 	bug occurs only if uncomment "status = FloppyPower(& devobj, pirp);" at main function

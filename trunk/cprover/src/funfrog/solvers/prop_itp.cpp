@@ -175,6 +175,10 @@ void prop_itpt::generalize(const prop_convt& decider,
     return;
   }
 
+# ifdef DEBUG_ITP
+  std::cout << "--------------- Generalizing -------------" << std::endl;
+# endif
+  
   // FIXME: Dirty cast.
   const boolbv_mapt::mappingt& mapping =
           dynamic_cast<const boolbvt&>(decider).get_map().mapping;
@@ -189,7 +193,7 @@ void prop_itpt::generalize(const prop_convt& decider,
             it->get_identifier());
 
     if (pos == mapping.end()) {
-      // Bool symbols are not in the boolbv_map and have to be treated separatelly
+      // Bool symbols are not in the boolbv_map and have to be treated separately
       if (it->type().id() == ID_bool) {
         literalt l;
         if (!decider.literal(*it, l)) {
@@ -249,6 +253,9 @@ void prop_itpt::generalize(const prop_convt& decider,
       // Bool symbols are not in the boolbv_map and have to be treated separatelly
       if (it->type().id() == ID_bool) {
         literalt l;
+#       ifdef DEBUG_ITP
+        std::cout << it->get_identifier().c_str() << " (1)" << std::endl;
+#       endif
         if (!decider.literal(*it, l)) {
           // NOTE: We assume that the variables are unsigned and there are
           // no duplicates. This migh not hold if some optimizations are added
@@ -260,7 +267,7 @@ void prop_itpt::generalize(const prop_convt& decider,
           // adding new clauses.
           unsigned idx = l.var_no() - min_var;
           assert (renaming[idx] == UINT_MAX);
-          renaming[idx] = cannon_var_no++;
+          renaming[idx] = cannon_var_no;
           represented_symbol[idx] = current_symbol;
 
 #         ifdef DEBUG_ITP
@@ -268,10 +275,14 @@ void prop_itpt::generalize(const prop_convt& decider,
 #         endif
         }
       }
+      cannon_var_no++;
       continue;
     }
     const boolbv_mapt::map_entryt& entry = pos->second;
 
+#   ifdef DEBUG_ITP
+    std::cout << it->get_identifier().c_str() << " (" << entry.width << ")" << std::endl;
+#   endif
     for (boolbv_mapt::literal_mapt::const_iterator it2 = entry.literal_map.begin();
             it2 != entry.literal_map.end();
             ++it2) {
@@ -279,6 +290,7 @@ void prop_itpt::generalize(const prop_convt& decider,
 #       ifdef DEBUG_ITP
         std::cout << "- ";
 #       endif
+        cannon_var_no++;
         continue;
       }
 
@@ -352,7 +364,15 @@ void prop_itpt::generalize(const prop_convt& decider,
     used_symbols[represented_symbol[idx]] = true;
   }
 
-  _no_variables -= shift;
+  // TODO: This line was broken - substitution could not guess variables, if some were not used 
+  // _no_variables -= shift;
+  
+# ifdef DEBUG_ITP
+  std::cout << "_cannon_vars: " << cannon_var_no << std::endl;
+  std::cout << "_no_vars: " << _no_variables << std::endl;
+  std::cout << "_no_orig_vars: " << _no_orig_variables << std::endl;
+# endif
+  _no_variables = cannon_var_no + (_no_variables - _no_orig_variables);
   _no_orig_variables = cannon_var_no;
   
   symbol_mask.reserve(symbols.size());
@@ -394,6 +414,10 @@ void prop_itpt::substitute(prop_convt& decider,
   boolbv_mapt& map = const_cast<boolbv_mapt&>(dynamic_cast<boolbvt&>(decider).get_map());
   literalt renaming[_no_variables];
 
+# ifdef DEBUG_ITP
+  std::cout << "--------------- Substituting -------------" << std::endl;
+# endif
+  
   // Fill the renaming table
   unsigned cannon_var_no = 1;
   for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
@@ -403,22 +427,31 @@ void prop_itpt::substitute(prop_convt& decider,
     // Bool symbols are not in the boolbv_map and have to be treated separatelly
     if (it->type().id() == ID_bool) {
       literalt l = decider.convert(*it);
-      renaming[cannon_var_no++] = l;
+      
 #     ifdef DEBUG_ITP
       std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
+      std::cout << it->get_identifier().c_str() << " (1)" << std::endl;
 #     endif
+      assert(cannon_var_no < _no_variables);
+      renaming[cannon_var_no++] = l;
       continue;
     }
 
+#   ifdef DEBUG_ITP
+    std::cout << it->get_identifier().c_str() << " (" << 
+            map.get_map_entry(it->get_identifier(), it->type()).width <<
+            ")" << std::endl;
+#   endif
     for (unsigned i = 0;
             i < map.get_map_entry(it->get_identifier(), it->type()).width;
             ++i) {
       literalt l = map.get_literal(it->get_identifier(), i, it->type());
 
-      renaming[cannon_var_no++] = l;
 #     ifdef DEBUG_ITP
       std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
 #     endif
+      assert(cannon_var_no < _no_variables);
+      renaming[cannon_var_no++] = l;
     }
 #   ifdef DEBUG_ITP
     std::cout << std::endl;
