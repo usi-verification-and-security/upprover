@@ -393,7 +393,7 @@ bool difft :: do_diff()
       pre_res_3 = true;
     } else { // dirty hack for __CPROVER_initialize (sometimes it exceeds memory, but never is changed)
       bool pre_res_1 = unroll_goto(goto_functions_1, call_name, goto_unrolled_1,
-          calltree_old, i, false);
+          calltree_old, call_loc, false);
 
       bool pre_res_2 = unroll_goto(goto_functions_2, call_name, goto_unrolled_2,
           calltree_new, i, false);
