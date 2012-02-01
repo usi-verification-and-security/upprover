@@ -60,3 +60,7 @@ BUGGY TEST CASES:
               -* c::stub_driver_init
               -* c::FloppyCreateClose
               -* c::IofCompleteRequest
+
+- kbfiltr2_b0.c: funfrog: solvers/prop_itp.cpp:453: void prop_itpt::substitute(prop_convt&, const std::vector<symbol_exprt, std::allocator<symbol_exprt> >&, bool) const: Assertion `cannon_var_no < _no_variables' failed.
+Aborted
+
