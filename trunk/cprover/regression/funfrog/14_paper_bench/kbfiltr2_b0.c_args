@@ -1,1 +1,1 @@
---init-upgrade-check --do-upgrade-check 14_paper_bench/kbfiltr_b1.out --no-slicing
+--init-upgrade-check --do-upgrade-check 14_paper_bench/kbfiltr2_b1.out --no-slicing
