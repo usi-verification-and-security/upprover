@@ -370,8 +370,13 @@ bool difft :: do_diff()
   std::vector<std::pair<std::string, unsigned> > goto_unrolled_2;
   std::vector<std::pair<std::string, unsigned> > goto_common;
 
+  contextt temp_context;
+  namespacet ns (temp_context);
+
   for (unsigned i = 0; i < functions_new.size(); i++)
   {
+    bool pre_res_3 = false;
+
     const irep_idt& call_name = (*functions_new[i].first);
     std::cout << "checking \"" << call_name <<"\":..\n";
 
@@ -387,7 +392,12 @@ bool difft :: do_diff()
       }
     }
 
-    bool pre_res_3 = false;
+    if(!base_type_eq(goto_functions_1.function_map[call_name].type,
+        goto_functions_2.function_map[call_name].type, ns)){
+      std::cout << " --- interface change\n";
+      new_summs[i * 7 + 2] = "2";
+      continue;
+    }
 
     if (i == 0){
       pre_res_3 = true;

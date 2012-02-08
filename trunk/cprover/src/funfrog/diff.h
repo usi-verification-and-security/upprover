@@ -8,6 +8,7 @@
 #include <time_stopping.h>
 #include <goto-programs/read_goto_binary.h>
 
+#include "base_type.h"
 #include "arith_tools.h"
 #include "fixedbv.h"
 #include "ieee_float.h"

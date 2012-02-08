@@ -239,6 +239,8 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
 
     } else {
       out << "  no summary, but the code was changed. try checking the parent.\n";
+      summarization_context.set_valid_summaries(summary_info.get_function_id(), false);
+      checked_functions.insert(&summary_info.get_function_id());
       summary_info.set_inline();
       pre = false;
       upward_traverse_call_tree(summary_info.get_parent(), pre);
