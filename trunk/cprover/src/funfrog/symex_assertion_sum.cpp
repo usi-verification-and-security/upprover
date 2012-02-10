@@ -642,12 +642,12 @@ void symex_assertion_sumt::assign_function_arguments(
   // SSA_exec_order is correctly ordered.
   // NOTE: The exec_order is not used now.
   
-  if (function_call.lhs().is_not_nil()) {
+  if (goto_function.type.return_type().id() != ID_empty) {
     // Add return value assignment from a temporary variable and
     // store the temporary return value symbol somewhere (so that we can
     // use it later, when processing the deferred function).
     return_assignment_and_mark(goto_function.type, state, &(function_call.lhs()),
-            partition_iface);
+            partition_iface, function_call.lhs().is_nil());
   } else {
     partition_iface.retval_symbol = symbol_exprt();
   }
