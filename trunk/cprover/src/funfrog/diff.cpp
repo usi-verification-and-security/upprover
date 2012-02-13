@@ -8,7 +8,7 @@
 
 #include "diff.h"
 
-#define DEBUG_DIFF
+//#define DEBUG_DIFF
 
 std::string form(const exprt &expr)
 {
@@ -280,13 +280,15 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
     while(goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){
 #     ifdef DEBUG_DIFF
       std::cout << "    [+] " << goto_unrolled_2[i_2].first << "\n";
+#     endif
       if (goto_unrolled_2[i_2].second > 0){
+#     ifdef DEBUG_DIFF
         std::cout << " --- function call UNpreserved.\n";
+#     endif
         if (do_write){
           new_summs[(goto_unrolled_2[i_2].second-1) * 7 + 4] = "0";
         }
       }
-#     endif
       i_2++;
     }
     while(goto_unrolled_1[i_1].first != goto_common[i_c - 1].first){
@@ -318,16 +320,16 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
   }
 
   while (i_2 < size_2){
-    std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
 #   ifdef DEBUG_DIFF
+    std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
     std::cout << "    [+] " << goto_unrolled_2[i_2].first << "\n";
 #   endif
     i_2++;
   }
 
   while (i_1 < size_1){
-    std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
 #   ifdef DEBUG_DIFF
+    std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
     std::cout << "    [+] " << goto_unrolled_1[i_1].first << "\n";
 #   endif
     i_1++;

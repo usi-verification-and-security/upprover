@@ -123,7 +123,14 @@ bool check_upgrade(const namespacet &ns,
     std::cout.flush();
   }
 
-  return upg_checker.check_upgrade();
+  res = upg_checker.check_upgrade();
+
+  final = current_time();
+  std::cout << std::endl<< "TOTAL UPGRADE CHECKING TIME: " << time2string(final - initial) << std::endl;
+
+  upg_checker.save_change_impact();
+
+  return res;
 }
 
 /*******************************************************************\
@@ -160,10 +167,10 @@ bool upgrade_checkert::check_upgrade()
 
     const irep_idt& name = (*summs[i]).get_function_id();
     if (omega.get_last_assertion_loc() >= (*summs[i]).get_call_location()){
-      if (checked_functions.find(&name) == checked_functions.end()){
+      if (checked_functions.find(name) == checked_functions.end()){
         upward_traverse_call_tree((*summs[i]), res);
       } else {
-        out << "function " << name << " is already checked\n;";
+        out << "function " << name << " is already checked;\n";
       }
     } else {
       out << "ignoring function: " << name
@@ -185,7 +192,6 @@ bool upgrade_checkert::check_upgrade()
   //
   // NOTE: call check_summary to do the check \phi_f => I_f.
   
-  omega.serialize_xml(options.get_option("save-change-impact"));
   return true;
 }
 
@@ -205,14 +211,14 @@ Function: upgrade_checkert::upward_traverse_call_tree
 void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bool& pre)
 {
   out << "checking function: " << summary_info.get_function_id() << "\n";
-  checked_functions.insert(&summary_info.get_function_id());
+  checked_functions.insert(summary_info.get_function_id());
   if (!summary_info.is_preserved_node() || !pre){
     if (!summary_info.is_preserved_node()){
       out << "  -- the body is changed;";
     }
     if (summary_info.get_precision() == 1){
       if (summary_info.get_precision() == 1){
-        out << " and there was a summary. ";
+        out << " and there was a summary.\n";
       } else {
         out << "   [parent check] do inlining.\n";
       }
@@ -240,7 +246,6 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
     } else {
       out << "  no summary, but the code was changed. try checking the parent.\n";
       summarization_context.set_valid_summaries(summary_info.get_function_id(), false);
-      checked_functions.insert(&summary_info.get_function_id());
       summary_info.set_inline();
       pre = false;
       upward_traverse_call_tree(summary_info.get_parent(), pre);

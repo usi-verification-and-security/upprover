@@ -34,12 +34,15 @@ public:
   bool check_upgrade();
   bool check_summary(const assertion_infot& assertion, 
           summary_infot& summary_info);
+  void save_change_impact(){
+    omega.serialize_xml(options.get_option("save-change-impact"));
+  }
 
 protected:
 
   void upward_traverse_call_tree(summary_infot& summary_info, bool &pre);
   void downward_traverse_call_tree(summary_infot& summary_info);
-  std::set<const irep_idt*> checked_functions;
+  std::set<irep_idt> checked_functions;
 };
 
 bool check_initial(const namespacet &ns,

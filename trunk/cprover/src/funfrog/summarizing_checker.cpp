@@ -81,7 +81,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   unsigned count = 0;
   bool end = false;
 
-  while (!end && count < (unsigned)options.get_int_option("steps"))
+  while (!end)// && count < (unsigned)options.get_int_option("steps"))
   {
     count++;
     opensmt = new satcheck_opensmtt(
