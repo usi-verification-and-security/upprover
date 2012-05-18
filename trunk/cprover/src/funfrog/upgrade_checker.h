@@ -10,6 +10,7 @@
 #define	CPROVER_UPGRADE_CHECKER_H
 
 #include "summarizing_checker.h"
+#include <ui_message.h>
 
 class upgrade_checkert : public summarizing_checkert
 {
@@ -23,10 +24,11 @@ public:
     const namespacet &_ns,
     contextt &_context,
     const optionst& _options,
-    std::ostream &_out,
+    //std::ostream &_out,
+    ui_message_handlert &_message_handler,
     unsigned long &_max_memory_used
     ) : summarizing_checkert (_goto_program, _value_sets, _goto_functions,
-    _imprecise_loops, _precise_loops, _ns, _context, _options, _out,
+    _imprecise_loops, _precise_loops, _ns, _context, _options, _message_handler,
     _max_memory_used)
   {};
   
@@ -49,6 +51,7 @@ bool check_initial(const namespacet &ns,
   goto_programt &program,
   const goto_functionst &goto_functions,
   const optionst& options,
+  ui_message_handlert &_message_handler,
   bool show_progress = true);
 
 bool check_upgrade(const namespacet &ns,
@@ -57,6 +60,7 @@ bool check_upgrade(const namespacet &ns,
   goto_programt &program_new,
   goto_functionst &goto_functions_new,
   const optionst& options,
+  ui_message_handlert &_message_handler,
   bool show_progress = true);
 
 #endif

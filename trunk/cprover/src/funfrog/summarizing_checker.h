@@ -12,13 +12,13 @@
 
 #include <memory>
 #include <options.h>
-
+#include <ui_message.h>
 #include "symex_assertion_sum.h"
 #include "prop_assertion_sum.h"
 #include "refiner_assertion_sum.h"
 #include "solvers/satcheck_opensmt.h"
 
-class summarizing_checkert
+class summarizing_checkert:public messaget
 {
 public:
   summarizing_checkert(
@@ -30,7 +30,8 @@ public:
     const namespacet &_ns,
     contextt &_context,
     const optionst& _options,
-    std::ostream &_out,
+    ui_message_handlert &_message_handler,
+    //std::ostream &_out,
     unsigned long &_max_memory_used
     ) :
       goto_program(_goto_program),
@@ -42,10 +43,11 @@ public:
                 _value_sets,
                 _imprecise_loops,
                 _precise_loops),
-      out(_out),
+      //out(_out),
+      message_handler (_message_handler),
       max_memory_used(_max_memory_used),
       omega(summarization_context, goto_program)
-  {};
+  {set_message_handler(_message_handler);};
 
   void initialize();
   bool last_assertion_holds();
@@ -61,7 +63,8 @@ protected:
   contextt &context;
   const optionst &options;
   summarization_contextt summarization_context;
-  std::ostream &out;
+  //std::ostream &out;
+  ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
   std::auto_ptr<prop_convt> decider;
   std::auto_ptr<interpolating_solvert> interpolator;
@@ -72,6 +75,8 @@ protected:
   void setup_unwind(symex_assertion_sumt& symex);
   double compute_reduction_timeout(double solving_time);
   void extract_interpolants (partitioning_target_equationt& equation, double red_timeout);
+  void report_success();
+  void report_failure();
 };
 
 init_modet get_init_mode(const std::string& str);

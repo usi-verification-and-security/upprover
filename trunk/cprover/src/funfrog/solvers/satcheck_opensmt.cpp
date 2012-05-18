@@ -348,8 +348,10 @@ propt::resultt satcheck_opensmtt::prop_solve() {
             i2string(clause_counter) + " clauses";
     messaget::status(msg);
   }
+# ifndef NDEBUG
   std::cout << "OpenSMT - CNF formula (" << _no_variables << " vars., " <<
           clause_counter << " cl.)" << std::endl;
+# endif
 
   add_variables();
 

@@ -48,7 +48,7 @@ void refiner_assertion_sumt::refine(prop_convt& decider, summary_infot& summary)
 void refiner_assertion_sumt::set_inline_sum(summary_infot& summary)
 {
   if (summary.get_call_location() <= last_assertion_loc){
-    out << "*** REFINING function: " << summary.get_function_id() << std::endl;
+    status(std::string("*** REFINING function: ") + summary.get_function_id().c_str());
     summary.set_inline();
     refined_functions.push_back(&summary);
   }
@@ -98,17 +98,17 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, summary_infot& su
     if (!part.ignore && part.is_summary) {
       partition_ifacet ipart = part.get_iface();
 #     ifdef DEBUG_REFINER
-      out<< "*** checking " << ipart.function_id << ":" << std::endl;
+      std::cout<< "*** checking " << ipart.function_id << ":" << std::endl;
 #     endif
       if (part.applicable_summaries.empty()) {
 #       ifdef DEBUG_REFINER
-        out<< "    -- no applicable summaries" << std::endl;
+        std::cout<< "    -- no applicable summaries" << std::endl;
 #       endif
         tmp.push_back(&ipart.summary_info);
       } 
       if (decider.prop.l_get(ipart.callstart_literal).is_true()){
 #       ifdef DEBUG_REFINER
-        out<< "    -- callstart literal is true" << std::endl;
+        std::cout<< "    -- callstart literal is true" << std::endl;
 #       endif
         if (do_callstart){
           tmp.push_back(&ipart.summary_info);

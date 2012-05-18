@@ -13,6 +13,7 @@ FUNFROG_SRC := \
       partitioning_slice.cpp \
       summary_info.cpp \
       subst_scenario.cpp \
+      xml_interface.cpp \
       parseoptions.cpp \
       check_claims.cpp \
       refiner_assertion_sum.cpp \
@@ -47,6 +48,7 @@ FUNFROG_OBJ := \
       ../loopfrog/value_set_alloc_adaptor$(OBJEXT) \
       ../loopfrog/replace_malloc$(OBJEXT) \
       ../goto-symex/goto-symex$(LIBEXT) \
+      ../xmllang/xmllang$(LIBEXT) \
       ../cbmc/symex_bmc$(OBJEXT) \
 	    $(SHARED_OBJ)
 
@@ -85,7 +87,7 @@ endif
 ###############################################################################
 
 funfrog$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) $(FUNFROG_OBJ) -lopensmt-1.0 -lgmpxx -lgmp
+	$(LINKBIN) $(FUNFROG_OBJ) -static -lopensmt-1.0 -lgmpxx -lgmp
 
 sumo$(EXEEXT): $(SUMO_OBJ)
 	$(LINKBIN) $(SUMO_OBJ) -lopensmt-1.0 -lgmpxx -lgmp

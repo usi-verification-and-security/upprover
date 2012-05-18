@@ -13,9 +13,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <fstream>
 #include <langapi/language_ui.h>
-#include <ui_message.h>
-#include <parseoptions.h>
 #include <options.h>
+#include "xml_interface.h"
 
 #include <goto-programs/goto_functions.h>
 #include <pointer-analysis/value_sets.h>
@@ -36,6 +35,7 @@ class value_set_alloc_adaptort;
   "(save-summaries):(load-summaries):" \
   "(show-symbol-table)(save-stats)(show-value-sets)" \
   "(save-claims)" \
+  "(xml-ui)(xml-interface)" \
   "(init-upgrade-check)(do-upgrade-check):" \
   "(no-slicing)(no-assert-grouping)(no-summary-optimization)" \
   "(pointer-check)(bounds-check)(string-abstraction)(assertions)" \
@@ -49,12 +49,15 @@ class value_set_alloc_adaptort;
   "(refine-mode):(init-mode):(steps):"
 class funfrog_parseoptionst:
   public parseoptions_baset,
+  public xml_interfacet,
   public language_uit
 {
 public:
   virtual int doit();
   virtual void help();
-
+  void ssos(){
+	  status("Partial Inlining");
+  }
   funfrog_parseoptionst(int argc, const char **argv);
 
 protected:

@@ -60,6 +60,7 @@ void subst_scenariot::initialize_summary_info(
     }
     else if (inst->type == FUNCTION_CALL)
     {
+    	proc_count++;
       // NOTE: Expects the function call to by a standard symbol call
       const code_function_callt& function_call = to_code_function_call(inst->code);
       const irep_idt &target_function = to_symbol_expr(
@@ -172,10 +173,10 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
         }
       }
     }
-    std::cout << "Assertion not specified. Check whole program. " << std::endl;
+    //std::cout << "Assertion not specified. Check whole program. " << std::endl;
   } else {
     std::map<unsigned, bool> &vis = assertions_visited[assertion.get_location()];
-    std::cout << vis.size() << " instances of the assertion found." << std::endl;
+    //std::cout << vis.size() << " instances of the assertion found." << std::endl;
     if (!assertion.is_assert_grouping()){
       for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
           // if no-grouping, every time we search for single instance of
@@ -207,7 +208,7 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
       last_assertion_loc = r.second;
     }
   }
-  std::cout << "Last assertion location: " << last_assertion_loc << " / " << global_loc << std::endl;
+  //std::cout << "Last assertion location: " << last_assertion_loc << " / " << global_loc << " ( " << proc_count << ")" << std::endl;
 
   single_assertion_check = count == 1;
 

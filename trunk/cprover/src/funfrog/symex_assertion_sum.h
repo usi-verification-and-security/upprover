@@ -17,6 +17,7 @@
 #include <cbmc/symex_bmc.h>
 #include <namespace.h>
 #include <symbol.h>
+#include <ui_message.h>
 
 #include <base_type.h>
 #include <time_stopping.h>
@@ -36,7 +37,8 @@ public:
           const namespacet &_ns,
           contextt &_context,
           partitioning_target_equationt &_target,
-          std::ostream &_out,
+          //std::ostream &_out,
+          ui_message_handlert &_message_handler,
           const goto_programt &_goto_program,
           unsigned _last_assertion_loc,
           bool _single_assertion_check,
@@ -48,13 +50,14 @@ public:
           current_summary_info(&_summary_info),
           equation(_target),
           current_assertion(NULL),
-          out(_out),
+          //out(_out),
+          message_handler(_message_handler),
           goto_program(_goto_program),
           last_assertion_loc(_last_assertion_loc),
           loc(0),
           single_assertion_check(_single_assertion_check),
           use_slicing(_use_slicing)
-          {}
+          {set_message_handler(_message_handler);}
           
   virtual ~symex_assertion_sumt();
 
@@ -133,7 +136,8 @@ private:
   // Current assertion
   const assertion_infot* current_assertion;
 
-  std::ostream &out;
+  //std::ostream &out;
+  ui_message_handlert &message_handler;
 
   const goto_programt &goto_program;
 

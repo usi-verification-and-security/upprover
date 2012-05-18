@@ -27,7 +27,8 @@ public:
         summarization_context (_summarization_context),
         functions_root (NULL, 0),
         default_precision (INLINE),
-        global_loc (0)
+        global_loc (0),
+        proc_count(0)
   {};
 
   summary_infot& get_summary_info(){ return functions_root; };
@@ -81,6 +82,7 @@ private:
   std::vector<summary_infot*> functions;
   std::vector<std::pair<unsigned, unsigned> > goto_ranges;
   unsigned global_loc;
+  unsigned proc_count;
   unsigned last_assertion_loc;
   bool single_assertion_check;
 

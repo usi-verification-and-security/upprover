@@ -59,7 +59,7 @@ void symex_assertion_sumt::loop_free_check(){
     forall_goto_program_instructions(it2, it->second.body) {
       if (it2->is_backwards_goto()) {
         std::cerr << "ERROR: Backward goto (i.e., a loop) in function: " << it->first << std::endl;
-        goto_program.output_instruction(ns, "", out, it2);
+        goto_program.output_instruction(ns, "", std::cout, it2);
         // assert(!it2->is_backwards_goto());
       }
     }
@@ -87,7 +87,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   // these are quick...
   if(assertion.is_trivially_true())
   {
-    out << std::endl << "ASSERTION IS TRUE" << std::endl;
+    status("ASSERTION IS TRUE");
     return true;
   }
 
@@ -221,28 +221,26 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
   while (has_more_steps(state))
   {
 #   if 0
-    goto_program.output_instruction(ns, "", out, state.source.pc);
+    goto_program.output_instruction(ns, "", std::cout, state.source.pc);
 #   endif
     symex_step(summarization_context.get_functions(), state);
   }
   after=current_time();
 
-  if(out.good())
-    out << "SYMEX TIME: "<< time2string(after-before) << std::endl;
+  status(std::string("SYMEX TIME: ") + time2string(after-before));
 
   if(remaining_claims!=0 || force_check)
   {
     if (use_slicing) {
       before=current_time();
-      out << "All SSA steps: " << equation.SSA_steps.size() << std::endl;
+      status(std::string("All SSA steps: ") + i2string(equation.SSA_steps.size()));
       partitioning_slice(equation, summarization_context.get_summary_store());
-      out << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << std::endl;
+      status(std::string("Ignored SSA steps after slice: ") + i2string(equation.count_ignored_SSA_steps()));
       after=current_time();
-      if (out.good())
-        out << "SLICER TIME: "<< time2string(after-before) << std::endl;
+      status(std::string("SLICER TIME: ") + time2string(after-before));
     }
   } else {
-      out << "Assertion(s) hold trivially." << std::endl;
+	  status("Assertion(s) hold trivially.");
       return true;
   }
   return false;
@@ -498,7 +496,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   const irep_idt& function_id = current_summary_info->get_function_id();
   loc = current_summary_info->get_call_location();
 
-  out << "Processing a deferred function: " << function_id << std::endl;
+  status(std::string("Processing a deferred function: ") + function_id.c_str());
 
   // Select symex target equation to produce formulas into the corresponding
   // partition
@@ -688,7 +686,7 @@ void symex_assertion_sumt::mark_argument_symbols(
     partition_iface.argument_symbols.push_back(symbol);
 
 #   ifdef DEBUG_PARTITIONING
-    expr_pretty_print(out << "Marking argument symbol: ", symbol);
+    expr_pretty_print(std::cout << "Marking argument symbol: ", symbol);
 #   endif
   }
 }
@@ -735,7 +733,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     partition_iface.argument_symbols.push_back(symb_ex);
 
 #   ifdef DEBUG_PARTITIONING
-    expr_pretty_print(out << "Marking accessed global symbol: ", symb_ex);
+    expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex);
 #   endif
   }
 }
@@ -775,7 +773,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     partition_iface.out_arg_symbols.push_back(symb_ex);
 
 #   ifdef DEBUG_PARTITIONING
-    expr_pretty_print(out << "Marking modified global symbol: ", symb_ex);
+    expr_pretty_print(std::cout << "Marking modified global symbol: ", symb_ex);
 #   endif
   }
 }
@@ -834,8 +832,8 @@ void symex_assertion_sumt::return_assignment_and_mark(
   }
 
 # ifdef DEBUG_PARTITIONING
-  expr_pretty_print(out << "Marking return symbol: ", retval_symbol);
-  expr_pretty_print(out << "Marking return tmp symbol: ", retval_tmp);
+  expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
+  expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
 # endif
 
   partition_iface.retval_symbol = retval_symbol;
@@ -1048,15 +1046,14 @@ void symex_assertion_sumt::summarize_function_call(
 {
   // We should use an already computed summary as an abstraction
   // of the function body
-  out << "*** SUMMARY abstraction used for function: " <<
-          function_id << std::endl;
+	status(std::string("*** SUMMARY abstraction used for function: ") + function_id.c_str());
   
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
   produce_callsite_symbols(partition_iface, state);
   produce_callend_assumption(partition_iface, state);
 
-  out << "Substituting interpolant" << std::endl;
+  status(std::string("Substituting interpolant"));
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
   equation.fill_summary_partition(partition_id,
@@ -1084,8 +1081,7 @@ void symex_assertion_sumt::fill_inverted_summary(
   // of the function body
   const irep_idt& function_id = summary_info.get_function_id();
 
-  out << "*** INVERTED SUMMARY used for function: " <<
-          function_id << std::endl;
+  status(std::string("*** INVERTED SUMMARY used for function: ") + function_id.c_str());
   
   partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION);
   
@@ -1093,11 +1089,11 @@ void symex_assertion_sumt::fill_inverted_summary(
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
 
-  out << "Substituting interpolant (part:" << partition_id << ")" << std::endl;
+  status(std::string("Substituting interpolant (part:") + i2string(partition_id) + std::string(")"));
 
 # ifdef DEBUG_PARTITIONING
-  out << "   summaries available: " << summarization_context.get_summaries(function_id).size() << std::endl;
-  out << "   summaries used: " << summary_info.get_used_summaries().size() << std::endl;
+  std::cout << "   summaries available: " << summarization_context.get_summaries(function_id).size() << std::endl;
+  std::cout << "   summaries used: " << summary_info.get_used_summaries().size() << std::endl;
 # endif
 
   equation.fill_inverted_summary_partition(partition_id,
@@ -1122,8 +1118,7 @@ void symex_assertion_sumt::inline_function_call(
         const irep_idt& function_id)
 {
   // We should inline the body --> defer evaluation of the body for later
-  out << "*** INLINING function: " <<
-          function_id << std::endl;
+	status(std::string("*** INLINING function: ") + function_id.c_str());
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
@@ -1151,8 +1146,7 @@ void symex_assertion_sumt::havoc_function_call(
 {
   // We should treat the function as nondeterministic, havocing
   // all data it touches.
-  out << "*** NONDET abstraction used for function: " <<
-          function_id << std::endl;
+	status(std::string("*** NONDET abstraction used for function: ") + function_id.c_str());
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
   

@@ -39,7 +39,6 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
           it != partitions.rend(); ++it) {
 #   ifdef DEBUG_SSA
     std::cout << "XXX" << std::string(77, '=') << std::endl;
-#   endif
     unsigned vars_before = prop_conv.prop.no_variables();
     unsigned clauses_before = dynamic_cast<cnf_solvert&>(prop_conv.prop).no_clauses();
     std::cout << "XXX Partition: " << --part_id << 
@@ -48,16 +47,16 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
             " (loc: " << it->get_iface().summary_info.get_call_location() << ", " <<
             ((it->is_summary) ? ((it->inverted_summary) ? "INV" : "SUM") : "INL") << ")" <<
             std::endl;
+#   endif
     convert_partition(prop_conv, interpolator, *it);
+#   ifdef DEBUG_ENCODING
     unsigned vars_after = prop_conv.prop.no_variables();
     unsigned clauses_after = dynamic_cast<cnf_solvert&>(prop_conv.prop).no_clauses();
     it->clauses = clauses_after - clauses_before;
     it->vars = vars_after - vars_before;
     std::cout << "    vars: " << it->vars << std::endl <<
             "    clauses: " << it->clauses << std::endl;
-#   ifdef DEBUG_ENCODING
     std::cout << "    last_var: " << dynamic_cast<satcheck_opensmtt&>(prop_conv.prop).get_last_var() << std::endl;
-#   endif
             
     unsigned clauses_total = it->clauses;
     unsigned vars_total = it->vars;
@@ -73,6 +72,7 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
     
     it->clauses = clauses_total;
     it->vars = vars_total;
+#   endif
   }
 }
 
@@ -91,6 +91,7 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
     interpolating_solvert &interpolator, partitiont& partition)
 {
   if (partition.ignore || partition.processed || partition.invalid) {
+#   ifdef DEBUG_ENCODING
     if (partition.invalid) {
       std::cout << "  partition invalidated (refined)." << std::endl;
     } else if (partition.ignore) {
@@ -99,6 +100,7 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
     } else if (partition.processed) {
       std::cout << "  partition already processed." << std::endl;
     }
+#	endif
     return;
   }
   
@@ -116,7 +118,9 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   if (partition.is_summary && 
           partition.applicable_summaries.empty()) {
     assert(!partition.inverted_summary);
+#   ifdef DEBUG_SSA
     std::cout << "  no applicable summary." << std::endl;
+#	endif
     return;
   }
 

@@ -15,7 +15,7 @@
 #include "summarization_context.h"
 #include "partitioning_target_equation.h"
 
-class refiner_assertion_sumt
+class refiner_assertion_sumt:public messaget
 {
 public:
   refiner_assertion_sumt(
@@ -23,7 +23,8 @@ public:
           subst_scenariot &_omega,
           partitioning_target_equationt &_target,
           refinement_modet _mode,
-          std::ostream &_out,
+          message_handlert &_message_handler,
+          //std::ostream &_out,
           const unsigned _last_assertion_loc,
           bool _valid
           ) :
@@ -31,10 +32,11 @@ public:
           omega(_omega),
           equation(_target),
           mode(_mode),
-          out(_out),
+          //out(_out),
+          message_handler(_message_handler),
           last_assertion_loc(_last_assertion_loc),
           valid (_valid)
-          {};
+          {set_message_handler(_message_handler);};
 
   void refine(prop_convt& decider, summary_infot& summary);
   std::list<summary_infot*>& get_refined_functions(){ return refined_functions; }
@@ -55,7 +57,8 @@ protected:
   refinement_modet mode;
 
   // Default output
-  std::ostream &out;
+  //std::ostream &out;
+  message_handlert &message_handler;
 
   // Location of the last assertion to be checked
   const unsigned last_assertion_loc;

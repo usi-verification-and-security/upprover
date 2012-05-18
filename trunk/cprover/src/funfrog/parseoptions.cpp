@@ -21,7 +21,7 @@
 #include <io.h>
 #endif
 
-#include <message.h>
+//#include <message.h>
 #include <context.h>
 #include <i2string.h>
 #include <std_expr.h>
@@ -38,7 +38,7 @@
 #include <goto-programs/string_instrumentation.h>
 #include <goto-programs/string_abstraction.h>
 #include <goto-programs/slicer.h>
-#include <goto-programs/show_claims.h>
+//#include <goto-programs/show_claims.h>
 #include <goto-programs/remove_unused_functions.h>
 #include <goto-programs/link_to_library.h>
 
@@ -75,6 +75,7 @@
 
 funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
   parseoptions_baset(FUNFROG_OPTIONS, argc, argv),
+  xml_interfacet(cmdline),
   language_uit("FUNFROG" FUNFROG_VERSION, cmdline)
 {
 }
@@ -275,8 +276,8 @@ int funfrog_parseoptionst::doit()
   register_languages();
   set_options(cmdline);  
   
-  stream_message_handlert mh(std::cout);  
-  set_message_handler(mh);
+  //stream_message_handlert mh(std::cout);
+  set_message_handler(ui_message_handler);
 
   int verbosity=6;
   if(cmdline.isset("v"))
@@ -456,6 +457,9 @@ void funfrog_parseoptionst::help()
   "                               for all function calls\n"
 //  "                               is being disabled by \"force-inlining\"\n"
   "--steps <bound>                number of refinement steps\n"
+  "\nI/O options:\n"
+  "--xml-ui                       use XML-formatted output\n"
+  "--xml-interface                stdio-XML interface\n"
   "\n";
 }
 
@@ -650,7 +654,7 @@ bool funfrog_parseoptionst::check_function_summarization(
 
   if(cmdline.isset("show-claims"))
   {
-    show_claims(ns, claim_map, claim_numbers);
+    show_claims(ns, claim_map, claim_numbers, get_ui());
     return 0;
   }
 
@@ -668,7 +672,7 @@ bool funfrog_parseoptionst::check_function_summarization(
     bool init_ready = true; // the checks of existence of __omega and upg. version will be later
     if (init_upg_check){
       init_ready = check_initial(ns, goto_functions.function_map[ID_main].body,
-              goto_functions, options, !cmdline.isset("no-progress"));
+              goto_functions, options, ui_message_handler, !cmdline.isset("no-progress"));
     }
 
     if (upg_check && init_ready){
@@ -687,7 +691,7 @@ bool funfrog_parseoptionst::check_function_summarization(
               goto_functions.function_map[ID_main].body, goto_functions,
               // NEW!
               goto_functions_new.function_map[ID_main].body, goto_functions_new,
-              options, !cmdline.isset("no-progress"));
+              options, ui_message_handler, !cmdline.isset("no-progress"));
     }
   } else {
     // perform standalone check (all the functionality remains the same)
@@ -722,6 +726,7 @@ bool funfrog_parseoptionst::check_function_summarization(
                                       claim_map,
                                       claim_numbers,
                                       options,
+                                      ui_message_handler,
                                       claim_nr,
                                       cmdline.isset("show-pass"),
                                       !cmdline.isset("suppress-fail"),

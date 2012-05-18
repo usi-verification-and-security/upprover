@@ -16,9 +16,13 @@
 #include "localized_inlining.h"
 */
 
+#include <xml.h>
+#include <i2string.h>
+#include <xml_irep.h>
 
 #include "check_claims.h"
 #include "assertion_info.h"
+#include <ui_message.h>
 
 
 /*******************************************************************
@@ -114,6 +118,7 @@ claim_statst check_claims(
   claim_mapt &claim_map,
   claim_numberst &claim_numbers,
   const optionst& options,
+  ui_message_handlert &_message_handler,
   unsigned claim_nr,
   bool show_pass,
   bool show_fail,
@@ -122,12 +127,12 @@ claim_statst check_claims(
 {
   // precondition: the leaping program must be numbered correctly.
   claim_statst res;  
-
   unsigned inlined_claims = count_inlined_claims(leaping_program,
                                                  goto_functions);
   unsigned seen_claims = 0;
   bool assert_grouping = !options.get_bool_option("no-assert-grouping");
   
+  res.set_message_handler(_message_handler);
   res.total_claims = claim_map.size();
   
   std::string fname;
@@ -145,7 +150,7 @@ claim_statst check_claims(
   namespacet ns1(ns.get_context(), temp_context);
   summarizing_checkert sum_checker(leaping_program, value_set_analysist(ns1),
                          goto_functions, loopstoret(), loopstoret(),
-                         ns1, temp_context, options, std::cout, res.max_mem_used);
+                         ns1, temp_context, options, _message_handler, res.max_mem_used);
 
   sum_checker.initialize();
 
@@ -169,10 +174,9 @@ claim_statst check_claims(
     if(show_progress)
     {
       seen_claims++;
-      std::cout << "\r    Checking Claim #" << claim_numbers[ass_ptr] << " (";
-      std::cout << (int)(100*seen_claims/(double)(assert_grouping ? claim_numbers.size() : inlined_claims));
-      std::cout << "%) ..." << std::endl;
-      std::cout.flush();
+      res.status(std::string("\r    Checking Claim #") + i2string(claim_numbers[ass_ptr]) + std::string(" (") +
+    		    i2string((int)(100*seen_claims/(double)(assert_grouping ? claim_numbers.size() : inlined_claims))) +
+    		    std::string("%) ..."));
     }
 
     std::ofstream out;
@@ -225,11 +229,11 @@ claim_statst check_claims(
       out.close();
   }
 
-  if(show_progress)
-  {
-    std::cout << "\r" << std::string(80, ' ');
-    std::cout.flush();
-  }
+//  if(show_progress)
+//  {
+//    std::cout << "\r" << std::string(80, ' ');
+//    std::cout.flush();
+//  }
   
   for(claim_mapt::const_iterator it=claim_map.begin();
       it!=claim_map.end();
@@ -290,7 +294,8 @@ Function: get_claims
 
 void show_claims(const namespacet &ns,
                  const claim_mapt &claim_map, 
-                 const claim_numberst &claim_numbers)
+                 const claim_numberst &claim_numbers,
+                 ui_message_handlert::uit ui)
 {
   std::map<unsigned, goto_programt::const_targett> reverse_map;
   for(claim_numberst::const_iterator it=claim_numbers.begin();
@@ -306,21 +311,64 @@ void show_claims(const namespacet &ns,
       it++)
   {
     assert(it->second->type==ASSERT);
+
+    const locationt &location=it->second->location;
       
-    const irep_idt &comment=it->second->location.get("comment");      
+    const irep_idt &comment=location.get_comment();
+    const irep_idt &function=location.get_function();
+    const irep_idt &property=location.get_property();
     const irep_idt description=
-      (comment==""?"user supplied assertion":comment);
-    
+      (comment==""?"assertion":comment);
+
     claim_numberst::const_iterator nr_it = claim_numbers.find(it->second);
-    std::cout << "Claim " << nr_it->second << ": " << description << std::endl;
+
+    std::string claim_name = i2string(nr_it->second);
     
-    std::cout << "  At: " << it->second->location << std::endl;
-    
-    std::cout << it->second->location.get_function() << ":" <<      
-                 it->second->location.get_line() << std::endl;
-    
-    std::cout << "  " << from_expr(ns, "", it->second->guard)
-              << std::endl;
-    std::cout << std::endl;  
+    switch(ui)
+    {
+    case ui_message_handlert::XML_UI:
+      {
+        xmlt xml("claim");
+        xml.new_element("number").data=claim_name;
+        xml.new_element("name").data=claim_name;
+
+        xmlt &l=xml.new_element();
+        convert(location, l);
+        l.name="location";
+
+        l.new_element("line").data=id2string(location.get_line());
+        l.new_element("file").data=id2string(location.get_file());
+        l.new_element("function").data=id2string(location.get_function());
+
+        xml.new_element("description").data=id2string(description);
+        xml.new_element("property").data=id2string(property);
+        xml.new_element("expression").data=from_expr(ns, "", it->second->guard);
+
+        std::cout << xml << std::endl;
+      }
+      break;
+
+    case ui_message_handlert::PLAIN:
+      {
+        const irep_idt &comment=it->second->location.get("comment");
+        const irep_idt description=
+          (comment==""?"user supplied assertion":comment);
+
+        std::cout << "Claim " << nr_it->second << ": " << description << std::endl;
+
+        std::cout << "  At: " << it->second->location << std::endl;
+
+        std::cout << it->second->location.get_function() << ":" <<
+                     it->second->location.get_line() << std::endl;
+
+        std::cout << "  " << from_expr(ns, "", it->second->guard)
+                  << std::endl;
+        std::cout << std::endl;
+      }
+      break;
+
+    default:
+      assert(false);
+    }
   }
 }

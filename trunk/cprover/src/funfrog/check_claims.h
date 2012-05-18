@@ -12,8 +12,10 @@
 #include <options.h>
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
+#include <ui_message.h>
+#include <message_stream.h>
 
-class claim_statst
+class claim_statst:public messaget
 {
 public:
   claim_statst(void) :
@@ -52,7 +54,8 @@ void get_claims(const goto_functionst &goto_functions,
 
 void show_claims(const namespacet &ns,
                  const claim_mapt &claim_map, 
-                 const claim_numberst &claim_numbers);
+                 const claim_numberst &claim_numbers,
+                 ui_message_handlert::uit ui);
 
 claim_statst check_claims(
   const namespacet &ns,
@@ -62,6 +65,7 @@ claim_statst check_claims(
   claim_mapt &claim_map,
   claim_numberst &claim_numbers,
   const optionst& options,
+  ui_message_handlert &_message_handler,
   unsigned claim_nr = 0,
   bool show_pass = false,
   bool show_fail = true,

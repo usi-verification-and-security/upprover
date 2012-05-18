@@ -9,6 +9,7 @@
 #include "upgrade_checker.h"
 #include "diff.h"
 #include <string>
+#include <i2string.h>
 
 void upgrade_checkert::initialize()
 {
@@ -41,6 +42,7 @@ bool check_initial(const namespacet &ns,
   goto_programt &program,
   const goto_functionst &goto_functions,
   const optionst& options,
+  ui_message_handlert &message_handler,
   bool show_progress)
 {
   unsigned long max_mem_used;
@@ -48,7 +50,7 @@ bool check_initial(const namespacet &ns,
   namespacet ns1(ns.get_context(), temp_context);
   summarizing_checkert sum_checker(program, value_set_analysist(ns1),
                          goto_functions, loopstoret(), loopstoret(),
-                         ns1, temp_context, options, std::cout, max_mem_used);
+                         ns1, temp_context, options, message_handler, max_mem_used);
 
   sum_checker.initialize();
 
@@ -88,6 +90,7 @@ bool check_upgrade(const namespacet &ns,
   goto_programt &program_new,
   goto_functionst &goto_functions_new,
   const optionst& options,
+  ui_message_handlert &message_handler,
   bool show_progress) 
 {
   // 1. Make diff
@@ -112,7 +115,7 @@ bool check_upgrade(const namespacet &ns,
   namespacet ns1(ns.get_context(), temp_context);
   upgrade_checkert upg_checker(program_new, value_set_analysist(ns1),
                          goto_functions_new, loopstoret(), loopstoret(),
-                         ns1, temp_context, options, std::cout, max_mem_used);
+                         ns1, temp_context, options, message_handler, max_mem_used);
 
   // Load older summaries
   upg_checker.initialize();
@@ -170,11 +173,12 @@ bool upgrade_checkert::check_upgrade()
       if (checked_functions.find(name) == checked_functions.end()){
         upward_traverse_call_tree((*summs[i]), res);
       } else {
-        out << "function " << name << " is already checked;\n";
+        status(std::string("function ") + name.c_str() + std::string(" is already checked"));
       }
     } else {
-      out << "ignoring function: " << name
-            << " (loc. number " << (*summs[i]).get_call_location() << " is out of assertion scope)\n";
+    	status(std::string("ignoring function: ") + name.c_str()
+            + std::string(" (loc. number ") + i2string((*summs[i]).get_call_location())
+            + std::string(" is out of assertion scope)"));
     }
     if (!res) {
       return false;
@@ -210,17 +214,17 @@ Function: upgrade_checkert::upward_traverse_call_tree
 \*******************************************************************/
 void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bool& pre)
 {
-  out << "checking function: " << summary_info.get_function_id() << "\n";
+  status(std::string("checking function: ") + summary_info.get_function_id().c_str());
   checked_functions.insert(summary_info.get_function_id());
   if (!summary_info.is_preserved_node() || !pre){
     if (!summary_info.is_preserved_node()){
-      out << "  -- the body is changed;";
+      //std::cout << "  -- the body is changed;";
     }
     if (summary_info.get_precision() == 1){
       if (summary_info.get_precision() == 1){
-        out << " and there was a summary.\n";
+        //std::cout << " and there was a summary.\n";
       } else {
-        out << "   [parent check] do inlining.\n";
+        //std::cout << "   [parent check] do inlining.\n";
       }
       // prepare subst. scenario for reverification
       downward_traverse_call_tree (summary_info);
@@ -229,29 +233,30 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
       //      in case of refinement, subst scenario will be renewed
       pre = check_summary(assertion_infot(), summary_info);
       if (pre){
-        out << "  summary was verified. go to the next check.\n"; // here is the actual exit of the method
+    	status("  summary was verified. go to the next check."); // here is the actual exit of the method
         summary_info.set_summary();
       } else {
         summarization_context.set_valid_summaries(summary_info.get_function_id(), false);
-        out << "invalidating summary: " << summary_info.get_function_id() << "\n";
+        status(std::string("invalidating summary: ") + summary_info.get_function_id().c_str());
         if (summary_info.get_parent().is_root()){
-          out << "summary cannot be renewed. A real bug found. ";
+          status("summary cannot be renewed. A real bug found. ");
+          report_failure();
         } else {
-          cout << "check the parent.\n";
+          //std::cout << "check the parent.\n";
           summary_info.set_inline();
           upward_traverse_call_tree(summary_info.get_parent(), pre);
         }
       }
 
     } else {
-      out << "  no summary, but the code was changed. try checking the parent.\n";
+      //std::cout << "  no summary, but the code was changed. try checking the parent.\n";
       summarization_context.set_valid_summaries(summary_info.get_function_id(), false);
       summary_info.set_inline();
       pre = false;
       upward_traverse_call_tree(summary_info.get_parent(), pre);
     }
   } else {
-    out << "  preserved. go to the next check\n";
+    status("  preserved. go to the next check");
   }
 }
 
@@ -274,32 +279,32 @@ void upgrade_checkert::downward_traverse_call_tree(summary_infot& summary_info)
   for (call_sitest::iterator it = call_sites.begin();
           it != call_sites.end(); ++it)
   {
-    out << "\n    -- the function call of " << (it->second).get_function_id();
+    //std::cout << "\n    -- the function call of " << (it->second).get_function_id();
 
     if (it->second.is_preserved_edge()){
-      out << " is preserved;";
+      //std::cout << " is preserved;";
       // FIXME: a summary that was being verified (both, valid or not) is INL now
       if ((it->second).get_precision() == 1){
-        out << " has summary => will remain summarized ";
+        //std::cout << " has summary => will remain summarized ";
       } else if ((it->second).get_precision() == 0){
-        out << " was havoced (probably, out of las_assertion_loc) => will remain havoced";
+        //std::cout << " was havoced (probably, out of las_assertion_loc) => will remain havoced";
       } else {
         if ((it->second).has_assertion_in_subtree()){
-          out << " was inlined (since has assertion) => will remain inlined" ;
+          //std::cout << " was inlined (since has assertion) => will remain inlined" ;
           // if inline, then do recursive traverse downward
           downward_traverse_call_tree(it->second);
         } else if ((it->second).is_preserved_node()){
-          out << " was inlined (irrelevant for proof) => can be havoced";
+          //std::cout << " was inlined (irrelevant for proof) => can be havoced";
           (it->second).set_nondet();
         } else {
-          out << " was modified => should be inlined";
+          //std::cout << " was modified => should be inlined";
         }
       }
 
     } else {
-      out << " not preserved => do inlining";
+      //std::cout << " not preserved => do inlining";
     }
-    out <<"\n";
+    //std::cout <<"\n";
   }
 }
 
@@ -324,7 +329,8 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   // Trivial case
   if(assertion.is_trivially_true())
   {
-    out << std::endl << "ASSERTION IS TRIVIALLY TRUE" << std::endl;
+    status("ASSERTION IS TRIVIALLY TRUE");
+    report_success();
     return true;
   }
   const bool no_slicing_option = options.get_bool_option("no-slicing");
@@ -336,7 +342,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
 
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, context,
-            equation, out, goto_program, last_assertion_loc,
+            equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option);
 
   setup_unwind(symex);
@@ -344,10 +350,10 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   refiner_assertion_sumt refiner = refiner_assertion_sumt(
               summarization_context, omega, equation,
               get_refine_mode(options.get_option("refine-mode")),
-              out, last_assertion_loc, false);
+              message_handler, last_assertion_loc, false);
 
   prop_assertion_sumt prop = prop_assertion_sumt(summarization_context,
-          equation, out, max_memory_used);
+          equation, message_handler, max_memory_used);
   unsigned count = 0;
   bool end = false;
 
@@ -374,33 +380,33 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
         double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
         extract_interpolants(equation, red_timeout);
         //omega.serialize("__omega_" + i2string(omega.get_assertion_location(assertion.get_location())));
-        out << "Old summary is still valid";
+        status("Old summary is still valid");
         if (summaries_count == 0)
         {
-          out << " (after inlining)." << std::endl;
+          //std::cout << " (after inlining)." << std::endl;
         } else {
-          out << " (after successful substitution of " << summaries_count <<
-                  " summaries for nested function calls)." << std::endl;
+          //std::cout << " (after successful substitution of " << summaries_count <<
+          //        " summaries for nested function calls)." << std::endl;
         }
       } else {
         if (summaries_count != 0 || init == ALL_HAVOCING) {
 //          if (init == ALL_HAVOCING){
 //            out << "NONDETERMINISTIC ASSIGNMENTS FOR ALL FUNCTION CALLS ";
 //          } else {
-            out << "Function summaries (for " << summaries_count << " calls) ";
+            //std::cout << "Function summaries (for " << summaries_count << " calls) ";
 //        }
-          out << "are not suitable for re-verification the summary." << std::endl;
+          //std::cout << "are not suitable for re-verification the summary." << std::endl;
           refiner.refine(*decider, summary_info);
 
           if (refiner.get_refined_functions().size() == 0){
-            out << "Old summary is no more valid." << std::endl;
+            //std::cout << "Old summary is no more valid." << std::endl;
             break;
           } else {
-            out << "Counterexample is spurious."  << std::endl <<
-                   "Go to the next iteration." << std::endl;
+            //std::cout << "Counterexample is spurious."  << std::endl <<
+            //       "Go to the next iteration." << std::endl;
           }
         } else {
-          out << "Old summary is no more valid."  << std::endl;
+          //std::cout << "Old summary is no more valid."  << std::endl;
           break;
         }
       }
@@ -408,7 +414,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   }
   final = current_time();
 
-  out << std::endl<< "Total number of steps: " << count << "." << std::endl <<
-        "TOTAL TIME FOR CHECKING THIS SUMMARY: "<< time2string(final - initial) << std::endl;
+  status(std::string("Total number of steps: ") + i2string(count) + std::string(".\r\n") +
+		  std::string("TOTAL TIME FOR CHECKING THIS SUMMARY: ") + time2string(final - initial));
   return end;
 }

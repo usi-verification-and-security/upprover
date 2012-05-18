@@ -11,7 +11,7 @@
 
 #include <solvers/flattening/sat_minimizer.h>
 #include <namespace.h>
-
+#include <ui_message.h>
 #include <time_stopping.h>
 #include <fstream>
 
@@ -22,21 +22,23 @@
 extern fine_timet global_satsolver_time;
 extern fine_timet global_sat_conversion_time;
 
-class prop_assertion_sumt
+class prop_assertion_sumt:public messaget
 {
 public:
   prop_assertion_sumt(
           summarization_contextt& _summarization_context,
           partitioning_target_equationt &_target,
-          std::ostream &_out,
+          //std::ostream &_out,
+          ui_message_handlert &_message_handler,
           unsigned long &_max_memory_used
           ) :
           summarization_context(_summarization_context),
           equation(_target),
           solving_time(0),
-          out(_out),
+          //out(_out),
+          message_handler (_message_handler),
           max_memory_used(_max_memory_used)
-          {};
+          {set_message_handler(_message_handler);};
 
   bool assertion_holds(const assertion_infot &assertion, const namespacet &ns, prop_convt& decider, interpolating_solvert& interpolator);
 
@@ -52,11 +54,14 @@ private:
   // SAT solving time
   fine_timet solving_time;
 
-  std::ostream &out;
+  //std::ostream &out;
+  ui_message_handlert &message_handler;
 
   unsigned long &max_memory_used;
 
   bool is_satisfiable(decision_proceduret &decision_procedure);
+
+  void error_trace(const prop_convt &prop_conv, const namespacet &ns);
 
 };
 #endif

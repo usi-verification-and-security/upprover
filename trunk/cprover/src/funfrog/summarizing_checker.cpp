@@ -52,7 +52,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   // Trivial case
   if(assertion.is_trivially_true())
   {
-    out << std::endl << "ASSERTION IS TRIVIALLY TRUE" << std::endl;
+    status("ASSERTION IS TRIVIALLY TRUE");
+    report_success();
     return true;
   }
   const bool no_slicing_option = options.get_bool_option("no-slicing");
@@ -66,7 +67,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, context,
-            equation, out, goto_program, last_assertion_loc,
+            equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option);
 
   setup_unwind(symex);
@@ -74,14 +75,17 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   refiner_assertion_sumt refiner = refiner_assertion_sumt(
               summarization_context, omega, equation,
               get_refine_mode(options.get_option("refine-mode")),
-              out, last_assertion_loc, true);
+              message_handler, last_assertion_loc, true);
 
   prop_assertion_sumt prop = prop_assertion_sumt(summarization_context,
-          equation, out, max_memory_used);
+          equation, message_handler, max_memory_used);
   unsigned count = 0;
   bool end = false;
+  if(&message_handler!=NULL){
+	  std::cout <<"";
+  }
 
-  while (!end)// && count < (unsigned)options.get_int_option("steps"))
+  while (!end && count < 3)
   {
     count++;
     opensmt = new satcheck_opensmtt(
@@ -104,31 +108,34 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
         extract_interpolants(equation, red_timeout);
         if (summaries_count == 0)
         {
-          out << "ASSERTION(S) HOLD(S) AFTER INLINING." << std::endl;
+          status("ASSERTION(S) HOLD(S) AFTER INLINING.");
         } else {
-          out << "FUNCTION SUMMARIES (for " << summaries_count <<
-                  " calls) WERE SUBSTITUTED SUCCESSFULLY." << std::endl;
+          status(std::string("FUNCTION SUMMARIES (for ") + i2string(summaries_count) +
+        		  std::string(" calls) WERE SUBSTITUTED SUCCESSFULLY."));
         }
+        report_success();
       } else {
         if (summaries_count != 0 || init == ALL_HAVOCING) {
           if (init == ALL_HAVOCING){
-            out << "NONDETERMINISTIC ASSIGNMENTS FOR ALL FUNCTION CALLS ";
+            status("NONDETERMINISTIC ASSIGNMENTS FOR ALL FUNCTION CALLS ARE NOT SUITABLE FOR CHECKING ASSERTION.");
           } else {
-            out << "FUNCTION SUMMARIES (for " << summaries_count << " calls) ";
+            status(std::string("FUNCTION SUMMARIES (for ") +
+            		i2string(summaries_count) + std::string(" calls) ARENOT SUITABLE FOR CHECKING ASSERTION."));
           }
-          out << "AREN'T SUITABLE FOR CHECKING ASSERTION." << std::endl;
           refiner.refine(*decider, omega.get_summary_info());
 
           if (refiner.get_refined_functions().size() == 0){
-            out << "A real bug found." << std::endl;
+            status("A real bug found.");
+            report_failure();
             break;
           } else {
-            out << "Counterexample is spurious."  << std::endl <<
-                   "Go to next iteration." << std::endl;
+            status("Counterexample is spurious");
+            status("Go to next iteration");
           }
         } else {
-          out << "ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING."  << std::endl <<
-                 "A real bug found." << std::endl;
+          status("ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING");
+          status("A real bug found");
+          report_failure();
           break;
         }
       }
@@ -136,8 +143,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   }
   final = current_time();
 
-  out << std::endl<< "Total number of steps: " << count << "." << std::endl <<
-        "TOTAL TIME FOR CHECKING THIS CLAIM: "<< time2string(final - initial) << std::endl;
+  status(std::string("\r\nTotal number of steps: ") + i2string(count));
+  status(std::string("TOTAL TIME FOR CHECKING THIS CLAIM: ") + time2string(final - initial));
   return end;
 }
 
@@ -180,7 +187,7 @@ void summarizing_checkert::extract_interpolants (partitioning_target_equationt& 
   before=current_time();
   equation.extract_interpolants(*interpolator, *decider, itp_map, red_timeout);
   after=current_time();
-  out << "INTERPOLATION TIME: "<< time2string(after-before) << std::endl;
+  status(std::string("INTERPOLATION TIME: ") + time2string(after-before));
 
   for (interpolant_mapt::iterator it = itp_map.begin();
                   it != itp_map.end(); ++it) {
@@ -289,3 +296,85 @@ init_modet get_init_mode(const std::string& str)
     return ALL_SUBSTITUTING;
   }
 };
+
+/*******************************************************************\
+
+Function: summarizing_checkert::report_success
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void summarizing_checkert::report_success()
+{
+  //status("VERIFICATION SUCCESSFUL");
+
+  switch(message_handler.get_ui())
+  {
+  case ui_message_handlert::OLD_GUI:
+    std::cout << "SUCCESS" << std::endl
+              << "Verification successful" << std::endl
+              << ""     << std::endl
+              << ""     << std::endl
+              << ""     << std::endl
+              << ""     << std::endl;
+    break;
+
+  case ui_message_handlert::PLAIN:
+    break;
+
+  case ui_message_handlert::XML_UI:
+    {
+      xmlt xml("cprover-status");
+      xml.data="SUCCESS";
+      std::cout << xml;
+      std::cout << std::endl;
+    }
+    break;
+
+  default:
+    assert(false);
+  }
+}
+
+/*******************************************************************\
+
+Function: summarizing_checkert::report_failure
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void summarizing_checkert::report_failure()
+{
+  //status("VERIFICATION FAILED");
+
+  switch(message_handler.get_ui())
+  {
+  case ui_message_handlert::OLD_GUI:
+    break;
+
+  case ui_message_handlert::PLAIN:
+    break;
+
+  case ui_message_handlert::XML_UI:
+    {
+      xmlt xml("cprover-status");
+      xml.data="FAILURE";
+      std::cout << xml;
+      std::cout << std::endl;
+    }
+    break;
+
+  default:
+    assert(false);
+  }
+}
