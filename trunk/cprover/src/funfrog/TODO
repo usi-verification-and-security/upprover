@@ -8,6 +8,7 @@ HIGH PRIORITY
 - PINCETTE stuff: xml-interface for output
 - Upgrade check: optimize upward propagation (in case of multiple changes, change the root of common subtree), e.g. for 12_upg_simple_ref/change_15.c
 - Repair slicing for upgrade check (e.g. 12_upg_simple_ref/change_13.c doesn't work without "--no-slicing")
+- 'depending variables' optimization seems broken (disabled for a while)
 
 LOW PRIORITY
 ------------

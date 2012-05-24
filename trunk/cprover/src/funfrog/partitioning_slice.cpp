@@ -157,8 +157,8 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
         
         summaryt& summary = summary_store.find_summary(summary_id);
         // Does not restrict the given symbol
-        if (!summary.get_symbol_mask()[symbol_idx])
-          continue;
+        //if (!summary.get_symbol_mask()[symbol_idx]) // TODO: seems broken
+        //  continue;
         
         // Yes it is relevant, add only symbols constrained by the summary
         unsigned idx = 0;
