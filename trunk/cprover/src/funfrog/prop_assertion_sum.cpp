@@ -57,7 +57,7 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 
   if (!sat)
   {
-	//status("ASSERTION IS TRUE");
+	status("ASSERTION IS TRUE");
     return true;
   }
   else

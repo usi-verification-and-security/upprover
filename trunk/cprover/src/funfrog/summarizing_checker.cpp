@@ -120,7 +120,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
             status("NONDETERMINISTIC ASSIGNMENTS FOR ALL FUNCTION CALLS ARE NOT SUITABLE FOR CHECKING ASSERTION.");
           } else {
             status(std::string("FUNCTION SUMMARIES (for ") +
-            		i2string(summaries_count) + std::string(" calls) ARENOT SUITABLE FOR CHECKING ASSERTION."));
+            		i2string(summaries_count) + std::string(" calls) AREN'T SUITABLE FOR CHECKING ASSERTION"));
           }
           refiner.refine(*decider, omega.get_summary_info());
 
@@ -133,7 +133,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
             status("Go to next iteration");
           }
         } else {
-          status("ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING");
+          status("ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.");
           status("A real bug found");
           report_failure();
           break;
