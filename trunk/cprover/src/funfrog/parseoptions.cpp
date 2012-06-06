@@ -383,18 +383,17 @@ int funfrog_parseoptionst::doit()
 void funfrog_parseoptionst::help()
 {
   std::cout <<"\n"
-    "* * *                FUNFROG "FUNFROG_VERSION
-  " - Copyright (C) 2011               * * *\n"
-  "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
-  "                based on LOOPFROG "LOOPFROG_VERSION
-  " - Copyright (C) 2008\n"
-  "          Daniel Kroening, Natasha Sharygina, Aliaksei Tsitovich,\n"
-  "                Stefano Tonetta & Christoph M. Wintersteiger\n"
+    "* * *                eVolCheck "EVOLCHECK_VERSION
+    " - Copyright (C) 2012               * * *\n"
+    "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
+    "                based on FUNFROG "FUNFROG_VERSION
+    " - Copyright (C) 2011               * * *\n"
+    "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
   "\n"
   "Usage:                         Purpose:\n"
   "\n"
-  " funfrog [-?] [-h] [--help]    show help\n"
-  " funfrog [options] <file>      run on goto-binary `file'\n"
+  " evolcheck [-?] [-h] [--help]    show help\n"
+  " evolcheck [options] <file>      run on goto-binary `file'\n"
   "\nDisplay options:\n"
   "--version                      show version information\n"
   "--show-symbol-table            show symbol table\n"

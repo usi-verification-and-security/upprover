@@ -69,7 +69,7 @@ SRC := ${FUNFROG_SRC} ${SUMO_SRC} ${DIFF_SRC}
 
 include ../common
 
-all: funfrog$(EXEEXT) sumo$(EXEEXT)
+all: evolcheck$(EXEEXT) sumo$(EXEEXT)
 
 INCLUDES := $(OPENSMT_INCLUDE) -I .. -I ../util
 LIBS := -L $(OPENSMT_LIBDIR)
@@ -86,6 +86,9 @@ endif
 
 ###############################################################################
 
+evolcheck$(EXEEXT): $(FUNFROG_OBJ)
+	$(LINKBIN) $(FUNFROG_OBJ) -static -lopensmt-1.0 -lgmpxx -lgmp
+
 funfrog$(EXEEXT): $(FUNFROG_OBJ)
 	$(LINKBIN) $(FUNFROG_OBJ) -static -lopensmt-1.0 -lgmpxx -lgmp
 
@@ -96,7 +99,7 @@ diff$(EXEEXT): $(DIFF_OBJ)
 	$(LINKBIN) $(DIFF_OBJ)
 
 clean:
-	rm -f *.o *.d funfrog sumo diff __omega_*
+	rm -f *.o *.d funfrog evolcheck sumo diff __omega_* __calltree.xml
 	rm -f solvers/*.o solvers/*.d
 
 re: clean all
