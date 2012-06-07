@@ -8,6 +8,7 @@
 #include <time_stopping.h>
 #include <goto-programs/read_goto_binary.h>
 
+#include <ui_message.h>
 #include "base_type.h"
 #include "arith_tools.h"
 #include "fixedbv.h"
@@ -16,30 +17,34 @@
 #include <iostream>
 #include <fstream>
 
-class difft {
+class difft : public messaget{
 public:
   difft(
+    message_handlert &_message_handler,
     goto_functionst &_goto_functions_1,
     goto_functionst &_goto_functions_2,
     const char* _output) :
+      message_handler (_message_handler),
       goto_functions_1(_goto_functions_1),
       goto_functions_2(_goto_functions_2),
       output(_output),
       do_write(true),
       old_summs(0),
       new_summs(0)
-  {};
+  {set_message_handler(_message_handler);};
 
   difft(
+	message_handlert &_message_handler,
     goto_functionst &_goto_functions_1,
     goto_functionst &_goto_functions_2) :
+      message_handler (_message_handler),
       goto_functions_1(_goto_functions_1),
       goto_functions_2(_goto_functions_2),
       output("__omega"),
       do_write(false),
       old_summs(0),
       new_summs(0)
-  {};
+  {set_message_handler(_message_handler);};
 
   bool do_diff();
 
@@ -48,6 +53,9 @@ public:
     //_output = "__omega";
     do_write = true;
   };
+
+protected:
+  message_handlert &message_handler;
 
   
 private:

@@ -67,8 +67,8 @@ std::string cmd_str (goto_programt::const_targett &it)
       case END_FUNCTION: { res = "end_f"; } break;
       case LOCATION:   { res = "loc + ?"; } break;      // TODO
       case GOTO:  {
-        goto_programt::targetst::const_iterator it2 = it->targets.begin();
-        unsigned tgt_location = (*it2)->location_number;
+          //goto_programt::targetst::const_iterator it2 = it->targets.begin();
+          //unsigned tgt_location = (*it2)->location_number;
 
           res = "if (" + form(it->guard) + ") goto " ;//+ integer2string(tgt_location);
           // FIXME: change the absolute target location to relative one
@@ -276,8 +276,10 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
   unsigned i_c = size_c;
 
   while (i_c > 0){
-    //std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
-    while(goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){
+#     ifdef DEBUG_DIFF
+    std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
+#     endif
+	  while(goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){
 #     ifdef DEBUG_DIFF
       std::cout << "    [+] " << goto_unrolled_2[i_2].first << "\n";
 #     endif
@@ -380,7 +382,6 @@ bool difft :: do_diff()
     bool pre_res_3 = false;
 
     const irep_idt& call_name = (*functions_new[i].first);
-    std::cout << "checking \"" << call_name <<"\":..\n";
 
     int call_loc = get_call_loc(call_name, functions_old);
 
@@ -396,7 +397,7 @@ bool difft :: do_diff()
 
     if(!base_type_eq(goto_functions_1.function_map[call_name].type,
         goto_functions_2.function_map[call_name].type, ns)){
-      std::cout << " --- interface change\n";
+      status (std::string("function \"") + call_name.c_str() + std::string ("\" has changed interface"));
       new_summs[i * 7 + 2] = "2";
       continue;
     }
@@ -425,7 +426,8 @@ bool difft :: do_diff()
       }
     }
 
-    std::cout << " --- " << (functions_new[i].second ? "" : "UN") << "preserved.\n";
+    status (std::string("function \"") + call_name.c_str() + std::string ("\" is ") +
+    		(functions_new[i].second ? std::string("") : std::string("UN")) + std::string("preserved"));
     goto_unrolled_1.clear();
     goto_unrolled_2.clear();
     goto_common.clear();

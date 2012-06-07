@@ -143,7 +143,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   }
   final = current_time();
 
-  status(std::string("\r\nTotal number of steps: ") + i2string(count));
+  status(std::string("Total number of steps: ") + i2string(count));
   status(std::string("TOTAL TIME FOR CHECKING THIS CLAIM: ") + time2string(final - initial));
   return end;
 }
@@ -316,16 +316,11 @@ void summarizing_checkert::report_success()
   switch(message_handler.get_ui())
   {
   case ui_message_handlert::OLD_GUI:
-    std::cout << "SUCCESS" << std::endl
-              << "Verification successful" << std::endl
-              << ""     << std::endl
-              << ""     << std::endl
-              << ""     << std::endl
-              << ""     << std::endl;
     break;
 
   case ui_message_handlert::PLAIN:
-    break;
+	std::cout << std::endl << std::endl << "VERIFICATION SUCCESSFUL" << std::endl;
+	break;
 
   case ui_message_handlert::XML_UI:
     {
@@ -355,15 +350,14 @@ Function: summarizing_checkert::report_failure
 
 void summarizing_checkert::report_failure()
 {
-  //status("VERIFICATION FAILED");
-
   switch(message_handler.get_ui())
   {
   case ui_message_handlert::OLD_GUI:
     break;
 
   case ui_message_handlert::PLAIN:
-    break;
+	std::cout << std::endl << std::endl << "VERIFICATION FAILED" << std::endl;
+	break;
 
   case ui_message_handlert::XML_UI:
     {

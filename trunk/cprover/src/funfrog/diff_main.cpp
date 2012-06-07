@@ -21,9 +21,8 @@ void print_help() {
     std::endl << std::endl;
 }
 
-void read(const char* file, goto_functionst& goto_functions) {
+void read(message_handlert& mh, const char* file, goto_functionst& goto_functions) {
 
-  stream_message_handlert mh(std::cout);
   contextt context;
   if(read_goto_binary(file, context, goto_functions, mh))
   {
@@ -43,17 +42,19 @@ int main(int argc, const char** argv) {
   goto_functionst goto_functions_1;
   goto_functionst goto_functions_2;
 
+  stream_message_handlert mh(std::cout);
+
   before=current_time();
 
-  read(argv[1], goto_functions_1);
-  read(argv[2], goto_functions_2);
+  read(mh, argv[1], goto_functions_1);
+  read(mh, argv[2], goto_functions_2);
 
   after=current_time();
   std::cout << "    LOAD Binaries Time: " << time2string(after-before) << " sec.\n";
 
   // Analyze both files
 
-  difft diff(goto_functions_1, goto_functions_2);
+  difft diff(mh, goto_functions_1, goto_functions_2);
 
   if (argc == 4){
     diff.set_output(argv[4]);

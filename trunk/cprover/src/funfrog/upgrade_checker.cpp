@@ -56,8 +56,8 @@ bool check_initial(const namespacet &ns,
 
   if(show_progress)
   {
-    std::cout << std::endl << "    Checking all claims" << std::endl;
-    std::cout.flush();
+    sum_checker.status("Checking all claims");
+    //std::cout.flush();
   }
 
   // Check all the assertions
@@ -66,8 +66,8 @@ bool check_initial(const namespacet &ns,
   sum_checker.serialize();
 
   if (!result){
-    std::cout << "Upgrade checking is not possible." << std::endl
-        << "Try standalone verification." << std::endl;
+    sum_checker.status("Upgrade checking is not possible");
+    sum_checker.status("Try standalone verification");
   }
 
   return result;
@@ -99,13 +99,15 @@ bool check_upgrade(const namespacet &ns,
   fine_timet initial, final;
   initial=current_time();
 
-  bool res = difft(goto_functions_old, goto_functions_new, "__omega").do_diff();
+  difft diff(message_handler, goto_functions_old, goto_functions_new, "__omega");
+
+  bool res = diff.do_diff();
 
   final = current_time();
-  std::cout << std::endl<< "DIFF TIME: " << time2string(final - initial) << std::endl;
+  diff.status(std::string("DIFF TIME: ") + time2string(final - initial));
 
   if (res){
-    std::cout<< "The programs are trivially identical." << std::endl;
+	diff.status("The programs are trivially identical");
     return 0;
   }
 
@@ -122,14 +124,15 @@ bool check_upgrade(const namespacet &ns,
 
   if(show_progress)
   {
-    std::cout << std::endl << "    Checking all claims" << std::endl;
-    std::cout.flush();
+    upg_checker.status("Checking all claims");
+    //std::cout.flush();
   }
 
   res = upg_checker.check_upgrade();
 
   final = current_time();
-  std::cout << std::endl<< "TOTAL UPGRADE CHECKING TIME: " << time2string(final - initial) << std::endl;
+
+  upg_checker.status(std::string("TOTAL UPGRADE CHECKING TIME: ") + time2string(final - initial));
 
   upg_checker.save_change_impact();
 
@@ -181,9 +184,11 @@ bool upgrade_checkert::check_upgrade()
             + std::string(" is out of assertion scope)"));
     }
     if (!res) {
+      report_failure();
       return false;
     }
     //serialize();
+    //FIXME
   }
 
   // 3. From the bottom of the tree, reverify all changed nodes
@@ -196,6 +201,7 @@ bool upgrade_checkert::check_upgrade()
   //
   // NOTE: call check_summary to do the check \phi_f => I_f.
   
+  report_success();
   return true;
 }
 
@@ -240,7 +246,6 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
         status(std::string("invalidating summary: ") + summary_info.get_function_id().c_str());
         if (summary_info.get_parent().is_root()){
           status("summary cannot be renewed. A real bug found. ");
-          report_failure();
         } else {
           //std::cout << "check the parent.\n";
           summary_info.set_inline();
@@ -414,7 +419,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   }
   final = current_time();
 
-  status(std::string("Total number of steps: ") + i2string(count) + std::string(".\r\n") +
-		  std::string("TOTAL TIME FOR CHECKING THIS SUMMARY: ") + time2string(final - initial));
+  status(std::string("Total number of steps: ") + i2string(count));
+  status(std::string("TOTAL TIME FOR CHECKING THIS SUMMARY: ") + time2string(final - initial));
   return end;
 }
