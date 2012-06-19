@@ -420,6 +420,9 @@ bool difft :: do_diff()
     functions_new[i].second = pre_res_3;
     if (pre_res_3 == false){
       do_proper_diff(goto_unrolled_1, goto_unrolled_2, goto_common);
+      if (do_write) {
+    	new_summs[i*7 + 3] = "0";
+      }
     } else {
       if (do_write) {
         new_summs[i*7 + 3] = "1";
