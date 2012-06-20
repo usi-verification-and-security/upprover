@@ -44,6 +44,8 @@ public:
 
   const fine_timet& get_solving_time() { return solving_time; };
 
+  void error_trace(const prop_convt &prop_conv, const namespacet &ns);
+
 private:
   // Summarizing context (summary_store needed)
   summarization_contextt& summarization_context;
@@ -60,8 +62,6 @@ private:
   unsigned long &max_memory_used;
 
   bool is_satisfiable(decision_proceduret &decision_procedure);
-
-  void error_trace(const prop_convt &prop_conv, const namespacet &ns);
 
 };
 #endif

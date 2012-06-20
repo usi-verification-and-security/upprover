@@ -125,14 +125,16 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
           refiner.refine(*decider, omega.get_summary_info());
 
           if (refiner.get_refined_functions().size() == 0){
+            prop.error_trace(*decider, ns);
             status("A real bug found.");
             report_failure();
             break;
           } else {
-            status("Counterexample is spurious");
+            //status("Counterexample is spurious");
             status("Go to next iteration");
           }
         } else {
+          prop.error_trace(*decider, ns);
           status("ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.");
           status("A real bug found");
           report_failure();

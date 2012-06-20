@@ -57,12 +57,12 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 
   if (!sat)
   {
-	status("ASSERTION IS TRUE");
+	  status("ASSERTION IS TRUE");
     return true;
   }
   else
   {
-    error_trace(decider, ns);
+    /* error_trace(decider, ns);
     //std::cout << std::endl << "NONDET assigns:" << std::endl;
 
     unsigned int nondet_counter=0;
@@ -70,7 +70,7 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
     if (!assertion.is_all_assert())
       find_symbols(assertion.get_location()->guard, lhs_symbols);
 
- /*   if (lhs_symbols.size()>0)
+    if (lhs_symbols.size()>0)
     {
       for (goto_tracet::stepst::reverse_iterator it=
              trace.steps.rbegin();
@@ -101,10 +101,10 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
             find_symbols(code.op1(), lhs_symbols);
         }
       }
-    }*/
+    }
 
     //std::cout << "Total nondet:" << nondet_counter << std::endl;
-
+    */
     return false;
   }
 }

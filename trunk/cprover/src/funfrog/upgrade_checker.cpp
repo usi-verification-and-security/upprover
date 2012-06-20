@@ -96,6 +96,7 @@ bool check_upgrade(const namespacet &ns,
   // 1. Make diff
   // 2. Construct changed summary_info tree -> write back to "__omega"
 
+
   fine_timet initial, final;
   initial=current_time();
 
@@ -105,7 +106,6 @@ bool check_upgrade(const namespacet &ns,
 
   final = current_time();
   diff.status(std::string("DIFF TIME: ") + time2string(final - initial));
-
   if (res){
 	diff.status("The programs are trivially identical");
     return 0;
@@ -124,7 +124,7 @@ bool check_upgrade(const namespacet &ns,
 
   if(show_progress)
   {
-    upg_checker.status("Checking all claims");
+    //upg_checker.status("Checking all claims");
     //std::cout.flush();
   }
 
@@ -220,7 +220,7 @@ Function: upgrade_checkert::upward_traverse_call_tree
 \*******************************************************************/
 void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bool& pre)
 {
-  status(std::string("checking function: ") + summary_info.get_function_id().c_str());
+  status(std::string("checking validity of old summary for function: ") + summary_info.get_function_id().c_str());
   checked_functions.insert(summary_info.get_function_id());
   if (!summary_info.is_preserved_node() || !pre){
     if (!summary_info.is_preserved_node()){
@@ -261,7 +261,7 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
       upward_traverse_call_tree(summary_info.get_parent(), pre);
     }
   } else {
-    status("  preserved. go to the next check");
+    status("  preserved. go to the next check.");
   }
 }
 
@@ -418,7 +418,9 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
     }
   }
   final = current_time();
-
+  if (!end && summary_info.get_parent().is_root()){
+    prop.error_trace(*decider, ns);
+  }
   status(std::string("Total number of steps: ") + i2string(count));
   status(std::string("TOTAL TIME FOR CHECKING THIS SUMMARY: ") + time2string(final - initial));
   return end;
