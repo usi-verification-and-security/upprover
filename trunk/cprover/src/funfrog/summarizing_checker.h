@@ -53,7 +53,7 @@ public:
   bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
   void serialize(){
-    omega.serialize("__omega"/* + i2string(omega.get_assertion_location(assertion.get_location()))*/);
+    omega.serialize(options.get_option("save-omega"));
   };
 
 protected:

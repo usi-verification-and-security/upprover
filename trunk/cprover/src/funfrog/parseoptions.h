@@ -33,6 +33,7 @@ class value_set_alloc_adaptort;
   "(show-claimed-program)(show-abstracted-program)" \
   "(save-claimed-program)(save-abstracted-program)" \
   "(save-summaries):(load-summaries):" \
+  "(save-omega):(load-omega):" \
   "(show-symbol-table)(save-stats)(show-value-sets)" \
   "(save-claims)" \
   "(xml-ui)(xml-interface)" \
@@ -40,7 +41,7 @@ class value_set_alloc_adaptort;
   "(no-slicing)(no-assert-grouping)(no-summary-optimization)" \
   "(pointer-check)(bounds-check)(string-abstraction)(assertions)" \
   "(show-pass)(suppress-fail)(no-progress)" \
-  "(save-summaries)(show-claims)(claim):" \
+  "(show-claims)(claim):" \
   "(save-queries)(save-change-impact):" \
   "(reduce-proof):(verbose-solver):" \
   "(unwind):(unwindset):" \

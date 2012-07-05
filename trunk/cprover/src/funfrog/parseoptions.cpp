@@ -408,6 +408,10 @@ void funfrog_parseoptionst::help()
   "                               to the given file\n"
   "--load-summaries <filename>    load function summaries\n"
   "                               from the given file\n"
+  "--save-omega <filename>        save the last used substitution scenario\n"
+  "                               to the given file\n"
+  "--load-omega <filename>        load substitution scenario\n"
+  "                               from the given file\n"
   "--no-progress                  turn off progress display\n"
   "--save-queries                 save SAT queries and configuration\n"
   "\nUpgrade options:\n"
@@ -799,10 +803,20 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   } else {
     options.set_option("save-summaries", "__summaries");
   }
+  if (cmdline.isset("save-omega")) {
+    options.set_option("save-omega", cmdline.getval("save-omega"));
+  } else {
+    options.set_option("save-omega", "__omega");
+  }
   if (cmdline.isset("load-summaries")) {
     options.set_option("load-summaries", cmdline.getval("load-summaries"));
   } else {
     options.set_option("load-summaries", "__summaries");
+  }
+  if (cmdline.isset("load-omega")) {
+    options.set_option("load-omega", cmdline.getval("load-omega"));
+  } else {
+    options.set_option("load-omega", "__omega");
   }
   if (cmdline.isset("save-change-impact")) {
     options.set_option("save-change-impact", cmdline.getval("save-change-impact"));

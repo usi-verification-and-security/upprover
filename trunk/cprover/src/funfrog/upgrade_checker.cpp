@@ -100,7 +100,7 @@ bool check_upgrade(const namespacet &ns,
   fine_timet initial, final;
   initial=current_time();
 
-  difft diff(message_handler, goto_functions_old, goto_functions_new, "__omega");
+  difft diff(message_handler, goto_functions_old, goto_functions_new, options.get_option("load-omega").c_str());
 
   bool res = diff.do_diff();
 
@@ -155,7 +155,7 @@ bool upgrade_checkert::check_upgrade()
 
   // Here we suppose that "__omega" already contains information about changes
   // TODO: Maybe omega should be passed internally, not as a file.
-  omega.deserialize("__omega", goto_program);
+  omega.deserialize(options.get_option("load-omega"), goto_program);
   omega.process_goto_locations();
   omega.setup_last_assertion_loc(assertion_infot());
 
@@ -384,7 +384,6 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
       {
         double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
         extract_interpolants(equation, red_timeout);
-        //omega.serialize("__omega_" + i2string(omega.get_assertion_location(assertion.get_location())));
         status("Old summary is still valid");
         if (summaries_count == 0)
         {
