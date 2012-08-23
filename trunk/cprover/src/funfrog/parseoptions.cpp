@@ -459,7 +459,6 @@ void funfrog_parseoptionst::help()
   "  1 | \"use-summaries\"          start with substituting all existent summaries\n"
   "                               for all function calls\n"
 //  "                               is being disabled by \"force-inlining\"\n"
-  "--steps <bound>                number of refinement steps\n"
   "\nI/O options:\n"
   "--xml-ui                       use XML-formatted output\n"
   "--xml-interface                stdio-XML interface\n"
@@ -834,10 +833,5 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("init-mode")) {
     options.set_option("init-mode", cmdline.getval("init-mode"));
-  }
-  if (cmdline.isset("steps")) {
-    options.set_option("steps", cmdline.getval("steps"));
-  } else {
-    options.set_option("steps", "5");
   }
 }

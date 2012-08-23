@@ -85,7 +85,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 	  std::cout <<"";
   }
 
-  while (!end /*&& count < 3*/)
+  while (!end)
   {
     count++;
     opensmt = new satcheck_opensmtt(

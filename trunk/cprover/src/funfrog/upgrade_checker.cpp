@@ -362,7 +362,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   unsigned count = 0;
   bool end = false;
 
-  while (!end)// && count < (unsigned)options.get_int_option("steps"))
+  while (!end)
   {
     count++;
     opensmt = new satcheck_opensmtt(
