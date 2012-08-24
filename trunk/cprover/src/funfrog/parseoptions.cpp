@@ -325,14 +325,12 @@ int funfrog_parseoptionst::doit()
     statfile.flush();
   }
 
-  if(cmdline.isset("save-summaries"))
+  /* if(cmdline.isset("save-summaries"))
   {
     // clean those files
     std::ofstream f("summaries_imprecise"); f.close();
     std::ofstream g("summaries_precise"); g.close();
-  }
-
-  register_languages();
+  }  */
 
   goto_functionst goto_functions;
   namespacet ns(context);
@@ -429,6 +427,8 @@ void funfrog_parseoptionst::help()
   "--pointer-check                add pointer checks\n"
   "--assertions                   add user supplied assertions\n"
   "--claim <int>                  check a specific claim\n"
+  "--claimset <int,int,...>       check specific claims separated by comas (TBD)\n"
+  "--all-claims                   check all claims in one run\n"
   "--testclaim <label>            check a labelled claim\n"
   "--unwind <bound>               loop unwind bound\n"
   "--unwindset <label:bound,...>  set of loop unwind bound for specific\n"
@@ -665,7 +665,7 @@ bool funfrog_parseoptionst::check_function_summarization(
 
   if (upg_check || init_upg_check){
     // perform the upgrade check (or preparation to it)
-    if(cmdline.isset("testclaim") || cmdline.isset("claim"))
+    if(cmdline.isset("testclaim") || cmdline.isset("claim") || cmdline.isset("claimset"))
     {
       error("Upgrade checking mode does not allow checking specific claims.");
       return 1;
@@ -698,6 +698,11 @@ bool funfrog_parseoptionst::check_function_summarization(
   } else {
     // perform standalone check (all the functionality remains the same)
   
+    if(cmdline.isset("claim") && cmdline.isset("all-claims")) {
+      error("A specific claim cannot be specified if --all-claims is set.");
+      return 1;
+    }
+
     if(cmdline.isset("testclaim"))
     {
       claim_nr=find_marked_claim(goto_functions,
@@ -719,7 +724,7 @@ bool funfrog_parseoptionst::check_function_summarization(
         return 1;
       }
     }
-  
+
     before=current_time();
     claim_statst stats = check_claims(ns,
                                       goto_functions.function_map[ID_main].body,
@@ -782,6 +787,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("pointer-check", cmdline.isset("pointer-check"));
   options.set_option("string-abstraction", cmdline.isset("string-abstraction"));
   options.set_option("assertions", cmdline.isset("assertions"));
+  options.set_option("all-claims", cmdline.isset("all-claims"));
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));

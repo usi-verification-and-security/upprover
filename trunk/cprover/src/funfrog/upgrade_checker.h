@@ -19,8 +19,6 @@ public:
     const goto_programt &_goto_program,
     const value_setst &_value_sets,
     const goto_functionst &_goto_functions,
-    const loopstoret &_imprecise_loops,
-    const loopstoret &_precise_loops,
     const namespacet &_ns,
     contextt &_context,
     const optionst& _options,
@@ -28,7 +26,7 @@ public:
     ui_message_handlert &_message_handler,
     unsigned long &_max_memory_used
     ) : summarizing_checkert (_goto_program, _value_sets, _goto_functions,
-    _imprecise_loops, _precise_loops, _ns, _context, _options, _message_handler,
+    _ns, _context, _options, _message_handler,
     _max_memory_used)
   {};
   

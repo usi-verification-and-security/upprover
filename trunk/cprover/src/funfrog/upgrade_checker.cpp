@@ -49,8 +49,7 @@ bool check_initial(const namespacet &ns,
   contextt temp_context;
   namespacet ns1(ns.get_context(), temp_context);
   summarizing_checkert sum_checker(program, value_set_analysist(ns1),
-                         goto_functions, loopstoret(), loopstoret(),
-                         ns1, temp_context, options, message_handler, max_mem_used);
+       goto_functions, ns1, temp_context, options, message_handler, max_mem_used);
 
   sum_checker.initialize();
 
@@ -116,8 +115,7 @@ bool check_upgrade(const namespacet &ns,
   contextt temp_context;
   namespacet ns1(ns.get_context(), temp_context);
   upgrade_checkert upg_checker(program_new, value_set_analysist(ns1),
-                         goto_functions_new, loopstoret(), loopstoret(),
-                         ns1, temp_context, options, message_handler, max_mem_used);
+         goto_functions_new, ns1, temp_context, options, message_handler, max_mem_used);
 
   // Load older summaries
   upg_checker.initialize();

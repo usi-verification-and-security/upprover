@@ -149,13 +149,13 @@ claim_statst check_claims(
   contextt temp_context;
   namespacet ns1(ns.get_context(), temp_context);
   summarizing_checkert sum_checker(leaping_program, value_set_analysist(ns1),
-                         goto_functions, loopstoret(), loopstoret(),
-                         ns1, temp_context, options, _message_handler, res.max_mem_used);
+        goto_functions, ns1, temp_context, options, _message_handler, res.max_mem_used);
 
   sum_checker.initialize();
 
-  while(true)
-  {
+  if (options.get_bool_option("all-claims")){
+    sum_checker.assertion_holds(assertion_infot(), true);
+  } else while(true) {
     // Next assertion (or next occurrence of the same assertion)
     ass_ptr = find_assertion(ass_ptr, goto_functions, stack);
     while(ass_ptr != leaping_program.instructions.end() && 

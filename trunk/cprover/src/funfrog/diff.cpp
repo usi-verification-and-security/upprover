@@ -6,6 +6,7 @@
 
 \*******************************************************************/
 
+#include <i2string.h>
 #include "diff.h"
 
 //#define DEBUG_DIFF
@@ -421,7 +422,7 @@ bool difft :: do_diff()
     if (pre_res_3 == false){
       do_proper_diff(goto_unrolled_1, goto_unrolled_2, goto_common);
       if (do_write) {
-    	new_summs[i*7 + 3] = "0";
+        new_summs[i*7 + 3] = "0";
       }
     } else {
       if (do_write) {
@@ -430,7 +431,10 @@ bool difft :: do_diff()
     }
 
     status (std::string("function \"") + call_name.c_str() + std::string ("\" is ") +
-    		(functions_new[i].second ? std::string("") : std::string("UN")) + std::string("preserved"));
+    		(functions_new[i].second ? std::string("") : std::string("UN")) + std::string("preserved") +
+        (functions_new[i].second ? std::string("") : std::string(" (") +
+            i2string(goto_unrolled_1.size() - goto_common.size() + goto_unrolled_2.size() - goto_common.size())
+            + std::string(")")));
     goto_unrolled_1.clear();
     goto_unrolled_2.clear();
     goto_common.clear();
