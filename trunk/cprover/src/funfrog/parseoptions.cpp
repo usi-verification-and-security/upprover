@@ -427,7 +427,7 @@ void funfrog_parseoptionst::help()
   "--pointer-check                add pointer checks\n"
   "--assertions                   add user supplied assertions\n"
   "--claim <int>                  check a specific claim\n"
-  "--claimset <int,int,...>       check specific claims separated by comas (TBD)\n"
+  "--claimset <int,int,...>       check specific claims separated by comas\n"
   "--all-claims                   check all claims in one run\n"
   "--testclaim <label>            check a labelled claim\n"
   "--unwind <bound>               loop unwind bound\n"
@@ -799,6 +799,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("unwindset")) {
     options.set_option("unwindset", cmdline.getval("unwindset"));
+  }
+  if (cmdline.isset("claimset")) {
+    options.set_option("claimset", cmdline.getval("claimset"));
   }
   if (cmdline.isset("do-upgrade-check")) {
     options.set_option("do-upgrade-check", cmdline.getval("do-upgrade-check"));

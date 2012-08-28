@@ -132,9 +132,28 @@ claim_statst check_claims(
   unsigned seen_claims = 0;
   bool assert_grouping = !options.get_bool_option("no-assert-grouping");
   
+  const std::string &set=options.get_option("claimset");
+  unsigned int length=set.length();
+  bool multi_assert = (length > 0);
+  std::vector<unsigned> claims;
+
+  if (multi_assert){
+    for(unsigned idx=0; idx<length; idx++)
+    {
+      std::string::size_type next=set.find(",", idx);
+      std::string val=set.substr(idx, next-idx);
+      claims.push_back(atoi(val.c_str()));
+
+      if(next==std::string::npos) break;
+      idx=next;
+    }
+  }
+
+  std::vector <goto_programt::const_targett> multi_assert_loc;
+
   res.set_message_handler(_message_handler);
   res.total_claims = claim_map.size();
-  
+
   std::string fname;
   call_stackt stack;
   goto_programt::const_targett ass_ptr = leaping_program.instructions.begin();
@@ -171,7 +190,7 @@ claim_statst check_claims(
     if (assert_grouping && claim_map[ass_ptr].first)
       continue;
     
-    if(show_progress)
+    if(show_progress && !multi_assert)
     {
       seen_claims++;
       res.status(std::string("\r    Checking Claim #") + i2string(claim_numbers[ass_ptr]) + std::string(" (") +
@@ -183,7 +202,7 @@ claim_statst check_claims(
 
     if(save_files)
     {
-      fname = stats_dir + "claim_" + integer2string(claim_numbers[ass_ptr]);
+      fname = stats_dir + "claim_" + i2string(claim_numbers[ass_ptr]);
       out.open(fname.c_str(), std::fstream::app);
       out << std::string(80, '-') << std::endl;
     }
@@ -195,8 +214,24 @@ claim_statst check_claims(
     // if(inlined_program.instructions.size()>res.max_instruction_count)
     //  res.max_instruction_count=inlined_program.instructions.size();
 
-    bool pass = sum_checker.assertion_holds(assert_grouping ? 
-            assertion_infot(ass_ptr) : assertion_infot(stack, ass_ptr), false);
+
+
+    bool pass = false;
+    if (multi_assert){
+      bool ok = false;
+      for (unsigned i = 0; i < claims.size(); i++){
+        if (claims[i] == claim_numbers[ass_ptr]){
+          ok = true;
+          break;
+        }
+      }
+      if (ok){
+        multi_assert_loc.push_back(ass_ptr);
+      }
+    } else {
+      pass = sum_checker.assertion_holds(assert_grouping ?
+              assertion_infot(ass_ptr) : assertion_infot(stack, ass_ptr), false);
+    }
 
     claim_map[ass_ptr].first = true;
     
@@ -227,6 +262,19 @@ claim_statst check_claims(
 
     if(save_files)
       out.close();
+  }
+
+  if (multi_assert){
+    std::cout << "Checking claims: ";
+    for (int i = 0; i < claims.size(); i++){
+      std::cout << "\"" << claims[i] <<"\"";
+      if (i < claims.size() - 1){
+        std::cout << ", ";
+      }
+    }
+    std::cout << " in a multi_assertion mode.\r\n";
+    sum_checker.assertion_holds(assert_grouping ?
+                  assertion_infot(multi_assert_loc) : assertion_infot(stack, ass_ptr), false);
   }
 
 //  if(show_progress)

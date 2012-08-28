@@ -41,7 +41,7 @@ class value_set_alloc_adaptort;
   "(no-slicing)(no-assert-grouping)(no-summary-optimization)" \
   "(pointer-check)(bounds-check)(string-abstraction)(assertions)" \
   "(show-pass)(suppress-fail)(no-progress)" \
-  "(show-claims)(all-claims)(claim):" \
+  "(show-claims)(all-claims)(claim):(claimset):" \
   "(save-queries)(save-change-impact):" \
   "(reduce-proof):(verbose-solver):" \
   "(unwind):(unwindset):" \

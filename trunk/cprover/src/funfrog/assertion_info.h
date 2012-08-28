@@ -27,16 +27,24 @@ public:
           matching_type(NO_ASSERT_GROUPING), target_stack(&_target_stack), 
           location(_location) {}
 
+  assertion_infot(const std::vector <goto_programt::const_targett>& _multi_location):
+          matching_type(MULTI_ASSERT), target_stack(NULL),
+          multi_location(_multi_location){}
+
   const call_stackt& get_target_stack() const {
     assert(matching_type == NO_ASSERT_GROUPING); 
     return *target_stack;
   }
   const goto_programt::const_targett& get_location() const {
-    assert(matching_type != ANY); 
+    assert(matching_type != ANY && matching_type != MULTI_ASSERT);
     return location;
   }
+  const std::vector <goto_programt::const_targett>& get_multi_location() const {
+    assert(matching_type == MULTI_ASSERT);
+    return multi_location;
+  }
   bool is_trivially_true() const {
-    if (matching_type == ANY)
+    if (matching_type == ANY || matching_type == MULTI_ASSERT)
       return false;
     return location->guard.is_true();
   }
@@ -71,11 +79,16 @@ public:
   {
     switch (matching_type) {
       case NO_ASSERT_GROUPING:
-        if (depth != get_target_stack().size())
-          return false;
+        return (depth == get_target_stack().size());
       case ASSERT_GROUPING:
-        if (get_location() != current_assertion)
-          return false;
+        return (location == current_assertion);
+      case MULTI_ASSERT:
+        for (unsigned i = 0; i < multi_location.size(); i++){
+          if (multi_location[i] == current_assertion){
+            return true;
+          }
+        }
+        return false;
       default:
         return true;
     }
@@ -83,28 +96,26 @@ public:
 
   bool is_assert_grouping() const
   {
-    if (matching_type == NO_ASSERT_GROUPING){
-      return false;
-    } else {
-      return true;
-    }
+    return (!matching_type == NO_ASSERT_GROUPING);
   }
 
   bool is_all_assert() const
   {
-    if (matching_type == ANY){
-      return true;
-    } else {
-      return false;
-    }
+    return (matching_type == ANY);
+  }
+
+  bool is_multi_assert() const
+  {
+    return (matching_type == MULTI_ASSERT);
   }
 
 private:
-  typedef enum {ANY, ASSERT_GROUPING, NO_ASSERT_GROUPING} matching_typet;
+  typedef enum {ANY, ASSERT_GROUPING, NO_ASSERT_GROUPING, MULTI_ASSERT} matching_typet;
   
   matching_typet matching_type;
   const call_stackt* target_stack;
   goto_programt::const_targett location;
+  std::vector <goto_programt::const_targett> multi_location;
 };
 
 #endif

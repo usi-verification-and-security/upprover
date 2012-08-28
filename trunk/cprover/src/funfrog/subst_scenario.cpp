@@ -174,6 +174,18 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
       }
     }
     //std::cout << "Assertion not specified. Check whole program. " << std::endl;
+  } else if (assertion.is_multi_assert()){
+    const std::vector <goto_programt::const_targett>& multi_location = assertion.get_multi_location();
+    for (unsigned i = 0; i < multi_location.size(); i++){
+      std::map<unsigned, bool> &vis = assertions_visited[multi_location[i]];
+      for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
+        if (it->first > last_assertion_loc){
+          last_assertion_loc = it->first;
+          count++;
+        }
+      }
+    }
+
   } else {
     std::map<unsigned, bool> &vis = assertions_visited[assertion.get_location()];
     //std::cout << vis.size() << " instances of the assertion found." << std::endl;
