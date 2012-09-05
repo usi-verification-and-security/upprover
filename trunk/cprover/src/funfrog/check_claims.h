@@ -14,8 +14,10 @@
 #include <goto-programs/goto_functions.h>
 #include <ui_message.h>
 #include <message_stream.h>
+#include "assertion_info.h"
+#include "unwind.h"
 
-class claim_statst:public messaget
+class claim_statst:public messaget, public unwindt
 {
 public:
   claim_statst(void) :
@@ -40,6 +42,13 @@ public:
 
     return *this;
   }
+
+  goto_programt::const_targett find_assertion(
+    const goto_programt::const_targett &start,
+    const goto_functionst &goto_functions,
+    call_stackt &stack,
+    unsigned unwind);
+
 };
 
 

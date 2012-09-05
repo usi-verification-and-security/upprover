@@ -75,9 +75,18 @@ void subst_scenariot::initialize_summary_info(
       call_site.set_function_id(target_function);
 //      call_site.set_order(functions.size());
 
-      const goto_programt &function_body =
-          summarization_context.get_function(target_function).body;
-      initialize_summary_info(call_site, function_body);
+      unsigned &unwinding_counter=rec_unwind[target_function];
+
+      if(!get_unwind_rec(unwinding_counter, summarization_context.get_unwind_max())){
+        const goto_programt &function_body =
+            summarization_context.get_function(target_function).body;
+
+        unwinding_counter++;
+        initialize_summary_info(call_site, function_body);
+      } else {
+        call_site.set_unwind_exceeded(true);
+        std::cout << "Recursion unwinding FINIFSHED with " << unwinding_counter << " iterations\n";
+      }
     }
     else if (inst->type == ASSERT){
       summary_info.get_assertions()[inst] = global_loc;

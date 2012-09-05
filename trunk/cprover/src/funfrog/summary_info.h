@@ -33,7 +33,7 @@ public:
   summary_infot(summary_infot *_parent, unsigned _call_location)
           : function_id(ID_nil), parent(_parent), assertion_in_subtree(false),
             precision(HAVOC), call_location(_call_location),
-            preserved_node(false), preserved_edge(false) { }
+            preserved_node(false), preserved_edge(false), unwind_exceeded(false) { }
 
   void clear() { call_sites.clear(); }
 
@@ -59,6 +59,14 @@ public:
   bool mark_enabled_assertions(
         const assertion_infot& assertion, unsigned depth,
         bool parent_stack_matches, const unsigned last_assertion_loc);
+
+  bool is_unwind_exceeded() const {
+      return unwind_exceeded;
+  }
+
+  void set_unwind_exceeded(bool _unwind_exceeded) {
+      unwind_exceeded = _unwind_exceeded;
+  }
 
   bool is_root() const { return parent == NULL; }
   bool has_assertion_in_subtree() const { return assertion_in_subtree; }
@@ -111,6 +119,7 @@ private:
 //  unsigned order;
   bool preserved_node;
   bool preserved_edge;
+  bool unwind_exceeded;
   
   void set_initial_precision(
         summary_precisiont default_precision,

@@ -21,7 +21,6 @@
 #include <xml_irep.h>
 
 #include "check_claims.h"
-#include "assertion_info.h"
 #include <ui_message.h>
 
 
@@ -37,10 +36,11 @@
           `stack' keeps the call path to that assertion.
 
 \*******************************************************************/
-goto_programt::const_targett find_assertion(
+goto_programt::const_targett claim_statst::find_assertion(
   const goto_programt::const_targett &start,
   const goto_functionst &goto_functions,
-  call_stackt &stack)
+  call_stackt &stack,
+  unsigned unwind)
 {
   goto_programt::const_targett it = start; it++;
 
@@ -53,14 +53,18 @@ goto_programt::const_targett find_assertion(
 
       const irep_idt &name = call.function().get("identifier");
 
+      unsigned &unwinding_counter=rec_unwind[name];
+
       goto_functionst::function_mapt::const_iterator f_it =
         goto_functions.function_map.find(name);
 
       if(f_it!=goto_functions.function_map.end() &&
-         f_it->second.body.instructions.size()>0)
+         f_it->second.body.instructions.size()>0 &&
+         !get_unwind_rec(unwinding_counter, unwind))
       {
         stack.push(it);
         it = f_it->second.body.instructions.begin();
+        unwinding_counter++;
       }
       else
         it++; // just ignore it
@@ -127,8 +131,8 @@ claim_statst check_claims(
 {
   // precondition: the leaping program must be numbered correctly.
   claim_statst res;  
-  unsigned inlined_claims = count_inlined_claims(leaping_program,
-                                                 goto_functions);
+  unsigned inlined_claims =   999;//count_inlined_claims(leaping_program,
+                                  //                 goto_functions); //ToDO: fix it (add unwind)
   unsigned seen_claims = 0;
   bool assert_grouping = !options.get_bool_option("no-assert-grouping");
   
@@ -176,13 +180,11 @@ claim_statst check_claims(
     sum_checker.assertion_holds(assertion_infot(), true);
   } else while(true) {
     // Next assertion (or next occurrence of the same assertion)
-    ass_ptr = find_assertion(ass_ptr, goto_functions, stack);
+    ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_int_option("unwind"));
     while(ass_ptr != leaping_program.instructions.end() && 
             (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
     {
-      ass_ptr = find_assertion(ass_ptr,
-                               goto_functions,
-                               stack);
+      ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_int_option("unwind"));
     }
     if (ass_ptr == leaping_program.instructions.end()) 
       break;
@@ -266,7 +268,7 @@ claim_statst check_claims(
 
   if (multi_assert){
     std::cout << "Checking claims: ";
-    for (int i = 0; i < claims.size(); i++){
+    for (unsigned i = 0; i < claims.size(); i++){
       std::cout << "\"" << claims[i] <<"\"";
       if (i < claims.size() - 1){
         std::cout << ", ";

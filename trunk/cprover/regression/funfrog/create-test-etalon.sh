@@ -78,7 +78,7 @@ function process_one {
   fi
 
   # Analysis using funfrog
-  funfrog ${FUNFROG_PARAMS} --save-summaries ${SUMMARIES} --load-summaries ${SUMMARIES} "${COMPILED}" > ${FUNFROG_OUTPUT} 2>&1
+  evolcheck ${FUNFROG_PARAMS} --save-summaries ${SUMMARIES} --load-summaries ${SUMMARIES} "${COMPILED}" > ${FUNFROG_OUTPUT} 2>&1
   if [[ $? -gt 0 ]]; then
     error "Funfrog analysis failed (see ${FUNFROG_OUTPUT})"
   fi

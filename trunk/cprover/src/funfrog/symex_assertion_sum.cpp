@@ -1026,6 +1026,12 @@ void symex_assertion_sumt::handle_function_call(
     assert(false);
     break;
   }
+
+  //      if(summary_info.is_unwind_exceeded())
+  //      {
+  //        if(options.get_bool_option("unwinding-assertions"))
+  //          claim(false_exprt(), "recursion unwinding assertion", state);
+  //      }
 }
 
 /*******************************************************************

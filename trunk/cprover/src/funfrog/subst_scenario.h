@@ -18,8 +18,9 @@
 
 #include "summary_info.h"
 #include "summarization_context.h"
+#include "unwind.h"
 
-class subst_scenariot {
+class subst_scenariot:public unwindt {
 public:
   subst_scenariot(
       summarization_contextt &_summarization_context,

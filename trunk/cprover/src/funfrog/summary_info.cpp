@@ -39,7 +39,8 @@ void summary_infot::set_initial_precision(
       // If assertion is in the subtree, we need to inline the call.
       function.set_inline();
     } 
-    else if (function.get_call_location() > last_assertion_loc)
+    else if (function.get_call_location() > last_assertion_loc
+        || function.is_unwind_exceeded())
     {
       // If the call is after the last assertion (including also backward gotos)
       // we can safely ignore it

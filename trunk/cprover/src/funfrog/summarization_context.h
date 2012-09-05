@@ -38,10 +38,12 @@ class summarization_contextt {
 public:
   summarization_contextt(
           const goto_functionst &_functions,
-          const value_setst &_value_sets
+          const value_setst &_value_sets,
+          const unsigned _unwind_max
           ) : 
           functions(_functions),
-          value_sets(_value_sets)
+          value_sets(_value_sets),
+          unwind_max(_unwind_max)
   {
     for (goto_functionst::function_mapt::const_iterator it =
             functions.function_map.begin();
@@ -56,6 +58,8 @@ public:
     return function_infos.find(function_id)->second.get_summaries();
   }
   
+  unsigned get_unwind_max() { return unwind_max; }
+
   summary_storet& get_summary_store() { return summary_store; }
   
   const goto_functionst& get_functions() const { return functions; }
@@ -147,6 +151,7 @@ public:
 private:
   const goto_functionst &functions;
   const value_setst &value_sets;
+  const unsigned unwind_max;
   function_infost function_infos;
   summary_storet summary_store;
 };

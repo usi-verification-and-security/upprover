@@ -38,7 +38,8 @@ public:
       options(_options),
       summarization_context(
                 _goto_functions,
-                _value_sets),
+                _value_sets,
+                options.get_int_option("unwind")),
       //out(_out),
       message_handler (_message_handler),
       max_memory_used(_max_memory_used),
