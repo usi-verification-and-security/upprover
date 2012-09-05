@@ -65,26 +65,27 @@ void subst_scenariot::initialize_summary_info(
       const code_function_callt& function_call = to_code_function_call(inst->code);
       const irep_idt &target_function = to_symbol_expr(
         function_call.function()).get_identifier();
-      // Mark the call site
-      summary_infot& call_site = summary_info.get_call_sites().insert(
-              std::pair<goto_programt::const_targett, summary_infot>(inst,
-              summary_infot(&summary_info, global_loc)
-              )).first->second;
-      functions.push_back(&call_site);
-
-      call_site.set_function_id(target_function);
-//      call_site.set_order(functions.size());
-
       unsigned &unwinding_counter=rec_unwind[target_function];
 
       if(!get_unwind_rec(unwinding_counter, summarization_context.get_unwind_max())){
+
+        // Mark the call site
+        summary_infot& call_site = summary_info.get_call_sites().insert(
+                std::pair<goto_programt::const_targett, summary_infot>(inst,
+                summary_infot(&summary_info, global_loc)
+                )).first->second;
+        functions.push_back(&call_site);
+
+        call_site.set_function_id(target_function);
+  //      call_site.set_order(functions.size());
+
         const goto_programt &function_body =
             summarization_context.get_function(target_function).body;
 
         unwinding_counter++;
         initialize_summary_info(call_site, function_body);
       } else {
-        call_site.set_unwind_exceeded(true);
+        //call_site.set_unwind_exceeded(true);
         std::cout << "Recursion unwinding FINIFSHED with " << unwinding_counter << " iterations\n";
       }
     }

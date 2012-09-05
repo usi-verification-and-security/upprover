@@ -27,8 +27,9 @@
 #include "partition_iface.h"
 #include "summarization_context.h"
 #include "partitioning_target_equation.h"
+#include "unwind.h"
 
-class symex_assertion_sumt : public symex_bmct
+class symex_assertion_sumt : public symex_bmct, public unwindt
 {
 public:
   symex_assertion_sumt(

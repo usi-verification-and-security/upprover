@@ -378,8 +378,15 @@ void symex_assertion_sumt::symex_step(
       code_function_callt deref_code=
         to_code_function_call(instruction.code);
 
-      // Process the function call according to the call_summary
-      handle_function_call(state, deref_code);
+      const irep_idt& name = deref_code.function().get(ID_identifier);
+
+      unsigned &unwinding_counter=rec_unwind[name];
+
+      if(!get_unwind_rec(unwinding_counter, max_unwind))
+      {
+        unwinding_counter++;
+        handle_function_call(state, deref_code);
+      }
     }
     state.source.pc++;
     break;
@@ -1009,6 +1016,7 @@ void symex_assertion_sumt::handle_function_call(
     state.source.pc++;
     return;
   }
+
 
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);
