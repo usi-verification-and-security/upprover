@@ -114,7 +114,7 @@ std::string cmd_str (goto_programt::const_targett &it)
       default:
         assert(false);
       }
-  return /*integer2string(it->location_number) + ": " +*/ res;
+  return res;
 }
 
 void difft :: stub_new_summs(unsigned loc){
@@ -180,7 +180,7 @@ bool difft :: is_untouched(const irep_idt &name)
 }
 
 bool difft :: unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
-      std::vector<std::pair<std::string, unsigned> > &goto_unrolled,
+      goto_sequencet &goto_unrolled,
       std::map<unsigned,std::vector<unsigned> > &calltree, unsigned init, bool inherit_change)
 {
 //  if (!is_untouched (name)){
@@ -207,21 +207,22 @@ bool difft :: unroll_goto(goto_functionst &goto_functions, const irep_idt &name,
       }
       loc++;
     }
-    goto_unrolled.push_back(std::make_pair(cmd_str(it), tmp));
+
+    goto_unrolled.push_back(triple<std::string, unsigned, const locationt*>(cmd_str(it), tmp, &(it->location)));
   }
   return true;
 }
 
-void copy(std::vector<std::pair<std::string, unsigned> > &goto_1,
-    std::vector<std::pair<std::string, unsigned> > &goto_2){
+void copy(goto_sequencet &goto_1,
+    goto_sequencet &goto_2){
   for (unsigned i = 0; i < goto_2.size(); i++){
     goto_1.push_back(goto_2[i]);
   }
 }
 
-bool compare_str_vecs(std::vector<std::pair<std::string, unsigned> > &goto_unrolled_1,
-                      std::vector<std::pair<std::string, unsigned> > &goto_unrolled_2,
-                      std::vector<std::pair<std::string, unsigned> > &goto_common){
+bool compare_str_vecs(goto_sequencet &goto_unrolled_1,
+                      goto_sequencet &goto_unrolled_2,
+                      goto_sequencet &goto_common){
   unsigned size_1 = goto_unrolled_1.size();
   unsigned size_2 = goto_unrolled_2.size();
 
@@ -230,20 +231,20 @@ bool compare_str_vecs(std::vector<std::pair<std::string, unsigned> > &goto_unrol
   }
 
   if (size_1 != 0 && size_2 != 0){
-    std::vector<std::pair<std::string, unsigned> > **goto_common_s =
-        new std::vector<std::pair<std::string, unsigned> >*[size_1 + 1];
+    goto_sequencet **goto_common_s =
+        new goto_sequencet*[size_1 + 1];
     for (unsigned i = 0; i <= size_1; ++i){
-      goto_common_s[i] = new std::vector<std::pair<std::string, unsigned> >[size_2 + 1];
+      goto_common_s[i] = new goto_sequencet[size_2 + 1];
     }
     for (unsigned i = 1; i <= size_1; i++){
       for (unsigned j = 1; j <= size_2; j++){
-        std::vector<std::pair<std::string, unsigned> >& tmp_i_j = goto_common_s[i][j];
+        goto_sequencet& tmp_i_j = goto_common_s[i][j];
         if (goto_unrolled_1[i-1].first == goto_unrolled_2[j-1].first){
           tmp_i_j.push_back(goto_unrolled_1[i-1]);
           copy(tmp_i_j, goto_common_s[i-1][j-1]);
         } else {
-          std::vector<std::pair<std::string, unsigned> >& tmp_i_1_j = goto_common_s[i-1][j];
-          std::vector<std::pair<std::string, unsigned> >& tmp_i_j_1 = goto_common_s[i][j-1];
+          goto_sequencet& tmp_i_1_j = goto_common_s[i-1][j];
+          goto_sequencet& tmp_i_j_1 = goto_common_s[i][j-1];
 
           if (tmp_i_j_1.size() > tmp_i_1_j.size()){
             copy(tmp_i_j, tmp_i_j_1);
@@ -262,9 +263,9 @@ bool compare_str_vecs(std::vector<std::pair<std::string, unsigned> > &goto_unrol
   return res;
 }
 
-void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &goto_unrolled_1,
-             std::vector<std::pair<std::string, unsigned> > &goto_unrolled_2,
-             std::vector<std::pair<std::string, unsigned> > &goto_common)
+void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
+             goto_sequencet &goto_unrolled_2,
+             goto_sequencet &goto_common)
 {
   // sizes
   unsigned size_1 = goto_unrolled_1.size();
@@ -282,8 +283,12 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
 #     endif
 	  while(goto_unrolled_2[i_2].first != goto_common[i_c - 1].first){
 #     ifdef DEBUG_DIFF
-      std::cout << "    [+] " << goto_unrolled_2[i_2].first << "\n";
+      std::cout << "    [+] " << goto_unrolled_2[i_2].first
+          << " // " << (*goto_unrolled_2[i_2].third).as_string()
+          << std::endl;
 #     endif
+      if (locs_output)
+        std::cout << "ADDED: " << (*goto_unrolled_2[i_2].third).as_string() << std::endl;
       if (goto_unrolled_2[i_2].second > 0){
 #     ifdef DEBUG_DIFF
         std::cout << " --- function call UNpreserved.\n";
@@ -301,6 +306,8 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
         std::cout << " --- function call UNpreserved.\n";
       }
 #     endif
+      if (locs_output)
+        std::cout << "REMOVED: " << (*goto_unrolled_1[i_1].third).as_string() << std::endl;
       i_1++;
     }
 #   ifdef DEBUG_DIFF
@@ -327,14 +334,18 @@ void difft :: do_proper_diff(std::vector<std::pair<std::string, unsigned> > &got
     std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
     std::cout << "    [+] " << goto_unrolled_2[i_2].first << "\n";
 #   endif
+    if (locs_output)
+      std::cout << "ADDED: " << (*goto_unrolled_2[i_2].third).as_string() << std::endl;
     i_2++;
   }
 
   while (i_1 < size_1){
 #   ifdef DEBUG_DIFF
     std::cout << i_1 << " (" << size_1 << ") " <<i_2 << " (" << size_2 << ") " <<i_c << " (" << size_c << ")\n";
-    std::cout << "    [+] " << goto_unrolled_1[i_1].first << "\n";
+    std::cout << "    [-] " << goto_unrolled_1[i_1].first << "\n";
 #   endif
+    if (locs_output)
+      std::cout << "REMOVED: " << (*goto_unrolled_1[i_1].third).as_string() << std::endl;
     i_1++;
   }
 }
@@ -353,7 +364,7 @@ bool difft :: do_diff()
   if (do_write){
     // Load substituting scenario
     std::ifstream in;
-    in.open(output);
+    in.open(input);
     while (!in.eof()){
       std::string str;
       in >> str;
@@ -371,9 +382,9 @@ bool difft :: do_diff()
     stub_new_summs(0);
   }
 
-  std::vector<std::pair<std::string, unsigned> > goto_unrolled_1;
-  std::vector<std::pair<std::string, unsigned> > goto_unrolled_2;
-  std::vector<std::pair<std::string, unsigned> > goto_common;
+  goto_sequencet goto_unrolled_1;
+  goto_sequencet goto_unrolled_2;
+  goto_sequencet goto_common;
 
   contextt temp_context;
   namespacet ns (temp_context);

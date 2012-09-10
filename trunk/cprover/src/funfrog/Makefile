@@ -97,6 +97,7 @@ sumo$(EXEEXT): $(SUMO_OBJ)
 
 diff$(EXEEXT): $(DIFF_OBJ)
 	$(LINKBIN) $(DIFF_OBJ)
+	mv diff goto-diff
 
 clean:
 	rm -f *.o *.d funfrog evolcheck sumo diff __omega_* __calltree.xml

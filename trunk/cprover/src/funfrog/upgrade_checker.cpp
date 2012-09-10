@@ -99,7 +99,8 @@ bool check_upgrade(const namespacet &ns,
   fine_timet initial, final;
   initial=current_time();
 
-  difft diff(message_handler, goto_functions_old, goto_functions_new, options.get_option("load-omega").c_str());
+  difft diff(message_handler, goto_functions_old, goto_functions_new,
+      options.get_option("load-omega").c_str(), options.get_option("save-omega").c_str());
 
   bool res = diff.do_diff();
 

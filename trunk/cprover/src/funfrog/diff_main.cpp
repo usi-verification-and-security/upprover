@@ -13,11 +13,12 @@ void print_help() {
     "goto-diff by Grigory Fedyukovich (grigory.fedyukovich@usi.ch)" << std::endl <<
     std::endl <<
     "Expected usage:" << std::endl <<
-    "> ./diff goto-src goto-upg [call-tree]" << std::endl << std::endl <<
+    "> ./diff goto-src goto-upg [--output-locs]" << std::endl << std::endl <<
     "where (*) goto-s are the binaries to be compared;" << std::endl <<
-    "      (*) call-tree is the file contained the storage of" << std::endl <<
-    "          substituting scenario. changed function calls are to be marked there." << std::endl <<
-    "          only std::cout if not specified." <<
+//    "      (*) call-tree is the file contained the storage of" << std::endl <<
+//    "          substituting scenario. changed function calls are to be marked there." << std::endl <<
+//    "          only std::cout if not specified." <<
+    "      (*) do output only locations of the modified instructions" << std::endl <<
     std::endl << std::endl;
 }
 
@@ -57,7 +58,9 @@ int main(int argc, const char** argv) {
   difft diff(mh, goto_functions_1, goto_functions_2);
 
   if (argc == 4){
-    diff.set_output(argv[4]);
+    if (!strcmp(argv[3],"--output-locs")){
+      diff.set_locs_output();
+    }
   }
 
   before=current_time();
