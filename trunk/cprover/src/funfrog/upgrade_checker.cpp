@@ -186,8 +186,7 @@ bool upgrade_checkert::check_upgrade()
       report_failure();
       return false;
     }
-    //serialize();
-    //FIXME
+    serialize();
   }
 
   // 3. From the bottom of the tree, reverify all changed nodes
@@ -243,6 +242,7 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
       } else {
         summarization_context.set_valid_summaries(summary_info.get_function_id(), false);
         status(std::string("invalidating summary: ") + summary_info.get_function_id().c_str());
+        summary_info.clear_used_summaries();
         if (summary_info.get_parent().is_root()){
           status("summary cannot be renewed. A real bug found. ");
         } else {
