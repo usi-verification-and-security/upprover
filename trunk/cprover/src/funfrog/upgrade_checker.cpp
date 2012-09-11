@@ -154,7 +154,7 @@ bool upgrade_checkert::check_upgrade()
 
   // Here we suppose that "__omega" already contains information about changes
   // TODO: Maybe omega should be passed internally, not as a file.
-  omega.deserialize(options.get_option("load-omega"), goto_program);
+  omega.deserialize(options.get_option("save-omega"), goto_program);
   omega.process_goto_locations();
   omega.setup_last_assertion_loc(assertion_infot());
 
@@ -246,7 +246,7 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
         if (summary_info.get_parent().is_root()){
           status("summary cannot be renewed. A real bug found. ");
         } else {
-          //std::cout << "check the parent.\n";
+          status("check the parent.");
           summary_info.set_inline();
           upward_traverse_call_tree(summary_info.get_parent(), pre);
         }
