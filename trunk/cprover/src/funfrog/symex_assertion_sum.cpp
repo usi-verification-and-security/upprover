@@ -290,6 +290,7 @@ void symex_assertion_sumt::symex_step(
 
   case END_FUNCTION:
 
+    //decrement_unwinding_counter();
     store_return_value(state, get_current_deferred_function());
     end_symex(state);
     break;
@@ -378,15 +379,8 @@ void symex_assertion_sumt::symex_step(
       code_function_callt deref_code=
         to_code_function_call(instruction.code);
 
-      const irep_idt& name = deref_code.function().get(ID_identifier);
-
-      unsigned &unwinding_counter=rec_unwind[name];
-
-      if(!get_unwind_rec(unwinding_counter, max_unwind))
-      {
-        unwinding_counter++;
-        handle_function_call(state, deref_code);
-      }
+      // Process the function call according to the call_summary
+      handle_function_call(state, deref_code);
     }
     state.source.pc++;
     break;

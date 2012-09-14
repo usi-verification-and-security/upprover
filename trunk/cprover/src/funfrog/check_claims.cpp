@@ -53,18 +53,18 @@ goto_programt::const_targett claim_statst::find_assertion(
 
       const irep_idt &name = call.function().get("identifier");
 
-      unsigned &unwinding_counter=rec_unwind[name];
+      set_function_to_be_unwound(name);
 
       goto_functionst::function_mapt::const_iterator f_it =
         goto_functions.function_map.find(name);
 
       if(f_it!=goto_functions.function_map.end() &&
          f_it->second.body.instructions.size()>0 &&
-         !get_unwind_rec(unwinding_counter, unwind))
+         !is_unwinding_exceeded(unwind))
       {
         stack.push(it);
         it = f_it->second.body.instructions.begin();
-        unwinding_counter++;
+        increment_unwinding_counter();
       }
       else
         it++; // just ignore it
@@ -82,6 +82,7 @@ goto_programt::const_targett claim_statst::find_assertion(
     }
     else if(it->type==END_FUNCTION)
     {
+      decrement_unwinding_counter();
       if(stack.size()==0)
       {
         // this must be the end.

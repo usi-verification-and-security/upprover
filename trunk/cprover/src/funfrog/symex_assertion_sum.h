@@ -29,7 +29,7 @@
 #include "partitioning_target_equation.h"
 #include "unwind.h"
 
-class symex_assertion_sumt : public symex_bmct, public unwindt
+class symex_assertion_sumt : public symex_bmct
 {
 public:
   symex_assertion_sumt(
