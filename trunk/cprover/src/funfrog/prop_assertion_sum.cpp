@@ -16,6 +16,8 @@
 #include <ui_message.h>
 #include "prop_assertion_sum.h"
 
+#define USE_EXEC_ORDER_ERROR_TRACE
+
 fine_timet global_satsolver_time;
 fine_timet global_sat_conversion_time;
 
@@ -242,12 +244,14 @@ void prop_assertion_sumt::error_trace(const prop_convt &prop_conv, const namespa
   status("Building error trace");
 
   goto_tracet goto_trace;
-  
+
+# ifndef USE_EXEC_ORDER_ERROR_TRACE
   // Original trace builder:
-  // build_goto_trace(equation, prop_conv, goto_trace);
-  
+  build_goto_trace(equation, prop_conv, goto_trace);
+# else
   // New exec order trace builder;
   build_exec_order_goto_trace(equation, prop_conv, goto_trace);
+# endif
 
   #if 0
   if(options.get_option("vcd")!="")

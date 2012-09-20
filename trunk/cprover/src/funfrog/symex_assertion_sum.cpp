@@ -95,7 +95,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   state = goto_symext::statet();
 
   // Prepare the partitions and deferred functions
-  partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION);
+  partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION, 0);
   defer_function(deferred_functiont(summary_info, partition_iface));
   equation.select_partition(partition_iface.partition_id);
 
@@ -127,7 +127,7 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
   state = goto_symext::statet();
 
   // Prepare a partition for the ROOT function and defer
-  partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION);
+  partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION, 0);
   summary_info.set_inline();
   defer_function(deferred_functiont(summary_info, partition_iface));
 
@@ -977,7 +977,8 @@ void symex_assertion_sumt::handle_function_call(
   assert(get_current_deferred_function().partition_iface.partition_id != partitiont::NO_PARTITION);
   deferred_functiont deferred_function(summary_info, 
           new_partition_iface(summary_info, 
-          get_current_deferred_function().partition_iface.partition_id));
+          get_current_deferred_function().partition_iface.partition_id, 
+          equation.get_SSA_steps_count()));
   const irep_idt& function_id = function_call.function().get(ID_identifier);
   const goto_functionst::goto_functiont &goto_function =
     summarization_context.get_function(function_id);
@@ -1091,7 +1092,7 @@ void symex_assertion_sumt::fill_inverted_summary(
 
   status(std::string("*** INVERTED SUMMARY used for function: ") + function_id.c_str());
   
-  partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION);
+  partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION, 0);
   
   partition_iface.share_symbols(inlined_iface);
 

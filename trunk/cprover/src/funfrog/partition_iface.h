@@ -22,7 +22,8 @@
 class partition_ifacet {
 public:
 
-  partition_ifacet(summary_infot& _summary_info, partition_idt _parent_id) : 
+  partition_ifacet(summary_infot& _summary_info, partition_idt _parent_id, 
+          unsigned _call_loc) : 
           function_id(_summary_info.get_function_id()),
           summary_info(_summary_info),
           callstart_symbol(ID_nil, typet(ID_bool)),
@@ -31,7 +32,8 @@ public:
           assertion_in_subtree(_summary_info.has_assertion_in_subtree()),
           returns_value(false),
           partition_id(partitiont::NO_PARTITION),
-          parent_id(_parent_id)
+          parent_id(_parent_id),
+          call_loc(_call_loc)
   {}
 
   // Represented function
@@ -61,6 +63,9 @@ public:
   partition_idt partition_id;
   partition_idt parent_id;
   
+  // SSA Location of the call
+  unsigned call_loc;
+  
   void share_symbols(const partition_ifacet& other) {
     argument_symbols = other.argument_symbols;
     in_arg_symbols = other.in_arg_symbols;
@@ -71,6 +76,7 @@ public:
     callend_symbol = other.callend_symbol;
     error_symbol = other.error_symbol;
     returns_value = other.returns_value;
+    call_loc = other.call_loc;
     
 #   if 0
     std::cerr << " === Sharing symbols:" << std::endl;

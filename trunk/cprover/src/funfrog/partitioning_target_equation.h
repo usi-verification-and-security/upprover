@@ -49,7 +49,7 @@ public:
     assert(check);
 
     if (parent_id != partitiont::NO_PARTITION) {
-      partitions[parent_id].add_child_partition(new_id, SSA_steps.size());
+      partitions[parent_id].add_child_partition(new_id, partition_iface.call_loc);
     }
     partition_iface.partition_id = new_id;
 
@@ -156,6 +156,8 @@ public:
     }
     return false;
   }
+  
+  unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
 
 private:
   // Current summarization context
