@@ -181,8 +181,8 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
       for (std::map<unsigned, bool>::iterator it2 = it->second.begin(); it2 != it->second.end(); ++it2){
         if (last_assertion_loc < it2->first){
           last_assertion_loc = it2->first;
-          count++;
         }
+        count++;
       }
     }
     //std::cout << "Assertion not specified. Check whole program. " << std::endl;
@@ -193,8 +193,8 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
       for (std::map<unsigned, bool>::iterator it = vis.begin(); it != vis.end(); ++it){
         if (it->first > last_assertion_loc){
           last_assertion_loc = it->first;
-          count++;
         }
+        count++;
       }
     }
 
