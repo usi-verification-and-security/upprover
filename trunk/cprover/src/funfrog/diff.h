@@ -90,9 +90,6 @@ private:
 
   std::vector<std::pair<const irep_idt*, bool> > functions_new;
 
-
-  triple<bool, bool, bool> er;
-
   goto_functionst &goto_functions_1;
 
   goto_functionst &goto_functions_2;
@@ -104,6 +101,8 @@ private:
   bool do_write;
 
   bool locs_output;
+
+  std::set<unsigned> locs_visited;
 
   std::vector<std::string > old_summs;
 
@@ -124,5 +123,7 @@ private:
   void do_proper_diff(goto_sequencet &goto_unrolled_1,
                goto_sequencet &goto_unrolled_2,
                goto_sequencet &goto_common);
+
+  int get_call_loc(const irep_idt& name, std::vector<std::pair<const irep_idt*, bool> >& functions, unsigned old);
 
 };

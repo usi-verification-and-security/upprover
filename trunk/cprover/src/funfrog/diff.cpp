@@ -350,9 +350,17 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
   }
 }
 
-int get_call_loc(const irep_idt& name, std::vector<std::pair<const irep_idt*, bool> >& functions){
+int difft :: get_call_loc(const irep_idt& name, std::vector<std::pair<const irep_idt*, bool> >& functions, unsigned old){
+  //ToDo: create more sophisticated method
+//  if ((*functions[old].first) == name){
+//    locs_visited.insert(old_loc);
+//    return old;
+//  }
+
   for (unsigned i = 0; i < functions.size(); i++){
-    if ((*functions[i].first) == name){
+    if ((*functions[i].first) == name &&
+      locs_visited.find(i) == locs_visited.end()){
+      locs_visited.insert(i);
       return i;
     }
   }
@@ -395,7 +403,7 @@ bool difft :: do_diff()
 
     const irep_idt& call_name = (*functions_new[i].first);
 
-    int call_loc = get_call_loc(call_name, functions_old);
+    unsigned call_loc = get_call_loc(call_name, functions_old, i);
 
     if (do_write){
       if (call_loc != -1){
