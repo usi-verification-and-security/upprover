@@ -183,10 +183,10 @@ bool upgrade_checkert::check_upgrade()
             + std::string(" is out of assertion scope)"));
     }
     if (!res) {
+      status(std::string("Invalid summaries ratio: ") + i2string(omega.get_invalid_count()) + "/" + i2string(omega.get_call_summaries().size()));
       report_failure();
       return false;
     }
-    serialize();
   }
 
   // 3. From the bottom of the tree, reverify all changed nodes
@@ -199,6 +199,8 @@ bool upgrade_checkert::check_upgrade()
   //
   // NOTE: call check_summary to do the check \phi_f => I_f.
   
+  status(std::string("Invalid summaries ratio: ") + i2string(omega.get_invalid_count()) + "/" + i2string(omega.get_call_summaries().size()));
+  serialize();
   report_success();
   return true;
 }

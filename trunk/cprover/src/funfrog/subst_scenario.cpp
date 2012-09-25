@@ -86,7 +86,8 @@ void subst_scenariot::initialize_summary_info(
         increment_unwinding_counter();
         initialize_summary_info(call_site, function_body);
       } else {
-        call_site.set_unwind_exceeded(true);
+        // ToDo: fix it (doesn't work if a function is called from loop)
+        //call_site.set_unwind_exceeded(true);
         //std::cout << "Recursion unwinding for " << target_function << " (" << inst->location << ") FINIFSHED with " << rec_unwind[target_function] << " iterations\n";
       }
     }
@@ -389,6 +390,17 @@ void subst_scenariot::restore_summary_info(
       assertions_visited[inst][global_loc] = false;
     }
   }
+}
+
+unsigned subst_scenariot::get_invalid_count()
+{
+  unsigned count = 0;
+  for (unsigned i = 0; i < functions.size(); i++){
+    if (summarization_context.any_invalid_summaries((*functions[i]).get_function_id())){
+      count++;
+    }
+  }
+  return count;
 }
 
 void subst_scenariot::construct_xml_tree(xmlt& call, summary_infot& summary)

@@ -73,6 +73,7 @@ public:
   }
 
   void setup_last_assertion_loc(const assertion_infot& assertion);
+  unsigned get_invalid_count();
 
 private:
   summarization_contextt &summarization_context;
@@ -90,6 +91,7 @@ private:
   void construct_xml_tree(xmlt& xml, summary_infot& summary);
   unsigned get_precision_count(summary_precisiont precision);
   unsigned get_precision_count(summary_infot& summary, summary_precisiont precision);
+
 };
 
 #endif
