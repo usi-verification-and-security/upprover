@@ -65,8 +65,6 @@ void subst_scenariot::initialize_summary_info(
       const code_function_callt& function_call = to_code_function_call(inst->code);
       const irep_idt &target_function = to_symbol_expr(
         function_call.function()).get_identifier();
-      set_function_to_be_unwound(target_function);
-
       // Mark the call site
       summary_infot& call_site = summary_info.get_call_sites().insert(
               std::pair<goto_programt::const_targett, summary_infot>(inst,
@@ -80,19 +78,18 @@ void subst_scenariot::initialize_summary_info(
       const goto_programt &function_body =
           summarization_context.get_function(target_function).body;
 
-      if(!is_unwinding_exceeded(summarization_context.get_unwind_max())){
+      if(!is_unwinding_exceeded(summarization_context.get_unwind_max(), target_function)){
 
-
-        increment_unwinding_counter();
+        increment_unwinding_counter(target_function);
         initialize_summary_info(call_site, function_body);
       } else {
-        // ToDo: fix it (doesn't work if a function is called from loop)
-        //call_site.set_unwind_exceeded(true);
-        //std::cout << "Recursion unwinding for " << target_function << " (" << inst->location << ") FINIFSHED with " << rec_unwind[target_function] << " iterations\n";
+        call_site.set_unwind_exceeded(true);
+        //std::cout << "Recursion unwinding for " << target_function << " (" << inst->location << ") FINIFSHED with " << " iterations\n";
       }
     }
     else if (inst->type == END_FUNCTION){
-      decrement_unwinding_counter();
+      const irep_idt &target_function = (inst->code).get("identifier");
+      decrement_unwinding_counter(target_function);
     }
     else if (inst->type == ASSERT){
       summary_info.get_assertions()[inst] = global_loc;
