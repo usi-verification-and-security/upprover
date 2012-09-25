@@ -42,7 +42,7 @@ protected:
 
   void upward_traverse_call_tree(summary_infot& summary_info, bool &pre);
   void downward_traverse_call_tree(summary_infot& summary_info);
-  std::set<irep_idt> checked_functions;
+  summary_ids_sett checked_summaries;
 };
 
 bool check_initial(const namespacet &ns,

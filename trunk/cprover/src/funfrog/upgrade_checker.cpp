@@ -172,10 +172,22 @@ bool upgrade_checkert::check_upgrade()
 
     const irep_idt& name = (*summs[i]).get_function_id();
     if (omega.get_last_assertion_loc() >= (*summs[i]).get_call_location()){
-      if (checked_functions.find(name) == checked_functions.end()){
-        upward_traverse_call_tree((*summs[i]), res);
-      } else {
-        status(std::string("function ") + name.c_str() + std::string(" is already checked"));
+
+      const summary_ids_sett& used = (*summs[i]).get_used_summaries();
+
+      for (summary_ids_sett::const_iterator it = used.begin(); it != used.end(); ++it) {
+//        summaryt& summary = summarization_context.get_summary_store().find_summary(*it);
+//        summary.print(std::cout);
+
+        if (checked_summaries.find(*it) == checked_summaries.end()){
+          summary_ids_sett summary_to_check;
+          summary_to_check.insert(*it);
+          (*summs[i]).set_used_summaries(summary_to_check);
+
+          upward_traverse_call_tree((*summs[i]), res);
+        } else {
+          status(std::string("function ") + name.c_str() + std::string(" is already checked"));
+        }
       }
     } else {
     	status(std::string("ignoring function: ") + name.c_str()
@@ -221,7 +233,12 @@ Function: upgrade_checkert::upward_traverse_call_tree
 void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bool& pre)
 {
   status(std::string("checking validity of old summary for function: ") + summary_info.get_function_id().c_str());
-  checked_functions.insert(summary_info.get_function_id());
+  const summary_ids_sett& used = summary_info.get_used_summaries();
+  assert(used.size() <= 1); // we can check only one summary at a time
+
+  for (summary_ids_sett::const_iterator it = used.begin(); it != used.end(); ++it){
+    checked_summaries.insert(*it);
+  }
   if (!summary_info.is_preserved_node() || !pre){
     if (!summary_info.is_preserved_node()){
       //std::cout << "  -- the body is changed;";

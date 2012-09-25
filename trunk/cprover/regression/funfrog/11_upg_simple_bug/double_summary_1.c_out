@@ -1,12 +1,11 @@
 UNSAT - it holds!
 ASSERTION IS TRUE
+SAT
+SAT
 ASSERTION(S) HOLD(S) AFTER INLINING.
 SAT - doesn't hold
 SAT - doesn't hold
-SAT - doesn't hold
-SAT - doesn't hold
-SAT - doesn't hold
 Violated property:
-  file change_not_valid_2.c line 31 function main
+  file double_summary_2.c line 22 function main
   assertion
-  a == b
+  v == 1

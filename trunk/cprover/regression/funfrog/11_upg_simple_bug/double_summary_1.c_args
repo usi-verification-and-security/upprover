@@ -1,0 +1,1 @@
+--init-upgrade-check --do-upgrade-check 11_upg_simple_bug/double_summary_2.out
