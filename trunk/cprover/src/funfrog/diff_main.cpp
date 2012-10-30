@@ -34,7 +34,7 @@ void read(message_handlert& mh, const char* file, goto_functionst& goto_function
 
 int main(int argc, const char** argv) {
 
-  fine_timet before, after;
+  //fine_timet before, after;
   if (argc < 3 || argc > 4){
     print_help();
     return 1;
@@ -45,13 +45,13 @@ int main(int argc, const char** argv) {
 
   stream_message_handlert mh(std::cout);
 
-  before=current_time();
+  //before=current_time();
 
   read(mh, argv[1], goto_functions_1);
   read(mh, argv[2], goto_functions_2);
 
-  after=current_time();
-  std::cout << "    LOAD Binaries Time: " << time2string(after-before) << " sec.\n";
+  //after=current_time();
+  //std::cout << "    LOAD Binaries Time: " << time2string(after-before) << " sec.\n";
 
   // Analyze both files
 
@@ -63,11 +63,11 @@ int main(int argc, const char** argv) {
     }
   }
 
-  before=current_time();
+  //before=current_time();
 
   diff.do_diff();
 
-  after=current_time();
-  std::cout << "    PROCESSING Time: " << time2string(after-before) << " sec.\n";
+  //after=current_time();
+  //std::cout << "    PROCESSING Time: " << time2string(after-before) << " sec.\n";
 
 }

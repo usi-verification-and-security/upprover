@@ -288,7 +288,10 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
           << std::endl;
 #     endif
       if (locs_output)
-        std::cout << "ADDED: " << (*goto_unrolled_2[i_2].third).as_string() << std::endl;
+        std::cout << "<ADDED> " << std::endl <<
+        "  <file>" << (*goto_unrolled_2[i_2].third).get("file") << "</file>" << std::endl <<
+        "  <line>" << (*goto_unrolled_2[i_2].third).get("line") << "</line>" << std::endl <<
+        "</ADDED>" << std::endl;
       if (goto_unrolled_2[i_2].second > 0){
 #     ifdef DEBUG_DIFF
         std::cout << " --- function call UNpreserved.\n";
@@ -307,7 +310,11 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
       }
 #     endif
       if (locs_output)
-        std::cout << "REMOVED: " << (*goto_unrolled_1[i_1].third).as_string() << std::endl;
+        //std::cout << "REMOVED: " << (*goto_unrolled_1[i_1].third).as_string() << std::endl;
+        std::cout << "<REMOVED> " << std::endl <<
+        "  <file>" << (*goto_unrolled_2[0].third).get("file") << "</file>" << std::endl <<
+        "  <line>" << (*goto_unrolled_2[0].third).get("line") << "</line>" << std::endl <<
+        "</REMOVED>" << std::endl;
       i_1++;
     }
 #   ifdef DEBUG_DIFF
@@ -335,7 +342,10 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
     std::cout << "    [+] " << goto_unrolled_2[i_2].first << "\n";
 #   endif
     if (locs_output)
-      std::cout << "ADDED: " << (*goto_unrolled_2[i_2].third).as_string() << std::endl;
+      std::cout << "<ADDED> " << std::endl <<
+      "  <file>" << (*goto_unrolled_2[i_2].third).get("file") << "</file>" << std::endl <<
+      "  <line>" << (*goto_unrolled_2[i_2].third).get("line") << "</line>" << std::endl <<
+      "</ADDED>" << std::endl;
     i_2++;
   }
 
@@ -345,7 +355,11 @@ void difft :: do_proper_diff(goto_sequencet &goto_unrolled_1,
     std::cout << "    [-] " << goto_unrolled_1[i_1].first << "\n";
 #   endif
     if (locs_output)
-      std::cout << "REMOVED: " << (*goto_unrolled_1[i_1].third).as_string() << std::endl;
+      //std::cout << "REMOVED: " << (*goto_unrolled_1[i_1].third).as_string() << std::endl;
+      std::cout << "<REMOVED> " << std::endl <<
+      "  <file>" << (*goto_unrolled_2[0].third).get("file") << "</file>" << std::endl <<
+      "  <line>" << (*goto_unrolled_2[0].third).get("line") << "</line>" << std::endl <<
+      "</REMOVED>" << std::endl;
     i_1++;
   }
 }
@@ -379,6 +393,10 @@ bool difft :: do_diff()
       old_summs.push_back(str);
     }
     in.close();
+  }
+
+  if (locs_output){
+    std::cout << "<cprover>" << std::endl;
   }
 
   unsigned loc = 0;
@@ -416,7 +434,7 @@ bool difft :: do_diff()
     }
 
     if(!base_type_eq(goto_functions_1.function_map[call_name].type,
-        goto_functions_2.function_map[call_name].type, ns)){
+        goto_functions_2.function_map[call_name].type, ns) && !locs_output){
       status (std::string("function \"") + call_name.c_str() + std::string ("\" has changed interface"));
       new_summs[i * 7 + 2] = "2";
       continue;
@@ -448,8 +466,8 @@ bool difft :: do_diff()
         new_summs[i*7 + 3] = "1";
       }
     }
-
-    status (std::string("function \"") + call_name.c_str() + std::string ("\" is ") +
+    if (!locs_output)
+      status (std::string("function \"") + call_name.c_str() + std::string ("\" is ") +
     		(functions_new[i].second ? std::string("") : std::string("UN")) + std::string("preserved") +
         (functions_new[i].second ? std::string("") : std::string(" (") +
             i2string(goto_unrolled_1.size() - goto_common.size() + goto_unrolled_2.size() - goto_common.size())
@@ -466,6 +484,10 @@ bool difft :: do_diff()
       out << new_summs[i] << std::endl;
     }
     out.close();
+  }
+
+  if (locs_output){
+    std::cout << "</cprover>" << std::endl;
   }
 
   bool res = true;

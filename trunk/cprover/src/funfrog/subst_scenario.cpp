@@ -232,7 +232,7 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
       last_assertion_loc = r.second;
     }
   }
-  //std::cout << "Last assertion location: " << last_assertion_loc << " / " << global_loc << " ( " << proc_count << ")" << std::endl;
+  std::cout << "Last assertion location: " << last_assertion_loc << " / " << global_loc << " ( " << proc_count << ")" << std::endl;
 
   single_assertion_check = count == 1;
 

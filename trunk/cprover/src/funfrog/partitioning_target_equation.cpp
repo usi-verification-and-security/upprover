@@ -168,14 +168,14 @@ void partitioning_target_equationt::convert_partition_summary(
   summary_storet& summary_store = summarization_context.get_summary_store();
   fill_common_symbols(partition, common_symbs);
 
-#   ifdef DEBUG_SSA      
+#   ifdef DEBUG_SSA
     std::cout << "Candidate summaries: " << partition.summaries->size() << std::endl;
 #   endif
   for (summary_ids_sett::const_iterator it = 
           partition.applicable_summaries.begin();
           it != partition.applicable_summaries.end();
           ++it) {
-#   ifdef DEBUG_SSA      
+#   ifdef DEBUG_SSA
     std::cout << "Substituting summary #" << *it << std::endl;
 #   endif
     summaryt& summary = summary_store.find_summary(*it);

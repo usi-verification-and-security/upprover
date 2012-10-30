@@ -266,6 +266,7 @@ void symex_assertion_sumt::symex_step(
   const goto_functionst &goto_functions,
   statet &state)
 {
+
   assert(!state.call_stack.empty());
 
   const goto_programt::instructiont &instruction=*state.source.pc;
@@ -280,7 +281,6 @@ void symex_assertion_sumt::symex_step(
     state.depth++;
   }
 
-  // actually do instruction
   switch(instruction.type)
   {
   case SKIP:
@@ -1007,11 +1007,8 @@ void symex_assertion_sumt::handle_function_call(
       code_assignt code(function_call.lhs(), rhs);
       basic_symext::symex(state, code);
     }
-
-    state.source.pc++;
     return;
   }
-
 
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);

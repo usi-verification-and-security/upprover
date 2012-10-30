@@ -107,7 +107,7 @@ bool check_upgrade(const namespacet &ns,
   final = current_time();
   diff.status(std::string("DIFF TIME: ") + time2string(final - initial));
   if (res){
-	diff.status("The programs are trivially identical");
+	diff.status("The program models are identical");
     return 0;
   }
 
@@ -195,7 +195,7 @@ bool upgrade_checkert::check_upgrade()
             + std::string(" is out of assertion scope)"));
     }
     if (!res) {
-      status(std::string("Invalid summaries ratio: ") + i2string(omega.get_invalid_count()) + "/" + i2string(omega.get_call_summaries().size()));
+      status(std::string("Invalid summaries ratio: ") + i2string(omega.get_invalid_count()) + "/" + i2string(omega.get_call_summaries().size() - 1));
       report_failure();
       return false;
     }
@@ -211,7 +211,7 @@ bool upgrade_checkert::check_upgrade()
   //
   // NOTE: call check_summary to do the check \phi_f => I_f.
   
-  status(std::string("Invalid summaries ratio: ") + i2string(omega.get_invalid_count()) + "/" + i2string(omega.get_call_summaries().size()));
+  status(std::string("Invalid summaries ratio: ") + i2string(omega.get_invalid_count()) + "/" + i2string(omega.get_call_summaries().size() - 1));
   serialize();
   report_success();
   return true;

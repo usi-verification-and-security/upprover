@@ -108,7 +108,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
         extract_interpolants(equation, red_timeout);
         if (summaries_count == 0)
         {
-          status("ASSERTION(S) HOLD(S) AFTER INLINING.");
+          status("ASSERTION(S) HOLD(S)");
         } else {
           status(std::string("FUNCTION SUMMARIES (for ") + i2string(summaries_count) +
         		  std::string(" calls) WERE SUBSTITUTED SUCCESSFULLY."));
@@ -135,7 +135,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
           }
         } else {
           prop.error_trace(*decider, ns);
-          status("ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.");
+          status("ASSERTION(S) DO(ES)N'T HOLD");
           status("A real bug found");
           report_failure();
           break;
