@@ -39,7 +39,8 @@ class value_set_alloc_adaptort;
   "(xml-ui)(xml-interface)" \
   "(init-upgrade-check)(do-upgrade-check):" \
   "(no-slicing)(no-assert-grouping)(no-summary-optimization)" \
-  "(pointer-check)(bounds-check)(string-abstraction)(assertions)" \
+  "(pointer-check)(bounds-check)(div-by-zero-check)(overflow-check)(nan-check)" \
+  "(string-abstraction)(assertions)" \
   "(show-pass)(suppress-fail)(no-progress)" \
   "(show-claims)(all-claims)(claim):(claimset):" \
   "(save-queries)(save-change-impact):" \

@@ -423,8 +423,11 @@ void funfrog_parseoptionst::help()
   "--show-pass                    report passed claims\n"
   "--suppress-fail                don't report failed claims\n"
   "--save-claims                  save claim info in `file'_data/claim*\n"
-  "--bounds-check                 add array bounds checks\n"
-  "--pointer-check                add pointer checks\n"
+  "--bounds-check                 enable array bounds checks\n"
+  "--div-by-zero-check            enable division by zero checks\n"
+  "--pointer-check                enable pointer checks\n"
+  "--overflow-check               enable arithmetic over- and underflow checks\n"
+  "--nan-check                    check floating-point for NaN\n"
   "--assertions                   add user supplied assertions\n"
   "--claim <int>                  check a specific claim\n"
   "--claimset <int,int,...>       check specific claims separated by comas\n"
@@ -785,6 +788,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 {
   options.set_option("bounds-check", cmdline.isset("bounds-check"));
   options.set_option("pointer-check", cmdline.isset("pointer-check"));
+  options.set_option("div-by-zero-check", cmdline.isset("div-by-zero-check"));
+  options.set_option("overflow-check", cmdline.isset("overflow-check"));
+  options.set_option("nan-check", cmdline.isset("nan-check"));
   options.set_option("string-abstraction", cmdline.isset("string-abstraction"));
   options.set_option("assertions", cmdline.isset("assertions"));
   options.set_option("all-claims", cmdline.isset("all-claims"));
