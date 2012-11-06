@@ -169,7 +169,11 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
     config.proof_red_time = 0;
     config.proof_reduce = 0;
   }
+
+  opensmt_ctx->createProofGraph();
+  opensmt_ctx->setPudlakInterpolation();
   opensmt_ctx->GetInterpolants(partition_ids, itp_enodes);
+  opensmt_ctx->deleteProofGraph();
 
   for (std::vector<Enode*>::iterator it = itp_enodes.begin();
           it != itp_enodes.end(); ++it) {
