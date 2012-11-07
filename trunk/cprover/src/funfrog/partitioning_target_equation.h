@@ -141,7 +141,8 @@ public:
       SSA_steps_exec_order.clear();
       SSA_steps_exec_order.reserve(SSA_steps.size());
       prepare_SSA_exec_order(partitions[0]);
-      assert(SSA_steps_exec_order.size() == SSA_steps.size());
+      //FIXME: assertion simply doesn't hold if there were some summaries substituted
+      //assert(SSA_steps_exec_order.size() == SSA_steps.size());
     }
     return SSA_steps_exec_order;
   }
