@@ -96,7 +96,7 @@ public:
 
   bool is_assert_grouping() const
   {
-    return (!matching_type == NO_ASSERT_GROUPING);
+    return (matching_type == ASSERT_GROUPING);
   }
 
   bool is_all_assert() const
