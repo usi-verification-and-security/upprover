@@ -52,8 +52,8 @@ void satcheck_opensmtt::initializeSolver()
   config.proof_red_trans = 1;
   config.proof_red_time = 0; // <-- timeout
   config.proof_reduce = 0;
-  config.proof_reorder_pivots = 0;
-  config.proof_reduce_while_reordering = 0;
+  //config.proof_reorder_pivots = 0;
+  //config.proof_reduce_while_reordering = 0;
   config.proof_set_inter_algo = 0; // McMillan -- the strongest interpolant
 
   sbool = opensmt_ctx->mkSortBool();
