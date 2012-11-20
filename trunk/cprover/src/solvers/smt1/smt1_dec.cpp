@@ -77,11 +77,11 @@ smt1_temp_filet::~smt1_temp_filet()
 {
   temp_out.close();
 
-  if(temp_out_filename!="")
-    unlink(temp_out_filename.c_str());
+//  if(temp_out_filename!="")
+   // unlink(temp_out_filename.c_str());
 
-  if(temp_result_filename!="")
-    unlink(temp_result_filename.c_str());
+  //if(temp_result_filename!="")
+    //unlink(temp_result_filename.c_str());
 }
 
 /*******************************************************************\

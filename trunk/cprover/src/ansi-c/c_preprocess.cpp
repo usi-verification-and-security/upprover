@@ -101,7 +101,7 @@ bool c_preprocess(
 
   bool result=c_preprocess(file, outstream, message_handler);
   
-  unlink(file.c_str());
+//  unlink(file.c_str());
   
   return result;
 }
@@ -254,8 +254,8 @@ bool c_preprocess_visual_studio(
 
   if(stream==NULL)
   {
-    unlink(tmpi.c_str());
-    unlink(stderr_file.c_str());
+  //  unlink(tmpi.c_str());
+  //  unlink(stderr_file.c_str());
     message_stream.error("Preprocessing failed (fopen failed)");
     return true;
   }
@@ -267,8 +267,8 @@ bool c_preprocess_visual_studio(
   }
 
   fclose(stream);
-  unlink(tmpi.c_str());
-  unlink(command_file_name.c_str());
+//  unlink(tmpi.c_str());
+//  unlink(command_file_name.c_str());
 
   // errors/warnings
   {
@@ -278,7 +278,7 @@ bool c_preprocess_visual_studio(
       message_stream.str << ch;
   }
 
-  unlink(stderr_file.c_str());
+  //unlink(stderr_file.c_str());
 
   if(result!=0)
   {
@@ -599,7 +599,7 @@ bool c_preprocess_gcc(
   }
   else
   {
-    unlink(stderr_file.c_str());
+   // unlink(stderr_file.c_str());
     message_stream.error("Preprocessing failed (popen failed)");
     return true;
   }
@@ -613,7 +613,7 @@ bool c_preprocess_gcc(
       message_stream.str << ch;
   }
 
-  unlink(stderr_file.c_str());
+  //unlink(stderr_file.c_str());
 
   if(result!=0)
   {
@@ -728,8 +728,8 @@ bool c_preprocess_arm(
   }
   else
   {
-    unlink(tmpi.c_str());
-    unlink(stderr_file.c_str());
+    //unlink(tmpi.c_str());
+    //unlink(stderr_file.c_str());
     message_stream.error("Preprocessing failed (fopen failed)");
     return true;
   }
@@ -749,7 +749,7 @@ bool c_preprocess_arm(
   }
   else
   {
-    unlink(stderr_file.c_str());
+    //unlink(stderr_file.c_str());
     message_stream.error("Preprocessing failed (popen failed)");
     return true;
   }
@@ -763,7 +763,7 @@ bool c_preprocess_arm(
       message_stream.str << ch;
   }
 
-  unlink(stderr_file.c_str());
+  //unlink(stderr_file.c_str());
 
   if(result!=0)
   {
