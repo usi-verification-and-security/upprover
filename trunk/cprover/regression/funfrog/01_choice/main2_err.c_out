@@ -3,4 +3,4 @@ Violated property:
   file 01_choice/main2_err.c line 34 function main
   assertion
   t != -2
-ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.
+ASSERTION(S) DO(ES)N'T HOLD

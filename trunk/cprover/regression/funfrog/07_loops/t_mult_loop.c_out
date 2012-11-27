@@ -1,52 +1,15 @@
 UNSAT - it holds!
 ASSERTION IS TRUE
 SAT
-SAT
-ASSERTION(S) HOLD(S) AFTER INLINING.
-SAT - doesn't hold
-Violated property:
-  file 07_loops/t_mult_loop.c line 64 function do_if_assert_a
-  assertion
-  a > q
-FUNCTION SUMMARIES (for 2 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
-SAT - doesn't hold
-Violated property:
-  file 07_loops/t_mult_loop.c line 64 function do_if_assert_a
-  assertion
-  a > q
-FUNCTION SUMMARIES (for 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+UNSAT
+ASSERTION(S) HOLD(S)
 UNSAT - it holds!
 ASSERTION IS TRUE
-SAT
-SAT
-UNSAT
-SAT
-SAT
-UNSAT
-ASSERTION(S) HOLD(S) AFTER INLINING.
+FUNCTION SUMMARIES (for 2 calls) WERE SUBSTITUTED SUCCESSFULLY.
 UNSAT - it holds!
 ASSERTION IS TRUE
-SAT
-SAT
-FUNCTION SUMMARIES (for 1 calls) WERE SUBSTITUTED SUCCESSFULLY.
-SAT - doesn't hold
-Violated property:
-  file 07_loops/t_mult_loop.c line 72 function do_if_assert_b
-  assertion
-  b > q
-FUNCTION SUMMARIES (for 3 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
-SAT - doesn't hold
-Violated property:
-  file 07_loops/t_mult_loop.c line 72 function do_if_assert_b
-  assertion
-  b > q
-FUNCTION SUMMARIES (for 2 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
-UNSAT - it holds!
-ASSERTION IS TRUE
-SAT
-SAT
-SAT
-UNSAT
-SAT
 UNSAT
 FUNCTION SUMMARIES (for 1 calls) WERE SUBSTITUTED SUCCESSFULLY.
+UNSAT - it holds!
+ASSERTION IS TRUE
+FUNCTION SUMMARIES (for 3 calls) WERE SUBSTITUTED SUCCESSFULLY.

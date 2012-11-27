@@ -3,4 +3,4 @@ Violated property:
   file 17_recursion/rec1.c line 18 function main
   assertion
   a < 5
-ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.
+ASSERTION(S) DO(ES)N'T HOLD

@@ -1,9 +1,6 @@
-UNSAT - it holds!
-ASSERTION IS TRUE
-SAT
-SAT
-SAT
-SAT
-UNSAT
-SAT
-ASSERTION(S) HOLD(S) AFTER INLINING.
+SAT - doesn't hold
+Violated property:
+  file 17_recursion/rec2.c line 18 function main
+  assertion
+  a < 5
+ASSERTION(S) DO(ES)N'T HOLD

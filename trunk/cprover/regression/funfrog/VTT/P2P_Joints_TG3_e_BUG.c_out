@@ -1,0 +1,6 @@
+SAT - doesn't hold
+Violated property:
+  file VTT/P2P_Joints_TG3_e_BUG.c line 167 function InitilizeTG
+  assertion
+  jp[(long int)i].v <= jl[0]
+ASSERTION(S) DO(ES)N'T HOLD

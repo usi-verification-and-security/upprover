@@ -3,4 +3,4 @@ Violated property:
   file 01_choice/main7.c line 3 function main
   assertion
   FALSE
-ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.
+ASSERTION(S) DO(ES)N'T HOLD

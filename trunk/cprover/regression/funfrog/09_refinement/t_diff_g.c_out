@@ -1,24 +1,12 @@
 UNSAT - it holds!
 ASSERTION IS TRUE
-ASSERTION(S) HOLD(S) AFTER INLINING.
+ASSERTION(S) HOLD(S)
 SAT - doesn't hold
-Violated property:
-  file 09_refinement/t_diff_g.c line 157 function main1
-  assertion
-  b < 10
-FUNCTION SUMMARIES (for 8 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+FUNCTION SUMMARIES (for 8 calls) AREN'T SUITABLE FOR CHECKING ASSERTION
 SAT - doesn't hold
-Violated property:
-  file 09_refinement/t_diff_g.c line 157 function main1
-  assertion
-  b < 10
-FUNCTION SUMMARIES (for 5 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+FUNCTION SUMMARIES (for 5 calls) AREN'T SUITABLE FOR CHECKING ASSERTION
 SAT - doesn't hold
-Violated property:
-  file 09_refinement/t_diff_g.c line 157 function main1
-  assertion
-  b < 10
-FUNCTION SUMMARIES (for 4 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+FUNCTION SUMMARIES (for 4 calls) AREN'T SUITABLE FOR CHECKING ASSERTION
 UNSAT - it holds!
 ASSERTION IS TRUE
 UNSAT
@@ -27,4 +15,4 @@ SAT
 SAT
 SAT
 UNSAT
-ASSERTION(S) HOLD(S) AFTER INLINING.
+ASSERTION(S) HOLD(S)

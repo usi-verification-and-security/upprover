@@ -2,7 +2,7 @@ UNSAT - it holds!
 ASSERTION IS TRUE
 SAT
 SAT
-ASSERTION(S) HOLD(S) AFTER INLINING.
+ASSERTION(S) HOLD(S)
 SAT - doesn't hold
 SAT - doesn't hold
 Violated property:

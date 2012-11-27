@@ -3,10 +3,10 @@ Violated property:
   file VTT/a1.c line 26 function addtwonumbers
   assertion a >= 0 && b >= 0
   FALSE
-ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.
+ASSERTION(S) DO(ES)N'T HOLD
 SAT - doesn't hold
 Violated property:
   file VTT/a1.c line 43 function main
   assertion c >= 0
   FALSE
-ASSERTION(S) DO(ES)N'T HOLD AFTER INLINING.
+ASSERTION(S) DO(ES)N'T HOLD
