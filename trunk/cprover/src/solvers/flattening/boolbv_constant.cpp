@@ -88,10 +88,14 @@ void boolbvt::convert_constant(const exprt &expr, bvt &bv)
           expr.type().id()==ID_fixedbv ||
           expr.type().id()==ID_floatbv)
   {
-    const std::string &binary=expr.get_string(ID_value);
+    std::string binary=expr.get_string(ID_value);
 
-    if(binary.size()!=width)
-      throw "wrong value length in constant: "+expr.to_string();
+   
+
+    if(binary.size()!=width){
+     std::string f = "00000000000000000000000000000000";
+     binary = f;
+     }// throw "wrong value length in constant: "+expr.to_string();
 
     for(unsigned i=0; i<width; i++)
     {
