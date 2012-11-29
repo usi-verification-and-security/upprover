@@ -1,1 +1,1 @@
---unwind 5
+--unwind 5 --all-claims --no-summary-optimization
