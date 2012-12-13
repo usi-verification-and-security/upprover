@@ -42,7 +42,7 @@ class value_set_alloc_adaptort;
   "(pointer-check)(bounds-check)(div-by-zero-check)(overflow-check)(nan-check)" \
   "(string-abstraction)(assertions)" \
   "(show-pass)(suppress-fail)(no-progress)" \
-  "(show-claims)(all-claims)(claim):(claimset):" \
+  "(show-claims)(all-claims)(claims-order)(claim):(claimset):" \
   "(save-queries)(save-change-impact):" \
   "(reduce-proof):(verbose-solver):" \
   "(unwind):(unwindset):" \

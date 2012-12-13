@@ -432,6 +432,7 @@ void funfrog_parseoptionst::help()
   "--claim <int>                  check a specific claim\n"
   "--claimset <int,int,...>       check specific claims separated by comas\n"
   "--all-claims                   check all claims in one run\n"
+  "--claims-order                 find the strongest claims\n"
   "--testclaim <label>            check a labelled claim\n"
   "--unwind <bound>               loop unwind bound\n"
   "--unwindset <label:bound,...>  set of loop unwind bound for specific\n"
@@ -701,10 +702,23 @@ bool funfrog_parseoptionst::check_function_summarization(
   } else {
     // perform standalone check (all the functionality remains the same)
   
-    if(cmdline.isset("claim") && cmdline.isset("all-claims")) {
-      error("A specific claim cannot be specified if --all-claims is set.");
+    if(cmdline.isset("claim") &&
+        (cmdline.isset("all-claims") || cmdline.isset("claimset") || cmdline.isset("claims-order"))) {
+      error("A specific claim cannot be specified if any other claim specification is set.");
       return 1;
     }
+
+    if(cmdline.isset("all-claims") &&
+        (cmdline.isset("claimset") || cmdline.isset("claims-order"))) {
+      error("All claims cannot be specified if any other claim specification is set.");
+      return 1;
+    }
+
+    if(cmdline.isset("claimset") && cmdline.isset("claims-order")) {
+      error("A specific claimset cannot be specified if any other claim specification is set.");
+      return 1;
+    }
+
 
     if(cmdline.isset("testclaim"))
     {
@@ -794,6 +808,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("string-abstraction", cmdline.isset("string-abstraction"));
   options.set_option("assertions", cmdline.isset("assertions"));
   options.set_option("all-claims", cmdline.isset("all-claims"));
+  options.set_option("claims-order", cmdline.isset("claims-order"));
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));

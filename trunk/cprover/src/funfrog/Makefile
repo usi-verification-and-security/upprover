@@ -16,6 +16,7 @@ FUNFROG_SRC := \
       xml_interface.cpp \
       parseoptions.cpp \
       check_claims.cpp \
+      dependency_checker.cpp \
       refiner_assertion_sum.cpp \
       prop_assertion_sum.cpp \
       symex_assertion_sum.cpp \

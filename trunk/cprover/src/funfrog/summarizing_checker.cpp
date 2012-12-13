@@ -8,6 +8,7 @@
 \*******************************************************************/
 #include <i2string.h>
 #include "summarizing_checker.h"
+#include "dependency_checker.h"
 
 void summarizing_checkert::initialize()
 {
@@ -99,6 +100,11 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
     end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
 
     if (!end){
+
+      // FIXME: find more proper location
+      if (options.get_bool_option("claims-order") && count == 1){
+        dependency_checkert(ns, equation, message_handler, goto_program).do_it();
+      }
 
       end = prop.assertion_holds(assertion, ns, *decider, *interpolator);
       unsigned summaries_count = omega.get_summaries_count();
