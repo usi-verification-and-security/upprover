@@ -38,7 +38,7 @@ public:
 
   void do_it();
 
-  typedef symex_target_equationt::SSA_stepst::const_iterator SSA_step_reft;
+  typedef symex_target_equationt::SSA_stepst::iterator SSA_step_reft;
   void find_var_deps();
   void find_assert_deps();
   void find_implications();

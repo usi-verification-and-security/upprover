@@ -12,10 +12,6 @@
 #include <sstream>
 #include <map>
 
-using namespace std;
-typedef symex_target_equationt::SSA_stepst::iterator SSA_step_reft;
-
-
 void dependency_checkert::do_it(){
       find_var_deps();
       find_assert_deps();
