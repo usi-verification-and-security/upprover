@@ -108,6 +108,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 
       end = prop.assertion_holds(assertion, ns, *decider, *interpolator);
       unsigned summaries_count = omega.get_summaries_count();
+      unsigned nondet_count = omega.get_nondets_count();
       if (end && interpolator->can_interpolate())
       {
         double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
@@ -121,12 +122,14 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
         }
         report_success();
       } else {
-        if (summaries_count != 0 || init == ALL_HAVOCING) {
-          if (init == ALL_HAVOCING){
-            status("NONDETERMINISTIC ASSIGNMENTS FOR ALL FUNCTION CALLS ARE NOT SUITABLE FOR CHECKING ASSERTION.");
-          } else {
+        if (summaries_count > 0 || nondet_count > 0) {
+          if (summaries_count > 0){
             status(std::string("FUNCTION SUMMARIES (for ") +
-            		i2string(summaries_count) + std::string(" calls) AREN'T SUITABLE FOR CHECKING ASSERTION"));
+                i2string(summaries_count) + std::string(" calls) AREN'T SUITABLE FOR CHECKING ASSERTION"));
+          }
+          if (nondet_count > 0){
+            status(std::string("HAVOCING (of ") +
+                i2string(nondet_count) + std::string(" calls) AREN'T SUITABLE FOR CHECKING ASSERTION"));
           }
           refiner.refine(*decider, omega.get_summary_info());
 

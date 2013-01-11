@@ -78,7 +78,7 @@ public:
     assert(!sum_partition.filled);
 
     sum_partition.filled = true;
-    sum_partition.is_summary = true;
+    sum_partition.summary = true;
     sum_partition.summaries = summaries;
     
     sum_partition.applicable_summaries.clear();
@@ -89,6 +89,17 @@ public:
     }
   }
 
+  // Fill the (reserved) partition with the stub summary.
+  void fill_stub_partition(partition_idt partition_id)
+  {
+    partitiont& sum_partition = partitions.at(partition_id);
+    assert(!sum_partition.filled);
+
+    sum_partition.filled = true;
+    sum_partition.stub = true;
+
+  }
+
   // Fill the (reserved) partition with the given summaries.
   void fill_inverted_summary_partition(partition_idt partition_id,
     const summary_idst* summaries, const summary_ids_sett& used_summaries)
@@ -97,7 +108,7 @@ public:
     assert(!sum_partition.filled);
 
     sum_partition.filled = true;
-    sum_partition.is_summary = true;
+    sum_partition.summary = true;
     sum_partition.inverted_summary = true;
     sum_partition.summaries = summaries;
     sum_partition.used_summaries = used_summaries;

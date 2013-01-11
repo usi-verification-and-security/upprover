@@ -27,7 +27,7 @@ public:
   static const int NO_PARTITION = -1;
   
   partitiont(partition_idt _parent_id, partition_ifacet& _partition_iface) :
-          filled(false), is_summary(false), ignore(false), processed(false),
+          filled(false), summary(false), stub(false), ignore(false), processed(false),
           invalid(false), inverted_summary(false), summaries(NULL), 
           parent_id(_parent_id), partition_iface(&_partition_iface) { }
           
@@ -57,6 +57,12 @@ public:
   partition_ifacet& get_iface() { return *partition_iface; }
   const partition_ifacet& get_iface() const { return *partition_iface; }
 
+  bool is_inline(){
+    return
+        !(summary || stub || ignore || invalid);
+       // || get_iface().assertion_in_subtree);
+  }
+
   bool filled;
   unsigned start_idx;
   // Index after the last SSA corresponding to this partition
@@ -64,7 +70,8 @@ public:
   symex_target_equationt::SSA_stepst::iterator start_it;
   // Iterator after the last SSA corresponding to this partition
   symex_target_equationt::SSA_stepst::iterator end_it;
-  bool is_summary;
+  bool summary;
+  bool stub;
   bool ignore;
   bool processed;
   bool invalid;

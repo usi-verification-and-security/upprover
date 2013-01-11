@@ -95,17 +95,17 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, summary_infot& su
   partitionst& parts = equation.get_partitions();
   for (unsigned i = 0; i < parts.size(); i++) {
     partitiont part = parts[i];
-    if (!part.ignore && part.is_summary) {
+    if (!part.ignore && (part.summary || part.stub)) {
       partition_ifacet ipart = part.get_iface();
 #     ifdef DEBUG_REFINER
       std::cout<< "*** checking " << ipart.function_id << ":" << std::endl;
 #     endif
-      if (part.applicable_summaries.empty()) {
+      /*if (part.summary && part.applicable_summaries.empty()) {
 #       ifdef DEBUG_REFINER
         std::cout<< "    -- no applicable summaries" << std::endl;
 #       endif
         tmp.push_back(&ipart.summary_info);
-      } 
+      }*/
       if (decider.prop.l_get(ipart.callstart_literal).is_true()){
 #       ifdef DEBUG_REFINER
         std::cout<< "    -- callstart literal is true" << std::endl;
@@ -120,12 +120,7 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, summary_infot& su
   if (tmp.size() > 0) {
     reset_depend_rec(tmp, summary);
     tmp.clear();
-  } else if (omega.get_nondets_count() != 0){
-    // FIXME: This should work the same as with the summaries, i.e., the call
-    // start symbols should be remembered and used above. 
-    // Unfortunately, we don't have the corresponding partitions now (OS)
-    reset_inline(summary);
-  } // else the assertion violation is real
+  }
 }
 
 void refiner_assertion_sumt::reset_depend_rec(std::vector<summary_infot*>& dep, summary_infot& summary)
@@ -133,14 +128,19 @@ void refiner_assertion_sumt::reset_depend_rec(std::vector<summary_infot*>& dep, 
   for (call_sitest::iterator it = summary.get_call_sites().begin();
           it != summary.get_call_sites().end(); ++it)
   {
-    if ((it->second).get_precision() != INLINE){
+    summary_infot& call = it->second;
+    if (call.get_precision() != INLINE){
       for (unsigned j = 0; j < dep.size(); j++){
-        if (dep[j] == &(it->second)){
-          set_inline_sum(it->second);
+        if (dep[j] == &call){
+          if (call.is_unwind_exceeded()){
+            std::cout << "This call cannot be refined because, the maximum unwinding bound is exceeded\n";
+          } else {
+            set_inline_sum(call);
+          }
           break;
         }
       }
     }
-    reset_depend_rec(dep, it->second);
+    reset_depend_rec(dep, call);
   }
 }

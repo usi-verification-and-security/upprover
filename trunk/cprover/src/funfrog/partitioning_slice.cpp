@@ -88,7 +88,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
           it != equation.get_partitions().end();
           ++it)
   {
-    if (it->is_summary) {
+    if (it->summary) {
       it->applicable_summaries.clear();
       // We can only slice standard summaries, not inverted and not summaries
       // with assertion in subtree
@@ -181,7 +181,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
           it != equation.get_partitions().end();
           ++it) {
     // Only care about real partitions
-    if (it->is_summary || it->invalid || it->ignore || 
+    if (it->summary || it->invalid || it->ignore ||
             it->get_iface().assertion_in_subtree)
       continue;
     
@@ -225,7 +225,7 @@ void partitioning_slicet::prepare_maps(partitioning_target_equationt &equation)
 
     prepare_partition(*it);
     
-    if (it->is_summary)
+    if (it->summary || it->stub)
       continue;
 
     // Analyze the SSA steps
@@ -348,7 +348,7 @@ void partitioning_slicet::prepare_partition(partitiont &partition)
 {
   partition_ifacet & partition_iface = partition.get_iface();
   // For a standard summary without assertion_in_subtree, fill the summary table
-  if (partition.is_summary) {
+  if (partition.summary) {
     if (!partition.inverted_summary &&
             !partition_iface.assertion_in_subtree) {
       if (partition_iface.returns_value) {

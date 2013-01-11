@@ -45,7 +45,7 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             " (loc: " << it->get_iface().summary_info.get_call_location() << ", " <<
-            ((it->is_summary) ? ((it->inverted_summary) ? "INV" : "SUM") : "INL") << ")" <<
+            ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM") : "INL") << ")" <<
             std::endl;
 #   endif
     convert_partition(prop_conv, interpolator, *it);
@@ -115,8 +115,8 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
             prop_conv.convert(partition_iface.error_symbol);
   }
   
-  if (partition.is_summary && 
-          partition.applicable_summaries.empty()) {
+  if (partition.stub || (partition.summary &&
+          partition.applicable_summaries.empty())) {
     assert(!partition.inverted_summary);
 #   ifdef DEBUG_SSA
     std::cout << "  no applicable summary." << std::endl;
@@ -128,7 +128,7 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   partition.fle_part_id = interpolator.new_partition();
   
   // If this is a summary partition, apply the summary
-  if (partition.is_summary) {
+  if (partition.summary) {
     convert_partition_summary(prop_conv, partition);
     // FIXME: Only use in the incremental solver mode (not yet implemented)
     // partition.processed = true;
@@ -550,7 +550,7 @@ void partitioning_target_equationt::prepare_partitions()
             " size: " << partitions.size() << std::endl;
 #   endif
 
-    if (it->is_summary)
+    if (it->summary || it->stub)
       continue;
 
     while (idx != it->end_idx) {
@@ -591,7 +591,7 @@ void partitioning_target_equationt::prepare_SSA_exec_order(
       // Process the call first
       const partitiont& partition = partitions[*id_it];
       
-      if (!partition.is_summary)
+      if (!partition.summary)
         prepare_SSA_exec_order(partition);
       
       ++loc_it;
@@ -604,7 +604,7 @@ void partitioning_target_equationt::prepare_SSA_exec_order(
     // Process the call first
     const partitiont& partition = partitions[*id_it];
 
-    if (!partition.is_summary)
+    if (!partition.summary)
       prepare_SSA_exec_order(partition);
 
     ++loc_it;
@@ -671,7 +671,7 @@ void partitioning_target_equationt::extract_interpolants(
     partitiont& partition = partitions[i];
 
     // Mark the used summaries
-    if (partition.is_summary && !(partition.ignore || partition.invalid)) {
+    if (partition.summary && !(partition.ignore || partition.invalid)) {
       for (summary_ids_sett::const_iterator it = 
               partition.applicable_summaries.begin();
               it != partition.applicable_summaries.end(); ++it) {
@@ -679,7 +679,7 @@ void partitioning_target_equationt::extract_interpolants(
       }
     }
     
-    if (partition.is_summary || partition.ignore || partition.invalid ||
+    if (!partition.is_inline() ||
             (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion))
       continue;
     
@@ -695,7 +695,7 @@ void partitioning_target_equationt::extract_interpolants(
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
     partitiont& partition = partitions[pid];
     
-    if (partition.is_summary || partition.ignore || partition.invalid ||
+    if (!partition.is_inline() ||
             (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion))
       continue;
     
@@ -713,7 +713,7 @@ void partitioning_target_equationt::extract_interpolants(
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
     partitiont& partition = partitions[pid];
 
-    if (partition.is_summary || partition.ignore || partition.invalid || 
+    if (!partition.is_inline() ||
             (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion))
       continue;
     
@@ -777,7 +777,7 @@ void partitioning_target_equationt::fill_partition_ids(
   // Current partition id
   part_ids.push_back(partition.fle_part_id);
   
-  assert(!partition.is_summary || partition.child_ids.empty());
+  assert(!partition.summary || partition.child_ids.empty());
 
   // Child partition ids
   for (partition_idst::iterator it = partition.child_ids.begin()++;

@@ -179,7 +179,7 @@ bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
         partition_ifacet* partition_iface = *it2;
 
         if (partition_iface->partition_id != partitiont::NO_PARTITION) {
-          // assert(equation.get_partitions()[partition_iface->partition_id].is_summary);
+          // assert(equation.get_partitions()[partition_iface->partition_id].summary);
           std::cerr << "Invalidating partition: " << partition_iface->partition_id << std::endl;
           equation.invalidate_partition(partition_iface->partition_id);
         }
@@ -1135,7 +1135,7 @@ void symex_assertion_sumt::inline_function_call(
 }
 /*******************************************************************
 
- Function: symex_assertion_sumt::summarize_function_call
+ Function: symex_assertion_sumt::havoc_function_call
 
  Inputs:
 
@@ -1155,9 +1155,12 @@ void symex_assertion_sumt::havoc_function_call(
 	status(std::string("*** NONDET abstraction used for function: ") + function_id.c_str());
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
-  
+
   produce_callsite_symbols(partition_iface, state);
   produce_callend_assumption(partition_iface, state);
+
+  partition_idt partition_id = equation.reserve_partition(partition_iface);
+  equation.fill_stub_partition(partition_id);
 }
 
 /*******************************************************************
