@@ -37,7 +37,7 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
   int part_id = partitions.size();
   for (partitionst::reverse_iterator it = partitions.rbegin();
           it != partitions.rend(); ++it) {
-#   ifdef DEBUG_SSA
+//#   ifdef DEBUG_SSA
     std::cout << "XXX" << std::string(77, '=') << std::endl;
     unsigned vars_before = prop_conv.prop.no_variables();
     unsigned clauses_before = dynamic_cast<cnf_solvert&>(prop_conv.prop).no_clauses();
@@ -47,7 +47,7 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
             " (loc: " << it->get_iface().summary_info.get_call_location() << ", " <<
             ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM") : "INL") << ")" <<
             std::endl;
-#   endif
+//#   endif
     convert_partition(prop_conv, interpolator, *it);
 #   ifdef DEBUG_ENCODING
     unsigned vars_after = prop_conv.prop.no_variables();
@@ -591,7 +591,7 @@ void partitioning_target_equationt::prepare_SSA_exec_order(
       // Process the call first
       const partitiont& partition = partitions[*id_it];
       
-      if (!partition.summary)
+      if (!partition.summary && !partition.stub)
         prepare_SSA_exec_order(partition);
       
       ++loc_it;
@@ -604,7 +604,7 @@ void partitioning_target_equationt::prepare_SSA_exec_order(
     // Process the call first
     const partitiont& partition = partitions[*id_it];
 
-    if (!partition.summary)
+    if (!partition.summary && !partition.stub)
       prepare_SSA_exec_order(partition);
 
     ++loc_it;
