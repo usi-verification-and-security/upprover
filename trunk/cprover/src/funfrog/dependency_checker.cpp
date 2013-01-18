@@ -12,6 +12,14 @@
 #include <sstream>
 #include <map>
 
+#define INDEPT false
+#define DEPT true
+
+#define NOTIMP false
+#define IMP true
+
+using namespace std;
+
 void dependency_checkert::do_it(){
       find_var_deps();
       find_assert_deps();
@@ -56,6 +64,8 @@ bool dependency_checkert::check_implication(SSA_step_reft c1, SSA_step_reft c2)
   }
 }
 
+
+
 void dependency_checkert::find_var_deps()
 {
     for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
@@ -69,9 +79,9 @@ void dependency_checkert::find_var_deps()
             get_expr_symbols(it->cond_expr, all_symbols);
 
             //PRINT
-            std::cout << "All symbols: ";
-            print_expr_symbols(std::cout, all_symbols);
-            std::cout << std::endl;
+            //std::cout << "All symbols: ";
+            //print_expr_symbols(std::cout, all_symbols);
+            //std::cout << std::endl;
 
             for (symbol_sett::iterator first_it = all_symbols.begin(); first_it != all_symbols.end(); ++first_it)
             {
@@ -79,21 +89,21 @@ void dependency_checkert::find_var_deps()
                 for (symbol_sett::iterator second_it = all_symbols.begin(); second_it != all_symbols.end(); ++second_it)
                 {
                   string second_id = second_it->as_string();
-                  std::cout << "Dependency " << variable_name(*first_it) << " <- " << variable_name(*second_it) << " is being added." << std::endl;
-                  var_deps[first_id][second_id] = true;
-                  var_deps[second_id][first_id] = true;
+                  //std::cout << "Dependency " << variable_name(*first_it) << " <- " << variable_name(*second_it) << " is being added." << std::endl;
+                  var_deps[first_id][second_id] = DEPT;
+                  var_deps[second_id][first_id] = DEPT;
                 }
             }
         }
     }
-    //std::cout << "Printing dependencies:" << std::endl;
-    map<string,map<string,bool> >::iterator dep_it;
-    for ( dep_it=var_deps.begin() ; dep_it != var_deps.end(); dep_it++ )
-    {
-      //std::cout << variable_name((*dep_it).first) << " <- ";
-      //print_dependents((*dep_it).second, std::cout);
-      //std::cout << std::endl;
-    }
+//    std::cout << "Printing dependencies:" << std::endl;
+//    map<string,map<string,bool> >::iterator dep_it;
+//    for ( dep_it=var_deps.begin() ; dep_it != var_deps.end(); dep_it++ )
+//    {
+//      std::cout << variable_name((*dep_it).first) << " <- ";
+//      print_dependents((*dep_it).second, std::cout);
+//      std::cout << std::endl;
+//    }
 
     map<string,map<string,bool> >::iterator first_it, second_it, third_it;
     for (first_it = var_deps.begin(); first_it != var_deps.end(); first_it++)
@@ -103,10 +113,10 @@ void dependency_checkert::find_var_deps()
         for (third_it = var_deps.begin(); third_it != var_deps.end(); third_it++)
         {
           if ((first_it->first != second_it->first) && (second_it->first != third_it->first) && (first_it->first != third_it->first))
-          if (var_deps[first_it->first][second_it->first] && var_deps[second_it->first][third_it->first])
+          if ((var_deps[first_it->first][second_it->first] == DEPT) && (var_deps[second_it->first][third_it->first] == DEPT))
           {
-            var_deps[first_it->first][third_it->first] = true;
-            var_deps[third_it->first][first_it->first] = true;
+            var_deps[first_it->first][third_it->first] = DEPT;
+            var_deps[third_it->first][first_it->first] = DEPT;
             //PRINTING
             //std::cout << "Since the pairs (" << variable_name(first_it->first) << ", " << variable_name(second_it->first) << ") and ("
             //     << variable_name(second_it->first) << ", " << variable_name(third_it->first) << ") have been added, " << std::endl;
@@ -135,31 +145,29 @@ void dependency_checkert::find_assert_deps()
 //    }
 
     map<SSA_step_reft, bool>::iterator first_it, second_it;
-    symbol_sett first_symbols, second_symbols;;
+    symbol_sett first_symbols, second_symbols;
+
     for (first_it = asserts.begin(); first_it != asserts.end(); first_it++)
     {
+      first_symbols.clear();
+      get_expr_symbols(first_it->first->guard_expr, first_symbols);
+      get_expr_symbols(first_it->first->cond_expr, first_symbols);
+
       for (second_it = asserts.begin(); second_it != asserts.end(); second_it++)
       {
-        get_expr_symbols(first_it->first->guard_expr, first_symbols);
-        get_expr_symbols(first_it->first->cond_expr, first_symbols);
-        get_expr_symbols(second_it->first->guard_expr, second_symbols);
+    	second_symbols.clear();
+    	get_expr_symbols(second_it->first->guard_expr, second_symbols);
         get_expr_symbols(second_it->first->cond_expr, second_symbols);
 
-        for (symbol_sett::iterator first_symit = first_symbols.begin(); first_symit != first_symbols.end(); ++first_symit)
+    	for (symbol_sett::iterator first_symit = first_symbols.begin(); first_symit != first_symbols.end(); ++first_symit)
         {
           for (symbol_sett::iterator second_symit = second_symbols.begin(); second_symit != second_symbols.end(); ++second_symit)
           {
-            bool mustprint = !assert_deps[first_it->first][second_it->first];
-            if (var_deps[first_symit->as_string()][second_symit->as_string()] == true)
-              assert_deps[first_it->first][second_it->first] = true;
-                assert_deps[second_it->first][first_it->first] = true; // FIXME: should it be in scope of the if?
-
-                if (mustprint)
-                {
-                    std::cout << "Adding the assertion dependency (" <<
-                    from_expr(ns, "", first_it->first->cond_expr) << " <-> " <<
-                    from_expr(ns, "", second_it->first->cond_expr) << ")" << std::endl;
-                }
+            if (var_deps[first_symit->as_string()][second_symit->as_string()] == DEPT)
+            {
+              assert_deps[first_it->first][second_it->first] = DEPT;
+              assert_deps[second_it->first][first_it->first] = DEPT;
+            }
           }
         }
       }
@@ -168,7 +176,8 @@ void dependency_checkert::find_assert_deps()
     std::cout << "Printing assertion dependencies:" << std::endl;
     for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_deps.begin(); dep_first_it != assert_deps.end(); ++dep_first_it)
       for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
-        std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " <-> " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
+        if (assert_deps[dep_first_it->first][dep_second_it->first] == DEPT)  std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " <-> " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
+
 }
 
 void dependency_checkert::find_implications()
@@ -187,9 +196,9 @@ void dependency_checkert::find_implications()
       {
         //if (distance(first_it, second_it) > 0){
         if (first_it != second_it){
-          if (assert_deps[first_it->first][second_it->first] == true){
+          if (assert_deps[first_it->first][second_it->first] == DEPT){
             if (check_implication(first_it->first, second_it->first) == true){
-              assert_imps[first_it->first][second_it->first] = true;
+              assert_imps[first_it->first][second_it->first] = IMP;
                 if (mustprint)
                 {
                     std::cout << "Adding the assertion implication (" <<
@@ -267,13 +276,13 @@ void dependency_checkert::print_SSA_steps_infos()
                 {
                   string rid = rhs_it->as_string();
                   std::cout << "Dependency " << variable_name(*lhs_it) << " <- " << variable_name(*rhs_it) << " is being added." << std::endl;
-                  var_deps[lid][rid] = true;
+                  var_deps[lid][rid] = DEPT;
                 }
                 for (symbol_sett::iterator guard_it = guard_symbols.begin(); guard_it != guard_symbols.end(); ++guard_it)
                 {
                   string gid = guard_it->as_string();
                   std::cout << "Dependency " << variable_name(*lhs_it) << " <- " << variable_name(*guard_it) << " is being added." << std::endl;
-                  var_deps[lid][gid] = true;
+                  var_deps[lid][gid] = DEPT;
                 }
             }
         }
@@ -340,9 +349,7 @@ void dependency_checkert::print_dependents(map<string,bool> dependents, std::ost
   int count = 0;
   for ( it=dependents.begin() ; it != dependents.end(); it++ )
   {
-    if (count > 0) out << ", ";
-    out << variable_name((*it).first);
-    count++;
+    if ((*it).second == true) {if (count > 0) out << ", "; out << variable_name((*it).first); count++;}
   }
 }
 
@@ -353,7 +360,8 @@ std::string dependency_checkert::variable_name(dstring name)
 
 std::string dependency_checkert::variable_name(std::string name)
 {
-  return name.substr(name.find_last_of(":") + 1);
+	//return "";
+  return (string) name.substr(name.find_last_of(":") + 1, 10);
 }
 
 void dependency_checkert::get_expr_symbols(const exprt &expr, symbol_sett& symbols)
@@ -380,9 +388,9 @@ void dependency_checkert::print_expr_symbols(std::ostream &out, symbol_sett& s)
 {
     for (symbol_sett::iterator it = s.begin(); it != s.end(); ++it)
     {
-      out << *it << " ";
+      out << variable_name(*it) << " ";
     }
-    s.clear();
+    //s.clear();
 }
 
 void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int indent)
@@ -414,6 +422,8 @@ void dependency_checkert::print_SSA_steps()
       it->output(ns, std::cout);
     }
 }
+
+
 
 void dependency_checkert::convert_delta_SSA(prop_convt &prop_conv,
     SSA_step_reft &it1, SSA_step_reft &it2)
@@ -529,3 +539,4 @@ void dependency_checkert::convert_io(
     it++;
   }
 }
+
