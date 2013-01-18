@@ -186,8 +186,11 @@ claim_statst check_claims(
     {
       ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_int_option("unwind"));
     }
-    if (ass_ptr == leaping_program.instructions.end()) 
+    if (ass_ptr == leaping_program.instructions.end()){
+      if (seen_claims == 0)
+        res.status("Assertion is not reachable");
       break;
+    }
     
     if (assert_grouping && claim_map[ass_ptr].first)
       continue;
@@ -367,6 +370,8 @@ void show_claims(const namespacet &ns,
     const irep_idt &comment=location.get_comment();
     const irep_idt &function=location.get_function();
     const irep_idt &property=location.get_property();
+    const irep_idt &line=location.get_line();
+    const irep_idt &file=location.get_file();
     const irep_idt description=
       (comment==""?"assertion":comment);
 
@@ -386,9 +391,9 @@ void show_claims(const namespacet &ns,
         convert(location, l);
         l.name="location";
 
-        l.new_element("line").data=id2string(location.get_line());
-        l.new_element("file").data=id2string(location.get_file());
-        l.new_element("function").data=id2string(location.get_function());
+        l.new_element("line").data=id2string(line);
+        l.new_element("file").data=id2string(file);
+        l.new_element("function").data=id2string(function);
 
         xml.new_element("description").data=id2string(description);
         xml.new_element("property").data=id2string(property);
@@ -400,19 +405,17 @@ void show_claims(const namespacet &ns,
 
     case ui_message_handlert::PLAIN:
       {
-        const irep_idt &comment=it->second->location.get("comment");
         const irep_idt description=
           (comment==""?"user supplied assertion":comment);
 
-        std::cout << "Claim " << nr_it->second << ": " << description << std::endl;
+        std::cout << "Claim " << claim_name << ": " << description << std::endl;
 
-        std::cout << "  At: " << it->second->location << std::endl;
+        std::cout << "  At: " << location << std::endl;
 
-        std::cout << it->second->location.get_function() << ":" <<
-                     it->second->location.get_line() << std::endl;
+        //std::cout << function << ":" << line << std::endl;
 
-        std::cout << "  " << from_expr(ns, "", it->second->guard)
-                  << std::endl;
+        std::cout << "  Guard: " << from_expr(ns, "", it->second->guard) << std::endl;
+
         std::cout << std::endl;
       }
       break;
