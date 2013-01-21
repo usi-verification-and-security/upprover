@@ -180,34 +180,52 @@ void dependency_checkert::find_assert_deps()
 
 }
 
+static bool compare_asserts(dependency_checkert::SSA_step_reft a, dependency_checkert::SSA_step_reft b)
+{
+	return (distance(a, b) < 0);
+}
+
 void dependency_checkert::find_implications()
 {
-  map<SSA_step_reft, bool> asserts;
+  vector<SSA_step_reft> asserts;
   bool mustprint = false;
     for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
     {
-      if (it->is_assert()) asserts[it] = true;
+      if (it->is_assert()) asserts.push_back(it);
     }
 
-    map<SSA_step_reft, bool>::iterator first_it, second_it;
-    for (first_it = asserts.begin(); first_it != asserts.end(); first_it++)
+    vector<SSA_step_reft>::iterator it;
+
+    cout << "Printing assertions before ordering." << endl;
+    for (it = asserts.begin(); it != asserts.end(); it++)
     {
-      for (second_it = first_it; second_it != asserts.end(); second_it++)
+    	cout << from_expr(ns, "", (*it)->cond_expr) << endl;
+    }
+
+    sort(asserts.begin(), asserts.end(), compare_asserts);
+
+    cout << "Printing assertions after ordering." << endl;
+    for (it = asserts.begin(); it != asserts.end(); it++)
+    {
+    	cout << from_expr(ns, "", (*it)->cond_expr) << endl;
+    }
+
+    for (it = asserts.begin(); it != (asserts.end() - 1); it++)
+    {
+      if (assert_deps[*it][*(it + 1)] == DEPT)
       {
-        //if (distance(first_it, second_it) > 0){
-        if (first_it != second_it){
-          if (assert_deps[first_it->first][second_it->first] == DEPT){
-            if (check_implication(first_it->first, second_it->first) == true){
-              assert_imps[first_it->first][second_it->first] = IMP;
-                if (mustprint)
-                {
-                    std::cout << "Adding the assertion implication (" <<
-                    from_expr(ns, "", first_it->first->cond_expr) << " => " <<
-                    from_expr(ns, "", second_it->first->cond_expr) << ")" << std::endl;
-                }
-            }
-          }
+    	cout << "Comparing the assertions " <<
+    			from_expr(ns, "", (*it)->cond_expr) << " and " <<
+    			from_expr(ns, "", (*(it + 1))->cond_expr) << endl;
+        if (check_implication(*it, *(it + 1)) == true)
+        {
+          cout << "check_implication returned TRUE" << endl;
+          assert_imps[*it][*(it+1)] = IMP;
+          std::cout << "Adding the assertion implication (" <<
+          from_expr(ns, "", (*it)->cond_expr) << " => " <<
+          from_expr(ns, "", (*(it + 1))->cond_expr) << ")" << std::endl;
         }
+        else cout << "check_implication returned FALSE" << endl;
       }
     }
 
@@ -360,8 +378,7 @@ std::string dependency_checkert::variable_name(dstring name)
 
 std::string dependency_checkert::variable_name(std::string name)
 {
-	//return "";
-  return (string) name.substr(name.find_last_of(":") + 1, 10);
+  return name.substr(name.find_last_of(":") + 1, 10);
 }
 
 void dependency_checkert::get_expr_symbols(const exprt &expr, symbol_sett& symbols)
@@ -422,6 +439,7 @@ void dependency_checkert::print_SSA_steps()
       it->output(ns, std::cout);
     }
 }
+
 
 
 
@@ -540,3 +558,53 @@ void dependency_checkert::convert_io(
   }
 }
 
+
+
+
+/*
+ void dependency_checkert::find_implications()
+{
+  vector<SSA_step_reft> asserts;
+  bool mustprint = false;
+    for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
+    {
+      if (it->is_assert()) asserts.push_back(it);
+    }
+
+  vector<SSA_step_reft> assert_vec (asserts.begin(), asserts.end());
+
+    vector<SSA_step_reft>::iterator it;
+    //sort(assert_vec.begin(), assert_vec.end(), compare_asserts);
+    for (first_it = asserts.begin(); first_it != asserts.end(); first_it++)
+    {
+      //for (second_it = first_it; second_it != asserts.end(); second_it++)
+      //{
+        //if (distance(first_it, second_it) > 0)
+        {
+          if (first_it != second_it)
+          {
+            if (assert_deps[first_it->first][second_it->first] == DEPT)
+            {
+              if (check_implication(first_it->first, second_it->first) == true)
+              {
+                assert_imps[first_it->first][second_it->first] = IMP;
+                if (mustprint)
+                {
+                  std::cout << "Adding the assertion implication (" <<
+                  from_expr(ns, "", first_it->first->cond_expr) << " => " <<
+                  from_expr(ns, "", second_it->first->cond_expr) << ")" << std::endl;
+                }
+              }
+            }
+          }
+        }
+      //}
+    }
+
+    std::cout << "Printing assertion implications:" << std::endl;
+    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
+      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
+      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
+
+}
+ */
