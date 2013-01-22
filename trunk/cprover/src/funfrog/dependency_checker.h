@@ -69,7 +69,7 @@ private:
   void convert_delta_SSA(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
   void convert_assignments(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
   void convert_assumptions(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assertions(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_assertions(prop_convt &prop_conv, SSA_step_reft &it2);
   void convert_guards(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
   void convert_io(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
 

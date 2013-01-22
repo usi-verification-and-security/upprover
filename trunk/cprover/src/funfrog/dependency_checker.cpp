@@ -27,7 +27,6 @@ void dependency_checkert::do_it(){
       get_minimals();
 }
 
-
 bool dependency_checkert::check_implication(SSA_step_reft c1, SSA_step_reft c2)
 {
   std::auto_ptr<prop_convt> decider;
@@ -51,20 +50,18 @@ bool dependency_checkert::check_implication(SSA_step_reft c1, SSA_step_reft c2)
     case decision_proceduret::D_UNSATISFIABLE:
     {
       status("UNSAT - it holds!");
-      return false;
+      return true;
     }
     case decision_proceduret::D_SATISFIABLE:
     {
       status("SAT - doesn't hold");
-      return true;
+      return false;
     }
 
     default:
       throw "unexpected result from dec_solve()";
   }
 }
-
-
 
 void dependency_checkert::find_var_deps()
 {
@@ -440,16 +437,13 @@ void dependency_checkert::print_SSA_steps()
     }
 }
 
-
-
-
 void dependency_checkert::convert_delta_SSA(prop_convt &prop_conv,
     SSA_step_reft &it1, SSA_step_reft &it2)
 {
   convert_guards(prop_conv, it1, it2);
   convert_assignments(prop_conv, it1, it2);
   convert_assumptions(prop_conv, it1, it2);
-  convert_assertions(prop_conv, it1, it2);
+  convert_assertions(prop_conv, it2);
   convert_io(prop_conv, it1, it2);
 }
 
@@ -460,10 +454,10 @@ void dependency_checkert::convert_assignments(
   while(it!=it2){
     it++;
 
-    if(it->is_assignment() && !it->ignore)
+    if(it->is_assignment())
     {
-      exprt tmp(it->cond_expr);
-      prop_conv.set_to_true(tmp);
+      //std::cout << "convert assign :" << from_expr(ns, "", it->cond_expr) <<"\n";
+      prop_conv.set_to_true(it->cond_expr);
     }
   }
 }
@@ -476,14 +470,8 @@ void dependency_checkert::convert_guards(
   it3++;
 
   while(it!=it3){
-
-    if(it->ignore)
-      it->guard_literal=const_literal(false);
-    else
-    {
-      exprt tmp(it->guard_expr);
-      it->guard_literal=prop_conv.convert(tmp);
-    }
+    //std::cout << "convert guard :" << from_expr(ns, "", it->cond_expr) <<"\n";
+    prop_conv.convert(it->cond_expr);
     it++;
   }
 }
@@ -496,45 +484,30 @@ void dependency_checkert::convert_assumptions(
   {
     if(it->is_assume() || it->is_assert())
     {
-      if(it->ignore)
-        it->cond_literal=const_literal(true);
-      else
-      {
-        exprt tmp(it->cond_expr);
-        prop_conv.set_to_true(tmp);
-      }
+       //std::cout << "convert assume :" << from_expr(ns, "", it->cond_expr) <<"\n";
+       prop_conv.set_to_true(it->cond_expr);
     }
     it++;
   }
 }
 
 void dependency_checkert::convert_assertions(
-  prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+  prop_convt &prop_conv, SSA_step_reft &it2)
 {
-
-    SSA_step_reft it=it1;
-    while (it!=it2){
-      it++;
-
-    if(it->is_assert())
-      {
-        prop_conv.set_to_false(it->cond_expr);
-        it->cond_literal=prop_conv.convert(it->cond_expr);
-      }
-    }
+  assert(it2->is_assert());
+  // std::cout << "convert assert :" << from_expr(ns, "", it2->cond_expr) <<"\n";
+  prop_conv.set_to_false(it2->cond_expr);
 }
 
 void dependency_checkert::convert_io(
     prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
 {
-   unsigned io_count=0;
+  unsigned io_count=0;
   SSA_step_reft it=it1;
   SSA_step_reft it3=it2;
   it3++;
 
   while (it!=it3){
-    if(!it->ignore)
-    {
       for(std::list<exprt>::const_iterator
           o_it=it->io_args.begin();
           o_it!=it->io_args.end();
@@ -553,13 +526,9 @@ void dependency_checkert::convert_io(
           it->converted_io_args.push_back(symbol);
         }
       }
-    }
     it++;
   }
 }
-
-
-
 
 /*
  void dependency_checkert::find_implications()
