@@ -44,8 +44,8 @@ class Assertion(object):
         return self.__state
     @state.setter
     def state (self, value):
-        print ("ass: sl:%d, fsl:%d, ex:%s" % (self.src_line, self.final_src_line, self.expression))
         if self.__state == AssertionStates.Invalid:
+            print ("ERROR: Invalidating an invalid assertion %s" % self)
             exit(1);
         self.__state = value
         if value == AssertionStates.Invalid:
@@ -57,6 +57,10 @@ class Assertion(object):
     @final_src_line.setter
     def final_src_line (self, value):
         self.__final_src_line = value
+
+    def __str__(self):
+        return "(sl:%d, fsl:%d, ex:'%s')" % (self.src_line, 
+                self.final_src_line, self.expression)
 
 
 
@@ -140,10 +144,10 @@ def create_models (files, output_path):
 
     # Finished correctly?
     if proc.returncode > 0:
-        print (" * Error during running goto-cc")
-        sys.stderr.write(std_err.decode("ascii"))
         sys.stdout.write(std_out.decode("ascii"))
-        return False
+        sys.stderr.write(std_err.decode("ascii"))
+        print ("ERROR: Error during running goto-cc")
+        exit(1)
 
     # no problem during the execution
     return True
@@ -182,7 +186,7 @@ def run_evolcheck (check_type, orig_gb, output_path, filename, assertions):
     if proc.returncode > 0:
         sys.stdout.write(std_out_str)
         sys.stderr.write(std_err.decode("ascii"))
-        print (" * Error during running evolcheck")
+        print ("ERROR: Error during running evolcheck")
         exit(1)
 
     std_out = None
@@ -222,24 +226,38 @@ def analyze_evolcheck_result (output_path, std_out, assertions):
 
     print("Assertion violated: file %s:%d expr: %s" % (file, line, m.group(3)))
 
+    mark_assertion_invalid(file, line, assertions)
+    return False
+
+################################################################################ 
+# Assertion Invalid --> remove if untrusted, report an error if trusted
+#
+def mark_assertion_invalid (file, src_line, assertions):
     # Mark the assertion as invalid
-    invalidated = 0
+    match = False
+    match_assertion = None
 
     for assertion in assertions[file]:
-        if assertion.final_src_line == line:
-            print("Assertion marked as invalid")
-            assertion.state = AssertionStates.Invalid
-            invalidated += 1
+        if assertion.final_src_line == src_line:
+            if match_assertion == None:
+                match = True
+                match_assertion = assertion
+            else:
+                match = False
 
-    if invalidated != 1:
+    if not match:
         print ("Violated assertion was not found.")
-
-        for assertion in assertions[file]:
-            print ("ass: sl:%d, fsl:%d, ex:%s" % 
-                    (assertion.src_line, assertion.final_src_line, assertion.expression))
+        # for assertion in assertions[file]:
+        #     print ("Assertion: %s" % assertion)
         exit(1)
 
-    return False
+    if match_assertion.type == AssertionTypes.Trusted:
+        print("Trusted assertion violated. The upgrade is BUGGY!")
+        exit(1)
+
+    print("Untrusted assertion marked as invalid")
+    match_assertion.state = AssertionStates.Invalid
+
 
 ################################################################################ 
 # Performs a single check
@@ -315,7 +333,23 @@ def parse_assertions (assertion_file, assertion_map, assertion_type):
 
 
 ################################################################################ 
-# endsWith
+# A standard ends_with function known from the civilized world
+#
+def dump_trusted_assertions(assertions, files, file):
+    output_file = open(file, 'w');
+
+    for file in files:
+        for assertion in assertions[file]:
+            if assertion.state == AssertionStates.Unknown:
+                output_file.write("%s\t%d\t%s\n" % (file, assertion.src_line,
+                    assertion.expression))
+
+    output_file.close()
+
+
+
+################################################################################ 
+# A standard ends_with function known from the civilized world
 #
 def ends_with(string, pattern):
     return string.rfind(pattern) == len(string) - len(pattern)
@@ -333,8 +367,9 @@ if len(sys.argv) < 6 or (sys.argv[1] == "--upgrade-check" and len(sys.argv) < 8)
     print ("-----")
     print ("Initial check:")
     print ("> naive-hybrid-check.py --initial-check [untrusted_assertion_file] [input_path] [tmp_path] [file1] [file2] ...")
+    print ("")
     print ("Upgrade check:")
-    print ("naive-hybrid-check.py --upgrade-check [orig_goto_binary] [trusted_assertion_file] [untrusted_assertion_file] [input_path] [tmp_path] [file1] [file2] ...")
+    print ("> naive-hybrid-check.py --upgrade-check [orig_goto_binary] [trusted_assertion_file] [untrusted_assertion_file] [input_path] [tmp_path] [file1] [file2] ...")
     sys.exit(1)
 
 
@@ -358,13 +393,17 @@ elif sys.argv[1] == "--upgrade-check":
     output_path = sys.argv[6] + ("" if ends_with(sys.argv[6], os.sep) else os.sep)
     files = sys.argv[7:]
 
+
 # Parse the file with trusted and untrusted assertions
 parse_assertions(untrusted_assertions_file, assertion_map, AssertionTypes.Untrusted)
 if check_type == CheckTypes.Upgrade:
     parse_assertions(trusted_assertions_file, assertion_map, AssertionTypes.Trusted)
 
 # Perform the check
-check_all_assertions(check_type, orig_gb, files, input_path, output_path, assertion_map)
+result = check_all_assertions(check_type, orig_gb, files, input_path, output_path, assertion_map)
+
+if result:
+    dump_trusted_assertions(assertion_map, files, "__trusted")
 
 print (' * Done.')
 
