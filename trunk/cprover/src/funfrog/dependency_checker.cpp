@@ -470,8 +470,13 @@ void dependency_checkert::convert_guards(
   it3++;
 
   while(it!=it3){
-    //std::cout << "convert guard :" << from_expr(ns, "", it->cond_expr) <<"\n";
-    prop_conv.convert(it->cond_expr);
+    if (it->cond_expr.is_nil()){
+      it->guard_literal=const_literal(false);
+    }
+    else {
+      //std::cout << "convert guard :" << from_expr(ns, "", it->cond_expr) <<"\n";
+      prop_conv.convert(it->cond_expr);
+    }
     it++;
   }
 }
@@ -495,7 +500,7 @@ void dependency_checkert::convert_assertions(
   prop_convt &prop_conv, SSA_step_reft &it2)
 {
   assert(it2->is_assert());
-  // std::cout << "convert assert :" << from_expr(ns, "", it2->cond_expr) <<"\n";
+  //std::cout << "convert assert :" << from_expr(ns, "", it2->cond_expr) <<"\n";
   prop_conv.set_to_false(it2->cond_expr);
 }
 
