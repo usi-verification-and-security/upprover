@@ -179,13 +179,13 @@ def run_evolcheck (check_type, orig_gb, output_path, filename, assertions):
     proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
 
     std_out, std_err = proc.communicate()
-
     std_out_str = std_out.decode("ascii")
+
+    dump_output("__last_out", std_out_str)
+    dump_output("__last_err", std_err.decode("ascii"))
 
     # Finished correctly?
     if proc.returncode > 0:
-        sys.stdout.write(std_out_str)
-        sys.stderr.write(std_err.decode("ascii"))
         print ("ERROR: Error during running evolcheck")
         exit(1)
 
@@ -203,13 +203,16 @@ def run_evolcheck (check_type, orig_gb, output_path, filename, assertions):
 # Performs a single check
 #
 def analyze_evolcheck_result (output_path, std_out, assertions):
-    split_str = std_out.rsplit('OpenSMT - CNF', 1)
-
-    if len(split_str) < 2:
+    if std_out.find('VERIFICATION') == -1:
+        print (std_out)
         print ("ERROR: Unexpected eVolCheck output!")
         exit(1)
 
-    last_call_str = split_str[1]
+    if std_out.find('OpenSMT - CNF') == -1:
+        last_cal_str = std_out
+    else:
+        split_str = std_out.rsplit('OpenSMT - CNF', 1)
+        last_call_str = split_str[1]
 
     if last_call_str.find("VERIFICATION SUCCESSFUL") != -1:
         return True
@@ -218,6 +221,7 @@ def analyze_evolcheck_result (output_path, std_out, assertions):
             '(.*) line (.*) function .*\n *assertion\n *(.*)\n', last_call_str, re.MULTILINE)
 
     if m == None:
+        print (std_out)
         print ("ERROR: Unexpected eVolCheck output!")
         exit(1)
 
@@ -329,6 +333,16 @@ def parse_assertions (assertion_file, assertion_map, assertion_type):
             print ('ERROR: unexpected line in the assertions file "%s"' % line)
         line = input_file.readline()
     input_file.close()
+
+
+
+################################################################################ 
+# A standard ends_with function known from the civilized world
+#
+def dump_output(file, text):
+    output_file = open(file, 'w');
+    output_file.write(text)
+    output_file.close()
 
 
 
