@@ -21,10 +21,28 @@
 using namespace std;
 
 void dependency_checkert::do_it(){
-      find_var_deps();
-      find_assert_deps();
-      find_implications();
-      get_minimals();
+  fine_timet initial, final;
+  initial=current_time();
+
+  find_var_deps();
+
+  final = current_time();
+  std::cout << "TIME FOR find_var_deps: " << time2string(final - initial) << std::endl;
+
+  find_assert_deps();
+
+  initial = current_time();
+  std::cout << "TIME FOR find_assert_deps: " << time2string(initial - final) << std::endl;
+
+  find_implications();
+
+  final = current_time();
+  std::cout << "TIME FOR find_implications: " << time2string(final - initial) << std::endl;
+
+  get_minimals();
+
+  initial = current_time();
+  std::cout << "TIME FOR get_minimals: " << time2string(initial - final) << std::endl;
 }
 
 bool dependency_checkert::check_implication(SSA_step_reft c1, SSA_step_reft c2)
