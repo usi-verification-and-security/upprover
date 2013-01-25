@@ -73,6 +73,7 @@ public:
   }
 
   void setup_last_assertion_loc(const assertion_infot& assertion);
+  bool is_assertion_in_loop(const unsigned ass_loc);
   unsigned get_invalid_count();
 
 private:

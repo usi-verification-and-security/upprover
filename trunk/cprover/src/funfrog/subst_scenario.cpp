@@ -27,7 +27,6 @@ void subst_scenariot::initialize_summary_info(
     summary_infot& summary_info, const goto_programt& code)
 {
   summary_info.get_assertions().clear();
-
   for(goto_programt::const_targett inst=code.instructions.begin();
       inst!=code.instructions.end(); ++inst)
   {
@@ -35,27 +34,18 @@ void subst_scenariot::initialize_summary_info(
 
     if (inst->type == GOTO)
     {
-      unsigned tmp_location = inst->location_number;
-      unsigned max_location = tmp_location;
-      unsigned min_location = tmp_location;
+      unsigned dst_location = inst->location_number;
 
-      for(goto_programt::targetst::const_iterator it = inst->targets.begin();
-          it!=inst->targets.end();
-          it++)
-      {
-        unsigned tgt_location = (*it)->location_number;
-        if(tgt_location < min_location){
-          min_location = tgt_location;
-        }
-        if(tgt_location > max_location){
-          max_location = tgt_location;
-        }
-      }
+      // we only do deterministic gotos for now
+      if(inst->targets.size()!=1)
+        throw "no support for non-deterministic gotos";
 
-      if (min_location != max_location){
+      unsigned tgt_location = (*inst->targets.begin())->location_number;
+      if(tgt_location < dst_location){
         goto_ranges.push_back(std::make_pair(
-             global_loc - (tmp_location - min_location),
-             global_loc + (max_location - tmp_location)));
+             global_loc - (dst_location - tgt_location),
+             global_loc));
+        //std::cout << "backwards goto: " << global_loc - (dst_location - tgt_location) << " -> " << global_loc <<"\n";
       }
     }
     else if (inst->type == FUNCTION_CALL)
@@ -127,7 +117,7 @@ unsigned subst_scenariot::get_precision_count(summary_infot& summary, summary_pr
 
 void subst_scenariot::process_goto_locations()
 {
-  const unsigned goto_sz = goto_ranges.size();
+/*  const unsigned goto_sz = goto_ranges.size();
   if (goto_sz == 0){
     return;
   }
@@ -158,19 +148,29 @@ void subst_scenariot::process_goto_locations()
     }
   }
   goto_ranges.push_back(std::make_pair(min, max));
+*/
+  for (unsigned i = 0; i < functions.size(); i++){
+    unsigned loc = (*functions[i]).get_call_location();
+    for (unsigned j = 0; j < goto_ranges.size(); j++){
+      std::pair<unsigned, unsigned> r = goto_ranges[j];
+      if (r.first <= loc && loc <= r.second){
+        loc = r.first;
+      }
+    }
+    (*functions[i]).set_call_location(loc);
+  }
+}
 
-//  for (unsigned i = 0; i < functions.size(); i++){
-//    unsigned loc = (*functions[i]).get_call_location();
-//    for (unsigned j = goto_sz; j < goto_ranges.size(); j++){
-//      std::pair<unsigned, unsigned> r = goto_ranges[j];
-//      if (r.first <= loc && loc <= r.second){
-//        loc = r.first;
-//      }
-//    }
-//    (*functions[i]).set_call_location(loc);
-//  }
+bool subst_scenariot::is_assertion_in_loop(const unsigned ass_loc)
+{
+  for (unsigned j = 0; j < goto_ranges.size(); j++){
+    std::pair<unsigned, unsigned> r = goto_ranges[j];
+    if (r.first <= ass_loc && ass_loc <= r.second){
+      return true;
+    }
+  }
 
-  goto_ranges.clear();
+  return false;
 }
 
 void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion){
@@ -234,7 +234,7 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
   }
   std::cout << "Last assertion location: " << last_assertion_loc << " / " << global_loc << " ( " << proc_count << ")" << std::endl;
 
-  single_assertion_check = count == 1;
+  single_assertion_check = (count == 1) && !is_assertion_in_loop(last_assertion_loc);
 
   functions_root.mark_enabled_assertions(assertion, 0, true, last_assertion_loc);
 }
