@@ -983,8 +983,6 @@ void symex_assertion_sumt::handle_function_call(
   const goto_functionst::goto_functiont &goto_function =
     summarization_context.get_function(function_id);
 
-  loc += summary_info.get_subtree_size(summarization_context);
-
   // Clean expressions in the arguments, function name, and lhs (if any)
   if (function_call.lhs().is_not_nil())
     clean_expr(function_call.lhs(), state, true);
@@ -1012,20 +1010,23 @@ void symex_assertion_sumt::handle_function_call(
 
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);
-  switch (summary_info.get_precision()){
-  case HAVOC:
-    havoc_function_call(deferred_function, state, function_id);
-    break;
-  case SUMMARY:
-    summarize_function_call(deferred_function, state, function_id);
-    break;
-  case INLINE:
-    inline_function_call(deferred_function, state, function_id);
-    break;
-  default:
-    assert(false);
-    break;
+  if(summary_info.get_call_location() < last_assertion_loc){
+    switch (summary_info.get_precision()){
+    case HAVOC:
+      havoc_function_call(deferred_function, state, function_id);
+      break;
+    case SUMMARY:
+      summarize_function_call(deferred_function, state, function_id);
+      break;
+    case INLINE:
+      inline_function_call(deferred_function, state, function_id);
+      break;
+    default:
+      assert(false);
+      break;
+    }
   }
+  loc += summary_info.get_subtree_size(summarization_context);
 
   //      if(summary_info.is_unwind_exceeded())
   //      {
