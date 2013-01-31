@@ -171,6 +171,11 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
   }
 
   opensmt_ctx->createProofGraph();
+  //std::cout << "set up reduction stuff\n";
+  //opensmt_ctx->setNumReductionLoops(2);
+  //opensmt_ctx->setNumGraphTraversals(2);
+  /*if(config.proof_reduce > 0) */
+  //opensmt_ctx->reduceProofGraph();
   opensmt_ctx->setPudlakInterpolation();
   opensmt_ctx->GetInterpolants(partition_ids, itp_enodes);
   opensmt_ctx->deleteProofGraph();
@@ -368,7 +373,7 @@ propt::resultt satcheck_opensmtt::prop_solve() {
     std::string dump_file("__sat_query");
     dump_file += i2string(dump_count);
     dump_file += ".smt2";
-    opensmt_ctx->DumpAssertionsToFile(dump_file.c_str());
+    opensmt_ctx->DumpToFileFunFrog(dump_file.c_str());
     dump_file = "__sat_config";
     dump_file += i2string(dump_count);
     dump_file += ".cfg";
