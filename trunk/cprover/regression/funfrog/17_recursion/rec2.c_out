@@ -1,6 +1,6 @@
 SAT - doesn't hold
+HAVOCING (of 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION
 Violated property:
   file 17_recursion/rec2.c line 18 function main
   assertion
   a < 5
-ASSERTION(S) DO(ES)N'T HOLD

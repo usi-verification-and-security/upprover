@@ -45,7 +45,8 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             " (loc: " << it->get_iface().summary_info.get_call_location() << ", " <<
-            ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM") : "INL") << ")" <<
+            ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM") :
+                ((it->stub) ? "TRU" : "INL")) << ")" <<
             std::endl;
 //#   endif
     convert_partition(prop_conv, interpolator, *it);
@@ -115,18 +116,18 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
             prop_conv.convert(partition_iface.error_symbol);
   }
   
-  if (partition.stub || (partition.summary &&
-          partition.applicable_summaries.empty())) {
-    assert(!partition.inverted_summary);
-#   ifdef DEBUG_SSA
-    std::cout << "  no applicable summary." << std::endl;
-#	endif
-    return;
-  }
+//  if ((partition.summary &&
+//          partition.applicable_summaries.empty())) {
+//    assert(!partition.inverted_summary);
+//#   ifdef DEBUG_SSA
+//    std::cout << "  no applicable summary." << std::endl;
+//#	endif
+//    return;
+//  }
 
   // Tell the interpolator about the new partition.
   partition.fle_part_id = interpolator.new_partition();
-  
+
   // If this is a summary partition, apply the summary
   if (partition.summary) {
     convert_partition_summary(prop_conv, partition);
@@ -139,7 +140,11 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   std::vector<symbol_exprt> common_symbs;
   fill_common_symbols(partition, common_symbs);
   interpolantt::reserve_variables(prop_conv, common_symbs);
-          
+
+  if (partition.stub){
+    return;
+  }
+
   // Convert the corresponding SSA steps
   convert_partition_guards(prop_conv, partition);
   convert_partition_assignments(prop_conv, partition);
@@ -698,7 +703,7 @@ void partitioning_target_equationt::extract_interpolants(
     if (!partition.is_inline() ||
             (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion))
       continue;
-    
+
     fill_partition_ids(pid, itp_task[tid++]);
   }
 
@@ -777,7 +782,7 @@ void partitioning_target_equationt::fill_partition_ids(
   // Current partition id
   part_ids.push_back(partition.fle_part_id);
   
-  assert(!partition.summary || partition.child_ids.empty());
+  assert(partition.is_inline() || partition.child_ids.empty());
 
   // Child partition ids
   for (partition_idst::iterator it = partition.child_ids.begin()++;

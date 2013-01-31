@@ -113,14 +113,16 @@ Function: satcheck_opensmtt::new_partition
 \*******************************************************************/
 fle_part_idt satcheck_opensmtt::new_partition()
 {
-  assert(partition_count == 0 || partition_root_enode != NULL);
-  if (partition_count != 0 && partition_root_enode == NULL) {
-    std::cerr << "WARNING: last partition was empty (probably due to slicing)." <<
-            std::endl;
-    // NOTE: The index is reused for the next partition, outer context must 
-    // ensure that the previously returned index is not used.
-    partition_count--;
-  }
+//Allowing partitions for havoced functions and fully slices ones
+//
+//assert(partition_count == 0 || partition_root_enode != NULL);
+//  if (partition_count != 0 && partition_root_enode == NULL) {
+//    std::cerr << "WARNING: last partition was empty (probably due to slicing)." <<
+//            std::endl;
+//    // NOTE: The index is reused for the next partition, outer context must
+//    // ensure that the previously returned index is not used.
+//    partition_count--;
+//  }
   
   // Finish the previous partition if any
   if (partition_root_enode != NULL)
@@ -161,13 +163,13 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
   itp_enodes.reserve(partition_ids.size());
 
   // Setup proof reduction
-  SMTConfig& config = opensmt_ctx->getConfig();
+//  SMTConfig& config = opensmt_ctx->getConfig();
   if (reduction_timeout > 0) {
-    config.proof_red_time = reduction_timeout;
-    config.proof_reduce = 1;
+    opensmt_ctx->setReductionTime(reduction_timeout);
+    opensmt_ctx->reduceProofGraph();
   } else {
-    config.proof_red_time = 0;
-    config.proof_reduce = 0;
+//    config.proof_red_time = 0;
+//    config.proof_reduce = 0;
   }
 
   opensmt_ctx->createProofGraph();
