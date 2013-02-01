@@ -1008,6 +1008,8 @@ void symex_assertion_sumt::handle_function_call(
     return;
   }
 
+  loc = summary_info.get_call_location();
+
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);
   if(summary_info.get_call_location() < last_assertion_loc){
@@ -1026,7 +1028,6 @@ void symex_assertion_sumt::handle_function_call(
       break;
     }
   }
-  loc += summary_info.get_subtree_size(summarization_context);
 
   //      if(summary_info.is_unwind_exceeded())
   //      {
