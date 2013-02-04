@@ -97,7 +97,7 @@ sumo$(EXEEXT): $(SUMO_OBJ)
 	$(LINKBIN) $(SUMO_OBJ) -lopensmt-1.0 -lgmpxx -lgmp
 
 diff$(EXEEXT): $(DIFF_OBJ)
-	$(LINKBIN) $(DIFF_OBJ)
+	$(LINKBIN) $(DIFF_OBJ) -static
 	mv diff goto-diff
 
 clean:

@@ -58,7 +58,8 @@ goto_programt::const_targett claim_statst::find_assertion(
 
       if(f_it!=goto_functions.function_map.end() &&
          f_it->second.body.instructions.size()>0 &&
-         !is_unwinding_exceeded(unwind, name))
+         !is_unwinding_exceeded(unwind, name) &&
+         !is_recursion_unwinding(unwind, name))
       {
         stack.push(it);
         it = f_it->second.body.instructions.begin();

@@ -15,9 +15,16 @@ protected:
   bool is_unwinding_exceeded(unsigned max_unwind, irep_idt target_function)
   {
     unsigned unwind = rec_unwind[target_function];
-    return max_unwind!=0 &&
-           unwind>=max_unwind;
-  };
+    return max_unwind != 0 &&
+           unwind >= max_unwind;
+  }
+
+  bool is_recursion_unwinding(unsigned max_unwind, irep_idt target_function)
+  {
+    unsigned unwind = rec_unwind[target_function];
+    return max_unwind == 0 &&
+           unwind > 0;
+  }
 
 private:
   std::map<irep_idt, unsigned> rec_unwind;

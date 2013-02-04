@@ -33,13 +33,15 @@ public:
   summary_infot(summary_infot *_parent, unsigned _call_location)
           : function_id(ID_nil), parent(_parent), assertion_in_subtree(false),
             precision(HAVOC), call_location(_call_location),
-            preserved_node(false), preserved_edge(false), unwind_exceeded(false) { }
+            preserved_node(false), preserved_edge(false), unwind_exceeded(false), recursion_nondet(false) { }
 
   void clear() { call_sites.clear(); }
 
   void set_function_id(const irep_idt& _function_id) { function_id = _function_id; }
 
   call_sitest& get_call_sites() { return call_sites; }
+
+  const goto_programt::const_targett* get_target();
 
   const summary_ids_sett& get_used_summaries() const { return used_summaries; }
   void set_used_summaries(summary_ids_sett& other)  { 
@@ -106,6 +108,14 @@ public:
     return res;
   }
 
+  void set_recursion_nondet(bool _recursion_nondet){
+    recursion_nondet = _recursion_nondet;
+  }
+
+  bool is_recursion_nondet(){
+    return recursion_nondet;
+  }
+
 private:
   call_sitest call_sites;
   location_mapt assertions;
@@ -120,6 +130,7 @@ private:
   bool preserved_node;
   bool preserved_edge;
   bool unwind_exceeded;
+  bool recursion_nondet;
   
   void set_initial_precision(
         summary_precisiont default_precision,

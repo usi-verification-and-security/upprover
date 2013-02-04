@@ -31,7 +31,6 @@ void subst_scenariot::initialize_summary_info(
       inst!=code.instructions.end(); ++inst)
   {
     global_loc++;
-
     if (inst->type == GOTO)
     {
       unsigned dst_location = inst->location_number;
@@ -50,7 +49,7 @@ void subst_scenariot::initialize_summary_info(
     }
     else if (inst->type == FUNCTION_CALL)
     {
-    	proc_count++;
+      proc_count++;
       // NOTE: Expects the function call to by a standard symbol call
       const code_function_callt& function_call = to_code_function_call(inst->code);
       const irep_idt &target_function = to_symbol_expr(
@@ -65,13 +64,13 @@ void subst_scenariot::initialize_summary_info(
       call_site.set_function_id(target_function);
 //      call_site.set_order(functions.size());
 
-      const goto_programt &function_body =
-          summarization_context.get_function(target_function).body;
-
-      if(!is_unwinding_exceeded(summarization_context.get_unwind_max(), target_function)){
-
+      unsigned unwind_max = summarization_context.get_unwind_max();
+      if (is_recursion_unwinding(unwind_max, target_function)){
+        call_site.set_recursion_nondet(true);
+      } else if(!is_unwinding_exceeded(unwind_max, target_function)){
         increment_unwinding_counter(target_function);
-        initialize_summary_info(call_site, function_body);
+        initialize_summary_info(call_site,
+          summarization_context.get_function(target_function).body);
       } else {
         call_site.set_unwind_exceeded(true);
         //std::cout << "Recursion unwinding for " << target_function << " (" << inst->location << ") FINIFSHED with " << " iterations\n";
@@ -86,6 +85,20 @@ void subst_scenariot::initialize_summary_info(
       assertions_visited[inst][global_loc] = false;
     }
   }
+}
+
+void subst_scenariot::refine_recursion_call(summary_infot& call)
+{
+  call.set_unwind_exceeded(false);
+  summary_infot& call_site = call.get_call_sites().insert(
+          std::pair<goto_programt::const_targett, summary_infot>(
+          *call.get_target(),
+          summary_infot(&call, call.get_call_location())
+          )).first->second;
+  functions.push_back(&call_site);
+  call_site.set_function_id(call.get_function_id());
+  call_site.set_recursion_nondet(true);
+  call_site.set_nondet();
 }
 
 unsigned subst_scenariot::get_precision_count(summary_precisiont precision)

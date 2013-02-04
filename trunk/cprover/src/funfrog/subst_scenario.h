@@ -34,6 +34,8 @@ public:
 
   summary_infot& get_summary_info(){ return functions_root; };
 
+  void refine_recursion_call(summary_infot& call);
+
   void process_goto_locations();
   void setup_default_precision(init_modet init);
   std::vector<summary_infot*>& get_call_summaries() { return functions; }

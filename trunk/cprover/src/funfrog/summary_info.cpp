@@ -35,7 +35,9 @@ void summary_infot::set_initial_precision(
     summary_infot& function = it->second;
     const irep_idt& function_id = function.get_function_id();
 
-    if (function.has_assertion_in_subtree()) {
+    if (function.is_recursion_nondet()){
+      function.set_nondet();
+    } else if (function.has_assertion_in_subtree()) {
       // If assertion is in the subtree, we need to inline the call.
       function.set_inline();
     } 
@@ -103,4 +105,17 @@ bool summary_infot::mark_enabled_assertions(
   }
   
   return assertion_in_subtree;
+}
+
+const goto_programt::const_targett* summary_infot::get_target()
+{
+  call_sitest& parent_call_sites = get_parent().get_call_sites();
+  for (call_sitest::iterator it = parent_call_sites.begin();
+          it != parent_call_sites.end(); ++it)
+  {
+    if (&(it->second) == this)
+      return &(it->first);
+  }
+  assert(false);
+  return NULL;
 }
