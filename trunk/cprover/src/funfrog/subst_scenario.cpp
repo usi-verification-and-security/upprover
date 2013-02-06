@@ -89,16 +89,29 @@ void subst_scenariot::initialize_summary_info(
 
 void subst_scenariot::refine_recursion_call(summary_infot& call)
 {
-  call.set_unwind_exceeded(false);
-  summary_infot& call_site = call.get_call_sites().insert(
-          std::pair<goto_programt::const_targett, summary_infot>(
-          *call.get_target(),
-          summary_infot(&call, call.get_call_location())
-          )).first->second;
-  functions.push_back(&call_site);
-  call_site.set_function_id(call.get_function_id());
-  call_site.set_recursion_nondet(true);
-  call_site.set_nondet();
+  summary_infot& parent = call.get_parent();
+
+  assert(parent.get_function_id() == call.get_function_id());
+
+  for (call_sitest::iterator it = parent.get_call_sites().begin();
+          it != parent.get_call_sites().end(); ++it)
+  {
+    summary_infot& to_be_cloned = it->second;
+//    call.set_unwind_exceeded(false);
+    summary_infot& cloned = call.get_call_sites().insert(
+            std::pair<goto_programt::const_targett, summary_infot>(
+            *to_be_cloned.get_target(),
+            summary_infot(&call, to_be_cloned.get_call_location())
+            )).first->second;
+    functions.push_back(&cloned);
+    cloned.set_function_id(to_be_cloned.get_function_id());
+    if (to_be_cloned.is_recursion_nondet()){
+      cloned.set_recursion_nondet(true);
+      cloned.set_nondet();
+    } else {
+      cloned.set_precision(to_be_cloned.get_precision());
+    }
+  }
 }
 
 unsigned subst_scenariot::get_precision_count(summary_precisiont precision)
