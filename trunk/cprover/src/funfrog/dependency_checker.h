@@ -34,7 +34,8 @@ public:
           ns(_ns),
           message_handler (_message_handler),
           equation(_target)
-          {set_message_handler(_message_handler);}
+          {set_message_handler(_message_handler);
+          last_label = 0;}
 
   void do_it();
 
