@@ -86,6 +86,7 @@ bool dependency_checkert::check_implication(SSA_step_reft c1, SSA_step_reft c2)
 void dependency_checkert::find_var_deps()
 {
     int mapcount = 0;
+    last_label = 0;
     for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
     {
       //it->output(ns, std::cout);

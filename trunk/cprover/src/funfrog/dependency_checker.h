@@ -61,7 +61,7 @@ private:
 
   partitioning_target_equationt &equation;
 
-  int last_label = 0;
+  int last_label;
   map<string,int*> label;
   map<string,map<string,bool> > var_deps;
   map<SSA_step_reft,map<SSA_step_reft,bool> > assert_deps;
