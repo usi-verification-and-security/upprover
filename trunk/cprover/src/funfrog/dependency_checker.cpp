@@ -18,6 +18,8 @@
 #define NOTIMP false
 #define IMP true
 
+#define ENABLE_TC false
+
 using namespace std;
 
 void dependency_checkert::do_it(){
@@ -83,6 +85,7 @@ bool dependency_checkert::check_implication(SSA_step_reft c1, SSA_step_reft c2)
 
 void dependency_checkert::find_var_deps()
 {
+    int mapcount = 0;
     for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
     {
       //it->output(ns, std::cout);
@@ -103,8 +106,24 @@ void dependency_checkert::find_var_deps()
               string first_id = first_it->as_string();
                 for (symbol_sett::iterator second_it = all_symbols.begin(); second_it != all_symbols.end(); ++second_it)
                 {
+                  mapcount++;
+                  //cout << "Ho fatto " << mapcount << " assegnamenti." << endl;
                   string second_id = second_it->as_string();
                   //std::cout << "Dependency " << variable_name(*first_it) << " <- " << variable_name(*second_it) << " is being added." << std::endl;
+                  if ((!label[first_id]) && (!label[second_id]))
+                  {
+                	  last_label++;
+                	  label[first_id] = new int;
+                	  *label[first_id] = last_label;
+                	  label[second_id] = label[first_id];
+                  }
+                  else if (!label[first_id])
+                	  label[first_id] = label[second_id];
+                  else if (!label[second_id])
+                	  label[second_id] = label[first_id];
+                  else
+                	  *label[second_id] = *label[first_id];
+
                   var_deps[first_id][second_id] = DEPT;
                   var_deps[second_id][first_id] = DEPT;
                 }
@@ -120,22 +139,25 @@ void dependency_checkert::find_var_deps()
 //      std::cout << std::endl;
 //    }
 
-    map<string,map<string,bool> >::iterator first_it, second_it, third_it;
-    for (first_it = var_deps.begin(); first_it != var_deps.end(); first_it++)
+    if (ENABLE_TC)
     {
-      for (second_it = var_deps.begin(); second_it != var_deps.end(); second_it++)
+      map<string,map<string,bool> >::iterator first_it, second_it, third_it;
+      for (first_it = var_deps.begin(); first_it != var_deps.end(); first_it++)
       {
-        for (third_it = var_deps.begin(); third_it != var_deps.end(); third_it++)
+        for (second_it = var_deps.begin(); second_it != var_deps.end(); second_it++)
         {
-          if ((first_it->first != second_it->first) && (second_it->first != third_it->first) && (first_it->first != third_it->first))
-          if ((var_deps[first_it->first][second_it->first] == DEPT) && (var_deps[second_it->first][third_it->first] == DEPT))
+          for (third_it = var_deps.begin(); third_it != var_deps.end(); third_it++)
           {
-            var_deps[first_it->first][third_it->first] = DEPT;
-            var_deps[third_it->first][first_it->first] = DEPT;
-            //PRINTING
-            //std::cout << "Since the pairs (" << variable_name(first_it->first) << ", " << variable_name(second_it->first) << ") and ("
-            //     << variable_name(second_it->first) << ", " << variable_name(third_it->first) << ") have been added, " << std::endl;
-            //std::cout << "then for transitivity the pair (" << variable_name(first_it->first) << ", " << variable_name(third_it->first) << ") is added." << std::endl;
+            if ((first_it->first != second_it->first) && (second_it->first != third_it->first) && (first_it->first != third_it->first))
+            if ((var_deps[first_it->first][second_it->first] == DEPT) && (var_deps[second_it->first][third_it->first] == DEPT))
+            {
+              var_deps[first_it->first][third_it->first] = DEPT;
+              var_deps[third_it->first][first_it->first] = DEPT;
+              //PRINTING
+              //std::cout << "Since the pairs (" << variable_name(first_it->first) << ", " << variable_name(second_it->first) << ") and ("
+              //     << variable_name(second_it->first) << ", " << variable_name(third_it->first) << ") have been added, " << std::endl;
+              //std::cout << "then for transitivity the pair (" << variable_name(first_it->first) << ", " << variable_name(third_it->first) << ") is added." << std::endl;
+            }
           }
         }
       }
@@ -178,20 +200,24 @@ void dependency_checkert::find_assert_deps()
         {
           for (symbol_sett::iterator second_symit = second_symbols.begin(); second_symit != second_symbols.end(); ++second_symit)
           {
-            if (var_deps[first_symit->as_string()][second_symit->as_string()] == DEPT)
-            {
-              assert_deps[first_it->first][second_it->first] = DEPT;
-              assert_deps[second_it->first][first_it->first] = DEPT;
-            }
+            //if (var_deps[first_symit->as_string()][second_symit->as_string()] == DEPT)
+        	if (label[first_symit->as_string()] && label[second_symit->as_string()])
+        		if (*label[first_symit->as_string()] == *label[second_symit->as_string()])
+        		{
+                   assert_deps[first_it->first][second_it->first] = DEPT;
+                   assert_deps[second_it->first][first_it->first] = DEPT;
+                }
           }
         }
       }
     }
 
+    /*
     std::cout << "Printing assertion dependencies:" << std::endl;
     for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_deps.begin(); dep_first_it != assert_deps.end(); ++dep_first_it)
       for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
         if (assert_deps[dep_first_it->first][dep_second_it->first] == DEPT)  std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " <-> " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
+    */
 
 }
 
@@ -211,19 +237,23 @@ void dependency_checkert::find_implications()
 
     vector<SSA_step_reft>::iterator it;
 
+    /*
     cout << "Printing assertions before ordering." << endl;
     for (it = asserts.begin(); it != asserts.end(); it++)
     {
     	cout << from_expr(ns, "", (*it)->cond_expr) << endl;
     }
+    */
 
     sort(asserts.begin(), asserts.end(), compare_asserts);
 
+    /*
     cout << "Printing assertions after ordering." << endl;
     for (it = asserts.begin(); it != asserts.end(); it++)
     {
     	cout << from_expr(ns, "", (*it)->cond_expr) << endl;
     }
+    */
 
     for (it = asserts.begin(); it != (asserts.end() - 1); it++)
     {
