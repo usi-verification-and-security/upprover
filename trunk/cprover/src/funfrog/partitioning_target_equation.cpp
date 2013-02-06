@@ -724,7 +724,7 @@ void partitioning_target_equationt::extract_interpolants(
     
     interpolantt& itp = itp_result[tid++];
             
-    if (itp.is_trivial()) {
+    if (itp.is_trivial() || itp.no_clauses() == 0) {
 #     ifdef DEBUG_ITP
       std::cout << "Trivial interpolant." << std::endl;
 #     endif
