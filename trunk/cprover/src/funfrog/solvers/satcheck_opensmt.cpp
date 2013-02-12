@@ -158,26 +158,18 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
     interpolantst& interpolants, double reduction_timeout) const
 {
   assert(ready_to_interpolate);
-  
+
   std::vector<Enode*> itp_enodes;
   itp_enodes.reserve(partition_ids.size());
 
+  opensmt_ctx->createProofGraph();
+
   // Setup proof reduction
-//  SMTConfig& config = opensmt_ctx->getConfig();
-  if (reduction_timeout > 0) {
+  if (reduction_timeout > 0){
     opensmt_ctx->setReductionTime(reduction_timeout);
     opensmt_ctx->reduceProofGraph();
-  } else {
-//    config.proof_red_time = 0;
-//    config.proof_reduce = 0;
   }
 
-  opensmt_ctx->createProofGraph();
-  //std::cout << "set up reduction stuff\n";
-  //opensmt_ctx->setNumReductionLoops(2);
-  //opensmt_ctx->setNumGraphTraversals(2);
-  /*if(config.proof_reduce > 0) */
-  //opensmt_ctx->reduceProofGraph();
   opensmt_ctx->setPudlakInterpolation();
   opensmt_ctx->GetInterpolants(partition_ids, itp_enodes);
   opensmt_ctx->deleteProofGraph();
