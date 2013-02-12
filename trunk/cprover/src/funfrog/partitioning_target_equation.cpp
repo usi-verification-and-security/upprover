@@ -58,19 +58,19 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
     std::cout << "    vars: " << it->vars << std::endl <<
             "    clauses: " << it->clauses << std::endl;
     std::cout << "    last_var: " << dynamic_cast<satcheck_opensmtt&>(prop_conv.prop).get_last_var() << std::endl;
-            
+
     unsigned clauses_total = it->clauses;
     unsigned vars_total = it->vars;
-    
+
     for (partition_idst::const_iterator it2 = it->child_ids.begin();
             it2 != it->child_ids.end(); ++it2) {
       clauses_total += partitions[*it2].clauses;
       vars_total += partitions[*it2].vars;
     }
-    
+
     std::cout << "    vars in subtree: " << vars_total << std::endl <<
             "    clauses in subtree: " << clauses_total << std::endl;
-    
+
     it->clauses = clauses_total;
     it->vars = vars_total;
 #   endif
@@ -104,18 +104,22 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
 #	endif
     return;
   }
-  
+ 
   // Convert the assumption propagation symbols
   partition_ifacet &partition_iface = partition.get_iface();
-  partition_iface.callstart_literal = 
+  partition_iface.callstart_literal =
           prop_conv.convert(partition_iface.callstart_symbol);
-  partition_iface.callend_literal = 
+  partition_iface.callend_literal =
           prop_conv.convert(partition_iface.callend_symbol);
   if (partition_iface.assertion_in_subtree) {
-    partition_iface.error_literal = 
+    partition_iface.error_literal =
             prop_conv.convert(partition_iface.error_symbol);
   }
-  
+
+  if (partition.stub){
+    return;
+  }
+
 //  if ((partition.summary &&
 //          partition.applicable_summaries.empty())) {
 //    assert(!partition.inverted_summary);
@@ -140,10 +144,6 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   std::vector<symbol_exprt> common_symbs;
   fill_common_symbols(partition, common_symbs);
   interpolantt::reserve_variables(prop_conv, common_symbs);
-
-  if (partition.stub){
-    return;
-  }
 
   // Convert the corresponding SSA steps
   convert_partition_guards(prop_conv, partition);
@@ -770,10 +770,14 @@ void partitioning_target_equationt::fill_partition_ids(
   partition_idt partition_id, fle_part_idst& part_ids)
 {
   partitiont& partition = partitions[partition_id];
-  
-  assert(!partition.invalid && 
+
+  if (partition.stub){
+    return;
+  }
+
+  assert(!partition.invalid &&
           (!partition.get_iface().assertion_in_subtree || store_summaries_with_assertion));
-  
+
   if (partition.ignore) {
     assert(partition.child_ids.empty());
     return;
@@ -781,7 +785,7 @@ void partitioning_target_equationt::fill_partition_ids(
 
   // Current partition id
   part_ids.push_back(partition.fle_part_id);
-  
+
   assert(partition.is_inline() || partition.child_ids.empty());
 
   // Child partition ids
