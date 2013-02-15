@@ -2,8 +2,8 @@ UNSAT - it holds!
 ASSERTION IS TRUE
 ASSERTION(S) HOLD(S)
 SAT - doesn't hold
+HAVOCING (of 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION
 Violated property:
   file VTT/a3.c line 43 function main
   assertion c >= 0
   FALSE
-ASSERTION(S) DO(ES)N'T HOLD
