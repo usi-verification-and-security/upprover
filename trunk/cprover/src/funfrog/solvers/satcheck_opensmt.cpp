@@ -31,7 +31,6 @@ satcheck_opensmtt::satcheck_opensmtt(int verbosity, bool _dump_queries) :
   initializeSolver();
 }
 
-  
 // Initialize the OpenSMT context
 void satcheck_opensmtt::initializeSolver() 
 {
@@ -82,9 +81,9 @@ Function: satcheck_opensmtt::convert
 Enode* satcheck_opensmtt::convert(const bvt &bv)
 {
   Enode* tmp = NULL;
-  
   for(unsigned i=0; i<bv.size(); i++) {
     const literalt& lit = bv[i];
+
     Enode* var = enodes[lit.var_no()];
 
     if (lit.sign()) {
@@ -170,8 +169,62 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
     opensmt_ctx->reduceProofGraph();
   }
 
-  opensmt_ctx->setPudlakInterpolation();
+  // FIXME: dirty cast
+  std::vector< std::map<Enode*, icolor_t>* > *ptr;
+  ptr = const_cast< std::vector< std::map<Enode*, icolor_t>* > * >(&coloring_suggestions);
+  if ((*ptr).size() != 0){
+    opensmt_ctx->setColoringSuggestions(ptr);
+    opensmt_ctx->setColoringSuggestionsInterpolation();
+  } else {
+    opensmt_ctx->setPudlakInterpolation();
+  }
   opensmt_ctx->GetInterpolants(partition_ids, itp_enodes);
+  opensmt_ctx->deleteProofGraph();
+
+  for (std::vector<Enode*>::iterator it = itp_enodes.begin();
+          it != itp_enodes.end(); ++it) {
+    Enode* node = (*it);
+
+#   if 0
+    std::cout << "OpenSMT interpolant: ";
+    node->print(std::cout);
+    std::cout << std::endl;
+#   endif
+
+    prop_itpt itp;
+    extract_itp(node, itp);
+
+#   if 0
+    std::cout << "CProver stored interpolant: ";
+    itp.print(std::cout);
+#   endif
+
+    interpolants.push_back(prop_itpt());
+    interpolants.back().swap(itp);
+  }
+}
+
+void satcheck_opensmtt::get_interpolant(opensmt::InterpolationTree* tree, const interpolation_taskt& partition_ids,
+    interpolantst& interpolants) const
+{
+  assert(ready_to_interpolate);
+
+  std::vector<Enode*> itp_enodes;
+  itp_enodes.reserve(partition_ids.size());
+
+  opensmt_ctx->createProofGraph();
+
+  // FIXME: dirty cast
+  std::vector< std::map<Enode*, icolor_t>* > *ptr;
+  ptr = const_cast< std::vector< std::map<Enode*, icolor_t>* > * >(&coloring_suggestions);
+  if ((*ptr).size() != 0){
+    opensmt_ctx->setColoringSuggestions(ptr);
+    opensmt_ctx->setColoringSuggestionsInterpolation();
+  } else {
+    opensmt_ctx->setPudlakInterpolation();
+  }
+
+  opensmt_ctx->getTreeInterpolants(tree, partition_ids, itp_enodes);
   opensmt_ctx->deleteProofGraph();
 
   for (std::vector<Enode*>::iterator it = itp_enodes.begin();
@@ -308,10 +361,10 @@ void satcheck_opensmtt::lcnf(const bvt &bv)
 {
   bvt new_bv;
   Enode* tmp = NULL;
-  
+
   if(process_clause(bv, new_bv))
     return;
-    
+
   // Shortcut for an empty clause
   if(new_bv.empty())
   {
@@ -606,4 +659,12 @@ literalt satcheck_opensmtt::extract_itp_rec(const Enode* enode,
 
   enode_cache.insert(enode_cachet::value_type(enode->getId(), result));
   return result;
+}
+
+void satcheck_opensmtt::addColors(const std::vector<unsigned>& symbols,
+    opensmt::icolor_t color, std::map<Enode*, icolor_t>* coloring_suggestion)
+{
+  for (unsigned i = 0; i < symbols.size(); i++){
+    (*coloring_suggestion)[enodes[symbols[i]]] = color;
+  }
 }

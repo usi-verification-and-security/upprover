@@ -16,19 +16,32 @@ Author: Ondrej Sery
 #include "partition_iface.h"
 #include "summarization_context.h"
 
+#define PRODUCE_PROOF
+#include "Global.h"
+
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
+
+typedef enum {
+  NO_COLORING,
+  RANDOM_COLORING,
+  COLORING_FROM_FILE,
+  TBD
+  // anything else?
+}
+  coloring_modet;
 
 class partitioning_target_equationt:public symex_target_equationt
 {
 public:
   partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
           _summarization_context, bool _upgrade_checking, 
-          bool _store_summaries_with_assertion) :
+          bool _store_summaries_with_assertion, coloring_modet _coloring_mode) :
           symex_target_equationt(_ns), 
           summarization_context(_summarization_context),
           current_partition_id(partitiont::NO_PARTITION),
           upgrade_checking(_upgrade_checking),
-          store_summaries_with_assertion(_store_summaries_with_assertion) {
+          store_summaries_with_assertion(_store_summaries_with_assertion),
+          coloring_mode(_coloring_mode){
   }
 
   // Convert all the SSA steps into the corresponding formulas in
@@ -141,7 +154,7 @@ public:
   // Extract interpolants corresponding to the created partitions
   void extract_interpolants(
     interpolating_solvert& interpolator, const prop_convt& decider,
-    interpolant_mapt& interpolant_map, double reduction_timeout = 0);
+    interpolant_mapt& interpolant_map, bool tree_interpolants, double reduction_timeout = 0);
   
   // Returns SSA steps ordered in the order of program execution (i.e., as they 
   // would be normally ordered in symex_target_equation).
@@ -241,6 +254,9 @@ private:
   // Fill in ids of all the child partitions
   void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
 
+  opensmt::InterpolationTree* fill_partition_tree(
+      partitiont& partition);
+
   // Fills in the SSA_steps_exec_order holding pointers to SSA steps ordered
   // in the order of program execution (i.e., as they would be normally 
   // ordered in symex_target_equation).
@@ -270,6 +286,8 @@ private:
   // This is used in upgrade checking.
   bool store_summaries_with_assertion;
   
+  coloring_modet coloring_mode;
+
   friend class partitioning_slicet;
 };
 

@@ -16,6 +16,9 @@ Author: Ondrej Sery
 
 #include "prop_itp.h"
 
+#define PRODUCE_PROOF
+#include "Global.h"
+
 typedef int fle_part_idt;
 typedef std::vector<fle_part_idt> fle_part_idst;
 typedef std::vector<fle_part_idst> interpolation_taskt;
@@ -38,9 +41,15 @@ public:
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
     interpolantst& interpolants, double reduction_timeout) const=0;
   
+  virtual void get_interpolant(opensmt::InterpolationTree*, const interpolation_taskt& partition_ids,
+    interpolantst& interpolants) const=0;
+
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const=0;
+
+  virtual void addAB(const std::vector<unsigned>& symbolsA, const std::vector<unsigned>& symbolsB)=0;
+
 };
 
 #endif

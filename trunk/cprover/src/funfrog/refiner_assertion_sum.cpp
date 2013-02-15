@@ -11,7 +11,7 @@
 #include <stdlib.h>
 #include "refiner_assertion_sum.h"
 
-// #define DEBUG_REFINER
+ #define DEBUG_REFINER
 
 /*******************************************************************
 

@@ -71,12 +71,13 @@ protected:
   
   void setup_unwind(symex_assertion_sumt& symex);
   double compute_reduction_timeout(double solving_time);
-  void extract_interpolants (partitioning_target_equationt& equation, double red_timeout);
+  void extract_interpolants (partitioning_target_equationt& equation, double red_timeout, bool tree_interpolants);
   void report_success();
   void report_failure();
 };
 
 init_modet get_init_mode(const std::string& str);
 refinement_modet get_refine_mode(const std::string& str);
+coloring_modet get_coloring_mode(const std::string& str);
 
 #endif

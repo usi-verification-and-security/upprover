@@ -63,7 +63,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
 
-  partitioning_target_equationt equation(ns, summarization_context, false, store_summaries_with_assertion);
+  partitioning_target_equationt equation(ns, summarization_context, false,
+      store_summaries_with_assertion, get_coloring_mode(options.get_option("color-proof")));
 
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
@@ -112,7 +113,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
       if (end && interpolator->can_interpolate())
       {
         double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
-        extract_interpolants(equation, red_timeout);
+        extract_interpolants(equation, red_timeout, options.get_bool_option("tree-interpolants"));
         if (summaries_count == 0)
         {
           status("ASSERTION(S) HOLD(S)");
@@ -189,14 +190,14 @@ Function: summarizing_checkert::extract_interpolants
 
 \*******************************************************************/
 
-void summarizing_checkert::extract_interpolants (partitioning_target_equationt& equation, double red_timeout)
+void summarizing_checkert::extract_interpolants (partitioning_target_equationt& equation, double red_timeout, bool tree_interpolants)
 {
   summary_storet& summary_store = summarization_context.get_summary_store();
   interpolant_mapt itp_map;
 
   fine_timet before, after;
   before=current_time();
-  equation.extract_interpolants(*interpolator, *decider, itp_map, red_timeout);
+  equation.extract_interpolants(*interpolator, *decider, itp_map, tree_interpolants, red_timeout);
   after=current_time();
   status(std::string("INTERPOLATION TIME: ") + time2string(after-before));
 
@@ -305,6 +306,19 @@ init_modet get_init_mode(const std::string& str)
   } else {
     // by default
     return ALL_SUBSTITUTING;
+  }
+};
+
+
+coloring_modet get_coloring_mode(const std::string& str)
+{
+  if (str == "0"){
+    return RANDOM_COLORING;
+  } else if (str == "1"){
+    return COLORING_FROM_FILE;
+  } else {
+    // by default
+    return NO_COLORING;
   }
 };
 

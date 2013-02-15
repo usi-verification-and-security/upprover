@@ -45,7 +45,7 @@ public:
   }
 
   static void reserve_variables(prop_convt& decider,
-    const std::vector<symbol_exprt>& symbols);
+    const std::vector<symbol_exprt>& symbols, std::map<symbol_exprt, std::vector<unsigned> >& symbol_vars);
 
   void generalize(const prop_convt& mapping,
     const std::vector<symbol_exprt>& symbols);

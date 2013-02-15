@@ -445,7 +445,12 @@ void funfrog_parseoptionst::help()
   "                               summaries (saves few cheap SAT calls)\n"
   "--reduce-proof <fraction>      use up to <fraction> of SAT solving time\n"
   "                               to reduce proof --> smaller summaries\n"
+  "--tree-interpolants            produce tree interpolants\n"
   "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
+  "--color-proof <mode>:          try different coloring strategies:\n"
+  "  0                            random\n"
+  "  1                            from external file \"__common\"\n"
+  "  2                            TBD"
 
   "\nRefinement options:\n"
   "--refine-mode <mode>:\n"
@@ -813,6 +818,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
+  options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
   options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
   
   if (cmdline.isset("unwind")) {
@@ -854,6 +860,11 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("reduce-proof")) {
     options.set_option("reduce-proof", cmdline.getval("reduce-proof"));
+  }
+  if (cmdline.isset("color-proof")) {
+    options.set_option("color-proof", cmdline.getval("color-proof"));
+  } else {
+    options.set_option("color-proof", "-1");
   }
   if (cmdline.isset("verbose-solver")) {
     options.set_option("verbose-solver", cmdline.getval("verbose-solver"));

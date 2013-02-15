@@ -31,14 +31,14 @@ public:
   virtual tvt l_get(literalt a) const;
 
   virtual void lcnf(const bvt &bv);
-  virtual const std::string solver_text();
+  const virtual std::string solver_text();
   virtual void set_assignment(literalt a, bool value);
-
   // extra MiniSat feature: solve with assumptions
-  virtual void set_assumptions(const bvt &_assumptions);
-
+  virtual void set_assumptions(const bvt& _assumptions);
   virtual bool is_in_conflict(literalt a) const;
+
   virtual bool has_set_assumptions() const { return true; }
+
   virtual bool has_is_in_conflict() const { return true; }
 
   // Begins a partition of formula for latter reference during
@@ -47,19 +47,29 @@ public:
   //
   // returns a unique partition id
   virtual fle_part_idt new_partition();
-
   // Extracts the symmetric interpolant of the specified set of
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
-    interpolantst& interpolants, double reduction_timeout) const;
-
+      interpolantst& interpolants, double reduction_timeout) const;
+  virtual void get_interpolant(opensmt::InterpolationTree*,
+      const interpolation_taskt& partition_ids,
+      interpolantst& interpolants) const;
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const;
-  
+
+  virtual void addAB(const std::vector<unsigned>& symbolsA, const std::vector<unsigned>& symbolsB)
+  {
+    std::map<Enode*, icolor_t>* coloring_suggestion;
+    coloring_suggestion = new std::map<Enode*, icolor_t>();
+    addColors(symbolsA, opensmt::I_A, coloring_suggestion);
+    addColors(symbolsB, opensmt::I_B, coloring_suggestion);
+    coloring_suggestions.push_back(coloring_suggestion);
+  };
+
   const std::string& get_last_var() { return id_str; }
-  
+
 protected:
   // Solver verbosity
   unsigned solver_verbosity;
@@ -99,6 +109,10 @@ protected:
   unsigned decode_id(const char* id) const;
   void close_partition();
   Enode* convert(const bvt &bv);
+  vector< std::map<Enode*, icolor_t>* > coloring_suggestions;
+
+  void addColors(const std::vector<unsigned>& symbols,
+      opensmt::icolor_t color, std::map<Enode*, icolor_t>* coloring_suggestion);
 };
 
 #endif

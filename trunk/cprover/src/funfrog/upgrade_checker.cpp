@@ -361,7 +361,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
 
-  partitioning_target_equationt equation(ns, summarization_context, true, true);
+  partitioning_target_equationt equation(ns, summarization_context, true, true, NO_COLORING);
 
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, context,
@@ -401,7 +401,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
       if (end && interpolator->can_interpolate())
       {
         double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
-        extract_interpolants(equation, red_timeout);
+        extract_interpolants(equation, options.get_bool_option("tree-interpolants"), red_timeout);
         status("Old summary is still valid");
         if (summaries_count == 0)
         {

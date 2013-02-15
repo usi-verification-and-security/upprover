@@ -66,6 +66,10 @@ public:
   // SSA Location of the call
   unsigned call_loc;
   
+  std::map<symbol_exprt, std::vector<unsigned> > common_symbols;
+  std::vector<unsigned> A_vars;
+  std::vector<unsigned> B_vars;
+
   void share_symbols(const partition_ifacet& other) {
     argument_symbols = other.argument_symbols;
     in_arg_symbols = other.in_arg_symbols;
@@ -113,6 +117,76 @@ public:
     expr_pretty_print(std::cerr << "Callend: ", callend_symbol);
     expr_pretty_print(std::cerr << "Error: ", error_symbol);
 #   endif
+  }
+
+  void distribute_A_B(){
+    // random choice
+    for (std::map<symbol_exprt, std::vector<unsigned> >::iterator it = common_symbols.begin();
+        it != common_symbols.end(); ++it){
+      if (rand() % 1000 < 300 || rand() % 1000 > 800){
+        A_vars.insert(A_vars.end(), (it->second).begin(), (it->second).end());
+      } else {
+        B_vars.insert(B_vars.end(), (it->second).begin(), (it->second).end());
+      }
+    }
+    std::cout << function_id << " --- Random coloring is applied." <<std::endl;
+  }
+
+  void serialize_common(const std::string& file)
+  {
+    std::ofstream out;
+    out.open(file.c_str());
+
+    if (out.fail()) {
+      std::cerr << "Failed to serialise common symbols (file: "
+          << file << " cannot be accessed)." << std::endl;
+      return;
+    }
+
+    for (std::map<symbol_exprt, std::vector<unsigned> >::iterator it = common_symbols.begin();
+        it != common_symbols.end(); ++it){
+      out << (it->first).get_identifier() << "|A|"<< std::endl;
+    }
+    std::cout << "Common symbols are successfully serialised to file \"" << file << "\"." <<std::endl;
+  }
+
+  bool is_marked_A(symbol_exprt sym, std::vector<std::string>& tmp){
+    for (unsigned i = 0; i < tmp.size() - 1; i++){
+      if (sym.get_identifier().as_string() == tmp[i] && tmp[i+1] == "A"){
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool deserialize_common(const std::string& file){
+    std::vector<std::string> tmp;
+    std::ifstream in;
+    in.open(file.c_str());
+    if (in.fail()) {
+      std::cout << "No file \"" << file << "\" found." <<std::endl;
+      return false;
+    }
+    std::string part;
+    while (getline(in, part, '|')){
+      try {
+        part = part.substr(part.find_first_not_of("\n\r"));
+      } catch (std::out_of_range& oor) {}
+      tmp.push_back(part);
+    }
+    in.close();
+
+    for (std::map<symbol_exprt, std::vector<unsigned> >::iterator it = common_symbols.begin();
+        it != common_symbols.end(); ++it){
+      if (is_marked_A(it->first, tmp)){
+        std::cout << (it->first).get_identifier() << " is marked A\n";
+        A_vars.insert(A_vars.end(), (it->second).begin(), (it->second).end());
+      } else {
+        B_vars.insert(B_vars.end(), (it->second).begin(), (it->second).end());
+      }
+    }
+    std::cout << "Coloring from file \"" << file << "\" is applied." <<std::endl;
+    return true;
   }
 };
 

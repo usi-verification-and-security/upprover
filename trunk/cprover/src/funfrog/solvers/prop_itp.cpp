@@ -582,7 +582,7 @@ Function: prop_itpt::reserve_variables
 \*******************************************************************/
 
 void prop_itpt::reserve_variables(prop_convt& decider,
-    const std::vector<symbol_exprt>& symbols)
+    const std::vector<symbol_exprt>& symbols, std::map<symbol_exprt, std::vector<unsigned> >& symbol_vars)
 {
   // FIXME: Dirty cast.
   boolbv_mapt& map = const_cast<boolbv_mapt&>(dynamic_cast<boolbvt&>(decider).get_map());
@@ -591,16 +591,17 @@ void prop_itpt::reserve_variables(prop_convt& decider,
   for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
           it != symbols.end();
           ++it) {
+    std::vector<unsigned> new_lit;
 
     // Bool symbols are not in the boolbv_map and have to be treated separately
     if (it->type().id() == ID_bool) {
       literalt l = decider.convert(*it);
+      new_lit.push_back(l.var_no());
       continue;
     }
 
     boolbv_mapt::map_entryt& m_entry = 
             map.get_map_entry(it->get_identifier(), it->type());
-    
     for (unsigned i = 0;
             i < m_entry.width;
             ++i) {
@@ -610,7 +611,9 @@ void prop_itpt::reserve_variables(prop_convt& decider,
         m_entry.literal_map[i].is_set = true;
         m_entry.literal_map[i].l = decider.prop.new_variable();
       }
+      new_lit.push_back(m_entry.literal_map[i].l.var_no());
     }
+    symbol_vars[*it] = new_lit;
   }
 }
 

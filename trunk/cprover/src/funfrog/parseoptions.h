@@ -44,7 +44,7 @@ class value_set_alloc_adaptort;
   "(show-pass)(suppress-fail)(no-progress)" \
   "(show-claims)(all-claims)(claims-order)(claim):(claimset):" \
   "(save-queries)(save-change-impact):" \
-  "(reduce-proof):(verbose-solver):" \
+  "(reduce-proof):(tree-interpolants)(color-proof):(verbose-solver):" \
   "(unwind):(unwindset):" \
   "(inlining-limit):(testclaim):" \
   "(pobj)(eq)(neq)(ineq)" \

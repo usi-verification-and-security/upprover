@@ -41,7 +41,7 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
     std::cout << "XXX" << std::string(77, '=') << std::endl;
     unsigned vars_before = prop_conv.prop.no_variables();
     unsigned clauses_before = dynamic_cast<cnf_solvert&>(prop_conv.prop).no_clauses();
-    std::cout << "XXX Partition: " << --part_id << 
+    std::cout << "XXX Partition: " << --part_id <<
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             " (loc: " << it->get_iface().summary_info.get_call_location() << ", " <<
@@ -143,7 +143,7 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   // Reserve fresh variables for the partition boundary
   std::vector<symbol_exprt> common_symbs;
   fill_common_symbols(partition, common_symbs);
-  interpolantt::reserve_variables(prop_conv, common_symbs);
+  interpolantt::reserve_variables(prop_conv, common_symbs, partition.get_iface().common_symbols);
 
   // Convert the corresponding SSA steps
   convert_partition_guards(prop_conv, partition);
@@ -661,7 +661,7 @@ Function: partitioning_target_equationt::extract_interpolants
 \*******************************************************************/
 void partitioning_target_equationt::extract_interpolants(
   interpolating_solvert& interpolator, const prop_convt& decider,
-  interpolant_mapt& interpolant_map, double reduction_timeout)
+  interpolant_mapt& interpolant_map, bool tree_interpolants, double reduction_timeout)
 {
   // Prepare the interpolation task. NOTE: ignore the root partition!
   unsigned valid_tasks = 0;
@@ -699,18 +699,42 @@ void partitioning_target_equationt::extract_interpolants(
 
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
     partitiont& partition = partitions[pid];
+    partition_ifacet ipartition = partition.get_iface();
     
     if (!partition.is_inline() ||
-            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion))
+            (ipartition.assertion_in_subtree && !store_summaries_with_assertion))
       continue;
-
     fill_partition_ids(pid, itp_task[tid++]);
+
+    //coloring staff
+    if (coloring_mode != NO_COLORING){
+      if (coloring_mode == COLORING_FROM_FILE){
+        // serialize to separate files
+        std::string filename = "__common_";
+        filename.append(ipartition.function_id.as_string());
+        filename.append("_");
+        filename.append(i2string(pid));
+        if (!ipartition.deserialize_common(filename)){
+          ipartition.serialize_common(filename);
+          ipartition.distribute_A_B();
+        }
+      } else if (coloring_mode == RANDOM_COLORING){
+        ipartition.distribute_A_B();
+      }
+      interpolator.addAB(ipartition.A_vars, ipartition.B_vars);
+    }
   }
 
   // Interpolate...
   interpolantst itp_result;
   itp_result.reserve(valid_tasks);
-  interpolator.get_interpolant(itp_task, itp_result, reduction_timeout);
+
+  if (tree_interpolants){
+    opensmt::InterpolationTree *itp_tree = fill_partition_tree(*partitions.begin());
+    interpolator.get_interpolant(itp_tree, itp_task, itp_result);
+  } else {
+    interpolator.get_interpolant(itp_task, itp_result, reduction_timeout);
+  }
 
   // Interpret the result
   std::vector<symbol_exprt> common_symbs;
@@ -723,13 +747,18 @@ void partitioning_target_equationt::extract_interpolants(
       continue;
     
     interpolantt& itp = itp_result[tid++];
-            
-    if (itp.is_trivial() || itp.no_clauses() == 0) {
+
+    if (itp.is_trivial()) {
 #     ifdef DEBUG_ITP
       std::cout << "Trivial interpolant." << std::endl;
 #     endif
       continue;
     }
+
+//    if (partition.get_iface().summary_info.is_recursion_nondet()){
+//      std::cout << "Skip interpolants for nested recursion calls." << std::endl;
+//      continue;
+//    }
     
     // Generalize the interpolant
     fill_common_symbols(partition, common_symbs);
@@ -769,6 +798,7 @@ Function: partitioning_target_equationt::fill_partition_ids
 void partitioning_target_equationt::fill_partition_ids(
   partition_idt partition_id, fle_part_idst& part_ids)
 {
+
   partitiont& partition = partitions[partition_id];
 
   if (partition.stub){
@@ -793,4 +823,34 @@ void partitioning_target_equationt::fill_partition_ids(
           it != partition.child_ids.end(); ++it) {
     fill_partition_ids(*it, part_ids);
   }
+}
+
+/*******************************************************************\
+
+Function: partitioning_target_equationt::fill_partition_tree
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Fill a tree from all the child partitions
+
+\*******************************************************************/
+opensmt::InterpolationTree* partitioning_target_equationt::fill_partition_tree(
+    partitiont& partition)
+{
+  opensmt::InterpolationTree* itp_tree;
+  itp_tree = new opensmt::InterpolationTree(partition.fle_part_id, partition.fle_part_id); //ToDo: what is nodeId?
+
+  // Child partition ids
+  for (partition_idst::iterator it = partition.child_ids.begin()++;
+          it != partition.child_ids.end(); ++it) {
+    partitiont& partition = partitions[*it];
+    if (!partition.invalid){
+      opensmt::InterpolationTree* child_tree = fill_partition_tree(partition);
+      (*itp_tree).addChild(child_tree);
+    }
+  }
+
+  return itp_tree;
 }
