@@ -48,7 +48,8 @@ public:
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const=0;
 
-  virtual void addAB(const std::vector<unsigned>& symbolsA, const std::vector<unsigned>& symbolsB)=0;
+  virtual void addAB(const std::vector<unsigned>& symbolsA, const std::vector<unsigned>& symbolsB,
+      const std::vector<unsigned>& symbolsAB)=0;
 
 };
 

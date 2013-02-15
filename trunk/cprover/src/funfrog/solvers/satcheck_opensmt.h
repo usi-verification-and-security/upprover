@@ -59,12 +59,13 @@ public:
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const;
 
-  virtual void addAB(const std::vector<unsigned>& symbolsA, const std::vector<unsigned>& symbolsB)
+  virtual void addAB(const std::vector<unsigned>& symbolsA, const std::vector<unsigned>& symbolsB, const std::vector<unsigned>& symbolsAB)
   {
     std::map<Enode*, icolor_t>* coloring_suggestion;
     coloring_suggestion = new std::map<Enode*, icolor_t>();
     addColors(symbolsA, opensmt::I_A, coloring_suggestion);
     addColors(symbolsB, opensmt::I_B, coloring_suggestion);
+    addColors(symbolsAB, opensmt::I_AB, coloring_suggestion);
     coloring_suggestions.push_back(coloring_suggestion);
   };
 

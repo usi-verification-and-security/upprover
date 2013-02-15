@@ -69,6 +69,7 @@ public:
   std::map<symbol_exprt, std::vector<unsigned> > common_symbols;
   std::vector<unsigned> A_vars;
   std::vector<unsigned> B_vars;
+  std::vector<unsigned> AB_vars;
 
   void share_symbols(const partition_ifacet& other) {
     argument_symbols = other.argument_symbols;
@@ -123,10 +124,13 @@ public:
     // random choice
     for (std::map<symbol_exprt, std::vector<unsigned> >::iterator it = common_symbols.begin();
         it != common_symbols.end(); ++it){
-      if (rand() % 1000 < 300 || rand() % 1000 > 800){
+      int rnd = rand() % 1000;
+      if (rnd < 333){
         A_vars.insert(A_vars.end(), (it->second).begin(), (it->second).end());
-      } else {
+      } if (rnd > 666){
         B_vars.insert(B_vars.end(), (it->second).begin(), (it->second).end());
+      } else {
+        AB_vars.insert(AB_vars.end(), (it->second).begin(), (it->second).end());
       }
     }
     std::cout << function_id << " --- Random coloring is applied." <<std::endl;
@@ -159,6 +163,15 @@ public:
     return false;
   }
 
+  bool is_marked_B(symbol_exprt sym, std::vector<std::string>& tmp){
+    for (unsigned i = 0; i < tmp.size() - 1; i++){
+      if (sym.get_identifier().as_string() == tmp[i] && tmp[i+1] == "B"){
+        return true;
+      }
+    }
+    return false;
+  }
+
   bool deserialize_common(const std::string& file){
     std::vector<std::string> tmp;
     std::ifstream in;
@@ -181,8 +194,12 @@ public:
       if (is_marked_A(it->first, tmp)){
         std::cout << (it->first).get_identifier() << " is marked A\n";
         A_vars.insert(A_vars.end(), (it->second).begin(), (it->second).end());
-      } else {
+      } else if (is_marked_B(it->first, tmp)) {
+        std::cout << (it->first).get_identifier() << " is marked B\n";
         B_vars.insert(B_vars.end(), (it->second).begin(), (it->second).end());
+      } else {
+        std::cout << (it->first).get_identifier() << " is marked AB\n";
+        AB_vars.insert(AB_vars.end(), (it->second).begin(), (it->second).end());
       }
     }
     std::cout << "Coloring from file \"" << file << "\" is applied." <<std::endl;

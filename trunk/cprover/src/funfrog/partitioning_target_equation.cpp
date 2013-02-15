@@ -721,7 +721,7 @@ void partitioning_target_equationt::extract_interpolants(
       } else if (coloring_mode == RANDOM_COLORING){
         ipartition.distribute_A_B();
       }
-      interpolator.addAB(ipartition.A_vars, ipartition.B_vars);
+      interpolator.addAB(ipartition.A_vars, ipartition.B_vars, ipartition.AB_vars);
     }
   }
 
