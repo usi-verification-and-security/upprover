@@ -154,9 +154,11 @@ Function: satcheck_opensmtt::get_interpolant
 
 \*******************************************************************/
 void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids,
-    interpolantst& interpolants, double reduction_timeout) const
+    interpolantst& interpolants,
+    double reduction_timeout, int reduction_loops, int reduction_graph) const
 {
   assert(ready_to_interpolate);
+  assert(reduction_timeout == 0 || reduction_graph == 0);
 
   std::vector<Enode*> itp_enodes;
   itp_enodes.reserve(partition_ids.size());
@@ -164,8 +166,24 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
   opensmt_ctx->createProofGraph();
 
   // Setup proof reduction
+  bool do_reduction = false;
+
   if (reduction_timeout > 0){
     opensmt_ctx->setReductionTime(reduction_timeout);
+    do_reduction = true;
+  }
+
+  if (reduction_loops > 0){
+    opensmt_ctx->setNumReductionLoops(reduction_loops);
+    do_reduction = true;
+  }
+
+  if (reduction_graph > 0){
+    opensmt_ctx->setNumGraphTraversals(reduction_graph);
+    do_reduction = true;
+  }
+
+  if (do_reduction){
     opensmt_ctx->reduceProofGraph();
   }
 

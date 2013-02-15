@@ -154,7 +154,8 @@ public:
   // Extract interpolants corresponding to the created partitions
   void extract_interpolants(
     interpolating_solvert& interpolator, const prop_convt& decider,
-    interpolant_mapt& interpolant_map, bool tree_interpolants, double reduction_timeout = 0);
+    interpolant_mapt& interpolant_map, bool tree_interpolants,
+    double reduction_timeout, int reduction_loops, int reduction_graph);
   
   // Returns SSA steps ordered in the order of program execution (i.e., as they 
   // would be normally ordered in symex_target_equation).

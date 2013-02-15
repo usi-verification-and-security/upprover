@@ -357,6 +357,11 @@ int funfrog_parseoptionst::doit()
     return true;
   }
 
+  if (cmdline.isset("reduce-proof-graph") && cmdline.isset("reduce-proof-time")){
+    status("Please set either ratio or time for reduction or number of proof traversals.");
+    return false;
+  }
+
   if(check_function_summarization(ns, goto_functions, stats_dir))
     return 1;
 
@@ -443,14 +448,20 @@ void funfrog_parseoptionst::help()
   "                               with different call stack\n"
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
-  "--reduce-proof <fraction>      use up to <fraction> of SAT solving time\n"
+
+  "\nOpenSMT proof options:\n"
+  "--reduce-proof-time <fraction> use up to <fraction> of SAT solving time\n"
   "                               to reduce proof --> smaller summaries\n"
+  "--reduce-proof-graph <int>     use <int> graph traversals for each global loop\n"
+  "                                               --> smaller summaries\n"
+  "--reduce-proof-loops <int>     use <int> global reduction loops\n"
+  "                                               --> smaller summaries\n"
   "--tree-interpolants            produce tree interpolants\n"
-  "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
   "--color-proof <mode>:          try different coloring strategies:\n"
   "  0                            random\n"
   "  1                            from external file \"__common\"\n"
   "  2                            TBD"
+  "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
 
   "\nRefinement options:\n"
   "--refine-mode <mode>:\n"
@@ -858,8 +869,14 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   } else {
     options.set_option("save-change-impact", "__calltree.xml");
   }
-  if (cmdline.isset("reduce-proof")) {
+  if (cmdline.isset("reduce-proof-time")) {
     options.set_option("reduce-proof", cmdline.getval("reduce-proof"));
+  }
+  if (cmdline.isset("reduce-proof-graph")) {
+    options.set_option("reduce-proof-graph", cmdline.getval("reduce-proof-graph"));
+  }
+  if (cmdline.isset("reduce-proof-loops")) {
+    options.set_option("reduce-proof-loops", cmdline.getval("reduce-proof-loops"));
   }
   if (cmdline.isset("color-proof")) {
     options.set_option("color-proof", cmdline.getval("color-proof"));

@@ -112,8 +112,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
       unsigned nondet_count = omega.get_nondets_count();
       if (end && interpolator->can_interpolate())
       {
-        double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
-        extract_interpolants(equation, red_timeout, options.get_bool_option("tree-interpolants"));
+        extract_interpolants(prop, equation);
         if (summaries_count == 0)
         {
           status("ASSERTION(S) HOLD(S)");
@@ -163,7 +162,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 double summarizing_checkert::compute_reduction_timeout(double solving_time)
 {
   double red_timeout = 0;
-  const char* red_timeout_str = options.get_option("reduce-proof").c_str();
+  const char* red_timeout_str = options.get_option("reduce-proof-time").c_str();
   if (strlen(red_timeout_str)) {
     char* result;
     red_timeout = strtod(red_timeout_str, &result);
@@ -190,14 +189,19 @@ Function: summarizing_checkert::extract_interpolants
 
 \*******************************************************************/
 
-void summarizing_checkert::extract_interpolants (partitioning_target_equationt& equation, double red_timeout, bool tree_interpolants)
+void summarizing_checkert::extract_interpolants (prop_assertion_sumt& prop, partitioning_target_equationt& equation)
 {
   summary_storet& summary_store = summarization_context.get_summary_store();
   interpolant_mapt itp_map;
-
   fine_timet before, after;
   before=current_time();
-  equation.extract_interpolants(*interpolator, *decider, itp_map, tree_interpolants, red_timeout);
+
+  double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
+
+  equation.extract_interpolants(*interpolator, *decider, itp_map,
+      options.get_bool_option("tree-interpolants"), red_timeout,
+      options.get_int_option("reduce-proof-loops"), options.get_int_option("reduce-proof-graph"));
+
   after=current_time();
   status(std::string("INTERPOLATION TIME: ") + time2string(after-before));
 

@@ -661,7 +661,8 @@ Function: partitioning_target_equationt::extract_interpolants
 \*******************************************************************/
 void partitioning_target_equationt::extract_interpolants(
   interpolating_solvert& interpolator, const prop_convt& decider,
-  interpolant_mapt& interpolant_map, bool tree_interpolants, double reduction_timeout)
+  interpolant_mapt& interpolant_map, bool tree_interpolants,
+    double reduction_timeout, int reduction_loops, int reduction_graph)
 {
   // Prepare the interpolation task. NOTE: ignore the root partition!
   unsigned valid_tasks = 0;
@@ -733,7 +734,7 @@ void partitioning_target_equationt::extract_interpolants(
     opensmt::InterpolationTree *itp_tree = fill_partition_tree(*partitions.begin());
     interpolator.get_interpolant(itp_tree, itp_task, itp_result);
   } else {
-    interpolator.get_interpolant(itp_task, itp_result, reduction_timeout);
+    interpolator.get_interpolant(itp_task, itp_result, reduction_timeout, reduction_loops, reduction_graph);
   }
 
   // Interpret the result

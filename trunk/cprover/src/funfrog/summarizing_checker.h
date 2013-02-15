@@ -71,7 +71,7 @@ protected:
   
   void setup_unwind(symex_assertion_sumt& symex);
   double compute_reduction_timeout(double solving_time);
-  void extract_interpolants (partitioning_target_equationt& equation, double red_timeout, bool tree_interpolants);
+  void extract_interpolants (prop_assertion_sumt& prop, partitioning_target_equationt& equation);
   void report_success();
   void report_failure();
 };

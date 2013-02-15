@@ -51,7 +51,8 @@ public:
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants, double reduction_timeout) const;
+      interpolantst& interpolants,
+      double reduction_timeout, int reduction_loops, int reduction_graph) const;
   virtual void get_interpolant(opensmt::InterpolationTree*,
       const interpolation_taskt& partition_ids,
       interpolantst& interpolants) const;

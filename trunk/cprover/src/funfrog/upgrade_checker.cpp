@@ -400,8 +400,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
       unsigned summaries_count = omega.get_summaries_count(summary_info);
       if (end && interpolator->can_interpolate())
       {
-        double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
-        extract_interpolants(equation, options.get_bool_option("tree-interpolants"), red_timeout);
+        extract_interpolants(prop, equation);
         status("Old summary is still valid");
         if (summaries_count == 0)
         {
