@@ -870,7 +870,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("save-change-impact", "__calltree.xml");
   }
   if (cmdline.isset("reduce-proof-time")) {
-    options.set_option("reduce-proof", cmdline.getval("reduce-proof"));
+    options.set_option("reduce-proof-time", cmdline.getval("reduce-proof-time"));
   }
   if (cmdline.isset("reduce-proof-graph")) {
     options.set_option("reduce-proof-graph", cmdline.getval("reduce-proof-graph"));
