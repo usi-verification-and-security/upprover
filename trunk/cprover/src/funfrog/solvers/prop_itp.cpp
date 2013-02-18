@@ -232,8 +232,10 @@ void prop_itpt::generalize(const prop_convt& decider,
 # ifdef DEBUG_ITP
   std::cout << " = " << min_var << " - " << max_var << std::endl;
 # endif
-  unsigned renaming[max_var - min_var + 1];
-  unsigned represented_symbol[max_var - min_var + 1];
+//  unsigned renaming[max_var - min_var + 1];
+  unsigned* renaming = (unsigned*) malloc(sizeof(unsigned)*(max_var - min_var + 1));
+//  unsigned represented_symbol[max_var - min_var + 1];
+  unsigned* represented_symbol = (unsigned*)malloc(sizeof(unsigned)*(max_var - min_var + 1));
 
 # ifndef NDEBUG
   // This is not exactly clean, but it should do for debugging purposes
@@ -363,6 +365,9 @@ void prop_itpt::generalize(const prop_convt& decider,
     root_literal.set(renaming[idx], root_literal.sign());
     used_symbols[represented_symbol[idx]] = true;
   }
+
+  free(renaming);
+  free(represented_symbol);
 
   // TODO: This line was broken - substitution could not guess variables, if some were not used 
   // _no_variables -= shift;
@@ -516,7 +521,11 @@ literalt prop_itpt::raw_assert(propt& prop_decider) const
 {
   assert(!is_trivial());
 
-  literalt renaming[_no_variables - _no_orig_variables];
+
+  // No stack allocation
+  literalt* renaming =
+    (literalt*)malloc(sizeof(literalt)*(_no_variables - _no_orig_variables));
+//  literalt renaming[_no_variables - _no_orig_variables];
 
   // Make sure, the original variables are allocated
   while (prop_decider.no_variables() < _no_orig_variables) {
@@ -556,16 +565,20 @@ literalt prop_itpt::raw_assert(propt& prop_decider) const
     prop_decider.lcnf(tmp_clause);
   }
   // Handle the root
+  literalt rval;
   if (root_literal.var_no() < _no_orig_variables)
-    return root_literal;
-  
-  bool sign = root_literal.sign();
-  literalt new_root_literal = 
-          renaming[root_literal.var_no() - _no_orig_variables];
-  if (sign)
-    new_root_literal.invert();
+    rval = root_literal;
+  else {
+    bool sign = root_literal.sign();
+    literalt new_root_literal = 
+            renaming[root_literal.var_no() - _no_orig_variables];
+    if (sign)
+      new_root_literal.invert();
 
-  return new_root_literal;
+    rval = new_root_literal;
+  }
+  free(renaming);
+  return rval;
 }
 
 /*******************************************************************\
