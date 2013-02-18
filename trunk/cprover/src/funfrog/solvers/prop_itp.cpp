@@ -239,8 +239,8 @@ void prop_itpt::generalize(const prop_convt& decider,
 
 # ifndef NDEBUG
   // This is not exactly clean, but it should do for debugging purposes
-  memset(renaming, UCHAR_MAX, sizeof(renaming));
-  memset(represented_symbol, UCHAR_MAX, sizeof(represented_symbol));
+  memset(renaming, UCHAR_MAX, sizeof(unsigned)*(max_var - min_var + 1));
+  memset(represented_symbol, UCHAR_MAX, sizeof(unsigned)*(max_var - min_var + 1));
 # endif
   
   // Fill the renaming table
