@@ -16,8 +16,10 @@ Author: Ondrej Sery
 
 #include "prop_itp.h"
 
+//#define DEBUG_COLOR_ITP
 #define PRODUCE_PROOF
 #include "Global.h"
+
 
 typedef int fle_part_idt;
 typedef std::vector<fle_part_idt> fle_part_idst;
@@ -40,10 +42,10 @@ public:
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants,
-      double reduction_timeout, int reduction_loops, int reduction_graph) const=0;
+      double reduction_timeout, int reduction_loops, int reduction_graph)=0;
   
   virtual void get_interpolant(opensmt::InterpolationTree*, const interpolation_taskt& partition_ids,
-    interpolantst& interpolants) const=0;
+    interpolantst& interpolants)=0;
 
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT
@@ -51,6 +53,10 @@ public:
 
   virtual void addAB(const std::vector<unsigned>& symbolsA, const std::vector<unsigned>& symbolsB,
       const std::vector<unsigned>& symbolsAB)=0;
+
+# ifdef DEBUG_COLOR_ITP
+  virtual std::vector<unsigned>& get_itp_symb(unsigned i)=0;
+# endif
 
 };
 

@@ -17,6 +17,7 @@ Author: Ondrej Sery
 //#define DEBUG_SSA
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
+
 #include "solvers/satcheck_opensmt.h"
 
 /*******************************************************************\
@@ -104,7 +105,7 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
 #	endif
     return;
   }
- 
+
   // Convert the assumption propagation symbols
   partition_ifacet &partition_iface = partition.get_iface();
   partition_iface.callstart_literal =
@@ -747,7 +748,33 @@ void partitioning_target_equationt::extract_interpolants(
             (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion))
       continue;
     
-    interpolantt& itp = itp_result[tid++];
+    interpolantt& itp = itp_result[tid];
+
+#   ifdef DEBUG_COLOR_ITP
+    std::map<symbol_exprt, unsigned> unique_symb;
+    std::vector<unsigned>& itp_symb = interpolator.get_itp_symb(tid);
+    std::cout << "Checking " << partition.get_iface().function_id << " ("<<itp_symb.size() <<")\n";
+
+    for (unsigned i = 0; i < itp_symb.size(); i++){
+      std::map<symbol_exprt, std::vector<unsigned> >& symbs = partition.get_iface().common_symbols;
+
+      for (std::map<symbol_exprt, std::vector<unsigned> >::iterator it = symbs.begin();
+          it != symbs.end(); ++it){
+        for (unsigned j = 0; j < (it->second).size(); j++){
+          if ((it->second)[j] == itp_symb[i]){
+            unique_symb[it->first]++;
+            break;
+          }
+        }
+      }
+    }
+
+    for (std::map<symbol_exprt, unsigned>::iterator it = unique_symb.begin(); it != unique_symb.end(); ++it){
+      std::cout << (it->first).get_identifier() << " (" << it->second << ")\n";
+    }
+#   endif
+
+    tid++;
 
     if (itp.is_trivial()) {
 #     ifdef DEBUG_ITP

@@ -155,7 +155,7 @@ Function: satcheck_opensmtt::get_interpolant
 \*******************************************************************/
 void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids,
     interpolantst& interpolants,
-    double reduction_timeout, int reduction_loops, int reduction_graph) const
+    double reduction_timeout, int reduction_loops, int reduction_graph)
 {
   assert(ready_to_interpolate);
   assert(reduction_timeout == 0 || reduction_graph == 0);
@@ -210,7 +210,16 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
 #   endif
 
     prop_itpt itp;
+
+#   ifdef DEBUG_COLOR_ITP
+    current_itp = new std::vector<unsigned> ();
+#   endif
+
     extract_itp(node, itp);
+
+#   ifdef DEBUG_COLOR_ITP
+    itp_symbols.push_back(*current_itp);
+#   endif
 
 #   if 0
     std::cout << "CProver stored interpolant: ";
@@ -223,7 +232,7 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
 }
 
 void satcheck_opensmtt::get_interpolant(opensmt::InterpolationTree* tree, const interpolation_taskt& partition_ids,
-    interpolantst& interpolants) const
+    interpolantst& interpolants)
 {
   assert(ready_to_interpolate);
 
@@ -256,7 +265,16 @@ void satcheck_opensmtt::get_interpolant(opensmt::InterpolationTree* tree, const 
 #   endif
 
     prop_itpt itp;
+
+#   ifdef DEBUG_COLOR_ITP
+    current_itp = new std::vector<unsigned> ();
+#   endif
+
     extract_itp(node, itp);
+
+#   ifdef DEBUG_COLOR_ITP
+    itp_symbols.push_back(*current_itp);
+#   endif
 
 #   if 0
     std::cout << "CProver stored interpolant: ";
@@ -666,6 +684,18 @@ literalt satcheck_opensmtt::extract_itp_rec(const Enode* enode,
       if (enode->isAtom()) {
         // Atom must be a prop. variable
         assert(enode->getArity() == 0 && enode->getCar()->isSymb());
+
+#   ifdef DEBUG_COLOR_ITP
+        unsigned var_no = 0;
+        while(var_no < enodes.size()){
+          if (enodes[var_no] == enode){
+            break;
+          }
+          var_no++;
+        }
+        current_itp->push_back(var_no);
+#   endif
+
         result.set(decode_id(enode->getCar()->getNameFullC()), false);
       } else {
         throw "Unexpected Enode term type in the interpolant.";

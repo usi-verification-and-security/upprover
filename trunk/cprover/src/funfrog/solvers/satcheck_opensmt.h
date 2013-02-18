@@ -52,10 +52,10 @@ public:
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants,
-      double reduction_timeout, int reduction_loops, int reduction_graph) const;
+      double reduction_timeout, int reduction_loops, int reduction_graph);
   virtual void get_interpolant(opensmt::InterpolationTree*,
       const interpolation_taskt& partition_ids,
-      interpolantst& interpolants) const;
+      interpolantst& interpolants);
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const;
@@ -71,6 +71,10 @@ public:
   };
 
   const std::string& get_last_var() { return id_str; }
+
+# ifdef DEBUG_COLOR_ITP
+  virtual std::vector<unsigned>& get_itp_symb(unsigned i){ return itp_symbols[i]; }
+# endif
 
 protected:
   // Solver verbosity
@@ -115,6 +119,11 @@ protected:
 
   void addColors(const std::vector<unsigned>& symbols,
       opensmt::icolor_t color, std::map<Enode*, icolor_t>* coloring_suggestion);
+
+# ifdef DEBUG_COLOR_ITP
+  std::vector<std::vector<unsigned> > itp_symbols;
+  std::vector<unsigned> *current_itp;
+# endif
 };
 
 #endif
