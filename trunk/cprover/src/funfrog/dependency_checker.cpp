@@ -264,21 +264,26 @@ void dependency_checkert::find_implications()
           std::cout << "Adding the assertion implication (" <<
           from_expr(ns, "", ass_1->cond_expr) << " => " <<
           from_expr(ns, "", ass_2->cond_expr) << ")" << std::endl;
+
+          equation.SSA_steps.erase(ass_2);
+          asserts.erase(asserts.begin()+j);
+
         }
         else cout << "check_implication returned FALSE" << endl;
       }
     }
   }
 
-    std::cout << "Printing assertion implications:" << std::endl;
-    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
-      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
-      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
+//    std::cout << "Printing assertion implications:" << std::endl;
+//    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
+//      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
+//      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
 
 }
 
 void dependency_checkert::get_minimals()
 {
+  // TODO: it doesn't seem working
   map<SSA_step_reft,int> inDegree;
 
     for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)

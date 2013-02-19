@@ -102,9 +102,13 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 
     if (!end){
 
-      // FIXME: find more proper location
       if (options.get_bool_option("claims-order") && count == 1){
         dependency_checkert(ns, equation, message_handler, goto_program, omega).do_it();
+
+        // TODO: employ dependency information from dependency checker
+        status(std::string("All SSA steps without weakest summaries: ") + i2string(equation.SSA_steps.size()));
+        partitioning_slice(equation, summarization_context.get_summary_store());
+        status(std::string("Ignored SSA steps after slice: ") + i2string(equation.count_ignored_SSA_steps()));
       }
 
       end = prop.assertion_holds(assertion, ns, *decider, *interpolator);
