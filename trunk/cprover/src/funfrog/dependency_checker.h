@@ -55,7 +55,10 @@ public:
   string variable_name(string name);
   string variable_name(dstring name);
   void print_dependents(map<string,bool> dependents, ostream &out);
-  bool check_implication(SSA_step_reft c1, SSA_step_reft c2);
+  bool check_implication(SSA_step_reft &c1, SSA_step_reft &c2);
+
+  //TODO: make treshold parametrized
+  bool compare_assertions(SSA_step_reft &a, SSA_step_reft &b, unsigned treshold = 10);
 
 private:
   const goto_programt &goto_program;
@@ -71,6 +74,8 @@ private:
   map<SSA_step_reft,map<SSA_step_reft,bool> > assert_deps;
   map<SSA_step_reft,map<SSA_step_reft,bool> > assert_imps;
   map<SSA_step_reft,bool> toCheck;
+
+  vector<SSA_step_reft> asserts;
 
   void convert_delta_SSA(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
   void convert_assignments(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
