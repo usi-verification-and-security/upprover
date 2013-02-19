@@ -76,6 +76,10 @@ public:
 
   void setup_last_assertion_loc(const assertion_infot& assertion);
   bool is_assertion_in_loop(const unsigned ass_loc);
+  bool is_assertion_in_loop(goto_programt::const_targett& tgt){
+    return is_assertion_in_loop(get_assertion_location(tgt));
+  }
+
   unsigned get_invalid_count();
 
 private:

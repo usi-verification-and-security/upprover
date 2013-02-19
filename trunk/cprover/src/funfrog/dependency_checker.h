@@ -15,7 +15,7 @@
 
 #include "partitioning_target_equation.h"
 #include "partitioning_slice.h"
-
+#include "subst_scenario.h"
 
 #include <map>
 
@@ -28,19 +28,21 @@ public:
           const namespacet &_ns,
           partitioning_target_equationt &_target,
           ui_message_handlert &_message_handler,
-          const goto_programt &_goto_program
+          const goto_programt &_goto_program,
+          subst_scenariot &_omega
     ) :
           goto_program(_goto_program),
           ns(_ns),
           message_handler (_message_handler),
-          equation(_target)
+          equation(_target),
+          omega(_omega)
           {set_message_handler(_message_handler);
           last_label = 0;}
 
   void do_it();
 
   typedef symex_target_equationt::SSA_stepst::iterator SSA_step_reft;
-  void find_var_deps();
+  void find_var_deps(bool ENABLE_TC=0);
   void find_assert_deps();
   void find_implications();
   void get_minimals();
@@ -61,6 +63,7 @@ private:
   ui_message_handlert &message_handler;
 
   partitioning_target_equationt &equation;
+  subst_scenariot &omega;
 
   int last_label;
   map<string,int*> label;

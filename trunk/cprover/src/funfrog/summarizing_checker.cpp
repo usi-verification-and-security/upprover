@@ -104,7 +104,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 
       // FIXME: find more proper location
       if (options.get_bool_option("claims-order") && count == 1){
-        dependency_checkert(ns, equation, message_handler, goto_program).do_it();
+        dependency_checkert(ns, equation, message_handler, goto_program, omega).do_it();
       }
 
       end = prop.assertion_holds(assertion, ns, *decider, *interpolator);

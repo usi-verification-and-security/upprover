@@ -18,8 +18,6 @@
 #define NOTIMP false
 #define IMP true
 
-#define ENABLE_TC false
-
 using namespace std;
 
 void dependency_checkert::do_it(){
@@ -83,7 +81,7 @@ bool dependency_checkert::check_implication(SSA_step_reft c1, SSA_step_reft c2)
   }
 }
 
-void dependency_checkert::find_var_deps()
+void dependency_checkert::find_var_deps(bool ENABLE_TC)
 {
     int mapcount = 0;
     for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
@@ -170,7 +168,9 @@ void dependency_checkert::find_assert_deps()
 
     for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
     {
-      if (it->is_assert()) asserts[it] = true;
+      if (it->is_assert() && !omega.is_assertion_in_loop(it->source.pc)){
+        asserts[it] = true;
+      }
     }
 
 //    Printing
