@@ -217,13 +217,13 @@ void dependency_checkert::find_assert_deps()
 
 }
 
-static bool compare_asserts(dependency_checkert::SSA_step_reft a, dependency_checkert::SSA_step_reft b)
-{
-	return (distance(a, b) < 0);
-}
+//static bool compare_asserts(dependency_checkert::SSA_step_reft a, dependency_checkert::SSA_step_reft b)
+//{
+//	return (distance(a, b) < 0);
+//}
 
-bool dependency_checkert::compare_assertions(SSA_step_reft &a, SSA_step_reft &b, unsigned treshold){
-  return distance(b, a) > 0 && distance(b, a) < treshold;
+bool dependency_checkert::compare_assertions(SSA_step_reft &a, SSA_step_reft &b){
+  return distance(a, b) < treshold;
 }
 
 void dependency_checkert::find_implications()

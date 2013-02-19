@@ -36,8 +36,12 @@ public:
           message_handler (_message_handler),
           equation(_target),
           omega(_omega)
-          {set_message_handler(_message_handler);
-          last_label = 0;}
+    {
+          set_message_handler(_message_handler);
+          last_label = 0;
+          // FIXME: make treshold parametrized
+          treshold = equation.SSA_steps.size() / 6;
+    }
 
   void do_it();
 
@@ -57,8 +61,7 @@ public:
   void print_dependents(map<string,bool> dependents, ostream &out);
   bool check_implication(SSA_step_reft &c1, SSA_step_reft &c2);
 
-  //TODO: make treshold parametrized
-  bool compare_assertions(SSA_step_reft &a, SSA_step_reft &b, unsigned treshold = 10);
+  bool compare_assertions(SSA_step_reft &a, SSA_step_reft &b);
 
 private:
   const goto_programt &goto_program;
@@ -76,6 +79,7 @@ private:
   map<SSA_step_reft,bool> toCheck;
 
   vector<SSA_step_reft> asserts;
+  unsigned treshold;
 
   void convert_delta_SSA(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
   void convert_assignments(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
