@@ -1,10 +1,11 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf8 -*-
 
 import re
 import os
 import sys
 import subprocess
+import time
 
 class CheckTypes:
     Initial, Upgrade = range(2)
@@ -159,6 +160,7 @@ def create_models (files, output_path):
 # using a given set of summaries
 #
 def run_evolcheck (check_type, orig_gb, output_path, filename, assertions):
+    time_init = time.time()
     # Choose the correct executable for each platform
     if sys.platform == 'win32' or sys.platform == 'cygwin':
         cmd_str = ["evolcheck.exe"]
@@ -167,6 +169,7 @@ def run_evolcheck (check_type, orig_gb, output_path, filename, assertions):
     # Check type
     if check_type == CheckTypes.Initial:
         cmd_str.append("--init-upgrade-check")
+        cmd_str.append("--no-summary-optimization")
         cmd_str.append(output_path + filename)
     else:
         cmd_str.append("--do-upgrade-check")
@@ -194,6 +197,7 @@ def run_evolcheck (check_type, orig_gb, output_path, filename, assertions):
 
     result = analyze_evolcheck_result(output_path, std_out_str, assertions)
 
+    print("Run time for evolcheck was %f" % (time.time() - time_init))
     # no problem during the execution
     return result
 
@@ -209,7 +213,7 @@ def analyze_evolcheck_result (output_path, std_out, assertions):
         exit(1)
 
     if std_out.find('OpenSMT - CNF') == -1:
-        last_cal_str = std_out
+        last_call_str = std_out
     else:
         split_str = std_out.rsplit('OpenSMT - CNF', 1)
         last_call_str = split_str[1]
@@ -323,7 +327,7 @@ def parse_assertions (assertion_file, assertion_map, assertion_type):
             filename = arr[0]
             line_number = int(arr[1])
             expr = arr[2].strip()
-            # print ('Assertion: file=%s, line=%s, expression="%s"' % (filename, line_number, expr))
+            print ('Assertion: file=%s, line=%s, expression="%s"' % (filename, line_number, expr))
             if not assertion_map.__contains__(filename):
                 assertion_map[filename] = []
 

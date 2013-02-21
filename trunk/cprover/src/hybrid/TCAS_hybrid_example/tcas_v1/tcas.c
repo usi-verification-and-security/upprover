@@ -3,16 +3,6 @@
 /* $Log: tcas.c,v $
  * Revision 1.2  1993/03/12  19:29:50  foster
  * Correct logic bug which didn't allow output of 2 - hf
- *
- *
- *
- *
- *
- *
- *
- *
- *
- *
  * */
 
 #include <stdio.h>
@@ -21,9 +11,9 @@
 #define MAXALTDIFF 600		/* max altitude difference in feet */
 #define MINSEP     300          /* min separation in feet */
 #define NOZCROSS   100		/* in feet */
-				/* variables */
-
 typedef int bool;
+bool Own_Below_Threat();
+bool Own_Above_Threat();
 
 int Cur_Vertical_Sep;
 bool High_Confidence;
@@ -135,17 +125,17 @@ int alt_sep_test()
     {
 	need_upward_RA = Non_Crossing_Biased_Climb() && Own_Below_Threat();
 	need_downward_RA = Non_Crossing_Biased_Descend() && Own_Above_Threat();
-	if (need_upward_RA && need_downward_RA)
+	if (need_upward_RA && need_downward_RA) {
         /* unreachable: requires Own_Below_Threat and Own_Above_Threat
            to both be true - that requires Own_Tracked_Alt < Other_Tracked_Alt
            and Other_Tracked_Alt < Own_Tracked_Alt, which isn't possible */
 	    alt_sep = UNRESOLVED;
-	else if (need_upward_RA)
+    } else if (need_upward_RA) {
 	    alt_sep = UPWARD_RA;
-	else if (need_downward_RA)
+    } else if (need_downward_RA) {
 	    alt_sep = DOWNWARD_RA;
-	else
-	    alt_sep = UNRESOLVED;
+    } else {
+	    alt_sep = UNRESOLVED; }
     }
     
     return alt_sep;
