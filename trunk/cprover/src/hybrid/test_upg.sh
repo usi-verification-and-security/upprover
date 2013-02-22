@@ -24,7 +24,7 @@ rm __*
 echo "################################################################################"
 
 #python ../naive-hybrid-check.py --initial-check tcas_v0/init_ass.txt tcas_v0 result tcas.c
-python ../naive-hybrid-check.py --initial-check ${v0}/init_ass_2.txt ${v0} result ${name}
+python ../naive-hybrid-check.py --initial-check ${v0}/init_ass.txt ${v0} result ${name}
 
 cp result/a.out __old_a.out
 
