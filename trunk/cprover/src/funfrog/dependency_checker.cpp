@@ -188,6 +188,10 @@ void dependency_checkert::find_assert_deps()
 
       for (unsigned j = i + 1; j < asserts.size(); j++)
       {
+        SSA_step_reft& ass_1 = asserts[i];
+        SSA_step_reft& ass_2 = asserts[j];
+        if (!compare_assertions(ass_1, ass_2))
+          continue;
         second_symbols.clear();
         get_expr_symbols(asserts[j]->guard_expr, second_symbols);
         get_expr_symbols(asserts[j]->cond_expr, second_symbols);
@@ -253,7 +257,7 @@ void dependency_checkert::find_implications()
     {
       SSA_step_reft& ass_1 = asserts[i];
       SSA_step_reft& ass_2 = asserts[j];
-      if (compare_assertions(ass_1, ass_2) && assert_deps[ass_1][ass_2] == DEPT){
+      if (assert_deps[ass_1][ass_2] == DEPT){
         cout << "Comparing the assertions " <<
     			from_expr(ns, "", ass_1->cond_expr) << " and " <<
     			from_expr(ns, "", ass_2->cond_expr) << endl;
