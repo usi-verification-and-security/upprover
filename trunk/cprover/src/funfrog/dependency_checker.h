@@ -29,7 +29,8 @@ public:
           partitioning_target_equationt &_target,
           ui_message_handlert &_message_handler,
           const goto_programt &_goto_program,
-          subst_scenariot &_omega
+          subst_scenariot &_omega,
+          int fraction
     ) :
           goto_program(_goto_program),
           ns(_ns),
@@ -40,7 +41,8 @@ public:
           set_message_handler(_message_handler);
           last_label = 0;
           // FIXME: make treshold parametrized
-          treshold = equation.SSA_steps.size() / 6;
+          treshold = equation.SSA_steps.size() / fraction;
+          std::cout << "Using the treshold of " << treshold << " out of " << equation.SSA_steps.size() << " SSA steps\n";
     }
 
   void do_it();

@@ -103,7 +103,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
     if (!end){
 
       if (options.get_bool_option("claims-order") && count == 1){
-        dependency_checkert(ns, equation, message_handler, goto_program, omega).do_it();
+        dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_int_option("claims-order")).do_it();
 
         // TODO: employ dependency information from dependency checker
         status(std::string("All SSA steps without weakest summaries: ") + i2string(equation.SSA_steps.size()));

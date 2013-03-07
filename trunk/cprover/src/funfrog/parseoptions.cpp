@@ -437,7 +437,8 @@ void funfrog_parseoptionst::help()
   "--claim <int>                  check a specific claim\n"
   "--claimset <int,int,...>       check specific claims separated by comas\n"
   "--all-claims                   check all claims in one run\n"
-  "--claims-order                 find the strongest claims\n"
+  "--claims-order <fraction>      find the strongest claims using the given treshold\n"
+  "                               treshold = 1/<fraction> of SSA steps\n"
   "--testclaim <label>            check a labelled claim\n"
   "--unwind <bound>               loop unwind bound\n"
   "--unwindset <label:bound,...>  set of loop unwind bound for specific\n"
@@ -824,7 +825,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("string-abstraction", cmdline.isset("string-abstraction"));
   options.set_option("assertions", cmdline.isset("assertions"));
   options.set_option("all-claims", cmdline.isset("all-claims"));
-  options.set_option("claims-order", cmdline.isset("claims-order"));
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
@@ -840,6 +840,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("claimset")) {
     options.set_option("claimset", cmdline.getval("claimset"));
+  }
+  if (cmdline.isset("claims-order")) {
+    options.set_option("claims-order", cmdline.getval("claims-order"));
   }
   if (cmdline.isset("do-upgrade-check")) {
     options.set_option("do-upgrade-check", cmdline.getval("do-upgrade-check"));
