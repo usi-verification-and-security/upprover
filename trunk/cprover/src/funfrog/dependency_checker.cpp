@@ -204,9 +204,9 @@ void dependency_checkert::find_assert_deps()
             if (label[first_symit->as_string()] && label[second_symit->as_string()])
               if (*label[first_symit->as_string()] == *label[second_symit->as_string()])
               {
-                     assert_deps[asserts[i]][asserts[j]] = DEPT;
-                     assert_deps[asserts[j]][asserts[i]] = DEPT;
-                  }
+                assert_deps[asserts[i]][asserts[j]] = DEPT;
+                assert_deps[asserts[j]][asserts[i]] = DEPT;
+              }
             }
           }
         }
@@ -257,7 +257,8 @@ void dependency_checkert::find_implications()
     {
       SSA_step_reft& ass_1 = asserts[i];
       SSA_step_reft& ass_2 = asserts[j];
-      if (assert_deps[ass_1][ass_2] == DEPT){
+      if (compare_assertions(ass_1, ass_2) &&
+          assert_deps[ass_1][ass_2] == DEPT){
         cout << "Comparing the assertions " <<
     			from_expr(ns, "", ass_1->cond_expr) << " and " <<
     			from_expr(ns, "", ass_2->cond_expr) << endl;
@@ -507,7 +508,7 @@ void dependency_checkert::convert_assignments(
   while(it!=it2){
     it++;
 
-    if(it->is_assignment())
+    if(it->is_assignment() && !it->ignore)
     {
       //std::cout << "convert assign :" << from_expr(ns, "", it->cond_expr) <<"\n";
       prop_conv.set_to_true(it->cond_expr);
@@ -523,13 +524,13 @@ void dependency_checkert::convert_guards(
   it3++;
 
   while(it!=it3){
-    if (it->cond_expr.is_nil()){
-      it->guard_literal=const_literal(false);
-    }
-    else {
-      //std::cout << "convert guard :" << from_expr(ns, "", it->cond_expr) <<"\n";
-      prop_conv.convert(it->cond_expr);
-    }
+      if (it->cond_expr.is_nil() || it->ignore){
+        it->guard_literal=const_literal(false);
+      }
+      else {
+        //std::cout << "convert guard :" << from_expr(ns, "", it->cond_expr) <<"\n";
+        prop_conv.convert(it->cond_expr);
+      }
     it++;
   }
 }
@@ -540,7 +541,7 @@ void dependency_checkert::convert_assumptions(
   SSA_step_reft it=it1;
   while(it!=it2)
   {
-    if(it->is_assume() || it->is_assert())
+    if((it->is_assume() || it->is_assert()) && !it->ignore)
     {
        //std::cout << "convert assume :" << from_expr(ns, "", it->cond_expr) <<"\n";
        prop_conv.set_to_true(it->cond_expr);
