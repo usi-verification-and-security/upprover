@@ -54,6 +54,8 @@ public:
   virtual void addAB(const std::vector<unsigned>& symbolsA, const std::vector<unsigned>& symbolsB,
       const std::vector<unsigned>& symbolsAB)=0;
 
+  virtual void addBitBlastBinding(boolbv_mapt::literal_mapt& map)=0;
+
 # ifdef DEBUG_COLOR_ITP
   virtual std::vector<unsigned>& get_itp_symb(unsigned i)=0;
 # endif

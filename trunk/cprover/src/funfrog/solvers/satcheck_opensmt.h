@@ -70,6 +70,8 @@ public:
     coloring_suggestions.push_back(coloring_suggestion);
   };
 
+  virtual void addBitBlastBinding(boolbv_mapt::literal_mapt& map);
+
   const std::string& get_last_var() { return id_str; }
 
 # ifdef DEBUG_COLOR_ITP
