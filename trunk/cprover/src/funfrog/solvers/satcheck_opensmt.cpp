@@ -720,7 +720,9 @@ void satcheck_opensmtt::addColors(const std::vector<unsigned>& symbols,
 void satcheck_opensmtt::addBitBlastBinding(boolbv_mapt::literal_mapt& map){
   std::vector<Enode*> v;
   for (unsigned i = 0; i < map.size(); i++){
-    v.push_back(enodes[map[i].l.var_no()]);
+    if(map[i].l.var_no() < enodes.size()){
+      v.push_back(enodes[map[i].l.var_no()]);
+    }
   }
   opensmt_ctx->addBitBlastBinding(v);
 }
