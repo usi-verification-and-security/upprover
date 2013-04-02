@@ -30,8 +30,8 @@ public:
           ui_message_handlert &_message_handler,
           const goto_programt &_goto_program,
           subst_scenariot &_omega,
-          int percentage
-          //int fraction
+          //int percentage
+          int fraction
     ) :
           goto_program(_goto_program),
           ns(_ns),
@@ -43,8 +43,8 @@ public:
           last_label = 0;
           impl_timeout = 2000;
           // FIXME: make treshold parametrized
-          //treshold = equation.SSA_steps.size() / fraction;
-          treshold = percentage * equation.SSA_steps.size() / 100;
+          treshold = equation.SSA_steps.size() / fraction;
+          //treshold = percentage * equation.SSA_steps.size() / 100;
           std::cout << "Using the treshold of " << treshold << " out of " << equation.SSA_steps.size() << " SSA steps\n";
           std::cout << "Assuming a timeout of " << time2string(impl_timeout) << endl;
     }
