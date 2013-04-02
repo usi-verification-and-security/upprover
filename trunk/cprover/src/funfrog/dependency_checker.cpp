@@ -21,7 +21,7 @@
 using namespace std;
 
 void dependency_checkert::do_it(){
-  fine_timet initial, final;
+  fine_timet initial, final, to_time;
   initial=current_time();
 
   find_var_deps();
@@ -34,18 +34,20 @@ void dependency_checkert::do_it(){
   initial = current_time();
   std::cout << "TIME FOR find_assert_deps: " << time2string(initial - final) << std::endl;
 
-  find_implications();
+  to_time = find_implications();
 
   final = current_time();
   std::cout << "TIME FOR find_implications: " << time2string(final - initial) << std::endl;
+  std::cout << "TIME exceeding timeouts: " << time2string(to_time) << std::endl;
+  std::cout << "TIME FOR find_implications using a timeout: " << time2string(final - initial - to_time) << std::endl;
 
-  get_minimals();
+//  get_minimals();
 
-  initial = current_time();
-  std::cout << "TIME FOR get_minimals: " << time2string(initial - final) << std::endl;
+//  initial = current_time();
+//  std::cout << "TIME FOR get_minimals: " << time2string(initial - final) << std::endl;
 }
 
-bool dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
+pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
   std::auto_ptr<prop_convt> decider;
   satcheck_opensmtt* opensmt = new satcheck_opensmtt();
@@ -68,12 +70,12 @@ bool dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2
     case decision_proceduret::D_UNSATISFIABLE:
     {
       status("UNSAT - it holds!");
-      return true;
+      return make_pair(true, after - before);
     }
     case decision_proceduret::D_SATISFIABLE:
     {
       status("SAT - doesn't hold");
-      return false;
+      return make_pair(false, after - before);
     }
 
     default:
@@ -170,6 +172,10 @@ void dependency_checkert::find_assert_deps()
         asserts.push_back(it);
       }
     }
+
+    cout << "SSA Assertions: " << asserts.size();
+    cout << endl;
+
 //    Printing
 //    std::cout << "Printing assertions:" << std::endl;
 //    map<SSA_step_reft, bool>::iterator asserts_it;
@@ -182,19 +188,19 @@ void dependency_checkert::find_assert_deps()
 
     for (unsigned i = 0; i < asserts.size(); i++)
     {
+      SSA_step_reft& assert_1 = asserts[i];
       first_symbols.clear();
-      get_expr_symbols(asserts[i]->guard_expr, first_symbols);
-      get_expr_symbols(asserts[i]->cond_expr, first_symbols);
+      get_expr_symbols(assert_1->guard_expr, first_symbols);
+      get_expr_symbols(assert_1->cond_expr, first_symbols);
 
       for (unsigned j = i + 1; j < asserts.size(); j++)
       {
-        SSA_step_reft& ass_1 = asserts[i];
-        SSA_step_reft& ass_2 = asserts[j];
-        if (!compare_assertions(ass_1, ass_2))
+        SSA_step_reft& assert_2 = asserts[j];
+        if (!compare_assertions(assert_1, assert_2))
           continue;
         second_symbols.clear();
-        get_expr_symbols(asserts[j]->guard_expr, second_symbols);
-        get_expr_symbols(asserts[j]->cond_expr, second_symbols);
+        get_expr_symbols(assert_2->guard_expr, second_symbols);
+        get_expr_symbols(assert_2->cond_expr, second_symbols);
 
         for (symbol_sett::iterator first_symit = first_symbols.begin(); first_symit != first_symbols.end(); ++first_symit)
           {
@@ -230,9 +236,16 @@ bool dependency_checkert::compare_assertions(SSA_step_reft &a, SSA_step_reft &b)
   return distance(a, b) < treshold;
 }
 
-void dependency_checkert::find_implications()
+fine_timet dependency_checkert::find_implications()
 {
-  bool mustprint = false;
+  fine_timet true_time, false_time, to_time;
+  true_time = 0;
+  false_time = 0;
+  to_time = 0;
+  //bool mustprint = false;
+  unsigned notdisc = 0;
+  unsigned discarded = 0;
+
     /*
     cout << "Printing assertions before ordering." << endl;
     for (it = asserts.begin(); it != asserts.end(); it++)
@@ -255,6 +268,7 @@ void dependency_checkert::find_implications()
   {
     for (unsigned j = 0; j < asserts.size(); j++)
     {
+      pair<bool, fine_timet> checkres;
       SSA_step_reft& ass_1 = asserts[i];
       SSA_step_reft& ass_2 = asserts[j];
       if (compare_assertions(ass_1, ass_2) &&
@@ -262,19 +276,36 @@ void dependency_checkert::find_implications()
         cout << "Comparing the assertions " <<
     			from_expr(ns, "", ass_1->cond_expr) << " and " <<
     			from_expr(ns, "", ass_2->cond_expr) << endl;
-        if (check_implication(ass_1, ass_2) == true)
+        checkres = check_implication(ass_1, ass_2);
+        if (checkres.first == true)
         {
+          true_time = true_time + checkres.second;
           cout << "check_implication returned TRUE" << endl;
-          assert_imps[ass_1][ass_2] = IMP;
-          std::cout << "Adding the assertion implication (" <<
-          from_expr(ns, "", ass_1->cond_expr) << " => " <<
-          from_expr(ns, "", ass_2->cond_expr) << ")" << std::endl;
+          if (checkres.second <= impl_timeout)
+          {
+              assert_imps[ass_1][ass_2] = IMP;
+              std::cout << "Adding the assertion implication (" <<
+              from_expr(ns, "", ass_1->cond_expr) << " => " <<
+              from_expr(ns, "", ass_2->cond_expr) << ") [" << ass_2->source.pc->location.get_line() << "]" << std::endl;
 
-          equation.SSA_steps.erase(ass_2);
-          asserts.erase(asserts.begin()+j);
+              equation.SSA_steps.erase(ass_2);
+              asserts.erase(asserts.begin()+j);
 
+              discarded++;
+          }
+          else notdisc++;
         }
-        else cout << "check_implication returned FALSE" << endl;
+        else
+        {
+        	false_time = false_time + checkres.second;
+        	cout << "check_implication returned FALSE" << endl;
+        }
+        if (checkres.second > impl_timeout)
+        {
+        	fine_timet exceeding = checkres.second - impl_timeout;
+        	cout << "Timeout " << time2string(impl_timeout) << " exceeded of " << time2string(exceeding) << " seconds." << endl;
+            to_time = to_time + exceeding;
+        }
       }
     }
   }
@@ -283,6 +314,10 @@ void dependency_checkert::find_implications()
 //    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
 //      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
 //      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
+
+  cout << "Discarded assertions: " << discarded << endl;
+  if (notdisc > 0) cout << "WARNING: " << notdisc << " true implications exceeded timeout!" << endl;
+  return to_time;
 
 }
 

@@ -30,7 +30,8 @@ public:
           ui_message_handlert &_message_handler,
           const goto_programt &_goto_program,
           subst_scenariot &_omega,
-          int fraction
+          int percentage
+          //int fraction
     ) :
           goto_program(_goto_program),
           ns(_ns),
@@ -40,9 +41,12 @@ public:
     {
           set_message_handler(_message_handler);
           last_label = 0;
+          impl_timeout = 2000;
           // FIXME: make treshold parametrized
-          treshold = equation.SSA_steps.size() / fraction;
+          //treshold = equation.SSA_steps.size() / fraction;
+          treshold = percentage * equation.SSA_steps.size() / 100;
           std::cout << "Using the treshold of " << treshold << " out of " << equation.SSA_steps.size() << " SSA steps\n";
+          std::cout << "Assuming a timeout of " << time2string(impl_timeout) << endl;
     }
 
   void do_it();
@@ -50,8 +54,9 @@ public:
   typedef symex_target_equationt::SSA_stepst::iterator SSA_step_reft;
   void find_var_deps(bool ENABLE_TC=0);
   void find_assert_deps();
-  void find_implications();
+  fine_timet find_implications();
   void get_minimals();
+
   void print_SSA_steps_infos();
   void print_SSA_steps();
   void print_expr_operands(ostream &out, exprt expr, int indent);
@@ -61,8 +66,8 @@ public:
   string variable_name(string name);
   string variable_name(dstring name);
   void print_dependents(map<string,bool> dependents, ostream &out);
-  bool check_implication(SSA_step_reft &c1, SSA_step_reft &c2);
 
+  pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2);
   bool compare_assertions(SSA_step_reft &a, SSA_step_reft &b);
 
 private:
@@ -82,6 +87,8 @@ private:
 
   vector<SSA_step_reft> asserts;
   unsigned treshold;
+
+  fine_timet impl_timeout;
 
   void convert_delta_SSA(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
   void convert_assignments(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
