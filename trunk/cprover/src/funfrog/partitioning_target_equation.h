@@ -255,7 +255,7 @@ private:
   // Fill in ids of all the child partitions
   void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
 
-  opensmt::InterpolationTree* fill_partition_tree(
+  InterpolationTree* fill_partition_tree(
       partitiont& partition);
 
   // Fills in the SSA_steps_exec_order holding pointers to SSA steps ordered

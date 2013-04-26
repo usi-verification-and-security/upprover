@@ -16,7 +16,12 @@
 #include "symex_assertion_sum.h"
 #include "prop_assertion_sum.h"
 #include "refiner_assertion_sum.h"
+
+#ifdef USE_PERIPLO
+#include "solvers/satcheck_periplo.h"
+#else
 #include "solvers/satcheck_opensmt.h"
+#endif
 
 class summarizing_checkert:public messaget
 {
@@ -65,7 +70,11 @@ protected:
   unsigned long &max_memory_used;
   std::auto_ptr<prop_convt> decider;
   std::auto_ptr<interpolating_solvert> interpolator;
+#ifdef USE_PERIPLO
+  satcheck_periplot* opensmt;
+#else
   satcheck_opensmtt* opensmt;
+#endif
   subst_scenariot omega;
   init_modet init;
   

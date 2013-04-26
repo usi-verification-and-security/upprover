@@ -18,7 +18,11 @@ Author: Ondrej Sery
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
 
+#ifdef USE_PERIPLO
+#include "solvers/satcheck_periplo.h"
+#else
 #include "solvers/satcheck_opensmt.h"
+#endif
 
 /*******************************************************************\
 
@@ -58,7 +62,7 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
     it->vars = vars_after - vars_before;
     std::cout << "    vars: " << it->vars << std::endl <<
             "    clauses: " << it->clauses << std::endl;
-    std::cout << "    last_var: " << dynamic_cast<satcheck_opensmtt&>(prop_conv.prop).get_last_var() << std::endl;
+   // std::cout << "    last_var: " << dynamic_cast<satcheck_opensmtt&>(prop_conv.prop).get_last_var() << std::endl;
 
     unsigned clauses_total = it->clauses;
     unsigned vars_total = it->vars;
@@ -464,7 +468,7 @@ void partitioning_target_equationt::convert_partition_assertions(
             assumption_literal);
     prop_conv.prop.l_set_to_true(tmp);
 
-#   ifdef DEBUG_SSA      
+#   ifdef DEBUG_SSA
     expr_pretty_print(std::cout << "XXX Call END implication: ", partition_iface.callend_symbol);
     for (SSA_stepst::iterator it2 = partition.start_it; it2 != partition.end_it; ++it2) {
       if (it2->is_assume()) {
@@ -687,7 +691,9 @@ void partitioning_target_equationt::extract_interpolants(
     }
     
     if (!partition.is_inline() ||
-            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion))
+            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion)
+   // || partition.get_iface().summary_info.is_recursion_nondet()
+    )
       continue;
     
     valid_tasks++;
@@ -704,7 +710,9 @@ void partitioning_target_equationt::extract_interpolants(
     partition_ifacet ipartition = partition.get_iface();
     
     if (!partition.is_inline() ||
-            (ipartition.assertion_in_subtree && !store_summaries_with_assertion))
+            (ipartition.assertion_in_subtree && !store_summaries_with_assertion)
+    //  || partition.get_iface().summary_info.is_recursion_nondet()
+            )
       continue;
     fill_partition_ids(pid, itp_task[tid++]);
 
@@ -731,12 +739,16 @@ void partitioning_target_equationt::extract_interpolants(
   interpolantst itp_result;
   itp_result.reserve(valid_tasks);
 
+#ifdef USE_PERIPLO
   if (tree_interpolants){
-    opensmt::InterpolationTree *itp_tree = fill_partition_tree(*partitions.begin());
+    InterpolationTree *itp_tree = fill_partition_tree(*partitions.begin());
     interpolator.get_interpolant(itp_tree, itp_task, itp_result);
   } else {
     interpolator.get_interpolant(itp_task, itp_result, reduction_timeout, reduction_loops, reduction_graph);
   }
+#else
+  interpolator.get_interpolant(itp_task, itp_result, reduction_timeout, reduction_loops, reduction_graph);
+#endif
 
   // Interpret the result
   std::vector<symbol_exprt> common_symbs;
@@ -745,7 +757,9 @@ void partitioning_target_equationt::extract_interpolants(
     partitiont& partition = partitions[pid];
 
     if (!partition.is_inline() ||
-            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion))
+            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion)
+        //    || partition.get_iface().summary_info.is_recursion_nondet()
+  )
       continue;
     
     interpolantt& itp = itp_result[tid];
@@ -853,6 +867,8 @@ void partitioning_target_equationt::fill_partition_ids(
   }
 }
 
+
+#ifdef USE_PERIPLO
 /*******************************************************************\
 
 Function: partitioning_target_equationt::fill_partition_tree
@@ -864,21 +880,23 @@ Function: partitioning_target_equationt::fill_partition_tree
  Purpose: Fill a tree from all the child partitions
 
 \*******************************************************************/
-opensmt::InterpolationTree* partitioning_target_equationt::fill_partition_tree(
+InterpolationTree* partitioning_target_equationt::fill_partition_tree(
     partitiont& partition)
 {
-  opensmt::InterpolationTree* itp_tree;
-  itp_tree = new opensmt::InterpolationTree(partition.fle_part_id, partition.fle_part_id); //ToDo: what is nodeId?
+  InterpolationTree* itp_tree;
+  itp_tree = new InterpolationTree(partition.fle_part_id + 1);
 
   // Child partition ids
   for (partition_idst::iterator it = partition.child_ids.begin()++;
           it != partition.child_ids.end(); ++it) {
     partitiont& partition = partitions[*it];
     if (!partition.invalid){
-      opensmt::InterpolationTree* child_tree = fill_partition_tree(partition);
+      InterpolationTree* child_tree = fill_partition_tree(partition);
       (*itp_tree).addChild(child_tree);
     }
   }
 
   return itp_tree;
 }
+
+#endif

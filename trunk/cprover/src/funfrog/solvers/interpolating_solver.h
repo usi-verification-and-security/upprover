@@ -44,7 +44,7 @@ public:
       interpolantst& interpolants,
       double reduction_timeout, int reduction_loops, int reduction_graph)=0;
   
-  virtual void get_interpolant(opensmt::InterpolationTree*, const interpolation_taskt& partition_ids,
+  virtual void get_interpolant(InterpolationTree*, const interpolation_taskt& partition_ids,
     interpolantst& interpolants)=0;
 
   // Is the solver ready for interpolation? I.e., the solver was used to decide

@@ -1,14 +1,14 @@
 /*******************************************************************\
 
-Module: OpenSMT wrapper for propositional logic. Based on
+Module: PeRIPLO wrapper for propositional logic. Based on
 satcheck_minisat.
 
 Author: Ondrej Sery
 
 \*******************************************************************/
 
-#ifndef CPROVER_SATCHECK_OPENSMT_H
-#define CPROVER_SATCHECK_OPENSMT_H
+#ifndef CPROVER_SATCHECK_PERIPLO_H
+#define CPROVER_SATCHECK_PERIPLO_H
 
 #include <vector>
 
@@ -16,14 +16,14 @@ Author: Ondrej Sery
 
 #include "interpolating_solver.h"
 #define PRODUCE_PROOF
-#include "OpenSMTContext.h"
+#include "PeriploContext.h"
 
-class satcheck_opensmtt:public cnf_solvert, public interpolating_solvert
+class satcheck_periplot:public cnf_solvert, public interpolating_solvert
 {
 public:
-  satcheck_opensmtt(int verbosity = 0, bool _dump_queries = false);
+  satcheck_periplot(int verbosity = 0, bool _dump_queries = false);
   
-  virtual ~satcheck_opensmtt() {
+  virtual ~satcheck_periplot() {
     freeSolver();
   }
   
@@ -64,9 +64,9 @@ public:
   {
     std::map<Enode*, icolor_t>* coloring_suggestion;
     coloring_suggestion = new std::map<Enode*, icolor_t>();
-    addColors(symbolsA, opensmt::I_A, coloring_suggestion);
-    addColors(symbolsB, opensmt::I_B, coloring_suggestion);
-    addColors(symbolsAB, opensmt::I_AB, coloring_suggestion);
+    addColors(symbolsA, periplo::I_A, coloring_suggestion);
+    addColors(symbolsB, periplo::I_B, coloring_suggestion);
+    addColors(symbolsAB, periplo::I_AB, coloring_suggestion);
     coloring_suggestions.push_back(coloring_suggestion);
   };
 
@@ -83,8 +83,8 @@ protected:
   unsigned solver_verbosity;
   // Dump all queries?
   bool dump_queries;
-  // OpenSMT API entry point
-  OpenSMTContext* opensmt_ctx;
+  // PeRIPLO API entry point
+  PeriploContext* periplo_ctx;
   // Shortcut for the bool sort;
   Snode* sbool;
   // List of clauses that are part of this partition
@@ -92,24 +92,24 @@ protected:
   // Count of the created partitions (the last one is open until a call to
   // prop_solve occurs)
   unsigned partition_count;
-  // Mapping from variable indices to their E-nodes in OpenSMT
+  // Mapping from variable indices to their E-nodes in PeRIPLO
   std::vector<Enode*> enodes;
   // Helper string for mangling the variable names
   std::string id_str;
   // Can we interpolate?
   bool ready_to_interpolate;
   
-  // Extract interpolant form OpenSMT Egraph
+  // Extract interpolant form PeRIPLO Egraph
   void extract_itp(const Enode* enode, prop_itpt& target_itp) const;
   // Cache of already visited interpolant Enodes
   typedef std::map<enodeid_t, literalt> enode_cachet;
-  // Simple recursive extraction of clauses from OpenSMT Egraph
+  // Simple recursive extraction of clauses from PeRIPLO Egraph
   literalt extract_itp_rec(const Enode* enode, prop_itpt& target_itp, 
     enode_cachet& enode_cache) const;
   
-  // Initialize the OpenSMT context
+  // Initialize the PeRIPLO context
   void initializeSolver();
-  // Free all resources related to OpenSMT
+  // Free all resources related to PeRIPLO
   void freeSolver();
 
   void add_variables();
@@ -120,7 +120,7 @@ protected:
   vector< std::map<Enode*, icolor_t>* > coloring_suggestions;
 
   void addColors(const std::vector<unsigned>& symbols,
-      opensmt::icolor_t color, std::map<Enode*, icolor_t>* coloring_suggestion);
+      icolor_t color, std::map<Enode*, icolor_t>* coloring_suggestion);
 
 # ifdef DEBUG_COLOR_ITP
   std::vector<std::vector<unsigned> > itp_symbols;

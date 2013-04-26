@@ -11,7 +11,6 @@ Author: Ondrej Sery
 
 #include <time_stopping.h>
 #include "function_info.h"
-#include "solvers/satcheck_opensmt.h"
 
 void list_summaries(summary_storet& summary_store, 
         const function_infost& f_infos) 

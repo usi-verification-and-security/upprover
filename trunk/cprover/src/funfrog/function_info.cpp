@@ -10,9 +10,14 @@
 #include "function_info.h"
 #include "summarization_context.h"
 #include "expr_pretty_print.h"
-#include "solvers/satcheck_opensmt.h"
 #include "time_stopping.h"
 #include <fstream>
+
+#ifdef USE_PERIPLO
+#include "solvers/satcheck_periplo.h"
+#else
+#include "solvers/satcheck_opensmt.h"
+#endif
 
 //#define DEBUG_GLOBALS
 
@@ -448,7 +453,12 @@ Function: function_infot::check_implies
 bool function_infot::check_implies(const interpolantt& first, 
         const interpolantt& second)
 {
+#ifdef USE_PERIPLO
+  satcheck_periplot prop_solver;
+#else
   satcheck_opensmtt prop_solver;
+#endif
+
   contextt ctx;
   namespacet ns(ctx);
 

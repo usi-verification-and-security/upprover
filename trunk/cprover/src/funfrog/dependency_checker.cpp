@@ -8,9 +8,14 @@
 #include "partitioning_slice.h"
 #include "dependency_checker.h"
 #include "expr_pretty_print.h"
-#include "solvers/satcheck_opensmt.h"
 #include <sstream>
 #include <map>
+
+#ifdef USE_PERIPLO
+#include "solvers/satcheck_periplo.h"
+#else
+#include "solvers/satcheck_opensmt.h"
+#endif
 
 #define INDEPT false
 #define DEPT true
@@ -50,7 +55,11 @@ void dependency_checkert::do_it(){
 pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
   std::auto_ptr<prop_convt> decider;
+#ifdef USE_PERIPLO
+  satcheck_periplot* opensmt = new satcheck_periplot();
+#else
   satcheck_opensmtt* opensmt = new satcheck_opensmtt();
+#endif
   bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
   deciderp->unbounded_array = bv_pointerst::U_AUTO;
   decider.reset(deciderp);
@@ -273,6 +282,7 @@ fine_timet dependency_checkert::find_implications()
       SSA_step_reft& ass_2 = asserts[j];
       if (compare_assertions(ass_1, ass_2) &&
           assert_deps[ass_1][ass_2] == DEPT){
+        std::cout << "2: " << distance(ass_1, ass_2) << "  "<< treshold <<"\n";
         cout << "Comparing the assertions " <<
     			from_expr(ns, "", ass_1->cond_expr) << " and " <<
     			from_expr(ns, "", ass_2->cond_expr) << endl;

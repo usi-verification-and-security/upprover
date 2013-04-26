@@ -1,6 +1,6 @@
 /*******************************************************************\
 
-Module: OpenSMT wrapper for propositional logic. Based on
+Module: OpenSAT wrapper for propositional logic. Based on
 satcheck_minisat.
 
 Author: Ondrej Sery
@@ -14,35 +14,34 @@ Author: Ondrej Sery
 #include <iosfwd>
 #include <ios>
 
-#include "satcheck_opensmt.h"
+#include "satcheck_periplo.h"
 
-#ifndef HAVE_OPENSMT
-//#error "Expected HAVE_OPENSMT"
+#ifndef HAVE_OPENSAT
+//#error "Expected HAVE_OPENSAT"
 #endif
 
-//#define MAX_OPENSMT_PARTITIONS 63
+//#define MAX_OPENSAT_PARTITIONS 63
 
 static unsigned dump_count = 0;
 
-satcheck_opensmtt::satcheck_opensmtt(int verbosity, bool _dump_queries) :
-  solver_verbosity(verbosity), dump_queries (_dump_queries), opensmt_ctx(NULL), 
+satcheck_periplot::satcheck_periplot(int verbosity, bool _dump_queries) :
+  solver_verbosity(verbosity), dump_queries (_dump_queries), periplo_ctx(NULL),
   partition_root_enode(NULL), partition_count(0), ready_to_interpolate(false)
 {
   initializeSolver();
 }
 
-// Initialize the OpenSMT context
-void satcheck_opensmtt::initializeSolver() 
+// Initialize the OpenSAT context
+void satcheck_periplot::initializeSolver()
 {
-  if (opensmt_ctx != NULL) {
+  if (periplo_ctx != NULL) {
     freeSolver();
   }
+  periplo_ctx = new PeriploContext();
+  periplo_ctx->SetLogic("QF_BOOL");
+  //periplo_ctx->SetOption(":verbosity", "1");
 
-  opensmt_ctx = new OpenSMTContext();
-  opensmt_ctx->SetLogic("QF_BOOL");
-  //opensmt_ctx->SetOption(":verbosity", "1");
-
-  SMTConfig& config = opensmt_ctx->getConfig();
+  SATConfig& config = periplo_ctx->getConfig();
   config.setProduceModels();
   config.setProduceInter();
   
@@ -55,20 +54,20 @@ void satcheck_opensmtt::initializeSolver()
   //config.proof_reduce_while_reordering = 0;
   config.proof_set_inter_algo = 0; // McMillan -- the strongest interpolant
 
-  sbool = opensmt_ctx->mkSortBool();
+  sbool = periplo_ctx->mkSortBool();
 }
 
-// Free all resources related to OpenSMT
-void satcheck_opensmtt::freeSolver()
+// Free all resources related to OpenSAT
+void satcheck_periplot::freeSolver()
 {
-    delete opensmt_ctx;
-    opensmt_ctx = NULL;
+    delete periplo_ctx;
+    periplo_ctx = NULL;
     sbool = NULL;
 }
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::convert
+Function: satcheck_periplot::convert
 
   Inputs:
 
@@ -78,7 +77,7 @@ Function: satcheck_opensmtt::convert
 
 \*******************************************************************/
 
-Enode* satcheck_opensmtt::convert(const bvt &bv)
+Enode* satcheck_periplot::convert(const bvt &bv)
 {
   Enode* tmp = NULL;
   for(unsigned i=0; i<bv.size(); i++) {
@@ -87,11 +86,11 @@ Enode* satcheck_opensmtt::convert(const bvt &bv)
     Enode* var = enodes[lit.var_no()];
 
     if (lit.sign()) {
-      var = opensmt_ctx->mkCons(var, NULL);
-      var = opensmt_ctx->mkNot(var);
+      var = periplo_ctx->mkCons(var, NULL);
+      var = periplo_ctx->mkNot(var);
     }
 
-    tmp = opensmt_ctx->mkCons(var, tmp);
+    tmp = periplo_ctx->mkCons(var, tmp);
   }
 
   return tmp;
@@ -99,7 +98,7 @@ Enode* satcheck_opensmtt::convert(const bvt &bv)
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::new_partition
+Function: satcheck_periplot::new_partition
 
   Inputs:
 
@@ -110,7 +109,7 @@ Function: satcheck_opensmtt::new_partition
  next call of new_partition() will be part of this partition.
 
 \*******************************************************************/
-fle_part_idt satcheck_opensmtt::new_partition()
+fle_part_idt satcheck_periplot::new_partition()
 {
 //Allowing partitions for havoced functions and fully slices ones
 //
@@ -127,11 +126,11 @@ fle_part_idt satcheck_opensmtt::new_partition()
   if (partition_root_enode != NULL)
     close_partition();
 
-# ifdef MAX_OPENSMT_PARTITIONS
-  if (partition_count == MAX_OPENSMT_PARTITIONS) {
+# ifdef MAX_OPENSAT_PARTITIONS
+  if (partition_count == MAX_OPENSAT_PARTITIONS) {
     std::string s =
-            "OpenSMT does not support more than " +
-            i2string(MAX_OPENSMT_PARTITIONS) + "partitions so far.";
+            "OpenSAT does not support more than " +
+            i2string(MAX_OPENSAT_PARTITIONS) + "partitions so far.";
     throw s.c_str();
   }
 # endif
@@ -142,7 +141,7 @@ fle_part_idt satcheck_opensmtt::new_partition()
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::get_interpolant
+Function: satcheck_periplot::get_interpolant
 
   Inputs:
 
@@ -153,7 +152,7 @@ Function: satcheck_opensmtt::get_interpolant
  the formula with an UNSAT result.
 
 \*******************************************************************/
-void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids,
+void satcheck_periplot::get_interpolant(const interpolation_taskt& partition_ids,
     interpolantst& interpolants,
     double reduction_timeout, int reduction_loops, int reduction_graph)
 {
@@ -163,48 +162,49 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
   std::vector<Enode*> itp_enodes;
   itp_enodes.reserve(partition_ids.size());
 
-  opensmt_ctx->createProofGraph();
+  periplo_ctx->createProofGraph();
 
   // Setup proof reduction
   bool do_reduction = false;
 
-  if (reduction_timeout > 0){
-    opensmt_ctx->setReductionTime(reduction_timeout);
-    do_reduction = true;
-  }
+//  if (reduction_timeout > 0){
+//    periplo_ctx->setReductionTime(reduction_timeout);
+//    do_reduction = true;
+//  }
 
   if (reduction_loops > 0){
-    opensmt_ctx->setNumReductionLoops(reduction_loops);
+    periplo_ctx->setNumReductionLoops(reduction_loops);
     do_reduction = true;
   }
 
   if (reduction_graph > 0){
-    opensmt_ctx->setNumGraphTraversals(reduction_graph);
+    periplo_ctx->setNumGraphTraversals(reduction_graph);
     do_reduction = true;
   }
 
   if (do_reduction){
-    opensmt_ctx->reduceProofGraph();
+    periplo_ctx->reduceProofGraph();
   }
 
   // FIXME: dirty cast
   std::vector< std::map<Enode*, icolor_t>* > *ptr;
   ptr = const_cast< std::vector< std::map<Enode*, icolor_t>* > * >(&coloring_suggestions);
   if ((*ptr).size() != 0){
-    opensmt_ctx->setColoringSuggestions(ptr);
-    opensmt_ctx->setColoringSuggestionsInterpolation();
+    periplo_ctx->setColoringSuggestions(ptr);
+    periplo_ctx->setColoringSuggestionsInterpolation();
   } else {
-    opensmt_ctx->setPudlakInterpolation();
+    periplo_ctx->setMcMillanInterpolation();
   }
-  opensmt_ctx->GetInterpolants(partition_ids, itp_enodes);
-  opensmt_ctx->deleteProofGraph();
+  periplo_ctx->setInterpolantCheck(); // TODO: make parametrizable
+  periplo_ctx->getInterpolants(partition_ids, itp_enodes);
+  periplo_ctx->deleteProofGraph();
 
   for (std::vector<Enode*>::iterator it = itp_enodes.begin();
           it != itp_enodes.end(); ++it) {
     Enode* node = (*it);
 
 #   if 0
-    std::cout << "OpenSMT interpolant: ";
+    std::cout << "Periplo interpolant: ";
     node->print(std::cout);
     std::cout << std::endl;
 #   endif
@@ -231,7 +231,7 @@ void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids
   }
 }
 
-void satcheck_opensmtt::get_interpolant(InterpolationTree* tree, const interpolation_taskt& partition_ids,
+void satcheck_periplot::get_interpolant(InterpolationTree* tree, const interpolation_taskt& partition_ids,
     interpolantst& interpolants)
 {
   assert(ready_to_interpolate);
@@ -239,27 +239,27 @@ void satcheck_opensmtt::get_interpolant(InterpolationTree* tree, const interpola
   std::vector<Enode*> itp_enodes;
   itp_enodes.reserve(partition_ids.size());
 
-  opensmt_ctx->createProofGraph();
+  periplo_ctx->createProofGraph();
 
   // FIXME: dirty cast
   std::vector< std::map<Enode*, icolor_t>* > *ptr;
   ptr = const_cast< std::vector< std::map<Enode*, icolor_t>* > * >(&coloring_suggestions);
   if ((*ptr).size() != 0){
-    opensmt_ctx->setColoringSuggestions(ptr);
-    opensmt_ctx->setColoringSuggestionsInterpolation();
+    periplo_ctx->setColoringSuggestions(ptr);
+    periplo_ctx->setColoringSuggestionsInterpolation();
   } else {
-    opensmt_ctx->setPudlakInterpolation();
+    periplo_ctx->setMcMillanInterpolation();
   }
-
-  opensmt_ctx->getTreeInterpolants(tree, partition_ids, itp_enodes);
-  opensmt_ctx->deleteProofGraph();
+  periplo_ctx->setInterpolantCheck(); // TODO: make parametrizable
+  periplo_ctx->getTreeInterpolants(tree, itp_enodes);
+  periplo_ctx->deleteProofGraph();
 
   for (std::vector<Enode*>::iterator it = itp_enodes.begin();
           it != itp_enodes.end(); ++it) {
     Enode* node = (*it);
 
 #   if 0
-    std::cout << "OpenSMT interpolant: ";
+    std::cout << "Periplo interpolant: ";
     node->print(std::cout);
     std::cout << std::endl;
 #   endif
@@ -288,7 +288,7 @@ void satcheck_opensmtt::get_interpolant(InterpolationTree* tree, const interpola
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::can_interpolate
+Function: satcheck_periplot::can_interpolate
 
   Inputs:
 
@@ -298,14 +298,14 @@ Function: satcheck_opensmtt::can_interpolate
  decide a problem and the result was UNSAT
 
 \*******************************************************************/
-bool satcheck_opensmtt::can_interpolate() const 
+bool satcheck_periplot::can_interpolate() const
 {
   return ready_to_interpolate;
 }
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::l_get
+Function: satcheck_periplot::l_get
 
   Inputs:
 
@@ -315,7 +315,7 @@ Function: satcheck_opensmtt::l_get
 
 \*******************************************************************/
 
-tvt satcheck_opensmtt::l_get(literalt a) const
+tvt satcheck_periplot::l_get(literalt a) const
 {
   if (a.is_true())
     return tvt(true);
@@ -323,7 +323,7 @@ tvt satcheck_opensmtt::l_get(literalt a) const
     return tvt(false);
 
   tvt tvtresult(tvt::TV_UNKNOWN);
-  lbool lresult = opensmt_ctx->getModel(enodes[a.var_no()]);
+  lbool lresult = periplo_ctx->getModel(enodes[a.var_no()]);
 
   if (lresult == l_True)
     tvtresult = tvt(true);
@@ -340,7 +340,7 @@ tvt satcheck_opensmtt::l_get(literalt a) const
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::solver_text
+Function: satcheck_periplot::solver_text
 
   Inputs:
 
@@ -350,14 +350,14 @@ Function: satcheck_opensmtt::solver_text
 
 \*******************************************************************/
 
-const std::string satcheck_opensmtt::solver_text()
+const std::string satcheck_periplot::solver_text()
 {
-  return "OpenSMT - propositional logic";
+  return "OpenSAT - propositional logic";
 }
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::add_variables
+Function: satcheck_periplot::add_variables
 
   Inputs:
 
@@ -367,15 +367,15 @@ Function: satcheck_opensmtt::add_variables
 
 \*******************************************************************/
 
-void satcheck_opensmtt::add_variables()
+void satcheck_periplot::add_variables()
 {
   enodes.reserve(no_variables());
   
   while (enodes.size() < no_variables()) {
     increase_id();
     const char* vid = id_str.c_str();
-    opensmt_ctx->DeclareFun(vid, NULL, sbool);
-    Enode* tmp = opensmt_ctx->mkVar(vid, true);
+    periplo_ctx->DeclareFun(vid, NULL, sbool);
+    Enode* tmp = periplo_ctx->mkVar(vid, true);
     enodes.push_back(tmp);
     assert (decode_id(vid) == enodes.size()-1);
   }
@@ -383,7 +383,7 @@ void satcheck_opensmtt::add_variables()
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::lcnf
+Function: satcheck_periplot::lcnf
 
   Inputs:
 
@@ -393,7 +393,7 @@ Function: satcheck_opensmtt::lcnf
 
 \*******************************************************************/
 
-void satcheck_opensmtt::lcnf(const bvt &bv)
+void satcheck_periplot::lcnf(const bvt &bv)
 {
   bvt new_bv;
   Enode* tmp = NULL;
@@ -405,22 +405,22 @@ void satcheck_opensmtt::lcnf(const bvt &bv)
   if(new_bv.empty())
   {
     std::cerr << "WARNING: Outputing an empty clause -> most probably an error due to pointers." << std::endl;
-    tmp = opensmt_ctx->mkFalse();
-    partition_root_enode = opensmt_ctx->mkCons(tmp, partition_root_enode);
+    tmp = periplo_ctx->mkFalse();
+    partition_root_enode = periplo_ctx->mkCons(tmp, partition_root_enode);
     return;
   }
 
   add_variables();
   tmp = convert(new_bv);
-  tmp = opensmt_ctx->mkOr(tmp);
-  partition_root_enode = opensmt_ctx->mkCons(tmp, partition_root_enode);
+  tmp = periplo_ctx->mkOr(tmp);
+  partition_root_enode = periplo_ctx->mkCons(tmp, partition_root_enode);
 
   clause_counter++;
 }
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::prop_solve
+Function: satcheck_periplot::prop_solve
 
   Inputs:
 
@@ -430,7 +430,7 @@ Function: satcheck_opensmtt::prop_solve
 
 \*******************************************************************/
 
-propt::resultt satcheck_opensmtt::prop_solve() {
+propt::resultt satcheck_periplot::prop_solve() {
   assert(status != ERROR);
   ready_to_interpolate = false;
 
@@ -441,7 +441,7 @@ propt::resultt satcheck_opensmtt::prop_solve() {
     messaget::status(msg);
   }
 # ifndef NDEBUG
-  std::cout << "OpenSMT - CNF formula (" << _no_variables << " vars., " <<
+  std::cout << "OpenSAT - CNF formula (" << _no_variables << " vars., " <<
           clause_counter << " cl.)" << std::endl;
 # endif
 
@@ -455,33 +455,33 @@ propt::resultt satcheck_opensmtt::prop_solve() {
   {
     std::string dump_file("__sat_query");
     dump_file += i2string(dump_count);
-    dump_file += ".smt2";
-    opensmt_ctx->DumpToFileFunFrog(dump_file.c_str());
+    dump_file += ".SAT2";
+    periplo_ctx->DumpToFileFunFrog(dump_file.c_str());
     dump_file = "__sat_config";
     dump_file += i2string(dump_count);
     dump_file += ".cfg";
     std::ofstream os;
     os.open(dump_file.c_str());
-    opensmt_ctx->PrintConfig(os);
+    periplo_ctx->PrintConfig(os);
     os.close();
     ++dump_count;
   }
 
   std::string msg;
 
-  opensmt_ctx->addCheckSAT();
-  opensmt_ctx->executeCommands();
-  if (opensmt_ctx->getStatus() == l_True) {
+  periplo_ctx->addCheckSAT();
+  periplo_ctx->executeCommands();
+  if (periplo_ctx->getStatus() == l_True) {
     msg = "SAT checker: negated claim is SATISFIABLE, i.e., does not hold";
     messaget::status(msg);
     status = SAT;
     return P_SATISFIABLE;
-  } else if (opensmt_ctx->getStatus() == l_False) {
+  } else if (periplo_ctx->getStatus() == l_False) {
     ready_to_interpolate = true;
     msg = "SAT checker: negated claim is UNSATISFIABLE, i.e., holds";
     messaget::status(msg);
   } else {
-    throw "Unexpected OpenSMT result.";
+    throw "Unexpected OpenSAT result.";
   }
 
   status = UNSAT;
@@ -490,7 +490,7 @@ propt::resultt satcheck_opensmtt::prop_solve() {
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::set_assignment
+Function: satcheck_periplot::set_assignment
 
   Inputs:
 
@@ -500,14 +500,14 @@ Function: satcheck_opensmtt::set_assignment
 
 \*******************************************************************/
 
-void satcheck_opensmtt::set_assignment(literalt a, bool value)
+void satcheck_periplot::set_assignment(literalt a, bool value)
 {
   throw "Unsupported operation";
 }
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::is_in_conflict
+Function: satcheck_periplot::is_in_conflict
 
   Inputs:
 
@@ -517,14 +517,14 @@ Function: satcheck_opensmtt::is_in_conflict
 
 \*******************************************************************/
 
-bool satcheck_opensmtt::is_in_conflict(literalt a) const
+bool satcheck_periplot::is_in_conflict(literalt a) const
 {
   throw "Unsupported operation";
 }
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::set_assumptions
+Function: satcheck_periplot::set_assumptions
 
   Inputs:
 
@@ -534,14 +534,14 @@ Function: satcheck_opensmtt::set_assumptions
 
 \*******************************************************************/
 
-void satcheck_opensmtt::set_assumptions(const bvt &bv)
+void satcheck_periplot::set_assumptions(const bvt &bv)
 {
   throw "Unsupported operation";
 }
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::increase_id
+Function: satcheck_periplot::increase_id
 
   Inputs:
 
@@ -551,7 +551,7 @@ Function: satcheck_opensmtt::increase_id
 
 \*******************************************************************/
 
-void satcheck_opensmtt::increase_id()
+void satcheck_periplot::increase_id()
 {
   unsigned i = 0;
 
@@ -568,7 +568,7 @@ void satcheck_opensmtt::increase_id()
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::decode_id
+Function: satcheck_periplot::decode_id
 
   Inputs:
 
@@ -578,7 +578,7 @@ Function: satcheck_opensmtt::decode_id
 
 \*******************************************************************/
 
-unsigned satcheck_opensmtt::decode_id(const char* id) const
+unsigned satcheck_periplot::decode_id(const char* id) const
 {
   unsigned base = 1;
   unsigned i = 0;
@@ -592,7 +592,7 @@ unsigned satcheck_opensmtt::decode_id(const char* id) const
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::close_partition
+Function: satcheck_periplot::close_partition
 
   Inputs:
 
@@ -603,28 +603,28 @@ Function: satcheck_opensmtt::close_partition
 
 \*******************************************************************/
 
-void satcheck_opensmtt::close_partition()
+void satcheck_periplot::close_partition()
 {
   assert(partition_root_enode != NULL);
-  partition_root_enode = opensmt_ctx->mkAnd(partition_root_enode);
-  opensmt_ctx->Assert(partition_root_enode);
+  partition_root_enode = periplo_ctx->mkAnd(partition_root_enode);
+  periplo_ctx->Assert(partition_root_enode);
   partition_root_enode = NULL;
 }
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::extract_itp
+Function: satcheck_periplot::extract_itp
 
   Inputs:
 
  Outputs:
 
- Purpose: Extracts the propositional interpolant from the OpenSMT
+ Purpose: Extracts the propositional interpolant from the OpenSAT
  E-node representation.
 
 \*******************************************************************/
 
-void satcheck_opensmtt::extract_itp(const Enode* enode,
+void satcheck_periplot::extract_itp(const Enode* enode,
   prop_itpt& target_itp) const
 {
   enode_cachet cache;
@@ -634,18 +634,18 @@ void satcheck_opensmtt::extract_itp(const Enode* enode,
 
 /*******************************************************************\
 
-Function: satcheck_opensmtt::extract_itp_rec
+Function: satcheck_periplot::extract_itp_rec
 
   Inputs:
 
  Outputs:
 
- Purpose: Extracts the propositional interpolant from the OpenSMT
+ Purpose: Extracts the propositional interpolant from the OpenSAT
  E-node representation. Simple recursive implementation.
 
 \*******************************************************************/
 
-literalt satcheck_opensmtt::extract_itp_rec(const Enode* enode,
+literalt satcheck_periplot::extract_itp_rec(const Enode* enode,
   prop_itpt& target_itp, enode_cachet& enode_cache) const
 {
   enode_cachet::const_iterator cached_it = enode_cache.find(enode->getId());
@@ -709,20 +709,20 @@ literalt satcheck_opensmtt::extract_itp_rec(const Enode* enode,
   return result;
 }
 
-void satcheck_opensmtt::addColors(const std::vector<unsigned>& symbols,
-    opensmt::icolor_t color, std::map<Enode*, icolor_t>* coloring_suggestion)
+void satcheck_periplot::addColors(const std::vector<unsigned>& symbols,
+    icolor_t color, std::map<Enode*, icolor_t>* coloring_suggestion)
 {
   for (unsigned i = 0; i < symbols.size(); i++){
     (*coloring_suggestion)[enodes[symbols[i]]] = color;
   }
 }
 
-void satcheck_opensmtt::addBitBlastBinding(boolbv_mapt::literal_mapt& map){
+void satcheck_periplot::addBitBlastBinding(boolbv_mapt::literal_mapt& map){
   std::vector<Enode*> v;
   for (unsigned i = 0; i < map.size(); i++){
     if(map[i].l.var_no() < enodes.size()){
       v.push_back(enodes[map[i].l.var_no()]);
     }
   }
-  opensmt_ctx->addBitBlastBinding(v);
+  periplo_ctx->addBitBlastBinding(v);
 }
