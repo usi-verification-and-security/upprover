@@ -74,6 +74,11 @@ GCCFLAGS += -DUSE_PERIPLO
 
 all: evolcheck$(EXEEXT) sumo$(EXEEXT)
 
+#Replace this path
+PERIPLO_SRCDIR := /home/simone/Programs/eclipseworkspace/PeRIPLO
+
+PERIPLO_INCLUDE := -I$(PERIPLO_SRCDIR)/src -I$(PERIPLO_SRCDIR)/src/minisat -I$(PERIPLO_SRCDIR)/src/minisat/mtl -I$(PERIPLO_SRCDIR)/src/minisat/core -I$(PERIPLO_SRCDIR)/src/satsolvers -I$(PERIPLO_SRCDIR)/src/simplifiers -I$(PERIPLO_SRCDIR)/src/common -I$(PERIPLO_SRCDIR)/src/egraph -I$(PERIPLO_SRCDIR)/src/sorts -I$(PERIPLO_SRCDIR)/src/cnfizers -I$(PERIPLO_SRCDIR)/src/proof -I$(PERIPLO_SRCDIR)/src/api
+
 INCLUDES := $(PERIPLO_INCLUDE) -I .. -I ../util
 
 ifdef MODULE_BV_REFINEMENT
@@ -86,7 +91,9 @@ ifdef MODULE_CPP
   CXXFLAGS += -DHAVE_CPP
 endif
 
-LIBS := -L/home/loris/libs/lib 
+#Replace this path
+LIBS := -L/home/simone/Programs/eclipseworkspace/PeRIPLO/opt_not/src/.libs
+
 
 ###############################################################################
 
