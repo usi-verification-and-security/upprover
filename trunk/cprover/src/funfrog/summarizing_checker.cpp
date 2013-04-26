@@ -94,7 +94,10 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 #ifdef USE_PERIPLO
     opensmt = new satcheck_periplot(
         options.get_int_option("verbose-solver"),
-        options.get_bool_option("save-queries"));
+        options.get_bool_option("save-queries"),
+        options.get_int_option("reduce-proof-loops"),
+        options.get_int_option("reduce-proof-graph"),
+        options.get_bool_option("tree-interpolants"));
 #else
     opensmt = new satcheck_opensmtt(
         options.get_int_option("verbose-solver"),
@@ -171,6 +174,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   return end;
 }
 
+// Useless method. TODO: clean
 double summarizing_checkert::compute_reduction_timeout(double solving_time)
 {
   double red_timeout = 0;
@@ -210,9 +214,7 @@ void summarizing_checkert::extract_interpolants (prop_assertion_sumt& prop, part
 
   double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
 
-  equation.extract_interpolants(*interpolator, *decider, itp_map,
-      options.get_bool_option("tree-interpolants"), red_timeout,
-      options.get_int_option("reduce-proof-loops"), options.get_int_option("reduce-proof-graph"));
+  equation.extract_interpolants(*interpolator, *decider, itp_map);
 
   after=current_time();
   status(std::string("INTERPOLATION TIME: ") + time2string(after-before));

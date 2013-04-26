@@ -357,10 +357,10 @@ int funfrog_parseoptionst::doit()
     return true;
   }
 
-  if (cmdline.isset("reduce-proof-graph") && cmdline.isset("reduce-proof-time")){
-    status("Please set either ratio or time for reduction or number of proof traversals.");
-    return false;
-  }
+//  if (cmdline.isset("reduce-proof-graph") && cmdline.isset("reduce-proof-time")){
+//    status("Please set either ratio or time for reduction or number of proof traversals.");
+//    return false;
+//  }
 
   if(check_function_summarization(ns, goto_functions, stats_dir))
     return 1;
@@ -450,9 +450,13 @@ void funfrog_parseoptionst::help()
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
 
-  "\nOpenSMT proof options:\n"
-  "--reduce-proof-time <fraction> use up to <fraction> of SAT solving time\n"
-  "                               to reduce proof --> smaller summaries\n"
+  "\nOpenSMT options :\n"
+  "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
+
+#ifdef USE_PERIPLO
+  "\nPeRIPLO options (only if compiled):\n"
+  //  "--reduce-proof-time <fraction> use up to <fraction> of SAT solving time\n"
+  //  "                               to reduce proof --> smaller summaries\n"
   "--reduce-proof-graph <int>     use <int> graph traversals for each global loop\n"
   "                                               --> smaller summaries\n"
   "--reduce-proof-loops <int>     use <int> global reduction loops\n"
@@ -461,8 +465,8 @@ void funfrog_parseoptionst::help()
   "--color-proof <mode>:          try different coloring strategies:\n"
   "  0                            random\n"
   "  1                            from external file \"__common\"\n"
-  "  2                            TBD"
-  "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
+  "  2                            TBD\n"
+#endif
 
   "\nRefinement options:\n"
   "--refine-mode <mode>:\n"

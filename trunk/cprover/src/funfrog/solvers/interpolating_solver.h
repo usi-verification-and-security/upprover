@@ -41,11 +41,14 @@ public:
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants,
-      double reduction_timeout, int reduction_loops, int reduction_graph)=0;
+      interpolantst& interpolants)=0;
   
+# ifdef USE_PERIPLO
   virtual void get_interpolant(InterpolationTree*, const interpolation_taskt& partition_ids,
     interpolantst& interpolants)=0;
+
+  virtual bool is_tree_interpolants() const=0;
+# endif
 
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT
@@ -55,6 +58,8 @@ public:
       const std::vector<unsigned>& symbolsAB)=0;
 
   virtual void addBitBlastBinding(boolbv_mapt::literal_mapt& map)=0;
+
+
 
 # ifdef DEBUG_COLOR_ITP
   virtual std::vector<unsigned>& get_itp_symb(unsigned i)=0;

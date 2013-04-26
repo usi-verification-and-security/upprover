@@ -51,10 +51,6 @@ public:
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants,
-      double reduction_timeout, int reduction_loops, int reduction_graph);
-  virtual void get_interpolant(InterpolationTree*,
-      const interpolation_taskt& partition_ids,
       interpolantst& interpolants);
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT

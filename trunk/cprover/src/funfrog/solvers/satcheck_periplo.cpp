@@ -24,8 +24,11 @@ Author: Ondrej Sery
 
 static unsigned dump_count = 0;
 
-satcheck_periplot::satcheck_periplot(int verbosity, bool _dump_queries) :
-  solver_verbosity(verbosity), dump_queries (_dump_queries), periplo_ctx(NULL),
+satcheck_periplot::satcheck_periplot(int verbosity, bool _dump_queries,
+    int _reduction_loops, int _reduction_graph, bool _tree_interpolation) :
+  solver_verbosity(verbosity), dump_queries (_dump_queries),
+  reduction_loops(_reduction_loops), reduction_graph(_reduction_graph), tree_interpolation(_tree_interpolation),
+  periplo_ctx(NULL),
   partition_root_enode(NULL), partition_count(0), ready_to_interpolate(false)
 {
   initializeSolver();
@@ -138,6 +141,37 @@ fle_part_idt satcheck_periplot::new_partition()
   return partition_count++;
 }
 
+/*******************************************************************\
+
+Function: satcheck_periplot::setup_reduction
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Set up corresponded parameters in the interpolating context
+
+\*******************************************************************/
+void satcheck_periplot::setup_reduction(){
+std::cout << reduction_loops << " " << reduction_graph <<"\n";
+
+  // Setup proof reduction
+  bool do_reduction = false;
+
+  if (reduction_loops > 0){
+    periplo_ctx->setNumReductionLoops(reduction_loops);
+    do_reduction = true;
+  }
+
+  if (reduction_graph > 0){
+    periplo_ctx->setNumGraphTraversals(reduction_graph);
+    do_reduction = true;
+  }
+
+  if (do_reduction){
+    periplo_ctx->reduceProofGraph();
+  }
+}
 
 /*******************************************************************\
 
@@ -153,38 +187,16 @@ Function: satcheck_periplot::get_interpolant
 
 \*******************************************************************/
 void satcheck_periplot::get_interpolant(const interpolation_taskt& partition_ids,
-    interpolantst& interpolants,
-    double reduction_timeout, int reduction_loops, int reduction_graph)
+    interpolantst& interpolants)
 {
   assert(ready_to_interpolate);
-  assert(reduction_timeout == 0 || reduction_graph == 0);
 
   std::vector<Enode*> itp_enodes;
   itp_enodes.reserve(partition_ids.size());
 
   periplo_ctx->createProofGraph();
 
-  // Setup proof reduction
-  bool do_reduction = false;
-
-//  if (reduction_timeout > 0){
-//    periplo_ctx->setReductionTime(reduction_timeout);
-//    do_reduction = true;
-//  }
-
-  if (reduction_loops > 0){
-    periplo_ctx->setNumReductionLoops(reduction_loops);
-    do_reduction = true;
-  }
-
-  if (reduction_graph > 0){
-    periplo_ctx->setNumGraphTraversals(reduction_graph);
-    do_reduction = true;
-  }
-
-  if (do_reduction){
-    periplo_ctx->reduceProofGraph();
-  }
+  setup_reduction();
 
   // FIXME: dirty cast
   std::vector< std::map<Enode*, icolor_t>* > *ptr;
@@ -240,6 +252,8 @@ void satcheck_periplot::get_interpolant(InterpolationTree* tree, const interpola
   itp_enodes.reserve(partition_ids.size());
 
   periplo_ctx->createProofGraph();
+
+  setup_reduction();
 
   // FIXME: dirty cast
   std::vector< std::map<Enode*, icolor_t>* > *ptr;

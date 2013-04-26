@@ -386,7 +386,10 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
 #ifdef USE_PERIPLO
     opensmt = new satcheck_periplot(
         options.get_int_option("verbose-solver"),
-        options.get_bool_option("save-queries"));
+        options.get_bool_option("save-queries"),
+        options.get_int_option("reduce-proof-loops"),
+        options.get_int_option("reduce-proof-graph"),
+        options.get_bool_option("tree-interpolants"));
 #else
     opensmt = new satcheck_opensmtt(
         options.get_int_option("verbose-solver"),

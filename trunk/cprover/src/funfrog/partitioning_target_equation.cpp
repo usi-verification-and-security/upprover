@@ -666,8 +666,7 @@ Function: partitioning_target_equationt::extract_interpolants
 \*******************************************************************/
 void partitioning_target_equationt::extract_interpolants(
   interpolating_solvert& interpolator, const prop_convt& decider,
-  interpolant_mapt& interpolant_map, bool tree_interpolants,
-    double reduction_timeout, int reduction_loops, int reduction_graph)
+  interpolant_mapt& interpolant_map)
 {
   // Prepare the interpolation task. NOTE: ignore the root partition!
   unsigned valid_tasks = 0;
@@ -740,14 +739,14 @@ void partitioning_target_equationt::extract_interpolants(
   itp_result.reserve(valid_tasks);
 
 #ifdef USE_PERIPLO
-  if (tree_interpolants){
+  if (interpolator.is_tree_interpolants()){
     InterpolationTree *itp_tree = fill_partition_tree(*partitions.begin());
     interpolator.get_interpolant(itp_tree, itp_task, itp_result);
   } else {
-    interpolator.get_interpolant(itp_task, itp_result, reduction_timeout, reduction_loops, reduction_graph);
+    interpolator.get_interpolant(itp_task, itp_result);
   }
 #else
-  interpolator.get_interpolant(itp_task, itp_result, reduction_timeout, reduction_loops, reduction_graph);
+  interpolator.get_interpolant(itp_task, itp_result);
 #endif
 
   // Interpret the result

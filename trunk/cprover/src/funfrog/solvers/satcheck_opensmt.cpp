@@ -154,84 +154,6 @@ Function: satcheck_opensmtt::get_interpolant
 
 \*******************************************************************/
 void satcheck_opensmtt::get_interpolant(const interpolation_taskt& partition_ids,
-    interpolantst& interpolants,
-    double reduction_timeout, int reduction_loops, int reduction_graph)
-{
-  assert(ready_to_interpolate);
-  assert(reduction_timeout == 0 || reduction_graph == 0);
-
-  std::vector<Enode*> itp_enodes;
-  itp_enodes.reserve(partition_ids.size());
-
-  opensmt_ctx->createProofGraph();
-
-  // Setup proof reduction
-  bool do_reduction = false;
-
-  if (reduction_timeout > 0){
-    opensmt_ctx->setReductionTime(reduction_timeout);
-    do_reduction = true;
-  }
-
-  if (reduction_loops > 0){
-    opensmt_ctx->setNumReductionLoops(reduction_loops);
-    do_reduction = true;
-  }
-
-  if (reduction_graph > 0){
-    opensmt_ctx->setNumGraphTraversals(reduction_graph);
-    do_reduction = true;
-  }
-
-  if (do_reduction){
-    opensmt_ctx->reduceProofGraph();
-  }
-
-  // FIXME: dirty cast
-  std::vector< std::map<Enode*, icolor_t>* > *ptr;
-  ptr = const_cast< std::vector< std::map<Enode*, icolor_t>* > * >(&coloring_suggestions);
-  if ((*ptr).size() != 0){
-    opensmt_ctx->setColoringSuggestions(ptr);
-    opensmt_ctx->setColoringSuggestionsInterpolation();
-  } else {
-    opensmt_ctx->setPudlakInterpolation();
-  }
-  opensmt_ctx->GetInterpolants(partition_ids, itp_enodes);
-  opensmt_ctx->deleteProofGraph();
-
-  for (std::vector<Enode*>::iterator it = itp_enodes.begin();
-          it != itp_enodes.end(); ++it) {
-    Enode* node = (*it);
-
-#   if 0
-    std::cout << "OpenSMT interpolant: ";
-    node->print(std::cout);
-    std::cout << std::endl;
-#   endif
-
-    prop_itpt itp;
-
-#   ifdef DEBUG_COLOR_ITP
-    current_itp = new std::vector<unsigned> ();
-#   endif
-
-    extract_itp(node, itp);
-
-#   ifdef DEBUG_COLOR_ITP
-    itp_symbols.push_back(*current_itp);
-#   endif
-
-#   if 0
-    std::cout << "CProver stored interpolant: ";
-    itp.print(std::cout);
-#   endif
-
-    interpolants.push_back(prop_itpt());
-    interpolants.back().swap(itp);
-  }
-}
-
-void satcheck_opensmtt::get_interpolant(InterpolationTree* tree, const interpolation_taskt& partition_ids,
     interpolantst& interpolants)
 {
   assert(ready_to_interpolate);
@@ -250,8 +172,7 @@ void satcheck_opensmtt::get_interpolant(InterpolationTree* tree, const interpola
   } else {
     opensmt_ctx->setPudlakInterpolation();
   }
-
-  opensmt_ctx->getTreeInterpolants(tree, partition_ids, itp_enodes);
+  opensmt_ctx->GetInterpolants(partition_ids, itp_enodes);
   opensmt_ctx->deleteProofGraph();
 
   for (std::vector<Enode*>::iterator it = itp_enodes.begin();

@@ -21,7 +21,7 @@ Author: Ondrej Sery
 class satcheck_periplot:public cnf_solvert, public interpolating_solvert
 {
 public:
-  satcheck_periplot(int verbosity = 0, bool _dump_queries = false);
+  satcheck_periplot(int verbosity = 0, bool _dump_queries = false, int _reduction_loops = 0, int _reduction_graph = 0 , bool _tree_interpolation = 0);
   
   virtual ~satcheck_periplot() {
     freeSolver();
@@ -51,14 +51,17 @@ public:
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants,
-      double reduction_timeout, int reduction_loops, int reduction_graph);
+      interpolantst& interpolants);
   virtual void get_interpolant(InterpolationTree*,
       const interpolation_taskt& partition_ids,
       interpolantst& interpolants);
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const;
+
+  virtual bool is_tree_interpolants() const {
+    return tree_interpolation;
+  }
 
   virtual void addAB(const std::vector<unsigned>& symbolsA, const std::vector<unsigned>& symbolsB, const std::vector<unsigned>& symbolsAB)
   {
@@ -99,6 +102,14 @@ protected:
   // Can we interpolate?
   bool ready_to_interpolate;
   
+  int reduction_loops;
+
+  int reduction_graph;
+
+  bool tree_interpolation;
+
+  void setup_reduction();
+
   // Extract interpolant form PeRIPLO Egraph
   void extract_itp(const Enode* enode, prop_itpt& target_itp) const;
   // Cache of already visited interpolant Enodes
