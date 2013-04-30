@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf8 -*-
 
 import re
 import os
@@ -62,7 +61,6 @@ class Assertion(object):
     def __str__(self):
         return "(sl:%d, fsl:%d, ex:'%s')" % (self.src_line, 
                 self.final_src_line, self.expression)
-
 
 
 ################################################################################ 
@@ -200,7 +198,6 @@ def run_evolcheck (check_type, orig_gb, output_path, filename, assertions):
     print("Run time for evolcheck was %f" % (time.time() - time_init))
     # no problem during the execution
     return result
-
 
 
 ################################################################################ 
@@ -377,51 +374,52 @@ def ends_with(string, pattern):
 # --- ENTRY ---
 #
 
-# Check parameters
-if len(sys.argv) < 6 or (sys.argv[1] == "--upgrade-check" and len(sys.argv) < 8) or (sys.argv[1] != "--initial-check" and sys.argv[1] != "--upgrade-check"):
-    print ("Expected at least 5 arguments")
-    print ("")
-    print ("Usage")
-    print ("-----")
-    print ("Initial check:")
-    print ("> naive-hybrid-check.py --initial-check [untrusted_assertion_file] [input_path] [tmp_path] [file1] [file2] ...")
-    print ("")
-    print ("Upgrade check:")
-    print ("> naive-hybrid-check.py --upgrade-check [orig_goto_binary] [trusted_assertion_file] [untrusted_assertion_file] [input_path] [tmp_path] [file1] [file2] ...")
-    sys.exit(1)
+if __name__ == '__main__':
+    # Check parameters
+    if len(sys.argv) < 6 or (sys.argv[1] == "--upgrade-check" and len(sys.argv) < 8) or (sys.argv[1] != "--initial-check" and sys.argv[1] != "--upgrade-check"):
+        print ("Expected at least 5 arguments")
+        print ("")
+        print ("Usage")
+        print ("-----")
+        print ("Initial check:")
+        print ("> naive-hybrid-check.py --initial-check [untrusted_assertion_file] [input_path] [tmp_path] [file1] [file2] ...")
+        print ("")
+        print ("Upgrade check:")
+        print ("> naive-hybrid-check.py --upgrade-check [orig_goto_binary] [trusted_assertion_file] [untrusted_assertion_file] [input_path] [tmp_path] [file1] [file2] ...")
+        sys.exit(1)
 
 
-# Maps file names to the oredered lists of assertions (line,expression,type,state)
-assertion_map = {}
+    # Maps file names to the oredered lists of assertions (line,expression,type,state)
+    assertion_map = {}
 
-# Input files with assertions and the paths
-if sys.argv[1] == "--initial-check":
-    check_type = CheckTypes.Initial
-    orig_gb = None
-    untrusted_assertions_file = sys.argv[2]
-    input_path = sys.argv[3] + ("" if ends_with(sys.argv[3], os.sep) else os.sep)
-    output_path = sys.argv[4] + ("" if ends_with(sys.argv[4], os.sep) else os.sep)
-    files = sys.argv[5:]
-elif sys.argv[1] == "--upgrade-check":
-    check_type = CheckTypes.Upgrade
-    orig_gb = sys.argv[2]
-    trusted_assertions_file = sys.argv[3]
-    untrusted_assertions_file = sys.argv[4]
-    input_path = sys.argv[5] + ("" if ends_with(sys.argv[5], os.sep) else os.sep)
-    output_path = sys.argv[6] + ("" if ends_with(sys.argv[6], os.sep) else os.sep)
-    files = sys.argv[7:]
+    # Input files with assertions and the paths
+    if sys.argv[1] == "--initial-check":
+        check_type = CheckTypes.Initial
+        orig_gb = None
+        untrusted_assertions_file = sys.argv[2]
+        input_path = sys.argv[3] + ("" if ends_with(sys.argv[3], os.sep) else os.sep)
+        output_path = sys.argv[4] + ("" if ends_with(sys.argv[4], os.sep) else os.sep)
+        files = sys.argv[5:]
+    elif sys.argv[1] == "--upgrade-check":
+        check_type = CheckTypes.Upgrade
+        orig_gb = sys.argv[2]
+        trusted_assertions_file = sys.argv[3]
+        untrusted_assertions_file = sys.argv[4]
+        input_path = sys.argv[5] + ("" if ends_with(sys.argv[5], os.sep) else os.sep)
+        output_path = sys.argv[6] + ("" if ends_with(sys.argv[6], os.sep) else os.sep)
+        files = sys.argv[7:]
 
 
-# Parse the file with trusted and untrusted assertions
-parse_assertions(untrusted_assertions_file, assertion_map, AssertionTypes.Untrusted)
-if check_type == CheckTypes.Upgrade:
-    parse_assertions(trusted_assertions_file, assertion_map, AssertionTypes.Trusted)
+    # Parse the file with trusted and untrusted assertions
+    parse_assertions(untrusted_assertions_file, assertion_map, AssertionTypes.Untrusted)
+    if check_type == CheckTypes.Upgrade:
+        parse_assertions(trusted_assertions_file, assertion_map, AssertionTypes.Trusted)
 
-# Perform the check
-result = check_all_assertions(check_type, orig_gb, files, input_path, output_path, assertion_map)
+    # Perform the check
+    result = check_all_assertions(check_type, orig_gb, files, input_path, output_path, assertion_map)
 
-if result:
-    dump_trusted_assertions(assertion_map, files, "__trusted")
+    if result:
+        dump_trusted_assertions(assertion_map, files, "__trusted")
 
-print (' * Done.')
+    print (' * Done.')
 
