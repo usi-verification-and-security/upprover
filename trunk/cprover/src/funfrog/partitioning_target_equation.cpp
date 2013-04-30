@@ -136,6 +136,7 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
 
   // Tell the interpolator about the new partition.
   partition.fle_part_id = interpolator.new_partition();
+  //TODO: increment?
 
   // If this is a summary partition, apply the summary
   if (partition.summary) {
@@ -883,7 +884,7 @@ InterpolationTree* partitioning_target_equationt::fill_partition_tree(
     partitiont& partition)
 {
   InterpolationTree* itp_tree;
-  itp_tree = new InterpolationTree(partition.fle_part_id + 1);
+  itp_tree = new InterpolationTree(partition.fle_part_id);
 
   // Child partition ids
   for (partition_idst::iterator it = partition.child_ids.begin()++;

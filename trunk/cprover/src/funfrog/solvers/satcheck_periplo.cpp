@@ -16,8 +16,8 @@ Author: Ondrej Sery
 
 #include "satcheck_periplo.h"
 
-#ifndef HAVE_OPENSAT
-//#error "Expected HAVE_OPENSAT"
+#ifndef HAVE_OPENSMT
+//#error "Expected HAVE_OPENSMT"
 #endif
 
 //#define MAX_OPENSAT_PARTITIONS 63
@@ -34,7 +34,7 @@ satcheck_periplot::satcheck_periplot(int verbosity, bool _dump_queries,
   initializeSolver();
 }
 
-// Initialize the OpenSAT context
+// Initialize the PeRIPLO context
 void satcheck_periplot::initializeSolver()
 {
   if (periplo_ctx != NULL) {
@@ -455,7 +455,7 @@ propt::resultt satcheck_periplot::prop_solve() {
     messaget::status(msg);
   }
 # ifndef NDEBUG
-  std::cout << "OpenSAT - CNF formula (" << _no_variables << " vars., " <<
+  std::cout << "PeRIPLO - CNF formula (" << _no_variables << " vars., " <<
           clause_counter << " cl.)" << std::endl;
 # endif
 
@@ -469,7 +469,7 @@ propt::resultt satcheck_periplot::prop_solve() {
   {
     std::string dump_file("__sat_query");
     dump_file += i2string(dump_count);
-    dump_file += ".SAT2";
+    dump_file += ".SMT2";
     periplo_ctx->DumpToFileFunFrog(dump_file.c_str());
     dump_file = "__sat_config";
     dump_file += i2string(dump_count);
@@ -495,7 +495,7 @@ propt::resultt satcheck_periplot::prop_solve() {
     msg = "SAT checker: negated claim is UNSATISFIABLE, i.e., holds";
     messaget::status(msg);
   } else {
-    throw "Unexpected OpenSAT result.";
+    throw "Unexpected PeRIPLO result.";
   }
 
   status = UNSAT;
