@@ -61,6 +61,8 @@ void subst_scenariot::initialize_summary_info(
               )).first->second;
       functions.push_back(&call_site);
 
+      call_site.set_preserved_node();
+
       call_site.set_function_id(target_function);
 //      call_site.set_order(functions.size());
 
