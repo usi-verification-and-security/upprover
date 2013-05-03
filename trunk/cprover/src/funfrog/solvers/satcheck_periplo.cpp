@@ -1,6 +1,6 @@
 /*******************************************************************\
 
-Module: OpenSAT wrapper for propositional logic. Based on
+Module: PeRIPLO wrapper for propositional logic. Based on
 satcheck_minisat.
 
 Author: Ondrej Sery
@@ -20,14 +20,15 @@ Author: Ondrej Sery
 //#error "Expected HAVE_OPENSMT"
 #endif
 
-//#define MAX_OPENSAT_PARTITIONS 63
+//#define MAX_PeRIPLO_PARTITIONS 63
 
 static unsigned dump_count = 0;
 
 satcheck_periplot::satcheck_periplot(int verbosity, bool _dump_queries,
-    int _reduction_loops, int _reduction_graph, bool _tree_interpolation) :
+    int _reduction_loops, int _reduction_graph, bool _tree_interpolation, int _itp_algo, bool _check_itp = false) :
   solver_verbosity(verbosity), dump_queries (_dump_queries),
   reduction_loops(_reduction_loops), reduction_graph(_reduction_graph), tree_interpolation(_tree_interpolation),
+  itp_algorithm (_itp_algo), check_itp (_check_itp),
   periplo_ctx(NULL),
   partition_root_enode(NULL), partition_count(0), ready_to_interpolate(false)
 {
@@ -60,7 +61,7 @@ void satcheck_periplot::initializeSolver()
   sbool = periplo_ctx->mkSortBool();
 }
 
-// Free all resources related to OpenSAT
+// Free all resources related to PeRIPLO
 void satcheck_periplot::freeSolver()
 {
     delete periplo_ctx;
@@ -129,11 +130,11 @@ fle_part_idt satcheck_periplot::new_partition()
   if (partition_root_enode != NULL)
     close_partition();
 
-# ifdef MAX_OPENSAT_PARTITIONS
-  if (partition_count == MAX_OPENSAT_PARTITIONS) {
+# ifdef MAX_PeRIPLO_PARTITIONS
+  if (partition_count == MAX_PeRIPLO_PARTITIONS) {
     std::string s =
-            "OpenSAT does not support more than " +
-            i2string(MAX_OPENSAT_PARTITIONS) + "partitions so far.";
+            "PeRIPLO does not support more than " +
+            i2string(MAX_PeRIPLO_PARTITIONS) + "partitions so far.";
     throw s.c_str();
   }
 # endif
@@ -175,6 +176,31 @@ std::cout << reduction_loops << " " << reduction_graph <<"\n";
 
 /*******************************************************************\
 
+Function: satcheck_periplot::setup_interpolation
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Set up the interpolating algorithm
+
+\*******************************************************************/
+void satcheck_periplot::setup_interpolation(){
+  switch (itp_algorithm) {
+    case 0:
+      periplo_ctx->setPudlakInterpolation();
+      break;
+    case 1:
+      periplo_ctx->setMcMillanInterpolation();
+      break;
+    case 2:
+      periplo_ctx->setMcMillanPrimeInterpolation();
+      break;
+    }
+}
+
+/*******************************************************************\
+
 Function: satcheck_periplot::get_interpolant
 
   Inputs:
@@ -205,9 +231,11 @@ void satcheck_periplot::get_interpolant(const interpolation_taskt& partition_ids
     periplo_ctx->setColoringSuggestions(ptr);
     periplo_ctx->setColoringSuggestionsInterpolation();
   } else {
-    periplo_ctx->setMcMillanInterpolation();
+    setup_interpolation();
   }
-  periplo_ctx->setInterpolantCheck(); // TODO: make parametrizable
+  if (check_itp){
+    periplo_ctx->setInterpolantCheck();
+  }
   periplo_ctx->getInterpolants(partition_ids, itp_enodes);
   periplo_ctx->deleteProofGraph();
 
@@ -262,9 +290,11 @@ void satcheck_periplot::get_interpolant(InterpolationTree* tree, const interpola
     periplo_ctx->setColoringSuggestions(ptr);
     periplo_ctx->setColoringSuggestionsInterpolation();
   } else {
-    periplo_ctx->setMcMillanInterpolation();
+    setup_interpolation();
   }
-  periplo_ctx->setInterpolantCheck(); // TODO: make parametrizable
+  if (check_itp){
+    periplo_ctx->setInterpolantCheck();
+  }
   periplo_ctx->getTreeInterpolants(tree, itp_enodes);
   periplo_ctx->deleteProofGraph();
 
@@ -366,7 +396,7 @@ Function: satcheck_periplot::solver_text
 
 const std::string satcheck_periplot::solver_text()
 {
-  return "OpenSAT - propositional logic";
+  return "PeRIPLO - propositional logic";
 }
 
 /*******************************************************************\
@@ -622,6 +652,8 @@ void satcheck_periplot::close_partition()
   assert(partition_root_enode != NULL);
   partition_root_enode = periplo_ctx->mkAnd(partition_root_enode);
   periplo_ctx->Assert(partition_root_enode);
+
+//  std::cout<< "&&&&: "<< partition_root_enode << "\n";
   partition_root_enode = NULL;
 }
 
@@ -633,7 +665,7 @@ Function: satcheck_periplot::extract_itp
 
  Outputs:
 
- Purpose: Extracts the propositional interpolant from the OpenSAT
+ Purpose: Extracts the propositional interpolant from the PeRIPLO
  E-node representation.
 
 \*******************************************************************/
@@ -654,7 +686,7 @@ Function: satcheck_periplot::extract_itp_rec
 
  Outputs:
 
- Purpose: Extracts the propositional interpolant from the OpenSAT
+ Purpose: Extracts the propositional interpolant from the PeRIPLO
  E-node representation. Simple recursive implementation.
 
 \*******************************************************************/

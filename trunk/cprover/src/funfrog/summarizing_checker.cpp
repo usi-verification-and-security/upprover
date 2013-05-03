@@ -97,7 +97,9 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
         options.get_bool_option("save-queries"),
         options.get_int_option("reduce-proof-loops"),
         options.get_int_option("reduce-proof-graph"),
-        options.get_bool_option("tree-interpolants"));
+        options.get_bool_option("tree-interpolants"),
+        options.get_int_option("itp-algorithm"),
+        options.get_int_option("check-itp"));
 #else
     opensmt = new satcheck_opensmtt(
         options.get_int_option("verbose-solver"),

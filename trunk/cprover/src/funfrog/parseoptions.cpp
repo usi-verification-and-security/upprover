@@ -466,6 +466,11 @@ void funfrog_parseoptionst::help()
   "  0                            random\n"
   "  1                            from external file \"__common\"\n"
   "  2                            TBD\n"
+  "--itp-algorithm <mode>:        set up interpolating algorithm:\n"
+  "  0                            Pudlak\n"
+  "  1                            McMillan\n"
+  "  2                            McMillanPrime\n"
+  "--check-itp                    check interpolants with Z3\n"
 #endif
 
   "\nRefinement options:\n"
@@ -835,6 +840,11 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
   options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
+  options.set_option("check-itp", cmdline.isset("check-itp"));
+
+  if (cmdline.isset("itp-algorithm")) {
+    options.set_option("itp-algorithm", cmdline.getval("itp-algorithm"));
+  }
   
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.getval("unwind"));

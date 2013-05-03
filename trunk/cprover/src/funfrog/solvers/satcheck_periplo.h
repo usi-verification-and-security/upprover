@@ -21,7 +21,9 @@ Author: Ondrej Sery
 class satcheck_periplot:public cnf_solvert, public interpolating_solvert
 {
 public:
-  satcheck_periplot(int verbosity = 0, bool _dump_queries = false, int _reduction_loops = 0, int _reduction_graph = 0 , bool _tree_interpolation = 0);
+  satcheck_periplot(int verbosity = 0, bool _dump_queries = false,
+      int _reduction_loops = 0, int _reduction_graph = 0, bool _tree_interpolation = 0,
+      int _itp_algo = 0, bool _check_itp = false);
   
   virtual ~satcheck_periplot() {
     freeSolver();
@@ -108,7 +110,14 @@ protected:
 
   bool tree_interpolation;
 
+  // 0 - Pudlak, 1 - McMillan, 2 - McMillan'
+  int itp_algorithm;
+
+  bool check_itp;
+
   void setup_reduction();
+
+  void setup_interpolation();
 
   // Extract interpolant form PeRIPLO Egraph
   void extract_itp(const Enode* enode, prop_itpt& target_itp) const;
