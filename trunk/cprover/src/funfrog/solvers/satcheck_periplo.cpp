@@ -7,6 +7,7 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
+#include <string.h>
 #include <assert.h>
 
 #include <i2string.h>
@@ -25,7 +26,7 @@ Author: Ondrej Sery
 static unsigned dump_count = 0;
 
 satcheck_periplot::satcheck_periplot(int verbosity, bool _dump_queries,
-    int _reduction_loops, int _reduction_graph, bool _tree_interpolation, int _itp_algo, bool _check_itp = false) :
+    int _reduction_loops, int _reduction_graph, bool _tree_interpolation, int _itp_algo, bool _check_itp) :
   solver_verbosity(verbosity), dump_queries (_dump_queries),
   reduction_loops(_reduction_loops), reduction_graph(_reduction_graph), tree_interpolation(_tree_interpolation),
   itp_algorithm (_itp_algo), check_itp (_check_itp),
