@@ -171,9 +171,15 @@ bool upgrade_checkert::check_upgrade()
     bool res = true;
 
     const irep_idt& name = (*summs[i]).get_function_id();
-    if (omega.get_last_assertion_loc() >= (*summs[i]).get_call_location()){
+    std::cout << "checking summary #"<< i<<": "<< name <<"\n";
+
+    // if (omega.get_last_assertion_loc() >= (*summs[i]).get_call_location()){
 
       const summary_ids_sett& used = (*summs[i]).get_used_summaries();
+      if (used.size() == 0){
+        res = false;
+        upward_traverse_call_tree((*summs[i]).get_parent(), res);
+      }
 
       for (summary_ids_sett::const_iterator it = used.begin(); it != used.end(); ++it) {
 //        summaryt& summary = summarization_context.get_summary_store().find_summary(*it);
@@ -189,11 +195,11 @@ bool upgrade_checkert::check_upgrade()
           status(std::string("function ") + name.c_str() + std::string(" is already checked"));
         }
       }
-    } else {
+   /* } else {
     	status(std::string("ignoring function: ") + name.c_str()
             + std::string(" (loc. number ") + i2string((*summs[i]).get_call_location())
             + std::string(" is out of assertion scope)"));
-    }
+    }*/
     if (!res) {
       status(std::string("Invalid summaries ratio: ") + i2string(omega.get_invalid_count()) + "/" + i2string(omega.get_call_summaries().size() - 1));
       report_failure();
@@ -256,7 +262,7 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
       //      in case of refinement, subst scenario will be renewed
       pre = check_summary(assertion_infot(), summary_info);
       if (pre){
-    	status("  summary was verified. go to the next check."); // here is the actual exit of the method
+    	  status("  summary was verified. go to the next check."); // here is the actual exit of the method
         summary_info.set_summary();
       } else {
         summarization_context.set_valid_summaries(summary_info.get_function_id(), false);
