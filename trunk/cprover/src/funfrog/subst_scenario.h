@@ -76,6 +76,7 @@ public:
 
   void setup_last_assertion_loc(const assertion_infot& assertion);
   bool is_assertion_in_loop(const unsigned ass_loc);
+  bool is_assertion_after_return(const unsigned return_loc);
   bool is_assertion_in_loop(goto_programt::const_targett& tgt){
     return is_assertion_in_loop(get_assertion_location(tgt));
   }
@@ -90,6 +91,7 @@ private:
 
   std::vector<summary_infot*> functions;
   std::vector<std::pair<unsigned, unsigned> > goto_ranges;
+  std::vector<unsigned> goto_ranges_upwards;
   unsigned global_loc;
   unsigned proc_count;
   unsigned last_assertion_loc;

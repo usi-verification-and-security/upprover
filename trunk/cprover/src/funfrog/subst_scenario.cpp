@@ -26,6 +26,7 @@ void subst_scenariot::setup_default_precision(init_modet init)
 void subst_scenariot::initialize_summary_info(
     summary_infot& summary_info, const goto_programt& code)
 {
+  bool skip_asserts = false;
   summary_info.get_assertions().clear();
   for(goto_programt::const_targett inst=code.instructions.begin();
       inst!=code.instructions.end(); ++inst)
@@ -45,6 +46,8 @@ void subst_scenariot::initialize_summary_info(
              global_loc - (dst_location - tgt_location),
              global_loc));
         //std::cout << "backwards goto: " << global_loc - (dst_location - tgt_location) << " -> " << global_loc <<"\n";
+      } else {
+        goto_ranges_upwards.push_back(tgt_location);
       }
     }
     else if (inst->type == FUNCTION_CALL)
@@ -60,7 +63,6 @@ void subst_scenariot::initialize_summary_info(
               summary_infot(&summary_info, global_loc)
               )).first->second;
       functions.push_back(&call_site);
-
       call_site.set_preserved_node();
 
       call_site.set_function_id(target_function);
@@ -82,7 +84,12 @@ void subst_scenariot::initialize_summary_info(
       const irep_idt &target_function = (inst->code).get("identifier");
       decrement_unwinding_counter(target_function);
     }
-    else if (inst->type == ASSERT){
+    else if (inst->type == RETURN){
+      if (!is_assertion_after_return(inst->location_number)){
+        skip_asserts = true;
+      }
+    }
+    else if (inst->type == ASSERT && !skip_asserts){
       summary_info.get_assertions()[inst] = global_loc;
       assertions_visited[inst][global_loc] = false;
     }
@@ -109,7 +116,7 @@ void subst_scenariot::refine_recursion_call(summary_infot& call)
     cloned.set_function_id(to_be_cloned.get_function_id());
     if (to_be_cloned.is_recursion_nondet()){
       cloned.set_recursion_nondet(true);
-      cloned.set_nondet();
+      cloned.set_summary();
     } else {
       cloned.set_precision(to_be_cloned.get_precision());
     }
@@ -194,6 +201,17 @@ bool subst_scenariot::is_assertion_in_loop(const unsigned ass_loc)
   for (unsigned j = 0; j < goto_ranges.size(); j++){
     std::pair<unsigned, unsigned> r = goto_ranges[j];
     if (r.first <= ass_loc && ass_loc <= r.second){
+      return true;
+    }
+  }
+
+  return false;
+}
+
+bool subst_scenariot::is_assertion_after_return(const unsigned return_loc)
+{
+  for (unsigned j = 0; j < goto_ranges_upwards.size(); j++){
+    if (goto_ranges_upwards[j] == return_loc){
       return true;
     }
   }
