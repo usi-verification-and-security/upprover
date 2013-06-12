@@ -300,9 +300,9 @@ void prop_itpt::generalize(const prop_convt& decider,
       // no duplicates. This might not hold if some optimizations are added
       // to the flattening process
       unsigned idx = it2->l.var_no() - min_var;
-      assert (it2->l.var_no() >= min_var);
-      assert (!it2->l.sign());
-      assert (renaming[idx] == UINT_MAX);
+      //assert (it2->l.var_no() >= min_var);
+      //assert (!it2->l.sign());
+      //assert (renaming[idx] == UINT_MAX);
       renaming[idx] = cannon_var_no++;
       represented_symbol[idx] = current_symbol;
 
@@ -363,6 +363,8 @@ void prop_itpt::generalize(const prop_convt& decider,
     // Sanity check, all variables used in the interpolant should be mapped.
     assert(renaming[idx] != UINT_MAX);
     root_literal.set(renaming[idx], root_literal.sign());
+    std::cout << root_literal.var_no() << " " << min_var <<" "<< idx << " " << represented_symbol[idx] <<" " <<
+        symbols.size() <<"\n";
     used_symbols[represented_symbol[idx]] = true;
   }
 

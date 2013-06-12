@@ -470,6 +470,9 @@ void funfrog_parseoptionst::help()
   "  0                            Pudlak\n"
   "  1                            McMillan\n"
   "  2                            McMillanPrime\n"
+  "--proof-trans <mode>:          transform proof:\n"
+  "  1                            to make stronger interpolants\n"
+  "  2                            to make weaker interpolants\n"
   "--check-itp                    check interpolants with Z3\n"
 #endif
 
@@ -846,6 +849,10 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("itp-algorithm", cmdline.getval("itp-algorithm"));
   }
   
+  if (cmdline.isset("proof-trans")) {
+    options.set_option("proof-trans", cmdline.getval("proof-trans"));
+  }
+
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.getval("unwind"));
   }

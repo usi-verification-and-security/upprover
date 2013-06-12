@@ -397,6 +397,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
         options.get_int_option("reduce-proof-graph"),
         options.get_bool_option("tree-interpolants"),
         options.get_int_option("itp-algorithm"),
+        options.get_int_option("proof-trans"),
         options.get_int_option("check-itp"));
 #else
     opensmt = new satcheck_opensmtt(

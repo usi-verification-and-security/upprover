@@ -26,10 +26,10 @@ Author: Ondrej Sery
 static unsigned dump_count = 0;
 
 satcheck_periplot::satcheck_periplot(int verbosity, bool _dump_queries,
-    int _reduction_loops, int _reduction_graph, bool _tree_interpolation, int _itp_algo, bool _check_itp) :
+    int _reduction_loops, int _reduction_graph, bool _tree_interpolation, int _itp_algo, int _proof_trans, bool _check_itp) :
   solver_verbosity(verbosity), dump_queries (_dump_queries),
   reduction_loops(_reduction_loops), reduction_graph(_reduction_graph), tree_interpolation(_tree_interpolation),
-  itp_algorithm (_itp_algo), check_itp (_check_itp),
+  itp_algorithm (_itp_algo), proof_trans(_proof_trans), check_itp (_check_itp),
   periplo_ctx(NULL),
   partition_root_enode(NULL), partition_count(0), ready_to_interpolate(false)
 {
@@ -202,6 +202,33 @@ void satcheck_periplot::setup_interpolation(){
 
 /*******************************************************************\
 
+Function: satcheck_periplot::setup_proof_transformation
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Set up proof transformation
+
+\*******************************************************************/
+void satcheck_periplot::setup_proof_transformation(){
+#ifdef FULL_LABELING
+  switch (proof_trans) {
+    case 1:
+      std::cout << "making stronger\n";
+      periplo_ctx->enableRestructuringForStrongerInterpolant();
+      break;
+    case 2:
+      std::cout << "making weaker\n";
+      periplo_ctx->enableRestructuringForWeakerInterpolant();
+      break;
+    }
+#endif
+}
+
+
+/*******************************************************************\
+
 Function: satcheck_periplot::get_interpolant
 
   Inputs:
@@ -229,11 +256,14 @@ void satcheck_periplot::get_interpolant(const interpolation_taskt& partition_ids
   std::vector< std::map<Enode*, icolor_t>* > *ptr;
   ptr = const_cast< std::vector< std::map<Enode*, icolor_t>* > * >(&coloring_suggestions);
   if ((*ptr).size() != 0){
+#ifdef FULL_LABELING
     periplo_ctx->setColoringSuggestions(ptr);
     periplo_ctx->setColoringSuggestionsInterpolation();
+#endif
   } else {
     setup_interpolation();
   }
+  setup_proof_transformation();
   if (check_itp){
     periplo_ctx->setInterpolantCheck();
   }
@@ -288,11 +318,14 @@ void satcheck_periplot::get_interpolant(InterpolationTree* tree, const interpola
   std::vector< std::map<Enode*, icolor_t>* > *ptr;
   ptr = const_cast< std::vector< std::map<Enode*, icolor_t>* > * >(&coloring_suggestions);
   if ((*ptr).size() != 0){
+#ifdef FULL_LABELING
     periplo_ctx->setColoringSuggestions(ptr);
     periplo_ctx->setColoringSuggestionsInterpolation();
+#endif
   } else {
     setup_interpolation();
   }
+  setup_proof_transformation();
   if (check_itp){
     periplo_ctx->setInterpolantCheck();
   }
