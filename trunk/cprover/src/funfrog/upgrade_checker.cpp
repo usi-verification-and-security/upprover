@@ -99,6 +99,16 @@ bool check_upgrade(const namespacet &ns,
   fine_timet initial, final;
   initial=current_time();
 
+  std::ifstream in;
+  in.open(options.get_option("load-omega").c_str());
+
+  if (in.fail()){
+    std::cerr << "Failed to deserialize previous verification efforts (file: " <<
+        options.get_option("load-omega").c_str() <<
+            " cannot be read)" << std::endl;
+    return 1;
+  }
+
   difft diff(message_handler, goto_functions_old, goto_functions_new,
       options.get_option("load-omega").c_str(), options.get_option("save-omega").c_str());
 
