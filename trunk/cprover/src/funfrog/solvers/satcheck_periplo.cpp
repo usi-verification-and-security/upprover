@@ -155,7 +155,7 @@ Function: satcheck_periplot::setup_reduction
 
 \*******************************************************************/
 void satcheck_periplot::setup_reduction(){
-std::cout << reduction_loops << " " << reduction_graph <<"\n";
+//std::cout << reduction_loops << " " << reduction_graph <<"\n";
 
   // Setup proof reduction
   bool do_reduction = false;
@@ -212,7 +212,6 @@ Function: satcheck_periplot::setup_proof_transformation
 
 \*******************************************************************/
 void satcheck_periplot::setup_proof_transformation(){
-#ifdef FULL_LABELING
   switch (proof_trans) {
     case 1:
       std::cout << "making stronger\n";
@@ -223,7 +222,6 @@ void satcheck_periplot::setup_proof_transformation(){
       periplo_ctx->enableRestructuringForWeakerInterpolant();
       break;
     }
-#endif
 }
 
 
@@ -547,6 +545,7 @@ propt::resultt satcheck_periplot::prop_solve() {
 
   std::string msg;
 
+  //periplo_ctx->SetOption(":verbosity", "1");
   periplo_ctx->addCheckSAT();
   periplo_ctx->executeCommands();
   if (periplo_ctx->getStatus() == l_True) {
@@ -685,6 +684,7 @@ void satcheck_periplot::close_partition()
 {
   assert(partition_root_enode != NULL);
   partition_root_enode = periplo_ctx->mkAnd(partition_root_enode);
+  //std::cout << "## Asserting formula: " << partition_root_enode << endl;
   periplo_ctx->Assert(partition_root_enode);
 
 //  std::cout<< "&&&&: "<< partition_root_enode << "\n";
