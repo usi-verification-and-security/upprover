@@ -106,7 +106,12 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, summary_infot& su
 #       endif
         tmp.push_back(&ipart.summary_info);
       }*/
+      std::cout << "to the check " << do_callstart << ":\n";
+#     ifdef USE_PERIPLO
+      if (!decider.prop.l_get(ipart.callstart_literal).is_false()){
+#     else
       if (decider.prop.l_get(ipart.callstart_literal).is_true()){
+#     endif
 #       ifdef DEBUG_REFINER
         std::cout<< "    -- callstart literal is true" << std::endl;
 #       endif
