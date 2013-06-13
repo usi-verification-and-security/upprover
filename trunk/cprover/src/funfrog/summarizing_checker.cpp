@@ -130,10 +130,15 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
       unsigned nondet_count = omega.get_nondets_count();
       if (end && interpolator->can_interpolate())
       {
-        extract_interpolants(prop, equation);
+        if (options.get_bool_option("no-itp")){
+          status("Skip generating interpolants");
+        } else {
+          status("Start generating interpolants...");
+          extract_interpolants(prop, equation);
+        }
         if (summaries_count == 0)
         {
-          status("ASSERTION(S) HOLD(S)");
+          status("ASSERTION(S) HOLD(S)"); //TODO change the message to something more clear (like, everyting was inlined...)
         } else {
           status(std::string("FUNCTION SUMMARIES (for ") + i2string(summaries_count) +
         		  std::string(" calls) WERE SUBSTITUTED SUCCESSFULLY."));

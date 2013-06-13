@@ -449,9 +449,7 @@ void funfrog_parseoptionst::help()
   "                               with different call stack\n"
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
-
-  "\nOpenSMT options :\n"
-  "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
+  "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
 
 #ifdef USE_PERIPLO
   "\nPeRIPLO options (only if compiled):\n"
@@ -474,6 +472,10 @@ void funfrog_parseoptionst::help()
   "  1                            to make stronger interpolants\n"
   "  2                            to make weaker interpolants\n"
   "--check-itp                    check interpolants with Z3\n"
+  "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
+#else
+  "\nOpenSMT options :\n"
+  "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
 #endif
 
   "\nRefinement options:\n"
@@ -698,9 +700,10 @@ bool funfrog_parseoptionst::check_function_summarization(
 
   if (upg_check || init_upg_check){
     // perform the upgrade check (or preparation to it)
-    if(cmdline.isset("testclaim") || cmdline.isset("claim") || cmdline.isset("claimset"))
+    if(cmdline.isset("testclaim") || cmdline.isset("claim") ||
+        cmdline.isset("claimset") || cmdline.isset("no-itp"))
     {
-      error("Upgrade checking mode does not allow checking specific claims.");
+      error("Upgrade checking mode does not allow checking specific claims and needs interpolation");
       return 1;
     }
 
@@ -839,6 +842,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("all-claims", cmdline.isset("all-claims"));
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
+  options.set_option("no-itp", cmdline.isset("no-itp"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
