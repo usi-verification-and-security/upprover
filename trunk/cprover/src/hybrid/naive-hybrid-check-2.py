@@ -201,6 +201,9 @@ def get_args(check_type, orig_gb, output_path, filename, asrts):
 #        cmd_str.append("--claim-set %s" % claims)
         pass
 
+    cmd_str.append("--unwind")
+    cmd_str.append("5")
+
     # Check type
     if check_type == CheckTypes.Initial:
         if len(asrts) > 1:
@@ -219,6 +222,31 @@ def get_args(check_type, orig_gb, output_path, filename, asrts):
         cmd_str.append(output_path + filename)
         cmd_str.append(orig_gb)
 
+    # Preceed with the time command
+    if asrts != None and len(asrts) == 1:
+        cmd_str.insert(0, 'claim-%s.time' % asrts[0].claim_nr)
+        cmd_str.insert(0, '-o')
+        cmd_str.insert(0, "'user: %U system: %S wall: %e'")
+        cmd_str.insert(0, '-f')
+        cmd_str.insert(0, '/usr/bin/time')
+    elif check_type == CheckTypes.Initial:
+        cmd_str.insert(0, 'initial.time')
+        cmd_str.insert(0, '-o')
+        cmd_str.insert(0, "'user: %U system: %S wall: %e'")
+        cmd_str.insert(0, '-f')
+        cmd_str.insert(0, '/usr/bin/time')
+    elif check_type == CheckTypes.Upgrade:
+        cmd_str.insert(0, 'upgrade.time')
+        cmd_str.insert(0, '-o')
+        cmd_str.insert(0, "'user: %U system: %S wall: %e'")
+        cmd_str.insert(0, '-f')
+        cmd_str.insert(0, '/usr/bin/time')
+    else:
+        cmd_str.insert(0, 'strange.time')
+        cmd_str.insert(0, '-o')
+        cmd_str.insert(0, "'user: %U system: %S wall: %e'")
+        cmd_str.insert(0, '-f')
+        cmd_str.insert(0, '/usr/bin/time')
 
     return cmd_str
 
@@ -241,6 +269,9 @@ def get_args_cbmc(check_type, orig_gb, output_path, filename, asrts):
 
     cmd_str.append("--no-unwinding-assertions")
 
+    cmd_str.append("--unwind")
+    cmd_str.append("5")
+
     # Check type
     if check_type == CheckTypes.Initial:
         if len(asrts) > 1:
@@ -254,6 +285,28 @@ def get_args_cbmc(check_type, orig_gb, output_path, filename, asrts):
 #        cmd_str.append("--no-slicing")
         cmd_str.append(output_path + filename)
 
+    # Preceed with the time command
+    if asrts != None and len(asrts) == 1:
+        cmd_str.insert(0, 'cbmc-claim-%s.time' % asrts[0].claim_nr)
+        cmd_str.insert(0, '-o')
+        cmd_str.insert(0, "'user: %U system: %S wall: %e'")
+        cmd_str.insert(0, '-f')
+        cmd_str.insert(0, '/usr/bin/time')
+    elif check_type == CheckTypes.Initial:
+        assert(False)
+    elif check_type == CheckTypes.Upgrade:
+        cmd_str.insert(0, 'cbmc-upgrade.time')
+        cmd_str.insert(0, '-o')
+        cmd_str.insert(0, "'user: %U system: %S wall: %e'")
+        cmd_str.insert(0, '-f')
+        cmd_str.insert(0, '/usr/bin/time')
+    else:
+        cmd_str.insert(0, 'cbmc-strange.time')
+        cmd_str.insert(0, '-o')
+        cmd_str.insert(0, "'user: %U system: %S wall: %e'")
+        cmd_str.insert(0, '-f')
+        cmd_str.insert(0, '/usr/bin/time')
+
 
     return cmd_str
 
@@ -261,13 +314,14 @@ def get_args_cbmc(check_type, orig_gb, output_path, filename, asrts):
 # Performs a single cbmc run on a given set of assertions
 #
 def run_cbmc (check_type, orig_gb, output_path, filename, assertions, claim2asrt):
-    print "Running cbmc XXX"
+    print "Running cbmc"
     time_init = time.time()
     cmd_str = get_args_cbmc(check_type, orig_gb, output_path, filename, None)
+    cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
     print (" * Running:")
     print (cmd_str);
 
-    proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
+    proc = subprocess.Popen(cmd_new, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
 
     std_out, std_err = proc.communicate()
     std_out_str = std_out.decode("ascii")
@@ -298,13 +352,14 @@ def run_cbmc (check_type, orig_gb, output_path, filename, assertions, claim2asrt
 # using a given set of summaries
 #
 def run_evolcheck (check_type, orig_gb, output_path, filename, assertions, claim2asrt):
-    print "Running evolcheck XXX"
+    print "Running evolcheck"
     time_init = time.time()
     cmd_str = get_args(check_type, orig_gb, output_path, filename, None)
+    cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
     print (" * Running:")
-    print (cmd_str);
+    print (cmd_new);
 
-    proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
+    proc = subprocess.Popen(cmd_new, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
 
     std_out, std_err = proc.communicate()
     std_out_str = std_out.decode("ascii")
@@ -337,10 +392,11 @@ def run_evolcheck_asrtset (check_type, orig_gb, output_path, filename, assertion
     print("Running evolcheck on an assertion set of %d" % len(asrtlist))
     time_init = time.time()
     cmd_str = get_args(check_type, orig_gb, output_path, filename, asrtlist)
+    cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
     print (" * Running:")
-    print (cmd_str);
+    print (cmd_new);
 
-    proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
+    proc = subprocess.Popen(cmd_new, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
 
     std_out, std_err = proc.communicate()
     std_out_str = std_out.decode("ascii")
@@ -377,7 +433,7 @@ def run_evolcheck_single (check_type, orig_gb, output_path, filename, assertion,
     cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
     print cmd_new
 
-    proc = subprocess.Popen(cmd_new, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ) 
+    proc = subprocess.Popen(cmd_new, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
     std_out, std_err = proc.communicate()
     std_out_str = std_out.decode("ascii")
 
@@ -419,7 +475,7 @@ def run_cbmc_single (check_type, orig_gb, output_path, filename, assertion, asse
     cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
     print cmd_new
 
-    proc = subprocess.Popen(cmd_new, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ) 
+    proc = subprocess.Popen(cmd_new, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
     std_out, std_err = proc.communicate()
     std_out_str = std_out.decode("ascii")
 
@@ -454,10 +510,10 @@ def run_cbmc_single (check_type, orig_gb, output_path, filename, assertion, asse
 def analyze_cbmc_result (output_path, std_out, assertions, claim2asrt, mem_out, assertion):
     trivial = False
 
-    if std_out.find('VERIFICATION SUCCESSFUL') == -1:
+    if std_out.find('VERIFICATION SUCCESSFUL') != -1:
         mark_assertion_valid(assertion)
         return True
-    elif std_out.find("VERIFICATION FAILED") == -1:
+    elif std_out.find("VERIFICATION FAILED") != -1:
         mark_assertion_invalid(assertion.filename, assertion.final_src_line, assertions)
         return False
     else:
@@ -506,7 +562,7 @@ def analyze_evolcheck_result_multi (output_path, std_out, assertions, claim2asrt
     # An assertion failed
 
     m = re.search('Violated property:\n *file ' + output_path + 
-            '(.*) line (.*) function .*\n *assertion[\n]* *(.*)\n', last_call_str, re.MULTILINE)
+            '(.*) line (.*) function .*\n *assertion[\n]* *(.*)\n', std_out, re.MULTILINE)
 
     if m == None:
         print (std_out)
@@ -950,16 +1006,16 @@ def ends_with(string, pattern):
 
 if __name__ == '__main__':
     # Check parameters
-    if len(sys.argv) < 6 or (sys.argv[1] == "--upgrade-check" and len(sys.argv) < 8) or (sys.argv[1] != "--initial-check" and sys.argv[1] != "--upgrade-check"):
-        print ("Expected at least 5 arguments")
+    if len(sys.argv) < 7 or (sys.argv[1] == "--upgrade-check" and len(sys.argv) < 9) or (sys.argv[1] != "--initial-check" and sys.argv[1] != "--upgrade-check"):
+        print ("Expected at least 6 arguments")
         print ("")
         print ("Usage")
         print ("-----")
         print ("Initial check:")
-        print ("> naive-hybrid-check.py --initial-check [untrusted_assertion_file] [input_path] [tmp_path] [file1] [file2] ...")
+        print ("> naive-hybrid-check.py --initial-check [untrusted_assertion_file] [input_path] [tmp_path] [yes|no] [file1] [file2] ...")
         print ("")
         print ("Upgrade check:")
-        print ("> naive-hybrid-check.py --upgrade-check [orig_goto_binary] [trusted_assertion_file] [untrusted_assertion_file] [input_path] [tmp_path] [file1] [file2] ...")
+        print ("> naive-hybrid-check.py --upgrade-check [orig_goto_binary] [trusted_assertion_file] [untrusted_assertion_file] [input_path] [tmp_path] [yes|no] [file1] [file2] ...")
         sys.exit(1)
 
 
@@ -973,7 +1029,8 @@ if __name__ == '__main__':
         untrusted_assertions_file = sys.argv[2]
         input_path = sys.argv[3] + ("" if ends_with(sys.argv[3], os.sep) else os.sep)
         output_path = sys.argv[4] + ("" if ends_with(sys.argv[4], os.sep) else os.sep)
-        files = sys.argv[5:]
+        cbmc = sys.argv[5]
+        files = sys.argv[6:]
     elif sys.argv[1] == "--upgrade-check":
         check_type = CheckTypes.Upgrade
         orig_gb = sys.argv[2]
@@ -981,7 +1038,8 @@ if __name__ == '__main__':
         untrusted_assertions_file = sys.argv[4]
         input_path = sys.argv[5] + ("" if ends_with(sys.argv[5], os.sep) else os.sep)
         output_path = sys.argv[6] + ("" if ends_with(sys.argv[6], os.sep) else os.sep)
-        files = sys.argv[7:]
+        cbmc = sys.argv[7]
+        files = sys.argv[8:]
 
 
     # Parse the file with trusted and untrusted assertions
@@ -993,7 +1051,11 @@ if __name__ == '__main__':
     process_files(files, input_path, output_path, assertion_map, False)
 
     claim_to_asrt = {}
-    cbmc = False
+    if cbmc == "yes":
+        USE_CBMC = True
+    else:
+        USE_CBMC = False
+
     if USE_CBMC:
         map_assertions_to_claims_cbmc(output_path, assertion_map, claim_to_asrt)
     else:
