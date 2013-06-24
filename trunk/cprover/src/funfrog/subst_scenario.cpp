@@ -62,6 +62,7 @@ void subst_scenariot::initialize_summary_info(
               std::pair<goto_programt::const_targett, summary_infot>(inst,
               summary_infot(&summary_info, global_loc)
               )).first->second;
+
       functions.push_back(&call_site);
       call_site.set_preserved_node();
 
@@ -201,7 +202,6 @@ bool subst_scenariot::is_assertion_in_loop(const unsigned ass_loc)
   for (unsigned j = 0; j < goto_ranges.size(); j++){
     std::pair<unsigned, unsigned> r = goto_ranges[j];
     if (r.first <= ass_loc && ass_loc <= r.second){
-      return true;
     }
   }
 
@@ -211,7 +211,7 @@ bool subst_scenariot::is_assertion_in_loop(const unsigned ass_loc)
 bool subst_scenariot::is_assertion_after_return(const unsigned return_loc)
 {
   for (unsigned j = 0; j < goto_ranges_upwards.size(); j++){
-    if (goto_ranges_upwards[j] == return_loc){
+    if (goto_ranges_upwards[j] > return_loc){
       return true;
     }
   }
