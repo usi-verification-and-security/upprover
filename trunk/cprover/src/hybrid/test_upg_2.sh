@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ $# != 5 ]]; then
-    echo "Usage: $0 <example> <old> <new> <yes|no> <name>               "
+    echo "Usage: $0 <example> <old> <new> <name> <yes|no>               "
     echo
     echo "where                                                         "
     echo "   <example>      is the directory containing the example     "
