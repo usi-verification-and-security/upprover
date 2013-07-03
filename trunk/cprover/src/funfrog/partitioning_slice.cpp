@@ -82,7 +82,8 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
           it!=equation.SSA_steps.end();
           ++it) {
     // We can only slice assignments and assumptions
-    it->ignore = it->is_assignment() || it->is_assume();
+    // HOTFIX (keep all assumptions)
+    it->ignore = it->is_assignment();// || it->is_assume();
   }
   for (partitionst::iterator it = equation.get_partitions().begin();
           it != equation.get_partitions().end();
