@@ -70,15 +70,10 @@ claim_statst check_claims(
   const namespacet &ns,
   goto_programt &leaping_program,
   const goto_functionst &goto_functions,
-  const std::string &stats_dir,
   claim_mapt &claim_map,
   claim_numberst &claim_numbers,
   const optionst& options,
   ui_message_handlert &_message_handler,
-  unsigned claim_nr = 0,
-  bool show_pass = false,
-  bool show_fail = true,
-  bool show_progress = true,
-  bool save_files=false);
+  unsigned claim_nr = 0);
 
 #endif /*_CPROVER_LOOPFROG_CHECK_CLAIMS_H_*/

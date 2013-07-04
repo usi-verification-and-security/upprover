@@ -88,7 +88,7 @@ int main(int argc, const char** argv) {
     function_infot::optimize_all_summaries(summary_store, f_infos);
     
     after=current_time();
-    std::cerr << "TOTAL OPTIMIZATION TIME: "<< time2string(after-before) << std::endl;
+    std::cerr << "TOTAL OPTIMIZATION TIME: "<< (after-before) << std::endl;
     
     std::ofstream out;
   

@@ -156,7 +156,7 @@ public:
 
   bool is_marked_A(symbol_exprt sym, std::vector<std::string>& tmp){
     for (unsigned i = 0; i < tmp.size() - 1; i++){
-      if (sym.get_identifier().as_string() == tmp[i] && tmp[i+1] == "A"){
+      if (sym.get_identifier() == tmp[i] && tmp[i+1] == "A"){
         return true;
       }
     }
@@ -165,7 +165,7 @@ public:
 
   bool is_marked_B(symbol_exprt sym, std::vector<std::string>& tmp){
     for (unsigned i = 0; i < tmp.size() - 1; i++){
-      if (sym.get_identifier().as_string() == tmp[i] && tmp[i+1] == "B"){
+      if (sym.get_identifier() == tmp[i] && tmp[i+1] == "B"){
         return true;
       }
     }

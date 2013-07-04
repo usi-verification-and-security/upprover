@@ -14,7 +14,7 @@ Author: Ondrej Sery
 #include "expr_pretty_print.h"
 #include "solvers/sat/cnf.h"
 
-#define DEBUG_SSA
+//#define DEBUG_SSA
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
 
@@ -109,7 +109,6 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
 #	endif
     return;
   }
-
   // Convert the assumption propagation symbols
   partition_ifacet &partition_iface = partition.get_iface();
   partition_iface.callstart_literal =
@@ -120,7 +119,6 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
     partition_iface.error_literal =
             prop_conv.convert(partition_iface.error_symbol);
   }
-
   if (partition.stub){
     return;
   }
@@ -150,12 +148,16 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
   std::vector<symbol_exprt> common_symbs;
   fill_common_symbols(partition, common_symbs);
   interpolantt::reserve_variables(prop_conv, common_symbs, partition.get_iface().common_symbols);
-
   // Convert the corresponding SSA steps
   convert_partition_guards(prop_conv, partition);
   convert_partition_assignments(prop_conv, partition);
   convert_partition_assumptions(prop_conv, partition);
-  convert_partition_assertions(prop_conv, partition);
+ // if (partition.get_iface().function_id.c_str() == "c::main"){
+ //   std::cout << "converting assertions\n";
+    convert_partition_assertions(prop_conv, partition);
+ // } else {
+ //   std::cout << "skipping converting assertions\n";
+ // }
   convert_partition_io(prop_conv, partition);
   // FIXME: Only use in the incremental solver mode (not yet implemented)
   // partition.processed = true;
@@ -249,7 +251,7 @@ void partitioning_target_equationt::convert_partition_guards(
       it->guard_literal=const_literal(false);
     else
     {
-      exprt tmp(it->guard_expr);
+      exprt tmp(it->guard);
 
 #     ifdef DEBUG_SSA      
       expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
@@ -357,7 +359,7 @@ void partitioning_target_equationt::convert_partition_assertions(
         #ifdef DEBUG_SSA      
         expr_pretty_print(std::cout << "XXX Call START equality: ",
                 target_partition_iface.callstart_symbol);
-        expr_pretty_print(std::cout << "  = ", it->guard_expr);
+        expr_pretty_print(std::cout << "  = ", it->guard);
         for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
           if (it2->is_assume() && !it2->ignore) {
             expr_pretty_print(std::cout << "  & ", it2->cond_expr);
@@ -515,7 +517,7 @@ void partitioning_target_equationt::convert_partition_io(
           symbol_exprt symbol;
           symbol.type()=tmp.type();
           symbol.set_identifier("symex::io::"+i2string(io_count++));
-          prop_conv.set_to(equality_exprt(tmp, symbol), true);
+          prop_conv.set_to(equal_exprt(tmp, symbol), true);
           it->converted_io_args.push_back(symbol);
         }
       }
@@ -721,7 +723,7 @@ void partitioning_target_equationt::extract_interpolants(
       if (coloring_mode == COLORING_FROM_FILE){
         // serialize to separate files
         std::string filename = "__common_";
-        filename.append(ipartition.function_id.as_string());
+        filename.append(id2string(ipartition.function_id));
         filename.append("_");
         filename.append(i2string(pid));
         if (!ipartition.deserialize_common(filename)){

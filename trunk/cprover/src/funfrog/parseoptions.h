@@ -12,9 +12,13 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_FUNFROG_PARSEOPTIONS_H
 
 #include <fstream>
+#include <iostream>
 #include <langapi/language_ui.h>
 #include <options.h>
 #include "xml_interface.h"
+
+#include <util/ui_message.h>
+#include <util/parseoptions.h>
 
 #include <goto-programs/goto_functions.h>
 #include <pointer-analysis/value_sets.h>
@@ -34,7 +38,7 @@ class value_set_alloc_adaptort;
   "(save-claimed-program)(save-abstracted-program)" \
   "(save-summaries):(load-summaries):" \
   "(save-omega):(load-omega):" \
-  "(show-symbol-table)(save-stats)(show-value-sets)" \
+  "(show-symbol-table)(show-value-sets)" \
   "(save-claims)" \
   "(xml-ui)(xml-interface)" \
   "(init-upgrade-check)(do-upgrade-check):" \
@@ -59,6 +63,8 @@ class funfrog_parseoptionst:
 public:
   virtual int doit();
   virtual void help();
+  virtual void register_languages();
+
   void ssos(){
 	  status("Partial Inlining");
   }
@@ -78,11 +84,10 @@ protected:
     optionst& options,
     goto_functionst &goto_functions);
   bool check_function_summarization(namespacet &ns,
-                                goto_functionst &goto_functions,
-                                std::string &stats_dir);
+                                goto_functionst &goto_functions);
 
-  unsigned long report_mem(void) const;
-  unsigned long report_max_mem(unsigned long mem) const;
+ // unsigned long report_mem(void) const;
+ // unsigned long report_max_mem(unsigned long mem) const;
   
   void set_options(const cmdlinet &cmdline);
 

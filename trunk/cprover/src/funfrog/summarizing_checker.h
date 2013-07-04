@@ -13,6 +13,7 @@
 #include <memory>
 #include <options.h>
 #include <ui_message.h>
+#include <solvers/flattening/bv_pointers.h>
 #include "symex_assertion_sum.h"
 #include "prop_assertion_sum.h"
 #include "refiner_assertion_sum.h"
@@ -28,24 +29,22 @@ class summarizing_checkert:public messaget
 public:
   summarizing_checkert(
     const goto_programt &_goto_program,
-    const value_setst &_value_sets,
     const goto_functionst &_goto_functions,
     const namespacet &_ns,
-    contextt &_context,
+    symbol_tablet &_symbol_table,
     const optionst& _options,
     ui_message_handlert &_message_handler,
-    //std::ostream &_out,
+
     unsigned long &_max_memory_used
     ) :
       goto_program(_goto_program),
       ns(_ns),
-      context(_context),
+      symbol_table(_symbol_table),
       options(_options),
       summarization_context(
                 _goto_functions,
-                _value_sets,
                 options.get_int_option("unwind")),
-      //out(_out),
+
       message_handler (_message_handler),
       max_memory_used(_max_memory_used),
       omega(summarization_context, goto_program)
@@ -62,10 +61,9 @@ protected:
 
   const goto_programt &goto_program;
   const namespacet &ns;
-  contextt &context;
+  symbol_tablet &symbol_table;
   const optionst &options;
   summarization_contextt summarization_context;
-  //std::ostream &out;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
   std::auto_ptr<prop_convt> decider;
@@ -79,7 +77,6 @@ protected:
   init_modet init;
   
   void setup_unwind(symex_assertion_sumt& symex);
-  double compute_reduction_timeout(double solving_time);
   void extract_interpolants (prop_assertion_sumt& prop, partitioning_target_equationt& equation);
   void report_success();
   void report_failure();

@@ -47,8 +47,8 @@ bool check_initial(const namespacet &ns,
 {
   unsigned long max_mem_used;
   contextt temp_context;
-  namespacet ns1(ns.get_context(), temp_context);
-  summarizing_checkert sum_checker(program, value_set_analysist(ns1),
+  namespacet ns1(ns.get_symbol_table(), temp_context);
+  summarizing_checkert sum_checker(program,
        goto_functions, ns1, temp_context, options, message_handler, max_mem_used);
 
   sum_checker.initialize();
@@ -115,17 +115,17 @@ bool check_upgrade(const namespacet &ns,
   bool res = diff.do_diff();
 
   final = current_time();
-  diff.status(std::string("DIFF TIME: ") + time2string(final - initial));
+  diff.status() << "DIFF TIME: " << (final - initial) << diff.eom;
   if (res){
-	diff.status("The program models are identical");
+    diff.status("The program models are identical");
     return 0;
   }
 
 
   unsigned long max_mem_used;
   contextt temp_context;
-  namespacet ns1(ns.get_context(), temp_context);
-  upgrade_checkert upg_checker(program_new, value_set_analysist(ns1),
+  namespacet ns1(ns.get_symbol_table(), temp_context);
+  upgrade_checkert upg_checker(program_new,
          goto_functions_new, ns1, temp_context, options, message_handler, max_mem_used);
 
   // Load older summaries
@@ -141,7 +141,7 @@ bool check_upgrade(const namespacet &ns,
 
   final = current_time();
 
-  upg_checker.status(std::string("TOTAL UPGRADE CHECKING TIME: ") + time2string(final - initial));
+  upg_checker.status() << "TOTAL UPGRADE CHECKING TIME: " << (final - initial);
 
   upg_checker.save_change_impact();
 
@@ -181,7 +181,7 @@ bool upgrade_checkert::check_upgrade()
     bool res = true;
 
     const irep_idt& name = (*summs[i]).get_function_id();
-    std::cout << "checking summary #"<< i<<": "<< name <<"\n";
+    // std::cout << "checking summary #"<< i<<": "<< name <<"\n";
 
     // if (omega.get_last_assertion_loc() >= (*summs[i]).get_call_location()){
 
@@ -202,7 +202,7 @@ bool upgrade_checkert::check_upgrade()
 
           upward_traverse_call_tree((*summs[i]), res);
         } else {
-          status(std::string("function ") + name.c_str() + std::string(" is already checked"));
+          status() << "function " << name << " is already checked" << eom;
         }
       }
    /* } else {
@@ -211,7 +211,7 @@ bool upgrade_checkert::check_upgrade()
             + std::string(" is out of assertion scope)"));
     }*/
     if (!res) {
-      status(std::string("Invalid summaries ratio: ") + i2string(omega.get_invalid_count()) + "/" + i2string(omega.get_call_summaries().size() - 1));
+      status() << "Invalid summaries ratio: " << omega.get_invalid_count() << "/" << (omega.get_call_summaries().size() - 1) << eom;
       report_failure();
       return false;
     }
@@ -227,7 +227,7 @@ bool upgrade_checkert::check_upgrade()
   //
   // NOTE: call check_summary to do the check \phi_f => I_f.
   
-  status(std::string("Invalid summaries ratio: ") + i2string(omega.get_invalid_count()) + "/" + i2string(omega.get_call_summaries().size() - 1));
+  status() << "Invalid summaries ratio: " << omega.get_invalid_count() << "/"  << (omega.get_call_summaries().size() - 1) << eom;
   serialize();
   report_success();
   return true;
@@ -248,7 +248,7 @@ Function: upgrade_checkert::upward_traverse_call_tree
 \*******************************************************************/
 void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bool& pre)
 {
-  status(std::string("checking validity of old summary for function: ") + summary_info.get_function_id().c_str());
+  status() << "checking validity of old summary for function: " << summary_info.get_function_id() << eom;
   const summary_ids_sett& used = summary_info.get_used_summaries();
   assert(used.size() <= 1); // we can check only one summary at a time
 
@@ -276,7 +276,7 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
         summary_info.set_summary();
       } else {
         summarization_context.set_valid_summaries(summary_info.get_function_id(), false);
-        status(std::string("invalidating summary: ") + summary_info.get_function_id().c_str());
+        status() << "invalidating summary: " << summary_info.get_function_id() << eom;
         summary_info.clear_used_summaries();
         if (summary_info.get_parent().is_root()){
           status("summary cannot be renewed. A real bug found. ");
@@ -380,7 +380,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   partitioning_target_equationt equation(ns, summarization_context, true, true, NO_COLORING);
 
   symex_assertion_sumt symex = symex_assertion_sumt(
-            summarization_context, summary_info, ns, context,
+            summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option);
 
@@ -466,7 +466,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   if (!end && summary_info.get_parent().is_root()){
     prop.error_trace(*decider, ns);
   }
-  status(std::string("Total number of steps: ") + i2string(count));
-  status(std::string("TOTAL TIME FOR CHECKING THIS SUMMARY: ") + time2string(final - initial));
+  status() << "Total number of steps: " << count << eom;
+  status() << "TOTAL TIME FOR CHECKING THIS SUMMARY: " << (final - initial) << eom;
   return end;
 }

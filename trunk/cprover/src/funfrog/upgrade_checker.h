@@ -17,7 +17,6 @@ class upgrade_checkert : public summarizing_checkert
 public:
   upgrade_checkert(
     const goto_programt &_goto_program,
-    const value_setst &_value_sets,
     const goto_functionst &_goto_functions,
     const namespacet &_ns,
     contextt &_context,
@@ -25,7 +24,7 @@ public:
     //std::ostream &_out,
     ui_message_handlert &_message_handler,
     unsigned long &_max_memory_used
-    ) : summarizing_checkert (_goto_program, _value_sets, _goto_functions,
+    ) : summarizing_checkert (_goto_program, _goto_functions,
     _ns, _context, _options, _message_handler,
     _max_memory_used)
   {};

@@ -11,7 +11,7 @@ Author: Ondrej Sery
 #define CPROVER_SATCHECK_OPENSMT_H
 
 #include <vector>
-
+#include <util/threeval.h>
 #include <solvers/sat/cnf.h>
 
 #include "interpolating_solver.h"

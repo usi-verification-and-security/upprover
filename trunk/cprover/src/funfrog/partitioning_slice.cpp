@@ -117,8 +117,8 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
     // Is it assigned?
     def_mapt::iterator def_it = def_map.find(id);
     if (def_it != def_map.end()) {
-      get_symbols(def_it->second->guard_expr, depends);
-      get_symbols(def_it->second->rhs, depends);
+      get_symbols(def_it->second->guard, depends);
+      get_symbols(def_it->second->ssa_rhs, depends);
       def_it->second->ignore = false;
     }
       
@@ -131,7 +131,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
       for (assume_mapt::iterator it = ass_rng.first;
               it != ass_rng.second;
               ++it) {
-        get_symbols(it->second->guard_expr, depends);
+        get_symbols(it->second->guard, depends);
         get_symbols(it->second->cond_expr, depends);
         it->second->ignore = false;
       }
@@ -261,7 +261,7 @@ Function: partitioning_slicet::prepare_assertion
 void partitioning_slicet::prepare_assertion(
         symex_target_equationt::SSA_stept &SSA_step) 
 {
-  get_symbols(SSA_step.guard_expr, depends);
+  get_symbols(SSA_step.guard, depends);
   get_symbols(SSA_step.cond_expr, depends);
 }
 
@@ -280,9 +280,9 @@ Function: partitioning_slicet::prepare_assignment
 void partitioning_slicet::prepare_assignment(
         symex_target_equationt::SSA_stept &SSA_step) 
 {
-  assert(SSA_step.lhs.id() == ID_symbol);
+  assert(SSA_step.ssa_lhs.id() == ID_symbol);
 
-  const irep_idt &id = SSA_step.lhs.get(ID_identifier);
+  const irep_idt &id = SSA_step.ssa_lhs.get(ID_identifier);
   def_map.insert(def_mapt::value_type(id, &SSA_step));
 }
 

@@ -46,7 +46,7 @@ public:
           treshold = equation.SSA_steps.size() / fraction;
           //treshold = percentage * equation.SSA_steps.size() / 100;
           std::cout << "Using the treshold of " << treshold << " out of " << equation.SSA_steps.size() << " SSA steps\n";
-          std::cout << "Assuming a timeout of " << time2string(impl_timeout) << endl;
+          std::cout << "Assuming a timeout of " << impl_timeout << endl;
     }
 
   void do_it();
@@ -54,7 +54,7 @@ public:
   typedef symex_target_equationt::SSA_stepst::iterator SSA_step_reft;
   void find_var_deps(bool ENABLE_TC=0);
   void find_assert_deps();
-  fine_timet find_implications();
+  long find_implications();
   void get_minimals();
 
   void print_SSA_steps_infos();
@@ -88,7 +88,7 @@ private:
   vector<SSA_step_reft> asserts;
   unsigned treshold;
 
-  fine_timet impl_timeout;
+  long impl_timeout;
 
   void convert_delta_SSA(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
   void convert_assignments(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);

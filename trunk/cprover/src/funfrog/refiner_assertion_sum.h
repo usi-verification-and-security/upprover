@@ -15,6 +15,12 @@
 #include "summarization_context.h"
 #include "partitioning_target_equation.h"
 
+#ifdef USE_PERIPLO
+#include "solvers/satcheck_periplo.h"
+#else
+#include "solvers/satcheck_opensmt.h"
+#endif
+
 class refiner_assertion_sumt:public messaget
 {
 public:

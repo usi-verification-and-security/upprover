@@ -14,6 +14,7 @@
 #include <ui_message.h>
 #include <time_stopping.h>
 #include <fstream>
+#include <util/threeval.h>
 
 #include "assertion_info.h"
 #include "summarization_context.h"

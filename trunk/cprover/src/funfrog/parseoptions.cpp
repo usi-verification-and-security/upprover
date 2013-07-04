@@ -21,45 +21,35 @@
 #include <io.h>
 #endif
 
-//#include <message.h>
-#include <context.h>
 #include <i2string.h>
 #include <std_expr.h>
 #include <arith_tools.h>
 #include <prefix.h>
 #include <time_stopping.h>
 
-#include <goto-programs/read_goto_binary.h>
-#include <goto-programs/goto_functions.h>
-#include <goto-programs/goto_function_pointers.h>
 #include <goto-programs/goto_convert_functions.h>
+#include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/goto_inline.h>
-#include <goto-programs/goto_check.h>
-#include <goto-programs/string_instrumentation.h>
+#include <goto-programs/show_claims.h>
+#include <goto-programs/set_claims.h>
+#include <goto-programs/read_goto_binary.h>
+#include <goto-programs/interpreter.h>
 #include <goto-programs/string_abstraction.h>
-#include <goto-programs/slicer.h>
-//#include <goto-programs/show_claims.h>
-#include <goto-programs/remove_unused_functions.h>
+#include <goto-programs/string_instrumentation.h>
+#include <goto-programs/loop_ids.h>
 #include <goto-programs/link_to_library.h>
 
-#include <pointer-analysis/add_failed_symbols.h>
-#include <pointer-analysis/value_set_analysis.h>
-#include <pointer-analysis/value_set_analysis_fi.h>
-#include <pointer-analysis/value_set_analysis_fivr.h>
-#include <pointer-analysis/value_set_analysis_fivrns.h>
 #include <pointer-analysis/goto_program_dereference.h>
+#include <pointer-analysis/add_failed_symbols.h>
 
-#include "version.h"
-#include "parseoptions.h"
-#include "../loopfrog/version.h"
-#include "../loopfrog/value_set_alloc_adaptor.h"
-#include "../loopfrog/memstat.h"
-#include "../loopfrog/replace_malloc.h"
-#include "../loopfrog/program_compression.h"
+#include <analyses/goto_check.h>
+#include <langapi/mode.h>
+
 #include "check_claims.h"
 #include "upgrade_checker.h"
-#include "inlined_claims.h"
-#include "../loopfrog/languages.h"
+#include "version.h"
+#include "parseoptions.h"
+
 
 /*******************************************************************
 
@@ -87,12 +77,13 @@ bool funfrog_parseoptionst::process_goto_program(
 {
   try
   {
-    if(cmdline.isset("string-abstraction"))
+   if(cmdline.isset("string-abstraction"))
       string_instrumentation(
-        context, get_message_handler(), goto_functions);
+        symbol_table, get_message_handler(), goto_functions);
 
     status("Function Pointer Removal");
-    remove_function_pointers(ns, goto_functions);
+    remove_function_pointers(symbol_table, goto_functions,
+      cmdline.isset("pointer-check"));
 
     status("Partial Inlining");
     // do partial inlining
@@ -105,27 +96,13 @@ bool funfrog_parseoptionst::process_goto_program(
     if(cmdline.isset("string-abstraction"))
     {
       status("String Abstraction");
-      string_abstraction(context,
+      string_abstraction(symbol_table,
         get_message_handler(), goto_functions);
     }
 
     // add failed symbols
     // needs to be done before pointer analysis
-    add_failed_symbols(context);
-
-    if(cmdline.isset("pointer-check"))
-    {
-      status("Pointer Analysis");
-      value_set_analysist value_set_analysis(ns);
-      value_set_analysis(goto_functions);
-
-
-      status("Adding Pointer Checks");
-
-      // add pointer checks
-      pointer_checks(
-        goto_functions, ns, options, value_set_analysis);
-    }
+    add_failed_symbols(symbol_table);
 
     // recalculate numbers, etc.
     goto_functions.update();
@@ -180,12 +157,12 @@ bool funfrog_parseoptionst::get_goto_program(
       status("Reading GOTO program from file");
 
       if(read_goto_binary(filename,
-           context, goto_functions, get_message_handler()))
+           symbol_table, goto_functions, get_message_handler()))
         return true;
 
-      config.ansi_c.set_from_context(context);
+      config.ansi_c.set_from_symbol_table(symbol_table);
 
-      if(context.symbols.find(ID_main)==context.symbols.end())
+      if(symbol_table.symbols.find(ID_main)==symbol_table.symbols.end())
       {
         error("The goto binary has no entry point; please complete linking");
         return true;
@@ -200,7 +177,7 @@ bool funfrog_parseoptionst::get_goto_program(
       // we no longer need any parse trees or language files
       clear_parse();
 
-      if(context.symbols.find(ID_main)==context.symbols.end())
+      if(symbol_table.symbols.find(ID_main)==symbol_table.symbols.end())
       {
         error("No entry point; please provide a main function");
         return true;
@@ -208,15 +185,13 @@ bool funfrog_parseoptionst::get_goto_program(
 
       status("Generating GOTO Program");
 
-      goto_convert(
-        context, options, goto_functions,
-        ui_message_handler);
+      goto_convert(symbol_table, goto_functions, ui_message_handler);
 
-      // finally add the library
-      status("Adding CPROVER library");
-      link_to_library(
-        context, goto_functions, options, ui_message_handler);
     }
+
+    // finally add the library
+    status() << "Adding CPROVER library" << eom;
+    link_to_library(symbol_table, goto_functions, ui_message_handler);
 
     if(process_goto_program(ns, options, goto_functions))
       return true;
@@ -304,36 +279,8 @@ int funfrog_parseoptionst::doit()
     return 1;
   }
 
-  std::string stats_dir;
-  if(cmdline.isset("save-stats") ||
-     cmdline.isset("save-claims") ||
-     cmdline.isset("save-loops"))
-  {
-    stats_dir = cmdline.args[0] + "_data/";
-    #ifndef _WIN32
-      mkdir(stats_dir.c_str(), S_IRWXU | S_IRGRP | S_IROTH);
-    #else
-      mkdir(stats_dir.c_str());
-    #endif
-  }
-
-  if(cmdline.isset("save-stats"))
-  {
-    std::string fn=cmdline.args[0]+".lfstat";
-    statfile.open(fn.c_str(), std::ios_base::app);
-    statfile << cmdline.args[0] << ";";
-    statfile.flush();
-  }
-
-  /* if(cmdline.isset("save-summaries"))
-  {
-    // clean those files
-    std::ofstream f("summaries_imprecise"); f.close();
-    std::ofstream g("summaries_precise"); g.close();
-  }  */
-
   goto_functionst goto_functions;
-  namespacet ns(context);
+  namespacet ns(symbol_table);
   fine_timet before, after;
 
   status(std::string("Loading `")+cmdline.args[0]+"' ...");
@@ -343,7 +290,10 @@ int funfrog_parseoptionst::doit()
     return 6;
 
   after=current_time();
-  status(std::string("    LOAD Time: ") + time2string(after-before) + " sec.");
+  status() << "    LOAD Time: " << (after-before) << " sec." << eom;
+
+
+  label_claims(goto_functions);
 
   if (cmdline.isset("show-symbol-table"))
   {
@@ -362,7 +312,7 @@ int funfrog_parseoptionst::doit()
 //    return false;
 //  }
 
-  if(check_function_summarization(ns, goto_functions, stats_dir))
+  if(check_function_summarization(ns, goto_functions))
     return 1;
 
 
@@ -439,7 +389,6 @@ void funfrog_parseoptionst::help()
   "--all-claims                   check all claims in one run\n"
   "--claims-order <fraction>      find the strongest claims using the given treshold\n"
   "                               treshold = 1/<fraction> of SSA steps\n"
-  "--testclaim <label>            check a labelled claim\n"
   "--unwind <bound>               loop unwind bound\n"
   "--unwindset <label:bound,...>  set of loop unwind bound for specific\n"
   "                               loops\n"
@@ -543,145 +492,17 @@ unsigned funfrog_parseoptionst::count(const goto_programt &goto_program) const
   return goto_program.instructions.size();
 }
 
-/*******************************************************************\
-  
- Function: 
-
- Inputs:
-
- Outputs:
-
- Purpose: 
-
-\*******************************************************************/
-
-unsigned long funfrog_parseoptionst::report_mem(void) const
-{
-  unsigned long l = current_memory();
-  unsigned long mbs = l / 1048576;
-
-  std::cout << "    MEM: "
-  << mbs << " MB " <<
-  "(" << l << " Bytes)." << std::endl;
-
-  return mbs;
-}
-
-/*******************************************************************\
-  
- Function: 
-
- Inputs:
-
- Outputs:
-
- Purpose: 
-
-\*******************************************************************/
-
-unsigned long funfrog_parseoptionst::report_max_mem(unsigned long mem) const
-{
-  unsigned long mbs = mem / 1048576;
-
-  std::cout << "    MEM: "
-  << mbs << " MB " <<
-  "(" << mem << " Bytes)." << std::endl;
-
-  return mbs;
-}
-
-
-/*******************************************************************\
-  
- Function: 
-
- Inputs:
-
- Outputs:
-
- Purpose: 
-
-\*******************************************************************/
 
 bool funfrog_parseoptionst::check_function_summarization(
   namespacet &ns,
-  goto_functionst &goto_functions,
-  std::string &stats_dir)
+  goto_functionst &goto_functions)
 {
-  //unsigned long mem;
-  //unsigned inst;
+
   fine_timet before, after;
   
   claim_mapt claim_map;
   claim_numberst claim_numbers;
-  /*  
-  // we don't create copies...
-  goto_functionst &leaping_functions = goto_functions;
-  
-  loop_summarizer_statst sumstats;
-  
-  // Stage 10: The loop summarization
-  status("#10: Loop Summarization...");
-  
-  loopstoret imprecise_loops;
-  loopstoret precise_loops;
 
-
-  string_summarizationt strsum( context, leaping_functions, imprecise_loops, precise_loops,adaptor, stats_dir, options );
-
-  before=current_time();
-  sumstats = summarize(goto_functions, context, strsum,
-                       imprecise_loops, precise_loops, adaptor,
-                       get_message_handler(), cmdline, stats_dir);
-  if(!cmdline.isset("no-progress") &&
-     !cmdline.isset("no-invariants"))
-    strsum.print_statistics(std::cout);
-  after=current_time();
-  status(std::string("    LS Time: ") + time2string(after-before) + " sec.");
-  if(cmdline.isset("no-invariants"))
-    mem = report_mem();
-  else
-    mem=report_max_mem(strsum.max_mem_used);
-  inst=count(goto_functions, imprecise_loops, precise_loops, 0);
-  
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << "LS;" << time2string(after-before) << ";" << mem << ";" <<
-      inst << ";" << strsum.seen_loops << ";" << sumstats.good << ";" <<
-      sumstats.bad << ";";
-    statfile.flush();
-  }
-  
-  Forall_goto_functions(it, leaping_functions)
-  {
-    compress_program(it->second.body);
-    it->second.body.update();
-  }
-  
-  if (cmdline.isset("show-leaping-program"))
-  {
-    forall_goto_functions(it, leaping_functions)
-    {
-      std::cout << it->first << ": " << std::endl;
-      std::cout << "---------------" << std::endl;
-      it->second.body.output(ns, "", std::cout);
-    }
-  
-    return true;
-  }
-  
-  if (cmdline.isset("save-leaping-program"))
-  {
-    std::ofstream f((stats_dir+"goto_program_leaping").c_str());
-    forall_goto_functions(it, leaping_functions)
-    {
-      f << it->first << ": " << std::endl;
-      f << "---------------" << std::endl;
-      it->second.body.output(ns, "", f);
-    }
-    f.close();
-  }
-  */
   
   status("Checking claims in program...");
 
@@ -715,15 +536,14 @@ bool funfrog_parseoptionst::check_function_summarization(
 
     if (upg_check && init_ready){
       goto_functionst goto_functions_new;
-      status(std::string("Loading `")+cmdline.getval("do-upgrade-check")+"' ...");
+      status(std::string("Loading an upgrade: `")+cmdline.getval("do-upgrade-check")+"' ...");
       before=current_time();
 
       if(get_goto_program(cmdline.getval("do-upgrade-check"), ns, options, goto_functions_new))
         return 6;
 
       after=current_time();
-      status(std::string("    LOAD Time: ") + time2string(after-before) + " sec.");
-
+      status() << "    LOAD Time: " << (after-before) << " sec." << eom;
       check_upgrade(ns,
               // OLD!
               goto_functions.function_map[ID_main].body, goto_functions,
@@ -750,22 +570,6 @@ bool funfrog_parseoptionst::check_function_summarization(
       error("A specific claimset cannot be specified if any other claim specification is set.");
       return 1;
     }
-
-
-    if(cmdline.isset("testclaim"))
-    {
-      claim_nr=find_marked_claim(goto_functions,
-                                 cmdline.getval("testclaim"),
-                                 claim_numbers);
-      if(claim_nr==(unsigned) -1)
-      {
-        claim_nr = atoi(cmdline.getval("testclaim"));
-        if (claim_nr == 0 || claim_nr > claim_numbers.size()) {
-          error("Testclaim not found.");
-          return 1;
-        }
-      }
-    }
     else if(cmdline.isset("claim")) {
       claim_nr=atoi(cmdline.getval("claim"));
       if (claim_nr == 0 || claim_nr > claim_numbers.size()) {
@@ -778,42 +582,13 @@ bool funfrog_parseoptionst::check_function_summarization(
     claim_statst stats = check_claims(ns,
                                       goto_functions.function_map[ID_main].body,
                                       goto_functions,
-                                      stats_dir,
                                       claim_map,
                                       claim_numbers,
                                       options,
                                       ui_message_handler,
-                                      claim_nr,
-                                      cmdline.isset("show-pass"),
-                                      !cmdline.isset("suppress-fail"),
-                                      !cmdline.isset("no-progress"),
-                                      cmdline.isset("save-claims"));
+                                      claim_nr);
     after=current_time();
   }
-  /*
-  if(!cmdline.isset("no-progress")) std::cout << "\r";
-  status(std::string("    PASS: ")+i2string(stats.claims_passed +
-                                            sumstats.good)+
-                        " FAIL: "+i2string(stats.claims_failed) + " ");
-  status(std::string("    CC Time: ") + time2string(after-before) + " sec.");
-  status(std::string("    Time spent in SAT SOLVER: ") +
-           time2string(global_satsolver_time) + " sec.");
-  status(std::string("    Time spent in SAT CONVERSION: ") +
-             time2string(global_sat_conversion_time) + " sec.");
-  mem=report_max_mem(stats.max_mem_used);
-  inst=count(goto_functions, imprecise_loops,
-             precise_loops, stats.max_instruction_count);
-  
-  if(cmdline.isset("save-stats"))
-  {
-    statfile << "CC;" << time2string(after-before) << ";" << mem << ";" <<
-      inst << ";CLAIMS;" << stats.claims_passed << ";" <<
-      stats.claims_failed <<
-      ";SAT;" << time2string(global_satsolver_time) <<
-      ";SCONV;" << time2string(global_sat_conversion_time) << ";";
-    statfile.close();
-  }
-  */
 
   return 0;
 }
@@ -848,6 +623,12 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
   options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
   options.set_option("check-itp", cmdline.isset("check-itp"));
+
+  // always check assertions
+  options.set_option("assertions", true);
+
+  // always use assumptions 
+  options.set_option("assumptions", true);
 
   if (cmdline.isset("itp-algorithm")) {
     options.set_option("itp-algorithm", cmdline.getval("itp-algorithm"));

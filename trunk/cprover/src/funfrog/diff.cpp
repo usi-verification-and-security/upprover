@@ -8,6 +8,7 @@
 
 #include <i2string.h>
 #include "diff.h"
+#include <util/std_expr.h>
 
 //#define DEBUG_DIFF
 
@@ -47,13 +48,13 @@ std::string form(const exprt &expr)
   else if(expr.id()==ID_string_constant){
     return expr.get_string(ID_value);
   } else if (expr.id()==ID_symbol){
-    return expr.get("identifier").as_string();
+    return expr.get_string("identifier");//.as_string();
   } else if(expr.id()==ID_sideeffect){
     if (expr.get(ID_statement)==ID_function_call){
-      return expr.op0().to_string();
+      return form(expr.op0());//.to_string();
     }
     else {
-      return expr.get("statement").as_string();
+      return expr.get_string("statement");//.as_string();
     }
   }
   return "(not supported yet: "+expr.id_string()+")";
@@ -87,12 +88,12 @@ std::string cmd_str (goto_programt::const_targett &it)
       case ASSIGN: {
           const code_assignt &ass =
               to_code_assign(it->code);
-          res = (ass.lhs().get("identifier").as_string() + " = " + form(ass.rhs()));
+          res = (ass.lhs().get_string("identifier") + " = " + form(ass.rhs()));
         }
         break;
       case FUNCTION_CALL: {
           const code_function_callt &call = to_code_function_call(to_code(it->code));
-          res = call.lhs().get("identifier").as_string() + " = " + call.function().get("identifier").as_string() + "(";
+          res = call.lhs().get_string("identifier") + " = " + call.function().get_string("identifier") + "(";
           for (unsigned i = 0; i < call.arguments().size(); i++){
             res += " (" + form (call.arguments()[i]) + ")";
           }

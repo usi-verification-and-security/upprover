@@ -13,8 +13,8 @@ Author: Ondrej Sery
 #include <vector>
 #include <iosfwd>
 #include <ios>
-
 #include "satcheck_opensmt.h"
+
 
 #ifndef HAVE_OPENSMT
 //#error "Expected HAVE_OPENSMT"
@@ -319,14 +319,10 @@ void satcheck_opensmtt::lcnf(const bvt &bv)
   bvt new_bv;
   Enode* tmp = NULL;
 
-std::cout << "process clause: ";
-  if(process_clause(bv, new_bv)){
-  std::cout << " --- true\n";
+  if(process_clause(bv, new_bv))
     return;
-}
-  std::cout << "\n";
-  // Shortcut for an empty clause
 
+  // Shortcut for an empty clause
   if(new_bv.empty())
   {
     std::cerr << "WARNING: Outputing an empty clause -> most probably an error due to pointers." << std::endl;

@@ -7,21 +7,14 @@
 \*******************************************************************/
 
 #include <fstream>
-#include <ansi-c/expr2c.h>
-
-#include "summarizing_checker.h"
-#include "inlined_claims.h"
-/*
-#include "conditional_goto_copy.h"
-#include "localized_inlining.h"
-*/
-
+#include <ui_message.h>
 #include <xml.h>
 #include <i2string.h>
 #include <xml_irep.h>
 
+#include <ansi-c/expr2c.h>
+#include "summarizing_checker.h"
 #include "check_claims.h"
-#include <ui_message.h>
 
 
 /*******************************************************************
@@ -119,16 +112,11 @@ claim_statst check_claims(
   const namespacet &ns,
   goto_programt &leaping_program,
   const goto_functionst &goto_functions,
-  const std::string &stats_dir,
   claim_mapt &claim_map,
   claim_numberst &claim_numbers,
   const optionst& options,
   ui_message_handlert &_message_handler,
-  unsigned claim_nr,
-  bool show_pass,
-  bool show_fail,
-  bool show_progress,
-  bool save_files)
+  unsigned claim_nr)
 {
   // precondition: the leaping program must be numbered correctly.
   claim_statst res;  
@@ -170,10 +158,10 @@ claim_statst check_claims(
   //                                          ns);
 
 
-  contextt temp_context;
-  namespacet ns1(ns.get_context(), temp_context);
-  summarizing_checkert sum_checker(leaping_program, value_set_analysist(ns1),
-        goto_functions, ns1, temp_context, options, _message_handler, res.max_mem_used);
+  symbol_tablet temp_table;
+  namespacet ns1(ns.get_symbol_table(), temp_table);
+  summarizing_checkert sum_checker(leaping_program,
+        goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
 
   sum_checker.initialize();
 
@@ -196,7 +184,7 @@ claim_statst check_claims(
     if (assert_grouping && claim_map[ass_ptr].first)
       continue;
     
-    if(show_progress && !multi_assert)
+    if(!multi_assert)
     {
       seen_claims++;
       res.status(std::string("\r    Checking Claim #") + i2string(claim_numbers[ass_ptr]) + std::string(" (") +
@@ -205,22 +193,6 @@ claim_statst check_claims(
     }
 
     std::ofstream out;
-
-    if(save_files)
-    {
-      fname = stats_dir + "claim_" + i2string(claim_numbers[ass_ptr]);
-      out.open(fname.c_str(), std::fstream::app);
-      out << std::string(80, '-') << std::endl;
-    }
-
-    // NOTE: No inlining in FUNFROG
-    // goto_programt::const_targett inlined_assertion =
-    //   gil.goto_inline(stack, ass_ptr, out);
-    //
-    // if(inlined_program.instructions.size()>res.max_instruction_count)
-    //  res.max_instruction_count=inlined_program.instructions.size();
-
-
 
     bool pass = false;
     if (multi_assert){
@@ -243,31 +215,15 @@ claim_statst check_claims(
     
     if (pass)
     {
-      if (show_pass)
-      {
-        // NOTE: Not reimplemented yet
-        // std::cout << "\rPASSED: ";
-        // show_inlined_claims.show_claim(inlined_assertion, stack,
-        //                                claim_numbers[ass_ptr], std::cout);
-      }
-
       claim_map[ass_ptr].second = true;
     }
     else
-    {      
-      if (show_fail)
-      {
-        // NOTE: Not reimplemented yet
-        // std::cout << "\rFAILED: ";
-        // show_inlined_claims.show_claim(inlined_assertion, stack,
-        //                                claim_numbers[ass_ptr], std::cout);
-      }
-      
+    {
       claim_map[ass_ptr].second = false;
     }
 
-    if(save_files)
-      out.close();
+//    if(save_files)
+//      out.close();
   }
 
   if (multi_assert){

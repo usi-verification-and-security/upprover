@@ -13,15 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 */
 
 #include <signal.h>
-
 #include "parseoptions.h"
-
-
-void xcpu_termination_handler(int signum)
-{
-  std::cout << std::endl << "TIME LIMIT EXCEEDED" << std::endl;
-  exit(0);
-}
 
 /*******************************************************************\
 
@@ -37,10 +29,6 @@ Function: main
 
 int main(int argc, const char **argv)
 {
-  #ifndef _WIN32
-  signal(SIGXCPU, &xcpu_termination_handler);
-  #endif
-
   funfrog_parseoptionst parseoptions(argc, argv);
   int r = 0;
   try

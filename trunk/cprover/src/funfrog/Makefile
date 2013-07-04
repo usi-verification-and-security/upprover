@@ -15,14 +15,13 @@ FUNFROG_SRC := \
       subst_scenario.cpp \
       xml_interface.cpp \
       parseoptions.cpp \
+      languages.cpp \
       check_claims.cpp \
-      dependency_checker.cpp \
       refiner_assertion_sum.cpp \
       prop_assertion_sum.cpp \
       symex_assertion_sum.cpp \
       summarizing_checker.cpp \
       upgrade_checker.cpp \
-      inlined_claims.cpp \
       main.cpp
 
 SUMO_SRC := \
@@ -32,30 +31,36 @@ DIFF_SRC := \
       diff.cpp \
       diff_main.cpp
 
-SHARED_OBJ := \
+OBJ += \
       $(SHARED_SRC:.cpp=$(OBJEXT)) \
-      ../util/util$(LIBEXT) \
-      ../big-int/bigint$(OBJEXT) \
-      ../goto-programs/goto-programs$(LIBEXT) \
-      ../pointer-analysis/pointer-analysis$(LIBEXT) \
-      ../langapi/langapi$(LIBEXT) \
       ../ansi-c/ansi-c$(LIBEXT) \
-      ../solvers/solvers$(LIBEXT)
+      ../linking/linking$(LIBEXT) \
+      ../big-int/big-int$(LIBEXT) \
+      ../goto-programs/goto-programs$(LIBEXT) \
+      ../pointer-analysis/value_set$(OBJEXT) \
+      ../pointer-analysis/dereference$(OBJEXT) \
+      ../pointer-analysis/add_failed_symbols$(OBJEXT) \
+      ../pointer-analysis/rewrite_index$(OBJEXT) \
+      ../pointer-analysis/goto_program_dereference$(OBJEXT) \
+      ../langapi/langapi$(LIBEXT) \
+      ../analyses/analyses$(LIBEXT) \
+      ../assembler/assembler$(LIBEXT) \
+      ../solvers/solvers$(LIBEXT) \
+      ../util/util$(LIBEXT)
+
 
 FUNFROG_OBJ := \
       $(FUNFROG_SRC:.cpp=$(OBJEXT)) \
-      ../loopfrog/languages$(OBJEXT) \
-      ../loopfrog/memstat$(OBJEXT) \
-      ../loopfrog/value_set_alloc_adaptor$(OBJEXT) \
-      ../loopfrog/replace_malloc$(OBJEXT) \
       ../goto-symex/goto-symex$(LIBEXT) \
       ../xmllang/xmllang$(LIBEXT) \
       ../cbmc/symex_bmc$(OBJEXT) \
-	    $(SHARED_OBJ)
+      ../cpp/cpp$(LIBEXT) \
+      ../java_bytecode/java_bytecode$(LIBEXT) \
+	    $(OBJ)
 
 SUMO_OBJ := \
       $(SUMO_SRC:.cpp=$(OBJEXT)) \
-      $(SHARED_OBJ)
+      $(OBJ)
 
 DIFF_OBJ := \
       $(DIFF_SRC:.cpp=$(OBJEXT)) \
@@ -75,29 +80,44 @@ all: evolcheck$(EXEEXT) sumo$(EXEEXT)
 INCLUDES := $(OPENSMT_INCLUDE) -I .. -I ../util
 LIBS := -L $(OPENSMT_LIBDIR)
 
-ifdef MODULE_BV_REFINEMENT
-  FUNFROG_OBJ += ../bv_refinement/bv_refinement$(LIBEXT)
-  CXXFLAGS += -DHAVE_BV_REFINEMENT
+ifneq ($(wildcard ../bv_refinement/Makefile),)
+  OBJ += ../bv_refinement/bv_refinement$(LIBEXT)
+  CP_CXXFLAGS += -DHAVE_BV_REFINEMENT
 endif
 
-ifdef MODULE_CPP
-  FUNFROG_OBJ += ../cpp/cpp$(LIBEXT)
-  CXXFLAGS += -DHAVE_CPP
+ifneq ($(wildcard ../cpp/Makefile),)
+  OBJ += ../cpp/cpp$(LIBEXT)
+  CP_CXXFLAGS += -DHAVE_CPP
+endif
+
+ifneq ($(wildcard ../java_bytecode/Makefile),)
+  OBJ += ../java_bytecode/java_bytecode$(LIBEXT)
+  CP_CXXFLAGS += -DHAVE_JAVA_BYTECODE
+endif
+
+ifneq ($(wildcard ../specc/Makefile),)
+  OBJ += ../specc/specc$(LIBEXT)
+  CP_CXXFLAGS += -DHAVE_SPECC
+endif
+
+ifneq ($(wildcard ../php/Makefile),)
+  OBJ += ../php/php$(LIBEXT)
+  CP_CXXFLAGS += -DHAVE_PHP
 endif
 
 ###############################################################################
 
 evolcheck$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) $(FUNFROG_OBJ) -static -lopensmt-1.0 -lgmpxx -lgmp
+	$(LINKBIN) -static -lopensmt-1.0 -lgmpxx -lgmp
 
 funfrog$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) $(FUNFROG_OBJ) -static -lopensmt-1.0 -lgmpxx -lgmp
+	$(LINKBIN) -static -lopensmt-1.0 -lgmpxx -lgmp
 
 sumo$(EXEEXT): $(SUMO_OBJ)
-	$(LINKBIN) $(SUMO_OBJ) -lopensmt-1.0 -lgmpxx -lgmp
+	$(LINKBIN) -static -lopensmt-1.0 -lgmpxx -lgmp
 
 diff$(EXEEXT): $(DIFF_OBJ)
-	$(LINKBIN) $(DIFF_OBJ) -static
+	$(LINKBIN) -static
 	mv diff goto-diff
 
 clean:

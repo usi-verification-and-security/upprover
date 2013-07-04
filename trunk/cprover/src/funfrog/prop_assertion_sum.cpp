@@ -60,18 +60,18 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
   after=current_time();
   global_sat_conversion_time += (after-before);
 
-  status(std::string("CONVERSION TIME: ") + time2string(after-before));
+  status() << "CONVERSION TIME: " << (after-before) << eom;
 
   // Decides the equation
   sat = is_satisfiable(decider);
 
-  unsigned long this_mem = current_memory();
-  if (this_mem > max_memory_used)
-    max_memory_used = this_mem;
+  //unsigned long this_mem = current_memory();
+  //if (this_mem > max_memory_used)
+  //  max_memory_used = this_mem;
 
   if (!sat)
   {
-	  status("ASSERTION IS TRUE");
+    status("ASSERTION IS TRUE");
     return true;
   }
   else
@@ -143,7 +143,7 @@ bool prop_assertion_sumt::is_satisfiable(
   before=current_time();
   decision_proceduret::resultt r = decision_procedure.dec_solve();
   after=current_time();
-  status(std::string("SOLVER TIME: ") + time2string(after-before));
+  status() << "SOLVER TIME: " << (after-before) << eom;
 
   solving_time = (after-before);
   global_satsolver_time += (after-before);
@@ -197,19 +197,18 @@ void build_exec_order_goto_trace(
     goto_trace_stept &goto_trace_step=goto_trace.steps.back();
     
     goto_trace_step.thread_nr=SSA_step.source.thread_nr;
-    goto_trace_step.lhs=SSA_step.lhs;
-    goto_trace_step.rhs=SSA_step.rhs;
     goto_trace_step.pc=SSA_step.source.pc;
     goto_trace_step.comment=SSA_step.comment;
-    goto_trace_step.original_lhs=SSA_step.original_lhs;
+    goto_trace_step.lhs_object=SSA_step.original_lhs_object;
     goto_trace_step.type=SSA_step.type;
     goto_trace_step.step_nr=step_nr;
     goto_trace_step.format_string=SSA_step.format_string;
     goto_trace_step.io_id=SSA_step.io_id;
     goto_trace_step.formatted=SSA_step.formatted;
+    goto_trace_step.identifier=SSA_step.identifier;
     
-    if(SSA_step.lhs.is_not_nil())
-      goto_trace_step.value=prop_conv.get(SSA_step.lhs);
+    if(SSA_step.ssa_lhs.is_not_nil())
+      goto_trace_step.full_lhs = prop_conv.get(SSA_step.ssa_lhs);
     
     for(std::list<exprt>::const_iterator
         j=SSA_step.converted_io_args.begin();
@@ -283,10 +282,6 @@ void prop_assertion_sumt::error_trace(const prop_convt &prop_conv, const namespa
   case ui_message_handlert::PLAIN:
     std::cout << std::endl << "Counterexample:" << std::endl;
     show_goto_trace(std::cout, ns, goto_trace);
-    break;
-
-  case ui_message_handlert::OLD_GUI:
-    show_goto_trace_gui(std::cout, ns, goto_trace);
     break;
 
   case ui_message_handlert::XML_UI:

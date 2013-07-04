@@ -13,6 +13,7 @@ Author: Ondrej Sery
 #include <vector>
 
 #include <solvers/sat/cnf.h>
+#include <util/threeval.h>
 
 #include "interpolating_solver.h"
 #define PRODUCE_PROOF

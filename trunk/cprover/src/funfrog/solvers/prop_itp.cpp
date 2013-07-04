@@ -8,8 +8,10 @@ Author: Ondrej Sery
 #include <limits.h>
 #include <string.h>
 #include "prop_itp.h"
+#include <stdlib.h>
+#include <iostream>
 
-#define DEBUG_ITP
+//#define DEBUG_ITP
 
 /*******************************************************************\
 
@@ -178,20 +180,6 @@ void prop_itpt::generalize(const prop_convt& decider,
 # ifdef DEBUG_ITP
   std::cout << "--------------- Generalizing -------------" << std::endl;
 # endif
-  
-  for (clausest::iterator it = clauses.begin();
-          it != clauses.end();
-          ++it) {
-    for (bvt::iterator it2 = it->begin();
-            it2 != it->end();
-            ++it2) {
-
-      // Only shift the artificial variables (present due to the Tseitin
-      // encoding to CNF)
-      std::cout << "check: " <<(it2->var_no()) << "\n";
-}}
-
-
 
   // FIXME: Dirty cast.
   const boolbv_mapt::mappingt& mapping =
@@ -214,10 +202,9 @@ void prop_itpt::generalize(const prop_convt& decider,
           unsigned var_no = l.var_no();
 
 #         ifdef DEBUG_ITP
-          std::cout << " -> '" << it->get_identifier().as_string() <<
+          std::cout << " -> '" << it->get_identifier() <<
                   "' - bool (" << var_no << ")" << std::endl;
 #         endif
-
           if (min_var > var_no) min_var = var_no;
           if (max_var < var_no) max_var = var_no;
         }
@@ -227,23 +214,24 @@ void prop_itpt::generalize(const prop_convt& decider,
     const boolbv_mapt::map_entryt& entry = pos->second;
     
 #   ifdef DEBUG_ITP
-    std::cout << " -> '" << it->get_identifier().as_string() << "' - " << entry.width << std::endl;
+    std::cout << " -> '" << it->get_identifier() << "' - " << entry.width << std::endl;
 #   endif
 
+   
     for (boolbv_mapt::literal_mapt::const_iterator it2 = entry.literal_map.begin();
             it2 != entry.literal_map.end();
             ++it2) {
-      if (!it2->is_set) continue;
-      
+      if (!it2->is_set)
+        continue;
+
       unsigned var_no = it2->l.var_no();
 
-      
       if (min_var > var_no) min_var = var_no;
       if (max_var < var_no) max_var = var_no;
     }
   }
   assert (min_var < UINT_MAX && max_var > 0);
-  
+
 # ifdef DEBUG_ITP
   std::cout << " = " << min_var << " - " << max_var << std::endl;
 # endif
@@ -322,7 +310,7 @@ void prop_itpt::generalize(const prop_convt& decider,
       represented_symbol[idx] = current_symbol;
 
 #     ifdef DEBUG_ITP
-      std::cout << it2->l.var_no() << " ";
+      std::cout <<"   ~~~~ smth more: "<< it2->l.var_no() << " ";
 #     endif
     }
 #   ifdef DEBUG_ITP
@@ -359,13 +347,9 @@ void prop_itpt::generalize(const prop_convt& decider,
       // Only shift the artificial variables (present due to the Tseitin
       // encoding to CNF)
       if (it2->var_no() > max_var) {
-        std::cout << "~~~~ shifting: " << it2->var_no() << " (max-var = "<<max_var <<") by " <<  shift << "\n"; 
         it2->set(it2->var_no() - shift, it2->sign());
         continue;
-      } else {
-        std::cout << "~~~~~~~  skipping: " << it2->var_no() <<"\n";
-      }
-
+      } 
 
       unsigned idx = it2->var_no() - min_var;
       // Sanity check, all variables used in the interpolant should be mapped.
@@ -382,8 +366,6 @@ void prop_itpt::generalize(const prop_convt& decider,
     // Sanity check, all variables used in the interpolant should be mapped.
     assert(renaming[idx] != UINT_MAX);
     root_literal.set(renaming[idx], root_literal.sign());
-    std::cout << root_literal.var_no() << " " << min_var <<" "<< idx << " " << represented_symbol[idx] <<" " <<
-        symbols.size() <<"\n";
     used_symbols[represented_symbol[idx]] = true;
   }
 
@@ -468,11 +450,13 @@ void prop_itpt::substitute(prop_convt& decider,
             map.get_map_entry(it->get_identifier(), it->type()).width <<
             ")" << std::endl;
 #   endif
-    for (unsigned i = 0;
-            i < map.get_map_entry(it->get_identifier(), it->type()).width;
-            ++i) {
-      literalt l = map.get_literal(it->get_identifier(), i, it->type());
-
+    bvt literals;
+    const unsigned width = map.get_map_entry(it->get_identifier(), it->type()).width;
+    literals.resize(width);
+    map.get_literals(
+      it->get_identifier(), it->type(), width, literals);
+    for (unsigned i = 0; i < width; ++i) {
+      literalt l = literals[i];
 #     ifdef DEBUG_ITP
       std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
 #     endif
@@ -483,7 +467,6 @@ void prop_itpt::substitute(prop_convt& decider,
     std::cout << std::endl;
 #   endif
   }
-
   // Allocate new variables for the auxiliary ones (present due to the Tseitin
   // encoding to CNF)
   for (unsigned i = _no_orig_variables; i < _no_variables; ++i) {
@@ -503,13 +486,14 @@ void prop_itpt::substitute(prop_convt& decider,
       // Rename
       bool sign = it2->sign();
       *it2 = renaming[it2->var_no()];
-      if (sign)
-        it2->invert();
+      if (sign){
+       it2->invert();
+      }
     }
-    
     // Assert the clause
     decider.prop.lcnf(tmp_clause);
   }
+
   // Handle the root
   bool sign = root_literal.sign();
   literalt new_root_literal = renaming[root_literal.var_no()];
@@ -633,7 +617,6 @@ void prop_itpt::reserve_variables(prop_convt& decider,
       new_lit.push_back(l.var_no());
       continue;
     }
-std::cout << "CREATE INDENTIFIER " << it->get_identifier()<< "\n";
     boolbv_mapt::map_entryt& m_entry = 
             map.get_map_entry(it->get_identifier(), it->type());
     for (unsigned i = 0;
@@ -643,9 +626,7 @@ std::cout << "CREATE INDENTIFIER " << it->get_identifier()<< "\n";
       assert(i < m_entry.literal_map.size());
       if(!m_entry.literal_map[i].is_set) {
         m_entry.literal_map[i].is_set = true;
-
         m_entry.literal_map[i].l = decider.prop.new_variable();
-        std::cout << "CREATING IN RESERVE VARIABLES " << m_entry.literal_map[i].l.var_no() << "\n\n";
       }
       new_lit.push_back(m_entry.literal_map[i].l.var_no());
     }

@@ -14,10 +14,13 @@
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
 #include <goto-symex/goto_symex.h>
+#include <goto-symex/goto_symex_state.h>
 #include <cbmc/symex_bmc.h>
 #include <namespace.h>
 #include <symbol.h>
 #include <ui_message.h>
+#include <util/options.h>
+
 
 #include <base_type.h>
 #include <time_stopping.h>
@@ -36,22 +39,20 @@ public:
           summarization_contextt &_summarization_context,
           summary_infot &_summary_info,
           const namespacet &_ns,
-          contextt &_context,
+          symbol_tablet &_new_symbol_table,
           partitioning_target_equationt &_target,
-          //std::ostream &_out,
           ui_message_handlert &_message_handler,
           const goto_programt &_goto_program,
           unsigned _last_assertion_loc,
           bool _single_assertion_check,
           bool _use_slicing=true
           ) :
-          symex_bmct(_ns, _context, _target),
+          symex_bmct(_ns, _new_symbol_table, _target),
           summarization_context(_summarization_context),
           summary_info(_summary_info),
           current_summary_info(&_summary_info),
           equation(_target),
           current_assertion(NULL),
-          //out(_out),
           message_handler(_message_handler),
           goto_program(_goto_program),
           last_assertion_loc(_last_assertion_loc),
@@ -288,12 +289,12 @@ private:
   void add_symbol(const irep_idt& id, const typet& type, bool dead) {
     if (dead) {
       dead_identifiers.insert(id);
-    } else if (!new_context.has_symbol(id)) {
+    } else if (!new_symbol_table.has_symbol(id)) {
       symbolt s;
       s.base_name = id;
       s.name = id;
       s.type = type;
-      new_context.add(s);
+      new_symbol_table.add(s);
     }
   }
 

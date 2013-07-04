@@ -8,7 +8,8 @@
 \*******************************************************************/
 #include <i2string.h>
 #include "summarizing_checker.h"
-#include "dependency_checker.h"
+#include "partitioning_slice.h"
+//#include "dependency_checker.h"
 
 void summarizing_checkert::initialize()
 {
@@ -28,7 +29,7 @@ void summarizing_checkert::initialize()
   // to the target assertion, which are marked depending on initial mode.
 
   omega.initialize_summary_info (omega.get_summary_info(), goto_program);
-  omega.process_goto_locations();
+  //omega.process_goto_locations();
   init = get_init_mode(options.get_option("init-mode"));
   omega.setup_default_precision(init);
 }
@@ -68,7 +69,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
-            summarization_context, summary_info, ns, context,
+            summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option);
 
@@ -117,7 +118,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
     if (!end){
 
       if (options.get_bool_option("claims-order") && count == 1){
-        dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_int_option("claims-order")).do_it();
+//TODO: ask Andrea to upgrade it (Makefile as well)
+//        dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_int_option("claims-order")).do_it();
 
         // TODO: employ dependency information from dependency checker
         status(std::string("All SSA steps without weakest summaries: ") + i2string(equation.SSA_steps.size()));
@@ -140,19 +142,19 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
         {
           status("ASSERTION(S) HOLD(S)"); //TODO change the message to something more clear (like, everyting was inlined...)
         } else {
-          status(std::string("FUNCTION SUMMARIES (for ") + i2string(summaries_count) +
-        		  std::string(" calls) WERE SUBSTITUTED SUCCESSFULLY."));
+          status() << "FUNCTION SUMMARIES (for " << summaries_count
+        	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
         }
         report_success();
       } else {
         if (summaries_count > 0 || nondet_count > 0) {
           if (summaries_count > 0){
-            status(std::string("FUNCTION SUMMARIES (for ") +
-                i2string(summaries_count) + std::string(" calls) AREN'T SUITABLE FOR CHECKING ASSERTION"));
+            status() << "FUNCTION SUMMARIES (for " << summaries_count
+                   << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
           }
           if (nondet_count > 0){
-            status(std::string("HAVOCING (of ") +
-                i2string(nondet_count) + std::string(" calls) AREN'T SUITABLE FOR CHECKING ASSERTION"));
+            status() << "HAVOCING (of " << nondet_count
+                   << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
           }
           refiner.refine(*decider, omega.get_summary_info());
 
@@ -177,28 +179,9 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   }
   final = current_time();
 
-  status(std::string("Total number of steps: ") + i2string(count));
-  status(std::string("TOTAL TIME FOR CHECKING THIS CLAIM: ") + time2string(final - initial));
+  status() << "Total number of steps: " << count << eom;
+  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
   return end;
-}
-
-// Useless method. TODO: clean
-double summarizing_checkert::compute_reduction_timeout(double solving_time)
-{
-  double red_timeout = 0;
-  const char* red_timeout_str = options.get_option("reduce-proof-time").c_str();
-  if (strlen(red_timeout_str)) {
-    char* result;
-    red_timeout = strtod(red_timeout_str, &result);
-
-    if (result == red_timeout_str) {
-            std::cerr << "WARNING: Invalid value of reduction time fraction \"" <<
-                            red_timeout_str << "\". No reduction will be applied." << std::endl;
-    } else {
-      red_timeout = solving_time / 1000 * red_timeout;
-    }
-  }
-  return red_timeout;
 }
 
 /*******************************************************************\
@@ -220,12 +203,10 @@ void summarizing_checkert::extract_interpolants (prop_assertion_sumt& prop, part
   fine_timet before, after;
   before=current_time();
 
-  double red_timeout = compute_reduction_timeout((double)prop.get_solving_time());
-
   equation.extract_interpolants(*interpolator, *decider, itp_map);
 
   after=current_time();
-  status(std::string("INTERPOLATION TIME: ") + time2string(after-before));
+  status() << "INTERPOLATION TIME: " << (after-before) << eom;
 
   for (interpolant_mapt::iterator it = itp_map.begin();
                   it != itp_map.end(); ++it) {
@@ -366,9 +347,7 @@ void summarizing_checkert::report_success()
 
   switch(message_handler.get_ui())
   {
-  case ui_message_handlert::OLD_GUI:
-    break;
-
+  
   case ui_message_handlert::PLAIN:
 	std::cout << std::endl << std::endl << "VERIFICATION SUCCESSFUL" << std::endl;
 	break;
@@ -403,8 +382,6 @@ void summarizing_checkert::report_failure()
 {
   switch(message_handler.get_ui())
   {
-  case ui_message_handlert::OLD_GUI:
-    break;
 
   case ui_message_handlert::PLAIN:
 	std::cout << std::endl << std::endl << "VERIFICATION FAILED" << std::endl;

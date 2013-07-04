@@ -384,7 +384,7 @@ void function_infot::add_to_set_if_global(const namespacet& ns,
     // Directly a symbol - add to set if it is a static variable
     irep_idt id = to_symbol_expr(ex).get_identifier();
     const symbolt& symbol = ns.lookup(id);
-    if (symbol.static_lifetime && symbol.lvalue) {
+    if (symbol.is_static_lifetime && symbol.is_lvalue) {
       set.insert(id);
     }
   } else if (ex.id() == ID_index) {
@@ -479,7 +479,7 @@ bool function_infot::check_implies(const interpolantt& first,
   propt::resultt res = prop_solver.prop_solve();
   
   after = current_time();
-  std::cerr << "SOLVER TIME: "<< time2string(after-before) << std::endl;
+  std::cerr << "SOLVER TIME: "<< after-before << std::endl;
   
   if (res == propt::P_UNSATISFIABLE) {
     std::cerr << "UNSAT" << std::endl;

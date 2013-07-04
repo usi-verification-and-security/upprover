@@ -38,11 +38,9 @@ class summarization_contextt {
 public:
   summarization_contextt(
           const goto_functionst &_functions,
-          const value_setst &_value_sets,
           const unsigned _unwind_max
           ) : 
           functions(_functions),
-          value_sets(_value_sets),
           unwind_max(_unwind_max)
   {
     for (goto_functionst::function_mapt::const_iterator it =
@@ -150,7 +148,6 @@ public:
 
 private:
   const goto_functionst &functions;
-  const value_setst &value_sets;
   const unsigned unwind_max;
   function_infost function_infos;
   summary_storet summary_store;

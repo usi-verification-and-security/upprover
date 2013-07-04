@@ -32,24 +32,24 @@ void dependency_checkert::do_it(){
   find_var_deps();
 
   final = current_time();
-  std::cout << "TIME FOR find_var_deps: " << time2string(final - initial) << std::endl;
+  std::cout << "TIME FOR find_var_deps: " << (final - initial) << std::endl;
 
   find_assert_deps();
 
   initial = current_time();
-  std::cout << "TIME FOR find_assert_deps: " << time2string(initial - final) << std::endl;
+  std::cout << "TIME FOR find_assert_deps: " << (initial - final) << std::endl;
 
   to_time = find_implications();
 
   final = current_time();
-  std::cout << "TIME FOR find_implications: " << time2string(final - initial) << std::endl;
-  std::cout << "TIME exceeding timeouts: " << time2string(to_time) << std::endl;
-  std::cout << "TIME FOR find_implications using a timeout: " << time2string(final - initial - to_time) << std::endl;
+  std::cout << "TIME FOR find_implications: " << (final - initial) << std::endl;
+  std::cout << "TIME exceeding timeouts: " << (to_time) << std::endl;
+  std::cout << "TIME FOR find_implications using a timeout: " << (final - initial - to_time) << std::endl;
 
 //  get_minimals();
 
 //  initial = current_time();
-//  std::cout << "TIME FOR get_minimals: " << time2string(initial - final) << std::endl;
+//  std::cout << "TIME FOR get_minimals: " << (initial - final) << std::endl;
 }
 
 pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
@@ -71,7 +71,7 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
   before=current_time();
   decision_proceduret::resultt r = (*decider).dec_solve();
   after=current_time();
-  status(std::string("SOLVER TIME: ") + time2string(after-before));
+  status() << "SOLVER TIME: " << (after-before) << eom;
 
   // solve it
   switch (r)
@@ -245,9 +245,9 @@ bool dependency_checkert::compare_assertions(SSA_step_reft &a, SSA_step_reft &b)
   return distance(a, b) < treshold;
 }
 
-fine_timet dependency_checkert::find_implications()
+long dependency_checkert::find_implications()
 {
-  fine_timet true_time, false_time, to_time;
+  long true_time, false_time, to_time;
   true_time = 0;
   false_time = 0;
   to_time = 0;
@@ -291,7 +291,7 @@ fine_timet dependency_checkert::find_implications()
         {
           true_time = true_time + checkres.second;
           cout << "check_implication returned TRUE" << endl;
-          if (checkres.second <= impl_timeout)
+          if (checkres.second.get_t() <= impl_timeout)
           {
               assert_imps[ass_1][ass_2] = IMP;
               std::cout << "Adding the assertion implication (" <<
@@ -307,13 +307,13 @@ fine_timet dependency_checkert::find_implications()
         }
         else
         {
-        	false_time = false_time + checkres.second;
+        	false_time = false_time + checkres.second.get_t();
         	cout << "check_implication returned FALSE" << endl;
         }
-        if (checkres.second > impl_timeout)
+        if (checkres.second.get_t() > impl_timeout)
         {
-        	fine_timet exceeding = checkres.second - impl_timeout;
-        	cout << "Timeout " << time2string(impl_timeout) << " exceeded of " << time2string(exceeding) << " seconds." << endl;
+        	long exceeding = checkres.second.get_t() - impl_timeout;
+        	cout << "Timeout " << impl_timeout << " exceeded of " << exceeding << " seconds." << endl;
             to_time = to_time + exceeding;
         }
       }
@@ -350,6 +350,8 @@ void dependency_checkert::get_minimals()
 
 void dependency_checkert::print_SSA_steps_infos()
 {
+//TODO: integrate with new CProver
+/*
   map<string,map<string,bool> > var_deps;
 
   //printf("Sono dentro la dependency analysis!\n");
@@ -454,7 +456,7 @@ void dependency_checkert::print_SSA_steps_infos()
       std::cout << variable_name((*dep_it).first) << " <- ";
       print_dependents((*dep_it).second, std::cout);
       std::cout << std::endl;
-    }
+    }*/
 }
 
 void dependency_checkert::print_dependents(map<string,bool> dependents, std::ostream &out)

@@ -6,6 +6,7 @@
 
 \*******************************************************************/
 #include <time_stopping.h>
+#include <goto-programs/goto_functions.h>
 #include <goto-programs/read_goto_binary.h>
 
 #include <ui_message.h>
@@ -16,6 +17,7 @@
 #include <cstring>
 #include <iostream>
 #include <fstream>
+#include <set>
 
 
 template <class T1, class T2, class T3> struct triple
