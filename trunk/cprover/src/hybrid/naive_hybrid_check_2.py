@@ -29,7 +29,7 @@ class Assertion(object):
         self.__expression = expression
         self.__type = type
         self.__state = state
-        self.__filename = filename
+        self.__filename = str(filename)
         self.__final_src_line = -1
         self.__claim_nr = -1
         self.__summarizable = True
@@ -96,8 +96,8 @@ def process_file (filename, input_path, output_path, assertions, skip_nonsummari
     assertions.sort(key=lambda assertion: assertion.src_line)
 
     # Copy the files while inserting the assertions
-    input_file = open(input_path + filename, 'r');
-    output_file = open(output_path + filename, 'w');
+    input_file = open(os.path.join(input_path, filename), 'r');
+    output_file = open(os.path.join(output_path, filename), 'w');
     line = input_file.readline()
     src_line = final_line = 1
     assertion_idx = 0
@@ -151,13 +151,13 @@ def process_files(files, input_path, output_path, assertion_map, skip_nonsummari
 def create_models (files, output_path, assertions):
     # Choose the correct executable for each platform
     if sys.platform == 'win32':
-        cmd_str = ["goto-cl.exe", "/Fo" + output_path + "a.out"]
+        cmd_str = ["goto-cl.exe", "/Fo" + os.path.join(output_path, "a.out")]
     elif sys.platform == 'cygwin':
-        cmd_str = ["goto-cc.exe", "-o", output_path + "a.out"]
+        cmd_str = ["goto-cc.exe", "-o", os.path.join(output_path, "a.out")]
     else:
-        cmd_str = ["goto-cc", "-o", output_path + "a.out"]
+        cmd_str = ["goto-cc", "-o", os.path.join(output_path, "a.out")]
 
-    cmd_str.extend(map(lambda x: (output_path + x), files))
+    cmd_str.extend(map(lambda x: (os.path.join(output_path, x)), files))
 
 #    print (" * Running:")
 #    print (cmd_str);
@@ -215,38 +215,39 @@ def get_args(check_type, orig_gb, output_path, filename, asrts):
             cmd_str.append("/nonexistent/file")
 #            cmd_str.append("--no-slicing")
         cmd_str.append("--no-summary-optimization")
-        cmd_str.append(output_path + filename)
+        cmd_str.append(os.path.join(output_path, filename))
     else:
 #        cmd_str.append("--no-slicing")
         cmd_str.append("--do-upgrade-check")
-        cmd_str.append(output_path + filename)
+        cmd_str.append(os.path.join(output_path, filename))
         cmd_str.append(orig_gb)
 
     # Preceed with the time command
-    if asrts != None and len(asrts) == 1:
-        cmd_str.insert(0, 'claim-%s.time' % asrts[0].claim_nr)
-        cmd_str.insert(0, '-o')
-        cmd_str.insert(0, "'user: %U system: %S wall: %e'")
-        cmd_str.insert(0, '-f')
-        cmd_str.insert(0, '/usr/bin/time')
-    elif check_type == CheckTypes.Initial:
-        cmd_str.insert(0, 'initial.time')
-        cmd_str.insert(0, '-o')
-        cmd_str.insert(0, "'user: %U system: %S wall: %e'")
-        cmd_str.insert(0, '-f')
-        cmd_str.insert(0, '/usr/bin/time')
-    elif check_type == CheckTypes.Upgrade:
-        cmd_str.insert(0, 'upgrade.time')
-        cmd_str.insert(0, '-o')
-        cmd_str.insert(0, "'user: %U system: %S wall: %e'")
-        cmd_str.insert(0, '-f')
-        cmd_str.insert(0, '/usr/bin/time')
-    else:
-        cmd_str.insert(0, 'strange.time')
-        cmd_str.insert(0, '-o')
-        cmd_str.insert(0, "'user: %U system: %S wall: %e'")
-        cmd_str.insert(0, '-f')
-        cmd_str.insert(0, '/usr/bin/time')
+    if sys.platform != 'win32' and sys.platform != 'cygwin':
+        if asrts != None and len(asrts) == 1:
+            cmd_str.insert(0, 'claim-%s.time' % asrts[0].claim_nr)
+            cmd_str.insert(0, '-o')
+            cmd_str.insert(0, "'user: %U system: %S wall: %e'")
+            cmd_str.insert(0, '-f')
+            cmd_str.insert(0, '/usr/bin/time')
+        elif check_type == CheckTypes.Initial:
+            cmd_str.insert(0, 'initial.time')
+            cmd_str.insert(0, '-o')
+            cmd_str.insert(0, "'user: %U system: %S wall: %e'")
+            cmd_str.insert(0, '-f')
+            cmd_str.insert(0, '/usr/bin/time')
+        elif check_type == CheckTypes.Upgrade:
+            cmd_str.insert(0, 'upgrade.time')
+            cmd_str.insert(0, '-o')
+            cmd_str.insert(0, "'user: %U system: %S wall: %e'")
+            cmd_str.insert(0, '-f')
+            cmd_str.insert(0, '/usr/bin/time')
+        else:
+            cmd_str.insert(0, 'strange.time')
+            cmd_str.insert(0, '-o')
+            cmd_str.insert(0, "'user: %U system: %S wall: %e'")
+            cmd_str.insert(0, '-f')
+            cmd_str.insert(0, '/usr/bin/time')
 
     return cmd_str
 
@@ -280,10 +281,10 @@ def get_args_cbmc(check_type, orig_gb, output_path, filename, asrts):
             # and he wants to make the summaries this time.
 #            cmd_str.append("--no-slicing")
             pass
-        cmd_str.append(output_path + filename)
+        cmd_str.append(os.path.join(output_path, filename))
     else:
 #        cmd_str.append("--no-slicing")
-        cmd_str.append(output_path + filename)
+        cmd_str.append(os.path.join(output_path, filename))
 
     # Preceed with the time command
     if asrts != None and len(asrts) == 1:
@@ -317,9 +318,12 @@ def run_cbmc (check_type, orig_gb, output_path, filename, assertions, claim2asrt
     print "Running cbmc"
     time_init = time.time()
     cmd_str = get_args_cbmc(check_type, orig_gb, output_path, filename, None)
-    cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
+    if sys.platform == 'win32' or sys.platform == 'cygwin':
+        cmd_new = cmd_str
+    else:
+        cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
     print (" * Running:")
-    print (cmd_str);
+    print (cmd_new);
 
     proc = subprocess.Popen(cmd_new, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
 
@@ -355,7 +359,10 @@ def run_evolcheck (check_type, orig_gb, output_path, filename, assertions, claim
     print "Running evolcheck"
     time_init = time.time()
     cmd_str = get_args(check_type, orig_gb, output_path, filename, None)
-    cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
+    if sys.platform == 'win32' or sys.platform == 'cygwin':
+        cmd_new = cmd_str
+    else:
+        cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
     print (" * Running:")
     print (cmd_new);
 
@@ -392,7 +399,10 @@ def run_evolcheck_asrtset (check_type, orig_gb, output_path, filename, assertion
     print("Running evolcheck on an assertion set of %d" % len(asrtlist))
     time_init = time.time()
     cmd_str = get_args(check_type, orig_gb, output_path, filename, asrtlist)
-    cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
+    if sys.platform == 'win32' or sys.platform == 'cygwin':
+        cmd_new = cmd_str
+    else:
+        cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
     print (" * Running:")
     print (cmd_new);
 
@@ -430,7 +440,10 @@ def run_evolcheck_single (check_type, orig_gb, output_path, filename, assertion,
 #    print (" * Running:")
 #    print (cmd_str);
 
-    cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
+    if sys.platform == 'win32' or sys.platform == 'cygwin':
+        cmd_new = cmd_str
+    else:
+        cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
     print cmd_new
 
     proc = subprocess.Popen(cmd_new, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
@@ -472,7 +485,10 @@ def run_cbmc_single (check_type, orig_gb, output_path, filename, assertion, asse
 #    print (" * Running:")
 #    print (cmd_str);
 
-    cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
+    if sys.platform == 'win32' or sys.platform == 'cygwin':
+        cmd_new = cmd_str
+    else:
+        cmd_new = ["sh", "-c", "ulimit -Sv %d; %s" % (SLVR_MMAX, " ".join(cmd_str))]
     print cmd_new
 
     proc = subprocess.Popen(cmd_new, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
@@ -536,7 +552,8 @@ def analyze_cbmc_result_multi (output_path, std_out, assertions, claim2asrt, mem
         if mo:
             filename = mo.group(1)
             line = int(mo.group(2))
-            mark_assertion_invalid(filename.replace(output_path, ""), line, assertions)
+            mark_assertion_invalid(os.path.basename(filename), line, assertions)
+#            mark_assertion_invalid(filename.replace(output_path, ""), line, assertions)
         else:
             print("ERROR parsing cbmc output: no violated property")
             exit(1)
@@ -632,7 +649,8 @@ def analyze_evolcheck_result (output_path, std_out, assertions, claim2asrt, mem_
         print ("ERROR: Unexpected eVolCheck output! - no Violated property")
         exit(1)
 
-    file = m.group(1)
+    file = os.path.basename(m.group(1)) # remove the (back)slash
+
     line = int(m.group(2))
 
 #    print("Assertion violated: file %s:%d expr: %s" % (file, line, m.group(3)))
@@ -699,7 +717,7 @@ def check_all_assertions_once (check_type, orig_gb, files, input_path, output_pa
     # Check the code for the asserions in a single iteration
 
     # Process the files
-    process_files(files, input_path, output_path, assertion_map, False)
+    process_files(files, input_path, output_path, assertions, False)
 
     # Run the evolcheck, in case of an assertion violation, 
     # the corresponding assertion is marked
@@ -777,7 +795,7 @@ def map_assertions_to_claims(output_path, assertions, c2a):
     cmd_str.append("--show-claims")
     cmd_str.append(os.path.join(output_path, "a.out"))
 
-#    print(" * Running: %s" % cmd_str)
+    print(" * Running: %s" % cmd_str)
 
     proc = subprocess.Popen(cmd_str, stdout=subprocess.PIPE, stderr=subprocess.PIPE, env = os.environ)
 
@@ -788,15 +806,16 @@ def map_assertions_to_claims(output_path, assertions, c2a):
     dump_output("__last_err", std_err.decode("ascii"))
 
     # Finished correctly?
-#    if proc.returncode > 0:
-#        print ("ERROR: Error during running evolcheck")
-#        exit(1)
+    if proc.returncode > 0:
+        print ("ERROR: Error during running evolcheck")
+        exit(1)
 
     lines = std_out.split("\n")
     while len(lines) != 0:
         line = lines[0]
         lines = lines[1:]
-        mo = re.search("Claim ([1-9][0-9]*): user supplied assertion", line)
+#        mo = re.search("Claim ([1-9][0-9]*): user supplied assertion", line)
+        mo = re.search("Claim ([1-9][0-9]*):", line)
         if mo:
             cln = int(mo.group(1))
             at_str = lines[0]
@@ -814,7 +833,6 @@ def map_assertions_to_claims(output_path, assertions, c2a):
             fun = mo.group(3)
 
             # The guard line
-            # 
             mo = re.search("Guard: (.*)", guard_str)
             if mo == None:
                 print("Error finding guard string: %s" % asrt_str)
@@ -999,6 +1017,83 @@ def dump_trusted_assertions(assertions, files, file):
 def ends_with(string, pattern):
     return string.rfind(pattern) == len(string) - len(pattern)
 
+################################################################################ 
+# Perform the check after initialization (generic)
+#
+
+def perform_check(untrusted_assertions_file, trusted_assertions_file, check_type, files, input_path, output_path, orig_gb):
+
+    # Maps file names to the oredered lists of assertions (line,expression,type,state)
+    assertion_map = {}
+
+    # Parse the file with trusted and untrusted assertions
+    parse_assertions(untrusted_assertions_file, assertion_map, AssertionTypes.Untrusted)
+    if check_type == CheckTypes.Upgrade:
+        parse_assertions(trusted_assertions_file, assertion_map, AssertionTypes.Trusted)
+
+    # build the models
+    process_files(files, input_path, output_path, assertion_map, False)
+
+    claim_to_asrt = {}
+
+    if USE_CBMC:
+        map_assertions_to_claims_cbmc(output_path, assertion_map, claim_to_asrt)
+    else:
+        map_assertions_to_claims(output_path, assertion_map, claim_to_asrt)
+
+    if check_type == CheckTypes.Initial:
+        # Perform the check
+        result = check_all_assertions_bot(check_type, orig_gb, files, input_path, output_path, assertion_map, claim_to_asrt)
+
+        if result:
+            dump_trusted_assertions(assertion_map, files, "__trusted")
+
+        valid_asrts = []
+        for file in assertion_map:
+            for a in assertion_map[file]:
+                if a.state == AssertionStates.Valid and a.summarizable:
+                    valid_asrts.append(a)
+        if not USE_CBMC:
+            if len(valid_asrts) > 0:
+                print("Generating the source file containing only valid assertions")
+                process_files(files, input_path, output_path, assertion_map, True)
+                print("Running check on the %d valid assertions to obtain summary." % len(valid_asrts))
+                result = run_evolcheck_asrtset(check_type, orig_gb, output_path, "a.out", assertion_map, valid_asrts, claim_to_asrt)
+                assert (result == True)
+            else:
+                print("No summarizable valid assertions found, skipping summarization")
+
+    else:
+        check_all_assertions(check_type, orig_gb, files, input_path, output_path, assertion_map, claim_to_asrt)
+
+    print (' * Done.')
+
+
+################################################################################ 
+# Init check
+#
+
+def init_check(asrt_untrust, inp_path, res_path, use_cbmc, files):
+    check_type = CheckTypes.Initial
+    orig_gb = None
+    untrusted_assertions_file = asrt_untrust
+    input_path = inp_path
+    output_path = res_path
+    global USE_CBMC
+    USE_CBMC = use_cbmc
+    perform_check(untrusted_assertions_file, None, check_type, files, input_path, output_path, None)
+
+################################################################################ 
+# Upgrade check
+#
+
+def upgr_check(orig_gb, asrts_trust, asrts_untrust, input_path, output_path, use_cbmc, files):
+    check_type = CheckTypes.Upgrade
+    untrusted_assertions_file = asrts_untrust
+    global USE_CBMC
+    USE_CBMC = use_cbmc
+
+    perform_check(untrusted_assertions_file, asrts_trust, check_type, files, input_path, output_path, orig_gb)
 
 ################################################################################ 
 # --- ENTRY ---
