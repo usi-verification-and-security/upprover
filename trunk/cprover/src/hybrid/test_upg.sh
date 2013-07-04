@@ -24,14 +24,14 @@ rm __*
 echo "################################################################################"
 
 #python ../naive-hybrid-check.py --initial-check tcas_v0/init_ass.txt tcas_v0 result tcas.c
-python ../naive-hybrid-check.py --initial-check ${v0}/init_ass.txt ${v0} result ${name}
-
+python ../naive-hybrid-check.py --initial-check ${v0}/CBMC_assertions_entryPoints_v0.txt ${v0} result ${name}
+#python ../naive-hybrid-check.py --initial-check ${v0}/init_ass.txt ${v0} result ${name}
 cp result/a.out __old_a.out
 
 
 echo "################################################################################"
 
 #python ../naive-hybrid-check.py --upgrade-check __old_a.out __trusted tcas_v0/new_ass.txt tcas_v0 result tcas.c
-python ../naive-hybrid-check.py --upgrade-check __old_a.out __trusted ${v1}/new_ass.txt ${v1} result ${name}
-
+python ../naive-hybrid-check.py --upgrade-check __old_a.out __trusted ${v1}/CBMC_assertions_entryPoints_v1.txt ${v1} result ${name}
+#python ../naive-hybrid-check.py --upgrade-check __old_a.out __trusted ${v1}/new_ass.txt ${v1} result ${name}
 

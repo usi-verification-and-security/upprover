@@ -681,6 +681,7 @@ void symex_assertion_sumt::mark_argument_symbols(
   {
     const code_typet::argumentt &argument=*it;
     const irep_idt &identifier=argument.get_identifier();
+    std::cout <<"symex_assertion_sumt::mark_argument_symbol " << identifier  <<  " " <<state.current_name(identifier) <<"\n";
 
     symbol_exprt symbol(state.current_name(identifier), argument.type());
 

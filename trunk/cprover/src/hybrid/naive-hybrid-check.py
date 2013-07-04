@@ -166,10 +166,12 @@ def run_evolcheck (check_type, orig_gb, output_path, filename, assertions):
         cmd_str = ["evolcheck"]
     # Check type
     if check_type == CheckTypes.Initial:
+        cmd_str.append("--no-slicing")
         cmd_str.append("--init-upgrade-check")
         cmd_str.append("--no-summary-optimization")
         cmd_str.append(output_path + filename)
     else:
+        cmd_str.append("--no-slicing")
         cmd_str.append("--do-upgrade-check")
         cmd_str.append(output_path + filename)
         cmd_str.append(orig_gb)
@@ -206,7 +208,7 @@ def run_evolcheck (check_type, orig_gb, output_path, filename, assertions):
 def analyze_evolcheck_result (output_path, std_out, assertions):
     if std_out.find('VERIFICATION') == -1:
         print (std_out)
-        print ("ERROR: Unexpected eVolCheck output!")
+        print ("ERROR: Unexpected eVolCheck output! c1")
         exit(1)
 
     if std_out.find('OpenSMT - CNF') == -1:
@@ -223,7 +225,7 @@ def analyze_evolcheck_result (output_path, std_out, assertions):
 
     if m == None:
         print (std_out)
-        print ("ERROR: Unexpected eVolCheck output!")
+        print ("ERROR: Unexpected eVolCheck output! c2")
         exit(1)
 
     file = m.group(1)

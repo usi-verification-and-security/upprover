@@ -14,7 +14,7 @@ Author: Ondrej Sery
 #include "expr_pretty_print.h"
 #include "solvers/sat/cnf.h"
 
-//#define DEBUG_SSA
+#define DEBUG_SSA
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
 

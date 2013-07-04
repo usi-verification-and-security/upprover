@@ -9,7 +9,7 @@ Author: Ondrej Sery
 #include <string.h>
 #include "prop_itp.h"
 
-// #define DEBUG_ITP
+#define DEBUG_ITP
 
 /*******************************************************************\
 
@@ -179,6 +179,20 @@ void prop_itpt::generalize(const prop_convt& decider,
   std::cout << "--------------- Generalizing -------------" << std::endl;
 # endif
   
+  for (clausest::iterator it = clauses.begin();
+          it != clauses.end();
+          ++it) {
+    for (bvt::iterator it2 = it->begin();
+            it2 != it->end();
+            ++it2) {
+
+      // Only shift the artificial variables (present due to the Tseitin
+      // encoding to CNF)
+      std::cout << "check: " <<(it2->var_no()) << "\n";
+}}
+
+
+
   // FIXME: Dirty cast.
   const boolbv_mapt::mappingt& mapping =
           dynamic_cast<const boolbvt&>(decider).get_map().mapping;
@@ -222,6 +236,7 @@ void prop_itpt::generalize(const prop_convt& decider,
       if (!it2->is_set) continue;
       
       unsigned var_no = it2->l.var_no();
+
       
       if (min_var > var_no) min_var = var_no;
       if (max_var < var_no) max_var = var_no;
@@ -344,9 +359,13 @@ void prop_itpt::generalize(const prop_convt& decider,
       // Only shift the artificial variables (present due to the Tseitin
       // encoding to CNF)
       if (it2->var_no() > max_var) {
+        std::cout << "~~~~ shifting: " << it2->var_no() << " (max-var = "<<max_var <<") by " <<  shift << "\n"; 
         it2->set(it2->var_no() - shift, it2->sign());
         continue;
+      } else {
+        std::cout << "~~~~~~~  skipping: " << it2->var_no() <<"\n";
       }
+
 
       unsigned idx = it2->var_no() - min_var;
       // Sanity check, all variables used in the interpolant should be mapped.
@@ -614,7 +633,7 @@ void prop_itpt::reserve_variables(prop_convt& decider,
       new_lit.push_back(l.var_no());
       continue;
     }
-
+std::cout << "CREATE INDENTIFIER " << it->get_identifier()<< "\n";
     boolbv_mapt::map_entryt& m_entry = 
             map.get_map_entry(it->get_identifier(), it->type());
     for (unsigned i = 0;
@@ -624,7 +643,9 @@ void prop_itpt::reserve_variables(prop_convt& decider,
       assert(i < m_entry.literal_map.size());
       if(!m_entry.literal_map[i].is_set) {
         m_entry.literal_map[i].is_set = true;
+
         m_entry.literal_map[i].l = decider.prop.new_variable();
+        std::cout << "CREATING IN RESERVE VARIABLES " << m_entry.literal_map[i].l.var_no() << "\n\n";
       }
       new_lit.push_back(m_entry.literal_map[i].l.var_no());
     }

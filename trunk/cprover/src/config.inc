@@ -13,63 +13,33 @@ LIBEXT = .a
 OBJEXT = .o
 EXEEXT =
 #GCCFLAGS = -Wall -DNDEBUG -MMD -O2
-GCCFLAGS = -Wall -g -MMD -O0
+GCCFLAGS = -Wall -g -MMD -O0 -fpermissive
 #LINKFLAGS = -static
+
 LINKLIB = ld -r -o $@ $^
-LINKBIN = $(CXX) $(LINKFLAGS) -o $@ $(LIBS)
+LINKBIN = $(CXX) $(LINKFLAGS) -o $@ $(LIBS)# Build platform (use one of AUTO, Unix, OSX_Universal, MSVC, Cygwin, MinGW)
+#BUILD_ENV = AUTO
 
-# MacOS Fat Binaries
-# LIBEXT = .a
-# OBJEXT = .o
-# EXEEXT =
-# GCCFLAGS = -Wall -MMD -O2 -force_cpusubtype_ALL -arch i386 -arch ppc -arch x86_64
-# LINKFLAGS = -force_cpusubtype_ALL -arch i386 -arch ppc -arch x86_64
-# LINKLIB = ld -r -o $@ $^
-# LINKBIN = $(CXX) $(LINKFLAGS) -o $@ $(LIBS)
-
-# use these for Cygwin:
-# LIBEXT = .a
-# OBJEXT = .o
-# EXEEXT =
-# GCCFLAGS = -Wall -MMD -O2 -mno-cygwin
-# LINKFLAGS = -mno-cygwin
-# LINKLIB = ld -r -o $@ $^
-# LINKBIN = $(CXX) $(LINKFLAGS) -o $@ $(LIBS)
-
-# use these for Visual Studio:
-# LIBEXT = .lib
-# OBJEXT = .obj
-# EXEEXT = .exe
-# CXX = cl
-# CC = cl
-# LINKLIB = lib /NOLOGO /OUT:$@ $^
-# LINKBIN = $(CXX) $(LINKFLAGS) /Fe$@ $(LIBS)
+# Variables you may want to override
+#CXXFLAGS = -Wall -O0 -g -Werror -Wno-long-long -Wno-sign-compare -Wno-parentheses -Wno-strict-aliasing -pedantic
 
 # SAT-solvers we have
+#PRECOSAT = ../../precosat-576-7e5e66f-120112
+#PICOSAT = ../../picosat-936
+#LINGELING = ../../lingeling-587f-4882048-110513
 #CHAFF = ../../zChaff
 #BOOLEFORCE = ../../booleforce-0.4
 #MINISAT = ../../MiniSat-p_v1.14
 MINISAT2 = ../../../minisat-2.2.0
+#GLUCOSE = ../../glucose2.2
 #SMVSAT =
 
 LANGUAGES = ansi-c csp intrep pvs smvlang verilog vhdl netlist cpp specc \
             xmllang promela pascal bplang csharp smtlang nsf mdllang java
 
-# modules that we have
-#MODULE_PROVER = 1
-#MODULE_IPP = 1
-#MODULE_INTERPOLATION = 1
-#MODULE_BV_REFINEMENT = 1
-#MODULE_SATQE = 1
+
+# Signing identity for MacOS Gatekeeper
+
+OSX_IDENTITY="3rd Party Mac Developer Application: Daniel Kroening"
+
 MODULE_CPP = 1
-#MODULE_SMTLANG = 1
-#MODULE_SPECC = 1
-#MODULE_VERILOG = 1
-#MODULE_VHDL = 1
-#MODULE_PASCAL = 1
-#MODULE_PHP = 1
-#MODULE_SIMPLIFYLANG = 1
-#MODULE_HW_CBMC = 1
-#MODULE_CEMC = 1
-#MODULE_FLOATBV = 1
-#MODULE_SMV = 1
