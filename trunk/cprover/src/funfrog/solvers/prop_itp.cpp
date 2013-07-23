@@ -420,7 +420,7 @@ void prop_itpt::substitute(prop_convt& decider,
 
   // FIXME: Dirty cast.
   boolbv_mapt& map = const_cast<boolbv_mapt&>(dynamic_cast<boolbvt&>(decider).get_map());
-  literalt renaming[_no_variables];
+  literalt* renaming = new literalt[_no_variables];
 
 # ifdef DEBUG_ITP
   std::cout << "--------------- Substituting -------------" << std::endl;
@@ -504,6 +504,8 @@ void prop_itpt::substitute(prop_convt& decider,
     new_root_literal.invert();
 
   decider.prop.l_set_to_true(new_root_literal);
+
+  delete [] renaming;
 }
 
 
