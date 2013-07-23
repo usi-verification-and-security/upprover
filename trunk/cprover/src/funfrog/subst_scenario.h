@@ -34,6 +34,8 @@ public:
 
   summary_infot& get_summary_info(){ return functions_root; };
 
+  unsigned get_unwinding_depth();
+
   void refine_recursion_call(summary_infot& call);
 
   void process_goto_locations();

@@ -2,5 +2,5 @@ SAT - doesn't hold
 Violated property:
   file 01_choice/main7.c line 3 function main
   assertion
-  FALSE
+  (_Bool)0
 ASSERTION(S) DO(ES)N'T HOLD

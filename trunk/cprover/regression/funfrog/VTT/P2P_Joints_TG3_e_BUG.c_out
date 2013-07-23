@@ -1,6 +1,6 @@
 SAT - doesn't hold
-HAVOCING (of 12 calls) AREN'T SUITABLE FOR CHECKING ASSERTION
+HAVOCING (of 12 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
 Violated property:
   file VTT/P2P_Joints_TG3_e_BUG.c line 167 function InitilizeTG
   assertion
-  jp[(long int)i].v <= jl[0]
+  jp[i].v <= jl[0]

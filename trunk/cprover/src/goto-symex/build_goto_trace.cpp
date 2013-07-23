@@ -231,7 +231,7 @@ void build_goto_trace(
     else if(SSA_step.is_assume())
     {
       // assumptions can't be false
-      assert(goto_trace_step.cond_value);
+      //assert(goto_trace_step.cond_value);
     }
   }
 }

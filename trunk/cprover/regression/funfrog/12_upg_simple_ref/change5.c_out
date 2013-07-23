@@ -6,3 +6,12 @@ UNSAT - it holds!
 ASSERTION IS TRUE
 SAT
 SAT
+SAT
+SAT
+SAT - doesn't hold
+UNSAT - it holds!
+ASSERTION IS TRUE
+SAT
+UNSAT
+SAT
+UNSAT

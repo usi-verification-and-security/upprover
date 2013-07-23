@@ -5,17 +5,6 @@ SAT
 ASSERTION(S) HOLD(S)
 SAT - doesn't hold
 SAT - doesn't hold
-UNSAT - it holds!
-ASSERTION IS TRUE
-UNSAT
-SAT
-SAT
-SAT
-SAT
-SAT - doesn't hold
-SAT - doesn't hold
-SAT - doesn't hold
-SAT - doesn't hold
 SAT - doesn't hold
 Violated property:
   file change24.c line 30 function main

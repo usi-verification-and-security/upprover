@@ -1289,12 +1289,10 @@ void symex_assertion_sumt::raw_assignment(
         const namespacet &ns,
         bool record_value)
 {
+
   symbol_exprt rhs_symbol = to_symbol_expr(rhs);
   rhs_symbol.set(ID_identifier, state.level2.current_name(rhs_symbol.get_identifier()));
 
-  // FIXME: Check that this does not mess (too much) with the value sets
-  // and constant propagation
-  //--8<--- Taken from goto_symex_statet::assignment()
   assert(lhs.id()==ID_symbol);
 
   // the type might need renaming
@@ -1303,54 +1301,16 @@ void symex_assertion_sumt::raw_assignment(
   const irep_idt &identifier = lhs.get(ID_identifier);
   irep_idt l1_identifier=state.level2.get_original_name(identifier);
 
-  // -->8---
-  assert(state.level2.current_names.find(state.level2.get_original_name(identifier)) != 
-          state.level2.current_names.end());
   state.propagation.remove(l1_identifier);
-  // smth old
-  //statet::level2t::valuet &entry=state.level2.current_names[
-  //        state.level2.get_original_name(identifier)];
-  //entry.constant.make_nil();
-  
-  // --8<---
-  /*
-  // identifier should be l0 or l1, make sure it's l1
 
-  const irep_idt l1_identifier=state.top().level1(identifier);
-  
-  // do the l2 renaming
-  statet::level2t::valuet &entry=state.level2.current_names[l1_identifier];
+    // update value sets
+    exprt l1_rhs(rhs_symbol);
+    state.level2.get_original_name(l1_rhs);
+    exprt l1_lhs(lhs);
+    //symbol_exprt l1_lhs(l1_identifier, lhs.type());
+    state.level2.get_original_name(l1_lhs.type());
 
-  // We do not want the new version!
-  // OLD:
-  //
-  // entry.count++;
-  //
-  // state.level2.rename(l1_identifier, entry.count);
-  //
-  // lhs.set(ID_identifier, level2.name(l1_identifier, entry.count));
-
-  if(record_value)
-  {
-    // for constant propagation
-
-    if(state.constant_propagation(rhs_symbol))
-      entry.constant=rhs_symbol;
-    else
-      entry.constant.make_nil();
-  }
-  else
-    entry.constant.make_nil();
-  */
-
-  // update value sets
-  exprt l1_rhs(rhs_symbol);
-  state.level2.get_original_name(l1_rhs);
-  exprt l1_lhs(lhs);
-  state.level2.get_original_name(l1_lhs);
-
-  state.value_set.assign(l1_lhs, l1_rhs, ns);
-  //--8<---
+    state.value_set.assign(l1_lhs, l1_rhs, ns, false);
 
   const symbol_exprt ce2;// =     to_symbol_expr(nil_exprt());
   guardt empty_guard;
@@ -1380,70 +1340,69 @@ void symex_assertion_sumt::phi_function(
   const statet::goto_statet &goto_state,
   statet &dest_state)
 {
-  // FIXME: The variables get cumulated in level2 renaming,
-  // we need to get rid of the old ones...
-  
   // go over all variables to see what changed
-  for(goto_symex_statet::level2t::current_namest::const_iterator
-      it = goto_state.level2.current_names.begin();
-      it != goto_state.level2.current_names.end();
-      ++it)
-  {
+  std::set<irep_idt> variables;
 
-    goto_symex_statet::level2t::current_namest::const_iterator d_it =
-            dest_state.level2.current_names.find(it->first);
-            
-    if(d_it == dest_state.level2.current_names.end()) {
-      // Only present in the new state. No assignment needed, just reuse the 
-      // count
-      dest_state.level2.current_names[it->first] = it->second;
-      continue;
-    }
-    
-    if (it->second == d_it->second)
+  goto_state.level2.get_variables(variables);
+  dest_state.level2.get_variables(variables);
+
+  for(std::set<irep_idt>::const_iterator
+      it=variables.begin();
+      it!=variables.end();
+      it++)
+  {
+    const irep_idt l1_identifier=*it;
+
+    if(l1_identifier==guard_identifier)
+      continue; // just a guard, don't bother
+
+    if(goto_state.level2.current_count(l1_identifier)==
+       dest_state.level2.current_count(l1_identifier))
       continue; // not at all changed
 
-    irep_idt original_identifier = dest_state.get_original_name(it->first);
-
-    if (is_dead_identifier(original_identifier))
+    if (is_dead_identifier(l1_identifier))
       continue;
 
-    //--8<--- Taken from goto_symex_statet::phi_function()
-  
-    // get type (may need renaming)      
+    // changed!
+
+    irep_idt original_identifier=
+      dest_state.get_original_name(l1_identifier);
+
+    // get type (may need renaming)
     const symbolt &symbol=ns.lookup(original_identifier);
-    
+
     // shared?
     if(dest_state.threads.size()>=2 && symbol.is_shared())
       continue; // no phi nodes for shared stuff
-    
+
     typet type=symbol.type;
     dest_state.rename(type, ns);
-    
+
     exprt goto_state_rhs, dest_state_rhs;
 
     {
       goto_symex_statet::propagationt::valuest::const_iterator p_it=
-        goto_state.propagation.values.find(original_identifier);
+        goto_state.propagation.values.find(l1_identifier);
 
-      if(p_it!=goto_state.propagation.values.end())
+      if(p_it!=goto_state.propagation.values.end()){
         goto_state_rhs=p_it->second;
-      else
-        goto_state_rhs=symbol_exprt(goto_state.level2.current_name(original_identifier), type);
-    }
-    
+      }else{
+        goto_state_rhs=symbol_exprt(goto_state.level2.current_name(l1_identifier), type);
+}
+}
+
     {
       goto_symex_statet::propagationt::valuest::const_iterator p_it=
-        dest_state.propagation.values.find(original_identifier);
+        dest_state.propagation.values.find(l1_identifier);
 
       if(p_it!=dest_state.propagation.values.end())
         dest_state_rhs=p_it->second;
       else
-        dest_state_rhs=symbol_exprt(dest_state.level2.current_name(original_identifier), type);
+        dest_state_rhs=symbol_exprt(dest_state.level2.current_name(l1_identifier), type);
     }
-    
+
     exprt rhs;
-    
+
     if(dest_state.guard.is_false()){
       rhs=goto_state_rhs;
     }else if(goto_state.guard.is_false()){
@@ -1451,26 +1410,23 @@ void symex_assertion_sumt::phi_function(
     }else
     {
       guardt tmp_guard(goto_state.guard);
-      
+
       // this gets the diff between the guards
       tmp_guard-=dest_state.guard;
-      
+
       rhs=if_exprt(tmp_guard.as_expr(), goto_state_rhs, dest_state_rhs, type);
       do_simplify(rhs);
     }
 
     symbol_exprt lhs=symbol_expr(symbol);
-    symbol_exprt new_lhs=symbol_exprt(original_identifier, type);
+    symbol_exprt new_lhs=symbol_exprt(l1_identifier, type);
     dest_state.assignment(new_lhs, rhs, ns, true);
- 
     target.assignment(
       true_exprt(),
       new_lhs, lhs, new_lhs, lhs,
       rhs,
       dest_state.source,
       symex_targett::PHI);
-
-  //--8<---
   }
 }
 

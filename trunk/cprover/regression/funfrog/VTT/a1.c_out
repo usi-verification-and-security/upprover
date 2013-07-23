@@ -1,11 +1,11 @@
 SAT - doesn't hold
-HAVOCING (of 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION
+HAVOCING (of 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
 Violated property:
   file VTT/a1.c line 26 function addtwonumbers
   assertion a >= 0 && b >= 0
   FALSE
 SAT - doesn't hold
-HAVOCING (of 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION
+HAVOCING (of 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
 Violated property:
   file VTT/a1.c line 43 function main
   assertion c >= 0

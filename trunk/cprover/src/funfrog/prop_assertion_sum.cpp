@@ -18,7 +18,7 @@
 
 //#define ADD_BITBLAST_BINDING
 
-#define USE_EXEC_ORDER_ERROR_TRACE
+//#define USE_EXEC_ORDER_ERROR_TRACE
 
 fine_timet global_satsolver_time;
 fine_timet global_sat_conversion_time;
@@ -58,7 +58,7 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 # endif
 
   after=current_time();
-  global_sat_conversion_time += (after-before);
+//  global_sat_conversion_time += (after-before);
 
   status() << "CONVERSION TIME: " << (after-before) << eom;
 
@@ -171,6 +171,7 @@ bool prop_assertion_sumt::is_satisfiable(
 void build_exec_order_goto_trace(
   partitioning_target_equationt &target,
   const prop_convt &prop_conv,
+  const namespacet &ns,
   goto_tracet &goto_trace)
 {
   unsigned step_nr=0;
@@ -206,10 +207,16 @@ void build_exec_order_goto_trace(
     goto_trace_step.io_id=SSA_step.io_id;
     goto_trace_step.formatted=SSA_step.formatted;
     goto_trace_step.identifier=SSA_step.identifier;
-    
+
     if(SSA_step.ssa_lhs.is_not_nil())
-      goto_trace_step.full_lhs = prop_conv.get(SSA_step.ssa_lhs);
+      goto_trace_step.lhs_object_value=prop_conv.get(SSA_step.ssa_lhs);
     
+    if(SSA_step.ssa_full_lhs.is_not_nil())
+    {
+      goto_trace_step.full_lhs_value=prop_conv.get(SSA_step.ssa_full_lhs);
+    //  simplify(goto_trace_step.full_lhs_value, ns);
+    }
+
     for(std::list<exprt>::const_iterator
         j=SSA_step.converted_io_args.begin();
         j!=SSA_step.converted_io_args.end();
@@ -258,10 +265,10 @@ void prop_assertion_sumt::error_trace(const prop_convt &prop_conv, const namespa
 
 # ifndef USE_EXEC_ORDER_ERROR_TRACE
   // Original trace builder:
-  build_goto_trace(equation, prop_conv, goto_trace);
+  build_goto_trace(equation, prop_conv, ns, goto_trace);
 # else
   // New exec order trace builder;
-  build_exec_order_goto_trace(equation, prop_conv, goto_trace);
+  build_exec_order_goto_trace(equation, prop_conv, ns, goto_trace);
 # endif
 
   #if 0
