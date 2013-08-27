@@ -407,7 +407,16 @@ void function_infot::add_to_set_if_global(const namespacet& ns,
   } else if (ex.id() == ID_constant) {
     // Ignore constants
 
-  } else {
+  } else if (ex.id() == ID_plus) {
+    add_to_set_if_global(ns, to_plus_expr(ex).operands()[0], set);
+    add_to_set_if_global(ns, to_plus_expr(ex).operands()[1], set);
+
+  } else if (ex.id() == ID_minus) {
+    add_to_set_if_global(ns, to_minus_expr(ex).operands()[0], set);
+    add_to_set_if_global(ns, to_minus_expr(ex).operands()[1], set);
+  }
+
+  else {
     std::cerr << "WARNING: Unsupported index/member scheme - ignoring." << std::endl;
 #ifdef DEBUG_GLOBALS
     expr_pretty_print(std::cerr << "Expr: ", ex);
