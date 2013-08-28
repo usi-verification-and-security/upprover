@@ -13,6 +13,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_program.h"
 
+#include <iostream>
+
 /*******************************************************************\
 
 Function: goto_programt::output_instruction
@@ -291,7 +293,10 @@ std::list<exprt> expressions_read(
     break;
   
   case RETURN:
-    if(to_code_return(instruction.code).return_value().is_not_nil())
+    if(instruction.code.operands().size()==0){
+      std::cerr << "WARNING: No arguments for RETURN statement\n";
+    }
+    else if(to_code_return(instruction.code).return_value().is_not_nil())
       dest.push_back(to_code_return(instruction.code).return_value());
     break;
   
