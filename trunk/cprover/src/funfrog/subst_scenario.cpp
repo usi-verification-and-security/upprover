@@ -68,7 +68,6 @@ void subst_scenariot::initialize_summary_info(
 
       call_site.set_function_id(target_function);
 //      call_site.set_order(functions.size());
-
       unsigned unwind_max = summarization_context.get_unwind_max();
       if (is_recursion_unwinding(unwind_max, target_function)){
         call_site.set_recursion_nondet(true);
@@ -78,6 +77,7 @@ void subst_scenariot::initialize_summary_info(
           summarization_context.get_function(target_function).body);
       } else {
         call_site.set_unwind_exceeded(true);
+        call_site.set_recursion_nondet(true);
         //std::cout << "Recursion unwinding for " << target_function << " (" << inst->location << ") FINIFSHED with " << " iterations\n";
       }
     }
@@ -97,18 +97,9 @@ void subst_scenariot::initialize_summary_info(
   }
 }
 
-void subst_scenariot::refine_recursion_call(summary_infot& call)
-{
-  summary_infot* parent = const_cast< summary_infot * >(&call);
-
-  do{
-    parent = const_cast< summary_infot * >(&parent->get_parent());
-  } while
-    (parent->get_function_id() != call.get_function_id());
-
-  // clone all children
-  for (call_sitest::iterator it = parent->get_call_sites().begin();
-          it != parent->get_call_sites().end(); ++it)
+void subst_scenariot::clone_children(summary_infot& call, summary_infot& parent){
+  for (call_sitest::iterator it = parent.get_call_sites().begin();
+          it != parent.get_call_sites().end(); ++it)
   {
     summary_infot& to_be_cloned = it->second;
 //    call.set_unwind_exceeded(false);
@@ -120,18 +111,31 @@ void subst_scenariot::refine_recursion_call(summary_infot& call)
     functions.push_back(&cloned);
     cloned.set_function_id(to_be_cloned.get_function_id());
     increment_unwinding_counter(to_be_cloned.get_function_id());
-//  if (to_be_cloned.is_recursion_nondet() ||
-//    is_recursion_unwinding(summarization_context.get_unwind_max(), to_be_cloned.get_function_id())){
+  if (to_be_cloned.is_recursion_nondet() /*||
+    is_recursion_unwinding(summarization_context.get_unwind_max(), to_be_cloned.get_function_id())*/){
       cloned.set_recursion_nondet(true);
 //      if (summarization_context.get_summaries(to_be_cloned.get_function_id()).size() > 0) {
 //        cloned.set_summary();
 //      } else {
         cloned.set_nondet();
-      //}
-//    } else {
-//      cloned.set_precision(to_be_cloned.get_precision());
-//    }
+//      }
+    } else {
+      cloned.set_precision(to_be_cloned.get_precision());
+      clone_children(cloned, to_be_cloned);
+    }
   }
+}
+
+void subst_scenariot::refine_recursion_call(summary_infot& call)
+{
+  summary_infot* parent = const_cast< summary_infot * >(&call);
+  do{
+    parent = const_cast< summary_infot * >(&parent->get_parent());
+  } while
+    (parent->get_function_id() != call.get_function_id());
+
+  // clone all children
+  clone_children(call, *parent);
 }
 
 unsigned subst_scenariot::get_precision_count(summary_precisiont precision)
@@ -470,26 +474,29 @@ void subst_scenariot::construct_xml_tree(xmlt& call, summary_infot& summary)
   }
 }
 
-unsigned subst_scenariot::get_unwinding_depth()
+void subst_scenariot::get_unwinding_depth()
 {
-  unsigned count = 0;
+  rec_count_max = 0;
+  rec_count_total = 0;
   unsigned i;
   for (i = functions.size() - 1; i > 0; i--){
     if ((*functions[i]).is_recursion_nondet() && (*functions[i]).get_precision() == HAVOC){
-      break;
+
+      unsigned count_tmp = 0;
+      summary_infot* parent = functions[i];
+
+      do{
+        parent = const_cast< summary_infot * >(&parent->get_parent());
+        count_tmp++;
+      } while
+        (parent->is_recursion_nondet());
+
+      if (count_tmp > rec_count_max) {
+        rec_count_max = count_tmp;
+      }
+      rec_count_total += count_tmp;
     }
   }
-
-  summary_infot* parent = functions[i];
-
-  do{
-    parent = const_cast< summary_infot * >(&parent->get_parent());
-    count++;
-  } while
-    (parent->is_recursion_nondet());
-
-
-  return count;
 }
 
 void subst_scenariot::serialize_xml(const std::string& file)

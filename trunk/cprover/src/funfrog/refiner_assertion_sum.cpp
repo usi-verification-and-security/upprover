@@ -106,7 +106,6 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, summary_infot& su
 #       endif
         tmp.push_back(&ipart.summary_info);
       }*/
-      std::cout << "to the check " << do_callstart << ":\n";
 #     ifdef USE_PERIPLO
       if (!decider.prop.l_get(ipart.callstart_literal).is_false()){
 #     else
@@ -137,13 +136,13 @@ void refiner_assertion_sumt::reset_depend_rec(std::vector<summary_infot*>& dep, 
     if (call.get_precision() != INLINE){
       for (unsigned j = 0; j < dep.size(); j++){
         if (dep[j] == &call){
-          if (call.is_unwind_exceeded()){
+          /*if (call.is_unwind_exceeded()){
             std::cout << "The call " << call.get_function_id() << " cannot be refined because the maximum unwinding bound is exceeded\n";
-          } else {
+          } else {*/
             if (call.is_recursion_nondet()){
               std::cout << "Automatically increasing unwinding bound for " << call.get_function_id() << "\n";
               omega.refine_recursion_call(call);
-            }
+          //  }
             set_inline_sum(call);
             break;
           }

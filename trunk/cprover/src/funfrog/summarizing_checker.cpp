@@ -178,8 +178,12 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
     }
   }
   final = current_time();
+  omega.get_unwinding_depth();
 
   status() << "Total number of steps: " << count << eom;
+  if (omega.get_recursive_total() > 0){
+    status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
+  }
   status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
   return end;
 }

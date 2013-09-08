@@ -34,7 +34,7 @@ public:
 
   summary_infot& get_summary_info(){ return functions_root; };
 
-  unsigned get_unwinding_depth();
+  void get_unwinding_depth();
 
   void refine_recursion_call(summary_infot& call);
 
@@ -76,6 +76,14 @@ public:
     return single_assertion_check;
   }
 
+  unsigned get_recursive_total(){
+    return rec_count_total;
+  }
+
+  unsigned get_recursive_max(){
+    return rec_count_max;
+  }
+
   void setup_last_assertion_loc(const assertion_infot& assertion);
   bool is_assertion_in_loop(const unsigned ass_loc);
   bool is_assertion_after_return(const unsigned return_loc);
@@ -99,9 +107,14 @@ private:
   unsigned last_assertion_loc;
   bool single_assertion_check;
 
+  unsigned rec_count_max;
+  unsigned rec_count_total;
+
   void construct_xml_tree(xmlt& xml, summary_infot& summary);
   unsigned get_precision_count(summary_precisiont precision);
   unsigned get_precision_count(summary_infot& summary, summary_precisiont precision);
+
+  void clone_children(summary_infot& call, summary_infot& parent);
 
 };
 
