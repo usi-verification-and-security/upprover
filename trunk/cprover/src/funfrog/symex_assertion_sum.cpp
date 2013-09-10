@@ -828,8 +828,9 @@ void symex_assertion_sumt::return_assignment_and_mark(
   
   if (!skip_assignment) {
     code_assignt assignment(*lhs, retval_symbol);
-    assert( ns.follow(assignment.lhs().type()) ==
-            ns.follow(type));
+
+    assert(base_type_eq(assignment.lhs().type(),
+          assignment.rhs().type(), ns));
 
     bool old_cp = constant_propagation;
     constant_propagation = false;
