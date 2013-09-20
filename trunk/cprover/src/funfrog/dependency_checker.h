@@ -4,7 +4,8 @@
 #include <queue>
 
 #include <goto-programs/goto_program.h>
-#include <solvers/flattening/sat_minimizer.h>
+//#include <solvers/flattening/sat_minimizer.h>
+#include <solvers/flattening/bv_pointers.h>
 
 #include <namespace.h>
 #include <symbol.h>
@@ -19,7 +20,10 @@
 
 #include <map>
 
+#include <boost/pending/disjoint_sets.hpp>
+
 using namespace std;
+using namespace boost;
 
 class dependency_checkert : public messaget
 {
@@ -40,20 +44,27 @@ public:
           omega(_omega)
     {
           set_message_handler(_message_handler);
-          last_label = 0;
+          //last_label could be useless after the updates
+          //last_label = 0;
           impl_timeout = 2000;
           // FIXME: make treshold parametrized
           treshold = equation.SSA_steps.size() / fraction;
           //treshold = percentage * equation.SSA_steps.size() / 100;
           std::cout << "Using the treshold of " << treshold << " out of " << equation.SSA_steps.size() << " SSA steps\n";
-          std::cout << "Assuming a timeout of " << impl_timeout << endl;
+          std::cout << "Assuming a timeout of " << (impl_timeout/1000) << "." << (impl_timeout%1000)/10 << " seconds." << std::endl;
     }
 
   void do_it();
 
   typedef symex_target_equationt::SSA_stepst::iterator SSA_step_reft;
-  void find_var_deps(bool ENABLE_TC=0);
-  void find_assert_deps();
+
+  typedef map<string, size_t> rank_t;
+  typedef map<string, string> parent_t;
+
+  typedef disjoint_sets<associative_property_map<rank_t>, associative_property_map<parent_t>, find_with_full_path_compression> str_disj_set;
+
+  void find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited);
+  void find_assert_deps(str_disj_set &deps_ds, map<string, bool> &visited);
   long find_implications();
   void get_minimals();
 
@@ -88,7 +99,7 @@ private:
   vector<SSA_step_reft> asserts;
   unsigned treshold;
 
-  long impl_timeout;
+  unsigned long impl_timeout;
 
   void convert_delta_SSA(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
   void convert_assignments(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);

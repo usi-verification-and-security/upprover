@@ -1,4 +1,3 @@
-
 #include <memory>
 
 #include <time_stopping.h>
@@ -10,6 +9,8 @@
 #include "expr_pretty_print.h"
 #include <sstream>
 #include <map>
+
+#include <boost/pending/disjoint_sets.hpp>
 
 #ifdef USE_PERIPLO
 #include "solvers/satcheck_periplo.h"
@@ -23,33 +24,61 @@
 #define NOTIMP false
 #define IMP true
 
+#define VERBOSE false
+
 using namespace std;
+using namespace boost;
+
+#define endl std::endl
 
 void dependency_checkert::do_it(){
-  fine_timet initial, final, to_time;
+  fine_timet initial, duration, durationto;
+
+  rank_t rank_map;
+  parent_t parent_map;
+
+  associative_property_map<rank_t> rank_pmap(rank_map);
+  associative_property_map<parent_t> parent_pmap(parent_map);
+
+  str_disj_set deps_ds(rank_pmap, parent_pmap);
+  map<string, bool> visited;
+
   initial=current_time();
 
-  find_var_deps();
+  find_var_deps(deps_ds, visited);
 
-  final = current_time();
-  std::cout << "TIME FOR find_var_deps: " << (final - initial) << std::endl;
+  duration = current_time();
+  duration = duration - initial;
+  std::cout << "TIME FOR find_var_deps: " << (duration) << endl;
 
-  find_assert_deps();
+  initial=current_time();
+
+  find_assert_deps(deps_ds, visited);
+
+  duration = current_time();
+  duration = duration - initial;
+  std::cout << "TIME FOR find_assert_deps: " << (duration) << endl;
 
   initial = current_time();
-  std::cout << "TIME FOR find_assert_deps: " << (initial - final) << std::endl;
 
-  to_time = find_implications();
+  //TODO: FIX THIS!
+  fine_timet to_time(find_implications());
 
-  final = current_time();
-  std::cout << "TIME FOR find_implications: " << (final - initial) << std::endl;
-  std::cout << "TIME exceeding timeouts: " << (to_time) << std::endl;
-  std::cout << "TIME FOR find_implications using a timeout: " << (final - initial - to_time) << std::endl;
+  duration = current_time();
+  durationto = current_time();
+
+  duration = duration - initial;
+  durationto = durationto - initial;
+  durationto = durationto - to_time;
+
+  std::cout << "TIME FOR find_implications: " << (duration) << endl;
+  std::cout << "TIME exceeding timeouts: " << (to_time) << endl;
+  std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << endl;
 
 //  get_minimals();
 
 //  initial = current_time();
-//  std::cout << "TIME FOR get_minimals: " << (initial - final) << std::endl;
+//  std::cout << "TIME FOR get_minimals: " << (initial - final) << endl;
 }
 
 pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
@@ -67,11 +96,14 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
   convert_delta_SSA(*decider, c1, c2);
 
   status("RESULT");
-  fine_timet before, after;
-  before=current_time();
+  fine_timet initial, duration;
+  initial=current_time();
   decision_proceduret::resultt r = (*decider).dec_solve();
-  after=current_time();
-  status() << "SOLVER TIME: " << (after-before) << eom;
+  duration=current_time();
+  duration = duration - initial;
+
+  // OLD INSTRUCTION: if (VERBOSE) status(std::string("SOLVER TIME FOR check_implication: ") + time2string(after-before));
+  if (VERBOSE) status() << "SOLVER TIME FOR check_implication: " << (duration) << eom;
 
   // solve it
   switch (r)
@@ -79,12 +111,12 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
     case decision_proceduret::D_UNSATISFIABLE:
     {
       status("UNSAT - it holds!");
-      return make_pair(true, after - before);
+      return make_pair(true, duration);
     }
     case decision_proceduret::D_SATISFIABLE:
     {
       status("SAT - doesn't hold");
-      return make_pair(false, after - before);
+      return make_pair(false, duration);
     }
 
     default:
@@ -92,89 +124,9 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
   }
 }
 
-void dependency_checkert::find_var_deps(bool ENABLE_TC)
+void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited)
 {
-    int mapcount = 0;
-    for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
-    {
-      //it->output(ns, std::cout);
-      if ((it->is_assignment()) || (it->is_assume()))
-      {
-            symbol_sett all_symbols;
 
-            get_expr_symbols(it->guard_expr, all_symbols);
-            get_expr_symbols(it->cond_expr, all_symbols);
-
-            //PRINT
-            //std::cout << "All symbols: ";
-            //print_expr_symbols(std::cout, all_symbols);
-            //std::cout << std::endl;
-
-            for (symbol_sett::iterator first_it = all_symbols.begin(); first_it != all_symbols.end(); ++first_it)
-            {
-              string first_id = first_it->as_string();
-                for (symbol_sett::iterator second_it = all_symbols.begin(); second_it != all_symbols.end(); ++second_it)
-                {
-                  mapcount++;
-                  //cout << "Ho fatto " << mapcount << " assegnamenti." << endl;
-                  string second_id = second_it->as_string();
-                  //std::cout << "Dependency " << variable_name(*first_it) << " <- " << variable_name(*second_it) << " is being added." << std::endl;
-                  if ((!label[first_id]) && (!label[second_id]))
-                  {
-                	  last_label++;
-                	  label[first_id] = new int;
-                	  *label[first_id] = last_label;
-                	  label[second_id] = label[first_id];
-                  }
-                  else if (!label[first_id])
-                	  label[first_id] = label[second_id];
-                  else if (!label[second_id])
-                	  label[second_id] = label[first_id];
-                  else
-                	  *label[second_id] = *label[first_id];
-
-                  var_deps[first_id][second_id] = DEPT;
-                  var_deps[second_id][first_id] = DEPT;
-                }
-            }
-        }
-    }
-//    std::cout << "Printing dependencies:" << std::endl;
-//    map<string,map<string,bool> >::iterator dep_it;
-//    for ( dep_it=var_deps.begin() ; dep_it != var_deps.end(); dep_it++ )
-//    {
-//      std::cout << variable_name((*dep_it).first) << " <- ";
-//      print_dependents((*dep_it).second, std::cout);
-//      std::cout << std::endl;
-//    }
-
-    if (ENABLE_TC)
-    {
-      map<string,map<string,bool> >::iterator first_it, second_it, third_it;
-      for (first_it = var_deps.begin(); first_it != var_deps.end(); first_it++)
-      {
-        for (second_it = var_deps.begin(); second_it != var_deps.end(); second_it++)
-        {
-          for (third_it = var_deps.begin(); third_it != var_deps.end(); third_it++)
-          {
-            if ((first_it->first != second_it->first) && (second_it->first != third_it->first) && (first_it->first != third_it->first))
-            if ((var_deps[first_it->first][second_it->first] == DEPT) && (var_deps[second_it->first][third_it->first] == DEPT))
-            {
-              var_deps[first_it->first][third_it->first] = DEPT;
-              var_deps[third_it->first][first_it->first] = DEPT;
-              //PRINTING
-              //std::cout << "Since the pairs (" << variable_name(first_it->first) << ", " << variable_name(second_it->first) << ") and ("
-              //     << variable_name(second_it->first) << ", " << variable_name(third_it->first) << ") have been added, " << std::endl;
-              //std::cout << "then for transitivity the pair (" << variable_name(first_it->first) << ", " << variable_name(third_it->first) << ") is added." << std::endl;
-            }
-          }
-        }
-      }
-    }
-}
-
-void dependency_checkert::find_assert_deps()
-{
     for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
     {
       if (it->is_assert() && !omega.is_assertion_in_loop(it->source.pc)){
@@ -185,54 +137,117 @@ void dependency_checkert::find_assert_deps()
     cout << "SSA Assertions: " << asserts.size();
     cout << endl;
 
-//    Printing
-//    std::cout << "Printing assertions:" << std::endl;
-//    map<SSA_step_reft, bool>::iterator asserts_it;
-//    for (asserts_it = asserts.begin(); asserts_it != asserts.end(); asserts_it++)
-//    {
-//      (asserts_it->first)->output(ns, std::cout);
-//    }
+    // ============ DISJOINT SETS EDITING BEGINS
+
+    vector<string> equation_symbols;
+
+    int i=0;
+    for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
+    {
+      if ((it->is_assignment()) || (it->is_assume()))
+      {
+            symbol_sett all_symbols;
+
+            get_expr_symbols(it->guard, all_symbols);
+            get_expr_symbols(it->cond_expr, all_symbols);
+
+            if (!all_symbols.empty())
+            {
+            	if (!visited[as_string(*(all_symbols.begin()))])
+                {
+                  deps_ds.make_set(as_string(*(all_symbols.begin())));
+                  equation_symbols.push_back(as_string(*(all_symbols.begin())));
+                  visited[as_string(*(all_symbols.begin()))] = true;
+                  //cout << "I have visited a variable: " << as_string(*(all_symbols.begin())) << " [" << (visited[as_string(*(all_symbols.begin()))]?"true":"false") << "]" << endl;
+                }
+            }
+
+            else
+            {
+            	cerr << "Empty list of symbols has been found. The corresponding instruction is printed below." << endl;
+            	cerr << "Instruction type: ";
+            	if (it->is_assume()) cerr << "Assumption.";
+            	else if (it->is_assignment()) cerr << "Assignment.";
+            	else cerr << "Neither assertion nor assignment.";
+            	cerr << endl;
+            	cerr << "Guard: " << from_expr(ns, "", it->guard) << endl;
+            	cerr << "Condition: " << from_expr(ns, "", it->cond_expr) << endl;
+            	cerr << "High level code line number: " << it->source.pc->location.as_string() << endl;
+            }
+
+            for (symbol_sett::iterator sym_it = all_symbols.begin(); sym_it != all_symbols.end(); ++sym_it)
+            {
+            	if (!visited[as_string(*sym_it)])
+              {
+                equation_symbols.push_back(as_string(*sym_it));
+            	deps_ds.make_set(as_string(*sym_it));
+                visited[as_string(*sym_it)] = true;
+                //cout << "I have visited a variable: " << as_string(*sym_it) << " [" << (visited[as_string(*sym_it)]?"true":"false") << "]" << endl;
+              }
+            	deps_ds.union_set(as_string(*(all_symbols.begin())), as_string(*sym_it));
+            	//string x = deps_ds->find_set(as_string(*sym_it));
+            	//cout << "Printing test of variable: " << x << endl;
+            	//exit(1);
+            }
+        }
+    }
+
+    //FIXME: Determine if compression is needed for greater efficiency
+    deps_ds.compress_sets(equation_symbols.begin(), equation_symbols.end());
+
+    cout << "Number of disjoint variable sets: " << (int)deps_ds.count_sets(equation_symbols.begin(), equation_symbols.end()) << endl;
+
+}
+
+void dependency_checkert::find_assert_deps(str_disj_set &deps_ds, map<string, bool> &visited)
+{
 
     symbol_sett first_symbols, second_symbols;
+    int deps=0;
+    int indeps=0;
+    bool doubleforbreak;
 
     for (unsigned i = 0; i < asserts.size(); i++)
     {
       SSA_step_reft& assert_1 = asserts[i];
       first_symbols.clear();
-      get_expr_symbols(assert_1->guard_expr, first_symbols);
+      get_expr_symbols(assert_1->guard, first_symbols);
       get_expr_symbols(assert_1->cond_expr, first_symbols);
 
       for (unsigned j = i + 1; j < asserts.size(); j++)
       {
+    	indeps++;
         SSA_step_reft& assert_2 = asserts[j];
         if (!compare_assertions(assert_1, assert_2))
           continue;
         second_symbols.clear();
-        get_expr_symbols(assert_2->guard_expr, second_symbols);
+        get_expr_symbols(assert_2->guard, second_symbols);
         get_expr_symbols(assert_2->cond_expr, second_symbols);
 
-        for (symbol_sett::iterator first_symit = first_symbols.begin(); first_symit != first_symbols.end(); ++first_symit)
+        doubleforbreak = false;
+        for (symbol_sett::iterator first_symit = first_symbols.begin(); (first_symit != first_symbols.end() && (!doubleforbreak)); ++first_symit)
           {
-            for (symbol_sett::iterator second_symit = second_symbols.begin(); second_symit != second_symbols.end(); ++second_symit)
+        	for (symbol_sett::iterator second_symit = second_symbols.begin(); (second_symit != second_symbols.end() && (!doubleforbreak)); ++second_symit)
             {
-              //if (var_deps[first_symit->as_string()][second_symit->as_string()] == DEPT)
-            if (label[first_symit->as_string()] && label[second_symit->as_string()])
-              if (*label[first_symit->as_string()] == *label[second_symit->as_string()])
-              {
-                assert_deps[asserts[i]][asserts[j]] = DEPT;
-                assert_deps[asserts[j]][asserts[i]] = DEPT;
-              }
+                if (visited[as_string(*first_symit)] && visited[as_string(*second_symit)])
+                  if (deps_ds.find_set(as_string(*first_symit)) == deps_ds.find_set(as_string(*second_symit)) )
+                  {
+                    assert_deps[asserts[i]][asserts[j]] = DEPT;
+                    assert_deps[asserts[j]][asserts[i]] = DEPT;
+                    doubleforbreak = true;
+                    deps++;
+                    indeps--;
+                    //cout << "The following assertions are dependent!" << endl;
+                    //cout << from_expr(ns, "", assert_1->cond_expr) << endl;
+                    //cout << from_expr(ns, "", assert_2->cond_expr) << endl;
+                  }
             }
           }
         }
     }
 
-    /*
-    std::cout << "Printing assertion dependencies:" << std::endl;
-    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_deps.begin(); dep_first_it != assert_deps.end(); ++dep_first_it)
-      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
-        if (assert_deps[dep_first_it->first][dep_second_it->first] == DEPT)  std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " <-> " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
-    */
+    cout << "Syntactic independecies found: " << indeps << endl;
+    cout << "Syntactic dependecies found: " << deps << endl;
 
 }
 
@@ -254,6 +269,9 @@ long dependency_checkert::find_implications()
   //bool mustprint = false;
   unsigned notdisc = 0;
   unsigned discarded = 0;
+  int checks=0;
+  int impchecks=0;
+  vector<bool> to_remove(asserts.size(), false);
 
     /*
     cout << "Printing assertions before ordering." << endl;
@@ -277,29 +295,33 @@ long dependency_checkert::find_implications()
   {
     for (unsigned j = 0; j < asserts.size(); j++)
     {
+      checks++;
       pair<bool, fine_timet> checkres;
-      SSA_step_reft& ass_1 = asserts[i];
-      SSA_step_reft& ass_2 = asserts[j];
-      if (compare_assertions(ass_1, ass_2) &&
-          assert_deps[ass_1][ass_2] == DEPT){
-        std::cout << "2: " << distance(ass_1, ass_2) << "  "<< treshold <<"\n";
-        cout << "Comparing the assertions " <<
-    			from_expr(ns, "", ass_1->cond_expr) << " and " <<
-    			from_expr(ns, "", ass_2->cond_expr) << endl;
-        checkres = check_implication(ass_1, ass_2);
+      SSA_step_reft& assert_1 = asserts[i];
+      SSA_step_reft& assert_2 = asserts[j];
+      if ((i != j) &&
+          (!to_remove[j]) &&
+          compare_assertions(assert_1, assert_2) &&
+          assert_deps[assert_1][assert_2] == DEPT){
+    	    impchecks++;
+    	    if (VERBOSE) {cout << "Comparing the assertions " <<
+    			from_expr(ns, "", assert_1->cond_expr) << " and " <<
+    			from_expr(ns, "", assert_2->cond_expr) << endl; }
+        checkres = check_implication(assert_1, assert_2);
         if (checkres.first == true)
         {
-          true_time = true_time + checkres.second;
-          cout << "check_implication returned TRUE" << endl;
+          true_time = true_time + checkres.second.get_t();
+          if (VERBOSE) {cout << "check_implication returned TRUE" << endl;}
           if (checkres.second.get_t() <= impl_timeout)
           {
-              assert_imps[ass_1][ass_2] = IMP;
-              std::cout << "Adding the assertion implication (" <<
-              from_expr(ns, "", ass_1->cond_expr) << " => " <<
-              from_expr(ns, "", ass_2->cond_expr) << ") [" << ass_2->source.pc->location.get_line() << "]" << std::endl;
+              assert_imps[assert_1][assert_2] = IMP;
+              {std::cout << "Adding the assertion implication \n (" <<
+              from_expr(ns, "", assert_1->cond_expr) << ") [" << assert_1->source.pc->location.get_line() << "] [stronger] \n => \n (" <<
+              from_expr(ns, "", assert_2->cond_expr) << ") [" << assert_2->source.pc->location.get_line() << "] [weaker]" << endl;}
 
-              equation.SSA_steps.erase(ass_2);
-              asserts.erase(asserts.begin()+j);
+              to_remove[j] = true;
+              //equation.SSA_steps.erase(assert_2);
+              //asserts.erase(asserts.begin()+j);
 
               discarded++;
           }
@@ -308,25 +330,49 @@ long dependency_checkert::find_implications()
         else
         {
         	false_time = false_time + checkres.second.get_t();
-        	cout << "check_implication returned FALSE" << endl;
+        	if (VERBOSE) cout << "check_implication returned FALSE" << endl;
         }
         if (checkres.second.get_t() > impl_timeout)
         {
         	long exceeding = checkres.second.get_t() - impl_timeout;
-        	cout << "Timeout " << impl_timeout << " exceeded of " << exceeding << " seconds." << endl;
+        	cout << "Timeout " << (impl_timeout/1000) << "." << (impl_timeout%1000)/10 << " exceeded of " << (exceeding/1000) << "." << (exceeding%1000)/10 << " seconds." << endl;
             to_time = to_time + exceeding;
         }
       }
     }
   }
 
-//    std::cout << "Printing assertion implications:" << std::endl;
+//    std::cout << "Printing assertion implications:" << endl;
 //    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
 //      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
-//      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
+//      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << endl;
 
   cout << "Discarded assertions: " << discarded << endl;
   if (notdisc > 0) cout << "WARNING: " << notdisc << " true implications exceeded timeout!" << endl;
+
+  cout << "Total number of implication checks: " << impchecks << endl;
+  cout << "Total number of comparisons: " << checks << endl;
+
+  for (int i = asserts.size() - 1; i >= 0; i--)
+  //for (unsigned i = 0; i < asserts.size(); i++)
+  {
+	  //cout << "Inizio iterazione " << i << endl;
+	  if (to_remove[i] == true)
+	  {
+		  SSA_step_reft& removable = asserts[i];
+		  int tempindex = distance(equation.SSA_steps.begin(), removable);
+		  if (tempindex > 0)
+		  //asserts[i]->ignore=true;
+		  equation.SSA_steps.erase(removable);
+		  if (removable->is_assert()) {if (VERBOSE) cout << "I am discarding an assertion." << endl;}
+		  else cout << "[ERROR] I am discarding some other type of instruction. Please debug." << endl;
+		  asserts.erase(asserts.begin()+i);
+		  //to_remove.erase(to_remove.begin()+i);
+		  //i--;
+	  }
+	  //cout << "Fine iterazione " << i <<  endl;
+  }
+
   return to_time;
 
 }
@@ -351,91 +397,90 @@ void dependency_checkert::get_minimals()
 void dependency_checkert::print_SSA_steps_infos()
 {
 //TODO: integrate with new CProver
-/*
   map<string,map<string,bool> > var_deps;
 
   //printf("Sono dentro la dependency analysis!\n");
-  std::cout << std::endl << "Printing SSA data" << std::endl << std::endl;
+  std::cout << endl << "Printing SSA data" << endl << endl;
     for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
     {
       it->output(ns, std::cout);
       std::cout << "Andrea's data:\n";
-      std::cout << "Guard = " << from_expr(ns, "", it->guard_expr) << std::endl;
+      std::cout << "Guard = " << from_expr(ns, "", it->guard) << endl;
       if (it->is_assignment())
       {
-            std::cout << "  Type = ASSIGNMENT" << std::endl;
+            std::cout << "  Type = ASSIGNMENT" << endl;
             std::cout << "  Assignment type = ";
-            if (it->assignment_type == symex_targett::HIDDEN) std::cout << "HIDDEN" << std::endl;
-            else if (it->assignment_type == symex_targett::STATE) std::cout << "STATE" << std::endl;
-            else std::cout << "NOT EXPECTED" << std::endl;
-            std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << std::endl;
+            if (it->assignment_type == symex_targett::HIDDEN) std::cout << "HIDDEN" << endl;
+            else if (it->assignment_type == symex_targett::STATE) std::cout << "STATE" << endl;
+            else std::cout << "NOT EXPECTED" << endl;
+            std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << endl;
             std::cout << "Symbols in the expression: ";
             print_expr_symbols(std::cout, it->cond_expr);
-            std::cout << std::endl;
-            std::cout << "left-hand side: " << from_expr(ns, "", it->lhs) << std::endl;
+            std::cout << endl;
+            std::cout << "left-hand side: " << from_expr(ns, "", it->ssa_lhs) << endl;
             std::cout << "Symbols in the left-hand side: ";
-            print_expr_symbols(std::cout, it->lhs);
-            std::cout << std::endl;
-            std::cout << "right-hand side: " << from_expr(ns, "", it->rhs) << std::endl;
+            print_expr_symbols(std::cout, it->ssa_lhs);
+            std::cout << endl;
+            std::cout << "right-hand side: " << from_expr(ns, "", it->ssa_rhs) << endl;
             std::cout << "Symbols in the right-hand side: ";
-            print_expr_symbols(std::cout, it->rhs);
-            std::cout << std::endl;
+            print_expr_symbols(std::cout, it->ssa_rhs);
+            std::cout << endl;
             symbol_sett lhs_symbols, rhs_symbols, guard_symbols;
-            get_expr_symbols(it->lhs, lhs_symbols);
-            get_expr_symbols(it->rhs, rhs_symbols);
-            get_expr_symbols(it->guard_expr, guard_symbols);
+            get_expr_symbols(it->ssa_lhs, lhs_symbols);
+            get_expr_symbols(it->ssa_rhs, rhs_symbols);
+            get_expr_symbols(it->guard, guard_symbols);
             dstring temp;
             for (symbol_sett::iterator lhs_it = lhs_symbols.begin(); lhs_it != lhs_symbols.end(); ++lhs_it)
             {
-              string lid = lhs_it->as_string();
+              string lid = as_string(*lhs_it);
                 for (symbol_sett::iterator rhs_it = rhs_symbols.begin(); rhs_it != rhs_symbols.end(); ++rhs_it)
                 {
-                  string rid = rhs_it->as_string();
-                  std::cout << "Dependency " << variable_name(*lhs_it) << " <- " << variable_name(*rhs_it) << " is being added." << std::endl;
+                  string rid = as_string(*rhs_it);
+                  std::cout << "Dependency " << variable_name(*lhs_it) << " <- " << variable_name(*rhs_it) << " is being added." << endl;
                   var_deps[lid][rid] = DEPT;
                 }
                 for (symbol_sett::iterator guard_it = guard_symbols.begin(); guard_it != guard_symbols.end(); ++guard_it)
                 {
-                  string gid = guard_it->as_string();
-                  std::cout << "Dependency " << variable_name(*lhs_it) << " <- " << variable_name(*guard_it) << " is being added." << std::endl;
+                  string gid = as_string(*guard_it);
+                  std::cout << "Dependency " << variable_name(*lhs_it) << " <- " << variable_name(*guard_it) << " is being added." << endl;
                   var_deps[lid][gid] = DEPT;
                 }
             }
         }
       else if (it->is_assert())
       {
-        std::cout << "  Type = ASSERT" << std::endl;
-        std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << std::endl;
-        std::cout << "  Comment = " << it->comment << std::endl;
+        std::cout << "  Type = ASSERT" << endl;
+        std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << endl;
+        std::cout << "  Comment = " << it->comment << endl;
       }
       else if (it->is_assume())
       {
-        std::cout << "  Type = ASSUME" << std::endl;
-        std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << std::endl;
+        std::cout << "  Type = ASSUME" << endl;
+        std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << endl;
       }
       else if (it->is_location())
       {
-        std::cout << "  Type = LOCATION" << std::endl;
+        std::cout << "  Type = LOCATION" << endl;
       }
       else if (it->is_output())
       {
-        std::cout << "  Type = OUTPUT" << std::endl;
+        std::cout << "  Type = OUTPUT" << endl;
       }
       else
       {
-        std::cout << "  Type = NOT EXPECTED" << std::endl;
+        std::cout << "  Type = NOT EXPECTED" << endl;
       }
         if(it->source.is_set)
         {
-          std::cout << "  Thread = " << it->source.thread_nr << std::endl;
+          std::cout << "  Thread = " << it->source.thread_nr << endl;
           if(it->source.pc->location.is_not_nil())
-            std::cout << "  Location = " << it->source.pc->location << std::endl;
+            std::cout << "  Location = " << it->source.pc->location << endl;
           else
-            std::cout << std::endl;
+            std::cout << endl;
         }
         if (it->cond_expr.has_operands())
         {
-            std::cout << "  Operands:" << std::endl;
+            std::cout << "  Operands:" << endl;
 
             int k = 0;
             Forall_operands(op, it->cond_expr)
@@ -447,16 +492,16 @@ void dependency_checkert::print_SSA_steps_infos()
             }
 
         }
-        std::cout << std::endl;
+        std::cout << endl;
     }
-    std::cout << "Printing dependencies:" << std::endl;
+    std::cout << "Printing dependencies:" << endl;
     map<string,map<string,bool> >::iterator dep_it;
     for ( dep_it=var_deps.begin() ; dep_it != var_deps.end(); dep_it++ )
     {
       std::cout << variable_name((*dep_it).first) << " <- ";
       print_dependents((*dep_it).second, std::cout);
-      std::cout << std::endl;
-    }*/
+      std::cout << endl;
+    }
 }
 
 void dependency_checkert::print_dependents(map<string,bool> dependents, std::ostream &out)
@@ -471,7 +516,7 @@ void dependency_checkert::print_dependents(map<string,bool> dependents, std::ost
 
 std::string dependency_checkert::variable_name(dstring name)
 {
-  return variable_name(name.as_string());
+  return variable_name(as_string(name));
 }
 
 std::string dependency_checkert::variable_name(std::string name)
@@ -515,7 +560,7 @@ void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int
     expr_pretty_printt pretty(out);
     pretty(expr);
   }
-  else out << from_expr(ns, "", expr) << std::endl;
+  else out << from_expr(ns, "", expr) << endl;
   if (expr.has_operands())
   {
     int k = 0;
@@ -531,7 +576,6 @@ void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int
 
 void dependency_checkert::print_SSA_steps()
 {
-  //printf("Sono dentro la stampa degli SSA steps!\n");
     for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
     {
       it->output(ns, std::cout);
@@ -628,58 +672,10 @@ void dependency_checkert::convert_io(
           symbol_exprt symbol;
           symbol.type()=tmp.type();
           symbol.set_identifier("symex::io::"+i2string(io_count++));
-          prop_conv.set_to(equality_exprt(tmp, symbol), true);
+          prop_conv.set_to(equal_exprt(tmp, symbol), true);
           it->converted_io_args.push_back(symbol);
         }
       }
     it++;
   }
 }
-
-/*
- void dependency_checkert::find_implications()
-{
-  vector<SSA_step_reft> asserts;
-  bool mustprint = false;
-    for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
-    {
-      if (it->is_assert()) asserts.push_back(it);
-    }
-
-  vector<SSA_step_reft> assert_vec (asserts.begin(), asserts.end());
-
-    vector<SSA_step_reft>::iterator it;
-    //sort(assert_vec.begin(), assert_vec.end(), compare_asserts);
-    for (first_it = asserts.begin(); first_it != asserts.end(); first_it++)
-    {
-      //for (second_it = first_it; second_it != asserts.end(); second_it++)
-      //{
-        //if (distance(first_it, second_it) > 0)
-        {
-          if (first_it != second_it)
-          {
-            if (assert_deps[first_it->first][second_it->first] == DEPT)
-            {
-              if (check_implication(first_it->first, second_it->first) == true)
-              {
-                assert_imps[first_it->first][second_it->first] = IMP;
-                if (mustprint)
-                {
-                  std::cout << "Adding the assertion implication (" <<
-                  from_expr(ns, "", first_it->first->cond_expr) << " => " <<
-                  from_expr(ns, "", second_it->first->cond_expr) << ")" << std::endl;
-                }
-              }
-            }
-          }
-        }
-      //}
-    }
-
-    std::cout << "Printing assertion implications:" << std::endl;
-    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
-      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
-      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
-
-}
- */

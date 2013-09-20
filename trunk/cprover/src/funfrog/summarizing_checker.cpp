@@ -9,7 +9,7 @@
 #include <i2string.h>
 #include "summarizing_checker.h"
 #include "partitioning_slice.h"
-//#include "dependency_checker.h"
+#include "dependency_checker.h"
 
 void summarizing_checkert::initialize()
 {
@@ -118,8 +118,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
     if (!end){
 
       if (options.get_bool_option("claims-order") && count == 1){
-//TODO: ask Andrea to upgrade it (Makefile as well)
-//        dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_int_option("claims-order")).do_it();
+        dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_int_option("claims-order")).do_it();
 
         // TODO: employ dependency information from dependency checker
         status(std::string("All SSA steps without weakest summaries: ") + i2string(equation.SSA_steps.size()));
