@@ -610,7 +610,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("bounds-check", cmdline.isset("bounds-check"));
   options.set_option("pointer-check", cmdline.isset("pointer-check"));
   options.set_option("div-by-zero-check", cmdline.isset("div-by-zero-check"));
-  options.set_option("overflow-check", cmdline.isset("overflow-check"));
+  options.set_option("signed-overflow-check", cmdline.isset("overflow-check"));
+  options.set_option("unsigned-overflow-check", cmdline.isset("overflow-check"));
   options.set_option("nan-check", cmdline.isset("nan-check"));
   options.set_option("string-abstraction", cmdline.isset("string-abstraction"));
   options.set_option("assertions", cmdline.isset("assertions"));
