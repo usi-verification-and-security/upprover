@@ -142,10 +142,10 @@ void refiner_assertion_sumt::reset_depend_rec(std::vector<summary_infot*>& dep, 
             if (call.is_recursion_nondet()){
               std::cout << "Automatically increasing unwinding bound for " << call.get_function_id() << "\n";
               omega.refine_recursion_call(call);
-          //  }
+            }
             set_inline_sum(call);
             break;
-          }
+          //}
         }
       }
     }
