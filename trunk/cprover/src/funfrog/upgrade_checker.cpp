@@ -141,7 +141,7 @@ bool check_upgrade(const namespacet &ns,
 
   final = current_time();
 
-  upg_checker.status() << "TOTAL UPGRADE CHECKING TIME: " << (final - initial);
+  upg_checker.status() << "TOTAL UPGRADE CHECKING TIME: " << (final - initial) << upg_checker.eom;
 
   upg_checker.save_change_impact();
 
