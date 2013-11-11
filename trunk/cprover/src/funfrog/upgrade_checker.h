@@ -12,6 +12,8 @@
 #include "summarizing_checker.h"
 #include <ui_message.h>
 
+//#define DEBUG_UPGR
+
 class upgrade_checkert : public summarizing_checkert
 {
 public:
@@ -41,6 +43,7 @@ protected:
 
   void upward_traverse_call_tree(summary_infot& summary_info, bool &pre);
   void downward_traverse_call_tree(summary_infot& summary_info);
+  void extract_interpolants (prop_assertion_sumt& prop, partitioning_target_equationt& equation);
   summary_ids_sett checked_summaries;
 };
 

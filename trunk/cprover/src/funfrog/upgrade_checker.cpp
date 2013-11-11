@@ -181,12 +181,14 @@ bool upgrade_checkert::check_upgrade()
     bool res = true;
 
     const irep_idt& name = (*summs[i]).get_function_id();
-    // std::cout << "checking summary #"<< i<<": "<< name <<"\n";
 
+#ifdef DEBUG_UPGR
+    std::cout << "checking summary #"<< i << ": " << name <<"\n";
+#endif
     // if (omega.get_last_assertion_loc() >= (*summs[i]).get_call_location()){
 
       const summary_ids_sett& used = (*summs[i]).get_used_summaries();
-      if (used.size() == 0){
+      if (used.size() == 0 && !(*summs[i]).is_preserved_node()){
         res = false;
         upward_traverse_call_tree((*summs[i]).get_parent(), res);
       }
@@ -199,7 +201,6 @@ bool upgrade_checkert::check_upgrade()
           summary_ids_sett summary_to_check;
           summary_to_check.insert(*it);
           (*summs[i]).set_used_summaries(summary_to_check);
-
           upward_traverse_call_tree((*summs[i]), res);
         } else {
           status() << "function " << name << " is already checked" << eom;
@@ -256,15 +257,19 @@ void upgrade_checkert::upward_traverse_call_tree(summary_infot& summary_info, bo
     checked_summaries.insert(*it);
   }
   if (!summary_info.is_preserved_node() || !pre){
+#ifdef DEBUG_UPGR
     if (!summary_info.is_preserved_node()){
-      //std::cout << "  -- the body is changed;";
+      std::cout << "  -- the body is changed;";
     }
+#endif
     if (summary_info.get_precision() == 1){
+#ifdef DEBUG_UPGR
       if (summary_info.get_precision() == 1){
-        //std::cout << " and there was a summary.\n";
+        std::cout << " and there was a summary.\n";
       } else {
-        //std::cout << "   [parent check] do inlining.\n";
+        std::cout << "   [parent check] do inlining.\n";
       }
+#endif
       // prepare subst. scenario for reverification
       downward_traverse_call_tree (summary_info);
 
@@ -318,32 +323,49 @@ void upgrade_checkert::downward_traverse_call_tree(summary_infot& summary_info)
   for (call_sitest::iterator it = call_sites.begin();
           it != call_sites.end(); ++it)
   {
-    //std::cout << "\n    -- the function call of " << (it->second).get_function_id();
-
+#ifdef DEBUG_UPGR
+    std::cout << "\n    -- the function call of " << (it->second).get_function_id();
+#endif
     if (it->second.is_preserved_edge()){
-      //std::cout << " is preserved;";
+#ifdef DEBUG_UPGR
+      std::cout << " is preserved;";
+#endif
       // FIXME: a summary that was being verified (both, valid or not) is INL now
       if ((it->second).get_precision() == 1){
-        //std::cout << " has summary => will remain summarized ";
+#ifdef DEBUG_UPGR
+        std::cout << " has summary => will remain summarized ";
+#endif
       } else if ((it->second).get_precision() == 0){
-        //std::cout << " was havoced (probably, out of las_assertion_loc) => will remain havoced";
+#ifdef DEBUG_UPGR
+        std::cout << " was havoced (probably, out of las_assertion_loc) => will remain havoced";
+#endif
       } else {
         if ((it->second).has_assertion_in_subtree()){
-          //std::cout << " was inlined (since has assertion) => will remain inlined" ;
+#ifdef DEBUG_UPGR
+          std::cout << " was inlined (since has assertion) => will remain inlined" ;
+#endif
           // if inline, then do recursive traverse downward
           downward_traverse_call_tree(it->second);
         } else if ((it->second).is_preserved_node()){
-          //std::cout << " was inlined (irrelevant for proof) => can be havoced";
+#ifdef DEBUG_UPGR
+          std::cout << " was inlined (irrelevant for proof) => can be havoced";
+#endif
           (it->second).set_nondet();
         } else {
-          //std::cout << " was modified => should be inlined";
+#ifdef DEBUG_UPGR
+          std::cout << " was modified => should be inlined";
+#endif
         }
       }
 
     } else {
-      //std::cout << " not preserved => do inlining";
+#ifdef DEBUG_UPGR
+      std::cout << " not preserved => do inlining";
+#endif
     }
-    //std::cout <<"\n";
+#ifdef DEBUG_UPGR
+    std::cout <<"\n";
+#endif
   }
 }
 
@@ -469,4 +491,42 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   status() << "Total number of steps: " << count << eom;
   status() << "TOTAL TIME FOR CHECKING THIS SUMMARY: " << (final - initial) << eom;
   return end;
+}
+
+/*
+  same as method as its predecessor, but it marks all newly generated interpolants as 'checked'
+*/
+void upgrade_checkert::extract_interpolants (prop_assertion_sumt& prop, partitioning_target_equationt& equation)
+{
+  summary_storet& summary_store = summarization_context.get_summary_store();
+  interpolant_mapt itp_map;
+  fine_timet before, after;
+  before=current_time();
+
+  equation.extract_interpolants(*interpolator, *decider, itp_map);
+
+  after=current_time();
+  status() << "INTERPOLATION TIME: " << (after-before) << eom;
+
+  for (interpolant_mapt::iterator it = itp_map.begin();
+                  it != itp_map.end(); ++it) {
+    summary_infot& summary_info = it->first->summary_info;
+
+    function_infot& function_info =
+            summarization_context.get_function_info(
+            summary_info.get_function_id());
+
+    function_info.add_summary(summary_store, it->second,
+            !options.get_bool_option("no-summary-optimization"));
+
+    summary_info.add_used_summary(it->second);
+    checked_summaries.insert(it->second);        // skip recheking a newly generated summary
+    summary_info.set_summary();           // helpful flag for omega's (de)serialization
+  }
+  // Store the summaries
+  const std::string& summary_file = options.get_option("save-summaries");
+  if (!summary_file.empty()) {
+    summarization_context.serialize_infos(summary_file,
+            omega.get_summary_info());
+  }
 }
