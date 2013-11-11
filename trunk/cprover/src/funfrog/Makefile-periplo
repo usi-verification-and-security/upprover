@@ -57,7 +57,7 @@ FUNFROG_OBJ := \
       ../cbmc/symex_bmc$(OBJEXT) \
       ../cpp/cpp$(LIBEXT) \
       ../java_bytecode/java_bytecode$(LIBEXT) \
-	    $(OBJ)
+      $(OBJ)
 
 SUMO_OBJ := \
       $(SUMO_SRC:.cpp=$(OBJEXT)) \
@@ -65,12 +65,19 @@ SUMO_OBJ := \
 
 DIFF_OBJ := \
       $(DIFF_SRC:.cpp=$(OBJEXT)) \
-      ../util/util$(LIBEXT) \
-      ../big-int/bigint$(OBJEXT) \
+      ../ansi-c/ansi-c$(LIBEXT) \
+      ../linking/linking$(LIBEXT) \
+      ../big-int/big-int$(LIBEXT) \
       ../goto-programs/goto-programs$(LIBEXT) \
-      ../pointer-analysis/pointer-analysis$(LIBEXT) \
+      ../pointer-analysis/value_set$(OBJEXT) \
+      ../pointer-analysis/dereference$(OBJEXT) \
+      ../pointer-analysis/add_failed_symbols$(OBJEXT) \
+      ../pointer-analysis/rewrite_index$(OBJEXT) \
+      ../pointer-analysis/goto_program_dereference$(OBJEXT) \
       ../langapi/langapi$(LIBEXT) \
-      ../ansi-c/ansi-c$(LIBEXT)
+      ../analyses/analyses$(LIBEXT) \
+      ../assembler/assembler$(LIBEXT) \
+      ../util/util$(LIBEXT)
 
 SRC := ${FUNFROG_SRC} ${SUMO_SRC} ${DIFF_SRC}
 
