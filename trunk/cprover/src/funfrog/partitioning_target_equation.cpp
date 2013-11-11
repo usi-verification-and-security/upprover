@@ -44,8 +44,10 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
           it != partitions.rend(); ++it) {
 //#   ifdef DEBUG_SSA
     std::cout << "XXX" << std::string(77, '=') << std::endl;
+#   ifdef DEBUG_ENCODING
     unsigned vars_before = prop_conv.prop.no_variables();
     unsigned clauses_before = dynamic_cast<cnf_solvert&>(prop_conv.prop).no_clauses();
+#   endif
     std::cout << "XXX Partition: " << --part_id <<
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
