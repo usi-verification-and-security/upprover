@@ -76,7 +76,9 @@ protected:
 
   void reset_inline(summary_infot& summary);
   void reset_random(summary_infot& summary);
-  void reset_depend(prop_convt& decider, summary_infot& summary, bool do_callstart = true);
+  void reset_depend(prop_convt& decider, summary_infot& summary);
+
+  // not in use now
   void reset_depend_rec(std::vector<summary_infot*>& dep, summary_infot& summary);
 
   void set_inline_sum(summary_infot& summary);

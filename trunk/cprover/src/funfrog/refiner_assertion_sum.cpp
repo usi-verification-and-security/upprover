@@ -88,7 +88,7 @@ void refiner_assertion_sumt::reset_random(summary_infot& summary)
                                        // there are more chances that the reason of SAT was in 2weak summaries
 }
 
-void refiner_assertion_sumt::reset_depend(prop_convt& decider, summary_infot& summary, bool do_callstart)
+void refiner_assertion_sumt::reset_depend(prop_convt& decider, summary_infot& summary)
 {
   std::vector<summary_infot*> tmp;
 
@@ -114,19 +114,20 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, summary_infot& su
 #       ifdef DEBUG_REFINER
         std::cout<< "    -- callstart literal is true" << std::endl;
 #       endif
-        if (do_callstart){
-          tmp.push_back(&ipart.summary_info);
+        if (ipart.summary_info.get_precision() != INLINE){
+          if (ipart.summary_info.is_recursion_nondet()){
+              status() << "Automatically increasing unwinding bound for " << ipart.summary_info.get_function_id() << "\n";
+              omega.refine_recursion_call(ipart.summary_info);
+          }s
+          set_inline_sum(ipart.summary_info);
         }
       }
     }
   }
 
-  if (tmp.size() > 0) {
-    reset_depend_rec(tmp, summary);
-    tmp.clear();
-  }
 }
 
+// something old
 void refiner_assertion_sumt::reset_depend_rec(std::vector<summary_infot*>& dep, summary_infot& summary)
 {
   for (call_sitest::iterator it = summary.get_call_sites().begin();
@@ -140,7 +141,7 @@ void refiner_assertion_sumt::reset_depend_rec(std::vector<summary_infot*>& dep, 
             std::cout << "The call " << call.get_function_id() << " cannot be refined because the maximum unwinding bound is exceeded\n";
           } else {*/
             if (call.is_recursion_nondet()){
-              std::cout << "Automatically increasing unwinding bound for " << call.get_function_id() << "\n";
+              status() << "Automatically increasing unwinding bound for " << call.get_function_id() << "\n";
               omega.refine_recursion_call(call);
             }
             set_inline_sum(call);
@@ -148,7 +149,8 @@ void refiner_assertion_sumt::reset_depend_rec(std::vector<summary_infot*>& dep, 
           //}
         }
       }
+    } else {
+      reset_depend_rec(dep, call);
     }
-    reset_depend_rec(dep, call);
   }
 }

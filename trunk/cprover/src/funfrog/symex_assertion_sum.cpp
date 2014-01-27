@@ -504,7 +504,6 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   // Prepare (and empty) the current state
   state.guard.make_true();
 
-\
   // Set pc to function entry point
   // NOTE: Here, we expect having the function body available
   const goto_functionst::goto_functiont& function =
@@ -1016,7 +1015,6 @@ void symex_assertion_sumt::handle_function_call(
   }
 
   loc = summary_info.get_call_location();
-
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);
   if(summary_info.get_call_location() < last_assertion_loc){
