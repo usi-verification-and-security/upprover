@@ -118,7 +118,7 @@ void refiner_assertion_sumt::reset_depend(prop_convt& decider, summary_infot& su
           if (ipart.summary_info.is_recursion_nondet()){
               status() << "Automatically increasing unwinding bound for " << ipart.summary_info.get_function_id() << "\n";
               omega.refine_recursion_call(ipart.summary_info);
-          }s
+          }
           set_inline_sum(ipart.summary_info);
         }
       }
