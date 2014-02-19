@@ -399,7 +399,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
 
-  partitioning_target_equationt equation(ns, summarization_context, true, true, NO_COLORING);
+  partitioning_target_equationt equation(ns, summarization_context, true, true, NO_COLORING, 0 );
 
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
@@ -516,8 +516,8 @@ void upgrade_checkert::extract_interpolants (prop_assertion_sumt& prop, partitio
             summarization_context.get_function_info(
             summary_info.get_function_id());
 
-    function_info.add_summary(summary_store, it->second,
-            !options.get_bool_option("no-summary-optimization"));
+    function_info.add_summary(summary_store, it->second, false
+            /*!options.get_bool_option("no-summary-optimization")*/);
 
     summary_info.add_used_summary(it->second);
     checked_summaries.insert(it->second);        // skip recheking a newly generated summary

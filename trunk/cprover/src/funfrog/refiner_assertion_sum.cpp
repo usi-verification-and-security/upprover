@@ -62,8 +62,13 @@ void refiner_assertion_sumt::reset_inline(summary_infot& summary)
   {
     if ((it->second).get_precision() != INLINE){
       set_inline_sum(it->second);
+      if ((it->second).is_recursion_nondet()){
+          status() << "Automatically increasing unwinding bound for " << (it->second).get_function_id() << "\n";
+          omega.refine_recursion_call(it->second);
+      }
+    } else {
+      reset_inline(it->second);
     }
-    reset_inline(it->second);
   }
 }
 

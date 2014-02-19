@@ -116,7 +116,12 @@ void subst_scenariot::clone_children(summary_infot& call, summary_infot& parent)
   if (to_be_cloned.is_recursion_nondet() /*||
     is_recursion_unwinding(summarization_context.get_unwind_max(), to_be_cloned.get_function_id())*/){
       cloned.set_recursion_nondet(true);
-      cloned.set_nondet();
+      if (summarization_context.get_summaries(to_be_cloned.get_function_id()).size() > 0) {
+        // If summaries are present, we use them
+        cloned.set_summary();
+      } else {
+        cloned.set_nondet();
+      }
     } else {
       cloned.set_precision(to_be_cloned.get_precision());
       clone_children(cloned, to_be_cloned);

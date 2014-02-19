@@ -35,13 +35,14 @@ class partitioning_target_equationt:public symex_target_equationt
 public:
   partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
           _summarization_context, bool _upgrade_checking, 
-          bool _store_summaries_with_assertion, coloring_modet _coloring_mode) :
+          bool _store_summaries_with_assertion, coloring_modet _coloring_mode, int _sum_number) :
           symex_target_equationt(_ns), 
           summarization_context(_summarization_context),
           current_partition_id(partitiont::NO_PARTITION),
           upgrade_checking(_upgrade_checking),
           store_summaries_with_assertion(_store_summaries_with_assertion),
-          coloring_mode(_coloring_mode){
+          coloring_mode(_coloring_mode),
+          sum_number(_sum_number){
   }
 
   // Convert all the SSA steps into the corresponding formulas in
@@ -289,6 +290,8 @@ private:
   bool store_summaries_with_assertion;
   
   coloring_modet coloring_mode;
+
+  int sum_number;
 
   friend class partitioning_slicet;
 };

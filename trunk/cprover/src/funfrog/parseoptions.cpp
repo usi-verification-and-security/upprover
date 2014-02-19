@@ -642,6 +642,11 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.getval("unwind"));
   }
+  if (cmdline.isset("sum-number")) {
+      options.set_option("sum-number", cmdline.getval("sum-number"));
+    }else {
+      options.set_option("sum-number", "-1");
+    }
   if (cmdline.isset("unwindset")) {
     options.set_option("unwindset", cmdline.getval("unwindset"));
   }

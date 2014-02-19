@@ -65,7 +65,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   const bool single_assertion_check = omega.is_single_assertion_check();
 
   partitioning_target_equationt equation(ns, summarization_context, false,
-      store_summaries_with_assertion, get_coloring_mode(options.get_option("color-proof")));
+      store_summaries_with_assertion, get_coloring_mode(options.get_option("color-proof")),
+      options.get_int_option("sum-number"));
 
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
@@ -139,7 +140,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
         }
         if (summaries_count == 0)
         {
-          status("ASSERTION(S) HOLD(S)"); //TODO change the message to something more clear (like, everyting was inlined...)
+          status("ASSERTION(S) HOLD(S)"); //TODO change the message to something more clear (like, everything was inlined...)
         } else {
           status() << "FUNCTION SUMMARIES (for " << summaries_count
         	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
@@ -179,6 +180,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   final = current_time();
   omega.get_unwinding_depth();
 
+  status() << "Initial unwinding bound: " << options.get_int_option("unwind") << eom;
   status() << "Total number of steps: " << count << eom;
   if (omega.get_recursive_total() > 0){
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
@@ -219,8 +221,8 @@ void summarizing_checkert::extract_interpolants (prop_assertion_sumt& prop, part
             summarization_context.get_function_info(
             summary_info.get_function_id());
 
-    function_info.add_summary(summary_store, it->second,
-            !options.get_bool_option("no-summary-optimization"));
+    function_info.add_summary(summary_store, it->second, false
+            /*!options.get_bool_option("no-summary-optimization")*/);
     
     summary_info.add_used_summary(it->second);
     summary_info.set_summary();           // helpful flag for omega's (de)serialization

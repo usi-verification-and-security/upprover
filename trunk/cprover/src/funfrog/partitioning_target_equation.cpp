@@ -182,6 +182,7 @@ void partitioning_target_equationt::convert_partition_summary(
   std::vector<symbol_exprt> common_symbs;
   summary_storet& summary_store = summarization_context.get_summary_store();
   fill_common_symbols(partition, common_symbs);
+  unsigned i = 0;
 
 #   ifdef DEBUG_SSA
     std::cout << "Candidate summaries: " << partition.summaries->size() << std::endl;
@@ -194,7 +195,8 @@ void partitioning_target_equationt::convert_partition_summary(
     std::cout << "Substituting summary #" << *it << std::endl;
 #   endif
     summaryt& summary = summary_store.find_summary(*it);
-    if (summary.is_valid()){
+    if (summary.is_valid() && (sum_number == -1 || sum_number == i++)){
+      std::cout << "Substituting summary #" << *it << std::endl;
       summary.substitute(prop_conv, common_symbs, partition.inverted_summary);
     }
   }
@@ -695,8 +697,8 @@ void partitioning_target_equationt::extract_interpolants(
     }
     
     if (!partition.is_inline() ||
-            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion)
-   // || partition.get_iface().summary_info.is_recursion_nondet()
+            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
+        partition.get_iface().summary_info.is_recursion_nondet()
     )
       continue;
     
@@ -714,8 +716,9 @@ void partitioning_target_equationt::extract_interpolants(
     partition_ifacet ipartition = partition.get_iface();
     
     if (!partition.is_inline() ||
-            (ipartition.assertion_in_subtree && !store_summaries_with_assertion)
-    //  || partition.get_iface().summary_info.is_recursion_nondet()
+            (ipartition.assertion_in_subtree &&
+                !store_summaries_with_assertion)
+      || partition.get_iface().summary_info.is_recursion_nondet()
             )
       continue;
     fill_partition_ids(pid, itp_task[tid++]);
@@ -762,7 +765,7 @@ void partitioning_target_equationt::extract_interpolants(
 
     if (!partition.is_inline() ||
             (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion)
-        //    || partition.get_iface().summary_info.is_recursion_nondet()
+            || partition.get_iface().summary_info.is_recursion_nondet()
   )
       continue;
     
@@ -801,10 +804,10 @@ void partitioning_target_equationt::extract_interpolants(
       continue;
     }
 
-//    if (partition.get_iface().summary_info.is_recursion_nondet()){
-//      std::cout << "Skip interpolants for nested recursion calls." << std::endl;
-//      continue;
-//    }
+    if (partition.get_iface().summary_info.is_recursion_nondet()){
+      std::cout << "Skip interpolants for nested recursion calls." << std::endl;
+      continue;
+    }
     
     // Generalize the interpolant
     fill_common_symbols(partition, common_symbs);

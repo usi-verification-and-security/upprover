@@ -51,7 +51,7 @@ class value_set_alloc_adaptort;
   "(tree-interpolants)(proof-trans):(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
   "(no-itp)(verbose-solver):" \
   "(itp-algorithm): (check-itp)" \
-  "(unwind):(unwindset):" \
+  "(unwind):(unwindset):(sum-number):" \
   "(inlining-limit):(testclaim):" \
   "(pobj)(eq)(neq)(ineq)" \
   "(refine-mode):(init-mode):"
