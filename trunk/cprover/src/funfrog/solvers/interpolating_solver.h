@@ -42,6 +42,8 @@ public:
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants)=0;
+  virtual void get_diff_interpolant(const interpolation_taskt& partition_ids,
+      interpolantst& interpolants)=0;
   
 # ifdef USE_PERIPLO
   virtual void get_interpolant(InterpolationTree*, const interpolation_taskt& partition_ids,

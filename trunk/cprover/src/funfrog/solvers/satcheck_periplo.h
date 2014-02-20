@@ -53,6 +53,8 @@ public:
   // Extracts the symmetric interpolant of the specified set of
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
+  virtual void get_diff_interpolant(const interpolation_taskt& partition_ids,
+      interpolantst& interpolants);
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants);
   virtual void get_interpolant(InterpolationTree*,

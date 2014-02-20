@@ -226,7 +226,6 @@ void satcheck_periplot::setup_proof_transformation(){
 #endif
 }
 
-
 /*******************************************************************\
 
 Function: satcheck_periplot::get_interpolant
@@ -300,6 +299,83 @@ void satcheck_periplot::get_interpolant(const interpolation_taskt& partition_ids
     interpolants.push_back(prop_itpt());
     interpolants.back().swap(itp);
   }
+}
+
+/*******************************************************************\
+
+Function: satcheck_periplot::get_interpolant
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Extracts the symmetric interpolant of the specified set of
+ partitions. This method can be called only after solving the
+ the formula with an UNSAT result.
+
+\*******************************************************************/
+void satcheck_periplot::get_diff_interpolant(const interpolation_taskt& partition_ids,
+    interpolantst& interpolants)
+{
+  assert(ready_to_interpolate);
+
+//  std::vector<Enode*> itp_enodes;
+//  itp_enodes.reserve(partition_ids.size());
+
+    periplo_ctx->createProofGraph();
+
+    setup_reduction();
+
+    // FIXME: dirty cast
+    std::vector< std::map<Enode*, icolor_t>* > *ptr;
+    ptr = const_cast< std::vector< std::map<Enode*, icolor_t>* > * >(&coloring_suggestions);
+    if ((*ptr).size() != 0){
+      #ifdef FULL_LABELING
+        periplo_ctx->setColoringSuggestions(ptr);
+        periplo_ctx->setColoringSuggestionsInterpolation();
+      #endif
+    } else {
+      setup_interpolation();
+    }
+    setup_proof_transformation();
+    if (check_itp){
+      periplo_ctx->setInterpolantCheck();
+    }
+
+    for (unsigned i = 0; i < partition_ids.size(); i++){
+      interpolation_taskt itp_task_1(1);
+      itp_task_1.push_back(partition_ids[i]);
+      std::vector<Enode*> itp_enodes;
+      periplo_ctx->getInterpolants(itp_task_1, itp_enodes);
+      Enode* node = itp_enodes[1];
+
+  #   if 0
+      std::cout << "Periplo interpolant: ";
+      node->print(std::cout);
+      std::cout << std::endl;
+  #   endif
+
+      prop_itpt itp;
+
+  #   ifdef DEBUG_COLOR_ITP
+      current_itp = new std::vector<unsigned> ();
+  #   endif
+
+      extract_itp(node, itp);
+
+  #   ifdef DEBUG_COLOR_ITP
+      itp_symbols.push_back(*current_itp);
+  #   endif
+
+  #   if 0
+      std::cout << "CProver stored interpolant: ";
+      itp.print(std::cout);
+  #   endif
+
+      interpolants.push_back(prop_itpt());
+      interpolants.back().swap(itp);
+    }
+  periplo_ctx->deleteProofGraph();
 }
 
 void satcheck_periplot::get_interpolant(InterpolationTree* tree, const interpolation_taskt& partition_ids,
