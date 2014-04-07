@@ -21,7 +21,7 @@ Author: Ondrej Sery
 class satcheck_opensmtt:public cnf_solvert, public interpolating_solvert
 {
 public:
-  satcheck_opensmtt(int verbosity = 0, bool _dump_queries = false);
+  satcheck_opensmtt(int _random_seed = 0, int _verbosity = 0, bool _dump_queries = false);
   
   virtual ~satcheck_opensmtt() {
     freeSolver();
@@ -75,6 +75,8 @@ public:
 # endif
 
 protected:
+  // random seed
+  int random_seed;
   // Solver verbosity
   unsigned solver_verbosity;
   // Dump all queries?

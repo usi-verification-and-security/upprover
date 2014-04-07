@@ -424,6 +424,7 @@ void funfrog_parseoptionst::help()
   "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
 #else
   "\nOpenSMT options :\n"
+  "--random-seed <number>         set up random seed to manipulate proof size"
   "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
 #endif
 
@@ -692,6 +693,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("reduce-proof-loops")) {
     options.set_option("reduce-proof-loops", cmdline.getval("reduce-proof-loops"));
+  }
+  if (cmdline.isset("random-seed")) {
+    options.set_option("random-seed", cmdline.getval("random-seed"));
   }
   if (cmdline.isset("color-proof")) {
     options.set_option("color-proof", cmdline.getval("color-proof"));

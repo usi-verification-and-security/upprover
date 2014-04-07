@@ -24,8 +24,8 @@ Author: Ondrej Sery
 
 static unsigned dump_count = 0;
 
-satcheck_opensmtt::satcheck_opensmtt(int verbosity, bool _dump_queries) :
-  solver_verbosity(verbosity), dump_queries (_dump_queries), opensmt_ctx(NULL), 
+satcheck_opensmtt::satcheck_opensmtt(int _random_seed, int verbosity, bool _dump_queries) :
+  random_seed(_random_seed), solver_verbosity(verbosity), dump_queries (_dump_queries), opensmt_ctx(NULL),
   partition_root_enode(NULL), partition_count(0), ready_to_interpolate(false)
 {
   initializeSolver();
@@ -53,8 +53,11 @@ void satcheck_opensmtt::initializeSolver()
   config.proof_reduce = 0;
   //config.proof_reorder_pivots = 0;
   //config.proof_reduce_while_reordering = 0;
+  //config.sat_random_seed = random_seed;
   config.proof_set_inter_algo = 0; // McMillan -- the strongest interpolant
+  opensmt_ctx->setSatRandomSeed(random_seed);
 
+  std::cout << "setting up the random seed: " << random_seed <<"\n";
   sbool = opensmt_ctx->mkSortBool();
 }
 

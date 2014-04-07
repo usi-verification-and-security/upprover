@@ -49,7 +49,7 @@ class value_set_alloc_adaptort;
   "(show-claims)(all-claims)(claims-order):(claim):(claimset):" \
   "(save-queries)(save-change-impact):" \
   "(tree-interpolants)(proof-trans):(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
-  "(no-itp)(verbose-solver):" \
+  "(random-seed):(no-itp)(verbose-solver):" \
   "(itp-algorithm): (check-itp)" \
   "(unwind):(unwindset):(sum-number):" \
   "(inlining-limit):(testclaim):" \

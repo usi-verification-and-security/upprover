@@ -105,6 +105,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
         options.get_int_option("check-itp"));
 #else
     opensmt = new satcheck_opensmtt(
+        options.get_int_option("random-seed"),
         options.get_int_option("verbose-solver"),
         options.get_bool_option("save-queries"));
 #endif
