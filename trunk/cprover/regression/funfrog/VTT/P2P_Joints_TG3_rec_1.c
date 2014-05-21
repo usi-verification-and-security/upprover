@@ -12,19 +12,33 @@ int fabs_ (int a){
 }
 
 int sqrt_ (int a){
-  if (a <= 0){
-    return 0;
-  }
-/*  int b = nondet_int();
-  __CPROVER_assume(b * b < a + 1);
-  __CPROVER_assume(b * b > a - 1);*/
 
-  return a; //b;
+  int b = nondet();
+  __CPROVER_assume(b > 0 && b < a);
+  //if (b*b == a){
+    return b;
+  //} else return fabs_(a);
+  //return sqrt(a);
+
+ /* if (a <= 0){
+    return 0;
+  } else if (a < 10){
+    return a/2;
+  } else if (a < 100){
+    return a/5;
+  } else if (a < 1000){
+    return a/10;
+  } else if (a < 5000){
+    return a/100;
+  } else if (a < 10000){
+    return a/400;
+  }
+  return a/1000;*/
 }
 
 void DllExport P2P_Joints_TG(int Sample_Time, int Joints_Limits[4], int XYZRPYin[NUM_JOINTS], int XYZRPYfb[NUM_JOINTS], int XYZRPYout[NUM_JOINTS], int *TrajectoryComplete)
 {
-	int		i;	
+	int	i;	
 	int	tt2;
 
 	if(initialized == 0)
@@ -118,43 +132,39 @@ void DllExport P2P_Joints_TG(int Sample_Time, int Joints_Limits[4], int XYZRPYin
 }
 
 int jl[4];
-int in[NUM_JOINTS];
-int fb[NUM_JOINTS];
+int in[4];
+int fb[4];
 
-int nondet_int();
 
-void InitilizeTG()
-{
-	// Create the profiles for each joint
-	int		i;
+int nondet();
+
+int nondet_int(){
+  int a = nondet();
+  __CPROVER_assume(a >= 0 && a < 100);
+  return a;
+}
+
 	int	totalTime;
-	int	maxTime=0;
-    int delta0, delta1, delta2, vMax;
+	int	maxTime;
+  int delta0, delta1, delta2, vMax;
 
-	// Get initialize time
-	// (Time zero, subtracted from future sample times to get elapsed time)
-	startTime = 0.0;
+int p2prec(int i){
+  int ret_tmp = 0;
 
-    vMax = jl[0];
+  if (i > 0) {
+    int m = i-1;
+    int res = p2prec(m);
+    ret_tmp = ret_tmp + res;
+  }
 
-    delta0 = nondet_int();
-    delta1 = nondet_int();
-    delta2 = nondet_int();
+  in[i] = nondet_int();
+  fb[i] = nondet_int();
+  //__CPROVER_assume(in[i] >= 0 && in[i] < 100 && fb[i] >= 0 && fb[i] < 100);
 
-    if(delta0 == 0 && delta1 != 0 && delta2 != 0) vMax = 2 * vMax;
-    if(delta0 != 0 && delta1 == 0 && delta2 != 0) vMax = 2 * vMax;
-    if(delta0 != 0 && delta1 != 0 && delta2 == 0) vMax = 2 * vMax;
 
-    if(delta0 != 0 && delta1 == 0 && delta2 == 0) vMax = 3 * vMax;
-    if(delta0 == 0 && delta1 != 0 && delta2 == 0) vMax = 3 * vMax;
-    if(delta0 == 0 && delta1 == 0 && delta2 != 0) vMax = 3 * vMax;
-    
+	currentPosition[i] = in[i];
 
-	for(i = 0; i < NUM_JOINTS; i++)
-	{
-		currentPosition[i] = in[i];
-
-		InitProfile(i, fb[i],	// start
+  InitProfile(i, fb[i],	// start
 					in[i],		// end
 //OK:
 					jl[0],		// max vel
@@ -162,48 +172,74 @@ void InitilizeTG()
 //					vMax,
 					jl[1],		// initial vel
 					jl[2],		// acceleration
-					jl[3]		// deceleration
+					jl[3]		  // deceleration
 					);
-        assert(jp[i].v <= jl[0]);
-		
-		totalTime = jp[i].t1 + jp[i].t2 + jp[i].t3;
-		
-		if(totalTime > maxTime) maxTime = totalTime;
-	}
 
-        assert(maxTime >= 0);
-	//Profile Extension	
-	for(i = 0; i < NUM_JOINTS; i++)
+  totalTime = jp[i].t1 + jp[i].t2 + jp[i].t3;
+		
+  if(totalTime > maxTime) maxTime = totalTime;
+
+  if (totalTime >= 0) ret_tmp++;
+  //if (jp[i].v <= jl[0]) ret_tmp++;
+
+  return ret_tmp; // && (jp[i].v <= jl[0]);
+}
+
+
+void InitilizeTG()
+{
+	// Create the profiles for each joint
+	maxTime=0;
+
+	// Get initialize time
+	// (Time zero, subtracted from future sample times to get elapsed time)
+	startTime = 0.0;
+
+  jl[0] = nondet_int();
+  jl[1] = nondet_int();
+  jl[2] = nondet_int();
+  jl[3] = nondet_int();
+
+  if (jl[0] <= 0 || jl[1] <= 0 || jl[2] <= 0 || jl[3] <= 0 ||
+    jl[0] >= 100 || jl[1] >= 100 || jl[2] >= 100 || jl[3] >= 100
+  ) return 0;
+
+  vMax = jl[0];
+
+  delta0 = nondet_int();
+  delta1 = nondet_int();
+  delta2 = nondet_int();
+
+  if(delta0 == 0 && delta1 != 0 && delta2 != 0) vMax = 2 * vMax;
+  if(delta0 != 0 && delta1 == 0 && delta2 != 0) vMax = 2 * vMax;
+  if(delta0 != 0 && delta1 != 0 && delta2 == 0) vMax = 2 * vMax;
+
+  if(delta0 != 0 && delta1 == 0 && delta2 == 0) vMax = 3 * vMax;
+  if(delta0 == 0 && delta1 != 0 && delta2 == 0) vMax = 3 * vMax;
+  if(delta0 == 0 && delta1 == 0 && delta2 != 0) vMax = 3 * vMax;
+    
+  int iterc = nondet_int();
+
+  int ret = p2prec(iterc);
+
+  if (iterc == 0) assert (ret == iterc + 1);
+  if (iterc == 1) assert (ret == iterc + 1);
+  if (iterc == 2) assert (ret == iterc + 1);
+  if (iterc == 3) assert (ret == iterc + 1);
+   
+    // Profile Extension	
+/*	for(int i = 0; i < NUM_JOINTS; i++)
 	{		
 		if((jp[i].t1 + jp[i].t2 + jp[i].t3) < maxTime)
 		{				
 				ExtendProfileTime(i, maxTime);
 		}
-	}// end for - profile extension
+	} // end for - profile extension
+*/
 }
 
 void main() {
-    int i;
-
-    //int res = 1;
-	for(i = 0; i < 4; i++)
-	{
-         jl[i] = nondet_int();
-         //res = res && (jl[i] > 0);
-         jl[i] &= 0x000000FF;
-         //__CPROVER_assume(jl[i] > 0);
-    }
-
-    for(i = 0; i < NUM_JOINTS; i++)
-	{
-        in[i] = nondet_int();
-        fb[i] = nondet_int();
-        in[i] &= 0x0000000F;
-        fb[i] &= 0x0000000F;
-    }
-    //if (res){
-      InitilizeTG();
-    //}
+  InitilizeTG();
 }
 
 void InitProfile(int i, int start, int end, int vMax, int v0, int aMax, int dMax)
@@ -257,15 +293,15 @@ void InitProfile(int i, int start, int end, int vMax, int v0, int aMax, int dMax
 	// The latter time is determined by when we reach the peak velocity necessary
 	// for this delta.
 	vPeak = CalculateVpeak(delta, v0c, aMax, dMax);
-//__CPROVER_assume(a1 == 0);
-        if (a1 == 0){
+
+  if (a1 == 0){
 		tVmax = (vMax - v0c) * 1000;
 		tVpeak = (vPeak - v0c) * 1000;
         } else {
 		tVmax = (vMax - v0c) / a1;
 		tVpeak = (vPeak - v0c) / a1;
 	}
-	if(tVpeak < tVmax) // choose minimum time and corresponding velocity
+	if(vPeak < vMax) // choose minimum time and corresponding velocity
 	{
 		jp[i].t1 = tVpeak;
 		jp[i].v = vPeak;
@@ -286,8 +322,7 @@ void InitProfile(int i, int start, int end, int vMax, int v0, int aMax, int dMax
 		// Note: could use -a1 but to be consistent with case 5, use -d1 instead.
 		// It is assumed that |a1| > |d1|, so above is not optimal time choice	
 	}
-__CPROVER_assume(v0c <= vPeak);
-	/*
+	__CPROVER_assume(v0c <= vPeak);
 	if(v0c > vPeak) // Case 5.  vPeak is velocity it's possible to decelerate from without exceeding delta.
 	{
 		// Actually need to decelerate below zero, then accelerate
@@ -300,11 +335,11 @@ __CPROVER_assume(v0c <= vPeak);
 		tVpeak = (vPeak - v0c) / a1;
 		jp[i].t1 = tVpeak;
 		jp[i].v = vPeak;
-	}*/
+	}
 	
 	// Step 3: Deceleration time
 	// Calculate time to decelerate from velocity achieved in step 2 to 0.
-//__CPROVER_assume(d1 == 0);
+
 	if (d1 == 0){
 		jp[i].t3 = jp[i].v * 1000;
 	} else {
@@ -317,18 +352,17 @@ __CPROVER_assume(v0c <= vPeak);
 	x1 = v0c * (jp[i].t1) + (a1) * (jp[i].t1) * (jp[i].t1) / 2;
 	x3 = (d1)*(jp[i].t3)*(jp[i].t3) / 2;
 	x2 = delta - (x1 + x3);
+  __CPROVER_assume(x1 > 0 && x2 > 0 && x3 > 0 && x1 < 1000 && x2 < 1000 && x3 < 1000);
 	
 	//if (fabs_(x2) < ZERO_TOLERANCE) x2 = 0;
-__CPROVER_assume(jp[i].v == 0);
-//        if (jp[i].v == 0){
+  if (jp[i].v == 0){
 		jp[i].t2 = x2 * 1000;
-//	} else {
-//		jp[i].t2 = (x2 / jp[i].v);               // may be very big              // v > 0
-//	}
+	} else {
+		jp[i].t2 = (x2 / jp[i].v);               // may be very big              // v > 0
+	}
 	jp[i].a1 = a1;
 	jp[i].a2 = d1;
 	
-//__CPROVER_assume((end - start) >= 0);
 	if((end - start) < 0)
 	{
 		jp[i].a1 = -jp[i].a1;
@@ -369,6 +403,20 @@ void ExtendProfileTime(int i, int totalTime)
 
 	jp[i].t2 = totalTime - jp[i].t1 - jp[i].t3;
 	jp[i].v  = newV;
+}
+
+int getNum(int x, int v0, int a, int d){
+  return x + v0 + a + d;
+	//return d * (v0 * v0 + 2 * a * x);
+}
+
+int simpleDiv (int x, int y){
+  // return x / y;
+  if (x > y){
+    return (x - y);
+  } else {
+    return 1;
+  }
 }
 
 int CalculateVpeak(int x, int v0, int a, int d)
@@ -416,14 +464,14 @@ int CalculateVpeak(int x, int v0, int a, int d)
 	
 	int num, den, result;
 	
-	num = d * (v0 * v0 + 2 * a * x);
+	num = getNum(x, v0, a, d);
 	den = d + a; // should both be +ve   
 
 	// Error checking
 	if(den == 0)
 		return 0;
 	
-	result = num /den;
+	result = simpleDiv(num, den);
 	
 	if(result <= 0)
 	{

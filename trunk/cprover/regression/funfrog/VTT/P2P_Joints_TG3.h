@@ -3,7 +3,7 @@
 //-------------------------------------------------------------------------
 #define DEFAULT_SMALL_ACCEL     0.0001  // used instead of zero
 #define ZERO_TOLERANCE          1.0e-9  // used to trap very small deltas
-#define NUM_JOINTS              1
+#define NUM_JOINTS              4
 //-------------------------------------------------------------------------
 
 //-------------------------------------------------------------------------

@@ -1,0 +1,6 @@
+SAT - doesn't hold
+HAVOCING (of 2 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+Violated property:
+  file VTT/P2P_Joints_TG3_rec_1_bug.c line 225 function InitilizeTG
+  assertion
+  ret == iterc + 1
