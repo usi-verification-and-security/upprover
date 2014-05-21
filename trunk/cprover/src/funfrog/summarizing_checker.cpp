@@ -65,8 +65,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   const bool single_assertion_check = omega.is_single_assertion_check();
 
   partitioning_target_equationt equation(ns, summarization_context, false,
-      store_summaries_with_assertion, get_coloring_mode(options.get_option("color-proof")),
-      options.get_int_option("sum-number"));
+      store_summaries_with_assertion, get_coloring_mode(options.get_option("color-proof")));
 
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(

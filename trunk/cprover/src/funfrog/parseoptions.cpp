@@ -424,7 +424,7 @@ void funfrog_parseoptionst::help()
   "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
 #else
   "\nOpenSMT options :\n"
-  "--random-seed <number>         set up random seed to manipulate proof size"
+  "--random-seed <number>         set up random seed to manipulate proof size\n"
   "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
 #endif
 
@@ -629,13 +629,13 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   // always check assertions
   options.set_option("assertions", true);
 
-  // always use assumptions 
+  // always use assumptions
   options.set_option("assumptions", true);
 
   if (cmdline.isset("itp-algorithm")) {
     options.set_option("itp-algorithm", cmdline.getval("itp-algorithm"));
   }
-  
+
   if (cmdline.isset("proof-trans")) {
     options.set_option("proof-trans", cmdline.getval("proof-trans"));
   }
@@ -643,11 +643,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.getval("unwind"));
   }
-  if (cmdline.isset("sum-number")) {
-      options.set_option("sum-number", cmdline.getval("sum-number"));
-    }else {
-      options.set_option("sum-number", "-1");
-    }
   if (cmdline.isset("unwindset")) {
     options.set_option("unwindset", cmdline.getval("unwindset"));
   }

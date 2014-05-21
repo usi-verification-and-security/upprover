@@ -108,6 +108,17 @@ public:
     return res;
   }
 
+  bool is_recursive(){
+    for (call_sitest::iterator it = call_sites.begin();
+            it != call_sites.end(); ++it)
+    {
+      // more presicely, it should compare pointers to target functions,
+      // but in case of nondeterministically treated summaries, it would not work
+      if (it->second.get_function_id() == get_function_id()) return true;
+    }
+    return false;
+ }
+
   void set_recursion_nondet(bool _recursion_nondet){
     recursion_nondet = _recursion_nondet;
   }

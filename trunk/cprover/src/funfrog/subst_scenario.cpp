@@ -76,7 +76,6 @@ void subst_scenariot::initialize_summary_info(
         initialize_summary_info(call_site,
           summarization_context.get_function(target_function).body);
       } else {
-        // TODO: dead branch
         call_site.set_unwind_exceeded(true);
         call_site.set_recursion_nondet(true);
         //std::cout << "Recursion unwinding for " << target_function << " (" << inst->location << ") FINIFSHED with " << " iterations\n";

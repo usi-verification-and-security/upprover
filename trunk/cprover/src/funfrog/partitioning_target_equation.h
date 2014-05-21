@@ -34,15 +34,14 @@ class partitioning_target_equationt:public symex_target_equationt
 {
 public:
   partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
-          _summarization_context, bool _upgrade_checking, 
-          bool _store_summaries_with_assertion, coloring_modet _coloring_mode, int _sum_number) :
-          symex_target_equationt(_ns), 
+          _summarization_context, bool _upgrade_checking,
+          bool _store_summaries_with_assertion, coloring_modet _coloring_mode) :
+          symex_target_equationt(_ns),
           summarization_context(_summarization_context),
           current_partition_id(partitiont::NO_PARTITION),
           upgrade_checking(_upgrade_checking),
           store_summaries_with_assertion(_store_summaries_with_assertion),
-          coloring_mode(_coloring_mode),
-          sum_number(_sum_number){
+          coloring_mode(_coloring_mode){
   }
 
   // Convert all the SSA steps into the corresponding formulas in
@@ -69,16 +68,16 @@ public:
 
     return new_id;
   }
-  
+
   // Marks the given partition as invalid. This is used in incremental SSA
   // generation to replace previously summarized partitions
   void invalidate_partition(partition_idt partition_id)
   {
     partitiont& partition = partitions[partition_id];
-    
+
     partition.invalid = true;
     partition_map.erase(partition.get_iface().callend_symbol.get_identifier());
-    
+
     if (partition.parent_id != partitiont::NO_PARTITION) {
       partitions[partition.parent_id].remove_child_partition(partition_id);
     }
@@ -94,7 +93,7 @@ public:
     sum_partition.filled = true;
     sum_partition.summary = true;
     sum_partition.summaries = summaries;
-    
+
     sum_partition.applicable_summaries.clear();
     for (summary_idst::const_iterator it = summaries->begin();
             it != summaries->end();
@@ -127,8 +126,8 @@ public:
     sum_partition.summaries = summaries;
     sum_partition.used_summaries = used_summaries;
     sum_partition.applicable_summaries = used_summaries;
-    
-    std::cerr << "  --- (" << partition_id << 
+
+    std::cerr << "  --- (" << partition_id <<
             ") sums: " << sum_partition.summaries->size() <<
             " used: " << sum_partition.used_summaries.size() << std::endl;
   }
@@ -147,7 +146,7 @@ public:
     new_partition.filled = true;
     new_partition.start_idx = SSA_steps.size();
   }
-  
+
   // Collects information about the specified partitions for later
   // processing and conversion
   void prepare_partitions();
@@ -156,8 +155,8 @@ public:
   void extract_interpolants(
     interpolating_solvert& interpolator, const prop_convt& decider,
     interpolant_mapt& interpolant_map);
-  
-  // Returns SSA steps ordered in the order of program execution (i.e., as they 
+
+  // Returns SSA steps ordered in the order of program execution (i.e., as they
   // would be normally ordered in symex_target_equation).
   const SSA_steps_orderingt& get_steps_exec_order() {
     if (SSA_steps_exec_order.size() != SSA_steps.size()) {
@@ -171,7 +170,7 @@ public:
     }
     return SSA_steps_exec_order;
   }
-  
+
   partitionst& get_partitions() { return partitions; }
 
   bool any_applicable_summaries() {
@@ -182,18 +181,18 @@ public:
     }
     return false;
   }
-  
+
   unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
 
 private:
   // Current summarization context
   summarization_contextt& summarization_context;
-  
+
   // Id of the currently selected partition
   partition_idt current_partition_id;
-  
+
   // Convert a specific partition of SSA steps
-  void convert_partition(prop_convt &prop_conv, 
+  void convert_partition(prop_convt &prop_conv,
     interpolating_solvert &interpolator, partitiont& partition);
   // Convert a specific partition guards of SSA steps
   void convert_partition_guards(prop_convt &prop_conv,
@@ -236,10 +235,10 @@ private:
   {
     common_symbols.clear();
     const partition_ifacet& iface = partition.get_iface();
-    common_symbols.reserve(iface.argument_symbols.size() + 
+    common_symbols.reserve(iface.argument_symbols.size() +
       iface.out_arg_symbols.size()+4);
     common_symbols = iface.argument_symbols;
-    common_symbols.insert(common_symbols.end(), 
+    common_symbols.insert(common_symbols.end(),
       iface.out_arg_symbols.begin(),
       iface.out_arg_symbols.end());
     common_symbols.push_back(iface.callstart_symbol);
@@ -261,37 +260,35 @@ private:
 #endif
 
   // Fills in the SSA_steps_exec_order holding pointers to SSA steps ordered
-  // in the order of program execution (i.e., as they would be normally 
+  // in the order of program execution (i.e., as they would be normally
   // ordered in symex_target_equation).
   void prepare_SSA_exec_order(const partitiont& partition);
-  
-  // Find partition corresponding to the function call. 
-  // If the given SSA step is a callend assumption, the corresponding target 
+
+  // Find partition corresponding to the function call.
+  // If the given SSA step is a callend assumption, the corresponding target
   // partition is returned. If not, NULL is returned.
   const partitiont* find_target_partition(const SSA_stept& step);
-  
+
   // Collection of all the partitions
   partitionst partitions;
-  
+
   // Mapping between callend symbol and the corresponding partition
   // This is used to emit assumption propagation constraints.
   partition_mapt partition_map;
-  
+
   // Ordering of SSA steps according to the program execution order, this is
   // filled in by prepare_SSA_exec_order and can be used for simple slicing
   // and error trace generation.
   // NOTE: Currently, the order is slightly broken by the glue variables
   SSA_steps_orderingt SSA_steps_exec_order;
-  
+
   // Mode of encoding. Are we doing upgrade check?
   bool upgrade_checking;
-  // Should we store summaries with assertion in subtree? 
+  // Should we store summaries with assertion in subtree?
   // This is used in upgrade checking.
   bool store_summaries_with_assertion;
-  
-  coloring_modet coloring_mode;
 
-  int sum_number;
+  coloring_modet coloring_mode;
 
   friend class partitioning_slicet;
 };

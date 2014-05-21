@@ -1,3 +1,4 @@
+
 /*******************************************************************\
 
 Module: Symex target equation which tracks different partitions for
@@ -187,16 +188,21 @@ void partitioning_target_equationt::convert_partition_summary(
 #   ifdef DEBUG_SSA
     std::cout << "Candidate summaries: " << partition.summaries->size() << std::endl;
 #   endif
-  for (summary_ids_sett::const_iterator it = 
+
+  bool is_recursive = partition.get_iface().summary_info.is_recursive(); //on_nondet();
+  unsigned last_summary = partition.applicable_summaries.size() - 1;
+
+  for (summary_ids_sett::const_iterator it =
           partition.applicable_summaries.begin();
           it != partition.applicable_summaries.end();
           ++it) {
-#   ifdef DEBUG_SSA
-    std::cout << "Substituting summary #" << *it << std::endl;
-#   endif
+
     summaryt& summary = summary_store.find_summary(*it);
-    if (summary.is_valid() && (sum_number == -1 || sum_number == i++)){
+
+    if (summary.is_valid() && (!is_recursive || last_summary == i++)){
+#   ifdef DEBUG_SSA
       std::cout << "Substituting summary #" << *it << std::endl;
+#   endif
       summary.substitute(prop_conv, common_symbs, partition.inverted_summary);
     }
   }
@@ -224,7 +230,7 @@ void partitioning_target_equationt::convert_partition_assignments(
     {
       exprt tmp(it->cond_expr);
 
-#     ifdef DEBUG_SSA      
+#     ifdef DEBUG_SSA
       expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);
 #     endif
 

@@ -399,7 +399,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
 
-  partitioning_target_equationt equation(ns, summarization_context, true, true, NO_COLORING, 0 );
+  partitioning_target_equationt equation(ns, summarization_context, true, true, NO_COLORING);
 
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
