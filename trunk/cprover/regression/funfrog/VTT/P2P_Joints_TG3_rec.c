@@ -225,7 +225,7 @@ void InitilizeTG()
   if (iterc == 0) assert (ret == iterc + 1);
   if (iterc == 1) assert (ret == iterc + 1);
   if (iterc == 2) assert (ret == iterc + 1);
-  if (iterc == 3) assert (ret == iterc + 1);
+//  if (iterc == 3) assert (ret == iterc + 1);
    
     // Profile Extension	
 /*	for(int i = 0; i < NUM_JOINTS; i++)
