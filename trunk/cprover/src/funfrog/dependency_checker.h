@@ -18,6 +18,7 @@
 #include "partitioning_slice.h"
 #include "subst_scenario.h"
 
+
 #include <map>
 
 #include <boost/pending/disjoint_sets.hpp>
@@ -99,6 +100,8 @@ private:
   vector<SSA_step_reft> asserts;
   unsigned treshold;
 
+  symex_target_equationt::SSA_stepst SSA_steps; // similar stuff to what symex_target_equationt has
+
   unsigned long impl_timeout;
 
   void convert_delta_SSA(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
@@ -108,5 +111,6 @@ private:
   void convert_guards(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
   void convert_io(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
 
+  void reconstruct_exec_SSA_order();
 };
 #endif

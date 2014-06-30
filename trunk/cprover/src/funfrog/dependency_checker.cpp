@@ -10,6 +10,8 @@
 #include <sstream>
 #include <map>
 
+#include <util/language.h>
+
 #include <boost/pending/disjoint_sets.hpp>
 
 #ifdef USE_PERIPLO
@@ -24,7 +26,7 @@
 #define NOTIMP false
 #define IMP true
 
-#define VERBOSE false
+#define VERBOSE true
 
 using namespace std;
 using namespace boost;
@@ -32,6 +34,7 @@ using namespace boost;
 #define endl std::endl
 
 void dependency_checkert::do_it(){
+
   fine_timet initial, duration, durationto;
 
   rank_t rank_map;
@@ -44,6 +47,8 @@ void dependency_checkert::do_it(){
   map<string, bool> visited;
 
   initial=current_time();
+
+  reconstruct_exec_SSA_order();
 
   find_var_deps(deps_ds, visited);
 
@@ -126,8 +131,7 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
 
 void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited)
 {
-
-    for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
+    for(symex_target_equationt::SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
       if (it->is_assert() && !omega.is_assertion_in_loop(it->source.pc)){
         asserts.push_back(it);
@@ -142,7 +146,7 @@ void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool>
     vector<string> equation_symbols;
 
     int i=0;
-    for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
+    for(symex_target_equationt::SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
       if ((it->is_assignment()) || (it->is_assume()))
       {
@@ -320,7 +324,7 @@ long dependency_checkert::find_implications()
               from_expr(ns, "", assert_2->cond_expr) << ") [" << assert_2->source.pc->location.get_line() << "] [weaker]" << endl;}
 
               to_remove[j] = true;
-              //equation.SSA_steps.erase(assert_2);
+              //SSA_steps.erase(assert_2);
               //asserts.erase(asserts.begin()+j);
 
               discarded++;
@@ -360,10 +364,10 @@ long dependency_checkert::find_implications()
 	  if (to_remove[i] == true)
 	  {
 		  SSA_step_reft& removable = asserts[i];
-		  int tempindex = distance(equation.SSA_steps.begin(), removable);
+		  int tempindex = distance(SSA_steps.begin(), removable);
 		  if (tempindex > 0)
 		  //asserts[i]->ignore=true;
-		  equation.SSA_steps.erase(removable);
+		  SSA_steps.erase(removable);
 		  if (removable->is_assert()) {if (VERBOSE) cout << "I am discarding an assertion." << endl;}
 		  else cout << "[ERROR] I am discarding some other type of instruction. Please debug." << endl;
 		  asserts.erase(asserts.begin()+i);
@@ -401,7 +405,7 @@ void dependency_checkert::print_SSA_steps_infos()
 
   //printf("Sono dentro la dependency analysis!\n");
   std::cout << endl << "Printing SSA data" << endl << endl;
-    for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
+    for(symex_target_equationt::SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
       it->output(ns, std::cout);
       std::cout << "Andrea's data:\n";
@@ -576,7 +580,7 @@ void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int
 
 void dependency_checkert::print_SSA_steps()
 {
-    for(symex_target_equationt::SSA_stepst::iterator it = equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); ++it)
+    for(symex_target_equationt::SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
       it->output(ns, std::cout);
     }
@@ -677,5 +681,24 @@ void dependency_checkert::convert_io(
         }
       }
     it++;
+  }
+}
+
+void dependency_checkert::reconstruct_exec_SSA_order(){
+  const SSA_steps_orderingt& SSA_steps = equation.get_steps_exec_order();
+  for(SSA_steps_orderingt::const_iterator
+      it=SSA_steps.begin();
+      it!=SSA_steps.end();
+      it++)
+  {
+    //TODO: optimize
+    const symex_target_equationt::SSA_stept &SSA_step=**it;
+    this->SSA_steps.push_back(SSA_step);
+
+    // (if(SSA_step.ssa_lhs.get_identifier()=="\guard"))
+     std::cout << "check: " << SSA_step.ssa_lhs.get_identifier()<<"\n"; //from_expr(ns, "", SSA_step.cond_expr) <<"\n";
+
+
+     //std::cout << "ssa_lhs: " << SSA_step.ssa_lhs.id() << ";" << from_expr(ns, "", SSA_step.ssa_lhs) << "\n";
   }
 }
