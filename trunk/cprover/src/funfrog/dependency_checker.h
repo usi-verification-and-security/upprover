@@ -101,6 +101,9 @@ private:
   unsigned treshold;
 
   symex_target_equationt::SSA_stepst SSA_steps; // similar stuff to what symex_target_equationt has
+  std::map<exprt, exprt> SSA_map;
+  void deep_convert_guards(prop_convt &prop_conv, exprt exp);
+  void set_guards_to_true(prop_convt &prop_conv, exprt exp);
 
   unsigned long impl_timeout;
 

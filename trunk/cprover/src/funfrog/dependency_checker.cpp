@@ -297,14 +297,15 @@ long dependency_checkert::find_implications()
 
   for (unsigned i = 0; i < asserts.size(); i++)
   {
-    for (unsigned j = 0; j < asserts.size(); j++)
+    for (unsigned j = i+1; j < asserts.size(); j++)
     {
       checks++;
       pair<bool, fine_timet> checkres;
       SSA_step_reft& assert_1 = asserts[i];
       SSA_step_reft& assert_2 = asserts[j];
-      if ((i != j) &&
-          (!to_remove[j]) &&
+
+     // cout << "["<< assert_1->source.pc->location.get_line() <<"] vs ["<< assert_2->source.pc->location.get_line() <<"]\n";
+      if ((!to_remove[j]) &&
           compare_assertions(assert_1, assert_2) &&
           assert_deps[assert_1][assert_2] == DEPT){
     	    impchecks++;
@@ -596,6 +597,36 @@ void dependency_checkert::convert_delta_SSA(prop_convt &prop_conv,
   convert_io(prop_conv, it1, it2);
 }
 
+void dependency_checkert::deep_convert_guards(prop_convt &prop_conv, exprt exp){
+  if (exp.has_operands())
+  {
+    for (unsigned i = 0; i < exp.operands().size(); i++){
+      deep_convert_guards(prop_conv, exp.operands()[i] );
+    }
+  } else {
+    // TODO: find a more clever way of identifying guards
+    if ((from_expr(ns, "", exp)).find("guard") == 1){
+      //std::cout << " -> converting " << from_expr(SSA_map[exp]) << "\n";
+      prop_conv.convert(SSA_map[exp]);
+    }
+  }
+}
+
+void dependency_checkert::set_guards_to_true(prop_convt &prop_conv, exprt exp){
+  if (exp.has_operands())
+  {
+    for (unsigned i = 0; i < exp.operands().size(); i++){
+      set_guards_to_true(prop_conv, exp.operands()[i] );
+    }
+  } else {
+    // TODO: find a more clever way of identifying guards
+    if ((from_expr(ns, "", exp)).find("guard") == 1){
+      //std::cout << " -> set to true " << from_expr(SSA_map[exp]) << "\n";
+      prop_conv.set_to_true(SSA_map[exp]);
+    }
+  }
+}
+
 void dependency_checkert::convert_assignments(
     prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
 {
@@ -623,8 +654,9 @@ void dependency_checkert::convert_guards(
         it->guard_literal=const_literal(false);
       }
       else {
-        //std::cout << "convert guard :" << from_expr(ns, "", it->cond_expr) <<"\n";
+        //std::cout << "convert guard: " << from_expr(ns, "", it->cond_expr) <<"\n";
         prop_conv.convert(it->cond_expr);
+        //deep_convert_guards(prop_conv, (it->cond_expr));
       }
     it++;
   }
@@ -636,7 +668,7 @@ void dependency_checkert::convert_assumptions(
   SSA_step_reft it=it1;
   while(it!=it2)
   {
-    if((it->is_assume() || it->is_assert()) && !it->ignore)
+    if((it->is_assume() || (it->is_assert() && it ==it1)) && !it->ignore)
     {
        //std::cout << "convert assume :" << from_expr(ns, "", it->cond_expr) <<"\n";
        prop_conv.set_to_true(it->cond_expr);
@@ -649,7 +681,8 @@ void dependency_checkert::convert_assertions(
   prop_convt &prop_conv, SSA_step_reft &it2)
 {
   assert(it2->is_assert());
-  //std::cout << "convert assert :" << from_expr(ns, "", it2->cond_expr) <<"\n";
+  std::cout << "convert assert :" << from_expr(ns, "", it2->cond_expr) <<"\n";
+  set_guards_to_true(prop_conv, (it2->cond_expr));
   prop_conv.set_to_false(it2->cond_expr);
 }
 
@@ -694,11 +727,6 @@ void dependency_checkert::reconstruct_exec_SSA_order(){
     //TODO: optimize
     const symex_target_equationt::SSA_stept &SSA_step=**it;
     this->SSA_steps.push_back(SSA_step);
-
-    // (if(SSA_step.ssa_lhs.get_identifier()=="\guard"))
-     std::cout << "check: " << SSA_step.ssa_lhs.get_identifier()<<"\n"; //from_expr(ns, "", SSA_step.cond_expr) <<"\n";
-
-
-     //std::cout << "ssa_lhs: " << SSA_step.ssa_lhs.id() << ";" << from_expr(ns, "", SSA_step.ssa_lhs) << "\n";
+    SSA_map[SSA_step.ssa_full_lhs] = SSA_step.cond_expr;
   }
 }
