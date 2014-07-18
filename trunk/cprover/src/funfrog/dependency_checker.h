@@ -57,7 +57,8 @@ public:
 
   void do_it();
 
-  typedef symex_target_equationt::SSA_stepst::iterator SSA_step_reft;
+  typedef std::list<symex_target_equationt::SSA_stept*> SSA_stepst;
+  typedef SSA_stepst::iterator SSA_step_reft;
 
   typedef map<string, size_t> rank_t;
   typedef map<string, string> parent_t;
@@ -100,7 +101,7 @@ private:
   vector<SSA_step_reft> asserts;
   unsigned treshold;
 
-  symex_target_equationt::SSA_stepst SSA_steps; // similar stuff to what symex_target_equationt has
+  SSA_stepst SSA_steps; // similar stuff to what symex_target_equationt has
   std::map<exprt, exprt> SSA_map;
   void deep_convert_guards(prop_convt &prop_conv, exprt exp);
   void set_guards_to_true(prop_convt &prop_conv, exprt exp);
@@ -116,4 +117,18 @@ private:
 
   void reconstruct_exec_SSA_order();
 };
+
+extern inline bool operator<(
+  const dependency_checkert::SSA_stepst::const_iterator a,
+  const dependency_checkert::SSA_stepst::const_iterator b)
+{
+  return &(*a)<&(*b);
+}
+
+extern inline bool operator==(
+    symex_target_equationt::SSA_stept a,
+    symex_target_equationt::SSA_stept b)
+{
+  return a.source.pc == b.source.pc;
+}
 #endif
