@@ -57,6 +57,7 @@ void dependency_checkert::do_it(){
 
   initial=current_time();
 
+  // TODO: this takes a lot of time
   find_assert_deps(deps_ds, visited);
 
   duration = current_time();
@@ -360,15 +361,13 @@ long dependency_checkert::find_implications()
   for (int i = asserts.size() - 1; i >= 0; i--)
   //for (unsigned i = 0; i < asserts.size(); i++)
   {
-	  if (to_remove[i] == true)
+    if (to_remove[i] == true)
 	  {
 		  SSA_step_reft& removable = asserts[i];
-		  equation.SSA_steps.remove(**(removable));
-
+		  (*removable)->ignore = true;
 		  //      if ((*removable)->is_assert()) {if (VERBOSE) cout << "I am discarding an assertion." << endl;}
 		  //      else cout << "[ERROR] I am discarding some other type of instruction. Please debug." << endl;
 	  }
-
   }
 
   return to_time;

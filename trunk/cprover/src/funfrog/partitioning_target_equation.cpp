@@ -336,7 +336,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 
   for (SSA_stepst::iterator it = partition.start_it;
       it != partition.end_it; ++it) {
-    if (it->is_assert())
+    if (it->is_assert() && !it->ignore)
     {
 
 #     ifdef DEBUG_SSA      
