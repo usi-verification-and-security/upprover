@@ -579,6 +579,9 @@ bool funfrog_parseoptionst::check_function_summarization(
       }
     }
 
+    if (cmdline.isset("claims-order"))
+      store_claims(ns, claim_map, claim_numbers);
+
     before=current_time();
     claim_statst stats = check_claims(ns,
                                       goto_functions.function_map[ID_main].body,

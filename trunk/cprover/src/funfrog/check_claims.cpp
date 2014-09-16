@@ -382,3 +382,30 @@ void show_claims(const namespacet &ns,
     }
   }
 }
+
+void store_claims(const namespacet &ns,
+                 const claim_mapt &claim_map,
+                 const claim_numberst &claim_numbers)
+{
+  std::ofstream mapping;
+  mapping.open ("__mapping");
+
+  std::map<unsigned, goto_programt::const_targett> reverse_map;
+  for(claim_numberst::const_iterator it=claim_numbers.begin();
+      it!=claim_numbers.end();
+      it++)
+  {
+    reverse_map[it->second] = it->first;
+  }
+
+  for(std::map<unsigned, goto_programt::const_targett>::const_iterator it=
+        reverse_map.begin();
+      it!=reverse_map.end();
+      it++)
+  {
+    assert(it->second->type==ASSERT);
+
+    mapping << i2string(claim_numbers.find(it->second)->second) << " "
+        << (it->second->location).get_claim().c_str() << std::endl;
+  }
+}

@@ -99,14 +99,16 @@ private:
   map<SSA_step_reft,bool> toCheck;
 
   vector<SSA_step_reft> asserts;
+  map<string,int> instances;
   unsigned treshold;
 
   SSA_stepst SSA_steps; // similar stuff to what symex_target_equationt has
   std::map<exprt, exprt> SSA_map;
+  vector<string> equation_symbols;
+  unsigned long impl_timeout;
+
   void deep_convert_guards(prop_convt &prop_conv, exprt exp);
   void set_guards_to_true(prop_convt &prop_conv, exprt exp);
-
-  unsigned long impl_timeout;
 
   void convert_delta_SSA(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
   void convert_assignments(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
