@@ -49,7 +49,7 @@ public:
           //last_label = 0;
           impl_timeout = 2000;
           // FIXME: make treshold parametrized
-          treshold = equation.SSA_steps.size() / fraction;
+          treshold = fraction; //equation.SSA_steps.size() / fraction;
           //treshold = percentage * equation.SSA_steps.size() / 100;
           std::cout << "Using the treshold of " << treshold << " out of " << equation.SSA_steps.size() << " SSA steps\n";
           std::cout << "Assuming a timeout of " << (impl_timeout/1000) << "." << (impl_timeout%1000)/10 << " seconds." << std::endl;
@@ -65,8 +65,8 @@ public:
 
   typedef disjoint_sets<associative_property_map<rank_t>, associative_property_map<parent_t>, find_with_full_path_compression> str_disj_set;
 
-  void find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited);
-  void find_assert_deps(str_disj_set &deps_ds, map<string, bool> &visited);
+  void find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2);
+  void find_assert_deps();
   long find_implications();
   void get_minimals();
 

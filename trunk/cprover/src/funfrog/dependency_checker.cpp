@@ -39,29 +39,35 @@ void dependency_checkert::do_it(){
 
   fine_timet initial, duration, durationto;
 
-  rank_t rank_map;
-  parent_t parent_map;
-
-  associative_property_map<rank_t> rank_pmap(rank_map);
-  associative_property_map<parent_t> parent_pmap(parent_map);
-
-  str_disj_set deps_ds(rank_pmap, parent_pmap);
-  map<string, bool> visited;
+  reconstruct_exec_SSA_order();
 
   initial=current_time();
 
-  reconstruct_exec_SSA_order();
+  ofstream hl_list;
+  hl_list.open ("__hl_list");
+    for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
+    {
+      if ((*it)->is_assert() && !omega.is_assertion_in_loop((*it)->source.pc)){
+        asserts.push_back(it);
+        //cout << "ID: " << it->source.pc->location.get_claim() << " Condition: " << from_expr(ns, "", it->cond_expr) << endl;
+        instances[(*it)->source.pc->location.get_claim().c_str()]++;
+        hl_list << "Assertion: " << (*it)->source.pc->location.get_claim().c_str() << endl;
+      }
+    }
 
-  find_var_deps(deps_ds, visited);
+    hl_list.close();
+
+    cout << "SSA Assertions: " << asserts.size();
+    cout << endl;
 
   duration = current_time();
   duration = duration - initial;
-  std::cout << "TIME FOR find_var_deps: " << (duration) << endl;
+  std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << endl;
 
   initial=current_time();
 
-  // TODO: this takes a lot of time
-  find_assert_deps(deps_ds, visited);
+  // TODO: this takes a lot of time. Oct.2014: optimized a little bit
+  find_assert_deps();
 
   duration = current_time();
   duration = duration - initial;
@@ -97,6 +103,8 @@ void dependency_checkert::do_it(){
 
 pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
+  try{
+
   std::auto_ptr<prop_convt> decider;
 #ifdef USE_PERIPLO
   satcheck_periplot* opensmt = new satcheck_periplot();
@@ -115,6 +123,11 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
   decision_proceduret::resultt r = (*decider).dec_solve();
   duration=current_time();
   duration = duration - initial;
+#ifdef USE_PERIPLO
+//  // todo
+#else
+delete opensmt;
+#endif
 
   if (VERBOSE) status() << "SOLVER TIME FOR check_implication: " << (duration) << eom;
 
@@ -135,46 +148,59 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
     default:
       throw "unexpected result from dec_solve()";
   }
+  } catch (const bad_alloc &e)
+  {
+    cout  << "smth is wrong: " << e.what()  << endl;
+    return make_pair(true, (fine_timet)0);
+  }
+  catch (const char* e)
+  {
+    std::cout << endl << "Caught exception: " << e << endl;
+    return make_pair(true, (fine_timet)0);
+  }
+  catch (const std::string &s)
+  {
+    std::cout << endl << "Caught exception: " << s << endl;
+    return make_pair(true, (fine_timet)0);
+  }
 }
 
-void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited)
+void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2)
 {
-	ofstream hl_list;
-	hl_list.open ("__hl_list");
-    for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
-    {
-      if ((*it)->is_assert() && !omega.is_assertion_in_loop((*it)->source.pc)){
-        asserts.push_back(it);
-        //cout << "ID: " << it->source.pc->location.get_claim() << " Condition: " << from_expr(ns, "", it->cond_expr) << endl;
-        instances[(*it)->source.pc->location.get_claim().c_str()]++;
-        hl_list << "Assertion: " << (*it)->source.pc->location.get_claim().c_str() << endl;
-      }
-    }
-
-    hl_list.close();
-
-    cout << "SSA Assertions: " << asserts.size();
-    cout << endl;
 
     // ============ DISJOINT SETS EDITING BEGINS
 
-    for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
+    for(SSA_stepst::iterator it = it1; it!=it2; ++it)
     {
-      if (((*it)->is_assignment()) || ((*it)->is_assume()))
+      if ((*it)->is_assignment() || (*it)->is_assume() || (*it)->is_assert())
       {
+//        if ((*it)->is_assert()){
+//          cout << "  ["<< (*it)->source.pc->location.get_line() <<"]\n";
+//        }
             symbol_sett all_symbols;
+            symbol_sett guard_symbols;
 
-            get_expr_symbols((*it)->guard, all_symbols);
+            //get_expr_symbols((*it)->guard, all_symbols);
             get_expr_symbols((*it)->cond_expr, all_symbols);
+            get_expr_symbols(SSA_map[(*it)->cond_expr], all_symbols);
 
+            for (symbol_sett::iterator sym_it = all_symbols.begin(); sym_it != all_symbols.end(); ++sym_it){
+              if (as_string(*sym_it).find("\guard") < 10000){ //dirty hack
+                 //cout <<"guard symbol: " << as_string(*sym_it)  << "\n";
+                  // all_symbols.erase(sym_it);
+                //get_expr_symbols(SSA_map[(*it)->cond_expr], all_symbols);
+              }
+            }
             if (!all_symbols.empty())
             {
-            	if (!visited[as_string(*(all_symbols.begin()))])
+              std::string first_sym = as_string(*(all_symbols.begin()));
+            	if (!visited[first_sym])
                 {
-                  deps_ds.make_set(as_string(*(all_symbols.begin())));
-                  equation_symbols.push_back(as_string(*(all_symbols.begin())));
-                  visited[as_string(*(all_symbols.begin()))] = true;
-                  //cout << "I have visited a variable: " << as_string(*(all_symbols.begin())) << " [" << (visited[as_string(*(all_symbols.begin()))]?"true":"false") << "]" << endl;
+                  deps_ds.make_set(first_sym);
+                  equation_symbols.push_back(first_sym);
+                  visited[first_sym] = true;
+//                  cout << "I have visited a variable: " << first_sym << " ["
+//                      << (visited[first_sym]?"true":"false") << "]" << endl;
                 }
             }
 
@@ -193,14 +219,17 @@ void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool>
 
             for (symbol_sett::iterator sym_it = all_symbols.begin(); sym_it != all_symbols.end(); ++sym_it)
             {
-            	if (!visited[as_string(*sym_it)])
+              std::string next_sym = as_string(*sym_it);
+            	if (!visited[next_sym])
               {
-                equation_symbols.push_back(as_string(*sym_it));
-                deps_ds.make_set(as_string(*sym_it));
-                visited[as_string(*sym_it)] = true;
-                //cout << "I have visited a variable: " << as_string(*sym_it) << " [" << (visited[as_string(*sym_it)]?"true":"false") << "]" << endl;
+                equation_symbols.push_back(next_sym);
+                deps_ds.make_set(next_sym);
+                visited[next_sym] = true;
+//                cout << "I have visited a variable: " << next_sym << " ["
+//                    << (visited[next_sym]?"true":"false") << "]" << endl;
               }
-              deps_ds.union_set(as_string(*(all_symbols.begin())), as_string(*sym_it));
+            	//cout << "Merging: " << as_string(*(all_symbols.begin())) << " and " <<  next_sym <<"\n";
+              deps_ds.union_set(as_string(*(all_symbols.begin())), next_sym);
             	//string x = deps_ds->find_set(as_string(*sym_it));
             	//cout << "Printing test of variable: " << x << endl;
             	//exit(1);
@@ -209,17 +238,28 @@ void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool>
     }
 
     //FIXME: Determine if compression is needed for greater efficiency
-    deps_ds.compress_sets(equation_symbols.begin(), equation_symbols.end());
+    //deps_ds.compress_sets(equation_symbols.begin(), equation_symbols.end());
 
     cout << "Number of disjoint variable sets: " << (int)deps_ds.count_sets(equation_symbols.begin(), equation_symbols.end()) << endl;
 
 }
 
-void dependency_checkert::find_assert_deps(str_disj_set &deps_ds, map<string, bool> &visited)
+void dependency_checkert::find_assert_deps()
 {
     int deps=0;
     int indeps=0;
     bool doubleforbreak;
+
+    rank_t rank_map;
+    parent_t parent_map;
+
+    associative_property_map<rank_t> rank_pmap(rank_map);
+    associative_property_map<parent_t> parent_pmap(parent_map);
+
+    str_disj_set deps_ds(rank_pmap, parent_pmap);
+    map<string, bool> visited;
+
+    find_var_deps(deps_ds, visited, asserts[0], asserts[asserts.size()-1]);
 
     for (unsigned i = 0; i < asserts.size(); i++)
     {
@@ -236,6 +276,7 @@ void dependency_checkert::find_assert_deps(str_disj_set &deps_ds, map<string, bo
         SSA_step_reft& assert_2 = asserts[j];
         if (!compare_assertions(assert_1, assert_2))
           continue;
+
         symbol_sett second_symbols;
         get_expr_symbols((*assert_2)->guard, second_symbols);
         get_expr_symbols((*assert_2)->cond_expr, second_symbols);
@@ -289,8 +330,9 @@ long dependency_checkert::find_implications()
   unsigned discarded = 0;
   int checks=0;
   int impchecks=0;
-  vector<bool> to_remove(asserts.size(), false);
-
+  vector<bool> stronger(asserts.size(), true);
+  vector<bool> weaker(asserts.size(), true);
+  
     /*
     cout << "Printing assertions before ordering." << endl;
     for (it = asserts.begin(); it != asserts.end(); it++)
@@ -314,28 +356,18 @@ long dependency_checkert::find_implications()
 
   for (unsigned i = 0; i < asserts.size(); i++)
   {
-	  //unsigned int lstart = IMAX(0, i - (treshold - 1));
+    SSA_step_reft& assert_1 = asserts[i];
+    //unsigned int lstart = IMAX(0, i - (treshold - 1));
 	  //unsigned int lend = IMIN(i + (treshold), asserts.size());
     for (unsigned j = i+1; j < asserts.size(); j++)
     {
       checks++;
       pair<bool, fine_timet> checkres;
-      SSA_step_reft& assert_1 = asserts[i];
       SSA_step_reft& assert_2 = asserts[j];
-
-     // cout << "["<< (*assert_1)->source.pc->location.get_line() <<"] vs ["<< (*assert_2)->source.pc->location.get_line() <<"]\n";
-      if ((!to_remove[j]) &&
-          compare_assertions(assert_1, assert_2) &&
-          assert_deps[assert_1][assert_2] == DEPT)
+      if (compare_assertions(assert_1, assert_2)
+          && assert_deps[assert_1][assert_2] == DEPT
+          )
       {
-//    	  if ((j >= lend) || (j < lstart))
-//    	  {
-//    		  cout << "Wow, ho trovato un caso strano! ";
-//    		  cout << "i = " << i << ", j = " << j;
-//    		  cout << ", lstart = " << lstart << ", lend = " << lend;
-//    		  cout << ", Distance = " << distance(asserts[i], asserts[j]) << endl;
-//    		  sleep(1000);
-//    	  }
         impchecks++;
         if (VERBOSE)
         {
@@ -343,7 +375,8 @@ long dependency_checkert::find_implications()
             from_expr(ns, "", (*assert_1)->cond_expr) << " and " <<
             from_expr(ns, "", (*assert_2)->cond_expr) << endl;
         }
-        checkres = check_implication(assert_1, assert_2);
+                checkres = check_implication(assert_1, assert_2);
+
         if (checkres.first == true)
         {
           true_time = true_time + checkres.second.get_t();
@@ -358,9 +391,8 @@ long dependency_checkert::find_implications()
                 from_expr(ns, "", (*assert_2)->cond_expr) << ") [" << (*assert_2)->source.pc->location.get_line() << "] [weaker]" << endl;
             }
 
-            to_remove[j] = true;
-            //SSA_steps.erase(assert_2);
-            //asserts.erase(asserts.begin()+j);
+            weaker[i] = false;
+            stronger[j] = false;
             hl_may_impl << (*assert_1)->source.pc->location.get_claim() << " " <<
                 (*assert_2)->source.pc->location.get_claim() << " " <<
                 distance(SSA_steps.begin(), assert_1) << " " <<
@@ -407,30 +439,34 @@ long dependency_checkert::find_implications()
   for (int i = asserts.size() - 1; i >= 0; i--)
   //for (unsigned i = 0; i < asserts.size(); i++)
   {
-    if (to_remove[i] == true)
+    if (weaker[i] == true)
 	  {
 		  SSA_step_reft& removable = asserts[i];
-      instances[(*removable)->source.pc->location.get_claim().c_str()]--;
+      cout << "Removing << " << (*removable)->source.pc->location.get_line() << "\n";
       (*removable)->ignore = true;
-      //      if ((*removable)->is_assert()) {if (VERBOSE) cout << "I am discarding an assertion." << endl;}
-      //      else cout << "[ERROR] I am discarding some other type of instruction. Please debug." << endl;
 	  }
   }
+  try{
+    ofstream hl_stronger;
+    ofstream hl_weaker;
+    hl_stronger.open ("__hl_stronger");
+    hl_weaker.open ("__hl_weaker");
+    int hldiscardable = 0;
+    for (int i = asserts.size() - 1; i >= 0; i--){
+      SSA_step_reft& ass = asserts[i];
+      if (weaker[i] == true)
+        hl_weaker << (*ass)->source.pc->location.get_claim().c_str() << endl;
+      if (stronger[i] == true)
+        hl_stronger << (*ass)->source.pc->location.get_claim().c_str() << endl;
+    }
 
-  ofstream hl_stronger;
-  ofstream hl_weaker;
-  hl_stronger.open ("__hl_stronger");
-  hl_weaker.open ("__hl_weaker");
-  int hldiscardable = 0;
-  for (map<string,int>::iterator id_it=instances.begin(); id_it!=instances.end(); ++id_it)
+    hl_stronger.close();
+    hl_weaker.close();
+  }  catch (const bad_alloc &e)
   {
-	  if (id_it->second < 0) cerr << "Error: check the assertion " << id_it->first << endl;
-	  else if (id_it->second > 0) hl_stronger << id_it->first << endl;
-	  else {hldiscardable++; hl_weaker << id_it->first << endl;}
-  }
-  hl_stronger.close();
-  hl_weaker.close();
+    cout  << "smth is very wrong: " << e.what()  << endl;
 
+  }
   return to_time;
 
 }
@@ -726,6 +762,7 @@ void dependency_checkert::convert_assumptions(
     {
        //std::cout << "convert assume :" << from_expr(ns, "", (*it)->cond_expr) <<"\n";
        prop_conv.set_to_true((*it)->cond_expr);
+       set_guards_to_true(prop_conv, ((*it)->cond_expr));
     }
     it++;
   }

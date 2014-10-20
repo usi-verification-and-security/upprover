@@ -5,6 +5,7 @@
 # $3 funfrog options
 # $4 divisor
 # $5 tred
+# $6 forward/backward traversal
 
 export FUNFROG=../evolcheck
 export SCRIPTS="$PWD"
@@ -13,7 +14,8 @@ bench=$1
 usegraph=$2
 options=$3
 divisor=$4
-usetred=$5
+strategy=$5
+usetred=$6
 
 mildiv () 
 { 
@@ -89,7 +91,12 @@ else
   rm __just_hl_dep
 fi
 
-suffix=""
+if [[ $strategy == "forward" ]]
+then
+  suffix="_strong"
+else
+  suffix="_weak"
+fi
 
 if [[ $usegraph == "nograph" ]]
 then
