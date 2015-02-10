@@ -4,7 +4,7 @@ SHARED_SRC := \
       expr_pretty_print.cpp \
       function_info.cpp \
       summary_store.cpp \
-      solvers/satcheck_opensmt.cpp \
+      solvers/satcheck_periplo.cpp \
       solvers/prop_itp.cpp
 
 FUNFROG_SRC := \
@@ -85,8 +85,18 @@ include ../common
 
 all: evolcheck$(EXEEXT) sumo$(EXEEXT)
 
-INCLUDES := $(OPENSMT_INCLUDE) -I .. -I ../util
-LIBS := -L $(OPENSMT_LIBDIR)
+PERIPLO_SRCDIR := /home/leonardo/devel/periplo
+
+PERIPLO_INCLUDE := -I$(PERIPLO_SRCDIR)/src -I$(PERIPLO_SRCDIR)/src/minisat -I$(PERIPLO_SRCDIR)/src/minisat/mtl -I$(PERIPLO_SRCDIR)/src/minisat/core -I$(PERIPLO_SRCDIR)/src/minisat/utils/ -I$(PERIPLO_SRCDIR)/src/satsolvers -I$(PERIPLO_SRCDIR)/src/simplifiers -I$(PERIPLO_SRCDIR)/src/common -I$(PERIPLO_SRCDIR)/src/egraph -I$(PERIPLO_SRCDIR)/src/sorts -I$(PERIPLO_SRCDIR)/src/cnfizers -I$(PERIPLO_SRCDIR)/src/proof -I$(PERIPLO_SRCDIR)/src/api
+
+INCLUDES := $(PERIPLO_INCLUDE) -I .. -I ../util 
+
+#LIBS := -L/home/loris/libs/lib 
+LIBS := -L/usr/lib
+
+GCCFLAGS += -DUSE_PERIPLO 
+
+CP_CXXFLAGS += -DUSE_PERIPLO -DFULL_LABELING
 
 ifneq ($(wildcard ../bv_refinement/Makefile),)
   OBJ += ../bv_refinement/bv_refinement$(LIBEXT)
@@ -116,13 +126,13 @@ endif
 ###############################################################################
 
 evolcheck$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) -static -lopensmt-1.0 -lgmpxx -lgmp
+	$(LINKBIN) -static -lperiplolibrary -lgmpxx -lgmp  
 
 funfrog$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) -static -lopensmt-1.0 -lgmpxx -lgmp
+	$(LINKBIN) -static -lperiplolibrary -lgmpxx -lgmp 
 
 sumo$(EXEEXT): $(SUMO_OBJ)
-	$(LINKBIN) -static -lopensmt-1.0 -lgmpxx -lgmp
+	$(LINKBIN) -static -lperiplolibrary -lgmpxx -lgmp 
 
 diff$(EXEEXT): $(DIFF_OBJ)
 	$(LINKBIN) -static
