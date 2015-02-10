@@ -337,10 +337,10 @@ void funfrog_parseoptionst::help()
 {
   std::cout <<"\n"
     "* * *                eVolCheck "EVOLCHECK_VERSION
-    " - Copyright (C) 2012               * * *\n"
+    " - Copyright (C) 2013               * * *\n"
     "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
     "                based on FUNFROG "FUNFROG_VERSION
-    " - Copyright (C) 2011               * * *\n"
+    " - Copyright (C) 2013               * * *\n"
     "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
   "\n"
   "Usage:                         Purpose:\n"

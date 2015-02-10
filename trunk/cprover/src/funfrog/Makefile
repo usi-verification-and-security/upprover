@@ -85,14 +85,18 @@ include ../common
 
 all: evolcheck$(EXEEXT) sumo$(EXEEXT)
 
-PERIPLO_SRCDIR := /home/leonardo/devel/periplo
+PERIPLO_SRCDIR ?= /home/leonardo/devel/periplo
 
-PERIPLO_INCLUDE := -I$(PERIPLO_SRCDIR)/src -I$(PERIPLO_SRCDIR)/src/minisat -I$(PERIPLO_SRCDIR)/src/minisat/mtl -I$(PERIPLO_SRCDIR)/src/minisat/core -I$(PERIPLO_SRCDIR)/src/minisat/utils/ -I$(PERIPLO_SRCDIR)/src/satsolvers -I$(PERIPLO_SRCDIR)/src/simplifiers -I$(PERIPLO_SRCDIR)/src/common -I$(PERIPLO_SRCDIR)/src/egraph -I$(PERIPLO_SRCDIR)/src/sorts -I$(PERIPLO_SRCDIR)/src/cnfizers -I$(PERIPLO_SRCDIR)/src/proof -I$(PERIPLO_SRCDIR)/src/api
+PERIPLO_INCLUDE ?= -I$(PERIPLO_SRCDIR)/src -I$(PERIPLO_SRCDIR)/src/minisat -I$(PERIPLO_SRCDIR)/src/minisat/mtl -I$(PERIPLO_SRCDIR)/src/minisat/core -I$(PERIPLO_SRCDIR)/src/minisat/utils/ -I$(PERIPLO_SRCDIR)/src/satsolvers -I$(PERIPLO_SRCDIR)/src/simplifiers -I$(PERIPLO_SRCDIR)/src/common -I$(PERIPLO_SRCDIR)/src/egraph -I$(PERIPLO_SRCDIR)/src/sorts -I$(PERIPLO_SRCDIR)/src/cnfizers -I$(PERIPLO_SRCDIR)/src/proof -I$(PERIPLO_SRCDIR)/src/api
 
-INCLUDES := $(PERIPLO_INCLUDE) -I .. -I ../util 
+INCLUDES := $(PERIPLO_INCLUDE) -I .. -I ../util
 
-#LIBS := -L/home/loris/libs/lib 
-LIBS := -L/usr/lib
+#LIBS := -L/home/loris/libs/lib
+ifeq ($(origin PERIPLO_LIBDIR), undefined)
+    LIBS := -L/usr/lib
+else
+    LIBS := -L$(PERIPLO_LIBDIR)
+endif
 
 GCCFLAGS += -DUSE_PERIPLO 
 
