@@ -16,18 +16,18 @@ Author: Ondrej Sery
 
 #include "prop_itp.h"
 
-
 //#define DEBUG_COLOR_ITP
 #define PRODUCE_PROOF
 #include "Global.h"
 
-# ifdef USE_PERIPLO
-using namespace periplo;
-# endif
 
 typedef int fle_part_idt;
 typedef std::vector<fle_part_idt> fle_part_idst;
 typedef std::vector<fle_part_idst> interpolation_taskt;
+
+# ifdef USE_PERIPLO
+using namespace periplo;
+# endif
 
 class interpolating_solvert
 {
@@ -46,8 +46,12 @@ public:
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants)=0;
-
+  
 # ifdef USE_PERIPLO
+
+  virtual void get_part_interpolant(const std::vector<pair<unsigned, bool> >& assignment,
+      const interpolation_taskt& partition_ids, interpolantst& interpolants)=0;
+
   virtual void get_interpolant(InterpolationTree*, const interpolation_taskt& partition_ids,
     interpolantst& interpolants)=0;
 

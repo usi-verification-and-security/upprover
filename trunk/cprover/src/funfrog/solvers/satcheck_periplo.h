@@ -60,6 +60,8 @@ public:
   virtual void get_interpolant(InterpolationTree*,
       const interpolation_taskt& partition_ids,
       interpolantst& interpolants);
+  virtual void get_part_interpolant(const std::vector<pair<unsigned, bool> >& assignment,
+      const interpolation_taskt& partition_ids, interpolantst& interpolants);
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const;
@@ -72,9 +74,9 @@ public:
   {
     std::map<Enode*, icolor_t>* coloring_suggestion;
     coloring_suggestion = new std::map<Enode*, icolor_t>();
-    addColors(symbolsA, periplo::I_A, coloring_suggestion);
-    addColors(symbolsB, periplo::I_B, coloring_suggestion);
-    addColors(symbolsAB, periplo::I_AB, coloring_suggestion);
+    addColors(symbolsA, I_A, coloring_suggestion);
+    addColors(symbolsB, I_B, coloring_suggestion);
+    addColors(symbolsAB, I_AB, coloring_suggestion);
     coloring_suggestions.push_back(coloring_suggestion);
   };
 
@@ -91,8 +93,6 @@ protected:
   unsigned solver_verbosity;
   // Dump all queries?
   bool dump_queries;
-  // PeRIPLO API entry point
-  PeriploContext* periplo_ctx;
   // Shortcut for the bool sort;
   Snode* sbool;
   // List of clauses that are part of this partition
@@ -120,6 +120,9 @@ protected:
   int proof_trans;
 
   bool check_itp;
+
+  // PeRIPLO API entry point
+  PeriploContext* periplo_ctx;
 
   void setup_reduction();
 

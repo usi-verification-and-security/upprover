@@ -226,6 +226,71 @@ void satcheck_periplot::setup_proof_transformation(){
 #endif
 }
 
+
+void satcheck_periplot::get_part_interpolant(const std::vector<pair<unsigned, bool> >& assignment,
+    const interpolation_taskt& partition_ids, interpolantst& interpolants)
+{
+  assert(ready_to_interpolate);
+
+  vector<pair<Enode*, bool> > periplo_assignment;
+  for (unsigned i = 0; i < assignment.size(); i++){
+    periplo_assignment.push_back(std::make_pair(
+        enodes[assignment[i].first],
+        assignment[i].second));
+  }
+
+  for (unsigned i = 0; i < periplo_assignment.size(); i++){
+    std::cout << "added: ";
+    if (periplo_assignment[i].second) {
+      std::cout << " ";
+    } else {
+      std::cout << "~";
+    }
+    periplo_assignment[i].first->print(std::cout);
+    std::cout << "\n";
+  }
+
+  std::vector<Enode*> itp_enodes;
+  itp_enodes.reserve(partition_ids.size());
+
+  periplo_ctx->createProofGraph();
+  //setup_interpolation();
+  periplo_ctx->setAssignment(periplo_assignment);
+  periplo_ctx->getInterpolants(partition_ids, itp_enodes);
+  periplo_ctx->deleteProofGraph();
+
+  for (std::vector<Enode*>::iterator it = itp_enodes.begin();
+          it != itp_enodes.end(); ++it) {
+    Enode* node = (*it);
+
+#   if 0
+    std::cout << "Periplo interpolant: ";
+    node->print(std::cout);
+    std::cout << std::endl;
+#   endif
+
+    prop_itpt itp;
+
+#   ifdef DEBUG_COLOR_ITP
+    current_itp = new std::vector<unsigned> ();
+#   endif
+
+    extract_itp(node, itp);
+
+#   ifdef DEBUG_COLOR_ITP
+    itp_symbols.push_back(*current_itp);
+#   endif
+
+#   if 0
+    std::cout << "CProver stored interpolant: ";
+    itp.print(std::cout);
+#   endif
+
+    interpolants.push_back(prop_itpt());
+    interpolants.back().swap(itp);
+  }
+}
+
 /*******************************************************************\
 
 Function: satcheck_periplot::get_interpolant

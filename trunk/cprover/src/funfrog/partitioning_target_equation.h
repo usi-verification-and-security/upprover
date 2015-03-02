@@ -35,13 +35,15 @@ class partitioning_target_equationt:public symex_target_equationt
 public:
   partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
           _summarization_context, bool _upgrade_checking,
-          bool _store_summaries_with_assertion, coloring_modet _coloring_mode) :
+          bool _store_summaries_with_assertion, coloring_modet _coloring_mode,
+          std::vector<unsigned>& _clauses) :
           symex_target_equationt(_ns),
           summarization_context(_summarization_context),
           current_partition_id(partitiont::NO_PARTITION),
           upgrade_checking(_upgrade_checking),
           store_summaries_with_assertion(_store_summaries_with_assertion),
-          coloring_mode(_coloring_mode){
+          coloring_mode(_coloring_mode),
+          clauses(_clauses){
   }
 
   // Convert all the SSA steps into the corresponding formulas in
@@ -257,6 +259,7 @@ private:
 #ifdef USE_PERIPLO
   InterpolationTree* fill_partition_tree(
       partitiont& partition);
+  bool do_partial_itp();
 #endif
 
   // Fills in the SSA_steps_exec_order holding pointers to SSA steps ordered
@@ -289,6 +292,12 @@ private:
   bool store_summaries_with_assertion;
 
   coloring_modet coloring_mode;
+
+  std::vector<unsigned>& clauses;
+
+#ifdef USE_PERIPLO
+  std::vector<pair<unsigned, bool> > part_clauses;
+#endif
 
   friend class partitioning_slicet;
 };

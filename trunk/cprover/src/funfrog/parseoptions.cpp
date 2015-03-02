@@ -420,6 +420,8 @@ void funfrog_parseoptionst::help()
   "--proof-trans <mode>:          transform proof:\n"
   "  1                            to make stronger interpolants\n"
   "  2                            to make weaker interpolants\n"
+  "--part-itp <int,int,..>        try partial interpolants\n"
+  "                               (specify clauses to be deleted)\n"
   "--check-itp                    check interpolants with Z3\n"
   "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
 #else
@@ -521,6 +523,9 @@ bool funfrog_parseoptionst::check_function_summarization(
   bool upg_check = cmdline.isset("do-upgrade-check");
 
   if (upg_check || init_upg_check){
+    // a bit of hack
+    options.set_option("no-slicing", true);
+
     // perform the upgrade check (or preparation to it)
     if(cmdline.isset("testclaim") || cmdline.isset("claim") ||
         cmdline.isset("claimset") || cmdline.isset("no-itp"))
@@ -639,10 +644,12 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("itp-algorithm", cmdline.getval("itp-algorithm"));
   }
 
+  if (cmdline.isset("part-itp")) {
+    options.set_option("part-itp", cmdline.getval("part-itp"));
+  }
   if (cmdline.isset("proof-trans")) {
     options.set_option("proof-trans", cmdline.getval("proof-trans"));
   }
-
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.getval("unwind"));
   }

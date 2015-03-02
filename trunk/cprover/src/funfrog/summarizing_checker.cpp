@@ -34,6 +34,21 @@ void summarizing_checkert::initialize()
   omega.setup_default_precision(init);
 }
 
+void get_ints(std::vector<unsigned>& claims, std::string set){
+
+  unsigned int length=set.length();
+
+  for(unsigned idx=0; idx<length; idx++)
+  {
+    std::string::size_type next=set.find(",", idx);
+    std::string val=set.substr(idx, next-idx);
+    claims.push_back(atoi(val.c_str()));
+
+    if(next==std::string::npos) break;
+    idx=next;
+  }
+}
+
 /*******************************************************************
 
  Function: summarizing_checkert::assertion_holds
@@ -64,8 +79,11 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
 
+  std::vector<unsigned> ints;
+  get_ints(ints, options.get_option("part-itp"));
+
   partitioning_target_equationt equation(ns, summarization_context, false,
-      store_summaries_with_assertion, get_coloring_mode(options.get_option("color-proof")));
+      store_summaries_with_assertion, get_coloring_mode(options.get_option("color-proof")), ints);
 
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
@@ -267,7 +285,6 @@ void summarizing_checkert::setup_unwind(symex_assertion_sumt& symex)
 
   symex.max_unwind=options.get_int_option("unwind");
 }
-
 
 /*******************************************************************\
 

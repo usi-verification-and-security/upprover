@@ -25,6 +25,48 @@ Author: Ondrej Sery
 #include "solvers/satcheck_opensmt.h"
 #endif
 
+#ifdef USE_PERIPLO
+bool partitioning_target_equationt::do_partial_itp(){
+  if (clauses.size() == 0) {
+
+    std::set<unsigned> distinct;
+
+    const SSA_steps_orderingt& SSA_steps = get_steps_exec_order();
+    for(SSA_steps_orderingt::const_iterator
+        it=SSA_steps.begin();
+        it!=SSA_steps.end();
+        it++)
+    {
+      symex_target_equationt::SSA_stept& SSA_step=**it;
+      unsigned num = SSA_step.guard_literal.var_no();
+      if (num < 2147483647)
+        distinct.insert(num);
+    }
+
+    // generate a template option for the next possible runs
+    std::cout << "--part-itp ";
+    unsigned count = 0;
+    for (std::set<unsigned>::iterator it=distinct.begin(); it!=distinct.end(); ++it){
+      if (++count != 1)
+        std::cout << ",";
+      std::cout << *it;
+    }
+
+    std::cout << "\n"; // general itp
+
+    return false;
+  }
+
+  for (unsigned i = 0; i < clauses.size(); i++){
+
+    //TODO: elaborate on a scenario when true-clauses are added to this vector
+    part_clauses.push_back(std::make_pair(clauses[i], false));
+    std::cout << "clause number to be removed: " << " " << clauses[i] << "\n";
+  }
+  return true; // partial itp
+}
+#endif
+
 /*******************************************************************\
 
  Function: partitioning_target_equationt::convert
@@ -263,7 +305,7 @@ void partitioning_target_equationt::convert_partition_guards(
     {
       exprt tmp(it->guard);
 
-#     ifdef DEBUG_SSA      
+#     ifdef DEBUG_SSA
       expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
 #     endif
 
@@ -757,7 +799,13 @@ void partitioning_target_equationt::extract_interpolants(
     InterpolationTree *itp_tree = fill_partition_tree(*partitions.begin());
     interpolator.get_interpolant(itp_tree, itp_task, itp_result);
   } else {
-    interpolator.get_interpolant(itp_task, itp_result);
+    if (!do_partial_itp()){
+      std::cout << "Preparing for general interpolation\n";
+      interpolator.get_interpolant(itp_task, itp_result);
+    } else {
+      std::cout << "Preparing for partial interpolation\n";
+      interpolator.get_part_interpolant(part_clauses, itp_task, itp_result);
+    }
   }
 #else
   interpolator.get_interpolant(itp_task, itp_result);
