@@ -879,6 +879,10 @@ void partitioning_target_equationt::extract_interpolants(
     
     itp.generalize(decider, common_symbs);
 
+    if (itp.is_trivial()) {
+      continue;
+    }
+
     // Store the interpolant
     summary_idt summary_id = summary_store.insert_summary(itp);
     

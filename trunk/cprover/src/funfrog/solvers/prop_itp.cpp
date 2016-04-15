@@ -347,6 +347,12 @@ void prop_itpt::generalize(const prop_convt& decider,
       // Only shift the artificial variables (present due to the Tseitin
       // encoding to CNF)
       if (it2->var_no() > max_var) {
+        if (shift > it2->var_no()){
+          std::cout << "Failed to generalize interpolant\n";
+          // possibly, due to pointers
+          root_literal = const_literal(true);
+          return;
+        }
         it2->set(it2->var_no() - shift, it2->sign());
         continue;
       } 
