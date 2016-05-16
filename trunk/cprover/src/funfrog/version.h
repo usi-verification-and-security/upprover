@@ -1,2 +1,2 @@
-#define FUNFROG_VERSION "2.1"
-#define EVOLCHECK_VERSION "2.1"
+#define FUNFROG_VERSION "3.0"
+#define EVOLCHECK_VERSION "3.0"
