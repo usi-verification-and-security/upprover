@@ -1,0 +1,73 @@
+
+# /
+/*.d
+/*.o
+
+# /cprover/
+/cprover/*.d
+/cprover/*.o
+
+# /cprover/doc/
+/cprover/doc/*.d
+/cprover/doc/*.o
+
+# /cprover/doc/html-manual/
+/cprover/doc/html-manual/*.d
+/cprover/doc/html-manual/*.o
+
+# /cprover/doc/html-manual/boop-example/
+/cprover/doc/html-manual/boop-example/*.d
+/cprover/doc/html-manual/boop-example/*.o
+
+# /cprover/src/
+/cprover/src/*.d
+/cprover/src/*.o
+
+# /cprover/src/funfrog/
+/cprover/src/funfrog/funfrog
+/cprover/src/funfrog/*.d
+/cprover/src/funfrog/*.o
+/cprover/src/funfrog/CVS
+/cprover/src/funfrog/.cvsignore
+/cprover/src/funfrog/sumo
+
+# /cprover/src/funfrog/solvers/
+/cprover/src/funfrog/solvers/*.d
+/cprover/src/funfrog/solvers/*.o
+
+# /cprover/src/loopfrog/
+/cprover/src/loopfrog/loopfrog
+/cprover/src/loopfrog/*.d
+/cprover/src/loopfrog/*.o
+
+# /cprover/src/loopfrog/invariants/
+/cprover/src/loopfrog/invariants/*.d
+/cprover/src/loopfrog/invariants/*.o
+
+# /cprover/src/loopfrog/obsolete/
+/cprover/src/loopfrog/obsolete/*.d
+/cprover/src/loopfrog/obsolete/*.o
+
+# /cprover/src/loopfrog/old/
+/cprover/src/loopfrog/old/*.d
+/cprover/src/loopfrog/old/*.o
+
+# /cprover/src/loopfrog/tests/
+/cprover/src/loopfrog/tests/*.d
+/cprover/src/loopfrog/tests/*.o
+
+# /minisat2/
+/minisat2/*.d
+/minisat2/*.o
+
+# /minisat2/core/
+/minisat2/core/*.d
+/minisat2/core/*.o
+
+# /minisat2/mtl/
+/minisat2/mtl/*.d
+/minisat2/mtl/*.o
+
+# /minisat2/simp/
+/minisat2/simp/*.d
+/minisat2/simp/*.o
