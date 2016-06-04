@@ -4,70 +4,211 @@
 /*.o
 
 # /cprover/
-/cprover/*.d
-/cprover/*.o
+/trunk/cprover/*.d
+/trunk/cprover/*.o
 
 # /cprover/doc/
-/cprover/doc/*.d
-/cprover/doc/*.o
+/trunk/cprover/doc/*.d
+/trunk/cprover/doc/*.o
 
 # /cprover/doc/html-manual/
-/cprover/doc/html-manual/*.d
-/cprover/doc/html-manual/*.o
+/trunk/cprover/doc/html-manual/*.d
+/trunk/cprover/doc/html-manual/*.o
 
 # /cprover/doc/html-manual/boop-example/
-/cprover/doc/html-manual/boop-example/*.d
-/cprover/doc/html-manual/boop-example/*.o
+/trunk/cprover/doc/html-manual/boop-example/*.d
+/trunk/cprover/doc/html-manual/boop-example/*.o
 
 # /cprover/src/
-/cprover/src/*.d
-/cprover/src/*.o
+/trunk/cprover/src/*.d
+/trunk/cprover/src/*.o
 
 # /cprover/src/funfrog/
-/cprover/src/funfrog/funfrog
-/cprover/src/funfrog/*.d
-/cprover/src/funfrog/*.o
-/cprover/src/funfrog/CVS
-/cprover/src/funfrog/.cvsignore
-/cprover/src/funfrog/sumo
+/trunk/cprover/src/funfrog/funfrog
+/trunk/cprover/src/funfrog/*.d
+/trunk/cprover/src/funfrog/*.o
+/trunk/cprover/src/funfrog/CVS
+/trunk/cprover/src/funfrog/.cvsignore
+/trunk/cprover/src/funfrog/sumo
 
 # /cprover/src/funfrog/solvers/
-/cprover/src/funfrog/solvers/*.d
-/cprover/src/funfrog/solvers/*.o
+/trunk/cprover/src/funfrog/solvers/*.d
+/trunk/cprover/src/funfrog/solvers/*.o
+
+# /cprover/src/xmllang/
+/trunk/cprover/src/xmllang/*.d
+/trunk/cprover/src/xmllang/*.o
+/trunk/cprover/src/xmllang/*.a
+
+# /cprover/src/util/
+/trunk/cprover/src/util/*.d
+/trunk/cprover/src/util/*.o
+/trunk/cprover/src/util/*.a
+
+# /cprover/src/linking/
+/trunk/cprover/src/linking/*.d
+/trunk/cprover/src/linking/*.o
+/trunk/cprover/src/linking/*.a
+
+# /cprover/src/pointer-analysis/
+/trunk/cprover/src/pointer-analysis/*.d
+/trunk/cprover/src/pointer-analysis/*.o
+/trunk/cprover/src/pointer-analysis/*.a
+
+# /cprover/src/langapi/
+/trunk/cprover/src/langapi/*.d
+/trunk/cprover/src/langapi/*.o
+/trunk/cprover/src/langapi/*.a
+
+# /cprover/src/java_bytecode/
+/trunk/cprover/src/java_bytecode/*.d
+/trunk/cprover/src/java_bytecode/*.o
+/trunk/cprover/src/java_bytecode/*.a
+
+# /cprover/src/goto-symex/
+/trunk/cprover/src/goto-symex/*.d
+/trunk/cprover/src/goto-symex/*.o
+/trunk/cprover/src/goto-symex/*.a
+
+# /cprover/src/goto-cc/
+/trunk/cprover/src/goto-cc/*.d
+/trunk/cprover/src/goto-cc/*.o
+/trunk/cprover/src/goto-cc/*.a
+/trunk/cprover/src/goto-cc/goto-cc
+
+# /cprover/src/cpp/
+/trunk/cprover/src/cpp/*.d
+/trunk/cprover/src/cpp/*.o
+/trunk/cprover/src/cpp/*.a
+
+# /cprover/src/ansi-c/
+/trunk/cprover/src/ansi-c/*.d
+/trunk/cprover/src/ansi-c/*.o
+/trunk/cprover/src/ansi-c/*.a
+/trunk/cprover/src/ansi-c/*.inc
+/trunk/cprover/src/ansi-c/library/converter
+
+# /cprover/src/ansi-c/
+/trunk/cprover/src/ansi-c/literals/*.d
+/trunk/cprover/src/ansi-c/literals/*.o
+/trunk/cprover/src/ansi-c/literals/*.a
+
+# /cprover/src/big-int/
+/trunk/cprover/src/big-int/*.d
+/trunk/cprover/src/big-int/*.o
+/trunk/cprover/src/big-int/*.a
+
+# /cprover/src/analyses/
+/trunk/cprover/src/analyses/*.d
+/trunk/cprover/src/analyses/*.o
+/trunk/cprover/src/analyses/*.a
+
+# /cprover/src/cbmc/
+/trunk/cprover/src/cbmc/*.d
+/trunk/cprover/src/cbmc/*.o
+/trunk/cprover/src/cbmc/*.a
+
+# /cprover/src/assembler/
+/trunk/cprover/src/assembler/*.d
+/trunk/cprover/src/assembler/*.o
+/trunk/cprover/src/assembler/*.a
+
+# /cprover/src/goto-programs/
+/trunk/cprover/src/goto-programs/*.d
+/trunk/cprover/src/goto-programs/*.o
+/trunk/cprover/src/goto-programs/*.a
+
+# /cprover/src/solvers/
+/trunk/cprover/src/solvers/*.d
+/trunk/cprover/src/solvers/*.o
+/trunk/cprover/src/solvers/*.a
+
+# /cprover/src/solvers/sat/
+/trunk/cprover/src/solvers/sat/*.d
+/trunk/cprover/src/solvers/sat/*.o
+/trunk/cprover/src/solvers/sat/*.a
+
+# /cprover/src/solvers/qbf/
+/trunk/cprover/src/solvers/qbf/*.d
+/trunk/cprover/src/solvers/qbf/*.o
+/trunk/cprover/src/solvers/qbf/*.a
+
+# /cprover/src/solvers/prop/
+/trunk/cprover/src/solvers/prop/*.d
+/trunk/cprover/src/solvers/prop/*.o
+/trunk/cprover/src/solvers/prop/*.a
+
+# /cprover/src/solvers/floatbv/
+/trunk/cprover/src/solvers/floatbv/*.d
+/trunk/cprover/src/solvers/floatbv/*.o
+/trunk/cprover/src/solvers/floatbv/*.a
+
+# /cprover/src/solvers/flattening/
+/trunk/cprover/src/solvers/flattening/*.d
+/trunk/cprover/src/solvers/flattening/*.o
+/trunk/cprover/src/solvers/flattening/*.a
+
+# /cprover/src/solvers/cvc/
+/trunk/cprover/src/solvers/cvc/*.d
+/trunk/cprover/src/solvers/cvc/*.o
+/trunk/cprover/src/solvers/cvc/*.a
+
+# /cprover/src/solvers/dplib/
+/trunk/cprover/src/solvers/dplib/*.d
+/trunk/cprover/src/solvers/dplib/*.o
+/trunk/cprover/src/solvers/dplib/*.a
+
+# /cprover/src/solvers/smt1/
+/trunk/cprover/src/solvers/smt1/*.d
+/trunk/cprover/src/solvers/smt1/*.o
+/trunk/cprover/src/solvers/smt1/*.a
+
+# /cprover/src/solvers/smt2/
+/trunk/cprover/src/solvers/smt2/*.d
+/trunk/cprover/src/solvers/smt2/*.o
+/trunk/cprover/src/solvers/smt2/*.a
 
 # /cprover/src/loopfrog/
-/cprover/src/loopfrog/loopfrog
-/cprover/src/loopfrog/*.d
-/cprover/src/loopfrog/*.o
+/trunk/cprover/src/loopfrog/loopfrog
+/trunk/cprover/src/loopfrog/*.d
+/trunk/cprover/src/loopfrog/*.o
 
 # /cprover/src/loopfrog/invariants/
-/cprover/src/loopfrog/invariants/*.d
-/cprover/src/loopfrog/invariants/*.o
+/trunk/cprover/src/loopfrog/invariants/*.d
+/trunk/cprover/src/loopfrog/invariants/*.o
 
 # /cprover/src/loopfrog/obsolete/
-/cprover/src/loopfrog/obsolete/*.d
-/cprover/src/loopfrog/obsolete/*.o
+/trunk/cprover/src/loopfrog/obsolete/*.d
+/trunk/cprover/src/loopfrog/obsolete/*.o
 
 # /cprover/src/loopfrog/old/
-/cprover/src/loopfrog/old/*.d
-/cprover/src/loopfrog/old/*.o
+/trunk/cprover/src/loopfrog/old/*.d
+/trunk/cprover/src/loopfrog/old/*.o
 
 # /cprover/src/loopfrog/tests/
-/cprover/src/loopfrog/tests/*.d
-/cprover/src/loopfrog/tests/*.o
+/trunk/cprover/src/loopfrog/tests/*.d
+/trunk/cprover/src/loopfrog/tests/*.o
 
 # /minisat2/
-/minisat2/*.d
-/minisat2/*.o
+/trunk/minisat2/*.d
+/trunk/minisat2/*.o
 
 # /minisat2/core/
-/minisat2/core/*.d
-/minisat2/core/*.o
+/trunk/minisat2/core/*.d
+/trunk/minisat2/core/*.o
 
 # /minisat2/mtl/
-/minisat2/mtl/*.d
-/minisat2/mtl/*.o
+/trunk/minisat2/mtl/*.d
+/trunk/minisat2/mtl/*.o
 
 # /minisat2/simp/
-/minisat2/simp/*.d
-/minisat2/simp/*.o
+/trunk/minisat2/simp/*.d
+/trunk/minisat2/simp/*.o
+
+# /minisat-2.2.0/simp/
+trunk/minisat-2.2.0/simp/*.d
+trunk/minisat-2.2.0/simp/*.o
+
+# /minisat-2.2.0/core/
+trunk/minisat-2.2.0/core/*.d
+trunk/minisat-2.2.0/core/*.o
