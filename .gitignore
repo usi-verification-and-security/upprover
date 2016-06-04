@@ -1,3 +1,4 @@
+.gitignore~
 
 # /
 /*.d
@@ -30,6 +31,7 @@
 /trunk/cprover/src/funfrog/CVS
 /trunk/cprover/src/funfrog/.cvsignore
 /trunk/cprover/src/funfrog/sumo
+/trunk/cprover/src/funfrog/evolcheck
 
 # /cprover/src/funfrog/solvers/
 /trunk/cprover/src/funfrog/solvers/*.d
@@ -39,11 +41,18 @@
 /trunk/cprover/src/xmllang/*.d
 /trunk/cprover/src/xmllang/*.o
 /trunk/cprover/src/xmllang/*.a
+/trunk/cprover/src/xmllang/*.output
+/trunk/cprover/src/xmllang/*_y.tab.*
+/trunk/cprover/src/xmllang/*_lex.yy.cpp
 
 # /cprover/src/util/
 /trunk/cprover/src/util/*.d
 /trunk/cprover/src/util/*.o
 /trunk/cprover/src/util/*.a
+/trunk/cprover/src/util/ieee_float_test
+/trunk/cprover/src/util/irep_ids.h
+/trunk/cprover/src/util/irep_ids.inc
+/trunk/cprover/src/util/irep_ids_convert
 
 # /cprover/src/linking/
 /trunk/cprover/src/linking/*.d
@@ -80,23 +89,33 @@
 /trunk/cprover/src/cpp/*.d
 /trunk/cprover/src/cpp/*.o
 /trunk/cprover/src/cpp/*.a
+/trunk/cprover/src/cpp/*.output
+/trunk/cprover/src/cpp/*_y.tab.*
+/trunk/cprover/src/cpp/*_lex.yy.cpp
 
 # /cprover/src/ansi-c/
 /trunk/cprover/src/ansi-c/*.d
 /trunk/cprover/src/ansi-c/*.o
 /trunk/cprover/src/ansi-c/*.a
 /trunk/cprover/src/ansi-c/*.inc
-/trunk/cprover/src/ansi-c/library/converter
+/trunk/cprover/src/ansi-c/file_converter
+/trunk/cprover/src/ansi-c/*.output
+/trunk/cprover/src/ansi-c/*_y.tab.*
+/trunk/cprover/src/ansi-c/*_lex.yy.cpp
 
-# /cprover/src/ansi-c/
+# /cprover/src/ansi-c/literals/
 /trunk/cprover/src/ansi-c/literals/*.d
 /trunk/cprover/src/ansi-c/literals/*.o
 /trunk/cprover/src/ansi-c/literals/*.a
+
+# /cprover/src/ansi-c/library/
+/trunk/cprover/src/ansi-c/library/converter
 
 # /cprover/src/big-int/
 /trunk/cprover/src/big-int/*.d
 /trunk/cprover/src/big-int/*.o
 /trunk/cprover/src/big-int/*.a
+/trunk/cprover/src/big-int/test-bigint
 
 # /cprover/src/analyses/
 /trunk/cprover/src/analyses/*.d
@@ -112,6 +131,9 @@
 /trunk/cprover/src/assembler/*.d
 /trunk/cprover/src/assembler/*.o
 /trunk/cprover/src/assembler/*.a
+/trunk/cprover/src/assembler/*.output
+/trunk/cprover/src/assembler/*_y.tab.*
+/trunk/cprover/src/assembler/*_lex.yy.cpp
 
 # /cprover/src/goto-programs/
 /trunk/cprover/src/goto-programs/*.d
