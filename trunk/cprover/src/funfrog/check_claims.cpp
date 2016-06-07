@@ -108,7 +108,7 @@ Function: check_claims
 
 \*******************************************************************/
 
-claim_statst check_claims(
+void check_claims(
   const namespacet &ns,
   goto_programt &leaping_program,
   const goto_functionst &goto_functions,
@@ -179,8 +179,8 @@ claim_statst check_claims(
       if (seen_claims == 0)
         res.status("Assertion is not reachable");
       break;
+
     }
-    
     if (assert_grouping && claim_map[ass_ptr].first)
       continue;
     
@@ -221,9 +221,6 @@ claim_statst check_claims(
     {
       claim_map[ass_ptr].second = false;
     }
-
-//    if(save_files)
-//      out.close();
   }
 
   if (multi_assert){
@@ -238,24 +235,6 @@ claim_statst check_claims(
     sum_checker.assertion_holds(assert_grouping ?
                   assertion_infot(multi_assert_loc) : assertion_infot(stack, ass_ptr), false);
   }
-
-//  if(show_progress)
-//  {
-//    std::cout << "\r" << std::string(80, ' ');
-//    std::cout.flush();
-//  }
-  
-  for(claim_mapt::const_iterator it=claim_map.begin();
-      it!=claim_map.end();
-      it++)
-  {
-    if(claim_nr==0 || claim_numbers[it->first]==claim_nr)
-    {
-      if(it->second.second) res.claims_passed++; else res.claims_failed++;
-    }
-  }
-
-  return res;
 }
 
 

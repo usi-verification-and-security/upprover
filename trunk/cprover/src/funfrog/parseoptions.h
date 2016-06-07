@@ -13,6 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <fstream>
 #include <iostream>
+#include <cstdlib>
 #include <langapi/language_ui.h>
 #include <options.h>
 #include "xml_interface.h"

@@ -13,13 +13,7 @@
 #include "time_stopping.h"
 #include <fstream>
 
-#ifdef USE_PERIPLO
-#include "solvers/satcheck_periplo.h"
-#else
-#include "solvers/satcheck_opensmt.h"
-#endif
-
-//#define DEBUG_GLOBALS
+#include "solvers/satcheck_opensmt2.h"
 
 /*******************************************************************\
 
@@ -462,11 +456,8 @@ Function: function_infot::check_implies
 bool function_infot::check_implies(const interpolantt& first, 
         const interpolantt& second)
 {
-#ifdef USE_PERIPLO
-  satcheck_periplot prop_solver;
-#else
-  satcheck_opensmtt prop_solver;
-#endif
+  satcheck_opensmt2t prop_solver;
+  prop_solver.new_partition();        // initialize assert on the solver side
 
   contextt ctx;
   namespacet ns(ctx);
@@ -474,14 +465,10 @@ bool function_infot::check_implies(const interpolantt& first,
   literalt first_root;
   literalt second_root;
   literalt root;
-  
   first_root = first.raw_assert(prop_solver);
   second_root = second.raw_assert(prop_solver);
-  
   root = prop_solver.land(first_root, second_root.negation());
-  
   prop_solver.l_set_to_true(root);
-
   fine_timet before, after;
   before = current_time();
   

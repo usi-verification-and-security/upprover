@@ -7,6 +7,7 @@ Author: Ondrej Sery
 \*******************************************************************/
 
 #include "expr_pretty_print.h"
+#include "format_constant.h"
 
 #define EDGE_COLOR "\033[2;37m"
 #define TYPE_COLOR "\033[0;37m"

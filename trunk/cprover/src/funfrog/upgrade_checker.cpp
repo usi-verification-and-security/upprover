@@ -425,21 +425,8 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   while (!end)
   {
     count++;
-#ifdef USE_PERIPLO
-    opensmt = new satcheck_periplot(
-        options.get_int_option("verbose-solver"),
-        options.get_bool_option("save-queries"),
-        options.get_int_option("reduce-proof-loops"),
-        options.get_int_option("reduce-proof-graph"),
-        options.get_bool_option("tree-interpolants"),
-        options.get_int_option("itp-algorithm"),
-        options.get_int_option("proof-trans"),
-        options.get_int_option("check-itp"));
-#else
-    opensmt = new satcheck_opensmtt(
-        options.get_int_option("verbose-solver"),
-        options.get_bool_option("save-queries"));
-#endif
+
+    opensmt = new satcheck_opensmt2t();
 
     interpolator.reset(opensmt);
     bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);

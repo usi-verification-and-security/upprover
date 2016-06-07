@@ -13,11 +13,7 @@
 
 #include <boost/pending/disjoint_sets.hpp>
 
-#ifdef USE_PERIPLO
-#include "solvers/satcheck_periplo.h"
-#else
-#include "solvers/satcheck_opensmt.h"
-#endif
+#include "solvers/satcheck_opensmt2.h"
 
 #define INDEPT false
 #define DEPT true
@@ -106,11 +102,7 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
   try{
 
   std::auto_ptr<prop_convt> decider;
-#ifdef USE_PERIPLO
-  satcheck_periplot* opensmt = new satcheck_periplot();
-#else
-  satcheck_opensmtt* opensmt = new satcheck_opensmtt();
-#endif
+  satcheck_opensmt2t* opensmt = new satcheck_opensmt2t();
   bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
   deciderp->unbounded_array = bv_pointerst::U_AUTO;
   decider.reset(deciderp);

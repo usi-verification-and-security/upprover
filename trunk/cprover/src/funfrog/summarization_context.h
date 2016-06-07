@@ -10,6 +10,7 @@
 #ifndef CPROVER_SUMMARIZATION_CONTEXT_H
 #define CPROVER_SUMMARIZATION_CONTEXT_H
 
+#include <iostream>
 #include <fstream>
 #include <pointer-analysis/value_set_analysis.h>
 #include <goto-programs/goto_functions.h>

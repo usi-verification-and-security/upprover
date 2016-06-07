@@ -19,53 +19,8 @@ Author: Ondrej Sery
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
 
-#ifdef USE_PERIPLO
-#include "solvers/satcheck_periplo.h"
-#else
-#include "solvers/satcheck_opensmt.h"
-#endif
+#include "solvers/satcheck_opensmt2.h"
 
-#ifdef USE_PERIPLO
-bool partitioning_target_equationt::do_partial_itp(){
-  if (clauses.size() == 0) {
-
-    std::set<unsigned> distinct;
-
-    const SSA_steps_orderingt& SSA_steps = get_steps_exec_order();
-    for(SSA_steps_orderingt::const_iterator
-        it=SSA_steps.begin();
-        it!=SSA_steps.end();
-        it++)
-    {
-      symex_target_equationt::SSA_stept& SSA_step=**it;
-      unsigned num = SSA_step.guard_literal.var_no();
-      if (num < 2147483647)
-        distinct.insert(num);
-    }
-
-    // generate a template option for the next possible runs
-    std::cout << "--part-itp ";
-    unsigned count = 0;
-    for (std::set<unsigned>::iterator it=distinct.begin(); it!=distinct.end(); ++it){
-      if (++count != 1)
-        std::cout << ",";
-      std::cout << *it;
-    }
-
-    std::cout << "\n"; // general itp
-
-    return false;
-  }
-
-  for (unsigned i = 0; i < clauses.size(); i++){
-
-    //TODO: elaborate on a scenario when true-clauses are added to this vector
-    part_clauses.push_back(std::make_pair(clauses[i], false));
-    std::cout << "clause number to be removed: " << " " << clauses[i] << "\n";
-  }
-  return true; // partial itp
-}
-#endif
 
 /*******************************************************************\
 
@@ -179,7 +134,6 @@ void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
 
   // Tell the interpolator about the new partition.
   partition.fle_part_id = interpolator.new_partition();
-  //TODO: increment?
 
   // If this is a summary partition, apply the summary
   if (partition.summary) {
@@ -770,46 +724,12 @@ void partitioning_target_equationt::extract_interpolants(
             )
       continue;
     fill_partition_ids(pid, itp_task[tid++]);
-
-    //coloring staff
-    if (coloring_mode != NO_COLORING){
-      if (coloring_mode == COLORING_FROM_FILE){
-        // serialize to separate files
-        std::string filename = "__common_";
-        filename.append(id2string(ipartition.function_id));
-        filename.append("_");
-        filename.append(i2string(pid));
-        if (!ipartition.deserialize_common(filename)){
-          ipartition.serialize_common(filename);
-          ipartition.distribute_A_B();
-        }
-      } else if (coloring_mode == RANDOM_COLORING){
-        ipartition.distribute_A_B();
-      }
-      interpolator.addAB(ipartition.A_vars, ipartition.B_vars, ipartition.AB_vars);
-    }
   }
 
   // Interpolate...
   interpolantst itp_result;
   itp_result.reserve(valid_tasks);
-
-#ifdef USE_PERIPLO
-  if (interpolator.is_tree_interpolants()){
-    InterpolationTree *itp_tree = fill_partition_tree(*partitions.begin());
-    interpolator.get_interpolant(itp_tree, itp_task, itp_result);
-  } else {
-    if (!do_partial_itp()){
-      std::cout << "Preparing for general interpolation\n";
-      interpolator.get_interpolant(itp_task, itp_result);
-    } else {
-      std::cout << "Preparing for partial interpolation\n";
-      interpolator.get_part_interpolant(part_clauses, itp_task, itp_result);
-    }
-  }
-#else
   interpolator.get_interpolant(itp_task, itp_result);
-#endif
 
   // Interpret the result
   std::vector<symbol_exprt> common_symbs;
@@ -820,41 +740,16 @@ void partitioning_target_equationt::extract_interpolants(
     if (!partition.is_inline() ||
             (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion)
             || partition.get_iface().summary_info.is_recursion_nondet()
-  )
+    )
       continue;
-    
+
     interpolantt& itp = itp_result[tid];
-
-#   ifdef DEBUG_COLOR_ITP
-    std::map<symbol_exprt, unsigned> unique_symb;
-    std::vector<unsigned>& itp_symb = interpolator.get_itp_symb(tid);
-    std::cout << "Checking " << partition.get_iface().function_id << " ("<<itp_symb.size() <<")\n";
-
-    for (unsigned i = 0; i < itp_symb.size(); i++){
-      std::map<symbol_exprt, std::vector<unsigned> >& symbs = partition.get_iface().common_symbols;
-
-      for (std::map<symbol_exprt, std::vector<unsigned> >::iterator it = symbs.begin();
-          it != symbs.end(); ++it){
-        for (unsigned j = 0; j < (it->second).size(); j++){
-          if ((it->second)[j] == itp_symb[i]){
-            unique_symb[it->first]++;
-            break;
-          }
-        }
-      }
-    }
-
-    for (std::map<symbol_exprt, unsigned>::iterator it = unique_symb.begin(); it != unique_symb.end(); ++it){
-      std::cout << (it->first).get_identifier() << " (" << it->second << ")\n";
-    }
-#   endif
 
     tid++;
 
     if (itp.is_trivial()) {
-#     ifdef DEBUG_ITP
-      std::cout << "Trivial interpolant." << std::endl;
-#     endif
+      std::cout << "Interpolant for function: " <<
+                partition.get_iface().function_id.c_str() << " is trivial." << std::endl;
       continue;
     }
 
@@ -862,12 +757,12 @@ void partitioning_target_equationt::extract_interpolants(
       std::cout << "Skip interpolants for nested recursion calls." << std::endl;
       continue;
     }
-    
+
     // Generalize the interpolant
     fill_common_symbols(partition, common_symbs);
 
 #   ifdef DEBUG_ITP
-    std::cout << "Interpolant for function: " << 
+    std::cout << "Interpolant for function: " <<
             partition.get_iface().function_id.c_str() << std::endl;
     std::cout << "Common symbols (" << common_symbs.size() << "):" << std::endl;
     for (std::vector<symbol_exprt>::iterator it = common_symbs.begin();
@@ -876,7 +771,7 @@ void partitioning_target_equationt::extract_interpolants(
 
     std::cout << "Generalizing interpolant" << std::endl;
 #   endif
-    
+
     itp.generalize(decider, common_symbs);
 
     if (itp.is_trivial()) {
@@ -885,7 +780,7 @@ void partitioning_target_equationt::extract_interpolants(
 
     // Store the interpolant
     summary_idt summary_id = summary_store.insert_summary(itp);
-    
+
     interpolant_map.push_back(interpolant_mapt::value_type(
       &partition.get_iface(), summary_id));
   }
@@ -932,36 +827,3 @@ void partitioning_target_equationt::fill_partition_ids(
   }
 }
 
-
-#ifdef USE_PERIPLO
-/*******************************************************************\
-
-Function: partitioning_target_equationt::fill_partition_tree
-
-  Inputs:
-
- Outputs:
-
- Purpose: Fill a tree from all the child partitions
-
-\*******************************************************************/
-InterpolationTree* partitioning_target_equationt::fill_partition_tree(
-    partitiont& partition)
-{
-  InterpolationTree* itp_tree;
-  itp_tree = new InterpolationTree(partition.fle_part_id);
-
-  // Child partition ids
-  for (partition_idst::iterator it = partition.child_ids.begin()++;
-          it != partition.child_ids.end(); ++it) {
-    partitiont& partition = partitions[*it];
-    if (!partition.invalid){
-      InterpolationTree* child_tree = fill_partition_tree(partition);
-      (*itp_tree).addChild(child_tree);
-    }
-  }
-
-  return itp_tree;
-}
-
-#endif

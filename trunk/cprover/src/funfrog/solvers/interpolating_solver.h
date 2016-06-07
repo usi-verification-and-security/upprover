@@ -16,18 +16,10 @@ Author: Ondrej Sery
 
 #include "prop_itp.h"
 
-//#define DEBUG_COLOR_ITP
-#define PRODUCE_PROOF
-#include "Global.h"
-
 
 typedef int fle_part_idt;
 typedef std::vector<fle_part_idt> fle_part_idst;
 typedef std::vector<fle_part_idst> interpolation_taskt;
-
-# ifdef USE_PERIPLO
-using namespace periplo;
-# endif
 
 class interpolating_solvert
 {
@@ -46,32 +38,10 @@ public:
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants)=0;
-  
-# ifdef USE_PERIPLO
-
-  virtual void get_part_interpolant(const std::vector<pair<unsigned, bool> >& assignment,
-      const interpolation_taskt& partition_ids, interpolantst& interpolants)=0;
-
-  virtual void get_interpolant(InterpolationTree*, const interpolation_taskt& partition_ids,
-    interpolantst& interpolants)=0;
-
-  virtual bool is_tree_interpolants() const=0;
-# endif
 
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const=0;
-
-  virtual void addAB(const std::vector<unsigned>& symbolsA, const std::vector<unsigned>& symbolsB,
-      const std::vector<unsigned>& symbolsAB)=0;
-
-  virtual void addBitBlastBinding(boolbv_mapt::literal_mapt& map)=0;
-
-
-
-# ifdef DEBUG_COLOR_ITP
-  virtual std::vector<unsigned>& get_itp_symb(unsigned i)=0;
-# endif
 
 };
 

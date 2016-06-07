@@ -16,10 +16,6 @@
 #include <ui_message.h>
 #include "prop_assertion_sum.h"
 
-//#define ADD_BITBLAST_BINDING
-
-//#define USE_EXEC_ORDER_ERROR_TRACE
-
 fine_timet global_satsolver_time;
 fine_timet global_sat_conversion_time;
 
@@ -48,14 +44,6 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
   before=current_time();
   equation.convert(decider, interpolator);
 
-# ifdef ADD_BITBLAST_BINDING
-  boolbv_mapt& map = const_cast<boolbv_mapt&>(dynamic_cast<boolbvt&>(decider).get_map());
-  for (boolbv_mapt::mappingt::iterator it = map.mapping.begin();
-      it != map.mapping.end(); ++it){
-    std::cout << "Sending BitBlast Binding for variable " << it->first << " ("<< (it->second).literal_map.size() <<" literals)\n";
-    interpolator.addBitBlastBinding((it->second).literal_map);
-  }
-# endif
 
   after=current_time();
 //  global_sat_conversion_time += (after-before);
@@ -76,6 +64,7 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
   }
   else
   {
+    status("ASSERTION IS VIOLATED");
     /* error_trace(decider, ns);
     //std::cout << std::endl << "NONDET assigns:" << std::endl;
 
@@ -184,7 +173,6 @@ void build_exec_order_goto_trace(
       it++)
   {
     const symex_target_equationt::SSA_stept &SSA_step=**it;
-    
     if(prop_conv.prop.l_get(SSA_step.guard_literal)!=tvt(true))
       continue;
 

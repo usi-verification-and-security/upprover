@@ -9,6 +9,7 @@
 #ifndef _CPROVER_LOOPFROG_CHECK_CLAIMS_H_
 #define _CPROVER_LOOPFROG_CHECK_CLAIMS_H_
 
+#include <cstdlib>
 #include <options.h>
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
@@ -70,7 +71,7 @@ void store_claims(const namespacet &ns,
     const claim_mapt &claim_map,
     const claim_numberst &claim_numbers);
 
-claim_statst check_claims(
+void check_claims(
   const namespacet &ns,
   goto_programt &leaping_program,
   const goto_functionst &goto_functions,

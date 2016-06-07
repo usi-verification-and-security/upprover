@@ -10,9 +10,6 @@
 
 #include <config.h>
 
-#include <iostream>
-#include <fstream>
-
 #include <sys/time.h>
 #include <sys/stat.h>
 #ifndef _WIN32
@@ -315,7 +312,6 @@ int funfrog_parseoptionst::doit()
   if(check_function_summarization(ns, goto_functions))
     return 1;
 
-
   status("#X: Done.");
 
   return 0;
@@ -336,10 +332,10 @@ int funfrog_parseoptionst::doit()
 void funfrog_parseoptionst::help()
 {
   std::cout <<"\n"
-    "* * *                eVolCheck "EVOLCHECK_VERSION
+    "* * *                eVolCheck " << EVOLCHECK_VERSION
     " - Copyright (C) 2013               * * *\n"
     "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
-    "                based on FUNFROG "FUNFROG_VERSION
+    "                based on FUNFROG " << FUNFROG_VERSION
     " - Copyright (C) 2013               * * *\n"
     "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
   "\n"
@@ -399,37 +395,6 @@ void funfrog_parseoptionst::help()
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
   "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
-
-#ifdef USE_PERIPLO
-  "\nPeRIPLO options (only if compiled):\n"
-  //  "--reduce-proof-time <fraction> use up to <fraction> of SAT solving time\n"
-  //  "                               to reduce proof --> smaller summaries\n"
-  "--reduce-proof-graph <int>     use <int> graph traversals for each global loop\n"
-  "                                               --> smaller summaries\n"
-  "--reduce-proof-loops <int>     use <int> global reduction loops\n"
-  "                                               --> smaller summaries\n"
-  "--tree-interpolants            produce tree interpolants\n"
-  "--color-proof <mode>:          try different coloring strategies:\n"
-  "  0                            random\n"
-  "  1                            from external file \"__common\"\n"
-  "  2                            TBD\n"
-  "--itp-algorithm <mode>:        set up interpolating algorithm:\n"
-  "  0                            Pudlak\n"
-  "  1                            McMillan\n"
-  "  2                            McMillanPrime\n"
-  "--proof-trans <mode>:          transform proof:\n"
-  "  1                            to make stronger interpolants\n"
-  "  2                            to make weaker interpolants\n"
-  "--part-itp <int,int,..>        try partial interpolants\n"
-  "                               (specify clauses to be deleted)\n"
-  "--check-itp                    check interpolants with Z3\n"
-  "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
-#else
-  "\nOpenSMT options :\n"
-  "--random-seed <number>         set up random seed to manipulate proof size\n"
-  "--verbose-solver <number>      set SAT solver verbosity (if applicable)\n"
-#endif
-
   "\nRefinement options:\n"
   "--refine-mode <mode>:\n"
   "  0 | \"force-inlining\"         inline every function call\n"
@@ -587,8 +552,7 @@ bool funfrog_parseoptionst::check_function_summarization(
     if (cmdline.isset("claims-order"))
       store_claims(ns, claim_map, claim_numbers);
 
-    before=current_time();
-    claim_statst stats = check_claims(ns,
+    check_claims(ns,
                                       goto_functions.function_map[ID_main].body,
                                       goto_functions,
                                       claim_map,
@@ -596,7 +560,6 @@ bool funfrog_parseoptionst::check_function_summarization(
                                       options,
                                       ui_message_handler,
                                       claim_nr);
-    after=current_time();
   }
 
   return 0;

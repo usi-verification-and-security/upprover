@@ -11,9 +11,11 @@
 #ifndef CPROVER_PARTITION_IFACE_H
 #define	CPROVER_PARTITION_IFACE_H
 
+#include <iostream>
 #include <list>
 #include <type.h>
 #include <symbol.h>
+
 
 #include "summary_info.h"
 #include "partition.h"
@@ -120,91 +122,6 @@ public:
 #   endif
   }
 
-  void distribute_A_B(){
-    // random choice
-    for (std::map<symbol_exprt, std::vector<unsigned> >::iterator it = common_symbols.begin();
-        it != common_symbols.end(); ++it){
-      int rnd = rand() % 1000;
-      if (rnd < 333){
-        A_vars.insert(A_vars.end(), (it->second).begin(), (it->second).end());
-      } if (rnd > 666){
-        B_vars.insert(B_vars.end(), (it->second).begin(), (it->second).end());
-      } else {
-        AB_vars.insert(AB_vars.end(), (it->second).begin(), (it->second).end());
-      }
-    }
-    std::cout << function_id << " --- Random coloring is applied." <<std::endl;
-  }
-
-  void serialize_common(const std::string& file)
-  {
-    std::ofstream out;
-    out.open(file.c_str());
-
-    if (out.fail()) {
-      std::cerr << "Failed to serialise common symbols (file: "
-          << file << " cannot be accessed)." << std::endl;
-      return;
-    }
-
-    for (std::map<symbol_exprt, std::vector<unsigned> >::iterator it = common_symbols.begin();
-        it != common_symbols.end(); ++it){
-      out << (it->first).get_identifier() << "|A|"<< std::endl;
-    }
-    std::cout << "Common symbols are successfully serialised to file \"" << file << "\"." <<std::endl;
-  }
-
-  bool is_marked_A(symbol_exprt sym, std::vector<std::string>& tmp){
-    for (unsigned i = 0; i < tmp.size() - 1; i++){
-      if (sym.get_identifier() == tmp[i] && tmp[i+1] == "A"){
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool is_marked_B(symbol_exprt sym, std::vector<std::string>& tmp){
-    for (unsigned i = 0; i < tmp.size() - 1; i++){
-      if (sym.get_identifier() == tmp[i] && tmp[i+1] == "B"){
-        return true;
-      }
-    }
-    return false;
-  }
-
-  bool deserialize_common(const std::string& file){
-    std::vector<std::string> tmp;
-    std::ifstream in;
-    in.open(file.c_str());
-    if (in.fail()) {
-      std::cout << "No file \"" << file << "\" found." <<std::endl;
-      return false;
-    }
-    std::string part;
-    while (getline(in, part, '|')){
-      try {
-        part = part.substr(part.find_first_not_of("\n\r"));
-      } catch (std::out_of_range& oor) {}
-      tmp.push_back(part);
-    }
-    in.close();
-
-    for (std::map<symbol_exprt, std::vector<unsigned> >::iterator it = common_symbols.begin();
-        it != common_symbols.end(); ++it){
-      if (is_marked_A(it->first, tmp)){
-        std::cout << (it->first).get_identifier() << " is marked A\n";
-        A_vars.insert(A_vars.end(), (it->second).begin(), (it->second).end());
-      } else if (is_marked_B(it->first, tmp)) {
-        std::cout << (it->first).get_identifier() << " is marked B\n";
-        B_vars.insert(B_vars.end(), (it->second).begin(), (it->second).end());
-      } else {
-        std::cout << (it->first).get_identifier() << " is marked AB\n";
-        AB_vars.insert(AB_vars.end(), (it->second).begin(), (it->second).end());
-      }
-    }
-    std::cout << "Coloring from file \"" << file << "\" is applied." <<std::endl;
-    return true;
-  }
 };
 
 typedef std::list<partition_ifacet*> partition_iface_ptrst;

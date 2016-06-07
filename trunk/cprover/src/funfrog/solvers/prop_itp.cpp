@@ -357,9 +357,9 @@ void prop_itpt::generalize(const prop_convt& decider,
         continue;
       } 
 
-      unsigned idx = it2->var_no() - min_var;
+      int idx = it2->var_no() - min_var;
       // Sanity check, all variables used in the interpolant should be mapped.
-      assert (it2->var_no() >= min_var);
+      assert (idx >= 0);
       assert(renaming[idx] != UINT_MAX);
       it2->set(renaming[idx], it2->sign());
       used_symbols[represented_symbol[idx]] = true;
@@ -568,7 +568,7 @@ literalt prop_itpt::raw_assert(propt& prop_decider) const
           it2->invert();
       }
     }
-    
+
 #   ifdef DEBUG_ITP
     print_clause(std::cout, tmp_clause);
     std::cout << std::endl;

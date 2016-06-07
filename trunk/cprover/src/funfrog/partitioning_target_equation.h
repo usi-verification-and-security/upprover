@@ -16,9 +16,6 @@ Author: Ondrej Sery
 #include "partition_iface.h"
 #include "summarization_context.h"
 
-#define PRODUCE_PROOF
-#include "Global.h"
-
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 
 typedef enum {
@@ -256,12 +253,6 @@ private:
   // Fill in ids of all the child partitions
   void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
 
-#ifdef USE_PERIPLO
-  InterpolationTree* fill_partition_tree(
-      partitiont& partition);
-  bool do_partial_itp();
-#endif
-
   // Fills in the SSA_steps_exec_order holding pointers to SSA steps ordered
   // in the order of program execution (i.e., as they would be normally
   // ordered in symex_target_equation).
@@ -294,10 +285,6 @@ private:
   coloring_modet coloring_mode;
 
   std::vector<unsigned>& clauses;
-
-#ifdef USE_PERIPLO
-  std::vector<pair<unsigned, bool> > part_clauses;
-#endif
 
   friend class partitioning_slicet;
 };

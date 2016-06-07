@@ -4,7 +4,7 @@ SHARED_SRC := \
       expr_pretty_print.cpp \
       function_info.cpp \
       summary_store.cpp \
-      solvers/satcheck_periplo.cpp \
+      solvers/satcheck_opensmt2.cpp \
       solvers/prop_itp.cpp
 
 FUNFROG_SRC := \
@@ -83,63 +83,23 @@ SRC := ${FUNFROG_SRC} ${SUMO_SRC} ${DIFF_SRC}
 
 include ../common
 
-all: evolcheck$(EXEEXT) sumo$(EXEEXT)
+CP_CXXFLAGS += -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING
 
-PERIPLO_SRCDIR ?= /home/leonardo/devel/periplo
+all: evolcheck$(EXEEXT) 
 
-PERIPLO_INCLUDE ?= -I$(PERIPLO_SRCDIR)/src -I$(PERIPLO_SRCDIR)/src/minisat -I$(PERIPLO_SRCDIR)/src/minisat/mtl -I$(PERIPLO_SRCDIR)/src/minisat/core -I$(PERIPLO_SRCDIR)/src/minisat/utils/ -I$(PERIPLO_SRCDIR)/src/satsolvers -I$(PERIPLO_SRCDIR)/src/simplifiers -I$(PERIPLO_SRCDIR)/src/common -I$(PERIPLO_SRCDIR)/src/egraph -I$(PERIPLO_SRCDIR)/src/sorts -I$(PERIPLO_SRCDIR)/src/cnfizers -I$(PERIPLO_SRCDIR)/src/proof -I$(PERIPLO_SRCDIR)/src/api
+INCLUDES :=  -I .. -I ../util 
 
-INCLUDES := $(PERIPLO_INCLUDE) -I .. -I ../util
-
-#LIBS := -L/home/loris/libs/lib
-ifeq ($(origin PERIPLO_LIBDIR), undefined)
-    LIBS := -L/usr/lib
-else
-    LIBS := -L$(PERIPLO_LIBDIR)
-endif
-
-GCCFLAGS += -DUSE_PERIPLO 
-
-CP_CXXFLAGS += -DUSE_PERIPLO -DFULL_LABELING
-
-ifneq ($(wildcard ../bv_refinement/Makefile),)
-  OBJ += ../bv_refinement/bv_refinement$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_BV_REFINEMENT
-endif
-
-ifneq ($(wildcard ../cpp/Makefile),)
-  OBJ += ../cpp/cpp$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_CPP
-endif
-
-ifneq ($(wildcard ../java_bytecode/Makefile),)
-  OBJ += ../java_bytecode/java_bytecode$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_JAVA_BYTECODE
-endif
-
-ifneq ($(wildcard ../specc/Makefile),)
-  OBJ += ../specc/specc$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_SPECC
-endif
-
-ifneq ($(wildcard ../php/Makefile),)
-  OBJ += ../php/php$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_PHP
-endif
 
 ###############################################################################
 
 evolcheck$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) -static -lperiplolibrary -lgmpxx -lgmp  
-
-funfrog$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) -static -lperiplolibrary -lgmpxx -lgmp 
+	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline 
 
 sumo$(EXEEXT): $(SUMO_OBJ)
-	$(LINKBIN) -static -lperiplolibrary -lgmpxx -lgmp 
+	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline
 
 diff$(EXEEXT): $(DIFF_OBJ)
-	$(LINKBIN) -static
+	$(LINKBIN)
 	mv diff goto-diff
 
 clean:

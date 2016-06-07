@@ -10,6 +10,7 @@
 #define CPROVER_SYMEX_ASSERTION_SUM_H
 
 #include <queue>
+#include <cstdlib>
 
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
