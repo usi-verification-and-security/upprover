@@ -40,7 +40,29 @@ public:
           upgrade_checking(_upgrade_checking),
           store_summaries_with_assertion(_store_summaries_with_assertion),
           coloring_mode(_coloring_mode),
-          clauses(_clauses){
+          clauses(_clauses),
+		  out_local_terms(0),
+		  out_terms(out_local_terms),
+		  out_local_basic(0),
+		  out_basic(out_local_basic),
+		  out_local_partition(0),
+		  out_partition(out_local_partition),
+		  terms_counter(0),
+		  is_first_call(true),
+		  first_call_expr(0)
+		  {
+	  partition_smt_decl = new std::map <std::string,exprt>();
+	  out_terms.rdbuf(&terms_buf);
+	  out_basic.rdbuf(&basic_buf);
+	  out_partition.rdbuf(&partition_buf);
+
+  }
+
+  // First this called and then the parent d'tor due to the use of virtual
+  virtual ~partitioning_target_equationt() {
+	  partition_smt_decl->clear();
+	  delete partition_smt_decl;
+	  first_call_expr = 0; // Not here to do the delete
   }
 
   // Convert all the SSA steps into the corresponding formulas in
@@ -190,6 +212,33 @@ private:
   // Id of the currently selected partition
   partition_idt current_partition_id;
 
+  // For SMT-Lib Translation - Move it later to a new class
+  std::map <std::string,exprt>* partition_smt_decl;
+  std::ostream out_local_terms; //for prints SSA - remove later
+  std::ostream& out_terms; // for prints SSA - remove later
+  std::stringbuf terms_buf; // for prints SSA - remove later
+
+  std::ostream out_local_basic; //for prints SSA - remove later
+  std::ostream& out_basic; // for prints SSA - remove later
+  std::stringbuf basic_buf; // for prints SSA - remove later
+
+  std::ostream out_local_partition; //for prints SSA - remove later
+  std::ostream& out_partition; // for prints SSA - remove later
+  std::stringbuf partition_buf; // for prints SSA - remove later
+
+  int terms_counter; // for prints SSA - remove later
+  bool is_first_call; // for prints SSA - remove later
+  const exprt* first_call_expr; // for prints SSA - remove later
+
+  // Print decl (later change to create)
+  std::ostream& print_decl_smt(std::ostream& out);
+  void print_all_partition(std::ostream& out);
+  void print_partition();
+  void addToDeclMap(const exprt &expr);
+  void saveFirstCallExpr(const exprt& expr);
+  bool isFirstCallExpr(const exprt& expr);
+  void getFirstCallExpr();
+
   // Convert a specific partition of SSA steps
   void convert_partition(prop_convt &prop_conv,
     interpolating_solvert &interpolator, partitiont& partition);
@@ -198,7 +247,7 @@ private:
     partitiont& partition);
   // Convert a specific partition assignments of SSA steps
   void convert_partition_assignments(prop_convt &prop_conv,
-    partitiont& partition) const;
+    partitiont& partition);
   // Convert a specific partition assumptions of SSA steps
   void convert_partition_assumptions(prop_convt &prop_conv,
     partitiont& partition);

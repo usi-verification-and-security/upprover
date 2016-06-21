@@ -15,7 +15,8 @@ Author: Ondrej Sery
 #include "expr_pretty_print.h"
 #include "solvers/sat/cnf.h"
 
-//#define DEBUG_SSA
+#define DEBUG_SSA
+//#define DEBUG_SSA_OLD // belongs only to the old version with BV
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
 
@@ -34,19 +35,20 @@ Author: Ondrej Sery
  the corresponding partitions
 
 \*******************************************************************/
-void partitioning_target_equationt::convert(prop_convt &prop_conv, 
+void partitioning_target_equationt::convert(prop_convt &prop_conv,
           interpolating_solvert &interpolator)
 {
+	getFirstCallExpr(); // Save the first call to the first function
   int part_id = partitions.size();
   for (partitionst::reverse_iterator it = partitions.rbegin();
           it != partitions.rend(); ++it) {
 //#   ifdef DEBUG_SSA
-    std::cout << "XXX" << std::string(77, '=') << std::endl;
+	  //cout << "XXX" << std::string(77, '=') << std::endl;
 #   ifdef DEBUG_ENCODING
     unsigned vars_before = prop_conv.prop.no_variables();
     unsigned clauses_before = dynamic_cast<cnf_solvert&>(prop_conv.prop).no_clauses();
 #   endif
-    std::cout << "XXX Partition: " << --part_id <<
+    out_basic << "XXX Partition: " << --part_id <<
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             " (loc: " << it->get_iface().summary_info.get_call_location() << ", " <<
@@ -55,6 +57,10 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
             std::endl;
 //#   endif
     convert_partition(prop_conv, interpolator, *it);
+
+    // Print partition into a buffer after the headers: basic and code
+    print_partition();
+
 #   ifdef DEBUG_ENCODING
     unsigned vars_after = prop_conv.prop.no_variables();
     unsigned clauses_after = dynamic_cast<cnf_solvert&>(prop_conv.prop).no_clauses();
@@ -80,6 +86,9 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
     it->vars = vars_total;
 #   endif
   }
+
+  // Print all after the headers: decl and code
+  print_all_partition(std::cout);
 }
 
 /*******************************************************************\
@@ -93,7 +102,7 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
  Purpose: Convert a specific partition of SSA steps
 
 \*******************************************************************/
-void partitioning_target_equationt::convert_partition(prop_convt &prop_conv, 
+void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
     interpolating_solvert &interpolator, partitiont& partition)
 {
   if (partition.ignore || partition.processed || partition.invalid) {
@@ -217,7 +226,7 @@ Function: partitioning_target_equationt::convert_partition_assignments
 \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_assignments(
-  prop_convt &prop_conv, partitiont& partition) const
+  prop_convt &prop_conv, partitiont& partition)
 {
   for(SSA_stepst::const_iterator it = partition.start_it;
       it != partition.end_it; ++it)
@@ -227,7 +236,10 @@ void partitioning_target_equationt::convert_partition_assignments(
       exprt tmp(it->cond_expr);
 
 #     ifdef DEBUG_SSA
-      expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);
+      //expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);
+      //expr_ssa_print_test(&partition_smt_decl, out_code << "(assign ", tmp);
+      expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
+      terms_counter++;
 #     endif
 
       prop_conv.set_to_true(tmp);
@@ -260,7 +272,9 @@ void partitioning_target_equationt::convert_partition_guards(
       exprt tmp(it->guard);
 
 #     ifdef DEBUG_SSA
-      expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
+      //expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
+      expr_ssa_print_guard(out_terms , tmp, partition_smt_decl);
+      if (!tmp.is_boolean()) terms_counter++; // SSA -> SMT shall be all in a new function
 #     endif
 
       it->guard_literal=prop_conv.convert(tmp);
@@ -294,8 +308,11 @@ void partitioning_target_equationt::convert_partition_assumptions(
       {
         exprt tmp(it->cond_expr);
 
-#       ifdef DEBUG_SSA      
-        expr_pretty_print(std::cout << "ASSUME-OUT:" << std::endl, tmp, 2);
+//#       ifdef DEBUG_SSA
+#		ifdef DEBUG_SSA_OLD
+//        expr_pretty_print(std::cout << "ASSUME-OUT:" << std::endl, tmp, 2);
+          expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
+          terms_counter++;
 #       endif
 
         it->cond_literal=prop_conv.convert(tmp);
@@ -331,12 +348,15 @@ void partitioning_target_equationt::convert_partition_assertions(
   literalt assumption_literal=const_literal(true);
 
   for (SSA_stepst::iterator it = partition.start_it;
-      it != partition.end_it; ++it) {
-    if (it->is_assert() && !it->ignore)
-    {
+    it != partition.end_it; ++it) {
 
-#     ifdef DEBUG_SSA      
-      expr_pretty_print(std::cout << "ASSERT-OUT:" << std::endl, it->cond_expr);
+    if ((it->is_assert()) && !(it->ignore))
+    {
+//#     ifdef DEBUG_SSA
+#	  ifdef DEBUG_SSA_OLD
+        //expr_pretty_print(std::cout << "ASSERT-OUT:" << std::endl, it->cond_expr);
+    	expr_ssa_print(out_terms << "    " , it->cond_expr, partition_smt_decl, true);
+    	terms_counter++;
 #     endif
 
       // Collect ass \in assertions(f) in bv
@@ -361,15 +381,31 @@ void partitioning_target_equationt::convert_partition_assertions(
 
         literalt tmp = prop_conv.prop.land(assumption_literal, it->guard_literal);
         prop_conv.prop.set_equal(tmp, target_partition_iface.callstart_literal);
-        
-        #ifdef DEBUG_SSA      
-        expr_pretty_print(std::cout << "XXX Call START equality: ",
-                target_partition_iface.callstart_symbol);
-        expr_pretty_print(std::cout << "  = ", it->guard);
+        // expr_ssa_print(out_code << "(assert " , it->cond_expr, partition_smt_decl, false);
+        #ifdef DEBUG_SSA
+		//#ifdef DEBUG_SSA_OLD
+        //expr_pretty_print(std::cout << "XXX Call START equality: ",
+        //        target_partition_iface.callstart_symbol);
+        //expr_pretty_print(std::cout << "  = ", it->guard);
+        //out_terms << "XXX Call START equality: \n";
+        terms_counter++;
+		std::ostream out_temp2(0); std::stringbuf temp2_buf; out_temp2.rdbuf(&temp2_buf); // Pre-order printing
+		int assume_counter=0;
+        expr_ssa_print(out_temp2 << "    (= ", target_partition_iface.callstart_symbol, partition_smt_decl, false);
+        //expr_ssa_print(out_temp2 << "        ", it->guard, partition_smt_decl, false);
         for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
           if (it2->is_assume() && !it2->ignore) {
-            expr_pretty_print(std::cout << "  & ", it2->cond_expr);
+        	assume_counter++;
+            //expr_pretty_print(std::cout << "  & ", it2->cond_expr);
+        	//expr_ssa_print(out_terms << "      & ", it2->cond_expr, partition_smt_decl, false);
+			expr_ssa_print(out_temp2 << "        ", it2->cond_expr, partition_smt_decl, false);
           }
+        }
+        // If there are more than one term - add and
+        switch (assume_counter) {
+			case 0: out_terms << temp2_buf.str() << "        true\n" << "    )\n"; break; // Shall be called only once at the beginning of the code
+			case 1: out_terms << temp2_buf.str() << "    )\n"; break;
+			default: out_terms << "    (and \n  " << temp2_buf.str() << "      )\n" << "    )\n"; break;
         }
         #endif
       }
@@ -407,10 +443,24 @@ void partitioning_target_equationt::convert_partition_assertions(
       prop_conv.prop.lcnf(bv);
       
       #ifdef DEBUG_SSA
-      std::cout << "XXX Encoding error in ROOT: " << std::endl;
+      //out_terms << "XXX Encoding error in ROOT: " << std::endl;
+
+      // Pre-order printing
+      std::ostream out_temp1(0);
+      std::stringbuf temp1_buf;
+      out_temp1.rdbuf(&temp1_buf);
+
+      int assert_counter=0;
+
       for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
         if (it->is_assert() && !it->ignore) {
-          expr_pretty_print(std::cout << "  | ", it->cond_expr);
+          assert_counter++;
+          //expr_pretty_print(std::cout << "  | ", it->cond_expr);
+          //expr_ssa_print(out_terms << "  | ", it->cond_expr, partition_smt_decl, false);
+          if (assert_counter == 1)
+			  expr_ssa_print(out_temp1, it->cond_expr, partition_smt_decl, false);
+		  else
+			  expr_ssa_print(out_temp1 << "        ", it->cond_expr, partition_smt_decl, false);
         }
       }
       for (partition_idst::const_iterator it = partition.child_ids.begin(); 
@@ -421,8 +471,19 @@ void partitioning_target_equationt::convert_partition_assertions(
 
         if (!target_partition.ignore && 
                 target_partition_iface.assertion_in_subtree) {
-          expr_pretty_print(std::cout << "  | ", target_partition_iface.error_symbol);
+          assert_counter++;
+          //expr_pretty_print(std::cout << "  | ", target_partition_iface.error_symbol);
+          //expr_ssa_print(out_terms << "  | ", target_partition_iface.error_symbol, partition_smt_decl, false);
+          if (assert_counter == 1)
+			  expr_ssa_print(out_temp1, target_partition_iface.error_symbol, partition_smt_decl, false);
+		  else
+			  expr_ssa_print(out_temp1 << "        ", target_partition_iface.error_symbol, partition_smt_decl, false);
         }
+      }
+      if (assert_counter > 0) {
+    	  terms_counter++;
+    	  if (assert_counter == 1) out_terms << "    " << temp1_buf.str().substr(4);
+    	  else out_terms << "    (or \n      (" << temp1_buf.str() << "      )\n" << "    )\n";
       }
       #endif
     } 
@@ -432,11 +493,19 @@ void partitioning_target_equationt::convert_partition_assertions(
       prop_conv.prop.set_equal(tmp, partition_iface.error_literal);
       
       #ifdef DEBUG_SSA
-      expr_pretty_print(std::cout << "XXX Encoding error_f: ",
-              partition_iface.error_symbol);
+      //#ifdef DEBUG_SSA_OLD
+      //expr_pretty_print(std::cout << "XXX Encoding error_f: ",
+      //out_terms << "XXX Encoding error_f: \n";
+      terms_counter++;
+      expr_ssa_print(out_terms << "    (= ",
+              partition_iface.error_symbol, partition_smt_decl, false);
+      std::ostream out_temp_assert(0); std::stringbuf temp_assert_buf; out_temp_assert.rdbuf(&temp_assert_buf); // Pre-order printing
+      int assert_counter=0;
       for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
         if (it->is_assert() && !it->ignore) {
-          expr_pretty_print(std::cout << "  | ", it->cond_expr);
+          assert_counter++;
+          expr_ssa_print(out_temp_assert << "          ", it->cond_expr, partition_smt_decl, false);
+          //expr_pretty_print(std::cout << "  | ", it->cond_expr);
         }
       }
       for (partition_idst::const_iterator it = partition.child_ids.begin(); 
@@ -447,8 +516,25 @@ void partitioning_target_equationt::convert_partition_assertions(
 
         if (!target_partition.ignore && 
                 target_partition_iface.assertion_in_subtree) {
-          expr_pretty_print(std::cout << "  | ", target_partition_iface.error_symbol);
+        	assert_counter++;
+        	expr_ssa_print(out_temp_assert << "          ", target_partition_iface.error_symbol,partition_smt_decl, false);
         }
+      }
+      std::ostream out_temp_assume(0); std::stringbuf temp_assume_buf; out_temp_assume.rdbuf(&temp_assume_buf); // Pre-order printing
+	  int assume_counter=0;
+	  for (symex_target_equationt::SSA_stepst::iterator it2 = partition.start_it; it2 != partition.end_it; ++it2) {
+		  if (it2->is_assume() && !it2->ignore) {
+			  assume_counter++;
+			  expr_ssa_print(out_temp_assume << "            ", it2->cond_expr, partition_smt_decl, false);
+		  }
+	  }
+	  std::string assume_code ="";
+      if (assume_counter > 1) assume_code = "          (and \n" + temp_assume_buf.str() + "          )\n";
+      else assume_code = temp_assume_buf.str();
+      if (assert_counter > 0) {
+    	  terms_counter++;
+    	  if (assert_counter == 1) out_terms << "      (not\n        (=>\n" << assume_code << temp_assert_buf.str() << "        )\n      )\n    )\n";
+    	  else out_terms << "      (not\n        (=>\n" << assume_code << "          (or \n  " << temp_assert_buf.str() << "          )\n        )\n      )\n    )\n";
       }
       #endif
     }
@@ -478,12 +564,25 @@ void partitioning_target_equationt::convert_partition_assertions(
     prop_conv.prop.l_set_to_true(tmp);
 
 #   ifdef DEBUG_SSA
-    expr_pretty_print(std::cout << "XXX Call END implication: ", partition_iface.callend_symbol);
-    for (SSA_stepst::iterator it2 = partition.start_it; it2 != partition.end_it; ++it2) {
-      if (it2->is_assume()) {
-        expr_pretty_print(std::cout << "  => ", it2->cond_expr);
-      }
-    }
+	//expr_pretty_print(std::cout << "XXX Call END implication: ", partition_iface.callend_symbol);
+    //out_terms << "XXX Call END implication: \n";
+    terms_counter++;
+    expr_ssa_print(out_terms << "    (=> ", partition_iface.callend_symbol, partition_smt_decl, false, true);
+	std::ostream out_temp(0); std::stringbuf temp_buf; out_temp.rdbuf(&temp_buf); // Pre-order printing
+    int assume_counter=0;
+	for (symex_target_equationt::SSA_stepst::iterator it2 = partition.start_it; it2 != partition.end_it; ++it2) {
+	  if (it2->is_assume() && !it2->ignore) {
+		if (assume_counter == 0 && isFirstCallExpr(it2->cond_expr)) {assume_counter++; expr_ssa_print(out_temp << "        ", it2->guard, partition_smt_decl, false);}
+		assume_counter++; expr_ssa_print(out_temp << "        ", it2->cond_expr, partition_smt_decl, false);
+	  }
+	}
+    if (assume_counter > 1) out_terms << "\n      (and \n" << temp_buf.str() << "      )\n" << "    )\n";
+    else out_terms << "\n" << temp_buf.str() << "    )\n";
+    //for (SSA_stepst::iterator it2 = partition.start_it; it2 != partition.end_it; ++it2) {
+    //  if (it2->is_assume()) {
+    //    expr_pretty_print(std::cout << "  => ", it2->cond_expr);
+    //  }
+   // }
 #   endif
   }
 }
@@ -825,5 +924,81 @@ void partitioning_target_equationt::fill_partition_ids(
           it != partition.child_ids.end(); ++it) {
     fill_partition_ids(*it, part_ids);
   }
+}
+
+
+/***************************************************************************/
+std::ostream& partitioning_target_equationt::print_decl_smt(std::ostream& out) {
+	  if (partition_smt_decl->empty())
+		  return out;
+	  else {
+		  // Print all decl
+		  for (std::map<std::string,exprt>::iterator it=partition_smt_decl->begin(); it!=partition_smt_decl->end(); ++it) {
+			  out << "(declare-fun " << it->first << ")" << std::endl;
+		  }
+
+		  // At the end of the loop
+		  partition_smt_decl->clear(); //Ready for the next partition
+		  return out;
+	  }
+}
+
+void partitioning_target_equationt::print_partition() {
+	// When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
+	out_partition << "; " <<basic_buf.str();
+	if (terms_buf.str().length() > 0) {
+		out_partition << "(assert\n";
+		if (terms_counter > 1)
+			out_partition << "  (and\n" << terms_buf.str() << "  )\n)" << endl;
+		else
+			out_partition << terms_buf.str() << ")" << endl;
+	}
+
+	// Init for reuse
+	terms_buf.str("");
+	basic_buf.str("");
+	terms_counter = 0;
+}
+
+void partitioning_target_equationt::print_all_partition(std::ostream& out) {
+	  // for prints later on
+	  std::ostream out_decl(0);
+	  std::stringbuf decl_buf;
+	  out_decl.rdbuf(&decl_buf);
+
+	  // When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
+	  print_decl_smt(out_decl); // print the symbol decl
+	  cout << decl_buf.str() << partition_buf.str() << "(check-sat)\n";
+}
+
+// Not in use here
+void partitioning_target_equationt::addToDeclMap(const exprt &expr) {
+	if (partition_smt_decl == NULL) return;
+
+	std::ostream out_code(0);
+	std::stringbuf code_buf;
+	out_code.rdbuf(&code_buf);
+
+	out_code << expr.id().c_str() << " " << expr.type().id();
+	std::string key = code_buf.str();
+
+	if (partition_smt_decl->find(key) == partition_smt_decl->end())
+		partition_smt_decl->insert(make_pair(key,expr));
+}
+
+void partitioning_target_equationt::getFirstCallExpr() {
+	saveFirstCallExpr(partitions.at(1).get_iface().callstart_symbol);
+}
+void partitioning_target_equationt::saveFirstCallExpr(const exprt& expr) {
+	if (!is_first_call) return;
+	is_first_call = false;
+    first_call_expr = &expr;
+}
+
+bool partitioning_target_equationt::isFirstCallExpr(const exprt& expr) {
+	if (is_first_call) return false;
+
+	//return (first_call_expr->compare(expr) != 0); // for debug
+    return (first_call_expr->pretty().compare(expr.pretty()) != 0);
 }
 
