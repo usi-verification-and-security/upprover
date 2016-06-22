@@ -31,14 +31,11 @@ fine_timet global_sat_conversion_time;
 
 \*******************************************************************/
 
-bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, const namespacet &ns, prop_convt& decider, interpolating_solvert& interpolator)
+bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, const namespacet &ns, smtcheck_opensmt2t& decider, interpolating_solvert& interpolator)
 {
   //stream_message_handlert message_handler(out);
 
   bool sat=false;
-
-  decider.set_message_handler(message_handler);
-  decider.set_verbosity(10);
 
   fine_timet before, after;
   before=current_time();
@@ -125,12 +122,12 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 \*******************************************************************/
 
 bool prop_assertion_sumt::is_satisfiable(
-  decision_proceduret &decision_procedure)
+		smtcheck_opensmt2t& decider)
 {
   status("RESULT");
   fine_timet before, after;
   before=current_time();
-  decision_proceduret::resultt r = decision_procedure.dec_solve();
+  bool r = decider.solve();
   after=current_time();
   status() << "SOLVER TIME: " << (after-before) << eom;
 
@@ -138,35 +135,28 @@ bool prop_assertion_sumt::is_satisfiable(
   global_satsolver_time += (after-before);
 
   // solve it
-  switch (r)
+  if (!r)
   {
-    case decision_proceduret::D_UNSATISFIABLE:
-    {
       status("UNSAT - it holds!");
       return false;
-    }
-    case decision_proceduret::D_SATISFIABLE:
-    {
+    } else {
       status("SAT - doesn't hold");
       return true;
     }
 
-    default:
-      throw "unexpected result from dec_solve()";
-  }
 }
 
 // Copied from build_goto_tarce.cpp
 void build_exec_order_goto_trace(
   partitioning_target_equationt &target,
-  const prop_convt &prop_conv,
+  const smtcheck_opensmt2t &decider,
   const namespacet &ns,
   goto_tracet &goto_trace)
 {
   unsigned step_nr=0;
   
   const SSA_steps_orderingt& SSA_steps = target.get_steps_exec_order();
-  
+  /*GF: broken
   for(SSA_steps_orderingt::const_iterator
       it=SSA_steps.begin();
       it!=SSA_steps.end();
@@ -242,13 +232,13 @@ void build_exec_order_goto_trace(
       // This is not necessarily true for partitioned_target_equation
       //assert(goto_trace_step.cond_value);
     }
-  }
+  }*/
 }
 
-void prop_assertion_sumt::error_trace(const prop_convt &prop_conv, const namespacet &ns)
+void prop_assertion_sumt::error_trace(const smtcheck_opensmt2t &decider, const namespacet &ns)
 {
   status("Building error trace");
-
+/* GF: broken
   goto_tracet goto_trace;
 
 # ifndef USE_EXEC_ORDER_ERROR_TRACE
@@ -290,4 +280,5 @@ void prop_assertion_sumt::error_trace(const prop_convt &prop_conv, const namespa
   default:
     assert(false);
   }
+  */
 }

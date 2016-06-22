@@ -4,7 +4,7 @@ SHARED_SRC := \
       expr_pretty_print.cpp \
       function_info.cpp \
       summary_store.cpp \
-      solvers/satcheck_opensmt2.cpp \
+      solvers/smtcheck_opensmt2.cpp \
       solvers/prop_itp.cpp
 
 FUNFROG_SRC := \
@@ -19,7 +19,6 @@ FUNFROG_SRC := \
       check_claims.cpp \
       refiner_assertion_sum.cpp \
       prop_assertion_sum.cpp \
-      dependency_checker.cpp \
       symex_assertion_sum.cpp \
       summarizing_checker.cpp \
       upgrade_checker.cpp \

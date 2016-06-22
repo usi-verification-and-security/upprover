@@ -426,21 +426,21 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   {
     count++;
 
-    opensmt = new satcheck_opensmt2t();
+    decider = new smtcheck_opensmt2t();
 
-    interpolator.reset(opensmt);
-    bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
-    deciderp->unbounded_array = bv_pointerst::U_AUTO;
-    decider.reset(deciderp);
+//    interpolator.reset(opensmt);
+//    bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
+//    deciderp->unbounded_array = bv_pointerst::U_AUTO;
+//    decider.reset(deciderp);
 
     end = (count == 1) ? symex.prepare_subtree_SSA(assertion) :
           symex.refine_SSA (assertion, refiner.get_refined_functions(), true);
 
     if (!end){
 
-      end = prop.assertion_holds(assertion, ns, *decider, *interpolator);
+      end = prop.assertion_holds(assertion, ns, *decider, *decider);
       unsigned summaries_count = omega.get_summaries_count(summary_info);
-      if (end && interpolator->can_interpolate())
+      if (end && decider->can_interpolate())
       {
         extract_interpolants(prop, equation);
         status("Old summary is still valid");
@@ -494,7 +494,7 @@ void upgrade_checkert::extract_interpolants (prop_assertion_sumt& prop, partitio
   fine_timet before, after;
   before=current_time();
 
-  equation.extract_interpolants(*interpolator, *decider, itp_map);
+  equation.extract_interpolants(*decider, *decider, itp_map);
 
   after=current_time();
   status() << "INTERPOLATION TIME: " << (after-before) << eom;

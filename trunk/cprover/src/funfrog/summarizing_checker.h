@@ -18,7 +18,7 @@
 #include "prop_assertion_sum.h"
 #include "refiner_assertion_sum.h"
 
-#include "solvers/satcheck_opensmt2.h"
+#include "solvers/smtcheck_opensmt2.h"
 
 class summarizing_checkert:public messaget
 {
@@ -62,10 +62,10 @@ protected:
   summarization_contextt summarization_context;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
-  std::auto_ptr<prop_convt> decider;
-  std::auto_ptr<interpolating_solvert> interpolator;
+//  std::auto_ptr<prop_convt> decider;
+//  std::auto_ptr<interpolating_solvert> interpolator;
 
-  satcheck_opensmt2t* opensmt;
+  smtcheck_opensmt2t* decider;
 
   subst_scenariot omega;
   init_modet init;

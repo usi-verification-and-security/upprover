@@ -13,7 +13,7 @@
 
 #include <boost/pending/disjoint_sets.hpp>
 
-#include "solvers/satcheck_opensmt2.h"
+#include "solvers/smtcheck_opensmt2.h"
 
 #define INDEPT false
 #define DEPT true

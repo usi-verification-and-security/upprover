@@ -15,6 +15,7 @@ Author: Ondrej Sery
 
 #include "partition_iface.h"
 #include "summarization_context.h"
+#include "solvers/smtcheck_opensmt2.h"
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 
@@ -67,7 +68,7 @@ public:
 
   // Convert all the SSA steps into the corresponding formulas in
   // the corresponding partitions
-  void convert(prop_convt &prop_conv, interpolating_solvert &interpolator);
+  void convert(smtcheck_opensmt2t &decider, interpolating_solvert &interpolator);
 
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
@@ -174,7 +175,7 @@ public:
 
   // Extract interpolants corresponding to the created partitions
   void extract_interpolants(
-    interpolating_solvert& interpolator, const prop_convt& decider,
+    interpolating_solvert& interpolator, const smtcheck_opensmt2t& decider,
     interpolant_mapt& interpolant_map);
 
   // Returns SSA steps ordered in the order of program execution (i.e., as they
@@ -240,25 +241,25 @@ private:
   void getFirstCallExpr();
 
   // Convert a specific partition of SSA steps
-  void convert_partition(prop_convt &prop_conv,
+  void convert_partition(smtcheck_opensmt2t &decider,
     interpolating_solvert &interpolator, partitiont& partition);
   // Convert a specific partition guards of SSA steps
-  void convert_partition_guards(prop_convt &prop_conv,
+  void convert_partition_guards(smtcheck_opensmt2t &decider,
     partitiont& partition);
   // Convert a specific partition assignments of SSA steps
-  void convert_partition_assignments(prop_convt &prop_conv,
+  void convert_partition_assignments(smtcheck_opensmt2t &decider,
     partitiont& partition);
   // Convert a specific partition assumptions of SSA steps
-  void convert_partition_assumptions(prop_convt &prop_conv,
+  void convert_partition_assumptions(smtcheck_opensmt2t &decider,
     partitiont& partition);
   // Convert a specific partition assertions of SSA steps
-  void convert_partition_assertions(prop_convt &prop_conv,
+  void convert_partition_assertions(smtcheck_opensmt2t &decider,
     partitiont& partition);
   // Convert a specific partition io of SSA steps
-  void convert_partition_io(prop_convt &prop_conv,
+  void convert_partition_io(smtcheck_opensmt2t &decider,
     partitiont& partition);
   // Convert a summary partition (i.e., assert its summary)
-  void convert_partition_summary(prop_convt &prop_conv,
+  void convert_partition_summary(smtcheck_opensmt2t &decider,
     partitiont& partition);
 
   unsigned count_partition_assertions(partitiont& partition) const
