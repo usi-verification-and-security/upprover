@@ -91,6 +91,13 @@ tvt smtcheck_opensmt2t::get_assignemt(literalt a) const
   return tvtresult;
 }
 
+literalt smtcheck_opensmt2t::const_var(bool val)
+{
+  literalt l = new_variable();
+  PTRef c = logic->mkConst(logic->getSort_bool(), val ? Logic::tk_true : Logic::tk_false);
+  literals.push_back (c);
+  return l;
+}
 
 literalt smtcheck_opensmt2t::convert(const exprt &expr)
 {

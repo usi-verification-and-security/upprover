@@ -270,7 +270,7 @@ void partitioning_target_equationt::convert_partition_guards(
       it != partition.end_it; ++it)
   {
     if(it->ignore)
-      it->guard_literal=const_literal(false);
+      it->guard_literal=decider.const_var(false);
     else
     {
       exprt tmp(it->guard);
@@ -306,8 +306,10 @@ void partitioning_target_equationt::convert_partition_assumptions(
   {
     if(it->is_assume())
     {
-      if(it->ignore)
-        it->cond_literal=const_literal(true);
+      if(it->ignore){
+          it->cond_literal=decider.const_var(true);
+          // GF
+      }
       else
       {
         exprt tmp(it->cond_expr);
@@ -349,7 +351,7 @@ void partitioning_target_equationt::convert_partition_assertions(
     bv.reserve(number_of_assertions + partition.child_ids.size());
   }
 
-  literalt assumption_literal=const_literal(true);
+  literalt assumption_literal=decider.const_var(true);
 
   for (SSA_stepst::iterator it = partition.start_it;
     it != partition.end_it; ++it) {
@@ -444,7 +446,7 @@ void partitioning_target_equationt::convert_partition_assertions(
     
     if (partition.parent_id == partitiont::NO_PARTITION && !upgrade_checking) 
     {
-      //decider.prop.lcnf(bv);
+      decider.land(bv);
       
       #ifdef DEBUG_SSA
       //out_terms << "XXX Encoding error in ROOT: " << std::endl;
