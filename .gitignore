@@ -69,6 +69,22 @@
 /trunk/cprover/src/langapi/*.o
 /trunk/cprover/src/langapi/*.a
 
+# /cprover/src/goto-instrument/
+/trunk/cprover/src/goto-instrument/*.d
+/trunk/cprover/src/goto-instrument/*.o
+/trunk/cprover/src/goto-instrument/*.a
+/trunk/cprover/src/goto-instrument/goto-instrument
+
+# /cprover/src/goto-instrument/wmm/
+/trunk/cprover/src/goto-instrument/wmm/*.d
+/trunk/cprover/src/goto-instrument/wmm/*.o
+/trunk/cprover/src/goto-instrument/wmm/*.a
+
+# /cprover/src/goto-instrument/accelerate/
+/trunk/cprover/src/goto-instrument/accelerate/*.d
+/trunk/cprover/src/goto-instrument/accelerate/*.o
+/trunk/cprover/src/goto-instrument/accelerate/*.a
+
 # /cprover/src/java_bytecode/
 /trunk/cprover/src/java_bytecode/*.d
 /trunk/cprover/src/java_bytecode/*.o
@@ -126,6 +142,7 @@
 /trunk/cprover/src/cbmc/*.d
 /trunk/cprover/src/cbmc/*.o
 /trunk/cprover/src/cbmc/*.a
+/trunk/cprover/src/cbmc/cbmc
 
 # /cprover/src/assembler/
 /trunk/cprover/src/assembler/*.d
