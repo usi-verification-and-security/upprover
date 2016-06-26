@@ -116,11 +116,21 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 
 void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 {
-	// here should be smth like
-	// PTRef p;
-	// encode p
-	// current_partition->push(p);
+	PTRef p;
 
+	// encode p - start the very basic case here - x=y
+	if (expr.id() == ID_assign) {
+		vec<PTRef> v; // Look for the arguments - store in this vector
+
+		// Look for ID_symbol, ID_constant, ID_nondet_symbol - in a loop, basic case: got 2, once found v.push(...)
+
+
+		p = logic->mkEq(v);
+	} else {
+		// unsupported so far
+	}
+
+	current_partition->push(p);
 }
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
@@ -380,4 +390,5 @@ void smtcheck_opensmt2t::close_partition()
   }
   current_partition = NULL;
 }
+
 

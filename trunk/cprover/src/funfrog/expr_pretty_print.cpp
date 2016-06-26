@@ -237,6 +237,7 @@ expr_pretty_printt::visit_SSA(const exprt& expr) {
 			//     (not (= |c::main::1::c!0#4| -2147483648))
 		}
 	}
+
 	if (isTypeCast0) { if (isNegIn) out << ")"; /* Skip on that case the visit since changed typecast 0 to false */}
 	else {
 		if (isHasOperands) {
