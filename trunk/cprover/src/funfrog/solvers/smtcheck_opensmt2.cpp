@@ -120,8 +120,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		if (expr.is_boolean()) {
 			l = const_var(expr.is_true());
 		} else { // other const e.g., 5
-			//logic->mkConst()
-
+			long val = convertBinaryIntoDec(expr);
+			//logic->mkConst(? ,val);
 		}
 	} else { // If it is an operator - trigger recursion
 		if (expr.id()==ID_notequal) {
@@ -410,6 +410,23 @@ void smtcheck_opensmt2t::close_partition()
     }
   }
   current_partition = NULL;
+}
+
+long smtcheck_opensmt2t::convertBinaryIntoDec(const exprt &expr) {
+	std::stringstream convert; // stringstream used for the conversion
+	convert << expr.get(ID_value);//add the value of Number to the characters in the stream
+	std::string inB = convert.str();
+
+    long dec = 0; long currDigit = 0; long base = 1; long base2 = 2;
+	int size = inB.size()-1;
+	for (int i=size; i>= 0; i--) {
+		char curr = inB[i];
+        currDigit = atol(&curr);
+        if (i==0) dec = dec - currDigit * base;
+        else dec = dec + currDigit * base;
+        base = base * base2;
+	}
+	return dec;
 }
 
 
