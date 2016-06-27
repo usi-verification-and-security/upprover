@@ -105,7 +105,7 @@ expr_pretty_printt::operator()(const exprt &expr)
 		if (is_prev_token) out << " ";
 		out << OPERATOR_COLOR << "|" << (name.size() > 0 ? name : expr.get(ID_identifier)) << "|" << NORMAL_COLOR;
 		is_prev_token = true;
-		addToDeclMap(expr);
+		//addToDeclMap(expr); // duplicate call - no need for it
 	} else if (expr.id() == ID_notequal) {
 		out << OPERATOR_COLOR << "not (=" << NORMAL_COLOR;
 		out << " "; is_prev_token = false;

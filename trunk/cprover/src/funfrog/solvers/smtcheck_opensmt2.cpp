@@ -108,22 +108,32 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		PTRef var = logic->mkBoolVar(str.c_str());
 		l = new_variable();
 		literals.push_back (var);
-	} else {
-		// unsupported so far
+	} else if(expr.id()==ID_nondet_symbol){ // converting nondet literals
+		string str = id2string(to_symbol_expr(expr).get_identifier());
+		if (str.find("nondet") == std::string::npos)
+			str = str.replace(0,7, "symex::nondet");
 
-		/*
-		// converting nondet literals
-		if(expr.id()==ID_nondet_symbol){
+		PTRef var = logic->mkBoolVar(str.c_str());
+		l = new_variable();
+		literals.push_back (var);
+	} else if (expr.id() == ID_constant) {
+		if (expr.is_boolean()) {
+			if (expr.is_true()) {
 
-			string str = id2string(to_symbol_expr(expr).get_identifier());
-			if (str.find("nondet") == std::string::npos)
-				str = str.replace(0,7, "symex::nondet");
+			} else { // is false
 
-			PTRef var = logic->mkBoolVar(str.c_str());
-			l = new_variable();
-			literals.push_back (var);
+			}
+		} else { // other const e.g., 5
+
 		}
-		*/
+	} else { // If it is an operator - trigger recursion
+		if (expr.id() == ID_notequal) {
+
+		} else if (expr.id() == ID_if) {
+		} else { // All the rest of the operators
+
+		}
+
 	}
     return l;
 }
