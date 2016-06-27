@@ -116,24 +116,21 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		PTRef var = logic->mkBoolVar(str.c_str());
 		l = new_variable();
 		literals.push_back (var);
-	} else if (expr.id() == ID_constant) {
+	} else if (expr.id()==ID_constant) {
 		if (expr.is_boolean()) {
-			if (expr.is_true()) {
-
-			} else { // is false
-
-			}
+			l = const_var(expr.is_true());
 		} else { // other const e.g., 5
+			//logic->mkConst()
 
 		}
 	} else { // If it is an operator - trigger recursion
-		if (expr.id() == ID_notequal) {
+		if (expr.id()==ID_notequal) {
 
-		} else if (expr.id() == ID_if) {
+		} else if (expr.id()==ID_if) {
+
 		} else { // All the rest of the operators
 
 		}
-
 	}
     return l;
 }
