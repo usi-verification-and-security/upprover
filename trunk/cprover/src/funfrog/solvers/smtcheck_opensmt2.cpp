@@ -113,9 +113,10 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		if (str.find("nondet") == std::string::npos)
 			str = str.replace(0,7, "symex::nondet");
 
-		PTRef var = logic->mkBoolVar(str.c_str());
-		l = new_variable();
-		literals.push_back (var);
+// GF: this may not necessarily be boolean variable:
+//		PTRef var = logic->mkBoolVar(str.c_str());
+//		l = new_variable();
+//		literals.push_back (var);
 	} else if (expr.id()==ID_constant) {
 		if (expr.is_boolean()) {
 			l = const_var(expr.is_true());
