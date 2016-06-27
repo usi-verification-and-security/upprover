@@ -120,6 +120,9 @@ protected:
   void close_partition();
 
   void freeSolver();
+
+private:
+  long convertBinaryIntoDec(const exprt &expr);
 };
 
 #endif
