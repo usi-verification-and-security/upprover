@@ -110,6 +110,20 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		literals.push_back (var);
 	} else {
 		// unsupported so far
+
+		/*
+		// converting nondet literals
+		if(expr.id()==ID_nondet_symbol){
+
+			string str = id2string(to_symbol_expr(expr).get_identifier());
+			if (str.find("nondet") == std::string::npos)
+				str = str.replace(0,7, "symex::nondet");
+
+			PTRef var = logic->mkBoolVar(str.c_str());
+			l = new_variable();
+			literals.push_back (var);
+		}
+		*/
 	}
     return l;
 }
@@ -125,7 +139,7 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 		// Look for ID_symbol, ID_constant, ID_nondet_symbol - in a loop, basic case: got 2, once found v.push(...)
 
 
-		p = logic->mkEq(v);
+		//p = logic->mkEq(v);
 	} else {
 		// unsupported so far
 	}
