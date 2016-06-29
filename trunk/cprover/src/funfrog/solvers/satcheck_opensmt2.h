@@ -26,7 +26,7 @@ public:
       osmt  (NULL),
       logic (NULL),
       mainSolver (NULL),
-      dump_queries(true),
+      dump_queries(false),
       partition_count(0),
       itp_algorithm(1)
   {
