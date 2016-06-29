@@ -77,7 +77,7 @@ public:
 protected:
 
   Opensmt* osmt;
-  Logic* logic;
+  LRALogic* logic;
   MainSolver* mainSolver;
 
 

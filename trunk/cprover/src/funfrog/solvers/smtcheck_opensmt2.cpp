@@ -10,8 +10,9 @@ Author: Grigory Fedyukovich
 
 void smtcheck_opensmt2t::initializeSolver()
 {
-  osmt = new Opensmt(opensmt_logic::qf_uf); // GF: hardcode for now
-  logic = &(osmt->getLogic());
+  osmt = new Opensmt(opensmt_logic::qf_lra); // GF: hardcode for now
+  //logic = &(osmt->getLogic());
+  logic = &(osmt->getLRALogic());
   mainSolver = &(osmt->getMainSolver());
   const char* msg;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
@@ -113,7 +114,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		if (str.find("nondet") == std::string::npos)
 			str = str.replace(0,7, "symex::nondet");
 
-		PTRef var = logic->mkBoolVar(str.c_str());
+		PTRef var = logic->mkRealVar(str.c_str());
 		l = new_variable();
 		literals.push_back (var);
 	} else if (expr.id()==ID_constant) {
@@ -121,7 +122,11 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 			l = const_var(expr.is_true());
 		} else { // other const e.g., 5
 			long val = convertBinaryIntoDec(expr);
-			//logic->mkConst(? ,val);
+            stringstream sval;
+            sval << val;
+			PTRef rconst = logic->mkConst(sval.str().c_str());
+            l = new_variable();
+            literals.push_back(rconst);
 		}
 	} else { // If it is an operator - trigger recursion
 		if (expr.id()==ID_notequal) {
@@ -155,18 +160,54 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 }
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
-	//GF: hack for now
+    PTRef ans;
+    vec<PTRef> args;
+    PTRef pl1 = literals[l1.var_no()];
+    PTRef pl2 = literals[l2.var_no()];
+    args.push(pl1);
+    args.push(pl2);
+    if(logic->isRealTerm(pl1))
+    {
+        assert(logic->isRealTerm(pl2));
+        PTRef i1 = logic->mkRealLeq(args);
+        PTRef i2 = logic->mkRealGeq(args);
+        args.clear();
+        args.push(i1);
+        args.push(i2);
+        ans = logic->mkAnd(args);
+    }
+    else
+    {
+        assert(!logic->isRealTerm(pl2));
+        ans = logic->mkEq(args);
+    }
+    literalt l = new_variable();
+    literals.push_back(ans);
 }
 
 literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
-	//GF: hack for now
 	literalt l;
+    vec<PTRef> args;
+    PTRef pl1 = literals[l1.var_no()];
+    PTRef pl2 = literals[l2.var_no()];
+    args.push(pl1);
+    args.push(pl2);
+    PTRef ans = logic->mkImpl(args);
+    l = new_variable();
+    literals.push_back(ans);
 	return l;
 }
 
 literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
-	//GF: hack for now
 	literalt l;
+    vec<PTRef> args;
+    PTRef pl1 = literals[l1.var_no()];
+    PTRef pl2 = literals[l2.var_no()];
+    args.push(pl1);
+    args.push(pl2);
+    PTRef ans = logic->mkAnd(args);
+    l = new_variable();
+    literals.push_back(ans);
 	return l;
 }
 
@@ -177,8 +218,15 @@ literalt smtcheck_opensmt2t::land(bvt b){
 }
 
 literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
-	//GF: hack for now
 	literalt l;
+    vec<PTRef> args;
+    PTRef pl1 = literals[l1.var_no()];
+    PTRef pl2 = literals[l2.var_no()];
+    args.push(pl1);
+    args.push(pl2);
+    PTRef ans = logic->mkOr(args);
+    l = new_variable();
+    literals.push_back(ans);
 	return l;
 }
 
@@ -190,6 +238,13 @@ literalt smtcheck_opensmt2t::lor(bvt b){
 
 literalt smtcheck_opensmt2t::lnot(literalt l){
 	//GF: hack for now
+    literalt ln;
+    vec<PTRef> args;
+    PTRef pl1 = literals[l.var_no()];
+    args.push(pl1);
+    PTRef ans = logic->mkImpl(args);
+    ln = new_variable();
+    literals.push_back(ans);
 	return l;
 }
 
