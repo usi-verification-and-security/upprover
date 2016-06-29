@@ -126,10 +126,13 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		if (expr.is_boolean()) {
 			l = const_var(expr.is_true());
 		} else { // other const e.g., 5
+            /*
 			long val = convertBinaryIntoDec(expr);
             stringstream sval;
             sval << val;
 			PTRef rconst = logic->mkConst(sval.str().c_str());
+            */
+            PTRef rconst = logic->mkConst(expr.get(ID_C_cformat).c_str());
             l = new_variable();
             literals.push_back(rconst);
 		}
@@ -177,6 +180,13 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             ptl = logic->mkRealTimes(args);
 		} else if(expr.id() == ID_div) {
             ptl = logic->mkRealDiv(args);
+		} else if(expr.id() == ID_assign) {
+            ptl = logic->mkEq(args);
+        } else if(expr.id() == ID_equal) {
+            ptl = logic->mkEq(args);
+		} else {
+            cout << ";Don't really know how to deal with this operation:\n" << expr << endl;
+            assert(false);
         }
         literals.push_back(ptl);
 	}
@@ -185,8 +195,9 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 
 void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 {
-	PTRef p;
-
+    literalt l = convert(expr);
+    PTRef lp = literals[l.var_no()];
+    /*
 	// encode p - start the very basic case here - x=y
 	if (expr.id() == ID_assign) {
 		vec<PTRef> v; // Look for the arguments - store in this vector
@@ -198,33 +209,20 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 	} else {
 		// unsupported so far
 	}
+    */
 
-	current_partition->push(p);
+    assert(lp != PTRef_Undef);
+	current_partition->push(lp);
 }
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     return;
-    PTRef ans;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
     args.push(pl1);
     args.push(pl2);
-    if(logic->isRealTerm(pl1))
-    {
-        assert(logic->isRealTerm(pl2));
-        PTRef i1 = logic->mkRealLeq(args);
-        PTRef i2 = logic->mkRealGeq(args);
-        args.clear();
-        args.push(i1);
-        args.push(i2);
-        ans = logic->mkAnd(args);
-    }
-    else
-    {
-        assert(!logic->isRealTerm(pl2));
-        ans = logic->mkEq(args);
-    }
+    PTRef ans = logic->mkEq(args);
     literalt l = new_variable();
     literals.push_back(ans);
 }
@@ -262,6 +260,7 @@ literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
 literalt smtcheck_opensmt2t::land(bvt b){
 	//GF: hack for now
 	literalt l;
+    l = new_variable();
 	return l;
 }
 
@@ -283,6 +282,7 @@ literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
 literalt smtcheck_opensmt2t::lor(bvt b){
 	//GF: hack for now
 	literalt l;
+    l = new_variable();
 	return l;
 }
 
@@ -519,7 +519,6 @@ void smtcheck_opensmt2t::close_partition()
 }
 
 long smtcheck_opensmt2t::convertBinaryIntoDec(const exprt &expr) {
-    cout << ";AAAAAAAAAAAAAAAA\n\n\n; Trying to convert " << expr << endl;
 	std::stringstream convert; // stringstream used for the conversion
 	convert << expr.get(ID_value);//add the value of Number to the characters in the stream
 	std::string inB = convert.str();
