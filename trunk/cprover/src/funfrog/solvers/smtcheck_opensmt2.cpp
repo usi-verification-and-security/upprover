@@ -58,7 +58,6 @@ fle_part_idt smtcheck_opensmt2t::new_partition()
   return partition_count++;
 }
 
-
 literalt smtcheck_opensmt2t::new_variable()
 {
   literalt l;
@@ -114,11 +113,15 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		if (str.find("nondet") == std::string::npos)
 			str = str.replace(0,7, "symex::nondet");
 
-// GF: this may not necessarily be boolean variable:
-//		PTRef var = logic->mkBoolVar(str.c_str());
-//		l = new_variable();
-//		literals.push_back (var);
-// Leo: true, needs typecheck
+        PTRef var;
+        //typecheck
+        if(is_number(expr.type()))
+            var = logic->mkRealVar(str.c_str());
+        else
+            var = logic->mkBoolVar(str.c_str());
+
+        l = new_variable();
+        literals.push_back(var);
 	} else if (expr.id()==ID_constant) {
 		if (expr.is_boolean()) {
 			l = const_var(expr.is_true());
@@ -131,13 +134,51 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             literals.push_back(rconst);
 		}
 	} else { // If it is an operator - trigger recursion
+        vec<PTRef> args;
+        forall_operands(it, expr)
+        {
+            literalt cl = convert(*it);
+            PTRef cp = literals[cl.var_no()];
+            assert(cp != PTRef_Undef);
+            args.push(cp);
+        }
+
+        l = new_variable();
+        PTRef ptl;
 		if (expr.id()==ID_notequal) {
-
+            ptl = logic->mkNot(logic->mkEq(args));
 		} else if (expr.id()==ID_if) {
-
-		} else { // All the rest of the operators
-
-		}
+            ptl = logic->mkImpl(args);
+		} else if(expr.id() == ID_ifthenelse) {
+            ptl = logic->mkIte(args);
+		} else if(expr.id() == ID_and) {
+            ptl = logic->mkAnd(args);
+		} else if(expr.id() == ID_or) {
+            ptl = logic->mkOr(args);
+		} else if(expr.id() == ID_not) {
+            ptl = logic->mkNot(args);
+		} else if(expr.id() == ID_ge) {
+            ptl = logic->mkRealGeq(args);
+		} else if(expr.id() == ID_le) {
+            ptl = logic->mkRealLeq(args);
+		} else if(expr.id() == ID_gt) {
+            ptl = logic->mkRealGt(args);
+		} else if(expr.id() == ID_lt) {
+            ptl = logic->mkRealLt(args);
+		} else if(expr.id() == ID_plus) {
+            ptl = logic->mkRealPlus(args);
+		} else if(expr.id() == ID_minus) {
+            ptl = logic->mkRealMinus(args);
+		} else if(expr.id() == ID_unary_minus) {
+            ptl = logic->mkRealMinus(args);
+		} else if(expr.id() == ID_unary_plus) {
+            ptl = logic->mkRealPlus(args);
+		} else if(expr.id() == ID_mult) {
+            ptl = logic->mkRealTimes(args);
+		} else if(expr.id() == ID_div) {
+            ptl = logic->mkRealDiv(args);
+        }
+        literals.push_back(ptl);
 	}
     return l;
 }
@@ -162,6 +203,7 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 }
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
+    return;
     PTRef ans;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
@@ -189,6 +231,8 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
 
 literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
 	literalt l;
+    l = new_variable();
+    return l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
@@ -202,6 +246,8 @@ literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
 
 literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
 	literalt l;
+    l = new_variable();
+    return l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
@@ -221,6 +267,8 @@ literalt smtcheck_opensmt2t::land(bvt b){
 
 literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
 	literalt l;
+    l = new_variable();
+    return l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
@@ -239,15 +287,16 @@ literalt smtcheck_opensmt2t::lor(bvt b){
 }
 
 literalt smtcheck_opensmt2t::lnot(literalt l){
-	//GF: hack for now
     literalt ln;
+    ln = new_variable();
+    return ln;
     vec<PTRef> args;
     PTRef pl1 = literals[l.var_no()];
     args.push(pl1);
     PTRef ans = logic->mkImpl(args);
     ln = new_variable();
     literals.push_back(ans);
-	return l;
+	return ln;
 }
 
 
@@ -470,6 +519,7 @@ void smtcheck_opensmt2t::close_partition()
 }
 
 long smtcheck_opensmt2t::convertBinaryIntoDec(const exprt &expr) {
+    cout << ";AAAAAAAAAAAAAAAA\n\n\n; Trying to convert " << expr << endl;
 	std::stringstream convert; // stringstream used for the conversion
 	convert << expr.get(ID_value);//add the value of Number to the characters in the stream
 	std::string inB = convert.str();
