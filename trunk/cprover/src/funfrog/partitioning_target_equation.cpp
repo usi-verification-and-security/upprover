@@ -446,7 +446,7 @@ void partitioning_target_equationt::convert_partition_assertions(
     
     if (partition.parent_id == partitiont::NO_PARTITION && !upgrade_checking) 
     {
-      decider.land(bv);
+      decider.set_equal(decider.land(bv), decider.const_var(true));
       
       #ifdef DEBUG_SSA
       //out_terms << "XXX Encoding error in ROOT: " << std::endl;
