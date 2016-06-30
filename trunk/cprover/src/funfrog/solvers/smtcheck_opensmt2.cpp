@@ -102,15 +102,10 @@ literalt smtcheck_opensmt2t::const_var(bool val)
 literalt smtcheck_opensmt2t::convert(const exprt &expr)
 {
 	literalt l;
-	if(expr.id()==ID_symbol){
-		// converting callstart / callend literals
+	if(expr.id()==ID_symbol || expr.id()==ID_nondet_symbol){
 		string str = id2string(to_symbol_expr(expr).get_identifier());
-		PTRef var = logic->mkBoolVar(str.c_str());
-		l = new_variable();
-		literals.push_back (var);
-	} else if(expr.id()==ID_nondet_symbol){ // converting nondet literals
-		string str = id2string(to_symbol_expr(expr).get_identifier());
-		if (str.find("nondet") == std::string::npos)
+
+        if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
 			str = str.replace(0,7, "symex::nondet");
 
         PTRef var;
@@ -120,8 +115,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         else
             var = logic->mkBoolVar(str.c_str());
 
-        l = new_variable();
-        literals.push_back(var);
+		l = new_variable();
+		literals.push_back (var);
 	} else if (expr.id()==ID_constant) {
 		if (expr.is_boolean()) {
 			l = const_var(expr.is_true());
