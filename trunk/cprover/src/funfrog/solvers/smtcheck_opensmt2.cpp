@@ -157,9 +157,9 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         PTRef ptl;
 		if (expr.id()==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
-		} else if (expr.id()==ID_if) {
+		} /*else if (expr.id()==ID_if) {
             ptl = logic->mkImpl(args);
-		} else if(expr.id() == ID_ifthenelse) {
+		} */else if(expr.id() == ID_ifthenelse) {
             ptl = logic->mkIte(args);
 		} else if(expr.id() == ID_and) {
             ptl = logic->mkAnd(args);
@@ -167,7 +167,9 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             ptl = logic->mkOr(args);
 		} else if(expr.id() == ID_not) {
             ptl = logic->mkNot(args);
-		} else if(expr.id() == ID_ge) {
+		} else if(expr.id() == ID_implies) {
+            ptl = logic->mkImpl(args);
+        } else if(expr.id() == ID_ge) {
             ptl = logic->mkRealGeq(args);
 		} else if(expr.id() == ID_le) {
             ptl = logic->mkRealLeq(args);
@@ -474,7 +476,7 @@ bool smtcheck_opensmt2t::solve() {
 
   if (dump_queries){
     char* msg1;
-    mainSolver->writeSolverState_smtlib2("__SMT_query", &msg1);
+    //mainSolver->writeSolverState_smtlib2("__SMT_query", &msg1);
   }
 
   ready_to_interpolate = false;
@@ -517,13 +519,17 @@ void smtcheck_opensmt2t::close_partition()
   assert(current_partition != NULL);
   if (partition_count > 0){
     if (current_partition->size() > 1){
-      mainSolver->push(logic->mkAnd(*current_partition));
+      PTRef pand = logic->mkAnd(*current_partition);
+      cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
+      mainSolver->push(pand);
     } else if (current_partition->size() == 1){
+      PTRef pand = (*current_partition)[0];
+      cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
       std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
-      mainSolver->push((*current_partition)[0]);
+      mainSolver->push(pand);
     } else {
       std::cout << "Empty partition (terms size = 0): " << partition_count << "\n";
-      mainSolver->push(logic->mkConst(logic->getSort_bool(), Logic::tk_true));
+      mainSolver->push(logic->getTerm_true());
       // GF: adding (assert true) for debugging only
     }
   }
