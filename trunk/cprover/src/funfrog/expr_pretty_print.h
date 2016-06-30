@@ -54,6 +54,9 @@ private:
 std::ostream& expr_pretty_print(std::ostream& out, const exprt& expr, 
         unsigned _indent = 0);
 
+std::ostream& expr_ssa_print_smt_dbg(std::ostream& out,
+		const exprt& expr, bool isNeg);
+
 std::ostream& expr_ssa_print(std::ostream& out, const exprt& expr,
 		std::map <std::string,exprt>* partition_smt_decl,
 		bool isNeg, bool contTerm=false);

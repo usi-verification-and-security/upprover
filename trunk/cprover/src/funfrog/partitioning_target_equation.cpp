@@ -19,6 +19,7 @@ Author: Ondrej Sery
 //#define DEBUG_SSA_OLD // belongs only to the old version with BV
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
+#define DEBUG_SSA_SMT_CALL
 
 #include "solvers/smtcheck_opensmt2.h"
 
@@ -118,6 +119,9 @@ void partitioning_target_equationt::convert_partition(smtcheck_opensmt2t &decide
 #	endif
     return;
   }
+# ifdef DEBUG_SSA_SMT_CALL
+  cout << "Before decider::convert - assumption propagation symbols" << endl;
+# endif
   // Convert the assumption propagation symbols
   partition_ifacet &partition_iface = partition.get_iface();
   partition_iface.callstart_literal =
@@ -246,6 +250,9 @@ void partitioning_target_equationt::convert_partition_assignments(
       terms_counter++;
 #     endif
 
+#     ifdef DEBUG_SSA_SMT_CALL
+      expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true(ASSIGN-OUT) --> " , tmp, false);
+#	  endif
       decider.set_to_true(tmp);
     }
   }
@@ -269,18 +276,21 @@ void partitioning_target_equationt::convert_partition_guards(
   for(SSA_stepst::iterator it = partition.start_it;
       it != partition.end_it; ++it)
   {
-    if(it->ignore)
+    if(it->ignore) {
+#     ifdef DEBUG_SSA_SMT_CALL
+      cout << "Before decider::const_var --> false" << endl;
+#	  endif
       it->guard_literal=decider.const_var(false);
-    else
-    {
+    } else {
       exprt tmp(it->guard);
-
 #     ifdef DEBUG_SSA
-      //expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
-      expr_ssa_print_guard(out_terms , tmp, partition_smt_decl);
-      if (!tmp.is_boolean()) terms_counter++; // SSA -> SMT shall be all in a new function
+      	  //expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
+      	  expr_ssa_print_guard(out_terms , tmp, partition_smt_decl);
+      	  if (!tmp.is_boolean()) terms_counter++; // SSA -> SMT shall be all in a new function
 #     endif
-
+#     ifdef DEBUG_SSA_SMT_CALL
+      expr_ssa_print_smt_dbg(cout << "Before decider::convert(GUARD-OUT) --> " , tmp, false);
+#	  endif
       it->guard_literal=decider.convert(tmp);
     }
   }
@@ -307,20 +317,23 @@ void partitioning_target_equationt::convert_partition_assumptions(
     if(it->is_assume())
     {
       if(it->ignore){
-          it->cond_literal=decider.const_var(true);
-          // GF
+#     	ifdef DEBUG_SSA_SMT_CALL
+    	cout << "Before decider::const_var --> true" << endl;
+#	  	endif
+    	it->cond_literal=decider.const_var(true);
+        // GF
       }
       else
       {
         exprt tmp(it->cond_expr);
-
-//#       ifdef DEBUG_SSA
 #		ifdef DEBUG_SSA_OLD
 //        expr_pretty_print(std::cout << "ASSUME-OUT:" << std::endl, tmp, 2);
           expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
           terms_counter++;
 #       endif
-
+#     	ifdef DEBUG_SSA_SMT_CALL
+          expr_ssa_print_smt_dbg(cout << "Before decider::convert(ASSUME-OUT) --> " , tmp, false);
+#	  	endif
         it->cond_literal=decider.convert(tmp);
       }
     }
@@ -351,6 +364,9 @@ void partitioning_target_equationt::convert_partition_assertions(
     bv.reserve(number_of_assertions + partition.child_ids.size());
   }
 
+# ifdef DEBUG_SSA_SMT_CALL
+  cout << "Before decider::const_var --> true" << endl;
+# endif
   literalt assumption_literal=decider.const_var(true);
 
   for (SSA_stepst::iterator it = partition.start_it;
@@ -364,7 +380,9 @@ void partitioning_target_equationt::convert_partition_assertions(
     	expr_ssa_print(out_terms << "    " , it->cond_expr, partition_smt_decl, true);
     	terms_counter++;
 #     endif
-
+#     ifdef DEBUG_SSA_SMT_CALL
+    	expr_ssa_print_smt_dbg(cout << "Before decider::convert and decider.limplies(ASSERT-OUT) --> " , it->cond_expr, true);
+#	  endif
       // Collect ass \in assertions(f) in bv
       literalt tmp_literal = decider.convert(it->cond_expr);
       it->cond_literal = decider.limplies(assumption_literal, tmp_literal);
@@ -385,11 +403,15 @@ void partitioning_target_equationt::convert_partition_assertions(
         const partition_ifacet& target_partition_iface = target_partition->get_iface();
         assert(!target_partition->invalid && !target_partition->processed);
 
+#		ifdef DEBUG_SSA_SMT_CALL
+        expr_ssa_print_smt_dbg(cout << "Before decider::land(GUARD-LITERAL) --> " , it->guard, false);
+        expr_ssa_print_smt_dbg(cout << "Before decider::set_equal(Call-START) --> " , target_partition_iface.callstart_symbol, false);
+#		endif
         literalt tmp = decider.land(assumption_literal, it->guard_literal);
         decider.set_equal(tmp, target_partition_iface.callstart_literal);
-        // expr_ssa_print(out_code << "(assert " , it->cond_expr, partition_smt_decl, false);
-        #ifdef DEBUG_SSA
+#		ifdef DEBUG_SSA
 		//#ifdef DEBUG_SSA_OLD
+        // expr_ssa_print(out_code << "(assert " , it->cond_expr, partition_smt_decl, false); ??
         //expr_pretty_print(std::cout << "XXX Call START equality: ",
         //        target_partition_iface.callstart_symbol);
         //expr_pretty_print(std::cout << "  = ", it->guard);
@@ -413,13 +435,16 @@ void partitioning_target_equationt::convert_partition_assertions(
 			case 1: out_terms << temp2_buf.str() << "    )\n"; break;
 			default: out_terms << "    (and \n  " << temp2_buf.str() << "      )\n" << "    )\n"; break;
         }
-        #endif
+#	    endif
       }
       
       // Collect this assumption as:
       //
       //     assumption_literal = \land_{ass \in assumptions(f)} ass
       //
+#     ifdef DEBUG_SSA_SMT_CALL
+      cout << "Before decider::land(call-START)" << endl;
+#	  endif
       assumption_literal = decider.land(assumption_literal, it->cond_literal);
       number_of_assumptions++;
     } 
@@ -446,6 +471,10 @@ void partitioning_target_equationt::convert_partition_assertions(
     
     if (partition.parent_id == partitiont::NO_PARTITION && !upgrade_checking) 
     {
+#     ifdef DEBUG_SSA_SMT_CALL
+      cout << "Before decider::const_var --> true" << endl;
+      cout << "Before decider::land" << endl;
+#	  endif
       decider.set_equal(decider.land(bv), decider.const_var(true));
       
       #ifdef DEBUG_SSA
@@ -457,7 +486,6 @@ void partitioning_target_equationt::convert_partition_assertions(
       out_temp1.rdbuf(&temp1_buf);
 
       int assert_counter=0;
-
       for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
         if (it->is_assert() && !it->ignore) {
           assert_counter++;
@@ -495,6 +523,10 @@ void partitioning_target_equationt::convert_partition_assertions(
     } 
     else 
     {
+#     ifdef DEBUG_SSA_SMT_CALL
+      cout << "Before decider::lor(ROOT-ERROR)" << endl;
+      cout << "Before decider::set_equal(ROOT-ERROR)" << endl;
+#	  endif
       literalt tmp = decider.lor(bv);
       decider.set_equal(tmp, partition_iface.error_literal);
       
@@ -565,6 +597,9 @@ void partitioning_target_equationt::convert_partition_assertions(
     //
     // NOTE: callstart_f \in assumptions(f)
     //
+#   ifdef DEBUG_SSA_SMT_CALL
+    cout << "Before decider::limplies(CALL-END)" << endl;
+#	endif
     decider.limplies(partition_iface.callend_literal,
             assumption_literal);
 
@@ -627,6 +662,10 @@ void partitioning_target_equationt::convert_partition_io(
           symbol_exprt symbol;
           symbol.type()=tmp.type();
           symbol.set_identifier("symex::io::"+i2string(io_count++));
+
+#     	  ifdef DEBUG_SSA_SMT_CALL
+          expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true --> " , equal_exprt(tmp, symbol), false);
+#	  	  endif
           decider.set_to_true(equal_exprt(tmp, symbol));
           it->converted_io_args.push_back(symbol);
         }
@@ -967,6 +1006,9 @@ void partitioning_target_equationt::print_partition() {
 }
 
 void partitioning_target_equationt::print_all_partition(std::ostream& out) {
+	  // Print header - not part of temp debug print!
+	  cout << "\nXXX SSA --> SMT-lib Translation XXX\n";
+
 	  // for prints later on
 	  std::ostream out_decl(0);
 	  std::stringbuf decl_buf;

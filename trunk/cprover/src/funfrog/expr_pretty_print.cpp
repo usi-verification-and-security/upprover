@@ -188,6 +188,19 @@ expr_ssa_print(std::ostream& out, const exprt& expr, std::map <std::string,exprt
 }
 
 std::ostream&
+expr_ssa_print_smt_dbg(std::ostream& out, const exprt& expr, bool isNeg) {
+	  if (isNeg) out << "(not ";
+
+	  expr_pretty_printt pp(out);
+	  pp.visit_SSA(expr);
+
+	  if (isNeg) out << ")";
+
+	  out << "\n";
+	  return out;
+}
+
+std::ostream&
 expr_ssa_print_guard(std::ostream& out, const exprt& expr, std::map <std::string,exprt>* partition_smt_decl)
 {
   // Create the output

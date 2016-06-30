@@ -9,6 +9,7 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2.h"
 
 //#define SMT_DEBUG
+#define DEBUG_SSA_SMT
 
 void smtcheck_opensmt2t::initializeSolver()
 {
@@ -193,9 +194,33 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             ptl = logic->mkEq(args);
         } else if(expr.id() == ID_equal) {
             ptl = logic->mkEq(args);
+		} else if (expr.id() == ID_typecast && expr.has_operands()) {
+			// KE: Take care of type cast: two cases (1) const and (2) val (var in SMT)
+			// First try to code it (just replace the binary to real and val/var just create without time cast
+			if ((expr.operands())[0].is_constant()) {
+				ptl = logic->mkConst(expr.get(ID_C_cformat).c_str());
+
+	            //cout << "Type cast applied to a constant ;Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
+	            //assert(false);
+			} else {
+				// GF: sometimes typecast is applied to variables, e.g.:
+				//     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
+				//     in this case, we should replace it by the variable itself, i.e.:
+				//     (not (= |c::main::1::c!0#4| -2147483648))
+				ptl = logic->mkRealVar(id2string(expr.get(ID_identifier)).c_str());
+
+	            //cout << "Type cast applied to a variable ;Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
+	            //assert(false);
+			}
 		} else {
+#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
+            cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
+#else
             cout << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
             assert(false);
+#endif
+            // KE: Missing float op: ID_floatbv_plus, ID_floatbv_minus, ID_floatbv_mult, ID_floatbv_div, ID_floatbv_sin, ID_floatbv_cos
+            // Do we need them now?
         }
         literals.push_back(ptl);
 	}
