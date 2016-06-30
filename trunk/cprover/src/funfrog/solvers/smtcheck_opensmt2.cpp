@@ -211,26 +211,17 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 {
     literalt l = convert(expr);
     PTRef lp = literals[l.var_no()];
-    /*
-	// encode p - start the very basic case here - x=y
-	if (expr.id() == ID_assign) {
-		vec<PTRef> v; // Look for the arguments - store in this vector
+    PTRef truep = logic->getTerm_true();
+    vec<PTRef> args;
+    args.push(lp);
+    args.push(truep);
+    PTRef tlp = logic->mkEq(args);
 
-		// Look for ID_symbol, ID_constant, ID_nondet_symbol - in a loop, basic case: got 2, once found v.push(...)
-
-
-		//p = logic->mkEq(v);
-	} else {
-		// unsupported so far
-	}
-    */
-
-    assert(lp != PTRef_Undef);
-	current_partition->push(lp);
+    assert(tlp != PTRef_Undef);
+	current_partition->push(tlp);
 }
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
-    return;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
@@ -239,12 +230,13 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     PTRef ans = logic->mkEq(args);
     literalt l = new_variable();
     literals.push_back(ans);
+
+    assert(ans != PTRef_Undef);
+	current_partition->push(ans);
 }
 
 literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
 	literalt l;
-    //l = new_variable();
-    return l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
@@ -258,8 +250,6 @@ literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
 
 literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
 	literalt l;
-    //l = new_variable();
-    return l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
@@ -272,16 +262,21 @@ literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
 }
 
 literalt smtcheck_opensmt2t::land(bvt b){
-	//GF: hack for now
-	literalt l;
-    //l = new_variable();
+    literalt l;
+    vec<PTRef> args;
+    for(bvt::iterator it = b.begin(); it != b.end(); ++it)
+    {
+        PTRef tmpp = literals[it->var_no()];
+        args.push(tmpp);
+    }
+    PTRef ans = logic->mkAnd(args);
+    l = new_variable();
+    literals.push_back(ans);
 	return l;
 }
 
 literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
 	literalt l;
-    //l = new_variable();
-    return l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
@@ -294,25 +289,29 @@ literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
 }
 
 literalt smtcheck_opensmt2t::lor(bvt b){
-	//GF: hack for now
-	literalt l;
-    //l = new_variable();
+    literalt l;
+    vec<PTRef> args;
+    for(bvt::iterator it = b.begin(); it != b.end(); ++it)
+    {
+        PTRef tmpp = literals[it->var_no()];
+        args.push(tmpp);
+    }
+    PTRef ans = logic->mkOr(args);
+    l = new_variable();
+    literals.push_back(ans);
 	return l;
 }
 
 literalt smtcheck_opensmt2t::lnot(literalt l){
     literalt ln;
-    //ln = new_variable();
-    return ln;
     vec<PTRef> args;
     PTRef pl1 = literals[l.var_no()];
     args.push(pl1);
-    PTRef ans = logic->mkImpl(args);
+    PTRef ans = logic->mkNot(args);
     ln = new_variable();
     literals.push_back(ans);
 	return ln;
 }
-
 
 void smtcheck_opensmt2t::extract_itp(PTRef ptref,
   prop_itpt& target_itp) const
