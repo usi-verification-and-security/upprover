@@ -8,6 +8,8 @@ Author: Grigory Fedyukovich
 
 #include "smtcheck_opensmt2.h"
 
+//#define SMT_DEBUG
+
 void smtcheck_opensmt2t::initializeSolver()
 {
   osmt = new Opensmt(opensmt_logic::qf_lra); // GF: hardcode for now
@@ -94,16 +96,26 @@ tvt smtcheck_opensmt2t::get_assignemt(literalt a) const
 literalt smtcheck_opensmt2t::const_var(bool val)
 {
   literalt l = new_variable();
-  PTRef c = logic->mkConst(logic->getSort_bool(), val ? Logic::tk_true : Logic::tk_false);
+  PTRef c = var ? logic->getTerm_true() : logic->getTerm_false();
   literals.push_back (c);
   return l;
 }
 
 literalt smtcheck_opensmt2t::convert(const exprt &expr)
 {
+    if(converted_exprs.find(expr.full_hash()) != converted_exprs.end())
+        return converted_exprs[expr.full_hash()];
+
+#ifdef SMT_DEBUG
+    cout << "; CONVERTING " << expr.pretty() << endl;
+#endif
 	literalt l;
 	if(expr.id()==ID_symbol || expr.id()==ID_nondet_symbol){
-		string str = id2string(to_symbol_expr(expr).get_identifier());
+#ifdef SMT_DEBUG
+        cout << "; IT IS A VAR" << endl;
+#endif
+		//string str = id2string(to_symbol_expr(expr).get_identifier());
+        string str = id2string(expr.get(ID_identifier));
 
         if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
 			str = str.replace(0,7, "symex::nondet");
@@ -118,20 +130,20 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		l = new_variable();
 		literals.push_back (var);
 	} else if (expr.id()==ID_constant) {
+#ifdef SMT_DEBUG
+        cout << "; IT IS A CONSTANT" << endl;
+#endif
 		if (expr.is_boolean()) {
 			l = const_var(expr.is_true());
-		} else { // other const e.g., 5
-            /*
-			long val = convertBinaryIntoDec(expr);
-            stringstream sval;
-            sval << val;
-			PTRef rconst = logic->mkConst(sval.str().c_str());
-            */
+		} else {
             PTRef rconst = logic->mkConst(expr.get(ID_C_cformat).c_str());
             l = new_variable();
             literals.push_back(rconst);
 		}
-	} else { // If it is an operator - trigger recursion
+	} else {
+#ifdef SMT_DEBUG
+        cout << "; IT IS AN OPERATOR" << endl;
+#endif
         vec<PTRef> args;
         forall_operands(it, expr)
         {
@@ -180,11 +192,16 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         } else if(expr.id() == ID_equal) {
             ptl = logic->mkEq(args);
 		} else {
-            cout << ";Don't really know how to deal with this operation:\n" << expr << endl;
+            cout << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
             assert(false);
         }
         literals.push_back(ptl);
 	}
+    converted_exprs[expr.full_hash()] = l;
+    PTRef ptr = literals[l.var_no()];
+#ifdef SMT_DEBUG
+    cout << "; Created OpenSMT2 formula " << logic->printTerm(ptr) << endl;
+#endif
     return l;
 }
 
@@ -224,7 +241,7 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
 
 literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
 	literalt l;
-    l = new_variable();
+    //l = new_variable();
     return l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
@@ -239,7 +256,7 @@ literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
 
 literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
 	literalt l;
-    l = new_variable();
+    //l = new_variable();
     return l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
@@ -255,13 +272,13 @@ literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
 literalt smtcheck_opensmt2t::land(bvt b){
 	//GF: hack for now
 	literalt l;
-    l = new_variable();
+    //l = new_variable();
 	return l;
 }
 
 literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
 	literalt l;
-    l = new_variable();
+    //l = new_variable();
     return l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
@@ -277,13 +294,13 @@ literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
 literalt smtcheck_opensmt2t::lor(bvt b){
 	//GF: hack for now
 	literalt l;
-    l = new_variable();
+    //l = new_variable();
 	return l;
 }
 
 literalt smtcheck_opensmt2t::lnot(literalt l){
     literalt ln;
-    ln = new_variable();
+    //ln = new_variable();
     return ln;
     vec<PTRef> args;
     PTRef pl1 = literals[l.var_no()];
@@ -512,22 +529,4 @@ void smtcheck_opensmt2t::close_partition()
   }
   current_partition = NULL;
 }
-
-long smtcheck_opensmt2t::convertBinaryIntoDec(const exprt &expr) {
-	std::stringstream convert; // stringstream used for the conversion
-	convert << expr.get(ID_value);//add the value of Number to the characters in the stream
-	std::string inB = convert.str();
-
-    long dec = 0; long currDigit = 0; long base = 1; long base2 = 2;
-	int size = inB.size()-1;
-	for (int i=size; i>= 0; i--) {
-		char curr = inB[i];
-        currDigit = atol(&curr);
-        if (i==0) dec = dec - currDigit * base;
-        else dec = dec + currDigit * base;
-        base = base * base2;
-	}
-	return dec;
-}
-
 
