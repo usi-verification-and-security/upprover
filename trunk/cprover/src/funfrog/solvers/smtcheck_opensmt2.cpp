@@ -166,7 +166,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         vec<PTRef> args;
         forall_operands(it, expr)
         {
-        	// KE: Here to add recursion in case the expr is not simple
+        	// KE: recursion in case the expr is not simple - shall be in a visitor
             literalt cl = convert(*it);
             PTRef cp = literals[cl.var_no()];
             assert(cp != PTRef_Undef);
@@ -219,6 +219,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             ptl = logic->mkRealMinus(args);
 		} else if(expr.id() == ID_floatbv_div) {
 			ptl = logic->mkRealDiv(args);
+		} else if(expr.id() == ID_floatbv_mult) {
+			ptl = logic->mkRealTimes(args);
 		} else {
 #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
@@ -226,7 +228,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             cout << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
             assert(false);
 #endif
-            // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos, ID_floatbv_mult
+            // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
             // Do we need them now?
         }
         literals.push_back(ptl);
