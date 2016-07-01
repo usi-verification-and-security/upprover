@@ -148,6 +148,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         vec<PTRef> args;
         forall_operands(it, expr)
         {
+        	// KE: Here to add recursion in case the expr is not simple
             literalt cl = convert(*it);
             PTRef cp = literals[cl.var_no()];
             assert(cp != PTRef_Undef);
@@ -194,6 +195,12 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             ptl = logic->mkEq(args);
         } else if(expr.id() == ID_equal) {
             ptl = logic->mkEq(args);
+		} else if(expr.id() == ID_floatbv_plus) {
+            ptl = logic->mkRealPlus(args);
+		} else if(expr.id() == ID_floatbv_minus) {
+            ptl = logic->mkRealMinus(args);
+		} else if(expr.id() == ID_floatbv_div) {
+			ptl = logic->mkRealDiv(args);
 		} else if (expr.id() == ID_typecast && expr.has_operands()) {
 			// KE: Take care of type cast: two cases (1) const and (2) val (var in SMT)
 			// First try to code it (just replace the binary to real and val/var just create without time cast
@@ -219,7 +226,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             cout << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
             assert(false);
 #endif
-            // KE: Missing float op: ID_floatbv_plus, ID_floatbv_minus, ID_floatbv_mult, ID_floatbv_div, ID_floatbv_sin, ID_floatbv_cos
+            // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos, ID_floatbv_mult
             // Do we need them now?
         }
         literals.push_back(ptl);
