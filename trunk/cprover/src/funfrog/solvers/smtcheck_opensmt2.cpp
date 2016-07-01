@@ -163,15 +163,28 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
 #endif
+
+#ifdef SMT_DEBUG
+        if (expr.has_operands() && expr.operands().size() > 1) {
+        	if ((expr.operands()[0] == expr.operands()[1]) &&
+        		  ((expr.id() == ID_mult) ||
+        		   (expr.id() == ID_floatbv_mult))
+        	){
+        		cout << "; IT IS AN OPERATOR BETWEEN SAME EXPR: NOT SUPPORTED FOR NONDET" << endl;
+        		assert(false);
+			}
+		}
+#endif
+
         vec<PTRef> args;
-        forall_operands(it, expr)
-        {
-        	// KE: recursion in case the expr is not simple - shall be in a visitor
-            literalt cl = convert(*it);
-            PTRef cp = literals[cl.var_no()];
-            assert(cp != PTRef_Undef);
-            args.push(cp);
-        }
+		forall_operands(it, expr)
+		{
+			// KE: recursion in case the expr is not simple - shall be in a visitor
+			literalt cl = convert(*it);
+			PTRef cp = literals[cl.var_no()];
+			assert(cp != PTRef_Undef);
+			args.push(cp);
+		}
 
         l = new_variable();
         PTRef ptl;
