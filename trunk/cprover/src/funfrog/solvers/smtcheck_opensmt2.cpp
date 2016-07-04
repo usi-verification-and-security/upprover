@@ -121,6 +121,17 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
 			str = str.replace(0,7, "symex::nondet");
 
+        string toremove[] = {"!", "::", "|", "\\", "#", "_"};
+        string newstr("");
+        for(int i = 0; i < str.size(); ++i)
+        {
+            char c = str[i];
+            if(c == '!' || c == ':' || c == '|' || c == '\\' || c == '#' || c == '_')
+                continue;
+            newstr += c;
+        }
+        str = newstr;
+
         PTRef var;
         //typecheck
         if(is_number(expr.type()))
@@ -532,7 +543,9 @@ bool smtcheck_opensmt2t::solve() {
   }
 
 //  add_variables();
-
+  char *msg;
+  for(int i = 0; i < top_level_formulas.size(); ++i)
+      mainSolver->insertFormula(top_level_formulas[i], &msg);
   sstat r = mainSolver->check();
 
   if (r == s_True) {
@@ -566,16 +579,19 @@ void smtcheck_opensmt2t::close_partition()
   if (partition_count > 0){
     if (current_partition->size() > 1){
       PTRef pand = logic->mkAnd(*current_partition);
-      cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
-      mainSolver->push(pand);
+      //cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
+      //mainSolver->push(pand);
+      top_level_formulas.push(pand);
     } else if (current_partition->size() == 1){
       PTRef pand = (*current_partition)[0];
-      cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
+      //cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
       std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
-      mainSolver->push(pand);
+      //mainSolver->push(pand);
+      top_level_formulas.push(pand);
     } else {
       std::cout << "Empty partition (terms size = 0): " << partition_count << "\n";
-      mainSolver->push(logic->getTerm_true());
+      //mainSolver->push(logic->getTerm_true());
+      top_level_formulas.push(logic->getTerm_true());
       // GF: adding (assert true) for debugging only
     }
   }

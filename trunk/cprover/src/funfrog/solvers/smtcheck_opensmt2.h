@@ -79,6 +79,7 @@ protected:
   Opensmt* osmt;
   LRALogic* logic;
   MainSolver* mainSolver;
+  vec<PTRef> top_level_formulas;
 
   map<size_t, literalt> converted_exprs;
 
