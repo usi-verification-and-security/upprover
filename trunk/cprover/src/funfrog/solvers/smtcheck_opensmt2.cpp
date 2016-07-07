@@ -143,14 +143,22 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		literals.push_back (var);
 	} else if (expr.id()==ID_constant) {
 #ifdef SMT_DEBUG
-        cout << "; IT IS A CONSTANT" << endl;
+        cout << "; IT IS A CONSTANT --" << expr.get(ID_C_cformat).c_str() << "--" << endl;
+#endif
+#ifdef DEBUG_SSA_SMT
+        cout << "; CONVERT INTO C-STRING --" << expr.get(ID_C_cformat).c_str() << "-- ORIG-EXPR " << expr.get(ID_value) << endl;
 #endif
 		if (expr.is_boolean()) {
 			l = const_var(expr.is_true());
 		} else {
-            PTRef rconst = logic->mkConst(expr.get(ID_C_cformat).c_str());
+            PTRef rconst = logic->mkConst(expr.get(ID_C_cformat).c_str()); // Can have a wrong conversion sometimes!
             l = new_variable();
             literals.push_back(rconst);
+
+            // Check the conversion from string to real was done properly - do not erase!
+            assert(!logic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
+            assert(!logic->isRealZero(rconst) || expr.is_zero()); // Check the conversion works: Zero => zero
+            // If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
 		}
 	} else if (expr.id() == ID_typecast && expr.has_operands()) {
 #ifdef SMT_DEBUG
@@ -186,15 +194,30 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 			}
 		}
 #endif
+        // Check if for div op there is a rounding variable
+        bool is_div_wtrounding = false;
+        if (expr.id() == ID_floatbv_div || expr.id() == ID_div) {
+        	if ((expr.operands()).size() > 2)
+        		is_div_wtrounding = true; // need to take care differently!
+        }
+        // End of check - shall be on a procedure!
 
         vec<PTRef> args;
-		forall_operands(it, expr)
-		{
-			// KE: recursion in case the expr is not simple - shall be in a visitor
-			literalt cl = convert(*it);
-			PTRef cp = literals[cl.var_no()];
-			assert(cp != PTRef_Undef);
-			args.push(cp);
+        int i = 0;
+        forall_operands(it, expr)
+        {	// KE: recursion in case the expr is not simple - shall be in a visitor
+
+			// Divide with 3 operators
+			if (is_div_wtrounding && i >= 2) {
+				cout << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
+				assert(false);
+			} else { // All the rest of the operators
+				literalt cl = convert(*it);
+				PTRef cp = literals[cl.var_no()];
+				assert(cp != PTRef_Undef);
+				args.push(cp);
+			}
+			i++;
 		}
 
         l = new_variable();
