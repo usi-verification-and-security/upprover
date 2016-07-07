@@ -146,12 +146,15 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         cout << "; IT IS A CONSTANT --" << expr.get(ID_C_cformat).c_str() << "--" << endl;
 #endif
 #ifdef DEBUG_SSA_SMT
-        cout << "; CONVERT INTO C-STRING --" << expr.get(ID_C_cformat).c_str() << "-- ORIG-EXPR " << expr.get(ID_value) << endl;
+        cout << "; CONVERT INTO C-STRING --" << expr.print_number_2smt() << "-- ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << endl;
 #endif
 		if (expr.is_boolean()) {
 			l = const_var(expr.is_true());
 		} else {
-            PTRef rconst = logic->mkConst(expr.get(ID_C_cformat).c_str()); // Can have a wrong conversion sometimes!
+			std::string const_val = expr.print_number_2smt(); // cprover - util code works only for positive or unsigned!
+			// If can be that we missed more cases... use the debug prints to check conversions!!
+
+            PTRef rconst = logic->mkConst(const_val.c_str()); // Can have a wrong conversion sometimes!
             l = new_variable();
             literals.push_back(rconst);
 

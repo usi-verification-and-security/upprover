@@ -61,24 +61,12 @@ long expr_pretty_printt::convertBinaryIntoDec(const exprt &expr) {
 		return last_convered_value;
 	}
 
-	std::stringstream convert; // stringstream used for the conversion
-	convert << expr.get(ID_value);//add the value of Number to the characters in the stream
-	std::string inB = convert.str();
-
-    long dec = 0;
-    long currDigit = 0;
-	long base = 1;
-	long base2 = 2;
-
-	int size = inB.size()-1;
-	for (int i=size; i>= 0; i--) {
-		char curr = inB[i];
-        currDigit = atol(&curr);
-        if (i==0) dec = dec - currDigit * base;
-        else dec = dec + currDigit * base;
-        base = base * base2;
+	std::string test = expr.print_number_2smt();
+	if (test.size() > 0) {
+		return stol(test);
 	}
-	return dec;
+
+	return 0;
 }
 
 void

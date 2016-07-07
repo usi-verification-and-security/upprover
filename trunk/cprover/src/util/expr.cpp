@@ -10,6 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 
 #include <stack>
+#include <sstream>
 
 #include "mp_arith.h"
 #include "fixedbv.h"
@@ -536,6 +537,61 @@ bool exprt::is_one() const
   }
 
   return false;
+}
+
+/*******************************************************************\
+
+Function: exprt::print_number - hckd¬!!
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+const std::string exprt::print_number_2smt() const
+{
+  if(is_constant())
+  {
+    const std::string &value=get_string(ID_value);
+    const irep_idt &type_id=type().id_string();
+
+    if(type_id==ID_integer || type_id==ID_natural)
+    {
+      mp_integer int_value=string2integer(value);
+      return integer2string(int_value);
+    }
+    else if(type_id==ID_rational)
+    {
+      std::stringstream convert; // stringstream used for the conversion
+      rationalt rat_value;
+      if(to_rational(*this, rat_value)) assert(false);
+      convert << rat_value;
+      return convert.str();
+    }
+    else if(type_id==ID_unsignedbv)
+    {
+      mp_integer int_value=binary2integer(value, false);
+      return integer2string(int_value);
+    }
+    else if(type_id==ID_signedbv)
+    {
+      mp_integer int_value=binary2integer(value, true);
+      return integer2string(int_value);
+    }
+    else if(type_id==ID_fixedbv)
+    {
+       return (fixedbvt(to_constant_expr(*this))).to_ansi_c_string();
+    }
+    else if(type_id==ID_floatbv)
+    {
+       return (ieee_floatt(to_constant_expr(*this))).to_ansi_c_string();
+    }
+  }
+
+  return "";
 }
 
 /*******************************************************************\
