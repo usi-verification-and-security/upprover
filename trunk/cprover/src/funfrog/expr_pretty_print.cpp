@@ -54,7 +54,7 @@ std::string expr_pretty_printt::addToDeclMap(const exprt &expr) {
 	return name_expr;
 }
 
-long expr_pretty_printt::convertBinaryIntoDec(const exprt &expr) {
+double expr_pretty_printt::convertBinaryIntoDec(const exprt &expr) {
 	// convert once per expt const - why? because if you "get" twice from the same object you don't get the same result
 	if (isAlreadyConverted) {
 		isAlreadyConverted = false;
@@ -63,7 +63,7 @@ long expr_pretty_printt::convertBinaryIntoDec(const exprt &expr) {
 
 	std::string test = expr.print_number_2smt();
 	if (test.size() > 0) {
-		return stol(test);
+		return stod(test);
 	}
 
 	return 0;
@@ -223,7 +223,7 @@ expr_pretty_printt::visit_SSA(const exprt& expr) {
 	bool isTypeCast0 = false;
 	if (expr.id() == ID_typecast && isHasOperands) {
 		if ((expr.operands())[0].is_constant()) {
-			long val_cast = convertBinaryIntoDec((expr.operands())[0]);
+			double val_cast = convertBinaryIntoDec((expr.operands())[0]);
 			if (val_cast == 0) {
 			  isTypeCast0 = true;
 			  if (is_prev_token) out << " ";

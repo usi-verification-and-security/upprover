@@ -143,10 +143,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		literals.push_back (var);
 	} else if (expr.id()==ID_constant) {
 #ifdef SMT_DEBUG
-        cout << "; IT IS A CONSTANT --" << expr.get(ID_C_cformat).c_str() << "--" << endl;
-#endif
-#ifdef DEBUG_SSA_SMT
-        cout << "; CONVERT INTO C-STRING --" << expr.print_number_2smt() << "-- ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << endl;
+        cout << "; IT IS A CONSTANT --" << expr.print_number_2smt() << "--ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << endl;
 #endif
 		if (expr.is_boolean()) {
 			l = const_var(expr.is_true());
@@ -209,11 +206,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         int i = 0;
         forall_operands(it, expr)
         {	// KE: recursion in case the expr is not simple - shall be in a visitor
-
-			// Divide with 3 operators
-			if (is_div_wtrounding && i >= 2) {
-				cout << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
-				assert(false);
+			if (is_div_wtrounding && i >= 2) { // Divide with 3 operators
+				// Skip - we don't need the rounding variable for non-bv logics
 			} else { // All the rest of the operators
 				literalt cl = convert(*it);
 				PTRef cp = literals[cl.var_no()];

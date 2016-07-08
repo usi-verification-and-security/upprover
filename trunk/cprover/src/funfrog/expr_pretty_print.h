@@ -44,11 +44,11 @@ private:
   std::map <std::string,exprt>* partition_smt_decl;
 
   std::string addToDeclMap(const exprt &expr);
-  long convertBinaryIntoDec(const exprt &expr);
+  double convertBinaryIntoDec(const exprt &expr);
 
   // Can do it only because refer to const!!
   bool isAlreadyConverted;
-  long last_convered_value;
+  double last_convered_value;
 };
 
 std::ostream& expr_pretty_print(std::ostream& out, const exprt& expr, 
