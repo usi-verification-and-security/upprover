@@ -196,7 +196,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 #endif
         // Check if for div op there is a rounding variable
         bool is_div_wtrounding = false;
-        if (expr.id() == ID_floatbv_div || expr.id() == ID_div) {
+        if (expr.id() == ID_floatbv_div || expr.id() == ID_div ||
+        	expr.id() == ID_floatbv_mult || expr.id() == ID_mult) {
         	if ((expr.operands()).size() > 2)
         		is_div_wtrounding = true; // need to take care differently!
         }
@@ -264,7 +265,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		} else if(expr.id() == ID_floatbv_div) {
 			ptl = logic->mkRealDiv(args);
 		} else if(expr.id() == ID_floatbv_mult) {
-			ptl = logic->mkRealTimes(args);
+			cout << "here !" << endl; ptl = logic->mkRealTimes(args);
 		} else {
 #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
