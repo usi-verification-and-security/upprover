@@ -10,6 +10,7 @@ Author: Grigory Fedyukovich
 
 //#define SMT_DEBUG
 #define DEBUG_SSA_SMT
+#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
 {
@@ -166,11 +167,11 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         PTRef ptl;
         l = new_variable();
 		if ((expr.operands())[0].is_constant()) {
-			ptl = logic->mkConst(extract_expr_str_number(expr).c_str());
+			ptl = logic->mkConst(extract_expr_str_number((expr.operands())[0]).c_str());
 
 			// Check the conversion from string to real was done properly - do not erase!
-			assert(!logic->isRealOne(ptl) || expr.is_one()); // Check the conversion works: One => one
-			assert(!logic->isRealZero(ptl) || expr.is_zero()); // Check the conversion works: Zero => zero
+			assert(!logic->isRealOne(ptl) || (expr.operands())[0].is_one()); // Check the conversion works: One => one
+			assert(!logic->isRealZero(ptl) || (expr.operands())[0].is_zero()); // Check the conversion works: Zero => zero
 			// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
 		} else {
 			// GF: sometimes typecast is applied to variables, e.g.:
@@ -639,11 +640,10 @@ std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
 	std::string const_val = expr.print_number_2smt(); // DO NOT CHANGE TO cprover util code as it works only for positive or unsigned!
 	//(unless upgrade, please keep the checks/assert!)
 	// If can be that we missed more cases... use the debug prints to check conversions!!
-#ifdef SMT_DEBUG
+#ifdef DEBUG_SSA_SMT_NUMERIC_CONV
         cout << "; EXTRACTING NUMBER --" << const_val << " (ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << ")"<< endl;
         cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << endl;
 #endif
 
 	return const_val;
 }
-
