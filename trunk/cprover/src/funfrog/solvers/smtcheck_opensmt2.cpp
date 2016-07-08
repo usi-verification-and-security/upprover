@@ -143,22 +143,19 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		literals.push_back (var);
 	} else if (expr.id()==ID_constant) {
 #ifdef SMT_DEBUG
-        cout << "; IT IS A CONSTANT --" << expr.print_number_2smt() << "--ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << endl;
+        cout << "; IT IS A CONSTANT " << endl;
 #endif
 		if (expr.is_boolean()) {
 			l = const_var(expr.is_true());
 		} else {
-			std::string const_val = expr.print_number_2smt(); // cprover - util code works only for positive or unsigned!
-			// If can be that we missed more cases... use the debug prints to check conversions!!
-
-            PTRef rconst = logic->mkConst(const_val.c_str()); // Can have a wrong conversion sometimes!
+            PTRef rconst = logic->mkConst(extract_expr_str_number(expr).c_str()); // Can have a wrong conversion sometimes!
             l = new_variable();
             literals.push_back(rconst);
 
-            // Check the conversion from string to real was done properly - do not erase!
-            assert(!logic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
-            assert(!logic->isRealZero(rconst) || expr.is_zero()); // Check the conversion works: Zero => zero
-            // If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
+        	// Check the conversion from string to real was done properly - do not erase!
+        	assert(!logic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
+        	assert(!logic->isRealZero(rconst) || expr.is_zero()); // Check the conversion works: Zero => zero
+        	// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
 		}
 	} else if (expr.id() == ID_typecast && expr.has_operands()) {
 #ifdef SMT_DEBUG
@@ -169,7 +166,12 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         PTRef ptl;
         l = new_variable();
 		if ((expr.operands())[0].is_constant()) {
-			ptl = logic->mkConst(expr.get(ID_C_cformat).c_str());
+			ptl = logic->mkConst(extract_expr_str_number(expr).c_str());
+
+			// Check the conversion from string to real was done properly - do not erase!
+			assert(!logic->isRealOne(ptl) || expr.is_one()); // Check the conversion works: One => one
+			assert(!logic->isRealZero(ptl) || expr.is_zero()); // Check the conversion works: Zero => zero
+			// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
 		} else {
 			// GF: sometimes typecast is applied to variables, e.g.:
 			//     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
@@ -222,9 +224,9 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         PTRef ptl;
 		if (expr.id()==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
-		} /*else if (expr.id()==ID_if) {
-            ptl = logic->mkImpl(args);
-		} */else if(expr.id() == ID_ifthenelse) {
+		/* } else if (expr.id()==ID_if) {
+            ptl = logic->mkImpl(args); */
+		} else if(expr.id() == ID_ifthenelse) {
             ptl = logic->mkIte(args);
 		} else if(expr.id() == ID_and) {
             ptl = logic->mkAnd(args);
@@ -617,5 +619,31 @@ void smtcheck_opensmt2t::close_partition()
     }
   }
   current_partition = NULL;
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::extract_expr_str_number
+
+  Inputs: expression that is a constant (+/-/int/float/rational)
+
+ Outputs: a string of the number
+
+ Purpose: assure we are extracting the number correctly.
+
+ expr.get(ID_C_cformat).c_str() - doesn't work for negative numbers!
+
+\*******************************************************************/
+std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
+{
+	std::string const_val = expr.print_number_2smt(); // DO NOT CHANGE TO cprover util code as it works only for positive or unsigned!
+	//(unless upgrade, please keep the checks/assert!)
+	// If can be that we missed more cases... use the debug prints to check conversions!!
+#ifdef SMT_DEBUG
+        cout << "; EXTRACTING NUMBER --" << const_val << " (ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << ")"<< endl;
+        cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << endl;
+#endif
+
+	return const_val;
 }
 

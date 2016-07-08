@@ -17,6 +17,9 @@ Author: Ondrej Sery
 #define SYMBOL_COLOR "\033[0m"
 #define OPERATOR_COLOR "\033[1;32m"
 #define NORMAL_COLOR "\033[0m"
+#define DEBUG_COLOR "\E[47;34m"
+
+//#define DEBUG_SSA_SMT
 
 std::string expr_pretty_printt::addToDeclMap(const exprt &expr) {
 	if (partition_smt_decl == NULL) return "";
@@ -62,16 +65,18 @@ double expr_pretty_printt::convertBinaryIntoDec(const exprt &expr) {
 	}
 
 	std::string test = expr.print_number_2smt();
-	if (test.size() > 0) {
+	if (test.size() > 0)
 		return stod(test);
-	}
-
 	return 0;
 }
 
 void
 expr_pretty_printt::operator()(const exprt &expr)
 {
+#ifdef DEBUG_SSA_SMT
+	out << DEBUG_COLOR << "; EXPR OP " << expr.id() << NORMAL_COLOR << '\n';
+#endif
+
 	if (expr.id() == ID_symbol) {
 		if (is_prev_token) out << " ";
 		out << SYMBOL_COLOR << "|" << expr.get(ID_identifier) << "|" << NORMAL_COLOR;

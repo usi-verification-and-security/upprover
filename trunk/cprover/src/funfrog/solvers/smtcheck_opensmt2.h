@@ -122,6 +122,8 @@ protected:
   void close_partition();
 
   void freeSolver();
+
+  std::string extract_expr_str_number(const exprt &expr); // Our conversion of const that works also for negative numbers + check of result
 };
 
 #endif
