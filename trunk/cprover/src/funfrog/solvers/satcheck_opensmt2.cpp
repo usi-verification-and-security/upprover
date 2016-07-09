@@ -499,12 +499,13 @@ Function: satcheck_opensmt2t::close_partition
 void satcheck_opensmt2t::close_partition()
 {
   assert(current_partition != NULL);
+  char *msg;
   if (partition_count > 0){
     if (current_partition->size() > 1){
-      mainSolver->push(logic->mkAnd(*current_partition));
+      mainSolver->insertFormula(logic->mkAnd(*current_partition), &msg);
     } else if (current_partition->size() == 1){
       std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
-      mainSolver->push((*current_partition)[0]);
+      mainSolver->insertFormula((*current_partition)[0], &msg);
     } else {
       std::cout << "Empty partition (terms size = 0): " << partition_count << "\n";
     }
