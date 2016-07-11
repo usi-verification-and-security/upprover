@@ -45,7 +45,13 @@ public:
 
   literalt const_var(bool val);
 
+  literalt const_var_Real(const exprt &expr);
+
+  literalt const_var_Real(std::string val);
+
   literalt limplies(literalt l1, literalt l2);
+
+  literalt lnotequal(literalt l1, literalt l2);
 
   literalt land(literalt l1, literalt l2);
 
