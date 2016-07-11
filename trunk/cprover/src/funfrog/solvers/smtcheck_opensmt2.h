@@ -64,12 +64,15 @@ public:
 
   bool can_interpolate() const;
 
-  // Extract interpolant form OpenSMT Egraph
+  // Extract interpolant form OpenSMT files/data
   void extract_itp(PTRef ptref, prop_itpt& target_itp) const;
 
+  /* KE : remove, will use OpenSMT code + PTRefs in hifrog
   // Simple recursive extraction of clauses from OpenSMT Egraph
   literalt extract_itp_rec(PTRef ptref, prop_itpt& target_itp,
     ptref_cachet& ptref_cache) const;
+   *
+   */
  
   const char* false_str = "false";
   const char* true_str = "true";

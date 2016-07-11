@@ -124,7 +124,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 
         string toremove[] = {"!", "::", "|", "\\", "#", "_"};
         string newstr("");
-        for(int i = 0; i < str.size(); ++i)
+        int str_size = str.size();
+        for(int i = 0; i < str_size; ++i)
         {
             char c = str[i];
             if(c == '!' || c == ':' || c == '|' || c == '\\' || c == '#' || c == '_')
@@ -399,10 +400,13 @@ void smtcheck_opensmt2t::extract_itp(PTRef ptref,
   prop_itpt& target_itp) const
 {
   ptref_cachet cache;
-//  target_itp.set_no_original_variables(no_literals);
-  target_itp.root_literal = extract_itp_rec(ptref, target_itp, cache);
+  //  target_itp.set_no_original_variables(no_literals);
+  //target_itp.root_literal = extract_itp_rec(ptref, target_itp, cache);
+
+  // KE : interpolant adjustments/remove var indices shall come here
 }
 
+/* KE: Remove code - Will use OpenSMT2 to do so + using only PTref as is
 // GF: this all should be rewritten, prop_itpt should be replaces by theory_itpt
 //     or, maybe, we can extract interpolants straight to CProver exprt?
 literalt smtcheck_opensmt2t::extract_itp_rec(PTRef ptref,
@@ -451,6 +455,7 @@ literalt smtcheck_opensmt2t::extract_itp_rec(PTRef ptref,
   else
   {
       Pterm& ptm = logic->getPterm(ptref);
+      cout << "; error " << logic->getSymName(ptref) << endl;
       assert(ptm.size() == 0);
 //      result.set(decode_id(logic->getSymName(ptref)), false);
       //GF: hack
@@ -459,6 +464,7 @@ literalt smtcheck_opensmt2t::extract_itp_rec(PTRef ptref,
   ptref_cache.insert(ptref_cachet::value_type(ptref, result));
   return result;
 }
+*/
 
 // helper interpolation method taken from opensmt
 void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants)
@@ -492,6 +498,8 @@ Function: smtcheck_opensmt2t::get_interpolant
  the formula with an UNSAT result.
 
 \*******************************************************************/
+// KE : Shall add the code using new outputs from OpenSMT2 + apply some changes to variable indices
+//      if the code is too long split to the method - extract_itp, which is now commented (its body).
 void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids,
     interpolantst& interpolants)
 {
@@ -556,7 +564,7 @@ Function: smtcheck_opensmt2t::prop_solve
 bool smtcheck_opensmt2t::solve() {
 
   if (dump_queries){
-    char* msg1;
+    //char* msg1;
     //mainSolver->writeSolverState_smtlib2("__SMT_query", &msg1);
   }
 
