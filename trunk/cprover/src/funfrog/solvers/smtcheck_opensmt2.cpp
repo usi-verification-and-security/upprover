@@ -199,6 +199,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 #ifdef SMT_DEBUG
         if (expr.has_operands() && expr.operands().size() > 1) {
         	if ((expr.operands()[0] == expr.operands()[1]) &&
+        		(!expr.operands()[1].is_constant())	&&
         		  ((expr.id() == ID_mult) ||
         		   (expr.id() == ID_floatbv_mult))
         	){
