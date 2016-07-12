@@ -384,9 +384,15 @@ void partitioning_target_equationt::convert_partition_assertions(
     	expr_ssa_print_smt_dbg(cout << "Before decider::convert and decider.limplies(ASSERT-OUT) --> " , it->cond_expr, true);
 #	  endif
       // Collect ass \in assertions(f) in bv
-      literalt tmp_literal = decider.convert(it->cond_expr);
+      literalt tmp_literal;
+      if (isTypeCastConst(it->cond_expr)) { // take care of assert(0); or assert(56); etc.
+    	  literalt const_0_literal = decider.const_var_Real("0");
+    	  literalt const_cond_literal = tmp_literal = decider.convert(it->cond_expr);
+    	  tmp_literal = decider.lnotequal(const_cond_literal, const_0_literal);
+	  } else { // The common case
+		  tmp_literal = decider.convert(it->cond_expr);
+	  }
       it->cond_literal = decider.limplies(assumption_literal, tmp_literal);
-
       bv.push_back(decider.lnot(it->cond_literal));
     }
     else if (it->is_assume() && !it->ignore) {
@@ -1048,5 +1054,15 @@ bool partitioning_target_equationt::isFirstCallExpr(const exprt& expr) {
 
 	//return (first_call_expr->compare(expr) != 0); // for debug
     return (first_call_expr->pretty().compare(expr.pretty()) != 0);
+}
+
+// For the case when we have => with cast to bool
+bool partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
+	if (expr.id() != ID_typecast) return false;
+	if (!expr.has_operands()) return false;
+	if (!(expr.operands())[0].is_constant()) return false;
+	if ((expr.operands())[0].is_boolean()) return false;
+
+	return true;
 }
 

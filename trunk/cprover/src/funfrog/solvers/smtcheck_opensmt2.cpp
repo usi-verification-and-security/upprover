@@ -10,7 +10,7 @@ Author: Grigory Fedyukovich
 
 //#define SMT_DEBUG
 #define DEBUG_SSA_SMT
-#define DEBUG_SSA_SMT_NUMERIC_CONV
+//#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
 {
@@ -103,6 +103,28 @@ literalt smtcheck_opensmt2t::const_var(bool val)
   return l;
 }
 
+literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
+{
+	literalt l = new_variable();
+	PTRef rconst = logic->mkConst(extract_expr_str_number(expr).c_str()); // Can have a wrong conversion sometimes!
+	literals.push_back(rconst);
+
+	// Check the conversion from string to real was done properly - do not erase!
+	assert(!logic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
+	assert(!logic->isRealZero(rconst) || expr.is_zero()); // Check the conversion works: Zero => zero
+	// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
+
+	return l;
+}
+
+literalt smtcheck_opensmt2t::const_var_Real(std::string val)
+{
+	literalt l = new_variable();
+	PTRef rconst = logic->mkConst(val.c_str()); // Can have a wrong conversion sometimes!
+	literals.push_back(rconst);
+	return l;
+}
+
 literalt smtcheck_opensmt2t::convert(const exprt &expr)
 {
     if(converted_exprs.find(expr.full_hash()) != converted_exprs.end())
@@ -127,7 +149,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         // They are fine via the library though
         string toremove[] = {"!", "::", "|", "\\", "#", "_"};
         string newstr("");
-        for(int i = 0; i < str.size(); ++i)
+        int str_size = str.size();
+        for(int i = 0; i < str_size; ++i)
         {
             char c = str[i];
             if(c == '!' || c == ':' || c == '|' || c == '\\' || c == '#' || c == '_')
@@ -152,14 +175,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		if (expr.is_boolean()) {
 			l = const_var(expr.is_true());
 		} else {
-            PTRef rconst = logic->mkConst(extract_expr_str_number(expr).c_str()); // Can have a wrong conversion sometimes!
-            l = new_variable();
-            literals.push_back(rconst);
-
-        	// Check the conversion from string to real was done properly - do not erase!
-        	assert(!logic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
-        	assert(!logic->isRealZero(rconst) || expr.is_zero()); // Check the conversion works: Zero => zero
-        	// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
+			l = const_var_Real(expr);
 		}
 	} else if (expr.id() == ID_typecast && expr.has_operands()) {
 #ifdef SMT_DEBUG
@@ -167,23 +183,17 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 #endif
 		// KE: Take care of type cast: two cases (1) const and (2) val (var in SMT)
 		// First try to code it (just replace the binary to real and val/var just create without time cast
-        PTRef ptl;
-        l = new_variable();
 		if ((expr.operands())[0].is_constant()) {
-			ptl = logic->mkConst(extract_expr_str_number((expr.operands())[0]).c_str());
-
-			// Check the conversion from string to real was done properly - do not erase!
-			assert(!logic->isRealOne(ptl) || (expr.operands())[0].is_one()); // Check the conversion works: One => one
-			assert(!logic->isRealZero(ptl) || (expr.operands())[0].is_zero()); // Check the conversion works: Zero => zero
-			// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
+			l = const_var_Real((expr.operands())[0]);
 		} else {
 			// GF: sometimes typecast is applied to variables, e.g.:
 			//     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
 			//     in this case, we should replace it by the variable itself, i.e.:
 			//     (not (= |c::main::1::c!0#4| -2147483648))
-			ptl = logic->mkRealVar(id2string(expr.get(ID_identifier)).c_str());
+			l = new_variable();
+			PTRef ptl = logic->mkRealVar(id2string(expr.get(ID_identifier)).c_str());
+			literals.push_back(ptl);
 		}
-		literals.push_back(ptl);
 	} else {
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
@@ -192,6 +202,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 #ifdef SMT_DEBUG
         if (expr.has_operands() && expr.operands().size() > 1) {
         	if ((expr.operands()[0] == expr.operands()[1]) &&
+        		(!expr.operands()[1].is_constant())	&&
         		  ((expr.id() == ID_mult) ||
         		   (expr.id() == ID_floatbv_mult))
         	){
@@ -271,7 +282,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		} else if(expr.id() == ID_floatbv_div) {
 			ptl = logic->mkRealDiv(args);
 		} else if(expr.id() == ID_floatbv_mult) {
-			cout << "here !" << endl; ptl = logic->mkRealTimes(args);
+			ptl = logic->mkRealTimes(args);
 		} else {
 #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
@@ -328,6 +339,19 @@ literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkImpl(args);
+    l = new_variable();
+    literals.push_back(ans);
+	return l;
+}
+
+literalt smtcheck_opensmt2t::lnotequal(literalt l1, literalt l2){
+	literalt l;
+    vec<PTRef> args;
+    PTRef pl1 = literals[l1.var_no()];
+    PTRef pl2 = literals[l2.var_no()];
+    args.push(pl1);
+    args.push(pl2);
+    PTRef ans = logic->mkNot(logic->mkEq(args));
     l = new_variable();
     literals.push_back(ans);
 	return l;
@@ -402,10 +426,13 @@ void smtcheck_opensmt2t::extract_itp(PTRef ptref,
   prop_itpt& target_itp) const
 {
   ptref_cachet cache;
-//  target_itp.set_no_original_variables(no_literals);
-  target_itp.root_literal = extract_itp_rec(ptref, target_itp, cache);
+  //  target_itp.set_no_original_variables(no_literals);
+  //target_itp.root_literal = extract_itp_rec(ptref, target_itp, cache);
+
+  // KE : interpolant adjustments/remove var indices shall come here
 }
 
+/* KE: Remove code - Will use OpenSMT2 to do so + using only PTref as is
 // GF: this all should be rewritten, prop_itpt should be replaces by theory_itpt
 //     or, maybe, we can extract interpolants straight to CProver exprt?
 literalt smtcheck_opensmt2t::extract_itp_rec(PTRef ptref,
@@ -454,6 +481,7 @@ literalt smtcheck_opensmt2t::extract_itp_rec(PTRef ptref,
   else
   {
       Pterm& ptm = logic->getPterm(ptref);
+      cout << "; error " << logic->getSymName(ptref) << endl;
       assert(ptm.size() == 0);
 //      result.set(decode_id(logic->getSymName(ptref)), false);
       //GF: hack
@@ -462,6 +490,7 @@ literalt smtcheck_opensmt2t::extract_itp_rec(PTRef ptref,
   ptref_cache.insert(ptref_cachet::value_type(ptref, result));
   return result;
 }
+*/
 
 // helper interpolation method taken from opensmt
 void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants)
@@ -495,6 +524,8 @@ Function: smtcheck_opensmt2t::get_interpolant
  the formula with an UNSAT result.
 
 \*******************************************************************/
+// KE : Shall add the code using new outputs from OpenSMT2 + apply some changes to variable indices
+//      if the code is too long split to the method - extract_itp, which is now commented (its body).
 void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids,
     interpolantst& interpolants)
 {
@@ -559,7 +590,7 @@ Function: smtcheck_opensmt2t::prop_solve
 bool smtcheck_opensmt2t::solve() {
 
   if (dump_queries){
-    char* msg1;
+    //char* msg1;
     //mainSolver->writeSolverState_smtlib2("__SMT_query", &msg1);
   }
 
@@ -644,7 +675,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
 	//(unless upgrade, please keep the checks/assert!)
 	// If can be that we missed more cases... use the debug prints to check conversions!!
 #ifdef DEBUG_SSA_SMT_NUMERIC_CONV
-        cout << "; EXTRACTING NUMBER --" << const_val << " (ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << ")"<< endl;
+        cout << "; EXTRACTING NUMBER " << const_val << " (ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << ")"<< endl;
         cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << endl;
 #endif
 
