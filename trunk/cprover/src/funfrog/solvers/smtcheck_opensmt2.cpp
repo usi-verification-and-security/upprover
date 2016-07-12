@@ -153,6 +153,10 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 #endif
         }
 
+        /*
+        // OpenSMT doesn't really like these characters when using standalone.
+        // They are fine via the library though
+
         string toremove[] = {"!", "::", "|", "\\", "#", "_"};
         string newstr("");
         int str_size = str.size();
@@ -164,9 +168,9 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             newstr += c;
         }
         str = newstr;
+        */
 
         PTRef var;
-        //typecheck
         if(is_number(expr.type()))
             var = logic->mkRealVar(str.c_str());
         else
