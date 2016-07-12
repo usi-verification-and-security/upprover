@@ -41,6 +41,7 @@ std::string expr_pretty_printt::addToDeclMap(const exprt &expr) {
 			name_expr = name_expr.replace(0,7, "symex::nondet");
 	}
 	convert.str(""); // for reuse
+	if (name_expr.find("c::__CPROVER_rounding_mode#") != std::string::npos) return "";
 
 	// Create the output
 	std::ostream out_code(0);
@@ -253,12 +254,25 @@ expr_pretty_printt::visit_SSA(const exprt& expr) {
 
 		(*this)(expr);
 
+		bool is_rdmd = isWithRoundingModel(expr); int i = 0; // If with rounding model and not BV then remove it
 		last = false;
 		forall_operands(it, expr) {
-			if (it == --expr.operands().end()) {
-			  last = true;
+			if (is_rdmd) { // Divide with 3 operators
+				if (i >= 2) {
+					// Skip - we don't need the rounding variable for non-bv logics
+				} else {
+					if ((it == --expr.operands().end()) || (i ==1)) {
+					  last = true;
+					}
+					this->visit_SSA(*it);
+					i++;
+				}
+			} else { // common regular case
+				if (it == --expr.operands().end()) {
+				  last = true;
+				}
+				this->visit_SSA(*it);
 			}
-			this->visit_SSA(*it);
 		}
 
 		// After all the expression parts printed
@@ -267,4 +281,18 @@ expr_pretty_printt::visit_SSA(const exprt& expr) {
 	}
 
 	indent = old_indent;
+}
+
+bool expr_pretty_printt::isWithRoundingModel(const exprt& expr) {
+	// Check if for div op there is a rounding variable
+	bool is_div_wtrounding = false;
+	if (expr.id() == ID_floatbv_minus || expr.id() == ID_minus ||
+		expr.id() == ID_floatbv_plus || expr.id() == ID_plus ||
+		expr.id() == ID_floatbv_div || expr.id() == ID_div ||
+		expr.id() == ID_floatbv_mult || expr.id() == ID_mult) {
+		if ((expr.operands()).size() > 2)
+			is_div_wtrounding = true; // need to take care differently!
+	}
+	// End of check - shall be on a procedure!
+	return is_div_wtrounding;
 }

@@ -339,6 +339,7 @@ private:
   friend class partitioning_slicet;
 
   bool isTypeCastConst(const exprt &expr); // For the case when we have => with cast to bool
+  bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
 };
 
 #endif

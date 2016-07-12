@@ -144,6 +144,15 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
 			str = str.replace(0,7, "symex::nondet");
 
+        if (str.find("c::__CPROVER_rounding_mode#") != std::string::npos) {
+#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
+                cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
+#else
+                cout << "; Error Using Rounding Model in LRA " << str << endl;
+                assert(false);
+#endif
+        }
+
         string toremove[] = {"!", "::", "|", "\\", "#", "_"};
         string newstr("");
         int str_size = str.size();
@@ -210,8 +219,10 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 #endif
         // Check if for div op there is a rounding variable
         bool is_div_wtrounding = false;
-        if (expr.id() == ID_floatbv_div || expr.id() == ID_div ||
-        	expr.id() == ID_floatbv_mult || expr.id() == ID_mult) {
+    	if (expr.id() == ID_floatbv_minus || expr.id() == ID_minus ||
+    		expr.id() == ID_floatbv_plus || expr.id() == ID_plus ||
+    		expr.id() == ID_floatbv_div || expr.id() == ID_div ||
+    		expr.id() == ID_floatbv_mult || expr.id() == ID_mult) {
         	if ((expr.operands()).size() > 2)
         		is_div_wtrounding = true; // need to take care differently!
         }
@@ -284,7 +295,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
 #else
-            cout << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
+            cout << "; Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
             assert(false);
 #endif
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos

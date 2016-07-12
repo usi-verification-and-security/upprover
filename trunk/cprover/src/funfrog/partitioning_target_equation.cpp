@@ -243,19 +243,40 @@ void partitioning_target_equationt::convert_partition_assignments(
     {
       exprt tmp(it->cond_expr);
 
+      // Only if not an assignment to rounding model print it + add it to LRA statements
+      cout << "; Test res " << isRoundModelEq(tmp) << endl;
+      if (!isRoundModelEq(tmp)) {
 #     ifdef DEBUG_SSA
-      //expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);
-      //expr_ssa_print_test(&partition_smt_decl, out_code << "(assign ", tmp);
-      expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
-      terms_counter++;
+		  //expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);
+		  //expr_ssa_print_test(&partition_smt_decl, out_code << "(assign ", tmp);
+		  expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
+		  terms_counter++;
 #     endif
 
 #     ifdef DEBUG_SSA_SMT_CALL
-      expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true(ASSIGN-OUT) --> " , tmp, false);
+		  expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true(ASSIGN-OUT) --> " , tmp, false);
 #	  endif
-      decider.set_to_true(tmp);
+		  decider.set_to_true(tmp);
+      }
     }
   }
+}
+
+bool partitioning_target_equationt::isRoundModelEq(const exprt &expr){
+	if (!expr.has_operands()) return false;
+	if (expr.operands().size() > 2) return false;
+
+	// Start checking if it is auto gen code for rounding model
+	if (expr.operands().size() == 2)
+    {
+		string str = id2string((expr.operands()[1]).get(ID_identifier));
+		if (str.find("c::__CPROVER_rounding_mode#") != std::string::npos) return true;
+    }
+
+	string str = id2string((expr.operands()[0]).get(ID_identifier));
+	if (str.find("c::__CPROVER_rounding_mode#") != std::string::npos) return true;
+
+	return false;
 }
 
 /*******************************************************************\
