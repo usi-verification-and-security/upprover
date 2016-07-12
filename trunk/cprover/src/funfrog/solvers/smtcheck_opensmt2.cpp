@@ -8,9 +8,9 @@ Author: Grigory Fedyukovich
 
 #include "smtcheck_opensmt2.h"
 
-#define SMT_DEBUG
+//#define SMT_DEBUG
 #define DEBUG_SSA_SMT
-#define DEBUG_SSA_SMT_NUMERIC_CONV
+//#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
 {
@@ -279,7 +279,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		} else if(expr.id() == ID_floatbv_div) {
 			ptl = logic->mkRealDiv(args);
 		} else if(expr.id() == ID_floatbv_mult) {
-			cout << "here !" << endl; ptl = logic->mkRealTimes(args);
+			ptl = logic->mkRealTimes(args);
 		} else {
 #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
