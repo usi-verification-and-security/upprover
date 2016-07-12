@@ -122,6 +122,9 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
 			str = str.replace(0,7, "symex::nondet");
 
+        /*
+        // OpenSMT doesn't really like these characters when using standalone.
+        // They are fine via the library though
         string toremove[] = {"!", "::", "|", "\\", "#", "_"};
         string newstr("");
         for(int i = 0; i < str.size(); ++i)
@@ -132,9 +135,9 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             newstr += c;
         }
         str = newstr;
+        */
 
         PTRef var;
-        //typecheck
         if(is_number(expr.type()))
             var = logic->mkRealVar(str.c_str());
         else
