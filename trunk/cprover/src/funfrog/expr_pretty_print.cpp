@@ -241,7 +241,6 @@ expr_pretty_printt::visit_SSA(const exprt& expr) {
 				}
 			} else {
 				out << CONSTANT_COLOR << val_cast << NORMAL_COLOR;
-				out << (expr.operands())[0];
 			}
 			is_prev_token = true;
 			last_convered_value = val_cast; isAlreadyConverted = true;
@@ -289,6 +288,7 @@ expr_pretty_printt::visit_SSA(const exprt& expr) {
 	}
 
 	indent = old_indent;
+	last_convered_value = 0; isAlreadyConverted = false;
 }
 
 bool expr_pretty_printt::isWithRoundingModel(const exprt& expr) {
