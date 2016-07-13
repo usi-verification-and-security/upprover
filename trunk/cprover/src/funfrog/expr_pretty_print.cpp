@@ -249,6 +249,7 @@ expr_pretty_printt::visit_SSA(const exprt& expr) {
 			//     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
 			//     in this case, we should replace it by the variable itself, i.e.:
 			//     (not (= |c::main::1::c!0#4| -2147483648))
+			isTypeCast0 = true; operator()(expr.operands()[0]);
 		}
 	}
 
