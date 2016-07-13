@@ -68,6 +68,7 @@ double expr_pretty_printt::convertBinaryIntoDec(const exprt &expr) {
 	std::string test = expr.print_number_2smt();
 	if (test.size() > 0)
 		return stod(test);
+
 	return 0;
 }
 
@@ -230,12 +231,19 @@ expr_pretty_printt::visit_SSA(const exprt& expr) {
 	if (expr.id() == ID_typecast && isHasOperands) {
 		if ((expr.operands())[0].is_constant()) {
 			double val_cast = convertBinaryIntoDec((expr.operands())[0]);
-			if (val_cast == 0) {
-			  isTypeCast0 = true;
-			  if (is_prev_token) out << " ";
-			  out << "false"; is_prev_token = true;
+			isTypeCast0 = true;
+			if (is_prev_token) out << " ";
+			if (expr.is_boolean()) {
+				if (val_cast == 0) {
+				  out << CONSTANT_COLOR << "false" << NORMAL_COLOR;
+				} else {
+					out << CONSTANT_COLOR << "true" << NORMAL_COLOR;
+				}
+			} else {
+				out << CONSTANT_COLOR << val_cast << NORMAL_COLOR;
+				out << (expr.operands())[0];
 			}
-
+			is_prev_token = true;
 			last_convered_value = val_cast; isAlreadyConverted = true;
 		} else {
 			// GF: sometimes typecast is applied to variables, e.g.:

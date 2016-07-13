@@ -98,7 +98,7 @@ tvt smtcheck_opensmt2t::get_assignemt(literalt a) const
 literalt smtcheck_opensmt2t::const_var(bool val)
 {
   literalt l = new_variable();
-  PTRef c = var ? logic->getTerm_true() : logic->getTerm_false();
+  PTRef c = val ? logic->getTerm_true() : logic->getTerm_false();
   literals.push_back (c);
   return l;
 }
@@ -194,7 +194,12 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		// KE: Take care of type cast: two cases (1) const and (2) val (var in SMT)
 		// First try to code it (just replace the binary to real and val/var just create without time cast
 		if ((expr.operands())[0].is_constant()) {
-			l = const_var_Real((expr.operands())[0]);
+			if (expr.is_boolean()) {
+				bool val_const = ((extract_expr_str_number((expr.operands())[0])).compare("0") != 0);
+				l = const_var(val_const);
+			} else {
+				l = const_var_Real((expr.operands())[0]);
+			}
 		} else {
 			// GF: sometimes typecast is applied to variables, e.g.:
 			//     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
