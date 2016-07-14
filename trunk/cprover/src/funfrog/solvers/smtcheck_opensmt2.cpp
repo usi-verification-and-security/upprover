@@ -256,8 +256,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         PTRef ptl;
 		if (expr.id()==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
-		/* } else if (expr.id()==ID_if) {
-            ptl = logic->mkImpl(args); */
+		} else if (expr.id()==ID_if) {
+            ptl = logic->mkIte(args);
 		} else if(expr.id() == ID_ifthenelse) {
             ptl = logic->mkIte(args);
 		} else if(expr.id() == ID_and) {

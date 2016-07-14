@@ -244,7 +244,6 @@ void partitioning_target_equationt::convert_partition_assignments(
       exprt tmp(it->cond_expr);
 
       // Only if not an assignment to rounding model print it + add it to LRA statements
-      cout << "; Test res " << isRoundModelEq(tmp) << endl;
       if (!isRoundModelEq(tmp)) {
 #     ifdef DEBUG_SSA
 		  //expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);

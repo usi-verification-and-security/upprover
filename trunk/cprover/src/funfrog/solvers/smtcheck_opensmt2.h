@@ -13,6 +13,7 @@ Module: Wrapper for OpenSMT2
 #include <util/threeval.h>
 #include "interpolating_solver.h"
 #include <opensmt/opensmt2.h>
+#include <expr.h>
 
 
 // Cache of already visited interpolant literals
