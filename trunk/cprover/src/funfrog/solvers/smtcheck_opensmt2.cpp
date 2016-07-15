@@ -10,6 +10,7 @@ Author: Grigory Fedyukovich
 
 //#define SMT_DEBUG
 #define DEBUG_SSA_SMT
+#define DEBUG_SMT_LRA
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
@@ -618,9 +619,21 @@ bool smtcheck_opensmt2t::solve() {
   }
 
 //  add_variables();
+#ifdef DEBUG_SMT_LRA
+  cout << "; XXX SMT-lib --> LRA-Logic Translation XXX" << endl;
+  cout << "(assert    (and" << endl;
+#endif
   char *msg;
-  for(int i = 0; i < top_level_formulas.size(); ++i)
+  for(int i = 0; i < top_level_formulas.size(); ++i) {
       mainSolver->insertFormula(top_level_formulas[i], &msg);
+#ifdef DEBUG_SMT_LRA
+      cout << "; XXX Partition: " << i << endl << logic->printTerm(top_level_formulas[i]) << endl;
+#endif
+  }
+#ifdef DEBUG_SMT_LRA
+  cout << "))" << endl << "(check-sat)" << endl;
+#endif
+
   sstat r = mainSolver->check();
 
   if (r == s_True) {
