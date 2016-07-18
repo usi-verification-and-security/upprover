@@ -386,12 +386,12 @@ void partitioning_target_equationt::convert_partition_assertions(
 #     ifdef DEBUG_SSA_SMT_CALL
 			bool test = (isTypeCastConst(it->cond_expr));
 			expr_ssa_print_smt_dbg(
-					cout << "Before decider::convert and decider.limplies(ASSERT-OUT) " << (test ? "w/t " : "no ") << "TYPECAST --> " , it->cond_expr, true);
-
+					cout << "Before decider::convert and decider.limplies(ASSERT-OUT) " << (test ? "w/t " : "no ") << "TYPECAST --> "
+					, it->cond_expr, true);
 #	  endif
 			// Collect ass \in assertions(f) in bv
-			literalt tmp_literal;
-			if (isTypeCastConst(it->cond_expr)) { // take care of assert(0); or assert(56); etc.
+			literalt tmp_literal = decider.convert(it->cond_expr);
+			/*if (isTypeCastConst(it->cond_expr)) { // take care of assert(0); or assert(56); etc.
 				literalt const_0_literal = decider.const_var_Real("0");
 				literalt const_cond_literal = tmp_literal = decider.convert(
 						it->cond_expr);
@@ -399,7 +399,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 						const_0_literal);
 			} else { // The common case
 				tmp_literal = decider.convert(it->cond_expr);
-			}
+			}*/
 			it->cond_literal
 					= decider.limplies(assumption_literal, tmp_literal);
 			bv.push_back(decider.lnot(it->cond_literal));
@@ -1121,7 +1121,10 @@ bool partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
 		return false;
 	if (!(expr.operands())[0].is_constant())
 		return false;
-	if ((expr.operands())[0].is_boolean() || expr.is_boolean()) // For LRA only: it will be taken care in the solver
+
+	// For LRA only: it will be taken care in the solver or before calling the solver
+	if ((expr.operands())[0].is_boolean() || 	// in the solver
+			expr.is_boolean()) 					// in decider::convert
 		return false;
 
 	return true;

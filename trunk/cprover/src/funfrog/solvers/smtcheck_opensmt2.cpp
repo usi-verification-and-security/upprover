@@ -10,7 +10,7 @@ Author: Grigory Fedyukovich
 
 //#define SMT_DEBUG
 #define DEBUG_SSA_SMT
-#define DEBUG_SMT_LRA
+//#define DEBUG_SMT_LRA
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
@@ -190,14 +190,16 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		}
 	} else if (expr.id() == ID_typecast && expr.has_operands()) {
 #ifdef SMT_DEBUG
-        cout << "; IT IS A TYPECAST" << endl;
+		bool is_const =(expr.operands())[0].is_constant();
+        cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
 #endif
 		// KE: Take care of type cast: two cases (1) const and (2) val (var in SMT)
 		// First try to code it (just replace the binary to real and val/var just create without time cast
 		if ((expr.operands())[0].is_constant()) {
 			if (expr.is_boolean()) {
-				bool val_const = ((extract_expr_str_number((expr.operands())[0])).compare("0") != 0);
-				l = const_var(val_const);
+				std::string val = extract_expr_str_number((expr.operands())[0]);
+				bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
+				l = const_var(!val_const_zero);
 			} else {
 				l = const_var_Real((expr.operands())[0]);
 			}
@@ -343,7 +345,6 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
     literalt l = new_variable();
-    cout << "Translate set_equal into : " << getPTermString(pl1) << " is =  to " << getPTermString(pl2) << " as " << getPTermString(ans) << endl;
     literals.push_back(ans);
 
     assert(ans != PTRef_Undef);
