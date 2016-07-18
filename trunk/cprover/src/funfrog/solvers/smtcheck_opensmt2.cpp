@@ -343,6 +343,7 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
     literalt l = new_variable();
+    cout << "Translate set_equal into : " << getPTermString(pl1) << " is =  to " << getPTermString(pl2) << " as " << getPTermString(ans) << endl;
     literals.push_back(ans);
 
     assert(ans != PTRef_Undef);
