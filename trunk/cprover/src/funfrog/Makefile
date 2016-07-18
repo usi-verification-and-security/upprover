@@ -5,7 +5,7 @@ SHARED_SRC := \
       function_info.cpp \
       summary_store.cpp \
       solvers/smtcheck_opensmt2.cpp \
-      solvers/prop_itp.cpp
+      solvers/smt_itp.cpp
 
 FUNFROG_SRC := \
       diff.cpp \
@@ -82,7 +82,7 @@ SRC := ${FUNFROG_SRC} ${SUMO_SRC} ${DIFF_SRC}
 
 include ../common
 
-CP_CXXFLAGS += -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING
+CP_CXXFLAGS += -O0 -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -g
 
 all: evolcheck$(EXEEXT) 
 
@@ -92,7 +92,7 @@ INCLUDES :=  -I .. -I ../util
 ###############################################################################
 
 evolcheck$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline 
+	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ
 
 sumo$(EXEEXT): $(SUMO_OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline
