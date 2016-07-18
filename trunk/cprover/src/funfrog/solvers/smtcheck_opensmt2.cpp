@@ -621,13 +621,13 @@ bool smtcheck_opensmt2t::solve() {
 //  add_variables();
 #ifdef DEBUG_SMT_LRA
   cout << "; XXX SMT-lib --> LRA-Logic Translation XXX" << endl;
-  cout << "(assert    (and" << endl;
+  cout << "(assert\n  (and" << endl;
 #endif
   char *msg;
   for(int i = 0; i < top_level_formulas.size(); ++i) {
       mainSolver->insertFormula(top_level_formulas[i], &msg);
 #ifdef DEBUG_SMT_LRA
-      cout << "; XXX Partition: " << i << endl << logic->printTerm(top_level_formulas[i]) << endl;
+      cout << "; XXX Partition: " << i << endl << "    " << logic->printTerm(top_level_formulas[i]) << endl;
 #endif
   }
 #ifdef DEBUG_SMT_LRA

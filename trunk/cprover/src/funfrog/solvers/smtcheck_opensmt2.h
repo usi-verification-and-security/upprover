@@ -80,7 +80,7 @@ public:
     ptref_cachet& ptref_cache) const;
    *
    */
- 
+
   const char* false_str = "false";
   const char* true_str = "true";
 
@@ -134,6 +134,17 @@ protected:
   void freeSolver();
 
   std::string extract_expr_str_number(const exprt &expr); // Our conversion of const that works also for negative numbers + check of result
+
+  // Basic prints for debug - KE: Hope I did it right :-)
+private:
+  char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
+public:
+  char* getPTermString(const literalt &l) { return getPTermString(literals[l.get()]); }
+  char* getPTermString(const exprt &expr) {
+	  if(converted_exprs.find(expr.full_hash()) != converted_exprs.end())
+		  return getPTermString(converted_exprs[expr.full_hash()]);
+	  return 0;
+  }
 };
 
 #endif
