@@ -64,6 +64,10 @@ public:
 
   literalt lnot(literalt l);
 
+  literalt lvar(const exprt &expr);
+
+  literalt lconst(const exprt &expr);
+
   fle_part_idt new_partition();
 
   void get_interpolant(const interpolation_taskt& partition_ids,
@@ -134,6 +138,8 @@ protected:
   void freeSolver();
 
   std::string extract_expr_str_number(const exprt &expr); // Our conversion of const that works also for negative numbers + check of result
+
+  std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
 
   // Basic prints for debug - KE: Hope I did it right :-)
 private:

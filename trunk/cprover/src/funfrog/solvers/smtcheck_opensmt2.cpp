@@ -8,10 +8,10 @@ Author: Grigory Fedyukovich
 
 #include "smtcheck_opensmt2.h"
 
-//#define SMT_DEBUG
+#define SMT_DEBUG
 #define DEBUG_SSA_SMT
-//#define DEBUG_SMT_LRA
-//#define DEBUG_SSA_SMT_NUMERIC_CONV
+#define DEBUG_SMT_LRA
+#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
 {
@@ -98,16 +98,21 @@ tvt smtcheck_opensmt2t::get_assignemt(literalt a) const
 
 literalt smtcheck_opensmt2t::const_var(bool val)
 {
-  literalt l = new_variable();
-  PTRef c = val ? logic->getTerm_true() : logic->getTerm_false();
-  literals.push_back (c);
-  return l;
+	literalt l;
+
+	PTRef c = val ? logic->getTerm_true() : logic->getTerm_false();
+	l = new_variable();
+	literals.push_back (c);
+
+	return l;
 }
 
 literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 {
-	literalt l = new_variable();
+	literalt l;
+
 	PTRef rconst = logic->mkConst(extract_expr_str_number(expr).c_str()); // Can have a wrong conversion sometimes!
+	l = new_variable();
 	literals.push_back(rconst);
 
 	// Check the conversion from string to real was done properly - do not erase!
@@ -120,9 +125,12 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 
 literalt smtcheck_opensmt2t::const_var_Real(std::string val)
 {
-	literalt l = new_variable();
+	literalt l;
+
 	PTRef rconst = logic->mkConst(val.c_str()); // Can have a wrong conversion sometimes!
+	l = new_variable();
 	literals.push_back(rconst);
+
 	return l;
 }
 
@@ -132,62 +140,21 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         return converted_exprs[expr.full_hash()];
 
 #ifdef SMT_DEBUG
-    cout << "; CONVERTING " << expr.pretty() << endl;
+    cout << "; CONVERTING with " << expr.has_operands() << " operands "<< expr.pretty() << endl;
 #endif
+
+    /* Check which case it is */
 	literalt l;
 	if(expr.id()==ID_symbol || expr.id()==ID_nondet_symbol){
 #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;
 #endif
-		//string str = id2string(to_symbol_expr(expr).get_identifier());
-        string str = id2string(expr.get(ID_identifier));
-
-        if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
-			str = str.replace(0,7, "symex::nondet");
-
-        if (str.find("c::__CPROVER_rounding_mode#") != std::string::npos) {
-#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
-                cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
-#else
-                cout << "; Error Using Rounding Model in LRA " << str << endl;
-                assert(false);
-#endif
-        }
-
-        /*
-        // OpenSMT doesn't really like these characters when using standalone.
-        // They are fine via the library though
-
-        string toremove[] = {"!", "::", "|", "\\", "#", "_"};
-        string newstr("");
-        int str_size = str.size();
-        for(int i = 0; i < str_size; ++i)
-        {
-            char c = str[i];
-            if(c == '!' || c == ':' || c == '|' || c == '\\' || c == '#' || c == '_')
-                continue;
-            newstr += c;
-        }
-        str = newstr;
-        */
-
-        PTRef var;
-        if(is_number(expr.type()))
-            var = logic->mkRealVar(str.c_str());
-        else
-            var = logic->mkBoolVar(str.c_str());
-
-		l = new_variable();
-		literals.push_back (var);
+        l = lvar(expr);
 	} else if (expr.id()==ID_constant) {
 #ifdef SMT_DEBUG
         cout << "; IT IS A CONSTANT " << endl;
 #endif
-		if (expr.is_boolean()) {
-			l = const_var(expr.is_true());
-		} else {
-			l = const_var_Real(expr);
-		}
+        l = lconst(expr);
 	} else if (expr.id() == ID_typecast && expr.has_operands()) {
 #ifdef SMT_DEBUG
 		bool is_const =(expr.operands())[0].is_constant();
@@ -196,22 +163,24 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		// KE: Take care of type cast: two cases (1) const and (2) val (var in SMT)
 		// First try to code it (just replace the binary to real and val/var just create without time cast
 		if ((expr.operands())[0].is_constant()) {
-			if (expr.is_boolean()) {
-				std::string val = extract_expr_str_number((expr.operands())[0]);
-				bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
-				l = const_var(!val_const_zero);
+			if (expr.is_boolean()) { // here might need to manually cast
+				if ((expr.operands())[0].is_boolean())
+					l = const_var((expr.operands())[0].is_true());
+				else
+					l = const_var(!(expr.operands())[0].is_zero());
 			} else {
-				l = const_var_Real((expr.operands())[0]);
+				l = lconst((expr.operands())[0]);
 			}
 		} else {
 			// GF: sometimes typecast is applied to variables, e.g.:
 			//     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
 			//     in this case, we should replace it by the variable itself, i.e.:
 			//     (not (= |c::main::1::c!0#4| -2147483648))
-			l = new_variable();
-			PTRef ptl = logic->mkRealVar(id2string(expr.get(ID_identifier)).c_str());
-			literals.push_back(ptl);
+			cout << "Here" <<endl;
+			l = lvar((expr.operands())[0]);
 		}
+	} else if (expr.id() == ID_typecast) {
+		assert(0); // Need to take care of
 	} else {
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
@@ -255,7 +224,6 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 			i++;
 		}
 
-        l = new_variable();
         PTRef ptl;
 		if (expr.id()==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
@@ -313,6 +281,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
             // Do we need them now?
         }
+		l = new_variable();
         literals.push_back(ptl);
 	}
     converted_exprs[expr.full_hash()] = l;
@@ -440,6 +409,51 @@ literalt smtcheck_opensmt2t::lnot(literalt l){
     ln = new_variable();
     literals.push_back(ans);
 	return ln;
+}
+
+literalt smtcheck_opensmt2t::lvar(const exprt &expr)
+{
+	const string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
+
+	literalt l;
+    PTRef var;
+    if(is_number(expr.type()))
+        var = logic->mkRealVar(str.c_str());
+    else
+        var = logic->mkBoolVar(str.c_str());
+
+    l = new_variable();
+	literals.push_back (var);
+	return l;
+
+    /*
+    // OpenSMT doesn't really like these characters when using standalone.
+    // They are fine via the library though
+
+    string toremove[] = {"!", "::", "|", "\\", "#", "_"};
+    string newstr("");
+    int str_size = str.size();
+    for(int i = 0; i < str_size; ++i)
+    {
+        char c = str[i];
+        if(c == '!' || c == ':' || c == '|' || c == '\\' || c == '#' || c == '_')
+            continue;
+        newstr += c;
+    }
+    str = newstr;
+    */
+}
+
+literalt smtcheck_opensmt2t::lconst(const exprt &expr)
+{
+	literalt l;
+	if (expr.is_boolean()) {
+		l = const_var(expr.is_true());
+	} else {
+		l = const_var_Real(expr);
+	}
+
+	return l;
 }
 
 void smtcheck_opensmt2t::extract_itp(PTRef ptref,
@@ -712,4 +726,35 @@ std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
 #endif
 
 	return const_val;
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::extract_expr_str_name
+
+  Inputs: expression that is a var
+
+ Outputs: a string of the name
+
+ Purpose: assure we are extracting the name correctly and in one place.
+
+\*******************************************************************/
+std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
+{
+	string str = id2string(expr.get(ID_identifier));
+	assert (str.size() != 0); // Check the we really got something
+
+	if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
+		str = str.replace(0,7, "symex::nondet");
+
+	if (str.find("c::__CPROVER_rounding_mode#") != std::string::npos) {
+	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
+			cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
+	#else
+			cout << "; Error Using Rounding Model in LRA " << str << endl;
+			assert(false);
+	#endif
+	}
+
+	return str;
 }
