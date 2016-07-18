@@ -5,6 +5,7 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 Author: Grigory Fedyukovich
 
 \*******************************************************************/
+#include <queue>
 
 #include "smtcheck_opensmt2.h"
 
@@ -21,6 +22,7 @@ void smtcheck_opensmt2t::initializeSolver()
   mainSolver = &(osmt->getMainSolver());
   const char* msg;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
+  //osmt->getConfig().setOption(SMTConfig::o_verbosity, SMTOption(0), msg);
 }
 
 // Free all resources related to OpenSMT2
@@ -440,14 +442,14 @@ literalt smtcheck_opensmt2t::lnot(literalt l){
 	return ln;
 }
 
-void smtcheck_opensmt2t::extract_itp(PTRef ptref,
-  prop_itpt& target_itp) const
+void smtcheck_opensmt2t::extract_itp(PTRef ptref, smt_itpt& itp) const
 {
   ptref_cachet cache;
   //  target_itp.set_no_original_variables(no_literals);
   //target_itp.root_literal = extract_itp_rec(ptref, target_itp, cache);
 
   // KE : interpolant adjustments/remove var indices shall come here
+  itp.setInterpolant(ptref);
 }
 
 /* KE: Remove code - Will use OpenSMT2 to do so + using only PTref as is
@@ -529,6 +531,85 @@ void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const vector< vector<i
   }
 }
 
+void
+smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbs, string fun_name)
+{
+    map<string, PTRef> vars;
+    PTRef itp_pt = itp.getInterpolant();
+
+    // retrieve variables
+    fill_vars(itp_pt, vars);
+
+    cout << "; Variables in the interpolant " << endl;
+    for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
+    {
+        cout << it->first << ' ';
+    }
+    cout << endl;
+
+    // build substitution map (removing indices)
+    // meanwhile, add the vars to Tterm
+    Tterm *tterm = new Tterm();
+    Map<PTRef,PtAsgn,PTRefHash> subst;
+    for (std::vector<symbol_exprt>::iterator it = common_symbs.begin(); it != common_symbs.end(); ++it)
+    {
+        string var_name = id2string(it->get_identifier());
+        map<string, PTRef>::iterator it_var = vars.find(var_name);
+        if(it_var == vars.end()) //LA: iface var not used in interpolant
+            continue;
+        PTRef var = it_var->second;
+        string new_var_name = remove_index(var_name);
+        PTRef new_var = logic->mkVar(logic->getSortRef(var), new_var_name.c_str());
+        tterm->addArg(new_var);
+        cout << "; Gonna substitute var " << logic->printTerm(var) << " by " << logic->printTerm(new_var) << endl;
+        subst.insert(var, PtAsgn(new_var, l_True));
+    }
+
+    // substitute
+    PTRef new_root;
+    logic->varsubstitute(itp_pt, subst, new_root);
+    cout << "; Formula " << logic->printTerm(itp.getInterpolant()) << " is now " << logic->printTerm(new_root) << endl;
+    tterm->setBody(new_root);
+
+    tterm->setName(fun_name);
+    //logic->addFunction(tterm);
+    logic->dumpFunction(cout, tterm);
+    itp.setTterm(tterm);
+}
+
+void
+smtcheck_opensmt2t::fill_vars(PTRef itp, map<string, PTRef>& subst)
+{
+    set<PTRef> visited;
+    queue<PTRef> q;
+    q.push(itp);
+    while(!q.empty())
+    {
+        PTRef p = q.front();
+        q.pop();
+        if(visited.find(p) != visited.end())
+            continue;
+        if(logic->isVar(p))
+            subst[logic->getSymName(p)] = p;
+        else
+        {
+            Pterm& pt = logic->getPterm(p);
+            for(int i = 0; i < pt.size(); ++i)
+                q.push(pt[i]);
+        }
+        visited.insert(p);
+    }
+}
+
+string
+smtcheck_opensmt2t::remove_index(string var)
+{
+    int i = var.length() - 1;
+    while(i >= 0 && var[i] != '#') --i;
+    return string(var.begin(), var.begin() + i);
+}
+
+
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t::get_interpolant
@@ -567,10 +648,9 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   for(unsigned i = 0; i < itp_ptrefs.size(); ++i)
   {
-      prop_itpt itp;
-      extract_itp(itp_ptrefs[i], itp);
-      interpolants.push_back(prop_itpt());
-      interpolants.back().swap(itp);
+      interpolants.push_back(smt_itpt());
+      extract_itp(itp_ptrefs[i], interpolants.back());
+      cout << "Interpolant " << i << " = " << logic->printTerm(interpolants.back().getInterpolant()) << endl;
   }
 }
 

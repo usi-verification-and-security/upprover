@@ -7,6 +7,7 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_PERIPLO_H
 #define CPROVER_SMTCHECK_PERIPLO_H
 
+#include <map>
 #include <vector>
 
 #include <solvers/sat/cnf.h>
@@ -72,7 +73,10 @@ public:
   bool can_interpolate() const;
 
   // Extract interpolant form OpenSMT files/data
-  void extract_itp(PTRef ptref, prop_itpt& target_itp) const;
+  //void extract_itp(PTRef ptref, prop_itpt& target_itp) const;
+  void extract_itp(PTRef ptref, smt_itpt& target_itp) const;
+
+  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name);
 
   /* KE : remove, will use OpenSMT code + PTRefs in hifrog
   // Simple recursive extraction of clauses from OpenSMT Egraph
@@ -134,6 +138,9 @@ protected:
   void freeSolver();
 
   std::string extract_expr_str_number(const exprt &expr); // Our conversion of const that works also for negative numbers + check of result
+
+  std::string remove_index(std::string);
+  void fill_vars(PTRef, std::map<std::string, PTRef>&);
 };
 
 #endif

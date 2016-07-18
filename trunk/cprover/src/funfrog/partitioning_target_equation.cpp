@@ -17,7 +17,7 @@ Author: Ondrej Sery
 
 #define DEBUG_SSA
 //#define DEBUG_SSA_OLD // belongs only to the old version with BV
-//#define DEBUG_ITP
+#define DEBUG_ITP
 //#define DEBUG_ENCODING
 #define DEBUG_SSA_SMT_CALL
 
@@ -947,6 +947,9 @@ void partitioning_target_equationt::extract_interpolants(
     if (itp.is_trivial()) {
       continue;
     }
+
+    string fun_name = id2string(partition.get_iface().function_id);
+    interpolator.adjust_function(itp, common_symbs, fun_name);
 
     // Store the interpolant
     summary_idt summary_id = summary_store.insert_summary(itp);
