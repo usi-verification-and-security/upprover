@@ -10,9 +10,11 @@ Author: Ondrej Sery
 #define CPROVER_SUMMARY_STORE_H
 
 #include <ostream>
-#include "solvers/prop_itp.h"
+//#include "solvers/prop_itp.h"
+#include "solvers/smt_itp.h"
 
-typedef prop_itpt summaryt;
+//typedef prop_itpt summaryt;
+typedef smt_itpt summaryt;
 typedef long unsigned summary_idt;
 typedef std::vector<summary_idt> summary_idst;
 typedef hash_set_cont<summary_idt> summary_ids_sett;

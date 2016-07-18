@@ -1,23 +1,17 @@
-/*******************************************************************\
-
-Module: Propositional interpolant. Based on code of cnft.
-
-Author: Ondrej Sery
-
-\*******************************************************************/
-
-#ifndef CPROVER_PROP_ITP_H
-#define CPROVER_PROP_ITP_H
+#ifndef SMT_ITP_H
+#define SMT_ITP_H
 
 #include <ostream>
 #include <std_expr.h>
 #include <solvers/prop/literal.h>
 #include <solvers/flattening/boolbv.h>
 
-class prop_itpt
+#include <opensmt/opensmt2.h>
+
+class smt_itpt
 {
 public:
-  prop_itpt() : _no_variables(1), _no_orig_variables(1) {}
+  smt_itpt() : _no_variables(1), _no_orig_variables(1) {}
 
   bool is_trivial() const { return root_literal.is_constant(); };
 
@@ -31,7 +25,7 @@ public:
   }
   void print(std::ostream& out) const;
 
-  void swap(prop_itpt& other) {
+  void swap(smt_itpt& other) {
     clauses.swap(other.clauses);
     std::swap(_no_variables, other._no_variables);
     std::swap(_no_orig_variables, other._no_orig_variables);
@@ -69,6 +63,10 @@ public:
 
   void set_valid(bool _valid){ valid = _valid; };
 
+  PTRef getInterpolant() { return interpolant; }
+  void setInterpolant(PTRef pt) { interpolant = pt; }
+  void setTterm(Tterm *t) { tterm = t; }
+
 protected:
   bool valid;
 
@@ -90,9 +88,12 @@ protected:
   void gate_or(literalt a, literalt b, literalt o);
   
   void print_clause(std::ostream& out, const bvt& clause) const;
+
+  PTRef interpolant;
+  Tterm *tterm;
 };
 
-//typedef prop_itpt interpolantt;
-//typedef std::vector<prop_itpt> interpolantst;
+typedef smt_itpt interpolantt;
+typedef std::vector<smt_itpt> interpolantst;
 
 #endif

@@ -15,7 +15,7 @@
 
 #define DEBUG_SSA
 //#define DEBUG_SSA_OLD // belongs only to the old version with BV
-//#define DEBUG_ITP
+#define DEBUG_ITP
 //#define DEBUG_ENCODING
 #define DEBUG_SSA_SMT_CALL
 
@@ -868,127 +868,213 @@ const partitiont* partitioning_target_equationt::find_target_partition(
 	return NULL;
 }
 
-/*******************************************************************
- Function: partitioning_target_equationt::extract_interpolants
+/*******************************************************************\
 
- Inputs:
+
+Function: partitioning_target_equationt::extract_interpolants
+
+
+  Inputs:
+
 
  Outputs:
 
+
  Purpose: Extract interpolants corresponding to the created partitions
 
- \*******************************************************************/
+
+\*******************************************************************/
+
 void partitioning_target_equationt::extract_interpolants(
-		interpolating_solvert& interpolator, const smtcheck_opensmt2t& decider,
-		interpolant_mapt& interpolant_map) {
-	// Prepare the interpolation task. NOTE: ignore the root partition!
-	unsigned valid_tasks = 0;
-	summary_storet& summary_store = summarization_context.get_summary_store();
 
-	// Clear the used summaries
-	for (unsigned i = 0; i < partitions.size(); ++i)
-		partitions[i].get_iface().summary_info.clear_used_summaries();
+  interpolating_solvert& interpolator, const smtcheck_opensmt2t& decider,
 
-	// Find partitions suitable for summary extraction
-	for (unsigned i = 1; i < partitions.size(); ++i) {
-		partitiont& partition = partitions[i];
+  interpolant_mapt& interpolant_map)
 
-		// Mark the used summaries
-		if (partition.summary && !(partition.ignore || partition.invalid)) {
-			for (summary_ids_sett::const_iterator it =
-					partition.applicable_summaries.begin(); it
-					!= partition.applicable_summaries.end(); ++it) {
-				partition.get_iface().summary_info.add_used_summary(*it);
-			}
-		}
+{
 
-		if (!partition.is_inline()
-				|| (partition.get_iface().assertion_in_subtree
-						&& !store_summaries_with_assertion)
-				|| partition.get_iface().summary_info.is_recursion_nondet())
-			continue;
+  // Prepare the interpolation task. NOTE: ignore the root partition!
 
-		valid_tasks++;
-	}
+  unsigned valid_tasks = 0;
 
-	// Only do the interpolation if there are some interpolation tasks
-	if (valid_tasks == 0)
-		return;
+  summary_storet& summary_store = summarization_context.get_summary_store();
 
-	interpolation_taskt itp_task(valid_tasks);
+  // Clear the used summaries
 
-	for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
-		partitiont& partition = partitions[pid];
-		partition_ifacet ipartition = partition.get_iface();
+  for (unsigned i = 0; i < partitions.size(); ++i)
 
-		if (!partition.is_inline() || (ipartition.assertion_in_subtree
-				&& !store_summaries_with_assertion)
-				|| partition.get_iface().summary_info.is_recursion_nondet())
-			continue;
-		fill_partition_ids(pid, itp_task[tid++]);
-	}
+    partitions[i].get_iface().summary_info.clear_used_summaries();
 
-	// Interpolate...
-	interpolantst itp_result;
-	itp_result.reserve(valid_tasks);
-	interpolator.get_interpolant(itp_task, itp_result);
+  // Find partitions suitable for summary extraction
 
-	// Interpret the result
-	std::vector < symbol_exprt > common_symbs;
-	interpolant_map.reserve(valid_tasks);
-	for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
-		partitiont& partition = partitions[pid];
+  for (unsigned i = 1; i < partitions.size(); ++i) {
 
-		if (!partition.is_inline()
-				|| (partition.get_iface().assertion_in_subtree
-						&& !store_summaries_with_assertion)
-				|| partition.get_iface().summary_info.is_recursion_nondet())
-			continue;
+    partitiont& partition = partitions[i];
 
-		interpolantt& itp = itp_result[tid];
+    // Mark the used summaries
 
-		tid++;
+    if (partition.summary && !(partition.ignore || partition.invalid)) {
 
-		if (itp.is_trivial()) {
-			std::cout << "Interpolant for function: "
-					<< partition.get_iface().function_id.c_str()
-					<< " is trivial." << std::endl;
-			continue;
-		}
+      for (summary_ids_sett::const_iterator it =
 
-		if (partition.get_iface().summary_info.is_recursion_nondet()) {
-			std::cout << "Skip interpolants for nested recursion calls."
-					<< std::endl;
-			continue;
-		}
+              partition.applicable_summaries.begin();
 
-		// Generalize the interpolant
-		fill_common_symbols(partition, common_symbs);
+              it != partition.applicable_summaries.end(); ++it) {
+
+        partition.get_iface().summary_info.add_used_summary(*it);
+
+      }
+
+    }
+
+
+
+    if (!partition.is_inline() ||
+
+            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
+
+        partition.get_iface().summary_info.is_recursion_nondet()
+
+    )
+
+      continue;
+
+
+
+    valid_tasks++;
+
+  }
+
+
+
+  // Only do the interpolation if there are some interpolation tasks
+
+  if (valid_tasks == 0)
+
+    return;
+
+  interpolation_taskt itp_task(valid_tasks);
+
+  for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
+
+    partitiont& partition = partitions[pid];
+
+    partition_ifacet ipartition = partition.get_iface();
+
+
+
+    if (!partition.is_inline() ||
+
+            (ipartition.assertion_in_subtree &&
+
+                !store_summaries_with_assertion)
+
+      || partition.get_iface().summary_info.is_recursion_nondet()
+
+            )
+
+      continue;
+
+    fill_partition_ids(pid, itp_task[tid++]);
+
+  }
+
+  // Interpolate...
+
+  interpolantst itp_result;
+
+  itp_result.reserve(valid_tasks);
+
+  interpolator.get_interpolant(itp_task, itp_result);
+
+  // Interpret the result
+
+  std::vector<symbol_exprt> common_symbs;
+
+  interpolant_map.reserve(valid_tasks);
+
+  for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
+
+    partitiont& partition = partitions[pid];
+
+    if (!partition.is_inline() ||
+
+            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion)
+
+            || partition.get_iface().summary_info.is_recursion_nondet()
+
+    )
+
+      continue;
+
+    interpolantt& itp = itp_result[tid];
+
+    tid++;
+
+    if (itp.is_trivial()) {
+
+      std::cout << "Interpolant for function: " <<
+
+                partition.get_iface().function_id.c_str() << " is trivial." << std::endl;
+
+      continue;
+
+    }
+
+    if (partition.get_iface().summary_info.is_recursion_nondet()){
+
+      std::cout << "Skip interpolants for nested recursion calls." << std::endl;
+
+      continue;
+
+    }
+
+    // Generalize the interpolant
+
+    fill_common_symbols(partition, common_symbs);
 
 #   ifdef DEBUG_ITP
-		std::cout << "Interpolant for function: " <<
-		partition.get_iface().function_id.c_str() << std::endl;
-		std::cout << "Common symbols (" << common_symbs.size() << "):" << std::endl;
-		for (std::vector<symbol_exprt>::iterator it = common_symbs.begin();
-				it != common_symbs.end(); ++it)
-		std::cout << it->get_identifier() << std::endl;
 
-		std::cout << "Generalizing interpolant" << std::endl;
+    std::cout << "Interpolant for function: " <<
+
+            partition.get_iface().function_id.c_str() << std::endl;
+
+    std::cout << "Common symbols (" << common_symbs.size() << "):" << std::endl;
+
+    for (std::vector<symbol_exprt>::iterator it = common_symbs.begin();
+
+            it != common_symbs.end(); ++it)
+
+      std::cout << it->get_identifier() << std::endl;
+
+    std::cout << "Generalizing interpolant" << std::endl;
+
 #   endif
 
-		// GF: hack
-		//    itp.generalize(decider, common_symbs);
+  // GF: hack
 
-		if (itp.is_trivial()) {
-			continue;
-		}
+//    itp.generalize(decider, common_symbs);
 
-		// Store the interpolant
-		summary_idt summary_id = summary_store.insert_summary(itp);
+    if (itp.is_trivial()) {
 
-		interpolant_map.push_back(
-				interpolant_mapt::value_type(&partition.get_iface(), summary_id));
-	}
+      continue;
+
+    }
+
+    string fun_name = id2string(partition.get_iface().function_id);
+
+    interpolator.adjust_function(itp, common_symbs, fun_name);
+
+    // Store the interpolant
+
+    summary_idt summary_id = summary_store.insert_summary(itp);
+
+    interpolant_map.push_back(interpolant_mapt::value_type(
+
+      &partition.get_iface(), summary_id));
+
+  }
+
 }
 
 /*******************************************************************
