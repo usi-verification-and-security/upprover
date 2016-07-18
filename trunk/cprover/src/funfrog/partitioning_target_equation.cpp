@@ -550,22 +550,13 @@ void partitioning_target_equationt::convert_partition_assertions(
     else 
     {
 #     ifdef DEBUG_SSA_SMT_CALL
-      cout << "Before decider::lor(ERROR) of size " << bv.size() << endl;
-      cout << "Before decider::set_equal(ERROR)" << endl;
+      cout << "Before decider::set_equal(ERROR) to "  << bv.size() << " literals" << endl;
 #	  endif
-      literalt tmp;
-      if (bv.size() == 1) { // Corner case: single literal for OR
-    	  tmp = decider.const_var(true);
-    	  cout << "Translate into : " << decider.getPTermString(tmp) << endl;
-    	  /*
-    	  literalt const_0_literal = decider.const_var_Real("0");
-    	  literalt const_cond_literal = tmp_literal = decider.convert(it->cond_expr);
-    	  tmp_literal = decider.lnotequal(const_cond_literal, const_0_literal);
-    	  */
+      if (bv.size() == 1) { // Corner case: single literal for OR, it is just bv[0]
+    	  decider.set_equal(bv[0], partition_iface.error_literal);
 	  } else {
-		  tmp = decider.lor(bv);
+		  decider.set_equal(decider.lor(bv), partition_iface.error_literal);
 	  }
-      decider.set_equal(tmp, partition_iface.error_literal);
       
       #ifdef DEBUG_SSA
       //#ifdef DEBUG_SSA_OLD
