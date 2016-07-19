@@ -141,7 +141,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         return converted_exprs[expr.full_hash()];
 
 #ifdef SMT_DEBUG
-    cout << "; CONVERTING with " << expr.has_operands() << " operands "<< expr.pretty() << endl;
+    cout << "; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
 #endif
 
     /* Check which case it is */
@@ -782,12 +782,16 @@ void smtcheck_opensmt2t::close_partition()
   if (partition_count > 0){
     if (current_partition->size() > 1){
       PTRef pand = logic->mkAnd(*current_partition);
-      //cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
+#ifdef DEBUG_SMT_LRA
+      cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
+#endif
       //mainSolver->push(pand);
       top_level_formulas.push(pand);
     } else if (current_partition->size() == 1){
       PTRef pand = (*current_partition)[0];
-      //cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
+#ifdef DEBUG_SMT_LRA
+      cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
+#endif
       std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
       //mainSolver->push(pand);
       top_level_formulas.push(pand);
