@@ -7,6 +7,8 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_PERIPLO_H
 #define CPROVER_SMTCHECK_PERIPLO_H
 
+//#define DEBUG_SMT_LRA
+
 #include <map>
 #include <vector>
 
@@ -152,6 +154,11 @@ protected:
   // Basic prints for debug - KE: Hope I did it right :-)
 private:
   char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
+
+#ifdef DEBUG_SMT_LRA
+  std::map <std::string,std::string> ite_map_str;
+  typedef std::map<std::string,std::string>::iterator it_ite_map_str;
+#endif
 public:
   char* getPTermString(const literalt &l) { return getPTermString(literals[l.get()]); }
   char* getPTermString(const exprt &expr) {

@@ -11,7 +11,6 @@ Author: Grigory Fedyukovich
 
 //#define SMT_DEBUG
 #define DEBUG_SSA_SMT
-//#define DEBUG_SMT_LRA
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
@@ -230,8 +229,20 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             ptl = logic->mkNot(logic->mkEq(args));
 		} else if (expr.id()==ID_if) {
             ptl = logic->mkIte(args);
+#ifdef DEBUG_SMT_LRA
+            std::string key = string(getPTermString(ptl));
+            std::string data = "(ite ";
+            data = ((data.append(getPTermString(args[0])) + " ").append(getPTermString(args[1])) + " " ).append(getPTermString(args[2])) + ")";
+            ite_map_str.insert(make_pair(key,data));
+#endif
 		} else if(expr.id() == ID_ifthenelse) {
             ptl = logic->mkIte(args);
+#ifdef DEBUG_SMT_LRA
+            std::string key = string(getPTermString(ptl));
+            std::string data = "(ite ";
+            data = ((data.append(getPTermString(args[0])) + " ").append(getPTermString(args[1])) + " " ).append(getPTermString(args[2])) + ")";
+            ite_map_str.insert(make_pair(key,data));
+#endif
 		} else if(expr.id() == ID_and) {
             ptl = logic->mkAnd(args);
 		} else if(expr.id() == ID_or) {
@@ -731,6 +742,11 @@ bool smtcheck_opensmt2t::solve() {
   }
 #ifdef DEBUG_SMT_LRA
   cout << "))" << endl << "(check-sat)" << endl;
+
+  cout << "ite info - incase need to replace .oite symbol \n";
+  for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
+	  cout << "; XXX oite symbol: " << iterator->first << endl << iterator->second << endl;
+  }
 #endif
 
   sstat r = mainSolver->check();
