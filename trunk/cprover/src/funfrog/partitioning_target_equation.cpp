@@ -983,13 +983,14 @@ void partitioning_target_equationt::extract_interpolants(
 			continue;
 		}
 
-    string fun_name = id2string(partition.get_iface().function_id);
-    interpolator.adjust_function(itp, common_symbs, fun_name);
+        string fun_name = id2string(partition.get_iface().function_id);
+        interpolator.adjust_function(itp, common_symbs, fun_name);
 
-    // Store the interpolant
-    summary_idt summary_id = summary_store.insert_summary(itp);
+        // Store the interpolant
+        summary_idt summary_id = summary_store.insert_summary(itp);
 
-    interpolant_map.push_back(interpolant_mapt::value_type(&partition.get_iface(), summary_id));
+        interpolant_map.push_back(interpolant_mapt::value_type(&partition.get_iface(), summary_id));
+    }
 }
 
 /*******************************************************************
