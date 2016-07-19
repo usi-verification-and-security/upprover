@@ -7,6 +7,8 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_PERIPLO_H
 #define CPROVER_SMTCHECK_PERIPLO_H
 
+//#define DEBUG_SMT_LRA
+
 #include <map>
 #include <vector>
 
@@ -64,6 +66,10 @@ public:
   literalt lor(bvt b);
 
   literalt lnot(literalt l);
+
+  literalt lvar(const exprt &expr);
+
+  literalt lconst(const exprt &expr);
 
   fle_part_idt new_partition();
 
@@ -139,11 +145,20 @@ protected:
 
   std::string extract_expr_str_number(const exprt &expr); // Our conversion of const that works also for negative numbers + check of result
 
+  std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
+
   std::string remove_index(std::string);
   void fill_vars(PTRef, std::map<std::string, PTRef>&);
+
+
   // Basic prints for debug - KE: Hope I did it right :-)
 private:
   char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
+
+#ifdef DEBUG_SMT_LRA
+  std::map <std::string,std::string> ite_map_str;
+  typedef std::map<std::string,std::string>::iterator it_ite_map_str;
+#endif
 public:
   char* getPTermString(const literalt &l) { return getPTermString(literals[l.get()]); }
   char* getPTermString(const exprt &expr) {

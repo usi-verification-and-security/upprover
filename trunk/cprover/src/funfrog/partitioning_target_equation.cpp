@@ -1115,7 +1115,7 @@ bool partitioning_target_equationt::isFirstCallExpr(const exprt& expr) {
 	return (first_call_expr->pretty().compare(expr.pretty()) != 0);
 }
 
-// For the case when we have => with cast to bool
+// For the case when we have => with cast to bool condition
 bool partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
 	if (expr.id() != ID_typecast)
 		return false;

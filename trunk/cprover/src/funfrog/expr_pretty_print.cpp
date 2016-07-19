@@ -230,20 +230,20 @@ expr_pretty_printt::visit_SSA(const exprt& expr) {
 	bool isTypeCast0 = false;
 	if (expr.id() == ID_typecast && isHasOperands) {
 		if ((expr.operands())[0].is_constant()) {
-			double val_cast = convertBinaryIntoDec((expr.operands())[0]);
 			isTypeCast0 = true;
 			if (is_prev_token) out << " ";
 			if (expr.is_boolean()) {
-				if (val_cast == 0) {
-				  out << CONSTANT_COLOR << "false" << NORMAL_COLOR;
+				if ((expr.operands())[0].is_zero()) {
+					out << CONSTANT_COLOR << "false" << NORMAL_COLOR;
 				} else {
 					out << CONSTANT_COLOR << "true" << NORMAL_COLOR;
 				}
-			} else {
+			} else { /* Translate only if not boolean */
+				double val_cast = convertBinaryIntoDec((expr.operands())[0]);
+				last_convered_value = val_cast; isAlreadyConverted = true;
 				out << CONSTANT_COLOR << val_cast << NORMAL_COLOR;
 			}
 			is_prev_token = true;
-			last_convered_value = val_cast; isAlreadyConverted = true;
 		} else {
 			// GF: sometimes typecast is applied to variables, e.g.:
 			//     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
