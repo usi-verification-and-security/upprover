@@ -7,6 +7,7 @@
 #include <solvers/flattening/boolbv.h>
 
 #include <opensmt/opensmt2.h>
+#include <opensmt/Tterm.h>
 
 class smt_itpt
 {

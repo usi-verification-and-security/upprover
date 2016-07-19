@@ -588,7 +588,7 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
 
     tterm->setName(fun_name);
     //logic->addFunction(tterm);
-    logic->dumpFunction(cout, tterm);
+    //logic->dumpFunction(cout, tterm);
     itp.setTterm(tterm);
 }
 
