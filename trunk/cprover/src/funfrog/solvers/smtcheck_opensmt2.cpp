@@ -272,6 +272,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 			ptl = logic->mkRealDiv(args);
 		} else if(expr.id() == ID_floatbv_mult) {
 			ptl = logic->mkRealTimes(args);
+		} else if(expr.id() == ID_index) {
+			assert(0); // No support yet for arrays
 		} else {
 #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
@@ -420,6 +422,8 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     PTRef var;
     if(is_number(expr.type()))
         var = logic->mkRealVar(str.c_str());
+    else if (expr.type().id() == ID_array) // Is a function with index
+    	assert(0); // No support yet for arrays
     else
         var = logic->mkBoolVar(str.c_str());
 
