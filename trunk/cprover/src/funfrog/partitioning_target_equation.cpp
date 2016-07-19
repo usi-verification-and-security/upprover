@@ -15,7 +15,7 @@
 
 #define DEBUG_SSA
 //#define DEBUG_SSA_OLD // belongs only to the old version with BV
-#define DEBUG_ITP
+//#define DEBUG_ITP
 //#define DEBUG_ENCODING
 #define DEBUG_SSA_SMT_CALL
 
@@ -929,7 +929,7 @@ void partitioning_target_equationt::extract_interpolants(
 	}
 
 	// Interpolate...
-	interpolantst itp_result;
+    interpolantst itp_result;
 	itp_result.reserve(valid_tasks);
 	interpolator.get_interpolant(itp_task, itp_result);
 
@@ -945,11 +945,11 @@ void partitioning_target_equationt::extract_interpolants(
 				|| partition.get_iface().summary_info.is_recursion_nondet())
 			continue;
 
-		interpolantt& itp = itp_result[tid];
+		smt_itpt *itp = itp_result[tid];
 
 		tid++;
 
-		if (itp.is_trivial()) {
+		if (itp->is_trivial()) {
 			std::cout << "Interpolant for function: "
 					<< partition.get_iface().function_id.c_str()
 					<< " is trivial." << std::endl;
@@ -979,15 +979,15 @@ void partitioning_target_equationt::extract_interpolants(
 		// GF: hack
 		//    itp.generalize(decider, common_symbs);
 
-		if (itp.is_trivial()) {
+		if (itp->is_trivial()) {
 			continue;
 		}
 
         string fun_name = id2string(partition.get_iface().function_id);
-        interpolator.adjust_function(itp, common_symbs, fun_name);
+        interpolator.adjust_function(*itp, common_symbs, fun_name);
 
         // Store the interpolant
-        summary_idt summary_id = summary_store.insert_summary(itp);
+        summary_idt summary_id = summary_store.insert_summary(*itp);
 
         interpolant_map.push_back(interpolant_mapt::value_type(&partition.get_iface(), summary_id));
     }

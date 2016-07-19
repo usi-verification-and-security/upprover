@@ -700,6 +700,10 @@ Function: smt_itpt::serialize
 
 void smt_itpt::serialize(std::ostream& out) const
 {
+    assert(logic && tterm);
+    logic->dumpFunction(out, tterm);
+    return; 
+
   out << _no_orig_variables << " ";
   out << _no_variables << " ";
   out << root_literal.get() << " ";
