@@ -11,9 +11,9 @@
 class smt_itpt
 {
 public:
-  smt_itpt() : _no_variables(1), _no_orig_variables(1) {}
+  smt_itpt() : _no_variables(1), _no_orig_variables(1), logic(NULL), tterm(NULL) {}
 
-  bool is_trivial() const { return root_literal.is_constant(); };
+  bool is_trivial() const { return false; return root_literal.is_constant(); };
 
   literalt land(literalt a, literalt b);
   literalt lor(literalt a, literalt b);
@@ -32,6 +32,9 @@ public:
     std::swap(root_literal, other.root_literal);
     std::swap(symbol_mask, other.symbol_mask);
     std::swap(valid, other.valid);
+    std::swap(tterm, other.tterm);
+    std::swap(logic, other.logic);
+    std::swap(interpolant, other.interpolant);
   }
 
   literalt new_variable() {
@@ -66,6 +69,8 @@ public:
   PTRef getInterpolant() { return interpolant; }
   void setInterpolant(PTRef pt) { interpolant = pt; }
   void setTterm(Tterm *t) { tterm = t; }
+  Tterm* getTterm() { return tterm; }
+  void setLogic(LRALogic *_l) { logic = _l; }
 
 protected:
   bool valid;
@@ -91,9 +96,10 @@ protected:
 
   PTRef interpolant;
   Tterm *tterm;
+  LRALogic *logic;
 };
 
 typedef smt_itpt interpolantt;
-typedef std::vector<smt_itpt> interpolantst;
+typedef std::vector<smt_itpt*> interpolantst;
 
 #endif

@@ -474,7 +474,7 @@ literalt smtcheck_opensmt2t::lconst(const exprt &expr)
 
 void smtcheck_opensmt2t::extract_itp(PTRef ptref, smt_itpt& itp) const
 {
-  ptref_cachet cache;
+  //ptref_cachet cache;
   //  target_itp.set_no_original_variables(no_literals);
   //target_itp.root_literal = extract_itp_rec(ptref, target_itp, cache);
 
@@ -570,12 +570,14 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     // retrieve variables
     fill_vars(itp_pt, vars);
 
+    /*
     cout << "; Variables in the interpolant " << endl;
     for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
     {
         cout << it->first << ' ';
     }
     cout << endl;
+    */
 
     // build substitution map (removing indices)
     // meanwhile, add the vars to Tterm
@@ -591,20 +593,20 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
         string new_var_name = remove_index(var_name);
         PTRef new_var = logic->mkVar(logic->getSortRef(var), new_var_name.c_str());
         tterm->addArg(new_var);
-        cout << "; Gonna substitute var " << logic->printTerm(var) << " by " << logic->printTerm(new_var) << endl;
         subst.insert(var, PtAsgn(new_var, l_True));
     }
 
     // substitute
     PTRef new_root;
     logic->varsubstitute(itp_pt, subst, new_root);
-    cout << "; Formula " << logic->printTerm(itp.getInterpolant()) << " is now " << logic->printTerm(new_root) << endl;
+    //cout << "; Formula " << logic->printTerm(itp.getInterpolant()) << " is now " << logic->printTerm(new_root) << endl;
     tterm->setBody(new_root);
 
     tterm->setName(fun_name);
     //logic->addFunction(tterm);
-    logic->dumpFunction(cout, tterm);
+    //logic->dumpFunction(cout, tterm);
     itp.setTterm(tterm);
+    itp.setLogic(logic);
 }
 
 void
@@ -655,8 +657,7 @@ Function: smtcheck_opensmt2t::get_interpolant
 \*******************************************************************/
 // KE : Shall add the code using new outputs from OpenSMT2 + apply some changes to variable indices
 //      if the code is too long split to the method - extract_itp, which is now commented (its body).
-void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids,
-    interpolantst& interpolants)
+void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids, interpolantst& interpolants)
 {
   assert(ready_to_interpolate);
 
@@ -678,9 +679,10 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   for(unsigned i = 0; i < itp_ptrefs.size(); ++i)
   {
-      interpolants.push_back(smt_itpt());
-      extract_itp(itp_ptrefs[i], interpolants.back());
-      cout << "Interpolant " << i << " = " << logic->printTerm(interpolants.back().getInterpolant()) << endl;
+      smt_itpt *new_itp = new smt_itpt();
+      extract_itp(itp_ptrefs[i], *new_itp);
+      interpolants.push_back(new_itp);
+      cout << "Interpolant " << i << " = " << logic->printTerm(interpolants.back()->getInterpolant()) << endl;
   }
 }
 
