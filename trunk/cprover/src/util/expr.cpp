@@ -580,14 +580,20 @@ const std::string exprt::print_number_2smt() const
     {
       mp_integer int_value=binary2integer(value, true);
       return integer2string(int_value);
-    }
-    else if(type_id==ID_fixedbv)
-    {
-       return (fixedbvt(to_constant_expr(*this))).to_ansi_c_string();
-    }
-    else if(type_id==ID_floatbv)
-    {
-       return (ieee_floatt(to_constant_expr(*this))).to_ansi_c_string();
+    } else {
+    	std::string temp_try1(get(ID_C_cformat).c_str());
+    	if (temp_try1.size() != 0)
+    	{ // WIll get here only for possitive numbers, the rest will try differently
+    		return temp_try1;
+    	}
+    	else if(type_id==ID_fixedbv)
+		{
+		   return (fixedbvt(to_constant_expr(*this))).to_ansi_c_string();
+		}
+		else if(type_id==ID_floatbv)
+		{
+		   return (ieee_floatt(to_constant_expr(*this))).to_ansi_c_string();
+		}
     }
   }
 
