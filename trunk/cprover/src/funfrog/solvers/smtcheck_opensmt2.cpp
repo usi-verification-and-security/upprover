@@ -227,6 +227,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         PTRef ptl;
 		if (expr.id()==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
+        } else if(expr.id() == ID_equal) {
+            ptl = logic->mkEq(args);
 		} else if (expr.id()==ID_if) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT_LRA
@@ -273,8 +275,10 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             ptl = logic->mkRealDiv(args);
 		} else if(expr.id() == ID_assign) {
             ptl = logic->mkEq(args);
-        } else if(expr.id() == ID_equal) {
+        } else if(expr.id() == ID_ieee_float_equal) {
             ptl = logic->mkEq(args);
+        } else if(expr.id() == ID_ieee_float_notequal) {
+            ptl = logic->mkNot(logic->mkEq(args));
 		} else if(expr.id() == ID_floatbv_plus) {
             ptl = logic->mkRealPlus(args);
 		} else if(expr.id() == ID_floatbv_minus) {
