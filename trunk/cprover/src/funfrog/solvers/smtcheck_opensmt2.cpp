@@ -10,8 +10,8 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2.h"
 
 //#define SMT_DEBUG
-#define DEBUG_SSA_SMT
-#define DEBUG_SSA_SMT_NUMERIC_CONV
+//#define DEBUG_SSA_SMT
+//#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
 {
@@ -161,30 +161,10 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		bool is_const =(expr.operands())[0].is_constant();
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
 #endif
-		// KE: Take care of type cast: two cases (1) const and (2) val (var in SMT)
-		// First try to code it (just replace the binary to real and val/var just create without time cast
-		if ((expr.operands())[0].is_constant()) {
-			if (expr.is_boolean()) { // here might need to manually cast
-				if ((expr.operands())[0].is_boolean())
-					l = const_var((expr.operands())[0].is_true());
-				else
-					l = const_var(!(expr.operands())[0].is_zero());
-			} else {
-				l = lconst((expr.operands())[0]);
-			}
-		} else {
-			// GF: sometimes typecast is applied to variables, e.g.:
-			//     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
-			//     in this case, we should replace it by the variable itself, i.e.:
-			//     (not (= |c::main::1::c!0#4| -2147483648))
-
-			assert(((expr.operands())[0].id()==ID_symbol || (expr.operands())[0].id()==ID_nondet_symbol));
-			// Should be var - else we need to take care of it differntly
-
-			l = lvar((expr.operands())[0]);
-		}
+		// KE: Take care of type cast - recursion of convert take care of it anyhow
+		l = convert((expr.operands())[0]);
 	} else if (expr.id() == ID_typecast) {
-		assert(0); // Need to take care of
+		assert(0); // Need to take care of - typecast no operands
 	} else {
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
@@ -330,12 +310,13 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     vec<PTRef> args;
+    literalt l;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
-    literalt l = new_variable();
+    l = new_variable();
     literals.push_back(ans);
 
     assert(ans != PTRef_Undef);
@@ -435,10 +416,9 @@ literalt smtcheck_opensmt2t::lnot(literalt l){
 
 literalt smtcheck_opensmt2t::lvar(const exprt &expr)
 {
-	const string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-
 	literalt l;
     PTRef var;
+    const string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
     if(is_number(expr.type()))
         var = logic->mkRealVar(str.c_str());
     else if (expr.type().id() == ID_array) // Is a function with index
@@ -448,6 +428,14 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
 
     l = new_variable();
 	literals.push_back (var);
+
+#ifdef DEBUG_SMT_LRA
+	cout << " Create " << str << endl;
+	std::string add_var = "|" + str + "| () " + getVarData(var);
+	if (var_set_str.end() == var_set_str.find(add_var)) {
+		var_set_str.insert(add_var);
+	}
+#endif
 	return l;
 
     /*
@@ -741,6 +729,9 @@ bool smtcheck_opensmt2t::solve() {
 //  add_variables();
 #ifdef DEBUG_SMT_LRA
   cout << "; XXX SMT-lib --> LRA-Logic Translation XXX" << endl;
+  for(it_var_set_str iterator = var_set_str.begin(); iterator != var_set_str.end(); iterator++) {
+  	  cout << "(declare-fun " << *iterator << ")" << endl;
+  }
   cout << "(assert\n  (and" << endl;
 #endif
   char *msg;
