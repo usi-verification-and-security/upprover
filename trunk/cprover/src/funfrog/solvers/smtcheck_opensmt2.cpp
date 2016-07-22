@@ -177,6 +177,10 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 			//     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
 			//     in this case, we should replace it by the variable itself, i.e.:
 			//     (not (= |c::main::1::c!0#4| -2147483648))
+
+			assert(((expr.operands())[0].id()==ID_symbol || (expr.operands())[0].id()==ID_nondet_symbol));
+			// Should be var - else we need to take care of it differntly
+
 			l = lvar((expr.operands())[0]);
 		}
 	} else if (expr.id() == ID_typecast) {
