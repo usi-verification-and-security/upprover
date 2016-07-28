@@ -10,7 +10,7 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2.h"
 
 //#define SMT_DEBUG
-#define DEBUG_SSA_SMT
+//#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
@@ -306,6 +306,14 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
     return l;
 }
 
+void smtcheck_opensmt2t::set_to_true(PTRef ptr)
+{
+	literalt l = new_variable();
+	literals.push_back (ptr);
+    assert(ptr != PTRef_Undef);
+	current_partition->push(ptr);
+}
+
 void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 {
     literalt l = convert(expr);
@@ -427,7 +435,9 @@ literalt smtcheck_opensmt2t::lnot(literalt l){
 
 literalt smtcheck_opensmt2t::lvar(const exprt &expr)
 {
-	const string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
+	const string _str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
+    string str = remove_invalid(_str);
+    str = quote_varname(str);
 
 	literalt l;
     PTRef var;
@@ -441,23 +451,6 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     l = new_variable();
 	literals.push_back (var);
 	return l;
-
-    /*
-    // OpenSMT doesn't really like these characters when using standalone.
-    // They are fine via the library though
-
-    string toremove[] = {"!", "::", "|", "\\", "#", "_"};
-    string newstr("");
-    int str_size = str.size();
-    for(int i = 0; i < str_size; ++i)
-    {
-        char c = str[i];
-        if(c == '!' || c == ':' || c == '|' || c == '\\' || c == '#' || c == '_')
-            continue;
-        newstr += c;
-    }
-    str = newstr;
-    */
 }
 
 literalt smtcheck_opensmt2t::lconst(const exprt &expr)
@@ -561,23 +554,51 @@ void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const vector< vector<i
   }
 }
 
+string
+smtcheck_opensmt2t::unquote_varname(const string& varname)
+{
+    int s = varname.length();
+    int l = 0;
+    if(varname[l] == '|') ++l;
+    if(varname[s - 1] == '|')
+        return string(varname.begin() + l, varname.begin() + (s - 1));
+    return string(varname.begin() + l, varname.end());
+}
+
+string
+smtcheck_opensmt2t::quote_varname(const string& varname)
+{
+    if(is_quoted_var(varname)) return varname;
+
+    string ans("");
+    assert(varname.length() > 0);
+    if(varname[0] != '|')
+        ans += '|';
+    ans += varname;
+    if(varname[varname.length() - 1] != '|')
+        ans += '|';
+    return ans;
+}
+
 void
-smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbs, string fun_name)
+smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbs, string _fun_name)
 {
     map<string, PTRef> vars;
     PTRef itp_pt = itp.getInterpolant();
 
+    string fun_name = quote_varname(_fun_name);
+
     // retrieve variables
     fill_vars(itp_pt, vars);
 
-    /*
+    
     cout << "; Variables in the interpolant " << endl;
     for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
     {
         cout << it->first << ' ';
     }
     cout << endl;
-    */
+    
 
     // build substitution map (removing indices)
     // meanwhile, add the vars to Tterm
@@ -585,7 +606,9 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     Map<PTRef,PtAsgn,PTRefHash> subst;
     for (std::vector<symbol_exprt>::iterator it = common_symbs.begin(); it != common_symbs.end(); ++it)
     {
-        string var_name = id2string(it->get_identifier());
+        string _var_name = id2string(it->get_identifier());
+        string var_name = remove_invalid(_var_name);
+        var_name = quote_varname(var_name);
         map<string, PTRef>::iterator it_var = vars.find(var_name);
         if(it_var == vars.end()) //LA: iface var not used in interpolant
             continue;
@@ -633,12 +656,38 @@ smtcheck_opensmt2t::fill_vars(PTRef itp, map<string, PTRef>& subst)
     }
 }
 
+bool
+smtcheck_opensmt2t::is_quoted_var(const string& varname)
+{
+    assert(varname.length() > 0);
+    return (varname[0] == '|') && (varname[varname.length() - 1] == '|');
+}
+
+string
+smtcheck_opensmt2t::remove_invalid(const string& varname)
+{
+    string ans("");
+    for(int i = 0; i < varname.length(); ++i)
+    {
+        if(varname[i] != '\\')
+            ans += varname[i];
+    }
+    return ans;
+}
+
 string
 smtcheck_opensmt2t::remove_index(string var)
 {
     int i = var.length() - 1;
     while(i >= 0 && var[i] != '#') --i;
-    return string(var.begin(), var.begin() + i);
+    string no_index;
+    if(i > 0)
+        no_index = string(var.begin(), var.begin() + i);
+    else
+        return var;
+    if(is_quoted_var(var))
+        return quote_varname(no_index);
+    return no_index;
 }
 
 
@@ -782,19 +831,11 @@ void smtcheck_opensmt2t::close_partition()
 {
   assert(current_partition != NULL);
   if (partition_count > 0){
-    if (current_partition->size() > 1){
+    if (current_partition->size() >= 1){
       PTRef pand = logic->mkAnd(*current_partition);
-      //cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
-      //mainSolver->push(pand);
-      top_level_formulas.push(pand);
-    } else if (current_partition->size() == 1){
-      PTRef pand = (*current_partition)[0];
-      //cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
-      std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
       //mainSolver->push(pand);
       top_level_formulas.push(pand);
     } else {
-      std::cout << "Empty partition (terms size = 0): " << partition_count << "\n";
       //mainSolver->push(logic->getTerm_true());
       top_level_formulas.push(logic->getTerm_true());
       // GF: adding (assert true) for debugging only

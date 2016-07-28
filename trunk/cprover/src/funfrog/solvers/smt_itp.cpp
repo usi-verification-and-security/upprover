@@ -3,6 +3,7 @@
 #include "smt_itp.h"
 #include <stdlib.h>
 #include <iostream>
+#include "smtcheck_opensmt2.h"
 
 //#define DEBUG_ITP
 
@@ -411,12 +412,40 @@ Function: smt_itpt::substitute
 
 \*******************************************************************/
 
-void smt_itpt::substitute(prop_convt& decider,
+void smt_itpt::substitute(smtcheck_opensmt2t& decider,
     const std::vector<symbol_exprt>& symbols,
     bool inverted) const
 {
   assert(!is_trivial());
+  assert(tterm && logic);
+  vec<PTRef>& args = tterm->getArgs();
+  Map<PTRef, PtAsgn, PTRefHash> subst;
+  for(int i = 0; i < symbols.size(); ++i)
+  {
+      string fixed_str = id2string(symbols[i].get_identifier());
+      fixed_str = smtcheck_opensmt2t::remove_index(fixed_str);
+      fixed_str = smtcheck_opensmt2t::quote_varname(fixed_str);
+      literalt l = decider.convert(symbols[i]);
+      PTRef tmp = decider.literal2ptref(l);
+      for(int j = 0; j < args.size(); ++j)
+      {
+          string aname = string(logic->getSymName(args[j]));
+          aname = smtcheck_opensmt2t::quote_varname(aname);
+          if(aname == fixed_str)
+          {
+              subst.insert(args[j], PtAsgn(tmp, l_True));
+          }
+      }
+  }
+  PTRef part_sum;
+  PTRef templ = tterm->getBody();
+  logic->varsubstitute(templ, subst, part_sum);
+  decider.set_to_true(part_sum);
+  cout << "; Template instantiated is " << logic->printTerm(part_sum) << endl;
+    
 
+
+  /*
   // FIXME: Dirty cast.
   boolbv_mapt& map = const_cast<boolbv_mapt&>(dynamic_cast<boolbvt&>(decider).get_map());
   literalt* renaming = new literalt[_no_variables];
@@ -505,6 +534,7 @@ void smt_itpt::substitute(prop_convt& decider,
   decider.prop.l_set_to_true(new_root_literal);
 
   delete [] renaming;
+  */
 }
 
 

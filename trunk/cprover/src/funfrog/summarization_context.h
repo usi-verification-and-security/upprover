@@ -81,24 +81,30 @@ public:
     function_infos.find(functions.main_id())->second.analyze_globals(*this, ns);
   }
 
-  void deserialize_infos(const std::string& file) {
-    std::ifstream in;
-    in.open(file.c_str());
+  void deserialize_infos(const std::string& file, smtcheck_opensmt2t *decider = NULL) {
+    //std::ifstream in;
+    //in.open(file.c_str());
 
+      /*
     if (in.fail()) {
       std::cerr << "Failed to deserialize function summaries (file: " << file <<
               " cannot be read)" << std::endl;
       return;
     }
+    */
 
-    summary_store.deserialize(in);
-    function_infot::deserialize_infos(in, function_infos);
+    //summary_store.deserialize(in, decider);
+    summary_store.deserialize(file, decider);
+    //function_infot::deserialize_infos(in, function_infos);
+    function_infot::deserialize_infos(summary_store, function_infos);
 
+    /*
     if (in.fail()) {
       throw "Failed to load function summaries.";
     }
 
     in.close();
+    */
   }
 
   void serialize_infos(const std::string& file, summary_infot& summary_info) {
@@ -114,7 +120,7 @@ public:
     }
 
     summary_store.serialize(out);
-    function_infot::serialize_infos(out, function_infos);
+    //function_infot::serialize_infos(out, function_infos);
 
     if (out.fail()) {
       throw "Failed to serialize the function summaries.";

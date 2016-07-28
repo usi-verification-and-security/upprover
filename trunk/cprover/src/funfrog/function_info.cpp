@@ -104,6 +104,11 @@ Function: function_infot::deserialize
 
 \*******************************************************************/
 
+void function_infot::deserialize(unsigned idx)
+{
+    summaries.push_back(idx);
+}
+
 void function_infot::deserialize(std::istream& in)
 {
   unsigned nsummaries;
@@ -123,7 +128,6 @@ void function_infot::deserialize(std::istream& in)
     summaries.push_back(id);
   }
 }
-
 
 /*******************************************************************\
 
@@ -173,7 +177,6 @@ Function: function_infot::deserialize_infos
  Purpose:
 
 \*******************************************************************/
-
 void function_infot::deserialize_infos(std::istream& in, function_infost& infos)
 {
   unsigned nfunctions;
@@ -199,6 +202,29 @@ void function_infot::deserialize_infos(std::istream& in, function_infost& infos)
     }
 
     it->second.deserialize(in);
+  }
+}
+
+void function_infot::deserialize_infos(summary_storet& store, function_infost& infos)
+{
+  unsigned nfunctions = store.n_of_summaries();
+
+  for (unsigned i = 0; i < nfunctions; ++i)
+  {
+      Tterm *sum = store.find_summary(i).getTterm();
+      std::string f_name = smtcheck_opensmt2t::unquote_varname(sum->getName());
+      f_name = smtcheck_opensmt2t::remove_index(f_name);
+
+      irep_idt f_id(f_name);
+      function_infost::iterator it = infos.find(f_id);
+
+    // If the function is unknown - we postpone the addition (otherwise, 
+    // we could break the iterator)
+    if (it == infos.end()) {
+      it = infos.insert(function_infost::value_type(f_id, function_infot(f_id))).first;
+    }
+
+    it->second.deserialize(i);
   }
 }
 

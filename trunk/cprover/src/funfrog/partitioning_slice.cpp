@@ -134,6 +134,8 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
         get_symbols(it->second->guard, depends);
         get_symbols(it->second->cond_expr, depends);
         it->second->ignore = false;
+
+
       }
     }
     
@@ -168,8 +170,8 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
                 partition_iface.argument_symbols.begin();
                 it2 != partition_iface.argument_symbols.end();
                 ++it2, ++idx) {
-          if (summary.get_symbol_mask()[idx])
-            get_symbols(*it2, depends);
+          //if (summary.get_symbol_mask()[idx])
+          //  get_symbols(*it2, depends);
         }
       }
       partition.ignore = false;
@@ -283,6 +285,7 @@ void partitioning_slicet::prepare_assignment(
   assert(SSA_step.ssa_lhs.id() == ID_symbol);
 
   const irep_idt &id = SSA_step.ssa_lhs.get(ID_identifier);
+  const irep_idt &id2 = SSA_step.ssa_rhs.get(ID_identifier);
   def_map.insert(def_mapt::value_type(id, &SSA_step));
 }
 

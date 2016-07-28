@@ -12,6 +12,7 @@ Author: Ondrej Sery
 #include <ostream>
 //#include "solvers/prop_itp.h"
 #include "solvers/smt_itp.h"
+#include "solvers/smtcheck_opensmt2.h"
 
 //typedef prop_itpt summaryt;
 typedef smt_itpt summaryt;
@@ -29,7 +30,8 @@ public:
 
   // Serialization
   void serialize(std::ostream& out) const;
-  void deserialize(std::istream& in);
+  void deserialize(const std::string& in, smtcheck_opensmt2t *decider = NULL);
+  //void deserialize(std::istream& in, smtcheck_opensmt2t *decider = NULL);
 
   // Compacts the store representation, only representatives are kept.
   void compact_store(summary_infot& summary_info, 
@@ -43,6 +45,7 @@ public:
   summary_idt insert_summary(summaryt& summary);
   // Finds the representative of the given summary
   summaryt& find_summary(summary_idt new_id);
+  unsigned n_of_summaries() { return store.size(); }
   
   // Reset the summary store
   void clear() { store.clear(); max_id = 0; repr_count = 0; }

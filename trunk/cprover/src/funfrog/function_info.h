@@ -36,9 +36,11 @@ public:
   // Serialization of summaries
   void serialize(std::ostream& out) const;
   void deserialize(std::istream& in);
-
+  void deserialize(unsigned);
+  
   static void serialize_infos(std::ostream& out, const function_infost& infos);
   static void deserialize_infos(std::istream& in, function_infost& infos);
+  static void deserialize_infos(summary_storet& store, function_infost& infos);
 
   static void serialize_infos(const std::string& file, const function_infost& infos);
   static void deserialize_infos(const std::string& file, function_infost& infos);
@@ -63,9 +65,12 @@ public:
   static void optimize_all_summaries(summary_storet& summary_store, 
         function_infost& f_infos);
 
-private:
-  // Id of the function
+  // Removes all summaries
+  void clear_summaries() { summaries.clear(); }
+   // Id of the function
   irep_idt function;
+
+private:
   // The collected summaries
   summary_idst summaries;
   // Globals modified in the function
@@ -100,9 +105,7 @@ private:
     summaries.swap(new_summaries);
   }
 
-  // Removes all summaries
-  void clear_summaries() { summaries.clear(); }
-  
+ 
   friend class summary_storet;
 };
 

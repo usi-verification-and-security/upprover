@@ -13,11 +13,11 @@
 #include "expr_pretty_print.h"
 #include "solvers/sat/cnf.h"
 
-#define DEBUG_SSA
+//#define DEBUG_SSA
 //#define DEBUG_SSA_OLD // belongs only to the old version with BV
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
-#define DEBUG_SSA_SMT_CALL
+//#define DEBUG_SSA_SMT_CALL
 
 #include "solvers/smtcheck_opensmt2.h"
 
@@ -44,7 +44,7 @@ void partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 		unsigned vars_before = decider.prop.no_variables();
 		unsigned clauses_before = dynamic_cast<cnf_solvert&>(decider.prop).no_clauses();
 #   endif
-		out_basic << "XXX Partition: " << --part_id << " (ass_in_subtree: "
+		cout << "XXX Partition: " << --part_id << " (ass_in_subtree: "
 				<< it->get_iface().assertion_in_subtree << ")" << " - "
 				<< it->get_iface().function_id.c_str() << " (loc: "
 				<< it->get_iface().summary_info.get_call_location() << ", "
@@ -206,8 +206,8 @@ void partitioning_target_equationt::convert_partition_summary(
 #   ifdef DEBUG_SSA
 			std::cout << "Substituting summary #" << *it << std::endl;
 #   endif
-			//GF:hack
-			//      summary.substitute(decider, common_symbs, partition.inverted_summary);
+            summary.setLogic(decider.getLRALogic());
+			summary.substitute(decider, common_symbs, partition.inverted_summary);
 		}
 	}
 }
@@ -227,16 +227,15 @@ void partitioning_target_equationt::convert_partition_assignments(
 		smtcheck_opensmt2t &decider, partitiont& partition) {
 	for (SSA_stepst::const_iterator it = partition.start_it; it
 			!= partition.end_it; ++it) {
+
 		if (it->is_assignment() && !it->ignore) {
 			exprt tmp(it->cond_expr);
 
 			// Only if not an assignment to rounding model print it + add it to LRA statements
 			if (!isRoundModelEq(tmp)) {
 #     ifdef DEBUG_SSA
-				//expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);
-				//expr_ssa_print_test(&partition_smt_decl, out_code << "(assign ", tmp);
-				expr_ssa_print(out_terms << "    ", tmp, partition_smt_decl,
-						false);
+				expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);
+				expr_ssa_print_test(&partition_smt_decl, out_code << "(assign ", tmp);
 				terms_counter++;
 #     endif
 
@@ -965,7 +964,7 @@ void partitioning_target_equationt::extract_interpolants(
 		// Generalize the interpolant
 		fill_common_symbols(partition, common_symbs);
 
-#   ifdef DEBUG_ITP
+//#   ifdef DEBUG_ITP
 		std::cout << "Interpolant for function: " <<
 		partition.get_iface().function_id.c_str() << std::endl;
 		std::cout << "Common symbols (" << common_symbs.size() << "):" << std::endl;
@@ -974,7 +973,7 @@ void partitioning_target_equationt::extract_interpolants(
 		std::cout << it->get_identifier() << std::endl;
 
 		std::cout << "Generalizing interpolant" << std::endl;
-#   endif
+//#   endif
 
 		// GF: hack
 		//    itp.generalize(decider, common_symbs);

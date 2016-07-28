@@ -231,32 +231,54 @@ void summary_storet::compact_store(summary_infot& summary_info,
 // Serialization
 void summary_storet::serialize(std::ostream& out) const
 {
-  out << max_id << std::endl;
+  //out << max_id << std::endl;
 
   for (storet::const_iterator it = store.begin();
           it != store.end();
           ++it) {
 
-    out << it->repr_id << " " << it->is_repr() << std::endl;
+    //out << it->repr_id << " " << it->is_repr() << std::endl;
     
     if (it->is_repr()) {
-      out << it->summary->is_valid() << std::endl;
+      //out << it->summary->is_valid() << std::endl;
       it->summary->serialize(out);
     }
   }
 }
 
-void summary_storet::deserialize(std::istream& in)
+//void summary_storet::deserialize(std::istream& in, smtcheck_opensmt2t *decider)
+void summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *decider)
 {
   repr_count = 0;
-  in >> max_id;
+  //in >> max_id;
 
+  /*
   if (in.fail())
     return;
+    */
 
-  store.clear();
-  store.reserve(max_id);
-  
+    if(!decider)
+        return;
+
+    store.clear();
+    //store.reserve(max_id);
+
+    if(!decider->getMainSolver()->readFormulaFromFile(in.c_str()))
+        return;
+    vec<Tterm*>& functions = decider->getLRALogic()->getFunctions();
+    for(int i = 0; i < functions.size(); ++i)
+    {
+        summaryt *itp = new summaryt();
+        itp->setTterm(functions[i]);
+        itp->setInterpolant(functions[i]->getBody());
+        itp->set_valid(1);
+        store.push_back(nodet(i, *itp));
+        repr_count++;
+    }
+    
+    return;
+
+    /*
   for (unsigned i = 0; i < max_id; ++i)
   {
     summary_idt repr_id;
@@ -264,10 +286,10 @@ void summary_storet::deserialize(std::istream& in)
     bool is_valid;
     summaryt summary;
     
-    in >> repr_id >> is_repr;
+    //in >> repr_id >> is_repr;
     
     if (is_repr) {
-      in >> is_valid;
+      //in >> is_valid;
       summary.deserialize(in);
       summary.set_valid(is_valid);
       store.push_back(nodet(repr_id, summary));
@@ -276,4 +298,5 @@ void summary_storet::deserialize(std::istream& in)
       store.push_back(nodet(repr_id));
     }
   }
+  */
 }

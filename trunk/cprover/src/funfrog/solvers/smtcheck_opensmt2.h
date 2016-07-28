@@ -44,6 +44,7 @@ public:
   literalt convert(const exprt &expr);
 
   void set_to_true(const exprt &expr);
+  void set_to_true(PTRef);
 
   void set_equal(literalt l1, literalt l2);
 
@@ -76,13 +77,25 @@ public:
   void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants);
 
-  bool can_interpolate() const;
+    bool can_interpolate() const;
 
   // Extract interpolant form OpenSMT files/data
   //void extract_itp(PTRef ptref, prop_itpt& target_itp) const;
-  void extract_itp(PTRef ptref, smt_itpt& target_itp) const;
+    void extract_itp(PTRef ptref, smt_itpt& target_itp) const;
 
-  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name);
+    void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name);
+
+    static std::string quote_varname(const string& varname);
+    static std::string unquote_varname(const string& varname);
+  
+    static std::string remove_index(std::string);
+    static std::string remove_invalid(const string& varname);
+
+    static bool is_quoted_var(const string& varname);
+
+    MainSolver * getMainSolver() { return mainSolver; }
+
+    LRALogic * getLRALogic() { return logic; }
 
   /* KE : remove, will use OpenSMT code + PTRefs in hifrog
   // Simple recursive extraction of clauses from OpenSMT Egraph
@@ -102,6 +115,7 @@ protected:
   vec<PTRef> top_level_formulas;
 
   map<size_t, literalt> converted_exprs;
+
 
   bool dump_queries;
 
@@ -147,7 +161,6 @@ protected:
 
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
 
-  std::string remove_index(std::string);
   void fill_vars(PTRef, std::map<std::string, PTRef>&);
 
 
@@ -166,6 +179,8 @@ public:
 		  return getPTermString(converted_exprs[expr.full_hash()]);
 	  return 0;
   }
+
+  PTRef literal2ptref(literalt l) { return literals[l.var_no()]; }
 };
 
 #endif

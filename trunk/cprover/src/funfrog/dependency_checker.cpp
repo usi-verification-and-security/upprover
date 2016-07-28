@@ -177,7 +177,7 @@ void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool>
             get_expr_symbols(SSA_map[(*it)->cond_expr], all_symbols);
 
             for (symbol_sett::iterator sym_it = all_symbols.begin(); sym_it != all_symbols.end(); ++sym_it){
-              if (as_string(*sym_it).find("\guard") < 10000){ //dirty hack
+              if (as_string(*sym_it).find("\\guard") < 10000){ //dirty hack
                  //cout <<"guard symbol: " << as_string(*sym_it)  << "\n";
                   // all_symbols.erase(sym_it);
                 //get_expr_symbols(SSA_map[(*it)->cond_expr], all_symbols);

@@ -13,6 +13,7 @@
 
 void summarizing_checkert::initialize()
 {
+  decider = new smtcheck_opensmt2t();
   // Prepare the summarization context
   summarization_context.analyze_functions(ns);
 
@@ -20,7 +21,7 @@ void summarizing_checkert::initialize()
   {
     const std::string& summary_file = options.get_option("load-summaries");
     if (!summary_file.empty()) {
-      summarization_context.deserialize_infos(summary_file);
+      summarization_context.deserialize_infos(summary_file, decider);
     }
   }
 
@@ -73,6 +74,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
     report_success();
     return true;
   }
+  
+
   const bool no_slicing_option = options.get_bool_option("no-slicing");
 
   omega.set_initial_precision(assertion);
@@ -110,7 +113,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   {
     count++;
 
-    decider = new smtcheck_opensmt2t();
+    //decider = new smtcheck_opensmt2t();
 
 //    interpolator.reset(opensmt);
 //    bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);

@@ -8,6 +8,8 @@
 
 #include <opensmt/opensmt2.h>
 
+class smtcheck_opensmt2t;
+
 class smt_itpt
 {
 public:
@@ -47,7 +49,7 @@ public:
   void generalize(const prop_convt& mapping,
     const std::vector<symbol_exprt>& symbols);
 
-  void substitute(prop_convt& decider,
+  void substitute(smtcheck_opensmt2t& decider,
     const std::vector<symbol_exprt>& symbols,
     bool inverted = false) const;
 
