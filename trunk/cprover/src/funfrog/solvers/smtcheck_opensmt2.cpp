@@ -729,6 +729,10 @@ bool smtcheck_opensmt2t::solve() {
 //  add_variables();
 #ifdef DEBUG_SMT_LRA
   cout << "; XXX SMT-lib --> LRA-Logic Translation XXX" << endl;
+  cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
+  cout << "; Declarations from OpenSMT2 :" << endl;
+  logic->dumpHeaderToFile(cout);
+  cout << "; Declarations from Hifrog :" << endl;
   for(it_var_set_str iterator = var_set_str.begin(); iterator != var_set_str.end(); iterator++) {
   	  cout << "(declare-fun " << *iterator << ")" << endl;
   }
