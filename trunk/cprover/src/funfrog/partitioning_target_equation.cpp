@@ -286,7 +286,7 @@ void partitioning_target_equationt::convert_partition_guards(
 	for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
 		if (it->ignore) {
 #     ifdef DEBUG_SSA_SMT_CALL
-			cout << "Before decider::const_var --> false" << endl;
+			cout << "Before decider::const_var(GUARD-OUT) --> false" << endl;
 #	  endif
 			it->guard_literal = decider.const_var(false);
 		} else {
@@ -324,7 +324,7 @@ void partitioning_target_equationt::convert_partition_assumptions(
 		if (it->is_assume()) {
 			if (it->ignore) {
 #     	ifdef DEBUG_SSA_SMT_CALL
-				cout << "Before decider::const_var --> true" << endl;
+				cout << "Before decider::const_var(ASSUME-OUT) --> true" << endl;
 #	  	endif
 				it->cond_literal = decider.const_var(true);
 				// GF
@@ -369,10 +369,9 @@ void partitioning_target_equationt::convert_partition_assertions(
 	}
 
 # ifdef DEBUG_SSA_SMT_CALL
-	cout << "Before decider::const_var --> true" << endl;
+	cout << "Before decider::const_var(ASSERT-OUT) --> true" << endl;
 # endif
 	literalt assumption_literal = decider.const_var(true);
-
 	for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
 
 		if ((it->is_assert()) && !(it->ignore)) {
@@ -421,7 +420,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 
 #		ifdef DEBUG_SSA_SMT_CALL
 				expr_ssa_print_smt_dbg(
-						cout << "Before decider::land(GUARD-LITERAL) --> ",
+						cout << "Before decider::land(GUARD-LITERAL of Call-START) --> ",
 						it->guard, false);
 				expr_ssa_print_smt_dbg(
 						cout << "Before decider::set_equal(Call-START) --> ",
@@ -477,7 +476,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 			//     assumption_literal = \land_{ass \in assumptions(f)} ass
 			//
 #     ifdef DEBUG_SSA_SMT_CALL
-			cout << "Before decider::land(call-START)" << endl;
+			cout << "Before decider::land(call-START) " << number_of_assumptions << endl;
 #	  endif
 			assumption_literal = decider.land(assumption_literal,
 					it->cond_literal);
@@ -507,8 +506,8 @@ void partitioning_target_equationt::convert_partition_assertions(
 		if (partition.parent_id == partitiont::NO_PARTITION
 				&& !upgrade_checking) {
 #     ifdef DEBUG_SSA_SMT_CALL
-			cout << "Before decider::const_var --> true" << endl;
-			cout << "Before decider::land" << endl;
+			cout << "Before decider::const_var(error in ROOT) --> true" << endl;
+			cout << "Before decider::land(error in ROOT)" << endl;
 #	  endif
 			decider.set_equal(decider.land(bv), decider.const_var(true));
 
@@ -668,7 +667,8 @@ void partitioning_target_equationt::convert_partition_assertions(
 #   ifdef DEBUG_SSA_SMT_CALL
 		cout << "Before decider::limplies(CALL-END)" << endl;
 #	endif
-		decider.limplies(partition_iface.callend_literal, assumption_literal);
+		literalt tmp_end = decider.limplies(partition_iface.callend_literal, assumption_literal); // BUG!! - before didn't not use the result of it
+		decider.set_equal(tmp_end, decider.const_var(true)); // KE: maybe that's the missing call?
 
 #   ifdef DEBUG_SSA
 		//expr_pretty_print(std::cout << "XXX Call END implication: ", partition_iface.callend_symbol);
@@ -698,11 +698,6 @@ void partitioning_target_equationt::convert_partition_assertions(
 					<< "    )\n";
 		else
 			out_terms << "\n" << temp_buf.str() << "    )\n";
-		//for (SSA_stepst::iterator it2 = partition.start_it; it2 != partition.end_it; ++it2) {
-		//  if (it2->is_assume()) {
-		//    expr_pretty_print(std::cout << "  => ", it2->cond_expr);
-		//  }
-		// }
 #   endif
 	}
 }

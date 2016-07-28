@@ -7,7 +7,7 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_PERIPLO_H
 #define CPROVER_SMTCHECK_PERIPLO_H
 
-//#define DEBUG_SMT_LRA
+#define DEBUG_SMT_LRA
 
 #include <map>
 #include <vector>
@@ -170,7 +170,13 @@ private:
 
 #ifdef DEBUG_SMT_LRA
   std::map <std::string,std::string> ite_map_str;
+  std::set <std::string> var_set_str;
   typedef std::map<std::string,std::string>::iterator it_ite_map_str;
+  typedef std::set<std::string>::iterator it_var_set_str;
+
+  std::string getVarData(const PTRef &var) {
+	  return string(logic->getSortName(logic->getSortRef(var)));
+  }
 #endif
 public:
   char* getPTermString(const literalt &l) { return getPTermString(literals[l.get()]); }

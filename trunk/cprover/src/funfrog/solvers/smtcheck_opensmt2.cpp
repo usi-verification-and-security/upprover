@@ -141,7 +141,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         return converted_exprs[expr.full_hash()];
 
 #ifdef SMT_DEBUG
-    cout << "; CONVERTING with " << expr.has_operands() << " operands "<< expr.pretty() << endl;
+    cout << "; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
 #endif
 
     /* Check which case it is */
@@ -161,26 +161,10 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		bool is_const =(expr.operands())[0].is_constant();
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
 #endif
-		// KE: Take care of type cast: two cases (1) const and (2) val (var in SMT)
-		// First try to code it (just replace the binary to real and val/var just create without time cast
-		if ((expr.operands())[0].is_constant()) {
-			if (expr.is_boolean()) { // here might need to manually cast
-				if ((expr.operands())[0].is_boolean())
-					l = const_var((expr.operands())[0].is_true());
-				else
-					l = const_var(!(expr.operands())[0].is_zero());
-			} else {
-				l = lconst((expr.operands())[0]);
-			}
-		} else {
-			// GF: sometimes typecast is applied to variables, e.g.:
-			//     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
-			//     in this case, we should replace it by the variable itself, i.e.:
-			//     (not (= |c::main::1::c!0#4| -2147483648))
-			l = lvar((expr.operands())[0]);
-		}
+		// KE: Take care of type cast - recursion of convert take care of it anyhow
+		l = convert((expr.operands())[0]);
 	} else if (expr.id() == ID_typecast) {
-		assert(0); // Need to take care of
+		assert(0); // Need to take care of - typecast no operands
 	} else {
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
@@ -227,6 +211,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         PTRef ptl;
 		if (expr.id()==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
+        } else if(expr.id() == ID_equal) {
+            ptl = logic->mkEq(args);
 		} else if (expr.id()==ID_if) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT_LRA
@@ -273,8 +259,10 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             ptl = logic->mkRealDiv(args);
 		} else if(expr.id() == ID_assign) {
             ptl = logic->mkEq(args);
-        } else if(expr.id() == ID_equal) {
+        } else if(expr.id() == ID_ieee_float_equal) {
             ptl = logic->mkEq(args);
+        } else if(expr.id() == ID_ieee_float_notequal) {
+            ptl = logic->mkNot(logic->mkEq(args));
 		} else if(expr.id() == ID_floatbv_plus) {
             ptl = logic->mkRealPlus(args);
 		} else if(expr.id() == ID_floatbv_minus) {
@@ -330,12 +318,13 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     vec<PTRef> args;
+    literalt l;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
-    literalt l = new_variable();
+    l = new_variable();
     literals.push_back(ans);
 
     assert(ans != PTRef_Undef);
@@ -450,6 +439,14 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
 
     l = new_variable();
 	literals.push_back (var);
+
+#ifdef DEBUG_SMT_LRA
+	cout << " Create " << str << endl;
+	std::string add_var = "|" + str + "| () " + getVarData(var);
+	if (var_set_str.end() == var_set_str.find(add_var)) {
+		var_set_str.insert(add_var);
+	}
+#endif
 	return l;
 }
 
@@ -782,6 +779,13 @@ bool smtcheck_opensmt2t::solve() {
 //  add_variables();
 #ifdef DEBUG_SMT_LRA
   cout << "; XXX SMT-lib --> LRA-Logic Translation XXX" << endl;
+  cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
+  cout << "; Declarations from OpenSMT2 :" << endl;
+  logic->dumpHeaderToFile(cout);
+  cout << "; Declarations from Hifrog :" << endl;
+  for(it_var_set_str iterator = var_set_str.begin(); iterator != var_set_str.end(); iterator++) {
+  	  cout << "(declare-fun " << *iterator << ")" << endl;
+  }
   cout << "(assert\n  (and" << endl;
 #endif
   char *msg;
@@ -833,6 +837,17 @@ void smtcheck_opensmt2t::close_partition()
   if (partition_count > 0){
     if (current_partition->size() >= 1){
       PTRef pand = logic->mkAnd(*current_partition);
+#ifdef DEBUG_SMT_LRA
+      cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
+#endif
+      //mainSolver->push(pand);
+      top_level_formulas.push(pand);
+    } else if (current_partition->size() == 1){
+      PTRef pand = (*current_partition)[0];
+#ifdef DEBUG_SMT_LRA
+      cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
+#endif
+      std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
       //mainSolver->push(pand);
       top_level_formulas.push(pand);
     } else {
@@ -864,7 +879,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
 	// If can be that we missed more cases... use the debug prints to check conversions!!
 #ifdef DEBUG_SSA_SMT_NUMERIC_CONV
         cout << "; EXTRACTING NUMBER " << const_val << " (ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << ")"<< endl;
-        cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << endl;
+        cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << " with TYPE " << expr.type().id_string() << endl;
 #endif
 
 	return const_val;
