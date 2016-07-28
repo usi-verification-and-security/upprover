@@ -325,7 +325,7 @@ void satcheck_opensmt2t::lcnf(const bvt &bv)
   if(new_bv.empty())
   {
     std::cerr << "WARNING: Outputing an empty clause -> most probably an error due to pointers." << std::endl;
-    PTRef tmp = logic->mkConst(logic->getSort_bool(), Logic::tk_false);
+    PTRef tmp = logic->getTerm_false();
     current_partition->push(tmp);
     return;
   }
@@ -352,9 +352,9 @@ Function: satcheck_opensmt2t::prop_solve
 
 propt::resultt satcheck_opensmt2t::prop_solve() {
 
+  char *msg;
   if (dump_queries){
-    char* msg1;
-    mainSolver->writeSolverState_smtlib2("__SAT_query", &msg1);
+    mainSolver->writeSolverState_smtlib2("__SAT_query", &msg);
   }
 
   assert(status != ERROR);
@@ -362,6 +362,10 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
 
   if (current_partition != NULL) {
     close_partition();
+  }
+
+  for(int i = 0; i < top_level_formulas.size(); ++i) {
+      mainSolver->insertFormula(top_level_formulas[i], &msg);
   }
 
   add_variables();
@@ -499,13 +503,12 @@ Function: satcheck_opensmt2t::close_partition
 void satcheck_opensmt2t::close_partition()
 {
   assert(current_partition != NULL);
-  char *msg;
   if (partition_count > 0){
     if (current_partition->size() > 1){
-      mainSolver->insertFormula(logic->mkAnd(*current_partition), &msg);
+      top_level_formulas.push(logic->mkAnd(*current_partition));
     } else if (current_partition->size() == 1){
       std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
-      mainSolver->insertFormula((*current_partition)[0], &msg);
+      top_level_formulas.push((*current_partition)[0]);
     } else {
       std::cout << "Empty partition (terms size = 0): " << partition_count << "\n";
     }

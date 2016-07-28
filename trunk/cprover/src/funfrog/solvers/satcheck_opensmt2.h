@@ -93,6 +93,8 @@ protected:
   // Can we interpolate?
   bool ready_to_interpolate;
   
+  vec<PTRef> top_level_formulas;
+
   int reduction_loops;
 
   int reduction_graph;

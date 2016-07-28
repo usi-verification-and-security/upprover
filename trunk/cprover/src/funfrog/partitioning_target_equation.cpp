@@ -15,7 +15,7 @@ Author: Ondrej Sery
 #include "expr_pretty_print.h"
 #include "solvers/sat/cnf.h"
 
-#define DEBUG_SSA
+//#define DEBUG_SSA
 //#define DEBUG_SSA_OLD // belongs only to the old version with BV
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
@@ -48,7 +48,7 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
     unsigned vars_before = prop_conv.prop.no_variables();
     unsigned clauses_before = dynamic_cast<cnf_solvert&>(prop_conv.prop).no_clauses();
 #   endif
-    out_basic << "XXX Partition: " << --part_id <<
+    cout << "XXX Partition: " << --part_id <<
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             " (loc: " << it->get_iface().summary_info.get_call_location() << ", " <<
@@ -87,8 +87,10 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
 #   endif
   }
 
+# ifdef DEBUG_SSA
   // Print all after the headers: decl and code
   print_all_partition(std::cout);
+# endif
 }
 
 /*******************************************************************\
