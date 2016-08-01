@@ -9,8 +9,8 @@ Author: Grigory Fedyukovich
 
 #include "smtcheck_opensmt2.h"
 
-//#define SMT_DEBUG
-//#define DEBUG_SSA_SMT
+#define SMT_DEBUG
+#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
@@ -158,11 +158,18 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         l = lconst(expr);
 	} else if (expr.id() == ID_typecast && expr.has_operands()) {
 #ifdef SMT_DEBUG
-		bool is_const =(expr.operands())[0].is_constant();
+		bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
 #endif
 		// KE: Take care of type cast - recursion of convert take care of it anyhow
-		l = convert((expr.operands())[0]);
+        // Unless it is constant bool, that needs different code:
+        if (expr.is_boolean() && (expr.operands())[0].is_constant()) {
+        	std::string val = extract_expr_str_number((expr.operands())[0]);
+        	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
+        	l = const_var(!val_const_zero);
+        } else {
+        	l = convert((expr.operands())[0]);
+        }
 	} else if (expr.id() == ID_typecast) {
 		assert(0); // Need to take care of - typecast no operands
 	} else {
@@ -289,7 +296,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
     converted_exprs[expr.full_hash()] = l;
     PTRef ptr = literals[l.var_no()];
 #ifdef SMT_DEBUG
-    cout << "; Created OpenSMT2 formula " << logic->printTerm(ptr) << endl;
+    cout << "; For " << expr.id() << " Created OpenSMT2 formula " << logic->printTerm(ptr) << endl;
 #endif
     return l;
 }
@@ -441,7 +448,7 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
 	literals.push_back (var);
 
 #ifdef DEBUG_SMT_LRA
-	cout << " Create " << str << endl;
+	cout << "; (lvar) Create " << str << endl;
 	std::string add_var = "|" + str + "| () " + getVarData(var);
 	if (var_set_str.end() == var_set_str.find(add_var)) {
 		var_set_str.insert(add_var);
