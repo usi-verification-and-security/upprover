@@ -223,18 +223,12 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		} else if (expr.id()==ID_if) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT_LRA
-            std::string key = string(getPTermString(ptl));
-            std::string data = "(ite ";
-            data = ((data.append(getPTermString(args[0])) + " ").append(getPTermString(args[1])) + " " ).append(getPTermString(args[2])) + ")";
-            ite_map_str.insert(make_pair(key,data));
+            ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
 		} else if(expr.id() == ID_ifthenelse) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT_LRA
-            std::string key = string(getPTermString(ptl));
-            std::string data = "(ite ";
-            data = ((data.append(getPTermString(args[0])) + " ").append(getPTermString(args[1])) + " " ).append(getPTermString(args[2])) + ")";
-            ite_map_str.insert(make_pair(key,data));
+            ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
 		} else if(expr.id() == ID_and) {
             ptl = logic->mkAnd(args);
@@ -810,12 +804,10 @@ bool smtcheck_opensmt2t::solve() {
 #endif
   }
 #ifdef DEBUG_SMT_LRA
-  cout << "))" << endl << "(check-sat)" << endl;
-
-  cout << "ite info - incase need to replace .oite symbol \n";
   for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
 	  cout << "; XXX oite symbol: " << iterator->first << endl << iterator->second << endl;
   }
+  cout << "))" << endl << "(check-sat)" << endl;
 #endif
 
   sstat r = mainSolver->check();
