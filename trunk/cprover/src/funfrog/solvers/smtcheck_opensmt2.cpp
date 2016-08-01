@@ -9,8 +9,8 @@ Author: Grigory Fedyukovich
 
 #include "smtcheck_opensmt2.h"
 
-#define SMT_DEBUG
-#define DEBUG_SSA_SMT
+//#define SMT_DEBUG
+//#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
@@ -435,6 +435,10 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     string str = remove_invalid(_str);
     str = quote_varname(str);
 
+    // Nil is a special case - don't create a var but a val of true
+    if (_str.compare("nil") == 0) return const_var(true);
+
+    // Else if it is really a var, continue and declare it!
 	literalt l;
     PTRef var;
     if(is_number(expr.type()))
@@ -447,9 +451,9 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     l = new_variable();
 	literals.push_back (var);
 
-#ifdef DEBUG_SMT_LRA
+#ifdef SMT_DEBUG
 	cout << "; (lvar) Create " << str << endl;
-	std::string add_var = "|" + str + "| () " + getVarData(var);
+	std::string add_var = str + " () " + getVarData(var);
 	if (var_set_str.end() == var_set_str.find(add_var)) {
 		var_set_str.insert(add_var);
 	}
@@ -785,18 +789,21 @@ bool smtcheck_opensmt2t::solve() {
 
 //  add_variables();
 #ifdef DEBUG_SMT_LRA
+  /*
+  //If have problem with declaration of vars - uncommen this!
   cout << "; XXX SMT-lib --> LRA-Logic Translation XXX" << endl;
   cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
-  cout << "; Declarations from OpenSMT2 :" << endl;
-  logic->dumpHeaderToFile(cout);
   cout << "; Declarations from Hifrog :" << endl;
   for(it_var_set_str iterator = var_set_str.begin(); iterator != var_set_str.end(); iterator++) {
   	  cout << "(declare-fun " << *iterator << ")" << endl;
   }
+  cout << "; Declarations from OpenSMT2 :" << endl;
+  */
+  logic->dumpHeaderToFile(cout);
   cout << "(assert\n  (and" << endl;
 #endif
   char *msg;
-  for(int i = 0; i < top_level_formulas.size(); ++i) {
+  for(int i = top_level_formulas.size()-1; i >= 0; --i) {
       mainSolver->insertFormula(top_level_formulas[i], &msg);
 #ifdef DEBUG_SMT_LRA
       cout << "; XXX Partition: " << i << endl << "    " << logic->printTerm(top_level_formulas[i]) << endl;

@@ -14,10 +14,11 @@
 #include "solvers/sat/cnf.h"
 
 //#define DEBUG_SSA
+//#define DEBUG_SSA_PRINT // Print the SSA encoding
 //#define DEBUG_SSA_OLD // belongs only to the old version with BV
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
-//#define DEBUG_SSA_SMT_CALL
+//#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
 
 #include "solvers/smtcheck_opensmt2.h"
 
@@ -38,8 +39,6 @@ void partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 	int part_id = partitions.size();
 	for (partitionst::reverse_iterator it = partitions.rbegin(); it
 			!= partitions.rend(); ++it) {
-		//#   ifdef DEBUG_SSA
-		//cout << "XXX" << std::string(77, '=') << std::endl;
 #   ifdef DEBUG_ENCODING
 		unsigned vars_before = decider.prop.no_variables();
 		unsigned clauses_before = dynamic_cast<cnf_solvert&>(decider.prop).no_clauses();
@@ -50,7 +49,14 @@ void partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 				<< it->get_iface().summary_info.get_call_location() << ", "
 				<< ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
 						: ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
-		//#   endif
+#   ifdef DEBUG_SSA_PRINT
+		out_basic << "XXX Partition: " << part_id << " (ass_in_subtree: "
+						<< it->get_iface().assertion_in_subtree << ")" << " - "
+						<< it->get_iface().function_id.c_str() << " (loc: "
+						<< it->get_iface().summary_info.get_call_location() << ", "
+						<< ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
+								: ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
+#   endif
 		convert_partition(decider, interpolator, *it);
 
 		// Print partition into a buffer after the headers: basic and code
@@ -235,10 +241,12 @@ void partitioning_target_equationt::convert_partition_assignments(
 			if (!isRoundModelEq(tmp)) {
 #     ifdef DEBUG_SSA
 				expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);
-				expr_ssa_print_test(&partition_smt_decl, out_code << "(assign ", tmp);
+				//expr_ssa_print_test(&partition_smt_decl, out_code << "(assign ", tmp);
+#     endif
+#     ifdef DEBUG_SSA_PRINT
+				expr_ssa_print(out_terms << "    ", tmp, partition_smt_decl, false);
 				terms_counter++;
 #     endif
-
 #     ifdef DEBUG_SSA_SMT_CALL
 				expr_ssa_print_smt_dbg(
 						cout << "Before decider::set_to_true(ASSIGN-OUT) --> ",
@@ -291,7 +299,7 @@ void partitioning_target_equationt::convert_partition_guards(
 			it->guard_literal = decider.const_var(false);
 		} else {
 			exprt tmp(it->guard);
-#     ifdef DEBUG_SSA
+#     ifdef DEBUG_SSA_PRINT
 			//expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
 			expr_ssa_print_guard(out_terms, tmp, partition_smt_decl);
 			if (!tmp.is_boolean())
@@ -429,7 +437,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 				literalt tmp = decider.land(assumption_literal,
 						it->guard_literal);
 				decider.set_equal(tmp, target_partition_iface.callstart_literal);
-#		ifdef DEBUG_SSA
+#		ifdef DEBUG_SSA_PRINT
 				//#ifdef DEBUG_SSA_OLD
 				// expr_ssa_print(out_code << "(assert " , it->cond_expr, partition_smt_decl, false); ??
 				//expr_pretty_print(std::cout << "XXX Call START equality: ",
@@ -511,7 +519,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 #	  endif
 			decider.set_equal(decider.land(bv), decider.const_var(true));
 
-#ifdef DEBUG_SSA
+#ifdef DEBUG_SSA_PRINT
 			//out_terms << "XXX Encoding error in ROOT: " << std::endl;
 
 			// Pre-order printing
@@ -577,7 +585,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 						partition_iface.error_literal);
 			}
 
-#ifdef DEBUG_SSA
+#ifdef DEBUG_SSA_PRINT
 			//#ifdef DEBUG_SSA_OLD
 			//expr_pretty_print(std::cout << "XXX Encoding error_f: ",
 			//out_terms << "XXX Encoding error_f: \n";
@@ -670,7 +678,7 @@ void partitioning_target_equationt::convert_partition_assertions(
 		literalt tmp_end = decider.limplies(partition_iface.callend_literal, assumption_literal); // BUG!! - before didn't not use the result of it
 		decider.set_equal(tmp_end, decider.const_var(true)); // KE: maybe that's the missing call?
 
-#   ifdef DEBUG_SSA
+#   ifdef DEBUG_SSA_PRINT
 		//expr_pretty_print(std::cout << "XXX Call END implication: ", partition_iface.callend_symbol);
 		//out_terms << "XXX Call END implication: \n";
 		terms_counter++;
@@ -1062,6 +1070,8 @@ void partitioning_target_equationt::print_partition() {
 }
 
 void partitioning_target_equationt::print_all_partition(std::ostream& out) {
+	// Print only if the flag is on!
+#   ifdef DEBUG_SSA_PRINT
 	// Print header - not part of temp debug print!
 	cout << "\nXXX SSA --> SMT-lib Translation XXX\n";
 
@@ -1073,6 +1083,7 @@ void partitioning_target_equationt::print_all_partition(std::ostream& out) {
 	// When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
 	print_decl_smt(out_decl); // print the symbol decl
 	cout << decl_buf.str() << partition_buf.str() << "(check-sat)\n";
+#   endif
 }
 
 // Not in use here
