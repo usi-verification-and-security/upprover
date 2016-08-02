@@ -425,14 +425,14 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
       string fixed_str = id2string(symbols[i].get_identifier());
       fixed_str = smtcheck_opensmt2t::remove_index(fixed_str);
       fixed_str = smtcheck_opensmt2t::quote_varname(fixed_str);
-      literalt l = decider.convert(symbols[i]);
-      PTRef tmp = decider.literal2ptref(l);
       for(int j = 0; j < args.size(); ++j)
       {
           string aname = string(logic->getSymName(args[j]));
           aname = smtcheck_opensmt2t::quote_varname(aname);
           if(aname == fixed_str)
           {
+              literalt l = decider.convert(symbols[i]);
+              PTRef tmp = decider.literal2ptref(l);
               subst.insert(args[j], PtAsgn(tmp, l_True));
           }
       }
