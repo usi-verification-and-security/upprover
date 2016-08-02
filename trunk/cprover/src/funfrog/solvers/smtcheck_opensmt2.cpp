@@ -111,27 +111,23 @@ literalt smtcheck_opensmt2t::const_var(bool val)
 literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 {
 	literalt l;
-
 	PTRef rconst = logic->mkConst(extract_expr_str_number(expr).c_str()); // Can have a wrong conversion sometimes!
-	l = new_variable();
-	literals.push_back(rconst);
 
 	// Check the conversion from string to real was done properly - do not erase!
 	assert(!logic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
 	assert(!logic->isRealZero(rconst) || expr.is_zero()); // Check the conversion works: Zero => zero
 	// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
 
-	return l;
-}
+	std::pair <std::string, bool> test = extract_expr_str_number_wt_sign(expr);
+	if (!test.second) {
+		rconst = logic->mkRealNeg(logic->mkConst(test.first.c_str()));
+#ifdef	DEBUG_SSA_SMT_NUMERIC_CONV
+		cout << "; BUILD NEGATIVE NUMBER CONST " << getPTermString(rconst) << endl;
+#endif
+	}
 
-literalt smtcheck_opensmt2t::const_var_Real(std::string val)
-{
-	literalt l;
-
-	PTRef rconst = logic->mkConst(val.c_str()); // Can have a wrong conversion sometimes!
 	l = new_variable();
 	literals.push_back(rconst);
-
 	return l;
 }
 
@@ -889,6 +885,27 @@ std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
 #endif
 
 	return const_val;
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::extract_expr_str_number_wt_sign
+
+  Inputs: expression that is a constant (+/-/int/float/rational)
+
+ Outputs: a pair of a number and its sign (true for +, false for -)
+
+ Purpose: to build negative number ptref correctly
+
+
+\*******************************************************************/
+std::pair <std::string, bool> smtcheck_opensmt2t::extract_expr_str_number_wt_sign(const exprt &expr)
+{
+	std::string const_val = extract_expr_str_number(expr);
+	if (const_val.at(0) == '-')
+		return std::pair <std::string, bool> (const_val.erase(0,1), false);
+
+	return std::pair <std::string, bool> (const_val, true);
 }
 
 /*******************************************************************\

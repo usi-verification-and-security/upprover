@@ -52,8 +52,6 @@ public:
 
   literalt const_var_Real(const exprt &expr);
 
-  literalt const_var_Real(std::string val);
-
   literalt limplies(literalt l1, literalt l2);
 
   literalt lnotequal(literalt l1, literalt l2);
@@ -158,6 +156,8 @@ protected:
   void freeSolver();
 
   std::string extract_expr_str_number(const exprt &expr); // Our conversion of const that works also for negative numbers + check of result
+
+  std::pair <std::string, bool> extract_expr_str_number_wt_sign(const exprt &expr); // Fix problems with declare of negative numbers
 
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
 
