@@ -797,7 +797,7 @@ bool smtcheck_opensmt2t::solve() {
   cout << "(assert\n  (and" << endl;
 #endif
   char *msg;
-  for(int i = top_level_formulas.size()-1; i >= 0; --i) {
+  for(int i = 0; i < top_level_formulas.size(); ++i) {
       mainSolver->insertFormula(top_level_formulas[i], &msg);
 #ifdef DEBUG_SMT_LRA
       cout << "; XXX Partition: " << i << endl << "    " << logic->printTerm(top_level_formulas[i]) << endl;
