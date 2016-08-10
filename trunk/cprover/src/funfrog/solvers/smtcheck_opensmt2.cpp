@@ -11,7 +11,7 @@ Author: Grigory Fedyukovich
 
 //#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
-//#define DEBUG_SSA_SMT_NUMERIC_CONV
+#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
 {
@@ -117,16 +117,6 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 	assert(!logic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
 	assert(!logic->isRealZero(rconst) || expr.is_zero()); // Check the conversion works: Zero => zero
 	// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
-
-    /*
-	std::pair <std::string, bool> test = extract_expr_str_number_wt_sign(expr);
-	if (!test.second) {
-		rconst = logic->mkRealNeg(logic->mkConst(test.first.c_str()));
-#ifdef	DEBUG_SSA_SMT_NUMERIC_CONV
-		cout << "; BUILD NEGATIVE NUMBER CONST " << getPTermString(rconst) << endl;
-#endif
-	}
-    */
 
 	l = new_variable();
 	literals.push_back(rconst);
