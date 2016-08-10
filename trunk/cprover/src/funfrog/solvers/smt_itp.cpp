@@ -7,6 +7,26 @@
 
 //#define DEBUG_ITP
 
+bool
+smt_itpt::usesVar(symbol_exprt& symb)
+{
+    assert(tterm != NULL && logic != NULL);
+
+    string _var_name = id2string(symb.get_identifier());
+    string var_name = smtcheck_opensmt2t::remove_invalid(_var_name);
+    var_name = smtcheck_opensmt2t::remove_index(var_name);
+    var_name = smtcheck_opensmt2t::quote_varname(var_name);
+    vec<PTRef>& args = tterm->getArgs();
+    for(int i = 0; i < args.size(); ++i)
+    {
+        string pname = logic->getSymName(args[i]);
+        pname = smtcheck_opensmt2t::quote_varname(pname);
+        if(pname == var_name) return true;
+    }
+    return false;
+}
+
+
 /*******************************************************************\
 
 Function: smt_itpt::gate_and

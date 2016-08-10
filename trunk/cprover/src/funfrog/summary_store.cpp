@@ -270,6 +270,7 @@ void summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *deci
     {
         summaryt *itp = new summaryt();
         itp->setTterm(functions[i]);
+        itp->setLogic(decider->getLRALogic());
         itp->setInterpolant(functions[i]->getBody());
         itp->set_valid(1);
         store.push_back(nodet(i, *itp));

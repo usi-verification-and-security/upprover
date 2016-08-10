@@ -118,6 +118,7 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 	assert(!logic->isRealZero(rconst) || expr.is_zero()); // Check the conversion works: Zero => zero
 	// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
 
+    /*
 	std::pair <std::string, bool> test = extract_expr_str_number_wt_sign(expr);
 	if (!test.second) {
 		rconst = logic->mkRealNeg(logic->mkConst(test.first.c_str()));
@@ -125,6 +126,7 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 		cout << "; BUILD NEGATIVE NUMBER CONST " << getPTermString(rconst) << endl;
 #endif
 	}
+    */
 
 	l = new_variable();
 	literals.push_back(rconst);
@@ -589,7 +591,6 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     // retrieve variables
     fill_vars(itp_pt, vars);
 
-    
     cout << "; Variables in the interpolant " << endl;
     for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
     {

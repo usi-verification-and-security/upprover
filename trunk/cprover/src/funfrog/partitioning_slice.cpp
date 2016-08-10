@@ -170,8 +170,11 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
                 partition_iface.argument_symbols.begin();
                 it2 != partition_iface.argument_symbols.end();
                 ++it2, ++idx) {
-          //if (summary.get_symbol_mask()[idx])
-          //  get_symbols(*it2, depends);
+            //if (summary.get_symbol_mask()[idx])
+            if(summary.usesVar(*it2))
+            {
+                get_symbols(*it2, depends);
+            }
         }
       }
       partition.ignore = false;

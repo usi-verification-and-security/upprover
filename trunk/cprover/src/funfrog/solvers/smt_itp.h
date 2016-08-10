@@ -73,6 +73,7 @@ public:
   void setTterm(Tterm *t) { tterm = t; }
   Tterm* getTterm() { return tterm; }
   void setLogic(LRALogic *_l) { logic = _l; }
+  bool usesVar(symbol_exprt&);
 
 protected:
   bool valid;
