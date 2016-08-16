@@ -37,6 +37,7 @@ void partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 		interpolating_solvert &interpolator) {
 	getFirstCallExpr(); // Save the first call to the first function
 	int part_id = partitions.size();
+	decider.start_encoding_partitions(); // KE: In case we are using slicing and keeps the same decider need to init the counter of partitions befoer the main loop
 	for (partitionst::reverse_iterator it = partitions.rbegin(); it
 			!= partitions.rend(); ++it) {
 #   ifdef DEBUG_ENCODING

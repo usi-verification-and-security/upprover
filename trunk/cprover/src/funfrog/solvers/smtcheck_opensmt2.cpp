@@ -10,7 +10,7 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2.h"
 
 //#define SMT_DEBUG
-//#define DEBUG_SSA_SMT
+#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t::initializeSolver()
@@ -849,6 +849,7 @@ void smtcheck_opensmt2t::close_partition()
       // GF: adding (assert true) for debugging only
     }
   }
+
   current_partition = NULL;
 }
 

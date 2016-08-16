@@ -31,7 +31,7 @@ public:
       mainSolver (NULL),
       dump_queries(true),
       partition_count(0),
-	    no_literals(0),
+	  no_literals(0),
       itp_algorithm(1)
   {
     initializeSolver();
@@ -104,6 +104,8 @@ public:
 
   const char* false_str = "false";
   const char* true_str = "true";
+
+  void start_encoding_partitions() { partition_count = 0;}
 
 protected:
 
