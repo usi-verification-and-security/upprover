@@ -108,7 +108,7 @@ public:
   }
 
   void serialize_infos(const std::string& file, summary_infot& summary_info) {
-    summary_store.compact_store(summary_info, function_infos);
+    //summary_store.compact_store(summary_info, function_infos);
     
     std::ofstream out;
     out.open(file.c_str());

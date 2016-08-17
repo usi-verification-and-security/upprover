@@ -269,7 +269,10 @@ void summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *deci
     for(int i = 0; i < functions.size(); ++i)
     {
         summaryt *itp = new summaryt();
-        itp->setTterm(functions[i]);
+        Tterm *tterm = functions[i];
+        string fixed_name = smtcheck_opensmt2t::quote_varname(tterm->getName());
+        tterm->setName(fixed_name);
+        itp->setTterm(tterm);
         itp->setLogic(decider->getLRALogic());
         itp->setInterpolant(functions[i]->getBody());
         itp->set_valid(1);
