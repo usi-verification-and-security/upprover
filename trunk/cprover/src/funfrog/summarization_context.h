@@ -108,6 +108,7 @@ public:
   }
 
   void serialize_infos(const std::string& file, summary_infot& summary_info) {
+    //LA: Karine, the following line is the one that eventualyl has to be used
     //summary_store.compact_store(summary_info, function_infos);
     
     std::ofstream out;
