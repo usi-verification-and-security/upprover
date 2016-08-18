@@ -115,7 +115,9 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 
 	// Check the conversion from string to real was done properly - do not erase!
 	assert(!logic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
-	assert(!logic->isRealZero(rconst) || expr.is_zero()); // Check the conversion works: Zero => zero
+	exprt temp_check = exprt(expr);
+	temp_check.negate();
+	assert(!logic->isRealZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
 	// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
 
 	l = new_variable();
@@ -433,7 +435,7 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     l = new_variable();
 	literals.push_back (var);
 
-#ifdef SMT_DEBUG
+#ifdef DEBUG_SMT_LRA
 	cout << "; (lvar) Create " << str << endl;
 	std::string add_var = str + " () " + getVarData(var);
 	if (var_set_str.end() == var_set_str.find(add_var)) {
@@ -872,8 +874,8 @@ std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
 	//(unless upgrade, please keep the checks/assert!)
 	// If can be that we missed more cases... use the debug prints to check conversions!!
 #ifdef DEBUG_SSA_SMT_NUMERIC_CONV
-        cout << "; EXTRACTING NUMBER " << const_val << " (ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << ")"<< endl;
-        cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << " with TYPE " << expr.type().id_string() << endl;
+	cout << "; EXTRACTING NUMBER " << const_val << " (ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << ")"<< endl;
+	cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << " with TYPE " << expr.type().id_string() << endl;
 #endif
 
 	return const_val;
