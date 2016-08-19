@@ -76,6 +76,14 @@ summary_idt summary_storet::insert_summary(summaryt& summary)
   return id;
 }
 
+int
+summary_storet::get_max_id(const string& fname) const
+{
+    map<string, int>::const_iterator it = max_ids.find(fname);
+    if(it == max_ids.end()) return -1;
+    return it->second;
+}
+
 /*******************************************************************\
 
 Function: summary_storet::find_summary
@@ -241,6 +249,23 @@ void summary_storet::serialize(std::ostream& out) const
     
     if (it->is_repr()) {
       //out << it->summary->is_valid() << std::endl;
+      summaryt *sum = it->summary;
+      Tterm *tterm = sum->getTterm();
+      string fname = tterm->getName();
+      int fidx = smtcheck_opensmt2t::get_index(fname);
+      if(fidx < 0)
+      {
+          string qless = smtcheck_opensmt2t::unquote_varname(fname);
+          string idxless = smtcheck_opensmt2t::remove_index(qless);
+          int midx = get_max_id(idxless);
+          if(midx < 0) fidx = 1;
+          else fidx = midx + 1;
+          stringstream ss;
+          ss << idxless << '#' << fidx;
+          string nname = ss.str();
+          nname = smtcheck_opensmt2t::quote_varname(nname);
+          tterm->setName(nname);
+      }
       it->summary->serialize(out);
     }
   }
@@ -270,7 +295,15 @@ void summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *deci
     {
         summaryt *itp = new summaryt();
         Tterm *tterm = functions[i];
-        string fixed_name = smtcheck_opensmt2t::quote_varname(tterm->getName());
+        string fname = tterm->getName();
+        string qless = smtcheck_opensmt2t::unquote_varname(fname);
+        string idxless = smtcheck_opensmt2t::remove_index(qless);
+        int midx = get_max_id(idxless);
+        int fidx = smtcheck_opensmt2t::get_index(fname);
+        assert(fidx > 0);
+        assert(midx != fidx);
+        max_ids[idxless] = max(fidx, midx);
+        string fixed_name = smtcheck_opensmt2t::quote_varname(qless);
         tterm->setName(fixed_name);
         itp->setTterm(tterm);
         itp->setLogic(decider->getLRALogic());

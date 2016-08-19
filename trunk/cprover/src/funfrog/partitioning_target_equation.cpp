@@ -213,7 +213,6 @@ void partitioning_target_equationt::convert_partition_summary(
 #   ifdef DEBUG_SSA
 			std::cout << "Substituting summary #" << *it << std::endl;
 #   endif
-            summary.setLogic(decider.getLRALogic());
 			summary.substitute(decider, common_symbs, partition.inverted_summary);
 		}
 	}

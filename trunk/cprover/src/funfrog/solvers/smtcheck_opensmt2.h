@@ -83,6 +83,7 @@ public:
 
     void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name);
 
+    static int get_index(const string& varname);
     static std::string quote_varname(const string& varname);
     static std::string unquote_varname(const string& varname);
   

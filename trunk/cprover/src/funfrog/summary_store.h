@@ -10,6 +10,7 @@ Author: Ondrej Sery
 #define CPROVER_SUMMARY_STORE_H
 
 #include <ostream>
+#include <map>
 //#include "solvers/prop_itp.h"
 #include "solvers/smt_itp.h"
 #include "solvers/smtcheck_opensmt2.h"
@@ -46,6 +47,7 @@ public:
   // Finds the representative of the given summary
   summaryt& find_summary(summary_idt new_id);
   unsigned n_of_summaries() { return store.size(); }
+  int get_max_id(const string& fname) const;
   
   // Reset the summary store
   void clear() { store.clear(); max_id = 0; repr_count = 0; }
@@ -93,6 +95,8 @@ private:
     summary_idt repr_id;
   };
   
+    std::map<string, int> max_ids;
+
   nodet& find_repr(summary_idt id);
   void mark_used_summaries(summary_infot& summary_info, bool *used_mask);
   void remap_used_summaries(summary_infot& summary_info, summary_idt *remap);

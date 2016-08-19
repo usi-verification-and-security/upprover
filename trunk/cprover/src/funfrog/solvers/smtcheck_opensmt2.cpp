@@ -557,6 +557,21 @@ smtcheck_opensmt2t::unquote_varname(const string& varname)
     return string(varname.begin() + l, varname.end());
 }
 
+int
+smtcheck_opensmt2t::get_index(const string& _varname)
+{
+    string varname = unquote_varname(_varname);
+    int i = 0;
+    int s = varname.length();
+    while(i < s && varname[i++] != '#');
+    if(i >= s) return -1;
+    string num = string(varname.begin() + i, varname.end());
+    stringstream ss(num);
+    int nnum;
+    ss >> nnum;
+    return nnum;
+}
+
 string
 smtcheck_opensmt2t::quote_varname(const string& varname)
 {
