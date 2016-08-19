@@ -313,6 +313,8 @@ void summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *deci
         repr_count++;
     }
     
+    max_id += repr_count; // KE: We add new summaries so we need to inc the max
+
     return;
 
     /*
