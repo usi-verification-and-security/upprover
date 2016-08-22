@@ -598,32 +598,40 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     // retrieve variables
     fill_vars(itp_pt, vars);
 
-    cout << "; Variables in the interpolant " << endl;
-    for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
+    // formatted names of common vars
+    std::vector<string> quoted_varnames;
+    for (std::vector<symbol_exprt>::iterator it = common_symbs.begin(); it != common_symbs.end(); ++it)
     {
-        cout << it->first << ' ';
+        string _var_name = id2string(it->get_identifier());
+        string var_name = remove_invalid(_var_name);
+        quoted_varnames.push_back(quote_varname(var_name));
     }
-    cout << endl;
-    
 
     // build substitution map (removing indices)
     // meanwhile, add the vars to Tterm
     Tterm *tterm = new Tterm();
     Map<PTRef,PtAsgn,PTRefHash> subst;
-    for (std::vector<symbol_exprt>::iterator it = common_symbs.begin(); it != common_symbs.end(); ++it)
+
+    bool only_common_vars_in_itp = true;
+    cout << "; Variables in the interpolant: " << endl;
+    for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
     {
-        string _var_name = id2string(it->get_identifier());
-        string var_name = remove_invalid(_var_name);
-        var_name = quote_varname(var_name);
-        map<string, PTRef>::iterator it_var = vars.find(var_name);
-        if(it_var == vars.end()) //LA: iface var not used in interpolant
-            continue;
-        PTRef var = it_var->second;
-        string new_var_name = remove_index(var_name);
+        cout << " * " << it->first << ' ';
+        if (quoted_varnames.end() ==
+            find (quoted_varnames.begin(), quoted_varnames.end(), it->first)){
+            cout << " ---> local var to A; should not be in the interpolant";
+            only_common_vars_in_itp = false;
+        }
+
+        PTRef var = it->second;
+        string new_var_name = remove_index(it->first);
         PTRef new_var = logic->mkVar(logic->getSortRef(var), new_var_name.c_str());
         tterm->addArg(new_var);
         subst.insert(var, PtAsgn(new_var, l_True));
+        cout << endl;
     }
+
+    assert(only_common_vars_in_itp);
 
     // substitute
     PTRef new_root;
