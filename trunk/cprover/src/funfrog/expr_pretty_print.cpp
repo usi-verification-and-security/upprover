@@ -96,11 +96,10 @@ expr_pretty_printt::operator()(const exprt &expr)
 			else is_prev_token = true;
 		}
 	} else if (expr.id() == ID_nondet_symbol) {
-		std::string name = addToDeclMap(expr);
+		std::string name = addToDeclMap(expr); // Add the symbol to the symbol table
 		if (is_prev_token) out << " ";
 		out << OPERATOR_COLOR << "|" << (name.size() > 0 ? name : expr.get(ID_identifier)) << "|" << NORMAL_COLOR;
 		is_prev_token = true;
-		//addToDeclMap(expr); // duplicate call - no need for it
 	} else if (expr.id() == ID_notequal) {
 		out << OPERATOR_COLOR << "not (=" << NORMAL_COLOR;
 		out << " "; is_prev_token = false;
@@ -216,9 +215,6 @@ expr_ssa_print_guard(std::ostream& out, const exprt& expr, std::map <std::string
 // Recursive inner order SSA representation
 void
 expr_pretty_printt::visit_SSA(const exprt& expr) {
-
-	std::string old_indent = indent;
-
 	bool isNegIn = false;
 	if (expr.id() == ID_notequal) isNegIn = true;
 
@@ -288,7 +284,6 @@ expr_pretty_printt::visit_SSA(const exprt& expr) {
 		if (isHasOperands) {out << ")"; is_prev_token = true;}
 	}
 
-	indent = old_indent;
 	last_convered_value = 0; isAlreadyConverted = false;
 }
 
