@@ -201,6 +201,15 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 				PTRef cp = literals[cl.var_no()];
 				assert(cp != PTRef_Undef);
 				args.push(cp);
+#ifdef DEBUG_SMT_LRA
+				cout << "; Op to command is var no " << cl.var_no()
+						<< " with hash code " << (*it).full_hash()
+						<< " and the other one " << (*it).hash()
+						<< " in address " << (void *)&(*it)
+						<< " of term " << logic->printTerm(cp)
+						<< " from |" << (*it).get(ID_identifier)
+						<< "| these should be the same !"<< endl; // Monitor errors in the table!
+#endif
 			}
 			i++;
 		}
