@@ -127,8 +127,8 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 
 literalt smtcheck_opensmt2t::convert(const exprt &expr)
 {
-    if(converted_exprs.find(expr.full_hash()) != converted_exprs.end())
-        return converted_exprs[expr.full_hash()];
+    if(converted_exprs.find(expr.hash()) != converted_exprs.end())
+        return converted_exprs[expr.hash()];
 
 #ifdef SMT_DEBUG
     cout << "; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
@@ -209,6 +209,17 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 						<< " of term " << logic->printTerm(cp)
 						<< " from |" << (*it).get(ID_identifier)
 						<< "| these should be the same !"<< endl; // Monitor errors in the table!
+
+				// Auto catch this kind if problem and throws and assert!
+				if((*it).id()==ID_symbol || (*it).id()==ID_nondet_symbol){
+					std::stringstream convert, convert2; // stringstream used for the conversion
+					convert << logic->printTerm(cp); std::string str_expr1 = convert.str();
+					convert2 << "|" << (*it).get(ID_identifier) << "|"; std::string str_expr2 = convert2.str();
+					str_expr2.erase(std::remove(str_expr2.begin(),str_expr2.end(),'\\'),str_expr2.end());
+					if((*it).id() == ID_nondet_symbol && str_expr2.find("nondet") == std::string::npos)
+						str_expr2 = str_expr2.replace(1,7, "symex::nondet");
+					assert(str_expr1.compare(str_expr2) == 0);
+				}
 #endif
 			}
 			i++;
