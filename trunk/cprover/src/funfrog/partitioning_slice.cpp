@@ -76,14 +76,13 @@ Function: partitioning_slicet::slice
 void partitioning_slicet::slice(partitioning_target_equationt &equation,
         summary_storet& summary_store)
 {
-  // Mark assignments and assumptions as ignored
+  // Mark assignments as ignored
   for(symex_target_equationt::SSA_stepst::iterator it = 
           equation.SSA_steps.begin();
           it!=equation.SSA_steps.end();
           ++it) {
-    // We can only slice assignments and assumptions
-    // HOTFIX (keep all assumptions)
-    it->ignore = it->is_assignment();// || it->is_assume();
+    // We can only slice assignments
+    it->ignore = it->is_assignment();
   }
   for (partitionst::iterator it = equation.get_partitions().begin();
           it != equation.get_partitions().end();
@@ -309,16 +308,17 @@ void partitioning_slicet::prepare_assumption(
         partitioning_target_equationt &equation,
         symex_target_equationt::SSA_stept &SSA_step) 
 {
-  // Collect referred symbols
-  symbol_sett s;
-  get_symbols(SSA_step.cond_expr, s);
-  for (symbol_sett::iterator it = s.begin(); it != s.end(); ++it) {
-    assume_map.insert(assume_mapt::value_type(*it, &SSA_step));
-  }
-  s.clear();
-
   // If it is a call_end assumption --> add dependency on out args + ret_val
   if (SSA_step.cond_expr.id() == ID_symbol) {
+
+    // Collect referred symbols
+    symbol_sett s;
+    get_symbols(SSA_step.cond_expr, s);
+    for (symbol_sett::iterator it = s.begin(); it != s.end(); ++it) {
+      assume_map.insert(assume_mapt::value_type(*it, &SSA_step));
+    }
+    s.clear();
+
     const irep_idt& sid = to_symbol_expr(SSA_step.cond_expr).get_identifier();
     partition_mapt::iterator p_it = equation.partition_map.find(sid);
 
@@ -337,6 +337,10 @@ void partitioning_slicet::prepare_assumption(
                 partition_iface.retval_symbol.get_identifier(), &SSA_step));
       }
     }
+  } else {
+      // we treat assumption as assertion in a sense that
+      // we must use its variables for the dependency-analysis
+      prepare_assertion(SSA_step);
   }
 }
 /*******************************************************************\
