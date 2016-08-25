@@ -12,7 +12,6 @@
 #include <find_symbols.h>
 #include <ansi-c/expr2c.h>
 #include <time_stopping.h>
-#include <loopfrog/memstat.h>
 #include <ui_message.h>
 #include "prop_assertion_sum.h"
 
@@ -52,10 +51,6 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 
   // Decides the equation
   sat = is_satisfiable(decider);
-
-  //unsigned long this_mem = current_memory();
-  //if (this_mem > max_memory_used)
-  //  max_memory_used = this_mem;
 
   if (!sat)
   {

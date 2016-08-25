@@ -14,7 +14,6 @@
 #include <fstream>
 #include <pointer-analysis/value_set_analysis.h>
 #include <goto-programs/goto_functions.h>
-#include <loopfrog/loopstore.h>
 
 #include "function_info.h"
 #include "summary_store.h"
