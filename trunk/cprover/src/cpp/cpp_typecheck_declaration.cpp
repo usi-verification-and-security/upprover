@@ -14,31 +14,6 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 /*******************************************************************\
 
-Function: cpp_typecheckt::convert_typedef
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-bool cpp_typecheckt::convert_typedef(typet &type)
-{
-  if(type.id()==ID_merged_type &&
-     type.subtypes().size()>=2 &&
-     type.subtypes()[0].id()==ID_typedef)
-  {
-    type.subtypes().erase(type.subtypes().begin());
-    return true;
-  }
-
-  return false;
-}
-
-/*******************************************************************\
-
 Function: cpp_typecheckt::convert_anonymous_union
 
   Inputs:
@@ -61,7 +36,7 @@ void cpp_typecheckt::convert_anonymous_union(
 
   irept name(ID_name);
   name.set(ID_identifier, identifier);
-  name.set(ID_C_location, declaration.location());
+  name.set(ID_C_source_location, declaration.source_location());
 
   cpp_namet cpp_name;
   cpp_name.move_to_sub(name);
@@ -75,8 +50,8 @@ void cpp_typecheckt::convert_anonymous_union(
 
   if(!cpp_is_pod(declaration.type()))
   {
-   err_location(follow(declaration.type()).location());
-   str << "anonymous union is not POD";
+   error().source_location=follow(declaration.type()).source_location();
+   error() << "anonymous union is not POD" << eom;
    throw 0;
   }
 
@@ -94,18 +69,19 @@ void cpp_typecheckt::convert_anonymous_union(
   {
     if(it->find(ID_type).id()==ID_code)
     {
-     err_location(union_symbol.type.location());
-     str << "anonymous union `" << union_symbol.base_name
-         << "' shall not have function members\n";
-     throw 0;
+      error().source_location=union_symbol.type.source_location();
+      error() << "anonymous union `" << union_symbol.base_name
+              << "' shall not have function members" << eom;
+      throw 0;
     }
 
     const irep_idt &base_name=it->get(ID_base_name);
 
     if(cpp_scopes.current_scope().contains(base_name))
     {
-      err_location(union_symbol.type.location());
-      str << "identifier `" << base_name << "' already in scope";
+      error().source_location=union_symbol.type.source_location();
+      error() << "identifier `" << base_name << "' already in scope"
+              << eom;
       throw 0;
     }
 
@@ -174,15 +150,16 @@ void cpp_typecheckt::convert_non_template_declaration(
   assert(!declaration.is_template());
 
   // we first check if this is a typedef
-  typet &type=declaration.type();
-  bool is_typedef=convert_typedef(type);
+  typet &declaration_type=declaration.type();
+  bool is_typedef=declaration.is_typedef();
 
   declaration.name_anon_struct_union();
-  typecheck_type(type);
+  typecheck_type(declaration_type);
   
   // Elaborate any class template instance _unless_ we do a typedef.
   // These are only elaborated on usage!
-  if(!is_typedef) elaborate_class_template(type);
+  if(!is_typedef)
+    elaborate_class_template(declaration_type);
   
   // Special treatment for anonymous unions
   if(declaration.declarators().empty() &&
@@ -192,8 +169,10 @@ void cpp_typecheckt::convert_non_template_declaration(
 
     if(final_type.id()!=ID_union)
     {
-      err_location(final_type.location());
-      throw "top-level declaration does not declare anything";
+      error().source_location=final_type.source_location();
+      error() << "top-level declaration does not declare anything"
+              << eom;
+      throw 0;
     }
 
     codet dummy;
@@ -211,7 +190,7 @@ void cpp_typecheckt::convert_non_template_declaration(
     cpp_declarator_converter.is_typedef=is_typedef;
 
     symbolt &symbol=cpp_declarator_converter.convert(
-      type, declaration.storage_spec(),
+      declaration_type, declaration.storage_spec(),
       declaration.member_spec(), declarator);
 
     // any template instance to remember?

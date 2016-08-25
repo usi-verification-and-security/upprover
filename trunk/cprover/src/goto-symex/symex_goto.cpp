@@ -7,6 +7,7 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <cassert>
+#include <algorithm>
 
 #include <util/expr_util.h>
 #include <util/std_expr.h>
@@ -29,26 +30,31 @@ Function: goto_symext::symex_goto
 void goto_symext::symex_goto(statet &state)
 {
   const goto_programt::instructiont &instruction=*state.source.pc;
+  statet::framet &frame=state.top();
   
   exprt old_guard=instruction.guard;
-  dereference(old_guard, state, false);
+  clean_expr(old_guard, state, false);
 
   exprt new_guard=old_guard;
   state.rename(new_guard, ns);
   do_simplify(new_guard);
   
-  target.location(state.guard.as_expr(), state.source);
-  
   if(new_guard.is_false() ||
      state.guard.is_false())
   {
+    if(!state.guard.is_false())
+      target.location(state.guard.as_expr(), state.source);
+
     // reset unwinding counter
-    unwind_map[state.source]=0;
+    if(instruction.is_backwards_goto())
+      frame.loop_iterations[goto_programt::loop_id(state.source.pc)].count=0;
 
     // next instruction
     state.source.pc++;
     return; // nothing to do
   }
+  
+  target.goto_instruction(state.guard.as_expr(), new_guard, state.source);
     
   assert(!instruction.targets.empty());
   
@@ -59,21 +65,22 @@ void goto_symext::symex_goto(statet &state)
   goto_programt::const_targett goto_target=
     instruction.get_target();
     
-  bool forward=
-    state.source.pc->location_number<
-    goto_target->location_number;
+  bool forward=!instruction.is_backwards_goto();
     
   if(!forward) // backwards?
   {
-    unsigned &unwind=unwind_map[state.source];
+    unsigned &unwind=
+      frame.loop_iterations[goto_programt::loop_id(state.source.pc)].count;
     unwind++;
     
+    // continue unwinding?
     if(get_unwind(state.source, unwind))
     {
+      // no!
       loop_bound_exceeded(state, new_guard);
 
       // reset unwinding
-      unwind_map[state.source]=0;
+      unwind=0;
       
       // next instruction
       state.source.pc++;
@@ -88,6 +95,7 @@ void goto_symext::symex_goto(statet &state)
   }
   
   goto_programt::const_targett new_state_pc, state_pc;
+  symex_targett::sourcet original_source=state.source;
   
   if(forward)
   {
@@ -133,17 +141,17 @@ void goto_symext::symex_goto(statet &state)
       exprt new_rhs=new_guard;
       new_rhs.make_not();
       
-      symbol_exprt new_lhs=guard_symbol_expr;
+      ssa_exprt new_lhs(guard_symbol_expr);
       state.rename(new_lhs, ns, goto_symex_statet::L1);
-      state.assignment(new_lhs, new_rhs, ns, false);
+      state.assignment(new_lhs, new_rhs, ns, true, false);
       
       guardt guard;
 
       target.assignment(
         guard.as_expr(),
-        new_lhs, guard_symbol_expr, new_lhs, guard_symbol_expr,
+        new_lhs, new_lhs, guard_symbol_expr,
         new_rhs,
-        state.source,
+        original_source,
         symex_targett::GUARD);
       
       guard_expr=guard_symbol_expr;
@@ -226,6 +234,10 @@ void goto_symext::merge_gotos(statet &state)
       list_it++)
   {
     statet::goto_statet &goto_state=*list_it;
+
+    // check atomic section
+    if(state.atomic_section_id!=goto_state.atomic_section_id)
+      throw "Atomic sections differ across branches";
     
     // do SSA phi functions
     phi_function(goto_state, state);
@@ -285,41 +297,46 @@ void goto_symext::phi_function(
   statet &dest_state)
 {
   // go over all variables to see what changed
-  std::set<irep_idt> variables;
+  hash_set_cont<ssa_exprt, irep_hash> variables;
 
-  goto_state.level2.get_variables(variables);
+  goto_state.level2_get_variables(variables);
   dest_state.level2.get_variables(variables);
   
-  for(std::set<irep_idt>::const_iterator
+  for(hash_set_cont<ssa_exprt, irep_hash>::const_iterator
       it=variables.begin();
       it!=variables.end();
       it++)
   {
-    const irep_idt l1_identifier=*it;
+    const irep_idt l1_identifier=it->get_identifier();
+    const irep_idt &obj_identifier=it->get_object_name();
   
-    if(l1_identifier==guard_identifier)
+    if(obj_identifier==guard_identifier)
       continue; // just a guard, don't bother
       
-    if(goto_state.level2.current_count(l1_identifier)==
+    if(goto_state.level2_current_count(l1_identifier)==
        dest_state.level2.current_count(l1_identifier))
       continue; // not at all changed
 
     // changed!
 
-    irep_idt original_identifier=
-      dest_state.get_original_name(l1_identifier);
-
-    // get type (may need renaming)      
-    const symbolt &symbol=ns.lookup(original_identifier);
+    // shared variables are renamed on every access anyway, we don't need to
+    // merge anything
+    const symbolt &symbol=ns.lookup(obj_identifier);
     
     // shared?
-    if(dest_state.threads.size()>=2 && symbol.is_shared())
+    if(dest_state.atomic_section_id==0 &&
+       dest_state.threads.size()>=2 && symbol.is_shared())
       continue; // no phi nodes for shared stuff
+
+    // don't merge (thread-)locals across different threads, which
+    // may have been introduced by symex_start_thread (and will
+    // only later be removed from level2.current_names by pop_frame
+    // once the thread is executed)
+    if(!it->get_level_0().empty() &&
+       it->get_level_0()!=i2string(dest_state.source.thread_nr))
+      continue;
     
-    typet type=symbol.type;
-    dest_state.rename(type, ns);
-    
-    exprt goto_state_rhs, dest_state_rhs;
+    exprt goto_state_rhs=*it, dest_state_rhs=*it;
 
     {
       goto_symex_statet::propagationt::valuest::const_iterator p_it=
@@ -328,7 +345,7 @@ void goto_symext::phi_function(
       if(p_it!=goto_state.propagation.values.end())
         goto_state_rhs=p_it->second;
       else
-        goto_state_rhs=symbol_exprt(goto_state.level2.current_name(l1_identifier), type);
+        to_ssa_expr(goto_state_rhs).set_level_2(goto_state.level2_current_count(l1_identifier));
     }
     
     {
@@ -338,7 +355,7 @@ void goto_symext::phi_function(
       if(p_it!=dest_state.propagation.values.end())
         dest_state_rhs=p_it->second;
       else
-        dest_state_rhs=symbol_exprt(dest_state.level2.current_name(l1_identifier), type);
+        to_ssa_expr(dest_state_rhs).set_level_2(dest_state.level2.current_count(l1_identifier));
     }
     
     exprt rhs;
@@ -354,17 +371,19 @@ void goto_symext::phi_function(
       // this gets the diff between the guards
       tmp_guard-=dest_state.guard;
       
-      rhs=if_exprt(tmp_guard.as_expr(), goto_state_rhs, dest_state_rhs, type);
+      rhs=if_exprt(tmp_guard.as_expr(), goto_state_rhs, dest_state_rhs);
       do_simplify(rhs);
     }
 
-    symbol_exprt lhs=symbol_expr(symbol);
-    symbol_exprt new_lhs=symbol_exprt(l1_identifier, type);
-    dest_state.assignment(new_lhs, rhs, ns, true);
+    ssa_exprt new_lhs=*it;
+    const bool record_events=dest_state.record_events;
+    dest_state.record_events=false;
+    dest_state.assignment(new_lhs, rhs, ns, true, true);
+    dest_state.record_events=record_events;
     
     target.assignment(
       true_exprt(),
-      new_lhs, lhs, new_lhs, lhs,
+      new_lhs, new_lhs, new_lhs.get_original_expr(),
       rhs,
       dest_state.source,
       symex_targett::PHI);
@@ -394,7 +413,7 @@ void goto_symext::loop_bound_exceeded(
   if(guard.is_true())
     negated_cond=false_exprt();
   else
-    negated_cond=gen_not(guard);
+    negated_cond=not_exprt(guard);
 
   bool unwinding_assertions=
     options.get_bool_option("unwinding-assertions");
@@ -406,21 +425,19 @@ void goto_symext::loop_bound_exceeded(
   {
     if(unwinding_assertions)
     {
-      // Generate unwinding assertion.
-      claim(negated_cond,
-            "unwinding assertion loop "+i2string(loop_number),
-            state);
+      // Generate VCC for unwinding assertion.
+      vcc(negated_cond,
+          "unwinding assertion loop "+i2string(loop_number),
+          state);
+
+      // add to state guard to prevent further assignments
+      state.guard.add(negated_cond);
     }
     else
     {
       // generate unwinding assumption, unless we permit partial loops
-      exprt guarded_expr=negated_cond;
-      state.guard.guard_expr(guarded_expr);
-      target.assumption(state.guard.as_expr(), guarded_expr, state.source);
+      symex_assume(state, negated_cond);
     }
-
-    // add to state guard to prevent further assignments
-    state.guard.add(negated_cond);
   }
 }
 
@@ -440,5 +457,6 @@ bool goto_symext::get_unwind(
   const symex_targett::sourcet &source,
   unsigned unwind)
 {
+  // by default, we keep going
   return false;
 }

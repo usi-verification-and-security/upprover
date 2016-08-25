@@ -26,10 +26,9 @@ Function: cnft::cnft
 
 \*******************************************************************/
 
-cnft::cnft()
+cnft::cnft() :
+  _no_variables(1) // for CNF, we don't use 0 as a matter of principle
 {
-  // for CNF, we don't use 0 as a matter of principle
-  _no_variables=1;
 }
 
 /*******************************************************************\
@@ -63,18 +62,14 @@ Function: cnft::gate_and
 void cnft::gate_and(literalt a, literalt b, literalt o)
 {
   // a*b=c <==> (a + o')( b + o')(a'+b'+o)
-  bvt lits;
+  bvt lits(2);
 
-  lits.clear();
-  lits.reserve(2);
-  lits.push_back(pos(a));
-  lits.push_back(neg(o));
+  lits[0]=pos(a);
+  lits[1]=neg(o);
   lcnf(lits);
 
-  lits.clear();
-  lits.reserve(2);
-  lits.push_back(pos(b));
-  lits.push_back(neg(o));
+  lits[0]=pos(b);
+  lits[1]=neg(o);
   lcnf(lits);
 
   lits.clear();
@@ -100,25 +95,20 @@ Function: cnft::gate_or
 void cnft::gate_or(literalt a, literalt b, literalt o)
 {
   // a+b=c <==> (a' + c)( b' + c)(a + b + c')
-  bvt lits;
+  bvt lits(2);
 
-  lits.clear();
-  lits.reserve(2);
-  lits.push_back(neg(a));
-  lits.push_back(pos(o));
+  lits[0]=neg(a);
+  lits[1]=pos(o);
   lcnf(lits);
 
-  lits.clear();
-  lits.reserve(2);
-  lits.push_back(neg(b));
-  lits.push_back(pos(o));
+  lits[0]=neg(b);
+  lits[1]=pos(o);
   lcnf(lits);
 
-  lits.clear();
-  lits.reserve(3);
-  lits.push_back(pos(a));
-  lits.push_back(pos(b));
-  lits.push_back(neg(o));
+  lits.resize(3);
+  lits[0]=pos(a);
+  lits[1]=pos(b);
+  lits[2]=neg(o);
   lcnf(lits);
 }
 
@@ -140,34 +130,26 @@ void cnft::gate_xor(literalt a, literalt b, literalt o)
   //                  (a + b + o' )
   //                  (a' + b + o)
   //                  (a + b' + o)
-  bvt lits;
+  bvt lits(3);
 
-  lits.clear();
-  lits.reserve(3);
-  lits.push_back(neg(a));
-  lits.push_back(neg(b));
-  lits.push_back(neg(o));
+  lits[0]=neg(a);
+  lits[1]=neg(b);
+  lits[2]=neg(o);
   lcnf(lits);
 
-  lits.clear();
-  lits.reserve(3);
-  lits.push_back(pos(a));
-  lits.push_back(pos(b));
-  lits.push_back(neg(o));
+  lits[0]=pos(a);
+  lits[1]=pos(b);
+  lits[2]=neg(o);
   lcnf(lits);
 
-  lits.clear();
-  lits.reserve(3);
-  lits.push_back(neg(a));
-  lits.push_back(pos(b));
-  lits.push_back(pos(o));
+  lits[0]=neg(a);
+  lits[1]=pos(b);
+  lits[2]=pos(o);
   lcnf(lits);
 
-  lits.clear();
-  lits.reserve(3);
-  lits.push_back(pos(a));
-  lits.push_back(neg(b));
-  lits.push_back(pos(o));
+  lits[0]=pos(a);
+  lits[1]=neg(b);
+  lits[2]=pos(o);
   lcnf(lits);
 }
 
@@ -186,25 +168,20 @@ Function: cnft::gate_nand
 void cnft::gate_nand(literalt a, literalt b, literalt o)
 {
   // a Nand b = o <==> (a + o)( b + o)(a' + b' + o')
-  bvt lits;
+  bvt lits(2);
 
-  lits.clear();
-  lits.reserve(2);
-  lits.push_back(pos(a));
-  lits.push_back(pos(o));
+  lits[0]=pos(a);
+  lits[1]=pos(o);
   lcnf(lits);
 
-  lits.clear();
-  lits.reserve(2);
-  lits.push_back(pos(b));
-  lits.push_back(pos(o));
+  lits[0]=pos(b);
+  lits[1]=pos(o);
   lcnf(lits);
 
-  lits.clear();
-  lits.reserve(3);
-  lits.push_back(neg(a));
-  lits.push_back(neg(b));
-  lits.push_back(neg(o));
+  lits.resize(3);
+  lits[0]=neg(a);
+  lits[1]=neg(b);
+  lits[2]=neg(o);
   lcnf(lits);
 }
 
@@ -223,25 +200,20 @@ Function: cnft::gate_nor
 void cnft::gate_nor(literalt a, literalt b, literalt o)
 {
   // a Nor b = o <==> (a' + o')( b' + o')(a + b + o)
-  bvt lits;
+  bvt lits(2);
 
-  lits.clear();
-  lits.reserve(2);
-  lits.push_back(neg(a));
-  lits.push_back(neg(o));
+  lits[0]=neg(a);
+  lits[1]=neg(o);
   lcnf(lits);
 
-  lits.clear();
-  lits.reserve(2);
-  lits.push_back(neg(b));
-  lits.push_back(neg(o));
+  lits[0]=neg(b);
+  lits[1]=neg(o);
   lcnf(lits);
 
-  lits.clear();
-  lits.reserve(3);
-  lits.push_back(pos(a));
-  lits.push_back(pos(b));
-  lits.push_back(pos(o));
+  lits.resize(3);
+  lits[0]=pos(a);
+  lits[1]=pos(b);
+  lits[2]=pos(o);
   lcnf(lits);
 }
 
@@ -259,7 +231,7 @@ Function: cnft::gate_equal
 
 void cnft::gate_equal(literalt a, literalt b, literalt o)
 {
-  gate_xor(a, b, lnot(o));
+  gate_xor(a, b, !o);
 }
   
 /*******************************************************************\
@@ -276,7 +248,7 @@ Function: cnft::gate_implies
 
 void cnft::gate_implies(literalt a, literalt b, literalt o)
 {
-  gate_or(lnot(a), b, o);
+  gate_or(!a, b, o);
 }
 
 /*******************************************************************\
@@ -293,13 +265,13 @@ Function: cnft::land
 
 literalt cnft::land(const bvt &bv)
 {
-  if(bv.size()==0) return const_literal(true);
+  if(bv.empty()) return const_literal(true);
   if(bv.size()==1) return bv[0];
   if(bv.size()==2) return land(bv[0], bv[1]);
 
   forall_literals(it, bv)
-    if(*it==const_literal(false))
-      return const_literal(false);
+    if(it->is_false())
+      return *it;
 
   if(is_all(bv, const_literal(true)))
     return const_literal(true);
@@ -308,18 +280,17 @@ literalt cnft::land(const bvt &bv)
 
   eliminate_duplicates(bv, new_bv);
 
+  bvt lits(2);
   literalt literal=new_variable();
+  lits[1]=neg(literal);
 
   forall_literals(it, new_bv)
   {
-    bvt lits;
-    lits.reserve(2);
-    lits.push_back(pos(*it));
-    lits.push_back(neg(literal));
+    lits[0]=pos(*it);
     lcnf(lits);
   }
 
-  bvt lits;
+  lits.clear();
   lits.reserve(new_bv.size()+1);
 
   forall_literals(it, new_bv)
@@ -345,13 +316,13 @@ Function: cnft::lor
 
 literalt cnft::lor(const bvt &bv)
 {
-  if(bv.size()==0) return const_literal(false);
+  if(bv.empty()) return const_literal(false);
   if(bv.size()==1) return bv[0];
   if(bv.size()==2) return lor(bv[0], bv[1]);
 
   forall_literals(it, bv)
-    if(*it==const_literal(true))
-      return const_literal(true);
+    if(it->is_true())
+      return *it;
 
   if(is_all(bv, const_literal(false)))
     return const_literal(false);
@@ -360,18 +331,17 @@ literalt cnft::lor(const bvt &bv)
 
   eliminate_duplicates(bv, new_bv);
 
+  bvt lits(2);
   literalt literal=new_variable();
+  lits[1]=pos(literal);
 
   forall_literals(it, new_bv)
   {
-    bvt lits;
-    lits.reserve(2);
-    lits.push_back(neg(*it));
-    lits.push_back(pos(literal));
+    lits[0]=neg(*it);
     lcnf(lits);
   }
 
-  bvt lits;
+  lits.clear();
   lits.reserve(new_bv.size()+1);
 
   forall_literals(it, new_bv)
@@ -397,7 +367,7 @@ Function: cnft::lxor
 
 literalt cnft::lxor(const bvt &bv)
 {
-  if(bv.size()==0) return const_literal(false);
+  if(bv.empty()) return const_literal(false);
   if(bv.size()==1) return bv[0];
   if(bv.size()==2) return lxor(bv[0], bv[1]);
 
@@ -423,10 +393,10 @@ Function: cnft::land
 
 literalt cnft::land(literalt a, literalt b)
 {
-  if(a==const_literal(true)) return b;
-  if(b==const_literal(true)) return a;
-  if(a==const_literal(false)) return const_literal(false);
-  if(b==const_literal(false)) return const_literal(false);
+  if(a.is_true()) return b;
+  if(b.is_true()) return a;
+  if(a.is_false()) return a;
+  if(b.is_false()) return b;
   if(a==b) return a;
 
   literalt o=new_variable();
@@ -448,33 +418,15 @@ Function: cnft::lor
 
 literalt cnft::lor(literalt a, literalt b)
 {
-  if(a==const_literal(false)) return b;
-  if(b==const_literal(false)) return a;
-  if(a==const_literal(true)) return const_literal(true);
-  if(b==const_literal(true)) return const_literal(true);
+  if(a.is_false()) return b;
+  if(b.is_false()) return a;
+  if(a.is_true()) return a;
+  if(b.is_true()) return b;
   if(a==b) return a;
 
   literalt o=new_variable();
   gate_or(a, b, o);
   return o;
-}
-
-/*******************************************************************\
-
-Function: cnft::lnot
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-literalt cnft::lnot(literalt a)
-{
-  a.invert();
-  return a;
 }
 
 /*******************************************************************\
@@ -491,10 +443,12 @@ Function: cnft::lxor
 
 literalt cnft::lxor(literalt a, literalt b)
 {
-  if(a==const_literal(false)) return b;
-  if(b==const_literal(false)) return a;
-  if(a==const_literal(true)) return lnot(b);
-  if(b==const_literal(true)) return lnot(a);
+  if(a.is_false()) return b;
+  if(b.is_false()) return a;
+  if(a.is_true()) return !b;
+  if(b.is_true()) return !a;
+  if(a==b) return const_literal(false);
+  if(a==!b) return const_literal(true);
 
   literalt o=new_variable();
   gate_xor(a, b, o);
@@ -515,7 +469,7 @@ Function: cnft::lnand
 
 literalt cnft::lnand(literalt a, literalt b)
 {
-  return lnot(land(a, b));
+  return !land(a, b);
 }
 
 /*******************************************************************\
@@ -532,7 +486,7 @@ Function: cnft::lnor
 
 literalt cnft::lnor(literalt a, literalt b)
 {
-  return lnot(lor(a, b));
+  return !lor(a, b);
 }
 
 /*******************************************************************\
@@ -549,7 +503,7 @@ Function: cnft::lequal
 
 literalt cnft::lequal(literalt a, literalt b)
 {
-  return lnot(lxor(a, b));
+  return !lxor(a, b);
 }
 
 /*******************************************************************\
@@ -566,7 +520,7 @@ Function: cnft::limplies
 
 literalt cnft::limplies(literalt a, literalt b)
 {
-  return lor(lnot(a), b);
+  return lor(!a, b);
 }
 
 /*******************************************************************\
@@ -581,17 +535,44 @@ Function: cnft::lselect
 
 \*******************************************************************/
 
+// Tino observed slow-downs up to 50% with OPTIMAL_COMPACT_ITE.
+
+#define COMPACT_ITE
+//#define OPTIMAL_COMPACT_ITE
+
 literalt cnft::lselect(literalt a, literalt b, literalt c)
-{  // a?b:c = (a AND b) OR (/a AND c)
-  if(a==const_literal(true)) return b;
-  if(a==const_literal(false)) return c;
+{ // a?b:c = (a AND b) OR (/a AND c)
+
+  if(a.is_constant()) return a.sign() ? b : c;
   if(b==c) return b;
 
-  bvt bv;
-  bv.reserve(2);
-  bv.push_back(land(a, b));
-  bv.push_back(land(lnot(a), c));
-  return lor(bv);
+  if(b.is_constant()) return b.sign() ? lor(a, c) : land(!a, c);
+  if(c.is_constant()) return c.sign() ? lor(!a, b) : land(a, b);
+
+  #ifdef COMPACT_ITE
+
+  // (a+c'+o) (a+c+o') (a'+b'+o) (a'+b+o')
+
+  literalt o=new_variable();
+
+  bvt lits;
+  
+  lcnf( a, !c,  o);
+  lcnf( a,  c, !o);
+  lcnf(!a, !b,  o);
+  lcnf(!a,  b, !o);
+
+  #ifdef OPTIMAL_COMPACT_ITE
+  // additional clauses to enable better propagation
+  lcnf( b,  c, !o);
+  lcnf(!b, !c,  o);
+  #endif
+
+  return o;
+
+  #else
+  return lor(land(a, b), land(!a, c));
+  #endif
 }
 
 /*******************************************************************\
@@ -634,11 +615,9 @@ void cnft::eliminate_duplicates(const bvt &bv, bvt &dest)
 
   dest.reserve(bv.size());
 
-  for(bvt::const_iterator it=bv.begin(); it!=bv.end(); it++)
-  {
+  forall_literals(it, bv)
     if(s.insert(*it).second)
       dest.push_back(*it);
-  }
 }
 
 /*******************************************************************\
@@ -722,7 +701,7 @@ bool cnft::process_clause(const bvt &bv, bvt &dest)
       // prevent duplicate literals
       if(l==previous)
         it=dest.erase(it);
-      else if(previous==lnot(l))
+      else if(previous==!l)
         return true; // clause satisfied trivially
       else
       {

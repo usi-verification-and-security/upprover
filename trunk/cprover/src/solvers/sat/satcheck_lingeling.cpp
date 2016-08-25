@@ -41,7 +41,7 @@ tvt satcheck_lingelingt::l_get(literalt a) const
   tvt result;
 
   if(a.var_no()>lglmaxvar(solver))
-    return tvt(tvt::TV_UNKNOWN);
+    return tvt(tvt::tv_enumt::TV_UNKNOWN);
 
   const int val=lglderef(solver, a.dimacs());
   if(val>0)
@@ -49,7 +49,7 @@ tvt satcheck_lingelingt::l_get(literalt a) const
   else if(val<0)
     result=tvt(false);
   else
-    return tvt(tvt::TV_UNKNOWN);
+    return tvt(tvt::tv_enumt::TV_UNKNOWN);
 
   return result;
 }
@@ -114,11 +114,12 @@ propt::resultt satcheck_lingelingt::prop_solve()
 {
   assert(status!=ERROR);
 
+  // We start counting at 1, thus there is one variable fewer.
   {
     std::string msg=
-      i2string(_no_variables)+" variables, "+
+      i2string(no_variables()-1)+" variables, "+
       i2string(clause_counter)+" clauses";
-    messaget::status(msg);
+    messaget::status() << msg << messaget::eom;
   }
   
   std::string msg;
@@ -129,16 +130,16 @@ propt::resultt satcheck_lingelingt::prop_solve()
   const int res=lglsat(solver);
   if(res==10)
   {
-    msg="SAT checker: negated claim is SATISFIABLE, i.e., does not hold";
-    messaget::status(msg);
+    msg="SAT checker: instance is SATISFIABLE";
+    messaget::status() << msg << messaget::eom;
     status=SAT;
     return P_SATISFIABLE;
   }
   else
   {
     assert(res==20);
-    msg="SAT checker: negated claim is UNSATISFIABLE, i.e., holds";
-    messaget::status(msg);
+    msg="SAT checker: instance is UNSATISFIABLE";
+    messaget::status() << msg << messaget::eom;
   }
 
   status=UNSAT;
@@ -215,5 +216,45 @@ void satcheck_lingelingt::set_assumptions(const bvt &bv)
 
   forall_literals(it, assumptions)
     assert(!it->is_constant());
+}
+
+/*******************************************************************\
+
+Function: satcheck_lingelingt::set_frozen
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void satcheck_lingelingt::set_frozen(literalt a)
+{
+  if(!a.is_constant())
+    lglfreeze(solver, a.dimacs());
+}
+
+/*******************************************************************\
+
+Function: satcheck_lingelingt::is_in_conflict
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Returns true if an assumed literal is in conflict if the
+ formula is UNSAT.
+
+ NOTE: if the literal is not in the assumption it causes an
+ assertion failure in lingeling.
+
+\*******************************************************************/
+
+bool satcheck_lingelingt::is_in_conflict(literalt a) const
+{
+  assert(!a.is_constant());
+  return lglfailed(solver, a.dimacs())!=0;
 }
 

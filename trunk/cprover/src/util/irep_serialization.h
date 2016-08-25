@@ -12,51 +12,18 @@ Date: May 2007
 #define CPROVER_IREP_SERIALIZATION_H
 
 #include <map>
-#include <ostream>
+#include <iosfwd>
 #include <string>
 #include <vector>
 
 #include "irep_hash_container.h"
 #include "irep.h"
 
-void write_long(std::ostream &, unsigned); 
-void write_string(std::ostream &, const std::string &);
+void write_gb_word(std::ostream &, std::size_t);
+void write_gb_string(std::ostream &, const std::string &);
 
 class irep_serializationt
 {
-private:
-  struct ul_hash
-  {
-    unsigned short operator()(const unsigned long l) const 
-    { 
-      return l & 0xFFFF;
-    }
-  };
-
-  struct ul_eq
-  {
-    bool operator()(const unsigned long l, const unsigned long r) const 
-    {
-      return l==r;
-    }
-  };
-
-  struct irep_full_hash
-  {
-    size_t operator()(const irept &i) const 
-    { 
-      return i.full_hash(); 
-    }
-  };
-
-  struct irep_content_eq
-  {
-    bool operator()(const irept &l, const irept &r) const 
-    {
-      return full_eq(l, r);
-    }
-  };
-  
 public:
   class ireps_containert
   {
@@ -65,7 +32,7 @@ public:
     ireps_on_readt ireps_on_read;
 
     irep_full_hash_containert irep_full_hash_container;
-    typedef std::map<unsigned, unsigned long> ireps_on_writet;
+    typedef std::map<unsigned, size_t> ireps_on_writet;
     ireps_on_writet ireps_on_write;
     
     typedef std::vector<bool> string_mapt;
@@ -91,8 +58,8 @@ public:
     clear(); 
   };
   
-  unsigned long insert_on_write(unsigned h);
-  unsigned long insert_on_read(unsigned id, const irept &);
+  std::size_t insert_on_write(std::size_t h);
+  std::size_t insert_on_read(std::size_t id, const irept &);
   
   void reference_convert(std::istream &, irept &irep);
   void reference_convert(const irept &irep, std::ostream &);
@@ -102,8 +69,8 @@ public:
 
   void clear() { ireps_container.clear(); }
 
-  static unsigned read_long(std::istream &);
-  irep_idt read_string(std::istream &);
+  static std::size_t read_gb_word(std::istream &);
+  irep_idt read_gb_string(std::istream &);
 
 private:
   ireps_containert &ireps_container;

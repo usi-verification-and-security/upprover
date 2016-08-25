@@ -36,6 +36,9 @@ static ui_message_handlert::uit get_ui_cmdline(const cmdlinet &cmdline)
   if(cmdline.isset("xml-ui"))
     return ui_message_handlert::XML_UI;
 
+  if(cmdline.isset("json-ui"))
+    return ui_message_handlert::JSON_UI;
+
   return ui_message_handlert::PLAIN;
 }
 
@@ -121,7 +124,7 @@ bool language_uit::parse(const std::string &filename)
 
   if(!infile)
   {
-    error("failed to open input file", filename);
+    error() << "failed to open input file `" << filename << "'" << eom;
     return true;
   }
 
@@ -141,10 +144,11 @@ bool language_uit::parse(const std::string &filename)
   }
   
   languaget &language=*lf.language;
+  language.set_message_handler(get_message_handler());
 
-  status("Parsing", filename);
+  status() << "Parsing " << filename << eom;
 
-  if(language.parse(infile, filename, get_message_handler()))
+  if(language.parse(infile, filename))
   {
     if(get_ui()==ui_message_handlert::PLAIN)
       std::cerr << "PARSING ERROR" << std::endl;
@@ -171,10 +175,9 @@ Function: language_uit::typecheck
 
 bool language_uit::typecheck()
 {
-  status("Converting");
+  status() << "Converting" << eom;
   
   language_files.set_message_handler(*message_handler);
-  language_files.set_verbosity(get_verbosity());
 
   if(language_files.typecheck(symbol_table))
   {
@@ -202,7 +205,6 @@ Function: language_uit::final
 bool language_uit::final()
 {
   language_files.set_message_handler(*message_handler);
-  language_files.set_verbosity(get_verbosity());
 
   if(language_files.final(symbol_table))
   {
@@ -227,20 +229,20 @@ Function: language_uit::show_symbol_table
 
 \*******************************************************************/
 
-void language_uit::show_symbol_table()
+void language_uit::show_symbol_table(bool brief)
 {
   switch(get_ui())
   {
   case ui_message_handlert::PLAIN:
-    show_symbol_table_plain(std::cout);
+    show_symbol_table_plain(std::cout, brief);
     break;
 
   case ui_message_handlert::XML_UI:
-    show_symbol_table_xml_ui();
+    show_symbol_table_xml_ui(brief);
     break;
 
   default:
-    error("cannot show symbol table in this format");
+    error() << "cannot show symbol table in this format" << eom;
   }
 }
 
@@ -256,9 +258,9 @@ Function: language_uit::show_symbol_table_xml_ui
 
 \*******************************************************************/
 
-void language_uit::show_symbol_table_xml_ui()
+void language_uit::show_symbol_table_xml_ui(bool brief)
 {
-  error("cannot show symbol table in this format");
+  error() << "cannot show symbol table in this format" << eom;
 }
 
 /*******************************************************************\
@@ -273,15 +275,24 @@ Function: language_uit::show_symbol_table_plain
 
 \*******************************************************************/
 
-void language_uit::show_symbol_table_plain(std::ostream &out)
+void language_uit::show_symbol_table_plain(
+  std::ostream &out,
+  bool brief)
 {
-  out << std::endl << "Symbols:" << std::endl << std::endl;
+  if(!brief)
+    out << '\n' << "Symbols:" << '\n' << std::endl;
+    
+  // we want to sort alphabetically
+  std::set<std::string> symbols;
+
+  forall_symbols(it, symbol_table.symbols)
+    symbols.insert(id2string(it->first));
   
   const namespacet ns(symbol_table);
 
-  forall_symbols(it, symbol_table.symbols)
+  for(const std::string &id : symbols)
   {
-    const symbolt &symbol=it->second;
+    const symbolt &symbol=ns.lookup(id);
     
     languaget *ptr;
     
@@ -293,7 +304,7 @@ void language_uit::show_symbol_table_plain(std::ostream &out)
       if(ptr==NULL) throw "symbol "+id2string(symbol.name)+" has unknown mode";
     }
 
-    std::auto_ptr<languaget> p(ptr);
+    std::unique_ptr<languaget> p(ptr);
     std::string type_str, value_str;
     
     if(symbol.type.is_not_nil())
@@ -302,13 +313,19 @@ void language_uit::show_symbol_table_plain(std::ostream &out)
     if(symbol.value.is_not_nil())
       p->from_expr(symbol.value, value_str, ns);
     
-    out << "Symbol......: " << symbol.name << std::endl;
-    out << "Pretty name.: " << symbol.pretty_name << std::endl;
-    out << "Module......: " << symbol.module << std::endl;
-    out << "Base name...: " << symbol.base_name << std::endl;
-    out << "Mode........: " << symbol.mode << std::endl;
-    out << "Type........: " << type_str << std::endl;
-    out << "Value.......: " << value_str << std::endl;
+    if(brief)
+    {
+      out << symbol.name << " " << type_str << std::endl;
+      continue;
+    }
+
+    out << "Symbol......: " << symbol.name << '\n' << std::flush;
+    out << "Pretty name.: " << symbol.pretty_name << '\n';
+    out << "Module......: " << symbol.module << '\n';
+    out << "Base name...: " << symbol.base_name << '\n';
+    out << "Mode........: " << symbol.mode << '\n';
+    out << "Type........: " << type_str << '\n';
+    out << "Value.......: " << value_str << '\n';
     out << "Flags.......:";
 
     if(symbol.is_lvalue)          out << " lvalue";
@@ -320,12 +337,17 @@ void language_uit::show_symbol_table_plain(std::ostream &out)
     if(symbol.is_input)           out << " input";
     if(symbol.is_output)          out << " output";
     if(symbol.is_macro)           out << " macro";
+    if(symbol.is_parameter)       out << " parameter";
+    if(symbol.is_auxiliary)       out << " auxiliary";
+    if(symbol.is_weak)            out << " weak";
     if(symbol.is_property)        out << " property";
     if(symbol.is_state_var)       out << " state_var";
+    if(symbol.is_exported)        out << " exported";
+    if(symbol.is_volatile)        out << " volatile";
 
-    out << std::endl;
-    out << "Location....: " << symbol.location << std::endl;
+    out << '\n';
+    out << "Location....: " << symbol.location << '\n';
     
-    out << std::endl;
+    out << '\n' << std::flush;
   }
 }

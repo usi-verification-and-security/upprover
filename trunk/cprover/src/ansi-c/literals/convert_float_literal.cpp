@@ -36,14 +36,14 @@ exprt convert_float_literal(const std::string &src)
   mp_integer significand;
   mp_integer exponent;
   bool is_float, is_long, is_imaginary;
+  bool is_decimal, is_float80, is_float128; // GCC extensions
   unsigned base;
   
   parse_float(src, significand, exponent, base,
-              is_float, is_long, is_imaginary);
+              is_float, is_long, is_imaginary,
+              is_decimal, is_float80, is_float128);
 
   exprt result=exprt(ID_constant);
-  
-  result.set(ID_C_cformat, src);
   
   // In ANSI-C, float literals are double by default,
   // unless marked with 'f'.
@@ -55,6 +55,16 @@ exprt convert_float_literal(const std::string &src)
     result.type()=float_type();
   else if(is_long)
     result.type()=long_double_type();
+  else if(is_float80)
+  {
+    result.type()=ieee_float_spect(64, 15).to_type();
+    result.type().set(ID_C_c_type, ID_long_double);
+  }
+  else if(is_float128)
+  {
+    result.type()=ieee_float_spect::quadruple_precision().to_type();
+    result.type().set(ID_C_c_type, ID_gcc_float128);
+  }
   else
   {
     // default
@@ -62,6 +72,12 @@ exprt convert_float_literal(const std::string &src)
       result.type()=float_type(); // default
     else
       result.type()=double_type(); // default
+  }
+
+  if(is_decimal)
+  {
+    // TODO - should set ID_gcc_decimal32/ID_gcc_decimal64/ID_gcc_decimal128,
+    // but these aren't handled anywhere
   }
   
   if(config.ansi_c.use_fixed_for_float)

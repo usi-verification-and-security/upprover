@@ -6,6 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+// THIS HEADER IS DEPRECATED AND WILL GO AWAY
+
 #ifndef CPROVER_LISPEXPR_H
 #define CPROVER_LISPEXPR_H
 
@@ -18,7 +20,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <string>
 #include <vector>
-#include <ostream>
+#include <iosfwd>
 
 class lispsymbolt:public std::string
 {

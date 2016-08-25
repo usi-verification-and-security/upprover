@@ -22,31 +22,30 @@ Function: boolbvt::convert_replication
 
 \*******************************************************************/
 
-void boolbvt::convert_replication(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_replication(const replication_exprt &expr)
 {
-  unsigned width=boolbv_width(expr.type());
+  std::size_t width=boolbv_width(expr.type());
   
   if(width==0)
-    return conversion_failed(expr, bv);
-
-  if(expr.operands().size()!=2)
-    throw "replication takes two operands";
+    return conversion_failed(expr);
 
   mp_integer times;
   if(to_integer(expr.op0(), times))
     throw "replication takes constant as first parameter";
 
-  const bvt &op=convert_bv(expr.op1());
-
-  unsigned offset=0;
+  bvt bv;
   bv.resize(width);
 
-  for(unsigned i=0; i<integer2long(times); i++)
+  const std::size_t u_times=integer2unsigned(times);
+  const bvt &op=convert_bv(expr.op1());
+  std::size_t offset=0;
+
+  for(std::size_t i=0; i<u_times; i++)
   {
     if(op.size()+offset>width)
       throw "replication operand width too big";
 
-    for(unsigned i=0; i<op.size(); i++)
+    for(std::size_t i=0; i<op.size(); i++)
       bv[i+offset]=op[i];
 
     offset+=op.size();
@@ -54,4 +53,6 @@ void boolbvt::convert_replication(const exprt &expr, bvt &bv)
 
   if(offset!=bv.size())
     throw "replication operand width too small";
+    
+  return bv;
 }

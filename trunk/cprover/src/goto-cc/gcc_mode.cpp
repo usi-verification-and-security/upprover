@@ -6,24 +6,34 @@ Author: CM Wintersteiger, 2006
 
 \*******************************************************************/
 
-#include <cstdlib>
+#ifdef _WIN32
+#define EX_OK 0
+#define EX_USAGE 64
+#define EX_SOFTWARE 70
+#else
+#include <sysexits.h>
+#endif
+
 #include <cstdio>
 #include <iostream>
 
+#include <util/string2int.h>
 #include <util/tempdir.h>
 #include <util/config.h>
 #include <util/prefix.h>
 #include <util/suffix.h>
+#include <util/get_base_name.h>
+
+#include <cbmc/version.h>
 
 #include "compile.h"
-#include "version.h"
 #include "run.h"
 
 #include "gcc_mode.h"
 
 /*******************************************************************\
 
-Function: gcc_modet::is_supported_source_file
+Function: gcc_modet::needs_preprocessing
 
   Inputs:
 
@@ -33,7 +43,7 @@ Function: gcc_modet::is_supported_source_file
 
 \*******************************************************************/
 
-bool gcc_modet::is_supported_source_file(const std::string &file)
+bool gcc_modet::needs_preprocessing(const std::string &file)
 {
   if(has_suffix(file, ".c") ||
      has_suffix(file, ".cc") ||
@@ -59,100 +69,116 @@ Function: gcc_modet::doit
 
 \*******************************************************************/
 
-bool gcc_modet::doit()
+int gcc_modet::doit()
 {
   act_as_ld=
-    has_prefix(base_name, "ld") ||
-    has_prefix(base_name, "goto-ld");
+    base_name=="ld" ||
+    base_name.find("goto-ld")!=std::string::npos;
 
   if(cmdline.isset('?') ||
      cmdline.isset("help"))
   {
     help();
-    return false;
+    return EX_OK;
   }
 
-  int verbosity=1;
+  unsigned int verbosity=1;
 
-  compilet compiler(cmdline);
-  
   if(cmdline.isset('v'))
   {
     // This a) prints the version and b) increases verbosity.
     // Compilation continues, don't exit!
     
     if(act_as_ld)
-      print("GNU ld version 2.16.91 20050610 (goto-cc " GOTOCC_VERSION ")");
+      std::cout << "GNU ld version 2.16.91 20050610 (goto-cc " CBMC_VERSION ")\n";
     else
-      print("gcc version 3.4.4 (goto-cc " GOTOCC_VERSION ")");
+      std::cout << "gcc version 3.4.4 (goto-cc " CBMC_VERSION ")\n";
   }
 
   if(cmdline.isset("version"))
   {
     if(act_as_ld)
-      print("GNU ld version 2.16.91 20050610 (goto-cc " GOTOCC_VERSION ")");
+      std::cout << "GNU ld version 2.16.91 20050610 (goto-cc " CBMC_VERSION ")\n";
     else
-      print("gcc (GCC) 3.4.4 (goto-cc " GOTOCC_VERSION ")\n");
+      std::cout << "gcc (GCC) 3.4.4 (goto-cc " CBMC_VERSION ")\n\n";
 
-    print("Copyright (C) 2006-2012 Daniel Kroening, Christoph Wintersteiger\n");
-    print("Architecture: "+id2string(config.this_architecture()));
-    print("OS: "+id2string(config.this_operating_system()));
+    std::cout << 
+      "Copyright (C) 2006-2014 Daniel Kroening, Christoph Wintersteiger\n" <<
+      "CBMC version: " CBMC_VERSION << '\n' <<
+      "Architecture: " << config.this_architecture() << '\n' <<
+      "OS: " << config.this_operating_system() << '\n';
 
-    return false; // Exit!
+    return EX_OK; // Exit!
   }
 
   if(cmdline.isset("dumpversion"))
   {
     std::cout << "3.4.4" << std::endl;
-    return false;
+    return EX_OK;
   }
 
   if(cmdline.isset("Wall"))
     verbosity=2;
 
   if(cmdline.isset("verbosity"))
-    verbosity=atoi(cmdline.getval("verbosity"));
+    verbosity=unsafe_string2unsigned(cmdline.get_value("verbosity"));
 
-  compiler.set_verbosity(verbosity);
-  set_verbosity(verbosity);
+  ui_message_handler.set_verbosity(verbosity);
 
   if(act_as_ld)
   {
     if(produce_hybrid_binary)
-      debug("LD mode (hybrid)");
+      debug() << "LD mode (hybrid)" << eom;
     else
-      debug("LD mode");
+      debug() << "LD mode" << eom;
   }
   else
   {
     if(produce_hybrid_binary)
-      debug("GCC mode (hybrid)");
+      debug() << "GCC mode (hybrid)" << eom;
     else
-      debug("GCC mode");
+      debug() << "GCC mode" << eom;
   }
+
+  // In gcc mode, we have just pass on to gcc to handle the following:
+  // * if -M or -MM is given, we do dependencies only
+  // * assembly (-S)
+  // * preprocessing (-E).
+  // * no input files given
   
-  // in gcc mode, if -M or -MM is given, we do dependencies only,
-  // which is handled by simply calling gcc and then exiting
-  if(!act_as_ld && (cmdline.isset('M') || cmdline.isset("MM")))
+  if(act_as_ld)
   {
-    int result;
-    result=run_gcc();
-    exit(result);
   }
+  else if(cmdline.isset('M') || 
+          cmdline.isset("MM") ||
+          cmdline.isset('S') ||
+          cmdline.isset('E') ||
+          !cmdline.have_infile_arg())
+    return run_gcc(); // exit!
   
   // get configuration
   config.set(cmdline);
-  
-  if(cmdline.isset("m32") || cmdline.isset("mx32"))
-    config.ansi_c.set_32();
+
+  // Intel-specific  
+  // in GCC, m16 is 32-bit (!), as documented here:
+  // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=59672
+  if(cmdline.isset("m16") ||
+     cmdline.isset("m32") || cmdline.isset("mx32"))
+  {
+    config.ansi_c.arch="i386";
+    config.ansi_c.set_arch_spec_i386();
+  }
   else if(cmdline.isset("m64"))
-    config.ansi_c.set_64();
+  {
+    config.ansi_c.arch="x86_64";
+    config.ansi_c.set_arch_spec_x86_64();
+  }
     
   // ARM-specific
   if(cmdline.isset("mbig-endian") || cmdline.isset("mbig"))
-    config.ansi_c.endianness=configt::ansi_ct::IS_BIG_ENDIAN;
+    config.ansi_c.endianness=configt::ansi_ct::endiannesst::IS_BIG_ENDIAN;
   else if(cmdline.isset("little-endian") || cmdline.isset("mlittle"))
-    config.ansi_c.endianness=configt::ansi_ct::IS_LITTLE_ENDIAN;
+    config.ansi_c.endianness=configt::ansi_ct::endiannesst::IS_LITTLE_ENDIAN;
     
   // -fshort-wchar makes wchar_t "short unsigned int"
   if(cmdline.isset("fshort-wchar"))
@@ -171,15 +197,23 @@ bool gcc_modet::doit()
     config.ansi_c.double_width=config.ansi_c.single_width;
 
   // determine actions to be undertaken
+  compilet compiler(cmdline);  
+  compiler.ui_message_handler.set_verbosity(verbosity);
   
   if(act_as_ld)
     compiler.mode=compilet::LINK_LIBRARY;
   else if(cmdline.isset('c'))
     compiler.mode=compilet::COMPILE_ONLY;
   else if(cmdline.isset('S'))
+  {
     compiler.mode=compilet::ASSEMBLE_ONLY;
+    assert(false);
+  }
   else if(cmdline.isset('E'))
+  {
     compiler.mode=compilet::PREPROCESS_ONLY;
+    assert(false);
+  }
   else if(cmdline.isset("shared") ||
           cmdline.isset('r')) // really not well documented
     compiler.mode=compilet::COMPILE_LINK;
@@ -188,12 +222,12 @@ bool gcc_modet::doit()
 
   switch(compiler.mode)
   {
-  case compilet::LINK_LIBRARY: debug("Linking a library only"); break;
-  case compilet::COMPILE_ONLY: debug("Compiling only"); break;
-  case compilet::ASSEMBLE_ONLY: debug("Assembling only"); break;
-  case compilet::PREPROCESS_ONLY: debug("Preprocessing only"); break;
-  case compilet::COMPILE_LINK: debug("Compiling and linking a library"); break;
-  case compilet::COMPILE_LINK_EXECUTABLE: debug("Compiling and linking an executable"); break;
+  case compilet::LINK_LIBRARY: debug() << "Linking a library only" << eom; break;
+  case compilet::COMPILE_ONLY: debug() << "Compiling only" << eom; break;
+  case compilet::ASSEMBLE_ONLY: debug() << "Assembling only" << eom; break;
+  case compilet::PREPROCESS_ONLY: debug() << "Preprocessing only" << eom; break;
+  case compilet::COMPILE_LINK: debug() << "Compiling and linking a library" << eom; break;
+  case compilet::COMPILE_LINK_EXECUTABLE: debug() << "Compiling and linking an executable" << eom; break;
   default: assert(false);
   }
 
@@ -201,11 +235,11 @@ bool gcc_modet::doit()
      cmdline.isset("winx64"))
   {
     // We may wish to reconsider the below.
-    config.ansi_c.mode=configt::ansi_ct::MODE_VISUAL_STUDIO;
-    debug("Enabling Visual Studio syntax");
+    config.ansi_c.mode=configt::ansi_ct::flavourt::MODE_VISUAL_STUDIO_C_CPP;
+    debug() << "Enabling Visual Studio syntax" << eom;
   }
   else
-    config.ansi_c.mode=configt::ansi_ct::MODE_GCC;
+    config.ansi_c.mode=configt::ansi_ct::flavourt::MODE_GCC_C;
 
   if(compiler.mode==compilet::ASSEMBLE_ONLY)
     compiler.object_file_extension="s";
@@ -214,12 +248,27 @@ bool gcc_modet::doit()
   
   if(cmdline.isset("std"))
   {
-    std::string std_string=cmdline.getval("std");
-    if(std_string=="gnu99" || std_string=="c99" ||
-       std_string=="gnu9x" || std_string=="c9x" ||
-       std_string=="gnu11" || std_string=="c11" ||
+    std::string std_string=cmdline.get_value("std");
+    
+    if(std_string=="gnu89" || std_string=="c89")
+      config.ansi_c.set_c89();
+
+    if(std_string=="gnu99" || std_string=="c99" || std_string=="iso9899:1999" ||
+       std_string=="gnu9x" || std_string=="c9x" || std_string=="iso9899:199x")
+      config.ansi_c.set_c99();
+
+    if(std_string=="gnu11" || std_string=="c11" ||
        std_string=="gnu1x" || std_string=="c1x")
-      config.ansi_c.for_has_scope=true;
+      config.ansi_c.set_c11();
+
+    if(std_string=="c++11" || std_string=="c++1x" ||
+       std_string=="gnu++11" || std_string=="gnu++1x" || 
+       std_string=="c++1y" ||
+       std_string=="gnu++1y")
+      config.cpp.set_cpp11();
+
+    if(std_string=="gnu++14" || std_string=="c++14")
+      config.cpp.set_cpp14();
   }
 
   // gcc's default is 32 bits for wchar_t
@@ -230,9 +279,12 @@ bool gcc_modet::doit()
   if(cmdline.isset("short-double"))
     config.ansi_c.double_width=32;
     
-  // gcc's default is signed chars
+  // gcc's default is signed chars on most architectures
   if(cmdline.isset("funsigned-char"))
     config.ansi_c.char_is_unsigned=true;
+
+  if(cmdline.isset("fsigned-char"))
+    config.ansi_c.char_is_unsigned=false;
 
   if(cmdline.isset('U'))
     config.ansi_c.undefines=cmdline.get_values('U');
@@ -250,6 +302,12 @@ bool gcc_modet::doit()
   if(cmdline.isset('l'))
     compiler.libraries=cmdline.get_values('l');
 
+  if(cmdline.isset("static"))
+    compiler.libraries.push_back("c");
+
+  if(cmdline.isset("pthread"))
+    compiler.libraries.push_back("pthread");
+
   if(cmdline.isset('o'))
   {
     // given gcc -o file1 -o file2,
@@ -262,57 +320,90 @@ bool gcc_modet::doit()
     compiler.output_file_object="";
     compiler.output_file_executable="a.out";
   }
-
-  // Using '-x', the type of a file can be overridden;
-  // otherwise, it's guessed from the extension.
   
-  if(cmdline.isset('x'))
-  {
-    const std::string language=cmdline.getval('x');
-    compiler.override_language=language;
-  }
-    
-  // Iterate over file arguments, and do any preprocessing needed
-
+  // We now iterate over any input files
+  
   temp_dirt temp_dir("goto-cc-XXXXXX");
   
-  cmdlinet::argst original_args=cmdline.args;
-
-  for(cmdlinet::argst::iterator
-      a_it=cmdline.args.begin();
-      a_it!=cmdline.args.end();
-      a_it++)
   {
-    if(is_supported_source_file(*a_it))
+    std::string language;
+    
+    for(goto_cc_cmdlinet::parsed_argvt::iterator
+        arg_it=cmdline.parsed_argv.begin();
+        arg_it!=cmdline.parsed_argv.end();
+        arg_it++)
     {
-      std::string new_suffix=has_suffix(*a_it, ".c")?".i":".ii";
-      std::string new_name=get_base_name(*a_it)+new_suffix;
-      std::string dest=temp_dir(new_name);
-
-      int exit_code=preprocess(*a_it, dest);
-
-      if(exit_code!=0)
+      if(arg_it->is_infile_name)
       {
-        error() << "preprocessing has failed" << eom;
-        return true;
+        // do any preprocessing needed
+
+        if(language=="cpp-output" || language=="c++-cpp-output")
+        {
+          compiler.add_input_file(arg_it->arg);
+        }
+        else if(language=="c" || language=="c++" ||
+                (language=="" && needs_preprocessing(arg_it->arg)))
+        {
+          std::string new_suffix;
+
+          if(language=="c")
+            new_suffix=".i";
+          else if(language=="c++")
+            new_suffix=".ii";
+          else
+            new_suffix=has_suffix(arg_it->arg, ".c")?".i":".ii";
+
+          std::string new_name=
+            get_base_name(arg_it->arg, true)+new_suffix;
+          std::string dest=temp_dir(new_name);
+
+          int exit_code=preprocess(language, arg_it->arg, dest);
+
+          if(exit_code!=0)
+          {
+            error() << "preprocessing has failed" << eom;
+            return exit_code;
+          }
+          
+          compiler.add_input_file(dest);
+        }
+        else
+          compiler.add_input_file(arg_it->arg);
       }
-      
-      *a_it=dest;
+      else if(arg_it->arg=="-x")
+      {
+        arg_it++;
+        if(arg_it!=cmdline.parsed_argv.end())
+        {
+          language=arg_it->arg;
+          if(language=="none") language="";
+        }
+      }
+      else if(has_prefix(arg_it->arg, "-x"))
+      {
+        language=std::string(arg_it->arg, 2, std::string::npos);
+        if(language=="none") language="";
+      }
     }
   }
+  
+  // Revert to gcc in case there is no source to compile
+  // and no binary to link.
+
+  if(compiler.source_files.empty() &&
+     compiler.object_files.empty())
+    return run_gcc(); // exit!
 
   // do all the rest
-  bool result=compiler.doit();
+  if(compiler.doit())
+    return 1; // GCC exit code for all kinds of errors
 
   // We can generate hybrid ELF and Mach-O binaries
   // containing both executable machine code and the goto-binary.
   if(produce_hybrid_binary)
-  {
-    if(gcc_hybrid_binary(original_args))
-      result=true;
-  }
+    return gcc_hybrid_binary();
   
-  return result;
+  return EX_OK;
 }
 
 /*******************************************************************\
@@ -327,7 +418,10 @@ Function: gcc_modet::preprocess
 
 \*******************************************************************/
 
-int gcc_modet::preprocess(const std::string &src, const std::string &dest)
+int gcc_modet::preprocess(
+  const std::string &language,
+  const std::string &src,
+  const std::string &dest)
 {
   // build new argv
   std::vector<std::string> new_argv;
@@ -378,21 +472,30 @@ int gcc_modet::preprocess(const std::string &src, const std::string &dest)
   new_argv.push_back("-o");
   new_argv.push_back(dest);
   
+  // language, if given
+  if(language!="")
+  {
+    new_argv.push_back("-x");
+    new_argv.push_back(language);
+  }
+  
   // source file  
   new_argv.push_back(src);
   
+  const char *compiler=compiler_name();
+
   // overwrite argv[0]
   assert(new_argv.size()>=1);
-  new_argv[0]="gcc";
+  new_argv[0]=compiler;
   
   #if 0
   std::cout << "RUN:";
-  for(unsigned i=0; i<new_argv.size(); i++)
+  for(std::size_t i=0; i<new_argv.size(); i++)
     std::cout << " " << new_argv[i];
   std::cout << std::endl;
   #endif
   
-  return run("gcc", new_argv);
+  return run(compiler, new_argv, cmdline.stdin_file);
 }
 
 /*******************************************************************\
@@ -403,7 +506,7 @@ Function: gcc_modet::run_gcc
 
  Outputs:
 
- Purpose: run gcc with original command line
+ Purpose: run gcc or clang with original command line
 
 \*******************************************************************/
 
@@ -421,19 +524,23 @@ int gcc_modet::run_gcc()
   {
     new_argv.push_back(it->arg);
   }
-
+  
   // overwrite argv[0]
   assert(new_argv.size()>=1);
-  new_argv[0]="gcc";
+
+  if(act_as_ld)
+    new_argv[0]=linker_name();
+  else
+    new_argv[0]=compiler_name();
   
   #if 0
   std::cout << "RUN:";
-  for(unsigned i=0; i<new_argv.size(); i++)
+  for(std::size_t i=0; i<new_argv.size(); i++)
     std::cout << " " << new_argv[i];
   std::cout << std::endl;
   #endif
   
-  return run("gcc", new_argv);
+  return run(new_argv[0], new_argv, cmdline.stdin_file);
 }
 
 /*******************************************************************\
@@ -448,10 +555,21 @@ Function: gcc_modet::gcc_hybrid_binary
 
 \*******************************************************************/
 
-int gcc_modet::gcc_hybrid_binary(const cmdlinet::argst &input_files)
+int gcc_modet::gcc_hybrid_binary()
 {
-  if(input_files.empty())
-    return 0;
+  {
+    bool have_files=false;
+
+    for(gcc_cmdlinet::parsed_argvt::const_iterator
+        it=cmdline.parsed_argv.begin();
+        it!=cmdline.parsed_argv.end();
+        it++)
+      if(it->is_infile_name)
+        have_files=true;
+
+    if(!have_files)
+      return EX_OK;
+  }
 
   std::list<std::string> output_files;
   
@@ -460,35 +578,37 @@ int gcc_modet::gcc_hybrid_binary(const cmdlinet::argst &input_files)
     if(cmdline.isset('o'))
     {
       // there should be only one input file
-      output_files.push_back(cmdline.getval('o'));
+      output_files.push_back(cmdline.get_value('o'));
     }
     else
     {
-      for(cmdlinet::argst::const_iterator
-          i_it=input_files.begin();
-          i_it!=input_files.end();
+      for(gcc_cmdlinet::parsed_argvt::const_iterator
+          i_it=cmdline.parsed_argv.begin();
+          i_it!=cmdline.parsed_argv.end();
           i_it++)
-      {
-        if(is_supported_source_file(*i_it) && cmdline.isset('c'))
-          output_files.push_back(get_base_name(*i_it)+".o");
-      }
+        if(i_it->is_infile_name &&
+           needs_preprocessing(i_it->arg))
+          output_files.push_back(get_base_name(i_it->arg, true)+".o");
     }
   }
   else
   {
     // -c is not given
     if(cmdline.isset('o'))
-      output_files.push_back(cmdline.getval('o'));
+      output_files.push_back(cmdline.get_value('o'));
     else
       output_files.push_back("a.out");      
   }
 
-  if(output_files.empty()) return 0;
+  if(output_files.empty() ||
+     (output_files.size()==1 &&
+      output_files.front()=="/dev/null"))
+    return EX_OK;
 
   if(act_as_ld)
-    debug("Running ld to generate hybrid binary");
+    debug() << "Running ld to generate hybrid binary" << eom;
   else
-    debug("Running gcc to generate hybrid binary");
+    debug() << "Running gcc to generate hybrid binary" << eom;
   
   // save the goto-cc output files
   for(std::list<std::string>::const_iterator
@@ -529,31 +649,31 @@ int gcc_modet::gcc_hybrid_binary(const cmdlinet::argst &input_files)
   assert(new_argv.size()>=1);
   
   if(act_as_ld)
-    new_argv[0]="ld";
+    new_argv[0]=linker_name();
   else
-    new_argv[0]="gcc";
+    new_argv[0]=compiler_name();
   
   #if 0
   std::cout << "RUN:";
-  for(unsigned i=0; i<new_argv.size(); i++)
+  for(std::size_t i=0; i<new_argv.size(); i++)
     std::cout << " " << new_argv[i];
   std::cout << std::endl;
   #endif
   
-  int result=run(new_argv[0], new_argv);
+  int result=run(new_argv[0], new_argv, "");
   
   // merge output from gcc with goto-binaries
-  // using objcopy
+  // using objcopy, or do cleanup if an earlier call failed
   for(std::list<std::string>::const_iterator
       it=output_files.begin();
       it!=output_files.end();
       it++)
   {
-    debug("merging "+*it);
+    debug() << "merging " << *it << eom;
     std::string saved=*it+".goto-cc-saved";
 
     #ifdef __linux__
-    if(!cmdline.isset('c'))
+    if(result==0 && !cmdline.isset('c'))
     {
       // remove any existing goto-cc section
       std::vector<std::string> objcopy_argv;
@@ -562,35 +682,41 @@ int gcc_modet::gcc_hybrid_binary(const cmdlinet::argst &input_files)
       objcopy_argv.push_back("--remove-section=goto-cc");
       objcopy_argv.push_back(*it);
       
-      run(objcopy_argv[0], objcopy_argv);
+      result=run(objcopy_argv[0], objcopy_argv, "");
     }
 
-    // now add goto-binary as goto-cc section  
-    std::vector<std::string> objcopy_argv;
-  
-    objcopy_argv.push_back("objcopy");
-    objcopy_argv.push_back("--add-section");
-    objcopy_argv.push_back("goto-cc="+saved);
-    objcopy_argv.push_back(*it);
-    
-    run(objcopy_argv[0], objcopy_argv);
+    if(result==0)
+    {
+      // now add goto-binary as goto-cc section  
+      std::vector<std::string> objcopy_argv;
+
+      objcopy_argv.push_back("objcopy");
+      objcopy_argv.push_back("--add-section");
+      objcopy_argv.push_back("goto-cc="+saved);
+      objcopy_argv.push_back(*it);
+
+      result=run(objcopy_argv[0], objcopy_argv, "");
+    }
 
     remove(saved.c_str());
     #elif defined(__APPLE__)
     // Mac
-    std::vector<std::string> lipo_argv;
-  
-    // now add goto-binary as hppa7100LC section  
-    lipo_argv.push_back("lipo");
-    lipo_argv.push_back(*it);
-    lipo_argv.push_back("-create");
-    lipo_argv.push_back("-arch");
-    lipo_argv.push_back("hppa7100LC");
-    lipo_argv.push_back(saved);
-    lipo_argv.push_back("-output");
-    lipo_argv.push_back(*it);
-    
-    run(lipo_argv[0], lipo_argv);
+    if(result==0)
+    {
+      std::vector<std::string> lipo_argv;
+
+      // now add goto-binary as hppa7100LC section  
+      lipo_argv.push_back("lipo");
+      lipo_argv.push_back(*it);
+      lipo_argv.push_back("-create");
+      lipo_argv.push_back("-arch");
+      lipo_argv.push_back("hppa7100LC");
+      lipo_argv.push_back(saved);
+      lipo_argv.push_back("-output");
+      lipo_argv.push_back(*it);
+
+      result=run(lipo_argv[0], lipo_argv, "");
+    }
 
     remove(saved.c_str());
 
@@ -600,7 +726,7 @@ int gcc_modet::gcc_hybrid_binary(const cmdlinet::argst &input_files)
     #endif
   }
   
-  return result!=0;
+  return result;
 }
 
 /*******************************************************************\

@@ -20,22 +20,23 @@ Function: boolbvt::convert_vector
 
 \*******************************************************************/
 
-void boolbvt::convert_vector(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_vector(const exprt &expr)
 {
-  unsigned width=boolbv_width(expr.type());
+  std::size_t width=boolbv_width(expr.type());
   
   if(width==0)
-    return conversion_failed(expr, bv);
+    return conversion_failed(expr);
     
-  bv.reserve(width);
-
   if(expr.type().id()==ID_vector)
   {
     const exprt::operandst &operands=expr.operands();
-    
+  
+    bvt bv;  
+    bv.reserve(width);
+
     if(!operands.empty())
     {
-      unsigned op_width=width/operands.size();
+      std::size_t op_width=width/operands.size();
     
       forall_expr(it, operands)
       {
@@ -49,9 +50,9 @@ void boolbvt::convert_vector(const exprt &expr, bvt &bv)
       }   
     }
 
-    return;
+    return bv;
   }
   
-  conversion_failed(expr, bv);
+  return conversion_failed(expr);
 }
 

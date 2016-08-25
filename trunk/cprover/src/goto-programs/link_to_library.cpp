@@ -25,6 +25,28 @@ Function: link_to_library
 \*******************************************************************/
 
 void link_to_library(
+  goto_modelt &goto_model,
+  message_handlert &message_handler)
+{
+  link_to_library(
+    goto_model.symbol_table,
+    goto_model.goto_functions,
+    message_handler);
+}
+
+/*******************************************************************\
+
+Function: link_to_library
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void link_to_library(
   symbol_tablet &symbol_table,
   goto_functionst &goto_functions,
   message_handlert &message_handler)
@@ -52,7 +74,7 @@ void link_to_library(
         f_it=goto_functions.function_map.find(*it);
       
       if(f_it!=goto_functions.function_map.end() &&
-         f_it->second.body_available)
+         f_it->second.body_available())
       {
         // it's overridden!
       }

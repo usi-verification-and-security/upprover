@@ -433,7 +433,7 @@ tvt invariant_sett::is_eq(std::pair<unsigned, unsigned> p) const
   if(has_ne(p) || has_ne(s))
     return tvt(false);
 
-  return tvt(tvt::TV_UNKNOWN);
+  return tvt::unknown();
 }
   
 /*******************************************************************\
@@ -463,7 +463,7 @@ tvt invariant_sett::is_le(std::pair<unsigned, unsigned> p) const
     if(has_ne(s) || has_ne(p))
       return tvt(false);
     
-  return tvt(tvt::TV_UNKNOWN);
+  return tvt::unknown();
 }
 
 /*******************************************************************\
@@ -857,7 +857,7 @@ tvt invariant_sett::implies_rec(const exprt &expr) const
   {
     forall_operands(it, expr)
       if(implies_rec(*it)!=tvt(true))
-        return tvt(tvt::TV_UNKNOWN);
+        return tvt::unknown();
       
     return tvt(true);
   }
@@ -879,7 +879,7 @@ tvt invariant_sett::implies_rec(const exprt &expr) const
     bool ob0=get_object(expr.op0(), p.first);
     bool ob1=get_object(expr.op1(), p.second);
     
-    if(ob0 || ob1) return tvt(tvt::TV_UNKNOWN);
+    if(ob0 || ob1) return tvt::unknown();
     
     tvt r;
     
@@ -913,7 +913,7 @@ tvt invariant_sett::implies_rec(const exprt &expr) const
       assert(false);
   }
 
-  return tvt(tvt::TV_UNKNOWN);
+  return tvt::unknown();
 }
 
 /*******************************************************************\
@@ -970,11 +970,11 @@ void invariant_sett::nnf(exprt &expr, bool negate)
 
   if(expr.is_true())
   {
-    if(negate) expr.make_false();
+    if(negate) expr=false_exprt();
   }
   else if(expr.is_false())
   {
-    if(negate) expr.make_true();
+    if(negate) expr=true_exprt();
   }
   else if(expr.id()==ID_not)
   {
@@ -1303,7 +1303,7 @@ bool invariant_sett::make_union_bounds_map(const bounds_mapt &other)
     {
       boundst old(it->second);
       it->second.approx_union_with(o_it->second);
-      if(!(it->second==old).is_true()) changed=true;
+      if(it->second!=old) changed=true;
       it++;
     }
   }

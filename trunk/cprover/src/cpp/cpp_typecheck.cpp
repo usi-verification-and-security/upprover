@@ -11,7 +11,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include <util/expr_util.h>
 #include <util/arith_tools.h>
 #include <util/i2string.h>
-#include <util/location.h>
+#include <util/source_location.h>
 #include <util/symbol.h>
 
 #include <linking/zero_initializer.h>
@@ -107,8 +107,11 @@ void cpp_typecheckt::convert(cpp_itemt &item)
     convert(item.get_static_assert());
   else
   {
-    err_location(item);
-    throw "unknown parse-tree element: "+item.id_string();
+    error().source_location=
+      static_cast<const source_locationt &>(
+        item.find(ID_C_source_location));
+    error() << "unknown parse-tree element: " << item.id() << eom;
+    throw 0;
   }
 }
 
@@ -199,12 +202,12 @@ bool cpp_typecheck(
 
   catch(const char *e)
   {
-    cpp_typecheck.error(e);
+    cpp_typecheck.error() << e << messaget::eom;
   }
 
   catch(const std::string &e)
   {
-    cpp_typecheck.error(e);
+    cpp_typecheck.error() << e << messaget::eom;
   }
 
   return cpp_typecheck.get_error_found();
@@ -241,48 +244,6 @@ void cpp_typecheckt::static_and_dynamic_initialization()
 
   disable_access_control = true;
 
-  // fill in any missing zero initializers
-  // for static initialization
-  Forall_symbols(s_it, symbol_table.symbols)
-  {
-    symbolt &symbol=s_it->second;
-
-    if(!symbol.is_static_lifetime)
-      continue;
-      
-    if(symbol.mode!=ID_cpp)
-      continue;
-      
-    // magic value
-    if(symbol.name=="c::__CPROVER::constant_infinity_uint")
-      continue;
-
-    // it has a non-code initializer already?
-    if(symbol.value.is_not_nil() &&
-       symbol.value.id()!=ID_code)
-      continue;
-      
-    // it's a declaration only
-    if(symbol.is_extern)
-      continue;
-
-    if(!symbol.is_lvalue)
-      continue;
-
-    if(cpp_is_pod(symbol.type))
-      symbol.value=::zero_initializer(symbol.type, symbol.location, *this, get_message_handler());
-    else
-    {
-      // _always_ zero initialize,
-      // even if there is already an initializer.
-      zero_initializer(
-        cpp_symbol_expr(symbol),
-        symbol.type,
-        symbol.location,
-        init_block.operands());
-    }
-  }
-
   for(dynamic_initializationst::const_iterator
       d_it=dynamic_initializations.begin();
       d_it!=dynamic_initializations.end();
@@ -306,14 +267,13 @@ void cpp_typecheckt::static_and_dynamic_initialization()
     // initializer given?
     if(symbol.value.is_not_nil())
     {
-      code_assignt code(symbol_expr, symbol.value);
-      code.location()=symbol.location;
+      // This will be a constructor call,
+      // which we execute.
+      assert(symbol.value.id()==ID_code);
+      init_block.copy_to_operands(symbol.value);
 
-      init_block.move_to_operands(code);
-
-      // Make it nil because we do not want
-      // global_init to try to initialize the
-      // object
+      // Make it nil to get zero initialization by
+      // __CPROVER_initialize
       symbol.value.make_nil();
     }
     else
@@ -336,14 +296,13 @@ void cpp_typecheckt::static_and_dynamic_initialization()
   // Create the dynamic initialization procedure
   symbolt init_symbol;
 
-  init_symbol.name="c::#cpp_dynamic_initialization#"+id2string(module);
+  init_symbol.name="#cpp_dynamic_initialization#"+id2string(module);
   init_symbol.base_name="#cpp_dynamic_initialization#"+id2string(module);
   init_symbol.value.swap(init_block);
   init_symbol.mode=ID_cpp;
   init_symbol.module=module;
   init_symbol.type=code_typet();
-  init_symbol.type.add(ID_return_type)=typet(ID_empty);
-  init_symbol.type.set("initialization", true);
+  init_symbol.type.add(ID_return_type)=typet(ID_constructor);
   init_symbol.is_type=false;
   init_symbol.is_macro=false;
 
@@ -381,17 +340,17 @@ void cpp_typecheckt::do_not_typechecked()
       {
         assert(symbol.type.id()==ID_code);
 
-        if(symbol.base_name =="operator=")
+        if(symbol.base_name=="operator=")
         {
           cpp_declaratort declarator;
-          declarator.location() = symbol.location;
+          declarator.add_source_location() = symbol.location;
           default_assignop_value(
             lookup(symbol.type.get(ID_C_member_name)), declarator);
           symbol.value.swap(declarator.value());
           convert_function(symbol);
           cont=true;
         }
-        else if(symbol.value.operands().size() == 1)
+        else if(symbol.value.operands().size()==1)
         {
           exprt tmp = symbol.value.operands()[0];
           symbol.value.swap(tmp);

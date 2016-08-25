@@ -1,0 +1,2 @@
+#define MUSKETEER_VERSION "0.37"
+

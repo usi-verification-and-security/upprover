@@ -1,9 +1,0 @@
-tcas.c	50	assert( Alt_Layer_Value == Two_of_Three_Reports_Valid );
-tcas.c	50	assert( Alt_Layer_Value == Up_Separation );
-tcas.c	50	assert( Alt_Layer_Value == 0 );
-tcas.c	58	assert( Alt_Layer_Value >= 0 );
-tcas.c	58	assert( Other_Tracked_Alt != Own_Tracked_Alt_Rate );
-tcas.c	68	assert( High_Confidence == -1 || High_Confidence == 1 );
-tcas.c	86	assert( Climb_Inhibit < Cur_Vertical_Sep );
-tcas.c	104	assert( Cur_Vertical_Sep > Other_Capability );
-tcas.c	109	assert( Cur_Vertical_Sep > High_Confidence );

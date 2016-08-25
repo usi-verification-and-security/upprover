@@ -39,6 +39,7 @@ const char *gcc_options_with_argument[]=
   "-V",
   "-D",
   "-L",
+  "-l",
   "-MT",
   "-MQ",
   "-MF",
@@ -59,6 +60,8 @@ const char *gcc_options_with_separated_argument[]=
   "-iwithprefixbefore",
   "-isystem",
   "-isysroot",
+  "-imultilib",
+  "-imultiarch",
   "-Xpreprocessor",
   "-Xassembler",
   "-Xlinker",
@@ -70,6 +73,9 @@ const char *gcc_options_with_separated_argument[]=
   "-specs",
   "--sysroot",
   "--include", // undocumented
+  "-current_version", // on the Mac
+  "-compatibility_version",  // on the Mac
+  "-z",
   NULL
 };
 
@@ -79,7 +85,6 @@ const char *gcc_options_with_concatenated_argument[]=
   "-g",
   "-A",
   "-U",
-  "-l",
   NULL
 };
 
@@ -146,6 +151,8 @@ const char *gcc_options_without_argument[]=
   "-print-multi-lib",
   "-print-search-dirs", 
   "-Q",
+  "-Qn",
+  "-Qy",
   "-pthread",
   "-save-temps", 
   "-time",
@@ -181,6 +188,7 @@ const char *gcc_options_without_argument[]=
   "--static", 
   "-shared",
   "--shared",
+  "-shared-libgcc",
   "-symbolic",
   "-EB",
   "-EL",
@@ -207,7 +215,6 @@ bool gcc_cmdlinet::parse(int argc, const char **argv)
     // file?
     if(argv_i=="-" || !has_prefix(argv_i, "-"))
     {
-      args.push_back(argv_i);
       add_infile_arg(argv_i);
       continue;
     }    
@@ -235,7 +242,15 @@ bool gcc_cmdlinet::parse(int argc, const char **argv)
     }
     else if(has_prefix(argv_i, "-m")) // m-options
     {
-      set(argv_i);
+      // these sometimes come with a value separated by '=', e.g., -march=cpu_type
+    
+      std::size_t equal_pos=argv_i.find('=');
+      
+      if(equal_pos==std::string::npos)
+        set(argv_i); // no value
+      else
+        set(std::string(argv_i, 0, equal_pos),
+            std::string(argv_i, equal_pos+1, std::string::npos));
     }
     else if(in_list(argv[i], gcc_options_without_argument)) // without argument
     {

@@ -9,8 +9,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_GOTO_PROGRAMS_STATIC_ANALYSIS_H
 #define CPROVER_GOTO_PROGRAMS_STATIC_ANALYSIS_H
 
+#ifndef USE_DEPRECATED_STATIC_ANALYSIS_H
+#error Deprecated, use ai.h instead
+#endif
+
 #include <map>
-#include <ostream>
+#include <iosfwd>
 
 #include <goto-programs/goto_functions.h>
 
@@ -23,9 +27,14 @@ public:
   {
   }
 
+  virtual ~domain_baset()
+  {
+  }
+  
   typedef goto_programt::const_targett locationt;
 
-  // will go away
+  // will go away,
+  // to be replaced by a factory class option to static_analysist
   virtual void initialize(
     const namespacet &ns,
     locationt l)
@@ -45,10 +54,6 @@ public:
     locationt from,
     locationt to)=0;
 
-  virtual ~domain_baset()
-  {
-  }
-  
   virtual void output(
     const namespacet &ns,
     std::ostream &out) const
@@ -69,9 +74,9 @@ public:
   
   // also add
   //
-  //   bool merge(const T &b);
+  //   bool merge(const T &b, locationt to);
   //
-  // this computes the join between "this" and b
+  // this computes the join between "this" and "b"
   // return true if "this" has changed
   
 protected:
@@ -184,11 +189,12 @@ protected:
     const goto_programt &goto_program,
     const goto_functionst &goto_functions);
     
-  bool fixedpoint(
-    goto_functionst::function_mapt::const_iterator it,
+  virtual void fixedpoint(
+    const goto_functionst &goto_functions)=0;
+
+  void sequential_fixedpoint(
     const goto_functionst &goto_functions);
-    
-  void fixedpoint(
+  void concurrent_fixedpoint(
     const goto_functionst &goto_functions);
 
   // true = found s.th. new
@@ -204,7 +210,9 @@ protected:
     return l;
   }
   
-  virtual bool merge(statet &a, const statet &b)=0;
+  virtual bool merge(statet &a, const statet &b, locationt to)=0;
+  // for concurrent fixedpoint
+  virtual bool merge_shared(statet &a, const statet &b, locationt to)=0;
   
   typedef std::set<irep_idt> functions_donet;
   functions_donet functions_done;
@@ -222,14 +230,14 @@ protected:
   
   // function calls
   void do_function_call_rec(
-    locationt l_call,
+    locationt l_call, locationt l_return,
     const exprt &function,
     const exprt::operandst &arguments,
     statet &new_state,
     const goto_functionst &goto_functions);
 
   void do_function_call(
-    locationt l_call,
+    locationt l_call, locationt l_return,
     const goto_functionst &goto_functions,
     const goto_functionst::function_mapt::const_iterator f_it,
     const exprt::operandst &arguments,
@@ -306,9 +314,9 @@ protected:
     return it->second;
   }
 
-  virtual bool merge(statet &a, const statet &b)
+  virtual bool merge(statet &a, const statet &b, locationt to)
   {
-    return static_cast<T &>(a).merge(static_cast<const T &>(b));
+    return static_cast<T &>(a).merge(static_cast<const T &>(b), to);
   }
   
   virtual statet *make_temporary_state(statet &s)
@@ -329,9 +337,51 @@ protected:
     state_map[l].get_reference_set(ns, expr, dest);
   }
 
+  virtual void fixedpoint(const goto_functionst &goto_functions)
+  {
+    sequential_fixedpoint(goto_functions);
+  }
+
 private:  
   // to enforce that T is derived from domain_baset
-  void dummy(const T &s) { const statet &x=dummy1(s); }
+  void dummy(const T &s) { const statet &x=dummy1(s); (void)x; }
+
+  // not implemented in sequential analyses
+  virtual bool merge_shared(
+    statet &a,
+    const statet &b,
+    goto_programt::const_targett to)
+  {
+    throw "not implemented";
+  }
+};
+
+template<typename T>
+class concurrency_aware_static_analysist:public static_analysist<T>
+{
+public:
+  // constructor
+  explicit concurrency_aware_static_analysist(const namespacet &_ns):
+    static_analysist<T>(_ns)
+  {
+  }
+
+  virtual bool merge_shared(
+    static_analysis_baset::statet &a,
+    const static_analysis_baset::statet &b,
+    goto_programt::const_targett to)
+  {
+    return static_cast<T &>(a).merge_shared(
+      this->ns,
+      static_cast<const T &>(b),
+      to);
+  }
+
+protected:
+  virtual void fixedpoint(const goto_functionst &goto_functions)
+  {
+    this->concurrent_fixedpoint(goto_functions);
+  }
 };
 
 #endif

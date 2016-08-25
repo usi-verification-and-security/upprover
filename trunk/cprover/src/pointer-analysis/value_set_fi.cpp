@@ -7,7 +7,7 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <cassert>
-#include <iostream>
+#include <ostream>
 
 #include <util/symbol_table.h>
 #include <util/simplify_expr.h>
@@ -24,7 +24,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "value_set_fi.h"
 
-const value_set_fit::object_map_dt value_set_fit::object_map_dt::empty;
+const value_set_fit::object_map_dt value_set_fit::object_map_dt::blank;
 object_numberingt value_set_fit::object_numbering;
 hash_numbering<irep_idt, irep_id_hash> value_set_fit::function_numbering;
 
@@ -103,10 +103,10 @@ void value_set_fit::output(
         result+=from_expr(ns, identifier, o);
         result+=", *, "; // offset unknown
         if (o.type().id()==ID_unknown)
-          result+="*";
+          result+='*';
         else
           result+=from_type(ns, identifier, o.type());        
-        result+=">";
+        result+='>';
       }
       else
       {
@@ -115,16 +115,16 @@ void value_set_fit::output(
         if(o_it->second.offset_is_set)
           result+=integer2string(o_it->second.offset)+"";
         else
-          result+="*";
+          result+='*';
         
         result+=", ";
         
         if (o.type().id()==ID_unknown)
-          result+="*";
+          result+='*';
         else
           result+=from_type(ns, identifier, o.type());
       
-        result+=">";
+        result+='>';
       }
 
       out << result;
@@ -141,7 +141,7 @@ void value_set_fit::output(
       }
     }
 
-    out << " } " << std::endl;
+    out << " } \n";
   }
 }
 
@@ -590,8 +590,7 @@ void value_set_fit::get_value_set_rec(
     
     return;
   }
-  else if(expr.id()==ID_dereference ||
-          expr.id()=="implicit_dereference")
+  else if(expr.id()==ID_dereference)
   {
     object_mapt reference_set;
     get_reference_set_sharing(expr, reference_set, ns);
@@ -708,7 +707,7 @@ void value_set_fit::get_value_set_rec(
       return;
     }
   }
-  else if(expr.id()==ID_sideeffect)
+  else if(expr.id()==ID_side_effect)
   {
     const irep_idt &statement=expr.get(ID_statement);
     
@@ -757,12 +756,17 @@ void value_set_fit::get_value_set_rec(
     insert(dest, address_of_exprt(expr), 0);
     return;
   }
-  else if(expr.id()==ID_with ||          
-          expr.id()==ID_array_of ||
-          expr.id()==ID_array)
+  else if(expr.id()==ID_with)
   {
     // these are supposed to be done by assign()
     throw "unexpected value in get_value_set: "+expr.id_string();
+  }
+  else if(expr.id()==ID_array_of ||
+          expr.id()==ID_array)
+  {
+    // an array constructur, possibly containing addresses
+    forall_operands(it, expr)
+      get_value_set_rec(*it, dest, suffix, original_type, ns, recursion_set);
   }
   else if(expr.id()==ID_dynamic_object)
   {
@@ -945,8 +949,7 @@ void value_set_fit::get_reference_set_sharing_rec(
 
     return;
   }
-  else if(expr.id()==ID_dereference ||
-          expr.id()=="implicit_dereference")
+  else if(expr.id()==ID_dereference)
   {
     if(expr.operands().size()!=1)
       throw expr.id_string()+" expected to have one operand";
@@ -1147,7 +1150,7 @@ void value_set_fit::assign(
   if(type.id()==ID_struct ||
      type.id()==ID_union)
   {
-    const struct_typet &struct_type=to_struct_type(type);
+    const struct_union_typet &struct_type=to_struct_union_type(type);
     
     unsigned no=0;
     
@@ -1175,7 +1178,10 @@ void value_set_fit::assign(
       }
       else
       {
-        assert(base_type_eq(rhs.type(), type, ns));
+        if(!base_type_eq(rhs.type(), type, ns))
+          throw "value_set_fit::assign type mismatch: "
+                "rhs.type():\n"+rhs.type().pretty()+"\n"+
+                "type:\n"+type.pretty();
       
         if(rhs.id()==ID_struct ||
            rhs.id()==ID_constant)
@@ -1227,9 +1233,16 @@ void value_set_fit::assign(
     {
       assign(lhs_index, exprt(rhs.id(), type.subtype()), ns);
     }
+    else if(rhs.is_nil())
+    {
+      // do nothing
+    }
     else
     {
-      assert(base_type_eq(rhs.type(), type, ns));
+      if(!base_type_eq(rhs.type(), type, ns))
+        throw "value_set_fit::assign type mismatch: "
+              "rhs.type():\n"+rhs.type().pretty()+"\n"+
+              "type:\n"+type.pretty();
         
       if(rhs.id()==ID_array_of)
       {
@@ -1439,8 +1452,7 @@ void value_set_fit::assign_rec(
     if (make_union(get_entry(name, suffix).object_map, values_rhs))
       changed = true;
   }
-  else if(lhs.id()==ID_dereference ||
-          lhs.id()=="implicit_dereference")
+  else if(lhs.id()==ID_dereference)
   {
     if(lhs.operands().size()!=1)
       throw lhs.id_string()+" expected to have one operand";
@@ -1543,7 +1555,7 @@ void value_set_fit::do_function_call(
   const symbolt &symbol=ns.lookup(function);
 
   const code_typet &type=to_code_type(symbol.type);
-  const code_typet::argumentst &argument_types=type.arguments();
+  const code_typet::parameterst &parameter_types=type.parameters();
 
   // these first need to be assigned to dummy, temporary arguments
   // and only thereafter to the actuals, in order
@@ -1563,9 +1575,9 @@ void value_set_fit::do_function_call(
 
   unsigned i=0;
 
-  for(code_typet::argumentst::const_iterator
-      it=argument_types.begin();
-      it!=argument_types.end();
+  for(code_typet::parameterst::const_iterator
+      it=parameter_types.begin();
+      it!=parameter_types.end();
       it++)
   {
     const irep_idt &identifier=it->get_identifier();
@@ -1704,9 +1716,15 @@ void value_set_fit::apply_code(
       assign(lhs, code.op0(), ns);
     }
   }
-  else
+  else if(statement==ID_fence)
   {
-    std::cerr << code.pretty() << std::endl;
-    throw "value_set_fit: unexpected statement: "+id2string(statement);
   }
+  else if(statement==ID_input)
+  {
+	  // doesn't do anything
+  }
+  else
+    throw
+      code.pretty()+"\n"+
+      "value_set_fit: unexpected statement: "+id2string(statement);
 }

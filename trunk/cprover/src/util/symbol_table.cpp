@@ -6,26 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <ostream>
+
 #include "symbol_table.h"
-
-/*******************************************************************\
-
-Function: symbol_tablet::value
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-const irept &symbol_tablet::value(const irep_idt &name) const
-{
-  symbolst::const_iterator it=symbols.find(name);
-  if(it==symbols.end()) return get_nil_irep();
-  return it->second.value;
-}
 
 /*******************************************************************\
 
@@ -144,7 +127,7 @@ Function: symbol_tablet::show
 
 void symbol_tablet::show(std::ostream &out) const
 {
-  out << std::endl << "Symbols:" << std::endl;
+  out << "\n" << "Symbols:" << "\n";
 
   forall_symbols(it, symbols)
     out << it->second;

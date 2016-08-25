@@ -7,9 +7,8 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <util/threeval.h>
-#include <util/i2string.h>
 
-#include "prop.h"
+#include "literal_expr.h"
 #include "minimize.h"
 
 /*******************************************************************\
@@ -35,24 +34,24 @@ void prop_minimizet::objective(
   }
   else if(weight<0)
   {
-    objectives[-weight].push_back(objectivet(prop.lnot(condition)));
+    objectives[-weight].push_back(objectivet(!condition));
     _number_objectives++;
   }
 }
 
 /*******************************************************************\
 
-Function: prop_minimizet::block
+Function: prop_minimizet::fix
 
   Inputs:
 
  Outputs:
 
- Purpose: Block objectives that are satisfied
+ Purpose: Fix objectives that are satisfied
 
 \*******************************************************************/
 
-void prop_minimizet::block()
+void prop_minimizet::fix_objectives()
 {
   std::vector<objectivet> &entry=current->second;
   bool found=false;
@@ -63,11 +62,11 @@ void prop_minimizet::block()
       ++o_it)
   {
     if(!o_it->fixed &&
-       prop.l_get(o_it->condition).is_false())
+       prop_conv.l_get(o_it->condition).is_false())
     {
       _number_satisfied++;
       _value+=current->first;
-      prop.l_set_to(o_it->condition, false); // fix it
+      prop_conv.set_to(literal_exprt(o_it->condition), false); // fix it
       o_it->fixed=true;
       found=true;
     }
@@ -92,6 +91,7 @@ Function: prop_minimizet::constaint
 literalt prop_minimizet::constraint()
 {
   std::vector<objectivet> &entry=current->second;
+
   bvt or_clause;
   
   for(std::vector<objectivet>::iterator
@@ -100,11 +100,23 @@ literalt prop_minimizet::constraint()
       ++o_it)
   {
     if(!o_it->fixed)
-      or_clause.push_back(prop.lnot(o_it->condition));
+      or_clause.push_back(!o_it->condition);
   }
 
-  // this returns false if the clause is empty
-  return prop.lor(or_clause);
+  // This returns false if the clause is empty,
+  // i.e., no further improvement possible.
+  if(or_clause.empty())
+    return const_literal(false);
+  else if(or_clause.size()==1)
+    return or_clause.front();
+  else
+  {
+    or_exprt or_expr;
+    forall_literals(it, or_clause)
+      or_expr.copy_to_operands(literal_exprt(*it));
+    
+    return prop_conv.convert(or_expr);
+  }
 }
 
 /*******************************************************************\
@@ -122,19 +134,18 @@ Function: prop_minimizet::operator()
 void prop_minimizet::operator()()
 {
   // we need to use assumptions
-  assert(prop_conv.prop.has_set_assumptions());
+  assert(prop_conv.has_set_assumptions());
 
   _iterations=_number_satisfied=0;
   _value=0;
+  bool last_was_SAT=false;
   
-  save_assignment();
-
   // go from high weights to low ones
   for(current=objectives.rbegin();
       current!=objectives.rend();
       current++)
   {
-    status("weight "+i2string(current->first));
+    status() << "weight " << current->first << eom;
 
     decision_proceduret::resultt dec_result;
     do
@@ -150,66 +161,38 @@ void prop_minimizet::operator()()
 
         bvt assumptions;
         assumptions.push_back(c);
-        prop_conv.prop.set_assumptions(assumptions);
+        prop_conv.set_assumptions(assumptions);
         dec_result=prop_conv.dec_solve();
     
         switch(dec_result)
         {
         case decision_proceduret::D_UNSATISFIABLE:
-          restore_assignment();
+          last_was_SAT=false;
           break;
 
         case decision_proceduret::D_SATISFIABLE:
-          block(); // block the ones we got
-          save_assignment();
+          last_was_SAT=true;
+          fix_objectives(); // fix the ones we got
           break;
 
         default:
-          error("decision procedure failed");
+          error() << "decision procedure failed" << eom;
+          last_was_SAT=false;
           return;
         }
       }
     }
     while(dec_result!=decision_proceduret::D_UNSATISFIABLE);
   }
+  
+  if(!last_was_SAT)
+  {
+    // We don't have a satisfying assignment to work with.
+    // Run solver again to get one.
+
+    bvt assumptions; // no assumptions
+    prop_conv.set_assumptions(assumptions);
+    prop_conv.dec_solve();
+  }
 }
 
-/*******************************************************************\
-
-Function: prop_minimizet::save_assignment
-
-  Inputs:
-
- Outputs:
-
- Purpose:   
-   
-\*******************************************************************/
-
-void prop_minimizet::save_assignment()
-{
-  assignment.resize(prop.no_variables());
-
-  for(unsigned i=1; i<prop.no_variables(); i++)
-    assignment[i]=prop.l_get(literalt(i, false)).is_true();
-}  
-
-/*******************************************************************\
-
-Function: prop_minimizet::restore_assignment
-
-  Inputs:
-
- Outputs:
-
- Purpose:   
-   
-\*******************************************************************/
-
-void prop_minimizet::restore_assignment()
-{
-  assert(assignment.size()<=prop.no_variables());
-
-  for(unsigned i=1; i<prop.no_variables(); i++)
-    prop.set_assignment(literalt(i, false), assignment[i]);
-}

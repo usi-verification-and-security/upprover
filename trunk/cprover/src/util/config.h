@@ -43,6 +43,12 @@ public:
     bool use_fixed_for_float;
     bool for_has_scope;
     bool single_precision_constant;
+    enum class c_standardt { C89, C99, C11 } c_standard;
+    static c_standardt default_c_standard();
+    
+    void set_c89() { c_standard=c_standardt::C89; for_has_scope=false; }
+    void set_c99() { c_standard=c_standardt::C99; for_has_scope=true; }
+    void set_c11() { c_standard=c_standardt::C11; for_has_scope=true; }
     
     ieee_floatt::rounding_modet rounding_mode;
 
@@ -57,8 +63,6 @@ public:
     void set_ILP32(); // int=32, long=32, pointer=32
     void set_LP32();  // int=16, long=32, pointer=32
 
-    void set_from_symbol_table(const symbol_tablet &symbol_table);
-    
     // minimum alignment (in structs) measured in bytes
     unsigned alignment;
 
@@ -66,20 +70,43 @@ public:
     // instruction (in bytes)
     unsigned memory_operand_size;
     
-    typedef enum { NO_ENDIANNESS, IS_LITTLE_ENDIAN, IS_BIG_ENDIAN } endiannesst;
+    enum class endiannesst { NO_ENDIANNESS, IS_LITTLE_ENDIAN, IS_BIG_ENDIAN };
     endiannesst endianness;
 
-    typedef enum { NO_OS, OS_LINUX, OS_MACOS, OS_WIN } ost;
+    enum class ost { NO_OS, OS_LINUX, OS_MACOS, OS_WIN };
     ost os;
 
-    typedef enum { NO_ARCH, ARCH_I386, ARCH_X86_64, ARCH_POWER, ARCH_ARM,
-                   ARCH_ALPHA, ARCH_MIPS, ARCH_S390, ARCH_S390X, ARCH_SPARC,
-                   ARCH_IA64, ARCH_X32 } archt;
-    archt arch;
+    static std::string os_to_string(ost);
+    static ost string_to_os(const std::string &);
+
+    irep_idt arch;
+
+    // architecture-specific integer value of null pointer constant
+    bool NULL_is_zero;
+
+    void set_arch_spec_i386();
+    void set_arch_spec_x86_64();
+    void set_arch_spec_power(const irep_idt &subarch);
+    void set_arch_spec_arm(const irep_idt &subarch);
+    void set_arch_spec_alpha();
+    void set_arch_spec_mips(const irep_idt &subarch);
+    void set_arch_spec_s390();
+    void set_arch_spec_s390x();
+    void set_arch_spec_sparc(const irep_idt &subarch);
+    void set_arch_spec_ia64();
+    void set_arch_spec_x32();
+    void set_arch_spec_v850();
+    void set_arch_spec_hppa();
+    void set_arch_spec_sh4();
     
-    typedef enum { NO_MODE, MODE_ANSI, MODE_GCC, MODE_VISUAL_STUDIO,
-                   MODE_CODEWARRIOR, MODE_ARM } modet;
-    modet mode;
+    enum class flavourt { NO_MODE, MODE_ANSI_C_CPP, MODE_GCC_C, MODE_GCC_CPP,
+                          MODE_VISUAL_STUDIO_C_CPP,
+                          MODE_CODEWARRIOR_C_CPP, MODE_ARM_C_CPP };
+    flavourt mode; // the syntax of source files
+
+    enum class preprocessort { NO_PP, PP_GCC, PP_CLANG, PP_VISUAL_STUDIO,
+                               PP_CODEWARRIOR, PP_ARM };
+    preprocessort preprocessor; // the preprocessor to use
 
     std::list<std::string> defines;
     std::list<std::string> undefines;
@@ -87,23 +114,46 @@ public:
     std::list<std::string> include_paths;
     std::list<std::string> include_files;
 
-    typedef enum { LIB_NONE, LIB_FULL } libt;
+    enum class libt { LIB_NONE, LIB_FULL };
     libt lib;
+
     bool string_abstraction;
-    
-  protected:
-    int from_ns(const namespacet &ns, const std::string &what);
   } ansi_c;
+  
+  struct cppt
+  {
+    enum class cpp_standardt { CPP98, CPP03, CPP11, CPP14 } cpp_standard;
+    static cpp_standardt default_cpp_standard();
+
+    void set_cpp98() { cpp_standard=cpp_standardt::CPP98; }
+    void set_cpp03() { cpp_standard=cpp_standardt::CPP03; }
+    void set_cpp11() { cpp_standard=cpp_standardt::CPP11; }
+    void set_cpp14() { cpp_standard=cpp_standardt::CPP14; }
+    
+  } cpp;
   
   struct verilogt
   {
     std::list<std::string> include_paths;
   } verilog;
+  
+  struct javat
+  {
+    typedef std::list<std::string> classpatht;
+    classpatht classpath;
+    irep_idt main_class;
+  } java;
 
   // this is the function to start executing
   std::string main;
   
+  void set_arch(const irep_idt &);
+
+  void set_from_symbol_table(const symbol_tablet &);
+  
   bool set(const cmdlinet &cmdline);
+  
+  void set_classpath(const std::string &cp);
   
   static irep_idt this_architecture();
   static irep_idt this_operating_system();

@@ -6,16 +6,26 @@ Author: CM Wintersteiger, 2006
 
 \*******************************************************************/
 
-#include <iostream>
-#include <cstdlib>
+#ifdef _WIN32
+#define EX_OK 0
+#define EX_USAGE 64
+#define EX_SOFTWARE 70
+#else
+#include <sysexits.h>
+#endif
 
+#include <iostream>
+
+#include <util/string2int.h>
 #include <util/message.h>
 #include <util/prefix.h>
 #include <util/config.h>
+#include <util/get_base_name.h>
+
+#include <cbmc/version.h>
 
 #include "ms_cl_mode.h"
 #include "compile.h"
-#include "version.h"
 
 /*******************************************************************\
 
@@ -37,16 +47,16 @@ static bool is_directory(const std::string &s)
   return last_char=='\\' || last_char=='/';
 }
 
-bool ms_cl_modet::doit()
+int ms_cl_modet::doit()
 {
   if(cmdline.isset('?') || 
      cmdline.isset("help"))
   {
     help();
-    return false;
+    return EX_OK;
   }
 
-  int verbosity=1;
+  unsigned int verbosity=1;
 
   compilet compiler(cmdline);
 
@@ -57,17 +67,17 @@ bool ms_cl_modet::doit()
   #endif
 
   if(cmdline.isset("verbosity"))
-    verbosity=atoi(cmdline.getval("verbosity"));
+    verbosity=unsafe_string2unsigned(cmdline.get_value("verbosity"));
 
-  compiler.set_verbosity(verbosity);
-  set_verbosity(verbosity);
+  compiler.ui_message_handler.set_verbosity(verbosity);
+  ui_message_handler.set_verbosity(verbosity);
 
-  debug("Visual Studio mode");
+  debug() << "Visual Studio mode" << eom;
   
   // get configuration
   config.set(cmdline);
 
-  config.ansi_c.mode=configt::ansi_ct::MODE_VISUAL_STUDIO;
+  config.ansi_c.mode=configt::ansi_ct::flavourt::MODE_VISUAL_STUDIO_C_CPP;
   compiler.object_file_extension="obj";
   
   // determine actions to be undertaken
@@ -83,34 +93,36 @@ bool ms_cl_modet::doit()
 
   if(cmdline.isset("Fo"))
   {
-    compiler.output_file_object=cmdline.getval("Fo");
+    compiler.output_file_object=cmdline.get_value("Fo");
 
     // this could be a directory
-    if(is_directory(compiler.output_file_object))
-    {
-      if(cmdline.args.size()>=1)
-        compiler.output_file_object+=get_base_name(cmdline.args[0])+".obj";
-    }
+    if(is_directory(compiler.output_file_object) &&
+       cmdline.args.size()>=1)
+      compiler.output_file_object+=
+        get_base_name(cmdline.args[0], true)+".obj";
   }
 
   if(cmdline.isset("Fe"))
   {
-    compiler.output_file_executable=cmdline.getval("Fe");
+    compiler.output_file_executable=cmdline.get_value("Fe");
 
     // this could be a directory
-    if(is_directory(compiler.output_file_executable))
-    {
-      if(cmdline.args.size()>=1)
-        compiler.output_file_executable+=get_base_name(cmdline.args[0])+".exe";
-    }
+    if(is_directory(compiler.output_file_executable) &&
+       cmdline.args.size()>=1)
+      compiler.output_file_executable+=
+        get_base_name(cmdline.args[0], true)+".exe";
   }
   else
   {
     // We need at least one argument.
     // CL uses the first file name it gets!
     if(cmdline.args.size()>=1)
-      compiler.output_file_executable=get_base_name(cmdline.args[0])+".exe";
+      compiler.output_file_executable=
+        get_base_name(cmdline.args[0], true)+".exe";
   }
+  
+  if(cmdline.isset('J'))
+    config.ansi_c.char_is_unsigned=true;
 
   if(verbosity>8)
   {
@@ -161,7 +173,7 @@ bool ms_cl_modet::doit()
   }
 
   // Parse input program, convert to goto program, write output
-  return compiler.doit();
+  return compiler.doit() ? EX_USAGE : EX_OK;
 }
 
 /*******************************************************************\

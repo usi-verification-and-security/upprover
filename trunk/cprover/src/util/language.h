@@ -10,17 +10,17 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_LANGUAGE_H
 
 #include <set>
-#include <istream>
-#include <ostream>
+#include <iosfwd>
 #include <string>
+
+#include "message.h"
 
 class symbol_tablet;
 class exprt;
-class message_handlert;
 class namespacet;
 class typet;
 
-class languaget
+class languaget:public messaget
 {
 public:
   // parse file
@@ -28,13 +28,11 @@ public:
   virtual bool preprocess(
     std::istream &instream,
     const std::string &path,
-    std::ostream &outstream,
-    message_handlert &message_handler) { return false; }
+    std::ostream &outstream) { return false; }
   
   virtual bool parse(
     std::istream &instream,
-    const std::string &path,
-    message_handlert &message_handler)=0;
+    const std::string &path)=0;
   
   // add external dependencies of a given module to set
   
@@ -50,21 +48,18 @@ public:
   // final adjustments, e.g., initialization and call to main()
 
   virtual bool final(
-    symbol_tablet &symbol_table,
-    message_handlert &message_handler);
+    symbol_tablet &symbol_table);
 
   // type check interfaces of currently parsed file
 
   virtual bool interfaces(
-    symbol_tablet &symbol_table,
-    message_handlert &message_handler);
+    symbol_tablet &symbol_table);
 
   // type check a module in the currently parsed file
 
   virtual bool typecheck(
     symbol_tablet &symbol_table,
-    const std::string &module,
-    message_handlert &message_handler)=0;
+    const std::string &module)=0;
   
   // language id / description
   
@@ -89,11 +84,15 @@ public:
     std::string &code,
     const namespacet &ns);
 
+  virtual bool type_to_name(
+    const typet &type,
+    std::string &name,
+    const namespacet &ns);
+
   virtual bool to_expr(
     const std::string &code,
     const std::string &module,
     exprt &expr,
-    message_handlert &message_handler,
     const namespacet &ns)=0;
                        
   virtual languaget *new_language()=0;

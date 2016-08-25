@@ -6,14 +6,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#if 0
-#include <util/std_types.h>
-#include <util/prefix.h>
-#include <util/config.h>
-
-#include <ansi-c/expr2c.h>
-#endif
-
 #include "java_bytecode_typecheck.h"
 
 /*******************************************************************\
@@ -59,6 +51,13 @@ void java_bytecode_typecheckt::typecheck_code(codet &code)
     code_ifthenelset &code_ifthenelse=to_code_ifthenelse(code);
     typecheck_expr(code_ifthenelse.cond());
     typecheck_code(code_ifthenelse.then_case());
+    if(code_ifthenelse.else_case().is_not_nil())
+      typecheck_code(code_ifthenelse.else_case());
+  }
+  else if(statement==ID_switch)
+  {
+    code_switcht &code_switch = to_code_switch(code);
+    typecheck_expr(code_switch.value());
   }
   else if(statement==ID_return)
   {

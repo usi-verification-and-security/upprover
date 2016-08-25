@@ -8,17 +8,9 @@ Date: 2012
 
 \*******************************************************************/
 
-#include <iostream>
+#include <util/message.h>
 
 #include "event_graph.h"
-
-//#define DEBUG
-
-#ifdef DEBUG
-#define DEBUG_MESSAGE(a) std::cout<<a<<std::endl
-#else
-#define DEBUG_MESSAGE(a)
-#endif
 
 /*******************************************************************\
 
@@ -52,12 +44,14 @@ void event_grapht::graph_explorert::filter_thin_air(
     it=next;
   }
 
+#ifdef DEBUG
   for(std::set<unsigned>::const_iterator it=thin_air_events.begin();
     it!=thin_air_events.end();
     ++it)
-    std::cout<<egraph[*it]<<";";
+    egraph.message.debug()<<egraph[*it]<<";";
 
-  std::cout<<std::endl;
+  egraph.message.debug() << messaget::eom;
+#endif
 }
 
 /*******************************************************************\
@@ -110,7 +104,7 @@ void event_grapht::graph_explorert::collect_cycles(
     st_it!=order->end(); ++st_it)
   {
     unsigned source=*st_it;
-    DEBUG_MESSAGE("explore " << egraph[source].id);
+    egraph.message.debug() << "explore " << egraph[source].id << messaget::eom;
     backtrack(set_of_cycles, source, source, 
       false, max_po_trans, false, false, false, "", model);
 
@@ -123,7 +117,8 @@ void event_grapht::graph_explorert::collect_cycles(
   }
 
   /* end of collection -- remove spurious by thin-air cycles */
-  filter_thin_air(set_of_cycles);
+  if(egraph.filter_thin_air)
+    filter_thin_air(set_of_cycles);
 }
 
 /*******************************************************************\
@@ -154,9 +149,15 @@ event_grapht::critical_cyclet event_grapht::graph_explorert::extract_cycle(
     unsigned current_vertex=stack.top();
     stack.pop();
 
-    DEBUG_MESSAGE("extract: " << egraph[current_vertex].get_operation() 
+    egraph.message.debug() << "extract: " << egraph[current_vertex].get_operation() 
       << egraph[current_vertex].variable << "@" 
-      << egraph[current_vertex].thread << "~" << egraph[current_vertex].local);
+      << egraph[current_vertex].thread << "~" << egraph[current_vertex].local
+      << messaget::eom;
+
+    if(!new_cycle.has_user_defined_fence)
+    {
+      new_cycle.has_user_defined_fence=egraph[current_vertex].is_fence();
+    }
 
     if(current_vertex==vertex)
       incycle=true;
@@ -196,17 +197,18 @@ bool event_grapht::graph_explorert::backtrack(
   memory_modelt model)
 {
 #ifdef DEBUG
-  for(unsigned i=0; i<80; std::cout << "-", ++i);
-  std::cout << std::endl;
-  std::cout << "marked size:" << marked_stack.size() << std::endl;
+  for(unsigned i=0; i<80; egraph.message.debug() << "-", ++i);
+  egraph.message.debug() << messaget::eom;
+  egraph.message.debug() << "marked size:" << marked_stack.size() 
+    << messaget::eom;
   std::stack<unsigned> tmp;
   while(!point_stack.empty())
   {
-    std::cout << point_stack.top() << " | ";
+    egraph.message.debug() << point_stack.top() << " | ";
     tmp.push(point_stack.top());
     point_stack.pop();
   }
-  std::cout << std::endl;
+  egraph.message.debug() << messaget::eom;
   while(!tmp.empty())
   { 
     point_stack.push(tmp.top());
@@ -214,11 +216,11 @@ bool event_grapht::graph_explorert::backtrack(
   }
   while(!marked_stack.empty())
   {
-    std::cout << marked_stack.top() << " | ";
+    egraph.message.debug() << marked_stack.top() << " | ";
     tmp.push(marked_stack.top());
     marked_stack.pop();
   }
-  std::cout << std::endl;
+  egraph.message.debug() << messaget::eom;
   while(!tmp.empty())
   {
     marked_stack.push(tmp.top());
@@ -230,9 +232,9 @@ bool event_grapht::graph_explorert::backtrack(
   if(filtering(vertex))
     return false;
 
-  DEBUG_MESSAGE("bcktck "<<egraph[vertex].id<<"#"<<vertex<<", "
+  egraph.message.debug() << "bcktck "<<egraph[vertex].id<<"#"<<vertex<<", "
     <<egraph[source].id<<"#"<<source<<" lw:"<<lwfence_met<<" unsafe:"
-    <<unsafe_met);
+    <<unsafe_met << messaget::eom;
   bool f=false;
   bool get_com_only=false;
   bool unsafe_met_updated=unsafe_met;
@@ -260,39 +262,46 @@ bool event_grapht::graph_explorert::backtrack(
     if(lwfence_met && this_vertex.operation!=abstract_eventt::Read)
       return false; //{no_comm=true;get_com_only=false;}//return false;
 
-    /* no more than 4 events per thread */
-    if(this_vertex.operation!=abstract_eventt::Fence
-      && this_vertex.operation!=abstract_eventt::Lwfence
-      && this_vertex.operation!=abstract_eventt::ASMfence)
+    bool has_to_be_unsafe_updated=false;
+    // TODO: propagate this constraint within the optimisation 
+    // -- no optimisation can strongly affect performances
+    /* tab[] can appear several times */
+    if(egraph.ignore_arrays || id2string(this_vertex.variable).find("[]")==std::string::npos) 
     {
-      if(events_per_thread[this_vertex.thread]==4)
-        return false;
-      else
-        events_per_thread[this_vertex.thread]++;
+      /* no more than 4 events per thread */
+      if(this_vertex.operation!=abstract_eventt::Fence
+        && this_vertex.operation!=abstract_eventt::Lwfence
+        && this_vertex.operation!=abstract_eventt::ASMfence)
+      {
+        if(events_per_thread[this_vertex.thread]==4)
+          return false;
+        else
+          events_per_thread[this_vertex.thread]++;
+      }
+
+      /* Multiple re-orderings constraint: if the thread on this cycles contains 
+         more than one, ensure that an unsafe pair is not protected by another 
+         relation in the thread. E.g., in Wx Rx Wy, under TSO, the rfi cannot be 
+         delayed, since the only way to make this transformation matter is to 
+         re-order also the two writes, which is not permitted on TSO. */
+      if(has_to_be_unsafe && point_stack.size() >= 2)
+      {
+        const unsigned previous = point_stack.top();
+        point_stack.pop();
+        const unsigned preprevious = point_stack.top();
+        point_stack.push(previous);
+        if(!egraph[preprevious].unsafe_pair(this_vertex,model)
+          && !(this_vertex.operation==abstract_eventt::Fence
+            || egraph[preprevious].operation==abstract_eventt::Fence
+            || this_vertex.operation==abstract_eventt::Lwfence
+            || egraph[preprevious].operation==abstract_eventt::Lwfence
+            || this_vertex.operation==abstract_eventt::ASMfence
+            || egraph[preprevious].operation==abstract_eventt::ASMfence))
+          return false;
+      }
     }
 
-    /* Multiple re-orderings constraint: if the thread on this cycles contains 
-       more than one, ensure that an unsafe pair is not protected by another 
-       relation in the thread. E.g., in Wx Rx Wy, under TSO, the rfi cannot be 
-       delayed, since the only way to make this transformation matter is to 
-       re-order also the two writes, which is not permitted on TSO. */
-    if(has_to_be_unsafe && point_stack.size() >= 2)
-    {
-      const unsigned previous = point_stack.top();
-      point_stack.pop();
-      const unsigned preprevious = point_stack.top();
-      point_stack.push(previous);
-      if(!egraph[preprevious].unsafe_pair(this_vertex,model)
-        && !(this_vertex.operation==abstract_eventt::Fence
-          || egraph[preprevious].operation==abstract_eventt::Fence
-          || this_vertex.operation==abstract_eventt::Lwfence
-          || egraph[preprevious].operation==abstract_eventt::Lwfence
-          || this_vertex.operation==abstract_eventt::ASMfence
-          || egraph[preprevious].operation==abstract_eventt::ASMfence))
-        return false;
-    }
-
-    bool has_to_be_unsafe_updated = has_to_be_unsafe;
+    has_to_be_unsafe_updated = has_to_be_unsafe;
 
     /* constraint 1.a: there is at most one pair of events per thread
        with different variables. Given that we cannot have more than
@@ -389,14 +398,12 @@ bool event_grapht::graph_explorert::backtrack(
         w_it!=egraph.po_out(vertex).end(); w_it++)
       {
         const unsigned w = w_it->first;
-        if(w < source)
-          egraph.remove_po_edge(vertex,w);
-        else if(w == source && point_stack.size()>=4
+        if(w == source && point_stack.size()>=4
           && (unsafe_met_updated
             || this_vertex.unsafe_pair(egraph[source],model)) )
         {
           critical_cyclet new_cycle = extract_cycle(vertex, source, cycle_nb++);
-          not_thin_air = new_cycle.is_not_thin_air();
+          not_thin_air = !egraph.filter_thin_air || new_cycle.is_not_thin_air();
           if(!not_thin_air)
           {
             for(critical_cyclet::const_iterator e_it=new_cycle.begin();
@@ -404,15 +411,13 @@ bool event_grapht::graph_explorert::backtrack(
               ++e_it)
               thin_air_events.insert(*e_it);
           }
-          if(new_cycle.is_not_uniproc(model) && not_thin_air 
+          if((!egraph.filter_uniproc || new_cycle.is_not_uniproc(model)) && not_thin_air 
             && new_cycle.is_cycle() &&
-#ifndef ASMFENCE
-            new_cycle.is_unsafe(model))
-#else
-            new_cycle.is_unsafe_asm(model))
-#endif
+            new_cycle.is_unsafe(model) /*&&
+            new_cycle.is_unsafe_asm(model)*/)
           {
-            DEBUG_MESSAGE(new_cycle.print_name(model,false));
+            egraph.message.debug() << new_cycle.print_name(model,false) 
+              << messaget::eom;
             set_of_cycles.insert(new_cycle);
 #if 0
             const critical_cyclet* reduced=new_cycle.hide_internals();
@@ -443,7 +448,7 @@ bool event_grapht::graph_explorert::backtrack(
           || this_vertex.unsafe_pair(egraph[source],model)) )
       {
         critical_cyclet new_cycle = extract_cycle(vertex, source, cycle_nb++);
-        not_thin_air = new_cycle.is_not_thin_air();
+        not_thin_air = !egraph.filter_thin_air || new_cycle.is_not_thin_air();
         if(!not_thin_air)
         {
           for(critical_cyclet::const_iterator e_it=new_cycle.begin();
@@ -451,15 +456,13 @@ bool event_grapht::graph_explorert::backtrack(
             ++e_it)
             thin_air_events.insert(*e_it);
         }
-        if(new_cycle.is_not_uniproc(model) && not_thin_air 
+        if((!egraph.filter_uniproc || new_cycle.is_not_uniproc(model)) && not_thin_air 
           && new_cycle.is_cycle() &&
-#ifndef ASMFENCE
-          new_cycle.is_unsafe(model))
-#else
-          new_cycle.is_unsafe_asm(model))
-#endif
+          new_cycle.is_unsafe(model) /*&&
+          new_cycle.is_unsafe_asm(model)*/)
         {
-          DEBUG_MESSAGE(new_cycle.print_name(model,false));
+          egraph.message.debug() << new_cycle.print_name(model,false) 
+            << messaget::eom;
           set_of_cycles.insert(new_cycle);
 #if 0
           const critical_cyclet* reduced=new_cycle.hide_internals();
@@ -551,7 +554,10 @@ bool event_grapht::graph_explorert::backtrack(
 
     if(!egraph[point_stack.top()].unsafe_pair(this_vertex, model))
     {
-      avoid_at_the_end = this_vertex.variable;
+      /* tab[] should never be avoided */
+      if(egraph.ignore_arrays 
+        || id2string(this_vertex.variable).find("[]")==std::string::npos)
+        avoid_at_the_end = this_vertex.variable;
     }
 
     /* skip lwfence by po-transition only if we consider a WR */

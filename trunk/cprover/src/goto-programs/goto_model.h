@@ -22,11 +22,30 @@ public:
   symbol_tablet symbol_table;
   goto_functionst goto_functions;
   
-  void clear()
+  inline void clear()
   {
     symbol_table.clear();
     goto_functions.clear();
   }
+  
+  void output(std::ostream &out)
+  {
+    namespacet ns(symbol_table);
+    goto_functions.output(ns, out);
+  }
+  
+  inline goto_modelt()
+  {
+  }
+  
+  inline goto_modelt(goto_modelt &&other)
+  {
+    symbol_table.swap(other.symbol_table);
+    goto_functions.swap(other.goto_functions);
+  }
+  
+  // copying is likely too expensive
+  goto_modelt(const goto_modelt &) = delete;
 };
 
 #endif

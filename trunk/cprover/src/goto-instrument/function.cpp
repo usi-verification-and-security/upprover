@@ -35,10 +35,8 @@ code_function_callt function_to_call(
 {
   // already there?
   
-  irep_idt full_id="c::"+id2string(id);
-
   symbol_tablet::symbolst::const_iterator s_it=
-    symbol_table.symbols.find(full_id);
+    symbol_table.symbols.find(id);
     
   if(s_it==symbol_table.symbols.end())
   {
@@ -48,25 +46,25 @@ code_function_callt function_to_call(
     
     code_typet function_type;
     function_type.return_type()=empty_typet();
-    function_type.arguments().push_back(
-      code_typet::argumentt(p));
+    function_type.parameters().push_back(
+      code_typet::parametert(p));
 
     symbolt new_symbol;
-    new_symbol.name=full_id;
+    new_symbol.name=id;
     new_symbol.base_name=id;
     new_symbol.type=function_type;
     
     symbol_table.move(new_symbol);
 
-    s_it=symbol_table.symbols.find(full_id);
+    s_it=symbol_table.symbols.find(id);
     assert(s_it!=symbol_table.symbols.end());
   }
 
   // signature is expected to be
   // (type *) -> ...
   if(s_it->second.type.id()!=ID_code ||
-     to_code_type(s_it->second.type).arguments().size()!=1 ||
-     to_code_type(s_it->second.type).arguments()[0].type().id()!=ID_pointer)
+     to_code_type(s_it->second.type).parameters().size()!=1 ||
+     to_code_type(s_it->second.type).parameters()[0].type().id()!=ID_pointer)
   {
     std::string error="function `"+id2string(id)+"' has wrong signature";
     throw error;
@@ -83,7 +81,7 @@ code_function_callt function_to_call(
     typecast_exprt(
       address_of_exprt(index_exprt(
         function_id_string, gen_zero(index_type()))),
-      to_code_type(s_it->second.type).arguments()[0].type());
+      to_code_type(s_it->second.type).parameters()[0].type());
 
   return call;
 }
@@ -113,7 +111,7 @@ void function_enter(
     
     // don't instrument the function to be called,
     // or otherwise this will be recursive
-    if(f_it->first=="c::"+id2string(id))
+    if(f_it->first==id)
       continue;
     
     // patch in a call to `id' at the entry point
@@ -152,7 +150,7 @@ void function_exit(
     
     // don't instrument the function to be called,
     // or otherwise this will be recursive
-    if(f_it->first=="c::"+id2string(id))
+    if(f_it->first==id)
       continue;
     
     // patch in a call to `id' at the exit points

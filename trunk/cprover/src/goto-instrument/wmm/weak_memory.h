@@ -16,6 +16,7 @@ Date: September 2011
 class value_setst;
 class goto_functionst;
 class symbol_tablet;
+class message_handlert;
 
 void weak_memory(
   memory_modelt model,
@@ -27,12 +28,25 @@ void weak_memory(
   unsigned unwinding_bound,
   bool no_cfg_kill,
   bool no_dependencies,
+  loop_strategyt duplicate_body,
   unsigned max_var,
   unsigned max_po_trans,
   bool render_po,
   bool render_file,
   bool render_function,
   bool cav11_option,
-  bool hide_internals);
+  bool hide_internals,
+  message_handlert& message,
+  bool ignore_arrays);
+
+void introduce_temporaries(
+  value_setst &value_sets,
+  symbol_tablet &symbol_table,
+  const irep_idt &function,
+  goto_programt &goto_program,
+#ifdef LOCAL_MAY
+  const goto_functionst::goto_functiont &goto_function,
+#endif
+  messaget& message);
 
 #endif

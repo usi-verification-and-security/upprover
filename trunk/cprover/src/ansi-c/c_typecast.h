@@ -73,12 +73,12 @@ protected:
                  LONGLONG, ULONGLONG,
                  LARGE_SIGNED_INT, LARGE_UNSIGNED_INT,
                  INTEGER, // these are unbounded integers
-                 SINGLE, DOUBLE, LONGDOUBLE, // float
+                 SINGLE, DOUBLE, LONGDOUBLE, FLOAT128, // float
                  RATIONAL, REAL, // these are infinite precision
                  COMPLEX,
                  VOIDPTR, PTR, OTHER };
 
-  c_typet get_c_type(const typet &type);
+  c_typet get_c_type(const typet &type) const;
 
   void implicit_typecast_arithmetic(
     exprt &expr,
@@ -90,9 +90,12 @@ protected:
   virtual void implicit_typecast_followed(
     exprt &expr,
     const typet &src_type,
+    const typet &orig_dest_type,
     const typet &dest_type);
 
   void do_typecast(exprt &dest, const typet &type);
+
+  c_typet minimum_promotion(const typet &type) const;
 };
 
 #endif

@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <iterator>
 #include <algorithm>
 
 #include <util/std_expr.h>
@@ -19,160 +20,38 @@ Author: Daniel Kroening, kroening@kroening.com
 
 /*******************************************************************\
 
-Function: cfgt::build
-
-  Inputs:
-
- Outputs:
-
- Purpose: 
-
-\*******************************************************************/
-
-void cfgt::build(const goto_programt &goto_program)
-{
-  locs.resize(goto_program.instructions.size());
-
-  {  
-    unsigned loc_nr=0;
-  
-    for(goto_programt::const_targett it=goto_program.instructions.begin();
-        it!=goto_program.instructions.end();
-        it++, loc_nr++)
-    {
-      loc_map[it]=loc_nr;
-      locs[loc_nr].t=it;
-    }
-  }
-
-  for(unsigned loc_nr=0; loc_nr<locs.size(); loc_nr++)
-  {
-    loct &loc=locs[loc_nr];
-    const goto_programt::instructiont &instruction=*loc.t;
-    
-    switch(instruction.type)
-    {
-    case GOTO:
-      if(!instruction.guard.is_true())
-        loc.successors.push_back(loc_nr+1);
-        
-      for(goto_programt::targetst::const_iterator
-          t_it=instruction.targets.begin();
-          t_it!=instruction.targets.end();
-          t_it++)
-      {
-        unsigned l=loc_map.find(*t_it)->second;
-        loc.successors.push_back(l); 
-      }
-      break;
-      
-    case START_THREAD:
-      loc.successors.push_back(loc_nr+1);
-        
-      for(goto_programt::targetst::const_iterator
-          t_it=instruction.targets.begin();
-          t_it!=instruction.targets.end();
-          t_it++)
-      {
-        unsigned l=loc_map.find(*t_it)->second;
-        loc.successors.push_back(l); 
-      }
-      break;
-      
-    case RETURN:
-      loc.successors.push_back(locs.size()-1);
-      break;
-      
-    case THROW:
-    case END_FUNCTION:
-    case END_THREAD:
-      break; // no successor
-
-    default:
-      loc.successors.push_back(loc_nr+1);
-    }
-  }  
-}
-
-/*******************************************************************\
-
 Function: local_may_aliast::loc_infot::merge
 
   Inputs:
 
- Outputs:
+ Outputs: return 'true' iff changed
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
 bool local_may_aliast::loc_infot::merge(const loc_infot &src)
 {
-  bool result=false;
+  bool changed=false;
   
-  points_tot::iterator dest_it=points_to.begin();
-
-  for(points_tot::const_iterator
-      src_it=src.points_to.begin();
-      src_it!=src.points_to.end();
-      ) // no it++
+  // do union; this should be amortized linear
+  for(std::size_t i=0; i<src.aliases.size(); i++)
   {
-    if(dest_it==points_to.end() || 
-       src_it->first<dest_it->first)
+    std::size_t root=src.aliases.find(i);
+
+    if(!aliases.same_set(i, root))
     {
-      points_to.insert(dest_it, *src_it);
-      result=true;
-      src_it++;
-      continue;
+      aliases.make_union(i, root);
+      changed=true;
     }
-    else if(dest_it->first<src_it->first)
-    {
-      dest_it++;
-      continue;
-    }
-    
-    assert(dest_it->first==src_it->first);
-      
-    std::set<unsigned> &dest_e=dest_it->second;
-    const std::set<unsigned> &src_e=src_it->second;
-
-    unsigned old_size=dest_e.size();
-    dest_e.insert(src_e.begin(), src_e.end());
-
-    if(dest_e.size()!=old_size)
-      result=true;
-
-    dest_it++;
-    src_it++;
   }
   
-  return result;
+  return changed;
 }
 
 /*******************************************************************\
 
-Function: local_may_aliast::track
-
-  Inputs:
-
- Outputs:
-
- Purpose: 
-
-\*******************************************************************/
-
-bool local_may_aliast::track(const irep_idt &identifier)
-{
-  localst::locals_mapt::const_iterator it=locals.locals_map.find(identifier);
-  if(it==locals.locals_map.end()) return false;
-  if(it->second.id()!=ID_pointer) return false;
-  if(dirty.is_dirty(identifier)) return false;
-  return true;
-}
-
-/*******************************************************************\
-
-Function: local_may_aliast::assign
+Function: local_may_aliast::assign_lhs
 
   Inputs:
 
@@ -190,18 +69,48 @@ void local_may_aliast::assign_lhs(
 {
   if(lhs.id()==ID_symbol)
   {
-    const irep_idt &identifier=to_symbol_expr(lhs).get_identifier();
-
-    if(track(identifier))
+    if(lhs.type().id()==ID_pointer)
     {
-      unsigned dest_pointer=pointers.number(identifier);
-      std::set<unsigned> &dest_set=loc_info_dest.points_to[dest_pointer];
-      dest_set.clear();
-      get_rec(dest_set, rhs, loc_info_src);
+      unsigned dest_pointer=objects.number(lhs);
+
+      // isolate the lhs pointer
+      loc_info_dest.aliases.isolate(dest_pointer);
+      
+      object_sett rhs_set;
+      get_rec(rhs_set, rhs, loc_info_src);
+      
+      // make these all aliases
+      for(object_sett::const_iterator
+          p_it=rhs_set.begin();
+          p_it!=rhs_set.end();
+          p_it++)
+      {
+        loc_info_dest.aliases.make_union(dest_pointer, *p_it);
+      }
     }
   }
   else if(lhs.id()==ID_dereference)
   {
+    // this might invalidate all pointers that are
+    // a) local and dirty
+    // b) global
+    if(lhs.type().id()==ID_pointer)
+    {
+      for(std::size_t i=0; i<objects.size(); i++)
+      {
+        if(objects[i].id()==ID_symbol)
+        {
+          const irep_idt &identifier=to_symbol_expr(objects[i]).get_identifier();
+
+          if(dirty(identifier) || !locals.is_local(identifier))
+          {
+            loc_info_dest.aliases.isolate(i);
+            loc_info_dest.aliases.make_union(i, unknown_object);
+          }
+             
+        }
+      }
+    }
   }
   else if(lhs.id()==ID_index)
   {
@@ -236,25 +145,26 @@ Function: local_may_aliast::get
 
 std::set<exprt> local_may_aliast::get(
   const goto_programt::const_targett t,
-  const exprt &rhs)
+  const exprt &rhs) const
 {
-  cfgt::loc_mapt::const_iterator loc_it=cfg.loc_map.find(t);
+  local_cfgt::loc_mapt::const_iterator loc_it=cfg.loc_map.find(t);
   
   assert(loc_it!=cfg.loc_map.end());
   
   const loc_infot &loc_info_src=loc_infos[loc_it->second];
   
-  std::set<unsigned> result_tmp;
+  object_sett result_tmp;
   get_rec(result_tmp, rhs, loc_info_src);
 
   std::set<exprt> result;
-  for(std::set<unsigned>::const_iterator
+
+  for(object_sett::const_iterator
       it=result_tmp.begin();
       it!=result_tmp.end();
       it++)
   {
     result.insert(objects[*it]);
-  }  
+  }
   
   return result;
 }
@@ -273,15 +183,15 @@ Function: local_may_aliast::aliases
 
 bool local_may_aliast::aliases(
   const goto_programt::const_targett t,
-  const exprt &src1, const exprt &src2)
+  const exprt &src1, const exprt &src2) const
 {
-  cfgt::loc_mapt::const_iterator loc_it=cfg.loc_map.find(t);
+  local_cfgt::loc_mapt::const_iterator loc_it=cfg.loc_map.find(t);
   
   assert(loc_it!=cfg.loc_map.end());
   
   const loc_infot &loc_info_src=loc_infos[loc_it->second];
   
-  std::set<unsigned> tmp1, tmp2;
+  object_sett tmp1, tmp2;
   get_rec(tmp1, src1, loc_info_src);
   get_rec(tmp2, src2, loc_info_src);
 
@@ -292,7 +202,9 @@ bool local_may_aliast::aliases(
   std::list<unsigned> result;
   
   std::set_intersection(
-    tmp1.begin(), tmp1.end(), tmp2.begin(), tmp2.end(), result.begin());
+    tmp1.begin(), tmp1.end(),
+    tmp2.begin(), tmp2.end(),
+    std::back_inserter(result));
   
   return !result.empty();
 }
@@ -310,9 +222,9 @@ Function: local_may_aliast::get_rec
 \*******************************************************************/
 
 void local_may_aliast::get_rec(
-  std::set<unsigned> &dest,
+  object_sett &dest,
   const exprt &rhs,
-  const loc_infot &loc_info_src)
+  const loc_infot &loc_info_src) const
 {
   if(rhs.id()==ID_constant)
   {
@@ -323,19 +235,23 @@ void local_may_aliast::get_rec(
   }
   else if(rhs.id()==ID_symbol)
   {
-    const irep_idt &identifier=to_symbol_expr(rhs).get_identifier();
-    if(track(identifier))
+    if(rhs.type().id()==ID_pointer)
     {
-      unsigned src_pointer=pointers.number(identifier);
-      points_tot::const_iterator src_it=loc_info_src.points_to.find(src_pointer);
-      if(src_it!=loc_info_src.points_to.end())
-      {
-        const std::set<unsigned> &src=src_it->second;
-        dest.insert(src.begin(), src.end());
-      }
+      unsigned src_pointer=objects.number(rhs);
+      
+      dest.insert(src_pointer);
+      
+      for(std::size_t i=0; i<loc_info_src.aliases.size(); i++)
+        if(loc_info_src.aliases.same_set(src_pointer, i))
+          dest.insert(i);
     }
     else
       dest.insert(unknown_object);
+  }
+  else if(rhs.id()==ID_if)
+  {
+    get_rec(dest, to_if_expr(rhs).false_case(), loc_info_src);
+    get_rec(dest, to_if_expr(rhs).true_case(), loc_info_src);
   }
   else if(rhs.id()==ID_address_of)
   {
@@ -343,17 +259,39 @@ void local_may_aliast::get_rec(
     
     if(object.id()==ID_symbol)
     {
-      unsigned object_nr=objects.number(object);
+      unsigned object_nr=objects.number(rhs);
       dest.insert(object_nr);
+
+      for(std::size_t i=0; i<loc_info_src.aliases.size(); i++)
+        if(loc_info_src.aliases.same_set(object_nr, i))
+          dest.insert(i);
     }
     else if(object.id()==ID_index)
     {
       const index_exprt &index_expr=to_index_expr(object);
       if(index_expr.array().id()==ID_symbol)
       {
-        index_exprt tmp=index_expr;
-        tmp.index()=gen_zero(index_type());
-        dest.insert(objects.number(tmp));
+        index_exprt tmp1=index_expr;
+        tmp1.index()=gen_zero(index_type());
+        address_of_exprt tmp2(tmp1);
+        unsigned object_nr=objects.number(tmp2);
+        dest.insert(object_nr);
+
+        for(std::size_t i=0; i<loc_info_src.aliases.size(); i++)
+          if(loc_info_src.aliases.same_set(object_nr, i))
+            dest.insert(i);
+      }
+      else if(index_expr.array().id()==ID_string_constant)
+      {
+        index_exprt tmp1=index_expr;
+        tmp1.index()=gen_zero(index_type());
+        address_of_exprt tmp2(tmp1);
+        unsigned object_nr=objects.number(tmp2);
+        dest.insert(object_nr);
+
+        for(std::size_t i=0; i<loc_info_src.aliases.size(); i++)
+          if(loc_info_src.aliases.same_set(object_nr, i))
+            dest.insert(i);
       }
       else
         dest.insert(unknown_object);
@@ -373,7 +311,7 @@ void local_may_aliast::get_rec(
     }
     else if(rhs.operands().size()==2)
     {
-      // one must be pointer
+      // one must be pointer, one an integer
       if(rhs.op0().type().id()==ID_pointer)
       {
         get_rec(dest, rhs.op0(), loc_info_src);
@@ -409,16 +347,21 @@ void local_may_aliast::get_rec(
   {
     dest.insert(unknown_object);
   }
-  else if(rhs.id()==ID_sideeffect)
+  else if(rhs.id()==ID_side_effect)
   {
     const side_effect_exprt &side_effect_expr=to_side_effect_expr(rhs);
     const irep_idt &statement=side_effect_expr.get_statement();
+
     if(statement==ID_malloc)
     {
       dest.insert(objects.number(exprt(ID_dynamic_object)));
     }
     else
       dest.insert(unknown_object);
+  }
+  else if(rhs.is_nil())
+  {
+    // this means 'empty'
   }
   else
     dest.insert(unknown_object);
@@ -438,40 +381,47 @@ Function: local_may_aliast::build
 
 void local_may_aliast::build(const goto_functiont &goto_function)
 {
-  if(cfg.locs.empty()) return;
+  if(cfg.nodes.empty()) return;
 
   work_queuet work_queue;
-  work_queue.push(0);  
+
+  // put all nodes into work queue  
+  for(local_cfgt::node_nrt n=0; n<cfg.nodes.size(); n++)
+    work_queue.push(n);  
   
   unknown_object=objects.number(exprt(ID_unknown));
   
-  loc_infos.resize(cfg.locs.size());
+  loc_infos.resize(cfg.nodes.size());
   
+  #if 0
   // feed in sufficiently bad defaults
-  for(code_typet::argumentst::const_iterator
-      it=goto_function.type.arguments().begin();
-      it!=goto_function.type.arguments().end();
+  for(code_typet::parameterst::const_iterator
+      it=goto_function.type.parameters().begin();
+      it!=goto_function.type.parameters().end();
       it++)
   {
     const irep_idt &identifier=it->get_identifier();
-    if(track(identifier))
-      loc_infos[0].points_to[pointers.number(identifier)].insert(unknown_object);
+    if(is_tracked(identifier))
+      loc_infos[0].points_to[objects.number(identifier)].objects.insert(unknown_object);
   }
+  #endif
 
+  #if 0
   for(localst::locals_mapt::const_iterator
       l_it=locals.locals_map.begin();
       l_it!=locals.locals_map.end();
       l_it++)
   {
-    if(track(l_it->first))
-      loc_infos[0].points_to[pointers.number(l_it->first)].insert(unknown_object);
+    if(is_tracked(l_it->first))
+      loc_infos[0].aliases.make_union(objects.number(l_it->second), unknown_object);
   }
+  #endif
 
   while(!work_queue.empty())
   {
-    unsigned loc_nr=work_queue.top();
-    const cfgt::loct &loc=cfg.locs[loc_nr];
-    const goto_programt::instructiont &instruction=*loc.t;
+    local_cfgt::node_nrt loc_nr=work_queue.top();
+    const local_cfgt::nodet &node=cfg.nodes[loc_nr];
+    const goto_programt::instructiont &instruction=*node.t;
     work_queue.pop();
     
     const loc_infot &loc_info_src=loc_infos[loc_nr];
@@ -505,15 +455,33 @@ void local_may_aliast::build(const goto_functiont &goto_function)
         const code_function_callt &code_function_call=to_code_function_call(instruction.code);
         if(code_function_call.lhs().is_not_nil())
           assign_lhs(code_function_call.lhs(), nil_exprt(), loc_info_src, loc_info_dest);
+
+        // this might invalidate all pointers that are
+        // a) local and dirty
+        // b) global
+        for(std::size_t i=0; i<objects.size(); i++)
+        {
+          if(objects[i].id()==ID_symbol)
+          {
+            const irep_idt &identifier=to_symbol_expr(objects[i]).get_identifier();
+
+            if(dirty(identifier) || !locals.is_local(identifier))
+            {
+              loc_info_dest.aliases.isolate(i);
+              loc_info_dest.aliases.make_union(i, unknown_object);
+            }
+               
+          }
+        }
       }
       break;
 
     default:;
     }
 
-    for(cfgt::successorst::const_iterator
-        it=loc.successors.begin();
-        it!=loc.successors.end();
+    for(local_cfgt::successorst::const_iterator
+        it=node.successors.begin();
+        it!=node.successors.end();
         it++)
     {
       if(loc_infos[*it].merge(loc_info_dest))
@@ -543,32 +511,31 @@ void local_may_aliast::output(
 
   forall_goto_program_instructions(i_it, goto_function.body)
   {
-    out << "**** " << i_it->location << std::endl;
+    out << "**** " << i_it->source_location << "\n";
 
     const loc_infot &loc_info=loc_infos[l];
-
-    for(points_tot::const_iterator
-        p_it=loc_info.points_to.begin();
-        p_it!=loc_info.points_to.end();
-        p_it++)
+    
+    for(std::size_t i=0; i<loc_info.aliases.size(); i++)
     {
-      out << "  " << pointers[p_it->first] << " = { ";
-
-      for(std::set<unsigned>::const_iterator
-          s_it=p_it->second.begin();
-          s_it!=p_it->second.end();
-          s_it++)
+      if(loc_info.aliases.count(i)!=1 &&
+         loc_info.aliases.find(i)==i) // root?
       {
-        if(s_it!=p_it->second.begin()) out << ", ";
-        out << from_expr(ns, "", objects[*s_it]);
-      }
+        out << '{';
+        for(std::size_t j=0; j<loc_info.aliases.size(); j++)
+          if(loc_info.aliases.find(j)==i)
+          {
+            assert(j<objects.size());
+            out << ' ' << from_expr(ns, "", objects[j]);
+          }
         
-      out << " }" << std::endl;
+        out << " }";
+        out << "\n";
+      }
     }
 
-    out << std::endl;
+    out << "\n";
     goto_function.body.output_instruction(ns, "", out, i_it);
-    out << std::endl;
+    out << "\n";
     
     l++;
   }

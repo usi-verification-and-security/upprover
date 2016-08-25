@@ -24,29 +24,24 @@ public:
   virtual bool preprocess(
     std::istream &instream,
     const std::string &path,
-    std::ostream &outstream,
-    message_handlert &message_handler);
+    std::ostream &outstream);
 
   virtual bool parse(
     std::istream &instream,
-    const std::string &path,
-    message_handlert &message_handler);
+    const std::string &path);
 
   virtual bool typecheck(
     symbol_tablet &symbol_table,
-    const std::string &module,
-    message_handlert &message_handler);
+    const std::string &module);
 
   bool merge_symbol_table(
     symbol_tablet &dest,
     symbol_tablet &src,
-    message_handlert &message_handler,
     const std::string &module,
     class replace_symbolt &replace_symbol) const; 
 
   virtual bool final(
-    symbol_tablet &symbol_table,
-    message_handlert &message_handler);
+    symbol_tablet &symbol_table);
 
   virtual void show_parse(std::ostream &out);
 
@@ -66,12 +61,16 @@ public:
     std::string &code,
     const namespacet &ns);
 
+  virtual bool type_to_name(
+    const typet &type,
+    std::string &name,
+    const namespacet &ns);
+
   // conversion from string into expression
   virtual bool to_expr(
     const std::string &code,
     const std::string &module,
     exprt &expr,
-    message_handlert &message_handler,
     const namespacet &ns);
 
   virtual languaget *new_language()
@@ -91,7 +90,7 @@ protected:
 
   virtual std::string main_symbol()
   {
-    return "c::main";
+    return "main";
   }
 };
 

@@ -10,15 +10,6 @@ Date: 2012
 
 #include "abstract_event.h"
 
-//#define DEBUG
-//#define ASMFENCE
-
-#ifdef DEBUG
-#define DEBUG_MESSAGE(a) std::cout<<a<<std::endl
-#else
-#define DEBUG_MESSAGE(a)
-#endif
-
 /*******************************************************************\
 
 Function: abstract_eventt::unsafe_pair_lwfence_param

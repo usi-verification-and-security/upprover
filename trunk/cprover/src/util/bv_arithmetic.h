@@ -9,7 +9,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_BV_ARITHMETIC_H
 #define CPROVER_BV_ARITHMETIC_H
 
-#include <ostream>
+#include <iosfwd>
 
 #include "mp_arith.h"
 #include "format_spec.h"
@@ -20,7 +20,7 @@ class typet;
 class bv_spect
 {
 public:
-  unsigned width;
+  std::size_t width;
   bool is_signed;
   
   bv_spect(const typet &type)

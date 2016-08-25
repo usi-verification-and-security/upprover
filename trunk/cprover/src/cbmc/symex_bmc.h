@@ -25,13 +25,47 @@ public:
     symex_targett &_target);
 
   // To show progress
-  irept last_location;
+  source_locationt last_source_location;
 
-  // control unwinding  
-  unsigned long max_unwind;
-  std::map<irep_idt, long> unwind_set;
+  // Control unwinding.
+  
+  void set_unwind_limit(unsigned limit)
+  {
+    max_unwind=limit;
+    max_unwind_is_set=true;
+  }
+  
+  void set_unwind_thread_loop_limit(
+    unsigned thread_nr,
+    const irep_idt &id,
+    unsigned limit)
+  {
+    thread_loop_limits[thread_nr][id]=limit;
+  }
+
+  void set_unwind_loop_limit(
+    const irep_idt &id,
+    unsigned limit)
+  {
+    loop_limits[id]=limit;
+  }
 
 protected:  
+  // We have
+  // 1) a global limit (max_unwind)
+  // 2) a limit per loop, all threads
+  // 3) a limit for a particular thread.
+  // We use the most specific of the above.
+
+  unsigned max_unwind;
+  bool max_unwind_is_set;
+
+  typedef hash_map_cont<irep_idt, unsigned, irep_id_hash> loop_limitst;
+  loop_limitst loop_limits;
+  
+  typedef std::map<unsigned, loop_limitst> thread_loop_limitst;
+  thread_loop_limitst thread_loop_limits;
+
   //
   // overloaded from goto_symext
   //
@@ -46,6 +80,7 @@ protected:
 
   virtual bool get_unwind_recursion(
     const irep_idt &identifier,
+    const unsigned thread_nr,
     unsigned unwind);
     
   virtual void no_body(const irep_idt &identifier);

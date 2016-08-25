@@ -20,7 +20,6 @@ Author: CM Wintersteiger, 2006
 #include <cbmc/version.h>
 
 #include "goto_cc_mode.h"
-#include "version.h"
 
 /*******************************************************************\
 
@@ -35,7 +34,7 @@ Function: goto_cc_modet::goto_cc_modet
 \*******************************************************************/
 
 goto_cc_modet::goto_cc_modet(goto_cc_cmdlinet &_cmdline):
-  language_uit("goto-cc " GOTOCC_VERSION, _cmdline),
+  language_uit("goto-cc " CBMC_VERSION, _cmdline),
   cmdline(_cmdline)
 {
   register_languages();
@@ -73,8 +72,7 @@ void goto_cc_modet::help()
 {
   std::cout <<
   "\n"
-  "* *         goto-cc " GOTOCC_VERSION "  - Copyright (C) 2006-2012          * *\n"
-  "* *                   based on CBMC " CBMC_VERSION "                     * *\n"
+  "* *         goto-cc " CBMC_VERSION "  - Copyright (C) 2006-2014          * *\n"
   "* *        Daniel Kroening, Christoph Wintersteiger         * *\n"
   "* *                 kroening@kroening.com                   * *\n"
   "\n";
@@ -110,25 +108,22 @@ int goto_cc_modet::main(int argc, const char **argv)
 
   try
   {
-    if(doit())
-      return EX_USAGE; // error
-    else
-      return EX_OK;
+    return doit();
   }
 
   catch(const char *e)
   {
-    error(e);
+    error() << e << eom;
     return EX_SOFTWARE;
   }
 
   catch(const std::string e)
   {
-    error(e);
+    error() << e << eom;
     return EX_SOFTWARE;
   }
 
-  catch(int e)
+  catch(int)
   {
     return EX_SOFTWARE;
   }

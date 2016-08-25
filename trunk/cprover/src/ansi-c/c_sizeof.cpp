@@ -37,15 +37,29 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
      type.id()==ID_unsignedbv ||
      type.id()==ID_floatbv ||
      type.id()==ID_fixedbv ||
-     type.id()==ID_c_enum ||
-     type.id()==ID_incomplete_c_enum)
+     type.id()==ID_c_bool)
   {
     // We round up to bytes.
     // See special treatment for bit-fields below.
-    unsigned bits=type.get_int(ID_width);
-    unsigned bytes=bits/8;
+    std::size_t bits=to_bitvector_type(type).get_width();
+    std::size_t bytes=bits/8;
     if((bits%8)!=0) bytes++;
     dest=from_integer(bytes, size_type());
+  }
+  else if(type.id()==ID_incomplete_c_enum)
+  {
+    // refuse to give a size
+    return nil_exprt();
+  }
+  else if(type.id()==ID_c_enum)
+  {
+    // check the subtype
+    dest=sizeof_rec(type.subtype());
+  }
+  else if(type.id()==ID_c_enum_tag)
+  {
+    // follow the tag
+    dest=sizeof_rec(ns.follow_tag(to_c_enum_tag_type(type)));
   }
   else if(type.id()==ID_pointer)
   {
@@ -53,14 +67,15 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
     if(type.get_bool(ID_C_ptr32))
       return from_integer(4, size_type());
              
-    unsigned bits=config.ansi_c.pointer_width;
-    unsigned bytes=bits/8;
+    std::size_t bits=config.ansi_c.pointer_width;
+    std::size_t bytes=bits/8;
     if((bits%8)!=0) bytes++;
     dest=from_integer(bytes, size_type());
   }
   else if(type.id()==ID_bool)
   {
     // We fit booleans into a byte.
+    // Don't confuse with c_bool, which is a bit-vector type.
     dest=from_integer(1, size_type());
   }
   else if(type.id()==ID_array)
@@ -120,17 +135,11 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
       else if(sub_type.id()==ID_code)
       {
       }
-      else if(it->get_is_bit_field())
+      else if(sub_type.id()==ID_c_bit_field)
       {
-        // this needs to be a signedbv/unsignedbv/enum
-        if(sub_type.id()!=ID_signedbv &&
-           sub_type.id()!=ID_unsignedbv &&
-           sub_type.id()!=ID_c_enum)
-          return nil_exprt();
-          
         // We just sum them up.
         // This assumes they are properly padded.
-        bit_field_width+=sub_type.get_int(ID_width);
+        bit_field_width+=to_c_bit_field_type(sub_type).get_width();
       }
       else
       {
@@ -163,22 +172,28 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
         continue;
 
       const typet &sub_type=it->type();
+      
+      exprt tmp;
 
+      if(sub_type.id()==ID_c_bit_field)
       {
-        exprt tmp=sizeof_rec(sub_type);
+        std::size_t width=to_c_bit_field_type(sub_type).get_width();
+        tmp=
+          from_integer(width/8, size_type());
+      }
+      else
+      {
+        tmp=sizeof_rec(sub_type);
 
         if(tmp.is_nil())
           return nil_exprt();
-          
-        if(max_size.is_nil())
-          max_size=tmp;
-        else
-          max_size=if_exprt(
-            binary_relation_exprt(max_size, ID_lt, tmp),
-            tmp, max_size);
-
-        simplify(max_size, ns);
       }
+
+      max_size=if_exprt(
+        binary_relation_exprt(max_size, ID_lt, tmp),
+        tmp, max_size);
+
+      simplify(max_size, ns);
     }
 
     dest=max_size;
@@ -291,18 +306,11 @@ exprt c_sizeoft::c_offsetof(
     if(sub_type.id()==ID_code)
     {
     }
-    else if(it->get_is_bit_field())
+    else if(sub_type.id()==ID_c_bit_field)
     {
-      // this needs to be a signedbv/unsignedbv
-      // or an enum
-      if(sub_type.id()!=ID_signedbv &&
-         sub_type.id()!=ID_unsignedbv &&
-         sub_type.id()!=ID_c_enum)
-        return nil_exprt();
-        
       // We just sum them up.
       // This assumes they are properly padded.
-      bit_field_width+=sub_type.get_int(ID_width);
+      bit_field_width+=to_c_bit_field_type(sub_type).get_width();
     }
     else
     {

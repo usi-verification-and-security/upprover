@@ -97,7 +97,7 @@ public:
   bool cpp_is_pod(const typet &type) const;
 
   codet cpp_constructor(
-    const locationt &location,
+    const source_locationt &source_location,
     const exprt &object,
     const exprt::operandst &operands);
 
@@ -132,14 +132,16 @@ protected:
   //
   // Templates
   //
-  void salvage_default_parameters(
+  void salvage_default_arguments(
     const template_typet &old_type,
     template_typet &new_type);
 
+  #if 0
   void check_template_restrictions(
     const irept &cpp_name,
     const irep_idt &final_identifier,
     const typet &final_type);
+  #endif
 
   void convert_template_declaration(cpp_declarationt &declaration);
 
@@ -168,14 +170,15 @@ protected:
     const typet &function_type);
 
   cpp_template_args_tct typecheck_template_args(
-    const locationt &location,
+    const source_locationt &source_location,
     const symbolt &template_symbol,
     const cpp_template_args_non_tct &template_args);
-    
+
+  // template instantiations    
   class instantiationt
   {
   public:
-    locationt location;
+    source_locationt source_location;
     irep_idt identifier;
     cpp_template_args_tct full_template_args;
   };
@@ -205,7 +208,7 @@ protected:
   };
   
   const symbolt &class_template_symbol(
-    const locationt &location,
+    const source_locationt &source_location,
     const symbolt &template_symbol,
     const cpp_template_args_tct &specialization_template_args,
     const cpp_template_args_tct &full_template_args);  
@@ -214,14 +217,14 @@ protected:
     const typet &type);
 
   const symbolt &instantiate_template(
-    const locationt &location,
+    const source_locationt &source_location,
     const symbolt &symbol,
     const cpp_template_args_tct &specialization_template_args,
     const cpp_template_args_tct &full_template_args,
     const typet &specialization=typet(ID_nil));
 
   void elaborate_class_template(
-    const locationt &location,
+    const source_locationt &source_location,
     const symbol_typet &type);
 
   unsigned template_counter;
@@ -232,26 +235,22 @@ protected:
   std::string template_suffix(
     const cpp_template_args_tct &template_args);
 
-  void convert_arguments(
+  void convert_parameters(
     const irep_idt &mode,
     code_typet &function_type);
 
-  void convert_argument(
+  void convert_parameter(
     const irep_idt &mode,
-    code_typet::argumentt &argument);
+    code_typet::parametert &parameter);
 
   //
   // Misc
   //
 
-  void find_constructor(
-    const typet &dest_type,
-    exprt &symbol_expr);
-
   void default_ctor(
-    const locationt& location,
+    const source_locationt &source_location,
     const irep_idt &base_name,
-    cpp_declarationt& ctor) const;
+    cpp_declarationt &ctor) const;
 
   void default_cpctor(
     const symbolt&, cpp_declarationt& cpctor) const;
@@ -276,7 +275,7 @@ protected:
     const struct_union_typet &struct_union_type);
 
   void full_member_initialization(
-    const struct_typet &struct_type,
+    const struct_union_typet &struct_union_type,
     irept &initializers);
 
   bool find_cpctor(const symbolt& symbol)const;
@@ -289,17 +288,17 @@ protected:
     irep_idt &identifier);
 
   bool get_component(
-      const locationt& location,
-      const exprt& object,
-      const irep_idt& component_name,
-      exprt& member);
+    const source_locationt &source_location,
+    const exprt& object,
+    const irep_idt& component_name,
+    exprt& member);
 
-  void new_temporary(const locationt &location,
+  void new_temporary(const source_locationt &source_location,
                      const typet &,
                      const exprt::operandst &ops,
                      exprt &temporary);
 
-  void new_temporary(const locationt &location,
+  void new_temporary(const source_locationt &source_location,
                      const typet &,
                      const exprt &op,
                      exprt &temporary);
@@ -353,7 +352,6 @@ protected:
 
   // types
 
-  bool convert_typedef(typet &type);
   void typecheck_type(typet &type);
 
   cpp_scopet &typecheck_template_parameters(
@@ -386,6 +384,7 @@ protected:
 
   void put_compound_into_scope(const struct_union_typet::componentt &component);
   void typecheck_compound_body(symbolt &symbol);
+  void typecheck_compound_body(struct_union_typet &type) { assert(false); };
   void typecheck_enum_body(symbolt &symbol);
   void typecheck_function_bodies();
   void typecheck_compound_bases(struct_typet &type);
@@ -400,14 +399,14 @@ protected:
   static bool has_volatile(const typet &type);
 
   void typecheck_member_function(
-    const irep_idt &compound_symbol,
-    struct_typet::componentt  &component,
+    const irep_idt &compound_identifier,
+    struct_typet::componentt &component,
     irept &initializers,
     const typet &method_qualifier,
     exprt &value);
 
   void adjust_method_type(
-    const irep_idt &compound_symbol,
+    const irep_idt &compound_identifier,
     typet &method_type,
     const typet &method_qualifier);
 
@@ -417,12 +416,12 @@ protected:
   void zero_initializer(
     const exprt &object,
     const typet &type,
-    const locationt &location,
+    const source_locationt &source_location,
     exprt::operandst &ops);
 
   // code conversion
   virtual void typecheck_code(codet &code);
-  virtual void typecheck_catch(codet &code);
+  virtual void typecheck_try_catch(codet &code);
   virtual void typecheck_member_initializer(codet &code);
   virtual void typecheck_decl(codet &code);
   virtual void typecheck_block(codet &code);
@@ -433,7 +432,7 @@ protected:
   const struct_typet &this_struct_type();
 
   codet cpp_destructor(
-      const locationt &location,
+      const source_locationt &source_location,
       const typet &type,
       const exprt &object);
 
@@ -465,11 +464,11 @@ protected:
   void typecheck_expr_sizeof(exprt &expr);
   void typecheck_expr_delete(exprt &expr);
   void typecheck_expr_side_effect(side_effect_exprt &expr);
-  void typecheck_side_effect_assignment(exprt &expr);
+  void typecheck_side_effect_assignment(side_effect_exprt &expr);
   void typecheck_side_effect_inc_dec(side_effect_exprt &expr);
   void typecheck_expr_typecast(exprt &expr);
-  void typecheck_expr_index(exprt& expr);
-  void typecheck_expr_rel(exprt& expr);
+  void typecheck_expr_index(exprt &expr);
+  void typecheck_expr_rel(binary_relation_exprt &expr);
   void typecheck_expr_comma(exprt &expr);
 
   void typecheck_function_call_arguments(

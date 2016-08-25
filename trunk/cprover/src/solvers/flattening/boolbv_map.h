@@ -47,10 +47,12 @@ public:
     {
     }
 
-    unsigned width;
+    std::size_t width;
     bvtypet bvtype;
     typet type;
     literal_mapt literal_map;
+    
+    std::string get_value(const propt &) const;
   };
   
   typedef hash_map_cont<irep_idt, map_entryt, irep_id_hash> mappingt;  
@@ -65,7 +67,7 @@ public:
   void get_literals(
     const irep_idt &identifier,
     const typet &type,
-    const unsigned width,
+    const std::size_t width,
     bvt &literals);
 
   void set_literals(

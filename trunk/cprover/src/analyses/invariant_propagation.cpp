@@ -136,7 +136,7 @@ void invariant_propagationt::get_objects(
 {
   std::list<exprt> object_list;
 
-  get_objects_rec(symbol_expr(symbol), object_list);
+  get_objects_rec(symbol.symbol_expr(), object_list);
   
   for(std::list<exprt>::const_iterator
       it=object_list.begin();
@@ -426,6 +426,6 @@ void invariant_propagationt::simplify(goto_programt &goto_program)
     ::simplify(simplified_guard, ns);
     
     if(invariant_set.implies(simplified_guard).is_true())
-      i_it->guard.make_true();
+      i_it->guard=true_exprt();
   }
 }

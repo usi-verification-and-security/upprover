@@ -10,7 +10,6 @@ Author: CM Wintersteiger
 #include <cstdlib>
 #include <fstream>
 
-#include <util/i2string.h>
 #include <util/mp_arith.h>
 
 #include "qbf_qube_core.h"
@@ -84,11 +83,10 @@ propt::resultt qbf_qube_coret::prop_solve()
     return P_SATISFIABLE;
 
   {
-    std::string msg=
-      "QuBE: "+
-      i2string(no_variables())+" variables, "+
-      i2string(no_clauses())+" clauses";
-    messaget::status(msg);
+    messaget::status() << 
+      "QuBE: " <<
+      no_variables() << " variables, " <<
+      no_clauses() << " clauses" << eom;
   }
 
   std::string result_tmp_file="qube.out";
@@ -104,8 +102,9 @@ propt::resultt qbf_qube_coret::prop_solve()
   std::string options="";
 
   // solve it
-  system(("QuBE " + options + " " + qbf_tmp_file +
+  int res=system(("QuBE " + options + " " + qbf_tmp_file +
           " > "+result_tmp_file).c_str());
+  assert(0 == res);
 
   bool result=false;
 
@@ -127,9 +126,9 @@ propt::resultt qbf_qube_coret::prop_solve()
       {
         mp_integer b(line.substr(2).c_str());
         if(b<0)
-          assignment[b.negate().to_ulong()] = false;
+          assignment[integer2unsigned(b.negate())] = false;
         else
-          assignment[b.to_ulong()] = true;
+          assignment[integer2unsigned(b)] = true;
       }
       else if(line=="s cnf 1")
       {
@@ -147,7 +146,7 @@ propt::resultt qbf_qube_coret::prop_solve()
 
     if(!result_found)
     {
-      messaget::error("QuBE failed: unknown result");
+      messaget::error() << "QuBE failed: unknown result" << eom;
       return P_ERROR;
     }
   }
@@ -157,12 +156,12 @@ propt::resultt qbf_qube_coret::prop_solve()
 
   if(result)
   {
-    messaget::status("QuBE: TRUE");
+    messaget::status() << "QuBE: TRUE" << eom;
     return P_SATISFIABLE;
   }
   else
   {
-    messaget::status("QuBE: FALSE");
+    messaget::status() << "QuBE: FALSE" << eom;
     return P_UNSATISFIABLE;
   }
 }

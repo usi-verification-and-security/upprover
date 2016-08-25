@@ -9,7 +9,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef DSTRING_H
 #define DSTRING_H
 
-#include <ostream>
+#include <iosfwd>
 
 #include "string_container.h"
 
@@ -17,15 +17,27 @@ class dstring
 {
 public:
   // this is safe for static objects
-  inline dstring():no(0)
+  #ifdef __GNUC__
+  constexpr 
+  #endif
+  dstring():no(0)
   {
   }
 
   // this is safe for static objects
   // the 2nd argument is to avoid accidental conversions
-  inline dstring(unsigned _no, unsigned):no(_no)
+  #ifdef __GNUC__
+  constexpr 
+  #endif
+  dstring(unsigned _no, unsigned):no(_no)
   {
   }
+
+  #if 0
+  // This conversion allows the use of dstrings
+  // in switch ... case statements.  
+  constexpr operator int() const { return no; }
+  #endif
 
   // this one is not safe for static objects
   inline dstring(const char *s):no(string_container[s])
@@ -44,7 +56,7 @@ public:
     return no==0; // string 0 is exactly the empty string
   }
   
-  inline char operator[](unsigned i) const
+  inline char operator[](size_t i) const
   {
     return as_string()[i];
   }

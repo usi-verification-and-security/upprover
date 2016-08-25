@@ -38,6 +38,7 @@ public:
   }
   
   array_exprt to_array_expr() const;
+  bool from_array_expr(const array_exprt &);
 };
 
 const string_constantt &to_string_constant(const exprt &expr);

@@ -1,15 +1,15 @@
 SRC = c_typecast.cpp ansi_c_y.tab.cpp ansi_c_lex.yy.cpp ansi_c_parser.cpp \
-      expr2c.cpp ansi_c_language.cpp c_sizeof.cpp \
-      c_types.cpp trans_unit.cpp ansi_c_typecheck.cpp \
-      c_preprocess.cpp \
+      expr2c.cpp ansi_c_language.cpp c_sizeof.cpp ansi_c_scope.cpp \
+      c_types.cpp ansi_c_typecheck.cpp \
+      c_preprocess.cpp c_storage_spec.cpp \
       c_typecheck_base.cpp c_typecheck_initializer.cpp \
       c_typecheck_typecast.cpp c_typecheck_code.cpp \
       c_typecheck_expr.cpp c_typecheck_type.cpp string_constant.cpp \
       c_qualifiers.cpp c_typecheck_argc_argv.cpp ansi_c_parse_tree.cpp \
-      preprocessor_line.cpp ansi_c_convert.cpp ansi_c_convert_type.cpp \
+      preprocessor_line.cpp ansi_c_convert_type.cpp \
       type2name.cpp cprover_library.cpp anonymous_member.cpp \
       printf_formatter.cpp ansi_c_internal_additions.cpp padding.cpp \
-      ansi_c_declaration.cpp designator.cpp \
+      ansi_c_declaration.cpp designator.cpp ansi_c_entry_point.cpp \
       literals/parse_float.cpp literals/unescape_string.cpp \
       literals/convert_float_literal.cpp \
       literals/convert_character_literal.cpp \
@@ -29,7 +29,8 @@ CLEANFILES = ansi-c$(LIBEXT) \
   gcc_builtin_headers_generic.inc gcc_builtin_headers_ia32.inc \
   arm_builtin_headers.inc cw_builtin_headers.inc \
   gcc_builtin_headers_arm.inc gcc_builtin_headers_alpha.inc \
-  gcc_builtin_headers_mips.inc gcc_builtin_headers_power.inc
+  gcc_builtin_headers_mips.inc gcc_builtin_headers_power.inc \
+	clang_builtin_headers.inc gcc_builtin_headers_ia32-2.inc
 
 all: ansi-c$(LIBEXT)
 
@@ -59,18 +60,22 @@ file_converter$(EXEEXT): file_converter.cpp
 	$(LINKNATIVE)
 
 ifeq ($(BUILD_ENV),MinGW)
-  platform_unavail = library/err.c library/threads.c
+  platform_unavail = library/java.io.c library/err.c library/threads.c
 else
-  platform_unavail = library/threads.c
+  platform_unavail = library/java.io.c library/threads.c
 endif
 library_check: library/*.c
 	for f in $(filter-out $(platform_unavail), $^) ; do \
-		$(CC) -S -Wall -Werror -pedantic -Wextra -std=gnu99 $$f -o __libcheck.s \
-			-include library/cprover.h -D__CPROVER_bool=_Bool -fno-builtin \
-			-D_Thread_local=volatile \
+		cp $$f __libcheck.c ; \
+		sed -i 's/__builtin_[^v]/s&/' __libcheck.c ; \
+		sed -i 's/__sync_/s&/' __libcheck.c ; \
+		sed -i 's/__noop/s&/' __libcheck.c ; \
+		$(CC) -std=gnu99 -E -include library/cprover.h -D__CPROVER_bool=_Bool \
+			-D__CPROVER_thread_local=__thread -DLIBRARY_CHECK -o __libcheck.i __libcheck.c ; \
+		$(CC) -S -Wall -Werror -pedantic -Wextra -std=gnu99 __libcheck.i -o __libcheck.s \
 			-Wno-unused-label -Wno-uninitialized ; \
 		ec=$$? ; \
-		$(RM) __libcheck.s ; \
+		$(RM) __libcheck.s __libcheck.i __libcheck.c ; \
 		[ $$ec -eq 0 ] || exit $$ec ; \
 	done
 	touch $@
@@ -78,47 +83,28 @@ library_check: library/*.c
 cprover_library.inc: library/converter$(EXEEXT) library/*.c
 	cat library/*.c | library/converter$(EXEEXT) > $@
 
-gcc_builtin_headers_ia32.inc: gcc_builtin_headers_ia32.h file_converter$(EXEEXT)
-	./file_converter$(EXEEXT) < gcc_builtin_headers_ia32.h > $@
-
-gcc_builtin_headers_alpha.inc: gcc_builtin_headers_alpha.h file_converter$(EXEEXT)
-	./file_converter$(EXEEXT) < gcc_builtin_headers_alpha.h > $@
-
-gcc_builtin_headers_arm.inc: gcc_builtin_headers_arm.h file_converter$(EXEEXT)
-	./file_converter$(EXEEXT) < gcc_builtin_headers_arm.h > $@
-
-gcc_builtin_headers_mips.inc: gcc_builtin_headers_mips.h file_converter$(EXEEXT)
-	./file_converter$(EXEEXT) < gcc_builtin_headers_mips.h > $@
-
-gcc_builtin_headers_power.inc: gcc_builtin_headers_power.h file_converter$(EXEEXT)
-	./file_converter$(EXEEXT) < gcc_builtin_headers_power.h > $@
-
-gcc_builtin_headers_generic.inc: gcc_builtin_headers_generic.h file_converter$(EXEEXT)
-	./file_converter$(EXEEXT) < gcc_builtin_headers_generic.h > $@
-
-arm_builtin_headers.inc: arm_builtin_headers.h file_converter$(EXEEXT)
-	./file_converter$(EXEEXT) < arm_builtin_headers.h > $@
-
-cw_builtin_headers.inc: cw_builtin_headers.h file_converter$(EXEEXT)
-	./file_converter$(EXEEXT) < cw_builtin_headers.h > $@
+%.inc: %.h file_converter$(EXEEXT)
+	./file_converter$(EXEEXT) < $< > $@
 
 cprover_library.cpp: cprover_library.inc
 
 ansi_c_internal_additions$(OBJEXT): gcc_builtin_headers_generic.inc
 ansi_c_internal_additions$(OBJEXT): gcc_builtin_headers_ia32.inc
+ansi_c_internal_additions$(OBJEXT): gcc_builtin_headers_ia32-2.inc
 ansi_c_internal_additions$(OBJEXT): gcc_builtin_headers_alpha.inc
 ansi_c_internal_additions$(OBJEXT): gcc_builtin_headers_arm.inc
 ansi_c_internal_additions$(OBJEXT): gcc_builtin_headers_mips.inc
 ansi_c_internal_additions$(OBJEXT): gcc_builtin_headers_power.inc
 ansi_c_internal_additions$(OBJEXT): arm_builtin_headers.inc
 ansi_c_internal_additions$(OBJEXT): cw_builtin_headers.inc
+ansi_c_internal_additions$(OBJEXT): clang_builtin_headers.inc
 
 generated_files: cprover_library.inc gcc_builtin_headers_generic.inc \
 	gcc_builtin_headers_ia32.inc gcc_builtin_headers_alpha.inc \
 	gcc_builtin_headers_arm.inc gcc_builtin_headers_mips.inc \
 	gcc_builtin_headers_power.inc arm_builtin_headers.inc \
 	cw_builtin_headers.inc ansi_c_y.tab.cpp ansi_c_lex.yy.cpp \
-	ansi_c_y.tab.h
+	ansi_c_y.tab.h clang_builtin_headers.inc gcc_builtin_headers_ia32-2.inc
 
 ###############################################################################
 

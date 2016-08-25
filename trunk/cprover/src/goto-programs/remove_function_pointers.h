@@ -8,8 +8,8 @@ Date: June 2003
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_FUNCTION_POINTERS_H
-#define CPROVER_GOTO_FUNCTION_POINTERS_H
+#ifndef CPROVER_REMOVE_FUNCTION_POINTERS_H
+#define CPROVER_REMOVE_FUNCTION_POINTERS_H
 
 #include "goto_model.h"
 
@@ -22,6 +22,12 @@ void remove_function_pointers(
 void remove_function_pointers(
   symbol_tablet &symbol_table,
   goto_functionst &goto_functions,
+  bool add_safety_assertion);
+
+bool remove_function_pointers(
+  symbol_tablet &symbol_table,
+  const goto_functionst &goto_functions,
+  goto_programt &goto_program,
   bool add_safety_assertion);
 
 #endif

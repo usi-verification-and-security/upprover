@@ -10,13 +10,16 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_BASIC_SYMEX_EQUATION_H
 
 #include <list>
-#include <ostream>
+#include <iosfwd>
+
+#include <util/merge_irep.h>
 
 #include <goto-programs/goto_program.h>
+#include <goto-programs/goto_trace.h>
+
 #include <solvers/prop/literal.h>
 
 #include "symex_target.h"
-#include "goto_trace.h"
 
 class decision_proceduret;
 class namespacet;
@@ -31,22 +34,21 @@ public:
   // read event
   virtual void shared_read(
     const exprt &guard,
-    const symbol_exprt &ssa_object,
-    const symbol_exprt &original_object,
+    const ssa_exprt &ssa_object,
+    unsigned atomic_section_id,
     const sourcet &source);
 
   // write event
   virtual void shared_write(
     const exprt &guard,
-    const symbol_exprt &ssa_object,
-    const symbol_exprt &original_object,
+    const ssa_exprt &ssa_object,
+    unsigned atomic_section_id,
     const sourcet &source);
 
   // assignment to a variable - lhs must be symbol
   virtual void assignment(
     const exprt &guard,
-    const symbol_exprt &ssa_lhs,
-    const symbol_exprt &original_lhs,
+    const ssa_exprt &ssa_lhs,
     const exprt &ssa_full_lhs,
     const exprt &original_full_lhs,
     const exprt &ssa_rhs,
@@ -56,15 +58,14 @@ public:
   // declare fresh variable - lhs must be symbol
   virtual void decl(
     const exprt &guard,
-    const symbol_exprt &ssa_lhs,
-    const symbol_exprt &original_lhs_object,
-    const sourcet &source);
+    const ssa_exprt &ssa_lhs,
+    const sourcet &source,
+    assignment_typet assignment_type);
 
   // note the death of a variable - lhs must be symbol
   virtual void dead(
     const exprt &guard,
-    const symbol_exprt &ssa_lhs,
-    const symbol_exprt &original_lhs_object,
+    const ssa_exprt &ssa_lhs,
     const sourcet &source);
 
   // record a function call
@@ -119,9 +120,14 @@ public:
     const std::string &msg,
     const sourcet &source);
 
+  // record a goto
+  virtual void goto_instruction(
+    const exprt &guard,
+    const exprt &cond,
+    const sourcet &source);
+
   // record a (global) constraint
   virtual void constraint(
-    const exprt &guard,
     const exprt &cond,
     const std::string &msg,
     const sourcet &source);
@@ -131,12 +137,28 @@ public:
     const exprt &guard,
     const sourcet &source);
 
+  // record memory barrier
+  virtual void memory_barrier(
+    const exprt &guard,
+    const sourcet &source);
+
+  // record atomic section
+  virtual void atomic_begin(
+    const exprt &guard,
+    unsigned atomic_section_id,
+    const sourcet &source);
+  virtual void atomic_end(
+    const exprt &guard,
+    unsigned atomic_section_id,
+    const sourcet &source);
+
   void convert(prop_convt &prop_conv);
   void convert_assignments(decision_proceduret &decision_procedure) const;
   void convert_decls(prop_convt &prop_conv) const;
   void convert_assumptions(prop_convt &prop_conv);
   void convert_assertions(prop_convt &prop_conv);
   void convert_constraints(decision_proceduret &decision_procedure) const;
+  void convert_goto_instructions(prop_convt &prop_conv);
   void convert_guards(prop_convt &prop_conv);
   void convert_io(decision_proceduret &decision_procedure);
 
@@ -151,6 +173,7 @@ public:
     bool is_assert() const          { return type==goto_trace_stept::ASSERT; }
     bool is_assume() const          { return type==goto_trace_stept::ASSUME; }
     bool is_assignment() const      { return type==goto_trace_stept::ASSIGNMENT; }
+    bool is_goto() const            { return type==goto_trace_stept::GOTO; }
     bool is_constraint() const      { return type==goto_trace_stept::CONSTRAINT; }
     bool is_location() const        { return type==goto_trace_stept::LOCATION; }
     bool is_output() const          { return type==goto_trace_stept::OUTPUT; }
@@ -160,19 +183,23 @@ public:
     bool is_shared_read() const     { return type==goto_trace_stept::SHARED_READ; }
     bool is_shared_write() const    { return type==goto_trace_stept::SHARED_WRITE; }
     bool is_spawn() const           { return type==goto_trace_stept::SPAWN; }
+    bool is_memory_barrier() const  { return type==goto_trace_stept::MEMORY_BARRIER; }
     bool is_atomic_begin() const    { return type==goto_trace_stept::ATOMIC_BEGIN; }
     bool is_atomic_end() const      { return type==goto_trace_stept::ATOMIC_END; }
+
+    // we may choose to hide
+    bool hidden;
     
     exprt guard;
     literalt guard_literal;
 
     // for ASSIGNMENT and DECL
-    symbol_exprt ssa_lhs, original_lhs_object;
+    ssa_exprt ssa_lhs;
     exprt ssa_full_lhs, original_full_lhs;
     exprt ssa_rhs;
     assignment_typet assignment_type;
     
-    // for ASSUME/ASSERT/CONSTRAINT
+    // for ASSUME/ASSERT/GOTO/CONSTRAINT
     exprt cond_expr; 
     literalt cond_literal;
     std::string comment;
@@ -185,19 +212,26 @@ public:
     
     // for function call/return
     irep_idt identifier;
+
+    // for SHARED_READ/SHARED_WRITE and ATOMIC_BEGIN/ATOMIC_END
+    unsigned atomic_section_id;
     
     // for slicing
     bool ignore;
     
     SSA_stept():
+      type(goto_trace_stept::NONE),
+      hidden(false),
       guard(static_cast<const exprt &>(get_nil_irep())),
-      ssa_lhs(static_cast<const symbol_exprt &>(get_nil_irep())),
-      original_lhs_object(static_cast<const symbol_exprt &>(get_nil_irep())),
+      guard_literal(const_literal(false)),
+      ssa_lhs(static_cast<const ssa_exprt &>(get_nil_irep())),
       ssa_full_lhs(static_cast<const exprt &>(get_nil_irep())),
       original_full_lhs(static_cast<const exprt &>(get_nil_irep())),
       ssa_rhs(static_cast<const exprt &>(get_nil_irep())),
       cond_expr(static_cast<const exprt &>(get_nil_irep())),
+      cond_literal(const_literal(false)),
       formatted(false),
+      atomic_section_id(0),
       ignore(false)
     {
     }
@@ -261,6 +295,10 @@ public:
   
 protected:
   const namespacet &ns;
+
+  // for enforcing sharing in the expressions stored
+  merge_irept merge_irep;
+  void merge_ireps(SSA_stept &SSA_step);
 };
 
 extern inline bool operator<(

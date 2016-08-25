@@ -6,10 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cstdlib>
+#include <ostream>
 
 #include "symbol.h"
-#include "location.h"
+#include "source_location.h"
 #include "std_expr.h"
 
 /*******************************************************************\
@@ -26,39 +26,35 @@ Function: symbolt::show
    
 void symbolt::show(std::ostream &out) const
 {
-  out << "  " << name << std::endl;
-  out << "    type:  " << type.pretty(4) << std::endl
-      << "    value: " << value.pretty(4) << std::endl;
+  out << "  " << name << '\n';
+  out << "    type:  " << type.pretty(4) << '\n'
+      << "    value: " << value.pretty(4) << '\n';
 
   out << "  flags:";
-  if(is_lvalue)          out << " lvalue";
-  if(is_static_lifetime) out << " static_lifetime";
-  if(is_thread_local)    out << " thread_local";
-  if(is_file_local)      out << " file_local";
-  if(is_type)            out << " type";
-  if(is_extern)          out << " extern";
-  if(is_input)           out << " input";
-  if(is_output)          out << " output";
-  if(is_macro)           out << " macro";
-  if(is_parameter)       out << " parameter";
-  if(is_property)        out << " property";
-  if(is_state_var)       out << " state_var";
-  if(mode!="")           out << " mode=" << mode;
-  if(base_name!="")      out << " base_name=" << base_name;
-  if(module!="")         out << " module=" << module;
-  if(pretty_name!="")    out << " pretty_name=" << pretty_name;
-  out << std::endl;
-  out << "  location: " << location << std::endl;
+  if(is_lvalue)            out << " lvalue";
+  if(is_static_lifetime)   out << " static_lifetime";
+  if(is_thread_local)      out << " thread_local";
+  if(is_file_local)        out << " file_local";
+  if(is_type)              out << " type";
+  if(is_extern)            out << " extern";
+  if(is_input)             out << " input";
+  if(is_output)            out << " output";
+  if(is_macro)             out << " macro";
+  if(is_parameter)         out << " parameter";
+  if(is_auxiliary)         out << " auxiliary";
+  if(is_weak)              out << " weak";
+  if(is_property)          out << " property";
+  if(is_state_var)         out << " state_var";
+  if(is_exported)          out << " exported";
+  if(is_volatile)          out << " volatile";
+  if(!mode.empty())        out << " mode=" << mode;
+  if(!base_name.empty())   out << " base_name=" << base_name;
+  if(!module.empty())      out << " module=" << module;
+  if(!pretty_name.empty()) out << " pretty_name=" << pretty_name;
+  out << '\n';
+  out << "  location: " << location << '\n';
 
-  out << "  hierarchy:";
-
-  for(std::list<irep_idt>::const_iterator it=hierarchy.begin();
-      it!=hierarchy.end();
-      it++)
-    out << " " << *it;
-
-  out << std::endl;  
-  out << std::endl;  
+  out << '\n';  
 }
 
 /*******************************************************************\
@@ -111,6 +107,8 @@ void symbolt::to_irep(irept &dest) const
   if(is_output) dest.set("is_output", true);
   if(is_state_var) dest.set("is_statevar", true);
   if(is_parameter) dest.set("is_parameter", true);
+  if(is_auxiliary) dest.set("is_auxiliary", true);
+  if(is_weak) dest.set("is_weak", true);
   if(is_property) dest.set("is_property", true);
   if(is_lvalue) dest.set("is_lvalue", true);
   if(is_static_lifetime) dest.set("is_static_lifetime", true);
@@ -136,7 +134,7 @@ void symbolt::from_irep(const irept &src)
 {
   type=static_cast<const typet &>(src.find(ID_type));
   value=static_cast<const exprt &>(src.find(ID_value));
-  location=static_cast<const locationt &>(src.find(ID_location));
+  location=static_cast<const source_locationt &>(src.find(ID_location));
 
   name=src.get(ID_name);
   module=src.get(ID_module);
@@ -151,6 +149,8 @@ void symbolt::from_irep(const irept &src)
   is_output=src.get_bool("is_output");
   is_state_var=src.get_bool("is_state_var");
   is_parameter=src.get_bool("is_parameter");
+  is_auxiliary=src.get_bool("is_auxiliary");
+  is_weak=src.get_bool("is_weak");
   is_property=src.get_bool("property");
   is_lvalue=src.get_bool("lvalue");
   is_static_lifetime=src.get_bool("static_lifetime");
@@ -193,7 +193,10 @@ void symbolt::swap(symbolt &b)
   SYM_SWAP2(is_input);
   SYM_SWAP2(is_output);
   SYM_SWAP2(is_state_var);
+  SYM_SWAP2(is_property);
   SYM_SWAP2(is_parameter);
+  SYM_SWAP2(is_auxiliary);
+  SYM_SWAP2(is_weak);
   SYM_SWAP2(is_lvalue);
   SYM_SWAP2(is_static_lifetime);
   SYM_SWAP2(is_thread_local);
@@ -216,8 +219,6 @@ Function: symbolt::symbol_expr
 
 symbol_exprt symbolt::symbol_expr() const
 {
-  symbol_exprt tmp(type);
-  tmp.set_identifier(name);
-  return tmp;
+  return symbol_exprt(name, type);
 }
 

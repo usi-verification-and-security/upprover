@@ -11,7 +11,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/language.h>
 
-#include "java_bytecode_parse_tree.h"
+#include "java_class_loader.h"
 
 class java_bytecode_languaget:public languaget
 {
@@ -19,22 +19,18 @@ public:
   virtual bool preprocess(
     std::istream &instream,
     const std::string &path,
-    std::ostream &outstream,
-    message_handlert &message_handler);
+    std::ostream &outstream);
 
   virtual bool parse(
     std::istream &instream,
-    const std::string &path,
-    message_handlert &message_handler);
+    const std::string &path);
              
   virtual bool typecheck(
     symbol_tablet &context,
-    const std::string &module,
-    message_handlert &message_handler);
+    const std::string &module);
 
   virtual bool final(
-    symbol_tablet &context,
-    message_handlert &message_handler);
+    symbol_tablet &context);
 
   virtual void show_parse(std::ostream &out);
   
@@ -55,7 +51,6 @@ public:
     const std::string &code,
     const std::string &module,
     exprt &expr,
-    message_handlert &message_handler,
     const namespacet &ns);
                        
   virtual languaget *new_language()
@@ -68,8 +63,8 @@ public:
   virtual void modules_provided(std::set<std::string> &modules);  
   
 protected:
-  java_bytecode_parse_treet parse_tree;
-  std::string parse_path;
+  irep_idt main_class;
+  java_class_loadert java_class_loader;
 };
  
 languaget *new_java_bytecode_language();

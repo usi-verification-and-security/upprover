@@ -107,7 +107,7 @@ bool language_filest::parse()
 
     if(!infile)
     {
-      error("Failed to open "+it->first);
+      error() << "Failed to open " << it->first << eom;
       return true;
     }
 
@@ -115,9 +115,9 @@ bool language_filest::parse()
 
     languaget &language=*(it->second.language);
 
-    if(language.parse(infile, it->first, get_message_handler()))
+    if(language.parse(infile, it->first))
     {
-      error("Parsing of "+it->first+" failed");
+      error() << "Parsing of " << it->first << " failed" << eom;
       return true;
     }
 
@@ -148,7 +148,7 @@ bool language_filest::typecheck(symbol_tablet &symbol_table)
   for(filemapt::iterator it=filemap.begin();
       it!=filemap.end(); it++)
   {
-    if(it->second.language->interfaces(symbol_table, get_message_handler()))
+    if(it->second.language->interfaces(symbol_table))
       return true;
   }
 
@@ -190,7 +190,7 @@ bool language_filest::typecheck(symbol_tablet &symbol_table)
       it!=filemap.end(); it++)
   {
     if(it->second.modules.empty())
-      if(it->second.language->typecheck(symbol_table, "", get_message_handler()))
+      if(it->second.language->typecheck(symbol_table, ""))
         return true;
   }
 
@@ -227,7 +227,7 @@ bool language_filest::final(
       it!=filemap.end(); it++)
   {
     if(languages.insert(it->second.language->id()).second)
-      if(it->second.language->final(symbol_table, get_message_handler()))
+      if(it->second.language->final(symbol_table))
         return true;
   }
 
@@ -252,7 +252,7 @@ bool language_filest::interfaces(
   for(filemapt::iterator it=filemap.begin();
       it!=filemap.end(); it++)
   {
-    if(it->second.language->interfaces(symbol_table, get_message_handler()))
+    if(it->second.language->interfaces(symbol_table))
       return true;
   }
 
@@ -281,7 +281,7 @@ bool language_filest::typecheck_module(
 
   if(it==modulemap.end())
   {
-    error("found no file that provides module "+module);
+    error() << "found no file that provides module " << module << eom;
     return true;
   }
 
@@ -313,7 +313,7 @@ bool language_filest::typecheck_module(
 
   if(module.in_progress)
   {
-    error("circular dependency in "+module.name);
+    error() << "circular dependency in " << module.name << eom;
     return true;
   }
 
@@ -339,9 +339,9 @@ bool language_filest::typecheck_module(
 
   // type check it
 
-  status("Type-checking "+module.name);
+  status() << "Type-checking " << module.name << eom;
 
-  if(module.file->language->typecheck(symbol_table, module.name, get_message_handler()))
+  if(module.file->language->typecheck(symbol_table, module.name))
   {
     module.in_progress=false;
     return true;

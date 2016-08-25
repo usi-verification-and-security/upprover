@@ -26,7 +26,7 @@ Function: boolbvt::convert_add_sub
 
 \*******************************************************************/
 
-void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_add_sub(const exprt &expr)
 {
   const typet &type=ns.follow(expr.type());
   
@@ -37,16 +37,16 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
      type.id()!=ID_range &&
      type.id()!=ID_complex &&
      type.id()!=ID_vector)
-    return conversion_failed(expr, bv);
+    return conversion_failed(expr);
 
-  unsigned width=boolbv_width(type);
+  std::size_t width=boolbv_width(type);
   
   if(width==0)
-    return conversion_failed(expr, bv);
+    return conversion_failed(expr);
     
   const exprt::operandst &operands=expr.operands();
 
-  if(operands.size()==0)
+  if(operands.empty())
     throw "operator "+expr.id_string()+" takes at least one operand";
 
   const exprt &op0=expr.op0();
@@ -57,7 +57,7 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
     throw "add/sub with mixed types";
   }
 
-  bv=convert_bv(op0);
+  bvt bv=convert_bv(op0);
 
   if(bv.size()!=width)
     throw "convert_add_sub: unexpected operand 0 width";
@@ -96,20 +96,20 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
     {
       const typet &subtype=ns.follow(type.subtype());
     
-      unsigned sub_width=boolbv_width(subtype);
+      std::size_t sub_width=boolbv_width(subtype);
 
       if(sub_width==0 || width%sub_width!=0)
         throw "convert_add_sub: unexpected vector operand width";
 
-      unsigned size=width/sub_width;
+      std::size_t size=width/sub_width;
       bv.resize(width);
 
-      for(unsigned i=0; i<size; i++)
+      for(std::size_t i=0; i<size; i++)
       {
         bvt tmp_op;
         tmp_op.resize(sub_width);
 
-        for(unsigned j=0; j<tmp_op.size(); j++)
+        for(std::size_t j=0; j<tmp_op.size(); j++)
         {
           assert(i*sub_width+j<op.size());
           tmp_op[j]=op[i*sub_width+j];
@@ -118,7 +118,7 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
         bvt tmp_result;
         tmp_result.resize(sub_width);
 
-        for(unsigned j=0; j<tmp_result.size(); j++)
+        for(std::size_t j=0; j<tmp_result.size(); j++)
         {
           assert(i*sub_width+j<bv.size());
           tmp_result[j]=bv[i*sub_width+j];
@@ -126,6 +126,7 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
         
         if(type.subtype().id()==ID_floatbv)
         {
+          // needs to change due to rounding mode
           float_utilst float_utils(prop);
           float_utils.spec=to_floatbv_type(subtype);
           tmp_result=float_utils.add_sub(tmp_result, tmp_op, subtract);
@@ -135,7 +136,7 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
       
         assert(tmp_result.size()==sub_width);
         
-        for(unsigned j=0; j<tmp_result.size(); j++)
+        for(std::size_t j=0; j<tmp_result.size(); j++)
         {
           assert(i*sub_width+j<bv.size());
           bv[i*sub_width+j]=tmp_result[j];
@@ -144,6 +145,7 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
     }
     else if(type.id()==ID_floatbv)
     {
+      // needs to change due to rounding mode
       float_utilst float_utils(prop);
       float_utils.spec=to_floatbv_type(arithmetic_type);
       bv=float_utils.add_sub(bv, op, subtract);
@@ -153,5 +155,7 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
     else
       bv=bv_utils.add_sub(bv, op, subtract);
   }
+  
+  return bv;
 }
 

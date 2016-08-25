@@ -18,7 +18,7 @@ Author: Daniel Kroening, kroening@kroening.com
 /*! \defgroup gr_symbol_table Symbol Table
 */
 
-#include <ostream>
+#include <iosfwd>
 #include <map>
 
 #include "hash_cont.h"
@@ -76,9 +76,6 @@ public:
    
   void show(std::ostream &out) const;
   
-  // deprecated -- will go away
-  const irept &value(const irep_idt &name) const;
-  
   inline void swap(symbol_tablet &other)
   {
     symbols.swap(other.symbols);
@@ -93,11 +90,6 @@ public:
 
   symbolt &lookup(const irep_idt &identifier);
   const symbolt &lookup(const irep_idt &identifier) const;
-};
-
-// old name, will go away
-class contextt:public symbol_tablet
-{
 };
 
 std::ostream &operator << (

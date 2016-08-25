@@ -13,7 +13,7 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 /*******************************************************************\
 
-Function: memory_model_baset::~memory_model_baset
+Function: memory_model_baset::memory_model_baset
 
   Inputs: 
 
@@ -63,46 +63,6 @@ symbol_exprt memory_model_baset::nondet_bool_symbol(
   return symbol_exprt(
     "memory_model::choice_"+prefix+i2string(var_cnt++),
     bool_typet());
-}
-
-/*******************************************************************\
-
-Function: memory_model_baset::build_event_lists
-
-  Inputs: 
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void memory_model_baset::build_event_lists(
-  symex_target_equationt &equation)
-{
-  // a per-thread counter
-  std::map<unsigned, unsigned> counter;
-
-  for(eventst::const_iterator
-      e_it=equation.SSA_steps.begin();
-      e_it!=equation.SSA_steps.end();
-      e_it++)
-  {
-    if(is_shared_read(e_it) || is_shared_write(e_it))
-    {
-      unsigned thread_nr=e_it->source.thread_nr;    
-      a_rect &a_rec=address_map[address(e_it)];
-    
-      if(is_shared_read(e_it))
-        a_rec.reads.push_back(e_it);
-      else // must be write
-        a_rec.writes.push_back(e_it);
-
-      // maps an event id to a per-thread counter
-      unsigned cnt=counter[thread_nr]++;
-      numbering[e_it]=cnt;
-    }
-  }
 }
 
 /*******************************************************************\
@@ -159,7 +119,7 @@ void memory_model_baset::read_from(symex_target_equationt &equation)
         r_it!=a_rec.reads.end();
         r_it++)
     {
-      event_it r=*r_it;
+      const event_it r=*r_it;
       
       exprt::operandst rf_some_operands;
       rf_some_operands.reserve(a_rec.writes.size());
@@ -170,52 +130,38 @@ void memory_model_baset::read_from(symex_target_equationt &equation)
           w_it!=a_rec.writes.end();
           ++w_it)
       {
-        event_it w=*w_it;
+        const event_it w=*w_it;
         
         // rf cannot contradict program order
-        if(po(*r_it, *w_it))
+        if(po(r, w))
           continue; // contradicts po
 
         bool is_rfi=
           w->source.thread_nr==r->source.thread_nr;
 
-        if(is_rfi)
-        {
-          // We only read from the most recent write of the same thread.
-          // Extra wsi constraints ensure that even a
-          // write with guard false will have the proper value.
-          
-          event_it e_it=*w_it;
-          bool is_most_recent=true;
-          for(++e_it; e_it!=*r_it && is_most_recent; ++e_it)
-            is_most_recent&=!e_it->is_assignment() ||
-                            address(e_it)!=address(*r_it);
-
-          if(!is_most_recent)
-            continue;
-        }
-
         symbol_exprt s=nondet_bool_symbol("rf");
         
         // record the symbol
         choice_symbols[
-          std::pair<event_it, event_it>(*r_it, *w_it)]=s;
+          std::make_pair(r, w)]=s;
 
         // We rely on the fact that there is at least
         // one write event that has guard 'true'.
         implies_exprt read_from(s,
-            and_exprt((is_rfi ? true_exprt() : w->guard),
+            and_exprt(w->guard,
               equal_exprt(r->ssa_lhs, w->ssa_lhs)));
 
-        equation.constraint(
-          true_exprt(), read_from, is_rfi?"rfi":"rf", r->source);
+        // Uses only the write's guard as precondition, read's guard
+        // follows from rf_some
+        add_constraint(equation,
+          read_from, is_rfi?"rfi":"rf", r->source);
 
         if(!is_rfi)
         {
           // if r reads from w, then w must have happened before r
           exprt cond=implies_exprt(s, before(w, r));
-          equation.constraint(
-            true_exprt(), cond, "rf-order", r->source);
+          add_constraint(equation,
+            cond, "rf-order", r->source);
         }
 
         rf_some_operands.push_back(s);
@@ -224,8 +170,10 @@ void memory_model_baset::read_from(symex_target_equationt &equation)
       // value equals the one of some write
       exprt rf_some;
 
+      // uninitialised global symbol like symex_dynamic::dynamic_object*
+      // or *$object
       if(rf_some_operands.empty())
-        continue; // don't add blank constraints
+        continue;
       else if(rf_some_operands.size()==1)
         rf_some=rf_some_operands.front();
       else
@@ -234,8 +182,10 @@ void memory_model_baset::read_from(symex_target_equationt &equation)
         rf_some.operands().swap(rf_some_operands);
       }
 
-      equation.constraint(
-        r->guard, rf_some, "rf-some", r->source);
+      // Add the read's guard, each of the writes' guards is implied
+      // by each entry in rf_some
+      add_constraint(equation,
+        implies_exprt(r->guard, rf_some), "rf-some", r->source);
     }
   }
 }

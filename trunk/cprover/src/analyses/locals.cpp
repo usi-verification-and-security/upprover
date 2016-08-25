@@ -30,17 +30,19 @@ void localst::build(const goto_functiont &goto_function)
     if(it->is_decl())
     {
       const code_declt &code_decl=to_code_decl(it->code);
-      locals_map[code_decl.get_identifier()]=code_decl.symbol().type();
+      locals_map[code_decl.get_identifier()]=
+        to_symbol_expr(code_decl.symbol());
     }
       
-  const code_typet::argumentst &arguments=
-    goto_function.type.arguments();
+  const code_typet::parameterst &parameters=
+    goto_function.type.parameters();
       
-  for(code_typet::argumentst::const_iterator
-      it=arguments.begin();
-      it!=arguments.end();
+  for(code_typet::parameterst::const_iterator
+      it=parameters.begin();
+      it!=parameters.end();
       it++)
-    locals_map[it->get_identifier()]=it->type();
+    locals_map[it->get_identifier()]=
+      symbol_exprt(it->get_identifier(), it->type());
 }
 
 /*******************************************************************\
@@ -61,5 +63,5 @@ void localst::output(std::ostream &out) const
       it=locals_map.begin();
       it!=locals_map.end();
       it++)
-    out << it->first << std::endl;
+    out << it->first << "\n";
 }

@@ -24,13 +24,16 @@ public:
   }
 
   void output(std::ostream &out) const;
-  
+
+  // Returns true for all procedure-local variables,
+  // not including those with static storage duration,
+  // but including the function parameters.
   inline bool is_local(const irep_idt &identifier) const
   {
     return locals_map.find(identifier)!=locals_map.end();
   }
 
-  typedef std::map<irep_idt, typet> locals_mapt;
+  typedef std::map<irep_idt, symbol_exprt> locals_mapt;
   locals_mapt locals_map;
   
 protected:

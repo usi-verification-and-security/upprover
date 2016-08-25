@@ -194,7 +194,7 @@ propt::resultt qbf_bdd_coret::prop_solve()
       solver_text() + ": "+
       i2string(no_variables())+" variables, "+
       i2string(matrix->nodeCount())+" nodes";
-    messaget::status(msg);
+    messaget::status() << msg << messaget::eom;
   }
 
   model_bdds.resize(no_variables()+1, NULL);
@@ -356,8 +356,6 @@ literalt qbf_bdd_coret::lor(literalt a, literalt b)
 {
   literalt nl = new_variable();
   
-  std::cout << "LOR2" << std::endl;
-  
   BDD abdd(*bdd_variable_map[a.var_no()]);
   BDD bbdd(*bdd_variable_map[b.var_no()]);
   
@@ -388,8 +386,6 @@ literalt qbf_bdd_coret::lor(const bvt &bv)
       return const_literal(true);
   
   literalt nl = new_variable();
-  
-  std::cout << "LORX" << std::endl;
   
   BDD &orbdd = *bdd_variable_map[nl.var_no()];
 
@@ -423,7 +419,7 @@ Function: qbf_bdd_coret::compress_certificate
 
 void qbf_bdd_coret::compress_certificate(void)
 {
-  status("Compressing Certificate");
+  status() << "Compressing Certificate" << eom;
 
   for(quantifierst::const_iterator it=quantifiers.begin();
       it!=quantifiers.end();
@@ -556,7 +552,7 @@ const exprt qbf_bdd_certificatet::f_get(literalt l)
 
       simplify_extractbits(prime);
 
-      if(prime.operands().size()==0)
+      if(prime.operands().empty())
         result.copy_to_operands(true_exprt());
       else if(prime.operands().size()==1)
         result.move_to_operands(prime.op0());
@@ -568,7 +564,7 @@ const exprt qbf_bdd_certificatet::f_get(literalt l)
 
     exprt final;
 
-    if(result.operands().size()==0)
+    if(result.operands().empty())
       final=false_exprt();
     else if(result.operands().size()==1)
       final=result.op0();
@@ -600,9 +596,9 @@ tvt qbf_bdd_certificatet::l_get(literalt a) const
   const BDD &model=*model_bdds[a.var_no()];
 
   if(model==bdd_manager->bddZero())
-    return tvt(a.sign()?tvt::TV_TRUE:tvt::TV_FALSE);
+    return tvt(a.sign()?tvt::tv_enumt::TV_TRUE:tvt::tv_enumt::TV_FALSE);
   else if(model==bdd_manager->bddOne())
-    return tvt(a.sign()?tvt::TV_FALSE:tvt::TV_TRUE);
+    return tvt(a.sign()?tvt::tv_enumt::TV_FALSE:tvt::tv_enumt::TV_TRUE);
   else
-    return tvt(tvt::TV_UNKNOWN);
+    return tvt(tvt::tv_enumt::TV_UNKNOWN);
 }

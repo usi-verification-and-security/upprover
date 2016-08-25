@@ -10,6 +10,7 @@ Author: Daniel Kroening
 #include <util/namespace.h>
 #include <util/find_symbols.h>
 #include <util/std_types.h>
+#include <util/cprover_prefix.h>
 
 #include "remove_internal_symbols.h"
 
@@ -24,8 +25,6 @@ Function: get_symbols_rec
  Purpose: 
 
 \*******************************************************************/
-
-#include <iostream>
 
 void get_symbols_rec(
   const namespacet &ns,
@@ -42,11 +41,11 @@ void get_symbols_rec(
   if(symbol.type.id()==ID_code)
   {
     const code_typet &code_type=to_code_type(symbol.type);
-    const code_typet::argumentst &arguments=code_type.arguments();
+    const code_typet::parameterst &parameters=code_type.parameters();
 
-    for(code_typet::argumentst::const_iterator
-        it=arguments.begin();
-        it!=arguments.end();
+    for(code_typet::parameterst::const_iterator
+        it=parameters.begin();
+        it!=parameters.end();
         it++)
     {
       irep_idt id=it->get_identifier();
@@ -73,9 +72,9 @@ void get_symbols_rec(
 
 Function: remove_internal_symbols
 
-  Inputs: 
+  Inputs: symbol table
 
- Outputs: 
+ Outputs: symbol table, with internal symbols removed
 
  Purpose: A symbol is EXPORTED if it is a
           * non-static function with body that is not extern inline
@@ -96,16 +95,17 @@ void remove_internal_symbols(
 
   // we retain certain special ones
   find_symbols_sett special;
-  special.insert("c::argc'");  
-  special.insert("c::argv'");  
-  special.insert("c::envp'");  
-  special.insert("c::envp_size'");  
-  special.insert("c::__CPROVER_memory");  
-  special.insert("c::__CPROVER_initialize");
-  special.insert("c::__CPROVER_malloc_size");
-  special.insert("c::__CPROVER_deallocated");
-  special.insert("c::__CPROVER_rounding_mode");
-  
+  special.insert("argc'");  
+  special.insert("argv'");  
+  special.insert("envp'");  
+  special.insert("envp_size'");  
+  special.insert(CPROVER_PREFIX "memory");  
+  special.insert(CPROVER_PREFIX "initialize");
+  special.insert(CPROVER_PREFIX "malloc_size");
+  special.insert(CPROVER_PREFIX "deallocated");
+  special.insert(CPROVER_PREFIX "dead_object");
+  special.insert(CPROVER_PREFIX "rounding_mode");
+
   for(symbol_tablet::symbolst::const_iterator
       it=symbol_table.symbols.begin();
       it!=symbol_table.symbols.end();
@@ -132,13 +132,22 @@ void remove_internal_symbols(
       symbol.value.is_not_nil() &&
       !symbol.value.get_bool(ID_C_zero_initializer);
 
+    // __attribute__((constructor)), __attribute__((destructor))
+    if(symbol.mode==ID_C && is_function && is_file_local)
+    {
+      const code_typet &code_type=to_code_type(symbol.type);
+      if(code_type.return_type().id()==ID_constructor ||
+         code_type.return_type().id()==ID_destructor)
+        is_file_local=false;
+    }
+
     if(is_type)
     {
       // never EXPORTED by itself
     }
     else if(is_function)
     {
-      // body? not local?
+      // body? not local (i.e., "static")?
       if(has_body && !is_file_local)
         get_symbols_rec(ns, symbol, exported);
     }
@@ -149,7 +158,6 @@ void remove_internal_symbols(
       if((has_initializer || !symbol.is_extern) && 
          !is_file_local)
       {
-        exported.insert(symbol.name);
         get_symbols_rec(ns, symbol, exported);
       }
     }

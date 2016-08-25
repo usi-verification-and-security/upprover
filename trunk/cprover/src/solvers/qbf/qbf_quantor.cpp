@@ -10,8 +10,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cstdlib>
 #include <fstream>
 
-#include <util/i2string.h>
-
 #include "qbf_quantor.h"
 
 /*******************************************************************\
@@ -61,7 +59,7 @@ Function: qbf_quantort::l_get
 tvt qbf_quantort::l_get(literalt a) const
 {
   assert(false);
-  return tvt(tvt::TV_UNKNOWN);
+  return tvt::unknown();
 }
 
 /*******************************************************************\
@@ -96,11 +94,10 @@ Function: qbf_quantort::prop_solve
 propt::resultt qbf_quantort::prop_solve()
 {
   {
-    std::string msg=
-      "Quantor: "+
-      i2string(no_variables())+" variables, "+
-      i2string(no_clauses())+" clauses";
-    messaget::status(msg);
+    messaget::status() <<
+      "Quantor: " <<
+      no_variables() << " variables, " <<
+      no_clauses() << " clauses" << eom;
   }
 
   std::string qbf_tmp_file="quantor.qdimacs";
@@ -117,9 +114,10 @@ propt::resultt qbf_quantort::prop_solve()
   std::string options="";
 
   // solve it
-  system(("quantor "+qbf_tmp_file+
+  int res=system(("quantor "+qbf_tmp_file+
          options+
          " -o "+result_tmp_file).c_str());
+  assert(0 == res);
 
   bool result=false;
   
@@ -153,19 +151,19 @@ propt::resultt qbf_quantort::prop_solve()
 
     if(!result_found)
     {
-      messaget::error("Quantor failed: unknown result");
+      messaget::error() << "Quantor failed: unknown result" << eom;
       return P_ERROR;
     }    
   }
 
   if(result)
   {
-    messaget::status("Quantor: TRUE");
+    messaget::status() << "Quantor: TRUE" << eom;
     return P_SATISFIABLE;
   }
   else
   {
-    messaget::status("Quantor: FALSE");
+    messaget::status() << "Quantor: FALSE" << eom;
     return P_UNSATISFIABLE;
   }
  

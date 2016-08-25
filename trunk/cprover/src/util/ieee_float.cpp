@@ -9,6 +9,7 @@ Author: Daniel Kroening, kroening@kroening.com
 // <cstdint> is yet to come
 #include <stdint.h>
 
+#include <ostream>
 #include <cassert>
 #include <cmath>
 #include <limits>
@@ -17,6 +18,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "std_types.h"
 #include "std_expr.h"
 #include "ieee_float.h"
+#include "i2string.h"
 
 /*******************************************************************\
 
@@ -52,6 +54,7 @@ floatbv_typet ieee_float_spect::to_type() const
   floatbv_typet result;
   result.set_f(f);
   result.set_width(width());
+  if(x86_extended) result.set(ID_x86_extended, true);
   return result;
 }
 
@@ -108,6 +111,8 @@ void ieee_float_spect::from_type(const floatbv_typet &type)
   assert(f!=0);
   assert(f<width);
   e=width-f-1;
+  x86_extended=type.get_bool(ID_x86_extended);
+  if(x86_extended) e=e-1; // no hidden bit
 }
 
 /*******************************************************************\
@@ -143,9 +148,88 @@ std::string ieee_floatt::format(const format_spect &format_spec) const
 {
   std::string result;
 
-  if(sign_flag) result+="-";
+  switch(format_spec.style)
+  {
+  case format_spect::DECIMAL:
+    result+=to_string_decimal(format_spec.precision);
+    break;
+    
+  case format_spect::SCIENTIFIC:
+    result+=to_string_scientific(format_spec.precision);
+    break;
   
-  if((NaN_flag || infinity_flag) && !sign_flag) result+="+";
+  case format_spect::AUTOMATIC:
+    {
+      // "Style e is used if the exponent from its conversion
+      //  is less than -4 or greater than or equal to the precision."    
+
+      mp_integer _exponent, _fraction;
+      extract_base10(_fraction, _exponent);
+
+      if(_exponent>=0)
+      {
+        if(base10_digits(_fraction)+_exponent>=format_spec.precision)
+          result+=to_string_scientific(format_spec.precision);
+        else
+          result+=to_string_decimal(format_spec.precision);
+      }
+      else // _exponent<0
+      {
+        if(true)//base10_digits(fraction)+_exponent<-4)
+          result+=to_string_scientific(format_spec.precision);
+        else
+          result+=to_string_decimal(format_spec.precision);
+      }
+    }      
+    break;
+  }
+
+  while(result.size()<format_spec.min_width)
+    result=" "+result;
+  
+  return result;
+}
+
+/*******************************************************************\
+
+Function: ieee_floatt::base10_digits
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+mp_integer ieee_floatt::base10_digits(const mp_integer &src)
+{
+  mp_integer tmp=src;
+  assert(tmp>=0);
+  mp_integer result=0;
+  while(tmp!=0) { ++result; tmp/=10; }
+  return result;
+}
+
+/*******************************************************************\
+
+Function: ieee_floatt::to_string_decimal
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+std::string ieee_floatt::to_string_decimal(unsigned precision) const
+{
+  std::string result;
+
+  if(sign_flag) result+='-';
+  
+  if((NaN_flag || infinity_flag) && !sign_flag) result+='+';
 
   // special cases
   if(NaN_flag)
@@ -154,31 +238,31 @@ std::string ieee_floatt::format(const format_spect &format_spec) const
     result+="inf";
   else if(is_zero())
   {
-    result+="0";
+    result+='0';
 
     // add zeros, if needed
-    if(format_spec.precision>0)
+    if(precision>0)
     {
       result+='.';
-      for(unsigned i=0; i<format_spec.precision; i++)
+      for(unsigned i=0; i<precision; i++)
         result+='0';
     }
   }
   else
   {
     mp_integer _exponent, _fraction;
-    extract(_fraction, _exponent);
+    extract_base2(_fraction, _exponent);
 
     // convert to base 10
     if(_exponent>=0)
     {
       result+=integer2string(_fraction*power(2, _exponent));
       
-      // add zeros, if needed
-      if(format_spec.precision>0)
+      // add dot and zeros, if needed
+      if(precision>0)
       {
         result+='.';
-        for(unsigned i=0; i<format_spec.precision; i++)
+        for(unsigned i=0; i<precision; i++)
           result+='0';
       }
     }
@@ -191,14 +275,14 @@ std::string ieee_floatt::format(const format_spect &format_spec) const
       _fraction*=power(5, position);
 
       // apply rounding
-      if(position>format_spec.precision)
+      if(position>precision)
       {
-        mp_integer r=power(10, position-format_spec.precision);
+        mp_integer r=power(10, position-precision);
         mp_integer remainder=_fraction%r;
         _fraction/=r;
         // not sure if this is the right kind of rounding here
         if(remainder>=r/2) ++_fraction;
-        position=format_spec.precision;
+        position=precision;
       }
 
       std::string tmp=integer2string(_fraction);
@@ -206,12 +290,12 @@ std::string ieee_floatt::format(const format_spect &format_spec) const
       // pad with zeros from the front, if needed
       while(mp_integer(tmp.size())<=position) tmp="0"+tmp;
 
-      unsigned dot=tmp.size()-integer2long(position);
+      std::size_t dot=tmp.size()-integer2size_t(position);
       result+=std::string(tmp, 0, dot)+'.';
       result+=std::string(tmp, dot, std::string::npos);
 
       // append zeros if needed
-      for(mp_integer i=position; i<format_spec.precision; ++i)
+      for(mp_integer i=position; i<precision; ++i)
         result+='0';
       #else
 
@@ -224,8 +308,104 @@ std::string ieee_floatt::format(const format_spect &format_spec) const
     }
   }
 
-  while(result.size()<format_spec.min_width)
-    result=" "+result;
+  return result;
+}
+
+/*******************************************************************\
+
+Function: ieee_floatt::to_string_scientific
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: format as [-]d.ddde+-d
+          Note that printf always produces at least two digits
+          for the exponent.
+
+\*******************************************************************/
+
+std::string ieee_floatt::to_string_scientific(unsigned precision) const
+{
+  std::string result;
+
+  if(sign_flag) result+='-';
+  
+  if((NaN_flag || infinity_flag) && !sign_flag) result+='+';
+
+  // special cases
+  if(NaN_flag)
+    result+="NaN";
+  else if(infinity_flag)
+    result+="inf";
+  else if(is_zero())
+  {
+    result+='0';
+
+    // add zeros, if needed
+    if(precision>0)
+    {
+      result+='.';
+      for(unsigned i=0; i<precision; i++)
+        result+='0';
+    }
+    
+    result+="e0";
+  }
+  else
+  {
+    mp_integer _exponent, _fraction;
+    extract_base10(_fraction, _exponent);
+
+    // C99 appears to say that conversion to decimal should
+    // use the currently selected IEEE rounding mode.
+    if(base10_digits(_fraction)>precision+1)
+    {
+      // re-align
+      mp_integer distance=base10_digits(_fraction)-(precision+1);
+      mp_integer p=power(10, distance);
+      mp_integer remainder=_fraction%p;
+      _fraction/=p;
+      _exponent+=distance;
+
+      if(remainder==p/2)
+      {
+        // need to do rounding mode here
+        ++_fraction;
+      }
+      else if(remainder>p/2)
+        ++_fraction;
+    }
+    
+    std::string decimals=integer2string(_fraction);
+    
+    assert(!decimals.empty());
+
+    // First add top digit to result.
+    result+=decimals[0];
+    
+    // Now add dot and further zeros, if needed.
+    if(precision>0)
+    {
+      result+='.';
+      
+      while(decimals.size()<precision+1)
+        decimals+='0';
+
+      result+=decimals.substr(1, precision);
+    }
+    
+    // add exponent
+    result+='e';
+    
+    std::string exponent_str=
+      integer2string(base10_digits(_fraction)+_exponent-1);
+    
+    if(exponent_str.size()>0 && exponent_str[0]!='-')
+      result+='+';
+
+    result+=exponent_str;
+  }
 
   return result;
 }
@@ -294,6 +474,23 @@ void ieee_floatt::unpack(const mp_integer &i)
 
 /*******************************************************************\
 
+Function: ieee_floatt::is_normal
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+bool ieee_floatt::is_normal() const
+{
+  return fraction>=power(2, spec.f);
+}
+
+/*******************************************************************\
+
 Function: ieee_floatt::pack
 
   Inputs:
@@ -322,8 +519,9 @@ mp_integer ieee_floatt::pack() const
   }
   else if(fraction==0 && exponent==0)
   {
+    // zero
   }
-  else if(fraction>=power(2, spec.f)) // normal?
+  else if(is_normal()) // normal?
   {
     // fraction -- need to hide hidden bit
     result+=fraction-power(2, spec.f); // hidden bit
@@ -342,7 +540,7 @@ mp_integer ieee_floatt::pack() const
 
 /*******************************************************************\
 
-Function: ieee_floatt::extract
+Function: ieee_floatt::extract_base2
 
   Inputs:
 
@@ -352,7 +550,7 @@ Function: ieee_floatt::extract
 
 \*******************************************************************/
 
-void ieee_floatt::extract(
+void ieee_floatt::extract_base2(
   mp_integer &_fraction,
   mp_integer &_exponent) const
 {
@@ -372,6 +570,54 @@ void ieee_floatt::extract(
   while((_fraction%2)==0)
   {
     _fraction/=2;
+    ++_exponent;
+  }
+}
+
+/*******************************************************************\
+
+Function: ieee_floatt::extract_base10
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void ieee_floatt::extract_base10(
+  mp_integer &_fraction,
+  mp_integer &_exponent) const
+{
+  if(is_zero() || is_NaN() || is_infinity())
+  {
+    _fraction=_exponent=0;
+    return;
+  }
+
+  _exponent=exponent;
+  _fraction=fraction;
+
+  // adjust exponent
+  _exponent-=spec.f;
+  
+  // now make it base 10
+  if(_exponent>=0)
+  {
+    _fraction*=power(2, _exponent);
+    _exponent=0;
+  }
+  else // _exponent<0
+  {
+    // 10/2=5 -- this makes it base 10
+    _fraction*=power(5, -_exponent);
+  }
+
+  // try to re-normalize
+  while((_fraction%10)==0)
+  {
+    _fraction/=10;
     ++_exponent;
   }
 }
@@ -498,38 +744,73 @@ void ieee_floatt::align()
   }
 
   // 'usual case'
-
   mp_integer f_power=power(2, spec.f);
   mp_integer f_power_next=power(2, spec.f+1);
 
+  unsigned lowPower2 = fraction.floorPow2();
   mp_integer exponent_offset=0;
 
-  if(fraction<f_power) // too small?
+  if (lowPower2 < spec.f) // too small
   {
-    mp_integer tmp_fraction=fraction;
+    exponent_offset -= (spec.f - lowPower2);
 
-    while(tmp_fraction<f_power)
-    {
-      tmp_fraction*=2;
-      --exponent_offset;
-    }
+    assert(fraction * power(2,(spec.f - lowPower2)) >= f_power);
+    assert(fraction * power(2,(spec.f - lowPower2)) < f_power_next);
   }
-  else if(fraction>=f_power_next) // too big?
+  else if (lowPower2 > spec.f)  // too large
   {
-    mp_integer tmp_fraction=fraction;
+    exponent_offset += (lowPower2 - spec.f);
 
-    while(tmp_fraction>=f_power_next)
-    {
-      tmp_fraction/=2;
-      ++exponent_offset;
-    }
+    assert(fraction / power(2,(lowPower2 - spec.f)) >= f_power);
+    assert(fraction / power(2,(lowPower2 - spec.f)) < f_power_next);
   }
 
   mp_integer biased_exponent=exponent+exponent_offset+spec.bias();
 
   // exponent too large (infinity)?
   if(biased_exponent>=spec.max_exponent())
-    infinity_flag=true;
+  {
+    // we need to consider the rounding mode here
+    switch(rounding_mode)
+    {
+    case UNKNOWN:
+    case NONDETERMINISTIC:
+    case ROUND_TO_EVEN:
+      infinity_flag=true;
+      break;
+      
+    case ROUND_TO_MINUS_INF:
+      // the result of the rounding is never larger than the argument
+      if(sign_flag)
+        infinity_flag=true;
+      else
+        make_fltmax();
+      break;
+    
+    case ROUND_TO_PLUS_INF:
+      // the result of the rounding is never smaller than the argument
+      if(sign_flag)
+      {
+        make_fltmax();
+        sign_flag=true; // restore sign
+      }
+      else
+        infinity_flag=true;
+      break;
+      
+    case ROUND_TO_ZERO:
+      if(sign_flag)
+      {
+        make_fltmax();
+        sign_flag=true; // restore sign
+      }
+      else
+        make_fltmax(); // positive
+      break;
+    }
+    
+    return; // done
+  }
   else if(biased_exponent<=0) // exponent too small?
   {
     // produce a denormal (or zero)
@@ -788,13 +1069,14 @@ ieee_floatt &ieee_floatt::operator += (const ieee_floatt &other)
     return *this;
   }
 
+  // 0 + 0 needs special treatment for the signs
   if(is_zero() && other.is_zero())
   { 
-    if(get_sign() == other.get_sign())
+    if(get_sign()==other.get_sign())
       return *this;
     else 
     {
-      if(rounding_mode == ROUND_TO_MINUS_INF)
+      if(rounding_mode==ROUND_TO_MINUS_INF)
       {
         set_sign(true);
         return *this;      
@@ -826,8 +1108,16 @@ ieee_floatt &ieee_floatt::operator += (const ieee_floatt &other)
   
   fraction+=_other.fraction;
   
-  // on zero, retain original sign
-  if(fraction!=0)
+  // if the result is zero,
+  // there is some set of rules to get the sign
+  if(fraction==0)
+  {
+    if(rounding_mode==ROUND_TO_MINUS_INF)
+      sign_flag=true;
+    else
+      sign_flag=false;
+  }
+  else // fraction!=0
   {
     sign_flag=(fraction<0);
     if(sign_flag) fraction.negate();
@@ -1107,17 +1397,17 @@ void ieee_floatt::change_spec(const ieee_float_spect &dest_spec)
   mp_integer _exponent=exponent-spec.f;
   mp_integer _fraction=fraction;
   
-  bool old_sign = sign_flag;
   if(sign_flag) _fraction.negate();
 
   spec=dest_spec;
-  build(_fraction, _exponent);
-
-  if(old_sign && !sign_flag) //this can happen if fraction == 0
+  
+  if(_fraction==0)
   {
-    assert(fraction == 0);
-    negate();
+    // We have a zero. It stays a zero.
+    // Don't call build to preserve sign.
   }
+  else
+    build(_fraction, _exponent);
 }
 
 /*******************************************************************\
@@ -1268,7 +1558,8 @@ Function: ieee_floatt::make_fltmax
 
 void ieee_floatt::make_fltmax()
 {
-  mp_integer bit_pattern = power(2,spec.e + spec.f)-1 - power(2,spec.f);
+  mp_integer bit_pattern=
+    power(2, spec.e+spec.f)-1 - power(2,spec.f);
   unpack(bit_pattern);
 }
 
@@ -1286,7 +1577,7 @@ Function: ieee_floatt::make_fltmin
 
 void ieee_floatt::make_fltmin()
 {
-  unpack(power(2,spec.f));
+  unpack(power(2, spec.f));
 }
 
 /*******************************************************************\

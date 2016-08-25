@@ -524,7 +524,7 @@ inline void *memcpy(void *dst, const void *src, size_t n)
 
 /* FUNCTION: __builtin___memcpy_chk */
 
-void *__builtin___memcpy_chk(void *dst, const void *src, size_t n, __CPROVER_size_t size)
+void *__builtin___memcpy_chk(void *dst, const void *src, __CPROVER_size_t n, __CPROVER_size_t size)
 {
   __CPROVER_HIDE:
   #ifdef __CPROVER_STRING_ABSTRACTION
@@ -584,7 +584,7 @@ inline void *memset(void *s, int c, size_t n)
 
 /* FUNCTION: __builtin___memset_chk */
 
-void *__builtin___memset_chk(void *s, int c, size_t n, __CPROVER_size_t size)
+void *__builtin___memset_chk(void *s, int c, __CPROVER_size_t n, __CPROVER_size_t size)
 {
   __CPROVER_HIDE:;
   #ifdef __CPROVER_STRING_ABSTRACTION
@@ -659,7 +659,7 @@ inline void *memmove(void *dest, const void *src, size_t n)
 inline int memcmp(const void *s1, const void *s2, size_t n)
 {
   __CPROVER_HIDE:;
-  int res;
+  int res=0;
   #ifdef __CPROVER_STRING_ABSTRACTION
   __CPROVER_assert(__CPROVER_buffer_size(s1)>=n, "memcmp buffer overflow of 1st argument");
   __CPROVER_assert(__CPROVER_buffer_size(s2)>=n, "memcmp buffer overflow of 2nd argument");
@@ -689,14 +689,16 @@ inline char *strchr(const char *src, int c)
   __CPROVER_HIDE:;
   #ifdef __CPROVER_STRING_ABSTRACTION
   __CPROVER_assert(__CPROVER_is_zero_string(src), "strchr zero-termination of string argument");
-  _Bool found;
+  __CPROVER_bool found;
   __CPROVER_size_t i;
   return found?src+i:0;
   #else
-  for(__CPROVER_size_t i=0; src[i]!=0; i++)
+  for(__CPROVER_size_t i=0; ; i++)
+  {
     if(src[i]==(char)c)
       return ((char *)src)+i; // cast away const-ness
-
+    if(src[i]==0) break;
+  }
   return 0;
   #endif
 }
@@ -715,14 +717,38 @@ inline char *strrchr(const char *src, int c)
   __CPROVER_HIDE:;
   #ifdef __CPROVER_STRING_ABSTRACTION
   __CPROVER_assert(__CPROVER_is_zero_string(src), "strrchr zero-termination of string argument");
-  _Bool found;
+  __CPROVER_bool found;
   __CPROVER_size_t i;
   return found?((char *)src)+i:0;
   #else
   char *res=0;
-  for(__CPROVER_size_t i=0; src[i]!=0; i++)
+  for(__CPROVER_size_t i=0; ; i++)
+  {
     if(src[i]==(char)c) res=((char *)src)+i;
+    if(src[i]==0) break;
+  }
   return res;
   #endif
 }
 
+/* FUNCTION: strerror */
+
+#ifndef __CPROVER_STRING_H_INCLUDED
+#include <string.h>
+#define __CPROVER_STRING_H_INCLUDED
+#endif
+
+char *strerror(int errnum)
+{
+  __CPROVER_HIDE:;
+  (void)errnum;
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_event("invalidate_pointer", "strerror_result");
+  char *strerror_result;
+  __CPROVER_set_must(strerror_result, "strerror_result");
+  return strerror_result;
+  #else
+  static char strerror_result[1];
+  return strerror_result;
+  #endif
+}

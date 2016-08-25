@@ -6,14 +6,14 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <ostream>
+
 #include <util/std_expr.h>
 #include <util/i2string.h>
 
 #include <langapi/language_util.h>
 
 #include "goto_program.h"
-
-#include <iostream>
 
 /*******************************************************************\
 
@@ -35,8 +35,8 @@ std::ostream& goto_programt::output_instruction(
 {
   out << "        // " << it->location_number << " ";
 
-  if(!it->location.is_nil())
-    out << it->location.as_string();
+  if(!it->source_location.is_nil())
+    out << it->source_location.as_string();
   else
     out << "no location";
 
@@ -53,7 +53,7 @@ std::ostream& goto_programt::output_instruction(
       out << " " << *l_it;
     }
     
-    out << std::endl;
+    out << '\n';
   }
 
   if(it->is_target())
@@ -64,7 +64,7 @@ std::ostream& goto_programt::output_instruction(
   switch(it->type)
   {
   case NO_INSTRUCTION_TYPE:
-    out << "NO INSTRUCTION TYPE SET" << std::endl;
+    out << "NO INSTRUCTION TYPE SET" << '\n';
     break;
   
   case GOTO:
@@ -86,7 +86,7 @@ std::ostream& goto_programt::output_instruction(
       out << (*gt_it)->target_number;
     }
       
-    out << std::endl;
+    out << '\n';
     break;
     
   case RETURN:
@@ -95,7 +95,7 @@ std::ostream& goto_programt::output_instruction(
   case DEAD:
   case FUNCTION_CALL:
   case ASSIGN:
-    out << from_expr(ns, identifier, it->code) << std::endl;
+    out << from_expr(ns, identifier, it->code) << '\n';
     break;
     
   case ASSUME:
@@ -108,23 +108,23 @@ std::ostream& goto_programt::output_instruction(
     {
       out << from_expr(ns, identifier, it->guard);
     
-      const irep_idt &comment=it->location.get(ID_comment);
+      const irep_idt &comment=it->source_location.get_comment();
       if(comment!="") out << " // " << comment;
     }
       
-    out << std::endl;
+    out << '\n';
     break;
 
   case SKIP:
-    out << "SKIP" << std::endl;
+    out << "SKIP" << '\n';
     break;
     
   case END_FUNCTION:
-    out << "END_FUNCTION" << std::endl;
+    out << "END_FUNCTION" << '\n';
     break;
     
   case LOCATION:
-    out << "LOCATION" << std::endl;
+    out << "LOCATION" << '\n';
     break;
     
   case THROW:
@@ -144,7 +144,7 @@ std::ostream& goto_programt::output_instruction(
     if(it->code.operands().size()==1)
       out << ": " << from_expr(ns, identifier, it->code.op0());
     
-    out << std::endl;
+    out << '\n';
     break;
     
   case CATCH:
@@ -170,15 +170,15 @@ std::ostream& goto_programt::output_instruction(
     else
       out << "CATCH-POP";
       
-    out << std::endl;
+    out << '\n';
     break;
     
   case ATOMIC_BEGIN:
-    out << "ATOMIC_BEGIN" << std::endl;
+    out << "ATOMIC_BEGIN" << '\n';
     break;
     
   case ATOMIC_END:
-    out << "ATOMIC_END" << std::endl;
+    out << "ATOMIC_END" << '\n';
     break;
     
   case START_THREAD:
@@ -187,11 +187,11 @@ std::ostream& goto_programt::output_instruction(
     if(it->targets.size()==1)
       out << it->targets.front()->target_number;
     
-    out << std::endl;
+    out << '\n';
     break;
     
   case END_THREAD:
-    out << "END THREAD" << std::endl;
+    out << "END THREAD" << '\n';
     break;
     
   default:
@@ -293,10 +293,7 @@ std::list<exprt> expressions_read(
     break;
   
   case RETURN:
-    if(instruction.code.operands().size()==0){
-      std::cerr << "WARNING: No arguments for RETURN statement\n";
-    }
-    else if(to_code_return(instruction.code).return_value().is_not_nil())
+    if(to_code_return(instruction.code).return_value().is_not_nil())
       dest.push_back(to_code_return(instruction.code).return_value());
     break;
   
@@ -536,8 +533,8 @@ std::string as_string(
     result+=from_expr(ns, i.function, i.guard);
 
     {
-      const irep_idt &comment=i.location.get(ID_comment);
-      if(comment!="") result+="/* "+id2string(comment)+" */";
+      const irep_idt &comment=i.source_location.get_comment();
+      if(comment!="") result+=" /* "+id2string(comment)+" */";
     }
     return result;
 

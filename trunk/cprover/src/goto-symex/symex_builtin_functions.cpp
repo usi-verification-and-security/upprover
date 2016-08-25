@@ -7,7 +7,6 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <cassert>
-#include <cstdlib>
 
 #include <util/expr_util.h>
 #include <util/i2string.h>
@@ -75,30 +74,46 @@ void goto_symext::symex_malloc(
   exprt size=code.op0();
   typet object_type=nil_typet();
   
+  // is the type given?
+  if(code.type().id()==ID_pointer && code.type().subtype().id()!=ID_empty)
+  {
+    object_type=code.type().subtype();
+  }
+  else
   {
     exprt tmp_size=size;
     state.rename(tmp_size, ns); // to allow constant propagation
+    simplify(tmp_size, ns);
     
     // special treatment for sizeof(T)*x
-    if(tmp_size.id()==ID_mult &&
-       tmp_size.operands().size()==2 &&
-       tmp_size.op0().find(ID_C_c_sizeof_type).is_not_nil())
-    {
-      object_type=array_typet(
-        c_sizeof_type_rec(tmp_size.op0()),
-        tmp_size.op1());      
-    }
-    else
     {
       typet tmp_type=c_sizeof_type_rec(tmp_size);
       
       if(tmp_type.is_not_nil())
       {
         // Did the size get multiplied?
-        mp_integer elem_size=pointer_offset_size(ns, tmp_type);
+        mp_integer elem_size=pointer_offset_size(tmp_type, ns);
         mp_integer alloc_size;
-        if(elem_size<0 || to_integer(tmp_size, alloc_size))
+
+        if(elem_size<0)
         {
+        }
+        else if(to_integer(tmp_size, alloc_size) &&
+                tmp_size.id()==ID_mult &&
+                tmp_size.operands().size()==2 &&
+                (tmp_size.op0().is_constant() ||
+                 tmp_size.op1().is_constant()))
+        {
+          exprt s=tmp_size.op0();
+          if(s.is_constant())
+          {
+            s=tmp_size.op1();
+            assert(c_sizeof_type_rec(tmp_size.op0())==tmp_type);
+          }
+          else
+            assert(c_sizeof_type_rec(tmp_size.op1())==tmp_type);
+
+          object_type=array_typet(tmp_type, s);
         }
         else
         {
@@ -136,10 +151,10 @@ void goto_symext::symex_malloc(
 
       new_symbol_table.add(size_symbol);
 
-      guardt guard;
-      symex_assign_rec(state, symbol_expr(size_symbol), nil_exprt(), size, guard, VISIBLE);
+      code_assignt assignment(size_symbol.symbol_expr(), size);
+      size=assignment.lhs();
 
-      size=symbol_expr(size_symbol);
+      symex_assign_rec(state, assignment);
     }
   }
   
@@ -161,23 +176,20 @@ void goto_symext::symex_malloc(
   {
     rhs.type()=pointer_typet(value_symbol.type.subtype());
     index_exprt index_expr(value_symbol.type.subtype());
-    index_expr.array()=symbol_expr(value_symbol);
+    index_expr.array()=value_symbol.symbol_expr();
     index_expr.index()=gen_zero(index_type());
     rhs.op0()=index_expr;
   }
   else
   {
-    rhs.op0()=symbol_expr(value_symbol);
+    rhs.op0()=value_symbol.symbol_expr();
     rhs.type()=pointer_typet(value_symbol.type);
   }
   
   if(rhs.type()!=lhs.type())
     rhs.make_typecast(lhs.type());
 
-  state.rename(rhs, ns);
-  
-  guardt guard;
-  symex_assign_rec(state, lhs, nil_exprt(), rhs, guard, VISIBLE);
+  symex_assign_rec(state, code_assignt(lhs, rhs));
 }
 
 /*******************************************************************\
@@ -199,8 +211,9 @@ irep_idt get_symbol(const exprt &src)
   else if(src.id()==ID_address_of)
   {
     exprt op=to_address_of_expr(src).object();
-    if(op.id()==ID_symbol)
-      return to_symbol_expr(op).get_identifier();
+    if(op.id()==ID_symbol &&
+       op.get_bool(ID_C_SSA_symbol))
+      return to_ssa_expr(op).get_object_name();
     else
       return irep_idt();
   }
@@ -221,14 +234,13 @@ void goto_symext::symex_gcc_builtin_va_arg_next(
 
   exprt tmp=code.op0();
   state.rename(tmp, ns); // to allow constant propagation
+  do_simplify(tmp);
   irep_idt id=get_symbol(tmp);
 
   exprt rhs=gen_zero(lhs.type());
   
   if(id!=irep_idt())
   {
-    id=state.get_original_name(id);
-
     // strip last name off id to get function name
     std::size_t pos=id2string(id).rfind("::");
     if(pos!=std::string::npos)
@@ -253,8 +265,7 @@ void goto_symext::symex_gcc_builtin_va_arg_next(
     }
   }
 
-  guardt guard;
-  symex_assign_rec(state, lhs, nil_exprt(), rhs, guard, VISIBLE);
+  symex_assign_rec(state, code_assignt(lhs, rhs));
 }
 
 /*******************************************************************\
@@ -336,6 +347,7 @@ void goto_symext::symex_printf(
 
   exprt tmp_rhs=rhs;
   state.rename(tmp_rhs, ns);
+  do_simplify(tmp_rhs);
 
   const exprt::operandst &operands=tmp_rhs.operands();
   std::list<exprt> args;
@@ -381,6 +393,7 @@ void goto_symext::symex_input(
   {
     args.push_back(code.operands()[i]);
     state.rename(args.back(), ns);
+    do_simplify(args.back());
   }
 
   const irep_idt input_id=get_string_argument(id_arg, ns);
@@ -417,6 +430,7 @@ void goto_symext::symex_output(
   {
     args.push_back(code.operands()[i]);
     state.rename(args.back(), ns);
+    do_simplify(args.back());
   }
 
   const irep_idt output_id=get_string_argument(id_arg, ns);
@@ -459,7 +473,7 @@ void goto_symext::symex_cpp_new(
              "dynamic_"+count_string+"_value";
   symbol.name="symex_dynamic::"+id2string(symbol.base_name);
   symbol.is_lvalue=true;
-  symbol.mode="cpp";
+  symbol.mode=ID_cpp;
   
   if(do_array)
   {
@@ -483,16 +497,13 @@ void goto_symext::symex_cpp_new(
   if(do_array)
   {
     exprt index_expr(ID_index, code.type().subtype());
-    index_expr.copy_to_operands(symbol_expr(symbol), gen_zero(index_type()));
+    index_expr.copy_to_operands(symbol.symbol_expr(), gen_zero(index_type()));
     rhs.move_to_operands(index_expr);
   }
   else
-    rhs.copy_to_operands(symbol_expr(symbol));
+    rhs.copy_to_operands(symbol.symbol_expr());
   
-  state.rename(rhs, ns);
-
-  guardt guard;
-  symex_assign_rec(state, lhs, nil_exprt(), rhs, guard, VISIBLE);
+  symex_assign_rec(state, code_assignt(lhs, rhs));
 }
 
 /*******************************************************************\
@@ -533,7 +544,7 @@ void goto_symext::symex_trace(
   if(code.arguments().size()<2)
     throw "CBMC_trace expects at least two arguments";
 
-  int debug_thresh=atol(options.get_option("debug-level").c_str());
+  int debug_thresh=unsafe_string2int(options.get_option("debug-level"));
   
   mp_integer debug_lvl;
 

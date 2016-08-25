@@ -9,8 +9,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_EXPR2C_CLASS_H
 #define CPROVER_EXPR2C_CLASS_H
 
-#include <set>
-#include <map>
+#include <string>
 
 #include <util/expr.h>
 #include <util/std_code.h>
@@ -40,13 +39,14 @@ protected:
 
   static std::string indent_str(unsigned indent);
 
-  std::set<exprt> symbols;
-  std::map<irep_idt, exprt> shorthands;
-  std::set<irep_idt> ns_collision;
+  hash_map_cont<irep_idt,
+                hash_set_cont<irep_idt, irep_id_hash>,
+                irep_id_hash> ns_collision;
+  hash_map_cont<irep_idt, irep_idt, irep_id_hash> shorthands;
+
   unsigned sizeof_nesting;
 
-  void get_symbols(const exprt &expr);
-  std::string id_shorthand(const exprt &expr) const;
+  irep_idt id_shorthand(const irep_idt &identifier) const;
 
   std::string convert_typecast(
     const typecast_exprt &src, unsigned &precedence);
@@ -56,9 +56,6 @@ protected:
 
   std::string convert_pointer_difference(const exprt &src,
     unsigned &precedence);
-
-  std::string convert_implicit_address_of(
-    const exprt &src, unsigned &precedence);
 
   std::string convert_binary(
     const exprt &src, const std::string &symbol,
@@ -148,7 +145,8 @@ protected:
   std::string convert_code(const codet &src);
   virtual std::string convert_code(const codet &src, unsigned indent);
   std::string convert_code_label(const code_labelt &src, unsigned indent);
-  std::string convert_code_asm(const codet &src, unsigned indent);
+  std::string convert_code_switch_case(const code_switch_caset &src, unsigned indent);
+  std::string convert_code_asm(const code_asmt &src, unsigned indent);
   std::string convert_code_assign(const code_assignt &src, unsigned indent);
   std::string convert_code_free(const codet &src, unsigned indent);
   std::string convert_code_init(const codet &src, unsigned indent);
@@ -166,6 +164,7 @@ protected:
   std::string convert_code_switch(const codet &src, unsigned indent);
   std::string convert_code_continue(const codet &src, unsigned indent);
   std::string convert_code_decl(const codet &src, unsigned indent);
+  std::string convert_code_decl_block(const codet &src, unsigned indent);
   std::string convert_code_dead(const codet &src, unsigned indent);
   std::string convert_code_function_call(const code_function_callt &src, unsigned indent);
   std::string convert_code_lock(const codet &src, unsigned indent);
@@ -173,6 +172,7 @@ protected:
   std::string convert_code_printf(const codet &src, unsigned indent);
   std::string convert_code_fence(const codet &src, unsigned indent);
   std::string convert_code_input(const codet &src, unsigned indent);
+  std::string convert_code_output(const codet &src, unsigned indent);
   std::string convert_code_array_set(const codet &src, unsigned indent);
   std::string convert_code_array_copy(const codet &src, unsigned indent);
 
@@ -195,7 +195,7 @@ protected:
   std::string convert_nondet_bool(const exprt &src, unsigned &precedence);
   std::string convert_object_descriptor(const exprt &src, unsigned &precedence);
   std::string convert_literal(const exprt &src, unsigned &precedence);
-  virtual std::string convert_constant(const exprt &src, unsigned &precedence);
+  virtual std::string convert_constant(const constant_exprt &src, unsigned &precedence);
 
   std::string convert_norep(const exprt &src, unsigned &precedence);
 
@@ -207,6 +207,7 @@ protected:
   std::string convert_initializer_list(const exprt &src, unsigned &precedence);
   std::string convert_designated_initializer(const exprt &src, unsigned &precedence);
   std::string convert_concatenation(const exprt &src, unsigned &precedence);
+  std::string convert_sizeof(const exprt &src, unsigned &precedence);
 };
 
 #endif

@@ -6,13 +6,22 @@ Author: Daniel Kroening, 2013
 
 \*******************************************************************/
 
-#include <cstdlib>
+#ifdef _WIN32
+#define EX_OK 0
+#define EX_USAGE 64
+#define EX_SOFTWARE 70
+#else
+#include <sysexits.h>
+#endif
+
 #include <iostream>
 
+#include <util/string2int.h>
 #include <util/config.h>
 
+#include <cbmc/version.h>
+
 #include "compile.h"
-#include "version.h"
 #include "ld_mode.h"
 
 /*******************************************************************\
@@ -27,15 +36,15 @@ Function: ld_modet::doit
 
 \*******************************************************************/
 
-bool ld_modet::doit()
+int ld_modet::doit()
 {
   if(cmdline.isset("help"))
   {
     help();
-    return false;
+    return EX_OK;
   }
 
-  int verbosity=1;
+  unsigned int verbosity=1;
 
   compilet compiler(cmdline);
   
@@ -44,28 +53,28 @@ bool ld_modet::doit()
     // This a) prints the version and b) increases verbosity.
     // Linking continues, don't exit!
     
-    print("GNU ld version 2.16.91 20050610 (goto-cc " GOTOCC_VERSION ")");
+    std::cout << "GNU ld version 2.16.91 20050610 (goto-cc " CBMC_VERSION ")\n";
     
     // 'V' should also print some supported "emulations".
   }
 
   if(cmdline.isset("version"))
   {
-    print("GNU ld version 2.16.91 20050610 (goto-cc " GOTOCC_VERSION ")");
-    print("Copyright (C) 2006-2013 Daniel Kroening, Christoph Wintersteiger");
-    return false; // Exit!
+    std::cout << "GNU ld version 2.16.91 20050610 (goto-cc " CBMC_VERSION ")\n";
+    std::cout << "Copyright (C) 2006-2014 Daniel Kroening, Christoph Wintersteiger\n";
+    return EX_OK; // Exit!
   }
 
   if(cmdline.isset("verbosity"))
-    verbosity=atoi(cmdline.getval("verbosity"));
+    verbosity=unsafe_string2int(cmdline.get_value("verbosity"));
 
-  compiler.set_verbosity(verbosity);
-  set_verbosity(verbosity);
+  compiler.ui_message_handler.set_verbosity(verbosity);
+  ui_message_handler.set_verbosity(verbosity);
 
   if(produce_hybrid_binary)
-    debug("LD mode (hybrid)");
+    debug() << "LD mode (hybrid)" << eom;
   else
-    debug("LD mode");
+    debug() << "LD mode" << eom;
   
   // get configuration
   config.set(cmdline);
@@ -111,7 +120,8 @@ bool ld_modet::doit()
   }
     
   // do all the rest
-  bool result=compiler.doit();
+  if(compiler.doit())
+    return 1; // ld uses exit code 1 for all sorts of errors
 
   #if 0
   if(produce_hybrid_binary)
@@ -121,7 +131,7 @@ bool ld_modet::doit()
   }
   #endif
   
-  return result;
+  return EX_OK;
 }
 
 /*******************************************************************\
@@ -149,7 +159,7 @@ int ld_modet::gcc_hybrid_binary(const cmdlinet::argst &input_files)
     if(cmdline.isset('o'))
     {
       // there should be only one input file
-      output_files.push_back(cmdline.getval('o'));
+      output_files.push_back(cmdline.get_value('o'));
     }
     else
     {
@@ -167,7 +177,7 @@ int ld_modet::gcc_hybrid_binary(const cmdlinet::argst &input_files)
   {
     // -c is not given
     if(cmdline.isset('o'))
-      output_files.push_back(cmdline.getval('o'));
+      output_files.push_back(cmdline.get_value('o'));
     else
       output_files.push_back("a.out");      
   }
@@ -217,7 +227,7 @@ int ld_modet::gcc_hybrid_binary(const cmdlinet::argst &input_files)
   
   #if 0
   std::cout << "RUN:";
-  for(unsigned i=0; i<new_argv.size(); i++)
+  for(std::size_t i=0; i<new_argv.size(); i++)
     std::cout << " " << new_argv[i];
   std::cout << std::endl;
   #endif

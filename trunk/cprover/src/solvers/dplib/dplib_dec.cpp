@@ -6,11 +6,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cstdlib>
 #include <cstring>
 #include <cassert>
 
-#ifndef _WIN32
+#if defined(__linux__) || \
+    defined(__FreeBSD_kernel__) || \
+    defined(__GNU__) || \
+    defined(__unix__) || \
+    defined(__CYGWIN__) || \
+    defined(__MACH__)
 #include <unistd.h>
 #endif
 
@@ -21,6 +25,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/i2string.h>
 #include <util/prefix.h>
+#include <util/string2int.h>
 
 #include "dplib_dec.h"
 
@@ -95,7 +100,8 @@ decision_proceduret::resultt dplib_dect::dec_solve()
   std::string command=
     "dplibl "+temp_out_filename+" > "+temp_result_filename+" 2>&1";
     
-  system(command.c_str());
+  int res=system(command.c_str());
+  assert(0 == res);
   
   status("Reading result from CVCL");
 
@@ -162,7 +168,7 @@ void dplib_dect::read_assert(std::istream &in, std::string &line)
     
     if(line[0]=='l')
     {
-      unsigned number=atoi(line.c_str()+1);
+      unsigned number=unsafe_str2unsigned(line.c_str()+1);
       assert(number<dplib_prop.no_variables());
       dplib_prop.assignment[number]=value;
     }

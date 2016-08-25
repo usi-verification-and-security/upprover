@@ -6,8 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cstdlib>
+#include <ostream>
 
+#include "string2int.h"
 #include "i2string.h"
 #include "xml.h"
 
@@ -74,22 +75,19 @@ void xmlt::output(std::ostream &out, unsigned indent) const
 
   out << '<' << name;
 
-  for(attributest::const_iterator
-      it=attributes.begin();
-      it!=attributes.end();
-      it++)
+  for(const auto & it : attributes)
   {
-    // it->first needs to be non-empty
-    if(it->first=="") continue;
-    out << ' ' << it->first
+    // it.first needs to be non-empty
+    if(it.first=="") continue;
+    out << ' ' << it.first
         << '=' << '"';
-    escape_attribute(it->second, out);
+    escape_attribute(it.second, out);
     out << '"';
   }
 
   if(elements.empty() && data.empty())
   {
-    out << "/>" << std::endl;;
+    out << "/>" << "\n";
     return;
   }
 
@@ -99,18 +97,15 @@ void xmlt::output(std::ostream &out, unsigned indent) const
     escape(data, out);
   else
   {
-    out << std::endl;
+    out << "\n";
 
-    for(elementst::const_iterator
-        it=elements.begin();
-        it!=elements.end();
-        it++)
-      it->output(out, indent+2);
+    for(const auto & it : elements)
+      it.output(out, indent+2);
 
     do_indent(out, indent);
   }
 
-  out << '<' << '/' << name << '>' << std::endl;
+  out << '<' << '/' << name << '>' << "\n";
 }
 
 /*******************************************************************\
@@ -121,16 +116,14 @@ Function: xmlt::escape
 
  Outputs:
 
- Purpose:
+ Purpose: escaping for XML elements
 
 \*******************************************************************/
 
 void xmlt::escape(const std::string &s, std::ostream &out)
 {
-  for(unsigned i=0; i<s.size(); i++)
+  for(const auto ch : s)
   {
-    const char ch=s[i];
-
     switch(ch)
     {
     case '&':
@@ -144,8 +137,16 @@ void xmlt::escape(const std::string &s, std::ostream &out)
     case '>':
       out << "&gt;";
       break;
+    
+    case '\r':
+      break; // drop!
+    
+    case '\n':
+      out << '\n';
+      break;
 
     default:
+      // &#0; isn't allowed, but what shall we do?
       if((ch>=0 && ch<' ') || ch==127)
         out << "&#"+i2string((unsigned char)ch)+";";
       else
@@ -162,16 +163,16 @@ Function: xmlt::escape_attribute
 
  Outputs:
 
- Purpose:
+ Purpose: escaping for XML attributes, assuming that
+          double quotes " are used consistently,
+          not single quotes
 
 \*******************************************************************/
 
 void xmlt::escape_attribute(const std::string &s, std::ostream &out)
 {
-  for(unsigned i=0; i<s.size(); i++)
+  for(const auto & ch : s)
   {
-    const char ch=s[i];
-
     switch(ch)
     {
     case '&':
@@ -191,7 +192,11 @@ void xmlt::escape_attribute(const std::string &s, std::ostream &out)
       break;
 
     default:
-      out << ch;
+      // &#0; isn't allowed, but what shall we do?
+      if((ch>=0 && ch<' ') || ch==127)
+        out << "&#"+i2string((unsigned char)ch)+";";
+      else
+        out << ch;
     }
   }
 }
@@ -341,7 +346,7 @@ std::string xmlt::unescape(const std::string &str)
       else if(tmp=="amp") result+='&';
       else if(tmp[0]=='#' && tmp[1]!='x')
       {
-        char c=atoi(tmp.substr(1, tmp.size()-1).c_str());
+        char c=unsafe_string2int(tmp.substr(1, tmp.size()-1));
         result+=c;
       }
       else

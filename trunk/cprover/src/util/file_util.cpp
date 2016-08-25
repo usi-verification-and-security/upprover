@@ -8,31 +8,12 @@ Date: January 2012
 
 \*******************************************************************/
 
-#ifdef __linux__
-#include <unistd.h>
-#include <cerrno>
-#include <dirent.h>
-#include <cstdlib>
-#include <cstdio>
-#endif
-
-#ifdef __FreeBSD_kernel__
-#include <unistd.h>
-#include <cerrno>
-#include <dirent.h>
-#include <cstdlib>
-#include <cstdio>
-#endif
-
-#ifdef __MACH__
-#include <unistd.h>
-#include <cerrno>
-#include <dirent.h>
-#include <cstdlib>
-#include <cstdio>
-#endif
-
-#ifdef __CYGWIN__
+#if defined(__linux__) || \
+    defined(__FreeBSD_kernel__) || \
+    defined(__GNU__) || \
+    defined(__unix__) || \
+    defined(__CYGWIN__) || \
+    defined(__MACH__)
 #include <unistd.h>
 #include <cerrno>
 #include <dirent.h>
@@ -134,3 +115,29 @@ void delete_directory(const std::string &path)
   rmdir(path.c_str());
 }
 
+/*******************************************************************\
+
+Function: concat_dir_file
+
+  Inputs: directory name and file name
+
+ Outputs: concatenation of directory and file, if the file path is
+          relative
+
+ Purpose:
+
+\*******************************************************************/
+
+std::string concat_dir_file(const std::string &directory,
+                            const std::string &file_name)
+{
+  #ifdef _WIN32
+  return  (file_name.size()>1 &&
+           file_name[0]!='/' &&
+           file_name[1]!=':') ?
+           file_name : directory+"\\"+file_name;
+  #else
+  return (!file_name.empty() && file_name[0]=='/') ?
+          file_name : directory+"/"+file_name;
+  #endif
+}

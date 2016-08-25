@@ -11,6 +11,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "i2string.h"
 #include "xml.h"
+#include "json.h"
 #include "xml_expr.h"
 #include "cout_message.h"
 #include "ui_message.h"
@@ -32,9 +33,12 @@ ui_message_handlert::ui_message_handlert(
 {
   switch(__ui)
   {
+  case PLAIN:
+    break;
+
   case XML_UI:
-    std::cout << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << std::endl;
-    std::cout << "<cprover>" << std::endl;
+    std::cout << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" << "\n";
+    std::cout << "<cprover>" << "\n";
     
     {
       xmlt program_xml;
@@ -45,10 +49,14 @@ ui_message_handlert::ui_message_handlert(
     }
     break;
     
-  case PLAIN:
+  case JSON_UI:
+    {
+      std::cout << "[\n";
+      json_objectt json_program;
+      json_program["program"] = json_stringt(program);
+      std::cout << json_program;
+    }
     break;
-    
-  default:;
   }
 }
 
@@ -66,8 +74,19 @@ Function: ui_message_handlert::~ui_message_handlert
 
 ui_message_handlert::~ui_message_handlert()
 {
-  if(get_ui()==XML_UI)
-    std::cout << "</cprover>" << std::endl;
+  switch(get_ui())
+  {
+  case XML_UI:
+    std::cout << "</cprover>" << "\n";
+    break;
+  
+  case JSON_UI:
+    std::cout << "\n]\n";
+    break;
+
+  case PLAIN:
+    break;
+  }
 }
 
 /*******************************************************************\
@@ -108,16 +127,26 @@ void ui_message_handlert::print(
   unsigned level,
   const std::string &message)
 {
-  if(get_ui()==XML_UI)
+  if(verbosity>=level)
   {
-    locationt location;
-    location.make_nil();
-    print(level, message, -1, location);
-  }
-  else
-  {
-    console_message_handlert console_message_handler;
-    console_message_handler.print(level, message);
+    switch(get_ui())
+    {
+    case PLAIN:
+    {
+      console_message_handlert console_message_handler;
+      console_message_handler.print(level, message);
+    }
+    break;
+
+    case XML_UI:
+    case JSON_UI:
+    {
+      source_locationt location;
+      location.make_nil();
+      print(level, message, -1, location);
+    }
+    break;
+    }
   }
 }
 
@@ -137,53 +166,35 @@ void ui_message_handlert::print(
   unsigned level,
   const std::string &message,
   int sequence_number,
-  const locationt &location)
+  const source_locationt &location)
 {
-  if(get_ui()==XML_UI)
+  if(verbosity>=level)
   {
-    std::string tmp_message(message);
+    switch(get_ui())
+    {
+    case PLAIN:
+      message_handlert::print(
+        level, message, sequence_number, location);
+      break;
 
-    if(tmp_message.size()!=0 && tmp_message[tmp_message.size()-1]=='\n')
-      tmp_message.resize(tmp_message.size()-1);
-  
-    const char *type=level_string(level);
-    
-    std::string sequence_number_str=
-      sequence_number>=0?i2string(sequence_number):"";
+    case XML_UI:
+    case JSON_UI:
+    {
+      std::string tmp_message(message);
 
-    ui_msg(type, tmp_message, sequence_number_str, location);
+      if(!tmp_message.empty() && *tmp_message.rbegin()=='\n')
+        tmp_message.resize(tmp_message.size()-1);
+      
+      const char *type=level_string(level);
+        
+      std::string sequence_number_str=
+        sequence_number>=0?i2string(sequence_number):"";
+
+      ui_msg(type, tmp_message, sequence_number_str, location);
+    }
+    break;
+    }
   }
-  else
-  {
-    message_handlert::print(
-      level, message, sequence_number, location);
-  }
-}
-
-/*******************************************************************\
-
-Function: ui_message_handlert::old_gui_msg
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void ui_message_handlert::old_gui_msg(
-  const std::string &type,
-  const std::string &msg1,
-  const std::string &msg2,
-  const locationt &location)
-{
-  std::cout << type   << std::endl
-            << msg1   << std::endl
-            << msg2   << std::endl
-            << location.get_file() << std::endl
-            << location.get_line() << std::endl
-            << location.get_column() << std::endl;
 }
 
 /*******************************************************************\
@@ -202,9 +213,21 @@ void ui_message_handlert::ui_msg(
   const std::string &type,
   const std::string &msg1,
   const std::string &msg2,
-  const locationt &location)
+  const source_locationt &location)
 {
-  xml_ui_msg(type, msg1, msg2, location);
+  switch(get_ui())
+  {
+  case PLAIN:
+    break;
+
+  case XML_UI:
+    xml_ui_msg(type, msg1, msg2, location);
+    break;
+    
+  case JSON_UI:
+    json_ui_msg(type, msg1, msg2, location);
+    break;
+  }
 }
 
 /*******************************************************************\
@@ -223,12 +246,13 @@ void ui_message_handlert::xml_ui_msg(
   const std::string &type,
   const std::string &msg1,
   const std::string &msg2,
-  const locationt &location)
+  const source_locationt &location)
 {
   xmlt result;
   result.name="message";
 
-  if(location.is_not_nil() && location.get_file()!="")
+  if(location.is_not_nil() &&
+     !location.get_file().empty())
     result.new_element(xml(location));
 
   result.new_element("text").data=msg1;
@@ -236,5 +260,40 @@ void ui_message_handlert::xml_ui_msg(
   
   std::cout << result;
   std::cout << std::endl;
+}
+
+/*******************************************************************\
+
+Function: ui_message_handlert::json_ui_msg
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void ui_message_handlert::json_ui_msg(
+  const std::string &type,
+  const std::string &msg1,
+  const std::string &msg2,
+  const source_locationt &location)
+{
+  json_objectt result;
+
+  #if 0
+  if(location.is_not_nil() &&
+     !location.get_file().empty())
+    result.new_element(xml(location));
+  #endif
+
+  result["messageType"] = json_stringt(type);
+  result["messageText"] = json_stringt(msg1);
+
+  //By convention a leading comma is created by every new array entry.
+  //The first entry is generated in the constructor and does not have
+  //  a trailing comma.
+  std::cout << ",\n" << result;
 }
 

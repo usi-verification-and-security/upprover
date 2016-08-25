@@ -14,8 +14,14 @@ Date: September 2011
 #include <util/prefix.h>
 #include <util/symbol_table.h>
 
+#include <goto-programs/goto_functions.h>
+
 #include "interrupt.h"
 #include "rw_set.h"
+
+#ifdef LOCAL_MAY
+#include <analyses/local_may_alias.h>
+#endif
 
 /*******************************************************************\
 
@@ -87,6 +93,9 @@ Function: interrupt
 void interrupt(
   value_setst &value_sets,
   const symbol_tablet &symbol_table,
+#ifdef LOCAL_MAY
+  const goto_functionst::goto_functiont& goto_function,
+#endif
   goto_programt &goto_program,
   const symbol_exprt &interrupt_handler,
   const rw_set_baset &isr_rw_set)
@@ -97,7 +106,14 @@ void interrupt(
   {
     goto_programt::instructiont &instruction=*i_it;
 
-    rw_set_loct rw_set(ns, value_sets, i_it);
+#ifdef LOCAL_MAY
+  local_may_aliast local_may(goto_function);
+#endif
+    rw_set_loct rw_set(ns, value_sets, i_it
+#ifdef LOCAL_MAY
+      , local_may
+#endif
+    );
 
     // potential race?
     bool race_on_read=potential_race_on_read(rw_set, isr_rw_set);
@@ -115,10 +131,11 @@ void interrupt(
       goto_programt::instructiont original_instruction;
       original_instruction.swap(instruction);
 
-      const locationt &location=original_instruction.location;
+      const source_locationt &source_location=
+        original_instruction.source_location;
       
       code_function_callt isr_call;
-      isr_call.location()=location;
+      isr_call.add_source_location()=source_location;
       isr_call.function()=interrupt_handler;
       
       goto_programt::targett t_goto=i_it;      
@@ -126,12 +143,12 @@ void interrupt(
       goto_programt::targett t_orig=goto_program.insert_after(t_call);
 
       t_goto->make_goto(t_orig);
-      t_goto->location=location;
+      t_goto->source_location=source_location;
       t_goto->guard=side_effect_expr_nondett(bool_typet());
       t_goto->function=original_instruction.function;
 
       t_call->make_function_call(isr_call);
-      t_call->location=location;
+      t_call->source_location=source_location;
       t_call->function=original_instruction.function;
 
       t_orig->swap(original_instruction);
@@ -148,19 +165,19 @@ void interrupt(
       goto_programt::targett t_goto=goto_program.insert_after(i_it);
       goto_programt::targett t_call=goto_program.insert_after(t_goto);
       
-      const locationt &location=i_it->location;
+      const source_locationt &source_location=i_it->source_location;
       
       code_function_callt isr_call;
-      isr_call.location()=location;
+      isr_call.add_source_location()=source_location;
       isr_call.function()=interrupt_handler;
       
       t_goto->make_goto(t_orig);
-      t_goto->location=location;
+      t_goto->source_location=source_location;
       t_goto->guard=side_effect_expr_nondett(bool_typet());
       t_goto->function=i_it->function;
 
       t_call->make_function_call(isr_call);
-      t_call->location=location;
+      t_call->source_location=source_location;
       t_call->function=i_it->function;
 
       i_it=t_call; // the for loop already counts us up      
@@ -206,9 +223,9 @@ symbol_exprt get_isr(
 
   symbol_exprt isr=matches.front();
   
-  if(!to_code_type(isr.type()).arguments().empty())
+  if(!to_code_type(isr.type()).parameters().empty())
     throw "interrupt handler `"+id2string(interrupt_handler)+
-          "' must not have arguments";
+          "' must not have parameters";
 
   return isr;
 }
@@ -243,10 +260,14 @@ void interrupt(
 
   Forall_goto_functions(f_it, goto_functions)
     if(f_it->first!=CPROVER_PREFIX "initialize" &&
-       f_it->first!=ID_main &&
-       f_it->first!=interrupt_handler)
+       f_it->first!=goto_functionst::entry_point() &&
+       f_it->first!=isr.get_identifier())
       interrupt(
-        value_sets, symbol_table, f_it->second.body, isr, isr_rw_set);
+        value_sets, symbol_table, 
+#ifdef LOCAL_MAY
+        f_it->second,
+#endif
+        f_it->second.body, isr, isr_rw_set);
 
   goto_functions.update();
 }
