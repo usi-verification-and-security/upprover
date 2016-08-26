@@ -39,7 +39,7 @@ public:
       options(_options),
       summarization_context(
                 _goto_functions,
-                options.get_int_option("unwind")),
+                options.get_unsigned_int_option("unwind")),
 
       message_handler (_message_handler),
       max_memory_used(_max_memory_used),
