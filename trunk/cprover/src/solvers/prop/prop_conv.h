@@ -72,8 +72,8 @@ public:
     use_cache(true),
     equality_propagation(true),
     freeze_all(false),
-    post_processing_done(false),
-    prop(_prop) { }
+    prop(_prop),
+    post_processing_done(false) { }
 
   virtual ~prop_conv_solvert() { }
 
@@ -111,6 +111,9 @@ public:
   const cachet &get_cache() const { return cache; }
   const symbolst &get_symbols() const { return symbols; }
   
+  // not protected anymore
+  propt &prop;
+
 protected:
   virtual void post_process();
   
@@ -134,8 +137,6 @@ protected:
   
   virtual void ignoring(const exprt &expr);
 
-  // deliberately protected now to protect lower-level API
-  propt &prop;
 };
 
 #endif

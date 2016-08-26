@@ -77,7 +77,7 @@ public:
   }
 
   void analyze_functions(const namespacet& ns) {
-    function_infos.find(functions.main_id())->second.analyze_globals(*this, ns);
+    function_infos.find(functions.entry_point())->second.analyze_globals(*this, ns);
   }
 
   void deserialize_infos(const std::string& file) {

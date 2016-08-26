@@ -26,32 +26,32 @@ FUNFROG_SRC := \
 SUMO_SRC := \
       sumo.cpp
 
-OBJ += \
-      $(SHARED_SRC:.cpp=$(OBJEXT)) \
-      ../ansi-c/ansi-c$(LIBEXT) \
+OBJ += ../ansi-c/ansi-c$(LIBEXT) \
+      ../cbmc/symex_bmc$(OBJEXT) \
+      ../cpp/cpp$(LIBEXT) \
       ../linking/linking$(LIBEXT) \
       ../big-int/big-int$(LIBEXT) \
       ../goto-programs/goto-programs$(LIBEXT) \
+      ../goto-symex/goto-symex$(LIBEXT) \
       ../pointer-analysis/value_set$(OBJEXT) \
-      ../pointer-analysis/dereference$(OBJEXT) \
+      ../pointer-analysis/value_set_analysis_fi$(OBJEXT) \
+      ../pointer-analysis/value_set_domain_fi$(OBJEXT) \
+      ../pointer-analysis/value_set_fi$(OBJEXT) \
+      ../pointer-analysis/value_set_dereference$(OBJEXT) \
+      ../pointer-analysis/dereference_callback$(OBJEXT) \
       ../pointer-analysis/add_failed_symbols$(OBJEXT) \
       ../pointer-analysis/rewrite_index$(OBJEXT) \
       ../pointer-analysis/goto_program_dereference$(OBJEXT) \
-      ../langapi/langapi$(LIBEXT) \
+      ../goto-instrument/full_slicer$(OBJEXT) \
+      ../goto-instrument/nondet_static$(OBJEXT) \
+      ../goto-instrument/cover$(OBJEXT) \
       ../analyses/analyses$(LIBEXT) \
+      ../langapi/langapi$(LIBEXT) \
+      ../xmllang/xmllang$(LIBEXT) \
       ../assembler/assembler$(LIBEXT) \
       ../solvers/solvers$(LIBEXT) \
       ../util/util$(LIBEXT)
 
-
-FUNFROG_OBJ := \
-      $(FUNFROG_SRC:.cpp=$(OBJEXT)) \
-      ../goto-symex/goto-symex$(LIBEXT) \
-      ../xmllang/xmllang$(LIBEXT) \
-      ../cbmc/symex_bmc$(OBJEXT) \
-      ../cpp/cpp$(LIBEXT) \
-      ../java_bytecode/java_bytecode$(LIBEXT) \
-      $(OBJ)
 
 SUMO_OBJ := \
       $(SUMO_SRC:.cpp=$(OBJEXT)) \
@@ -63,7 +63,9 @@ include ../common
 
 INCLUDES :=  -I .. -I ../util 
 
-CXXFLAGS := -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING $(INCLUDES)
+LIBS =
+
+CXXFLAGS += -std=c++11 -MMD -MP -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING $(INCLUDES)
 
 all: hifrog$(EXEEXT) 
 
@@ -71,7 +73,7 @@ all: hifrog$(EXEEXT)
 
 ###############################################################################
 
-hifrog$(EXEEXT): $(FUNFROG_OBJ)
+hifrog$(EXEEXT): $(OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline 
 
 sumo$(EXEEXT): $(SUMO_OBJ)

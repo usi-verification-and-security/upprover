@@ -35,7 +35,7 @@ Author: Ondrej Sery
  the corresponding partitions
 
 \*******************************************************************/
-void partitioning_target_equationt::convert(prop_convt &prop_conv,
+void partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
           interpolating_solvert &interpolator)
 {
 	getFirstCallExpr(); // Save the first call to the first function
@@ -104,7 +104,7 @@ void partitioning_target_equationt::convert(prop_convt &prop_conv,
  Purpose: Convert a specific partition of SSA steps
 
 \*******************************************************************/
-void partitioning_target_equationt::convert_partition(prop_convt &prop_conv,
+void partitioning_target_equationt::convert_partition(prop_conv_solvert &prop_conv,
     interpolating_solvert &interpolator, partitiont& partition)
 {
   if (partition.ignore || partition.processed || partition.invalid) {
@@ -185,7 +185,7 @@ Function: partitioning_target_equationt::convert_partition_summary
 \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_summary(
-    prop_convt &prop_conv, partitiont& partition)
+    prop_conv_solvert &prop_conv, partitiont& partition)
 {
   std::vector<symbol_exprt> common_symbs;
   summary_storet& summary_store = summarization_context.get_summary_store();
@@ -228,7 +228,7 @@ Function: partitioning_target_equationt::convert_partition_assignments
 \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_assignments(
-  prop_convt &prop_conv, partitiont& partition)
+  prop_conv_solvert &prop_conv, partitiont& partition)
 {
   for(SSA_stepst::const_iterator it = partition.start_it;
       it != partition.end_it; ++it)
@@ -262,7 +262,7 @@ Function: partitioning_target_equationt::convert_partition_guards
 \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_guards(
-  prop_convt &prop_conv, partitiont& partition)
+  prop_conv_solvert &prop_conv, partitiont& partition)
 {
   for(SSA_stepst::iterator it = partition.start_it;
       it != partition.end_it; ++it)
@@ -297,7 +297,7 @@ Function: partitioning_target_equationt::convert_partition_assumptions
 \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_assumptions(
-  prop_convt &prop_conv, partitiont& partition)
+  prop_conv_solvert &prop_conv, partitiont& partition)
 {
   for(SSA_stepst::iterator it = partition.start_it;
       it != partition.end_it; ++it)
@@ -336,7 +336,7 @@ Function: partitioning_target_equationt::convert_partition_assertions
 \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_assertions(
-  prop_convt &prop_conv, partitiont& partition)
+  prop_conv_solvert &prop_conv, partitiont& partition)
 {
   unsigned number_of_assertions = count_partition_assertions(partition);
   unsigned number_of_assumptions = 0;
@@ -365,7 +365,7 @@ void partitioning_target_equationt::convert_partition_assertions(
       literalt tmp_literal = prop_conv.convert(it->cond_expr);
       it->cond_literal = prop_conv.prop.limplies(assumption_literal, tmp_literal);
 
-      bv.push_back(prop_conv.prop.lnot(it->cond_literal));
+      bv.push_back(!it->cond_literal);
     }
     else if (it->is_assume() && !it->ignore) {
       // If the assumption represents a call of the function g, 
@@ -602,7 +602,7 @@ Function: partitioning_target_equationt::convert_partition_io
 \*******************************************************************/
 
 void partitioning_target_equationt::convert_partition_io(
-  prop_convt &prop_conv, partitiont& partition)
+  prop_conv_solvert &prop_conv, partitiont& partition)
 {
   unsigned io_count=0;
 
@@ -775,7 +775,7 @@ Function: partitioning_target_equationt::extract_interpolants
 
 \*******************************************************************/
 void partitioning_target_equationt::extract_interpolants(
-  interpolating_solvert& interpolator, const prop_convt& decider,
+  interpolating_solvert& interpolator, const prop_conv_solvert& decider,
   interpolant_mapt& interpolant_map)
 {
   // Prepare the interpolation task. NOTE: ignore the root partition!
