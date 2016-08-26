@@ -19,7 +19,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "xml_interface.h"
 
 #include <util/ui_message.h>
-#include <util/parseoptions.h>
+#include <util/parse_options.h>
 
 #include <goto-programs/goto_functions.h>
 #include <pointer-analysis/value_sets.h>
@@ -54,7 +54,7 @@ class value_set_alloc_adaptort;
   "(pobj)(eq)(neq)(ineq)" \
   "(refine-mode):(init-mode):"
 class funfrog_parseoptionst:
-  public parseoptions_baset,
+  public parse_options_baset,
   public xml_interfacet,
   public language_uit
 {
@@ -64,7 +64,7 @@ public:
   virtual void register_languages();
 
   void ssos(){
-	  status("Partial Inlining");
+	  cbmc_status_interface("Partial Inlining");
   }
   funfrog_parseoptionst(int argc, const char **argv);
 
@@ -91,6 +91,10 @@ protected:
 
   optionst options;
   std::ofstream statfile;
+
+private:
+  void cbmc_error_interface(std::string error_msg) { error() << error_msg << eom; } // KE: adjust for CBMC 5.5 interface
+  void cbmc_status_interface(std::string msg) { status() << msg; } // KE: adjust for CBMC 5.5 interface
 };
 
 #endif
