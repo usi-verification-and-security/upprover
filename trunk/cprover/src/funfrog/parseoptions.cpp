@@ -43,7 +43,6 @@
 #include <langapi/mode.h>
 
 #include "check_claims.h"
-#include "upgrade_checker.h"
 #include "version.h"
 #include "parseoptions.h"
 
@@ -363,12 +362,6 @@ void funfrog_parseoptionst::help()
   "                               from the given file\n"
   "--no-progress                  turn off progress display\n"
   "--save-queries                 save SAT queries and configuration\n"
-  "\nUpgrade options:\n"
-  "--init-upgrade-check           prepare for upgrade checking\n"
-  "--do-upgrade-check <filename>  incremental upgrade check with the specified\n"
-  "                               upgraded version (goto-binary)\n"
-  "--save-change-impact <xml>     save call-tree representing the change impact in xml file\n"
-  "                               (by default in __calltree.xml)\n"
   "\nProof Engine options:\n"
   "--show-claims                  output the claims list\n"
   "--show-pass                    report passed claims\n"
@@ -483,46 +476,6 @@ bool funfrog_parseoptionst::check_function_summarization(
     show_claims(ns, claim_map, claim_numbers, get_ui());
     return 0;
   }
-
-  bool init_upg_check = cmdline.isset("init-upgrade-check");
-  bool upg_check = cmdline.isset("do-upgrade-check");
-
-  if (upg_check || init_upg_check){
-    // a bit of hack
-    options.set_option("no-slicing", true);
-
-    // perform the upgrade check (or preparation to it)
-    if(cmdline.isset("testclaim") || cmdline.isset("claim") ||
-        cmdline.isset("claimset") || cmdline.isset("no-itp"))
-    {
-      error("Upgrade checking mode does not allow checking specific claims and needs interpolation");
-      return 1;
-    }
-
-    bool init_ready = true; // the checks of existence of __omega and upg. version will be later
-    if (init_upg_check){
-      init_ready = check_initial(ns, goto_functions.function_map[ID_main].body,
-              goto_functions, options, ui_message_handler, !cmdline.isset("no-progress"));
-    }
-
-    if (upg_check && init_ready){
-      goto_functionst goto_functions_new;
-      status(std::string("Loading an upgrade: `")+cmdline.getval("do-upgrade-check")+"' ...");
-      before=current_time();
-
-      if(get_goto_program(cmdline.getval("do-upgrade-check"), ns, options, goto_functions_new))
-        return 6;
-
-      after=current_time();
-      status() << "    LOAD Time: " << (after-before) << " sec." << eom;
-      check_upgrade(ns,
-              // OLD!
-              goto_functions.function_map[ID_main].body, goto_functions,
-              // NEW!
-              goto_functions_new.function_map[ID_main].body, goto_functions_new,
-              options, ui_message_handler, !cmdline.isset("no-progress"));
-    }
-  } else {
     // perform standalone check (all the functionality remains the same)
   
     if(cmdline.isset("claim") &&
@@ -560,8 +513,6 @@ bool funfrog_parseoptionst::check_function_summarization(
                                       options,
                                       ui_message_handler,
                                       claim_nr);
-  }
-
   return 0;
 }
 
@@ -594,7 +545,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
-  options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
   options.set_option("check-itp", cmdline.isset("check-itp"));
 
   // always check assertions
@@ -624,9 +574,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("claims-order")) {
     options.set_option("claims-order", cmdline.getval("claims-order"));
-  }
-  if (cmdline.isset("do-upgrade-check")) {
-    options.set_option("do-upgrade-check", cmdline.getval("do-upgrade-check"));
   }
   if (cmdline.isset("save-summaries")) {
     options.set_option("save-summaries", cmdline.getval("save-summaries"));

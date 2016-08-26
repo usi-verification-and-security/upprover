@@ -1,9 +1,9 @@
 DIRS = ansi-c big-int cbmc cpp goto-cc goto-instrument goto-programs \
        goto-symex langapi pointer-analysis solvers util linking xmllang \
        assembler analyses java_bytecode aa-path-symex path-symex musketeer \
-       json cegis goto-analyzer jsil symex goto-diff
+       json cegis goto-analyzer jsil symex goto-diff funfrog
 
-all: cbmc.dir goto-cc.dir goto-instrument.dir symex.dir goto-analyzer.dir goto-diff.dir
+all: cbmc.dir goto-cc.dir goto-instrument.dir symex.dir goto-analyzer.dir goto-diff.dir funfrog.dir
 
 ###############################################################################
 
@@ -62,3 +62,4 @@ clean: $(patsubst %, %_clean, $(DIRS))
 
 $(patsubst %, %_clean, $(DIRS)):
 	$(MAKE) $(MAKEARGS) -C $(patsubst %_clean, %, $@) clean ; \
+

@@ -8,7 +8,6 @@ SHARED_SRC := \
       solvers/prop_itp.cpp
 
 FUNFROG_SRC := \
-      diff.cpp \
       partitioning_target_equation.cpp \
       partitioning_slice.cpp \
       summary_info.cpp \
@@ -22,15 +21,10 @@ FUNFROG_SRC := \
       dependency_checker.cpp \
       symex_assertion_sum.cpp \
       summarizing_checker.cpp \
-      upgrade_checker.cpp \
       main.cpp
 
 SUMO_SRC := \
       sumo.cpp
-
-DIFF_SRC := \
-      diff.cpp \
-      diff_main.cpp
 
 OBJ += \
       $(SHARED_SRC:.cpp=$(OBJEXT)) \
@@ -63,47 +57,28 @@ SUMO_OBJ := \
       $(SUMO_SRC:.cpp=$(OBJEXT)) \
       $(OBJ)
 
-DIFF_OBJ := \
-      $(DIFF_SRC:.cpp=$(OBJEXT)) \
-      ../ansi-c/ansi-c$(LIBEXT) \
-      ../linking/linking$(LIBEXT) \
-      ../big-int/big-int$(LIBEXT) \
-      ../goto-programs/goto-programs$(LIBEXT) \
-      ../pointer-analysis/value_set$(OBJEXT) \
-      ../pointer-analysis/dereference$(OBJEXT) \
-      ../pointer-analysis/add_failed_symbols$(OBJEXT) \
-      ../pointer-analysis/rewrite_index$(OBJEXT) \
-      ../pointer-analysis/goto_program_dereference$(OBJEXT) \
-      ../langapi/langapi$(LIBEXT) \
-      ../analyses/analyses$(LIBEXT) \
-      ../assembler/assembler$(LIBEXT) \
-      ../util/util$(LIBEXT)
-
-SRC := ${FUNFROG_SRC} ${SUMO_SRC} ${DIFF_SRC}
+SRC := ${FUNFROG_SRC} ${SUMO_SRC} 
 
 include ../common
 
-CP_CXXFLAGS += -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING
-
-all: evolcheck$(EXEEXT) 
-
 INCLUDES :=  -I .. -I ../util 
+
+CXXFLAGS := -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING $(INCLUDES)
+
+all: hifrog$(EXEEXT) 
+
 
 
 ###############################################################################
 
-evolcheck$(EXEEXT): $(FUNFROG_OBJ)
+hifrog$(EXEEXT): $(FUNFROG_OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline 
 
 sumo$(EXEEXT): $(SUMO_OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline
 
-diff$(EXEEXT): $(DIFF_OBJ)
-	$(LINKBIN)
-	mv diff goto-diff
-
 clean:
-	rm -f *.o *.d funfrog evolcheck sumo diff __omega_* __calltree.xml
+	rm -f *.o *.d hifrog sumo __omega_* __calltree.xml
 	rm -f solvers/*.o solvers/*.d
 
 re: clean all

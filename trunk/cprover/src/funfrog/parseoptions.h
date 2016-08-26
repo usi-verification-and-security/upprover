@@ -29,8 +29,6 @@ class value_set_alloc_adaptort;
 #define FUNFROG_OPTIONS \
   "D:I:(16)(32)(64)(v):(version)" \
   "(i386-linux)(i386-macos)(ppc-macos)" \
-  "(show-leaping-program)(show-instrumented-program)" \
-  "(save-leaping-program)(save-instrumented-program)" \
   "(show-program)(show-fpfreed-program)(show-dereferenced-program)" \
   "(save-program)(save-fpfreed-program)(save-dereferenced-program)" \
   "(show-transformed-program)(show-inlined-program)" \
@@ -42,7 +40,6 @@ class value_set_alloc_adaptort;
   "(show-symbol-table)(show-value-sets)" \
   "(save-claims)" \
   "(xml-ui)(xml-interface)" \
-  "(init-upgrade-check)(do-upgrade-check):" \
   "(no-slicing)(no-assert-grouping)(no-summary-optimization)" \
   "(pointer-check)(bounds-check)(div-by-zero-check)(overflow-check)(nan-check)" \
   "(string-abstraction)(assertions)" \
