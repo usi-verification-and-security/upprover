@@ -20,8 +20,8 @@
 #include "summarization_context.h"
 #include "partitioning_target_equation.h"
 
-extern fine_timet global_satsolver_time;
-extern fine_timet global_sat_conversion_time;
+extern time_periodt global_satsolver_time;
+extern time_periodt global_sat_conversion_time;
 
 class prop_assertion_sumt:public messaget
 {
@@ -55,7 +55,7 @@ private:
   partitioning_target_equationt &equation;
 
   // SAT solving time
-  fine_timet solving_time;
+  time_periodt solving_time;
 
   //std::ostream &out;
   ui_message_handlert &message_handler;

@@ -8,15 +8,15 @@
 \*******************************************************************/
 
 #include <goto-symex/build_goto_trace.h>
-#include <goto-symex/xml_goto_trace.h>
+#include <goto-programs/xml_goto_trace.h>
 #include <find_symbols.h>
 #include <ansi-c/expr2c.h>
 #include <time_stopping.h>
 #include <ui_message.h>
 #include "prop_assertion_sum.h"
 
-fine_timet global_satsolver_time;
-fine_timet global_sat_conversion_time;
+time_periodt global_satsolver_time;
+time_periodt global_sat_conversion_time;
 
 /*******************************************************************
 
@@ -36,10 +36,11 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 
   bool sat=false;
 
+  message_handler.set_verbosity(10);
   decider.set_message_handler(message_handler);
-  decider.set_verbosity(10);
+  //decider.set_verbosity(10);
 
-  fine_timet before, after;
+  absolute_timet before, after;
   before=current_time();
   equation.convert(decider, interpolator);
 
@@ -54,12 +55,12 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 
   if (!sat)
   {
-    status("ASSERTION IS TRUE");
+    status() << ("ASSERTION IS TRUE");
     return true;
   }
   else
   {
-    status("ASSERTION IS VIOLATED");
+    status() << ("ASSERTION IS VIOLATED");
     /* error_trace(decider, ns);
     //std::cout << std::endl << "NONDET assigns:" << std::endl;
 
@@ -122,8 +123,8 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 bool prop_assertion_sumt::is_satisfiable(
   decision_proceduret &decision_procedure)
 {
-  status("RESULT");
-  fine_timet before, after;
+  status() << ("RESULT");
+  absolute_timet before, after;
   before=current_time();
   decision_proceduret::resultt r = decision_procedure.dec_solve();
   after=current_time();
@@ -137,12 +138,12 @@ bool prop_assertion_sumt::is_satisfiable(
   {
     case decision_proceduret::D_UNSATISFIABLE:
     {
-      status("UNSAT - it holds!");
+      status() << ("UNSAT - it holds!");
       return false;
     }
     case decision_proceduret::D_SATISFIABLE:
     {
-      status("SAT - doesn't hold");
+      status() << ("SAT - doesn't hold");
       return true;
     }
 
@@ -168,7 +169,7 @@ void build_exec_order_goto_trace(
       it++)
   {
     const symex_target_equationt::SSA_stept &SSA_step=**it;
-    if(prop_conv.prop.l_get(SSA_step.guard_literal)!=tvt(true))
+    if(prop_conv.l_get(SSA_step.guard_literal)!=tvt(true)) // KE: variant of lget shall do prop.l_get
       continue;
 
     if(SSA_step.is_assignment() &&
@@ -177,22 +178,29 @@ void build_exec_order_goto_trace(
 
     step_nr++;
     
+    // KE: in case there is missing information in the way it is created now - copy the code from src/goto-symex/build_goto_trace.cpp
+    // Look for the method: build_goto_trace
     goto_trace.steps.push_back(goto_trace_stept());    
     goto_trace_stept &goto_trace_step=goto_trace.steps.back();
     
     goto_trace_step.thread_nr=SSA_step.source.thread_nr;
     goto_trace_step.pc=SSA_step.source.pc;
     goto_trace_step.comment=SSA_step.comment;
-    goto_trace_step.lhs_object=SSA_step.original_lhs_object;
+    //goto_trace_step.lhs_object=SSA_step.original_lhs_object;
     goto_trace_step.type=SSA_step.type;
+    goto_trace_step.hidden=SSA_step.hidden;
     goto_trace_step.step_nr=step_nr;
     goto_trace_step.format_string=SSA_step.format_string;
     goto_trace_step.io_id=SSA_step.io_id;
     goto_trace_step.formatted=SSA_step.formatted;
     goto_trace_step.identifier=SSA_step.identifier;
 
-    if(SSA_step.ssa_lhs.is_not_nil())
+    if(SSA_step.ssa_lhs.is_not_nil()) {
       goto_trace_step.lhs_object_value=prop_conv.get(SSA_step.ssa_lhs);
+      goto_trace_step.lhs_object=ssa_exprt(SSA_step.ssa_lhs.get_original_expr());
+    } else {
+    	goto_trace_step.lhs_object.make_nil();
+    }
     
     if(SSA_step.ssa_full_lhs.is_not_nil())
     {
@@ -222,7 +230,7 @@ void build_exec_order_goto_trace(
       goto_trace_step.cond_expr=SSA_step.cond_expr;
 
       goto_trace_step.cond_value=
-        prop_conv.prop.l_get(SSA_step.cond_literal).is_true();
+        prop_conv.l_get(SSA_step.cond_literal).is_true(); // KE: variant of lget shall do prop.l_get
     }
 
     if(SSA_step.is_assert())
@@ -242,7 +250,7 @@ void build_exec_order_goto_trace(
 
 void prop_assertion_sumt::error_trace(const prop_convt &prop_conv, const namespacet &ns)
 {
-  status("Building error trace");
+  status() << ("Building error trace");
 
   goto_tracet goto_trace;
 
