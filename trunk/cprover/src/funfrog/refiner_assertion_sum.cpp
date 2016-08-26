@@ -48,7 +48,7 @@ void refiner_assertion_sumt::refine(const prop_convt &decider, summary_infot& su
 void refiner_assertion_sumt::set_inline_sum(summary_infot& summary)
 {
   if (summary.get_call_location() <= last_assertion_loc){
-    status(std::string("*** REFINING function: ") + summary.get_function_id().c_str());
+    status() << (std::string("*** REFINING function: ") + summary.get_function_id().c_str());
     summary.set_inline();
     refined_functions.push_back(&summary);
   }
@@ -111,7 +111,7 @@ void refiner_assertion_sumt::reset_depend(const prop_convt &decider, summary_inf
 #       endif
         tmp.push_back(&ipart.summary_info);
       }*/
-      if (decider.prop.l_get(ipart.callstart_literal).is_true()){
+      if (decider.l_get(ipart.callstart_literal).is_true()){ // in the variant will do prop.lget
 #       ifdef DEBUG_REFINER
         std::cout<< "    -- callstart literal is true" << std::endl;
 #       endif
