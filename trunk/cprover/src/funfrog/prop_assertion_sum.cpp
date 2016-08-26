@@ -30,7 +30,7 @@ time_periodt global_sat_conversion_time;
 
 \*******************************************************************/
 
-bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, const namespacet &ns, prop_convt& decider, interpolating_solvert& interpolator)
+bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, const namespacet &ns, prop_conv_solvert& decider, interpolating_solvert& interpolator)
 {
   //stream_message_handlert message_handler(out);
 

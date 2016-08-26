@@ -38,6 +38,9 @@ Author: Ondrej Sery
 void partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
           interpolating_solvert &interpolator)
 {
+	// KE: prop_conv change into prop_conv_solvert and use it from here - does cast + error check
+	//prop_conv_solvert&prop_conv_solver = dynamic_cast<prop_conv_solvert&> (prop_conv);
+	//assert(prop_conv_solver != 0); // KE: if null it says we never created it as prop_conv_solver - go back to prop_assertion_sum and fix it!
 	getFirstCallExpr(); // Save the first call to the first function
   int part_id = partitions.size();
   for (partitionst::reverse_iterator it = partitions.rbegin();

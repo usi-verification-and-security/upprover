@@ -41,7 +41,7 @@ public:
           max_memory_used(_max_memory_used)
           {set_message_handler(_message_handler);};
 
-  bool assertion_holds(const assertion_infot &assertion, const namespacet &ns, prop_convt& decider, interpolating_solvert& interpolator);
+  bool assertion_holds(const assertion_infot &assertion, const namespacet &ns, prop_conv_solvert& decider, interpolating_solvert& interpolator);
 
   const fine_timet& get_solving_time() { return solving_time; };
 

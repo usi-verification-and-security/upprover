@@ -240,7 +240,7 @@ private:
   void getFirstCallExpr();
 
   // Convert a specific partition of SSA steps
-  void convert_partition(prop_conv_solvert &prop_conv,
+  void convert_partition(prop_conv_solvert &prop_conv_solvert,
     interpolating_solvert &interpolator, partitiont& partition);
   // Convert a specific partition guards of SSA steps
   void convert_partition_guards(prop_conv_solvert &prop_conv,
