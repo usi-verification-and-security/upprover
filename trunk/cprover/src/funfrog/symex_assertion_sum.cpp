@@ -532,8 +532,8 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
           it1 != partition_iface.argument_symbols.end();
           ++it1) {
     guardt guard;
-    symbol_exprt lhs(state.get_original_name(it1->get_identifier()),
-    		ns.follow(it1->type()));
+
+    symbol_exprt lhs = to_symbol_expr(to_ssa_expr(*it1).get_original_expr());
 
     assignment_typet assignment_type=symex_targett::HIDDEN;
     symex_assign_symbol(state, to_ssa_expr(lhs), nil_exprt(), *it1, guard, assignment_type);
@@ -688,12 +688,17 @@ void symex_assertion_sumt::mark_argument_symbols(
     symbol_exprt lhs = symbol.symbol_expr(); // Taken from src/util/symbol.cpp
     // The definition: class symbol_exprt:public exprt in file: /util/std_expr.h
 
-    state.rename(lhs, ns, goto_symex_statet::L2);
-    const irep_idt &expr = state.level2.current_name(lhs.get("identifier"));
+    //GF: not sure about it:
+    const irep_idt l0_name = to_ssa_expr(lhs).get_original_name();
 
-    symbol_exprt symbol_ex(expr, argument.type());
+    statet::level2t::current_namest::const_iterator it2 =
+        state.level2.current_names.find(l0_name);
+    if(it2==state.level2.current_names.end()) assert (0);
 
-    partition_iface.argument_symbols.push_back(symbol_ex);
+      // rename!
+    to_ssa_expr(lhs).set_level_2(it2->second.second);
+
+    partition_iface.argument_symbols.push_back(lhs);
 
 #   ifdef DEBUG_PARTITIONING
     std::cout << "Marking argument symbol: " << symbol << "\n";
@@ -732,14 +737,19 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     const symbolt& symbol = ns.lookup(*it);
     // The symbol is not yet in l2 renaming
     if (state.level2.current_names.find(*it) == state.level2.current_names.end()) {
-      state.level2.rename(*it, 0);
+
+        symbol_exprt s = symbol.symbol_expr();
+        to_ssa_expr(s).set_level_2(0);
+
+        // GF: should there be assert(0) ?
 #     ifdef DEBUG_PARTITIONING
       std::cerr << " * WARNING: Forcing '" << *it << 
               "' into l2 renaming." << std::endl;
 #     endif
     }
 
-    symbol_exprt symb_ex(state.level2.current_name(*it), symbol.type);
+    // GF: not sure about it. ToDo: debug when compiled
+    symbol_exprt symb_ex(state.level2.current_names[*it].first);
     partition_iface.argument_symbols.push_back(symb_ex);
 
 #   ifdef DEBUG_PARTITIONING
@@ -878,9 +888,8 @@ void symex_assertion_sumt::store_modified_globals(
           partition_iface.out_arg_symbols.begin();
           it != partition_iface.out_arg_symbols.end();
           ++it) {
-    
-    symbol_exprt rhs(state.get_original_name(it->get_identifier()),
-            ns.follow(it->type()));
+      exprt rhs(to_ssa_expr(*it).get_original_expr());
+
     code_assignt assignment(
             *it,
             rhs);
@@ -960,7 +969,10 @@ void symex_assertion_sumt::clear_locals_versions(statet &state)
 */
 #     endif
 
-      state.level2.remove(*it);
+      statet::level2t::current_namest::const_iterator it2 =
+          state.level2.current_names.find(*it);
+      if(it2 != state.level2.current_names.end())
+        state.level2.current_names[*it].first.remove_level_2();
     }
   }
 }
@@ -1263,10 +1275,20 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 {
   //--8<--- Taken from goto_symex_statet::assignment()
   // identifier should be l0 or l1, make sure it's l1
-  irep_idt l1_identifier=state.level1(identifier);
 
-  // do the l2 renaming 
-  irep_idt new_l2_name=state.level2.increase_counter(l1_identifier);
+  statet::level1t::current_namest::const_iterator c1_it=
+        state.level1.current_names.find(identifier);
+
+  if(c1_it == state.level1.current_names.end()) assert(0);
+
+  ssa_exprt s = c1_it->second.first;
+  irep_idt l1_identifier = s.get_level_1();
+
+  state.level2.increase_counter(l1_identifier);
+
+  //GF: not sure at all
+
+  irep_idt new_l2_name = s.get_level_2();
 
   // Break constant propagation for this new symbol
   state.propagation.remove(l1_identifier);
@@ -1296,24 +1318,35 @@ void symex_assertion_sumt::raw_assignment(
 {
 
   symbol_exprt rhs_symbol = to_symbol_expr(rhs);
-  rhs_symbol.set(ID_identifier, state.level2.current_name(rhs_symbol.get_identifier()));
+
+  //GF: not sure at all
+  statet::level1t::current_namest::const_iterator c1_it=
+        state.level1.current_names.find(to_ssa_expr(rhs).get_identifier());
+
+  if(c1_it == state.level1.current_names.end()) assert(0);
+
+  ssa_exprt s = c1_it->second.first;
+  irep_idt rhs_identifier = s.get_level_2();
+
+  rhs_symbol.set(ID_identifier, rhs_identifier);
 
   assert(lhs.id()==ID_symbol);
 
   // the type might need renaming
-  state.rename(lhs.type(), ns);
+  const irep_idt &lhs_identifier = to_ssa_expr(lhs).get_identifier();
 
-  const irep_idt &identifier = lhs.get(ID_identifier);
-  irep_idt l1_identifier=state.level2.get_original_name(identifier);
+  state.rename(lhs.type(), lhs_identifier, ns);
+  to_ssa_expr(lhs).update_type();
 
-  state.propagation.remove(l1_identifier);
+  // GF: not sure, just commented this line
+//  state.propagation.remove(state.level2.get_original_name(lhs_identifier));
 
     // update value sets
     exprt l1_rhs(rhs_symbol);
-    state.level2.get_original_name(l1_rhs);
-    exprt l1_lhs(lhs);
-    //symbol_exprt l1_lhs(l1_identifier, lhs.type());
-    state.level2.get_original_name(l1_lhs.type());
+    state.get_l1_name(l1_rhs);
+
+    ssa_exprt l1_lhs(lhs);
+    state.get_l1_name(l1_lhs);
 
     state.value_set.assign(l1_lhs, l1_rhs, ns, false, false);
 

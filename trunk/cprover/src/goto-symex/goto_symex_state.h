@@ -165,12 +165,13 @@ public:
   // undoes all levels of renaming
   void get_original_name(exprt &expr) const;
   void get_original_name(typet &type) const;
+  // only required for value_set.assign
+  void get_l1_name(exprt &expr) const;
+
 protected:
   void rename_address(exprt &expr, const namespacet &ns, levelt level);
 
   void set_ssa_indices(ssa_exprt &expr, const namespacet &ns, levelt level=L2);
-  // only required for value_set.assign
-  void get_l1_name(exprt &expr) const;
 
   // this maps L1 names to (L2) types
   typedef hash_map_cont<irep_idt, typet, irep_id_hash> l1_typest;
