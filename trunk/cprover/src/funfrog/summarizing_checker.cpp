@@ -64,7 +64,7 @@ void get_ints(std::vector<unsigned>& claims, std::string set){
 bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
         bool store_summaries_with_assertion)
 {
-  fine_timet initial, final;
+  absolute_timet initial, final;
   initial=current_time();
   // Trivial case
   if(assertion.is_trivially_true())
@@ -206,7 +206,7 @@ void summarizing_checkert::extract_interpolants (prop_assertion_sumt& prop, part
 {
   summary_storet& summary_store = summarization_context.get_summary_store();
   interpolant_mapt itp_map;
-  fine_timet before, after;
+  absolute_timet before, after;
   before=current_time();
 
   equation.extract_interpolants(*interpolator, *decider, itp_map);
@@ -261,14 +261,15 @@ void summarizing_checkert::setup_unwind(symex_assertion_sumt& symex)
     {
       std::string id=val.substr(0, val.rfind(":"));
       unsigned long uw=atol(val.substr(val.rfind(":")+1).c_str());
-      symex.unwind_set[id]=uw;
+      //symex.unwind_set[id]=uw; // KE: changed in cbmc 5.5
+      symex.set_unwind_thread_loop_limit(1,id,uw); //KE: No threads support, assume main is in thread 1
     }
     
     if(next==std::string::npos) break;
     idx=next;
   }
 
-  symex.max_unwind=options.get_int_option("unwind");
+  symex.set_unwind_limit(options.get_unsigned_int_option("unwind"));
 }
 
 /*******************************************************************\
