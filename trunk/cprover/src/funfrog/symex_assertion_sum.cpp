@@ -534,7 +534,9 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     guardt guard;
     symbol_exprt lhs(state.get_original_name(it1->get_identifier()),
     		ns.follow(it1->type()));
-    symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, HIDDEN);
+
+    assignment_typet assignment_type=symex_targett::HIDDEN;
+    symex_assign_symbol(state, to_ssa_expr(lhs), nil_exprt(), *it1, guard, assignment_type);
   }
 }
 
@@ -627,7 +629,7 @@ void symex_assertion_sumt::assign_function_arguments(
   // Add parameters assignment
   bool old_cp = constant_propagation;
   constant_propagation = false;
-  argument_assignments(identifier, goto_function.type, state, function_call.arguments());
+  parameter_assignments(identifier, goto_function, state, function_call.arguments());
 
   // Store the argument renamed symbols somewhere (so that we can use
   // them later, when processing the deferred function).
@@ -671,18 +673,20 @@ void symex_assertion_sumt::mark_argument_symbols(
         statet &state,
         partition_ifacet &partition_iface)
 {
-  const code_typet::argumentst &argument_types=function_type.arguments();
+  const code_typet::parameterst &parameter_types=function_type.parameters();
 
-  for(code_typet::argumentst::const_iterator
-      it=argument_types.begin();
-      it!=argument_types.end();
+  for(code_typet::parameterst::const_iterator
+      it=parameter_types.begin();
+      it!=parameter_types.end();
       it++)
   {
-    const code_typet::argumentt &argument=*it;
-    const irep_idt &identifier = argument.get_identifier();
+    const code_typet::parametert &parameter=*it;
+    const irep_idt &identifier = parameter.get_identifier();
 
     const symbolt &symbol = ns.lookup(identifier);
-    symbol_exprt lhs = symbol_expr(symbol);
+    //symbol_exprt lhs = symbol_expr(symbol);
+    symbol_exprt lhs = symbol.symbol_expr(); // Taken from src/util/symbol.cpp
+    // The definition: class symbol_exprt:public exprt in file: /util/std_expr.h
 
     state.rename(lhs, ns, goto_symex_statet::L2);
     const irep_idt &expr = state.level2.current_name(lhs.get("identifier"));
@@ -1000,7 +1004,7 @@ void symex_assertion_sumt::handle_function_call(
   clean_expr(*it, state, false);
 
   // Do we have the body?
-  if(!goto_function.body_available)
+  if(!goto_function.body_available())
   {
     no_body(function_id);
 
@@ -1008,7 +1012,8 @@ void symex_assertion_sumt::handle_function_call(
     {
       exprt rhs = exprt("nondet_symbol", function_call.lhs().type());
       rhs.set(ID_identifier, "symex::" + i2string(nondet_count++));
-      rhs.source_location() = function_call.source_location();
+      //rhs.source_location() = function_call.source_location();
+      rhs.add_source_location() = function_call.source_location(); // KE: I think that's how it is done now - from expr.h
       code_assignt code(function_call.lhs(), rhs);
       symex_assign(state, code);
     }
@@ -1310,14 +1315,14 @@ void symex_assertion_sumt::raw_assignment(
     //symbol_exprt l1_lhs(l1_identifier, lhs.type());
     state.level2.get_original_name(l1_lhs.type());
 
-    state.value_set.assign(l1_lhs, l1_rhs, ns, false);
+    state.value_set.assign(l1_lhs, l1_rhs, ns, false, false);
 
   const symbol_exprt ce2;// =     to_symbol_expr(nil_exprt());
   guardt empty_guard;
   target.assignment(
     empty_guard.as_expr(),
-    to_symbol_expr(lhs),
-    to_symbol_expr(ce2),
+    to_ssa_expr(lhs), //to_symbol_expr(lhs))
+    //to_symbol_expr(ce2),
     lhs, l1_lhs,
     rhs_symbol,
     state.source,
