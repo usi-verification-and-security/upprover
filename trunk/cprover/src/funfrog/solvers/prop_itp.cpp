@@ -169,7 +169,7 @@ Function: prop_itpt::generalize
 
 \*******************************************************************/
 
-void prop_itpt::generalize(const prop_convt& decider,
+void prop_itpt::generalize(const prop_conv_solvert& decider,
     const std::vector<symbol_exprt>& symbols)
 {
   symbol_mask.clear();
@@ -418,7 +418,7 @@ Function: prop_itpt::substitute
 
 \*******************************************************************/
 
-void prop_itpt::substitute(prop_convt& decider,
+void prop_itpt::substitute(prop_conv_solvert& decider,
     const std::vector<symbol_exprt>& symbols,
     bool inverted) const
 {
@@ -607,7 +607,7 @@ Function: prop_itpt::reserve_variables
 
 \*******************************************************************/
 
-void prop_itpt::reserve_variables(prop_convt& decider,
+void prop_itpt::reserve_variables(prop_conv_solvert& decider,
     const std::vector<symbol_exprt>& symbols, std::map<symbol_exprt, std::vector<unsigned> >& symbol_vars)
 {
   // FIXME: Dirty cast.
