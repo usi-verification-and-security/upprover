@@ -50,14 +50,13 @@ OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../xmllang/xmllang$(LIBEXT) \
       ../assembler/assembler$(LIBEXT) \
       ../solvers/solvers$(LIBEXT) \
-      ../util/util$(LIBEXT)
 
 
 SUMO_OBJ := \
       $(SUMO_SRC:.cpp=$(OBJEXT)) \
       $(OBJ)
 
-SRC := ${FUNFROG_SRC} ${SUMO_SRC} 
+SRC := ${FUNFROG_SRC} ${SUMO_SRC} ${SHARED_SRC}
 
 include ../common
 

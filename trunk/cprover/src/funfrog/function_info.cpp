@@ -459,7 +459,7 @@ bool function_infot::check_implies(const interpolantt& first,
   satcheck_opensmt2t prop_solver;
   prop_solver.new_partition();        // initialize assert on the solver side
 
-  contextt ctx;
+  symbol_tablet ctx;
   namespacet ns(ctx);
 
   literalt first_root;
@@ -467,9 +467,9 @@ bool function_infot::check_implies(const interpolantt& first,
   literalt root;
   first_root = first.raw_assert(prop_solver);
   second_root = second.raw_assert(prop_solver);
-  root = prop_solver.land(first_root, second_root.negation());
+  root = prop_solver.land(first_root, neg(second_root));
   prop_solver.l_set_to_true(root);
-  fine_timet before, after;
+  absolute_timet before, after;
   before = current_time();
   
   propt::resultt res = prop_solver.prop_solve();
