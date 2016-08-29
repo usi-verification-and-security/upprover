@@ -69,7 +69,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   // Trivial case
   if(assertion.is_trivially_true())
   {
-    status("ASSERTION IS TRIVIALLY TRUE");
+    status() << ("ASSERTION IS TRIVIALLY TRUE");
     report_success();
     return true;
   }
@@ -117,31 +117,32 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
     deciderp->unbounded_array = bv_pointerst::U_AUTO;
     decider.reset(deciderp);
 
+
     end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
 
     if (!end){
 
       if (options.get_bool_option("claims-order") && count == 1){
-        dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_int_option("claims-order")).do_it();
+        dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-order")).do_it();
         // TODO: employ dependency information from dependency checker
         //partitioning_slice(equation, summarization_context.get_summary_store());
-        status(std::string("Ignored SSA steps after dependency checker: ") + i2string(equation.count_ignored_SSA_steps()));
+        status() << (std::string("Ignored SSA steps after dependency checker: ") + i2string(equation.count_ignored_SSA_steps()));
       }
 
-      end = prop.assertion_holds(assertion, ns, *decider, *interpolator);
+      end = prop.assertion_holds(assertion, ns, *(dynamic_cast<prop_conv_solvert *> (decider.get())), *(interpolator.get())); // KE: strange conversion after shift to cbmc 5.5 - I think the bv_pointerst is changed
       unsigned summaries_count = omega.get_summaries_count();
       unsigned nondet_count = omega.get_nondets_count();
       if (end && interpolator->can_interpolate())
       {
         if (options.get_bool_option("no-itp")){
-          status("Skip generating interpolants");
+          status() << ("Skip generating interpolants");
         } else {
-          status("Start generating interpolants...");
+          status() << ("Start generating interpolants...");
           extract_interpolants(prop, equation);
         }
         if (summaries_count == 0)
         {
-          status("ASSERTION(S) HOLD(S)"); //TODO change the message to something more clear (like, everything was inlined...)
+          status() << ("ASSERTION(S) HOLD(S)"); //TODO change the message to something more clear (like, everything was inlined...)
         } else {
           status() << "FUNCTION SUMMARIES (for " << summaries_count
         	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
@@ -161,17 +162,17 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 
           if (refiner.get_refined_functions().size() == 0){
             prop.error_trace(*decider, ns);
-            status("A real bug found.");
+            status() << ("A real bug found.");
             report_failure();
             break;
           } else {
             //status("Counterexample is spurious");
-            status("Go to next iteration");
+            status() << ("Go to next iteration");
           }
         } else {
           prop.error_trace(*decider, ns);
-          status("ASSERTION(S) DO(ES)N'T HOLD");
-          status("A real bug found");
+          status() << ("ASSERTION(S) DO(ES)N'T HOLD");
+          status() << ("A real bug found");
           report_failure();
           break;
         }
@@ -181,7 +182,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   final = current_time();
   omega.get_unwinding_depth();
 
-  status() << "Initial unwinding bound: " << options.get_int_option("unwind") << eom;
+  status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
   status() << "Total number of steps: " << count << eom;
   if (omega.get_recursive_total() > 0){
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
@@ -201,7 +202,6 @@ Function: summarizing_checkert::extract_interpolants
  Purpose: Extract and store the interpolation summaries
 
 \*******************************************************************/
-
 void summarizing_checkert::extract_interpolants (prop_assertion_sumt& prop, partitioning_target_equationt& equation)
 {
   summary_storet& summary_store = summarization_context.get_summary_store();
@@ -209,7 +209,7 @@ void summarizing_checkert::extract_interpolants (prop_assertion_sumt& prop, part
   absolute_timet before, after;
   before=current_time();
 
-  equation.extract_interpolants(*interpolator, *decider, itp_map);
+  equation.extract_interpolants(*(interpolator.get()), *(dynamic_cast<prop_conv_solvert *> (decider.get())), itp_map); // KE: strange conversion after shift to cbmc 5.5 - I think the bv_pointerst is changed
 
   after=current_time();
   status() << "INTERPOLATION TIME: " << (after-before) << eom;
@@ -349,7 +349,7 @@ Function: summarizing_checkert::report_success
 
 void summarizing_checkert::report_success()
 {
-  //status("VERIFICATION SUCCESSFUL");
+  //status() << ("VERIFICATION SUCCESSFUL");
 
   switch(message_handler.get_ui())
   {
