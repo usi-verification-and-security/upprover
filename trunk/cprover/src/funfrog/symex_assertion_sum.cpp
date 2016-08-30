@@ -536,6 +536,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     symbol_exprt lhs = to_symbol_expr(to_ssa_expr(*it1).get_original_expr());
 
     assignment_typet assignment_type=symex_targett::HIDDEN;
+
     symex_assign_symbol(state, to_ssa_expr(lhs), nil_exprt(), *it1, guard, assignment_type);
   }
 }
@@ -684,12 +685,10 @@ void symex_assertion_sumt::mark_argument_symbols(
     const irep_idt &identifier = parameter.get_identifier();
 
     const symbolt &symbol = ns.lookup(identifier);
-    //symbol_exprt lhs = symbol_expr(symbol);
-    symbol_exprt lhs = symbol.symbol_expr(); // Taken from src/util/symbol.cpp
-    // The definition: class symbol_exprt:public exprt in file: /util/std_expr.h
+    symbol_exprt lhs = symbol.symbol_expr();
+    state.rename(lhs, ns, goto_symex_statet::L1);
 
-    //GF: not sure about it:
-    const irep_idt l0_name = to_ssa_expr(lhs).get_original_name();
+    const irep_idt l0_name = lhs.get_identifier();
 
     statet::level2t::current_namest::const_iterator it2 =
         state.level2.current_names.find(l0_name);
@@ -833,13 +832,11 @@ void symex_assertion_sumt::return_assignment_and_mark(
   irep_idt retval_tmp_id("funfrog::\\retval_tmp");
 # endif
  */
-  symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state),
-          type);
+  symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state), type);
   symbol_exprt retval_tmp(retval_tmp_id, type);
-
   add_symbol(retval_tmp_id, type, false);
   add_symbol(retval_symbol_id, type, true);
-  
+
   if (!skip_assignment) {
     code_assignt assignment(*lhs, retval_symbol);
 
@@ -848,10 +845,11 @@ void symex_assertion_sumt::return_assignment_and_mark(
 
     bool old_cp = constant_propagation;
     constant_propagation = false;
+    // GF: fails here. for some reason, retval_symbol is not in the symbol_table.
+    //     not clear, how it used to get there in the previous version
     symex_assign(state, assignment);
     constant_propagation = old_cp;
   } 
-
 # ifdef DEBUG_PARTITIONING
   expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
   expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
@@ -888,6 +886,7 @@ void symex_assertion_sumt::store_modified_globals(
           partition_iface.out_arg_symbols.begin();
           it != partition_iface.out_arg_symbols.end();
           ++it) {
+
       exprt rhs(to_ssa_expr(*it).get_original_expr());
 
     code_assignt assignment(
@@ -1273,28 +1272,31 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
         const irep_idt& identifier,
         statet &state)
 {
-  //--8<--- Taken from goto_symex_statet::assignment()
-  // identifier should be l0 or l1, make sure it's l1
+  ssa_exprt lhs_ssa;
 
   statet::level1t::current_namest::const_iterator c1_it=
         state.level1.current_names.find(identifier);
 
-  if(c1_it == state.level1.current_names.end()) assert(0);
+  unsigned count = 0;
+  if(c1_it == state.level1.current_names.end()){
 
-  ssa_exprt s = c1_it->second.first;
-  irep_idt l1_identifier = s.get_level_1();
+    // TODO: find a more elegant way for getting a new symbol
 
-  state.level2.increase_counter(l1_identifier);
+    symbol_exprt lhs(identifier);
+    lhs_ssa = ssa_exprt(lhs);
+    state.level2.current_names[identifier]=std::make_pair(lhs_ssa, 0);
+  } else {
+    lhs_ssa = c1_it->second.first;
+    state.level2.increase_counter(identifier);
+    count = c1_it->second.second;
+  }
 
-  //GF: not sure at all
-
-  irep_idt new_l2_name = s.get_level_2();
+  irep_idt new_l2_name = id2string(identifier) + "#" + i2string(count);
 
   // Break constant propagation for this new symbol
-  state.propagation.remove(l1_identifier);
+  state.propagation.remove(identifier);
 
   return new_l2_name;
-  //--8<---
 }
 
 /*******************************************************************
@@ -1320,6 +1322,7 @@ void symex_assertion_sumt::raw_assignment(
   symbol_exprt rhs_symbol = to_symbol_expr(rhs);
 
   //GF: not sure at all
+
   statet::level1t::current_namest::const_iterator c1_it=
         state.level1.current_names.find(to_ssa_expr(rhs).get_identifier());
 
@@ -1352,6 +1355,7 @@ void symex_assertion_sumt::raw_assignment(
 
   const symbol_exprt ce2;// =     to_symbol_expr(nil_exprt());
   guardt empty_guard;
+
   target.assignment(
     empty_guard.as_expr(),
     to_ssa_expr(lhs), //to_symbol_expr(lhs))
@@ -1431,7 +1435,7 @@ void symex_assertion_sumt::phi_function(
         goto_state_rhs=p_it->second;
       else
         to_ssa_expr(goto_state_rhs).set_level_2(goto_state.level2_current_count(l1_identifier));
-    }
+      }
 
     {
       goto_symex_statet::propagationt::valuest::const_iterator p_it=
@@ -1441,7 +1445,7 @@ void symex_assertion_sumt::phi_function(
         dest_state_rhs=p_it->second;
       else
         to_ssa_expr(dest_state_rhs).set_level_2(dest_state.level2.current_count(l1_identifier));
-    }
+      }
 
     exprt rhs;
 
