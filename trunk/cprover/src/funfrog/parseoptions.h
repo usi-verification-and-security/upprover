@@ -94,7 +94,7 @@ protected:
 
 private:
   void cbmc_error_interface(std::string error_msg) { error() << error_msg << eom; } // KE: adjust for CBMC 5.5 interface
-  void cbmc_status_interface(std::string msg) { status() << msg; } // KE: adjust for CBMC 5.5 interface
+  void cbmc_status_interface(std::string msg) { status() << msg << eom; } // KE: adjust for CBMC 5.5 interface
 };
 
 #endif
