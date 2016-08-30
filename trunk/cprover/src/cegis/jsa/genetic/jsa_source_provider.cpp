@@ -7,6 +7,8 @@
 #include <cegis/instrument/literals.h>
 #include <cegis/jsa/value/jsa_genetic_synthesis.h>
 #include <cegis/jsa/options/jsa_program_info.h>
+#include <cegis/jsa/instrument/temps_helper.h>
+#include <cegis/jsa/instrument/jsa_meta_data.h>
 #include <cegis/jsa/learn/jsa_symex_learn.h>
 #include <cegis/jsa/genetic/jsa_source_provider.h>
 
@@ -29,22 +31,12 @@ jsa_source_providert::jsa_source_providert(jsa_symex_learnt &lcfg) :
       "const __CPROVER_jsa_word_t *__CPROVER_jsa_counterexample_words)"
 #define CE_ASSIGNMENT_MARKER "= __CPROVER_jsa_ce_array___CPROVER_jsa_predicate_ce_marker_"
 
-#define __CPROVER_JSA_MAX_CONCRETE_NODES 2u
-#define __CPROVER_JSA_MAX_ABSTRACT_NODES 0u
-#define __CPROVER_JSA_MAX_LISTS 2u
-#define __CPROVER_JSA_MAX_NODES_PER_LIST 1u
-#define __CPROVER_JSA_MAX_ITERATORS 2u
-
-#define __CPROVER_JSA_MAX_QUERY_SIZE 3u
-#define __CPROVER_JSA_MAX_PRED_SIZE 2u
-#define __CPROVER_JSA_NUM_PRED_OPS 7u
-#define __CPROVER_JSA_NUM_PRED_RESULT_OPS 3u
-
 namespace
 {
 void add_jsa_defines(std::string &result, const jsa_symex_learnt &lcfg)
 {
   result+="#define __CPROVER_assume(c) __CPROVER_jsa_assume(c)\n"
+      "#define __CPROVER_JSA_DYNAMIC_TEST_RUNNER\n"
       "#define __CPROVER_JSA_MAX_CONCRETE_NODES ";
   result+=std::to_string(__CPROVER_JSA_MAX_CONCRETE_NODES);
   result+="\n#define __CPROVER_JSA_MAX_ABSTRACT_NODES ";
@@ -53,8 +45,8 @@ void add_jsa_defines(std::string &result, const jsa_symex_learnt &lcfg)
       "#define __CPROVER_JSA_DEFINE_TRANSFORMERS\n";
   result+="\n#define __CPROVER_JSA_MAX_LISTS ";
   result+=std::to_string(__CPROVER_JSA_MAX_LISTS);
-  result+="\n#define __CPROVER_JSA_MAX_NODES_PER_LIST ";
-  result+=std::to_string(__CPROVER_JSA_MAX_NODES_PER_LIST);
+  result+="\n#define __CPROVER_JSA_MAX_NODES_PER_CE_LIST ";
+  result+=std::to_string(__CPROVER_JSA_MAX_NODES_PER_CE_LIST);
   result+="\n#define __CPROVER_JSA_MAX_ITERATORS ";
   result+=std::to_string(__CPROVER_JSA_MAX_ITERATORS);
   result+="\n#define __CPROVER_JSA_MAX_QUERY_SIZE ";
@@ -75,6 +67,20 @@ void add_includes_and_globals(std::string &result)
   result+="#include <stdlib.h>\n\n"
       "#include <ansi-c/library/jsa.h>\n\n";
   result+="jmp_buf " JUMP_BUFFER";\n\n";
+}
+
+void add_temp_clean(std::string &result, const symbol_tablet &st)
+{
+  result+="void __CPROVER_jsa_internal__clear_temps(void)\n{\n";
+  const size_t num_temps=count_tmps(st);
+  assert(num_temps >= 1);
+  for (size_t i=1; i <= num_temps; ++i)
+  {
+    result+="  *" JSA_PRED_RES_OPS "[";
+    result+=std::to_string(i);
+    result+="]=0;\n";
+  }
+  result+="}\n\n";
 }
 
 void add_main_body(std::string &result, const jsa_symex_learnt &lcfg)
@@ -231,6 +237,7 @@ const std::string &jsa_source_providert::operator ()()
   if (!source.empty()) return source;
   add_jsa_defines(source, lcfg);
   add_includes_and_globals(source);
+  add_temp_clean(source, lcfg.get_symbol_table());
   add_main_body(source, lcfg);
   fix_return_values(source);
   add_facade_function(source);
