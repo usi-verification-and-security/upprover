@@ -511,9 +511,10 @@ bool funfrog_parseoptionst::check_function_summarization(
     if (cmdline.isset("claims-order"))
       store_claims(ns, claim_map, claim_numbers);
 
-    // ID_main is the entry point
+    // ID_main is the entry point that is now changed to be ID__start
+    // So instead of c::main we have now _start (cbmc 5.5)
     check_claims(ns,
-                                      goto_functions.function_map[ID_main].body,
+                                      goto_functions.function_map[ID__start].body,
                                       goto_functions,
                                       claim_map,
                                       claim_numbers,
