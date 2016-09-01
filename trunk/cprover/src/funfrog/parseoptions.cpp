@@ -511,6 +511,7 @@ bool funfrog_parseoptionst::check_function_summarization(
     if (cmdline.isset("claims-order"))
       store_claims(ns, claim_map, claim_numbers);
 
+    // ID_main is the entry point
     check_claims(ns,
                                       goto_functions.function_map[ID_main].body,
                                       goto_functions,
