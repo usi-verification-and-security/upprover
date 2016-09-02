@@ -733,18 +733,22 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
           it != globals_accessed.end();
           ++it) 
   {
-    const symbolt& symbol = ns.lookup(*it);
+    //const symbolt& symbol = ns.lookup(*it);
     // The symbol is not yet in l2 renaming
     if (state.level2.current_names.find(*it) == state.level2.current_names.end()) {
-
-        symbol_exprt s = symbol.symbol_expr();
-        to_ssa_expr(s).set_level_2(0);
-
+        // Original code: state.level2.rename(*it, 0);
+        
+        //symbol_exprt s = symbol.symbol_expr();
+        //to_ssa_expr(s).set_level_2(0);
+    	
+        symbol_exprt s = (ns.lookup(*it)).symbol_expr();
+        ssa_exprt(s).set_level_2(0); // KE: Not sure if this conversion works...
+        
         // GF: should there be assert(0) ?
-#     ifdef DEBUG_PARTITIONING
-      std::cerr << " * WARNING: Forcing '" << *it << 
-              "' into l2 renaming." << std::endl;
-#     endif
+#       ifdef DEBUG_PARTITIONING
+            std::cerr << " * WARNING: Forcing '" << *it << 
+                "' into l2 renaming." << std::endl;
+#       endif
     }
 
     // GF: not sure about it. ToDo: debug when compiled
