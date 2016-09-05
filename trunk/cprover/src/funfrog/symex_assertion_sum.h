@@ -295,6 +295,7 @@ private:
       s.base_name = id;
       s.name = id;
       s.type = type;
+      s.mode=ID_C;
       new_symbol_table.add(s);
     }
   }

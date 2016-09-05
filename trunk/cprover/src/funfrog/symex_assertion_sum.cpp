@@ -838,11 +838,15 @@ void symex_assertion_sumt::return_assignment_and_mark(
  */
   symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state), type);
   symbol_exprt retval_tmp(retval_tmp_id, type);
+  
+  // To assure we are adding the same name (exactly), we are using the object after went via cbmc code
+  code_assignt assignment(*lhs, retval_symbol);
+  const irep_idt &re_extracted_obj_identifier=(ssa_exprt(assignment.rhs())).get_object_name();
   add_symbol(retval_tmp_id, type, false);
-  add_symbol(retval_symbol_id, type, true);
+  add_symbol(re_extracted_obj_identifier, type, false);
 
   if (!skip_assignment) {
-    code_assignt assignment(*lhs, retval_symbol);
+    //code_assignt assignment(*lhs, retval_symbol); KE: moved up, we need it before
 
     assert(base_type_eq(assignment.lhs().type(),
           assignment.rhs().type(), ns));
