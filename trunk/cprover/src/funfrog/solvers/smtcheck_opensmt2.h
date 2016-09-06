@@ -184,8 +184,8 @@ private:
 public:
   char* getPTermString(const literalt &l) { return getPTermString(literals[l.get()]); }
   char* getPTermString(const exprt &expr) {
-	  if(converted_exprs.find(expr.full_hash()) != converted_exprs.end())
-		  return getPTermString(converted_exprs[expr.full_hash()]);
+	  if(converted_exprs.find(expr.hash()) != converted_exprs.end())
+		  return getPTermString(converted_exprs[expr.hash()]);
 	  return 0;
   }
 

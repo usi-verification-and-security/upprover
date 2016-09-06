@@ -203,6 +203,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 				args.push(cp);
 #ifdef DEBUG_SMT_LRA
 				cout << "; Op to command is var no " << cl.var_no()
+						<< " inner index " << cp.x
 						<< " with hash code " << (*it).full_hash()
 						<< " and the other one " << (*it).hash()
 						<< " in address " << (void *)&(*it)
@@ -297,7 +298,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		l = new_variable();
         literals.push_back(ptl);
 	}
-    converted_exprs[expr.full_hash()] = l;
+    converted_exprs[expr.hash()] = l;
     PTRef ptr = literals[l.var_no()];
 #ifdef SMT_DEBUG
     cout << "; For " << expr.id() << " Created OpenSMT2 formula " << logic->printTerm(ptr) << endl;
