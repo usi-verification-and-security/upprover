@@ -838,15 +838,11 @@ void symex_assertion_sumt::return_assignment_and_mark(
  */
   symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state), type);
   symbol_exprt retval_tmp(retval_tmp_id, type);
-  
-  // To assure we are adding the same name (exactly), we are using the object after went via cbmc code
-  code_assignt assignment(*lhs, retval_symbol);
-  const irep_idt &re_extracted_obj_identifier=(ssa_exprt(assignment.rhs())).get_object_name();
   add_symbol(retval_tmp_id, type, false);
-  add_symbol(re_extracted_obj_identifier, type, false);
+  add_symbol(retval_symbol_id, type, false);
 
   if (!skip_assignment) {
-    //code_assignt assignment(*lhs, retval_symbol); KE: moved up, we need it before
+    code_assignt assignment(*lhs, retval_symbol);
 
     assert(base_type_eq(assignment.lhs().type(),
           assignment.rhs().type(), ns));
@@ -855,6 +851,8 @@ void symex_assertion_sumt::return_assignment_and_mark(
     constant_propagation = false;
     // GF: fails here. for some reason, retval_symbol is not in the symbol_table.
     //     not clear, how it used to get there in the previous version
+    // KE: The name/irep_idt is wrong - there is addition #0 (a specific instance and not a symbol in general).
+    //     The old version referred only to the symbol and insert a symbol so it was all ok
     symex_assign(state, assignment);
     constant_propagation = old_cp;
   } 
