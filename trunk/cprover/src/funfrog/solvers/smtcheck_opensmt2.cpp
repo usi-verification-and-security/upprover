@@ -127,8 +127,12 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 
 literalt smtcheck_opensmt2t::convert(const exprt &expr)
 {
-    if(converted_exprs.find(expr.hash()) != converted_exprs.end())
-        return converted_exprs[expr.hash()];
+// GF: disabling hash for a while, since it leads to bugs at some particular cases,
+//     e.g., for (= |goto_symex::guard#3| (< |c::f::a!0#7| 10))
+//           and (= |goto_symex::guard#4| (< |c::f::a!0#11| 10))
+//
+//    if(converted_exprs.find(expr.hash()) != converted_exprs.end())
+//        return converted_exprs[expr.hash()];
 
 #ifdef SMT_DEBUG
     cout << "; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
