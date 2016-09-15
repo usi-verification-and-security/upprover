@@ -31,8 +31,8 @@ public:
       mainSolver (NULL),
       dump_queries(true),
       partition_count(0),
-	  no_literals(0),
-      itp_algorithm(1)
+      no_literals(0),
+      itp_algorithm(itp_alg_mcmillan)
   {
     initializeSolver();
   }
@@ -130,8 +130,8 @@ protected:
 
   int reduction_graph;
 
-  // 0 - Pudlak, 1 - McMillan, 2 - McMillan'
-  int itp_algorithm;
+  // itp_alg_mcmillan, itp_alg_pudlak, itp_alg_mcmillanp, etc...
+  ItpAlgorithm itp_algorithm;
 
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
   int proof_trans;

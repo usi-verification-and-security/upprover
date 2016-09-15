@@ -97,8 +97,9 @@ protected:
 
   int reduction_graph;
 
-  // 0 - Pudlak, 1 - McMillan, 2 - McMillan'
-  int itp_algorithm;
+  // 0 - McMillan, 1 - Pudlak, 2 - McMillan'
+//  int itp_algorithm;
+  SMTConfig::ItpAlgorithm itp_algorithm;
 
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
   int proof_trans;
