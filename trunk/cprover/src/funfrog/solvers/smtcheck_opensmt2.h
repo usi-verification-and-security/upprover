@@ -166,6 +166,7 @@ protected:
 
   void fill_vars(PTRef, std::map<std::string, PTRef>&);
 
+  void dump_on_error(std::string location);
 
   // Basic prints for debug - KE: Hope I did it right :-)
 private:
