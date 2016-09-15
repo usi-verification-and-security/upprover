@@ -204,7 +204,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 				literalt cl = convert(*it);
 				PTRef cp = literals[cl.var_no()];
 				assert(cp != PTRef_Undef);
-				args.push(cp);
+	 			args.push(cp);
 #ifdef DEBUG_SMT_LRA
 				cout << "; Op to command is var no " << cl.var_no()
 						<< " inner index " << cp.x
@@ -980,4 +980,41 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 	}
 
 	return str;
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::dump_on_error
+
+  Inputs: location where the error happened
+
+ Outputs: cout the current smt encoding (what did so far) to the cout
+
+ Purpose: To know what is the problem while encoding the formula
+
+\*******************************************************************/
+void smtcheck_opensmt2t::dump_on_error(std::string location) {
+	  /*
+	  //If have problem with declaration of vars - uncommen this!
+	  cout << "; XXX SMT-lib --> LRA-Logic Translation XXX" << endl;
+	  cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
+	  cout << "; Declarations from Hifrog :" << endl;
+	  for(it_var_set_str iterator = var_set_str.begin(); iterator != var_set_str.end(); iterator++) {
+	  	  cout << "(declare-fun " << *iterator << ")" << endl;
+	  }
+	  cout << "; Declarations from OpenSMT2 :" << endl;
+	  */
+	  logic->dumpHeaderToFile(cout);
+	  cout << "(assert\n  (and" << endl;
+	  for(int i = 0; i < top_level_formulas.size(); ++i) {
+	      cout << "; XXX Partition: " << i << endl << "    " << logic->printTerm(top_level_formulas[i]) << endl;
+	  }
+
+	  // If code - once needed uncomment this debug flag in the header
+#ifdef DEBUG_SMT_LRA
+	  for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
+		  cout << "; XXX oite symbol: " << iterator->first << endl << iterator->second << endl;
+	  }
+#endif
+	  cout << "))" << endl << "(check-sat)" << endl;
 }
