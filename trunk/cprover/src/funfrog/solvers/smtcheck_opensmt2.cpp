@@ -135,7 +135,7 @@ literalt smtcheck_opensmt2t::type_cast(const exprt &expr) {
     }
 
 #ifdef SMT_DEBUG
-    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << logic->printTerm(l) << endl;
+    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << getPTermString(l) << endl;
 #endif
 
     return l;
@@ -761,7 +761,7 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   assert(ready_to_interpolate);
 
   // Set labeling function
-  const char* msg;
+  //const char* msg;
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
   //osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
 
