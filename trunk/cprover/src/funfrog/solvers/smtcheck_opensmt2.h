@@ -32,7 +32,8 @@ public:
       dump_queries(true),
       partition_count(0),
       no_literals(0),
-      itp_algorithm(itp_alg_mcmillan)
+      itp_algorithm(itp_alg_mcmillan),
+	  pushed_formulas(0)
   {
     initializeSolver();
   }
@@ -150,6 +151,8 @@ protected:
 
 //  Mapping from boolean variable indexes to their PTRefs
   std::vector<PTRef> literals;
+
+  unsigned pushed_formulas;
 
   literalt new_variable();
 
