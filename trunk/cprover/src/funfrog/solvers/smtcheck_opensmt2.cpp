@@ -45,16 +45,7 @@ Function: smtcheck_opensmt2t::new_partition
 \*******************************************************************/
 fle_part_idt smtcheck_opensmt2t::new_partition()
 {
-//Allowing partitions for havoced functions and fully slices ones
 
-  assert(partition_count == 0 || current_partition != NULL);
-  if (partition_count != 0 && current_partition == NULL) {
-    std::cerr << "WARNING: last partition was empty (probably due to slicing)." << std::endl;
-    // NOTE: The index is reused for the next partition, outer context must
-    // ensure that the previously returned index is not used.
-    partition_count--;
-  }
-  
   // Finish the previous partition if any
   if (current_partition != NULL)
     close_partition();
@@ -884,7 +875,6 @@ void smtcheck_opensmt2t::close_partition()
 #ifdef DEBUG_SMT_LRA
       cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
 #endif
-      //mainSolver->push(pand);
       top_level_formulas.push(pand);
     } else if (current_partition->size() == 1){
       PTRef pand = (*current_partition)[0];
@@ -892,13 +882,11 @@ void smtcheck_opensmt2t::close_partition()
       cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
 #endif
       std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
-      //mainSolver->push(pand);
       top_level_formulas.push(pand);
-    } else {
-      //mainSolver->push(logic->getTerm_true());
-      top_level_formulas.push(logic->getTerm_true());
+    } /*else {
       // GF: adding (assert true) for debugging only
-    }
+      top_level_formulas.push(logic->getTerm_true());
+    } */
   }
 
   current_partition = NULL;

@@ -29,7 +29,7 @@ public:
   partitiont(partition_idt _parent_id, partition_ifacet& _partition_iface) :
           filled(false), summary(false), stub(false), ignore(false), processed(false),
           invalid(false), inverted_summary(false), summaries(NULL), 
-          parent_id(_parent_id), partition_iface(&_partition_iface) { }
+          parent_id(_parent_id), partition_iface(&_partition_iface), fle_part_id(-1) { }
           
   void add_child_partition(partition_idt child_id, unsigned callsite) {
     child_ids.push_back(child_id);

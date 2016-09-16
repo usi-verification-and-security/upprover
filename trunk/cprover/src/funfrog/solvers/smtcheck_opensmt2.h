@@ -106,7 +106,14 @@ public:
   const char* false_str = "false";
   const char* true_str = "true";
 
-  void start_encoding_partitions() { partition_count = 0;}
+  void start_encoding_partitions() {
+	  if (partition_count > 0){
+		  assert (!ready_to_interpolate); // GF: checking of previous assertion run was successful (unsat)
+		  	  	  	  	  	  	  	  	  // TODO: reset opensmt context
+
+		  std::cout << "Incrementally adding partitions to the SMT solver\n";
+	  }
+  }
 
 protected:
 

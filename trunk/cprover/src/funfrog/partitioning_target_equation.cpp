@@ -36,29 +36,30 @@
 void partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 		interpolating_solvert &interpolator) {
 	getFirstCallExpr(); // Save the first call to the first function
-	int part_id = partitions.size();
-	decider.start_encoding_partitions(); // KE: In case we are using slicing and keeps the same decider need to init the counter of partitions befoer the main loop
+
+	decider.start_encoding_partitions();
 	for (partitionst::reverse_iterator it = partitions.rbegin(); it
 			!= partitions.rend(); ++it) {
 #   ifdef DEBUG_ENCODING
 		unsigned vars_before = decider.prop.no_variables();
 		unsigned clauses_before = dynamic_cast<cnf_solvert&>(decider.prop).no_clauses();
 #   endif
-		cout << "XXX Partition: " << --part_id << " (ass_in_subtree: "
+		convert_partition(decider, interpolator, *it);
+        if (it->fle_part_id < 0) continue;
+		cout << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
 				<< it->get_iface().assertion_in_subtree << ")" << " - "
 				<< it->get_iface().function_id.c_str() << " (loc: "
 				<< it->get_iface().summary_info.get_call_location() << ", "
 				<< ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
 						: ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
 #   ifdef DEBUG_SSA_PRINT
-		out_basic << "XXX Partition: " << part_id << " (ass_in_subtree: "
+		out_basic << "XXX Partition: " << fle_part_id << " (ass_in_subtree: "
 						<< it->get_iface().assertion_in_subtree << ")" << " - "
 						<< it->get_iface().function_id.c_str() << " (loc: "
 						<< it->get_iface().summary_info.get_call_location() << ", "
 						<< ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
 								: ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
 #   endif
-		convert_partition(decider, interpolator, *it);
 
 		// Print partition into a buffer after the headers: basic and code
 		print_partition();
@@ -133,6 +134,9 @@ void partitioning_target_equationt::convert_partition(
 				partition_iface.error_symbol);
 	}
 	if (partition.stub) {
+#   ifdef DEBUG_ENCODING
+			std::cout << "  partition havoced." << std::endl;
+#	endif
 		return;
 	}
 
