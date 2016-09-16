@@ -52,6 +52,8 @@ public:
 
   literalt const_var_Real(const exprt &expr);
 
+  literalt type_cast(const exprt &expr);
+
   literalt limplies(literalt l1, literalt l2);
 
   literalt lnotequal(literalt l1, literalt l2);

@@ -116,6 +116,27 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 	return l;
 }
 
+literalt smtcheck_opensmt2t::type_cast(const exprt &expr) {
+	literalt l;
+
+	// KE: Take care of type cast - recursion of convert take care of it anyhow
+    // Unless it is constant bool, that needs different code:
+    if (expr.is_boolean() && (expr.operands())[0].is_constant()) {
+    	std::string val = extract_expr_str_number((expr.operands())[0]);
+    	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
+    	l = const_var(!val_const_zero);
+    } else if (!expr.is_boolean() && (expr.operands())[0].is_boolean()) {
+    	// Cast from Bool to Real - Add
+    	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
+    	PTRef ptl = logic->mkIte(literals[lt.get()], logic->mkConst("1"), logic->mkConst("0"));
+    	l = new_variable(); literals.push_back(ptl); // Keeps the new literal + index it
+	} else {
+    	l = convert((expr.operands())[0]);
+    }
+
+    return l;
+}
+
 literalt smtcheck_opensmt2t::convert(const exprt &expr)
 {
 // GF: disabling hash for a while, since it leads to bugs at some particular cases,
@@ -148,13 +169,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 #endif
 		// KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
-        if (expr.is_boolean() && (expr.operands())[0].is_constant()) {
-        	std::string val = extract_expr_str_number((expr.operands())[0]);
-        	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
-        	l = const_var(!val_const_zero);
-        } else {
-        	l = convert((expr.operands())[0]);
-        }
+        l = type_cast(expr);
 	} else if (expr.id() == ID_typecast) {
 		assert(0); // Need to take care of - typecast no operands
 	} else {
@@ -197,14 +212,15 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 				assert(cp != PTRef_Undef);
 	 			args.push(cp);
 #ifdef DEBUG_SMT_LRA
-				cout << "; Op to command is var no " << cl.var_no()
+				cout << "; On inner iteration " << i
+						<< " Op to command is var no " << cl.var_no()
 						<< " inner index " << cp.x
 						<< " with hash code " << (*it).full_hash()
 						<< " and the other one " << (*it).hash()
 						<< " in address " << (void *)&(*it)
 						<< " of term " << logic->printTerm(cp)
 						<< " from |" << (*it).get(ID_identifier)
-						<< "| these should be the same !"<< endl; // Monitor errors in the table!
+						<< "| these should be the same !" << endl; // Monitor errors in the table!
 
 				// Auto catch this kind if problem and throws and assert!
 				if((*it).id()==ID_symbol || (*it).id()==ID_nondet_symbol){
