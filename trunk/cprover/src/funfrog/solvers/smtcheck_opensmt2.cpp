@@ -846,12 +846,13 @@ bool smtcheck_opensmt2t::solve() {
   cout << "(assert\n  (and" << endl;
 #endif
   char *msg;
-  for(int i = 0; i < top_level_formulas.size(); ++i) {
+  for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
       mainSolver->insertFormula(top_level_formulas[i], &msg);
 #ifdef DEBUG_SMT_LRA
       cout << "; XXX Partition: " << i << endl << "    " << logic->printTerm(top_level_formulas[i]) << endl;
 #endif
   }
+  pushed_formulas = top_level_formulas.size();
 #ifdef DEBUG_SMT_LRA
   for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
 	  cout << "; XXX oite symbol: " << iterator->first << endl << iterator->second << endl;
