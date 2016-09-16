@@ -51,6 +51,7 @@ public:
   }
 
   void set_fle_part_id(fle_part_idt _fle_part_id) {
+	fle_part_ids.push_back(_fle_part_id); 		// allowing multiple partition numbers (for refinement) -- to be tested
     fle_part_id = _fle_part_id;
   }
   
@@ -88,6 +89,7 @@ public:
   partition_idt parent_id;
   partition_idst child_ids;
   partition_locst child_locs;
+  std::vector<fle_part_idt> fle_part_ids;
   
 private:
   partition_ifacet* partition_iface;

@@ -40,54 +40,23 @@ void partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 	decider.start_encoding_partitions();
 	for (partitionst::reverse_iterator it = partitions.rbegin(); it
 			!= partitions.rend(); ++it) {
-#   ifdef DEBUG_ENCODING
-		unsigned vars_before = decider.prop.no_variables();
-		unsigned clauses_before = dynamic_cast<cnf_solvert&>(decider.prop).no_clauses();
-#   endif
 		convert_partition(decider, interpolator, *it);
         if (it->fle_part_id < 0) continue;
-		cout << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
+
+#   ifndef DEBUG_SSA_PRINT
+		cout
+#   else
+		out_basic
+#   endif
+		        << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
 				<< it->get_iface().assertion_in_subtree << ")" << " - "
 				<< it->get_iface().function_id.c_str() << " (loc: "
 				<< it->get_iface().summary_info.get_call_location() << ", "
 				<< ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
 						: ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
-#   ifdef DEBUG_SSA_PRINT
-		out_basic << "XXX Partition: " << fle_part_id << " (ass_in_subtree: "
-						<< it->get_iface().assertion_in_subtree << ")" << " - "
-						<< it->get_iface().function_id.c_str() << " (loc: "
-						<< it->get_iface().summary_info.get_call_location() << ", "
-						<< ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
-								: ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
-#   endif
 
 		// Print partition into a buffer after the headers: basic and code
 		print_partition();
-
-#   ifdef DEBUG_ENCODING
-		unsigned vars_after = decider.prop.no_variables();
-		unsigned clauses_after = dynamic_cast<cnf_solvert&>(decider.prop).no_clauses();
-		it->clauses = clauses_after - clauses_before;
-		it->vars = vars_after - vars_before;
-		std::cout << "    vars: " << it->vars << std::endl <<
-		"    clauses: " << it->clauses << std::endl;
-		// std::cout << "    last_var: " << dynamic_cast<satcheck_opensmtt&>(decider.prop).get_last_var() << std::endl;
-
-		unsigned clauses_total = it->clauses;
-		unsigned vars_total = it->vars;
-
-		for (partition_idst::const_iterator it2 = it->child_ids.begin();
-				it2 != it->child_ids.end(); ++it2) {
-			clauses_total += partitions[*it2].clauses;
-			vars_total += partitions[*it2].vars;
-		}
-
-		std::cout << "    vars in subtree: " << vars_total << std::endl <<
-		"    clauses in subtree: " << clauses_total << std::endl;
-
-		it->clauses = clauses_total;
-		it->vars = vars_total;
-#   endif
 	}
 
 	// Print all after the headers: decl and code
@@ -150,7 +119,7 @@ void partitioning_target_equationt::convert_partition(
 	//  }
 
 	// Tell the interpolator about the new partition.
-	partition.fle_part_id = interpolator.new_partition();
+	partition.set_fle_part_id(interpolator.new_partition());
 
 	// If this is a summary partition, apply the summary
 	if (partition.summary) {
@@ -926,7 +895,6 @@ void partitioning_target_equationt::extract_interpolants(
 	for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
 		partitiont& partition = partitions[pid];
 		partition_ifacet ipartition = partition.get_iface();
-
 		if (!partition.is_inline() || (ipartition.assertion_in_subtree
 				&& !store_summaries_with_assertion)
 				|| partition.get_iface().summary_info.is_recursion_nondet())
@@ -1028,7 +996,9 @@ void partitioning_target_equationt::fill_partition_ids(
 	}
 
 	// Current partition id
-	part_ids.push_back(partition.fle_part_id);
+	for (int i = 0; i < partition.fle_part_ids.size(); i++){
+		part_ids.push_back(partition.fle_part_ids[i]);
+	}
 
 	assert(partition.is_inline() || partition.child_ids.empty());
 
