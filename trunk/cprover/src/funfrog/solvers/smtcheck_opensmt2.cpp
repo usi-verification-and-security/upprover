@@ -126,13 +126,17 @@ literalt smtcheck_opensmt2t::type_cast(const exprt &expr) {
     	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
     	l = const_var(!val_const_zero);
     } else if (!expr.is_boolean() && (expr.operands())[0].is_boolean()) {
-    	// Cast from Bool to Real - Add
+    	// Cast from Boolean to Real - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	PTRef ptl = logic->mkIte(literals[lt.get()], logic->mkConst("1"), logic->mkConst("0"));
     	l = new_variable(); literals.push_back(ptl); // Keeps the new literal + index it
 	} else {
     	l = convert((expr.operands())[0]);
     }
+
+#ifdef SMT_DEBUG
+    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << logic->printTerm(l) << endl;
+#endif
 
     return l;
 }
@@ -310,8 +314,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         literals.push_back(ptl);
 	}
     converted_exprs[expr.hash()] = l;
-    PTRef ptr = literals[l.var_no()];
 #ifdef SMT_DEBUG
+    PTRef ptr = literals[l.var_no()];
     cout << "; For " << expr.id() << " Created OpenSMT2 formula " << logic->printTerm(ptr) << endl;
 #endif
     return l;
