@@ -128,7 +128,7 @@ literalt smtcheck_opensmt2t::type_cast(const exprt &expr) {
     } else if (!expr.is_boolean() && (expr.operands())[0].is_boolean()) {
     	// Cast from Boolean to Real - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
-    	PTRef ptl = logic->mkIte(literals[lt.get()], logic->mkConst("1"), logic->mkConst("0"));
+    	PTRef ptl = logic->mkIte(literals[lt.var_no()], logic->mkConst("1"), logic->mkConst("0"));
     	l = new_variable(); literals.push_back(ptl); // Keeps the new literal + index it
 	} else {
     	l = convert((expr.operands())[0]);
@@ -717,7 +717,7 @@ string
 smtcheck_opensmt2t::remove_invalid(const string& varname)
 {
     string ans("");
-    for(int i = 0; i < varname.length(); ++i)
+    for(unsigned int i = 0; i < varname.length(); ++i)
     {
         if(varname[i] != '\\')
             ans += varname[i];
