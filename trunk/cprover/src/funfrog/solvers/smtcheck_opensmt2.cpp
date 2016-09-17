@@ -96,7 +96,7 @@ literalt smtcheck_opensmt2t::const_var(bool val)
 	l = new_variable();
 	literals.push_back (c);
 #ifdef SMT_DEBUG
-    	assert(c.x == (literals[l.get()]).x);
+    	assert(c.x == (literals[l.var_no()]).x);
 #endif
 
 	return l;
@@ -117,7 +117,7 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 	l = new_variable();
 	literals.push_back(rconst);
 #ifdef SMT_DEBUG
-    	assert(rconst.x == (literals[l.get()]).x);
+    	assert(rconst.x == (literals[l.var_no()]).x);
 #endif
 	return l;
 }
@@ -137,7 +137,7 @@ literalt smtcheck_opensmt2t::type_cast(const exprt &expr) {
     	PTRef ptl = logic->mkIte(literals[lt.var_no()], logic->mkConst("1"), logic->mkConst("0"));
     	l = new_variable(); literals.push_back(ptl); // Keeps the new literal + index it
 #ifdef SMT_DEBUG
-    	assert(ptl.x == (literals[l.get()]).x);
+    	assert(ptl.x == (literals[l.var_no()]).x);
 #endif
 	} else {
     	l = convert((expr.operands())[0]);
@@ -322,7 +322,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		l = new_variable();
         literals.push_back(ptl);
 #ifdef SMT_DEBUG
-    	assert(ptl.x == (literals[l.get()]).x);
+    	assert(ptl.x == (literals[l.var_no()]).x);
 #endif
 	}
     converted_exprs[expr.hash()] = l;
@@ -339,7 +339,7 @@ void smtcheck_opensmt2t::set_to_true(PTRef ptr)
 	literals.push_back (ptr);
     assert(ptr != PTRef_Undef);
 #ifdef SMT_DEBUG
-    assert(ptr.x == (literals[l.get()]).x);
+    assert(ptr.x == (literals[l.var_no()]).x);
 #endif
 	current_partition->push(ptr);
 }
@@ -369,7 +369,7 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     l = new_variable();
     literals.push_back(ans);
 #ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.get()]).x);
+    assert(ans.x == (literals[l.var_no()]).x);
 #endif
 
     assert(ans != PTRef_Undef);
@@ -387,7 +387,7 @@ literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
     l = new_variable();
     literals.push_back(ans);
 #ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.get()]).x);
+    assert(ans.x == (literals[l.var_no()]).x);
 #endif
 	return l;
 }
@@ -403,7 +403,7 @@ literalt smtcheck_opensmt2t::lnotequal(literalt l1, literalt l2){
     l = new_variable();
     literals.push_back(ans);
 #ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.get()]).x);
+    assert(ans.x == (literals[l.var_no()]).x);
 #endif
 	return l;
 }
@@ -419,7 +419,7 @@ literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
     l = new_variable();
     literals.push_back(ans);
 #ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.get()]).x);
+    assert(ans.x == (literals[l.var_no()]).x);
 #endif
 	return l;
 }
@@ -436,7 +436,7 @@ literalt smtcheck_opensmt2t::land(bvt b){
     l = new_variable();
     literals.push_back(ans);
 #ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.get()]).x);
+    assert(ans.x == (literals[l.var_no()]).x);
 #endif
 	return l;
 }
@@ -452,7 +452,7 @@ literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
     l = new_variable();
     literals.push_back(ans);
 #ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.get()]).x);
+    assert(ans.x == (literals[l.var_no()]).x);
 #endif
 	return l;
 }
@@ -469,7 +469,7 @@ literalt smtcheck_opensmt2t::lor(bvt b){
     l = new_variable();
     literals.push_back(ans);
 #ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.get()]).x);
+    assert(ans.x == (literals[l.var_no()]).x);
 #endif
 	return l;
 }
@@ -483,7 +483,7 @@ literalt smtcheck_opensmt2t::lnot(literalt l){
     ln = new_variable();
     literals.push_back(ans);
 #ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.get()]).x);
+    assert(ans.x == (literals[l.var_no()]).x);
 #endif
 	return ln;
 }
@@ -510,7 +510,7 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     l = new_variable();
 	literals.push_back (var);
 #ifdef SMT_DEBUG
-    assert(var.x == (literals[l.get()]).x);
+    assert(var.x == (literals[l.var_no()]).x);
 #endif
 
 #ifdef DEBUG_SMT_LRA
