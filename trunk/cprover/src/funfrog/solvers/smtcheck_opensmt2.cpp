@@ -23,10 +23,8 @@ void smtcheck_opensmt2t::initializeSolver()
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
   //osmt->getConfig().setOption(SMTConfig::o_verbosity, SMTOption(0), msg);
 
-  // KE: Fix a strange bug related to the fact we are pushing
-  // a struct into std::vector and not a regular object
-  // The idea: add 0 literal as true to literals. It fist be in pos 0 and 1
-  // And ofter the first real insert only in pos 0. Have no idea why.
+  // KE: Fix a strange bug can be related to the fact we are pushing
+  // a struct into std::vector and use [] before any push_back
   literals.push_back(PTRef());
   literalt l = new_variable();
   literals[0] = logic->getTerm_true(); // Which is .x =0
@@ -95,10 +93,7 @@ Function: smtcheck_opensmt2t::push_variable
 literalt smtcheck_opensmt2t::push_variable(PTRef ptl) {
 	literalt l = new_variable();
 #ifdef SMT_DEBUG
-	cout << "; Creating a new variable number " << l.var_no()
-			<< " and total size of literals is " << literals.size()
-			<< " and location 0 is " << literals[0].x
-			<< " and location 1 is " << literals[1].x << endl;
+	// If this assert fails try to check location 0,1 and the rest of the data in literals
 	assert(l.var_no() == literals.size());
 #endif
 	literals.push_back(ptl); // Keeps the new literal + index it
