@@ -9,7 +9,7 @@ Author: Grigory Fedyukovich
 
 #include "smtcheck_opensmt2.h"
 
-//#define SMT_DEBUG
+#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 
@@ -24,13 +24,12 @@ void smtcheck_opensmt2t::initializeSolver()
   //osmt->getConfig().setOption(SMTConfig::o_verbosity, SMTOption(0), msg);
 
   // KE: Fix a strange bug related to the fact we are pushing
-  // a struct into a std::vector and not a regular object
+  // a struct into std::vector and not a regular object
   // The idea: add 0 literal as true to literals. It fist be in pos 0 and 1
   // And ofter the first real insert only in pos 0. Have no idea why.
-  PTRef x_true; x_true.x = 0; // True is always with index 0
   literals.push_back(PTRef());
   literalt l = new_variable();
-  literals[0] = x_true;
+  literals[0] = logic->getTerm_true(); // Which is .x =0
   // KE: End of fix
 }
 
@@ -97,7 +96,9 @@ literalt smtcheck_opensmt2t::push_variable(PTRef ptl) {
 	literalt l = new_variable();
 #ifdef SMT_DEBUG
 	cout << "; Creating a new variable number " << l.var_no()
-			<< " and total size of literals is " << literals.size() << endl;
+			<< " and total size of literals is " << literals.size()
+			<< " and location 0 is " << literals[0].x
+			<< " and location 1 is " << literals[1].x << endl;
 	assert(l.var_no() == literals.size());
 #endif
 	literals.push_back(ptl); // Keeps the new literal + index it
