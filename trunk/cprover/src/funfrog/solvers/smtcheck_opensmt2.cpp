@@ -26,7 +26,7 @@ void smtcheck_opensmt2t::initializeSolver()
   // KE: Fix a strange bug can be related to the fact we are pushing
   // a struct into std::vector and use [] before any push_back
   literals.push_back(PTRef());
-  literalt l = new_variable();
+  literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
   literals[0] = logic->getTerm_true(); // Which is .x =0
   // KE: End of fix
 }

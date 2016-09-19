@@ -33,7 +33,8 @@ public:
       partition_count(0),
       no_literals(0),
       itp_algorithm(itp_alg_mcmillan),
-	  pushed_formulas(0)
+	  pushed_formulas(0),
+	  current_partition(0)
   {
     initializeSolver();
   }
