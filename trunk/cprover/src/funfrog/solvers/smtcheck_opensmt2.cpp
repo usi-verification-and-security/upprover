@@ -22,6 +22,16 @@ void smtcheck_opensmt2t::initializeSolver()
   const char* msg;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
   //osmt->getConfig().setOption(SMTConfig::o_verbosity, SMTOption(0), msg);
+
+  // KE: Fix a strange bug related to the fact we are pushing
+  // a struct into a std::vector and not a regular object
+  // The idea: add 0 literal as true to literals. It fist be in pos 0 and 1
+  // And ofter the first real insert only in pos 0. Have no idea why.
+  PTRef x_true; x_true.x = 0; // True is always with index 0
+  literals.push_back(PTRef());
+  literalt l = new_variable();
+  literals[0] = x_true;
+  // KE: End of fix
 }
 
 // Free all resources related to OpenSMT2
@@ -75,15 +85,24 @@ Function: smtcheck_opensmt2t::push_variable
  That is given a literal we will always get the original PTRef
  (or error index) - but no other PTRefs...
 
+ NOTE: IN CASE YOU HAVE AN ASSERTION VIOLATION FROM THIS CODE
+ 	 	 D O   N O T   C O M M E N T   THE DEBUG PRINTS
+ 	 	 IT SAYS THAT THE MAPPING OF LITERALS TO PTREFS
+ 	 	 ARE NOT WORKING!! FIX IT, PLEASE
+ 	 	 REASON: PTREF IS A STRUCT AND VECTOR AND STRUCTS
+ 	 	 HAVE SOME ISSUES...
+
 \*******************************************************************/
 literalt smtcheck_opensmt2t::push_variable(PTRef ptl) {
 	literalt l = new_variable();
 #ifdef SMT_DEBUG
-	cout << "; Creating a new variable number " << l.var_no() << " and total size of literals is " << literals.size() << endl;
+	cout << "; Creating a new variable number " << l.var_no()
+			<< " and total size of literals is " << literals.size() << endl;
 	assert(l.var_no() == literals.size());
 #endif
 	literals.push_back(ptl); // Keeps the new literal + index it
 #ifdef SMT_DEBUG
+	// THE MAPPING IS WRONG. YOU ARE NOT GETTING THE CORRECT PTREF!!
 	assert(ptl.x == (literals[l.var_no()]).x);
 #endif
 	return l; // Return the literal after creating all ok - check if here with SMT_DEBUG flag

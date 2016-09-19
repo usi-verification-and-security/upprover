@@ -197,7 +197,7 @@ private:
   }
 #endif
 public:
-  char* getPTermString(const literalt &l) { return getPTermString(literals[l.get()]); }
+  char* getPTermString(const literalt &l) { return getPTermString(literals[l.var_no()]); }
   char* getPTermString(const exprt &expr) {
 	  if(converted_exprs.find(expr.hash()) != converted_exprs.end())
 		  return getPTermString(converted_exprs[expr.hash()]);
