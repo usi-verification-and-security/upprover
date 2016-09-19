@@ -63,6 +63,32 @@ literalt smtcheck_opensmt2t::new_variable()
   return l;
 }
 
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::push_variable
+
+  Inputs: PTRef to store
+
+ Outputs: Literal that has the index of the stored PTRef in literals
+
+ Purpose: To check if the store of PTRef in literals is sound
+ That is given a literal we will always get the original PTRef
+ (or error index) - but no other PTRefs...
+
+\*******************************************************************/
+literalt smtcheck_opensmt2t::push_variable(PTRef ptl) {
+	literalt l = new_variable();
+#ifdef SMT_DEBUG
+	cout << "; Creating a new variable number " << l.var_no() << " and total size of literals is " << literals.size() << endl;
+	assert(l.var_no() == literals.size());
+#endif
+	literals.push_back(ptl); // Keeps the new literal + index it
+#ifdef SMT_DEBUG
+	assert(ptl.x == (literals[l.var_no()]).x);
+#endif
+	return l; // Return the literal after creating all ok - check if here with SMT_DEBUG flag
+}
+
 // TODO: enhance this to get assignments for any PTRefs, not only for Bool Vars.
 tvt smtcheck_opensmt2t::get_assignemt(literalt a) const
 {
@@ -93,11 +119,7 @@ literalt smtcheck_opensmt2t::const_var(bool val)
 	literalt l;
 
 	PTRef c = val ? logic->getTerm_true() : logic->getTerm_false();
-	l = new_variable();
-	literals.push_back (c);
-#ifdef SMT_DEBUG
-    	assert(c.x == (literals[l.var_no()]).x);
-#endif
+	l = push_variable(c); // Keeps the new PTRef + create for it a new index/literal
 
 	return l;
 }
@@ -114,11 +136,8 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 	assert(!logic->isRealZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
 	// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
 
-	l = new_variable();
-	literals.push_back(rconst);
-#ifdef SMT_DEBUG
-    	assert(rconst.x == (literals[l.var_no()]).x);
-#endif
+	l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
+
 	return l;
 }
 
@@ -135,10 +154,7 @@ literalt smtcheck_opensmt2t::type_cast(const exprt &expr) {
     	// Cast from Boolean to Real - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	PTRef ptl = logic->mkIte(literals[lt.var_no()], logic->mkConst("1"), logic->mkConst("0"));
-    	l = new_variable(); literals.push_back(ptl); // Keeps the new literal + index it
-#ifdef SMT_DEBUG
-    	assert(ptl.x == (literals[l.var_no()]).x);
-#endif
+    	l = push_variable(ptl); // Keeps the new literal + index it
 	} else {
     	l = convert((expr.operands())[0]);
     }
@@ -319,11 +335,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
             // Do we need them now?
         }
-		l = new_variable();
-        literals.push_back(ptl);
-#ifdef SMT_DEBUG
-    	assert(ptl.x == (literals[l.var_no()]).x);
-#endif
+		l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
 	}
     converted_exprs[expr.hash()] = l;
 #ifdef SMT_DEBUG
@@ -335,12 +347,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 
 void smtcheck_opensmt2t::set_to_true(PTRef ptr)
 {
-	literalt l = new_variable();
-	literals.push_back (ptr);
+	push_variable(ptr); // Keeps the new PTRef + create for it a new index/literal
     assert(ptr != PTRef_Undef);
-#ifdef SMT_DEBUG
-    assert(ptr.x == (literals[l.var_no()]).x);
-#endif
 	current_partition->push(ptr);
 }
 
@@ -366,12 +374,7 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
-    l = new_variable();
-    literals.push_back(ans);
-#ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.var_no()]).x);
-#endif
-
+    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
     assert(ans != PTRef_Undef);
 	current_partition->push(ans);
 }
@@ -384,11 +387,8 @@ literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkImpl(args);
-    l = new_variable();
-    literals.push_back(ans);
-#ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.var_no()]).x);
-#endif
+    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+
 	return l;
 }
 
@@ -400,11 +400,8 @@ literalt smtcheck_opensmt2t::lnotequal(literalt l1, literalt l2){
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkNot(logic->mkEq(args));
-    l = new_variable();
-    literals.push_back(ans);
-#ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.var_no()]).x);
-#endif
+    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+
 	return l;
 }
 
@@ -416,11 +413,8 @@ literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkAnd(args);
-    l = new_variable();
-    literals.push_back(ans);
-#ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.var_no()]).x);
-#endif
+    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+
 	return l;
 }
 
@@ -433,11 +427,8 @@ literalt smtcheck_opensmt2t::land(bvt b){
         args.push(tmpp);
     }
     PTRef ans = logic->mkAnd(args);
-    l = new_variable();
-    literals.push_back(ans);
-#ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.var_no()]).x);
-#endif
+    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+
 	return l;
 }
 
@@ -449,11 +440,8 @@ literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkOr(args);
-    l = new_variable();
-    literals.push_back(ans);
-#ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.var_no()]).x);
-#endif
+    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+
 	return l;
 }
 
@@ -466,11 +454,8 @@ literalt smtcheck_opensmt2t::lor(bvt b){
         args.push(tmpp);
     }
     PTRef ans = logic->mkOr(args);
-    l = new_variable();
-    literals.push_back(ans);
-#ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.var_no()]).x);
-#endif
+    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+
 	return l;
 }
 
@@ -480,11 +465,8 @@ literalt smtcheck_opensmt2t::lnot(literalt l){
     PTRef pl1 = literals[l.var_no()];
     args.push(pl1);
     PTRef ans = logic->mkNot(args);
-    ln = new_variable();
-    literals.push_back(ans);
-#ifdef SMT_DEBUG
-    assert(ans.x == (literals[l.var_no()]).x);
-#endif
+    ln = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+
 	return ln;
 }
 
@@ -507,11 +489,7 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     else
         var = logic->mkBoolVar(str.c_str());
 
-    l = new_variable();
-	literals.push_back (var);
-#ifdef SMT_DEBUG
-    assert(var.x == (literals[l.var_no()]).x);
-#endif
+    l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
 
 #ifdef DEBUG_SMT_LRA
 	cout << "; (lvar) Create " << str << endl;
@@ -520,6 +498,7 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
 		var_set_str.insert(add_var);
 	}
 #endif
+
 	return l;
 }
 

@@ -156,6 +156,8 @@ protected:
 
   literalt new_variable();
 
+  literalt push_variable(PTRef ptl);
+
   void setup_reduction();
 
   void setup_interpolation();
