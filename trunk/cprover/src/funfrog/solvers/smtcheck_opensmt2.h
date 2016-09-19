@@ -39,6 +39,8 @@ public:
     initializeSolver();
   }
 
+  virtual ~smtcheck_opensmt2t(); // d'tor
+
   bool solve();
   
   tvt get_assignemt(literalt a) const;
@@ -79,26 +81,26 @@ public:
   void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants);
 
-    bool can_interpolate() const;
+  bool can_interpolate() const;
 
   // Extract interpolant form OpenSMT files/data
   //void extract_itp(PTRef ptref, prop_itpt& target_itp) const;
-    void extract_itp(PTRef ptref, smt_itpt& target_itp) const;
+  void extract_itp(PTRef ptref, smt_itpt& target_itp) const;
 
-    void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name);
+  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name);
 
-    static int get_index(const string& varname);
-    static std::string quote_varname(const string& varname);
-    static std::string unquote_varname(const string& varname);
+  static int get_index(const string& varname);
+  static std::string quote_varname(const string& varname);
+  static std::string unquote_varname(const string& varname);
   
-    static std::string remove_index(std::string);
-    static std::string remove_invalid(const string& varname);
+  static std::string remove_index(std::string);
+  static std::string remove_invalid(const string& varname);
 
-    static bool is_quoted_var(const string& varname);
+  static bool is_quoted_var(const string& varname);
 
-    MainSolver * getMainSolver() { return mainSolver; }
+  MainSolver * getMainSolver() { return mainSolver; }
 
-    LRALogic * getLRALogic() { return logic; }
+  LRALogic * getLRALogic() { return logic; }
 
   /* KE : remove, will use OpenSMT code + PTRefs in hifrog
   // Simple recursive extraction of clauses from OpenSMT Egraph
@@ -183,8 +185,8 @@ protected:
 
   void dump_on_error(std::string location);
 
-  // Basic prints for debug - KE: Hope I did it right :-)
 private:
+  // Basic prints for debug - KE: Hope I did it right :-)
   char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
 
 #ifdef DEBUG_SMT_LRA
@@ -204,8 +206,6 @@ public:
 		  return getPTermString(converted_exprs[expr.hash()]);
 	  return 0;
   }
-
-  PTRef literal2ptref(literalt l) { return literals[l.var_no()]; }
 };
 
 #endif

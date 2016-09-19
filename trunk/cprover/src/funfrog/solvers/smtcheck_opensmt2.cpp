@@ -9,7 +9,7 @@ Author: Grigory Fedyukovich
 
 #include "smtcheck_opensmt2.h"
 
-#define SMT_DEBUG
+//#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 
@@ -35,6 +35,14 @@ void smtcheck_opensmt2t::initializeSolver()
 void smtcheck_opensmt2t::freeSolver()
 {
   if (osmt != NULL) delete osmt;
+}
+
+// Free all inner objects
+smtcheck_opensmt2t::~smtcheck_opensmt2t()
+{
+
+
+	// Shall/When need to: freeSolver() ?
 }
 
 /*******************************************************************\
@@ -175,7 +183,9 @@ literalt smtcheck_opensmt2t::type_cast(const exprt &expr) {
     }
 
 #ifdef SMT_DEBUG
-    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << getPTermString(l) << endl;
+    char* s = getPTermString(l);
+    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    free(s);
 #endif
 
     return l;
@@ -256,26 +266,28 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 				assert(cp != PTRef_Undef);
 	 			args.push(cp);
 #ifdef DEBUG_SMT_LRA
+	 			char *s = logic->printTerm(cp);
 				cout << "; On inner iteration " << i
 						<< " Op to command is var no " << cl.var_no()
 						<< " inner index " << cp.x
 						<< " with hash code " << (*it).full_hash()
 						<< " and the other one " << (*it).hash()
 						<< " in address " << (void *)&(*it)
-						<< " of term " << logic->printTerm(cp)
+						<< " of term " << s
 						<< " from |" << (*it).get(ID_identifier)
 						<< "| these should be the same !" << endl; // Monitor errors in the table!
 
 				// Auto catch this kind if problem and throws and assert!
 				if((*it).id()==ID_symbol || (*it).id()==ID_nondet_symbol){
 					std::stringstream convert, convert2; // stringstream used for the conversion
-					convert << logic->printTerm(cp); std::string str_expr1 = convert.str();
+					convert << s; std::string str_expr1 = convert.str();
 					convert2 << "|" << (*it).get(ID_identifier) << "|"; std::string str_expr2 = convert2.str();
 					str_expr2.erase(std::remove(str_expr2.begin(),str_expr2.end(),'\\'),str_expr2.end());
 					if((*it).id() == ID_nondet_symbol && str_expr2.find("nondet") == std::string::npos)
 						str_expr2 = str_expr2.replace(1,7, "symex::nondet");
 					assert(str_expr1.compare(str_expr2) == 0);
 				}
+				free(s);
 #endif
 			}
 			i++;
@@ -355,7 +367,9 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
     converted_exprs[expr.hash()] = l;
 #ifdef SMT_DEBUG
     PTRef ptr = literals[l.var_no()];
-    cout << "; For " << expr.id() << " Created OpenSMT2 formula " << logic->printTerm(ptr) << endl;
+    char *s = logic->printTerm(ptr);
+    cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    free(s);
 #endif
     return l;
 }
@@ -818,7 +832,9 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
       smt_itpt *new_itp = new smt_itpt();
       extract_itp(itp_ptrefs[i], *new_itp);
       interpolants.push_back(new_itp);
-      cout << "Interpolant " << i << " = " << logic->printTerm(interpolants.back()->getInterpolant()) << endl;
+      char *s = logic->printTerm(interpolants.back()->getInterpolant());
+      cout << "Interpolant " << i << " = " << s << endl;
+      free(s);
   }
 }
 
@@ -885,7 +901,9 @@ bool smtcheck_opensmt2t::solve() {
   for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
       mainSolver->insertFormula(top_level_formulas[i], &msg);
 #ifdef DEBUG_SMT_LRA
-      cout << "; XXX Partition: " << i << endl << "    " << logic->printTerm(top_level_formulas[i]) << endl;
+      char* s = logic->printTerm(top_level_formulas[i]);
+      cout << "; XXX Partition: " << i << endl << "    " << s << endl;
+      free(s);
 #endif
   }
   pushed_formulas = top_level_formulas.size();
@@ -930,13 +948,17 @@ void smtcheck_opensmt2t::close_partition()
     if (current_partition->size() >= 1){
       PTRef pand = logic->mkAnd(*current_partition);
 #ifdef DEBUG_SMT_LRA
-      cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
+      char* s= logic->printTerm(pand);
+      cout << "; Pushing to solver: " << s << endl;
+      free(s);
 #endif
       top_level_formulas.push(pand);
     } else if (current_partition->size() == 1){
       PTRef pand = (*current_partition)[0];
 #ifdef DEBUG_SMT_LRA
-      cout << "; Pushing to solver: " << logic->printTerm(pand) << endl;
+      char* s= logic->printTerm(pand);
+      cout << "; Pushing to solver: " << s << endl;
+      free(s);
 #endif
       std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
       top_level_formulas.push(pand);
@@ -1052,7 +1074,9 @@ void smtcheck_opensmt2t::dump_on_error(std::string location) {
 	  logic->dumpHeaderToFile(cout);
 	  cout << "(assert\n  (and" << endl;
 	  for(int i = 0; i < top_level_formulas.size(); ++i) {
-	      cout << "; XXX Partition: " << i << endl << "    " << logic->printTerm(top_level_formulas[i]) << endl;
+		  char *s = logic->printTerm(top_level_formulas[i]);
+	      cout << "; XXX Partition: " << i << endl << "    " << s << endl;
+	      free(s);
 	  }
 
 	  // If code - once needed uncomment this debug flag in the header
