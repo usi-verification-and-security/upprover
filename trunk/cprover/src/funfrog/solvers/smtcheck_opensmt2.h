@@ -114,6 +114,7 @@ public:
 
   void start_encoding_partitions() {
 	  if (partition_count > 0){
+		  if (ready_to_interpolate) cout << "EXIT WITH ERROR: Try using --claim parameter" << std::endl;
 		  assert (!ready_to_interpolate); // GF: checking of previous assertion run was successful (unsat)
 		  	  	  	  	  	  	  	  	  // TODO: reset opensmt context
 

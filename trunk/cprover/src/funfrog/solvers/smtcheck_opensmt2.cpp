@@ -154,10 +154,13 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 
 	// Check the conversion from string to real was done properly - do not erase!
 	assert(!logic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
-	exprt temp_check = exprt(expr);
-	temp_check.negate();
-	assert(!logic->isRealZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
-	// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
+    if(expr.is_constant() && !expr.is_boolean()) {
+    	assert(!logic->isRealZero(rconst) || (expr.is_zero())); // If fails here for zero, check if also the negation is not zero
+    } else {
+    	exprt temp_check = exprt(expr); temp_check.negate();
+		assert(!logic->isRealZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
+		// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
+    }
 
 	l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
 
@@ -236,7 +239,9 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         if (expr.has_operands() && expr.operands().size() > 1) {
         	if ((expr.operands()[0] == expr.operands()[1]) &&
         		(!expr.operands()[1].is_constant())	&&
-        		  ((expr.id() == ID_mult) ||
+        		  ((expr.id() == ID_div) ||
+        		   (expr.id() == ID_floatbv_div) ||
+        	       (expr.id() == ID_mult) ||
         		   (expr.id() == ID_floatbv_mult))
         	){
         		cout << "; IT IS AN OPERATOR BETWEEN SAME EXPR: NOT SUPPORTED FOR NONDET" << endl;
@@ -1047,7 +1052,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
 			cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
 	#else
-			cout << "; Error Using Rounding Model in LRA " << str << endl;
+			cout << "EXIT WITH ERROR: Using Rounding Model in LRA " << str << endl;
 			assert(false);
 	#endif
 	}
