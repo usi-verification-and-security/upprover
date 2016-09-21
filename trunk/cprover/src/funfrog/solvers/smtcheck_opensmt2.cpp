@@ -225,7 +225,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         // Unless it is constant bool, that needs different code:
         l = type_cast(expr);
 	} else if (expr.id() == ID_typecast) {
-		assert(0); // Need to take care of - typecast no operands
+		cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version" << endl;
+		assert(false); // Need to take care of - typecast no operands
 	} else {
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
@@ -351,12 +352,13 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		} else if(expr.id() == ID_floatbv_mult) {
 			ptl = logic->mkRealTimes(args);
 		} else if(expr.id() == ID_index) {
-			assert(0); // No support yet for arrays
+			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version" << endl;
+			assert(false); // No support yet for arrays
 		} else {
 #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
 #else
-            cout << "; Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
+            cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version" << endl;
             assert(false);
 #endif
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
@@ -512,11 +514,12 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
 	literalt l;
     PTRef var;
     if(is_number(expr.type()))
-        var = logic->mkRealVar(str.c_str());
-    else if (expr.type().id() == ID_array) // Is a function with index
-    	assert(0); // No support yet for arrays
-    else
-        var = logic->mkBoolVar(str.c_str());
+    	var = logic->mkRealVar(str.c_str());
+    else if (expr.type().id() == ID_array) { // Is a function with index
+    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version" << endl;
+    	assert(false); // No support yet for arrays
+    } else
+    	var = logic->mkBoolVar(str.c_str());
 
     l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
 
