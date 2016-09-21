@@ -225,7 +225,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         // Unless it is constant bool, that needs different code:
         l = type_cast(expr);
 	} else if (expr.id() == ID_typecast) {
-		cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version" << endl;
+		cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << expr.id() << ")" << endl;
 		assert(false); // Need to take care of - typecast no operands
 	} else {
 #ifdef SMT_DEBUG
@@ -352,13 +352,15 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		} else if(expr.id() == ID_floatbv_mult) {
 			ptl = logic->mkRealTimes(args);
 		} else if(expr.id() == ID_index) {
-			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version" << endl;
+			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
+					<< expr.id() << ")" << endl;
 			assert(false); // No support yet for arrays
 		} else {
 #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
 #else
-            cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version" << endl;
+            cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: "
+            		<< expr.id() << ")" << endl;
             assert(false);
 #endif
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
@@ -516,7 +518,8 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     if(is_number(expr.type()))
     	var = logic->mkRealVar(str.c_str());
     else if (expr.type().id() == ID_array) { // Is a function with index
-    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version" << endl;
+    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
+    			<< expr.type().id() << ")" << endl;
     	assert(false); // No support yet for arrays
     } else
     	var = logic->mkBoolVar(str.c_str());
