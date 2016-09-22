@@ -339,8 +339,10 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		} else if(expr.id() == ID_unary_plus) {
             ptl = logic->mkRealPlus(args);
 		} else if(expr.id() == ID_mult) {
+			assert(isLinearOp(expr,args));
             ptl = logic->mkRealTimes(args);
 		} else if(expr.id() == ID_div) {
+			assert(isLinearOp(expr,args));
             ptl = logic->mkRealDiv(args);
 		} else if(expr.id() == ID_assign) {
             ptl = logic->mkEq(args);
@@ -353,8 +355,10 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		} else if(expr.id() == ID_floatbv_minus) {
             ptl = logic->mkRealMinus(args);
 		} else if(expr.id() == ID_floatbv_div) {
+			assert(isLinearOp(expr,args));
 			ptl = logic->mkRealDiv(args);
 		} else if(expr.id() == ID_floatbv_mult) {
+			assert(isLinearOp(expr,args));
 			ptl = logic->mkRealTimes(args);
 		} else if(expr.id() == ID_index) {
 			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
@@ -1058,6 +1062,42 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 	}
 
 	return str;
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::isLinearOp
+
+  Inputs: expression of * or /
+
+ Outputs: true if linear op else false
+
+ Purpose: we cannot express x*x or nodet*nodet (any) in LRA - assure
+          we are not trying to push such an expression to the solver
+          In case we sent this to the solver we will get assertion
+          violation!
+
+\*******************************************************************/
+bool smtcheck_opensmt2t::isLinearOp(const exprt &expr, vec<PTRef> &args) {
+	// Must be true
+	if (!expr.has_operands()) return true;
+	if (expr.operands().size() < 2) return true;
+	if (expr.operands()[0].is_constant()) return true;
+	if (expr.operands()[1].is_constant()) return true;
+
+	// Must be false if there is more than one var
+	int count_var = 0;
+	for (int i=0; i< args.size(); i++) {
+		count_var += logic->isRealVar(args[i]) ? 1 : 0;
+	}
+	if (count_var > 1) {
+		cout << "EXIT WITH ERROR: Using Unbounded mul/div operator" << endl;
+		return false; // e.g. when a*b is the instruction
+	}
+
+
+	// Don't know
+	return true; // Probably missed cased of false, so once found please add it
 }
 
 /*******************************************************************\

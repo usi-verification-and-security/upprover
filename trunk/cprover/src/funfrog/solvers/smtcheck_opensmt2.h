@@ -182,6 +182,8 @@ protected:
 
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
 
+  bool isLinearOp(const exprt &expr, vec<PTRef> &args); // Check if we don't do sth. like nondet*nondet, but only const*nondet (e.g.)
+
   void fill_vars(PTRef, std::map<std::string, PTRef>&);
 
   void dump_on_error(std::string location);
