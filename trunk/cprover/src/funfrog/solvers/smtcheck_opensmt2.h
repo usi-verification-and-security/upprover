@@ -34,7 +34,8 @@ public:
       no_literals(0),
       itp_algorithm(itp_alg_mcmillan),
 	  pushed_formulas(0),
-	  current_partition(0)
+	  current_partition(0),
+	  unsupported2var(0)
   {
     initializeSolver();
   }
@@ -157,6 +158,10 @@ protected:
   std::vector<PTRef> literals;
 
   unsigned pushed_formulas;
+
+  unsigned unsupported2var; // Create a new var funfrog::c::unsupported_op2var#i
+
+  literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
   literalt new_variable();
 

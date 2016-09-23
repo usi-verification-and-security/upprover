@@ -228,8 +228,12 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         // Unless it is constant bool, that needs different code:
         l = type_cast(expr);
 	} else if (expr.id() == ID_typecast) {
+#ifdef SMT_DEBUG
 		cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << expr.id() << ")" << endl;
 		assert(false); // Need to take care of - typecast no operands
+#else
+		l = lunsupported2var(expr);
+#endif
 	} else {
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
@@ -339,11 +343,25 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		} else if(expr.id() == ID_unary_plus) {
             ptl = logic->mkRealPlus(args);
 		} else if(expr.id() == ID_mult) {
+#ifdef SMT_DEBUG
 			assert(isLinearOp(expr,args));
-            ptl = logic->mkRealTimes(args);
+			ptl = logic->mkRealTimes(args);
+#else
+			if (isLinearOp(expr,args))
+				ptl = logic->mkRealTimes(args);
+			else
+				ptl = literals[lunsupported2var(expr).var_no()];
+#endif
 		} else if(expr.id() == ID_div) {
+#ifdef SMT_DEBUG
 			assert(isLinearOp(expr,args));
-            ptl = logic->mkRealDiv(args);
+			ptl = logic->mkRealDiv(args);
+#else
+			if (isLinearOp(expr,args))
+				ptl = logic->mkRealDiv(args);
+			else
+				ptl = literals[lunsupported2var(expr).var_no()];
+#endif
 		} else if(expr.id() == ID_assign) {
             ptl = logic->mkEq(args);
         } else if(expr.id() == ID_ieee_float_equal) {
@@ -355,22 +373,42 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 		} else if(expr.id() == ID_floatbv_minus) {
             ptl = logic->mkRealMinus(args);
 		} else if(expr.id() == ID_floatbv_div) {
+#ifdef SMT_DEBUG
 			assert(isLinearOp(expr,args));
 			ptl = logic->mkRealDiv(args);
+#else
+			if (isLinearOp(expr,args))
+				ptl = logic->mkRealDiv(args);
+			else
+				ptl = literals[lunsupported2var(expr).var_no()];
+#endif
 		} else if(expr.id() == ID_floatbv_mult) {
+#ifdef SMT_DEBUG
 			assert(isLinearOp(expr,args));
 			ptl = logic->mkRealTimes(args);
+#else
+			if (isLinearOp(expr,args))
+				ptl = logic->mkRealTimes(args);
+			else
+				ptl = literals[lunsupported2var(expr).var_no()];
+#endif
+
 		} else if(expr.id() == ID_index) {
+#ifdef SMT_DEBUG
 			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
 					<< expr.id() << ")" << endl;
 			assert(false); // No support yet for arrays
+#else
+			ptl = literals[lunsupported2var(expr).var_no()];
+#endif
 		} else {
 #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
-#else
             cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: "
             		<< expr.id() << ")" << endl;
             assert(false);
+#else
+            ptl = literals[lunsupported2var(expr).var_no()];
 #endif
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
             // Do we need them now?
@@ -385,6 +423,22 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
     free(s);
 #endif
     return l;
+}
+
+literalt smtcheck_opensmt2t::lunsupported2var(exprt expr)
+{
+	literalt l;
+	PTRef var;
+
+	const string str =  "funfrog::c::unsupported_op2var#" + (unsupported2var++);
+	if (expr.is_boolean())
+		var = logic->mkBoolVar(str.c_str());
+	else
+		var = logic->mkRealVar(str.c_str());
+
+	l = push_variable(var);
+
+	return l;
 }
 
 void smtcheck_opensmt2t::set_to_true(PTRef ptr)
@@ -527,9 +581,13 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     if(is_number(expr.type()))
     	var = logic->mkRealVar(str.c_str());
     else if (expr.type().id() == ID_array) { // Is a function with index
+#ifdef SMT_DEBUG
     	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
     			<< expr.type().id() << ")" << endl;
     	assert(false); // No support yet for arrays
+#else
+    	var = literals[lunsupported2var(expr).var_no()];
+#endif
     } else
     	var = logic->mkBoolVar(str.c_str());
 
@@ -1054,10 +1112,10 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 
 	if (str.find("c::__CPROVER_rounding_mode#") != std::string::npos) {
 	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
-			cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
+		cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
 	#else
-			cout << "EXIT WITH ERROR: Using Rounding Model in LRA " << str << endl;
-			assert(false);
+		cout << "EXIT WITH ERROR: Using Rounding Model in LRA " << str << endl;
+		assert(false);
 	#endif
 	}
 
@@ -1091,7 +1149,9 @@ bool smtcheck_opensmt2t::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 		count_var += logic->isRealVar(args[i]) ? 1 : 0;
 	}
 	if (count_var > 1) {
+#ifdef SMT_DEBUG
 		cout << "EXIT WITH ERROR: Using Unbounded mul/div operator" << endl;
+#endif
 		return false; // e.g. when a*b is the instruction
 	}
 
