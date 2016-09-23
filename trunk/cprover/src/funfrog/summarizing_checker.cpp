@@ -156,19 +156,14 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
           refiner.refine(*decider, omega.get_summary_info());
 
           if (refiner.get_refined_functions().size() == 0){
-            prop.error_trace(*decider, ns);
-            status("A real bug found.");
-            report_failure();
+            assertion_violated(prop);
             break;
           } else {
             //status("Counterexample is spurious");
             status("Go to next iteration");
           }
         } else {
-          prop.error_trace(*decider, ns);
-          status("ASSERTION(S) DO(ES)N'T HOLD");
-          status("A real bug found");
-          report_failure();
+          assertion_violated(prop);
           break;
         }
       }
@@ -184,6 +179,20 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   }
   status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
   return end;
+}
+
+
+void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop)
+{
+    prop.error_trace(*decider, ns);
+    if (decider->has_unsupported_vars()){
+    	status("\nA bug found.");
+    	status("WARNING: Possibly due to the LRA-conversion.");
+    } else {
+    	status("A real bug found.");
+    }
+    report_failure();
+
 }
 
 /*******************************************************************\

@@ -74,6 +74,7 @@ protected:
   void extract_interpolants (prop_assertion_sumt& prop, partitioning_target_equationt& equation);
   void report_success();
   void report_failure();
+  void assertion_violated(prop_assertion_sumt& prop);
 };
 
 init_modet get_init_mode(const std::string& str);

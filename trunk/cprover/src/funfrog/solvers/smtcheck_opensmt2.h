@@ -125,6 +125,9 @@ public:
 	  }
   }
 
+
+  bool has_unsupported_vars() { return unsupported2var > 0; }
+
 protected:
 
   Opensmt* osmt;
