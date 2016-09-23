@@ -137,6 +137,17 @@ tvt smtcheck_opensmt2t::get_assignemt(literalt a) const
   return tvtresult;
 }
 
+// For using symbol only when creating the interpolant (in smt_itpt::substitute)
+PTRef smtcheck_opensmt2t::convert_symbol(const exprt &expr)
+{
+	// Assert if not symbol_exprt
+	assert(expr.id()==ID_symbol || expr.id()==ID_nondet_symbol);
+
+	// If it is a symbol create the PTRef for it and returns it
+	literalt l = convert(expr);
+	return literals[l.var_no()];
+}
+
 literalt smtcheck_opensmt2t::const_var(bool val)
 {
 	literalt l;

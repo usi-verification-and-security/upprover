@@ -53,6 +53,8 @@ public:
 
   void set_equal(literalt l1, literalt l2);
 
+  PTRef convert_symbol(const exprt &expr);
+
   literalt const_var(bool val);
 
   literalt const_var_Real(const exprt &expr);

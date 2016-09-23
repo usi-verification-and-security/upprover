@@ -451,8 +451,9 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
           aname = smtcheck_opensmt2t::quote_varname(aname);
           if(aname == fixed_str)
           {
-              literalt l = decider.convert(symbols[i]);
-              PTRef tmp = decider.literal2ptref(l);
+              //literalt l = decider.convert(symbols[i]);
+              //PTRef tmp = decider.literal2ptref(l);
+        	  PTRef tmp = decider.convert_symbol(symbols[i]);
               subst.insert(args[j], PtAsgn(tmp, l_True));
           }
       }
