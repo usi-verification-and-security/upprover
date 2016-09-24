@@ -473,6 +473,20 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 	current_partition->push(tlp);
 }
 
+void smtcheck_opensmt2t::set_to_false(const exprt &expr)
+{
+    literalt l = convert(expr);
+    PTRef lp = literals[l.var_no()];
+    PTRef falsep = logic->getTerm_false();
+    vec<PTRef> args;
+    args.push(lp);
+    args.push(falsep);
+    PTRef tlp = logic->mkEq(args);
+
+    assert(tlp != PTRef_Undef);
+	current_partition->push(tlp);
+}
+
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     vec<PTRef> args;
     literalt l;

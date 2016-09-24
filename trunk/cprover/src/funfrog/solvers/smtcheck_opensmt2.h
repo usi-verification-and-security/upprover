@@ -48,6 +48,7 @@ public:
 
   literalt convert(const exprt &expr);
 
+  void set_to_false(const exprt &expr);
   void set_to_true(const exprt &expr);
   void set_to_true(PTRef);
 

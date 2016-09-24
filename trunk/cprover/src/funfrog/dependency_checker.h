@@ -1,11 +1,7 @@
 #ifndef CPROVER_DEPENDECY_CHECKER_H
 #define CPROVER_DEPENDECY_CHECKER_H
 
-#include <queue>
-
 #include <goto-programs/goto_program.h>
-//#include <solvers/flattening/sat_minimizer.h>
-#include <solvers/flattening/bv_pointers.h>
 
 #include <namespace.h>
 #include <symbol.h>
@@ -18,8 +14,8 @@
 #include "partitioning_slice.h"
 #include "subst_scenario.h"
 
-
 #include <map>
+#include <queue>
 
 #include <boost/pending/disjoint_sets.hpp>
 
@@ -107,15 +103,15 @@ private:
   vector<string> equation_symbols;
   unsigned long impl_timeout;
 
-  void deep_convert_guards(prop_convt &prop_conv, exprt exp);
-  void set_guards_to_true(prop_convt &prop_conv, exprt exp);
+  void deep_convert_guards(smtcheck_opensmt2t &decider, exprt exp);
+  void set_guards_to_true(smtcheck_opensmt2t &decider, exprt exp);
 
-  void convert_delta_SSA(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assignments(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assumptions(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assertions(prop_convt &prop_conv, SSA_step_reft &it2);
-  void convert_guards(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_io(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_delta_SSA(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_assignments(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_assumptions(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_assertions(smtcheck_opensmt2t &decider, SSA_step_reft &it2);
+  void convert_guards(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_io(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
 
   void reconstruct_exec_SSA_order();
 };

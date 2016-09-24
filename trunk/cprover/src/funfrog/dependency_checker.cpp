@@ -101,45 +101,22 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
 {
   try{
 
-  std::auto_ptr<prop_convt> decider;
-  satcheck_opensmt2t* opensmt = new satcheck_opensmt2t();
-  bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
-  deciderp->unbounded_array = bv_pointerst::U_AUTO;
-  decider.reset(deciderp);
+  smtcheck_opensmt2t* decider = new smtcheck_opensmt2t();
+  decider->new_partition();
 
   convert_delta_SSA(*decider, c1, c2);
 
   if (VERBOSE) status("RESULT");
   fine_timet initial, duration;
   initial=current_time();
-  decision_proceduret::resultt r = (*decider).dec_solve();
+  bool r = decider->solve();
   duration=current_time();
   duration = duration - initial;
-#ifdef USE_PERIPLO
-//  // todo
-#else
-delete opensmt;
-#endif
 
-  if (VERBOSE) status() << "SOLVER TIME FOR check_implication: " << (duration) << eom;
-
+  status() << "SOLVER TIME FOR check_implication: " << duration << eom;
   // solve it
-  switch (r)
-  {
-    case decision_proceduret::D_UNSATISFIABLE:
-    {
-      if (VERBOSE) status("UNSAT - it holds!");
-      return make_pair(true, duration);
-    }
-    case decision_proceduret::D_SATISFIABLE:
-    {
-      if (VERBOSE) status("SAT - doesn't hold");
-      return make_pair(false, duration);
-    }
+  return make_pair(!r, duration);
 
-    default:
-      throw "unexpected result from dec_solve()";
-  }
   } catch (const bad_alloc &e)
   {
     cout  << "smth is wrong: " << e.what()  << endl;
@@ -322,8 +299,8 @@ long dependency_checkert::find_implications()
   unsigned discarded = 0;
   int checks=0;
   int impchecks=0;
-  vector<bool> stronger(asserts.size(), true);
-  vector<bool> weaker(asserts.size(), true);
+  vector<bool> stronger(asserts.size(), false);
+  vector<bool> weaker(asserts.size(), false);
   
     /*
     cout << "Printing assertions before ordering." << endl;
@@ -383,8 +360,8 @@ long dependency_checkert::find_implications()
                 from_expr(ns, "", (*assert_2)->cond_expr) << ") [" << (*assert_2)->source.pc->location.get_line() << "] [weaker]" << endl;
             }
 
-            weaker[i] = false;
-            stronger[j] = false;
+            weaker[i] = true;
+            stronger[j] = true;
             hl_may_impl << (*assert_1)->source.pc->location.get_claim() << " " <<
                 (*assert_2)->source.pc->location.get_claim() << " " <<
                 distance(SSA_steps.begin(), assert_1) << " " <<
@@ -431,12 +408,13 @@ long dependency_checkert::find_implications()
   for (int i = asserts.size() - 1; i >= 0; i--)
   //for (unsigned i = 0; i < asserts.size(); i++)
   {
+      // GF: to test
     if (weaker[i] == true)
 	  {
 		  SSA_step_reft& removable = asserts[i];
       cout << "Removing << " << (*removable)->source.pc->location.get_line() << "\n";
       (*removable)->ignore = true;
-	  }
+	}
   }
   try{
     ofstream hl_stronger;
@@ -669,48 +647,48 @@ void dependency_checkert::print_SSA_steps()
     }
 }
 
-void dependency_checkert::convert_delta_SSA(prop_convt &prop_conv,
+void dependency_checkert::convert_delta_SSA(smtcheck_opensmt2t &decider,
     SSA_step_reft &it1, SSA_step_reft &it2)
 {
-  convert_guards(prop_conv, it1, it2);
-  convert_assignments(prop_conv, it1, it2);
-  convert_assumptions(prop_conv, it1, it2);
-  convert_assertions(prop_conv, it2);
-  convert_io(prop_conv, it1, it2);
+  convert_guards(decider, it1, it2);
+  convert_assignments(decider, it1, it2);
+  convert_assumptions(decider, it1, it2);
+  convert_assertions(decider, it2);
+  convert_io(decider, it1, it2);
 }
 
-void dependency_checkert::deep_convert_guards(prop_convt &prop_conv, exprt exp){
+void dependency_checkert::deep_convert_guards(smtcheck_opensmt2t &decider, exprt exp){
   if (exp.has_operands())
   {
     for (unsigned i = 0; i < exp.operands().size(); i++){
-      deep_convert_guards(prop_conv, exp.operands()[i] );
+      deep_convert_guards(decider, exp.operands()[i] );
     }
   } else {
     // TODO: find a more clever way of identifying guards
     if ((from_expr(ns, "", exp)).find("guard") == 1){
       //std::cout << " -> converting " << from_expr(SSA_map[exp]) << "\n";
-      prop_conv.convert(SSA_map[exp]);
+      decider.convert(SSA_map[exp]);
     }
   }
 }
 
-void dependency_checkert::set_guards_to_true(prop_convt &prop_conv, exprt exp){
+void dependency_checkert::set_guards_to_true(smtcheck_opensmt2t &decider, exprt exp){
   if (exp.has_operands())
   {
     for (unsigned i = 0; i < exp.operands().size(); i++){
-      set_guards_to_true(prop_conv, exp.operands()[i] );
+      set_guards_to_true(decider, exp.operands()[i] );
     }
   } else {
     // TODO: find a more clever way of identifying guards
     if ((from_expr(ns, "", exp)).find("guard") == 1){
       //std::cout << " -> set to true " << from_expr(SSA_map[exp]) << "\n";
-      prop_conv.set_to_true(SSA_map[exp]);
+      decider.set_to_true(SSA_map[exp]);
     }
   }
 }
 
 void dependency_checkert::convert_assignments(
-    prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+    smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   SSA_step_reft it=it1;
   while(it!=it2){
@@ -719,13 +697,13 @@ void dependency_checkert::convert_assignments(
     if((*it)->is_assignment() && !(*it)->ignore)
     {
       //std::cout << "convert assign :" << from_expr(ns, "", (*it)->cond_expr) <<"\n";
-      prop_conv.set_to_true((*it)->cond_expr);
+      decider.set_to_true((*it)->cond_expr);
     }
   }
 }
 
 void dependency_checkert::convert_guards(
-  prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+  smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   SSA_step_reft it=it1;
   SSA_step_reft it3=it2;
@@ -737,15 +715,15 @@ void dependency_checkert::convert_guards(
       }
       else {
         //std::cout << "convert guard: " << from_expr(ns, "", (*it)->cond_expr) <<"\n";
-        prop_conv.convert((*it)->cond_expr);
-        //deep_convert_guards(prop_conv, ((*it)->cond_expr));
+        decider.convert((*it)->cond_expr);
+        //deep_convert_guards(decider, ((*it)->cond_expr));
       }
     it++;
   }
 }
 
 void dependency_checkert::convert_assumptions(
-  prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+  smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   SSA_step_reft it=it1;
   while(it!=it2)
@@ -753,24 +731,24 @@ void dependency_checkert::convert_assumptions(
     if(((*it)->is_assume() || ((*it)->is_assert() && it ==it1)) && !(*it)->ignore)
     {
        //std::cout << "convert assume :" << from_expr(ns, "", (*it)->cond_expr) <<"\n";
-       prop_conv.set_to_true((*it)->cond_expr);
-       set_guards_to_true(prop_conv, ((*it)->cond_expr));
+       decider.set_to_true((*it)->cond_expr);
+       set_guards_to_true(decider, ((*it)->cond_expr));
     }
     it++;
   }
 }
 
 void dependency_checkert::convert_assertions(
-  prop_convt &prop_conv, SSA_step_reft &it2)
+  smtcheck_opensmt2t &decider, SSA_step_reft &it2)
 {
   assert((*it2)->is_assert());
   //std::cout << "convert assert :" << from_expr(ns, "", (*it2)->cond_expr) <<"\n";
-  set_guards_to_true(prop_conv, ((*it2)->cond_expr));
-  prop_conv.set_to_false((*it2)->cond_expr);
+  set_guards_to_true(decider, ((*it2)->cond_expr));
+  decider.set_to_false((*it2)->cond_expr);
 }
 
 void dependency_checkert::convert_io(
-    prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+    smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   unsigned io_count=0;
   SSA_step_reft it=it1;
@@ -792,7 +770,7 @@ void dependency_checkert::convert_io(
           symbol_exprt symbol;
           symbol.type()=tmp.type();
           symbol.set_identifier("symex::io::"+i2string(io_count++));
-          prop_conv.set_to(equal_exprt(tmp, symbol), true);
+          decider.set_to_true(equal_exprt(tmp, symbol));
           (*it)->converted_io_args.push_back(symbol);
         }
       }

@@ -9,7 +9,7 @@
 #include <i2string.h>
 #include "summarizing_checker.h"
 #include "partitioning_slice.h"
-//#include "dependency_checker.h"
+#include "dependency_checker.h"
 
 void summarizing_checkert::initialize()
 {
@@ -113,16 +113,14 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   {
     count++;
 
-    //decider = new smtcheck_opensmt2t();
-
-//    interpolator.reset(opensmt);
-//    bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
-//    deciderp->unbounded_array = bv_pointerst::U_AUTO;
-//    decider.reset(deciderp);
-
     end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
 
     if (!end){
+
+      if (options.get_bool_option("claims-order") && count == 1){
+      dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_int_option("claims-order")).do_it();
+         status(std::string("Ignored SSA steps after dependency checker: ") + i2string(equation.count_ignored_SSA_steps()));
+      }
 
       end = prop.assertion_holds(assertion, ns, *decider, *decider);
       unsigned summaries_count = omega.get_summaries_count();

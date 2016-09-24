@@ -19,6 +19,7 @@ FUNFROG_SRC := \
       check_claims.cpp \
       refiner_assertion_sum.cpp \
       prop_assertion_sum.cpp \
+      dependency_checker.cpp \
       symex_assertion_sum.cpp \
       summarizing_checker.cpp \
       upgrade_checker.cpp \
