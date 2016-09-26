@@ -12,6 +12,7 @@ Author: Grigory Fedyukovich
 //#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
+//#define DEBUG_SMT_EUF
 
 const char* smtcheck_opensmt2t::tk_sort_ureal = "UReal";
 const char* smtcheck_opensmt2t::tk_mult = "*";
@@ -1060,7 +1061,9 @@ bool smtcheck_opensmt2t::solve() {
     close_partition();
   }
 
+#ifdef DEBUG_SMT_EUF
   logic->dumpHeaderToFile(cout);
+#endif
 //  add_variables();
 #ifdef DEBUG_SMT_LRA
   /*
@@ -1078,8 +1081,9 @@ bool smtcheck_opensmt2t::solve() {
 #endif
   char *msg;
   for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
-      //cout << "; INSERTING FORMULA\n";
+#ifdef DEBUG_SMT_EUF
       cout << "\n(assert\n" << logic->printTerm(top_level_formulas[i]) << "\n)" << endl;
+#endif
       mainSolver->insertFormula(top_level_formulas[i], &msg);
 #ifdef DEBUG_SMT_LRA
       char* s = logic->printTerm(top_level_formulas[i]);
