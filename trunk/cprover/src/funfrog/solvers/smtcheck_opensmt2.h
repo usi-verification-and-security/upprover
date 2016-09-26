@@ -40,6 +40,15 @@ public:
     initializeSolver();
   }
 
+  PTRef mkURealMult(vec<PTRef>& args);
+  PTRef mkURealDiv(vec<PTRef>& args);
+  PTRef mkURealPlus(vec<PTRef>& args);
+  PTRef mkURealMinus(vec<PTRef>& args);
+  PTRef mkURealLt(vec<PTRef>& args);
+  PTRef mkURealLe(vec<PTRef>& args);
+  PTRef mkURealGt(vec<PTRef>& args);
+  PTRef mkURealGe(vec<PTRef>& args);
+
   virtual ~smtcheck_opensmt2t(); // d'tor
 
   bool solve();
@@ -57,6 +66,10 @@ public:
   PTRef convert_symbol(const exprt &expr);
 
   literalt const_var(bool val);
+
+  virtual literalt const_var_Real(const exprt &expr);
+  
+  virtual literalt type_cast(const exprt &expr);
 
   literalt limplies(literalt l1, literalt l2);
 
@@ -196,6 +209,20 @@ protected:
   std::pair <std::string, bool> extract_expr_str_number_wt_sign(const exprt &expr); // Fix problems with declare of negative numbers
 
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
+
+  static const char *tk_sort_ureal;
+  static const char *tk_mult;
+  static const char *tk_div;
+  static const char *tk_plus;
+  static const char *tk_minus;
+  static const char *tk_lt;
+  static const char *tk_le;
+  static const char *tk_gt;
+  static const char *tk_ge;
+
+  SRef sort_ureal; //Uninterpreted Real sort. Used to fake LRA.
+  SymRef s_mult, s_div, s_plus, s_minus;
+  SymRef s_lt, s_le, s_gt, s_ge;
 
 
 #ifdef DEBUG_SMT_LRA

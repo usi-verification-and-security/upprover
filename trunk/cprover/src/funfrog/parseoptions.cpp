@@ -604,6 +604,10 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   // always use assumptions
   options.set_option("assumptions", true);
 
+  if(cmdline.isset("logic")) {
+    options.set_option("logic", cmdline.getval("logic"));
+  }
+
   if (cmdline.isset("itp-algorithm")) {
     options.set_option("itp-algorithm", cmdline.getval("itp-algorithm"));
   }
