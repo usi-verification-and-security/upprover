@@ -13,7 +13,7 @@
 
 void summarizing_checkert::initialize()
 {
-  decider = new smtcheck_opensmt2t();
+  decider = new smtcheck_opensmt2t_lra();
   // Prepare the summarization context
   summarization_context.analyze_functions(ns);
 

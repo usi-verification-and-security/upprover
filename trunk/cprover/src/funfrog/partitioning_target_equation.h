@@ -15,7 +15,7 @@ Author: Ondrej Sery
 
 #include "partition_iface.h"
 #include "summarization_context.h"
-#include "solvers/smtcheck_opensmt2.h"
+#include "solvers/smtcheck_opensmt2_lra.h"
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 

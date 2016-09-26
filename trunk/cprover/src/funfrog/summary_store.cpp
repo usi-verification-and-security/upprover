@@ -290,7 +290,7 @@ void summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *deci
 
     if(!decider->getMainSolver()->readFormulaFromFile(in.c_str()))
         return;
-    vec<Tterm*>& functions = decider->getLRALogic()->getFunctions();
+    vec<Tterm*>& functions = decider->getLogic()->getFunctions();
     for(int i = 0; i < functions.size(); ++i)
     {
         summaryt *itp = new summaryt();
@@ -306,7 +306,7 @@ void summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *deci
         string fixed_name = smtcheck_opensmt2t::quote_varname(qless);
         tterm->setName(fixed_name);
         itp->setTterm(tterm);
-        itp->setLogic(decider->getLRALogic());
+        itp->setLogic(decider->getLogic());
         itp->setInterpolant(functions[i]->getBody());
         itp->set_valid(1);
         store.push_back(nodet(i, *itp));

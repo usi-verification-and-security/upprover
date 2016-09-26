@@ -18,7 +18,7 @@
 #include "prop_assertion_sum.h"
 #include "refiner_assertion_sum.h"
 
-#include "solvers/smtcheck_opensmt2.h"
+#include "solvers/smtcheck_opensmt2_lra.h"
 
 class summarizing_checkert:public messaget
 {

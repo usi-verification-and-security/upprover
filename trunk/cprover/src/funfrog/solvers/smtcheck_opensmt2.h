@@ -46,7 +46,7 @@ public:
   
   tvt get_assignemt(literalt a) const;
 
-  literalt convert(const exprt &expr);
+  virtual literalt convert(const exprt &expr);
 
   void set_to_false(const exprt &expr);
   void set_to_true(const exprt &expr);
@@ -57,10 +57,6 @@ public:
   PTRef convert_symbol(const exprt &expr);
 
   literalt const_var(bool val);
-
-  literalt const_var_Real(const exprt &expr);
-
-  literalt type_cast(const exprt &expr);
 
   literalt limplies(literalt l1, literalt l2);
 
@@ -76,9 +72,9 @@ public:
 
   literalt lnot(literalt l);
 
-  literalt lvar(const exprt &expr);
+  virtual literalt lvar(const exprt &expr);
 
-  literalt lconst(const exprt &expr);
+  virtual literalt lconst(const exprt &expr);
 
   fle_part_idt new_partition();
 
@@ -104,7 +100,7 @@ public:
 
   MainSolver * getMainSolver() { return mainSolver; }
 
-  LRALogic * getLRALogic() { return logic; }
+  Logic * getLogic() { return logic; }
 
   /* KE : remove, will use OpenSMT code + PTRefs in hifrog
   // Simple recursive extraction of clauses from OpenSMT Egraph
@@ -132,7 +128,7 @@ public:
 protected:
 
   Opensmt* osmt;
-  LRALogic* logic;
+  Logic* logic;
   MainSolver* mainSolver;
   vec<PTRef> top_level_formulas;
 
@@ -167,7 +163,7 @@ protected:
 
   unsigned unsupported2var; // Create a new var funfrog::c::unsupported_op2var#i
 
-  literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
   literalt new_variable();
 
@@ -179,7 +175,7 @@ protected:
 
   void setup_proof_transformation();
   
-  void initializeSolver();
+  virtual void initializeSolver();
 
   void produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants);
 
@@ -187,21 +183,20 @@ protected:
 
   void freeSolver();
 
+  void fill_vars(PTRef, std::map<std::string, PTRef>&);
+
+  void dump_on_error(std::string location);
+
+protected:
+  // Basic prints for debug - KE: Hope I did it right :-)
+  char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
+
   std::string extract_expr_str_number(const exprt &expr); // Our conversion of const that works also for negative numbers + check of result
 
   std::pair <std::string, bool> extract_expr_str_number_wt_sign(const exprt &expr); // Fix problems with declare of negative numbers
 
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
 
-  bool isLinearOp(const exprt &expr, vec<PTRef> &args); // Check if we don't do sth. like nondet*nondet, but only const*nondet (e.g.)
-
-  void fill_vars(PTRef, std::map<std::string, PTRef>&);
-
-  void dump_on_error(std::string location);
-
-private:
-  // Basic prints for debug - KE: Hope I did it right :-)
-  char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
 
 #ifdef DEBUG_SMT_LRA
   std::map <std::string,std::string> ite_map_str;

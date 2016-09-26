@@ -72,7 +72,7 @@ public:
   void setInterpolant(PTRef pt) { interpolant = pt; }
   void setTterm(Tterm *t) { tterm = t; }
   Tterm* getTterm() { return tterm; }
-  void setLogic(LRALogic *_l) { logic = _l; }
+  void setLogic(Logic *_l) { logic = _l; }
   bool usesVar(symbol_exprt&);
 
 protected:
@@ -99,7 +99,7 @@ protected:
 
   PTRef interpolant;
   Tterm *tterm;
-  LRALogic *logic;
+  Logic *logic;
 };
 
 typedef smt_itpt interpolantt;

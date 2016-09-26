@@ -5,6 +5,7 @@ SHARED_SRC := \
       function_info.cpp \
       summary_store.cpp \
       solvers/smtcheck_opensmt2.cpp \
+      solvers/smtcheck_opensmt2_lra.cpp \
       solvers/smt_itp.cpp
 
 FUNFROG_SRC := \
@@ -93,7 +94,7 @@ INCLUDES :=  -I .. -I ../util
 ###############################################################################
 
 evolcheck$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ
+	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline -O0 -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -g
 
 sumo$(EXEEXT): $(SUMO_OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline
