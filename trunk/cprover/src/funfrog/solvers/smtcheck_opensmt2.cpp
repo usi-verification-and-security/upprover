@@ -428,7 +428,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 #endif
 		} else if(expr.id() == ID_ifthenelse) {
             ptl = logic->mkIte(args);
-#ifdef DEBUG_SMT_LRA
+#ifdef DEBUG_SMT2SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
 		} else if(expr.id() == ID_and) {
@@ -496,7 +496,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 			ptl = literals[lunsupported2var(expr).var_no()];
 #endif
 		} else {
-#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
+#ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
             cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: "
             		<< expr.id() << ")" << endl;
@@ -680,6 +680,10 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     // Nil is a special case - don't create a var but a val of true
     if (_str.compare("nil") == 0) return const_var(true);
 
+#ifdef SMT_DEBUG
+	cout << "; (lvar) Create " << str << endl;
+#endif
+
     // Else if it is really a var, continue and declare it!
 	literalt l;
     PTRef var;
@@ -699,8 +703,7 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
 
     l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
 
-#ifdef DEBUG_SMT_LRA
-	cout << "; (lvar) Create " << str << endl;
+#ifdef DEBUG_SMT2SOLVER
 	std::string add_var = str + " () " + getVarData(var);
 	if (var_set_str.end() == var_set_str.find(add_var)) {
 		var_set_str.insert(add_var);
@@ -1065,38 +1068,18 @@ bool smtcheck_opensmt2t::solve() {
   logic->dumpHeaderToFile(cout);
 #endif
 //  add_variables();
-#ifdef DEBUG_SMT_LRA
-  /*
-  //If have problem with declaration of vars - uncommen this!
-  cout << "; XXX SMT-lib --> LRA-Logic Translation XXX" << endl;
-  cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
-  cout << "; Declarations from Hifrog :" << endl;
-  for(it_var_set_str iterator = var_set_str.begin(); iterator != var_set_str.end(); iterator++) {
-  	  cout << "(declare-fun " << *iterator << ")" << endl;
-  }
-  cout << "; Declarations from OpenSMT2 :" << endl;
-  */
-  logic->dumpHeaderToFile(cout);
-  cout << "(assert\n  (and" << endl;
-#endif
   char *msg;
   for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
 #ifdef DEBUG_SMT_EUF
-      cout << "\n(assert\n" << logic->printTerm(top_level_formulas[i]) << "\n)" << endl;
-#endif
-      mainSolver->insertFormula(top_level_formulas[i], &msg);
-#ifdef DEBUG_SMT_LRA
-      char* s = logic->printTerm(top_level_formulas[i]);
-      cout << "; XXX Partition: " << i << endl << "    " << s << endl;
+	  char* s = logic->printTerm(top_level_formulas[i]);
+      cout << "\n(assert\n" << s << "\n)" << endl;
       free(s);
 #endif
+      mainSolver->insertFormula(top_level_formulas[i], &msg);
   }
   pushed_formulas = top_level_formulas.size();
-#ifdef DEBUG_SMT_LRA
-  for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
-	  cout << "; XXX oite symbol: " << iterator->first << endl << iterator->second << endl;
-  }
-  cout << "))" << endl << "(check-sat)" << endl;
+#ifdef DEBUG_SMT2SOLVER
+  dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
 #endif
 
   sstat r = mainSolver->check();
@@ -1132,7 +1115,7 @@ void smtcheck_opensmt2t::close_partition()
   if (partition_count > 0){
     if (current_partition->size() >= 1){
       PTRef pand = logic->mkAnd(*current_partition);
-#ifdef DEBUG_SMT_LRA
+#ifdef DEBUG_SMT2SOLVER
       char* s= logic->printTerm(pand);
       cout << "; Pushing to solver: " << s << endl;
       free(s);
@@ -1140,7 +1123,7 @@ void smtcheck_opensmt2t::close_partition()
       top_level_formulas.push(pand);
     } else if (current_partition->size() == 1){
       PTRef pand = (*current_partition)[0];
-#ifdef DEBUG_SMT_LRA
+#ifdef DEBUG_SMT2SOLVER
       char* s= logic->printTerm(pand);
       cout << "; Pushing to solver: " << s << endl;
       free(s);
@@ -1248,7 +1231,7 @@ Function: smtcheck_opensmt2t::dump_on_error
 void smtcheck_opensmt2t::dump_on_error(std::string location) {
 	  /*
 	  //If have problem with declaration of vars - uncommen this!
-	  cout << "; XXX SMT-lib --> LRA-Logic Translation XXX" << endl;
+	  cout << "; XXX SMT-lib --> Current Logic Translation XXX" << endl;
 	  cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
 	  cout << "; Declarations from Hifrog :" << endl;
 	  for(it_var_set_str iterator = var_set_str.begin(); iterator != var_set_str.end(); iterator++) {
@@ -1265,7 +1248,7 @@ void smtcheck_opensmt2t::dump_on_error(std::string location) {
 	  }
 
 	  // If code - once needed uncomment this debug flag in the header
-#ifdef DEBUG_SMT_LRA
+#ifdef DEBUG_SMT2SOLVER
 	  for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
 		  cout << "; XXX oite symbol: " << iterator->first << endl << iterator->second << endl;
 	  }

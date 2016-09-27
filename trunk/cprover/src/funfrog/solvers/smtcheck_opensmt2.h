@@ -7,7 +7,7 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_PERIPLO_H
 #define CPROVER_SMTCHECK_PERIPLO_H
 
-//#define DEBUG_SMT_LRA
+#define DEBUG_SMT2SOLVER
 
 #include <map>
 #include <vector>
@@ -225,7 +225,7 @@ protected:
   SymRef s_lt, s_le, s_gt, s_ge;
 
 
-#ifdef DEBUG_SMT_LRA
+#ifdef DEBUG_SMT2SOLVER
   std::map <std::string,std::string> ite_map_str;
   std::set <std::string> var_set_str;
   typedef std::map<std::string,std::string>::iterator it_ite_map_str;
