@@ -4,18 +4,11 @@ Module: Wrapper for OpenSMT2
 
 \*******************************************************************/
 
-#ifndef CPROVER_SMTCHECK_PERIPLO_LRA_H
-#define CPROVER_SMTCHECK_PERIPLO_LRA_H
-
-//#define DEBUG_SMT_LRA
+#ifndef CPROVER_SMTCHECK_OPENSMT2_LRA_H
+#define CPROVER_SMTCHECK_OPENSMT2_LRA_H
 
 #include "smtcheck_opensmt2.h"
 
-#include <map>
-#include <vector>
-
-#include <solvers/sat/cnf.h>
-#include <util/threeval.h>
 #include <opensmt/opensmt2.h>
 #include <expr.h>
 
@@ -38,7 +31,8 @@ public:
 
   literalt lconst(const exprt &expr);
 
-  literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  literalt lunsupported2var(exprt expr); // for isnan, mod, arrays etc. that we have no support (or no support yet) create over-approx as nondet
+  	  	  	  	  	  	  	  	  	  	 // Remove when has a support for UF
 
   literalt lvar(const exprt &expr);
 
