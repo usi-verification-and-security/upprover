@@ -7,7 +7,7 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_PERIPLO_H
 #define CPROVER_SMTCHECK_PERIPLO_H
 
-#define DEBUG_SMT2SOLVER
+//#define DEBUG_SMT2SOLVER
 
 #include <map>
 #include <vector>
