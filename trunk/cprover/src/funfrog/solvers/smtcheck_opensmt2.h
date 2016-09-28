@@ -97,7 +97,6 @@ public:
   bool can_interpolate() const;
 
   // Extract interpolant form OpenSMT files/data
-  //void extract_itp(PTRef ptref, prop_itpt& target_itp) const;
   void extract_itp(PTRef ptref, smt_itpt& target_itp) const;
 
   void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name);
@@ -115,13 +114,6 @@ public:
 
   Logic * getLogic() { return logic; }
 
-  /* KE : remove, will use OpenSMT code + PTRefs in hifrog
-  // Simple recursive extraction of clauses from OpenSMT Egraph
-  literalt extract_itp_rec(PTRef ptref, prop_itpt& target_itp,
-    ptref_cachet& ptref_cache) const;
-   *
-   */
-
   const char* false_str = "false";
   const char* true_str = "true";
 
@@ -137,6 +129,8 @@ public:
 
 
   bool has_unsupported_vars() { return unsupported2var > 0; }
+
+  const std::vector<PTRef> &getVars(); // Get all variables from literals for the counter example phase
 
 protected:
 
@@ -166,11 +160,12 @@ protected:
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
   int proof_trans;
 
-//  List of clauses that are part of this partition (a.k.a. assert in smt2lib)
+  //  List of clauses that are part of this partition (a.k.a. assert in smt2lib)
   vec<PTRef>* current_partition;
 
-//  Mapping from boolean variable indexes to their PTRefs
+  //  Mapping from boolean variable indexes to their PTRefs
   std::vector<PTRef> literals;
+  typedef std::vector<PTRef>::iterator it_literals;
 
   unsigned pushed_formulas;
 
@@ -197,12 +192,6 @@ protected:
   void freeSolver();
 
   void fill_vars(PTRef, std::map<std::string, PTRef>&);
-
-  void dump_on_error(std::string location);
-
-protected:
-  // Basic prints for debug - KE: Hope I did it right :-)
-  char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
 
   std::string extract_expr_str_number(const exprt &expr); // Our conversion of const that works also for negative numbers + check of result
 
@@ -235,6 +224,11 @@ protected:
 	  return string(logic->getSortName(logic->getSortRef(var)));
   }
 #endif
+  void dump_on_error(std::string location);
+
+  // Basic prints for debug - KE: Hope I did it right :-)
+  char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
+
 public:
   char* getPTermString(const literalt &l) { return getPTermString(literals[l.var_no()]); }
   char* getPTermString(const exprt &expr) {

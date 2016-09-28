@@ -1141,6 +1141,30 @@ void smtcheck_opensmt2t::close_partition()
 
 /*******************************************************************\
 
+Function: smtcheck_opensmt2t::getVars
+
+  Inputs: -
+
+ Outputs: a set of all variables that used in the smt formula
+
+ Purpose: get all the vars to create later on the counter example path
+
+\*******************************************************************/
+const std::vector<PTRef> & smtcheck_opensmt2t::getVars()
+{
+	std::vector<PTRef> ret;
+	for(it_literals it = literals.begin(); it != literals.end(); it++)
+	{
+		if (logic->isVar(*it)) {
+			ret.push_back(*it);
+		}
+	}
+
+	return ret;
+}
+
+/*******************************************************************\
+
 Function: smtcheck_opensmt2t::extract_expr_str_number
 
   Inputs: expression that is a constant (+/-/int/float/rational)
