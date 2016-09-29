@@ -13,6 +13,7 @@ Author: Grigory Fedyukovich
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 //#define DEBUG_SMT_EUF
+//#define DEBUG_SMT_ITP
 
 const char* smtcheck_opensmt2t::tk_sort_ureal = "UReal";
 const char* smtcheck_opensmt2t::tk_mult = "*";
