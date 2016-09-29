@@ -1150,14 +1150,13 @@ Function: smtcheck_opensmt2t::getVars
  Purpose: get all the vars to create later on the counter example path
 
 \*******************************************************************/
-const std::vector<PTRef> & smtcheck_opensmt2t::getVars()
+std::set<PTRef>* smtcheck_opensmt2t::getVars()
 {
-	std::vector<PTRef> ret;
+	std::set<PTRef>* ret = new std::set<PTRef>();
 	for(it_literals it = literals.begin(); it != literals.end(); it++)
 	{
-		if (logic->isVar(*it)) {
-			ret.push_back(*it);
-		}
+		if ((logic->isVar(*it)) && (ret->count(*it) < 1))
+			ret->insert(*it);
 	}
 
 	return ret;

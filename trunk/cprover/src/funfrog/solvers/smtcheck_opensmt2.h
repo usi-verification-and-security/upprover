@@ -130,7 +130,7 @@ public:
 
   bool has_unsupported_vars() { return unsupported2var > 0; }
 
-  const std::vector<PTRef> &getVars(); // Get all variables from literals for the counter example phase
+  std::set<PTRef>* getVars(); // Get all variables from literals for the counter example phase
 
 protected:
 
