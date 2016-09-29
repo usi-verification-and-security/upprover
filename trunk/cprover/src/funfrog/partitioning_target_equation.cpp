@@ -939,7 +939,7 @@ void partitioning_target_equationt::extract_interpolants(
 		// Generalize the interpolant
 		fill_common_symbols(partition, common_symbs);
 
-//#   ifdef DEBUG_ITP
+#   ifdef DEBUG_ITP
 		std::cout << "Interpolant for function: " <<
 		partition.get_iface().function_id.c_str() << std::endl;
 		std::cout << "Common symbols (" << common_symbs.size() << "):" << std::endl;
@@ -948,7 +948,7 @@ void partitioning_target_equationt::extract_interpolants(
 		std::cout << it->get_identifier() << std::endl;
 
 		std::cout << "Generalizing interpolant" << std::endl;
-//#   endif
+#   endif
 
 		// GF: hack
 		//    itp.generalize(decider, common_symbs);

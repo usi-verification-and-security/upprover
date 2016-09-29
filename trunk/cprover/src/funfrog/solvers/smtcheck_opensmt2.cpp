@@ -12,6 +12,7 @@ Author: Grigory Fedyukovich
 //#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
+//#define DEBUG_ITP_VARS
 
 void smtcheck_opensmt2t::initializeSolver()
 {
@@ -522,6 +523,7 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     Tterm *tterm = new Tterm();
     Map<PTRef,PtAsgn,PTRefHash> subst;
 
+#ifdef DEBUG_ITP_VARS
     bool only_common_vars_in_itp = true;
     cout << "; Variables in the interpolant: " << endl;
     for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
@@ -542,6 +544,7 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     }
 
     assert(only_common_vars_in_itp);
+#endif
 
     // substitute
     PTRef new_root;
