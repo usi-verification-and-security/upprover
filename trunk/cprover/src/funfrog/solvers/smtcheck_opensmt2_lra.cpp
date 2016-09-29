@@ -316,7 +316,7 @@ literalt smtcheck_opensmt2t_lra::lunsupported2var(exprt expr)
 	literalt l;
 	PTRef var;
 
-	const string str =  "funfrog::c::unsupported_op2var#" + (unsupported2var++);
+	const string str =  "funfrog::c::unsupported_op2var#" + std::to_string(unsupported2var++);
 	if (expr.is_boolean())
 		var = lralogic->mkBoolVar(str.c_str());
 	else

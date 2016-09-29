@@ -524,7 +524,7 @@ literalt smtcheck_opensmt2t::lunsupported2var(exprt expr)
 	literalt l;
 	PTRef var;
 
-	const string str =  "funfrog::c::unsupported_op2var#" + (unsupported2var++);
+	const string str =  "funfrog::c::unsupported_op2var#" + std::to_string(unsupported2var++);
     var = logic->mkBoolVar(str.c_str());
 
 	l = push_variable(var);
@@ -1252,8 +1252,9 @@ Function: smtcheck_opensmt2t::dump_on_error
 
 \*******************************************************************/
 void smtcheck_opensmt2t::dump_on_error(std::string location) {
-	  /*
+
 	  //If have problem with declaration of vars - uncommen this!
+#ifdef DEBUG_SMT2SOLVER
 	  cout << "; XXX SMT-lib --> Current Logic Translation XXX" << endl;
 	  cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
 	  cout << "; Declarations from Hifrog :" << endl;
@@ -1261,7 +1262,7 @@ void smtcheck_opensmt2t::dump_on_error(std::string location) {
 	  	  cout << "(declare-fun " << *iterator << ")" << endl;
 	  }
 	  cout << "; Declarations from OpenSMT2 :" << endl;
-	  */
+#endif
 	  logic->dumpHeaderToFile(cout);
 	  cout << "(assert\n  (and" << endl;
 	  for(int i = 0; i < top_level_formulas.size(); ++i) {
