@@ -245,18 +245,29 @@ void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespa
   Logic *logic = decider.getLogic();
   std::set<PTRef>* vars = decider.getVars();
   std::set<PTRef>::iterator iter;
+  bool isOverAppox = false;
+  std::string overapprox_str ("funfrog::c::unsupported_op2var");
   for(iter = vars->begin(); iter != vars->end(); iter++)
-	{
+  {
   	// Print the var and its value
   	char* name = logic->printTerm(*iter);
-  	cout << " \\ " << name ;
-  	free(name);
-  	ValPair v1 = mainSolver->getValue(*iter);
-  	cout << " = " << v1.val << "\n";
-
+  	std::string curr (name);
+  	if (curr.find(overapprox_str) != std::string::npos)
+  		isOverAppox = true;
+  	else {
+  		cout << " \\ " << name ;
+  		ValPair v1 = mainSolver->getValue(*iter);
+  		cout << " = " << v1.val << "\n";
 	}
+
+  	free(name);
+  }
   vars->clear();
   delete vars;
+
+  // Incase we use over approx to verify this example - gives a warning to the user!
+  if (isOverAppox)
+	  cout << "\nWARNING: Use over approximation, counter example can be incorrect \n";
 
 /* GF: broken
   goto_tracet goto_trace;
