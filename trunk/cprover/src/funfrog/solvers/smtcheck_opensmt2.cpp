@@ -1053,10 +1053,10 @@ Function: smtcheck_opensmt2t::prop_solve
 
 bool smtcheck_opensmt2t::solve() {
 
-  if (dump_queries){
+  //if (dump_queries){
     //char* msg1;
     //mainSolver->writeSolverState_smtlib2("__SMT_query", &msg1);
-  }
+  //}
 
   ready_to_interpolate = false;
 
