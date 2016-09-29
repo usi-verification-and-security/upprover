@@ -4,18 +4,11 @@ Module: Wrapper for OpenSMT2
 
 \*******************************************************************/
 
-#ifndef CPROVER_SMTCHECK_PERIPLO_LRA_H
-#define CPROVER_SMTCHECK_PERIPLO_LRA_H
-
-//#define DEBUG_SMT_LRA
+#ifndef CPROVER_SMTCHECK_OPENSMT2_LRA_H
+#define CPROVER_SMTCHECK_OPENSMT2_LRA_H
 
 #include "smtcheck_opensmt2.h"
 
-#include <map>
-#include <vector>
-
-#include <solvers/sat/cnf.h>
-#include <util/threeval.h>
 #include <opensmt/opensmt2.h>
 #include <expr.h>
 
@@ -28,19 +21,20 @@ public:
     initializeSolver();
   }
 
-  ~smtcheck_opensmt2t_lra(); // d'tor
+  virtual ~smtcheck_opensmt2t_lra(); // d'tor
 
-  literalt convert(const exprt &expr);
+  virtual literalt convert(const exprt &expr);
 
-  literalt const_var_Real(const exprt &expr);
+  virtual literalt const_var_Real(const exprt &expr);
 
-  literalt type_cast(const exprt &expr);
+  virtual literalt type_cast(const exprt &expr);
 
-  literalt lconst(const exprt &expr);
+  virtual literalt lconst(const exprt &expr);
 
-  literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays etc. that we have no support (or no support yet) create over-approx as nondet
+  	  	  	  	  	  	  	  	  	  	 // Remove when has a support for UF
 
-  literalt lvar(const exprt &expr);
+  virtual literalt lvar(const exprt &expr);
 
   LRALogic * getLRALogic() { return lralogic; }
 

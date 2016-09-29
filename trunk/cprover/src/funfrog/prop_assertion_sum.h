@@ -45,7 +45,7 @@ public:
 
   const fine_timet& get_solving_time() { return solving_time; };
 
-  void error_trace(const smtcheck_opensmt2t& decider, const namespacet &ns);
+  void error_trace(smtcheck_opensmt2t& decider, const namespacet &ns);
 
 private:
   // Summarizing context (summary_store needed)

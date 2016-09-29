@@ -421,7 +421,6 @@ long dependency_checkert::find_implications()
     ofstream hl_weaker;
     hl_stronger.open ("__hl_stronger");
     hl_weaker.open ("__hl_weaker");
-    int hldiscardable = 0;
     for (int i = asserts.size() - 1; i >= 0; i--){
       SSA_step_reft& ass = asserts[i];
       if (weaker[i] == true)

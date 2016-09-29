@@ -62,6 +62,7 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
   else
   {
     status("ASSERTION IS VIOLATED");
+
     /* error_trace(decider, ns);
     //std::cout << std::endl << "NONDET assigns:" << std::endl;
 
@@ -153,10 +154,10 @@ void build_exec_order_goto_trace(
   const namespacet &ns,
   goto_tracet &goto_trace)
 {
+  /*GF: broken
   unsigned step_nr=0;
   
   const SSA_steps_orderingt& SSA_steps = target.get_steps_exec_order();
-  /*GF: broken
   for(SSA_steps_orderingt::const_iterator
       it=SSA_steps.begin();
       it!=SSA_steps.end();
@@ -235,9 +236,39 @@ void build_exec_order_goto_trace(
   }*/
 }
 
-void prop_assertion_sumt::error_trace(const smtcheck_opensmt2t &decider, const namespacet &ns)
+void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns)
 {
   status("Building error trace");
+
+  /* Basic print of the error trace as all variables values */
+  MainSolver *mainSolver = decider.getMainSolver();
+  Logic *logic = decider.getLogic();
+  std::set<PTRef>* vars = decider.getVars();
+  std::set<PTRef>::iterator iter;
+  bool isOverAppox = false;
+  std::string overapprox_str ("funfrog::c::unsupported_op2var");
+  for(iter = vars->begin(); iter != vars->end(); iter++)
+  {
+  	// Print the var and its value
+  	char* name = logic->printTerm(*iter);
+  	std::string curr (name);
+  	if (curr.find(overapprox_str) != std::string::npos)
+  		isOverAppox = true;
+  	else {
+  		cout << " \\ " << name ;
+  		ValPair v1 = mainSolver->getValue(*iter);
+  		cout << " = " << v1.val << "\n";
+	}
+
+  	free(name);
+  }
+  vars->clear();
+  delete vars;
+
+  // Incase we use over approx to verify this example - gives a warning to the user!
+  if (isOverAppox)
+	  cout << "\nWARNING: Use over approximation, counter example can be incorrect \n";
+
 /* GF: broken
   goto_tracet goto_trace;
 
