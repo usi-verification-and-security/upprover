@@ -881,13 +881,19 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     Map<PTRef,PtAsgn,PTRefHash> subst;
 
     bool only_common_vars_in_itp = true;
+#ifdef DEBUG_SMT_ITP
     cout << "; Variables in the interpolant: " << endl;
+#endif
     for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
     {
+#ifdef DEBUG_SMT_ITP
         cout << " * " << it->first << ' ';
+#endif
         if (quoted_varnames.end() ==
             find (quoted_varnames.begin(), quoted_varnames.end(), it->first)){
+#ifdef DEBUG_SMT_ITP
             cout << " ---> local var to A; should not be in the interpolant";
+#endif
             only_common_vars_in_itp = false;
         }
 
@@ -896,7 +902,9 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
         PTRef new_var = logic->mkVar(logic->getSortRef(var), new_var_name.c_str());
         tterm->addArg(new_var);
         subst.insert(var, PtAsgn(new_var, l_True));
+#ifdef DEBUG_SMT_ITP
         cout << endl;
+#endif
     }
 
     assert(only_common_vars_in_itp);
@@ -1015,7 +1023,9 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
       extract_itp(itp_ptrefs[i], *new_itp);
       interpolants.push_back(new_itp);
       char *s = logic->printTerm(interpolants.back()->getInterpolant());
+#ifdef DEBUG_SMT_ITP
       cout << "Interpolant " << i << " = " << s << endl;
+#endif
       free(s);
   }
 }
