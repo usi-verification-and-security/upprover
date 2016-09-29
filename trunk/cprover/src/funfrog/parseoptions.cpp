@@ -396,6 +396,7 @@ void funfrog_parseoptionst::help()
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
   "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
+  "--show-error-trace             print counter example once a real bug found in\n"
   "\nRefinement options:\n"
   "--refine-mode <mode>:\n"
   "  0 | \"force-inlining\"         inline every function call\n"
@@ -683,5 +684,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("init-mode")) {
     options.set_option("init-mode", cmdline.getval("init-mode"));
+  }
+
+  if (cmdline.isset("show-error-trace")) {
+    options.set_option("show-error-trace", cmdline.getval("show-error-trace"));
   }
 }
