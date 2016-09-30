@@ -9,11 +9,7 @@
 
 #include <goto-symex/build_goto_trace.h>
 #include <goto-symex/xml_goto_trace.h>
-#include <find_symbols.h>
-#include <ansi-c/expr2c.h>
 #include <time_stopping.h>
-#include <loopfrog/memstat.h>
-#include <ui_message.h>
 #include "prop_assertion_sum.h"
 
 fine_timet global_satsolver_time;
@@ -64,50 +60,6 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
   else
   {
     status("ASSERTION IS VIOLATED");
-
-    /* error_trace(decider, ns);
-    //std::cout << std::endl << "NONDET assigns:" << std::endl;
-
-    unsigned int nondet_counter=0;
-    std::set<exprt> lhs_symbols;
-    if (!assertion.is_all_assert())
-      find_symbols(assertion.get_location()->guard, lhs_symbols);
-
-    if (lhs_symbols.size()>0)
-    {
-      for (goto_tracet::stepst::reverse_iterator it=
-             trace.steps.rbegin();
-           it!=trace.steps.rend();
-           it++)
-      {
-        // FIXME: Work around for a broken error_trace
-        if (it->type==goto_trace_stept::ASSIGNMENT &&
-                !it->pc->code.has_operands())
-          continue;
-        
-        if (it->type==goto_trace_stept::ASSIGNMENT &&
-            lhs_symbols.find(it->pc->code.op0())!=lhs_symbols.end())
-        {
-          const codet &code = to_code(it->pc->code);
-
-          goto_programt::instructiont::labelst::const_iterator lit =
-              find(it->pc->labels.begin(), it->pc->labels.end(),
-                   irep_idt("VARIANT"));
-
-          if (code.op1().get("statement")=="nondet" &&
-              lit!=it->pc->labels.end())
-          {
-            // std::cout <<std::endl<<expr2c(code, ns)<<std::endl;
-            nondet_counter++;
-          }
-          else
-            find_symbols(code.op1(), lhs_symbols);
-        }
-      }
-    }
-
-    //std::cout << "Total nondet:" << nondet_counter << std::endl;
-    */
     return false;
   }
 }
