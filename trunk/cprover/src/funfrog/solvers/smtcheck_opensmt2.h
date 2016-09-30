@@ -55,6 +55,8 @@ public:
   
   tvt get_assignemt(literalt a) const;
 
+  exprt get_value(const exprt &expr);
+
   virtual literalt convert(const exprt &expr);
 
   void set_to_false(const exprt &expr);

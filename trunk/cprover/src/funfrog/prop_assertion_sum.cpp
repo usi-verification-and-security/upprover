@@ -150,9 +150,9 @@ bool prop_assertion_sumt::is_satisfiable(
 }
 
 // Copied from build_goto_tarce.cpp
-void build_exec_order_goto_trace(
+void prop_assertion_sumt::build_exec_order_goto_trace (
   partitioning_target_equationt &target,
-  const smtcheck_opensmt2t &decider,
+  smtcheck_opensmt2t &decider,
   const namespacet &ns,
   goto_tracet &goto_trace)
 {
@@ -190,13 +190,12 @@ void build_exec_order_goto_trace(
     goto_trace_step.formatted=SSA_step.formatted;
     goto_trace_step.identifier=SSA_step.identifier;
 
-    /*GF: broken
     if(SSA_step.ssa_lhs.is_not_nil())
-      goto_trace_step.lhs_object_value=prop_conv.get(SSA_step.ssa_lhs);
+      goto_trace_step.lhs_object_value=decider.get_value(SSA_step.ssa_lhs);
     
     if(SSA_step.ssa_full_lhs.is_not_nil())
     {
-      goto_trace_step.full_lhs_value=prop_conv.get(SSA_step.ssa_full_lhs);
+      goto_trace_step.full_lhs_value=decider.get_value(SSA_step.ssa_full_lhs);
     //  simplify(goto_trace_step.full_lhs_value, ns);
     }
 
@@ -211,11 +210,10 @@ void build_exec_order_goto_trace(
         goto_trace_step.io_args.push_back(arg);
       else
       {
-        exprt tmp=prop_conv.get(arg);
+        exprt tmp=decider.get_value(arg);
         goto_trace_step.io_args.push_back(tmp);
       }
     }
-    */
 
     // Stop condition + adding data to assume and assert steps
     if(SSA_step.is_assert() || SSA_step.is_assume())
@@ -234,13 +232,14 @@ void build_exec_order_goto_trace(
 void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns)
 {
   /* Basic print of the error trace as all variables values */
+#ifdef TRACE_DEBUG
   MainSolver *mainSolver = decider.getMainSolver();
+#endif
   Logic *logic = decider.getLogic();
   std::set<PTRef>* vars = decider.getVars();
-  std::set<PTRef>::iterator iter;
   bool isOverAppox = false;
   std::string overapprox_str ("funfrog::c::unsupported_op2var");
-  for(iter = vars->begin(); iter != vars->end(); iter++)
+  for(std::set<PTRef>::iterator iter = vars->begin(); iter != vars->end(); iter++)
   {
   	// Print the var and its value
   	char* name = logic->printTerm(*iter);
