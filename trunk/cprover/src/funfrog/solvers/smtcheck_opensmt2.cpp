@@ -222,13 +222,11 @@ literalt smtcheck_opensmt2t::push_variable(PTRef ptl) {
 	return l; // Return the literal after creating all ok - check if here with SMT_DEBUG flag
 }
 
-// TODO: might be buggy
-
 exprt smtcheck_opensmt2t::get_value(const exprt &expr)
 {
 	PTRef ptrf;
 	if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
-		literalt l = converted_exprs[expr.hash()];
+		literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
 		ptrf = literals[l.var_no()];
 
 		// Get the value of the PTRef
