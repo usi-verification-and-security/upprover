@@ -240,8 +240,6 @@ void build_exec_order_goto_trace(
 
 void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns)
 {
-  status("Building error trace");
-
   /* Basic print of the error trace as all variables values */
   MainSolver *mainSolver = decider.getMainSolver();
   Logic *logic = decider.getLogic();
@@ -260,9 +258,10 @@ void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespa
   	else {
   		cout << " \\ " << name ;
   		ValPair v1 = mainSolver->getValue(*iter);
-  		if (logic->isIff((*iter)))
-  			cout << "(" << logic->printTerm(logic->getTopLevelIte(*iter)) << ")" << endl;
-  		cout << " = " << v1.val << "\n";
+  		if (logic->isIteVar((*iter)))
+  			cout << ": (" << logic->printTerm(logic->getTopLevelIte(*iter)) << ")" << " = " << ((v1.val != 0) ? "true" : "false") << "\n";
+  		else
+  			cout << " = " << v1.val << "\n";
 	}
 #endif
 
@@ -273,9 +272,12 @@ void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespa
 
   // Incase we use over approx to verify this example - gives a warning to the user!
   if (isOverAppox) {
-	  cout << "\nWARNING: Use over approximation, counter example can be incorrect \n";
+	  cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
 	  return; // Cannot really print a trace
   }
+
+  // Only if can build an error trace - give notice to the user
+  status("Building error trace");
 
 /* GF: broken
   goto_tracet goto_trace;
