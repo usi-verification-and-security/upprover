@@ -156,9 +156,9 @@ void build_exec_order_goto_trace(
   const namespacet &ns,
   goto_tracet &goto_trace)
 {
-  /*GF: broken
+
   unsigned step_nr=0;
-  
+
   const SSA_steps_orderingt& SSA_steps = target.get_steps_exec_order();
   for(SSA_steps_orderingt::const_iterator
       it=SSA_steps.begin();
@@ -166,7 +166,8 @@ void build_exec_order_goto_trace(
       it++)
   {
     const symex_target_equationt::SSA_stept &SSA_step=**it;
-    if(prop_conv.prop.l_get(SSA_step.guard_literal)!=tvt(true))
+
+    if(decider.get_assignemt(SSA_step.guard_literal)!=tvt(true))
       continue;
 
     if(SSA_step.is_assignment() &&
@@ -189,6 +190,7 @@ void build_exec_order_goto_trace(
     goto_trace_step.formatted=SSA_step.formatted;
     goto_trace_step.identifier=SSA_step.identifier;
 
+    /*GF: broken
     if(SSA_step.ssa_lhs.is_not_nil())
       goto_trace_step.lhs_object_value=prop_conv.get(SSA_step.ssa_lhs);
     
@@ -213,29 +215,20 @@ void build_exec_order_goto_trace(
         goto_trace_step.io_args.push_back(tmp);
       }
     }
+    */
 
-    if(SSA_step.is_assert() ||
-       SSA_step.is_assume())
+    // Stop condition + adding data to assume and assert steps
+    if(SSA_step.is_assert() || SSA_step.is_assume())
     {
       goto_trace_step.cond_expr=SSA_step.cond_expr;
-
       goto_trace_step.cond_value=
-        prop_conv.prop.l_get(SSA_step.cond_literal).is_true();
-    }
+    		  decider.get_assignemt(SSA_step.cond_literal).is_true();
 
-    if(SSA_step.is_assert())
-    {
       // we stop after a violated assertion
-      if(!goto_trace_step.cond_value)
-        break;
+      if(SSA_step.is_assert() && !goto_trace_step.cond_value)
+    	  break;
     }
-    else if(SSA_step.is_assume())
-    {
-      // assumptions can't be false
-      // This is not necessarily true for partitioned_target_equation
-      //assert(goto_trace_step.cond_value);
-    }
-  }*/
+  }
 }
 
 void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns)
@@ -267,21 +260,24 @@ void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespa
 
   	free(name);
   }
-  vars->clear();
-  delete vars;
 
   // Incase we use over approx to verify this example - gives a warning to the user!
   if (isOverAppox) {
 	  cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
+
+	  // Clear all vars list and quit
+	  vars->clear(); delete vars;
 	  return; // Cannot really print a trace
   }
 
   // Only if can build an error trace - give notice to the user
   status("Building error trace");
 
-/* GF: broken
   goto_tracet goto_trace;
 
+  build_exec_order_goto_trace(equation, decider, ns, goto_trace);
+
+  /*
 # ifndef USE_EXEC_ORDER_ERROR_TRACE
   // Original trace builder:
   build_goto_trace(equation, prop_conv, ns, goto_trace);
@@ -322,4 +318,7 @@ void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespa
     assert(false);
   }
   */
+
+  // Clear all vars list before quit
+  vars->clear(); delete vars;
 }
