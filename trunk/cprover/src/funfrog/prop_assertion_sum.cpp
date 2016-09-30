@@ -19,6 +19,8 @@
 fine_timet global_satsolver_time;
 fine_timet global_sat_conversion_time;
 
+//#define TRACE_DEBUG //Use it to debug the trace of an error build
+
 /*******************************************************************
 
  Function: prop_assertion_sumt::assertion_holds
@@ -254,11 +256,15 @@ void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespa
   	std::string curr (name);
   	if (curr.find(overapprox_str) != std::string::npos)
   		isOverAppox = true;
+#ifdef TRACE_DEBUG
   	else {
   		cout << " \\ " << name ;
   		ValPair v1 = mainSolver->getValue(*iter);
+  		if (logic->isIff((*iter)))
+  			cout << "(" << logic->printTerm(logic->getTopLevelIte(*iter)) << ")" << endl;
   		cout << " = " << v1.val << "\n";
 	}
+#endif
 
   	free(name);
   }
@@ -266,8 +272,10 @@ void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespa
   delete vars;
 
   // Incase we use over approx to verify this example - gives a warning to the user!
-  if (isOverAppox)
+  if (isOverAppox) {
 	  cout << "\nWARNING: Use over approximation, counter example can be incorrect \n";
+	  return; // Cannot really print a trace
+  }
 
 /* GF: broken
   goto_tracet goto_trace;
