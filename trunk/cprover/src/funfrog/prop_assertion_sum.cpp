@@ -119,7 +119,7 @@ void prop_assertion_sumt::build_exec_order_goto_trace (
   {
     const symex_target_equationt::SSA_stept &SSA_step=**it;
 
-    if(decider.get_assignemt(SSA_step.guard_literal)!=tvt(true))
+    if(!decider.is_assignemt_true(SSA_step.guard_literal))
       continue;
 
     if(SSA_step.is_assignment() &&
@@ -172,7 +172,7 @@ void prop_assertion_sumt::build_exec_order_goto_trace (
     {
       goto_trace_step.cond_expr=SSA_step.cond_expr;
       goto_trace_step.cond_value=
-    		  decider.get_assignemt(SSA_step.cond_literal).is_true();
+    		  decider.is_assignemt_true(SSA_step.cond_literal);
 
       // we stop after a violated assertion
       if(SSA_step.is_assert() && !goto_trace_step.cond_value)

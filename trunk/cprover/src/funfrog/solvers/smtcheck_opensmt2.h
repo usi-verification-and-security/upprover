@@ -51,7 +51,7 @@ public:
 
   bool solve();
   
-  tvt get_assignemt(literalt a) const;
+  bool is_assignemt_true(literalt a) const;
 
   exprt get_value(const exprt &expr);
 

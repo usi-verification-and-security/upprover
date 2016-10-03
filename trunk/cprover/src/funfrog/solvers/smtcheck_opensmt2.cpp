@@ -230,11 +230,11 @@ exprt smtcheck_opensmt2t::get_value(const exprt &expr)
 		ptrf = literals[l.var_no()];
 
 		// Get the value of the PTRef
-		if (logic->isIteVar(ptrf)) // true/false - eveluation of a branching
+		if (logic->isIteVar(ptrf)) // true/false - evaluation of a branching
 		{
 			ValPair v1 = mainSolver->getValue(ptrf);
 			if (v1.val == 0)
-				return  false_exprt();
+				return false_exprt();
 			else
 				return true_exprt();
 		}
@@ -278,28 +278,25 @@ exprt smtcheck_opensmt2t::get_value(const exprt &expr)
 }
 
 // TODO: enhance this to get assignments for any PTRefs, not only for Bool Vars.
-tvt smtcheck_opensmt2t::get_assignemt(literalt a) const
+bool smtcheck_opensmt2t::is_assignemt_true(literalt a) const
 {
   if (a.is_true())
-    return tvt(true);
+    return true;
   else if (a.is_false())
-    return tvt(false);
+    return false;
 
-  tvt tvtresult(tvt::TV_UNKNOWN);
   ValPair a_p = mainSolver->getValue(literals[a.var_no()]);
-  lbool lresult = (*a_p.val == *true_str) ? l_True : l_False;
-
-  if (lresult == l_True)
-    tvtresult = tvt(true);
-  else if (lresult == l_False)
-    tvtresult = tvt(false);
-  else
-    return tvtresult;
-
-  if (a.sign())
-    return !tvtresult;
-
-  return tvtresult;
+  if (*a_p.val == *true_str) {
+	  if (a.sign())
+		  return false;
+	  else
+		  return true;
+  } else {
+	  if (a.sign())
+		  return true;
+	  else
+		  return false;
+  }
 }
 
 // For using symbol only when creating the interpolant (in smt_itpt::substitute)
