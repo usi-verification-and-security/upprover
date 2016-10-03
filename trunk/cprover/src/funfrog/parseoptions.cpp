@@ -396,6 +396,7 @@ void funfrog_parseoptionst::help()
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
   "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
+  "--no-error-trace               disable the counter example's print once a real bug found\n"
   "\nRefinement options:\n"
   "--refine-mode <mode>:\n"
   "  0 | \"force-inlining\"         inline every function call\n"
@@ -597,6 +598,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
   options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
   options.set_option("check-itp", cmdline.isset("check-itp"));
+  options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
 
   // always check assertions
   options.set_option("assertions", true);

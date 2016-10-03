@@ -45,7 +45,7 @@ public:
 
   const fine_timet& get_solving_time() { return solving_time; };
 
-  void error_trace(const smtcheck_opensmt2t& decider, const namespacet &ns);
+  void error_trace(smtcheck_opensmt2t& decider, const namespacet &ns);
 
 private:
   // Summarizing context (summary_store needed)
@@ -63,6 +63,12 @@ private:
   unsigned long &max_memory_used;
 
   bool is_satisfiable(smtcheck_opensmt2t& decider);
+
+  void build_exec_order_goto_trace (
+    partitioning_target_equationt &target,
+    smtcheck_opensmt2t &decider,
+    const namespacet &ns,
+    goto_tracet &goto_trace);
 
 };
 #endif

@@ -188,7 +188,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 
 void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop)
 {
-    prop.error_trace(*decider, ns);
+	if (!options.get_bool_option("no-error-trace"))
+		prop.error_trace(*decider, ns);
     if (decider->has_unsupported_vars()){
     	status("\nA bug found.");
     	status("WARNING: Possibly due to the LRA-conversion.");

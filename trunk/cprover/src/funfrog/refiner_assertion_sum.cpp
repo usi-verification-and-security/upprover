@@ -111,7 +111,7 @@ void refiner_assertion_sumt::reset_depend(const smtcheck_opensmt2t &decider, sum
 #       endif
         tmp.push_back(&ipart.summary_info);
       }*/
-      if (decider.get_assignemt(ipart.callstart_literal).is_true()){
+      if (decider.is_assignemt_true(ipart.callstart_literal)){
 #       ifdef DEBUG_REFINER
         std::cout<< "    -- callstart literal is true" << std::endl;
 #       endif

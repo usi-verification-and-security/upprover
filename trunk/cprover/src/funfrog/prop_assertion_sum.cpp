@@ -9,15 +9,13 @@
 
 #include <goto-symex/build_goto_trace.h>
 #include <goto-symex/xml_goto_trace.h>
-#include <find_symbols.h>
-#include <ansi-c/expr2c.h>
 #include <time_stopping.h>
-#include <loopfrog/memstat.h>
-#include <ui_message.h>
 #include "prop_assertion_sum.h"
 
 fine_timet global_satsolver_time;
 fine_timet global_sat_conversion_time;
+
+//#define TRACE_DEBUG //Use it to debug the trace of an error build
 
 /*******************************************************************
 
@@ -62,49 +60,6 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
   else
   {
     status("ASSERTION IS VIOLATED");
-    /* error_trace(decider, ns);
-    //std::cout << std::endl << "NONDET assigns:" << std::endl;
-
-    unsigned int nondet_counter=0;
-    std::set<exprt> lhs_symbols;
-    if (!assertion.is_all_assert())
-      find_symbols(assertion.get_location()->guard, lhs_symbols);
-
-    if (lhs_symbols.size()>0)
-    {
-      for (goto_tracet::stepst::reverse_iterator it=
-             trace.steps.rbegin();
-           it!=trace.steps.rend();
-           it++)
-      {
-        // FIXME: Work around for a broken error_trace
-        if (it->type==goto_trace_stept::ASSIGNMENT &&
-                !it->pc->code.has_operands())
-          continue;
-        
-        if (it->type==goto_trace_stept::ASSIGNMENT &&
-            lhs_symbols.find(it->pc->code.op0())!=lhs_symbols.end())
-        {
-          const codet &code = to_code(it->pc->code);
-
-          goto_programt::instructiont::labelst::const_iterator lit =
-              find(it->pc->labels.begin(), it->pc->labels.end(),
-                   irep_idt("VARIANT"));
-
-          if (code.op1().get("statement")=="nondet" &&
-              lit!=it->pc->labels.end())
-          {
-            // std::cout <<std::endl<<expr2c(code, ns)<<std::endl;
-            nondet_counter++;
-          }
-          else
-            find_symbols(code.op1(), lhs_symbols);
-        }
-      }
-    }
-
-    //std::cout << "Total nondet:" << nondet_counter << std::endl;
-    */
     return false;
   }
 }
@@ -147,23 +102,24 @@ bool prop_assertion_sumt::is_satisfiable(
 }
 
 // Copied from build_goto_tarce.cpp
-void build_exec_order_goto_trace(
+void prop_assertion_sumt::build_exec_order_goto_trace (
   partitioning_target_equationt &target,
-  const smtcheck_opensmt2t &decider,
+  smtcheck_opensmt2t &decider,
   const namespacet &ns,
   goto_tracet &goto_trace)
 {
+
   unsigned step_nr=0;
-  
+
   const SSA_steps_orderingt& SSA_steps = target.get_steps_exec_order();
-  /*GF: broken
   for(SSA_steps_orderingt::const_iterator
       it=SSA_steps.begin();
       it!=SSA_steps.end();
       it++)
   {
     const symex_target_equationt::SSA_stept &SSA_step=**it;
-    if(prop_conv.prop.l_get(SSA_step.guard_literal)!=tvt(true))
+
+    if(!decider.is_assignemt_true(SSA_step.guard_literal))
       continue;
 
     if(SSA_step.is_assignment() &&
@@ -187,11 +143,11 @@ void build_exec_order_goto_trace(
     goto_trace_step.identifier=SSA_step.identifier;
 
     if(SSA_step.ssa_lhs.is_not_nil())
-      goto_trace_step.lhs_object_value=prop_conv.get(SSA_step.ssa_lhs);
+      goto_trace_step.lhs_object_value=decider.get_value(SSA_step.ssa_lhs);
     
     if(SSA_step.ssa_full_lhs.is_not_nil())
     {
-      goto_trace_step.full_lhs_value=prop_conv.get(SSA_step.ssa_full_lhs);
+      goto_trace_step.full_lhs_value=decider.get_value(SSA_step.ssa_full_lhs);
     //  simplify(goto_trace_step.full_lhs_value, ns);
     }
 
@@ -206,79 +162,100 @@ void build_exec_order_goto_trace(
         goto_trace_step.io_args.push_back(arg);
       else
       {
-        exprt tmp=prop_conv.get(arg);
+        exprt tmp=decider.get_value(arg);
         goto_trace_step.io_args.push_back(tmp);
       }
     }
 
-    if(SSA_step.is_assert() ||
-       SSA_step.is_assume())
+    // Stop condition + adding data to assume and assert steps
+    if(SSA_step.is_assert() || SSA_step.is_assume())
     {
       goto_trace_step.cond_expr=SSA_step.cond_expr;
-
       goto_trace_step.cond_value=
-        prop_conv.prop.l_get(SSA_step.cond_literal).is_true();
-    }
+    		  decider.is_assignemt_true(SSA_step.cond_literal);
 
-    if(SSA_step.is_assert())
-    {
       // we stop after a violated assertion
-      if(!goto_trace_step.cond_value)
-        break;
+      if(SSA_step.is_assert() && !goto_trace_step.cond_value)
+    	  break;
     }
-    else if(SSA_step.is_assume())
-    {
-      // assumptions can't be false
-      // This is not necessarily true for partitioned_target_equation
-      //assert(goto_trace_step.cond_value);
-    }
-  }*/
+  }
 }
 
-void prop_assertion_sumt::error_trace(const smtcheck_opensmt2t &decider, const namespacet &ns)
+void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns)
 {
-  status("Building error trace");
-/* GF: broken
-  goto_tracet goto_trace;
+	/* Basic print of the error trace as all variables values */
+#ifdef TRACE_DEBUG
+	MainSolver *mainSolver = decider.getMainSolver();
+#endif
+	Logic *logic = decider.getLogic();
+	std::set<PTRef>* vars = decider.getVars();
+	bool isOverAppox = false;
+	std::string overapprox_str ("funfrog::c::unsupported_op2var");
+	for(std::set<PTRef>::iterator iter = vars->begin(); iter != vars->end(); iter++)
+	{
+	// Print the var and its value
+	char* name = logic->printTerm(*iter);
+	std::string curr (name);
+	if (curr.find(overapprox_str) != std::string::npos)
+		isOverAppox = true;
+#ifdef TRACE_DEBUG
+	else
+	{
+		cout << " \\ " << name ;
+		ValPair v1 = mainSolver->getValue(*iter);
+		if (logic->isIteVar((*iter)))
+			cout << ": (" << logic->printTerm(logic->getTopLevelIte(*iter)) << ")" << " = " << ((v1.val != 0) ? "true" : "false") << "\n";
+		else
+			cout << " = " << v1.val << "\n";
+	}
+#endif
+		free(name);
+	}
 
-# ifndef USE_EXEC_ORDER_ERROR_TRACE
-  // Original trace builder:
-  build_goto_trace(equation, prop_conv, ns, goto_trace);
-# else
-  // New exec order trace builder;
-  build_exec_order_goto_trace(equation, prop_conv, ns, goto_trace);
-# endif
+	// Clear all vars list before quit
+	vars->clear(); delete vars;
 
-  #if 0
-  if(options.get_option("vcd")!="")
-  {
-    if(options.get_option("vcd")=="-")
-      output_vcd(ns, goto_trace, std::cout);
-    else
-    {
-      std::ofstream out(options.get_option("vcd").c_str());
-      output_vcd(ns, goto_trace, out);
-    }
-  }
-  #endif
+	// Incase we use over approx to verify this example - gives a warning to the user!
+	if (isOverAppox) {
+		cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
+		return; // Cannot really print a trace
+	}
 
-  switch(message_handler.get_ui())
-  {
-  case ui_message_handlert::PLAIN:
-    std::cout << std::endl << "Counterexample:" << std::endl;
-    show_goto_trace(std::cout, ns, goto_trace);
-    break;
+	// Only if can build an error trace - give notice to the user
+	status("Building error trace");
 
-  case ui_message_handlert::XML_UI:
-    {
-      xmlt xml;
-      convert(ns, goto_trace, xml);
-      std::cout << xml << std::endl;
-    }
-    break;
+	goto_tracet goto_trace;
+	build_exec_order_goto_trace(equation, decider, ns, goto_trace);
 
-  default:
-    assert(false);
-  }
-  */
+#if 0
+	if(options.get_option("vcd")!="")
+	{
+		if(options.get_option("vcd")=="-")
+			output_vcd(ns, goto_trace, std::cout);
+		else
+		{
+			std::ofstream out(options.get_option("vcd").c_str());
+			output_vcd(ns, goto_trace, out);
+		}
+	}
+#endif
+
+	switch(message_handler.get_ui())
+	{
+		case ui_message_handlert::PLAIN:
+			std::cout << std::endl << "Counterexample:" << std::endl;
+			show_goto_trace(std::cout, ns, goto_trace);
+			break;
+
+		case ui_message_handlert::XML_UI:
+		{
+			xmlt xml;
+			convert(ns, goto_trace, xml);
+			std::cout << xml << std::endl;
+		}
+		break;
+
+		default:
+			assert(false);
+	}
 }
