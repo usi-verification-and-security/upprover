@@ -261,7 +261,8 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 {
     //TODO: Check this
 	literalt l;
-    string num = "const" + extract_expr_str_number(expr);
+    string num = extract_expr_str_number(expr);
+    //string num = "const" + extract_expr_str_number(expr);
 	//PTRef rconst = logic->mkVar(sort_ureal, extract_expr_str_number(expr).c_str()); // Can have a wrong conversion sometimes!
 	PTRef rconst = logic->mkVar(sort_ureal, num.c_str()); // Can have a wrong conversion sometimes!
 
@@ -317,7 +318,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 //        return converted_exprs[expr.hash()];
 
 #ifdef SMT_DEBUG
-    cout << "; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
+    cout << "\n\n; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
 #endif
 
     /* Check which case it is */
@@ -361,8 +362,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         	       (expr.id() == ID_mult) ||
         		   (expr.id() == ID_floatbv_mult))
         	){
-        		cout << "; IT IS AN OPERATOR BETWEEN SAME EXPR: NOT SUPPORTED FOR NONDET" << endl;
-        		assert(false);
+        		//cout << "; IT IS AN OPERATOR BETWEEN SAME EXPR: NOT SUPPORTED FOR NONDET" << endl;
+        		//assert(false);
 			}
 		}
 #endif
@@ -372,8 +373,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
     		expr.id() == ID_floatbv_plus || expr.id() == ID_plus ||
     		expr.id() == ID_floatbv_div || expr.id() == ID_div ||
     		expr.id() == ID_floatbv_mult || expr.id() == ID_mult) {
-        	if ((expr.operands()).size() > 2)
-        		is_div_wtrounding = true; // need to take care differently!
+        	//if ((expr.operands()).size() > 2)
+        	//	is_div_wtrounding = true; // need to take care differently!
         }
         // End of check - shall be on a procedure!
 
