@@ -222,6 +222,61 @@ literalt smtcheck_opensmt2t::push_variable(PTRef ptl) {
 	return l; // Return the literal after creating all ok - check if here with SMT_DEBUG flag
 }
 
+exprt smtcheck_opensmt2t::get_value(const exprt &expr)
+{
+	PTRef ptrf;
+	if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
+		literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
+		ptrf = literals[l.var_no()];
+
+		// Get the value of the PTRef
+		if (logic->isIteVar(ptrf)) // true/false - eveluation of a branching
+		{
+			ValPair v1 = mainSolver->getValue(ptrf);
+			if (v1.val == 0)
+				return  false_exprt();
+			else
+				return true_exprt();
+		}
+		else if (logic->isTrue(ptrf)) //true only
+		{
+			return true_exprt();
+		}
+		else if (logic->isFalse(ptrf)) //false only
+		{
+			return false_exprt();
+		}
+		else if (logic->isVar(ptrf)) // Constant value
+		{
+			// Create the value
+			ValPair v1 = mainSolver->getValue(ptrf);
+			irep_idt value = v1.val;
+
+			// Create the expr with it
+			constant_exprt tmp = constant_exprt();
+			tmp.set_value(value);
+
+			return tmp;
+		}
+		else
+		{
+			assert(0);
+		}
+	}
+	else // Find the value inside the expression - recursive call
+	{
+		exprt tmp=expr;
+
+		Forall_operands(it, tmp)
+		{
+			exprt tmp_op=get_value(*it);
+			it->swap(tmp_op);
+		}
+
+		return tmp;
+	}
+}
+
 // TODO: enhance this to get assignments for any PTRefs, not only for Bool Vars.
 tvt smtcheck_opensmt2t::get_assignemt(literalt a) const
 {
@@ -308,6 +363,7 @@ literalt smtcheck_opensmt2t::type_cast(const exprt &expr) {
 
     return l;
 }
+
 literalt smtcheck_opensmt2t::convert(const exprt &expr)
 {
 // GF: disabling hash for a while, since it leads to bugs at some particular cases,

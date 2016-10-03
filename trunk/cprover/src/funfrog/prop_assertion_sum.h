@@ -64,5 +64,11 @@ private:
 
   bool is_satisfiable(smtcheck_opensmt2t& decider);
 
+  void build_exec_order_goto_trace (
+    partitioning_target_equationt &target,
+    smtcheck_opensmt2t &decider,
+    const namespacet &ns,
+    goto_tracet &goto_trace);
+
 };
 #endif

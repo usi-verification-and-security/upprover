@@ -12,12 +12,10 @@ Module: Wrapper for OpenSMT2
 #include <map>
 #include <vector>
 
-#include <solvers/sat/cnf.h>
 #include <util/threeval.h>
 #include "interpolating_solver.h"
 #include <opensmt/opensmt2.h>
 #include <expr.h>
-
 
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
@@ -54,6 +52,8 @@ public:
   bool solve();
   
   tvt get_assignemt(literalt a) const;
+
+  exprt get_value(const exprt &expr);
 
   virtual literalt convert(const exprt &expr);
 
