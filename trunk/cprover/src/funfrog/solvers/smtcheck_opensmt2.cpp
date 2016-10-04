@@ -230,11 +230,11 @@ exprt smtcheck_opensmt2t::get_value(const exprt &expr)
 		ptrf = literals[l.var_no()];
 
 		// Get the value of the PTRef
-		if (logic->isIteVar(ptrf)) // true/false - eveluation of a branching
+		if (logic->isIteVar(ptrf)) // true/false - evaluation of a branching
 		{
 			ValPair v1 = mainSolver->getValue(ptrf);
 			if (v1.val == 0)
-				return  false_exprt();
+				return false_exprt();
 			else
 				return true_exprt();
 		}
@@ -278,28 +278,25 @@ exprt smtcheck_opensmt2t::get_value(const exprt &expr)
 }
 
 // TODO: enhance this to get assignments for any PTRefs, not only for Bool Vars.
-tvt smtcheck_opensmt2t::get_assignemt(literalt a) const
+bool smtcheck_opensmt2t::is_assignemt_true(literalt a) const
 {
   if (a.is_true())
-    return tvt(true);
+    return true;
   else if (a.is_false())
-    return tvt(false);
+    return false;
 
-  tvt tvtresult(tvt::TV_UNKNOWN);
   ValPair a_p = mainSolver->getValue(literals[a.var_no()]);
-  lbool lresult = (*a_p.val == *true_str) ? l_True : l_False;
-
-  if (lresult == l_True)
-    tvtresult = tvt(true);
-  else if (lresult == l_False)
-    tvtresult = tvt(false);
-  else
-    return tvtresult;
-
-  if (a.sign())
-    return !tvtresult;
-
-  return tvtresult;
+  if (*a_p.val == *true_str) {
+	  if (a.sign())
+		  return false;
+	  else
+		  return true;
+  } else {
+	  if (a.sign())
+		  return true;
+	  else
+		  return false;
+  }
 }
 
 // For using symbol only when creating the interpolant (in smt_itpt::substitute)
@@ -317,7 +314,8 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
 {
     //TODO: Check this
 	literalt l;
-    string num = "const" + extract_expr_str_number(expr);
+    string num = extract_expr_str_number(expr);
+    //string num = "const" + extract_expr_str_number(expr);
 	//PTRef rconst = logic->mkVar(sort_ureal, extract_expr_str_number(expr).c_str()); // Can have a wrong conversion sometimes!
 	PTRef rconst = logic->mkVar(sort_ureal, num.c_str()); // Can have a wrong conversion sometimes!
 
@@ -374,7 +372,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 //        return converted_exprs[expr.hash()];
 
 #ifdef SMT_DEBUG
-    cout << "; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
+    cout << "\n\n; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
 #endif
 
     /* Check which case it is */
@@ -418,8 +416,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
         	       (expr.id() == ID_mult) ||
         		   (expr.id() == ID_floatbv_mult))
         	){
-        		cout << "; IT IS AN OPERATOR BETWEEN SAME EXPR: NOT SUPPORTED FOR NONDET" << endl;
-        		assert(false);
+        		//cout << "; IT IS AN OPERATOR BETWEEN SAME EXPR: NOT SUPPORTED FOR NONDET" << endl;
+        		//assert(false);
 			}
 		}
 #endif
@@ -429,8 +427,8 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
     		expr.id() == ID_floatbv_plus || expr.id() == ID_plus ||
     		expr.id() == ID_floatbv_div || expr.id() == ID_div ||
     		expr.id() == ID_floatbv_mult || expr.id() == ID_mult) {
-        	if ((expr.operands()).size() > 2)
-        		is_div_wtrounding = true; // need to take care differently!
+        	//if ((expr.operands()).size() > 2)
+        	//	is_div_wtrounding = true; // need to take care differently!
         }
         // End of check - shall be on a procedure!
 
@@ -546,7 +544,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             ptl = this->mkURealMult(args);
 		} else if(expr.id() == ID_index) {
 #ifdef SMT_DEBUG
-			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
+			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
 					<< expr.id() << ")" << endl;
 			assert(false); // No support yet for arrays
 #else
@@ -749,7 +747,7 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     	var = logic->mkVar(sort_ureal, str.c_str());
     else if (expr.type().id() == ID_array) { // Is a function with index
 #ifdef SMT_DEBUG
-    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
+    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
     			<< expr.type().id() << ")" << endl;
     	assert(false); // No support yet for arrays
 #else
@@ -1299,8 +1297,8 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
 		cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
 	#else
-		cout << "EXIT WITH ERROR: Using Rounding Model in LRA " << str << endl;
-		assert(false);
+		cout << "Using Rounding in UF, ignoring " << str << endl;
+		//assert(false);
 	#endif
 	}
 
