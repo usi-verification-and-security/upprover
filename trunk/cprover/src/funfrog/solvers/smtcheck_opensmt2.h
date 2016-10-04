@@ -197,7 +197,7 @@ protected:
 
   std::pair <std::string, bool> extract_expr_str_number_wt_sign(const exprt &expr); // Fix problems with declare of negative numbers
 
-  std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
+  virtual std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
 
   static const char *tk_sort_ureal;
   static const char *tk_mult;

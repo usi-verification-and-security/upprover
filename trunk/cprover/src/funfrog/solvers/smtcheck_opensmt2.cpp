@@ -544,7 +544,7 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
             ptl = this->mkURealMult(args);
 		} else if(expr.id() == ID_index) {
 #ifdef SMT_DEBUG
-			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
+			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
 					<< expr.id() << ")" << endl;
 			assert(false); // No support yet for arrays
 #else
@@ -747,7 +747,7 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     	var = logic->mkVar(sort_ureal, str.c_str());
     else if (expr.type().id() == ID_array) { // Is a function with index
 #ifdef SMT_DEBUG
-    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
+    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
     			<< expr.type().id() << ")" << endl;
     	assert(false); // No support yet for arrays
 #else
@@ -1297,8 +1297,8 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
 		cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
 	#else
-		cout << "EXIT WITH ERROR: Using Rounding Model in LRA " << str << endl;
-		assert(false);
+		cout << "Using Rounding in UF, ignoring " << str << endl;
+		//assert(false);
 	#endif
 	}
 
