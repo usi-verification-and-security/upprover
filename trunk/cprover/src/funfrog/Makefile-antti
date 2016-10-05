@@ -6,7 +6,8 @@ SHARED_SRC := \
       summary_store.cpp \
       solvers/smtcheck_opensmt2.cpp \
       solvers/smtcheck_opensmt2_lra.cpp \
-      solvers/smt_itp.cpp
+      solvers/smt_itp.cpp \
+      error_trace.cpp
 
 FUNFROG_SRC := \
       diff.cpp \

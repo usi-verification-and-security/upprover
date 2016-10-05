@@ -32,6 +32,7 @@ void smtcheck_opensmt2t::initializeSolver()
   mainSolver = &(osmt->getMainSolver());
   const char* msg2;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
+  osmt->getConfig().setOption(SMTConfig::o_itp_euf_alg, SMTOption(0), msg2);
   //osmt->getConfig().setOption(SMTConfig::o_verbosity, SMTOption(0), msg);
 
   // KE: Fix a strange bug can be related to the fact we are pushing
