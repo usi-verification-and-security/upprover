@@ -880,6 +880,14 @@ smtcheck_opensmt2t::unquote_varname(const string& varname)
     return string(varname.begin() + l, varname.end());
 }
 
+string
+smtcheck_opensmt2t::insert_index(const string& _varname, const string& _idx)
+{
+    string unidx = remove_index(_varname);
+    string varname = unquote_varname(unidx);
+    return quote_varname(varname + "#" + _idx);
+}
+
 int
 smtcheck_opensmt2t::get_index(const string& _varname)
 {
@@ -913,21 +921,25 @@ smtcheck_opensmt2t::quote_varname(const string& varname)
 void
 smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbs, string _fun_name)
 {
-    map<string, PTRef> vars;
+    //map<string, PTRef> vars;
     PTRef itp_pt = itp.getInterpolant();
 
     string fun_name = quote_varname(_fun_name);
 
     // retrieve variables
-    fill_vars(itp_pt, vars);
+    //fill_vars(itp_pt, vars);
 
     // formatted names of common vars
     std::vector<string> quoted_varnames;
+    std::map<string, PTRef> var2ptref;
     for (std::vector<symbol_exprt>::iterator it = common_symbs.begin(); it != common_symbs.end(); ++it)
     {
         string _var_name = id2string(it->get_identifier());
+        if(_var_name.find("rounding_mode") != string::npos) continue;
         string var_name = remove_invalid(_var_name);
-        quoted_varnames.push_back(quote_varname(var_name));
+        var_name = quote_varname(var_name);
+        quoted_varnames.push_back(var_name);
+        var2ptref[var_name] = convert_symbol(*it);
     }
 
     // build substitution map (removing indices)
@@ -935,25 +947,71 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     Tterm *tterm = new Tterm();
     Map<PTRef,PtAsgn,PTRefHash> subst;
 
+    map<string, int[3]> occurrences;
+    // first we should account for repetitions in the non-indexed varnames
+    //for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
+    for(vector<string>::iterator it = quoted_varnames.begin(); it != quoted_varnames.end(); ++it)
+    {
+        string unidx = remove_index(*it);
+        if(occurrences.find(unidx) == occurrences.end())
+        {
+            occurrences[unidx][0] = 1;
+            occurrences[unidx][1] = get_index(*it);
+        }
+        else
+        {
+            ++occurrences[unidx][0];
+            assert(occurrences[unidx][0] == 2);
+            int new_idx = get_index(*it);
+            int old_idx = occurrences[unidx][1];
+            if(new_idx < old_idx) swap(new_idx, old_idx);
+            occurrences[unidx][1] = old_idx;
+            occurrences[unidx][2] = new_idx;
+        }
+    }
+
+    // now we can compute the substitutions properly
     bool only_common_vars_in_itp = true;
 #ifdef DEBUG_SMT_ITP
     cout << "; Variables in the interpolant: " << endl;
 #endif
-    for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
+    //for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
+    for(vector<string>::iterator it = quoted_varnames.begin(); it != quoted_varnames.end(); ++it)
     {
 #ifdef DEBUG_SMT_ITP
-        cout << " * " << it->first << ' ';
+        cout << " * " << *it << ' ';
 #endif
         if (quoted_varnames.end() ==
-            find (quoted_varnames.begin(), quoted_varnames.end(), it->first)){
+            find (quoted_varnames.begin(), quoted_varnames.end(), *it)){
 #ifdef DEBUG_SMT_ITP
             cout << " ---> local var to A; should not be in the interpolant";
 #endif
             only_common_vars_in_itp = false;
         }
 
-        PTRef var = it->second;
-        string new_var_name = remove_index(it->first);
+        string unidx = remove_index(*it);
+        int occ = occurrences[unidx][0];
+        assert(occ >= 1 && occ <= 2);
+
+        string new_var_name = unidx;
+
+        if(occ == 2)
+        {
+            int idx = get_index(*it);
+            int l = occurrences[unidx][1];
+            int r = occurrences[unidx][2];
+            if(idx == l)
+                new_var_name = insert_index(new_var_name, "in");
+            else
+            {
+                assert(idx == r);
+                new_var_name = insert_index(new_var_name, "out");
+            }
+        }
+
+        PTRef var = PTRef_Undef;
+        var = var2ptref[*it];
+        assert(var != PTRef_Undef);
         PTRef new_var = logic->mkVar(logic->getSortRef(var), new_var_name.c_str());
         tterm->addArg(new_var);
         subst.insert(var, PtAsgn(new_var, l_True));
