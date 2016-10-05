@@ -100,7 +100,8 @@ bool prop_assertion_sumt::is_satisfiable(
 
 }
 
-void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns)
+void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns,
+		std::map<irep_idt, std::string>& guard_expln)
 {
 	error_tracet error_trace;
 
@@ -109,5 +110,5 @@ void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespa
 
 	error_trace.build_goto_trace(equation, decider);
 
-	error_trace.show_goto_trace(decider, std::cout, ns);
+	error_trace.show_goto_trace(decider, std::cout, ns, guard_expln);
 }
