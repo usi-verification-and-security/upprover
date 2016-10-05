@@ -103,6 +103,7 @@ public:
 
   static int get_index(const string& varname);
   static std::string insert_index(const string& varname, const string& idx);
+  static std::string insert_index(const string& varname, int idx);
   static std::string quote_varname(const string& varname);
   static std::string unquote_varname(const string& varname);
   
