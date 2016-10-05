@@ -160,14 +160,14 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
           refiner.refine(*decider, omega.get_summary_info());
 
           if (refiner.get_refined_functions().size() == 0){
-            assertion_violated(prop);
+            assertion_violated(prop, symex.guard_expln);
             break;
           } else {
             //status("Counterexample is spurious");
             status("Go to next iteration");
           }
         } else {
-          assertion_violated(prop);
+          assertion_violated(prop, symex.guard_expln);
           break;
         }
       }
@@ -186,10 +186,11 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 }
 
 
-void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop)
+void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop,
+				std::map<irep_idt, std::string> &guard_expln)
 {
 	if (!options.get_bool_option("no-error-trace"))
-		prop.error_trace(*decider, ns);
+		prop.error_trace(*decider, ns, guard_expln);
     if (decider->has_unsupported_vars()){
     	status("\nA bug found.");
     	status("WARNING: Possibly due to the LRA-conversion.");

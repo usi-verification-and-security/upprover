@@ -43,13 +43,26 @@ void error_tracet::build_goto_trace (
     goto_trace.steps.push_back(goto_trace_stept());
     goto_trace_stept &goto_trace_step=goto_trace.steps.back();
 
+    std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
+    if (str.find("goto_symex::\\guard#") == 0){
+      goto_trace_step.lhs_object=SSA_step.ssa_lhs;
+    } else {
+      goto_trace_step.lhs_object=SSA_step.original_lhs_object;
+    }
+
+    if (str.find("?retval") < str.size() ||
+	str.find("$tmp::return_value")	< str.size())
+    {
+      goto_trace_step.format_string = "function return value";
+    } else {
+      goto_trace_step.format_string=SSA_step.format_string;
+    }
+
     goto_trace_step.thread_nr=SSA_step.source.thread_nr;
     goto_trace_step.pc=SSA_step.source.pc;
     goto_trace_step.comment=SSA_step.comment;
-    goto_trace_step.lhs_object=SSA_step.original_lhs_object;
     goto_trace_step.type=SSA_step.type;
     goto_trace_step.step_nr=step_nr;
-    goto_trace_step.format_string=SSA_step.format_string;
     goto_trace_step.io_id=SSA_step.io_id;
     goto_trace_step.formatted=SSA_step.formatted;
     goto_trace_step.identifier=SSA_step.identifier;
@@ -155,7 +168,8 @@ Function: show_goto_trace
 void error_tracet::show_goto_trace(
   smtcheck_opensmt2t &decider,
   std::ostream &out,
-  const namespacet &ns)
+  const namespacet &ns,
+  std::map<irep_idt, std::string> &guard_expln)
 {
     // In case we use over approximate to verify this example - gives a warning to the user!
 	if (is_trace_overapprox(decider)) {
@@ -182,6 +196,7 @@ void error_tracet::show_goto_trace(
 			case goto_trace_stept::SPAWN:
 			case goto_trace_stept::ATOMIC_BEGIN:
 			case goto_trace_stept::ATOMIC_END:
+			case goto_trace_stept::DECL:
 				break;
 
 			case goto_trace_stept::ASSERT:
@@ -213,23 +228,16 @@ void error_tracet::show_goto_trace(
 						show_state_header(out, it->thread_nr, it->pc->location, it->step_nr);
 					}
 
-					// see if the full lhs is something clean
-					if(is_index_member_symbol(it->full_lhs))
+					std::string str = guard_expln[it->lhs_object.get("identifier")];
+					if (str != "")
+						show_guard_value(out, str, it->full_lhs_value);
+					else if (it->format_string != "")
+						show_misc_value(out, it->format_string, it->full_lhs_value);
+					else if(is_index_member_symbol(it->full_lhs)) // see if the full lhs is something clean
 						show_var_value(out, ns, it->lhs_object, it->full_lhs, it->full_lhs_value);
 					else
 						show_var_value(out, ns, it->lhs_object, it->lhs_object, it->lhs_object_value);
 				}
-				break;
-
-			case goto_trace_stept::DECL:
-				if(prev_step_nr!=it->step_nr || first_step)
-				{
-					first_step=false;
-					prev_step_nr=it->step_nr;
-					show_state_header(out, it->thread_nr, it->pc->location, it->step_nr);
-				}
-
-				show_var_value(out, ns, it->lhs_object, it->full_lhs, it->full_lhs_value);
 				break;
 
 			case goto_trace_stept::OUTPUT:
@@ -310,6 +318,22 @@ void error_tracet::show_state_header(
   out << "----------------------------------------------------" << std::endl;
 }
 
+void error_tracet::show_guard_value(
+  std::ostream &out,
+  const std::string &str,
+  const exprt &value)
+{
+	out << "  [" << str <<  "] = " << value.get(ID_value) << std::endl;
+}
+
+void error_tracet::show_misc_value(
+  std::ostream &out,
+  const irep_idt &str,
+  const exprt &value)
+{
+	out << "  \"" << str <<  "\" = " << value.get(ID_value) << std::endl;
+}
+
 /*******************************************************************\
 
 Function: error_tracet::show_var_value
@@ -329,10 +353,9 @@ void error_tracet::show_var_value(
   const exprt &value)
 {
 	const irep_idt &identifier=lhs_object.get_identifier();
-
 	out << "  ";
 	show_expr(out, ns, identifier, full_lhs, false);
-	out << "=";
+	out << " = ";
 	show_expr(out, ns, identifier, value, value.is_nil());
 	out << std::endl;
 }

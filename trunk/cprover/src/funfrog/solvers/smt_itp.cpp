@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <limits.h>
 #include <string.h>
 #include "smt_itp.h"
@@ -20,6 +21,7 @@ smt_itpt::usesVar(symbol_exprt& symb)
     for(int i = 0; i < args.size(); ++i)
     {
         string pname = logic->getSymName(args[i]);
+        pname = smtcheck_opensmt2t::remove_index(pname);
         pname = smtcheck_opensmt2t::quote_varname(pname);
         if(pname == var_name) return true;
     }
@@ -436,35 +438,66 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
     const std::vector<symbol_exprt>& symbols,
     bool inverted) const
 {
-  assert(!is_trivial());
-  assert(tterm && logic);
-  vec<PTRef>& args = tterm->getArgs();
-  Map<PTRef, PtAsgn, PTRefHash> subst;
-  for(int i = 0; i < symbols.size(); ++i)
-  {
-      string fixed_str = id2string(symbols[i].get_identifier());
-      fixed_str = smtcheck_opensmt2t::remove_index(fixed_str);
-      fixed_str = smtcheck_opensmt2t::quote_varname(fixed_str);
-      for(int j = 0; j < args.size(); ++j)
-      {
-          string aname = string(logic->getSymName(args[j]));
-          aname = smtcheck_opensmt2t::quote_varname(aname);
-          if(aname == fixed_str)
-          {
-              //literalt l = decider.convert(symbols[i]);
-              //PTRef tmp = decider.literal2ptref(l);
-        	  PTRef tmp = decider.convert_symbol(symbols[i]);
-              subst.insert(args[j], PtAsgn(tmp, l_True));
-          }
-      }
-  }
-  PTRef part_sum;
-  PTRef templ = tterm->getBody();
-  logic->varsubstitute(templ, subst, part_sum);
-  decider.set_to_true(part_sum);
-  cout << "; Template instantiated is " << logic->printTerm(part_sum) << endl;
-    
+    assert(!is_trivial());
+    assert(tterm && logic);
+    vec<PTRef>& args = tterm->getArgs();
+    Map<PTRef, PtAsgn, PTRefHash> subst;
 
+    map<string, int[3]> occurrences;
+    for(int i = 0; i < symbols.size(); ++i)
+    {
+        string fixed_str = id2string(symbols[i].get_identifier());
+        string unidx = smtcheck_opensmt2t::remove_index(fixed_str);
+        if(occurrences.find(unidx) == occurrences.end())
+        {
+            occurrences[unidx][0] = 1;
+            occurrences[unidx][1] = smtcheck_opensmt2t::get_index(fixed_str);
+        }
+        else
+        {
+            ++occurrences[unidx][0];
+            assert(occurrences[unidx][0] == 2);
+            int new_idx = smtcheck_opensmt2t::get_index(fixed_str);
+            int old_idx = occurrences[unidx][1];
+            if(new_idx < old_idx) std::swap(new_idx, old_idx);
+            occurrences[unidx][1] = old_idx;
+            occurrences[unidx][2] = new_idx;
+        }
+
+    }
+
+    for(int i = 0; i < symbols.size(); ++i)
+    {
+        string fixed_str = id2string(symbols[i].get_identifier());
+        string unidx = smtcheck_opensmt2t::remove_index(fixed_str);
+        string quoted_unidx = smtcheck_opensmt2t::quote_varname(unidx);
+        int idx = smtcheck_opensmt2t::get_index(fixed_str);
+        for(int j = 0; j < args.size(); ++j)
+        {
+            string aname = string(logic->getSymName(args[j]));
+            string unidx_aname = smtcheck_opensmt2t::remove_index(aname);
+            string quoted_unidx_aname = smtcheck_opensmt2t::quote_varname(unidx_aname);
+            if(quoted_unidx == quoted_unidx_aname)
+            {
+                if( (occurrences[unidx][0] == 1) ||
+                        (idx == occurrences[unidx][1] && aname.find("#in") != string::npos) ||
+                     (idx == occurrences[unidx][2] && aname.find("#out") != string::npos)
+                  )
+                {
+                    //cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << fixed_str << endl;
+                    //literalt l = decider.convert(symbols[i]);
+                    //PTRef tmp = decider.literal2ptref(l);
+        	        PTRef tmp = decider.convert_symbol(symbols[i]);
+                    subst.insert(args[j], PtAsgn(tmp, l_True));
+                }
+            }
+        }
+    }
+    PTRef part_sum;
+    PTRef templ = tterm->getBody();
+    logic->varsubstitute(templ, subst, part_sum);
+    decider.set_to_true(part_sum);
+    //cout << "; Template instantiated for function " << tterm->getName() << " is\n" << logic->printTerm(part_sum) << endl;
 
   /*
   // FIXME: Dirty cast.

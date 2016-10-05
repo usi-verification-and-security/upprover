@@ -29,7 +29,8 @@ public:
 	void show_goto_trace(
 	  smtcheck_opensmt2t &decider,
 	  std::ostream &out,
-	  const namespacet &ns);
+	  const namespacet &ns,
+	  std::map<irep_idt, std::string> &guard_expln);
 
 private:
 	bool isOverAppox;
@@ -42,6 +43,16 @@ private:
 			  const unsigned thread_nr,
 			  const locationt &location,
 			  unsigned step_nr);
+
+	void show_guard_value(
+	  std::ostream &out,
+	  const std::string &str,
+	  const exprt &value);
+
+	void show_misc_value(
+	  std::ostream &out,
+	  const irep_idt &str,
+	  const exprt &value);
 
 	void show_var_value(
 	  std::ostream &out,
