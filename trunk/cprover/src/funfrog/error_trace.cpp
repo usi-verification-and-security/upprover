@@ -67,11 +67,12 @@ void error_tracet::build_goto_trace (
     goto_trace_step.formatted=SSA_step.formatted;
     goto_trace_step.identifier=SSA_step.identifier;
 
-    if(SSA_step.ssa_lhs.is_not_nil())
-      goto_trace_step.lhs_object_value=decider.get_value(SSA_step.ssa_lhs);
-
-    if(SSA_step.ssa_full_lhs.is_not_nil())
+    if(is_index_member_symbol(SSA_step.ssa_full_lhs)){
       goto_trace_step.full_lhs_value=decider.get_value(SSA_step.ssa_full_lhs);
+    }
+    else {
+      goto_trace_step.full_lhs_value=decider.get_value(SSA_step.ssa_lhs);
+    }
 
     for(std::list<exprt>::const_iterator
         j=SSA_step.converted_io_args.begin();
@@ -233,10 +234,8 @@ void error_tracet::show_goto_trace(
 						show_guard_value(out, str, it->full_lhs_value);
 					else if (it->format_string != "")
 						show_misc_value(out, it->format_string, it->full_lhs_value);
-					else if(is_index_member_symbol(it->full_lhs)) // see if the full lhs is something clean
-						show_var_value(out, ns, it->lhs_object, it->full_lhs, it->full_lhs_value);
 					else
-						show_var_value(out, ns, it->lhs_object, it->lhs_object, it->lhs_object_value);
+						show_var_value(out, ns, it->lhs_object, it->lhs_object, it->full_lhs_value);
 				}
 				break;
 
