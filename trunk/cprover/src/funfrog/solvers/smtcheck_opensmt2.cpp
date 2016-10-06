@@ -1123,10 +1123,10 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 {
   assert(ready_to_interpolate);
 
-  // Set labeling function
-  //const char* msg;
+  // Set labeling functions
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
-  //osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
+  osmt->getConfig().setEUFInterpolationAlgorithm(itp_euf_algorithm);
+  osmt->getConfig().setLRAInterpolationAlgorithm(itp_lra_algorithm);
 
   SimpSMTSolver& solver = osmt->getSolver();
 

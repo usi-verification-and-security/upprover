@@ -20,6 +20,9 @@ void summarizing_checkert::initialize()
       decider = new smtcheck_opensmt2t_lra();
   else
       decider = new smtcheck_opensmt2t_lra();
+  decider->set_itp_bool_alg(options.get_int_option("itp-algorithm"));
+  decider->set_itp_euf_alg(options.get_int_option("itp-euf-algorithm"));
+  decider->set_itp_lra_alg(options.get_int_option("itp-lra-algorithm"));
   // Prepare the summarization context
   summarization_context.analyze_functions(ns);
 

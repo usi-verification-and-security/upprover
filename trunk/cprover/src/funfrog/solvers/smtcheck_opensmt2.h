@@ -31,6 +31,8 @@ public:
       partition_count(0),
       no_literals(0),
       itp_algorithm(itp_alg_mcmillan),
+      itp_euf_algorithm(itp_euf_alg_strong),
+      itp_lra_algorithm(itp_lra_alg_strong),
 	  pushed_formulas(0),
 	  current_partition(0),
 	  unsupported2var(0)
@@ -48,6 +50,21 @@ public:
   PTRef mkURealGe(vec<PTRef>& args);
 
   virtual ~smtcheck_opensmt2t(); // d'tor
+
+  void set_itp_bool_alg(int x)
+  {
+      itp_algorithm.x = x;
+  }
+  
+  void set_itp_euf_alg(int x)
+  {
+      itp_euf_algorithm.x = x;
+  }
+
+  void set_itp_lra_alg(int x)
+  {
+      itp_lra_algorithm.x = x;
+  }
 
   bool solve();
   
@@ -158,6 +175,8 @@ protected:
 
   // itp_alg_mcmillan, itp_alg_pudlak, itp_alg_mcmillanp, etc...
   ItpAlgorithm itp_algorithm;
+  ItpAlgorithm itp_euf_algorithm;
+  ItpAlgorithm itp_lra_algorithm;
 
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
   int proof_trans;
