@@ -10,8 +10,6 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2_lra.h"
 
 //#define SMT_DEBUG
-//#define DEBUG_SSA_SMT
-//#define DEBUG_SSA_SMT_NUMERIC_CONV
 
 void smtcheck_opensmt2t_lra::initializeSolver()
 {
@@ -94,7 +92,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 //        return converted_exprs[expr.hash()];
 
 #ifdef SMT_DEBUG
-    cout << "; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
+    cout << "; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< endl;
 #endif
 
     /* Check which case it is */
@@ -127,9 +125,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 	} else {
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
-#endif
 
-#ifdef SMT_DEBUG
         if (expr.has_operands() && expr.operands().size() > 1) {
         	if ((expr.operands()[0] == expr.operands()[1]) &&
         		(!expr.operands()[1].is_constant())	&&
@@ -165,7 +161,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 				PTRef cp = literals[cl.var_no()];
 				assert(cp != PTRef_Undef);
 	 			args.push(cp);
-#ifdef DEBUG_SMT_LRA
+#ifdef SMT_DEBUG
 	 			char *s = lralogic->printTerm(cp);
 				cout << "; On inner iteration " << i
 						<< " Op to command is var no " << cl.var_no()
@@ -200,12 +196,12 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             ptl = lralogic->mkEq(args);
 		} else if (expr.id()==ID_if) {
             ptl = lralogic->mkIte(args);
-#ifdef DEBUG_SMT_LRA
+#ifdef DEBUG_SMT2SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),lralogic->printTerm(lralogic->getTopLevelIte(ptl))));
 #endif
 		} else if(expr.id() == ID_ifthenelse) {
             ptl = lralogic->mkIte(args);
-#ifdef DEBUG_SMT_LRA
+#ifdef DEBUG_SMT2SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),lralogic->printTerm(lralogic->getTopLevelIte(ptl))));
 #endif
 		} else if(expr.id() == ID_and) {
@@ -292,7 +288,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 			ptl = literals[lunsupported2var(expr).var_no()];
 #endif
 		} else {
-#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
+#ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
             cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: "
             		<< expr.id() << ")" << endl;
@@ -320,7 +316,7 @@ literalt smtcheck_opensmt2t_lra::lunsupported2var(exprt expr)
 	literalt l;
 	PTRef var;
 
-	const string str =  "funfrog::c::unsupported_op2var#" + (unsupported2var++);
+	const string str =  "funfrog::c::unsupported_op2var#" + std::to_string(unsupported2var++);
 	if (expr.is_boolean())
 		var = lralogic->mkBoolVar(str.c_str());
 	else
@@ -340,6 +336,10 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     // Nil is a special case - don't create a var but a val of true
     if (_str.compare("nil") == 0) return const_var(true);
 
+#ifdef SMT_DEBUG
+	cout << "; (lvar) Create " << str << endl;
+#endif
+
     // Else if it is really a var, continue and declare it!
 	literalt l;
     PTRef var;
@@ -358,8 +358,7 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 
     l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
 
-#ifdef DEBUG_SMT_LRA
-	cout << "; (lvar) Create " << str << endl;
+#ifdef DEBUG_SMT2SOLVER
 	std::string add_var = str + " () " + getVarData(var);
 	if (var_set_str.end() == var_set_str.find(add_var)) {
 		var_set_str.insert(add_var);
@@ -418,3 +417,36 @@ bool smtcheck_opensmt2t_lra::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 	// Don't know
 	return true; // Probably missed cased of false, so once found please add it
 }
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t_lra::extract_expr_str_name
+
+  Inputs: expression that is a var
+
+ Outputs: a string of the name
+
+ Purpose: assure we are extracting the name correctly and in one place.
+
+\*******************************************************************/
+std::string smtcheck_opensmt2t_lra::extract_expr_str_name(const exprt &expr)
+{
+	string str = id2string(expr.get(ID_identifier));
+	assert (str.size() != 0); // Check the we really got something
+
+	if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
+		str = str.replace(0,7, "symex::nondet");
+
+	if (str.find("c::__CPROVER_rounding_mode#") != std::string::npos) {
+	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
+		cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
+	#else
+        cout << "EXIT WITH ERROR: Using Rounding Model in LRA " << str << endl;  
+		assert(false);
+	#endif
+	}
+
+	return str;
+}
+
+

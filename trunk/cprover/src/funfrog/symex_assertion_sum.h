@@ -92,6 +92,8 @@ public:
     return &(it->second);
   };
 
+  std::map<irep_idt, std::string> guard_expln;
+
 private:
   
   // Symex state holding the renaming levels

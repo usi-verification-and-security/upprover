@@ -370,6 +370,8 @@ void funfrog_parseoptionst::help()
   "--save-change-impact <xml>     save call-tree representing the change impact in xml file\n"
   "                               (by default in __calltree.xml)\n"
   "\nProof Engine options:\n"
+  "--logic <logic>                [qfuf, qflra] if not present qflra is used\n"
+  "--list-templates               dump the templates of the functions for user generated summaries\n"
   "--show-claims                  output the claims list\n"
   "--show-pass                    report passed claims\n"
   "--suppress-fail                don't report failed claims\n"
@@ -396,6 +398,10 @@ void funfrog_parseoptionst::help()
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
   "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
+  "--itp-algorithm                propositional interpolation algorithm - 0 for McMillan_s, 1 for Pudlak, 2 for McMillan_w\n"
+  "--itp-euf-algorithm            EUF interpolation algorithm - 0 for Strong, 2 for Weak, 3 for Random\n"
+  "--itp-lra-algorithm            LRA interpolation algorithm - 0 for Strong, 2 for Weak\n"
+  "--no-error-trace               disable the counter example's print once a real bug found\n"
   "\nRefinement options:\n"
   "--refine-mode <mode>:\n"
   "  0 | \"force-inlining\"         inline every function call\n"
@@ -597,6 +603,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
   options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
   options.set_option("check-itp", cmdline.isset("check-itp"));
+  options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
+  options.set_option("list-templates", cmdline.isset("list-templates"));
 
   // always check assertions
   options.set_option("assertions", true);
@@ -604,8 +612,20 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   // always use assumptions
   options.set_option("assumptions", true);
 
+  if(cmdline.isset("logic")) {
+    options.set_option("logic", cmdline.getval("logic"));
+  }
+
   if (cmdline.isset("itp-algorithm")) {
     options.set_option("itp-algorithm", cmdline.getval("itp-algorithm"));
+  }
+
+  if (cmdline.isset("itp-euf-algorithm")) {
+    options.set_option("itp-euf-algorithm", cmdline.getval("itp-euf-algorithm"));
+  }
+
+  if (cmdline.isset("itp-lra-algorithm")) {
+    options.set_option("itp-lra-algorithm", cmdline.getval("itp-lra-algorithm"));
   }
 
   if (cmdline.isset("part-itp")) {

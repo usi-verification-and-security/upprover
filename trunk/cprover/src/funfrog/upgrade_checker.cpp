@@ -426,7 +426,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   {
     count++;
 
-    decider = new smtcheck_opensmt2t();
+    decider = new smtcheck_opensmt2t_lra();
 
 //    interpolator.reset(opensmt);
 //    bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
@@ -477,7 +477,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   }
   final = current_time();
   if (!end && summary_info.get_parent().is_root()){
-    prop.error_trace(*decider, ns);
+    prop.error_trace(*decider, ns, symex.guard_expln);
   }
   status() << "Total number of steps: " << count << eom;
   status() << "TOTAL TIME FOR CHECKING THIS SUMMARY: " << (final - initial) << eom;

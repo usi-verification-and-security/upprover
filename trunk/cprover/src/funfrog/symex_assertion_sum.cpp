@@ -300,9 +300,16 @@ void symex_assertion_sumt::symex_step(
     break;
   
   case GOTO:
-    symex_goto(state);
-    break;
-    
+    {
+      bool store_expln = state.source.pc->guard.has_operands();
+      string str;
+      if (store_expln) str = from_expr(state.source.pc->guard.op0());
+
+      symex_goto(state);
+
+      if (store_expln) guard_expln[state.guard.as_expr().get("identifier")] = str;
+      break;
+    }
   case ASSUME:
     if(!state.guard.is_false())
     {

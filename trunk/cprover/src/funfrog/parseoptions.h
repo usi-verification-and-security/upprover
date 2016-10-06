@@ -51,11 +51,12 @@ class value_set_alloc_adaptort;
   "(save-queries)(save-change-impact):" \
   "(tree-interpolants)(proof-trans):(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
   "(random-seed):(no-itp)(verbose-solver):" \
-  "(itp-algorithm): (check-itp) (part-itp):" \
+  "(itp-algorithm): (itp-euf-algorithm): (itp-lra-algorithm): (check-itp) (part-itp):" \
   "(unwind):(unwindset):" \
   "(inlining-limit):(testclaim):" \
   "(pobj)(eq)(neq)(ineq)" \
-  "(refine-mode):(init-mode):"
+  "(no-error-trace)" \
+  "(refine-mode):(init-mode):(logic):(list-templates):"
 class funfrog_parseoptionst:
   public parseoptions_baset,
   public xml_interfacet,

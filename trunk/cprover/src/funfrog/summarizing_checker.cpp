@@ -13,7 +13,16 @@
 
 void summarizing_checkert::initialize()
 {
-  decider = new smtcheck_opensmt2t_lra();
+  string _logic = options.get_option("logic");
+  if(_logic == "qfuf")
+      decider = new smtcheck_opensmt2t();
+  else if(_logic == "qflra")
+      decider = new smtcheck_opensmt2t_lra();
+  else
+      decider = new smtcheck_opensmt2t_lra();
+  decider->set_itp_bool_alg(options.get_int_option("itp-algorithm"));
+  decider->set_itp_euf_alg(options.get_int_option("itp-euf-algorithm"));
+  decider->set_itp_lra_alg(options.get_int_option("itp-lra-algorithm"));
   // Prepare the summarization context
   summarization_context.analyze_functions(ns);
 
@@ -154,14 +163,14 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
           refiner.refine(*decider, omega.get_summary_info());
 
           if (refiner.get_refined_functions().size() == 0){
-            assertion_violated(prop);
+            assertion_violated(prop, symex.guard_expln);
             break;
           } else {
             //status("Counterexample is spurious");
             status("Go to next iteration");
           }
         } else {
-          assertion_violated(prop);
+          assertion_violated(prop, symex.guard_expln);
           break;
         }
       }
@@ -180,9 +189,11 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 }
 
 
-void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop)
+void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop,
+				std::map<irep_idt, std::string> &guard_expln)
 {
-    prop.error_trace(*decider, ns);
+	if (!options.get_bool_option("no-error-trace"))
+		prop.error_trace(*decider, ns, guard_expln);
     if (decider->has_unsupported_vars()){
     	status("\nA bug found.");
     	status("WARNING: Possibly due to the LRA-conversion.");
