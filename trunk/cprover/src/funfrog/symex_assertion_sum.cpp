@@ -301,9 +301,13 @@ void symex_assertion_sumt::symex_step(
   
   case GOTO:
     {
-      string str = from_expr(state.source.pc->guard.op0());
+      bool store_expln = state.source.pc->guard.has_operands();
+      string str;
+      if (store_expln) str = from_expr(state.source.pc->guard.op0());
+
       symex_goto(state);
-      guard_expln[state.guard.as_expr().get("identifier")] = str;
+
+      if (store_expln) guard_expln[state.guard.as_expr().get("identifier")] = str;
       break;
     }
   case ASSUME:

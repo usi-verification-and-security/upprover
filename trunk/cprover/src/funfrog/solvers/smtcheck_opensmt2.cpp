@@ -287,17 +287,7 @@ bool smtcheck_opensmt2t::is_assignemt_true(literalt a) const
     return false;
 
   ValPair a_p = mainSolver->getValue(literals[a.var_no()]);
-  if (*a_p.val == *true_str) {
-	  if (a.sign())
-		  return false;
-	  else
-		  return true;
-  } else {
-	  if (a.sign())
-		  return true;
-	  else
-		  return false;
-  }
+  return ((*a_p.val == *true_str) ^ (a.sign()));
 }
 
 // For using symbol only when creating the interpolant (in smt_itpt::substitute)
@@ -882,6 +872,16 @@ smtcheck_opensmt2t::unquote_varname(const string& varname)
 }
 
 string
+smtcheck_opensmt2t::insert_index(const string& _varname, int _idx)
+{
+    string unidx = remove_index(_varname);
+    string varname = unquote_varname(unidx);
+    stringstream ss;
+    ss << _idx;
+    return quote_varname(varname + "#" + ss.str());
+}
+
+string
 smtcheck_opensmt2t::insert_index(const string& _varname, const string& _idx)
 {
     string unidx = remove_index(_varname);
@@ -1114,10 +1114,10 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 {
   assert(ready_to_interpolate);
 
-  // Set labeling function
-  //const char* msg;
+  // Set labeling functions
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
-  //osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
+  osmt->getConfig().setEUFInterpolationAlgorithm(itp_euf_algorithm);
+  osmt->getConfig().setLRAInterpolationAlgorithm(itp_lra_algorithm);
 
   SimpSMTSolver& solver = osmt->getSolver();
 

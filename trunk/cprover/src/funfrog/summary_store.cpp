@@ -71,6 +71,18 @@ summary_idt summary_storet::insert_summary(summaryt& summary)
 {
   summary_idt id = max_id++;
   summary.set_valid(1);
+
+  Tterm *tterm = summary.getTterm();
+  assert(tterm);
+  string fname = tterm->getName();
+  string qless = smtcheck_opensmt2t::unquote_varname(fname);
+  string idxless = smtcheck_opensmt2t::remove_index(qless);
+  int midx = get_max_id(idxless);
+  int next_idx = midx + 1;
+  max_ids[idxless] = next_idx;// = max(fidx, midx);
+  string fixed_name = smtcheck_opensmt2t::insert_index(idxless, next_idx);
+  tterm->setName(fixed_name);
+
   store.push_back(nodet(id, summary));
   repr_count++;
   return id;
@@ -248,9 +260,11 @@ void summary_storet::serialize(std::ostream& out) const
     //out << it->repr_id << " " << it->is_repr() << std::endl;
     
     if (it->is_repr()) {
+      /*
       //out << it->summary->is_valid() << std::endl;
       summaryt *sum = it->summary;
       Tterm *tterm = sum->getTterm();
+      
       string fname = tterm->getName();
       int fidx = smtcheck_opensmt2t::get_index(fname);
       if(fidx < 0)
@@ -266,6 +280,8 @@ void summary_storet::serialize(std::ostream& out) const
           nname = smtcheck_opensmt2t::quote_varname(nname);
           tterm->setName(nname);
       }
+      */
+      
       it->summary->serialize(out);
     }
   }
@@ -300,10 +316,12 @@ void summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *deci
         string idxless = smtcheck_opensmt2t::remove_index(qless);
         int midx = get_max_id(idxless);
         int fidx = smtcheck_opensmt2t::get_index(fname);
-        assert(fidx > 0);
-        assert(midx != fidx);
-        max_ids[idxless] = max(fidx, midx);
-        string fixed_name = smtcheck_opensmt2t::quote_varname(qless);
+        assert(fidx >= 0);
+        //assert(midx != fidx);
+        int next_idx = midx + 1;
+        ++max_ids[idxless];// = max(fidx, midx);
+        //string fixed_name = smtcheck_opensmt2t::quote_varname(qless);
+        string fixed_name = smtcheck_opensmt2t::insert_index(idxless, next_idx);
         tterm->setName(fixed_name);
         itp->setTterm(tterm);
         itp->setLogic(decider->getLogic());
