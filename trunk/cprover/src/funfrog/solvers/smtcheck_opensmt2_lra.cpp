@@ -147,12 +147,26 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 
         vec<PTRef> args;
         int i = 0;
+        bool is_no_support = false;
         forall_operands(it, expr)
         {	// KE: recursion in case the expr is not simple - shall be in a visitor
-			if (is_div_wtrounding && i >= 2) { // Divide with 3 operators
+        	bool is_builtin_rounding_mode =
+        			(id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode#")!=std::string::npos);
+			if ((is_div_wtrounding && i >= 2) || is_builtin_rounding_mode)
+			{
 				// Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
-				assert(id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode#")!=std::string::npos);
-			} else { // All the rest of the operators
+				if (!is_builtin_rounding_mode) {
+#ifdef SMT_DEBUG
+					cout << "EXIT WITH ERROR: * and / operators with more than 2 arguments have no support yet in the LRA version (token: "
+							<< expr.id() << ")" << endl;
+					assert(false); // No support yet for more than two arguments for these operators
+#else
+					is_no_support = true; // Will cause to over approx all
+#endif
+				}
+			}
+			else
+			{ // All the rest of the operators
 				literalt cl = convert(*it);
 				PTRef cp = literals[cl.var_no()];
 				assert(cp != PTRef_Undef);
@@ -181,12 +195,14 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 				}
 				free(s);
 #endif
+				i++; // Only if really add an item to mult/div inc the counter
 			}
-			i++;
 		}
 
         PTRef ptl;
-		if (expr.id()==ID_notequal) {
+        if (is_no_support) { // If we don't supposrt the operator due to more than 2 args
+        	ptl = literals[lunsupported2var(expr).var_no()];
+        } else if (expr.id()==ID_notequal) {
             ptl = lralogic->mkNot(lralogic->mkEq(args));
         } else if(expr.id() == ID_equal) {
             ptl = lralogic->mkEq(args);
