@@ -1287,27 +1287,6 @@ std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::extract_expr_str_number_wt_sign
-
-  Inputs: expression that is a constant (+/-/int/float/rational)
-
- Outputs: a pair of a number and its sign (true for +, false for -)
-
- Purpose: to build negative number ptref correctly
-
-
-\*******************************************************************/
-std::pair <std::string, bool> smtcheck_opensmt2t::extract_expr_str_number_wt_sign(const exprt &expr)
-{
-	std::string const_val = extract_expr_str_number(expr);
-	if (const_val.at(0) == '-')
-		return std::pair <std::string, bool> (const_val.erase(0,1), false);
-
-	return std::pair <std::string, bool> (const_val, true);
-}
-
-/*******************************************************************\
-
 Function: smtcheck_opensmt2t::extract_expr_str_name
 
   Inputs: expression that is a var
@@ -1329,7 +1308,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
 		cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
 	#else
-		cout << "Using Rounding in UF, ignoring " << str << endl;
+        cout << "EXIT WITH ERROR: Using Rounding Model not in propositional logic" << str << endl;
 		assert(false);
 	#endif
 	}

@@ -430,35 +430,3 @@ bool smtcheck_opensmt2t_lra::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 	return true; // Probably missed cased of false, so once found please add it
 }
 
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t_lra::extract_expr_str_name
-
-  Inputs: expression that is a var
-
- Outputs: a string of the name
-
- Purpose: assure we are extracting the name correctly and in one place.
-
-\*******************************************************************/
-std::string smtcheck_opensmt2t_lra::extract_expr_str_name(const exprt &expr)
-{
-	string str = id2string(expr.get(ID_identifier));
-	assert (str.size() != 0); // Check the we really got something
-
-	if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
-		str = str.replace(0,7, "symex::nondet");
-
-	if (str.find("__CPROVER_rounding_mode#") != std::string::npos) {
-	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
-		cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
-	#else
-        cout << "EXIT WITH ERROR: Using Rounding Model in LRA " << str << endl;  
-		assert(false);
-	#endif
-	}
-
-	return str;
-}
-
-
