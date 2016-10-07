@@ -286,17 +286,7 @@ bool smtcheck_opensmt2t::is_assignemt_true(literalt a) const
     return false;
 
   ValPair a_p = mainSolver->getValue(literals[a.var_no()]);
-  if (*a_p.val == *true_str) {
-	  if (a.sign())
-		  return false;
-	  else
-		  return true;
-  } else {
-	  if (a.sign())
-		  return true;
-	  else
-		  return false;
-  }
+  return ((*a_p.val == *true_str) ^ (a.sign()));
 }
 
 // For using symbol only when creating the interpolant (in smt_itpt::substitute)
