@@ -301,13 +301,20 @@ void symex_assertion_sumt::symex_step(
   
   case GOTO:
     {
-      bool store_expln = state.source.pc->guard.has_operands();
+      bool store_expln;
       string str;
-      if (store_expln) str = from_expr(state.source.pc->guard.op0());
+      if (do_guard_expl) {
+        store_expln = state.source.pc->guard.has_operands();
+        if (store_expln) {
+          try { str = from_expr(state.source.pc->guard.op0()); }
+          catch (const std::string &s) { str = ""; }
+        }
+      }
 
       symex_goto(state);
 
-      if (store_expln) guard_expln[state.guard.as_expr().get("identifier")] = str;
+      if (do_guard_expl &&store_expln && str != "")
+        guard_expln[state.guard.as_expr().get("identifier")] = str;
       break;
     }
   case ASSUME:

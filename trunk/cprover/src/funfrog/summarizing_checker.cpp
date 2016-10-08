@@ -86,6 +86,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   
 
   const bool no_slicing_option = options.get_bool_option("no-slicing");
+  const bool no_ce_option = options.get_bool_option("no-error-trace");
 
   omega.set_initial_precision(assertion);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
@@ -101,7 +102,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, !no_slicing_option);
+            single_assertion_check, !no_slicing_option, !no_ce_option);
 
   setup_unwind(symex);
 

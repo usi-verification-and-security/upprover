@@ -30,7 +30,6 @@ void error_tracet::build_goto_trace (
       it++)
   {
     const symex_target_equationt::SSA_stept &SSA_step=**it;
-
     if(!decider.is_assignemt_true(SSA_step.guard_literal))
       continue;
 
@@ -125,6 +124,8 @@ bool error_tracet::is_trace_overapprox(smtcheck_opensmt2t &decider)
 	Logic *logic = decider.getLogic();
 	std::set<PTRef>* vars = decider.getVars();
 	std::string overapprox_str ("funfrog::c::unsupported_op2var");
+	std::string skip_debug_print ("funfrog::?call"); // Skip the print of this value due to assertion
+	// violation in opensmt2 - worth debuging one day: Cnfizer.C:891: lbool Cnfizer::getTermValue(PTRef) const: Assertion `val != (lbool((uint8_t)2))' failed.
 	for(std::set<PTRef>::iterator iter = vars->begin(); iter != vars->end(); iter++)
 	{
 	// Print the var and its value
@@ -133,6 +134,10 @@ bool error_tracet::is_trace_overapprox(smtcheck_opensmt2t &decider)
 	if (curr.find(overapprox_str) != std::string::npos)
 		isOverAppox = true;
 #ifdef TRACE_DEBUG
+	else if (curr.find(skip_debug_print) != std::string::npos)
+	{
+		// Skip print
+	}
 	else
 	{
 		cout << " \\ " << name ;

@@ -35,8 +35,6 @@ public:
   	  	  	  	  	  	  	  	  	  	 // Remove when has a support for UF
 
   virtual literalt lvar(const exprt &expr);
-  
-  virtual std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
 
   LRALogic * getLRALogic() { return lralogic; }
 

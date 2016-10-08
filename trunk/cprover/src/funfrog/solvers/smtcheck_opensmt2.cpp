@@ -287,17 +287,7 @@ bool smtcheck_opensmt2t::is_assignemt_true(literalt a) const
     return false;
 
   ValPair a_p = mainSolver->getValue(literals[a.var_no()]);
-  if (*a_p.val == *true_str) {
-	  if (a.sign())
-		  return false;
-	  else
-		  return true;
-  } else {
-	  if (a.sign())
-		  return true;
-	  else
-		  return false;
-  }
+  return ((*a_p.val == *true_str) ^ (a.sign()));
 }
 
 // For using symbol only when creating the interpolant (in smt_itpt::substitute)
@@ -407,38 +397,12 @@ literalt smtcheck_opensmt2t::convert(const exprt &expr)
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
 #endif
-
-#ifdef SMT_DEBUG
-        if (expr.has_operands() && expr.operands().size() > 1) {
-        	if ((expr.operands()[0] == expr.operands()[1]) &&
-        		(!expr.operands()[1].is_constant())	&&
-        		  ((expr.id() == ID_div) ||
-        		   (expr.id() == ID_floatbv_div) ||
-        	       (expr.id() == ID_mult) ||
-        		   (expr.id() == ID_floatbv_mult))
-        	){
-        		//cout << "; IT IS AN OPERATOR BETWEEN SAME EXPR: NOT SUPPORTED FOR NONDET" << endl;
-        		//assert(false);
-			}
-		}
-#endif
-        // Check if for div op there is a rounding variable
-        bool is_div_wtrounding = false;
-    	if (expr.id() == ID_floatbv_minus || expr.id() == ID_minus ||
-    		expr.id() == ID_floatbv_plus || expr.id() == ID_plus ||
-    		expr.id() == ID_floatbv_div || expr.id() == ID_div ||
-    		expr.id() == ID_floatbv_mult || expr.id() == ID_mult) {
-        	//if ((expr.operands()).size() > 2)
-        	//	is_div_wtrounding = true; // need to take care differently!
-        }
-        // End of check - shall be on a procedure!
-
         vec<PTRef> args;
         int i = 0;
         forall_operands(it, expr)
         {	// KE: recursion in case the expr is not simple - shall be in a visitor
-			if (is_div_wtrounding && i >= 2) { // Divide with 3 operators
-				// Skip - we don't need the rounding variable for non-bv logics
+			if (id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode#")!=std::string::npos) {
+				// Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
 			} else { // All the rest of the operators
 				literalt cl = convert(*it);
 				PTRef cp = literals[cl.var_no()];
@@ -1324,27 +1288,6 @@ std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::extract_expr_str_number_wt_sign
-
-  Inputs: expression that is a constant (+/-/int/float/rational)
-
- Outputs: a pair of a number and its sign (true for +, false for -)
-
- Purpose: to build negative number ptref correctly
-
-
-\*******************************************************************/
-std::pair <std::string, bool> smtcheck_opensmt2t::extract_expr_str_number_wt_sign(const exprt &expr)
-{
-	std::string const_val = extract_expr_str_number(expr);
-	if (const_val.at(0) == '-')
-		return std::pair <std::string, bool> (const_val.erase(0,1), false);
-
-	return std::pair <std::string, bool> (const_val, true);
-}
-
-/*******************************************************************\
-
 Function: smtcheck_opensmt2t::extract_expr_str_name
 
   Inputs: expression that is a var
@@ -1362,12 +1305,12 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 	if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
 		str = str.replace(0,7, "symex::nondet");
 
-	if (str.find("c::__CPROVER_rounding_mode#") != std::string::npos) {
+	if (str.find("__CPROVER_rounding_mode#") != std::string::npos) {
 	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
 		cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
 	#else
-		cout << "Using Rounding in UF, ignoring " << str << endl;
-		//assert(false);
+        cout << "EXIT WITH ERROR: Using Rounding Model not in propositional logic" << str << endl;
+		assert(false);
 	#endif
 	}
 
