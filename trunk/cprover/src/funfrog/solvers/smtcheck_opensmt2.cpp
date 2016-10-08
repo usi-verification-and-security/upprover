@@ -12,9 +12,7 @@ Author: Grigory Fedyukovich
 //#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
-<<<<<<< HEAD
 //#define DEBUG_ITP_VARS
-=======
 //#define DEBUG_SMT_EUF
 //#define DEBUG_SMT_ITP
 
@@ -27,7 +25,6 @@ const char* smtcheck_opensmt2t::tk_lt = "<";
 const char* smtcheck_opensmt2t::tk_le = "<=";
 const char* smtcheck_opensmt2t::tk_gt = ">";
 const char* smtcheck_opensmt2t::tk_ge = ">=";
->>>>>>> 9135d51ed6afeaaa273092564c4c205a91b5aba3
 
 void smtcheck_opensmt2t::initializeSolver()
 {
@@ -961,9 +958,6 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     Tterm *tterm = new Tterm();
     Map<PTRef,PtAsgn,PTRefHash> subst;
 
-<<<<<<< HEAD
-#ifdef DEBUG_ITP_VARS
-=======
     map<string, int[3]> occurrences;
     // first we should account for repetitions in the non-indexed varnames
     //for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
@@ -988,7 +982,6 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     }
 
     // now we can compute the substitutions properly
->>>>>>> 9135d51ed6afeaaa273092564c4c205a91b5aba3
     bool only_common_vars_in_itp = true;
 #ifdef DEBUG_SMT_ITP
     cout << "; Variables in the interpolant: " << endl;
@@ -1039,7 +1032,6 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     }
 
     assert(only_common_vars_in_itp);
-#endif
 
     // substitute
     PTRef new_root;
