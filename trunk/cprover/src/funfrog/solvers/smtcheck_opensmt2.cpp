@@ -894,7 +894,7 @@ smtcheck_opensmt2t::quote_varname(const string& varname)
 }
 
 void
-smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbs, string _fun_name)
+smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbs, string _fun_name, bool substitute)
 {
     //map<string, PTRef> vars;
     PTRef itp_pt = itp.getInterpolant();
@@ -911,6 +911,7 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     {
         string _var_name = id2string(it->get_identifier());
         if(_var_name.find("rounding_mode") != string::npos) continue;
+        if(_var_name.find("nil") != string::npos) continue;
         string var_name = remove_invalid(_var_name);
         var_name = quote_varname(var_name);
         quoted_varnames.push_back(var_name);
@@ -997,10 +998,17 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
 
     assert(only_common_vars_in_itp);
 
-    // substitute
     PTRef new_root;
-    logic->varsubstitute(itp_pt, subst, new_root);
-    //cout << "; Formula " << logic->printTerm(itp.getInterpolant()) << " is now " << logic->printTerm(new_root) << endl;
+    // substitute
+    if(substitute)
+    {
+        logic->varsubstitute(itp_pt, subst, new_root);
+        //cout << "; Formula " << logic->printTerm(itp.getInterpolant()) << " is now " << logic->printTerm(new_root) << endl;
+    }
+    else
+    {
+        new_root = logic->getTerm_true();
+    }
     tterm->setBody(new_root);
 
     tterm->setName(fun_name);

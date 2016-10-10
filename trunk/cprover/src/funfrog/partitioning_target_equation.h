@@ -70,6 +70,9 @@ public:
   // the corresponding partitions
   void convert(smtcheck_opensmt2t &decider, interpolating_solvert &interpolator);
 
+  //
+  void fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*> &templates);
+
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
   partition_idt reserve_partition(partition_ifacet& partition_iface)

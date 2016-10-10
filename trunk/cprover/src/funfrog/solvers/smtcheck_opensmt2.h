@@ -116,7 +116,7 @@ public:
   // Extract interpolant form OpenSMT files/data
   void extract_itp(PTRef ptref, smt_itpt& target_itp) const;
 
-  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name);
+  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true);
 
   static int get_index(const string& varname);
   static std::string insert_index(const string& varname, const string& idx);

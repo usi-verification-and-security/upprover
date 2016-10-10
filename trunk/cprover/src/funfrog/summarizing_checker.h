@@ -53,6 +53,7 @@ public:
     omega.serialize(options.get_option("save-omega"));
   };
 
+    void list_templates(prop_assertion_sumt &prop, partitioning_target_equationt &equation);
 protected:
 
   const goto_programt &goto_program;

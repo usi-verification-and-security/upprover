@@ -125,6 +125,14 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 
     end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
 
+    //LA: good place?
+    if(options.get_bool_option("list-templates"))
+    {
+        cout << "Listing templates\n" << endl;
+        list_templates(prop, equation);
+        return true;
+    }
+
     if (!end){
 
       if (options.get_bool_option("claims-order") && count == 1){
@@ -203,6 +211,22 @@ void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop,
     }
     report_failure();
 
+}
+
+
+void summarizing_checkert::list_templates(prop_assertion_sumt& prop, partitioning_target_equationt& equation)
+{
+    summary_storet& summary_store = summarization_context.get_summary_store();
+    vector<summaryt*> templates;
+    equation.fill_function_templates(*decider, templates);
+    for(int i = 0; i < templates.size(); ++i)
+        summary_store.insert_summary(*templates[i]);
+    // Store the summaries
+    const std::string& summary_file = options.get_option("save-summaries");
+    if (!summary_file.empty()) {
+        summarization_context.serialize_infos(summary_file, 
+            omega.get_summary_info());
+    }
 }
 
 /*******************************************************************\

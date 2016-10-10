@@ -22,6 +22,21 @@
 
 #include "solvers/smtcheck_opensmt2.h"
 
+void
+partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*>& templates)
+{
+    for(partitionst::iterator it = partitions.begin(); it != partitions.end(); ++it)
+    {
+        vector<symbol_exprt> common;
+        fill_common_symbols(*it, common);
+        summaryt *sum = new summaryt();
+        string fun_name = id2string(it->get_iface().function_id);
+        decider.adjust_function(*sum, common, fun_name, false);
+        templates.push_back(sum);
+    }
+}
+
+
 /*******************************************************************
  Function: partitioning_target_equationt::convert
 

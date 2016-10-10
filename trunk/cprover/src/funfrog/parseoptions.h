@@ -56,7 +56,7 @@ class value_set_alloc_adaptort;
   "(inlining-limit):(testclaim):" \
   "(pobj)(eq)(neq)(ineq)" \
   "(no-error-trace)" \
-  "(refine-mode):(init-mode):(logic):(list-templates):"
+  "(refine-mode):(init-mode):(logic):(list-templates)"
 class funfrog_parseoptionst:
   public parseoptions_baset,
   public xml_interfacet,
