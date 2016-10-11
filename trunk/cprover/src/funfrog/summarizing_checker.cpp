@@ -205,7 +205,7 @@ void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop,
 		prop.error_trace(*decider, ns, guard_expln);
     if (decider->has_unsupported_vars()){
     	status("\nA bug found.");
-    	status("WARNING: Possibly due to the LRA-conversion.");
+    	status("WARNING: Possibly due to the Theory conversion.");
     } else {
     	status("A real bug found.");
     }

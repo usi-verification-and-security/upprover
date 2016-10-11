@@ -545,7 +545,10 @@ literalt smtcheck_opensmt2t::lunsupported2var(exprt expr)
 	PTRef var;
 
 	const string str =  "funfrog::c::unsupported_op2var#" + std::to_string(unsupported2var++);
-    var = logic->mkBoolVar(str.c_str());
+	if (expr.is_boolean())
+		var = logic->mkBoolVar(str.c_str());
+	else
+		var = logic->mkVar(sort_ureal, str.c_str());
 
 	l = push_variable(var);
 
