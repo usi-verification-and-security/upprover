@@ -41,10 +41,14 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
 	assert(!lralogic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
     if(expr.is_constant() && is_number(expr.type())) { // Const and a number
     	assert(!lralogic->isRealZero(rconst) || (expr.is_zero())); // If fails here for zero, check if also the negation is not zero
-    } else {
+    } else if(expr.is_constant() && expr.is_boolean()){
     	exprt temp_check = exprt(expr); temp_check.negate();
 		assert(!lralogic->isRealZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
 		// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
+    } else {
+    	// Don't check here, it can be a pointer or some address.
+    	// Yes, we can have also a bug here
+    	//TODO: when support array fully add assert here
     }
 
 	l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
