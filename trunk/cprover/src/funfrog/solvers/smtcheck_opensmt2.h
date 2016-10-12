@@ -37,8 +37,8 @@ public:
 	  current_partition(0),
 	  unsupported2var(0),
       reduction(false),
-      reduction_graph(0),
-      reduction_loops(0),
+      reduction_graph(3),
+      reduction_loops(2),
       verbosity(0)
   {
     initializeSolver();

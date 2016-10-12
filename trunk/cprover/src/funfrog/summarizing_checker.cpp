@@ -27,8 +27,8 @@ void summarizing_checkert::initialize()
   if(options.get_bool_option("reduce-proof"))
   {
     decider->set_reduce_proof(options.get_bool_option("reduce-proof"));
-    decider->set_reduce_proof_graph(options.get_int_option("reduce-proof-graph"));
-    decider->set_reduce_proof_loops(options.get_int_option("reduce-proof-loops"));
+    if(options.get_int_option("reduce-proof-graph")) decider->set_reduce_proof_graph(options.get_int_option("reduce-proof-graph"));
+    if(options.get_int_option("reduce-proof-loops")) decider->set_reduce_proof_loops(options.get_int_option("reduce-proof-loops"));
   }
   // Prepare the summarization context
   summarization_context.analyze_functions(ns);
