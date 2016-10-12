@@ -39,7 +39,7 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
 
 	// Check the conversion from string to real was done properly - do not erase!
 	assert(!lralogic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
-    if(expr.is_constant() && !expr.is_boolean()) {
+    if(expr.is_constant() && is_number(expr.type())) { // Const and a number
     	assert(!lralogic->isRealZero(rconst) || (expr.is_zero())); // If fails here for zero, check if also the negation is not zero
     } else {
     	exprt temp_check = exprt(expr); temp_check.negate();
@@ -61,7 +61,7 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr) {
     	std::string val = extract_expr_str_number((expr.operands())[0]);
     	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
     	l = const_var(!val_const_zero);
-    } else if (!expr.is_boolean() && (expr.operands())[0].is_boolean()) {
+    } else if (is_number(expr.type()) && (expr.operands())[0].is_boolean()) {
     	// Cast from Boolean to Real - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	PTRef ptl = lralogic->mkIte(literals[lt.var_no()], lralogic->mkConst("1"), lralogic->mkConst("0"));
@@ -383,7 +383,9 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     PTRef var;
     if(is_number(expr.type()))
     	var = lralogic->mkRealVar(str.c_str());
-    else if (expr.type().id() == ID_array) { // Is a function with index
+    else if (expr.is_boolean())
+    	var = lralogic->mkBoolVar(str.c_str());
+    else { // Is a function with index, array, pointer
 #ifdef SMT_DEBUG
     	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
     			<< expr.type().id() << ")" << endl;
@@ -391,10 +393,10 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 #else
     	var = runsupported2var(expr);
 #endif
-    } else
-    	var = lralogic->mkBoolVar(str.c_str());
+    }
 
     l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
+
 
 #ifdef DEBUG_SMT2SOLVER
 	std::string add_var = str + " () " + getVarData(var);
