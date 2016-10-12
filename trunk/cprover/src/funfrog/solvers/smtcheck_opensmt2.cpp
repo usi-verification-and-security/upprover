@@ -307,7 +307,7 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
     string num = extract_expr_str_number(expr);
     //string num = "const" + extract_expr_str_number(expr);
 	//PTRef rconst = logic->mkVar(sort_ureal, extract_expr_str_number(expr).c_str()); // Can have a wrong conversion sometimes!
-	PTRef rconst = logic->mkVar(sort_ureal, num.c_str()); // Can have a wrong conversion sometimes!
+	PTRef rconst = logic->mkConst(sort_ureal, num.c_str()); // Can have a wrong conversion sometimes!
 
 	l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
 
@@ -337,7 +337,7 @@ literalt smtcheck_opensmt2t::type_cast(const exprt &expr) {
     	// Cast from Boolean to Real - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	//PTRef ptl = lralogic->mkIte(literals[lt.var_no()], lralogic->mkConst("1"), lralogic->mkConst("0"));
-        PTRef ptl = logic->mkIte(literals[lt.var_no()], logic->mkVar(sort_ureal, "1"), logic->mkVar(sort_ureal, "0"));
+        PTRef ptl = logic->mkIte(literals[lt.var_no()], logic->mkConst(sort_ureal, "1"), logic->mkConst(sort_ureal, "0"));
     	l = push_variable(ptl); // Keeps the new literal + index it
 	} else {
     	l = convert((expr.operands())[0]);
