@@ -23,6 +23,13 @@ void summarizing_checkert::initialize()
   decider->set_itp_bool_alg(options.get_int_option("itp-algorithm"));
   decider->set_itp_euf_alg(options.get_int_option("itp-euf-algorithm"));
   decider->set_itp_lra_alg(options.get_int_option("itp-lra-algorithm"));
+  decider->set_verbosity(options.get_int_option("verbose-solver"));
+  if(options.get_bool_option("reduce-proof"))
+  {
+    decider->set_reduce_proof(options.get_bool_option("reduce-proof"));
+    if(options.get_int_option("reduce-proof-graph")) decider->set_reduce_proof_graph(options.get_int_option("reduce-proof-graph"));
+    if(options.get_int_option("reduce-proof-loops")) decider->set_reduce_proof_loops(options.get_int_option("reduce-proof-loops"));
+  }
   // Prepare the summarization context
   summarization_context.analyze_functions(ns);
 
@@ -86,6 +93,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   
 
   const bool no_slicing_option = options.get_bool_option("no-slicing");
+  const bool no_ce_option = options.get_bool_option("no-error-trace");
 
   omega.set_initial_precision(assertion);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
@@ -101,7 +109,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, !no_slicing_option);
+            single_assertion_check, !no_slicing_option, !no_ce_option);
 
   setup_unwind(symex);
 
@@ -123,6 +131,14 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
     count++;
 
     end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
+
+    //LA: good place?
+    if(options.get_bool_option("list-templates"))
+    {
+        cout << "Listing templates\n" << endl;
+        list_templates(prop, equation);
+        return true;
+    }
 
     if (!end){
 
@@ -196,12 +212,28 @@ void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop,
 		prop.error_trace(*decider, ns, guard_expln);
     if (decider->has_unsupported_vars()){
     	status("\nA bug found.");
-    	status("WARNING: Possibly due to the LRA-conversion.");
+    	status("WARNING: Possibly due to the Theory conversion.");
     } else {
     	status("A real bug found.");
     }
     report_failure();
 
+}
+
+
+void summarizing_checkert::list_templates(prop_assertion_sumt& prop, partitioning_target_equationt& equation)
+{
+    summary_storet& summary_store = summarization_context.get_summary_store();
+    vector<summaryt*> templates;
+    equation.fill_function_templates(*decider, templates);
+    for(int i = 0; i < templates.size(); ++i)
+        summary_store.insert_summary(*templates[i]);
+    // Store the summaries
+    const std::string& summary_file = options.get_option("save-summaries");
+    if (!summary_file.empty()) {
+        summarization_context.serialize_infos(summary_file, 
+            omega.get_summary_info());
+    }
 }
 
 /*******************************************************************\

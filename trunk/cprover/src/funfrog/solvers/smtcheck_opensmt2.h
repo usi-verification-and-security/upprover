@@ -35,7 +35,11 @@ public:
       itp_lra_algorithm(itp_lra_alg_strong),
 	  pushed_formulas(0),
 	  current_partition(0),
-	  unsupported2var(0)
+	  unsupported2var(0),
+      reduction(false),
+      reduction_graph(3),
+      reduction_loops(2),
+      verbosity(0)
   {
     initializeSolver();
   }
@@ -50,6 +54,12 @@ public:
   PTRef mkURealGe(vec<PTRef>& args);
 
   virtual ~smtcheck_opensmt2t(); // d'tor
+
+  void set_verbosity(int r) { verbosity = r; }
+
+  void set_reduce_proof(bool r) { reduction = r; }
+  void set_reduce_proof_graph(int r) { reduction_graph = r; }
+  void set_reduce_proof_loops(int r) { reduction_loops = r; }
 
   void set_itp_bool_alg(int x)
   {
@@ -116,7 +126,7 @@ public:
   // Extract interpolant form OpenSMT files/data
   void extract_itp(PTRef ptref, smt_itpt& target_itp) const;
 
-  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name);
+  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true);
 
   static int get_index(const string& varname);
   static std::string insert_index(const string& varname, const string& idx);
@@ -169,8 +179,10 @@ protected:
   
   unsigned no_literals;
 
-  int reduction_loops;
+  int verbosity;
 
+  bool reduction;
+  int reduction_loops;
   int reduction_graph;
 
   // itp_alg_mcmillan, itp_alg_pudlak, itp_alg_mcmillanp, etc...
@@ -216,9 +228,7 @@ protected:
 
   std::string extract_expr_str_number(const exprt &expr); // Our conversion of const that works also for negative numbers + check of result
 
-  std::pair <std::string, bool> extract_expr_str_number_wt_sign(const exprt &expr); // Fix problems with declare of negative numbers
-
-  virtual std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
+  std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
 
   static const char *tk_sort_ureal;
   static const char *tk_mult;

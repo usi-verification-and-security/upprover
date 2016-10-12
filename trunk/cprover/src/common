@@ -18,6 +18,7 @@ ifeq ($(filter-out Unix MinGW OSX_Universal,$(BUILD_ENV_)),)
   # Linux etc.
   LIBEXT = .a
   OBJEXT = .o
+
 ifeq ($(BUILD_ENV_),MinGW)
   EXEEXT = .exe
 else
@@ -62,7 +63,7 @@ else ifeq ($(BUILD_ENV_),Cygwin)
   OBJEXT = .o
   EXEEXT = .exe
   CFLAGS ?= -Wall -O2
-  CXXFLAGS ?= -Wall -O2
+  CXXFLAGS ?= -Wall
   CP_CFLAGS = -MMD -MP -mno-cygwin
   CP_CXXFLAGS = -MMD -MP -DSTL_HASH_GNU -mno-cygwin
   LINKFLAGS = -static -mno-cygwin
@@ -133,10 +134,16 @@ OBJ += $(patsubst %.cc, %$(OBJEXT), $(filter %.cc, $(SRC)))
 .SUFFIXES:	.cc .d .cpp
 
 %.o:%.cpp
-	$(CXX) -c $(CP_CXXFLAGS) -o $@ $<
+	$(CXX) -c $(CP_CXXFLAGS) -O2 -o $@ $<
+
+%.do:%.cpp
+	$(CXX) -c $(CP_CXXFLAGS) -O0 -o $@ $<
 
 %.o:%.cc
 	$(CXX) -c $(CP_CXXFLAGS) -o $@ $<
+
+%.do:%cpp
+	$(CXX) -c $(CP_CXXFLAGS) -O0 -o $@ $<
 
 %.o:%.c
 	$(CC) -c $(CP_CFLAGS) -o $@ $<

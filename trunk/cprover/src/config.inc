@@ -11,6 +11,8 @@ LEX    = flex
 # Linux etc.
 LIBEXT = .a
 OBJEXT = .o
+DOBJEXT = .do
+
 EXEEXT =
 #GCCFLAGS = -Wall -DNDEBUG -MMD -O2
 GCCFLAGS = -Wall -g -MMD -O0 -fpermissive
