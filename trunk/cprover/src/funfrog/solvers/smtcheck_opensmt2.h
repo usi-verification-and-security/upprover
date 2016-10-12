@@ -35,7 +35,11 @@ public:
       itp_lra_algorithm(itp_lra_alg_strong),
 	  pushed_formulas(0),
 	  current_partition(0),
-	  unsupported2var(0)
+	  unsupported2var(0),
+      reduction(false),
+      reduction_graph(0),
+      reduction_loops(0),
+      verbosity(0)
   {
     initializeSolver();
   }
@@ -50,6 +54,12 @@ public:
   PTRef mkURealGe(vec<PTRef>& args);
 
   virtual ~smtcheck_opensmt2t(); // d'tor
+
+  void set_verbosity(int r) { verbosity = r; }
+
+  void set_reduce_proof(bool r) { reduction = r; }
+  void set_reduce_proof_graph(int r) { reduction_graph = r; }
+  void set_reduce_proof_loops(int r) { reduction_loops = r; }
 
   void set_itp_bool_alg(int x)
   {
@@ -169,8 +179,10 @@ protected:
   
   unsigned no_literals;
 
-  int reduction_loops;
+  int verbosity;
 
+  bool reduction;
+  int reduction_loops;
   int reduction_graph;
 
   // itp_alg_mcmillan, itp_alg_pudlak, itp_alg_mcmillanp, etc...

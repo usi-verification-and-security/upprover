@@ -33,7 +33,6 @@ void smtcheck_opensmt2t::initializeSolver()
   mainSolver = &(osmt->getMainSolver());
   const char* msg2;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
-  //osmt->getConfig().setOption(SMTConfig::o_verbosity, SMTOption(0), msg);
 
   // KE: Fix a strange bug can be related to the fact we are pushing
   // a struct into std::vector and use [] before any push_back
@@ -1099,6 +1098,8 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 {
   assert(ready_to_interpolate);
 
+  const char* msg2;
+  osmt->getConfig().setOption(SMTConfig::o_verbosity, verbosity, msg2);
   // Set labeling functions
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
   osmt->getConfig().setEUFInterpolationAlgorithm(itp_euf_algorithm);
@@ -1108,6 +1109,15 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   // Create the proof graph
   solver.createProofGraph();
+
+  // Reduce the proof graph
+  if(reduction)
+  {
+      osmt->getConfig().setReduction(1);
+      osmt->getConfig().setReductionGraph(reduction_graph);
+      osmt->getConfig().setReductionLoops(reduction_loops);
+      solver.reduceProofGraph();
+  }
 
   vector<PTRef> itp_ptrefs;
 

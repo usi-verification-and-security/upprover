@@ -23,6 +23,13 @@ void summarizing_checkert::initialize()
   decider->set_itp_bool_alg(options.get_int_option("itp-algorithm"));
   decider->set_itp_euf_alg(options.get_int_option("itp-euf-algorithm"));
   decider->set_itp_lra_alg(options.get_int_option("itp-lra-algorithm"));
+  decider->set_verbosity(options.get_int_option("verbose-solver"));
+  if(options.get_bool_option("reduce-proof"))
+  {
+    decider->set_reduce_proof(options.get_bool_option("reduce-proof"));
+    decider->set_reduce_proof_graph(options.get_int_option("reduce-proof-graph"));
+    decider->set_reduce_proof_loops(options.get_int_option("reduce-proof-loops"));
+  }
   // Prepare the summarization context
   summarization_context.analyze_functions(ns);
 

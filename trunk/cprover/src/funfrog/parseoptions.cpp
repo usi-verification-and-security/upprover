@@ -402,6 +402,10 @@ void funfrog_parseoptionst::help()
   "--itp-euf-algorithm            EUF interpolation algorithm - 0 for Strong, 2 for Weak, 3 for Random\n"
   "--itp-lra-algorithm            LRA interpolation algorithm - 0 for Strong, 2 for Weak\n"
   "--no-error-trace               disable the counter example's print once a real bug found\n"
+  "\nProof Reduction options:\n"
+  "--reduce-proof                 enables Proof Reduction\n"
+  "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
+  "--reduce-proof-loops           number of reduction iterations\n"
   "\nRefinement options:\n"
   "--refine-mode <mode>:\n"
   "  0 | \"force-inlining\"         inline every function call\n"
@@ -605,6 +609,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("check-itp", cmdline.isset("check-itp"));
   options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
   options.set_option("list-templates", cmdline.isset("list-templates"));
+  options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
 
   // always check assertions
   options.set_option("assertions", true);
