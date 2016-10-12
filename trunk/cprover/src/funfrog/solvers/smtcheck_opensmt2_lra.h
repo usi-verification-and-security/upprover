@@ -29,10 +29,15 @@ public:
 
   virtual literalt type_cast(const exprt &expr);
 
+  PTRef mult_real(const exprt &expr, vec<PTRef> &args);
+
+  PTRef div_real(const exprt &expr, vec<PTRef> &args);
+
   virtual literalt lconst(const exprt &expr);
 
-  virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays etc. that we have no support (or no support yet) create over-approx as nondet
-  	  	  	  	  	  	  	  	  	  	 // Remove when has a support for UF
+  // for isnan, mod, arrays etc. that we have no support (or no support yet) create over-approx as nondet
+  PTRef runsupported2var(const exprt expr);
+  virtual literalt lunsupported2var(const exprt expr);
 
   virtual literalt lvar(const exprt &expr);
 

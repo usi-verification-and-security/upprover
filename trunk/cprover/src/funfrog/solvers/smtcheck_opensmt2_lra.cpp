@@ -79,6 +79,60 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr) {
     return l;
 }
 
+PTRef smtcheck_opensmt2t_lra::mult_real(const exprt &expr, vec<PTRef> &args) {
+	PTRef ptl;
+
+	bool is_lin_op = isLinearOp(expr,args);
+	#ifdef SMT_DEBUG
+		assert(is_lin_op);
+		ptl = lralogic->mkRealTimes(args);
+	#else
+		if (!is_lin_op)
+			return runsupported2var(expr);
+
+		// If linear op, try to create it
+		try
+		{
+			ptl = lralogic->mkRealTimes(args);
+		}
+		catch (...)
+		{ /* We catch and give a nice error message if it is not in debug mode
+		 	 To See the error run with the SMT_DEBUG define on
+		 	 */
+			return runsupported2var(expr);
+		}
+	#endif
+
+	return ptl;
+}
+
+PTRef smtcheck_opensmt2t_lra::div_real(const exprt &expr, vec<PTRef> &args) {
+	PTRef ptl;
+
+	bool is_lin_op = isLinearOp(expr,args);
+	#ifdef SMT_DEBUG
+		assert(is_lin_op);
+		ptl = lralogic->mkRealDiv(args);
+	#else
+		if (!is_lin_op)
+			return runsupported2var(expr);
+
+		// If linear op, try to create it
+		try
+		{
+			ptl = lralogic->mkRealDiv(args);
+		}
+		catch (...)
+		{ /* We catch and give a nice error message if it is not in debug mode
+		 	 To See the error run with the SMT_DEBUG define on
+		 	 */
+			return runsupported2var(expr);
+		}
+	#endif
+
+	return ptl;
+}
+
 literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 {
 // GF: disabling hash for a while, since it leads to bugs at some particular cases,
@@ -201,7 +255,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 
         PTRef ptl;
         if (is_no_support) { // If we don't supposrt the operator due to more than 2 args
-        	ptl = literals[lunsupported2var(expr).var_no()];
+        	ptl = runsupported2var(expr);
         } else if (expr.id()==ID_notequal) {
             ptl = lralogic->mkNot(lralogic->mkEq(args));
         } else if(expr.id() == ID_equal) {
@@ -241,25 +295,9 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 		} else if(expr.id() == ID_unary_plus) {
             ptl = lralogic->mkRealPlus(args);
 		} else if(expr.id() == ID_mult) {
-#ifdef SMT_DEBUG
-			assert(isLinearOp(expr,args));
-			ptl = lralogic->mkRealTimes(args);
-#else
-			if (isLinearOp(expr,args))
-				ptl = lralogic->mkRealTimes(args);
-			else
-				ptl = literals[lunsupported2var(expr).var_no()];
-#endif
+			ptl = mult_real(expr,args);
 		} else if(expr.id() == ID_div) {
-#ifdef SMT_DEBUG
-			assert(isLinearOp(expr,args));
-			ptl = lralogic->mkRealDiv(args);
-#else
-			if (isLinearOp(expr,args))
-				ptl = lralogic->mkRealDiv(args);
-			else
-				ptl = literals[lunsupported2var(expr).var_no()];
-#endif
+			ptl = div_real(expr,args);
 		} else if(expr.id() == ID_assign) {
             ptl = lralogic->mkEq(args);
         } else if(expr.id() == ID_ieee_float_equal) {
@@ -271,33 +309,16 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 		} else if(expr.id() == ID_floatbv_minus) {
             ptl = lralogic->mkRealMinus(args);
 		} else if(expr.id() == ID_floatbv_div) {
-#ifdef SMT_DEBUG
-			assert(isLinearOp(expr,args));
-			ptl = lralogic->mkRealDiv(args);
-#else
-			if (isLinearOp(expr,args))
-				ptl = lralogic->mkRealDiv(args);
-			else
-				ptl = literals[lunsupported2var(expr).var_no()];
-#endif
+			ptl = div_real(expr,args);
 		} else if(expr.id() == ID_floatbv_mult) {
-#ifdef SMT_DEBUG
-			assert(isLinearOp(expr,args));
-			ptl = lralogic->mkRealTimes(args);
-#else
-			if (isLinearOp(expr,args))
-				ptl = lralogic->mkRealTimes(args);
-			else
-				ptl = literals[lunsupported2var(expr).var_no()];
-#endif
-
+			ptl = mult_real(expr,args);
 		} else if(expr.id() == ID_index) {
 #ifdef SMT_DEBUG
 			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
 					<< expr.id() << ")" << endl;
 			assert(false); // No support yet for arrays
 #else
-			ptl = literals[lunsupported2var(expr).var_no()];
+			ptl = runsupported2var(expr);
 #endif
 		} else {
 #ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
@@ -306,10 +327,8 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             		<< expr.id() << ")" << endl;
             assert(false);
 #else
-            ptl = literals[lunsupported2var(expr).var_no()];
+            ptl = runsupported2var(expr);
 #endif
-            // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
-            // Do we need them now?
         }
 		l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
 	}
@@ -323,9 +342,8 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     return l;
 }
 
-literalt smtcheck_opensmt2t_lra::lunsupported2var(exprt expr)
+PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt expr)
 {
-	literalt l;
 	PTRef var;
 
 	const string str =  "funfrog::c::unsupported_op2var#" + std::to_string(unsupported2var++);
@@ -334,6 +352,14 @@ literalt smtcheck_opensmt2t_lra::lunsupported2var(exprt expr)
 	else
 		var = lralogic->mkRealVar(str.c_str());
 
+	return var;
+}
+
+literalt smtcheck_opensmt2t_lra::lunsupported2var(const exprt expr)
+{
+	literalt l;
+
+	PTRef var = runsupported2var(expr);
 	l = push_variable(var);
 
 	return l;
@@ -363,7 +389,7 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     			<< expr.type().id() << ")" << endl;
     	assert(false); // No support yet for arrays
 #else
-    	var = literals[lunsupported2var(expr).var_no()];
+    	var = runsupported2var(expr);
 #endif
     } else
     	var = lralogic->mkBoolVar(str.c_str());
