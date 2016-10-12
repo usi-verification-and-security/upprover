@@ -108,26 +108,39 @@ public:
   }
 
   void serialize_infos(const std::string& file, summary_infot& summary_info) {
-    //LA: Karine, the following line is the one that eventualyl has to be used
-    //summary_store.compact_store(summary_info, function_infos);
-    
     std::ofstream out;
     out.open(file.c_str());
 
+    serialize_infos(out, summary_info);
+    //function_infot::serialize_infos(out, function_infos);
+
+    //if (out.fail()) {
+    //  throw "Failed to serialize the function summaries.";
+    //}
+
+    //out.close();
+  }
+
+  bool serialize_infos(std::ofstream &out, summary_infot& summary_info) {
+        
     if (out.fail()) {
-      std::cerr << "Failed to serialize the function summaries (file: " << file <<
-              " cannot be accessed)" << std::endl;
-      return;
+      std::cerr << "Failed to serialize the function summaries (file cannot be accessed)" << std::endl;
+      return false;
     }
+
+    //LA: Karine, the following line is the one that eventualyl has to be used
+    //summary_store.compact_store(summary_info, function_infos);
 
     summary_store.serialize(out);
     //function_infot::serialize_infos(out, function_infos);
 
     if (out.fail()) {
-      throw "Failed to serialize the function summaries.";
+      return false;
+      //throw "Failed to serialize the function summaries.";
     }
 
     out.close();
+    return true;
   }
 
   void set_valid_summaries(const irep_idt& function_id, bool value){

@@ -277,8 +277,10 @@ void summarizing_checkert::extract_interpolants (prop_assertion_sumt& prop, part
   // Store the summaries
   const std::string& summary_file = options.get_option("save-summaries");
   if (!summary_file.empty()) {
-    summarization_context.serialize_infos(summary_file, 
-            omega.get_summary_info());
+      std::ofstream out;
+      out.open(summary_file.c_str());
+      decider->getLogic()->dumpHeaderToFile(out);
+      summarization_context.serialize_infos(out, omega.get_summary_info());
   }
 }
 /*******************************************************************\
