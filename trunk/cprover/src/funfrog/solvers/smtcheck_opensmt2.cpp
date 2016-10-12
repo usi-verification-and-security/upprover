@@ -230,6 +230,7 @@ exprt smtcheck_opensmt2t::get_value(const exprt &expr)
 		ptrf = literals[l.var_no()];
 
 		// Get the value of the PTRef
+
 		if (logic->isIteVar(ptrf)) // true/false - evaluation of a branching
 		{
 			ValPair v1 = mainSolver->getValue(ptrf);
@@ -249,6 +250,18 @@ exprt smtcheck_opensmt2t::get_value(const exprt &expr)
 		else if (logic->isVar(ptrf)) // Constant value
 		{
 			// Create the value
+			ValPair v1 = mainSolver->getValue(ptrf);
+			irep_idt value = v1.val;
+
+			// Create the expr with it
+			constant_exprt tmp = constant_exprt();
+			tmp.set_value(value);
+
+			return tmp;
+		}
+		else if (logic->isConstant(ptrf))
+		{
+			// Constant?
 			ValPair v1 = mainSolver->getValue(ptrf);
 			irep_idt value = v1.val;
 

@@ -22,7 +22,7 @@ void smtcheck_opensmt2t_lra::initializeSolver()
   // a struct into std::vector and use [] before any push_back
   literals.push_back(PTRef());
   literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
-  literals[0] = logic->getTerm_true(); // Which is .x =0
+  literals[0] = lralogic->getTerm_true(); // Which is .x =0
   // KE: End of fix
 }
 
@@ -30,6 +30,73 @@ void smtcheck_opensmt2t_lra::initializeSolver()
 smtcheck_opensmt2t_lra::~smtcheck_opensmt2t_lra()
 {
 	// Shall/When need to: freeSolver() ?
+}
+
+exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
+{
+	PTRef ptrf;
+	if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
+		literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
+		ptrf = literals[l.var_no()];
+
+		// Get the value of the PTRef
+		if (lralogic->isIteVar(ptrf)) // true/false - evaluation of a branching
+		{
+			ValPair v1 = mainSolver->getValue(ptrf);
+			if (v1.val == 0)
+				return false_exprt();
+			else
+				return true_exprt();
+		}
+		else if (lralogic->isTrue(ptrf)) //true only
+		{
+			return true_exprt();
+		}
+		else if (lralogic->isFalse(ptrf)) //false only
+		{
+			return false_exprt();
+		}
+		else if (lralogic->isVar(ptrf)) // Constant value
+		{
+			// Create the value
+			ValPair v1 = mainSolver->getValue(ptrf);
+			irep_idt value = v1.val;
+
+			// Create the expr with it
+			constant_exprt tmp = constant_exprt();
+			tmp.set_value(value);
+
+			return tmp;
+		}
+		else if (lralogic->isConstant(ptrf))
+		{
+			// Constant?
+			ValPair v1 = mainSolver->getValue(ptrf);
+			irep_idt value = v1.val;
+
+			// Create the expr with it
+			constant_exprt tmp = constant_exprt();
+			tmp.set_value(value);
+
+			return tmp;
+		}
+		else
+		{
+			assert(0);
+		}
+	}
+	else // Find the value inside the expression - recursive call
+	{
+		exprt tmp=expr;
+
+		Forall_operands(it, tmp)
+		{
+			exprt tmp_op=get_value(*it);
+			it->swap(tmp_op);
+		}
+
+		return tmp;
+	}
 }
 
 literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
