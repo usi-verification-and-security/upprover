@@ -28,6 +28,7 @@ endif
   CXXFLAGS ?= -Wall -O2
   CP_CFLAGS = -MMD -MP
   CP_CXXFLAGS = -MMD -MP -DSTL_HASH_TR1
+  CP_CXXFLAGS_OPT = -MMD -MP -DSTL_HASH_TR1
   #LINKFLAGS = -static
 ifeq ($(BUILD_ENV_),OSX_Universal)
   # MacOS Fat Binaries
@@ -128,13 +129,15 @@ HOSTCXX ?= $(CXX)
 CP_CFLAGS += $(CFLAGS) $(INCLUDES)
 CP_CXXFLAGS += $(CXXFLAGS) $(INCLUDES)
 
+CP_CXXFLAGS_OPT += $(CXXFLAGS) $(OPTINCLUDES)
+
 OBJ += $(patsubst %.cpp, %$(OBJEXT), $(filter %.cpp, $(SRC)))
 OBJ += $(patsubst %.cc, %$(OBJEXT), $(filter %.cc, $(SRC)))
 
 .SUFFIXES:	.cc .d .cpp
 
 %.o:%.cpp
-	$(CXX) -c $(CP_CXXFLAGS) -O2 -o $@ $<
+	$(CXX) -c $(CP_CXXFLAGS_OPT) -O2 -o $@ $<
 
 %.do:%.cpp
 	$(CXX) -c $(CP_CXXFLAGS) -O0 -o $@ $<
