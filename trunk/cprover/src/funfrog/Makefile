@@ -95,7 +95,7 @@ all: evolcheck$(EXEEXT)
 
 INCLUDES +=  -I .. -I ../util
 
-
+OPTINCLUDES += -I.. -I../util
 
 ###############################################################################
 
@@ -103,7 +103,7 @@ evolcheck$(EXEEXT): $(FUNFROGD_OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline -O0 -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -g $(INCLUDES) $(LIBS) $(LINKS)
 
 evolcheck-opt$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline -O3 -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -g $(INCLUDES) $(LIBS) $(LINKS)
+	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline -O3 -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -g $(OPTINCLUDES) $(OPTLIBS) $(LINKS)
 
 
 sumo$(EXEEXT): $(SUMO_OBJ)
