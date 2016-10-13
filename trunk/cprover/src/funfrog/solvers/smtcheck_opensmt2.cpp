@@ -230,6 +230,7 @@ exprt smtcheck_opensmt2t::get_value(const exprt &expr)
 		ptrf = literals[l.var_no()];
 
 		// Get the value of the PTRef
+
 		if (logic->isIteVar(ptrf)) // true/false - evaluation of a branching
 		{
 			ValPair v1 = mainSolver->getValue(ptrf);
@@ -249,6 +250,18 @@ exprt smtcheck_opensmt2t::get_value(const exprt &expr)
 		else if (logic->isVar(ptrf)) // Constant value
 		{
 			// Create the value
+			ValPair v1 = mainSolver->getValue(ptrf);
+			irep_idt value = v1.val;
+
+			// Create the expr with it
+			constant_exprt tmp = constant_exprt();
+			tmp.set_value(value);
+
+			return tmp;
+		}
+		else if (logic->isConstant(ptrf))
+		{
+			// Constant?
 			ValPair v1 = mainSolver->getValue(ptrf);
 			irep_idt value = v1.val;
 
@@ -305,9 +318,8 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
     //TODO: Check this
 	literalt l;
     string num = extract_expr_str_number(expr);
-    //string num = "const" + extract_expr_str_number(expr);
-	//PTRef rconst = logic->mkVar(sort_ureal, extract_expr_str_number(expr).c_str()); // Can have a wrong conversion sometimes!
 	PTRef rconst = logic->mkConst(sort_ureal, num.c_str()); // Can have a wrong conversion sometimes!
+	//TODO: Add a check that the conversion to a number worked!!
 
 	l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
 
@@ -333,7 +345,7 @@ literalt smtcheck_opensmt2t::type_cast(const exprt &expr) {
     	std::string val = extract_expr_str_number((expr.operands())[0]);
     	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
     	l = const_var(!val_const_zero);
-    } else if (!expr.is_boolean() && (expr.operands())[0].is_boolean()) {
+    } else if (is_number(expr.type()) && (expr.operands())[0].is_boolean()) {
     	// Cast from Boolean to Real - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	//PTRef ptl = lralogic->mkIte(literals[lt.var_no()], lralogic->mkConst("1"), lralogic->mkConst("0"));
@@ -712,7 +724,9 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
     if(is_number(expr.type()))
         //TODO: Check this
     	var = logic->mkVar(sort_ureal, str.c_str());
-    else if (expr.type().id() == ID_array) { // Is a function with index
+    else if (expr.is_boolean())
+    	var = logic->mkBoolVar(str.c_str());
+    else { // Is a function with index, array, pointer
 #ifdef SMT_DEBUG
     	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
     			<< expr.type().id() << ")" << endl;
@@ -720,8 +734,7 @@ literalt smtcheck_opensmt2t::lvar(const exprt &expr)
 #else
     	var = literals[lunsupported2var(expr).var_no()];
 #endif
-    } else
-    	var = logic->mkBoolVar(str.c_str());
+    }
 
     l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
 

@@ -80,7 +80,7 @@ public:
   
   bool is_assignemt_true(literalt a) const;
 
-  exprt get_value(const exprt &expr);
+  virtual exprt get_value(const exprt &expr);
 
   virtual literalt convert(const exprt &expr);
 

@@ -180,6 +180,7 @@ void error_tracet::show_goto_trace(
     // In case we use over approximate to verify this example - gives a warning to the user!
 	if (is_trace_overapprox(decider)) {
 		cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
+		cout << "         Use --logic with Different Logic to Try Creating an Error Trace. \n";
 		return; // Cannot really print a trace
 	}
 
