@@ -91,7 +91,7 @@ include ../common
 
 CP_CXXFLAGS += -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -g
 
-all: evolcheck$(EXEEXT) 
+all: hifrog$(EXEEXT) 
 
 INCLUDES +=  -I .. -I ../util
 
@@ -99,7 +99,7 @@ OPTINCLUDES += -I.. -I../util
 
 ###############################################################################
 
-evolcheck$(EXEEXT): $(FUNFROGD_OBJ)
+hifrog$(EXEEXT): $(FUNFROGD_OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline -O0 -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -g $(INCLUDES) $(LIBS) $(LINKS)
 
 evolcheck-opt$(EXEEXT): $(FUNFROG_OBJ)
@@ -114,7 +114,7 @@ diff$(EXEEXT): $(DIFF_OBJ)
 	mv diff goto-diff
 
 clean:
-	rm -f *.o *.d *.do funfrog evolcheck sumo diff __omega_* __calltree.xml
+	rm -f *.o *.d *.do funfrog hifrog sumo diff __omega_* __calltree.xml
 	rm -f solvers/*.o solvers/*.d solvers/*.do
 
 re: clean all

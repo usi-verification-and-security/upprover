@@ -333,11 +333,12 @@ void funfrog_parseoptionst::help()
 {
   std::cout <<"\n"
     "* * *                hiFrog " << HIFROG_VERSION
-    " - Copyright (C) 2013               * * *\n"
+    " - Copyright (C) 2016                    * * *\n"
     "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
     "                based on FUNFROG " << FUNFROG_VERSION
-    "                based on eVolCheck " << EVOLCHECK_VERSION
     " - Copyright (C) 2013               * * *\n"
+    "                based on eVolCheck " << EVOLCHECK_VERSION
+    " - Copyright (C) 2013             * * *\n"
     "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
   "\n"
   "Usage:                         Purpose:\n"
