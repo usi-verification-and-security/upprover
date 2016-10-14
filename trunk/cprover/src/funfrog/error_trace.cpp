@@ -37,12 +37,15 @@ void error_tracet::build_goto_trace (
        SSA_step.assignment_type==symex_target_equationt::HIDDEN)
       continue;
 
+    std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
+    if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
+    	continue;
+
     step_nr++;
 
     goto_trace.steps.push_back(goto_trace_stept());
     goto_trace_stept &goto_trace_step=goto_trace.steps.back();
 
-    std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
     if (str.find("goto_symex::\\guard#") == 0){
       goto_trace_step.lhs_object=SSA_step.ssa_lhs;
     } else {
