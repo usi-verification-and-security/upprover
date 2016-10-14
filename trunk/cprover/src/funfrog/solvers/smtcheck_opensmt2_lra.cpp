@@ -186,11 +186,12 @@ PTRef smtcheck_opensmt2t_lra::div_real(const exprt &expr, vec<PTRef> &args) {
 	PTRef ptl;
 
 	bool is_lin_op = isLinearOp(expr,args);
+	bool is_of_legal_form2solver = lralogic->isRealTerm(args[0]) &&  lralogic->isConstant(args[1]);
 	#ifdef SMT_DEBUG
 		assert(is_lin_op);
 		ptl = lralogic->mkRealDiv(args);
 	#else
-		if (!is_lin_op)
+		if ((!is_lin_op) || (!is_of_legal_form2solver))
 			return runsupported2var(expr);
 
 		// If linear op, try to create it
