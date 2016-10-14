@@ -351,6 +351,11 @@ literalt smtcheck_opensmt2t::type_cast(const exprt &expr) {
     	//PTRef ptl = lralogic->mkIte(literals[lt.var_no()], lralogic->mkConst("1"), lralogic->mkConst("0"));
         PTRef ptl = logic->mkIte(literals[lt.var_no()], logic->mkConst(sort_ureal, "1"), logic->mkConst(sort_ureal, "0"));
     	l = push_variable(ptl); // Keeps the new literal + index it
+    } else if (expr.is_boolean() && is_number((expr.operands())[0].type())) {
+    	// Cast from Real to Boolean - Add
+    	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
+    	PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], logic->mkConst(sort_ureal, "0")));
+    	l = push_variable(ptl); // Keeps the new literal + index it
 	} else {
     	l = convert((expr.operands())[0]);
     }
