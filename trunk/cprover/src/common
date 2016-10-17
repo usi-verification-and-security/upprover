@@ -1,3 +1,5 @@
+INCLUDES +=  -I .. -I ../util
+
 # Build platform (use one of AUTO, Unix, OSX_Universal, MSVC, Cygwin, MinGW)
 ifeq ($(BUILD_ENV),AUTO)
 uname = $(shell uname)
@@ -129,7 +131,7 @@ HOSTCXX ?= $(CXX)
 CP_CFLAGS += $(CFLAGS) $(INCLUDES)
 CP_CXXFLAGS += $(CXXFLAGS) $(INCLUDES)
 
-CP_CXXFLAGS_OPT += $(CXXFLAGS) $(OPTINCLUDES)
+CP_CXXFLAGS_OPT += $(CXXFLAGS) $(INCLUDES)
 
 OBJ += $(patsubst %.cpp, %$(OBJEXT), $(filter %.cpp, $(SRC)))
 OBJ += $(patsubst %.cc, %$(OBJEXT), $(filter %.cc, $(SRC)))
@@ -144,9 +146,6 @@ OBJ += $(patsubst %.cc, %$(OBJEXT), $(filter %.cc, $(SRC)))
 
 %.o:%.cc
 	$(CXX) -c $(CP_CXXFLAGS) -o $@ $<
-
-%.do:%cpp
-	$(CXX) -c $(CP_CXXFLAGS) -O0 -o $@ $<
 
 %.o:%.c
 	$(CC) -c $(CP_CFLAGS) -o $@ $<
