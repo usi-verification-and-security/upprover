@@ -1,3 +1,3 @@
 #define FUNFROG_VERSION "3.0"
 #define EVOLCHECK_VERSION "3.0"
-#define HIFROG_VERSION "3.0"
+#define HIFROG_VERSION "0.1"

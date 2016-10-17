@@ -53,12 +53,12 @@ void dependency_checkert::do_it(){
 
     hl_list.close();
 
-    cout << "SSA Assertions: " << asserts.size();
-    cout << endl;
+//    cout << "SSA Assertions: " << asserts.size();
+//    cout << endl;
 
   duration = current_time();
   duration = duration - initial;
-  std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << endl;
+//  std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << endl;
 
   initial=current_time();
 
@@ -67,7 +67,7 @@ void dependency_checkert::do_it(){
 
   duration = current_time();
   duration = duration - initial;
-  std::cout << "TIME FOR find_assert_deps: " << (duration) << endl;
+//  std::cout << "TIME FOR find_assert_deps: " << (duration) << endl;
 
   initial = current_time();
 
@@ -81,9 +81,9 @@ void dependency_checkert::do_it(){
   durationto = durationto - initial;
   durationto = durationto - to_time;
 
-  std::cout << "TIME FOR find_implications: " << (duration) << endl;
-  std::cout << "TIME exceeding timeouts: " << (to_time) << endl;
-  std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << endl;
+  std::cout << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << endl;
+//  std::cout << "TIME exceeding timeouts: " << (to_time) << endl;
+//  std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << endl;
 
   //TODO: make a proper cmd-parameter
   ifstream just_dep;
@@ -209,7 +209,7 @@ void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool>
     //FIXME: Determine if compression is needed for greater efficiency
     //deps_ds.compress_sets(equation_symbols.begin(), equation_symbols.end());
 
-    cout << "Number of disjoint variable sets: " << (int)deps_ds.count_sets(equation_symbols.begin(), equation_symbols.end()) << endl;
+//    cout << "Number of disjoint variable sets: " << (int)deps_ds.count_sets(equation_symbols.begin(), equation_symbols.end()) << endl;
 
 }
 
@@ -274,8 +274,8 @@ void dependency_checkert::find_assert_deps()
         }
     }
 
-    cout << "Syntactic independencies found: " << (indeps - deps) << endl;
-    cout << "Syntactic dependencies found: " << deps << endl;
+//    cout << "Syntactic independencies found: " << (indeps - deps) << endl;
+//    cout << "Syntactic dependencies found: " << deps << endl;
 
 }
 
@@ -399,43 +399,42 @@ long dependency_checkert::find_implications()
 
   hl_may_impl.close();
 
-  cout << "Discarded assertions: " << discarded << endl;
+//  cout << "Discarded assertions: " << discarded << endl;
   if (notdisc > 0) cout << "WARNING: " << notdisc << " true implications exceeded timeout!" << endl;
 
-  cout << "Total number of implication checks: " << impchecks << endl;
-  cout << "Total number of comparisons: " << checks << endl;
+//  cout << "Total number of implication checks: " << impchecks << endl;
+//  cout << "Total number of comparisons: " << checks << endl;
 
   for (int i = asserts.size() - 1; i >= 0; i--)
   //for (unsigned i = 0; i < asserts.size(); i++)
   {
-      // GF: to test
     if (weaker[i] == true)
 	  {
 		  SSA_step_reft& removable = asserts[i];
-      cout << "Removing << " << (*removable)->source.pc->location.get_line() << "\n";
+      cout << "Redundant claim at line " << (*removable)->source.pc->location.get_line() << "\n";
       (*removable)->ignore = true;
 	}
   }
-  try{
-    ofstream hl_stronger;
-    ofstream hl_weaker;
-    hl_stronger.open ("__hl_stronger");
-    hl_weaker.open ("__hl_weaker");
-    for (int i = asserts.size() - 1; i >= 0; i--){
-      SSA_step_reft& ass = asserts[i];
-      if (weaker[i] == true)
-        hl_weaker << (*ass)->source.pc->location.get_claim().c_str() << endl;
-      if (stronger[i] == true)
-        hl_stronger << (*ass)->source.pc->location.get_claim().c_str() << endl;
-    }
-
-    hl_stronger.close();
-    hl_weaker.close();
-  }  catch (const bad_alloc &e)
-  {
-    cout  << "smth is very wrong: " << e.what()  << endl;
-
-  }
+//  try{
+//    ofstream hl_stronger;
+//    ofstream hl_weaker;
+//    hl_stronger.open ("__hl_stronger");
+//    hl_weaker.open ("__hl_weaker");
+//    for (int i = asserts.size() - 1; i >= 0; i--){
+//      SSA_step_reft& ass = asserts[i];
+//      if (weaker[i] == true)
+//        hl_weaker << (*ass)->source.pc->location.get_claim().c_str() << endl;
+//      if (stronger[i] == true)
+//        hl_stronger << (*ass)->source.pc->location.get_claim().c_str() << endl;
+//    }
+//
+//    hl_stronger.close();
+//    hl_weaker.close();
+//  }  catch (const bad_alloc &e)
+//  {
+//    cout  << "smth is very wrong: " << e.what()  << endl;
+//
+//  }
   return to_time;
 
 }
