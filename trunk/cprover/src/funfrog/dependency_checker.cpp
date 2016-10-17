@@ -727,7 +727,7 @@ void dependency_checkert::convert_assumptions(
   SSA_step_reft it=it1;
   while(it!=it2)
   {
-    if(((*it)->is_assume() || ((*it)->is_assert() && it ==it1)) && !(*it)->ignore)
+    if(((*it)->is_assume() || ((*it)->is_assert() && it != it2)) && !(*it)->ignore)
     {
        //std::cout << "convert assume :" << from_expr(ns, "", (*it)->cond_expr) <<"\n";
        decider.set_to_true((*it)->cond_expr);
