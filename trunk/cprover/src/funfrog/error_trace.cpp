@@ -213,13 +213,11 @@ void error_tracet::show_goto_trace(
 				if(!it->cond_value)
 				{
 					out << std::endl;
-					out << "Violated property:" << std::endl;
-					if(!it->pc->location.is_nil())
-						out << "  " << it->pc->location << std::endl;
-					out << "  " << it->comment << std::endl;
-
-					if(it->pc->is_assert())
-						out << "  " << from_expr(ns, "", it->pc->guard) << std::endl;
+					cout << "Violated assertion at:\n" <<
+					"  file \"" << it->pc->location.get_file() <<
+					"\",\n  function \"" << it->pc->location.get_function() <<
+					"\",\n  line " << it->pc->location.get_line() << ":\n  " <<
+					from_expr(ns, "", it->pc->guard) << "\n";
 
 					out << std::endl;
 				}

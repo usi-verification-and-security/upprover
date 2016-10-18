@@ -139,10 +139,10 @@ OBJ += $(patsubst %.cc, %$(OBJEXT), $(filter %.cc, $(SRC)))
 .SUFFIXES:	.cc .d .cpp
 
 %.o:%.cpp
-	$(CXX) -c $(CP_CXXFLAGS_OPT) -O2 -o $@ $<
+	$(CXX) -c $(CP_CXXFLAGS_OPT) $(OSMT_OPT_INCLUDES) -O2 -o $@ $<
 
 %.do:%.cpp
-	$(CXX) -c $(CP_CXXFLAGS) -O0 -o $@ $<
+	$(CXX) -c $(CP_CXXFLAGS) $(OSMT_DEBUG_INCLUDES) -O0 -o $@ $<
 
 %.o:%.cc
 	$(CXX) -c $(CP_CXXFLAGS) -o $@ $<
