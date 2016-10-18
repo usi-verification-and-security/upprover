@@ -388,6 +388,7 @@ void funfrog_parseoptionst::help()
   "--reduce-proof                 enables Proof Reduction\n"
   "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
   "--reduce-proof-loops           number of reduction iterations\n"
+  "--list-templates               dump the templates of the functions for user-defined summaries\n"
 //  "\nRefinement options:\n"
 //  "--refine-mode <mode>:\n"
 //  "  0 | \"force-inlining\"         inline every function call\n"
