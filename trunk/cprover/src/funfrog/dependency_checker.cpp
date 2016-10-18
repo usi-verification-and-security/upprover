@@ -411,7 +411,13 @@ long dependency_checkert::find_implications()
     if (weaker[i] == true)
 	  {
 		  SSA_step_reft& removable = asserts[i];
-      cout << "Redundant claim at line " << (*removable)->source.pc->location.get_line() << "\n";
+      cout << "\nRedundant assertion at:\n" <<
+	  "  file \"" << (*removable)->source.pc->location.get_file() <<
+	  "\",\n  function \"" << (*removable)->source.pc->location.get_function() <<
+	  "\",\n  line " << (*removable)->source.pc->location.get_line() << ":\n  " <<
+          from_expr(ns, "", (*removable)->source.pc->guard) << "\n\n";
+
+
       (*removable)->ignore = true;
 	}
   }
