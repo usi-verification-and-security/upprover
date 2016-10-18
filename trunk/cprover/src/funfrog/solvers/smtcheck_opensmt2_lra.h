@@ -53,6 +53,9 @@ protected:
 
   bool isLinearOp(const exprt &expr, vec<PTRef> &args); // Check if we don't do sth. like nondet*nondet, but only const*nondet (e.g.)
 
+  void add_constraints2type(const exprt &expr, PTRef &var);
+  void push_constraints2type(PTRef &var, std::string lower_b, std::string upper_b);
+  std::string create_bound_string(std::string base, int exp);
 };
 
 #endif

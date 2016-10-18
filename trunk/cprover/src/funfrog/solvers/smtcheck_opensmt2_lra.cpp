@@ -6,8 +6,11 @@ Author: Grigory Fedyukovich
 
 \*******************************************************************/
 #include "smtcheck_opensmt2_lra.h"
+#include <util/type.h>
 
 //#define SMT_DEBUG
+//#define SMT_DEBUG_VARS_BOUNDS
+//#define SMT_VARS_BOUNDS
 
 void smtcheck_opensmt2t_lra::initializeSolver()
 {
@@ -471,7 +474,9 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     }
 
     l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
-
+#ifdef SMT_VARS_BOUNDS // Code still in testing
+    add_constraints2type(expr, var);
+#endif
 
 #ifdef DEBUG_SMT2SOLVER
 	std::string add_var = str + " () " + getVarData(var);
@@ -481,6 +486,104 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 #endif
 
 	return l;
+}
+
+std::string smtcheck_opensmt2t_lra::create_bound_string(std::string base, int exp)
+{
+	  std::string ret = base;
+	  int size = exp - base.size() + 1; // for format 3.444444
+	  for (int i=0; i<size;i++)
+		  ret+= "0";
+
+	  return ret;
+}
+
+void smtcheck_opensmt2t_lra::push_constraints2type(PTRef &var, std::string lower_b, std::string upper_b)
+{
+	vec<PTRef> args;
+	vec<PTRef> args1; args1.push(var); args1.push(lralogic->mkConst(lower_b.c_str()));
+	vec<PTRef> args2; args2.push(var); args2.push(lralogic->mkConst(upper_b.c_str()));
+	PTRef ptl1 = lralogic->mkRealGeq(args1);
+	PTRef ptl2 = lralogic->mkRealLeq(args2);
+	args.push(ptl1);
+	args.push(ptl2);
+	PTRef ptr = logic->mkAnd(args);
+	top_level_formulas.push(ptr);
+}
+
+// If the expression is a number adds constraints
+void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
+{
+	if(!is_number(expr.type())) return ;
+	if (lralogic->isRealConst(var)) return; // if trivial no need for constraints
+
+	typet var_type = expr.type(); // Get the current type
+	if (var_type.is_nil()) return;
+
+	// Start building the constraints
+#ifdef SMT_DEBUG_VARS_BOUNDS
+	cout << "; For valiable " << expr.get(ID_identifier)
+			<< " try to identify this type "<< var_type
+			<< endl;
+#endif
+
+	//gets the property
+	int size = var_type.get_int("width");
+	const irep_idt type = var_type.get("#c_type");
+	const irep_idt &type_id=var_type.id_string();
+
+	// Start checking what it is
+    if(type_id==ID_integer || type_id==ID_natural)
+    {
+    	assert(0); // need to see an example!
+    }
+    else if(type_id==ID_rational)
+    {
+    	assert(0); // need to see an example!
+    }
+    else if(type_id==ID_unsignedbv) // unsigned int = 32, unsigned long = 64
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    	cout << "; Adding new constraint for unsigned " << ((size==32) ? "int" : "long") << endl;
+#endif
+    	// Add Assume
+    	push_constraints2type(var, "0", ((size==32) ? "4294967295" : "18446744073709551615"));
+    }
+    else if(type_id==ID_signedbv) // int = 32, long = 64
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    	cout << "; Adding new constraint for " << ((size==32) ? "int" : "long") << endl;
+#endif
+    	push_constraints2type(var, ((size==32) ? " −2147483648" : "−9223372036854775808"),
+    					((size==32) ? " 2147483647" : "9223372036854775807"));
+    }
+    else if(type_id==ID_fixedbv)
+    {
+    	assert(0); // need to see an example!
+    }
+    else if(type_id==ID_floatbv) // float = 32, double = 64
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    	cout << "; Adding new constraint for unsigned " << ((size==32) ? "float" : "double") << endl;
+#endif
+    	push_constraints2type(var,
+    			((size==32) ?
+    				("-" + create_bound_string("34028234", 38)) : ("-" + create_bound_string("17976931348623157", 308))),
+    			((size==32) ?
+    				create_bound_string("34028234", 38) : create_bound_string("17976931348623157", 308)));
+    }
+    else
+    {
+    	assert(0); // need to see an example!
+    }
+
+	// For numbers add constraints of upper and lower bounds
+#ifdef SMT_DEBUG_VARS_BOUNDS
+	cout << "; Add bounds constraints for type "
+			<< var_type.get("#c_type") << " "
+			<< var_type.get_int("width") << "bits"
+			<< endl;
+#endif
 }
 
 literalt smtcheck_opensmt2t_lra::lconst(const exprt &expr)
