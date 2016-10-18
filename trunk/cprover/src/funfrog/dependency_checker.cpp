@@ -299,7 +299,7 @@ long dependency_checkert::find_implications()
   unsigned discarded = 0;
   int checks=0;
   int impchecks=0;
-  vector<bool> stronger(asserts.size(), false);
+//  vector<bool> stronger(asserts.size(), false);
   vector<bool> weaker(asserts.size(), false);
   
     /*
@@ -353,15 +353,15 @@ long dependency_checkert::find_implications()
           if (checkres.second.get_t() <= impl_timeout)
           {
             assert_imps[assert_1][assert_2] = IMP;
-            if (VERBOSE)
-            {
-              std::cout << "Adding the assertion implication \n (" <<
-                from_expr(ns, "", (*assert_1)->cond_expr) << ") [" << (*assert_1)->source.pc->location.get_line() << "] [stronger] \n => \n (" <<
-                from_expr(ns, "", (*assert_2)->cond_expr) << ") [" << (*assert_2)->source.pc->location.get_line() << "] [weaker]" << endl;
-            }
+//            if (VERBOSE)
+//            {
+//              std::cout << "Adding the assertion implication \n (" <<
+//                from_expr(ns, "", (*assert_1)->cond_expr) << ") [" << (*assert_1)->source.pc->location.get_line() << "] [stronger] \n => \n (" <<
+//                from_expr(ns, "", (*assert_2)->cond_expr) << ") [" << (*assert_2)->source.pc->location.get_line() << "] [weaker]" << endl;
+//            }
 
-            weaker[i] = true;
-            stronger[j] = true;
+            weaker[j] = true;
+//            stronger[j] = true;
             hl_may_impl << (*assert_1)->source.pc->location.get_claim() << " " <<
                 (*assert_2)->source.pc->location.get_claim() << " " <<
                 distance(SSA_steps.begin(), assert_1) << " " <<
