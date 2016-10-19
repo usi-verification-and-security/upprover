@@ -53,6 +53,7 @@ class value_set_alloc_adaptort;
   "(random-seed):(no-itp)(verbose-solver):" \
   "(itp-algorithm): (itp-euf-algorithm): (itp-lra-algorithm): (check-itp) (part-itp):" \
   "(unwind):(unwindset):" \
+  "(type-constraints):" \
   "(inlining-limit):(testclaim):" \
   "(pobj)(eq)(neq)(ineq)" \
   "(no-error-trace)" \

@@ -10,7 +10,6 @@ Author: Grigory Fedyukovich
 
 //#define SMT_DEBUG
 //#define SMT_DEBUG_VARS_BOUNDS
-//#define SMT_VARS_BOUNDS
 
 void smtcheck_opensmt2t_lra::initializeSolver()
 {
@@ -474,9 +473,9 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     }
 
     l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
-#ifdef SMT_VARS_BOUNDS // Code still in testing
-    add_constraints2type(expr, var);
-#endif
+
+    if (type_constraints_level > 0)
+    	add_constraints2type(expr, var);
 
 #ifdef DEBUG_SMT2SOLVER
 	std::string add_var = str + " () " + getVarData(var);
@@ -520,6 +519,7 @@ void smtcheck_opensmt2t_lra::push_assumes2type(
 		std::string lower_b,
 		std::string upper_b)
 {
+	if (type_constraints_level < 1 ) return;
 	PTRef ptr = create_constraints2type(var, lower_b, upper_b);
 	top_level_formulas.push(ptr);
 
@@ -536,9 +536,18 @@ void smtcheck_opensmt2t_lra::push_asserts2type(
 		std::string lower_b,
 		std::string upper_b)
 {
+	if (type_constraints_level < 2) return;
 
+	// Else add the checks
 	PTRef ptr = create_constraints2type(var, lower_b, upper_b);
-	//.push(ptr);
+
+	if (is_var_constraints_empty)
+	{
+		is_var_constraints_empty = false;
+		ptr_assert_var_constraints = ptr;
+	}
+	else
+		ptr_assert_var_constraints = lralogic->mkAnd(ptr_assert_var_constraints, ptr);
 
 #ifdef SMT_DEBUG_VARS_BOUNDS
 	char *s = lralogic->printTerm(ptr);

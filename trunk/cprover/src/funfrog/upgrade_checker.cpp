@@ -426,7 +426,7 @@ bool upgrade_checkert::check_summary(const assertion_infot& assertion,
   {
     count++;
 
-    decider = new smtcheck_opensmt2t_lra();
+    decider = new smtcheck_opensmt2t_lra(0);
 
 //    interpolator.reset(opensmt);
 //    bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);

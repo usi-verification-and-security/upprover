@@ -14,12 +14,13 @@
 void summarizing_checkert::initialize()
 {
   string _logic = options.get_option("logic");
+  int _type_constraints = options.get_int_option("type-constraints");
   if(_logic == "qfuf")
       decider = new smtcheck_opensmt2t();
   else if(_logic == "qflra")
-      decider = new smtcheck_opensmt2t_lra();
+      decider = new smtcheck_opensmt2t_lra(_type_constraints);
   else
-      decider = new smtcheck_opensmt2t_lra();
+      decider = new smtcheck_opensmt2t_lra(_type_constraints);
   decider->set_itp_bool_alg(options.get_int_option("itp-algorithm"));
   decider->set_itp_euf_alg(options.get_int_option("itp-euf-algorithm"));
   decider->set_itp_lra_alg(options.get_int_option("itp-lra-algorithm"));

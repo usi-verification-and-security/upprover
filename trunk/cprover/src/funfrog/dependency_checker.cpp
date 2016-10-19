@@ -101,7 +101,7 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
 {
   try{
 
-  smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra();
+  smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra(0);
   decider->new_partition();
 
   convert_delta_SSA(*decider, c1, c2);

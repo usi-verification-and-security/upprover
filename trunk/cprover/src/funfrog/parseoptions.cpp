@@ -364,6 +364,10 @@ void funfrog_parseoptionst::help()
   "                               (treshold = number of SSA steps)\n"
   "                               and check stronger claims at once\n"
   "--unwind <bound>               loop unwind bound\n"
+  "--type-constraints             LRA's basic constraints on numerical data type\n"
+  "                                 0 for no additional constraints,\n"
+  "                                 1 for type constraints on non-deterministic input\n"
+  "                                 2 for type constraints on variables\n"
   "--no-slicing                   no slicing of the SSA program form (slower\n"
   "                               computation, more dependable result)\n"
   "--no-assert-grouping           do not group checks for the same assertion\n"
@@ -600,6 +604,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   // always use assumptions
   options.set_option("assumptions", true);
 
+  // Use basic check as defualt
+  options.set_option("type-constraints", 1);
+
   if(cmdline.isset("logic")) {
     options.set_option("logic", cmdline.getval("logic"));
   }
@@ -627,6 +634,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("unwindset")) {
     options.set_option("unwindset", cmdline.getval("unwindset"));
+  }
+  if (cmdline.isset("type-constraints")) {
+    options.set_option("type-constraints", cmdline.getval("type-constraints"));
   }
   if (cmdline.isset("claimset")) {
     options.set_option("claimset", cmdline.getval("claimset"));
