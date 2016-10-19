@@ -498,32 +498,86 @@ std::string smtcheck_opensmt2t_lra::create_bound_string(std::string base, int ex
 	  return ret;
 }
 
-void smtcheck_opensmt2t_lra::push_constraints2type(PTRef &var, std::string lower_b, std::string upper_b)
+PTRef& smtcheck_opensmt2t_lra::create_constraints2type(
+		PTRef &var,
+		std::string lower_b,
+		std::string upper_b)
 {
 	vec<PTRef> args;
-	vec<PTRef> args1; args1.push(var); args1.push(lralogic->mkConst(lower_b.c_str()));
+	vec<PTRef> args1; args1.push(lralogic->mkConst(lower_b.c_str())); args1.push(var);
 	vec<PTRef> args2; args2.push(var); args2.push(lralogic->mkConst(upper_b.c_str()));
-	PTRef ptl1 = lralogic->mkRealGeq(args1);
+	PTRef ptl1 = lralogic->mkRealLeq(args1);
 	PTRef ptl2 = lralogic->mkRealLeq(args2);
 	args.push(ptl1);
 	args.push(ptl2);
 	PTRef ptr = logic->mkAnd(args);
+
+	return ptr;
+}
+
+void smtcheck_opensmt2t_lra::push_assumes2type(
+		PTRef &var,
+		std::string lower_b,
+		std::string upper_b)
+{
+	PTRef ptr = create_constraints2type(var, lower_b, upper_b);
 	top_level_formulas.push(ptr);
+
+#ifdef SMT_DEBUG_VARS_BOUNDS
+	char *s = lralogic->printTerm(ptr);
+	cout << "; For Assume Constraints Created OpenSMT2 formula " << s << endl;
+	cout << "; For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
+	free(s);
+#endif
+}
+
+void smtcheck_opensmt2t_lra::push_asserts2type(
+		PTRef &var,
+		std::string lower_b,
+		std::string upper_b)
+{
+
+	PTRef ptr = create_constraints2type(var, lower_b, upper_b);
+	//.push(ptr);
+
+#ifdef SMT_DEBUG_VARS_BOUNDS
+	char *s = lralogic->printTerm(ptr);
+	cout << "; For Assert Constraints Created OpenSMT2 formula " << s << endl;
+	cout << "; For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
+	free(s);
+#endif
+}
+
+bool smtcheck_opensmt2t_lra::push_constraints2type(
+		PTRef &var,
+		bool is_non_det,
+		std::string lower_b,
+		std::string upper_b)
+{
+	if (is_non_det) // Add Assume
+		push_assumes2type(var, lower_b, upper_b);
+	else // Add assert
+		push_asserts2type(var, lower_b, upper_b);
+
+	return true;
 }
 
 // If the expression is a number adds constraints
 void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 {
 	if(!is_number(expr.type())) return ;
-	if (lralogic->isRealConst(var)) return; // if trivial no need for constraints
 
 	typet var_type = expr.type(); // Get the current type
 	if (var_type.is_nil()) return;
 
+	// Check the id is a var
+	assert((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol));
+
 	// Start building the constraints
 #ifdef SMT_DEBUG_VARS_BOUNDS
-	cout << "; For valiable " << expr.get(ID_identifier)
+	cout << "; For variable " << expr.get(ID_identifier)
 			<< " try to identify this type "<< var_type
+			<< ((expr.id() == ID_nondet_symbol) ? " that is non-det symbol" : " that is a regular symbol")
 			<< endl;
 #endif
 
@@ -531,6 +585,8 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 	int size = var_type.get_int("width");
 	const irep_idt type = var_type.get("#c_type");
 	const irep_idt &type_id=var_type.id_string();
+	bool is_add_constraints = false;
+	bool is_non_det = (expr.id() == ID_nondet_symbol);
 
 	// Start checking what it is
     if(type_id==ID_integer || type_id==ID_natural)
@@ -546,16 +602,18 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for unsigned " << ((size==32) ? "int" : "long") << endl;
 #endif
-    	// Add Assume
-    	push_constraints2type(var, "0", ((size==32) ? "4294967295" : "18446744073709551615"));
+    	std::string lower_bound = "0";
+    	std::string upper_bound = ((size==32) ? "4294967295" : "18446744073709551615");
+    	is_add_constraints = push_constraints2type(var, is_non_det, lower_bound, upper_bound);
     }
     else if(type_id==ID_signedbv) // int = 32, long = 64
     {
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for " << ((size==32) ? "int" : "long") << endl;
 #endif
-    	push_constraints2type(var, ((size==32) ? " −2147483648" : "−9223372036854775808"),
-    					((size==32) ? " 2147483647" : "9223372036854775807"));
+    	std::string lower_bound = ((size==32) ? "-2147483648" : "-9223372036854775808");
+    	std::string upper_bound = ((size==32) ? "2147483647" : "9223372036854775807");
+    	is_add_constraints = push_constraints2type(var, is_non_det, lower_bound, upper_bound);
     }
     else if(type_id==ID_fixedbv)
     {
@@ -566,11 +624,11 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for unsigned " << ((size==32) ? "float" : "double") << endl;
 #endif
-    	push_constraints2type(var,
-    			((size==32) ?
-    				("-" + create_bound_string("34028234", 38)) : ("-" + create_bound_string("17976931348623157", 308))),
-    			((size==32) ?
-    				create_bound_string("34028234", 38) : create_bound_string("17976931348623157", 308)));
+    	std::string lower_bound = ((size==32) ?
+				("-" + create_bound_string("34028234", 38)) : ("-" + create_bound_string("17976931348623157", 308)));
+    	std::string upper_bound = ((size==32) ?
+				create_bound_string("34028234", 38) : create_bound_string("17976931348623157", 308));
+    	is_add_constraints = push_constraints2type(var, is_non_det, lower_bound, upper_bound);
     }
     else
     {
@@ -579,7 +637,8 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 
 	// For numbers add constraints of upper and lower bounds
 #ifdef SMT_DEBUG_VARS_BOUNDS
-	cout << "; Add bounds constraints for type "
+    if (is_add_constraints)
+    	cout << "; Add bounds constraints for type "
 			<< var_type.get("#c_type") << " "
 			<< var_type.get_int("width") << "bits"
 			<< endl;

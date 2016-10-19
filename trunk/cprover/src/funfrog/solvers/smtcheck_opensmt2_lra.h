@@ -53,9 +53,31 @@ protected:
 
   bool isLinearOp(const exprt &expr, vec<PTRef> &args); // Check if we don't do sth. like nondet*nondet, but only const*nondet (e.g.)
 
-  void add_constraints2type(const exprt &expr, PTRef &var);
-  void push_constraints2type(PTRef &var, std::string lower_b, std::string upper_b);
-  std::string create_bound_string(std::string base, int exp);
+  /* Set of functions that add constraints to take care of overflow and underflow */
+  void add_constraints2type(const exprt &expr, PTRef &var); // add assume/assert on the data type
+
+  bool push_constraints2type(
+  		PTRef &var,
+		bool is_non_det,
+  		std::string lower_b,
+  		std::string upper_b); // Push the constraints of a data type
+
+  void push_assumes2type(
+  		PTRef &var,
+  		std::string lower_b,
+  		std::string upper_b); // Push assume to the higher level
+
+  void push_asserts2type(
+  		PTRef &var,
+  		std::string lower_b,
+  		std::string upper_b); // Push assert to the current partition
+
+  PTRef& create_constraints2type(
+  		PTRef &var,
+  		std::string lower_b,
+  		std::string upper_b); // create a formula with the constraints
+
+  std::string create_bound_string(std::string base, int exp); // build the string of the upper and lower bounds
 };
 
 #endif
