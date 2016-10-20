@@ -382,7 +382,7 @@ void funfrog_parseoptionst::help()
   "                                 0 for McMillan_s,\n"
   "                                 1 for Pudlak,\n"
   "                                 2 for McMillan_w\n"
-  "--itp-euf-algorithm            EUF interpolation algorithm:\n"
+  "--itp-uf-algorithm            EUF interpolation algorithm:\n"
   "                                 0 for Strong,\n"
   "                                 2 for Weak,\n"
   "                                 3 for Random\n"
@@ -615,8 +615,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("itp-algorithm", cmdline.getval("itp-algorithm"));
   }
 
-  if (cmdline.isset("itp-euf-algorithm")) {
-    options.set_option("itp-euf-algorithm", cmdline.getval("itp-euf-algorithm"));
+  if (cmdline.isset("itp-uf-algorithm")) {
+    options.set_option("itp-uf-algorithm", cmdline.getval("itp-uf-algorithm"));
   }
 
   if (cmdline.isset("itp-lra-algorithm")) {

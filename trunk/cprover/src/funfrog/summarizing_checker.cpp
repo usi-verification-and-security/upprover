@@ -22,7 +22,7 @@ void summarizing_checkert::initialize()
   else
       decider = new smtcheck_opensmt2t_lra(_type_constraints);
   decider->set_itp_bool_alg(options.get_int_option("itp-algorithm"));
-  decider->set_itp_euf_alg(options.get_int_option("itp-euf-algorithm"));
+  decider->set_itp_euf_alg(options.get_int_option("itp-uf-algorithm"));
   decider->set_itp_lra_alg(options.get_int_option("itp-lra-algorithm"));
   decider->set_verbosity(options.get_int_option("verbose-solver"));
   if(options.get_bool_option("reduce-proof"))
