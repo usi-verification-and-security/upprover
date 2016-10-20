@@ -520,8 +520,9 @@ void smtcheck_opensmt2t_lra::push_assumes2type(
 		std::string upper_b)
 {
 	if (type_constraints_level < 1 ) return;
+
 	PTRef ptr = create_constraints2type(var, lower_b, upper_b);
-	top_level_formulas.push(ptr);
+	set_to_true(ptr);
 
 #ifdef SMT_DEBUG_VARS_BOUNDS
 	char *s = lralogic->printTerm(ptr);
@@ -552,7 +553,7 @@ void smtcheck_opensmt2t_lra::push_asserts2type(
 #ifdef SMT_DEBUG_VARS_BOUNDS
 	char *s = lralogic->printTerm(ptr);
 	cout << "; For Assert Constraints Created OpenSMT2 formula " << s << endl;
-	cout << "; For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
+	cout << "; Pushed Formulat For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
 	free(s);
 #endif
 }
@@ -584,7 +585,7 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 
 	// Start building the constraints
 #ifdef SMT_DEBUG_VARS_BOUNDS
-	cout << "; For variable " << expr.get(ID_identifier)
+	cout << "; For variable " << expr.get(ID_identifier) << " in partition " << partition_count
 			<< " try to identify this type "<< var_type
 			<< ((expr.id() == ID_nondet_symbol) ? " that is non-det symbol" : " that is a regular symbol")
 			<< endl;
