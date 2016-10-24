@@ -1210,9 +1210,9 @@ bool smtcheck_opensmt2t::solve() {
       mainSolver->insertFormula(top_level_formulas[i], &msg);
   }
   pushed_formulas = top_level_formulas.size();
-#ifdef DEBUG_SMT2SOLVER
+//#ifdef DEBUG_SMT2SOLVER
   dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
-#endif
+//#endif
 
   sstat r = mainSolver->check();
 
@@ -1363,7 +1363,6 @@ Function: smtcheck_opensmt2t::dump_on_error
 
 \*******************************************************************/
 void smtcheck_opensmt2t::dump_on_error(std::string location) {
-
 	  //If have problem with declaration of vars - uncommen this!
 #ifdef DEBUG_SMT2SOLVER
 	  cout << "; XXX SMT-lib --> Current Logic Translation XXX" << endl;
@@ -1377,7 +1376,9 @@ void smtcheck_opensmt2t::dump_on_error(std::string location) {
 	  logic->dumpHeaderToFile(cout);
 	  cout << "(assert\n  (and" << endl;
 	  for(int i = 0; i < top_level_formulas.size(); ++i) {
-		  char *s = logic->printTerm(top_level_formulas[i]);
+		  PTRef tmp;
+		  logic->conjoinItes(top_level_formulas[i], tmp);
+		  char *s = logic->printTerm(tmp);
 	      cout << "; XXX Partition: " << i << endl << "    " << s << endl;
 	      free(s);
 	  }
