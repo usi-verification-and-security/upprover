@@ -85,15 +85,15 @@ include ../common
 
 CP_CXXFLAGS += -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING -L/home/hyvaeria/opensmt2-install/lib
 
-all: evolcheck$(EXEEXT) 
+all: hifrog-prop$(EXEEXT) 
 
 INCLUDES :=  -I .. -I ../util -I/home/hyvaeria/opensmt2-install/include
 
 
 ###############################################################################
 
-evolcheck$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline -L/home/hyvaeria/opensmt2-install/lib
+hifrog-prop$(EXEEXT): $(FUNFROG_OBJ)
+	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline
 
 sumo$(EXEEXT): $(SUMO_OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline
