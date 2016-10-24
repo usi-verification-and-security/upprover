@@ -14,14 +14,15 @@
 void summarizing_checkert::initialize()
 {
   string _logic = options.get_option("logic");
+  int _type_constraints = options.get_int_option("type-constraints");
   if(_logic == "qfuf")
       decider = new smtcheck_opensmt2t();
   else if(_logic == "qflra")
-      decider = new smtcheck_opensmt2t_lra();
+      decider = new smtcheck_opensmt2t_lra(_type_constraints);
   else
-      decider = new smtcheck_opensmt2t_lra();
+      decider = new smtcheck_opensmt2t_lra(_type_constraints);
   decider->set_itp_bool_alg(options.get_int_option("itp-algorithm"));
-  decider->set_itp_euf_alg(options.get_int_option("itp-euf-algorithm"));
+  decider->set_itp_euf_alg(options.get_int_option("itp-uf-algorithm"));
   decider->set_itp_lra_alg(options.get_int_option("itp-lra-algorithm"));
   decider->set_verbosity(options.get_int_option("verbose-solver"));
   if(options.get_bool_option("reduce-proof"))
@@ -142,9 +143,9 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 
     if (!end){
 
-      if (options.get_bool_option("claims-order") && count == 1){
-      dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_int_option("claims-order")).do_it();
-         status(std::string("Ignored SSA steps after dependency checker: ") + i2string(equation.count_ignored_SSA_steps()));
+      if (options.get_bool_option("claims-opt") && count == 1){
+      dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_int_option("claims-opt")).do_it();
+         status(std::string("Ignored SSA steps after assertion optimizations: ") + i2string(equation.count_ignored_SSA_steps()));
       }
 
       end = prop.assertion_holds(assertion, ns, *decider, *decider);

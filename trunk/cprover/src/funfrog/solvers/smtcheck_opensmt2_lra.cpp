@@ -6,8 +6,10 @@ Author: Grigory Fedyukovich
 
 \*******************************************************************/
 #include "smtcheck_opensmt2_lra.h"
+#include <util/type.h>
 
 //#define SMT_DEBUG
+//#define SMT_DEBUG_VARS_BOUNDS
 
 void smtcheck_opensmt2t_lra::initializeSolver()
 {
@@ -106,9 +108,7 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
 
 	// Check the conversion from string to real was done properly - do not erase!
 	assert(!lralogic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
-    if(expr.is_constant() && is_number(expr.type())) { // Const and a number
-    	assert(!lralogic->isRealZero(rconst) || (expr.is_zero())); // If fails here for zero, check if also the negation is not zero
-    } else if(expr.is_constant() && expr.is_boolean()){
+	if(expr.is_constant() && (expr.is_boolean() || is_number(expr.type()))){
     	exprt temp_check = exprt(expr); temp_check.negate();
 		assert(!lralogic->isRealZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
 		// If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
@@ -136,6 +136,11 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr) {
     	// Cast from Boolean to Real - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	PTRef ptl = lralogic->mkIte(literals[lt.var_no()], lralogic->mkConst("1"), lralogic->mkConst("0"));
+    	l = push_variable(ptl); // Keeps the new literal + index it
+    } else if (expr.is_boolean() && is_number((expr.operands())[0].type())) {
+    	// Cast from Real to Boolean - Add
+    	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
+    	PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], lralogic->mkConst("0")));
     	l = push_variable(ptl); // Keeps the new literal + index it
 	} else {
     	l = convert((expr.operands())[0]);
@@ -181,11 +186,12 @@ PTRef smtcheck_opensmt2t_lra::div_real(const exprt &expr, vec<PTRef> &args) {
 	PTRef ptl;
 
 	bool is_lin_op = isLinearOp(expr,args);
+	bool is_of_legal_form2solver = lralogic->isRealTerm(args[0]) &&  lralogic->isConstant(args[1]);
 	#ifdef SMT_DEBUG
 		assert(is_lin_op);
 		ptl = lralogic->mkRealDiv(args);
 	#else
-		if (!is_lin_op)
+		if ((!is_lin_op) || (!is_of_legal_form2solver))
 			return runsupported2var(expr);
 
 		// If linear op, try to create it
@@ -468,6 +474,8 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 
     l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
 
+    if (type_constraints_level > 0)
+    	add_constraints2type(expr, var);
 
 #ifdef DEBUG_SMT2SOLVER
 	std::string add_var = str + " () " + getVarData(var);
@@ -477,6 +485,174 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 #endif
 
 	return l;
+}
+
+std::string smtcheck_opensmt2t_lra::create_bound_string(std::string base, int exp)
+{
+	  std::string ret = base;
+	  int size = exp - base.size() + 1; // for format 3.444444
+	  for (int i=0; i<size;i++)
+		  ret+= "0";
+
+	  return ret;
+}
+
+PTRef& smtcheck_opensmt2t_lra::create_constraints2type(
+		PTRef &var,
+		std::string lower_b,
+		std::string upper_b)
+{
+	vec<PTRef> args;
+	vec<PTRef> args1; args1.push(lralogic->mkConst(lower_b.c_str())); args1.push(var);
+	vec<PTRef> args2; args2.push(var); args2.push(lralogic->mkConst(upper_b.c_str()));
+	PTRef ptl1 = lralogic->mkRealLeq(args1);
+	PTRef ptl2 = lralogic->mkRealLeq(args2);
+	args.push(ptl1);
+	args.push(ptl2);
+	PTRef ptr = logic->mkAnd(args);
+
+	return ptr;
+}
+
+void smtcheck_opensmt2t_lra::push_assumes2type(
+		PTRef &var,
+		std::string lower_b,
+		std::string upper_b)
+{
+	if (type_constraints_level < 1 ) return;
+
+	PTRef ptr = create_constraints2type(var, lower_b, upper_b);
+	set_to_true(ptr);
+
+#ifdef SMT_DEBUG_VARS_BOUNDS
+	char *s = lralogic->printTerm(ptr);
+	cout << "; For Assume Constraints Created OpenSMT2 formula " << s << endl;
+	cout << "; For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
+	free(s);
+#endif
+}
+
+void smtcheck_opensmt2t_lra::push_asserts2type(
+		PTRef &var,
+		std::string lower_b,
+		std::string upper_b)
+{
+	if (type_constraints_level < 2) return;
+
+	// Else add the checks
+	PTRef ptr = create_constraints2type(var, lower_b, upper_b);
+
+	if (is_var_constraints_empty)
+	{
+		is_var_constraints_empty = false;
+		ptr_assert_var_constraints = ptr;
+	}
+	else
+		ptr_assert_var_constraints = lralogic->mkAnd(ptr_assert_var_constraints, ptr);
+
+#ifdef SMT_DEBUG_VARS_BOUNDS
+	char *s = lralogic->printTerm(ptr);
+	cout << "; For Assert Constraints Created OpenSMT2 formula " << s << endl;
+	cout << "; Pushed Formulat For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
+	free(s);
+#endif
+}
+
+bool smtcheck_opensmt2t_lra::push_constraints2type(
+		PTRef &var,
+		bool is_non_det,
+		std::string lower_b,
+		std::string upper_b)
+{
+	if (is_non_det) // Add Assume
+		push_assumes2type(var, lower_b, upper_b);
+	else // Add assert
+		push_asserts2type(var, lower_b, upper_b);
+
+	return true;
+}
+
+// If the expression is a number adds constraints
+void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
+{
+	if(!is_number(expr.type())) return ;
+
+	typet var_type = expr.type(); // Get the current type
+	if (var_type.is_nil()) return;
+
+	// Check the id is a var
+	assert((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol));
+
+	// Start building the constraints
+#ifdef SMT_DEBUG_VARS_BOUNDS
+	cout << "; For variable " << expr.get(ID_identifier) << " in partition " << partition_count
+			<< " try to identify this type "<< var_type
+			<< ((expr.id() == ID_nondet_symbol) ? " that is non-det symbol" : " that is a regular symbol")
+			<< endl;
+#endif
+
+	//gets the property
+	int size = var_type.get_int("width");
+	const irep_idt type = var_type.get("#c_type");
+	const irep_idt &type_id=var_type.id_string();
+	bool is_add_constraints = false;
+	bool is_non_det = (expr.id() == ID_nondet_symbol);
+
+	// Start checking what it is
+    if(type_id==ID_integer || type_id==ID_natural)
+    {
+    	assert(0); // need to see an example!
+    }
+    else if(type_id==ID_rational)
+    {
+    	assert(0); // need to see an example!
+    }
+    else if(type_id==ID_unsignedbv) // unsigned int = 32, unsigned long = 64
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    	cout << "; Adding new constraint for unsigned " << ((size==32) ? "int" : "long") << endl;
+#endif
+    	std::string lower_bound = "0";
+    	std::string upper_bound = ((size==32) ? "4294967295" : "18446744073709551615");
+    	is_add_constraints = push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+    }
+    else if(type_id==ID_signedbv) // int = 32, long = 64
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    	cout << "; Adding new constraint for " << ((size==32) ? "int" : "long") << endl;
+#endif
+    	std::string lower_bound = ((size==32) ? "-2147483648" : "-9223372036854775808");
+    	std::string upper_bound = ((size==32) ? "2147483647" : "9223372036854775807");
+    	is_add_constraints = push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+    }
+    else if(type_id==ID_fixedbv)
+    {
+    	assert(0); // need to see an example!
+    }
+    else if(type_id==ID_floatbv) // float = 32, double = 64
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    	cout << "; Adding new constraint for unsigned " << ((size==32) ? "float" : "double") << endl;
+#endif
+    	std::string lower_bound = ((size==32) ?
+				("-" + create_bound_string("34028234", 38)) : ("-" + create_bound_string("17976931348623157", 308)));
+    	std::string upper_bound = ((size==32) ?
+				create_bound_string("34028234", 38) : create_bound_string("17976931348623157", 308));
+    	is_add_constraints = push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+    }
+    else
+    {
+    	assert(0); // need to see an example!
+    }
+
+	// For numbers add constraints of upper and lower bounds
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    if (is_add_constraints)
+    	cout << "; Add bounds constraints for type "
+			<< var_type.get("#c_type") << " "
+			<< var_type.get_int("width") << "bits"
+			<< endl;
+#endif
 }
 
 literalt smtcheck_opensmt2t_lra::lconst(const exprt &expr)
@@ -515,7 +691,7 @@ bool smtcheck_opensmt2t_lra::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 	// Must be false if there is more than one var
 	int count_var = 0;
 	for (int i=0; i< args.size(); i++) {
-		count_var += lralogic->isRealVar(args[i]) ? 1 : 0;
+		count_var += lralogic->isConstant(args[i]) ? 0 : 1;
 	}
 	if (count_var > 1) {
 #ifdef SMT_DEBUG

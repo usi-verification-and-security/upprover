@@ -53,12 +53,12 @@ void dependency_checkert::do_it(){
 
     hl_list.close();
 
-    cout << "SSA Assertions: " << asserts.size();
-    cout << endl;
+//    cout << "SSA Assertions: " << asserts.size();
+//    cout << endl;
 
   duration = current_time();
   duration = duration - initial;
-  std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << endl;
+//  std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << endl;
 
   initial=current_time();
 
@@ -67,7 +67,7 @@ void dependency_checkert::do_it(){
 
   duration = current_time();
   duration = duration - initial;
-  std::cout << "TIME FOR find_assert_deps: " << (duration) << endl;
+//  std::cout << "TIME FOR find_assert_deps: " << (duration) << endl;
 
   initial = current_time();
 
@@ -81,9 +81,9 @@ void dependency_checkert::do_it(){
   durationto = durationto - initial;
   durationto = durationto - to_time;
 
-  std::cout << "TIME FOR find_implications: " << (duration) << endl;
-  std::cout << "TIME exceeding timeouts: " << (to_time) << endl;
-  std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << endl;
+  std::cout << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << endl;
+//  std::cout << "TIME exceeding timeouts: " << (to_time) << endl;
+//  std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << endl;
 
   //TODO: make a proper cmd-parameter
   ifstream just_dep;
@@ -101,7 +101,7 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
 {
   try{
 
-  smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra();
+  smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra(0);
   decider->new_partition();
 
   convert_delta_SSA(*decider, c1, c2);
@@ -209,7 +209,7 @@ void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool>
     //FIXME: Determine if compression is needed for greater efficiency
     //deps_ds.compress_sets(equation_symbols.begin(), equation_symbols.end());
 
-    cout << "Number of disjoint variable sets: " << (int)deps_ds.count_sets(equation_symbols.begin(), equation_symbols.end()) << endl;
+//    cout << "Number of disjoint variable sets: " << (int)deps_ds.count_sets(equation_symbols.begin(), equation_symbols.end()) << endl;
 
 }
 
@@ -274,8 +274,8 @@ void dependency_checkert::find_assert_deps()
         }
     }
 
-    cout << "Syntactic independencies found: " << (indeps - deps) << endl;
-    cout << "Syntactic dependencies found: " << deps << endl;
+//    cout << "Syntactic independencies found: " << (indeps - deps) << endl;
+//    cout << "Syntactic dependencies found: " << deps << endl;
 
 }
 
@@ -299,7 +299,7 @@ long dependency_checkert::find_implications()
   unsigned discarded = 0;
   int checks=0;
   int impchecks=0;
-  vector<bool> stronger(asserts.size(), false);
+//  vector<bool> stronger(asserts.size(), false);
   vector<bool> weaker(asserts.size(), false);
   
     /*
@@ -353,15 +353,15 @@ long dependency_checkert::find_implications()
           if (checkres.second.get_t() <= impl_timeout)
           {
             assert_imps[assert_1][assert_2] = IMP;
-            if (VERBOSE)
-            {
-              std::cout << "Adding the assertion implication \n (" <<
-                from_expr(ns, "", (*assert_1)->cond_expr) << ") [" << (*assert_1)->source.pc->location.get_line() << "] [stronger] \n => \n (" <<
-                from_expr(ns, "", (*assert_2)->cond_expr) << ") [" << (*assert_2)->source.pc->location.get_line() << "] [weaker]" << endl;
-            }
+//            if (VERBOSE)
+//            {
+//              std::cout << "Adding the assertion implication \n (" <<
+//                from_expr(ns, "", (*assert_1)->cond_expr) << ") [" << (*assert_1)->source.pc->location.get_line() << "] [stronger] \n => \n (" <<
+//                from_expr(ns, "", (*assert_2)->cond_expr) << ") [" << (*assert_2)->source.pc->location.get_line() << "] [weaker]" << endl;
+//            }
 
-            weaker[i] = true;
-            stronger[j] = true;
+            weaker[j] = true;
+//            stronger[j] = true;
             hl_may_impl << (*assert_1)->source.pc->location.get_claim() << " " <<
                 (*assert_2)->source.pc->location.get_claim() << " " <<
                 distance(SSA_steps.begin(), assert_1) << " " <<
@@ -399,43 +399,48 @@ long dependency_checkert::find_implications()
 
   hl_may_impl.close();
 
-  cout << "Discarded assertions: " << discarded << endl;
+//  cout << "Discarded assertions: " << discarded << endl;
   if (notdisc > 0) cout << "WARNING: " << notdisc << " true implications exceeded timeout!" << endl;
 
-  cout << "Total number of implication checks: " << impchecks << endl;
-  cout << "Total number of comparisons: " << checks << endl;
+//  cout << "Total number of implication checks: " << impchecks << endl;
+//  cout << "Total number of comparisons: " << checks << endl;
 
   for (int i = asserts.size() - 1; i >= 0; i--)
   //for (unsigned i = 0; i < asserts.size(); i++)
   {
-      // GF: to test
     if (weaker[i] == true)
 	  {
 		  SSA_step_reft& removable = asserts[i];
-      cout << "Removing << " << (*removable)->source.pc->location.get_line() << "\n";
+      cout << "\nRedundant assertion at:\n" <<
+	  "  file \"" << (*removable)->source.pc->location.get_file() <<
+	  "\",\n  function \"" << (*removable)->source.pc->location.get_function() <<
+	  "\",\n  line " << (*removable)->source.pc->location.get_line() << ":\n  " <<
+          from_expr(ns, "", (*removable)->source.pc->guard) << "\n\n";
+
+
       (*removable)->ignore = true;
 	}
   }
-  try{
-    ofstream hl_stronger;
-    ofstream hl_weaker;
-    hl_stronger.open ("__hl_stronger");
-    hl_weaker.open ("__hl_weaker");
-    for (int i = asserts.size() - 1; i >= 0; i--){
-      SSA_step_reft& ass = asserts[i];
-      if (weaker[i] == true)
-        hl_weaker << (*ass)->source.pc->location.get_claim().c_str() << endl;
-      if (stronger[i] == true)
-        hl_stronger << (*ass)->source.pc->location.get_claim().c_str() << endl;
-    }
-
-    hl_stronger.close();
-    hl_weaker.close();
-  }  catch (const bad_alloc &e)
-  {
-    cout  << "smth is very wrong: " << e.what()  << endl;
-
-  }
+//  try{
+//    ofstream hl_stronger;
+//    ofstream hl_weaker;
+//    hl_stronger.open ("__hl_stronger");
+//    hl_weaker.open ("__hl_weaker");
+//    for (int i = asserts.size() - 1; i >= 0; i--){
+//      SSA_step_reft& ass = asserts[i];
+//      if (weaker[i] == true)
+//        hl_weaker << (*ass)->source.pc->location.get_claim().c_str() << endl;
+//      if (stronger[i] == true)
+//        hl_stronger << (*ass)->source.pc->location.get_claim().c_str() << endl;
+//    }
+//
+//    hl_stronger.close();
+//    hl_weaker.close();
+//  }  catch (const bad_alloc &e)
+//  {
+//    cout  << "smth is very wrong: " << e.what()  << endl;
+//
+//  }
   return to_time;
 
 }
@@ -727,7 +732,7 @@ void dependency_checkert::convert_assumptions(
   SSA_step_reft it=it1;
   while(it!=it2)
   {
-    if(((*it)->is_assume() || ((*it)->is_assert() && it ==it1)) && !(*it)->ignore)
+    if(((*it)->is_assume() || ((*it)->is_assert() && it != it2)) && !(*it)->ignore)
     {
        //std::cout << "convert assume :" << from_expr(ns, "", (*it)->cond_expr) <<"\n";
        decider.set_to_true((*it)->cond_expr);

@@ -332,101 +332,86 @@ int funfrog_parseoptionst::doit()
 void funfrog_parseoptionst::help()
 {
   std::cout <<"\n"
-    "* * *                hiFrog " << HIFROG_VERSION
-    " - Copyright (C) 2016                    * * *\n"
-    "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
-    "                based on FUNFROG " << FUNFROG_VERSION
-    " - Copyright (C) 2013               * * *\n"
-    "                based on eVolCheck " << EVOLCHECK_VERSION
-    " - Copyright (C) 2013             * * *\n"
-    "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
+    "* * *                HiFrog " << HIFROG_VERSION
+//    " - Copyright (C) 2016                    * * *\n"
+//    "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
+//    "                based on FUNFROG " << FUNFROG_VERSION
+//    " - Copyright (C) 2013               * * *\n"
+//    "                based on eVolCheck " << EVOLCHECK_VERSION
+//    " - Copyright (C) 2013             * * *\n"
+//    "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
   "\n"
   "Usage:                         Purpose:\n"
   "\n"
-  " evolcheck [-?] [-h] [--help]    show help\n"
-  " evolcheck [options] <file>      run on goto-binary `file'\n"
-  "\nDisplay options:\n"
+  " hifrog [-?] [-h] [--help]    show help\n"
+  " hifrog [options] <file>      run on goto-binary `file'\n"
+  "\nGeneral Purpose options:\n"
   "--version                      show version information\n"
-  "--show-symbol-table            show symbol table\n"
-  "--show-program                 show goto program (as loaded)\n"
-  "--show-*-program               show intermediate program, where\n"
-  "                               * is one of transformed, inlined,\n"
-  "                               fpfreed, instrumented, claimed,\n"
-  "                               abstracted, dereferenced, leaping\n"
-  "--save-*-program               like --show-*-program, but save the\n"
-  "                               program to goto_program_*\n"
   "--save-summaries <filename>    save collected function summaries\n"
   "                               to the given file\n"
   "--load-summaries <filename>    load function summaries\n"
   "                               from the given file\n"
-  "--save-omega <filename>        save the last used substitution scenario\n"
-  "                               to the given file\n"
-  "--load-omega <filename>        load substitution scenario\n"
-  "                               from the given file\n"
-  "--no-progress                  turn off progress display\n"
-  "--save-queries                 save SAT queries and configuration\n"
-  "\nUpgrade options:\n"
-  "--init-upgrade-check           prepare for upgrade checking\n"
-  "--do-upgrade-check <filename>  incremental upgrade check with the specified\n"
-  "                               upgraded version (goto-binary)\n"
-  "--save-change-impact <xml>     save call-tree representing the change impact in xml file\n"
-  "                               (by default in __calltree.xml)\n"
-  "\nProof Engine options:\n"
-  "--logic <logic>                [qfuf, qflra] if not present qflra is used\n"
-  "--list-templates               dump the templates of the functions for user generated summaries\n"
   "--show-claims                  output the claims list\n"
-  "--show-pass                    report passed claims\n"
-  "--suppress-fail                don't report failed claims\n"
-  "--save-claims                  save claim info in `file'_data/claim*\n"
-  "--bounds-check                 enable array bounds checks\n"
-  "--div-by-zero-check            enable division by zero checks\n"
-  "--pointer-check                enable pointer checks\n"
-  "--overflow-check               enable arithmetic over- and underflow checks\n"
-  "--nan-check                    check floating-point for NaN\n"
-  "--assertions                   add user supplied assertions\n"
+//  "--bounds-check                 enable array bounds checks\n"
+//  "--div-by-zero-check            enable division by zero checks\n"
+//  "--pointer-check                enable pointer checks\n"
+//  "--overflow-check               enable arithmetic over- and underflow checks\n"
+//  "--nan-check                    check floating-point for NaN\n"
   "--claim <int>                  check a specific claim\n"
   "--claimset <int,int,...>       check specific claims separated by comas\n"
   "--all-claims                   check all claims in one run\n"
-  "--claims-order <steps>         remove weaker claims using the given treshold\n"
+  "--claims-opt <steps>           remove weaker claims using the given treshold\n"
   "                               (treshold = number of SSA steps)\n"
   "                               and check stronger claims at once\n"
   "--unwind <bound>               loop unwind bound\n"
-  "--unwindset <label:bound,...>  set of loop unwind bound for specific\n"
-  "                               loops\n"
+  "--type-constraints             LRA's basic constraints on numerical data type\n"
+  "                                 0 for no additional constraints,\n"
+  "                                 1 for type constraints on non-deterministic input\n"
+  "                                 2 for type constraints on variables\n"
   "--no-slicing                   no slicing of the SSA program form (slower\n"
   "                               computation, more dependable result)\n"
   "--no-assert-grouping           do not group checks for the same assertion\n"
   "                               with different call stack\n"
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
+  "--no-error-trace               disable the counter example's print once a real bug found\n\n"
+  "\nSMT, Interpolation and Proof Reduction options:\n"
+  "--logic <logic>                [qfuf, qflra] if not present qflra is used\n"
   "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
-  "--itp-algorithm                propositional interpolation algorithm - 0 for McMillan_s, 1 for Pudlak, 2 for McMillan_w\n"
-  "--itp-euf-algorithm            EUF interpolation algorithm - 0 for Strong, 2 for Weak, 3 for Random\n"
-  "--itp-lra-algorithm            LRA interpolation algorithm - 0 for Strong, 2 for Weak\n"
-  "--no-error-trace               disable the counter example's print once a real bug found\n"
-  "\nProof Reduction options:\n"
+  "--itp-algorithm                propositional interpolation algorithm: \n"
+  "                                 0 for McMillan_s,\n"
+  "                                 1 for Pudlak,\n"
+  "                                 2 for McMillan_w\n"
+  "--itp-uf-algorithm            EUF interpolation algorithm:\n"
+  "                                 0 for Strong,\n"
+  "                                 2 for Weak,\n"
+  "                                 3 for Random\n"
+  "--itp-lra-algorithm            LRA interpolation algorithm:\n"
+  "                                 0 for Strong,\n"
+  "                                 2 for Weak\n"
   "--reduce-proof                 enables Proof Reduction\n"
   "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
   "--reduce-proof-loops           number of reduction iterations\n"
-  "\nRefinement options:\n"
-  "--refine-mode <mode>:\n"
-  "  0 | \"force-inlining\"         inline every function call\n"
-  "                               after an unsuccessful attempt\n"
-  "                               of summary substitution\n"
-  "  1 | \"random-substitution\"    try to randomly choose function calls\n"
-  "                               to be inlined\n"
-  "  2 | \"slicing-result\"         try to choose function calls to be inlined\n"
-  "                               based on slicing results\n"
-  "\nOptions of first refinement iteration:\n"
-  "--init-mode <mode>\n"
-  "  0 | \"havoc-all\"              start with nondeterministic assignments\n"
-  "                               for all function calls\n"
-  "  1 | \"use-summaries\"          start with substituting all existent summaries\n"
-  "                               for all function calls\n"
+  "--list-templates               dump the templates of the functions for user-defined summaries\n"
+//  "\nRefinement options:\n"
+//  "--refine-mode <mode>:\n"
+//  "  0 | \"force-inlining\"         inline every function call\n"
+//  "                               after an unsuccessful attempt\n"
+//  "                               of summary substitution\n"
+//  "  1 | \"random-substitution\"    try to randomly choose function calls\n"
+//  "                               to be inlined\n"
+//  "  2 | \"slicing-result\"         try to choose function calls to be inlined\n"
+//  "                               based on slicing results\n"
+//  "\nOptions of first refinement iteration:\n"
+//  "--init-mode <mode>\n"
+//  "  0 | \"havoc-all\"              start with nondeterministic assignments\n"
+//  "                               for all function calls\n"
+//  "  1 | \"use-summaries\"          start with substituting all existent summaries\n"
+//  "                               for all function calls\n"
 //  "                               is being disabled by \"force-inlining\"\n"
-  "\nI/O options:\n"
-  "--xml-ui                       use XML-formatted output\n"
-  "--xml-interface                stdio-XML interface\n"
+//  "\nI/O options:\n"
+//  "--xml-ui                       use XML-formatted output\n"
+//  "--xml-interface                stdio-XML interface\n"
   "\n";
 }
 
@@ -539,18 +524,18 @@ bool funfrog_parseoptionst::check_function_summarization(
     // perform standalone check (all the functionality remains the same)
   
     if(cmdline.isset("claim") &&
-        (cmdline.isset("all-claims") || cmdline.isset("claimset") || cmdline.isset("claims-order"))) {
+        (cmdline.isset("all-claims") || cmdline.isset("claimset") || cmdline.isset("claims-opt"))) {
       error("A specific claim cannot be specified if any other claim specification is set.");
       return 1;
     }
 
     if(cmdline.isset("all-claims") &&
-        (cmdline.isset("claimset") || cmdline.isset("claims-order"))) {
+        (cmdline.isset("claimset") || cmdline.isset("claims-opt"))) {
       error("All claims cannot be specified if any other claim specification is set.");
       return 1;
     }
 
-    if(cmdline.isset("claimset") && cmdline.isset("claims-order")) {
+    if(cmdline.isset("claimset") && cmdline.isset("claims-opt")) {
       error("A specific claimset cannot be specified if any other claim specification is set.");
       return 1;
     }
@@ -562,7 +547,7 @@ bool funfrog_parseoptionst::check_function_summarization(
       }
     }
 
-    if (cmdline.isset("claims-order"))
+    if (cmdline.isset("claims-opt"))
       store_claims(ns, claim_map, claim_numbers);
 
     check_claims(ns,
@@ -619,6 +604,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   // always use assumptions
   options.set_option("assumptions", true);
 
+  // Use basic check as defualt
+  options.set_option("type-constraints", 1);
+
   if(cmdline.isset("logic")) {
     options.set_option("logic", cmdline.getval("logic"));
   }
@@ -627,8 +615,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("itp-algorithm", cmdline.getval("itp-algorithm"));
   }
 
-  if (cmdline.isset("itp-euf-algorithm")) {
-    options.set_option("itp-euf-algorithm", cmdline.getval("itp-euf-algorithm"));
+  if (cmdline.isset("itp-uf-algorithm")) {
+    options.set_option("itp-uf-algorithm", cmdline.getval("itp-uf-algorithm"));
   }
 
   if (cmdline.isset("itp-lra-algorithm")) {
@@ -647,11 +635,14 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   if (cmdline.isset("unwindset")) {
     options.set_option("unwindset", cmdline.getval("unwindset"));
   }
+  if (cmdline.isset("type-constraints")) {
+    options.set_option("type-constraints", cmdline.getval("type-constraints"));
+  }
   if (cmdline.isset("claimset")) {
     options.set_option("claimset", cmdline.getval("claimset"));
   }
-  if (cmdline.isset("claims-order")) {
-    options.set_option("claims-order", cmdline.getval("claims-order"));
+  if (cmdline.isset("claims-opt")) {
+    options.set_option("claims-opt", cmdline.getval("claims-opt"));
   }
   if (cmdline.isset("do-upgrade-check")) {
     options.set_option("do-upgrade-check", cmdline.getval("do-upgrade-check"));

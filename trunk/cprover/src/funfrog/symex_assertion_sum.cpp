@@ -823,9 +823,9 @@ void symex_assertion_sumt::return_assignment_and_mark(
 //# ifndef DEBUG_PARTITIONING
   const irep_idt &function_id = partition_iface.function_id;
   irep_idt retval_symbol_id(
-          "funfrog::" + as_string(function_id) + "::?retval");
+          as_string(function_id) + "::?retval");
   irep_idt retval_tmp_id(
-          "funfrog::" + as_string(function_id) + "::?retval_tmp");
+          as_string(function_id) + "::?retval_tmp");
 /* FIXME: This possibly breaks typing of return values
 # else
   irep_idt retval_symbol_id("funfrog::?retval");
@@ -1212,9 +1212,9 @@ void symex_assertion_sumt::produce_callsite_symbols(
   irep_idt error_id = "funfrog::" + as_string(partition_iface.function_id) +
           "::?error_symbol";
 # else
-  irep_idt callstart_id = "funfrog::?callstart_symbol";
-  irep_idt callend_id = "funfrog::?callend_symbol";
-  irep_idt error_id = "funfrog::?error_symbol";
+  irep_idt callstart_id = "hifrog::?fun_start";
+  irep_idt callend_id = "hifrog::?fun_end";
+  irep_idt error_id = "hifrog::?err";
 # endif
 
   partition_iface.callstart_symbol.set_identifier(

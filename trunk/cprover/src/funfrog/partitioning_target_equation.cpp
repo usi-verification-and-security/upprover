@@ -384,7 +384,10 @@ void partitioning_target_equationt::convert_partition_assertions(
 					, it->cond_expr, true);
 #	  endif
 			// Collect ass \in assertions(f) in bv
-			literalt tmp_literal = decider.convert(it->cond_expr);
+			literalt tmp_literal = (decider.is_exist_var_constraints()) ?
+					decider.land(decider.convert(it->cond_expr), decider.lassert_var())
+					:decider.convert(it->cond_expr);
+
 			/*if (isTypeCastConst(it->cond_expr)) { // take care of assert(0); or assert(56); etc.
 				literalt const_0_literal = decider.const_var_Real("0");
 				literalt const_cond_literal = tmp_literal = decider.convert(

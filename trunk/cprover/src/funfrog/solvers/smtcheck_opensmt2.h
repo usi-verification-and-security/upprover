@@ -39,7 +39,8 @@ public:
       reduction(false),
       reduction_graph(3),
       reduction_loops(2),
-      verbosity(0)
+      verbosity(0),
+	  is_var_constraints_empty(true)
   {
     initializeSolver();
   }
@@ -81,6 +82,10 @@ public:
   bool is_assignemt_true(literalt a) const;
 
   virtual exprt get_value(const exprt &expr);
+
+  virtual literalt lassert_var() { assert(0);}
+
+  bool is_exist_var_constraints() { return !is_var_constraints_empty;}
 
   virtual literalt convert(const exprt &expr);
 
@@ -167,6 +172,8 @@ protected:
   Logic* logic;
   MainSolver* mainSolver;
   vec<PTRef> top_level_formulas;
+
+  bool is_var_constraints_empty;
 
   map<size_t, literalt> converted_exprs;
 
