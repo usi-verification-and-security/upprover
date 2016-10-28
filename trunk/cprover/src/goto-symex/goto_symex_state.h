@@ -58,10 +58,10 @@ public:
       return it==current_names.end()?0:it->second.second;
     }
 
-    void increase_counter(const irep_idt &identifier)
+    unsigned int increase_counter(const irep_idt &identifier)
     {
       assert(current_names.find(identifier)!=current_names.end());
-      ++current_names[identifier].second;
+      return ++current_names[identifier].second;
     }
 
     void get_variables(hash_set_cont<ssa_exprt, irep_hash> &vars) const

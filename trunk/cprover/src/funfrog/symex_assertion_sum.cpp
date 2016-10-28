@@ -644,11 +644,17 @@ void symex_assertion_sumt::assign_function_arguments(
   // NOTE: The exec_order is not used now.
   
   if (goto_function.type.return_type().id() != ID_empty) {
+      //std::cout << "; Before call " << (function_call.lhs().is_nil()) << std::endl;
+      //expr_pretty_print(std::cout << "check: ", function_call); std::cout << std::endl;
+      //std::cout << (function_call.lhs().get(ID_identifier) == "return'!0") << " and code: " << function_call.pretty() << std::endl;
     // Add return value assignment from a temporary variable and
     // store the temporary return value symbol somewhere (so that we can
     // use it later, when processing the deferred function).
+    // KE: the nil (function_call.lhs().is_nil()), changed into |return'!0|
+    // Fix the flag according to the string return'!0. 
+    // TODO: find what is the right symbol
     return_assignment_and_mark(goto_function.type, state, &(function_call.lhs()),
-            partition_iface, function_call.lhs().is_nil());
+            partition_iface, (function_call.lhs().get(ID_identifier) == "return'!0"));
   } else {
     partition_iface.retval_symbol = symbol_exprt();
   }
@@ -839,7 +845,12 @@ void symex_assertion_sumt::return_assignment_and_mark(
   symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state), type);
   symbol_exprt retval_tmp(retval_tmp_id, type);
   add_symbol(retval_tmp_id, type, false);
-  add_symbol(retval_symbol_id, type, false);
+  add_symbol(retval_symbol_id, type, true);
+  //expr_pretty_print(std::cout << (!skip_assignment) << "Marking return symbol: ", retval_symbol); std::cout << std::endl;
+  //expr_pretty_print(std::cout << (!skip_assignment) << "Marking return tmp symbol: ", retval_tmp); std::cout << std::endl;
+  code_assignt assignment(*lhs, retval_symbol);
+  //expr_pretty_print(std::cout << "lhs: ", assignment.lhs()); std::cout << std::endl;
+  //expr_pretty_print(std::cout << "rhs: ", assignment.rhs()); std::cout << std::endl;
 
   if (!skip_assignment) {
     code_assignt assignment(*lhs, retval_symbol);
@@ -1278,31 +1289,25 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
         const irep_idt& identifier,
         statet &state)
 {
-  ssa_exprt lhs_ssa;
+    //--8<--- Taken from goto_symex_statet::assignment()
+    unsigned int count = 0;
+    if(state.level2.current_names.find(identifier)==state.level2.current_names.end()) {
+        
+        // TODO: find a more elegant way for getting a new symbol
 
-  statet::level1t::current_namest::const_iterator c1_it=
-        state.level1.current_names.find(identifier);
+        symbol_exprt lhs(identifier);
+        state.level2.current_names[identifier]=std::make_pair(ssa_exprt(lhs), 0);
+    } else {
+        count = state.level2.increase_counter(identifier);
+    }
 
-  unsigned count = 0;
-  if(c1_it == state.level1.current_names.end()){
+    // Return Value
+    irep_idt new_l2_name = id2string(identifier) + "#" + i2string(count);
 
-    // TODO: find a more elegant way for getting a new symbol
+    // Break constant propagation for this new symbol
+    state.propagation.remove(identifier);
 
-    symbol_exprt lhs(identifier);
-    lhs_ssa = ssa_exprt(lhs);
-    state.level2.current_names[identifier]=std::make_pair(lhs_ssa, 0);
-  } else {
-    lhs_ssa = c1_it->second.first;
-    state.level2.increase_counter(identifier);
-    count = c1_it->second.second;
-  }
-
-  irep_idt new_l2_name = id2string(identifier) + "#" + i2string(count);
-
-  // Break constant propagation for this new symbol
-  state.propagation.remove(identifier);
-
-  return new_l2_name;
+    return new_l2_name;
 }
 
 /*******************************************************************
