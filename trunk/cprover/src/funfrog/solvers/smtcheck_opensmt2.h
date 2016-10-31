@@ -40,7 +40,8 @@ public:
       reduction_graph(3),
       reduction_loops(2),
       verbosity(0),
-	  is_var_constraints_empty(true)
+	  is_var_constraints_empty(true),
+      itp_lra_factor(NULL)
   {
     initializeSolver();
   }
@@ -75,6 +76,11 @@ public:
   void set_itp_lra_alg(int x)
   {
       itp_lra_algorithm.x = x;
+  }
+
+  void set_itp_lra_factor(const char * f)
+  {
+      itp_lra_factor = f;
   }
 
   bool solve();
@@ -196,6 +202,7 @@ protected:
   ItpAlgorithm itp_algorithm;
   ItpAlgorithm itp_euf_algorithm;
   ItpAlgorithm itp_lra_algorithm;
+  const char * itp_lra_factor;
 
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
   int proof_trans;

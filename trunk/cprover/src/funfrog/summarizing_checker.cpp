@@ -24,6 +24,7 @@ void summarizing_checkert::initialize()
   decider->set_itp_bool_alg(options.get_int_option("itp-algorithm"));
   decider->set_itp_euf_alg(options.get_int_option("itp-uf-algorithm"));
   decider->set_itp_lra_alg(options.get_int_option("itp-lra-algorithm"));
+  if(options.get_option("itp-lra-factor").size() > 0) decider->set_itp_lra_factor(options.get_option("itp-lra-factor").c_str());
   decider->set_verbosity(options.get_int_option("verbose-solver"));
   if(options.get_bool_option("reduce-proof"))
   {

@@ -389,6 +389,8 @@ void funfrog_parseoptionst::help()
   "--itp-lra-algorithm            LRA interpolation algorithm:\n"
   "                                 0 for Strong,\n"
   "                                 2 for Weak\n"
+  "                                 3 for custom factor.\n"
+  "--itp-lra-factor               LRA interpolation strength factor. Must be a fraction in the interval [0,1)."
   "--reduce-proof                 enables Proof Reduction\n"
   "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
   "--reduce-proof-loops           number of reduction iterations\n"
@@ -621,6 +623,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 
   if (cmdline.isset("itp-lra-algorithm")) {
     options.set_option("itp-lra-algorithm", cmdline.getval("itp-lra-algorithm"));
+  }
+  if (cmdline.isset("itp-lra-factor")) {
+    options.set_option("itp-lra-factor", cmdline.getval("itp-lra-factor"));
   }
 
   if (cmdline.isset("part-itp")) {

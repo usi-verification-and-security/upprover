@@ -1134,6 +1134,7 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
   osmt->getConfig().setEUFInterpolationAlgorithm(itp_euf_algorithm);
   osmt->getConfig().setLRAInterpolationAlgorithm(itp_lra_algorithm);
+  if(itp_lra_factor != NULL) osmt->getConfig().setLRAStrengthFactor(itp_lra_factor);
 
   SimpSMTSolver& solver = osmt->getSolver();
 
