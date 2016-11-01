@@ -47,6 +47,7 @@ public:
   {set_message_handler(_message_handler);};
 
   void initialize();
+  void initialize_solver();
   bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
   void serialize(){

@@ -595,7 +595,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
   options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
-  options.set_option("check-itp", cmdline.isset("check-itp"));
   options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
   options.set_option("list-templates", cmdline.isset("list-templates"));
   options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
@@ -613,6 +612,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("logic", cmdline.getval("logic"));
   }
 
+  if (cmdline.isset("check-itp")) {
+    options.set_option("check-itp", cmdline.getval("check-itp"));
+  }
   if (cmdline.isset("itp-algorithm")) {
     options.set_option("itp-algorithm", cmdline.getval("itp-algorithm"));
   }

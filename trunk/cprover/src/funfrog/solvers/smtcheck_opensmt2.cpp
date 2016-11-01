@@ -1129,7 +1129,7 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   const char* msg2;
   osmt->getConfig().setOption(SMTConfig::o_verbosity, verbosity, msg2);
-  //osmt->getConfig().setOption(SMTConfig::o_certify_inter, SMTOption(1), msg2);
+  osmt->getConfig().setOption(SMTConfig::o_certify_inter, SMTOption(certify), msg2);
   // Set labeling functions
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
   osmt->getConfig().setEUFInterpolationAlgorithm(itp_euf_algorithm);

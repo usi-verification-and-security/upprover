@@ -40,6 +40,7 @@ public:
       reduction_graph(3),
       reduction_loops(2),
       verbosity(0),
+      certify(0),
 	  is_var_constraints_empty(true),
       itp_lra_factor(NULL)
   {
@@ -58,6 +59,7 @@ public:
   virtual ~smtcheck_opensmt2t(); // d'tor
 
   void set_verbosity(int r) { verbosity = r; }
+  void set_certify(int r) { certify = r; }
 
   void set_reduce_proof(bool r) { reduction = r; }
   void set_reduce_proof_graph(int r) { reduction_graph = r; }
@@ -193,6 +195,7 @@ protected:
   unsigned no_literals;
 
   int verbosity;
+  int certify;
 
   bool reduction;
   int reduction_loops;
