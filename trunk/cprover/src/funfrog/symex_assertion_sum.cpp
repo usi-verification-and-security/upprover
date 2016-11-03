@@ -531,13 +531,13 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
           partition_iface.argument_symbols.begin();
           it1 != partition_iface.argument_symbols.end();
           ++it1) {
+    // KE: Original and first try are commented out
+    //symbol_exprt lhs(state.get_original_name(it1->get_identifier()), ns.follow(it1->type()));
+    //symbol_exprt lhs = to_symbol_expr(to_ssa_expr(*it1).get_original_expr());
+    ssa_exprt lhs(symbol_exprt((to_ssa_expr(*it1).get_original_expr()).id(), ns.follow(it1->type())));
+
     guardt guard;
-
-    symbol_exprt lhs = to_symbol_expr(to_ssa_expr(*it1).get_original_expr());
-
-    assignment_typet assignment_type=symex_targett::HIDDEN;
-
-    symex_assign_symbol(state, to_ssa_expr(lhs), nil_exprt(), *it1, guard, assignment_type);
+    symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, symex_targett::HIDDEN);
   }
 }
 
