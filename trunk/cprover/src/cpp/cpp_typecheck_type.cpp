@@ -120,17 +120,6 @@ void cpp_typecheckt::typecheck_type(typet &type)
         }
       }
     }
-
-    // now do qualifier
-    if(type.find(ID_C_qualifier).is_not_nil())
-    {
-      typet &t=static_cast<typet &>(type.add(ID_C_qualifier));
-      cpp_convert_plain_type(t);
-      c_qualifierst q(t);
-      q.write(type);
-    }
-
-    type.remove(ID_C_qualifier);
   }
   else if(type.id()==ID_array)
   {
@@ -154,17 +143,15 @@ void cpp_typecheckt::typecheck_type(typet &type)
 
     code_typet::parameterst &parameters=code_type.parameters();
 
-    for(code_typet::parameterst::iterator it=parameters.begin();
-        it!=parameters.end();
-        it++)
+    for(auto & it : parameters)
     {
-      typecheck_type(it->type());
+      typecheck_type(it.type());
 
       // see if there is a default value
-      if(it->has_default_value())
+      if(it.has_default_value())
       {
-        typecheck_expr(it->default_value());
-        implicit_typecast(it->default_value(), it->type());
+        typecheck_expr(it.default_value());
+        implicit_typecast(it.default_value(), it.type());
       }
     }
   }

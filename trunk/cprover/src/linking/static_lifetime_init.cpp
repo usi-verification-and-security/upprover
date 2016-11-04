@@ -156,6 +156,7 @@ bool static_lifetime_init(
 
   // call designated "initialization" functions
 
+  #if 0
   for(const std::string &id : symbols)
   {
     const symbolt &symbol=ns.lookup(id);
@@ -169,6 +170,7 @@ bool static_lifetime_init(
       dest.move_to_operands(function_call);
     }
   }
+  #endif
 
   return false;
 }

@@ -1,3 +1,5 @@
+#include <util/options.h>
+
 #include <cegis/options/parameters.h>
 
 typedef std::chrono::high_resolution_clock my_clockt;
@@ -86,6 +88,7 @@ void cegis_statistics_wrappert<learnt, verifyt, mstreamt>::verify(
     }
     os << "</counterexamples>" << messaget::endl;
     show_candidate(os);
+    os << messaget::eom;
   }
 }
 
