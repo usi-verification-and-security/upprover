@@ -739,25 +739,23 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
           it != globals_accessed.end();
           ++it) 
   {
-    //const symbolt& symbol = ns.lookup(*it);
     // The symbol is not yet in l2 renaming
     if (state.level2.current_names.find(*it) == state.level2.current_names.end()) {
         // Original code: state.level2.rename(*it, 0);
-        
-        //symbol_exprt s = symbol.symbol_expr();
-        //to_ssa_expr(s).set_level_2(0);
-    	
-        symbol_exprt s = (ns.lookup(*it)).symbol_expr();
-        ssa_exprt(s).set_level_2(0); // KE: Not sure if this conversion works...
+   
+        const symbolt& symbol = ns.lookup(*it);
+        const symbol_exprt& expr = symbol.symbol_expr();
+        renameL2(state, expr);
         
         // GF: should there be assert(0) ?
 #       ifdef DEBUG_PARTITIONING
-            std::cerr << " * WARNING: Forcing '" << *it << 
-                "' into l2 renaming." << std::endl;
+            std::cerr << "\n * WARNING: Forcing '" << *it << 
+              "' into l2 renaming. " << expr.pretty() << std::endl;
 #       endif
     }
 
     // GF: not sure about it. ToDo: debug when compiled
+    assert(state.level2.current_names.count(*it) > 0); // Can use it only if there are items!
     symbol_exprt symb_ex(state.level2.current_names[*it].first);
     partition_iface.argument_symbols.push_back(symb_ex);
 
@@ -765,6 +763,28 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex);
 #   endif
   }
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::renameL2
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: to do this Original code: state.level2.rename(*it, 0);
+          in cprover 5.4 version
+  
+ Taken from goto_symext::symex_decl
+
+\*******************************************************************/
+void symex_assertion_sumt::renameL2(statet &state, const symbol_exprt &expr) 
+{
+    // KE: not sure that it is all we need. But that's for a start!
+    ssa_exprt ssa(expr);
+    const irep_idt &l1_identifier=ssa.get_identifier();
+    state.level2.current_names[l1_identifier]=std::make_pair(ssa, 0);
 }
 
 /*******************************************************************
