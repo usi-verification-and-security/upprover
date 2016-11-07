@@ -40,7 +40,9 @@ public:
       reduction_graph(3),
       reduction_loops(2),
       verbosity(0),
-	  is_var_constraints_empty(true)
+      certify(0),
+	  is_var_constraints_empty(true),
+      itp_lra_factor(NULL)
   {
     initializeSolver();
   }
@@ -57,6 +59,7 @@ public:
   virtual ~smtcheck_opensmt2t(); // d'tor
 
   void set_verbosity(int r) { verbosity = r; }
+  void set_certify(int r) { certify = r; }
 
   void set_reduce_proof(bool r) { reduction = r; }
   void set_reduce_proof_graph(int r) { reduction_graph = r; }
@@ -75,6 +78,11 @@ public:
   void set_itp_lra_alg(int x)
   {
       itp_lra_algorithm.x = x;
+  }
+
+  void set_itp_lra_factor(const char * f)
+  {
+      itp_lra_factor = f;
   }
 
   bool solve();
@@ -187,6 +195,7 @@ protected:
   unsigned no_literals;
 
   int verbosity;
+  int certify;
 
   bool reduction;
   int reduction_loops;
@@ -196,6 +205,7 @@ protected:
   ItpAlgorithm itp_algorithm;
   ItpAlgorithm itp_euf_algorithm;
   ItpAlgorithm itp_lra_algorithm;
+  const char * itp_lra_factor;
 
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
   int proof_trans;

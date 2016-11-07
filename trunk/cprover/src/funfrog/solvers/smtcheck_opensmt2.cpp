@@ -318,8 +318,19 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
     //TODO: Check this
 	literalt l;
     string num = extract_expr_str_number(expr);
-	PTRef rconst = logic->mkConst(sort_ureal, num.c_str()); // Can have a wrong conversion sometimes!
+    if(num.size() <= 0)
+    {
+        if(expr.type().id() == ID_c_enum)
+        {
+            string enum_tag = expr.type().find(ID_tag).pretty();
+        }
+        else
+        {
+            assert(0);
+        }
+    }
 	//TODO: Add a check that the conversion to a number worked!!
+	PTRef rconst = logic->mkConst(sort_ureal, num.c_str()); // Can have a wrong conversion sometimes!
 
 	l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
 
@@ -1119,10 +1130,12 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   const char* msg2;
   osmt->getConfig().setOption(SMTConfig::o_verbosity, verbosity, msg2);
+  osmt->getConfig().setOption(SMTConfig::o_certify_inter, SMTOption(certify), msg2);
   // Set labeling functions
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
   osmt->getConfig().setEUFInterpolationAlgorithm(itp_euf_algorithm);
   osmt->getConfig().setLRAInterpolationAlgorithm(itp_lra_algorithm);
+  if(itp_lra_factor != NULL) osmt->getConfig().setLRAStrengthFactor(itp_lra_factor);
 
   SimpSMTSolver& solver = osmt->getSolver();
 

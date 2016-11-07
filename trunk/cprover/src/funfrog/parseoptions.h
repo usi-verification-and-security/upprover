@@ -51,7 +51,7 @@ class value_set_alloc_adaptort;
   "(save-queries)(save-change-impact):" \
   "(tree-interpolants)(proof-trans):(reduce-proof)(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
   "(random-seed):(no-itp)(verbose-solver):" \
-  "(itp-algorithm): (itp-uf-algorithm): (itp-lra-algorithm): (check-itp) (part-itp):" \
+  "(itp-algorithm): (itp-uf-algorithm): (itp-lra-algorithm):(itp-lra-factor): (check-itp): (part-itp):" \
   "(unwind):(unwindset):" \
   "(type-constraints):" \
   "(inlining-limit):(testclaim):" \

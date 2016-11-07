@@ -11,7 +11,7 @@
 #include "partitioning_slice.h"
 #include "dependency_checker.h"
 
-void summarizing_checkert::initialize()
+void summarizing_checkert::initialize_solver()
 {
   string _logic = options.get_option("logic");
   int _type_constraints = options.get_int_option("type-constraints");
@@ -24,13 +24,21 @@ void summarizing_checkert::initialize()
   decider->set_itp_bool_alg(options.get_int_option("itp-algorithm"));
   decider->set_itp_euf_alg(options.get_int_option("itp-uf-algorithm"));
   decider->set_itp_lra_alg(options.get_int_option("itp-lra-algorithm"));
+  if(options.get_option("itp-lra-factor").size() > 0) decider->set_itp_lra_factor(options.get_option("itp-lra-factor").c_str());
   decider->set_verbosity(options.get_int_option("verbose-solver"));
+  decider->set_certify(options.get_int_option("check-itp"));
   if(options.get_bool_option("reduce-proof"))
   {
     decider->set_reduce_proof(options.get_bool_option("reduce-proof"));
     if(options.get_int_option("reduce-proof-graph")) decider->set_reduce_proof_graph(options.get_int_option("reduce-proof-graph"));
     if(options.get_int_option("reduce-proof-loops")) decider->set_reduce_proof_loops(options.get_int_option("reduce-proof-loops"));
   }
+}
+
+void summarizing_checkert::initialize()
+{
+  initialize_solver();
+
   // Prepare the summarization context
   summarization_context.analyze_functions(ns);
 
