@@ -9,7 +9,7 @@ Author: Grigory Fedyukovich
 
 #include "smtcheck_opensmt2.h"
 
-//#define SMT_DEBUG
+#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 //#define DEBUG_ITP_VARS
@@ -1008,6 +1008,7 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
         PTRef var = PTRef_Undef;
         var = var2ptref[*it];
         assert(var != PTRef_Undef);
+        assert(new_var_name.size() > 0);
         PTRef new_var = logic->mkVar(logic->getSortRef(var), new_var_name.c_str());
         tterm->addArg(new_var);
         subst.insert(var, PtAsgn(new_var, l_True));
