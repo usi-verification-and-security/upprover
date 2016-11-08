@@ -1346,7 +1346,8 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
         symbol_exprt lhs(identifier);
         state.level2.current_names[identifier]=std::make_pair(ssa_exprt(lhs), 0);
     } else {
-        count = state.level2.increase_counter(identifier);
+        state.level2.increase_counter(identifier);
+	count = state.level2.current_count(identifier);
     }
 
     // Return Value

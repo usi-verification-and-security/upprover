@@ -58,10 +58,10 @@ public:
       return it==current_names.end()?0:it->second.second;
     }
 
-    unsigned int increase_counter(const irep_idt &identifier)
+    void increase_counter(const irep_idt &identifier)
     {
       assert(current_names.find(identifier)!=current_names.end());
-      return ++current_names[identifier].second;
+      ++current_names[identifier].second;
     }
 
     void get_variables(hash_set_cont<ssa_exprt, irep_hash> &vars) const
@@ -165,19 +165,21 @@ public:
   // undoes all levels of renaming
   void get_original_name(exprt &expr) const;
   void get_original_name(typet &type) const;
-  // only required for value_set.assign
-  void get_l1_name(exprt &expr) const;
-
 protected:
   void rename_address(exprt &expr, const namespacet &ns, levelt level);
 
   void set_ssa_indices(ssa_exprt &expr, const namespacet &ns, levelt level=L2);
+  // only required for value_set.assign
+  //void get_l1_name(exprt &expr) const;
 
   // this maps L1 names to (L2) types
   typedef hash_map_cont<irep_idt, typet, irep_id_hash> l1_typest;
   l1_typest l1_types;
   
 public:
+  // only required for value_set.assign
+  void get_l1_name(exprt &expr) const; // KE: changes for hifrog
+
   // uses level 1 names, and is used to
   // do dereferencing
   value_sett value_set;
