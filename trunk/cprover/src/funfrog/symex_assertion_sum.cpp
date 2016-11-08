@@ -535,7 +535,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     // KE: Original and first try are commented out
     //symbol_exprt lhs(state.get_original_name(it1->get_identifier()), ns.follow(it1->type()));
     //symbol_exprt lhs = to_symbol_expr(to_ssa_expr(*it1).get_original_expr());
-    ssa_exprt lhs(symbol_exprt((to_ssa_expr(*it1).get_original_expr()).id(), ns.follow(it1->type())));
+    ssa_exprt lhs(symbol_exprt((to_ssa_expr(*it1).get_original_expr()).get(ID_identifier), ns.follow(it1->type())));
 
     guardt guard;
     symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, symex_targett::HIDDEN);
