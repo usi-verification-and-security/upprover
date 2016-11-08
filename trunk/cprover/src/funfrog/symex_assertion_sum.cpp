@@ -538,6 +538,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     ssa_exprt lhs(symbol_exprt((to_ssa_expr(*it1).get_original_expr()).get(ID_identifier), ns.follow(it1->type())));
 
     guardt guard;
+    state.record_events=false;
     symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, symex_targett::HIDDEN);
   }
 }
