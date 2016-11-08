@@ -13,6 +13,7 @@
 #include <expr_util.h>
 #include <i2string.h>
 #include <goto-symex/goto_symex_state.h>
+#include <pointer-analysis/add_failed_symbols.h>
 
 #include "partitioning_slice.h"
 #include "symex_assertion_sum.h"
@@ -750,7 +751,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
         // GF: should there be assert(0) ?
 #       ifdef DEBUG_PARTITIONING
             std::cerr << "\n * WARNING: Forcing '" << *it << 
-              "' into l2 renaming. " << expr.pretty() << std::endl;
+              "' into l2 renaming. " << std::endl;
 #       endif
     }
 
@@ -781,10 +782,37 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
 \*******************************************************************/
 void symex_assertion_sumt::renameL2(statet &state, const symbol_exprt &expr) 
 {
-    // KE: not sure that it is all we need. But that's for a start!
     ssa_exprt ssa(expr);
     const irep_idt &l1_identifier=ssa.get_identifier();
-    state.level2.current_names[l1_identifier]=std::make_pair(ssa, 0);
+    
+    state.rename(ssa.type(), l1_identifier, ns);
+    ssa.update_type();
+    
+    // in case of pointers, put something into the value set - else got "symbol" as name?!
+    if(ns.follow(expr.type()).id()==ID_pointer)
+    {
+      exprt failed=
+        get_failed_symbol(expr, ns);
+
+      exprt rhs;
+
+      if(failed.is_not_nil())
+      {
+        address_of_exprt address_of_expr;
+        address_of_expr.object()=failed;
+        address_of_expr.type()=expr.type();
+        rhs=address_of_expr;
+      }
+      else
+        rhs=exprt(ID_invalid);
+
+      state.rename(rhs, ns, goto_symex_statet::L1);
+      state.value_set.assign(ssa, rhs, ns, true, false);
+    }
+    
+    if(state.level2.current_names.find(l1_identifier)== 
+            state.level2.current_names.end())
+        state.level2.current_names[l1_identifier]=std::make_pair(ssa, 0);
 }
 
 /*******************************************************************
