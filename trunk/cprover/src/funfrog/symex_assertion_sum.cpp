@@ -958,7 +958,7 @@ void symex_assertion_sumt::store_modified_globals(
           it != partition_iface.out_arg_symbols.end();
           ++it) {
 
-      exprt rhs(to_ssa_expr(*it).get_original_expr());
+      exprt rhs(ssa_exprt(*it).get_original_expr());
 
     code_assignt assignment(
             *it,
