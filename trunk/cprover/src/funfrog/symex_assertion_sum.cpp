@@ -953,12 +953,14 @@ void symex_assertion_sumt::store_modified_globals(
   constant_propagation = false;
   partition_ifacet &partition_iface = deferred_function.partition_iface;
   
+  state.record_events=false; // expr-s are build ins 
+  // therefore we don't want to use parallel built-ins
   for (std::vector<symbol_exprt>::const_iterator it = 
           partition_iface.out_arg_symbols.begin();
           it != partition_iface.out_arg_symbols.end();
           ++it) {
 
-      exprt rhs(ssa_exprt(*it).get_original_expr());
+    ssa_exprt rhs(symbol_exprt((ssa_exprt(*it).get_original_expr()).get(ID_identifier), ns.follow(it->type())));
 
     code_assignt assignment(
             *it,
