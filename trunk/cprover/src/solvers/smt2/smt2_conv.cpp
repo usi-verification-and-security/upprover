@@ -756,6 +756,7 @@ void smt2_convt::convert_byte_update(const byte_update_exprt &expr)
 {
   assert(expr.operands().size()==3);
 
+  #if 0
   // The situation: expr.op0 needs to be split in 3 parts
   // |<--- L --->|<--- M --->|<--- R --->|
   // where M is the expr.op1'th byte
@@ -763,7 +764,7 @@ void smt2_convt::convert_byte_update(const byte_update_exprt &expr)
 
   mp_integer i;
   if(to_integer(expr.op1(), i))
-    INVALIDEXPR("byte_extract takes constant as second parameter");
+    INVALIDEXPR("byte_update takes constant as second parameter");
 
   std::size_t total_width=boolbv_width(expr.op().type());
   std::size_t value_width=boolbv_width(expr.value().type());
@@ -828,7 +829,31 @@ void smt2_convt::convert_byte_update(const byte_update_exprt &expr)
     }
   }
 
-  unflatten(END, expr.type());    
+  unflatten(END, expr.type());
+
+  #else
+
+  // We'll do an AND-mask for op(), and then OR-in
+  // the value() shifted by the offset * 8.
+
+  std::size_t total_width=boolbv_width(expr.op().type());
+  std::size_t value_width=boolbv_width(expr.value().type());
+
+  mp_integer mask=power(2, value_width)-1;
+  exprt one_mask=from_integer(mask, unsignedbv_typet(total_width));
+
+  exprt distance=mult_exprt(
+    expr.offset(),
+    from_integer(8, expr.offset().type()));
+
+  exprt and_expr=bitand_exprt(expr.op(), bitnot_exprt(one_mask));
+  exprt ext_value=typecast_exprt(expr.value(), one_mask.type());
+  exprt or_expr=bitor_exprt(and_expr, shl_exprt(ext_value, distance));
+
+  unflatten(BEGIN, expr.type());
+  flatten2bv(or_expr);
+  unflatten(END, expr.type());
+  #endif
 }
 
 /*******************************************************************\

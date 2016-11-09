@@ -1,5 +1,5 @@
-CBMC Version 5.5 from Git
-Date: 08/11/2016
+CBMC Version 5.5 from Git - 64-bit version
+Date: 09/11/2016
 
 File Changed:
 =============
@@ -19,4 +19,10 @@ trunk/minisat-2.2.1/minisat/mtl/Vec.h
 trunk/minisat-2.2.1/minisat/simp/SimpSolver.cc
 trunk/minisat-2.2.1/minisat/utils/Options.h
 trunk/minisat-2.2.1/minisat/utils/ParseUtils.h
+
+Taken from Git:
+===============
+https://github.com/diffblue/cbmc
+(found by git remote show origin)
+
 
