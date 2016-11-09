@@ -537,6 +537,11 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     //symbol_exprt lhs = to_symbol_expr(to_ssa_expr(*it1).get_original_expr());
     ssa_exprt lhs(symbol_exprt((to_ssa_expr(*it1).get_original_expr()).get(ID_identifier), ns.follow(it1->type())));
 
+    // Check before getting into symex_assign_symbol that lhs is correct
+    assert(lhs.id()==ID_symbol &&
+       lhs.get_bool(ID_C_SSA_symbol) &&
+       !lhs.has_operands());
+      
     guardt guard;
     state.record_events=false;
     symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, symex_targett::HIDDEN);
