@@ -781,7 +781,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
  Outputs:
 
  Purpose: to do this Original code: state.level2.rename(*it, 0);
-          in cprover 5.4 version
+          in cprover 5.5 version
   
  Taken from goto_symext::symex_decl
 
@@ -819,6 +819,8 @@ void symex_assertion_sumt::renameL2(statet &state, const symbol_exprt &expr)
     if(state.level2.current_names.find(l1_identifier)== 
             state.level2.current_names.end())
         state.level2.current_names[l1_identifier]=std::make_pair(ssa, 0);
+    else
+        assert(0); // Use this mothod only to do: state.level2.rename(*it, 0);
 }
 
 /*******************************************************************
