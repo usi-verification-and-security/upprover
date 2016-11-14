@@ -1348,25 +1348,31 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
         statet &state)
 {
     //--8<--- Taken from goto_symex_statet::assignment()
-    unsigned int count = 0;
     if(state.level2.current_names.find(identifier)==state.level2.current_names.end()) {
         
         // TODO: find a more elegant way for getting a new symbol
+        // KE: There is no setter for this field as renaming_levelt is a struct!
 
         symbol_exprt lhs(identifier);
         state.level2.current_names[identifier]=std::make_pair(ssa_exprt(lhs), 0);
-    } else {
-        state.level2.increase_counter(identifier);
-	count = state.level2.current_count(identifier);
-    }
+    } 
 
+    // This object use it, so increase the counter
+    state.level2.increase_counter(identifier);
+    
     // Return Value
-    irep_idt new_l2_name = id2string(identifier) + "#" + i2string(count);
+    irep_idt new_l2_name = id2string(identifier) + "#" + i2string(state.level2.current_count(identifier));
 
     // Break constant propagation for this new symbol
     state.propagation.remove(identifier);
 
     return new_l2_name;
+}
+
+// Simplify what the old code of state L2 current_name does
+irep_idt symex_assertion_sumt::current_L2_name(statet &state, const irep_idt &identifier) const 
+{
+  return id2string(identifier)+"#"+i2string(state.level2.current_count(identifier));
 }
 
 /*******************************************************************

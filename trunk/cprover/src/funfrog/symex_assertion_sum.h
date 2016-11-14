@@ -279,6 +279,9 @@ private:
         const irep_idt& identifier,
         statet &state);
 
+  // Replace old interface of get current name from counter
+  irep_idt current_L2_name(statet &state, const irep_idt &identifier) const;
+
   // Makes an assignment without increasing the version of the
   // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
   void raw_assignment(
