@@ -1369,10 +1369,14 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
     return new_l2_name;
 }
 
-// Simplify what the old code of state L2 current_name does
+// Simplify what the old code of state L2 current_name does - it is only a stupid test that
+// We always with a counter!
 irep_idt symex_assertion_sumt::current_L2_name(statet &state, const irep_idt &identifier) const 
 {
-  return id2string(identifier)+"#"+i2string(state.level2.current_count(identifier));
+    if ( id2string(identifier).find("#") != std::string::npos)
+        return identifier;
+    
+    return id2string(identifier)+"#"+i2string(state.level2.current_count(identifier));
 }
 
 /*******************************************************************
@@ -1396,18 +1400,7 @@ void symex_assertion_sumt::raw_assignment(
 {
 
   symbol_exprt rhs_symbol = to_symbol_expr(rhs);
-
-  //GF: not sure at all
-
-  statet::level1t::current_namest::const_iterator c1_it=
-        state.level1.current_names.find(to_ssa_expr(rhs).get_identifier());
-
-  if(c1_it == state.level1.current_names.end()) assert(0);
-
-  ssa_exprt s = c1_it->second.first;
-  irep_idt rhs_identifier = s.get_level_2();
-
-  rhs_symbol.set(ID_identifier, rhs_identifier);
+  rhs_symbol.set(ID_identifier, current_L2_name(state, rhs_symbol.get_identifier()));
 
   assert(lhs.id()==ID_symbol);
 
