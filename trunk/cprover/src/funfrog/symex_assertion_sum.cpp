@@ -1429,7 +1429,7 @@ void symex_assertion_sumt::raw_assignment(
 
   target.assignment(
     empty_guard.as_expr(),
-    to_ssa_expr(lhs), //to_symbol_expr(lhs))
+    ssa_lhs, //to_symbol_expr(lhs))
     //to_symbol_expr(ce2),
     lhs, l1_lhs,
     rhs_symbol,
