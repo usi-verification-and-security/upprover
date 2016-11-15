@@ -1405,22 +1405,24 @@ void symex_assertion_sumt::raw_assignment(
   assert(lhs.id()==ID_symbol);
 
   // the type might need renaming
-  const irep_idt &lhs_identifier = to_ssa_expr(lhs).get_identifier();
+  ssa_exprt ssa_lhs = to_ssa_expr(lhs);
+  const irep_idt &lhs_identifier = ssa_lhs.get_identifier();
 
   state.rename(lhs.type(), lhs_identifier, ns);
-  to_ssa_expr(lhs).update_type();
+  ssa_lhs.update_type();
 
   // GF: not sure, just commented this line
-//  state.propagation.remove(state.level2.get_original_name(lhs_identifier));
+  // KE: it seems that the field of original names isn't in use any more!
+  //  state.propagation.remove(state.level2.get_original_name(lhs_identifier));
 
-    // update value sets
-    exprt l1_rhs(rhs_symbol);
-    state.get_l1_name(l1_rhs);
+  // update value sets
+  exprt l1_rhs(rhs_symbol);
+  state.get_l1_name(l1_rhs);
 
-    ssa_exprt l1_lhs(lhs);
-    state.get_l1_name(l1_lhs);
+  ssa_exprt l1_lhs(lhs);
+  state.get_l1_name(l1_lhs);
 
-    state.value_set.assign(l1_lhs, l1_rhs, ns, false, false);
+  state.value_set.assign(l1_lhs, l1_rhs, ns, false, false);
 
   const symbol_exprt ce2;// =     to_symbol_expr(nil_exprt());
   guardt empty_guard;
