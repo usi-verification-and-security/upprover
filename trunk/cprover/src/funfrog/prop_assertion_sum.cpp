@@ -123,7 +123,7 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 bool prop_assertion_sumt::is_satisfiable(
   decision_proceduret &decision_procedure)
 {
-  status() << ("RESULT");
+  status() << ("RESULT") << endl;
   absolute_timet before, after;
   before=current_time();
   decision_proceduret::resultt r = decision_procedure.dec_solve();
