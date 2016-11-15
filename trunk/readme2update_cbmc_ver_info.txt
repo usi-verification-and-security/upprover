@@ -1,5 +1,5 @@
-CBMC Version 5.5 from Git - 64-bit version
-Date: 09/11/2016
+CBMC Version 5.6 from Git - 64-bit version
+Date: 15/11/2016
 
 File Changed:
 =============
