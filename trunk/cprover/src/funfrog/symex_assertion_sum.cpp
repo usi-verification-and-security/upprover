@@ -1411,6 +1411,8 @@ void symex_assertion_sumt::raw_assignment(
   state.rename(lhs.type(), lhs_identifier, ns);
   ssa_lhs.update_type();
 
+std::cout << "New " << ssa_lhs.pretty() << std::endl;
+
   // GF: not sure, just commented this line
   // KE: it seems that the field of original names isn't in use any more!
   //  state.propagation.remove(state.level2.get_original_name(lhs_identifier));

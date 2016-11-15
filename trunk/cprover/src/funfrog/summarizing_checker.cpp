@@ -162,17 +162,17 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 
           if (refiner.get_refined_functions().size() == 0){
             prop.error_trace(*decider, ns);
-            status() << ("A real bug found.");
+            status() << ("A real bug found.") << endl << endl;
             report_failure();
             break;
           } else {
             //status("Counterexample is spurious");
-            status() << ("Go to next iteration");
+            status() << ("Go to next iteration") << endl;
           }
         } else {
           prop.error_trace(*decider, ns);
-          status() << ("ASSERTION(S) DO(ES)N'T HOLD");
-          status() << ("A real bug found");
+          status() << ("ASSERTION(S) DO(ES)N'T HOLD") << endl;
+          status() << ("A real bug found") << endl << endl;
           report_failure();
           break;
         }
