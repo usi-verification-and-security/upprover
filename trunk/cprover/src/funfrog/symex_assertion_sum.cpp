@@ -496,7 +496,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   const irep_idt& function_id = current_summary_info->get_function_id();
   loc = current_summary_info->get_call_location();
 
-  status () <<  (std::string("Processing a deferred function: ") + function_id.c_str());
+  status () <<  (std::string("Processing a deferred function: ") + function_id.c_str()) << eom;
 
   // Select symex target equation to produce formulas into the corresponding
   // partition
@@ -1155,7 +1155,7 @@ void symex_assertion_sumt::summarize_function_call(
 {
   // We should use an already computed summary as an abstraction
   // of the function body
-	status () << (std::string("*** SUMMARY abstraction used for function: ") + function_id.c_str());
+  status () << (std::string("*** SUMMARY abstraction used for function: ") + function_id.c_str());
   
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
@@ -1227,7 +1227,7 @@ void symex_assertion_sumt::inline_function_call(
         const irep_idt& function_id)
 {
   // We should inline the body --> defer evaluation of the body for later
-	status() << (std::string("*** INLINING function: ") + function_id.c_str());
+	status() << (std::string("*** INLINING function: ") + function_id.c_str()) << endl;
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
