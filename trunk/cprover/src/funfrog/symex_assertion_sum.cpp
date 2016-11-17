@@ -658,10 +658,13 @@ void symex_assertion_sumt::assign_function_arguments(
     // store the temporary return value symbol somewhere (so that we can
     // use it later, when processing the deferred function).
     // KE: the nil (function_call.lhs().is_nil()), changed into |return'!0|
-    // Fix the flag according to the string return'!0. 
+    // Fix the flag according to the string return'!0 or is_nil
     // TODO: find what is the right symbol
+    bool is_nil_or_ret = ((function_call.lhs().get(ID_identifier) == "return'!0") 
+                          || 
+                          (function_call.lhs().is_nil()));
     return_assignment_and_mark(goto_function.type, state, &(function_call.lhs()),
-            partition_iface, (function_call.lhs().get(ID_identifier) == "return'!0"));
+            partition_iface, is_nil_or_ret);
   } else {
     partition_iface.retval_symbol = symbol_exprt();
   }
