@@ -268,18 +268,17 @@ void symex_assertion_sumt::symex_step(
   const goto_functionst &goto_functions,
   statet &state)
 {
-  //TODO
-  //assert(!state.call_stack.empty());
+  assert(!state.threads.empty());
+  assert(!state.call_stack().empty());
+
   const goto_programt::instructiont &instruction=*state.source.pc;
   loc++;
   merge_gotos(state);
   // depth exceeded?
-  {
-    unsigned max_depth=atoi(options.get_option("depth").c_str());
-    if(max_depth!=0 && state.depth>max_depth)
+  unsigned max_depth=atoi(options.get_option("depth").c_str());
+  if(max_depth!=0 && state.depth>max_depth)
       state.guard.add(false_exprt());
-    state.depth++;
-  }
+  state.depth++;
 
   // KE: This switch-case is taken from: symex_assertion_sumt::symex_step
   switch(instruction.type)
@@ -1209,7 +1208,7 @@ void symex_assertion_sumt::inline_function_call(
         const irep_idt& function_id)
 {
   // We should inline the body --> defer evaluation of the body for later
-	status() << (std::string("*** INLINING function: ") + function_id.c_str()) << endl;
+  status() << (std::string("*** INLINING function: ") + function_id.c_str()) << endl;
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
