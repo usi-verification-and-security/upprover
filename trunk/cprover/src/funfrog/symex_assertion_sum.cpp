@@ -281,10 +281,12 @@ void symex_assertion_sumt::symex_step(
     state.depth++;
   }
 
+  // KE: This switch-case is taken from: symex_assertion_sumt::symex_step
   switch(instruction.type)
   {
   case SKIP:
-    // really ignore
+    if(!state.guard.is_false())
+      target.location(state.guard.as_expr(), state.source);
     state.source.pc++;
     break;
 
@@ -296,7 +298,8 @@ void symex_assertion_sumt::symex_step(
     break;
   
   case LOCATION:
-    target.location(state.guard.as_expr(), state.source);
+    if(!state.guard.is_false())
+      target.location(state.guard.as_expr(), state.source);
     state.source.pc++;
     break;
   
@@ -310,20 +313,7 @@ void symex_assertion_sumt::symex_step(
       exprt tmp=instruction.guard;
       clean_expr(tmp, state, false);
       state.rename(tmp, ns);
-      do_simplify(tmp);
-
-      if(!tmp.is_true())
-      {
-        exprt tmp2=tmp;
-        state.guard.guard_expr(tmp2);
-
-        target.assumption(state.guard.as_expr(), tmp2, state.source);
-
-        #if 0      
-        // we also add it to the state guard
-        state.guard.add(tmp);
-        #endif
-      }
+      symex_assume(state, tmp);
     }
 
     state.source.pc++;
@@ -331,44 +321,33 @@ void symex_assertion_sumt::symex_step(
 
   case ASSERT:
     if(!state.guard.is_false())
-      if(options.get_bool_option("assertions") ||
-         !state.source.pc->source_location.get_bool("user-provided"))
-      {
-        // Is the assertion enabled?
-        if (get_current_deferred_function().summary_info.is_assertion_enabled(state.source.pc)) {
-          std::string msg = id2string(state.source.pc->source_location.get_comment());
-          if (msg == "") msg = "assertion";
-          exprt tmp(instruction.guard);
-          clean_expr(tmp, state, false);
-          claim(tmp, msg, state);
-          if ((single_assertion_check) ||
-              (loc >= last_assertion_loc && max_unwind <= 1)){
-            end_symex(state);
-            return;
-          }
+    {
+        std::string msg=id2string(state.source.pc->source_location.get_comment());
+        if(msg=="") msg="assertion";
+        exprt tmp(instruction.guard);
+        clean_expr(tmp, state, false);
+        vcc(tmp, msg, state);
+        if ((single_assertion_check) ||
+            (loc >= last_assertion_loc && max_unwind <= 1)){
+          end_symex(state);
+          return;
         }
-      }
+        
+    }
 
     state.source.pc++;
     break;
     
   case RETURN:
-    if(!state.guard.is_false()){ // KE: When can it be?!
-      assert(0);//symex_return(state);
-    }
+    if(!state.guard.is_false())
+      return_assignment(state);
+
     state.source.pc++;
     break;
 
   case ASSIGN:
     if(!state.guard.is_false())
-    {
-      code_assignt deref_code=to_code_assign(instruction.code);
-
-      clean_expr(deref_code.lhs(), state, true);
-      clean_expr(deref_code.rhs(), state, false);
-
-      symex_assign(state, deref_code);
-    }
+      symex_assign_rec(state, to_code_assign(instruction.code));
 
     state.source.pc++;
     break;
