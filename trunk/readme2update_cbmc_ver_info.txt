@@ -6,7 +6,7 @@ File Changed:
 - trunk/cprover/src/solvers/prop/prop_conv.h
 - trunk/cprover/src/goto-symex/goto_symex_state.h
 - trunk/cprover/src/config.inc
-
+- trunk/cprover/src/goto-symex/goto-symex.h (set virtual phi_function method)
 
 minisat-2.2.1:
 ==============
