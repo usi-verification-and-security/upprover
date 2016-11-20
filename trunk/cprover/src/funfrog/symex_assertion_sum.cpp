@@ -870,9 +870,9 @@ void symex_assertion_sumt::return_assignment_and_mark(
 //# ifndef DEBUG_PARTITIONING
   const irep_idt &function_id = partition_iface.function_id;
   irep_idt retval_symbol_id(
-          "funfrog::" + as_string(function_id) + "::\\retval");
+          "funfrog::" + as_string(function_id) + "::\\return_value");
   irep_idt retval_tmp_id(
-          "funfrog::" + as_string(function_id) + "::\\retval_tmp");
+          "funfrog::" + as_string(function_id) + "::\\return_value_tmp");
 /* FIXME: This possibly breaks typing of return values
 # else
   irep_idt retval_symbol_id("funfrog::\\retval");
