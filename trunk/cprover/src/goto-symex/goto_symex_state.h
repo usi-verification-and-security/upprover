@@ -176,7 +176,7 @@ protected:
   typedef hash_map_cont<irep_idt, typet, irep_id_hash> l1_typest;
   l1_typest l1_types;
   
-public:
+public:  
   // only required for value_set.assign
   void get_l1_name(exprt &expr) const; // KE: changes for hifrog
 

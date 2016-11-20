@@ -205,6 +205,13 @@ protected:
   virtual void adjust_function_parameter(typet &type) const;
   virtual bool is_complete_type(const typet &type) const;
   
+  typet enum_constant_type(
+    const mp_integer &min, const mp_integer &max) const;
+  
+  typet enum_underlying_type(
+    const mp_integer &min, const mp_integer &max,
+    bool is_packed) const;
+  
   void make_already_typechecked(typet &dest)
   {
     typet result(ID_already_typechecked);
