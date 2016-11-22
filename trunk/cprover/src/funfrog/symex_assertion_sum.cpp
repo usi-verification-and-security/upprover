@@ -1009,8 +1009,6 @@ void symex_assertion_sumt::store_return_value(
           partition_iface.retval_symbol,
           partition_iface.retval_tmp);
   
-  std::cout << ";; " <<assignment.rhs().pretty() << std::endl;
-  std::cout << ";; " << assignment.lhs().pretty() << std::endl;
   assert( ns.follow(assignment.lhs().type()) ==
           ns.follow(assignment.rhs().type()));
 
