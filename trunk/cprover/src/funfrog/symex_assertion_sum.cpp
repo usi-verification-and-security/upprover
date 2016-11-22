@@ -834,7 +834,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
           ++it) 
   {
     const symbolt& symbol = ns.lookup(*it);
-    symbol_exprt symb_ex(get_new_symbol_version(*it, state), symbol.type);
+    symbol_exprt symb_ex(get_new_symbol_version(*it, state,symbol.type), symbol.type);
     
     partition_iface.out_arg_symbols.push_back(symb_ex);
 
@@ -843,6 +843,34 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
 #   endif
   }
 }
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::rename2SSA
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Replace the old functionality of rename + new SSA in old
+ * CProver framework
+
+\*******************************************************************/
+symbol_exprt& symex_assertion_sumt::rename2SSA(
+    statet &state, 
+    const irep_idt identifier, 
+    const typet& type)
+{
+    // Create a general var: identifier: funfrog::netpoll_trap::\return_value
+    ssa_exprt code_var(symbol_exprt(identifier, type));
+    
+    // Change to SSA format: identifier: funfrog::netpoll_trap::\return_value#2
+    code_var.set_identifier(get_new_symbol_version(identifier, state, type)); 
+    
+    // Return a symbol of ssa val with expression of original var
+    return to_symbol_expr(code_var);
+}
+
 
 /*******************************************************************
 
@@ -879,7 +907,9 @@ void symex_assertion_sumt::return_assignment_and_mark(
   irep_idt retval_tmp_id("funfrog::\\retval_tmp");
 # endif
  */
-  symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state), type);
+  symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state,type), type);
+  if (!skip_assignment) 
+	symbol_exprt retval_symbol = rename2SSA(state, retval_symbol_id, type); // We do rename alone...
   symbol_exprt retval_tmp(retval_tmp_id, type);
   add_symbol(retval_tmp_id, type, false);
   add_symbol(retval_symbol_id, type, true);
@@ -979,6 +1009,8 @@ void symex_assertion_sumt::store_return_value(
           partition_iface.retval_symbol,
           partition_iface.retval_tmp);
   
+  std::cout << ";; " <<assignment.rhs().pretty() << std::endl;
+  std::cout << ";; " << assignment.lhs().pretty() << std::endl;
   assert( ns.follow(assignment.lhs().type()) ==
           ns.follow(assignment.rhs().type()));
 
@@ -1274,16 +1306,16 @@ void symex_assertion_sumt::produce_callsite_symbols(
 # endif
 
   partition_iface.callstart_symbol.set_identifier(
-          get_new_symbol_version(callstart_id, state));
+          get_new_symbol_version(callstart_id, state,typet(ID_bool)));
   partition_iface.callend_symbol.set_identifier(
-          get_new_symbol_version(callend_id, state));
+          get_new_symbol_version(callend_id, state,typet(ID_bool)));
 
   add_symbol(callstart_id, typet(ID_bool), true);
   add_symbol(callend_id, typet(ID_bool), true);
 
   if (partition_iface.assertion_in_subtree) {
     partition_iface.error_symbol.set_identifier(
-          get_new_symbol_version(error_id, state));
+          get_new_symbol_version(error_id, state,typet(ID_bool)));
     add_symbol(error_id, typet(ID_bool), true);
   }
 }
@@ -1323,17 +1355,12 @@ void symex_assertion_sumt::produce_callend_assumption(
 \*******************************************************************/
 irep_idt symex_assertion_sumt::get_new_symbol_version(
         const irep_idt& identifier,
-        statet &state)
+        statet &state,
+        typet type)
 {
     //--8<--- Taken from goto_symex_statet::assignment()
-    if(state.level2.current_names.find(identifier)==state.level2.current_names.end()) {
-        
-        // TODO: find a more elegant way for getting a new symbol
-        // KE: There is no setter for this field as renaming_levelt is a struct!
-
-        symbol_exprt lhs(identifier);
-        state.level2.current_names[identifier]=std::make_pair(ssa_exprt(lhs), 0);
-    } 
+    if(state.level2.current_names.find(identifier)==state.level2.current_names.end()) 
+	    renameL2(state, symbol_exprt(identifier, type));
 
     // This object use it, so increase the counter
     state.level2.increase_counter(identifier);
@@ -1346,7 +1373,6 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 
     return new_l2_name;
 }
-
 // Simplify what the old code of state L2 current_name does - it is only a stupid test that
 // We always with a counter!
 irep_idt symex_assertion_sumt::current_L2_name(statet &state, const irep_idt &identifier) const 

@@ -240,6 +240,12 @@ private:
     statet &state,
     partition_ifacet &partition_iface);
 
+  // AFter upgrade of CPROVER need to do rename and SSA creation alone
+  symbol_exprt& rename2SSA(
+    statet &state, 
+    const irep_idt identifier, 
+    const typet& type); 
+
   // Assigns return value from a new SSA symbols to the lhs at
   // call site. Marks the SSA symbol of the return value temporary
   // variable for later use when processing the deferred function
@@ -277,7 +283,8 @@ private:
   // assigning to it. Constant propagation is stopped for the given symbol.
   irep_idt get_new_symbol_version(
         const irep_idt& identifier,
-        statet &state);
+        statet &state,
+        typet type);
 
   // Replace old interface of get current name from counter
   irep_idt current_L2_name(statet &state, const irep_idt &identifier) const;
