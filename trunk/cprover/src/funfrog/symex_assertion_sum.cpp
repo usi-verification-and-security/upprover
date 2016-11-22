@@ -883,13 +883,11 @@ void symex_assertion_sumt::return_assignment_and_mark(
   symbol_exprt retval_tmp(retval_tmp_id, type);
   add_symbol(retval_tmp_id, type, false);
   add_symbol(retval_symbol_id, type, true);
-  //expr_pretty_print(std::cout << (!skip_assignment) << "Marking return symbol: ", retval_symbol); std::cout << std::endl;
-  //expr_pretty_print(std::cout << (!skip_assignment) << "Marking return tmp symbol: ", retval_tmp); std::cout << std::endl;
-  //expr_pretty_print(std::cout << "lhs: ", assignment.lhs()); std::cout << std::endl;
-  //expr_pretty_print(std::cout << "rhs: ", assignment.rhs()); std::cout << std::endl;
 
   if (!skip_assignment) {
     code_assignt assignment(*lhs, retval_symbol);
+    //expr_pretty_print(std::cout << "lhs: ", assignment.lhs()); std::cout << std::endl;
+    //expr_pretty_print(std::cout << "rhs: ", assignment.rhs()); std::cout << std::endl;
 
     assert(base_type_eq(assignment.lhs().type(),
           assignment.rhs().type(), ns));
