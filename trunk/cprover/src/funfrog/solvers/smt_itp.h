@@ -7,7 +7,7 @@
 #include <solvers/flattening/boolbv.h>
 
 #include <opensmt/opensmt2.h>
-
+#include <opensmt/Tterm.h>
 class smtcheck_opensmt2t;
 
 class smt_itpt
@@ -70,7 +70,7 @@ public:
 
   PTRef getInterpolant() { return interpolant; }
   void setInterpolant(PTRef pt) { interpolant = pt; }
-  void setTterm(Tterm *t) { tterm = t; }
+  void setTterm(Tterm& t) { tterm = &t; }
   Tterm* getTterm() { return tterm; }
   void setLogic(Logic *_l) { logic = _l; }
   bool usesVar(symbol_exprt&);

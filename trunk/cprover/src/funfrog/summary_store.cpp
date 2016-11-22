@@ -306,12 +306,12 @@ void summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *deci
 
     if(!decider->getMainSolver()->readFormulaFromFile(in.c_str()))
         return;
-    vec<Tterm*>& functions = decider->getLogic()->getFunctions();
+    vec<Tterm>& functions = decider->getLogic()->getFunctions();
     for(int i = 0; i < functions.size(); ++i)
     {
         summaryt *itp = new summaryt();
-        Tterm *tterm = functions[i];
-        string fname = tterm->getName();
+        Tterm &tterm = functions[i];
+        string fname = tterm.getName();
         string qless = smtcheck_opensmt2t::unquote_varname(fname);
         string idxless = smtcheck_opensmt2t::remove_index(qless);
         int midx = get_max_id(idxless);
@@ -322,10 +322,10 @@ void summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *deci
         ++max_ids[idxless];// = max(fidx, midx);
         //string fixed_name = smtcheck_opensmt2t::quote_varname(qless);
         string fixed_name = smtcheck_opensmt2t::insert_index(idxless, next_idx);
-        tterm->setName(fixed_name);
+        tterm.setName(fixed_name);
         itp->setTterm(tterm);
         itp->setLogic(decider->getLogic());
-        itp->setInterpolant(functions[i]->getBody());
+        itp->setInterpolant(tterm.getBody());
         itp->set_valid(1);
         store.push_back(nodet(i, *itp));
         repr_count++;

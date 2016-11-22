@@ -9,7 +9,7 @@ Author: Grigory Fedyukovich
 
 #include "smtcheck_opensmt2.h"
 
-#define SMT_DEBUG
+//#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 //#define DEBUG_ITP_VARS
@@ -1046,7 +1046,7 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     tterm->setName(fun_name);
     //logic->addFunction(tterm);
     //logic->dumpFunction(cout, tterm);
-    itp.setTterm(tterm);
+    itp.setTterm(*tterm);
     itp.setLogic(logic);
 }
 
@@ -1229,9 +1229,9 @@ bool smtcheck_opensmt2t::solve() {
       mainSolver->insertFormula(top_level_formulas[i], &msg);
   }
   pushed_formulas = top_level_formulas.size();
-//#ifdef DEBUG_SMT2SOLVER
+#ifdef DEBUG_SMT2SOLVER
   dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
-//#endif
+#endif
 
   sstat r = mainSolver->check();
 

@@ -17,7 +17,7 @@ smt_itpt::usesVar(symbol_exprt& symb)
     string var_name = smtcheck_opensmt2t::remove_invalid(_var_name);
     var_name = smtcheck_opensmt2t::remove_index(var_name);
     var_name = smtcheck_opensmt2t::quote_varname(var_name);
-    vec<PTRef>& args = tterm->getArgs();
+    const vec<PTRef>& args = tterm->getArgs();
     for(int i = 0; i < args.size(); ++i)
     {
         string pname = logic->getSymName(args[i]);
@@ -440,7 +440,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
 {
     assert(!is_trivial());
     assert(tterm && logic);
-    vec<PTRef>& args = tterm->getArgs();
+    const vec<PTRef>& args = tterm->getArgs();
     Map<PTRef, PtAsgn, PTRefHash> subst;
 
     map<string, int[3]> occurrences;
@@ -785,7 +785,7 @@ Function: smt_itpt::serialize
 void smt_itpt::serialize(std::ostream& out) const
 {
     assert(logic && tterm);
-    logic->dumpFunction(out, tterm);
+    logic->dumpFunction(out, *tterm);
     return; 
 
   out << _no_orig_variables << " ";
