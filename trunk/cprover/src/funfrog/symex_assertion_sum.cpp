@@ -14,6 +14,7 @@
 #include <i2string.h>
 #include <goto-symex/goto_symex_state.h>
 #include <pointer-analysis/add_failed_symbols.h>
+//#include <util/rename.h> // KE: we should do rename with it, but I didn't find how yet...
 
 #include "partitioning_slice.h"
 #include "symex_assertion_sum.h"
@@ -910,16 +911,16 @@ void symex_assertion_sumt::return_assignment_and_mark(
  */
 
   // return_value_tmp - create new symbol
-  symbol_exprt retval_tmp(retval_tmp_id, type);
   add_symbol(retval_tmp_id, type, false);
+  symbol_exprt retval_tmp(retval_tmp_id, type);
 
   // return_value - create new symbol
+  add_symbol(retval_symbol_id, type, false); // Need to be in the table since rename l0 needs it
   symbol_exprt retval_symbol;
   if (!skip_assignment) 	
 	rename2SSA(state, retval_symbol_id, type, retval_symbol); // We do rename alone...
   else 
 	retval_symbol = symbol_exprt(get_new_symbol_version(retval_symbol_id, state,type), type);
-  add_symbol(retval_symbol_id, type, true);
 
   if (!skip_assignment) {
     code_assignt assignment(*lhs, retval_symbol);
