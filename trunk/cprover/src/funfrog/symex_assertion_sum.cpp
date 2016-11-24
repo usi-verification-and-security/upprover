@@ -856,10 +856,11 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
  * CProver framework
 
 \*******************************************************************/
-symbol_exprt& symex_assertion_sumt::rename2SSA(
+void symex_assertion_sumt::rename2SSA(
     statet &state, 
     const irep_idt identifier, 
-    const typet& type)
+    const typet& type,
+    symbol_exprt& ret_symbol)
 {
     // Create a general var: identifier: funfrog::netpoll_trap::\return_value
     ssa_exprt code_var(symbol_exprt(identifier, type));
@@ -868,7 +869,7 @@ symbol_exprt& symex_assertion_sumt::rename2SSA(
     code_var.set_identifier(get_new_symbol_version(identifier, state, type)); 
     
     // Return a symbol of ssa val with expression of original var
-    return to_symbol_expr(code_var);
+    ret_symbol = to_symbol_expr(code_var);
 }
 
 
@@ -907,11 +908,15 @@ void symex_assertion_sumt::return_assignment_and_mark(
   irep_idt retval_tmp_id("funfrog::\\retval_tmp");
 # endif
  */
-  symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state,type), type);
-  if (!skip_assignment) 
-	retval_symbol = rename2SSA(state, retval_symbol_id, type); // We do rename alone...
+
+  // return_value_tmp - create new symbol
   symbol_exprt retval_tmp(retval_tmp_id, type);
   add_symbol(retval_tmp_id, type, false);
+
+  // return_value - create new symbol
+  symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state,type), type);
+  if (!skip_assignment) 	
+	rename2SSA(state, retval_symbol_id, type, retval_symbol); // We do rename alone...
   add_symbol(retval_symbol_id, type, true);
 
   if (!skip_assignment) {

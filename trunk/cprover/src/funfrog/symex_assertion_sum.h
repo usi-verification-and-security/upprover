@@ -241,10 +241,11 @@ private:
     partition_ifacet &partition_iface);
 
   // AFter upgrade of CPROVER need to do rename and SSA creation alone
-  symbol_exprt& rename2SSA(
+  void rename2SSA(
     statet &state, 
     const irep_idt identifier, 
-    const typet& type); 
+    const typet& type,
+    symbol_exprt& ret_symbol); 
 
   // Assigns return value from a new SSA symbols to the lhs at
   // call site. Marks the SSA symbol of the return value temporary
