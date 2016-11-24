@@ -914,9 +914,11 @@ void symex_assertion_sumt::return_assignment_and_mark(
   add_symbol(retval_tmp_id, type, false);
 
   // return_value - create new symbol
-  symbol_exprt retval_symbol(get_new_symbol_version(retval_symbol_id, state,type), type);
+  symbol_exprt retval_symbol;
   if (!skip_assignment) 	
 	rename2SSA(state, retval_symbol_id, type, retval_symbol); // We do rename alone...
+  else 
+	retval_symbol = symbol_exprt(get_new_symbol_version(retval_symbol_id, state,type), type);
   add_symbol(retval_symbol_id, type, true);
 
   if (!skip_assignment) {
