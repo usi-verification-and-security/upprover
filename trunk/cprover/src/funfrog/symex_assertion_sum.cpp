@@ -1367,12 +1367,12 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
     //--8<--- Taken from goto_symex_statet::assignment()
     if(state.level2.current_names.find(identifier)==state.level2.current_names.end()) 
 	    renameL2(state, symbol_exprt(identifier, type));
-
-    // This object use it, so increase the counter
-    state.level2.increase_counter(identifier);
     
-    // Return Value
+    // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
     irep_idt new_l2_name = id2string(identifier) + "#" + i2string(state.level2.current_count(identifier));
+
+    // This object use it, so increase the counter - adds to the next time.
+    state.level2.increase_counter(identifier);
 
     // Break constant propagation for this new symbol
     state.propagation.remove(identifier);
