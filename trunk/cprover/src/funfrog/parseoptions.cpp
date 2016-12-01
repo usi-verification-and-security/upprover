@@ -573,6 +573,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.get_value("unwind"));
+  } else { // Set to max - KE: find a better way to do so
+    options.set_option("unwind", "4294967295"); 
   }
   if (cmdline.isset("unwindset")) {
     options.set_option("unwindset", cmdline.get_value("unwindset"));
