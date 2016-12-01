@@ -322,6 +322,7 @@ void symex_assertion_sumt::symex_step(
   case ASSERT:
     if(!state.guard.is_false())
     {
+      if (get_current_deferred_function().summary_info.is_assertion_enabled(state.source.pc)) {
         std::string msg=id2string(state.source.pc->source_location.get_comment());
         if(msg=="") msg="assertion";
         exprt tmp(instruction.guard);
@@ -332,7 +333,7 @@ void symex_assertion_sumt::symex_step(
           end_symex(state);
           return;
         }
-        
+      }
     }
 
     state.source.pc++;
