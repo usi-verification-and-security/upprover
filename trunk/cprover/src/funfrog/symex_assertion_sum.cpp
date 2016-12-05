@@ -855,6 +855,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
  Outputs:
 
  Purpose: Replace the old functionality of rename + new SSA in old
+ 	  Also adds L2 counter to the symbol and increase L2 counter
  * CProver framework
 
 \*******************************************************************/
@@ -869,6 +870,8 @@ void symex_assertion_sumt::rename2SSA(
     
     // Change to SSA format: identifier: funfrog::netpoll_trap::\return_value#2
     code_var.set_identifier(get_new_symbol_version(identifier, state, type)); 
+    code_var.set_level_2(state.level2.current_count(identifier)); // Adds L2 counter to the symbol
+    // KE: It can be that this should be part of get_new_symbol_version
     
     // Return a symbol of ssa val with expression of original var
     ret_symbol = to_symbol_expr(code_var);
@@ -1435,9 +1438,7 @@ void symex_assertion_sumt::raw_assignment(
 
   state.value_set.assign(l1_lhs, l1_rhs, ns, false, false);
 
-  const symbol_exprt ce2;// =     to_symbol_expr(nil_exprt());
   guardt empty_guard;
-
   target.assignment(
     empty_guard.as_expr(),
     ssa_lhs, //to_symbol_expr(lhs))
