@@ -732,11 +732,9 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     // The symbol is not yet in l2 renaming
     if (state.level2.current_names.find(*it) == state.level2.current_names.end()) {
         // Original code: state.level2.rename(*it, 0);
-   
-        const symbolt& symbol = ns.lookup(*it);
-        const symbol_exprt& expr = symbol.symbol_expr();
-        renameL2(state, expr);
-        
+        const symbol_exprt& expr = (ns.lookup(*it)).symbol_expr();
+        level2_rename(state, expr);
+            
         // GF: should there be assert(0) ?
 #       ifdef DEBUG_PARTITIONING
             std::cerr << "\n * WARNING: Forcing '" << *it << 
@@ -753,57 +751,6 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex);
 #   endif
   }
-}
-
-/*******************************************************************
-
- Function: symex_assertion_sumt::renameL2
-
- Inputs:
-
- Outputs:
-
- Purpose: to do this Original code: state.level2.rename(*it, 0);
-          in cprover 5.5 version
-  
- Taken from goto_symext::symex_decl
-
-\*******************************************************************/
-void symex_assertion_sumt::renameL2(statet &state, const symbol_exprt &expr) 
-{
-    ssa_exprt ssa(expr);
-    const irep_idt &l1_identifier=ssa.get_identifier();
-    
-    state.rename(ssa.type(), l1_identifier, ns);
-    ssa.update_type();
-    
-    // in case of pointers, put something into the value set - else got "symbol" as name?!
-    if(ns.follow(expr.type()).id()==ID_pointer)
-    {
-      exprt failed=
-        get_failed_symbol(expr, ns);
-
-      exprt rhs;
-
-      if(failed.is_not_nil())
-      {
-        address_of_exprt address_of_expr;
-        address_of_expr.object()=failed;
-        address_of_expr.type()=expr.type();
-        rhs=address_of_expr;
-      }
-      else
-        rhs=exprt(ID_invalid);
-
-      state.rename(rhs, ns, goto_symex_statet::L1);
-      state.value_set.assign(ssa, rhs, ns, true, false);
-    }
-    
-    if(state.level2.current_names.find(l1_identifier)== 
-            state.level2.current_names.end())
-        state.level2.current_names[l1_identifier]=std::make_pair(ssa, 0);
-    else
-        assert(0); // Use this mothod only to do: state.level2.rename(*it, 0);
 }
 
 /*******************************************************************
@@ -859,7 +806,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
  * CProver framework
 
 \*******************************************************************/
-void symex_assertion_sumt::rename2SSA(
+void symex_assertion_sumt::level2_rename_and_2ssa(
     statet &state, 
     const irep_idt identifier, 
     const typet& type,
@@ -870,13 +817,13 @@ void symex_assertion_sumt::rename2SSA(
     
     // Change to SSA format: identifier: funfrog::netpoll_trap::\return_value#2
     code_var.set_identifier(get_new_symbol_version(identifier, state, type)); 
-    code_var.set_level_2(state.level2.current_count(identifier)); // Adds L2 counter to the symbol
-    // KE: It can be that this should be part of get_new_symbol_version
+    
+    // Adds L2 counter to the symbol (L2: 1 adds to the expression) 
+    code_var.set_level_2(state.level2.current_count(identifier)); 
     
     // Return a symbol of ssa val with expression of original var
     ret_symbol = to_symbol_expr(code_var);
 }
-
 
 /*******************************************************************
 
@@ -898,15 +845,15 @@ void symex_assertion_sumt::return_assignment_and_mark(
         partition_ifacet &partition_iface,
         bool skip_assignment)
 {
-  assert(function_type.return_type().is_not_nil());
+    assert(function_type.return_type().is_not_nil());
 
-  const typet& type = function_type.return_type();
-//# ifndef DEBUG_PARTITIONING
-  const irep_idt &function_id = partition_iface.function_id;
-  irep_idt retval_symbol_id(
-          "funfrog::" + as_string(function_id) + "::\\return_value");
-  irep_idt retval_tmp_id(
-          "funfrog::" + as_string(function_id) + "::\\return_value_tmp");
+    const typet& type = function_type.return_type();
+    //# ifndef DEBUG_PARTITIONING
+    const irep_idt &function_id = partition_iface.function_id;
+    irep_idt retval_symbol_id(
+            "funfrog::" + as_string(function_id) + "::\\return_value");
+    irep_idt retval_tmp_id(
+            "funfrog::" + as_string(function_id) + "::\\return_value_tmp");
 /* FIXME: This possibly breaks typing of return values
 # else
   irep_idt retval_symbol_id("funfrog::\\retval");
@@ -914,43 +861,40 @@ void symex_assertion_sumt::return_assignment_and_mark(
 # endif
  */
 
-  // return_value_tmp - create new symbol
-  add_symbol(retval_tmp_id, type, false);
-  symbol_exprt retval_tmp(retval_tmp_id, type);
+    // return_value_tmp - create new symbol
+    add_symbol(retval_tmp_id, type, false);
+    symbol_exprt retval_tmp(retval_tmp_id, type);
 
-  // return_value - create new symbol
-  add_symbol(retval_symbol_id, type, false); // Need to be in the table since rename l0 needs it
-  symbol_exprt retval_symbol;
-  if (!skip_assignment) 	
-	rename2SSA(state, retval_symbol_id, type, retval_symbol); // We do rename alone...
-  else 
-	retval_symbol = symbol_exprt(get_new_symbol_version(retval_symbol_id, state,type), type);
+    // return_value - create new symbol
+    add_symbol(retval_symbol_id, type, false); // Need to be in the table since rename l0 needs it
+    symbol_exprt retval_symbol;	
+    level2_rename_and_2ssa(state, retval_symbol_id, type, retval_symbol); // We do rename alone...
 
-  if (!skip_assignment) {
-    code_assignt assignment(*lhs, retval_symbol);
-    //expr_pretty_print(std::cout << "lhs: ", assignment.lhs()); std::cout << std::endl;
-    //expr_pretty_print(std::cout << "rhs: ", assignment.rhs()); std::cout << std::endl;
+    if (!skip_assignment) {
+        code_assignt assignment(*lhs, retval_symbol);
+        //expr_pretty_print(std::cout << "lhs: ", assignment.lhs()); std::cout << std::endl;
+        //expr_pretty_print(std::cout << "rhs: ", assignment.rhs()); std::cout << std::endl;
 
-    assert(base_type_eq(assignment.lhs().type(),
-          assignment.rhs().type(), ns));
+        assert(base_type_eq(assignment.lhs().type(),
+                assignment.rhs().type(), ns));
 
-    bool old_cp = constant_propagation;
-    constant_propagation = false;
-    // GF: fails here. for some reason, retval_symbol is not in the symbol_table.
-    //     not clear, how it used to get there in the previous version
-    // KE: The name/irep_idt is wrong - there is addition #0 (a specific instance and not a symbol in general).
-    //     The old version referred only to the symbol and insert a symbol so it was all ok
-    symex_assign(state, assignment);
-    constant_propagation = old_cp;
-  } 
-# ifdef DEBUG_PARTITIONING
-  expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
-  expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
-# endif
+        bool old_cp = constant_propagation;
+        constant_propagation = false;
+        // GF: fails here. for some reason, retval_symbol is not in the symbol_table.
+        //     not clear, how it used to get there in the previous version
+        // KE: The name/irep_idt is wrong - there is addition #0 (a specific instance and not a symbol in general).
+        //     The old version referred only to the symbol and insert a symbol so it was all ok
+        symex_assign(state, assignment);
+        constant_propagation = old_cp;
+    } 
+    # ifdef DEBUG_PARTITIONING
+      expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
+      expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
+    # endif
 
-  partition_iface.retval_symbol = retval_symbol;
-  partition_iface.retval_tmp = retval_tmp;
-  partition_iface.returns_value = true;
+    partition_iface.retval_symbol = retval_symbol;
+    partition_iface.retval_tmp = retval_tmp;
+    partition_iface.returns_value = true;
 }
 
 
@@ -1350,6 +1294,60 @@ void symex_assertion_sumt::produce_callend_assumption(
   target.assumption(state.guard.as_expr(), tmp, state.source);
 }
 
+/*******************************************************************
+
+ Function: symex_assertion_sumt::renameL2
+
+ Inputs: State and a symbol in use for the first time
+
+ Outputs: --
+
+ Purpose: to do this Original code: state.level2.rename(*it, 0);
+          in cprover 5.5 version
+  
+ Taken from goto_symext::symex_decl
+
+\*******************************************************************/
+void symex_assertion_sumt::level2_rename(statet &state, const symbol_exprt &expr) 
+{        
+    ssa_exprt ssa(expr);
+    const irep_idt &l1_identifier=ssa.get_identifier();
+            
+    state.rename(ssa.type(), l1_identifier, ns);
+    ssa.update_type();
+
+    // Must be the first time the var is in use
+    assert (state.level2.current_names.find(l1_identifier)== 
+                state.level2.current_names.end());
+    
+    // Set the counter to be 0 (val_name#0)
+    state.level2.current_names[l1_identifier]=std::make_pair(ssa, 0);
+    
+    // Adds L2 counter to the SSA expression (L2: 0)
+    ssa.set_level_2(state.level2.current_count(l1_identifier)); // Adds L2 counter to the symbol
+    
+    // in case of pointers, put something into the value set - else got "symbol" as name?!
+    if(ns.follow(expr.type()).id()==ID_pointer)
+    {
+      exprt failed=
+        get_failed_symbol(expr, ns);
+
+      exprt rhs;
+
+      if(failed.is_not_nil())
+      {
+        address_of_exprt address_of_expr;
+        address_of_expr.object()=failed;
+        address_of_expr.type()=expr.type();
+        rhs=address_of_expr;
+      }
+      else
+        rhs=exprt(ID_invalid);
+
+      state.rename(rhs, ns, goto_symex_statet::L1);
+      state.value_set.assign(ssa, rhs, ns, true, false);
+    }
+}
 
 /*******************************************************************
 
@@ -1370,7 +1368,7 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 {
     //--8<--- Taken from goto_symex_statet::assignment()
     if(state.level2.current_names.find(identifier)==state.level2.current_names.end()) 
-	    renameL2(state, symbol_exprt(identifier, type));
+	    level2_rename(state, symbol_exprt(identifier, type));
     
     // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
     irep_idt new_l2_name = id2string(identifier) + "#" + i2string(state.level2.current_count(identifier));
@@ -1383,9 +1381,10 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 
     return new_l2_name;
 }
+
 // Simplify what the old code of state L2 current_name does - it is only a stupid test that
 // We always with a counter!
-irep_idt symex_assertion_sumt::current_L2_name(statet &state, const irep_idt &identifier) const 
+irep_idt symex_assertion_sumt::get_current_l2_name(statet &state, const irep_idt &identifier) const 
 {
     if ( id2string(identifier).find("#") != std::string::npos)
         return identifier;
@@ -1414,7 +1413,7 @@ void symex_assertion_sumt::raw_assignment(
 {
 
   symbol_exprt rhs_symbol = to_symbol_expr(rhs);
-  rhs_symbol.set(ID_identifier, current_L2_name(state, rhs_symbol.get_identifier()));
+  rhs_symbol.set(ID_identifier, get_current_l2_name(state, rhs_symbol.get_identifier()));
 
   assert(lhs.id()==ID_symbol);
 

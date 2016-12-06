@@ -231,7 +231,7 @@ private:
     partition_ifacet &partition_iface);
 
   // L2 rename - new code
-  void renameL2(statet &state, const symbol_exprt &expr);
+  void level2_rename(statet &state, const symbol_exprt &expr);
 
   // Assigns values from the modified global variables. Marks the SSA symbol 
   // of the global variables for later use when processing the deferred function
@@ -241,7 +241,7 @@ private:
     partition_ifacet &partition_iface);
 
   // AFter upgrade of CPROVER need to do rename and SSA creation alone
-  void rename2SSA(
+  void level2_rename_and_2ssa(
     statet &state, 
     const irep_idt identifier, 
     const typet& type,
@@ -288,7 +288,7 @@ private:
         typet type);
 
   // Replace old interface of get current name from counter
-  irep_idt current_L2_name(statet &state, const irep_idt &identifier) const;
+  irep_idt get_current_l2_name(statet &state, const irep_idt &identifier) const;
 
   // Makes an assignment without increasing the version of the
   // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
