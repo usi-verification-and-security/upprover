@@ -1296,7 +1296,7 @@ void symex_assertion_sumt::produce_callend_assumption(
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::renameL2
+ Function: symex_assertion_sumt::level2_rename
 
  Inputs: State and a symbol in use for the first time
 
@@ -1312,9 +1312,6 @@ void symex_assertion_sumt::level2_rename(statet &state, const symbol_exprt &expr
 {        
     ssa_exprt ssa(expr);
     const irep_idt &l1_identifier=ssa.get_identifier();
-            
-    state.rename(ssa.type(), l1_identifier, ns);
-    ssa.update_type();
 
     // Must be the first time the var is in use
     assert (state.level2.current_names.find(l1_identifier)== 
@@ -1322,6 +1319,9 @@ void symex_assertion_sumt::level2_rename(statet &state, const symbol_exprt &expr
     
     // Set the counter to be 0 (val_name#0)
     state.level2.current_names[l1_identifier]=std::make_pair(ssa, 0);
+
+    state.rename(ssa.type(), l1_identifier, ns);
+    ssa.update_type();
     
     // Adds L2 counter to the SSA expression (L2: 0)
     ssa.set_level_2(state.level2.current_count(l1_identifier)); // Adds L2 counter to the symbol
@@ -1348,7 +1348,6 @@ void symex_assertion_sumt::level2_rename(statet &state, const symbol_exprt &expr
       state.value_set.assign(ssa, rhs, ns, true, false);
     }
 }
-
 /*******************************************************************
 
  Function: symex_assertion_sumt::get_new_symbol_version
@@ -1367,8 +1366,14 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
         typet type)
 {
     //--8<--- Taken from goto_symex_statet::assignment()
+
+    // Force Rename
     if(state.level2.current_names.find(identifier)==state.level2.current_names.end()) 
 	    level2_rename(state, symbol_exprt(identifier, type));
+
+    // Can use it only if there are items and our item is there!
+    assert(state.level2.current_names.count(identifier) > 0);    
+    assert(state.level2.current_names.find(identifier) != state.level2.current_names.end());
     
     // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
     irep_idt new_l2_name = id2string(identifier) + "#" + i2string(state.level2.current_count(identifier));
