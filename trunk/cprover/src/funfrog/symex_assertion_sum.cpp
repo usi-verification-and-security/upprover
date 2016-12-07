@@ -729,11 +729,12 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
           it != globals_accessed.end();
           ++it) 
   {
+    const symbol_exprt& symbol_expr = (ns.lookup(*it)).symbol_expr();
+    
     // The symbol is not yet in l2 renaming
     if (state.level2.current_names.find(*it) == state.level2.current_names.end()) {
         // Original code: state.level2.rename(*it, 0);
-        const symbol_exprt& expr = (ns.lookup(*it)).symbol_expr();
-        level2_rename(state, expr);
+        level2_rename(state, symbol_expr);
             
         // GF: should there be assert(0) ?
 #       ifdef DEBUG_PARTITIONING
@@ -745,8 +746,9 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     // GF: not sure about it. ToDo: debug when compiled
     assert(state.level2.current_names.count(*it) > 0); // Can use it only if there are items!
     symbol_exprt symb_ex(state.level2.current_names[*it].first);
+    to_ssa_expr(symb_ex).set_level_2(state.level2.current_count(*it));
     partition_iface.argument_symbols.push_back(symb_ex);
-
+    
 #   ifdef DEBUG_PARTITIONING
     expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex);
 #   endif
@@ -1532,6 +1534,7 @@ void symex_assertion_sumt::phi_function(
         dest_state_rhs=p_it->second;
       else
         to_ssa_expr(dest_state_rhs).set_level_2(dest_state.level2.current_count(l1_identifier));
+        //dest_state_rhs=symbol_exprt(dest_state.level2.current_name(l1_identifier), type);
       }
 
     exprt rhs;
