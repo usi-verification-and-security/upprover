@@ -90,7 +90,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   // these are quick...
   if(assertion.is_trivially_true())
   {
-    status() << ("ASSERTION IS TRUE");
+    status() << "ASSERTION IS TRUE" << eom;
     return true;
   }
 
@@ -235,16 +235,16 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
   if(remaining_vccs!=0 || force_check)
   {
     if (use_slicing) {
-      before=current_time();
-      status() << "All SSA steps: " << equation.SSA_steps.size() << eom;
-      partitioning_slice(equation, summarization_context.get_summary_store());
-      status() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
-      after=current_time();
-      status() << "SLICER TIME: " << (after-before) << eom;
+      	before=current_time();
+      	status() << "All SSA steps: " << equation.SSA_steps.size() << eom;
+      	partitioning_slice(equation, summarization_context.get_summary_store());
+      	status() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
+      	after=current_time();
+      	status() << "SLICER TIME: " << (after-before) << eom;
     }
   } else {
-	  status() << ("Assertion(s) hold trivially.");
-      return true;
+	status() << "Assertion(s) hold trivially." << eom;
+      	return true;
   }
   return false;
 }
@@ -1128,7 +1128,7 @@ void symex_assertion_sumt::summarize_function_call(
   produce_callsite_symbols(partition_iface, state);
   produce_callend_assumption(partition_iface, state);
 
-  status() << (std::string("Substituting interpolant"));
+  status() << "Substituting interpolant" << eom;
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
   equation.fill_summary_partition(partition_id,
@@ -1193,7 +1193,7 @@ void symex_assertion_sumt::inline_function_call(
         const irep_idt& function_id)
 {
   // We should inline the body --> defer evaluation of the body for later
-  status() << (std::string("*** INLINING function: ") + function_id.c_str()) << endl;
+  status() << (std::string("*** INLINING function: ") + function_id.c_str()) << eom;
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
@@ -1221,7 +1221,7 @@ void symex_assertion_sumt::havoc_function_call(
 {
   // We should treat the function as nondeterministic, havocing
   // all data it touches.
-	status() << (std::string("*** NONDET abstraction used for function: ") + function_id.c_str());
+  status() << (std::string("*** NONDET abstraction used for function: ") + function_id.c_str());
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
