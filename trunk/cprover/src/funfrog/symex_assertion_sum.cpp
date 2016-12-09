@@ -690,7 +690,7 @@ void symex_assertion_sumt::mark_argument_symbols(
         state.level2.current_names.find(l0_name);
     if(it2==state.level2.current_names.end()) assert (0);
 
-      // rename!
+    // rename!
     to_ssa_expr(lhs).set_level_2(it2->second.second);
 
     partition_iface.argument_symbols.push_back(lhs);
@@ -735,7 +735,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     if (state.level2.current_names.find(*it) == state.level2.current_names.end()) {
         // Original code: state.level2.rename(*it, 0);
         level2_rename(state, symbol_expr);
-            
+             
         // GF: should there be assert(0) ?
 #       ifdef DEBUG_PARTITIONING
             std::cerr << "\n * WARNING: Forcing '" << *it << 
@@ -862,7 +862,6 @@ void symex_assertion_sumt::return_assignment_and_mark(
   irep_idt retval_tmp_id("funfrog::\\retval_tmp");
 # endif
  */
-
     // return_value_tmp - create new symbol
     add_symbol(retval_tmp_id, type, false);
     symbol_exprt retval_tmp(retval_tmp_id, type);
@@ -1370,18 +1369,19 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
     //--8<--- Taken from goto_symex_statet::assignment()
 
     // Force Rename
-    if(state.level2.current_names.find(identifier)==state.level2.current_names.end()) 
+    if(state.level2.current_names.find(identifier)==state.level2.current_names.end()) {
 	    level2_rename(state, symbol_exprt(identifier, type));
-
+    } else {
+        // This object use it, so increase the counter - adds to the next time.
+        state.level2.increase_counter(identifier);
+    }
+    
     // Can use it only if there are items and our item is there!
     assert(state.level2.current_names.count(identifier) > 0);    
     assert(state.level2.current_names.find(identifier) != state.level2.current_names.end());
     
     // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
     irep_idt new_l2_name = id2string(identifier) + "#" + i2string(state.level2.current_count(identifier));
-
-    // This object use it, so increase the counter - adds to the next time.
-    state.level2.increase_counter(identifier);
 
     // Break constant propagation for this new symbol
     state.propagation.remove(identifier);
