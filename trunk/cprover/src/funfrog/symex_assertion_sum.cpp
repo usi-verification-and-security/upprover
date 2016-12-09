@@ -1581,12 +1581,12 @@ Function: symex_assertion_sumt::claim
 
 \*******************************************************************/
 
-void symex_assertion_sumt::claim(
+void symex_assertion_sumt::vcc(
   const exprt &claim_expr,
   const std::string &msg,
   statet &state)
 {
-	total_vccs++;
+  total_vccs++;
 
   exprt expr=claim_expr;
   state.rename(expr, ns);
