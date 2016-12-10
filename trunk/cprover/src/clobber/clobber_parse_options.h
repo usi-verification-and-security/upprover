@@ -6,22 +6,22 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_CLOBBER_PARSEOPTIONS_H
-#define CPROVER_CLOBBER_PARSEOPTIONS_H
+#ifndef CPROVER_CLOBBER_CLOBBER_PARSE_OPTIONS_H
+#define CPROVER_CLOBBER_CLOBBER_PARSE_OPTIONS_H
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
 
 #include <langapi/language_ui.h>
 
+#include <analyses/goto_check.h>
+
 class goto_functionst;
 class optionst;
 
 #define CLOBBER_OPTIONS \
   "(depth):(context-bound):(unwind):" \
-  "(bounds-check)(pointer-check)(div-by-zero-check)(memory-leak-check)" \
-  "(signed-overflow-check)(unsigned-overflow-check)(nan-check)" \
-  "(float-overflow-check)" \
+  GOTO_CHECK_OPTIONS \
   "(no-assertions)(no-assumptions)" \
   "(error-label):(verbosity):(no-library)" \
   "(version)" \
@@ -53,14 +53,14 @@ protected:
   bool process_goto_program(
     const optionst &options,
     goto_functionst &goto_functions);
-    
+
   bool set_properties(goto_functionst &goto_functions);
 
   void report_success();
   void report_failure();
   void show_counterexample(const class goto_tracet &);
-            
+
   void eval_verbosity();
 };
 
-#endif
+#endif // CPROVER_CLOBBER_CLOBBER_PARSE_OPTIONS_H

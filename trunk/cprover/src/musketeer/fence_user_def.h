@@ -1,14 +1,14 @@
 /*******************************************************************\
 
-Module: ILP construction for cycles containing user-placed fences 
+Module: ILP construction for cycles containing user-placed fences
         and resolution
 
 Author: Vincent Nimal
 
 \*******************************************************************/
 
-#ifndef CPROVER_FENCE_USER_DEF_H
-#define CPROVER_FENCE_USER_DEF_H
+#ifndef CPROVER_MUSKETEER_FENCE_USER_DEF_H
+#define CPROVER_MUSKETEER_FENCE_USER_DEF_H
 
 #include <set>
 
@@ -41,7 +41,7 @@ public:
 
   fence_user_def_insertert(instrumentert &instr, memory_modelt _model)
     :fence_insertert(instr, _model) {
-  }  
+  }
 };
 
-#endif
+#endif // CPROVER_MUSKETEER_FENCE_USER_DEF_H

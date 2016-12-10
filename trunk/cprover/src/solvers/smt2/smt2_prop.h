@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PROP_SMT2_PROP_H
-#define CPROVER_PROP_SMT2_PROP_H
+#ifndef CPROVER_SOLVERS_SMT2_SMT2_PROP_H
+#define CPROVER_SOLVERS_SMT2_SMT2_PROP_H
 
 #include <iosfwd>
 #include <set>
@@ -47,7 +47,7 @@ public:
 
   virtual const std::string solver_text()
   { return "SMT"; }
-   
+
   virtual tvt l_get(literalt literal) const;
   virtual void set_assignment(literalt a, bool value);
 
@@ -66,24 +66,24 @@ public:
 
   friend class smt2_convt;
   friend class smt2_dect;
-  
+
   void finalize();
 
 protected:
   size_t _no_variables;
   std::ostream &out;
-  
+
   std::string smt2_literal(literalt l);
   literalt def_smt2_literal();
-  
+
   std::vector<tvt> assignment;
-  
+
   literalt define_new_variable();
-  
+
   typedef std::set<std::string> smt2_identifierst;
   smt2_identifierst smt2_identifiers;
 
   bool core_enabled;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_SMT2_SMT2_PROP_H

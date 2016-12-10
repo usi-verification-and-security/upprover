@@ -6,8 +6,8 @@ Author:
 
 \*******************************************************************/
 
-#ifndef CPROVER_UTIL_PIPE_STREAM
-#define CPROVER_UTIL_PIPE_STREAM
+#ifndef CPROVER_UTIL_PIPE_STREAM_H
+#define CPROVER_UTIL_PIPE_STREAM_H
 
 #include <iosfwd>
 #include <string>
@@ -30,13 +30,13 @@ public:
   #endif
 
   filedescriptor_streambuf();
-  
+
   // these are closed automatically on destruction
   void set_in(HANDLE in) { proc_in=in; }
   void set_out(HANDLE out) { proc_out=out; }
 
   ~filedescriptor_streambuf();
-  
+
 protected:
   HANDLE proc_in, proc_out;
   char *in_buffer;
@@ -71,4 +71,4 @@ protected:
   filedescriptor_streambuf buffer;
 };
 
-#endif
+#endif // CPROVER_UTIL_PIPE_STREAM_H

@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_OPTIONS_H
-#define CPROVER_OPTIONS_H
+#ifndef CPROVER_UTIL_OPTIONS_H
+#define CPROVER_UTIL_OPTIONS_H
 
 #include <string>
 #include <map>
@@ -18,7 +18,7 @@ class optionst
 public:
   typedef std::list<std::string> value_listt;
   typedef std::map<std::string, value_listt> option_mapt;
-  
+
   const std::string get_option(const std::string &option) const;
   bool get_bool_option(const std::string &option) const;
   signed int get_signed_int_option(const std::string &option) const;
@@ -39,10 +39,10 @@ public:
   {
     option_map[option]=values;
   }
-  
+
   optionst() { }
   ~optionst() { }
-  
+
   inline optionst &operator=(const optionst &other)
   {
     option_map=other.option_map;
@@ -50,8 +50,8 @@ public:
   }
 
 protected:
-  option_mapt option_map;  
+  option_mapt option_map;
   const value_listt empty_list;
 };
 
-#endif
+#endif // CPROVER_UTIL_OPTIONS_H

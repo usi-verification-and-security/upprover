@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PROP_SMT2_DEC_H
-#define CPROVER_PROP_SMT2_DEC_H
+#ifndef CPROVER_SOLVERS_SMT2_SMT2_DEC_H
+#define CPROVER_SOLVERS_SMT2_SMT2_DEC_H
 
 /*! \defgroup gr_smt2 SMT-LIB 2.x Interface */
 
@@ -49,12 +49,12 @@ public:
 
   virtual resultt dec_solve();
   virtual std::string decision_procedure_text() const;
-  
+
   // yes, we are incremental!
   virtual bool has_set_assumptions() const { return true; }
-  
+
 protected:
   resultt read_result(std::istream &in);
 };
 
-#endif
+#endif // CPROVER_SOLVERS_SMT2_SMT2_DEC_H

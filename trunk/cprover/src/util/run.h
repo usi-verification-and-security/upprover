@@ -1,6 +1,6 @@
 /*******************************************************************\
 
-Module: 
+Module:
 
 Author: Daniel Kroening
 
@@ -8,15 +8,15 @@ Date: August 2012
 
 \*******************************************************************/
 
-#ifndef GOTO_CC_RUN_H
-#define GOTO_CC_RUN_H
+#ifndef CPROVER_UTIL_RUN_H
+#define CPROVER_UTIL_RUN_H
 
 #include <string>
 #include <vector>
-  
+
 int run(
   const std::string &what,
   const std::vector<std::string> &argv,
   const std::string &std_input);
 
-#endif /* GOTO_CC_RUN_H */
+#endif // CPROVER_UTIL_RUN_H

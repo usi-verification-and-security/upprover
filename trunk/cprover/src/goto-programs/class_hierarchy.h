@@ -8,8 +8,8 @@ Date: April 2016
 
 \*******************************************************************/
 
-#ifndef CPROVER_CLASS_HIERARCHY_H
-#define CPROVER_CLASS_HIERARCHY_H
+#ifndef CPROVER_GOTO_PROGRAMS_CLASS_HIERARCHY_H
+#define CPROVER_GOTO_PROGRAMS_CLASS_HIERARCHY_H
 
 #include <iosfwd>
 #include <map>
@@ -29,7 +29,7 @@ public:
 
   typedef std::map<irep_idt, entryt> class_mapt;
   class_mapt class_map;
-  
+
   void operator()(const symbol_tablet &);
 
   // transitively gets all children
@@ -39,7 +39,7 @@ public:
     get_children_trans_rec(id, result);
     return result;
   }
-  
+
   // transitively gets all parents
   idst get_parents_trans(const irep_idt &id) const
   {
@@ -47,7 +47,7 @@ public:
     get_parents_trans_rec(id, result);
     return result;
   }
-  
+
   void output(std::ostream &) const;
 
 protected:
@@ -55,4 +55,4 @@ protected:
   void get_parents_trans_rec(const irep_idt &, idst &) const;
 };
 
-#endif
+#endif // CPROVER_GOTO_PROGRAMS_CLASS_HIERARCHY_H

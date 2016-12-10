@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGAR_INVARIANT_PROPAGATION_H
-#define CPROVER_CEGAR_INVARIANT_PROPAGATION_H
+#ifndef CPROVER_ANALYSES_INVARIANT_PROPAGATION_H
+#define CPROVER_ANALYSES_INVARIANT_PROPAGATION_H
 
 #include <pointer-analysis/value_sets.h>
 
@@ -27,7 +27,7 @@ public:
     object_store(_ns)
   {
   }
-  
+
   const invariant_sett &lookup(locationt l) const
   {
     return (*this)[l].invariant_set;
@@ -38,16 +38,16 @@ public:
 
   void make_all_true();
   void make_all_false();
-    
+
   void simplify(goto_programt &goto_program);
   void simplify(goto_functionst &goto_functions);
-  
+
   typedef ait<invariant_set_domaint> baset;
-  
+
 protected:
   const namespacet &ns;
   value_setst &value_sets;
-  
+
   inv_object_storet object_store;
 
   typedef std::list<unsigned> object_listt;
@@ -62,10 +62,10 @@ protected:
   void get_objects_rec(
     const exprt &src,
     std::list<exprt> &dest);
-    
+
   void get_globals(object_listt &globals);
-  
+
   bool check_type(const typet &type) const;
 };
 
-#endif
+#endif // CPROVER_ANALYSES_INVARIANT_PROPAGATION_H

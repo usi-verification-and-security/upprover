@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#ifndef CPROVER_GOTO_INSTRUMENT_DUMP_C_CLASS_H
+#define CPROVER_GOTO_INSTRUMENT_DUMP_C_CLASS_H
+
 #include <set>
 #include <string>
 
@@ -132,3 +135,4 @@ protected:
     std::list<irep_idt> &local_type_decls);
 };
 
+#endif // CPROVER_GOTO_INSTRUMENT_DUMP_C_CLASS_H

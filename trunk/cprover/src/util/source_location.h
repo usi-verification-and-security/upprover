@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_SOURCE_LOCATION_H
-#define CPROVER_SOURCE_LOCATION_H
+#ifndef CPROVER_UTIL_SOURCE_LOCATION_H
+#define CPROVER_UTIL_SOURCE_LOCATION_H
 
 #include "irep.h"
 
@@ -27,7 +27,7 @@ public:
   {
     return as_string(true);
   }
-  
+
   inline const irep_idt &get_file() const
   {
     return get(ID_file);
@@ -67,7 +67,7 @@ public:
   {
     return get(ID_comment);
   }
-  
+
   inline void set_file(const irep_idt &file)
   {
     set(ID_file, file);
@@ -117,7 +117,7 @@ public:
   {
     set(ID_comment, comment);
   }
-  
+
   inline void set_hide()
   {
     set(ID_hide, true);
@@ -127,7 +127,7 @@ public:
   {
     return get_bool(ID_hide);
   }
-  
+
   inline static const source_locationt &nil()
   {
     return static_cast<const source_locationt &>(get_nil_irep());
@@ -142,4 +142,4 @@ protected:
 
 std::ostream &operator <<(std::ostream &, const source_locationt &);
 
-#endif
+#endif // CPROVER_UTIL_SOURCE_LOCATION_H

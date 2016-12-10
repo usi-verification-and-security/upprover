@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_DECLARATION_H
-#define CPROVER_CPP_DECLARATION_H
+#ifndef CPROVER_CPP_CPP_DECLARATION_H
+#define CPROVER_CPP_CPP_DECLARATION_H
 
 #include <cassert>
 
@@ -25,7 +25,7 @@ public:
   inline cpp_declarationt():exprt(ID_cpp_declaration)
   {
   }
-  
+
   inline bool is_empty() const
   {
     return type().is_nil() && !has_operands();
@@ -35,29 +35,29 @@ public:
   {
     return type().id()==ID_constructor;
   }
-  
+
   inline bool is_static_assert() const
   {
     return get_bool(ID_is_static_assert);
   }
-  
+
   inline bool is_destructor() const
   {
     return type().id()==ID_destructor;
   }
-  
+
   inline bool is_template() const
   {
     return get_bool(ID_is_template);
   }
-  
+
   inline bool is_class_template() const
   {
     return is_template() &&
            type().id()==ID_struct &&
            declarators().empty();
   }
-  
+
   inline const declaratorst &declarators() const
   {
     return (const declaratorst &)operands();
@@ -67,7 +67,7 @@ public:
   {
     return (declaratorst &)operands();
   }
-  
+
   inline const cpp_storage_spect &storage_spec() const
   {
     return static_cast<const cpp_storage_spect &>(
@@ -121,12 +121,12 @@ public:
   {
     return get("specialization_of");
   }
-  
+
   void set_is_typedef()
   {
     set(ID_is_typedef, true);
   }
-  
+
   bool is_typedef() const
   {
     return get_bool(ID_is_typedef);
@@ -152,4 +152,4 @@ extern inline const cpp_declarationt &to_cpp_declaration(const irept &irep)
   return static_cast<const cpp_declarationt &>(irep);
 }
 
-#endif
+#endif // CPROVER_CPP_CPP_DECLARATION_H

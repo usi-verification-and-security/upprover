@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_EXPANDING_VECTOR_H
-#define CPROVER_EXPANDING_VECTOR_H
+#ifndef CPROVER_UTIL_EXPANDING_VECTOR_H
+#define CPROVER_UTIL_EXPANDING_VECTOR_H
 
 #include <vector>
 
@@ -20,7 +20,7 @@ public:
     check_index(n);
     return subt::operator[](n);
   }
-  
+
   inline const T & operator[] (typename std::vector<T>::size_type n) const
   {
     // hack-ish const cast
@@ -28,7 +28,7 @@ public:
     return subt::operator[](n);
   }
 
-protected:  
+protected:
   typedef std::vector<T> subt;
 
   // make the vector large enough to contain 'n'
@@ -38,4 +38,4 @@ protected:
   }
 };
 
-#endif
+#endif // CPROVER_UTIL_EXPANDING_VECTOR_H

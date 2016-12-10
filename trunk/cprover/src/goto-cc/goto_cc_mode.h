@@ -8,8 +8,8 @@ Date: June 2006
 
 \*******************************************************************/
 
-#ifndef GOTO_CC_MODE_H
-#define GOTO_CC_MODE_H
+#ifndef CPROVER_GOTO_CC_GOTO_CC_MODE_H
+#define CPROVER_GOTO_CC_GOTO_CC_MODE_H
 
 #include <langapi/language_ui.h>
 
@@ -28,11 +28,11 @@ public:
 
   explicit goto_cc_modet(goto_cc_cmdlinet &_cmdline);
   ~goto_cc_modet();
-  
+
 protected:
   ui_message_handlert ui_message_handler;
   void register_languages();
   goto_cc_cmdlinet &cmdline;
 };
 
-#endif /* GOTO_CC_MODE_H */
+#endif // CPROVER_GOTO_CC_GOTO_CC_MODE_H

@@ -1,13 +1,13 @@
 /*******************************************************************\
- 
+
 Module:
- 
+
 Author: Daniel Kroening, kroening@kroening.com
- 
+
 \*******************************************************************/
 
-#ifndef XML_H
-#define XML_H
+#ifndef CPROVER_UTIL_XML_H
+#define CPROVER_UTIL_XML_H
 
 #include <list>
 #include <map>
@@ -60,7 +60,7 @@ public:
   {
     attributest::const_iterator i=attributes.find(attribute);
     if(i!=attributes.end())
-      return i->second;                    
+      return i->second;
     return "";
   }
 
@@ -130,4 +130,4 @@ extern inline std::ostream& operator <<(
   return out;
 }
 
-#endif
+#endif // CPROVER_UTIL_XML_H

@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_ANALYZER_PARSEOPTIONS_H
-#define CPROVER_GOTO_ANALYZER_PARSEOPTIONS_H
+#ifndef CPROVER_GOTO_ANALYZER_GOTO_ANALYZER_PARSE_OPTIONS_H
+#define CPROVER_GOTO_ANALYZER_GOTO_ANALYZER_PARSE_OPTIONS_H
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
@@ -58,10 +58,10 @@ protected:
 
   virtual bool process_goto_program(const optionst &options);
   bool set_properties();
-  
+
   void eval_verbosity();
-  
+
   bool has_entry_point;
 };
 
-#endif
+#endif // CPROVER_GOTO_ANALYZER_GOTO_ANALYZER_PARSE_OPTIONS_H

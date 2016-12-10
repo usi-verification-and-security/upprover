@@ -9,7 +9,7 @@ Date:
 \*******************************************************************/
 
 #if defined(_WIN32)
-
+#include <process.h>
 #else
 #include <cstdlib>
 #include <csignal>
@@ -23,7 +23,10 @@ Date:
 // It keeps track of any child processes that we'll kill
 // when we are told to terminate.
 
+#ifdef _WIN32
+#else
 std::vector<pid_t> pids_of_children;
+#endif
 
 /*******************************************************************\
 
@@ -55,6 +58,33 @@ void install_signal_catcher()
 
 /*******************************************************************\
 
+Function: remove_signal_catcher
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void remove_signal_catcher()
+{
+  #if defined(_WIN32)
+  #else
+  // declare act to deal with action on signal set
+  static struct sigaction act;
+
+  act.sa_handler=SIG_DFL;
+  act.sa_flags=0;
+  sigfillset(&(act.sa_mask));
+
+  sigaction(SIGTERM, &act, NULL);
+  #endif
+}
+
+/*******************************************************************\
+
 Function: signal_catcher
 
   Inputs:
@@ -69,7 +99,7 @@ void signal_catcher(int sig)
 {
   #if defined(_WIN32)
   #else
-  
+
   #if 1
   // kill any children by killing group
   killpg(0, sig);

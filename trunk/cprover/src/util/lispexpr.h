@@ -8,8 +8,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 // THIS HEADER IS DEPRECATED AND WILL GO AWAY
 
-#ifndef CPROVER_LISPEXPR_H
-#define CPROVER_LISPEXPR_H
+#ifndef CPROVER_UTIL_LISPEXPR_H
+#define CPROVER_UTIL_LISPEXPR_H
 
 #if defined(_WIN32) && !defined(__MINGW32__)
 #include <cstring>
@@ -28,15 +28,15 @@ class lispsymbolt:public std::string
   lispsymbolt(const char *a):std::string(a)
   {
   }
- 
+
   lispsymbolt():std::string()
   {
   }
- 
+
   lispsymbolt(const std::string &a):std::string(a)
   {
   }
- 
+
   friend bool operator== (const lispsymbolt &a, const lispsymbolt &b)
   { return strcasecmp(a.c_str(), b.c_str())==0; }
 
@@ -78,7 +78,7 @@ class lispexprt:public std::vector<lispexprt>
   bool parse(const std::string &s);
   bool is_nil() const
   { return type==Symbol && value=="nil"; }
-   
+
   void make_nil()
   {
     clear();
@@ -92,9 +92,9 @@ class lispexprt:public std::vector<lispexprt>
     return out;
   }
 };
- 
+
 std::string escape(const std::string &s);
 
 int test_lispexpr();
 
-#endif
+#endif // CPROVER_UTIL_LISPEXPR_H

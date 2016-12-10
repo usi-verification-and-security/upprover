@@ -6,8 +6,8 @@ Author: CM Wintersteiger
 
 \*******************************************************************/
 
-#ifndef CPROVER_QBF_QUBE_CORE_H
-#define CPROVER_QBF_QUBE_CORE_H
+#ifndef CPROVER_SOLVERS_QBF_QBF_QUBE_CORE_H
+#define CPROVER_SOLVERS_QBF_QBF_QUBE_CORE_H
 
 #include "qdimacs_core.h"
 
@@ -37,9 +37,9 @@ public:
     if(fit!=assignment.end())
       return a.sign()?tvt(!fit->second) : tvt(fit->second);
     else
-    {      
+    {
       // throw "Missing toplevel assignment from QuBE";
-      // We assume this is a don't-care and return unknown      
+      // We assume this is a don't-care and return unknown
     }
 
 
@@ -54,4 +54,4 @@ public:
   }
 };
 
-#endif
+#endif // CPROVER_SOLVERS_QBF_QBF_QUBE_CORE_H

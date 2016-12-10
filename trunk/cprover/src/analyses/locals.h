@@ -8,8 +8,8 @@ Date: March 2013
 
 \*******************************************************************/
 
-#ifndef CPROVER_LOCALS_H
-#define CPROVER_LOCALS_H
+#ifndef CPROVER_ANALYSES_LOCALS_H
+#define CPROVER_ANALYSES_LOCALS_H
 
 #include <goto-programs/goto_functions.h>
 
@@ -35,7 +35,7 @@ public:
 
   typedef std::map<irep_idt, symbol_exprt> locals_mapt;
   locals_mapt locals_map;
-  
+
 protected:
   void build(const goto_functiont &goto_function);
 };
@@ -47,4 +47,4 @@ static inline std::ostream &operator << (
   return out;
 }
 
-#endif
+#endif // CPROVER_ANALYSES_LOCALS_H

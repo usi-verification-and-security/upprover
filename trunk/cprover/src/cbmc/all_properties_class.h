@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#ifndef CPROVER_CBMC_ALL_PROPERTIES_CLASS_H
+#define CPROVER_CBMC_ALL_PROPERTIES_CLASS_H
+
 #include <solvers/prop/cover_goals.h>
 
 #include "bmc.h"
@@ -45,11 +48,11 @@ public:
     typedef std::vector<symex_target_equationt::SSA_stepst::iterator> instancest;
     instancest instances;
     std::string description;
-    
+
     // if failed, we compute a goto_trace for the first failing instance
     enum statust { UNKNOWN, FAILURE, SUCCESS, ERROR } status;
     goto_tracet goto_trace;
-    
+
     std::string status_string() const
     {
       switch(status)
@@ -64,18 +67,18 @@ public:
       assert(false);
       return "";
     }
-    
+
     explicit goalt(
       const goto_programt::instructiont &instruction):
       status(statust::UNKNOWN)
     {
       description=id2string(instruction.source_location.get_comment());
     }
-    
+
     goalt():status(statust::UNKNOWN)
     {
     }
-    
+
     exprt as_expr() const
     {
       std::vector<exprt> tmp;
@@ -100,3 +103,4 @@ protected:
   virtual void do_before_solving() {}
 };
 
+#endif // CPROVER_CBMC_ALL_PROPERTIES_CLASS_H

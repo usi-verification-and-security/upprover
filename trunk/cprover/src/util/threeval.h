@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_THREEVAL_H
-#define CPROVER_THREEVAL_H
+#ifndef CPROVER_UTIL_THREEVAL_H
+#define CPROVER_UTIL_THREEVAL_H
 
 #include <iosfwd>
 
@@ -31,7 +31,7 @@ public:
   }
 
   const char *to_string() const;
-  
+
   inline tv_enumt get_value() const
   {
     return value;
@@ -40,7 +40,7 @@ public:
   inline tvt()
   {
   }
-  
+
   inline explicit tvt(bool b):value(b?tv_enumt::TV_TRUE:tv_enumt::TV_FALSE)
   {
   }
@@ -86,4 +86,4 @@ protected:
 
 std::ostream &operator << (std::ostream &out, const tvt &a);
 
-#endif
+#endif // CPROVER_UTIL_THREEVAL_H

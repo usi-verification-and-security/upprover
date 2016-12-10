@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PROP_CVC_CONV_H
-#define CPROVER_PROP_CVC_CONV_H
+#ifndef CPROVER_SOLVERS_CVC_CVC_CONV_H
+#define CPROVER_SOLVERS_CVC_CVC_CONV_H
 
 #include <util/hash_cont.h>
 
@@ -41,26 +41,26 @@ protected:
   virtual void convert_type(const typet &type);
   virtual void convert_address_of_rec(const exprt &expr);
 
-  pointer_logict pointer_logic;  
+  pointer_logict pointer_logic;
   unsigned no_boolean_variables;
-  
+
   struct identifiert
   {
     typet type;
     exprt value;
-    
+
     identifiert()
     {
       type.make_nil();
       value.make_nil();
     }
   };
-  
+
   typedef hash_map_cont<irep_idt, identifiert, irep_id_hash>
     identifier_mapt;
 
   identifier_mapt identifier_map;
-  
+
   std::vector<bool> boolean_assignment;
 
 private:
@@ -75,7 +75,7 @@ private:
   static std::string bin_zero(unsigned bits);
   static std::string array_index_type();
   static std::string array_index(unsigned i);
-  static std::string cvc_pointer_type();  
+  static std::string cvc_pointer_type();
 };
 
-#endif
+#endif // CPROVER_SOLVERS_CVC_CVC_CONV_H

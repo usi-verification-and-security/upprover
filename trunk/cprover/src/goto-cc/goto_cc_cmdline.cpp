@@ -11,6 +11,7 @@ Date:   April 2010
 #include <cstring>
 #include <cassert>
 #include <iostream>
+#include <cstdio>
 
 #include <util/prefix.h>
 #include <util/tempfile.h>
@@ -54,7 +55,7 @@ bool goto_cc_cmdlinet::in_list(const char *option, const char **list)
     if(strcmp(option, list[i])==0)
       return true;
   }
-  
+
   return false;
 }
 
@@ -83,7 +84,7 @@ bool goto_cc_cmdlinet::prefix_in_list(
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -103,7 +104,7 @@ std::size_t goto_cc_cmdlinet::get_optnr(const std::string &opt_string)
 {
   int optnr;
   cmdlinet::optiont option;
-  
+
   if(has_prefix(opt_string, "--")) // starts with -- ?
   {
     if(opt_string.size()==3) // still "short"
@@ -148,7 +149,7 @@ std::size_t goto_cc_cmdlinet::get_optnr(const std::string &opt_string)
     options.push_back(option);
     return options.size()-1;
   }
-  
+
   return optnr;
 }
 

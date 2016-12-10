@@ -6,8 +6,8 @@ Author: Vincent Nimal
 
 \*******************************************************************/
 
-#ifndef CYCLES_VISITOR_H
-#define CYCLES_VISITOR_H
+#ifndef CPROVER_MUSKETEER_CYCLES_VISITOR_H
+#define CPROVER_MUSKETEER_CYCLES_VISITOR_H
 
 #include <set>
 
@@ -30,7 +30,7 @@ public:
   /* computes po^+ edges in U{C_1, ..., C_j} */
   void po_edges(std::set<unsigned>& edges);
 
-  /* computes pairs that will be protected for the 
+  /* computes pairs that will be protected for the
      TSO/PSO/RMO/Power/ARM by the constraints */
   void powr_constraint(const event_grapht::critical_cyclet& C_j,
     std::set<unsigned>& edges);
@@ -44,4 +44,4 @@ public:
     std::set<unsigned>& edges);
 };
 
-#endif
+#endif // CPROVER_MUSKETEER_CYCLES_VISITOR_H

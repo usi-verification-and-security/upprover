@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_SYMEX_PARSE_OPTIONS_H
-#define CPROVER_SYMEX_PARSE_OPTIONS_H
+#ifndef CPROVER_SYMEX_SYMEX_PARSE_OPTIONS_H
+#define CPROVER_SYMEX_SYMEX_PARSE_OPTIONS_H
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
@@ -15,6 +15,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/get_goto_model.h>
 
 #include <langapi/language_ui.h>
+
+#include <analyses/goto_check.h>
 
 #include "path_search.h"
 
@@ -25,9 +27,7 @@ class optionst;
   "(function):" \
   "D:I:" \
   "(depth):(context-bound):(branch-bound):(unwind):" \
-  "(bounds-check)(pointer-check)(div-by-zero-check)(memory-leak-check)" \
-  "(signed-overflow-check)(unsigned-overflow-check)(nan-check)" \
-  "(float-overflow-check)" \
+  GOTO_CHECK_OPTIONS \
   "(no-assertions)(no-assumptions)" \
   "(16)(32)(64)(LP64)(ILP64)(LLP64)(ILP32)(LP32)" \
   "(little-endian)(big-endian)" \
@@ -67,10 +67,10 @@ protected:
   void report_properties(const path_searcht::property_mapt &);
   void report_cover(const path_searcht::property_mapt &);
   void show_counterexample(const class goto_tracet &);
-            
+
   void eval_verbosity();
 
   std::string get_test(const goto_tracet &goto_trace);
 };
 
-#endif
+#endif // CPROVER_SYMEX_SYMEX_PARSE_OPTIONS_H

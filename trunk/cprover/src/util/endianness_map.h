@@ -43,14 +43,14 @@ public:
     assert(result<map.size());
     return result;
   }
-  
+
   inline size_t number_of_bits() const
   {
     return map.size();
   }
-  
+
   void build(const typet &type, bool little_endian);
-  
+
   void output(std::ostream &) const;
 
 protected:
@@ -69,4 +69,4 @@ extern inline std::ostream &operator << (
   return out;
 }
 
-#endif
+#endif // CPROVER_UTIL_ENDIANNESS_MAP_H

@@ -8,6 +8,9 @@ Date: January 2010
 
 \*******************************************************************/
 
+#ifndef CPROVER_ANALYSES_UNINITIALIZED_DOMAIN_H
+#define CPROVER_ANALYSES_UNINITIALIZED_DOMAIN_H
+
 #include "ai.h"
 
 class uninitialized_domaint:public ai_domain_baset
@@ -27,13 +30,13 @@ public:
     std::ostream &out,
     const ai_baset &ai,
     const namespacet &ns) const;
-  
+
   // returns true iff there is s.th. new
   bool merge(
     const uninitialized_domaint &other,
     locationt from,
     locationt to);
-  
+
 protected:
   void assign(const exprt &lhs);
 };
@@ -41,3 +44,4 @@ protected:
 typedef ait<uninitialized_domaint>
   uninitialized_analysist;
 
+#endif // CPROVER_ANALYSES_UNINITIALIZED_DOMAIN_H

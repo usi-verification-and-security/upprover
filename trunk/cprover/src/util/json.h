@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_JSON_H
-#define CPROVER_JSON_H
+#ifndef CPROVER_UTIL_JSON_H
+#define CPROVER_UTIL_JSON_H
 
 #include <vector>
 #include <map>
@@ -23,7 +23,7 @@ public:
   typedef enum { J_STRING, J_NUMBER, J_OBJECT, J_ARRAY,
                  J_TRUE, J_FALSE, J_NULL } kindt;
   kindt kind;
-  
+
   inline bool is_string() const
   {
     return kind==J_STRING;
@@ -67,14 +67,14 @@ public:
   {
     output_rec(out, 0);
   }
-  
+
   void swap(jsont &other);
-  
+
   inline static jsont json_boolean(bool value)
   {
     return jsont(value?J_TRUE:J_FALSE);
   }
-  
+
   void clear()
   {
     value.clear();
@@ -82,10 +82,10 @@ public:
     object.clear();
     array.clear();
   }
-  
+
   inline json_arrayt &make_array();
   inline json_objectt &make_object();
-  
+
   // this presumes that this is an object
   inline const jsont &operator[](const std::string &key) const
   {
@@ -95,7 +95,7 @@ public:
     else
       return it->second;
   }
-  
+
 protected:
   void output_rec(std::ostream &, unsigned indent) const;
   static void escape_string(const std::string &, std::ostream &);
@@ -111,13 +111,13 @@ protected:
   }
 
 public:
-  // should become protected  
+  // should become protected
   typedef std::vector<jsont> arrayt;
   arrayt array;
-  
+
   typedef std::map<std::string, jsont> objectt;
   objectt object;
-  
+
   std::string value;
 };
 
@@ -133,12 +133,12 @@ public:
   json_arrayt():jsont(J_ARRAY)
   {
   }
-  
+
   inline void resize(std::size_t size)
   {
     array.resize(size);
   }
-  
+
   std::size_t size() const
   {
     return array.size();
@@ -227,4 +227,4 @@ json_objectt &jsont::make_object()
   return static_cast<json_objectt &>(*this);
 }
 
-#endif
+#endif // CPROVER_UTIL_JSON_H

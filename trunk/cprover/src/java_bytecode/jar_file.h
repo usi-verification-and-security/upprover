@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_JAVA_JAR_FILE_H
-#define CPROVER_JAVA_JAR_FILE_H
+#ifndef CPROVER_JAVA_BYTECODE_JAR_FILE_H
+#define CPROVER_JAVA_BYTECODE_JAR_FILE_H
 
 #include <string>
 #include <vector>
@@ -24,20 +24,20 @@ public:
   }
 
   ~jar_filet();
-  
+
   void open(const std::string &);
-  
+
   // Test for error; 'true' means we are good.
   inline explicit operator bool() const { return zip!=nullptr; }
 
   typedef std::vector<std::string> indext;
   indext index;
-  
+
   std::string get_entry(std::size_t i);
-  
+
   typedef std::map<std::string, std::string> manifestt;
   manifestt get_manifest();
-  
+
 protected:
   void *zip;
 };
@@ -57,10 +57,10 @@ public:
     else
       return file_map[file_name];
   }
-  
+
 protected:
   typedef std::map<std::string, jar_filet> file_mapt;
   file_mapt file_map;
 };
 
-#endif
+#endif // CPROVER_JAVA_BYTECODE_JAR_FILE_H

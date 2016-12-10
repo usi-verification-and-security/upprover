@@ -8,8 +8,8 @@ Date:   April 2010
 
 \*******************************************************************/
 
-#ifndef GOTO_CC_CMDLINE_H
-#define GOTO_CC_CMDLINE_H
+#ifndef CPROVER_GOTO_CC_GOTO_CC_CMDLINE_H
+#define CPROVER_GOTO_CC_GOTO_CC_CMDLINE_H
 
 #include <util/cmdline.h>
 
@@ -20,7 +20,7 @@ public:
 
   using cmdlinet::parse;
   virtual bool parse(int argc, const char **argv)=0;
-  
+
   static bool in_list(const char *option, const char **list);
 
   static bool prefix_in_list(
@@ -37,7 +37,7 @@ public:
     options[nr].isset=true;
     options[nr].values.push_back(value);
   }
-  
+
   void set(const std::string &opt)
   {
     options[get_optnr(opt)].isset=true;
@@ -46,7 +46,7 @@ public:
   // This lets you distinguish input file name arguments
   // from others, but is otherwise identical to the
   // original command line.
-  
+
   struct argt
   {
   public:
@@ -55,10 +55,10 @@ public:
     bool is_infile_name;
     std::string arg;
   };
-  
+
   typedef std::list<argt> parsed_argvt;
   parsed_argvt parsed_argv;
-  
+
   bool have_infile_arg() const
   {
     for(parsed_argvt::const_iterator
@@ -69,7 +69,7 @@ public:
 
   std::string stdin_file;
 
-protected:  
+protected:
   void add_arg(const std::string &arg)
   {
     parsed_argv.push_back(argt(arg));
@@ -78,4 +78,4 @@ protected:
   void add_infile_arg(const std::string &arg);
 };
 
-#endif /* GOTO_CC_CMDLINE_H */
+#endif // CPROVER_GOTO_CC_GOTO_CC_CMDLINE_H

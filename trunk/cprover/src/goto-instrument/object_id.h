@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_OBJECT_ID_H
-#define CPROVER_OBJECT_ID_H
+#ifndef CPROVER_GOTO_INSTRUMENT_OBJECT_ID_H
+#define CPROVER_GOTO_INSTRUMENT_OBJECT_ID_H
 
 #include <set>
 #include <ostream>
@@ -24,12 +24,12 @@ public:
   {
     id=symbol_expr.get_identifier();
   }
-  
+
   explicit object_idt(const irep_idt &identifier)
   {
     id=identifier;
   }
-  
+
   friend std::ostream &operator << (std::ostream &out, const object_idt &x)
   {
     return out << x.id;
@@ -39,7 +39,7 @@ public:
   {
     return a.id < b.id;
   }
-  
+
 protected:
   irep_idt id;
 };
@@ -55,4 +55,4 @@ void get_objects_w(const code_assignt &assign, object_id_sett &);
 void get_objects_w_lhs(const exprt &lhs, object_id_sett &);
 void get_objects_r_lhs(const exprt &lhs, object_id_sett &);
 
-#endif
+#endif // CPROVER_GOTO_INSTRUMENT_OBJECT_ID_H

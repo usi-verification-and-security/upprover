@@ -12,11 +12,11 @@ Author: Vincent Nimal
 
 #include <vector>
 
-#ifndef ILP_H
-#define ILP_H
+#ifndef CPROVER_MUSKETEER_ILP_H
+#define CPROVER_MUSKETEER_ILP_H
 
 #ifdef HAVE_GLPK
-class ilpt 
+class ilpt
 {
 protected:
   template <class T>
@@ -60,7 +60,7 @@ public:
   }
 
   void solve() {
-    glp_load_matrix(lp, matrix_size, imat.to_array(), 
+    glp_load_matrix(lp, matrix_size, imat.to_array(),
       jmat.to_array(), vmat.to_array());
     glp_intopt(lp, &parm);
   }
@@ -69,4 +69,4 @@ public:
 class ilpt {};
 #endif
 
-#endif
+#endif // CPROVER_MUSKETEER_ILP_H

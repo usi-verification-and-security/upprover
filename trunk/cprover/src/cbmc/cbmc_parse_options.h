@@ -6,13 +6,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_CBMC_PARSE_OPTIONS_H
-#define CPROVER_CBMC_PARSE_OPTIONS_H
+#ifndef CPROVER_CBMC_CBMC_PARSE_OPTIONS_H
+#define CPROVER_CBMC_CBMC_PARSE_OPTIONS_H
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
 
 #include <langapi/language_ui.h>
+
+#include <analyses/goto_check.h>
 
 #include "xml_interface.h"
 
@@ -28,8 +30,7 @@ class optionst;
   "D:I:(c89)(c99)(c11)(cpp89)(cpp99)(cpp11)" \
   "(classpath):(cp):(main-class):" \
   "(depth):(partial-loops)(no-unwinding-assertions)(unwinding-assertions)" \
-  "(bounds-check)(pointer-check)(div-by-zero-check)(memory-leak-check)" \
-  "(signed-overflow-check)(unsigned-overflow-check)(float-overflow-check)(nan-check)" \
+  GOTO_CHECK_OPTIONS \
   "(no-assertions)(no-assumptions)" \
   "(xml-ui)(xml-interface)(json-ui)" \
   "(smt1)(smt2)(fpa)(cvc3)(cvc4)(boolector)(yices)(z3)(opensmt)(mathsat)" \
@@ -53,7 +54,7 @@ class optionst;
   "(arrays-uf-always)(arrays-uf-never)" \
   "(string-abstraction)(no-arch)(arch):" \
   "(round-to-nearest)(round-to-plus-inf)(round-to-minus-inf)(round-to-zero)" \
-  "(graphml-cex):" \
+  "(graphml-witness):" \
   "(localize-faults)(localize-faults-method):" \
   "(floatbv)(all-claims)(all-properties)" // legacy, and will eventually disappear
 
@@ -87,18 +88,18 @@ protected:
   virtual bool process_goto_program(
     const optionst &options,
     goto_functionst &goto_functions);
-    
+
   bool set_properties(goto_functionst &goto_functions);
-  
+
   void eval_verbosity();
-  
+
   // get any additional stuff before finalizing
   virtual int get_modules(bmct &bmc)
   {
     return -1; // continue
   }
-  
+
   void preprocessing();
 };
 
-#endif
+#endif // CPROVER_CBMC_CBMC_PARSE_OPTIONS_H

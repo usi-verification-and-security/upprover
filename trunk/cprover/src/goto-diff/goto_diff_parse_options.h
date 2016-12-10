@@ -6,8 +6,8 @@ Author: Peter Schrammel
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_DIFF_PARSEOPTIONS_H
-#define CPROVER_GOTO_DIFF_PARSEOPTIONS_H
+#ifndef CPROVER_GOTO_DIFF_GOTO_DIFF_PARSE_OPTIONS_H
+#define CPROVER_GOTO_DIFF_GOTO_DIFF_PARSE_OPTIONS_H
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
@@ -56,10 +56,10 @@ protected:
   virtual bool process_goto_program(
     const optionst &options,
     goto_modelt &goto_model);
-    
+
   void eval_verbosity();
-  
+
   void preprocessing();
 };
 
-#endif
+#endif // CPROVER_GOTO_DIFF_GOTO_DIFF_PARSE_OPTIONS_H

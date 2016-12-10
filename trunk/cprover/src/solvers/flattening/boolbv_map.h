@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_BOOLBV_MAP_H
-#define CPROVER_BOOLBV_MAP_H
+#ifndef CPROVER_SOLVERS_FLATTENING_BOOLBV_MAP_H
+#define CPROVER_SOLVERS_FLATTENING_BOOLBV_MAP_H
 
 #include <vector>
 
@@ -51,11 +51,11 @@ public:
     bvtypet bvtype;
     typet type;
     literal_mapt literal_map;
-    
+
     std::string get_value(const propt &) const;
   };
-  
-  typedef hash_map_cont<irep_idt, map_entryt, irep_id_hash> mappingt;  
+
+  typedef hash_map_cont<irep_idt, map_entryt, irep_id_hash> mappingt;
   mappingt mapping;
 
   void show() const;
@@ -74,11 +74,11 @@ public:
     const irep_idt &identifier,
     const typet &type,
     const bvt &literals);
-    
+
 protected:
   propt &prop;
   const namespacet &ns;
   const boolbv_widtht &boolbv_width;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_FLATTENING_BOOLBV_MAP_H

@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_SYMEX_SSA_EXPR_H
-#define CPROVER_GOTO_SYMEX_SSA_EXPR_H
+#ifndef CPROVER_UTIL_SSA_EXPR_H
+#define CPROVER_UTIL_SSA_EXPR_H
 
 #include <util/std_expr.h>
 
@@ -132,7 +132,7 @@ public:
 
     set_identifier(build_identifier(get_original_expr(), l0, l1, l2));
   }
-  
+
   static irep_idt build_identifier(
     const exprt &src,
     const irep_idt &l0,
@@ -175,4 +175,4 @@ extern inline bool is_ssa_expr(const exprt &expr)
          expr.get_bool(ID_C_SSA_symbol);
 }
 
-#endif
+#endif // CPROVER_UTIL_SSA_EXPR_H

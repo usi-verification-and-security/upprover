@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#ifndef CPROVER_GOTO_INSTRUMENT_GOTO_PROGRAM2CODE_H
+#define CPROVER_GOTO_INSTRUMENT_GOTO_PROGRAM2CODE_H
+
 #include <list>
 
 #include <analyses/natural_loops.h>
@@ -210,3 +213,4 @@ protected:
       codet &dest);
 };
 
+#endif // CPROVER_GOTO_INSTRUMENT_GOTO_PROGRAM2CODE_H

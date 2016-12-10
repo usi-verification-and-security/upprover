@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#ifndef CPROVER_SOLVERS_SMT2_SMT2_PARSER_H
+#define CPROVER_SOLVERS_SMT2_SMT2_PARSER_H
+
 #include <iosfwd>
 #include <string>
 
@@ -15,13 +18,13 @@ public:
   smt2_parsert(std::istream &_in):in(_in)
   {
   }
-  
+
   void operator()();
-  
+
 protected:
   std::istream &in;
   std::string buffer;
-  
+
   // string literal, numeral, simple symbol, quoted symbol
   // and keyword are in 'buffer'
   virtual void string_literal() = 0;
@@ -44,3 +47,4 @@ private:
   bool is_simple_symbol_character(char ch);
 };
 
+#endif // CPROVER_SOLVERS_SMT2_SMT2_PARSER_H

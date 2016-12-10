@@ -1,13 +1,13 @@
 /*******************************************************************\
 
-Module: 
+Module:
 
 Author: Daniel Kroening
 
 \*******************************************************************/
 
-#ifndef CPROVER_TEMPFILE_H
-#define CPROVER_TEMPFILE_H
+#ifndef CPROVER_UTIL_TEMPFILE_H
+#define CPROVER_UTIL_TEMPFILE_H
 
 #include <string>
 
@@ -28,7 +28,7 @@ public:
       name(get_temporary_file(prefix, suffix))
   {
   }
-  
+
   // get the name
   inline std::string operator()() const
   {
@@ -42,4 +42,4 @@ protected:
   std::string name;
 };
 
-#endif
+#endif // CPROVER_UTIL_TEMPFILE_H

@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_INTERVAL_DOMAIN_H
-#define CPROVER_INTERVAL_DOMAIN_H
+#ifndef CPROVER_ANALYSES_INTERVAL_DOMAIN_H
+#define CPROVER_ANALYSES_INTERVAL_DOMAIN_H
 
 #include <util/ieee_float.h>
 #include <util/mp_arith.h>
@@ -24,13 +24,13 @@ public:
   // Trivial, conjunctive interval domain for both float
   // and integers. The categorization 'float' and 'integers'
   // is done by is_int and is_float.
-  
+
   virtual void transform(
     locationt from,
     locationt to,
     ai_baset &ai,
     const namespacet &ns);
-              
+
   virtual void output(
     std::ostream &out,
     const ai_baset &ai,
@@ -40,7 +40,7 @@ public:
     const interval_domaint &b,
     locationt from,
     locationt to);
-  
+
   // no states
   virtual void make_bottom()
   {
@@ -48,7 +48,7 @@ public:
     float_map.clear();
     bottom=true;
   }
-        
+
   // all states
   virtual void make_top()
   {
@@ -58,14 +58,14 @@ public:
   }
 
   exprt make_expression(const symbol_exprt &) const;
-  
+
   void assume(const exprt &, const namespacet &);
 
   inline static bool is_int(const typet &src)
   {
     return src.id()==ID_signedbv || src.id()==ID_unsignedbv;
   }
-  
+
   inline static bool is_float(const typet &src)
   {
     return src.id()==ID_floatbv;
@@ -93,4 +93,4 @@ protected:
   ieee_float_intervalt get_float_rec(const exprt &);
 };
 
-#endif
+#endif // CPROVER_ANALYSES_INTERVAL_DOMAIN_H

@@ -17,7 +17,7 @@ public:
   cpp_storage_spect():irept(ID_cpp_storage_spec)
   {
   }
-  
+
   source_locationt &location()
   {
     return static_cast<source_locationt &>(add(ID_C_source_location));
@@ -52,4 +52,4 @@ public:
   }
 };
 
-#endif
+#endif // CPROVER_CPP_CPP_STORAGE_SPEC_H

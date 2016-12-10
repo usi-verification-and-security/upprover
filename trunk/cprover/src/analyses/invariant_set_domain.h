@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_POINTER_ANALYSIS_INVARIANT_SET_DOMAIN_H
-#define CPROVER_POINTER_ANALYSIS_INVARIANT_SET_DOMAIN_H
+#ifndef CPROVER_ANALYSES_INVARIANT_SET_DOMAIN_H
+#define CPROVER_ANALYSES_INVARIANT_SET_DOMAIN_H
 
 #include "ai.h"
 #include "invariant_set.h"
@@ -17,7 +17,7 @@ class invariant_set_domaint:public ai_domain_baset
 public:
   invariant_sett invariant_set;
 
-  // overloading  
+  // overloading
 
   inline bool merge(
     const invariant_set_domaint &other,
@@ -34,7 +34,7 @@ public:
   {
     invariant_set.output("", out);
   }
-    
+
   virtual void initialize(
     const namespacet &ns,
     locationt l)
@@ -49,4 +49,4 @@ public:
     const namespacet &ns);
 };
 
-#endif
+#endif // CPROVER_ANALYSES_INVARIANT_SET_DOMAIN_H

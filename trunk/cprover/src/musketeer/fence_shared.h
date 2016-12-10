@@ -4,12 +4,12 @@ Module: (naive) Fence insertion
 
 Purpose: fences all the shared or volatile-declared variables
 
-Author: Vincent Nimal 
+Author: Vincent Nimal
 
 \*******************************************************************/
 
-#ifndef CPROVER_FENCE_SHARED_H
-#define CPROVER_FENCE_SHARED_H
+#ifndef CPROVER_MUSKETEER_FENCE_SHARED_H
+#define CPROVER_MUSKETEER_FENCE_SHARED_H
 
 class value_setst;
 class goto_functionst;
@@ -37,4 +37,4 @@ void fence_volatile(
   symbol_tablet &symbol_table,
   goto_functionst &goto_functions);
 
-#endif
+#endif // CPROVER_MUSKETEER_FENCE_SHARED_H

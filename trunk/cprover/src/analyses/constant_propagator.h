@@ -6,8 +6,8 @@ Author: Peter Schrammel
 
 \*******************************************************************/
 
-#ifndef CPROVER_CONSTANT_PROPAGATOR_H
-#define CPROVER_CONSTANT_PROPAGATOR_H
+#ifndef CPROVER_ANALYSES_CONSTANT_PROPAGATOR_H
+#define CPROVER_ANALYSES_CONSTANT_PROPAGATOR_H
 
 #include "ai.h"
 
@@ -24,22 +24,22 @@ public:
   {
   public:
     valuest():is_bottom(true) { }
-    
+
     // maps variables to constants
     replace_symbol_extt replace_const;
     bool is_bottom;
-    
+
     void output(std::ostream &, const namespacet &) const;
-    
+
     bool merge(const valuest &src);
     bool meet(const valuest &src);
-    
+
     inline void set_to_bottom()
     {
       replace_const.clear();
       is_bottom = true;
     }
-    
+
     inline void set_to(const irep_idt &lhs_id, const exprt &rhs_val)
     {
       replace_const.expr_map[lhs_id] = rhs_val;
@@ -59,7 +59,7 @@ public:
     {
       return set_to_top(expr.get_identifier());
     }
-    
+
     inline void set_to_top()
     {
       replace_const.clear();
@@ -68,7 +68,7 @@ public:
   };
 
   valuest values;
-  
+
 protected:
   void assign(
     valuest &dest,
@@ -115,8 +115,8 @@ protected:
     const namespacet &);
 
   void replace_types_rec(
-    const replace_symbolt &replace_const, 
+    const replace_symbolt &replace_const,
     exprt &expr);
 };
 
-#endif
+#endif // CPROVER_ANALYSES_CONSTANT_PROPAGATOR_H

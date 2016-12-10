@@ -8,8 +8,8 @@ Date: March 2013
 
 \*******************************************************************/
 
-#ifndef CPROVER_DIRTY_H
-#define CPROVER_DIRTY_H
+#ifndef CPROVER_ANALYSES_DIRTY_H
+#define CPROVER_ANALYSES_DIRTY_H
 
 #include <util/std_expr.h>
 #include <goto-programs/goto_functions.h>
@@ -47,13 +47,13 @@ public:
   {
     return dirty;
   }
-  
+
 protected:
   void build(const goto_functiont &goto_function);
 
   // variables whose address is taken
   id_sett dirty;
-  
+
   void find_dirty(const exprt &expr);
   void find_dirty_address_of(const exprt &expr);
 };
@@ -65,4 +65,4 @@ static inline std::ostream &operator << (
   return out;
 }
 
-#endif
+#endif // CPROVER_ANALYSES_DIRTY_H

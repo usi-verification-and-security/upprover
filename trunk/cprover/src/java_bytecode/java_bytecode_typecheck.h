@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_JAVA_BYTECODE_TYPECHECK_H
-#define CPROVER_JAVA_BYTECODE_TYPECHECK_H
+#ifndef CPROVER_JAVA_BYTECODE_JAVA_BYTECODE_TYPECHECK_H
+#define CPROVER_JAVA_BYTECODE_JAVA_BYTECODE_TYPECHECK_H
 
 #include <set>
 
@@ -43,7 +43,7 @@ public:
 
   virtual void typecheck();
   virtual void typecheck_expr(exprt &expr);
-  
+
 protected:
   symbol_tablet &symbol_table;
   const namespacet ns;
@@ -61,9 +61,8 @@ protected:
   // overload to use language-specific syntax
   virtual std::string to_string(const exprt &expr);
   virtual std::string to_string(const typet &type);
-  
+
   std::set<irep_idt> already_typechecked;
 };
 
-#endif
-
+#endif // CPROVER_JAVA_BYTECODE_JAVA_BYTECODE_TYPECHECK_H

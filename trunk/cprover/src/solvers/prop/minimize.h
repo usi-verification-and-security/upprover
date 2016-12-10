@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PROP_MINIMIZE_H
-#define CPROVER_PROP_MINIMIZE_H
+#ifndef CPROVER_SOLVERS_PROP_MINIMIZE_H
+#define CPROVER_SOLVERS_PROP_MINIMIZE_H
 
 #include <map>
 
@@ -41,19 +41,19 @@ public:
   {
     return _number_satisfied;
   }
-  
+
   inline unsigned iterations() const
   {
     return _iterations;
   }
-  
+
   inline std::size_t size() const
   {
     return _number_objectives;
   }
-  
+
   // managing the objectives
-  
+
   typedef long long signed int weightt;
 
   // adds an objective with given weight
@@ -65,7 +65,7 @@ public:
   {
     literalt condition;
     bool fixed;
-    
+
     explicit objectivet(const literalt _condition):
       condition(_condition), fixed(false)
     {
@@ -84,8 +84,8 @@ protected:
 
   literalt constraint();
   void fix_objectives();
-  
+
   objectivest::reverse_iterator current;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_PROP_MINIMIZE_H

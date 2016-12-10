@@ -1,14 +1,14 @@
 /*******************************************************************\
 
-Module: ILP construction for cycles affecting user-assertions 
+Module: ILP construction for cycles affecting user-assertions
         and resolution
 
 Author: Vincent Nimal
 
 \*******************************************************************/
 
-#ifndef CPROVER_FENCE_ASSERT_H
-#define CPROVER_FENCE_ASSERT_H
+#ifndef CPROVER_MUSKETEER_FENCE_ASSERT_H
+#define CPROVER_MUSKETEER_FENCE_ASSERT_H
 
 #include <set>
 
@@ -46,4 +46,4 @@ public:
   }
 };
 
-#endif
+#endif // CPROVER_MUSKETEER_FENCE_ASSERT_H

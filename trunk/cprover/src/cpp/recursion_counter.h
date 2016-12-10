@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+#ifndef CPROVER_CPP_RECURSION_COUNTER_H
+#define CPROVER_CPP_RECURSION_COUNTER_H
+
 class recursion_countert
 {
 public:
@@ -13,7 +16,7 @@ public:
   {
     cnt++;
   }
-  
+
   ~recursion_countert()
   {
     cnt--;
@@ -22,3 +25,5 @@ public:
 protected:
   unsigned &cnt;
 };
+
+#endif // CPROVER_CPP_RECURSION_COUNTER_H

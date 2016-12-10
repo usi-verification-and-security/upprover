@@ -6,8 +6,8 @@ Author: Alex Groce
 
 \*******************************************************************/
 
-#ifndef CPROVER_PBS_DIMACS_CNF_H
-#define CPROVER_PBS_DIMACS_CNF_H
+#ifndef CPROVER_SOLVERS_SAT_PBS_DIMACS_CNF_H
+#define CPROVER_SOLVERS_SAT_PBS_DIMACS_CNF_H
 
 #include <set>
 #include <map>
@@ -30,7 +30,7 @@ class pbs_dimacs_cnft:public dimacs_cnft
   virtual ~pbs_dimacs_cnft()
   {
   }
- 
+
   virtual void write_dimacs_pb(std::ostream &out);
 
   bool optimize;
@@ -51,7 +51,7 @@ class pbs_dimacs_cnft:public dimacs_cnft
   virtual tvt l_get(literalt a) const;
 
   // dummy functions
-  
+
   virtual const std::string solver_text()
     { return "PBS - Pseudo Boolean/CNF Solver and Optimizer"; }
 
@@ -60,4 +60,4 @@ class pbs_dimacs_cnft:public dimacs_cnft
   std::set<int> assigned;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_SAT_PBS_DIMACS_CNF_H

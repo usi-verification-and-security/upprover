@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_SOLVER_FLATTENING_EQUALITY_H
-#define CPROVER_SOLVER_FLATTENING_EQUALITY_H
+#ifndef CPROVER_SOLVERS_FLATTENING_EQUALITY_H
+#define CPROVER_SOLVERS_FLATTENING_EQUALITY_H
 
 #include <map>
 
@@ -24,7 +24,7 @@ public:
     propt &_prop):prop_conv_solvert(_ns, _prop) { }
 
   virtual literalt equality(const exprt &e1, const exprt &e2);
-  
+
   virtual void post_process() override
   {
     add_equality_constraints();
@@ -43,14 +43,14 @@ protected:
     elements_revt elements_rev;
     equalitiest equalities;
   };
- 
+
   typedef hash_map_cont<const typet, typestructt, irep_hash> typemapt;
-  
-  typemapt typemap;    
+
+  typemapt typemap;
 
   virtual literalt equality2(const exprt &e1, const exprt &e2);
   virtual void add_equality_constraints();
   virtual void add_equality_constraints(const typestructt &typestruct);
 };
 
-#endif
+#endif // CPROVER_SOLVERS_FLATTENING_EQUALITY_H

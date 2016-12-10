@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#ifndef CPROVER_GOTO_SYMEX_SYMEX_DEREFERENCE_STATE_H
+#define CPROVER_GOTO_SYMEX_SYMEX_DEREFERENCE_STATE_H
+
 #include <pointer-analysis/dereference_callback.h>
 
 #include "goto_symex.h"
@@ -33,7 +36,7 @@ public:
     state(_state)
   {
   }
-  
+
 protected:
   goto_symext &goto_symex;
   goto_symext::statet &state;
@@ -42,7 +45,7 @@ protected:
     const std::string &property,
     const std::string &msg,
     const guardt &guard);
-          
+
   virtual void get_value_set(
     const exprt &expr,
     value_setst::valuest &value_set);
@@ -52,3 +55,4 @@ protected:
     const symbolt *&symbol);
 };
 
+#endif // CPROVER_GOTO_SYMEX_SYMEX_DEREFERENCE_STATE_H

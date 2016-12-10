@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_LANGUAGE_H
-#define CPROVER_LANGUAGE_H
+#ifndef CPROVER_UTIL_LANGUAGE_H
+#define CPROVER_UTIL_LANGUAGE_H
 
 #include <set>
 #include <iosfwd>
@@ -24,18 +24,18 @@ class languaget:public messaget
 {
 public:
   // parse file
-  
+
   virtual bool preprocess(
     std::istream &instream,
     const std::string &path,
     std::ostream &outstream) { return false; }
-  
+
   virtual bool parse(
     std::istream &instream,
     const std::string &path)=0;
-  
+
   // add external dependencies of a given module to set
-  
+
   virtual void dependencies(
     const std::string &module,
     std::set<std::string> &modules);
@@ -60,20 +60,20 @@ public:
   virtual bool typecheck(
     symbol_tablet &symbol_table,
     const std::string &module)=0;
-  
+
   // language id / description
-  
+
   virtual std::string id() const { return ""; }
   virtual std::string description() const { return ""; }
   virtual std::set<std::string> extensions() const
   { return std::set<std::string>(); }
-  
+
   // show parse tree
 
   virtual void show_parse(std::ostream &out)=0;
-             
+
   // conversion of expressions
-  
+
   virtual bool from_expr(
     const exprt &expr,
     std::string &code,
@@ -94,12 +94,12 @@ public:
     const std::string &module,
     exprt &expr,
     const namespacet &ns)=0;
-                       
+
   virtual languaget *new_language()=0;
-  
+
   // constructor / destructor
-  
+
   languaget() { }
   virtual ~languaget() { }
 };
-#endif
+#endif // CPROVER_UTIL_LANGUAGE_H

@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_TOKEN_H
-#define CPROVER_CPP_TOKEN_H
+#ifndef CPROVER_CPP_CPP_TOKEN_H
+#define CPROVER_CPP_CPP_TOKEN_H
 
 #include <algorithm>
 
@@ -21,7 +21,7 @@ public:
   std::string text;
   unsigned line_no;
   irep_idt filename;
-  
+
   void clear()
   {
     kind=0;
@@ -30,7 +30,7 @@ public:
     line_no=0;
     filename="";
   }
-  
+
   void swap(cpp_tokent &token)
   {
     std::swap(kind, token.kind);
@@ -41,4 +41,4 @@ public:
   }
 };
 
-#endif
+#endif // CPROVER_CPP_CPP_TOKEN_H

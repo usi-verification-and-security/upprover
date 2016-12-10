@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PROP_DPLIB_PROP_H
-#define CPROVER_PROP_DPLIB_PROP_H
+#ifndef CPROVER_SOLVERS_DPLIB_DPLIB_PROP_H
+#define CPROVER_SOLVERS_DPLIB_DPLIB_PROP_H
 
 #include <iosfwd>
 
@@ -28,7 +28,7 @@ public:
   virtual void lnor(literalt a, literalt b, literalt o);
   virtual void lequal(literalt a, literalt b, literalt o);
   virtual void limplies(literalt a, literalt b, literalt o);
-  
+
   virtual literalt land(literalt a, literalt b);
   virtual literalt lor(literalt a, literalt b);
   virtual literalt land(const bvt &bv);
@@ -49,7 +49,7 @@ public:
 
   virtual const std::string solver_text()
   { return "DPLIB"; }
-   
+
   virtual tvt l_get(literalt literal) const
   {
     unsigned v=literal.var_no();
@@ -57,7 +57,7 @@ public:
     tvt r=assignment[v];
     return literal.sign()?!r:r;
   }
-  
+
   virtual propt::resultt prop_solve();
 
   friend class dplib_convt;
@@ -77,13 +77,13 @@ public:
 protected:
   unsigned _no_variables;
   std::ostream &out;
-  
+
   std::string dplib_literal(literalt l);
   literalt def_dplib_literal();
-  
+
   std::vector<tvt> assignment;
-  
+
   void finish();
 };
 
-#endif
+#endif // CPROVER_SOLVERS_DPLIB_DPLIB_PROP_H

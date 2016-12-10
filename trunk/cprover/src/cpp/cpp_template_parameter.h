@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_TEMPLATE_PARAMETER_H
-#define CPROVER_CPP_TEMPLATE_PARAMETER_H
+#ifndef CPROVER_CPP_CPP_TEMPLATE_PARAMETER_H
+#define CPROVER_CPP_CPP_TEMPLATE_PARAMETER_H
 
 #include <util/expr.h>
 
@@ -22,7 +22,7 @@ public:
   {
   }
 
-  #if 0  
+  #if 0
   bool get_is_type() const
   {
     return get_bool(ID_is_type);
@@ -32,12 +32,12 @@ public:
   {
     set(ID_is_type, value);
   }
-  
+
   irep_idt get_identifier() const
   {
     return get(ID_identifier);
   }
-  
+
   void set_identifier(const irep_idt &identifier)
   {
     return set(ID_identifier, identifier);
@@ -64,11 +64,11 @@ public:
   {
     return static_cast<const exprt &>(find(ID_C_default_value));
   }
-  
+
   bool has_default_argument() const
   {
     return find(ID_C_default_value).is_not_nil();
   }
 };
 
-#endif
+#endif // CPROVER_CPP_CPP_TEMPLATE_PARAMETER_H
