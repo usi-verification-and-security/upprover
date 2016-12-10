@@ -394,7 +394,7 @@ void function_infot::add_to_set_if_global(const namespacet& ns,
     // Structure member scheme
     add_to_set_if_global(ns, to_dereference_expr(ex).pointer(), set);
 
-  } else if (ex.id() == ID_typecast) {
+  } else if (ex.id() == ID_typecast || ex.id() == ID_floatbv_typecast) {
     // Typecast
     add_to_set_if_global(ns, to_typecast_expr(ex).op(), set);
 
