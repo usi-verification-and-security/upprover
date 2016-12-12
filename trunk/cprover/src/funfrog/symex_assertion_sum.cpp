@@ -685,12 +685,11 @@ void symex_assertion_sumt::mark_argument_symbols(
     state.rename(lhs, ns, goto_symex_statet::L1);
 
     const irep_idt l0_name = lhs.get_identifier();
-
     statet::level2t::current_namest::const_iterator it2 =
         state.level2.current_names.find(l0_name);
     if(it2==state.level2.current_names.end()) assert (0);
 
-    // rename!
+    // rename L2: update the level counters
     ssa_exprt ssa_expr_lhs = to_ssa_expr(lhs);
     state.level0(ssa_expr_lhs, ns, state.source.thread_nr);
     state.level1(ssa_expr_lhs);
@@ -732,12 +731,10 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
           it != globals_accessed.end();
           ++it) 
   {
-    const symbol_exprt& symbol_expr = (ns.lookup(*it)).symbol_expr();
-    
     // The symbol is not yet in l2 renaming
     if (state.level2.current_names.find(*it) == state.level2.current_names.end()) {
         // Original code: state.level2.rename(*it, 0);
-        level2_rename_init(state, symbol_expr);
+        level2_rename_init(state, (ns.lookup(*it)).symbol_expr());
              
         // GF: should there be assert(0) ?
 #       ifdef DEBUG_PARTITIONING
@@ -746,10 +743,10 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
 #       endif
     }
 
-    // GF: not sure about it. ToDo: debug when compiled
-    assert(state.level2.current_names.count(*it) > 0); // Can use it only if there are items!
+    // Check we have items in *it location
+    assert(state.level2.current_names.count(*it) > 0);
     
-    // Update after rename
+    // rename: update the level counters
     ssa_exprt ssa_expr = state.level2.current_names[*it].first;
     state.level0(ssa_expr, ns, state.source.thread_nr);
     state.level1(ssa_expr);
