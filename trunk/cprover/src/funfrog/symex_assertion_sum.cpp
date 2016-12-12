@@ -792,7 +792,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
           ++it) 
   {
     const symbolt& symbol = ns.lookup(*it);
-    symbol_exprt symb_ex(get_new_symbol_version(*it, state,symbol.type), symbol.type);
+    symbol_exprt symb_ex(get_new_symbol_version(*it, state,symbol.type, true), symbol.type);
     
     partition_iface.out_arg_symbols.push_back(symb_ex);
 
@@ -825,7 +825,7 @@ void symex_assertion_sumt::level2_rename_and_2ssa(
     ssa_exprt code_var(symbol_exprt(identifier, type));
     
     // Change to SSA format: identifier: funfrog::netpoll_trap::\return_value#2
-    code_var.set_identifier(get_new_symbol_version(identifier, state, type)); 
+    code_var.set_identifier(get_new_symbol_version(identifier, state, type, true)); 
     
     // Adds L2 counter to the symbol (L2: 1 adds to the expression) 
     code_var.set_level_2(state.level2.current_count(identifier)); 
@@ -1268,16 +1268,16 @@ void symex_assertion_sumt::produce_callsite_symbols(
 # endif
 
   partition_iface.callstart_symbol.set_identifier(
-          get_new_symbol_version(callstart_id, state,typet(ID_bool)));
+          get_new_symbol_version(callstart_id, state,typet(ID_bool), false));
   partition_iface.callend_symbol.set_identifier(
-          get_new_symbol_version(callend_id, state,typet(ID_bool)));
+          get_new_symbol_version(callend_id, state,typet(ID_bool), false));
 
   add_symbol(callstart_id, typet(ID_bool), true);
   add_symbol(callend_id, typet(ID_bool), true);
 
   if (partition_iface.assertion_in_subtree) {
     partition_iface.error_symbol.set_identifier(
-          get_new_symbol_version(error_id, state,typet(ID_bool)));
+          get_new_symbol_version(error_id, state,typet(ID_bool), false));
     add_symbol(error_id, typet(ID_bool), true);
   }
 }
@@ -1371,28 +1371,33 @@ void symex_assertion_sumt::level2_rename_init(statet &state, const symbol_exprt 
 irep_idt symex_assertion_sumt::get_new_symbol_version(
         const irep_idt& identifier,
         statet &state,
-        typet type)
+        typet type,
+        bool set_ssa_indices)
 {
     //--8<--- Taken from goto_symex_statet::assignment()
 
     // Force Rename
-    if(state.level2.current_names.find(identifier)==state.level2.current_names.end()) {
-	    level2_rename_init(state, symbol_exprt(identifier, type));
-    } else {
-        // This object use it, so increase the counter - adds to the next time.
-        state.level2.increase_counter(identifier);
+    if(state.level2.current_names.find(identifier)==state.level2.current_names.end())
+        level2_rename_init(state, symbol_exprt(identifier, type));
+    
+    // rename
+    state.level2.increase_counter(identifier);
+    
+    //set_ssa_indices to L2
+    if (set_ssa_indices) 
+    {
+        ssa_exprt ssa_expr = state.level2.current_names[identifier].first;
+        state.level0(ssa_expr, ns, state.source.thread_nr);
+        state.level1(ssa_expr);
+        ssa_expr.set_level_2(state.level2.current_count(identifier));
     }
     
-    // Can use it only if there are items and our item is there!
-    assert(state.level2.current_names.count(identifier) > 0);    
-    assert(state.level2.current_names.find(identifier) != state.level2.current_names.end());
-    
-    // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
-    irep_idt new_l2_name = id2string(identifier) + "#" + i2string(state.level2.current_count(identifier));
-
     // Break constant propagation for this new symbol
     state.propagation.remove(identifier);
 
+    // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
+    irep_idt new_l2_name = id2string(identifier) + "#" + i2string(state.level2.current_count(identifier));
+    
     return new_l2_name;
 }
 
@@ -1400,7 +1405,7 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 // We always with a counter!
 irep_idt symex_assertion_sumt::get_current_l2_name(statet &state, const irep_idt &identifier) const 
 {
-    if ( id2string(identifier).find("#") != std::string::npos)
+    if (id2string(identifier).find("#") != std::string::npos)
         return identifier;
     
     return id2string(identifier)+"#"+i2string(state.level2.current_count(identifier));
