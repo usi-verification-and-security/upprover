@@ -231,7 +231,7 @@ private:
     partition_ifacet &partition_iface);
 
   // L2 rename - new code
-  void level2_rename(statet &state, const symbol_exprt &expr);
+  void level2_rename_init(statet &state, const symbol_exprt &expr);
 
   // Assigns values from the modified global variables. Marks the SSA symbol 
   // of the global variables for later use when processing the deferred function

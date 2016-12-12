@@ -671,7 +671,7 @@ void symex_assertion_sumt::mark_argument_symbols(
         partition_ifacet &partition_iface)
 {
   const code_typet::parameterst &parameter_types=function_type.parameters();
-
+ 
   for(code_typet::parameterst::const_iterator
       it=parameter_types.begin();
       it!=parameter_types.end();
@@ -691,7 +691,10 @@ void symex_assertion_sumt::mark_argument_symbols(
     if(it2==state.level2.current_names.end()) assert (0);
 
     // rename!
-    to_ssa_expr(lhs).set_level_2(it2->second.second);
+    ssa_exprt ssa_expr_lhs = to_ssa_expr(lhs);
+    state.level0(ssa_expr_lhs, ns, state.source.thread_nr);
+    state.level1(ssa_expr_lhs);
+    ssa_expr_lhs.set_level_2(it2->second.second);
 
     partition_iface.argument_symbols.push_back(lhs);
 
@@ -734,7 +737,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     // The symbol is not yet in l2 renaming
     if (state.level2.current_names.find(*it) == state.level2.current_names.end()) {
         // Original code: state.level2.rename(*it, 0);
-        level2_rename(state, symbol_expr);
+        level2_rename_init(state, symbol_expr);
              
         // GF: should there be assert(0) ?
 #       ifdef DEBUG_PARTITIONING
@@ -745,8 +748,15 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
 
     // GF: not sure about it. ToDo: debug when compiled
     assert(state.level2.current_names.count(*it) > 0); // Can use it only if there are items!
+    
+    // Update after rename
+    ssa_exprt ssa_expr = state.level2.current_names[*it].first;
+    state.level0(ssa_expr, ns, state.source.thread_nr);
+    state.level1(ssa_expr);
+    ssa_expr.set_level_2(state.level2.current_count(*it));
+    
+    // Push the new renamed to the partition
     symbol_exprt symb_ex(state.level2.current_names[*it].first);
-    to_ssa_expr(symb_ex).set_level_2(state.level2.current_count(*it));
     partition_iface.argument_symbols.push_back(symb_ex);
     
 #   ifdef DEBUG_PARTITIONING
@@ -797,7 +807,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::rename2SSA
+ Function: symex_assertion_sumt::level2_rename_and_2ssa
 
  Inputs:
 
@@ -1309,7 +1319,7 @@ void symex_assertion_sumt::produce_callend_assumption(
  Taken from goto_symext::symex_decl
 
 \*******************************************************************/
-void symex_assertion_sumt::level2_rename(statet &state, const symbol_exprt &expr) 
+void symex_assertion_sumt::level2_rename_init(statet &state, const symbol_exprt &expr) 
 {        
     ssa_exprt ssa(expr);
     const irep_idt &l1_identifier=ssa.get_identifier();
@@ -1370,7 +1380,7 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 
     // Force Rename
     if(state.level2.current_names.find(identifier)==state.level2.current_names.end()) {
-	    level2_rename(state, symbol_exprt(identifier, type));
+	    level2_rename_init(state, symbol_exprt(identifier, type));
     } else {
         // This object use it, so increase the counter - adds to the next time.
         state.level2.increase_counter(identifier);
