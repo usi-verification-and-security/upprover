@@ -746,16 +746,14 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     // Check we have items in *it location
     assert(state.level2.current_names.count(*it) > 0);
     
-    // rename: update the level counters: varname!L0#L2
+    // rename: update the level counters: varname!L0
     ssa_exprt ssa_expr = state.level2.current_names[*it].first;
     state.level0(ssa_expr, ns, state.source.thread_nr);
     state.level1(ssa_expr);
-    ssa_expr.set_level_2(state.level2.current_count(*it));
     
     // Push the new renamed to the partition
     symbol_exprt symb_ex(ssa_expr);
     partition_iface.argument_symbols.push_back(symb_ex);
-    
 #   ifdef DEBUG_PARTITIONING
     expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex);
 #   endif
@@ -791,6 +789,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
           it != globals_modified.end();
           ++it) 
   {
+    // Creates a var name: varname!L0#L2 - instance and thread  
     const symbolt& symbol = ns.lookup(*it);
     get_new_symbol_version(*it, state, symbol.type);    
     ssa_exprt ssa_expr = state.level2.current_names[*it].first;
