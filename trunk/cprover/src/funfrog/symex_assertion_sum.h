@@ -285,8 +285,7 @@ private:
   irep_idt get_new_symbol_version(
         const irep_idt& identifier,
         statet &state,
-        typet type,
-        bool set_ssa_indices);
+        typet type);
 
   // Replace old interface of get current name from counter
   irep_idt get_current_l2_name(statet &state, const irep_idt &identifier) const;

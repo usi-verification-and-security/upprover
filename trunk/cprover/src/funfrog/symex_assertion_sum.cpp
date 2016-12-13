@@ -792,7 +792,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
           ++it) 
   {
     const symbolt& symbol = ns.lookup(*it);
-    get_new_symbol_version(*it, state, symbol.type, true);    
+    get_new_symbol_version(*it, state, symbol.type);    
     ssa_exprt ssa_expr = state.level2.current_names[*it].first;
     state.level0(ssa_expr, ns, state.source.thread_nr);
     state.level1(ssa_expr);
@@ -830,9 +830,11 @@ void symex_assertion_sumt::level2_rename_and_2ssa(
     ssa_exprt code_var(symbol_exprt(identifier, type));
     
     // Change to SSA format: identifier: funfrog::netpoll_trap::\return_value#2
-    code_var.set_identifier(get_new_symbol_version(identifier, state, type, true)); 
+    code_var.set_identifier(get_new_symbol_version(identifier, state, type)); 
     
     // Adds L2 counter to the symbol (L2: 1 adds to the expression) 
+    state.level0(code_var, ns, state.source.thread_nr);
+    state.level1(code_var);
     code_var.set_level_2(state.level2.current_count(identifier)); 
     
     // Return a symbol of ssa val with expression of original var
@@ -1273,16 +1275,16 @@ void symex_assertion_sumt::produce_callsite_symbols(
 # endif
 
   partition_iface.callstart_symbol.set_identifier(
-          get_new_symbol_version(callstart_id, state,typet(ID_bool), false));
+          get_new_symbol_version(callstart_id, state,typet(ID_bool)));
   partition_iface.callend_symbol.set_identifier(
-          get_new_symbol_version(callend_id, state,typet(ID_bool), false));
+          get_new_symbol_version(callend_id, state,typet(ID_bool)));
 
   add_symbol(callstart_id, typet(ID_bool), true);
   add_symbol(callend_id, typet(ID_bool), true);
 
   if (partition_iface.assertion_in_subtree) {
     partition_iface.error_symbol.set_identifier(
-          get_new_symbol_version(error_id, state,typet(ID_bool), false));
+          get_new_symbol_version(error_id, state,typet(ID_bool)));
     add_symbol(error_id, typet(ID_bool), true);
   }
 }
@@ -1376,8 +1378,7 @@ void symex_assertion_sumt::level2_rename_init(statet &state, const symbol_exprt 
 irep_idt symex_assertion_sumt::get_new_symbol_version(
         const irep_idt& identifier,
         statet &state,
-        typet type,
-        bool set_ssa_indices)
+        typet type)
 {
     //--8<--- Taken from goto_symex_statet::assignment()
 
@@ -1387,15 +1388,6 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
     
     // rename
     state.level2.increase_counter(identifier);
-    
-    //set_ssa_indices to L2
-    if (set_ssa_indices) 
-    {
-        ssa_exprt ssa_expr = state.level2.current_names[identifier].first;
-        state.level0(ssa_expr, ns, state.source.thread_nr);
-        state.level1(ssa_expr);
-        ssa_expr.set_level_2(state.level2.current_count(identifier));
-    }
     
     // Break constant propagation for this new symbol
     state.propagation.remove(identifier);
