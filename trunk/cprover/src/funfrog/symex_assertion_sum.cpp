@@ -746,14 +746,14 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     // Check we have items in *it location
     assert(state.level2.current_names.count(*it) > 0);
     
-    // rename: update the level counters
+    // rename: update the level counters: varname!L0#L2
     ssa_exprt ssa_expr = state.level2.current_names[*it].first;
     state.level0(ssa_expr, ns, state.source.thread_nr);
     state.level1(ssa_expr);
     ssa_expr.set_level_2(state.level2.current_count(*it));
     
     // Push the new renamed to the partition
-    symbol_exprt symb_ex(state.level2.current_names[*it].first);
+    symbol_exprt symb_ex(ssa_expr);
     partition_iface.argument_symbols.push_back(symb_ex);
     
 #   ifdef DEBUG_PARTITIONING
