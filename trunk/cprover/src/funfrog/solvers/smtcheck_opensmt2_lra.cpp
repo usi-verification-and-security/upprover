@@ -104,7 +104,30 @@ exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
 literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
 {
 	literalt l;
-	PTRef rconst = lralogic->mkConst(extract_expr_str_number(expr).c_str()); // Can have a wrong conversion sometimes!
+    string num = extract_expr_str_number(expr);
+    PTRef rconst = PTRef_Undef;
+    if(num.size() <= 0)
+    {
+        if(expr.type().id() == ID_c_enum)
+        {
+            string enum_tag = expr.type().find(ID_tag).pretty();
+            rconst = lralogic->mkRealVar(enum_tag.c_str());
+            PTRef zero = lralogic->getTerm_RealZero();
+            vec<PTRef> args;
+            args.push(rconst);
+            args.push(zero);
+            PTRef ge = lralogic->mkRealGeq(args);
+            set_to_true(ge);
+        }
+        else
+        {
+            assert(0);
+        }
+    }
+    else
+    {
+	    rconst = lralogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
+    }
 
 	// Check the conversion from string to real was done properly - do not erase!
 	assert(!lralogic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one

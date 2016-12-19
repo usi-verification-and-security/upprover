@@ -318,19 +318,24 @@ literalt smtcheck_opensmt2t::const_var_Real(const exprt &expr)
     //TODO: Check this
 	literalt l;
     string num = extract_expr_str_number(expr);
+    PTRef rconst = PTRef_Undef;
     if(num.size() <= 0)
     {
         if(expr.type().id() == ID_c_enum)
         {
             string enum_tag = expr.type().find(ID_tag).pretty();
+            rconst = logic->mkConst(sort_ureal, enum_tag.c_str());
         }
         else
         {
             assert(0);
         }
     }
-	//TODO: Add a check that the conversion to a number worked!!
-	PTRef rconst = logic->mkConst(sort_ureal, num.c_str()); // Can have a wrong conversion sometimes!
+    else
+    {
+	    rconst = logic->mkConst(sort_ureal, num.c_str());
+    }
+    assert(rconst != PTRef_Undef);
 
 	l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
 
