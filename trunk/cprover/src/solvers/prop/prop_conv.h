@@ -111,7 +111,6 @@ public:
   const cachet &get_cache() const { return cache; }
   const symbolst &get_symbols() const { return symbols; }
 
-  propt &prop; // KE: change for hifro
 protected:
   virtual void post_process();
 
@@ -136,7 +135,8 @@ protected:
   virtual void ignoring(const exprt &expr);
 
   // deliberately protected now to protect lower-level API
-  //propt &prop;
+public: // KE: change for hifrog
+  propt &prop;
 };
 
 #endif // CPROVER_SOLVERS_PROP_PROP_CONV_H
