@@ -158,7 +158,7 @@ bool funfrog_parseoptionst::get_goto_program(
 
       config.set_from_symbol_table(symbol_table);
 
-      if(symbol_table.symbols.find(ID_main)==symbol_table.symbols.end())
+      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
       {
         cbmc_error_interface("The goto binary has no entry point; please complete linking");
         return true;
@@ -173,7 +173,7 @@ bool funfrog_parseoptionst::get_goto_program(
       // we no longer need any parse trees or language files
       clear_parse();
 
-      if(symbol_table.symbols.find(ID_main)==symbol_table.symbols.end())
+      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
       {
         cbmc_error_interface("No entry point; please provide a main function");
         return true;
@@ -512,9 +512,10 @@ bool funfrog_parseoptionst::check_function_summarization(
       store_claims(ns, claim_map, claim_numbers);
 
     // ID_main is the entry point that is now changed to be ID__start
+    // KE: or is it goto_functionst::entry_point()?
     // So instead of c::main we have now _start (cbmc 5.5)
     check_claims(ns,
-                                      goto_functions.function_map[ID__start].body,
+                                      goto_functions.function_map[goto_functionst::entry_point()].body,
                                       goto_functions,
                                       claim_map,
                                       claim_numbers,
