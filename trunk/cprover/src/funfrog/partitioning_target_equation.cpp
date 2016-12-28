@@ -15,7 +15,7 @@ Author: Ondrej Sery
 #include "expr_pretty_print.h"
 #include "solvers/sat/cnf.h"
 
-#define DEBUG_SSA
+//#define DEBUG_SSA
 //#define DEBUG_SSA_OLD // belongs only to the old version with BV
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
@@ -617,8 +617,6 @@ void partitioning_target_equationt::convert_partition_io(
           ++o_it)
       {
         exprt tmp=*o_it;
-        std::cout << "First " << tmp.is_constant() << " second " 
-                << (tmp.id()==ID_string_constant) << std::endl;
         if(tmp.is_constant() ||
            tmp.id()==ID_string_constant)
           it->converted_io_args.push_back(tmp);

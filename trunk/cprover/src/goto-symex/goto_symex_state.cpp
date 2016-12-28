@@ -736,7 +736,7 @@ bool goto_symex_statet::l2_thread_read_encoding(
     record_events=record_events_bak;
 
     if (symex_target == NULL) {
-        printf("Warning: assignment ignored from symex_target\n");
+        printf(";; Warning: assignment ignored from symex_target\n");
     }
     else
     {
@@ -820,7 +820,8 @@ bool goto_symex_statet::l2_thread_write_encoding(
         atomic_section_id,
         source);
   else
-      printf("Warning: shared write not recorded\n");
+      printf(";; Warning: shared write not recorded\n");
+  
   // do we have threads?
   return threads.size()>1;
 }
