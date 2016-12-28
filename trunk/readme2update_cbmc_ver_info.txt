@@ -8,6 +8,7 @@ File Changed:
 - trunk/cprover/src/goto-symex/goto_symex.h (set virtual phi_function method)
 - trunk/cprover/src/config.inc (change: add ../ to minisat2 path)
 - trunk/cprover/src/Makefile
+- trunk/cprover/src/goto-symex/goto_symex_state.cpp // Fix to ignor issues of parallel MC
 
 minisat-2.2.1:
 ==============
