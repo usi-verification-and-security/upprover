@@ -735,18 +735,23 @@ bool goto_symex_statet::l2_thread_read_encoding(
     assignment(ssa_l1, tmp, ns, true, true);
     record_events=record_events_bak;
 
-    symex_target->assignment(
-      guard.as_expr(),
-      ssa_l1,
-      ssa_l1,
-      ssa_l1.get_original_expr(),
-      tmp,
-      source,
-      symex_targett::PHI);
+    if (symex_target == NULL) {
+        printf("Warning: assignment ignored from symex_target\n");
+    }
+    else
+    {
+        symex_target->assignment(
+          guard.as_expr(),
+          ssa_l1,
+          ssa_l1,
+          ssa_l1.get_original_expr(),
+          tmp,
+          source,
+          symex_targett::PHI);
+    }
 
     set_ssa_indices(ssa_l1, ns, L2);
     expr=ssa_l1;
-
     a_s_read.second.push_back(guard);
     if(!no_write.op().is_false())
       a_s_read.second.back().add(no_write);
@@ -808,12 +813,14 @@ bool goto_symex_statet::l2_thread_write_encoding(
   }
 
   // record a shared write
-  symex_target->shared_write(
-    guard.as_expr(),
-    expr,
-    atomic_section_id,
-    source);
-
+  if (symex_target != NULL)
+      symex_target->shared_write(
+        guard.as_expr(),
+        expr,
+        atomic_section_id,
+        source);
+  else
+      printf("Warning: shared write not recorded\n");
   // do we have threads?
   return threads.size()>1;
 }
