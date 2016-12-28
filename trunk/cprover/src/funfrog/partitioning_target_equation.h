@@ -49,7 +49,8 @@ public:
 		  out_partition(out_local_partition),
 		  terms_counter(0),
 		  is_first_call(true),
-		  first_call_expr(0)
+		  first_call_expr(0),
+                  io_count_global(0)
 		  {
 	  partition_smt_decl = new std::map <std::string,exprt>();
 	  out_terms.rdbuf(&terms_buf);
@@ -229,6 +230,8 @@ private:
   int terms_counter; // for prints SSA - remove later
   bool is_first_call; // for prints SSA - remove later
   const exprt* first_call_expr; // for prints SSA - remove later
+  
+  unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
 
   // Print decl (later change to create)
   std::ostream& print_decl_smt(std::ostream& out);

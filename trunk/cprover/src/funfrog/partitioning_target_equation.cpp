@@ -607,8 +607,6 @@ Function: partitioning_target_equationt::convert_partition_io
 void partitioning_target_equationt::convert_partition_io(
   prop_conv_solvert &prop_conv, partitiont& partition)
 {
-  unsigned io_count=0;
-
   for(SSA_stepst::iterator it = partition.start_it;
       it != partition.end_it; ++it)
     if(!it->ignore)
@@ -619,14 +617,14 @@ void partitioning_target_equationt::convert_partition_io(
           ++o_it)
       {
         exprt tmp=*o_it;
+        std::cout << "First " << tmp.is_constant() << " second " 
+                << (tmp.id()==ID_string_constant) << std::endl;
         if(tmp.is_constant() ||
            tmp.id()==ID_string_constant)
           it->converted_io_args.push_back(tmp);
         else
         {
-          symbol_exprt symbol;
-          symbol.type()=tmp.type();
-          symbol.set_identifier("symex::io::"+i2string(io_count++));
+          symbol_exprt symbol(("symex::io::"+i2string(io_count_global++)), tmp.type());
           prop_conv.set_to(equal_exprt(tmp, symbol), true);
           it->converted_io_args.push_back(symbol);
         }
