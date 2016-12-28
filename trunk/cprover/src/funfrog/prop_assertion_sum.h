@@ -45,7 +45,7 @@ public:
 
   const fine_timet& get_solving_time() { return solving_time; };
 
-  void error_trace(const prop_convt &prop_conv, const namespacet &ns);
+  void error_trace(const prop_conv_solvert &prop_conv, const namespacet &ns);
 
 private:
   // Summarizing context (summary_store needed)

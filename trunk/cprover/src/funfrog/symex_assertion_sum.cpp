@@ -863,18 +863,12 @@ void symex_assertion_sumt::return_assignment_and_mark(
     assert(function_type.return_type().is_not_nil());
 
     const typet& type = function_type.return_type();
-    //# ifndef DEBUG_PARTITIONING
     const irep_idt &function_id = partition_iface.function_id;
     irep_idt retval_symbol_id(
             "funfrog::" + as_string(function_id) + "::\\return_value");
     irep_idt retval_tmp_id(
             "funfrog::" + as_string(function_id) + "::\\return_value_tmp");
-/* FIXME: This possibly breaks typing of return values
-# else
-  irep_idt retval_symbol_id("funfrog::\\retval");
-  irep_idt retval_tmp_id("funfrog::\\retval_tmp");
-# endif
- */
+    
     // return_value_tmp - create new symbol
     add_symbol(retval_tmp_id, type, false);
     symbol_exprt retval_tmp(retval_tmp_id, type);
@@ -894,10 +888,6 @@ void symex_assertion_sumt::return_assignment_and_mark(
 
         bool old_cp = constant_propagation;
         constant_propagation = false;
-        // GF: fails here. for some reason, retval_symbol is not in the symbol_table.
-        //     not clear, how it used to get there in the previous version
-        // KE: The name/irep_idt is wrong - there is addition #0 (a specific instance and not a symbol in general).
-        //     The old version referred only to the symbol and insert a symbol so it was all ok
         symex_assign(state, assignment);
         constant_propagation = old_cp;
     } 
@@ -1076,8 +1066,11 @@ void symex_assertion_sumt::handle_function_call(
     {
       exprt rhs = exprt("nondet_symbol", function_call.lhs().type());
       rhs.set(ID_identifier, "symex::" + i2string(nondet_count++));
+      
+      // KE: I think that's how it is done now - from expr.h
       //rhs.source_location() = function_call.source_location();
-      rhs.add_source_location() = function_call.source_location(); // KE: I think that's how it is done now - from expr.h
+      rhs.add_source_location() = function_call.source_location(); 
+      
       code_assignt code(function_call.lhs(), rhs);
       symex_assign(state, code);
     }

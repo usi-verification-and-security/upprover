@@ -62,7 +62,7 @@ protected:
   summarization_contextt summarization_context;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
-  std::auto_ptr<prop_convt> decider;
+  std::auto_ptr<prop_conv_solvert> decider;
   std::auto_ptr<interpolating_solvert> interpolator;
 
   satcheck_opensmt2t* opensmt;

@@ -155,7 +155,7 @@ bool prop_assertion_sumt::is_satisfiable(
 // Copied from build_goto_tarce.cpp
 void build_exec_order_goto_trace(
   partitioning_target_equationt &target,
-  const prop_convt &prop_conv,
+  const prop_conv_solvert &prop_conv,
   const namespacet &ns,
   goto_tracet &goto_trace)
 {
@@ -248,7 +248,7 @@ void build_exec_order_goto_trace(
   }
 }
 
-void prop_assertion_sumt::error_trace(const prop_convt &prop_conv, const namespacet &ns)
+void prop_assertion_sumt::error_trace(const prop_conv_solvert &prop_conv, const namespacet &ns)
 {
   status() << ("Building error trace");
 

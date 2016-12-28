@@ -107,15 +107,15 @@ private:
   vector<string> equation_symbols;
   unsigned long impl_timeout;
 
-  void deep_convert_guards(prop_convt &prop_conv, exprt exp);
-  void set_guards_to_true(prop_convt &prop_conv, exprt exp);
+  void deep_convert_guards(prop_conv_solvert &prop_conv, exprt exp);
+  void set_guards_to_true(prop_conv_solvert &prop_conv, exprt exp);
 
-  void convert_delta_SSA(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assignments(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assumptions(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assertions(prop_convt &prop_conv, SSA_step_reft &it2);
-  void convert_guards(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_io(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_delta_SSA(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_assignments(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_assumptions(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_assertions(prop_conv_solvert &prop_conv, SSA_step_reft &it2);
+  void convert_guards(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_io(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
 
   void reconstruct_exec_SSA_order();
 };

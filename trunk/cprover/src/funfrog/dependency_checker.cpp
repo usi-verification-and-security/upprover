@@ -106,7 +106,7 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
 {
   try{
 
-  std::auto_ptr<prop_convt> decider;
+  std::auto_ptr<prop_conv_solvert> decider;
   satcheck_opensmt2t* opensmt = new satcheck_opensmt2t();
   bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
   deciderp->unbounded_array = bv_pointerst::U_AUTO;
@@ -675,7 +675,7 @@ void dependency_checkert::print_SSA_steps()
     }
 }
 
-void dependency_checkert::convert_delta_SSA(prop_convt &prop_conv,
+void dependency_checkert::convert_delta_SSA(prop_conv_solvert &prop_conv,
     SSA_step_reft &it1, SSA_step_reft &it2)
 {
   convert_guards(prop_conv, it1, it2);
@@ -685,7 +685,7 @@ void dependency_checkert::convert_delta_SSA(prop_convt &prop_conv,
   convert_io(prop_conv, it1, it2);
 }
 
-void dependency_checkert::deep_convert_guards(prop_convt &prop_conv, exprt exp){
+void dependency_checkert::deep_convert_guards(prop_conv_solvert &prop_conv, exprt exp){
   if (exp.has_operands())
   {
     for (unsigned i = 0; i < exp.operands().size(); i++){
@@ -700,7 +700,7 @@ void dependency_checkert::deep_convert_guards(prop_convt &prop_conv, exprt exp){
   }
 }
 
-void dependency_checkert::set_guards_to_true(prop_convt &prop_conv, exprt exp){
+void dependency_checkert::set_guards_to_true(prop_conv_solvert &prop_conv, exprt exp){
   if (exp.has_operands())
   {
     for (unsigned i = 0; i < exp.operands().size(); i++){
@@ -716,7 +716,7 @@ void dependency_checkert::set_guards_to_true(prop_convt &prop_conv, exprt exp){
 }
 
 void dependency_checkert::convert_assignments(
-    prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+    prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   SSA_step_reft it=it1;
   while(it!=it2){
@@ -731,7 +731,7 @@ void dependency_checkert::convert_assignments(
 }
 
 void dependency_checkert::convert_guards(
-  prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+  prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   SSA_step_reft it=it1;
   SSA_step_reft it3=it2;
@@ -751,7 +751,7 @@ void dependency_checkert::convert_guards(
 }
 
 void dependency_checkert::convert_assumptions(
-  prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+  prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   SSA_step_reft it=it1;
   while(it!=it2)
@@ -767,7 +767,7 @@ void dependency_checkert::convert_assumptions(
 }
 
 void dependency_checkert::convert_assertions(
-  prop_convt &prop_conv, SSA_step_reft &it2)
+  prop_conv_solvert &prop_conv, SSA_step_reft &it2)
 {
   assert((*it2)->is_assert());
   //std::cout << "convert assert :" << from_expr(ns, "", (*it2)->cond_expr) <<"\n";
@@ -776,7 +776,7 @@ void dependency_checkert::convert_assertions(
 }
 
 void dependency_checkert::convert_io(
-    prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+    prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   unsigned io_count=0;
   SSA_step_reft it=it1;
