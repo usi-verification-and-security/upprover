@@ -695,6 +695,7 @@ void symex_assertion_sumt::mark_argument_symbols(
     state.level1(ssa_expr_lhs);
     ssa_expr_lhs.set_level_2(it2->second.second);
 
+    to_ssa_expr(lhs).set_level_2(it2->second.second);
     partition_iface.argument_symbols.push_back(lhs);
 
 #   ifdef DEBUG_PARTITIONING
@@ -753,6 +754,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     
     // Push the new renamed to the partition
     symbol_exprt symb_ex(ssa_expr);
+    // to_ssa_expr(symb_ex).set_level_2(state.level2.current_count(*it)); - KE: if gets into infinite loop, try to uncomment this one
     partition_iface.argument_symbols.push_back(symb_ex);
 #   ifdef DEBUG_PARTITIONING
     expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex);
