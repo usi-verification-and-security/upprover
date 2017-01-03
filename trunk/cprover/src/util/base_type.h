@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_BASE_TYPE_H
-#define CPROVER_BASE_TYPE_H
+#ifndef CPROVER_UTIL_BASE_TYPE_H
+#define CPROVER_UTIL_BASE_TYPE_H
 
 #include "union_find.h"
 #include "irep.h"
@@ -46,13 +46,13 @@ public:
     identifiers.clear();
     return base_type_eq_rec(type1, type2);
   }
-  
+
   bool base_type_eq(const exprt &expr1, const exprt &expr2)
   {
     identifiers.clear();
     return base_type_eq_rec(expr1, expr2);
   }
-  
+
   virtual ~base_type_eqt() { }
 
 protected:
@@ -60,10 +60,10 @@ protected:
 
   virtual bool base_type_eq_rec(const typet &type1, const typet &type2);
   virtual bool base_type_eq_rec(const exprt &expr1, const exprt &expr2);
-  
+
   // for loop avoidance
   typedef union_find<irep_idt> identifierst;
   identifierst identifiers;
 };
 
-#endif
+#endif // CPROVER_UTIL_BASE_TYPE_H

@@ -10,7 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_GOTO_PROGRAMS_STRING_ABSTRACTION_H
 
 #include <util/symbol_table.h>
-#include <util/message_stream.h>
+#include <util/message.h>
 #include <util/config.h>
 #include <util/std_expr.h>
 
@@ -24,7 +24,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-class string_abstractiont:public message_streamt
+class string_abstractiont:public messaget
 {
 public:
   string_abstractiont(
@@ -51,7 +51,7 @@ protected:
   void replace_string_macros(
     exprt &expr,
     bool lhs,
-    const locationt &location);
+    const source_locationt &);
 
   void move_lhs_arithmetic(exprt &lhs, exprt &rhs);
 
@@ -90,8 +90,6 @@ protected:
 
   void abstract_function_call(goto_programt &dest, goto_programt::targett it);
 
-  goto_programt::targett abstract_return(goto_programt &dest, goto_programt::targett it);
-
   goto_programt::targett value_assignments(goto_programt &dest,
       goto_programt::targett it,
       const exprt& lhs, const exprt& rhs);
@@ -113,7 +111,7 @@ protected:
     const exprt &pointer,
     whatt what,
     bool write,
-    const locationt &location);
+    const source_locationt &);
 
   bool build(const exprt &object, exprt &dest, bool write);
   bool build_wrap(const exprt &object, exprt &dest, bool write);
@@ -133,12 +131,11 @@ protected:
       const irep_idt &identifier, const typet &type);
 
   exprt member(const exprt &a, whatt what);
-  irep_idt abstract_ret_val_name(const symbolt &fct);
 
   typet string_struct;
   goto_programt initialization;
 
-  typedef hash_map_cont<irep_idt, irep_idt, irep_id_hash> localst;
+  typedef std::unordered_map<irep_idt, irep_idt, irep_id_hash> localst;
   localst locals;
 
   void abstract(goto_programt &dest);
@@ -148,7 +145,7 @@ protected:
       goto_functionst::goto_functiont &fct);
 
   void add_argument(
-    code_typet::argumentst &str_args,
+    code_typet::parameterst &str_args,
     const symbolt &fct_symbol,
     const typet &type,
     const irep_idt &base_name,
@@ -184,4 +181,4 @@ void string_abstraction(
   message_handlert &message_handler,
   goto_functionst &dest);
 
-#endif
+#endif // CPROVER_GOTO_PROGRAMS_STRING_ABSTRACTION_H

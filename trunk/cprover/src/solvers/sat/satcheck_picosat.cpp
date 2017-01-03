@@ -8,7 +8,6 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 #include <cassert>
 
-#include <util/i2string.h>
 #include <util/threeval.h>
 
 #include "satcheck_picosat.h"
@@ -40,16 +39,16 @@ tvt satcheck_picosatt::l_get(literalt a) const
 
   tvt result;
 
-  if(a.var_no()>picosat_variables())
-    return tvt(tvt::TV_UNKNOWN);
+  if((int)a.var_no()>picosat_variables(picosat))
+    return tvt(tvt::tv_enumt::TV_UNKNOWN);
 
-  const int val=picosat_deref(a.dimacs());
+  const int val=picosat_deref(picosat, a.dimacs());
   if(val>0)
     result=tvt(true);
   else if(val<0)
     result=tvt(false);
   else
-    return tvt(tvt::TV_UNKNOWN);
+    return tvt(tvt::tv_enumt::TV_UNKNOWN);
 
   return result;
 }
@@ -86,16 +85,16 @@ Function: satcheck_picosatt::lcnf
 void satcheck_picosatt::lcnf(const bvt &bv)
 {
   bvt new_bv;
-  
+
   if(process_clause(bv, new_bv))
     return;
 
-  picosat_adjust(_no_variables);
+  picosat_adjust(picosat, _no_variables);
 
   forall_literals(it, new_bv)
-    picosat_add(it->dimacs());
+    picosat_add(picosat, it->dimacs());
 
-  picosat_add(0);
+  picosat_add(picosat, 0);
 
   clause_counter++;
 }
@@ -118,29 +117,29 @@ propt::resultt satcheck_picosatt::prop_solve()
 
   {
     std::string msg=
-      i2string(_no_variables)+" variables, "+
-      i2string(picosat_added_original_clauses())+" clauses";
-    messaget::status(msg);
+      std::to_string(_no_variables-1)+" variables, "+
+      std::to_string(picosat_added_original_clauses(picosat))+" clauses";
+    messaget::status() << msg << messaget::eom;
   }
-  
+
   std::string msg;
 
   forall_literals(it, assumptions)
-    picosat_assume(it->dimacs());
+    picosat_assume(picosat, it->dimacs());
 
-  const int res=picosat_sat(-1);
+  const int res=picosat_sat(picosat, -1);
   if(res==PICOSAT_SATISFIABLE)
   {
-    msg="SAT checker: negated claim is SATISFIABLE, i.e., does not hold";
-    messaget::status(msg);
+    msg="SAT checker: instance is SATISFIABLE";
+    messaget::status() << msg << messaget::eom;
     status=SAT;
     return P_SATISFIABLE;
   }
   else
   {
     assert(res==PICOSAT_UNSATISFIABLE);
-    msg="SAT checker: negated claim is UNSATISFIABLE, i.e., holds";
-    messaget::status(msg);
+    msg="SAT checker: instance is UNSATISFIABLE";
+    messaget::status() << msg << messaget::eom;
   }
 
   status=UNSAT;
@@ -178,7 +177,24 @@ Function: satcheck_picosatt::satcheck_picosatt
 
 satcheck_picosatt::satcheck_picosatt()
 {
-  picosat_init();
+  picosat = picosat_init();
+}
+
+/*******************************************************************\
+
+Function: satcheck_picosatt::~satcheck_picosatt
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+satcheck_picosatt::~satcheck_picosatt()
+{
+  picosat_reset(picosat);
 }
 
 /*******************************************************************\
@@ -197,7 +213,7 @@ bool satcheck_picosatt::is_in_conflict(literalt a) const
 {
   assert(!a.is_constant());
 
-  return picosat_failed_assumption(a.dimacs())!=0;
+  return picosat_failed_assumption(picosat, a.dimacs())!=0;
 }
 
 /*******************************************************************\
@@ -219,4 +235,3 @@ void satcheck_picosatt::set_assumptions(const bvt &bv)
   forall_literals(it, assumptions)
     assert(!it->is_constant());
 }
-

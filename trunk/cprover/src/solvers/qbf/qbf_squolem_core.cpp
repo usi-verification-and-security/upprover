@@ -8,7 +8,6 @@ Author: CM Wintersteiger
 
 #include <algorithm>
 
-#include <util/i2string.h>
 #include <util/std_expr.h>
 #include <util/arith_tools.h>
 
@@ -120,16 +119,16 @@ Function: qbf_squolem_coret::l_get
 tvt qbf_squolem_coret::l_get(literalt a) const
 {
   if(a.is_true())
-    return tvt(tvt::TV_TRUE);
+    return tvt(tvt::tv_enumt::TV_TRUE);
   else if(a.is_false())
-    return tvt(tvt::TV_FALSE);
+    return tvt(tvt::tv_enumt::TV_FALSE);
   else if(squolem->modelIsTrue(a.var_no()))
-    return tvt(tvt::TV_TRUE);
+    return tvt(tvt::tv_enumt::TV_TRUE);
   else if(squolem->modelIsFalse(a.var_no()) ||
           squolem->modelIsDontCare(a.var_no()))
-    return tvt(tvt::TV_FALSE);
+    return tvt(tvt::tv_enumt::TV_FALSE);
   else
-    return tvt(tvt::TV_UNKNOWN);
+    return tvt(tvt::tv_enumt::TV_UNKNOWN);
 }
 
 /*******************************************************************\
@@ -166,9 +165,9 @@ propt::resultt qbf_squolem_coret::prop_solve()
   {
     std::string msg=
       "Squolem: "+
-      i2string(no_variables())+" variables, "+
-      i2string(no_clauses())+" clauses";
-    messaget::status(msg);
+      std::to_string(no_variables())+" variables, "+
+      std::to_string(no_clauses())+" clauses";
+    messaget::status() << msg << messaget::eom;
   }
 
   squolem->endOfOriginals();
@@ -176,12 +175,12 @@ propt::resultt qbf_squolem_coret::prop_solve()
 
   if(result)
   {
-    messaget::status("Squolem: VALID");
+    messaget::status() << "Squolem: VALID" << messaget::eom;
     return P_SATISFIABLE;
   }
   else
   {
-    messaget::status("Squolem: INVALID");
+    messaget::status() << "Squolem: INVALID" << messaget::eom;
     return P_UNSATISFIABLE;
   }
 
@@ -250,7 +249,7 @@ void qbf_squolem_coret::lcnf(const bvt &bv)
   if(process_clause(bv, new_bv))
     return;
 
-  if(new_bv.size()==0)
+  if(new_bv.empty())
   {
     early_decision=true;
     return;
@@ -414,7 +413,7 @@ const exprt qbf_squolem_coret::f_get(literalt l)
     WitnessStack *wsp = squolem->getModelFunction(Literal(l.dimacs()));
     exprt res;
 
-    if(wsp==NULL || wsp->size()==0)
+    if(wsp==NULL || wsp->empty())
     {
 //      res=exprt(ID_nondet_bool, typet(ID_bool));
       res=false_exprt(); // just set it to zero
@@ -466,7 +465,7 @@ const exprt qbf_squolem_coret::f_get_cnf(WitnessStack *wsp)
         clause.move_to_operands(subf);
     }
 
-    if(clause.operands().size()==0)
+    if(clause.operands().empty())
       clause=false_exprt();
     else if(clause.operands().size()==1)
     {
@@ -521,7 +520,7 @@ const exprt qbf_squolem_coret::f_get_dnf(WitnessStack *wsp)
       simplify_extractbits(cube);
     }
 
-    if(cube.operands().size()==0)
+    if(cube.operands().empty())
       cube=true_exprt();
     else if(cube.operands().size()==1)
     {

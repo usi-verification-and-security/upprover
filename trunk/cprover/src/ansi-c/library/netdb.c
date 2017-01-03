@@ -10,12 +10,12 @@ struct hostent *gethostbyname(const char *name)
   __CPROVER_assert(__CPROVER_is_zero_string(name), "gethostbyname zero-termination of name argument");
   #endif
 
-  _Bool error;
+  __CPROVER_bool error;
   if(error) return 0;
-  
+
   // quite restrictive, as will alias between calls
   static struct hostent result;
-  
+
   // we whould be filling in the fields of this
   return &result;
 }
@@ -29,12 +29,12 @@ struct hostent *gethostbyaddr(const void *addr, socklen_t len, int type)
   (void)len;
   (void)type;
 
-  _Bool error;
+  __CPROVER_bool error;
   if(error) return 0;
-  
+
   // quite restrictive, as will alias between calls
   static struct hostent result;
-  
+
   // we whould be filling in the fields of this
   return &result;
 }
@@ -45,12 +45,12 @@ struct hostent *gethostent(void)
 {
   __CPROVER_HIDE:;
 
-  _Bool error;
+  __CPROVER_bool error;
   if(error) return 0;
-  
+
   // quite restrictive, as will alias between calls
   static struct hostent result;
-  
+
   // we whould be filling in the fields of this
   return &result;
 }

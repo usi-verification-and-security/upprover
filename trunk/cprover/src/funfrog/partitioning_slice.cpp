@@ -7,7 +7,6 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
-#include <hash_cont.h>
 #include <std_expr.h>
 
 #include "partitioning_slice.h"
@@ -142,7 +141,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
       partitiont& partition = *(sum_it->second.first);
       partition_ifacet& partition_iface = partition.get_iface();
       const summary_idst& itps = *partition.summaries;
-      unsigned symbol_idx = sum_it->second.second;
+      //unsigned symbol_idx = sum_it->second.second;
 
       // Any of the summaries can match, we need to go through all of them
       // (this may be optimized by precomputation)

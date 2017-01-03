@@ -1,15 +1,15 @@
 /*******************************************************************\
- 
+
 Module: XML-symbol conversions with irep hashing
- 
+
 Author: CM Wintersteiger
- 
+
 Date: July 2006
- 
+
 \*******************************************************************/
 
-#ifndef XML_SYMBOL_HASHING_H_
-#define XML_SYMBOL_HASHING_H_
+#ifndef CPROVER_GOTO_CC_XML_BINARIES_XML_SYMBOL_HASHING_H
+#define CPROVER_GOTO_CC_XML_BINARIES_XML_SYMBOL_HASHING_H
 
 #include <util/symbol.h>
 #include <util/xml.h>
@@ -20,13 +20,13 @@ class xml_symbol_convertt {
   private:
     xml_irep_convertt irepconverter;
     std::list<irept> irepcache;
-    
+
   public:
-    xml_symbol_convertt(xml_irep_convertt::ireps_containert &ic) : 
+    xml_symbol_convertt(xml_irep_convertt::ireps_containert &ic) :
       irepconverter(ic) {};
-        
+
   void convert(const symbolt &, xmlt &);
   void convert(const xmlt &, symbolt &);
 };
 
-#endif /*XML_SYMBOL_HASHING_H_*/
+#endif // CPROVER_GOTO_CC_XML_BINARIES_XML_SYMBOL_HASHING_H

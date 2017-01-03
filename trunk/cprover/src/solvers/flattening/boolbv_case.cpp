@@ -22,15 +22,16 @@ Function: boolbvt::convert_case
 
 \*******************************************************************/
 
-void boolbvt::convert_case(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_case(const exprt &expr)
 {
   const std::vector<exprt> &operands=expr.operands();
 
-  unsigned width=boolbv_width(expr.type());
+  std::size_t width=boolbv_width(expr.type());
 
   if(width==0)
-    return conversion_failed(expr, bv);
+    return conversion_failed(expr);
 
+  bvt bv;
   bv.resize(width);
 
   // make it free variables
@@ -72,15 +73,14 @@ void boolbvt::convert_case(const exprt &expr, bvt &bv)
       }
 
       compare_literal=bv_utils.equal(compare_bv, op);
-      compare_literal=prop.land(prop.lnot(previous_compare),
-                           compare_literal);
+      compare_literal=prop.land(!previous_compare, compare_literal);
 
       previous_compare=prop.lor(previous_compare, compare_literal);
 
       what=VALUE;
       break;
 
-    case VALUE: 
+    case VALUE:
       if(bv.size()!=op.size())
       {
         std::cerr << "result size: " << bv.size()
@@ -106,5 +106,6 @@ void boolbvt::convert_case(const exprt &expr, bvt &bv)
       assert(false);
     }
   }
-}
 
+  return bv;
+}

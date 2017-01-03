@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_COVER_GOALS_H
-#define CPROCER_COVER_GOALS_H
+#ifndef CPROVER_SOLVERS_PROP_COVER_GOALS_H
+#define CPROVER_SOLVERS_PROP_COVER_GOALS_H
 
 #include <util/message.h>
 
@@ -17,7 +17,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
    Class: cover_gooalst
 
- Purpose: Try to cover some given set of goals
+ Purpose: Try to cover some given set of goals incrementally.
+          This can be seen as a heuristic variant of
+          SAT-based set-cover. No minimality guarantee.
 
 \*******************************************************************/
 
@@ -25,65 +27,82 @@ class cover_goalst:public messaget
 {
 public:
   explicit inline cover_goalst(prop_convt &_prop_conv):
-    prop_conv(_prop_conv), prop(_prop_conv.prop)
+    prop_conv(_prop_conv)
   {
   }
-  
+
   virtual ~cover_goalst();
 
-  void operator()();
+  // returns result of last run on success
+  decision_proceduret::resultt operator()();
 
-  // statistics
+  // the goals
 
-  inline unsigned number_covered() const
-  {
-    return _number_covered;
-  }
-  
-  inline unsigned iterations() const
-  {
-    return _iterations;
-  }
-  
-  inline unsigned size() const
-  {
-    return goals.size();
-  }
-  
-  // managing the goals
-
-  inline void add(const literalt condition)
-  {
-    goals.push_back(cover_goalt());
-    goals.back().condition=condition;
-  }
-  
-  struct cover_goalt
+  struct goalt
   {
     literalt condition;
-    bool covered;
-    
-    cover_goalt():covered(false)
+    enum class statust { UNKNOWN, COVERED, UNCOVERED, ERROR } status;
+
+    goalt():status(statust::UNKNOWN)
     {
     }
   };
 
-  typedef std::list<cover_goalt> goalst;
+  typedef std::list<goalt> goalst;
   goalst goals;
-  
-protected:
-  unsigned _number_covered, _iterations;
-  prop_convt &prop_conv;
-  propt &prop;
 
-  // this method is called for each satisfying assignment
-  virtual void assignment()
+  // statistics
+
+  inline std::size_t number_covered() const
   {
+    return _number_covered;
   }
+
+  inline unsigned iterations() const
+  {
+    return _iterations;
+  }
+
+  inline goalst::size_type size() const
+  {
+    return goals.size();
+  }
+
+  // managing the goals
+
+  inline void add(const literalt condition)
+  {
+    goals.push_back(goalt());
+    goals.back().condition=condition;
+  }
+
+  // register an observer if you want to be told
+  // about satisfying assignments
+
+  class observert
+  {
+  public:
+    virtual void goal_covered(const goalt &) { }
+    virtual void satisfying_assignment() { }
+  };
+
+  inline void register_observer(observert &o)
+  {
+    observers.push_back(&o);
+  }
+
+protected:
+  std::size_t _number_covered;
+  unsigned _iterations;
+  prop_convt &prop_conv;
+
+  typedef std::vector<observert *> observerst;
+  observerst observers;
 
 private:
   void mark();
   void constraint();
+  void freeze_goal_variables();
 };
 
-#endif
+#endif // CPROVER_SOLVERS_PROP_COVER_GOALS_H

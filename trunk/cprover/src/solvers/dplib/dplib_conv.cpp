@@ -8,16 +8,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 #include <cctype>
-#include <cstdlib>
 
 #include <util/arith_tools.h>
 #include <util/std_types.h>
 #include <util/std_expr.h>
 #include <util/config.h>
-#include <util/i2string.h>
 #include <util/expr_util.h>
 #include <util/find_symbols.h>
 #include <util/pointer_offset_size.h>
+#include <util/string2int.h>
 
 #include <ansi-c/string_constant.h>
 
@@ -59,7 +58,7 @@ std::string dplib_convt::dplib_pointer_type()
 {
   assert(config.ansi_c.pointer_width!=0);
   return "[# object: INT, offset: BITVECTOR("+
-         i2string(config.ansi_c.pointer_width)+") #]";
+         std::to_string(config.ansi_c.pointer_width)+") #]";
 }
 
 /*******************************************************************\
@@ -76,7 +75,7 @@ Function: dplib_convt::array_index_type
 
 std::string dplib_convt::array_index_type()
 {
-  return std::string("SIGNED [")+i2string(32)+"]";
+  return std::string("SIGNED [")+std::to_string(32)+"]";
 }
 
 /*******************************************************************\
@@ -183,11 +182,11 @@ void dplib_convt::convert_address_of_rec(const exprt &expr)
         assert(false);
     }
     else
-    {    
+    {
       dplib_prop.out << "(LET P: ";
       dplib_prop.out << dplib_pointer_type();
       dplib_prop.out << " = ";
-      
+
       if(array.type().id()==ID_pointer)
         convert_dplib_expr(array);
       else if(array.type().id()==ID_array)
@@ -212,15 +211,15 @@ void dplib_convt::convert_address_of_rec(const exprt &expr)
     dplib_prop.out << "(LET P: ";
     dplib_prop.out << dplib_pointer_type();
     dplib_prop.out << " = ";
-    
+
     convert_address_of_rec(struct_op);
 
     const irep_idt &component_name=
       to_member_expr(expr).get_component_name();
-    
+
     mp_integer offset=member_offset(ns,
       to_struct_type(struct_op.type()), component_name);
-    
+
     typet index_type(ID_unsignedbv);
     index_type.set(ID_width, config.ansi_c.pointer_width);
 
@@ -253,7 +252,7 @@ literalt dplib_convt::convert_rest(const exprt &expr)
   //dplib_prop.out << "%% E: " << expr << std::endl;
 
   literalt l=prop.new_variable();
-  
+
   find_symbols(expr);
 
   if(expr.id()==ID_equal || expr.id()==ID_notequal)
@@ -385,7 +384,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
   {
     assert(expr.operands().size()==1);
     const exprt &op=expr.op0();
-    
+
     if(expr.type().id()==ID_bool)
     {
       if(op.type().id()==ID_signedbv ||
@@ -404,12 +403,12 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
     else if(expr.type().id()==ID_signedbv ||
             expr.type().id()==ID_unsignedbv)
     {
-      unsigned to_width=atoi(expr.type().get(ID_width).c_str());
-      
+      unsigned to_width=unsafe_string2unsigned(id2string(expr.type().get(ID_width)));
+
       if(op.type().id()==ID_signedbv)
       {
-        unsigned from_width=atoi(op.type().get(ID_width).c_str());
-        
+        unsigned from_width=unsafe_string2unsigned(id2string(op.type().get(ID_width)));
+
         if(from_width==to_width)
           convert_dplib_expr(op);
         else if(from_width<to_width)
@@ -427,8 +426,8 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
       }
       else if(op.type().id()==ID_unsignedbv)
       {
-        unsigned from_width=atoi(op.type().get(ID_width).c_str());
-        
+        unsigned from_width=unsafe_string2unsigned(id2string(op.type().get(ID_width)));
+
         if(from_width==to_width)
           convert_dplib_expr(op);
         else if(from_width<to_width)
@@ -439,7 +438,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
             dplib_prop.out << "0";
 
           dplib_prop.out << " @ ";
-            
+
           dplib_prop.out << "(";
           convert_dplib_expr(op);
           dplib_prop.out << "))";
@@ -461,7 +460,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
             dplib_prop.out << "0";
 
           dplib_prop.out << " @ ";
-          
+
           dplib_prop.out << "IF ";
           convert_dplib_expr(op);
           dplib_prop.out << " THEN 0bin1 ELSE 0bin0 ENDIF)";
@@ -494,12 +493,12 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
   else if(expr.id()==ID_struct)
   {
     dplib_prop.out << "(# ";
-    
+
     const struct_typet &struct_type=to_struct_type(expr.type());
-  
+
     const struct_typet::componentst &components=
       struct_type.components();
-      
+
     assert(components.size()==expr.operands().size());
 
     unsigned i=0;
@@ -513,7 +512,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
       dplib_prop.out << ":=";
       convert_dplib_expr(expr.operands()[i]);
     }
-    
+
     dplib_prop.out << " #)";
   }
   else if(expr.id()==ID_constant)
@@ -527,7 +526,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
     else if(expr.type().id()==ID_pointer)
     {
       const irep_idt &value=expr.get(ID_value);
-      
+
       if(value=="NULL")
       {
         dplib_prop.out << "(# object:="
@@ -550,9 +549,9 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
     else if(expr.type().id()==ID_array)
     {
       dplib_prop.out << "ARRAY (i: " << array_index_type() << "):";
-      
-      assert(expr.operands().size()!=0);
-      
+
+      assert(!expr.operands().empty());
+
       unsigned i=0;
       forall_operands(it, expr)
       {
@@ -565,7 +564,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
         convert_array_value(*it);
         i++;
       }
-      
+
       dplib_prop.out << "\n  ELSE ";
       convert_dplib_expr(expr.op0());
       dplib_prop.out << "\n  ENDIF";
@@ -579,7 +578,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
     else
       throw "unknown constant: "+expr.type().id_string();
   }
-  else if(expr.id()==ID_concatenation || 
+  else if(expr.id()==ID_concatenation ||
           expr.id()==ID_bitand ||
           expr.id()==ID_bitor)
   {
@@ -605,7 +604,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
   else if(expr.id()==ID_bitxor)
   {
     assert(!expr.operands().empty());
-  
+
     if(expr.operands().size()==1)
     {
       convert_dplib_expr(expr.op0());
@@ -621,7 +620,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
     else
     {
       assert(expr.operands().size()>=3);
-      
+
       exprt tmp(expr);
       tmp.operands().resize(tmp.operands().size()-1);
 
@@ -678,7 +677,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
           expr.id()==ID_xor)
   {
     assert(expr.type().id()==ID_bool);
-    
+
     if(expr.operands().size()>=2)
     {
       forall_operands(it, expr)
@@ -692,7 +691,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
           else if(expr.id()==ID_xor)
             dplib_prop.out << " XOR ";
         }
-        
+
         dplib_prop.out << "(";
         convert_dplib_expr(*it);
         dplib_prop.out << ")";
@@ -745,7 +744,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
           expr.id()==ID_gt)
   {
     assert(expr.operands().size()==2);
-    
+
     const typet &op_type=expr.op0().type();
 
     if(op_type.id()==ID_unsignedbv)
@@ -758,7 +757,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
         dplib_prop.out << "BVGE";
       else if(expr.id()==ID_gt)
         dplib_prop.out << "BVGT";
-      
+
       dplib_prop.out << "(";
       convert_dplib_expr(expr.op0());
       dplib_prop.out << ", ";
@@ -775,7 +774,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
         dplib_prop.out << "SBVGE";
       else if(expr.id()==ID_gt)
         dplib_prop.out << "SBVGT";
-      
+
       dplib_prop.out << "(";
       convert_dplib_expr(expr.op0());
       dplib_prop.out << ", ";
@@ -799,16 +798,16 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
           dplib_prop.out << ", ";
           convert_dplib_expr(*it);
         }
-          
+
         dplib_prop.out << ")";
       }
       else if(expr.type().id()==ID_pointer)
       {
         if(expr.operands().size()!=2)
           throw "pointer arithmetic with more than two operands";
-        
+
         const exprt *p, *i;
-        
+
         if(expr.op0().type().id()==ID_pointer)
         {
           p=&expr.op0();
@@ -821,7 +820,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
         }
         else
           throw "unexpected mixture in pointer arithmetic";
-        
+
         dplib_prop.out << "(LET P: " << dplib_pointer_type() << " = ";
         convert_dplib_expr(*p);
         dplib_prop.out << " IN P WITH .offset:=BVPLUS("
@@ -929,7 +928,6 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
       assert(false);
   }
   else if(expr.id()==ID_address_of ||
-          expr.id()=="implicit_address_of" ||
           expr.id()=="reference_to")
   {
     assert(expr.operands().size()==1);
@@ -986,7 +984,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
     dplib_prop.out << "(";
     convert_dplib_expr(expr.op0());
     dplib_prop.out << ")";
-  
+
     for(unsigned i=1; i<expr.operands().size(); i+=2)
     {
       assert((i+1)<expr.operands().size());
@@ -1043,15 +1041,6 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
     // TODO, this has the wrong type
   }
   #endif
-  else if(expr.id()==ID_same_object)
-  {
-    assert(expr.operands().size()==2);
-    dplib_prop.out << "(";
-    convert_dplib_expr(expr.op0());
-    dplib_prop.out << ").object=(";
-    convert_dplib_expr(expr.op1());
-    dplib_prop.out << ").object";
-  }
   else if(expr.id()==ID_string_constant)
   {
     convert_dplib_expr(to_string_constant(expr).to_array_expr());
@@ -1064,11 +1053,11 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
        expr.op0().type().id()==ID_signedbv)
     {
       convert_dplib_expr(expr.op0());
-      
+
       mp_integer i;
       if(to_integer(expr.op1(), i))
         throw "extractbit takes constant as second parameter";
-        
+
       dplib_prop.out << "[" << i << "]";
     }
     else
@@ -1077,11 +1066,11 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
   else if(expr.id()==ID_replication)
   {
     assert(expr.operands().size()==2);
-  
+
     mp_integer times;
     if(to_integer(expr.op0(), times))
       throw "replication takes constant as first parameter";
-    
+
     dplib_prop.out << "(LET v: BITVECTOR(1) = ";
 
     convert_dplib_expr(expr.op1());
@@ -1093,7 +1082,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
       if(i!=0) dplib_prop.out << "@";
       dplib_prop.out << "v";
     }
-    
+
     dplib_prop.out << ")";
   }
   else
@@ -1120,7 +1109,7 @@ void dplib_convt::set_to(const exprt &expr, bool value)
       set_to(*it, true);
     return;
   }
-  
+
   if(value && expr.is_true())
     return;
 
@@ -1129,16 +1118,16 @@ void dplib_convt::set_to(const exprt &expr, bool value)
   if(expr.id()==ID_equal && value)
   {
     assert(expr.operands().size()==2);
-    
+
     if(expr.op0().id()==ID_symbol)
     {
       const irep_idt &identifier=expr.op0().get(ID_identifier);
-      
+
       identifiert &id=identifier_map[identifier];
 
       if(id.type.is_nil())
       {
-        hash_set_cont<irep_idt, irep_id_hash> s_set;
+        std::unordered_set<irep_idt, irep_id_hash> s_set;
 
         ::find_symbols(expr.op1(), s_set);
 
@@ -1153,26 +1142,26 @@ void dplib_convt::set_to(const exprt &expr, bool value)
           convert_dplib_type(expr.op0().type());
           dplib_prop.out << " = ";
           convert_dplib_expr(expr.op1());
-        
+
           dplib_prop.out << ";" << std::endl << std::endl;
           return;
         }
       }
     }
   }
-  
+
   find_symbols(expr);
 
   dplib_prop.out << "AXIOM ";
 
   if(!value)
     dplib_prop.out << "! (";
-    
+
   convert_dplib_expr(expr);
 
   if(!value)
     dplib_prop.out << ")";
-    
+
   dplib_prop.out << ";" << std::endl << std::endl;
 }
 
@@ -1194,7 +1183,7 @@ void dplib_convt::find_symbols(const exprt &expr)
 
   forall_operands(it, expr)
     find_symbols(*it);
-    
+
   if(expr.id()==ID_symbol)
   {
     if(expr.type().id()==ID_code)
@@ -1213,7 +1202,7 @@ void dplib_convt::find_symbols(const exprt &expr)
       convert_dplib_type(expr.type());
       dplib_prop.out << ";" << std::endl;
     }
-  }  
+  }
   else if(expr.id()==ID_nondet_symbol)
   {
     if(expr.type().id()==ID_code)
@@ -1232,7 +1221,7 @@ void dplib_convt::find_symbols(const exprt &expr)
       convert_dplib_type(expr.type());
       dplib_prop.out << ";" << std::endl;
     }
-  }  
+  }
 }
 
 /*******************************************************************\
@@ -1252,10 +1241,10 @@ void dplib_convt::convert_dplib_type(const typet &type)
   if(type.id()==ID_array)
   {
     const array_typet &array_type=to_array_type(type);
-    
+
     dplib_prop.out << "ARRAY " << array_index_type()
                  << " OF ";
-                 
+
     if(array_type.subtype().id()==ID_bool)
       dplib_prop.out << "BITVECTOR(1)";
     else
@@ -1269,9 +1258,9 @@ void dplib_convt::convert_dplib_type(const typet &type)
           type.id()==ID_union)
   {
     const struct_typet &struct_type=to_struct_type(type);
-  
+
     dplib_prop.out << "[#";
-    
+
     const struct_typet::componentst &components=
       struct_type.components();
 
@@ -1286,7 +1275,7 @@ void dplib_convt::convert_dplib_type(const typet &type)
       dplib_prop.out << ": ";
       convert_dplib_type(it->type());
     }
-    
+
     dplib_prop.out << " #]";
   }
   else if(type.id()==ID_pointer ||
@@ -1304,30 +1293,30 @@ void dplib_convt::convert_dplib_type(const typet &type)
 
     if(width==0)
       throw "zero-width vector type: "+type.id_string();
-  
+
     dplib_prop.out << "signed[" << width << "]";
   }
   else if(type.id()==ID_unsignedbv)
   {
     unsigned width=to_unsignedbv_type(type).get_width();
-      
+
     if(width==0)
       throw "zero-width vector type: "+type.id_string();
-  
+
     dplib_prop.out << "unsigned[" << width << "]";
   }
   else if(type.id()==ID_bv)
   {
     unsigned width=to_bv_type(type).get_width();
-      
+
     if(width==0)
       throw "zero-width vector type: "+type.id_string();
-  
+
     dplib_prop.out << "bv[" << width << "]";
   }
   else
     throw "unsupported type: "+type.id_string();
-}    
+}
 
 /*******************************************************************\
 

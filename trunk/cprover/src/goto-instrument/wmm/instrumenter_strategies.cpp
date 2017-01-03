@@ -9,34 +9,26 @@ Date: 2012
 \*******************************************************************/
 
 #include <string>
+#include <fstream>
 
-#include <util/i2string.h>
 
 #include "goto2graph.h"
 
-//#define USE_GLPK
-
-#ifdef USE_GLPK
+#ifdef HAVE_GLPK
 #include <glpk.h>
 #include <cstdlib>
-#endif
-
-#ifdef DEBUG
-#define DEBUG_MESSAGE(a) std::cout<<a<<std::endl
-#else
-#define DEBUG_MESSAGE(a)
 #endif
 
 /*******************************************************************\
 
 Function: instrumentert::instrument_with_strategy
-  
+
   Inputs:
-  
+
  Outputs:
-  
+
  Purpose:
-  
+
 \*******************************************************************/
 
 void instrumentert::instrument_with_strategy(instrumentation_strategyt strategy)
@@ -95,19 +87,19 @@ void instrumentert::instrument_with_strategy(instrumentation_strategyt strategy)
     }
   }
   else
-    DEBUG_MESSAGE("no cycles to instrument");
+    message.debug() << "no cycles to instrument" << messaget::eom;
 }
 
 /*******************************************************************\
 
 Function: instrumentert::instrument_all_inserter
-  
+
   Inputs:
-  
+
  Outputs:
-  
+
  Purpose:
-  
+
 \*******************************************************************/
 
 void inline instrumentert::instrument_all_inserter(
@@ -124,13 +116,13 @@ void inline instrumentert::instrument_all_inserter(
       const abstract_eventt& first_ev=egraph[p_it->first];
       var_to_instr.insert(first_ev.variable);
       id2loc.insert(
-        std::pair<irep_idt,locationt>(first_ev.variable,first_ev.location));
+        std::pair<irep_idt,source_locationt>(first_ev.variable,first_ev.source_location));
       if(!p_it->is_po)
       {
         const abstract_eventt& second_ev = egraph[p_it->second];
         var_to_instr.insert(second_ev.variable);
         id2loc.insert(
-          std::pair<irep_idt,locationt>(second_ev.variable,second_ev.location));
+          std::pair<irep_idt,source_locationt>(second_ev.variable,second_ev.source_location));
       }
     }
   }
@@ -139,13 +131,13 @@ void inline instrumentert::instrument_all_inserter(
 /*******************************************************************\
 
 Function: instrumentert::instrument_one_event_per_cycle
-  
+
   Inputs:
-  
+
  Outputs:
-  
+
  Purpose:
-  
+
 \*******************************************************************/
 
 void inline instrumentert::instrument_one_event_per_cycle_inserter(
@@ -173,7 +165,7 @@ void inline instrumentert::instrument_one_event_per_cycle_inserter(
     }
 
     if(next)
-      continue;  
+      continue;
 
     /* instruments the first pair */
     for(std::set<event_grapht::critical_cyclet::delayt>::iterator
@@ -184,13 +176,13 @@ void inline instrumentert::instrument_one_event_per_cycle_inserter(
       const abstract_eventt& first_ev=egraph[p_it->first];
       var_to_instr.insert(first_ev.variable);
       id2loc.insert(
-        std::pair<irep_idt,locationt>(first_ev.variable,first_ev.location));
+        std::pair<irep_idt,source_locationt>(first_ev.variable,first_ev.source_location));
       if(!p_it->is_po)
       {
         const abstract_eventt& second_ev=egraph[p_it->second];
         var_to_instr.insert(second_ev.variable);
         id2loc.insert(
-          std::pair<irep_idt,locationt>(second_ev.variable,second_ev.location));
+          std::pair<irep_idt,source_locationt>(second_ev.variable,second_ev.source_location));
       }
       break;
     }
@@ -200,13 +192,13 @@ void inline instrumentert::instrument_one_event_per_cycle_inserter(
 /*******************************************************************\
 
 Function: instrumentert::instrument_one_read_per_cycle
-  
+
   Inputs:
-  
+
  Outputs:
-  
+
  Purpose:
-  
+
 \*******************************************************************/
 
 void inline instrumentert::instrument_one_read_per_cycle_inserter(
@@ -219,13 +211,13 @@ void inline instrumentert::instrument_one_read_per_cycle_inserter(
 /*******************************************************************\
 
 Function: instrumentert::instrument_one_write_per_cycle
-  
+
   Inputs:
-  
+
  Outputs:
-  
+
  Purpose:
-  
+
 \*******************************************************************/
 
 void inline instrumentert::instrument_one_write_per_cycle_inserter(
@@ -238,19 +230,19 @@ void inline instrumentert::instrument_one_write_per_cycle_inserter(
 /*******************************************************************\
 
 Function: instrumentert::cost
-  
+
   Inputs:
-  
+
  Outputs:
-  
+
  Purpose: cost function
-  
+
 \*******************************************************************/
 
 unsigned inline instrumentert::cost(
-  const event_grapht::critical_cyclet::delayt& e) 
+  const event_grapht::critical_cyclet::delayt& e)
 {
-  /* cost(poW*)=1 
+  /* cost(poW*)=1
      cost(poRW)=cost(rfe)=2
      cost(poRR)=3 */
   if(egraph[e.first].operation==abstract_eventt::Write)
@@ -265,26 +257,26 @@ unsigned inline instrumentert::cost(
 /*******************************************************************\
 
 Function: instrumentert::instrument_minimum_interference
-  
+
   Inputs:
-  
+
  Outputs:
-  
+
  Purpose:
-  
+
 \*******************************************************************/
 
 void inline instrumentert::instrument_minimum_interference_inserter(
   const std::set<event_grapht::critical_cyclet>& set_of_cycles)
 {
   /* Idea:
-     We solve this by a linear programming approach, 
+     We solve this by a linear programming approach,
      using for instance glpk lib.
 
      Input: the edges to instrument E, the cycles C_j
      Pb: min sum_{e_i in E} d(e_i).x_i
          s.t. for all j, sum_{e_i in C_j} >= 1,
-       where e_i is a pair to potentially instrument, 
+       where e_i is a pair to potentially instrument,
        x_i is a Boolean stating whether we instrument
        e_i, and d() is the cost of an instrumentation.
      Output: the x_i, saying which pairs to instrument
@@ -294,15 +286,15 @@ void inline instrumentert::instrument_minimum_interference_inserter(
      d(poRW)=d(rfe)=2
      d(poRR)=3
 
-     This function can be refined with the actual times 
-     we get in experimenting the different pairs in a 
+     This function can be refined with the actual times
+     we get in experimenting the different pairs in a
      single IRIW.
   */
-  
-#ifdef USE_GLPK
+
+#ifdef HAVE_GLPK
   /* first, identify all the unsafe pairs */
   std::set<event_grapht::critical_cyclet::delayt> edges;
-  for(std::set<event_grapht::critical_cyclet>::iterator 
+  for(std::set<event_grapht::critical_cyclet>::iterator
     C_j=set_of_cycles.begin();
     C_j!=set_of_cycles.end();
     ++C_j)
@@ -321,19 +313,20 @@ void inline instrumentert::instrument_minimum_interference_inserter(
   lp=glp_create_prob();
   glp_set_prob_name(lp, "instrumentation optimisation");
   glp_set_obj_dir(lp, GLP_MIN);
-  
-  DEBUG_MESSAGE("edges: "<<edges.size()<<" cycles:"<<set_of_cycles.size());
+
+  message.debug() << "edges: "<<edges.size()<<" cycles:"<<set_of_cycles.size()
+    << messaget::eom;
 
   /* sets the variables and coefficients */
   glp_add_cols(lp, edges.size());
   unsigned i=0;
-  for(std::set<event_grapht::critical_cyclet::delayt>::iterator 
+  for(std::set<event_grapht::critical_cyclet::delayt>::iterator
     e_i=edges.begin();
     e_i!=edges.end();
     ++e_i)
   {
     ++i;
-    std::string name="e_"+i2string(i);
+    std::string name="e_"+std::to_string(i);
     glp_set_col_name(lp, i, name.c_str());
     glp_set_col_bnds(lp, i, GLP_LO, 0.0, 0.0);
     glp_set_obj_coef(lp, i, cost(*e_i));
@@ -349,17 +342,18 @@ void inline instrumentert::instrument_minimum_interference_inserter(
     ++C_j)
   {
     ++i;
-    std::string name="C_"+i2string(i);
+    std::string name="C_"+std::to_string(i);
     glp_set_row_name(lp, i, name.c_str());
     glp_set_row_bnds(lp, i, GLP_LO, 1.0, 0.0); /* >= 1*/
   }
 
   const unsigned mat_size=set_of_cycles.size()*edges.size();
-  DEBUG_MESSAGE("size of the system: " << mat_size);
+  message.debug() << "size of the system: " << mat_size
+    << messaget::eom;
   int* imat=(int*)malloc(sizeof(int)*(mat_size+1));
   int* jmat=(int*)malloc(sizeof(int)*(mat_size+1));
   double* vmat=(double*)malloc(sizeof(double)*(mat_size+1));
-  
+
   /* fills the constraints coeff */
   /* tables read from 1 in glpk -- first row/column ignored */
   unsigned col=1;
@@ -390,7 +384,8 @@ void inline instrumentert::instrument_minimum_interference_inserter(
 
 #ifdef DEBUG
   for(i=1; i<=mat_size; ++i)
-    std::cout<<i<<"["<<imat[i]<<","<<jmat[i]<<"]="<<vmat[i]<<std::endl;
+    message.statistics() <<i<<"["<<imat[i]<<","<<jmat[i]<<"]="<<vmat[i]
+      << messaget::eom;
 #endif
 
   /* solves MIP by branch-and-cut */
@@ -398,7 +393,8 @@ void inline instrumentert::instrument_minimum_interference_inserter(
   glp_intopt(lp, &parm);
 
   /* loads results (x_i) */
-  std::cout << "minimal cost: " << glp_mip_obj_val(lp) << std::endl;
+  message.statistics() << "minimal cost: " << glp_mip_obj_val(lp)
+    << messaget::eom;
   i=0;
   for(std::set<event_grapht::critical_cyclet::delayt>::iterator
     e_i=edges.begin();
@@ -411,13 +407,13 @@ void inline instrumentert::instrument_minimum_interference_inserter(
       const abstract_eventt& first_ev=egraph[e_i->first];
       var_to_instr.insert(first_ev.variable);
       id2loc.insert(
-        std::pair<irep_idt,locationt>(first_ev.variable,first_ev.location));
+        std::pair<irep_idt,source_locationt>(first_ev.variable,first_ev.source_location));
       if(!e_i->is_po)
       {
         const abstract_eventt& second_ev=egraph[e_i->second];
         var_to_instr.insert(second_ev.variable);
         id2loc.insert(
-          std::pair<irep_idt,locationt>(second_ev.variable,second_ev.location));
+          std::pair<irep_idt,source_locationt>(second_ev.variable,second_ev.source_location));
       }
     }
   }
@@ -427,21 +423,21 @@ void inline instrumentert::instrument_minimum_interference_inserter(
   free(jmat);
   free(vmat);
 #else
-  throw "Sorry, minimum interference option requires glpk; please recompile\
-    goto-instrument with glpk.";
+  throw "Sorry, minimum interference option requires glpk; "
+        "please recompile goto-instrument with glpk.";
 #endif
 }
 
 /*******************************************************************\
 
 Function: instrumentert::instrument_my_events_inserter
-  
+
   Inputs:
-  
+
  Outputs:
-  
+
  Purpose:
-  
+
 \*******************************************************************/
 
 void inline instrumentert::instrument_my_events_inserter(
@@ -461,14 +457,14 @@ void inline instrumentert::instrument_my_events_inserter(
         const abstract_eventt& first_ev=egraph[p_it->first];
         var_to_instr.insert(first_ev.variable);
         id2loc.insert(
-          std::pair<irep_idt,locationt>(first_ev.variable,first_ev.location));
+          std::pair<irep_idt,source_locationt>(first_ev.variable,first_ev.source_location));
         if(!p_it->is_po && my_events.find(p_it->second)!=my_events.end())
         {
           const abstract_eventt& second_ev=egraph[p_it->second];
           var_to_instr.insert(second_ev.variable);
           id2loc.insert(
-            std::pair<irep_idt,locationt>(second_ev.variable,
-              second_ev.location));
+            std::pair<irep_idt,source_locationt>(second_ev.variable,
+              second_ev.source_location));
         }
       }
     }
@@ -478,13 +474,13 @@ void inline instrumentert::instrument_my_events_inserter(
 /*******************************************************************\
 
 Function: instrumentert::instrument_my_events
-  
+
   Inputs:
-  
+
  Outputs:
-  
+
  Purpose:
-  
+
 \*******************************************************************/
 
 void instrumentert::instrument_my_events(const std::set<unsigned>& my_events)
@@ -501,6 +497,39 @@ void instrumentert::instrument_my_events(const std::set<unsigned>& my_events)
       instrument_my_events_inserter(set_of_cycles_per_SCC[i], my_events);
   }
   else
-    DEBUG_MESSAGE("no cycles to instrument");
+    message.debug() << "no cycles to instrument" << messaget::eom;
 }
 
+/*******************************************************************\
+
+Function: extract_my_events
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+std::set<unsigned> instrumentert::extract_my_events()
+{
+  std::ifstream file;
+  file.open("inst.evt");
+  std::set<unsigned> this_set;
+
+  unsigned size;
+  file >> size;
+
+  unsigned tmp;
+
+  for(unsigned i=0; i<size; i++)
+  {
+    file>>tmp;
+    this_set.insert(tmp);
+  }
+
+  file.close();
+
+  return this_set;
+}

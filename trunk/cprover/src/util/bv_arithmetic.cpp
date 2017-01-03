@@ -7,8 +7,9 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <cassert>
-#include <cstdlib>
+#include <ostream>
 
+#include "string2int.h"
 #include "arith_tools.h"
 #include "std_types.h"
 #include "std_expr.h"
@@ -88,8 +89,8 @@ void bv_spect::from_type(const typet &type)
     is_signed=true;
   else
     assert(0);
-  
-  width=atoi(type.get(ID_width).c_str());
+
+  width=unsafe_string2unsigned(type.get_string(ID_width));
 }
 
 /*******************************************************************\
@@ -225,7 +226,7 @@ bv_arithmetict &bv_arithmetict::operator /= (const bv_arithmetict &other)
   if(other.value==0)
     value=0;
   else
-    value/=other.value;  
+    value/=other.value;
 
   return *this;
 }
@@ -245,10 +246,10 @@ Function: operator *=
 bv_arithmetict &bv_arithmetict::operator *= (const bv_arithmetict &other)
 {
   assert(other.spec==spec);
-  
+
   value*=other.value;
   adjust();
-  
+
   return *this;
 }
 

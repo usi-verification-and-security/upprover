@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_SATCHECK_MINISAT2_H
-#define CPROVER_SATCHECK_MINISAT2_H
+#ifndef CPROVER_SOLVERS_SAT_SATCHECK_MINISAT2_H
+#define CPROVER_SOLVERS_SAT_SATCHECK_MINISAT2_H
 
 #include "cnf.h"
 
@@ -26,28 +26,30 @@ template<typename T>
 class satcheck_minisat2_baset:public cnf_solvert
 {
 public:
-  satcheck_minisat2_baset();
+  explicit satcheck_minisat2_baset(T *);
   virtual ~satcheck_minisat2_baset();
-  
-  virtual resultt prop_solve();
-  virtual tvt l_get(literalt a) const;
 
-  virtual void lcnf(const bvt &bv);
-  virtual void set_assignment(literalt a, bool value);
+  virtual resultt prop_solve() override;
+  virtual tvt l_get(literalt a) const override final;
+
+  virtual void lcnf(const bvt &bv) override final;
+  virtual void set_assignment(literalt a, bool value) override;
 
   // extra MiniSat feature: solve with assumptions
-  virtual void set_assumptions(const bvt &_assumptions);
+  virtual void set_assumptions(const bvt &_assumptions) override;
 
-  virtual bool is_in_conflict(literalt a) const;
-  virtual bool has_set_assumptions() const { return true; }
-  virtual bool has_is_in_conflict() const { return true; }
-  
+  // extra MiniSat feature: default branching decision
+  void set_polarity(literalt a, bool value);
+
+  virtual bool is_in_conflict(literalt a) const override;
+  virtual bool has_set_assumptions() const override final { return true; }
+  virtual bool has_is_in_conflict() const override final { return true; }
+
 protected:
   T *solver;
-  
+
   void add_variables();
   bvt assumptions;
-  bool empty_clause_added;
 };
 
 class satcheck_minisat_no_simplifiert:
@@ -63,9 +65,9 @@ class satcheck_minisat_simplifiert:
 {
 public:
   satcheck_minisat_simplifiert();
-  virtual const std::string solver_text();
-  void set_frozen(literalt a);
+  virtual const std::string solver_text() override final;
+  virtual void set_frozen(literalt a) override final;
   bool is_eliminated(literalt a) const;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_SAT_SATCHECK_MINISAT2_H

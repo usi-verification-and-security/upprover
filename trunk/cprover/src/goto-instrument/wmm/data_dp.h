@@ -8,14 +8,15 @@ Date: 2012
 
 \*******************************************************************/
 
-#ifndef DATA_DEP_H
-#define DATA_DEP_H
+#ifndef CPROVER_GOTO_INSTRUMENT_WMM_DATA_DP_H
+#define CPROVER_GOTO_INSTRUMENT_WMM_DATA_DP_H
 
 #include <set>
 
-#include <util/location.h>
+#include <util/source_location.h>
 
 class abstract_eventt;
+class messaget;
 
 /*******************************************************************\
                           data dependencies
@@ -24,15 +25,15 @@ class abstract_eventt;
 struct datat
 {
   irep_idt id;
-  locationt loc;
+  source_locationt loc;
   mutable unsigned eq_class;
 
-  datat(irep_idt _id, locationt _loc, unsigned _eq_class)
+  datat(irep_idt _id, source_locationt _loc, unsigned _eq_class)
   : id(_id), loc(_loc), eq_class(_eq_class)
   {
   }
 
-  datat(irep_idt _id, locationt _loc)
+  datat(irep_idt _id, source_locationt _loc)
   : id(_id), loc(_loc), eq_class(0)
   {
   }
@@ -65,7 +66,7 @@ public:
   void dp_merge();
 
   /* printing */
-  void print();
+  void print(messaget& message);
 };
 
-#endif
+#endif // CPROVER_GOTO_INSTRUMENT_WMM_DATA_DP_H

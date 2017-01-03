@@ -8,10 +8,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
-#include <util/i2string.h>
 #include <util/replace_expr.h>
 #include <util/expr_util.h>
-#include <util/location.h>
+#include <util/source_location.h>
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
 #include <util/std_expr.h>
@@ -62,20 +61,20 @@ void goto_convertt::do_function_call(
   goto_programt &dest)
 {
   // make it all side effect free
-  
+
   exprt new_lhs=lhs,
         new_function=function;
-  
+
   exprt::operandst new_arguments=arguments;
 
   if(!new_lhs.is_nil())
     clean_expr(new_lhs, dest);
 
   clean_expr(new_function, dest);
-  
+
   // the arguments of __noop do not get evaluated
   if(new_function.id()==ID_symbol &&
-     to_symbol_expr(new_function).get_identifier()=="c::__noop")
+     to_symbol_expr(new_function).get_identifier()=="__noop")
   {
     new_arguments.clear();
   }
@@ -85,25 +84,28 @@ void goto_convertt::do_function_call(
 
   // split on the function
 
-  if(new_function.id()==ID_dereference)
+  if(new_function.id()==ID_if)
   {
-    do_function_call_dereference(new_lhs, new_function, new_arguments, dest);
-  }
-  else if(new_function.id()==ID_if)
-  {
-    do_function_call_if(new_lhs, new_function, new_arguments, dest);
+    do_function_call_if(new_lhs, to_if_expr(new_function), new_arguments, dest);
   }
   else if(new_function.id()==ID_symbol)
   {
-    do_function_call_symbol(new_lhs, new_function, new_arguments, dest);
+    do_function_call_symbol(new_lhs, to_symbol_expr(new_function), new_arguments, dest);
   }
   else if(new_function.id()=="NULL-object")
   {
   }
+  else if(new_function.id()==ID_dereference ||
+          new_function.id()=="virtual_function")
+  {
+    do_function_call_other(new_lhs, new_function, new_arguments, dest);
+  }
   else
   {
-    err_location(function);
-    throw "unexpected function argument: "+new_function.id_string();
+    error().source_location=function.find_source_location();
+    error() << "unexpected function argument: " << new_function.id()
+            << eom;
+    throw 0;
   }
 }
 
@@ -121,16 +123,10 @@ Function: goto_convertt::do_function_call_if
 
 void goto_convertt::do_function_call_if(
   const exprt &lhs,
-  const exprt &function,
+  const if_exprt &function,
   const exprt::operandst &arguments,
   goto_programt &dest)
 {
-  if(function.operands().size()!=3)
-  {
-    err_location(function);
-    throw "if expects three operands";
-  }
-  
   // case split
 
   //    c?f():g()
@@ -158,7 +154,7 @@ void goto_convertt::do_function_call_if(
   goto_programt tmp_y;
   goto_programt::targett y;
 
-  do_function_call(lhs, function.op2(), arguments, tmp_y);
+  do_function_call(lhs, function.false_case(), arguments, tmp_y);
 
   if(tmp_y.instructions.empty())
     y=tmp_y.add_instruction(SKIP);
@@ -167,14 +163,14 @@ void goto_convertt::do_function_call_if(
 
   // v: if(!c) goto y;
   v->make_goto(y);
-  v->guard=function.op0();
+  v->guard=function.cond();
   v->guard.make_not();
-  v->location=function.op0().location();
+  v->source_location=function.cond().source_location();
 
   // w: f();
   goto_programt tmp_w;
 
-  do_function_call(lhs, function.op1(), arguments, tmp_w);
+  do_function_call(lhs, function.true_case(), arguments, tmp_w);
 
   if(tmp_w.instructions.empty())
     tmp_w.add_instruction(SKIP);
@@ -191,7 +187,7 @@ void goto_convertt::do_function_call_if(
 
 /*******************************************************************\
 
-Function: goto_convertt::do_function_call_dereference
+Function: goto_convertt::do_function_call_other
 
   Inputs:
 
@@ -201,7 +197,7 @@ Function: goto_convertt::do_function_call_dereference
 
 \*******************************************************************/
 
-void goto_convertt::do_function_call_dereference(
+void goto_convertt::do_function_call_other(
   const exprt &lhs,
   const exprt &function,
   const exprt::operandst &arguments,
@@ -211,11 +207,11 @@ void goto_convertt::do_function_call_dereference(
   goto_programt::targett t=dest.add_instruction(FUNCTION_CALL);
 
   code_function_callt function_call;
-  function_call.location()=function.location();
+  function_call.add_source_location()=function.source_location();
   function_call.lhs()=lhs;
   function_call.function()=function;
   function_call.arguments()=arguments;
-  
-  t->location=function.location();
+
+  t->source_location=function.source_location();
   t->code.swap(function_call);
 }

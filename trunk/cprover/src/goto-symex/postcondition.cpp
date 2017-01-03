@@ -48,7 +48,7 @@ protected:
 
 public:
   void compute(exprt &dest);
-  
+
 protected:
   void strengthen(exprt &dest);
   void weaken(exprt &dest);
@@ -124,7 +124,7 @@ bool postconditiont::is_used_address_of(
     assert(expr.operands().size()==1);
     return is_used(expr.op0(), identifier);
   }
-  
+
   return false;
 }
 
@@ -144,7 +144,7 @@ void postconditiont::compute(exprt &dest)
 {
   // weaken due to assignment
   weaken(dest);
-  
+
   // strengthen due to assignment
   strengthen(dest);
 }
@@ -168,21 +168,20 @@ void postconditiont::weaken(exprt &dest)
   {
     Forall_operands(it, dest)
       weaken(*it);
-      
+
     return;
   }
 
   // we are lazy:
   // if lhs is mentioned in dest, we use "true".
-  
-  const irep_idt &lhs_identifier=
-    s.get_original_name(SSA_step.ssa_lhs.get_identifier());
+
+  const irep_idt &lhs_identifier=SSA_step.ssa_lhs.get_object_name();
 
   if(is_used(dest, lhs_identifier))
-    dest.make_true();
-    
+    dest=true_exprt();
+
   // otherwise, no weakening needed
-}  
+}
 
 /*******************************************************************\
 
@@ -198,8 +197,7 @@ Function: postconditiont::strengthen
 
 void postconditiont::strengthen(exprt &dest)
 {
-  const irep_idt &lhs_identifier=
-    s.get_original_name(SSA_step.ssa_lhs.get_identifier());
+  const irep_idt &lhs_identifier=SSA_step.ssa_lhs.get_object_name();
 
   if(!is_used(SSA_step.ssa_rhs, lhs_identifier))
   {
@@ -207,7 +205,7 @@ void postconditiont::strengthen(exprt &dest)
     if(SSA_step.ssa_lhs.type().id()==ID_array ||
        SSA_step.ssa_lhs.type().id()==ID_struct)
       return;
-  
+
     equal_exprt equality(SSA_step.ssa_lhs, SSA_step.ssa_rhs);
     s.get_original_name(equality);
 
@@ -216,7 +214,7 @@ void postconditiont::strengthen(exprt &dest)
     else
       dest=and_exprt(dest, equality);
   }
-}  
+}
 
 /*******************************************************************\
 
@@ -240,9 +238,14 @@ bool postconditiont::is_used(
     assert(expr.operands().size()==1);
     return is_used_address_of(expr.op0(), identifier);
   }
+  else if(expr.id()==ID_symbol &&
+          expr.get_bool(ID_C_SSA_symbol))
+  {
+    return to_ssa_expr(expr).get_object_name()==identifier;
+  }
   else if(expr.id()==ID_symbol)
   {
-    return s.get_original_name(expr.get(ID_identifier))==identifier;
+    return expr.get(ID_identifier)==identifier;
   }
   else if(expr.id()==ID_dereference)
   {
@@ -252,8 +255,8 @@ bool postconditiont::is_used(
 
     value_setst::valuest expr_set;
     value_set.get_value_set(expr.op0(), expr_set, ns);
-    hash_set_cont<irep_idt, irep_id_hash> symbols;
-    
+    std::unordered_set<irep_idt, irep_id_hash> symbols;
+
     for(value_setst::valuest::const_iterator
         it=expr_set.begin();
         it!=expr_set.end();
@@ -263,13 +266,13 @@ bool postconditiont::is_used(
       s.get_original_name(tmp);
       find_symbols(tmp, symbols);
     }
-    
+
     return symbols.find(identifier)!=symbols.end();
   }
   else
     forall_operands(it, expr)
       if(is_used(*it, identifier))
         return true;
-        
+
   return false;
 }

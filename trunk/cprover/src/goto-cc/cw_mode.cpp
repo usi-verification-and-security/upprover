@@ -6,16 +6,23 @@ Author: CM Wintersteiger, 2006
 
 \*******************************************************************/
 
-#include <iostream>
-#include <cstdlib>
+#ifdef _WIN32
+#define EX_OK 0
+#define EX_USAGE 64
+#define EX_SOFTWARE 70
+#else
+#include <sysexits.h>
+#endif
 
+#include <iostream>
+
+#include <util/string2int.h>
 #include <util/message.h>
 #include <util/prefix.h>
 #include <util/config.h>
 
 #include "cw_mode.h"
 #include "compile.h"
-#include "version.h"
 
 /*******************************************************************\
 
@@ -29,15 +36,15 @@ Function: cw_modet::doit
 
 \*******************************************************************/
 
-bool cw_modet::doit()
+int cw_modet::doit()
 {
   if(cmdline.isset('?') || cmdline.isset("help"))
   {
     help();
-    return false;
+    return EX_OK;
   }
 
-  int verbosity=1;
+  unsigned int verbosity=1;
 
   compilet compiler(cmdline);
 
@@ -50,17 +57,17 @@ bool cw_modet::doit()
   #endif
 
   if(cmdline.isset("verbosity"))
-    verbosity=atoi(cmdline.getval("verbosity"));
+    verbosity=unsafe_string2unsigned(cmdline.get_value("verbosity"));
 
-  compiler.set_verbosity(verbosity);
-  set_verbosity(verbosity);
+  compiler.ui_message_handler.set_verbosity(verbosity);
+  ui_message_handler.set_verbosity(verbosity);
 
-  debug("CodeWarrior mode");
-  
+  debug() << "CodeWarrior mode" << eom;
+
   // get configuration
   config.set(cmdline);
 
-  config.ansi_c.mode=configt::ansi_ct::MODE_CODEWARRIOR;
+  config.ansi_c.mode=configt::ansi_ct::flavourt::CODEWARRIOR;
 
   compiler.object_file_extension="o";
 
@@ -100,7 +107,7 @@ bool cw_modet::doit()
     compiler.output_file_object="";
     compiler.output_file_executable="a.out";
   }
-    
+
   if(cmdline.isset("Wp,"))
   {
     const std::list<std::string> &values=
@@ -174,7 +181,7 @@ bool cw_modet::doit()
   }
 
   // Parse input program, convert to goto program, write output
-  return compiler.doit();
+  return compiler.doit() ? EX_USAGE : EX_OK;
 }
 
 /*******************************************************************\
@@ -193,4 +200,3 @@ void cw_modet::help_mode()
 {
   std::cout << "goto-cw understands the options of gcc (mwcc mode) plus the following.\n\n";
 }
-

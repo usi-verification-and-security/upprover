@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_WP_H
-#define CPROVER_WP_H
+#ifndef CPROVER_GOTO_PROGRAMS_WP_H
+#define CPROVER_GOTO_PROGRAMS_WP_H
 
 class codet;
 class exprt;
@@ -32,8 +32,8 @@ exprt wp(
 /*! \brief approximate the non-deterministic choice
            in a way cheaper than by (proper) quantification
  * \ingroup gr_wp
-*/           
-           
+*/
+
 void approximate_nondet(exprt &dest);
 
-#endif
+#endif // CPROVER_GOTO_PROGRAMS_WP_H

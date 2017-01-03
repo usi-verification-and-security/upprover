@@ -7,13 +7,34 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include "cprover_prefix.h"
+#include "namespace.h"
 #include "std_expr.h"
 #include "expr_util.h"
 #include "arith_tools.h"
 #include "pointer_offset_size.h"
 #include "config.h"
+#include "symbol.h"
 
 #include "pointer_predicates.h"
+
+/*******************************************************************\
+
+Function: pointer_object
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+exprt pointer_object(const exprt &p)
+{
+  return unary_exprt(
+    ID_pointer_object, p,
+    unsignedbv_typet(config.ansi_c.pointer_width));
+}
 
 /*******************************************************************\
 
@@ -29,7 +50,7 @@ Function: same_object
 
 exprt same_object(const exprt &p1, const exprt &p2)
 {
-  return binary_relation_exprt(p1, ID_same_object, p2);
+  return equal_exprt(pointer_object(p1), pointer_object(p2));
 }
 
 /*******************************************************************\
@@ -85,7 +106,7 @@ exprt malloc_object(const exprt &pointer, const namespacet &ns)
   // we check __CPROVER_malloc_object!
   const symbolt &malloc_object_symbol=ns.lookup(CPROVER_PREFIX "malloc_object");
 
-  return same_object(pointer, symbol_expr(malloc_object_symbol));
+  return same_object(pointer, malloc_object_symbol.symbol_expr());
 }
 
 /*******************************************************************\
@@ -105,7 +126,27 @@ exprt deallocated(const exprt &pointer, const namespacet &ns)
   // we check __CPROVER_deallocated!
   const symbolt &deallocated_symbol=ns.lookup(CPROVER_PREFIX "deallocated");
 
-  return same_object(pointer, symbol_expr(deallocated_symbol));
+  return same_object(pointer, deallocated_symbol.symbol_expr());
+}
+
+/*******************************************************************\
+
+Function: dead_object
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+exprt dead_object(const exprt &pointer, const namespacet &ns)
+{
+  // we check __CPROVER_dead_object!
+  const symbolt &deallocated_symbol=ns.lookup(CPROVER_PREFIX "dead_object");
+
+  return same_object(pointer, deallocated_symbol.symbol_expr());
 }
 
 /*******************************************************************\
@@ -122,7 +163,7 @@ Function: dynamic_size
 
 exprt dynamic_size(const namespacet &ns)
 {
-  return symbol_expr(ns.lookup(CPROVER_PREFIX "malloc_size"));
+  return ns.lookup(CPROVER_PREFIX "malloc_size").symbol_expr();
 }
 
 /*******************************************************************\
@@ -208,15 +249,15 @@ exprt good_pointer_def(
               good_dynamic_tmp1);
 
   exprt good_dynamic=
-    or_exprt(not_exprt(dynamic_object(pointer)), 
+    or_exprt(not_exprt(dynamic_object(pointer)),
              good_dynamic_tmp2);
 
   exprt not_null=
-    not_exprt(null_object(pointer));
-  
+    not_exprt(null_pointer(pointer));
+
   exprt not_invalid=
     not_exprt(invalid_pointer(pointer));
-    
+
   exprt bad_other=
     or_exprt(object_lower_bound(pointer),
              object_upper_bound(pointer, dereference_type, ns));
@@ -252,6 +293,25 @@ exprt null_object(const exprt &pointer)
 
 /*******************************************************************\
 
+Function: integer_address
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+exprt integer_address(const exprt &pointer)
+{
+  null_pointer_exprt null_pointer(to_pointer_type(pointer.type()));
+  return and_exprt(same_object(null_pointer, pointer),
+                   notequal_exprt(null_pointer, pointer));
+}
+
+/*******************************************************************\
+
 Function: null_pointer
 
   Inputs:
@@ -265,7 +325,7 @@ Function: null_pointer
 exprt null_pointer(const exprt &pointer)
 {
   null_pointer_exprt null_pointer(to_pointer_type(pointer.type()));
-  return equal_exprt(pointer, null_pointer);
+  return same_object(pointer, null_pointer);
 }
 
 /*******************************************************************\
@@ -321,7 +381,7 @@ exprt dynamic_object_upper_bound(
 {
   // this is
   // POINTER_OFFSET(p)+size>__CPROVER_malloc_size
-  
+
   exprt malloc_size=dynamic_size(ns);
 
   exprt object_offset=pointer_offset(pointer);
@@ -357,7 +417,7 @@ exprt object_upper_bound(
 {
   // this is
   // POINTER_OFFSET(p)+size>OBJECT_SIZE(pointer)
-  
+
   exprt object_size_expr=object_size(pointer);
 
   exprt object_offset=pointer_offset(pointer);

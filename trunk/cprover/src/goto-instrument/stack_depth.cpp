@@ -13,7 +13,6 @@ Date: November 2011
 #include <util/std_types.h>
 #include <util/arith_tools.h>
 #include <util/cprover_prefix.h>
-#include <util/i2string.h>
 
 #include <goto-programs/goto_functions.h>
 
@@ -77,17 +76,17 @@ void stack_depth(
   binary_relation_exprt guard(symbol, ID_le, max_depth);
   goto_programt::targett assert_ins=goto_program.insert_before(first);
   assert_ins->make_assertion(guard);
-  assert_ins->location=first->location;
+  assert_ins->source_location=first->source_location;
   assert_ins->function=first->function;
 
-  assert_ins->location.set_comment("Stack depth exceeds "+i2string(i_depth));
-  assert_ins->location.set_property("stack-depth");
+  assert_ins->source_location.set_comment("Stack depth exceeds "+std::to_string(i_depth));
+  assert_ins->source_location.set_property_class("stack-depth");
 
   goto_programt::targett plus_ins=goto_program.insert_before(first);
   plus_ins->make_assignment();
   plus_ins->code=code_assignt(symbol,
       plus_exprt(symbol, from_integer(1, symbol.type())));
-  plus_ins->location=first->location;
+  plus_ins->source_location=first->source_location;
   plus_ins->function=first->function;
 
   goto_programt::targett last=--goto_program.instructions.end();
@@ -97,7 +96,7 @@ void stack_depth(
   minus_ins.make_assignment();
   minus_ins.code=code_assignt(symbol,
       minus_exprt(symbol, from_integer(1, symbol.type())));
-  minus_ins.location=last->location;
+  minus_ins.source_location=last->source_location;
   minus_ins.function=last->function;
 
   goto_program.insert_before_swap(last, minus_ins);
@@ -124,9 +123,9 @@ void stack_depth(
   const exprt depth_expr(from_integer(depth, sym.type()));
 
   Forall_goto_functions(f_it, goto_functions)
-    if(f_it->second.body_available &&
+    if(f_it->second.body_available() &&
         f_it->first!=CPROVER_PREFIX "initialize" &&
-        f_it->first!=ID_main)
+        f_it->first!=goto_functionst::entry_point())
       stack_depth(f_it->second.body, sym, depth, depth_expr);
 
   // initialize depth to 0
@@ -139,10 +138,9 @@ void stack_depth(
   goto_programt::targett it=init.insert_before(first);
   it->make_assignment();
   it->code=code_assignt(sym, from_integer(0, sym.type()));
-  it->location=first->location;
+  it->source_location=first->source_location;
   it->function=first->function;
 
   // update counters etc.
   goto_functions.update();
 }
-

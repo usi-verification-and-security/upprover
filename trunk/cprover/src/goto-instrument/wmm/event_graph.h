@@ -8,19 +8,22 @@ Date: 2012
 
 \*******************************************************************/
 
-#ifndef EVENT_GRAPH_H
-#define EVENT_GRAPH_H
+#ifndef CPROVER_GOTO_INSTRUMENT_WMM_EVENT_GRAPH_H
+#define CPROVER_GOTO_INSTRUMENT_WMM_EVENT_GRAPH_H
 
 #include <list>
 #include <set>
 #include <map>
-#include <ostream>
+#include <iosfwd>
 
 #include <util/graph.h>
 
 #include "abstract_event.h"
 #include "data_dp.h"
 #include "wmm.h"
+
+class messaget;
+class namespacet;
 
 /*******************************************************************\
                      graph of abstract events
@@ -38,23 +41,25 @@ public:
     bool is_not_uniproc() const;
     bool is_not_weak_uniproc() const;
 
-    std::string print_detail(const critical_cyclet& reduced, 
+    std::string print_detail(const critical_cyclet& reduced,
       std::map<std::string,std::string>& map_id2var,
       std::map<std::string,std::string>& map_var2id,
       memory_modelt model) const;
-    std::string print_name(const critical_cyclet& redyced, 
+    std::string print_name(const critical_cyclet& redyced,
       memory_modelt model) const;
 
-    bool check_AC(const_iterator s_it, const abstract_eventt& first, 
+    bool check_AC(const_iterator s_it, const abstract_eventt& first,
       const abstract_eventt& second) const;
-    bool check_BC(const_iterator it, const abstract_eventt& first, 
+    bool check_BC(const_iterator it, const abstract_eventt& first,
       const abstract_eventt& second) const;
 
   public:
     unsigned id;
 
+    bool has_user_defined_fence;
+
     critical_cyclet(event_grapht& _egraph, unsigned _id)
-      :egraph(_egraph),id(_id)
+      :egraph(_egraph),id(_id), has_user_defined_fence(false)
     {
     }
 
@@ -63,8 +68,9 @@ public:
       clear();
       for(const_iterator it=cyc.begin(); it!=cyc.end(); it++)
         push_back(*it);
+      has_user_defined_fence=cyc.has_user_defined_fence;
     }
-    
+
     bool is_cycle()
     {
       /* size check */
@@ -77,7 +83,7 @@ public:
       ++n_it;
       for(; it!=end() && n_it!=end(); ++it, ++n_it)
       {
-        if(egraph[*it].thread==egraph[*n_it].thread 
+        if(egraph[*it].thread==egraph[*n_it].thread
           && !egraph.are_po_ordered(*it,*n_it))
           return false;
       }
@@ -85,11 +91,11 @@ public:
       return true;
     }
 
-    /* removes internal events (e.g. podWW Rfi gives podWR) 
+    /* removes internal events (e.g. podWW Rfi gives podWR)
        from.hide_internals(&target) */
     void hide_internals(critical_cyclet& reduced) const;
 
-    /* checks whether there is at leat one pair which is unsafe 
+    /* checks whether there is at leat one pair which is unsafe
        (takes fences and dependencies into account), and adds
        the unsafe pairs in the set */
     bool is_unsafe(memory_modelt model, bool fast=false);
@@ -154,7 +160,7 @@ public:
 
     std::set<delayt> unsafe_pairs;
 
-    /* print events or ids in the cycles*/    
+    /* print events or ids in the cycles*/
     std::string print() const;
     std::string print_events() const;
 
@@ -178,12 +184,12 @@ public:
 
     std::string print_unsafes() const;
     std::string print_output() const;
-    std::string print_all(memory_modelt model, 
+    std::string print_all(memory_modelt model,
       std::map<std::string,std::string>& map_id2var,
       std::map<std::string,std::string>& map_var2id,
       bool hide_internals) const;
 
-    void print_dot(std::ostream &str, 
+    void print_dot(std::ostream &str,
       unsigned colour, memory_modelt model) const;
 
     inline bool operator<(const critical_cyclet& other) const
@@ -200,6 +206,7 @@ protected:
   /* parameters limiting the exploration */
   unsigned max_var;
   unsigned max_po_trans;
+  bool ignore_arrays;
 
   /* graph explorer (for each cycles collection) */
   class graph_explorert
@@ -237,7 +244,7 @@ protected:
     unsigned cycle_nb;
 
     /* events in thin-air executions met so far */
-    /* any execution blocked by thin-air is guaranteed 
+    /* any execution blocked by thin-air is guaranteed
        to have all its events in this set */
     std::set<unsigned> thin_air_events;
 
@@ -246,7 +253,7 @@ protected:
     void filter_thin_air(std::set<critical_cyclet>& set_of_cycles);
 
   public:
-    graph_explorert(event_grapht& _egraph, unsigned _max_var, 
+    graph_explorert(event_grapht& _egraph, unsigned _max_var,
       unsigned _max_po_trans)
       :egraph(_egraph), max_var(_max_var), max_po_trans(_max_po_trans), cycle_nb(0)
     {
@@ -259,7 +266,7 @@ protected:
 
     std::set<unsigned> skip_tracked;
 
-    critical_cyclet extract_cycle(unsigned vertex, 
+    critical_cyclet extract_cycle(unsigned vertex,
       unsigned source, unsigned number_of_cycles);
 
     bool backtrack(std::set<critical_cyclet>& set_of_cycles,
@@ -310,7 +317,37 @@ protected:
     }
   };
 
+  /* explorer for pairs collection a la Pensieve */
+  class graph_pensieve_explorert:public graph_explorert
+  {
+  protected:
+    std::set<unsigned> visited_nodes;
+    bool naive;
+
+    bool find_second_event(unsigned source);
+
+  public:
+    graph_pensieve_explorert(event_grapht& _egraph, unsigned _max_var,
+      unsigned _max_po_trans)
+      :graph_explorert(_egraph,_max_var,_max_po_trans), naive(false)
+    {}
+
+    void set_naive() {naive=true;}
+    void collect_pairs(namespacet& ns);
+  };
+
 public:
+  event_grapht(messaget& _message):
+    filter_thin_air(true),
+    filter_uniproc(true),
+    message(_message)
+  {
+  }
+
+  bool filter_thin_air;
+  bool filter_uniproc;
+  messaget& message;
+
   /* data dependencies per thread */
   std::map<unsigned,data_dpt> map_data_dp;
 
@@ -331,7 +368,7 @@ public:
   inline graph<abstract_eventt>::nodet &operator[](unsigned n)
   {
     return po_graph[n];
-  } 
+  }
 
   bool has_po_edge(unsigned i, unsigned j) const
   {
@@ -370,6 +407,8 @@ public:
 
   void add_po_edge(unsigned a, unsigned b)
   {
+    assert(a!=b);
+    assert(operator[](a).thread==operator[](b).thread);
     po_graph.add_edge(a,b);
     po_order.push_back(a);
     poUrfe_order.push_back(a);
@@ -377,6 +416,8 @@ public:
 
   void add_po_back_edge(unsigned a, unsigned b)
   {
+    assert(a!=b);
+    assert(operator[](a).thread==operator[](b).thread);
     po_graph.add_edge(a,b);
     po_order.push_back(a);
     poUrfe_order.push_back(a);
@@ -386,12 +427,14 @@ public:
 
   void add_com_edge(unsigned a, unsigned b)
   {
+    assert(a!=b);
     com_graph.add_edge(a,b);
     poUrfe_order.push_back(a);
   }
 
   void add_undirected_com_edge(unsigned a, unsigned b)
   {
+    assert(a!=b);
     add_com_edge(a,b);
     add_com_edge(b,a);
   }
@@ -414,14 +457,19 @@ public:
 
   /* copies the sub-graph G between begin and end into G', connects
      G.end with G'.begin, and returns G'.end */
+  void explore_copy_segment(std::set<unsigned>& explored, unsigned begin,
+    unsigned end) const;
   unsigned copy_segment(unsigned begin, unsigned end);
+
+  /* to keep track of the loop already copied */
+  std::set<std::pair<const abstract_eventt&, const abstract_eventt&> > duplicated_bodies;
 
   bool is_local(unsigned a)
   {
     return operator[](a).local;
   }
 
-  /* a -po-> b */
+  /* a -po-> b  -- transitive */
   bool are_po_ordered(unsigned a, unsigned b)
   {
     if(operator[](a).thread!=operator[](b).thread)
@@ -449,8 +497,13 @@ public:
     map_data_dp.clear();
   }
 
+  /* prints to graph.dot */
+  void print_graph();
+  void print_rec_graph(std::ofstream& file, unsigned node_id,
+    std::set<unsigned>& visited);
+
   /* Tarjan 1972 adapted and modified for events + po-transitivity */
-  void collect_cycles(std::set<critical_cyclet>& set_of_cycles, 
+  void collect_cycles(std::set<critical_cyclet>& set_of_cycles,
     memory_modelt model,
     const std::set<unsigned>& filter)
   {
@@ -465,12 +518,29 @@ public:
     exploration.collect_cycles(set_of_cycles,model);
   }
 
-  void set_parameters_collection(unsigned _max_var=0, 
-    unsigned _max_po_trans=0)
+  void set_parameters_collection(
+    unsigned _max_var=0,
+    unsigned _max_po_trans=0,
+    bool _ignore_arrays=false)
   {
     max_var = _max_var;
     max_po_trans = _max_po_trans;
+    ignore_arrays = _ignore_arrays;
+  }
+
+  /* collects all the pairs of events with respectively at least one cmp,
+     regardless of the architecture (Pensieve'05 strategy) */
+  void collect_pairs(namespacet& ns)
+  {
+    graph_pensieve_explorert exploration(*this, max_var, max_po_trans);
+    exploration.collect_pairs(ns);
+  }
+
+  void collect_pairs_naive(namespacet& ns)
+  {
+    graph_pensieve_explorert exploration(*this, max_var, max_po_trans);
+    exploration.set_naive();
+    exploration.collect_pairs(ns);
   }
 };
-
-#endif
+#endif // CPROVER_GOTO_INSTRUMENT_WMM_EVENT_GRAPH_H

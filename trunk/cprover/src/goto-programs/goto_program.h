@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_PROGRAM_H
-#define CPROVER_GOTO_PROGRAM_H
+#ifndef CPROVER_GOTO_PROGRAMS_GOTO_PROGRAM_H
+#define CPROVER_GOTO_PROGRAMS_GOTO_PROGRAM_H
 
 #include <set>
 
@@ -29,7 +29,7 @@ public:
     instructionst::const_iterator it) const;
 
   goto_programt() { }
-  
+
   // get the variables in decl statements
   typedef std::set<irep_idt> decl_identifierst;
   void get_decl_identifiers(decl_identifierst &decl_identifiers) const;
@@ -44,12 +44,14 @@ public:
   for(goto_programt::instructionst::iterator \
       it=(program).instructions.begin(); \
       it!=(program).instructions.end(); it++)
- 
+
 extern inline bool operator<(const goto_programt::const_targett i1,
                              const goto_programt::const_targett i2)
 {
   return order_const_target<codet, exprt>(i1, i2);
 }
+
+typedef struct const_target_hash_templatet<codet, exprt> const_target_hash;
 
 std::list<exprt> objects_read(const goto_programt::instructiont &);
 std::list<exprt> objects_written(const goto_programt::instructiont &);
@@ -61,4 +63,4 @@ std::string as_string(
   const namespacet &ns,
   const goto_programt::instructiont &);
 
-#endif
+#endif // CPROVER_GOTO_PROGRAMS_GOTO_PROGRAM_H

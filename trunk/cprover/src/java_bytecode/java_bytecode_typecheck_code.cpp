@@ -6,14 +6,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#if 0
-#include <util/std_types.h>
-#include <util/prefix.h>
-#include <util/config.h>
-
-#include <ansi-c/expr2c.h>
-#endif
-
 #include "java_bytecode_typecheck.h"
 
 /*******************************************************************\
@@ -29,15 +21,15 @@ Function: java_bytecode_typecheckt::typecheck_code
 \*******************************************************************/
 
 void java_bytecode_typecheckt::typecheck_code(codet &code)
-{ 
+{
   const irep_idt &statement=code.get_statement();
-  
+
   if(statement==ID_assign)
   {
     code_assignt &code_assign=to_code_assign(code);
     typecheck_expr(code_assign.lhs());
     typecheck_expr(code_assign.rhs());
-    
+
     if(code_assign.lhs().type()!=code_assign.rhs().type())
       code_assign.rhs().make_typecast(code_assign.lhs().type());
   }
@@ -59,6 +51,13 @@ void java_bytecode_typecheckt::typecheck_code(codet &code)
     code_ifthenelset &code_ifthenelse=to_code_ifthenelse(code);
     typecheck_expr(code_ifthenelse.cond());
     typecheck_code(code_ifthenelse.then_case());
+    if(code_ifthenelse.else_case().is_not_nil())
+      typecheck_code(code_ifthenelse.else_case());
+  }
+  else if(statement==ID_switch)
+  {
+    code_switcht &code_switch = to_code_switch(code);
+    typecheck_expr(code_switch.value());
   }
   else if(statement==ID_return)
   {
@@ -70,7 +69,7 @@ void java_bytecode_typecheckt::typecheck_code(codet &code)
     code_function_callt &code_function_call=to_code_function_call(code);
     typecheck_expr(code_function_call.lhs());
     typecheck_expr(code_function_call.function());
-    
+
     for(code_function_callt::argumentst::iterator
         a_it=code_function_call.arguments().begin();
         a_it!=code_function_call.arguments().end();
@@ -78,4 +77,3 @@ void java_bytecode_typecheckt::typecheck_code(codet &code)
       typecheck_expr(*a_it);
   }
 }
-

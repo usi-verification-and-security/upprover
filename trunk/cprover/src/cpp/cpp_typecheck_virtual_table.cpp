@@ -21,7 +21,7 @@ void cpp_typecheckt::do_virtual_table(const symbolt &symbol)
   assert(symbol.type.id()==ID_struct);
 
   // builds virtual-table value maps: (class x virtual_name x value)
-  std::map<irep_idt, std::map<irep_idt,exprt> > vt_value_maps; 
+  std::map<irep_idt, std::map<irep_idt,exprt> > vt_value_maps;
 
   const struct_typet &struct_type = to_struct_type(symbol.type);
 
@@ -32,10 +32,10 @@ void cpp_typecheckt::do_virtual_table(const symbolt &symbol)
       continue;
 
     const code_typet& code_type = to_code_type(compo.type());
-    assert(code_type.arguments().size() > 0);
+    assert(code_type.parameters().size() > 0);
 
     const pointer_typet& pointer_type =
-      static_cast<const pointer_typet&>(code_type.arguments()[0].type());
+      static_cast<const pointer_typet&>(code_type.parameters()[0].type());
 
     irep_idt class_id = pointer_type.subtype().get("identifier");
 
@@ -65,7 +65,7 @@ void cpp_typecheckt::do_virtual_table(const symbolt &symbol)
   {
     const std::map<irep_idt,exprt>& value_map = cit->second;
 
-    const symbolt& late_cast_symb = namespacet(symbol_table).lookup(cit->first); 
+    const symbolt& late_cast_symb = namespacet(symbol_table).lookup(cit->first);
     const symbolt& vt_symb_type = namespacet(symbol_table).lookup("virtual_table::"+id2string(late_cast_symb.name));
 
     symbolt vt_symb_var;

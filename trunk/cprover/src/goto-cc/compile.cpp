@@ -16,32 +16,28 @@ Date: June 2006
 
 #include <util/config.h>
 #include <util/tempdir.h>
-#include <util/replace_symbol.h>
 #include <util/base_type.h>
-#include <util/i2string.h>
 #include <util/cmdline.h>
 #include <util/file_util.h>
 #include <util/unicode.h>
 #include <util/irep_serialization.h>
-#include <util/symbol_serialization.h>
+#include <util/suffix.h>
+#include <util/get_base_name.h>
 
 #include <ansi-c/ansi_c_language.h>
-
-#include <linking/linking_class.h>
-#include <linking/entry_point.h>
+#include <ansi-c/ansi_c_entry_point.h>
 
 #include <goto-programs/goto_convert.h>
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/goto_inline.h>
-#include <goto-programs/goto_function_serialization.h>
 #include <goto-programs/read_goto_binary.h>
 #include <goto-programs/write_goto_binary.h>
 
 #include <langapi/mode.h>
 
-#include "get_base_name.h"
+#include <cbmc/version.h>
+
 #include "compile.h"
-#include "version.h"
 
 #define DOTGRAPHSETTINGS  "color=black;" \
                           "orientation=portrait;" \
@@ -52,19 +48,12 @@ Date: June 2006
 
 // the following are for chdir
 
-#ifdef __linux__
-#include <unistd.h>
-#endif
-
-#ifdef __FreeBSD_kernel__
-#include <unistd.h>
-#endif
-
-#ifdef __MACH__
-#include <unistd.h>
-#endif
-
-#ifdef __CYGWIN__
+#if defined(__linux__) || \
+    defined(__FreeBSD_kernel__) || \
+    defined(__GNU__) || \
+    defined(__unix__) || \
+    defined(__CYGWIN__) || \
+    defined(__MACH__)
 #include <unistd.h>
 #endif
 
@@ -96,7 +85,7 @@ bool compilet::doit()
   add_compiler_specific_defines(config);
 
   // Parse commandline for source and object file names
-  for(unsigned i=0; i<_cmdline.args.size(); i++)
+  for(std::size_t i=0; i<_cmdline.args.size(); i++)
     if(add_input_file(_cmdline.args[i]))
       return true;
 
@@ -105,17 +94,16 @@ bool compilet::doit()
       it++)
   {
     if(!find_library(*it))
-      warning(std::string("Library not found: ") + *it + " (ignoring)");
+      // GCC is going to complain if this doesn't exist
+      debug() << "Library not found: " << *it << " (ignoring)" << eom;
   }
 
+  statistics() << "No. of source files: " << source_files.size() << eom;
+  statistics() << "No. of object files: " << object_files.size() << eom;
+
   // Work through the given source files
-  print(8, "No. of source files: " +
-    i2string((unsigned long) source_files.size()));
 
-  print(8, "No. of object files: " +
-    i2string((unsigned long) object_files.size()));
-
-  if(source_files.size()==0 && object_files.size()==0)
+  if(source_files.empty() && object_files.empty())
   {
     error() << "no input files" << eom;
     return true;
@@ -142,7 +130,7 @@ bool compilet::doit()
   {
     if(link()) return true;
   }
-  
+
   return false;
 }
 
@@ -161,136 +149,138 @@ Function: compilet::add_input_file
 
 bool compilet::add_input_file(const std::string &file_name)
 {
-  size_t r=file_name.rfind('.', file_name.length()-1);
-
-  if(r!=std::string::npos)
+  // first of all, try to open the file
   {
-    std::string ext = file_name.substr(r+1, file_name.length());
-
-    if(ext=="c" ||
-       ext=="cc" ||
-       ext=="cp" ||
-       ext=="cpp" ||
-       ext=="CPP" ||
-       ext=="c++" ||
-       ext=="C" ||
-       ext=="i" ||
-       ext=="ii")
+    std::ifstream in(file_name);
+    if(!in)
     {
-      source_files.push_back(file_name);
-    }
-    else if(ext=="a")
-    {
-      #ifdef _WIN32
-      char td[MAX_PATH+1];
-      #else
-      char td[] = "goto-cc.XXXXXX";
-      #endif
-
-      std::string tstr=get_temporary_directory(td);
-
-      if(tstr=="")
-      {
-        error() << "Cannot create temporary directory" << eom;
-        return true;
-      }
-
-      tmp_dirs.push_back(tstr);
-      std::stringstream cmd("");
-      if(chdir(tmp_dirs.back().c_str())!=0)
-      {
-        error() << "Cannot switch to temporary directory" << eom;
-        return true;
-      }
-
-      // unpack now
-      #ifdef _WIN32
-      if(file_name[0]!='/' && file_name[1]!=':')
-      #else
-      if(file_name[0]!='/')
-      #endif
-      {
-        cmd << "ar x " <<
-        #ifdef _WIN32
-          working_directory << "\\" << file_name;
-        #else
-          working_directory << "/" << file_name;
-        #endif
-      }
-      else
-      {
-        cmd << "ar x " << file_name;
-      }
-      
-      FILE *stream;
-
-      stream=popen(cmd.str().c_str(), "r");
-      pclose(stream);
-      
-      cmd.clear();
-      cmd.str("");
-      
-      // add the files from "ar t"
-      #ifdef _WIN32
-      if(file_name[0]!='/' && file_name[1]!=':')
-      #else
-      if(file_name[0]!='/')
-      #endif
-      {
-        cmd << "ar t " <<
-        #ifdef _WIN32
-          working_directory << "\\" << file_name;
-        #else
-          working_directory << "/" << file_name;
-        #endif
-      }
-      else
-      {
-        cmd << "ar t " << file_name;
-      }
-
-      stream=popen(cmd.str().c_str(), "r");
-      if(stream!=NULL)
-      {
-        std::string line;
-        char ch;
-        while((ch=fgetc(stream))!=EOF)
-        {
-          if(ch!='\n' && ch!=EOF)
-          {
-            line += ch;
-          }
-          else
-          {
-            std::string t;
-            #ifdef _WIN32
-            t = tmp_dirs.back() + '\\' + line;
-            #else
-            t = tmp_dirs.back() + '/' + line;
-            #endif
-
-            if(is_goto_binary(t))
-              object_files.push_back(t);
-            line = "";
-          }
-        }
-      }
-      pclose(stream);
-      cmd.str("");
-
-      if(chdir(working_directory.c_str())!=0)
-        error() << "Could not change back to working directory" << eom;
-    }
-    else if(is_goto_binary(file_name))
-      object_files.push_back(file_name);
-    else
-    {
-      // unknown extension, not a goto binary, will ignore
+      error() << "failed to open file `" << file_name << "'" << eom;
+      return false; // generously ignore
     }
   }
+
+  size_t r=file_name.rfind('.', file_name.length()-1);
+
+  if(r==std::string::npos)
+  {
+    // a file without extension; will ignore
+    warning() << "input file `" << file_name
+              << "' has no extension, not considered" << eom;
+    return false;
+  }
+
+  std::string ext = file_name.substr(r+1, file_name.length());
+
+  if(ext=="c" ||
+     ext=="cc" ||
+     ext=="cp" ||
+     ext=="cpp" ||
+     ext=="CPP" ||
+     ext=="c++" ||
+     ext=="C" ||
+     ext=="i" ||
+     ext=="ii" ||
+     ext=="class" ||
+     ext=="jar" ||
+     ext=="jsil")
+  {
+    source_files.push_back(file_name);
+  }
+  else if(ext=="a")
+  {
+    #ifdef _WIN32
+    char td[MAX_PATH+1];
+    #else
+    char td[] = "goto-cc.XXXXXX";
+    #endif
+
+    std::string tstr=get_temporary_directory(td);
+
+    if(tstr=="")
+    {
+      error() << "Cannot create temporary directory" << eom;
+      return true;
+    }
+
+    tmp_dirs.push_back(tstr);
+    std::stringstream cmd("");
+    if(chdir(tmp_dirs.back().c_str())!=0)
+    {
+      error() << "Cannot switch to temporary directory" << eom;
+      return true;
+    }
+
+    // unpack now
+    cmd << "ar x " << concat_dir_file(working_directory, file_name);
+
+    FILE *stream;
+
+    stream=popen(cmd.str().c_str(), "r");
+    pclose(stream);
+
+    cmd.clear();
+    cmd.str("");
+
+    // add the files from "ar t"
+    #ifdef _WIN32
+    if(file_name[0]!='/' && file_name[1]!=':')
+    #else
+    if(file_name[0]!='/')
+    #endif
+    {
+      cmd << "ar t " <<
+      #ifdef _WIN32
+        working_directory << "\\" << file_name;
+      #else
+        working_directory << "/" << file_name;
+      #endif
+    }
+    else
+    {
+      cmd << "ar t " << file_name;
+    }
+
+    stream=popen(cmd.str().c_str(), "r");
+
+    if(stream!=NULL)
+    {
+      std::string line;
+      int ch; // fgetc returns an int, not char
+      while((ch=fgetc(stream))!=EOF)
+      {
+        if(ch!='\n')
+        {
+          line+=(char)ch;
+        }
+        else
+        {
+          std::string t;
+          #ifdef _WIN32
+          t = tmp_dirs.back() + '\\' + line;
+          #else
+          t = tmp_dirs.back() + '/' + line;
+          #endif
+
+          if(is_goto_binary(t))
+            object_files.push_back(t);
+
+          line = "";
+        }
+      }
+
+      pclose(stream);
+    }
+
+    cmd.str("");
+
+    if(chdir(working_directory.c_str())!=0)
+      error() << "Could not change back to working directory" << eom;
+  }
+  else if(is_goto_binary(file_name))
+    object_files.push_back(file_name);
   else
   {
-    // don't care about no extensions
+    // unknown extension, not a goto binary, will silently ignore
   }
 
   return false;
@@ -324,24 +314,25 @@ bool compilet::find_library(const std::string &name)
     tmp = *it + "/lib";
     #endif
 
-    std::ifstream in((tmp+name+".a").c_str());
+    std::ifstream in(tmp+name+".a");
 
     if(in.is_open())
-      add_input_file(tmp+name+".a");
+      return !add_input_file(tmp+name+".a");
     else
     {
       std::string libname=tmp+name+".so";
 
       if(is_goto_binary(libname))
-        add_input_file(libname);
+        return !add_input_file(libname);
       else if(is_elf_file(libname))
-        warning("Warning: Cannot read ELF library "+libname);
-      else
+      {
+        warning() << "Warning: Cannot read ELF library " << libname << eom;
         return false;
+      }
     }
   }
-  
-  return true;
+
+  return false;
 }
 
 /*******************************************************************\
@@ -361,11 +352,11 @@ bool compilet::is_elf_file(const std::string &file_name)
 {
   std::fstream in;
 
-  in.open(file_name.c_str(), std::ios::in);
+  in.open(file_name, std::ios::in);
   if(in.is_open())
   {
     char buf[4];
-    for (unsigned i=0; i<4; i++)
+    for(std::size_t i=0; i<4; i++)
       buf[i] = in.get();
     if(buf[0]==0x7f && buf[1]=='E' &&
         buf[2]=='L' && buf[3]=='F')
@@ -399,15 +390,24 @@ bool compilet::link()
     std::string file_name=object_files.front();
     object_files.pop_front();
 
-    if(read_object(file_name, compiled_functions))
+    if(read_object_and_link(file_name, symbol_table,
+                            compiled_functions, get_message_handler()))
       return true;
   }
 
   // produce entry point?
-  
+
   if(mode==COMPILE_LINK_EXECUTABLE)
   {
-    if(entry_point(symbol_table, "c::main", ui_message_handler))
+    // new symbols may have been added to a previously linked file
+    // make sure a new entry point is created that contains all
+    // static initializers
+    compiled_functions.function_map.erase("__CPROVER_initialize");
+
+    symbol_table.remove(goto_functionst::entry_point());
+    compiled_functions.function_map.erase(goto_functionst::entry_point());
+
+    if(ansi_c_entry_point(symbol_table, "main", ui_message_handler))
       return true;
 
     // entry_point may (should) add some more functions.
@@ -439,10 +439,10 @@ bool compilet::compile()
   {
     std::string file_name=source_files.front();
     source_files.pop_front();
-    
+
     // Visual Studio always prints the name of the file it's doing
     if(echo_file_name)
-      status(file_name);
+      status() << file_name << eom;
 
     bool r=parse_source(file_name); // don't break the program!
 
@@ -456,9 +456,9 @@ bool compilet::compile()
       convert_symbols(compiled_functions);
 
       std::string cfn;
-      
+
       if(output_file_object=="")
-        cfn=get_base_name(file_name) + "." + object_file_extension;
+        cfn=get_base_name(file_name, true)+"."+object_file_extension;
       else
         cfn=output_file_object;
 
@@ -469,7 +469,7 @@ bool compilet::compile()
       compiled_functions.clear();
     }
   }
-  
+
   return false;
 }
 
@@ -490,9 +490,9 @@ bool compilet::parse(const std::string &file_name)
   if(file_name=="-") return parse_stdin();
 
   #ifdef _MSC_VER
-  std::ifstream infile(widen(file_name).c_str());
+  std::ifstream infile(widen(file_name));
   #else
-  std::ifstream infile(file_name.c_str());
+  std::ifstream infile(file_name);
   #endif
 
   if(!infile)
@@ -502,10 +502,10 @@ bool compilet::parse(const std::string &file_name)
   }
 
   languaget *languagep;
-  
+
   // Using '-x', the type of a file can be overridden;
   // otherwise, it's guessed from the extension.
-  
+
   if(override_language!="")
   {
     if(override_language=="c++" || override_language=="c++-header")
@@ -523,6 +523,8 @@ bool compilet::parse(const std::string &file_name)
   }
 
   languaget &language=*languagep;
+  language.set_message_handler(get_message_handler());
+
   language_filet language_file;
 
   std::pair<language_filest::filemapt::iterator, bool>
@@ -542,24 +544,24 @@ bool compilet::parse(const std::string &file_name)
 
     if(cmdline.isset('o'))
     {
-      ofs.open(cmdline.getval('o'));
+      ofs.open(cmdline.get_value('o'));
       os = &ofs;
 
       if(!ofs.is_open())
       {
-        error() << "failed to open output file `" 
-                << cmdline.getval('o') << "'" << eom;
+        error() << "failed to open output file `"
+                << cmdline.get_value('o') << "'" << eom;
         return true;
       }
     }
 
-    language.preprocess(infile, file_name, *os, get_message_handler());
+    language.preprocess(infile, file_name, *os);
   }
   else
   {
     print(8, "Parsing: "+file_name);
 
-    if(language.parse(infile, file_name, get_message_handler()))
+    if(language.parse(infile, file_name))
     {
       if(get_ui()==ui_message_handlert::PLAIN)
         error() << "PARSING ERROR" << eom;
@@ -587,6 +589,8 @@ bool compilet::parse_stdin()
 {
   ansi_c_languaget language;
 
+  language.set_message_handler(get_message_handler());
+
   print(8, "Parsing: (stdin)");
 
   if(mode==PREPROCESS_ONLY)
@@ -596,22 +600,22 @@ bool compilet::parse_stdin()
 
     if(cmdline.isset('o'))
     {
-      ofs.open(cmdline.getval('o'));
+      ofs.open(cmdline.get_value('o'));
       os = &ofs;
 
       if(!ofs.is_open())
       {
         error() << "failed to open output file `"
-                << cmdline.getval('o') << "'" << eom;
+                << cmdline.get_value('o') << "'" << eom;
         return true;
       }
     }
 
-    language.preprocess(std::cin, "", *os, get_message_handler());
+    language.preprocess(std::cin, "", *os);
   }
   else
   {
-    if(language.parse(std::cin, "", get_message_handler()))
+    if(language.parse(std::cin, ""))
     {
       if(get_ui()==ui_message_handlert::PLAIN)
         error() << "PARSING ERROR" << eom;
@@ -661,13 +665,14 @@ bool compilet::write_bin_object_file(
   const symbol_tablet &lsymbol_table,
   goto_functionst &functions)
 {
-  print(8, "Writing binary format object `" + file_name + "'");
+  statistics() << "Writing binary format object `"
+               << file_name << "'" << eom;
 
   // symbols
-  print(8, "Symbols in table: "+
-           i2string((unsigned long)lsymbol_table.symbols.size()));
+  statistics() << "Symbols in table: "
+               << lsymbol_table.symbols.size() << eom;
 
-  std::ofstream outfile(file_name.c_str(), std::ios::binary);
+  std::ofstream outfile(file_name, std::ios::binary);
 
   if(!outfile.is_open())
   {
@@ -680,8 +685,8 @@ bool compilet::write_bin_object_file(
 
   unsigned cnt=function_body_count(functions);
 
-  debug("Functions: "+i2string(functions.function_map.size())+"; "+
-        i2string(cnt)+" have a body.");
+  statistics() << "Functions: " << functions.function_map.size()
+               << "; " << cnt << " have a body." << eom;
 
   outfile.close();
 
@@ -704,74 +709,17 @@ bool compilet::parse_source(const std::string &file_name)
 {
   if(parse(file_name))
     return true;
-    
+
   if(typecheck()) // we just want to typecheck this one file here
     return true;
-    
+
+  if((has_suffix(file_name, ".class") ||
+      has_suffix(file_name, ".jar")) &&
+     final())
+    return true;
+
   // so we remove it from the list afterwards
   language_files.filemap.erase(file_name);
-  return false;
-}
-
-/*******************************************************************\
-
-Function: compilet::read_object
-
-  Inputs: a file_name
-
- Outputs: true on error, false otherwise
-
- Purpose: reads an object file
-
-\*******************************************************************/
-
-bool compilet::read_object(
-  const std::string &file_name,
-  goto_functionst &functions)
-{
-  print(8, "Reading: " + file_name);
-
-  // we read into a temporary symbol_table
-  symbol_tablet temp_symbol_table;
-  goto_functionst temp_functions;
-
-  if(read_goto_binary(file_name, temp_symbol_table, temp_functions, *message_handler))
-    return true;
-  
-  std::set<irep_idt> seen_modes;
-
-  for(symbol_tablet::symbolst::const_iterator
-      it=temp_symbol_table.symbols.begin();
-      it!=temp_symbol_table.symbols.end();
-      it++)
-  {
-    if(it->second.mode!="")
-      seen_modes.insert(it->second.mode);
-  }
-  
-  seen_modes.erase(ID_cpp);
-  seen_modes.erase(ID_C);
-
-  if(seen_modes.size()!=0)
-  {
-    error() << "Multi-language linking not supported" << eom;
-    return true;
-  }
-
-  // hardwired to C-style linking
-
-  linkingt linking(symbol_table, temp_symbol_table, ui_message_handler);
-  
-  linking.set_verbosity(verbosity);
-
-  if(linking.typecheck_main())
-    return true;
-    
-  if(link_functions(symbol_table, functions,
-                    temp_symbol_table, temp_functions,
-                    linking.replace_symbol))
-    return true;
-
   return false;
 }
 
@@ -788,7 +736,8 @@ Function: compilet::compilet
 \*******************************************************************/
 
 compilet::compilet(cmdlinet &_cmdline):
-  language_uit("goto-cc " GOTOCC_VERSION, _cmdline),
+  language_uit(_cmdline, ui_message_handler),
+  ui_message_handler(_cmdline, "goto-cc " CBMC_VERSION),
   ns(symbol_table),
   cmdline(_cmdline)
 {
@@ -839,135 +788,10 @@ unsigned compilet::function_body_count(const goto_functionst &functions)
       functions.function_map.begin();
       it != functions.function_map.end();
       it++)
-    if(it->second.body_available)
+    if(it->second.body_available())
       fbs++;
 
   return fbs;
-}
-
-/*******************************************************************\
-
-Function: compilet::link_functions
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-bool compilet::link_functions(
-  symbol_tablet &dest_symbol_table,
-  goto_functionst &dest_functions,
-  symbol_tablet &src_symbol_table,
-  goto_functionst &src_functions,
-  const replace_symbolt &replace_symbol)
-{
-  // merge functions
-  Forall_goto_functions(src_it, src_functions)
-  {
-    // the function might have been renamed    
-    replace_symbolt::expr_mapt::const_iterator e_it=
-      replace_symbol.expr_map.find(src_it->first);
-    irep_idt final_id=src_it->first;
-    if(e_it!=replace_symbol.expr_map.end())
-    {
-      const exprt &rep_exp=e_it->second;
-      if(rep_exp.id()==ID_symbol)
-        final_id=rep_exp.get(ID_identifier);
-    }
-  
-    // already there?
-    goto_functionst::function_mapt::iterator dest_f_it=
-      dest_functions.function_map.find(final_id);
-
-    if(dest_f_it==dest_functions.function_map.end()) // not there yet
-    {
-      replace_symbols_in_function(src_it->second, replace_symbol);
-
-      goto_functionst::goto_functiont &in_dest_symbol_table=
-        dest_functions.function_map[final_id];
-
-      in_dest_symbol_table.body.swap(src_it->second.body);
-      in_dest_symbol_table.body_available=src_it->second.body_available;
-      in_dest_symbol_table.type=src_it->second.type;
-    }
-    else // collision!
-    {
-      goto_functionst::goto_functiont &in_dest_symbol_table=
-        dest_functions.function_map[final_id];
-
-      goto_functionst::goto_functiont &src_func=src_it->second;
-
-      if(in_dest_symbol_table.body.instructions.empty())
-      {
-        // the one with body wins!
-        replace_symbols_in_function(src_func, replace_symbol);
-        
-        in_dest_symbol_table.body.swap(src_func.body);
-        in_dest_symbol_table.body_available=src_func.body_available;
-        in_dest_symbol_table.type=src_func.type;
-      }
-      else if(src_func.body.instructions.empty())
-      {
-        // just keep the old one in dest
-      }
-      else if(in_dest_symbol_table.type.get_bool(ID_C_inlined))
-      {
-        // ok, we silently ignore
-      }
-      else if(base_type_eq(in_dest_symbol_table.type, src_func.type, ns))
-      {
-        // keep the one in in_symbol_table -- libraries come last!
-        warning() << "warning: function `" << final_id << "' in module `"
-                  << src_symbol_table.symbols.begin()->second.module
-                  << "' is shadowed by a definition in module `"
-                  << symbol_table.symbols.begin()->second.module << "'"
-                  << eom;
-      }
-      else
-      {
-        error() << "error: duplicate definition of function `"
-                << final_id
-                << "'" << messaget::endl
-                << "In module `" 
-                << symbol_table.symbols.begin()->second.module
-                << "' and module `"
-                << src_symbol_table.symbols.begin()->second.module << "'"
-                << eom;
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
-
-/*******************************************************************\
-
-Function: compilet::replace_symbols_in_function
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void compilet::replace_symbols_in_function(
-  goto_functionst::goto_functiont &function,
-  const replace_symbolt &replace_symbol) const
-{
-  goto_programt &program=function.body;
-  replace_symbol.replace(function.type);
-
-  Forall_goto_program_instructions(iit, program)
-  {
-    replace_symbol.replace(iit->code);
-    replace_symbol.replace(iit->guard);
-  }
 }
 
 /*******************************************************************\
@@ -984,7 +808,7 @@ Function: compilet::add_compiler_specific_defines
 
 void compilet::add_compiler_specific_defines(configt &config) const
 {
-  config.ansi_c.defines.push_back("__GOTO_CC_VERSION__=" GOTOCC_VERSION);
+  config.ansi_c.defines.push_back("__GOTO_CC_VERSION__=" CBMC_VERSION);
 }
 
 /*******************************************************************\
@@ -1006,14 +830,14 @@ void compilet::convert_symbols(goto_functionst &dest)
   // the compilation may add symbols!
 
   symbol_tablet::symbolst::size_type before=0;
-  
+
   while(before!=symbol_table.symbols.size())
   {
     before=symbol_table.symbols.size();
 
     typedef std::set<irep_idt> symbols_sett;
     symbols_sett symbols;
-  
+
     Forall_symbols(it, symbol_table.symbols)
       symbols.insert(it->first);
 
@@ -1027,6 +851,7 @@ void compilet::convert_symbols(goto_functionst &dest)
       assert(s_it!=symbol_table.symbols.end());
 
       if(s_it->second.type.id()==ID_code &&
+         !s_it->second.is_macro &&
           s_it->second.value.id()!="compiled" &&
           s_it->second.value.is_not_nil())
       {

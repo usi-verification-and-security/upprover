@@ -28,7 +28,8 @@ public:
       mainSolver (NULL),
       dump_queries(false),
       partition_count(0),
-      itp_algorithm(1)
+      itp_algorithm(1),
+      current_partition(0)
   {
     initializeSolver();
   }

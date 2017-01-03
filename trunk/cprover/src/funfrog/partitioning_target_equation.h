@@ -49,7 +49,8 @@ public:
 		  out_partition(out_local_partition),
 		  terms_counter(0),
 		  is_first_call(true),
-		  first_call_expr(0)
+		  first_call_expr(0),
+                  io_count_global(0)
 		  {
 	  partition_smt_decl = new std::map <std::string,exprt>();
 	  out_terms.rdbuf(&terms_buf);
@@ -67,7 +68,7 @@ public:
 
   // Convert all the SSA steps into the corresponding formulas in
   // the corresponding partitions
-  void convert(prop_convt &prop_conv, interpolating_solvert &interpolator);
+  void convert(prop_conv_solvert &prop_conv, interpolating_solvert &interpolator);
 
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
@@ -174,7 +175,7 @@ public:
 
   // Extract interpolants corresponding to the created partitions
   void extract_interpolants(
-    interpolating_solvert& interpolator, const prop_convt& decider,
+    interpolating_solvert& interpolator, const prop_conv_solvert& decider,
     interpolant_mapt& interpolant_map);
 
   // Returns SSA steps ordered in the order of program execution (i.e., as they
@@ -229,6 +230,8 @@ private:
   int terms_counter; // for prints SSA - remove later
   bool is_first_call; // for prints SSA - remove later
   const exprt* first_call_expr; // for prints SSA - remove later
+  
+  unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
 
   // Print decl (later change to create)
   std::ostream& print_decl_smt(std::ostream& out);
@@ -240,25 +243,25 @@ private:
   void getFirstCallExpr();
 
   // Convert a specific partition of SSA steps
-  void convert_partition(prop_convt &prop_conv,
+  void convert_partition(prop_conv_solvert &prop_conv_solvert,
     interpolating_solvert &interpolator, partitiont& partition);
   // Convert a specific partition guards of SSA steps
-  void convert_partition_guards(prop_convt &prop_conv,
+  void convert_partition_guards(prop_conv_solvert &prop_conv,
     partitiont& partition);
   // Convert a specific partition assignments of SSA steps
-  void convert_partition_assignments(prop_convt &prop_conv,
+  void convert_partition_assignments(prop_conv_solvert &prop_conv,
     partitiont& partition);
   // Convert a specific partition assumptions of SSA steps
-  void convert_partition_assumptions(prop_convt &prop_conv,
+  void convert_partition_assumptions(prop_conv_solvert &prop_conv,
     partitiont& partition);
   // Convert a specific partition assertions of SSA steps
-  void convert_partition_assertions(prop_convt &prop_conv,
+  void convert_partition_assertions(prop_conv_solvert &prop_conv,
     partitiont& partition);
   // Convert a specific partition io of SSA steps
-  void convert_partition_io(prop_convt &prop_conv,
+  void convert_partition_io(prop_conv_solvert &prop_conv,
     partitiont& partition);
   // Convert a summary partition (i.e., assert its summary)
-  void convert_partition_summary(prop_convt &prop_conv,
+  void convert_partition_summary(prop_conv_solvert &prop_conv,
     partitiont& partition);
 
   unsigned count_partition_assertions(partitiont& partition) const

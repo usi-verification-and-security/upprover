@@ -26,10 +26,13 @@ Function: uninitialized_domaint::transform
 \*******************************************************************/
 
 void uninitialized_domaint::transform(
-  const namespacet &ns,
   locationt from,
-  locationt to)
+  locationt to,
+  ai_baset &ai,
+  const namespacet &ns)
 {
+  if(is_bottom) return;
+
   switch(from->type)
   {
   case DECL:
@@ -49,7 +52,7 @@ void uninitialized_domaint::transform(
       std::list<exprt> written=expressions_written(*from);
 
       forall_expr_list(it, written) assign(*it);
-      
+
       // we only care about the *first* uninitalized use
       forall_expr_list(it, read) assign(*it);
     }
@@ -91,14 +94,17 @@ Function: uninitialized_domaint::output
 \*******************************************************************/
 
 void uninitialized_domaint::output(
-  const namespacet &ns,
-  std::ostream &out) const
+  std::ostream &out,
+  const ai_baset &ai,
+  const namespacet &ns) const
 {
-  for(uninitializedt::const_iterator
-      it=uninitialized.begin();
-      it!=uninitialized.end();
-      it++)
-    out << *it << std::endl;
+  if(is_bottom)
+    out << "BOTTOM";
+  else
+  {
+    for(const auto & id : uninitialized)
+      out << id << '\n';
+  }
 }
 
 /*******************************************************************\
@@ -113,13 +119,21 @@ Function: uninitialized_domaint::merge
 
 \*******************************************************************/
 
-bool uninitialized_domaint::merge(const uninitialized_domaint &other)
+bool uninitialized_domaint::merge(
+  const uninitialized_domaint &other,
+  locationt from,
+  locationt to)
 {
-  unsigned old_uninitialized=uninitialized.size();
+  bool old_is_bottom=is_bottom;
   
+  is_bottom=is_bottom && other.is_bottom;
+  
+  unsigned old_uninitialized=uninitialized.size();
+
   uninitialized.insert(
     other.uninitialized.begin(),
     other.uninitialized.end());
 
-  return old_uninitialized!=uninitialized.size();
+  return old_is_bottom!=is_bottom ||
+         old_uninitialized!=uninitialized.size();
 }

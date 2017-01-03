@@ -20,24 +20,25 @@ Function: boolbvt::convert_mod
 
 \*******************************************************************/
 
-void boolbvt::convert_mod(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_mod(const mod_exprt &expr)
 {
+  if(expr.type().id()==ID_floatbv)
+  {
+  }
+
   if(expr.type().id()!=ID_unsignedbv &&
      expr.type().id()!=ID_signedbv)
-    return conversion_failed(expr, bv);
+    return conversion_failed(expr);
 
-  unsigned width=boolbv_width(expr.type());
-  
+  std::size_t width=boolbv_width(expr.type());
+
   if(width==0)
-    return conversion_failed(expr, bv);
-
-  if(expr.operands().size()!=2)
-    throw "mod takes two operands";
+    return conversion_failed(expr);
 
   if(expr.op0().type().id()!=expr.type().id() ||
      expr.op1().type().id()!=expr.type().id())
     throw "mod got mixed-type operands";
-    
+
   bv_utilst::representationt rep=
     expr.type().id()==ID_signedbv?bv_utilst::SIGNED:
                                   bv_utilst::UNSIGNED;
@@ -53,5 +54,5 @@ void boolbvt::convert_mod(const exprt &expr, bvt &bv)
 
   bv_utils.divider(op0, op1, res, rem, rep);
 
-  bv=rem;
+  return rem;
 }

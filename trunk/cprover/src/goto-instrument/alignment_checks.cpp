@@ -58,7 +58,7 @@ void print_struct_alignment_problems(
         {
           const typet &it_type=it_next->type();
           const namespacet ns(symbol_table);
-          mp_integer size=pointer_offset_size(ns, it_type);
+          mp_integer size=pointer_offset_size(it_type, ns);
 
           cumulated_length+=size;
           // [it_mem;it_next] cannot be covered by an instruction
@@ -99,11 +99,11 @@ void print_struct_alignment_problems(
       const namespacet ns(symbol_table);
       const array_typet array=to_array_type(it->second.type);
       const mp_integer size=
-        pointer_offset_size(ns, array.subtype());       
+        pointer_offset_size(array.subtype(), ns);
 
       if(2*integer2long(size)<=config.ansi_c.memory_operand_size)
       {
-        out << std::endl << "WARNING: " 
+        out << std::endl << "WARNING: "
             << "declaration of an array at "
             << it->second.location << std::endl
             << "might be concurrently accessed" << std::endl;

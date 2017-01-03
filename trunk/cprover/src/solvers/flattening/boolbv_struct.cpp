@@ -23,20 +23,25 @@ Function: boolbvt::convert_struct
 
 \*******************************************************************/
 
-void boolbvt::convert_struct(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_struct(const struct_exprt &expr)
 {
   const struct_typet &struct_type=to_struct_type(ns.follow(expr.type()));
 
-  unsigned width=boolbv_width(struct_type);
-  
+  std::size_t width=boolbv_width(struct_type);
+
   const struct_typet::componentst &components=struct_type.components();
 
   if(expr.operands().size()!=components.size())
-    throw "struct: wrong number of arguments";
+  {
+    error().source_location=expr.find_source_location();
+    error() << "struct: wrong number of arguments" << eom;
+    throw 0;
+  }
 
+  bvt bv;
   bv.resize(width);
 
-  unsigned offset=0, i=0;
+  std::size_t offset=0, i=0;
 
   for(struct_typet::componentst::const_iterator
       it=components.begin();
@@ -47,28 +52,34 @@ void boolbvt::convert_struct(const exprt &expr, bvt &bv)
     const exprt &op=expr.operands()[i];
 
     if(!base_type_eq(subtype, op.type(), ns))
-      throw "struct: component type does not match: "+
-        subtype.to_string()+" vs. "+
-        op.type().to_string();
-        
-    unsigned subtype_width=boolbv_width(subtype);
+    {
+      error().source_location=expr.find_source_location();
+      error() << "struct: component type does not match: "
+              << subtype.pretty() << " vs. "
+              << op.type().pretty() << eom;
+      throw 0;
+    }
+
+    std::size_t subtype_width=boolbv_width(subtype);
 
     if(subtype_width!=0)
     {
       const bvt &op_bv=convert_bv(op);
-    
+
       assert(offset<width);
       assert(op_bv.size()==subtype_width);
       assert(offset+op_bv.size()<=width);
 
-      for(unsigned j=0; j<op_bv.size(); j++)
+      for(std::size_t j=0; j<op_bv.size(); j++)
         bv[offset+j]=op_bv[j];
 
       offset+=op_bv.size();
     }
 
-    i++;    
+    i++;
   }
-  
+
   assert(offset==width);
+
+  return bv;
 }

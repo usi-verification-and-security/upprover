@@ -9,7 +9,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_ANALYSES_CALL_GRAPH_H
 #define CPROVER_ANALYSES_CALL_GRAPH_H
 
-#include <ostream>
+#include <iosfwd>
 #include <map>
 
 #include <goto-programs/goto_functions.h>
@@ -28,10 +28,10 @@ public:
   grapht graph;
 
   void add(const irep_idt &caller, const irep_idt &callee);
-  
+
 protected:
   void add(const irep_idt &function,
            const goto_programt &body);
 };
 
-#endif
+#endif // CPROVER_ANALYSES_CALL_GRAPH_H

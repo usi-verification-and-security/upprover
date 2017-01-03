@@ -6,26 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <ostream>
+
 #include "symbol_table.h"
-
-/*******************************************************************\
-
-Function: symbol_tablet::value
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-const irept &symbol_tablet::value(const irep_idt &name) const
-{
-  symbolst::const_iterator it=symbols.find(name);
-  if(it==symbols.end()) return get_nil_irep();
-  return it->second.value;
-}
 
 /*******************************************************************\
 
@@ -43,7 +26,7 @@ bool symbol_tablet::add(const symbolt &symbol)
 {
   if(!symbols.insert(std::pair<irep_idt, symbolt>(symbol.name, symbol)).second)
     return true;
-    
+
   symbol_base_map.insert(std::pair<irep_idt, irep_idt>(symbol.base_name, symbol.name));
   symbol_module_map.insert(std::pair<irep_idt, irep_idt>(symbol.module, symbol.name));
 
@@ -74,7 +57,7 @@ bool symbol_tablet::move(symbolt &symbol, symbolt *&new_symbol)
     new_symbol=&result.first->second;
     return true;
   }
-    
+
   symbol_base_map.insert(std::pair<irep_idt, irep_idt>(symbol.base_name, symbol.name));
   symbol_module_map.insert(std::pair<irep_idt, irep_idt>(symbol.module, symbol.name));
 
@@ -99,7 +82,7 @@ Function: symbol_tablet::remove
 bool symbol_tablet::remove(const irep_idt &name)
 {
   symbolst::iterator entry=symbols.find(name);
-  
+
   if(entry==symbols.end())
     return true;
 
@@ -144,7 +127,7 @@ Function: symbol_tablet::show
 
 void symbol_tablet::show(std::ostream &out) const
 {
-  out << std::endl << "Symbols:" << std::endl;
+  out << "\n" << "Symbols:" << "\n";
 
   forall_symbols(it, symbols)
     out << it->second;
@@ -165,10 +148,10 @@ Function: symbol_tablet::lookup
 const symbolt &symbol_tablet::lookup(const irep_idt &identifier) const
 {
   symbolst::const_iterator it=symbols.find(identifier);
-      
+
   if(it==symbols.end())
     throw "symbol "+id2string(identifier)+" not found";
-                    
+
   return it->second;
 }
 
@@ -187,10 +170,10 @@ Function: symbol_tablet::lookup
 symbolt &symbol_tablet::lookup(const irep_idt &identifier)
 {
   symbolst::iterator it=symbols.find(identifier);
-      
+
   if(it==symbols.end())
     throw "symbol "+id2string(identifier)+" not found";
-                    
+
   return it->second;
 }
 

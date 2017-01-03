@@ -6,10 +6,58 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <util/threeval.h>
+
+#include "../prop/prop.h"
+
 #include "boolbv_map.h"
 #include "boolbv_width.h"
 
 //#define DEBUG
+
+#ifdef DEBUG
+#include <iostream>
+#endif
+
+/*******************************************************************\
+
+Function: boolbv_mapt::map_entryt::get_value
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+std::string boolbv_mapt::map_entryt::get_value(const propt &prop) const
+{
+  std::string result;
+
+  result.reserve(literal_map.size());
+
+  for(std::size_t i=0; i<literal_map.size(); i++)
+  {
+    char ch='*';
+
+    if(literal_map[i].is_set)
+    {
+      tvt value=prop.l_get(literal_map[i].l);
+
+      if(value.is_true())
+        ch='1';
+      else if(value.is_false())
+        ch='0';
+      else
+        ch='?';
+    }
+
+    result=result+ch;
+  }
+
+  return result;
+}
 
 /*******************************************************************\
 
@@ -72,7 +120,7 @@ void boolbv_mapt::show() const
 
 /*******************************************************************\
 
-Function: boolbv_mapt::get_literal
+Function: boolbv_mapt::get_literals
 
   Inputs:
 
@@ -85,16 +133,18 @@ Function: boolbv_mapt::get_literal
 void boolbv_mapt::get_literals(
   const irep_idt &identifier,
   const typet &type,
-  const unsigned width,
+  const std::size_t width,
   bvt &literals)
 {
   map_entryt &map_entry=get_map_entry(identifier, type);
 
   assert(literals.size()==width);
+  assert(map_entry.literal_map.size()==width);
+
   Forall_literals(it, literals)
   {
     literalt &l=*it;
-    const unsigned bit=it-literals.begin();
+    const std::size_t bit=it-literals.begin();
 
     assert(bit<map_entry.literal_map.size());
     map_bitt &mb=map_entry.literal_map[bit];
@@ -119,7 +169,7 @@ void boolbv_mapt::get_literals(
 
 /*******************************************************************\
 
-Function: boolbv_mapt::set_literal
+Function: boolbv_mapt::set_literals
 
   Inputs:
 
@@ -139,7 +189,7 @@ void boolbv_mapt::set_literals(
   forall_literals(it, literals)
   {
     const literalt &literal=*it;
-    const unsigned bit=it-literals.begin();
+    const std::size_t bit=it-literals.begin();
 
     assert(literal.is_constant() ||
            literal.var_no()<prop.no_variables());
@@ -157,4 +207,3 @@ void boolbv_mapt::set_literals(
     mb.l=literal;
   }
 }
-

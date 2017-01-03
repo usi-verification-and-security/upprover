@@ -44,13 +44,14 @@ public:
     return literalt(_no_variables++, false);
   }
 
-  static void reserve_variables(prop_convt& decider,
+  // These 3 methods are needed in partitioning_target_equation (called from)
+  static void reserve_variables(prop_conv_solvert& decider,
     const std::vector<symbol_exprt>& symbols, std::map<symbol_exprt, std::vector<unsigned> >& symbol_vars);
 
-  void generalize(const prop_convt& mapping,
+  void generalize(const prop_conv_solvert& mapping,
     const std::vector<symbol_exprt>& symbols);
 
-  void substitute(prop_convt& decider,
+  void substitute(prop_conv_solvert& decider,
     const std::vector<symbol_exprt>& symbols,
     bool inverted = false) const;
 

@@ -19,11 +19,15 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <java_bytecode/java_bytecode_language.h>
 #endif
 
-#include "cbmc_parseoptions.h"
+#ifdef HAVE_JSIL
+#include <jsil/jsil_language.h>
+#endif
+
+#include "cbmc_parse_options.h"
 
 /*******************************************************************\
 
-Function: cbmc_parseoptionst::register_languages
+Function: cbmc_parse_optionst::register_languages
 
   Inputs:
 
@@ -33,17 +37,20 @@ Function: cbmc_parseoptionst::register_languages
 
 \*******************************************************************/
 
-void cbmc_parseoptionst::register_languages()
+void cbmc_parse_optionst::register_languages()
 {
   register_language(new_ansi_c_language);
   register_language(new_cpp_language);
-  
+
   #ifdef HAVE_SPECC
   register_language(new_specc_language);
   #endif
-  
+
   #ifdef HAVE_JAVA_BYTECODE
   register_language(new_java_bytecode_language);
   #endif
-}
 
+  #ifdef HAVE_JSIL
+  register_language(new_jsil_language);
+  #endif
+}

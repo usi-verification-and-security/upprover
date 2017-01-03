@@ -32,6 +32,7 @@
 /trunk/cprover/src/funfrog/.cvsignore
 /trunk/cprover/src/funfrog/sumo
 /trunk/cprover/src/funfrog/evolcheck
+/trunk/cprover/src/funfrog/hifrog
 
 # /cprover/src/funfrog/solvers/
 /trunk/cprover/src/funfrog/solvers/*.d
@@ -69,6 +70,23 @@
 /trunk/cprover/src/langapi/*.o
 /trunk/cprover/src/langapi/*.a
 
+# /cprover/src/path-symex/
+/trunk/cprover/src/path-symex/*.d
+/trunk/cprover/src/path-symex/*.o
+/trunk/cprover/src/path-symex/*.a
+
+# /cprover/src/goto-diff/
+/trunk/cprover/src/goto-diff/*.d
+/trunk/cprover/src/goto-diff/*.o
+/trunk/cprover/src/goto-diff/*.a
+/trunk/cprover/src/goto-diff/goto-diff
+
+# /cprover/src/goto-analyzer/
+/trunk/cprover/src/goto-analyzer/*.d
+/trunk/cprover/src/goto-analyzer/*.o
+/trunk/cprover/src/goto-analyzer/*.a
+/trunk/cprover/src/goto-analyzer/goto-analyzer
+
 # /cprover/src/goto-instrument/
 /trunk/cprover/src/goto-instrument/*.d
 /trunk/cprover/src/goto-instrument/*.o
@@ -94,6 +112,7 @@
 /trunk/cprover/src/goto-symex/*.d
 /trunk/cprover/src/goto-symex/*.o
 /trunk/cprover/src/goto-symex/*.a
+/trunk/cprover/src/symex/symex
 
 # /cprover/src/goto-cc/
 /trunk/cprover/src/goto-cc/*.d
@@ -251,6 +270,15 @@ trunk/minisat-2.2.0/simp/*.o
 # /minisat-2.2.0/core/
 trunk/minisat-2.2.0/core/*.d
 trunk/minisat-2.2.0/core/*.o
+
+# /minisat-2.2.1/simp/
+trunk/minisat-2.2.1/simp/*.d
+trunk/minisat-2.2.1/simp/*.o
+
+# /minisat-2.2.1/core/
+trunk/minisat-2.2.1/core/*.d
+trunk/minisat-2.2.1/core/*.o
+
 
 # Project in exlipse definitions - exclude form commit
 /trunk/cprover/src/.metadata/

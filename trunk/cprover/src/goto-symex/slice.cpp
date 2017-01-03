@@ -6,7 +6,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/hash_cont.h>
 #include <util/std_expr.h>
 
 #include "slice.h"
@@ -65,7 +64,7 @@ Function: symex_slicet::slice
 \*******************************************************************/
 
 void symex_slicet::slice(
-  symex_target_equationt &equation, 
+  symex_target_equationt &equation,
   const expr_listt &exprs)
 {
   // collect dependencies
@@ -122,6 +121,10 @@ void symex_slicet::slice(symex_target_equationt::SSA_stept &SSA_step)
     get_symbols(SSA_step.cond_expr);
     break;
 
+  case goto_trace_stept::GOTO:
+    get_symbols(SSA_step.cond_expr);
+    break;
+
   case goto_trace_stept::LOCATION:
     // ignore
     break;
@@ -130,31 +133,35 @@ void symex_slicet::slice(symex_target_equationt::SSA_stept &SSA_step)
     slice_assignment(SSA_step);
     break;
 
+  case goto_trace_stept::DECL:
+    slice_decl(SSA_step);
+    break;
+
   case goto_trace_stept::OUTPUT:
   case goto_trace_stept::INPUT:
     break;
-    
-  case goto_trace_stept::DECL:
+
   case goto_trace_stept::DEAD:
     // ignore for now
     break;
-    
+
   case goto_trace_stept::CONSTRAINT:
   case goto_trace_stept::SHARED_READ:
   case goto_trace_stept::SHARED_WRITE:
   case goto_trace_stept::ATOMIC_BEGIN:
   case goto_trace_stept::ATOMIC_END:
   case goto_trace_stept::SPAWN:
+  case goto_trace_stept::MEMORY_BARRIER:
     // ignore for now
     break;
-    
+
   case goto_trace_stept::FUNCTION_CALL:
   case goto_trace_stept::FUNCTION_RETURN:
     // ignore for now
     break;
-    
+
   default:
-    assert(false);  
+    assert(false);
   }
 }
 
@@ -187,6 +194,31 @@ void symex_slicet::slice_assignment(
 
 /*******************************************************************\
 
+Function: symex_slicet::slice_decl
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void symex_slicet::slice_decl(
+  symex_target_equationt::SSA_stept &SSA_step)
+{
+  assert(SSA_step.ssa_lhs.id()==ID_symbol);
+  const irep_idt &id=SSA_step.ssa_lhs.get_identifier();
+
+  if(depends.find(id)==depends.end())
+  {
+    // we don't really need it
+    SSA_step.ignore=true;
+  }
+}
+
+/*******************************************************************\
+
 Function: symex_slice_classt::collect_open_variables
 
   Inputs: equation - symex trace
@@ -200,7 +232,7 @@ Function: symex_slice_classt::collect_open_variables
 \*******************************************************************/
 
 void symex_slicet::collect_open_variables(
-  const symex_target_equationt &equation, 
+  const symex_target_equationt &equation,
   symbol_sett &open_variables)
 {
   symbol_sett lhs;
@@ -248,16 +280,17 @@ void symex_slicet::collect_open_variables(
     case goto_trace_stept::ATOMIC_BEGIN:
     case goto_trace_stept::ATOMIC_END:
     case goto_trace_stept::SPAWN:
+    case goto_trace_stept::MEMORY_BARRIER:
       // ignore for now
       break;
 
     default:
-      assert(false);  
+      assert(false);
     }
   }
-  
+
   open_variables=depends;
-  
+
   // remove the ones that are defined
   open_variables.erase(lhs.begin(), lhs.end());
 }
@@ -295,7 +328,7 @@ Function: collect_open_variables
 \*******************************************************************/
 
 void collect_open_variables(
-  const symex_target_equationt &equation, 
+  const symex_target_equationt &equation,
   symbol_sett &open_variables)
 {
   symex_slicet symex_slice;
@@ -315,8 +348,8 @@ Function: slice
 
 \*******************************************************************/
 
-void slice(symex_target_equationt &equation, 
-	   const expr_listt &expressions)
+void slice(symex_target_equationt &equation,
+           const expr_listt &expressions)
 {
   symex_slicet symex_slice;
   symex_slice.slice(equation, expressions);
@@ -339,7 +372,7 @@ void simple_slice(symex_target_equationt &equation)
   // just find the last assertion
   symex_target_equationt::SSA_stepst::iterator
     last_assertion=equation.SSA_steps.end();
-  
+
   for(symex_target_equationt::SSA_stepst::iterator
       it=equation.SSA_steps.begin();
       it!=equation.SSA_steps.end();
@@ -358,4 +391,3 @@ void simple_slice(symex_target_equationt &equation)
         s_it++)
       s_it->ignore=true;
 }
-

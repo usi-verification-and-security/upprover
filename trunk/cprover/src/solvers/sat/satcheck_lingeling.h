@@ -6,8 +6,8 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_satcheck_lingeling_H
-#define CPROVER_satcheck_lingeling_H
+#ifndef CPROVER_SOLVERS_SAT_SATCHECK_LINGELING_H
+#define CPROVER_SOLVERS_SAT_SATCHECK_LINGELING_H
 
 #include "cnf.h"
 
@@ -28,11 +28,13 @@ public:
 
   virtual void set_assumptions(const bvt &_assumptions);
   virtual bool has_set_assumptions() const { return true; }
-  virtual bool has_is_in_conflict() const { return false; }
+  virtual bool has_is_in_conflict() const { return true; }
+  virtual bool is_in_conflict(literalt a) const;
+  virtual void set_frozen(literalt a);
 
 protected:
   struct LGL * solver;
   bvt assumptions;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_SAT_SATCHECK_LINGELING_H

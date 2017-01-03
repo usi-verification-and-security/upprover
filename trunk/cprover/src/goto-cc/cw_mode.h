@@ -8,8 +8,8 @@ Date: June 2006
 
 \*******************************************************************/
 
-#ifndef GOTO_CC_CW_MODE_H
-#define GOTO_CC_CW_MODE_H
+#ifndef CPROVER_GOTO_CC_CW_MODE_H
+#define CPROVER_GOTO_CC_CW_MODE_H
 
 #include "goto_cc_mode.h"
 #include "gcc_cmdline.h"
@@ -17,7 +17,7 @@ Date: June 2006
 class cw_modet:public goto_cc_modet
 {
 public:
-  virtual bool doit();
+  virtual int doit();
   virtual void help_mode();
 
   explicit cw_modet(gcc_cmdlinet &_gcc_cmdline):
@@ -25,9 +25,9 @@ public:
     cmdline(_gcc_cmdline)
   {
   }
-  
+
 protected:
   gcc_cmdlinet &cmdline;
 };
 
-#endif /* GOTO_CC_CW_MODE_H */
+#endif // CPROVER_GOTO_CC_CW_MODE_H

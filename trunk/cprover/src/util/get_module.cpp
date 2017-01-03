@@ -6,9 +6,22 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <list>
+#include <set>
+
 #include "get_module.h"
-#include "message_stream.h"
+#include "message.h"
 #include "symbol_table.h"
+
+typedef std::list<const symbolt *> symbolptr_listt;
+
+#define forall_symbolptr_list(it, list) \
+  for(symbolptr_listt::const_iterator it=(list).begin(); \
+      it!=(list).end(); ++it)
+
+#define Forall_symbolptr_list(it, list) \
+  for(symbolptr_listt::iterator it=(list).begin(); \
+      it!=(list).end(); ++it)
 
 /*******************************************************************\
 
@@ -28,7 +41,7 @@ const symbolt &get_module_by_name(
   message_handlert &message_handler)
 {
   symbolptr_listt symbolptr_list;
-  message_streamt message_stream(message_handler);
+  messaget message(message_handler);
 
   forall_symbol_base_map(it, symbol_table.symbol_base_map, module)
   {
@@ -41,24 +54,23 @@ const symbolt &get_module_by_name(
 
     if(s.is_type || s.type.id()!=ID_module)
       continue;
-    
+
     symbolptr_list.push_back(&s);
   }
 
   if(symbolptr_list.empty())
   {
-    message_stream.str << "module `" << module << "' not found";
-    message_stream.error();
+    message.error() << "module `" << module << "' not found" << messaget::eom;
     throw 0;
   }
   else if(symbolptr_list.size()>=2)
   {
-    message_stream.str << "module `" << module << "' does not uniquely resolve:" << std::endl;
+    message.error() << "module `" << module << "' does not uniquely resolve:\n";
 
     forall_symbolptr_list(it, symbolptr_list)
-      message_stream.str << "  " << (*it)->name << std::endl;
+      message.error() << "  " << (*it)->name << '\n';
 
-    message_stream.error();
+    message.error() << messaget::eom;
     throw 0;
   }
 
@@ -88,46 +100,50 @@ const symbolt &get_module(
     return get_module_by_name(symbol_table, module, message_handler);
 
   symbolptr_listt symbolptr_list, main_symbolptr_list;
-  message_streamt message_stream(message_handler);
+  messaget message(message_handler);
 
   forall_symbols(it, symbol_table.symbols)
   {
     const symbolt &s=it->second;
-    
-    if(s.type.id()!="module")
+
+    if(s.type.id()!=ID_module)
       continue;
 
-    // this is our default    
-    if(s.base_name=="main")
+    // this is our default
+    if(s.base_name==ID_main)
       return get_module_by_name(symbol_table, "main", message_handler);
-    
+
     symbolptr_list.push_back(&s);
   }
 
   if(symbolptr_list.empty())
   {
-    message_stream.str << "no module found";
-    message_stream.error();
+    message.error() << "no module found" << messaget::eom;
     throw 0;
   }
   else if(symbolptr_list.size()>=2)
   {
-    message_stream.str << "multiple modules found, please select one:" << std::endl;
+    // sorted alphabetically
+    std::set<std::string> modules;
 
     forall_symbolptr_list(it, symbolptr_list)
-      message_stream.str << "  " << (*it)->pretty_name << std::endl;
+      modules.insert(id2string((*it)->pretty_name));
 
-    message_stream.error();
+    message.error() << "multiple modules found, please select one:\n";
+
+    for(const auto & s_it : modules)
+      message.error() << "  " << s_it << '\n';
+
+    message.error() << messaget::eom;
     throw 0;
   }
 
   // symbolptr_list has exactly one element
-  
+
   const symbolt &symbol=*symbolptr_list.front();
 
-  message_stream.str << "Using module `" << symbol.pretty_name << "'";
-  message_stream.status();
+  message.status() << "Using module `" << symbol.pretty_name << "'"
+                   << messaget::eom;
 
   return symbol;
 }
-

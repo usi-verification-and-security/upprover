@@ -6,8 +6,8 @@ Author:
 
 \*******************************************************************/
 
-#ifndef CPROVER_FLOAT_APPROXIMATION_H
-#define CPROVER_FLOAT_APPROXIMATION_H
+#ifndef CPROVER_SOLVERS_FLOATBV_FLOAT_APPROXIMATION_H
+#define CPROVER_SOLVERS_FLOATBV_FLOAT_APPROXIMATION_H
 
 #include <floatbv/float_utils.h>
 
@@ -22,7 +22,7 @@ public:
   }
 
   virtual ~float_approximationt();
-  
+
   bool over_approximate;
   bool partial_interpretation;
 
@@ -34,4 +34,4 @@ private:
   typedef float_utilst SUB;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_FLOATBV_FLOAT_APPROXIMATION_H

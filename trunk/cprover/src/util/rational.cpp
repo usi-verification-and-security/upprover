@@ -7,6 +7,7 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <algorithm>
+#include <ostream>
 
 #include "rational.h"
 
@@ -122,7 +123,7 @@ void rationalt::normalize()
   {
     denominator/=_gcd;
     numerator/=_gcd;
-  }  
+  }
 }
 
 /*******************************************************************\

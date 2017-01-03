@@ -6,9 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <stdlib.h>
-#include <string.h>
-
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
 
 #include "xml_parser.h"
@@ -35,11 +34,11 @@ bool parse_xml(
   xmlt &dest)
 {
   xml_parser.clear();
-  xml_parser.filename=filename;
+  xml_parser.set_file(filename);
   xml_parser.in=&in;
   xml_parser.set_message_handler(message_handler);
 
-  bool result=yyxmlparse();
+  bool result=yyxmlparse()!=0;
 
   // save result
   xml_parser.parse_tree.element.swap(dest);
@@ -47,7 +46,7 @@ bool parse_xml(
   // save some memory
   xml_parser.clear();
 
-  return result;  
+  return result;
 }
 
 /*******************************************************************\
@@ -68,9 +67,9 @@ bool parse_xml(
   message_handlert &message_handler,
   xmlt &dest)
 {
-  std::ifstream in(filename.c_str());
-  
+  std::ifstream in(filename);
+
   if(!in) return true;
- 
+
   return parse_xml(in, filename, message_handler, dest);
 }

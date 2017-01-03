@@ -8,7 +8,6 @@ Date: February 2006
 
 \*******************************************************************/
 
-#include <util/expr_util.h>
 #include <util/std_expr.h>
 #include <util/std_code.h>
 #include <util/namespace.h>
@@ -41,7 +40,7 @@ void rw_set_baset::output(std::ostream &out) const
     out << it->second.object << " if "
         << from_expr(ns, "", it->second.guard) << std::endl;
   }
-  
+
   out << std::endl;
 
   out << "WRITE:" << std::endl;
@@ -66,7 +65,7 @@ Function: rw_set_loct::compute
 
 \*******************************************************************/
 
-void rw_set_loct::compute()
+void _rw_set_loct::compute()
 {
   if(target->is_assign())
   {
@@ -85,14 +84,14 @@ void rw_set_loct::compute()
       to_code_function_call(target->code);
 
     read(code_function_call.function());
-    
+
     // do operands
     for(code_function_callt::argumentst::const_iterator
         it=code_function_call.arguments().begin();
         it!=code_function_call.arguments().end();
         it++)
       read(*it);
-    
+
     if(code_function_call.lhs().is_not_nil())
       write(code_function_call.lhs());
   }
@@ -110,7 +109,7 @@ Function: rw_set_loct::assign
 
 \*******************************************************************/
 
-void rw_set_loct::assign(const exprt &lhs, const exprt &rhs)
+void _rw_set_loct::assign(const exprt &lhs, const exprt &rhs)
 {
   read(rhs);
   read_write_rec(lhs, false, true, "", guardt());
@@ -128,7 +127,7 @@ Function: rw_set_loct::read_write_rec
 
 \*******************************************************************/
 
-void rw_set_loct::read_write_rec(
+void _rw_set_loct::read_write_rec(
   const exprt &expr,
   bool r, bool w,
   const std::string &suffix,
@@ -146,14 +145,18 @@ void rw_set_loct::read_write_rec(
       entry.object=object;
       entry.symbol_expr=symbol_expr;
       entry.guard=guard.as_expr(); // should 'OR'
+
+      track_deref(entry, true);
     }
-    
+
     if(w)
     {
       entryt &entry=w_entries[object];
       entry.object=object;
       entry.symbol_expr=symbol_expr;
       entry.guard=guard.as_expr(); // should 'OR'
+
+      track_deref(entry, false);
     }
   }
   else if(expr.id()==ID_member)
@@ -172,12 +175,41 @@ void rw_set_loct::read_write_rec(
   else if(expr.id()==ID_dereference)
   {
     assert(expr.operands().size()==1);
+    set_track_deref();
     read(expr.op0(), guard);
 
     exprt tmp=expr;
+    #ifdef LOCAL_MAY
+    const std::set<exprt> aliases=local_may.get(target, expr);
+    for(std::set<exprt>::const_iterator it=aliases.begin();
+      it!=aliases.end();
+      ++it)
+    {
+      #ifndef LOCAL_MAY_SOUND
+      if(it->id()==ID_unknown)
+      {
+        /* as an under-approximation */
+        //std::cout << "Sorry, LOCAL_MAY too imprecise. Omitting some variables."
+        //  << std::endl;
+        irep_idt object=ID_unknown;
+
+        entryt &entry=r_entries[object];
+        entry.object=object;
+        entry.symbol_expr=symbol_exprt(ID_unknown);
+        entry.guard=guard.as_expr(); // should 'OR'
+
+        continue;
+      }
+      #endif
+      read_write_rec(*it, r, w, suffix, guard);
+    }
+    #else
     dereference(target, tmp, ns, value_sets);
-    
+
     read_write_rec(tmp, r, w, suffix, guard);
+    #endif
+
+    reset_track_deref();
   }
   else if(expr.id()==ID_typecast)
   {
@@ -187,19 +219,19 @@ void rw_set_loct::read_write_rec(
   else if(expr.id()==ID_address_of)
   {
     assert(expr.operands().size()==1);
-    
+
   }
   else if(expr.id()==ID_if)
   {
     assert(expr.operands().size()==3);
     read(expr.op0(), guard);
-    
+
     guardt true_guard(guard);
     true_guard.add(expr.op0());
     read_write_rec(expr.op1(), r, w, suffix, true_guard);
-    
+
     guardt false_guard(guard);
-    false_guard.add(gen_not(expr.op0()));
+    false_guard.add(not_exprt(expr.op0()));
     read_write_rec(expr.op2(), r, w, suffix, false_guard);
   }
   else
@@ -234,9 +266,22 @@ void rw_set_functiont::compute_rec(const exprt &function)
     {
       const goto_programt &body=f_it->second.body;
 
+#ifdef LOCAL_MAY
+      local_may_aliast local_may(f_it->second);
+#if 0
+      for(goto_functionst::function_mapt::const_iterator g_it=goto_functions.function_map.begin();
+        g_it!=goto_functions.function_map.end(); ++g_it)
+        local_may(g_it->second);
+#endif
+#endif
+
       forall_goto_program_instructions(i_it, body)
       {
-        *this+=rw_set_loct(ns, value_sets, i_it);
+        *this+=rw_set_loct(ns, value_sets, i_it
+#ifdef LOCAL_MAY
+        , local_may
+#endif
+        );
       }
     }
   }
@@ -245,4 +290,4 @@ void rw_set_functiont::compute_rec(const exprt &function)
     compute_rec(to_if_expr(function).true_case());
     compute_rec(to_if_expr(function).false_case());
   }
-} 
+}

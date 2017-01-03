@@ -6,32 +6,13 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_TEMPLATE_TYPE_H
-#define CPROVER_CPP_TEMPLATE_TYPE_H
+#ifndef CPROVER_CPP_CPP_TEMPLATE_TYPE_H
+#define CPROVER_CPP_CPP_TEMPLATE_TYPE_H
 
 #include <util/type.h>
 #include <util/expr.h>
 
 #include "cpp_template_parameter.h"
-
-class template_parametert:public exprt
-{
-public:
-  inline exprt &default_parameter()
-  {
-    return static_cast<exprt &>(add(ID_C_default_value));
-  }
-
-  inline const exprt &default_parameter() const
-  {
-    return static_cast<const exprt &>(find(ID_C_default_value));
-  }
-  
-  bool has_default_parameter() const
-  {
-    return find(ID_C_default_value).is_not_nil();
-  }
-};
 
 class template_typet:public typet
 {
@@ -40,18 +21,16 @@ public:
   {
   }
 
-  typedef std::vector<template_parametert> parameterst;
+  typedef std::vector<template_parametert> template_parameterst;
 
-  inline parameterst &parameters()
+  inline template_parameterst &template_parameters()
   {
-    // todo: will change to 'parameters'
-    return (parameterst &)add(ID_arguments).get_sub();
+    return (template_parameterst &)add(ID_template_parameters).get_sub();
   }
 
-  inline const parameterst &parameters() const
+  inline const template_parameterst &template_parameters() const
   {
-    // todo: will change to 'parameters'
-    return (const parameterst &)find(ID_arguments).get_sub();
+    return (const template_parameterst &)find(ID_template_parameters).get_sub();
   }
 };
 
@@ -83,4 +62,4 @@ inline typet &template_subtype(typet &type)
   return type;
 }
 
-#endif
+#endif // CPROVER_CPP_CPP_TEMPLATE_TYPE_H

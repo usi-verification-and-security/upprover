@@ -6,6 +6,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <ostream>
+
+#include <util/symbol_table.h>
+#include <util/namespace.h>
+
+#include <langapi/language_util.h>
+
+#include "expr2java.h"
+
 #include "java_bytecode_parse_tree.h"
 
 /*******************************************************************\
@@ -20,32 +29,21 @@ Function: java_bytecode_parse_treet::swap
 
 \*******************************************************************/
 
-void java_bytecode_parse_treet::swap(
-  java_bytecode_parse_treet &java_bytecode_parse_tree)
+void java_bytecode_parse_treet::classt::swap(
+  classt &other)
 {
-  java_bytecode_parse_tree.classes.swap(classes);
+  other.name.swap(name);
+  other.extends.swap(extends);
+  std::swap(other.is_abstract, is_abstract);
+  other.implements.swap(implements);
+  other.fields.swap(fields);
+  other.methods.swap(methods);
+  other.annotations.swap(annotations);
 }
 
 /*******************************************************************\
 
-Function: java_bytecode_parse_treet::clear
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void java_bytecode_parse_treet::clear()
-{
-  classes.clear();
-}
-
-/*******************************************************************\
-
-Function: java_bytecode_parse_treet::output
+Function: java_bytecode_parse_treet::classt::output
 
   Inputs:
 
@@ -57,13 +55,16 @@ Function: java_bytecode_parse_treet::output
 
 void java_bytecode_parse_treet::output(std::ostream &out) const
 {
-  for(classest::const_iterator
-      it=classes.begin();
-      it!=classes.end();
+  parsed_class.output(out);
+
+  out << "Class references:\n";
+  for(class_refst::const_iterator it=class_refs.begin();
+      it!=class_refs.end();
       it++)
   {
-    it->output(out);
+    out << "  " << *it << '\n';
   }
+
 }
 
 /*******************************************************************\
@@ -80,23 +81,41 @@ Function: java_bytecode_parse_treet::classt::output
 
 void java_bytecode_parse_treet::classt::output(std::ostream &out) const
 {
-  out << "class " << name << " {" << std::endl;
+  for(const auto & annotation : annotations)
+  {
+    annotation.output(out);
+    out << '\n';
+  }
 
-  for(memberst::const_iterator
-      it=members.begin();
-      it!=members.end();
+  out << "class " << name;
+  if(!extends.empty()) out << " extends " << extends;
+  out << " {" << '\n';
+
+  for(fieldst::const_iterator
+      it=fields.begin();
+      it!=fields.end();
       it++)
   {
     it->output(out);
   }
-  
-  out << "}" << std::endl;
-  out << std::endl;
+
+  out << '\n';
+
+  for(methodst::const_iterator
+      it=methods.begin();
+      it!=methods.end();
+      it++)
+  {
+    it->output(out);
+  }
+
+  out << '}' << '\n';
+  out << '\n';
 }
 
 /*******************************************************************\
 
-Function: java_bytecode_parse_treet::membert::output
+Function: java_bytecode_parse_treet::annotationt::output
 
   Inputs:
 
@@ -106,51 +125,170 @@ Function: java_bytecode_parse_treet::membert::output
 
 \*******************************************************************/
 
-void java_bytecode_parse_treet::membert::output(std::ostream &out) const
+void java_bytecode_parse_treet::annotationt::output(std::ostream &out) const
 {
+  symbol_tablet symbol_table;
+  namespacet ns(symbol_table);
+
+  out << '@' << type2java(type, ns);
+
+  if(!element_value_pairs.empty())
+  {
+    out << '(';
+
+    bool first=true;
+    for(const auto & element_value_pair : element_value_pairs)
+    {
+      if(first) first=false; else out << ", ";
+      element_value_pair.output(out);
+    }
+
+    out << ')';
+  }
+}
+
+/*******************************************************************\
+
+Function: java_bytecode_parse_treet::annotationt::element_value_pairt::output
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void java_bytecode_parse_treet::annotationt::element_value_pairt::output(std::ostream &out) const
+{
+  symbol_tablet symbol_table;
+  namespacet ns(symbol_table);
+
+  out << '"' << element_name << '"' << '=';
+  out << expr2java(value, ns);
+}
+
+/*******************************************************************\
+
+Function: java_bytecode_parse_treet::methodt::output
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void java_bytecode_parse_treet::methodt::output(std::ostream &out) const
+{
+  symbol_tablet symbol_table;
+  namespacet ns(symbol_table);
+
+  for(const auto & annotation : annotations)
+  {
+    out << "  ";
+    annotation.output(out);
+    out << '\n';
+  }
+
   out << "  ";
+
+  if(is_public)
+    out << "public ";
+
+  if(is_protected)
+    out << "protected ";
+
+  if(is_private)
+    out << "private ";
 
   if(is_static)
     out << "static ";
-  
+
+  if(is_final)
+    out << "final ";
+
   if(is_native)
     out << "native ";
-  
+
+  if(is_synchronized)
+    out << "synchronized ";
+
   out << name;
+  out << " : " << signature;
 
-  if(is_method)
+  out << '\n';
+
+  out << "  {" << '\n';
+
+  for(const auto & i : instructions)
   {
-    out << std::endl;
+    if(i.source_location.get_line()!=irep_idt())
+      out << "    // " << i.source_location << '\n';
 
-    out << "  {" << std::endl;
+    out << "    " << i.address << ": ";
+    out << i.statement;
 
-    for(instructionst::const_iterator
-        i_it=instructions.begin();
-        i_it!=instructions.end();
-        i_it++)
+    for(std::vector<exprt>::const_iterator
+        a_it=i.args.begin(); a_it!=i.args.end(); a_it++)
     {
-      if(i_it->location.get_line()!=irep_idt())
-        out << "    // " << i_it->location << std::endl;
-
-      out << "    " << i_it->address << ": ";
-      out << i_it->statement;
-      
-      for(std::vector<exprt>::const_iterator
-          a_it=i_it->args.begin(); a_it!=i_it->args.end(); a_it++)
-      {
-        if(a_it!=i_it->args.begin()) out << ",";
-        out << " " << *a_it;
-      }
-
-      out << std::endl;
+      if(a_it!=i.args.begin()) out << ',';
+      #if 0
+      out << ' ' << from_expr(*a_it);
+      #else
+      out << ' ' << expr2java(*a_it, ns);
+      #endif
     }
 
-    out << "  }" << std::endl;
-  }
-  else
-  {
-    out << ";";
+    out << '\n';
   }
 
-  out << std::endl;
+  out << "  }" << '\n';
+
+  out << '\n';
+
+  out << "  Locals:\n";
+  for(const auto & v : local_variable_table)
+  {
+    out << "    " << v.index << ": " << v.name << ' '
+        << v.signature << '\n';
+  }
+
+  out << '\n';
+}
+
+/*******************************************************************\
+
+Function: java_bytecode_parse_treet::fieldt::output
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void java_bytecode_parse_treet::fieldt::output(std::ostream &out) const
+{
+  for(const auto & annotation : annotations)
+  {
+    out << "  ";
+    annotation.output(out);
+    out << '\n';
+  }
+
+  out << "  ";
+
+  if(is_public)
+    out << "public ";
+
+  if(is_static)
+    out << "static ";
+
+  out << name;
+  out << " : " << signature << ';';
+
+  out << '\n';
 }

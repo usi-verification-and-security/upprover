@@ -2,37 +2,18 @@
 
 Module: File Utilities
 
-Author: 
+Author:
 
 Date: January 2012
 
 \*******************************************************************/
 
-#ifdef __linux__
-#include <unistd.h>
-#include <cerrno>
-#include <dirent.h>
-#include <cstdlib>
-#include <cstdio>
-#endif
-
-#ifdef __FreeBSD_kernel__
-#include <unistd.h>
-#include <cerrno>
-#include <dirent.h>
-#include <cstdlib>
-#include <cstdio>
-#endif
-
-#ifdef __MACH__
-#include <unistd.h>
-#include <cerrno>
-#include <dirent.h>
-#include <cstdlib>
-#include <cstdio>
-#endif
-
-#ifdef __CYGWIN__
+#if defined(__linux__) || \
+    defined(__FreeBSD_kernel__) || \
+    defined(__GNU__) || \
+    defined(__unix__) || \
+    defined(__CYGWIN__) || \
+    defined(__MACH__)
 #include <unistd.h>
 #include <cerrno>
 #include <dirent.h>
@@ -60,7 +41,7 @@ Function: get_current_working_directory
 
  Outputs: current working directory
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -70,9 +51,9 @@ std::string get_current_working_directory()
 
   char *buf=(char*)malloc(sizeof(char)*bsize);
   if(!buf) abort();
-  
+
   errno=0;
-  
+
   while(buf && getcwd(buf, bsize-1)==NULL && errno==ERANGE)
   {
     bsize*=2;
@@ -81,7 +62,7 @@ std::string get_current_working_directory()
 
   std::string working_directory=buf;
   free(buf);
-  
+
   return working_directory;
 }
 
@@ -100,21 +81,21 @@ Function: delete_directory
 void delete_directory(const std::string &path)
 {
   #ifdef _WIN32
-  
+
   std::string pattern=path+"\\*";
-  
+
   struct _finddata_t info;
-  
+
   intptr_t handle=_findfirst(pattern.c_str(), &info);
-  
+
   if(handle!=-1)
   {
     unlink(info.name);
-    
+
     while(_findnext(handle, &info)!=-1)
       unlink(info.name);
   }
-  
+
   #else
 
   DIR *dir=opendir(path.c_str());
@@ -134,3 +115,29 @@ void delete_directory(const std::string &path)
   rmdir(path.c_str());
 }
 
+/*******************************************************************\
+
+Function: concat_dir_file
+
+  Inputs: directory name and file name
+
+ Outputs: concatenation of directory and file, if the file path is
+          relative
+
+ Purpose:
+
+\*******************************************************************/
+
+std::string concat_dir_file(const std::string &directory,
+                            const std::string &file_name)
+{
+  #ifdef _WIN32
+  return  (file_name.size()>1 &&
+           file_name[0]!='/' &&
+           file_name[1]!=':') ?
+           file_name : directory+"\\"+file_name;
+  #else
+  return (!file_name.empty() && file_name[0]=='/') ?
+          file_name : directory+"/"+file_name;
+  #endif
+}

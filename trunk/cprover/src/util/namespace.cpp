@@ -6,12 +6,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cassert>
-#include <cstdlib>
+#include <algorithm>
 
-#include "namespace.h"
+#include <cassert>
+
+#include "string2int.h"
 #include "symbol_table.h"
 #include "prefix.h"
+#include "std_types.h"
+#include "namespace.h"
 
 /*******************************************************************\
 
@@ -34,7 +37,8 @@ unsigned get_max(
   forall_symbols(it, symbols)
     if(has_prefix(id2string(it->first), prefix))
       max_nr=
-        std::max(unsigned(atoi(it->first.c_str()+prefix.size())),
+        std::max(unsafe_string2unsigned(
+                  id2string(it->first).substr(prefix.size())),
                  max_nr);
 
   return max_nr;
@@ -120,6 +124,66 @@ const typet &namespace_baset::follow(const typet &src) const
 
 /*******************************************************************\
 
+Function: namespace_baset::follow_tag
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+const typet &namespace_baset::follow_tag(const union_tag_typet &src) const
+{
+  const symbolt &symbol=lookup(src.get_identifier());
+  assert(symbol.is_type);
+  assert(symbol.type.id()==ID_union || symbol.type.id()==ID_incomplete_union);
+  return symbol.type;
+}
+
+/*******************************************************************\
+
+Function: namespace_baset::follow_tag
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+const typet &namespace_baset::follow_tag(const struct_tag_typet &src) const
+{
+  const symbolt &symbol=lookup(src.get_identifier());
+  assert(symbol.is_type);
+  assert(symbol.type.id()==ID_struct || symbol.type.id()==ID_incomplete_struct);
+  return symbol.type;
+}
+
+/*******************************************************************\
+
+Function: namespace_baset::follow_tag
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+const typet &namespace_baset::follow_tag(const c_enum_tag_typet &src) const
+{
+  const symbolt &symbol=lookup(src.get_identifier());
+  assert(symbol.is_type);
+  assert(symbol.type.id()==ID_c_enum || symbol.type.id()==ID_incomplete_c_enum);
+  return symbol.type;
+}
+
+/*******************************************************************\
+
 Function: namespace_baset::follow_macros
 
   Inputs:
@@ -188,7 +252,7 @@ Function: namespacet::lookup
 
 bool namespacet::lookup(
   const irep_idt &name,
-  const symbolt *&symbol) const  
+  const symbolt *&symbol) const
 {
   symbol_tablet::symbolst::const_iterator it;
 
@@ -256,7 +320,7 @@ Function: multi_namespacet::lookup
 
 bool multi_namespacet::lookup(
   const irep_idt &name,
-  const symbolt *&symbol) const  
+  const symbolt *&symbol) const
 {
   symbol_tablet::symbolst::const_iterator s_it;
 

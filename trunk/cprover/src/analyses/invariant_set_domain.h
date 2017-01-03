@@ -6,42 +6,55 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_POINTER_ANALYSIS_INVARIANT_SET_DOMAIN_H
-#define CPROVER_POINTER_ANALYSIS_INVARIANT_SET_DOMAIN_H
+#ifndef CPROVER_ANALYSES_INVARIANT_SET_DOMAIN_H
+#define CPROVER_ANALYSES_INVARIANT_SET_DOMAIN_H
 
-#include "static_analysis.h"
+#include "ai.h"
 #include "invariant_set.h"
 
-class invariant_set_domaint:public domain_baset
+class invariant_set_domaint:public ai_domain_baset
 {
 public:
   invariant_sett invariant_set;
 
-  // overloading  
+  // overloading
 
-  virtual bool merge(const invariant_set_domaint &other)
+  inline bool merge(
+    const invariant_set_domaint &other,
+    locationt from,
+    locationt to)
   {
     return invariant_set.make_union(other.invariant_set);
   }
 
-  virtual void output(
-    const namespacet &ns,
-    std::ostream &out) const
+  void output(
+    std::ostream &out,
+    const ai_baset &ai,
+    const namespacet &ns) const override final
   {
     invariant_set.output("", out);
   }
+
+  virtual void transform(
+    locationt from_l,
+    locationt to_l,
+    ai_baset &ai,
+    const namespacet &ns) override final;
     
-  virtual void initialize(
-    const namespacet &ns,
-    locationt l)
+  void make_top() override final
   {
     invariant_set.make_true();
   }
 
-  virtual void transform(
-    const namespacet &ns,
-    locationt from_l,
-    locationt to_l);
+  void make_bottom() override final
+  {
+    invariant_set.make_false();
+  }
+
+  void make_entry() override final
+  {
+    invariant_set.make_true();
+  }
 };
 
-#endif
+#endif // CPROVER_ANALYSES_INVARIANT_SET_DOMAIN_H

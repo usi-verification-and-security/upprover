@@ -6,15 +6,14 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_SAFETY_CHECKER_H
-#define CPROVER_SAFETY_CHECKER_H
+#ifndef CPROVER_GOTO_PROGRAMS_SAFETY_CHECKER_H
+#define CPROVER_GOTO_PROGRAMS_SAFETY_CHECKER_H
 
 // this is just an interface -- it won't actually do any checking!
 
 #include <util/message.h>
 
-#include <goto-symex/goto_trace.h>
-
+#include "goto_trace.h"
 #include "goto_functions.h"
 
 class safety_checkert:public messaget
@@ -35,7 +34,7 @@ public:
   virtual resultt operator()(
     const goto_functionst &goto_functions)=0;
 
-  // this is the counterexample  
+  // this is the counterexample
   goto_tracet error_trace;
 
 protected:
@@ -43,4 +42,4 @@ protected:
   const namespacet &ns;
 };
 
-#endif
+#endif // CPROVER_GOTO_PROGRAMS_SAFETY_CHECKER_H

@@ -12,7 +12,6 @@
 
 #include <irep.h>
 #include <expr.h>
-#include <hash_cont.h>
 
 #include "solvers/interpolating_solver.h"
 #include "summary_store.h"

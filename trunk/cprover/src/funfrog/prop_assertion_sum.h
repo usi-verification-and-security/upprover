@@ -20,8 +20,8 @@
 #include "summarization_context.h"
 #include "partitioning_target_equation.h"
 
-extern fine_timet global_satsolver_time;
-extern fine_timet global_sat_conversion_time;
+extern time_periodt global_satsolver_time;
+extern time_periodt global_sat_conversion_time;
 
 class prop_assertion_sumt:public messaget
 {
@@ -41,11 +41,11 @@ public:
           max_memory_used(_max_memory_used)
           {set_message_handler(_message_handler);};
 
-  bool assertion_holds(const assertion_infot &assertion, const namespacet &ns, prop_convt& decider, interpolating_solvert& interpolator);
+  bool assertion_holds(const assertion_infot &assertion, const namespacet &ns, prop_conv_solvert& decider, interpolating_solvert& interpolator);
 
   const fine_timet& get_solving_time() { return solving_time; };
 
-  void error_trace(const prop_convt &prop_conv, const namespacet &ns);
+  void error_trace(const prop_conv_solvert &prop_conv, const namespacet &ns);
 
 private:
   // Summarizing context (summary_store needed)
@@ -55,7 +55,7 @@ private:
   partitioning_target_equationt &equation;
 
   // SAT solving time
-  fine_timet solving_time;
+  time_periodt solving_time;
 
   //std::ostream &out;
   ui_message_handlert &message_handler;

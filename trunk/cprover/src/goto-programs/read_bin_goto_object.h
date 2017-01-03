@@ -1,17 +1,17 @@
 /*******************************************************************\
- 
+
 Module: Read goto object files.
- 
+
 Author: CM Wintersteiger
- 
+
 Date: May 2007
- 
+
 \*******************************************************************/
 
-#ifndef CPROVER_READ_BIN_GOTO_OBJECT_H
-#define CPROVER_READ_BIN_GOTO_OBJECT_H
+#ifndef CPROVER_GOTO_PROGRAMS_READ_BIN_GOTO_OBJECT_H
+#define CPROVER_GOTO_PROGRAMS_READ_BIN_GOTO_OBJECT_H
 
-#include <istream>
+#include <iosfwd>
 #include <string>
 
 class symbol_tablet;
@@ -25,4 +25,4 @@ bool read_bin_goto_object(
   goto_functionst &goto_functions,
   message_handlert &message_handler);
 
-#endif /*READ_BIN_GOTO_OBJECT_H_*/
+#endif // CPROVER_GOTO_PROGRAMS_READ_BIN_GOTO_OBJECT_H

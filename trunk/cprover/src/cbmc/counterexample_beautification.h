@@ -31,20 +31,20 @@ public:
 
 protected:
   void get_minimization_list(
-    const bv_cbmct &bv_cbmc,
-    const symex_target_equationt &equation,        
+    prop_convt &prop_conv,
+    const symex_target_equationt &equation,
     minimization_listt &minimization_list);
 
   void minimize(
     const exprt &expr,
     class prop_minimizet &prop_minimize);
 
-  symex_target_equationt::SSA_stepst::const_iterator get_failed_claim(
-    const bv_cbmct &bv_cbmc,
+  symex_target_equationt::SSA_stepst::const_iterator get_failed_property(
+    const prop_convt &prop_conv,
     const symex_target_equationt &equation);
 
-  // the failed claim
+  // the failed property
   symex_target_equationt::SSA_stepst::const_iterator failed;
 };
 
-#endif
+#endif // CPROVER_CBMC_COUNTEREXAMPLE_BEAUTIFICATION_H

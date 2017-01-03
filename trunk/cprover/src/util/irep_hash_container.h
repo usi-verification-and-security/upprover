@@ -6,14 +6,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_IREP_HASH_H
-#define CPROVER_IREP_HASH_H
+#ifndef CPROVER_UTIL_IREP_HASH_CONTAINER_H
+#define CPROVER_UTIL_IREP_HASH_CONTAINER_H
 
 #include <cstdlib>  // for size_t
 #include <vector>
 
 #include "numbering.h"
-#include "hash_cont.h"
 
 class irept;
 
@@ -21,22 +20,22 @@ class irep_hash_container_baset
 {
 public:
   unsigned number(const irept &irep);
-  
+
   irep_hash_container_baset(bool _full):full(_full)
   {
   }
-  
+
   void clear()
   {
     numbering.clear();
   }
-  
+
 protected:
   // replacing the following two hash-tables by
   // std::maps doesn't make much difference in performance
 
   // this is the first level: address of the content
-  
+
   struct pointer_hash
   {
     inline size_t operator()(const void *p) const
@@ -45,13 +44,13 @@ protected:
     }
   };
 
-  typedef hash_map_cont<const void *, unsigned, pointer_hash> ptr_hasht;
+  typedef std::unordered_map<const void *, unsigned, pointer_hash> ptr_hasht;
   ptr_hasht ptr_hash;
 
   // this is the second level: content
-      
+
   typedef std::vector<unsigned> packedt;
-  
+
   struct vector_hash
   {
     inline size_t operator()(const packedt &p) const
@@ -65,9 +64,9 @@ protected:
 
   typedef hash_numbering<packedt, vector_hash> numberingt;
   numberingt numbering;
-  
+
   void pack(const irept &irep, packedt &);
-  
+
   bool full;
 };
 
@@ -78,7 +77,7 @@ class irep_hash_containert:
 public:
   irep_hash_containert():irep_hash_container_baset(false)
   {
-  } 
+  }
 };
 
 // includes comments
@@ -91,4 +90,4 @@ public:
   }
 };
 
-#endif
+#endif // CPROVER_UTIL_IREP_HASH_CONTAINER_H

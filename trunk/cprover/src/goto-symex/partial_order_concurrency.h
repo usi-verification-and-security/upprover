@@ -6,8 +6,8 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_PARTIAL_ORDER_CONCURRENCY_H
-#define CPROVER_PARTIAL_ORDER_CONCURRENCY_H
+#ifndef CPROVER_GOTO_SYMEX_PARTIAL_ORDER_CONCURRENCY_H
+#define CPROVER_GOTO_SYMEX_PARTIAL_ORDER_CONCURRENCY_H
 
 #include <util/message.h>
 
@@ -22,42 +22,86 @@ public:
   typedef symex_target_equationt::SSA_stept eventt;
   typedef symex_target_equationt::SSA_stepst eventst;
   typedef eventst::const_iterator event_it;
-  
+
+  // the name of a clock variable for a shared read/write
+  typedef enum {
+    AX_SC_PER_LOCATION=1,
+    AX_NO_THINAIR=2,
+    AX_OBSERVATION=4,
+    AX_PROPAGATION=8
+  } axiomt;
+
+  static irep_idt rw_clock_id(
+    event_it e,
+    axiomt axiom=AX_PROPAGATION);
+
 protected:
   const namespacet &ns;
 
-  typedef std::vector<const eventt *> event_listt;
-  
+  typedef std::vector<event_it> event_listt;
+
+  // lists of reads and writes per address
+  struct a_rect
+  {
+    event_listt reads, writes;
+  };
+
+  typedef std::map<irep_idt, a_rect> address_mapt;
+  address_mapt address_map;
+
+  void build_event_lists(symex_target_equationt &);
+  void add_init_writes(symex_target_equationt &);
+
+  // a per-thread numbering of the events
+  typedef std::map<event_it, unsigned> numberingt;
+  numberingt numbering;
+
   // produces the symbol ID for an event
-  inline irep_idt id(event_it event) const
+  static inline irep_idt id(event_it event)
   {
     return event->ssa_lhs.get_identifier();
   }
-  
+
   // produces an address ID for an event
   inline irep_idt address(event_it event) const
   {
-    return event->original_lhs_object.get_identifier();
+    ssa_exprt tmp=event->ssa_lhs;
+    tmp.remove_level_2();
+    return tmp.get_identifier();
   }
 
   // produce a clock symbol for some event
   typet clock_type;
-  symbol_exprt clock(event_it e);
+  symbol_exprt clock(event_it e, axiomt axiom);
   void build_clock_type(const symex_target_equationt &);
-  
+
+  // preprocess and add a constraint to equation
+  void add_constraint(
+    symex_target_equationt &equation,
+    const exprt &cond,
+    const std::string &msg,
+    const symex_targett::sourcet &source) const;
+
   // the partial order constraint for two events
-  exprt before(event_it e1, event_it e2);
+  exprt before(event_it e1, event_it e2, unsigned axioms);
+  virtual exprt before(event_it e1, event_it e2)=0;
 
   // is it an assignment for a shared variable?
   bool is_shared_write(event_it e) const;
 
   // is it a read from a shared variable?
   bool is_shared_read(event_it e) const;
-  
+
   // is this a spawn?
   static inline bool is_spawn(event_it e)
   {
     return e->is_spawn();
+  }
+
+  // is this a fence?
+  static inline bool is_memory_barrier(event_it e)
+  {
+    return e->is_memory_barrier();
   }
 };
 
@@ -330,4 +374,4 @@ private:
 };
 #endif
 
-#endif
+#endif // CPROVER_GOTO_SYMEX_PARTIAL_ORDER_CONCURRENCY_H

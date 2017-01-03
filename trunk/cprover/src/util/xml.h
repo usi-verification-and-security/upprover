@@ -1,18 +1,18 @@
 /*******************************************************************\
- 
+
 Module:
- 
+
 Author: Daniel Kroening, kroening@kroening.com
- 
+
 \*******************************************************************/
 
-#ifndef XML_H
-#define XML_H
+#ifndef CPROVER_UTIL_XML_H
+#define CPROVER_UTIL_XML_H
 
 #include <list>
 #include <map>
 #include <string>
-#include <ostream>
+#include <iosfwd>
 
 /*! \defgroup gr_xml XML file processing */
 
@@ -45,6 +45,14 @@ public:
 
   void set_attribute(
     const std::string &attribute,
+    unsigned long value);
+
+  void set_attribute(
+    const std::string &attribute,
+    unsigned long long value);
+
+  void set_attribute(
+    const std::string &attribute,
     const std::string &value);
 
   std::string get_attribute(
@@ -52,7 +60,7 @@ public:
   {
     attributest::const_iterator i=attributes.find(attribute);
     if(i!=attributes.end())
-      return i->second;                    
+      return i->second;
     return "";
   }
 
@@ -122,4 +130,4 @@ extern inline std::ostream& operator <<(
   return out;
 }
 
-#endif
+#endif // CPROVER_UTIL_XML_H

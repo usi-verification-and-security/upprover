@@ -2,7 +2,6 @@
 
 #include <time_stopping.h>
 #include <expr_util.h>
-#include <i2string.h>
 
 #include "dependency_checker.h"
 #include "expr_pretty_print.h"
@@ -33,7 +32,8 @@ using namespace boost;
 
 void dependency_checkert::do_it(){
 
-  fine_timet initial, duration, durationto;
+  absolute_timet initial, temp_end;
+  time_periodt duration, durationto;
 
   reconstruct_exec_SSA_order();
 
@@ -46,8 +46,8 @@ void dependency_checkert::do_it(){
       if ((*it)->is_assert() && !omega.is_assertion_in_loop((*it)->source.pc)){
         asserts.push_back(it);
         //cout << "ID: " << it->source.pc->location.get_claim() << " Condition: " << from_expr(ns, "", it->cond_expr) << endl;
-        instances[(*it)->source.pc->location.get_claim().c_str()]++;
-        hl_list << "Assertion: " << (*it)->source.pc->location.get_claim().c_str() << endl;
+        instances[(*it)->source.pc->source_location.get_property_id().c_str()]++;
+        hl_list << "Assertion: " << (*it)->source.pc->source_location.get_property_id().c_str() << endl;
       }
     }
 
@@ -56,34 +56,38 @@ void dependency_checkert::do_it(){
     cout << "SSA Assertions: " << asserts.size();
     cout << endl;
 
-  duration = current_time();
-  duration = duration - initial;
-  std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << endl;
+    temp_end = current_time();
+    duration = temp_end - initial;
+    std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << endl;
 
-  initial=current_time();
+    initial=current_time();
 
-  // TODO: this takes a lot of time. Oct.2014: optimized a little bit
-  find_assert_deps();
+    // TODO: this takes a lot of time. Oct.2014: optimized a little bit
+    find_assert_deps();
 
-  duration = current_time();
-  duration = duration - initial;
-  std::cout << "TIME FOR find_assert_deps: " << (duration) << endl;
+    temp_end = current_time();
+    duration = temp_end - initial;
+  	std::cout << "TIME FOR find_assert_deps: " << (duration) << endl;
 
-  initial = current_time();
+  	initial = current_time();
 
-  //TODO: FIX THIS!
-  fine_timet to_time(find_implications());
+  	//TODO: FIX THIS!
+  	absolute_timet to_time(find_implications());
 
-  duration = current_time();
-  durationto = current_time();
+  	temp_end = current_time();
+  	duration = temp_end - initial;
 
-  duration = duration - initial;
-  durationto = durationto - initial;
-  durationto = durationto - to_time;
+  	//durationto = current_time();
+  	//durationto = durationto - initial;
+  	//durationto = durationto - to_time;
+  	absolute_timet duration_cast(duration.get_t());
+  	durationto = duration_cast - to_time;
 
-  std::cout << "TIME FOR find_implications: " << (duration) << endl;
-  std::cout << "TIME exceeding timeouts: " << (to_time) << endl;
-  std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << endl;
+  	time_periodt to_time_cast(to_time.get_t());
+
+  	std::cout << "TIME FOR find_implications: " << (duration) << endl;
+  	std::cout << "TIME exceeding timeouts: " << (to_time_cast) << endl;
+  	std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << endl;
 
   //TODO: make a proper cmd-parameter
   ifstream just_dep;
@@ -101,7 +105,7 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
 {
   try{
 
-  std::auto_ptr<prop_convt> decider;
+  std::auto_ptr<prop_conv_solvert> decider;
   satcheck_opensmt2t* opensmt = new satcheck_opensmt2t();
   bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
   deciderp->unbounded_array = bv_pointerst::U_AUTO;
@@ -109,31 +113,32 @@ pair<bool, fine_timet> dependency_checkert::check_implication(SSA_step_reft &c1,
 
   convert_delta_SSA(*decider, c1, c2);
 
-  if (VERBOSE) status("RESULT");
-  fine_timet initial, duration;
+  if (VERBOSE) status() << ("RESULT");
+  time_periodt duration;
+  absolute_timet initial, end;
   initial=current_time();
   decision_proceduret::resultt r = (*decider).dec_solve();
-  duration=current_time();
-  duration = duration - initial;
+  end=current_time();
+  duration = end - initial;
 #ifdef USE_PERIPLO
 //  // todo
 #else
 delete opensmt;
 #endif
 
-  if (VERBOSE) status() << "SOLVER TIME FOR check_implication: " << (duration) << eom;
+  if (VERBOSE) {status() << ("SOLVER TIME FOR check_implication: ") << duration << eom;}
 
   // solve it
   switch (r)
   {
     case decision_proceduret::D_UNSATISFIABLE:
     {
-      if (VERBOSE) status("UNSAT - it holds!");
+      if (VERBOSE) status() << ("UNSAT - it holds!");
       return make_pair(true, duration);
     }
     case decision_proceduret::D_SATISFIABLE:
     {
-      if (VERBOSE) status("SAT - doesn't hold");
+      if (VERBOSE) status() << ("SAT - doesn't hold");
       return make_pair(false, duration);
     }
 
@@ -379,14 +384,14 @@ long dependency_checkert::find_implications()
             if (VERBOSE)
             {
               std::cout << "Adding the assertion implication \n (" <<
-                from_expr(ns, "", (*assert_1)->cond_expr) << ") [" << (*assert_1)->source.pc->location.get_line() << "] [stronger] \n => \n (" <<
-                from_expr(ns, "", (*assert_2)->cond_expr) << ") [" << (*assert_2)->source.pc->location.get_line() << "] [weaker]" << endl;
+                from_expr(ns, "", (*assert_1)->cond_expr) << ") [" << (*assert_1)->source.pc->source_location.get_line() << "] [stronger] \n => \n (" <<
+                from_expr(ns, "", (*assert_2)->cond_expr) << ") [" << (*assert_2)->source.pc->source_location.get_line() << "] [weaker]" << endl;
             }
 
             weaker[i] = false;
             stronger[j] = false;
-            hl_may_impl << (*assert_1)->source.pc->location.get_claim() << " " <<
-                (*assert_2)->source.pc->location.get_claim() << " " <<
+            hl_may_impl << (*assert_1)->source.pc->source_location.get_property_id() << " " <<
+                (*assert_2)->source.pc->source_location.get_property_id() << " " <<
                 distance(SSA_steps.begin(), assert_1) << " " <<
                 distance(SSA_steps.begin(), assert_2) << endl;
 
@@ -434,7 +439,7 @@ long dependency_checkert::find_implications()
     if (weaker[i] == true)
 	  {
 		  SSA_step_reft& removable = asserts[i];
-      cout << "Removing << " << (*removable)->source.pc->location.get_line() << "\n";
+      cout << "Removing << " << (*removable)->source.pc->source_location.get_line() << "\n";
       (*removable)->ignore = true;
 	  }
   }
@@ -443,13 +448,13 @@ long dependency_checkert::find_implications()
     ofstream hl_weaker;
     hl_stronger.open ("__hl_stronger");
     hl_weaker.open ("__hl_weaker");
-    int hldiscardable = 0;
+    //int hldiscardable = 0;
     for (int i = asserts.size() - 1; i >= 0; i--){
       SSA_step_reft& ass = asserts[i];
       if (weaker[i] == true)
-        hl_weaker << (*ass)->source.pc->location.get_claim().c_str() << endl;
+        hl_weaker << (*ass)->source.pc->source_location.get_property_id().c_str() << endl;
       if (stronger[i] == true)
-        hl_stronger << (*ass)->source.pc->location.get_claim().c_str() << endl;
+        hl_stronger << (*ass)->source.pc->source_location.get_property_id().c_str() << endl;
     }
 
     hl_stronger.close();
@@ -669,7 +674,7 @@ void dependency_checkert::print_SSA_steps()
     }
 }
 
-void dependency_checkert::convert_delta_SSA(prop_convt &prop_conv,
+void dependency_checkert::convert_delta_SSA(prop_conv_solvert &prop_conv,
     SSA_step_reft &it1, SSA_step_reft &it2)
 {
   convert_guards(prop_conv, it1, it2);
@@ -679,7 +684,7 @@ void dependency_checkert::convert_delta_SSA(prop_convt &prop_conv,
   convert_io(prop_conv, it1, it2);
 }
 
-void dependency_checkert::deep_convert_guards(prop_convt &prop_conv, exprt exp){
+void dependency_checkert::deep_convert_guards(prop_conv_solvert &prop_conv, exprt exp){
   if (exp.has_operands())
   {
     for (unsigned i = 0; i < exp.operands().size(); i++){
@@ -694,7 +699,7 @@ void dependency_checkert::deep_convert_guards(prop_convt &prop_conv, exprt exp){
   }
 }
 
-void dependency_checkert::set_guards_to_true(prop_convt &prop_conv, exprt exp){
+void dependency_checkert::set_guards_to_true(prop_conv_solvert &prop_conv, exprt exp){
   if (exp.has_operands())
   {
     for (unsigned i = 0; i < exp.operands().size(); i++){
@@ -710,7 +715,7 @@ void dependency_checkert::set_guards_to_true(prop_convt &prop_conv, exprt exp){
 }
 
 void dependency_checkert::convert_assignments(
-    prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+    prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   SSA_step_reft it=it1;
   while(it!=it2){
@@ -725,7 +730,7 @@ void dependency_checkert::convert_assignments(
 }
 
 void dependency_checkert::convert_guards(
-  prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+  prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   SSA_step_reft it=it1;
   SSA_step_reft it3=it2;
@@ -745,7 +750,7 @@ void dependency_checkert::convert_guards(
 }
 
 void dependency_checkert::convert_assumptions(
-  prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+  prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   SSA_step_reft it=it1;
   while(it!=it2)
@@ -761,7 +766,7 @@ void dependency_checkert::convert_assumptions(
 }
 
 void dependency_checkert::convert_assertions(
-  prop_convt &prop_conv, SSA_step_reft &it2)
+  prop_conv_solvert &prop_conv, SSA_step_reft &it2)
 {
   assert((*it2)->is_assert());
   //std::cout << "convert assert :" << from_expr(ns, "", (*it2)->cond_expr) <<"\n";
@@ -770,7 +775,7 @@ void dependency_checkert::convert_assertions(
 }
 
 void dependency_checkert::convert_io(
-    prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
+    prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2)
 {
   unsigned io_count=0;
   SSA_step_reft it=it1;
@@ -791,7 +796,7 @@ void dependency_checkert::convert_io(
         {
           symbol_exprt symbol;
           symbol.type()=tmp.type();
-          symbol.set_identifier("symex::io::"+i2string(io_count++));
+          symbol.set_identifier("symex::io::"+std::to_string(io_count++));
           prop_conv.set_to(equal_exprt(tmp, symbol), true);
           (*it)->converted_io_args.push_back(symbol);
         }

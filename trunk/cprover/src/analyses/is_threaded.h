@@ -8,8 +8,8 @@ Date: October 2012
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_PROGRAMS_IS_THREADED_H
-#define CPROVER_GOTO_PROGRAMS_IS_THREADED_H
+#ifndef CPROVER_ANALYSES_IS_THREADED_H
+#define CPROVER_ANALYSES_IS_THREADED_H
 
 #include <set>
 
@@ -18,10 +18,8 @@ Date: October 2012
 class is_threadedt
 {
 public:
-  is_threadedt(
-    const namespacet &_ns,
-    const goto_functionst &goto_functions):
-    ns(_ns)
+  explicit is_threadedt(
+    const goto_functionst &goto_functions)
   {
     compute(goto_functions);
   }
@@ -30,10 +28,8 @@ public:
   {
     return is_threaded_set.find(t)!=is_threaded_set.end();
   }
-  
-protected:
-  const namespacet &ns;
 
+protected:
   typedef std::set<goto_programt::const_targett> is_threaded_sett;
   is_threaded_sett is_threaded_set;
 
@@ -41,4 +37,4 @@ protected:
     const goto_functionst &goto_functions);
 };
 
-#endif
+#endif // CPROVER_ANALYSES_IS_THREADED_H

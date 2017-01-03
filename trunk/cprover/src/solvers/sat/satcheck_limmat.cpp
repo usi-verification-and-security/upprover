@@ -8,7 +8,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
-#include <util/i2string.h>
 
 #include "satcheck_limmat.h"
 
@@ -80,7 +79,7 @@ tvt satcheck_limmatt::l_get(literalt a) const
   {
    case 0: result=tvt(false); break;
    case 1: result=tvt(true); break;
-   default: result=tvt(tvt::TV_UNKNOWN); break;
+   default: result=tvt(tvt::tv_enumt::TV_UNKNOWN); break;
   }
 
   if(a.sign()) result=!result;
@@ -125,7 +124,7 @@ void satcheck_limmatt::copy_cnf()
       //it=clauses.erase(it))
   {
     int *clause=new int[it->size()+1];
-    
+
     for(unsigned j=0; j<it->size(); j++)
       clause[j]=(*it)[j].dimacs();
 
@@ -156,9 +155,9 @@ propt::resultt satcheck_limmatt::prop_solve()
 
   {
     std::string msg=
-      i2string(maxvar_Limmat(solver))+" variables, "+
-      i2string(clauses_Limmat(solver))+" clauses";
-    messaget::status(msg);
+      std::to_string(maxvar_Limmat(solver))+" variables, "+
+      std::to_string(clauses_Limmat(solver))+" clauses";
+    messaget::status() << msg << messaget::eom;
   }
 
   int status=sat_Limmat(solver, -1);
@@ -169,19 +168,19 @@ propt::resultt satcheck_limmatt::prop_solve()
     switch(status)
     {
      case 0:
-      msg="SAT checker: negated claim is UNSATISFIABLE, i.e., holds";
+      msg="SAT checker: instance is UNSATISFIABLE";
       break;
 
      case 1:
-      msg="SAT checker: negated claim is SATISFIABLE, i.e., does not hold";
+      msg="SAT checker: instance is SATISFIABLE";
       break;
 
      default:
       msg="SAT checker failed: unknown result";
-      break;    
+      break;
     }
 
-    messaget::status(msg);
+    messaget::status() << msg << messaget::eom;
   }
 
   if(status==0)
@@ -204,7 +203,6 @@ propt::resultt satcheck_limmatt::prop_solve()
 
     return P_SATISFIABLE;
   }
- 
+
   return P_ERROR;
 }
-

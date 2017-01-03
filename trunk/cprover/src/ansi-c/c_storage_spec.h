@@ -9,7 +9,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_ANSI_C_C_STORAGE_SPEC_H
 #define CPROVER_ANSI_C_C_STORAGE_SPEC_H
 
-#include <util/expr.h>
+#include <util/type.h>
 
 class c_storage_spect
 {
@@ -18,7 +18,13 @@ public:
   {
     clear();
   }
-  
+
+  explicit c_storage_spect(const typet &type)
+  {
+    clear();
+    read(type);
+  }
+
   void clear()
   {
     is_typedef=false;
@@ -27,12 +33,21 @@ public:
     is_static=false;
     is_register=false;
     is_inline=false;
+    is_weak=false;
+    alias.clear();
+    asm_label.clear();
+    section.clear();
   }
-  
+
   bool is_typedef, is_extern, is_static, is_register,
-       is_inline, is_thread_local;
-  
-  std::string as_string() const;
+       is_inline, is_thread_local, is_weak;
+
+  // __attribute__((alias("foo")))
+  irep_idt alias;
+
+  // GCC asm labels __asm__("foo") - these change the symbol name
+  irep_idt asm_label;
+  irep_idt section;
 
   friend bool operator == (
     const c_storage_spect &a,
@@ -43,7 +58,11 @@ public:
            a.is_static==b.is_static &&
            a.is_register==b.is_register &&
            a.is_thread_local==b.is_thread_local &&
-           a.is_inline==b.is_inline;
+           a.is_inline==b.is_inline &&
+           a.is_weak==b.is_weak &&
+           a.alias==b.alias &&
+           a.asm_label==b.asm_label &&
+           a.section==b.section;
   }
 
   friend bool operator != (
@@ -63,9 +82,12 @@ public:
     a.is_register     |=b.is_register;
     a.is_inline       |=b.is_inline;
     a.is_thread_local |=b.is_thread_local;
-    
+    // attributes belong to the declarator, don't replace them
+
     return a;
   }
+
+  void read(const typet &type);
 };
 
-#endif
+#endif // CPROVER_ANSI_C_C_STORAGE_SPEC_H

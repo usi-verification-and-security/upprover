@@ -10,8 +10,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cstdlib>
 #include <fstream>
 
-#include <util/i2string.h>
-
 #include "qbf_skizzo.h"
 
 /*******************************************************************\
@@ -100,13 +98,12 @@ propt::resultt qbf_skizzot::prop_solve()
   // sKizzo crashes on empty instances
   if(no_clauses()==0)
     return P_SATISFIABLE;
-  
+
   {
-    std::string msg=
-      "Skizzo: "+
-      i2string(no_variables())+" variables, "+
-      i2string(no_clauses())+" clauses";
-    messaget::status(msg);
+    messaget::status() <<
+      "Skizzo: " <<
+      no_variables() << " variables, " <<
+      no_clauses() << " clauses" << eom;
   }
 
   std::string qbf_tmp_file="sKizzo.qdimacs";
@@ -118,28 +115,29 @@ propt::resultt qbf_skizzot::prop_solve()
     // write it
     write_qdimacs_cnf(out);
   }
-  
+
   //std::string options=" --equivalences=0";
   std::string options="";
 
   // solve it
-  system(("sKizzo "+qbf_tmp_file+
+  int res=system(("sKizzo "+qbf_tmp_file+
          options+
          " > "+result_tmp_file).c_str());
+  assert(0 == res);
 
   bool result=false;
-  
+
   // read result
   {
     std::ifstream in(result_tmp_file.c_str());
-    
+
     bool result_found=false;
     while(in)
     {
       std::string line;
 
       std::getline(in, line);
-      
+
       if(line!="" && line[line.size()-1]=='\r')
         line.resize(line.size()-1);
 
@@ -159,22 +157,21 @@ propt::resultt qbf_skizzot::prop_solve()
 
     if(!result_found)
     {
-      messaget::error("Skizzo failed: unknown result");
+      messaget::error() << "Skizzo failed: unknown result" << eom;
       return P_ERROR;
-    }    
+    }
   }
 
   if(result)
   {
-    messaget::status("Skizzo: TRUE");
+    messaget::status() << "Skizzo: TRUE" << eom;
     return P_SATISFIABLE;
   }
   else
   {
-    messaget::status("Skizzo: FALSE");
+    messaget::status() << "Skizzo: FALSE" << eom;
     return P_UNSATISFIABLE;
   }
- 
+
   return P_ERROR;
 }
-

@@ -24,11 +24,9 @@ Function: unescape_string
 
 \*******************************************************************/
 
-void unescape_string(
-  const std::string &src,
-  std::string &dest)
+std::string unescape_string(const std::string &src)
 {
-  dest="";
+  std::string dest;
   dest.reserve(src.size());
 
   for(unsigned i=0; i<src.size(); i++)
@@ -40,7 +38,7 @@ void unescape_string(
       // go to next character
       i++;
       assert(i<src.size()); // backslash can't be last character
-      
+
       ch=src[i];
       switch(ch)
       {
@@ -61,18 +59,19 @@ void unescape_string(
 
         {
           std::string hex;
-          
-          unsigned count=(ch=='u')?4:8;
-          hex.reserve(count);
 
-          for(; count!=0 && i<src.size(); i++, count--)
+          const unsigned digits=(ch=='u')?4:8;
+          hex.reserve(digits);
+
+          for(unsigned count=digits;
+              count!=0 && i<src.size();
+              i++, count--)
             hex+=src[i];
 
           // go back
           i--;
-        
-          unsigned int result;
-          sscanf(hex.c_str(), "%x", &result);
+
+          unsigned int result=hex_to_unsigned(hex.c_str(), hex.size());
 
           // Universal characters in non-wide strings don't
           // really work; gcc just issues a warning.
@@ -81,7 +80,7 @@ void unescape_string(
 
         dest+=ch;
         break;
-      
+
       case 'x': // hex
         i++;
 
@@ -96,32 +95,28 @@ void unescape_string(
 
           // go back
           i--;
-        
-          unsigned int result;
-          sscanf(hex.c_str(), "%x", &result);
-          ch=result;
+
+          ch=hex_to_unsigned(hex.c_str(), hex.size());
         }
-        
-        dest+=ch;      
+
+        dest+=ch;
         break;
-      
+
       default:
         if(isdigit(ch)) // octal
         {
           std::string octal;
-          
+
           while(i<src.size() && isdigit(src[i]))
           {
             octal+=src[i];
             i++;
           }
-          
+
           // go back
           i--;
-          
-          unsigned int result;
-          sscanf(octal.c_str(), "%o", &result);
-          ch=result;
+
+          ch=octal_to_unsigned(octal.c_str(), octal.size());
           dest+=ch;
         }
         else
@@ -135,6 +130,8 @@ void unescape_string(
     else
       dest+=ch;
   }
+
+  return dest;
 }
 
 /*******************************************************************\
@@ -149,16 +146,17 @@ Function: unescape_wide_string
 
 \*******************************************************************/
 
-void unescape_wide_string(
-  const std::string &src,
-  std::basic_string<unsigned int> &dest)
+std::basic_string<unsigned int> unescape_wide_string(
+  const std::string &src)
 {
+  std::basic_string<unsigned int> dest;
+
   dest.reserve(src.size()); // about that long, but may be shorter
-  
+
   for(unsigned i=0; i<src.size(); i++)
   {
     unsigned int ch=(unsigned char)src[i];
-    
+
     if(ch=='\\') // escape?
     {
       i++;
@@ -177,14 +175,14 @@ void unescape_wide_string(
       case 'a': dest.push_back('\a'); break; /* BEL (0x07) */
       case '"': dest.push_back('"'); break;
       case '\'': dest.push_back('\''); break;
-      
+
       case 'u': // universal character
       case 'U': // universal character
         i++;
 
         {
           std::string hex;
-          
+
           unsigned count=(ch=='u')?4:8;
           hex.reserve(count);
 
@@ -193,12 +191,12 @@ void unescape_wide_string(
 
           // go back
           i--;
-        
+
           unsigned int result;
           sscanf(hex.c_str(), "%x", &result);
           ch=result;
         }
-        
+
         dest.push_back(ch);
         break;
 
@@ -212,7 +210,7 @@ void unescape_wide_string(
             hex+=src[i];
             i++;
           }
-        
+
           // go back
           i--;
 
@@ -220,24 +218,24 @@ void unescape_wide_string(
           sscanf(hex.c_str(), "%x", &result);
           ch=result;
         }
-        
-        dest.push_back(ch);      
+
+        dest.push_back(ch);
         break;
-      
+
       default:
         if(isdigit(ch)) // octal
         {
           std::string octal;
-          
+
           while(i<src.size() && isdigit(src[i]))
           {
             octal+=src[i];
             i++;
           }
-          
+
           // go back
           i--;
-          
+
           unsigned int result;
           sscanf(octal.c_str(), "%o", &result);
           ch=result;
@@ -254,4 +252,72 @@ void unescape_wide_string(
     else
       dest.push_back(ch);
   }
+
+  return dest;
+}
+
+/*******************************************************************\
+
+Function: hex_to_unsigned
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+unsigned hex_to_unsigned(const char *hex, std::size_t digits)
+{
+  unsigned value=0;
+
+  for(; digits!=0; digits--, hex++)
+  {
+    char ch=*hex;
+
+    if(ch==0)
+      break;
+
+    value<<=4;
+
+    if(isdigit(ch))
+      value|=ch-'0';
+    else if(isxdigit(ch))
+      value|=10+tolower(ch)-'a';
+  }
+
+  return value;
+}
+
+/*******************************************************************\
+
+Function: octal_to_unsigned
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+unsigned octal_to_unsigned(const char *octal, std::size_t digits)
+{
+  unsigned value=0;
+
+  for(; digits!=0; digits--, octal++)
+  {
+    char ch=*octal;
+
+    if(ch==0)
+      break;
+
+    value<<=3;
+
+    if(isdigit(ch))
+      value|=ch-'0';
+  }
+
+  return value;
 }

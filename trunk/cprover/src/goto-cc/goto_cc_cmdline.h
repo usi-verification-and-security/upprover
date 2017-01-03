@@ -8,16 +8,19 @@ Date:   April 2010
 
 \*******************************************************************/
 
-#ifndef GOTO_CC_CMDLINE_H
-#define GOTO_CC_CMDLINE_H
+#ifndef CPROVER_GOTO_CC_GOTO_CC_CMDLINE_H
+#define CPROVER_GOTO_CC_GOTO_CC_CMDLINE_H
 
 #include <util/cmdline.h>
 
 class goto_cc_cmdlinet:public cmdlinet
 {
 public:
+  ~goto_cc_cmdlinet();
+
+  using cmdlinet::parse;
   virtual bool parse(int argc, const char **argv)=0;
-  
+
   static bool in_list(const char *option, const char **list);
 
   static bool prefix_in_list(
@@ -25,15 +28,16 @@ public:
     const char **list,
     std::string &prefix);
 
-  int get_optnr(const std::string &option);
+  // never fails, will add if not found
+  std::size_t get_optnr(const std::string &option);
 
   void set(const std::string &opt, const std::string &value)
   {
-    int nr=get_optnr(opt);
+    std::size_t nr=get_optnr(opt);
     options[nr].isset=true;
     options[nr].values.push_back(value);
   }
-  
+
   void set(const std::string &opt)
   {
     options[get_optnr(opt)].isset=true;
@@ -42,7 +46,7 @@ public:
   // This lets you distinguish input file name arguments
   // from others, but is otherwise identical to the
   // original command line.
-  
+
   struct argt
   {
   public:
@@ -51,21 +55,27 @@ public:
     bool is_infile_name;
     std::string arg;
   };
-  
+
   typedef std::list<argt> parsed_argvt;
   parsed_argvt parsed_argv;
 
-protected:  
+  bool have_infile_arg() const
+  {
+    for(parsed_argvt::const_iterator
+        it=parsed_argv.begin(); it!=parsed_argv.end(); it++)
+      if(it->is_infile_name) return true;
+    return false;
+  }
+
+  std::string stdin_file;
+
+protected:
   void add_arg(const std::string &arg)
   {
     parsed_argv.push_back(argt(arg));
   }
 
-  void add_infile_arg(const std::string &arg)
-  {
-    parsed_argv.push_back(argt(arg));
-    parsed_argv.back().is_infile_name=true;
-  }
+  void add_infile_arg(const std::string &arg);
 };
 
-#endif /* GOTO_CC_CMDLINE_H */
+#endif // CPROVER_GOTO_CC_GOTO_CC_CMDLINE_H

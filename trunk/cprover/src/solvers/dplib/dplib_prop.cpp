@@ -10,7 +10,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <set>
 
-#include <util/i2string.h>
 
 #include "dplib_prop.h"
 
@@ -151,7 +150,7 @@ void dplib_propt::lequal(literalt a, literalt b, literalt o)
       << dplib_literal(b) << ") <=> " << dplib_literal(o)
       << ";" << std::endl << std::endl;
 }
-  
+
 /*******************************************************************\
 
 Function: dplib_propt::limplies
@@ -195,12 +194,12 @@ literalt dplib_propt::land(const bvt &bv)
     if(it!=bv.begin()) out << " & ";
     out << dplib_literal(*it);
   }
-  
+
   out << std::endl << std::endl;
 
-  return literal;  
+  return literal;
 }
-  
+
 /*******************************************************************\
 
 Function: dplib_propt::lor
@@ -224,12 +223,12 @@ literalt dplib_propt::lor(const bvt &bv)
     if(it!=bv.begin()) out << " | ";
     out << dplib_literal(*it);
   }
-  
+
   out << std::endl << std::endl;
 
-  return literal;  
+  return literal;
 }
-  
+
 /*******************************************************************\
 
 Function: dplib_propt::lxor
@@ -244,7 +243,7 @@ Function: dplib_propt::lxor
 
 literalt dplib_propt::lxor(const bvt &bv)
 {
-  if(bv.size()==0) return const_literal(false);
+  if(bv.empty()) return const_literal(false);
   if(bv.size()==1) return bv[0];
   if(bv.size()==2) return lxor(bv[0], bv[1]);
 
@@ -255,7 +254,7 @@ literalt dplib_propt::lxor(const bvt &bv)
 
   return literal;
 }
-  
+
 /*******************************************************************\
 
 Function: dplib_propt::land
@@ -302,30 +301,12 @@ literalt dplib_propt::lor(literalt a, literalt b)
   if(a==const_literal(true)) return const_literal(true);
   if(b==const_literal(true)) return const_literal(true);
   if(a==b) return a;
-  
+
   literalt o=def_dplib_literal();
   out << dplib_literal(a) << " | " << dplib_literal(b)
       << ";" << std::endl << std::endl;
 
   return o;
-}
-
-/*******************************************************************\
-
-Function: dplib_propt::lnot
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-literalt dplib_propt::lnot(literalt a)
-{
-  a.invert();
-  return a;
 }
 
 /*******************************************************************\
@@ -344,8 +325,8 @@ literalt dplib_propt::lxor(literalt a, literalt b)
 {
   if(a==const_literal(false)) return b;
   if(b==const_literal(false)) return a;
-  if(a==const_literal(true)) return lnot(b);
-  if(b==const_literal(true)) return lnot(a);
+  if(a==const_literal(true)) return !b;
+  if(b==const_literal(true)) return !a;
 
   literalt o=def_dplib_literal();
   out << "!(" << dplib_literal(a) << " <-> " << dplib_literal(b)
@@ -368,7 +349,7 @@ Function: dplib_propt::lnand
 
 literalt dplib_propt::lnand(literalt a, literalt b)
 {
-  return lnot(land(a, b));
+  return !land(a, b);
 }
 
 /*******************************************************************\
@@ -385,7 +366,7 @@ Function: dplib_propt::lnor
 
 literalt dplib_propt::lnor(literalt a, literalt b)
 {
-  return lnot(lor(a, b));
+  return !lor(a, b);
 }
 
 /*******************************************************************\
@@ -402,7 +383,7 @@ Function: dplib_propt::lequal
 
 literalt dplib_propt::lequal(literalt a, literalt b)
 {
-  return lnot(lxor(a, b));
+  return !lxor(a, b);
 }
 
 /*******************************************************************\
@@ -419,7 +400,7 @@ Function: dplib_propt::limplies
 
 literalt dplib_propt::limplies(literalt a, literalt b)
 {
-  return lor(lnot(a), b);
+  return lor(!a, b);
 }
 
 /*******************************************************************\
@@ -435,7 +416,7 @@ Function: dplib_propt::lselect
 \*******************************************************************/
 
 literalt dplib_propt::lselect(literalt a, literalt b, literalt c)
-{ 
+{
   if(a==const_literal(true)) return b;
   if(a==const_literal(false)) return c;
   if(b==c) return b;
@@ -520,7 +501,7 @@ void dplib_propt::lcnf(const bvt &bv)
     if(s.insert(*it).second)
       new_bv.push_back(*it);
 
-    if(s.find(lnot(*it))!=s.end())
+    if(s.find(!*it)!=s.end())
       return; // clause satisfied
 
     assert(it->var_no()<=_no_variables);
@@ -560,9 +541,9 @@ std::string dplib_propt::dplib_literal(literalt l)
     return "TRUE";
 
   if(l.sign())
-    return "(NOT l"+i2string(l.var_no())+")";  
+    return "(NOT l"+std::to_string(l.var_no())+")";
 
-  return "l"+i2string(l.var_no());
+  return "l"+std::to_string(l.var_no());
 }
 
 /*******************************************************************\

@@ -6,11 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cstdlib>
 #include <cassert>
 
 #include <stack>
 
+#include "string2int.h"
 #include "mp_arith.h"
 #include "fixedbv.h"
 #include "ieee_float.h"
@@ -190,12 +190,12 @@ void exprt::make_not()
 {
   if(is_true())
   {
-    make_false();
+    *this=false_exprt();
     return;
   }
   else if(is_false())
   {
-    make_true();
+    *this=true_exprt();
     return;
   }
 
@@ -363,7 +363,7 @@ void exprt::negate()
     if(is_constant())
     {
       const irep_idt &value=get(ID_value);
-      
+
       if(type_id==ID_integer)
       {
         set(ID_value, integer2string(-string2integer(id2string(value))));
@@ -450,13 +450,12 @@ bool exprt::is_zero() const
 {
   if(is_constant())
   {
-    const irep_idt value=get_string(ID_value);
+    const constant_exprt &constant=to_constant_expr(*this);
     const irep_idt &type_id=type().id_string();
 
     if(type_id==ID_integer || type_id==ID_natural)
     {
-      mp_integer int_value=string2integer(id2string(value));
-      if(int_value==0) return true;
+      return constant.value_is_zero_string();
     }
     else if(type_id==ID_rational)
     {
@@ -466,22 +465,20 @@ bool exprt::is_zero() const
     }
     else if(type_id==ID_unsignedbv || type_id==ID_signedbv)
     {
-      mp_integer int_value=binary2integer(id2string(value), false);
-      if(int_value==0) return true;
+      return constant.value_is_zero_string();
     }
     else if(type_id==ID_fixedbv)
     {
-      if(fixedbvt(to_constant_expr(*this))==0) return true;
+      if(fixedbvt(constant)==0) return true;
     }
     else if(type_id==ID_floatbv)
     {
-      if(ieee_floatt(to_constant_expr(*this))==0) return true;
+      if(ieee_floatt(constant)==0) return true;
     }
     else if(type_id==ID_pointer)
     {
-      if(value==ID_NULL) return true;
-      mp_integer int_value=binary2integer(id2string(value), false);
-      if(int_value==0) return true;
+      return constant.value_is_zero_string() ||
+             constant.get_value()==ID_NULL;
     }
   }
 
@@ -579,7 +576,7 @@ bool exprt::sum(const exprt &expr)
     set(ID_value, integer2binary(
       binary2integer(get_string(ID_value), false)+
       binary2integer(expr.get_string(ID_value), false),
-      atoi(type().get(ID_width).c_str())));
+      unsafe_string2unsigned(type().get_string(ID_width))));
     return false;
   }
   else if(type_id==ID_fixedbv)
@@ -587,7 +584,7 @@ bool exprt::sum(const exprt &expr)
     set(ID_value, integer2binary(
       binary2integer(get_string(ID_value), false)+
       binary2integer(expr.get_string(ID_value), false),
-      atoi(type().get(ID_width).c_str())));
+      unsafe_string2unsigned(type().get_string(ID_width))));
     return false;
   }
   else if(type_id==ID_floatbv)
@@ -643,7 +640,7 @@ bool exprt::mul(const exprt &expr)
     set(ID_value, integer2binary(
       binary2integer(get_string(ID_value), false)*
       binary2integer(expr.get_string(ID_value), false),
-      atoi(type().get(ID_width).c_str())));
+      unsafe_string2unsigned(type().get_string(ID_width))));
     return false;
   }
   else if(type_id==ID_fixedbv)
@@ -706,7 +703,7 @@ bool exprt::subtract(const exprt &expr)
     set(ID_value, integer2binary(
       binary2integer(get_string(ID_value), false)-
       binary2integer(expr.get_string(ID_value), false),
-      atoi(type().get(ID_width).c_str())));
+      unsafe_string2unsigned(type().get_string(ID_width))));
     return false;
   }
 
@@ -715,7 +712,7 @@ bool exprt::subtract(const exprt &expr)
 
 /*******************************************************************\
 
-Function: exprt::find_location
+Function: exprt::find_source_location
 
   Inputs:
 
@@ -725,19 +722,19 @@ Function: exprt::find_location
 
 \*******************************************************************/
 
-const locationt &exprt::find_location() const
+const source_locationt &exprt::find_source_location() const
 {
-  const locationt &l=location();
+  const source_locationt &l=source_location();
 
   if(l.is_not_nil()) return l;
 
   forall_operands(it, (*this))
   {
-    const locationt &l=it->find_location();
+    const source_locationt &l=it->find_source_location();
     if(l.is_not_nil()) return l;
   }
 
-  return static_cast<const locationt &>(get_nil_irep());
+  return static_cast<const source_locationt &>(get_nil_irep());
 }
 
 /*******************************************************************\
@@ -755,7 +752,7 @@ Function: exprt::visit
 void exprt::visit(expr_visitort &visitor)
 {
   std::stack<exprt *> stack;
-  
+
   stack.push(this);
 
   while(!stack.empty())
@@ -785,7 +782,7 @@ Function: exprt::visit
 void exprt::visit(const_expr_visitort &visitor) const
 {
   std::stack<const exprt *> stack;
-  
+
   stack.push(this);
 
   while(!stack.empty())

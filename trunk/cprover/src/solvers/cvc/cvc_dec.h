@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PROP_CVC_DEC_H
-#define CPROVER_PROP_CVC_DEC_H
+#ifndef CPROVER_SOLVERS_CVC_CVC_DEC_H
+#define CPROVER_SOLVERS_CVC_CVC_DEC_H
 
 #include <fstream>
 
@@ -19,7 +19,7 @@ public:
   cvc_temp_filet();
   ~cvc_temp_filet();
 
-protected:  
+protected:
   std::ofstream temp_out;
   std::string temp_out_filename, temp_result_filename;
 };
@@ -30,12 +30,12 @@ public:
   explicit cvc_dect(const namespacet &_ns):cvc_convt(_ns, temp_out)
   {
   }
-  
+
   virtual resultt dec_solve();
-  
+
 protected:
   resultt read_cvcl_result();
   void read_assert(std::istream &in, std::string &line);
 };
 
-#endif
+#endif // CPROVER_SOLVERS_CVC_CVC_DEC_H

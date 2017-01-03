@@ -6,16 +6,23 @@ Author: CM Wintersteiger, 2006
 
 \*******************************************************************/
 
-#include <iostream>
-#include <cstdlib>
+#ifdef _WIN32
+#define EX_OK 0
+#define EX_USAGE 64
+#define EX_SOFTWARE 70
+#else
+#include <sysexits.h>
+#endif
 
+#include <iostream>
+
+#include <util/string2int.h>
 #include <util/message.h>
 #include <util/prefix.h>
 #include <util/config.h>
 
 #include "armcc_mode.h"
 #include "compile.h"
-#include "version.h"
 
 /*******************************************************************\
 
@@ -29,15 +36,15 @@ Function: armcc_modet::doit
 
 \*******************************************************************/
 
-bool armcc_modet::doit()
+int armcc_modet::doit()
 {
   if(cmdline.isset('?') || cmdline.isset("help"))
   {
     help();
-    return false;
+    return EX_OK;
   }
 
-  int verbosity=1;
+  unsigned int verbosity=1;
 
   compilet compiler(cmdline);
 
@@ -50,21 +57,21 @@ bool armcc_modet::doit()
   #endif
 
   if(cmdline.isset("verbosity"))
-    verbosity=atoi(cmdline.getval("verbosity"));
+    verbosity=unsafe_string2int(cmdline.get_value("verbosity"));
 
-  compiler.set_verbosity(verbosity);
-  set_verbosity(verbosity);
+  compiler.ui_message_handler.set_verbosity(verbosity);
+  ui_message_handler.set_verbosity(verbosity);
 
-  debug("ARM mode");
-  
+  debug() << "ARM mode" << eom;
+
   // get configuration
   config.set(cmdline);
 
-  config.ansi_c.mode=configt::ansi_ct::MODE_ARM;
-  config.ansi_c.arch=configt::ansi_ct::ARCH_ARM;
-  
+  config.ansi_c.mode=configt::ansi_ct::flavourt::ARM;
+  config.ansi_c.arch="arm";
+
   // determine actions to be taken
-  
+
   if(cmdline.isset('E'))
     compiler.mode=compilet::PREPROCESS_ONLY;
   else if(cmdline.isset('c') || cmdline.isset('S'))
@@ -104,13 +111,13 @@ bool armcc_modet::doit()
       config.ansi_c.preprocessor_options.push_back("--preinclude="+*it);
   }
 
-  // armcc's default is .o    
+  // armcc's default is .o
   if(cmdline.isset("default_extension="))
     compiler.object_file_extension=
-      cmdline.getval("default_extension=");
+      cmdline.get_value("default_extension=");
   else
     compiler.object_file_extension="o";
-      
+
   // note that ARM's default is "unsigned_chars",
   // in contrast to gcc's default!
   if(cmdline.isset("signed_chars"))
@@ -185,7 +192,7 @@ bool armcc_modet::doit()
   }
 
   // Parse input program, convert to goto program, write output
-  return compiler.doit();
+  return compiler.doit() ? EX_USAGE : EX_OK;
 }
 
 /*******************************************************************\
@@ -204,5 +211,3 @@ void armcc_modet::help_mode()
 {
   std::cout << "goto-armcc understands the options of armcc plus the following.\n\n";
 }
-
-

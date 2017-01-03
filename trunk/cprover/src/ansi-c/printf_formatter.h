@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PRINTF_FORMATTER
-#define CPROVER_PRINTF_FORMATTER
+#ifndef CPROVER_ANSI_C_PRINTF_FORMATTER_H
+#define CPROVER_ANSI_C_PRINTF_FORMATTER_H
 
 #include <util/expr.h>
 #include <util/namespace.h>
@@ -21,7 +21,7 @@ public:
 
   void print(std::ostream &out);
   std::string as_string();
-  
+
   explicit printf_formattert(const namespacet &_ns):ns(_ns)
   {
   }
@@ -33,7 +33,7 @@ protected:
   std::list<exprt>::const_iterator next_operand;
   unsigned format_pos;
   inline bool eol() const { return format_pos>=format.size(); }
-  
+
   class eol_exception { };
 
   char next()
@@ -41,11 +41,11 @@ protected:
     if(eol()) throw eol_exception();
     return format[format_pos++];
   }
-  
+
   void process_char(std::ostream &out);
   void process_format(std::ostream &out);
 
   const exprt make_type(const exprt &src, const typet &dest);
 };
 
-#endif
+#endif // CPROVER_ANSI_C_PRINTF_FORMATTER_H

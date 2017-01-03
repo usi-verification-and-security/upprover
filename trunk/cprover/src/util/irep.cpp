@@ -6,17 +6,59 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cstdlib>
 #include <cassert>
+#include <ostream>
 
+#include "string2int.h"
 #include "irep.h"
-#include "i2string.h"
 #include "string_hash.h"
+#include "irep_hash.h"
+
+#ifdef SUB_IS_LIST
+#include <algorithm>
+#endif
+
+#ifdef IREP_DEBUG
+#include <iostream>
+#endif
 
 irept nil_rep_storage;
 
 #ifdef SHARING
 irept::dt irept::empty_d;
+#endif
+
+/*******************************************************************\
+
+Function: named_subt_lower_bound
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+#ifdef SUB_IS_LIST
+static inline bool named_subt_order(
+  const std::pair<irep_namet, irept> &a,
+  const irep_namet &b)
+{
+  return a.first<b;
+}
+
+static inline irept::named_subt::const_iterator named_subt_lower_bound(
+  const irept::named_subt &s, const irep_namet &id)
+{
+  return std::lower_bound(s.begin(), s.end(), id, named_subt_order);
+}
+
+static inline irept::named_subt::iterator named_subt_lower_bound(
+  irept::named_subt &s, const irep_namet &id)
+{
+  return std::lower_bound(s.begin(), s.end(), id, named_subt_order);
+}
 #endif
 
 /*******************************************************************\
@@ -40,7 +82,7 @@ const irept &get_nil_irep()
 
 /*******************************************************************\
 
-Function: irept::detatch
+Function: irept::detach
 
   Inputs:
 
@@ -51,10 +93,10 @@ Function: irept::detatch
 \*******************************************************************/
 
 #ifdef SHARING
-void irept::detatch()
+void irept::detach()
 {
   #ifdef IREP_DEBUG
-  std::cout << "DETATCH1: " << data << std::endl;
+  std::cout << "DETACH1: " << data << std::endl;
   #endif
 
   if(data==&empty_d)
@@ -73,53 +115,16 @@ void irept::detatch()
     #ifdef IREP_DEBUG
     std::cout << "ALLOCATED " << data << std::endl;
     #endif
-    
+
     data->ref_count=1;
     remove_ref(old_data);
   }
-  
+
   assert(data->ref_count==1);
 
   #ifdef IREP_DEBUG
-  std::cout << "DETATCH2: " << data << std::endl;
+  std::cout << "DETACH2: " << data << std::endl;
   #endif
-}
-#endif
-
-/*******************************************************************\
-
-Function: irept::recursive_detatch
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-#ifdef SHARING
-void irept::recursive_detatch()
-{
-  detatch();
-  
-  for(named_subt::iterator
-      it=data->named_sub.begin();
-      it!=data->named_sub.end();
-      it++)
-    it->second.recursive_detatch();
-    
-  for(named_subt::iterator
-      it=data->comments.begin();
-      it!=data->comments.end();
-      it++)
-    it->second.recursive_detatch();
-    
-  for(subt::iterator
-      it=data->sub.begin();
-      it!=data->sub.end();
-      it++)
-    it->recursive_detatch();
 }
 #endif
 
@@ -135,60 +140,110 @@ Function: irept::remove_ref
 
 \*******************************************************************/
 
-#include <iostream>
-  
 #ifdef SHARING
 void irept::remove_ref(dt *old_data)
 {
   if(old_data==&empty_d) return;
+
+  #if 0
+  nonrecursive_destructor(old_data);
+  #else
 
   assert(old_data->ref_count!=0);
 
   #ifdef IREP_DEBUG
   std::cout << "R: " << old_data << " " << old_data->ref_count << std::endl;
   #endif
-  
+
   old_data->ref_count--;
   if(old_data->ref_count==0)
   {
     #ifdef IREP_DEBUG
     std::cout << "D: " << pretty() << std::endl;
-    std::cout << "DELETING " << old_data->data 
+    std::cout << "DELETING " << old_data->data
               << " " << old_data << std::endl;
     old_data->clear();
     std::cout << "DEALLOCATING " << old_data << "\n";
     #endif
-    
+
+    // may cause recursive call
     delete old_data;
 
     #ifdef IREP_DEBUG
     std::cout << "DONE\n";
     #endif
   }
+  #endif
 }
 #endif
 
 /*******************************************************************\
 
-Function: irept::clear
+Function: irept::nonrecursive_destructor
 
   Inputs:
 
  Outputs:
 
- Purpose:
+ Purpose: Does the same as remove_ref, but
+          using an explicit stack instead of recursion.
 
 \*******************************************************************/
 
-void irept::clear()
+#ifdef SHARING
+void irept::nonrecursive_destructor(dt *old_data)
 {
-  #ifdef SHARING
-  remove_ref(data);
-  data=&empty_d;
-  #else
-  data.clear();
-  #endif
+  std::vector<dt *> stack(1, old_data);
+
+  while(!stack.empty())
+  {
+    dt *d=stack.back();
+    stack.erase(--stack.end());
+    if(d==&empty_d) continue;
+
+    assert(d->ref_count!=0);
+    d->ref_count--;
+
+    if(d->ref_count==0)
+    {
+      stack.reserve(stack.size()+
+                    d->named_sub.size()+
+                    d->comments.size()+
+                    d->sub.size());
+
+      for(named_subt::iterator
+          it=d->named_sub.begin();
+          it!=d->named_sub.end();
+          it++)
+      {
+        stack.push_back(it->second.data);
+        it->second.data=&empty_d;
+      }
+
+      for(named_subt::iterator
+          it=d->comments.begin();
+          it!=d->comments.end();
+          it++)
+      {
+        stack.push_back(it->second.data);
+        it->second.data=&empty_d;
+      }
+
+      for(subt::iterator
+          it=d->sub.begin();
+          it!=d->sub.end();
+          it++)
+      {
+        stack.push_back(it->data);
+        it->data=&empty_d;
+      }
+
+      // now delete, won't do recursion
+      delete d;
+    }
+  }
 }
+#endif
 
 /*******************************************************************\
 
@@ -205,7 +260,7 @@ Function: irept::move_to_named_sub
 void irept::move_to_named_sub(const irep_namet &name, irept &irep)
 {
   #ifdef SHARING
-  detatch();
+  detach();
   #endif
   add(name).swap(irep);
   irep.clear();
@@ -226,7 +281,7 @@ Function: irept::move_to_sub
 void irept::move_to_sub(irept &irep)
 {
   #ifdef SHARING
-  detatch();
+  detach();
   #endif
   get_sub().push_back(get_nil_irep());
   get_sub().back().swap(irep);
@@ -249,6 +304,16 @@ const irep_idt &irept::get(const irep_namet &name) const
   const named_subt &s=
     is_comment(name)?get_comments():get_named_sub();
 
+  #ifdef SUB_IS_LIST
+  named_subt::const_iterator it=named_subt_lower_bound(s, name);
+
+  if(it==s.end() ||
+     it->first!=name)
+  {
+    const static irep_idt empty;
+    return empty;
+  }
+  #else
   named_subt::const_iterator it=s.find(name);
 
   if(it==s.end())
@@ -256,6 +321,7 @@ const irep_idt &irept::get(const irep_namet &name) const
     const static irep_idt empty;
     return empty;
   }
+  #endif
 
   return it->second.id();
 }
@@ -274,7 +340,7 @@ Function: irept::get_bool
 
 bool irept::get_bool(const irep_namet &name) const
 {
-  return bool(atoi(get(name).c_str()));
+  return get(name)==ID_1;
 }
 
 /*******************************************************************\
@@ -291,7 +357,58 @@ Function: irept::get_int
 
 int irept::get_int(const irep_namet &name) const
 {
-  return atoi(get(name).c_str());
+  return unsafe_string2int(get_string(name));
+}
+
+/*******************************************************************\
+
+Function: irept::get_unsigned_int
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+unsigned int irept::get_unsigned_int(const irep_namet &name) const
+{
+  return unsafe_string2unsigned(get_string(name));
+}
+
+/*******************************************************************\
+
+Function: irept::get_size_t
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+std::size_t irept::get_size_t(const irep_namet &name) const
+{
+  return unsafe_string2size_t(get_string(name));
+}
+
+/*******************************************************************\
+
+Function: irept::get_long_long
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+long long irept::get_long_long(const irep_namet &name) const
+{
+  return unsafe_string2signedlonglong(get_string(name));
 }
 
 /*******************************************************************\
@@ -306,10 +423,10 @@ Function: irept::set
 
 \*******************************************************************/
 
-void irept::set(const irep_namet &name, const long value)
+void irept::set(const irep_namet &name, const long long value)
 {
-  add(name).id(i2string((int)value));
-}  
+  add(name).id(std::to_string(value));
+}
 
 /*******************************************************************\
 
@@ -328,27 +445,14 @@ void irept::remove(const irep_namet &name)
   named_subt &s=
     is_comment(name)?get_comments():get_named_sub();
 
-  named_subt::iterator it=s.find(name);
+  #ifdef SUB_IS_LIST
+  named_subt::iterator it=named_subt_lower_bound(s, name);
 
-  if(it!=s.end()) s.erase(it);
-}  
-
-/*******************************************************************\
-
-Function: irept::set
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void irept::set(const irep_namet &name, const irept &irep)
-{
-  add(name)=irep;
-}  
+  if(it!=s.end() && it->first==name) s.erase(it);
+  #else
+  s.erase(name);
+  #endif
+}
 
 /*******************************************************************\
 
@@ -367,10 +471,18 @@ const irept &irept::find(const irep_namet &name) const
   const named_subt &s=
     is_comment(name)?get_comments():get_named_sub();
 
+  #ifdef SUB_IS_LIST
+  named_subt::const_iterator it=named_subt_lower_bound(s, name);
+
+  if(it==s.end() ||
+     it->first!=name)
+    return get_nil_irep();
+  #else
   named_subt::const_iterator it=s.find(name);
 
   if(it==s.end())
     return get_nil_irep();
+  #endif
 
   return it->second;
 }
@@ -392,7 +504,55 @@ irept &irept::add(const irep_namet &name)
   named_subt &s=
     is_comment(name)?get_comments():get_named_sub();
 
+  #ifdef SUB_IS_LIST
+  named_subt::iterator it=named_subt_lower_bound(s, name);
+
+  if(it==s.end() ||
+     it->first!=name)
+    it=s.insert(it, std::make_pair(name, irept()));
+
+  return it->second;
+  #else
   return s[name];
+  #endif
+}
+
+/*******************************************************************\
+
+Function: irept::add
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+irept &irept::add(const irep_namet &name, const irept &irep)
+{
+  named_subt &s=
+    is_comment(name)?get_comments():get_named_sub();
+
+  #ifdef SUB_IS_LIST
+  named_subt::iterator it=named_subt_lower_bound(s, name);
+
+  if(it==s.end() ||
+     it->first!=name)
+    it=s.insert(it, std::make_pair(name, irep));
+  else
+    it->second=irep;
+
+  return it->second;
+  #else
+  std::pair<named_subt::iterator, bool> entry=
+    s.insert(std::make_pair(name, irep));
+
+  if(!entry.second)
+    entry.first->second=irep;
+
+  return entry.first->second;
+  #endif
 }
 
 /*******************************************************************\
@@ -407,17 +567,29 @@ Function: operator==
 
 \*******************************************************************/
 
+#ifdef IREP_HASH_STATS
+unsigned long long irep_cmp_cnt=0;
+unsigned long long irep_cmp_ne_cnt=0;
+#endif
+
 bool operator==(const irept &i1, const irept &i2)
 {
+  #ifdef IREP_HASH_STATS
+  ++irep_cmp_cnt;
+  #endif
   #ifdef SHARING
   if(i1.data==i2.data) return true;
   #endif
 
-  if(i1.id()!=i2.id()) return false;
-
-  if(i1.get_sub()!=i2.get_sub()) return false; // recursive call
-
-  if(i1.get_named_sub()!=i2.get_named_sub()) return false; // recursive call
+  if(i1.id()!=i2.id() ||
+     i1.get_sub()!=i2.get_sub() || // recursive call
+     i1.get_named_sub()!=i2.get_named_sub()) // recursive call
+  {
+    #ifdef IREP_HASH_STATS
+    ++irep_cmp_ne_cnt;
+    #endif
+    return false;
+  }
 
   // comments are NOT checked
 
@@ -462,17 +634,17 @@ bool full_eq(const irept &i1, const irept &i2)
   {
     irept::named_subt::const_iterator i1_it=i1_named_sub.begin();
     irept::named_subt::const_iterator i2_it=i2_named_sub.begin();
-    
+
     for(; i1_it!=i1_named_sub.end(); i1_it++, i2_it++)
       if(i1_it->first!=i2_it->first ||
          !full_eq(i1_it->second, i2_it->second))
         return false;
   }
-  
+
   {
     irept::named_subt::const_iterator i1_it=i1_comments.begin();
     irept::named_subt::const_iterator i2_it=i2_comments.begin();
-    
+
     for(; i1_it!=i1_comments.end(); i1_it++, i2_it++)
       if(i1_it->first!=i2_it->first ||
          !full_eq(i1_it->second, i2_it->second))
@@ -480,46 +652,6 @@ bool full_eq(const irept &i1, const irept &i2)
   }
 
   return true;
-}
-
-/*******************************************************************\
-
-Function: irept::to_string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-#include "lispirep.h"
-#include "lispexpr.h"
-
-std::string irept::to_string() const
-{
-  lispexprt lispexpr;
-  irep2lisp(*this, lispexpr);
-  return lispexpr.expr2string();
-}
-
-/*******************************************************************\
-
-Function: operator<<
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-std::ostream& operator<< (std::ostream& out, const irept &irep)
-{
-  out << irep.to_string();
-  return out;
 }
 
 /*******************************************************************\
@@ -685,22 +817,22 @@ Function: irept::hash
 
 \*******************************************************************/
 
-static inline size_t hash_rotl(const size_t value, int shift)
-{
-  return (value << shift) | (value >> (sizeof(value)*8 - shift));
-}
 
-static inline size_t hash_combine(size_t h1, size_t h2)
-{
-  return hash_rotl(h1, 7)^h2;
-}
+#ifdef IREP_HASH_STATS
+unsigned long long irep_hash_cnt=0;
+#endif
 
-size_t irept::hash() const
+std::size_t irept::hash() const
 {
+  #ifdef HASH_CODE
+  if(read().hash_code!=0)
+    return read().hash_code;
+  #endif
+
   const irept::subt &sub=get_sub();
   const irept::named_subt &named_sub=get_named_sub();
 
-  size_t result=hash_string(id());
+  std::size_t result=hash_string(id());
 
   forall_irep(it, sub) result=hash_combine(result, it->hash());
 
@@ -710,6 +842,14 @@ size_t irept::hash() const
     result=hash_combine(result, it->second.hash());
   }
 
+  result=hash_finalize(result, named_sub.size()+sub.size());
+
+  #ifdef HASH_CODE
+  read().hash_code=result;
+  #endif
+  #ifdef IREP_HASH_STATS
+  ++irep_hash_cnt;
+  #endif
   return result;
 }
 
@@ -725,13 +865,13 @@ Function: irept::full_hash
 
 \*******************************************************************/
 
-size_t irept::full_hash() const
+std::size_t irept::full_hash() const
 {
   const irept::subt &sub=get_sub();
   const irept::named_subt &named_sub=get_named_sub();
   const irept::named_subt &comments=get_comments();
 
-  size_t result=hash_string(id());
+  std::size_t result=hash_string(id());
 
   forall_irep(it, sub) result=hash_combine(result, it->full_hash());
 
@@ -746,6 +886,10 @@ size_t irept::full_hash() const
     result=hash_combine(result, hash_string(it->first));
     result=hash_combine(result, it->second.full_hash());
   }
+
+  result=hash_finalize(
+    result,
+    named_sub.size()+sub.size()+comments.size());
 
   return result;
 }
@@ -782,12 +926,12 @@ Function: irept::pretty
 
 std::string irept::pretty(unsigned indent, unsigned max_indent) const
 {
-  if (max_indent > 0 && indent > max_indent) 
+  if (max_indent > 0 && indent > max_indent)
     return "";
 
   std::string result;
 
-  if(id()!="")
+  if(!id().empty())
   {
     result+=id_string();
     indent+=2;
@@ -824,7 +968,7 @@ std::string irept::pretty(unsigned indent, unsigned max_indent) const
     result+="\n";
     indent_str(result, indent);
 
-    result+=i2string(count++);
+    result+=std::to_string(count++);
     result+=": ";
 
     result+=it->pretty(indent+2, max_indent);
@@ -832,4 +976,3 @@ std::string irept::pretty(unsigned indent, unsigned max_indent) const
 
   return result;
 }
-

@@ -102,7 +102,7 @@ private:
   void end_symex(statet &state);
 
   // Mapping from summary_info to the corresponding partition_iface
-  typedef hash_map_cont<const summary_infot*,partition_iface_ptrst> partition_iface_mapt;
+  typedef std::unordered_map<const summary_infot*,partition_iface_ptrst> partition_iface_mapt;
   partition_iface_mapt partition_iface_map;
 
   class deferred_functiont {
@@ -230,12 +230,22 @@ private:
     statet &state,
     partition_ifacet &partition_iface);
 
+  // L2 rename - new code
+  void level2_rename_init(statet &state, const symbol_exprt &expr);
+
   // Assigns values from the modified global variables. Marks the SSA symbol 
   // of the global variables for later use when processing the deferred function
   void modified_globals_assignment_and_mark(
     const irep_idt &function_id,
     statet &state,
     partition_ifacet &partition_iface);
+
+  // AFter upgrade of CPROVER need to do rename and SSA creation alone
+  void level2_rename_and_2ssa(
+    statet &state, 
+    const irep_idt identifier, 
+    const typet& type,
+    symbol_exprt& ret_symbol); 
 
   // Assigns return value from a new SSA symbols to the lhs at
   // call site. Marks the SSA symbol of the return value temporary
@@ -274,7 +284,11 @@ private:
   // assigning to it. Constant propagation is stopped for the given symbol.
   irep_idt get_new_symbol_version(
         const irep_idt& identifier,
-        statet &state);
+        statet &state,
+        typet type);
+
+  // Replace old interface of get current name from counter
+  irep_idt get_current_l2_name(statet &state, const irep_idt &identifier) const;
 
   // Makes an assignment without increasing the version of the
   // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
@@ -295,6 +309,7 @@ private:
       s.base_name = id;
       s.name = id;
       s.type = type;
+      s.mode=ID_C;
       new_symbol_table.add(s);
     }
   }
@@ -329,7 +344,7 @@ protected:
     const statet::goto_statet &goto_state,
     statet &state);
 
-  virtual void claim(
+  virtual void vcc(
     const exprt &claim_expr,
     const std::string &msg,
     statet &state);

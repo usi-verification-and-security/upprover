@@ -20,9 +20,9 @@ public:
         summary_storet& summary_store);
 
 protected:
-  typedef hash_map_cont<irep_idt, symex_target_equationt::SSA_stept*,
+  typedef std::unordered_map<irep_idt, symex_target_equationt::SSA_stept*,
     irep_id_hash> def_mapt;
-  typedef hash_map_cont<irep_idt, std::pair<partitiont*, unsigned>,
+  typedef std::unordered_map<irep_idt, std::pair<partitiont*, unsigned>,
     irep_id_hash> summary_mapt;
   typedef std::multimap<irep_idt, symex_target_equationt::SSA_stept*> assume_mapt;
 

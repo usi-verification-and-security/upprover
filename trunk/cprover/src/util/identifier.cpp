@@ -1,6 +1,6 @@
 /*******************************************************************\
 
-Module: 
+Module:
 
 Author: Daniel Kroening, kroening@kroening.com
 
@@ -52,7 +52,7 @@ void identifiert::parse(const std::string &s)
 {
   std::string component;
 
-  for(unsigned i=0; i<s.size();)
+  for(size_t i=0; i<s.size();)
   {
     for(; i<s.size(); i++)
     {
@@ -67,5 +67,5 @@ void identifiert::parse(const std::string &s)
 
     components.push_back(component);
     component="";
-  }  
+  }
 }

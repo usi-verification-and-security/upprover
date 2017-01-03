@@ -8,8 +8,8 @@ Date: June 2006
 
 \*******************************************************************/
 
-#ifndef GOTO_CC_MS_CL_MODE_H
-#define GOTO_CC_MS_CL_MODE_H
+#ifndef CPROVER_GOTO_CC_MS_CL_MODE_H
+#define CPROVER_GOTO_CC_MS_CL_MODE_H
 
 #include "goto_cc_mode.h"
 #include "ms_cl_cmdline.h"
@@ -17,7 +17,7 @@ Date: June 2006
 class ms_cl_modet:public goto_cc_modet
 {
 public:
-  virtual bool doit();
+  virtual int doit();
   virtual void help_mode();
 
   explicit ms_cl_modet(ms_cl_cmdlinet &_ms_cl_cmdline):
@@ -25,9 +25,9 @@ public:
     cmdline(_ms_cl_cmdline)
   {
   }
-  
+
 protected:
   ms_cl_cmdlinet &cmdline;
 };
 
-#endif /* GOTO_CC_MS_CL_MODE_H */
+#endif // CPROVER_GOTO_CC_MS_CL_MODE_H

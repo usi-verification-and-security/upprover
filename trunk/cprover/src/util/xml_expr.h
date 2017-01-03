@@ -6,18 +6,24 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_XML_EXPR_H
-#define CPROVER_XML_EXPR_H
+#ifndef CPROVER_UTIL_XML_EXPR_H
+#define CPROVER_UTIL_XML_EXPR_H
 
-class locationt;
+#include "xml.h"
+
+class source_locationt;
+class typet;
 class exprt;
-class xmlt;
 class namespacet;
 
 xmlt xml(
-  const exprt &expr,
-  const namespacet &ns);
+  const exprt &,
+  const namespacet &);
 
-xmlt xml(const locationt &location);
+xmlt xml(
+  const typet &,
+  const namespacet &);
 
-#endif
+xmlt xml(const source_locationt &);
+
+#endif // CPROVER_UTIL_XML_EXPR_H

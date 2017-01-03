@@ -8,7 +8,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <iostream>
 
-#include <util/i2string.h>
 #include <util/std_expr.h>
 #include <util/base_type.h>
 
@@ -49,13 +48,13 @@ literalt boolbvt::convert_equality(const equal_exprt &expr)
       //std::cout << "X: " << from_expr(ns, "", tmp) << std::endl;
       return record_array_equality(to_equal_expr(tmp));
     }
-    
+
     return record_array_equality(expr);
   }
 
   const bvt &bv0=convert_bv(expr.lhs());
   const bvt &bv1=convert_bv(expr.rhs());
-    
+
   if(bv0.size()!=bv1.size())
   {
     std::cerr << "lhs: " << expr.lhs().pretty() << std::endl;
@@ -65,19 +64,54 @@ literalt boolbvt::convert_equality(const equal_exprt &expr)
     throw "unexpected size mismatch on equality";
   }
 
-  if(bv0.size()==0)
+  if(bv0.empty())
   {
     // An empty bit-vector comparison. It's not clear
     // what this is meant to say.
     return prop.new_variable();
   }
 
-  if(expr.lhs().type().id()==ID_verilogbv)
+  return bv_utils.equal(bv0, bv1);
+}
+
+/*******************************************************************\
+
+Function: boolbvt::convert_verilog_case_equality
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+literalt boolbvt::convert_verilog_case_equality(const binary_relation_exprt &expr)
+{
+  // This is 4-valued comparison, i.e., z===z, x===x etc.
+  // The result is always Boolean.
+
+  if(!base_type_eq(expr.lhs().type(), expr.rhs().type(), ns))
   {
-    // TODO
+    std::cout << "######### lhs: " << expr.lhs().pretty() << std::endl;
+    std::cout << "######### rhs: " << expr.rhs().pretty() << std::endl;
+    throw "verilog_case_equality without matching types";
   }
+
+  const bvt &bv0=convert_bv(expr.lhs());
+  const bvt &bv1=convert_bv(expr.rhs());
+
+  if(bv0.size()!=bv1.size())
+  {
+    std::cerr << "lhs: " << expr.lhs().pretty() << std::endl;
+    std::cerr << "lhs size: " << bv0.size() << std::endl;
+    std::cerr << "rhs: " << expr.rhs().pretty() << std::endl;
+    std::cerr << "rhs size: " << bv1.size() << std::endl;
+    throw "unexpected size mismatch on verilog_case_equality";
+  }
+
+  if(expr.id()==ID_verilog_case_inequality)
+    return !bv_utils.equal(bv0, bv1);
   else
     return bv_utils.equal(bv0, bv1);
-  
-  return SUB::convert_rest(expr);
 }

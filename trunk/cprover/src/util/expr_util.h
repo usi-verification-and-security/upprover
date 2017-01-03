@@ -6,8 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#ifndef CPROVER_UTIL_EXPR_UTIL_H
+#define CPROVER_UTIL_EXPR_UTIL_H
+
 /*! \file util/expr_util.h
- * \brief Deprecated expression utility functions 
+ * \brief Deprecated expression utility functions
  *
  * \author Daniel Kroening <kroening@kroening.com>
  * \date   Sun Jul 31 21:54:44 BST 2011
@@ -16,10 +19,13 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "irep.h"
 
 class exprt;
-class pointer_typet;
 class symbol_exprt;
+class update_exprt;
+class with_exprt;
+class if_exprt;
 class symbolt;
 class typet;
+class namespacet;
 
 /*! \deprecated This function will eventually be removed. Use functions from
  * \ref util/std_expr.h instead.
@@ -27,19 +33,27 @@ class typet;
 exprt gen_zero(const typet &type);
 /*! \copydoc gen_zero(const typet &) */
 exprt gen_one(const typet &type);
-/*! \copydoc gen_zero(const typet &) */
-exprt gen_not(const exprt &op);
 
 /*! \copydoc gen_zero(const typet &) */
-void gen_and(exprt &expr);
-/*! \copydoc gen_zero(const typet &) */
-void gen_or(exprt &expr);
-
-/*! \copydoc gen_zero(const typet &) */
-symbol_exprt symbol_expr(const symbolt &symbol);
-
-/*! \copydoc gen_zero(const typet &) */
-void make_next_state(exprt &expr);
+void make_next_state(exprt &);
 
 /*! \copydoc splits an expression with >=3 operands into nested binary expressions */
-exprt make_binary(const exprt &src);
+exprt make_binary(const exprt &);
+
+/*! converts an udpate expr into a (possibly nested) with expression */
+with_exprt make_with_expr(const update_exprt &);
+
+/*! converts a scalar/float expression to C/C++ Booleans */
+exprt is_not_zero(const exprt &, const namespacet &ns);
+
+/*! negate a Boolean expression, possibly removing a not_exprt,
+    and swapping false and true */
+exprt boolean_negate(const exprt &);
+
+/*! returns true if the expression has a subexpresion with given ID */
+bool has_subexpr(const exprt &, const irep_idt &);
+
+/*! lift up an if_exprt one level */
+if_exprt lift_if(const exprt &, std::size_t operand_number);
+
+#endif // CPROVER_UTIL_EXPR_UTIL_H

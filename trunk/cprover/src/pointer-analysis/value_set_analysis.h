@@ -6,9 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_POINTER_ANALYSIS_VALUE_PROPAGATION_H
-#define CPROVER_POINTER_ANALYSIS_VALUE_PROPAGATION_H
+#ifndef CPROVER_POINTER_ANALYSIS_VALUE_SET_ANALYSIS_H
+#define CPROVER_POINTER_ANALYSIS_VALUE_SET_ANALYSIS_H
 
+#define USE_DEPRECATED_STATIC_ANALYSIS_H
 #include <analyses/static_analysis.h>
 
 #include "value_set_domain.h"
@@ -28,7 +29,7 @@ public:
 
   typedef static_analysist<value_set_domaint> baset;
 
-  // overloading  
+  // overloading
   virtual void initialize(const goto_programt &goto_program);
   virtual void initialize(const goto_functionst &goto_functions);
 
@@ -46,7 +47,7 @@ public:
     const goto_programt &goto_program,
     const irep_idt &identifier,
     xmlt &dest) const;
-    
+
 public:
   // interface value_sets
   virtual void get_values(
@@ -55,7 +56,7 @@ public:
     value_setst::valuest &dest)
   {
     (*this)[l].value_set.get_value_set(expr, dest, ns);
-  }  
+  }
 };
 
-#endif
+#endif // CPROVER_POINTER_ANALYSIS_VALUE_SET_ANALYSIS_H

@@ -8,8 +8,8 @@ Date: June 2006
 
 \*******************************************************************/
 
-#ifndef GOTO_CC_GCC_MODE_H
-#define GOTO_CC_GCC_MODE_H
+#ifndef CPROVER_GOTO_CC_GCC_MODE_H
+#define CPROVER_GOTO_CC_GCC_MODE_H
 
 #include "goto_cc_mode.h"
 #include "gcc_cmdline.h"
@@ -17,7 +17,7 @@ Date: June 2006
 class gcc_modet:public goto_cc_modet
 {
 public:
-  virtual bool doit();
+  virtual int doit();
   virtual void help_mode();
 
   explicit gcc_modet(goto_cc_cmdlinet &_cmdline):
@@ -28,16 +28,69 @@ public:
   }
 
   bool produce_hybrid_binary;
-  
+
 protected:
   bool act_as_ld;
-  
-  int preprocess(const std::string &src, const std::string &dest);
+  std::string native_compiler_name;
+
+  int preprocess(
+    const std::string &language,
+    const std::string &src,
+    const std::string &dest);
+
   int run_gcc(); // call gcc with original command line
-  
-  int gcc_hybrid_binary(const cmdlinet::argst &input_files);
-  
-  static bool is_supported_source_file(const std::string &);
+
+  int gcc_hybrid_binary();
+
+  static bool needs_preprocessing(const std::string &);
+
+  inline const char *compiler_name()
+  {
+    if(native_compiler_name.empty())
+    {
+      std::string::size_type pos=base_name.find("goto-gcc");
+
+      if(pos==std::string::npos ||
+         base_name=="goto-gcc" ||
+         base_name=="goto-ld")
+      {
+        #ifdef __FreeBSD__
+        native_compiler_name="clang";
+        #else
+        native_compiler_name="gcc";
+        #endif
+      }
+      else
+      {
+        native_compiler_name=base_name;
+        native_compiler_name.replace(pos, 8, "gcc");
+      }
+    }
+
+    return native_compiler_name.c_str();
+  }
+
+  inline const char *linker_name()
+  {
+    if(native_compiler_name.empty())
+    {
+      std::string::size_type pos=base_name.find("goto-ld");
+
+      if(pos==std::string::npos ||
+         base_name=="goto-gcc" ||
+         base_name=="goto-ld")
+      {
+        native_compiler_name="ld";
+      }
+      else
+      {
+        native_compiler_name=base_name;
+        native_compiler_name.replace(pos, 7, "ld");
+      }
+    }
+
+    return native_compiler_name.c_str();
+  }
 };
 
-#endif /* GOTO_CC_GCC_MODE_H */
+#endif // CPROVER_GOTO_CC_GCC_MODE_H

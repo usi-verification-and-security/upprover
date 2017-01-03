@@ -1,18 +1,18 @@
 /*******************************************************************\
- 
+
 Module: Compile and link source and object files.
- 
+
 Author: CM Wintersteiger
- 
+
 Date: June 2006
- 
+
 \*******************************************************************/
 
-#ifndef GOTO_CC_COMPILE_H
-#define GOTO_CC_COMPILE_H
+#ifndef CPROVER_GOTO_CC_COMPILE_H
+#define CPROVER_GOTO_CC_COMPILE_H
 
 #include <util/symbol.h>
-#include <util/replace_symbol.h>
+#include <util/rename_symbol.h>
 
 #include <langapi/language_ui.h>
 #include <goto-programs/goto_functions.h>
@@ -20,12 +20,13 @@ Date: June 2006
 class compilet:public language_uit
 {
 public:
+  ui_message_handlert ui_message_handler;
   namespacet ns;
   goto_functionst compiled_functions;
   bool echo_file_name;
   std::string working_directory;
   std::string override_language;
-  
+
   enum { PREPROCESS_ONLY, // gcc -E
          COMPILE_ONLY, // gcc -c
          ASSEMBLE_ONLY, // gcc -S
@@ -45,9 +46,9 @@ public:
   std::string output_file_object, output_file_executable;
 
   compilet(cmdlinet &_cmdline);
-  
+
   ~compilet();
-  
+
   bool add_input_file(const std::string &);
   bool find_library(const std::string &);
   bool is_elf_file(const std::string &);
@@ -59,34 +60,20 @@ public:
   bool link();
 
   bool parse_source(const std::string &);
-  bool read_object(const std::string &, goto_functionst &);
 
-  bool write_object_file( const std::string &, const symbol_tablet &, 
+  bool write_object_file( const std::string &, const symbol_tablet &,
                           goto_functionst &);
-  bool write_bin_object_file( const std::string&, const symbol_tablet &, 
-                              goto_functionst& );    
+  bool write_bin_object_file( const std::string&, const symbol_tablet &,
+                              goto_functionst& );
 
 protected:
   cmdlinet &cmdline;
-  
-  unsigned function_body_count( const goto_functionst &functions );
-  
-  void add_compiler_specific_defines(class configt &config) const;
 
-  bool link_functions(
-    symbol_tablet &dest_symbol_table,
-    goto_functionst &dest_functions,
-    symbol_tablet &src_symbol_table,
-    goto_functionst &src_functions,
-    const replace_symbolt &replace_symbol);
-  
-  void replace_symbols_in_function(
-    goto_functionst::goto_functiont &function,
-    const replace_symbolt &replace_symbol) const;
+  unsigned function_body_count(const goto_functionst &);
+
+  void add_compiler_specific_defines(class configt &config) const;
 
   void convert_symbols(goto_functionst &dest);
 };
 
-std::string get_base_name(const std::string &);
-
-#endif /*COMPILE_H_*/
+#endif // CPROVER_GOTO_CC_COMPILE_H

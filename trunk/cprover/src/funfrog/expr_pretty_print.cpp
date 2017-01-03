@@ -220,7 +220,10 @@ expr_pretty_printt::visit_SSA(const exprt& expr) {
 	} // before expression
 
 	bool isTypeCast0 = false;
-	if (expr.id() == ID_typecast && isHasOperands) {
+	if ((expr.id() == ID_typecast 
+            || expr.id() == ID_floatbv_typecast) 
+                && isHasOperands) 
+        {
 		if ((expr.operands())[0].is_constant()) {
 			long val_cast = convertBinaryIntoDec((expr.operands())[0]);
 			if (val_cast == 0) {

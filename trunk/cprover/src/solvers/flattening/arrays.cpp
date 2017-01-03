@@ -11,6 +11,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 #include <iostream>
 
+#include <langapi/language_util.h>
+
 #include <util/std_expr.h>
 #include <util/std_types.h>
 #include <util/arith_tools.h>
@@ -37,6 +39,8 @@ arrayst::arrayst(
   const namespacet &_ns,
   propt &_prop):equalityt(_ns, _prop)
 {
+  lazy_arrays = false;        // will be set to true when --refine is used
+  incremental_cache = false;  // for incremental solving
 }
 
 /*******************************************************************\
@@ -53,9 +57,12 @@ Function: arrayst::record_array_index
 
 void arrayst::record_array_index(const index_exprt &index)
 {
-  unsigned number=arrays.number(index.array());
-  if(number>=index_map.size()) index_map.resize(number+1);
+  // we are not allowed to put the index directly in the
+  //   entry for the root of the equivalence class
+  //   because this map is accessed during building the error trace
+  std::size_t number=arrays.number(index.array());
   index_map[number].insert(index.index());
+  update_indices.insert(number);
 }
 
 /*******************************************************************\
@@ -82,11 +89,11 @@ literalt arrayst::record_array_equality(
     std::cout << equality.pretty() << std::endl;
     throw "record_array_equality got equality without matching types";
   }
-  
+
   assert(ns.follow(op0.type()).id()==ID_array);
 
   array_equalities.push_back(array_equalityt());
-  
+
   array_equalities.back().f1=op0;
   array_equalities.back().f2=op1;
   array_equalities.back().l=SUB::equality(op0, op1);
@@ -96,6 +103,52 @@ literalt arrayst::record_array_equality(
   collect_arrays(op1);
 
   return array_equalities.back().l;
+}
+
+/*******************************************************************\
+
+Function: arrayst::collect_indices
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void arrayst::collect_indices()
+{
+  for(std::size_t i=0; i<arrays.size(); i++)
+  {
+    collect_indices(arrays[i]);
+  }
+}
+
+void arrayst::collect_indices(const exprt &expr)
+{
+  if(expr.id()!=ID_index)
+  {
+    forall_operands(op,expr) collect_indices(*op);
+  }
+  else
+  {
+    const index_exprt &e = to_index_expr(expr);
+    collect_indices(e.index()); //necessary?
+
+    const typet &array_op_type=ns.follow(e.array().type());
+
+    if(array_op_type.id()==ID_array)
+    {
+      const array_typet &array_type=
+        to_array_type(array_op_type);
+
+      if(is_unbounded_array(array_type))
+      {
+        record_array_index(e);
+      }
+    }
+  }
 }
 
 /*******************************************************************\
@@ -126,10 +179,10 @@ void arrayst::collect_arrays(const exprt &a)
       std::cout << a.pretty() << std::endl;
       throw "collect_arrays got 'with' without matching types";
     }
-      
+
     arrays.make_union(a, a.op0());
     collect_arrays(a.op0());
-    
+
     // make sure this shows as an application
     index_exprt index_expr;
     index_expr.type()=array_type.subtype();
@@ -137,7 +190,7 @@ void arrayst::collect_arrays(const exprt &a)
     index_expr.index()=a.op1();
     record_array_index(index_expr);
   }
-  else if(a.id()==ID_update)
+  else if(a.id()==ID_update) //TODO: is this obsolete?
   {
     if(a.operands().size()!=3)
       throw "update expected to have three operands";
@@ -148,18 +201,18 @@ void arrayst::collect_arrays(const exprt &a)
       std::cout << a.pretty() << std::endl;
       throw "collect_arrays got 'update' without matching types";
     }
-      
+
     arrays.make_union(a, a.op0());
     collect_arrays(a.op0());
-    
+
+#if 0
     // make sure this shows as an application
-    #if 0
     index_exprt index_expr;
     index_expr.type()=array_type.subtype();
     index_expr.array()=a.op0();
     index_expr.index()=a.op1();
     record_array_index(index_expr);
-    #endif
+#endif
   }
   else if(a.id()==ID_if)
   {
@@ -172,7 +225,7 @@ void arrayst::collect_arrays(const exprt &a)
       std::cout << a.pretty() << std::endl;
       throw "collect_arrays got if without matching types";
     }
-      
+
     // check types
     if(!base_type_eq(array_type, a.op2().type(), ns))
     {
@@ -222,8 +275,53 @@ void arrayst::collect_arrays(const exprt &a)
     else
       throw "unexpected array type cast from "+a.op0().type().id_string();
   }
+  else if(a.id()==ID_index)
+  {
+    // nested unbounded arrays
+    arrays.make_union(a, a.op0());
+    collect_arrays(a.op0());
+  }
   else
     throw "unexpected array expression (collect_arrays): `"+a.id_string()+"'";
+}
+
+/*******************************************************************\
+
+Function: arrayst::add_array_constraint
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: adds array constraints
+          (refine=true...lazily for the refinement loop)
+
+\*******************************************************************/
+
+
+void arrayst::add_array_constraint(const lazy_constraintt &lazy, bool refine)
+{
+  if (lazy_arrays && refine)
+  {
+    // lazily add the constraint
+    if (incremental_cache)
+    {
+      if (expr_map.find(lazy.lazy) == expr_map.end())
+      {
+        lazy_array_constraints.push_back(lazy);
+        expr_map[lazy.lazy] = true;
+      }
+    }
+    else
+    {
+      lazy_array_constraints.push_back(lazy);
+    }
+  }
+  else
+  {
+    // add the constraint eagerly
+    prop.l_set_to_true(convert(lazy.lazy));
+  }
 }
 
 /*******************************************************************\
@@ -240,24 +338,38 @@ Function: arrayst::add_array_constraints
 
 void arrayst::add_array_constraints()
 {
-  // first get index map
-  build_index_map();
-  
+  collect_indices();
+  // at this point all indices should in the index set
+
+  // reduce initial index map
+  update_index_map(true);
+
   // add constraints for if, with, array_of
-  for(unsigned i=0; i<arrays.size(); i++)
-    add_array_constraints(
-      index_map[arrays.find_number(i)],
-      arrays[i]);
+  for(std::size_t i=0; i<arrays.size(); i++)
+  {
+    // take a copy as arrays may get modified by add_array_constraints
+    // in case of nested unbounded arrays
+    exprt a=arrays[i];
+
+    add_array_constraints(index_map[arrays.find_number(i)], a);
+
+    //we have to update before it gets used in the next add_* call
+    update_index_map(false);
+  }
 
   // add constraints for equalities
   for(array_equalitiest::const_iterator it=
       array_equalities.begin();
       it!=array_equalities.end();
       it++)
+  {
     add_array_constraints(
       index_map[arrays.find_number(it->f1)],
       *it);
-    
+
+    // update_index_map should not be necessary here
+  }
+
   // add the Ackermann constraints
   add_array_Ackermann_constraints();
 }
@@ -278,11 +390,19 @@ void arrayst::add_array_Ackermann_constraints()
 {
   // this is quadratic!
 
+#if 0
+  std::cout << "arrays.size(): " << arrays.size() << std::endl;
+#endif
+
   // iterate over arrays
-  for(unsigned i=0; i<arrays.size(); i++)
+  for(std::size_t i=0; i<arrays.size(); i++)
   {
     const index_sett &index_set=index_map[arrays.find_number(i)];
-    
+
+#if 0
+    std::cout << "index_set.size(): " << index_set.size() << std::endl;
+#endif
+
     // iterate over indices, 2x!
     for(index_sett::const_iterator
         i1=index_set.begin();
@@ -294,10 +414,9 @@ void arrayst::add_array_Ackermann_constraints()
           i2++)
         if(i1!=i2)
         {
-          // skip if both are constants
           if(i1->is_constant() && i2->is_constant())
             continue;
-        
+
           // index equality
           equal_exprt indices_equal(*i1, *i2);
 
@@ -307,9 +426,9 @@ void arrayst::add_array_Ackermann_constraints()
             indices_equal.op1().
               make_typecast(indices_equal.op0().type());
           }
-          
+
           literalt indices_equal_lit=convert(indices_equal);
-          
+
           if(indices_equal_lit!=const_literal(false))
           {
             index_exprt index_expr1;
@@ -319,14 +438,17 @@ void arrayst::add_array_Ackermann_constraints()
 
             index_exprt index_expr2=index_expr1;
             index_expr2.index()=*i2;
-          
+
             equal_exprt values_equal(index_expr1, index_expr2);
 
-            bvt implication;
-            implication.reserve(2);
-            implication.push_back(prop.lnot(indices_equal_lit));
-            implication.push_back(convert(values_equal));
-            prop.lcnf(implication);
+            //add constraint
+            lazy_constraintt lazy(ARRAY_ACKERMANN,
+              or_exprt(literal_exprt(!indices_equal_lit), values_equal));
+            add_array_constraint(lazy, true); //added lazily
+
+#if 0 // old code for adding, not significantly faster
+            prop.lcnf(!indices_equal_lit, convert(values_equal));
+#endif
           }
         }
   }
@@ -334,36 +456,67 @@ void arrayst::add_array_Ackermann_constraints()
 
 /*******************************************************************\
 
-Function: arrayst::build_index_map
+Function: arrayst::update_index_map
 
   Inputs:
 
  Outputs:
 
- Purpose:
+ Purpose: merge the indices into the root
 
 \*******************************************************************/
 
-void arrayst::build_index_map()
+void arrayst::update_index_map(std::size_t i)
 {
-  // merge the indices into the root
-  
-  if(index_map.size()<arrays.size())
-    index_map.resize(arrays.size());
+  if(arrays.is_root_number(i))
+    return;
 
+  std::size_t root_number=arrays.find_number(i);
+  assert(root_number!=i);
+
+  index_sett &root_index_set=index_map[root_number];
+  index_sett &index_set=index_map[i];
+
+  root_index_set.insert(index_set.begin(), index_set.end());
+}
+
+void arrayst::update_index_map(bool update_all)
+{
   // iterate over non-roots
-  for(unsigned i=0; i<arrays.size(); i++)
+  // possible reasons why update is needed:
+  //  -- there are new equivalence classes in arrays
+  //  -- there are new indices for arrays that are not the root
+  //     of an equivalence class
+  //     (and we cannot do that in record_array_index())
+  //  -- equivalence classes have been merged
+  if(update_all)
+    for(std::size_t i=0; i<arrays.size(); i++)
+      update_index_map(i);
+  else
   {
-    if(arrays.is_root_number(i)) continue;
-
-    unsigned root_number=arrays.find_number(i);
-    assert(root_number!=i);
-
-    index_sett &root_index_set=index_map[root_number];
-    index_sett &index_set=index_map[i];
-
-    root_index_set.insert(index_set.begin(), index_set.end());
+    for(std::set<std::size_t>::const_iterator
+        it=update_indices.begin();
+        it!=update_indices.end(); it++)
+      update_index_map(*it);
+    update_indices.clear();
   }
+
+#ifdef DEBUG
+  //print index sets
+  for(index_mapt::const_iterator
+      i1=index_map.begin();
+      i1!=index_map.end();
+      i1++)
+    for(index_sett::const_iterator
+        i2=i1->second.begin();
+        i2!=i1->second.end();
+        i2++)
+      std::cout << "Index set (" << i1->first << " = "
+                << arrays.find_number(i1->first) << " = "
+                << from_expr(ns,"",arrays[arrays.find_number(i1->first)]) << "): "
+                << from_expr(ns,"",*i2) << std::endl;
+   std::cout << "-----" << std::endl;
+#endif
 }
 
 /*******************************************************************\
@@ -398,18 +551,21 @@ void arrayst::add_array_constraints(
     index_expr2.type()=ns.follow(array_equality.f2.type()).subtype();
     index_expr2.array()=array_equality.f2;
     index_expr2.index()=*it;
-    
+
     assert(index_expr1.type()==index_expr2.type());
 
+    array_equalityt equal;
+    equal.f1 = index_expr1;
+    equal.f2 = index_expr2;
+    equal.l = array_equality.l;
     equal_exprt equality_expr(index_expr1, index_expr2);
-    
+
     // add constraint
-    bvt bv;
-    bv.push_back(prop.lnot(array_equality.l));
-    bv.push_back(convert(equality_expr));
-    prop.lcnf(bv);
+    // equality constraints are not added lazily
+    // convert must be done to guarantee correct update of the index_set
+    prop.lcnf(!array_equality.l, convert(equality_expr));
   }
-}  
+}
 
 /*******************************************************************\
 
@@ -476,8 +632,13 @@ void arrayst::add_array_constraints(
       assert(index_expr1.type()==index_expr2.type());
 
       // add constraint
-      set_to(equal_exprt(index_expr1, index_expr2), true);
+      lazy_constraintt lazy(ARRAY_TYPECAST,
+        equal_exprt(index_expr1, index_expr2));
+      add_array_constraint(lazy, false); //added immediately
     }
+  }
+  else if(expr.id()==ID_index)
+  {
   }
   else
     throw "unexpected array expression (add_array_constraints): `"+expr.id_string()+"'";
@@ -500,12 +661,12 @@ void arrayst::add_array_constraints_with(
   const with_exprt &expr)
 {
   // we got x=(y with [i:=v])
-  // add constaint x[i]=v
+  // add constraint x[i]=v
 
   const exprt &index=expr.where();
   const exprt &value=expr.new_value();
 
-  {  
+  {
     index_exprt index_expr;
     index_expr.type()=ns.follow(expr.type()).subtype();
     index_expr.array()=expr;
@@ -517,7 +678,8 @@ void arrayst::add_array_constraints_with(
       assert(false);
     }
 
-    set_to_true(equal_exprt(index_expr, value));
+     lazy_constraintt lazy(ARRAY_WITH, equal_exprt(index_expr, value));
+     add_array_constraint(lazy,false); //added immediately
   }
 
   // use other array index applications for "else" case
@@ -533,7 +695,7 @@ void arrayst::add_array_constraints_with(
     if(other_index!=index)
     {
       // we first build the guard
-      
+
       if(other_index.type()!=index.type())
         other_index.make_typecast(index.type());
 
@@ -554,15 +716,23 @@ void arrayst::add_array_constraints_with(
         assert(index_expr1.type()==index_expr2.type());
 
         equal_exprt equality_expr(index_expr1, index_expr2);
-        
-        literalt equality_lit=convert(equality_expr);
 
         // add constraint
-        bvt bv;
-        bv.reserve(2);
-        bv.push_back(equality_lit);
-        bv.push_back(guard_lit);
-        prop.lcnf(bv);
+        lazy_constraintt lazy(ARRAY_WITH, or_exprt(equality_expr,
+                                literal_exprt(guard_lit)));
+        add_array_constraint(lazy,false); //added immediately
+
+#if 0 // old code for adding, not significantly faster
+        {
+          literalt equality_lit=convert(equality_expr);
+
+          bvt bv;
+          bv.reserve(2);
+          bv.push_back(equality_lit);
+          bv.push_back(guard_lit);
+          prop.lcnf(bv);
+        }
+#endif
       }
     }
   }
@@ -587,11 +757,11 @@ void arrayst::add_array_constraints_update(
   // we got x=UPDATE(y, [i], v)
   // add constaint x[i]=v
 
-  #if 0
+#if 0
   const exprt &index=expr.where();
   const exprt &value=expr.new_value();
 
-  {  
+  {
     index_exprt index_expr;
     index_expr.type()=ns.follow(expr.type()).subtype();
     index_expr.array()=expr;
@@ -619,7 +789,7 @@ void arrayst::add_array_constraints_update(
     if(other_index!=index)
     {
       // we first build the guard
-      
+
       if(other_index.type()!=index.type())
         other_index.make_typecast(index.type());
 
@@ -640,7 +810,7 @@ void arrayst::add_array_constraints_update(
         assert(index_expr1.type()==index_expr2.type());
 
         equal_exprt equality_expr(index_expr1, index_expr2);
-        
+
         literalt equality_lit=convert(equality_expr);
 
         // add constraint
@@ -652,7 +822,7 @@ void arrayst::add_array_constraints_update(
       }
     }
   }
-  #endif
+#endif
 }
 
 /*******************************************************************\
@@ -688,7 +858,8 @@ void arrayst::add_array_constraints_array_of(
     assert(base_type_eq(index_expr.type(), expr.op0().type(), ns));
 
     // add constraint
-    set_to_true(equal_exprt(index_expr, expr.op0()));
+    lazy_constraintt lazy(ARRAY_OF, equal_exprt(index_expr, expr.op0()));
+    add_array_constraint(lazy, false); //added immediately
   }
 }
 
@@ -735,14 +906,17 @@ void arrayst::add_array_constraints_if(
     assert(index_expr1.type()==index_expr2.type());
 
     // add implication
-    bvt bv;
-    bv.push_back(prop.lnot(cond_lit));
-    bv.push_back(convert(equal_exprt(index_expr1, index_expr2)));
-    prop.lcnf(bv);
+    lazy_constraintt lazy(ARRAY_IF,
+                            or_exprt(literal_exprt(!cond_lit),
+                              equal_exprt(index_expr1, index_expr2)));
+    add_array_constraint(lazy, false); //added immediately
+
+#if 0 // old code for adding, not significantly faster
+    prop.lcnf(!cond_lit, convert(equal_exprt(index_expr1, index_expr2)));
+#endif
   }
 
   // now the false case
-
   for(index_sett::const_iterator
       it=index_set.begin();
       it!=index_set.end();
@@ -761,9 +935,12 @@ void arrayst::add_array_constraints_if(
     assert(index_expr1.type()==index_expr2.type());
 
     // add implication
-    bvt bv;
-    bv.push_back(cond_lit);
-    bv.push_back(convert(equal_exprt(index_expr1, index_expr2)));
-    prop.lcnf(bv);
+    lazy_constraintt lazy(ARRAY_IF, or_exprt(literal_exprt(cond_lit),
+                          equal_exprt(index_expr1, index_expr2)));
+    add_array_constraint(lazy, false); //added immediately
+
+#if 0 //old code for adding, not significantly faster
+    prop.lcnf(cond_lit, convert(equal_exprt(index_expr1, index_expr2)));
+#endif
   }
 }

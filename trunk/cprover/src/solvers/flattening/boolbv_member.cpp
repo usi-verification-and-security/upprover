@@ -7,6 +7,9 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <util/base_type.h>
+#include <util/expr_util.h>
+#include <util/byte_operators.h>
+#include <util/arith_tools.h>
 
 #include "boolbv.h"
 
@@ -22,7 +25,7 @@ Function: boolbvt::convert_member
 
 \*******************************************************************/
 
-void boolbvt::convert_member(const member_exprt &expr, bvt &bv)
+bvt boolbvt::convert_member(const member_exprt &expr)
 {
   const exprt &struct_op=expr.struct_op();
   const typet &struct_op_type=ns.follow(struct_op.type());
@@ -31,20 +34,11 @@ void boolbvt::convert_member(const member_exprt &expr, bvt &bv)
 
   if(struct_op_type.id()==ID_union)
   {
-    unsigned width=boolbv_width(expr.type());
-
-    if(width==0)
-      return conversion_failed(expr, bv);
-
-    bv.resize(width);
-
-    if(width>struct_bv.size())
-      throw "member/union: unexpected widths";
-
-    for(unsigned i=0; i<width; i++)
-      bv[i]=struct_bv[i];
-
-    return;
+    return convert_bv(
+      byte_extract_exprt(byte_extract_id(),
+                         struct_op,
+                         gen_zero(integer_typet()),
+                         expr.type()));
   }
   else if(struct_op_type.id()==ID_struct)
   {
@@ -52,7 +46,7 @@ void boolbvt::convert_member(const member_exprt &expr, bvt &bv)
     const struct_typet::componentst &components=
       to_struct_type(struct_op_type).components();
 
-    unsigned offset=0;
+    std::size_t offset=0;
 
     for(struct_typet::componentst::const_iterator
         it=components.begin();
@@ -60,7 +54,7 @@ void boolbvt::convert_member(const member_exprt &expr, bvt &bv)
         it++)
     {
       const typet &subtype=it->type();
-      unsigned sub_width=boolbv_width(subtype);
+      std::size_t sub_width=boolbv_width(subtype);
 
       if(it->get_name()==component_name)
       {
@@ -70,25 +64,35 @@ void boolbvt::convert_member(const member_exprt &expr, bvt &bv)
           std::cout << "DEBUG " << expr.pretty() << "\n";
           #endif
 
-          throw "member: component type does not match: "+
-            subtype.to_string()+" vs. "+
-            expr.type().to_string();
+          error().source_location=expr.find_source_location();
+          error() << "member: component type does not match: "
+                  << subtype.pretty() << " vs. "
+                  << expr.type().pretty() << eom;
+          throw 0;
         }
 
+        bvt bv;
         bv.resize(sub_width);
         assert(offset+sub_width<=struct_bv.size());
 
-        for(unsigned i=0; i<sub_width; i++)
+        for(std::size_t i=0; i<sub_width; i++)
           bv[i]=struct_bv[offset+i];
 
-        return;
+        return bv;
       }
 
       offset+=sub_width;
     }
 
-    throw "component "+id2string(component_name)+" not found in structure";
+    error().source_location=expr.find_source_location();
+    error() << "component " << component_name
+            << " not found in structure" << eom;
+    throw 0;
   }
   else
-    throw "member takes struct or union operand";
+  {
+    error().source_location=expr.find_source_location();
+    error() << "member takes struct or union operand" << eom;
+    throw 0;
+  }
 }

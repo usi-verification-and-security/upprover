@@ -8,7 +8,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
-#include <util/i2string.h>
 
 #include "satcheck_booleforce.h"
 
@@ -100,7 +99,7 @@ tvt satcheck_booleforce_baset::l_get(literalt a) const
   else if(r<0)
     result=tvt(false);
   else
-    result=tvt(tvt::TV_UNKNOWN);
+    result=tvt(tvt::tv_enumt::TV_UNKNOWN);
 
   if(a.sign()) result=!result;
 
@@ -139,7 +138,7 @@ Function: satcheck_booleforce_baset::lcnf
 void satcheck_booleforce_baset::lcnf(const bvt &bv)
 {
   bvt tmp;
-  
+
   if(process_clause(bv, tmp))
     return;
 
@@ -148,7 +147,7 @@ void satcheck_booleforce_baset::lcnf(const bvt &bv)
 
   // zero-terminated
   booleforce_add(0);
-  
+
   clause_counter++;
 }
 
@@ -176,19 +175,19 @@ propt::resultt satcheck_booleforce_baset::prop_solve()
     switch(result)
     {
     case BOOLEFORCE_UNSATISFIABLE:
-      msg="SAT checker: negated claim is UNSATISFIABLE, i.e., holds";
+      msg="SAT checker: instance is UNSATISFIABLE";
       break;
 
     case BOOLEFORCE_SATISFIABLE:
-      msg="SAT checker: negated claim is SATISFIABLE, i.e., does not hold";
+      msg="SAT checker: instance is SATISFIABLE";
       break;
 
     default:
       msg="SAT checker failed: unknown result";
-      break;    
+      break;
     }
 
-    messaget::status(msg);
+    messaget::status() << msg << messaget::eom;
   }
 
   if(result==BOOLEFORCE_UNSATISFIABLE)
@@ -202,9 +201,9 @@ propt::resultt satcheck_booleforce_baset::prop_solve()
     status=SAT;
     return P_SATISFIABLE;
   }
-  
+
   status=ERROR;
- 
+
   return P_ERROR;
 }
 

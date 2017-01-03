@@ -40,8 +40,8 @@ literalt boolbvt::convert_ieee_float_rel(const exprt &expr)
 
     const bvt &bv0=convert_bv(op0);
     const bvt &bv1=convert_bv(op1);
-    
-    if(bv0.size()==bv1.size() && bv0.size()!=0 &&
+
+    if(bv0.size()==bv1.size() && !bv0.empty() &&
        bvtype0==IS_FLOAT && bvtype1==IS_FLOAT)
     {
       float_utilst float_utils(prop);
@@ -50,7 +50,7 @@ literalt boolbvt::convert_ieee_float_rel(const exprt &expr)
       if(rel==ID_ieee_float_equal)
         return float_utils.relation(bv0, float_utilst::EQ, bv1);
       else if(rel==ID_ieee_float_notequal)
-        return prop.lnot(float_utils.relation(bv0, float_utilst::EQ, bv1));
+        return !float_utils.relation(bv0, float_utilst::EQ, bv1);
       else
         return SUB::convert_rest(expr);
     }
@@ -58,4 +58,3 @@ literalt boolbvt::convert_ieee_float_rel(const exprt &expr)
 
   return SUB::convert_rest(expr);
 }
-

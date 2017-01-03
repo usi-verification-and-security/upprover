@@ -6,13 +6,13 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_TEMPLATE_ARGS_H
-#define CPROVER_CPP_TEMPLATE_ARGS_H
+#ifndef CPROVER_CPP_CPP_TEMPLATE_ARGS_H
+#define CPROVER_CPP_CPP_TEMPLATE_ARGS_H
 
 #include <util/irep.h>
 
 // A data structures for template arguments, i.e.,
-// expressions of the form <E1, T2, ...>.
+// a sequence of types/expressions of the form <E1, T2, ...>.
 // Not to be confused with the template parameters!
 
 class cpp_template_args_baset:public irept
@@ -68,7 +68,7 @@ public:
       if(it->id()==ID_unassigned ||
          it->type().id()==ID_unassigned)
         return true;
-        
+
     return false;
   }
 };
@@ -85,4 +85,4 @@ extern inline const cpp_template_args_tct &to_cpp_template_args_tc(const irept &
   return static_cast<const cpp_template_args_tct &>(irep);
 }
 
-#endif
+#endif // CPROVER_CPP_CPP_TEMPLATE_ARGS_H

@@ -7,14 +7,12 @@ __gcc_v2si __builtin_ia32_vec_init_v2si(int, int);
 __gcc_v4hi __builtin_ia32_vec_init_v4hi(short, short, short, short);
 __gcc_v8qi __builtin_ia32_vec_init_v8qi(char, char, char, char, char, char, char, char);
 int __builtin_ia32_vec_ext_v2si(__gcc_v2si, int);
-__gcc_v8si __builtin_ia32_paddusw128(__gcc_v8si, __gcc_v8si);
-__gcc_v8si __builtin_ia32_psubusw128(__gcc_v8si, __gcc_v8si);
+__gcc_v8hi __builtin_ia32_paddusw128(__gcc_v8hi, __gcc_v8hi);
+__gcc_v8hi __builtin_ia32_psubusw128(__gcc_v8hi, __gcc_v8hi);
 void __builtin_ia32_ldmxcsr(unsigned);
 unsigned __builtin_ia32_stmxcsr(void);
-__gcc_v4hi __builtin_ia32_paddsw128(__gcc_v4hi,__gcc_v4hi);
-__gcc_v4hi __builtin_ia32_psubsw128(__gcc_v4hi,__gcc_v4hi);
-//__gcc_v4hi __builtin_ia32_paddusw128(__gcc_v4hi,__gcc_v4hi);
-//__gcc_v4hi __builtin_ia32_psubusw128(__gcc_v4hi,__gcc_v4hi);
+__gcc_v8hi __builtin_ia32_paddsw128(__gcc_v8hi,__gcc_v8hi);
+__gcc_v8hi __builtin_ia32_psubsw128(__gcc_v8hi,__gcc_v8hi);
 __gcc_v16qi __builtin_ia32_paddsb128(__gcc_v16qi,__gcc_v16qi);
 __gcc_v16qi __builtin_ia32_psubsb128(__gcc_v16qi,__gcc_v16qi);
 __gcc_v16qi __builtin_ia32_paddusb128(__gcc_v16qi,__gcc_v16qi);
@@ -53,10 +51,16 @@ __gcc_v8qi __builtin_ia32_psubusb(__gcc_v8qi, __gcc_v8qi);
 __gcc_v4hi __builtin_ia32_psubusw(__gcc_v4hi, __gcc_v4hi);
 __gcc_v4hi __builtin_ia32_pmullw(__gcc_v4hi, __gcc_v4hi);
 __gcc_v4hi __builtin_ia32_pmulhw(__gcc_v4hi, __gcc_v4hi);
+
 __gcc_v2si __builtin_ia32_pand(__gcc_v2si, __gcc_v2si); // maybe di
 __gcc_v2si __builtin_ia32_pandn(__gcc_v2si, __gcc_v2si); // maybe di
 __gcc_v2si __builtin_ia32_por(__gcc_v2si, __gcc_v2si); // maybe di
 __gcc_v2si __builtin_ia32_pxor(__gcc_v2si, __gcc_v2si); // maybe di
+//__gcc_di __builtin_ia32_pand(__gcc_di, __gcc_di);
+//__gcc_di __builtin_ia32_pandn(__gcc_di, __gcc_di);
+//__gcc_di __builtin_ia32_por(__gcc_di, __gcc_di);
+//__gcc_di __builtin_ia32_pxor(__gcc_di, __gcc_di);
+
 __gcc_v8qi __builtin_ia32_pcmpeqb(__gcc_v8qi, __gcc_v8qi);
 __gcc_v4hi __builtin_ia32_pcmpeqw(__gcc_v4hi, __gcc_v4hi);
 __gcc_v2si __builtin_ia32_pcmpeqd(__gcc_v2si, __gcc_v2si);
@@ -609,7 +613,7 @@ void __builtin_ia32_vzeroall(void);
 void __builtin_ia32_vzeroupper(void);
 __gcc_v4df __builtin_ia32_xorpd256(__gcc_v4df,__gcc_v4df);
 __gcc_v8sf __builtin_ia32_xorps256(__gcc_v8sf,__gcc_v8sf);
-__gcc_v32qi __builtin_ia32_mpsadbw256(__gcc_v32qi,__gcc_v32qi,__gcc_v32qi,int);
+__gcc_v32qi __builtin_ia32_mpsadbw256(__gcc_v32qi,__gcc_v32qi,int);
 __gcc_v32qi __builtin_ia32_pabsb256(__gcc_v32qi);
 __gcc_v16hi __builtin_ia32_pabsw256(__gcc_v16hi);
 __gcc_v8si __builtin_ia32_pabsd256(__gcc_v8si);
@@ -729,8 +733,8 @@ __gcc_v4sf __builtin_ia32_vbroadcastss_ps(__gcc_v4sf);
 __gcc_v8sf __builtin_ia32_vbroadcastss_ps256(__gcc_v4sf);
 __gcc_v4df __builtin_ia32_vbroadcastsd_pd256(__gcc_v2df);
 __gcc_v4di __builtin_ia32_vbroadcastsi256(__gcc_v2di);
-__gcc_v4si __builtin_ia32_pblendd128(__gcc_v4si,__gcc_v4si);
-__gcc_v8si __builtin_ia32_pblendd256(__gcc_v8si,__gcc_v8si);
+__gcc_v4si __builtin_ia32_pblendd128(__gcc_v4si,__gcc_v4si,int);
+__gcc_v8si __builtin_ia32_pblendd256(__gcc_v8si,__gcc_v8si,int);
 __gcc_v32qi __builtin_ia32_pbroadcastb256(__gcc_v16qi);
 __gcc_v16hi __builtin_ia32_pbroadcastw256(__gcc_v8hi);
 __gcc_v8si __builtin_ia32_pbroadcastd256(__gcc_v4si);
@@ -806,8 +810,8 @@ __gcc_v2di __builtin_ia32_insertq(__gcc_v2di, __gcc_v2di);
 __gcc_v2di __builtin_ia32_insertqi(__gcc_v2di, __gcc_v2di, const unsigned int, const unsigned int);
 __gcc_v2df __builtin_ia32_vfrczpd(__gcc_v2df);
 __gcc_v4sf __builtin_ia32_vfrczps(__gcc_v4sf);
-__gcc_v2df __builtin_ia32_vfrczsd(__gcc_v2df, __gcc_v2df);
-__gcc_v4sf __builtin_ia32_vfrczss(__gcc_v4sf, __gcc_v4sf);
+__gcc_v2df __builtin_ia32_vfrczsd(__gcc_v2df);
+__gcc_v4sf __builtin_ia32_vfrczss(__gcc_v4sf);
 __gcc_v4df __builtin_ia32_vfrczpd256(__gcc_v4df);
 __gcc_v8sf __builtin_ia32_vfrczps256(__gcc_v8sf);
 __gcc_v2di __builtin_ia32_vpcmov(__gcc_v2di, __gcc_v2di, __gcc_v2di);
@@ -1014,7 +1018,7 @@ __gcc_v2si __builtin_ia32_pswapdsi(__gcc_v2si);
 
 // unknown!
 
-int __builtin_ia32_cmpnltss();
+__gcc_v4sf __builtin_ia32_cmpnltss(__gcc_v4sf, __gcc_v4sf);
 int __builtin_ia32_comeqpd();
 int __builtin_ia32_comeqps();
 int __builtin_ia32_comeqsd();
