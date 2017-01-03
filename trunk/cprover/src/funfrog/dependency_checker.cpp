@@ -2,7 +2,6 @@
 
 #include <time_stopping.h>
 #include <expr_util.h>
-#include <i2string.h>
 
 #include "dependency_checker.h"
 #include "expr_pretty_print.h"
@@ -797,7 +796,7 @@ void dependency_checkert::convert_io(
         {
           symbol_exprt symbol;
           symbol.type()=tmp.type();
-          symbol.set_identifier("symex::io::"+i2string(io_count++));
+          symbol.set_identifier("symex::io::"+std::to_string(io_count++));
           prop_conv.set_to(equal_exprt(tmp, symbol), true);
           (*it)->converted_io_args.push_back(symbol);
         }

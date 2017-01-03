@@ -10,7 +10,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_GOTO_INSTRUMENT_UNWIND_H
 #define CPROVER_GOTO_INSTRUMENT_UNWIND_H
 
-#include <util/i2string.h>
 #include <util/json.h>
 #include <util/json_expr.h>
 #include <goto-programs/goto_program.h>
@@ -117,13 +116,6 @@ protected:
     const goto_programt::const_targett start,
     const goto_programt::const_targett end, // exclusive
     goto_programt &goto_program); // result
-
-  goto_programt::targett get_mutable(
-    goto_programt &goto_program,
-    const goto_programt::const_targett t) const
-  {
-    return goto_program.instructions.erase(t, t);
-  }
 };
 
 #endif // CPROVER_GOTO_INSTRUMENT_UNWIND_H

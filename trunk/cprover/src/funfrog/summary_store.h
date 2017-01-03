@@ -10,15 +10,16 @@ Author: Ondrej Sery
 #define CPROVER_SUMMARY_STORE_H
 
 #include <ostream>
+#include <unordered_set>
 #include "solvers/prop_itp.h"
 
 typedef prop_itpt summaryt;
 typedef long unsigned summary_idt;
 typedef std::vector<summary_idt> summary_idst;
-typedef hash_set_cont<summary_idt> summary_ids_sett;
+typedef std::unordered_set<summary_idt> summary_ids_sett;
 class summary_infot;
 class function_infot;
-typedef hash_map_cont<irep_idt, function_infot, irep_id_hash> function_infost;
+typedef std::unordered_map<irep_idt, function_infot, irep_id_hash> function_infost;
 
 class summary_storet
 {

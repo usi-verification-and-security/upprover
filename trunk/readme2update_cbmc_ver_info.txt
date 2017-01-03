@@ -1,9 +1,9 @@
 CBMC Version 5.6 from Git - 64-bit version (CBMC version 5.6 64-bit x86_64 linux)
-Date: 27/12/2016
+Date: 03/01/2017
 
 File Changed:
 =============
-- trunk/cprover/src/solvers/prop/prop_conv.h (more to public: propt &prop; // KE: change for hifrog)
+- trunk/cprover/src/solvers/prop/prop_conv.h (move to public: propt &prop; // KE: change for hifrog)
 - trunk/cprover/src/goto-symex/goto_symex_state.h (Move a method to public)
 - trunk/cprover/src/goto-symex/goto_symex.h (set virtual phi_function method)
 - trunk/cprover/src/config.inc (change: add ../ to minisat2 path)

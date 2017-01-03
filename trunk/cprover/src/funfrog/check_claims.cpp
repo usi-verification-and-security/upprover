@@ -9,7 +9,6 @@
 #include <fstream>
 #include <ui_message.h>
 #include <xml.h>
-#include <i2string.h>
 #include <xml_irep.h>
 
 #include <ansi-c/expr2c.h>
@@ -187,8 +186,8 @@ void check_claims(
     if(!multi_assert)
     {
       seen_claims++;
-      res.status() << (std::string("\r    Checking Claim #") + i2string(claim_numbers[ass_ptr]) + std::string(" (") +
-    		    i2string((int)(100*seen_claims/(double)(assert_grouping ? claim_numbers.size() : inlined_claims))) +
+      res.status() << (std::string("\r    Checking Claim #") + std::to_string(claim_numbers[ass_ptr]) + std::string(" (") +
+    		    std::to_string((int)(100*seen_claims/(double)(assert_grouping ? claim_numbers.size() : inlined_claims))) +
     		    std::string("%) ..."));
     }
 
@@ -313,7 +312,7 @@ void show_claims(const namespacet &ns,
 
     claim_numberst::const_iterator nr_it = claim_numbers.find(it->second);
 
-    std::string claim_name = i2string(nr_it->second);
+    std::string claim_name = std::to_string(nr_it->second);
     
     switch(ui)
     {
@@ -384,7 +383,7 @@ void store_claims(const namespacet &ns,
   {
     assert(it->second->type==ASSERT);
 
-    mapping << i2string(claim_numbers.find(it->second)->second) << " "
+    mapping << std::to_string(claim_numbers.find(it->second)->second) << " "
         << (it->second->source_location).get_property_id().c_str() << std::endl; // KE: get_claim doesn't exist anymore - I think all just becomes a property
   }
 }

@@ -18,7 +18,6 @@
 #include <io.h>
 #endif
 
-#include <i2string.h>
 #include <std_expr.h>
 #include <arith_tools.h>
 #include <prefix.h>

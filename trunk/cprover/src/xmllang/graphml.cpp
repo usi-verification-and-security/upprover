@@ -11,7 +11,6 @@ Author: Michael Tautschnig, mt@eecs.qmul.ac.uk
 
 #include <util/message.h>
 #include <util/string2int.h>
-#include <util/i2string.h>
 
 #include "graphml.h"
 
@@ -75,6 +74,7 @@ static bool build_graph_rec(
     graphmlt::nodet &node=dest[n];
     node.node_name=node_name;
     node.is_violation=false;
+    node.has_invariant=false;
     node.thread_nr=0;
 
     for(xmlt::elementst::const_iterator
@@ -281,8 +281,12 @@ Function: write_graphml
 bool write_graphml(const graphmlt &src, std::ostream &os)
 {
   xmlt graphml("graphml");
-  graphml.set_attribute("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance");
-  graphml.set_attribute("xmlns", "http://graphml.graphdrawing.org/xmlns");
+  graphml.set_attribute(
+    "xmlns:xsi",
+    "http://www.w3.org/2001/XMLSchema-instance");
+  graphml.set_attribute(
+    "xmlns",
+    "http://graphml.graphdrawing.org/xmlns");
 
   // <key attr.name="originFileName" attr.type="string" for="edge"
   //      id="originfile">
@@ -295,7 +299,10 @@ bool write_graphml(const graphmlt &src, std::ostream &os)
     key.set_attribute("for", "edge");
     key.set_attribute("id", "originfile");
 
-    key.new_element("default").data="<command-line>";
+    if(src.key_values.find("programfile")!=src.key_values.end())
+      key.new_element("default").data=src.key_values.at("programfile");
+    else
+      key.new_element("default").data="<command-line>";
   }
 
   // <key attr.name="invariant" attr.type="string" for="node" id="invariant"/>
@@ -307,7 +314,7 @@ bool write_graphml(const graphmlt &src, std::ostream &os)
     key.set_attribute("id", "invariant");
   }
 
-  //<key attr.name="invariant.scope" attr.type="string" for="node"
+  // <key attr.name="invariant.scope" attr.type="string" for="node"
   //     id="invariant.scope"/>
   {
     xmlt &key=graphml.new_element("key");
@@ -559,11 +566,11 @@ bool write_graphml(const graphmlt &src, std::ostream &os)
   xmlt &graph=graphml.new_element("graph");
   graph.set_attribute("edgedefault", "directed");
 
-  // <data key="sourcecodelang">C</data>
+  for(const auto &kv : src.key_values)
   {
     xmlt &data=graph.new_element("data");
-    data.set_attribute("key", "sourcecodelang");
-    data.data="C";
+    data.set_attribute("key", kv.first);
+    data.data=kv.second;
   }
 
   bool entry_done=false;
@@ -591,7 +598,7 @@ bool write_graphml(const graphmlt &src, std::ostream &os)
     {
       xmlt &entry=node.new_element("data");
       entry.set_attribute("key", "threadNumber");
-      entry.data=i2string(n.thread_nr);
+      entry.data=std::to_string(n.thread_nr);
     }
 
     // <node id="A14">
@@ -602,6 +609,17 @@ bool write_graphml(const graphmlt &src, std::ostream &os)
       xmlt &entry=node.new_element("data");
       entry.set_attribute("key", "violation");
       entry.data="true";
+    }
+
+    if(n.has_invariant)
+    {
+      xmlt &val=node.new_element("data");
+      val.set_attribute("key", "invariant");
+      val.data=n.invariant;
+
+      xmlt &val_s=node.new_element("data");
+      val_s.set_attribute("key", "invariant.scope");
+      val_s.data=n.invariant_scope;
     }
 
     for(graphmlt::edgest::const_iterator

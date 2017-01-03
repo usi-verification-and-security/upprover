@@ -11,8 +11,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <memory>
 
 #include <util/string2int.h>
-#include <util/i2string.h>
 #include <util/source_location.h>
+#include <util/string_utils.h>
 #include <util/time_stopping.h>
 #include <util/message.h>
 #include <util/json.h>
@@ -131,6 +131,8 @@ void bmct::output_graphml(
   graphml_witnesst graphml_witness(ns);
   if(result==UNSAFE)
     graphml_witness(safety_checkert::error_trace);
+  else if(result==SAFE)
+    graphml_witness(equation);
   else
     return;
 
@@ -328,7 +330,7 @@ void bmct::show_program()
       if(!step.guard.is_true())
       {
         languages.from_expr(step.guard, string_value);
-        std::cout << std::string(i2string(count).size()+3, ' ');
+        std::cout << std::string(std::to_string(count).size()+3, ' ');
         std::cout << "guard: " << string_value << "\n";
       }
 
@@ -344,7 +346,7 @@ void bmct::show_program()
       if(!step.guard.is_true())
       {
         languages.from_expr(step.guard, string_value);
-        std::cout << std::string(i2string(count).size()+3, ' ');
+        std::cout << std::string(std::to_string(count).size()+3, ' ');
         std::cout << "guard: " << string_value << "\n";
       }
 
@@ -360,7 +362,7 @@ void bmct::show_program()
       if(!step.guard.is_true())
       {
         languages.from_expr(step.guard, string_value);
-        std::cout << std::string(i2string(count).size()+3, ' ');
+        std::cout << std::string(std::to_string(count).size()+3, ' ');
         std::cout << "guard: " << string_value << "\n";
       }
 
@@ -379,13 +381,14 @@ void bmct::show_program()
     {
       std::string string_value;
       languages.from_expr(step.ssa_lhs, string_value);
-      std::cout << "(" << count << ") SHARED_" << (step.is_shared_write()?"WRITE":"READ") << "("
-                << string_value <<") " << "\n";
+      std::cout << "(" << count << ") SHARED_"
+                << (step.is_shared_write()?"WRITE":"READ")
+                << "(" << string_value <<")\n";
 
       if(!step.guard.is_true())
       {
         languages.from_expr(step.guard, string_value);
-        std::cout << std::string(i2string(count).size()+3, ' ');
+        std::cout << std::string(std::to_string(count).size()+3, ' ');
         std::cout << "guard: " << string_value << "\n";
       }
 
@@ -544,6 +547,7 @@ safety_checkert::resultt bmct::run(
        symex.remaining_vccs==0)
     {
       report_success();
+      output_graphml(SAFE, goto_functions);
       return safety_checkert::SAFE;
     }
 
@@ -619,6 +623,7 @@ safety_checkert::resultt bmct::stop_on_fail(
   {
   case decision_proceduret::D_UNSATISFIABLE:
     report_success();
+    output_graphml(SAFE, goto_functions);
     return SAFE;
 
   case decision_proceduret::D_SATISFIABLE:
@@ -661,13 +666,11 @@ Function: bmct::setup_unwind
 void bmct::setup_unwind()
 {
   const std::string &set=options.get_option("unwindset");
-  std::string::size_type length=set.length();
+  std::vector<std::string> unwindset_loops;
+  split_string(set, ',', unwindset_loops, true, true);
 
-  for(std::string::size_type idx=0; idx<length; idx++)
+  for(auto & val : unwindset_loops)
   {
-    std::string::size_type next=set.find(",", idx);
-    std::string val=set.substr(idx, next-idx);
-
     unsigned thread_nr;
     bool thread_nr_set=false;
 
@@ -691,9 +694,6 @@ void bmct::setup_unwind()
       else
         symex.set_unwind_loop_limit(id, uw);
     }
-
-    if(next==std::string::npos) break;
-    idx=next;
   }
 
   if(options.get_option("unwind")!="")

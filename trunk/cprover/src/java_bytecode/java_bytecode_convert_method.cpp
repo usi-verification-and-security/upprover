@@ -15,7 +15,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_expr.h>
 #include <util/expanding_vector.h>
 #include <util/string2int.h>
-#include <util/i2string.h>
 #include <util/prefix.h>
 #include <util/arith_tools.h>
 #include <util/ieee_float.h>
@@ -135,7 +134,7 @@ protected:
     if(var.symbol_expr.get_identifier().empty())
     {
       // an un-named local variable
-      irep_idt base_name="local"+id2string(number)+type_char;
+      irep_idt base_name="anonlocal::"+id2string(number)+type_char;
       irep_idt identifier=id2string(current_method)+"::"+id2string(base_name);
 
       symbol_exprt result(identifier, t);
@@ -156,7 +155,7 @@ protected:
 
   symbol_exprt tmp_variable(const std::string &prefix, const typet &type)
   {
-    irep_idt base_name=prefix+"_tmp"+i2string(tmp_vars.size());
+    irep_idt base_name=prefix+"_tmp"+std::to_string(tmp_vars.size());
     irep_idt identifier=id2string(current_method)+"::"+id2string(base_name);
 
     auxiliary_symbolt tmp_symbol;
@@ -305,7 +304,9 @@ void java_bytecode_convert_methodt::convert(
   for(const auto & v : m.local_variable_table)
   {
     typet t=java_type_from_string(v.signature);
-    irep_idt identifier=id2string(method_identifier)+"::"+id2string(v.name);
+    std::ostringstream id_oss;
+    id_oss << method_identifier << "::" << v.start_pc << "::" << v.name;
+    irep_idt identifier(id_oss.str());
     symbol_exprt result(identifier, t);
     result.set(ID_C_base_name, v.name);
     size_t number_index_entries = variables[v.index].size();
@@ -346,7 +347,7 @@ void java_bytecode_convert_methodt::convert(
       {
         const typet &type=parameters[i].type();
         char suffix=java_char_from_type(type);
-        base_name="arg"+i2string(param_index)+suffix;
+        base_name="arg"+std::to_string(param_index)+suffix;
         identifier=id2string(method_identifier)+"::"+id2string(base_name);
       }
 
@@ -1525,7 +1526,7 @@ codet java_bytecode_convert_methodt::convert_instructions(
     const codet &c=it.second.code;
 
     if(targets.find(address)!=targets.end())
-      code.add(code_labelt(label(i2string(address)), c));
+      code.add(code_labelt(label(std::to_string(address)), c));
     else if(c.get_statement()!=ID_skip)
       code.add(c);
   }

@@ -752,6 +752,7 @@ bool goto_symex_statet::l2_thread_read_encoding(
 
     set_ssa_indices(ssa_l1, ns, L2);
     expr=ssa_l1;
+
     a_s_read.second.push_back(guard);
     if(!no_write.op().is_false())
       a_s_read.second.back().add(no_write);
@@ -821,7 +822,7 @@ bool goto_symex_statet::l2_thread_write_encoding(
         source);
   else
       printf(";; Warning: shared write not recorded\n");
-  
+
   // do we have threads?
   return threads.size()>1;
 }

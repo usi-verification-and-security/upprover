@@ -40,10 +40,7 @@ Function: ansi_c_languaget::extensions
 
 std::set<std::string> ansi_c_languaget::extensions() const
 {
-  std::set<std::string> s;
-  s.insert("c");
-  s.insert("i");
-  return s;
+  return { "c", "i" };
 }
 
 /*******************************************************************\
@@ -169,8 +166,14 @@ bool ansi_c_languaget::typecheck(
 {
   symbol_tablet new_symbol_table;
 
-  if(ansi_c_typecheck(parse_tree, new_symbol_table, module, get_message_handler()))
+  if(ansi_c_typecheck(
+    parse_tree,
+    new_symbol_table,
+    module,
+    get_message_handler()))
+  {
     return true;
+  }
 
   remove_internal_symbols(new_symbol_table);
 

@@ -11,7 +11,6 @@
 
 #include <time_stopping.h>
 #include <expr_util.h>
-#include <i2string.h>
 #include <goto-symex/goto_symex_state.h>
 #include <pointer-analysis/add_failed_symbols.h>
 //#include <util/rename.h> // KE: we should do rename with it, but I didn't find how yet...
@@ -1067,7 +1066,7 @@ void symex_assertion_sumt::handle_function_call(
     if(function_call.lhs().is_not_nil())
     {
       exprt rhs = exprt("nondet_symbol", function_call.lhs().type());
-      rhs.set(ID_identifier, "symex::" + i2string(nondet_count++));
+      rhs.set(ID_identifier, "symex::" + std::to_string(nondet_count++));
       
       // KE: I think that's how it is done now - from expr.h
       //rhs.source_location() = function_call.source_location();
@@ -1387,7 +1386,7 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
     state.propagation.remove(identifier);
 
     // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
-    irep_idt new_l2_name = id2string(identifier) + "#" + i2string(state.level2.current_count(identifier));
+    irep_idt new_l2_name = id2string(identifier) + "#" + std::to_string(state.level2.current_count(identifier));
     
     return new_l2_name;
 }
@@ -1399,7 +1398,7 @@ irep_idt symex_assertion_sumt::get_current_l2_name(statet &state, const irep_idt
     if (id2string(identifier).find("#") != std::string::npos)
         return identifier;
     
-    return id2string(identifier)+"#"+i2string(state.level2.current_count(identifier));
+    return id2string(identifier)+"#"+std::to_string(state.level2.current_count(identifier));
 }
 
 /*******************************************************************
@@ -1475,12 +1474,12 @@ void symex_assertion_sumt::phi_function(
   statet &dest_state)
 {
   // go over all variables to see what changed
-  hash_set_cont<ssa_exprt, irep_hash> variables;
+  std::unordered_set<ssa_exprt, irep_hash> variables;
 
   goto_state.level2_get_variables(variables);
   dest_state.level2.get_variables(variables);
 
-  for(hash_set_cont<ssa_exprt, irep_hash>::const_iterator
+  for(std::unordered_set<ssa_exprt, irep_hash>::const_iterator
       it=variables.begin();
       it!=variables.end();
       it++)
@@ -1514,7 +1513,7 @@ void symex_assertion_sumt::phi_function(
     // only later be removed from level2.current_names by pop_frame
     // once the thread is executed)
     if(!it->get_level_0().empty() &&
-       it->get_level_0()!=i2string(dest_state.source.thread_nr))
+       it->get_level_0()!=std::to_string(dest_state.source.thread_nr))
       continue;
 
     exprt goto_state_rhs=*it, dest_state_rhs=*it;

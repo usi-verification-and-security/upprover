@@ -6,7 +6,6 @@
  Author: Ondrej Sery
 
 \*******************************************************************/
-#include <i2string.h>
 #include "summarizing_checker.h"
 #include "partitioning_slice.h"
 #include "dependency_checker.h"
@@ -126,7 +125,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
         dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-order")).do_it();
         // TODO: employ dependency information from dependency checker
         //partitioning_slice(equation, summarization_context.get_summary_store());
-        status() << (std::string("Ignored SSA steps after dependency checker: ") + i2string(equation.count_ignored_SSA_steps()));
+        status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps()));
       }
 
       end = prop.assertion_holds(assertion, ns, *(dynamic_cast<prop_conv_solvert *> (decider.get())), *(interpolator.get())); // KE: strange conversion after shift to cbmc 5.5 - I think the bv_pointerst is changed

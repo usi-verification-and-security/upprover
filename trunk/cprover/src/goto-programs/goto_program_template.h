@@ -248,6 +248,19 @@ public:
   //! The list of instructions in the goto program
   instructionst instructions;
 
+  // Convert a const_targett to a targett - use with care and avoid
+  // whenever possible
+  targett const_cast_target(const_targett t)
+  {
+    return instructions.erase(t, t);
+  }
+
+  // Dummy for templates with possible const contexts
+  const_targett const_cast_target(const_targett t) const
+  {
+    return t;
+  }
+
   void get_successors(
     targett target,
     targetst &successors);
@@ -403,7 +416,7 @@ public:
   inline static irep_idt loop_id(const_targett target)
   {
     return id2string(target->function)+"."+
-           i2string(target->loop_number);
+           std::to_string(target->loop_number);
   }
 
   //! Is the program empty?

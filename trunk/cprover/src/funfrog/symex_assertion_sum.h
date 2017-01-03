@@ -102,7 +102,7 @@ private:
   void end_symex(statet &state);
 
   // Mapping from summary_info to the corresponding partition_iface
-  typedef hash_map_cont<const summary_infot*,partition_iface_ptrst> partition_iface_mapt;
+  typedef std::unordered_map<const summary_infot*,partition_iface_ptrst> partition_iface_mapt;
   partition_iface_mapt partition_iface_map;
 
   class deferred_functiont {

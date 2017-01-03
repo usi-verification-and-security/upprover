@@ -7,7 +7,6 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
-#include <hash_cont.h>
 #include <std_expr.h>
 
 #include "partitioning_slice.h"
