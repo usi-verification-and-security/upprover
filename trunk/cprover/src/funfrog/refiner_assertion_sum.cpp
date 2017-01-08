@@ -26,7 +26,11 @@
 
 \*******************************************************************/
 
+<<<<<<< HEAD
 void refiner_assertion_sumt::refine(const prop_conv_solvert &decider, summary_infot& summary)
+=======
+void refiner_assertion_sumt::refine(const smtcheck_opensmt2t &decider, summary_infot& summary)
+>>>>>>> origin/dev
 {
   refined_functions.clear();
   switch (mode){
@@ -93,7 +97,11 @@ void refiner_assertion_sumt::reset_random(summary_infot& summary)
                                        // there are more chances that the reason of SAT was in 2weak summaries
 }
 
+<<<<<<< HEAD
 void refiner_assertion_sumt::reset_depend(const prop_conv_solvert &decider, summary_infot& summary)
+=======
+void refiner_assertion_sumt::reset_depend(const smtcheck_opensmt2t &decider, summary_infot& summary)
+>>>>>>> origin/dev
 {
   std::vector<summary_infot*> tmp;
 
@@ -111,7 +119,11 @@ void refiner_assertion_sumt::reset_depend(const prop_conv_solvert &decider, summ
 #       endif
         tmp.push_back(&ipart.summary_info);
       }*/
+<<<<<<< HEAD
       if (decider.l_get(ipart.callstart_literal).is_true()){ // in the variant will do prop.lget
+=======
+      if (decider.is_assignemt_true(ipart.callstart_literal)){
+>>>>>>> origin/dev
 #       ifdef DEBUG_REFINER
         std::cout<< "    -- callstart literal is true" << std::endl;
 #       endif

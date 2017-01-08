@@ -4,7 +4,12 @@ SHARED_SRC := \
       expr_pretty_print.cpp \
       function_info.cpp \
       summary_store.cpp \
+      smt_summary_store \
+      prop_summary_store \
       solvers/satcheck_opensmt2.cpp \
+      solvers/smtcheck_opensmt2.cpp \
+      solvers/smtcheck_opensmt2_lra.cpp \
+      solvers/smt_itp.cpp \
       solvers/prop_itp.cpp
 
 FUNFROG_SRC := \

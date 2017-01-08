@@ -132,6 +132,8 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
         get_symbols(it->second->guard, depends);
         get_symbols(it->second->cond_expr, depends);
         it->second->ignore = false;
+
+
       }
     }
     
@@ -166,8 +168,11 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
                 partition_iface.argument_symbols.begin();
                 it2 != partition_iface.argument_symbols.end();
                 ++it2, ++idx) {
-          if (summary.get_symbol_mask()[idx])
-            get_symbols(*it2, depends);
+            // SAT checks idx, SMT checks it2
+            if(summary.usesVar(*it2,idx))
+            {
+                get_symbols(*it2, depends);
+            }
         }
       }
       partition.ignore = false;
@@ -281,6 +286,7 @@ void partitioning_slicet::prepare_assignment(
   assert(SSA_step.ssa_lhs.id() == ID_symbol);
 
   const irep_idt &id = SSA_step.ssa_lhs.get(ID_identifier);
+  const irep_idt &id2 = SSA_step.ssa_rhs.get(ID_identifier);
   def_map.insert(def_mapt::value_type(id, &SSA_step));
 }
 
@@ -436,7 +442,8 @@ void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store,
             partition_iface.argument_symbols.begin();
             it2 != partition_iface.argument_symbols.end();
             ++it2, ++idx) {
-      if (summary.get_symbol_mask()[idx])
+      // SAT checks idx, SMT checks it2
+      if(summary.usesVar(*it2,idx)) // Only SAT uses it
         get_symbols(*it2, depends);
     }
     // Output argument symbols
@@ -444,12 +451,14 @@ void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store,
             partition_iface.out_arg_symbols.begin();
             it2 != partition_iface.out_arg_symbols.end();
             ++it2, ++idx) {
-      if (summary.get_symbol_mask()[idx])
+      // SAT checks idx, SMT checks it2
+      if(summary.usesVar(*it2,idx)) // Only SAT uses it
         get_symbols(*it2, depends);
     }
     // Return value symbol
     if (partition_iface.returns_value) {
-      if (summary.get_symbol_mask()[idx])
+      // SAT checks idx, SMT checks it2
+      if(summary.usesVar(*it2,idx)) // Only SAT uses it
         get_symbols(partition_iface.retval_symbol, depends);
     }
   }

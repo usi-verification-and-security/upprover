@@ -11,9 +11,14 @@ Author: Ondrej Sery
 
 #include <ostream>
 #include <unordered_set>
-#include "solvers/prop_itp.h"
+#include <map>
+#include "solvers/itp.h"
+#include "solvers/smtcheck_opensmt2.h"
+#include "solvers/satcheck_opensmt2.h"
 
-typedef prop_itpt summaryt;
+typedef itpt summaryt;
+typedef prop_itpt prop_summaryt;
+typedef smt_itpt smt_summaryt;
 typedef long unsigned summary_idt;
 typedef std::vector<summary_idt> summary_idst;
 typedef std::unordered_set<summary_idt> summary_ids_sett;
@@ -21,14 +26,15 @@ class summary_infot;
 class function_infot;
 typedef std::unordered_map<irep_idt, function_infot, irep_id_hash> function_infost;
 
+/*KE: Abstract class, has implementation as either prop_summary_storet or smt_summary_storet */
 class summary_storet
 {
 public:
   summary_storet() : max_id (0), repr_count(0) {}
 
   // Serialization
-  void serialize(std::ostream& out) const;
-  void deserialize(std::istream& in);
+  virtual void serialize(std::ostream& out) const=0;
+  virtual void deserialize(const std::string& in, smtcheck_opensmt2t *decider = NULL)=0;
 
   // Compacts the store representation, only representatives are kept.
   void compact_store(summary_infot& summary_info, 
@@ -42,18 +48,26 @@ public:
   summary_idt insert_summary(summaryt& summary);
   // Finds the representative of the given summary
   summaryt& find_summary(summary_idt new_id);
+  unsigned n_of_summaries() { return store.size(); }
+  int get_max_id(const string& fname) const;
   
   // Reset the summary store
   void clear() { store.clear(); max_id = 0; repr_count = 0; }
 
-private:
+protected: 
+  virtual void deserialize(std::istream& in)=0;
 
   // Union find node
   struct nodet {
     // Note that the given summary is destroyed
     nodet(summary_idt id, summaryt& _summary) : repr_id(id) {
-      summary = new summaryt();
-      summary->swap(_summary);
+        if (typeid(*summary) == typeid(prop_itpt))
+            summary = new prop_itpt();
+        else if (typeid(*summary) == typeid(smt_itpt))
+            summary = new smt_itpt();
+        else
+            assert(0); // missing type
+      summary->swap(_summary); 
     }
     
     nodet(summary_idt _repr_id) : summary(NULL), repr_id(_repr_id)  { }
@@ -89,6 +103,8 @@ private:
     summary_idt repr_id;
   };
   
+  std::map<string, int> max_ids;
+
   nodet& find_repr(summary_idt id);
   void mark_used_summaries(summary_infot& summary_info, bool *used_mask);
   void remap_used_summaries(summary_infot& summary_info, summary_idt *remap);

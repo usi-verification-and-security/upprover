@@ -216,9 +216,9 @@ Function: symex_assertion_sumt::process_planned
  
 bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
 {
-	// Proceed with symbolic execution
-	absolute_timet before, after;
-	before=current_time();
+  // Proceed with symbolic execution
+  absolute_timet before, after;
+  before=current_time();
 
   while (has_more_steps(state))
   {
@@ -234,16 +234,16 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
   if(remaining_vccs!=0 || force_check)
   {
     if (use_slicing) {
-      	before=current_time();
-      	status() << "All SSA steps: " << equation.SSA_steps.size() << eom;
-      	partitioning_slice(equation, summarization_context.get_summary_store());
-      	status() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
-      	after=current_time();
-      	status() << "SLICER TIME: " << (after-before) << eom;
+      before=current_time();
+      status() << "All SSA steps: " << equation.SSA_steps.size() << eom;
+      partitioning_slice(equation, summarization_context.get_summary_store());
+      status() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
+      after=current_time();
+      status() << "SLICER TIME: " << (after-before) << eom;
     }
   } else {
-	status() << "Assertion(s) hold trivially." << eom;
-      	return true;
+    status() << "Assertion(s) hold trivially." << eom;
+    return true;
   }
   return false;
 }
@@ -303,9 +303,24 @@ void symex_assertion_sumt::symex_step(
     break;
   
   case GOTO:
-    symex_goto(state);
-    break;
-    
+    {
+      bool store_expln;
+      string str;
+      if (do_guard_expl) {
+        store_expln = state.source.pc->guard.has_operands();
+        if (store_expln) {
+          try { str = from_expr(state.source.pc->guard.op0()); }
+          catch (const std::string &s) { str = ""; }
+        }
+      }
+
+      symex_goto(state); // Original code from Cprover follow with break
+
+      if (do_guard_expl &&store_expln && str != "")
+        guard_expln[state.guard.as_expr().get("identifier")] = str;
+
+      break;
+    }
   case ASSUME:
     if(!state.guard.is_false())
     {
@@ -866,9 +881,9 @@ void symex_assertion_sumt::return_assignment_and_mark(
     const typet& type = function_type.return_type();
     const irep_idt &function_id = partition_iface.function_id;
     irep_idt retval_symbol_id(
-            "funfrog::" + as_string(function_id) + "::\\return_value");
+            as_string(function_id) + "::?return_value");
     irep_idt retval_tmp_id(
-            "funfrog::" + as_string(function_id) + "::\\return_value_tmp");
+            as_string(function_id) + "::?return_value_tmp");
     
     // return_value_tmp - create new symbol
     add_symbol(retval_tmp_id, type, false);
@@ -901,7 +916,6 @@ void symex_assertion_sumt::return_assignment_and_mark(
     partition_iface.retval_tmp = retval_tmp;
     partition_iface.returns_value = true;
 }
-
 
 /*******************************************************************
 
@@ -1255,16 +1269,16 @@ void symex_assertion_sumt::produce_callsite_symbols(
         statet& state)
 {
 # ifdef DEBUG_PARTITIONING
-  irep_idt callstart_id = "funfrog::" + as_string(partition_iface.function_id) +
-          "::\\callstart_symbol";
-  irep_idt callend_id = "funfrog::" + as_string(partition_iface.function_id) +
-          "::\\callend_symbol";
-  irep_idt error_id = "funfrog::" + as_string(partition_iface.function_id) +
-          "::\\error_symbol";
+  irep_idt callstart_id = "hifrog::" + as_string(partition_iface.function_id) +
+          "::?callstart_symbol";
+  irep_idt callend_id = "hifrog::" + as_string(partition_iface.function_id) +
+          "::?callend_symbol";
+  irep_idt error_id = "hifrog::" + as_string(partition_iface.function_id) +
+          "::?error_symbol";
 # else
-  irep_idt callstart_id = "funfrog::\\callstart_symbol";
-  irep_idt callend_id = "funfrog::\\callend_symbol";
-  irep_idt error_id = "funfrog::\\error_symbol";
+  irep_idt callstart_id = "hifrog::?fun_start";
+  irep_idt callend_id = "hifrog::?fun_end";
+  irep_idt error_id = "hifrog::?err";
 # endif
 
   partition_iface.callstart_symbol.set_identifier(

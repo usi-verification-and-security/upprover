@@ -4,8 +4,6 @@ SHARED_SRC := \
       expr_pretty_print.cpp \
       function_info.cpp \
       summary_store.cpp \
-      solvers/satcheck_opensmt2.cpp \
-      solvers/prop_itp.cpp
       solvers/smtcheck_opensmt2.cpp \
       solvers/smtcheck_opensmt2_lra.cpp \
       solvers/smt_itp.cpp \
@@ -87,17 +85,19 @@ SRC := ${FUNFROG_SRC} ${SUMO_SRC} ${DIFF_SRC}
 
 include ../common
 
-CP_CXXFLAGS += -O3 -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING -g
+CUSTOM_FLAGS := -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DITP_DEBUG
+
+CP_CXXFLAGS += -O0 -std=c++11 $(CUSTOM_FLAGS) -g
 
 all: evolcheck$(EXEEXT) 
 
-INCLUDES :=  -I .. -I ../util -I/home/asadis/dev/opensmt/include
+INCLUDES :=  -I .. -I ../util -I/home/hyvaeria/opensmt2-install/include
 
 
 ###############################################################################
 
 evolcheck$(EXEEXT): $(FUNFROG_OBJ)
-	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline -O3 -std=c++11 -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -g -I/home/asadis/dev/opensmt/include -L/home/asadis/dev/opensmt/lib
+	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline -std=c++11 $(CUSTOM_FLAGS) -I/home/hyvaeria/opensmt2-install/include -L/home/hyvaeria/opensmt2-install/lib -O0
 
 sumo$(EXEEXT): $(SUMO_OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline

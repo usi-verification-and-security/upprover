@@ -9,12 +9,12 @@
 #ifndef CPROVER_PROP_ASSERTION_SUM_H
 #define CPROVER_PROP_ASSERTION_SUM_H
 
-#include <solvers/flattening/sat_minimizer.h>
 #include <namespace.h>
 #include <ui_message.h>
 #include <time_stopping.h>
 #include <fstream>
 #include <util/threeval.h>
+#include "solvers/smtcheck_opensmt2.h"
 
 #include "assertion_info.h"
 #include "summarization_context.h"
@@ -41,11 +41,19 @@ public:
           max_memory_used(_max_memory_used)
           {set_message_handler(_message_handler);};
 
+<<<<<<< HEAD
   bool assertion_holds(const assertion_infot &assertion, const namespacet &ns, prop_conv_solvert& decider, interpolating_solvert& interpolator);
 
   const fine_timet& get_solving_time() { return solving_time; };
 
   void error_trace(const prop_conv_solvert &prop_conv, const namespacet &ns);
+=======
+  bool assertion_holds(const assertion_infot &assertion, const namespacet &ns, smtcheck_opensmt2t& decider, interpolating_solvert& interpolator);
+
+  const fine_timet& get_solving_time() { return solving_time; };
+
+  void error_trace(smtcheck_opensmt2t& decider, const namespacet &ns, std::map<irep_idt, std::string>& guard_expln);
+>>>>>>> origin/dev
 
 private:
   // Summarizing context (summary_store needed)
@@ -62,7 +70,7 @@ private:
 
   unsigned long &max_memory_used;
 
-  bool is_satisfiable(decision_proceduret &decision_procedure);
+  bool is_satisfiable(smtcheck_opensmt2t& decider);
 
 };
 #endif

@@ -18,8 +18,6 @@
 #include "prop_assertion_sum.h"
 #include "refiner_assertion_sum.h"
 
-#include "solvers/satcheck_opensmt2.h"
-
 class summarizing_checkert:public messaget
 {
 public:
@@ -44,15 +42,21 @@ public:
       message_handler (_message_handler),
       max_memory_used(_max_memory_used),
       omega(summarization_context, goto_program)
-  {set_message_handler(_message_handler);};
+  {
+    set_message_handler(_message_handler);
+  };
 
   void initialize();
+  void initialize_solver();
   bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
+  bool assertion_holds_prop(const assertion_infot& assertion, bool store_summaries_with_assertion);
+  bool assertion_holds_smt(const assertion_infot& assertion, bool store_summaries_with_assertion);
   void serialize(){
     omega.serialize(options.get_option("save-omega"));
   };
 
+    void list_templates(prop_assertion_sumt &prop, partitioning_target_equationt &equation);
 protected:
 
   const goto_programt &goto_program;
@@ -62,18 +66,18 @@ protected:
   summarization_contextt summarization_context;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
-  std::auto_ptr<prop_conv_solvert> decider;
-  std::auto_ptr<interpolating_solvert> interpolator;
-
-  satcheck_opensmt2t* opensmt;
-
+  check_opensmt2t* decider; // Can be Prop, LRA or UF solver!!
   subst_scenariot omega;
   init_modet init;
   
   void setup_unwind(symex_assertion_sumt& symex);
-  void extract_interpolants (prop_assertion_sumt& prop, partitioning_target_equationt& equation);
+  void extract_interpolants_smt (prop_assertion_sumt& prop, partitioning_target_equationt& equation);
+  void extract_interpolants_prop (prop_assertion_sumt& prop, partitioning_target_equationt& equation,
+            std::auto_ptr<prop_conv_solvert> decider_prop, std::auto_ptr<interpolating_solvert> interpolator);
   void report_success();
   void report_failure();
+  void assertion_violated(prop_assertion_sumt& prop,
+		  std::map<irep_idt, std::string> &guard_expln);
 };
 
 init_modet get_init_mode(const std::string& str);

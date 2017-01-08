@@ -66,10 +66,6 @@ public:
 	  first_call_expr = 0; // Not here to do the delete
   }
 
-  // Convert all the SSA steps into the corresponding formulas in
-  // the corresponding partitions
-  void convert(prop_conv_solvert &prop_conv, interpolating_solvert &interpolator);
-
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
   partition_idt reserve_partition(partition_ifacet& partition_iface)
@@ -173,11 +169,6 @@ public:
   // processing and conversion
   void prepare_partitions();
 
-  // Extract interpolants corresponding to the created partitions
-  void extract_interpolants(
-    interpolating_solvert& interpolator, const prop_conv_solvert& decider,
-    interpolant_mapt& interpolant_map);
-
   // Returns SSA steps ordered in the order of program execution (i.e., as they
   // would be normally ordered in symex_target_equation).
   const SSA_steps_orderingt& get_steps_exec_order() {
@@ -242,28 +233,6 @@ private:
   bool isFirstCallExpr(const exprt& expr);
   void getFirstCallExpr();
 
-  // Convert a specific partition of SSA steps
-  void convert_partition(prop_conv_solvert &prop_conv_solvert,
-    interpolating_solvert &interpolator, partitiont& partition);
-  // Convert a specific partition guards of SSA steps
-  void convert_partition_guards(prop_conv_solvert &prop_conv,
-    partitiont& partition);
-  // Convert a specific partition assignments of SSA steps
-  void convert_partition_assignments(prop_conv_solvert &prop_conv,
-    partitiont& partition);
-  // Convert a specific partition assumptions of SSA steps
-  void convert_partition_assumptions(prop_conv_solvert &prop_conv,
-    partitiont& partition);
-  // Convert a specific partition assertions of SSA steps
-  void convert_partition_assertions(prop_conv_solvert &prop_conv,
-    partitiont& partition);
-  // Convert a specific partition io of SSA steps
-  void convert_partition_io(prop_conv_solvert &prop_conv,
-    partitiont& partition);
-  // Convert a summary partition (i.e., assert its summary)
-  void convert_partition_summary(prop_conv_solvert &prop_conv,
-    partitiont& partition);
-
   unsigned count_partition_assertions(partitiont& partition) const
   {
     unsigned i=0;
@@ -303,7 +272,7 @@ private:
   }
 
   // Fill in ids of all the child partitions
-  void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
+  virtual void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
 
   // Fills in the SSA_steps_exec_order holding pointers to SSA steps ordered
   // in the order of program execution (i.e., as they would be normally
@@ -314,7 +283,7 @@ private:
   // If the given SSA step is a callend assumption, the corresponding target
   // partition is returned. If not, NULL is returned.
   const partitiont* find_target_partition(const SSA_stept& step);
-
+  
   // Collection of all the partitions
   partitionst partitions;
 
@@ -339,6 +308,9 @@ private:
   std::vector<unsigned>& clauses;
 
   friend class partitioning_slicet;
+  
+protected:
+    virtual bool is_smt_encoding()=0; // KE: Temp. Just to force virtual for compilation
 };
 
 #endif

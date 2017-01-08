@@ -6,30 +6,27 @@ Author: Grigory Fedyukovich
 
 \*******************************************************************/
 
-#ifndef CPROVER_SATCHECK_PERIPLO_H
-#define CPROVER_SATCHECK_PERIPLO_H
+#ifndef CPROVER_SATCHECK_OPENSMT2_H
+#define CPROVER_SATCHECK_OPENSMT2_H
 
 #include <vector>
 
 #include <solvers/sat/cnf.h>
 #include <util/threeval.h>
+#include "check_opensmt2.h"
 #include "interpolating_solver.h"
+#include "prop_itp.h"
 #include <opensmt/opensmt2.h>
 
 // Cache of already visited interpolant ptrefs
 typedef std::map<PTRef, literalt> ptref_cachet;
 
-class satcheck_opensmt2t:public cnf_solvert, public interpolating_solvert
+class satcheck_opensmt2t:public cnf_solvert, public interpolating_solvert, public check_opensmt2t
 {
 public:
   satcheck_opensmt2t() :
-      osmt  (NULL),
-      logic (NULL),
-      mainSolver (NULL),
-      dump_queries(false),
-      partition_count(0),
-      itp_algorithm(1),
-      current_partition(0)
+      itp_algorithm(2),
+      check_opensmt2t() // Is last always!
   {
     initializeSolver();
   }
@@ -37,6 +34,9 @@ public:
   virtual ~satcheck_opensmt2t() {
     freeSolver();
   }
+
+  virtual prop_conv_solvert* get_prop_conv_solver() {return prop_conv_interface;}
+  void set_prop_conv_solver(prop_conv_solvert* _prop) { prop_conv_interface = _prop;}
 
   virtual resultt prop_solve();
   virtual tvt l_get(literalt a) const;
@@ -77,18 +77,11 @@ public:
   const char* true_str = "true";
 
 protected:
-
-  Opensmt* osmt;
-  Logic* logic;
-  MainSolver* mainSolver;
+  // Use in the convert from SSA -> SMT-prop encoding
+  prop_conv_solvert* prop_conv_interface;
 
   // Solver verbosity
   unsigned solver_verbosity;
-  // Dump all queries?
-  bool dump_queries;
-  // Count of the created partitions (the last one is open until a call to
-  // prop_solve occurs)
-  unsigned partition_count;
   // Mapping from variable indices to their E-nodes in PeRIPLO
   std::string id_str;
   // Can we interpolate?
@@ -100,14 +93,12 @@ protected:
 
   int reduction_graph;
 
-  // 0 - Pudlak, 1 - McMillan, 2 - McMillan'
+  // 0 - McMillan, 1 - Pudlak, 2 - McMillan'
   int itp_algorithm;
+  //SMTConfig::ItpAlgorithm itp_algorithm;
 
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
   int proof_trans;
-
-//  List of clauses that are part of this partition (a.k.a. assert in smt2lib)
-  vec<PTRef>* current_partition;
 
 //  Mapping from variable indices to their PTRefs in OpenSMT
   std::vector<PTRef> ptrefs;
@@ -121,10 +112,10 @@ protected:
   void setup_proof_transformation();
   
   // Initialize the OpenSMT context
-  void initializeSolver();
+  virtual void initializeSolver();
 
   // Free all resources related to PeRIPLO
-  void freeSolver();
+  virtual void freeSolver();
   void produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants);
 
   void add_variables();

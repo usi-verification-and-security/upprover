@@ -1,21 +1,37 @@
-/*******************************************************************\
-
-Module: Propositional interpolant.  Based on code of cnft.
-
-Author: Ondrej Sery
-
-\*******************************************************************/
+#include <algorithm>
 #include <limits.h>
 #include <string.h>
-#include "prop_itp.h"
+#include "smt_itp.h"
 #include <stdlib.h>
 #include <iostream>
+#include "smtcheck_opensmt2.h"
 
 //#define DEBUG_ITP
 
+bool
+smt_itpt::usesVar(symbol_exprt& symb, unsigned idx)
+{
+    assert(tterm != NULL && logic != NULL);
+
+    string _var_name = id2string(symb.get_identifier());
+    string var_name = smtcheck_opensmt2t::remove_invalid(_var_name);
+    var_name = smtcheck_opensmt2t::remove_index(var_name);
+    var_name = smtcheck_opensmt2t::quote_varname(var_name);
+    const vec<PTRef>& args = tterm->getArgs();
+    for(int i = 0; i < args.size(); ++i)
+    {
+        string pname = logic->getSymName(args[i]);
+        pname = smtcheck_opensmt2t::remove_index(pname);
+        pname = smtcheck_opensmt2t::quote_varname(pname);
+        if(pname == var_name) return true;
+    }
+    return false;
+}
+
+
 /*******************************************************************\
 
-Function: prop_itpt::gate_and
+Function: smt_itpt::gate_and
 
   Inputs:
 
@@ -25,7 +41,7 @@ Function: prop_itpt::gate_and
 
 \*******************************************************************/
 
-void prop_itpt::gate_and(literalt a, literalt b, literalt o)
+void smt_itpt::gate_and(literalt a, literalt b, literalt o)
 {
   // a*b=c <==> (a + o')( b + o')(a'+b'+o)
   bvt lits;
@@ -52,7 +68,7 @@ void prop_itpt::gate_and(literalt a, literalt b, literalt o)
 
 /*******************************************************************\
 
-Function: prop_itpt::gate_or
+Function: smt_itpt::gate_or
 
   Inputs:
 
@@ -62,7 +78,7 @@ Function: prop_itpt::gate_or
 
 \*******************************************************************/
 
-void prop_itpt::gate_or(literalt a, literalt b, literalt o)
+void smt_itpt::gate_or(literalt a, literalt b, literalt o)
 {
   // a+b=c <==> (a' + c)( b' + c)(a + b + c')
   bvt lits;
@@ -89,7 +105,7 @@ void prop_itpt::gate_or(literalt a, literalt b, literalt o)
 
 /*******************************************************************\
 
-Function: prop_itpt::land
+Function: smt_itpt::land
 
   Inputs:
 
@@ -99,7 +115,7 @@ Function: prop_itpt::land
 
 \*******************************************************************/
 
-literalt prop_itpt::land(literalt a, literalt b)
+literalt smt_itpt::land(literalt a, literalt b)
 {
   if(a==const_literal(true)) return b;
   if(b==const_literal(true)) return a;
@@ -124,7 +140,7 @@ Function: cnft::lor
 
 \*******************************************************************/
 
-literalt prop_itpt::lor(literalt a, literalt b)
+literalt smt_itpt::lor(literalt a, literalt b)
 {
   if(a==const_literal(false)) return b;
   if(b==const_literal(false)) return a;
@@ -139,7 +155,7 @@ literalt prop_itpt::lor(literalt a, literalt b)
 
 /*******************************************************************\
 
-Function: prop_itpt::lnot
+Function: smt_itpt::lnot
 
   Inputs:
 
@@ -149,7 +165,7 @@ Function: prop_itpt::lnot
 
 \*******************************************************************/
 
-literalt prop_itpt::lnot(literalt a)
+literalt smt_itpt::lnot(literalt a)
 {
   a.invert();
   return a;
@@ -157,7 +173,7 @@ literalt prop_itpt::lnot(literalt a)
 
 /*******************************************************************\
 
-Function: prop_itpt::generalize
+Function: smt_itpt::generalize
 
   Inputs:
 
@@ -169,7 +185,7 @@ Function: prop_itpt::generalize
 
 \*******************************************************************/
 
-void prop_itpt::generalize(const prop_conv_solvert& decider,
+void smt_itpt::generalize(const prop_convt& decider,
     const std::vector<symbol_exprt>& symbols)
 {
   symbol_mask.clear();
@@ -406,7 +422,7 @@ void prop_itpt::generalize(const prop_conv_solvert& decider,
 
 /*******************************************************************\
 
-Function: prop_itpt::substitute
+Function: smt_itpt::substitute
 
   Inputs:
 
@@ -418,12 +434,72 @@ Function: prop_itpt::substitute
 
 \*******************************************************************/
 
-void prop_itpt::substitute(prop_conv_solvert& decider,
+void smt_itpt::substitute(smtcheck_opensmt2t& decider,
     const std::vector<symbol_exprt>& symbols,
     bool inverted) const
 {
-  assert(!is_trivial());
+    assert(!is_trivial());
+    assert(tterm && logic);
+    const vec<PTRef>& args = tterm->getArgs();
+    Map<PTRef, PtAsgn, PTRefHash> subst;
 
+    map<string, int[3]> occurrences;
+    for(int i = 0; i < symbols.size(); ++i)
+    {
+        string fixed_str = id2string(symbols[i].get_identifier());
+        string unidx = smtcheck_opensmt2t::remove_index(fixed_str);
+        if(occurrences.find(unidx) == occurrences.end())
+        {
+            occurrences[unidx][0] = 1;
+            occurrences[unidx][1] = smtcheck_opensmt2t::get_index(fixed_str);
+        }
+        else
+        {
+            ++occurrences[unidx][0];
+            assert(occurrences[unidx][0] == 2);
+            int new_idx = smtcheck_opensmt2t::get_index(fixed_str);
+            int old_idx = occurrences[unidx][1];
+            if(new_idx < old_idx) std::swap(new_idx, old_idx);
+            occurrences[unidx][1] = old_idx;
+            occurrences[unidx][2] = new_idx;
+        }
+
+    }
+
+    for(int i = 0; i < symbols.size(); ++i)
+    {
+        string fixed_str = id2string(symbols[i].get_identifier());
+        string unidx = smtcheck_opensmt2t::remove_index(fixed_str);
+        string quoted_unidx = smtcheck_opensmt2t::quote_varname(unidx);
+        int idx = smtcheck_opensmt2t::get_index(fixed_str);
+        for(int j = 0; j < args.size(); ++j)
+        {
+            string aname = string(logic->getSymName(args[j]));
+            string unidx_aname = smtcheck_opensmt2t::remove_index(aname);
+            string quoted_unidx_aname = smtcheck_opensmt2t::quote_varname(unidx_aname);
+            if(quoted_unidx == quoted_unidx_aname)
+            {
+                if( (occurrences[unidx][0] == 1) ||
+                        (idx == occurrences[unidx][1] && aname.find("#in") != string::npos) ||
+                     (idx == occurrences[unidx][2] && aname.find("#out") != string::npos)
+                  )
+                {
+                    //cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << fixed_str << endl;
+                    //literalt l = decider.convert(symbols[i]);
+                    //PTRef tmp = decider.literal2ptref(l);
+        	        PTRef tmp = decider.convert_symbol(symbols[i]);
+                    subst.insert(args[j], PtAsgn(tmp, l_True));
+                }
+            }
+        }
+    }
+    PTRef part_sum;
+    PTRef templ = tterm->getBody();
+    logic->varsubstitute(templ, subst, part_sum);
+    decider.set_to_true(part_sum);
+    //cout << "; Template instantiated for function " << tterm->getName() << " is\n" << logic->printTerm(part_sum) << endl;
+
+  /*
   // FIXME: Dirty cast.
   boolbv_mapt& map = const_cast<boolbv_mapt&>(dynamic_cast<boolbvt&>(decider).get_map());
   literalt* renaming = new literalt[_no_variables];
@@ -512,12 +588,13 @@ void prop_itpt::substitute(prop_conv_solvert& decider,
   decider.prop.l_set_to_true(new_root_literal);
 
   delete [] renaming;
+  */
 }
 
 
 /*******************************************************************\
 
-Function: prop_itpt::raw_assert
+Function: smt_itpt::raw_assert
 
   Inputs:
 
@@ -530,7 +607,7 @@ Function: prop_itpt::raw_assert
 
 \*******************************************************************/
 
-literalt prop_itpt::raw_assert(propt& prop_decider) const
+literalt smt_itpt::raw_assert(propt& prop_decider) const
 {
   assert(!is_trivial());
 
@@ -596,7 +673,7 @@ literalt prop_itpt::raw_assert(propt& prop_decider) const
 
 /*******************************************************************\
 
-Function: prop_itpt::reserve_variables
+Function: smt_itpt::reserve_variables
 
   Inputs:
 
@@ -607,7 +684,7 @@ Function: prop_itpt::reserve_variables
 
 \*******************************************************************/
 
-void prop_itpt::reserve_variables(prop_conv_solvert& decider,
+void smt_itpt::reserve_variables(prop_convt& decider,
     const std::vector<symbol_exprt>& symbols, std::map<symbol_exprt, std::vector<unsigned> >& symbol_vars)
 {
   // FIXME: Dirty cast.
@@ -644,7 +721,7 @@ void prop_itpt::reserve_variables(prop_conv_solvert& decider,
 
 /*******************************************************************\
 
-Function: prop_itpt::print
+Function: smt_itpt::print
 
   Inputs:
 
@@ -654,7 +731,7 @@ Function: prop_itpt::print
 
 \*******************************************************************/
 
-void prop_itpt::print(std::ostream& out) const
+void smt_itpt::print(std::ostream& out) const
 {
   if (is_trivial()) {
     out << "Prop. interpolant: trivial" << std::endl;
@@ -662,19 +739,13 @@ void prop_itpt::print(std::ostream& out) const
     out << "Prop. interpolant (#v: " << _no_variables << ", #c: " << clauses.size() <<
             ",root: " << root_literal.dimacs() << "):" << std::endl;
 
-#   ifdef DEBUG_ITP
-    for (clausest::const_iterator it = clauses.begin();
-            it != clauses.end(); ++it) {
-      print_clause(out, *it);
-      out << std::endl;
-    }
-#   endif
+// KE: Old code with bv only, need to be re-write for SMT
   }
 }
 
 /*******************************************************************\
 
-Function: prop_itpt::print
+Function: smt_itpt::serialize
 
   Inputs:
 
@@ -684,29 +755,12 @@ Function: prop_itpt::print
 
 \*******************************************************************/
 
-void prop_itpt::print_clause(std::ostream& out, const bvt& clause) const {
-  for (bvt::const_iterator it2 = clause.begin();
-          it2 != clause.end(); ++it2) {
-    if (it2 != clause.begin())
-      out << " ";
-    out << it2->dimacs();
-  }
-}
-
-/*******************************************************************\
-
-Function: prop_itpt::serialize
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void prop_itpt::serialize(std::ostream& out) const
+void smt_itpt::serialize(std::ostream& out) const
 {
+    assert(logic && tterm);
+    logic->dumpFunction(out, *tterm);
+    return; 
+
   out << _no_orig_variables << " ";
   out << _no_variables << " ";
   out << root_literal.get() << " ";
@@ -736,7 +790,7 @@ void prop_itpt::serialize(std::ostream& out) const
 
 /*******************************************************************\
 
-Function: prop_itpt::deserialize
+Function: smt_itpt::deserialize
 
   Inputs:
 
@@ -746,7 +800,7 @@ Function: prop_itpt::deserialize
 
 \*******************************************************************/
 
-void prop_itpt::deserialize(std::istream& in)
+void smt_itpt::deserialize(std::istream& in)
 {
   unsigned raw_root;
   unsigned nclauses;

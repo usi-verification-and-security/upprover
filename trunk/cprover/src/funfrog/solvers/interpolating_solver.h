@@ -7,15 +7,13 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
-#ifndef CPROVER_INTERPOLATING_SOLVER_H
-#define CPROVER_INTERPOLATING_SOLVER_H
+#ifndef CPROVER_interpolating_solver_H
+#define CPROVER_interpolating_solver_H
 
 #include <set>
-
 #include <decision_procedure.h>
-
-#include "prop_itp.h"
-
+#include "itp.h"
+#include <opensmt/opensmt2.h>
 
 typedef int fle_part_idt;
 typedef std::vector<fle_part_idt> fle_part_idst;
@@ -38,6 +36,8 @@ public:
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants)=0;
+
+  virtual void adjust_function(interpolantt&, std::vector<symbol_exprt>&, std::string, bool substitute = true)=0;
 
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT

@@ -15,6 +15,7 @@
 #include "summary_info.h"
 #include "summarization_context.h"
 #include "partitioning_target_equation.h"
+#include "solvers/smtcheck_opensmt2.h"
 
 class refiner_assertion_sumt:public messaget
 {
@@ -25,7 +26,6 @@ public:
           partitioning_target_equationt &_target,
           refinement_modet _mode,
           message_handlert &_message_handler,
-          //std::ostream &_out,
           const unsigned _last_assertion_loc,
           bool _valid
           ) :
@@ -39,7 +39,11 @@ public:
           valid (_valid)
           {set_message_handler(_message_handler);};
 
+<<<<<<< HEAD
   void refine(const prop_conv_solvert &decider, summary_infot& summary);
+=======
+  void refine(const smtcheck_opensmt2t &decider, summary_infot& summary);
+>>>>>>> origin/dev
   std::list<summary_infot*>& get_refined_functions(){ return refined_functions; }
   void set_refine_mode(refinement_modet _mode){ mode = _mode; }
 
@@ -71,7 +75,11 @@ protected:
 
   void reset_inline(summary_infot& summary);
   void reset_random(summary_infot& summary);
+<<<<<<< HEAD
   void reset_depend(const prop_conv_solvert &decider, summary_infot& summary);
+=======
+  void reset_depend(const smtcheck_opensmt2t &decider, summary_infot& summary);
+>>>>>>> origin/dev
 
   // not in use now
   void reset_depend_rec(std::vector<summary_infot*>& dep, summary_infot& summary);

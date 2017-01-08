@@ -164,7 +164,7 @@ void check_claims(
 
   sum_checker.initialize();
 
-  if (options.get_bool_option("all-claims") || options.get_bool_option("claims-order")){
+  if (options.get_bool_option("all-claims") || options.get_bool_option("claims-opt")){
     sum_checker.assertion_holds(assertion_infot(), true);
   } else while(true) {
     // Next assertion (or next occurrence of the same assertion)
