@@ -199,7 +199,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 
     if (!end){
       if (options.get_bool_option("claims-opt") && count == 1){
-        dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_int_option("claims-opt")).do_it();
+        prop_dependency_checkert(ns, message_handler, goto_program, omega, options.get_int_option("claims-opt")).do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps()));
       }
 
@@ -332,7 +332,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 
     if (!end){
       if (options.get_bool_option("claims-opt") && count == 1){
-        dependency_checkert(ns, equation, message_handler, goto_program, omega, options.get_int_option("claims-opt")).do_it();
+        smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_int_option("claims-opt")).do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps()));
       }
 

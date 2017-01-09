@@ -9,8 +9,6 @@
 
 #include <base_type.h>
 #include <time_stopping.h>
-
-#include "partitioning_target_equation.h"
 #include "partitioning_slice.h"
 #include "subst_scenario.h"
 
@@ -22,12 +20,22 @@
 using namespace std;
 using namespace boost;
 
+#define INDEPT false
+#define DEPT true
+
+#define NOTIMP false
+#define IMP true
+
+#define VERBOSE false
+
+#define IMIN(i, j) ((int)(i)<(int)(j))?(int)(i):(int)(j)
+#define IMAX(i, j) ((int)(i)<(int)(j))?(int)(j):(int)(i)
+
 class dependency_checkert : public messaget
 {
 public:
     dependency_checkert(
           const namespacet &_ns,
-          partitioning_target_equationt &_target,
           ui_message_handlert &_message_handler,
           const goto_programt &_goto_program,
           subst_scenariot &_omega,
@@ -37,7 +45,6 @@ public:
           goto_program(_goto_program),
           ns(_ns),
           message_handler (_message_handler),
-          equation(_target),
           omega(_omega)
     {
           set_message_handler(_message_handler);
@@ -51,7 +58,7 @@ public:
           std::cout << "Assuming a timeout of " << (impl_timeout/1000) << "." << (impl_timeout%1000)/10 << " seconds." << std::endl;
     }
 
-  void do_it();
+  void do_it(partitioning_target_equationt &equation);
 
   typedef std::list<symex_target_equationt::SSA_stept*> SSA_stepst;
   typedef SSA_stepst::iterator SSA_step_reft;
@@ -63,7 +70,7 @@ public:
 
   void find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2);
   void find_assert_deps();
-  long find_implications();
+  virtual long find_implications()=0;
   void get_minimals();
 
   void print_SSA_steps_infos();
@@ -76,15 +83,13 @@ public:
   string variable_name(dstring name);
   void print_dependents(map<string,bool> dependents, ostream &out);
 
-  pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2);
+  virtual pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2)=0;
   bool compare_assertions(SSA_step_reft &a, SSA_step_reft &b);
 
-private:
+protected:
   const goto_programt &goto_program;
   const namespacet &ns;
   ui_message_handlert &message_handler;
-
-  partitioning_target_equationt &equation;
   subst_scenariot &omega;
 
   int last_label;
@@ -102,30 +107,8 @@ private:
   std::map<exprt, exprt> SSA_map;
   vector<string> equation_symbols;
   unsigned long impl_timeout;
-
-<<<<<<< HEAD
-  void deep_convert_guards(prop_conv_solvert &prop_conv, exprt exp);
-  void set_guards_to_true(prop_conv_solvert &prop_conv, exprt exp);
-
-  void convert_delta_SSA(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assignments(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assumptions(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assertions(prop_conv_solvert &prop_conv, SSA_step_reft &it2);
-  void convert_guards(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_io(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-=======
-  void deep_convert_guards(smtcheck_opensmt2t &decider, exprt exp);
-  void set_guards_to_true(smtcheck_opensmt2t &decider, exprt exp);
-
-  void convert_delta_SSA(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assignments(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assumptions(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assertions(smtcheck_opensmt2t &decider, SSA_step_reft &it2);
-  void convert_guards(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_io(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
->>>>>>> origin/dev
-
-  void reconstruct_exec_SSA_order();
+  
+  void reconstruct_exec_SSA_order(partitioning_target_equationt &equation);
 };
 
 extern inline bool operator<(
