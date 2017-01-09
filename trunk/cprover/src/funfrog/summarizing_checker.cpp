@@ -163,8 +163,8 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 
   setup_unwind(symex);
 
-  refiner_assertion_sumt refiner = refiner_assertion_sumt(
-              summarization_context, omega, equation,
+  prop_refiner_assertion_sumt refiner = refiner_assertion_sumt(
+              summarization_context, omega,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
 
@@ -304,8 +304,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 
   setup_unwind(symex);
 
-  refiner_assertion_sumt refiner = refiner_assertion_sumt(
-              summarization_context, omega, equation,
+  smt_refiner_assertion_sumt refiner = refiner_assertion_sumt(
+              summarization_context, omega,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
 
