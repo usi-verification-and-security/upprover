@@ -232,7 +232,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
             status() << "HAVOCING (of " << nondet_count
                    << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
           }
-          refiner.refine(*decider_prop, omega.get_summary_info());
+          refiner.refine(*decider_prop, omega.get_summary_info(), equation);
 
           if (refiner.get_refined_functions().size() == 0){
             prop.error_trace(*decider_prop, ns);
@@ -365,7 +365,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
             status() << "HAVOCING (of " << nondet_count
                    << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
           }
-          refiner.refine(*decider, omega.get_summary_info());
+          refiner.refine(*decider, omega.get_summary_info(), equation);
 
           if (refiner.get_refined_functions().size() == 0){
             assertion_violated(prop, symex.guard_expln);
