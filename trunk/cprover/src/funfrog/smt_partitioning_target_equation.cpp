@@ -20,7 +20,7 @@ smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &d
     {
         vector<symbol_exprt> common;
         fill_common_symbols(*it, common);
-        summaryt *sum = new summaryt();
+        smt_summaryt *sum = new smt_summaryt();
         string fun_name = id2string(it->get_iface().function_id);
         decider.adjust_function(*sum, common, fun_name, false);
         templates.push_back(sum);
@@ -186,7 +186,7 @@ void smt_partitioning_target_equationt::convert_partition_summary(
                     partition.applicable_summaries.begin(); it
                     != partition.applicable_summaries.end(); ++it) {
 
-        summaryt& summary = summary_store->find_summary(*it);
+        smt_summaryt& summary = dynamic_cast<smt_summaryt&> (summary_store->find_summary(*it));
 
         if (summary.is_valid() && (!is_recursive || last_summary == i++)) {
 #ifdef DEBUG_SSA
@@ -707,55 +707,25 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
 
 void smt_partitioning_target_equationt::convert_partition_io(
 		smtcheck_opensmt2t &decider, partitiont& partition) {
-	for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it)
-		if (!it->ignore) {
-			for (std::list<exprt>::const_iterator o_it = it->io_args.begin(); o_it
-					!= it->io_args.end(); ++o_it) {
-				exprt tmp = *o_it;
-				if (tmp.is_constant() || tmp.id() == ID_string_constant)
-					it->converted_io_args.push_back(tmp);
-				else {
-					symbol_exprt symbol;
-					symbol.type() = tmp.type();
-					symbol_exprt symbol(("symex::io::"+std::to_string(io_count_global++)), tmp.type());
+    for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it)
+        if (!it->ignore) {
+            for (std::list<exprt>::const_iterator o_it = it->io_args.begin(); o_it
+                            != it->io_args.end(); ++o_it) {
+                exprt tmp = *o_it;
+                if (tmp.is_constant() || tmp.id() == ID_string_constant)
+                    it->converted_io_args.push_back(tmp);
+                else {
+                    symbol_exprt symbol(("symex::io::"+std::to_string(io_count_global++)), tmp.type());
 
-#     	  ifdef DEBUG_SSA_SMT_CALL
-					expr_ssa_print_smt_dbg(
-							cout << "Before decider::set_to_true --> ",
-							equal_exprt(tmp, symbol), false);
-#	  	  endif
-					decider.set_to_true(equal_exprt(tmp, symbol));
-					it->converted_io_args.push_back(symbol);
-				}
-			}
-		}
-}
-
-/*******************************************************************
- Function: smt_partitioning_target_equationt::find_target_partition
-
- Inputs:
-
- Outputs:
-
- Purpose: Find partition corresponding to the function call. 
- If the given SSA step is a callend assumption, the corresponding target 
- partition is returned. If not, NULL is returned.
-
- \*******************************************************************/
-const partitiont* smt_partitioning_target_equationt::find_target_partition(
-		const SSA_stept& step) {
-	if (step.cond_expr.id() == ID_symbol || (step.cond_expr.id() == ID_implies
-			&& step.cond_expr.op1().id() == ID_symbol)) {
-		irep_idt id = step.cond_expr.id() == ID_symbol ? step.cond_expr.get(
-				ID_identifier) : step.cond_expr.op1().get(ID_identifier);
-		partition_mapt::iterator pit = partition_map.find(id);
-
-		if (pit != partition_map.end()) {
-			return &partitions[pit->second];
-		}
-	}
-	return NULL;
+#ifdef DEBUG_SSA_SMT_CALL
+                    expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true --> ",
+                        equal_exprt(tmp, symbol), false);
+#endif
+                    decider.set_to_true(equal_exprt(tmp, symbol));
+                    it->converted_io_args.push_back(symbol);
+                }
+            }
+        }
 }
 
 /*******************************************************************
@@ -834,7 +804,7 @@ void smt_partitioning_target_equationt::extract_interpolants(
                 || partition.get_iface().summary_info.is_recursion_nondet())
             continue;
 
-        smt_itpt *itp = itp_result[tid];
+        smt_itpt *itp = dynamic_cast <smt_itpt*> (itp_result[tid]);
 
         tid++;
 

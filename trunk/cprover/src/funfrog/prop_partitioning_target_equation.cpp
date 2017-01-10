@@ -200,7 +200,7 @@ void prop_partitioning_target_equationt::convert_partition_summary(
           it != partition.applicable_summaries.end();
           ++it) {
 
-    summaryt& summary = summary_store->find_summary(*it);
+    prop_summaryt& summary = dynamic_cast <prop_summaryt&> (summary_store->find_summary(*it));
 
     if (summary.is_valid() && (!is_recursive || last_summary == i++)){
 #   ifdef DEBUG_SSA
@@ -706,11 +706,11 @@ void prop_partitioning_target_equationt::extract_interpolants(
     )
       continue;
 
-    interpolantt& itp = itp_result[tid];
+    prop_itpt* itp = dynamic_cast <prop_itpt*> (itp_result[tid]);
 
     tid++;
 
-    if (itp.is_trivial()) {
+    if (itp->is_trivial()) {
       std::cout << "Interpolant for function: " <<
                 partition.get_iface().function_id.c_str() << " is trivial." << std::endl;
       continue;
@@ -735,14 +735,14 @@ void prop_partitioning_target_equationt::extract_interpolants(
     std::cout << "Generalizing interpolant" << std::endl;
 #   endif
 
-    itp.generalize(decider, common_symbs);
+    itp->generalize(decider, common_symbs);
 
-    if (itp.is_trivial()) {
+    if (itp->is_trivial()) {
       continue;
     }
 
     // Store the interpolant
-    summary_idt summary_id = summary_store->insert_summary(itp);
+    summary_idt summary_id = summary_store->insert_summary(*itp);
 
     interpolant_map.push_back(interpolant_mapt::value_type(
       &partition.get_iface(), summary_id));
