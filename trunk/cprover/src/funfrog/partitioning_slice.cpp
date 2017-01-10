@@ -432,18 +432,21 @@ void partitioning_slicet::mark_summary_symbols(summary_storet* summary_store,
       continue;
     }
 
-    summaryt& summary = summary_store->find_summary(summary_id);
+    /* THIS CODE IS FOR PROP-LOGIC ONLY. IF Gets here with something else assert! */
+    prop_summaryt& summary = dynamic_cast <prop_summaryt&> 
+            (summary_store->find_summary(summary_id));
 
     // Add only symbols constrained by the summary
     unsigned idx = 0;
     partition.applicable_summaries.insert(summary_id);
+    symbol_exprt stub_v; // Stub var
     // Input argument symbols
     for (std::vector<symbol_exprt>::iterator it2 =
             partition_iface.argument_symbols.begin();
             it2 != partition_iface.argument_symbols.end();
             ++it2, ++idx) {
       // SAT checks idx, SMT checks it2
-      if(summary.usesVar(*it2,idx)) // Only SAT uses it
+      if(summary.usesVar(stub_v,idx)) // Only SAT uses it
         get_symbols(*it2, depends);
     }
     // Output argument symbols
@@ -452,13 +455,13 @@ void partitioning_slicet::mark_summary_symbols(summary_storet* summary_store,
             it2 != partition_iface.out_arg_symbols.end();
             ++it2, ++idx) {
       // SAT checks idx, SMT checks it2
-      if(summary.usesVar(*it2,idx)) // Only SAT uses it
+      if(summary.usesVar(stub_v,idx)) // Only SAT uses it
         get_symbols(*it2, depends);
     }
     // Return value symbol
     if (partition_iface.returns_value) {
       // SAT checks idx, SMT checks it2
-      if(summary.usesVar(*it2,idx)) // Only SAT uses it
+      if(summary.usesVar(stub_v,idx)) // Only SAT uses it
         get_symbols(partition_iface.retval_symbol, depends);
     }
   }
