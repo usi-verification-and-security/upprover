@@ -14,6 +14,8 @@ SHARED_SRC := \
 
 FUNFROG_SRC := \
       partitioning_target_equation.cpp \
+      prop_partitioning_target_equation.cpp \
+      smt_partitioning_target_equation.cpp \
       partitioning_slice.cpp \
       summary_info.cpp \
       subst_scenario.cpp \
@@ -22,8 +24,12 @@ FUNFROG_SRC := \
       languages.cpp \
       check_claims.cpp \
       refiner_assertion_sum.cpp \
+      prop_refiner_assertion_sum.cpp \
+      smt_refiner_assertion_sum.cpp \
       prop_assertion_sum.cpp \
       dependency_checker.cpp \
+      prop_dependency_checker.cpp \
+      smt_dependency_checker.cpp \
       symex_assertion_sum.cpp \
       summarizing_checker.cpp \
       main.cpp
