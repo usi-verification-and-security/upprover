@@ -184,7 +184,7 @@ void prop_partitioning_target_equationt::convert_partition_summary(
     prop_conv_solvert &prop_conv, partitiont& partition)
 {
   std::vector<symbol_exprt> common_symbs;
-  summary_storet& summary_store = summarization_context.get_summary_store();
+  summary_storet* summary_store = summarization_context.get_summary_store();
   fill_common_symbols(partition, common_symbs);
   unsigned i = 0;
 
@@ -200,7 +200,7 @@ void prop_partitioning_target_equationt::convert_partition_summary(
           it != partition.applicable_summaries.end();
           ++it) {
 
-    summaryt& summary = summary_store.find_summary(*it);
+    summaryt& summary = summary_store->find_summary(*it);
 
     if (summary.is_valid() && (!is_recursive || last_summary == i++)){
 #   ifdef DEBUG_SSA
@@ -209,6 +209,8 @@ void prop_partitioning_target_equationt::convert_partition_summary(
       summary.substitute(prop_conv, common_symbs, partition.inverted_summary);
     }
   }
+  
+  summary_store = NULL;
 }
 
 /*******************************************************************\
@@ -640,7 +642,7 @@ void prop_partitioning_target_equationt::extract_interpolants(
 {
   // Prepare the interpolation task. NOTE: ignore the root partition!
   unsigned valid_tasks = 0;
-  summary_storet& summary_store = summarization_context.get_summary_store();
+  summary_storet* summary_store = summarization_context.get_summary_store();
 
   // Clear the used summaries
   for (unsigned i = 0; i < partitions.size(); ++i)
@@ -740,11 +742,13 @@ void prop_partitioning_target_equationt::extract_interpolants(
     }
 
     // Store the interpolant
-    summary_idt summary_id = summary_store.insert_summary(itp);
+    summary_idt summary_id = summary_store->insert_summary(itp);
 
     interpolant_map.push_back(interpolant_mapt::value_type(
       &partition.get_iface(), summary_id));
   }
+  
+  summary_store = NULL;
 }
 
 /*******************************************************************\

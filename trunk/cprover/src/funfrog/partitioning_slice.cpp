@@ -73,7 +73,7 @@ Function: partitioning_slicet::slice
 \*******************************************************************/
 
 void partitioning_slicet::slice(partitioning_target_equationt &equation,
-        summary_storet& summary_store)
+        summary_storet* summary_store)
 {
   // Mark assignments as ignored
   for(symex_target_equationt::SSA_stepst::iterator it = 
@@ -156,7 +156,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
                 partition.applicable_summaries.end())
           continue;
         
-        summaryt& summary = summary_store.find_summary(summary_id);
+        summaryt& summary = summary_store->find_summary(summary_id);
         // Does not restrict the given symbol
         //if (!summary.get_symbol_mask()[symbol_idx]) // TODO: seems broken
         //  continue;
@@ -403,7 +403,7 @@ Function: partitioning_slicet::mark_summary_symbols
 
 \*******************************************************************/
 
-void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store, 
+void partitioning_slicet::mark_summary_symbols(summary_storet* summary_store, 
         partitiont &partition) {
   // Mark all used symbols as directly as dependent
   partition_ifacet& partition_iface = partition.get_iface();
@@ -432,7 +432,7 @@ void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store,
       continue;
     }
 
-    summaryt& summary = summary_store.find_summary(summary_id);
+    summaryt& summary = summary_store->find_summary(summary_id);
 
     // Add only symbols constrained by the summary
     unsigned idx = 0;
@@ -477,7 +477,7 @@ Function: partitioning_slice
 \*******************************************************************/
 
 void partitioning_slice(partitioning_target_equationt &equation,
-        summary_storet& summary_store)
+        summary_storet* summary_store)
 {
   partitioning_slicet slice;
   slice.slice(equation, summary_store);
