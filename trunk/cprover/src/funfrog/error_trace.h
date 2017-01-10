@@ -41,7 +41,7 @@ private:
 	void show_state_header(
 			  std::ostream &out,
 			  const unsigned thread_nr,
-			  const locationt &location,
+			  const source_locationt &location,
 			  unsigned step_nr);
 
 	void show_guard_value(

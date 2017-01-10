@@ -27,6 +27,7 @@ FUNFROG_SRC := \
       prop_refiner_assertion_sum.cpp \
       smt_refiner_assertion_sum.cpp \
       prop_assertion_sum.cpp \
+      smt_assertion_sum.cpp \
       dependency_checker.cpp \
       prop_dependency_checker.cpp \
       smt_dependency_checker.cpp \

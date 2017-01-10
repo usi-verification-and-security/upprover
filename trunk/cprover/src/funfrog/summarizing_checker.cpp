@@ -409,16 +409,19 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 void summarizing_checkert::assertion_violated (smt_assertion_sumt& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
+    smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
+
     if (!options.get_bool_option("no-error-trace"))
-        prop.error_trace(*decider, ns, guard_expln);
+        prop.error_trace(*decider_smt, ns, guard_expln);
     if (decider->has_unsupported_vars()){
-    	status("\nA bug found.");
-    	status("WARNING: Possibly due to the Theory conversion.");
+    	status() << "\nA bug found." << endl;
+    	status() << "WARNING: Possibly due to the Theory conversion." << endl;
     } else {
-    	status("A real bug found.");
+    	status() << "A real bug found." << endl;
     }
     report_failure();
 
+    decider_smt = NULL;
 }
 
 // Only for SMT version
@@ -426,7 +429,9 @@ void summarizing_checkert::list_templates(smt_assertion_sumt& prop, smt_partitio
 {
     summary_storet* summary_store = summarization_context.get_summary_store();
     vector<summaryt*> templates;
-    equation.fill_function_templates(*decider, templates);
+    smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
+    equation.fill_function_templates(*decider_smt, templates);
+    decider_smt = NULL;
     for(int i = 0; i < templates.size(); ++i)
         summary_store->insert_summary(*templates[i]);
     // Store the summaries
@@ -455,7 +460,9 @@ void summarizing_checkert::extract_interpolants_smt (smt_assertion_sumt& prop, s
   absolute_timet before, after;
   before=current_time();
   
-  equation.extract_interpolants(*decider, *decider, itp_map);
+  smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
+  equation.extract_interpolants(*decider_smt, *decider_smt, itp_map);
+  decider_smt = NULL;
 
   after=current_time();
   status() << "INTERPOLATION TIME: " << (after-before) << eom;
@@ -468,7 +475,7 @@ void summarizing_checkert::extract_interpolants_smt (smt_assertion_sumt& prop, s
             summarization_context.get_function_info(
             summary_info.get_function_id());
 
-    function_info.add_summary(summary_store, it->second, false);
+    function_info.add_summary(*summary_store, it->second, false);
            // !options.get_bool_option("no-summary-optimization"));
     
     summary_info.add_used_summary(it->second);

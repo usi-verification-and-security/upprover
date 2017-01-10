@@ -13,7 +13,7 @@
 #include <ansi-c/expr2c.h>
 #include <time_stopping.h>
 #include <ui_message.h>
-#include "prop_assertion_sum.h"
+#include "smt_assertion_sum.h"
 #include "error_trace.h"
 
 time_periodt global_satsolver_time;
@@ -55,7 +55,7 @@ bool smt_assertion_sumt::assertion_holds(const assertion_infot &assertion, const
   }
   else
   {
-    status("ASSERTION IS VIOLATED");
+    status() << ("ASSERTION IS VIOLATED");
     return false;
   }
 }
@@ -88,10 +88,10 @@ bool smt_assertion_sumt::is_satisfiable(
   // solve it
   if (!r)
   {
-      status("UNSAT - it holds!");
+      status() << ("UNSAT - it holds!");
       return false;
     } else {
-      status("SAT - doesn't hold");
+      status() << ("SAT - doesn't hold");
       return true;
     }
 
@@ -103,7 +103,7 @@ void smt_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespac
 	error_tracet error_trace;
 
 	// Only if can build an error trace - give notice to the user
-	status("Building error trace");
+	status() << ("Building error trace");
 
 	error_trace.build_goto_trace(equation, decider);
 
