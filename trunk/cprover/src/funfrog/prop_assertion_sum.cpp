@@ -8,18 +8,12 @@
 \*******************************************************************/
 
 #include <goto-symex/build_goto_trace.h>
-<<<<<<< HEAD
 #include <goto-programs/xml_goto_trace.h>
 #include <find_symbols.h>
 #include <ansi-c/expr2c.h>
 #include <time_stopping.h>
 #include <ui_message.h>
-=======
-#include <goto-symex/xml_goto_trace.h>
-#include <time_stopping.h>
->>>>>>> origin/dev
 #include "prop_assertion_sum.h"
-#include "error_trace.h"
 
 time_periodt global_satsolver_time;
 time_periodt global_sat_conversion_time;
@@ -36,25 +30,17 @@ time_periodt global_sat_conversion_time;
 
 \*******************************************************************/
 
-<<<<<<< HEAD
 bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, const namespacet &ns, prop_conv_solvert& decider, interpolating_solvert& interpolator)
-=======
-bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, const namespacet &ns, smtcheck_opensmt2t& decider, interpolating_solvert& interpolator)
->>>>>>> origin/dev
 {
   //stream_message_handlert message_handler(out);
 
   bool sat=false;
 
-<<<<<<< HEAD
   message_handler.set_verbosity(10);
   decider.set_message_handler(message_handler);
   //decider.set_verbosity(10);
 
   absolute_timet before, after;
-=======
-  fine_timet before, after;
->>>>>>> origin/dev
   before=current_time();
   equation.convert(decider, interpolator);
 
@@ -74,7 +60,6 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
   }
   else
   {
-<<<<<<< HEAD
     status() << ("ASSERTION IS VIOLATED");
     /* error_trace(decider, ns);
     //std::cout << std::endl << "NONDET assigns:" << std::endl;
@@ -119,9 +104,6 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 
     //std::cout << "Total nondet:" << nondet_counter << std::endl;
     */
-=======
-    status("ASSERTION IS VIOLATED");
->>>>>>> origin/dev
     return false;
   }
 }
@@ -139,12 +121,12 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 \*******************************************************************/
 
 bool prop_assertion_sumt::is_satisfiable(
-		smtcheck_opensmt2t& decider)
+  decision_proceduret &decision_procedure)
 {
   status() << ("RESULT") << endl;
   absolute_timet before, after;
   before=current_time();
-  bool r = decider.solve();
+  decision_proceduret::resultt r = decision_procedure.dec_solve();
   after=current_time();
   status() << "SOLVER TIME: " << (after-before) << eom;
 
@@ -152,9 +134,8 @@ bool prop_assertion_sumt::is_satisfiable(
   global_satsolver_time += (after-before);
 
   // solve it
-  if (!r)
+  switch (r)
   {
-<<<<<<< HEAD
     case decision_proceduret::D_UNSATISFIABLE:
     {
       status() << ("UNSAT - it holds!");
@@ -163,18 +144,14 @@ bool prop_assertion_sumt::is_satisfiable(
     case decision_proceduret::D_SATISFIABLE:
     {
       status() << ("SAT - doesn't hold");
-=======
-      status("UNSAT - it holds!");
-      return false;
-    } else {
-      status("SAT - doesn't hold");
->>>>>>> origin/dev
       return true;
     }
 
+    default:
+      throw "unexpected result from dec_solve()";
+  }
 }
 
-<<<<<<< HEAD
 // Copied from build_goto_tarce.cpp
 void build_exec_order_goto_trace(
   partitioning_target_equationt &target,
@@ -230,17 +207,28 @@ void build_exec_order_goto_trace(
       goto_trace_step.full_lhs_value=prop_conv.get(SSA_step.ssa_full_lhs);
     //  simplify(goto_trace_step.full_lhs_value, ns);
     }
-=======
-void prop_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns,
-		std::map<irep_idt, std::string>& guard_expln)
-{
-	error_tracet error_trace;
->>>>>>> origin/dev
 
-	// Only if can build an error trace - give notice to the user
-	status("Building error trace");
+    for(std::list<exprt>::const_iterator
+        j=SSA_step.converted_io_args.begin();
+        j!=SSA_step.converted_io_args.end();
+        j++)
+    {
+      const exprt &arg=*j;
+      if(arg.is_constant() ||
+         arg.id()==ID_string_constant)
+        goto_trace_step.io_args.push_back(arg);
+      else
+      {
+        exprt tmp=prop_conv.get(arg);
+        goto_trace_step.io_args.push_back(tmp);
+      }
+    }
 
-<<<<<<< HEAD
+    if(SSA_step.is_assert() ||
+       SSA_step.is_assume())
+    {
+      goto_trace_step.cond_expr=SSA_step.cond_expr;
+
       goto_trace_step.cond_value=
         prop_conv.l_get(SSA_step.cond_literal).is_true(); // KE: variant of lget shall do prop.l_get
     }
@@ -305,9 +293,4 @@ void prop_assertion_sumt::error_trace(const prop_conv_solvert &prop_conv, const 
   default:
     assert(false);
   }
-=======
-	error_trace.build_goto_trace(equation, decider);
-
-	error_trace.show_goto_trace(decider, std::cout, ns, guard_expln);
->>>>>>> origin/dev
 }

@@ -309,7 +309,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
 
-  prop_assertion_sumt prop = prop_assertion_sumt(summarization_context,
+  smt_assertion_sumt prop = smt_assertion_sumt(summarization_context,
           equation, message_handler, max_memory_used);
   unsigned count = 0;
   bool end = false;
@@ -404,7 +404,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
  Purpose: Prints the error trace for smt encoding
 
 \*******************************************************************/
-void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop,
+void summarizing_checkert::assertion_violated (smt_assertion_sumt& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
     if (!options.get_bool_option("no-error-trace"))
@@ -419,8 +419,8 @@ void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop,
 
 }
 
-// TODO: KE: fix this call and the code after prop_assertion_sum fixed
-void summarizing_checkert::list_templates(prop_assertion_sumt& prop, partitioning_target_equationt& equation)
+// Only for SMT version
+void summarizing_checkert::list_templates(smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation)
 {
     summary_storet* summary_store = summarization_context.get_summary_store();
     vector<summaryt*> templates;
@@ -446,7 +446,7 @@ Function: summarizing_checkert::extract_interpolants_smt
  Purpose: Extract and store the interpolation summaries for smt only
 
 \*******************************************************************/
-void summarizing_checkert::extract_interpolants_smt (prop_assertion_sumt& prop, smt_partitioning_target_equationt& equation)
+void summarizing_checkert::extract_interpolants_smt (smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation)
 {
   summary_storet* summary_store = summarization_context.get_summary_store();
   interpolant_mapt itp_map;

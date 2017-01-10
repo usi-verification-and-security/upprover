@@ -5,23 +5,24 @@
  */
 
 /* 
- * File:   prop_assertion_sum.h
+ * File:   smt_assertion_sum.h
  * Author: karinek
  *
  * Created on 10 January 2017, 16:30
  */
 
-#ifndef PROP_ASSERTION_SUM_H
-#define PROP_ASSERTION_SUM_H
+#ifndef SMT_ASSERTION_SUM_H
+#define SMT_ASSERTION_SUM_H
 
 #include "assertion_sum.h"
+#include "solvers/smtcheck_opensmt2.h"
 
-class prop_assertion_sumt : public assertion_sumt 
+class smt_assertion_sumt : public assertion_sumt 
 {
 public:
-    prop_assertion_sumt(
+    smt_assertion_sumt(
             summarization_contextt& _summarization_context,
-            prop_partitioning_target_equationt &_target,
+            smt_partitioning_target_equationt &_target,
             ui_message_handlert &_message_handler,
             unsigned long &_max_memory_used
             ) 
@@ -29,19 +30,17 @@ public:
                         _message_handler, 
                         _max_memory_used), 
           equation(_target) {};
-      
-    virtual ~prop_assertion_sumt() {}
     
-    bool assertion_holds(const assertion_infot &assertion, const namespacet &ns, prop_conv_solvert& decider, interpolating_solvert& interpolator);
+    bool assertion_holds(const assertion_infot &assertion, const namespacet &ns, smtcheck_opensmt2t& decider, interpolating_solvert& interpolator);
 
-    void error_trace(const prop_conv_solvert &prop_conv, const namespacet &ns);
+    void error_trace(smtcheck_opensmt2t& decider, const namespacet &ns, std::map<irep_idt, std::string>& guard_expln);
 
 private:
     // Store for the symex result
-    prop_partitioning_target_equationt &equation;
+    smt_partitioning_target_equationt &equation;
     
-    bool is_satisfiable(decision_proceduret &decision_procedure);
+    bool is_satisfiable(smtcheck_opensmt2t& decider);
 };
 
-#endif /* PROP_ASSERTION_SUM_H */
+#endif /* SMT_ASSERTION_SUM_H */
 

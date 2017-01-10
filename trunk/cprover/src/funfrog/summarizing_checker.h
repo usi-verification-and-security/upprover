@@ -15,8 +15,12 @@
 #include <ui_message.h>
 #include <solvers/flattening/bv_pointers.h>
 #include "symex_assertion_sum.h"
+#include "assertion_sum.h"
 #include "prop_assertion_sum.h"
+#include "smt_assertion_sum.h"
 #include "refiner_assertion_sum.h"
+#include "prop_partitioning_target_equation.h"
+#include "smt_partitioning_target_equation.h"
 
 class summarizing_checkert:public messaget
 {
@@ -56,7 +60,7 @@ public:
     omega.serialize(options.get_option("save-omega"));
   };
 
-    void list_templates(prop_assertion_sumt &prop, partitioning_target_equationt &equation);
+    void list_templates(smt_assertion_sumt &prop, smt_partitioning_target_equationt &equation);
 protected:
 
   const goto_programt &goto_program;
@@ -71,12 +75,12 @@ protected:
   init_modet init;
   
   void setup_unwind(symex_assertion_sumt& symex);
-  void extract_interpolants_smt (prop_assertion_sumt& prop, smt_partitioning_target_equationt& equation);
+  void extract_interpolants_smt (smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation);
   void extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
             std::auto_ptr<prop_conv_solvert> decider_prop, std::auto_ptr<interpolating_solvert> interpolator);
   void report_success();
   void report_failure();
-  void assertion_violated(prop_assertion_sumt& prop,
+  void assertion_violated(smt_assertion_sumt& prop,
 		  std::map<irep_idt, std::string> &guard_expln);
 };
 
