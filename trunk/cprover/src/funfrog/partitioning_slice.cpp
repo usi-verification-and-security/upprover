@@ -434,7 +434,7 @@ void partitioning_slicet::mark_summary_symbols(summary_storet* summary_store,
 
     /* THIS CODE IS FOR PROP-LOGIC ONLY. IF Gets here with something else assert! */
     prop_summaryt& summary = dynamic_cast <prop_summaryt&> 
-            (summary_store->find_summary(summary_id));
+            (summary_store->find_summary(summary_id)); // KE: SMT code shall not use this!
 
     // Add only symbols constrained by the summary
     unsigned idx = 0;

@@ -31,6 +31,7 @@ class summary_storet
 {
 public:
   summary_storet() : max_id (0), repr_count(0) {}
+ virtual ~summary_storet() { store.clear(); } // Virtual for sub-class
 
   // Serialization
   virtual void serialize(std::ostream& out) const=0;

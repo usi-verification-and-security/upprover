@@ -170,7 +170,7 @@ void partitioning_target_equationt::fill_partition_ids(
     }
 
     // Current partition id
-    for (int i = 0; i < partition.fle_part_ids.size(); i++){
+    for (unsigned int i = 0; i < partition.fle_part_ids.size(); i++){
         part_ids.push_back(partition.fle_part_ids[i]);
     }
 
