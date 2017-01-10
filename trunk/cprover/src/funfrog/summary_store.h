@@ -54,8 +54,8 @@ public:
   // Reset the summary store
   void clear() { store.clear(); max_id = 0; repr_count = 0; }
 
-protected: 
   virtual void deserialize(std::istream& in)=0;
+protected: 
 
   // Union find node
   struct nodet {

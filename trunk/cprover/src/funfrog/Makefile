@@ -4,8 +4,8 @@ SHARED_SRC := \
       expr_pretty_print.cpp \
       function_info.cpp \
       summary_store.cpp \
-      smt_summary_store \
-      prop_summary_store \
+      smt_summary_store.cpp \
+      prop_summary_store.cpp \
       solvers/satcheck_opensmt2.cpp \
       solvers/smtcheck_opensmt2.cpp \
       solvers/smtcheck_opensmt2_lra.cpp \
@@ -65,7 +65,7 @@ SRC := ${FUNFROG_SRC} ${SHARED_SRC}
 
 include ../common
 
-INCLUDES :=  -I .. -I ../util 
+INCLUDES :=  -I .. -I ../util
 
 LIBS =
 

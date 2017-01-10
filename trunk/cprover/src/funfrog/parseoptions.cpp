@@ -574,27 +574,29 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("type-constraints", 1);
 
   if(cmdline.isset("logic")) {
-    options.set_option("logic", cmdline.getval("logic"));
+//    options.set_option("logic", cmdline.getval("logic"));
+    options.set_option("logic", cmdline.get_value("logic"));
   } else { // Set to qfuf - defualt
     options.set_option("logic", "qfuf"); 
   }
   
   if (cmdline.isset("check-itp")) {
-    options.set_option("check-itp", cmdline.getval("check-itp"));
+//    options.set_option("check-itp", cmdline.getval("check-itp"));
+    options.set_option("check-itp", cmdline.get_value("check-itp"));
   }
   if (cmdline.isset("itp-algorithm")) { // In Help Menu
     options.set_option("itp-algorithm", cmdline.get_value("itp-algorithm"));
   }
 
   if (cmdline.isset("itp-uf-algorithm")) { // In Help Menu
-    options.set_option("itp-uf-algorithm", cmdline.getval("itp-uf-algorithm"));
+    options.set_option("itp-uf-algorithm", cmdline.get_value("itp-uf-algorithm"));
   }
 
   if (cmdline.isset("itp-lra-algorithm")) { // In Help Menu
-    options.set_option("itp-lra-algorithm", cmdline.getval("itp-lra-algorithm"));
+    options.set_option("itp-lra-algorithm", cmdline.get_value("itp-lra-algorithm"));
   }
   if (cmdline.isset("itp-lra-factor")) { // In Help Menu
-    options.set_option("itp-lra-factor", cmdline.getval("itp-lra-factor"));
+    options.set_option("itp-lra-factor", cmdline.get_value("itp-lra-factor"));
   }
   //if (cmdline.isset("part-itp")) {
   //  options.set_option("part-itp", cmdline.get_value("part-itp"));
@@ -611,16 +613,16 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   //  options.set_option("unwindset", cmdline.get_value("unwindset"));
   //}
   if (cmdline.isset("type-constraints")) { // In Help Menu
-    options.set_option("type-constraints", cmdline.getval("type-constraints"));
+    options.set_option("type-constraints", cmdline.get_value("type-constraints"));
   }
   if (cmdline.isset("claimset")) {
     options.set_option("claimset", cmdline.get_value("claimset"));
   }
   if (cmdline.isset("claims-opt")) { // In Help Menu
-    options.set_option("claims-opt", cmdline.getval("claims-opt"));
+    options.set_option("claims-opt", cmdline.get_value("claims-opt"));
   }
   //if (cmdline.isset("do-upgrade-check")) { // KE: not working
-  //  options.set_option("do-upgrade-check", cmdline.getval("do-upgrade-check"));
+  //  options.set_option("do-upgrade-check", cmdline.get_value("do-upgrade-check"));
   //}
   if (cmdline.isset("save-summaries")) {
     options.set_option("save-summaries", cmdline.get_value("save-summaries"));
@@ -649,7 +651,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   //if (cmdline.isset("reduce-proof-time")) {
   //  options.set_option("reduce-proof-time", cmdline.get_value("reduce-proof-time"));
-  }
+//  }
   if (cmdline.isset("reduce-proof-graph")) { // In Help Menu
     options.set_option("reduce-proof-graph", cmdline.get_value("reduce-proof-graph"));
   }

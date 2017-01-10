@@ -29,13 +29,10 @@ public:
       no_literals(0),
       pushed_formulas(0),
       unsupported2var(0),
-      reduction(false),
-      reduction_graph(3),
-      reduction_loops(2),
       verbosity(0),
       certify(0),
       is_var_constraints_empty(true),
-      check_opensmt2t() // Is last always!
+      check_opensmt2t(false, 3, 2) // Is last always!
   {
     initializeSolver();
   }

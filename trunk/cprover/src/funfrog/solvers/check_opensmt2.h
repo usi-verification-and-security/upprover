@@ -20,7 +20,7 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class check_opensmt2t
 {
 public:
-  check_opensmt2t() :
+  check_opensmt2t(bool reduction, int reduction_graph, int reduction_loops) :
       osmt  (NULL),
       logic (NULL),
       mainSolver (NULL),
@@ -30,7 +30,10 @@ public:
       itp_algorithm(itp_alg_mcmillan),
       itp_euf_algorithm(itp_euf_alg_strong),
       itp_lra_algorithm(itp_lra_alg_strong),
-      itp_lra_factor(NULL)
+      itp_lra_factor(NULL),
+      reduction(reduction),
+      reduction_graph(reduction_graph),
+      reduction_loops(reduction_loops)
   { }
   
   virtual ~check_opensmt2t() { }

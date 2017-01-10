@@ -15,6 +15,7 @@
 #include <pointer-analysis/value_set_analysis.h>
 #include <goto-programs/goto_functions.h>
 #include "summary_store.h"
+#include "function_info.h"
 
 typedef enum {
   FORCE_INLINING,
@@ -123,7 +124,7 @@ public:
       return;
     }
 
-    summary_store.deserialize(in);
+    summary_store->deserialize(in);
     function_infot::deserialize_infos(in, function_infos);
 
     if (in.fail()) {
@@ -134,7 +135,7 @@ public:
   }
 
   void serialize_infos_prop(const std::string& file, summary_infot& summary_info) {
-    summary_store.compact_store(summary_info, function_infos);
+    summary_store->compact_store(summary_info, function_infos);
     
     std::ofstream out;
     out.open(file.c_str());
@@ -145,7 +146,7 @@ public:
       return;
     }
 
-    summary_store.serialize(out);
+    summary_store->serialize(out);
     function_infot::serialize_infos(out, function_infos);
 
     if (out.fail()) {
@@ -156,7 +157,7 @@ public:
   }
 
   void deserialize_infos_smt(const std::string& file, smtcheck_opensmt2t *decider = NULL) {
-    summary_store.deserialize(file, decider);
+    summary_store->deserialize(file, decider);
     function_infot::deserialize_infos(summary_store, function_infos);
   }
 
@@ -175,7 +176,7 @@ public:
     //LA: Karine, the following line is the one that eventualyl has to be used
     //summary_store.compact_store(summary_info, function_infos);
 
-    summary_store.serialize(out);
+    summary_store->serialize(out);
     if (out.fail()) {
       return false;
     }

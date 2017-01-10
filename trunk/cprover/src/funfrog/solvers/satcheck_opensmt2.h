@@ -26,11 +26,11 @@ class satcheck_opensmt2t:public cnf_solvert, public interpolating_solvert, publi
 public:
   satcheck_opensmt2t() :
       itp_algorithm(2),
-      check_opensmt2t() // Is last always!
+      check_opensmt2t(false, 3, 2) // Is last always!
   {
     initializeSolver();
   }
-  
+
   virtual ~satcheck_opensmt2t() {
     freeSolver();
   }
