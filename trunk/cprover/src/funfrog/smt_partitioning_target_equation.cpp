@@ -140,7 +140,7 @@ void smt_partitioning_target_equationt::convert_partition(
 	fill_common_symbols(partition, common_symbs);
 
 	// GF: hack
-	//  interpolantt::reserve_variables(decider, common_symbs, partition.get_iface().common_symbols);
+	//  smt_interpolantt::reserve_variables(decider, common_symbs, partition.get_iface().common_symbols);
 
 	// Convert the corresponding SSA steps
 	convert_partition_guards(decider, partition);
