@@ -217,13 +217,13 @@ Function: function_infot::deserialize_infos
  Purpose: For SMT encoding
 
 \*******************************************************************/
-void function_infot::deserialize_infos(smt_summary_storet& store, function_infost& infos)
+void function_infot::deserialize_infos(smt_summary_storet* store, function_infost& infos)
 {
-  unsigned nfunctions = store.n_of_summaries();
+  unsigned nfunctions = store->n_of_summaries();
 
   for (unsigned i = 0; i < nfunctions; ++i)
   {
-      Tterm *sum = store.find_summary(i).getTterm();
+      Tterm *sum = store->find_summary(i).getTterm();
       std::string f_name = smtcheck_opensmt2t::unquote_varname(sum->getName());
       f_name = smtcheck_opensmt2t::remove_index(f_name);
 

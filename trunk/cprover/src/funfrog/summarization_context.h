@@ -158,7 +158,7 @@ public:
 
   void deserialize_infos_smt(const std::string& file, smtcheck_opensmt2t *decider = NULL) {
     summary_store->deserialize(file, decider);
-    function_infot::deserialize_infos(summary_store, function_infos);
+    function_infot::deserialize_infos((dynamic_cast<smt_summary_storet *> (summary_store)), function_infos);
   }
 
   void serialize_infos_smt(const std::string& file, summary_infot& summary_info) {

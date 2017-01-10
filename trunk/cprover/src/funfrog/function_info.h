@@ -43,7 +43,7 @@ public:
   
   static void serialize_infos(std::ostream& out, const function_infost& infos);
   static void deserialize_infos(std::istream& in, function_infost& infos);
-  static void deserialize_infos(smt_summary_storet& store, function_infost& infos);
+  static void deserialize_infos(smt_summary_storet* store, function_infost& infos); // for SMT version only
 
   static void serialize_infos(const std::string& file, const function_infost& infos);
   static void deserialize_infos(const std::string& file, function_infost& infos);
