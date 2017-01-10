@@ -197,7 +197,7 @@ public:
 
   unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
 
-private:
+protected:
   // Current summarization context
   summarization_contextt& summarization_context;
 
