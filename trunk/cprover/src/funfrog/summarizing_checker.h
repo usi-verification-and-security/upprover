@@ -71,8 +71,8 @@ protected:
   init_modet init;
   
   void setup_unwind(symex_assertion_sumt& symex);
-  void extract_interpolants_smt (prop_assertion_sumt& prop, partitioning_target_equationt& equation);
-  void extract_interpolants_prop (prop_assertion_sumt& prop, partitioning_target_equationt& equation,
+  void extract_interpolants_smt (prop_assertion_sumt& prop, smt_partitioning_target_equationt& equation);
+  void extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
             std::auto_ptr<prop_conv_solvert> decider_prop, std::auto_ptr<interpolating_solvert> interpolator);
   void report_success();
   void report_failure();

@@ -33,10 +33,10 @@ public:
 
           virtual ~smt_refiner_assertion_sumt() {}
     
-    void refine(const smtcheck_opensmt2t &decider, summary_infot& summary, partitioning_target_equationt &equation);
+    void refine(const smtcheck_opensmt2t &decider, summary_infot& summary, smt_partitioning_target_equationt &equation);
   
 protected:
-    void reset_depend(const smtcheck_opensmt2t &decider, summary_infot& summary, partitioning_target_equationt &equation);
+    void reset_depend(const smtcheck_opensmt2t &decider, summary_infot& summary, smt_partitioning_target_equationt &equation);
     
 };
 

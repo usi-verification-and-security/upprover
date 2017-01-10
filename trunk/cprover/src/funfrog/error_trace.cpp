@@ -17,7 +17,7 @@ Function: error_trace::build_exec_order_goto_trace
 
 \*******************************************************************/
 void error_tracet::build_goto_trace (
-  partitioning_target_equationt &target,
+  smt_partitioning_target_equationt &target,
   smtcheck_opensmt2t &decider)
 {
 

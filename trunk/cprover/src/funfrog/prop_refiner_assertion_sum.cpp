@@ -11,7 +11,7 @@
  * Created on 09 January 2017, 20:01
  */
 
-#include "prop_refiner_assertion_sumt.h"
+#include "prop_refiner_assertion_sum.h"
 
 
 /*******************************************************************
@@ -29,7 +29,7 @@
 void prop_refiner_assertion_sumt::refine(
         const prop_conv_solvert &decider, 
         summary_infot& summary, 
-        partitioning_target_equationt &equation)
+        prop_partitioning_target_equationt &equation)
 {
   refined_functions.clear();
   switch (mode){
@@ -51,7 +51,7 @@ void prop_refiner_assertion_sumt::refine(
 void prop_refiner_assertion_sumt::reset_depend(
         const prop_conv_solvert &decider, 
         summary_infot& summary, 
-        partitioning_target_equationt &equation)
+        prop_partitioning_target_equationt &equation)
 {
   std::vector<summary_infot*> tmp;
 

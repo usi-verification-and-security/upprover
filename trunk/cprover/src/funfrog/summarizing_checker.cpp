@@ -419,6 +419,7 @@ void summarizing_checkert::assertion_violated (prop_assertion_sumt& prop,
 
 }
 
+// TODO: KE: fix this call and the code after prop_assertion_sum fixed
 void summarizing_checkert::list_templates(prop_assertion_sumt& prop, partitioning_target_equationt& equation)
 {
     summary_storet* summary_store = summarization_context.get_summary_store();

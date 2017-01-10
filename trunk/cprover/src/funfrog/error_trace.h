@@ -23,7 +23,7 @@ public:
 	virtual ~error_tracet() {}
 
 	void build_goto_trace(
-			  partitioning_target_equationt &target,
+			  smt_partitioning_target_equationt &target,
 			  smtcheck_opensmt2t &decider);
 
 	void show_goto_trace(

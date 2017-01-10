@@ -28,7 +28,7 @@
 void smt_refiner_assertion_sumt::refine(
         const smtcheck_opensmt2t &decider, 
         summary_infot& summary, 
-        partitioning_target_equationt &equation)
+        smt_partitioning_target_equationt &equation)
 {
   refined_functions.clear();
   switch (mode){
@@ -50,7 +50,7 @@ void smt_refiner_assertion_sumt::refine(
 void smt_refiner_assertion_sumt::reset_depend(
         const smtcheck_opensmt2t &decider, 
         summary_infot& summary,
-        partitioning_target_equationt &equation)
+        smt_partitioning_target_equationt &equation)
 {
   std::vector<summary_infot*> tmp;
 
