@@ -124,10 +124,6 @@ public:
 
   static bool is_quoted_var(const string& varname);
 
-  MainSolver * getMainSolver() { return mainSolver; }
-
-  Logic * getLogic() { return logic; }
-
   const char* false_str = "false";
   const char* true_str = "true";
 

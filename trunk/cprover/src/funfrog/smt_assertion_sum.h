@@ -16,6 +16,7 @@
 
 #include "assertion_sum.h"
 #include "solvers/smtcheck_opensmt2.h"
+#include "smt_partitioning_target_equation.h"
 
 class smt_assertion_sumt : public assertion_sumt 
 {

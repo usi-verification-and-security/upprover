@@ -40,7 +40,8 @@ public:
           const goto_programt &_goto_program,
           subst_scenariot &_omega,
           //int percentage
-          int fraction
+          int fraction,
+          unsigned int SSA_steps_size
     ) :
           goto_program(_goto_program),
           ns(_ns),
@@ -54,7 +55,7 @@ public:
           // FIXME: make treshold parametrized
           treshold = fraction; //equation.SSA_steps.size() / fraction;
           //treshold = percentage * equation.SSA_steps.size() / 100;
-          std::cout << "Using the treshold of " << treshold << " out of " << equation.SSA_steps.size() << " SSA steps\n";
+          std::cout << "Using the treshold of " << treshold << " out of " << SSA_steps_size << " SSA steps\n";
           std::cout << "Assuming a timeout of " << (impl_timeout/1000) << "." << (impl_timeout%1000)/10 << " seconds." << std::endl;
     }
 

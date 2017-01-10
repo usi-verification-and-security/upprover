@@ -448,7 +448,7 @@ void dependency_checkert::print_SSA_steps()
 }
 
 // TODO: send equation as in parameter - requires no additional changes!
-void smt_dependency_checkert::reconstruct_exec_SSA_order(partitioning_target_equationt &equation){
+void dependency_checkert::reconstruct_exec_SSA_order(partitioning_target_equationt &equation){
   const SSA_steps_orderingt& SSA_steps = equation.get_steps_exec_order();
   for(SSA_steps_orderingt::const_iterator
       it=SSA_steps.begin();

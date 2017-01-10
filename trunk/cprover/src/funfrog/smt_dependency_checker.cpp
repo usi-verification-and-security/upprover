@@ -11,7 +11,7 @@
  * Created on 09 January 2017, 15:13
  */
 
-#include "smt_dependency_checkert.h"
+#include "smt_dependency_checker.h"
 
 pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {

@@ -26,8 +26,9 @@ public:
           ui_message_handlert &_message_handler,
           const goto_programt &_goto_program,
           subst_scenariot &_omega,
-          int fraction) : dependency_checkert(_ns,
-          _message_handler, _goto_program, _omega,fraction) {}
+          int fraction,
+          unsigned int SSA_steps_size) : dependency_checkert(_ns,
+          _message_handler, _goto_program, _omega,fraction,SSA_steps_size) {}
     virtual ~smt_dependency_checkert() {}
     
     virtual pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2);

@@ -61,7 +61,7 @@ public:
 
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants);
-
+  
   virtual bool can_interpolate() const;
 
   // Extract interpolant form OpenSMT Egraph

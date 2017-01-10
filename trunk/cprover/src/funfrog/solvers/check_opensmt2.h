@@ -61,6 +61,10 @@ public:
   {
       itp_lra_factor = f;
   }
+  
+  MainSolver * getMainSolver() { return mainSolver; }
+
+  Logic * getLogic() { return logic; }
 
   
   /* General consts for prop version */

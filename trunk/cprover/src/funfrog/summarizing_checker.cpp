@@ -62,9 +62,9 @@ void summarizing_checkert::initialize()
             // Prop and SMT have different mechanism to load/store summaries
             // TODO: unify this mechanism
             if (options.get_option("logic") == "prop")
-                summarization_context.deserialize_infos(summary_file); // Prop load summary  
+                summarization_context.deserialize_infos_prop(summary_file); // Prop load summary  
             else
-                summarization_context.deserialize_infos(summary_file, decider); // smt load summary
+                summarization_context.deserialize_infos_smt(summary_file, decider); // smt load summary
         }
     }
 
@@ -199,7 +199,8 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 
     if (!end){
       if (options.get_bool_option("claims-opt") && count == 1){
-        prop_dependency_checkert(ns, message_handler, goto_program, omega, options.get_int_option("claims-opt")).do_it(equation);
+        prop_dependency_checkert(ns, message_handler, goto_program, omega, options.get_int_option("claims-opt"), equation.SSA_steps.size())
+                .do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps()));
       }
 
@@ -332,7 +333,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 
     if (!end){
       if (options.get_bool_option("claims-opt") && count == 1){
-        smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_int_option("claims-opt")).do_it(equation);
+        smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_int_option("claims-opt"), equation.SSA_steps.size())
+                .do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps()));
       }
 
@@ -430,7 +432,7 @@ void summarizing_checkert::list_templates(smt_assertion_sumt& prop, smt_partitio
     // Store the summaries
     const std::string& summary_file = options.get_option("save-summaries");
     if (!summary_file.empty()) {
-        summarization_context.serialize_infos(summary_file, 
+        summarization_context.serialize_infos_smt(summary_file, 
             omega.get_summary_info());
     }
 }
@@ -466,8 +468,8 @@ void summarizing_checkert::extract_interpolants_smt (smt_assertion_sumt& prop, s
             summarization_context.get_function_info(
             summary_info.get_function_id());
 
-    function_info.add_summary(summary_store, it->second, false
-            /*!options.get_bool_option("no-summary-optimization")*/);
+    function_info.add_summary(summary_store, it->second, false);
+           // !options.get_bool_option("no-summary-optimization"));
     
     summary_info.add_used_summary(it->second);
     summary_info.set_summary();           // helpful flag for omega's (de)serialization
@@ -479,7 +481,7 @@ void summarizing_checkert::extract_interpolants_smt (smt_assertion_sumt& prop, s
     std::ofstream out;
     out.open(summary_file.c_str());
     decider->getLogic()->dumpHeaderToFile(out);
-    summarization_context.serialize_infos(out, omega.get_summary_info());
+    summarization_context.serialize_infos_smt(out, omega.get_summary_info());
   }
 }
 
@@ -515,8 +517,8 @@ void summarizing_checkert::extract_interpolants_prop (prop_assertion_sumt& prop,
             summarization_context.get_function_info(
             summary_info.get_function_id());
 
-    function_info.add_summary(summary_store, it->second, false
-            /*!options.get_bool_option("no-summary-optimization")*/);
+    function_info.add_summary(*summary_store, it->second, false);
+            //!options.get_bool_option("no-summary-optimization")*/);
     
     summary_info.add_used_summary(it->second);
     summary_info.set_summary();           // helpful flag for omega's (de)serialization
@@ -525,7 +527,7 @@ void summarizing_checkert::extract_interpolants_prop (prop_assertion_sumt& prop,
   // Store the summaries
   const std::string& summary_file = options.get_option("save-summaries");
   if (!summary_file.empty()) {
-    summarization_context.serialize_infos(summary_file, 
+    summarization_context.serialize_infos_prop(summary_file, 
         omega.get_summary_info());
   }
 }

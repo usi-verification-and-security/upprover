@@ -12,7 +12,7 @@
  * 
  */
 
-#include "prop_dependency_checkert.h"
+#include "prop_dependency_checker.h"
 
 pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {

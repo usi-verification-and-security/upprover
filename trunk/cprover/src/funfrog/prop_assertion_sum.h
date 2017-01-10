@@ -15,6 +15,7 @@
 #define PROP_ASSERTION_SUM_H
 
 #include "assertion_sum.h"
+#include "prop_partitioning_target_equation.h"
 
 class prop_assertion_sumt : public assertion_sumt 
 {

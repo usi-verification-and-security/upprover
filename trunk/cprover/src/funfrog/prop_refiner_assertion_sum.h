@@ -14,7 +14,8 @@
 #ifndef PROP_REFINER_ASSERTION_SUMT_H
 #define PROP_REFINER_ASSERTION_SUMT_H
 
-#define "refiner_assertion_sum.h"
+#include "refiner_assertion_sum.h"
+#include "prop_partitioning_target_equation.h"
 
 class prop_refiner_assertion_sumt : refiner_assertion_sumt 
 {
@@ -31,7 +32,7 @@ public:
           _valid)
           {}
 
-          virtual ~refiner_assertion_sumt() {}
+          virtual ~prop_refiner_assertion_sumt() {}
 
     void refine(const prop_conv_solvert &decider, summary_infot& summary, prop_partitioning_target_equationt &equation);
   

@@ -38,7 +38,7 @@ public:
 private:
   std::ostream& out;
   std::string indent;
-  unsigned orig_indent;
+  unsigned int orig_indent;
   bool last;
   bool is_prev_token; // is token or space
   std::map <std::string,exprt>* partition_smt_decl;

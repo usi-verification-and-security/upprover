@@ -11,7 +11,7 @@
  * Created on 09 January 2017, 19:57
  */
 
-#include "smt_refiner_assertion_sumt.h"
+#include "smt_refiner_assertion_sum.h"
 
 /*******************************************************************
 

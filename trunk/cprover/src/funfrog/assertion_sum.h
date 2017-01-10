@@ -27,7 +27,6 @@ class assertion_sumt:public messaget
 public:
     assertion_sumt(
           summarization_contextt& _summarization_context,
-          partitioning_target_equationt &_target,
           //std::ostream &_out,
           ui_message_handlert &_message_handler,
           unsigned long &_max_memory_used
@@ -43,7 +42,7 @@ public:
 
     const fine_timet& get_solving_time() { return solving_time; };
 
-private:
+protected:
   // Summarizing context (summary_store needed)
   summarization_contextt& summarization_context;
 
