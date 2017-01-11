@@ -25,7 +25,6 @@ class satcheck_opensmt2t:public cnf_solvert, public check_opensmt2t
 {
 public:
   satcheck_opensmt2t() :
-      itp_algorithm(2),
       check_opensmt2t(false, 3, 2) // Is last always!
   {
     initializeSolver();
@@ -92,10 +91,6 @@ protected:
   int reduction_loops;
 
   int reduction_graph;
-
-  // 0 - McMillan, 1 - Pudlak, 2 - McMillan'
-  int itp_algorithm;
-  //SMTConfig::ItpAlgorithm itp_algorithm;
 
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
   int proof_trans;

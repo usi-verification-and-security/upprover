@@ -187,7 +187,7 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   const char* msg;
 //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
 //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(0), msg);
-  //osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm); // TODO: fix compilation errors
+  osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
 
   SimpSMTSolver& solver = osmt->getSolver();
 
