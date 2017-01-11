@@ -49,7 +49,11 @@ void error_tracet::build_goto_trace (
     if (str.find("goto_symex::\\guard#") == 0){
       goto_trace_step.lhs_object=SSA_step.ssa_lhs;
     } else {
-      goto_trace_step.lhs_object=SSA_step.original_lhs_object;
+      //goto_trace_step.lhs_object=SSA_step.original_lhs_object;
+      if(SSA_step.ssa_lhs.is_not_nil())
+        goto_trace_step.lhs_object=ssa_exprt(SSA_step.ssa_lhs.get_original_expr());
+      else
+        goto_trace_step.lhs_object.make_nil();
     }
 
     if (str.find("?retval") < str.size() ||
@@ -214,9 +218,9 @@ void error_tracet::show_goto_trace(
 				{
 					out << std::endl;
 					cout << "Violated assertion at:\n" <<
-					"  file \"" << it->pc->location.get_file() <<
-					"\",\n  function \"" << it->pc->location.get_function() <<
-					"\",\n  line " << it->pc->location.get_line() << ":\n  " <<
+					"  file \"" << it->pc->source_location.get_file() <<
+					"\",\n  function \"" << it->pc->source_location.get_function() <<
+					"\",\n  line " << it->pc->source_location.get_line() << ":\n  " <<
 					from_expr(ns, "", it->pc->guard) << "\n";
 
 					out << std::endl;
@@ -233,7 +237,7 @@ void error_tracet::show_goto_trace(
 					{
 						first_step=false;
 						prev_step_nr=it->step_nr;
-						show_state_header(out, it->thread_nr, it->pc->location, it->step_nr);
+						show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
 					}
 
 					std::string str = guard_expln[it->lhs_object.get("identifier")];
@@ -256,7 +260,7 @@ void error_tracet::show_goto_trace(
 				}
 				else
 				{
-					show_state_header(out, it->thread_nr, it->pc->location, it->step_nr);
+					show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
 					out << "  OUTPUT " << it->io_id << ":";
 
 					for(std::list<exprt>::const_iterator
@@ -273,7 +277,7 @@ void error_tracet::show_goto_trace(
 				break;
 
 			case goto_trace_stept::INPUT:
-				show_state_header(out, it->thread_nr, it->pc->location, it->step_nr);
+				show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
 				out << "  INPUT " << it->io_id << ":";
 
 				for(std::list<exprt>::const_iterator

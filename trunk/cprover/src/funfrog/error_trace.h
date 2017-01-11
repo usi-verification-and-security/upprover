@@ -3,6 +3,7 @@
 
 #include "solvers/smtcheck_opensmt2.h"
 #include "partitioning_target_equation.h"
+#include "smt_partitioning_target_equation.h"
 
 #include "assertion_info.h"
 #include "summarization_context.h"

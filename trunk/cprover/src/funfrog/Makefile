@@ -10,7 +10,8 @@ SHARED_SRC := \
       solvers/smtcheck_opensmt2.cpp \
       solvers/smtcheck_opensmt2_lra.cpp \
       solvers/smt_itp.cpp \
-      solvers/prop_itp.cpp
+      solvers/prop_itp.cpp \
+      error_trace.cpp
 
 FUNFROG_SRC := \
       partitioning_target_equation.cpp \
