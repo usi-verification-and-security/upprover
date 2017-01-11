@@ -85,6 +85,7 @@ int main(int argc, const char** argv) {
 	absolute_timet before, after;
     before=current_time();
   
+    // TODO: KE - need to fix this code to work for summary of smt or sat
     function_infot::optimize_all_summaries(summary_store, f_infos);
     
     after=current_time();

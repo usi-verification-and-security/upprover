@@ -98,9 +98,9 @@ private:
         const prop_interpolantt& second);
   static bool check_implies_smt(const smt_interpolantt& first, 
         const smt_interpolantt& second);
-  static bool check_implies(const interpolantt& first, 
-        const smt_interpolantt& second);
-  */
+   */
+  static bool check_implies(const interpolantt& first, const interpolantt& second);
+  
   // Finds out weather some of the given summaries are 
   // superfluous, if so the second list will not contain them.
   static bool optimize_summaries(summary_storet& summary_store, 

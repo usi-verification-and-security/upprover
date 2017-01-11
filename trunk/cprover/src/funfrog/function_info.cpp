@@ -37,7 +37,6 @@ bool function_infot::add_summary(summary_storet& summary_store,
   if (filter && !summaries.empty()) {
     summaryt& new_summary = summary_store.find_summary(summary_id);
     // Is implied by any older summary?
-    /* TODO: fix compilation error
     for (summary_idst::const_iterator it = summaries.begin();
             it != summaries.end();
             ++it) { 
@@ -46,16 +45,15 @@ bool function_infot::add_summary(summary_storet& summary_store,
         return false; // Implied by an already present summary --> skip it
       }
     }
-     */
     
     // It implies any older summary?
     unsigned used = 0;
     for (unsigned i = 0; i < summaries.size(); ++i) {
-      /*TODO: Fix compilation errors
-       * if (check_implies(new_summary, summary_store.find_summary(summaries[i]))) {
+
+      if (check_implies(new_summary, summary_store.find_summary(summaries[i]))) {
         // Replace it
         summary_store.replace_summary(summaries[i], summary_id);
-      } else*/ {
+      } else {
         if (used != i) {
           // Shift needed
           std::swap(summaries[used], summaries[i]);
@@ -494,12 +492,13 @@ Function: function_infot::check_implies
 
 \*******************************************************************/
 
-/*bool function_infot::check_implies(const interpolantt& first, 
-        const prop_interpolantt& second)
+bool function_infot::check_implies(const interpolantt& first, 
+        const interpolantt& second)
 {
     // TODO: add calls according to type 
     return false;
 }
+/*
 bool function_infot::check_implies_prop(const prop_interpolantt& first, 
         const prop_interpolantt& second)
 {
