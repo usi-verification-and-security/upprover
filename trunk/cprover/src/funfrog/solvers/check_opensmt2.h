@@ -12,12 +12,18 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 #include <solvers/sat/cnf.h>
 #include <util/threeval.h>
 #include <opensmt/opensmt2.h>
+#include "interpolating_solver.h"
+
+/*
+ TODO: think how to generalize this class and interpolating_solvert to be 
+ * not related. Need also to change (split?) summarizing_checkert
+ */
 
 // Cache of already visited interpolant ptrefs
 typedef std::map<PTRef, literalt> ptref_cachet;
 
 // General interface for OPENSMT2 calls
-class check_opensmt2t
+class check_opensmt2t :  public interpolating_solvert
 {
 public:
   check_opensmt2t(bool reduction, int reduction_graph, int reduction_loops) :
@@ -33,7 +39,9 @@ public:
       itp_lra_factor(NULL),
       reduction(reduction),
       reduction_graph(reduction_graph),
-      reduction_loops(reduction_loops)
+      reduction_loops(reduction_loops),
+      verbosity(0),
+      certify(0)
   { }
   
   virtual ~check_opensmt2t() { }
@@ -66,6 +74,13 @@ public:
 
   Logic * getLogic() { return logic; }
 
+  void set_verbosity(int r) { verbosity = r; }
+  
+  void set_certify(int r) { certify = r; }
+  
+  void set_reduce_proof(bool r) { reduction = r; }
+  void set_reduce_proof_graph(int r) { reduction_graph = r; }
+  void set_reduce_proof_loops(int r) { reduction_loops = r; }
   
   /* General consts for prop version */
   const char* false_str = "false";
@@ -104,6 +119,9 @@ protected:
   ItpAlgorithm itp_lra_algorithm;
   const char * itp_lra_factor;
 
+  int verbosity;
+  
+  int certify;
 };
 
 #endif

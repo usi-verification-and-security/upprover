@@ -11,32 +11,36 @@
 #include "dependency_checker.h"
 
 #include "solvers/smtcheck_opensmt2_lra.h"
+#include "smt_refiner_assertion_sum.h"
+#include "prop_refiner_assertion_sum.h"
+#include "smt_dependency_checker.h"
+#include "prop_dependency_checker.h"
 
 void summarizing_checkert::initialize_solver()
 {
     string _logic = options.get_option("logic");
-    int _type_constraints = options.get_int_option("type-constraints");
+    int _type_constraints = options.get_unsigned_int_option("type-constraints");
     if(_logic == "qfuf")
         decider = new smtcheck_opensmt2t();
     else if(_logic == "qflra")
         decider = new smtcheck_opensmt2t_lra(_type_constraints);
     else if (_logic == "prop")
-        decider = new satcheck_opensmt2t(_type_constraints);
+        decider = new satcheck_opensmt2t();
     else
         assert(0); //Unsupported 
   
   // Set all the rest of the option - KE: check what to shift to the part of SMT only
-  decider->set_itp_bool_alg(options.get_int_option("itp-algorithm"));
-  decider->set_itp_euf_alg(options.get_int_option("itp-uf-algorithm"));
-  decider->set_itp_lra_alg(options.get_int_option("itp-lra-algorithm"));
+  decider->set_itp_bool_alg(options.get_unsigned_int_option("itp-algorithm"));
+  decider->set_itp_euf_alg(options.get_unsigned_int_option("itp-uf-algorithm"));
+  decider->set_itp_lra_alg(options.get_unsigned_int_option("itp-lra-algorithm"));
   if(options.get_option("itp-lra-factor").size() > 0) decider->set_itp_lra_factor(options.get_option("itp-lra-factor").c_str());
-  decider->set_verbosity(options.get_int_option("verbose-solver"));
-  decider->set_certify(options.get_int_option("check-itp"));
+  decider->set_verbosity(options.get_unsigned_int_option("verbose-solver"));
+  decider->set_certify(options.get_unsigned_int_option("check-itp"));
   if(options.get_bool_option("reduce-proof"))
   {
     decider->set_reduce_proof(options.get_bool_option("reduce-proof"));
-    if(options.get_int_option("reduce-proof-graph")) decider->set_reduce_proof_graph(options.get_int_option("reduce-proof-graph"));
-    if(options.get_int_option("reduce-proof-loops")) decider->set_reduce_proof_loops(options.get_int_option("reduce-proof-loops"));
+    if(options.get_unsigned_int_option("reduce-proof-graph")) decider->set_reduce_proof_graph(options.get_unsigned_int_option("reduce-proof-graph"));
+    if(options.get_unsigned_int_option("reduce-proof-loops")) decider->set_reduce_proof_loops(options.get_unsigned_int_option("reduce-proof-loops"));
   }
 }
 
@@ -50,7 +54,7 @@ void summarizing_checkert::initialize()
     if (options.get_option("logic") == "prop")
         summarization_context.set_summary_store(new prop_summary_storet());
     else
-        ssummarization_context.set_summary_store(new smt_summary_storet());
+        summarization_context.set_summary_store(new smt_summary_storet());
   
     // Prepare the summarization context
     summarization_context.analyze_functions(ns);
@@ -64,7 +68,7 @@ void summarizing_checkert::initialize()
             if (options.get_option("logic") == "prop")
                 summarization_context.deserialize_infos_prop(summary_file); // Prop load summary  
             else
-                summarization_context.deserialize_infos_smt(summary_file, decider); // smt load summary
+                summarization_context.deserialize_infos_smt(summary_file, dynamic_cast <smtcheck_opensmt2t*> (decider)); // smt load summary
         }
     }
 
@@ -163,7 +167,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 
   setup_unwind(symex);
 
-  prop_refiner_assertion_sumt refiner = refiner_assertion_sumt(
+  prop_refiner_assertion_sumt refiner = prop_refiner_assertion_sumt(
               summarization_context, omega,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
@@ -184,22 +188,20 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
     
     // Init the next iteration context
     {
-        satcheck_opensmt2t* temp = new satcheck_opensmt2t();
-        opensmt = temp;
+        decider = new satcheck_opensmt2t();
 
-        interpolator.reset(opensmt);
-        bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
+        interpolator.reset(decider);
+        bv_pointerst *deciderp = new bv_pointerst(ns, *decider);
         deciderp->unbounded_array = bv_pointerst::U_AUTO;
         decider_prop.reset(deciderp);
-        temp.set_prop_conv_solver(decider_prop);
-        temp = Null
+        (dynamic_cast<satcheck_opensmt2t *> (decider))->set_prop_conv_solver(decider_prop);
     }
     
     end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
 
     if (!end){
       if (options.get_bool_option("claims-opt") && count == 1){
-        prop_dependency_checkert(ns, message_handler, goto_program, omega, options.get_int_option("claims-opt"), equation.SSA_steps.size())
+        prop_dependency_checkert(ns, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
                 .do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps()));
       }
@@ -305,7 +307,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 
   setup_unwind(symex);
 
-  smt_refiner_assertion_sumt refiner = refiner_assertion_sumt(
+  smt_refiner_assertion_sumt refiner = smt_refiner_assertion_sumt(
               summarization_context, omega,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
@@ -333,12 +335,14 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 
     if (!end){
       if (options.get_bool_option("claims-opt") && count == 1){
-        smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_int_option("claims-opt"), equation.SSA_steps.size())
+        smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
                 .do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps()));
       }
 
-      end = prop.assertion_holds(assertion, ns, *decider, *decider);
+      end = prop.assertion_holds(assertion, ns, 
+              *(dynamic_cast<smtcheck_opensmt2t *> (decider)), 
+              *(dynamic_cast<interpolating_solvert *> (decider)));
       unsigned summaries_count = omega.get_summaries_count();
       unsigned nondet_count = omega.get_nondets_count();
       if (end && decider->can_interpolate())
@@ -367,7 +371,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
             status() << "HAVOCING (of " << nondet_count
                    << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
           }
-          refiner.refine(*decider, omega.get_summary_info(), equation);
+          refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), omega.get_summary_info(), equation);
 
           if (refiner.get_refined_functions().size() == 0){
             assertion_violated(prop, symex.guard_expln);
@@ -413,7 +417,7 @@ void summarizing_checkert::assertion_violated (smt_assertion_sumt& prop,
 
     if (!options.get_bool_option("no-error-trace"))
         prop.error_trace(*decider_smt, ns, guard_expln);
-    if (decider->has_unsupported_vars()){
+    if (decider_smt->has_unsupported_vars()){
     	status() << "\nA bug found." << endl;
     	status() << "WARNING: Possibly due to the Theory conversion." << endl;
     } else {

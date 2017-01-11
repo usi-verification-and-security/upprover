@@ -17,7 +17,7 @@
 #include "refiner_assertion_sum.h"
 #include "smt_partitioning_target_equation.h"
 
-class smt_refiner_assertion_sumt : refiner_assertion_sumt 
+class smt_refiner_assertion_sumt : public refiner_assertion_sumt 
 {
 public:
     smt_refiner_assertion_sumt(

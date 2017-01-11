@@ -22,15 +22,13 @@ Module: Wrapper for OpenSMT2
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
 
-class smtcheck_opensmt2t : public interpolating_solvert, public check_opensmt2t
+class smtcheck_opensmt2t : public check_opensmt2t
 {
 public:
   smtcheck_opensmt2t() :
       no_literals(0),
       pushed_formulas(0),
       unsupported2var(0),
-      verbosity(0),
-      certify(0),
       is_var_constraints_empty(true),
       check_opensmt2t(false, 3, 2) // Is last always!
   {
@@ -49,13 +47,6 @@ public:
   virtual ~smtcheck_opensmt2t(); // d'tor
 
   virtual prop_conv_solvert* get_prop_conv_solver() {return NULL;}
-
-  void set_verbosity(int r) { verbosity = r; }
-  void set_certify(int r) { certify = r; }
-
-  void set_reduce_proof(bool r) { reduction = r; }
-  void set_reduce_proof_graph(int r) { reduction_graph = r; }
-  void set_reduce_proof_loops(int r) { reduction_loops = r; }
 
   bool solve();
   
@@ -153,9 +144,6 @@ protected:
   bool ready_to_interpolate;
   
   unsigned no_literals;
-
-  int verbosity;
-  int certify;
 
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
   int proof_trans;

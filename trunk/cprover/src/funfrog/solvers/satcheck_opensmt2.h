@@ -21,7 +21,7 @@ Author: Grigory Fedyukovich
 // Cache of already visited interpolant ptrefs
 typedef std::map<PTRef, literalt> ptref_cachet;
 
-class satcheck_opensmt2t:public cnf_solvert, public interpolating_solvert, public check_opensmt2t
+class satcheck_opensmt2t:public cnf_solvert, public check_opensmt2t
 {
 public:
   satcheck_opensmt2t() :
@@ -102,7 +102,7 @@ protected:
 
 //  Mapping from variable indices to their PTRefs in OpenSMT
   std::vector<PTRef> ptrefs;
-
+ 
   void convert(const bvt &bv, vec<PTRef> &args);
 
   void setup_reduction();
