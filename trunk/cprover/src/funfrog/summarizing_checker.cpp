@@ -188,13 +188,13 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
     
     // Init the next iteration context
     {
-        decider = new satcheck_opensmt2t();
+        decider = (new satcheck_opensmt2t())->set_prop_conv_solver(
+                (dynamic_cast<prop_conv_solvert *> (decider_prop.get())));
 
         interpolator.reset(decider);
         //bv_pointerst *deciderp = new bv_pointerst(ns, *decider);
         //deciderp->unbounded_array = bv_pointerst::U_AUTO;
         //decider_prop.reset(deciderp);
-        //(dynamic_cast<satcheck_opensmt2t *> (decider))->set_prop_conv_solver(decider_prop); // TODO: fix compilation
     }
     
     end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());

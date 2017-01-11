@@ -35,7 +35,10 @@ public:
   }
 
   virtual prop_conv_solvert* get_prop_conv_solver() {return prop_conv_interface;}
-  void set_prop_conv_solver(prop_conv_solvert* _prop) { prop_conv_interface = _prop;}
+  satcheck_opensmt2t* set_prop_conv_solver(prop_conv_solvert* _prop) { 
+      prop_conv_interface = _prop;
+      return this;
+  }
 
   virtual resultt prop_solve();
   virtual tvt l_get(literalt a) const;

@@ -553,7 +553,7 @@ Function: function_infot::optimize_summaries
 bool function_infot::optimize_summaries(summary_storet& summary_store, 
         const summary_idst& itps_in, summary_idst& itps_out)
 {
-    /* TODO: Fix it 
+    /* TODO: Fix it - Related to Sumo.cpp code.
   unsigned n = itps_in.size();
   bool changed = false;
   bool itps_map[n];
