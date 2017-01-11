@@ -80,7 +80,7 @@ protected:
   		std::string lower_b,
   		std::string upper_b); // Push assert to the current partition
 
-  PTRef& create_constraints2type(
+  literalt create_constraints2type(
   		PTRef &var,
   		std::string lower_b,
   		std::string upper_b); // create a formula with the constraints

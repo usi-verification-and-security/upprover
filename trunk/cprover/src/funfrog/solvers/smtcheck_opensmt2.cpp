@@ -660,7 +660,7 @@ literalt smtcheck_opensmt2t::lnotequal(literalt l1, literalt l2){
 }
 
 literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
-	literalt l;
+    literalt l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
@@ -669,7 +669,7 @@ literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
     PTRef ans = logic->mkAnd(args);
     l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
-	return l;
+    return l;
 }
 
 literalt smtcheck_opensmt2t::land(bvt b){

@@ -520,7 +520,7 @@ std::string smtcheck_opensmt2t_lra::create_bound_string(std::string base, int ex
 	  return ret;
 }
 
-PTRef& smtcheck_opensmt2t_lra::create_constraints2type(
+literalt smtcheck_opensmt2t_lra::create_constraints2type(
 		PTRef &var,
 		std::string lower_b,
 		std::string upper_b)
@@ -530,11 +530,10 @@ PTRef& smtcheck_opensmt2t_lra::create_constraints2type(
 	vec<PTRef> args2; args2.push(var); args2.push(lralogic->mkConst(upper_b.c_str()));
 	PTRef ptl1 = lralogic->mkRealLeq(args1);
 	PTRef ptl2 = lralogic->mkRealLeq(args2);
-	args.push(ptl1);
-	args.push(ptl2);
-	PTRef ptr = logic->mkAnd(args);
+        literalt l1 = push_variable(ptl1);
+        literalt l2 = push_variable(ptl2);
 
-	return ptr;
+	return land(l1,l2);
 }
 
 void smtcheck_opensmt2t_lra::push_assumes2type(
@@ -544,7 +543,9 @@ void smtcheck_opensmt2t_lra::push_assumes2type(
 {
 	if (type_constraints_level < 1 ) return;
 
-	PTRef ptr = create_constraints2type(var, lower_b, upper_b);
+        literalt l = create_constraints2type(var, lower_b, upper_b); 
+	PTRef ptr = literals[l.var_no()];
+        std::cout << "after " << ptr.x << std::endl;
 	set_to_true(ptr);
 
 #ifdef SMT_DEBUG_VARS_BOUNDS
@@ -563,7 +564,8 @@ void smtcheck_opensmt2t_lra::push_asserts2type(
 	if (type_constraints_level < 2) return;
 
 	// Else add the checks
-	PTRef ptr = create_constraints2type(var, lower_b, upper_b);
+        literalt l = create_constraints2type(var, lower_b, upper_b); 
+	PTRef ptr = literals[l.var_no()];
 
 	if (is_var_constraints_empty)
 	{
