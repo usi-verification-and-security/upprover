@@ -203,11 +203,11 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   for(unsigned i = 0; i < itp_ptrefs.size(); ++i)
   {
-      prop_itpt itp;
-      extract_itp(itp_ptrefs[i], itp);
-      // TODO: fix compilation errors
-      //interpolants.push_back(prop_itpt());
-      //interpolants.back().swap(itp);
+      itpt* itp = new prop_itpt();
+      itpt* itp_empty = new prop_itpt();
+      extract_itp(itp_ptrefs[i], *(dynamic_cast <prop_itpt*> (itp)));
+      interpolants.push_back(*&itp_empty);
+      interpolants.back()->swap(*itp);
   }
 }
 
