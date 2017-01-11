@@ -57,6 +57,8 @@ public:
   virtual bool usesVar(symbol_exprt&, unsigned);
   
   virtual bool check_implies(const itpt& second) const { return false;}
+  
+  virtual itpt* get_nodet() { return new smt_itpt(); }
 
 protected:
   typedef std::vector<bvt> clausest;

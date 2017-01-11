@@ -64,6 +64,8 @@ public:
   }
   
   virtual bool check_implies(const itpt& second) const;
+  
+  virtual itpt* get_nodet() { return new prop_itpt(); }
 
 protected:
   typedef std::vector<bvt> clausest;

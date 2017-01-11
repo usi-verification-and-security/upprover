@@ -545,7 +545,6 @@ void smtcheck_opensmt2t_lra::push_assumes2type(
 
         literalt l = create_constraints2type(var, lower_b, upper_b); 
 	PTRef ptr = literals[l.var_no()];
-        std::cout << "after " << ptr.x << std::endl;
 	set_to_true(ptr);
 
 #ifdef SMT_DEBUG_VARS_BOUNDS

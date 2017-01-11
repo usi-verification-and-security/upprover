@@ -62,13 +62,8 @@ protected:
   struct nodet {
     // Note that the given summary is destroyed
     nodet(summary_idt id, summaryt& _summary) : repr_id(id) {
-        if (typeid(*summary) == typeid(prop_itpt))
-            summary = new prop_itpt();
-        else if (typeid(*summary) == typeid(smt_itpt))
-            summary = new smt_itpt();
-        else
-            assert(0); // missing type
-      summary->swap(_summary); 
+        summary = _summary.get_nodet();
+        summary->swap(_summary); 
     }
     
     nodet(summary_idt _repr_id) : summary(NULL), repr_id(_repr_id)  { }

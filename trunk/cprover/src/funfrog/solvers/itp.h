@@ -24,6 +24,8 @@ public:
   virtual void swap(itpt& other)=0;
   virtual void swap(prop_itpt& other)=0;
   virtual void swap(smt_itpt& other)=0;
+  
+  virtual itpt* get_nodet() =0;
 
   // For SAT & SMT code
   literalt new_variable() {
