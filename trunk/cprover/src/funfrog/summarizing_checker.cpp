@@ -215,7 +215,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
           status() << ("Skip generating interpolants");
         } else {
           status() << ("Start generating interpolants...");
-          //extract_interpolants_prop(prop, equation); // TODO: Fix compilation
+          extract_interpolants_prop(prop, equation, decider_prop, interpolator);
         }
         if (summaries_count == 0)
         {
