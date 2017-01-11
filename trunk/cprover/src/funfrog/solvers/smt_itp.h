@@ -55,6 +55,8 @@ public:
   virtual void deserialize(std::istream& in);
 
   virtual bool usesVar(symbol_exprt&, unsigned);
+  
+  virtual bool check_implies(const itpt& second) const { return false;}
 
 protected:
   typedef std::vector<bvt> clausest;

@@ -14,6 +14,7 @@ Author: Ondrej Sery
 #include <solvers/prop/literal.h>
 #include <solvers/flattening/boolbv.h>
 #include "itp.h"
+#include "satcheck_opensmt2.h"
 
 class prop_itpt: public itpt
 {
@@ -61,6 +62,8 @@ public:
   { 
       return get_symbol_mask()[idx];
   }
+  
+  virtual bool check_implies(const itpt& second) const;
 
 protected:
   typedef std::vector<bvt> clausest;

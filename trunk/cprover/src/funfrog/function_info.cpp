@@ -495,9 +495,9 @@ Function: function_infot::check_implies
 bool function_infot::check_implies(const interpolantt& first, 
         const interpolantt& second)
 {
-    // TODO: add calls according to type 
-    return false;
+    return (first.check_implies(second));
 }
+// KE: move these into interpolant code
 /*
 bool function_infot::check_implies_prop(const prop_interpolantt& first, 
         const prop_interpolantt& second)

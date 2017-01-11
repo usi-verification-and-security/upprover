@@ -41,6 +41,8 @@ public:
   // Serialization
   virtual void serialize(std::ostream& out) const=0;
   virtual void deserialize(std::istream& in)=0;
+  
+  virtual bool check_implies(const itpt& second) const=0;
 
   // Getters & Setters
   PTRef getInterpolant() { return interpolant; }
