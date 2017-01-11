@@ -192,9 +192,9 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
                 (dynamic_cast<prop_conv_solvert *> (decider_prop.get())));
 
         interpolator.reset(decider);
-        //bv_pointerst *deciderp = new bv_pointerst(ns, *decider);
-        //deciderp->unbounded_array = bv_pointerst::U_AUTO;
-        //decider_prop.reset(deciderp);
+        bv_pointerst *deciderp = new bv_pointerst(ns, *(dynamic_cast<satcheck_opensmt2t *> (decider)));
+        deciderp->unbounded_array = bv_pointerst::U_AUTO;
+        decider_prop.reset(deciderp);
     }
     
     end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
