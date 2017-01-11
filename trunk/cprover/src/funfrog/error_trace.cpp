@@ -185,117 +185,130 @@ void error_tracet::show_goto_trace(
   std::map<irep_idt, std::string> &guard_expln)
 {
     // In case we use over approximate to verify this example - gives a warning to the user!
-	if (is_trace_overapprox(decider)) {
-		cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
-		cout << "         Use --logic with Different Logic to Try Creating an Error Trace. \n";
-		return; // Cannot really print a trace
-	}
+    if (is_trace_overapprox(decider)) {
+        cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
+        cout << "         Use --logic with Different Logic to Try Creating an Error Trace. \n";
+        return; // Cannot really print a trace
+    }
 
 
-	unsigned prev_step_nr=0;
-	bool first_step=true;
+    unsigned prev_step_nr=0;
+    bool first_step=true;
 
-	for(goto_tracet::stepst::const_iterator
-      it=goto_trace.steps.begin();
-      it!=goto_trace.steps.end();
-      it++)
-	{
-		switch(it->type)
-		{
-			// Don't print artificial instructions added for verification
-			case goto_trace_stept::ASSUME:
-			case goto_trace_stept::LOCATION:
-			case goto_trace_stept::FUNCTION_CALL:
-			case goto_trace_stept::FUNCTION_RETURN:
-			case goto_trace_stept::SPAWN:
-			case goto_trace_stept::ATOMIC_BEGIN:
-			case goto_trace_stept::ATOMIC_END:
-			case goto_trace_stept::DECL:
-				break;
+    for(goto_tracet::stepst::const_iterator
+  it=goto_trace.steps.begin();
+  it!=goto_trace.steps.end();
+  it++)
+    {
+        switch(it->type)
+        {
+            // Don't print artificial instructions added for verification
+            case goto_trace_stept::ASSUME:
+            case goto_trace_stept::LOCATION:
+            case goto_trace_stept::FUNCTION_CALL:
+            case goto_trace_stept::FUNCTION_RETURN:
+            case goto_trace_stept::SPAWN:
+            case goto_trace_stept::ATOMIC_BEGIN:
+            case goto_trace_stept::ATOMIC_END:
+            case goto_trace_stept::DECL:
+            case goto_trace_stept::MEMORY_BARRIER:
+            case goto_trace_stept::DEAD:  
+            case goto_trace_stept::GOTO:    
+                    break;
 
-			case goto_trace_stept::ASSERT:
-				if(!it->cond_value)
-				{
-					out << std::endl;
-					cout << "Violated assertion at:\n" <<
-					"  file \"" << it->pc->source_location.get_file() <<
-					"\",\n  function \"" << it->pc->source_location.get_function() <<
-					"\",\n  line " << it->pc->source_location.get_line() << ":\n  " <<
-					from_expr(ns, "", it->pc->guard) << "\n";
+            case goto_trace_stept::CONSTRAINT:
+              assert(false);
+              break;
 
-					out << std::endl;
-				}
-				break;
+            case goto_trace_stept::SHARED_READ:
+            case goto_trace_stept::SHARED_WRITE:
+              assert(false);
+              break;
 
-			case goto_trace_stept::ASSIGNMENT:
-				if(it->pc->is_assign() ||
-						it->pc->is_return() || // returns have a lhs!
-						it->pc->is_function_call() ||
-						(it->pc->is_other() && it->lhs_object.is_not_nil()))
-				{
-					if(prev_step_nr!=it->step_nr || first_step)
-					{
-						first_step=false;
-						prev_step_nr=it->step_nr;
-						show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
-					}
+            case goto_trace_stept::ASSERT:
+                if(!it->cond_value)
+                {
+                    out << std::endl;
+                    cout << "Violated assertion at:\n" <<
+                    "  file \"" << it->pc->source_location.get_file() <<
+                    "\",\n  function \"" << it->pc->source_location.get_function() <<
+                    "\",\n  line " << it->pc->source_location.get_line() << ":\n  " <<
+                    from_expr(ns, "", it->pc->guard) << "\n";
 
-					std::string str = guard_expln[it->lhs_object.get("identifier")];
-					if (str != "")
-						show_guard_value(out, str, it->full_lhs_value);
-					else if (it->format_string != "")
-						show_misc_value(out, it->format_string, it->full_lhs_value);
-					else
-						show_var_value(out, ns, it->lhs_object, it->lhs_object, it->full_lhs_value);
-				}
-				break;
+                    out << std::endl;
+                }
+                break;
 
-			case goto_trace_stept::OUTPUT:
-				if(it->formatted)
-				{
-					printf_formattert printf_formatter(ns);
-					printf_formatter(id2string(it->format_string), it->io_args);
-					printf_formatter.print(out);
-					out << std::endl;
-				}
-				else
-				{
-					show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
-					out << "  OUTPUT " << it->io_id << ":";
+            case goto_trace_stept::ASSIGNMENT:
+                if(it->pc->is_assign() ||
+                                it->pc->is_return() || // returns have a lhs!
+                                it->pc->is_function_call() ||
+                                (it->pc->is_other() && it->lhs_object.is_not_nil()))
+                {
+                        if(prev_step_nr!=it->step_nr || first_step)
+                        {
+                                first_step=false;
+                                prev_step_nr=it->step_nr;
+                                show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
+                        }
 
-					for(std::list<exprt>::const_iterator
-							l_it=it->io_args.begin();
-							l_it!=it->io_args.end();
-							l_it++)
-					{
-						if(l_it!=it->io_args.begin()) out << ";";
-							out << " " << from_expr(ns, "", *l_it);
-					}
+                        std::string str = guard_expln[it->lhs_object.get("identifier")];
+                        if (str != "")
+                                show_guard_value(out, str, it->full_lhs_value);
+                        else if (it->format_string != "")
+                                show_misc_value(out, it->format_string, it->full_lhs_value);
+                        else
+                                show_var_value(out, ns, it->lhs_object, it->lhs_object, it->full_lhs_value);
+                }
+                break;
 
-					out << std::endl;
-				}
-				break;
+            case goto_trace_stept::OUTPUT:
+                if(it->formatted)
+                {
+                        printf_formattert printf_formatter(ns);
+                        printf_formatter(id2string(it->format_string), it->io_args);
+                        printf_formatter.print(out);
+                        out << std::endl;
+                }
+                else
+                {
+                        show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
+                        out << "  OUTPUT " << it->io_id << ":";
 
-			case goto_trace_stept::INPUT:
-				show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
-				out << "  INPUT " << it->io_id << ":";
+                        for(std::list<exprt>::const_iterator
+                                        l_it=it->io_args.begin();
+                                        l_it!=it->io_args.end();
+                                        l_it++)
+                        {
+                                if(l_it!=it->io_args.begin()) out << ";";
+                                        out << " " << from_expr(ns, "", *l_it);
+                        }
 
-				for(std::list<exprt>::const_iterator
-						l_it=it->io_args.begin();
-						l_it!=it->io_args.end();
-						l_it++)
-				{
-					if(l_it!=it->io_args.begin()) out << ";";
-						out << " " << from_expr(ns, "", *l_it);
-				}
+                        out << std::endl;
+                }
+                break;
 
-				out << std::endl;
-				break;
+            case goto_trace_stept::INPUT:
+                show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
+                out << "  INPUT " << it->io_id << ":";
 
-			default:
-				assert(false);
-		}
-	}
+                for(std::list<exprt>::const_iterator
+                                l_it=it->io_args.begin();
+                                l_it!=it->io_args.end();
+                                l_it++)
+                {
+                        if(l_it!=it->io_args.begin()) out << ";";
+                                out << " " << from_expr(ns, "", *l_it);
+                }
+
+                out << std::endl;
+                break;
+
+            default:
+                std::cout << "Error " << it->type << std::endl;
+                assert(false);
+        }
+    }
 }
 
 /*******************************************************************\
