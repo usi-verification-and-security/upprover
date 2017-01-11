@@ -79,12 +79,12 @@ LIBS =
 
 CXXFLAGS += -std=c++11 -MMD -MP -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING $(INCLUDES)
 
-all: hifrog-prop$(EXEEXT) 
+all: hifrog$(EXEEXT) 
 
 
 ###############################################################################
 
-hifrog-prop$(EXEEXT): $(OBJ)
+hifrog$(EXEEXT): $(OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline 
 
 sumo$(EXEEXT): $(SUMO_OBJ)
