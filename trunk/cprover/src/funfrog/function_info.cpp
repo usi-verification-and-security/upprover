@@ -37,22 +37,25 @@ bool function_infot::add_summary(summary_storet& summary_store,
   if (filter && !summaries.empty()) {
     summaryt& new_summary = summary_store.find_summary(summary_id);
     // Is implied by any older summary?
+    /* TODO: fix compilation error
     for (summary_idst::const_iterator it = summaries.begin();
             it != summaries.end();
-            ++it) {
+            ++it) { 
       if (check_implies(summary_store.find_summary(*it), new_summary)) {
         summary_store.replace_summary(summary_id, *it);
         return false; // Implied by an already present summary --> skip it
       }
     }
+     */
     
     // It implies any older summary?
     unsigned used = 0;
     for (unsigned i = 0; i < summaries.size(); ++i) {
-      if (check_implies(new_summary, summary_store.find_summary(summaries[i]))) {
+      /*TODO: Fix compilation errors
+       * if (check_implies(new_summary, summary_store.find_summary(summaries[i]))) {
         // Replace it
         summary_store.replace_summary(summaries[i], summary_id);
-      } else {
+      } else*/ {
         if (used != i) {
           // Shift needed
           std::swap(summaries[used], summaries[i]);
@@ -490,7 +493,14 @@ Function: function_infot::check_implies
  the second one (i.e., the second one is superfluous).
 
 \*******************************************************************/
-bool function_infot::check_implies(const prop_interpolantt& first, 
+
+/*bool function_infot::check_implies(const interpolantt& first, 
+        const prop_interpolantt& second)
+{
+    // TODO: add calls according to type 
+    return false;
+}
+bool function_infot::check_implies_prop(const prop_interpolantt& first, 
         const prop_interpolantt& second)
 {
   satcheck_opensmt2t prop_solver;
@@ -522,12 +532,12 @@ bool function_infot::check_implies(const prop_interpolantt& first,
     return false;
   }
 }
-bool static bool function_infot::check_implies(const smt_interpolantt& first, 
+bool static bool function_infot::check_implies_smt(const smt_interpolantt& first, 
         const smt_interpolantt& second) 
 {
   return false;
 }
-
+*/
 /*******************************************************************\
 
 Function: function_infot::optimize_summaries
@@ -544,6 +554,7 @@ Function: function_infot::optimize_summaries
 bool function_infot::optimize_summaries(summary_storet& summary_store, 
         const summary_idst& itps_in, summary_idst& itps_out)
 {
+    /* TODO: Fix it 
   unsigned n = itps_in.size();
   bool changed = false;
   bool itps_map[n];
@@ -587,6 +598,7 @@ bool function_infot::optimize_summaries(summary_storet& summary_store,
     if (itps_map[i])
       itps_out.push_back(itps_in[i]);
   }
+     */
   return true;
 }
 

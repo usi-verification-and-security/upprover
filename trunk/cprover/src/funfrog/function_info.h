@@ -93,11 +93,14 @@ private:
   
   // Check (using a SAT call) that the first interpolant implies
   // the second one (i.e., the second one is superfluous).
-  static bool check_implies(const prop_interpolantt& first, 
+  /*
+  static bool check_implies_prop(const prop_interpolantt& first, 
         const prop_interpolantt& second);
-  static bool check_implies(const smt_interpolantt& first, 
+  static bool check_implies_smt(const smt_interpolantt& first, 
         const smt_interpolantt& second);
-  
+  static bool check_implies(const interpolantt& first, 
+        const smt_interpolantt& second);
+  */
   // Finds out weather some of the given summaries are 
   // superfluous, if so the second list will not contain them.
   static bool optimize_summaries(summary_storet& summary_store, 

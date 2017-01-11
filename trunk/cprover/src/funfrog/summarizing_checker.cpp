@@ -191,10 +191,10 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
         decider = new satcheck_opensmt2t();
 
         interpolator.reset(decider);
-        bv_pointerst *deciderp = new bv_pointerst(ns, *decider);
-        deciderp->unbounded_array = bv_pointerst::U_AUTO;
-        decider_prop.reset(deciderp);
-        (dynamic_cast<satcheck_opensmt2t *> (decider))->set_prop_conv_solver(decider_prop);
+        //bv_pointerst *deciderp = new bv_pointerst(ns, *decider);
+        //deciderp->unbounded_array = bv_pointerst::U_AUTO;
+        //decider_prop.reset(deciderp);
+        //(dynamic_cast<satcheck_opensmt2t *> (decider))->set_prop_conv_solver(decider_prop); // TODO: fix compilation
     }
     
     end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
@@ -215,7 +215,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
           status() << ("Skip generating interpolants");
         } else {
           status() << ("Start generating interpolants...");
-          extract_interpolants_prop(prop, equation);
+          //extract_interpolants_prop(prop, equation); // TODO: Fix compilation
         }
         if (summaries_count == 0)
         {

@@ -150,8 +150,6 @@ void smtcheck_opensmt2t::freeSolver()
 // Free all inner objects
 smtcheck_opensmt2t::~smtcheck_opensmt2t()
 {
-' '
-
 	// Shall/When need to: freeSolver() ?
 }
 
