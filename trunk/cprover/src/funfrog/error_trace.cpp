@@ -14,6 +14,8 @@ Function: error_trace::build_exec_order_goto_trace
  Purpose: To create a concrete error trace with concrete values
 
  Note: Copied from build_goto_tarce.cpp
+ * 
+ * ANY PROBLEMS with values, you should start look for here!
 
 \*******************************************************************/
 void error_tracet::build_goto_trace (
@@ -24,6 +26,7 @@ void error_tracet::build_goto_trace (
   unsigned step_nr=0;
 
   const SSA_steps_orderingt& SSA_steps = target.get_steps_exec_order();
+  
   for(SSA_steps_orderingt::const_iterator
       it=SSA_steps.begin();
       it!=SSA_steps.end();
@@ -46,40 +49,47 @@ void error_tracet::build_goto_trace (
     goto_trace.steps.push_back(goto_trace_stept());
     goto_trace_stept &goto_trace_step=goto_trace.steps.back();
 
-    if (str.find("goto_symex::\\guard#") == 0){
-      goto_trace_step.lhs_object=SSA_step.ssa_lhs;
-    } else {
-      //goto_trace_step.lhs_object=SSA_step.original_lhs_object;
-      if(SSA_step.ssa_lhs.is_not_nil())
-        goto_trace_step.lhs_object=ssa_exprt(SSA_step.ssa_lhs.get_original_expr());
-      else
-        goto_trace_step.lhs_object.make_nil();
-    }
-
-    if (str.find("?retval") < str.size() ||
-	str.find("$tmp::return_value")	< str.size())
-    {
-      goto_trace_step.format_string = "function return value";
-    } else {
-      goto_trace_step.format_string=SSA_step.format_string;
-    }
-
     goto_trace_step.thread_nr=SSA_step.source.thread_nr;
     goto_trace_step.pc=SSA_step.source.pc;
     goto_trace_step.comment=SSA_step.comment;
     goto_trace_step.type=SSA_step.type;
+    goto_trace_step.hidden=SSA_step.hidden;
     goto_trace_step.step_nr=step_nr;
+    goto_trace_step.format_string=SSA_step.format_string;
     goto_trace_step.io_id=SSA_step.io_id;
     goto_trace_step.formatted=SSA_step.formatted;
     goto_trace_step.identifier=SSA_step.identifier;
-
-    if(is_index_member_symbol(SSA_step.ssa_full_lhs)){
-      goto_trace_step.full_lhs_value=decider.get_value(SSA_step.ssa_full_lhs);
+    
+    if(SSA_step.ssa_lhs.is_not_nil()) {
+        if (str.find("goto_symex::\\guard#") == 0){
+            goto_trace_step.lhs_object=SSA_step.ssa_lhs;
+        } else {
+            //goto_trace_step.lhs_object=SSA_step.original_lhs_object;
+            goto_trace_step.lhs_object=ssa_exprt(SSA_step.ssa_lhs.get_original_expr());
+        }
+    } else {
+        goto_trace_step.lhs_object.make_nil();
     }
-    else {
-      goto_trace_step.full_lhs_value=decider.get_value(SSA_step.ssa_lhs);
-    }
 
+    if(SSA_step.ssa_full_lhs.is_not_nil())
+    {
+        if(is_index_member_symbol(SSA_step.ssa_full_lhs)){
+            goto_trace_step.full_lhs_value=decider.get_value(SSA_step.ssa_full_lhs);
+        }
+        else {
+            goto_trace_step.full_lhs_value=decider.get_value(SSA_step.ssa_lhs);
+        }
+    }
+    
+    /* Print nice return value info */
+    if (str.find("::?return_value") < str.size() ||
+	str.find("::?return_value_tmp")	< str.size())
+    {
+        goto_trace_step.format_string = "function return value";
+    } else {
+        goto_trace_step.format_string=SSA_step.format_string;
+    }
+    
     for(std::list<exprt>::const_iterator
         j=SSA_step.converted_io_args.begin();
         j!=SSA_step.converted_io_args.end();
@@ -95,7 +105,7 @@ void error_tracet::build_goto_trace (
         goto_trace_step.io_args.push_back(tmp);
       }
     }
-
+    
     // Stop condition + adding data to assume and assert steps
     if(SSA_step.is_assert() || SSA_step.is_assume())
     {
