@@ -30,11 +30,9 @@ void global_may_alias_domaint::assign_lhs_aliases(
 
     aliases.isolate(identifier);
 
-    for(std::set<irep_idt>::const_iterator it=alias_set.begin();
-        it!=alias_set.end();
-        it++)
+    for(const auto &alias : alias_set)
     {
-      aliases.make_union(identifier, *it);
+      aliases.make_union(identifier, alias);
     }
   }
 }
@@ -60,11 +58,9 @@ void global_may_alias_domaint::get_rhs_aliases(
     irep_idt identifier=to_symbol_expr(rhs).get_identifier();
     alias_set.insert(identifier);
 
-    for(aliasest::const_iterator it=aliases.begin();
-        it!=aliases.end();
-        it++)
-      if(aliases.same_set(*it, identifier))
-        alias_set.insert(*it);
+    for(const auto &alias : alias_set)
+      if(aliases.same_set(alias, identifier))
+        alias_set.insert(alias);
   }
   else if(rhs.id()==ID_if)
   {
@@ -130,6 +126,8 @@ void global_may_alias_domaint::transform(
   ai_baset &ai,
   const namespacet &ns)
 {
+  if(has_values.is_false()) return;
+
   const goto_programt::instructiont &instruction=*from;
 
   switch(instruction.type)
@@ -179,6 +177,12 @@ void global_may_alias_domaint::output(
   const ai_baset &ai,
   const namespacet &ns) const
 {
+  if(has_values.is_known())
+  {
+    out << has_values.to_string() << '\n';
+    return;
+  }
+
   for(aliasest::const_iterator a_it1=aliases.begin();
       a_it1!=aliases.end();
       a_it1++)
@@ -218,7 +222,8 @@ bool global_may_alias_domaint::merge(
   locationt from,
   locationt to)
 {
-  bool changed=false;
+  bool changed=has_values.is_false();
+  has_values=tvt::unknown();
 
   // do union
   for(aliasest::const_iterator it=b.aliases.begin();
