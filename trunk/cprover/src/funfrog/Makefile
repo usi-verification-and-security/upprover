@@ -8,6 +8,7 @@ SHARED_SRC := \
       prop_summary_store.cpp \
       solvers/satcheck_opensmt2.cpp \
       solvers/smtcheck_opensmt2.cpp \
+      solvers/smtcheck_opensmt2_uf.cpp \
       solvers/smtcheck_opensmt2_lra.cpp \
       solvers/smtcheck_opensmt2_cuf.cpp \
       solvers/smt_itp.cpp \

@@ -25,6 +25,7 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class smtcheck_opensmt2t : public check_opensmt2t
 {
 public:
+  // Defualt C'tor
   smtcheck_opensmt2t() :
       no_literals(0),
       pushed_formulas(0),
@@ -32,92 +33,89 @@ public:
       is_var_constraints_empty(true),
       check_opensmt2t(false, 3, 2) // Is last always!
   {
-    initializeSolver();
+    /* No init of solver - done for inherit check_opensmt2 */
   }
-      
-  PTRef mkURealMult(vec<PTRef>& args);
-  PTRef mkURealDiv(vec<PTRef>& args);
-  PTRef mkURealPlus(vec<PTRef>& args);
-  PTRef mkURealMinus(vec<PTRef>& args);
-  PTRef mkURealLt(vec<PTRef>& args);
-  PTRef mkURealLe(vec<PTRef>& args);
-  PTRef mkURealGt(vec<PTRef>& args);
-  PTRef mkURealGe(vec<PTRef>& args);
 
+  // C'tor to pass the value to main interface check_opensmt2
+  smtcheck_opensmt2t(bool reduction, int reduction_graph, int reduction_loops) :
+        no_literals(0),
+        pushed_formulas(0),
+        unsupported2var(0),
+        is_var_constraints_empty(true),
+        check_opensmt2t(reduction, reduction_graph, reduction_loops)
+  { /* No init of solver - done for inherit check_opensmt2 */}
+    
   virtual ~smtcheck_opensmt2t(); // d'tor
 
-  virtual prop_conv_solvert* get_prop_conv_solver() {return NULL;}
+  virtual prop_conv_solvert* get_prop_conv_solver(){return NULL;} // Common to all
 
-  bool solve();
+  bool solve(); // Common to all
   
-  bool is_assignemt_true(literalt a) const;
+  bool is_assignemt_true(literalt a) const; // Common to all
 
-  virtual exprt get_value(const exprt &expr);
+  virtual exprt get_value(const exprt &expr)=0;
 
   virtual literalt lassert_var() { assert(0);}
 
   bool is_exist_var_constraints() { return !is_var_constraints_empty;}
 
-  virtual literalt convert(const exprt &expr);
+  virtual literalt convert(const exprt &expr) =0;
 
-  void set_to_false(const exprt &expr);
-  void set_to_true(const exprt &expr);
-  void set_to_true(PTRef);
+  void set_to_false(const exprt &expr); // Common to all
+  void set_to_true(const exprt &expr); // Common to all
+  void set_to_true(PTRef); // Common to all
+  void set_equal(literalt l1, literalt l2); // Common to all
 
-  void set_equal(literalt l1, literalt l2);
+  PTRef convert_symbol(const exprt &expr); // Common to all 
 
-  PTRef convert_symbol(const exprt &expr);
+  literalt const_var(bool val); // Common to all
 
-  literalt const_var(bool val);
-
-  virtual literalt const_var_Real(const exprt &expr);
+  virtual literalt const_var_Real(const exprt &expr)=0;
   
-  virtual literalt type_cast(const exprt &expr);
+  virtual literalt type_cast(const exprt &expr)=0;
 
-  literalt limplies(literalt l1, literalt l2);
+  literalt limplies(literalt l1, literalt l2); // Common to all
 
-  literalt lnotequal(literalt l1, literalt l2);
+  virtual literalt lnotequal(literalt l1, literalt l2)=0;
 
-  literalt land(literalt l1, literalt l2);
+  literalt land(literalt l1, literalt l2); // Common to all
 
-  literalt land(bvt b);
+  literalt land(bvt b); // Common to all
 
-  literalt lor(literalt l1, literalt l2);
+  literalt lor(literalt l1, literalt l2); // Common to all
 
-  literalt lor(bvt b);
+  literalt lor(bvt b); // Common to all
 
-  literalt lnot(literalt l);
+  literalt lnot(literalt l); // Common to all
 
-  virtual literalt lvar(const exprt &expr);
+  virtual literalt lvar(const exprt &expr)=0;
 
-  virtual literalt lconst(const exprt &expr);
+  literalt lconst(const exprt &expr); // Common to all
 
-  fle_part_idt new_partition();
+  fle_part_idt new_partition(); // Common to all
 
   void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants);
+      interpolantst& interpolants); // Common to all
 
-  bool can_interpolate() const;
+  bool can_interpolate() const; // Common to all
 
   // Extract interpolant form OpenSMT files/data
-  void extract_itp(PTRef ptref, smt_itpt& target_itp) const;
+  void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
 
-  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true);
+  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true); // Common to all
 
   static int get_index(const string& varname);
-  static std::string insert_index(const string& varname, const string& idx);
-  static std::string insert_index(const string& varname, int idx);
-  static std::string quote_varname(const string& varname);
-  static std::string unquote_varname(const string& varname);
+  static std::string insert_index(const string& varname, const string& idx); // Common to all
+  static std::string insert_index(const string& varname, int idx); // Common to all
+  static std::string quote_varname(const string& varname); // Common to all
+  static std::string unquote_varname(const string& varname); // Common to all
   
-  static std::string remove_index(std::string);
-  static std::string remove_invalid(const string& varname);
+  static std::string remove_index(std::string); // Common to all
+  static std::string remove_invalid(const string& varname); // Common to all
 
-  static bool is_quoted_var(const string& varname);
+  static bool is_quoted_var(const string& varname); // Common to all
 
-  const char* false_str = "false";
-  const char* true_str = "true";
-
+  // Common to all
   void start_encoding_partitions() {
 	  if (partition_count > 0){
 		  if (ready_to_interpolate) cout << "EXIT WITH ERROR: Try using --claim parameter" << std::endl;
@@ -129,21 +127,13 @@ public:
   }
 
 
-  bool has_unsupported_vars() { return unsupported2var > 0; }
+  bool has_unsupported_vars() { return unsupported2var > 0; } // Common to all
 
+  // Common to all
   std::set<PTRef>* getVars(); // Get all variables from literals for the counter example phase
 
 protected:
   
-    
-  smtcheck_opensmt2t(bool reduction, int reduction_graph, int reduction_loops) :
-        no_literals(0),
-        pushed_formulas(0),
-        unsupported2var(0),
-        is_var_constraints_empty(true),
-        check_opensmt2t(reduction, reduction_graph, reduction_loops)
-  { /* No init of solver - done for inherit check_opensmt2 */}
-
   vec<PTRef> top_level_formulas;
 
   bool is_var_constraints_empty;
@@ -165,11 +155,11 @@ protected:
 
   unsigned unsupported2var; // Create a new var funfrog::c::unsupported_op2var#i
 
-  virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  virtual literalt lunsupported2var(exprt expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
-  literalt new_variable();
+  literalt new_variable(); // Common to all
 
-  literalt push_variable(PTRef ptl);
+  literalt push_variable(PTRef ptl); // Common to all
 
   void setup_reduction();
 
@@ -177,33 +167,21 @@ protected:
 
   void setup_proof_transformation();
   
-  virtual void initializeSolver();
+  virtual void initializeSolver()=0;
 
-  void produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants);
+  void produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants); // Common to all
 
-  void close_partition();
+  void close_partition(); // Common to all
 
-  virtual void freeSolver();
+  virtual void freeSolver(); // Common to all
 
-  void fill_vars(PTRef, std::map<std::string, PTRef>&);
+  void fill_vars(PTRef, std::map<std::string, PTRef>&); // Common to all
 
+  // Common to all
   std::string extract_expr_str_number(const exprt &expr); // Our conversion of const that works also for negative numbers + check of result
 
+  // Common to all
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
-
-  static const char *tk_sort_ureal;
-  static const char *tk_mult;
-  static const char *tk_div;
-  static const char *tk_plus;
-  static const char *tk_minus;
-  static const char *tk_lt;
-  static const char *tk_le;
-  static const char *tk_gt;
-  static const char *tk_ge;
-
-  SRef sort_ureal; //Uninterpreted Real sort. Used to fake LRA.
-  SymRef s_mult, s_div, s_plus, s_minus;
-  SymRef s_lt, s_le, s_gt, s_ge;
 
 #ifdef DEBUG_SMT2SOLVER
   std::map <std::string,std::string> ite_map_str;

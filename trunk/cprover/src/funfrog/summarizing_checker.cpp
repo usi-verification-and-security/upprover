@@ -12,6 +12,7 @@
 
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
+#include "solvers/smtcheck_opensmt2_uf.h"
 #include "smt_refiner_assertion_sum.h"
 #include "prop_refiner_assertion_sum.h"
 #include "smt_dependency_checker.h"
@@ -22,7 +23,7 @@ void summarizing_checkert::initialize_solver()
     string _logic = options.get_option("logic");
     int _type_constraints = options.get_unsigned_int_option("type-constraints");
     if(_logic == "qfuf")
-        decider = new smtcheck_opensmt2t();
+        decider = new smtcheck_opensmt2t_uf();
     else if(_logic == "qfcuf")
         decider = new smtcheck_opensmt2t_cuf();
     else if(_logic == "qflra")

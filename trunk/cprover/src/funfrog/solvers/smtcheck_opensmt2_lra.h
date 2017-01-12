@@ -16,43 +16,39 @@ class smtcheck_opensmt2t_lra : public smtcheck_opensmt2t
 {
 public:
   smtcheck_opensmt2t_lra(int _type_constraints_level) :
-      lralogic (NULL),
       type_constraints_level(_type_constraints_level),
       smtcheck_opensmt2t(false, 3, 2)
   {
     initializeSolver();
   }
-
+      
   virtual ~smtcheck_opensmt2t_lra(); // d'tor
 
   virtual exprt get_value(const exprt &expr);
 
   virtual literalt convert(const exprt &expr);
-
+  
   virtual literalt const_var_Real(const exprt &expr);
 
   virtual literalt type_cast(const exprt &expr);
-
-  virtual literalt lconst(const exprt &expr);
+  
+  virtual literalt lnotequal(literalt l1, literalt l2);
 
   // for isnan, mod, arrays etc. that we have no support (or no support yet) create over-approx as nondet
   virtual literalt lunsupported2var(const exprt expr);
 
   virtual literalt lvar(const exprt &expr);
-
+    
   virtual literalt lassert_var() { literalt l; l = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); return l;}
 
-  LRALogic * getLRALogic() { return lralogic; }
-
 protected:
-
-  LRALogic* lralogic;
+  LRALogic* lralogic; // Extra var, inner use only - Helps to avoid dynamic cast!
 
   PTRef ptr_assert_var_constraints;
 
   int type_constraints_level; // The level of checks in LRA for numerical checks of overflow
 
-  void initializeSolver();
+  virtual void initializeSolver();
 
   PTRef mult_real(const exprt &expr, vec<PTRef> &args);
 
