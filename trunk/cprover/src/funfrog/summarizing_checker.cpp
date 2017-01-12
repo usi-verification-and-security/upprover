@@ -11,6 +11,7 @@
 #include "dependency_checker.h"
 
 #include "solvers/smtcheck_opensmt2_lra.h"
+#include "solvers/smtcheck_opensmt2_cuf.h"
 #include "smt_refiner_assertion_sum.h"
 #include "prop_refiner_assertion_sum.h"
 #include "smt_dependency_checker.h"
@@ -22,6 +23,8 @@ void summarizing_checkert::initialize_solver()
     int _type_constraints = options.get_unsigned_int_option("type-constraints");
     if(_logic == "qfuf")
         decider = new smtcheck_opensmt2t();
+    else if(_logic == "qfcuf")
+        decider = new smtcheck_opensmt2t_cuf();
     else if(_logic == "qflra")
         decider = new smtcheck_opensmt2t_lra(_type_constraints);
     else if (_logic == "prop")
