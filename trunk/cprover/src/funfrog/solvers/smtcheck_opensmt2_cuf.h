@@ -4,8 +4,8 @@ Module: Wrapper for OpenSMT2
 
 \*******************************************************************/
 
-#ifndef CPROVER_SMTCHECK_OPENSMT2_H
-#define CPROVER_SMTCHECK_OPENSMT2_H
+#ifndef CPROVER_SMTCHECK_OPENSMT2_CUF_H
+#define CPROVER_SMTCHECK_OPENSMT2_CUF_H
 
 //#define DEBUG_SMT2SOLVER
 

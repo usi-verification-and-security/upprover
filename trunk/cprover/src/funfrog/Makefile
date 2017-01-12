@@ -9,6 +9,7 @@ SHARED_SRC := \
       solvers/satcheck_opensmt2.cpp \
       solvers/smtcheck_opensmt2.cpp \
       solvers/smtcheck_opensmt2_lra.cpp \
+      solvers/smtcheck_opensmt2_cuf.cpp \
       solvers/smt_itp.cpp \
       solvers/prop_itp.cpp \
       error_trace.cpp
@@ -85,7 +86,7 @@ all: hifrog$(EXEEXT)
 ###############################################################################
 
 hifrog$(EXEEXT): $(OBJ)
-	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline 
+	$(LINKBIN) -O0 -g -lopensmt2 -lgmp -lgmpxx -lz -lreadline 
 
 sumo$(EXEEXT): $(SUMO_OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline
