@@ -17,7 +17,8 @@ class smtcheck_opensmt2t_lra : public smtcheck_opensmt2t
 public:
   smtcheck_opensmt2t_lra(int _type_constraints_level) :
       lralogic (NULL),
-	  type_constraints_level(_type_constraints_level)
+      type_constraints_level(_type_constraints_level),
+      smtcheck_opensmt2t(false, 3, 2)
   {
     initializeSolver();
   }
@@ -39,7 +40,7 @@ public:
 
   virtual literalt lvar(const exprt &expr);
 
-  virtual literalt lassert_var() { literalt l; l = push_variable(ptr_assert_var_constraints); return l;}
+  virtual literalt lassert_var() { literalt l; l = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); return l;}
 
   LRALogic * getLRALogic() { return lralogic; }
 

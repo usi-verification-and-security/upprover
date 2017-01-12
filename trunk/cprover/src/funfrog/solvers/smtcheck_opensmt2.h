@@ -34,7 +34,7 @@ public:
   {
     initializeSolver();
   }
-
+      
   PTRef mkURealMult(vec<PTRef>& args);
   PTRef mkURealDiv(vec<PTRef>& args);
   PTRef mkURealPlus(vec<PTRef>& args);
@@ -134,6 +134,15 @@ public:
   std::set<PTRef>* getVars(); // Get all variables from literals for the counter example phase
 
 protected:
+  
+    
+  smtcheck_opensmt2t(bool reduction, int reduction_graph, int reduction_loops) :
+        no_literals(0),
+        pushed_formulas(0),
+        unsupported2var(0),
+        is_var_constraints_empty(true),
+        check_opensmt2t(reduction, reduction_graph, reduction_loops)
+  { /* No init of solver - done for inherit check_opensmt2 */}
 
   vec<PTRef> top_level_formulas;
 
