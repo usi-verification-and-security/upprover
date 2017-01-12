@@ -20,6 +20,7 @@ void smtcheck_opensmt2t_cuf::initializeSolver()
 {
   osmt = new Opensmt(opensmt_logic::qf_cuf);
   logic = &(osmt->getCUFLogic());
+  cuflogic = &(osmt->getCUFLogic());
   mainSolver = &(osmt->getMainSolver());
   const char* msg2;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);

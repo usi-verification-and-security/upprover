@@ -492,11 +492,11 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     if (_str.compare("nil") == 0) return const_var(true);
 
 #ifdef SMT_DEBUG
-	cout << "; (lvar) Create " << str << endl;
+    cout << "; (lvar) Create " << str << endl;
 #endif
 
     // Else if it is really a var, continue and declare it!
-	literalt l;
+    literalt l;
     PTRef var;
     if(is_number(expr.type()))
     	var = lralogic->mkRealVar(str.c_str());
