@@ -418,13 +418,22 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             ptl = mult_real(expr,args);
         } else if(expr.id() == ID_index) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
+            cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LRA version (token: "
                             << expr.id() << ")" << endl;
             assert(false); // No support yet for arrays
 #else
             ptl = runsupported2var(expr);
 #endif
-		} else {
+        } else if((expr.id() == ID_address_of) || (expr.id() == ID_pointer_object) 
+                || (expr.id() == ID_pointer_offset)) {
+#ifdef SMT_DEBUG
+            cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LRA version (token: "
+                            << expr.id() << ")" << endl;
+            assert(false); // No support yet for arrays
+#else
+            ptl = runsupported2var(expr);
+#endif
+        } else {
 #ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
             cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: "
@@ -435,7 +444,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 #endif
         }
 		l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
-	}
+    }
     converted_exprs[expr.hash()] = l;
 #ifdef SMT_DEBUG
     PTRef ptr = literals[l.var_no()];

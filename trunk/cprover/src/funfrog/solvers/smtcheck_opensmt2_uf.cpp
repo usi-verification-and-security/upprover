@@ -41,7 +41,7 @@ void smtcheck_opensmt2t_uf::initializeSolver()
   literals[0] = logic->getTerm_true(); // Which is .x =0
   // KE: End of fix
 
-  //Initialize the stuff to fake LRA
+  //Initialize the stuff to fake UF
   //Create new sort UReal
   IdRef idr = IdRef_Undef;
   idr = logic->newIdentifier(tk_sort_ureal);
@@ -361,88 +361,97 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
 		}
 
         PTRef ptl;
-		if (expr.id()==ID_notequal) {
+        if (expr.id()==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
         } else if(expr.id() == ID_equal) {
             ptl = logic->mkEq(args);
-		} else if (expr.id()==ID_if) {
+        } else if (expr.id()==ID_if) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT_LRA
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
-		} else if(expr.id() == ID_ifthenelse) {
+        } else if(expr.id() == ID_ifthenelse) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT2SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
-		} else if(expr.id() == ID_and) {
+        } else if(expr.id() == ID_and) {
             ptl = logic->mkAnd(args);
-		} else if(expr.id() == ID_or) {
+        } else if(expr.id() == ID_or) {
             ptl = logic->mkOr(args);
-		} else if(expr.id() == ID_not) {
+        } else if(expr.id() == ID_not) {
             ptl = logic->mkNot(args);
-		} else if(expr.id() == ID_implies) {
+        } else if(expr.id() == ID_implies) {
             ptl = logic->mkImpl(args);
         } else if(expr.id() == ID_ge) {
             //ptl = logic->mkRealGeq(args);
             ptl = this->mkURealGe(args);
-		} else if(expr.id() == ID_le) {
+        } else if(expr.id() == ID_le) {
             //ptl = logic->mkRealLeq(args);
             ptl = this->mkURealLe(args);
-		} else if(expr.id() == ID_gt) {
+        } else if(expr.id() == ID_gt) {
             //ptl = logic->mkRealGt(args);
             ptl = this->mkURealGt(args);
-		} else if(expr.id() == ID_lt) {
+        } else if(expr.id() == ID_lt) {
             //ptl = logic->mkRealLt(args);
             ptl = this->mkURealLt(args);
-		} else if(expr.id() == ID_plus) {
+        } else if(expr.id() == ID_plus) {
             //ptl = logic->mkRealPlus(args);
             ptl = this->mkURealPlus(args);
-		} else if(expr.id() == ID_minus) {
+        } else if(expr.id() == ID_minus) {
             //ptl = logic->mkRealMinus(args);
             ptl = this->mkURealMinus(args);
-		} else if(expr.id() == ID_unary_minus) {
+        } else if(expr.id() == ID_unary_minus) {
             //ptl = logic->mkRealMinus(args);
             ptl = this->mkURealMinus(args);
-		} else if(expr.id() == ID_unary_plus) {
+        } else if(expr.id() == ID_unary_plus) {
             //ptl = logic->mkRealPlus(args);
             ptl = this->mkURealPlus(args);
-		} else if(expr.id() == ID_mult) {
-			//ptl = logic->mkRealTimes(args);
+        } else if(expr.id() == ID_mult) {
+            //ptl = logic->mkRealTimes(args);
             ptl = this->mkURealMult(args);
-		} else if(expr.id() == ID_div) {
-			//ptl = logic->mkRealDiv(args);
+        } else if(expr.id() == ID_div) {
+            //ptl = logic->mkRealDiv(args);
             ptl = this->mkURealDiv(args);
-		} else if(expr.id() == ID_assign) {
+        } else if(expr.id() == ID_assign) {
             ptl = logic->mkEq(args);
         } else if(expr.id() == ID_ieee_float_equal) {
             ptl = logic->mkEq(args);
         } else if(expr.id() == ID_ieee_float_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
-		} else if(expr.id() == ID_floatbv_plus) {
+        } else if(expr.id() == ID_floatbv_plus) {
             //ptl = logic->mkRealPlus(args);
             ptl = this->mkURealPlus(args);
-		} else if(expr.id() == ID_floatbv_minus) {
+        } else if(expr.id() == ID_floatbv_minus) {
             //ptl = logic->mkRealMinus(args);
             ptl = this->mkURealMinus(args);
-		} else if(expr.id() == ID_floatbv_div) {
-			//ptl = logic->mkRealDiv(args);
+        } else if(expr.id() == ID_floatbv_div) {
+            //ptl = logic->mkRealDiv(args);
             ptl = this->mkURealDiv(args);
-		} else if(expr.id() == ID_floatbv_mult) {
-			//ptl = logic->mkRealTimes(args);
+        } else if(expr.id() == ID_floatbv_mult) {
+            //ptl = logic->mkRealTimes(args);
             ptl = this->mkURealMult(args);
-		} else if(expr.id() == ID_index) {
+        } else if(expr.id() == ID_index) {
 #ifdef SMT_DEBUG
-			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
-					<< expr.id() << ")" << endl;
-			assert(false); // No support yet for arrays
+            cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
+                << expr.id() << ")" << endl;
+            assert(false); // No support yet for arrays
 #else
-			ptl = literals[lunsupported2var(expr).var_no()];
+            ptl = literals[lunsupported2var(expr).var_no()];
 #endif
-		} else {
+        } else if((expr.id() == ID_address_of) || (expr.id() == ID_pointer_object) 
+                || (expr.id() == ID_pointer_offset)) {
+#ifdef SMT_DEBUG
+            cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the QF/UF version (token: "
+                            << expr.id() << ")" << endl;
+            assert(false); // No support yet for arrays
+#else
+            ptl = literals[lunsupported2var(expr).var_no()];
+#endif
+        } else {
 #ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
             cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
-            cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: "
+            cout << "EXIT WITH ERROR: operator does not yet supported in the QF/UF version (token: "
             		<< expr.id() << ")" << endl;
             assert(false);
 #else
@@ -451,8 +460,8 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
             // Do we need them now?
         }
-		l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
-	}
+            l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
+    }
     converted_exprs[expr.hash()] = l;
 #ifdef SMT_DEBUG
     PTRef ptr = literals[l.var_no()];
