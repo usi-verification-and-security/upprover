@@ -886,7 +886,7 @@ void smtcheck_opensmt2t::dump_on_error(std::string location) {
 	  cout << "(assert\n  (and" << endl;
 	  for(int i = 0; i < top_level_formulas.size(); ++i) {
 		  PTRef tmp;
-		  logic->conjoinItes(top_level_formulas[i], tmp);
+		  logic->conjoinExtras(top_level_formulas[i], tmp);
 		  char *s = logic->printTerm(tmp);
 	      cout << "; XXX Partition: " << i << endl << "    " << s << endl;
 	      free(s);
