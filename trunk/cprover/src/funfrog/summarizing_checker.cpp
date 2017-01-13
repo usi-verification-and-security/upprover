@@ -352,9 +352,9 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
       if (end && decider->can_interpolate())
       {
         if (options.get_bool_option("no-itp")){
-          status() << ("Skip generating interpolants");
+          status() << ("Skip generating interpolants") << endl;
         } else {
-          status() << ("Start generating interpolants...");
+          status() << ("Start generating interpolants...") << endl;
           extract_interpolants_smt(prop, equation);
         }
         if (summaries_count == 0)

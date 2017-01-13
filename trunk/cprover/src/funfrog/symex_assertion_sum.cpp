@@ -1141,7 +1141,7 @@ void symex_assertion_sumt::summarize_function_call(
 {
   // We should use an already computed summary as an abstraction
   // of the function body
-  status () << (std::string("*** SUMMARY abstraction used for function: ") + function_id.c_str());
+  status() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << endl;
   
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
