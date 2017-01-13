@@ -186,7 +186,7 @@ PTRef smtcheck_opensmt2t_lra::mult_real(const exprt &expr, vec<PTRef> &args)
     bool is_lin_op = isLinearOp(expr,args);
     #ifdef SMT_DEBUG
         assert(is_lin_op);
-        ptl = logic->mkRealTimes(args);
+        ptl = lralogic->mkRealTimes(args);
     #else
         if (!is_lin_op)
             return runsupported2var(expr);
