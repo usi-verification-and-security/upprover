@@ -32,8 +32,6 @@ time_periodt global_sat_conversion_time;
 \*******************************************************************/
 bool smt_assertion_sumt::assertion_holds(const assertion_infot &assertion, const namespacet &ns, smtcheck_opensmt2t& decider, interpolating_solvert& interpolator)
 {
-  //stream_message_handlert message_handler(out);
-
   bool sat=false;
 
   absolute_timet before, after;
@@ -43,19 +41,19 @@ bool smt_assertion_sumt::assertion_holds(const assertion_infot &assertion, const
   after=current_time();
 //  global_sat_conversion_time += (after-before);
 
-  status() << "CONVERSION TIME: " << (after-before) << eom;
+  status() << "CONVERSION TIME: " << (after-before) << endl;
 
   // Decides the equation
   sat = is_satisfiable(decider);
 
   if (!sat)
   {
-    status() << ("ASSERTION IS TRUE");
+    status() << "ASSERTION IS TRUE" << eom;
     return true;
   }
   else
   {
-    status() << ("ASSERTION IS VIOLATED");
+    status() << "ASSERTION IS VIOLATED" << eom;
     return false;
   }
 }
@@ -75,26 +73,24 @@ bool smt_assertion_sumt::assertion_holds(const assertion_infot &assertion, const
 bool smt_assertion_sumt::is_satisfiable(
 		smtcheck_opensmt2t& decider)
 {
-  status() << ("RESULT") << endl;
   absolute_timet before, after;
   before=current_time();
   bool r = decider.solve();
   after=current_time();
-  status() << "SOLVER TIME: " << (after-before) << eom;
-
   solving_time = (after-before);
   global_satsolver_time += (after-before);
+  status() << "SOLVER TIME: " << (after-before) << endl;
+  status() << "RESULT: ";
 
   // solve it
   if (!r)
   {
-      status() << ("UNSAT - it holds!");
+      status() << "UNSAT - it holds!" << endl;
       return false;
     } else {
-      status() << ("SAT - doesn't hold");
+      status() << "SAT - doesn't hold" << endl;
       return true;
     }
-
 }
 
 void smt_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns,
