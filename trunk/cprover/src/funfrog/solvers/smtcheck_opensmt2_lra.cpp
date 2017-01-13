@@ -307,121 +307,122 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         bool is_no_support = false;
         forall_operands(it, expr)
         {	// KE: recursion in case the expr is not simple - shall be in a visitor
-        	bool is_builtin_rounding_mode =
-        			(id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode#")!=std::string::npos);
-			if ((is_div_wtrounding && i >= 2) || is_builtin_rounding_mode)
-			{
-				// Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
-				if (!is_builtin_rounding_mode) {
+            bool is_builtin_rounding_mode =
+                            (id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode#")!=std::string::npos);
+            if ((is_div_wtrounding && i >= 2) || is_builtin_rounding_mode)
+            {
+                // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
+                if (!is_builtin_rounding_mode) {
 #ifdef SMT_DEBUG
-					cout << "EXIT WITH ERROR: * and / operators with more than 2 arguments have no support yet in the LRA version (token: "
-							<< expr.id() << ")" << endl;
-					assert(false); // No support yet for more than two arguments for these operators
+                    cout << "EXIT WITH ERROR: * and / operators with more than 2 arguments have no support yet in the LRA version (token: "
+                                    << expr.id() << ")" << endl;
+                    assert(false); // No support yet for more than two arguments for these operators
 #else
-					is_no_support = true; // Will cause to over approx all
+                    is_no_support = true; // Will cause to over approx all
 #endif
-				}
-			}
-			else
-			{ // All the rest of the operators
-				literalt cl = convert(*it);
-				PTRef cp = literals[cl.var_no()];
-				assert(cp != PTRef_Undef);
-	 			args.push(cp);
+                }
+            }
+            else
+            { // All the rest of the operators
+                literalt cl = convert(*it);
+                PTRef cp = literals[cl.var_no()];
+                assert(cp != PTRef_Undef);
+                args.push(cp);
 #ifdef SMT_DEBUG
-	 			char *s = logic->printTerm(cp);
-				cout << "; On inner iteration " << i
-						<< " Op to command is var no " << cl.var_no()
-						<< " inner index " << cp.x
-						<< " with hash code " << (*it).full_hash()
-						<< " and the other one " << (*it).hash()
-						<< " in address " << (void *)&(*it)
-						<< " of term " << s
-						<< " from |" << (*it).get(ID_identifier)
-						<< "| these should be the same !" << endl; // Monitor errors in the table!
+                char *s = logic->printTerm(cp);
+                cout << "; On inner iteration " << i
+                    << " Op to command is var no " << cl.var_no()
+                    << " inner index " << cp.x
+                    << " with hash code " << (*it).full_hash()
+                    << " and the other one " << (*it).hash()
+                    << " in address " << (void *)&(*it)
+                    << " of term " << s
+                    << " from |" << (*it).get(ID_identifier)
+                    << "| these should be the same !" << endl; // Monitor errors in the table!
 
-				// Auto catch this kind if problem and throws and assert!
-				if((*it).id()==ID_symbol || (*it).id()==ID_nondet_symbol){
-					std::stringstream convert, convert2; // stringstream used for the conversion
-					convert << s; std::string str_expr1 = convert.str();
-					convert2 << "|" << (*it).get(ID_identifier) << "|"; std::string str_expr2 = convert2.str();
-					str_expr2.erase(std::remove(str_expr2.begin(),str_expr2.end(),'\\'),str_expr2.end());
-					if((*it).id() == ID_nondet_symbol && str_expr2.find("nondet") == std::string::npos)
-						str_expr2 = str_expr2.replace(1,7, "symex::nondet");
-					assert(str_expr1.compare(str_expr2) == 0);
-				}
-				free(s);
+                // Auto catch this kind if problem and throws and assert!
+                if((*it).id()==ID_symbol || (*it).id()==ID_nondet_symbol)
+                {
+                    std::stringstream convert, convert2; // stringstream used for the conversion
+                    convert << s; std::string str_expr1 = convert.str();
+                    convert2 << "|" << (*it).get(ID_identifier) << "|"; std::string str_expr2 = convert2.str();
+                    str_expr2.erase(std::remove(str_expr2.begin(),str_expr2.end(),'\\'),str_expr2.end());
+                    if((*it).id() == ID_nondet_symbol && str_expr2.find("nondet") == std::string::npos)
+                            str_expr2 = str_expr2.replace(1,7, "symex::nondet");
+                    assert(str_expr1.compare(str_expr2) == 0);
+                }
+                free(s);
 #endif
-				i++; // Only if really add an item to mult/div inc the counter
-			}
-		}
+                i++; // Only if really add an item to mult/div inc the counter
+            }
+        }
 
         PTRef ptl;
         if (is_no_support) { // If we don't supposrt the operator due to more than 2 args
-        	ptl = runsupported2var(expr);
+            ptl = runsupported2var(expr);
         } else if (expr.id()==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
         } else if(expr.id() == ID_equal) {
             ptl = logic->mkEq(args);
-		} else if (expr.id()==ID_if) {
+        } else if (expr.id()==ID_if) {
+            ptl = logic->mkIte(args);
+#ifdef DEBUG_SMT2SOLVER
+    ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
+#endif
+        } else if(expr.id() == ID_ifthenelse) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT2SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
-		} else if(expr.id() == ID_ifthenelse) {
-            ptl = logic->mkIte(args);
-#ifdef DEBUG_SMT2SOLVER
-            ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
-#endif
-		} else if(expr.id() == ID_and) {
+        } else if(expr.id() == ID_and) {
             ptl = logic->mkAnd(args);
-		} else if(expr.id() == ID_or) {
+        } else if(expr.id() == ID_or) {
             ptl = logic->mkOr(args);
-		} else if(expr.id() == ID_not) {
+        } else if(expr.id() == ID_not) {
             ptl = logic->mkNot(args);
-		} else if(expr.id() == ID_implies) {
+        } else if(expr.id() == ID_implies) {
             ptl = logic->mkImpl(args);
         } else if(expr.id() == ID_ge) {
             ptl = lralogic->mkRealGeq(args);
-		} else if(expr.id() == ID_le) {
+        } else if(expr.id() == ID_le) {
             ptl = lralogic->mkRealLeq(args);
-		} else if(expr.id() == ID_gt) {
+        } else if(expr.id() == ID_gt) {
             ptl = lralogic->mkRealGt(args);
-		} else if(expr.id() == ID_lt) {
+        } else if(expr.id() == ID_lt) {
             ptl = lralogic->mkRealLt(args);
-		} else if(expr.id() == ID_plus) {
+        } else if(expr.id() == ID_plus) {
             ptl = lralogic->mkRealPlus(args);
-		} else if(expr.id() == ID_minus) {
+        } else if(expr.id() == ID_minus) {
             ptl = lralogic->mkRealMinus(args);
-		} else if(expr.id() == ID_unary_minus) {
+        } else if(expr.id() == ID_unary_minus) {
             ptl = lralogic->mkRealMinus(args);
-		} else if(expr.id() == ID_unary_plus) {
+        } else if(expr.id() == ID_unary_plus) {
             ptl = lralogic->mkRealPlus(args);
-		} else if(expr.id() == ID_mult) {
-			ptl = mult_real(expr,args);
-		} else if(expr.id() == ID_div) {
-			ptl = div_real(expr,args);
-		} else if(expr.id() == ID_assign) {
+        } else if(expr.id() == ID_mult) {
+            ptl = mult_real(expr,args);
+        } else if(expr.id() == ID_div) {
+            ptl = div_real(expr,args);
+        } else if(expr.id() == ID_assign) {
             ptl = logic->mkEq(args);
         } else if(expr.id() == ID_ieee_float_equal) {
             ptl = logic->mkEq(args);
         } else if(expr.id() == ID_ieee_float_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
-		} else if(expr.id() == ID_floatbv_plus) {
+        } else if(expr.id() == ID_floatbv_plus) {
             ptl = lralogic->mkRealPlus(args);
-		} else if(expr.id() == ID_floatbv_minus) {
+        } else if(expr.id() == ID_floatbv_minus) {
             ptl = lralogic->mkRealMinus(args);
-		} else if(expr.id() == ID_floatbv_div) {
-			ptl = div_real(expr,args);
-		} else if(expr.id() == ID_floatbv_mult) {
-			ptl = mult_real(expr,args);
-		} else if(expr.id() == ID_index) {
+        } else if(expr.id() == ID_floatbv_div) {
+            ptl = div_real(expr,args);
+        } else if(expr.id() == ID_floatbv_mult) {
+            ptl = mult_real(expr,args);
+        } else if(expr.id() == ID_index) {
 #ifdef SMT_DEBUG
-			cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
-					<< expr.id() << ")" << endl;
-			assert(false); // No support yet for arrays
+            cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
+                            << expr.id() << ")" << endl;
+            assert(false); // No support yet for arrays
 #else
-			ptl = runsupported2var(expr);
+            ptl = runsupported2var(expr);
 #endif
 		} else {
 #ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
