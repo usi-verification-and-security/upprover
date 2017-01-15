@@ -146,6 +146,14 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
     return l;
 }
 
+literalt smtcheck_opensmt2t_lra::const_from_str(const char* num)
+{
+    literalt l;
+    PTRef rconst = lralogic->mkConst(num); // Can have a wrong conversion sometimes!
+    l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
+    return l;
+}
+
 literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr) 
 {
     literalt l;
