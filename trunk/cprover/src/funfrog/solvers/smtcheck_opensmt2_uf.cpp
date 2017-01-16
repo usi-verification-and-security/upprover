@@ -431,6 +431,17 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
         } else if(expr.id() == ID_floatbv_mult) {
             //ptl = logic->mkRealTimes(args);
             ptl = this->mkURealMult(args);
+        } else if((expr.id() == ID_member) || 
+                (expr.id() == ID_C_member_name) ||
+                (expr.id() == ID_with) ||
+                (expr.id() == ID_member_name)) {
+#ifdef SMT_DEBUG
+            cout << "EXIT WITH ERROR:member operator has no support yet in the UF version (token: "
+                << expr.id() << ")" << endl;
+            assert(false); // No support yet for arrays
+#else
+            ptl = literals[lunsupported2var(expr).var_no()];
+#endif
         } else if(expr.id() == ID_index) {
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "

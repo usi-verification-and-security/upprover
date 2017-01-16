@@ -1,6 +1,6 @@
 /*******************************************************************\
 
-Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
+Module: Wrapper for OpenSMT2. Based on smtcheck_opensmt2s.
 
 Author: Grigory Fedyukovich
 
@@ -130,9 +130,9 @@ literalt smtcheck_opensmt2t::const_var(bool val)
 
 void smtcheck_opensmt2t::set_to_true(PTRef ptr)
 {
-	push_variable(ptr); // Keeps the new PTRef + create for it a new index/literal
+    push_variable(ptr); // Keeps the new PTRef + create for it a new index/literal
     assert(ptr != PTRef_Undef);
-	current_partition->push(ptr);
+    current_partition->push(ptr);
 }
 
 void smtcheck_opensmt2t::set_to_true(const exprt &expr)
@@ -146,7 +146,7 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
     PTRef tlp = logic->mkEq(args);
 
     assert(tlp != PTRef_Undef);
-	current_partition->push(tlp);
+    current_partition->push(tlp);
 }
 
 void smtcheck_opensmt2t::set_to_false(const exprt &expr)
@@ -160,7 +160,7 @@ void smtcheck_opensmt2t::set_to_false(const exprt &expr)
     PTRef tlp = logic->mkEq(args);
 
     assert(tlp != PTRef_Undef);
-	current_partition->push(tlp);
+    current_partition->push(tlp);
 }
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
@@ -173,7 +173,7 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     PTRef ans = logic->mkEq(args);
     l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
     assert(ans != PTRef_Undef);
-	current_partition->push(ans);
+    current_partition->push(ans);
 }
 
 literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
@@ -186,7 +186,7 @@ literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
     PTRef ans = logic->mkImpl(args);
     l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
-	return l;
+    return l;
 }
 
 literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
@@ -213,7 +213,7 @@ literalt smtcheck_opensmt2t::land(bvt b){
     PTRef ans = logic->mkAnd(args);
     l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
-	return l;
+    return l;
 }
 
 literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
@@ -226,7 +226,7 @@ literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
     PTRef ans = logic->mkOr(args);
     l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
-	return l;
+    return l;
 }
 
 literalt smtcheck_opensmt2t::lor(bvt b){
@@ -251,19 +251,19 @@ literalt smtcheck_opensmt2t::lnot(literalt l){
     PTRef ans = logic->mkNot(args);
     ln = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
-	return ln;
+    return ln;
 }
 
 literalt smtcheck_opensmt2t::lconst(const exprt &expr)
 {
-	literalt l;
-	if (expr.is_boolean()) {
-		l = const_var(expr.is_true());
-	} else {
+    literalt l;
+    if (expr.is_boolean()) {
+        l = const_var(expr.is_true());
+    } else {
         l = const_var_Real(expr);
-	}
+    }
 
-	return l;
+    return l;
 }
 
 void smtcheck_opensmt2t::extract_itp(PTRef ptref, smt_itpt& itp) const
