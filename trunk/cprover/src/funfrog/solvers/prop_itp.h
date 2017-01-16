@@ -29,6 +29,9 @@ public:
   virtual literalt lnot(literalt a);
   virtual void print(std::ostream& out) const;
 
+  virtual void setTterm(Tterm& t) { assert(0); }
+  virtual Tterm* getTterm() { assert(0); }
+  
   virtual void swap(itpt& other) {other.swap(*this);}
   virtual void swap(smt_itpt& other) override {assert(0);}
   virtual void swap(prop_itpt& other) override {

@@ -13,7 +13,7 @@ class smt_itpt;
 class itpt
 {
 public:
-  itpt() : _no_variables(1), _no_orig_variables(1), logic(NULL), tterm(NULL) {}
+  itpt() : _no_variables(1), _no_orig_variables(1), logic(NULL) {}
   virtual ~itpt() {} // d'tor
 
   virtual bool is_trivial() const =0;
@@ -48,10 +48,10 @@ public:
 
   // Getters & Setters
   PTRef getInterpolant() { return interpolant; }
-  Tterm* getTterm() { return tterm; }
+  virtual Tterm* getTterm() =0; // moved to smt_itp { return tterm; }
   
   void setInterpolant(PTRef pt) { interpolant = pt; }
-  void setTterm(Tterm& t) { tterm = &t; }
+  virtual void setTterm(Tterm& t) =0; // moved to smt_itp { tterm = &t; }
   void setLogic(Logic *_l) { logic = _l; }
 
   bool is_valid(){ return valid; };
@@ -66,7 +66,6 @@ public:
   literalt root_literal;
 protected:
   PTRef interpolant;
-  Tterm *tterm;
   Logic *logic;
 
   bool valid;

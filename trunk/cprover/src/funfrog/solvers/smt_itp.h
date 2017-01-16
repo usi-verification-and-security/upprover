@@ -14,7 +14,7 @@ class smtcheck_opensmt2t;
 class smt_itpt: public itpt
 {
 public:
-  smt_itpt() :itpt() {}
+  smt_itpt() :tterm(NULL), itpt() {}
   ~smt_itpt() {} // d'tor
 
   virtual  bool is_trivial() const { return false; };
@@ -24,6 +24,9 @@ public:
   virtual literalt lnot(literalt a);
   virtual void print(std::ostream& out) const;
 
+  virtual void setTterm(Tterm& t) { tterm = &t; }
+  virtual Tterm* getTterm() { return tterm; }
+  
   virtual void swap(itpt& other) {other.swap(*this);}
   virtual void swap(prop_itpt& other) override {assert(0);}
   virtual void swap(smt_itpt& other) override {
@@ -65,6 +68,9 @@ protected:
 
   // Clauses of the interpolant representation
   clausest clauses;
+  
+  // Only for SMT version
+  Tterm *tterm;
   
   // Mask for used symbols
   std::vector<bool> symbol_mask;
