@@ -85,7 +85,7 @@ public:
   /* General consts for prop version */
   const char* false_str = "false";
   const char* true_str = "true";
-
+  
 protected:
   // Initialize the OpenSMT context
   virtual void initializeSolver()=0;

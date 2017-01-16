@@ -207,8 +207,8 @@ bool error_tracet::is_trace_overapprox(smtcheck_opensmt2t &decider)
 #endif
 	Logic *logic = decider.getLogic();
 	std::set<PTRef>* vars = decider.getVars();
-	std::string overapprox_str ("funfrog::c::unsupported_op2var");
-	std::string skip_debug_print ("funfrog::?call"); // Skip the print of this value due to assertion
+	std::string overapprox_str (smtcheck_opensmt2t::_unsupported_var_str);
+	std::string skip_debug_print ("hifrog::?call"); // Skip the print of this value due to assertion
 	// violation in opensmt2 - worth debuging one day: Cnfizer.C:891: lbool Cnfizer::getTermValue(PTRef) const: Assertion `val != (lbool((uint8_t)2))' failed.
 	for(std::set<PTRef>::iterator iter = vars->begin(); iter != vars->end(); iter++)
 	{

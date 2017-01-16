@@ -16,6 +16,8 @@ Author: Grigory Fedyukovich
 //#define DEBUG_SMT_EUF
 //#define DEBUG_SMT_ITP
 
+const string smtcheck_opensmt2t::_unsupported_var_str = "hifrog::c::unsupported_op2var!0#";
+
 // Free all resources related to OpenSMT2
 void smtcheck_opensmt2t::freeSolver()
 {

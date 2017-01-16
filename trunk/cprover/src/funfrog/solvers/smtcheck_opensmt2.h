@@ -133,6 +133,8 @@ public:
   // Common to all
   std::set<PTRef>* getVars(); // Get all variables from literals for the counter example phase
 
+  /* For unsupported var creation */
+  static const string _unsupported_var_str;
 protected:
   
   vec<PTRef> top_level_formulas;
@@ -154,7 +156,7 @@ protected:
 
   unsigned pushed_formulas;
 
-  unsigned unsupported2var; // Create a new var funfrog::c::unsupported_op2var#i
+  unsigned unsupported2var; // Create a new var hifrog::c::unsupported_op2var#i - smtcheck_opensmt2t::_unsupported_var_str
 
   virtual literalt lunsupported2var(exprt expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 

@@ -482,7 +482,7 @@ PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt expr)
 {
     PTRef var;
 
-    const string str =  "funfrog::c::unsupported_op2var#" + std::to_string(unsupported2var++);
+    const string str = smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
     if (expr.is_boolean())
         var = logic->mkBoolVar(str.c_str());
     else
