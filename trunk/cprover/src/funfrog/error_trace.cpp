@@ -46,6 +46,9 @@ void error_tracet::build_goto_trace (
 
     if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
         continue;
+    
+    if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
+        continue;
 
     step_nr++;
 
@@ -156,6 +159,9 @@ void error_tracet::build_goto_trace_formula (
 
     if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
         continue;
+    
+    if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
+        continue;
 
     if(SSA_step.ssa_full_lhs.is_not_nil())
     {
@@ -201,21 +207,21 @@ Function: error_trace::show_trace_vars_value
 \*******************************************************************/
 bool error_tracet::is_trace_overapprox(smtcheck_opensmt2t &decider)
 {
-	/* Basic print of the error trace as all variables values */
+    /* Basic print of the error trace as all variables values */
 #ifdef TRACE_DEBUG
-	MainSolver *mainSolver = decider.getMainSolver();
+    MainSolver *mainSolver = decider.getMainSolver();
 #endif
-	Logic *logic = decider.getLogic();
-	std::set<PTRef>* vars = decider.getVars();
-	std::string overapprox_str (smtcheck_opensmt2t::_unsupported_var_str);
-	std::string skip_debug_print ("hifrog::?call"); // Skip the print of this value due to assertion
-	// violation in opensmt2 - worth debuging one day: Cnfizer.C:891: lbool Cnfizer::getTermValue(PTRef) const: Assertion `val != (lbool((uint8_t)2))' failed.
-	for(std::set<PTRef>::iterator iter = vars->begin(); iter != vars->end(); iter++)
-	{
+    Logic *logic = decider.getLogic();
+    std::set<PTRef>* vars = decider.getVars();
+    //std::string overapprox_str (smtcheck_opensmt2t::_unsupported_var_str);
+    //std::string skip_debug_print ("hifrog::?call"); // Skip the print of this value due to assertion
+    // violation in opensmt2 - worth debuging one day: Cnfizer.C:891: lbool Cnfizer::getTermValue(PTRef) const: Assertion `val != (lbool((uint8_t)2))' failed.
+    for(std::set<PTRef>::iterator iter = vars->begin(); iter != vars->end(); iter++)
+    {
 	// Print the var and its value
 	char* name = logic->printTerm(*iter);
 	std::string curr (name);
-	if (curr.find(overapprox_str) != std::string::npos)
+	if (curr.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
 		isOverAppox = true;
 #ifdef TRACE_DEBUG
 	else if (curr.find(skip_debug_print) != std::string::npos)
@@ -232,14 +238,14 @@ bool error_tracet::is_trace_overapprox(smtcheck_opensmt2t &decider)
 			cout << " = " << v1.val << "\n";
 	}
 #endif
-		free(name);
-	}
+        free(name);
+    }
 
-	// Clear all vars list before quit
-	vars->clear(); delete vars;
+    // Clear all vars list before quit
+    vars->clear(); delete vars;
 
-	// True if there is some effect of over-approx of ops
-	return isOverAppox;
+    // True if there is some effect of over-approx of ops
+    return isOverAppox;
 }
 
 /*******************************************************************\
@@ -256,10 +262,10 @@ Function: show_goto_trace
 
 \*******************************************************************/
 void error_tracet::show_goto_trace(
-  smtcheck_opensmt2t &decider,
-  std::ostream &out,
-  const namespacet &ns,
-  std::map<irep_idt, std::string> &guard_expln)
+    smtcheck_opensmt2t &decider,
+    std::ostream &out,
+    const namespacet &ns,
+    std::map<irep_idt, std::string> &guard_expln)
 {
     // In case we use over approximate to verify this example - gives a warning to the user!
     if (is_trace_overapprox(decider)) {
@@ -273,9 +279,9 @@ void error_tracet::show_goto_trace(
     bool first_step=true;
 
     for(goto_tracet::stepst::const_iterator
-  it=goto_trace.steps.begin();
-  it!=goto_trace.steps.end();
-  it++)
+        it=goto_trace.steps.begin();
+        it!=goto_trace.steps.end();
+        it++)
     {
         switch(it->type)
         {
@@ -318,48 +324,48 @@ void error_tracet::show_goto_trace(
 
             case goto_trace_stept::ASSIGNMENT:
                 if(it->pc->is_assign() ||
-                                it->pc->is_return() || // returns have a lhs!
-                                it->pc->is_function_call() ||
-                                (it->pc->is_other() && it->lhs_object.is_not_nil()))
+                        it->pc->is_return() || // returns have a lhs!
+                        it->pc->is_function_call() ||
+                        (it->pc->is_other() && it->lhs_object.is_not_nil()))
                 {
-                        if(prev_step_nr!=it->step_nr || first_step)
-                        {
-                                first_step=false;
-                                prev_step_nr=it->step_nr;
-                                show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
-                        }
+                    if(prev_step_nr!=it->step_nr || first_step)
+                    {
+                        first_step=false;
+                        prev_step_nr=it->step_nr;
+                        show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
+                    }
 
-                        std::string str = guard_expln[it->lhs_object.get("identifier")];
-                        if (str != "")
-                                show_guard_value(out, str, it->full_lhs_value);
-                        else if (it->format_string != "")
-                                show_misc_value(out, it->format_string, it->full_lhs_value);
-                        else
-                                show_var_value(out, ns, it->lhs_object, it->lhs_object, it->full_lhs_value);
-                }
+                    std::string str = guard_expln[it->lhs_object.get("identifier")];
+                    if (str != "")
+                        show_guard_value(out, str, it->full_lhs_value);
+                    else if (it->format_string != "")
+                        show_misc_value(out, it->format_string, it->full_lhs_value);
+                    else
+                        show_var_value(out, ns, it->lhs_object, it->lhs_object, it->full_lhs_value);
+            }
                 break;
 
             case goto_trace_stept::OUTPUT:
                 if(it->formatted)
                 {
-                        printf_formattert printf_formatter(ns);
-                        printf_formatter(id2string(it->format_string), it->io_args);
-                        printf_formatter.print(out);
-                        out << std::endl;
+                    printf_formattert printf_formatter(ns);
+                    printf_formatter(id2string(it->format_string), it->io_args);
+                    printf_formatter.print(out);
+                    out << std::endl;
                 }
                 else
                 {
-                        show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
-                        out << "  OUTPUT " << it->io_id << ":";
+                    show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
+                    out << "  OUTPUT " << it->io_id << ":";
 
-                        for(std::list<exprt>::const_iterator
-                                        l_it=it->io_args.begin();
-                                        l_it!=it->io_args.end();
-                                        l_it++)
-                        {
-                                if(l_it!=it->io_args.begin()) out << ";";
-                                        out << " " << from_expr(ns, "", *l_it);
-                        }
+                    for(std::list<exprt>::const_iterator
+                                l_it=it->io_args.begin();
+                                l_it!=it->io_args.end();
+                                l_it++)
+                    {
+                        if(l_it!=it->io_args.begin()) out << ";";
+                            out << " " << from_expr(ns, "", *l_it);
+                    }
 
                         out << std::endl;
                 }
@@ -370,12 +376,12 @@ void error_tracet::show_goto_trace(
                 out << "  INPUT " << it->io_id << ":";
 
                 for(std::list<exprt>::const_iterator
-                                l_it=it->io_args.begin();
-                                l_it!=it->io_args.end();
-                                l_it++)
+                        l_it=it->io_args.begin();
+                        l_it!=it->io_args.end();
+                        l_it++)
                 {
-                        if(l_it!=it->io_args.begin()) out << ";";
-                                out << " " << from_expr(ns, "", *l_it);
+                    if(l_it!=it->io_args.begin()) out << ";";
+                        out << " " << from_expr(ns, "", *l_it);
                 }
 
                 out << std::endl;
@@ -452,12 +458,12 @@ void error_tracet::show_var_value(
   const exprt &full_lhs,
   const exprt &value)
 {
-	const irep_idt &identifier=lhs_object.get_identifier();
-	out << "  ";
-	show_expr(out, ns, identifier, full_lhs, false);
-	out << " = ";
-	show_expr(out, ns, identifier, value, value.is_nil());
-	out << std::endl;
+    const irep_idt &identifier=lhs_object.get_identifier();
+    out << "  ";
+    show_expr(out, ns, identifier, full_lhs, false);
+    out << " = ";
+    show_expr(out, ns, identifier, value, value.is_nil());
+    out << std::endl;
 }
 
 /*******************************************************************\
@@ -478,15 +484,15 @@ void error_tracet::show_expr(
   const exprt &expr,
   bool is_removed)
 {
-	if (is_removed) // only for the value check
-		out << "(assignment removed)";
-	else if (expr.id() == ID_nil)
-		out << "nil";
-	else if (expr.id() == ID_constant)
-		out << expr.get(ID_value);
-	else
-		out << from_expr(ns, identifier, expr);
-}
+    if (is_removed) // only for the value check
+        out << "(assignment removed)";
+    else if (expr.id() == ID_nil)
+        out << "nil";
+    else if (expr.id() == ID_constant)
+        out << expr.get(ID_value);
+    else
+        out << from_expr(ns, identifier, expr);
+    }
 
 /*******************************************************************\
 
@@ -503,12 +509,12 @@ Function: error_tracet::is_index_member_symbol
 \*******************************************************************/
 bool error_tracet::is_index_member_symbol(const exprt &src)
 {
-	  if(src.id()==ID_index)
-	    return is_index_member_symbol(src.op0());
-	  else if(src.id()==ID_member)
-	    return is_index_member_symbol(src.op0());
-	  else if(src.id()==ID_symbol)
-	    return true;
-	  else
-	    return false;
+    if(src.id()==ID_index)
+      return is_index_member_symbol(src.op0());
+    else if(src.id()==ID_member)
+      return is_index_member_symbol(src.op0());
+    else if(src.id()==ID_symbol)
+      return true;
+    else
+      return false;
 }

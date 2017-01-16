@@ -95,13 +95,15 @@ bool smt_assertion_sumt::is_satisfiable(
 
 void smt_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns,
 		std::map<irep_idt, std::string>& guard_expln)
-{
-	error_tracet error_trace;
+{      
+    // Only if can build an error trace - give notice to the user
+    status() << ("Building error trace");
+    
+    error_tracet error_trace;
 
-	// Only if can build an error trace - give notice to the user
-	status() << ("Building error trace");
+    error_trace.build_goto_trace(equation, decider);
 
-	error_trace.build_goto_trace(equation, decider);
-
-	error_trace.show_goto_trace(decider, std::cout, ns, guard_expln);
+    std::cout << std::endl << "Counterexample:" << std::endl;
+    
+    error_trace.show_goto_trace(decider, std::cout, ns, guard_expln);
 }
