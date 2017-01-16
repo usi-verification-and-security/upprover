@@ -62,12 +62,13 @@ exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
         {
             // Create the value
             ValPair v1 = mainSolver->getValue(ptrf);
-            irep_idt value = v1.val;
+            assert(v1.val != NULL);
+            irep_idt value(v1.val);
 
             // Create the expr with it
             constant_exprt tmp = constant_exprt();
             tmp.set_value(value);
-
+            
             return tmp;
         }
         else if (logic->isConstant(ptrf))
@@ -88,7 +89,7 @@ exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
         }
     }
     else // Find the value inside the expression - recursive call
-    {
+    { 
         exprt tmp=expr;
 
         Forall_operands(it, tmp)

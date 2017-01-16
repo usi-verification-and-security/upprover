@@ -41,70 +41,71 @@ smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
 
 exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
 {
-	PTRef ptrf;
-	if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
-		literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
-		ptrf = literals[l.var_no()];
+    PTRef ptrf;
+    if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
+        literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
+        ptrf = literals[l.var_no()];
 
-		// Get the value of the PTRef
+        // Get the value of the PTRef
 
-		if (logic->isIteVar(ptrf)) // true/false - evaluation of a branching
-		{
-			ValPair v1 = mainSolver->getValue(ptrf);
-			if (v1.val == 0)
-				return false_exprt();
-			else
-				return true_exprt();
-		}
-		else if (logic->isTrue(ptrf)) //true only
-		{
-			return true_exprt();
-		}
-		else if (logic->isFalse(ptrf)) //false only
-		{
-			return false_exprt();
-		}
-		else if (logic->isVar(ptrf)) // Constant value
-		{
-			// Create the value
-			ValPair v1 = mainSolver->getValue(ptrf);
-			irep_idt value = v1.val;
+        if (logic->isIteVar(ptrf)) // true/false - evaluation of a branching
+        {
+            ValPair v1 = mainSolver->getValue(ptrf);
+            if (v1.val == 0)
+                return false_exprt();
+            else
+                return true_exprt();
+        }
+        else if (logic->isTrue(ptrf)) //true only
+        {
+            return true_exprt();
+        }
+        else if (logic->isFalse(ptrf)) //false only
+        {
+            return false_exprt();
+        }
+        else if (logic->isVar(ptrf)) // Constant value
+        {
+            // Create the value
+            ValPair v1 = mainSolver->getValue(ptrf);
+            irep_idt value = v1.val;
 
-			// Create the expr with it
-			constant_exprt tmp = constant_exprt();
-			tmp.set_value(value);
+            // Create the expr with it
+            constant_exprt tmp = constant_exprt();
+            tmp.set_value(value);
 
-			return tmp;
-		}
-		else if (logic->isConstant(ptrf))
-		{
-			// Constant?
-			ValPair v1 = mainSolver->getValue(ptrf);
-			irep_idt value = v1.val;
+            return tmp;
+        }
+        else if (logic->isConstant(ptrf))
+        {
+            // Constant?
+            ValPair v1 = mainSolver->getValue(ptrf);
+            assert(v1.val != NULL);
+            irep_idt value(v1.val);
 
-			// Create the expr with it
-			constant_exprt tmp = constant_exprt();
-			tmp.set_value(value);
+            // Create the expr with it
+            constant_exprt tmp = constant_exprt();
+            tmp.set_value(value);
 
-			return tmp;
-		}
-		else
-		{
-			assert(0);
-		}
-	}
-	else // Find the value inside the expression - recursive call
-	{
-		exprt tmp=expr;
+            return tmp;
+        }
+        else
+        {
+            assert(0);
+        }
+    }
+    else // Find the value inside the expression - recursive call
+    {
+        exprt tmp=expr;
 
-		Forall_operands(it, tmp)
-		{
-			exprt tmp_op=get_value(*it);
-			it->swap(tmp_op);
-		}
+        Forall_operands(it, tmp)
+        {
+            exprt tmp_op=get_value(*it);
+            it->swap(tmp_op);
+        }
 
-		return tmp;
-	}
+        return tmp;
+    }
 }
 
 literalt smtcheck_opensmt2t_cuf::const_var_Real(const exprt &expr)
