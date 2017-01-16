@@ -44,6 +44,9 @@ void error_tracet::build_goto_trace (
     if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
     	continue;
 
+    if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
+        continue;
+
     step_nr++;
 
     goto_trace.steps.push_back(goto_trace_stept());
@@ -151,6 +154,8 @@ void error_tracet::build_goto_trace_formula (
     if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
     	continue;
 
+    if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
+        continue;
 
     if(SSA_step.ssa_full_lhs.is_not_nil())
     {
