@@ -73,12 +73,15 @@ void error_tracet::build_goto_trace (
 
     if(SSA_step.ssa_full_lhs.is_not_nil())
     {
+    	exprt val;
         if(is_index_member_symbol(SSA_step.ssa_full_lhs)){
-            goto_trace_step.full_lhs_value=decider.get_value(SSA_step.ssa_full_lhs);
+            val=decider.get_value(SSA_step.ssa_full_lhs);
         }
         else {
-            goto_trace_step.full_lhs_value=decider.get_value(SSA_step.ssa_lhs);
+            val=decider.get_value(SSA_step.ssa_lhs);
         }
+        goto_trace_step.full_lhs_value=val;
+
     }
     
     /* Print nice return value info */
@@ -118,6 +121,65 @@ void error_tracet::build_goto_trace (
     	  break;
     }
   }
+}
+
+void error_tracet::build_goto_trace_formula (
+  smt_partitioning_target_equationt &target,
+  smtcheck_opensmt2t &decider,
+  smtcheck_opensmt2t_lra &decider2)
+{
+
+  decider2.new_partition();
+
+  const SSA_steps_orderingt& SSA_steps = target.get_steps_exec_order();
+
+  for(SSA_steps_orderingt::const_iterator
+      it=SSA_steps.begin();
+      it!=SSA_steps.end();
+      it++)
+  {
+    const symex_target_equationt::SSA_stept &SSA_step=**it;
+
+    if(!decider.is_assignemt_true(SSA_step.guard_literal))
+      continue;
+
+    if(SSA_step.is_assignment() &&
+       SSA_step.assignment_type==symex_target_equationt::HIDDEN)
+      continue;
+
+    std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
+    if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
+    	continue;
+
+
+    if(SSA_step.ssa_full_lhs.is_not_nil())
+    {
+    	exprt val;
+        if(is_index_member_symbol(SSA_step.ssa_full_lhs)){
+            val=decider.get_value(SSA_step.ssa_full_lhs);
+        }
+        else {
+            val=decider.get_value(SSA_step.ssa_lhs);
+        }
+
+    	literalt l1;
+    	literalt l2;
+    	if (val.get(ID_value)[0] == 'u'){
+            l1 = decider2.const_from_str(val.get(ID_value).c_str() + 1);
+            l2 = decider2.convert(SSA_step.ssa_lhs);
+            decider2.set_equal(l1, l2);
+    	} else if (val.get(ID_value) == "true"){
+    		l1 = decider2.const_var(true);
+    		l2 = decider2.convert(SSA_step.ssa_lhs);
+    		decider2.set_equal(l1, l2);
+    	} else if (val.get(ID_value) == "false"){
+    		l1 = decider2.const_var(false);
+    		l2 = decider2.convert(SSA_step.ssa_lhs);
+    		decider2.set_equal(l1, l2);
+    	}
+    }
+  }
+
 }
 
 /*******************************************************************\

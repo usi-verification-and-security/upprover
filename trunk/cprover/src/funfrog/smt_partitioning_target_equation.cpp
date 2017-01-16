@@ -234,6 +234,7 @@ void smt_partitioning_target_equationt::convert_partition_assignments(
 						tmp, false);
 #	  endif
 				decider.set_to_true(tmp);
+				exprs.push_back(tmp);
 			}
 		}
 	}

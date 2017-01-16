@@ -35,6 +35,7 @@ FUNFROG_SRC := \
       prop_dependency_checker.cpp \
       smt_dependency_checker.cpp \
       symex_assertion_sum.cpp \
+      theory_refiner.cpp \
       summarizing_checker.cpp \
       main.cpp
 

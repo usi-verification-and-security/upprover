@@ -40,7 +40,12 @@ public:
     interpolating_solvert& interpolator, const smtcheck_opensmt2t& decider,
     interpolant_mapt& interpolant_map);
 
+  std::vector<exprt>& get_exprs_to_refine () { return exprs; };
+
 protected:
+
+  std::vector<exprt> exprs;
+
   // Convert a specific partition of SSA steps
   void convert_partition(smtcheck_opensmt2t &decider,
     interpolating_solvert &interpolator, partitiont& partition);

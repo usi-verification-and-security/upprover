@@ -27,7 +27,9 @@ public:
   virtual exprt get_value(const exprt &expr);
 
   virtual literalt convert(const exprt &expr);
-  
+
+  virtual literalt const_from_str(const char* num);
+
   virtual literalt const_var_Real(const exprt &expr);
 
   virtual literalt type_cast(const exprt &expr);

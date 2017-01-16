@@ -126,6 +126,7 @@ public:
 	  }
   }
 
+  void check_ce(std::vector<exprt>& exprs);
 
   bool has_unsupported_vars() { return unsupported2var > 0; } // Common to all
 

@@ -13,6 +13,7 @@
 
 #include <ansi-c/expr2c.h>
 #include "summarizing_checker.h"
+#include "theory_refiner.h"
 #include "check_claims.h"
 
 
@@ -159,6 +160,16 @@ void check_claims(
 
   symbol_tablet temp_table;
   namespacet ns1(ns.get_symbol_table(), temp_table);
+
+  if (options.get_bool_option("theoref")){
+	  theory_refinert th_checker(leaping_program,
+	        goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
+
+	  th_checker.initialize();
+	  th_checker.assertion_holds_smt(assertion_infot(), true);
+	  return;
+  }
+
   summarizing_checkert sum_checker(leaping_program,
         goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
 
