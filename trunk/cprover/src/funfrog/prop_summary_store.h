@@ -17,6 +17,7 @@ class prop_summary_storet :public summary_storet
 public:
   virtual void serialize(std::ostream& out) const;
   virtual void deserialize(const std::string& in, smtcheck_opensmt2t *decider = NULL);
+  virtual summary_idt insert_summary(summaryt& summary);
 
 protected:
   virtual void deserialize(std::istream& in);

@@ -67,3 +67,24 @@ void prop_summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t 
    std::istringstream in_stream(in); 
    deserialize(in_stream);
 }
+
+/*******************************************************************\
+
+Function: summary_storet::insert_summary
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Inserts a new summary, the given summary is invalidated
+
+\*******************************************************************/
+
+summary_idt prop_summary_storet::insert_summary(summaryt& summary)
+{
+  summary_idt id = max_id++;
+  summary.set_valid(1);
+  store.push_back(nodet(id, summary));
+  repr_count++;
+  return id;
+}

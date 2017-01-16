@@ -64,3 +64,35 @@ void smt_summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *
     return;
 }
 
+/*******************************************************************\
+
+Function: summary_storet::insert_summary
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Inserts a new summary, the given summary is invalidated
+
+\*******************************************************************/
+
+summary_idt smt_summary_storet::insert_summary(summaryt& summary)
+{
+  summary_idt id = max_id++;
+  summary.set_valid(1);
+
+  Tterm *tterm = summary.getTterm();
+  assert(tterm);
+  string fname = tterm->getName();
+  string qless = smtcheck_opensmt2t::unquote_varname(fname);
+  string idxless = smtcheck_opensmt2t::remove_index(qless);
+  int midx = get_max_id(idxless);
+  int next_idx = midx + 1;
+  max_ids[idxless] = next_idx;// = max(fidx, midx);
+  string fixed_name = smtcheck_opensmt2t::insert_index(idxless, next_idx);
+  tterm->setName(fixed_name);
+
+  store.push_back(nodet(id, summary));
+  repr_count++;
+  return id;
+}
