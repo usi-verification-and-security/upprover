@@ -50,6 +50,9 @@ void error_tracet::build_goto_trace (
     if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
         continue;
 
+    if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
+        continue;
+
     step_nr++;
 
     goto_trace.steps.push_back(goto_trace_stept());
@@ -161,6 +164,9 @@ void error_tracet::build_goto_trace_formula (
         continue;
     
     if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
+        continue;
+
+    if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
         continue;
 
     if(SSA_step.ssa_full_lhs.is_not_nil())
