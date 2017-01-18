@@ -189,7 +189,8 @@ exprt smtcheck_opensmt2t_uf::get_value(const exprt &expr)
         {
             // Constant?
             ValPair v1 = mainSolver->getValue(ptrf);
-            irep_idt value = v1.val;
+            assert(v1.val != NULL);
+            irep_idt value(v1.val);
 
             // Create the expr with it
             constant_exprt tmp = constant_exprt();
