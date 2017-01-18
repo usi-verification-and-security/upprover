@@ -681,56 +681,6 @@ bool smtcheck_opensmt2t::can_interpolate() const
   return ready_to_interpolate;
 }
 
-// GF: probably, need to move away from here
-void getVarsInExpr(exprt& e, std::set<exprt>& vars){
-	if(e.id()==ID_symbol){
-		vars.insert(e);
-	} else if (e.has_operands()){
-		for (int i = 0; i< e.operands().size();i++){
-			getVarsInExpr(e.operands()[i], vars);
-		}
-	}
-}
-
-void smtcheck_opensmt2t::check_ce(std::vector<exprt>& exprs){
-	char *msg;
-	close_partition();
-
-	cout << "\n  TODO: bit-blast this counter-example formula:\n" << logic->printTerm(top_level_formulas[0]) << endl;
-
-	mainSolver->insertFormula(top_level_formulas[0], &msg);
-
-	bool res = true;
-	int i = 0;
-	while (i < exprs.size() && res){
-	    literalt l = convert(exprs[i]);
-	    PTRef lp = literals[l.var_no()];
-	    PTRef truep = logic->getTerm_true();
-	    vec<PTRef> args;
-	    args.push(lp);
-	    args.push(truep);
-	    PTRef tlp = logic->mkEq(args);
-		mainSolver->insertFormula(tlp, &msg);
-	    res = (s_True == mainSolver->check());
-	    if (!res){
-	    	cout << "  Problem is here: " << logic->printTerm(tlp) << endl;
-	    	std::set<exprt> se;
-	    	if (!exprs[i].has_operands() || exprs[i].operands().size() < 2){
-	    		cout << "what should we do with it?" << endl;
-	    		continue;
-	    	}
-	    	exprt lhs = exprs[i].operands()[0];
-	    	cout << "\n  TODO: create a glue for this lhs var: " << lhs.get("identifier") << "\n";
-	    	getVarsInExpr(exprs[i].operands()[1], se);
-	    	for (auto it = se.begin(); it != se.end(); ++it){
-	    		cout << "  TODO: create a glue for this rhs var: " << (*it).get("identifier") << "\n\n";
-	    	}
-	    }
-	    i++;
-    }
-}
-
-
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t::prop_solve

@@ -15,6 +15,7 @@ Module: Wrapper for OpenSMT2
 #include "interpolating_solver.h"
 #include "smt_itp.h"
 #include <opensmt/opensmt2.h>
+#include <opensmt/BitBlaster.h>
 #include <expr.h>
 
 // Cache of already visited interpolant literals
@@ -43,8 +44,24 @@ public:
 
   virtual literalt lvar(const exprt &expr);
 
+  PTRef get_bv_var(const char* name);
+
+  PTRef get_bv_const(int val);
+
+  void set_equal_bv(PTRef l1, PTRef l2);
+
+  PTRef convert_bv(const exprt &expr);
+
+  int check_ce(std::vector<exprt>& exprs);
+
+  bool refine_ce(std::vector<exprt>& exprs, int i);
+
 protected:
   CUFLogic* cuflogic; // Extra var, inner use only - Helps to avoid dynamic cast! 
+
+  BVLogic* bvlogic;
+
+  BitBlaster* bitblaster;
     
   virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 

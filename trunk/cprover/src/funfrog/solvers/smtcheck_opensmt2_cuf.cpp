@@ -22,6 +22,14 @@ void smtcheck_opensmt2t_cuf::initializeSolver()
   logic = &(osmt->getCUFLogic());
   cuflogic = &(osmt->getCUFLogic());
   mainSolver = &(osmt->getMainSolver());
+  bvlogic = &((BVLogic&)osmt->getLogic());
+
+  SolverId id = { 0 };
+  vec<PtAsgn> asgns;
+  vec<DedElem> deds;
+  vec<PTRef> foo;
+  bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *bvlogic, asgns, deds, foo);
+
   const char* msg2;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
 
@@ -38,6 +46,60 @@ smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
 {
 	// Shall/When need to: freeSolver() ?
 }
+
+
+PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
+{
+	return bvlogic->mkNumVar(name);
+}
+
+PTRef smtcheck_opensmt2t_cuf::get_bv_const(int val)
+{
+	return bvlogic->mkConst(val);
+}
+
+void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
+{
+	current_partition->push(bvlogic->mkEq(l1, l2));
+}
+
+PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
+{
+	PTRef l;
+	if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) {
+
+		l = get_bv_var(expr.get("identifier").c_str());
+
+	} else if (expr.id()==ID_constant) {
+
+		l = get_bv_const(stoi(id2string(to_constant_expr(expr).get_value())));
+
+	} else if (expr.id() == ID_equal) {
+
+        l = bvlogic->mkEq(
+        		convert_bv(expr.operands()[0]),
+				convert_bv(expr.operands()[1]));
+
+    } else if (expr.id() == ID_not) {
+
+        l = bvlogic->mkBVNot(
+        		convert_bv(expr.operands()[0]));
+
+    } else if (expr.id()==ID_notequal){
+
+    	l = bvlogic->mkBVNot(
+    			bvlogic->mkEq(convert_bv(expr.operands()[0]),
+    					      convert_bv(expr.operands()[1])));
+
+    } else {
+
+		//GF: to continue...
+		l = logic->getTerm_true(); // stub for now
+
+	}
+	return l;
+}
+
 
 exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
 {
@@ -412,4 +474,69 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
 #endif
 
     return l;
+}
+
+// GF: probably, need to move away from here
+void getVarsInExpr(exprt& e, std::set<exprt>& vars)
+{
+	if(e.id()==ID_symbol){
+		vars.insert(e);
+	} else if (e.has_operands()){
+		for (int i = 0; i< e.operands().size();i++){
+			getVarsInExpr(e.operands()[i], vars);
+		}
+	}
+}
+
+int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
+{
+	for (int i = 0; i < top_level_formulas.size(); i++){
+		cout << "\n  " << logic->printTerm(top_level_formulas[i]);
+		BVRef tmp;
+		bitblaster->insert(top_level_formulas[i], tmp);
+	}
+	mainSolver->push();
+
+	bool res = true;
+	int i = 0;
+	while (i < exprs.size() && res){
+	    PTRef lp = convert_bv(exprs[i]);
+		cout << "\n  Validating: " << logic->printTerm(lp) << endl;
+		BVRef tmp;
+		bitblaster->insert(lp, tmp);
+	    res = (s_True == mainSolver->check());
+	    if (!res){
+	    	cout << "\n  Weak statement encoding found." << endl;
+	    	return i;
+	    }
+	    // mainSolver->pop();
+	    i++;
+    }
+	return -1;
+}
+
+bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
+{
+	std::set<exprt> se;
+	if (!exprs[i].has_operands() || exprs[i].operands().size() < 2){
+		cout << "what should we do with it?" << endl;
+		return true;
+	}
+
+	// create a glue for lhs
+	PTRef lhs = literals[convert(exprs[i].operands()[0]).var_no()];
+	BVRef lhs_bv;
+	bitblaster->insert(convert_bv(exprs[i].operands()[0]), lhs_bv);
+	bitblaster->glueBtoUF(lhs_bv, lhs);
+
+	// create a glue for rhs
+	getVarsInExpr(exprs[i].operands()[1], se);
+	for (auto it = se.begin(); it != se.end(); ++it){
+		PTRef rhs = literals[convert(*it).var_no()];
+    	BVRef rhs_bv;
+		bitblaster->insert(convert_bv(*it), rhs_bv);
+		bitblaster->glueUFtoB(rhs, rhs_bv);
+	}
+
+	return solve();
 }

@@ -43,6 +43,8 @@ public:
     
   virtual literalt lassert_var() { literalt l; l = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); return l;}
 
+  void check_ce(std::vector<exprt>& exprs); // checking spuriousness of the error trace (not refinement here)
+
 protected:
   LRALogic* lralogic; // Extra var, inner use only - Helps to avoid dynamic cast!
 

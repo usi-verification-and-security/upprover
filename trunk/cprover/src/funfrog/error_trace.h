@@ -2,6 +2,7 @@
 #define ERROR_TRACE_H_
 
 #include "solvers/smtcheck_opensmt2.h"
+#include "solvers/smtcheck_opensmt2_cuf.h"
 #include "partitioning_target_equation.h"
 #include "smt_partitioning_target_equation.h"
 
@@ -31,6 +32,11 @@ public:
 	  smt_partitioning_target_equationt &target,
 	  smtcheck_opensmt2t &decider,
 	  smtcheck_opensmt2t_lra &decider2);
+
+	void build_goto_trace_formula (
+	  smt_partitioning_target_equationt &target,
+	  smtcheck_opensmt2t &decider,
+	  smtcheck_opensmt2t_cuf &decider2);
 
 	void show_goto_trace(
 	  smtcheck_opensmt2t &decider,

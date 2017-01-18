@@ -1,27 +1,17 @@
 /*******************************************************************
 
- Module: Assertion checker that extracts and uses function 
- summaries
+ Module: Theory refiner for the CAV submission
 
- Author: Ondrej Sery
+ Author: all
 
 \*******************************************************************/
 #include "theory_refiner.h"
-#include "partitioning_slice.h"
-#include "dependency_checker.h"
 #include "error_trace.h"
-
 #include "solvers/smtcheck_opensmt2_lra.h"
-#include "solvers/smtcheck_opensmt2_cuf.h"
-#include "solvers/smtcheck_opensmt2_uf.h"
-#include "smt_refiner_assertion_sum.h"
-#include "prop_refiner_assertion_sum.h"
-#include "smt_dependency_checker.h"
-#include "prop_dependency_checker.h"
 
 void theory_refinert::initialize()
 {
-  decider = new smtcheck_opensmt2t_uf();
+  decider = new smtcheck_opensmt2t_cuf();
   summarization_context.analyze_functions(ns);
   omega.initialize_summary_info (omega.get_summary_info(), goto_program);
   omega.setup_default_precision(ALL_SUBSTITUTING);
@@ -35,7 +25,7 @@ void theory_refinert::initialize()
 
  Outputs:
 
- Purpose: Checks if the given assertion of the GP holds for smt encoding
+ Purpose: Checks if the given assertion holds in CUF with bit-blasting (when needed)
 
 \*******************************************************************/
 
@@ -76,20 +66,57 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 	  status() << "ASSERTION HOLDS";
 	  report_success();
   } else {
-	  status() << "Trying to refine (currently, using LRA)" << endl;
+	  const std::string &log=options.get_option("logic");
 
-	  smtcheck_opensmt2t_lra* decider2 = new smtcheck_opensmt2t_lra(0);
+	  status() << "\nChecking if the error trace is spurious";
+	  if (log == "qflra"){
 
-	  error_tracet error_trace;
+		  status() << " (for testing only) with LRA" << eom;
+		  smtcheck_opensmt2t_lra* decider2 = new smtcheck_opensmt2t_lra(0);
 
-	  error_trace.build_goto_trace_formula(equation,
-			*(dynamic_cast<smtcheck_opensmt2t *> (decider)),
-					*(dynamic_cast<smtcheck_opensmt2t_lra *> (decider2)));
+		  error_tracet error_trace;
 
-	  std::vector<exprt>& exprs = equation.get_exprs_to_refine();
-	  decider2->check_ce(exprs);
+		  error_trace.build_goto_trace_formula(equation,
+				*(dynamic_cast<smtcheck_opensmt2t *> (decider)),
+						*(dynamic_cast<smtcheck_opensmt2t_lra *> (decider2)));
 
-	  status() << "TODO: continue with bit-blasted refinement..." << endl;
+		  std::vector<exprt>& exprs = equation.get_exprs_to_refine();
+		  decider2->check_ce(exprs);
+
+	  } else {
+
+		  status() << " and trying to refine with CUF" << eom;
+
+		  std::vector<exprt>& exprs = equation.get_exprs_to_refine();
+		  std::set<int> refined;
+
+		  while (true){
+
+			  // local CUF solver
+			  smtcheck_opensmt2t_cuf* decider2 = new smtcheck_opensmt2t_cuf();
+
+			  error_tracet error_trace;
+			  error_trace.build_goto_trace_formula(equation,
+					*(dynamic_cast<smtcheck_opensmt2t *> (decider)),
+							*(dynamic_cast<smtcheck_opensmt2t_cuf *> (decider2)));
+
+			  int spur = decider2->check_ce(exprs);
+
+			  if (refined.find(spur) == refined.end() && spur >= 0){
+				  if (decider->refine_ce(exprs, spur)){
+					  refined.insert(spur);
+				  } else {
+					  status() << "Refinement successful" << endl;
+					  status() << "ASSERTION HOLDS";
+					  report_success();
+					  break;
+				  }
+			  } else {
+				  status() << "Refinement failed" << eom;
+				  break;
+			  }
+		  }
+	  }
   }
 
   final = current_time();

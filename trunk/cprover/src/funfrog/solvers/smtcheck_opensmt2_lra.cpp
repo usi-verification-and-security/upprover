@@ -752,3 +752,30 @@ bool smtcheck_opensmt2t_lra::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 	// Don't know
 	return true; // Probably missed cased of false, so once found please add it
 }
+
+void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
+{
+	// this method is used for testing mostly
+	char *msg;
+
+	for (int i = 0; i < top_level_formulas.size(); i++){
+		cout << "\nCE:  " << logic->printTerm(top_level_formulas[i]);
+		mainSolver->insertFormula(top_level_formulas[i], &msg);
+	}
+	mainSolver->push();
+
+	bool res = true;
+	int i = 0;
+	while (i < exprs.size() && res){
+		literalt l = convert(exprs[i]);
+		PTRef lp = literals[l.var_no()];
+		mainSolver->insertFormula(lp, &msg);
+	    res = (s_True == mainSolver->check());
+	    if (!res){
+	    	cout << "\n  Problem could be here: " << logic->printTerm(lp) << endl;
+	    }
+//	    mainSolver->pop();  // TODO: uncomment this line and comment "&& res" in the guard
+	    					// to get a segmfalut in the incremental solver
+	    i++;
+    }
+}

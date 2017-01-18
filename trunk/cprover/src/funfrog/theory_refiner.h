@@ -4,14 +4,11 @@
 #include <memory>
 #include <options.h>
 #include <ui_message.h>
-#include <solvers/flattening/bv_pointers.h>
+#include "solvers/smtcheck_opensmt2_cuf.h"
 #include "symex_assertion_sum.h"
-#include "assertion_sum.h"
-#include "prop_assertion_sum.h"
 #include "smt_assertion_sum.h"
-#include "refiner_assertion_sum.h"
-#include "prop_partitioning_target_equation.h"
 #include "smt_partitioning_target_equation.h"
+#include "subst_scenario.h"
 
 class theory_refinert:public messaget
 {
@@ -51,7 +48,7 @@ public:
   summarization_contextt summarization_context;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
-  check_opensmt2t* decider; // currently UF solver
+  smtcheck_opensmt2t_cuf* decider; // CUF solver
   subst_scenariot omega;
   
   void setup_unwind(symex_assertion_sumt& symex);

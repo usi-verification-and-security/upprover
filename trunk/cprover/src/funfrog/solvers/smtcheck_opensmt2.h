@@ -94,6 +94,8 @@ public:
 
   fle_part_idt new_partition(); // Common to all
 
+  void close_partition(); // Common to all
+
   void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants); // Common to all
 
@@ -125,8 +127,6 @@ public:
 		  std::cout << "Incrementally adding partitions to the SMT solver\n";
 	  }
   }
-
-  void check_ce(std::vector<exprt>& exprs);
 
   bool has_unsupported_vars() { return unsupported2var > 0; } // Common to all
 
@@ -173,8 +173,6 @@ protected:
   virtual void initializeSolver()=0;
 
   void produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants); // Common to all
-
-  void close_partition(); // Common to all
 
   virtual void freeSolver(); // Common to all
 
