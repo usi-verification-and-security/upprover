@@ -17,9 +17,13 @@
 
 class error_tracet {
 public:
+	// Status of over-approx checking and results
+	enum flagOverApproxt { UNKNOWN, REAL, SPURIOUS };
+	typedef enum flagOverApproxt isOverAppoxt;
+
 	// C'tor
 	error_tracet() :
-		isOverAppox(false) {}
+		isOverAppox(error_tracet::isOverAppoxt::UNKNOWN) {}
 
 	// D'tor
 	virtual ~error_tracet() {}
@@ -44,11 +48,11 @@ public:
 	  const namespacet &ns,
 	  std::map<irep_idt, std::string> &guard_expln);
 
-private:
-	bool isOverAppox;
-	goto_tracet goto_trace; // The error trace
+	error_tracet::isOverAppoxt is_trace_overapprox(smtcheck_opensmt2t &decider);
 
-	bool is_trace_overapprox(smtcheck_opensmt2t &decider);
+private:
+	isOverAppoxt isOverAppox;
+	goto_tracet goto_trace; // The error trace
 
 	void show_state_header(
 			  std::ostream &out,

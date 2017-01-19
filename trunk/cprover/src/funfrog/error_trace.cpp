@@ -275,7 +275,7 @@ Function: error_trace::show_trace_vars_value
  Purpose: To check that it is really a full concrete path
 
 \*******************************************************************/
-bool error_tracet::is_trace_overapprox(smtcheck_opensmt2t &decider)
+error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(smtcheck_opensmt2t &decider)
 {
     /* Basic print of the error trace as all variables values */
 #ifdef TRACE_DEBUG
@@ -292,7 +292,7 @@ bool error_tracet::is_trace_overapprox(smtcheck_opensmt2t &decider)
 	char* name = logic->printTerm(*iter);
 	std::string curr (name);
 	if (curr.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
-		isOverAppox = true;
+		isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
 #ifdef TRACE_DEBUG
 	else if (curr.find(skip_debug_print) != std::string::npos)
 	{
@@ -313,6 +313,9 @@ bool error_tracet::is_trace_overapprox(smtcheck_opensmt2t &decider)
 
     // Clear all vars list before quit
     vars->clear(); delete vars;
+
+    if (isOverAppox != error_tracet::isOverAppoxt::SPURIOUS)
+    	isOverAppox = error_tracet::isOverAppoxt::REAL;
 
     // True if there is some effect of over-approx of ops
     return isOverAppox;
@@ -338,7 +341,10 @@ void error_tracet::show_goto_trace(
     std::map<irep_idt, std::string> &guard_expln)
 {
     // In case we use over approximate to verify this example - gives a warning to the user!
-    if (is_trace_overapprox(decider)) {
+    assert (isOverAppox != error_tracet::isOverAppoxt::UNKNOWN);
+    
+    //if (is_trace_overapprox(decider)) {
+    if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS) {
         cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
         cout << "         Use --logic with Different Logic to Try Creating an Error Trace. \n";
         return; // Cannot really print a trace

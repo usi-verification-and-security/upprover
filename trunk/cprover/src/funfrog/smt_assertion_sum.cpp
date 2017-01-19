@@ -100,6 +100,15 @@ void smt_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespac
     status() << ("Building error trace");
     
     error_tracet error_trace;
+    
+    error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(decider);
+    if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS)
+    {
+        // Same as in funfrog/error_tracet::show_goto_trace
+        cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
+        cout << "         Use --logic with Different Logic to Try Creating an Error Trace. \n";
+        return; // Cannot really print a trace
+    }
 
     error_trace.build_goto_trace(equation, decider);
 
