@@ -225,7 +225,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
     Map<PTRef, PtAsgn, PTRefHash> subst;
 
     map<string, int[3]> occurrences;
-    for(int i = 0; i < symbols.size(); ++i)
+    for(unsigned int i = 0; i < symbols.size(); ++i)
     {
         string fixed_str = id2string(symbols[i].get_identifier());
         string unidx = smtcheck_opensmt2t::remove_index(fixed_str);
@@ -247,7 +247,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
 
     }
 
-    for(int i = 0; i < symbols.size(); ++i)
+    for(unsigned int i = 0; i < symbols.size(); ++i)
     {
         string fixed_str = id2string(symbols[i].get_identifier());
         string unidx = smtcheck_opensmt2t::remove_index(fixed_str);

@@ -183,6 +183,34 @@ protected:
 
   // Common to all
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
+  
+  irep_idt get_value_from_solver(PTRef ptrf)
+  {
+    if (logic->hasSortBool(ptrf)) 
+    {
+        lbool v1 = mainSolver->getTermValue(ptrf);
+        int int_v1 = toInt(v1);
+        irep_idt value(std::to_string(int_v1).c_str());
+        
+        return value;
+    } 
+    else
+    {
+        ValPair v1 = mainSolver->getValue(ptrf);
+        assert(v1.val != NULL);
+        irep_idt value(v1.val);
+        
+        return value;
+    }
+  }
+
+  bool is_value_from_solver_false(PTRef ptrf)
+  {
+    assert(logic->hasSortBool(ptrf));
+    
+    lbool v1 = mainSolver->getTermValue(ptrf);
+    return (toInt(v1) == 0);
+  }
 
 #ifdef DEBUG_SMT2SOLVER
   std::map <std::string,std::string> ite_map_str;

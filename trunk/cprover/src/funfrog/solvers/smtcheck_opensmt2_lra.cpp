@@ -44,8 +44,7 @@ exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
         // Get the value of the PTRef
         if (logic->isIteVar(ptrf)) // true/false - evaluation of a branching
         {
-            ValPair v1 = mainSolver->getValue(ptrf);
-            if (v1.val == 0)
+            if (smtcheck_opensmt2t::is_value_from_solver_false(ptrf))
                     return false_exprt();
             else
                     return true_exprt();
@@ -61,9 +60,8 @@ exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
         else if (logic->isVar(ptrf)) // Constant value
         {
             // Create the value
-            ValPair v1 = mainSolver->getValue(ptrf);
-            assert(v1.val != NULL);
-            irep_idt value(v1.val);
+            irep_idt value = 
+                    smtcheck_opensmt2t::get_value_from_solver(ptrf);
 
             // Create the expr with it
             constant_exprt tmp = constant_exprt();
@@ -74,10 +72,9 @@ exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
         else if (logic->isConstant(ptrf))
         {
             // Constant?
-            ValPair v1 = mainSolver->getValue(ptrf);
-            assert(v1.val != NULL);
-            irep_idt value(v1.val);
-
+            irep_idt value = 
+                    smtcheck_opensmt2t::get_value_from_solver(ptrf);
+            
             // Create the expr with it
             constant_exprt tmp = constant_exprt();
             tmp.set_value(value);
@@ -654,7 +651,7 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 
 	//gets the property
 	int size = var_type.get_int("width");
-	const irep_idt type = var_type.get("#c_type");
+	//const irep_idt type = var_type.get("#c_type");
 	const irep_idt &type_id=var_type.id_string();
 	bool is_add_constraints = false;
 	bool is_non_det = (expr.id() == ID_nondet_symbol);
@@ -766,7 +763,7 @@ void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 	mainSolver->push();
 
 	bool res = true;
-	int i = 0;
+	unsigned int i = 0;
 	while (i < exprs.size() && res){
 		literalt l = convert(exprs[i]);
 		PTRef lp = literals[l.var_no()];
