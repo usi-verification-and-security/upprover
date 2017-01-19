@@ -30,8 +30,11 @@ void summarizing_checkert::initialize_solver()
         decider = new smtcheck_opensmt2t_lra(_type_constraints);
     else if (_logic == "prop")
         decider = new satcheck_opensmt2t();
-    else
+    else 
+    {
+        std::cout << ("Unsupported theory: " +  _logic + "\n");
         assert(0); //Unsupported 
+    }
   
   // Set all the rest of the option - KE: check what to shift to the part of SMT only
   decider->set_itp_bool_alg(options.get_unsigned_int_option("itp-algorithm"));
