@@ -750,7 +750,7 @@ bool goto_symex_statet::l2_thread_read_encoding(
           symex_targett::PHI);
     }
 
-    set_ssa_indices(ssa_l1, ns, L2);
+    set_ssa_indices(ssa_l1, ns, L2);
     expr=ssa_l1;
     a_s_read.second.push_back(guard);
     if(!no_write.op().is_false())
