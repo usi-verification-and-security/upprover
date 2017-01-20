@@ -20,15 +20,14 @@ void smtcheck_opensmt2t_cuf::initializeSolver()
 {
   osmt = new Opensmt(opensmt_logic::qf_cuf);
   logic = &(osmt->getCUFLogic());
-  cuflogic = &(osmt->getCUFLogic());
+  cuflogic = &((BVLogic&)osmt->getLogic());
   mainSolver = &(osmt->getMainSolver());
-  bvlogic = &((BVLogic&)osmt->getLogic());
 
   SolverId id = { 0 };
   vec<PtAsgn> asgns;
   vec<DedElem> deds;
   vec<PTRef> foo;
-  bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *bvlogic, asgns, deds, foo);
+  bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *cuflogic, asgns, deds, foo);
 
   const char* msg2;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
@@ -50,17 +49,17 @@ smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 {
-	return bvlogic->mkNumVar(name);
+	return cuflogic->mkNumVar(name);
 }
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_const(int val)
 {
-	return bvlogic->mkConst(val);
+	return cuflogic->mkConst(val);
 }
 
 void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
 {
-	current_partition->push(bvlogic->mkEq(l1, l2));
+	current_partition->push(cuflogic->mkEq(l1, l2));
 }
 
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
@@ -76,19 +75,19 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 
 	} else if (expr.id() == ID_equal) {
 
-        l = bvlogic->mkEq(
+        l = cuflogic->mkEq(
         		convert_bv(expr.operands()[0]),
 				convert_bv(expr.operands()[1]));
 
     } else if (expr.id() == ID_not) {
 
-        l = bvlogic->mkBVNot(
+        l = cuflogic->mkBVNot(
         		convert_bv(expr.operands()[0]));
 
     } else if (expr.id()==ID_notequal){
 
-    	l = bvlogic->mkBVNot(
-    			bvlogic->mkEq(convert_bv(expr.operands()[0]),
+    	l = cuflogic->mkBVNot(
+    			cuflogic->mkEq(convert_bv(expr.operands()[0]),
     					      convert_bv(expr.operands()[1])));
 
     } else {
@@ -178,18 +177,16 @@ literalt smtcheck_opensmt2t_cuf::const_var_Real(const exprt &expr)
     {
         if (expr.type().id() == ID_c_enum)
         {
-            string enum_tag = expr.type().find(ID_tag).pretty();
-            rconst = cuflogic->mkConst(atoi(enum_tag.c_str()));
+        	num = expr.type().find(ID_tag).pretty();
         }
         else
         {
             assert(0);
         }
     }
-    else
-    {
-        rconst = cuflogic->mkConst(atoi(num.c_str()));
-    }
+
+    rconst = cuflogic->mkCUFConst(atoi(num.c_str()));
+
     assert(rconst != PTRef_Undef);
 
     l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
@@ -491,7 +488,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
 	for (int i = 0; i < top_level_formulas.size(); i++){
 		cout << "\n  " << logic->printTerm(top_level_formulas[i]);
 		BVRef tmp;
-		bitblaster->insert(top_level_formulas[i], tmp);
+		bitblaster->insertEq(top_level_formulas[i], tmp);
 	}
 	mainSolver->push();
 
@@ -501,7 +498,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
 	    PTRef lp = convert_bv(exprs[i]);
 		cout << "\n  Validating: " << logic->printTerm(lp) << endl;
 		BVRef tmp;
-		bitblaster->insert(lp, tmp);
+		bitblaster->insertEq(lp, tmp); // GF: bugs here!
 	    res = (s_True == mainSolver->check());
 	    if (!res){
 	    	cout << "\n  Weak statement encoding found." << endl;
@@ -524,7 +521,7 @@ bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
 	// create a glue for lhs
 	PTRef lhs = literals[convert(exprs[i].operands()[0]).var_no()];
 	BVRef lhs_bv;
-	bitblaster->insert(convert_bv(exprs[i].operands()[0]), lhs_bv);
+	bitblaster->insertEq(convert_bv(exprs[i].operands()[0]), lhs_bv);
 	bitblaster->glueBtoUF(lhs_bv, lhs);
 
 	// create a glue for rhs
@@ -532,7 +529,7 @@ bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
 	for (auto it = se.begin(); it != se.end(); ++it){
 		PTRef rhs = literals[convert(*it).var_no()];
     	BVRef rhs_bv;
-		bitblaster->insert(convert_bv(*it), rhs_bv);
+		bitblaster->insertEq(convert_bv(*it), rhs_bv);
 		bitblaster->glueUFtoB(rhs, rhs_bv);
 	}
 

@@ -57,12 +57,10 @@ public:
   bool refine_ce(std::vector<exprt>& exprs, int i);
 
 protected:
-  CUFLogic* cuflogic; // Extra var, inner use only - Helps to avoid dynamic cast! 
-
-  BVLogic* bvlogic;
+  BVLogic* cuflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
 
   BitBlaster* bitblaster;
-    
+
   virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
   virtual void initializeSolver();
