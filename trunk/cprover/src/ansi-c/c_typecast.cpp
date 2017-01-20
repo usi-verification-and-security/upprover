@@ -383,8 +383,7 @@ c_typecastt::c_typet c_typecastt::get_c_type(
     return BOOL;
   else if(type.id()==ID_c_bool)
     return BOOL;
-  else if(type.id()==ID_floatbv ||
-          type.id()==ID_fixedbv)
+  else if(type.id()==ID_floatbv)
   {
     if(width<=config.ansi_c.single_width)
       return SINGLE;
@@ -394,6 +393,10 @@ c_typecastt::c_typet c_typecastt::get_c_type(
       return LONGDOUBLE;
     else if(width<=128)
       return FLOAT128;
+  }
+  else if(type.id()==ID_fixedbv)
+  {
+    return FIXEDBV;
   }
   else if(type.id()==ID_pointer)
   {
@@ -609,21 +612,16 @@ void c_typecastt::implicit_typecast_followed(
       src_type_no_const.subtype().remove(ID_C_constant);
 
     // Check union members.
-    const union_typet &dest_union_type=to_union_type(dest_type);
-
-    for(union_typet::componentst::const_iterator
-        it=dest_union_type.components().begin();
-        it!=dest_union_type.components().end();
-        it++)
+    for(const auto &comp : to_union_type(dest_type).components())
     {
-      if(!check_c_implicit_typecast(src_type_no_const, it->type()))
+      if(!check_c_implicit_typecast(src_type_no_const, comp.type()))
       {
         // build union constructor
         exprt union_expr(ID_union, orig_dest_type);
         union_expr.move_to_operands(expr);
         if(!full_eq(src_type, src_type_no_const))
           do_typecast(union_expr.op0(), src_type_no_const);
-        union_expr.set(ID_component_name, it->get_name());
+        union_expr.set(ID_component_name, comp.get_name());
         expr=union_expr;
         return; // ok
       }
@@ -733,8 +731,8 @@ void c_typecastt::implicit_typecast_arithmetic(
   if(max_type==LARGE_SIGNED_INT || max_type==LARGE_UNSIGNED_INT)
   {
     // get the biggest width of both
-    unsigned width1=type1.get_int(ID_width);
-    unsigned width2=type2.get_int(ID_width);
+    std::size_t width1=type1.get_size_t(ID_width);
+    std::size_t width2=type2.get_size_t(ID_width);
 
     // produce type
     typet result_type;
@@ -754,6 +752,30 @@ void c_typecastt::implicit_typecast_arithmetic(
     do_typecast(expr1, result_type);
     do_typecast(expr2, result_type);
 
+    return;
+  }
+  else if(max_type==FIXEDBV)
+  {
+    typet result_type;
+    
+    if(c_type1==FIXEDBV && c_type2==FIXEDBV)
+    {
+      // get bigger of both
+      std::size_t width1=to_fixedbv_type(type1).get_width();
+      std::size_t width2=to_fixedbv_type(type2).get_width();
+      if(width1>=width2)
+        result_type=type1;
+      else
+        result_type=type2;
+    }
+    else if(c_type1==FIXEDBV)
+      result_type=type1;
+    else
+      result_type=type2;
+
+    do_typecast(expr1, result_type);
+    do_typecast(expr2, result_type);
+    
     return;
   }
   else if(max_type==COMPLEX)

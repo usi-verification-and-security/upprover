@@ -30,7 +30,7 @@ Function:
 \*******************************************************************/
 
 /* po^+ /\ U{C_1, ..., C_n} \/ delays */
-void cycles_visitort::po_edges(std::set<unsigned>& edges)
+void cycles_visitort::po_edges(std::set<event_idt>& edges)
 {
   instrumentert& instrumenter=fence_inserter.instrumenter;
 
@@ -61,24 +61,24 @@ void cycles_visitort::po_edges(std::set<unsigned>& edges)
         {
           /* also add pos of non-delaying pos+ of cycles, as they could AC or
              BC */
-          for(graph<abstract_eventt>::edgest::const_iterator
+          for(wmm_grapht::edgest::const_iterator
             next_it=egraph.po_in(e_i->first).begin();
             next_it!=egraph.po_in(e_i->first).end();
             ++next_it)
           {
-            std::list<unsigned> new_path;
+            std::list<event_idt> new_path;
             new_path.push_back(e_i->first);
             new_path.push_back(next_it->first);
             fence_inserter.const_graph_visitor.const_graph_explore_AC(egraph,
               next_it->first, new_path);
           }
 
-          for(graph<abstract_eventt>::edgest::const_iterator
+          for(wmm_grapht::edgest::const_iterator
             next_it=egraph.po_out(e_i->second).begin();
             next_it!=egraph.po_out(e_i->second).end();
             ++next_it)
           {
-            std::list<unsigned> new_path;
+            std::list<event_idt> new_path;
             new_path.push_back(e_i->second);
             new_path.push_back(next_it->first);
             fence_inserter.const_graph_visitor.const_graph_explore_BC(egraph,
@@ -105,12 +105,12 @@ void cycles_visitort::po_edges(std::set<unsigned>& edges)
       else
       {
         /* adds basic pos from this pos^+ */
-        for(graph<abstract_eventt>::edgest::const_iterator
+        for(wmm_grapht::edgest::const_iterator
           next_it=egraph.po_out(e_i.first).begin();
           next_it!=egraph.po_out(e_i.first).end();
           ++next_it)
         {
-          std::list<unsigned> new_path;
+          std::list<event_idt> new_path;
           new_path.push_back(e_i.first);
           new_path.push_back(next_it->first);
           fence_inserter.const_graph_visitor.const_graph_explore(egraph,
@@ -129,12 +129,12 @@ void cycles_visitort::po_edges(std::set<unsigned>& edges)
         else
         {
           /* adds basic pos from this pos^+ */
-          for(graph<abstract_eventt>::edgest::const_iterator
+          for(wmm_grapht::edgest::const_iterator
             next_it=egraph.po_out(e_i.first).begin();
             next_it!=egraph.po_out(e_i.first).end();
             ++next_it)
           {
-            std::list<unsigned> new_path;
+            std::list<event_idt> new_path;
             new_path.push_back(e_i.first);
             new_path.push_back(next_it->first);
             fence_inserter.const_graph_visitor.const_graph_explore(egraph,
@@ -176,7 +176,7 @@ void cycles_visitort::po_edges(std::set<unsigned>& edges)
       /* computes the largest pos+ in C_j */
       std::map<unsigned,event_grapht::critical_cyclet::const_iterator> m_begin;
       std::map<unsigned,event_grapht::critical_cyclet::const_iterator> m_end;
-      std::set<unsigned> m_threads;
+      std::set<event_idt> m_threads;
 
       unsigned previous_thread=0;
       for(event_grapht::critical_cyclet::const_iterator C_j_it=C_j->begin();
@@ -199,7 +199,7 @@ void cycles_visitort::po_edges(std::set<unsigned>& edges)
       /* computes the largest pos+ in C_k */
       std::map<unsigned,event_grapht::critical_cyclet::const_iterator> k_begin;
       std::map<unsigned,event_grapht::critical_cyclet::const_iterator> k_end;
-      std::set<unsigned> k_threads;
+      std::set<event_idt> k_threads;
 
       previous_thread=0;
       for(event_grapht::critical_cyclet::const_iterator C_k_it=C_k->begin();
@@ -220,14 +220,14 @@ void cycles_visitort::po_edges(std::set<unsigned>& edges)
       }
 
       /* if there are some commun threads, take the intersection if relevant */
-      for(std::set<unsigned>::const_iterator it=m_threads.begin();
+      for(std::set<event_idt>::const_iterator it=m_threads.begin();
         it!=m_threads.end(); ++it)
         if(k_threads.find(*it)!=k_threads.end())
         {
-          const unsigned a=*m_begin[*it];
-          const unsigned b=*m_end[*it];
-          const unsigned c=*k_begin[*it];
-          const unsigned d=*k_end[*it];
+          const event_idt a=*m_begin[*it];
+          const event_idt b=*m_end[*it];
+          const event_idt c=*k_begin[*it];
+          const event_idt d=*k_end[*it];
 
           if(egraph.are_po_ordered(b,c))
             continue;
@@ -264,7 +264,7 @@ Function:
 /* C_j /\ po^+ /\ poWR */
 void cycles_visitort::powr_constraint(
   const event_grapht::critical_cyclet& C_j,
-  std::set<unsigned>& edges)
+  std::set<event_idt>& edges)
 {
   event_grapht& graph=fence_inserter.instrumenter.egraph;
 
@@ -295,7 +295,7 @@ Function:
 /* C_j /\ po^+ /\ poWW */
 void cycles_visitort::poww_constraint(
   const event_grapht::critical_cyclet& C_j,
-  std::set<unsigned>& edges)
+  std::set<event_idt>& edges)
 {
   event_grapht& graph=fence_inserter.instrumenter.egraph;
 
@@ -326,7 +326,7 @@ Function:
 /* C_j /\ po^+ /\ poRW */
 void cycles_visitort::porw_constraint(
   const event_grapht::critical_cyclet& C_j,
-  std::set<unsigned>& edges)
+  std::set<event_idt>& edges)
 {
   event_grapht& graph=fence_inserter.instrumenter.egraph;
 
@@ -357,7 +357,7 @@ Function:
 /* C_j /\ po^+ /\ poRR */
 void cycles_visitort::porr_constraint(
   const event_grapht::critical_cyclet& C_j,
-  std::set<unsigned>& edges)
+  std::set<event_idt>& edges)
 {
   event_grapht& graph=fence_inserter.instrumenter.egraph;
 
@@ -388,7 +388,7 @@ Function:
 /* C_j /\ comWR */
 void cycles_visitort::com_constraint(
   const event_grapht::critical_cyclet& C_j,
-  std::set<unsigned>& edges)
+  std::set<event_idt>& edges)
 {
   event_grapht& egraph=fence_inserter.instrumenter.egraph;
 
@@ -406,8 +406,8 @@ void cycles_visitort::com_constraint(
 #if 0
   event_grapht& egraph=instrumenter.egraph;
 
-  std::list<unsigned>::const_iterator e_it=C_j.begin();
-  std::list<unsigned>::const_iterator next_it=e_it;
+  std::list<event_idt>::const_iterator e_it=C_j.begin();
+  std::list<event_idt>::const_iterator next_it=e_it;
   assert(C_j.size()>0);
   ++next_it;
   for(;  next_it!=C_j.end() && e_it!=C_j.end(); ++e_it, ++next_it)

@@ -34,10 +34,7 @@ void ai_baset::output(
   const goto_functionst &goto_functions,
   std::ostream &out) const
 {
-  for(goto_functionst::function_mapt::const_iterator
-      f_it=goto_functions.function_map.begin();
-      f_it!=goto_functions.function_map.end();
-      f_it++)
+  forall_goto_functions(f_it, goto_functions)
   {
     if(f_it->second.body_available())
     {
@@ -120,8 +117,7 @@ Function: ai_baset::entry_state
 
 void ai_baset::entry_state(const goto_programt &goto_program)
 {
-  // The first instruction of 'goto_program' is the entry point,
-  // and we make that 'top'.
+  // The first instruction of 'goto_program' is the entry point
   get_state(goto_program.instructions.begin()).make_entry();
 }
 
@@ -176,10 +172,7 @@ Function: ai_baset::initialize
 
 void ai_baset::initialize(const goto_functionst &goto_functions)
 {
-  for(goto_functionst::function_mapt::const_iterator
-      it=goto_functions.function_map.begin();
-      it!=goto_functions.function_map.end();
-      it++)
+  forall_goto_functions(it, goto_functions)
     initialize(it->second);
 }
 
@@ -226,9 +219,11 @@ bool ai_baset::fixedpoint(
 {
   working_sett working_set;
 
-  // We will put all locations at least once into the working set.
-  forall_goto_program_instructions(i_it, goto_program)
-    put_in_working_set(working_set, i_it);
+  // Put the first location in the working set
+  if(!goto_program.empty())
+    put_in_working_set(
+      working_set,
+      goto_program.instructions.begin());
 
   bool new_data=false;
 
@@ -270,13 +265,8 @@ bool ai_baset::visit(
 
   goto_program.get_successors(l, successors);
 
-  for(goto_programt::const_targetst::const_iterator
-      it=successors.begin();
-      it!=successors.end();
-      it++)
+  for(const auto &to_l : successors)
   {
-    locationt to_l=*it;
-
     if(to_l==goto_program.instructions.end())
       continue;
 
@@ -509,13 +499,11 @@ void ai_baset::sequential_fixedpoint(
   const goto_functionst &goto_functions,
   const namespacet &ns)
 {
-  // do each function at least once
+  goto_functionst::function_mapt::const_iterator
+    f_it=goto_functions.function_map.find(goto_functions.entry_point());
 
-  for(goto_functionst::function_mapt::const_iterator
-      it=goto_functions.function_map.begin();
-      it!=goto_functions.function_map.end();
-      it++)
-    fixedpoint(it->second.body, goto_functions, ns);
+  if(f_it!=goto_functions.function_map.end())
+    fixedpoint(f_it->second.body, goto_functions, ns);
 }
 
 /*******************************************************************\
@@ -571,21 +559,19 @@ void ai_baset::concurrent_fixedpoint(
   {
     new_shared=false;
 
-    for(thread_wlt::const_iterator it=thread_wl.begin();
-        it!=thread_wl.end();
-        ++it)
+    for(const auto &wl_pair : thread_wl)
     {
       working_sett working_set;
-      put_in_working_set(working_set, it->second);
+      put_in_working_set(working_set, wl_pair.second);
 
-      statet &begin_state=get_state(it->second);
-      merge(begin_state, sh_target, it->second);
+      statet &begin_state=get_state(wl_pair.second);
+      merge(begin_state, sh_target, wl_pair.second);
 
       while(!working_set.empty())
       {
         goto_programt::const_targett l=get_next(working_set);
 
-        visit(l, working_set, *(it->first), goto_functions, ns);
+        visit(l, working_set, *(wl_pair.first), goto_functions, ns);
 
         // the underlying domain must make sure that the final state
         // carries all possible values; otherwise we would need to

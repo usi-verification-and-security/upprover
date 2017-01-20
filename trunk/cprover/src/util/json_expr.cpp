@@ -132,11 +132,11 @@ json_objectt json(
     json_arrayt &members=result["members"].make_array();
     const struct_typet::componentst &components=
       to_struct_type(type).components();
-    for(const auto & it : components)
+    for(const auto &component : components)
     {
       json_objectt &e=members.push_back().make_object();
-      e["name"]=json_stringt(id2string(it.get_name()));
-      e["type"]=json(it.type(), ns);
+      e["name"]=json_stringt(id2string(component.get_name()));
+      e["type"]=json(component.type(), ns);
     }
   }
   else if(type.id()==ID_union)
@@ -145,11 +145,11 @@ json_objectt json(
     json_arrayt &members=result["members"].make_array();
     const union_typet::componentst &components=
       to_union_type(type).components();
-    for(const auto & it : components)
+    for(const auto &component : components)
     {
       json_objectt &e=members.push_back().make_object();
-      e["name"]=json_stringt(id2string(it.get_name()));
-      e["type"]=json(it.type(), ns);
+      e["name"]=json_stringt(id2string(component.get_name()));
+      e["type"]=json(component.type(), ns);
     }
   }
   else
@@ -264,6 +264,15 @@ json_objectt json(
       result["name"]=json_stringt("boolean");
       result["binary"]=json_stringt(expr.is_true()?"1":"0");
       result["data"]=jsont::json_boolean(expr.is_true());
+    }
+    else if(type.id()==ID_c_bool)
+    {
+      result["name"]=json_stringt("integer");
+      result["c_type"]=json_stringt("_Bool");
+      result["binary"]=json_stringt(expr.get_string(ID_value));
+      mp_integer b;
+      to_integer(to_constant_expr(expr), b);
+      result["data"]=json_stringt(integer2string(b));
     }
     else
     {

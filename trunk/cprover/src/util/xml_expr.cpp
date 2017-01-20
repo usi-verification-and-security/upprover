@@ -126,18 +126,19 @@ xmlt xml(
   {
     result.name="vector";
     result.new_element("subtype").new_element()=xml(type.subtype(), ns);
-    result.new_element("size").new_element()=xml(to_vector_type(type).size(), ns);
+    result.new_element("size").new_element()=
+      xml(to_vector_type(type).size(), ns);
   }
   else if(type.id()==ID_struct)
   {
     result.name="struct";
     const struct_typet::componentst &components=
       to_struct_type(type).components();
-    for(const auto & it : components)
+    for(const auto &component : components)
     {
       xmlt &e=result.new_element("member");
-      e.set_attribute("name", id2string(it.get_name()));
-      e.new_element("type").new_element()=xml(it.type(), ns);
+      e.set_attribute("name", id2string(component.get_name()));
+      e.new_element("type").new_element()=xml(component.type(), ns);
     }
   }
   else if(type.id()==ID_union)
@@ -145,11 +146,11 @@ xmlt xml(
     result.name="union";
     const union_typet::componentst &components=
       to_union_type(type).components();
-    for(const auto & it : components)
+    for(const auto &component : components)
     {
       xmlt &e=result.new_element("member");
-      e.set_attribute("name", id2string(it.get_name()));
-      e.new_element("type").new_element()=xml(it.type(), ns);
+      e.set_attribute("name", id2string(component.get_name()));
+      e.new_element("type").new_element()=xml(component.type(), ns);
     }
   }
   else
@@ -263,6 +264,15 @@ xmlt xml(
       result.set_attribute("binary", expr.is_true()?"1":"0");
       result.data=expr.is_true()?"TRUE":"FALSE";
     }
+    else if(type.id()==ID_c_bool)
+    {
+      result.name="integer";
+      result.set_attribute("c_type", "_Bool");
+      result.set_attribute("binary", expr.get_string(ID_value));
+      mp_integer b;
+      to_integer(to_constant_expr(expr), b);
+      result.data=integer2string(b);
+    }
     else
     {
       result.name="unknown";
@@ -309,7 +319,8 @@ xmlt xml(
 
     xmlt &e=result.new_element("member");
     e.new_element(xml(expr.op0(), ns));
-    e.set_attribute("member_name",
+    e.set_attribute(
+      "member_name",
       id2string(to_union_expr(expr).get_component_name()));
   }
   else

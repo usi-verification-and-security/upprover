@@ -48,7 +48,7 @@ exprt::operandst build_function_environment(
 
   std::size_t i=0;
 
-  for(const auto & p : parameters)
+  for(const auto &p : parameters)
   {
     irep_idt base_name=p.get_base_name().empty()?
       ("argument#"+std::to_string(i)):p.get_base_name();
@@ -72,6 +72,18 @@ exprt::operandst build_function_environment(
     decl.symbol()=symbol_expr;
 
     init_code.add(decl);
+
+    // nondet init for _Bool
+    if(decl.symbol().type().id()==ID_c_bool)
+    {
+      code_assignt assign(
+        decl.symbol(),
+        typecast_exprt(
+          side_effect_expr_nondett(bool_typet()),
+          decl.symbol().type()));
+
+      init_code.move_to_operands(assign);
+    }
 
     codet input(ID_input);
     input.operands().resize(2);
@@ -132,7 +144,7 @@ void record_function_outputs(
   #if 0
   std::size_t i=0;
 
-  for(const auto & p : parameters)
+  for(const auto &p : parameters)
   {
     if(p.get_identifier().empty())
       continue;

@@ -21,6 +21,7 @@
  *
  * @details
  */
+template<class solution_configt>
 class control_symex_learnt
 {
   const control_programt &original_program;
@@ -28,7 +29,7 @@ class control_symex_learnt
 public:
   typedef control_counterexamplet counterexamplet;
   typedef control_counterexamplest counterexamplest;
-  typedef control_solutiont candidatet;
+  typedef typename solution_configt::solutiont candidatet;
   /**
    * @brief
    *
@@ -103,5 +104,7 @@ public:
       messaget::mstreamt &os,
       const candidatet &candidate) const;
 };
+
+#include "control_symex_learn.inc"
 
 #endif // CPROVER_CEGIS_CONTROL_LEARN_CONTROL_SYMEX_LEARN_H

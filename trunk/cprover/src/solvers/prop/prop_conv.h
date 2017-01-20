@@ -134,8 +134,8 @@ protected:
   virtual void ignoring(const exprt &expr);
 
   // deliberately protected now to protect lower-level API
-public: // KE: change for hifrog
-  propt &prop;
+public:
+  propt &prop; // KE: change for hifrog)
 };
 
 #endif // CPROVER_SOLVERS_PROP_PROP_CONV_H

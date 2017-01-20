@@ -34,7 +34,7 @@ public:
     bool old_reachable=reachable;
     if(src.reachable)
       reachable=true;
-  
+
     bool old_h_s=has_spawn;
     if(src.has_spawn &&
        (from->is_end_function() ||
@@ -66,7 +66,7 @@ public:
       is_threaded=true;
     }
   }
-  
+
   void make_bottom() override final
   {
     reachable=has_spawn=is_threaded=false;
@@ -76,7 +76,7 @@ public:
   {
     reachable=has_spawn=is_threaded=true;
   }
-  
+
   void make_entry() override final
   {
     reachable=true;
@@ -106,17 +106,8 @@ void is_threadedt::compute(const goto_functionst &goto_functions)
 
   is_threaded_analysis(goto_functions, ns);
 
-  for(goto_functionst::function_mapt::const_iterator
-      f_it=goto_functions.function_map.begin();
-      f_it!=goto_functions.function_map.end();
-      f_it++)
-  {
-    const goto_programt &goto_program=f_it->second.body;
-    for(goto_programt::instructionst::const_iterator
-        i_it=goto_program.instructions.begin();
-        i_it!=goto_program.instructions.end();
-        i_it++)
+  forall_goto_functions(f_it, goto_functions)
+    forall_goto_program_instructions(i_it, f_it->second.body)
       if(is_threaded_analysis[i_it].is_threaded)
         is_threaded_set.insert(i_it);
-  }
 }
