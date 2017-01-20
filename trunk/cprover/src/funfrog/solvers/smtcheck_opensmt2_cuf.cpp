@@ -54,7 +54,7 @@ PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_const(int val)
 {
-	return cuflogic->mkConst(val);
+	return cuflogic->mkCUFConst(val);
 }
 
 void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
@@ -206,12 +206,12 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
     } else if (is_number(expr.type()) && (expr.operands())[0].is_boolean()) {
         // Cast from Boolean to Real - Add
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
-        PTRef ptl = logic->mkIte(literals[lt.var_no()], cuflogic->mkConst(1), cuflogic->mkConst(0));
+        PTRef ptl = logic->mkIte(literals[lt.var_no()], cuflogic->mkCUFConst(1), cuflogic->mkCUFConst(0));
         l = push_variable(ptl); // Keeps the new literal + index it
     } else if (expr.is_boolean() && is_number((expr.operands())[0].type())) {
         // Cast from Real to Boolean - Add
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
-        PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], cuflogic->mkConst(0)));
+        PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], cuflogic->mkCUFConst(0)));
         l = push_variable(ptl); // Keeps the new literal + index it
     } else {
         l = convert((expr.operands())[0]);
