@@ -54,7 +54,7 @@ PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_const(int val)
 {
-	return cuflogic->mkCUFConst(val);
+	return cuflogic->mkBVConst(val);
 }
 
 void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
@@ -408,7 +408,7 @@ literalt smtcheck_opensmt2t_cuf::lunsupported2var(exprt expr)
     if (expr.is_boolean())
         var = logic->mkBoolVar(str.c_str());
     else
-        var = cuflogic->mkNumVar(str.c_str());
+        var = cuflogic->mkCUFVar(str.c_str());
 
     l = push_variable(var);
 
@@ -446,7 +446,7 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
     PTRef var;
     if(is_number(expr.type()))
         //TODO: Check this
-        var = cuflogic->mkNumVar(str.c_str());
+        var = cuflogic->mkCUFVar(str.c_str());
     else if (expr.is_boolean())
         var = logic->mkBoolVar(str.c_str());
     else { // Is a function with index, array, pointer
