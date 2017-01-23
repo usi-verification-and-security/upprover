@@ -261,6 +261,11 @@ literalt smtcheck_opensmt2t::lconst(const exprt &expr)
     literalt l;
     if (expr.is_boolean()) {
         l = const_var(expr.is_true());
+    } else if (expr.type().id() == ID_c_bool) { // KE: New Cprover code - patching
+        std::string num(expr.get_string(ID_value));
+        assert(num.size() == 8); // if not 8, but longer, please add the case
+        l = const_var(num.compare("00000000") != 0);
+        //std::cout << "Check? " << (num.compare("00000000") != 0) << " for string " << num << std::endl;
     } else {
         l = const_var_Real(expr);
     }
