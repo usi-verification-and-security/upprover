@@ -489,9 +489,14 @@ literalt smtcheck_opensmt2t_uf::lunsupported2var(exprt expr)
 
 	const string str = smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
 	if (expr.is_boolean())
-		var = logic->mkBoolVar(str.c_str());
+            var = logic->mkBoolVar(str.c_str());
+        else if (expr.type().id() == ID_c_bool) 
+        { // KE: New Cprover code - patching
+            std::string num(expr.get_string(ID_value));
+            var = logic->mkBoolVar(num.c_str());
+        }
 	else
-		var = logic->mkVar(sort_ureal, str.c_str());
+            var = logic->mkVar(sort_ureal, str.c_str());
 
 	l = push_variable(var);
 
@@ -532,6 +537,11 @@ literalt smtcheck_opensmt2t_uf::lvar(const exprt &expr)
     	var = logic->mkVar(sort_ureal, str.c_str());
     else if (expr.is_boolean())
     	var = logic->mkBoolVar(str.c_str());
+        else if (expr.type().id() == ID_c_bool) 
+    { // KE: New Cprover code - patching
+        std::string num(expr.get_string(ID_value));
+        var = logic->mkBoolVar(num.c_str());
+    }
     else { // Is a function with index, array, pointer
 #ifdef SMT_DEBUG
     	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "

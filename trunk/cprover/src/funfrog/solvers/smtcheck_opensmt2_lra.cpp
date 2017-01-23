@@ -128,9 +128,9 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
         rconst = lralogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
     }
 
-	// Check the conversion from string to real was done properly - do not erase!
-	assert(!lralogic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
-	if(expr.is_constant() && (expr.is_boolean() || is_number(expr.type()))){
+    // Check the conversion from string to real was done properly - do not erase!
+    assert(!lralogic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
+    if(expr.is_constant() && (expr.is_boolean() || is_number(expr.type()))){
     	exprt temp_check = exprt(expr); temp_check.negate();
         assert(!lralogic->isRealZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
         // If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
@@ -483,6 +483,11 @@ PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt expr)
     const string str = smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
     if (expr.is_boolean())
         var = logic->mkBoolVar(str.c_str());
+    else if (expr.type().id() == ID_c_bool) 
+    { // KE: New Cprover code - patching
+        std::string num(expr.get_string(ID_value));
+        var = logic->mkBoolVar(num.c_str());
+    }
     else
         var = lralogic->mkRealVar(str.c_str());
 
@@ -519,6 +524,11 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     	var = lralogic->mkRealVar(str.c_str());
     else if (expr.is_boolean())
     	var = logic->mkBoolVar(str.c_str());
+    else if (expr.type().id() == ID_c_bool) 
+    { // KE: New Cprover code - patching
+        std::string num(expr.get_string(ID_value));
+        var = logic->mkBoolVar(num.c_str());
+    }
     else { // Is a function with index, array, pointer
 #ifdef SMT_DEBUG
     	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
