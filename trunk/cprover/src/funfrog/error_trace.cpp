@@ -245,7 +245,10 @@ void error_tracet::build_goto_trace_formula (
     	//GF: probably, to move it to smtcheck_opensmt2_cuf:
     	PTRef l1;
     	PTRef l2;
-    	if (val.get(ID_value)[0] == 'u'){
+        if (val.get(ID_value)[0] == 'n'){
+            // GF: Show me this example! I want to look at it :)
+            assert(0);
+        } else if (val.get(ID_value)[0] == 'u'){
             l1 = decider2.get_bv_const(atoi(val.get(ID_value).c_str() + 1));
     	} else if (val.get(ID_value) == "true"){
     		l1 = decider2.get_bv_const(1);
