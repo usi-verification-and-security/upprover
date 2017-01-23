@@ -13,6 +13,8 @@
 #include "solvers/sat/cnf.h"
 #include "solvers/smtcheck_opensmt2.h"
 
+//#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
+
 void
 smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*>& templates)
 {
@@ -232,7 +234,7 @@ void smt_partitioning_target_equationt::convert_partition_assignments(
 				expr_ssa_print_smt_dbg(
 						cout << "Before decider::set_to_true(ASSIGN-OUT) --> ",
 						tmp, false);
-#	  endif
+#     endif
 				decider.set_to_true(tmp);
 				exprs.push_back(tmp);
 			}
@@ -249,12 +251,12 @@ bool smt_partitioning_target_equationt::isRoundModelEq(const exprt &expr) {
 	// Start checking if it is auto gen code for rounding model
 	if (expr.operands().size() == 2) {
 		string str = id2string((expr.operands()[1]).get(ID_identifier));
-		if (str.find("c::__CPROVER_rounding_mode#") != std::string::npos)
+		if (str.find("__CPROVER_rounding_mode#") != std::string::npos)
 			return true;
 	}
 
 	string str = id2string((expr.operands()[0]).get(ID_identifier));
-	if (str.find("c::__CPROVER_rounding_mode#") != std::string::npos)
+	if (str.find("__CPROVER_rounding_mode#") != std::string::npos)
 		return true;
 
 	return false;

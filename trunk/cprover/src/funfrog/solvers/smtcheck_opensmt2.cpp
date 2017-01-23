@@ -854,6 +854,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 	if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
 		str = str.replace(0,7, "symex::nondet");
 
+        //std::cout << "Create var " << str << std::endl;
 	if (str.find("__CPROVER_rounding_mode#") != std::string::npos) {
 	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
 		cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;

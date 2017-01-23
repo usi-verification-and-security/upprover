@@ -43,6 +43,9 @@ void error_tracet::build_goto_trace (
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
     if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
     	continue;
+    
+    if (str.find("__CPROVER_")!=std::string::npos)
+    	continue;
 
     if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
         continue;
@@ -222,6 +225,9 @@ void error_tracet::build_goto_trace_formula (
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
     if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
     	continue;
+    
+    if (str.find("__CPROVER_")!=std::string::npos)
+    	continue;
 
     if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
         continue;
@@ -295,7 +301,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(smtcheck_opensmt2t 
 	char* name = logic->printTerm(*iter);
 	std::string curr (name);
 	if (curr.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
-		isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
+            isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
 #ifdef TRACE_DEBUG
 	else if (curr.find(skip_debug_print) != std::string::npos)
 	{

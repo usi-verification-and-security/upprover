@@ -41,7 +41,7 @@ std::string expr_pretty_printt::addToDeclMap(const exprt &expr) {
 			name_expr = name_expr.replace(0,7, "symex::nondet");
 	}
 	convert.str(""); // for reuse
-	if (name_expr.find("c::__CPROVER_rounding_mode#") != std::string::npos) return "";
+	if (name_expr.find("__CPROVER_rounding_mode#") != std::string::npos) return "";
 
 	// Create the output
 	std::ostream out_code(0);
