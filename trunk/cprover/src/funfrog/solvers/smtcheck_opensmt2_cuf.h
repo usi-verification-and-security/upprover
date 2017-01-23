@@ -56,6 +56,8 @@ public:
 
   bool refine_ce(std::vector<exprt>& exprs, int i);
 
+  PTRef split_exprs(irep_idt id, vec<PTRef>& args);
+  
 protected:
   BVLogic* cuflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
 

@@ -43,60 +43,60 @@ void smtcheck_opensmt2t_cuf::initializeSolver()
 // Free all inner objects
 smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
 {
-	// Shall/When need to: freeSolver() ?
+    // Shall/When need to: freeSolver() ?
 }
 
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 {
-	return cuflogic->mkNumVar(name);
+    return cuflogic->mkNumVar(name);
 }
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_const(int val)
 {
-	return cuflogic->mkBVConst(val);
+    return cuflogic->mkBVConst(val);
 }
 
 void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
 {
-	current_partition->push(cuflogic->mkEq(l1, l2));
+    current_partition->push(cuflogic->mkEq(l1, l2));
 }
 
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 {
-	PTRef l;
-	if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) {
+    PTRef l;
+    if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) {
 
-		l = get_bv_var(expr.get("identifier").c_str());
+        l = get_bv_var(expr.get("identifier").c_str());
 
-	} else if (expr.id()==ID_constant) {
+    } else if (expr.id()==ID_constant) {
 
-		l = get_bv_const(stoi(id2string(to_constant_expr(expr).get_value())));
+        l = get_bv_const(stoi(id2string(to_constant_expr(expr).get_value())));
 
-	} else if (expr.id() == ID_equal) {
+    } else if (expr.id() == ID_equal) {
 
         l = cuflogic->mkEq(
-        		convert_bv(expr.operands()[0]),
-				convert_bv(expr.operands()[1]));
+                    convert_bv(expr.operands()[0]),
+                    convert_bv(expr.operands()[1]));
 
     } else if (expr.id() == ID_not) {
 
         l = cuflogic->mkBVNot(
-        		convert_bv(expr.operands()[0]));
+                    convert_bv(expr.operands()[0]));
 
     } else if (expr.id()==ID_notequal){
 
-    	l = cuflogic->mkBVNot(
-    			cuflogic->mkEq(convert_bv(expr.operands()[0]),
-    					      convert_bv(expr.operands()[1])));
+        l = cuflogic->mkBVNot(
+                    cuflogic->mkEq(convert_bv(expr.operands()[0]),
+                                    convert_bv(expr.operands()[1])));
 
     } else {
+        
+        //GF: to continue...
+        l = logic->getTerm_true(); // stub for now
 
-		//GF: to continue...
-		l = logic->getTerm_true(); // stub for now
-
-	}
-	return l;
+    }
+    return l;
 }
 
 
@@ -311,7 +311,20 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         }
 
         PTRef ptl;
-        if (expr.id()==ID_notequal) {
+        if ((args.size() > 2) &&
+            ((expr.id() == ID_plus) ||
+             (expr.id() == ID_minus) ||
+             (expr.id() == ID_unary_minus) ||
+             (expr.id() == ID_unary_plus) ||
+             (expr.id() == ID_mult) ||
+             (expr.id() == ID_floatbv_plus) ||
+             (expr.id() == ID_floatbv_minus) ||
+             (expr.id() == ID_floatbv_mult)))
+        {
+            //std::cout << "Before build size of " << args.size() << " items " << std::endl;
+            // KE:  patching code - check when it is fixed in OpenSMT2 and disable it here.
+            ptl = split_exprs(expr.id(), args);
+        } else if (expr.id()==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
         } else if (expr.id() == ID_equal) {
             ptl = logic->mkEq(args);
@@ -397,6 +410,46 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
     free(s);
 #endif
     return l;
+}
+
+PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
+{
+    vec<PTRef> args_current;
+    args_current.push(args.last()); args.pop();
+    args_current.push(args.last()); args.pop();
+	
+    // Do like convert
+    PTRef ptl;
+
+    if (id == ID_plus) {
+        ptl = cuflogic->mkCUFPlus(args_current);
+    } else if (id == ID_minus) {
+        ptl = cuflogic->mkCUFMinus(args_current);
+    } else if (id == ID_unary_minus) {
+        ptl = cuflogic->mkCUFMinus(args_current);
+    } else if (id == ID_unary_plus) {
+        ptl = cuflogic->mkCUFPlus(args_current);
+    } else if (id == ID_mult) {
+        ptl = cuflogic->mkCUFTimes(args_current);
+    } else if (id == ID_floatbv_plus) {
+        ptl = cuflogic->mkCUFPlus(args_current);
+    } else if (id == ID_floatbv_minus) {
+        ptl = cuflogic->mkCUFMinus(args_current);
+    } else if (id == ID_floatbv_mult) {
+        ptl = cuflogic->mkCUFTimes(args_current);
+    } else {
+        assert(0); // need to add the case!
+    }
+
+    // Recursive call and tail of the recursion
+    if (args.size() > 0) 
+    {
+        args.push(ptl);
+        return split_exprs(id, args); // recursive call
+    } else {
+        //std::cout << "build " << logic->printTerm(ptl) << std::endl;
+        return ptl; // tail
+    }
 }
 
 literalt smtcheck_opensmt2t_cuf::lunsupported2var(exprt expr)
