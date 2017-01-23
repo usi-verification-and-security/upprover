@@ -857,19 +857,19 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 
 	if (str.find("__CPROVER_rounding_mode#") != std::string::npos) {
 	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
-		cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
+            cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
 	#else
-        cout << "EXIT WITH ERROR: Using Rounding Model not in propositional logic" << str << endl;
-		assert(false);
+            cout << "EXIT WITH ERROR: Using Rounding Model not in propositional logic" << str << endl;
+            assert(false);
 	#endif
 	}
         
         if (str.find("__CPROVER_") != std::string::npos) {
 	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
-		cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
+            cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
 	#else
-        cout << "EXIT WITH ERROR: Using CPROVER built-in variables not in propositional logic" << str << endl;
-		assert(false);
+            cout << "EXIT WITH ERROR: Using CPROVER built-in variables not in propositional logic" << str << endl;
+            //assert(false); KE: when found all reasons - uncomment
 	#endif
 	}
 
