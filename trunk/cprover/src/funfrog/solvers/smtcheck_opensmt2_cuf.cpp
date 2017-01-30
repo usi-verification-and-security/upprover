@@ -49,7 +49,7 @@ smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 {
-    return cuflogic->mkNumVar(name);
+    return cuflogic->mkBVNumVar(name);
 }
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_const(int val)
@@ -64,39 +64,189 @@ void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
 
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 {
-    PTRef l;
+    //cout << "Convertin now " << expr.id() << std::endl;
+    
+    PTRef ptl;
     if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) {
 
-        l = get_bv_var(expr.get("identifier").c_str());
+        ptl = get_bv_var(expr.get("identifier").c_str());
 
     } else if (expr.id()==ID_constant) {
 
-        l = get_bv_const(stoi(id2string(to_constant_expr(expr).get_value())));
+        ptl = get_bv_const(stoi(id2string(to_constant_expr(expr).get_value())));
 
-    } else if (expr.id() == ID_equal) {
+    } else if (expr.id() == ID_typecast) {
+        
+        ptl = logic->getTerm_true(); // stub for now
 
-        l = cuflogic->mkEq(
+    } else if (expr.id() == ID_index) {
+        
+        ptl = logic->getTerm_true(); // stub for now
+            
+    } else if ((expr.id() == ID_equal) ||
+               (expr.id() == ID_ieee_float_equal) || 
+               (expr.id() == ID_assign)) {
+
+        ptl = cuflogic->mkEq(
                     convert_bv(expr.operands()[0]),
                     convert_bv(expr.operands()[1]));
 
     } else if (expr.id() == ID_not) {
 
-        l = cuflogic->mkBVNot(
+        ptl = cuflogic->mkBVNot(
                     convert_bv(expr.operands()[0]));
 
-    } else if (expr.id()==ID_notequal){
+    } else if ((expr.id()==ID_notequal) || 
+               (expr.id() == ID_ieee_float_notequal)) {
 
-        l = cuflogic->mkBVNot(
+        ptl = cuflogic->mkBVNot(
                     cuflogic->mkEq(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1])));
+        
+    } else if (expr.id() == ID_mod) {
+        
+        ptl = cuflogic->mkBVMod(convert_bv(expr.operands()[0]),
+                                    convert_bv(expr.operands()[1]));
+    
+    } else if ((expr.id() == ID_div) || (expr.id() == ID_floatbv_div)) {
+        
+        ptl = cuflogic->mkBVDiv(convert_bv(expr.operands()[0]),
+                                    convert_bv(expr.operands()[1]));
+    
+    } else {
 
+        // For all operators that can have more than 2 args
+        vec<PTRef> args;
+        int i = 0;
+        forall_operands(it, expr)
+        {
+            literalt cl = convert(*it);
+            PTRef cp = literals[cl.var_no()];
+            assert(cp != PTRef_Undef);
+            args.push(cp);
+
+            i++;
+        }
+
+        if (expr.id() == ID_if) {
+
+            ptl = logic->mkIte(args);
+
+        } else if (expr.id() == ID_ifthenelse) {
+
+            ptl = logic->mkIte(args);
+
+        } else if (expr.id() ==  ID_implies) {
+
+            ptl = logic->mkImpl(args);
+
+        } else if (expr.id() ==  ID_and) {
+            
+            ptl = cuflogic->mkBVLand(args);
+
+        } else if (expr.id() ==  ID_or) {
+            ptl = cuflogic->mkBVLor(args);
+                
+        } else if (expr.id() == ID_ge ||
+                    expr.id() ==  ID_le ||
+                    expr.id() ==  ID_gt ||
+                    expr.id() ==  ID_lt) {  
+            
+            // Signed/unsigend ops.
+            const irep_idt &type_id = expr.type().id();
+            assert(type_id != ID_pointer); // TODO
+            assert(type_id != ID_bool); // TODO
+
+            bool is_unsigned = (type_id == ID_unsignedbv || 
+                            type_id == ID_natural);
+            // KE: ID_bool is int so refer as signed - not sure about it -
+            // to check!
+
+            if (expr.id() == ID_ge) {
+                ptl = (is_unsigned) ? 
+                    cuflogic->mkBVUgeq(args) : cuflogic->mkBVSgeq(args);
+            } else if (expr.id() == ID_le) {
+                ptl = (is_unsigned) ?
+                    cuflogic->mkBVUleq(args) : cuflogic->mkBVSleq(args);
+            } else if (expr.id() == ID_gt) {
+                ptl = (is_unsigned) ?
+                    cuflogic->mkBVUgt(args) : cuflogic->mkBVSgt(args);
+            } else if (expr.id() == ID_lt) {
+                ptl = (is_unsigned) ?
+                    cuflogic->mkBVUlt(args) : cuflogic->mkBVSlt(args);
+            } else {
+                assert(0);
+            } 
+            
+        } else if (expr.id() == ID_plus ||
+                    expr.id() == ID_unary_plus ||
+                    expr.id() == ID_floatbv_plus) {
+            
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(expr.id(), args) : cuflogic->mkBVPlus(args);
+            
+        } else if (expr.id() == ID_minus ||
+                    expr.id() == ID_unary_minus || 
+                    expr.id() == ID_floatbv_minus) {
+            
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(expr.id(), args) : cuflogic->mkBVMinus(args);
+                
+        } else if (expr.id() == ID_mult ||
+                    expr.id() == ID_floatbv_mult) {
+            
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(expr.id(), args) : cuflogic->mkBVTimes(args);
+                
+        } else {
+            
+            //GF: to continue...
+            ptl = logic->getTerm_true(); // stub for now
+
+        }
+    }
+    
+    return ptl;
+}
+
+PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
+{
+    vec<PTRef> args_current;
+    args_current.push(args.last()); args.pop();
+    args_current.push(args.last()); args.pop();
+	
+    // Do like convert
+    PTRef ptl;
+    if (id == ID_plus ||
+        id == ID_unary_plus ||
+        id == ID_floatbv_plus) {
+  
+        ptl = cuflogic->mkBVPlus(args_current);
+  
+    } else if (id == ID_minus ||
+                id == ID_unary_minus || 
+                id == ID_floatbv_minus) {
+                    
+        ptl = cuflogic->mkBVMinus(args_current);
+        
+    } else if (id == ID_mult || id == ID_floatbv_mult) { 
+        
+            ptl = cuflogic->mkBVTimes(args_current);
+    
     } else {
         
-        //GF: to continue...
-        l = logic->getTerm_true(); // stub for now
-
+        assert(0); // need to add the case!
     }
-    return l;
+
+    // Recursive call and tail of the recursion
+    if (args.size() > 0) 
+    {
+        args.push(ptl);
+        return split_exprs(id, args); // recursive call
+    } else {
+        //std::cout << "build " << logic->printTerm(ptl) << std::endl;
+        return ptl; // tail
+    }
 }
 
 
@@ -540,7 +690,7 @@ void getVarsInExpr(exprt& e, std::set<exprt>& vars)
 	if(e.id()==ID_symbol){
 		vars.insert(e);
 	} else if (e.has_operands()){
-		for (int i = 0; i< e.operands().size();i++){
+		for (unsigned int i = 0; i< e.operands().size();i++){
 			getVarsInExpr(e.operands()[i], vars);
 		}
 	}
@@ -556,7 +706,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
 	mainSolver->push();
 
 	bool res = true;
-	int i = 0;
+	unsigned int i = 0;
 	while (i < exprs.size() && res){
 	    PTRef lp = convert_bv(exprs[i]);
 		cout << "\n  Validating: " << logic->printTerm(lp) << endl;
