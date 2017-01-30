@@ -49,7 +49,13 @@ smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 {
-    return cuflogic->mkBVNumVar(name);
+    // The original symbol is defined in UF - this is its equivalent one
+    // after bit-blasting an expression
+    std::string bv_name(name);
+    bv_name = "bv_bitblast::" + bv_name;
+        
+    //std::cout << "Creating new var name " << bv_name << std::endl;
+    return cuflogic->mkBVNumVar(bv_name.c_str());
 }
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_const(int val)
@@ -64,7 +70,7 @@ void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
 
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 {
-    //cout << "Convertin now " << expr.id() << std::endl;
+    //cout << "Converting now " << expr.id() << std::endl;
     
     PTRef ptl;
     if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) {
