@@ -466,7 +466,7 @@ literalt smtcheck_opensmt2t_cuf::lunsupported2var(exprt expr)
         var = logic->mkBoolVar(num.c_str());
     }
     else
-        var = cuflogic->mkCUFVar(str.c_str());
+        var = cuflogic->mkCUFNumVar(str.c_str());
 
     l = push_variable(var);
 
@@ -504,7 +504,7 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
     PTRef var;
     if(is_number(expr.type()))
         //TODO: Check this
-        var = cuflogic->mkCUFVar(str.c_str());
+        var = cuflogic->mkCUFNumVar(str.c_str());
     else if (expr.is_boolean())
         var = logic->mkBoolVar(str.c_str());
     else if (expr.type().id() == ID_c_bool) 
