@@ -83,7 +83,10 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             ptrf_cuf = literals[l.var_no()];
         } else {
             // Some bug in saving the terms
-            assert(0);
+            //assert(0); // TODO: fix
+            
+            literalt l = convert(expr);
+            ptrf_cuf = literals[l.var_no()];
         }
             
 #ifdef DEBUG_SMT_BB        
