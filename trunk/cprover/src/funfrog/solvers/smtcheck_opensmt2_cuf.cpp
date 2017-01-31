@@ -15,7 +15,7 @@ Author: Grigory Fedyukovich
 //#define DEBUG_ITP_VARS
 //#define DEBUG_SMT_EUF
 //#define DEBUG_SMT_ITP
-//#define DEBUG_SMT_BB
+#define DEBUG_SMT_BB
 
 void smtcheck_opensmt2t_cuf::initializeSolver()
 {
@@ -50,13 +50,8 @@ smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 {
-    // The original symbol is defined in UF - this is its equivalent one
-    // after bit-blasting an expression
-    std::string bv_name(name);
-    bv_name = "bv_bitblast::" + bv_name;
-        
     //std::cout << "Creating new var name " << bv_name << std::endl;
-    return cuflogic->mkBVNumVar(bv_name.c_str());
+    return cuflogic->mkBVNumVar(name);
 }
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_const(int val)
@@ -81,7 +76,24 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) {
 
         ptl = get_bv_var(expr.get("identifier").c_str());
-
+        
+        PTRef ptrf_cuf;
+        if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
+            literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
+            ptrf_cuf = literals[l.var_no()];
+        } else {
+            // Some bug in saving the terms
+            assert(0);
+        }
+            
+#ifdef DEBUG_SMT_BB        
+        std::cout << "Bind terms " << logic->printTerm(ptl) << " and "
+                << logic->printTerm(ptrf_cuf) << std::endl;
+#endif
+        
+        // Bind operator
+        bitblaster->bindCUFToBV(ptrf_cuf, ptl); // Bind cuf_pterm to bv_pterm
+        
     } else if (expr.id()==ID_constant) {
 
         ptl = get_bv_const(stoi(id2string(to_constant_expr(expr).get_value())));
@@ -133,8 +145,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         int i = 0;
         forall_operands(it, expr)
         {
-            literalt cl = convert(*it);
-            PTRef cp = literals[cl.var_no()];
+            PTRef cp = convert_bv(*it);
             assert(cp != PTRef_Undef);
             args.push(cp);
 
