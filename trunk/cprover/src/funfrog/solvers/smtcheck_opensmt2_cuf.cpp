@@ -61,7 +61,7 @@ PTRef smtcheck_opensmt2t_cuf::get_bv_const(int val)
 
 void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
 {
-    current_partition->push(cuflogic->mkEq(l1, l2));
+    current_partition->push(cuflogic->mkBVEq(l1, l2));
 }
 
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
@@ -113,7 +113,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
                (expr.id() == ID_ieee_float_equal) || 
                (expr.id() == ID_assign)) {
 
-        ptl = cuflogic->mkEq(
+        ptl = cuflogic->mkBVEq(
                     convert_bv(expr.operands()[0]),
                     convert_bv(expr.operands()[1]));
 
@@ -126,7 +126,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
                (expr.id() == ID_ieee_float_notequal)) {
 
         ptl = cuflogic->mkBVNot(
-                    cuflogic->mkEq(convert_bv(expr.operands()[0]),
+                    cuflogic->mkBVEq(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1])));
         
     } else if (expr.id() == ID_mod) {
