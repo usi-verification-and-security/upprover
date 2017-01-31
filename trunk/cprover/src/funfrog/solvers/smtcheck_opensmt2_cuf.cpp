@@ -166,9 +166,10 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             // Signed/unsigend ops.
             const irep_idt &type_id = expr.type().id();
             assert(type_id != ID_pointer); // TODO
-            assert(type_id != ID_bool); // TODO
+            //assert(type_id != ID_bool); // TODO
 
-            bool is_unsigned = (type_id == ID_unsignedbv || 
+            bool is_unsigned = (type_id == ID_unsignedbv ||
+                            type_id == ID_bool || // KE: Not sure about it
                             type_id == ID_natural);
             // KE: ID_bool is int so refer as signed - not sure about it -
             // to check!
