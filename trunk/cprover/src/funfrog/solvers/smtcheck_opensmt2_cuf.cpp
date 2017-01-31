@@ -116,8 +116,10 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         
     } else if (expr.id() == ID_mod) {
         
-        ptl = cuflogic->mkBVMod(convert_bv(expr.operands()[0]),
-                                    convert_bv(expr.operands()[1]));
+        //ptl = cuflogic->mkBVMod(convert_bv(expr.operands()[0]),
+        //                            convert_bv(expr.operands()[1]));
+        ptl = logic->getTerm_true(); // stub for now 
+                                     // KE: Remove it once mod works
     
     } else if ((expr.id() == ID_div) || (expr.id() == ID_floatbv_div)) {
         
