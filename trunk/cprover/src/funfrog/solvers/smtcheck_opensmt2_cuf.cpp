@@ -15,6 +15,7 @@ Author: Grigory Fedyukovich
 //#define DEBUG_ITP_VARS
 //#define DEBUG_SMT_EUF
 //#define DEBUG_SMT_ITP
+//#define DEBUG_SMT_BB
 
 void smtcheck_opensmt2t_cuf::initializeSolver()
 {
@@ -70,7 +71,11 @@ void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
 
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 {
-    //cout << "Converting now " << expr.id() << std::endl;
+#ifdef DEBUG_SMT_BB
+        std::cout << "Bit-blasting expression type " << expr.id() << " "
+               << ((expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) ?
+                   expr.get("identifier") : "") << std::endl;
+#endif
     
     PTRef ptl;
     if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) {
@@ -212,6 +217,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         }
     }
     
+    converted_bitblasted_exprs[expr.hash()] = ptl;
     return ptl;
 }
 
@@ -259,13 +265,38 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
 exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
 {
     PTRef ptrf;
-    if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
-        literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
-        ptrf = literals[l.var_no()];
+    
+    // Check if it was bit-blasted or else, check if in the cuf values
+    bool is_expr_bb = (converted_bitblasted_exprs.find(expr.hash()) != converted_bitblasted_exprs.end());
+    bool is_expr_uf = (converted_exprs.find(expr.hash()) != converted_exprs.end());
+    
+    if (is_expr_bb || is_expr_uf) {
+        if (is_expr_bb)
+            ptrf = converted_bitblasted_exprs[expr.hash()];
+        else {
+            literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
+            ptrf = literals[l.var_no()];
+        }
 
+#ifdef DEBUG_SMT_BB
+        std::cout << "Getting value for " << logic->printTerm(ptrf) 
+                << " which " << ((is_expr_bb)? "was bb" : "was not bb") 
+                << std::endl;
+#endif
+        
         // Get the value of the PTRef
+        if (is_expr_bb) {
+            ValPair v1 = bitblaster->getValue(ptrf);
+            assert(v1.val != NULL);
+            irep_idt value(v1.val);
+            
+            // Create the expr with it
+            constant_exprt tmp = constant_exprt();
+            tmp.set_value(value);
 
-        if (logic->isIteVar(ptrf)) // true/false - evaluation of a branching
+            return tmp;
+        }
+        else if (logic->isIteVar(ptrf)) // true/false - evaluation of a branching
         {
             if (smtcheck_opensmt2t::is_value_from_solver_false(ptrf))
                 return false_exprt();

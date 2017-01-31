@@ -64,6 +64,8 @@ protected:
 
   BitBlaster* bitblaster;
 
+  map<size_t, PTRef> converted_bitblasted_exprs;
+  
   virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
   virtual void initializeSolver();
