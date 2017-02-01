@@ -71,7 +71,6 @@ protected:
   virtual bool is_smt_encoding() {return true;} // KE: Temp. Just to force virtual for compilation
 
 private:
-  bool isTypeCastConst(const exprt &expr); // For the case when we have => with cast to bool
   bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
 };
 #endif
