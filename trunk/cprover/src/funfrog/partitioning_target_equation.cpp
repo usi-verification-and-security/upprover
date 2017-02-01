@@ -13,8 +13,6 @@
 #include "solvers/sat/cnf.h"
  
 //#define DEBUG_SSA
-//#define DEBUG_SSA_PRINT // Print the SSA encoding
-//#define DEBUG_SSA_OLD // belongs only to the old version with BV
 //#define DEBUG_ITP
 //#define DEBUG_ENCODING
 //#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
