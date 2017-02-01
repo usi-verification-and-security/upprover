@@ -135,12 +135,21 @@ void error_tracet::build_goto_trace (
   }
 }
 
+/**
+ * LRA-version of the CE-formula.
+ * analogous to the CUF-version (see next method)
+ * used for debugging / comparison with CUF-version
+ * (not in the theory-refinement algorithm)
+ */
 void error_tracet::build_goto_trace_formula (
   smt_partitioning_target_equationt &target,
   smtcheck_opensmt2t &decider,
   smtcheck_opensmt2t_lra &decider2)
 {
   decider2.new_partition();
+
+  std::map<const irep_idt, std::vector<literalt>*> non_interp_classes;
+  int max_interp_value = 0;
 
   const SSA_steps_orderingt& SSA_steps = target.get_steps_exec_order();
 
@@ -181,32 +190,57 @@ void error_tracet::build_goto_trace_formula (
             val=decider.get_value(SSA_step.ssa_lhs);
         }
 
-    	literalt l1;
-    	literalt l2;
-    	if (val.get(ID_value)[0] == 'u'){
-            l1 = decider2.const_from_str(val.get(ID_value).c_str() + 1);
-            l2 = decider2.convert(SSA_step.ssa_lhs);
-            decider2.set_equal(l1, l2);
-    	} else if (val.get(ID_value) == "true"){
-    		l1 = decider2.const_var(true);
-    		l2 = decider2.convert(SSA_step.ssa_lhs);
-    		decider2.set_equal(l1, l2);
-    	} else if (val.get(ID_value) == "false"){
-    		l1 = decider2.const_var(false);
-    		l2 = decider2.convert(SSA_step.ssa_lhs);
-    		decider2.set_equal(l1, l2);
-    	}
+        const irep_idt val_val = val.get(ID_value);
+        if (val_val.size() == 0) continue;
+
+        literalt ltr;
+        if (val_val[0] == 'n'){
+          int interp_value = atoi(val.get(ID_value).c_str() + 1);
+          if (interp_value > max_interp_value) max_interp_value = interp_value;
+          ltr = decider2.const_from_str(val.get(ID_value).c_str() + 1);
+        } else if (val_val[0] == 'a'){
+          ltr = decider2.const_from_str("777");
+        } else if (val_val[0] == 'u'){
+          if (non_interp_classes.find(val_val) == non_interp_classes.end()){
+            non_interp_classes[val_val] = new std::vector<literalt>();
+          }
+          non_interp_classes[val_val]->push_back(decider2.convert(SSA_step.ssa_lhs));
+          continue;
+        } else if (val.get(ID_value) == "1"){
+          ltr = decider2.const_var(true);
+        } else if (val.get(ID_value) == "0"){
+          ltr = decider2.const_var(false);
+        } else {
+          continue;
+        }
+
+	decider2.set_equal(ltr, decider2.convert(SSA_step.ssa_lhs));
+    }
+  }
+  for (std::map<const irep_idt, std::vector<literalt>*>::iterator
+      it=non_interp_classes.begin(); it!=non_interp_classes.end(); ++it){
+    literalt l1 = decider2.const_from_str(std::to_string(++max_interp_value).c_str());
+    for (int i = 0; i < it->second->size(); i++){
+      decider2.set_equal(l1, it->second->at(i));
     }
   }
   decider2.close_partition();
+  cout << "CE-formula constructed\n";
 }
 
+/**
+ * CUF-version of the CE-formula
+ * used in the theory-refinement algorithm
+ */
 void error_tracet::build_goto_trace_formula (
   smt_partitioning_target_equationt &target,
   smtcheck_opensmt2t &decider,
   smtcheck_opensmt2t_cuf &decider2)
 {
   const SSA_steps_orderingt& SSA_steps = target.get_steps_exec_order();
+
+  std::map<const irep_idt, std::vector<PTRef>*> non_interp_classes;
+  int max_interp_value = 0;
 
   for(SSA_steps_orderingt::const_iterator
       it=SSA_steps.begin();
@@ -248,28 +282,49 @@ void error_tracet::build_goto_trace_formula (
             val=decider.get_value(SSA_step.ssa_lhs);
         }
 
-    	//GF: probably, to move it to smtcheck_opensmt2_cuf:
-    	PTRef l1;
-    	PTRef l2;
-        if (val.get(ID_value)[0] == 'n'){
-            // GF: Show me this example! I want to look at it :)
-            assert(0);
-        } else if (val.get(ID_value)[0] == 'u'){
-            l1 = decider2.get_bv_const(atoi(val.get(ID_value).c_str() + 1));
-    	} else if (val.get(ID_value) == "true"){
-    		l1 = decider2.get_bv_const(1);
-    	} else if (val.get(ID_value) == "false"){
-    		l1 = decider2.get_bv_const(0);
-    	} else {
-    		continue;
-    	}
+        const irep_idt val_val = val.get(ID_value);
+        if (val_val.size() == 0) continue;
 
-		decider2.new_partition();
-		l2 = decider2.convert_bv(SSA_step.ssa_lhs);
-		decider2.set_equal_bv(l1, l2);
-		decider2.close_partition();
+        PTRef ptr;
+        if (val_val[0] == 'n'){
+          int interp_value = atoi(val.get(ID_value).c_str() + 1);
+		// store the max value among n-values (will be used after the loop):
+          if (interp_value > max_interp_value) max_interp_value = interp_value;
+          ptr = decider2.get_bv_const(interp_value);
+        } else if (val_val[0] == 'a'){
+          ptr = decider2.get_bv_const(777); // value just for fun
+        } else if (val_val[0] == 'u'){
+          if (non_interp_classes.find(val_val) == non_interp_classes.end()){
+            non_interp_classes[val_val] = new std::vector<PTRef>();
+          }
+          non_interp_classes[val_val]->push_back(decider2.convert_bv(SSA_step.ssa_lhs));
+		// the interpretations for u-values will be computed after this loop
+          continue;
+        } else if (val_val == "1"){
+          ptr = decider2.get_bv_const(1);
+        } else if (val_val == "0"){
+          ptr = decider2.get_bv_const(0);
+        } else {
+          continue;
+        }
+
+        decider2.new_partition();
+        decider2.set_equal_bv(ptr, decider2.convert_bv(SSA_step.ssa_lhs));
+        decider2.close_partition();
     }
   }
+
+      // computing interpretations for u-values:
+  for (std::map<const irep_idt, std::vector<PTRef>*>::iterator
+      it=non_interp_classes.begin(); it!=non_interp_classes.end(); ++it){
+    PTRef l1 = decider2.get_bv_const(++max_interp_value);
+    for (int i = 0; i < it->second->size(); i++){
+      decider2.new_partition();
+      decider2.set_equal_bv(l1, it->second->at(i));
+      decider2.close_partition();
+    }
+  }
+  cout << "CE-formula constructed\n";
 }
 
 /*******************************************************************\
