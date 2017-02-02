@@ -761,7 +761,7 @@ void smtcheck_opensmt2t::close_partition()
 {
   assert(current_partition != NULL);
   if (partition_count > 0){
-    if (current_partition->size() >= 1){
+    if (current_partition->size() > 1){
       PTRef pand = logic->mkAnd(*current_partition);
 #ifdef DEBUG_SMT2SOLVER
       char* s= logic->printTerm(pand);
@@ -772,11 +772,11 @@ void smtcheck_opensmt2t::close_partition()
     } else if (current_partition->size() == 1){
       PTRef pand = (*current_partition)[0];
 #ifdef DEBUG_SMT2SOLVER
+      cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
       char* s= logic->printTerm(pand);
       cout << "; Pushing to solver: " << s << endl;
       free(s);
 #endif
-      std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
       top_level_formulas.push(pand);
     } /*else {
       // GF: adding (assert true) for debugging only
