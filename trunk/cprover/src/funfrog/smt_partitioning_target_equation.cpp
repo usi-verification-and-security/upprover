@@ -236,7 +236,7 @@ void smt_partitioning_target_equationt::convert_partition_assignments(
 						tmp, false);
 #     endif
                 decider.set_to_true(tmp);
-		exprs.push_back(tmp);
+                exprs.push_back(tmp);
             }
         }
     }
@@ -362,6 +362,28 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
 	for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
 
 		if ((it->is_assert()) && !(it->ignore)) {
+
+		    // GF: probably move it from here later:
+            exprt tmp(it->cond_expr);
+            exprt fl;
+            fl.make_false();
+            exprt op_ass = exprt (ID_equal);
+            if (tmp.id() == ID_implies){
+                exprt tr;
+                tr.make_true();
+
+                exprt op_gua = exprt (ID_equal); //
+                op_gua.operands().push_back(tr);
+                op_gua.operands().push_back(tmp.operands()[0]);
+                exprs.push_back(op_gua);
+
+                op_ass.operands().push_back(tmp.operands()[1]);
+            } else op_ass.operands().push_back(tmp);
+
+            op_ass.operands().push_back(fl);
+            exprs.push_back(op_ass);
+		    // GF: <-- end
+
 #       ifdef DEBUG_SSA_SMT_CALL
 			bool test = (isTypeCastConst(it->cond_expr));
 			expr_ssa_print_smt_dbg(
