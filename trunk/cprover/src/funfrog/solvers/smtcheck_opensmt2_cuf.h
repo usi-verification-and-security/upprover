@@ -52,6 +52,8 @@ public:
 
   PTRef convert_bv(const exprt &expr);
 
+  bool convert_eq_ite(const exprt &expr, PTRef& ptl);
+
   int check_ce(std::vector<exprt>& exprs);
 
   bool refine_ce(std::vector<exprt>& exprs, int i);
@@ -66,6 +68,8 @@ protected:
 
   map<size_t, PTRef> converted_bitblasted_exprs;
   
+  void bindBB(const exprt& expr, PTRef pt1, PTRef pt2);
+
   virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
   virtual void initializeSolver();

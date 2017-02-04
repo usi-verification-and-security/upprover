@@ -287,7 +287,7 @@ void error_tracet::build_goto_trace_formula (
 
         PTRef ptr;
         if (val_val[0] == 'n'){
-          int interp_value = atoi(val.get(ID_value).c_str() + 1);
+          int interp_value = atoi(val_val.c_str() + 1);
 		// store the max value among n-values (will be used after the loop):
           if (interp_value > max_interp_value) max_interp_value = interp_value;
           ptr = decider2.get_bv_const(interp_value);
@@ -305,7 +305,8 @@ void error_tracet::build_goto_trace_formula (
         } else if (val_val == "0"){
           ptr = decider2.get_bv_const(0);
         } else {
-          continue;
+          int interp_value = atoi(val.get(ID_value).c_str());
+          ptr = decider2.get_bv_const(interp_value);
         }
 
         decider2.new_partition();

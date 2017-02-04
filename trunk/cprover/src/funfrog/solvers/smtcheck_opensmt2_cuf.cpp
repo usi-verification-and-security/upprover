@@ -15,7 +15,7 @@ Author: Grigory Fedyukovich
 //#define DEBUG_ITP_VARS
 //#define DEBUG_SMT_EUF
 //#define DEBUG_SMT_ITP
-#define DEBUG_SMT_BB
+//#define DEBUG_SMT_BB
 
 void smtcheck_opensmt2t_cuf::initializeSolver()
 {
@@ -64,6 +64,37 @@ void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
     current_partition->push(cuflogic->mkBVEq(l1, l2));
 }
 
+bool smtcheck_opensmt2t_cuf::convert_eq_ite(const exprt &expr, PTRef& ptl)
+{
+    assert (expr.id() == ID_equal);
+    exprt sing;
+    exprt ite;
+    if (expr.operands()[0].id() == ID_if){
+        ite = expr.operands()[0];
+        sing = expr.operands()[1];
+    } else if (expr.operands()[1].id() == ID_if){
+        ite = expr.operands()[1];
+        sing = expr.operands()[0];
+    } else {
+        return false;
+    }
+    exprt ite_guard = ite.operands()[0];
+    exprt ite_tru_choice = ite.operands()[1];
+    exprt ite_fls_choice = ite.operands()[2];
+
+    PTRef sing_bv = convert_bv(sing);
+    PTRef guard_bv = convert_bv(ite_guard);
+    PTRef tru_eq = cuflogic->mkBVEq(sing_bv, convert_bv(ite_tru_choice));
+    PTRef fls_eq = cuflogic->mkBVEq(sing_bv, convert_bv(ite_fls_choice));
+    PTRef guard_tru = cuflogic->mkBVEq(guard_bv, get_bv_const(1));
+    PTRef guard_fls = cuflogic->mkBVEq(guard_bv, get_bv_const(0));
+
+    ptl = cuflogic->mkBVLor(
+            cuflogic->mkBVLand(guard_tru, tru_eq),
+            cuflogic->mkBVLand(guard_fls, fls_eq));
+    return true;
+}
+
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 {
 #ifdef DEBUG_SMT_BB
@@ -73,10 +104,13 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #endif
     
     PTRef ptl;
-    if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) {
+    if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol || expr.id() == ID_typecast) {
 
-        ptl = get_bv_var(expr.get("identifier").c_str());
-        
+        if (expr.id() == ID_typecast) {
+            ptl = get_bv_var(expr.operands()[0].get("identifier").c_str());
+        } else {
+            ptl = get_bv_var(expr.get("identifier").c_str());
+        }
         PTRef ptrf_cuf;
         if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
             literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
@@ -88,23 +122,15 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             literalt l = convert(expr);
             ptrf_cuf = literals[l.var_no()];
         }
-            
-#ifdef DEBUG_SMT_BB        
-        std::cout << "Bind terms " << logic->printTerm(ptl) << " and "
-                << logic->printTerm(ptrf_cuf) << std::endl;
-#endif
-        
-        // Bind operator
-        bitblaster->bindCUFToBV(ptrf_cuf, ptl); // Bind cuf_pterm to bv_pterm
         
     } else if (expr.id()==ID_constant) {
-
-        ptl = get_bv_const(stoi(id2string(to_constant_expr(expr).get_value())));
-
-    } else if (expr.id() == ID_typecast) {
-        
-        ptl = logic->getTerm_true(); // stub for now
-
+        if ("true" == id2string(to_constant_expr(expr).get_value())) {
+            ptl = get_bv_const(1);
+        } else if ("false" == id2string(to_constant_expr(expr).get_value())) {
+            ptl = get_bv_const(0);
+        } else {
+            ptl = get_bv_const(stoi(expr.print_number_2smt()));
+        }
     } else if (expr.id() == ID_index) {
         
         ptl = logic->getTerm_true(); // stub for now
@@ -112,8 +138,8 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     } else if ((expr.id() == ID_equal) ||
                (expr.id() == ID_ieee_float_equal) || 
                (expr.id() == ID_assign)) {
-
-        ptl = cuflogic->mkBVEq(
+        if (! convert_eq_ite (expr, ptl))
+            ptl = cuflogic->mkBVEq(
                     convert_bv(expr.operands()[0]),
                     convert_bv(expr.operands()[1]));
 
@@ -156,39 +182,29 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         }
 
         if (expr.id() == ID_if) {
-
-            ptl = logic->mkIte(args);
-
+            assert(0);
+            // GF: this should be handled by convert_eq_ite.
+            //     but if ID_if appears in any other type of expr than equality,
+            //     then we should handle it in a somewhat way.
         } else if (expr.id() == ID_ifthenelse) {
-
-            ptl = logic->mkIte(args);
-
+            assert(0);
+            // GF: TODO
         } else if (expr.id() ==  ID_implies) {
-
-            ptl = logic->mkImpl(args);
-
+            ptl = cuflogic->mkBVLor(cuflogic->mkBVNot(args[0]), args[1]);
         } else if (expr.id() ==  ID_and) {
-            
             ptl = cuflogic->mkBVLand(args);
-
         } else if (expr.id() ==  ID_or) {
             ptl = cuflogic->mkBVLor(args);
-                
         } else if (expr.id() == ID_ge ||
                     expr.id() ==  ID_le ||
                     expr.id() ==  ID_gt ||
                     expr.id() ==  ID_lt) {  
-            
             // Signed/unsigend ops.
             const irep_idt &type_id = expr.type().id();
             assert(type_id != ID_pointer); // TODO
-            //assert(type_id != ID_bool); // TODO
 
             bool is_unsigned = (type_id == ID_unsignedbv ||
-                            type_id == ID_bool || // KE: Not sure about it
                             type_id == ID_natural);
-            // KE: ID_bool is int so refer as signed - not sure about it -
-            // to check!
 
             if (expr.id() == ID_ge) {
                 ptl = (is_unsigned) ? 
@@ -209,7 +225,6 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         } else if (expr.id() == ID_plus ||
                     expr.id() == ID_unary_plus ||
                     expr.id() == ID_floatbv_plus) {
-            
             ptl = (args.size() > 2) ?
                 split_exprs_bv(expr.id(), args) : cuflogic->mkBVPlus(args);
             
@@ -234,7 +249,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         }
     }
     
-    converted_bitblasted_exprs[expr.hash()] = ptl;
+//    converted_bitblasted_exprs[expr.hash()] = ptl;
     return ptl;
 }
 
@@ -303,6 +318,7 @@ exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
         
         // Get the value of the PTRef
         if (is_expr_bb) {
+            bitblaster->computeModel();
             ValPair v1 = bitblaster->getValue(ptrf);
             assert(v1.val != NULL);
             irep_idt value(v1.val);
@@ -738,67 +754,103 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
     return l;
 }
 
-// GF: probably, need to move away from here
+void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1, PTRef pt2){
+  if (converted_bitblasted_exprs.find(expr.hash()) != converted_bitblasted_exprs.end()) return;
+
+#ifdef DEBUG_SMT_BB
+  std::cout << " -- Bind terms " << logic->printTerm(pt1) << " and "
+          << logic->printTerm(pt2) << std::endl;
+#endif
+
+  bitblaster->bindCUFToBV(pt1, pt2);
+
+  converted_bitblasted_exprs[expr.hash()] = pt2;
+}
+
 void getVarsInExpr(exprt& e, std::set<exprt>& vars)
 {
-	if(e.id()==ID_symbol){
-		vars.insert(e);
-	} else if (e.has_operands()){
-		for (unsigned int i = 0; i< e.operands().size();i++){
-			getVarsInExpr(e.operands()[i], vars);
-		}
-	}
+  if(e.id()==ID_symbol){
+    vars.insert(e);
+  } else if (e.has_operands()){
+    for (unsigned int i = 0; i< e.operands().size();i++){
+      getVarsInExpr(e.operands()[i], vars);
+    }
+  }
 }
 
 int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
 {
-	for (int i = 0; i < top_level_formulas.size(); i++){
-		cout << "\n  " << logic->printTerm(top_level_formulas[i]);
-		BVRef tmp;
-		bitblaster->insertEq(top_level_formulas[i], tmp);
-	}
-	mainSolver->push();
-
-	bool res = true;
-	unsigned int i = 0;
-	while (i < exprs.size() && res){
-	    PTRef lp = convert_bv(exprs[i]);
-		cout << "\n  Validating: " << logic->printTerm(lp) << endl;
-		BVRef tmp;
-		bitblaster->insertEq(lp, tmp); // GF: bugs here!
-	    res = (s_True == mainSolver->check());
-	    if (!res){
-	    	cout << "\n  Weak statement encoding found." << endl;
-	    	return i;
-	    }
-	    // mainSolver->pop();
-	    i++;
+    for (int i = 0; i < top_level_formulas.size(); i++){
+#ifdef DEBUG_SMT_BB
+        cout << "  " << logic->printTerm(top_level_formulas[i]) << "\n";
+#endif
+        BVRef tmp;
+        bitblaster->insertEq(top_level_formulas[i], tmp);
     }
-	return -1;
+    mainSolver->push();
+
+    bool res = true;
+    unsigned int i = 0;
+    while (i < exprs.size() && res){
+        PTRef lp = convert_bv(exprs[i]);
+
+#ifdef DEBUG_SMT_BB
+            cout << logic->printTerm(lp) << endl;
+#endif
+
+        BVRef tmp;
+        if (cuflogic->isBVLor(lp)){
+            bitblaster->insertOr(lp, tmp);
+        } else if (cuflogic->isBVEq(lp)){
+            bitblaster->insertEq(lp, tmp);
+        } else {
+            assert(0);
+        }
+
+        res = (s_True == mainSolver->check());
+        if (!res){
+            cout << "\nWeak statement encoding found" << endl;
+            return i;
+        }
+        i++;
+    }
+    return -1;
 }
 
 bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
 {
-	std::set<exprt> se;
-	if (!exprs[i].has_operands() || exprs[i].operands().size() < 2){
-		cout << "what should we do with it?" << endl;
-		return true;
-	}
+    std::set<exprt> se;
+    if (!exprs[i].has_operands() || exprs[i].operands().size() < 2){
+        cout << "what should we do with it?" << endl;
+        return true;
+    }
 
-	// create a glue for lhs
-	PTRef lhs = literals[convert(exprs[i].operands()[0]).var_no()];
-	BVRef lhs_bv;
-	bitblaster->insertEq(convert_bv(exprs[i].operands()[0]), lhs_bv);
-	bitblaster->glueBtoUF(lhs_bv, lhs);
+    PTRef lp = convert_bv(exprs[i]);
 
-	// create a glue for rhs
-	getVarsInExpr(exprs[i].operands()[1], se);
-	for (auto it = se.begin(); it != se.end(); ++it){
-		PTRef rhs = literals[convert(*it).var_no()];
-    	BVRef rhs_bv;
-		bitblaster->insertEq(convert_bv(*it), rhs_bv);
-		bitblaster->glueUFtoB(rhs, rhs_bv);
-	}
+    // do binding for lhs
+    PTRef lhs = literals[convert(exprs[i].operands()[0]).var_no()];
+    BVRef tmp;
+    PTRef lhs_bv = convert_bv(exprs[i].operands()[0]);
 
-	return solve();
+    if (cuflogic->isBVLor(lp)){
+        bitblaster->insertOr(lp, tmp);
+    } else if (cuflogic->isBVEq(lp)){
+        bitblaster->insertEq(lp, tmp);
+    } else {
+        assert(0);
+    }
+
+    bindBB(exprs[i].operands()[0], lhs, lhs_bv);
+
+    // keep binding for rhs
+
+    getVarsInExpr(exprs[i].operands()[1], se);
+
+    for (auto it = se.begin(); it != se.end(); ++it){
+        PTRef rhs = literals[convert(*it).var_no()];
+        PTRef rhs_bv = convert_bv(*it);
+        bindBB(*it, rhs, rhs_bv);
+    }
+
+    return solve();
 }

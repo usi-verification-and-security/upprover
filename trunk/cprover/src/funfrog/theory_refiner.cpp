@@ -58,65 +58,71 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   symex.prepare_SSA(assertion);
 
   bool end = prop.assertion_holds(assertion, ns,
-		  *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
-		  *(dynamic_cast<interpolating_solvert *> (decider)));
+          *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
+          *(dynamic_cast<interpolating_solvert *> (decider)));
 
   if (end)
   {
-	  status() << "ASSERTION HOLDS";
-	  report_success();
+      status() << "ASSERTION HOLDS";
+      report_success();
   } else {
-	  const std::string &log=options.get_option("logic");
 
-	  status() << "\nChecking if the error trace is spurious";
-	  if (log == "qflra"){
+	  status() << endl << "Checking if the error trace is spurious";
+      error_tracet error_trace;
+      const std::string &log=options.get_option("logic");
 
-		  status() << " (for testing only) with LRA" << eom;
-		  smtcheck_opensmt2t_lra* decider2 = new smtcheck_opensmt2t_lra(0);
+      if (log == "qflra"){
 
-		  error_tracet error_trace;
+          status() << " (for testing only) with LRA" << eom;
+          smtcheck_opensmt2t_lra* decider2 = new smtcheck_opensmt2t_lra(0);
 
-		  error_trace.build_goto_trace_formula(equation,
-				*(dynamic_cast<smtcheck_opensmt2t *> (decider)),
-						*(dynamic_cast<smtcheck_opensmt2t_lra *> (decider2)));
+          error_trace.build_goto_trace_formula(equation,
+                *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
+                        *(dynamic_cast<smtcheck_opensmt2t_lra *> (decider2)));
 
-		  std::vector<exprt>& exprs = equation.get_exprs_to_refine();
-		  decider2->check_ce(exprs);
+          std::vector<exprt>& exprs = equation.get_exprs_to_refine();
+          decider2->check_ce(exprs);
 
-	  } else {
+      } else {
 
-		  status() << " and trying to refine with CUF" << eom;
+          status() << " and trying to refine with CUF" << endl << eom;
 
-		  std::vector<exprt>& exprs = equation.get_exprs_to_refine();
-		  std::set<int> refined;
+          std::vector<exprt>& exprs = equation.get_exprs_to_refine();
+          std::set<int> refined;
 
-		  while (true){
+          unsigned iter = 0;
 
-			  // local CUF solver
-			  smtcheck_opensmt2t_cuf* decider2 = new smtcheck_opensmt2t_cuf();
+          while (true){
 
-			  error_tracet error_trace;
-			  error_trace.build_goto_trace_formula(equation,
-					*(dynamic_cast<smtcheck_opensmt2t *> (decider)),
-							*(dynamic_cast<smtcheck_opensmt2t_cuf *> (decider2)));
+              iter++;
+              // local CUF solver
+              smtcheck_opensmt2t_cuf* decider2 = new smtcheck_opensmt2t_cuf();
 
-			  int spur = decider2->check_ce(exprs);
+              error_trace.build_goto_trace_formula(equation,
+                    *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
+                    *(dynamic_cast<smtcheck_opensmt2t_cuf *> (decider2)));
 
-			  if (refined.find(spur) == refined.end() && spur >= 0){
-				  if (decider->refine_ce(exprs, spur)){
-					  refined.insert(spur);
-				  } else {
-					  status() << "Refinement successful" << endl;
-					  status() << "ASSERTION HOLDS";
-					  report_success();
-					  break;
-				  }
-			  } else {
-				  status() << "Refinement failed" << eom;
-				  break;
-			  }
-		  }
-	  }
+              int spur = decider2->check_ce(exprs);
+
+              if (refined.find(spur) == refined.end() && spur >= 0){
+                  if (decider->refine_ce(exprs, spur)){
+                      refined.insert(spur);
+                  } else {
+                      status() << endl << "Refinement successful" << endl;
+                      status() << "(" << iter << " counter-examples checked)" << endl;
+                      status() << "ASSERTION HOLDS" << eom;
+                      report_success();
+                      break;
+                  }
+              } else {
+                  status() << endl << "All spurious counter-examples are refined" << endl;
+                  status() << "(" << iter << " in total)" << endl;
+                  status() << "ASSERTION DOES NOT HOLD" << eom;
+                  report_failure();
+                  break;
+              }
+          }
+      }
   }
 
   final = current_time();
@@ -185,8 +191,8 @@ void theory_refinert::report_success()
   {
   
   case ui_message_handlert::PLAIN:
-	std::cout << std::endl << std::endl << "VERIFICATION SUCCESSFUL" << std::endl;
-	break;
+    std::cout << std::endl << std::endl << "VERIFICATION SUCCESSFUL" << std::endl;
+    break;
 
   case ui_message_handlert::XML_UI:
     {
@@ -220,8 +226,8 @@ void theory_refinert::report_failure()
   {
 
   case ui_message_handlert::PLAIN:
-	std::cout << std::endl << std::endl << "VERIFICATION FAILED" << std::endl;
-	break;
+    std::cout << std::endl << std::endl << "VERIFICATION FAILED" << std::endl;
+    break;
 
   case ui_message_handlert::XML_UI:
     {
