@@ -792,6 +792,9 @@ void getVarsInExpr(exprt& e, std::set<exprt>& vars)
 
 int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
 {
+#ifdef DEBUG_SMT_BB  
+    cout << "Check ce for " <<exprs.size() << " terms " << std::endl;
+#endif
     for (int i = 0; i < top_level_formulas.size(); i++){
 #ifdef DEBUG_SMT_BB
         cout << "  " << logic->printTerm(top_level_formulas[i]) << "\n";
@@ -809,12 +812,19 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
 #ifdef DEBUG_SMT_BB
             cout <<  "  Validating: " << logic->printTerm(lp) << endl;
 #endif
-
+            
         BVRef tmp;
         if (cuflogic->isBVLor(lp)){
             bitblaster->insertOr(lp, tmp);
         } else if (cuflogic->isBVEq(lp)){
             bitblaster->insertEq(lp, tmp);
+        } else if (cuflogic->isBVOne(lp)) {
+#ifdef DEBUG_SMT_BB            
+            cout << " " << (exprs[i]).pretty() << endl;
+#endif
+            assert(0); // Probably true (as 0000..0001)
+        } else if (cuflogic->isBVNUMConst(lp)) {
+            assert(0); // TODO: check when can it happen
         } else {
             assert(0);
         }

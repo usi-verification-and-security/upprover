@@ -841,3 +841,36 @@ void smt_partitioning_target_equationt::extract_interpolants(
     
     summary_store = NULL;
 }
+
+#ifdef DEBUG_SSA_SMT_CALL
+// For the case when we have => with cast to bool condition
+bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
+
+        if (expr.id() != ID_typecast)
+
+                return false;
+
+        if (!expr.has_operands())
+
+                return false;
+
+        if (!(expr.operands())[0].is_constant())
+
+                return false;
+
+        // For LRA only: it will be taken care in the solver or before calling the solver
+
+        if ((expr.operands())[0].is_boolean() ||         // in the solver
+
+                        expr.is_boolean())                                         // in decider::convert
+
+                return false;
+
+        return true;
+
+}
+#else
+    bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
+        assert(0);
+    }
+#endif
