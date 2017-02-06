@@ -443,7 +443,7 @@ void summarizing_checkert::list_templates(smt_assertion_sumt& prop, smt_partitio
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
     equation.fill_function_templates(*decider_smt, templates);
     decider_smt = NULL;
-    for(int i = 0; i < templates.size(); ++i)
+    for(unsigned int i = 0; i < templates.size(); ++i)
         summary_store->insert_summary(*templates[i]);
     // Store the summaries
     const std::string& summary_file = options.get_option("save-summaries");

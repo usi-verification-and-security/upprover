@@ -220,7 +220,7 @@ void error_tracet::build_goto_trace_formula (
   for (std::map<const irep_idt, std::vector<literalt>*>::iterator
       it=non_interp_classes.begin(); it!=non_interp_classes.end(); ++it){
     literalt l1 = decider2.const_from_str(std::to_string(++max_interp_value).c_str());
-    for (int i = 0; i < it->second->size(); i++){
+    for (unsigned int i = 0; i < it->second->size(); i++){
       decider2.set_equal(l1, it->second->at(i));
     }
   }
@@ -319,7 +319,7 @@ void error_tracet::build_goto_trace_formula (
   for (std::map<const irep_idt, std::vector<PTRef>*>::iterator
       it=non_interp_classes.begin(); it!=non_interp_classes.end(); ++it){
     PTRef l1 = decider2.get_bv_const(++max_interp_value);
-    for (int i = 0; i < it->second->size(); i++){
+    for (unsigned int i = 0; i < it->second->size(); i++){
       decider2.new_partition();
       decider2.set_equal_bv(l1, it->second->at(i));
       decider2.close_partition();
