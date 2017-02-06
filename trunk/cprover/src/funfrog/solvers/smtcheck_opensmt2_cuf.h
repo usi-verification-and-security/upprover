@@ -52,7 +52,7 @@ public:
 
   PTRef convert_bv(const exprt &expr);
 
-  bool convert_eq_ite(const exprt &expr, PTRef& ptl);
+  bool convert_bv_eq_ite(const exprt &expr, PTRef& ptl);
 
   int check_ce(std::vector<exprt>& exprs);
 
@@ -62,7 +62,8 @@ public:
   PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
   
 protected:
-  BVLogic* cuflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
+  BVLogic* bvlogic; // Extra var, inner use only - Helps to avoid dynamic cast!
+  CUFLogic* uflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
 
   BitBlaster* bitblaster;
 

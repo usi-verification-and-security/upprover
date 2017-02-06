@@ -21,14 +21,15 @@ void smtcheck_opensmt2t_cuf::initializeSolver()
 {
   osmt = new Opensmt(opensmt_logic::qf_cuf);
   logic = &(osmt->getCUFLogic());
-  cuflogic = &((BVLogic&)osmt->getLogic());
+  uflogic = &(osmt->getCUFLogic());
+  bvlogic = &((BVLogic&)osmt->getLogic());
   mainSolver = &(osmt->getMainSolver());
 
   SolverId id = { 0 };
   vec<PtAsgn> asgns;
   vec<DedElem> deds;
   vec<PTRef> foo;
-  bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *cuflogic, asgns, deds, foo);
+  bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *bvlogic, asgns, deds, foo);
 
   const char* msg2;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
@@ -36,7 +37,7 @@ void smtcheck_opensmt2t_cuf::initializeSolver()
   // KE: Fix a strange bug can be related to the fact we are pushing
   // a struct into std::vector and use [] before any push_back
   literals.push_back(PTRef());
-  literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
+  new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
   literals[0] = logic->getTerm_true(); // Which is .x =0
   // KE: End of fix
 }
@@ -51,20 +52,20 @@ smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
 PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 {
     //std::cout << "Creating new var name " << bv_name << std::endl;
-    return cuflogic->mkBVNumVar(name);
+    return bvlogic->mkBVNumVar(name);
 }
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_const(int val)
 {
-    return cuflogic->mkBVConst(val);
+    return bvlogic->mkBVConst(val);
 }
 
 void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
 {
-    current_partition->push(cuflogic->mkBVEq(l1, l2));
+    current_partition->push(bvlogic->mkBVEq(l1, l2));
 }
 
-bool smtcheck_opensmt2t_cuf::convert_eq_ite(const exprt &expr, PTRef& ptl)
+bool smtcheck_opensmt2t_cuf::convert_bv_eq_ite(const exprt &expr, PTRef& ptl)
 {
     assert (expr.id() == ID_equal);
     exprt sing;
@@ -84,14 +85,14 @@ bool smtcheck_opensmt2t_cuf::convert_eq_ite(const exprt &expr, PTRef& ptl)
 
     PTRef sing_bv = convert_bv(sing);
     PTRef guard_bv = convert_bv(ite_guard);
-    PTRef tru_eq = cuflogic->mkBVEq(sing_bv, convert_bv(ite_tru_choice));
-    PTRef fls_eq = cuflogic->mkBVEq(sing_bv, convert_bv(ite_fls_choice));
-    PTRef guard_tru = cuflogic->mkBVEq(guard_bv, get_bv_const(1));
-    PTRef guard_fls = cuflogic->mkBVEq(guard_bv, get_bv_const(0));
+    PTRef tru_eq = bvlogic->mkBVEq(sing_bv, convert_bv(ite_tru_choice));
+    PTRef fls_eq = bvlogic->mkBVEq(sing_bv, convert_bv(ite_fls_choice));
+    PTRef guard_tru = bvlogic->mkBVEq(guard_bv, get_bv_const(1));
+    PTRef guard_fls = bvlogic->mkBVEq(guard_bv, get_bv_const(0));
 
-    ptl = cuflogic->mkBVLor(
-            cuflogic->mkBVLand(guard_tru, tru_eq),
-            cuflogic->mkBVLand(guard_fls, fls_eq));
+    ptl = bvlogic->mkBVLor(
+            bvlogic->mkBVLand(guard_tru, tru_eq),
+            bvlogic->mkBVLand(guard_fls, fls_eq));
     return true;
 }
 
@@ -133,36 +134,36 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         }
     } else if (expr.id() == ID_index) {
         
-        ptl = logic->getTerm_true(); // stub for now
+        ptl = bvlogic->getTerm_true(); // stub for now
             
     } else if ((expr.id() == ID_equal) ||
                (expr.id() == ID_ieee_float_equal) || 
                (expr.id() == ID_assign)) {
-        if (! convert_eq_ite (expr, ptl))
-            ptl = cuflogic->mkBVEq(
+        if (! convert_bv_eq_ite (expr, ptl))
+            ptl = bvlogic->mkBVEq(
                     convert_bv(expr.operands()[0]),
                     convert_bv(expr.operands()[1]));
 
     } else if (expr.id() == ID_not) {
 
-        ptl = cuflogic->mkBVNot(
+        ptl = bvlogic->mkBVNot(
                     convert_bv(expr.operands()[0]));
 
     } else if ((expr.id()==ID_notequal) || 
                (expr.id() == ID_ieee_float_notequal)) {
 
-        ptl = cuflogic->mkBVNot(
-                    cuflogic->mkBVEq(convert_bv(expr.operands()[0]),
+        ptl = bvlogic->mkBVNot(
+                    bvlogic->mkBVEq(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1])));
         
     } else if (expr.id() == ID_mod) {
         
-        ptl = cuflogic->mkBVMod(convert_bv(expr.operands()[0]),
+        ptl = bvlogic->mkBVMod(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1]));
     
     } else if ((expr.id() == ID_div) || (expr.id() == ID_floatbv_div)) {
 
-        ptl = cuflogic->mkBVDiv(convert_bv(expr.operands()[0]),
+        ptl = bvlogic->mkBVDiv(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1]));
     
     } else {
@@ -181,23 +182,23 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 
         if (expr.id() == ID_if) {
             assert(0);
-            // GF: this should be handled by convert_eq_ite.
+            // GF: this should be handled by convert_bv_eq_ite.
             //     but if ID_if appears in any other type of expr than equality,
             //     then we should handle it in a somewhat way.
         } else if (expr.id() == ID_ifthenelse) {
             assert(0);
             // GF: TODO
         } else if (expr.id() ==  ID_implies) {
-            ptl = cuflogic->mkBVLor(cuflogic->mkBVNot(args[0]), args[1]);
+            ptl = bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]);
         } else if (expr.id() ==  ID_and) {
 
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : cuflogic->mkBVLand(args);
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVLand(args);
 
         } else if (expr.id() ==  ID_or) {
 
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : cuflogic->mkBVLor(args);
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVLor(args);
 
         } else if (expr.id() == ID_ge ||
                     expr.id() ==  ID_le ||
@@ -212,16 +213,16 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 
             if (expr.id() == ID_ge) {
                 ptl = (is_unsigned) ? 
-                    cuflogic->mkBVUgeq(args) : cuflogic->mkBVSgeq(args);
+                    bvlogic->mkBVUgeq(args) : bvlogic->mkBVSgeq(args);
             } else if (expr.id() == ID_le) {
                 ptl = (is_unsigned) ?
-                    cuflogic->mkBVUleq(args) : cuflogic->mkBVSleq(args);
+                    bvlogic->mkBVUleq(args) : bvlogic->mkBVSleq(args);
             } else if (expr.id() == ID_gt) {
                 ptl = (is_unsigned) ?
-                    cuflogic->mkBVUgt(args) : cuflogic->mkBVSgt(args);
+                    bvlogic->mkBVUgt(args) : bvlogic->mkBVSgt(args);
             } else if (expr.id() == ID_lt) {
                 ptl = (is_unsigned) ?
-                    cuflogic->mkBVUlt(args) : cuflogic->mkBVSlt(args);
+                    bvlogic->mkBVUlt(args) : bvlogic->mkBVSlt(args);
             } else {
                 assert(0);
             } 
@@ -230,30 +231,29 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
                     expr.id() == ID_unary_plus ||
                     expr.id() == ID_floatbv_plus) {
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : cuflogic->mkBVPlus(args);
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVPlus(args);
             
         } else if (expr.id() == ID_minus ||
                     expr.id() == ID_unary_minus || 
                     expr.id() == ID_floatbv_minus) {
             
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : cuflogic->mkBVMinus(args);
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVMinus(args);
                 
         } else if (expr.id() == ID_mult ||
                     expr.id() == ID_floatbv_mult) {
             
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : cuflogic->mkBVTimes(args);
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVTimes(args);
                 
         } else {
             
             //GF: to continue...
-            ptl = logic->getTerm_true(); // stub for now
+            ptl = bvlogic->getTerm_true(); // stub for now
 
         }
     }
     
-//    converted_bitblasted_exprs[expr.hash()] = ptl;
     return ptl;
 }
 
@@ -269,25 +269,25 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
         id == ID_unary_plus ||
         id == ID_floatbv_plus) {
   
-        ptl = cuflogic->mkBVPlus(args_current);
+        ptl = bvlogic->mkBVPlus(args_current);
   
     } else if (id == ID_minus ||
                 id == ID_unary_minus || 
                 id == ID_floatbv_minus) {
                     
-        ptl = cuflogic->mkBVMinus(args_current);
+        ptl = bvlogic->mkBVMinus(args_current);
         
     } else if (id == ID_mult || id == ID_floatbv_mult) { 
         
-        ptl = cuflogic->mkBVTimes(args_current);
+        ptl = bvlogic->mkBVTimes(args_current);
     
     } else if (id == ID_and) {
 
-        ptl = cuflogic->mkBVLand(args_current);
+        ptl = bvlogic->mkBVLand(args_current);
 
     } else if (id == ID_or) {
 
-        ptl = cuflogic->mkBVLor(args_current);
+        ptl = bvlogic->mkBVLor(args_current);
 
     } else {
         
@@ -305,13 +305,13 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
     }
 }
 
-
+/* Used for both - uf values and bit-blasted values */
 exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
 {
     PTRef ptrf;
     
     // Check if it was bit-blasted or else, check if in the cuf values
-    bool is_expr_bb = (converted_bitblasted_exprs.find(expr.hash()) != converted_bitblasted_exprs.end());
+    bool is_expr_bb = (converted_bitblasted_exprs.find(expr.hash()) != converted_bitblasted_exprs.end()); // In use: bindBB and here
     bool is_expr_uf = (converted_exprs.find(expr.hash()) != converted_exprs.end());
     
     if (is_expr_bb || is_expr_uf) {
@@ -417,7 +417,7 @@ literalt smtcheck_opensmt2t_cuf::const_var_Real(const exprt &expr)
         }
     }
 
-    rconst = cuflogic->mkCUFConst(atoi(num.c_str()));
+    rconst = uflogic->mkCUFConst(atoi(num.c_str())); // uflogic To avoid dynamic cast
 
     assert(rconst != PTRef_Undef);
 
@@ -438,12 +438,12 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
     } else if (is_number(expr.type()) && (expr.operands())[0].is_boolean()) {
         // Cast from Boolean to Real - Add
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
-        PTRef ptl = logic->mkIte(literals[lt.var_no()], cuflogic->mkCUFConst(1), cuflogic->mkCUFConst(0));
+        PTRef ptl = logic->mkIte(literals[lt.var_no()], uflogic->mkCUFConst(1), uflogic->mkCUFConst(0));
         l = push_variable(ptl); // Keeps the new literal + index it
     } else if (expr.is_boolean() && is_number((expr.operands())[0].type())) {
         // Cast from Real to Boolean - Add
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
-        PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], cuflogic->mkCUFConst(0)));
+        PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], uflogic->mkCUFConst(0)));
         l = push_variable(ptl); // Keeps the new literal + index it
     } else {
         l = convert((expr.operands())[0]);
@@ -579,39 +579,40 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (expr.id() == ID_implies) {
             ptl = logic->mkImpl(args);
         } else if (expr.id() == ID_ge) {
-            ptl = cuflogic->mkCUFGeq(args);
+// uflogic To avoid dynamic cast - till the end of this section            
+            ptl = uflogic->mkCUFGeq(args);
         } else if (expr.id() == ID_le) {
-            ptl = cuflogic->mkCUFLeq(args);
+            ptl = uflogic->mkCUFLeq(args);
         } else if (expr.id() == ID_gt) {
-            ptl = cuflogic->mkCUFGt(args);
+            ptl = uflogic->mkCUFGt(args);
         } else if (expr.id() == ID_lt) {
-            ptl = cuflogic->mkCUFLt(args);
+            ptl = uflogic->mkCUFLt(args);
         } else if (expr.id() == ID_plus) {
-            ptl = cuflogic->mkCUFPlus(args);
+            ptl = uflogic->mkCUFPlus(args);
         } else if (expr.id() == ID_minus) {
-            ptl = cuflogic->mkCUFMinus(args);
+            ptl = uflogic->mkCUFMinus(args);
         } else if (expr.id() == ID_unary_minus) {
-            ptl = cuflogic->mkCUFMinus(args);
+            ptl = uflogic->mkCUFMinus(args);
         } else if (expr.id() == ID_unary_plus) {
-            ptl = cuflogic->mkCUFPlus(args);
+            ptl = uflogic->mkCUFPlus(args);
         } else if (expr.id() == ID_mult) {
-            ptl = cuflogic->mkCUFTimes(args);
+            ptl = uflogic->mkCUFTimes(args);
         } else if (expr.id() == ID_div) {
-            ptl = cuflogic->mkCUFDiv(args);
+            ptl = uflogic->mkCUFDiv(args);
         } else if (expr.id() == ID_assign) {
-            ptl = cuflogic->mkEq(args);
+            ptl = logic->mkEq(args);
         } else if (expr.id() == ID_ieee_float_equal) {
-            ptl = cuflogic->mkEq(args);
+            ptl = logic->mkEq(args);
         } else if (expr.id() == ID_ieee_float_notequal) {
-            ptl = cuflogic->mkCUFNeq(args);
+            ptl = uflogic->mkCUFNeq(args);
         } else if (expr.id() == ID_floatbv_plus) {
-            ptl = cuflogic->mkCUFPlus(args);
+            ptl = uflogic->mkCUFPlus(args);
         } else if (expr.id() == ID_floatbv_minus) {
-            ptl = cuflogic->mkCUFMinus(args);
+            ptl = uflogic->mkCUFMinus(args);
         } else if (expr.id() == ID_floatbv_div) {
-            ptl = cuflogic->mkCUFDiv(args);
+            ptl = uflogic->mkCUFDiv(args);
         } else if (expr.id() == ID_floatbv_mult) {
-            ptl = cuflogic->mkCUFTimes(args);
+            ptl = uflogic->mkCUFTimes(args);
         } else if(expr.id() == ID_index) {
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
@@ -653,22 +654,23 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
     // Do like convert
     PTRef ptl;
 
+    // Uflogic to avoid dynamic cast
     if (id == ID_plus) {
-        ptl = cuflogic->mkCUFPlus(args_current);
+        ptl = uflogic->mkCUFPlus(args_current);
     } else if (id == ID_minus) {
-        ptl = cuflogic->mkCUFMinus(args_current);
+        ptl = uflogic->mkCUFMinus(args_current);
     } else if (id == ID_unary_minus) {
-        ptl = cuflogic->mkCUFMinus(args_current);
+        ptl = uflogic->mkCUFMinus(args_current);
     } else if (id == ID_unary_plus) {
-        ptl = cuflogic->mkCUFPlus(args_current);
+        ptl = uflogic->mkCUFPlus(args_current);
     } else if (id == ID_mult) {
-        ptl = cuflogic->mkCUFTimes(args_current);
+        ptl = uflogic->mkCUFTimes(args_current);
     } else if (id == ID_floatbv_plus) {
-        ptl = cuflogic->mkCUFPlus(args_current);
+        ptl = uflogic->mkCUFPlus(args_current);
     } else if (id == ID_floatbv_minus) {
-        ptl = cuflogic->mkCUFMinus(args_current);
+        ptl = uflogic->mkCUFMinus(args_current);
     } else if (id == ID_floatbv_mult) {
-        ptl = cuflogic->mkCUFTimes(args_current);
+        ptl = uflogic->mkCUFTimes(args_current);
     } else {
         assert(0); // need to add the case!
     }
@@ -698,7 +700,7 @@ literalt smtcheck_opensmt2t_cuf::lunsupported2var(exprt expr)
         var = logic->mkBoolVar(num.c_str());
     }
     else
-        var = cuflogic->mkCUFNumVar(str.c_str());
+        var = uflogic->mkCUFNumVar(str.c_str()); // To avoid dynamic cast
 
     l = push_variable(var);
 
@@ -712,7 +714,7 @@ literalt smtcheck_opensmt2t_cuf::lnotequal(literalt l1, literalt l2){
     PTRef pl2 = literals[l2.var_no()];
     args.push(pl1);
     args.push(pl2);
-    PTRef ans = cuflogic->mkCUFNeq(args);
+    PTRef ans = uflogic->mkCUFNeq(args); // uflogic to avoid dynamic cast
     l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
     return l;
@@ -736,7 +738,7 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
     PTRef var;
     if(is_number(expr.type()))
         //TODO: Check this
-        var = cuflogic->mkCUFNumVar(str.c_str());
+        var = uflogic->mkCUFNumVar(str.c_str()); // uflogic to avoid dynamic cast
     else if (expr.is_boolean())
         var = logic->mkBoolVar(str.c_str());
     else if (expr.type().id() == ID_c_bool) 
@@ -814,16 +816,16 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
 #endif
             
         BVRef tmp;
-        if (cuflogic->isBVLor(lp)){
+        if (bvlogic->isBVLor(lp)){
             bitblaster->insertOr(lp, tmp);
-        } else if (cuflogic->isBVEq(lp)){
+        } else if (bvlogic->isBVEq(lp)){
             bitblaster->insertEq(lp, tmp);
-        } else if (cuflogic->isBVOne(lp)) {
+        } else if (bvlogic->isBVOne(lp)) {
 #ifdef DEBUG_SMT_BB            
             cout << " " << (exprs[i]).pretty() << endl;
 #endif
             assert(0); // Probably true (as 0000..0001)
-        } else if (cuflogic->isBVNUMConst(lp)) {
+        } else if (bvlogic->isBVNUMConst(lp)) {
             assert(0); // TODO: check when can it happen
         } else {
             assert(0);
@@ -854,9 +856,9 @@ bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
     BVRef tmp;
     PTRef lhs_bv = convert_bv(exprs[i].operands()[0]);
 
-    if (cuflogic->isBVLor(lp)){
+    if (bvlogic->isBVLor(lp)){
         bitblaster->insertOr(lp, tmp);
-    } else if (cuflogic->isBVEq(lp)){
+    } else if (bvlogic->isBVEq(lp)){
         bitblaster->insertEq(lp, tmp);
     } else {
         assert(0);
@@ -873,6 +875,13 @@ bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
         PTRef rhs_bv = convert_bv(*it);
         bindBB(*it, rhs, rhs_bv);
     }
-
+    
+    //KE: notifyEquality should be here. But currently notifyEquality works
+    // on the level of the whole partition! We need to fix it (or remove it)
+    // After the changes in OpenSMT2. It doesn't make sense to notify a partition!
+    // TODO: fix me
+    //PTRef l_uf = literals[convert(exprs[i]).var_no()];
+    //bitblaster->notifyEquality(l_uf);
+    
     return solve();
 }
