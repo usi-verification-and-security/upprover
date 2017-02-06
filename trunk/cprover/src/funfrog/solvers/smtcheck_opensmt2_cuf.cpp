@@ -190,9 +190,15 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         } else if (expr.id() ==  ID_implies) {
             ptl = cuflogic->mkBVLor(cuflogic->mkBVNot(args[0]), args[1]);
         } else if (expr.id() ==  ID_and) {
-            ptl = cuflogic->mkBVLand(args);
+
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(expr.id(), args) : cuflogic->mkBVLand(args);
+
         } else if (expr.id() ==  ID_or) {
-            ptl = cuflogic->mkBVLor(args);
+
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(expr.id(), args) : cuflogic->mkBVLor(args);
+
         } else if (expr.id() == ID_ge ||
                     expr.id() ==  ID_le ||
                     expr.id() ==  ID_gt ||
@@ -273,8 +279,16 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
         
     } else if (id == ID_mult || id == ID_floatbv_mult) { 
         
-            ptl = cuflogic->mkBVTimes(args_current);
+        ptl = cuflogic->mkBVTimes(args_current);
     
+    } else if (id == ID_and) {
+
+        ptl = cuflogic->mkBVLand(args_current);
+
+    } else if (id == ID_or) {
+
+        ptl = cuflogic->mkBVLor(args_current);
+
     } else {
         
         assert(0); // need to add the case!
@@ -284,7 +298,7 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
     if (args.size() > 0) 
     {
         args.push(ptl);
-        return split_exprs(id, args); // recursive call
+        return split_exprs_bv(id, args); // recursive call
     } else {
         //std::cout << "build " << logic->printTerm(ptl) << std::endl;
         return ptl; // tail
@@ -793,7 +807,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
         PTRef lp = convert_bv(exprs[i]);
 
 #ifdef DEBUG_SMT_BB
-            cout << logic->printTerm(lp) << endl;
+            cout <<  "  Validating: " << logic->printTerm(lp) << endl;
 #endif
 
         BVRef tmp;
