@@ -881,7 +881,7 @@ bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
     // After the changes in OpenSMT2. It doesn't make sense to notify a partition!
     // TODO: fix me
     //PTRef l_uf = literals[convert(exprs[i]).var_no()];
-    //bitblaster->notifyEquality(l_uf);
+    bitblaster->notifyEqualities();
     
     return solve();
 }
