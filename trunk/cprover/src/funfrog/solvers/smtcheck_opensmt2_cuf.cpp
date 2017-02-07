@@ -145,11 +145,29 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         
         ptl = bvlogic->getTerm_true(); // stub for now
 
+    } else if (expr.id() == ID_member) {
+        
+        ptl = bvlogic->getTerm_true(); // stub for now
+        
+    } else if (expr.id() == ID_member_name) {
+        
+        ptl = bvlogic->getTerm_true(); // stub for now
+        
+    } else if (expr.id() == ID_C_member_name) {
+        
+        ptl = bvlogic->getTerm_true(); // stub for now
+        
     } else if (expr.id() == ID_pointer) {
         
         ptl = bvlogic->getTerm_true(); // stub for now 
         // KE: when active, also change the code in lvar
          
+    } else if (expr.id() == ID_pointer_offset) {
+        
+        ptl = bvlogic->getTerm_true(); // stub for now 
+        // KE: when active, also change the code in lvar
+         
+        
     } else if ((expr.id() == ID_equal) ||
                (expr.id() == ID_ieee_float_equal) || 
                (expr.id() == ID_assign)) {
@@ -214,6 +232,16 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 
             ptl = (args.size() > 2) ?
                 split_exprs_bv(expr.id(), args) : bvlogic->mkBVLor(args);
+            
+        } else if (expr.id() ==  ID_bitand) {
+
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVBwAnd(args);
+
+        } else if (expr.id() ==  ID_bitor) {
+
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVBwOr(args);
 
         } else if (expr.id() == ID_shl) {
         
@@ -315,6 +343,14 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
 
         ptl = bvlogic->mkBVLor(args_current);
   
+    } else if (id ==  ID_bitand) {
+
+        ptl = bvlogic->mkBVBwAnd(args);
+
+    } else if (id ==  ID_bitor) {
+
+        ptl = bvlogic->mkBVBwOr(args);
+        
     } else if (id == ID_shl) {
 
         ptl = bvlogic->mkBVLshift(args);
@@ -612,6 +648,10 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ptl = logic->mkAnd(args);
         } else if (expr.id() == ID_or) {
             ptl = logic->mkOr(args);
+        } else if (expr.id() == ID_bitand) {
+            ptl = logic->mkAnd(args);
+        } else if (expr.id() == ID_bitor) {
+            ptl = logic->mkOr(args);            
         } else if (expr.id() == ID_not) {
             ptl = logic->mkNot(args);
         } else if (expr.id() == ID_implies) {
@@ -664,10 +704,22 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             // KE: TODO
         } else if (expr.id() == ID_array) {
             ptl = literals[lunsupported2var(expr).var_no()];
+            // KE: TODO    
+        } else if (expr.id() == ID_member) {
+            ptl = literals[lunsupported2var(expr).var_no()];
+            // KE: TODO       
+        } else if (expr.id() == ID_member_name) {
+            ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO   
+        } else if (expr.id() == ID_C_member_name) {
+            ptl = literals[lunsupported2var(expr).var_no()];
+            // KE: TODO       
         } else if (expr.id() == ID_pointer) {
             ptl =literals[lunsupported2var(expr).var_no()];
             // KE: when active, also change the code in lvar
+        } else if (expr.id() == ID_pointer_offset) {
+            ptl =literals[lunsupported2var(expr).var_no()];
+            // KE: when active, also change the code in lvar            
         } else {
             cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << endl;
