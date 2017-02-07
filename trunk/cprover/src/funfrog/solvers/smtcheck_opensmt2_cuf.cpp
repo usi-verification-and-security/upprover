@@ -604,6 +604,8 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ptl = uflogic->mkCUFTimes(args);
         } else if (expr.id() == ID_div) {
             ptl = uflogic->mkCUFDiv(args);
+        } else if (expr.id() == ID_mod) {
+            ptl = uflogic->mkCUFMod(args);
         } else if (expr.id() == ID_assign) {
             ptl = logic->mkEq(args);
         } else if (expr.id() == ID_ieee_float_equal) {
