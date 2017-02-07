@@ -140,7 +140,16 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     } else if (expr.id() == ID_index) {
         
         ptl = bvlogic->getTerm_true(); // stub for now
-            
+
+    } else if (expr.id() == ID_array) {
+        
+        ptl = bvlogic->getTerm_true(); // stub for now
+
+    } else if (expr.id() == ID_pointer) {
+        
+        ptl = bvlogic->getTerm_true(); // stub for now 
+        // KE: when active, also change the code in lvar
+         
     } else if ((expr.id() == ID_equal) ||
                (expr.id() == ID_ieee_float_equal) || 
                (expr.id() == ID_assign)) {
@@ -195,6 +204,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             // GF: TODO
         } else if (expr.id() ==  ID_implies) {
             ptl = bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]);
+            
         } else if (expr.id() ==  ID_and) {
 
             ptl = (args.size() > 2) ?
@@ -205,6 +215,17 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             ptl = (args.size() > 2) ?
                 split_exprs_bv(expr.id(), args) : bvlogic->mkBVLor(args);
 
+        } else if (expr.id() == ID_shl) {
+        
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVLshift(args);
+        
+        } else if (expr.id() == ID_shr ||
+                    expr.id() == ID_lshr) {
+            
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVRshift(args); 
+        
         } else if (expr.id() == ID_ge ||
                     expr.id() ==  ID_le ||
                     expr.id() ==  ID_gt ||
@@ -293,7 +314,15 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
     } else if (id == ID_or) {
 
         ptl = bvlogic->mkBVLor(args_current);
+  
+    } else if (id == ID_shl) {
 
+        ptl = bvlogic->mkBVLshift(args);
+
+    } else if (id == ID_shr || id == ID_lshr) {
+
+        ptl = bvlogic->mkBVRshift(args); 
+            
     } else {
         
         assert(0); // need to add the case!
@@ -556,7 +585,11 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
              (expr.id() == ID_mult) ||
              (expr.id() == ID_floatbv_plus) ||
              (expr.id() == ID_floatbv_minus) ||
-             (expr.id() == ID_floatbv_mult)))
+             (expr.id() == ID_floatbv_mult) ||
+             (expr.id() == ID_lshr) ||
+             (expr.id() == ID_shr) ||
+             (expr.id() == ID_shl)
+                ))
         {
             //std::cout << "Before build size of " << args.size() << " items " << std::endl;
             // KE:  patching code - check when it is fixed in OpenSMT2 and disable it here.
@@ -623,7 +656,18 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (expr.id() == ID_shl) {
             ptl = uflogic->mkCUFLshift(args);
         } else if (expr.id() == ID_shr) {
-            ptl = uflogic->mkCUFRshift(args);    
+            ptl = uflogic->mkCUFRshift(args); 
+        } else if (expr.id() == ID_lshr) {
+            ptl = uflogic->mkCUFRshift(args); 
+        } else if (expr.id() == ID_index) {
+            ptl = literals[lunsupported2var(expr).var_no()];
+            // KE: TODO
+        } else if (expr.id() == ID_array) {
+            ptl = literals[lunsupported2var(expr).var_no()];
+            // KE: TODO   
+        } else if (expr.id() == ID_pointer) {
+            ptl =literals[lunsupported2var(expr).var_no()];
+            // KE: when active, also change the code in lvar
         } else {
             cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << endl;
@@ -667,6 +711,12 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
         ptl = uflogic->mkCUFMinus(args_current);
     } else if (id == ID_floatbv_mult) {
         ptl = uflogic->mkCUFTimes(args_current);
+    } else if (id == ID_shl) {
+        ptl = uflogic->mkCUFLshift(args);
+    } else if (id == ID_shr) {
+        ptl = uflogic->mkCUFRshift(args); 
+    } else if (id == ID_lshr) {
+        ptl = uflogic->mkCUFRshift(args);    
     } else {
         assert(0); // need to add the case!
     }
