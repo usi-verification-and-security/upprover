@@ -130,7 +130,12 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         } else if ("false" == id2string(to_constant_expr(expr).get_value())) {
             ptl = get_bv_const(0);
         } else {
-            ptl = get_bv_const(stoi(expr.print_number_2smt()));
+            int num = stoi(expr.print_number_2smt());
+            if (num < -127 || 127 < num){
+                cout << "\nNo support for \"big\" (> 8 bit) integers so far.\n\n";
+                exit(0);
+            }
+            ptl = get_bv_const(num);
         }
     } else if (expr.id() == ID_index) {
         
@@ -882,6 +887,6 @@ bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
     // TODO: fix me
     //PTRef l_uf = literals[convert(exprs[i]).var_no()];
     bitblaster->notifyEqualities();
-    
+
     return solve();
 }
