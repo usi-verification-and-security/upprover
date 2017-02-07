@@ -48,7 +48,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, true, true);
+            single_assertion_check, true, true, true);
 
   setup_unwind(symex);
 

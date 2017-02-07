@@ -11,7 +11,7 @@ Author: Ondrej Sery
 #define CPROVER_PARTITIONING_TARGET_EQUATION_H
 
 // Debugging flags:
-#define DEBUG_SSA_PRINT // Print the SSA encoding
+//#define DEBUG_SSA_PRINT // Print the SSA encoding
 // End of working debugging flags
 
 #include <goto-symex/symex_target_equation.h>

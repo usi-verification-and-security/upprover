@@ -155,6 +155,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
   
   const bool no_slicing_option = options.get_bool_option("no-slicing");
   const bool no_ce_option = options.get_bool_option("no-error-trace");
+  const bool no_smt_usage = (options.get_option("logic") == "prop");
 
   omega.set_initial_precision(assertion);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
@@ -170,7 +171,8 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, !no_slicing_option, !no_ce_option);
+            single_assertion_check, !no_slicing_option, !no_ce_option, 
+            !no_smt_usage);
 
   setup_unwind(symex);
 
@@ -295,6 +297,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   
   const bool no_slicing_option = options.get_bool_option("no-slicing");
   const bool no_ce_option = options.get_bool_option("no-error-trace");
+  const bool no_smt_usage = (options.get_option("logic") == "prop");
 
   omega.set_initial_precision(assertion);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
@@ -310,7 +313,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, !no_slicing_option, !no_ce_option);
+            single_assertion_check, !no_slicing_option, !no_ce_option,
+            !no_smt_usage);
 
   setup_unwind(symex);
 

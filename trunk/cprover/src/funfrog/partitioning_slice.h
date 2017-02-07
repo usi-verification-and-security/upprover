@@ -17,7 +17,7 @@ class partitioning_slicet
 {
 public:
   void slice(partitioning_target_equationt &equation,
-        summary_storet* summary_store);
+        summary_storet* summary_store, bool use_smt);
 
 protected:
   typedef std::unordered_map<irep_idt, symex_target_equationt::SSA_stept*,
@@ -40,6 +40,10 @@ protected:
   void prepare_partition(partitiont &partition);
   
   void mark_summary_symbols(summary_storet* summary_store, 
+        partitiont &partition, bool use_smt);
+  void mark_summary_symbols_sat(summary_storet* summary_store, 
+        partitiont &partition);
+  void mark_summary_symbols_smt(summary_storet* summary_store, 
         partitiont &partition);
   
   void get_symbols(const typet &type, symbol_sett& symbols);
@@ -48,6 +52,6 @@ protected:
 
 // Slice an equation with respect to the assertions contained therein
 void partitioning_slice(partitioning_target_equationt &equation,
-        summary_storet* summary_store);
+        summary_storet* summary_store, bool use_smt);
 
 #endif

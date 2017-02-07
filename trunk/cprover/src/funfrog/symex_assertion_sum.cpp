@@ -236,7 +236,7 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
     if (use_slicing) {
       before=current_time();
       status() << "All SSA steps: " << equation.SSA_steps.size() << eom;
-      partitioning_slice(equation, summarization_context.get_summary_store());
+      partitioning_slice(equation, summarization_context.get_summary_store(), use_smt);
       status() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
       after=current_time();
       status() << "SLICER TIME: " << (after-before) << eom;
@@ -883,7 +883,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
     const typet& type = function_type.return_type();
     const irep_idt &function_id = partition_iface.function_id;
     irep_idt retval_symbol_id(
-            as_string(function_id) + "::?return_value");
+            as_string(function_id) + "::#return_value!"); // For goto_symext::symex_assign
     irep_idt retval_tmp_id(
             as_string(function_id) + "::?return_value_tmp");
     
@@ -1403,7 +1403,7 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 
     // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
     irep_idt new_l2_name = id2string(identifier) + "#" + std::to_string(state.level2.current_count(identifier));
-    
+
     return new_l2_name;
 }
 
@@ -1575,7 +1575,7 @@ void symex_assertion_sumt::phi_function(
     ssa_exprt new_lhs=*it;
     const bool record_events=dest_state.record_events;
     dest_state.record_events=false;
-    dest_state.assignment(new_lhs, rhs, ns, true, true);
+    dest_state.assignment(new_lhs, rhs, ns, true, true); // ++counter l2
     dest_state.record_events=record_events;
 
     target.assignment(
