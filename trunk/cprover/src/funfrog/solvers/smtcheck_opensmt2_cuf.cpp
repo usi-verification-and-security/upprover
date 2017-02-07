@@ -130,12 +130,23 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         } else if ("false" == id2string(to_constant_expr(expr).get_value())) {
             ptl = get_bv_const(0);
         } else {
-            int num = stoi(expr.print_number_2smt());
-            if (num < -127 || 127 < num){
+            // TODO: KE - refactor
+            bool flag = false;
+            std::string str = expr.print_number_2smt();
+            if ((str.compare("inf") == 0) || (str.compare("-inf") == 0))
+                flag = true;
+            else 
+            {
+                int num = stoi(str);
+                flag = (num < -127 || 127 < num);
+            }
+  
+            if (flag) {
                 cout << "\nNo support for \"big\" (> 8 bit) integers so far.\n\n";
                 exit(0);
+            } else {
+                ptl = get_bv_const(stoi(str));
             }
-            ptl = get_bv_const(num);
         }
     } else if (expr.id() == ID_index) {
         
