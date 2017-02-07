@@ -50,6 +50,10 @@ void error_tracet::build_goto_trace (
     if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
         continue;
     
+    if(SSA_step.ssa_lhs.id()==ID_symbol &&
+       str.find("#return_value!")!=std::string::npos)
+        continue;
+    
     if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
         continue;
 
@@ -170,16 +174,24 @@ void error_tracet::build_goto_trace_formula (
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
     if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
     	continue;
+    
+    if (str.find("__CPROVER_")!=std::string::npos)
+    	continue;
 
     if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
         continue;
+    
+    if(SSA_step.ssa_lhs.id()==ID_symbol &&
+       str.find("#return_value!")!=std::string::npos)
+        continue;
+    
     
     if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
         continue;
-
+    
     if(SSA_step.ssa_full_lhs.is_not_nil())
     {
     	exprt val;
@@ -265,6 +277,11 @@ void error_tracet::build_goto_trace_formula (
 
     if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
         continue;
+    
+    if(SSA_step.ssa_lhs.id()==ID_symbol &&
+       str.find("#return_value!")!=std::string::npos)
+        continue;
+    
 
     if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
         continue;
