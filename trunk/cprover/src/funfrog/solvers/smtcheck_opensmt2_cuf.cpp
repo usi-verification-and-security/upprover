@@ -620,25 +620,14 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ptl = uflogic->mkCUFDiv(args);
         } else if (expr.id() == ID_floatbv_mult) {
             ptl = uflogic->mkCUFTimes(args);
-        } else if(expr.id() == ID_index) {
-#ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
-                 << expr.id() << ")" << endl;
-            assert(false); // No support yet for arrays
-#else
-            ptl = literals[lunsupported2var(expr).var_no()];
-#endif
+        } else if (expr.id() == ID_shl) {
+            ptl = uflogic->mkCUFLshift(args);
+        } else if (expr.id() == ID_shr) {
+            ptl = uflogic->mkCUFRshift(args);    
         } else {
-#ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
-            cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
-            cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: "
+            cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << endl;
-            assert(false);
-#else
-            ptl = literals[lunsupported2var(expr).var_no()];
-#endif
-            // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
-            // Do we need them now?
+            assert(false); // KE: tell me if you get here!
         }
         l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
     }
@@ -781,9 +770,17 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1, PTRef pt2){
 #ifdef DEBUG_SMT_BB
   std::cout << " -- Bind terms " << logic->printTerm(pt1) << " and "
           << logic->printTerm(pt2) << std::endl;
+  
+  if (bitblaster->isBound(pt1)) 
+  {
+      PTRef old_bv = bitblaster->getBoundPTRef(pt1);
+      std::cout << logic->printTerm(pt1) << " is already refined with "
+              << logic->printTerm(old_bv) << " and so we skip "
+              << logic->printTerm(pt2) << std::endl;
+  }
 #endif
 
-  bitblaster->bindCUFToBV(pt1, pt2);
+  bitblaster->bindCUFToBV(pt1, pt2); // (PTRef cuf_tr, PTRef bv_tr)
 
   converted_bitblasted_exprs[expr.hash()] = pt2;
 }
@@ -855,23 +852,17 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
         return;
     }
 
-    PTRef lp = convert_bv(exprs[i]);
-
+    
     // do binding for lhs
-    PTRef lhs = literals[convert(exprs[i].operands()[0]).var_no()];
-    BVRef tmp;
-    PTRef lhs_bv = convert_bv(exprs[i].operands()[0]);
 
-    if (bvlogic->isBVLor(lp)){
-        bitblaster->insertOr(lp, tmp);
-    } else if (bvlogic->isBVEq(lp)){
-        bitblaster->insertEq(lp, tmp);
-    } else {
-        assert(0);
+    PTRef lhs = literals[convert(exprs[i].operands()[0]).var_no()];
+    if (!bitblaster->isBound(lhs)) 
+    {
+        PTRef lhs_bv = convert_bv(exprs[i].operands()[0]);
+        bindBB(exprs[i].operands()[0], lhs, lhs_bv);        
     }
 
-    bindBB(exprs[i].operands()[0], lhs, lhs_bv);
-
+    
     // keep binding for rhs
 
     std::set<exprt> se;
@@ -879,19 +870,30 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
 
     for (auto it = se.begin(); it != se.end(); ++it){
         PTRef rhs = literals[convert(*it).var_no()];
-        PTRef rhs_bv = convert_bv(*it);
-        bindBB(*it, rhs, rhs_bv);
+        
+        // Skip, if we already used it as "read" once
+        if (!bitblaster->isBound(rhs))
+        {
+            PTRef rhs_bv = convert_bv(*it);
+            bindBB(*it, rhs, rhs_bv);
+        }
+    }
+    
+    PTRef lp = convert_bv(exprs[i]);
+    BVRef tmp;
+    if (bvlogic->isBVLor(lp)){
+        bitblaster->insertOr(lp, tmp);
+    } else if (bvlogic->isBVEq(lp)){
+        bitblaster->insertEq(lp, tmp);
+    } else {
+        assert(0);
     }
 }
 
 bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
 {
     refine_ce_one_iter(exprs, i);
-    //KE: notifyEquality should be here. But currently notifyEquality works
-    // on the level of the whole partition! We need to fix it (or remove it)
-    // After the changes in OpenSMT2. It doesn't make sense to notify a partition!
-    // TODO: fix me
-    //PTRef l_uf = literals[convert(exprs[i]).var_no()];
+    
     bitblaster->notifyEqualities();
 
     return solve();
