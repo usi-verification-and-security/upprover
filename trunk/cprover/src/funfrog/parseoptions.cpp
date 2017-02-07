@@ -375,6 +375,7 @@ void funfrog_parseoptionst::help()
   "--no-error-trace               disable the counter example's print once a real bug found\n\n"
   "\nSMT, Interpolation and Proof Reduction options:\n"
   "--theoref                      Use experimental Theory Refining algorithm\n"
+  "--force                        Force refining CUF to BV without counterexamples \n\n"
   "--logic <logic>                [qfuf, qflra, prop] if not present qfuf is used\n"
   "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
   "--itp-algorithm                propositional interpolation algorithm: \n"
@@ -565,6 +566,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("list-templates", cmdline.isset("list-templates"));
   options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
   options.set_option("theoref", cmdline.isset("theoref"));
+  options.set_option("force", cmdline.isset("force"));
 
   // always check assertions
   options.set_option("assertions", true);

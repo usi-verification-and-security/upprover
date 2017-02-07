@@ -846,12 +846,11 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
     return -1;
 }
 
-bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
+void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i)
 {
-    std::set<exprt> se;
     if (!exprs[i].has_operands() || exprs[i].operands().size() < 2){
         cout << "what should we do with it?" << endl;
-        return true;
+        return;
     }
 
     PTRef lp = convert_bv(exprs[i]);
@@ -873,6 +872,7 @@ bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
 
     // keep binding for rhs
 
+    std::set<exprt> se;
     getVarsInExpr(exprs[i].operands()[1], se);
 
     for (auto it = se.begin(); it != se.end(); ++it){
@@ -880,12 +880,28 @@ bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
         PTRef rhs_bv = convert_bv(*it);
         bindBB(*it, rhs, rhs_bv);
     }
-    
+}
+
+bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
+{
+    refine_ce_one_iter(exprs, i);
     //KE: notifyEquality should be here. But currently notifyEquality works
     // on the level of the whole partition! We need to fix it (or remove it)
     // After the changes in OpenSMT2. It doesn't make sense to notify a partition!
     // TODO: fix me
     //PTRef l_uf = literals[convert(exprs[i]).var_no()];
+    bitblaster->notifyEqualities();
+
+    return solve();
+}
+
+bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set<int>& refined)
+{
+    for (int i = 0; i < exprs.size(); i++){
+        if (refined.find(i) != refined.end()) continue;
+        refine_ce_one_iter(exprs, i);
+    }
+
     bitblaster->notifyEqualities();
 
     return solve();

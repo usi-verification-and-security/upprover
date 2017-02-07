@@ -87,39 +87,59 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
           status() << " and trying to refine with CUF" << endl << eom;
 
+          bool refine_all = options.get_bool_option("force");
+
           std::vector<exprt>& exprs = equation.get_exprs_to_refine();
           std::set<int> refined;
 
-          unsigned iter = 0;
-
-          while (true){
-
-              iter++;
-              // local CUF solver
-              smtcheck_opensmt2t_cuf* decider2 = new smtcheck_opensmt2t_cuf();
-
-              error_trace.build_goto_trace_formula(equation,
-                    *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
-                    *(dynamic_cast<smtcheck_opensmt2t_cuf *> (decider2)));
-
-              int spur = decider2->check_ce(exprs);
-
-              if (refined.find(spur) == refined.end() && spur >= 0){
-                  if (decider->refine_ce(exprs, spur)){
-                      refined.insert(spur);
-                  } else {
-                      status() << endl << "Refinement successful" << endl;
-                      status() << "(" << iter << " counter-examples checked)" << endl;
-                      status() << "ASSERTION HOLDS" << eom;
-                      report_success();
-                      break;
-                  }
-              } else {
-                  status() << endl << "All spurious counter-examples are refined" << endl;
-                  status() << "(" << iter << " in total)" << endl;
+          if (refine_all) {
+              if (decider->force_refine_ce(exprs, refined)){
                   status() << "ASSERTION DOES NOT HOLD" << eom;
                   report_failure();
-                  break;
+              } else {
+                  status() << endl << "Naive refinement successful" << endl;
+                  status() << "ASSERTION HOLDS" << eom;
+                  report_success();
+              }
+          } else {
+
+              unsigned iter = 0;
+
+              while (true){
+
+                  iter++;
+                  // local CUF solver
+                  smtcheck_opensmt2t_cuf* decider2 = new smtcheck_opensmt2t_cuf();
+
+                  error_trace.build_goto_trace_formula(equation,
+                        *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
+                        *(dynamic_cast<smtcheck_opensmt2t_cuf *> (decider2)));
+
+                  int spur = decider2->check_ce(exprs);
+
+                  if (refined.find(spur) == refined.end() && spur >= 0){
+                      if (decider->refine_ce(exprs, spur)){
+                          refined.insert(spur);
+                      } else {
+                          status() << endl << "Refinement successful" << endl;
+                          status() << "(" << iter << " counter-examples checked)" << endl;
+                          status() << "ASSERTION HOLDS" << eom;
+                          report_success();
+                          break;
+                      }
+                  } else /* if (decider->force_refine_ce(exprs, refined) )*/{ // TODO: uncomment
+                      status() << endl << "All spurious counter-examples are refined" << endl;
+                      status() << "(" << iter << " in total)" << endl;
+                      status() << "ASSERTION DOES NOT HOLD" << eom;
+                      report_failure();
+                      break;
+                 /* } else {
+                      status() << endl << "Naive refinement successful" << endl;
+                      status() << "(" << iter << " counter-examples + refine everything else)" << endl;
+                      status() << "ASSERTION HOLDS" << eom;
+                      report_success();
+                      break; */
+                  }
               }
           }
       }
