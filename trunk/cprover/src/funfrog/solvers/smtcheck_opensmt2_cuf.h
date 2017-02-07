@@ -56,7 +56,9 @@ public:
 
   int check_ce(std::vector<exprt>& exprs);
 
-  bool refine_ce(std::vector<exprt>& exprs, int i);
+  bool refine_ce(std::vector<exprt>& exprs, int i); // refine only exprs[i]
+
+  bool force_refine_ce(std::vector<exprt>& exprs, std::set<int>& refined); // refine all from exprs, but already refined
 
   PTRef split_exprs(irep_idt id, vec<PTRef>& args);
   PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
@@ -70,6 +72,8 @@ protected:
   map<size_t, PTRef> converted_bitblasted_exprs;
   
   void bindBB(const exprt& expr, PTRef pt1, PTRef pt2);
+
+  void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
 
   virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
