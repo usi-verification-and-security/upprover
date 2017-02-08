@@ -82,6 +82,8 @@ protected:
 
   virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
+  PTRef unsupported2var_bv(); // for BVs
+  
   virtual void initializeSolver();
 
 };

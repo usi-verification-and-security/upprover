@@ -49,6 +49,11 @@ smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
     // Shall/When need to: freeSolver() ?
 }
 
+PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv()
+{
+    const string str = "BV__" + smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
+    return get_bv_var(str.c_str());
+}
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 {
@@ -149,34 +154,42 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
                 ptl = get_bv_const(stoi(str));
             }
         }
+    } else if (expr.id() == ID_typecast) {
+        
+        ptl = unsupported2var_bv(); // stub for now
+        
+    } else if (expr.id() == ID_floatbv_typecast) {
+        
+        ptl = unsupported2var_bv(); // stub for now
+        
     } else if (expr.id() == ID_index) {
         
-        ptl = get_bv_const(1); // stub for now
+        ptl = unsupported2var_bv(); // stub for now
 
     } else if (expr.id() == ID_array) {
         
-        ptl = get_bv_const(1); // stub for now
+        ptl = unsupported2var_bv(); // stub for now
 
     } else if (expr.id() == ID_member) {
         
-        ptl = get_bv_const(1); // stub for now
+        ptl = unsupported2var_bv(); // stub for now
         
     } else if (expr.id() == ID_member_name) {
         
-        ptl = get_bv_const(1); // stub for now
+        ptl = unsupported2var_bv(); // stub for now
         
     } else if (expr.id() == ID_C_member_name) {
         
-        ptl = get_bv_const(1); // stub for now
+        ptl = unsupported2var_bv(); // stub for now
         
     } else if (expr.id() == ID_pointer) {
         
-        ptl = get_bv_const(1); // stub for now 
+        ptl = unsupported2var_bv(); // stub for now 
         // KE: when active, also change the code in lvar
          
     } else if (expr.id() == ID_pointer_offset) {
         
-        ptl = get_bv_const(1); // stub for now 
+        ptl = unsupported2var_bv(); // stub for now 
         // KE: when active, also change the code in lvar
          
         
@@ -315,7 +328,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         } else {
             
             //GF: to continue...
-            ptl = get_bv_const(1); // stub for now
+            ptl = unsupported2var_bv(); // stub for now
 
         }
     }
