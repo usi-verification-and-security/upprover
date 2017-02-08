@@ -118,15 +118,14 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         }
     } else if (expr.type().id() == ID_c_bool) { // KE: New Cprover code - patching
         std::string num(expr.get_string(ID_value));
-        assert(num.size() == 8); // if not 8, but longer, please add the case
-        if (num.compare("00000000") != 0) {
+        if (num.find_first_not_of('0') != std::string::npos) {
+            std::cout << "Find true " << num << std::endl;
             // true
             ptl = get_bv_const(1);
         } else {
             // false
             ptl = get_bv_const(0);
         }
-        //std::cout << "Check? " << (num.compare("00000000") != 0) << " for string " << num << std::endl;
     } else {
         // General number (not just 0 or 1)
         if ("true" == id2string(to_constant_expr(expr).get_value())) {
@@ -137,15 +136,19 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
             std::string str = expr.print_number_2smt();
             if ((str.compare("inf") == 0) || (str.compare("-inf") == 0)) 
             {
-                cout << "\nNo support for \"big\" (> 8 bit) integers so far.\n\n";
-                exit(0);
+                // No inf values in toy models!
+                if ((bitwidth != 32) && (bitwidth != 64) && (bitwidth != 128)) {
+                    cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+                    exit(0);
+                }
             } 
             else 
             {
+                int max = (2^bitwidth) - 1;
                 int num = stoi(str);
-                if ((num < -127 || 127 < num)) 
+                if ((num < -max || max < num)) 
                 {
-                    cout << "\nNo support for \"big\" (> 8 bit) integers so far.\n\n";
+                    cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
                     exit(0);
                 } else {
                     ptl = get_bv_const(stoi(str));
