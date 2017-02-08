@@ -74,6 +74,8 @@ protected:
 
   int bitwidth;
 
+  __int128 max_num; // w.r.t. current bitwidth
+
   map<size_t, PTRef> converted_bitblasted_exprs;
   
   void bindBB(const exprt& expr, PTRef pt1, PTRef pt2);

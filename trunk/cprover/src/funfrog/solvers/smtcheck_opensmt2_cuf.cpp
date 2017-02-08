@@ -6,6 +6,7 @@ Author: Grigory Fedyukovich
 
 \*******************************************************************/
 #include <queue>
+#include <math.h>
 
 #include "smtcheck_opensmt2_cuf.h"
 
@@ -41,6 +42,8 @@ void smtcheck_opensmt2t_cuf::initializeSolver()
   new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
   literals[0] = logic->getTerm_true(); // Which is .x =0
   // KE: End of fix
+
+  max_num = pow (2, bitwidth) - 1;
 }
 
 // Free all inner objects
@@ -144,9 +147,8 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
             } 
             else 
             {
-                int max = (2^bitwidth) - 1;
-                int num = stoi(str);
-                if ((num < -max || max < num)) 
+                long num = stoi(str);
+                if ((num < -max_num || max_num < num))
                 {
                     cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
                     exit(0);
