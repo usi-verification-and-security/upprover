@@ -942,7 +942,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
 #ifdef DEBUG_SMT_BB            
             cout << " " << (exprs[i]).pretty() << endl;
 #endif
-            assert(0); // Probably true (as 0000..0001)
+//            assert(0); // Probably true (as 0000..0001)
         } else if (bvlogic->isBVNUMConst(lp)) {
             assert(0); // TODO: check when can it happen
         } else {
@@ -1003,8 +1003,10 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
         bitblaster->insertOr(lp, tmp);
     } else if (bvlogic->isBVEq(lp)){
         bitblaster->insertEq(lp, tmp);
+    } else if (bvlogic->isBVOne(lp)) {
+        ; // No action
     } else {
-        assert(0);
+//        assert(0);
     }
 }
 
