@@ -161,6 +161,22 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     } else if (expr.id() == ID_floatbv_typecast) {
         
         ptl = unsupported2var_bv(); // stub for now
+
+    } else if (expr.id() == ID_byte_extract_little_endian) {
+        
+        ptl = unsupported2var_bv(); // stub for now  
+                  
+    } else if (expr.id() == ID_byte_update_little_endian) {
+        
+        ptl = unsupported2var_bv(); // stub for now  
+                  
+    } else if (expr.id() == ID_address_of) {
+        
+        ptl = unsupported2var_bv(); // stub for now  
+
+    } else if (expr.id() == ID_with) {
+        
+        ptl = unsupported2var_bv(); // stub for now
         
     } else if (expr.id() == ID_index) {
         
@@ -586,7 +602,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         // KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
         l = type_cast(expr);
-    } else if (expr.id() == ID_typecast) {
+    } else if (expr.id() == ID_typecast || expr.id() == ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
         cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << expr.id() << ")" << endl;
         assert(false); // Need to take care of - typecast no operands
@@ -724,6 +740,18 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ptl = uflogic->mkCUFRshift(args); 
         } else if (expr.id() == ID_lshr) {
             ptl = uflogic->mkCUFRshift(args); 
+        } else if (expr.id() == ID_byte_extract_little_endian) {
+            ptl = literals[lunsupported2var(expr).var_no()];
+            // KE: TODO                 
+        } else if (expr.id() == ID_byte_update_little_endian) {
+            ptl = literals[lunsupported2var(expr).var_no()];
+            // KE: TODO              
+        } else if (expr.id() == ID_address_of) {
+            ptl = literals[lunsupported2var(expr).var_no()];
+            // KE: TODO
+        } else if (expr.id() == ID_with) {
+            ptl = literals[lunsupported2var(expr).var_no()];
+            // KE: TODO            
         } else if (expr.id() == ID_index) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO
