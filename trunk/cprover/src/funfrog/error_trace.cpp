@@ -261,9 +261,6 @@ void error_tracet::build_goto_trace_formula (
   {
     const symex_target_equationt::SSA_stept &SSA_step=**it;
 
-    if(!decider.is_assignemt_true(SSA_step.guard_literal))
-      continue;
-
     if(SSA_step.is_assignment() &&
        SSA_step.assignment_type==symex_target_equationt::HIDDEN)
       continue;
