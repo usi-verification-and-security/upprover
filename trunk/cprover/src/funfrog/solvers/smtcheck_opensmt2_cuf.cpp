@@ -725,9 +725,9 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (expr.id() == ID_or) {
             ptl = logic->mkOr(args);
         } else if (expr.id() == ID_bitand) {
-            ptl = logic->mkAnd(args);
+            ptl = uflogic->mkCUFBwAnd(args);
         } else if (expr.id() == ID_bitor) {
-            ptl = logic->mkOr(args);            
+            ptl = uflogic->mkCUFBwOr(args);            
         } else if (expr.id() == ID_not) {
             ptl = logic->mkNot(args);
         } else if (expr.id() == ID_implies) {
