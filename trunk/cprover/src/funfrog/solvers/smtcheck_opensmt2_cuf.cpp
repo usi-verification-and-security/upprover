@@ -151,32 +151,32 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         }
     } else if (expr.id() == ID_index) {
         
-        ptl = bvlogic->getTerm_true(); // stub for now
+        ptl = get_bv_const(1); // stub for now
 
     } else if (expr.id() == ID_array) {
         
-        ptl = bvlogic->getTerm_true(); // stub for now
+        ptl = get_bv_const(1); // stub for now
 
     } else if (expr.id() == ID_member) {
         
-        ptl = bvlogic->getTerm_true(); // stub for now
+        ptl = get_bv_const(1); // stub for now
         
     } else if (expr.id() == ID_member_name) {
         
-        ptl = bvlogic->getTerm_true(); // stub for now
+        ptl = get_bv_const(1); // stub for now
         
     } else if (expr.id() == ID_C_member_name) {
         
-        ptl = bvlogic->getTerm_true(); // stub for now
+        ptl = get_bv_const(1); // stub for now
         
     } else if (expr.id() == ID_pointer) {
         
-        ptl = bvlogic->getTerm_true(); // stub for now 
+        ptl = get_bv_const(1); // stub for now 
         // KE: when active, also change the code in lvar
          
     } else if (expr.id() == ID_pointer_offset) {
         
-        ptl = bvlogic->getTerm_true(); // stub for now 
+        ptl = get_bv_const(1); // stub for now 
         // KE: when active, also change the code in lvar
          
         
@@ -315,7 +315,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         } else {
             
             //GF: to continue...
-            ptl = bvlogic->getTerm_true(); // stub for now
+            ptl = get_bv_const(1); // stub for now
 
         }
     }
