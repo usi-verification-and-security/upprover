@@ -102,6 +102,61 @@ bool smtcheck_opensmt2t_cuf::convert_bv_eq_ite(const exprt &expr, PTRef& ptl)
     return true;
 }
 
+PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
+{
+    PTRef ptl;            
+    if (expr.is_boolean()) {
+        if (expr.is_true() || expr.is_one()) {
+            // true
+            ptl = get_bv_const(1);
+        } else if (expr.is_false() || expr.is_zero()) {
+            // false
+            ptl = get_bv_const(0);
+        } else {
+            // any other valuse 
+            assert(0); // TODO: check what's here
+        }
+    } else if (expr.type().id() == ID_c_bool) { // KE: New Cprover code - patching
+        std::string num(expr.get_string(ID_value));
+        assert(num.size() == 8); // if not 8, but longer, please add the case
+        if (num.compare("00000000") != 0) {
+            // true
+            ptl = get_bv_const(1);
+        } else {
+            // false
+            ptl = get_bv_const(0);
+        }
+        //std::cout << "Check? " << (num.compare("00000000") != 0) << " for string " << num << std::endl;
+    } else {
+        // General number (not just 0 or 1)
+        if ("true" == id2string(to_constant_expr(expr).get_value())) {
+            ptl = get_bv_const(1);
+        } else if ("false" == id2string(to_constant_expr(expr).get_value())) {
+            ptl = get_bv_const(0);
+        } else {
+            std::string str = expr.print_number_2smt();
+            if ((str.compare("inf") == 0) || (str.compare("-inf") == 0)) 
+            {
+                cout << "\nNo support for \"big\" (> 8 bit) integers so far.\n\n";
+                exit(0);
+            } 
+            else 
+            {
+                int num = stoi(str);
+                if ((num < -127 || 127 < num)) 
+                {
+                    cout << "\nNo support for \"big\" (> 8 bit) integers so far.\n\n";
+                    exit(0);
+                } else {
+                    ptl = get_bv_const(stoi(str));
+                }
+            }
+        } // General case
+    }
+
+    return ptl;
+}
+
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 {
 #ifdef DEBUG_SMT_BB
@@ -131,29 +186,9 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         }
         
     } else if (expr.id()==ID_constant) {
-        if ("true" == id2string(to_constant_expr(expr).get_value())) {
-            ptl = get_bv_const(1);
-        } else if ("false" == id2string(to_constant_expr(expr).get_value())) {
-            ptl = get_bv_const(0);
-        } else {
-            // TODO: KE - refactor
-            bool flag = false;
-            std::string str = expr.print_number_2smt();
-            if ((str.compare("inf") == 0) || (str.compare("-inf") == 0))
-                flag = true;
-            else 
-            {
-                int num = stoi(str);
-                flag = (num < -127 || 127 < num);
-            }
-  
-            if (flag) {
-                cout << "\nNo support for \"big\" (> 8 bit) integers so far.\n\n";
-                exit(0);
-            } else {
-                ptl = get_bv_const(stoi(str));
-            }
-        }
+        
+        ptl = lconst_bv(expr);
+        
     } else if (expr.id() == ID_typecast) {
         
         ptl = unsupported2var_bv(); // stub for now
