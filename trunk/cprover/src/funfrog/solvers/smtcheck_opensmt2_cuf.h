@@ -24,8 +24,9 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class smtcheck_opensmt2t_cuf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_cuf() :
+  smtcheck_opensmt2t_cuf(int bitwidth) :
       smtcheck_opensmt2t(false, 3, 2) // Is last always!
+    , bitwidth(bitwidth)
   {
     initializeSolver();
   }
@@ -70,6 +71,8 @@ protected:
   CUFLogic* uflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
 
   BitBlaster* bitblaster;
+
+  int bitwidth;
 
   map<size_t, PTRef> converted_bitblasted_exprs;
   

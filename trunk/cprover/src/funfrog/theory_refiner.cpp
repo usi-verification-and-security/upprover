@@ -11,7 +11,7 @@
 
 void theory_refinert::initialize()
 {
-  decider = new smtcheck_opensmt2t_cuf();
+  decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"));
   summarization_context.analyze_functions(ns);
   omega.initialize_summary_info (omega.get_summary_info(), goto_program);
   omega.setup_default_precision(ALL_SUBSTITUTING);
@@ -139,7 +139,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
                   iter++;
                   // local CUF solver
-                  smtcheck_opensmt2t_cuf* decider2 = new smtcheck_opensmt2t_cuf();
+                  smtcheck_opensmt2t_cuf* decider2 = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"));
 
                   error_trace.build_goto_trace_formula(equation,
                         *(dynamic_cast<smtcheck_opensmt2t *> (decider)),

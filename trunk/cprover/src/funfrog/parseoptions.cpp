@@ -376,7 +376,8 @@ void funfrog_parseoptionst::help()
   "\nSMT, Interpolation and Proof Reduction options:\n"
   "--theoref                      Use experimental Theory Refining algorithm\n"
   "--force                        Force refining CUF to BV without counterexamples\n"
-  "--custom <n1,n2,..>            Program statement ids to be refined (without counterexamples)\n\n"
+  "--custom <n1,n2,..>            Program statement ids to be refined (without counterexamples)\n"
+  "--bitwidth <n>                 The bitwidth for the CUF BV mode\n\n"
   "--logic <logic>                [qfuf, qflra, prop] if not present qfuf is used\n"
   "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
   "--itp-algorithm                propositional interpolation algorithm: \n"
@@ -567,7 +568,11 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("theoref", cmdline.isset("theoref"));
   options.set_option("force", cmdline.isset("force"));
   options.set_option("custom", cmdline.get_value("custom"));
-
+  if (cmdline.isset("bitwidth")) {
+    options.set_option("bitwidth", cmdline.get_value("bitwidth"));
+  } else {
+    options.set_option("bitwidth", 8);
+  }
   // always check assertions
   options.set_option("assertions", true);
 

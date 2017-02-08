@@ -19,7 +19,8 @@ Author: Grigory Fedyukovich
 
 void smtcheck_opensmt2t_cuf::initializeSolver()
 {
-  osmt = new Opensmt(opensmt_logic::qf_cuf);
+//  osmt = new Opensmt(opensmt_logic::qf_cuf, options.get_unsigned_int_option("bitwidth"));
+  osmt = new Opensmt(opensmt_logic::qf_cuf, bitwidth);
   logic = &(osmt->getCUFLogic());
   uflogic = &(osmt->getCUFLogic());
   bvlogic = &((BVLogic&)osmt->getLogic());

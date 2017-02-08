@@ -25,7 +25,7 @@ void summarizing_checkert::initialize_solver()
     if(_logic == "qfuf")
         decider = new smtcheck_opensmt2t_uf();
     else if(_logic == "qfcuf")
-        decider = new smtcheck_opensmt2t_cuf();
+        decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"));
     else if(_logic == "qflra")
         decider = new smtcheck_opensmt2t_lra(_type_constraints);
     else if (_logic == "prop")
