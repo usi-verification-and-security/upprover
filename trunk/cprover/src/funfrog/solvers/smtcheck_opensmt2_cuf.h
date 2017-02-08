@@ -84,6 +84,8 @@ protected:
 
   PTRef unsupported2var_bv(); // for BVs
   
+  PTRef lconst_bv(const exprt &expr); // For bv only!
+  
   virtual void initializeSolver();
 
 };
