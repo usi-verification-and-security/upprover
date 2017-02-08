@@ -56,7 +56,9 @@ public:
 
   int check_ce(std::vector<exprt>& exprs);
 
-  bool refine_ce(std::vector<exprt>& exprs, int i); // refine only exprs[i]
+  bool refine_ce_solo(std::vector<exprt>& exprs, int i); // refine only exprs[i]
+
+  bool refine_ce_mul(std::vector<exprt>& exprs, std::vector<int>& is); // refine only subset of expr
 
   bool force_refine_ce(std::vector<exprt>& exprs, std::set<int>& refined); // refine all from exprs, but already refined
 

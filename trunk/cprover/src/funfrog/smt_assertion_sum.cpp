@@ -48,12 +48,10 @@ bool smt_assertion_sumt::assertion_holds(const assertion_infot &assertion, const
 
   if (!sat)
   {
-    status() << "ASSERTION IS TRUE" << eom;
     return true;
   }
   else
   {
-    status() << "ASSERTION IS VIOLATED" << eom;
     return false;
   }
 }
@@ -85,10 +83,10 @@ bool smt_assertion_sumt::is_satisfiable(
   // solve it
   if (!r)
   {
-      status() << "UNSAT - it holds!" << endl;
+      status() << "UNSAT - it holds!" << eom;
       return false;
     } else {
-      status() << "SAT - doesn't hold" << endl;
+      status() << "SAT - doesn't hold" << eom;
       return true;
     }
 }

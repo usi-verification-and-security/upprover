@@ -965,7 +965,6 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
         return;
     }
 
-    
     // do binding for lhs
 
     PTRef lhs = literals[convert(exprs[i].operands()[0]).var_no()];
@@ -993,6 +992,11 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
     }
     
     PTRef lp = convert_bv(exprs[i]);
+
+//#ifdef DEBUG_SMT_BB
+    cout <<  "  Refining [" << i << "]: " << logic->printTerm(lp) << endl;
+//#endif
+
     BVRef tmp;
     if (bvlogic->isBVLor(lp)){
         bitblaster->insertOr(lp, tmp);
@@ -1003,10 +1007,27 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
     }
 }
 
-bool smtcheck_opensmt2t_cuf::refine_ce(std::vector<exprt>& exprs, int i)
+bool smtcheck_opensmt2t_cuf::refine_ce_solo(std::vector<exprt>& exprs, int i)
 {
     refine_ce_one_iter(exprs, i);
     
+    bitblaster->notifyEqualities();
+
+    return solve();
+}
+
+bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::vector<int>& is)
+{
+    bool res = true;
+    for (int i = 0; i < is.size(); i++){
+        if (exprs.size() <= is[i]) continue;
+
+        refine_ce_one_iter(exprs, is[i]);
+        res = false;
+    }
+
+    if (res) return res;
+
     bitblaster->notifyEqualities();
 
     return solve();

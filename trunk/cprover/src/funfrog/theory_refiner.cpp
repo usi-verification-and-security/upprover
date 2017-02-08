@@ -1,6 +1,6 @@
 /*******************************************************************
 
- Module: Theory refiner for the CAV submission
+ Module: Theory refiner
 
  Author: all
 
@@ -16,6 +16,22 @@ void theory_refinert::initialize()
   omega.initialize_summary_info (omega.get_summary_info(), goto_program);
   omega.setup_default_precision(ALL_SUBSTITUTING);
 }
+
+void get_numbers(std::vector<int>& nums, std::string set){
+
+  int length=set.length();
+
+  for(int idx=0; idx<length; idx++)
+  {
+    std::string::size_type next=set.find(",", idx);
+    std::string val=set.substr(idx, next-idx);
+    nums.push_back(atoi(val.c_str()));
+
+    if(next==std::string::npos) break;
+    idx=next;
+  }
+}
+
 
 /*******************************************************************
 
@@ -87,12 +103,26 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
           status() << " and trying to refine with CUF" << endl << eom;
 
+          std::vector<int> exprs_ids;
+          get_numbers(exprs_ids, options.get_option("custom"));
+
           bool refine_all = options.get_bool_option("force");
 
           std::vector<exprt>& exprs = equation.get_exprs_to_refine();
           std::set<int> refined;
 
-          if (refine_all) {
+          if (exprs_ids.size() > 0){
+
+              if (decider->refine_ce_mul(exprs, exprs_ids)){
+                  status() << "ASSERTION DOES NOT HOLD" << eom;
+                  report_failure();
+              } else {
+                  status() << endl << "Custom refinement successful" << endl;
+                  status() << "ASSERTION HOLDS" << eom;
+                  report_success();
+              }
+          } else if (refine_all) {
+
               if (decider->force_refine_ce(exprs, refined)){
                   status() << "ASSERTION DOES NOT HOLD" << eom;
                   report_failure();
@@ -118,7 +148,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   int spur = decider2->check_ce(exprs);
 
                   if (refined.find(spur) == refined.end() && spur >= 0){
-                      if (decider->refine_ce(exprs, spur)){
+                      if (decider->refine_ce_solo(exprs, spur)){
                           refined.insert(spur);
                       } else {
                           status() << endl << "Refinement successful" << endl;
@@ -187,9 +217,6 @@ void theory_refinert::setup_unwind(symex_assertion_sumt& symex)
 
   symex.set_unwind_limit(options.get_unsigned_int_option("unwind"));
 }
-
-
-
 
 /*******************************************************************\
 

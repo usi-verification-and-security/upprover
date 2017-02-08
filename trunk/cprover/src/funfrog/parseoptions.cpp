@@ -375,7 +375,8 @@ void funfrog_parseoptionst::help()
   "--no-error-trace               disable the counter example's print once a real bug found\n\n"
   "\nSMT, Interpolation and Proof Reduction options:\n"
   "--theoref                      Use experimental Theory Refining algorithm\n"
-  "--force                        Force refining CUF to BV without counterexamples \n\n"
+  "--force                        Force refining CUF to BV without counterexamples\n"
+  "--custom <n1,n2,..>            Program statement ids to be refined (without counterexamples)\n\n"
   "--logic <logic>                [qfuf, qflra, prop] if not present qfuf is used\n"
   "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
   "--itp-algorithm                propositional interpolation algorithm: \n"
@@ -552,7 +553,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("unsigned-overflow-check", cmdline.isset("overflow-check"));
   options.set_option("nan-check", cmdline.isset("nan-check"));
   options.set_option("string-abstraction", cmdline.isset("string-abstraction"));
-  options.set_option("assertions", cmdline.isset("assertions"));
   options.set_option("all-claims", cmdline.isset("all-claims"));
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
@@ -561,12 +561,12 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
   options.set_option("check-itp", cmdline.isset("check-itp"));
-  options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
   options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
   options.set_option("list-templates", cmdline.isset("list-templates"));
   options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
   options.set_option("theoref", cmdline.isset("theoref"));
   options.set_option("force", cmdline.isset("force"));
+  options.set_option("custom", cmdline.get_value("custom"));
 
   // always check assertions
   options.set_option("assertions", true);
