@@ -314,6 +314,11 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             ptl = (args.size() > 2) ?
                 split_exprs_bv(expr.id(), args) : bvlogic->mkBVBwAnd(args);
 
+        } else if (expr.id() ==  ID_bitxor) {
+
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVBwXor(args);
+
         } else if (expr.id() ==  ID_bitor) {
 
             ptl = (args.size() > 2) ?
@@ -423,6 +428,10 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
 
         ptl = bvlogic->mkBVBwAnd(args);
 
+    } else if (id ==  ID_bitxor) {
+
+        ptl = bvlogic->mkBVBwXor(args);
+        
     } else if (id ==  ID_bitor) {
 
         ptl = bvlogic->mkBVBwOr(args);
@@ -726,8 +735,10 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ptl = logic->mkOr(args);
         } else if (expr.id() == ID_bitand) {
             ptl = uflogic->mkCUFBwAnd(args);
+        } else if (expr.id() == ID_bitxor) {
+            ptl = uflogic->mkCUFBwXor(args); 
         } else if (expr.id() == ID_bitor) {
-            ptl = uflogic->mkCUFBwOr(args);            
+            ptl = uflogic->mkCUFBwOr(args);             
         } else if (expr.id() == ID_not) {
             ptl = logic->mkNot(args);
         } else if (expr.id() == ID_implies) {
