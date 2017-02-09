@@ -79,17 +79,17 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   if (end)
   {
-      status() << "ASSERTION HOLDS";
+      status() << "ASSERTION HOLDS" << endl << eom;
       report_success();
   } else {
 
-	  status() << endl << "Checking if the error trace is spurious";
       error_tracet error_trace;
       const std::string &log=options.get_option("logic");
 
       if (log == "qflra"){
 
-          status() << " (for testing only) with LRA" << eom;
+          status() << "Checking if the error trace is spurious (for testing only) with LRA" << eom;
+
           smtcheck_opensmt2t_lra* decider2 = new smtcheck_opensmt2t_lra(0);
 
           error_trace.build_goto_trace_formula(equation,
@@ -101,7 +101,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
       } else {
 
-          status() << " and trying to refine with CUF" << endl << eom;
+          status() << endl << "Trying to refine with CUF+BitBlast" << endl;
 
           std::vector<int> exprs_ids;
           get_numbers(exprs_ids, options.get_option("custom"));
@@ -113,8 +113,11 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
           if (exprs_ids.size() > 0){
 
+              status() << "(user-specified statements only)" << endl << eom;
+
               if (decider->refine_ce_mul(exprs, exprs_ids)){
-                  status() << "ASSERTION DOES NOT HOLD" << eom;
+                  status() << "ASSERTION UNKNOWN" << endl;
+                  status() << "(further refinement needed)" << eom;
                   report_failure();
               } else {
                   status() << endl << "Custom refinement successful" << endl;
@@ -122,6 +125,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   report_success();
               }
           } else if (refine_all) {
+
+              status() << "(all statements at once)" << endl << eom;
 
               if (decider->force_refine_ce(exprs, refined)){
                   status() << "ASSERTION DOES NOT HOLD" << eom;
@@ -132,6 +137,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   report_success();
               }
           } else {
+
+              status() << "(driven by iterative CE-analysis)" << endl << eom;
 
               unsigned iter = 0;
 
@@ -145,7 +152,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                         *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
                         *(dynamic_cast<smtcheck_opensmt2t_cuf *> (decider2)));
 
-                  int spur = decider2->check_ce(exprs);
+                  int spur = decider2->check_ce(exprs, refined);
 
                   if (refined.find(spur) == refined.end() && spur >= 0){
                       if (decider->refine_ce_solo(exprs, spur)){
@@ -158,7 +165,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                           break;
                       }
                   } else /* if (decider->force_refine_ce(exprs, refined) )*/{ // TODO: uncomment
-                      status() << endl << "All spurious counter-examples are refined" << endl;
+                      status() << endl << "Obtained counter-examples are refined" << endl;
                       status() << "(" << iter << " in total)" << endl;
                       status() << "ASSERTION DOES NOT HOLD" << eom;
                       report_failure();

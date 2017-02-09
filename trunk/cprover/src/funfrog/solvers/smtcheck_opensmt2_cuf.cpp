@@ -11,11 +11,6 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2_cuf.h"
 
 //#define SMT_DEBUG
-//#define DEBUG_SSA_SMT
-//#define DEBUG_SSA_SMT_NUMERIC_CONV
-//#define DEBUG_ITP_VARS
-//#define DEBUG_SMT_EUF
-//#define DEBUG_SMT_ITP
 //#define DEBUG_SMT_BB
 
 void smtcheck_opensmt2t_cuf::initializeSolver()
@@ -992,7 +987,7 @@ void getVarsInExpr(exprt& e, std::set<exprt>& vars)
   }
 }
 
-int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
+int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::set<int>& refined)
 {
 #ifdef DEBUG_SMT_BB  
     cout << "Check ce for " <<exprs.size() << " terms " << std::endl;
@@ -1006,13 +1001,19 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
     }
     mainSolver->push();
 
-    bool res = true;
-    unsigned int i = 0;
-    while (i < exprs.size() && res){
+    // GF: sometimes, it makes sense to iterate over exprs in the reverse order:
+    //     for (int i = exprs.size() - 1; i >= 0; i--)
+    //     however, it causes some inconsistencies (SAFE / BUG),
+    //     probably, because of binding.. need to debug it when time permits...
+
+    for (int i = 0; i < exprs.size(); i++){
+
+        if (refined.find(i) != refined.end()) continue;
+
         PTRef lp = convert_bv(exprs[i]);
 
 #ifdef DEBUG_SMT_BB
-            cout <<  "  Validating: " << logic->printTerm(lp) << endl;
+            cout <<  "  Validating: [" << i << "]: " << logic->printTerm(lp) << endl;
 #endif
             
         BVRef tmp;
@@ -1031,12 +1032,10 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs)
             assert(0);
         }
 
-        res = (s_True == mainSolver->check());
-        if (!res){
+        if (s_False == mainSolver->check()){
             cout << "\nWeak statement encoding found" << endl;
             return i;
         }
-        i++;
     }
     return -1;
 }

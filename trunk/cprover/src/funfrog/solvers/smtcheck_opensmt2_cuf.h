@@ -55,7 +55,7 @@ public:
 
   bool convert_bv_eq_ite(const exprt &expr, PTRef& ptl);
 
-  int check_ce(std::vector<exprt>& exprs);
+  int check_ce(std::vector<exprt>& exprs, std::set<int>& refined);
 
   bool refine_ce_solo(std::vector<exprt>& exprs, int i); // refine only exprs[i]
 
