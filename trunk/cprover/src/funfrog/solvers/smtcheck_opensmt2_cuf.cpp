@@ -959,25 +959,26 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
     return l;
 }
 
-void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1, PTRef pt2){
-  if (converted_bitblasted_exprs.find(expr.hash()) != converted_bitblasted_exprs.end()) return;
+void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
+{
+    if (bitblaster->isBound(pt1))
+    {
+      PTRef old_bv = bitblaster->getBoundPTRef(pt1);
+#ifdef DEBUG_SMT_BB
+      std::cout << " -- Term " << logic->printTerm(pt1) << " is already refined with "
+              << logic->printTerm(old_bv) << " and so we skip " << std::endl;
+#endif
+    } else {
+        PTRef expr_bv = convert_bv(expr);
 
 #ifdef DEBUG_SMT_BB
   std::cout << " -- Bind terms " << logic->printTerm(pt1) << " and "
-          << logic->printTerm(pt2) << std::endl;
-  
-  if (bitblaster->isBound(pt1)) 
-  {
-      PTRef old_bv = bitblaster->getBoundPTRef(pt1);
-      std::cout << logic->printTerm(pt1) << " is already refined with "
-              << logic->printTerm(old_bv) << " and so we skip "
-              << logic->printTerm(pt2) << std::endl;
-  }
+          << logic->printTerm(expr_bv) << std::endl;
 #endif
 
-  bitblaster->bindCUFToBV(pt1, pt2); // (PTRef cuf_tr, PTRef bv_tr)
-
-  converted_bitblasted_exprs[expr.hash()] = pt2;
+        bitblaster->bindCUFToBV(pt1, expr_bv); // (PTRef cuf_tr, PTRef bv_tr)
+        converted_bitblasted_exprs[expr.hash()] = expr_bv;
+  }
 }
 
 void getVarsInExpr(exprt& e, std::set<exprt>& vars)
@@ -1049,13 +1050,11 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
 
     // do binding for lhs
 
-    PTRef lhs = literals[convert(exprs[i].operands()[0]).var_no()];
-    if (!bitblaster->isBound(lhs)) 
-    {
-        PTRef lhs_bv = convert_bv(exprs[i].operands()[0]);
-        bindBB(exprs[i].operands()[0], lhs, lhs_bv);        
+    const exprt lhs_expr = exprs[i].operands()[0];
+    if(lhs_expr.id() == ID_symbol){
+        PTRef lhs = literals[convert(lhs_expr).var_no()];
+        bindBB(lhs_expr, lhs);
     }
-
     
     // keep binding for rhs
 
@@ -1064,13 +1063,7 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
 
     for (auto it = se.begin(); it != se.end(); ++it){
         PTRef rhs = literals[convert(*it).var_no()];
-        
-        // Skip, if we already used it as "read" once
-        if (!bitblaster->isBound(rhs))
-        {
-            PTRef rhs_bv = convert_bv(*it);
-            bindBB(*it, rhs, rhs_bv);
-        }
+        bindBB(*it, rhs);
     }
     
     PTRef lp = convert_bv(exprs[i]);
@@ -1123,7 +1116,6 @@ bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set
         if (refined.find(i) != refined.end()) continue;
         refine_ce_one_iter(exprs, i);
     }
-
     bitblaster->notifyEqualities();
 
     return solve();

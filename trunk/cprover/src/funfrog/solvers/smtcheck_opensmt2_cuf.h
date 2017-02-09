@@ -78,7 +78,7 @@ protected:
 
   map<size_t, PTRef> converted_bitblasted_exprs;
   
-  void bindBB(const exprt& expr, PTRef pt1, PTRef pt2);
+  void bindBB(const exprt& expr, PTRef pt1);
 
   void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
 
