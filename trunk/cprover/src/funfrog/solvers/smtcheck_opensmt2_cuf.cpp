@@ -12,10 +12,10 @@ Author: Grigory Fedyukovich
 
 //#define SMT_DEBUG
 //#define DEBUG_SMT_BB
+//#define DEBUG_SMT2SOLVER
 
 void smtcheck_opensmt2t_cuf::initializeSolver()
 {
-//  osmt = new Opensmt(opensmt_logic::qf_cuf, options.get_unsigned_int_option("bitwidth"));
   osmt = new Opensmt(opensmt_logic::qf_cuf, bitwidth);
   logic = &(osmt->getCUFLogic());
   uflogic = &(osmt->getCUFLogic());
@@ -55,7 +55,6 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv()
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 {
-    //std::cout << "Creating new var name " << bv_name << std::endl;
     return bvlogic->mkBVNumVar(name);
 }
 
@@ -132,7 +131,10 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
             ptl = get_bv_const(0);
         } else {
             std::string str = expr.print_number_2smt();
-            if ((str.compare("inf") == 0) || (str.compare("-inf") == 0)) 
+            if ((str.compare("inf") == 0) || (str.compare("-inf") == 0) || 
+                    (str.compare("4294967295") == 0) ||
+                    (str.compare("18446744073709551615") == 0)) // From unwind option
+                    // KE: there will be more magic numbers, if get these, add it here
             {
                 // No inf values in toy models!
                 if ((bitwidth != 32) && (bitwidth != 64) && (bitwidth != 128)) {
@@ -242,8 +244,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         
         ptl = unsupported2var_bv(); // stub for now 
         // KE: when active, also change the code in lvar
-         
-        
+                 
     } else if ((expr.id() == ID_equal) ||
                (expr.id() == ID_ieee_float_equal) || 
                (expr.id() == ID_assign)) {
@@ -678,7 +679,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
                 PTRef cp = literals[cl.var_no()];
                 assert(cp != PTRef_Undef);
                 args.push(cp);
-#ifdef DEBUG_SMT_LRA
+#ifdef DEBUG_SMT2SOLVER
                 char *s = logic->printTerm(cp);
                 cout << "; On inner iteration " << i
                      << " Op to command is var no " << cl.var_no()
@@ -716,6 +717,11 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
              (expr.id() == ID_floatbv_plus) ||
              (expr.id() == ID_floatbv_minus) ||
              (expr.id() == ID_floatbv_mult) ||
+             (expr.id() == ID_and) ||
+             (expr.id() == ID_or) ||
+             (expr.id() == ID_bitand) ||
+             (expr.id() == ID_bitor) ||
+             (expr.id() == ID_bitxor) ||
              (expr.id() == ID_ashr) ||   
              (expr.id() == ID_lshr) ||
              (expr.id() == ID_shr) ||
@@ -731,7 +737,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ptl = logic->mkEq(args);
         } else if (expr.id()==ID_if) {
             ptl = logic->mkIte(args);
-#ifdef DEBUG_SMT_LRA
+#ifdef DEBUG_SMT2SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)), logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
         } else if (expr.id() == ID_ifthenelse) {
@@ -875,13 +881,23 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
     } else if (id == ID_floatbv_mult) {
         ptl = uflogic->mkCUFTimes(args_current);
     } else if (id == ID_shl) {
-        ptl = uflogic->mkCUFLshift(args);
+        ptl = uflogic->mkCUFLshift(args_current);
     } else if (id == ID_shr) {
-        ptl = uflogic->mkCUFLRshift(args); 
+        ptl = uflogic->mkCUFLRshift(args_current); 
     } else if (id == ID_lshr) {
-        ptl = uflogic->mkCUFLRshift(args); 
+        ptl = uflogic->mkCUFLRshift(args_current); 
     } else if (id == ID_ashr) {
-        ptl = uflogic->mkCUFARshift(args);     
+        ptl = uflogic->mkCUFARshift(args_current);   
+    } else if (id == ID_and) {
+        ptl = logic->mkAnd(args_current);
+    } else if (id == ID_or) {
+        ptl = logic->mkOr(args_current);
+    } else if (id == ID_bitand) {
+        ptl = uflogic->mkCUFBwAnd(args_current);
+    } else if (id == ID_bitxor) {
+        ptl = uflogic->mkCUFBwXor(args_current); 
+    } else if (id == ID_bitor) {
+        ptl = uflogic->mkCUFBwOr(args_current);                 
     } else {
         assert(0); // need to add the case!
     }
