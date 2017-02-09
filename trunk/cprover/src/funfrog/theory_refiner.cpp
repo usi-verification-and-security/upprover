@@ -121,6 +121,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   report_failure();
               } else {
                   status() << endl << "Custom refinement successful" << endl;
+                  status() << "(" << exprs_ids.size() << " / "
+                                  << exprs.size()  << " expressions bit-blasted)" << endl;
                   status() << "ASSERTION HOLDS" << eom;
                   report_success();
               }
@@ -133,6 +135,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   report_failure();
               } else {
                   status() << endl << "Naive refinement successful" << endl;
+                  status() << "(" << exprs.size() << " / "
+                                  << exprs.size()  << " expressions bit-blasted)" << endl;
                   status() << "ASSERTION HOLDS" << eom;
                   report_success();
               }
@@ -140,13 +144,11 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
               status() << "(driven by iterative CE-analysis)" << endl << eom;
 
-              unsigned iter = 0;
-
               while (true){
 
-                  iter++;
                   // local CUF solver
-                  smtcheck_opensmt2t_cuf* decider2 = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"));
+                  smtcheck_opensmt2t_cuf* decider2 =
+                          new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"));
 
                   error_trace.build_goto_trace_formula(equation,
                         *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
@@ -155,18 +157,23 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   int spur = decider2->check_ce(exprs, refined);
 
                   if (refined.find(spur) == refined.end() && spur >= 0){
-                      if (decider->refine_ce_solo(exprs, spur)){
-                          refined.insert(spur);
-                      } else {
+                      refined.insert(spur);
+                      if (!decider->refine_ce_solo(exprs, spur)){
                           status() << endl << "Refinement successful" << endl;
-                          status() << "(" << iter << " counter-examples checked)" << endl;
-                          status() << "ASSERTION HOLDS" << eom;
+                          status() << "(" << refined.size() << " / "
+                                          << exprs.size()  << " expressions bit-blasted)" << endl;
+                          status() << "Command-line options to double-check: --theoref --custom ";
+                          for (auto it = refined.begin(); it != refined.end(); ++it){
+                              status() << *it << ",";
+                          }
+                          status() << endl << "ASSERTION HOLDS" << eom;
                           report_success();
                           break;
                       }
                   } else /* if (decider->force_refine_ce(exprs, refined) )*/{ // TODO: uncomment
                       status() << endl << "Obtained counter-examples are refined" << endl;
-                      status() << "(" << iter << " in total)" << endl;
+                      status() << "(" << refined.size() << " / "
+                                      << exprs.size()  << " expressions bit-blasted)" << endl;
                       status() << "ASSERTION DOES NOT HOLD" << eom;
                       report_failure();
                       break;
