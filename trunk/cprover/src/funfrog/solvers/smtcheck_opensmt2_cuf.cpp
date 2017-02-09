@@ -329,12 +329,17 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             ptl = (args.size() > 2) ?
                 split_exprs_bv(expr.id(), args) : bvlogic->mkBVLshift(args);
         
-        } else if (expr.id() == ID_shr ||
+        } else if (expr.id() == ID_shr || // KE: not sure about shr
                     expr.id() == ID_lshr) {
             
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVRshift(args); 
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVLRshift(args); 
         
+        } else if (expr.id() == ID_ashr) {
+            
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVARshift(args);
+            
         } else if (expr.id() == ID_ge ||
                     expr.id() ==  ID_le ||
                     expr.id() ==  ID_gt ||
@@ -440,10 +445,14 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
 
         ptl = bvlogic->mkBVLshift(args);
 
-    } else if (id == ID_shr || id == ID_lshr) {
+    } else if (id == ID_shr || id == ID_lshr) { // KE: not sure about shr
 
-        ptl = bvlogic->mkBVRshift(args); 
+        ptl = bvlogic->mkBVLRshift(args); 
             
+    } else if (id == ID_ashr) {
+
+        ptl = bvlogic->mkBVARshift(args); 
+                    
     } else {
         
         assert(0); // need to add the case!
@@ -707,6 +716,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
              (expr.id() == ID_floatbv_plus) ||
              (expr.id() == ID_floatbv_minus) ||
              (expr.id() == ID_floatbv_mult) ||
+             (expr.id() == ID_ashr) ||   
              (expr.id() == ID_lshr) ||
              (expr.id() == ID_shr) ||
              (expr.id() == ID_shl)
@@ -782,10 +792,12 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ptl = uflogic->mkCUFTimes(args);
         } else if (expr.id() == ID_shl) {
             ptl = uflogic->mkCUFLshift(args);
-        } else if (expr.id() == ID_shr) {
-            ptl = uflogic->mkCUFRshift(args); 
+        } else if (expr.id() == ID_shr) { // KE: Not sure about shr
+            ptl = uflogic->mkCUFLRshift(args); 
         } else if (expr.id() == ID_lshr) {
-            ptl = uflogic->mkCUFRshift(args); 
+            ptl = uflogic->mkCUFLRshift(args); 
+        } else if (expr.id() == ID_ashr) {
+            ptl = uflogic->mkCUFARshift(args);     
         } else if (expr.id() == ID_byte_extract_little_endian) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO                 
@@ -865,9 +877,11 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
     } else if (id == ID_shl) {
         ptl = uflogic->mkCUFLshift(args);
     } else if (id == ID_shr) {
-        ptl = uflogic->mkCUFRshift(args); 
+        ptl = uflogic->mkCUFLRshift(args); 
     } else if (id == ID_lshr) {
-        ptl = uflogic->mkCUFRshift(args);    
+        ptl = uflogic->mkCUFLRshift(args); 
+    } else if (id == ID_ashr) {
+        ptl = uflogic->mkCUFARshift(args);     
     } else {
         assert(0); // need to add the case!
     }
