@@ -71,9 +71,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   smt_assertion_sumt prop = smt_assertion_sumt(summarization_context,
           equation, message_handler, max_memory_used);
 
-  symex.prepare_SSA(assertion);
+  bool end = symex.prepare_SSA(assertion);
 
-  bool end = prop.assertion_holds(assertion, ns,
+  if (!end) end = prop.assertion_holds(assertion, ns,
           *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
           *(dynamic_cast<interpolating_solvert *> (decider)));
 
