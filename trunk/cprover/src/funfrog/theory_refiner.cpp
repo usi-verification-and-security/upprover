@@ -150,11 +150,12 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   smtcheck_opensmt2t_cuf* decider2 =
                           new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"));
 
-                  error_trace.build_goto_trace_formula(equation,
-                        *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
-                        *(dynamic_cast<smtcheck_opensmt2t_cuf *> (decider2)));
+                  std::map<const exprt, int> model;
 
-                  int spur = decider2->check_ce(exprs, refined);
+                  error_trace.build_goto_trace_formula(exprs, model,
+                        *(dynamic_cast<smtcheck_opensmt2t *> (decider)));
+
+                  int spur = decider2->check_ce(exprs, model, refined);
 
                   if (refined.find(spur) == refined.end() && spur >= 0){
                       refined.insert(spur);

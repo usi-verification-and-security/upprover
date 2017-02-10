@@ -55,7 +55,7 @@ public:
 
   bool convert_bv_eq_ite(const exprt &expr, PTRef& ptl);
 
-  int check_ce(std::vector<exprt>& exprs, std::set<int>& refined);
+  int check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model, std::set<int>& refined);
 
   bool refine_ce_solo(std::vector<exprt>& exprs, int i); // refine only exprs[i]
 
@@ -65,7 +65,7 @@ public:
 
   PTRef split_exprs(irep_idt id, vec<PTRef>& args);
   PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
-  
+
 protected:
   BVLogic* bvlogic; // Extra var, inner use only - Helps to avoid dynamic cast!
   CUFLogic* uflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
@@ -92,4 +92,14 @@ protected:
 
 };
 
+inline void getVarsInExpr(exprt& e, std::set<exprt>& vars)
+{
+  if(e.id()==ID_symbol){
+    vars.insert(e);
+  } else if (e.has_operands()){
+    for (unsigned int i = 0; i < e.operands().size(); i++){
+      getVarsInExpr(e.operands()[i], vars);
+    }
+  }
+}
 #endif
