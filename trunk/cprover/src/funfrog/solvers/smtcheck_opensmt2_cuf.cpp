@@ -11,7 +11,7 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2_cuf.h"
 
 //#define SMT_DEBUG
-//#define DEBUG_SMT_BB
+#define DEBUG_SMT_BB
 //#define DEBUG_SMT2SOLVER
 
 void smtcheck_opensmt2t_cuf::initializeSolver()
@@ -318,7 +318,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         } else if (expr.id() ==  ID_bitxor) {
 
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : patchingBwXor(args[0], args[1],true);
+                split_exprs_bv(expr.id(), args) : bvlogic->mkBVBwXor(args);
 
         } else if (expr.id() ==  ID_bitor) {
 
@@ -436,7 +436,7 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
 
     } else if (id ==  ID_bitxor) {
 
-        ptl = patchingBwXor(args_current[0], args_current[1],true);
+        ptl = bvlogic->mkBVBwXor(args_current);
         
     } else if (id ==  ID_bitor) {
 
@@ -752,7 +752,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (expr.id() == ID_bitand) {
             ptl = uflogic->mkCUFBwAnd(args);
         } else if (expr.id() == ID_bitxor) {
-            ptl = ptl = patchingBwXor(args[0], args[1],false); 
+            ptl = uflogic->mkCUFBwXor(args); 
         } else if (expr.id() == ID_bitor) {
             ptl = uflogic->mkCUFBwOr(args);             
         } else if (expr.id() == ID_not) {
@@ -895,7 +895,7 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
     } else if (id == ID_bitand) {
         ptl = uflogic->mkCUFBwAnd(args_current);
     } else if (id == ID_bitxor) {
-        ptl = ptl = patchingBwXor(args_current[0], args_current[1],false); 
+        ptl = uflogic->mkCUFBwXor(args_current); 
     } else if (id == ID_bitor) {
         ptl = uflogic->mkCUFBwOr(args_current);                 
     } else {
