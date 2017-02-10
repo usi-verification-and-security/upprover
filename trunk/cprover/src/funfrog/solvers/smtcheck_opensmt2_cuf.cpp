@@ -608,6 +608,7 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
     } else if (expr.is_boolean() && is_number((expr.operands())[0].type())) {
         // Cast from Real to Boolean - Add
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
+        // TODO: to cuf, look many locations!
         PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], uflogic->mkCUFConst(0)));
         l = push_variable(ptl); // Keeps the new literal + index it
     } else {
@@ -732,6 +733,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             // KE:  patching code - check when it is fixed in OpenSMT2 and disable it here.
             ptl = split_exprs(expr.id(), args);
         } else if (expr.id()==ID_notequal) {
+            // TODO: to cuf, look many locations!
             ptl = logic->mkNot(logic->mkEq(args));
         } else if (expr.id() == ID_equal) {
             ptl = logic->mkEq(args);
@@ -746,9 +748,11 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
         } else if (expr.id() == ID_and) {
-            ptl = uflogic->mkCUFLand(args); // KE: with new cuf interface
+            // TODO: to cuf
+            ptl = logic->mkAnd(args); 
         } else if (expr.id() == ID_or) {
-            ptl = uflogic->mkCUFLor(args); // KE: with new cuf interface
+            // TODO: to cuf
+            ptl = logic->mkOr(args);
         } else if (expr.id() == ID_bitand) {
             ptl = uflogic->mkCUFBwAnd(args);
         } else if (expr.id() == ID_bitxor) {
@@ -756,6 +760,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (expr.id() == ID_bitor) {
             ptl = uflogic->mkCUFBwOr(args);             
         } else if (expr.id() == ID_not) {
+            // TODO: to cuf, look many locations!
             ptl = logic->mkNot(args);
         } else if (expr.id() == ID_implies) {
             ptl = logic->mkImpl(args);
@@ -889,9 +894,11 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
     } else if (id == ID_ashr) {
         ptl = uflogic->mkCUFARshift(args_current);   
     } else if (id == ID_and) {
-        ptl = uflogic->mkCUFLand(args_current); // KE: with new cuf interface
-    } else if (id == ID_or) { 
-        ptl = uflogic->mkCUFLor(args_current); // KE: with new cuf interface
+        // TODO: to cuf
+        ptl = logic->mkAnd(args_current); 
+    } else if (id == ID_or) {
+        // TODO: to cuf
+        ptl = logic->mkOr(args_current);
     } else if (id == ID_bitand) {
         ptl = uflogic->mkCUFBwAnd(args_current);
     } else if (id == ID_bitxor) {
