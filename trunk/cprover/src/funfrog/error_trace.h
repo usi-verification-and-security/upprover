@@ -38,9 +38,9 @@ public:
 	  smtcheck_opensmt2t_lra &decider2);
 
 	void build_goto_trace_formula (
-	  smt_partitioning_target_equationt &target,
-	  smtcheck_opensmt2t &decider,
-	  smtcheck_opensmt2t_cuf &decider2);
+	  std::vector<exprt>& exprs,
+	  std::map<const exprt, int>& model,
+	  smtcheck_opensmt2t &decider);
 
 	void show_goto_trace(
 	  smtcheck_opensmt2t &decider,

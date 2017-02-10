@@ -1017,39 +1017,48 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
   }
 }
 
-void getVarsInExpr(exprt& e, std::set<exprt>& vars)
+int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
+                     std::map<const exprt, int>& model, std::set<int>& refined, std::set<int>& weak)
 {
-  if(e.id()==ID_symbol){
-    vars.insert(e);
-  } else if (e.has_operands()){
-    for (unsigned int i = 0; i< e.operands().size();i++){
-      getVarsInExpr(e.operands()[i], vars);
-    }
-  }
-}
-
-int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::set<int>& refined)
-{
-#ifdef DEBUG_SMT_BB  
-    cout << "Check ce for " <<exprs.size() << " terms " << std::endl;
-#endif
-    for (int i = 0; i < top_level_formulas.size(); i++){
 #ifdef DEBUG_SMT_BB
-        cout << "  " << logic->printTerm(top_level_formulas[i]) << "\n";
+    cout << "Check CE for " <<exprs.size() << " terms " << std::endl;
 #endif
-        BVRef tmp;
-        bitblaster->insertEq(top_level_formulas[i], tmp);
-    }
-    mainSolver->push();
 
     // GF: sometimes, it makes sense to iterate over exprs in the reverse order:
     //     for (int i = exprs.size() - 1; i >= 0; i--)
     //     however, it causes some inconsistencies (SAFE / BUG),
     //     probably, because of binding.. need to debug it when time permits...
 
+    std::set<exprt> encoded_vars;
+
     for (int i = 0; i < exprs.size(); i++){
 
         if (refined.find(i) != refined.end()) continue;
+
+        std::set<exprt> cur_vars;
+        getVarsInExpr(exprs[i], cur_vars);
+
+        // encode only the necessary part of the counter-example here
+        for (auto it = cur_vars.begin(); it != cur_vars.end(); ++it)
+        {
+            if (encoded_vars.find(*it) != encoded_vars.end()) continue;
+
+#ifdef DEBUG_SMT_BB
+            if (model.find(*it) == model.end()) {
+                cout << "No model for " << it->get("identifier") << "\n";
+                assert(0);
+            }
+#endif
+            PTRef ce_term = bvlogic->mkBVEq(convert_bv(*it), get_bv_const(model[*it]));
+            BVRef tmp;
+            bitblaster->insertEq(ce_term, tmp);
+            encoded_vars.insert(*it);
+#ifdef DEBUG_SMT_BB
+            cout <<  "  CE value: " << logic->printTerm(ce_term) << endl;
+#endif
+        }
+
+        // encode the CUF-expression we want to validate w.r.t. the CE
 
         PTRef lp = convert_bv(exprs[i]);
 
@@ -1074,8 +1083,9 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::set<int>& r
         }
 
         if (s_False == mainSolver->check()){
-            cout << "\nWeak statement encoding found" << endl;
-            return i;
+            cout << "Weak statement encoding found" << endl;
+            weak.insert(i);
+            //return i;
         }
     }
     return -1;
@@ -1133,13 +1143,13 @@ bool smtcheck_opensmt2t_cuf::refine_ce_solo(std::vector<exprt>& exprs, int i)
     return solve();
 }
 
-bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::vector<int>& is)
+bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::set<int>& is)
 {
     bool res = true;
-    for (int i = 0; i < is.size(); i++){
-        if (exprs.size() <= is[i]) continue;
+    for (auto it = is.begin(); it != is.end(); ++it){
+        if (exprs.size() <= *it) continue;
 
-        refine_ce_one_iter(exprs, is[i]);
+        refine_ce_one_iter(exprs, *it);
         res = false;
     }
 

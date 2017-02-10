@@ -140,7 +140,7 @@ void error_tracet::build_goto_trace (
 }
 
 /**
- * LRA-version of the CE-formula.
+ * LRA-version of the CE-formula (obsolete).
  * analogous to the CUF-version (see next method)
  * used for debugging / comparison with CUF-version
  * (not in the theory-refinement algorithm)
@@ -245,101 +245,59 @@ void error_tracet::build_goto_trace_formula (
  * used in the theory-refinement algorithm
  */
 void error_tracet::build_goto_trace_formula (
-  smt_partitioning_target_equationt &target,
-  smtcheck_opensmt2t &decider,
-  smtcheck_opensmt2t_cuf &decider2)
+  std::vector<exprt>& exprs,
+  std::map<const exprt, int>& model,
+  smtcheck_opensmt2t &decider)
 {
-  const SSA_steps_orderingt& SSA_steps = target.get_steps_exec_order();
+    std::set<exprt> vars;
+    std::map<const irep_idt, std::vector<exprt>*> non_interp_classes;
+    int max_interp_value = 0;
 
-  std::map<const irep_idt, std::vector<PTRef>*> non_interp_classes;
-  int max_interp_value = 0;
-
-  for(SSA_steps_orderingt::const_iterator
-      it=SSA_steps.begin();
-      it!=SSA_steps.end();
-      it++)
-  {
-    const symex_target_equationt::SSA_stept &SSA_step=**it;
-
-    if(SSA_step.is_assignment() &&
-       SSA_step.assignment_type==symex_target_equationt::HIDDEN)
-      continue;
-
-    std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
-    	continue;
-    
-    if (str.find("__CPROVER_")!=std::string::npos)
-    	continue;
-
-    if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
-        continue;
-    
-    if(SSA_step.ssa_lhs.id()==ID_symbol &&
-       str.find("#return_value!")!=std::string::npos)
-        continue;
-    
-
-    if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
-        continue;
-
-    if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
-        continue;
-
-    if(SSA_step.ssa_full_lhs.is_not_nil())
+    for (auto it = exprs.begin(); it != exprs.end(); ++it)
     {
-    	exprt val;
-        if(is_index_member_symbol(SSA_step.ssa_full_lhs)){
-            val=decider.get_value(SSA_step.ssa_full_lhs);
-        }
-        else {
-            val=decider.get_value(SSA_step.ssa_lhs);
-        }
+        getVarsInExpr(*it, vars);
+    }
+
+    for (auto it = vars.begin(); it != vars.end(); ++it)
+    {
+        exprt val = decider.get_value(*it);
 
         const irep_idt val_val = val.get(ID_value);
         if (val_val.size() == 0) continue;
 
-        PTRef ptr;
+        int ptr;
         if (val_val[0] == 'n'){
-          int interp_value = atoi(val_val.c_str() + 1);
-		// store the max value among n-values (will be used after the loop):
-          if (interp_value > max_interp_value) max_interp_value = interp_value;
-          ptr = decider2.get_bv_const(interp_value);
+            ptr = atoi(val_val.c_str() + 1);
+		    // store the max value among n-values (will be used after the loop):
+            if (ptr > max_interp_value) max_interp_value = ptr;
         } else if (val_val[0] == 'a'){
-          ptr = decider2.get_bv_const(777); // value just for fun
+            ptr = 777; // value just for fun
         } else if (val_val[0] == 'u'){
-          if (non_interp_classes.find(val_val) == non_interp_classes.end()){
-            non_interp_classes[val_val] = new std::vector<PTRef>();
-          }
-          non_interp_classes[val_val]->push_back(decider2.convert_bv(SSA_step.ssa_lhs));
-		// the interpretations for u-values will be computed after this loop
-          continue;
+            if (non_interp_classes.find(val_val) == non_interp_classes.end()){
+                non_interp_classes[val_val] = new std::vector<exprt>();
+            }
+            non_interp_classes[val_val]->push_back(*it);
+            // the interpretations for u-values will be computed after this loop
+            continue;
         } else if (val_val == "1"){
-          ptr = decider2.get_bv_const(1);
+            ptr = 1;
         } else if (val_val == "0"){
-          ptr = decider2.get_bv_const(0);
+            ptr = 0;
         } else {
-          int interp_value = atoi(val.get(ID_value).c_str());
-          ptr = decider2.get_bv_const(interp_value);
+            ptr = atoi(val.get(ID_value).c_str());
         }
 
-        decider2.new_partition();
-        decider2.set_equal_bv(ptr, decider2.convert_bv(SSA_step.ssa_lhs));
-        decider2.close_partition();
+        model[*it] = ptr;
     }
-  }
 
-      // computing interpretations for u-values:
-  for (std::map<const irep_idt, std::vector<PTRef>*>::iterator
-      it=non_interp_classes.begin(); it!=non_interp_classes.end(); ++it){
-    PTRef l1 = decider2.get_bv_const(++max_interp_value);
-    for (unsigned int i = 0; i < it->second->size(); i++){
-      decider2.new_partition();
-      decider2.set_equal_bv(l1, it->second->at(i));
-      decider2.close_partition();
+    // computing interpretations for u-values:
+    for (std::map<const irep_idt, std::vector<exprt>*>::iterator
+              it=non_interp_classes.begin(); it!=non_interp_classes.end(); ++it){
+        int l1 = ++max_interp_value;
+        for (unsigned int i = 0; i < it->second->size(); i++){
+            model[it->second->at(i)] = l1;
+        }
     }
-  }
-  cout << "CE-formula constructed\n";
 }
 
 /*******************************************************************\
