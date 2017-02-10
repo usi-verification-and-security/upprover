@@ -11,7 +11,7 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2_cuf.h"
 
 //#define SMT_DEBUG
-#define DEBUG_SMT_BB
+//#define DEBUG_SMT_BB
 //#define DEBUG_SMT2SOLVER
 
 void smtcheck_opensmt2t_cuf::initializeSolver()
@@ -746,9 +746,9 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
         } else if (expr.id() == ID_and) {
-            ptl = logic->mkAnd(args);
+            ptl = uflogic->mkCUFLand(args); // KE: with new cuf interface
         } else if (expr.id() == ID_or) {
-            ptl = logic->mkOr(args);
+            ptl = uflogic->mkCUFLor(args); // KE: with new cuf interface
         } else if (expr.id() == ID_bitand) {
             ptl = uflogic->mkCUFBwAnd(args);
         } else if (expr.id() == ID_bitxor) {
@@ -889,9 +889,9 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
     } else if (id == ID_ashr) {
         ptl = uflogic->mkCUFARshift(args_current);   
     } else if (id == ID_and) {
-        ptl = logic->mkAnd(args_current);
-    } else if (id == ID_or) {
-        ptl = logic->mkOr(args_current);
+        ptl = uflogic->mkCUFLand(args_current); // KE: with new cuf interface
+    } else if (id == ID_or) { 
+        ptl = uflogic->mkCUFLor(args_current); // KE: with new cuf interface
     } else if (id == ID_bitand) {
         ptl = uflogic->mkCUFBwAnd(args_current);
     } else if (id == ID_bitxor) {
@@ -1118,9 +1118,9 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
     
     PTRef lp = convert_bv(exprs[i]);
 
-//#ifdef DEBUG_SMT_BB
+#ifdef DEBUG_SMT_BB
     cout <<  "  Refining [" << i << "]: " << logic->printTerm(lp) << endl;
-//#endif
+#endif
 
     BVRef tmp;
     if (bvlogic->isBVLor(lp)){
@@ -1171,23 +1171,3 @@ bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set
     return solve();
 }
 
-PTRef smtcheck_opensmt2t_cuf::patchingBwXor(PTRef a, PTRef b, bool is2bb_step) 
-{
-    PTRef ptl;
-    if (is2bb_step)
-    {
-        PTRef ptl1 = bvlogic->mkBVBwXor(a,b);
-        PTRef ptl2 = bvlogic->mkBVBwAnd(a,b);
-        PTRef ptl3 = bvlogic->mkBVNot(ptl2);
-        ptl = bvlogic->mkBVBwAnd(ptl1,ptl3);        
-    }
-    else
-    {
-        PTRef ptl1 = uflogic->mkCUFBwOr(a,b);
-        PTRef ptl2 = uflogic->mkCUFBwAnd(a,b);
-        PTRef ptl3 = logic->mkNot(ptl2);
-        ptl = uflogic->mkCUFBwAnd(ptl1,ptl3);
-    }
-    
-    return ptl;
-}

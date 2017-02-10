@@ -86,8 +86,6 @@ protected:
 
   PTRef unsupported2var_bv(); // for BVs
   
-  PTRef patchingBwXor(PTRef a, PTRef b, bool is2bb_step); // Temp patching
-  
   PTRef lconst_bv(const exprt &expr); // For bv only!
   
   virtual void initializeSolver();
