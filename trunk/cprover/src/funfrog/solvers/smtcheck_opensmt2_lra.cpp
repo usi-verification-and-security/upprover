@@ -385,6 +385,8 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             ptl = logic->mkAnd(args);
         } else if(expr.id() == ID_or) {
             ptl = logic->mkOr(args);
+        } else if(expr.id() == ID_xor) {
+            ptl = logic->mkXor(args);      
         } else if(expr.id() == ID_not) {
             ptl = logic->mkNot(args);
         } else if(expr.id() == ID_implies) {

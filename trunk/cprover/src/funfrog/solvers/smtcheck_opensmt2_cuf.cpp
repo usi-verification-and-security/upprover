@@ -318,7 +318,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         } else if (expr.id() ==  ID_bitxor) {
 
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVBwXor(args);
+                split_exprs_bv(expr.id(), args) : patchingBwXor(args[0], args[1],true);
 
         } else if (expr.id() ==  ID_bitor) {
 
@@ -432,27 +432,27 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
   
     } else if (id ==  ID_bitand) {
 
-        ptl = bvlogic->mkBVBwAnd(args);
+        ptl = bvlogic->mkBVBwAnd(args_current);
 
     } else if (id ==  ID_bitxor) {
 
-        ptl = bvlogic->mkBVBwXor(args);
+        ptl = patchingBwXor(args_current[0], args_current[1],true);
         
     } else if (id ==  ID_bitor) {
 
-        ptl = bvlogic->mkBVBwOr(args);
+        ptl = bvlogic->mkBVBwOr(args_current);
         
     } else if (id == ID_shl) {
 
-        ptl = bvlogic->mkBVLshift(args);
+        ptl = bvlogic->mkBVLshift(args_current);
 
     } else if (id == ID_shr || id == ID_lshr) { // KE: not sure about shr
 
-        ptl = bvlogic->mkBVLRshift(args); 
+        ptl = bvlogic->mkBVLRshift(args_current); 
             
     } else if (id == ID_ashr) {
 
-        ptl = bvlogic->mkBVARshift(args); 
+        ptl = bvlogic->mkBVARshift(args_current); 
                     
     } else {
         
@@ -752,7 +752,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (expr.id() == ID_bitand) {
             ptl = uflogic->mkCUFBwAnd(args);
         } else if (expr.id() == ID_bitxor) {
-            ptl = uflogic->mkCUFBwXor(args); 
+            ptl = ptl = patchingBwXor(args[0], args[1],false); 
         } else if (expr.id() == ID_bitor) {
             ptl = uflogic->mkCUFBwOr(args);             
         } else if (expr.id() == ID_not) {
@@ -895,7 +895,7 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
     } else if (id == ID_bitand) {
         ptl = uflogic->mkCUFBwAnd(args_current);
     } else if (id == ID_bitxor) {
-        ptl = uflogic->mkCUFBwXor(args_current); 
+        ptl = ptl = patchingBwXor(args_current[0], args_current[1],false); 
     } else if (id == ID_bitor) {
         ptl = uflogic->mkCUFBwOr(args_current);                 
     } else {
@@ -1159,4 +1159,25 @@ bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set
     bitblaster->notifyEqualities();
 
     return solve();
+}
+
+PTRef smtcheck_opensmt2t_cuf::patchingBwXor(PTRef a, PTRef b, bool is2bb_step) 
+{
+    PTRef ptl;
+    if (is2bb_step)
+    {
+        PTRef ptl1 = bvlogic->mkBVBwXor(a,b);
+        PTRef ptl2 = bvlogic->mkBVBwAnd(a,b);
+        PTRef ptl3 = bvlogic->mkBVNot(ptl2);
+        ptl = bvlogic->mkBVBwAnd(ptl1,ptl3);        
+    }
+    else
+    {
+        PTRef ptl1 = uflogic->mkCUFBwOr(a,b);
+        PTRef ptl2 = uflogic->mkCUFBwAnd(a,b);
+        PTRef ptl3 = logic->mkNot(ptl2);
+        ptl = uflogic->mkCUFBwAnd(ptl1,ptl3);
+    }
+    
+    return ptl;
 }
