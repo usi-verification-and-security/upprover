@@ -1018,7 +1018,7 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
 }
 
 int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
-                     std::map<const exprt, int>& model, std::set<int>& refined)
+                     std::map<const exprt, int>& model, std::set<int>& refined, std::set<int>& weak)
 {
 #ifdef DEBUG_SMT_BB
     cout << "Check CE for " <<exprs.size() << " terms " << std::endl;
@@ -1083,8 +1083,9 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
         }
 
         if (s_False == mainSolver->check()){
-            cout << "\nWeak statement encoding found" << endl;
-            return i;
+            cout << "Weak statement encoding found" << endl;
+            weak.insert(i);
+            //return i;
         }
     }
     return -1;
@@ -1142,13 +1143,13 @@ bool smtcheck_opensmt2t_cuf::refine_ce_solo(std::vector<exprt>& exprs, int i)
     return solve();
 }
 
-bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::vector<int>& is)
+bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::set<int>& is)
 {
     bool res = true;
-    for (int i = 0; i < is.size(); i++){
-        if (exprs.size() <= is[i]) continue;
+    for (auto it = is.begin(); it != is.end(); ++it){
+        if (exprs.size() <= *it) continue;
 
-        refine_ce_one_iter(exprs, is[i]);
+        refine_ce_one_iter(exprs, *it);
         res = false;
     }
 

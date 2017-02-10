@@ -17,7 +17,7 @@ void theory_refinert::initialize()
   omega.setup_default_precision(ALL_SUBSTITUTING);
 }
 
-void get_numbers(std::vector<int>& nums, std::string set){
+void get_numbers(std::set<int>& nums, std::string set){
 
   int length=set.length();
 
@@ -25,7 +25,7 @@ void get_numbers(std::vector<int>& nums, std::string set){
   {
     std::string::size_type next=set.find(",", idx);
     std::string val=set.substr(idx, next-idx);
-    nums.push_back(atoi(val.c_str()));
+    nums.insert(stoi(val));
 
     if(next==std::string::npos) break;
     idx=next;
@@ -103,7 +103,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
           status() << endl << "Trying to refine with CUF+BitBlast" << endl;
 
-          std::vector<int> exprs_ids;
+          std::set<int> exprs_ids;
           get_numbers(exprs_ids, options.get_option("custom"));
 
           bool refine_all = options.get_bool_option("force");
@@ -155,11 +155,15 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   error_trace.build_goto_trace_formula(exprs, model,
                         *(dynamic_cast<smtcheck_opensmt2t *> (decider)));
 
-                  int spur = decider2->check_ce(exprs, model, refined);
+                  std::set<int> weak;
+                  decider2->check_ce(exprs, model, refined, weak);
 
-                  if (refined.find(spur) == refined.end() && spur >= 0){
-                      refined.insert(spur);
-                      if (!decider->refine_ce_solo(exprs, spur)){
+                  if (weak.size() > 0){
+                      for (auto it = weak.begin(); it != weak.end(); ++it){
+                          refined.insert(*it);
+                      }
+
+                      if (!decider->refine_ce_mul(exprs, weak)){
                           status() << endl << "Refinement successful" << endl;
                           status() << "(" << refined.size() << " / "
                                           << exprs.size()  << " expressions bit-blasted)" << endl;
