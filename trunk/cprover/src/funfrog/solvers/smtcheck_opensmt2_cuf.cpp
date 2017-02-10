@@ -223,6 +223,10 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         
         ptl = unsupported2var_bv(); // stub for now
 
+    } else if (expr.id() == ID_union) {
+        
+        ptl = unsupported2var_bv(); // stub for now
+        
     } else if (expr.id() == ID_member) {
         
         ptl = unsupported2var_bv(); // stub for now
@@ -244,7 +248,12 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         
         ptl = unsupported2var_bv(); // stub for now 
         // KE: when active, also change the code in lvar
-                 
+        
+    } else if (expr.id() == ID_pointer_object) {
+        
+        ptl = unsupported2var_bv(); // stub for now 
+        // KE: when active, also change the code in lvar
+                                  
     } else if ((expr.id() == ID_equal) ||
                (expr.id() == ID_ieee_float_equal) || 
                (expr.id() == ID_assign)) {
@@ -827,6 +836,9 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (expr.id() == ID_array) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO    
+        } else if (expr.id() == ID_union) {
+            ptl = literals[lunsupported2var(expr).var_no()];
+            // KE: TODO              
         } else if (expr.id() == ID_member) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO       
@@ -841,7 +853,9 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             // KE: when active, also change the code in lvar
         } else if (expr.id() == ID_pointer_offset) {
             ptl =literals[lunsupported2var(expr).var_no()];
-            // KE: when active, also change the code in lvar            
+            // KE: when active, also change the code in lvar 
+        } else if (expr.id() == ID_pointer_object) {
+            ptl =literals[lunsupported2var(expr).var_no()];    
         } else {
             cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << endl;
