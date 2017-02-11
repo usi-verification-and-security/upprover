@@ -50,6 +50,11 @@ smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
 PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv()
 {
     const string str = "BV__" + smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
+    
+#ifdef DEBUG_SMT_BB
+        cout << "; IT IS AN UNSUPPORTED VAR " << str << endl;
+#endif   
+        
     return get_bv_var(str.c_str());
 }
 
@@ -70,6 +75,9 @@ void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
 
 bool smtcheck_opensmt2t_cuf::convert_bv_eq_ite(const exprt &expr, PTRef& ptl)
 {
+#ifdef DEBUG_SMT_BB
+        cout << "; IT IS A EQ ITE " << endl;
+#endif   
     assert (expr.id() == ID_equal);
     exprt sing;
     exprt ite;
@@ -130,10 +138,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
             ptl = get_bv_const(0);
         } else {
             std::string str = expr.print_number_2smt();
-            if ((str.compare("inf") == 0) || (str.compare("-inf") == 0) || 
-                    (str.compare("2147483648") == 0) ||
-                    (str.compare("4294967295") == 0) ||
-                    (str.compare("18446744073709551615") == 0)) // From unwind option
+            if ((str.compare("inf") == 0) || (str.compare("-inf") == 0))
                     // KE: there will be more magic numbers, if get these, add it here
             {
                 // No inf values in toy models!
@@ -141,9 +146,16 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
                     cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
                     exit(0);
                 }
-            } 
-            else 
-            {
+                
+                assert(0); // KE: Not sure what to do with it, please show me the case
+            } else if ((str.compare("2147483648") == 0) || /* From unwind option */
+                    (str.compare("4294967295") == 0) ||
+                    (str.compare("18446744073709551615") == 0)) {
+                    // TODO: Fix me - refactor to general code!
+                    // Max numbers for the current presentation
+                    cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+                    exit(0);         
+            } else {
                 long num = stoi(str);
                 if ((num < -max_num || max_num < num))
                 {
@@ -224,7 +236,9 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     PTRef ptl;
     if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol 
             || (expr.id() == ID_typecast && expr.has_operands())) {
-
+#ifdef DEBUG_SMT_BB
+        cout << "; IT IS A VAR" << endl;
+#endif
         if (expr.id() == ID_typecast) {
             ptl = type_cast_bv(expr);
             // KE: moved into the method type_cast_bv
@@ -232,21 +246,21 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         } else {
             ptl = get_bv_var(expr.get("identifier").c_str());
         }
-        PTRef ptrf_cuf;
-        if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
-            literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
-            ptrf_cuf = literals[l.var_no()];
-        } else {
-            // Some bug in saving the terms
-            //assert(0); // TODO: fix
-            
-            literalt l = convert(expr);
-            ptrf_cuf = literals[l.var_no()];
-        }
-        
+#ifdef DEBUG_SMT_BB
+        char* s = logic->printTerm(ptl);
+        cout << "; CREAT A VAR in OPENSMT2 " << s << endl;
+        free(s);
+#endif        
     } else if (expr.id()==ID_constant) {
-        
+#ifdef DEBUG_SMT_BB
+        cout << "; IT IS A CONSTANT " << endl;
+#endif        
         ptl = lconst_bv(expr);
+#ifdef DEBUG_SMT_BB
+        char* s = logic->printTerm(ptl);
+        cout << "; CREAT A CONSTANT in OPENSMT2 " << s << endl;
+        free(s);
+#endif          
         
     } else if (expr.id() == ID_typecast || expr.id() == ID_floatbv_typecast) {
         // KE: TODO, don't know how to do it yet...
@@ -310,30 +324,41 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     } else if ((expr.id() == ID_equal) ||
                (expr.id() == ID_ieee_float_equal) || 
                (expr.id() == ID_assign)) {
-        if (! convert_bv_eq_ite (expr, ptl))
+#ifdef DEBUG_SMT_BB
+            cout << "; IT IS = " << endl;
+#endif         
+        if (!convert_bv_eq_ite (expr, ptl))
             ptl = bvlogic->mkBVEq(
                     convert_bv(expr.operands()[0]),
                     convert_bv(expr.operands()[1]));
 
     } else if (expr.id() == ID_not) {
-
+#ifdef DEBUG_SMT_BB
+            cout << "; IT IS ! " << endl;
+#endif
         ptl = bvlogic->mkBVNot(
                     convert_bv(expr.operands()[0]));
 
     } else if ((expr.id()==ID_notequal) || 
                (expr.id() == ID_ieee_float_notequal)) {
-
+#ifdef DEBUG_SMT_BB
+            cout << "; IT IS != " << endl;
+#endif
         ptl = bvlogic->mkBVNot(
                     bvlogic->mkBVEq(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1])));
         
     } else if (expr.id() == ID_mod) {
-        
+#ifdef DEBUG_SMT_BB
+            cout << "; IT IS A MOD (%) " << endl;
+#endif        
         ptl = bvlogic->mkBVMod(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1]));
     
     } else if ((expr.id() == ID_div) || (expr.id() == ID_floatbv_div)) {
-
+#ifdef DEBUG_SMT_BB
+            cout << "; IT IS A DIV " << endl;
+#endif
         ptl = bvlogic->mkBVDiv(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1]));
     
@@ -351,6 +376,9 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             i++;
         }
 
+#ifdef DEBUG_SMT_BB
+        cout << "; IT IS A " << expr.id().c_str() << endl;
+#endif
         if (expr.id() == ID_if) {
             assert(0);
             // GF: this should be handled by convert_bv_eq_ite.
@@ -456,6 +484,12 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 
         }
     }
+    
+#ifdef DEBUG_SMT_BB
+    char *s = logic->printTerm(ptl);
+    cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    free(s);
+#endif
     
     return ptl;
 }
