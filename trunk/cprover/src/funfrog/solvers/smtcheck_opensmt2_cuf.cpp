@@ -160,6 +160,55 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
     return ptl;
 }
 
+// KE: Got here and this failed? Please use the debug print at the end of this
+// code to know which case you need to add!
+// If not? OpenSMT2 will crash with this error:
+// hifrog: ../../src/common/Alloc.h:64: const T& RegionAllocator<T>::operator[]
+//    (RegionAllocator<T>::Ref) const [with T = unsigned int; 
+//     RegionAllocator<T>::Ref = unsigned int]: Assertion `r < sz' failed.
+PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr) 
+{
+    PTRef ptl;
+      
+#ifdef DEBUG_SMT_BB
+    std::cout << ";;; Start (TYPE_CAST) For " << expr.id() << std::endl;
+#endif    
+    // KE: Take care of type cast - recursion of convert take care of it anyhow
+    // Unless it is constant bool, that needs different code:
+    if (expr.is_boolean() && (expr.operands())[0].is_constant()) {
+        std::string val = extract_expr_str_number((expr.operands())[0]);
+        bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
+#ifdef DEBUG_SMT_BB        
+        std::cout << ";;; IS THIS ZERO? " << val_const_zero << std::endl;
+#endif        
+        ptl = get_bv_const(!val_const_zero);
+    } else if (is_number(expr.type()) && (expr.operands())[0].is_boolean()) {
+        // Cast from Boolean to Real - Add
+        PTRef lt = convert_bv((expr.operands())[0]); // Creating the Bool expression
+        PTRef ptl_if = bvlogic->mkBVLor(bvlogic->mkBVNot(lt), get_bv_const(1));
+        PTRef ptl_else = bvlogic->mkBVLor(lt, get_bv_const(0));
+        ptl = bvlogic->mkBVLand(ptl_if, ptl_else);
+        //PTRef ptl = logic->mkIte(lt, get_bv_const(1), get_bv_const(0));
+    } else if (expr.is_boolean() && is_number((expr.operands())[0].type())) {
+        // Cast from Real to Boolean - Add
+        PTRef lt = convert_bv((expr.operands())[0]); // Creating the Bool expression
+        // TODO: to cuf, look many locations!
+        ptl = bvlogic->mkBVNot(bvlogic->mkBVEq(lt, get_bv_const(0)));
+    } else {
+        ptl = convert_bv((expr.operands())[0]); 
+        // This is the original encoding that does:
+        // get_bv_var(expr.operands()[0].get("identifier").c_str());
+    }
+
+#ifdef DEBUG_SMT_BB
+    char* s = logic->printTerm(ptl);
+    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    free(s);
+#endif
+
+    return ptl;
+}
+
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 {
 #ifdef DEBUG_SMT_BB
@@ -169,10 +218,13 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #endif
     
     PTRef ptl;
-    if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol || expr.id() == ID_typecast) {
+    if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol 
+            || (expr.id() == ID_typecast && expr.has_operands())) {
 
         if (expr.id() == ID_typecast) {
-            ptl = get_bv_var(expr.operands()[0].get("identifier").c_str());
+            ptl = type_cast_bv(expr);
+            // KE: moved into the method type_cast_bv
+            // ptl = get_bv_var(expr.operands()[0].get("identifier").c_str());
         } else {
             ptl = get_bv_var(expr.get("identifier").c_str());
         }
@@ -192,14 +244,10 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         
         ptl = lconst_bv(expr);
         
-    } else if (expr.id() == ID_typecast) {
-        
+    } else if (expr.id() == ID_typecast || expr.id() == ID_floatbv_typecast) {
+        // KE: TODO, don't know how to do it yet...
         ptl = unsupported2var_bv(); // stub for now
         
-    } else if (expr.id() == ID_floatbv_typecast) {
-        
-        ptl = unsupported2var_bv(); // stub for now
-
     } else if (expr.id() == ID_byte_extract_little_endian) {
         
         ptl = unsupported2var_bv(); // stub for now  
@@ -601,6 +649,12 @@ literalt smtcheck_opensmt2t_cuf::const_var_Real(const exprt &expr)
     return l;
 }
 
+// KE: Got here and this failed? Please use the debug print at the end of this
+// code to know which case you need to add!
+// If not? OpenSMT2 will crash with this error:
+// hifrog: ../../src/common/Alloc.h:64: const T& RegionAllocator<T>::operator[]
+//    (RegionAllocator<T>::Ref) const [with T = unsigned int; 
+//     RegionAllocator<T>::Ref = unsigned int]: Assertion `r < sz' failed.
 literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
     literalt l;
 
@@ -609,6 +663,9 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
     if (expr.is_boolean() && (expr.operands())[0].is_constant()) {
         std::string val = extract_expr_str_number((expr.operands())[0]);
         bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
+#ifdef SMT_DEBUG        s
+        std::cout << " IS THIS ZERO? :" << val_const_zero << std::endl;
+#endif
         l = const_var(!val_const_zero);
     } else if (is_number(expr.type()) && (expr.operands())[0].is_boolean()) {
         // Cast from Boolean to Real - Add

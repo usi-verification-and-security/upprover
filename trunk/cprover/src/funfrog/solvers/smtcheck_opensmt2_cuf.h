@@ -54,6 +54,8 @@ public:
   PTRef convert_bv(const exprt &expr);
 
   bool convert_bv_eq_ite(const exprt &expr, PTRef& ptl);
+  
+  PTRef type_cast_bv(const exprt &expr);
 
   int check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model, std::set<int>& refined, std::set<int>& weak);
 
