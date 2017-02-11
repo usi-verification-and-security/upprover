@@ -116,7 +116,6 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
     } else if (expr.type().id() == ID_c_bool) { // KE: New Cprover code - patching
         std::string num(expr.get_string(ID_value));
         if (num.find_first_not_of('0') != std::string::npos) {
-            std::cout << "Find true " << num << std::endl;
             // true
             ptl = get_bv_const(1);
         } else {
@@ -175,29 +174,34 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
 #endif    
     // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code:
-    if (expr.is_boolean() && (expr.operands())[0].is_constant()) {
+    if ((expr.is_boolean() || (expr.type().id() == ID_c_bool)) // KE: New Cprover code - patching
+            && (expr.operands())[0].is_constant()) {
         std::string val = extract_expr_str_number((expr.operands())[0]);
         bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
 #ifdef DEBUG_SMT_BB        
         std::cout << ";;; IS THIS ZERO? " << val_const_zero << std::endl;
 #endif        
-        ptl = get_bv_const(!val_const_zero);
-    } else if (is_number(expr.type()) && (expr.operands())[0].is_boolean()) {
+        ptl = get_bv_const(!val_const_zero);       
+    } else if (is_number(expr.type()) && 
+            (expr.operands())[0].is_boolean() 
+                || ((expr.operands())[0].type().id() == ID_c_bool)) { // KE: New Cprover code - patching
         // Cast from Boolean to Real - Add
         PTRef lt = convert_bv((expr.operands())[0]); // Creating the Bool expression
         PTRef ptl_if = bvlogic->mkBVLor(bvlogic->mkBVNot(lt), get_bv_const(1));
         PTRef ptl_else = bvlogic->mkBVLor(lt, get_bv_const(0));
         ptl = bvlogic->mkBVLand(ptl_if, ptl_else);
         //PTRef ptl = logic->mkIte(lt, get_bv_const(1), get_bv_const(0));
-    } else if (expr.is_boolean() && is_number((expr.operands())[0].type())) {
+    } else if ((expr.is_boolean() || (expr.type().id() == ID_c_bool)) // KE: New Cprover code - patching
+            && is_number((expr.operands())[0].type())) {
         // Cast from Real to Boolean - Add
         PTRef lt = convert_bv((expr.operands())[0]); // Creating the Bool expression
-        // TODO: to cuf, look many locations!
         ptl = bvlogic->mkBVNot(bvlogic->mkBVEq(lt, get_bv_const(0)));
     } else {
         ptl = convert_bv((expr.operands())[0]); 
         // This is the original encoding that does:
         // get_bv_var(expr.operands()[0].get("identifier").c_str());
+        //cout << "Case 4 with type (from -> to) " << expr.type().pretty() << 
+        //        " -> " << (expr.operands())[0].type().pretty() << std::endl;
     }
 
 #ifdef DEBUG_SMT_BB
@@ -660,19 +664,23 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
 
     // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code:
-    if (expr.is_boolean() && (expr.operands())[0].is_constant()) {
+    if ((expr.is_boolean() || (expr.type().id() == ID_c_bool)) // KE: New Cprover code - patching
+            && (expr.operands())[0].is_constant()) {
         std::string val = extract_expr_str_number((expr.operands())[0]);
         bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
-#ifdef SMT_DEBUG        s
+#ifdef SMT_DEBUG       
         std::cout << " IS THIS ZERO? :" << val_const_zero << std::endl;
 #endif
         l = const_var(!val_const_zero);
-    } else if (is_number(expr.type()) && (expr.operands())[0].is_boolean()) {
+    } else if (is_number(expr.type()) && 
+            (expr.operands())[0].is_boolean() 
+                || ((expr.operands())[0].type().id() == ID_c_bool)) { // KE: New Cprover code - patching
         // Cast from Boolean to Real - Add
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
         PTRef ptl = logic->mkIte(literals[lt.var_no()], uflogic->mkCUFConst(1), uflogic->mkCUFConst(0));
         l = push_variable(ptl); // Keeps the new literal + index it
-    } else if (expr.is_boolean() && is_number((expr.operands())[0].type())) {
+    } else if ((expr.is_boolean() || (expr.type().id() == ID_c_bool)) // KE: New Cprover code - patching
+            && is_number((expr.operands())[0].type())) {
         // Cast from Real to Boolean - Add
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
         // TODO: to cuf, look many locations!
