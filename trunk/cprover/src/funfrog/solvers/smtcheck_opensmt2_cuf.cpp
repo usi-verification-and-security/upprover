@@ -132,6 +132,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         } else {
             std::string str = expr.print_number_2smt();
             if ((str.compare("inf") == 0) || (str.compare("-inf") == 0) || 
+                    (str.compare("2147483648") == 0) ||
                     (str.compare("4294967295") == 0) ||
                     (str.compare("18446744073709551615") == 0)) // From unwind option
                     // KE: there will be more magic numbers, if get these, add it here
@@ -150,7 +151,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
                     cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
                     exit(0);
                 } else {
-                    ptl = get_bv_const(stoi(str));
+                    ptl = get_bv_const(num);
                 }
             }
         } // General case
