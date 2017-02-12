@@ -1138,7 +1138,7 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
   }
 }
 
-int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
+void smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
                      std::map<const exprt, int>& model, std::set<int>& refined, std::set<int>& weak)
 {
 #ifdef DEBUG_SMT_BB
@@ -1204,12 +1204,12 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
         }
 
         if (s_False == mainSolver->check()){
-            cout << "Weak statement encoding found" << endl;
             weak.insert(i);
-            //return i;
         }
     }
-    return -1;
+
+    if (weak.size() > 0)
+        cout << "  Weak statement encodings (" << weak.size() << ") found" << endl;
 }
 
 void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i)

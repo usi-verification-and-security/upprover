@@ -104,7 +104,7 @@ bool symex_bmct::get_unwind(
 
   bool abort=unwind>=this_loop_limit;
 
-  if (unwind % (this_loop_limit / 10) == 0){
+  if (this_loop_limit < 10 || unwind % (this_loop_limit / 10) == 0){
       statistics() << (abort?"Not unwinding":"Unwinding")
                    << " loop " << id << " iteration "
                    << unwind;
@@ -113,7 +113,7 @@ bool symex_bmct::get_unwind(
         statistics() << " (" << this_loop_limit << " max)";
 
       statistics() << " " << source.pc->source_location
-                   << " thread " << source.thread_nr << eom;
+                   << " thread " << source.thread_nr << endl << " ... " << eom;
 
   }
   return abort;
