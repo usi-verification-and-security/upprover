@@ -244,9 +244,14 @@ literalt smtcheck_opensmt2t_uf::const_var_Real(const exprt &expr)
 }
 
 literalt smtcheck_opensmt2t_uf::type_cast(const exprt &expr) {
-	literalt l;
+    literalt l;
 
-	// KE: Take care of type cast - recursion of convert take care of it anyhow
+    // KE: New Cprover code - patching
+    bool is_expr_bool = (expr.is_boolean() || (expr.type().id() == ID_c_bool)); 
+    bool is_operands_bool = ((expr.operands())[0].is_boolean() 
+                || ((expr.operands())[0].type().id() == ID_c_bool)); 
+    
+    // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code:
     if (expr.is_boolean() && (expr.operands())[0].is_constant()) {
     	std::string val = extract_expr_str_number((expr.operands())[0]);
@@ -263,7 +268,7 @@ literalt smtcheck_opensmt2t_uf::type_cast(const exprt &expr) {
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], logic->mkConst(sort_ureal, "0")));
     	l = push_variable(ptl); // Keeps the new literal + index it
-	} else {
+    } else {
     	l = convert((expr.operands())[0]);
     }
 
