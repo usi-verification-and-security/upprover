@@ -1138,8 +1138,8 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
   }
 }
 
-void smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
-                     std::map<const exprt, int>& model, std::set<int>& refined, std::set<int>& weak)
+int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
+           std::map<const exprt, int>& model, std::set<int>& refined, std::set<int>& weak, int start, int heuri)
 {
 #ifdef DEBUG_SMT_BB
     cout << "Check CE for " <<exprs.size() << " terms " << std::endl;
@@ -1152,7 +1152,7 @@ void smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
 
     std::set<exprt> encoded_vars;
 
-    for (int i = 0; i < exprs.size(); i++){
+    for (int i = start; i < exprs.size(); i++){
 
         if (refined.find(i) != refined.end()) continue;
 
@@ -1205,11 +1205,45 @@ void smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
 
         if (s_False == mainSolver->check()){
             weak.insert(i);
+
+            // heuristic to get weak "candidates" based on dependency analysis
+            if (heuri == 1){
+                std::set<exprt> dep_vars;
+                getVarsInExpr(exprs[i], dep_vars);
+
+                for (int j = i + 1; j < exprs.size(); j++){
+
+                    if (refined.find(j) != refined.end()) continue;
+
+                    std::set<exprt> cur_vars;
+                    getVarsInExpr(exprs[j], cur_vars);
+
+                    bool res = true;
+
+                    for (auto it = cur_vars.begin(); it != cur_vars.end(); ++it){
+                        if (dep_vars.find(*it) != dep_vars.end()) {
+                            res = false;
+                            break;
+                        }
+                    }
+
+                    if (res) continue;
+
+                    for (auto it = cur_vars.begin(); it != cur_vars.end(); ++it){
+                        dep_vars.insert(*it);
+                    }
+
+                    weak.insert(j);
+#ifdef DEBUG_SMT_BB
+                    cout << "Potentially weak statement encoding [" << j << "] found" << endl;
+#endif
+                }
+            }
+            return (i + 1);
         }
     }
 
-    if (weak.size() > 0)
-        cout << "  Weak statement encodings (" << weak.size() << ") found" << endl;
+    return -1;
 }
 
 void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i)

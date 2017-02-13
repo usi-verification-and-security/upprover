@@ -143,12 +143,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
           } else {
 
               status() << "(driven by iterative CE-analysis)" << endl << eom;
+              unsigned bw = options.get_unsigned_int_option("bitwidth");
 
               while (true){
-
-                  // local CUF solver
-                  smtcheck_opensmt2t_cuf* decider2 =
-                          new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"));
 
                   std::map<const exprt, int> model;
 
@@ -156,9 +153,18 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                         *(dynamic_cast<smtcheck_opensmt2t *> (decider)));
 
                   std::set<int> weak;
-                  decider2->check_ce(exprs, model, refined, weak);
+
+                  int last = 0;
+                  while (last != -1 || last == exprs.size()){
+                      // local CUF solver
+                      smtcheck_opensmt2t_cuf* decider2 = new smtcheck_opensmt2t_cuf(bw);
+                      last = decider2->check_ce(exprs, model, refined, weak, last);
+                  }
 
                   if (weak.size() > 0){
+
+                      status() << "  Weak statement encodings (" << weak.size() << ") found" << endl;
+
                       for (auto it = weak.begin(); it != weak.end(); ++it){
                           refined.insert(*it);
                       }
