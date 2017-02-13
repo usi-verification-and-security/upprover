@@ -568,14 +568,13 @@ const std::string exprt::print_number_2smt() const
       convert << rat_value;
       return convert.str();
     }
-    else if(type_id==ID_unsignedbv)
-    {
-      mp_integer int_value=binary2integer(value, false);
-      return integer2string(int_value);
-    }
-    else if(type_id==ID_signedbv)
-    {
-      mp_integer int_value=binary2integer(value, true);
+    else if (type_id==ID_unsignedbv ||
+          type_id==ID_signedbv ||
+          type_id==ID_c_bit_field ||
+          type_id==ID_c_bool)
+    { // from expre2c.cpp code
+      mp_integer int_value=binary2integer(id2string(value), 
+              type_id==ID_signedbv);
       return integer2string(int_value);
     } else {
     	if (is_zero()) return "0";
