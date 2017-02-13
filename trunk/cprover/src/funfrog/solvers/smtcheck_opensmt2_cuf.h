@@ -57,7 +57,8 @@ public:
   
   PTRef type_cast_bv(const exprt &expr);
 
-  int check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model, std::set<int>& refined, std::set<int>& weak);
+  int check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model,
+               std::set<int>& refined, std::set<int>& weak, int start, int heuri  = 1);
 
   bool refine_ce_solo(std::vector<exprt>& exprs, int i); // refine only exprs[i]
 
