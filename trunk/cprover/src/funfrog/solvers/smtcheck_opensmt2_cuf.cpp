@@ -1303,6 +1303,9 @@ bool smtcheck_opensmt2t_cuf::refine_ce_solo(std::vector<exprt>& exprs, int i)
 {
     refine_ce_one_iter(exprs, i);
     
+#ifdef DEBUG_SMT_BB
+    cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
+#endif     
     bitblaster->notifyEqualities();
 
     return solve();
@@ -1320,6 +1323,9 @@ bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::set<i
 
     if (res) return res;
 
+#ifdef DEBUG_SMT_BB
+    cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
+#endif     
     bitblaster->notifyEqualities();
 
     return solve();
@@ -1331,6 +1337,10 @@ bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set
         if (refined.find(i) != refined.end()) continue;
         refine_ce_one_iter(exprs, i);
     }
+    
+#ifdef DEBUG_SMT_BB
+    cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
+#endif    
     bitblaster->notifyEqualities();
 
     return solve();
