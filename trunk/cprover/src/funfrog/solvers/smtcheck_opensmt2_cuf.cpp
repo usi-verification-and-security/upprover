@@ -147,16 +147,24 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
                     exit(0);
                 }
                 
-                assert(0); // KE: Not sure what to do with it, please show me the case
-            } else if ((str.compare("2147483648") == 0) || /* From unwind option */
-                    (str.compare("4294967295") == 0) ||
-                    (str.compare("18446744073709551615") == 0)) {
-                    // TODO: Fix me - refactor to general code!
-                    // Max numbers for the current presentation
-                    cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                    exit(0);         
+                assert(0); // KE: Not sure what to do with it, please show me the case        
             } else {
-                long num = stoi(str);
+                long num;
+                try {
+                    num= stoi(str);
+                } catch(std::invalid_argument& e){
+                    cout << "\nNo support for constant or symbol " << str << " so far.\n\n";
+                    exit(0);
+                }
+                catch(std::out_of_range& e){
+                    cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+                    exit(0);
+                }
+                catch(...) {
+                    assert(0); // unknown: need to add code probably!
+                }
+                
+                // Check if fits
                 if ((num < -max_num || max_num < num))
                 {
                     cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
