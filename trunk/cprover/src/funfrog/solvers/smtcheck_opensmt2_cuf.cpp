@@ -315,6 +315,10 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         
         ptl = unsupported2var_bv(); // stub for now
         
+    } else if (expr.id() == ID_dynamic_object) {
+        
+        ptl = unsupported2var_bv(); // stub for now
+        
     } else if (expr.id() == ID_pointer) {
         
         ptl = unsupported2var_bv(); // stub for now 
@@ -965,7 +969,9 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ptl =literals[lunsupported2var(expr).var_no()];
             // KE: when active, also change the code in lvar 
         } else if (expr.id() == ID_pointer_object) {
-            ptl =literals[lunsupported2var(expr).var_no()];    
+            ptl =literals[lunsupported2var(expr).var_no()]; 
+        } else if (expr.id() == ID_dynamic_object) {
+            ptl =literals[lunsupported2var(expr).var_no()]; 
         } else {
             cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << endl;
