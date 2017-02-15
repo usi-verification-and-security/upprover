@@ -181,19 +181,23 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                           report_success();
                           break;
                       }
-                  } else /* if (decider->force_refine_ce(exprs, refined) )*/{ // TODO: uncomment
+                  } else  if (decider->force_refine_ce(exprs, refined) ){ // TODO: comment once the bug with thoref is fixed
                       status() << endl << "Obtained counter-examples are refined" << endl;
                       status() << "(" << refined.size() << " / "
                                       << exprs.size()  << " expressions bit-blasted)" << endl;
                       status() << "ASSERTION DOES NOT HOLD" << eom;
                       report_failure();
                       break;
-                 /* } else {
+                  } else {
                       status() << endl << "Naive refinement successful" << endl;
-                      status() << "(" << iter << " counter-examples + refine everything else)" << endl;
-                      status() << "ASSERTION HOLDS" << eom;
+                      status() << "(" << refined.size() << " counter-examples + refine everything else)" << endl;
+                      status() << "Command-line options to double-check: --theoref --custom ";
+                      for (int i = 0; i < exprs.size(); i++){
+                          status() << i << ",";
+                      }
+                      status() << endl << "ASSERTION HOLDS" << eom;
                       report_success();
-                      break; */
+                      break;
                   }
               }
           }
