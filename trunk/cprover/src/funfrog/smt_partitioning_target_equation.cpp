@@ -51,11 +51,12 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
         convert_partition(decider, interpolator, *it);
         if (it->fle_part_id < 0) continue;
 
-#   ifndef DEBUG_SSA_PRINT
+#   ifdef DEBUG_SSA
+#     ifndef DEBUG_SSA_PRINT
         cout
-#   else
+#     else
         out_basic
-#   endif
+#     endif
             << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
                 << it->get_iface().assertion_in_subtree << ")" << " - "
                 << it->get_iface().function_id.c_str() << " (loc: "
@@ -64,7 +65,10 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
                     : ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
 
         // Print partition into a buffer after the headers: basic and code
+#       ifdef DEBUG_SSA_PRINT
         print_partition();
+#       endif
+#   endif
     }
 
     // Print all after the headers: decl and code

@@ -38,17 +38,20 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
   int part_id = partitions.size();
   for (partitionst::reverse_iterator it = partitions.rbegin();
           it != partitions.rend(); ++it) {
+      --part_id; // dec the counter NOT in a print statement
 #   ifdef DEBUG_ENCODING
     unsigned vars_before = prop_conv.prop.no_variables();
     unsigned clauses_before = dynamic_cast<cnf_solvert&>(prop_conv.prop).no_clauses();
 #   endif
-    cout << "XXX Partition: " << --part_id <<
+#   ifdef DEBUG_SSA    
+    cout << "XXX Partition: " << part_id <<
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             " (loc: " << it->get_iface().summary_info.get_call_location() << ", " <<
             ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM") :
                 ((it->stub) ? "TRU" : "INL")) << ")" <<
             std::endl;
+#   endif
     // For debugging of the SSA to SMT encoding
 #   ifdef DEBUG_SSA_PRINT
         out_basic << "XXX Partition: " << part_id <<
