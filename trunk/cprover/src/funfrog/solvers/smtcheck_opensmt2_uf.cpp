@@ -294,34 +294,36 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
     cout << "\n\n; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
 #endif
 
+    const irep_idt &_id=expr.id(); // KE: gets the id once for performance
+    
     /* Check which case it is */
-	literalt l;
-	if(expr.id()==ID_symbol || expr.id()==ID_nondet_symbol){
+    literalt l;
+    if(_id==ID_symbol || _id==ID_nondet_symbol){
 #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;
 #endif
-        l = lvar(expr);
-	} else if (expr.id()==ID_constant) {
+    l = lvar(expr);
+    } else if (_id==ID_constant) {
 #ifdef SMT_DEBUG
         cout << "; IT IS A CONSTANT " << endl;
 #endif
-        l = lconst(expr);
-	} else if (expr.id() == ID_typecast && expr.has_operands()) {
+    l = lconst(expr);
+    } else if (_id == ID_typecast && expr.has_operands()) {
 #ifdef SMT_DEBUG
 		bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
 #endif
 		// KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
-        l = type_cast(expr);
-	} else if (expr.id() == ID_typecast) {
+    l = type_cast(expr);
+    } else if (_id == ID_typecast) {
 #ifdef SMT_DEBUG
-		cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << expr.id() << ")" << endl;
+		cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << _id << ")" << endl;
 		assert(false); // Need to take care of - typecast no operands
 #else
 		l = lunsupported2var(expr);
 #endif
-	} else {
+    } else {
 #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
 #endif
@@ -365,111 +367,111 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
 		}
 
         PTRef ptl;
-        if (expr.id()==ID_notequal) {
+        if (_id==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
-        } else if(expr.id() == ID_equal) {
+        } else if(_id == ID_equal) {
             ptl = logic->mkEq(args);
-        } else if (expr.id()==ID_if) {
+        } else if (_id==ID_if) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT_LRA
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
-        } else if(expr.id() == ID_ifthenelse) {
+        } else if(_id == ID_ifthenelse) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT2SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
-        } else if(expr.id() == ID_and) {
+        } else if(_id == ID_and) {
             ptl = logic->mkAnd(args);
-        } else if(expr.id() == ID_or) {
+        } else if(_id == ID_or) {
             ptl = logic->mkOr(args);
-        } else if(expr.id() == ID_xor) {
+        } else if(_id == ID_xor) {
             ptl = logic->mkXor(args);    
-        } else if(expr.id() == ID_not) {
+        } else if(_id == ID_not) {
             ptl = logic->mkNot(args);
-        } else if(expr.id() == ID_implies) {
+        } else if(_id == ID_implies) {
             ptl = logic->mkImpl(args);
-        } else if(expr.id() == ID_ge) {
+        } else if(_id == ID_ge) {
             //ptl = logic->mkRealGeq(args);
             ptl = this->mkURealGe(args);
-        } else if(expr.id() == ID_le) {
+        } else if(_id == ID_le) {
             //ptl = logic->mkRealLeq(args);
             ptl = this->mkURealLe(args);
-        } else if(expr.id() == ID_gt) {
+        } else if(_id == ID_gt) {
             //ptl = logic->mkRealGt(args);
             ptl = this->mkURealGt(args);
-        } else if(expr.id() == ID_lt) {
+        } else if(_id == ID_lt) {
             //ptl = logic->mkRealLt(args);
             ptl = this->mkURealLt(args);
-        } else if(expr.id() == ID_plus) {
+        } else if(_id == ID_plus) {
             //ptl = logic->mkRealPlus(args);
             ptl = this->mkURealPlus(args);
-        } else if(expr.id() == ID_minus) {
+        } else if(_id == ID_minus) {
             //ptl = logic->mkRealMinus(args);
             ptl = this->mkURealMinus(args);
-        } else if(expr.id() == ID_unary_minus) {
+        } else if(_id == ID_unary_minus) {
             //ptl = logic->mkRealMinus(args);
             ptl = this->mkURealMinus(args);
-        } else if(expr.id() == ID_unary_plus) {
+        } else if(_id == ID_unary_plus) {
             //ptl = logic->mkRealPlus(args);
             ptl = this->mkURealPlus(args);
-        } else if(expr.id() == ID_mult) {
+        } else if(_id == ID_mult) {
             //ptl = logic->mkRealTimes(args);
             ptl = this->mkURealMult(args);
-        } else if(expr.id() == ID_div) {
+        } else if(_id == ID_div) {
             //ptl = logic->mkRealDiv(args);
             ptl = this->mkURealDiv(args);
-        } else if(expr.id() == ID_assign) {
+        } else if(_id == ID_assign) {
             ptl = logic->mkEq(args);
-        } else if(expr.id() == ID_ieee_float_equal) {
+        } else if(_id == ID_ieee_float_equal) {
             ptl = logic->mkEq(args);
-        } else if(expr.id() == ID_ieee_float_notequal) {
+        } else if(_id == ID_ieee_float_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
-        } else if(expr.id() == ID_floatbv_plus) {
+        } else if(_id == ID_floatbv_plus) {
             //ptl = logic->mkRealPlus(args);
             ptl = this->mkURealPlus(args);
-        } else if(expr.id() == ID_floatbv_minus) {
+        } else if(_id == ID_floatbv_minus) {
             //ptl = logic->mkRealMinus(args);
             ptl = this->mkURealMinus(args);
-        } else if(expr.id() == ID_floatbv_div) {
+        } else if(_id == ID_floatbv_div) {
             //ptl = logic->mkRealDiv(args);
             ptl = this->mkURealDiv(args);
-        } else if(expr.id() == ID_floatbv_mult) {
+        } else if(_id == ID_floatbv_mult) {
             //ptl = logic->mkRealTimes(args);
             ptl = this->mkURealMult(args);
-        } else if((expr.id() == ID_member) || 
-                (expr.id() == ID_C_member_name) ||
-                (expr.id() == ID_with) ||
-                (expr.id() == ID_member_name)) {
+        } else if((_id == ID_member) || 
+                (_id == ID_C_member_name) ||
+                (_id == ID_with) ||
+                (_id == ID_member_name)) {
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR:member operator has no support yet in the UF version (token: "
-                << expr.id() << ")" << endl;
+                << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
             ptl = literals[lunsupported2var(expr).var_no()];
 #endif
-        } else if(expr.id() == ID_index) {
+        } else if(_id == ID_index) {
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
-                << expr.id() << ")" << endl;
+                << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
             ptl = literals[lunsupported2var(expr).var_no()];
 #endif
-        } else if((expr.id() == ID_address_of) || (expr.id() == ID_pointer_object) 
-                || (expr.id() == ID_pointer_offset)) {
+        } else if((_id == ID_address_of) || (_id == ID_pointer_object) 
+                || (_id == ID_pointer_offset)) {
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the QF/UF version (token: "
-                            << expr.id() << ")" << endl;
+                            << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
             ptl = literals[lunsupported2var(expr).var_no()];
 #endif
         } else {
 #ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
-            cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
+            cout << _id << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
             cout << "EXIT WITH ERROR: operator does not yet supported in the QF/UF version (token: "
-            		<< expr.id() << ")" << endl;
+            		<< _id << ")" << endl;
             assert(false);
 #else
             ptl = literals[lunsupported2var(expr).var_no()];
@@ -483,7 +485,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
 #ifdef SMT_DEBUG
     PTRef ptr = literals[l.var_no()];
     char *s = logic->printTerm(ptr);
-    cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
     free(s);
 #endif
     return l;

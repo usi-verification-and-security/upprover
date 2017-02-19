@@ -261,19 +261,21 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     cout << "; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< endl;
 #endif
 
+    const irep_idt &_id=expr.id(); // KE: gets the id once for performance
+    
     /* Check which case it is */
     literalt l;
-    if(expr.id()==ID_symbol || expr.id()==ID_nondet_symbol){
+    if(_id==ID_symbol || _id==ID_nondet_symbol){
     #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;
     #endif
         l = lvar(expr);
-    } else if (expr.id()==ID_constant) {
+    } else if (_id==ID_constant) {
     #ifdef SMT_DEBUG
         cout << "; IT IS A CONSTANT " << endl;
     #endif
         l = lconst(expr);
-    } else if (expr.id() == ID_typecast && expr.has_operands()) {
+    } else if (_id == ID_typecast && expr.has_operands()) {
     #ifdef SMT_DEBUG
         bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
@@ -281,9 +283,9 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                 // KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
         l = type_cast(expr);
-    } else if (expr.id() == ID_typecast) {
+    } else if (_id == ID_typecast) {
     #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << expr.id() << ")" << endl;
+            cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")" << endl;
             assert(false); // Need to take care of - typecast no operands
     #else
         l = lunsupported2var(expr);
@@ -295,10 +297,10 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         if (expr.has_operands() && expr.operands().size() > 1) {
         	if ((expr.operands()[0] == expr.operands()[1]) &&
         		(!expr.operands()[1].is_constant())	&&
-        		  ((expr.id() == ID_div) ||
-        		   (expr.id() == ID_floatbv_div) ||
-        	       (expr.id() == ID_mult) ||
-        		   (expr.id() == ID_floatbv_mult))
+        		  ((_id == ID_div) ||
+        		   (_id == ID_floatbv_div) ||
+        	       (_id == ID_mult) ||
+        		   (_id == ID_floatbv_mult))
         	){
         		cout << "; IT IS AN OPERATOR BETWEEN SAME EXPR: NOT SUPPORTED FOR NONDET" << endl;
         		assert(false);
@@ -307,12 +309,12 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 #endif
         // Check if for div op there is a rounding variable
         bool is_div_wtrounding = // need to take care differently!
-        		((expr.id() == ID_floatbv_minus || expr.id() == ID_minus ||
-        		  expr.id() == ID_floatbv_plus || expr.id() == ID_plus ||
-    		      expr.id() == ID_floatbv_div || expr.id() == ID_div ||
-    		      expr.id() == ID_floatbv_mult || expr.id() == ID_mult)
-    		    &&
-    		    ((expr.operands()).size() > 2));
+        		((_id == ID_floatbv_minus || _id == ID_minus ||
+        		  _id == ID_floatbv_plus || _id == ID_plus ||
+                          _id == ID_floatbv_div || _id == ID_div ||
+                          _id == ID_floatbv_mult || _id == ID_mult)
+                        &&
+                        ((expr.operands()).size() > 2));
 
         vec<PTRef> args;
         int i = 0;
@@ -327,7 +329,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                 if (!is_builtin_rounding_mode) {
 #ifdef SMT_DEBUG
                     cout << "EXIT WITH ERROR: * and / operators with more than 2 arguments have no support yet in the LRA version (token: "
-                                    << expr.id() << ")" << endl;
+                                    << _id << ")" << endl;
                     assert(false); // No support yet for more than two arguments for these operators
 #else
                     is_no_support = true; // Will cause to over approx all
@@ -372,86 +374,86 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         PTRef ptl;
         if (is_no_support) { // If we don't supposrt the operator due to more than 2 args
             ptl = runsupported2var(expr);
-        } else if (expr.id()==ID_notequal) {
+        } else if (_id==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
-        } else if(expr.id() == ID_equal) {
+        } else if(_id == ID_equal) {
             ptl = logic->mkEq(args);
-        } else if (expr.id()==ID_if) {
+        } else if (_id==ID_if) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT2SOLVER
     ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
-        } else if(expr.id() == ID_ifthenelse) {
+        } else if(_id == ID_ifthenelse) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT2SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
-        } else if(expr.id() == ID_and) {
+        } else if(_id == ID_and) {
             ptl = logic->mkAnd(args);
-        } else if(expr.id() == ID_or) {
+        } else if(_id == ID_or) {
             ptl = logic->mkOr(args);
-        } else if(expr.id() == ID_xor) {
+        } else if(_id == ID_xor) {
             ptl = logic->mkXor(args);      
-        } else if(expr.id() == ID_not) {
+        } else if(_id == ID_not) {
             ptl = logic->mkNot(args);
-        } else if(expr.id() == ID_implies) {
+        } else if(_id == ID_implies) {
             ptl = logic->mkImpl(args);
-        } else if(expr.id() == ID_ge) {
+        } else if(_id == ID_ge) {
             ptl = lralogic->mkRealGeq(args);
-        } else if(expr.id() == ID_le) {
+        } else if(_id == ID_le) {
             ptl = lralogic->mkRealLeq(args);
-        } else if(expr.id() == ID_gt) {
+        } else if(_id == ID_gt) {
             ptl = lralogic->mkRealGt(args);
-        } else if(expr.id() == ID_lt) {
+        } else if(_id == ID_lt) {
             ptl = lralogic->mkRealLt(args);
-        } else if(expr.id() == ID_plus) {
+        } else if(_id == ID_plus) {
             ptl = lralogic->mkRealPlus(args);
-        } else if(expr.id() == ID_minus) {
+        } else if(_id == ID_minus) {
             ptl = lralogic->mkRealMinus(args);
-        } else if(expr.id() == ID_unary_minus) {
+        } else if(_id == ID_unary_minus) {
             ptl = lralogic->mkRealMinus(args);
-        } else if(expr.id() == ID_unary_plus) {
+        } else if(_id == ID_unary_plus) {
             ptl = lralogic->mkRealPlus(args);
-        } else if(expr.id() == ID_mult) {
+        } else if(_id == ID_mult) {
             ptl = mult_real(expr,args);
-        } else if(expr.id() == ID_div) {
+        } else if(_id == ID_div) {
             ptl = div_real(expr,args);
-        } else if(expr.id() == ID_assign) {
+        } else if(_id == ID_assign) {
             ptl = logic->mkEq(args);
-        } else if(expr.id() == ID_ieee_float_equal) {
+        } else if(_id == ID_ieee_float_equal) {
             ptl = logic->mkEq(args);
-        } else if(expr.id() == ID_ieee_float_notequal) {
+        } else if(_id == ID_ieee_float_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
-        } else if(expr.id() == ID_floatbv_plus) {
+        } else if(_id == ID_floatbv_plus) {
             ptl = lralogic->mkRealPlus(args);
-        } else if(expr.id() == ID_floatbv_minus) {
+        } else if(_id == ID_floatbv_minus) {
             ptl = lralogic->mkRealMinus(args);
-        } else if(expr.id() == ID_floatbv_div) {
+        } else if(_id == ID_floatbv_div) {
             ptl = div_real(expr,args);
-        } else if(expr.id() == ID_floatbv_mult) {
+        } else if(_id == ID_floatbv_mult) {
             ptl = mult_real(expr,args);
-        } else if(expr.id() == ID_index) {
+        } else if(_id == ID_index) {
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LRA version (token: "
-                            << expr.id() << ")" << endl;
+                            << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
             ptl = runsupported2var(expr);
 #endif
-        } else if((expr.id() == ID_address_of) || (expr.id() == ID_pointer_object) 
-                || (expr.id() == ID_pointer_offset)) {
+        } else if((_id == ID_address_of) || (_id == ID_pointer_object) 
+                || (_id == ID_pointer_offset)) {
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LRA version (token: "
-                            << expr.id() << ")" << endl;
+                            << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
             ptl = runsupported2var(expr);
 #endif
         } else {
 #ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
-            cout << expr.id() << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
+            cout << _id << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
             cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: "
-            		<< expr.id() << ")" << endl;
+            		<< _id << ")" << endl;
             assert(false);
 #else
             ptl = runsupported2var(expr);
@@ -463,7 +465,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 #ifdef SMT_DEBUG
     PTRef ptr = literals[l.var_no()];
     char *s = logic->printTerm(ptr);
-    cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
     free(s);
 #endif
     return l;
