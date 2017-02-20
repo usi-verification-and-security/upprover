@@ -29,7 +29,6 @@ public:
   smtcheck_opensmt2t() :
       no_literals(0),
       pushed_formulas(0),
-      unsupported2var(0),
       is_var_constraints_empty(true),
       check_opensmt2t(false, 3, 2) // Is last always!
   {
@@ -40,7 +39,6 @@ public:
   smtcheck_opensmt2t(bool reduction, int reduction_graph, int reduction_loops) :
         no_literals(0),
         pushed_formulas(0),
-        unsupported2var(0),
         is_var_constraints_empty(true),
         check_opensmt2t(reduction, reduction_graph, reduction_loops)
   { /* No init of solver - done for inherit check_opensmt2 */}
@@ -156,7 +154,7 @@ protected:
 
   unsigned pushed_formulas;
 
-  unsigned unsupported2var; // Create a new var hifrog::c::unsupported_op2var#i - smtcheck_opensmt2t::_unsupported_var_str
+  static unsigned unsupported2var; // Create a new var hifrog::c::unsupported_op2var#i - smtcheck_opensmt2t::_unsupported_var_str
 
   virtual literalt lunsupported2var(exprt expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
