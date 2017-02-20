@@ -45,6 +45,8 @@ public:
 
   virtual literalt lvar(const exprt &expr);
 
+  PTRef var_bv(const exprt &expr); // lvar for bv logic
+  
   PTRef get_bv_var(const char* name);
 
   PTRef get_bv_const(int val);
@@ -86,8 +88,8 @@ protected:
   void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
 
   virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
-
-  PTRef unsupported2var_bv(); // for BVs
+  
+  PTRef unsupported2var_bv(const exprt &expr); // for BVs
   
   PTRef lconst_bv(const exprt &expr); // For bv only!
   

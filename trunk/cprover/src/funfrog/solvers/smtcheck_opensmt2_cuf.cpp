@@ -47,15 +47,45 @@ smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
     // Shall/When need to: freeSolver() ?
 }
 
-PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv()
+PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
 {
-    const string str = "BV__" + smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
+    string str;
     
+    // Tries to map unsupported to another unsupported
+    if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
+        literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
+        PTRef ptrf = literals[l.var_no()];
+        str = std::string(logic->printTerm(ptrf));
+    } else {
+        str = smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
+        str = quote_varname(str);
+    }
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS AN UNSUPPORTED VAR " << str << endl;
 #endif   
         
     return get_bv_var(str.c_str());
+}
+
+PTRef smtcheck_opensmt2t_cuf::var_bv(const exprt &expr)
+{
+    const irep_idt &_id=expr.id(); // KE: gets the id once for performance
+    assert(_id==ID_symbol || _id==ID_nondet_symbol); // Only for data types!!
+    
+   
+    // Check if we suppose to have a support for this
+    const irep_idt &type_id=expr.type().id_string();
+    bool isSupported = !((type_id==ID_union) || 
+                         (type_id==ID_struct) ||
+                         (type_id==ID_range) ||
+                         (type_id==ID_array) ||
+                         (type_id==ID_pointer) ||
+                         (type_id==ID_class));
+    
+    if (isSupported)
+        return get_bv_var(expr.get("identifier").c_str());
+    else
+        return unsupported2var_bv(expr);
 }
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
@@ -242,25 +272,28 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
                    expr.get("identifier") : "") << std::endl;
 #endif
     
+    const irep_idt &_id=expr.id(); // KE: gets the id once for performance
+    
     PTRef ptl;
-    if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol 
-            || (expr.id() == ID_typecast && expr.has_operands())) {
+    if (_id==ID_symbol || _id==ID_nondet_symbol 
+            || (_id == ID_typecast && expr.has_operands())) {
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A VAR" << endl;
 #endif
-        if (expr.id() == ID_typecast) {
+        if (_id == ID_typecast) {
             ptl = type_cast_bv(expr);
             // KE: moved into the method type_cast_bv
             // ptl = get_bv_var(expr.operands()[0].get("identifier").c_str());
         } else {
-            ptl = get_bv_var(expr.get("identifier").c_str());
+            //ptl = get_bv_var(expr.get("identifier").c_str());
+            ptl = var_bv(expr);
         }
 #ifdef DEBUG_SMT_BB
         char* s = logic->printTerm(ptl);
-        cout << "; CREAT A VAR in OPENSMT2 " << s << endl;
+        cout << "; CREAT A VAR in OPENSMT2 " << s << " of tye " << expr.type().id_string() << endl;
         free(s);
 #endif        
-    } else if (expr.id()==ID_constant) {
+    } else if (_id==ID_constant) {
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A CONSTANT " << endl;
 #endif        
@@ -271,72 +304,72 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         free(s);
 #endif          
         
-    } else if (expr.id() == ID_typecast || expr.id() == ID_floatbv_typecast) {
+    } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
         // KE: TODO, don't know how to do it yet...
-        ptl = unsupported2var_bv(); // stub for now
+        ptl = unsupported2var_bv(expr); // stub for now
         
-    } else if (expr.id() == ID_byte_extract_little_endian) {
+    } else if (_id == ID_byte_extract_little_endian) {
         
-        ptl = unsupported2var_bv(); // stub for now  
+        ptl = unsupported2var_bv(expr); // stub for now  
                   
-    } else if (expr.id() == ID_byte_update_little_endian) {
+    } else if (_id == ID_byte_update_little_endian) {
         
-        ptl = unsupported2var_bv(); // stub for now  
+        ptl = unsupported2var_bv(expr); // stub for now  
                   
-    } else if (expr.id() == ID_address_of) {
+    } else if (_id == ID_address_of) {
         
-        ptl = unsupported2var_bv(); // stub for now  
+        ptl = unsupported2var_bv(expr); // stub for now  
 
-    } else if (expr.id() == ID_with) {
+    } else if (_id == ID_with) {
         
-        ptl = unsupported2var_bv(); // stub for now
+        ptl = unsupported2var_bv(expr); // stub for now
         
-    } else if (expr.id() == ID_index) {
+    } else if (_id == ID_index) {
         
-        ptl = unsupported2var_bv(); // stub for now
+        ptl = unsupported2var_bv(expr); // stub for now
 
-    } else if (expr.id() == ID_array) {
+    } else if (_id == ID_array) {
         
-        ptl = unsupported2var_bv(); // stub for now
+        ptl = unsupported2var_bv(expr); // stub for now
 
-    } else if (expr.id() == ID_union) {
+    } else if (_id == ID_union) {
         
-        ptl = unsupported2var_bv(); // stub for now
+        ptl = unsupported2var_bv(expr); // stub for now
         
-    } else if (expr.id() == ID_member) {
+    } else if (_id == ID_member) {
         
-        ptl = unsupported2var_bv(); // stub for now
+        ptl = unsupported2var_bv(expr); // stub for now
         
-    } else if (expr.id() == ID_member_name) {
+    } else if (_id == ID_member_name) {
         
-        ptl = unsupported2var_bv(); // stub for now
+        ptl = unsupported2var_bv(expr); // stub for now
         
-    } else if (expr.id() == ID_C_member_name) {
+    } else if (_id == ID_C_member_name) {
         
-        ptl = unsupported2var_bv(); // stub for now
+        ptl = unsupported2var_bv(expr); // stub for now
         
-    } else if (expr.id() == ID_dynamic_object) {
+    } else if (_id == ID_dynamic_object) {
         
-        ptl = unsupported2var_bv(); // stub for now
+        ptl = unsupported2var_bv(expr); // stub for now
         
-    } else if (expr.id() == ID_pointer) {
+    } else if (_id == ID_pointer) {
         
-        ptl = unsupported2var_bv(); // stub for now 
+        ptl = unsupported2var_bv(expr); // stub for now 
         // KE: when active, also change the code in lvar
          
-    } else if (expr.id() == ID_pointer_offset) {
+    } else if (_id == ID_pointer_offset) {
         
-        ptl = unsupported2var_bv(); // stub for now 
+        ptl = unsupported2var_bv(expr); // stub for now 
         // KE: when active, also change the code in lvar
         
-    } else if (expr.id() == ID_pointer_object) {
+    } else if (_id == ID_pointer_object) {
         
-        ptl = unsupported2var_bv(); // stub for now 
+        ptl = unsupported2var_bv(expr); // stub for now 
         // KE: when active, also change the code in lvar
                                   
-    } else if ((expr.id() == ID_equal) ||
-               (expr.id() == ID_ieee_float_equal) || 
-               (expr.id() == ID_assign)) {
+    } else if ((_id == ID_equal) ||
+               (_id == ID_ieee_float_equal) || 
+               (_id == ID_assign)) {
 #ifdef DEBUG_SMT_BB
             cout << "; IT IS = " << endl;
 #endif         
@@ -345,15 +378,15 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
                     convert_bv(expr.operands()[0]),
                     convert_bv(expr.operands()[1]));
 
-    } else if (expr.id() == ID_not) {
+    } else if (_id == ID_not) {
 #ifdef DEBUG_SMT_BB
             cout << "; IT IS ! " << endl;
 #endif
         ptl = bvlogic->mkBVNot(
                     convert_bv(expr.operands()[0]));
 
-    } else if ((expr.id()==ID_notequal) || 
-               (expr.id() == ID_ieee_float_notequal)) {
+    } else if ((_id==ID_notequal) || 
+               (_id == ID_ieee_float_notequal)) {
 #ifdef DEBUG_SMT_BB
             cout << "; IT IS != " << endl;
 #endif
@@ -361,14 +394,14 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
                     bvlogic->mkBVEq(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1])));
         
-    } else if (expr.id() == ID_mod) {
+    } else if (_id == ID_mod) {
 #ifdef DEBUG_SMT_BB
             cout << "; IT IS A MOD (%) " << endl;
 #endif        
         ptl = bvlogic->mkBVMod(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1]));
     
-    } else if ((expr.id() == ID_div) || (expr.id() == ID_floatbv_div)) {
+    } else if ((_id == ID_div) || (_id == ID_floatbv_div)) {
 #ifdef DEBUG_SMT_BB
             cout << "; IT IS A DIV " << endl;
 #endif
@@ -390,64 +423,64 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         }
 
 #ifdef DEBUG_SMT_BB
-        cout << "; IT IS A " << expr.id().c_str() << endl;
+        cout << "; IT IS A " << _id.c_str() << endl;
 #endif
-        if (expr.id() == ID_if) {
+        if (_id == ID_if) {
             assert(0);
             // GF: this should be handled by convert_bv_eq_ite.
             //     but if ID_if appears in any other type of expr than equality,
             //     then we should handle it in a somewhat way.
-        } else if (expr.id() == ID_ifthenelse) {
+        } else if (_id == ID_ifthenelse) {
             assert(0);
             // GF: TODO
-        } else if (expr.id() ==  ID_implies) {
+        } else if (_id ==  ID_implies) {
             ptl = bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]);
             
-        } else if (expr.id() ==  ID_and) {
+        } else if (_id ==  ID_and) {
 
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVLand(args);
+                split_exprs_bv(_id, args) : bvlogic->mkBVLand(args);
 
-        } else if (expr.id() ==  ID_or) {
+        } else if (_id ==  ID_or) {
 
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVLor(args);
+                split_exprs_bv(_id, args) : bvlogic->mkBVLor(args);
             
-        } else if (expr.id() ==  ID_bitand) {
+        } else if (_id ==  ID_bitand) {
 
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVBwAnd(args);
+                split_exprs_bv(_id, args) : bvlogic->mkBVBwAnd(args);
 
-        } else if (expr.id() ==  ID_bitxor) {
-
-            ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVBwXor(args);
-
-        } else if (expr.id() ==  ID_bitor) {
+        } else if (_id ==  ID_bitxor) {
 
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVBwOr(args);
+                split_exprs_bv(_id, args) : bvlogic->mkBVBwXor(args);
 
-        } else if (expr.id() == ID_shl) {
+        } else if (_id ==  ID_bitor) {
+
+            ptl = (args.size() > 2) ?
+                split_exprs_bv(_id, args) : bvlogic->mkBVBwOr(args);
+
+        } else if (_id == ID_shl) {
         
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVLshift(args);
+                split_exprs_bv(_id, args) : bvlogic->mkBVLshift(args);
         
-        } else if (expr.id() == ID_shr || // KE: not sure about shr
-                    expr.id() == ID_lshr) {
+        } else if (_id == ID_shr || // KE: not sure about shr
+                    _id == ID_lshr) {
             
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVLRshift(args); 
+                split_exprs_bv(_id, args) : bvlogic->mkBVLRshift(args); 
         
-        } else if (expr.id() == ID_ashr) {
+        } else if (_id == ID_ashr) {
             
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVARshift(args);
+                split_exprs_bv(_id, args) : bvlogic->mkBVARshift(args);
             
-        } else if (expr.id() == ID_ge ||
-                    expr.id() ==  ID_le ||
-                    expr.id() ==  ID_gt ||
-                    expr.id() ==  ID_lt) {  
+        } else if (_id == ID_ge ||
+                    _id ==  ID_le ||
+                    _id ==  ID_gt ||
+                    _id ==  ID_lt) {  
             // Signed/unsigend ops.
             const irep_idt &type_id = expr.type().id();
             assert(type_id != ID_pointer); // TODO
@@ -455,52 +488,52 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             bool is_unsigned = (type_id == ID_unsignedbv ||
                             type_id == ID_natural);
 
-            if (expr.id() == ID_ge) {
+            if (_id == ID_ge) {
                 ptl = (is_unsigned) ? 
                     bvlogic->mkBVUgeq(args) : bvlogic->mkBVSgeq(args);
-            } else if (expr.id() == ID_le) {
+            } else if (_id == ID_le) {
                 ptl = (is_unsigned) ?
                     bvlogic->mkBVUleq(args) : bvlogic->mkBVSleq(args);
-            } else if (expr.id() == ID_gt) {
+            } else if (_id == ID_gt) {
                 ptl = (is_unsigned) ?
                     bvlogic->mkBVUgt(args) : bvlogic->mkBVSgt(args);
-            } else if (expr.id() == ID_lt) {
+            } else if (_id == ID_lt) {
                 ptl = (is_unsigned) ?
                     bvlogic->mkBVUlt(args) : bvlogic->mkBVSlt(args);
             } else {
                 assert(0);
             } 
             
-        } else if (expr.id() == ID_plus ||
-                    expr.id() == ID_unary_plus ||
-                    expr.id() == ID_floatbv_plus) {
+        } else if (_id == ID_plus ||
+                    _id == ID_unary_plus ||
+                    _id == ID_floatbv_plus) {
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVPlus(args);
+                split_exprs_bv(_id, args) : bvlogic->mkBVPlus(args);
             
-        } else if (expr.id() == ID_minus ||
-                    expr.id() == ID_unary_minus || 
-                    expr.id() == ID_floatbv_minus) {
+        } else if (_id == ID_minus ||
+                    _id == ID_unary_minus || 
+                    _id == ID_floatbv_minus) {
             
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVMinus(args);
+                split_exprs_bv(_id, args) : bvlogic->mkBVMinus(args);
                 
-        } else if (expr.id() == ID_mult ||
-                    expr.id() == ID_floatbv_mult) {
+        } else if (_id == ID_mult ||
+                    _id == ID_floatbv_mult) {
             
             ptl = (args.size() > 2) ?
-                split_exprs_bv(expr.id(), args) : bvlogic->mkBVTimes(args);
+                split_exprs_bv(_id, args) : bvlogic->mkBVTimes(args);
                 
         } else {
             
             //GF: to continue...
-            ptl = unsupported2var_bv(); // stub for now
+            ptl = unsupported2var_bv(expr); // stub for now
 
         }
     }
     
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(ptl);
-    cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
     free(s);
 #endif
     
@@ -760,19 +793,21 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
     cout << "\n\n; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
 #endif
 
+    const irep_idt &_id=expr.id(); // KE: gets the id once for performance
+    
     /* Check which case it is */
     literalt l;
-    if (expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) {
+    if (_id==ID_symbol || _id==ID_nondet_symbol) {
 #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;
 #endif
         l = lvar(expr);
-    } else if (expr.id()==ID_constant) {
+    } else if (_id==ID_constant) {
 #ifdef SMT_DEBUG
         cout << "; IT IS A CONSTANT " << endl;
 #endif
         l = lconst(expr);
-    } else if (expr.id() == ID_typecast && expr.has_operands()) {
+    } else if (_id==ID_typecast && expr.has_operands()) {
 #ifdef SMT_DEBUG
         bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
@@ -780,7 +815,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         // KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
         l = type_cast(expr);
-    } else if (expr.id() == ID_typecast || expr.id() == ID_floatbv_typecast) {
+    } else if (_id==ID_typecast || _id==ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
         cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << expr.id() << ")" << endl;
         assert(false); // Need to take care of - typecast no operands
@@ -833,144 +868,144 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
 
         PTRef ptl;
         if ((args.size() > 2) &&
-            ((expr.id() == ID_plus) ||
-             (expr.id() == ID_minus) ||
-             (expr.id() == ID_unary_minus) ||
-             (expr.id() == ID_unary_plus) ||
-             (expr.id() == ID_mult) ||
-             (expr.id() == ID_floatbv_plus) ||
-             (expr.id() == ID_floatbv_minus) ||
-             (expr.id() == ID_floatbv_mult) ||
-             (expr.id() == ID_and) ||
-             (expr.id() == ID_or) ||
-             (expr.id() == ID_bitand) ||
-             (expr.id() == ID_bitor) ||
-             (expr.id() == ID_bitxor) ||
-             (expr.id() == ID_ashr) ||   
-             (expr.id() == ID_lshr) ||
-             (expr.id() == ID_shr) ||
-             (expr.id() == ID_shl)
+            ((_id==ID_plus) ||
+             (_id==ID_minus) ||
+             (_id==ID_unary_minus) ||
+             (_id==ID_unary_plus) ||
+             (_id==ID_mult) ||
+             (_id==ID_floatbv_plus) ||
+             (_id==ID_floatbv_minus) ||
+             (_id==ID_floatbv_mult) ||
+             (_id==ID_and) ||
+             (_id==ID_or) ||
+             (_id==ID_bitand) ||
+             (_id==ID_bitor) ||
+             (_id==ID_bitxor) ||
+             (_id==ID_ashr) ||   
+             (_id==ID_lshr) ||
+             (_id==ID_shr) ||
+             (_id==ID_shl)
                 ))
         {
             //std::cout << "Before build size of " << args.size() << " items " << std::endl;
             // KE:  patching code - check when it is fixed in OpenSMT2 and disable it here.
             ptl = split_exprs(expr.id(), args);
-        } else if (expr.id()==ID_notequal) {
+        } else if (_id==ID_notequal) {
             // TODO: to cuf, look many locations!
             ptl = logic->mkNot(logic->mkEq(args));
-        } else if (expr.id() == ID_equal) {
+        } else if (_id == ID_equal) {
             ptl = logic->mkEq(args);
-        } else if (expr.id()==ID_if) {
+        } else if (_id==ID_if) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT2SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)), logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
-        } else if (expr.id() == ID_ifthenelse) {
+        } else if (_id == ID_ifthenelse) {
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT2SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
-        } else if (expr.id() == ID_and) {
+        } else if (_id == ID_and) {
             // TODO: to cuf
             ptl = logic->mkAnd(args); 
-        } else if (expr.id() == ID_or) {
+        } else if (_id == ID_or) {
             // TODO: to cuf
             ptl = logic->mkOr(args);
-        } else if (expr.id() == ID_bitand) {
+        } else if (_id == ID_bitand) {
             ptl = uflogic->mkCUFBwAnd(args);
-        } else if (expr.id() == ID_bitxor) {
+        } else if (_id == ID_bitxor) {
             ptl = uflogic->mkCUFBwXor(args); 
-        } else if (expr.id() == ID_bitor) {
+        } else if (_id == ID_bitor) {
             ptl = uflogic->mkCUFBwOr(args);             
-        } else if (expr.id() == ID_not) {
+        } else if (_id == ID_not) {
             // TODO: to cuf, look many locations!
             ptl = logic->mkNot(args);
-        } else if (expr.id() == ID_implies) {
+        } else if (_id == ID_implies) {
             ptl = logic->mkImpl(args);
-        } else if (expr.id() == ID_ge) {
-// uflogic To avoid dynamic cast - till the end of this section            
+        } else if (_id == ID_ge) {
+            // uflogic To avoid dynamic cast - till the end of this section            
             ptl = uflogic->mkCUFGeq(args);
-        } else if (expr.id() == ID_le) {
+        } else if (_id == ID_le) {
             ptl = uflogic->mkCUFLeq(args);
-        } else if (expr.id() == ID_gt) {
+        } else if (_id == ID_gt) {
             ptl = uflogic->mkCUFGt(args);
-        } else if (expr.id() == ID_lt) {
+        } else if (_id == ID_lt) {
             ptl = uflogic->mkCUFLt(args);
-        } else if (expr.id() == ID_plus) {
+        } else if (_id == ID_plus) {
             ptl = uflogic->mkCUFPlus(args);
-        } else if (expr.id() == ID_minus) {
+        } else if (_id==ID_minus) {
             ptl = uflogic->mkCUFMinus(args);
-        } else if (expr.id() == ID_unary_minus) {
+        } else if (_id==ID_unary_minus) {
             ptl = uflogic->mkCUFMinus(args);
-        } else if (expr.id() == ID_unary_plus) {
+        } else if (_id==ID_unary_plus) {
             ptl = uflogic->mkCUFPlus(args);
-        } else if (expr.id() == ID_mult) {
+        } else if (_id==ID_mult) {
             ptl = uflogic->mkCUFTimes(args);
-        } else if (expr.id() == ID_div) {
+        } else if (_id==ID_div) {
             ptl = uflogic->mkCUFDiv(args);
-        } else if (expr.id() == ID_mod) {
+        } else if (_id==ID_mod) {
             ptl = uflogic->mkCUFMod(args);
-        } else if (expr.id() == ID_assign) {
+        } else if (_id==ID_assign) {
             ptl = logic->mkEq(args);
-        } else if (expr.id() == ID_ieee_float_equal) {
+        } else if (_id==ID_ieee_float_equal) {
             ptl = logic->mkEq(args);
-        } else if (expr.id() == ID_ieee_float_notequal) {
+        } else if (_id==ID_ieee_float_notequal) {
             ptl = uflogic->mkCUFNeq(args);
-        } else if (expr.id() == ID_floatbv_plus) {
+        } else if (_id==ID_floatbv_plus) {
             ptl = uflogic->mkCUFPlus(args);
-        } else if (expr.id() == ID_floatbv_minus) {
+        } else if (_id==ID_floatbv_minus) {
             ptl = uflogic->mkCUFMinus(args);
-        } else if (expr.id() == ID_floatbv_div) {
+        } else if (_id==ID_floatbv_div) {
             ptl = uflogic->mkCUFDiv(args);
-        } else if (expr.id() == ID_floatbv_mult) {
+        } else if (_id==ID_floatbv_mult) {
             ptl = uflogic->mkCUFTimes(args);
-        } else if (expr.id() == ID_shl) {
+        } else if (_id==ID_shl) {
             ptl = uflogic->mkCUFLshift(args);
-        } else if (expr.id() == ID_shr) { // KE: Not sure about shr
+        } else if (_id==ID_shr) { // KE: Not sure about shr
             ptl = uflogic->mkCUFLRshift(args); 
-        } else if (expr.id() == ID_lshr) {
+        } else if (_id==ID_lshr) {
             ptl = uflogic->mkCUFLRshift(args); 
-        } else if (expr.id() == ID_ashr) {
+        } else if (_id==ID_ashr) {
             ptl = uflogic->mkCUFARshift(args);     
-        } else if (expr.id() == ID_byte_extract_little_endian) {
+        } else if (_id==ID_byte_extract_little_endian) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO                 
-        } else if (expr.id() == ID_byte_update_little_endian) {
+        } else if (_id==ID_byte_update_little_endian) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO              
-        } else if (expr.id() == ID_address_of) {
+        } else if (_id == ID_address_of) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO
-        } else if (expr.id() == ID_with) {
+        } else if (_id==ID_with) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO            
-        } else if (expr.id() == ID_index) {
+        } else if (_id==ID_index) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO
-        } else if (expr.id() == ID_array) {
+        } else if (_id==ID_array) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO    
-        } else if (expr.id() == ID_union) {
+        } else if (_id==ID_union) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO              
-        } else if (expr.id() == ID_member) {
+        } else if (_id==ID_member) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO       
-        } else if (expr.id() == ID_member_name) {
+        } else if (_id==ID_member_name) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO   
-        } else if (expr.id() == ID_C_member_name) {
+        } else if (_id==ID_C_member_name) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO       
-        } else if (expr.id() == ID_pointer) {
+        } else if (_id==ID_pointer) {
             ptl =literals[lunsupported2var(expr).var_no()];
             // KE: when active, also change the code in lvar
-        } else if (expr.id() == ID_pointer_offset) {
+        } else if (_id==ID_pointer_offset) {
             ptl =literals[lunsupported2var(expr).var_no()];
             // KE: when active, also change the code in lvar 
-        } else if (expr.id() == ID_pointer_object) {
+        } else if (_id==ID_pointer_object) {
             ptl =literals[lunsupported2var(expr).var_no()]; 
-        } else if (expr.id() == ID_dynamic_object) {
+        } else if (_id==ID_dynamic_object) {
             ptl =literals[lunsupported2var(expr).var_no()]; 
         } else {
             cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
@@ -1050,24 +1085,47 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
     }
 }
 
+/*******************************************************************
+
+ Function: smtcheck_opensmt2t_cuf::lunsupported2var
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: In CUF it is **only** for unsupported operators, for 
+ *        unsupported data type please use: lnsupportedDatatype2var
+
+\*******************************************************************/
 literalt smtcheck_opensmt2t_cuf::lunsupported2var(exprt expr)
 {
+    // Tries to map unsupported to another unsupported
+    if (converted_exprs.find(expr.hash()) != converted_exprs.end())
+        return converted_exprs[expr.hash()]; // TODO: might be buggy;
+    
+    
+    // Create a new unsupported var
     literalt l;
     PTRef var;
-
-    const string str = smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
-    if (expr.is_boolean())
+           
+    std::string str =smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
+    str = quote_varname(str);
+    
+    // Create the correct type in opensmt
+    if (expr.is_boolean()) 
         var = logic->mkBoolVar(str.c_str());
     else if (expr.type().id() == ID_c_bool) 
-    { // KE: New Cprover code - patching
-        std::string num(expr.get_string(ID_value));
-        var = logic->mkBoolVar(num.c_str());
-    }
+        // KE: New Cprover code - patching
+        var = logic->mkBoolVar((expr.get_string(ID_value)).c_str());
     else
-        var = uflogic->mkCUFNumVar(str.c_str()); // To avoid dynamic cast
+        var = uflogic->mkCUFNumVar(str.c_str()); // create unsupported var for expression we don't support
 
     l = push_variable(var);
-
+    
+#ifdef DEBUG_SMT_BB
+        cout << "; IT IS AN UNSUPPORTED VAR " << str << endl;
+#endif     
+    
     return l;
 }
 
@@ -1102,7 +1160,7 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
     PTRef var;
     if(is_number(expr.type()))
         //TODO: Check this
-        var = uflogic->mkCUFNumVar(str.c_str()); // uflogic to avoid dynamic cast
+        var = uflogic->mkCUFNumVar(str.c_str());//Main CufNumVar, for symbols
     else if (expr.is_boolean())
         var = logic->mkBoolVar(str.c_str());
     else if (expr.type().id() == ID_c_bool) 
@@ -1116,7 +1174,10 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
              << expr.type().id() << ")" << endl;
         assert(false); // No support yet for arrays
 #else
-        var = literals[lunsupported2var(expr).var_no()];
+        literalt l_unsupported = lunsupported2var(expr);
+        var = literals[l_unsupported.var_no()];
+        
+        return l_unsupported; // No need to push it again, so return here
 #endif
     }
 
@@ -1136,9 +1197,9 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
 {
     if (bitblaster->isBound(pt1))
     {
-      PTRef old_bv = bitblaster->getBoundPTRef(pt1);
 #ifdef DEBUG_SMT_BB
-      std::cout << " -- Term " << logic->printTerm(pt1) << " is already refined with "
+        PTRef old_bv = bitblaster->getBoundPTRef(pt1);
+        std::cout << " -- Term " << logic->printTerm(pt1) << " is already refined with "
               << logic->printTerm(old_bv) << " and so we skip " << std::endl;
 #endif
     } else {
@@ -1311,6 +1372,7 @@ bool smtcheck_opensmt2t_cuf::refine_ce_solo(std::vector<exprt>& exprs, int i)
     
 #ifdef DEBUG_SMT_BB
     cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
+    logic->dumpHeaderToFile(cout);
 #endif     
     bitblaster->notifyEqualities();
 
@@ -1331,6 +1393,7 @@ bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::set<i
 
 #ifdef DEBUG_SMT_BB
     cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
+    logic->dumpHeaderToFile(cout);
 #endif     
     bitblaster->notifyEqualities();
 
@@ -1346,6 +1409,7 @@ bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set
     
 #ifdef DEBUG_SMT_BB
     cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
+    logic->dumpHeaderToFile(cout);
 #endif    
     bitblaster->notifyEqualities();
 
