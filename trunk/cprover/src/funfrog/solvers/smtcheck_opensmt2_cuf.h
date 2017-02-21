@@ -24,7 +24,7 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class smtcheck_opensmt2t_cuf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_cuf(int bitwidth) :
+  smtcheck_opensmt2t_cuf(unsigned bitwidth) :
       smtcheck_opensmt2t(false, 3, 2) // Is last always!
     , bitwidth(bitwidth)
   {
@@ -77,7 +77,7 @@ protected:
 
   BitBlaster* bitblaster;
 
-  int bitwidth;
+  unsigned bitwidth;
 
   __int128 max_num; // w.r.t. current bitwidth
 

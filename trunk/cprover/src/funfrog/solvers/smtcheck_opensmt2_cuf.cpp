@@ -41,6 +41,13 @@ void smtcheck_opensmt2t_cuf::initializeSolver()
   // KE: End of fix
 
   max_num = pow (2, bitwidth) - 1;
+  
+  // how the check is implemented in malloc.c in the GNU C Library (glibc)
+  if ((bitwidth != 0) && !(bitwidth & (bitwidth - 1))) return;
+  
+  std::cout << "EXIT on Error --bitwidth " << bitwidth
+          <<". Please re-run with bit-width parameter that is a pow of 2! \n";
+  assert((bitwidth != 0) && !(bitwidth & (bitwidth - 1)));
 }
 
 // Free all inner objects
