@@ -40,6 +40,7 @@ public:
       reduction(reduction),
       reduction_graph(reduction_graph),
       reduction_loops(reduction_loops),
+      random_seed(1),
       verbosity(0),
       certify(0)
   { }
@@ -69,7 +70,20 @@ public:
   {
       itp_lra_factor = f;
   }
-  
+
+  void set_random_seed(unsigned int i)
+  {
+      const char* msg;
+      random_seed = i;
+      if (osmt != NULL)
+          osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
+  }
+
+  unsigned get_random_seed()
+  {
+      return random_seed;
+  }
+
   MainSolver * getMainSolver() { return mainSolver; }
 
   Logic * getLogic() { return logic; }
@@ -119,8 +133,10 @@ protected:
   ItpAlgorithm itp_lra_algorithm;
   const char * itp_lra_factor;
 
+  unsigned random_seed;
+
   int verbosity;
-  
+
   int certify;
 };
 

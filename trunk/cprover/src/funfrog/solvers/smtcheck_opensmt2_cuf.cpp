@@ -31,6 +31,8 @@ void smtcheck_opensmt2t_cuf::initializeSolver()
   const char* msg2;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
 
+  osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)get_random_seed()), msg2);
+
   // KE: Fix a strange bug can be related to the fact we are pushing
   // a struct into std::vector and use [] before any push_back
   literals.push_back(PTRef());

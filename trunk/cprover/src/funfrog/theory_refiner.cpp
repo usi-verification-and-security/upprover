@@ -12,6 +12,9 @@
 void theory_refinert::initialize()
 {
   decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"));
+
+  if (options.get_unsigned_int_option("random-seed")) decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
+
   summarization_context.analyze_functions(ns);
   omega.initialize_summary_info (omega.get_summary_info(), goto_program);
   omega.setup_default_precision(ALL_SUBSTITUTING);
