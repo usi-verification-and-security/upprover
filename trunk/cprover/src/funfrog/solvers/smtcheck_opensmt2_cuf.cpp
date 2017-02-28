@@ -224,51 +224,65 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
 // hifrog: ../../src/common/Alloc.h:64: const T& RegionAllocator<T>::operator[]
 //    (RegionAllocator<T>::Ref) const [with T = unsigned int; 
 //     RegionAllocator<T>::Ref = unsigned int]: Assertion `r < sz' failed.
-PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr) 
+PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
 {
-    PTRef ptl;
+    const exprt &expr_op0 = (expr.operands())[0];
+    const irep_idt &_id0=expr_op0.id(); // KE: gets the id once for performance
+    if (_id0 == ID_floatbv_typecast) 
+        assert(0); // Type-cast of float - KE: show me that!
+        
+#ifdef DEBUG_SMT_BB
+    std::cout << ";;; Start (TYPE_CAST) for " << expr.type().id() 
+               << " to " << (expr_op0.type().id()) << std::endl;
+#endif  
+
+    /* For Operators - TYPE CAST OP AS SHL, =, or another TYPE_CAST */    
+    PTRef ptl; // Return Val
     
     // KE: New Cprover code - patching
-    bool is_expr_bool = (expr.is_boolean() || (expr.type().id() == ID_c_bool)); 
-    bool is_operands_bool = ((expr.operands())[0].is_boolean() 
-                || ((expr.operands())[0].type().id() == ID_c_bool)); 
-      
-#ifdef DEBUG_SMT_BB
-    std::cout << ";;; Start (TYPE_CAST) For " << expr.id() << std::endl;
-#endif    
+    bool is_expr_bool = expr.is_boolean() || (expr.type().id() == ID_c_bool); 
+    bool is_operands_bool = expr_op0.is_boolean() ||
+                            (expr_op0.type().id() == ID_c_bool); 
+        
     // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code:
-    if (is_expr_bool && (expr.operands())[0].is_constant()) {
-        std::string val = extract_expr_str_number((expr.operands())[0]);
+    if ((expr.id()== ID_typecast) && (_id0 == ID_typecast) 
+            && (expr_op0.operands().size() == 1)) { // Recursive typecast  
+        ptl = type_cast_bv(expr_op0);
+        if (is_expr_bool && is_number(expr_op0.type())) {
+            ptl = bvlogic->mkBVNot(bvlogic->mkBVEq(ptl, get_bv_const(0)));
+        }
+
+#ifdef DEBUG_SMT_BB
+        std::cout << ";;; Start (TYPE_CAST) for bv operator inner 0 " << expr.type().id() 
+           << " to " << (expr.operands())[0].type().id() << " and again to " 
+           << (expr_op0.operands())[0].type().id() << " to id " 
+           << (expr.operands())[0].id() << " to inner id " 
+           << (expr_op0.operands())[0].id() << std::endl;
+#endif
+           
+    } else if ((expr.id()== ID_typecast) && (_id0 == ID_typecast)) {
+        assert(0); // No arguments - KE: show me that!
+    } else if (expr.type().id() == expr_op0.type().id()) {
+        ptl = convert_bv(expr_op0);
+    } else if (is_expr_bool && expr_op0.is_constant()) {
+        std::string val = extract_expr_str_number(expr_op0);
         bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
 #ifdef DEBUG_SMT_BB        
         std::cout << ";;; IS THIS ZERO? " << val_const_zero << std::endl;
 #endif        
         ptl = get_bv_const(!val_const_zero);       
+    } else if (is_expr_bool && is_number(expr_op0.type())) {
+        // Cast from Real to Boolean - Add
+        PTRef lt = convert_bv(expr_op0); // Creating the Bool expression
+        ptl = bvlogic->mkBVNot(bvlogic->mkBVEq(lt, get_bv_const(0)));
     } else if (is_number(expr.type()) && is_operands_bool) {
         // Cast from Boolean to Real - Add
-        PTRef lt = convert_bv((expr.operands())[0]); // Creating the Bool expression
-        PTRef ptl_if = bvlogic->mkBVLor(bvlogic->mkBVNot(lt), get_bv_const(1));
-        PTRef ptl_else = bvlogic->mkBVLor(lt, get_bv_const(0));
-        ptl = bvlogic->mkBVLand(ptl_if, ptl_else);
-        //PTRef ptl = logic->mkIte(lt, get_bv_const(1), get_bv_const(0));
-    } else if (is_expr_bool && is_number((expr.operands())[0].type())) {
-        // Cast from Real to Boolean - Add
-        PTRef lt = convert_bv((expr.operands())[0]); // Creating the Bool expression
-        ptl = bvlogic->mkBVNot(bvlogic->mkBVEq(lt, get_bv_const(0)));
+        // As bool is signedbv, then no need to do anything in BVP
+        ptl = convert_bv(expr_op0);
     } else {
-        ptl = convert_bv((expr.operands())[0]); 
-        // This is the original encoding that does:
-        // get_bv_var(expr.operands()[0].get("identifier").c_str());
-        //cout << "Case 4 with type (from -> to) " << expr.type().pretty() << 
-        //        " -> " << (expr.operands())[0].type().pretty() << std::endl;
+	ptl = convert_bv(expr_op0);
     }
-
-#ifdef DEBUG_SMT_BB
-    char* s = logic->printTerm(ptl);
-    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
-#endif
 
     return ptl;
 }
@@ -284,24 +298,28 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     const irep_idt &_id=expr.id(); // KE: gets the id once for performance
     
     PTRef ptl;
-    if (_id==ID_symbol || _id==ID_nondet_symbol 
-            || (_id == ID_typecast && expr.has_operands())) {
+    if (_id==ID_symbol || _id==ID_nondet_symbol)
+    {
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A VAR" << endl;
 #endif
-        if (_id == ID_typecast) {
-            ptl = type_cast_bv(expr);
-            // KE: moved into the method type_cast_bv
-            // ptl = get_bv_var(expr.operands()[0].get("identifier").c_str());
-        } else {
-            //ptl = get_bv_var(expr.get("identifier").c_str());
-            ptl = var_bv(expr);
-        }
+       ptl = var_bv(expr);
+       
 #ifdef DEBUG_SMT_BB
         char* s = logic->printTerm(ptl);
-        cout << "; CREAT A VAR in OPENSMT2 " << s << " of tye " << expr.type().id_string() << endl;
+        cout << "; CREATE A VAR in OPENSMT2 " << s << " of type " << expr.type().id_string() << endl;
         free(s);
-#endif        
+#endif
+    } else if (_id == ID_typecast && expr.operands().size() == 1) {
+#ifdef DEBUG_SMT_BB
+        cout << "; IT IS A TYPE-CAST " << endl;
+#endif           
+        ptl = type_cast_bv(expr);
+        
+    } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
+        // KE: TODO, don't know how to do it yet...
+        ptl = unsupported2var_bv(expr); // stub for now
+                
     } else if (_id==ID_constant) {
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A CONSTANT " << endl;
@@ -312,11 +330,10 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         cout << "; CREAT A CONSTANT in OPENSMT2 " << s << endl;
         free(s);
 #endif          
+    } else if (_id == ID_string_constant) {
         
-    } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
-        // KE: TODO, don't know how to do it yet...
-        ptl = unsupported2var_bv(expr); // stub for now
-        
+        ptl = unsupported2var_bv(expr); // stub for now  
+                  
     } else if (_id == ID_byte_extract_little_endian) {
         
         ptl = unsupported2var_bv(expr); // stub for now  
@@ -344,7 +361,11 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     } else if (_id == ID_union) {
         
         ptl = unsupported2var_bv(expr); // stub for now
+     
+    } else if (_id==ID_struct) {  
         
+        ptl = unsupported2var_bv(expr); // stub for now
+    
     } else if (_id == ID_member) {
         
         ptl = unsupported2var_bv(expr); // stub for now
@@ -435,7 +456,9 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         cout << "; IT IS A " << _id.c_str() << endl;
 #endif
         if (_id == ID_if) {
-            assert(0);
+            ptl = bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]); 
+            //assert(0);
+            // KE: isn't it like implies if inside expr?
             // GF: this should be handled by convert_bv_eq_ite.
             //     but if ID_if appears in any other type of expr than equality,
             //     then we should handle it in a somewhat way.
@@ -723,9 +746,9 @@ literalt smtcheck_opensmt2t_cuf::const_var_Real(const exprt &expr)
     PTRef rconst = PTRef_Undef;
     if (num.size() <= 0)
     {
-        if (expr.type().id() == ID_c_enum)
+        if (expr.type().id() == ID_c_enum ||  expr.type().id() == ID_c_enum_tag)
         {
-        	num = expr.type().find(ID_tag).pretty();
+            num = expr.type().find(ID_tag).pretty();
         }
         else
         {
@@ -734,7 +757,7 @@ literalt smtcheck_opensmt2t_cuf::const_var_Real(const exprt &expr)
     }
 
     rconst = uflogic->mkCUFConst(atoi(num.c_str())); // uflogic To avoid dynamic cast
-
+    
     assert(rconst != PTRef_Undef);
 
     l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
@@ -757,8 +780,10 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
                 || ((expr.operands())[0].type().id() == ID_c_bool)); 
     
     // KE: Take care of type cast - recursion of convert take care of it anyhow
-    // Unless it is constant bool, that needs different code:  
-    if (is_expr_bool && (expr.operands())[0].is_constant()) {
+    // Unless it is constant bool, that needs different code: 
+    if (expr.type().id() == (expr.operands())[0].type().id()) {
+        l = convert((expr.operands())[0]);
+    } else if (is_expr_bool && (expr.operands())[0].is_constant()) {
         std::string val = extract_expr_str_number((expr.operands())[0]);
         bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
 #ifdef SMT_DEBUG       
@@ -997,6 +1022,9 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (_id==ID_union) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO              
+        } else if (_id==ID_struct) {
+            ptl = literals[lunsupported2var(expr).var_no()];
+            // KE: TODO                          
         } else if (_id==ID_member) {
             ptl = literals[lunsupported2var(expr).var_no()];
             // KE: TODO       
@@ -1016,6 +1044,8 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ptl =literals[lunsupported2var(expr).var_no()]; 
         } else if (_id==ID_dynamic_object) {
             ptl =literals[lunsupported2var(expr).var_no()]; 
+        } else if (_id == ID_string_constant) {
+            ptl =literals[lunsupported2var(expr).var_no()];    
         } else {
             cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << endl;
@@ -1381,7 +1411,6 @@ bool smtcheck_opensmt2t_cuf::refine_ce_solo(std::vector<exprt>& exprs, int i)
     
 #ifdef DEBUG_SMT_BB
     cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
-    logic->dumpHeaderToFile(cout);
 #endif     
     bitblaster->notifyEqualities();
 
@@ -1402,7 +1431,6 @@ bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::set<i
 
 #ifdef DEBUG_SMT_BB
     cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
-    logic->dumpHeaderToFile(cout);
 #endif     
     bitblaster->notifyEqualities();
 
@@ -1418,7 +1446,6 @@ bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set
     
 #ifdef DEBUG_SMT_BB
     cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
-    logic->dumpHeaderToFile(cout);
 #endif    
     bitblaster->notifyEqualities();
 

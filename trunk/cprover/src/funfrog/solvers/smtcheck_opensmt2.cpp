@@ -869,7 +869,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
             cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
 	#else
-            cout << "EXIT WITH ERROR: Using CPROVER built-in variables not in propositional logic" << str << endl;
+            cout << "EXIT WITH ERROR: Using CPROVER built-in variables not in propositional logic " << str << endl;
             //assert(false); KE: when found all reasons - uncomment
 	#endif
 	}

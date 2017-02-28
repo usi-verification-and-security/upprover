@@ -164,7 +164,9 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
 
     // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code:
-    if (is_expr_bool && (expr.operands())[0].is_constant()) {
+    if (expr.type().id() == (expr.operands())[0].type().id()) {
+        l = convert((expr.operands())[0]);
+    } else if (is_expr_bool && (expr.operands())[0].is_constant()) {
     	std::string val = extract_expr_str_number((expr.operands())[0]);
     	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
     	l = const_var(!val_const_zero);
