@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <cegis/refactor/environment/instrument_state_vars.h>
 
 namespace
@@ -6,7 +15,7 @@ class var_findert: public const_expr_visitort
 {
   std::set<irep_idt> &vars;
 public:
-  var_findert(std::set<irep_idt> &vars) :
+  explicit var_findert(std::set<irep_idt> &vars) :
       vars(vars)
   {
   }

@@ -9,7 +9,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 
 #include <util/cprover_prefix.h>
-#include <util/expr_util.h>
 #include <util/prefix.h>
 #include <util/std_expr.h>
 #include <util/symbol_table.h>
@@ -385,14 +384,15 @@ void goto_convertt::convert_gcc_switch_case_range(
   if(code.operands().size()!=3)
   {
     err_location(code);
-    error() << "GCC's switch-case-range statement expected to have three operands" << eom;
+    error() << "GCC's switch-case-range statement expected to have "
+            << "three operands" << eom;
     throw 0;
   }
 
   goto_programt tmp;
   convert(to_code(code.op2()), tmp);
 
-  //goto_programt::targett target=tmp.instructions.begin();
+  // goto_programt::targett target=tmp.instructions.begin();
   dest.destructive_append(tmp);
 
   #if 0
@@ -920,7 +920,6 @@ void goto_convertt::convert_cpp_delete(
     if(code.get_statement()==ID_cpp_delete_array)
     {
       // build loop
-
     }
     else if(code.get_statement()==ID_cpp_delete)
     {
@@ -1171,7 +1170,8 @@ void goto_convertt::convert_while(
   z->source_location=source_location;
 
   goto_programt tmp_branch;
-  generate_conditional_branch(boolean_negate(cond), z, source_location, tmp_branch);
+  generate_conditional_branch(
+    boolean_negate(cond), z, source_location, tmp_branch);
 
   // do the v label
   goto_programt::targett v=tmp_branch.instructions.begin();
@@ -1456,7 +1456,8 @@ void goto_convertt::convert_break(
   }
 
   // need to process destructor stack
-  unwind_destructor_stack(code.source_location(), targets.break_stack_size, dest);
+  unwind_destructor_stack(
+    code.source_location(), targets.break_stack_size, dest);
 
   // add goto
   goto_programt::targett t=dest.add_instruction();
@@ -1508,7 +1509,7 @@ void goto_convertt::convert_return(
 
     // remove void-typed return value
     if(!result_is_used)
-      new_code.operands().resize(0);
+      new_code.return_value().make_nil();
   }
 
   if(targets.has_return_value)
@@ -1570,7 +1571,8 @@ void goto_convertt::convert_continue(
   }
 
   // need to process destructor stack
-  unwind_destructor_stack(code.source_location(), targets.continue_stack_size, dest);
+  unwind_destructor_stack(
+    code.source_location(), targets.continue_stack_size, dest);
 
   // add goto
   goto_programt::targett t=dest.add_instruction();
@@ -2247,7 +2249,8 @@ Function: goto_convertt::generate_conditional_branch
 static bool has_and_or(const exprt &expr)
 {
   forall_operands(it, expr)
-    if(has_and_or(*it)) return true;
+    if(has_and_or(*it))
+      return true;
 
   if(expr.id()==ID_and || expr.id()==ID_or)
     return true;
@@ -2421,7 +2424,7 @@ const irep_idt goto_convertt::get_string_constant(
             binary2integer(id2string(to_constant_expr(*it).get_value()), true));
 
           if(i!=0) // to skip terminating 0
-            result+=char(i);
+            result+=static_cast<char>(i);
         }
 
       return result;
@@ -2504,7 +2507,8 @@ symbolt &goto_convertt::new_tmp_symbol(
     new_symbol.name=tmp_symbol_prefix+id2string(new_symbol.base_name);
     new_symbol.type=type;
     new_symbol.location=source_location;
-  } while(symbol_table.move(new_symbol, symbol_ptr));
+  }
+  while(symbol_table.move(new_symbol, symbol_ptr));
 
   tmp_symbols.push_back(symbol_ptr->name);
 

@@ -1,4 +1,4 @@
-/*******************************************************************
+/*******************************************************************\
 
 Module: Counterexample-Guided Inductive Synthesis
 
@@ -46,7 +46,8 @@ public:
    * @tparam goto_program_providert
    */
   template<class goto_program_providert>
-  instruction_set_info_factoryt(const goto_program_providert &provider);
+  explicit instruction_set_info_factoryt(
+    const goto_program_providert &provider);
 
   /**
    * @brief

@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 
 #include <util/arith_tools.h>
@@ -15,7 +24,7 @@ class compare_constantt
 {
   const namespacet ns;
 public:
-  compare_constantt(const invariant_programt &program) :
+  explicit compare_constantt(const invariant_programt &program) :
       ns(program.st)
   {
   }

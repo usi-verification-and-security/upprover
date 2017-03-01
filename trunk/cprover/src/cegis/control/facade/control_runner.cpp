@@ -1,4 +1,11 @@
-#include <linking/zero_initializer.h>
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
 
 #include <cegis/symex/cegis_symex_learn.h>
 #include <cegis/symex/cegis_symex_verify.h>
@@ -14,10 +21,6 @@
 #include <cegis/control/verify/control_symex_verify.h>
 #include <cegis/control/verify/zero_solutions.h>
 #include <cegis/control/facade/control_runner.h>
-
-// XXX: Debug
-#include <iostream>
-// XXX: Debug
 
 namespace
 {
@@ -41,7 +44,6 @@ int run(optionst &o, messaget::mstreamt &result, const symbol_tablet &st,
 int run_control(optionst &o, messaget::mstreamt &result,
     const symbol_tablet &st, const goto_functionst &gf)
 {
-  const bool is_vector_solution=is_vector_solution_config(st);
   if (is_vector_solution_config(st))
   {
     const zero_vector_solutiont def(st);

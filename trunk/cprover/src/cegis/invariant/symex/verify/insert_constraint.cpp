@@ -1,7 +1,15 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 
 #include <util/cprover_prefix.h>
-#include <util/expr_util.h>
 
 #include <cegis/cegis-util/program_helper.h>
 #include <cegis/instrument/meta_variables.h>

@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <util/std_types.h>
 #include <util/symbol_table.h>
 
@@ -9,9 +18,9 @@ const symbol_typet &control_solution_type(const symbol_tablet &st)
   return to_symbol_type(st.lookup(CEGIS_CONTROL_SOLUTION_VAR_NAME).type);
 }
 
-const symbol_typet &control_vector_solution_type(const symbol_tablet &st)
+const array_typet &control_vector_solution_type(const symbol_tablet &st)
 {
-  return to_symbol_type(st.lookup(CEGIS_CONTROL_VECTOR_SOLUTION_VAR_NAME).type);
+  return to_array_type(st.lookup(CEGIS_CONTROL_VECTOR_SOLUTION_VAR_NAME).type);
 }
 
 namespace

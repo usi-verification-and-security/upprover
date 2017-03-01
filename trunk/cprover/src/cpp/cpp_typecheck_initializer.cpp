@@ -6,7 +6,6 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#include <util/expr_util.h>
 #include <util/arith_tools.h>
 #include <util/std_expr.h>
 
@@ -35,7 +34,8 @@ void cpp_typecheckt::convert_initializer(symbolt &symbol)
 
   if(symbol.is_type)
   {
-    if(symbol.value.is_nil()) return;
+    if(symbol.value.is_nil())
+      return;
 
     if(symbol.value.id()!=ID_type)
     {
@@ -296,7 +296,7 @@ void cpp_typecheckt::zero_initializer(
     typet enum_type(ID_unsignedbv);
     enum_type.add(ID_width)=final_type.find(ID_width);
 
-    exprt zero(gen_zero(enum_type));
+    exprt zero(from_integer(0, enum_type));
     zero.make_typecast(type);
     already_typechecked(zero);
 
@@ -322,7 +322,8 @@ void cpp_typecheckt::zero_initializer(
   else
   {
     exprt value=
-      ::zero_initializer(final_type, source_location, *this, get_message_handler());
+      ::zero_initializer(
+        final_type, source_location, *this, get_message_handler());
 
     code_assignt assign;
     assign.lhs()=object;

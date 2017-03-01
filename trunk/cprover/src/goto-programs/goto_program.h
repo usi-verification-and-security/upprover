@@ -28,6 +28,12 @@ public:
     std::ostream &out,
     instructionst::const_iterator it) const;
 
+  std::ostream &output_instruction(
+    const class namespacet &ns,
+    const irep_idt &identifier,
+    std::ostream &out,
+    const instructiont &instruction) const;
+
   goto_programt() { }
 
   // get the variables in decl statements
@@ -45,12 +51,14 @@ public:
       it=(program).instructions.begin(); \
       it!=(program).instructions.end(); it++)
 
-extern inline bool operator<(const goto_programt::const_targett i1,
-                             const goto_programt::const_targett i2)
+inline bool operator<(
+  const goto_programt::const_targett i1,
+  const goto_programt::const_targett i2)
 {
   return order_const_target<codet, exprt>(i1, i2);
 }
 
+// NOLINTNEXTLINE(readability/identifiers)
 typedef struct const_target_hash_templatet<codet, exprt> const_target_hash;
 
 std::list<exprt> objects_read(const goto_programt::instructiont &);

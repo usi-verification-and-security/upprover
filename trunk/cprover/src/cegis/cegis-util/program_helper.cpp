@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 #include <functional>
 
@@ -56,7 +65,7 @@ class id_searcht: public const_expr_visitort
   const irep_idt &id;
   bool found;
 public:
-  id_searcht(const irep_idt &id) :
+  explicit id_searcht(const irep_idt &id) :
       id(id), found(false)
   {
   }
@@ -348,8 +357,10 @@ goto_programt::targett insert_after_preserving_source_location(
 goto_programt::targett insert_before_preserving_source_location(
     goto_programt &body, goto_programt::targett pos)
 {
-  typedef goto_programt::targett(goto_programt::*ftype)(goto_programt::targett);
-  const auto op=std::bind1st(std::mem_fun(static_cast<ftype>(&goto_programt::insert_before)), &body);
+  typedef goto_programt::targett (goto_programt::*ftype)(
+      goto_programt::targett);
+  const auto op=std::bind1st(
+      std::mem_fun(static_cast<ftype>(&goto_programt::insert_before)), &body);
   return insert_preserving_source_location(pos, op);
 }
 

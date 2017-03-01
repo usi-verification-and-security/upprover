@@ -13,7 +13,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_types.h>
 #include <util/std_expr.h>
 #include <util/config.h>
-#include <util/expr_util.h>
 #include <util/find_symbols.h>
 #include <util/pointer_offset_size.h>
 #include <util/string2int.h>
@@ -249,7 +248,7 @@ Function: dplib_convt::convert_rest
 
 literalt dplib_convt::convert_rest(const exprt &expr)
 {
-  //dplib_prop.out << "%% E: " << expr << std::endl;
+  // dplib_prop.out << "%% E: " << expr << std::endl;
 
   literalt l=prop.new_variable();
 
@@ -393,21 +392,24 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
       {
         convert_dplib_expr(op);
         dplib_prop.out << "/=";
-        convert_dplib_expr(gen_zero(op.type()));
+        convert_dplib_expr(from_integer(0, op.type()));
       }
       else
       {
+        // NOLINTNEXTLINE(readability/throw)
         throw "TODO typecast1 "+op.type().id_string()+" -> bool";
       }
     }
     else if(expr.type().id()==ID_signedbv ||
             expr.type().id()==ID_unsignedbv)
     {
-      unsigned to_width=unsafe_string2unsigned(id2string(expr.type().get(ID_width)));
+      unsigned to_width=
+        unsafe_string2unsigned(id2string(expr.type().get(ID_width)));
 
       if(op.type().id()==ID_signedbv)
       {
-        unsigned from_width=unsafe_string2unsigned(id2string(op.type().get(ID_width)));
+        unsigned from_width=
+          unsafe_string2unsigned(id2string(op.type().get(ID_width)));
 
         if(from_width==to_width)
           convert_dplib_expr(op);
@@ -426,7 +428,8 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
       }
       else if(op.type().id()==ID_unsignedbv)
       {
-        unsigned from_width=unsafe_string2unsigned(id2string(op.type().get(ID_width)));
+        unsigned from_width=
+          unsafe_string2unsigned(id2string(op.type().get(ID_width)));
 
         if(from_width==to_width)
           convert_dplib_expr(op);
@@ -474,6 +477,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
       }
       else
       {
+        // NOLINTNEXTLINE(readability/throw)
         throw "TODO typecast2 "+op.type().id_string()+
               " -> "+expr.type().id_string();
       }
@@ -485,9 +489,11 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
         convert_dplib_expr(op);
       }
       else
+        // NOLINTNEXTLINE(readability/throw)
         throw "TODO typecast3 "+op.type().id_string()+" -> pointer";
     }
     else
+      // NOLINTNEXTLINE(readability/throw)
       throw "TODO typecast4 ? -> "+expr.type().id_string();
   }
   else if(expr.id()==ID_struct)
@@ -507,7 +513,8 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
         it!=components.end();
         it++, i++)
     {
-      if(i!=0) dplib_prop.out << ", ";
+      if(i!=0)
+        dplib_prop.out << ", ";
       dplib_prop.out << it->get(ID_name);
       dplib_prop.out << ":=";
       convert_dplib_expr(expr.operands()[i]);
@@ -719,13 +726,15 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
 
     if(expr.op0().type().id()==ID_bool)
     {
-      if(expr.id()==ID_notequal) dplib_prop.out << "NOT (";
+      if(expr.id()==ID_notequal)
+        dplib_prop.out << "NOT (";
       dplib_prop.out << "(";
       convert_dplib_expr(expr.op0());
       dplib_prop.out << ") <=> (";
       convert_dplib_expr(expr.op1());
       dplib_prop.out << ")";
-      if(expr.id()==ID_notequal) dplib_prop.out << ")";
+      if(expr.id()==ID_notequal)
+        dplib_prop.out << ")";
     }
     else
     {
@@ -782,7 +791,8 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
       dplib_prop.out << ")";
     }
     else
-      throw "unsupported type for "+expr.id_string()+": "+expr.type().id_string();
+      throw
+        "unsupported type for "+expr.id_string()+": "+expr.type().id_string();
   }
   else if(expr.id()==ID_plus)
   {
@@ -976,7 +986,8 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
       dplib_prop.out << ")";
     }
     else
-      throw "unsupported type for "+expr.id_string()+": "+expr.type().id_string();
+      throw
+        "unsupported type for "+expr.id_string()+": "+expr.type().id_string();
   }
   else if(expr.id()==ID_with)
   {
@@ -1014,7 +1025,9 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
         dplib_prop.out << ")";
       }
       else
-        throw "with expects struct or array type, but got "+expr.type().id_string();
+        throw
+          "with expects struct or array type, but got "+
+          expr.type().id_string();
     }
   }
   else if(expr.id()==ID_member)
@@ -1038,7 +1051,7 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
     dplib_prop.out << "(";
     convert_dplib_expr(expr.op0());
     dplib_prop.out << ").object";
-    // TODO, this has the wrong type
+    // TODO this has the wrong type
   }
   #endif
   else if(expr.id()==ID_string_constant)
@@ -1061,7 +1074,9 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
       dplib_prop.out << "[" << i << "]";
     }
     else
-      throw "unsupported type for "+expr.id_string()+": "+expr.op0().type().id_string();
+      throw
+        "unsupported type for "+expr.id_string()+": "+
+        expr.op0().type().id_string();
   }
   else if(expr.id()==ID_replication)
   {
@@ -1079,7 +1094,8 @@ void dplib_convt::convert_dplib_expr(const exprt &expr)
 
     for(mp_integer i=0; i<times; ++i)
     {
-      if(i!=0) dplib_prop.out << "@";
+      if(i!=0)
+        dplib_prop.out << "@";
       dplib_prop.out << "v";
     }
 
@@ -1269,7 +1285,8 @@ void dplib_convt::convert_dplib_type(const typet &type)
         it!=components.end();
         it++)
     {
-      if(it!=components.begin()) dplib_prop.out << ",";
+      if(it!=components.begin())
+        dplib_prop.out << ",";
       dplib_prop.out << " ";
       dplib_prop.out << it->get(ID_name);
       dplib_prop.out << ": ";

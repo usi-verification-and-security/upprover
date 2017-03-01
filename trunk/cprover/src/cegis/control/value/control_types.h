@@ -1,9 +1,9 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
@@ -30,7 +30,7 @@ const class symbol_typet &control_solution_type(const class symbol_tablet &st);
  *
  * @return
  */
-const class symbol_typet &control_vector_solution_type(const class symbol_tablet &st);
+const class array_typet &control_vector_solution_type(const class symbol_tablet &st);
 
 /**
  * @brief

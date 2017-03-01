@@ -30,23 +30,23 @@ class optionst;
   "D:I:(c89)(c99)(c11)(cpp89)(cpp99)(cpp11)" \
   "(classpath):(cp):(main-class):" \
   "(depth):(partial-loops)(no-unwinding-assertions)(unwinding-assertions)" \
-  GOTO_CHECK_OPTIONS \
+  OPT_GOTO_CHECK \
   "(no-assertions)(no-assumptions)" \
   "(xml-ui)(xml-interface)(json-ui)" \
   "(smt1)(smt2)(fpa)(cvc3)(cvc4)(boolector)(yices)(z3)(opensmt)(mathsat)" \
   "(no-sat-preprocessor)" \
   "(no-pretty-names)(beautify)" \
-  "(dimacs)(refine)(max-node-refinement):(refine-arrays)(refine-arithmetic)(aig)" \
-  "(16)(32)(64)(LP64)(ILP64)(LLP64)(ILP32)(LP32)" \
+  "(dimacs)(refine)(max-node-refinement):(refine-arrays)(refine-arithmetic)"\
+  "(aig)(16)(32)(64)(LP64)(ILP64)(LLP64)(ILP32)(LP32)" \
   "(little-endian)(big-endian)" \
   "(show-goto-functions)(show-loops)" \
   "(show-symbol-table)(show-parse-tree)(show-vcc)" \
-  "(show-claims)(claim):(show-properties)(show-reachable-properties)(property):" \
-  "(stop-on-fail)(trace)" \
+  "(show-claims)(claim):(show-properties)(show-reachable-properties)" \
+  "(property):(stop-on-fail)(trace)" \
   "(error-label):(verbosity):(no-library)" \
   "(nondet-static)" \
   "(version)" \
-  "(cover):" \
+  "(cover):(symex-coverage-report):" \
   "(mm):" \
   "(i386-linux)(i386-macos)(i386-win32)(win32)(winx64)(gcc)" \
   "(ppc-macos)(unsigned-char)" \
@@ -54,8 +54,10 @@ class optionst;
   "(string-abstraction)(no-arch)(arch):" \
   "(round-to-nearest)(round-to-plus-inf)(round-to-minus-inf)(round-to-zero)" \
   "(graphml-witness):" \
+  "(java-max-vla-length):(java-unwind-enum-static)" \
   "(localize-faults)(localize-faults-method):" \
-  "(fixedbv)(floatbv)(all-claims)(all-properties)" // legacy, and will eventually disappear
+  "(lazy-methods)" \
+  "(fixedbv)(floatbv)(all-claims)(all-properties)" // legacy, and will eventually disappear // NOLINT(whitespace/line_length)
 
 class cbmc_parse_optionst:
   public parse_options_baset,

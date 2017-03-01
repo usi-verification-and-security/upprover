@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 
 #include <ansi-c/cprover_library.h>
@@ -84,7 +93,6 @@ void zero_new_global_vars(const symbol_tablet &st, goto_functionst &gf)
   assert(init.body_available());
   goto_programt &body=init.body;
   goto_programt::targett pos=std::prev(body.instructions.end(), 2);
-  null_message_handlert msg;
   const source_locationt loc(jsa_builtin_source_location());
   const namespacet ns(st);
   for (const symbol_tablet::symbolst::value_type &symbol : st.symbols)
@@ -94,7 +102,7 @@ void zero_new_global_vars(const symbol_tablet &st, goto_functionst &gf)
       pos->type=goto_program_instruction_typet::ASSIGN;
       pos->source_location=loc;
       const symbol_exprt lhs(ns.lookup(symbol.first).symbol_expr());
-      const exprt rhs(zero_initializer(lhs.type(), loc, ns, msg));
+      const exprt rhs(zero_initializer(lhs.type(), loc, ns));
       pos->code=code_assignt(lhs, rhs);
     }
 }

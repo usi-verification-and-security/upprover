@@ -1,9 +1,9 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
@@ -43,7 +43,7 @@ public:
    * should close automaticall, <code>false</code>
    * otherwise.
    */
-  irep_pipet(bool auto_close);
+  explicit irep_pipet(bool auto_close);
 
   /**
    * @brief Optionally closing destructor.

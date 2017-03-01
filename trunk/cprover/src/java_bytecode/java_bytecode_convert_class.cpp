@@ -6,8 +6,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#define DEBUG
-
 #ifdef DEBUG
 #include <iostream>
 #endif
@@ -16,19 +14,29 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "java_root_class.h"
 #include "java_types.h"
 #include "java_bytecode_convert_method.h"
+#include "java_bytecode_language.h"
 
+#include <util/namespace.h>
 #include <util/std_expr.h>
-#include <util/expr_util.h>
 
-namespace {
+#include <linking/zero_initializer.h>
+
 class java_bytecode_convert_classt:public messaget
 {
 public:
   java_bytecode_convert_classt(
     symbol_tablet &_symbol_table,
-    message_handlert &_message_handler):
+    message_handlert &_message_handler,
+    bool _disable_runtime_checks,
+    size_t _max_array_length,
+    lazy_methodst& _lazy_methods,
+    lazy_methods_modet _lazy_methods_mode):
     messaget(_message_handler),
-    symbol_table(_symbol_table)
+    symbol_table(_symbol_table),
+    disable_runtime_checks(_disable_runtime_checks),
+    max_array_length(_max_array_length),
+    lazy_methods(_lazy_methods),
+    lazy_methods_mode(_lazy_methods_mode)
   {
   }
 
@@ -47,6 +55,10 @@ public:
 
 protected:
   symbol_tablet &symbol_table;
+  const bool disable_runtime_checks;
+  const size_t max_array_length;
+  lazy_methodst &lazy_methods;
+  lazy_methods_modet lazy_methods_mode;
 
   // conversion
   void convert(const classt &c);
@@ -55,7 +67,6 @@ protected:
   void generate_class_stub(const irep_idt &class_name);
   void add_array_types();
 };
-}
 
 /*******************************************************************\
 
@@ -71,10 +82,21 @@ Function: java_bytecode_convert_classt::convert
 
 void java_bytecode_convert_classt::convert(const classt &c)
 {
+  std::string qualified_classname="java::"+id2string(c.name);
+  if(symbol_table.has_symbol(qualified_classname))
+  {
+    debug() << "Skip class " << c.name << " (already loaded)" << eom;
+    return;
+  }
+
   class_typet class_type;
 
   class_type.set_tag(c.name);
   class_type.set(ID_base_name, c.name);
+  if(c.is_enum)
+    class_type.set(
+      ID_java_enum_static_unwind,
+      std::to_string(c.enum_elements+1));
 
   if(!c.extends.empty())
   {
@@ -99,7 +121,7 @@ void java_bytecode_convert_classt::convert(const classt &c)
   symbolt new_symbol;
   new_symbol.base_name=c.name;
   new_symbol.pretty_name=c.name;
-  new_symbol.name="java::"+id2string(c.name);
+  new_symbol.name=qualified_classname;
   class_type.set(ID_name, new_symbol.name);
   new_symbol.type=class_type;
   new_symbol.mode=ID_java;
@@ -120,8 +142,35 @@ void java_bytecode_convert_classt::convert(const classt &c)
 
   // now do methods
   for(const auto &method : c.methods)
-    java_bytecode_convert_method(
-      *class_symbol, method, symbol_table, get_message_handler());
+  {
+    const irep_idt method_identifier=
+      id2string(qualified_classname)+
+      "."+id2string(method.name)+
+      ":"+method.signature;
+    // Always run the lazy pre-stage, as it symbol-table
+    // registers the function.
+    java_bytecode_convert_method_lazy(
+      *class_symbol,
+      method_identifier,
+      method,
+      symbol_table);
+    if(lazy_methods_mode==LAZY_METHODS_MODE_EAGER)
+    {
+      // Upgrade to a fully-realized symbol now:
+      java_bytecode_convert_method(
+        *class_symbol,
+        method,
+        symbol_table,
+        get_message_handler(),
+        disable_runtime_checks,
+        max_array_length);
+    }
+    else
+    {
+      // Wait for our caller to decide what needs elaborating.
+      lazy_methods[method_identifier]=std::make_pair(class_symbol, &method);
+    }
+  }
 
   // is this a root class?
   if(c.extends.empty())
@@ -140,7 +189,8 @@ Function: java_bytecode_convert_classt::generate_class_stub
 
 \*******************************************************************/
 
-void java_bytecode_convert_classt::generate_class_stub(const irep_idt &class_name)
+void java_bytecode_convert_classt::generate_class_stub(
+  const irep_idt &class_name)
 {
   class_typet class_type;
 
@@ -163,7 +213,8 @@ void java_bytecode_convert_classt::generate_class_stub(const irep_idt &class_nam
 
   if(symbol_table.move(new_symbol, class_symbol))
   {
-    warning() << "stub class symbol "+id2string(new_symbol.name)+" already exists";
+    warning() << "stub class symbol " << new_symbol.name
+              << " already exists" << eom;
   }
   else
   {
@@ -202,16 +253,25 @@ void java_bytecode_convert_classt::convert(
     new_symbol.name=id2string(class_symbol.name)+"."+id2string(f.name);
     new_symbol.base_name=f.name;
     new_symbol.type=field_type;
-    new_symbol.pretty_name=id2string(class_symbol.pretty_name)+"."+id2string(f.name);
+    new_symbol.pretty_name=id2string(class_symbol.pretty_name)+
+      "."+id2string(f.name);
     new_symbol.mode=ID_java;
     new_symbol.is_type=false;
-    new_symbol.value=gen_zero(field_type);
+    const namespacet ns(symbol_table);
+    new_symbol.value=
+      zero_initializer(
+        field_type,
+        class_symbol.location,
+        ns,
+        get_message_handler());
+
+    // Do we have the static field symbol already?
+    const auto s_it=symbol_table.symbols.find(new_symbol.name);
+    if(s_it!=symbol_table.symbols.end())
+      symbol_table.symbols.erase(s_it); // erase, we stubbed it
 
     if(symbol_table.add(new_symbol))
-    {
-      error() << "failed to add static field symbol" << eom;
-      throw 0;
-    }
+      assert(false && "failed to add static field symbol");
   }
   else
   {
@@ -296,10 +356,19 @@ Function: java_bytecode_convert_class
 bool java_bytecode_convert_class(
   const java_bytecode_parse_treet &parse_tree,
   symbol_tablet &symbol_table,
-  message_handlert &message_handler)
+  message_handlert &message_handler,
+  bool disable_runtime_checks,
+  size_t max_array_length,
+  lazy_methodst &lazy_methods,
+  lazy_methods_modet lazy_methods_mode)
 {
   java_bytecode_convert_classt java_bytecode_convert_class(
-    symbol_table, message_handler);
+    symbol_table,
+    message_handler,
+    disable_runtime_checks,
+    max_array_length,
+    lazy_methods,
+    lazy_methods_mode);
 
   try
   {

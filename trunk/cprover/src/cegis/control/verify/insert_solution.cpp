@@ -1,7 +1,15 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 
 #include <util/arith_tools.h>
-#include <util/message.h>
 #include <linking/zero_initializer.h>
 
 #include <cegis/cegis-util/program_helper.h>
@@ -47,8 +55,7 @@ struct_exprt to_struct_expr(const symbol_tablet &st,
   const symbol_typet &type=control_solution_type(st);
   const namespacet ns(st);
   const struct_typet &struct_type=to_struct_type(ns.follow(type));
-  null_message_handlert msg;
-  const exprt zero(zero_initializer(type, loc, ns, msg));
+  const exprt zero(zero_initializer(type, loc, ns));
   struct_exprt result(to_struct_expr(zero));
   struct_exprt::operandst &ops=result.operands();
   set_array(ops, st, struct_type, solution.a, CEGIS_CONTROL_A_MEMBER_NAME);
@@ -73,8 +80,7 @@ class is_assignment_tot
 {
   const std::string name;
 public:
-  is_assignment_tot(const std::string &name) :
-      name(name)
+  explicit is_assignment_tot(const std::string &name):name(name)
   {
   }
 
@@ -96,8 +102,5 @@ void insert_solution(control_programt &program,
   const is_assignment_tot pred(CEGIS_CONTROL_VECTOR_SOLUTION_VAR_NAME);
   const goto_programt::targett it=std::find_if(instrs.begin(), end, pred);
   assert(end != it);
-  struct_exprt &value=to_struct_expr(to_code_assign(it->code).rhs());
-  const namespacet ns(program.st);
-  exprt &k=get_controller_comp(ns, value, CEGIS_CONTROL_K_MEMBER_NAME);
-  k=solution.K;
+  to_code_assign(it->code).rhs()=solution.K;
 }

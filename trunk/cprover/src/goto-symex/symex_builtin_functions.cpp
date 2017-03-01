@@ -8,7 +8,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
-#include <util/expr_util.h>
 #include <util/arith_tools.h>
 #include <util/cprover_prefix.h>
 #include <util/std_types.h>
@@ -21,6 +20,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/string2int.h>
 
 #include <ansi-c/c_types.h>
+
+#include <linking/zero_initializer.h>
 
 #include "goto_symex.h"
 #include "goto_symex_state.h"
@@ -50,7 +51,8 @@ inline static typet c_sizeof_type_rec(const exprt &expr)
     forall_operands(it, expr)
     {
       typet t=c_sizeof_type_rec(*it);
-      if(t.is_not_nil()) return t;
+      if(t.is_not_nil())
+        return t;
     }
   }
 
@@ -123,7 +125,8 @@ void goto_symext::symex_malloc(
             mp_integer elements=alloc_size/elem_size;
 
             if(elements*elem_size==alloc_size)
-              object_type=array_typet(tmp_type, from_integer(elements, tmp_size.type()));
+              object_type=array_typet(
+                tmp_type, from_integer(elements, tmp_size.type()));
           }
         }
       }
@@ -142,7 +145,8 @@ void goto_symext::symex_malloc(
 
       symbolt size_symbol;
 
-      size_symbol.base_name="dynamic_object_size"+std::to_string(dynamic_counter);
+      size_symbol.base_name=
+        "dynamic_object_size"+std::to_string(dynamic_counter);
       size_symbol.name="symex_dynamic::"+id2string(size_symbol.base_name);
       size_symbol.is_lvalue=true;
       size_symbol.type=tmp_size.type();
@@ -176,7 +180,7 @@ void goto_symext::symex_malloc(
     rhs.type()=pointer_typet(value_symbol.type.subtype());
     index_exprt index_expr(value_symbol.type.subtype());
     index_expr.array()=value_symbol.symbol_expr();
-    index_expr.index()=gen_zero(index_type());
+    index_expr.index()=from_integer(0, index_type());
     rhs.op0()=index_expr;
   }
   else
@@ -236,7 +240,7 @@ void goto_symext::symex_gcc_builtin_va_arg_next(
   do_simplify(tmp);
   irep_idt id=get_symbol(tmp);
 
-  exprt rhs=gen_zero(lhs.type());
+  exprt rhs=zero_initializer(lhs.type(), code.source_location(), ns);
 
   if(id!=irep_idt())
   {
@@ -485,7 +489,7 @@ void goto_symext::symex_cpp_new(
   else
     symbol.type=code.type().subtype();
 
-  //symbol.type.set("#active", symbol_expr(active_symbol));
+  // symbol.type.set("#active", symbol_expr(active_symbol));
   symbol.type.set("#dynamic", true);
 
   new_symbol_table.add(symbol);
@@ -498,7 +502,9 @@ void goto_symext::symex_cpp_new(
   if(do_array)
   {
     exprt index_expr(ID_index, code.type().subtype());
-    index_expr.copy_to_operands(symbol.symbol_expr(), gen_zero(index_type()));
+    index_expr.copy_to_operands(
+      symbol.symbol_expr(),
+      from_integer(0, index_type()));
     rhs.move_to_operands(index_expr);
   }
   else
@@ -523,7 +529,7 @@ void goto_symext::symex_cpp_delete(
   statet &state,
   const codet &code)
 {
-  //bool do_array=code.get(ID_statement)==ID_cpp_delete_array;
+  // bool do_array=code.get(ID_statement)==ID_cpp_delete_array;
 }
 
 /*******************************************************************\
@@ -543,18 +549,21 @@ void goto_symext::symex_trace(
   const code_function_callt &code)
 {
   if(code.arguments().size()<2)
-    throw "CBMC_trace expects at least two arguments";
+    // NOLINTNEXTLINE(readability/throw)
+    throw "symex_trace expects at least two arguments";
 
   int debug_thresh=unsafe_string2int(options.get_option("debug-level"));
 
   mp_integer debug_lvl;
 
   if(to_integer(code.arguments()[0], debug_lvl))
+    // NOLINTNEXTLINE(readability/throw)
     throw "CBMC_trace expects constant as first argument";
 
   if(code.arguments()[1].id()!="implicit_address_of" ||
      code.arguments()[1].operands().size()!=1 ||
      code.arguments()[1].op0().id()!=ID_string_constant)
+    // NOLINTNEXTLINE(readability/throw)
     throw "CBMC_trace expects string constant as second argument";
 
   if(mp_integer(debug_thresh)>=debug_lvl)
@@ -598,7 +607,10 @@ void goto_symext::symex_fkt(
   bool first=true;
 
   Forall_operands(it, fc)
-    if(first) first=false; else new_fc.move_to_operands(*it);
+    if(first)
+      first=false;
+    else
+      new_fc.move_to_operands(*it);
 
   new_fc.set(ID_identifier, fc.op0().get(ID_identifier));
 

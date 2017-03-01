@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <ansi-c/expr2c.h>
 #include <goto-programs/goto_trace.h>
 
@@ -30,9 +39,8 @@ const struct_exprt &find_solution(const goto_tracet &trace)
 }
 }
 
-void rational_solution_configurationt::convert(
-    solutiont &current_candidate, const goto_tracet &trace,
-    const symbol_tablet &st)
+void rational_solution_configurationt::convert(solutiont &current_candidate,
+    const goto_tracet &trace, const symbol_tablet &st)
 {
   const struct_exprt &solution=find_solution(trace);
   const namespacet ns(st);

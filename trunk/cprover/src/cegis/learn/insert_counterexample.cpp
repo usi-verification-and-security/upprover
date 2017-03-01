@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 
 #include <ansi-c/c_types.h>
@@ -22,12 +31,11 @@ zero_valuest get_zero_values(const symbol_tablet &st,
   std::map<const irep_idt, exprt> zero_values;
   const source_locationt loc(default_cegis_source_location());
   const namespacet ns(st);
-  null_message_handlert msg;
   for (const goto_programt::const_targett pos : ce_locs)
   {
     const irep_idt &marker=get_counterexample_marker(pos);
     const typet &type=get_affected_type(*pos);
-    const exprt value(zero_initializer(type, loc, ns, msg));
+    const exprt value(zero_initializer(type, loc, ns));
     zero_values.insert(std::make_pair(marker, value));
   }
   return zero_values;
@@ -139,7 +147,6 @@ void add_array_declarations(symbol_tablet &st, goto_functionst &gf,
   const constant_exprt sz_expr(from_integer(ces.size(), sz_type));
   const array_valuest array_values(get_array_values(ces));
   const labelled_counterexamplest::value_type &prototype=ces.front();
-  goto_programt &body=get_entry_body(gf);
   goto_programt::targett pos=std::prev(begin);
   for (const labelled_counterexamplest::value_type::value_type &value : prototype)
   {
@@ -164,8 +171,7 @@ void add_array_indexes(const std::set<irep_idt> &ce_keys, symbol_tablet &st,
   pos=declare_cegis_meta_variable(st, gf, std::prev(pos), CE_ARRAY_INDEX, type);
   const source_locationt loc(default_cegis_source_location());
   const namespacet ns(st);
-  null_message_handlert msg;
-  const exprt zero(zero_initializer(type, loc, ns, msg));
+  const exprt zero(zero_initializer(type, loc, ns));
   assign_cegis_meta_variable(st, gf, pos, CE_ARRAY_INDEX, zero);
   pos=cprover_init;
   for (const irep_idt &key : ce_keys)

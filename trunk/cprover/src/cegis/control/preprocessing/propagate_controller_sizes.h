@@ -1,9 +1,9 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
@@ -65,20 +65,6 @@ const array_exprt &get_a_controller_comp(
  * @return
  */
 const array_exprt &get_b_controller_comp(
-    const namespacet &ns,
-    const struct_exprt &value);
-
-/**
- * @brief
- *
- * @details
- *
- * @param ns
- * @param value
- *
- * @return
- */
-const array_exprt &get_K_controller_comp(
     const namespacet &ns,
     const struct_exprt &value);
 

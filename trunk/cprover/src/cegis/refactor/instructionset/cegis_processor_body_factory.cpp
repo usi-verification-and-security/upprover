@@ -1,8 +1,16 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 #include <functional>
 
 #include <util/arith_tools.h>
-#include <util/expr_util.h>
 
 #include <cegis/cegis-util/program_helper.h>
 #include <cegis/instrument/meta_variables.h>
@@ -154,7 +162,7 @@ public:
 
   void declare_instruction_loop_head()
   {
-    decl(CEGIS_PROC_INSTR_INDEX, gen_zero(cegis_size_type()));
+    decl(CEGIS_PROC_INSTR_INDEX, from_integer(0, cegis_size_type()));
     const member_exprt opcode(cegis_opcode(st, func_name));
     const size_t size(num_instrs(ordered_instructions));
     assume_less(pos=body.insert_after(pos), opcode, size);
@@ -169,7 +177,7 @@ public:
     const char * const base_idx_name=CEGIS_PROC_INSTR_INDEX;
     const std::string idx(meta_name(base_idx_name));
     const symbol_exprt idx_expr(st.lookup(idx).symbol_expr());
-    const plus_exprt rhs(idx_expr, gen_one(idx_expr.type()));
+    const plus_exprt rhs(idx_expr, from_integer(1, idx_expr.type()));
     cegis_assign_local_variable(st, body, pos, func_name, base_idx_name, rhs);
     pos=std::prev(body.instructions.end(), 2);
     const std::string index(meta_name(CEGIS_PROC_INSTR_INDEX));
@@ -214,49 +222,6 @@ public:
     finalise_conditional_instr_gotos();
   }
 };
-
-bool is_forward_goto(const goto_programt::instructiont &instr)
-{
-  return instr.is_goto() && !instr.is_backwards_goto();
-}
-
-void remove_singleton_switch_cases(goto_programt &body)
-{
-  body.compute_location_numbers();
-  goto_programt::instructionst &instrs=body.instructions;
-  const goto_programt::targett end(instrs.end());
-  for (goto_programt::targett pos=instrs.begin(); pos != end; ++pos)
-  {
-    if (!is_forward_goto(*pos)) continue;
-    const auto pred(std::mem_fun_ref(&goto_programt::instructiont::is_skip));
-    const goto_programt::targett tail=std::find_if(pos, end, pred);
-    assert(end != tail);
-    if (pos->get_target() == tail) instrs.erase(pos);
-    pos=tail;
-  }
-}
-
-void remove_goto_next(goto_programt &body)
-{
-  body.compute_location_numbers();
-  goto_programt::instructionst &instrs=body.instructions;
-  for (goto_programt::targett pos=instrs.begin(); pos != instrs.end(); ++pos)
-    if (is_forward_goto(*pos) && pos->get_target() == std::next(pos))
-      pos=instrs.erase(pos);
-}
-
-void remove_skips(goto_programt::instructionst &instrs)
-{
-  const goto_programt::targett first(instrs.begin());
-  const goto_programt::targett last(instrs.end());
-  for (goto_programt::targett pos=first; pos != last; ++pos)
-  {
-    if (!pos->is_skip()) continue;
-    const goto_programt::targett successor(std::next(pos));
-    move_labels(instrs, pos, successor);
-    pos=instrs.erase(pos);
-  }
-}
 }
 
 void generate_processor_body(symbol_tablet &st, goto_programt &body,
@@ -272,9 +237,6 @@ void generate_processor_body(symbol_tablet &st, goto_programt &body,
     factory.finish_instruction_loop();
   }
   body.add_instruction(goto_program_instruction_typet::END_FUNCTION);
-  //remove_singleton_switch_cases(body);
-  //remove_goto_next(body);
-  //remove_skips(body.instructions);
   body.compute_loop_numbers();
   body.update();
 }

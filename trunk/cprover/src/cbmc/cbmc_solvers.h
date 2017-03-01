@@ -47,34 +47,65 @@ public:
   {
   }
 
-  //The solver class (that takes care of allocated objects)
+  // The solver class,
+  // which owns a variety of allocated objects.
   class solvert
   {
   public:
-    solvert(prop_convt* _prop_conv)
+    solvert()
     {
-      assert(_prop_conv!=NULL);
-      prop_conv_ptr = _prop_conv;
     }
 
-    ~solvert()
+    explicit solvert(prop_convt *p):prop_conv_ptr(p)
     {
-      assert(prop_conv_ptr!=NULL);
-      delete prop_conv_ptr;
     }
 
-    //use this to get the prop_conv
-    prop_convt& prop_conv() const
+    solvert(prop_convt *p1, propt *p2):
+      prop_ptr(p2),
+      prop_conv_ptr(p1)
     {
-      assert(prop_conv_ptr!=NULL);
+    }
+
+    solvert(prop_convt *p1, std::ofstream *p2):
+      ofstream_ptr(p2),
+      prop_conv_ptr(p1)
+    {
+    }
+
+    prop_convt &prop_conv() const
+    {
+      assert(prop_conv_ptr!=nullptr);
       return *prop_conv_ptr;
     }
 
-  protected:
-    prop_convt* prop_conv_ptr;
+    propt &prop() const
+    {
+      assert(prop_ptr!=nullptr);
+      return *prop_ptr;
+    }
+
+    void set_prop_conv(prop_convt *p)
+    {
+      prop_conv_ptr=std::unique_ptr<prop_convt>(p);
+    }
+
+    void set_prop(propt *p)
+    {
+      prop_ptr=std::unique_ptr<propt>(p);
+    }
+
+    void set_ofstream(std::ofstream *p)
+    {
+      ofstream_ptr=std::unique_ptr<std::ofstream>(p);
+    }
+
+    // the objects are deleted in the opposite order they appear below
+    std::unique_ptr<std::ofstream> ofstream_ptr;
+    std::unique_ptr<propt> prop_ptr;
+    std::unique_ptr<prop_convt> prop_conv_ptr;
   };
 
-  //returns a solvert object
+  // returns a solvert object
   virtual std::unique_ptr<solvert> get_solver()
   {
     solvert *solver;
@@ -107,19 +138,18 @@ protected:
   // use gui format
   language_uit::uit ui;
 
-  solvert* get_default();
-  solvert* get_dimacs();
-  solvert* get_bv_refinement();
-  solvert* get_smt1(smt1_dect::solvert solver);
-  solvert* get_smt2(smt2_dect::solvert solver);
+  solvert *get_default();
+  solvert *get_dimacs();
+  solvert *get_bv_refinement();
+  solvert *get_smt1(smt1_dect::solvert solver);
+  solvert *get_smt2(smt2_dect::solvert solver);
 
   smt1_dect::solvert get_smt1_solver_type() const;
   smt2_dect::solvert get_smt2_solver_type() const;
 
-  //consistency checks during solver creation
+  // consistency checks during solver creation
   void no_beautification();
   void no_incremental_check();
-
 };
 
 #endif // CPROVER_CBMC_CBMC_SOLVERS_H

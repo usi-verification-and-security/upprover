@@ -10,6 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_JAVA_BYTECODE_JAVA_BYTECODE_TYPECHECK_H
 
 #include <set>
+#include <map>
 
 #include <util/symbol_table.h>
 #include <util/typecheck.h>

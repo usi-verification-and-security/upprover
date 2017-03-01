@@ -122,13 +122,15 @@ bool compilet::doit()
   }
 
   if(source_files.size()>0)
-    if(compile()) return true;
+    if(compile())
+      return true;
 
   if(mode==LINK_LIBRARY ||
      mode==COMPILE_LINK ||
      mode==COMPILE_LINK_EXECUTABLE)
   {
-    if(link()) return true;
+    if(link())
+      return true;
   }
 
   return false;
@@ -223,9 +225,9 @@ bool compilet::add_input_file(const std::string &file_name)
 
     // add the files from "ar t"
     #ifdef _WIN32
-    if(file_name[0]!='/' && file_name[1]!=':')
+    if(file_name[0]!='/' && file_name[1]!=':') // NOLINT(readability/braces)
     #else
-    if(file_name[0]!='/')
+    if(file_name[0]!='/') // NOLINT(readability/braces)
     #endif
     {
       cmd << "ar t " <<
@@ -250,7 +252,7 @@ bool compilet::add_input_file(const std::string &file_name)
       {
         if(ch!='\n')
         {
-          line+=(char)ch;
+          line+=static_cast<char>(ch);
         }
         else
         {
@@ -414,7 +416,8 @@ bool compilet::link()
     convert_symbols(compiled_functions);
   }
 
-  if(write_object_file(output_file_executable, symbol_table, compiled_functions))
+  if(write_object_file(
+      output_file_executable, symbol_table, compiled_functions))
     return true;
 
   return false;
@@ -446,7 +449,20 @@ bool compilet::compile()
 
     bool r=parse_source(file_name); // don't break the program!
 
-    if(r) return true; // parser/typecheck error
+    if(r)
+    {
+      const std::string &debug_outfile=
+        cmdline.get_value("print-rejected-preprocessed-source");
+      if(!debug_outfile.empty())
+      {
+        std::ifstream in(file_name, std::ios::binary);
+        std::ofstream out(debug_outfile, std::ios::binary);
+        out << in.rdbuf();
+        warning() << "Failed sources in " << debug_outfile << eom;
+      }
+
+      return true; // parser/typecheck error
+    }
 
     if(mode==COMPILE_ONLY || mode==ASSEMBLE_ONLY)
     {
@@ -487,7 +503,8 @@ Function: compilet::parse
 
 bool compilet::parse(const std::string &file_name)
 {
-  if(file_name=="-") return parse_stdin();
+  if(file_name=="-")
+    return parse_stdin();
 
   #ifdef _MSC_VER
   std::ifstream infile(widen(file_name));
@@ -527,8 +544,8 @@ bool compilet::parse(const std::string &file_name)
 
   language_filet language_file;
 
-  std::pair<language_filest::filemapt::iterator, bool>
-  res=language_files.filemap.insert(
+  std::pair<language_filest::file_mapt::iterator, bool>
+  res=language_files.file_map.insert(
     std::pair<std::string, language_filet>(file_name, language_file));
 
   language_filet &lf=res.first->second;
@@ -719,7 +736,7 @@ bool compilet::parse_source(const std::string &file_name)
     return true;
 
   // so we remove it from the list afterwards
-  language_files.filemap.erase(file_name);
+  language_files.file_map.erase(file_name);
   return false;
 }
 

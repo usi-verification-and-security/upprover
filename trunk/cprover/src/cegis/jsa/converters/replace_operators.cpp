@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <util/arith_tools.h>
 
 #include <cegis/jsa/instrument/jsa_meta_data.h>
@@ -25,8 +34,8 @@ class replace_pred_ops_visitort: public expr_visitort
 {
   const __CPROVER_jsa_pred_instructiont &instr;
 public:
-  replace_pred_ops_visitort(const __CPROVER_jsa_pred_instructiont &instr) :
-      instr(instr)
+  explicit replace_pred_ops_visitort(
+    const __CPROVER_jsa_pred_instructiont &instr):instr(instr)
   {
   }
 

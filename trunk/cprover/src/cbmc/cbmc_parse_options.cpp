@@ -13,7 +13,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/string2int.h>
 #include <util/config.h>
-#include <util/expr_util.h>
 #include <util/language.h>
 #include <util/unicode.h>
 #include <util/memory_info.h>
@@ -23,11 +22,13 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/remove_virtual_functions.h>
+#include <goto-programs/remove_instanceof.h>
 #include <goto-programs/remove_returns.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
 #include <goto-programs/remove_asm.h>
 #include <goto-programs/remove_unused_functions.h>
+#include <goto-programs/remove_static_init_loops.h>
 #include <goto-programs/goto_inline.h>
 #include <goto-programs/show_properties.h>
 #include <goto-programs/set_properties.h>
@@ -38,6 +39,9 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/link_to_library.h>
 #include <goto-programs/remove_skip.h>
 #include <goto-programs/show_goto_functions.h>
+
+#include <goto-symex/rewrite_union.h>
+#include <goto-symex/adjust_float_expressions.h>
 
 #include <goto-instrument/full_slicer.h>
 #include <goto-instrument/nondet_static.h>
@@ -220,7 +224,11 @@ void cbmc_parse_optionst::get_command_line_options(optionst &options)
     options.set_option("propagation", true);
 
   // all checks supported by goto_check
-  GOTO_CHECK_PARSE_OPTIONS(cmdline, options);
+  PARSE_OPTIONS_GOTO_CHECK(cmdline, options);
+
+  // unwind loops in java enum static initialization
+  if(cmdline.isset("java-unwind-enum-static"))
+    options.set_option("java-unwind-enum-static", true);
 
   // check assertions
   if(cmdline.isset("no-assertions"))
@@ -426,6 +434,11 @@ void cbmc_parse_optionst::get_command_line_options(optionst &options)
     options.set_option("stop-on-fail", true);
     options.set_option("trace", true);
   }
+
+  if(cmdline.isset("symex-coverage-report"))
+    options.set_option(
+      "symex-coverage-report",
+      cmdline.get_value("symex-coverage-report"));
 }
 
 /*******************************************************************\
@@ -541,6 +554,11 @@ int cbmc_parse_optionst::doit()
 
   if(set_properties(goto_functions))
     return 7; // should contemplate EX_USAGE from sysexits.h
+
+  // unwinds <clinit> loops to number of enum elements
+  // side effect: add this as explicit unwind to unwind set
+  if(options.get_bool_option("java-unwind-enum-static"))
+    remove_static_init_loops(symbol_table, goto_functions, options);
 
   // do actual BMC
   return do_bmc(bmc, goto_functions);
@@ -874,7 +892,10 @@ bool cbmc_parse_optionst::process_goto_program(
       symbol_table,
       goto_functions,
       cmdline.isset("pointer-check"));
+    // Java virtual functions -> explicit dispatch tables:
     remove_virtual_functions(symbol_table, goto_functions);
+    // Java instanceof -> clsid comparison:
+    remove_instanceof(symbol_table, goto_functions);
 
     // full slice?
     if(cmdline.isset("full-slice"))
@@ -891,10 +912,13 @@ bool cbmc_parse_optionst::process_goto_program(
     remove_returns(symbol_table, goto_functions);
     remove_vector(symbol_table, goto_functions);
     remove_complex(symbol_table, goto_functions);
+    rewrite_union(goto_functions, ns);
 
     // add generic checks
     status() << "Generic Property Instrumentation" << eom;
     goto_check(ns, options, goto_functions);
+    // checks don't know about adjusted float expressions
+    adjust_float_expressions(goto_functions, ns);
 
     // ignore default/user-specified initialization
     // of variables with static lifetime
@@ -1067,6 +1091,7 @@ void cbmc_parse_optionst::help()
     "\n"
     "Analysis options:\n"
     " --show-properties            show the properties, but don't run analysis\n" // NOLINT(*)
+    " --symex-coverage-report f    generate a Cobertura XML coverage report in f\n" // NOLINT(*)
     " --property id                only check one specific property\n"
     " --stop-on-fail               stop analysis once a failed property is detected\n" // NOLINT(*)
     " --trace                      give a counterexample trace for failed properties\n" //NOLINT(*)
@@ -1114,10 +1139,10 @@ void cbmc_parse_optionst::help()
     "Program representations:\n"
     " --show-parse-tree            show parse tree\n"
     " --show-symbol-table          show symbol table\n"
-    " --show-goto-functions        show goto program\n"
+    HELP_SHOW_GOTO_FUNCTIONS
     "\n"
     "Program instrumentation options:\n"
-    GOTO_CHECK_HELP
+    HELP_GOTO_CHECK
     " --no-assertions              ignore user assertions\n"
     " --no-assumptions             ignore user assumptions\n"
     " --error-label label          check that label is unreachable\n"
@@ -1127,6 +1152,10 @@ void cbmc_parse_optionst::help()
     "Java Bytecode frontend options:\n"
     " --classpath dir/jar          set the classpath\n"
     " --main-class class-name      set the name of the main class\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
+    " --java-max-vla-length        limit the length of user-code-created arrays\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
+    " --java-unwind-enum-static    try to unwind loops in static initialization of enums\n"
     "\n"
     "Semantic transformations:\n"
     " --nondet-static              add nondeterministic initialization of variables with static lifetime\n" // NOLINT(*)

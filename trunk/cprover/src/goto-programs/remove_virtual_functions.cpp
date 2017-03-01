@@ -7,8 +7,10 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <util/prefix.h>
+#include <util/type_eq.h>
 
 #include "class_hierarchy.h"
+#include "class_identifier.h"
 #include "remove_virtual_functions.h"
 
 /*******************************************************************\
@@ -43,15 +45,23 @@ protected:
   class functiont
   {
   public:
+    functiont() {}
+    explicit functiont(const irep_idt &_class_id) :
+      class_id(_class_id)
+    {}
+
     symbol_exprt symbol_expr;
     irep_idt class_id;
   };
 
   typedef std::vector<functiont> functionst;
   void get_functions(const exprt &, functionst &);
-  exprt get_method(const irep_idt &class_id, const irep_idt &component_name);
-
-  exprt build_class_identifier(const exprt &);
+  void get_child_functions_rec(
+    const irep_idt &, const symbol_exprt &,
+    const irep_idt &, functionst &) const;
+  exprt get_method(
+    const irep_idt &class_id,
+    const irep_idt &component_name) const;
 };
 
 /*******************************************************************\
@@ -77,48 +87,6 @@ remove_virtual_functionst::remove_virtual_functionst(
 
 /*******************************************************************\
 
-Function: remove_virtual_functionst::build_class_identifier
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-exprt remove_virtual_functionst::build_class_identifier(
-  const exprt &src)
-{
-  // the class identifier is in the root class
-  exprt e=src;
-
-  while(1)
-  {
-    const typet &type=ns.follow(e.type());
-    assert(type.id()==ID_struct);
-
-    const struct_typet &struct_type=to_struct_type(type);
-    const struct_typet::componentst &components=struct_type.components();
-    assert(!components.empty());
-
-    member_exprt member_expr(
-      e, components.front().get_name(), components.front().type());
-
-    if(components.front().get_name()=="@class_identifier")
-    {
-      // found it
-      return member_expr;
-    }
-    else
-    {
-      e=member_expr;
-    }
-  }
-}
-
-/*******************************************************************\
-
 Function: remove_virtual_functionst::remove_virtual_function
 
   Inputs:
@@ -135,6 +103,8 @@ void remove_virtual_functionst::remove_virtual_function(
 {
   const code_function_callt &code=
     to_code_function_call(target->code);
+
+  const auto &vcall_source_loc=target->source_location;
 
   const exprt &function=code.function();
   assert(function.id()==ID_virtual_function);
@@ -153,9 +123,11 @@ void remove_virtual_functionst::remove_virtual_function(
   if(functions.size()==1)
   {
     assert(target->is_function_call());
-    to_code_function_call(target->code).function()=
-      functions.begin()->symbol_expr;
-
+    if(functions.begin()->symbol_expr==symbol_exprt())
+      target->make_skip();
+    else
+      to_code_function_call(target->code).function()=
+        functions.begin()->symbol_expr;
     return;
   }
 
@@ -163,6 +135,8 @@ void remove_virtual_functionst::remove_virtual_function(
   goto_programt final_skip;
 
   goto_programt::targett t_final=final_skip.add_instruction();
+  t_final->source_location=vcall_source_loc;
+
   t_final->make_skip();
 
   // build the calls and gotos
@@ -170,31 +144,59 @@ void remove_virtual_functionst::remove_virtual_function(
   goto_programt new_code_calls;
   goto_programt new_code_gotos;
 
-  for(const auto &fun : functions)
+  exprt this_expr=code.arguments()[0];
+  // If necessary, cast to the last candidate function to
+  // get the object's clsid. By the structure of get_functions,
+  // this is the parent of all other classes under consideration.
+  const auto &base_classid=functions.back().class_id;
+  const auto &base_function_symbol=functions.back().symbol_expr;
+  symbol_typet suggested_type(base_classid);
+  exprt c_id2=get_class_identifier_field(this_expr, suggested_type, ns);
+
+  std::map<irep_idt, goto_programt::targett> calls;
+  // Note backwards iteration, to get the least-derived candidate first.
+  for(auto it=functions.crbegin(), itend=functions.crend(); it!=itend; ++it)
   {
-    // call function
-    goto_programt::targett t1=new_code_calls.add_instruction();
-    t1->make_function_call(code);
-    to_code_function_call(t1->code).function()=fun.symbol_expr;
+    const auto &fun=*it;
+    auto insertit=calls.insert(
+      {fun.symbol_expr.get_identifier(), goto_programt::targett()});
 
-    // goto final
-    goto_programt::targett t3=new_code_calls.add_instruction();
-    t3->make_goto(t_final, true_exprt());
-
-    exprt this_expr=code.arguments()[0];
-    if(this_expr.type().id()!=ID_pointer ||
-       this_expr.type().id()!=ID_struct)
+    // Only create one call sequence per possible target:
+    if(insertit.second)
     {
-      symbol_typet symbol_type(fun.class_id);
-      this_expr=typecast_exprt(this_expr, pointer_typet(symbol_type));
+      goto_programt::targett t1=new_code_calls.add_instruction();
+      t1->source_location=vcall_source_loc;
+      if(!fun.symbol_expr.get_identifier().empty())
+      {
+      // call function
+        t1->make_function_call(code);
+        auto &newcall=to_code_function_call(t1->code);
+        newcall.function()=fun.symbol_expr;
+        pointer_typet need_type(symbol_typet(fun.symbol_expr.get(ID_C_class)));
+        if(!type_eq(newcall.arguments()[0].type(), need_type, ns))
+          newcall.arguments()[0].make_typecast(need_type);
+      }
+      else
+      {
+        // No definition for this type; shouldn't be possible...
+        t1->make_assertion(false_exprt());
+      }
+      insertit.first->second=t1;
+      // goto final
+      goto_programt::targett t3=new_code_calls.add_instruction();
+      t3->source_location=vcall_source_loc;
+      t3->make_goto(t_final, true_exprt());
     }
 
-    exprt deref=dereference_exprt(this_expr, this_expr.type().subtype());
-    exprt c_id1=constant_exprt(fun.class_id, string_typet());
-    exprt c_id2=build_class_identifier(deref);
-
-    goto_programt::targett t4=new_code_gotos.add_instruction();
-    t4->make_goto(t1, equal_exprt(c_id1, c_id2));
+    // If this calls the base function we just fall through.
+    // Otherwise branch to the right call:
+    if(fun.symbol_expr!=base_function_symbol)
+    {
+      exprt c_id1=constant_exprt(fun.class_id, string_typet());
+      goto_programt::targett t4=new_code_gotos.add_instruction();
+      t4->source_location=vcall_source_loc;
+      t4->make_goto(insertit.first->second, equal_exprt(c_id1, c_id2));
+    }
   }
 
   goto_programt new_code;
@@ -211,8 +213,10 @@ void remove_virtual_functionst::remove_virtual_function(
     const irep_idt comment=it->source_location.get_comment();
     it->source_location=target->source_location;
     it->function=target->function;
-    if(!property_class.empty()) it->source_location.set_property_class(property_class);
-    if(!comment.empty()) it->source_location.set_comment(comment);
+    if(!property_class.empty())
+      it->source_location.set_property_class(property_class);
+    if(!comment.empty())
+      it->source_location.set_comment(comment);
   }
 
   goto_programt::targett next_target=target;
@@ -222,6 +226,61 @@ void remove_virtual_functionst::remove_virtual_function(
 
   // finally, kill original invocation
   target->make_skip();
+}
+
+/*******************************************************************\
+
+Function: remove_virtual_functionst::get_child_functions_rec
+
+  Inputs: `this_id`: class name
+          `last_method_defn`: the most-derived parent of `this_id`
+             to define the requested function
+          `component_name`: name of the function searched for
+
+ Outputs: `functions` is assigned a list of {class name, function symbol}
+          pairs indicating that if `this` is of the given class, then the
+          call will target the given function. Thus if A <: B <: C and A
+          and C provide overrides of `f` (but B does not),
+          get_child_functions_rec("C", C.f, "f") -> [{"C", C.f},
+                                                     {"B", C.f},
+                                                     {"A", A.f}]
+
+ Purpose: Used by get_functions to track the most-derived parent that
+          provides an override of a given function.
+
+\*******************************************************************/
+
+void remove_virtual_functionst::get_child_functions_rec(
+  const irep_idt &this_id,
+  const symbol_exprt &last_method_defn,
+  const irep_idt &component_name,
+  functionst &functions) const
+{
+  auto findit=class_hierarchy.class_map.find(this_id);
+  if(findit==class_hierarchy.class_map.end())
+    return;
+
+  for(const auto &child : findit->second.children)
+  {
+    exprt method=get_method(child, component_name);
+    functiont function(child);
+    if(method.is_not_nil())
+    {
+      function.symbol_expr=to_symbol_expr(method);
+      function.symbol_expr.set(ID_C_class, child);
+    }
+    else
+    {
+      function.symbol_expr=last_method_defn;
+    }
+    functions.push_back(function);
+
+    get_child_functions_rec(
+      child,
+      function.symbol_expr,
+      component_name,
+      functions);
+  }
 }
 
 /*******************************************************************\
@@ -243,23 +302,7 @@ void remove_virtual_functionst::get_functions(
   const irep_idt class_id=function.get(ID_C_class);
   const irep_idt component_name=function.get(ID_component_name);
   assert(!class_id.empty());
-
-  // iterate over all children, transitively
-  std::vector<irep_idt> children=
-    class_hierarchy.get_children_trans(class_id);
-
-  for(const auto &child : children)
-  {
-    exprt method=get_method(child, component_name);
-    if(method.is_not_nil())
-    {
-      functiont function;
-      function.class_id=child;
-      function.symbol_expr=to_symbol_expr(method);
-      function.symbol_expr.set(ID_C_class, child);
-      functions.push_back(function);
-    }
-  }
+  functiont root_function;
 
   // Start from current class, go to parents until something
   // is found.
@@ -269,20 +312,35 @@ void remove_virtual_functionst::get_functions(
     exprt method=get_method(c, component_name);
     if(method.is_not_nil())
     {
-      functiont function;
-      function.class_id=c;
-      function.symbol_expr=to_symbol_expr(method);
-      function.symbol_expr.set(ID_C_class, c);
-      functions.push_back(function);
+      root_function.class_id=c;
+      root_function.symbol_expr=to_symbol_expr(method);
+      root_function.symbol_expr.set(ID_C_class, c);
       break; // abort
     }
 
     const class_hierarchyt::idst &parents=
       class_hierarchy.class_map[c].parents;
 
-    if(parents.empty()) break;
+    if(parents.empty())
+      break;
     c=parents.front();
   }
+
+  if(root_function.class_id.empty())
+  {
+    // No definition here; this is an abstract function.
+    root_function.class_id=class_id;
+  }
+
+  // iterate over all children, transitively
+  get_child_functions_rec(
+    class_id,
+    root_function.symbol_expr,
+    component_name,
+    functions);
+
+  if(root_function.symbol_expr!=symbol_exprt())
+    functions.push_back(root_function);
 }
 
 /*******************************************************************\
@@ -299,7 +357,7 @@ Function: remove_virtual_functionst::get_method
 
 exprt remove_virtual_functionst::get_method(
   const irep_idt &class_id,
-  const irep_idt &component_name)
+  const irep_idt &component_name) const
 {
   irep_idt id=id2string(class_id)+"."+
               id2string(component_name);
@@ -343,7 +401,6 @@ bool remove_virtual_functionst::remove_virtual_functions(
 
   if(did_something)
   {
-    //remove_skip(goto_program);
     goto_program.update();
   }
 

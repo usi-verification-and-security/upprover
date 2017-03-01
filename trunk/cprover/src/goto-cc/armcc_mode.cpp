@@ -59,8 +59,8 @@ int armcc_modet::doit()
   if(cmdline.isset("verbosity"))
     verbosity=unsafe_string2int(cmdline.get_value("verbosity"));
 
-  compiler.ui_message_handler.set_verbosity(verbosity);
-  ui_message_handler.set_verbosity(verbosity);
+  compiler.set_message_handler(get_message_handler());
+  message_handler.set_verbosity(verbosity);
 
   debug() << "ARM mode" << eom;
 
@@ -187,8 +187,10 @@ int armcc_modet::doit()
       std::cout << "  " << (*it) << std::endl;
     }
 
-    std::cout << "Output file (object): " << compiler.output_file_object << std::endl;
-    std::cout << "Output file (executable): " << compiler.output_file_executable << std::endl;
+    std::cout << "Output file (object): "
+              << compiler.output_file_object << std::endl;
+    std::cout << "Output file (executable): "
+              << compiler.output_file_executable << std::endl;
   }
 
   // Parse input program, convert to goto program, write output
@@ -209,5 +211,6 @@ Function: armcc_modet::help_mode
 
 void armcc_modet::help_mode()
 {
-  std::cout << "goto-armcc understands the options of armcc plus the following.\n\n";
+  std::cout << "goto-armcc understands the options "
+            << "of armcc plus the following.\n\n";
 }

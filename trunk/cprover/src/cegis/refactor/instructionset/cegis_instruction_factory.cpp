@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 #include <numeric>
 
@@ -37,7 +46,7 @@ class arithmetic_instructionst
   const typet &type;
   const instruction_descriptiont::typest sig;
 public:
-  arithmetic_instructionst(const typet &type) :
+  explicit arithmetic_instructionst(const typet &type) :
       type(type), sig( { type, type, type })
   {
   }
@@ -67,7 +76,7 @@ class assignt
 {
   const typet type;
 public:
-  assignt(const typet &type) :
+  explicit assignt(const typet &type) :
       type(type)
   {
   }

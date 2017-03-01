@@ -24,8 +24,11 @@ public:
   virtual decision_proceduret::resultt dec_solve();
 
   virtual std::string decision_procedure_text() const
-  { return "refinement loop with "+prop.solver_text(); }
+  {
+    return "refinement loop with "+prop.solver_text();
+  }
 
+  // NOLINTNEXTLINE(readability/identifiers)
   typedef bv_pointerst SUB;
 
   // maximal number of times we refine a formula node
@@ -83,8 +86,8 @@ protected:
   void get_values(approximationt &approximation);
   bool is_in_conflict(approximationt &approximation);
 
-  void check_SAT();
-  void check_UNSAT();
+  virtual void check_SAT();
+  virtual void check_UNSAT();
   bool progress;
 
   // we refine the theory of arrays
@@ -108,7 +111,6 @@ protected:
 
   // use gui format
   language_uit::uit ui;
-
 };
 
 #endif // CPROVER_SOLVERS_REFINEMENT_BV_REFINEMENT_H

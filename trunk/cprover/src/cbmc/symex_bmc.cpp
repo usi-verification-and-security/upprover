@@ -29,7 +29,9 @@ symex_bmct::symex_bmct(
   symbol_tablet &_new_symbol_table,
   symex_targett &_target):
   goto_symext(_ns, _new_symbol_table, _target),
-  max_unwind_is_set(false)
+  record_coverage(false),
+  max_unwind_is_set(false),
+  symex_coverage(_ns)
 {
 }
 
@@ -60,6 +62,10 @@ void symex_bmct::symex_step(
 
     last_source_location=source_location;
   }
+
+  if(record_coverage &&
+     !state.guard.is_false())
+    symex_coverage.covered(state.source.pc);
 
   goto_symext::symex_step(goto_functions, state);
 }
@@ -104,18 +110,16 @@ bool symex_bmct::get_unwind(
 
   bool abort=unwind>=this_loop_limit;
 
-  if (this_loop_limit < 10 || unwind % (this_loop_limit / 10) == 0){
-      statistics() << (abort?"Not unwinding":"Unwinding")
-                   << " loop " << id << " iteration "
-                   << unwind;
+  statistics() << (abort?"Not unwinding":"Unwinding")
+               << " loop " << id << " iteration "
+               << unwind;
 
-      if(this_loop_limit!=std::numeric_limits<unsigned>::max())
-        statistics() << " (" << this_loop_limit << " max)";
+  if(this_loop_limit!=std::numeric_limits<unsigned>::max())
+    statistics() << " (" << this_loop_limit << " max)";
 
-      statistics() << " " << source.pc->source_location
-                   << " thread " << source.thread_nr << endl << " ... " << eom;
+  statistics() << " " << source.pc->source_location
+               << " thread " << source.thread_nr << eom;
 
-  }
   return abort;
 }
 

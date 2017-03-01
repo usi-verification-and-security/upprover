@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 #include <iterator>
 
@@ -40,7 +49,7 @@ class counterexample_variable_collectort
 {
   invariant_symbol_set &vars;
 public:
-  counterexample_variable_collectort(invariant_symbol_set &vars) :
+  explicit counterexample_variable_collectort(invariant_symbol_set &vars) :
       vars(vars)
   {
   }

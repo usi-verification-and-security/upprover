@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 
 #include <cegis/invariant/util/copy_instructions.h>
@@ -95,7 +104,7 @@ class skip_removert
   typedef std::map<goto_programt::targett, goto_programt::targett> skipst;
   skipst skips;
 public:
-  skip_removert(goto_programt::instructionst &instrs) :
+  explicit skip_removert(goto_programt::instructionst &instrs) :
       instrs(instrs)
   {
   }

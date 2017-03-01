@@ -35,7 +35,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cbmc/version.h>
 
 #include "clobber_parse_options.h"
-#include "clobber_instrumenter.h"
+// #include "clobber_instrumenter.h"
 
 /*******************************************************************\
 
@@ -51,7 +51,8 @@ Function: clobber_parse_optionst::clobber_parse_optionst
 
 clobber_parse_optionst::clobber_parse_optionst(int argc, const char **argv):
   parse_options_baset(CLOBBER_OPTIONS, argc, argv),
-  language_uit("CLOBBER " CBMC_VERSION, cmdline)
+  language_uit(cmdline, ui_message_handler),
+  ui_message_handler(cmdline, "CLOBBER " CBMC_VERSION)
 {
 }
 
@@ -74,7 +75,7 @@ void clobber_parse_optionst::eval_verbosity()
 
   if(cmdline.isset("verbosity"))
   {
-    v=unsafe_string2int(cmdline.getval("verbosity"));
+    v=unsafe_string2int(cmdline.get_value("verbosity"));
     if(v<0)
       v=0;
     else if(v>10)
@@ -105,13 +106,13 @@ void clobber_parse_optionst::get_command_line_options(optionst &options)
   }
 
   if(cmdline.isset("debug-level"))
-    options.set_option("debug-level", cmdline.getval("debug-level"));
+    options.set_option("debug-level", cmdline.get_value("debug-level"));
 
   if(cmdline.isset("unwindset"))
-    options.set_option("unwindset", cmdline.getval("unwindset"));
+    options.set_option("unwindset", cmdline.get_value("unwindset"));
 
   // all checks supported by goto_check
-  GOTO_CHECK_PARSE_OPTIONS(cmdline, options);
+  PARSE_OPTIONS_GOTO_CHECK(cmdline, options);
 
   // check assertions
   if(cmdline.isset("no-assertions"))
@@ -127,7 +128,7 @@ void clobber_parse_optionst::get_command_line_options(optionst &options)
 
   // magic error label
   if(cmdline.isset("error-label"))
-    options.set_option("error-label", cmdline.getval("error-label"));
+    options.set_option("error-label", cmdline.get_value("error-label"));
 }
 
 /*******************************************************************\
@@ -164,25 +165,24 @@ int clobber_parse_optionst::doit()
 
   goto_functionst goto_functions;
 
-  if(get_goto_program(options, goto_functions))
-    return 6;
-
-  label_properties(goto_functions);
-
-  if(cmdline.isset("show-properties"))
-  {
-    const namespacet ns(symbol_table);
-    show_properties(ns, get_ui(), goto_functions);
-    return 0;
-  }
-
-  if(set_properties(goto_functions))
-    return 7;
-
-  // do instrumentation
-
   try
   {
+    if(get_goto_program(options, goto_functions))
+      return 6;
+
+    label_properties(goto_functions);
+
+    if(cmdline.isset("show-properties"))
+    {
+      const namespacet ns(symbol_table);
+      show_properties(ns, get_ui(), goto_functions);
+      return 0;
+    }
+
+    set_properties(goto_functions);
+
+    // do instrumentation
+
     const namespacet ns(symbol_table);
 
     std::ofstream out("simulator.c");
@@ -192,7 +192,8 @@ int clobber_parse_optionst::doit()
 
     dump_c(goto_functions, true, ns, out);
 
-    status() << "instrumentation complete; compile and execute simulator.c" << eom;
+    status() << "instrumentation complete; compile and execute simulator.c"
+             << eom;
 
     return 0;
   }
@@ -206,6 +207,12 @@ int clobber_parse_optionst::doit()
   catch(const char *error_msg)
   {
     error() << error_msg << messaget::eom;
+    return 8;
+  }
+
+  catch(std::bad_alloc)
+  {
+    error() << "Out of memory" << messaget::eom;
     return 8;
   }
 
@@ -231,28 +238,8 @@ Function: clobber_parse_optionst::set_properties
 
 bool clobber_parse_optionst::set_properties(goto_functionst &goto_functions)
 {
-  try
-  {
-    if(cmdline.isset("property"))
-      ::set_properties(goto_functions, cmdline.get_values("property"));
-  }
-
-  catch(const char *e)
-  {
-    error(e);
-    return true;
-  }
-
-  catch(const std::string e)
-  {
-    error(e);
-    return true;
-  }
-
-  catch(int)
-  {
-    return true;
-  }
+  if(cmdline.isset("property"))
+    ::set_properties(goto_functions, cmdline.get_values("property"));
 
   return false;
 }
@@ -279,7 +266,6 @@ bool clobber_parse_optionst::get_goto_program(
     return true;
   }
 
-  try
   {
     if(cmdline.args.size()==1 &&
        is_goto_binary(cmdline.args[0]))
@@ -290,7 +276,7 @@ bool clobber_parse_optionst::get_goto_program(
            symbol_table, goto_functions, get_message_handler()))
         return true;
 
-      config.ansi_c.set_from_symbol_table(symbol_table);
+      config.set_from_symbol_table(symbol_table);
 
       if(cmdline.isset("show-symbol-table"))
       {
@@ -302,7 +288,8 @@ bool clobber_parse_optionst::get_goto_program(
 
       if(symbol_table.symbols.find(entry_point)==symbol_table.symbols.end())
       {
-        error() << "The goto binary has no entry point; please complete linking" << eom;
+        error() << "The goto binary has no entry point; please complete linking"
+                << eom;
         return true;
       }
     }
@@ -332,7 +319,8 @@ bool clobber_parse_optionst::get_goto_program(
 
       if(language==NULL)
       {
-        error() << "failed to figure out type of file `" <<  filename << "'" << eom;
+        error() << "failed to figure out type of file `" <<  filename << "'"
+                << eom;
         return true;
       }
 
@@ -351,10 +339,10 @@ bool clobber_parse_optionst::get_goto_program(
     }
     else
     {
-
-      if(parse()) return true;
-      if(typecheck()) return true;
-      if(final()) return true;
+      if(parse() ||
+         typecheck() ||
+         final())
+        return true;
 
       // we no longer need any parse trees or language files
       clear_parse();
@@ -388,29 +376,6 @@ bool clobber_parse_optionst::get_goto_program(
       return true;
   }
 
-  catch(const char *e)
-  {
-    error(e);
-    return true;
-  }
-
-  catch(const std::string e)
-  {
-    error(e);
-    return true;
-  }
-
-  catch(int)
-  {
-    return true;
-  }
-
-  catch(std::bad_alloc)
-  {
-    error() << "Out of memory" << eom;
-    return true;
-  }
-
   return false;
 }
 
@@ -430,7 +395,6 @@ bool clobber_parse_optionst::process_goto_program(
   const optionst &options,
   goto_functionst &goto_functions)
 {
-  try
   {
     namespacet ns(symbol_table);
 
@@ -464,32 +428,9 @@ bool clobber_parse_optionst::process_goto_program(
     // show it?
     if(cmdline.isset("show-goto-functions"))
     {
-      goto_functions.output(ns, std::cout);
+      show_goto_functions(ns, get_ui(), goto_functions);
       return true;
     }
-  }
-
-  catch(const char *e)
-  {
-    error(e);
-    return true;
-  }
-
-  catch(const std::string e)
-  {
-    error(e);
-    return true;
-  }
-
-  catch(int)
-  {
-    return true;
-  }
-
-  catch(std::bad_alloc)
-  {
-    error() << "Out of memory" << eom;
-    return true;
   }
 
   return false;
@@ -717,7 +658,7 @@ void clobber_parse_optionst::help()
     " --unsigned-char              make \"char\" unsigned by default\n"
     " --show-parse-tree            show parse tree\n"
     " --show-symbol-table          show symbol table\n"
-    " --show-goto-functions        show goto program\n"
+    HELP_SHOW_GOTO_FUNCTIONS
     " --ppc-macos                  set MACOS/PPC architecture\n"
     " --mm model                   set memory model (default: sc)\n"
     " --arch                       set architecture (default: "
@@ -729,13 +670,14 @@ void clobber_parse_optionst::help()
     #endif
     " --no-arch                    don't set up an architecture\n"
     " --no-library                 disable built-in abstract C library\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --round-to-nearest           IEEE floating point rounding mode (default)\n"
     " --round-to-plus-inf          IEEE floating point rounding mode\n"
     " --round-to-minus-inf         IEEE floating point rounding mode\n"
     " --round-to-zero              IEEE floating point rounding mode\n"
     "\n"
     "Program instrumentation options:\n"
-    GOTO_CHECK_HELP
+    HELP_GOTO_CHECK
     " --show-properties            show the properties\n"
     " --no-assertions              ignore user assertions\n"
     " --no-assumptions             ignore user assumptions\n"

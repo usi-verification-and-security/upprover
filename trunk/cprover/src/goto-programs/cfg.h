@@ -39,7 +39,7 @@ struct cfg_base_nodet:public graph_nodet<empty_edget>, public T
 template<class T,
          typename P=const goto_programt,
          typename I=goto_programt::const_targett>
-class cfg_baset:public graph< cfg_base_nodet<T,I> >
+class cfg_baset:public grapht< cfg_base_nodet<T, I> >
 {
 public:
   typedef std::size_t entryt;
@@ -47,16 +47,16 @@ public:
   struct entry_mapt:
     public std::map<goto_programt::const_targett, entryt>
   {
-    graph< cfg_base_nodet<T,I> > & container;
+    grapht< cfg_base_nodet<T, I> > &container;
 
-    explicit entry_mapt(graph< cfg_base_nodet<T,I> > & _container):
+    explicit entry_mapt(grapht< cfg_base_nodet<T, I> > &_container):
       container(_container)
     {
     }
 
-    entryt& operator[](const goto_programt::const_targett &t)
+    entryt &operator[](const goto_programt::const_targett &t)
     {
-      std::pair<iterator,bool> e=insert(std::make_pair(t, 0));
+      std::pair<iterator, bool> e=insert(std::make_pair(t, 0));
 
       if(e.second)
         e.first->second=container.add_node();
@@ -131,6 +131,9 @@ public:
     compute_edges(goto_functions, goto_program);
   }
 
+  I get_first_node(P &program) const { return program.instructions.begin(); }
+  I get_last_node(P &program) const { return --program.instructions.end(); }
+  bool nodes_empty(P &program) const { return program.instructions.empty(); }
 };
 
 /*******************************************************************\
