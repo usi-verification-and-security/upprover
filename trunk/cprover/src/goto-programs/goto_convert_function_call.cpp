@@ -9,7 +9,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 
 #include <util/replace_expr.h>
-#include <util/expr_util.h>
 #include <util/source_location.h>
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
@@ -90,7 +89,8 @@ void goto_convertt::do_function_call(
   }
   else if(new_function.id()==ID_symbol)
   {
-    do_function_call_symbol(new_lhs, to_symbol_expr(new_function), new_arguments, dest);
+    do_function_call_symbol(
+      new_lhs, to_symbol_expr(new_function), new_arguments, dest);
   }
   else if(new_function.id()=="NULL-object")
   {

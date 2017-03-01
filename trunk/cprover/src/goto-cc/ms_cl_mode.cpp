@@ -41,7 +41,8 @@ Function: ms_cl_modet::doit
 
 static bool is_directory(const std::string &s)
 {
-  if(s.size()<1) return false;
+  if(s.empty())
+    return false;
   char last_char=s[s.size()-1];
   // Visual CL recognizes both
   return last_char=='\\' || last_char=='/';
@@ -69,8 +70,8 @@ int ms_cl_modet::doit()
   if(cmdline.isset("verbosity"))
     verbosity=unsafe_string2unsigned(cmdline.get_value("verbosity"));
 
-  compiler.ui_message_handler.set_verbosity(verbosity);
-  ui_message_handler.set_verbosity(verbosity);
+  compiler.set_message_handler(get_message_handler());
+  message_handler.set_verbosity(verbosity);
 
   debug() << "Visual Studio mode" << eom;
 
@@ -168,8 +169,10 @@ int ms_cl_modet::doit()
       std::cout << "  " << (*it) << std::endl;
     }
 
-    std::cout << "Output file (object): " << compiler.output_file_object << std::endl;
-    std::cout << "Output file (executable): " << compiler.output_file_executable << std::endl;
+    std::cout << "Output file (object): "
+              << compiler.output_file_object << std::endl;
+    std::cout << "Output file (executable): "
+              << compiler.output_file_executable << std::endl;
   }
 
   // Parse input program, convert to goto program, write output

@@ -69,8 +69,8 @@ bool memory_model_sct::program_order_is_relaxed(
   partial_order_concurrencyt::event_it e1,
   partial_order_concurrencyt::event_it e2) const
 {
-  assert(is_shared_read(e1) || is_shared_write(e1));
-  assert(is_shared_read(e2) || is_shared_write(e2));
+  assert(e1->is_shared_read() || e1->is_shared_write());
+  assert(e2->is_shared_read() || e2->is_shared_write());
 
   return false;
 }
@@ -99,10 +99,10 @@ void memory_model_sct::build_per_thread_map(
       e_it++)
   {
     // concurreny-related?
-    if(!is_shared_read(e_it) &&
-       !is_shared_write(e_it) &&
-       !is_spawn(e_it) &&
-       !is_memory_barrier(e_it)) continue;
+    if(!e_it->is_shared_read() &&
+       !e_it->is_shared_write() &&
+       !e_it->is_spawn() &&
+       !e_it->is_memory_barrier()) continue;
 
     dest[e_it->source.thread_nr].push_back(e_it);
   }
@@ -133,11 +133,12 @@ void memory_model_sct::thread_spawn(
       e_it!=equation.SSA_steps.end();
       e_it++)
   {
-    if(is_spawn(e_it))
+    if(e_it->is_spawn())
     {
       per_thread_mapt::const_iterator next_thread=
         per_thread_map.find(++next_thread_id);
-      if(next_thread==per_thread_map.end()) continue;
+      if(next_thread==per_thread_map.end())
+        continue;
 
       // add a constraint for all events,
       // considering regression/cbmc-concurrency/pthread_create_tso1
@@ -175,7 +176,8 @@ void memory_model_sct::thread_spawn(
     {
       per_thread_mapt::const_iterator next_thread=
         per_thread_map.find(++next_thread_id);
-      if(next_thread==per_thread_map.end()) continue;
+      if(next_thread==per_thread_map.end())
+        continue;
 
       // For SC and several weaker memory models a memory barrier
       // at the beginning of a thread can simply be ignored, because
@@ -187,7 +189,8 @@ void memory_model_sct::thread_spawn(
           n_it!=next_thread->second.end() &&
           (*n_it)->is_memory_barrier();
           ++n_it)
-        ;
+      {
+      }
 
       if(n_it!=next_thread->second.end())
         add_constraint(
@@ -238,7 +241,7 @@ void memory_model_sct::program_order(
         e_it!=events.end();
         e_it++)
     {
-      if(is_memory_barrier(*e_it))
+      if((*e_it)->is_memory_barrier())
          continue;
 
       if(previous==equation.SSA_steps.end())
@@ -419,7 +422,6 @@ void memory_model_sct::from_read(symex_target_equationt &equation)
             add_constraint(equation,
               cond, "fr", r->source);
         }
-
       }
     }
   }

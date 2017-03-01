@@ -1,9 +1,9 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
@@ -33,7 +33,7 @@ private:
     individualt *individual;
   public:
     pid_t child_pid;
-    bool_pipet(individualt *individual);
+    explicit bool_pipet(individualt *individual);
     void run_test(const class optionst &options, configt &config,
         const counterexamplet &ce);
     void join();

@@ -186,13 +186,12 @@ void goto_convert_functionst::add_return(
 
   #endif
 
+  side_effect_expr_nondett rhs(f.type.return_type());
+
   goto_programt::targett t=f.body.add_instruction();
   t->make_return();
-  t->code=code_returnt();
+  t->code=code_returnt(rhs);
   t->source_location=source_location;
-
-  side_effect_expr_nondett rhs(f.type.return_type());
-  t->code.move_to_operands(rhs);
 }
 
 /*******************************************************************\
@@ -217,7 +216,8 @@ void goto_convert_functionst::convert_function(const irep_idt &identifier)
   temporary_counter=0;
 
   f.type=to_code_type(symbol.type);
-  if(f.body_available()) return; // already converted
+  if(f.body_available())
+    return; // already converted
 
   if(symbol.value.is_nil() ||
      symbol.value.id()=="compiled") /* goto_inline may have removed the body */

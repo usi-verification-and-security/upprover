@@ -18,6 +18,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_types.h>
 #include <util/guard.h>
 #include <util/base_type.h>
+#include <util/pointer_offset_size.h>
 #include <util/pointer_predicates.h>
 #include <util/cprover_prefix.h>
 #include <util/options.h>
@@ -38,12 +39,17 @@ public:
     enable_pointer_check=_options.get_bool_option("pointer-check");
     enable_memory_leak_check=_options.get_bool_option("memory-leak-check");
     enable_div_by_zero_check=_options.get_bool_option("div-by-zero-check");
-    enable_signed_overflow_check=_options.get_bool_option("signed-overflow-check");
-    enable_unsigned_overflow_check=_options.get_bool_option("unsigned-overflow-check");
-    enable_pointer_overflow_check=_options.get_bool_option("pointer-overflow-check");
+    enable_signed_overflow_check=
+      _options.get_bool_option("signed-overflow-check");
+    enable_unsigned_overflow_check=
+      _options.get_bool_option("unsigned-overflow-check");
+    enable_pointer_overflow_check=
+      _options.get_bool_option("pointer-overflow-check");
     enable_conversion_check=_options.get_bool_option("conversion-check");
-    enable_undefined_shift_check=_options.get_bool_option("undefined-shift-check");
-    enable_float_overflow_check=_options.get_bool_option("float-overflow-check");
+    enable_undefined_shift_check=
+      _options.get_bool_option("undefined-shift-check");
+    enable_float_overflow_check=
+      _options.get_bool_option("float-overflow-check");
     enable_simplify=_options.get_bool_option("simplify");
     enable_nan_check=_options.get_bool_option("nan-check");
     retain_trivial=_options.get_bool_option("retain-trivial");
@@ -73,7 +79,11 @@ protected:
   void undefined_shift_check(const shift_exprt &expr, const guardt &guard);
   void pointer_rel_check(const exprt &expr, const guardt &guard);
   void pointer_overflow_check(const exprt &expr, const guardt &guard);
-  void pointer_validity_check(const dereference_exprt &expr, const guardt &guard);
+  void pointer_validity_check(
+    const dereference_exprt &expr,
+    const guardt &guard,
+    const exprt &access_lb,
+    const exprt &access_ub);
   void integer_overflow_check(const exprt &expr, const guardt &guard);
   void conversion_check(const exprt &expr, const guardt &guard);
   void float_overflow_check(const exprt &expr, const guardt &guard);
@@ -188,7 +198,7 @@ void goto_checkt::div_by_zero_check(
 
   // add divison by zero subgoal
 
-  exprt zero=gen_zero(expr.op1().type());
+  exprt zero=from_integer(0, expr.op1().type());
 
   if(zero.is_nil())
     throw "no zero of argument type of operator "+expr.id_string();
@@ -233,7 +243,7 @@ void goto_checkt::undefined_shift_check(
   if(distance_type.id()==ID_signedbv)
   {
     binary_relation_exprt inequality(
-      expr.distance(), ID_ge, gen_zero(distance_type));
+      expr.distance(), ID_ge, from_integer(0, distance_type));
 
     add_guarded_claim(
       inequality,
@@ -289,7 +299,7 @@ void goto_checkt::mod_by_zero_check(
 
   // add divison by zero subgoal
 
-  exprt zero=gen_zero(expr.op1().type());
+  exprt zero=from_integer(0, expr.op1().type());
 
   if(zero.is_nil())
     throw "no zero of argument type of operator "+expr.id_string();
@@ -348,7 +358,8 @@ void goto_checkt::conversion_check(
       if(old_type.id()==ID_signedbv) // signed -> signed
       {
         std::size_t old_width=to_signedbv_type(old_type).get_width();
-        if(new_width>=old_width) return; // always ok
+        if(new_width>=old_width)
+          return; // always ok
 
         binary_relation_exprt no_overflow_upper(ID_le);
         no_overflow_upper.lhs()=expr.op0();
@@ -369,7 +380,8 @@ void goto_checkt::conversion_check(
       else if(old_type.id()==ID_unsignedbv) // unsigned -> signed
       {
         std::size_t old_width=to_unsignedbv_type(old_type).get_width();
-        if(new_width>=old_width+1) return; // always ok
+        if(new_width>=old_width+1)
+          return; // always ok
 
         binary_relation_exprt no_overflow_upper(ID_le);
         no_overflow_upper.lhs()=expr.op0();
@@ -453,7 +465,8 @@ void goto_checkt::conversion_check(
       else if(old_type.id()==ID_unsignedbv) // unsigned -> unsigned
       {
         std::size_t old_width=to_unsignedbv_type(old_type).get_width();
-        if(new_width>=old_width) return; // always ok
+        if(new_width>=old_width)
+          return; // always ok
 
         binary_relation_exprt no_overflow_upper(ID_le);
         no_overflow_upper.lhs()=expr.op0();
@@ -802,8 +815,8 @@ void goto_checkt::nan_check(
     // 0/0 = NaN and x/inf = NaN
     // (note that x/0 = +-inf for x!=0 and x!=inf)
     exprt zero_div_zero=and_exprt(
-      ieee_float_equal_exprt(expr.op0(), gen_zero(expr.op0().type())),
-      ieee_float_equal_exprt(expr.op1(), gen_zero(expr.op1().type())));
+      ieee_float_equal_exprt(expr.op0(), from_integer(0, expr.op0().type())),
+      ieee_float_equal_exprt(expr.op1(), from_integer(0, expr.op1().type())));
 
     exprt div_inf=unary_exprt(ID_isinf, expr.op1(), bool_typet());
 
@@ -819,10 +832,10 @@ void goto_checkt::nan_check(
     // Inf * 0 is NaN
     exprt inf_times_zero=and_exprt(
       unary_exprt(ID_isinf, expr.op0(), bool_typet()),
-      ieee_float_equal_exprt(expr.op1(), gen_zero(expr.op1().type())));
+      ieee_float_equal_exprt(expr.op1(), from_integer(0, expr.op1().type())));
 
     exprt zero_times_inf=and_exprt(
-      ieee_float_equal_exprt(expr.op1(), gen_zero(expr.op1().type())),
+      ieee_float_equal_exprt(expr.op1(), from_integer(0, expr.op1().type())),
       unary_exprt(ID_isinf, expr.op0(), bool_typet()));
 
     isnan=or_exprt(inf_times_zero, zero_times_inf);
@@ -840,9 +853,14 @@ void goto_checkt::nan_check(
     exprt plus_inf=ieee_floatt::plus_infinity(spec).to_expr();
     exprt minus_inf=ieee_floatt::minus_infinity(spec).to_expr();
 
-    isnan=or_exprt(
-      and_exprt(equal_exprt(expr.op0(), minus_inf), equal_exprt(expr.op1(), plus_inf)),
-      and_exprt(equal_exprt(expr.op0(), plus_inf), equal_exprt(expr.op1(), minus_inf)));
+    isnan=
+      or_exprt(
+        and_exprt(
+          equal_exprt(expr.op0(), minus_inf),
+          equal_exprt(expr.op1(), plus_inf)),
+        and_exprt(
+          equal_exprt(expr.op0(), plus_inf),
+          equal_exprt(expr.op1(), minus_inf)));
   }
   else if(expr.id()==ID_minus)
   {
@@ -854,9 +872,14 @@ void goto_checkt::nan_check(
     exprt plus_inf=ieee_floatt::plus_infinity(spec).to_expr();
     exprt minus_inf=ieee_floatt::minus_infinity(spec).to_expr();
 
-    isnan=or_exprt(
-      and_exprt(equal_exprt(expr.op0(), plus_inf), equal_exprt(expr.op1(), plus_inf)),
-      and_exprt(equal_exprt(expr.op0(), minus_inf), equal_exprt(expr.op1(), minus_inf)));
+    isnan=
+      or_exprt(
+        and_exprt(
+          equal_exprt(expr.op0(), plus_inf),
+          equal_exprt(expr.op1(), plus_inf)),
+        and_exprt(
+          equal_exprt(expr.op0(), minus_inf),
+          equal_exprt(expr.op1(), minus_inf)));
   }
   else
     assert(false);
@@ -966,13 +989,16 @@ Function: goto_checkt::pointer_validity_check
 
 void goto_checkt::pointer_validity_check(
   const dereference_exprt &expr,
-  const guardt &guard)
+  const guardt &guard,
+  const exprt &access_lb,
+  const exprt &access_ub)
 {
   if(!enable_pointer_check)
     return;
 
   const exprt &pointer=expr.op0();
-  const typet &pointer_type=to_pointer_type(ns.follow(pointer.type()));
+  const pointer_typet &pointer_type=
+    to_pointer_type(ns.follow(pointer.type()));
 
   assert(base_type_eq(pointer_type.subtype(), expr.type(), ns));
 
@@ -986,7 +1012,7 @@ void goto_checkt::pointer_validity_check(
   {
     if(flags.is_unknown() || flags.is_null())
     {
-      notequal_exprt not_eq_null(pointer, gen_zero(pointer.type()));
+      notequal_exprt not_eq_null(pointer, null_pointer_exprt(pointer_type));
 
       add_guarded_claim(
         not_eq_null,
@@ -1028,63 +1054,62 @@ void goto_checkt::pointer_validity_check(
         expr,
         guard);
 
-    if(mode != ID_java)
-    {
-      if(flags.is_unknown() || flags.is_dynamic_heap())
-        add_guarded_claim(
-          not_exprt(deallocated(pointer, ns)),
-          "dereference failure: deallocated dynamic object",
-          "pointer dereference",
-          expr.find_source_location(),
-          expr,
-          guard);
+    if(flags.is_unknown() || flags.is_dynamic_heap())
+      add_guarded_claim(
+        not_exprt(deallocated(pointer, ns)),
+        "dereference failure: deallocated dynamic object",
+        "pointer dereference",
+        expr.find_source_location(),
+        expr,
+        guard);
 
-      if(flags.is_unknown() || flags.is_dynamic_local())
-        add_guarded_claim(
-          not_exprt(dead_object(pointer, ns)),
-          "dereference failure: dead object",
-          "pointer dereference",
-          expr.find_source_location(),
-          expr,
-          guard);
+    if(flags.is_unknown() || flags.is_dynamic_local())
+      add_guarded_claim(
+        not_exprt(dead_object(pointer, ns)),
+        "dereference failure: dead object",
+        "pointer dereference",
+        expr.find_source_location(),
+        expr,
+        guard);
+
+    if(flags.is_unknown() || flags.is_dynamic_heap())
+    {
+      exprt dynamic_bounds=
+        or_exprt(dynamic_object_lower_bound(pointer, ns, access_lb),
+                 dynamic_object_upper_bound(
+                   pointer,
+                   dereference_type,
+                   ns,
+                   access_ub));
+
+      add_guarded_claim(
+        implies_exprt(malloc_object(pointer, ns), not_exprt(dynamic_bounds)),
+        "dereference failure: pointer outside dynamic object bounds",
+        "pointer dereference",
+        expr.find_source_location(),
+        expr,
+        guard);
     }
 
-    if(enable_bounds_check)
+    if(flags.is_unknown() ||
+       flags.is_dynamic_local() ||
+       flags.is_static_lifetime())
     {
-      if(flags.is_unknown() || flags.is_dynamic_heap())
-      {
-        exprt dynamic_bounds=
-          or_exprt(dynamic_object_lower_bound(pointer),
-                   dynamic_object_upper_bound(pointer, dereference_type, ns));
+      exprt object_bounds=
+        or_exprt(object_lower_bound(pointer, ns, access_lb),
+                 object_upper_bound(
+                   pointer,
+                   dereference_type,
+                   ns,
+                   access_ub));
 
-        add_guarded_claim(
-          implies_exprt(malloc_object(pointer, ns), not_exprt(dynamic_bounds)),
-          "dereference failure: dynamic object bounds",
-          "pointer dereference",
-          expr.find_source_location(),
-          expr,
-          guard);
-      }
-    }
-
-    if(enable_bounds_check)
-    {
-      if(flags.is_unknown() ||
-         flags.is_dynamic_local() ||
-         flags.is_static_lifetime())
-      {
-        exprt object_bounds=
-          or_exprt(object_lower_bound(pointer),
-                   object_upper_bound(pointer, dereference_type, ns));
-
-        add_guarded_claim(
-          or_exprt(dynamic_object(pointer), not_exprt(object_bounds)),
-          "dereference failure: object bounds",
-          "pointer dereference",
-          expr.find_source_location(),
-          expr,
-          guard);
-      }
+      add_guarded_claim(
+        or_exprt(dynamic_object(pointer), not_exprt(object_bounds)),
+        "dereference failure: pointer outside object bounds",
+        "pointer dereference",
+        expr.find_source_location(),
+        expr,
+        guard);
     }
   }
 }
@@ -1132,7 +1157,7 @@ void goto_checkt::bounds_check(
   typet array_type=ns.follow(expr.array().type());
 
   if(array_type.id()==ID_pointer)
-    return; // done by the pointer code
+    throw "index got pointer as array type";
   else if(array_type.id()==ID_incomplete_array)
     throw "index got incomplete array";
   else if(array_type.id()!=ID_array && array_type.id()!=ID_vector)
@@ -1175,7 +1200,7 @@ void goto_checkt::bounds_check(
           effective_offset=plus_exprt(p_offset, effective_offset);
         }
 
-        exprt zero=gen_zero(ode.offset().type());
+        exprt zero=from_integer(0, ode.offset().type());
         assert(zero.is_not_nil());
 
         // the final offset must not be negative
@@ -1191,6 +1216,8 @@ void goto_checkt::bounds_check(
       }
     }
   }
+
+  exprt type_matches_size=true_exprt();
 
   if(ode.root_object().id()==ID_dereference)
   {
@@ -1217,13 +1244,18 @@ void goto_checkt::bounds_check(
 
     add_guarded_claim(
       precond,
-      name+" upper bound",
+      name+" dynamic object upper bound",
       "array bounds",
       expr.find_source_location(),
       expr,
       guard);
 
-    return;
+    exprt type_size=size_of_expr(ode.root_object().type(), ns);
+    if(type_size.is_not_nil())
+      type_matches_size=
+        equal_exprt(
+          size,
+          typecast_exprt(type_size, size.type()));
   }
 
   const exprt &size=array_type.id()==ID_array ?
@@ -1256,7 +1288,7 @@ void goto_checkt::bounds_check(
       inequality.op1().make_typecast(inequality.op0().type());
 
     add_guarded_claim(
-      inequality,
+      implies_exprt(type_matches_size, inequality),
       name+" upper bound",
       "array bounds",
       expr.find_source_location(),
@@ -1429,6 +1461,27 @@ void goto_checkt::check_rec(
 
     return;
   }
+  else if(expr.id()==ID_member &&
+          to_member_expr(expr).struct_op().id()==ID_dereference)
+  {
+    const member_exprt &member=to_member_expr(expr);
+    const dereference_exprt &deref=
+      to_dereference_expr(member.struct_op());
+
+    check_rec(deref.op0(), guard, false);
+
+    exprt access_ub=nil_exprt();
+
+    exprt member_offset=member_offset_expr(member, ns);
+    exprt size=size_of_expr(expr.type(), ns);
+
+    if(member_offset.is_not_nil() && size.is_not_nil())
+      access_ub=plus_exprt(member_offset, size);
+
+    pointer_validity_check(deref, guard, member_offset, access_ub);
+
+    return;
+  }
 
   forall_operands(it, expr)
     check_rec(*it, guard, false);
@@ -1486,7 +1539,11 @@ void goto_checkt::check_rec(
           expr.id()==ID_ge || expr.id()==ID_gt)
     pointer_rel_check(expr, guard);
   else if(expr.id()==ID_dereference)
-    pointer_validity_check(to_dereference_expr(expr), guard);
+    pointer_validity_check(
+      to_dereference_expr(expr),
+      guard,
+      nil_exprt(),
+      size_of_expr(expr.type(), ns));
 }
 
 /*******************************************************************\
@@ -1612,7 +1669,9 @@ void goto_checkt::goto_check(goto_functiont &goto_function)
 
         if(flags.is_unknown() || flags.is_null())
         {
-          notequal_exprt not_eq_null(pointer, gen_zero(pointer.type()));
+          notequal_exprt not_eq_null(
+            pointer,
+            null_pointer_exprt(to_pointer_type(pointer.type())));
 
           add_guarded_claim(
             not_eq_null,
@@ -1649,9 +1708,12 @@ void goto_checkt::goto_check(goto_functiont &goto_function)
 
         exprt pointer=i.code.op0().op0();
 
-        if(pointer.type().subtype().get(ID_identifier)!="java::java.lang.AssertionError")
+        if(pointer.type().subtype().get(ID_identifier)!=
+           "java::java.lang.AssertionError")
         {
-          notequal_exprt not_eq_null(pointer, gen_zero(pointer.type()));
+          notequal_exprt not_eq_null(
+            pointer,
+            null_pointer_exprt(to_pointer_type(pointer.type())));
 
           add_guarded_claim(
             not_eq_null,
@@ -1694,8 +1756,12 @@ void goto_checkt::goto_check(goto_functiont &goto_function)
           exprt lhs=ns.lookup(CPROVER_PREFIX "dead_object").symbol_expr();
           if(!base_type_eq(lhs.type(), address_of_expr.type(), ns))
             address_of_expr.make_typecast(lhs.type());
-          exprt rhs=if_exprt(
-            side_effect_expr_nondett(bool_typet()), address_of_expr, lhs, lhs.type());
+          exprt rhs=
+            if_exprt(
+              side_effect_expr_nondett(bool_typet()),
+              address_of_expr,
+              lhs,
+              lhs.type());
           t->source_location=i.source_location;
           t->code=code_assignt(lhs, rhs);
           t->code.add_source_location()=i.source_location;
@@ -1718,7 +1784,9 @@ void goto_checkt::goto_check(goto_functiont &goto_function)
         source_locationt source_location;
         source_location.set_function(i.function);
 
-        equal_exprt eq(leak_expr, gen_zero(ns.follow(leak.type)));
+        equal_exprt eq(
+          leak_expr,
+          null_pointer_exprt(to_pointer_type(leak.type)));
         add_guarded_claim(
           eq,
           "dynamically allocated memory never freed",
@@ -1742,13 +1810,15 @@ void goto_checkt::goto_check(goto_functiont &goto_function)
           i_it->source_location.set_line(it->source_location.get_line());
 
         if(it->source_location.get_function()!=irep_idt())
-          i_it->source_location.set_function(it->source_location.get_function());
+          i_it->source_location.set_function(
+            it->source_location.get_function());
 
         if(it->source_location.get_column()!=irep_idt())
           i_it->source_location.set_column(it->source_location.get_column());
       }
 
-      if(i_it->function==irep_idt()) i_it->function=it->function;
+      if(i_it->function==irep_idt())
+        i_it->function=it->function;
     }
 
     // insert new instructions -- make sure targets are not moved

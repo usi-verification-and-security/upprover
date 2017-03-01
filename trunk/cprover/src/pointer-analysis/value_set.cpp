@@ -11,7 +11,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/symbol_table.h>
 #include <util/simplify_expr.h>
-#include <util/expr_util.h>
 #include <util/base_type.h>
 #include <util/std_expr.h>
 #include <util/prefix.h>
@@ -220,7 +219,8 @@ void value_sett::output(
       if(next!=object_map.end())
       {
         out << ", ";
-        if(width>=40) out << "\n      ";
+        if(width>=40)
+          out << "\n      ";
       }
     }
 
@@ -430,7 +430,8 @@ void value_sett::get_value_set(
     dest.push_back(to_expr(it));
 
   #if 0
-  for(value_setst::valuest::const_iterator it=dest.begin(); it!=dest.end(); it++)
+  for(value_setst::valuest::const_iterator it=dest.begin();
+      it!=dest.end(); it++)
     std::cout << "GET_VALUE_SET: " << from_expr(ns, "", *it) << std::endl;
   #endif
 }
@@ -454,7 +455,8 @@ void value_sett::get_value_set(
   bool is_simplified) const
 {
   exprt tmp(expr);
-  if(!is_simplified) simplify(tmp, ns);
+  if(!is_simplified)
+    simplify(tmp, ns);
 
   get_value_set_rec(tmp, dest, "", tmp.type(), ns);
 }
@@ -717,7 +719,8 @@ void value_sett::get_value_set_rec(
       {
         i*=pointer_offset_size(ptr_operand.type().subtype(), ns);
 
-        if(expr.id()==ID_minus) i.negate();
+        if(expr.id()==ID_minus)
+          i.negate();
       }
 
       get_value_set_rec(
@@ -796,7 +799,8 @@ void value_sett::get_value_set_rec(
         static_cast<const typet &>(expr.find("#type"));
 
       dynamic_object_exprt dynamic_object(dynamic_type);
-      dynamic_object.instance()=from_integer(location_number, typet(ID_natural));
+      dynamic_object.instance()=
+        from_integer(location_number, typet(ID_natural));
       dynamic_object.valid()=true_exprt();
 
       insert(dest, dynamic_object, 0);
@@ -808,7 +812,8 @@ void value_sett::get_value_set_rec(
       assert(expr_type.id()==ID_pointer);
 
       dynamic_object_exprt dynamic_object(expr_type.subtype());
-      dynamic_object.instance()=from_integer(location_number, typet(ID_natural));
+      dynamic_object.instance()=
+        from_integer(location_number, typet(ID_natural));
       dynamic_object.valid()=true_exprt();
 
       insert(dest, dynamic_object, 0);
@@ -1075,7 +1080,8 @@ void value_sett::get_reference_set_rec(
   const namespacet &ns) const
 {
   #if 0
-  std::cout << "GET_REFERENCE_SET_REC EXPR: " << from_expr(ns, "", expr) << std::endl;
+  std::cout << "GET_REFERENCE_SET_REC EXPR: " << from_expr(ns, "", expr)
+            << std::endl;
   #endif
 
   if(expr.id()==ID_symbol ||
@@ -1099,7 +1105,8 @@ void value_sett::get_reference_set_rec(
     get_value_set_rec(expr.op0(), dest, "", expr.op0().type(), ns);
 
     #if 0
-    for(expr_sett::const_iterator it=value_set.begin(); it!=value_set.end(); it++)
+    for(expr_sett::const_iterator it=value_set.begin();
+        it!=value_set.end(); it++)
       std::cout << "VALUE_SET: " << from_expr(ns, "", *it) << std::endl;
     #endif
 
@@ -1136,7 +1143,7 @@ void value_sett::get_reference_set_rec(
       {
         index_exprt index_expr(expr.type());
         index_expr.array()=object;
-        index_expr.index()=gen_zero(index_type());
+        index_expr.index()=from_integer(0, index_type());
 
         // adjust type?
         if(ns.follow(object.type())!=array_type)
@@ -1194,7 +1201,7 @@ void value_sett::get_reference_set_rec(
         // We cannot introduce a cast from scalar to non-scalar,
         // thus, we can only adjust the types of structs and unions.
 
-        const typet& final_object_type = ns.follow(object.type());
+        const typet &final_object_type = ns.follow(object.type());
 
         if(final_object_type.id()==ID_struct ||
            final_object_type.id()==ID_union)
@@ -1302,7 +1309,12 @@ void value_sett::assign(
     if(rhs.id()==ID_unknown ||
        rhs.id()==ID_invalid)
     {
-      assign(lhs_index, exprt(rhs.id(), type.subtype()), ns, is_simplified, add_to_sets);
+      assign(
+        lhs_index,
+        exprt(rhs.id(), type.subtype()),
+        ns,
+        is_simplified,
+        add_to_sets);
     }
     else
     {
@@ -1548,7 +1560,8 @@ void value_sett::assign_rec(
            type.id()==ID_incomplete_struct ||
            type.id()==ID_incomplete_union);
 
-    assign_rec(lhs.op0(), values_rhs, "."+component_name+suffix, ns, add_to_sets);
+    assign_rec(
+      lhs.op0(), values_rhs, "."+component_name+suffix, ns, add_to_sets);
   }
   else if(lhs.id()=="valid_object" ||
           lhs.id()=="dynamic_size" ||
@@ -1633,7 +1646,8 @@ void value_sett::do_function_call(
       it++)
   {
     const irep_idt &identifier=it->get_identifier();
-    if(identifier=="") continue;
+    if(identifier=="")
+      continue;
 
     const exprt v_expr=
       symbol_exprt("value_set::dummy_arg_"+std::to_string(i), it->type());
@@ -1662,7 +1676,8 @@ void value_sett::do_end_function(
   const exprt &lhs,
   const namespacet &ns)
 {
-  if(lhs.is_nil()) return;
+  if(lhs.is_nil())
+    return;
 
   symbol_exprt rhs("value_set::return_value", lhs.type());
 
@@ -1804,11 +1819,11 @@ void value_sett::apply_code(
   }
   else if(statement==ID_input || statement==ID_output)
   {
-	  // doesn't do anything
+    // doesn't do anything
   }
   else
   {
-    //std::cerr << code.pretty() << std::endl;
+    // std::cerr << code.pretty() << std::endl;
     throw "value_sett: unexpected statement: "+id2string(statement);
   }
 }
@@ -1848,7 +1863,8 @@ void value_sett::guard(
     assert(expr.operands().size()==1);
 
     dynamic_object_exprt dynamic_object(unsigned_char_type());
-    //dynamic_object.instance()=from_integer(location_number, typet(ID_natural));
+    // dynamic_object.instance()=
+    // from_integer(location_number, typet(ID_natural));
     dynamic_object.valid()=true_exprt();
 
     address_of_exprt address_of(dynamic_object);

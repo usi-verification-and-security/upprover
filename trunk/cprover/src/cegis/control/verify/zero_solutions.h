@@ -1,14 +1,14 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_CONTROL_VERIFY_ZERO_SOLUTIONS_H_
-#define CEGIS_CONTROL_VERIFY_ZERO_SOLUTIONS_H_
+#ifndef CPROVER_CEGIS_CONTROL_VERIFY_ZERO_SOLUTIONS_H
+#define CPROVER_CEGIS_CONTROL_VERIFY_ZERO_SOLUTIONS_H
 
 /**
  * @brief
@@ -37,7 +37,7 @@ public:
    *
    * @param st
    */
-  zero_rational_solutiont(const symbol_tablet &st);
+  explicit zero_rational_solutiont(const symbol_tablet &st);
 
   /**
    * @brief
@@ -65,7 +65,7 @@ public:
    *
    * @param st
    */
-  zero_vector_solutiont(const symbol_tablet &st);
+  explicit zero_vector_solutiont(const symbol_tablet &st);
 
   /**
    * @brief
@@ -77,4 +77,4 @@ public:
   void operator()(class control_vector_solutiont &solution) const;
 };
 
-#endif /* CEGIS_CONTROL_VERIFY_ZERO_SOLUTIONS_H_ */
+#endif // CPROVER_CEGIS_CONTROL_VERIFY_ZERO_SOLUTIONS_H

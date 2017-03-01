@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <util/bv_arithmetic.h>
 #include <goto-programs/goto_functions.h>
 #include <goto-programs/goto_trace.h>
@@ -15,12 +24,13 @@ namespace
 typedef std::pair<size_t, array_exprt> encoded_programt;
 typedef std::vector<encoded_programt> encoded_programst;
 
-inline bool is_integer(const std::string & s)
+inline bool is_integer(const std::string &s)
 {
   if (s.empty() || (!isdigit(s[0]) && s[0] != '-' && s[0] != '+')) return false;
   char *p;
-  strtol(s.c_str(), &p, 10);
-  return *p == 0;
+  long result=strtol(s.c_str(), &p, 10);
+  (void)result; // unused as just used for testing string format
+  return *p==0;
 }
 
 bool is_prog_name(const std::string &var_name, const std::string &prefix)

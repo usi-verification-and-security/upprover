@@ -13,7 +13,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/config.h>
 #include <util/std_types.h>
 #include <util/std_expr.h>
-#include <util/expr_util.h>
 #include <util/string2int.h>
 
 #include "convert_integer_literal.h"
@@ -142,7 +141,8 @@ exprt convert_integer_literal(const std::string &src)
     is_signed=true;
     c_type=ID_signed_long_int;
   }
-  else if(FITS(config.ansi_c.long_int_width, false) && long_cnt!=2) // unsigned long int
+  // unsigned long int
+  else if(FITS(config.ansi_c.long_int_width, false) && long_cnt!=2)
   {
     width=config.ansi_c.long_int_width;
     is_signed=false;
@@ -154,7 +154,8 @@ exprt convert_integer_literal(const std::string &src)
     is_signed=true;
     c_type=ID_signed_long_long_int;
   }
-  else if(FITS(config.ansi_c.long_long_int_width, false)) // unsigned long long int
+  // unsigned long long int
+  else if(FITS(config.ansi_c.long_long_int_width, false))
   {
     width=config.ansi_c.long_long_int_width;
     is_signed=false;
@@ -187,7 +188,7 @@ exprt convert_integer_literal(const std::string &src)
     complex_type.subtype()=type;
     result=exprt(ID_complex, complex_type);
     result.operands().resize(2);
-    result.op0()=gen_zero(type);
+    result.op0()=from_integer(0, type);
     result.op1()=from_integer(value, type);
   }
   else

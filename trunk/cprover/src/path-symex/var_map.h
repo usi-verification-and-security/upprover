@@ -27,7 +27,7 @@ public:
   {
     enum { SHARED, THREAD_LOCAL, PROCEDURE_LOCAL } kind;
 
-    inline bool is_shared() const
+    bool is_shared() const
     {
       return kind==SHARED;
     }
@@ -57,7 +57,7 @@ public:
       return s;
     }
 
-    inline void increment_ssa_counter()
+    void increment_ssa_counter()
     {
       ++ssa_counter;
     }
@@ -73,9 +73,18 @@ public:
     const irep_idt &suffix,
     const typet &type);
 
-  inline var_infot &operator[](const irep_idt &full_identifier)
+  var_infot &operator[](const irep_idt &full_identifier)
   {
     return id_map[full_identifier];
+  }
+
+  void clear()
+  {
+    shared_count=0;
+    local_count=0;
+    nondet_count=0;
+    dynamic_count=0;
+    id_map.clear();
   }
 
   void init(var_infot &var_info);

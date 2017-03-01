@@ -14,6 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <langapi/language_ui.h>
 #include <goto-programs/goto_functions.h>
+#include <goto-programs/show_goto_functions.h>
 
 #include <analyses/goto_check.h>
 
@@ -22,7 +23,7 @@ Author: Daniel Kroening, kroening@kroening.com
   "(document-claims-latex)(document-claims-html)" \
   "(document-properties-latex)(document-properties-html)" \
   "(dump-c)(dump-cpp)(use-system-headers)(dot)(xml)" \
-  GOTO_CHECK_OPTIONS \
+  OPT_GOTO_CHECK \
   /* no-X-check are deprecated and ignored */ \
   "(no-bounds-check)(no-pointer-check)(no-div-by-zero-check)" \
   "(no-nan-check)" \
@@ -43,7 +44,8 @@ Author: Daniel Kroening, kroening@kroening.com
   "(nondet-volatile)(isr):" \
   "(stack-depth):(nondet-static)" \
   "(function-enter):(function-exit):(branch):" \
-  "(show-goto-functions)(show-value-sets)" \
+  OPT_SHOW_GOTO_FUNCTIONS \
+  "(show-value-sets)" \
   "(show-global-may-alias)" \
   "(show-local-bitvector-analysis)(show-custom-bitvector-analysis)" \
   "(show-escape-analysis)(escape-analysis)" \
@@ -65,7 +67,8 @@ Author: Daniel Kroening, kroening@kroening.com
   "(interpreter)(show-reaching-definitions)(count-eloc)(list-eloc)" \
   "(list-symbols)(list-undefined-functions)" \
   "(z3)(add-library)(show-dependence-graph)" \
-  "(horn)(skip-loops):(apply-code-contracts)"
+  "(horn)(skip-loops):(apply-code-contracts)(model-argc-argv):" \
+  "(show-threaded)"
 
 class goto_instrument_parse_optionst:
   public parse_options_baset,
@@ -94,7 +97,7 @@ protected:
 
   void eval_verbosity();
 
-  void do_function_pointer_removal();
+  void do_indirect_call_and_rtti_removal(bool force=false);
   void do_partial_inlining();
   void do_remove_returns();
 

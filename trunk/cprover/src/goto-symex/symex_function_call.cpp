@@ -10,7 +10,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <sstream>
 #include <cassert>
 
-#include <util/expr_util.h>
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
 #include <util/arith_tools.h>
@@ -19,6 +18,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/symbol_table.h>
 
 #include <ansi-c/c_types.h>
+
+#include <analyses/dirty.h>
 
 #include "goto_symex.h"
 
@@ -135,7 +136,7 @@ void goto_symext::parameter_assignments(
             byte_extract_exprt(
               byte_extract_id(),
               rhs,
-              gen_zero(index_type()),
+              from_integer(0, index_type()),
               parameter_type);
         }
         else
@@ -160,13 +161,15 @@ void goto_symext::parameter_assignments(
     // These are va_arg arguments; their types may differ from call to call
     unsigned va_count=0;
     const symbolt *va_sym=0;
-    while(!ns.lookup(id2string(function_identifier)+"::va_arg"+std::to_string(va_count),
-                    va_sym))
+    while(!ns.lookup(
+        id2string(function_identifier)+"::va_arg"+std::to_string(va_count),
+        va_sym))
       ++va_count;
 
     for( ; it1!=arguments.end(); it1++, va_count++)
     {
-      irep_idt id=id2string(function_identifier)+"::va_arg"+std::to_string(va_count);
+      irep_idt id=
+        id2string(function_identifier)+"::va_arg"+std::to_string(va_count);
 
       // add to symbol table
       symbolt symbol;
@@ -396,6 +399,7 @@ void goto_symext::pop_frame(statet &state)
     state.level1.restore_from(frame.old_level1);
 
     // clear function-locals from L2 renaming
+    assert(state.dirty);
     for(goto_symex_statet::renaming_levelt::current_namest::iterator
         c_it=state.level2.current_names.begin();
         c_it!=state.level2.current_names.end();
@@ -403,7 +407,9 @@ void goto_symext::pop_frame(statet &state)
     {
       const irep_idt l1_o_id=c_it->second.first.get_l1_object_identifier();
       // could use iteration over local_objects as l1_o_id is prefix
-      if(frame.local_objects.find(l1_o_id)==frame.local_objects.end())
+      if(frame.local_objects.find(l1_o_id)==frame.local_objects.end() ||
+         (state.threads.size()>1 &&
+          (*state.dirty)(c_it->second.first.get_object_name())))
       {
         ++c_it;
         continue;
@@ -543,10 +549,11 @@ void goto_symext::return_assignment(statet &state)
 
       if(!base_type_eq(assignment.lhs().type(),
                        assignment.rhs().type(), ns))
-        throw "goto_symext::return_assignment type mismatch at "+
-              instruction.source_location.as_string()+":\n"+
-              "assignment.lhs().type():\n"+assignment.lhs().type().pretty()+"\n"+
-              "assignment.rhs().type():\n"+assignment.rhs().type().pretty();
+        throw
+          "goto_symext::return_assignment type mismatch at "+
+          instruction.source_location.as_string()+":\n"+
+          "assignment.lhs().type():\n"+assignment.lhs().type().pretty()+"\n"+
+          "assignment.rhs().type():\n"+assignment.rhs().type().pretty();
 
       symex_assign_rec(state, assignment);
     }

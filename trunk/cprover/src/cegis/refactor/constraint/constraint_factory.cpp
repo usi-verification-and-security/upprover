@@ -1,7 +1,16 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 
+#include <util/arith_tools.h>
 #include <util/config.h>
-#include <util/expr_util.h>
 #include <util/message.h>
 #include <goto-programs/goto_convert_functions.h>
 #include <java_bytecode/java_entry_point.h>
@@ -32,7 +41,7 @@ void create_or_redirect_entry(symbol_tablet &st, goto_functionst &gf)
   if (fmap.end() == it)
   {
     config.main=CONSTRAINT_CALLER;
-    assert(!java_entry_point(st, ID_empty, msg));
+    assert(!java_entry_point(st, ID_empty, msg, false, 0));
     goto_convert(CPROVER_INIT, st, gf, msg);
     goto_convert(goto_functionst::entry_point(), st, gf, msg);
   } else
@@ -79,7 +88,7 @@ void create_constraint_function_caller(refactor_programt &prog)
     call.function()=symbol.symbol_expr();
     code_function_callt::argumentst &args=call.arguments();
     for (const code_typet::parametert &param : type.parameters())
-      args.push_back(gen_zero(param.type()));
+      args.push_back(from_integer(0, param.type()));
     pos->code=call;
   }
   body.add_instruction(goto_program_instruction_typet::END_FUNCTION);
@@ -110,7 +119,6 @@ const goto_ranget &get_second_range(const refactor_programt::sketcht &sketch)
 void make_skip(const goto_programt::targett first,
     const goto_programt::targett last)
 {
-  const auto op(std::mem_fun_ref(&goto_programt::instructiont::make_skip));
   std::for_each(first, last, [](goto_programt::instructiont &instr)
   { if(!instr.is_decl()) instr.make_skip();});
 }

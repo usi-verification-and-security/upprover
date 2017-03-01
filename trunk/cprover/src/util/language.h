@@ -19,10 +19,14 @@ class symbol_tablet;
 class exprt;
 class namespacet;
 class typet;
+class cmdlinet;
 
 class languaget:public messaget
 {
 public:
+  // Parse language-specific options
+  virtual void get_language_options(const cmdlinet &) {}
+
   // parse file
 
   virtual bool preprocess(
@@ -43,6 +47,15 @@ public:
   // add modules provided by currently parsed file to set
 
   virtual void modules_provided(std::set<std::string> &modules)
+  { }
+
+  // add lazy functions provided to set
+
+  virtual void lazy_methods_provided(std::set<irep_idt> &methods) const
+  { }
+
+  // populate a lazy method
+  virtual void convert_lazy_method(const irep_idt &id, symbol_tablet &)
   { }
 
   // final adjustments, e.g., initialization and call to main()

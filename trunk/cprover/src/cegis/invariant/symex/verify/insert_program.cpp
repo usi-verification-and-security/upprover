@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <cegis/invariant/util/copy_instructions.h>
 #include <cegis/invariant/symex/verify/insert_program.h>
 
@@ -7,7 +16,7 @@ class replace_name_visitort: public expr_visitort
 {
   const replacementst &repl;
 public:
-  replace_name_visitort(const replacementst &repl) :
+  explicit replace_name_visitort(const replacementst &repl) :
       repl(repl)
   {
   }

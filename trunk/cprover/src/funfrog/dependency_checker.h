@@ -77,7 +77,7 @@ public:
   void print_expr_symbols(ostream &out, exprt expr);
   void print_expr_symbols(ostream &out, symbol_sett& s);
   string variable_name(string name);
-  string variable_name(dstring name);
+  string variable_name(dstringt name);
   void print_dependents(map<string,bool> dependents, ostream &out);
 
   pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2);

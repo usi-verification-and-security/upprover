@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <ansi-c/c_types.h>
 
 #include <cegis/jsa/instrument/jsa_meta_data.h>
@@ -35,7 +44,7 @@ symbol_typet jsa_invariant_instruction_type()
   return symbol_typet(INV_INSTR_TYPE);
 }
 
-array_typet jsa_invariant_type(const exprt & size)
+array_typet jsa_invariant_type(const exprt &size)
 {
   return array_typet(jsa_invariant_instruction_type(), size);
 }

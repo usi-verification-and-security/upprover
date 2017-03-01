@@ -9,7 +9,7 @@
 #ifndef CPROVER_PROP_ASSERTION_SUM_H
 #define CPROVER_PROP_ASSERTION_SUM_H
 
-#include <solvers/flattening/sat_minimizer.h>
+//#include <solvers/flattening/sat_minimizer.h>
 #include <namespace.h>
 #include <ui_message.h>
 #include <time_stopping.h>

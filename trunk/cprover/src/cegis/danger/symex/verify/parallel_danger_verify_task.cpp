@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 #include <iterator>
 
@@ -53,7 +62,7 @@ public:
   typedef danger_verify_configt::counterexamplest counterexamplest;
   typedef danger_verify_configt::candidatet candidatet;
 
-  danger_config_fullt(danger_verify_configt &config) :
+  explicit danger_config_fullt(danger_verify_configt &config) :
       config(config)
   {
   }
@@ -88,7 +97,7 @@ public:
   typedef danger_verify_configt::counterexamplest counterexamplest;
   typedef danger_verify_configt::candidatet candidatet;
 
-  danger_config_rankingt(danger_verify_configt &config) :
+  explicit danger_config_rankingt(danger_verify_configt &config) :
       config(config), gf(config.get_goto_functions())
   {
   }
@@ -123,7 +132,7 @@ public:
   typedef danger_verify_configt::counterexamplest counterexamplest;
   typedef danger_verify_configt::candidatet candidatet;
 
-  danger_config_assertiont(danger_verify_configt &config) :
+  explicit danger_config_assertiont(danger_verify_configt &config) :
       config(config), gf(config.get_goto_functions())
   {
   }
@@ -166,7 +175,7 @@ class ce_to_irept
 {
   irept &result;
 public:
-  ce_to_irept(irept &result) :
+  explicit ce_to_irept(irept &result) :
       result(result)
   {
   }
@@ -188,7 +197,7 @@ class ces_to_irept
 {
   irept &result;
 public:
-  ces_to_irept(irept &result) :
+  explicit ces_to_irept(irept &result) :
       result(result)
   {
   }

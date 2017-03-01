@@ -1,8 +1,16 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 
 #include <ansi-c/c_types.h>
 #include <util/arith_tools.h>
-#include <util/expr_util.h>
 
 #include <cegis/cegis-util/program_helper.h>
 #include <cegis/cegis-util/counterexample_vars.h>
@@ -49,7 +57,6 @@ void create_ce_arrays(symbol_tablet &st, goto_functionst &gf,
   const constant_exprt sz_expr(from_integer(ces.size(), sz_type));
   const array_valuest array_values(get_array_values(ces));
   const labelled_counterexamplest::value_type &prototype=ces.front();
-  goto_programt &body=get_body(gf, CPROVER_INIT);
   for (const labelled_counterexamplest::value_type::value_type &value : prototype)
   {
     const labelled_assignmentst::value_type::first_type loc_id=value.first;
@@ -65,7 +72,7 @@ void create_ce_arrays(symbol_tablet &st, goto_functionst &gf,
 void create_ce_array_indexes(const std::set<irep_idt> &ce_keys,
     symbol_tablet &st, goto_functionst &gf)
 {
-  const exprt zero(gen_zero(signed_int_type()));
+  const exprt zero(from_integer(0, signed_int_type()));
   declare_global_meta_variable(st, gf, CE_ARRAY_INDEX, zero);
   goto_programt &body=get_body(gf, CONSTRAINT_CALLER_ID);
   goto_programt::targett pos=body.instructions.begin();
@@ -121,7 +128,6 @@ void assign_ce_values(symbol_tablet &st, goto_functionst &gf,
 {
   for (const refactor_programt::counterexample_locationst::value_type ce_loc : ce_locs)
   {
-    const std::string &func=id2string(ce_loc.first);
     for (goto_programt::targett pos : ce_loc.second)
     {
       const irep_idt &label=get_counterexample_marker(pos);

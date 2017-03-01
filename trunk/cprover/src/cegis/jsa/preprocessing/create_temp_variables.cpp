@@ -1,4 +1,13 @@
-#include <util/expr_util.h>
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
+#include <util/arith_tools.h>
 
 #include <cegis/cegis-util/program_helper.h>
 
@@ -21,7 +30,7 @@ void create_jsa_temp_variables(jsa_programt &prog, const size_t max_size)
     pos=body.insert_after(pos);
     const std::string base_name(tmp_prefix + std::to_string(i));
     declare_jsa_meta_variable(st, pos, base_name, type);
-    pos=assign_jsa_meta_variable(st, gf, pos, base_name, gen_zero(type));
+    pos=assign_jsa_meta_variable(st, gf, pos, base_name, from_integer(0, type));
   }
   prog.synthetic_variables=pos;
 }

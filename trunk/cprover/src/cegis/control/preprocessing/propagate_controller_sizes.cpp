@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <deque>
 #include <algorithm>
 
@@ -44,13 +53,6 @@ const array_exprt &get_b_controller_comp(const namespacet &ns,
 {
   return to_array_expr(
       get_controller_comp(ns, value, CEGIS_CONTROL_B_MEMBER_NAME));
-}
-
-const array_exprt &get_K_controller_comp(const namespacet &ns,
-    const struct_exprt &value)
-{
-  return to_array_expr(
-      get_controller_comp(ns, value, CEGIS_CONTROL_K_MEMBER_NAME));
 }
 
 namespace

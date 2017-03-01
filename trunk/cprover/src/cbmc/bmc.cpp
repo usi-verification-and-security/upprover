@@ -16,6 +16,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/time_stopping.h>
 #include <util/message.h>
 #include <util/json.h>
+#include <util/cprover_prefix.h>
 
 #include <langapi/mode.h>
 #include <langapi/languages.h>
@@ -431,6 +432,12 @@ safety_checkert::resultt bmct::run(
   symex.set_message_handler(get_message_handler());
   symex.options=options;
 
+  {
+    const symbolt *init_symbol;
+    if(!ns.lookup(CPROVER_PREFIX "initialize", init_symbol))
+      symex.language_mode=init_symbol->mode;
+  }
+
   status() << "Starting Bounded Model Checking" << eom;
 
   symex.last_source_location.make_nil();
@@ -519,6 +526,15 @@ safety_checkert::resultt bmct::run(
       statistics() << "Generated " << symex.total_vccs
                    << " VCC(s), " << symex.remaining_vccs
                    << " remaining after simplification" << eom;
+    }
+
+    // coverage report
+    std::string cov_out=options.get_option("symex-coverage-report");
+    if(!cov_out.empty() &&
+       symex.output_coverage_report(goto_functions, cov_out))
+    {
+      error() << "Failed to write symex coverage report" << eom;
+      return safety_checkert::ERROR;
     }
 
     if(options.get_bool_option("show-vcc"))

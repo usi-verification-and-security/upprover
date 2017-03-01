@@ -19,6 +19,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/set_properties.h>
 #include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/remove_virtual_functions.h>
+#include <goto-programs/remove_instanceof.h>
 #include <goto-programs/remove_returns.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
@@ -59,7 +60,9 @@ Function: goto_analyzer_parse_optionst::goto_analyzer_parse_optionst
 
 \*******************************************************************/
 
-goto_analyzer_parse_optionst::goto_analyzer_parse_optionst(int argc, const char **argv):
+goto_analyzer_parse_optionst::goto_analyzer_parse_optionst(
+  int argc,
+  const char **argv):
   parse_options_baset(GOTO_ANALYSER_OPTIONS, argc, argv),
   language_uit(cmdline, ui_message_handler),
   ui_message_handler(cmdline, "GOTO-ANALYZER " CBMC_VERSION)
@@ -106,7 +109,8 @@ void goto_analyzer_parse_optionst::eval_verbosity()
   if(cmdline.isset("verbosity"))
   {
     v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
-    if(v>10) v=10;
+    if(v>10)
+      v=10;
   }
 
   ui_message_handler.set_verbosity(v);
@@ -230,7 +234,8 @@ int goto_analyzer_parse_optionst::doit()
     {
       std::string json_file=cmdline.get_value("json");
       bool result=
-        taint_analysis(goto_model, taint_file, get_message_handler(), false, json_file);
+        taint_analysis(
+          goto_model, taint_file, get_message_handler(), false, json_file);
       return result?10:0;
     }
   }
@@ -380,7 +385,10 @@ bool goto_analyzer_parse_optionst::process_goto_program(
     // remove function pointers
     status() << "Removing function pointers and virtual functions" << eom;
     remove_function_pointers(goto_model, cmdline.isset("pointer-check"));
+    // Java virtual functions -> explicit dispatch tables:
     remove_virtual_functions(goto_model);
+    // Java instanceof -> clsid comparison:
+    remove_instanceof(goto_model);
 
     // do partial inlining
     status() << "Partial Inlining" << eom;
@@ -406,9 +414,7 @@ bool goto_analyzer_parse_optionst::process_goto_program(
     // show it?
     if(cmdline.isset("show-goto-functions"))
     {
-      namespacet ns(goto_model.symbol_table);
-
-      goto_model.goto_functions.output(ns, std::cout);
+      show_goto_functions(goto_model, get_ui());
       return true;
     }
 
@@ -479,12 +485,14 @@ void goto_analyzer_parse_optionst::help()
     "\n"
     "Analyses:\n"
     "\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --taint file_name            perform taint analysis using rules in given file\n"
     " --unreachable-instructions   list dead code\n"
     " --intervals                  interval analysis\n"
     " --non-null                   non-null analysis\n"
     "\n"
     "Analysis options:\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --json file_name             output results in JSON format to given file\n"
     " --xml file_name              output results in XML format to given file\n"
     "\n"
@@ -501,14 +509,18 @@ void goto_analyzer_parse_optionst::help()
                                        configt::ansi_ct::default_c_standard()==
                                        configt::ansi_ct::c_standardt::C99?"c99":
                                        configt::ansi_ct::default_c_standard()==
-                                       configt::ansi_ct::c_standardt::C11?"c11":"") << ")\n"
+                                       configt::ansi_ct::c_standardt::C11?
+                                         "c11":"") << ")\n"
     " --cpp98/03/11                set C++ language standard (default: "
                                    << (configt::cppt::default_cpp_standard()==
-                                       configt::cppt::cpp_standardt::CPP98?"cpp98":
+                                       configt::cppt::cpp_standardt::CPP98?
+                                         "cpp98":
                                        configt::cppt::default_cpp_standard()==
-                                       configt::cppt::cpp_standardt::CPP03?"cpp03":
+                                       configt::cppt::cpp_standardt::CPP03?
+                                         "cpp03":
                                        configt::cppt::default_cpp_standard()==
-                                       configt::cppt::cpp_standardt::CPP11?"cpp11":"") << ")\n"
+                                       configt::cppt::cpp_standardt::CPP11?
+                                         "cpp11":"") << ")\n"
     #ifdef _WIN32
     " --gcc                        use GCC as preprocessor\n"
     #endif
@@ -521,7 +533,8 @@ void goto_analyzer_parse_optionst::help()
     "Program representations:\n"
     " --show-parse-tree            show parse tree\n"
     " --show-symbol-table          show symbol table\n"
-    " --show-goto-functions        show goto program\n"
+    HELP_SHOW_GOTO_FUNCTIONS
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --show-properties            show the properties, but don't run analysis\n"
     "\n"
     "Other options:\n"

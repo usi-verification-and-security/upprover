@@ -1,7 +1,17 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 #include <functional>
 
-#include <util/expr_util.h>
+#include <util/arith_tools.h>
+
 #include <goto-programs/goto_trace.h>
 
 #include <cegis/cegis-util/program_helper.h>
@@ -54,7 +64,7 @@ public:
     for (const goto_programt::targett &pos : q)
     {
       const irep_idt &var=get_affected_variable(*pos);
-      const exprt value(gen_zero(get_affected_type(*pos)));
+      const exprt value(from_integer(0, get_affected_type(*pos)));
       result.insert(std::make_pair(var, value));
     }
     q.clear();

@@ -9,8 +9,9 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 #include <algorithm>
 
-#include <util/expr_util.h>
 #include <util/std_expr.h>
+
+#include <analyses/dirty.h>
 
 #include "goto_symex.h"
 
@@ -101,6 +102,17 @@ void goto_symext::symex_goto(statet &state)
     new_state_pc=goto_target;
     state_pc=state.source.pc;
     state_pc++;
+
+    // skip dead instructions
+    if(new_guard.is_true())
+      while(state_pc!=goto_target && !state_pc->is_target())
+        ++state_pc;
+
+    if(state_pc==goto_target)
+    {
+      state.source.pc=goto_target;
+      return; // nothing else to do
+    }
   }
   else
   {
@@ -193,7 +205,8 @@ void goto_symext::symex_step_goto(statet &state, bool taken)
   dereference(guard, state, false);
   state.rename(guard, ns);
 
-  if(!taken) guard.make_not();
+  if(!taken)
+    guard.make_not();
 
   state.guard.guard_expr(guard);
   do_simplify(guard);
@@ -236,7 +249,7 @@ void goto_symext::merge_gotos(statet &state)
 
     // check atomic section
     if(state.atomic_section_id!=goto_state.atomic_section_id)
-      throw "Atomic sections differ across branches";
+      throw "atomic sections differ across branches";
 
     // do SSA phi functions
     phi_function(goto_state, state);
@@ -324,7 +337,8 @@ void goto_symext::phi_function(
 
     // shared?
     if(dest_state.atomic_section_id==0 &&
-       dest_state.threads.size()>=2 && symbol.is_shared())
+       dest_state.threads.size()>=2 &&
+       (symbol.is_shared() || (*dest_state.dirty)(symbol.name)))
       continue; // no phi nodes for shared stuff
 
     // don't merge (thread-)locals across different threads, which
@@ -344,7 +358,8 @@ void goto_symext::phi_function(
       if(p_it!=goto_state.propagation.values.end())
         goto_state_rhs=p_it->second;
       else
-        to_ssa_expr(goto_state_rhs).set_level_2(goto_state.level2_current_count(l1_identifier));
+        to_ssa_expr(goto_state_rhs).set_level_2(
+          goto_state.level2_current_count(l1_identifier));
     }
 
     {
@@ -354,7 +369,8 @@ void goto_symext::phi_function(
       if(p_it!=dest_state.propagation.values.end())
         dest_state_rhs=p_it->second;
       else
-        to_ssa_expr(dest_state_rhs).set_level_2(dest_state.level2.current_count(l1_identifier));
+        to_ssa_expr(dest_state_rhs).set_level_2(
+          dest_state.level2.current_count(l1_identifier));
     }
 
     exprt rhs;

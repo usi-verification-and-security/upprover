@@ -7,7 +7,6 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <util/find_symbols.h>
-#include <util/expr_util.h>
 #include <util/std_expr.h>
 
 #include "goto_symex_state.h"
@@ -82,7 +81,8 @@ void postcondition(
   {
     postconditiont postcondition(ns, value_set, *it, s);
     postcondition.compute(dest);
-    if(dest.is_false()) return;
+    if(dest.is_false())
+      return;
   }
 }
 

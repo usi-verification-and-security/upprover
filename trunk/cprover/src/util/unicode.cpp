@@ -7,6 +7,10 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <cstring>
+#include <locale>
+#include <codecvt>
+#include <iomanip>
+#include <sstream>
 
 #include "unicode.h"
 
@@ -32,10 +36,11 @@ std::string narrow(const wchar_t *s)
 {
   #ifdef _WIN32
 
-  size_t slength=wcslen(s);
-  int rlength=WideCharToMultiByte(CP_UTF8, 0, s, slength, NULL, 0, NULL, NULL);
+  int slength=static_cast<int>(wcslen(s));
+  int rlength=
+    WideCharToMultiByte(CP_UTF8, 0, s, slength, NULL, 0, NULL, NULL);
   std::string r(rlength, 0);
-  WideCharToMultiByte(CP_UTF8, 0, s, (int)slength, &r[0], rlength, NULL, NULL);
+  WideCharToMultiByte(CP_UTF8, 0, s, slength, &r[0], rlength, NULL, NULL);
   return r;
 
   #else
@@ -44,7 +49,7 @@ std::string narrow(const wchar_t *s)
   r.reserve(wcslen(s));
   while(*s!=0)
   {
-    r+=char(*s);
+    r+=static_cast<char>(*s);
     s++;
   }
 
@@ -68,10 +73,11 @@ std::wstring widen(const char *s)
 {
   #ifdef _WIN32
 
-  size_t slength=strlen(s);
-  int rlength=MultiByteToWideChar(CP_UTF8, 0, s, (int)slength, NULL, 0);
+  int slength=static_cast<int>(strlen(s));
+  int rlength=
+    MultiByteToWideChar(CP_UTF8, 0, s, slength, NULL, 0);
   std::wstring r(rlength, 0);
-  MultiByteToWideChar(CP_UTF8, 0, s, (int)slength, &r[0], rlength);
+  MultiByteToWideChar(CP_UTF8, 0, s, slength, &r[0], rlength);
   return r;
 
   #else
@@ -104,10 +110,11 @@ std::string narrow(const std::wstring &s)
 {
   #ifdef _WIN32
 
-  size_t slength=s.size();
-  int rlength=WideCharToMultiByte(CP_UTF8, 0, &s[0], (int)slength, NULL, 0, NULL, NULL);
+  int slength=static_cast<int>(s.size());
+  int rlength=
+    WideCharToMultiByte(CP_UTF8, 0, &s[0], slength, NULL, 0, NULL, NULL);
   std::string r(rlength, 0);
-  WideCharToMultiByte(CP_UTF8, 0, &s[0], (int)slength, &r[0], rlength, NULL, NULL);
+  WideCharToMultiByte(CP_UTF8, 0, &s[0], slength, &r[0], rlength, NULL, NULL);
   return r;
 
   #else
@@ -132,8 +139,9 @@ std::wstring widen(const std::string &s)
 {
   #ifdef _WIN32
 
-  size_t slength=s.size();
-  int rlength=MultiByteToWideChar(CP_UTF8, 0, &s[0], (int)slength, NULL, 0);
+  int slength=static_cast<int>(s.size());
+  int rlength=
+    MultiByteToWideChar(CP_UTF8, 0, &s[0], slength, NULL, 0);
   std::wstring r(rlength, 0);
   MultiByteToWideChar(CP_UTF8, 0, &s[0], slength, &r[0], rlength);
   return r;
@@ -159,24 +167,24 @@ Function: utf32_to_utf8
 void utf32_to_utf8(unsigned int c, std::string &result)
 {
   if(c<=0x7f)
-    result+=char(c);
+    result+=static_cast<char>(c);
   else if(c<=0x7ff)
   {
-    result+=char((c >> 6)   | 0xc0);
-    result+=char((c & 0x3f) | 0x80);
+    result+=static_cast<char>((c >> 6)   | 0xc0);
+    result+=static_cast<char>((c &0x3f) | 0x80);
   }
   else if(c<=0xffff)
   {
-    result+=char((c >> 12)         | 0xe0);
-    result+=char(((c >> 6) & 0x3f) | 0x80);
-    result+=char((c & 0x3f)        | 0x80);
+    result+=static_cast<char>((c >> 12)         | 0xe0);
+    result+=static_cast<char>(((c >> 6) &0x3f) | 0x80);
+    result+=static_cast<char>((c &0x3f)        | 0x80);
   }
   else
   {
-    result+=char((c >> 18)         | 0xf0);
-    result+=char(((c >> 12) & 0x3f)| 0x80);
-    result+=char(((c >> 6) & 0x3f) | 0x80);
-    result+=char((c & 0x3f)        | 0x80);
+    result+=static_cast<char>((c >> 18)         | 0xf0);
+    result+=static_cast<char>(((c >> 12) &0x3f)| 0x80);
+    result+=static_cast<char>(((c >> 6) &0x3f) | 0x80);
+    result+=static_cast<char>((c &0x3f)        | 0x80);
   }
 }
 
@@ -242,7 +250,8 @@ Function: narrow_argv
 
 const char **narrow_argv(int argc, const wchar_t **argv_wide)
 {
-  if(argv_wide==NULL) return NULL;
+  if(argv_wide==NULL)
+    return NULL;
 
   // the following never gets deleted
   const char **argv_narrow=new const char *[argc+1];
@@ -252,4 +261,80 @@ const char **narrow_argv(int argc, const wchar_t **argv_wide)
     argv_narrow[i]=strdup(narrow(argv_wide[i]).c_str());
 
   return argv_narrow;
+}
+
+/*******************************************************************\
+
+Function: utf8_to_utf16_big_endian
+
+  Inputs: String in UTF-8 format
+
+ Outputs: String in UTF-16BE format
+
+ Purpose: Note this requires g++-5 libstdc++ / libc++ / MSVC2010+
+
+\*******************************************************************/
+
+std::wstring utf8_to_utf16_big_endian(const std::string& in)
+{
+  std::wstring_convert<std::codecvt_utf8_utf16<wchar_t> > converter;
+  return converter.from_bytes(in);
+}
+
+/*******************************************************************\
+
+Function: utf8_to_utf16_little_endian
+
+  Inputs: String in UTF-8 format
+
+ Outputs: String in UTF-16LE format
+
+ Purpose: Note this requires g++-5 libstdc++ / libc++ / MSVC2010+
+
+\*******************************************************************/
+
+std::wstring utf8_to_utf16_little_endian(const std::string& in)
+{
+  const std::codecvt_mode mode=std::codecvt_mode::little_endian;
+
+  // default largest value codecvt_utf8_utf16 reads without error is 0x10ffff
+  // see: http://en.cppreference.com/w/cpp/locale/codecvt_utf8_utf16
+  const unsigned long maxcode=0x10ffff;
+
+  typedef std::codecvt_utf8_utf16<wchar_t, maxcode, mode> codecvt_utf8_utf16t;
+  std::wstring_convert<codecvt_utf8_utf16t> converter;
+  return converter.from_bytes(in);
+}
+
+/*******************************************************************\
+
+Function: utf16_little_endian_to_ascii
+
+  Inputs: String in UTF-16LE format
+
+ Outputs: String in US-ASCII format, with \uxxxx escapes for other
+          characters
+
+ Purpose:
+
+\*******************************************************************/
+
+std::string utf16_little_endian_to_ascii(const std::wstring& in)
+{
+  std::ostringstream result;
+  std::locale loc;
+  for(const auto c : in)
+  {
+    if(c<=255 && isprint(c, loc))
+      result << (unsigned char)c;
+    else
+    {
+      result << "\\u"
+             << std::hex
+             << std::setw(4)
+             << std::setfill('0')
+             << (unsigned int)c;
+    }
+  }
+  return result.str();
 }

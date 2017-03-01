@@ -124,13 +124,13 @@ void cfg_dominators_templatet<P, T, post_dom>::fixedpoint(P &program)
 {
   std::list<T> worklist;
 
-  if(program.instructions.empty())
+  if(cfg.nodes_empty(program))
     return;
 
   if(post_dom)
-    entry_node = --program.instructions.end();
+    entry_node=cfg.get_last_node(program);
   else
-    entry_node = program.instructions.begin();
+    entry_node=cfg.get_first_node(program);
   typename cfgt::nodet &n=cfg[cfg.entry_map[entry_node]];
   n.dominators.insert(entry_node);
 
@@ -149,16 +149,18 @@ void cfg_dominators_templatet<P, T, post_dom>::fixedpoint(P &program)
     bool changed=false;
     typename cfgt::nodet &node=cfg[cfg.entry_map[current]];
     if(node.dominators.empty())
-      for(const auto & edge : (post_dom?node.out:node.in))
+    {
+      for(const auto &edge : (post_dom ? node.out : node.in))
         if(!cfg[edge.first].dominators.empty())
         {
           node.dominators=cfg[edge.first].dominators;
           node.dominators.insert(current);
           changed=true;
         }
+    }
 
     // compute intersection of predecessors
-    for(const auto & edge : (post_dom?node.out:node.in))
+    for(const auto &edge : (post_dom ? node.out : node.in))
     {
       const target_sett &other=cfg[edge.first].dominators;
       if(other.empty())
@@ -170,10 +172,20 @@ void cfg_dominators_templatet<P, T, post_dom>::fixedpoint(P &program)
       // in-place intersection. not safe to use set_intersect
       while(n_it!=node.dominators.end() && o_it!=other.end())
       {
-        if(*n_it==current) ++n_it;
-        else if(*n_it<*o_it) { changed=true; node.dominators.erase(n_it++); }
-        else if(*o_it<*n_it) ++o_it;
-        else { ++n_it; ++o_it; }
+        if(*n_it==current)
+          ++n_it;
+        else if(*n_it<*o_it)
+        {
+          changed=true;
+          node.dominators.erase(n_it++);
+        }
+        else if(*o_it<*n_it)
+          ++o_it;
+        else
+        {
+          ++n_it;
+          ++o_it;
+        }
       }
 
       while(n_it!=node.dominators.end())
@@ -190,12 +202,31 @@ void cfg_dominators_templatet<P, T, post_dom>::fixedpoint(P &program)
 
     if(changed) // fixed point for node reached?
     {
-      for(const auto & edge : (post_dom?node.in:node.out))
+      for(const auto &edge : (post_dom ? node.in : node.out))
       {
         worklist.push_back(cfg[edge.first].PC);
       }
     }
   }
+}
+
+/*******************************************************************\
+
+Function: dominators_pretty_print_node
+
+  Inputs: `node` to print and stream `out` to pretty-print it to
+
+ Outputs:
+
+ Purpose: Pretty-print a single node in the dominator tree.
+          Supply a specialisation if operator<< is not sufficient.
+
+\*******************************************************************/
+
+template <class T>
+void dominators_pretty_print_node(const T &node, std::ostream &out)
+{
+  out << node;
 }
 
 /*******************************************************************\
@@ -215,29 +246,39 @@ void cfg_dominators_templatet<P, T, post_dom>::output(std::ostream &out) const
 {
   for(const auto &node : cfg.entry_map)
   {
-    unsigned n=node.first->location_number;
+    T n=node.first;
 
+    dominators_pretty_print_node(n, out);
     if(post_dom)
-      out << n << " post-dominated by ";
+      out << " post-dominated by ";
     else
-      out << n << " dominated by ";
-    for(typename target_sett::const_iterator
-        d_it=node.second.dominators.begin();
-        d_it!=node.second.dominators.end();
-       ) // no d_it++
+      out << " dominated by ";
+    bool first=true;
+    for(const auto &d : cfg[node.second].dominators)
     {
-      out << (*d_it)->location_number;
-      if (++d_it!=node.second.dominators.end())
+      if(!first)
         out << ", ";
+      first=false;
+      dominators_pretty_print_node(d, out);
     }
     out << "\n";
   }
 }
 
-typedef cfg_dominators_templatet<const goto_programt, goto_programt::const_targett, false>
+typedef cfg_dominators_templatet<
+          const goto_programt, goto_programt::const_targett, false>
         cfg_dominatorst;
 
-typedef cfg_dominators_templatet<const goto_programt, goto_programt::const_targett, true>
+typedef cfg_dominators_templatet<
+          const goto_programt, goto_programt::const_targett, true>
         cfg_post_dominatorst;
+
+template<>
+inline void dominators_pretty_print_node(
+  const goto_programt::const_targett &node,
+  std::ostream &out)
+{
+  out << node->location_number;
+}
 
 #endif // CPROVER_ANALYSES_CFG_DOMINATORS_H

@@ -6,11 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-//#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 #include <iostream>
-#include <langapi/language_util.h>
 #endif
 
 #include <cassert>
@@ -175,7 +174,8 @@ exprt value_set_dereferencet::dereference(
         it=values.begin();
         it!=values.end();
         it++)
-      if(it->value.is_nil()) may_fail=true;
+      if(it->value.is_nil())
+        may_fail=true;
   }
 
   if(may_fail)
@@ -386,7 +386,7 @@ value_set_dereferencet::valuet value_set_dereferencet::build_reference_to(
   }
   else if(root_object.id()==ID_dynamic_object)
   {
-    //const dynamic_object_exprt &dynamic_object=
+    // const dynamic_object_exprt &dynamic_object=
     //  to_dynamic_object_expr(root_object);
 
     // the object produced by malloc
@@ -407,7 +407,7 @@ value_set_dereferencet::valuet value_set_dereferencet::build_reference_to(
 
     if(options.get_bool_option("pointer-check"))
     {
-      //if(!dynamic_object.valid().is_true())
+      // if(!dynamic_object.valid().is_true())
       {
         // check if it is still alive
         guardt tmp_guard(guard);
@@ -425,7 +425,11 @@ value_set_dereferencet::valuet value_set_dereferencet::build_reference_to(
           // check lower bound
           guardt tmp_guard(guard);
           tmp_guard.add(is_malloc_object);
-          tmp_guard.add(dynamic_object_lower_bound(pointer_expr));
+          tmp_guard.add(
+            dynamic_object_lower_bound(
+              pointer_expr,
+              ns,
+              nil_exprt()));
           dereference_callback.dereference_failure(
             "pointer dereference",
             "dynamic object lower bound", tmp_guard);
@@ -439,7 +443,12 @@ value_set_dereferencet::valuet value_set_dereferencet::build_reference_to(
 
           guardt tmp_guard(guard);
           tmp_guard.add(is_malloc_object);
-          tmp_guard.add(dynamic_object_upper_bound(pointer_expr, dereference_type, ns));
+          tmp_guard.add(
+            dynamic_object_upper_bound(
+              pointer_expr,
+              dereference_type,
+              ns,
+              size_of_expr(dereference_type, ns)));
           dereference_callback.dereference_failure(
             "pointer dereference",
             "dynamic object upper bound", tmp_guard);
@@ -451,6 +460,12 @@ value_set_dereferencet::valuet value_set_dereferencet::build_reference_to(
   {
     // This is stuff like *((char *)5).
     // This is turned into an access to __CPROVER_memory[...].
+
+    if(language_mode==ID_java)
+    {
+      result.value=nil_exprt();
+      return result;
+    }
 
     const symbolt &memory_symbol=ns.lookup(CPROVER_PREFIX "memory");
     exprt symbol_expr=symbol_exprt(memory_symbol.name, memory_symbol.type);
@@ -527,7 +542,9 @@ value_set_dereferencet::valuet value_set_dereferencet::build_reference_to(
         result.value.make_typecast(dereference_type);
     }
     else if(root_object_type.id()==ID_array &&
-            dereference_type_compare(root_object_type.subtype(), dereference_type))
+            dereference_type_compare(
+              root_object_type.subtype(),
+              dereference_type))
     {
       // We have an array with a subtype that matches
       // the dereferencing type.
@@ -573,8 +590,11 @@ value_set_dereferencet::valuet value_set_dereferencet::build_reference_to(
       if(ns.follow(result.value.type())!=ns.follow(dereference_type))
         result.value.make_typecast(dereference_type);
     }
-    else if(get_subexpression_at_offset(root_object_subexpression, o.offset(),
-					dereference_type, ns))
+    else if(get_subexpression_at_offset(
+        root_object_subexpression,
+        o.offset(),
+        dereference_type,
+        ns))
     {
       // Successfully found a member, array index, or combination thereof
       // that matches the desired type and offset:
@@ -717,7 +737,7 @@ void value_set_dereferencet::bounds_check(
     }
     else
     {
-      exprt zero=gen_zero(expr.index().type());
+      exprt zero=from_integer(0, expr.index().type());
 
       if(zero.is_nil())
         throw "no zero constant of index type "+
@@ -872,7 +892,7 @@ bool value_set_dereferencet::memory_model_conversion(
 
   if(options.get_bool_option("pointer-check"))
   {
-    equal_exprt offset_not_zero(offset, gen_zero(offset.type()));
+    equal_exprt offset_not_zero(offset, from_integer(0, offset.type()));
     offset_not_zero.make_not();
 
     guardt tmp_guard(guard);
@@ -966,8 +986,8 @@ bool value_set_dereferencet::memory_model_bytes(
     if(!offset.is_zero())
     {
       binary_relation_exprt
-        offset_lower_bound(offset, ID_lt,
-                           gen_zero(offset.type()));
+        offset_lower_bound(
+          offset, ID_lt, from_integer(0, offset.type()));
 
       guardt tmp_guard(guard);
       tmp_guard.add(offset_lower_bound);

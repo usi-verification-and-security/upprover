@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 
 #include <cegis/cegis-util/program_helper.h>
@@ -28,7 +37,7 @@ class add_x0_placeholdert
   symbol_tablet &st;
   goto_functionst &gf;
 public:
-  add_x0_placeholdert(danger_programt &prog) :
+  explicit add_x0_placeholdert(danger_programt &prog) :
       prog(prog), st(prog.st), gf(prog.gf)
   {
   }
