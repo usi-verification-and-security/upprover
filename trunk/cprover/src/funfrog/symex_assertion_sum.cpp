@@ -19,6 +19,8 @@
 #include "symex_assertion_sum.h"
 #include "expr_pretty_print.h"
 
+#include <analyses/dirty.h> // KE: not in use, just added because of cprover framework!
+
 //#define DEBUG_PARTITIONING
 
 /*******************************************************************
@@ -280,6 +282,8 @@ void symex_assertion_sumt::symex_step(
       state.guard.add(false_exprt());
   state.depth++;
 
+  state.dirty=new dirtyt(goto_functions); // KE: dirty analysis not in use, add to avoid crushes
+  
   // KE: This switch-case is taken from: symex_assertion_sumt::symex_step
   switch(instruction.type)
   {
@@ -508,6 +512,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   state.top().end_of_function = --body.instructions.end();
   state.top().goto_state_map.clear();
   state.top().local_objects.clear();
+  //state.dirty=new dirtyt(function); // KE: dirty analysis not in use, add to avoid crushes
 
   // Setup temporary store for return value
   if (partition_iface.returns_value) {
@@ -569,6 +574,7 @@ void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
     throw "failed to find `"+id2string(identifier)+"' in function_map";
 
   const goto_functionst::goto_functiont &goto_function=it->second;
+  //state.dirty=new dirtyt(goto_function); // KE: dirty analysis not in use, add to avoid crushes
 
   // Callsite symbols
   produce_callsite_symbols(partition_iface, state);
@@ -627,6 +633,7 @@ void symex_assertion_sumt::assign_function_arguments(
     throw "failed to find `"+id2string(identifier)+"' in function_map";
 
   const goto_functionst::goto_functiont &goto_function=it->second;
+  //state.dirty=new dirtyt(goto_function); // KE: dirty analysis not in use, add to avoid crushes
 
   // Add parameters assignment
   bool old_cp = constant_propagation;
@@ -1064,6 +1071,8 @@ void symex_assertion_sumt::handle_function_call(
   const irep_idt& function_id = function_call.function().get(ID_identifier);
   const goto_functionst::goto_functiont &goto_function =
     summarization_context.get_function(function_id);
+  
+  //state.dirty=new dirtyt(goto_function); // KE: dirty analysis not in use, add to avoid crushes
 
   // Clean expressions in the arguments, function name, and lhs (if any)
   if (function_call.lhs().is_not_nil())

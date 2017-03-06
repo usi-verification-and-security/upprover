@@ -6,7 +6,6 @@ File Changed:
 - trunk/cprover/src/solvers/prop/prop_conv.h (move to public: propt &prop; // KE: change for hifrog)
 - trunk/cprover/src/goto-symex/goto_symex_state.h (Move a method to public - get_l1_name())
 - trunk/cprover/src/goto-symex/goto_symex.h (set virtual phi_function method)
-- trunk/cprover/src/goto-symex/symex_decl.cpp (remove dirty analysis code)
 - trunk/cprover/src/config.inc (change: add ../ to minisat2 path)
 - trunk/cprover/src/Makefile
 - trunk/cprover/src/goto-symex/goto_symex_state.cpp // Fix to ignor issues of parallel MC
@@ -35,8 +34,9 @@ Special modifications in HiFrog:
 - To public: get_l1_name
   // only required for value_set.assign
   void get_l1_name(exprt &expr) const; // KE: changes for hifrog
--- expr.h add function:
+- expr.h add function:
   const std::string print_number_2smt() const; // hckd!!
--- expr.cpp add function impl
+- expr.cpp add function impl
+- Issues with dirty analysis
 
 
