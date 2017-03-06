@@ -778,7 +778,9 @@ void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 	char *msg;
 
 	for (int i = 0; i < top_level_formulas.size(); i++){
-		cout << "\nCE:  " << logic->printTerm(top_level_formulas[i]);
+                char *s = logic->printTerm(logic->printTerm(top_level_formulas[i]));
+		cout << "\nCE:  " << s << endl;
+                free(s);
 		mainSolver->insertFormula(top_level_formulas[i], &msg);
 	}
 	mainSolver->push();
