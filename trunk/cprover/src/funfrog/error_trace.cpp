@@ -413,12 +413,13 @@ void error_tracet::show_goto_trace(
                     break;
 
             case goto_trace_stept::CONSTRAINT:
-              assert(false);
+              assert(false); // KE: show me this case!
               break;
 
             case goto_trace_stept::SHARED_READ:
             case goto_trace_stept::SHARED_WRITE:
-              assert(false);
+              // Unsupported here, probably is unsupported var
+              isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
               break;
 
             case goto_trace_stept::ASSERT:
