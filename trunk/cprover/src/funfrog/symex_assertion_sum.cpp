@@ -714,7 +714,7 @@ void symex_assertion_sumt::mark_argument_symbols(
     ssa_exprt ssa_expr_lhs = to_ssa_expr(lhs);
     state.level0(ssa_expr_lhs, ns, state.source.thread_nr);
     state.level1(ssa_expr_lhs);
-    ssa_expr_lhs.set_level_2(it2->second.second);
+    ssa_expr_lhs.set_level_2(state.level2.current_count(ssa_expr_lhs.get_identifier()));
 
     to_ssa_expr(lhs).set_level_2(it2->second.second);
     partition_iface.argument_symbols.push_back(lhs);
@@ -772,6 +772,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     ssa_exprt ssa_expr = state.level2.current_names[*it].first;
     state.level0(ssa_expr, ns, state.source.thread_nr);
     state.level1(ssa_expr);
+    ssa_expr.set_level_2(state.level2.current_count(ssa_expr.get_identifier()));
     
     // Push the new renamed to the partition
     symbol_exprt symb_ex(ssa_expr);
@@ -820,7 +821,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     ssa_exprt ssa_expr = state.level2.current_names[*it].first;
     state.level0(ssa_expr, ns, state.source.thread_nr);
     state.level1(ssa_expr);
-    ssa_expr.set_level_2(state.level2.current_count(*it));
+    ssa_expr.set_level_2(state.level2.current_count(ssa_expr.get_identifier()));
     
     symbol_exprt symb_ex(ssa_expr);
     partition_iface.out_arg_symbols.push_back(symb_ex);
@@ -859,7 +860,7 @@ void symex_assertion_sumt::level2_rename_and_2ssa(
     // Adds L2 counter to the symbol (L2: 1 adds to the expression) 
     state.level0(code_var, ns, state.source.thread_nr);
     state.level1(code_var);
-    code_var.set_level_2(state.level2.current_count(identifier)); 
+    code_var.set_level_2(state.level2.current_count(code_var.get_identifier())); 
     
     // Return a symbol of ssa val with expression of original var
     ret_symbol = to_symbol_expr(code_var);
