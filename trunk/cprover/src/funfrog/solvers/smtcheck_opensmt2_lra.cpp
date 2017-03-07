@@ -9,7 +9,7 @@ Author: Grigory Fedyukovich
 #include <util/type.h>
 
 //#define SMT_DEBUG
-//#define SMT_DEBUG_VARS_BOUNDS
+//#define SMT_DEBUG_VARS_BOUNDS // For debugging the option: type_constraints_level
 
 void smtcheck_opensmt2t_lra::initializeSolver()
 {
@@ -26,7 +26,15 @@ void smtcheck_opensmt2t_lra::initializeSolver()
     literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
     literals[0] = logic->getTerm_true(); // Which is .x =0
     // KE: End of fix
-}
+    
+    // To avoid issues with type constraints for LRA
+    if (type_constraints_level > 0)
+        std::cout << "Adding Type Constraints (" << type_constraints_level << ")" 
+                << ((type_constraints_level == 1 ? "for type constraints on non-deterministic input" : ""))
+                << ((type_constraints_level == 2 ? "for type constraints on variables" : ""))
+                << ((type_constraints_level >= 3  ? "** ERROR ** Unknown Option" : ""))
+                << std::endl;
+ }
 
 // Free all inner objects
 smtcheck_opensmt2t_lra::~smtcheck_opensmt2t_lra()
@@ -654,30 +662,30 @@ bool smtcheck_opensmt2t_lra::push_constraints2type(
 // If the expression is a number adds constraints
 void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 {
-	if(!is_number(expr.type())) return ;
+    if(!is_number(expr.type())) return ;
 
-	typet var_type = expr.type(); // Get the current type
-	if (var_type.is_nil()) return;
+    typet var_type = expr.type(); // Get the current type
+    if (var_type.is_nil()) return;
 
-	// Check the id is a var
-	assert((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol));
+    // Check the id is a var
+    assert((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol));
 
-	// Start building the constraints
+    // Start building the constraints
 #ifdef SMT_DEBUG_VARS_BOUNDS
-	cout << "; For variable " << expr.get(ID_identifier) << " in partition " << partition_count
-			<< " try to identify this type "<< var_type
+    cout << "; For variable " << expr.get(ID_identifier) << " in partition " << partition_count
+			<< " try to identify this type "<< var_type.pretty()
 			<< ((expr.id() == ID_nondet_symbol) ? " that is non-det symbol" : " that is a regular symbol")
 			<< endl;
 #endif
 
-	//gets the property
-	int size = var_type.get_int("width");
-	//const irep_idt type = var_type.get("#c_type");
-	const irep_idt &type_id=var_type.id_string();
-	bool is_add_constraints = false;
-	bool is_non_det = (expr.id() == ID_nondet_symbol);
+    //gets the property
+    int size = var_type.get_int("width");
+    //const irep_idt type = var_type.get("#c_type");
+    const irep_idt &type_id=var_type.id_string();
+    bool is_add_constraints = false;
+    bool is_non_det = (expr.id() == ID_nondet_symbol);
 
-	// Start checking what it is
+    // Start checking what it is
     if(type_id==ID_integer || type_id==ID_natural)
     {
     	assert(0); // need to see an example!
