@@ -79,9 +79,17 @@ public:
           osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
   }
 
+
   unsigned get_random_seed()
   {
       return random_seed;
+  }
+
+  void set_dump_query(bool f)
+  {
+      const char* msg;
+      if (osmt != NULL)
+          osmt->getConfig().setOption(SMTConfig::o_dump_query, SMTOption(f), msg);
   }
 
   MainSolver * getMainSolver() { return mainSolver; }

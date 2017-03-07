@@ -398,6 +398,7 @@ void funfrog_parseoptionst::help()
   "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
   "--reduce-proof-loops           number of reduction iterations\n"
   "--list-templates               dump the templates of the functions for user-defined summaries\n"
+  "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n"
 //  "\nRefinement options:\n"
 //  "--refine-mode <mode>:\n"
 //  "  0 | \"force-inlining\"         inline every function call\n"
@@ -574,6 +575,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   } else {
     options.set_option("bitwidth", 8);
   }
+  if (cmdline.isset("dump-query"))
+      options.set_option("dump-query", true);
+
   // always check assertions
   options.set_option("assertions", true);
 

@@ -50,6 +50,8 @@ void summarizing_checkert::initialize_solver()
     if(options.get_unsigned_int_option("reduce-proof-loops")) decider->set_reduce_proof_loops(options.get_unsigned_int_option("reduce-proof-loops"));
   }
   if(options.get_unsigned_int_option("random-seed")) decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
+  if (options.get_bool_option("dump-query"))
+      decider->set_dump_query(true);
 }
 
 void summarizing_checkert::initialize()
