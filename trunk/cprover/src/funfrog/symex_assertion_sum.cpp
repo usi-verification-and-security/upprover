@@ -283,7 +283,7 @@ void symex_assertion_sumt::symex_step(
   state.depth++;
 
   state.dirty=new dirtyt(goto_functions); // KE: dirty analysis not in use, add to avoid crushes
-  
+   
   // KE: This switch-case is taken from: symex_assertion_sumt::symex_step
   switch(instruction.type)
   {
@@ -295,7 +295,7 @@ void symex_assertion_sumt::symex_step(
 
   case END_FUNCTION:
 
-    //decrement_unwinding_counter();
+    //decrement_unwinding_counter(); 
     store_return_value(state, get_current_deferred_function());
     end_symex(state);
     break;
@@ -360,14 +360,14 @@ void symex_assertion_sumt::symex_step(
   case RETURN:
     if(!state.guard.is_false())
       return_assignment(state);
-
+    
     state.source.pc++;
     break;
 
-  case ASSIGN:
-    if(!state.guard.is_false())
+  case ASSIGN:      
+    if(!state.guard.is_false()) 
       symex_assign_rec(state, to_code_assign(instruction.code));
-
+          
     state.source.pc++;
     break;
 
@@ -378,7 +378,7 @@ void symex_assertion_sumt::symex_step(
         to_code_function_call(instruction.code);
       // Process the function call according to the call_summary
       handle_function_call(state, deref_code);
-    }
+    }      
     state.source.pc++;
     break;
 
@@ -950,16 +950,24 @@ void symex_assertion_sumt::store_modified_globals(
   
   state.record_events=false; // expr-s are build ins 
   // therefore we don't want to use parallel built-ins
-  for (std::vector<symbol_exprt>::const_iterator it = 
+  for (std::vector<symbol_exprt>::iterator it = 
           partition_iface.out_arg_symbols.begin();
           it != partition_iface.out_arg_symbols.end();
           ++it) {
 
-    ssa_exprt rhs(symbol_exprt((ssa_exprt(*it).get_original_expr()).get(ID_identifier), ns.follow(it->type())));
-
+    //symbol_exprt rhs(state.get_original_name(it->get_identifier()), 
+    //        ns.follow(it->type())); 
+        
+    // SSA Symbol   
+    symbol_exprt lhs_ssa_symbol(ssa_exprt(*it).get(ID_identifier), ns.follow(it->type()));
+    
+    // Pure Symbol
+    state.get_original_name(*it); // KE: Don't like this solution, but that's the only way it works        
+    ssa_exprt rhs_symbol(symbol_exprt(ssa_exprt(*it).get(ID_identifier), ns.follow(it->type())));   
+      
     code_assignt assignment(
-            *it,
-            rhs);
+            lhs_ssa_symbol,
+            rhs_symbol);
   
     assert( ns.follow(assignment.lhs().type()) ==
             ns.follow(assignment.rhs().type()));
@@ -996,7 +1004,7 @@ void symex_assertion_sumt::store_return_value(
   
   assert( ns.follow(assignment.lhs().type()) ==
           ns.follow(assignment.rhs().type()));
-
+  
   // Emit the assignment
   bool old_cp = constant_propagation;
   constant_propagation = false;
@@ -1437,7 +1445,7 @@ irep_idt symex_assertion_sumt::get_current_l2_name(statet &state, const irep_idt
 
  Purpose: Makes an assignment without increasing the version of the
  lhs symbol (make sure that lhs symbol is not assigned elsewhere)
-
+ 
 \*******************************************************************/
 void symex_assertion_sumt::raw_assignment(
         statet &state,
@@ -1460,9 +1468,15 @@ void symex_assertion_sumt::raw_assignment(
   ssa_lhs.update_type();
 
   // GF: not sure, just commented this line
-  // KE: it seems that the field of original names isn't in use any more!
-  //  state.propagation.remove(state.level2.get_original_name(lhs_identifier));
+  // KE: it seems that the field of original names isn't in use any more in L2, but is in the state class
+  // const irep_idt &identifier = lhs.get(ID_identifier);
+  // irep_idt l1_identifier=state.level2.get_original_name(identifier);
+  irep_idt l1_identifier = lhs.get(ID_identifier);
+  state.get_original_name(lhs);
 
+  state.propagation.remove(l1_identifier);
+  // KE: old code, not sure about it!
+  
   // update value sets
   exprt l1_rhs(rhs_symbol);
   state.get_l1_name(l1_rhs);
