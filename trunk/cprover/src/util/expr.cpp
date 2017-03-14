@@ -554,6 +554,7 @@ const std::string exprt::print_number_2smt() const
     else if(type_id==ID_rational)
     {
       std::stringstream convert; // stringstream used for the conversion
+      convert.precision(1);
       rationalt rat_value;
       if(to_rational(*this, rat_value)) assert(false);
       convert << rat_value;
@@ -574,25 +575,30 @@ const std::string exprt::print_number_2smt() const
     	// Else try to extract the number
     	std::string temp_try1(get(ID_C_member_name).c_str()); // KE: need testing!
     	if (temp_try1.size() > 0)
-    	{ 	// WIll get here only for positive numbers, the rest will try differently
-    		return temp_try1;
+    	{ 	
+            // WIll get here only for positive numbers, the rest will try differently
+            return temp_try1;
     	}
     	else if(type_id==ID_fixedbv)
-		{
-		   return (fixedbvt(to_constant_expr(*this))).to_ansi_c_string();
-		}
-		else if(type_id==ID_floatbv)
-		{
-		   ieee_floatt temp = ieee_floatt(to_constant_expr(*this));
-		   std::string ans_cand = temp.to_ansi_c_string();
-		   if (ans_cand != "0.000000" && ans_cand != "-0.000000" && ans_cand != "0" && ans_cand != "-0") {
-			   return ans_cand; // If the translation makes sense - returns it
-		   } else { // Else try to get something closer.
-			   double temp_double = temp.to_double(); if (temp_double == 0) return "0";
-			   std::ostringstream s; s << temp_double;
-			   return s.str();
-		   }
-		}
+        {
+           return (fixedbvt(to_constant_expr(*this))).to_ansi_c_string();
+        }
+        else if(type_id==ID_floatbv)
+        {
+           ieee_floatt temp = ieee_floatt(to_constant_expr(*this));
+           std::string ans_cand = temp.to_ansi_c_string();
+           if (ans_cand.find("e+") != std::string::npos)
+               return temp.to_string_decimal(ans_cand.size());
+           if (ans_cand.find("e-") != std::string::npos)
+               return temp.to_string_decimal(ans_cand.size());
+           if (ans_cand != "0.000000" && ans_cand != "-0.000000" && ans_cand != "0" && ans_cand != "-0") {
+               return ans_cand; // If the translation makes sense - returns it
+           } else { // Else try to get something closer.
+               double temp_double = temp.to_double(); if (temp_double == 0) return "0";
+               std::ostringstream s; s << temp_double;
+               return s.str();
+           }
+        }
     }
   }
 

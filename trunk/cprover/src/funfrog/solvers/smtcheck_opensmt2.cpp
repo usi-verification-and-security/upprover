@@ -822,6 +822,8 @@ Function: smtcheck_opensmt2t::extract_expr_str_number
  Purpose: assure we are extracting the number correctly.
 
  expr.get(ID_C_cformat).c_str() - doesn't work for negative numbers!
+ * And thanks god (the starts and mother nature) that this option 
+ * is NOT in new Cprover framework
 
 \*******************************************************************/
 std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
@@ -830,8 +832,10 @@ std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
 	//(unless upgrade, please keep the checks/assert!)
 	// If can be that we missed more cases... use the debug prints to check conversions!!
 #ifdef DEBUG_SSA_SMT_NUMERIC_CONV
-	cout << "; EXTRACTING NUMBER " << const_val << " (ORIG-EXPR " << expr.get(ID_value) << " :: " << expr.type().id() << ")"<< endl;
-	cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << " with TYPE " << expr.type().id_string() << endl;
+	cout << "; EXTRACTING NUMBER " << const_val 
+                << " (ORIG-EXPR " << expr.get(ID_value) 
+                << " :: " << expr.type().id() << ")" << endl;
+	//cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << " with TYPE " << expr.type().id_string() << endl;
 #endif
 
 	return const_val;
