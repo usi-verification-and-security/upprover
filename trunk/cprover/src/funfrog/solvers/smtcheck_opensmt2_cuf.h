@@ -107,4 +107,13 @@ inline void getVarsInExpr(exprt& e, std::set<exprt>& vars)
     }
   }
 }
+
+// Taken from cprover framework: integer2unsigned, mp_arith.cpp
+inline int mp_integer2int(const mp_integer &n)
+{
+  mp_integer::llong_t ll=n.to_long();
+  assert(ll <= std::numeric_limits<int>::max());
+  assert(ll >= std::numeric_limits<int>::min());
+  return (int)ll;
+}
 #endif

@@ -148,72 +148,79 @@ bool smtcheck_opensmt2t_cuf::convert_bv_eq_ite(const exprt &expr, PTRef& ptl)
 
 PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
 {
+    assert(expr.is_constant()); // If not a constant then assert
+         
+    const irep_idt &type_id=expr.type().id_string(); // Check by type how to convert
+    
     PTRef ptl;            
     if (expr.is_boolean()) {
-        if (expr.is_true() || expr.is_one()) {
-            // true
-            ptl = get_bv_const(1);
-        } else if (expr.is_false() || expr.is_zero()) {
-            // false
-            ptl = get_bv_const(0);
-        } else {
-            // any other valuse 
+        if (expr.is_true() || expr.is_one())
+            ptl = get_bv_const(1); // true
+        else if (expr.is_false() || expr.is_zero()) 
+            ptl = get_bv_const(0); // false
+        else 
             assert(0); // TODO: check what's here
-        }
-    } else if (expr.type().id() == ID_c_bool) { // KE: New Cprover code - patching
-        std::string num(expr.get_string(ID_value));
-        if (num.find_first_not_of('0') != std::string::npos) {
-            // true
-            ptl = get_bv_const(1);
-        } else {
-            // false
-            ptl = get_bv_const(0);
-        }
+        
+    } else if(type_id==ID_integer || type_id==ID_natural) {
+        mp_integer int_value=string2integer(expr.get_string(ID_value));
+        ptl = get_bv_const(mp_integer2int(int_value));
+        
+    } else if (type_id==ID_unsignedbv || type_id==ID_signedbv ||
+               type_id==ID_c_bit_field || type_id==ID_c_bool) {
+        mp_integer int_value=binary2integer(id2string(expr.get_string(ID_value))
+                                            , type_id==ID_signedbv);
+        ptl = get_bv_const(mp_integer2int(int_value));
+        
+    } else if (expr.is_one()) {
+        ptl = get_bv_const(1);
+        
+    } else if (expr.is_zero()) {
+        ptl = get_bv_const(0);
+        
+    } else if ("true" == id2string(to_constant_expr(expr).get_value())) {
+        ptl = get_bv_const(1);
+        
+    } else if ("false" == id2string(to_constant_expr(expr).get_value())) {
+        ptl = get_bv_const(0); 
+        
     } else {
         // General number (not just 0 or 1)
-        if ("true" == id2string(to_constant_expr(expr).get_value())) {
-            ptl = get_bv_const(1);
-        } else if ("false" == id2string(to_constant_expr(expr).get_value())) {
-            ptl = get_bv_const(0);
-        } else {
-            std::string str = expr.print_number_2smt();
-            if ((str.compare("inf") == 0) || (str.compare("-inf") == 0))
-                    // KE: there will be more magic numbers, if get these, add it here
-            {
-                // No inf values in toy models!
-                if ((bitwidth != 32) && (bitwidth != 64) && (bitwidth != 128)) {
-                    cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                    exit(0);
-                }
-                
-                assert(0); // KE: Not sure what to do with it, please show me the case        
-            } else {
-                long num;
-                try {
-                    num= stoi(str);
-                } catch(std::invalid_argument& e){
-                    cout << "\nNo support for constant or symbol " << str << " so far.\n\n";
-                    exit(0);
-                }
-                catch(std::out_of_range& e){
-                    cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                    exit(0);
-                }
-                catch(...) {
-                    assert(0); // unknown: need to add code probably!
-                }
-                
-                // Check if fits
-                if ((num < -max_num || max_num < num))
-                {
-                    cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                    exit(0);
-                } else {
-                    ptl = get_bv_const(num);
-                }
+        std::string str = expr.print_number_2smt();
+        if ((str.compare("inf") == 0) || (str.compare("-inf") == 0))
+        {
+            // No inf values in toy models!
+            if ((bitwidth != 32) && (bitwidth != 64) && (bitwidth != 128)) {
+                cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+                exit(0);
             }
-        } // General case
-    }
+                
+            assert(0); // KE: Not sure what to do with it, please show me the case        
+        } else {
+            long num;
+            try {
+                num= stoi(str);
+            } catch(std::invalid_argument& e){
+                cout << "\nNo support for constant or symbol " << str << " so far.\n\n";
+                exit(0);
+            }
+            catch(std::out_of_range& e){
+                cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+                exit(0);
+            }
+            catch(...) {
+                assert(0); // unknown: need to add code probably!
+            }
+            
+            // Check if fits
+            if ((num < -max_num || max_num < num))
+            {
+                cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+                exit(0);
+            } else {
+                ptl = get_bv_const(num);
+            }
+        } 
+    } // General case
 
     return ptl;
 }
