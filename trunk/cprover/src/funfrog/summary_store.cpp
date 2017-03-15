@@ -55,25 +55,12 @@ void summary_storet::replace_summary(summary_idt old_summary_id,
   repr_count--;
 }
 
-/*******************************************************************\
-
-Function: summary_storet::insert_summary
-
-  Inputs:
-
- Outputs:
-
- Purpose: Inserts a new summary, the given summary is invalidated
-
-\*******************************************************************/
-
-summary_idt summary_storet::insert_summary(summaryt& summary)
+int
+summary_storet::get_max_id(const string& fname) const
 {
-  summary_idt id = max_id++;
-  summary.set_valid(1);
-  store.push_back(nodet(id, summary));
-  repr_count++;
-  return id;
+    map<string, int>::const_iterator it = max_ids.find(fname);
+    if(it == max_ids.end()) return -1;
+    return it->second;
 }
 
 /*******************************************************************\
@@ -228,52 +215,3 @@ void summary_storet::compact_store(summary_infot& summary_info,
   return;
 }
 
-// Serialization
-void summary_storet::serialize(std::ostream& out) const
-{
-  out << max_id << std::endl;
-
-  for (storet::const_iterator it = store.begin();
-          it != store.end();
-          ++it) {
-
-    out << it->repr_id << " " << it->is_repr() << std::endl;
-    
-    if (it->is_repr()) {
-      out << it->summary->is_valid() << std::endl;
-      it->summary->serialize(out);
-    }
-  }
-}
-
-void summary_storet::deserialize(std::istream& in)
-{
-  repr_count = 0;
-  in >> max_id;
-
-  if (in.fail())
-    return;
-
-  store.clear();
-  store.reserve(max_id);
-  
-  for (unsigned i = 0; i < max_id; ++i)
-  {
-    summary_idt repr_id;
-    bool is_repr;
-    bool is_valid;
-    summaryt summary;
-    
-    in >> repr_id >> is_repr;
-    
-    if (is_repr) {
-      in >> is_valid;
-      summary.deserialize(in);
-      summary.set_valid(is_valid);
-      store.push_back(nodet(repr_id, summary));
-      repr_count++;
-    } else {
-      store.push_back(nodet(repr_id));
-    }
-  }
-}

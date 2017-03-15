@@ -11,6 +11,9 @@ Author: Ondrej Sery
 #include <stdlib.h>
 #include <iostream>
 
+#include "time_stopping.h"
+#include <symbol_table.h>
+
 //#define DEBUG_ITP
 
 /*******************************************************************\
@@ -659,7 +662,7 @@ void prop_itpt::print(std::ostream& out) const
   if (is_trivial()) {
     out << "Prop. interpolant: trivial" << std::endl;
   } else {
-    out << "Prop. interpolant (#v: " << _no_variables << ", #c: " << no_clauses() <<
+    out << "Prop. interpolant (#v: " << _no_variables << ", #c: " << clauses.size() <<
             ",root: " << root_literal.dimacs() << "):" << std::endl;
 
 #   ifdef DEBUG_ITP
@@ -799,5 +802,37 @@ void prop_itpt::deserialize(std::istream& in)
 
       bv.push_back(lit);
     }
+  }
+}
+
+bool prop_itpt::check_implies(const itpt& second) const 
+{
+  satcheck_opensmt2t prop_solver;
+  prop_solver.new_partition();        // initialize assert on the solver side
+
+  symbol_tablet ctx;
+  namespacet ns(ctx);
+
+  literalt first_root;
+  literalt second_root;
+  literalt root;
+  first_root = this->raw_assert(prop_solver);
+  second_root = (dynamic_cast <const prop_itpt&> (second)).raw_assert(prop_solver);
+  root = prop_solver.land(first_root, neg(second_root));
+  prop_solver.l_set_to_true(root);
+  absolute_timet before, after;
+  before = current_time();
+  
+  propt::resultt res = prop_solver.prop_solve();
+  
+  after = current_time();
+  std::cerr << "SOLVER TIME: "<< after-before << std::endl;
+  
+  if (res == propt::P_UNSATISFIABLE) {
+    std::cerr << "UNSAT" << std::endl;
+    return true;
+  } else {
+    std::cerr << "SAT" << std::endl;
+    return false;
   }
 }

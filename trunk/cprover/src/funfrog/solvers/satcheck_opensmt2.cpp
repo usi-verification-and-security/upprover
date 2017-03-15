@@ -185,7 +185,9 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   // Set labeling function
   const char* msg;
-  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
+//  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
+//  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(0), msg);
+  osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
 
   SimpSMTSolver& solver = osmt->getSolver();
 
@@ -201,10 +203,11 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   for(unsigned i = 0; i < itp_ptrefs.size(); ++i)
   {
-      prop_itpt itp;
-      extract_itp(itp_ptrefs[i], itp);
-      interpolants.push_back(prop_itpt());
-      interpolants.back().swap(itp);
+      itpt* itp = new prop_itpt();
+      itpt* itp_empty = new prop_itpt();
+      extract_itp(itp_ptrefs[i], *(dynamic_cast <prop_itpt*> (itp)));
+      interpolants.push_back(*&itp_empty);
+      interpolants.back()->swap(*itp);
   }
 }
 

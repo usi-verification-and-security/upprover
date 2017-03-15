@@ -15,8 +15,6 @@
 #include <ui_message.h>
 #include "prop_assertion_sum.h"
 
-time_periodt global_satsolver_time;
-time_periodt global_sat_conversion_time;
 
 /*******************************************************************
 

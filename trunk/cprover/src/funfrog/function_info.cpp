@@ -13,6 +13,7 @@
 #include "time_stopping.h"
 #include <fstream>
 
+#include "solvers/smtcheck_opensmt2.h"
 #include "solvers/satcheck_opensmt2.h"
 
 /*******************************************************************\
@@ -38,7 +39,7 @@ bool function_infot::add_summary(summary_storet& summary_store,
     // Is implied by any older summary?
     for (summary_idst::const_iterator it = summaries.begin();
             it != summaries.end();
-            ++it) {
+            ++it) { 
       if (check_implies(summary_store.find_summary(*it), new_summary)) {
         summary_store.replace_summary(summary_id, *it);
         return false; // Implied by an already present summary --> skip it
@@ -48,6 +49,7 @@ bool function_infot::add_summary(summary_storet& summary_store,
     // It implies any older summary?
     unsigned used = 0;
     for (unsigned i = 0; i < summaries.size(); ++i) {
+
       if (check_implies(new_summary, summary_store.find_summary(summaries[i]))) {
         // Replace it
         summary_store.replace_summary(summaries[i], summary_id);
@@ -104,6 +106,11 @@ Function: function_infot::deserialize
 
 \*******************************************************************/
 
+void function_infot::deserialize(unsigned idx)
+{
+    summaries.push_back(idx);
+}
+
 void function_infot::deserialize(std::istream& in)
 {
   unsigned nsummaries;
@@ -123,7 +130,6 @@ void function_infot::deserialize(std::istream& in)
     summaries.push_back(id);
   }
 }
-
 
 /*******************************************************************\
 
@@ -170,10 +176,9 @@ Function: function_infot::deserialize_infos
 
  Outputs:
 
- Purpose:
+ Purpose: For SAT encoding
 
 \*******************************************************************/
-
 void function_infot::deserialize_infos(std::istream& in, function_infost& infos)
 {
   unsigned nfunctions;
@@ -199,6 +204,40 @@ void function_infot::deserialize_infos(std::istream& in, function_infost& infos)
     }
 
     it->second.deserialize(in);
+  }
+}
+
+/*******************************************************************\
+
+Function: function_infot::deserialize_infos
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: For SMT encoding
+
+\*******************************************************************/
+void function_infot::deserialize_infos(smt_summary_storet* store, function_infost& infos)
+{
+  unsigned nfunctions = store->n_of_summaries();
+
+  for (unsigned i = 0; i < nfunctions; ++i)
+  {
+      Tterm *sum = store->find_summary(i).getTterm();
+      std::string f_name = smtcheck_opensmt2t::unquote_varname(sum->getName());
+      f_name = smtcheck_opensmt2t::remove_index(f_name);
+
+      irep_idt f_id(f_name);
+      function_infost::iterator it = infos.find(f_id);
+
+    // If the function is unknown - we postpone the addition (otherwise, 
+    // we could break the iterator)
+    if (it == infos.end()) {
+      it = infos.insert(function_infost::value_type(f_id, function_infot(f_id))).first;
+    }
+
+    it->second.deserialize(i);
   }
 }
 
@@ -319,7 +358,7 @@ void function_infot::analyze_globals_rec(summarization_contextt& context,
   // Accessed ids
   add_objects_to_set(ns, read_list, globals_accessed);
   add_objects_to_set(ns, write_list, globals_accessed);
-  // Modified ids
+  // Modified idsfim
   add_objects_to_set(ns, write_list, globals_modified);
 
   // Mark this function as analyzed
@@ -456,6 +495,13 @@ Function: function_infot::check_implies
 bool function_infot::check_implies(const interpolantt& first, 
         const interpolantt& second)
 {
+    return (first.check_implies(second));
+}
+// KE: move these into interpolant code
+/*
+bool function_infot::check_implies_prop(const prop_interpolantt& first, 
+        const prop_interpolantt& second)
+{
   satcheck_opensmt2t prop_solver;
   prop_solver.new_partition();        // initialize assert on the solver side
 
@@ -480,11 +526,17 @@ bool function_infot::check_implies(const interpolantt& first,
   if (res == propt::P_UNSATISFIABLE) {
     std::cerr << "UNSAT" << std::endl;
     return true;
+  } else {
+    std::cerr << "SAT" << std::endl;
+    return false;
   }
-  std::cerr << "SAT" << std::endl;
+}
+bool static bool function_infot::check_implies_smt(const smt_interpolantt& first, 
+        const smt_interpolantt& second) 
+{
   return false;
 }
-
+*/
 /*******************************************************************\
 
 Function: function_infot::optimize_summaries
@@ -501,6 +553,7 @@ Function: function_infot::optimize_summaries
 bool function_infot::optimize_summaries(summary_storet& summary_store, 
         const summary_idst& itps_in, summary_idst& itps_out)
 {
+    /* TODO: Fix it - Related to Sumo.cpp code.
   unsigned n = itps_in.size();
   bool changed = false;
   bool itps_map[n];
@@ -544,6 +597,7 @@ bool function_infot::optimize_summaries(summary_storet& summary_store,
     if (itps_map[i])
       itps_out.push_back(itps_in[i]);
   }
+     */
   return true;
 }
 

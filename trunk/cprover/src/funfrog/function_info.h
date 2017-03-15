@@ -14,7 +14,11 @@
 #include <expr.h>
 
 #include "solvers/interpolating_solver.h"
+#include "solvers/prop_itp.h"
+#include "solvers/smt_itp.h"
 #include "summary_store.h"
+#include "prop_summary_store.h"
+#include "smt_summary_store.h"
 
 class summarization_contextt;
 
@@ -35,9 +39,11 @@ public:
   // Serialization of summaries
   void serialize(std::ostream& out) const;
   void deserialize(std::istream& in);
-
+  void deserialize(unsigned);
+  
   static void serialize_infos(std::ostream& out, const function_infost& infos);
   static void deserialize_infos(std::istream& in, function_infost& infos);
+  static void deserialize_infos(smt_summary_storet* store, function_infost& infos); // for SMT version only
 
   static void serialize_infos(const std::string& file, const function_infost& infos);
   static void deserialize_infos(const std::string& file, function_infost& infos);
@@ -62,9 +68,12 @@ public:
   static void optimize_all_summaries(summary_storet& summary_store, 
         function_infost& f_infos);
 
-private:
-  // Id of the function
+  // Removes all summaries
+  void clear_summaries() { summaries.clear(); }
+   // Id of the function
   irep_idt function;
+
+private:
   // The collected summaries
   summary_idst summaries;
   // Globals modified in the function
@@ -84,8 +93,13 @@ private:
   
   // Check (using a SAT call) that the first interpolant implies
   // the second one (i.e., the second one is superfluous).
-  static bool check_implies(const interpolantt& first, 
-        const interpolantt& second);
+  /*
+  static bool check_implies_prop(const prop_interpolantt& first, 
+        const prop_interpolantt& second);
+  static bool check_implies_smt(const smt_interpolantt& first, 
+        const smt_interpolantt& second);
+   */
+  static bool check_implies(const interpolantt& first, const interpolantt& second);
   
   // Finds out weather some of the given summaries are 
   // superfluous, if so the second list will not contain them.
@@ -99,9 +113,7 @@ private:
     summaries.swap(new_summaries);
   }
 
-  // Removes all summaries
-  void clear_summaries() { summaries.clear(); }
-  
+ 
   friend class summary_storet;
 };
 

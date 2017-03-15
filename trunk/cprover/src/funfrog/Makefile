@@ -4,11 +4,21 @@ SHARED_SRC := \
       expr_pretty_print.cpp \
       function_info.cpp \
       summary_store.cpp \
+      smt_summary_store.cpp \
+      prop_summary_store.cpp \
       solvers/satcheck_opensmt2.cpp \
-      solvers/prop_itp.cpp
+      solvers/smtcheck_opensmt2.cpp \
+      solvers/smtcheck_opensmt2_uf.cpp \
+      solvers/smtcheck_opensmt2_lra.cpp \
+      solvers/smtcheck_opensmt2_cuf.cpp \
+      solvers/smt_itp.cpp \
+      solvers/prop_itp.cpp \
+      error_trace.cpp
 
 FUNFROG_SRC := \
       partitioning_target_equation.cpp \
+      prop_partitioning_target_equation.cpp \
+      smt_partitioning_target_equation.cpp \
       partitioning_slice.cpp \
       summary_info.cpp \
       subst_scenario.cpp \
@@ -17,9 +27,15 @@ FUNFROG_SRC := \
       languages.cpp \
       check_claims.cpp \
       refiner_assertion_sum.cpp \
+      prop_refiner_assertion_sum.cpp \
+      smt_refiner_assertion_sum.cpp \
       prop_assertion_sum.cpp \
+      smt_assertion_sum.cpp \
       dependency_checker.cpp \
+      prop_dependency_checker.cpp \
+      smt_dependency_checker.cpp \
       symex_assertion_sum.cpp \
+      theory_refiner.cpp \
       summarizing_checker.cpp \
       main.cpp
 
@@ -60,19 +76,19 @@ SRC := ${FUNFROG_SRC} ${SHARED_SRC}
 
 include ../common
 
-INCLUDES :=  -I .. -I ../util 
+INCLUDES :=  -I .. -I ../util
 
 LIBS =
 
 CXXFLAGS += -std=c++11 -MMD -MP -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING $(INCLUDES)
 
-all: hifrog-prop$(EXEEXT) 
+all: hifrog$(EXEEXT) 
 
 
 ###############################################################################
 
-hifrog-prop$(EXEEXT): $(OBJ)
-	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline 
+hifrog$(EXEEXT): $(OBJ)
+	$(LINKBIN) -O0 -g -lopensmt2 -lgmp -lgmpxx -lz -lreadline 
 
 sumo$(EXEEXT): $(SUMO_OBJ)
 	$(LINKBIN) -lopensmt2 -lgmp -lgmpxx -lz -lreadline

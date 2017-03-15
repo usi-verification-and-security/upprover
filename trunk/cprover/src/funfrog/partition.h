@@ -29,7 +29,7 @@ public:
   partitiont(partition_idt _parent_id, partition_ifacet& _partition_iface) :
           filled(false), summary(false), stub(false), ignore(false), processed(false),
           invalid(false), inverted_summary(false), summaries(NULL), 
-          parent_id(_parent_id), partition_iface(&_partition_iface) { }
+          parent_id(_parent_id), partition_iface(&_partition_iface), fle_part_id(-1) { }
           
   void add_child_partition(partition_idt child_id, unsigned callsite) {
     child_ids.push_back(child_id);
@@ -51,6 +51,7 @@ public:
   }
 
   void set_fle_part_id(fle_part_idt _fle_part_id) {
+	fle_part_ids.push_back(_fle_part_id); 		// allowing multiple partition numbers (for refinement) -- to be tested
     fle_part_id = _fle_part_id;
   }
   
@@ -88,6 +89,7 @@ public:
   partition_idt parent_id;
   partition_idst child_ids;
   partition_locst child_locs;
+  std::vector<fle_part_idt> fle_part_ids;
   
 private:
   partition_ifacet* partition_iface;

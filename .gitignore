@@ -7,40 +7,51 @@
 # /cprover/
 /trunk/cprover/*.d
 /trunk/cprover/*.o
+/trunk/cprover/*.do
 
 # /cprover/doc/
 /trunk/cprover/doc/*.d
 /trunk/cprover/doc/*.o
+/trunk/cprover/doc/*.do
 
 # /cprover/doc/html-manual/
 /trunk/cprover/doc/html-manual/*.d
 /trunk/cprover/doc/html-manual/*.o
+/trunk/cprover/doc/html-manual/*.do
 
 # /cprover/doc/html-manual/boop-example/
 /trunk/cprover/doc/html-manual/boop-example/*.d
+/trunk/cprover/doc/html-manual/boop-example/*.do
 /trunk/cprover/doc/html-manual/boop-example/*.o
 
 # /cprover/src/
 /trunk/cprover/src/*.d
 /trunk/cprover/src/*.o
+/trunk/cprover/src/*.do
 
 # /cprover/src/funfrog/
 /trunk/cprover/src/funfrog/funfrog
 /trunk/cprover/src/funfrog/*.d
+/trunk/cprover/src/funfrog/*.do
 /trunk/cprover/src/funfrog/*.o
 /trunk/cprover/src/funfrog/CVS
 /trunk/cprover/src/funfrog/.cvsignore
 /trunk/cprover/src/funfrog/sumo
 /trunk/cprover/src/funfrog/evolcheck
 /trunk/cprover/src/funfrog/hifrog
+/trunk/cprover/src/funfrog/local
+/trunk/cprover/src/funfrog/hifrog-prop
+
 
 # /cprover/src/funfrog/solvers/
 /trunk/cprover/src/funfrog/solvers/*.d
+/trunk/cprover/src/funfrog/solvers/*.do
 /trunk/cprover/src/funfrog/solvers/*.o
 
 # /cprover/src/xmllang/
 /trunk/cprover/src/xmllang/*.d
 /trunk/cprover/src/xmllang/*.o
+/trunk/cprover/src/xmllang/*.do
 /trunk/cprover/src/xmllang/*.a
 /trunk/cprover/src/xmllang/*.output
 /trunk/cprover/src/xmllang/*_y.tab.*
@@ -49,6 +60,7 @@
 # /cprover/src/util/
 /trunk/cprover/src/util/*.d
 /trunk/cprover/src/util/*.o
+/trunk/cprover/src/util/*.do
 /trunk/cprover/src/util/*.a
 /trunk/cprover/src/util/ieee_float_test
 /trunk/cprover/src/util/irep_ids.h
@@ -58,18 +70,22 @@
 # /cprover/src/linking/
 /trunk/cprover/src/linking/*.d
 /trunk/cprover/src/linking/*.o
+/trunk/cprover/src/linking/*.do
 /trunk/cprover/src/linking/*.a
 
 # /cprover/src/pointer-analysis/
 /trunk/cprover/src/pointer-analysis/*.d
 /trunk/cprover/src/pointer-analysis/*.o
+/trunk/cprover/src/pointer-analysis/*.do
 /trunk/cprover/src/pointer-analysis/*.a
 
 # /cprover/src/langapi/
 /trunk/cprover/src/langapi/*.d
 /trunk/cprover/src/langapi/*.o
+/trunk/cprover/src/langapi/*.do
 /trunk/cprover/src/langapi/*.a
 
+<<<<<<< HEAD
 # /cprover/src/path-symex/
 /trunk/cprover/src/path-symex/*.d
 /trunk/cprover/src/path-symex/*.o
@@ -90,39 +106,46 @@
 # /cprover/src/goto-instrument/
 /trunk/cprover/src/goto-instrument/*.d
 /trunk/cprover/src/goto-instrument/*.o
+/trunk/cprover/src/goto-instrument/*.do
 /trunk/cprover/src/goto-instrument/*.a
 /trunk/cprover/src/goto-instrument/goto-instrument
 
 # /cprover/src/goto-instrument/wmm/
 /trunk/cprover/src/goto-instrument/wmm/*.d
 /trunk/cprover/src/goto-instrument/wmm/*.o
+/trunk/cprover/src/goto-instrument/wmm/*.do
 /trunk/cprover/src/goto-instrument/wmm/*.a
 
 # /cprover/src/goto-instrument/accelerate/
 /trunk/cprover/src/goto-instrument/accelerate/*.d
 /trunk/cprover/src/goto-instrument/accelerate/*.o
+/trunk/cprover/src/goto-instrument/accelerate/*.do
 /trunk/cprover/src/goto-instrument/accelerate/*.a
 
 # /cprover/src/java_bytecode/
 /trunk/cprover/src/java_bytecode/*.d
 /trunk/cprover/src/java_bytecode/*.o
+/trunk/cprover/src/java_bytecode/*.do
 /trunk/cprover/src/java_bytecode/*.a
 
 # /cprover/src/goto-symex/
 /trunk/cprover/src/goto-symex/*.d
 /trunk/cprover/src/goto-symex/*.o
+/trunk/cprover/src/goto-symex/*.do
 /trunk/cprover/src/goto-symex/*.a
 /trunk/cprover/src/symex/symex
 
 # /cprover/src/goto-cc/
 /trunk/cprover/src/goto-cc/*.d
 /trunk/cprover/src/goto-cc/*.o
+/trunk/cprover/src/goto-cc/*.do
 /trunk/cprover/src/goto-cc/*.a
 /trunk/cprover/src/goto-cc/goto-cc
 
 # /cprover/src/cpp/
 /trunk/cprover/src/cpp/*.d
 /trunk/cprover/src/cpp/*.o
+/trunk/cprover/src/cpp/*.do
 /trunk/cprover/src/cpp/*.a
 /trunk/cprover/src/cpp/*.output
 /trunk/cprover/src/cpp/*_y.tab.*
@@ -131,6 +154,7 @@
 # /cprover/src/ansi-c/
 /trunk/cprover/src/ansi-c/*.d
 /trunk/cprover/src/ansi-c/*.o
+/trunk/cprover/src/ansi-c/*.do
 /trunk/cprover/src/ansi-c/*.a
 /trunk/cprover/src/ansi-c/*.inc
 /trunk/cprover/src/ansi-c/file_converter
@@ -141,6 +165,7 @@
 # /cprover/src/ansi-c/literals/
 /trunk/cprover/src/ansi-c/literals/*.d
 /trunk/cprover/src/ansi-c/literals/*.o
+/trunk/cprover/src/ansi-c/literals/*.do
 /trunk/cprover/src/ansi-c/literals/*.a
 
 # /cprover/src/ansi-c/library/
@@ -149,23 +174,27 @@
 # /cprover/src/big-int/
 /trunk/cprover/src/big-int/*.d
 /trunk/cprover/src/big-int/*.o
+/trunk/cprover/src/big-int/*.do
 /trunk/cprover/src/big-int/*.a
 /trunk/cprover/src/big-int/test-bigint
 
 # /cprover/src/analyses/
 /trunk/cprover/src/analyses/*.d
 /trunk/cprover/src/analyses/*.o
+/trunk/cprover/src/analyses/*.do
 /trunk/cprover/src/analyses/*.a
 
 # /cprover/src/cbmc/
 /trunk/cprover/src/cbmc/*.d
 /trunk/cprover/src/cbmc/*.o
+/trunk/cprover/src/cbmc/*.do
 /trunk/cprover/src/cbmc/*.a
 /trunk/cprover/src/cbmc/cbmc
 
 # /cprover/src/assembler/
 /trunk/cprover/src/assembler/*.d
 /trunk/cprover/src/assembler/*.o
+/trunk/cprover/src/assembler/*.do
 /trunk/cprover/src/assembler/*.a
 /trunk/cprover/src/assembler/*.output
 /trunk/cprover/src/assembler/*_y.tab.*
@@ -174,102 +203,124 @@
 # /cprover/src/goto-programs/
 /trunk/cprover/src/goto-programs/*.d
 /trunk/cprover/src/goto-programs/*.o
+/trunk/cprover/src/goto-programs/*.do
 /trunk/cprover/src/goto-programs/*.a
 
 # /cprover/src/solvers/
 /trunk/cprover/src/solvers/*.d
 /trunk/cprover/src/solvers/*.o
+/trunk/cprover/src/solvers/*.do
 /trunk/cprover/src/solvers/*.a
 
 # /cprover/src/solvers/sat/
 /trunk/cprover/src/solvers/sat/*.d
 /trunk/cprover/src/solvers/sat/*.o
+/trunk/cprover/src/solvers/sat/*.do
 /trunk/cprover/src/solvers/sat/*.a
 
 # /cprover/src/solvers/qbf/
 /trunk/cprover/src/solvers/qbf/*.d
 /trunk/cprover/src/solvers/qbf/*.o
+/trunk/cprover/src/solvers/qbf/*.do
 /trunk/cprover/src/solvers/qbf/*.a
 
 # /cprover/src/solvers/prop/
 /trunk/cprover/src/solvers/prop/*.d
 /trunk/cprover/src/solvers/prop/*.o
+/trunk/cprover/src/solvers/prop/*.do
 /trunk/cprover/src/solvers/prop/*.a
 
 # /cprover/src/solvers/floatbv/
 /trunk/cprover/src/solvers/floatbv/*.d
 /trunk/cprover/src/solvers/floatbv/*.o
+/trunk/cprover/src/solvers/floatbv/*.do
 /trunk/cprover/src/solvers/floatbv/*.a
 
 # /cprover/src/solvers/flattening/
 /trunk/cprover/src/solvers/flattening/*.d
 /trunk/cprover/src/solvers/flattening/*.o
+/trunk/cprover/src/solvers/flattening/*.do
 /trunk/cprover/src/solvers/flattening/*.a
 
 # /cprover/src/solvers/cvc/
 /trunk/cprover/src/solvers/cvc/*.d
 /trunk/cprover/src/solvers/cvc/*.o
+/trunk/cprover/src/solvers/cvc/*.do
 /trunk/cprover/src/solvers/cvc/*.a
 
 # /cprover/src/solvers/dplib/
 /trunk/cprover/src/solvers/dplib/*.d
 /trunk/cprover/src/solvers/dplib/*.o
+/trunk/cprover/src/solvers/dplib/*.do
 /trunk/cprover/src/solvers/dplib/*.a
 
 # /cprover/src/solvers/smt1/
 /trunk/cprover/src/solvers/smt1/*.d
 /trunk/cprover/src/solvers/smt1/*.o
+/trunk/cprover/src/solvers/smt1/*.do
 /trunk/cprover/src/solvers/smt1/*.a
 
 # /cprover/src/solvers/smt2/
 /trunk/cprover/src/solvers/smt2/*.d
 /trunk/cprover/src/solvers/smt2/*.o
+/trunk/cprover/src/solvers/smt2/*.do
 /trunk/cprover/src/solvers/smt2/*.a
 
 # /cprover/src/loopfrog/
 /trunk/cprover/src/loopfrog/loopfrog
 /trunk/cprover/src/loopfrog/*.d
 /trunk/cprover/src/loopfrog/*.o
+/trunk/cprover/src/loopfrog/*.do
 
 # /cprover/src/loopfrog/invariants/
 /trunk/cprover/src/loopfrog/invariants/*.d
 /trunk/cprover/src/loopfrog/invariants/*.o
+/trunk/cprover/src/loopfrog/invariants/*.do
 
 # /cprover/src/loopfrog/obsolete/
 /trunk/cprover/src/loopfrog/obsolete/*.d
 /trunk/cprover/src/loopfrog/obsolete/*.o
+/trunk/cprover/src/loopfrog/obsolete/*.do
 
 # /cprover/src/loopfrog/old/
 /trunk/cprover/src/loopfrog/old/*.d
 /trunk/cprover/src/loopfrog/old/*.o
+/trunk/cprover/src/loopfrog/old/*.do
 
 # /cprover/src/loopfrog/tests/
 /trunk/cprover/src/loopfrog/tests/*.d
 /trunk/cprover/src/loopfrog/tests/*.o
+/trunk/cprover/src/loopfrog/tests/*.do
 
 # /minisat2/
 /trunk/minisat2/*.d
 /trunk/minisat2/*.o
+/trunk/minisat2/*.do
 
 # /minisat2/core/
 /trunk/minisat2/core/*.d
 /trunk/minisat2/core/*.o
+/trunk/minisat2/core/*.do
 
 # /minisat2/mtl/
 /trunk/minisat2/mtl/*.d
 /trunk/minisat2/mtl/*.o
+/trunk/minisat2/mtl/*.do
 
 # /minisat2/simp/
 /trunk/minisat2/simp/*.d
 /trunk/minisat2/simp/*.o
+/trunk/minisat2/simp/*.do
 
 # /minisat-2.2.0/simp/
 trunk/minisat-2.2.0/simp/*.d
 trunk/minisat-2.2.0/simp/*.o
+trunk/minisat-2.2.0/simp/*.do
 
 # /minisat-2.2.0/core/
 trunk/minisat-2.2.0/core/*.d
 trunk/minisat-2.2.0/core/*.o
+trunk/minisat-2.2.0/core/*.do
 
 # /minisat-2.2.1/simp/
 trunk/minisat-2.2.1/simp/*.d
@@ -279,10 +330,14 @@ trunk/minisat-2.2.1/simp/*.o
 trunk/minisat-2.2.1/core/*.d
 trunk/minisat-2.2.1/core/*.o
 
-
 # Project in exlipse definitions - exclude form commit
 /trunk/cprover/src/.metadata/
 /trunk/cprover/src/RemoteSystemsTempFiles/
+
+# eclipse project def - incase used
+/trunk/cprover/src/.cproject
+/trunk/cprover/src/.project
+/trunk/cprover/src/.metadata
 /trunk/cprover/src/analyses/.cproject
 /trunk/cprover/src/analyses/.project
 /trunk/cprover/src/ansi-c/.cproject
@@ -297,6 +352,10 @@ trunk/minisat-2.2.1/core/*.o
 /trunk/cprover/src/cpp/.project
 /trunk/cprover/src/funfrog/.cproject
 /trunk/cprover/src/funfrog/.project
+/trunk/cprover/src/cpp/.cproject
+/trunk/cprover/src/cpp/.project
+/trunk/cprover/src/cproject
+/trunk/cprover/src/project
 /trunk/cprover/src/goto-cc/.cproject
 /trunk/cprover/src/goto-cc/.project
 /trunk/cprover/src/goto-instrument/.cproject

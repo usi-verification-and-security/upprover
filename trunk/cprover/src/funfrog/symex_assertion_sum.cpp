@@ -19,6 +19,8 @@
 #include "symex_assertion_sum.h"
 #include "expr_pretty_print.h"
 
+#include <analyses/dirty.h> // KE: not in use, just added because of cprover framework!
+
 //#define DEBUG_PARTITIONING
 
 /*******************************************************************
@@ -216,9 +218,9 @@ Function: symex_assertion_sumt::process_planned
  
 bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
 {
-	// Proceed with symbolic execution
-	absolute_timet before, after;
-	before=current_time();
+  // Proceed with symbolic execution
+  absolute_timet before, after;
+  before=current_time();
 
   while (has_more_steps(state))
   {
@@ -234,16 +236,16 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
   if(remaining_vccs!=0 || force_check)
   {
     if (use_slicing) {
-      	before=current_time();
-      	status() << "All SSA steps: " << equation.SSA_steps.size() << eom;
-      	partitioning_slice(equation, summarization_context.get_summary_store());
-      	status() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
-      	after=current_time();
-      	status() << "SLICER TIME: " << (after-before) << eom;
+      before=current_time();
+      status() << "All SSA steps: " << equation.SSA_steps.size() << eom;
+      partitioning_slice(equation, summarization_context.get_summary_store(), use_smt);
+      status() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
+      after=current_time();
+      status() << "SLICER TIME: " << (after-before) << eom;
     }
   } else {
-	status() << "Assertion(s) hold trivially." << eom;
-      	return true;
+    status() << "Assertion(s) hold trivially." << eom;
+    return true;
   }
   return false;
 }
@@ -280,6 +282,8 @@ void symex_assertion_sumt::symex_step(
       state.guard.add(false_exprt());
   state.depth++;
 
+  state.dirty=new dirtyt(goto_functions); // KE: dirty analysis not in use, add to avoid crushes
+   
   // KE: This switch-case is taken from: symex_assertion_sumt::symex_step
   switch(instruction.type)
   {
@@ -291,7 +295,7 @@ void symex_assertion_sumt::symex_step(
 
   case END_FUNCTION:
 
-    //decrement_unwinding_counter();
+    //decrement_unwinding_counter(); 
     store_return_value(state, get_current_deferred_function());
     end_symex(state);
     break;
@@ -303,9 +307,24 @@ void symex_assertion_sumt::symex_step(
     break;
   
   case GOTO:
-    symex_goto(state);
-    break;
-    
+    {
+      bool store_expln;
+      string str;
+      if (do_guard_expl) {
+        store_expln = state.source.pc->guard.has_operands();
+        if (store_expln) {
+          try { str = from_expr(state.source.pc->guard.op0()); }
+          catch (const std::string &s) { str = ""; }
+        }
+      }
+
+      symex_goto(state); // Original code from Cprover follow with break
+
+      if (do_guard_expl &&store_expln && str != "")
+        guard_expln[state.guard.as_expr().get("identifier")] = str;
+
+      break;
+    }
   case ASSUME:
     if(!state.guard.is_false())
     {
@@ -341,14 +360,14 @@ void symex_assertion_sumt::symex_step(
   case RETURN:
     if(!state.guard.is_false())
       return_assignment(state);
-
+    
     state.source.pc++;
     break;
 
-  case ASSIGN:
-    if(!state.guard.is_false())
+  case ASSIGN:      
+    if(!state.guard.is_false()) 
       symex_assign_rec(state, to_code_assign(instruction.code));
-
+          
     state.source.pc++;
     break;
 
@@ -359,7 +378,7 @@ void symex_assertion_sumt::symex_step(
         to_code_function_call(instruction.code);
       // Process the function call according to the call_summary
       handle_function_call(state, deref_code);
-    }
+    }      
     state.source.pc++;
     break;
 
@@ -493,6 +512,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   state.top().end_of_function = --body.instructions.end();
   state.top().goto_state_map.clear();
   state.top().local_objects.clear();
+  //state.dirty=new dirtyt(function); // KE: dirty analysis not in use, add to avoid crushes
 
   // Setup temporary store for return value
   if (partition_iface.returns_value) {
@@ -554,6 +574,7 @@ void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
     throw "failed to find `"+id2string(identifier)+"' in function_map";
 
   const goto_functionst::goto_functiont &goto_function=it->second;
+  //state.dirty=new dirtyt(goto_function); // KE: dirty analysis not in use, add to avoid crushes
 
   // Callsite symbols
   produce_callsite_symbols(partition_iface, state);
@@ -612,6 +633,7 @@ void symex_assertion_sumt::assign_function_arguments(
     throw "failed to find `"+id2string(identifier)+"' in function_map";
 
   const goto_functionst::goto_functiont &goto_function=it->second;
+  //state.dirty=new dirtyt(goto_function); // KE: dirty analysis not in use, add to avoid crushes
 
   // Add parameters assignment
   bool old_cp = constant_propagation;
@@ -692,7 +714,7 @@ void symex_assertion_sumt::mark_argument_symbols(
     ssa_exprt ssa_expr_lhs = to_ssa_expr(lhs);
     state.level0(ssa_expr_lhs, ns, state.source.thread_nr);
     state.level1(ssa_expr_lhs);
-    ssa_expr_lhs.set_level_2(it2->second.second);
+    ssa_expr_lhs.set_level_2(state.level2.current_count(ssa_expr_lhs.get_identifier()));
 
     to_ssa_expr(lhs).set_level_2(it2->second.second);
     partition_iface.argument_symbols.push_back(lhs);
@@ -750,13 +772,16 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     ssa_exprt ssa_expr = state.level2.current_names[*it].first;
     state.level0(ssa_expr, ns, state.source.thread_nr);
     state.level1(ssa_expr);
+    ssa_expr.set_level_2(state.level2.current_count(ssa_expr.get_identifier()));
     
     // Push the new renamed to the partition
     symbol_exprt symb_ex(ssa_expr);
-    // to_ssa_expr(symb_ex).set_level_2(state.level2.current_count(*it)); - KE: if gets into infinite loop, try to uncomment this one
+    to_ssa_expr(symb_ex).set_level_2(state.level2.current_count(*it));
+    //KE: else some of the global ones are not ssa (but just symbol)
+    
     partition_iface.argument_symbols.push_back(symb_ex);
 #   ifdef DEBUG_PARTITIONING
-    expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex);
+    expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex, " ");
 #   endif
   }
 }
@@ -796,7 +821,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     ssa_exprt ssa_expr = state.level2.current_names[*it].first;
     state.level0(ssa_expr, ns, state.source.thread_nr);
     state.level1(ssa_expr);
-    ssa_expr.set_level_2(state.level2.current_count(*it));
+    ssa_expr.set_level_2(state.level2.current_count(ssa_expr.get_identifier()));
     
     symbol_exprt symb_ex(ssa_expr);
     partition_iface.out_arg_symbols.push_back(symb_ex);
@@ -835,7 +860,7 @@ void symex_assertion_sumt::level2_rename_and_2ssa(
     // Adds L2 counter to the symbol (L2: 1 adds to the expression) 
     state.level0(code_var, ns, state.source.thread_nr);
     state.level1(code_var);
-    code_var.set_level_2(state.level2.current_count(identifier)); 
+    code_var.set_level_2(state.level2.current_count(code_var.get_identifier())); 
     
     // Return a symbol of ssa val with expression of original var
     ret_symbol = to_symbol_expr(code_var);
@@ -866,9 +891,9 @@ void symex_assertion_sumt::return_assignment_and_mark(
     const typet& type = function_type.return_type();
     const irep_idt &function_id = partition_iface.function_id;
     irep_idt retval_symbol_id(
-            "funfrog::" + as_string(function_id) + "::\\return_value");
+            as_string(function_id) + "::#return_value!"); // For goto_symext::symex_assign
     irep_idt retval_tmp_id(
-            "funfrog::" + as_string(function_id) + "::\\return_value_tmp");
+            as_string(function_id) + "::?return_value_tmp");
     
     // return_value_tmp - create new symbol
     add_symbol(retval_tmp_id, type, false);
@@ -902,7 +927,6 @@ void symex_assertion_sumt::return_assignment_and_mark(
     partition_iface.returns_value = true;
 }
 
-
 /*******************************************************************
 
  Function: symex_assertion_sumt::store_modified_globals
@@ -926,16 +950,24 @@ void symex_assertion_sumt::store_modified_globals(
   
   state.record_events=false; // expr-s are build ins 
   // therefore we don't want to use parallel built-ins
-  for (std::vector<symbol_exprt>::const_iterator it = 
+  for (std::vector<symbol_exprt>::iterator it = 
           partition_iface.out_arg_symbols.begin();
           it != partition_iface.out_arg_symbols.end();
           ++it) {
 
-    ssa_exprt rhs(symbol_exprt((ssa_exprt(*it).get_original_expr()).get(ID_identifier), ns.follow(it->type())));
-
+    //symbol_exprt rhs(state.get_original_name(it->get_identifier()), 
+    //        ns.follow(it->type())); 
+        
+    // SSA Symbol   
+    symbol_exprt lhs_ssa_symbol(ssa_exprt(*it).get(ID_identifier), ns.follow(it->type()));
+    
+    // Pure Symbol
+    state.get_original_name(*it); // KE: Don't like this solution, but that's the only way it works        
+    ssa_exprt rhs_symbol(symbol_exprt(ssa_exprt(*it).get(ID_identifier), ns.follow(it->type())));   
+      
     code_assignt assignment(
-            *it,
-            rhs);
+            lhs_ssa_symbol,
+            rhs_symbol);
   
     assert( ns.follow(assignment.lhs().type()) ==
             ns.follow(assignment.rhs().type()));
@@ -972,7 +1004,7 @@ void symex_assertion_sumt::store_return_value(
   
   assert( ns.follow(assignment.lhs().type()) ==
           ns.follow(assignment.rhs().type()));
-
+  
   // Emit the assignment
   bool old_cp = constant_propagation;
   constant_propagation = false;
@@ -1048,6 +1080,8 @@ void symex_assertion_sumt::handle_function_call(
   const irep_idt& function_id = function_call.function().get(ID_identifier);
   const goto_functionst::goto_functiont &goto_function =
     summarization_context.get_function(function_id);
+  
+  //state.dirty=new dirtyt(goto_function); // KE: dirty analysis not in use, add to avoid crushes
 
   // Clean expressions in the arguments, function name, and lhs (if any)
   if (function_call.lhs().is_not_nil())
@@ -1127,7 +1161,7 @@ void symex_assertion_sumt::summarize_function_call(
 {
   // We should use an already computed summary as an abstraction
   // of the function body
-  status () << (std::string("*** SUMMARY abstraction used for function: ") + function_id.c_str());
+  status() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << endl;
   
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
@@ -1255,16 +1289,16 @@ void symex_assertion_sumt::produce_callsite_symbols(
         statet& state)
 {
 # ifdef DEBUG_PARTITIONING
-  irep_idt callstart_id = "funfrog::" + as_string(partition_iface.function_id) +
-          "::\\callstart_symbol";
-  irep_idt callend_id = "funfrog::" + as_string(partition_iface.function_id) +
-          "::\\callend_symbol";
-  irep_idt error_id = "funfrog::" + as_string(partition_iface.function_id) +
-          "::\\error_symbol";
+  irep_idt callstart_id = "hifrog::" + as_string(partition_iface.function_id) +
+          "::?callstart_symbol";
+  irep_idt callend_id = "hifrog::" + as_string(partition_iface.function_id) +
+          "::?callend_symbol";
+  irep_idt error_id = "hifrog::" + as_string(partition_iface.function_id) +
+          "::?error_symbol";
 # else
-  irep_idt callstart_id = "funfrog::\\callstart_symbol";
-  irep_idt callend_id = "funfrog::\\callend_symbol";
-  irep_idt error_id = "funfrog::\\error_symbol";
+  irep_idt callstart_id = "hifrog::?fun_start";
+  irep_idt callend_id = "hifrog::?fun_end";
+  irep_idt error_id = "hifrog::?err";
 # endif
 
   partition_iface.callstart_symbol.set_identifier(
@@ -1387,7 +1421,7 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 
     // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
     irep_idt new_l2_name = id2string(identifier) + "#" + std::to_string(state.level2.current_count(identifier));
-    
+
     return new_l2_name;
 }
 
@@ -1411,7 +1445,7 @@ irep_idt symex_assertion_sumt::get_current_l2_name(statet &state, const irep_idt
 
  Purpose: Makes an assignment without increasing the version of the
  lhs symbol (make sure that lhs symbol is not assigned elsewhere)
-
+ 
 \*******************************************************************/
 void symex_assertion_sumt::raw_assignment(
         statet &state,
@@ -1434,9 +1468,15 @@ void symex_assertion_sumt::raw_assignment(
   ssa_lhs.update_type();
 
   // GF: not sure, just commented this line
-  // KE: it seems that the field of original names isn't in use any more!
-  //  state.propagation.remove(state.level2.get_original_name(lhs_identifier));
+  // KE: it seems that the field of original names isn't in use any more in L2, but is in the state class
+  // const irep_idt &identifier = lhs.get(ID_identifier);
+  // irep_idt l1_identifier=state.level2.get_original_name(identifier);
+  irep_idt l1_identifier = lhs.get(ID_identifier);
+  state.get_original_name(lhs);
 
+  state.propagation.remove(l1_identifier);
+  // KE: old code, not sure about it!
+  
   // update value sets
   exprt l1_rhs(rhs_symbol);
   state.get_l1_name(l1_rhs);
@@ -1559,7 +1599,7 @@ void symex_assertion_sumt::phi_function(
     ssa_exprt new_lhs=*it;
     const bool record_events=dest_state.record_events;
     dest_state.record_events=false;
-    dest_state.assignment(new_lhs, rhs, ns, true, true);
+    dest_state.assignment(new_lhs, rhs, ns, true, true); // ++counter l2
     dest_state.record_events=record_events;
 
     target.assignment(

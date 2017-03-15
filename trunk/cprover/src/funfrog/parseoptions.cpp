@@ -331,7 +331,7 @@ int funfrog_parseoptionst::doit()
 void funfrog_parseoptionst::help()
 {
   std::cout <<"\n"
-    "* * *                HiFrog (Propositional) " << HIFROG_VERSION
+    "* * *                HiFrog " << HIFROG_VERSION
 //    " - Copyright (C) 2016                    * * *\n"
 //    "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
 //    "                based on FUNFROG " << FUNFROG_VERSION
@@ -358,21 +358,66 @@ void funfrog_parseoptionst::help()
 //  "--nan-check                    check floating-point for NaN\n"
   "--claim <int>                  check a specific claim\n"
   "--all-claims                   check all claims in one run\n"
+  "--claims-opt <steps>           remove weaker claims using the given treshold\n"
+  "                               (treshold = number of SSA steps)\n"
+  "                               and check stronger claims at once\n"
   "--unwind <bound>               loop unwind bound\n"
+  "--type-constraints             LRA's basic constraints on numerical data type\n"
+  "                                 0 for no additional constraints,\n"
+  "                                 1 for type constraints on non-deterministic input\n"
+  "                                 2 for type constraints on variables\n"
   "--no-slicing                   no slicing of the SSA program form (slower\n"
   "                               computation, more dependable result)\n"
   "--no-assert-grouping           do not group checks for the same assertion\n"
   "                               with different call stack\n"
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
-  "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
+  "--no-error-trace               disable the counter example's print once a real bug found\n"
+  "--no-itp                       do not construct summaries (just report SAFE/BUG)\n\n"
+  "\nSMT, Interpolation and Proof Reduction options:\n"
+  "--theoref                      use experimental Theory Refining algorithm\n"
+  "--force                        force refining CUF to BV without counterexamples\n"
+  "--custom <n1,n2,..>            program statement ids to be refined (without counterexamples)\n"
+  "--bitwidth <n>                 bitwidth for the CUF BV mode\n\n"
+  "--logic <logic>                [qfuf, qfcuf, qflra, prop] if not present qfuf is used\n"
   "--itp-algorithm                propositional interpolation algorithm: \n"
   "                                 0 for McMillan_s,\n"
   "                                 1 for Pudlak,\n"
   "                                 2 for McMillan_w\n"
-  "--reduce-proof                 enables Proof Reduction\n"
+  "--itp-uf-algorithm             EUF interpolation algorithm:\n"
+  "                                 0 for Strong,\n"
+  "                                 2 for Weak,\n"
+  "                                 3 for Random\n"
+  "--itp-lra-algorithm            LRA interpolation algorithm:\n"
+  "                                 0 for Strong,\n"
+  "                                 2 for Weak\n"
+  "                                 3 for custom factor.\n"
+  "--itp-lra-factor               LRA interpolation strength factor:\n"
+  "                               must be a fraction in the interval [0,1)\n"
+  "--reduce-proof                 enable Proof Reduction\n"
   "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
   "--reduce-proof-loops           number of reduction iterations\n"
+  "--list-templates               dump the templates of the functions for user-defined summaries\n"
+  "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n"
+//  "\nRefinement options:\n"
+//  "--refine-mode <mode>:\n"
+//  "  0 | \"force-inlining\"         inline every function call\n"
+//  "                               after an unsuccessful attempt\n"
+//  "                               of summary substitution\n"
+//  "  1 | \"random-substitution\"    try to randomly choose function calls\n"
+//  "                               to be inlined\n"
+//  "  2 | \"slicing-result\"         try to choose function calls to be inlined\n"
+//  "                               based on slicing results\n"
+//  "\nOptions of first refinement iteration:\n"
+//  "--init-mode <mode>\n"
+//  "  0 | \"havoc-all\"              start with nondeterministic assignments\n"
+//  "                               for all function calls\n"
+//  "  1 | \"use-summaries\"          start with substituting all existent summaries\n"
+//  "                               for all function calls\n"
+//  "                               is being disabled by \"force-inlining\"\n"
+//  "\nI/O options:\n"
+//  "--xml-ui                       use XML-formatted output\n"
+//  "--xml-interface                stdio-XML interface\n"
   "\n";
 }
 
@@ -473,7 +518,7 @@ bool funfrog_parseoptionst::check_function_summarization(
       }
     }
 
-    if (cmdline.isset("claims-order"))
+    if (cmdline.isset("claims-opt"))
       store_claims(ns, claim_map, claim_numbers);
 
     // ID_main is the entry point that is now changed to be ID__start
@@ -511,7 +556,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("unsigned-overflow-check", cmdline.isset("overflow-check"));
   options.set_option("nan-check", cmdline.isset("nan-check"));
   options.set_option("string-abstraction", cmdline.isset("string-abstraction"));
-  options.set_option("assertions", cmdline.isset("assertions"));
   options.set_option("all-claims", cmdline.isset("all-claims"));
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
@@ -520,6 +564,19 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
   options.set_option("check-itp", cmdline.isset("check-itp"));
+  options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
+  options.set_option("list-templates", cmdline.isset("list-templates"));
+  options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
+  options.set_option("theoref", cmdline.isset("theoref"));
+  options.set_option("force", cmdline.isset("force"));
+  options.set_option("custom", cmdline.get_value("custom"));
+  if (cmdline.isset("bitwidth")) {
+    options.set_option("bitwidth", cmdline.get_value("bitwidth"));
+  } else {
+    options.set_option("bitwidth", 8);
+  }
+  if (cmdline.isset("dump-query"))
+      options.set_option("dump-query", true);
 
   // always check assertions
   options.set_option("assertions", true);
@@ -527,30 +584,60 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   // always use assumptions
   options.set_option("assumptions", true);
 
-  if (cmdline.isset("itp-algorithm")) {
+  // Use basic check as defualt
+  options.set_option("type-constraints", 1);
+
+  if(cmdline.isset("logic")) {
+//    options.set_option("logic", cmdline.getval("logic"));
+    options.set_option("logic", cmdline.get_value("logic"));
+  } else { // Set to qfuf - defualt
+    options.set_option("logic", "qfuf"); 
+  }
+  
+  if (cmdline.isset("check-itp")) {
+//    options.set_option("check-itp", cmdline.getval("check-itp"));
+    options.set_option("check-itp", cmdline.get_value("check-itp"));
+  }
+  if (cmdline.isset("itp-algorithm")) { // In Help Menu
     options.set_option("itp-algorithm", cmdline.get_value("itp-algorithm"));
   }
 
-  if (cmdline.isset("part-itp")) {
-    options.set_option("part-itp", cmdline.get_value("part-itp"));
+  if (cmdline.isset("itp-uf-algorithm")) { // In Help Menu
+    options.set_option("itp-uf-algorithm", cmdline.get_value("itp-uf-algorithm"));
   }
-  if (cmdline.isset("proof-trans")) {
-    options.set_option("proof-trans", cmdline.get_value("proof-trans"));
+
+  if (cmdline.isset("itp-lra-algorithm")) { // In Help Menu
+    options.set_option("itp-lra-algorithm", cmdline.get_value("itp-lra-algorithm"));
   }
+  if (cmdline.isset("itp-lra-factor")) { // In Help Menu
+    options.set_option("itp-lra-factor", cmdline.get_value("itp-lra-factor"));
+  }
+  //if (cmdline.isset("part-itp")) {
+  //  options.set_option("part-itp", cmdline.get_value("part-itp"));
+  //}
+  //if (cmdline.isset("proof-trans")) {
+  //  options.set_option("proof-trans", cmdline.get_value("proof-trans"));
+  //}
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.get_value("unwind"));
   } else { // Set to max - KE: find a better way to do so
     options.set_option("unwind", "4294967295"); 
   }
-  if (cmdline.isset("unwindset")) {
-    options.set_option("unwindset", cmdline.get_value("unwindset"));
+  //if (cmdline.isset("unwindset")) {
+  //  options.set_option("unwindset", cmdline.get_value("unwindset"));
+  //}
+  if (cmdline.isset("type-constraints")) { // In Help Menu
+    options.set_option("type-constraints", cmdline.get_value("type-constraints"));
   }
   if (cmdline.isset("claimset")) {
     options.set_option("claimset", cmdline.get_value("claimset"));
   }
-  if (cmdline.isset("claims-order")) {
-    options.set_option("claims-order", cmdline.get_value("claims-order"));
+  if (cmdline.isset("claims-opt")) { // In Help Menu
+    options.set_option("claims-opt", cmdline.get_value("claims-opt"));
   }
+  //if (cmdline.isset("do-upgrade-check")) { // KE: not working
+  //  options.set_option("do-upgrade-check", cmdline.get_value("do-upgrade-check"));
+  //}
   if (cmdline.isset("save-summaries")) {
     options.set_option("save-summaries", cmdline.get_value("save-summaries"));
   } else {
@@ -576,13 +663,13 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   } else {
     options.set_option("save-change-impact", "__calltree.xml");
   }
-  if (cmdline.isset("reduce-proof-time")) {
-    options.set_option("reduce-proof-time", cmdline.get_value("reduce-proof-time"));
-  }
-  if (cmdline.isset("reduce-proof-graph")) {
+  //if (cmdline.isset("reduce-proof-time")) {
+  //  options.set_option("reduce-proof-time", cmdline.get_value("reduce-proof-time"));
+//  }
+  if (cmdline.isset("reduce-proof-graph")) { // In Help Menu
     options.set_option("reduce-proof-graph", cmdline.get_value("reduce-proof-graph"));
   }
-  if (cmdline.isset("reduce-proof-loops")) {
+  if (cmdline.isset("reduce-proof-loops")) { // In Help Menu
     options.set_option("reduce-proof-loops", cmdline.get_value("reduce-proof-loops"));
   }
   if (cmdline.isset("random-seed")) {
@@ -596,10 +683,10 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   if (cmdline.isset("verbose-solver")) {
     options.set_option("verbose-solver", cmdline.get_value("verbose-solver"));
   }
-  if (cmdline.isset("refine-mode")) {
-    options.set_option("refine-mode", cmdline.get_value("refine-mode"));
-  }
-  if (cmdline.isset("init-mode")) {
-    options.set_option("init-mode", cmdline.get_value("init-mode"));
-  }
+  //if (cmdline.isset("refine-mode")) {
+  //  options.set_option("refine-mode", cmdline.get_value("refine-mode"));
+  //}
+  //if (cmdline.isset("init-mode")) {
+  //  options.set_option("init-mode", cmdline.get_value("init-mode"));
+  //}
 }

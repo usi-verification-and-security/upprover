@@ -13,6 +13,7 @@
 
 #include <ansi-c/expr2c.h>
 #include "summarizing_checker.h"
+#include "theory_refiner.h"
 #include "check_claims.h"
 
 
@@ -159,12 +160,30 @@ void check_claims(
 
   symbol_tablet temp_table;
   namespacet ns1(ns.get_symbol_table(), temp_table);
+
+  if (options.get_bool_option("theoref")){
+
+      // GF: currently works only for one assertion (either specified in --claim or the first one)
+      while(ass_ptr != leaping_program.instructions.end() &&
+              (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
+      {
+        ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_unsigned_int_option("unwind"));
+      }
+
+	  theory_refinert th_checker(leaping_program,
+	        goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
+
+	  th_checker.initialize();
+	  th_checker.assertion_holds_smt(ass_ptr, true);
+	  return;
+  }
+
   summarizing_checkert sum_checker(leaping_program,
         goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
 
   sum_checker.initialize();
 
-  if (options.get_bool_option("all-claims") || options.get_bool_option("claims-order")){
+  if (options.get_bool_option("all-claims") || options.get_bool_option("claims-opt")){
     sum_checker.assertion_holds(assertion_infot(), true);
   } else while(true) {
     // Next assertion (or next occurrence of the same assertion)

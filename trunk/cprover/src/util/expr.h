@@ -134,6 +134,7 @@ public:
   bool is_false() const;
   bool is_zero() const;
   bool is_one() const;
+  const std::string print_number_2smt() const; // hckd!! 
   bool is_boolean() const;
 
   const source_locationt &find_source_location() const;

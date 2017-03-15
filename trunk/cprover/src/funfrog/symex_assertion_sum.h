@@ -46,7 +46,9 @@ public:
           const goto_programt &_goto_program,
           unsigned _last_assertion_loc,
           bool _single_assertion_check,
-          bool _use_slicing=true
+          bool _use_slicing=true,
+	  bool _do_guard_expl=true,
+          bool _use_smt=true
           ) :
           symex_bmct(_ns, _new_symbol_table, _target),
           summarization_context(_summarization_context),
@@ -59,7 +61,9 @@ public:
           last_assertion_loc(_last_assertion_loc),
           loc(0),
           single_assertion_check(_single_assertion_check),
-          use_slicing(_use_slicing)
+          use_slicing(_use_slicing),
+	  do_guard_expl(_do_guard_expl),
+          use_smt(_use_smt)
           {set_message_handler(_message_handler);}
           
   virtual ~symex_assertion_sumt();
@@ -91,6 +95,8 @@ public:
       return NULL;
     return &(it->second);
   };
+
+  std::map<irep_idt, std::string> guard_expln;
 
 private:
   
@@ -151,6 +157,10 @@ private:
   bool single_assertion_check;
 
   bool use_slicing;
+
+  bool do_guard_expl;
+  
+  bool use_smt; // for slicing 
 
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation

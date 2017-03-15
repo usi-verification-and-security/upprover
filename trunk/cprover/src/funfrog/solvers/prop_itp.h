@@ -13,25 +13,28 @@ Author: Ondrej Sery
 #include <std_expr.h>
 #include <solvers/prop/literal.h>
 #include <solvers/flattening/boolbv.h>
+#include "itp.h"
+#include "satcheck_opensmt2.h"
 
-class prop_itpt
+class prop_itpt: public itpt
 {
 public:
-  prop_itpt() : _no_variables(1), _no_orig_variables(1) {}
+  prop_itpt() :itpt() {}
+  ~prop_itpt() {} 
 
-  bool is_trivial() const { return root_literal.is_constant(); };
+  virtual bool is_trivial() const { return root_literal.is_constant(); }
 
-  literalt land(literalt a, literalt b);
-  literalt lor(literalt a, literalt b);
-  literalt lnot(literalt a);
-  unsigned no_variables() const { return _no_variables; }
-  unsigned no_clauses() const {return clauses.size(); }
-  void set_no_original_variables(unsigned no) { 
-    _no_variables = no; _no_orig_variables = no;
-  }
-  void print(std::ostream& out) const;
+  virtual literalt land(literalt a, literalt b);
+  virtual literalt lor(literalt a, literalt b);
+  virtual literalt lnot(literalt a);
+  virtual void print(std::ostream& out) const;
 
-  void swap(prop_itpt& other) {
+  virtual void setTterm(Tterm& t) { assert(0); }
+  virtual Tterm* getTterm() { assert(0); }
+  
+  virtual void swap(itpt& other) {other.swap(*this);}
+  virtual void swap(smt_itpt& other) override {assert(0);}
+  virtual void swap(prop_itpt& other) override {
     clauses.swap(other.clauses);
     std::swap(_no_variables, other._no_variables);
     std::swap(_no_orig_variables, other._no_orig_variables);
@@ -40,46 +43,35 @@ public:
     std::swap(valid, other.valid);
   }
 
-  literalt new_variable() {
-    return literalt(_no_variables++, false);
-  }
-
   // These 3 methods are needed in partitioning_target_equation (called from)
   static void reserve_variables(prop_conv_solvert& decider,
-    const std::vector<symbol_exprt>& symbols, std::map<symbol_exprt, std::vector<unsigned> >& symbol_vars);
+    		  const std::vector<symbol_exprt>& symbols, std::map<symbol_exprt, 
+		  std::vector<unsigned> >& symbol_vars);
 
   void generalize(const prop_conv_solvert& mapping,
-    const std::vector<symbol_exprt>& symbols);
+    		  const std::vector<symbol_exprt>& symbols);
 
   void substitute(prop_conv_solvert& decider,
     const std::vector<symbol_exprt>& symbols,
     bool inverted = false) const;
 
-  literalt raw_assert(propt& decider) const;
-  
-  const std::vector<bool>& get_symbol_mask() const { return symbol_mask; }
+  virtual literalt raw_assert(propt& decider) const;
 
   // Serialization
-  void serialize(std::ostream& out) const;
-  void deserialize(std::istream& in);
+  virtual void serialize(std::ostream& out) const;
+  virtual void deserialize(std::istream& in);
 
-  // Literal equivalent to the interpolant root
-  literalt root_literal;
-
-  bool is_valid(){ return valid; };
-
-  void set_valid(bool _valid){ valid = _valid; };
+  virtual bool usesVar(symbol_exprt& symb, unsigned idx) 
+  { 
+      return get_symbol_mask()[idx];
+  }
+  
+  virtual bool check_implies(const itpt& second) const;
+  
+  virtual itpt* get_nodet() { return new prop_itpt(); }
 
 protected:
-  bool valid;
-
   typedef std::vector<bvt> clausest;
-
-  // Number of all used variables
-  unsigned _no_variables;
-  // Upper bound on the number of variables in the interpolant. Variables with
-  // a higher number are due to Tseitin encoding
-  unsigned _no_orig_variables;
 
   // Clauses of the interpolant representation
   clausest clauses;
@@ -91,9 +83,10 @@ protected:
   void gate_or(literalt a, literalt b, literalt o);
   
   void print_clause(std::ostream& out, const bvt& clause) const;
+
+  const std::vector<bool>& get_symbol_mask() const { return symbol_mask; }
 };
 
-typedef prop_itpt interpolantt;
-typedef std::vector<prop_itpt> interpolantst;
+typedef prop_itpt prop_interpolantt;
 
 #endif
