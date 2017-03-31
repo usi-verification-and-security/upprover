@@ -6,7 +6,9 @@ Author: Vincent Nimal
 
 \*******************************************************************/
 
+#include <util/i2string.h>
 #include <util/cprover_prefix.h>
+#include <util/expr_util.h>
 #include <util/message.h>
 
 #include <goto-programs/remove_skip.h>
@@ -50,7 +52,7 @@ void fence_weak_memory(
   bool hide_internals,
   bool print_graph,
   infer_modet mode,
-  message_handlert &message_handler,
+  message_handlert& message_handler,
   bool ignore_arrays)
 {
   messaget message(message_handler);
@@ -78,7 +80,7 @@ void fence_weak_memory(
 
   // collects cycles, directly or by SCCs
   if(input_max_var!=0 || input_max_po_trans!=0)
-    instrumenter.set_parameters_collection(input_max_var, input_max_po_trans,
+    instrumenter.set_parameters_collection(input_max_var,input_max_po_trans,
       ignore_arrays);
   else
     instrumenter.set_parameters_collection(max_thds, 0, ignore_arrays);
@@ -122,7 +124,7 @@ void fence_weak_memory(
     /* if no cycle, no need to instrument */
     if(instrumenter.set_of_cycles.size() == 0)
     {
-      message.result()
+      message.result() 
         << "program safe -- no need to place additional fences"
         << messaget::eom;
       instrumenter.print_map_function_graph();
@@ -139,9 +141,8 @@ void fence_weak_memory(
   if(!no_cfg_kill)
     instrumenter.cfg_cycles_filter();
 
-  /* selects method, infers fences then outputs them */
-  switch(mode)
-  {
+  /* selects method, infers fences then outputs them */ 
+  switch(mode) {
     case INFER:
     {
       fence_insertert fence_inserter(instrumenter, model);
@@ -171,7 +172,7 @@ void fence_weak_memory(
   instrumenter.print_outputs(model, hide_internals);
 #endif
 
-  /* TODO: insert the fences into the actual code or call script directly
+  /* TODO: insert the fences into the actual code or call script directly 
      from here*/
 
   /* removes potential skips */
@@ -190,3 +191,4 @@ void fence_weak_memory(
   instrumenter.print_map_function_graph();
 #endif
 }
+

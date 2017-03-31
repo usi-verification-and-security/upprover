@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_SOLVERS_PROP_LITERAL_EXPR_H
-#define CPROVER_SOLVERS_PROP_LITERAL_EXPR_H
+#ifndef CPROVER_LITERAL_EXPR_H
+#define CPROVER_LITERAL_EXPR_H
 
 #include <util/std_expr.h>
 
@@ -16,20 +16,20 @@ Author: Daniel Kroening, kroening@kroening.com
 class literal_exprt:public predicate_exprt
 {
 public:
-  explicit literal_exprt(literalt a):
+  inline explicit literal_exprt(literalt a):
     predicate_exprt(ID_literal)
   {
     set_literal(a);
   }
 
-  literalt get_literal() const
+  inline literalt get_literal() const
   {
     literalt result;
     result.set(literalt::var_not(get_long_long(ID_literal)));
     return result;
   }
 
-  void set_literal(literalt a)
+  inline void set_literal(literalt a)
   {
     set(ID_literal, a.get());
   }
@@ -45,7 +45,7 @@ public:
  *
  * \ingroup gr_std_expr
 */
-inline const literal_exprt &to_literal_expr(const exprt &expr)
+extern inline const literal_exprt &to_literal_expr(const exprt &expr)
 {
   assert(expr.id()==ID_literal && !expr.has_operands());
   return static_cast<const literal_exprt &>(expr);
@@ -54,10 +54,10 @@ inline const literal_exprt &to_literal_expr(const exprt &expr)
 /*! \copydoc to_literal_expr(const exprt &)
  * \ingroup gr_std_expr
 */
-inline literal_exprt &to_literal_expr(exprt &expr)
+extern inline literal_exprt &to_literal_expr(exprt &expr)
 {
   assert(expr.id()==ID_literal && !expr.has_operands());
   return static_cast<literal_exprt &>(expr);
 }
 
-#endif // CPROVER_SOLVERS_PROP_LITERAL_EXPR_H
+#endif

@@ -23,14 +23,10 @@ Function: bv_cbmct::convert_waitfor
 
 \*******************************************************************/
 
-bvt bv_cbmct::convert_waitfor(const exprt &expr)
+void bv_cbmct::convert_waitfor(const exprt &expr, bvt &bv)
 {
   if(expr.operands().size()!=4)
-  {
-    error().source_location=expr.find_source_location();
-    error() << "waitfor expected to have four operands" << eom;
-    throw 0;
-  }
+    throw "waitfor expected to have four operands";
 
   exprt new_cycle;
   const exprt &old_cycle=expr.op0();
@@ -42,11 +38,7 @@ bvt bv_cbmct::convert_waitfor(const exprt &expr)
 
   mp_integer bound_value;
   if(to_integer(bound, bound_value))
-  {
-    error().source_location=expr.find_source_location();
-    error() << "waitfor bound must be a constant" << eom;
-    throw 0;
-  }
+    throw "waitfor bound must be a constant";
 
   {
     // constraint: new_cycle>=old_cycle
@@ -141,7 +133,7 @@ bvt bv_cbmct::convert_waitfor(const exprt &expr)
   }
 
   // result: new_cycle
-  return convert_bitvector(new_cycle);
+  return convert_bitvector(new_cycle, bv);
 }
 
 /*******************************************************************\
@@ -156,14 +148,10 @@ Function: bv_cbmct::convert_waitfor_symbol
 
 \*******************************************************************/
 
-bvt bv_cbmct::convert_waitfor_symbol(const exprt &expr)
+void bv_cbmct::convert_waitfor_symbol(const exprt &expr, bvt &bv)
 {
   if(expr.operands().size()!=1)
-  {
-    error().source_location=expr.find_source_location();
-    error() << "waitfor_symbol expected to have one operand" << eom;
-    throw 0;
-  }
+    throw "waitfor_symbol expected to have one operand";
 
   exprt result;
   const exprt &bound=expr.op0();
@@ -176,7 +164,7 @@ bvt bv_cbmct::convert_waitfor_symbol(const exprt &expr)
   rel_expr.copy_to_operands(result, bound);
   set_to_true(rel_expr);
 
-  return convert_bitvector(result);
+  return convert_bitvector(result, bv);
 }
 
 /*******************************************************************\
@@ -191,13 +179,13 @@ Function: bv_cbmct::convert_bitvector
 
 \*******************************************************************/
 
-bvt bv_cbmct::convert_bitvector(const exprt &expr)
+void bv_cbmct::convert_bitvector(const exprt &expr, bvt &bv)
 {
   if(expr.id()=="waitfor")
-    return convert_waitfor(expr);
+    return convert_waitfor(expr, bv);
 
   if(expr.id()=="waitfor_symbol")
-    return convert_waitfor_symbol(expr);
+    return convert_waitfor_symbol(expr, bv);
 
-  return bv_pointerst::convert_bitvector(expr);
+  return bv_pointerst::convert_bitvector(expr, bv);
 }

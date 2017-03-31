@@ -24,21 +24,20 @@ Function: boolbvt::convert_union
 
 \*******************************************************************/
 
-bvt boolbvt::convert_union(const union_exprt &expr)
+void boolbvt::convert_union(const union_exprt &expr, bvt &bv)
 {
   std::size_t width=boolbv_width(expr.type());
 
   if(width==0)
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
 
   const bvt &op_bv=convert_bv(expr.op());
 
   if(width<op_bv.size())
     throw "union: unexpected operand op width";
 
-  bvt bv;
   bv.resize(width);
-
+  
   if(config.ansi_c.endianness==configt::ansi_ct::endiannesst::IS_LITTLE_ENDIAN)
   {
     for(std::size_t i=0; i<op_bv.size(); i++)
@@ -50,8 +49,7 @@ bvt boolbvt::convert_union(const union_exprt &expr)
   }
   else
   {
-    assert(
-      config.ansi_c.endianness==configt::ansi_ct::endiannesst::IS_BIG_ENDIAN);
+    assert(config.ansi_c.endianness==configt::ansi_ct::endiannesst::IS_BIG_ENDIAN);
 
     endianness_mapt map_u(expr.type(), false, ns);
     endianness_mapt map_op(expr.op0().type(), false, ns);
@@ -63,6 +61,4 @@ bvt boolbvt::convert_union(const union_exprt &expr)
     for(std::size_t i=op_bv.size(); i<bv.size(); i++)
       bv[map_u.map_bit(i)]=prop.new_variable();
   }
-
-  return bv;
 }

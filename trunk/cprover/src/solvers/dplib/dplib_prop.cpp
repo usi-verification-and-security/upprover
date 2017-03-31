@@ -10,6 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <set>
 
+#include <util/i2string.h>
 
 #include "dplib_prop.h"
 
@@ -150,7 +151,7 @@ void dplib_propt::lequal(literalt a, literalt b, literalt o)
       << dplib_literal(b) << ") <=> " << dplib_literal(o)
       << ";" << std::endl << std::endl;
 }
-
+  
 /*******************************************************************\
 
 Function: dplib_propt::limplies
@@ -191,16 +192,15 @@ literalt dplib_propt::land(const bvt &bv)
 
   forall_literals(it, bv)
   {
-    if(it!=bv.begin())
-      out << " & ";
+    if(it!=bv.begin()) out << " & ";
     out << dplib_literal(*it);
   }
-
+  
   out << std::endl << std::endl;
 
-  return literal;
+  return literal;  
 }
-
+  
 /*******************************************************************\
 
 Function: dplib_propt::lor
@@ -221,16 +221,15 @@ literalt dplib_propt::lor(const bvt &bv)
 
   forall_literals(it, bv)
   {
-    if(it!=bv.begin())
-      out << " | ";
+    if(it!=bv.begin()) out << " | ";
     out << dplib_literal(*it);
   }
-
+  
   out << std::endl << std::endl;
 
-  return literal;
+  return literal;  
 }
-
+  
 /*******************************************************************\
 
 Function: dplib_propt::lxor
@@ -245,12 +244,9 @@ Function: dplib_propt::lxor
 
 literalt dplib_propt::lxor(const bvt &bv)
 {
-  if(bv.empty())
-    return const_literal(false);
-  if(bv.size()==1)
-    return bv[0];
-  if(bv.size()==2)
-    return lxor(bv[0], bv[1]);
+  if(bv.empty()) return const_literal(false);
+  if(bv.size()==1) return bv[0];
+  if(bv.size()==2) return lxor(bv[0], bv[1]);
 
   literalt literal=const_literal(false);
 
@@ -259,7 +255,7 @@ literalt dplib_propt::lxor(const bvt &bv)
 
   return literal;
 }
-
+  
 /*******************************************************************\
 
 Function: dplib_propt::land
@@ -274,16 +270,11 @@ Function: dplib_propt::land
 
 literalt dplib_propt::land(literalt a, literalt b)
 {
-  if(a==const_literal(true))
-    return b;
-  if(b==const_literal(true))
-    return a;
-  if(a==const_literal(false))
-    return const_literal(false);
-  if(b==const_literal(false))
-    return const_literal(false);
-  if(a==b)
-    return a;
+  if(a==const_literal(true)) return b;
+  if(b==const_literal(true)) return a;
+  if(a==const_literal(false)) return const_literal(false);
+  if(b==const_literal(false)) return const_literal(false);
+  if(a==b) return a;
 
   literalt o=def_dplib_literal();
   out << dplib_literal(a) << " & " << dplib_literal(b)
@@ -306,17 +297,12 @@ Function: dplib_propt::lor
 
 literalt dplib_propt::lor(literalt a, literalt b)
 {
-  if(a==const_literal(false))
-    return b;
-  if(b==const_literal(false))
-    return a;
-  if(a==const_literal(true))
-    return const_literal(true);
-  if(b==const_literal(true))
-    return const_literal(true);
-  if(a==b)
-    return a;
-
+  if(a==const_literal(false)) return b;
+  if(b==const_literal(false)) return a;
+  if(a==const_literal(true)) return const_literal(true);
+  if(b==const_literal(true)) return const_literal(true);
+  if(a==b) return a;
+  
   literalt o=def_dplib_literal();
   out << dplib_literal(a) << " | " << dplib_literal(b)
       << ";" << std::endl << std::endl;
@@ -338,14 +324,10 @@ Function: dplib_propt::lxor
 
 literalt dplib_propt::lxor(literalt a, literalt b)
 {
-  if(a==const_literal(false))
-    return b;
-  if(b==const_literal(false))
-    return a;
-  if(a==const_literal(true))
-    return !b;
-  if(b==const_literal(true))
-    return !a;
+  if(a==const_literal(false)) return b;
+  if(b==const_literal(false)) return a;
+  if(a==const_literal(true)) return !b;
+  if(b==const_literal(true)) return !a;
 
   literalt o=def_dplib_literal();
   out << "!(" << dplib_literal(a) << " <-> " << dplib_literal(b)
@@ -435,13 +417,10 @@ Function: dplib_propt::lselect
 \*******************************************************************/
 
 literalt dplib_propt::lselect(literalt a, literalt b, literalt c)
-{
-  if(a==const_literal(true))
-    return b;
-  if(a==const_literal(false))
-    return c;
-  if(b==c)
-    return b;
+{ 
+  if(a==const_literal(true)) return b;
+  if(a==const_literal(false)) return c;
+  if(b==c) return b;
 
   out << "// lselect" << std::endl;
 
@@ -511,8 +490,7 @@ Function: dplib_propt::lcnf
 
 void dplib_propt::lcnf(const bvt &bv)
 {
-  if(bv.empty())
-    return;
+  if(bv.empty()) return;
   bvt new_bv;
 
   std::set<literalt> s;
@@ -537,8 +515,7 @@ void dplib_propt::lcnf(const bvt &bv)
 
   for(bvt::const_iterator it=new_bv.begin(); it!=new_bv.end(); it++)
   {
-    if(it!=new_bv.begin())
-      out << " | ";
+    if(it!=new_bv.begin()) out << " | ";
     out << dplib_literal(*it);
   }
 
@@ -565,9 +542,9 @@ std::string dplib_propt::dplib_literal(literalt l)
     return "TRUE";
 
   if(l.sign())
-    return "(NOT l"+std::to_string(l.var_no())+")";
+    return "(NOT l"+i2string(l.var_no())+")";  
 
-  return "l"+std::to_string(l.var_no());
+  return "l"+i2string(l.var_no());
 }
 
 /*******************************************************************\

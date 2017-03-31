@@ -33,8 +33,11 @@ void basic_blocks(goto_programt &goto_program,
       i_it!=goto_program.instructions.end();
       i_it++)
     if(i_it->is_goto())
-      for(const auto &target : i_it->targets)
-        targets.insert(target);
+      for(goto_programt::instructiont::targetst::iterator
+          t_it=i_it->targets.begin();
+          t_it!=i_it->targets.end();
+          t_it++)
+        targets.insert(*t_it);
 
   // Scan program
   for(goto_programt::instructionst::iterator
@@ -53,7 +56,7 @@ void basic_blocks(goto_programt &goto_program,
       it++;
     else if(it->is_other() || it->is_assign())
     {
-      if(it->code.is_nil())
+      if(it->code.is_nil()) 
         it++;
       else
       {
@@ -77,7 +80,7 @@ void basic_blocks(goto_programt &goto_program,
         while(end_block!=goto_program.instructions.end() &&
               (end_block->is_other() || end_block->is_assign()) &&
               t_it==targets.end());
-
+              
         // replace it with the code of the block
 
         {
@@ -85,10 +88,10 @@ void basic_blocks(goto_programt &goto_program,
 
           for(goto_programt::instructionst::iterator stmt = it;
               stmt != end_block;
-              stmt++)
+              stmt++) 
             if(!stmt->code.is_nil())
               new_block.move_to_operands(stmt->code);
-
+          
           it->code.swap(new_block);
           it++;
           if(it!=goto_program.instructions.end())

@@ -282,7 +282,7 @@ void symex_assertion_sumt::symex_step(
       state.guard.add(false_exprt());
   state.depth++;
 
-  state.dirty=new dirtyt(goto_functions); // KE: dirty analysis not in use, add to avoid crushes
+  //state.dirty=new dirtyt(goto_functions); // KE: dirty analysis not in use, add to avoid crushes
    
   // KE: This switch-case is taken from: symex_assertion_sumt::symex_step
   switch(instruction.type)
@@ -1514,12 +1514,12 @@ void symex_assertion_sumt::phi_function(
   statet &dest_state)
 {
   // go over all variables to see what changed
-  std::unordered_set<ssa_exprt, irep_hash> variables;
+  hash_set_cont<ssa_exprt, irep_hash> variables;
 
   goto_state.level2_get_variables(variables);
   dest_state.level2.get_variables(variables);
 
-  for(std::unordered_set<ssa_exprt, irep_hash>::const_iterator
+  for(hash_set_cont<ssa_exprt, irep_hash>::const_iterator
       it=variables.begin();
       it!=variables.end();
       it++)

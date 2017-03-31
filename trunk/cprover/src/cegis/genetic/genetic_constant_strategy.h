@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_GENETIC_GENETIC_CONSTANT_STRATEGY_H
-#define CPROVER_CEGIS_GENETIC_GENETIC_CONSTANT_STRATEGY_H
+#ifndef CEGIS_GENETIC_CONSTANT_STRATEGY_H_
+#define CEGIS_GENETIC_CONSTANT_STRATEGY_H_
 
 #include <cstddef>
 
@@ -23,4 +23,4 @@ Author: Daniel Kroening, kroening@kroening.com
 size_t genetic_constant_strategy(class invariant_programt &program,
     size_t max_length);
 
-#endif // CPROVER_CEGIS_GENETIC_GENETIC_CONSTANT_STRATEGY_H
+#endif /* CEGIS_GENETIC_CONSTANT_STRATEGY_H_ */

@@ -1,11 +1,9 @@
 SRC = cbmc_main.cpp cbmc_parse_options.cpp bmc.cpp cbmc_dimacs.cpp \
       cbmc_languages.cpp counterexample_beautification.cpp \
       bv_cbmc.cpp symex_bmc.cpp show_vcc.cpp cbmc_solvers.cpp \
-      xml_interface.cpp bmc_cover.cpp all_properties.cpp \
-      fault_localization.cpp symex_coverage.cpp
+      xml_interface.cpp cover.cpp all_properties.cpp
 
 OBJ += ../ansi-c/ansi-c$(LIBEXT) \
-      ../cpp/cpp$(LIBEXT) \
       ../linking/linking$(LIBEXT) \
       ../big-int/big-int$(LIBEXT) \
       ../goto-programs/goto-programs$(LIBEXT) \
@@ -21,7 +19,6 @@ OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../pointer-analysis/goto_program_dereference$(OBJEXT) \
       ../goto-instrument/full_slicer$(OBJEXT) \
       ../goto-instrument/nondet_static$(OBJEXT) \
-      ../goto-instrument/cover$(OBJEXT) \
       ../analyses/analyses$(LIBEXT) \
       ../langapi/langapi$(LIBEXT) \
       ../xmllang/xmllang$(LIBEXT) \
@@ -45,17 +42,17 @@ ifneq ($(wildcard ../bv_refinement/Makefile),)
   CP_CXXFLAGS += -DHAVE_BV_REFINEMENT
 endif
 
+ifneq ($(wildcard ../cpp/Makefile),)
+  OBJ += ../cpp/cpp$(LIBEXT)
+  CP_CXXFLAGS += -DHAVE_CPP
+endif
+
 ifneq ($(wildcard ../java_bytecode/Makefile),)
   OBJ += ../java_bytecode/java_bytecode$(LIBEXT)
   CP_CXXFLAGS += -DHAVE_JAVA_BYTECODE
-  ifneq ($(wildcard $(LIBZIPINC)),)
+  ifneq ($(LIBZIPLIB),)
     LIBS += $(LIBZIPLIB)
   endif
-endif
-
-ifneq ($(wildcard ../jsil/Makefile),)
-  OBJ += ../jsil/jsil$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_JSIL
 endif
 
 ifneq ($(wildcard ../specc/Makefile),)
@@ -77,3 +74,4 @@ cbmc$(EXEEXT): $(OBJ)
 
 cbmc-mac-signed: cbmc$(EXEEXT)
 	strip cbmc$(EXEEXT) ; codesign -v -s $(OSX_IDENTITY) cbmc$(EXEEXT)
+

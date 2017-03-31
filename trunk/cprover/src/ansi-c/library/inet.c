@@ -42,3 +42,4 @@ in_addr_t inet_network(const char *cp)
   in_addr_t result;
   return result;
 }
+

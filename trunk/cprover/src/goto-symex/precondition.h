@@ -21,4 +21,4 @@ void precondition(
   const class goto_symex_statet &s,
   exprt &dest);
 
-#endif // CPROVER_GOTO_SYMEX_PRECONDITION_H
+#endif

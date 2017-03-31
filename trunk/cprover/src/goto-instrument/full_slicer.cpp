@@ -9,6 +9,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/find_symbols.h>
 #include <util/cprover_prefix.h>
 #ifdef DEBUG_FULL_SLICERT
+#include <util/i2string.h>
 #endif
 
 #include <goto-programs/remove_skip.h>
@@ -99,8 +100,7 @@ void full_slicert::add_decl_dead(
   queuet &queue,
   decl_deadt &decl_dead)
 {
-  if(decl_dead.empty())
-    return;
+  if(decl_dead.empty()) return;
 
   find_symbols_sett syms;
   find_symbols(node.PC->code, syms);
@@ -112,8 +112,7 @@ void full_slicert::add_decl_dead(
       ++it)
   {
     decl_deadt::iterator entry=decl_dead.find(*it);
-    if(entry==decl_dead.end())
-      continue;
+    if(entry==decl_dead.end()) continue;
 
     while(!entry->second.empty())
     {
@@ -271,7 +270,7 @@ void full_slicert::fixedpoint(
 {
   std::vector<cfgt::entryt> dep_node_to_cfg;
   dep_node_to_cfg.reserve(dep_graph.size());
-  for(dependence_grapht::node_indext i=0; i<dep_graph.size(); ++i)
+  for(unsigned i=0; i<dep_graph.size(); ++i)
   {
     cfgt::entry_mapt::const_iterator entry=
       cfg.entry_map.find(dep_graph[i].PC);
@@ -327,12 +326,10 @@ static bool implicit(goto_programt::const_targett target)
 {
   // some variables are used during symbolic execution only
 
-  if(!target->is_assign())
-    return false;
+  if(!target->is_assign()) return false;
 
   const code_assignt &a=to_code_assign(target->code);
-  if(a.lhs().id()!=ID_symbol)
-    return false;
+  if(a.lhs().id()!=ID_symbol) return false;
 
   const symbol_exprt &s=to_symbol_expr(a.lhs());
 
@@ -412,16 +409,15 @@ void full_slicert::operator()(
 #ifdef DEBUG_FULL_SLICERT
         else
         {
-          std::string c="ins:"+std::to_string(i_it->location_number);
+          std::string c="ins:"+i2string(i_it->location_number);
           c+=" req by:";
           for(std::set<unsigned>::const_iterator
               req_it=cfg[e].required_by.begin();
               req_it!=cfg[e].required_by.end();
               ++req_it)
           {
-            if(req_it!=cfg[e].required_by.begin())
-              c+=",";
-            c+=std::to_string(*req_it);
+            if(req_it!=cfg[e].required_by.begin()) c+=",";
+            c+=i2string(*req_it);
           }
           i_it->source_location.set_column(c);  // for show-goto-functions
           i_it->source_location.set_comment(c); // for dump-c
@@ -477,27 +473,6 @@ void full_slicer(
 
 /*******************************************************************\
 
-Function: property_slicer
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void property_slicer(
-  goto_functionst &goto_functions,
-  const namespacet &ns,
-  const std::list<std::string> &properties)
-{
-  properties_criteriont p(properties);
-  full_slicert()(goto_functions, ns, p);
-}
-
-/*******************************************************************\
-
 Function: slicing_criteriont::~slicing_criteriont
 
   Inputs:
@@ -511,3 +486,4 @@ Function: slicing_criteriont::~slicing_criteriont
 slicing_criteriont::~slicing_criteriont()
 {
 }
+

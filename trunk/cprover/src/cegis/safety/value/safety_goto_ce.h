@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_SAFETY_VALUE_SAFETY_GOTO_CE_H
-#define CPROVER_CEGIS_SAFETY_VALUE_SAFETY_GOTO_CE_H
+#ifndef CEGIS_SAFETY_GOTO_CE_H_
+#define CEGIS_SAFETY_GOTO_CE_H_
 
 #include <util/expr.h>
 
@@ -50,4 +50,4 @@ public:
   bool operator==(const safety_goto_cet &other) const;
 };
 
-#endif // CPROVER_CEGIS_SAFETY_VALUE_SAFETY_GOTO_CE_H
+#endif /* CEGIS_SAFETY_GOTO_CE_H_ */

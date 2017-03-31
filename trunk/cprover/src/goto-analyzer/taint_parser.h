@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_ANALYZER_TAINT_PARSER_H
-#define CPROVER_GOTO_ANALYZER_TAINT_PARSER_H
+#ifndef CPROVER_TAINT_PARSER_H
+#define CPROVER_TAINT_PARSER_H
 
 #include <string>
 #include <list>
@@ -24,18 +24,18 @@ public:
   public:
     enum { SOURCE, SINK, SANITIZER } kind;
     enum { THIS, PARAMETER, RETURN_VALUE } where;
-
-    bool is_source() const
+    
+    inline bool is_source() const
     {
       return kind==SOURCE;
     }
 
-    bool is_sink() const
+    inline bool is_sink() const
     {
       return kind==SINK;
     }
 
-    bool is_sanitizer() const
+    inline bool is_sanitizer() const
     {
       return kind==SANITIZER;
     }
@@ -45,17 +45,17 @@ public:
     irep_idt taint;
     unsigned parameter_number; // the frist one is '1'
     std::string message;
-
+    
     void output(std::ostream &) const;
-
-    rulet():parameter_number(0)
+    
+    inline rulet():parameter_number(0)
     {
     }
   };
 
   typedef std::list<rulet> rulest;
   rulest rules;
-
+  
   void output(std::ostream &) const;
 };
 
@@ -64,4 +64,4 @@ bool taint_parser(
   taint_parse_treet &,
   message_handlert &);
 
-#endif // CPROVER_GOTO_ANALYZER_TAINT_PARSER_H
+#endif

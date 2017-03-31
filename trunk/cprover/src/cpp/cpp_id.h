@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_CPP_ID_H
-#define CPROVER_CPP_CPP_ID_H
+#ifndef CPROVER_CPP_ID_H
+#define CPROVER_CPP_ID_H
 
 #include <cassert>
 #include <list>
@@ -18,6 +18,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include <util/expr.h>
 #include <util/std_types.h>
+
+typedef std::multimap<irep_idt, class cpp_idt> cpp_id_mapt;
 
 class cpp_scopet;
 
@@ -38,28 +40,28 @@ public:
 
   id_classt id_class;
 
-  bool is_class() const
+  inline bool is_class() const
   {
     return id_class==CLASS;
   }
 
-  bool is_enum() const
+  inline bool is_enum() const
   {
     return id_class==ENUM;
   }
 
-  bool is_namespace() const
+  inline bool is_namespace() const
   {
     return id_class==NAMESPACE;
   }
 
-  bool is_typedef() const
+  inline bool is_typedef() const
   {
     return id_class==TYPEDEF;
   }
-
+  
   irep_idt identifier, base_name;
-
+  
   // if it is a member or method, what class is it in?
   irep_idt class_identifier;
   exprt this_expr;
@@ -67,20 +69,20 @@ public:
   // scope data
   std::string prefix, suffix;
   unsigned compound_counter;
-
-  cpp_idt &get_parent() const
+  
+  inline cpp_idt &get_parent() const
   {
     assert(parent!=NULL);
     return *parent;
   }
 
-  void set_parent(cpp_idt &_parent)
+  inline void set_parent(cpp_idt &_parent)
   {
     assert(_parent.is_scope);
     parent=&_parent;
   }
 
-  void clear()
+  inline void clear()
   {
     *this=cpp_idt();
   }
@@ -88,8 +90,9 @@ public:
   void print(std::ostream &out, unsigned indent=0) const;
   void print_fields(std::ostream &out, unsigned indent=0) const;
 
+  friend class cpp_scopet;
+
 protected:
-  typedef std::multimap<irep_idt, cpp_idt> cpp_id_mapt;
   cpp_id_mapt sub;
 
   // These are used for base classes and 'using' clauses.
@@ -101,4 +104,4 @@ protected:
 std::ostream &operator<<(std::ostream &out, const cpp_idt &cpp_id);
 std::ostream &operator<<(std::ostream &out, const cpp_idt::id_classt &id_class);
 
-#endif // CPROVER_CPP_CPP_ID_H
+#endif

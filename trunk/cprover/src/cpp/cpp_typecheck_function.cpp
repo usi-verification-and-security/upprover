@@ -6,6 +6,10 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+#include <util/i2string.h>
+#include <util/identifier.h>
+#include <util/expr_util.h>
+
 #include <ansi-c/c_qualifiers.h>
 
 #include "cpp_template_type.h"
@@ -29,16 +33,16 @@ void cpp_typecheckt::convert_parameter(
   const irep_idt &mode,
   code_typet::parametert &parameter)
 {
-  irep_idt base_name=id2string(parameter.get_base_name());
+  std::string identifier=id2string(parameter.get_identifier());
 
-  if(base_name.empty())
+  if(identifier.empty())
   {
-    base_name="#anon_arg"+std::to_string(anon_counter++);
-    parameter.set_base_name(base_name);
+    identifier="#anon_arg"+i2string(anon_counter++);
+    parameter.set_base_name(identifier);
   }
 
-  irep_idt identifier=cpp_scopes.current_scope().prefix+
-                      id2string(base_name);
+  identifier=cpp_scopes.current_scope().prefix+
+             id2string(identifier);
 
   parameter.set_identifier(identifier);
 
@@ -59,9 +63,9 @@ void cpp_typecheckt::convert_parameter(
 
   if(symbol_table.move(symbol, new_symbol))
   {
-    error().source_location=symbol.location;
-    error() << "cpp_typecheckt::convert_parameter: symbol_table.move(\""
-            << symbol.name << "\") failed" << eom;
+    err_location(symbol.location);
+    str << "cpp_typecheckt::convert_parameter: symbol_table.move("
+        << symbol.name << ") failed";
     throw 0;
   }
 
@@ -132,7 +136,7 @@ void cpp_typecheckt::convert_function(symbolt &symbol)
   cpp_scopet &function_scope=cpp_scopes.set_scope(symbol.name);
 
   // fix the scope's prefix
-  function_scope.prefix=id2string(symbol.name)+"::";
+  function_scope.prefix+=id2string(symbol.name)+"::";
 
   // genuine function definition -- do the parameter declarations
   convert_parameters(symbol.mode, function_type);
@@ -145,8 +149,7 @@ void cpp_typecheckt::convert_function(symbolt &symbol)
     assert(parameters.size()>=1);
     code_typet::parametert &this_parameter_expr=parameters.front();
     function_scope.this_expr=exprt(ID_symbol, this_parameter_expr.type());
-    function_scope.this_expr.set(
-      ID_identifier, this_parameter_expr.get(ID_C_identifier));
+    function_scope.this_expr.set(ID_identifier, this_parameter_expr.get(ID_C_identifier));
   }
   else
     function_scope.this_expr.make_nil();
@@ -163,11 +166,11 @@ void cpp_typecheckt::convert_function(symbolt &symbol)
   if(return_type.id()==ID_constructor ||
      return_type.id()==ID_destructor)
     return_type=empty_typet();
-
+  
   typecheck_code(to_code(symbol.value));
 
   symbol.value.type()=symbol.type;
-
+  
   return_type = old_return_type;
 }
 
@@ -209,10 +212,8 @@ irep_idt cpp_typecheckt::function_identifier(const typet &type)
   {
     const typet &pointer=it->type();
     const typet &symbol =pointer.subtype();
-    if(symbol.get_bool(ID_C_constant))
-      result+="const$";
-    if(symbol.get_bool(ID_C_volatile))
-      result+="volatile$";
+    if(symbol.get_bool(ID_C_constant)) result+="const$";
+    if(symbol.get_bool(ID_C_volatile)) result+="volatile$";
     result+="this";
     first=false;
     it++;
@@ -222,10 +223,7 @@ irep_idt cpp_typecheckt::function_identifier(const typet &type)
 
   for(; it!=parameters.end(); it++)
   {
-    if(first)
-      first=false;
-    else
-      result+=',';
+    if(first) first=false; else result+=',';
     typet tmp_type=it->type();
     result+=cpp_type2name(it->type());
   }

@@ -1,12 +1,12 @@
 /*******************************************************************\
-
+ 
 Module: Convert goto programs to xml structures and back (with irep
         hashing)
-
+ 
 Author: CM Wintersteiger
-
+ 
 Date: July 2006
-
+ 
 \*******************************************************************/
 
 #include <sstream>
@@ -16,40 +16,42 @@ Date: July 2006
 #include "xml_goto_program_hashing.h"
 
 /*******************************************************************\
-
+ 
 Function: xml_goto_program_convertt::convert
-
+ 
   Inputs: goto program and an xml structure to fill
-
+ 
  Outputs: none
-
+ 
  Purpose: constructs the xml structure according to the goto program
           and the namespace into the given xml object.
-
+ 
 \*******************************************************************/
 
-void xml_goto_program_convertt::convert(
-  const goto_programt &goto_program,
-  xmlt &xml)
+void xml_goto_program_convertt::convert(const goto_programt &goto_program,
+                                        xmlt &xml)
 {
   std::stringstream tmp;
   // std::cout << "TNO: " << goto_program.target_numbers.size() << std::endl;
 
-  for(const auto &inst : goto_program.instructions)
+  const goto_programt::instructionst &instructions =
+    goto_program.instructions;
+  goto_programt::instructionst::const_iterator ins_it =
+    instructions.begin();
+  for (;ins_it!=instructions.end();ins_it++)
   {
-    xmlt &ins=xml.new_element("instruction");
-    if(!inst.location.is_nil())
+    xmlt &ins = xml.new_element("instruction");
+    if (!ins_it->location.is_nil())
     {
-      irepconverter.reference_convert(
-        inst.location, ins.new_element("location"));
+      irepconverter.reference_convert(ins_it->location, ins.new_element("location"));      
     }
 
-    if(!inst.labels.empty())
+    if(!ins_it->labels.empty())
     {
-      xmlt &lbl=ins.new_element("labels");
+      xmlt &lbl = ins.new_element("labels");
       for(goto_programt::instructiont::labelst::const_iterator
-          l_it=inst.labels.begin();
-          l_it!=inst.labels.end();
+          l_it=ins_it->labels.begin();
+          l_it!=ins_it->labels.end();
           l_it++)
       {
         lbl.new_element("label").set_attribute("name", id2string(*l_it));
@@ -57,43 +59,43 @@ void xml_goto_program_convertt::convert(
     }
 
 
-    if(inst.target_number!=0)
+    if(ins_it->target_number!=0)
     {
       // std::cout << "Targetlabel found!" << std::endl;
       tmp.str("");
-      tmp << inst.target_number;
-      ins.set_attribute("targetlabel", tmp.str());
+      tmp << ins_it->target_number;
+      ins.set_attribute("targetlabel",tmp.str());
     }
 
-    switch(inst.type)
+    switch(ins_it->type)
     {
     case GOTO:
       {
-        ins.name="goto";
-        if(!inst.guard.is_true())
+        ins.name = "goto";
+        if (!ins_it->guard.is_true())
         {
-          xmlt &g=ins.new_element("guard");
-          irepconverter.reference_convert(inst.guard, g);
+          xmlt &g = ins.new_element("guard");
+          irepconverter.reference_convert(ins_it->guard, g);
         }
-        xmlt &tgt=ins.new_element("targets");
+        xmlt &tgt = ins.new_element("targets");
         for(goto_programt::instructiont::targetst::const_iterator
-            gt_it=inst.targets.begin();
-            gt_it!=inst.targets.end();
+            gt_it=ins_it->targets.begin();
+            gt_it!=ins_it->targets.end();
             gt_it++)
         {
           tmp.str("");
           tmp << (*gt_it)->target_number;
-          tgt.new_element("target").data=tmp.str();
+          tgt.new_element("target").data = tmp.str();
         }
         break;
       }
 
     case ASSUME:
       {
-        ins.name="assume";
-        xmlt &g=ins.new_element("guard");
-        irepconverter.reference_convert(inst.guard, g);
-        const irep_idt &comment=inst.location.get("comment");
+        ins.name = "assume";
+        xmlt &g = ins.new_element("guard");
+        irepconverter.reference_convert(ins_it->guard, g);
+        const irep_idt &comment=ins_it->location.get("comment");
         if(comment!="")
           ins.new_element("comment").data=id2string(comment);
         break;
@@ -101,214 +103,213 @@ void xml_goto_program_convertt::convert(
 
     case ASSERT:
       {
-        ins.name="assert";
-        xmlt &g=ins.new_element("guard");
-        irepconverter.reference_convert(inst.guard, g);
-        const irep_idt &comment=inst.location.get("comment");
+        ins.name = "assert";
+        xmlt &g = ins.new_element("guard");
+        irepconverter.reference_convert(ins_it->guard, g);
+        const irep_idt &comment=ins_it->location.get("comment");
         if(comment!="")
           ins.new_element("comment").data=id2string(comment);
         break;
       }
 
     case SKIP:
-      ins.name="skip";
+      ins.name = "skip";
       break;
 
     case END_FUNCTION:
-      ins.name="end_function";
+      ins.name = "end_function";
       break;
 
     case LOCATION:
-      ins.name="location";
+      ins.name = "location";
       break;
 
     case DEAD:
-      ins.name="dead";
+      ins.name = "dead";
       break;
 
     case ATOMIC_BEGIN:
-      ins.name="atomic_begin";
+      ins.name = "atomic_begin";
       break;
 
     case ATOMIC_END:
-      ins.name="atomic_end";
+      ins.name = "atomic_end";
       break;
 
     case RETURN:
       {
-        ins.name="return";
-        xmlt &c=ins.new_element("code");
-        irepconverter.reference_convert(inst.code, c);
+        ins.name = "return";
+        xmlt &c = ins.new_element("code");
+        irepconverter.reference_convert(ins_it->code, c);
         break;
       }
 
     case OTHER:
       {
-        ins.name="instruction";
-        xmlt &c=ins.new_element("code");
-        irepconverter.reference_convert(inst.code, c);
+        ins.name = "instruction";
+        xmlt &c = ins.new_element("code");
+        irepconverter.reference_convert(ins_it->code, c);
         break;
       }
 
     case ASSIGN:
       {
-        ins.name="assign";
-        xmlt &c=ins.new_element("code");
-        irepconverter.reference_convert(inst.code, c);
+        ins.name = "assign";
+        xmlt &c = ins.new_element("code");
+        irepconverter.reference_convert(ins_it->code, c);
         break;
       }
 
     case FUNCTION_CALL:
       {
-        ins.name="functioncall";
-        xmlt &c=ins.new_element("code");
-        irepconverter.reference_convert(inst.code, c);
+        ins.name = "functioncall";
+        xmlt &c = ins.new_element("code");
+        irepconverter.reference_convert(ins_it->code, c);
         break;
       }
 
     case START_THREAD:
       {
-        ins.name="thread_start";
-        xmlt &tgt=ins.new_element("targets");
-        if(inst.targets.size()==1)
+        ins.name = "thread_start";
+        xmlt &tgt = ins.new_element("targets");
+        if(ins_it->targets.size()==1)
         {
           tmp.str("");
-          tmp << inst.targets.front()->target_number;
-          tgt.new_element("target").data=tmp.str();
+          tmp << ins_it->targets.front()->target_number;
+          tgt.new_element("target").data = tmp.str();
         }
         break;
       }
 
     case END_THREAD:
-      ins.name="thread_end";
+      ins.name = "thread_end";
       break;
 
     default:
-      ins.name="unknown";
+      ins.name = "unknown";
       break;
     }
-
-    if(inst.function!="")
+    
+    if(ins_it->function!="")
     {
       xmlt &fnc=ins.new_element("function");
-      fnc.data=id2string(inst.function);
+      fnc.data=id2string(ins_it->function);
     }
   }
 }
 
 /*******************************************************************\
-
+ 
 Function: xml_goto_program_convertt::convert
-
+ 
   Inputs: an xml structure and a goto program to fill
-
+ 
  Outputs: none
-
+ 
  Purpose: constructs the goto program according to the xml structure
           and the namespace into the given goto program object.
-
+ 
 \*******************************************************************/
-void xml_goto_program_convertt::convert(
-  const xmlt &xml,
-  goto_programt &goto_program)
+void xml_goto_program_convertt::convert( const xmlt& xml,
+              goto_programt& goto_program)
 {
   goto_program.clear();
-  goto_programt::instructionst &instructions=goto_program.instructions;
-
-  for(const auto &element : xml.elements)
+  goto_programt::instructionst &instructions = goto_program.instructions;
+  
+  xmlt::elementst::const_iterator it = xml.elements.begin();
+  for (; it != xml.elements.end(); it++)
   {
-    goto_programt::targett inst=goto_program.add_instruction();
+    goto_programt::targett inst = goto_program.add_instruction();
     inst->targets.clear();
 
-    if(element.name=="goto")
+    if (it->name=="goto")
     {
-      inst->type=GOTO;
+      inst->type = GOTO;
     }
-    else if(element.name=="assume")
+    else if (it->name=="assume")
     {
-      inst->type=ASSUME;
+      inst->type = ASSUME;
     }
-    else if(element.name=="assert")
+    else if (it->name=="assert")
     {
-      inst->type=ASSERT;
+      inst->type = ASSERT;
     }
-    else if(element.name=="skip")
+    else if (it->name=="skip")
     {
-      inst->type=SKIP;
+      inst->type = SKIP;
     }
-    else if(element.name=="end_function")
+    else if (it->name=="end_function")
     {
-      inst->type=END_FUNCTION;
+      inst->type = END_FUNCTION;
     }
-    else if(element.name=="location")
+    else if (it->name=="location")
     {
-      inst->type=LOCATION;
+      inst->type = LOCATION;
     }
-    else if(element.name=="dead")
+    else if (it->name=="dead")
     {
-      inst->type=DEAD;
+      inst->type = DEAD;
     }
-    else if(element.name=="atomic_begin")
+    else if (it->name=="atomic_begin")
     {
-      inst->type=ATOMIC_BEGIN;
+      inst->type = ATOMIC_BEGIN;
     }
-    else if(element.name=="atomic_end")
+    else if (it->name=="atomic_end")
     {
-      inst->type=ATOMIC_END;
+      inst->type = ATOMIC_END;
     }
-    else if(element.name=="return")
+    else if (it->name=="return")
     {
       inst->make_return();
     }
-    else if(element.name=="instruction") // OTHER
+    else if (it->name=="instruction") // OTHER
     {
       inst->make_other();
     }
-    else if(element.name=="assign") // OTHER
+    else if (it->name=="assign") // OTHER
     {
       inst->make_other();
-      inst->type=ASSIGN;
+      inst->type = ASSIGN;
     }
-    else if(element.name=="functioncall") // OTHER
+    else if (it->name=="functioncall") // OTHER
     {
       inst->make_other();
-      inst->type=FUNCTION_CALL;
+      inst->type = FUNCTION_CALL;
     }
-    else if(element.name=="thread_start")
+    else if (it->name=="thread_start")
     {
-      inst->type=START_THREAD;
+      inst->type = START_THREAD;
     }
-    else if(element.name=="thread_end")
+    else if (it->name=="thread_end")
     {
-      inst->type=END_THREAD;
+      inst->type = END_THREAD;
     }
     else
     {
-      std::cout << "Unknown instruction type encountered ("
-                << element.name << ")";
+      std::cout << "Unknown instruction type encountered (" << it->name << ")";
       std::cout << std::endl;
       return;
     }
 
-    xmlt::elementst::const_iterator eit=element.elements.begin();
-    for(const auto &sub : element.elements)
+    xmlt::elementst::const_iterator eit = it->elements.begin();
+    for (; eit != it->elements.end(); eit++)
     {
-      if(sub.name=="location")
+      if (eit->name=="location")
       {
         irepconverter.convert(*eit, inst->location);
         irepconverter.resolve_references(inst->location);
       }
-      else if(sub.name=="variables")
+      else if (eit->name=="variables")
       {
       }
-      else if(sub.name=="labels")
+      else if (eit->name=="labels")
       {
-        xmlt::elementst::const_iterator lit=sub.elements.begin();
-        for(; lit != sub.elements.end(); lit++)
+        xmlt::elementst::const_iterator lit = eit->elements.begin();
+        for (; lit != eit->elements.end(); lit++)
         {
-          if(lit->name=="label")
+          if (lit->name=="label")
           {
-            std::string ls=lit->get_attribute("name");
+            std::string ls = lit->get_attribute("name");
             inst->labels.push_back(ls);
           }
           else
@@ -318,28 +319,28 @@ void xml_goto_program_convertt::convert(
           }
         }
       }
-      else if(sub.name=="guard")
+      else if (eit->name=="guard")
       {
         inst->guard.remove("value");
         irepconverter.convert(*eit, inst->guard);
         irepconverter.resolve_references(inst->guard);
       }
-      else if(sub.name=="code")
+      else if (eit->name=="code")
       {
         irepconverter.convert(*eit, inst->code);
         irepconverter.resolve_references(inst->code);
       }
-      else if(sub.name=="targets")
+      else if (eit->name=="targets")
       {
         // Don't do anything here, we'll need a second run for that
       }
-      else if(sub.name=="comment")
+      else if (eit->name=="comment")
       {
-        inst->location.set("comment", sub.data);
+        inst->location.set("comment", eit->data);
       }
-      else if(sub.name=="function")
+      else if (eit->name=="function")
       {
-        inst->function=sub.data;
+        inst->function=eit->data;
       }
     }
   }
@@ -348,23 +349,23 @@ void xml_goto_program_convertt::convert(
   goto_program.compute_location_numbers();
 
   // second run, for targets
-  goto_programt::targett ins_it=instructions.begin();
-  for(const auto &element : xml.elements)
+  goto_programt::targett ins_it = instructions.begin();
+  it = xml.elements.begin();
+  for (; it != xml.elements.end() && ins_it!=instructions.end(); it++)
   {
-    if(ins_it==instructions.end())
-      break;
-
-    for(const auto &sub : element.elements)
+    xmlt::elementst::const_iterator eit = it->elements.begin();
+    for (; eit != it->elements.end(); eit++)
     {
-      if(sub.name=="targets")
+      if (eit->name=="targets")
       {
-        for(const auto &t : sub.elements)
+        xmlt::elementst::const_iterator tit = eit->elements.begin();
+        for (; tit != eit->elements.end(); tit++)
         {
-          if(t.name=="target")
+          if (tit->name=="target")
           {
             goto_programt::targett tins =
-              find_instruction(xml, instructions, t.data);
-            if(tins!=instructions.end())
+              find_instruction(xml, instructions, tit->data);
+            if (tins != instructions.end())
             {
               // Here we insert the iterators that somehow seem
               // to be strange afterwards (see line 87)
@@ -390,35 +391,34 @@ void xml_goto_program_convertt::convert(
   // resolve links
   goto_program.update();
 
-  // std::cout << "TNI: " << goto_program.target_numbers.size() << std::endl;
+  //std::cout << "TNI: " << goto_program.target_numbers.size() << std::endl;
 }
 
 /*******************************************************************\
-
+ 
 Function: xml_goto_program_convertt::find_instruction
-
+ 
   Inputs: a target label string, the instructions list and an xml program
-
+ 
  Outputs: iterator to the found instruction or .end()
-
- Purpose: finds the index of the instruction labelled with the given
+ 
+ Purpose: finds the index of the instruction labelled with the given 
           target label in the given xml-program
-
+ 
 \*******************************************************************/
-goto_programt::targett xml_goto_program_convertt::find_instruction(
-  const xmlt &xml,
-  goto_programt::instructionst &instructions,
-  const std::string &label)
+goto_programt::targett
+xml_goto_program_convertt::find_instruction( const xmlt &xml,
+                  goto_programt::instructionst &instructions,
+                  const std::string &label)
 {
-  goto_programt::targett ins_it=instructions.begin();
-  for(const auto &element : xml.elements)
+  goto_programt::targett ins_it = instructions.begin();
+  xmlt::elementst::const_iterator it = xml.elements.begin();
+  for (; it != xml.elements.end() && ins_it!=instructions.end(); it++)
   {
-    if(ins_it==instructions.end())
-      break;
-
-    if(label==element.get_attribute("targetlabel"))
+    if (label==it->get_attribute("targetlabel"))
       return ins_it;
     ins_it++;
   }
   return instructions.end();
 }
+

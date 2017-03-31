@@ -39,24 +39,24 @@ struct cfg_base_nodet:public graph_nodet<empty_edget>, public T
 template<class T,
          typename P=const goto_programt,
          typename I=goto_programt::const_targett>
-class cfg_baset:public grapht< cfg_base_nodet<T, I> >
+class cfg_baset:public graph< cfg_base_nodet<T,I> >
 {
 public:
-  typedef std::size_t entryt;
+  typedef unsigned entryt;
 
   struct entry_mapt:
     public std::map<goto_programt::const_targett, entryt>
   {
-    grapht< cfg_base_nodet<T, I> > &container;
+    graph< cfg_base_nodet<T,I> > & container;
 
-    explicit entry_mapt(grapht< cfg_base_nodet<T, I> > &_container):
+    explicit entry_mapt(graph< cfg_base_nodet<T,I> > & _container):
       container(_container)
     {
     }
 
-    entryt &operator[](const goto_programt::const_targett &t)
+    entryt& operator[](const goto_programt::const_targett &t)
     {
-      std::pair<iterator, bool> e=insert(std::make_pair(t, 0));
+      std::pair<iterator,bool> e=insert(std::make_pair(t, 0));
 
       if(e.second)
         e.first->second=container.add_node();
@@ -131,9 +131,6 @@ public:
     compute_edges(goto_functions, goto_program);
   }
 
-  I get_first_node(P &program) const { return program.instructions.begin(); }
-  I get_last_node(P &program) const { return --program.instructions.end(); }
-  bool nodes_empty(P &program) const { return program.instructions.empty(); }
 };
 
 /*******************************************************************\
@@ -219,9 +216,15 @@ void cfg_baset<T, P, I>::compute_edges_goto(
      !instruction.guard.is_true())
     this->add_edge(entry, entry_map[next_PC]);
 
-  for(const auto &t : instruction.targets)
+  for(goto_programt::instructiont::targetst::const_iterator
+      t_it=instruction.targets.begin();
+      t_it!=instruction.targets.end();
+      t_it++)
+  {
+    goto_programt::const_targett t=*t_it;
     if(t!=goto_program.instructions.end())
       this->add_edge(entry, entry_map[t]);
+  }
 }
 
 /*******************************************************************\
@@ -249,9 +252,15 @@ void cfg_baset<T, P, I>::compute_edges_catch(
   // Not ideal, but preserves targets
   // Ideally, the throw statements should have those as successors
 
-  for(const auto &t : instruction.targets)
+  for(goto_programt::instructiont::targetst::const_iterator
+      t_it=instruction.targets.begin();
+      t_it!=instruction.targets.end();
+      t_it++)
+  {
+    goto_programt::const_targett t=*t_it;
     if(t!=goto_program.instructions.end())
       this->add_edge(entry, entry_map[t]);
+  }
 }
 
 /*******************************************************************\
@@ -324,9 +333,15 @@ void concurrent_cfg_baset<T, P, I>::compute_edges_start_thread(
     next_PC,
     entry);
 
-  for(const auto &t : instruction.targets)
+  for(goto_programt::instructiont::targetst::const_iterator
+      t_it=instruction.targets.begin();
+      t_it!=instruction.targets.end();
+      t_it++)
+  {
+    goto_programt::const_targett t=*t_it;
     if(t!=goto_program.instructions.end())
       this->add_edge(entry, this->entry_map[t]);
+  }
 }
 
 /*******************************************************************\
@@ -386,7 +401,7 @@ void cfg_baset<T, P, I>::compute_edges_function_call(
     {
       // empty function
       this->add_edge(entry, entry_map[next_PC]);
-    }
+    }        
   }
   else if(next_PC!=goto_program.instructions.end())
     this->add_edge(entry, entry_map[next_PC]);
@@ -552,4 +567,4 @@ void cfg_baset<T, P, I>::compute_edges(
       compute_edges(goto_functions, it->second.body);
 }
 
-#endif // CPROVER_GOTO_PROGRAMS_CFG_H
+#endif

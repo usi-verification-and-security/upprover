@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_INVARIANT_OPTIONS_INVARIANT_PROGRAM_H
-#define CPROVER_CEGIS_INVARIANT_OPTIONS_INVARIANT_PROGRAM_H
+#ifndef CEGIS_INVARIANT_PROGRAM_H_
+#define CEGIS_INVARIANT_PROGRAM_H_
 
 #include <goto-programs/goto_functions.h>
 
@@ -145,4 +145,4 @@ public:
   virtual invariant_loopt &add_loop() = 0;
 };
 
-#endif // CPROVER_CEGIS_INVARIANT_OPTIONS_INVARIANT_PROGRAM_H
+#endif /* CEGIS_INVARIANT_PROGRAM_H_ */

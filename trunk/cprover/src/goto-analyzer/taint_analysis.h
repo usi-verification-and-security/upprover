@@ -6,19 +6,20 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_ANALYZER_TAINT_ANALYSIS_H
-#define CPROVER_GOTO_ANALYZER_TAINT_ANALYSIS_H
+#ifndef CPROVER_TAINT_ANALYSIS_H
+#define CPROVER_TAINT_ANALYSIS_H
 
 #include <util/message.h>
 #include <util/namespace.h>
 
-#include <goto-programs/goto_model.h>
+#include <goto-programs/goto_functions.h>
 
 bool taint_analysis(
-  goto_modelt &,
+  goto_functionst &,
+  const namespacet &,
   const std::string &taint_file_name,
   message_handlert &,
   bool show_full,
-  const std::string &json_file_name);
+  bool json);
 
-#endif // CPROVER_GOTO_ANALYZER_TAINT_ANALYSIS_H
+#endif

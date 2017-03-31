@@ -8,6 +8,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
+#include <util/i2string.h>
 #include <util/cprover_prefix.h>
 #include <util/expr_util.h>
 #include <util/prefix.h>
@@ -57,18 +58,20 @@ Function: goto_convertt::finish_gotos
 
 \*******************************************************************/
 
-void goto_convertt::finish_gotos(goto_programt &dest)
+void goto_convertt::finish_gotos()
 {
-  for(const auto &g_it : targets.gotos)
+  for(gotost::const_iterator it=targets.gotos.begin();
+      it!=targets.gotos.end();
+      it++)
   {
-    goto_programt::instructiont &i=*(g_it.first);
-
+    goto_programt::instructiont &i=**it;
+    
     if(i.code.get_statement()=="non-deterministic-goto")
     {
       const irept &destinations=i.code.find("destinations");
 
       i.make_goto();
-
+      
       forall_irep(it, destinations.get_sub())
       {
         labelst::const_iterator l_it=
@@ -76,12 +79,13 @@ void goto_convertt::finish_gotos(goto_programt &dest)
 
         if(l_it==targets.labels.end())
         {
-          error().source_location=i.code.find_source_location();
-          error() << "goto label `" << it->id() << "' not found" << eom;
+          err_location(i.code);
+          str << "goto label `" << it->id_string() << "' not found";
+          error_msg();
           throw 0;
         }
-
-        i.targets.push_back(l_it->second.first);
+          
+        i.targets.push_back(l_it->second);
       }
     }
     else if(i.is_start_thread())
@@ -93,12 +97,13 @@ void goto_convertt::finish_gotos(goto_programt &dest)
 
       if(l_it==targets.labels.end())
       {
-        error().source_location=i.code.find_source_location();
-        error() << "goto label `" << goto_label << "' not found" << eom;
+        err_location(i.code);
+        str << "goto label `" << goto_label << "' not found";
+        error_msg();
         throw 0;
       }
 
-      i.targets.push_back(l_it->second.first);
+      i.targets.push_back(l_it->second);
     }
     else if(i.code.get_statement()==ID_goto)
     {
@@ -108,64 +113,22 @@ void goto_convertt::finish_gotos(goto_programt &dest)
 
       if(l_it==targets.labels.end())
       {
-        error().source_location=i.code.find_source_location();
-        error() << "goto label `" << goto_label << "' not found" << eom;
+        err_location(i.code);
+        str << "goto label `" << goto_label << "' not found";
+        error_msg();
         throw 0;
       }
 
       i.targets.clear();
-      i.targets.push_back(l_it->second.first);
-
-      // If the goto recorded a destructor stack, execute as much as is
-      // appropriate for however many automatic variables leave scope.
-      // We don't currently handle variables *entering* scope, which is illegal
-      // for C++ non-pod types and impossible in Java in any case.
-      auto goto_stack=g_it.second;
-      const auto &label_stack=l_it->second.second;
-      bool stack_is_prefix=true;
-      if(label_stack.size()>goto_stack.size())
-        stack_is_prefix=false;
-      for(unsigned i=0, ilim=label_stack.size();
-          i!=ilim && stack_is_prefix;
-          ++i)
-      {
-        if(goto_stack[i]!=label_stack[i])
-          stack_is_prefix=false;
-      }
-
-      if(!stack_is_prefix)
-      {
-        warning() << "Encountered goto (" << goto_label <<
-          ") that enters one or more lexical blocks;" <<
-          "omitting constructors and destructors." << eom;
-      }
-      else
-      {
-        auto unwind_to_size=label_stack.size();
-        if(unwind_to_size<goto_stack.size())
-        {
-          status() << "Adding goto-destructor code on jump to " <<
-            goto_label << eom;
-          goto_programt destructor_code;
-          unwind_destructor_stack(
-            i.code.add_source_location(),
-            unwind_to_size,
-            destructor_code,
-            goto_stack);
-          dest.destructive_insert(g_it.first, destructor_code);
-          // This should leave iterators intact, as long as
-          // goto_programt::instructionst is std::list.
-        }
-      }
+      i.targets.push_back(l_it->second);
     }
     else
     {
-      error().source_location=i.code.find_source_location();
-      error() << "finish_gotos: unexpected goto" << eom;
-      throw 0;
+      err_location(i.code);
+      throw "finish_gotos: unexpected goto";
     }
   }
-
+  
   targets.gotos.clear();
 }
 
@@ -183,85 +146,47 @@ Function: goto_convertt::finish_computed_gotos
 
 void goto_convertt::finish_computed_gotos(goto_programt &goto_program)
 {
-  for(auto &g_it : targets.computed_gotos)
+  for(computed_gotost::const_iterator
+      g_it=targets.computed_gotos.begin();
+      g_it!=targets.computed_gotos.end();
+      g_it++)
   {
-    goto_programt::instructiont &i=*g_it;
+    goto_programt::instructiont &i=**g_it;
     exprt destination=i.code.op0();
-
+    
     assert(destination.id()==ID_dereference);
     assert(destination.operands().size()==1);
-
+    
     exprt pointer=destination.op0();
 
     // remember the expression for later checks
     i.type=OTHER;
     i.code=code_expressiont(pointer);
-
+    
     // insert huge case-split
-    for(const auto &label : targets.labels)
+    for(labelst::const_iterator
+        l_it=targets.labels.begin();
+        l_it!=targets.labels.end();
+        l_it++)
     {
       exprt label_expr(ID_label, empty_typet());
-      label_expr.set(ID_identifier, label.first);
+      label_expr.set(ID_identifier, l_it->first);
 
       equal_exprt guard;
-
+      
       guard.lhs()=pointer;
       guard.rhs()=address_of_exprt(label_expr);
-
+    
       goto_programt::targett t=
-        goto_program.insert_after(g_it);
+        goto_program.insert_after(*g_it);
 
-      t->make_goto(label.second.first);
+      t->make_goto(l_it->second);
       t->source_location=i.source_location;
       t->guard=guard;
     }
   }
-
+  
   targets.computed_gotos.clear();
-}
-
-/*******************************************************************\
-
-Function: goto_convertt::finish_guarded_gotos
-
-  Inputs: Destination goto program
-
- Outputs:
-
- Purpose: For each if(x) goto z; goto y; z: emitted,
-          see if any destructor statements were inserted
-          between goto z and z, and if not, simplify into
-          if(!x) goto y;
-
-\*******************************************************************/
-
-void goto_convertt::finish_guarded_gotos(goto_programt &dest)
-{
-  for(auto &gg : guarded_gotos)
-  {
-    // Check if any destructor code has been inserted:
-    bool destructor_present=false;
-    for(auto it=gg.ifiter;
-        it!=gg.gotoiter && !destructor_present;
-        ++it)
-    {
-      if(!(it->is_goto() || it->is_skip()))
-        destructor_present=true;
-    }
-
-    // If so, can't simplify.
-    if(destructor_present)
-      continue;
-
-    // Simplify: remove whatever code was generated for the condition
-    // and attach the original guard to the goto instruction.
-    gg.gotoiter->guard=gg.guard;
-    // goto_programt doesn't provide an erase operation,
-    // perhaps for a good reason, so let's be cautious and just
-    // flatten the un-needed instructions into skips.
-    for(auto it=gg.ifiter, itend=gg.gotoiter; it!=itend; ++it)
-      it->make_skip();
-  }
 }
 
 /*******************************************************************\
@@ -299,9 +224,8 @@ void goto_convertt::goto_convert_rec(
 {
   convert(code, dest);
 
-  finish_gotos(dest);
+  finish_gotos();
   finish_computed_gotos(dest);
-  finish_guarded_gotos(dest);
 }
 
 /*******************************************************************\
@@ -344,14 +268,13 @@ void goto_convertt::convert_label(
 {
   if(code.operands().size()!=1)
   {
-    error().source_location=code.find_source_location();
-    error() << "label statement expected to have one operand" << eom;
-    throw 0;
+    err_location(code);
+    throw "label statement expected to have one operand";
   }
-
+  
   // grab the label
   const irep_idt &label=code.get_label();
-
+  
   goto_programt tmp;
 
   // magic thread creation label?
@@ -365,11 +288,12 @@ void goto_convertt::convert_label(
   }
   else
     convert(to_code(code.op0()), tmp);
-
+  
   goto_programt::targett target=tmp.instructions.begin();
   dest.destructive_append(tmp);
 
-  targets.labels.insert({label, {target, targets.destructor_stack}});
+  targets.labels.insert(std::pair<irep_idt, goto_programt::targett>
+                        (label, target));
   target->labels.push_front(label);
 }
 
@@ -410,15 +334,13 @@ void goto_convertt::convert_switch_case(
 {
   if(code.operands().size()!=2)
   {
-    error().source_location=code.find_source_location();
-    error() << "switch-case statement expected to have two operands"
-            << eom;
-    throw 0;
+    err_location(code);
+    throw "switch-case statement expected to have two operands";
   }
-
+  
   goto_programt tmp;
   convert(code.code(), tmp);
-
+  
   goto_programt::targett target=tmp.instructions.begin();
   dest.destructive_append(tmp);
 
@@ -461,16 +383,14 @@ void goto_convertt::convert_gcc_switch_case_range(
 {
   if(code.operands().size()!=3)
   {
-    error().source_location=code.find_source_location();
-    error() << "GCC's switch-case-range statement expected to have "
-            << "three operands" << eom;
-    throw 0;
+    err_location(code);
+    throw "GCC's switch-case-range statement expected to have three operands";
   }
-
+  
   goto_programt tmp;
   convert(to_code(code.op2()), tmp);
-
-  // goto_programt::targett target=tmp.instructions.begin();
+  
+  //goto_programt::targett target=tmp.instructions.begin();
   dest.destructive_append(tmp);
 
   #if 0
@@ -504,8 +424,10 @@ void goto_convertt::convert(
   const codet &code,
   goto_programt &dest)
 {
-  const irep_idt &statement=code.get_statement();
+  std::size_t old_tmp_symbols_size=tmp_symbols.size();
 
+  const irep_idt &statement=code.get_statement();
+  
   if(statement==ID_block)
     convert_block(to_code_block(code), dest);
   else if(statement==ID_decl)
@@ -601,9 +523,10 @@ void goto_convertt::convert(
     simplify(assertion, ns);
     if(assertion.is_false())
     {
-      error().source_location=code.op0().find_source_location();
-      error() << "static assertion "
-              << get_string_constant(code.op1()) << eom;
+      err_location(code.op0());
+      str << "static assertion "
+          << get_string_constant(code.op1());
+      error_msg();
       throw 0;
     }
     else if(assertion.is_true())
@@ -624,12 +547,39 @@ void goto_convertt::convert(
   else
     copy(code, OTHER, dest);
 
+  kill_tmp_symbols(old_tmp_symbols_size, dest);
+
   // make sure dest is never empty
   if(dest.instructions.empty())
   {
     dest.add_instruction(SKIP);
     dest.instructions.back().code.make_nil();
     dest.instructions.back().source_location=code.source_location();
+  }
+}
+
+/*******************************************************************\
+
+Function: goto_convertt::kill_tmp_symbols
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void goto_convertt::kill_tmp_symbols(
+  std::size_t final_size,
+  goto_programt &dest)
+{
+  while(tmp_symbols.size()>final_size)
+  {
+    symbol_exprt symbol=tmp_symbols.back();
+    tmp_symbols.pop_back();
+    dest.add_instruction(DEAD);
+    dest.instructions.back().code=code_deadt(symbol);
   }
 }
 
@@ -653,24 +603,16 @@ void goto_convertt::convert_block(
 
   // this saves the size of the destructor stack
   std::size_t old_stack_size=targets.destructor_stack.size();
-
-  // now convert block
+  
+  // now convert block  
   forall_operands(it, code)
   {
     const codet &b_code=to_code(*it);
     convert(b_code, dest);
   }
 
-  // see if we need to do any destructors -- may have been processed
-  // in a prior break/continue/return already, don't create dead code
-  if(!dest.empty() &&
-     dest.instructions.back().is_goto() &&
-     dest.instructions.back().guard.is_true())
-  {
-    // don't do destructors when we are unreachable
-  }
-  else
-    unwind_destructor_stack(end_location, old_stack_size, dest);
+  // see if we need to do any destructors
+  unwind_destructor_stack(end_location, old_stack_size, dest);
 
   // remove those destructors
   targets.destructor_stack.resize(old_stack_size);
@@ -694,13 +636,12 @@ void goto_convertt::convert_expression(
 {
   if(code.operands().size()!=1)
   {
-    error().source_location=code.find_source_location();
-    error() << "expression statement takes one operand" << eom;
-    throw 0;
+    err_location(code);
+    throw "expression statement takes one operand";
   }
-
+  
   exprt expr=code.op0();
-
+  
   if(expr.id()==ID_if)
   {
     // We do a special treatment for c?t:f
@@ -719,7 +660,7 @@ void goto_convertt::convert_expression(
   {
     clean_expr(expr, dest, false); // result _not_ used
 
-    // Any residual expression?
+    // Any residual expression? 
     // We keep it to add checks later.
     if(expr.is_not_nil())
     {
@@ -748,18 +689,17 @@ void goto_convertt::convert_decl(
   goto_programt &dest)
 {
   const exprt &op0=code.op0();
-
+    
   if(op0.id()!=ID_symbol)
   {
-    error().source_location=op0.find_source_location();
-    error() << "decl statement expects symbol as first operand" << eom;
-    throw 0;
+    err_location(op0);
+    throw "decl statement expects symbol as first operand";
   }
 
   const irep_idt &identifier=op0.get(ID_identifier);
-
+  
   const symbolt &symbol=lookup(identifier);
-
+  
   if(symbol.is_static_lifetime ||
      symbol.type.id()==ID_code)
     return; // this is a SKIP!
@@ -772,11 +712,11 @@ void goto_convertt::convert_decl(
   {
     // this is expected to go away
     exprt initializer;
-
+  
     codet tmp=code;
     initializer=code.op1();
     tmp.operands().resize(1);
-
+    
     // Break up into decl and assignment.
     // Decl must be visible before initializer.
     copy(tmp, DECL, dest);
@@ -857,11 +797,10 @@ void goto_convertt::convert_assign(
   {
     if(rhs.operands().size()!=2)
     {
-      error().source_location=rhs.find_source_location();
-      error() << "function_call sideeffect takes two operands" << eom;
-      throw 0;
+      err_location(rhs);
+      throw "function_call sideeffect takes two operands";
     }
-
+  
     Forall_operands(it, rhs)
       clean_expr(*it, dest);
 
@@ -908,7 +847,7 @@ void goto_convertt::convert_assign(
   else
   {
     clean_expr(rhs, dest);
-
+    
     if(lhs.id()==ID_typecast)
     {
       assert(lhs.operands().size()==1);
@@ -917,9 +856,9 @@ void goto_convertt::convert_assign(
       exprt new_rhs=rhs;
       rhs.make_typecast(lhs.op0().type());
 
-      // remove typecast from lhs
+      // remove typecast from lhs      
       exprt tmp=lhs.op0();
-      lhs.swap(tmp);
+      lhs.swap(tmp);      
     }
 
     code_assignt new_assign(code);
@@ -948,11 +887,10 @@ void goto_convertt::convert_init(
 {
   if(code.operands().size()!=2)
   {
-    error().source_location=code.find_source_location();
-    error() <<"init statement takes two operands" << eom;
-    throw 0;
+    err_location(code);
+    throw "init statement takes two operands";
   }
-
+  
   // make it an assignment
   codet assignment=code;
   assignment.set_statement(ID_assign);
@@ -978,40 +916,40 @@ void goto_convertt::convert_cpp_delete(
 {
   if(code.operands().size()!=1)
   {
-    error().source_location=code.find_source_location();
-    error() << "cpp_delete statement takes one operand" << eom;
-    throw 0;
+    err_location(code);
+    throw "cpp_delete statement takes one operand";
   }
-
+  
   exprt tmp_op=code.op0();
-
+  
   clean_expr(tmp_op, dest);
-
+  
   // we call the destructor, and then free
   const exprt &destructor=
     static_cast<const exprt &>(code.find(ID_destructor));
-
+    
   irep_idt delete_identifier;
-
+  
   if(code.get_statement()==ID_cpp_delete_array)
     delete_identifier="__delete_array";
   else if(code.get_statement()==ID_cpp_delete)
     delete_identifier="__delete";
   else
     assert(false);
-
+  
   if(destructor.is_not_nil())
   {
     if(code.get_statement()==ID_cpp_delete_array)
     {
       // build loop
+
     }
     else if(code.get_statement()==ID_cpp_delete)
     {
       // just one object
       exprt deref_op(ID_dereference, tmp_op.type().subtype());
       deref_op.copy_to_operands(tmp_op);
-
+      
       codet tmp_code=to_code(destructor);
       replace_new_object(deref_op, tmp_code);
       convert(tmp_code, dest);
@@ -1019,22 +957,22 @@ void goto_convertt::convert_cpp_delete(
     else
       assert(false);
   }
-
+  
   // now do "free"
   exprt delete_symbol=ns.lookup(delete_identifier).symbol_expr();
-
+  
   assert(to_code_type(delete_symbol.type()).parameters().size()==1);
 
   typet arg_type=
     to_code_type(delete_symbol.type()).parameters().front().type();
-
+  
   code_function_callt delete_call;
   delete_call.function()=delete_symbol;
   delete_call.arguments().push_back(typecast_exprt(tmp_op, arg_type));
   delete_call.lhs().make_nil();
   delete_call.add_source_location()=code.source_location();
-
-  convert(delete_call, dest);
+  
+  convert(delete_call, dest);  
 }
 
 /*******************************************************************\
@@ -1056,7 +994,7 @@ void goto_convertt::convert_assert(
   exprt cond=code.assertion();
 
   clean_expr(cond, dest);
-
+  
   goto_programt::targett t=dest.add_instruction(ASSERT);
   t->guard.swap(cond);
   t->source_location=code.source_location();
@@ -1087,7 +1025,7 @@ void goto_convertt::convert_skip(
 
 /*******************************************************************\
 
-Function: goto_convertt::convert_assume
+Function: goto_convertt::convert_assert
 
   Inputs:
 
@@ -1112,41 +1050,6 @@ void goto_convertt::convert_assume(
 
 /*******************************************************************\
 
-Function: goto_convertt::convert_loop_invariant
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void goto_convertt::convert_loop_invariant(
-  const codet &code,
-  goto_programt::targett loop)
-{
-  exprt invariant=
-    static_cast<const exprt&>(code.find(ID_C_spec_loop_invariant));
-
-  if(invariant.is_nil())
-    return;
-
-  goto_programt no_sideeffects;
-  clean_expr(invariant, no_sideeffects);
-  if(!no_sideeffects.instructions.empty())
-  {
-    error().source_location=code.find_source_location();
-    error() << "loop invariant is not side-effect free" << eom;
-    throw 0;
-  }
-
-  assert(loop->is_goto());
-  loop->guard.add(ID_C_spec_loop_invariant).swap(invariant);
-}
-
-/*******************************************************************\
-
 Function: goto_convertt::convert_for
 
   Inputs:
@@ -1165,7 +1068,7 @@ void goto_convertt::convert_for(
   //  A; while(c) { P; B; }
   //-----------------------------
   //    A;
-  // u: sideeffects in c
+  // u: sideeffects in c 
   // v: if(!c) goto z;
   // w: P;
   // x: B;               <-- continue target
@@ -1175,7 +1078,7 @@ void goto_convertt::convert_for(
   // A;
   if(code.init().is_not_nil())
     convert(to_code(code.init()), dest);
-
+    
   exprt cond=code.cond();
 
   goto_programt sideeffects;
@@ -1190,7 +1093,7 @@ void goto_convertt::convert_for(
   // do the v label
   goto_programt tmp_v;
   goto_programt::targett v=tmp_v.add_instruction();
-
+  
   // do the z label
   goto_programt tmp_z;
   goto_programt::targett z=tmp_z.add_instruction(SKIP);
@@ -1198,7 +1101,7 @@ void goto_convertt::convert_for(
 
   // do the x label
   goto_programt tmp_x;
-
+  
   if(code.op2().is_nil())
   {
     tmp_x.add_instruction(SKIP);
@@ -1216,7 +1119,7 @@ void goto_convertt::convert_for(
       tmp_x.instructions.back().source_location=code.source_location();
     }
   }
-
+  
   // optimize the v label
   if(sideeffects.instructions.empty())
     u=v;
@@ -1234,16 +1137,13 @@ void goto_convertt::convert_for(
   // do the w label
   goto_programt tmp_w;
   convert(code.body(), tmp_w);
-
+  
   // y: goto u;
   goto_programt tmp_y;
   goto_programt::targett y=tmp_y.add_instruction();
   y->make_goto(u);
   y->guard=true_exprt();
   y->source_location=code.source_location();
-
-  // loop invariant
-  convert_loop_invariant(code, y);
 
   dest.destructive_append(sideeffects);
   dest.destructive_append(tmp_v);
@@ -1293,8 +1193,7 @@ void goto_convertt::convert_while(
   z->source_location=source_location;
 
   goto_programt tmp_branch;
-  generate_conditional_branch(
-    boolean_negate(cond), z, source_location, tmp_branch);
+  generate_conditional_branch(boolean_negate(cond), z, source_location, tmp_branch);
 
   // do the v label
   goto_programt::targett v=tmp_branch.instructions.begin();
@@ -1315,9 +1214,6 @@ void goto_convertt::convert_while(
   y->make_goto(v);
   y->guard=true_exprt();
   y->source_location=code.source_location();
-
-  // loop invariant
-  convert_loop_invariant(code, y);
 
   dest.destructive_append(tmp_branch);
   dest.destructive_append(tmp_x);
@@ -1346,18 +1242,17 @@ void goto_convertt::convert_dowhile(
 {
   if(code.operands().size()!=2)
   {
-    error().source_location=code.find_source_location();
-    error() << "dowhile takes two operands" << eom;
-    throw 0;
+    err_location(code);
+    throw "dowhile takes two operands";
   }
 
-  // save source location
+  // save source location  
   source_locationt condition_location=code.op0().find_source_location();
 
   exprt cond=code.op0();
 
   goto_programt sideeffects;
-  clean_expr(cond, sideeffects);
+  clean_expr(cond, sideeffects);  
 
   //    do P while(c);
   //--------------------
@@ -1399,9 +1294,6 @@ void goto_convertt::convert_dowhile(
   y->make_goto(w);
   y->guard=cond;
   y->source_location=condition_location;
-
-  // loop invariant
-  convert_loop_invariant(code, y);
 
   dest.destructive_append(tmp_w);
   dest.destructive_append(sideeffects);
@@ -1447,7 +1339,7 @@ exprt goto_convertt::case_guard(
     tmp.swap(dest.op0());
     dest.swap(tmp);
   }
-
+  
   return dest;
 }
 
@@ -1484,11 +1376,10 @@ void goto_convertt::convert_switch(
 
   if(code.operands().size()<2)
   {
-    error().source_location=code.find_source_location();
-    error() << "switch takes at least two operands" << eom;
-    throw 0;
+    err_location(code);
+    throw "switch takes at least two operands";
   }
-
+  
   exprt argument=code.value();
 
   goto_programt sideeffects;
@@ -1517,16 +1408,18 @@ void goto_convertt::convert_switch(
 
   goto_programt tmp_cases;
 
-  for(auto &case_pair : targets.cases)
+  for(casest::iterator it=targets.cases.begin();
+      it!=targets.cases.end();
+      it++)
   {
-    const caset &case_ops=case_pair.second;
-
-    assert(!case_ops.empty());
-
+    const caset &case_ops=it->second;
+  
+    assert(!case_ops.empty());    
+  
     exprt guard_expr=case_guard(argument, case_ops);
 
     goto_programt::targett x=tmp_cases.add_instruction();
-    x->make_goto(case_pair.first);
+    x->make_goto(it->first);
     x->guard.swap(guard_expr);
     x->source_location=case_ops.front().find_source_location();
   }
@@ -1564,14 +1457,12 @@ void goto_convertt::convert_break(
 {
   if(!targets.break_set)
   {
-    error().source_location=code.find_source_location();
-    error() << "break without target" << eom;
-    throw 0;
+    err_location(code);
+    throw "break without target";
   }
 
   // need to process destructor stack
-  unwind_destructor_stack(
-    code.source_location(), targets.break_stack_size, dest);
+  unwind_destructor_stack(code.source_location(), targets.break_stack_size, dest);
 
   // add goto
   goto_programt::targett t=dest.add_instruction();
@@ -1597,42 +1488,39 @@ void goto_convertt::convert_return(
 {
   if(!targets.return_set)
   {
-    error().source_location=code.find_source_location();
-    error() << "return without target" << eom;
-    throw 0;
+    err_location(code);
+    throw "return without target";
   }
 
   if(!code.operands().empty() &&
      code.operands().size()!=1)
   {
-    error().source_location=code.find_source_location();
-    error() << "return takes none or one operand" << eom;
-    throw 0;
+    err_location(code);
+    throw "return takes none or one operand";
   }
-
+  
   code_returnt new_code(code);
-
+  
   if(new_code.has_return_value())
   {
     bool result_is_used=
       new_code.return_value().type().id()!=ID_empty;
-
+  
     goto_programt sideeffects;
     clean_expr(new_code.return_value(), sideeffects, result_is_used);
     dest.destructive_append(sideeffects);
 
     // remove void-typed return value
     if(!result_is_used)
-      new_code.return_value().make_nil();
+      new_code.operands().resize(0);    
   }
 
   if(targets.has_return_value)
   {
     if(!new_code.has_return_value())
     {
-      error().source_location=new_code.find_source_location();
-      error() << "function must return value" << eom;
-      throw 0;
+      err_location(new_code);
+      throw "function must return value";
     }
 
     // Now add a return node to set the return value.
@@ -1646,15 +1534,14 @@ void goto_convertt::convert_return(
     if(new_code.has_return_value() &&
        new_code.return_value().type().id()!=ID_empty)
     {
-      error().source_location=new_code.find_source_location();
-      error() << "function must not return value" << eom;
-      throw 0;
+      err_location(new_code);
+      throw "function must not return value";
     }
   }
-
+  
   // Need to process _entire_ destructor stack.
   unwind_destructor_stack(code.source_location(), 0, dest);
-
+  
   // add goto to end-of-function
   goto_programt::targett t=dest.add_instruction();
   t->make_goto(targets.return_target, true_exprt());
@@ -1679,14 +1566,12 @@ void goto_convertt::convert_continue(
 {
   if(!targets.continue_set)
   {
-    error().source_location=code.find_source_location();
-    error() << "continue without target" << eom;
-    throw 0;
+    err_location(code);
+    throw "continue without target";
   }
 
   // need to process destructor stack
-  unwind_destructor_stack(
-    code.source_location(), targets.continue_stack_size, dest);
+  unwind_destructor_stack(code.source_location(), targets.continue_stack_size, dest);
 
   // add goto
   goto_programt::targett t=dest.add_instruction();
@@ -1716,7 +1601,7 @@ void goto_convertt::convert_goto(
   t->code=code;
 
   // remember it to do target later
-  targets.gotos.push_back(std::make_pair(t, targets.destructor_stack));
+  targets.gotos.push_back(t);
 }
 
 /*******************************************************************\
@@ -1824,9 +1709,8 @@ void goto_convertt::convert_specc_event(
   }
   else
   {
-    error().source_location=op.find_source_location();
-    error() << "convert_convert_event got " << op.id() << eom;
-    throw 0;
+    err_location(op);
+    throw "convert_convert_event got "+op.id_string();
   }
 }
 
@@ -1848,12 +1732,11 @@ void goto_convertt::convert_specc_wait(
 {
   #if 0
   goto_programt::targett t=dest.add_instruction(WAIT);
-
+  
   if(code.operands().size()!=1)
   {
-    error().source_location=code.find_source_location();
-    error() << "specc_wait expects one operand" << eom;
-    throw 0;
+    err_location(code);
+    throw "specc_wait expects one operand";
   }
 
   const exprt &op=code.op0();
@@ -1907,23 +1790,22 @@ void goto_convertt::convert_start_thread(
 {
   if(code.operands().size()!=1)
   {
-    error().source_location=code.find_source_location();
-    error() << "start_thread expects one operand" << eom;
-    throw 0;
+    err_location(code);
+    throw "start_thread expects one operand";
   }
 
   goto_programt::targett start_thread=
     dest.add_instruction(START_THREAD);
 
   start_thread->source_location=code.source_location();
-
+  
   {
     // start_thread label;
     // goto tmp;
     // label: op0-code
     // end_thread
     // tmp: skip
-
+    
     goto_programt::targett goto_instruction=dest.add_instruction(GOTO);
     goto_instruction->guard=true_exprt();
     goto_instruction->source_location=code.source_location();
@@ -1932,7 +1814,7 @@ void goto_convertt::convert_start_thread(
     convert(to_code(code.op0()), tmp);
     goto_programt::targett end_thread=tmp.add_instruction(END_THREAD);
     end_thread->source_location=code.source_location();
-
+    
     start_thread->targets.push_back(tmp.instructions.begin());
     dest.destructive_append(tmp);
     goto_instruction->targets.push_back(dest.add_instruction(SKIP));
@@ -1958,9 +1840,8 @@ void goto_convertt::convert_end_thread(
 {
   if(!code.operands().empty())
   {
-    error().source_location=code.find_source_location();
-    error() << "end_thread expects no operands" << eom;
-    throw 0;
+    err_location(code);
+    throw "end_thread expects no operands";
   }
 
   copy(code, END_THREAD, dest);
@@ -1984,9 +1865,8 @@ void goto_convertt::convert_atomic_begin(
 {
   if(!code.operands().empty())
   {
-    error().source_location=code.find_source_location();
-    error() << "atomic_begin expects no operands" << eom;
-    throw 0;
+    err_location(code);
+    throw "atomic_begin expects no operands";
   }
 
   copy(code, ATOMIC_BEGIN, dest);
@@ -2010,9 +1890,8 @@ void goto_convertt::convert_atomic_end(
 {
   if(!code.operands().empty())
   {
-    error().source_location=code.find_source_location();
-    error() << "atomic_end expects no operands" << eom;
-    throw 0;
+    err_location(code);
+    throw "atomic_end expects no operands";
   }
 
   copy(code, ATOMIC_END, dest);
@@ -2036,11 +1915,12 @@ void goto_convertt::convert_bp_enforce(
 {
   if(code.operands().size()!=2)
   {
-    error().source_location=code.find_source_location();
-    error() << "bp_enfroce expects two arguments" << eom;
+    err_location(code);
+    str << "bp_enfroce expects two arguments";
+    error_msg();
     throw 0;
   }
-
+    
   // do an assume
   exprt op=code.op0();
 
@@ -2051,15 +1931,15 @@ void goto_convertt::convert_bp_enforce(
   t->source_location=code.source_location();
 
   // change the assignments
-
+  
   goto_programt tmp;
   convert(to_code(code.op1()), tmp);
-
+  
   if(!op.is_true())
   {
     exprt constraint(op);
     make_next_state(constraint);
-
+  
     Forall_goto_program_instructions(it, tmp)
     {
       if(it->is_assign())
@@ -2085,7 +1965,7 @@ void goto_convertt::convert_bp_enforce(
       }
     }
   }
-
+  
   dest.destructive_append(tmp);
 }
 
@@ -2107,16 +1987,15 @@ void goto_convertt::convert_bp_abortif(
 {
   if(code.operands().size()!=1)
   {
-    error().source_location=code.find_source_location();
-    error() << "bp_abortif expects one argument" << eom;
-    throw 0;
+    err_location(code);
+    throw "bp_abortif expects one argument";
   }
-
+    
   // do an assert
   exprt op=code.op0();
 
   clean_expr(op, dest);
-
+  
   op.make_not();
 
   goto_programt::targett t=dest.add_instruction(ASSERT);
@@ -2142,13 +2021,12 @@ void goto_convertt::convert_ifthenelse(
 {
   if(code.operands().size()!=3)
   {
-    error().source_location=code.find_source_location();
-    error() << "ifthenelse takes three operands" << eom;
-    throw 0;
+    err_location(code);
+    throw "ifthenelse takes three operands";
   }
-
+  
   assert(code.then_case().is_not_nil());
-
+  
   bool has_else=
     !code.else_case().is_nil();
 
@@ -2218,24 +2096,6 @@ void goto_convertt::collect_operands(
 
 /*******************************************************************\
 
-Function: is_size_one
-
-  Inputs: Goto program 'g'
-
- Outputs: True if 'g' has one instruction
-
- Purpose: This is (believed to be) faster than using std::list.size
-
-\*******************************************************************/
-
-static inline bool is_size_one(const goto_programt &g)
-{
-  return (!g.instructions.empty()) &&
-    ++g.instructions.begin()==g.instructions.end();
-}
-
-/*******************************************************************\
-
 Function: goto_convertt::generate_ifthenelse
 
   Inputs:
@@ -2255,37 +2115,26 @@ void goto_convertt::generate_ifthenelse(
 {
   if(is_empty(true_case) &&
      is_empty(false_case))
-  {
-    // hmpf. Useless branch.
-    goto_programt tmp_z;
-    goto_programt::targett z=tmp_z.add_instruction();
-    z->make_skip();
-    goto_programt::targett v=dest.add_instruction();
-    v->make_goto(z, guard);
-    v->source_location=source_location;
-    dest.destructive_append(tmp_z);
     return;
-  }
-
-  bool is_guarded_goto=false;
 
   // do guarded gotos directly
   if(is_empty(false_case) &&
-     is_size_one(true_case) &&
+     // true_case.instructions.size()==1 optimised
+     !true_case.instructions.empty() &&
+     ++true_case.instructions.begin()==true_case.instructions.end() &&
      true_case.instructions.back().is_goto() &&
      true_case.instructions.back().guard.is_true() &&
      true_case.instructions.back().labels.empty())
   {
     // The above conjunction deliberately excludes the instance
     // if(some) { label: goto somewhere; }
-    // Don't perform the transformation here, as code might get inserted into
-    // the true case to perform destructors.
-    // This will be attempted in finish_guarded_gotos.
-    is_guarded_goto=true;
+    true_case.instructions.back().guard=guard;
+    dest.destructive_append(true_case);
+    return;
   }
-
+  
   // similarly, do guarded assertions directly
-  if(is_size_one(true_case) &&
+  if(true_case.instructions.size()==1 &&
      true_case.instructions.back().is_assert() &&
      true_case.instructions.back().guard.is_false() &&
      true_case.instructions.back().labels.empty())
@@ -2298,7 +2147,7 @@ void goto_convertt::generate_ifthenelse(
   }
 
   // similarly, do guarded assertions directly
-  if(is_size_one(false_case) &&
+  if(false_case.instructions.size()==1 &&
      false_case.instructions.back().is_assert() &&
      false_case.instructions.back().guard.is_false() &&
      false_case.instructions.back().labels.empty())
@@ -2339,8 +2188,7 @@ void goto_convertt::generate_ifthenelse(
   goto_programt tmp_z;
   goto_programt::targett z=tmp_z.add_instruction();
   z->make_skip();
-  // We deliberately don't set a location for 'z', it's a dummy
-  // target.
+  z->source_location=source_location;
 
   // y: Q;
   goto_programt tmp_y;
@@ -2364,15 +2212,6 @@ void goto_convertt::generate_ifthenelse(
   x->make_goto(z);
   assert(!tmp_w.instructions.empty());
   x->source_location=tmp_w.instructions.back().source_location;
-
-  // See if we can simplify this guarded goto later.
-  // Note this depends on the fact that `instructions` is a std::list
-  // and so goto-program-destructive-append preserves iterator validity.
-  if(is_guarded_goto)
-    guarded_gotos.push_back({ // NOLINT(whitespace/braces)
-      tmp_v.instructions.begin(),
-      tmp_w.instructions.begin(),
-      guard});
 
   dest.destructive_append(tmp_v);
   dest.destructive_append(tmp_w);
@@ -2401,12 +2240,11 @@ Function: goto_convertt::generate_conditional_branch
 static bool has_and_or(const exprt &expr)
 {
   forall_operands(it, expr)
-    if(has_and_or(*it))
-      return true;
+    if(has_and_or(*it)) return true;
 
   if(expr.id()==ID_and || expr.id()==ID_or)
     return true;
-
+    
   return false;
 }
 
@@ -2427,10 +2265,10 @@ void goto_convertt::generate_conditional_branch(
     goto_programt::targett target_false=tmp.add_instruction();
     target_false->make_skip();
     target_false->source_location=source_location;
-
+    
     generate_conditional_branch(
       guard, target_true, target_false, source_location, dest);
-
+    
     dest.destructive_append(tmp);
   }
   else
@@ -2438,7 +2276,7 @@ void goto_convertt::generate_conditional_branch(
     // simple branch
     exprt cond=guard;
     clean_expr(cond, dest);
-
+  
     goto_programt tmp;
     goto_programt::targett g=tmp.add_instruction();
     g->make_goto(target_true);
@@ -2484,10 +2322,10 @@ void goto_convertt::generate_conditional_branch(
     //    if(!a) goto target_false;
     //    if(!b) goto target_false;
     //    goto target_true;
-
+    
     std::list<exprt> op;
     collect_operands(guard, guard.id(), op);
-
+  
     forall_expr_list(it, op)
       generate_conditional_branch(
         boolean_negate(*it), target_false, source_location, dest);
@@ -2496,7 +2334,7 @@ void goto_convertt::generate_conditional_branch(
     t_true->make_goto(target_true);
     t_true->guard=true_exprt();
     t_true->source_location=source_location;
-
+    
     return;
   }
   else if(guard.id()==ID_or)
@@ -2510,7 +2348,7 @@ void goto_convertt::generate_conditional_branch(
 
     std::list<exprt> op;
     collect_operands(guard, guard.id(), op);
-
+  
     forall_expr_list(it, op)
       generate_conditional_branch(
         *it, target_true, source_location, dest);
@@ -2519,13 +2357,13 @@ void goto_convertt::generate_conditional_branch(
     t_false->make_goto(target_false);
     t_false->guard=true_exprt();
     t_false->source_location=guard.source_location();
-
+    
     return;
   }
 
   exprt cond=guard;
   clean_expr(cond, dest);
-
+  
   goto_programt::targett t_true=dest.add_instruction();
   t_true->make_goto(target_true);
   t_true->guard=cond;
@@ -2549,13 +2387,12 @@ Function: goto_convertt::get_string_constant
 
 \*******************************************************************/
 
-bool goto_convertt::get_string_constant(
-  const exprt &expr,
-  irep_idt &value)
+const irep_idt goto_convertt::get_string_constant(
+  const exprt &expr)
 {
   if(expr.id()==ID_typecast &&
      expr.operands().size()==1)
-    return get_string_constant(expr.op0(), value);
+    return get_string_constant(expr.op0());
 
   if(expr.id()==ID_address_of &&
      expr.operands().size()==1 &&
@@ -2564,58 +2401,35 @@ bool goto_convertt::get_string_constant(
   {
     exprt index_op=get_constant(expr.op0().op0());
     simplify(index_op, ns);
-
+    
     if(index_op.id()==ID_string_constant)
-      return value=index_op.get(ID_value), false;
+      return index_op.get(ID_value);
     else if(index_op.id()==ID_array)
     {
       std::string result;
       forall_operands(it, index_op)
         if(it->is_constant())
         {
-          unsigned long i=integer2ulong(
+          unsigned i=integer2long(
             binary2integer(id2string(to_constant_expr(*it).get_value()), true));
 
           if(i!=0) // to skip terminating 0
-            result+=static_cast<char>(i);
+            result+=char(i);
         }
-
-      return value=result, false;
+          
+      return result;
     }
   }
 
   if(expr.id()==ID_string_constant)
-    return value=expr.get(ID_value), false;
+    return expr.get(ID_value);
 
-  return true;
-}
+  err_location(expr);
+  str << "expected string constant, but got: "
+      << expr.pretty();
+  error_msg();
 
-/*******************************************************************\
-
-Function: goto_convertt::get_string_constant
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-irep_idt goto_convertt::get_string_constant(const exprt &expr)
-{
-  irep_idt result;
-
-  if(get_string_constant(expr, result))
-  {
-    error().source_location=expr.find_source_location();
-    error() << "expected string constant, but got: "
-      << expr.pretty() << eom;
-
-    throw 0;
-  }
-
-  return result;
+  throw 0;
 }
 
 /*******************************************************************\
@@ -2676,22 +2490,22 @@ symbolt &goto_convertt::new_tmp_symbol(
 {
   auxiliary_symbolt new_symbol;
   symbolt *symbol_ptr;
-
+  
   do
   {
-    new_symbol.base_name="tmp_"+suffix+"$"+std::to_string(++temporary_counter);
+    new_symbol.base_name="tmp_"+suffix+"$"+i2string(++temporary_counter);
     new_symbol.name=tmp_symbol_prefix+id2string(new_symbol.base_name);
-    new_symbol.type=type;
+    new_symbol.type=type;    
     new_symbol.location=source_location;
-  }
-  while(symbol_table.move(new_symbol, symbol_ptr));
+  } while(symbol_table.move(new_symbol, symbol_ptr));    
+  
+  tmp_symbols.push_back(symbol_ptr->symbol_expr());
+  
+  goto_programt::targett t=dest.add_instruction(DECL);
+  t->code=code_declt(symbol_ptr->symbol_expr());
+  t->source_location=source_location;
 
-  code_declt decl;
-  decl.symbol()=symbol_ptr->symbol_expr();
-  decl.add_source_location()=source_location;
-  convert_decl(decl, dest);
-
-  return *symbol_ptr;
+  return *symbol_ptr;  
 }
 
 /*******************************************************************\
@@ -2712,7 +2526,7 @@ void goto_convertt::make_temp_symbol(
   goto_programt &dest)
 {
   const source_locationt source_location=expr.find_source_location();
-
+  
   symbolt &new_symbol=
     new_tmp_symbol(expr.type(), suffix, dest, source_location);
 
@@ -2759,14 +2573,11 @@ Function: goto_convertt::lookup
 
 \*******************************************************************/
 
-const symbolt &goto_convertt::lookup(const irep_idt &identifier)
+const symbolt &goto_convertt::lookup(const irep_idt &identifier) const
 {
   const symbolt *symbol;
   if(ns.lookup(identifier, symbol))
-  {
-    error() << "failed to find symbol " << identifier << eom;
-    throw 0;
-  }
+    throw "failed to find symbol "+id2string(identifier);
   return *symbol;
 }
 
@@ -2794,24 +2605,26 @@ void goto_convert(
   {
     goto_convert.goto_convert(code, dest);
   }
-
+  
   catch(int)
   {
-    goto_convert.error();
-    throw 0;
+    goto_convert.error_msg();
   }
 
   catch(const char *e)
   {
-    goto_convert.error() << e << messaget::eom;
-    throw 0;
+    goto_convert.str << e;
+    goto_convert.error_msg();
   }
 
   catch(const std::string &e)
   {
-    goto_convert.error() << e << messaget::eom;
-    throw 0;
+    goto_convert.str << e;
+    goto_convert.error_msg();
   }
+
+  if(goto_convert.get_error_found())
+    throw 0;
 }
 
 /*******************************************************************\
@@ -2834,11 +2647,11 @@ void goto_convert(
   // find main symbol
   const symbol_tablet::symbolst::const_iterator s_it=
     symbol_table.symbols.find("main");
-
+  
   if(s_it==symbol_table.symbols.end())
     throw "failed to find main symbol";
-
+  
   const symbolt &symbol=s_it->second;
-
+  
   ::goto_convert(to_code(symbol.value), symbol_table, dest, message_handler);
 }

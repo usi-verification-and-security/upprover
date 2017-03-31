@@ -14,7 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 /*******************************************************************\
 
-Function: c_typecheck_baset::start_typecheck_code
+Function: c_typecheck_baset::init
 
   Inputs:
 
@@ -44,11 +44,7 @@ Function: c_typecheck_baset::typecheck_code
 void c_typecheck_baset::typecheck_code(codet &code)
 {
   if(code.id()!=ID_code)
-  {
-    err_location(code);
-    error() << "expected code, got " << code.pretty() << eom;
-    throw 0;
-  }
+    throw "expected code, got "+code.pretty();
 
   code.type()=code_typet();
 
@@ -64,9 +60,6 @@ void c_typecheck_baset::typecheck_code(codet &code)
     typecheck_gcc_switch_case_range(code);
   else if(statement==ID_block)
     typecheck_block(code);
-  else if(statement==ID_decl_block)
-  {
-  }
   else if(statement==ID_ifthenelse)
     typecheck_ifthenelse(to_code_ifthenelse(code));
   else if(statement==ID_while)
@@ -147,7 +140,7 @@ void c_typecheck_baset::typecheck_code(codet &code)
   else
   {
     err_location(code);
-    error() << "unexpected statement: " << statement << eom;
+    str << "unexpected statement: " << statement;
     throw 0;
   }
 }
@@ -167,22 +160,22 @@ Function: c_typecheck_baset::typecheck_asm
 void c_typecheck_baset::typecheck_asm(codet &code)
 {
   const irep_idt flavor=to_code_asm(code).get_flavor();
-
+  
   if(flavor==ID_gcc)
   {
     // These have 5 operands.
     // The first parameter is a string.
     // Parameters 1, 2, 3, 4 are lists of expressions.
-
+    
     // Parameter 1: OutputOperands
     // Parameter 2: InputOperands
     // Parameter 3: Clobbers
     // Parameter 4: GotoLabels
 
     assert(code.operands().size()==5);
-
+  
     typecheck_expr(code.op0());
-
+  
     for(unsigned i=1; i<code.operands().size(); i++)
     {
       exprt &list=code.operands()[i];
@@ -212,12 +205,7 @@ Function: c_typecheck_baset::typecheck_assign
 void c_typecheck_baset::typecheck_assign(codet &code)
 {
   if(code.operands().size()!=2)
-  {
-    err_location(code);
-    error() << "assignment statement expected to have two operands"
-            << eom;
-    throw 0;
-  }
+    throw "assignment statement expected to have two operands";
 
   typecheck_expr(code.op0());
   typecheck_expr(code.op1());
@@ -249,23 +237,22 @@ void c_typecheck_baset::typecheck_block(codet &code)
 
   Forall_operands(it1, code)
   {
-    if(it1->is_nil())
-      continue;
+    if(it1->is_nil()) continue;
 
     codet &code_op=to_code(*it1);
-
+  
     if(code_op.get_statement()==ID_label)
     {
       // these may be nested
       codet *code_ptr=&code_op;
-
+      
       while(code_ptr->get_statement()==ID_label)
       {
         assert(code_ptr->operands().size()==1);
         code_ptr=&to_code(code_ptr->op0());
       }
-
-      // codet &label_op=*code_ptr;
+      
+      //codet &label_op=*code_ptr;
 
       new_ops.move_to_operands(code_op);
     }
@@ -293,8 +280,7 @@ void c_typecheck_baset::typecheck_break(codet &code)
   if(!break_is_allowed)
   {
     err_location(code);
-    error() << "break not allowed here" << eom;
-    throw 0;
+    throw "break not allowed here";
   }
 }
 
@@ -315,8 +301,7 @@ void c_typecheck_baset::typecheck_continue(codet &code)
   if(!continue_is_allowed)
   {
     err_location(code);
-    error() << "continue not allowed here" << eom;
-    throw 0;
+    throw "continue not allowed here";
   }
 }
 
@@ -338,22 +323,19 @@ void c_typecheck_baset::typecheck_decl(codet &code)
   if(code.operands().size()!=1)
   {
     err_location(code);
-    error() << "decl expected to have 1 operand" << eom;
-    throw 0;
+    throw "decl expected to have 1 operand";
   }
 
   // op0 must be declaration
   if(code.op0().id()!=ID_declaration)
   {
     err_location(code);
-    error() << "decl statement expected to have declaration as operand"
-            << eom;
-    throw 0;
+    throw "decl statement expected to have declaration as operand";
   }
 
   ansi_c_declarationt declaration;
   declaration.swap(code.op0());
-
+  
   if(declaration.get_is_static_assert())
   {
     assert(declaration.operands().size()==2);
@@ -364,13 +346,13 @@ void c_typecheck_baset::typecheck_decl(codet &code)
     typecheck_code(code);
     return; // done
   }
-
+  
   typecheck_declaration(declaration);
-
+  
   std::list<codet> new_code;
-
+  
   // iterate over declarators
-
+  
   for(ansi_c_declarationt::declaratorst::const_iterator
       d_it=declaration.declarators().begin();
       d_it!=declaration.declarators().end();
@@ -385,24 +367,23 @@ void c_typecheck_baset::typecheck_decl(codet &code)
     if(s_it==symbol_table.symbols.end())
     {
       err_location(code);
-      error() << "failed to find decl symbol `" << identifier
-              << "' in symbol table" << eom;
+      str << "failed to find decl symbol `" << identifier
+          << "' in symbol table";
       throw 0;
     }
 
     symbolt &symbol=s_it->second;
-
-    // This must not be an incomplete type, unless it's 'extern'
+    
+    // This must not be an incomplete type, unless it's 'extern' 
     // or a typedef.
     if(!symbol.is_type &&
        !symbol.is_extern &&
        !is_complete_type(symbol.type))
     {
-      error().source_location=symbol.location;
-      error() << "incomplete type not permitted here" << eom;
-      throw 0;
+      err_location(symbol.location);
+      throw "incomplete type not permitted here";
     }
-
+  
     // see if it's a typedef
     // or a function
     // or static
@@ -418,21 +399,21 @@ void c_typecheck_baset::typecheck_decl(codet &code)
       code.add_source_location()=symbol.location;
       code.symbol()=symbol.symbol_expr();
       code.symbol().add_source_location()=symbol.location;
-
+      
       // add initializer, if any
       if(symbol.value.is_not_nil())
       {
         code.operands().resize(2);
-        code.op1()=symbol.value;
+        code.op1()=symbol.value; 
       }
-
+      
       new_code.push_back(code);
     }
   }
-
+  
   // stash away any side-effects in the declaration
   new_code.splice(new_code.begin(), clean_code);
-
+  
   if(new_code.empty())
   {
     source_locationt source_location=code.source_location();
@@ -471,8 +452,7 @@ bool c_typecheck_baset::is_complete_type(const typet &type) const
     return false;
   else if(type.id()==ID_array)
   {
-    if(to_array_type(type).size().is_nil())
-      return false;
+    if(to_array_type(type).size().is_nil()) return false;
     return is_complete_type(type.subtype());
   }
   else if(type.id()==ID_struct || type.id()==ID_union)
@@ -490,7 +470,7 @@ bool c_typecheck_baset::is_complete_type(const typet &type) const
     return is_complete_type(type.subtype());
   else if(type.id()==ID_symbol)
     return is_complete_type(follow(type));
-
+  
   return true;
 }
 
@@ -509,12 +489,7 @@ Function: c_typecheck_baset::typecheck_expression
 void c_typecheck_baset::typecheck_expression(codet &code)
 {
   if(code.operands().size()!=1)
-  {
-    err_location(code);
-    error() << "expression statement expected to have one operand"
-            << eom;
-    throw 0;
-  }
+    throw "expression statement expected to have one operand";
 
   exprt &op=code.op0();
   typecheck_expr(op);
@@ -535,12 +510,8 @@ Function: c_typecheck_baset::typecheck_for
 void c_typecheck_baset::typecheck_for(codet &code)
 {
   if(code.operands().size()!=4)
-  {
-    err_location(code);
-    error() << "for expected to have four operands" << eom;
-    throw 0;
-  }
-
+    throw "for expected to have four operands";
+    
   // the "for" statement has an implicit block around it,
   // since code.op0() may contain declarations
   //
@@ -600,17 +571,13 @@ void c_typecheck_baset::typecheck_for(codet &code)
     code_blockt code_block;
     code_block.add_source_location()=code.source_location();
     if(to_code(code.op3()).get_statement()==ID_block)
-    {
       code_block.set(
         ID_C_end_location,
         to_code_block(to_code(code.op3())).end_location());
-    }
     else
-    {
       code_block.set(
         ID_C_end_location,
-        code.op3().source_location());
-    }
+        code.op3().source_location());;
 
     code_block.reserve_operands(2);
     code_block.move_to_operands(code.op0());
@@ -619,8 +586,6 @@ void c_typecheck_baset::typecheck_for(codet &code)
     code.swap(code_block);
     typecheck_code(code); // recursive call
   }
-
-  typecheck_spec_expr(code, ID_C_spec_loop_invariant);
 }
 
 /*******************************************************************\
@@ -660,8 +625,7 @@ void c_typecheck_baset::typecheck_switch_case(code_switch_caset &code)
   if(code.operands().size()!=2)
   {
     err_location(code);
-    error() << "switch_case expected to have two operands" << eom;
-    throw 0;
+    throw "switch_case expected to have two operands";
   }
 
   typecheck_code(code.code());
@@ -671,8 +635,7 @@ void c_typecheck_baset::typecheck_switch_case(code_switch_caset &code)
     if(!case_is_allowed)
     {
       err_location(code);
-      error() << "did not expect default label here" << eom;
-      throw 0;
+      throw "did not expect default label here";
     }
   }
   else
@@ -680,10 +643,9 @@ void c_typecheck_baset::typecheck_switch_case(code_switch_caset &code)
     if(!case_is_allowed)
     {
       err_location(code);
-      error() << "did not expect `case' here" << eom;
-      throw 0;
+      throw "did not expect `case' here";
     }
-
+  
     exprt &case_expr=code.case_op();
     typecheck_expr(case_expr);
     implicit_typecast(case_expr, switch_op_type);
@@ -707,9 +669,7 @@ void c_typecheck_baset::typecheck_gcc_switch_case_range(codet &code)
   if(code.operands().size()!=3)
   {
     err_location(code);
-    error() << "gcc_switch_case_range expected to have three operands"
-            << eom;
-    throw 0;
+    throw "gcc_switch_case_range expected to have three operands";
   }
 
   typecheck_code(to_code(code.op2()));
@@ -717,8 +677,7 @@ void c_typecheck_baset::typecheck_gcc_switch_case_range(codet &code)
   if(!case_is_allowed)
   {
     err_location(code);
-    error() << "did not expect `case' here" << eom;
-    throw 0;
+    throw "did not expect `case' here";
   }
 
   typecheck_expr(code.op0());
@@ -780,20 +739,17 @@ void c_typecheck_baset::typecheck_gcc_computed_goto(codet &code)
   if(code.operands().size()!=1)
   {
     err_location(code);
-    error() << "computed-goto expected to have one operand" << eom;
-    throw 0;
+    throw "computed-goto expected to have one operand";
   }
 
   exprt &dest=code.op0();
-
+  
   if(dest.id()!=ID_dereference)
   {
     err_location(dest);
-    error() << "computed-goto expected to have dereferencing operand"
-            << eom;
-    throw 0;
+    throw "computed-goto expected to have dereferencing operand";
   }
-
+  
   assert(dest.operands().size()==1);
 
   typecheck_expr(dest.op0());
@@ -815,11 +771,7 @@ Function: c_typecheck_baset::typecheck_ifthenelse
 void c_typecheck_baset::typecheck_ifthenelse(code_ifthenelset &code)
 {
   if(code.operands().size()!=3)
-  {
-    err_location(code);
-    error() << "ifthenelse expected to have three operands" << eom;
-    throw 0;
-  }
+    throw "ifthenelse expected to have three operands";
 
   exprt &cond=code.cond();
 
@@ -829,6 +781,7 @@ void c_typecheck_baset::typecheck_ifthenelse(code_ifthenelset &code)
   if(cond.id()==ID_sideeffect &&
      cond.get(ID_statement)==ID_assign)
   {
+    err_location(cond);
     warning("warning: assignment in if condition");
   }
   #endif
@@ -843,7 +796,7 @@ void c_typecheck_baset::typecheck_ifthenelse(code_ifthenelset &code)
     code_block.move_to_operands(code.then_case());
     code.then_case().swap(code_block);
   }
-
+  
   typecheck_code(to_code(code.then_case()));
 
   if(!code.else_case().is_nil())
@@ -876,11 +829,7 @@ Function: c_typecheck_baset::typecheck_start_thread
 void c_typecheck_baset::typecheck_start_thread(codet &code)
 {
   if(code.operands().size()!=1)
-  {
-    err_location(code);
-    error() << "start_thread expected to have one operand" << eom;
-    throw 0;
-  }
+    throw "start_thread expected to have one operand";
 
   typecheck_code(to_code(code.op0()));
 }
@@ -905,9 +854,7 @@ void c_typecheck_baset::typecheck_return(codet &code)
     {
       // gcc doesn't actually complain, it just warns!
       // We'll put a zero here, which is dubious.
-      exprt zero=
-        zero_initializer(
-          return_type, code.source_location(), *this, get_message_handler());
+      exprt zero=zero_initializer(return_type, code.source_location(), *this, get_message_handler());
       code.copy_to_operands(zero);
     }
   }
@@ -919,16 +866,7 @@ void c_typecheck_baset::typecheck_return(codet &code)
     {
       // gcc doesn't actually complain, it just warns!
       if(follow(code.op0().type()).id()!=ID_empty)
-      {
-        warning().source_location=code.source_location();
-
-        warning() << "function has return void ";
-        warning() << "but a return statement returning ";
-        warning() << to_string(follow(code.op0().type()));
-        warning() << eom;
-
         code.op0().make_typecast(return_type);
-      }
     }
     else
       implicit_typecast(code.op0(), return_type);
@@ -936,8 +874,7 @@ void c_typecheck_baset::typecheck_return(codet &code)
   else
   {
     err_location(code);
-    error() << "return expected to have 0 or 1 operands" << eom;
-    throw 0;
+    throw "return expected to have 0 or 1 operands";
   }
 }
 
@@ -956,11 +893,7 @@ Function: c_typecheck_baset::typecheck_switch
 void c_typecheck_baset::typecheck_switch(code_switcht &code)
 {
   if(code.operands().size()!=2)
-  {
-    err_location(code);
-    error() << "switch expects two operands" << eom;
-    throw 0;
-  }
+    throw "switch expects two operands";
 
   typecheck_expr(code.value());
 
@@ -999,11 +932,7 @@ Function: c_typecheck_baset::typecheck_while
 void c_typecheck_baset::typecheck_while(code_whilet &code)
 {
   if(code.operands().size()!=2)
-  {
-    err_location(code);
-    error() << "while expected to have two operands" << eom;
-    throw 0;
-  }
+    throw "while expected to have two operands";
 
   typecheck_expr(code.cond());
   implicit_typecast_bool(code.cond());
@@ -1027,8 +956,6 @@ void c_typecheck_baset::typecheck_while(code_whilet &code)
   // restore flags
   break_is_allowed=old_break_is_allowed;
   continue_is_allowed=old_continue_is_allowed;
-
-  typecheck_spec_expr(code, ID_C_spec_loop_invariant);
 }
 
 /*******************************************************************\
@@ -1046,11 +973,7 @@ Function: c_typecheck_baset::typecheck_dowhile
 void c_typecheck_baset::typecheck_dowhile(code_dowhilet &code)
 {
   if(code.operands().size()!=2)
-  {
-    err_location(code);
-    error() << "do while expected to have two operands" << eom;
-    throw 0;
-  }
+    throw "do while expected to have two operands";
 
   typecheck_expr(code.cond());
   implicit_typecast_bool(code.cond());
@@ -1074,32 +997,4 @@ void c_typecheck_baset::typecheck_dowhile(code_dowhilet &code)
   // restore flags
   break_is_allowed=old_break_is_allowed;
   continue_is_allowed=old_continue_is_allowed;
-
-  typecheck_spec_expr(code, ID_C_spec_loop_invariant);
-}
-
-/*******************************************************************\
-
-Function: c_typecheck_baset::typecheck_spec_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void c_typecheck_baset::typecheck_spec_expr(
-  codet &code,
-  const irep_idt &spec)
-{
-  if(code.find(spec).is_not_nil())
-  {
-    exprt &constraint=
-      static_cast<exprt&>(code.add(spec));
-
-    typecheck_expr(constraint);
-    implicit_typecast_bool(constraint);
-  }
 }

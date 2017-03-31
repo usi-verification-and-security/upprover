@@ -6,69 +6,68 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_UTIL_IREP_HASH_CONTAINER_H
-#define CPROVER_UTIL_IREP_HASH_CONTAINER_H
+#ifndef CPROVER_IREP_HASH_H
+#define CPROVER_IREP_HASH_H
 
 #include <cstdlib>  // for size_t
 #include <vector>
 
-#include "irep_hash.h"
 #include "numbering.h"
+#include "hash_cont.h"
 
 class irept;
 
 class irep_hash_container_baset
 {
 public:
-  size_t number(const irept &irep);
-
-  explicit irep_hash_container_baset(bool _full):full(_full)
+  unsigned number(const irept &irep);
+  
+  irep_hash_container_baset(bool _full):full(_full)
   {
   }
-
+  
   void clear()
   {
     numbering.clear();
   }
-
+  
 protected:
   // replacing the following two hash-tables by
   // std::maps doesn't make much difference in performance
 
   // this is the first level: address of the content
-
-  struct pointer_hasht
+  
+  struct pointer_hash
   {
-    size_t operator()(const void *p) const
+    inline size_t operator()(const void *p) const
     {
       return (size_t)p;
     }
   };
 
-  typedef std::unordered_map<const void *, size_t, pointer_hasht>
-    ptr_hasht;
+  typedef hash_map_cont<const void *, unsigned, pointer_hash> ptr_hasht;
   ptr_hasht ptr_hash;
 
   // this is the second level: content
-
-  typedef std::vector<size_t> packedt;
-
-  struct vector_hasht
+      
+  typedef std::vector<unsigned> packedt;
+  
+  struct vector_hash
   {
-    size_t operator()(const packedt &p) const
+    inline size_t operator()(const packedt &p) const
     {
-      size_t result=p.size(); // seed
-      for(auto elem : p)
-        result=hash_combine(result, elem);
+      size_t result=p.size();
+      for(unsigned i=0; i<p.size(); i++)
+        result^=p[i]<<i;
       return result;
     }
   };
 
-  typedef hash_numbering<packedt, vector_hasht> numberingt;
+  typedef hash_numbering<packedt, vector_hash> numberingt;
   numberingt numbering;
-
+  
   void pack(const irept &irep, packedt &);
-
+  
   bool full;
 };
 
@@ -79,7 +78,7 @@ class irep_hash_containert:
 public:
   irep_hash_containert():irep_hash_container_baset(false)
   {
-  }
+  } 
 };
 
 // includes comments
@@ -92,4 +91,4 @@ public:
   }
 };
 
-#endif // CPROVER_UTIL_IREP_HASH_CONTAINER_H
+#endif

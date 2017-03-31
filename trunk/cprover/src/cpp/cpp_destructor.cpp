@@ -57,16 +57,16 @@ codet cpp_typecheckt::cpp_destructor(
       new_code.make_nil();
       return new_code;
     }
-
+    
     exprt tmp_size=size_expr;
     make_constant_index(tmp_size);
 
     mp_integer s;
     if(to_integer(tmp_size, s))
     {
-      error().source_location=source_location;
-      error() << "array size `" << to_string(size_expr)
-              << "' is not a constant" << eom;
+      err_location(source_location);
+      str << "array size `" << to_string(size_expr)
+          << "' is not a constant";
       throw 0;
     }
 
@@ -75,7 +75,7 @@ codet cpp_typecheckt::cpp_destructor(
     new_code.set_statement(ID_block);
 
     // for each element of the array, call the destructor
-    for(mp_integer i=0; i < s; ++i)
+    for(mp_integer i = 0; i < s; ++i)
     {
       exprt constant=from_integer(i, index_type());
       constant.add_source_location()=source_location;
@@ -135,7 +135,7 @@ codet cpp_typecheckt::cpp_destructor(
     function_call.function().swap(static_cast<exprt&>(cpp_name));
 
     typecheck_side_effect_function_call(function_call);
-    assert(function_call.get(ID_statement)==ID_temporary_object);
+    assert(function_call.get(ID_statement) == ID_temporary_object);
 
     exprt &initializer =
       static_cast<exprt &>(function_call.add(ID_initializer));
@@ -143,15 +143,15 @@ codet cpp_typecheckt::cpp_destructor(
     assert(initializer.id()==ID_code
            && initializer.get(ID_statement)==ID_expression);
 
-    side_effect_expr_function_callt &func_ini=
+    side_effect_expr_function_callt& func_ini =
       to_side_effect_expr_function_call(initializer.op0());
 
-    exprt &tmp_this=func_ini.arguments().front();
-    assert(tmp_this.id()==ID_address_of
-           && tmp_this.op0().id()=="new_object");
+    exprt& tmp_this = func_ini.arguments().front();
+    assert(tmp_this.id() == ID_address_of
+           && tmp_this.op0().id() == "new_object");
 
     exprt address_of(ID_address_of, typet(ID_pointer));
-    address_of.type().subtype()=object.type();
+    address_of.type().subtype() = object.type();
     address_of.copy_to_operands(object);
     tmp_this.swap(address_of);
 
@@ -160,3 +160,4 @@ codet cpp_typecheckt::cpp_destructor(
 
   return new_code;
 }
+

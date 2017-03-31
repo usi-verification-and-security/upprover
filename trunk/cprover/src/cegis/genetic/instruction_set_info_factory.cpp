@@ -1,12 +1,3 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <cstring>
 #include <algorithm>
 #include <iterator>
@@ -51,8 +42,7 @@ public:
     const std::string::size_type op_id_pos=id.find(OP_SIGNIFIER);
     if (std::string::npos == op_id_pos) return;
     const std::string::size_type value_pos=op_id_pos + strlen(OP_SIGNIFIER);
-    const mp_integer::llong_t v=string2integer(id.substr(value_pos)).to_long();
-    const size_t op_id=static_cast<size_t>(v);
+    const size_t op_id=string2integer(id.substr(value_pos)).to_ulong();
     count=std::max(count, op_id + 1);
   }
 
@@ -95,7 +85,7 @@ void initialise(instruction_set_infot &info, instruction_sett &ins,
 {
   if (!info.empty()) return;
   const goto_programt &body=body_provider();
-  ins=extract_instruction_set(body);
+  extract_instruction_set(ins, body);
   const transform_to_info op;
   std::transform(ins.begin(), ins.end(), std::inserter(info, info.end()), op);
 }

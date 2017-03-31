@@ -6,12 +6,11 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_SOLVERS_SAT_SATCHECK_LINGELING_H
-#define CPROVER_SOLVERS_SAT_SATCHECK_LINGELING_H
+#ifndef CPROVER_satcheck_lingeling_H
+#define CPROVER_satcheck_lingeling_H
 
 #include "cnf.h"
 
-// NOLINTNEXTLINE(readability/identifiers)
 struct LGL;
 
 class satcheck_lingelingt:public cnf_solvert
@@ -34,9 +33,8 @@ public:
   virtual void set_frozen(literalt a);
 
 protected:
-  // NOLINTNEXTLINE(readability/identifiers)
   struct LGL * solver;
   bvt assumptions;
 };
 
-#endif // CPROVER_SOLVERS_SAT_SATCHECK_LINGELING_H
+#endif

@@ -1,12 +1,3 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <cstdlib>
 
 #include <util/options.h>
@@ -14,7 +5,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cegis/danger/meta/literals.h>
 
 #include <cegis/facade/cegis.h>
-#include <cegis/options/parameters.h>
 #include <cegis/statistics/cegis_statistics_wrapper.h>
 #include <cegis/genetic/genetic_preprocessing.h>
 #include <cegis/genetic/genetic_constant_strategy.h>
@@ -26,15 +16,15 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cegis/genetic/match_select.h>
 #include <cegis/genetic/lazy_fitness.h>
 #include <cegis/genetic/ga_learn.h>
-#include <cegis/genetic/tournament_select.h>
-#include <cegis/instrument/meta_variables.h>
 #include <cegis/symex/cegis_symex_learn.h>
 #include <cegis/symex/cegis_symex_verify.h>
 #include <cegis/seed/null_seed.h>
 #include <cegis/learn/concurrent_learn.h>
 #include <cegis/value/program_individual_serialisation.h>
+#include <cegis/invariant/options/parameters.h>
 #include <cegis/invariant/constant/constant_strategy.h>
 #include <cegis/invariant/constant/default_constant_strategy.h>
+#include <cegis/invariant/instrument/meta_variables.h>
 #include <cegis/invariant/fitness/concrete_fitness_source_provider.h>
 #include <cegis/invariant/symex/learn/invariant_body_provider.h>
 #include <cegis/safety/value/safety_goto_ce.h>
@@ -53,14 +43,14 @@ namespace
 typedef messaget::mstreamt mstreamt;
 
 template<class learnt, class verifyt, class preproct>
-int configure_ui_and_run(mstreamt &os, const optionst &opt, learnt &learn,
+int configure_ui_and_run(mstreamt &os, const optionst &options, learnt &learn,
     verifyt &verify, preproct &preproc)
 {
   null_seedt seed;
-  const size_t max_prog_size=opt.get_unsigned_int_option(CEGIS_MAX_SIZE);
-  if (!opt.get_bool_option(CEGIS_STATISTICS))
+  const size_t max_prog_size=options.get_unsigned_int_option(CEGIS_MAX_SIZE);
+  if (!options.get_bool_option(CEGIS_STATISTICS))
     return run_cegis(learn, verify, preproc, seed, max_prog_size, os);
-  cegis_statistics_wrappert<learnt, verifyt, mstreamt> stat(learn, verify, os, opt);
+  cegis_statistics_wrappert<learnt, verifyt, mstreamt> stat(learn, verify, os);
   return run_cegis(stat, stat, preproc, seed, max_prog_size, os);
 }
 
@@ -82,55 +72,32 @@ int configure_backend(mstreamt &os, const optionst &o,
   lazy_genetic_settingst<safety_program_genetic_settingst<preproct> > lazy(set);
   invariant_exec_body_providert<safety_programt> body(DANGER_EXECUTE, prog);
   instruction_set_info_factoryt info_fac(std::ref(body));
+  const size_t pop_size=o.get_unsigned_int_option(CEGIS_POPSIZE);
   const size_t rounds=o.get_unsigned_int_option(CEGIS_ROUNDS);
-  const typet type=cegis_default_integer_type(); // XXX: Currently single user data type.
+  const typet type=invariant_meta_type(); // XXX: Currently single user data type.
   random_individualt rnd(type, info_fac, lazy);
   safety_fitness_configt safety_fitness_config(info_fac, prog);
   concrete_fitness_source_providert<safety_programt, safety_learn_configt> src(
       prog, lazy.max_prog_sz_provider(), DANGER_EXECUTE);
   dynamic_safety_test_runnert test_runner(std::ref(src),
       lazy.max_prog_sz_per_index_provider());
-  typedef lazy_fitnesst<program_populationt, dynamic_safety_test_runnert,
-      safety_goto_cet> fitnesst;
-  fitnesst fit(test_runner);
+  lazy_fitnesst<dynamic_safety_test_runnert, safety_goto_cet> fit(test_runner);
   random_mutatet mutate(rnd, lazy.num_consts_provder());
   random_crosst cross(rnd);
-  const size_t symex_head_start=o.get_unsigned_int_option(CEGIS_SYMEX_HEAD_START);
-  if (o.get_bool_option(CEGIS_MATCH_SELECT))
-  {
-    typedef match_selectt<program_populationt> selectt;
-    selectt select(fit.get_test_case_data(), rnd, rounds);
-    typedef ga_learnt<selectt, random_mutatet, random_crosst,
-        lazy_fitnesst<program_populationt, dynamic_safety_test_runnert,
-            safety_goto_cet>, safety_fitness_configt> ga_learnt;
-    ga_learnt ga_learn(o, rnd, select, mutate, cross, fit, safety_fitness_config);
+  match_selectt select(fit.get_test_case_data(), rnd, pop_size, rounds);
+  typedef ga_learnt<match_selectt, random_mutatet, random_crosst,
+      lazy_fitnesst<dynamic_safety_test_runnert, safety_goto_cet>,
+      safety_fitness_configt> ga_learnt;
+  ga_learnt ga_learn(o, select, mutate, cross, fit, safety_fitness_config);
 #ifndef _WIN32
-    if (!o.get_bool_option(CEGIS_GENETIC_ONLY))
-    {
-      const individual_to_safety_solution_deserialisert deser(prog, info_fac);
-      concurrent_learnt<ga_learnt, symex_learnt> learner(ga_learn, learn,
-          serialise, deser, deserialise, symex_head_start);
-      return configure_ui_and_run(os, o, learner, verify, pre);
-    }
+  const individual_to_safety_solution_deserialisert deser(prog, info_fac);
+  concurrent_learnt<ga_learnt, symex_learnt> learner(ga_learn, learn, serialise,
+      std::ref(deser), deserialise);
+#else
+  // TODO: Remove once task_pool supports Windows.
+  ga_learnt &learner=ga_learn;
 #endif
-    return configure_ui_and_run(os, o, ga_learn, verify, pre);
-  }
-  typedef tournament_selectt<program_populationt> selectt;
-  selectt select(rounds);
-  typedef ga_learnt<selectt, random_mutatet, random_crosst,
-      lazy_fitnesst<program_populationt, dynamic_safety_test_runnert,
-          safety_goto_cet>, safety_fitness_configt> ga_learnt;
-  ga_learnt ga_learn(o, rnd, select, mutate, cross, fit, safety_fitness_config);
-#ifndef _WIN32
-  if (!o.get_bool_option(CEGIS_GENETIC_ONLY))
-  {
-    const individual_to_safety_solution_deserialisert deser(prog, info_fac);
-    concurrent_learnt<ga_learnt, symex_learnt> learner(ga_learn, learn,
-        serialise, std::ref(deser), deserialise, symex_head_start);
-    return configure_ui_and_run(os, o, learner, verify, pre);
-  }
-#endif
-  return configure_ui_and_run(os, o, ga_learn, verify, pre);
+  return configure_ui_and_run(os, o, learner, verify, pre);
 }
 
 constant_strategyt get_constant_strategy(const optionst &opt)

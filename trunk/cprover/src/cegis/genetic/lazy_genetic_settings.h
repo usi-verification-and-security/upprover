@@ -1,14 +1,12 @@
-/*******************************************************************\
+/*
+ * lazy_genetic_settings.h
+ *
+ *  Created on: 10 Jan 2016
+ *      Author: Pascal
+ */
 
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
-#ifndef CPROVER_CEGIS_GENETIC_LAZY_GENETIC_SETTINGS_H
-#define CPROVER_CEGIS_GENETIC_LAZY_GENETIC_SETTINGS_H
+#ifndef CEGIS_LAZY_GENETIC_SETTINGS_H_
+#define CEGIS_LAZY_GENETIC_SETTINGS_H_
 
 #include <functional>
 
@@ -34,7 +32,7 @@ public:
    *
    * @details
    */
-  explicit lazy_genetic_settingst(const wrappedt &wrapped);
+  lazy_genetic_settingst(const wrappedt &wrapped);
 
   /**
    * @brief
@@ -108,4 +106,4 @@ public:
 
 #include "lazy_genetic_settings.inc"
 
-#endif // CPROVER_CEGIS_GENETIC_LAZY_GENETIC_SETTINGS_H
+#endif /* CEGIS_LAZY_GENETIC_SETTINGS_H_ */

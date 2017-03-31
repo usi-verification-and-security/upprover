@@ -1,16 +1,15 @@
 SRC = goto_cc_main.cpp goto_cc_mode.cpp gcc_mode.cpp \
+      get_base_name.cpp \
       gcc_cmdline.cpp ms_cl_cmdline.cpp ld_cmdline.cpp \
-      compile.cpp armcc_cmdline.cpp \
+      compile.cpp armcc_cmdline.cpp run.cpp \
       goto_cc_languages.cpp goto_cc_cmdline.cpp \
-      ms_cl_mode.cpp armcc_mode.cpp cw_mode.cpp bcc_cmdline.cpp \
-      as_mode.cpp as_cmdline.cpp as86_cmdline.cpp
+      ms_cl_mode.cpp armcc_mode.cpp cw_mode.cpp ld_mode.cpp
 
 OBJ += ../big-int/big-int$(LIBEXT) \
       ../goto-programs/goto-programs$(LIBEXT) \
       ../util/util$(LIBEXT) \
       ../linking/linking$(LIBEXT) \
       ../ansi-c/ansi-c$(LIBEXT) \
-      ../cpp/cpp$(LIBEXT) \
       ../xmllang/xmllang$(LIBEXT) \
       ../assembler/assembler$(LIBEXT) \
       ../langapi/langapi$(LIBEXT)
@@ -29,16 +28,16 @@ all: goto-cl$(EXEEXT)
 endif
 all: goto-cc$(EXEEXT)
 
-ifneq ($(wildcard ../java_bytecode/Makefile),)
-  OBJ += ../java_bytecode/java_bytecode$(LIBEXT)
-  ifneq ($(wildcard $(LIBZIPINC)),)
-    LIBS += $(LIBZIPLIB)
-  endif
+ifneq ($(wildcard ../cpp/Makefile),)
+  OBJ += ../cpp/cpp$(LIBEXT)
+  CP_CXXFLAGS += -D HAVE_CPP
 endif
 
-ifneq ($(wildcard ../jsil/Makefile),)
-  OBJ += ../jsil/jsil$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_JSIL
+ifneq ($(wildcard ../java_bytecode/Makefile),)
+  OBJ += ../java_bytecode/java_bytecode$(LIBEXT)
+  ifneq ($(LIBZIPLIB),)
+    LIBS += $(LIBZIPLIB)
+  endif
 endif
 
 ###############################################################################
@@ -53,3 +52,4 @@ goto-cl$(EXEEXT): $(OBJ)
 
 goto-cc-mac-signed: goto-cc$(EXEEXT)
 	codesign -v -s $(OSX_IDENTITY) goto-cc$(EXEEXT)
+

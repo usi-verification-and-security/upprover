@@ -1,16 +1,6 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <algorithm>
 
 #include <util/options.h>
-#include <util/message.h>
 
 #include <goto-programs/goto_inline.h>
 
@@ -24,8 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 danger_preprocessingt::danger_preprocessingt(optionst &options,
     const symbol_tablet &st, const goto_functionst &gf,
     const constant_strategyt &constant_strategy) :
-    options(options), original_program(st, gf,
-        !options.get_bool_option("danger-no-ranking")), constant_strategy(
+    options(options), original_program(st, gf), constant_strategy(
         constant_strategy)
 {
 }

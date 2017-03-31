@@ -55,24 +55,6 @@ rationalt &rationalt::operator-=(const rationalt &n)
 
 /*******************************************************************\
 
-Function: rationalt::operator-=
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-rationalt &rationalt::operator-()
-{
-  numerator.negate();
-  return *this;
-}
-
-/*******************************************************************\
-
 Function: rationalt::operator*=
 
   Inputs:
@@ -141,7 +123,7 @@ void rationalt::normalize()
   {
     denominator/=_gcd;
     numerator/=_gcd;
-  }
+  }  
 }
 
 /*******************************************************************\
@@ -158,8 +140,7 @@ Function: rationalt::same_denominator
 
 void rationalt::same_denominator(rationalt &n)
 {
-  if(denominator==n.denominator)
-    return;
+  if(denominator==n.denominator) return;
 
   numerator*=n.denominator;
   n.numerator*=denominator;
@@ -218,10 +199,9 @@ Function: operator<<
 
 \*******************************************************************/
 
-std::ostream &operator<<(std::ostream &out, const rationalt &a)
+std::ostream& operator<<(std::ostream& out, const rationalt &a)
 {
-  std::string d=integer2string(a.get_numerator());
-  if(a.get_denominator()!=1)
-    d+="/"+integer2string(a.get_denominator());
+  std::string d=integer2string(a.numerator);
+  if(a.denominator!=1) d+="/"+integer2string(a.denominator);
   return out << d;
 }

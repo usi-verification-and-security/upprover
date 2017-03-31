@@ -1,13 +1,5 @@
-/*******************************************************************\
-
-Module: Time Stopping
-
-Author: Daniel Kroening, kroening@kroening.com
-
-\*******************************************************************/
-
-#ifndef CPROVER_UTIL_TIMER_H
-#define CPROVER_UTIL_TIMER_H
+#ifndef CPROVER_TIMER_H
+#define CPROVER_TIMER_H
 
 #include <string>
 #include <iosfwd>
@@ -24,12 +16,8 @@ private:
   bool started;
 
 public:
-  timert():
-    _total_time(0),
-    _start_time(0),
-    _latest_time(0),
-    nr_starts(0),
-    started(false)
+  timert(): _total_time(0), _start_time(0), _latest_time(0),
+            nr_starts(0), started(false)
   {
   }
 
@@ -39,35 +27,37 @@ public:
   virtual void stop();
   virtual void clear();
 
-  virtual time_periodt total_time() const
+  virtual time_periodt total_time()
   {
     return _total_time;
   }
-
-  virtual fine_timet latest_time() const
+  
+  virtual fine_timet latest_time()
   {
     return _latest_time;
   }
-
-  virtual long number_starts() const
+  
+  virtual long number_starts()
   {
     return nr_starts;
   }
 
-  std::string output_total_time() const
+  std::string output_total_time()
   {
     return _total_time.as_string();
   }
-
-  std::string output_latest_time() const
+  
+  std::string output_latest_time()
   {
     return _latest_time.as_string();
   }
+  
+  friend std::ostream& operator<< (std::ostream &out, const timert &timer)
+  {
+    return out << timer._total_time;
+  }
 };
 
-std::ostream &operator<<(std::ostream &out, const timert &timer)
-{
-  return out << timer.total_time();
-}
+std::ostream& operator<< (std::ostream &out, const timert &timer);
 
-#endif // CPROVER_UTIL_TIMER_H
+#endif /*CPROVER_TIMER_H*/

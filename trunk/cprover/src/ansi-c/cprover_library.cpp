@@ -9,6 +9,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <sstream>
 
 #include <util/config.h>
+#include <util/replace_symbol.h>
 
 #include "cprover_library.h"
 #include "ansi_c_language.h"
@@ -19,7 +20,7 @@ struct cprover_library_entryt
   const char *model;
 } cprover_library[]=
 #include "cprover_library.inc"
-; // NOLINT(whitespace/semicolon)
+;
 
 /*******************************************************************\
 
@@ -67,7 +68,7 @@ std::string get_cprover_library_text(
       }
     }
   }
-
+  
   if(count==0)
     return std::string();
   else
@@ -93,11 +94,11 @@ void add_cprover_library(
 {
   if(config.ansi_c.lib==configt::ansi_ct::libt::LIB_NONE)
     return;
-
+    
   std::string library_text;
 
   library_text=get_cprover_library_text(functions, symbol_table);
-
+  
   add_library(library_text, symbol_table, message_handler);
 }
 
@@ -118,14 +119,21 @@ void add_library(
   symbol_tablet &symbol_table,
   message_handlert &message_handler)
 {
-  if(src.empty())
-    return;
+  if(src.empty()) return;
 
   std::istringstream in(src);
 
+  // switch mode temporarily from gcc C++ to gcc C flavour
+  configt::ansi_ct::flavourt old_mode=config.ansi_c.mode;
+  
+  if(config.ansi_c.mode==configt::ansi_ct::flavourt::MODE_GCC_CPP)
+    config.ansi_c.mode=configt::ansi_ct::flavourt::MODE_GCC_C;
+  
   ansi_c_languaget ansi_c_language;
   ansi_c_language.set_message_handler(message_handler);
   ansi_c_language.parse(in, "");
-
+  
   ansi_c_language.typecheck(symbol_table, "<built-in-library>");
+
+  config.ansi_c.mode=old_mode;
 }

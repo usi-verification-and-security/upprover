@@ -2,8 +2,6 @@ SRC = mm_y.tab.cpp mm_lex.yy.cpp mmcc_main.cpp mm_parser.cpp \
       mmcc_parse_options.cpp mm2cpp.cpp
 
 OBJ += ../big-int/big-int$(LIBEXT) \
-      ../ansi-c/ansi-c$(LIBEXT) \
-      ../linking/linking$(LIBEXT) \
       ../util/util$(LIBEXT)
 
 INCLUDES= -I ..
@@ -38,5 +36,6 @@ generated_files: mm_y.tab.cpp mm_lex.yy.cpp mm_y.tab.h
 
 ###############################################################################
 
-mmcc$(EXEEXT): $(OBJ)
+mmcc$(EXEEXT): $(OBJ) 
 	$(LINKBIN)
+

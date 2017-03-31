@@ -36,17 +36,17 @@ void cpp_typecheckt::typecheck_type(typet &type)
     cpp_convert_plain_type(type);
   }
 
-  catch(const char *err)
+  catch(const char *error)
   {
-    error().source_location=type.source_location();
-    error() << err << eom;
+    err_location(type);
+    str << error;
     throw 0;
   }
 
-  catch(const std::string &err)
+  catch(const std::string &error)
   {
-    error().source_location=type.source_location();
-    error() << err << eom;
+    err_location(type);
+    str << error;
     throw 0;
   }
 
@@ -64,11 +64,11 @@ void cpp_typecheckt::typecheck_type(typet &type)
 
     if(symbol_expr.id()!=ID_type)
     {
-      error().source_location=type.source_location();
-      error() << "error: expected type" << eom;
+      err_location(type);
+      str << "error: expected type";
       throw 0;
     }
-
+    
     type=symbol_expr.type();
     assert(type.is_not_nil());
 
@@ -120,6 +120,17 @@ void cpp_typecheckt::typecheck_type(typet &type)
         }
       }
     }
+
+    // now do qualifier
+    if(type.find(ID_C_qualifier).is_not_nil())
+    {
+      typet &t=static_cast<typet &>(type.add(ID_C_qualifier));
+      cpp_convert_plain_type(t);
+      c_qualifierst q(t);
+      q.write(type);
+    }
+
+    type.remove(ID_C_qualifier);
   }
   else if(type.id()==ID_array)
   {
@@ -143,15 +154,17 @@ void cpp_typecheckt::typecheck_type(typet &type)
 
     code_typet::parameterst &parameters=code_type.parameters();
 
-    for(auto &param : parameters)
+    for(code_typet::parameterst::iterator it=parameters.begin();
+        it!=parameters.end();
+        it++)
     {
-      typecheck_type(param.type());
+      typecheck_type(it->type());
 
       // see if there is a default value
-      if(param.has_default_value())
+      if(it->has_default_value())
       {
-        typecheck_expr(param.default_value());
-        implicit_typecast(param.default_value(), param.type());
+        typecheck_expr(it->default_value());
+        implicit_typecast(it->default_value(), it->type());
       }
     }
   }
@@ -250,10 +263,10 @@ void cpp_typecheckt::typecheck_type(typet &type)
   }
   else
   {
-    error().source_location=type.source_location();
-    error() << "unexpected cpp type: " << type.pretty() << eom;
+    err_location(type);
+    str << "unexpected cpp type: " << type.pretty();
     throw 0;
   }
-
+  
   assert(type.is_not_nil());
 }

@@ -1,8 +1,6 @@
-SRC = symex_main.cpp symex_parse_options.cpp path_search.cpp \
-      symex_cover.cpp
+SRC = symex_main.cpp symex_parse_options.cpp path_search.cpp
 
 OBJ += ../ansi-c/ansi-c$(LIBEXT) \
-       ../cpp/cpp$(LIBEXT) \
        ../linking/linking$(LIBEXT) \
        ../big-int/big-int$(LIBEXT) \
        ../goto-programs/goto-programs$(LIBEXT) \
@@ -15,7 +13,6 @@ OBJ += ../ansi-c/ansi-c$(LIBEXT) \
        ../goto-symex/adjust_float_expressions$(OBJEXT) \
        ../goto-symex/rewrite_union$(OBJEXT) \
        ../pointer-analysis/dereference$(OBJEXT) \
-       ../goto-instrument/cover$(OBJEXT) \
        ../path-symex/path-symex$(LIBEXT)
 
 INCLUDES= -I ..
@@ -34,12 +31,14 @@ ifneq ($(wildcard ../bv_refinement/Makefile),)
   CP_CXXFLAGS += -DHAVE_BV_REFINEMENT
 endif
 
+ifneq ($(wildcard ../cpp/Makefile),)
+  OBJ += ../cpp/cpp$(LIBEXT)
+  CP_CXXFLAGS += -DHAVE_CPP
+endif
+
 ifneq ($(wildcard ../java_bytecode/Makefile),)
   OBJ += ../java_bytecode/java_bytecode$(LIBEXT)
   CP_CXXFLAGS += -DHAVE_JAVA_BYTECODE
-  ifneq ($(wildcard $(LIBZIPINC)),)
-    LIBS += $(LIBZIPLIB)
-  endif
 endif
 
 ifneq ($(wildcard ../specc/Makefile),)
@@ -61,3 +60,4 @@ symex$(EXEEXT): $(OBJ)
 
 symex-mac-signed: cbmc$(EXEEXT)
 	strip symex$(EXEEXT) ; codesign -v -s $(OSX_IDENTITY) symex$(EXEEXT)
+

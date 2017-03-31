@@ -8,10 +8,8 @@ Date: March 2013
 
 \*******************************************************************/
 
-#ifndef CPROVER_ANALYSES_DIRTY_H
-#define CPROVER_ANALYSES_DIRTY_H
-
-#include <unordered_set>
+#ifndef CPROVER_DIRTY_H
+#define CPROVER_DIRTY_H
 
 #include <util/std_expr.h>
 #include <goto-programs/goto_functions.h>
@@ -19,7 +17,7 @@ Date: March 2013
 class dirtyt
 {
 public:
-  typedef std::unordered_set<irep_idt, irep_id_hash> id_sett;
+  typedef hash_set_cont<irep_idt, irep_id_hash> id_sett;
   typedef goto_functionst::goto_functiont goto_functiont;
 
   explicit dirtyt(const goto_functiont &goto_function)
@@ -35,37 +33,36 @@ public:
 
   void output(std::ostream &out) const;
 
-  bool operator()(const irep_idt &id) const
+  inline bool operator()(const irep_idt &id) const
   {
     return dirty.find(id)!=dirty.end();
   }
 
-  bool operator()(const symbol_exprt &expr) const
+  inline bool operator()(const symbol_exprt &expr) const
   {
     return operator()(expr.get_identifier());
   }
 
-  const id_sett &get_dirty_ids() const
+  inline const id_sett& get_dirty_ids() const
   {
     return dirty;
   }
-
+  
 protected:
   void build(const goto_functiont &goto_function);
 
   // variables whose address is taken
   id_sett dirty;
-
+  
   void find_dirty(const exprt &expr);
   void find_dirty_address_of(const exprt &expr);
 };
 
-inline std::ostream &operator<<(
-  std::ostream &out,
-  const dirtyt &dirty)
+static inline std::ostream &operator << (
+  std::ostream &out, const dirtyt &dirty)
 {
   dirty.output(out);
   return out;
 }
 
-#endif // CPROVER_ANALYSES_DIRTY_H
+#endif

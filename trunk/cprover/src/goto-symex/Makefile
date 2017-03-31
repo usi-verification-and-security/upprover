@@ -23,3 +23,4 @@ all: goto-symex$(LIBEXT)
 
 goto-symex$(LIBEXT): $(OBJ)
 	$(LINKLIB)
+

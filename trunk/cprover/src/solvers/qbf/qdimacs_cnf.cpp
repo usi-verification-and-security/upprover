@@ -87,7 +87,7 @@ void qdimacs_cnft::write_prefix(std::ostream &out) const
 
 /*******************************************************************\
 
-Function: qdimacs_cnft::operator==
+Function: operator==
 
   Inputs:
 
@@ -97,9 +97,10 @@ Function: qdimacs_cnft::operator==
 
 \*******************************************************************/
 
-bool qdimacs_cnft::operator==(const qdimacs_cnft &other) const
+bool operator==(const qdimacs_cnft &a, const qdimacs_cnft &b)
 {
-  return quantifiers==other.quantifiers && clauses==other.clauses;
+  return a.quantifiers==b.quantifiers &&
+         a.clauses==b.clauses;
 }
 
 /*******************************************************************\

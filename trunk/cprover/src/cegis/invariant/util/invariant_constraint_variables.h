@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_INVARIANT_UTIL_INVARIANT_CONSTRAINT_VARIABLES_H
-#define CPROVER_CEGIS_INVARIANT_UTIL_INVARIANT_CONSTRAINT_VARIABLES_H
+#ifndef CEGIS_INVARIANT_CONSTRAINT_VARIABLES_H_
+#define CEGIS_INVARIANT_CONSTRAINT_VARIABLES_H_
 
 #include <deque>
 #include <set>
@@ -67,4 +67,4 @@ typedef std::deque<symbol_exprt> constraint_varst;
 void get_invariant_constraint_vars(constraint_varst &vars,
     const invariant_programt &program);
 
-#endif // CPROVER_CEGIS_INVARIANT_UTIL_INVARIANT_CONSTRAINT_VARIABLES_H
+#endif /* CEGIS_INVARIANT_CONSTRAINT_VARIABLES_H_ */

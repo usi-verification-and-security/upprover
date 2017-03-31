@@ -1,27 +1,16 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <algorithm>
 
-#include <cegis/cegis-util/program_helper.h>
 #include <cegis/invariant/options/target_copy_helper.h>
 #include <cegis/invariant/util/invariant_program_helper.h>
 #include <cegis/danger/options/danger_program.h>
 
-danger_programt::danger_programt() :
-    use_ranking(true)
+danger_programt::danger_programt()
 {
 }
 
 danger_programt::danger_programt(const symbol_tablet &st,
-    const goto_functionst &gf, const bool use_ranking) :
-    invariant_programt(st, gf), use_ranking(use_ranking)
+    const goto_functionst &gf) :
+    invariant_programt(st, gf)
 {
 }
 
@@ -76,13 +65,12 @@ danger_programt &assign(danger_programt &lhs, const danger_programt &rhs)
   const danger_programt::loopst &old_loops=rhs.loops;
   lhs.loops.resize(old_loops.size());
   std::transform(old_loops.begin(), old_loops.end(), lhs.loops.begin(), fix);
-  lhs.use_ranking=rhs.use_ranking;
   return lhs;
 }
 }
 
 danger_programt::danger_programt(const danger_programt &other) :
-    invariant_programt(other), use_ranking(true)
+    invariant_programt(other)
 {
   assign(*this, other);
 }

@@ -6,9 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include "rational.h"
+#include "std_expr.h"
 #include "std_types.h"
-
 #include "rational_tools.h"
 
 /*******************************************************************\
@@ -47,16 +46,19 @@ Function: to_rational
 
 bool to_rational(const exprt &expr, rationalt &rational_value)
 {
-  if(expr.id()!=ID_constant)
-    return true;
+  if(expr.id()!=ID_constant) return true;
 
   const std::string &value=expr.get_string(ID_value);
 
   std::string no1, no2;
   char mode=0;
 
-  for(const char ch : value)
+  for(std::string::const_iterator it=value.begin();
+      it!=value.end();
+      ++it)
   {
+    const char ch=*it;
+
     if(isdigit(ch))
     {
       if(mode==0)
@@ -77,24 +79,23 @@ bool to_rational(const exprt &expr, rationalt &rational_value)
 
   switch(mode)
   {
-  case 0:
-    rational_value=rationalt(string2integer(no1));
+   case 0:
+    rational_value=string2integer(no1);
     break;
 
-  case '.':
-    rational_value=rationalt(string2integer(no1));
-    rational_value+=
-      rationalt(string2integer(no2))/rationalt(power10(no2.size()));
+   case '.':
+    rational_value=string2integer(no1);
+    rational_value+=rationalt(string2integer(no2))/power10(no2.size());
     break;
 
-  case '/':
-    rational_value=rationalt(string2integer(no1));
-    rational_value/=rationalt(string2integer(no2));
+   case '/':
+    rational_value=string2integer(no1);
+    rational_value/=string2integer(no2);
     break;
 
-  default:
+   default:
     return true;
-  }
+  }    
 
   return false;
 }
@@ -113,9 +114,8 @@ Function: from_rational
 
 constant_exprt from_rational(const rationalt &a)
 {
-  std::string d=integer2string(a.get_numerator());
-  if(a.get_denominator()!=1)
-    d+="/"+integer2string(a.get_denominator());
+  std::string d=integer2string(a.numerator);
+  if(a.denominator!=1) d+="/"+integer2string(a.denominator);
   constant_exprt result;
   result.type()=rational_typet();
   result.set_value(d);

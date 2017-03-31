@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_DANGER_OPTIONS_DANGER_PROGRAM_GENETIC_SETTINGS_H
-#define CPROVER_CEGIS_DANGER_OPTIONS_DANGER_PROGRAM_GENETIC_SETTINGS_H
+#ifndef CEGIS_DANGER_PROGRAM_GENETIC_SETTINGS_H_
+#define CEGIS_DANGER_PROGRAM_GENETIC_SETTINGS_H_
 
 #include <cegis/genetic/genetic_settings.h>
 
@@ -81,4 +81,4 @@ public:
 
 #include "danger_program_genetic_settings.inc"
 
-#endif // CPROVER_CEGIS_DANGER_OPTIONS_DANGER_PROGRAM_GENETIC_SETTINGS_H
+#endif /* CEGIS_DANGER_PROGRAM_GENETIC_SETTINGS_H_ */

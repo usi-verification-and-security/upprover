@@ -14,6 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/find_symbols.h>
 #include <util/arith_tools.h>
 #include <util/type_eq.h>
+#include <util/i2string.h>
 
 #include "goto_program2code.h"
 
@@ -29,7 +30,7 @@ Purpose:
 
 \*******************************************************************/
 
-static const exprt &skip_typecast(const exprt &expr)
+static const exprt& skip_typecast(const exprt &expr)
 {
   if(expr.id()!=ID_typecast)
     return expr;
@@ -556,7 +557,7 @@ goto_programt::const_targett goto_program2codet::convert_return(
     goto_programt::const_targett upper_bound,
     codet &dest)
 {
-  const code_returnt &ret=to_code_return(target->code);
+  code_returnt ret=to_code_return(target->code);
 
   // add return instruction unless original code was missing a return
   if(!ret.has_return_value() ||
@@ -920,12 +921,10 @@ goto_programt::const_targett goto_program2codet::get_cases(
         assert(cases.back().value.is_not_nil());
 
         if(first_target==goto_program.instructions.end() ||
-           first_target->location_number>
-           cases.back().case_start->location_number)
+           first_target->location_number > cases.back().case_start->location_number)
           first_target=cases.back().case_start;
         if(last_target==goto_program.instructions.end() ||
-           last_target->location_number<
-           cases.back().case_start->location_number)
+           last_target->location_number < cases.back().case_start->location_number)
           last_target=cases.back().case_start;
 
         unique_targets.insert(cases.back().case_start);
@@ -970,7 +969,7 @@ bool goto_program2codet::set_block_end_points(
   cases_listt &cases,
   std::set<unsigned> &processed_locations)
 {
-  std::map<goto_programt::const_targett, std::size_t> targets_done;
+  std::map<goto_programt::const_targett, unsigned> targets_done;
 
   for(cases_listt::iterator it=cases.begin();
       it!=cases.end();
@@ -1036,8 +1035,7 @@ bool goto_program2codet::remove_default(
       ++it)
   {
     // ignore empty cases
-    if(it->case_last==goto_program.instructions.end())
-      continue;
+    if(it->case_last==goto_program.instructions.end()) continue;
 
     // the last case before default is the most interesting
     cases_listt::const_iterator last=--cases.end();
@@ -1079,8 +1077,7 @@ bool goto_program2codet::remove_default(
       continue;
 
     // fall-through is ok
-    if(!it->case_last->is_goto())
-      continue;
+    if(!it->case_last->is_goto()) continue;
 
     return false;
   }
@@ -1107,8 +1104,7 @@ goto_programt::const_targett goto_program2codet::convert_goto_switch(
 {
   // try to figure out whether this was a switch/case
   exprt eq_cand=target->guard;
-  if(eq_cand.id()==ID_or)
-    eq_cand=eq_cand.op0();
+  if(eq_cand.id()==ID_or) eq_cand=eq_cand.op0();
 
   if(target->is_backwards_goto() ||
      eq_cand.id()!=ID_equal ||
@@ -1118,7 +1114,7 @@ goto_programt::const_targett goto_program2codet::convert_goto_switch(
   const cfg_dominatorst &dominators=loops.get_dominator_info();
 
   // always use convert_goto_if for dead code as the construction below relies
-  // on effective dominator information
+  // on effective dominator information 
   cfg_dominatorst::cfgt::entry_mapt::const_iterator t_entry=
     dominators.cfg.entry_map.find(target);
   assert(t_entry!=dominators.cfg.entry_map.end());
@@ -1315,13 +1311,11 @@ goto_programt::const_targett goto_program2codet::convert_goto_if(
       return target;
     }
 
-    has_else=
-      before_else->is_goto() &&
+    has_else=before_else->is_goto() &&
       before_else->get_target()->location_number > end_if->location_number &&
       before_else->guard.is_true() &&
       (upper_bound==goto_program.instructions.end() ||
-       upper_bound->location_number>=
-       before_else->get_target()->location_number);
+       upper_bound->location_number >= before_else->get_target()->location_number);
 
     if(has_else)
       end_if=before_else->get_target();
@@ -1358,10 +1352,8 @@ goto_programt::const_targett goto_program2codet::convert_goto_if(
       target=convert_instruction(target, end_if, to_code(i.else_case()));
   }
   else
-  {
     for(++target; target!=end_if; ++target)
       target=convert_instruction(target, end_if, to_code(i.then_case()));
-  }
 
   dest.move_to_operands(i);
   return --target;
@@ -1406,8 +1398,7 @@ goto_programt::const_targett goto_program2codet::convert_goto_break_continue(
   if(target->get_target()==next)
   {
     dest.copy_to_operands(code_skipt());
-    // skip over all dead instructions
-    return --next;
+    return target;
   }
 
   goto_programt::const_targett loop_end=loop_last_stack.back().first;
@@ -1623,8 +1614,8 @@ goto_programt::const_targett goto_program2codet::convert_start_thread(
   // use pthreads if "code in new thread" is a function call to a function with
   // suitable signature
   if(thread_start->is_function_call() &&
-     to_code_function_call(to_code(thread_start->code)).arguments().size()==1 &&
-     after_thread_start==thread_end)
+      to_code_function_call(to_code(thread_start->code)).arguments().size()==1 &&
+      after_thread_start==thread_end)
   {
     const code_function_callt &cf=
       to_code_function_call(to_code(thread_start->code));
@@ -2233,7 +2224,7 @@ void goto_program2codet::cleanup_expr(exprt &expr, bool no_typecast)
       cleanup_expr(*it, no_typecast);
   }
 
-  // work around transparent union argument
+  // work around transparent union argument 
   if(expr.id()==ID_union &&
      ns.follow(expr.type()).id()!=ID_union)
   {
@@ -2248,8 +2239,7 @@ void goto_program2codet::cleanup_expr(exprt &expr, bool no_typecast)
   if(expr.id()==ID_union ||
      expr.id()==ID_struct)
   {
-    if(no_typecast)
-      return;
+    if(no_typecast) return;
 
     assert(expr.type().id()==ID_symbol);
 
@@ -2278,33 +2268,29 @@ void goto_program2codet::cleanup_expr(exprt &expr, bool no_typecast)
     {
       // Replace by a function call to nondet_...
       // We first search for a suitable one in the symbol table.
-
+      
       irep_idt id="";
-
+      
       for(symbol_tablet::symbolst::const_iterator
           it=symbol_table.symbols.begin();
           it!=symbol_table.symbols.end();
           it++)
       {
-        if(it->second.type.id()!=ID_code)
-          continue;
-        if(!has_prefix(id2string(it->second.base_name), "nondet_"))
-          continue;
+        if(it->second.type.id()!=ID_code) continue;
+        if(!has_prefix(id2string(it->second.base_name), "nondet_")) continue;
         const code_typet &code_type=to_code_type(it->second.type);
-        if(!type_eq(code_type.return_type(), expr.type(), ns))
-          continue;
-        if(!code_type.parameters().empty())
-          continue;
+        if(!type_eq(code_type.return_type(), expr.type(), ns)) continue;
+        if(!code_type.parameters().empty()) continue;
         id=it->second.name;
         break;
       }
-
+      
       // none found? make one
-
+      
       if(id=="")
       {
         irep_idt base_name="";
-
+      
         if(expr.type().get(ID_C_c_type)!="")
         {
           irep_idt suffix;
@@ -2314,38 +2300,39 @@ void goto_program2codet::cleanup_expr(exprt &expr, bool no_typecast)
              symbol_table.symbols.end())
             base_name="nondet_"+id2string(suffix);
         }
-
+        
         if(base_name=="")
         {
-          unsigned count=0;
-          while(symbol_table.symbols.find("nondet_"+std::to_string(count))!=
-                symbol_table.symbols.end())
-            ++count;
-          base_name="nondet_"+std::to_string(count);
+          unsigned count;
+          for(count=0;
+              symbol_table.symbols.find("nondet_"+i2string(count))!=
+              symbol_table.symbols.end();
+              count++);
+          base_name="nondet_"+i2string(count);
         }
-
+        
         code_typet code_type;
         code_type.return_type()=expr.type();
-
+        
         symbolt symbol;
         symbol.base_name=base_name;
         symbol.name=base_name;
         symbol.type=code_type;
         id=symbol.name;
-
+        
         symbol_table.move(symbol);
       }
-
+      
       const symbolt &symbol=ns.lookup(id);
-
+      
       symbol_exprt symbol_expr(symbol.name, symbol.type);
       symbol_expr.add_source_location()=expr.source_location();
-
+      
       side_effect_expr_function_callt call;
       call.add_source_location()=expr.source_location();
       call.function()=symbol_expr;
       call.type()=expr.type();
-
+      
       expr.swap(call);
     }
   }
@@ -2412,3 +2399,4 @@ void goto_program2codet::cleanup_expr(exprt &expr, bool no_typecast)
     }
   }
 }
+

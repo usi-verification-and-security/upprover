@@ -10,6 +10,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "escape_analysis.h"
 
+#include <iostream>
+
 /*******************************************************************\
 
 Function: escape_domaint::is_tracked
@@ -18,7 +20,7 @@ Function: escape_domaint::is_tracked
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -30,7 +32,7 @@ bool escape_domaint::is_tracked(const symbol_exprt &symbol)
      identifier=="__CPROVER_dead_object" ||
      identifier=="__CPROVER_deallocated")
     return false;
-
+    
   return true;
 }
 
@@ -42,7 +44,7 @@ Function: escape_domaint::get_function
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -57,7 +59,7 @@ irep_idt escape_domaint::get_function(const exprt &lhs)
     irep_idt identifier=to_symbol_expr(lhs).get_identifier();
     return identifier;
   }
-
+  
   return irep_idt();
 }
 
@@ -69,7 +71,7 @@ Function: escape_domaint::assign_lhs_cleanup
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -83,7 +85,7 @@ void escape_domaint::assign_lhs_cleanup(
     if(is_tracked(symbol_expr))
     {
       irep_idt identifier=symbol_expr.get_identifier();
-
+      
       if(cleanup_functions.empty())
         cleanup_map.erase(identifier);
       else
@@ -100,7 +102,7 @@ Function: escape_domaint::assign_lhs_aliases
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -117,9 +119,11 @@ void escape_domaint::assign_lhs_aliases(
 
       aliases.isolate(identifier);
 
-      for(const auto &alias : alias_set)
+      for(std::set<irep_idt>::const_iterator it=alias_set.begin();
+          it!=alias_set.end();
+          it++)
       {
-        aliases.make_union(identifier, alias);
+        aliases.make_union(identifier, *it);
       }
     }
   }
@@ -133,7 +137,7 @@ Function: escape_domaint::get_rhs_cleanup
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -150,7 +154,7 @@ void escape_domaint::get_rhs_cleanup(
 
       const escape_domaint::cleanup_mapt::const_iterator m_it=
         cleanup_map.find(identifier);
-
+    
       if(m_it!=cleanup_map.end())
         cleanup_functions.insert(m_it->second.cleanup_functions.begin(),
                                  m_it->second.cleanup_functions.end());
@@ -175,7 +179,7 @@ Function: escape_domaint::get_rhs_aliases
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -190,10 +194,12 @@ void escape_domaint::get_rhs_aliases(
     {
       irep_idt identifier=symbol_expr.get_identifier();
       alias_set.insert(identifier);
-
-      for(const auto &alias : aliases)
-        if(aliases.same_set(alias, identifier))
-          alias_set.insert(alias);
+    
+      for(aliasest::const_iterator it=aliases.begin();
+          it!=aliases.end();
+          it++)
+        if(aliases.same_set(*it, identifier))
+          alias_set.insert(*it);
     }
   }
   else if(rhs.id()==ID_if)
@@ -219,7 +225,7 @@ Function: escape_domaint::get_rhs_aliases_address_of
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -250,7 +256,7 @@ Function: escape_domaint::transform
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -260,11 +266,8 @@ void escape_domaint::transform(
   ai_baset &ai,
   const namespacet &ns)
 {
-  if(has_values.is_false())
-    return;
-
   // upcast of ai
-  // escape_analysist &ea=
+  //escape_analysist &ea=
   //  static_cast<escape_analysist &>(ai);
 
   const goto_programt::instructiont &instruction=*from;
@@ -274,7 +277,7 @@ void escape_domaint::transform(
   case ASSIGN:
     {
       const code_assignt &code_assign=to_code_assign(instruction.code);
-
+      
       std::set<irep_idt> cleanup_functions;
       get_rhs_cleanup(code_assign.rhs(), cleanup_functions);
       assign_lhs_cleanup(code_assign.lhs(), cleanup_functions);
@@ -303,10 +306,9 @@ void escape_domaint::transform(
 
   case FUNCTION_CALL:
     {
-      const code_function_callt &code_function_call=
-        to_code_function_call(instruction.code);
+      const code_function_callt &code_function_call=to_code_function_call(instruction.code);
       const exprt &function=code_function_call.function();
-
+      
       if(function.id()==ID_symbol)
       {
         const irep_idt &identifier=to_symbol_expr(function).get_identifier();
@@ -324,10 +326,11 @@ void escape_domaint::transform(
               // may alias other stuff
               std::set<irep_idt> lhs_set;
               get_rhs_aliases(lhs, lhs_set);
-
-              for(const auto &lhs : lhs_set)
+              
+              for(std::set<irep_idt>::const_iterator
+                  l_it=lhs_set.begin(); l_it!=lhs_set.end(); l_it++)
               {
-                cleanup_map[lhs].cleanup_functions.insert(cleanup_function);
+                cleanup_map[*l_it].cleanup_functions.insert(cleanup_function);
               }
             }
           }
@@ -335,14 +338,12 @@ void escape_domaint::transform(
       }
     }
     break;
-
+  
   case END_FUNCTION:
     // This is the edge to the call site.
     break;
 
-  default:
-    {
-    }
+  default:;
   }
 }
 
@@ -354,7 +355,7 @@ Function: escape_domaint::output
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -363,26 +364,31 @@ void escape_domaint::output(
   const ai_baset &ai,
   const namespacet &ns) const
 {
-  if(has_values.is_known())
+  if(is_bottom)
   {
-    out << has_values.to_string() << '\n';
+    out << "BOTTOM\n";
     return;
   }
 
-  for(const auto &cleanup : cleanup_map)
+  for(cleanup_mapt::const_iterator it=cleanup_map.begin();
+      it!=cleanup_map.end();
+      it++)
   {
-    out << cleanup.first << ':';
-    for(const auto &id : cleanup.second.cleanup_functions)
-      out << ' ' << id;
+    out << it->first << ':';
+    for(std::set<irep_idt>::const_iterator
+        c_it=it->second.cleanup_functions.begin();
+        c_it!=it->second.cleanup_functions.end();
+        c_it++)
+      out << ' ' << *c_it;
     out << '\n';
   }
-
+  
   for(aliasest::const_iterator a_it1=aliases.begin();
       a_it1!=aliases.end();
       a_it1++)
   {
     bool first=true;
-
+  
     for(aliasest::const_iterator a_it2=aliases.begin();
         a_it2!=aliases.end();
         a_it2++)
@@ -390,17 +396,12 @@ void escape_domaint::output(
       if(aliases.is_root(a_it1) && a_it1!=a_it2 &&
          aliases.same_set(a_it1, a_it2))
       {
-        if(first)
-        {
-          out << "Aliases: " << *a_it1;
-          first=false;
-        }
+        if(first) { out << "Aliases: " << *a_it1; first=false; }
         out << ' ' << *a_it2;
       }
     }
 
-    if(!first)
-      out << '\n';
+    if(!first) out << '\n';
   }
 }
 
@@ -412,7 +413,7 @@ Function: escape_domaint::merge
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -421,10 +422,10 @@ bool escape_domaint::merge(
   locationt from,
   locationt to)
 {
-  if(b.has_values.is_false())
+  if(b.is_bottom)
     return false; // no change
 
-  if(has_values.is_false())
+  if(is_bottom)
   {
     *this=b;
     return true; // change
@@ -432,18 +433,19 @@ bool escape_domaint::merge(
 
   bool changed=false;
 
-  for(const auto &cleanup : b.cleanup_map)
+  for(cleanup_mapt::const_iterator b_it=b.cleanup_map.begin();
+      b_it!=b.cleanup_map.end();
+      b_it++)
   {
-    const std::set<irep_idt> &b_cleanup=cleanup.second.cleanup_functions;
-    std::set<irep_idt> &a_cleanup=cleanup_map[cleanup.first].cleanup_functions;
+    const std::set<irep_idt> &b_cleanup=b_it->second.cleanup_functions;
+    std::set<irep_idt> &a_cleanup=cleanup_map[b_it->first].cleanup_functions;
     unsigned old_size=a_cleanup.size();
     a_cleanup.insert(b_cleanup.begin(), b_cleanup.end());
-    if(a_cleanup.size()!=old_size)
-      changed=true;
+    if(a_cleanup.size()!=old_size) changed=true;
   }
-
+  
   // kill empty ones
-
+  
   for(cleanup_mapt::iterator a_it=cleanup_map.begin();
       a_it!=cleanup_map.end();
       ) // no a_it++
@@ -453,13 +455,13 @@ bool escape_domaint::merge(
     else
       a_it++;
   }
-
+  
   // do union
   for(aliasest::const_iterator it=b.aliases.begin();
       it!=b.aliases.end(); it++)
   {
     irep_idt b_root=b.aliases.find(it);
-
+    
     if(!aliases.same_set(*it, b_root))
     {
       aliases.make_union(*it, b_root);
@@ -476,7 +478,7 @@ bool escape_domaint::merge(
       aliases.isolate(it);
   }
   #endif
-
+  
   return changed;
 }
 
@@ -488,18 +490,18 @@ Function: escape_domaint::check_lhs
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
 void escape_domaint::check_lhs(
   const exprt &lhs,
-  std::set<irep_idt> &cleanup_functions)
+  std::set<irep_idt> &cleanup_functions)  
 {
   if(lhs.id()==ID_symbol)
   {
     const irep_idt &identifier=to_symbol_expr(lhs).get_identifier();
-
+    
     // pointer with aleanup function?
     const escape_domaint::cleanup_mapt::const_iterator m_it=
       cleanup_map.find(identifier);
@@ -509,10 +511,13 @@ void escape_domaint::check_lhs(
       // count the aliases
 
       unsigned count=0;
-
-      for(const auto &alias : aliases)
+      
+      for(aliasest::const_iterator
+          a_it=aliases.begin();
+          a_it!=aliases.end();
+          a_it++)
       {
-        if(alias!=identifier && aliases.same_set(alias, identifier))
+        if(*a_it!=identifier && aliases.same_set(*a_it, identifier))
           count+=1;
       }
 
@@ -535,7 +540,7 @@ Function: escape_analysist::insert_cleanup
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -548,12 +553,14 @@ void escape_analysist::insert_cleanup(
   const namespacet &ns)
 {
   source_locationt source_location=location->source_location;
-
-  for(const auto &cleanup : cleanup_functions)
+  
+  for(std::set<irep_idt>::const_iterator c_it=cleanup_functions.begin();
+      c_it!=cleanup_functions.end();
+      c_it++)
   {
-    symbol_exprt function=ns.lookup(cleanup).symbol_expr();
+    symbol_exprt function=ns.lookup(*c_it).symbol_expr();
     const code_typet &function_type=to_code_type(function.type());
-
+  
     goto_function.body.insert_before_swap(location);
     code_function_callt code;
     code.lhs().make_nil();
@@ -564,13 +571,11 @@ void escape_analysist::insert_cleanup(
     {
       typet param_type=function_type.parameters().front().type();
       exprt arg=lhs;
-      if(is_object)
-        arg=address_of_exprt(arg);
-      if(arg.type()!=param_type)
-        arg.make_typecast(param_type);
+      if(is_object) arg=address_of_exprt(arg);
+      if(arg.type()!=param_type) arg.make_typecast(param_type);
       code.arguments().push_back(arg);
     }
-
+    
     location->make_function_call(code);
     location->source_location=source_location;
   }
@@ -584,7 +589,7 @@ Function: escape_analysist::instrument
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -599,7 +604,7 @@ void escape_analysist::instrument(
       get_state(i_it);
 
       const goto_programt::instructiont &instruction=*i_it;
-
+      
       switch(instruction.type)
       {
       case ASSIGN:
@@ -608,27 +613,21 @@ void escape_analysist::instrument(
 
           std::set<irep_idt> cleanup_functions;
           operator[](i_it).check_lhs(code_assign.lhs(), cleanup_functions);
-          insert_cleanup(
-            f_it->second,
-            i_it,
-            code_assign.lhs(),
-            cleanup_functions,
-            false,
-            ns);
+          insert_cleanup(f_it->second, i_it, code_assign.lhs(), cleanup_functions, false, ns);
         }
         break;
 
       case DEAD:
         {
           const code_deadt &code_dead=to_code_dead(instruction.code);
-
+          
           std::set<irep_idt> cleanup_functions1;
-
+          
           escape_domaint &d=operator[](i_it);
 
           const escape_domaint::cleanup_mapt::const_iterator m_it=
             d.cleanup_map.find("&"+id2string(code_dead.get_identifier()));
-
+            
           // does it have a cleanup function for the object?
           if(m_it!=d.cleanup_map.end())
           {
@@ -638,41 +637,21 @@ void escape_analysist::instrument(
           }
 
           std::set<irep_idt> cleanup_functions2;
-
+          
           d.check_lhs(code_dead.symbol(), cleanup_functions2);
 
-          insert_cleanup(
-            f_it->second,
-            i_it,
-            code_dead.symbol(),
-            cleanup_functions1,
-            true,
-            ns);
-          insert_cleanup(
-            f_it->second,
-            i_it,
-            code_dead.symbol(),
-            cleanup_functions2,
-            false,
-            ns);
-
-          for(const auto &c : cleanup_functions1)
-          {
-            (void)c;
+          insert_cleanup(f_it->second, i_it, code_dead.symbol(), cleanup_functions1, true, ns);
+          insert_cleanup(f_it->second, i_it, code_dead.symbol(), cleanup_functions2, false, ns);
+          
+          for(unsigned i=0; i<cleanup_functions1.size(); i++)
             i_it++;
-          }
 
-          for(const auto &c : cleanup_functions2)
-          {
-            (void)c;
+          for(unsigned i=0; i<cleanup_functions2.size(); i++)
             i_it++;
-          }
         }
         break;
 
-      default:
-        {
-        }
+      default:;
       }
     }
 

@@ -11,6 +11,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "string2int.h"
 #include "irep.h"
+#include "i2string.h"
 #include "string_hash.h"
 #include "irep_hash.h"
 
@@ -115,11 +116,11 @@ void irept::detach()
     #ifdef IREP_DEBUG
     std::cout << "ALLOCATED " << data << std::endl;
     #endif
-
+    
     data->ref_count=1;
     remove_ref(old_data);
   }
-
+  
   assert(data->ref_count==1);
 
   #ifdef IREP_DEBUG
@@ -143,9 +144,8 @@ Function: irept::remove_ref
 #ifdef SHARING
 void irept::remove_ref(dt *old_data)
 {
-  if(old_data==&empty_d)
-    return;
-
+  if(old_data==&empty_d) return;
+  
   #if 0
   nonrecursive_destructor(old_data);
   #else
@@ -155,13 +155,13 @@ void irept::remove_ref(dt *old_data)
   #ifdef IREP_DEBUG
   std::cout << "R: " << old_data << " " << old_data->ref_count << std::endl;
   #endif
-
+  
   old_data->ref_count--;
   if(old_data->ref_count==0)
   {
     #ifdef IREP_DEBUG
     std::cout << "D: " << pretty() << std::endl;
-    std::cout << "DELETING " << old_data->data
+    std::cout << "DELETING " << old_data->data 
               << " " << old_data << std::endl;
     old_data->clear();
     std::cout << "DEALLOCATING " << old_data << "\n";
@@ -195,14 +195,13 @@ Function: irept::nonrecursive_destructor
 void irept::nonrecursive_destructor(dt *old_data)
 {
   std::vector<dt *> stack(1, old_data);
-
+  
   while(!stack.empty())
   {
     dt *d=stack.back();
     stack.erase(--stack.end());
-    if(d==&empty_d)
-      continue;
-
+    if(d==&empty_d) continue;
+    
     assert(d->ref_count!=0);
     d->ref_count--;
 
@@ -221,7 +220,7 @@ void irept::nonrecursive_destructor(dt *old_data)
         stack.push_back(it->second.data);
         it->second.data=&empty_d;
       }
-
+      
       for(named_subt::iterator
           it=d->comments.begin();
           it!=d->comments.end();
@@ -230,7 +229,7 @@ void irept::nonrecursive_destructor(dt *old_data)
         stack.push_back(it->second.data);
         it->second.data=&empty_d;
       }
-
+      
       for(subt::iterator
           it=d->sub.begin();
           it!=d->sub.end();
@@ -239,10 +238,10 @@ void irept::nonrecursive_destructor(dt *old_data)
         stack.push_back(it->data);
         it->data=&empty_d;
       }
-
+      
       // now delete, won't do recursion
       delete d;
-    }
+    }    
   }
 }
 #endif
@@ -312,15 +311,15 @@ const irep_idt &irept::get(const irep_namet &name) const
   if(it==s.end() ||
      it->first!=name)
   {
-    static const irep_idt empty;
+    const static irep_idt empty;
     return empty;
   }
   #else
   named_subt::const_iterator it=s.find(name);
-
+  
   if(it==s.end())
   {
-    static const irep_idt empty;
+    const static irep_idt empty;
     return empty;
   }
   #endif
@@ -381,23 +380,6 @@ unsigned int irept::get_unsigned_int(const irep_namet &name) const
 
 /*******************************************************************\
 
-Function: irept::get_size_t
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-std::size_t irept::get_size_t(const irep_namet &name) const
-{
-  return unsafe_string2size_t(get_string(name));
-}
-
-/*******************************************************************\
-
 Function: irept::get_long_long
 
   Inputs:
@@ -427,8 +409,8 @@ Function: irept::set
 
 void irept::set(const irep_namet &name, const long long value)
 {
-  add(name).id(std::to_string(value));
-}
+  add(name).id(i2string(value));
+}  
 
 /*******************************************************************\
 
@@ -450,12 +432,11 @@ void irept::remove(const irep_namet &name)
   #ifdef SUB_IS_LIST
   named_subt::iterator it=named_subt_lower_bound(s, name);
 
-  if(it!=s.end() && it->first==name)
-    s.erase(it);
+  if(it!=s.end() && it->first==name) s.erase(it);
   #else
   s.erase(name);
   #endif
-}
+}  
 
 /*******************************************************************\
 
@@ -560,7 +541,7 @@ irept &irept::add(const irep_namet &name, const irept &irep)
 
 /*******************************************************************\
 
-Function: irept::operator==
+Function: operator==
 
   Inputs:
 
@@ -575,19 +556,18 @@ unsigned long long irep_cmp_cnt=0;
 unsigned long long irep_cmp_ne_cnt=0;
 #endif
 
-bool irept::operator==(const irept &other) const
+bool operator==(const irept &i1, const irept &i2)
 {
   #ifdef IREP_HASH_STATS
   ++irep_cmp_cnt;
   #endif
   #ifdef SHARING
-  if(data==other.data)
-    return true;
+  if(i1.data==i2.data) return true;
   #endif
 
-  if(id()!=other.id() ||
-     get_sub()!=other.get_sub() || // recursive call
-     get_named_sub()!=other.get_named_sub()) // recursive call
+  if(i1.id()!=i2.id() ||
+     i1.get_sub()!=i2.get_sub() || // recursive call
+     i1.get_named_sub()!=i2.get_named_sub()) // recursive call
   {
     #ifdef IREP_HASH_STATS
     ++irep_cmp_ne_cnt;
@@ -602,7 +582,7 @@ bool irept::operator==(const irept &other) const
 
 /*******************************************************************\
 
-Function: irept::full_eq
+Function: full_eq
 
   Inputs:
 
@@ -612,49 +592,46 @@ Function: irept::full_eq
 
 \*******************************************************************/
 
-bool irept::full_eq(const irept &other) const
+bool full_eq(const irept &i1, const irept &i2)
 {
   #ifdef SHARING
-  if(data==other.data)
-    return true;
+  if(i1.data==i2.data) return true;
   #endif
 
-  if(id()!=other.id())
-    return false;
+  if(i1.id()!=i2.id()) return false;
 
-  const irept::subt &i1_sub=get_sub();
-  const irept::subt &i2_sub=other.get_sub();
-  const irept::named_subt &i1_named_sub=get_named_sub();
-  const irept::named_subt &i2_named_sub=other.get_named_sub();
-  const irept::named_subt &i1_comments=get_comments();
-  const irept::named_subt &i2_comments=other.get_comments();
+  const irept::subt &i1_sub=i1.get_sub();
+  const irept::subt &i2_sub=i2.get_sub();
+  const irept::named_subt &i1_named_sub=i1.get_named_sub();
+  const irept::named_subt &i2_named_sub=i2.get_named_sub();
+  const irept::named_subt &i1_comments=i1.get_comments();
+  const irept::named_subt &i2_comments=i2.get_comments();
 
-  if(i1_sub.size()!=i2_sub.size() ||
-     i1_named_sub.size()!=i2_named_sub.size() ||
-     i1_comments.size()!=i2_comments.size())
-    return false;
+  if(i1_sub.size()      !=i2_sub.size()) return false;
+  if(i1_named_sub.size()!=i2_named_sub.size()) return false;
+  if(i1_comments.size() !=i2_comments.size()) return false;
 
-  for(std::size_t i=0; i<i1_sub.size(); i++)
-    if(!i1_sub[i].full_eq(i2_sub[i]))
+  for(unsigned i=0; i<i1_sub.size(); i++)
+    if(!full_eq(i1_sub[i], i2_sub[i]))
       return false;
 
   {
     irept::named_subt::const_iterator i1_it=i1_named_sub.begin();
     irept::named_subt::const_iterator i2_it=i2_named_sub.begin();
-
+    
     for(; i1_it!=i1_named_sub.end(); i1_it++, i2_it++)
       if(i1_it->first!=i2_it->first ||
-         !i1_it->second.full_eq(i2_it->second))
+         !full_eq(i1_it->second, i2_it->second))
         return false;
   }
-
+  
   {
     irept::named_subt::const_iterator i1_it=i1_comments.begin();
     irept::named_subt::const_iterator i2_it=i2_comments.begin();
-
+    
     for(; i1_it!=i1_comments.end(); i1_it++, i2_it++)
       if(i1_it->first!=i2_it->first ||
-         !i1_it->second.full_eq(i2_it->second))
+         !full_eq(i1_it->second, i2_it->second))
         return false;
   }
 
@@ -663,7 +640,47 @@ bool irept::full_eq(const irept &other) const
 
 /*******************************************************************\
 
-Function: irept::ordering
+Function: irept::to_string
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+#include "lispirep.h"
+#include "lispexpr.h"
+
+std::string irept::to_string() const
+{
+  lispexprt lispexpr;
+  irep2lisp(*this, lispexpr);
+  return lispexpr.expr2string();
+}
+
+/*******************************************************************\
+
+Function: operator<<
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+std::ostream& operator<< (std::ostream& out, const irept &irep)
+{
+  out << irep.to_string();
+  return out;
+}
+
+/*******************************************************************\
+
+Function: ordering
 
   Inputs:
 
@@ -673,20 +690,16 @@ Function: irept::ordering
 
 \*******************************************************************/
 
-bool irept::ordering(const irept &other) const
+bool ordering(const irept &X, const irept &Y)
 {
-  return compare(other)<0;
+  return X.compare(Y)<0;
 
   #if 0
-  if(X.data<Y.data)
-    return true;
-  if(Y.data<X.data)
-    return false;
+  if(X.data<Y.data) return true;
+  if(Y.data<X.data) return false;
 
-  if(X.sub.size()<Y.sub.size())
-    return true;
-  if(Y.sub.size()<X.sub.size())
-    return false;
+  if(X.sub.size()<Y.sub.size()) return true;
+  if(Y.sub.size()<X.sub.size()) return false;
 
   {
     irept::subt::const_iterator it1, it2;
@@ -697,19 +710,15 @@ bool irept::ordering(const irept &other) const
         it1++,
         it2++)
     {
-      if(ordering(*it1, *it2))
-        return true;
-      if(ordering(*it2, *it1))
-        return false;
+      if(ordering(*it1, *it2)) return true;
+      if(ordering(*it2, *it1)) return false;
     }
 
     assert(it1==X.sub.end() && it2==Y.sub.end());
   }
 
-  if(X.named_sub.size()<Y.named_sub.size())
-    return true;
-  if(Y.named_sub.size()<X.named_sub.size())
-    return false;
+  if(X.named_sub.size()<Y.named_sub.size()) return true;
+  if(Y.named_sub.size()<X.named_sub.size()) return false;
 
   {
     irept::named_subt::const_iterator it1, it2;
@@ -720,15 +729,11 @@ bool irept::ordering(const irept &other) const
         it1++,
         it2++)
     {
-      if(it1->first<it2->first)
-        return true;
-      if(it2->first<it1->first)
-        return false;
+      if(it1->first<it2->first) return true;
+      if(it2->first<it1->first) return false;
 
-      if(ordering(it1->second, it2->second))
-        return true;
-      if(ordering(it2->second, it1->second))
-        return false;
+      if(ordering(it1->second, it2->second)) return true;
+      if(ordering(it2->second, it1->second)) return false;
     }
 
     assert(it1==X.named_sub.end() && it2==Y.named_sub.end());
@@ -755,15 +760,12 @@ int irept::compare(const irept &i) const
   int r;
 
   r=id().compare(i.id());
-  if(r!=0)
-    return r;
+  if(r!=0) return r;
 
   const subt::size_type size=get_sub().size(),
         i_size=i.get_sub().size();
-  if(size<i_size)
-    return -1;
-  if(size>i_size)
-    return 1;
+  if(size<i_size) return -1;
+  if(size>i_size) return 1;
 
   {
     irept::subt::const_iterator it1, it2;
@@ -775,8 +777,7 @@ int irept::compare(const irept &i) const
         it2++)
     {
       r=it1->compare(*it2);
-      if(r!=0)
-        return r;
+      if(r!=0) return r;
     }
 
     assert(it1==get_sub().end() && it2==i.get_sub().end());
@@ -784,10 +785,8 @@ int irept::compare(const irept &i) const
 
   const named_subt::size_type n_size=get_named_sub().size(),
         i_n_size=i.get_named_sub().size();
-  if(n_size<i_n_size)
-    return -1;
-  if(n_size>i_n_size)
-    return 1;
+  if(n_size<i_n_size) return -1;
+  if(n_size>i_n_size) return 1;
 
   {
     irept::named_subt::const_iterator it1, it2;
@@ -799,12 +798,10 @@ int irept::compare(const irept &i) const
         it2++)
     {
       r=it1->first.compare(it2->first);
-      if(r!=0)
-        return r;
+      if(r!=0) return r;
 
       r=it1->second.compare(it2->second);
-      if(r!=0)
-        return r;
+      if(r!=0) return r;
     }
 
     assert(it1==get_named_sub().end() &&
@@ -817,7 +814,7 @@ int irept::compare(const irept &i) const
 
 /*******************************************************************\
 
-Function: irept::operator<
+Function: operator<
 
   Inputs:
 
@@ -827,9 +824,9 @@ Function: irept::operator<
 
 \*******************************************************************/
 
-bool irept::operator<(const irept &other) const
+bool operator<(const irept &X, const irept &Y)
 {
-  return ordering(other);
+  return ordering(X, Y);
 }
 
 /*******************************************************************\
@@ -953,7 +950,7 @@ Function: irept::pretty
 
 std::string irept::pretty(unsigned indent, unsigned max_indent) const
 {
-  if(max_indent>0 && indent>max_indent)
+  if (max_indent > 0 && indent > max_indent) 
     return "";
 
   std::string result;
@@ -995,7 +992,7 @@ std::string irept::pretty(unsigned indent, unsigned max_indent) const
     result+="\n";
     indent_str(result, indent);
 
-    result+=std::to_string(count++);
+    result+=i2string(count++);
     result+=": ";
 
     result+=it->pretty(indent+2, max_indent);
@@ -1003,3 +1000,4 @@ std::string irept::pretty(unsigned indent, unsigned max_indent) const
 
   return result;
 }
+

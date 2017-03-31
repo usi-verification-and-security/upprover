@@ -1,17 +1,7 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <cstdlib>
 
 #include <util/substitute.h>
 
-#include <cegis/genetic/serialise_individual.h>
 #include <cegis/genetic/dynamic_test_runner_helper.h>
 #include <cegis/safety/value/safety_goto_ce.h>
 #include <cegis/safety/genetic/dynamic_safety_test_runner.h>
@@ -42,7 +32,7 @@ void dynamic_safety_test_runnert::run_test(individualt &ind,
         return code;
       };
   prepare_fitness_tester_library(handle, fitness_tester, source_code_provider,
-      shared_library());
+      shared_library(), false);
   assert(ind.x0.empty());
   std::deque<unsigned int> args;
   // TODO: Implement for multiple loops (change constraint, instrumentation)

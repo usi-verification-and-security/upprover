@@ -6,9 +6,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_INSTRUMENT_DOCUMENT_PROPERTIES_H
-#define CPROVER_GOTO_INSTRUMENT_DOCUMENT_PROPERTIES_H
-
 #include <iosfwd>
 
 #include <goto-programs/goto_functions.h>
@@ -20,5 +17,3 @@ void document_properties_latex(
 void document_properties_html(
   const goto_functionst &goto_functions,
   std::ostream &out);
-
-#endif // CPROVER_GOTO_INSTRUMENT_DOCUMENT_PROPERTIES_H

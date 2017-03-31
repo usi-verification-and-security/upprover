@@ -2,13 +2,11 @@
 
 Module: File Utilities
 
-Author:
+Author: 
 
 Date: January 2012
 
 \*******************************************************************/
-
-#include <cerrno>
 
 #if defined(__linux__) || \
     defined(__FreeBSD_kernel__) || \
@@ -17,6 +15,7 @@ Date: January 2012
     defined(__CYGWIN__) || \
     defined(__MACH__)
 #include <unistd.h>
+#include <cerrno>
 #include <dirent.h>
 #include <cstdlib>
 #include <cstdio>
@@ -26,6 +25,7 @@ Date: January 2012
 #include <io.h>
 #include <windows.h>
 #include <direct.h>
+#include <cerrno>
 #define chdir _chdir
 #define popen _popen
 #define pclose _pclose
@@ -41,7 +41,7 @@ Function: get_current_working_directory
 
  Outputs: current working directory
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -49,21 +49,20 @@ std::string get_current_working_directory()
 {
   unsigned bsize=50;
 
-  char *buf=reinterpret_cast<char*>(malloc(sizeof(char)*bsize));
-  if(!buf)
-    abort();
-
+  char *buf=(char*)malloc(sizeof(char)*bsize);
+  if(!buf) abort();
+  
   errno=0;
-
+  
   while(buf && getcwd(buf, bsize-1)==NULL && errno==ERANGE)
   {
     bsize*=2;
-    buf=reinterpret_cast<char*>(realloc(buf, sizeof(char)*bsize));
+    buf=(char*)realloc(buf, sizeof(char)*bsize);
   }
 
   std::string working_directory=buf;
   free(buf);
-
+  
   return working_directory;
 }
 
@@ -82,22 +81,21 @@ Function: delete_directory
 void delete_directory(const std::string &path)
 {
   #ifdef _WIN32
-
+  
   std::string pattern=path+"\\*";
-
-  // NOLINTNEXTLINE(readability/identifiers)
+  
   struct _finddata_t info;
-
+  
   intptr_t handle=_findfirst(pattern.c_str(), &info);
-
+  
   if(handle!=-1)
   {
     unlink(info.name);
-
+    
     while(_findnext(handle, &info)!=-1)
       unlink(info.name);
   }
-
+  
   #else
 
   DIR *dir=opendir(path.c_str());
@@ -107,7 +105,7 @@ void delete_directory(const std::string &path)
     struct dirent *ent;
 
     while((ent=readdir(dir))!=NULL)
-      remove((path+"/"+ent->d_name).c_str());
+      remove((path + "/" + ent->d_name).c_str());
 
     closedir(dir);
   }
@@ -117,30 +115,3 @@ void delete_directory(const std::string &path)
   rmdir(path.c_str());
 }
 
-/*******************************************************************\
-
-Function: concat_dir_file
-
-  Inputs: directory name and file name
-
- Outputs: concatenation of directory and file, if the file path is
-          relative
-
- Purpose:
-
-\*******************************************************************/
-
-std::string concat_dir_file(
-  const std::string &directory,
-  const std::string &file_name)
-{
-  #ifdef _WIN32
-  return  (file_name.size()>1 &&
-           file_name[0]!='/' &&
-           file_name[1]!=':') ?
-           file_name : directory+"\\"+file_name;
-  #else
-  return (!file_name.empty() && file_name[0]=='/') ?
-          file_name : directory+"/"+file_name;
-  #endif
-}

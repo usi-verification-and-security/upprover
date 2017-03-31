@@ -1,5 +1,3 @@
-/* FUNCTION: __CPROVER_danger_execute */
-
 #ifndef __CPROVER_cegis_number_of_vars
 #define __CPROVER_cegis_number_of_vars 2
 #endif
@@ -8,10 +6,12 @@
 #endif
 #ifndef __CPROVER_cegis_number_of_ops
 #define __CPROVER_cegis_number_of_ops 3
-#endif
+#endif 
 #ifndef __CPROVER_cegis_max_solution_size
 #define __CPROVER_cegis_max_solution_size 1
 #endif
+
+/* FUNCTION: __CPROVER_danger_execute */
 
 const void *__CPROVER_cegis_OPS[__CPROVER_cegis_number_of_ops];
 void *__CPROVER_cegis_RESULT_OPS[__CPROVER_cegis_max_solution_size];
@@ -65,7 +65,7 @@ void __CPROVER_danger_execute(struct __CPROVER_cegis_instructiont *program,
           else if (opcode < 2)
     __CPROVER_cegis_opcode_1: result=op0 * op1;
           else
-    __CPROVER_cegis_opcode_2: result=op0 &op1;
+    __CPROVER_cegis_opcode_2: result=op0 & op1;
         else
           if (opcode < 5)
             if  (opcode < 4)

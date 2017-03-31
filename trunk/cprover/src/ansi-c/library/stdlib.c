@@ -96,13 +96,13 @@ inline void *malloc(__CPROVER_size_t malloc_size)
 
   // make sure it's not recorded as deallocated
   __CPROVER_deallocated=(malloc_res==__CPROVER_deallocated)?0:__CPROVER_deallocated;
-
+  
   // record the object size for non-determistic bounds checking
   __CPROVER_bool record_malloc;
   __CPROVER_malloc_object=record_malloc?malloc_res:__CPROVER_malloc_object;
   __CPROVER_malloc_size=record_malloc?malloc_size:__CPROVER_malloc_size;
   __CPROVER_malloc_is_new_array=record_malloc?0:__CPROVER_malloc_is_new_array;
-
+  
   // detect memory leaks
   __CPROVER_bool record_may_leak;
   __CPROVER_memory_leak=record_may_leak?malloc_res:__CPROVER_memory_leak;
@@ -120,7 +120,7 @@ inline void *__builtin_alloca(__CPROVER_size_t alloca_size)
 
   // make sure it's not recorded as deallocated
   __CPROVER_deallocated=(res==__CPROVER_deallocated)?0:__CPROVER_deallocated;
-
+  
   // record the object size for non-determistic bounds checking
   __CPROVER_bool record_malloc;
   __CPROVER_malloc_object=record_malloc?res:__CPROVER_malloc_object;
@@ -149,13 +149,13 @@ inline void free(void *ptr)
     // catch double free
     if(__CPROVER_deallocated==ptr)
       __CPROVER_assert(0, "double free");
-
+      
     // catch people who try to use free(...) for stuff
     // allocated with new[]
     __CPROVER_assert(__CPROVER_malloc_object!=ptr ||
                      !__CPROVER_malloc_is_new_array,
                      "free called for new[] object");
-
+    
     // non-deterministically record as deallocated
     __CPROVER_bool record;
     if(record) __CPROVER_deallocated=ptr;
@@ -310,14 +310,6 @@ inline char *getenv(const char *name)
     "zero-termination of argument of getenv");
   #endif
 
-  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
-  __CPROVER_event("invalidate_pointer", "getenv_result");
-  char *getenv_result;
-  __CPROVER_set_must(getenv_result, "getenv_result");
-  return getenv_result;
-
-  #else
-
   __CPROVER_bool found;
   if(!found) return 0;
 
@@ -333,7 +325,6 @@ inline char *getenv(const char *name)
   buffer[buf_size-1]=0;
 
   return buffer;
-  #endif
 }
 
 /* FUNCTION: realloc */
@@ -377,7 +368,7 @@ inline void *valloc(__CPROVER_size_t malloc_size)
 {
   // The allocated memory is aligned on a page
   // boundary, which we don't model.
-
+     
   __CPROVER_HIDE:;
   return malloc(malloc_size);
 }
@@ -392,3 +383,4 @@ long random(void)
   __CPROVER_assume(result>=0 && result<=2147483647);
   return result;
 }
+

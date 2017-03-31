@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_UTIL_FIXEDBV_H
-#define CPROVER_UTIL_FIXEDBV_H
+#ifndef CPROVER_FIXEDBV_UTIL_H
+#define CPROVER_FIXEDBV_UTIL_H
 
 #include "mp_arith.h"
 #include "format_spec.h"
@@ -18,20 +18,20 @@ class fixedbv_typet;
 class fixedbv_spect
 {
 public:
-  std::size_t integer_bits, width;
+  unsigned integer_bits, width;
 
   fixedbv_spect():integer_bits(0), width(0)
   {
   }
-
-  fixedbv_spect(std::size_t _width, std::size_t _integer_bits):
+  
+  fixedbv_spect(unsigned _width, unsigned _integer_bits):
     integer_bits(_integer_bits), width(_width)
   {
   }
+  
+  fixedbv_spect(const fixedbv_typet &type);
 
-  explicit fixedbv_spect(const fixedbv_typet &type);
-
-  std::size_t get_fraction_bits() const
+  inline unsigned get_fraction_bits() const
   {
     return width-integer_bits;
   }
@@ -41,7 +41,7 @@ class fixedbvt
 {
 public:
   fixedbv_spect spec;
-
+  
   fixedbvt():v(0)
   {
   }
@@ -61,27 +61,26 @@ public:
 
   std::string format(const format_spect &format_spec) const;
 
-  bool operator==(int i) const;
-
+  bool operator == (int i) const;
   bool is_zero() const
   {
     return v==0;
   }
-
+  
   void negate();
 
-  fixedbvt &operator/=(const fixedbvt &other);
-  fixedbvt &operator*=(const fixedbvt &other);
-  fixedbvt &operator+=(const fixedbvt &other);
-  fixedbvt &operator-=(const fixedbvt &other);
-
-  bool operator<(const fixedbvt &other) const { return v<other.v; }
-  bool operator<=(const fixedbvt &other) const { return v<=other.v; }
-  bool operator>(const fixedbvt &other) const { return v>other.v; }
-  bool operator>=(const fixedbvt &other) const { return v>=other.v; }
-  bool operator==(const fixedbvt &other) const { return v==other.v; }
-  bool operator!=(const fixedbvt &other) const { return v!=other.v; }
-
+  fixedbvt &operator /= (const fixedbvt &other);
+  fixedbvt &operator *= (const fixedbvt &other);
+  fixedbvt &operator += (const fixedbvt &other);
+  fixedbvt &operator -= (const fixedbvt &other);
+  
+  friend bool operator < (const fixedbvt &a, const fixedbvt &b) { return a.v<b.v; }
+  friend bool operator <=(const fixedbvt &a, const fixedbvt &b) { return a.v<=b.v; }
+  friend bool operator > (const fixedbvt &a, const fixedbvt &b) { return a.v>b.v; }
+  friend bool operator >=(const fixedbvt &a, const fixedbvt &b) { return a.v>=b.v; }
+  friend bool operator ==(const fixedbvt &a, const fixedbvt &b) { return a.v==b.v; }
+  friend bool operator !=(const fixedbvt &a, const fixedbvt &b) { return a.v!=b.v; }
+  
   const mp_integer &get_value() const { return v; }
   void set_value(const mp_integer &_v) { v=_v; }
 
@@ -90,4 +89,11 @@ protected:
   mp_integer v;
 };
 
-#endif // CPROVER_UTIL_FIXEDBV_H
+bool operator < (const fixedbvt &a, const fixedbvt &b);
+bool operator <=(const fixedbvt &a, const fixedbvt &b);
+bool operator > (const fixedbvt &a, const fixedbvt &b);
+bool operator >=(const fixedbvt &a, const fixedbvt &b);
+bool operator ==(const fixedbvt &a, const fixedbvt &b);
+bool operator !=(const fixedbvt &a, const fixedbvt &b);
+
+#endif

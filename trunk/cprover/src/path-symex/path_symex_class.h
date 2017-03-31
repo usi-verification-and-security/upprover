@@ -6,18 +6,18 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PATH_SYMEX_PATH_SYMEX_CLASS_H
-#define CPROVER_PATH_SYMEX_PATH_SYMEX_CLASS_H
+#ifndef CPROVER_PATH_SYMEX_CLASS_H
+#define CPROVER_PATH_SYMEX_CLASS_H
 
 #include "path_symex.h"
 
 class path_symext
 {
 public:
-  path_symext()
+  inline path_symext()
   {
   }
-
+  
   virtual void operator()(
     path_symex_statet &state,
     std::list<path_symex_statet> &furter_states);
@@ -27,18 +27,18 @@ public:
   void do_goto(
     path_symex_statet &state,
     bool taken);
-
+    
   virtual void do_assert_fail(path_symex_statet &state)
   {
     const goto_programt::instructiont &instruction=
       *state.get_instruction();
-
+    
     state.record_step();
     state.next_pc();
     exprt guard=state.read(not_exprt(instruction.guard));
     state.history->guard=guard;
-  }
-
+  }  
+  
   typedef path_symex_stept stept;
 
 protected:
@@ -54,23 +54,18 @@ protected:
     exprt f=state.read(call.function());
     function_call_rec(state, call, f, further_states);
   }
-
+    
   void function_call_rec(
     path_symex_statet &state,
     const code_function_callt &function_call,
     const exprt &function,
     std::list<path_symex_statet> &further_states);
-
-  void return_from_function(path_symex_statet &state);
-
-  void set_return_value(path_symex_statet &, const exprt &);
+    
+  void return_from_function(
+    path_symex_statet &state,
+    const exprt &return_value);
 
   void symex_malloc(
-    path_symex_statet &state,
-    const exprt &lhs,
-    const side_effect_exprt &code);
-
-  void symex_va_arg_next(
     path_symex_statet &state,
     const exprt &lhs,
     const side_effect_exprt &code);
@@ -80,7 +75,7 @@ protected:
     const exprt &lhs,
     const exprt &rhs);
 
-  void assign(
+  inline void assign(
     path_symex_statet &state,
     const code_assignt &assignment)
   {
@@ -97,4 +92,4 @@ protected:
 };
 
 
-#endif // CPROVER_PATH_SYMEX_PATH_SYMEX_CLASS_H
+#endif

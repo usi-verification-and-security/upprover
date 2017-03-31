@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
 Module: Counterexample-Guided Inductive Synthesis
 
 Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+        Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_GENETIC_INSTRUCTION_SET_INFO_FACTORY_H
-#define CPROVER_CEGIS_GENETIC_INSTRUCTION_SET_INFO_FACTORY_H
+#ifndef CEGIS_GENETIC_INSTRUCTION_SET_INFO_FACTORY_H_
+#define CEGIS_GENETIC_INSTRUCTION_SET_INFO_FACTORY_H_
 
 #include <functional>
 
@@ -35,7 +35,7 @@ public:
    *
    * @param body
    */
-  explicit instruction_set_info_factoryt(const goto_programt &body);
+  instruction_set_info_factoryt(const goto_programt &body);
 
   /**
    * @brief
@@ -46,8 +46,7 @@ public:
    * @tparam goto_program_providert
    */
   template<class goto_program_providert>
-  explicit instruction_set_info_factoryt(
-    const goto_program_providert &provider);
+  instruction_set_info_factoryt(const goto_program_providert &provider);
 
   /**
    * @brief
@@ -77,4 +76,4 @@ public:
 
 #include "instruction_set_info_factory.inc"
 
-#endif // CPROVER_CEGIS_GENETIC_INSTRUCTION_SET_INFO_FACTORY_H
+#endif /* CEGIS_GENETIC_INSTRUCTION_SET_INFO_FACTORY_H_ */

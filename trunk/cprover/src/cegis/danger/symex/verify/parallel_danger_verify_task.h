@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_DANGER_SYMEX_VERIFY_PARALLEL_DANGER_VERIFY_TASK_H
-#define CPROVER_CEGIS_DANGER_SYMEX_VERIFY_PARALLEL_DANGER_VERIFY_TASK_H
+#ifndef CEGIS_PARALLEL_DANGER_VERIFY_TASK_H_
+#define CEGIS_PARALLEL_DANGER_VERIFY_TASK_H_
 
 #include <cegis/cegis-util/irep_pipe.h>
 #include <cegis/danger/symex/verify/danger_verify_config.h>
@@ -61,7 +61,7 @@ public:
    *
    * @param other
    */
-  explicit parallel_danger_verify_taskt(const parallel_danger_verify_taskt &other);
+  parallel_danger_verify_taskt(const parallel_danger_verify_taskt &other);
 
   /**
    * @brief
@@ -164,4 +164,4 @@ public:
   bool join();
 };
 
-#endif // CPROVER_CEGIS_DANGER_SYMEX_VERIFY_PARALLEL_DANGER_VERIFY_TASK_H
+#endif /* CEGIS_PARALLEL_DANGER_VERIFY_TASK_H_ */

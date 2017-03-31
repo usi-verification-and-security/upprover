@@ -1,18 +1,8 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <algorithm>
 #include <iterator>
 
-#include <util/arith_tools.h>
+#include <util/expr_util.h>
 
-#include <cegis/cegis-util/program_helper.h>
 #include <cegis/invariant/util/invariant_constraint_variables.h>
 #include <cegis/invariant/util/invariant_program_helper.h>
 #include <cegis/seed/literals_seed.h>
@@ -32,7 +22,7 @@ class is_same_symbolt
 {
   const irep_idt &name;
 public:
-  explicit is_same_symbolt(const irep_idt &name) :
+  is_same_symbolt(const irep_idt &name) :
       name(name)
   {
   }
@@ -51,7 +41,7 @@ class add_symbolt
 {
   keyst &keys;
 public:
-  explicit add_symbolt(keyst &keys) :
+  add_symbolt(keyst &keys) :
       keys(keys)
   {
   }
@@ -67,7 +57,7 @@ class compare_literalt
 {
   const constant_exprt &literal;
 public:
-  explicit compare_literalt(const constant_exprt &literal) :
+  compare_literalt(const constant_exprt &literal) :
       literal(literal)
   {
   }
@@ -82,7 +72,7 @@ class add_literalt
 {
   valuest &values;
 public:
-  explicit add_literalt(valuest &values) :
+  add_literalt(valuest &values) :
       values(values)
   {
   }
@@ -178,7 +168,7 @@ class is_keyt
 {
   const exprt::operandst &ops;
 public:
-  explicit is_keyt(const exprt::operandst &ops) :
+  is_keyt(const exprt::operandst &ops) :
       ops(ops)
   {
   }
@@ -212,7 +202,7 @@ class scrape_literalst: public const_expr_visitort
   std::deque<keyst> keys;
   pool_storaget &pool;
 public:
-  explicit scrape_literalst(pool_storaget &p) :
+  scrape_literalst(pool_storaget &p) :
       pool(p)
   {
     std::transform(p.begin(), p.end(), std::back_inserter(keys), &get_first);
@@ -275,8 +265,7 @@ public:
       const size_t index) const
   {
     const valuest &values=operator[](id);
-    if(values.empty())
-      return from_integer(0, type);
+    if (values.empty()) return to_constant_expr(gen_zero(type));
     return values.at(index % values.size());
   }
 

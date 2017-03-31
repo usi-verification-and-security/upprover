@@ -6,11 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_JAVA_BYTECODE_JAVA_BYTECODE_TYPECHECK_H
-#define CPROVER_JAVA_BYTECODE_JAVA_BYTECODE_TYPECHECK_H
+#ifndef CPROVER_JAVA_BYTECODE_TYPECHECK_H
+#define CPROVER_JAVA_BYTECODE_TYPECHECK_H
 
 #include <set>
-#include <map>
 
 #include <util/symbol_table.h>
 #include <util/typecheck.h>
@@ -44,26 +43,26 @@ public:
 
   virtual void typecheck();
   virtual void typecheck_expr(exprt &expr);
-
+  
 protected:
   symbol_tablet &symbol_table;
   const namespacet ns;
 
-  void typecheck_type_symbol(symbolt &);
-  void typecheck_non_type_symbol(symbolt &);
-  void typecheck_code(codet &);
-  void typecheck_type(typet &);
-  void typecheck_expr_symbol(symbol_exprt &);
-  void typecheck_expr_java_string_literal(exprt &);
-  void typecheck_expr_member(member_exprt &);
-  void typecheck_expr_java_new(side_effect_exprt &);
-  void typecheck_expr_java_new_array(side_effect_exprt &);
+  void typecheck_type_symbol(symbolt &symbol);
+  void typecheck_non_type_symbol(symbolt &symbol);
+  void typecheck_code(codet &code);
+  void typecheck_type(typet &type);
+  void typecheck_expr_symbol(symbol_exprt &expr);
+  void typecheck_expr_member(member_exprt &expr);
+  void typecheck_expr_java_new(side_effect_exprt &expr);
+  void typecheck_expr_java_new_array(side_effect_exprt &expr);
 
   // overload to use language-specific syntax
   virtual std::string to_string(const exprt &expr);
   virtual std::string to_string(const typet &type);
-
+  
   std::set<irep_idt> already_typechecked;
 };
 
-#endif // CPROVER_JAVA_BYTECODE_JAVA_BYTECODE_TYPECHECK_H
+#endif
+

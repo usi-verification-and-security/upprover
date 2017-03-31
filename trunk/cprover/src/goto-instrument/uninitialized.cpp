@@ -14,22 +14,21 @@ Date: January 2010
 
 #include <analyses/uninitialized_domain.h>
 
-#include "uninitialized.h"
-
 /*******************************************************************\
 
    Class: uninitializedt
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
 class uninitializedt
 {
 public:
-  explicit uninitializedt(symbol_tablet &_symbol_table):
+  uninitializedt(symbol_tablet &_symbol_table):
     symbol_table(_symbol_table),
-    ns(_symbol_table)
+    ns(_symbol_table),
+    uninitialized_analysis(ns)
   {
   }
 
@@ -43,7 +42,7 @@ protected:
   // The variables that need tracking,
   // i.e., are uninitialized and may be read?
   std::set<irep_idt> tracking;
-
+  
   void get_tracking(goto_programt::const_targett i_it);
 };
 
@@ -94,14 +93,14 @@ Function: uninitializedt::add_assertions
 
 void uninitializedt::add_assertions(goto_programt &goto_program)
 {
-  uninitialized_analysis(goto_program, ns);
-
+  uninitialized_analysis(goto_program);
+  
   // find out which variables need tracking
 
   tracking.clear();
   forall_goto_program_instructions(i_it, goto_program)
     get_tracking(i_it);
-
+    
   // add tracking symbols to symbol table
   for(std::set<irep_idt>::const_iterator
       it=tracking.begin();
@@ -121,7 +120,7 @@ void uninitializedt::add_assertions(goto_programt &goto_program)
     new_symbol.is_static_lifetime=false;
     new_symbol.is_file_local=true;
     new_symbol.is_lvalue=true;
-
+    
     symbol_table.move(new_symbol);
   }
 
@@ -142,7 +141,7 @@ void uninitializedt::add_assertions(goto_programt &goto_program)
         goto_programt::targett i1=goto_program.insert_after(i_it);
         goto_programt::targett i2=goto_program.insert_after(i1);
         i_it++, i_it++;
-
+        
         const irep_idt new_identifier=
           id2string(identifier)+"#initialized";
 
@@ -155,7 +154,7 @@ void uninitializedt::add_assertions(goto_programt &goto_program)
 
         i2->type=ASSIGN;
         i2->source_location=instruction.source_location;
-        i2->code=code_assignt(symbol_expr, false_exprt());
+        i2->code=code_assignt(symbol_expr, false_exprt());        
       }
     }
     else
@@ -164,9 +163,10 @@ void uninitializedt::add_assertions(goto_programt &goto_program)
       std::list<exprt> written=objects_written(instruction);
 
       // if(instruction.is_function_call())
-      // const code_function_callt &code_function_call=
+      //const code_function_callt &code_function_call=
       //  to_code_function_call(instruction.code);
 
+      assert(uninitialized_analysis.has_location(i_it));
       const std::set<irep_idt> &uninitialized=
         uninitialized_analysis[i_it].uninitialized;
 
@@ -181,16 +181,15 @@ void uninitializedt::add_assertions(goto_programt &goto_program)
           {
             assert(tracking.find(identifier)!=tracking.end());
             const irep_idt new_identifier=id2string(identifier)+"#initialized";
-
+          
             // insert assertion
             goto_programt::instructiont assertion;
             assertion.type=ASSERT;
             assertion.guard=symbol_exprt(new_identifier, bool_typet());
             assertion.source_location=instruction.source_location;
-            assertion.source_location.set_comment(
-              "use of uninitialized local variable");
+            assertion.source_location.set_comment("use of uninitialized local variable");
             assertion.source_location.set_property_class("uninitialized local");
-
+            
             goto_program.insert_before_swap(i_it, assertion);
             i_it++;
           }
@@ -207,20 +206,20 @@ void uninitializedt::add_assertions(goto_programt &goto_program)
           if(tracking.find(identifier)!=tracking.end())
           {
             const irep_idt new_identifier=id2string(identifier)+"#initialized";
-
+          
             goto_programt::instructiont assignment;
             assignment.type=ASSIGN;
             assignment.code=code_assignt(
               symbol_exprt(new_identifier, bool_typet()), true_exprt());
             assignment.source_location=instruction.source_location;
-
+            
             goto_program.insert_before_swap(i_it, assignment);
             i_it++;
           }
         }
       }
     }
-  }
+  }  
 }
 
 /*******************************************************************\
@@ -274,9 +273,10 @@ void show_uninitialized(
       out << "//// Function: " << f_it->first << std::endl;
       out << "////" << std::endl;
       out << std::endl;
-      uninitialized_analysist uninitialized_analysis;
-      uninitialized_analysis(f_it->second.body, ns);
-      uninitialized_analysis.output(ns, f_it->second.body, out);
+      uninitialized_analysist uninitialized_analysis(ns);
+      uninitialized_analysis(f_it->second.body);
+      uninitialized_analysis.output(f_it->second.body, out);
     }
   }
+
 }

@@ -1,6 +1,6 @@
 SRC = c_typecast.cpp ansi_c_y.tab.cpp ansi_c_lex.yy.cpp ansi_c_parser.cpp \
       expr2c.cpp ansi_c_language.cpp c_sizeof.cpp ansi_c_scope.cpp \
-      c_types.cpp ansi_c_typecheck.cpp \
+      c_types.cpp trans_unit.cpp ansi_c_typecheck.cpp \
       c_preprocess.cpp c_storage_spec.cpp \
       c_typecheck_base.cpp c_typecheck_initializer.cpp \
       c_typecheck_typecast.cpp c_typecheck_code.cpp \
@@ -9,12 +9,12 @@ SRC = c_typecast.cpp ansi_c_y.tab.cpp ansi_c_lex.yy.cpp ansi_c_parser.cpp \
       preprocessor_line.cpp ansi_c_convert_type.cpp \
       type2name.cpp cprover_library.cpp anonymous_member.cpp \
       printf_formatter.cpp ansi_c_internal_additions.cpp padding.cpp \
-      ansi_c_declaration.cpp designator.cpp ansi_c_entry_point.cpp \
+      ansi_c_declaration.cpp designator.cpp \
       literals/parse_float.cpp literals/unescape_string.cpp \
       literals/convert_float_literal.cpp \
       literals/convert_character_literal.cpp \
       literals/convert_integer_literal.cpp \
-      literals/convert_string_literal.cpp c_misc.cpp
+      literals/convert_string_literal.cpp
 
 INCLUDES= -I ..
 
@@ -79,7 +79,7 @@ library_check: library/*.c
 		[ $$ec -eq 0 ] || exit $$ec ; \
 	done
 	touch $@
-
+	
 cprover_library.inc: library/converter$(EXEEXT) library/*.c
 	cat library/*.c | library/converter$(EXEEXT) > $@
 
@@ -108,5 +108,6 @@ generated_files: cprover_library.inc gcc_builtin_headers_generic.inc \
 
 ###############################################################################
 
-ansi-c$(LIBEXT): $(OBJ)
+ansi-c$(LIBEXT): $(OBJ) 
 	$(LINKLIB)
+

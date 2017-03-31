@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PATH_SYMEX_PATH_SYMEX_HISTORY_H
-#define CPROVER_PATH_SYMEX_PATH_SYMEX_HISTORY_H
+#ifndef CPROVER_PATH_SYMEX_HISTORY_H
+#define CPROVER_PATH_SYMEX_HISTORY_H
 
 #include <cassert>
 #include <limits>
@@ -24,46 +24,46 @@ class path_symex_stept;
 class path_symex_step_reft
 {
 public:
-  explicit path_symex_step_reft(
+  explicit inline path_symex_step_reft(
     class path_symex_historyt &_history):
     index(std::numeric_limits<std::size_t>::max()),
     history(&_history)
   {
   }
 
-  path_symex_step_reft():
+  inline path_symex_step_reft():
     index(std::numeric_limits<std::size_t>::max()), history(0)
   {
   }
-
-  bool is_nil() const
+  
+  inline bool is_nil() const
   {
     return index==std::numeric_limits<std::size_t>::max();
   }
-
-  path_symex_historyt &get_history() const
+  
+  inline path_symex_historyt &get_history() const
   {
     assert(history!=0);
     return *history;
   }
-
+  
   // pre-decrement
-  path_symex_step_reft &operator--();
-
-  path_symex_stept &operator*() const { return get(); }
-  path_symex_stept *operator->() const { return &get(); }
-
+  inline path_symex_step_reft &operator--();
+  
+  inline path_symex_stept &operator*() const { return get(); }
+  inline path_symex_stept *operator->() const { return &get(); }
+  
   void generate_successor();
 
-  // build a forward-traversible version of the history
+  // build a forward-traversible version of the history  
   void build_history(std::vector<path_symex_step_reft> &dest) const;
 
 protected:
   // we use a vector to store all steps
   std::size_t index;
   class path_symex_historyt *history;
-
-  path_symex_stept &get() const;
+  
+  inline path_symex_stept &get() const;
 };
 
 class decision_proceduret;
@@ -72,31 +72,30 @@ class decision_proceduret;
 class path_symex_stept
 {
 public:
-  enum kindt
-  {
+  enum kindt {
     NON_BRANCH, BRANCH_TAKEN, BRANCH_NOT_TAKEN
   } branch;
-
-  bool is_branch_taken() const
+  
+  inline bool is_branch_taken() const
   {
     return branch==BRANCH_TAKEN;
   }
 
-  bool is_branch_not_taken() const
+  inline bool is_branch_not_taken() const
   {
     return branch==BRANCH_NOT_TAKEN;
   }
 
-  bool is_branch() const
+  inline bool is_branch() const
   {
     return branch==BRANCH_TAKEN || branch==BRANCH_NOT_TAKEN;
   }
 
   path_symex_step_reft predecessor;
-
+  
   // the thread that did the step
   unsigned thread_nr;
-
+  
   // the instruction that was executed
   loc_reft pc;
 
@@ -104,8 +103,8 @@ public:
   exprt full_lhs;
   symbol_exprt ssa_lhs;
 
-  bool hidden;
-
+  bool hidden; 
+  
   path_symex_stept():
     branch(NON_BRANCH),
     guard(nil_exprt()),
@@ -114,15 +113,15 @@ public:
     hidden(false)
   {
   }
-
+  
   // interface to solvers; this converts a single step
   void convert(decision_proceduret &dest) const;
-
+  
   void output(std::ostream &) const;
 };
 
 // converts the full history
-inline decision_proceduret &operator<<(
+static inline decision_proceduret &operator << (
   decision_proceduret &dest,
   path_symex_step_reft src)
 {
@@ -131,7 +130,7 @@ inline decision_proceduret &operator<<(
     src->convert(dest);
     --src;
   }
-
+  
   return dest;
 }
 
@@ -141,12 +140,6 @@ class path_symex_historyt
 public:
   typedef std::vector<path_symex_stept> step_containert;
   step_containert step_container;
-
-  // TODO: consider typedefing path_symex_historyt
-  void clear()
-  {
-    step_container.clear();
-  }
 };
 
 inline void path_symex_step_reft::generate_successor()
@@ -171,4 +164,4 @@ inline path_symex_stept &path_symex_step_reft::get() const
   return history->step_container[index];
 }
 
-#endif // CPROVER_PATH_SYMEX_PATH_SYMEX_HISTORY_H
+#endif

@@ -1,12 +1,3 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <algorithm>
 #ifndef _WIN32
 #include <unistd.h>
@@ -57,10 +48,4 @@ bool parallel_danger_verifiert::has_counterexamples() const
 bool parallel_danger_verifiert::success() const
 {
   return !is_failure;
-}
-
-void parallel_danger_verifiert::show_counterexample(messaget::mstreamt &os,
-    const counterexamplet &counterexample) const
-{
-  config.show_counterexample(os, counterexample);
 }

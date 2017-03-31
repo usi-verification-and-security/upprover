@@ -6,14 +6,6 @@ Author: CM Wintersteiger, 2006
 
 \*******************************************************************/
 
-#ifdef _WIN32
-#define EX_OK 0
-#define EX_USAGE 64
-#define EX_SOFTWARE 70
-#else
-#include <sysexits.h>
-#endif
-
 #include <iostream>
 
 #include <util/string2int.h>
@@ -36,12 +28,12 @@ Function: cw_modet::doit
 
 \*******************************************************************/
 
-int cw_modet::doit()
+bool cw_modet::doit()
 {
   if(cmdline.isset('?') || cmdline.isset("help"))
   {
     help();
-    return EX_OK;
+    return false;
   }
 
   unsigned int verbosity=1;
@@ -59,15 +51,15 @@ int cw_modet::doit()
   if(cmdline.isset("verbosity"))
     verbosity=unsafe_string2unsigned(cmdline.get_value("verbosity"));
 
-  compiler.set_message_handler(get_message_handler());
-  message_handler.set_verbosity(verbosity);
+  compiler.ui_message_handler.set_verbosity(verbosity);
+  ui_message_handler.set_verbosity(verbosity);
 
   debug() << "CodeWarrior mode" << eom;
-
+  
   // get configuration
   config.set(cmdline);
 
-  config.ansi_c.mode=configt::ansi_ct::flavourt::CODEWARRIOR;
+  config.ansi_c.mode=configt::ansi_ct::flavourt::MODE_CODEWARRIOR_C_CPP;
 
   compiler.object_file_extension="o";
 
@@ -107,7 +99,7 @@ int cw_modet::doit()
     compiler.output_file_object="";
     compiler.output_file_executable="a.out";
   }
-
+    
   if(cmdline.isset("Wp,"))
   {
     const std::list<std::string> &values=
@@ -176,14 +168,12 @@ int cw_modet::doit()
       std::cout << "  " << (*it) << std::endl;
     }
 
-    std::cout << "Output file (object): "
-              << compiler.output_file_object << std::endl;
-    std::cout << "Output file (executable): "
-              << compiler.output_file_executable << std::endl;
+    std::cout << "Output file (object): " << compiler.output_file_object << std::endl;
+    std::cout << "Output file (executable): " << compiler.output_file_executable << std::endl;
   }
 
   // Parse input program, convert to goto program, write output
-  return compiler.doit() ? EX_USAGE : EX_OK;
+  return compiler.doit();
 }
 
 /*******************************************************************\
@@ -200,6 +190,6 @@ Function: cw_modet::help_mode
 
 void cw_modet::help_mode()
 {
-  std::cout << "goto-cw understands the options of "
-            << "gcc (mwcc mode) plus the following.\n\n";
+  std::cout << "goto-cw understands the options of gcc (mwcc mode) plus the following.\n\n";
 }
+

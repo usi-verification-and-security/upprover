@@ -31,8 +31,7 @@ void unsigned_union_find::make_union(size_type j, size_type k)
   j=find(j);
   k=find(k);
 
-  if(j==k)
-    return; // already in same set
+  if(j==k) return; // already in same set
 
   // weight it
 
@@ -65,15 +64,14 @@ Function: unsigned_union_find::isolate
 void unsigned_union_find::isolate(size_type a)
 {
   check_index(a);
-
+  
   // is a itself a root?
   if(is_root(a))
   {
     size_type c=nodes[a].count;
 
     // already isolated?
-    if(c==1)
-      return;
+    if(c==1) return;
 
     assert(c>=2);
 
@@ -83,12 +81,12 @@ void unsigned_union_find::isolate(size_type a)
 
     re_root(a, new_root);
   }
-
+  
   // now it's not a root
   // get its root
   size_type r=find(a);
-
-  // assert(r!=a);
+  
+  assert(r!=a);
 
   nodes[r].count--;
   nodes[a].parent=a;
@@ -114,16 +112,14 @@ void unsigned_union_find::re_root(size_type old_root, size_type new_root)
 
   // make sure old_root is a root
   old_root=find(old_root);
-
+  
   // same set?
-  // assert(find(new_root)==old_root);
-  if(find(new_root)!=old_root)
-    return;
+  assert(find(new_root)==old_root);
 
   // make sure we actually do s.th.
   assert(new_root!=old_root);
   assert(nodes[old_root].count>=2);
-
+  
   nodes[new_root].parent=new_root;
   nodes[new_root].count=nodes[old_root].count;
 
@@ -131,7 +127,7 @@ void unsigned_union_find::re_root(size_type old_root, size_type new_root)
   nodes[old_root].count=0;
 
   // the order here is important!
-
+  
   for(size_type i=0; i<size(); i++)
     if(i!=new_root && i!=old_root && !is_root(i))
     {
@@ -164,8 +160,8 @@ unsigned_union_find::size_type unsigned_union_find::get_other(size_type a)
   for(size_type i=0; i<size(); i++)
     if(find(i)==a && i!=a)
       return i;
-
-//  assert(false);
+  
+  assert(false);
   return 0;
 }
 
@@ -185,20 +181,20 @@ void unsigned_union_find::intersection(
   const unsigned_union_find &other)
 {
   unsigned_union_find new_sets;
-
+  
   new_sets.resize(std::max(size(), other.size()));
 
   // should be n log n
-
+  
   for(size_type i=0; i<size(); i++)
     if(!is_root(i))
     {
       size_type j=find(i);
-
+      
       if(other.same_set(i, j))
         new_sets.make_union(i, j);
     }
-
+  
   swap(new_sets);
 }
 
@@ -216,8 +212,7 @@ Function: unsigned_union_find::find
 
 unsigned_union_find::size_type unsigned_union_find::find(size_type a) const
 {
-  if(a>=size())
-    return a;
+  if(a>=size()) return a;
 
   while(!is_root(a))
   {
@@ -225,7 +220,7 @@ unsigned_union_find::size_type unsigned_union_find::find(size_type a) const
     // make every other node in path
     // point to its grandparent.
     nodes[a].parent=nodes[nodes[a].parent].parent;
-
+    
     a=nodes[a].parent;
   }
 

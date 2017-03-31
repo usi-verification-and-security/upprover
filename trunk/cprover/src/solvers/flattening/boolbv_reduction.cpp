@@ -28,7 +28,7 @@ literalt boolbvt::convert_reduction(const unary_exprt &expr)
     throw "reduction operators take one non-empty operand";
 
   enum { O_OR, O_AND, O_XOR } op;
-
+  
   const irep_idt id=expr.id();
 
   if(id==ID_reduction_or || id==ID_reduction_nor)
@@ -46,7 +46,7 @@ literalt boolbvt::convert_reduction(const unary_exprt &expr)
   {
     switch(op)
     {
-    case O_OR:  l=prop.lor(l, op_bv[i]); break;
+    case O_OR:  l=prop.lor (l, op_bv[i]); break;
     case O_AND: l=prop.land(l, op_bv[i]); break;
     case O_XOR: l=prop.lxor(l, op_bv[i]); break;
     }
@@ -56,13 +56,13 @@ literalt boolbvt::convert_reduction(const unary_exprt &expr)
      id==ID_reduction_nand ||
      id==ID_reduction_xnor)
     l=!l;
-
-  return l;
+  
+  return l; 
 }
 
 /*******************************************************************\
 
-Function: boolbvt::convert_bv_reduction
+Function: boolbvt::convert_reduction
 
   Inputs:
 
@@ -72,7 +72,7 @@ Function: boolbvt::convert_bv_reduction
 
 \*******************************************************************/
 
-bvt boolbvt::convert_bv_reduction(const unary_exprt &expr)
+void boolbvt::convert_reduction(const unary_exprt &expr, bvt &bv)
 {
   const bvt &op_bv=convert_bv(expr.op());
 
@@ -80,7 +80,7 @@ bvt boolbvt::convert_bv_reduction(const unary_exprt &expr)
     throw "reduction operators take one non-empty operand";
 
   enum { O_OR, O_AND, O_XOR } op;
-
+  
   const irep_idt id=expr.id();
 
   if(id==ID_reduction_or || id==ID_reduction_nor)
@@ -101,24 +101,20 @@ bvt boolbvt::convert_bv_reduction(const unary_exprt &expr)
         expr.type().id()==ID_verilog_unsignedbv) &&
         expr.type().get_int(ID_width)==1)
     {
-      bvt bv;
       bv.resize(2);
-
+      
       literalt l0=op_bv[0], l1=op_bv[1];
 
       for(std::size_t i=2; i<op_bv.size(); i+=2)
       {
         switch(op)
         {
-        case O_OR:
-          l0=prop.lor(l0, op_bv[i]); l1=prop.lor(l1, op_bv[i+1]); break;
-        case O_AND:
-          l0=prop.land(l0, op_bv[i]); l1=prop.lor(l1, op_bv[i+1]); break;
-        case O_XOR:
-          l0=prop.lxor(l0, op_bv[i]); l1=prop.lor(l1, op_bv[i+1]); break;
+        case O_OR:  l0=prop.lor (l0, op_bv[i]); l1=prop.lor(l1, op_bv[i+1]); break;
+        case O_AND: l0=prop.land(l0, op_bv[i]); l1=prop.lor(l1, op_bv[i+1]); break;
+        case O_XOR: l0=prop.lxor(l0, op_bv[i]); l1=prop.lor(l1, op_bv[i+1]); break;
         }
       }
-
+      
       // Dominating values?
       if(op==O_OR)
         l1=prop.lselect(l0, const_literal(false), l1);
@@ -132,13 +128,14 @@ bvt boolbvt::convert_bv_reduction(const unary_exprt &expr)
 
       // we give back 'x', which is 10, if we had seen a 'z'
       l0=prop.lselect(l1, const_literal(false), l0);
-
+      
       bv[0]=l0;
       bv[1]=l1;
 
-      return bv;
+      return;
     }
   }
 
-  return conversion_failed(expr);
+
+  return conversion_failed(expr, bv);
 }

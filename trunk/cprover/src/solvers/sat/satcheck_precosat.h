@@ -6,14 +6,14 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_SOLVERS_SAT_SATCHECK_PRECOSAT_H
-#define CPROVER_SOLVERS_SAT_SATCHECK_PRECOSAT_H
+#ifndef CPROVER_SATCHECK_PRECOSAT_H
+#define CPROVER_SATCHECK_PRECOSAT_H
 
 #include "cnf.h"
 
-namespace PrecoSat // NOLINT(readability/namespace)
+namespace PrecoSat
 {
-class Solver; // NOLINT(readability/identifiers)
+  class Solver;
 }
 
 class satcheck_precosatt:public cnf_solvert
@@ -40,4 +40,4 @@ protected:
   // bvt assumptions;
 };
 
-#endif // CPROVER_SOLVERS_SAT_SATCHECK_PRECOSAT_H
+#endif

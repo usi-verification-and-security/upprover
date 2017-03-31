@@ -33,3 +33,4 @@ exprt cpp_symbol_expr(const symbolt &symbol)
 
   return tmp;
 }
+

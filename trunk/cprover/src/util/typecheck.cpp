@@ -20,45 +20,6 @@ Function:
 
 \*******************************************************************/
 
-bool legacy_typecheckt::typecheck_main()
-{
-  try
-  {
-    typecheck();
-  }
-
-  catch(int)
-  {
-    error_msg();
-  }
-
-  catch(const char *e)
-  {
-    str << e;
-    error_msg();
-  }
-
-  catch(const std::string &e)
-  {
-    str << e;
-    error_msg();
-  }
-
-  return error_found;
-}
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool typecheckt::typecheck_main()
 {
   try
@@ -68,17 +29,19 @@ bool typecheckt::typecheck_main()
 
   catch(int)
   {
-    error_found=true;
+    error_msg();
   }
 
   catch(const char *e)
   {
-    error() << e << eom;
+    str << e;
+    error_msg();
   }
 
   catch(const std::string &e)
   {
-    error() << e << eom;
+    str << e;
+    error_msg();
   }
 
   return error_found;

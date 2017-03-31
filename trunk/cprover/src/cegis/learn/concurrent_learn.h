@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_LEARN_CONCURRENT_LEARN_H
-#define CPROVER_CEGIS_LEARN_CONCURRENT_LEARN_H
+#ifndef CEGIS_CONCURRENT_LEARN_H_
+#define CEGIS_CONCURRENT_LEARN_H_
 
 #include <functional>
 
@@ -25,25 +25,22 @@ template<class learner1t, class learner2t>
 class concurrent_learnt
 {
 public:
-  typedef typename learner1t::candidatet learner1_candidatet;
-  typedef typename learner2t::candidatet learner2_candidatet;
-  typedef learner1_candidatet candidatet;
+  typedef typename learner1t::candidatet candidatet;
+  typedef typename learner2t::candidatet encoded_candidatet;
   typedef typename learner1t::counterexamplet counterexamplet;
   typedef typename learner1t::counterexamplest counterexamplest;
-  typedef std::function<void(irept &, const learner2_candidatet &)> learner2_serialisert;
-  typedef std::function<void(learner1_candidatet &, const irept &)> learner1_deserialisert;
-  typedef std::function<void(learner2_candidatet &, const irept &)> paragon_deserialisert;
+  typedef std::function<void(irept &, const encoded_candidatet &)> serialisert;
+  typedef std::function<void(candidatet &, const irept &)> deserialisert;
+  typedef std::function<void(encoded_candidatet &, const irept &)> encoded_deserialisert;
 private:
   learner1t &learner1;
   learner2t &learner2;
   task_poolt task_pool;
-  const learner2_serialisert learner2_serialiser;
-  const learner1_deserialisert learner1_deserialiser;
-  const paragon_deserialisert paragon_deserialiser;
+  const serialisert serialiser;
+  const deserialisert deserialiser;
+  const encoded_deserialisert encoded_deserialiser;
   bool is_decoded_candidate;
-  learner1_candidatet decoded_candidate;
-  size_t num_ces;
-  const size_t num_symex_ces;
+  candidatet decoded_candidate;
 public:
   /**
    * @brief
@@ -55,30 +52,22 @@ public:
    * @param serialiser
    * @param deserialiser
    * @param encoded_deserialiser
-   * @param learner1_head_start
    */
   concurrent_learnt(learner1t &learner1, learner2t &learner2,
-      learner2_serialisert serialiser, learner1_deserialisert deserialiser,
-      paragon_deserialisert encoded_deserialiser, size_t learner1_head_start);
+      serialisert serialiser, deserialisert deserialiser,
+      encoded_deserialisert encoded_deserialiser);
 
   /**
    * @brief
    *
    * @details
-   *
-   * @param learner1
-   * @param learner2
-   * @param serialiser
-   * @param learner1_head_start
    */
-  template<class serialisert>
-  concurrent_learnt(learner1t &learner1, learner2t &learner2,
-      serialisert serialiser, size_t learner1_head_start);
+  ~concurrent_learnt();
 
   template<class seedt>
   void seed(seedt &seed);
 
-  const learner1_candidatet &next_candidate() const;
+  const candidatet &next_candidate() const;
 
   template<class itert>
   bool learn(itert first, const itert &last);
@@ -90,4 +79,4 @@ public:
 
 #include "concurrent_learn.inc"
 
-#endif // CPROVER_CEGIS_LEARN_CONCURRENT_LEARN_H
+#endif /* CEGIS_CONCURRENT_LEARN_H_ */

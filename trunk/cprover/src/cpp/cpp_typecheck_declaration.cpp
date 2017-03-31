@@ -6,43 +6,11 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \********************************************************************/
 
+#include <util/i2string.h>
+#include <util/expr_util.h>
+
 #include "cpp_typecheck.h"
 #include "cpp_declarator_converter.h"
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void cpp_typecheckt::convert(cpp_declarationt &declaration)
-{
-  // see if the declaration is empty
-  if(declaration.is_empty())
-    return;
-
-  // Record the function bodies so we can check them later.
-  // This function is used recursively, so we save them.
-  method_bodiest old_method_bodies;
-  old_method_bodies.swap(method_bodies);
-
-  // templates are done in a dedicated function
-  if(declaration.is_template())
-    convert_template_declaration(declaration);
-  else
-    convert_non_template_declaration(declaration);
-
-  method_bodiest b;
-  b.swap(method_bodies);
-  typecheck_method_bodies(b);
-  method_bodies.swap(old_method_bodies);
-}
 
 /*******************************************************************\
 
@@ -64,7 +32,7 @@ void cpp_typecheckt::convert_anonymous_union(
   new_code.reserve_operands(declaration.declarators().size());
 
   // unnamed object
-  std::string identifier="#anon_union"+std::to_string(anon_counter++);
+  std::string identifier="#anon_union"+i2string(anon_counter++);
 
   irept name(ID_name);
   name.set(ID_identifier, identifier);
@@ -82,9 +50,9 @@ void cpp_typecheckt::convert_anonymous_union(
 
   if(!cpp_is_pod(declaration.type()))
   {
-    error().source_location=follow(declaration.type()).source_location();
-    error() << "anonymous union is not POD" << eom;
-    throw 0;
+   err_location(follow(declaration.type()).source_location());
+   str << "anonymous union is not POD";
+   throw 0;
   }
 
   codet decl_statement(ID_decl);
@@ -101,19 +69,18 @@ void cpp_typecheckt::convert_anonymous_union(
   {
     if(it->find(ID_type).id()==ID_code)
     {
-      error().source_location=union_symbol.type.source_location();
-      error() << "anonymous union `" << union_symbol.base_name
-              << "' shall not have function members" << eom;
-      throw 0;
+     err_location(union_symbol.type.source_location());
+     str << "anonymous union `" << union_symbol.base_name
+         << "' shall not have function members\n";
+     throw 0;
     }
 
     const irep_idt &base_name=it->get(ID_base_name);
 
     if(cpp_scopes.current_scope().contains(base_name))
     {
-      error().source_location=union_symbol.type.source_location();
-      error() << "identifier `" << base_name << "' already in scope"
-              << eom;
+      err_location(union_symbol.type.source_location());
+      str << "identifier `" << base_name << "' already in scope";
       throw 0;
     }
 
@@ -128,6 +95,40 @@ void cpp_typecheckt::convert_anonymous_union(
     "#unnamed_object", symbol.base_name);
 
   code.swap(new_code);
+}
+
+/*******************************************************************\
+
+Function: cpp_typecheckt::convert
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void cpp_typecheckt::convert(cpp_declarationt &declaration)
+{
+  // see if the declaration is empty
+  if(declaration.find(ID_type).is_nil() &&
+     !declaration.has_operands())
+    return;
+
+  // Record the function bodies so we can check them later.
+  // This function is used recursively, so we save them.
+  function_bodiest old_function_bodies=function_bodies;
+  function_bodies.clear();
+
+  // templates are done in a dedicated function
+  if(declaration.is_template())
+    convert_template_declaration(declaration);
+  else
+    convert_non_template_declaration(declaration);
+
+  typecheck_function_bodies();
+  function_bodies=old_function_bodies;
 }
 
 /*******************************************************************\
@@ -151,17 +152,14 @@ void cpp_typecheckt::convert_non_template_declaration(
   typet &declaration_type=declaration.type();
   bool is_typedef=declaration.is_typedef();
 
-  // the name anonymous tag types
   declaration.name_anon_struct_union();
-
-  // do the type of the declaration
   typecheck_type(declaration_type);
-
+  
   // Elaborate any class template instance _unless_ we do a typedef.
   // These are only elaborated on usage!
   if(!is_typedef)
     elaborate_class_template(declaration_type);
-
+  
   // Special treatment for anonymous unions
   if(declaration.declarators().empty() &&
      follow(declaration.type()).get_bool(ID_C_is_anonymous))
@@ -170,10 +168,8 @@ void cpp_typecheckt::convert_non_template_declaration(
 
     if(final_type.id()!=ID_union)
     {
-      error().source_location=final_type.source_location();
-      error() << "top-level declaration does not declare anything"
-              << eom;
-      throw 0;
+      err_location(final_type.source_location());
+      throw "top-level declaration does not declare anything";
     }
 
     codet dummy;
@@ -181,10 +177,10 @@ void cpp_typecheckt::convert_non_template_declaration(
   }
 
   // do the declarators (optional)
-  for(auto &d : declaration.declarators())
+  Forall_cpp_declarators(it, declaration)
   {
     // copy the declarator (we destroy the original)
-    cpp_declaratort declarator=d;
+    cpp_declaratort declarator=*it;
 
     cpp_declarator_convertert cpp_declarator_converter(*this);
 
@@ -198,14 +194,12 @@ void cpp_typecheckt::convert_non_template_declaration(
     if(declaration.find(ID_C_template).is_not_nil())
     {
       symbol.type.set(ID_C_template, declaration.find(ID_C_template));
-      symbol.type.set(
-        ID_C_template_arguments,
-        declaration.find(ID_C_template_arguments));
+      symbol.type.set(ID_C_template_arguments, declaration.find(ID_C_template_arguments));
     }
 
     // replace declarator by symbol expression
     exprt tmp=cpp_symbol_expr(symbol);
-    d.swap(tmp);
+    it->swap(tmp);
 
     // is there a constructor to be called for the declarator?
     if(symbol.is_lvalue &&

@@ -26,14 +26,10 @@ Function: uninitialized_domaint::transform
 \*******************************************************************/
 
 void uninitialized_domaint::transform(
+  const namespacet &ns,
   locationt from,
-  locationt to,
-  ai_baset &ai,
-  const namespacet &ns)
+  locationt to)
 {
-  if(has_values.is_false())
-    return;
-
   switch(from->type)
   {
   case DECL:
@@ -53,7 +49,7 @@ void uninitialized_domaint::transform(
       std::list<exprt> written=expressions_written(*from);
 
       forall_expr_list(it, written) assign(*it);
-
+      
       // we only care about the *first* uninitalized use
       forall_expr_list(it, read) assign(*it);
     }
@@ -95,17 +91,14 @@ Function: uninitialized_domaint::output
 \*******************************************************************/
 
 void uninitialized_domaint::output(
-  std::ostream &out,
-  const ai_baset &ai,
-  const namespacet &ns) const
+  const namespacet &ns,
+  std::ostream &out) const
 {
-  if(has_values.is_known())
-    out << has_values.to_string() << '\n';
-  else
-  {
-    for(const auto &id : uninitialized)
-      out << id << '\n';
-  }
+  for(uninitializedt::const_iterator
+      it=uninitialized.begin();
+      it!=uninitialized.end();
+      it++)
+    out << *it << '\n';
 }
 
 /*******************************************************************\
@@ -122,19 +115,13 @@ Function: uninitialized_domaint::merge
 
 bool uninitialized_domaint::merge(
   const uninitialized_domaint &other,
-  locationt from,
   locationt to)
 {
   unsigned old_uninitialized=uninitialized.size();
-
+  
   uninitialized.insert(
     other.uninitialized.begin(),
     other.uninitialized.end());
 
-  bool changed=
-    (has_values.is_false() && !other.has_values.is_false()) ||
-    old_uninitialized!=uninitialized.size();
-  has_values=tvt::unknown();
-
-  return changed;
+  return old_uninitialized!=uninitialized.size();
 }

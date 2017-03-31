@@ -9,7 +9,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_POINTER_ANALYSIS_VALUE_SET_DOMAIN_H
 #define CPROVER_POINTER_ANALYSIS_VALUE_SET_DOMAIN_H
 
-#define USE_DEPRECATED_STATIC_ANALYSIS_H
 #include <analyses/static_analysis.h>
 
 #include "value_set.h"
@@ -19,9 +18,9 @@ class value_set_domaint:public domain_baset
 public:
   value_sett value_set;
 
-  // overloading
+  // overloading  
 
-  bool merge(const value_set_domaint &other, locationt to)
+  inline bool merge(const value_set_domaint &other, locationt to)
   {
     return value_set.make_union(other.value_set);
   }
@@ -32,7 +31,7 @@ public:
   {
     value_set.output(ns, out);
   }
-
+    
   virtual void initialize(
     const namespacet &ns,
     locationt l)
@@ -53,6 +52,7 @@ public:
   {
     value_set.get_reference_set(expr, dest, ns);
   }
+  
 };
 
-#endif // CPROVER_POINTER_ANALYSIS_VALUE_SET_DOMAIN_H
+#endif

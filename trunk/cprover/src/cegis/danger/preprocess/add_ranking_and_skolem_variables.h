@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_DANGER_PREPROCESS_ADD_RANKING_AND_SKOLEM_VARIABLES_H
-#define CPROVER_CEGIS_DANGER_PREPROCESS_ADD_RANKING_AND_SKOLEM_VARIABLES_H
+#ifndef CEGIS_DANGER_ADD_INVARIANT_AND_TEMP_VARIABLES_H_
+#define CEGIS_DANGER_ADD_INVARIANT_AND_TEMP_VARIABLES_H_
 
 /**
  * @brief
@@ -21,4 +21,4 @@ Author: Daniel Kroening, kroening@kroening.com
 void add_ranking_and_skolem_variables(class danger_programt &program,
     const size_t max_program_length);
 
-#endif // CPROVER_CEGIS_DANGER_PREPROCESS_ADD_RANKING_AND_SKOLEM_VARIABLES_H
+#endif /* CEGIS_DANGER_ADD_INVARIANT_AND_TEMP_VARIABLES_H_ */

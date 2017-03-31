@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
 Module: Counterexample-Guided Inductive Synthesis
 
 Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+        Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_INVARIANT_SYMEX_VERIFY_INSERT_PROGRAM_H
-#define CPROVER_CEGIS_INVARIANT_SYMEX_VERIFY_INSERT_PROGRAM_H
+#ifndef CEGIS_INVARIANT_INSERT_PROGRAM_H_
+#define CEGIS_INVARIANT_INSERT_PROGRAM_H_
 
 #include <goto-programs/goto_program.h>
 
@@ -54,4 +54,4 @@ void insert_program(goto_programt &body, const goto_programt::targett &pos,
 void insert_program(goto_programt &body, goto_programt::targett pos,
     const goto_programt::instructionst &prog, const replacementst &replacements);
 
-#endif // CPROVER_CEGIS_INVARIANT_SYMEX_VERIFY_INSERT_PROGRAM_H
+#endif /* CEGIS_INVARIANT_INSERT_PROGRAM_H_ */

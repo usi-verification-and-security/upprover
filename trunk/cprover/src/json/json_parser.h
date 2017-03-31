@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_JSON_JSON_PARSER_H
-#define CPROVER_JSON_JSON_PARSER_H
+#ifndef JSON_PARSER_H
+#define JSON_PARSER_H
 
 #include <cassert>
 #include <stack>
@@ -22,27 +22,22 @@ class json_parsert:public parsert
 public:
   typedef std::stack<jsont, std::vector<jsont> > stackt;
   stackt stack;
-
-  jsont &top() { return stack.top(); }
-
-  virtual bool parse() override
-  {
-    return yyjsonparse()!=0;
-  }
-
-  void push(const jsont &x)
+  
+  inline jsont &top() { return stack.top(); }
+  
+  inline void push(const jsont &x)
   {
     stack.push(x);
   }
 
-  void pop(jsont &dest)
+  inline void pop(jsont &dest)
   {
     assert(!stack.empty());
     dest.swap(stack.top());
     stack.pop();
   }
 
-  virtual void clear() override
+  virtual void clear()
   {
     stack=stackt();
   }
@@ -64,4 +59,4 @@ bool parse_json(
   message_handlert &message_handler,
   jsont &dest);
 
-#endif // CPROVER_JSON_JSON_PARSER_H
+#endif

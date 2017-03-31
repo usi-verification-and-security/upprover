@@ -6,9 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_SOLVERS_FLATTENING_BV_POINTERS_H
-#define CPROVER_SOLVERS_FLATTENING_BV_POINTERS_H
+#ifndef CPROVER_BV_POINTERS_H
+#define CPROVER_BV_POINTERS_H
 
+#include <util/hash_cont.h>
 
 #include "boolbv.h"
 #include "pointer_logic.h"
@@ -18,56 +19,55 @@ class bv_pointerst:public boolbvt
 public:
   bv_pointerst(const namespacet &_ns, propt &_prop);
 
-  void post_process() override;
+  virtual void post_process();
 
 protected:
   pointer_logict pointer_logic;
 
-  // NOLINTNEXTLINE(readability/identifiers)
   typedef boolbvt SUB;
 
   unsigned object_bits, offset_bits, bits;
-
-  void encode(std::size_t object, bvt &bv);
-
-  virtual bvt convert_pointer_type(const exprt &expr);
-
+  
+  void encode(unsigned object, bvt &bv);
+  
+  virtual void convert_pointer_type(const exprt &expr, bvt &bv);
+  
   virtual void add_addr(const exprt &expr, bvt &bv);
-
+  
   // overloading
-  literalt convert_rest(const exprt &expr) override;
-  bvt convert_bitvector(const exprt &expr) override; // no cache
+  virtual literalt convert_rest(const exprt &expr);
+  
+  virtual void convert_bitvector(const exprt &expr, bvt &bv); // no cache
 
-  exprt bv_get_rec(
+  virtual exprt bv_get_rec(
     const bvt &bv,
     const std::vector<bool> &unknown,
     std::size_t offset,
-    const typet &type) const override;
+    const typet &type) const;
 
   bool convert_address_of_rec(
     const exprt &expr,
     bvt &bv);
-
+    
   void offset_arithmetic(bvt &bv, const mp_integer &x);
   void offset_arithmetic(bvt &bv, const mp_integer &factor, const exprt &index);
-  void offset_arithmetic(
-    bvt &bv, const mp_integer &factor, const bvt &index_bv);
+  void offset_arithmetic(bvt &bv, const mp_integer &factor, const bvt &index_bv);
 
   struct postponedt
   {
     bvt bv, op;
     exprt expr;
   };
-
+  
   typedef std::list<postponedt> postponed_listt;
-  postponed_listt postponed_list;
-
+  postponed_listt postponed_list;  
+  
   void do_postponed(const postponedt &postponed);
-
+  
   static bool is_ptr(const typet &type)
   {
     return type.id()==ID_pointer || type.id()==ID_reference;
   }
 };
 
-#endif // CPROVER_SOLVERS_FLATTENING_BV_POINTERS_H
+#endif

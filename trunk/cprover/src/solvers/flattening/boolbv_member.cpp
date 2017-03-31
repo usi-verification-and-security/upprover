@@ -7,6 +7,7 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <util/base_type.h>
+#include <util/expr_util.h>
 #include <util/byte_operators.h>
 #include <util/arith_tools.h>
 
@@ -24,7 +25,7 @@ Function: boolbvt::convert_member
 
 \*******************************************************************/
 
-bvt boolbvt::convert_member(const member_exprt &expr)
+void boolbvt::convert_member(const member_exprt &expr, bvt &bv)
 {
   const exprt &struct_op=expr.struct_op();
   const typet &struct_op_type=ns.follow(struct_op.type());
@@ -33,11 +34,13 @@ bvt boolbvt::convert_member(const member_exprt &expr)
 
   if(struct_op_type.id()==ID_union)
   {
-    return convert_bv(
+    bv=convert_bv(
       byte_extract_exprt(byte_extract_id(),
                          struct_op,
-                         from_integer(0, integer_typet()),
+                         gen_zero(integer_typet()),
                          expr.type()));
+
+    return;
   }
   else if(struct_op_type.id()==ID_struct)
   {
@@ -63,35 +66,25 @@ bvt boolbvt::convert_member(const member_exprt &expr)
           std::cout << "DEBUG " << expr.pretty() << "\n";
           #endif
 
-          error().source_location=expr.find_source_location();
-          error() << "member: component type does not match: "
-                  << subtype.pretty() << " vs. "
-                  << expr.type().pretty() << eom;
-          throw 0;
+          throw "member: component type does not match: "+
+            subtype.to_string()+" vs. "+
+            expr.type().to_string();
         }
 
-        bvt bv;
         bv.resize(sub_width);
         assert(offset+sub_width<=struct_bv.size());
 
         for(std::size_t i=0; i<sub_width; i++)
           bv[i]=struct_bv[offset+i];
 
-        return bv;
+        return;
       }
 
       offset+=sub_width;
     }
 
-    error().source_location=expr.find_source_location();
-    error() << "component " << component_name
-            << " not found in structure" << eom;
-    throw 0;
+    throw "component "+id2string(component_name)+" not found in structure";
   }
   else
-  {
-    error().source_location=expr.find_source_location();
-    error() << "member takes struct or union operand" << eom;
-    throw 0;
-  }
+    throw "member takes struct or union operand";
 }

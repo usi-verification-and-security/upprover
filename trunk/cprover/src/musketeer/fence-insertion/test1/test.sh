@@ -24,3 +24,4 @@ gcc -std=c99 -Wall -o test3 test.c
 echo -e $T 'Fenced compiled successfully (other format).'
 
 ./clean.sh
+

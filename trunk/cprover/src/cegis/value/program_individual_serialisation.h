@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_VALUE_PROGRAM_INDIVIDUAL_SERIALISATION_H
-#define CPROVER_CEGIS_VALUE_PROGRAM_INDIVIDUAL_SERIALISATION_H
+#ifndef CEGIS_PROGRAM_INDIVIDUAL_SERIALISATION_H_
+#define CEGIS_PROGRAM_INDIVIDUAL_SERIALISATION_H_
 
 #include <util/std_expr.h>
 
@@ -23,7 +23,7 @@ Author: Daniel Kroening, kroening@kroening.com
  *
  * @return
  */
-bool is_program_individual_decl(const class goto_trace_stept &step);
+bool is_program_indivdual_decl(const class goto_trace_stept &step);
 
 /**
  * @brief
@@ -122,4 +122,4 @@ public:
   void operator()(class danger_goto_solutiont &result, const irept &sdu) const;
 };
 
-#endif // CPROVER_CEGIS_VALUE_PROGRAM_INDIVIDUAL_SERIALISATION_H
+#endif /* CEGIS_PROGRAM_INDIVIDUAL_SERIALISATION_H_ */

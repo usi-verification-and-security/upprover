@@ -44,3 +44,4 @@ extern int *__errno(void)
 {
   return &__CPROVER_errno;
 }
+

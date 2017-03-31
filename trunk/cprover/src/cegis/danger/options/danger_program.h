@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_DANGER_OPTIONS_DANGER_PROGRAM_H
-#define CPROVER_CEGIS_DANGER_OPTIONS_DANGER_PROGRAM_H
+#ifndef CEGIS_DANGER_PROGRAM_H_
+#define CEGIS_DANGER_PROGRAM_H_
 
 #include <cegis/invariant/options/invariant_program.h>
 
@@ -44,7 +44,6 @@ public:
   typedef std::vector<loopt> loopst;
 
   loopst loops;
-  bool use_ranking;
 
   /**
    * @brief
@@ -69,12 +68,8 @@ public:
    *
    * @param st
    * @param gf
-   * @param use_ranking
    */
-  danger_programt(
-      const symbol_tablet &st,
-      const goto_functionst &gf,
-      const bool use_ranking);
+  danger_programt(const symbol_tablet &st, const goto_functionst &gf);
 
   /**
    * @brief
@@ -110,4 +105,4 @@ public:
   virtual invariant_loopt &add_loop();
 };
 
-#endif // CPROVER_CEGIS_DANGER_OPTIONS_DANGER_PROGRAM_H
+#endif /* CEGIS_DANGER_PROGRAM_H_ */

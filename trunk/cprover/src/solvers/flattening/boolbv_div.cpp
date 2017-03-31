@@ -22,21 +22,21 @@ Function: boolbvt::convert_div
 
 \*******************************************************************/
 
-bvt boolbvt::convert_div(const div_exprt &expr)
+void boolbvt::convert_div(const div_exprt &expr, bvt &bv)
 {
   if(expr.type().id()!=ID_unsignedbv &&
      expr.type().id()!=ID_signedbv &&
      expr.type().id()!=ID_fixedbv)
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
 
   std::size_t width=boolbv_width(expr.type());
-
+  
   if(width==0)
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
 
   if(expr.op0().type().id()!=expr.type().id() ||
      expr.op1().type().id()!=expr.type().id())
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
 
   bvt op0=convert_bv(expr.op0());
   bvt op1=convert_bv(expr.op1());
@@ -58,9 +58,9 @@ bvt boolbvt::convert_div(const div_exprt &expr)
     // add fraction_bits least-significant bits
     op0.insert(op0.begin(), zeros.begin(), zeros.end());
     op1=bv_utils.sign_extension(op1, op1.size()+fraction_bits);
-
+  
     bv_utils.divider(op0, op1, res, rem, bv_utilst::SIGNED);
-
+    
     // cut it down again
     res.resize(width);
   }
@@ -73,5 +73,5 @@ bvt boolbvt::convert_div(const div_exprt &expr)
     bv_utils.divider(op0, op1, res, rem, rep);
   }
 
-  return res;
+  bv=res;
 }

@@ -8,12 +8,12 @@
 #include "bigint.hh"
 #include "allocainc.h"
 
-#include <cctype>
-#include <climits>
-#include <cstring>
+#include <ctype.h>
+#include <limits.h>
+#include <string.h>
 
 // How to report errors.
-#include <cstdio>
+#include <stdio.h>
 #define error(x) fprintf (stderr, "%s\n", x)
 
 
@@ -1298,19 +1298,19 @@ BigInt::floorPow2 () const
   while ((power << 1) <= (twodig_t)digit[i]) {
     ++count, power <<= 1;
   }
-
+  
   return (single_bits * i) + count;
 }
 
 // Not part of original BigInt.
-void
+void 
 BigInt::setPower2 (unsigned exponent) {
   unsigned digitOffset = exponent / single_bits;
   unsigned bitOffset = exponent % single_bits;
   unsigned digitsNeeded = 1 + digitOffset;
 
   reallocate(digitsNeeded);
-  this->length = digitsNeeded;
+  this->length = digitsNeeded; 
   this->positive = true;
 
   unsigned i;

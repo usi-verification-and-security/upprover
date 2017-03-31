@@ -1,5 +1,8 @@
-CBMC Version 5.6 from Git - 64-bit version (CBMC version 5.6 64-bit x86_64 linux)
-Date: 01/03/2017
+CBMC Version 5.7 from Git - 64-bit version (CBMC version 5.6 64-bit x86_64 linux)
+Date: 31/03/2017
+
+** CURRENTLY ONLY WORKS WITH OPENSMT2 OLD VERSION **
+git checkout 2df821308c568b0d22b4937b79a6d3ffa015cea6
 
 File Changed:
 =============
@@ -7,9 +10,9 @@ File Changed:
 - trunk/cprover/src/goto-symex/goto_symex.h (set virtual phi_function method)
 - trunk/cprover/src/goto-symex/goto_symex_state.h (Move a method to public - get_l1_name())
 - trunk/cprover/src/goto-symex/goto_symex_state.cpp // Fix to ignor issues of parallel MC (two locations)
+- trunk/cprover/util/expr.h/.cpp - add a function
 - trunk/cprover/src/config.inc (change: add ../ to minisat2 path)
 - trunk/cprover/src/Makefile
-- trunk/cprover/util/expr.h/.cpp - add a function
 
 minisat-2.2.1:
 ==============
@@ -27,6 +30,7 @@ Taken from Git:
 ===============
 https://github.com/diffblue/cbmc
 (found by git remote show origin)
+http://www.cprover.org/svn/cbmc/trunk/COMPILING
 
 Special modifications in HiFrog:
 ================================

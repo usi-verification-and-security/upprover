@@ -19,7 +19,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <ansi-c/ansi_c_language.h>
 #include <cpp/cpp_language.h>
-#include <java_bytecode/java_bytecode_language.h>
 
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/show_properties.h>
@@ -29,15 +28,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/link_to_library.h>
 #include <goto-programs/goto_inline.h>
 #include <goto-programs/xml_goto_trace.h>
-#include <goto-programs/remove_complex.h>
-#include <goto-programs/remove_vector.h>
-#include <goto-programs/remove_virtual_functions.h>
-#include <goto-programs/remove_instanceof.h>
 
-#include <goto-symex/rewrite_union.h>
-#include <goto-symex/adjust_float_expressions.h>
-
-#include <goto-instrument/cover.h>
+#include <analyses/goto_check.h>
 
 #include <langapi/mode.h>
 
@@ -62,11 +54,10 @@ Function: symex_parse_optionst::symex_parse_optionst
 
 symex_parse_optionst::symex_parse_optionst(int argc, const char **argv):
   parse_options_baset(SYMEX_OPTIONS, argc, argv),
-  language_uit(cmdline, ui_message_handler),
-  ui_message_handler(cmdline, "Symex " CBMC_VERSION)
+  language_uit("Symex " CBMC_VERSION, cmdline)
 {
 }
-
+  
 /*******************************************************************\
 
 Function: symex_parse_optionst::eval_verbosity
@@ -83,7 +74,7 @@ void symex_parse_optionst::eval_verbosity()
 {
   // this is our default verbosity
   int v=messaget::M_STATISTICS;
-
+  
   if(cmdline.isset("verbosity"))
   {
     v=unsafe_string2int(cmdline.get_value("verbosity"));
@@ -92,7 +83,7 @@ void symex_parse_optionst::eval_verbosity()
     else if(v>10)
       v=10;
   }
-
+  
   ui_message_handler.set_verbosity(v);
 }
 
@@ -122,8 +113,53 @@ void symex_parse_optionst::get_command_line_options(optionst &options)
   if(cmdline.isset("unwindset"))
     options.set_option("unwindset", cmdline.get_value("unwindset"));
 
-  // all checks supported by goto_check
-  PARSE_OPTIONS_GOTO_CHECK(cmdline, options);
+  // check array bounds
+  if(cmdline.isset("bounds-check"))
+    options.set_option("bounds-check", true);
+  else
+    options.set_option("bounds-check", false);
+
+  // check division by zero
+  if(cmdline.isset("div-by-zero-check"))
+    options.set_option("div-by-zero-check", true);
+  else
+    options.set_option("div-by-zero-check", false);
+
+  // check overflow/underflow
+  if(cmdline.isset("signed-overflow-check"))
+    options.set_option("signed-overflow-check", true);
+  else
+    options.set_option("signed-overflow-check", false);
+
+  // check overflow/underflow
+  if(cmdline.isset("unsigned-overflow-check"))
+    options.set_option("unsigned-overflow-check", true);
+  else
+    options.set_option("unsigned-overflow-check", false);
+
+  // check overflow
+  if(cmdline.isset("float-overflow-check"))
+    options.set_option("float-overflow-check", true);
+  else
+    options.set_option("float-overflow-check", false);
+
+  // check for NaN (not a number)
+  if(cmdline.isset("nan-check"))
+    options.set_option("nan-check", true);
+  else
+    options.set_option("nan-check", false);
+
+  // check pointers
+  if(cmdline.isset("pointer-check"))
+    options.set_option("pointer-check", true);
+  else
+    options.set_option("pointer-check", false);
+
+  // check for memory leaks
+  if(cmdline.isset("memory-leak-check"))
+    options.set_option("memory-leak-check", true);
+  else
+    options.set_option("memory-leak-check", false);
 
   // check assertions
   if(cmdline.isset("no-assertions"))
@@ -139,7 +175,7 @@ void symex_parse_optionst::get_command_line_options(optionst &options)
 
   // magic error label
   if(cmdline.isset("error-label"))
-    options.set_option("error-label", cmdline.get_values("error-label"));
+    options.set_option("error-label", cmdline.get_value("error-label"));
 }
 
 /*******************************************************************\
@@ -164,7 +200,6 @@ int symex_parse_optionst::doit()
 
   register_language(new_ansi_c_language);
   register_language(new_cpp_language);
-  register_language(new_java_bytecode_language);
 
   //
   // command line options
@@ -175,31 +210,29 @@ int symex_parse_optionst::doit()
 
   eval_verbosity();
 
-  goto_model.set_message_handler(get_message_handler());
+  goto_functionst goto_functions;
 
-  if(goto_model(cmdline.args))
+  if(get_goto_program(options, goto_functions))
     return 6;
-
-  if(process_goto_program(options))
-    return 6;
-
-  label_properties(goto_model);
+    
+  label_properties(goto_functions);
 
   if(cmdline.isset("show-properties"))
   {
-    show_properties(goto_model, get_ui());
+    const namespacet ns(symbol_table);
+    show_properties(ns, get_ui(), goto_functions);
     return 0;
   }
 
-  if(set_properties())
+  if(set_properties(goto_functions))
     return 7;
-
+    
   if(cmdline.isset("show-locs"))
   {
-    const namespacet ns(goto_model.symbol_table);
+    const namespacet ns(symbol_table);
     locst locs(ns);
-    locs.build(goto_model.goto_functions);
-    locs.output(std::cout);
+    locs.build(goto_functions);
+    locs.output(std::cout);    
     return 0;
   }
 
@@ -207,74 +240,45 @@ int symex_parse_optionst::doit()
 
   try
   {
-    const namespacet ns(goto_model.symbol_table);
+    const namespacet ns(symbol_table);
     path_searcht path_search(ns);
-
+    
     path_search.set_message_handler(get_message_handler());
 
     if(cmdline.isset("depth"))
-      path_search.set_depth_limit(
-        unsafe_string2unsigned(cmdline.get_value("depth")));
+      path_search.set_depth_limit(unsafe_string2unsigned(cmdline.get_value("depth")));
 
     if(cmdline.isset("context-bound"))
-      path_search.set_context_bound(
-        unsafe_string2unsigned(cmdline.get_value("context-bound")));
-
-    if(cmdline.isset("branch-bound"))
-      path_search.set_branch_bound(
-        unsafe_string2unsigned(cmdline.get_value("branch-bound")));
+      path_search.set_context_bound(unsafe_string2unsigned(cmdline.get_value("context-bound")));
 
     if(cmdline.isset("unwind"))
-      path_search.set_unwind_limit(
-        unsafe_string2unsigned(cmdline.get_value("unwind")));
-
-    if(cmdline.isset("dfs"))
-      path_search.set_dfs();
-
-    if(cmdline.isset("bfs"))
-      path_search.set_bfs();
-
-    if(cmdline.isset("locs"))
-      path_search.set_locs();
+      path_search.set_unwind_limit(unsafe_string2unsigned(cmdline.get_value("unwind")));
 
     if(cmdline.isset("show-vcc"))
     {
       path_search.show_vcc=true;
-      path_search(goto_model.goto_functions);
+      path_search(goto_functions);
       return 0;
     }
 
-    path_search.eager_infeasibility=
-      cmdline.isset("eager-infeasibility");
-
-    if(cmdline.isset("cover"))
+    // do actual symex
+    switch(path_search(goto_functions))
     {
-      // test-suite generation
-      path_search(goto_model.goto_functions);
-      report_cover(path_search.property_map);
+    case safety_checkert::SAFE:
+      report_properties(path_search.property_map);
+      report_success();
       return 0;
-    }
-    else
-    {
-      // do actual symex, for assertion checking
-      switch(path_search(goto_model.goto_functions))
-      {
-      case safety_checkert::SAFE:
-        report_properties(path_search.property_map);
-        report_success();
-        return 0;
-
-      case safety_checkert::UNSAFE:
-        report_properties(path_search.property_map);
-        report_failure();
-        return 10;
-
-      default:
-        return 8;
-      }
+    
+    case safety_checkert::UNSAFE:
+      report_properties(path_search.property_map);
+      report_failure();
+      return 10;
+    
+    default:
+      return 8;
     }
   }
-
+  
   catch(const std::string error_msg)
   {
     error() << error_msg << messaget::eom;
@@ -287,7 +291,7 @@ int symex_parse_optionst::doit()
     return 8;
   }
 
-  #if 0
+  #if 0                                         
   // let's log some more statistics
   debug() << "Memory consumption:" << messaget::endl;
   memory_info(debug());
@@ -307,13 +311,12 @@ Function: symex_parse_optionst::set_properties
 
 \*******************************************************************/
 
-bool symex_parse_optionst::set_properties()
+bool symex_parse_optionst::set_properties(goto_functionst &goto_functions)
 {
   try
   {
     if(cmdline.isset("property"))
-      ::set_properties(
-        goto_model.goto_functions, cmdline.get_values("property"));
+      ::set_properties(goto_functions, cmdline.get_values("property"));
   }
 
   catch(const char *e)
@@ -327,12 +330,167 @@ bool symex_parse_optionst::set_properties()
     error() << e << eom;
     return true;
   }
-
+  
   catch(int)
   {
     return true;
   }
+  
+  return false;
+}
 
+/*******************************************************************\
+
+Function: symex_parse_optionst::get_goto_program
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+  
+bool symex_parse_optionst::get_goto_program(
+  const optionst &options,
+  goto_functionst &goto_functions)
+{
+  if(cmdline.args.empty())
+  {
+    error() << "Please provide a program to verify" << eom;
+    return true;
+  }
+
+  try
+  {
+    if(cmdline.args.size()==1 &&
+       is_goto_binary(cmdline.args[0]))
+    {
+      status() << "Reading GOTO program from file" << eom;
+
+      if(read_goto_binary(cmdline.args[0],
+           symbol_table, goto_functions, get_message_handler()))
+        return true;
+        
+      config.set_from_symbol_table(symbol_table);
+
+      if(cmdline.isset("show-symbol-table"))
+      {
+        show_symbol_table();
+        return true;
+      }
+      
+      irep_idt entry_point=goto_functions.entry_point();
+      
+      if(symbol_table.symbols.find(entry_point)==symbol_table.symbols.end())
+      {
+        error() << "The goto binary has no entry point; please complete linking" << eom;
+        return true;
+      }
+    }
+    else if(cmdline.isset("show-parse-tree"))
+    {
+      if(cmdline.args.size()!=1)
+      {
+        error() << "Please give one source file only" << eom;
+        return true;
+      }
+      
+      std::string filename=cmdline.args[0];
+      
+      #ifdef _MSC_VER
+      std::ifstream infile(widen(filename).c_str());
+      #else
+      std::ifstream infile(filename.c_str());
+      #endif
+                
+      if(!infile)
+      {
+        error() << "failed to open input file `" << filename << "'" << eom;
+        return true;
+      }
+                              
+      languaget *language=get_language_from_filename(filename);
+                                                
+      if(language==NULL)
+      {
+        error() << "failed to figure out type of file `" <<  filename << "'" << eom;
+        return true;
+      }
+      
+      language->set_message_handler(get_message_handler());
+                                                                
+      status("Parsing", filename);
+  
+      if(language->parse(infile, filename))
+      {
+        error() << "PARSING ERROR" << eom;
+        return true;
+      }
+      
+      language->show_parse(std::cout);
+      return true;
+    }
+    else
+    {
+    
+      if(parse()) return true;
+      if(typecheck()) return true;
+      if(final()) return true;
+
+      // we no longer need any parse trees or language files
+      clear_parse();
+
+      if(cmdline.isset("show-symbol-table"))
+      {
+        show_symbol_table();
+        return true;
+      }
+
+      irep_idt entry_point=goto_functions.entry_point();
+      
+      if(symbol_table.symbols.find(entry_point)==symbol_table.symbols.end())
+      {
+        error() << "No entry point; please provide a main function" << eom;
+        return true;
+      }
+
+      status() << "Generating GOTO Program" << eom;
+
+      goto_convert(symbol_table, goto_functions, ui_message_handler);
+    }
+
+    // finally add the library
+    status() << "Adding CPROVER library" << eom;
+    link_to_library(symbol_table, goto_functions, ui_message_handler);
+
+    if(process_goto_program(options, goto_functions))
+      return true;
+  }
+
+  catch(const char *e)
+  {
+    error() << e << eom;
+    return true;
+  }
+
+  catch(const std::string e)
+  {
+    error() << e << eom;
+    return true;
+  }
+  
+  catch(int)
+  {
+    return true;
+  }
+  
+  catch(std::bad_alloc)
+  {
+    error() << "Out of memory" << eom;
+    return true;
+  }
+  
   return false;
 }
 
@@ -347,83 +505,46 @@ Function: symex_parse_optionst::process_goto_program
  Purpose:
 
 \*******************************************************************/
-
-bool symex_parse_optionst::process_goto_program(const optionst &options)
+  
+bool symex_parse_optionst::process_goto_program(
+  const optionst &options,
+  goto_functionst &goto_functions)
 {
   try
   {
-    // we add the library
-    status() << "Adding CPROVER library" << eom;
-    link_to_library(goto_model, ui_message_handler);
+    namespacet ns(symbol_table);
 
     // do partial inlining
     status() << "Partial Inlining" << eom;
-    goto_partial_inline(goto_model, ui_message_handler);
-
+    goto_partial_inline(goto_functions, ns, ui_message_handler);
+    
     // add generic checks
     status() << "Generic Property Instrumentation" << eom;
-    goto_check(options, goto_model);
-
-    // remove stuff
-    remove_complex(goto_model);
-    remove_vector(goto_model);
-    // Java virtual functions -> explicit dispatch tables:
-    remove_virtual_functions(goto_model);
-    // Java instanceof -> clsid comparison:
-    remove_instanceof(goto_model);
-    rewrite_union(goto_model);
-    adjust_float_expressions(goto_model);
-
+    goto_check(ns, options, goto_functions);
+    
     // recalculate numbers, etc.
-    goto_model.goto_functions.update();
+    goto_functions.update();
 
     // add loop ids
-    goto_model.goto_functions.compute_loop_numbers();
-
-    if(cmdline.isset("cover"))
-    {
-      std::string criterion=cmdline.get_value("cover");
-
-      coverage_criteriont c;
-
-      if(criterion=="assertion" || criterion=="assertions")
-        c=coverage_criteriont::ASSERTION;
-      else if(criterion=="path" || criterion=="paths")
-        c=coverage_criteriont::PATH;
-      else if(criterion=="branch" || criterion=="branches")
-        c=coverage_criteriont::BRANCH;
-      else if(criterion=="location" || criterion=="locations")
-        c=coverage_criteriont::LOCATION;
-      else if(criterion=="decision" || criterion=="decisions")
-        c=coverage_criteriont::DECISION;
-      else if(criterion=="condition" || criterion=="conditions")
-        c=coverage_criteriont::CONDITION;
-      else if(criterion=="mcdc")
-        c=coverage_criteriont::MCDC;
-      else if(criterion=="cover")
-        c=coverage_criteriont::COVER;
-      else
-      {
-        error() << "unknown coverage criterion" << eom;
-        return true;
-      }
-
-      status() << "Instrumenting coverge goals" << eom;
-      instrument_cover_goals(symbol_table, goto_model.goto_functions, c);
-      goto_model.goto_functions.update();
-    }
+    goto_functions.compute_loop_numbers();
+    
+    // if we aim to cover, replace
+    // all assertions by false to prevent simplification
+    
+    if(cmdline.isset("cover-assertions"))
+      make_assertions_false(goto_functions);
 
     // show it?
     if(cmdline.isset("show-loops"))
     {
-      show_loop_ids(get_ui(), goto_model.goto_functions);
+      show_loop_ids(get_ui(), goto_functions);
       return true;
     }
 
     // show it?
     if(cmdline.isset("show-goto-functions"))
     {
-      show_goto_functions(goto_model, get_ui());
+      goto_functions.output(ns, std::cout);
       return true;
     }
   }
@@ -439,18 +560,18 @@ bool symex_parse_optionst::process_goto_program(const optionst &options)
     error() << e << eom;
     return true;
   }
-
+  
   catch(int)
   {
     return true;
   }
-
+  
   catch(std::bad_alloc)
   {
     error() << "Out of memory" << eom;
     return true;
   }
-
+  
   return false;
 }
 
@@ -469,9 +590,6 @@ Function: symex_parse_optionst::report_properties
 void symex_parse_optionst::report_properties(
   const path_searcht::property_mapt &property_map)
 {
-  if(get_ui()==ui_message_handlert::PLAIN)
-    status() << "\n** Results:" << eom;
-
   for(path_searcht::property_mapt::const_iterator
       it=property_map.begin();
       it!=property_map.end();
@@ -486,9 +604,9 @@ void symex_parse_optionst::report_properties(
 
       switch(it->second.status)
       {
-      case path_searcht::SUCCESS: status_string="SUCCESS"; break;
-      case path_searcht::FAILURE: status_string="FAILURE"; break;
-      case path_searcht::NOT_REACHED: status_string="SUCCESS"; break;
+      case path_searcht::PASS: status_string="OK"; break;
+      case path_searcht::FAIL: status_string="FAILURE"; break;
+      case path_searcht::NOT_REACHED: status_string="OK"; break;
       }
 
       xml_result.set_attribute("status", status_string);
@@ -501,16 +619,15 @@ void symex_parse_optionst::report_properties(
                << it->second.description << ": ";
       switch(it->second.status)
       {
-      case path_searcht::SUCCESS: status() << "SUCCESS"; break;
-      case path_searcht::FAILURE: status() << "FAILURE"; break;
-      case path_searcht::NOT_REACHED: status() << "SUCCESS"; break;
+      case path_searcht::PASS: status() << "OK"; break;
+      case path_searcht::FAIL: status() << "FAILED"; break;
+      case path_searcht::NOT_REACHED: status() << "OK"; break;
       }
       status() << eom;
     }
 
-    if((cmdline.isset("show-trace") ||
-        cmdline.isset("trace")) &&
-       it->second.is_failure())
+    if(cmdline.isset("show-trace") &&
+       it->second.status==path_searcht::FAIL)
       show_counterexample(it->second.error_trace);
   }
 
@@ -524,12 +641,12 @@ void symex_parse_optionst::report_properties(
         it=property_map.begin();
         it!=property_map.end();
         it++)
-      if(it->second.is_failure())
+      if(it->second.status==path_searcht::FAIL)
         failed++;
-
+    
     status() << "** " << failed
              << " of " << property_map.size() << " failed"
-             << eom;
+             << eom;  
   }
 }
 
@@ -553,7 +670,7 @@ void symex_parse_optionst::report_success()
   {
   case ui_message_handlert::PLAIN:
     break;
-
+    
   case ui_message_handlert::XML_UI:
     {
       xmlt xml("cprover-status");
@@ -562,7 +679,7 @@ void symex_parse_optionst::report_success()
       std::cout << std::endl;
     }
     break;
-
+    
   default:
     assert(false);
   }
@@ -583,23 +700,23 @@ Function: symex_parse_optionst::show_counterexample
 void symex_parse_optionst::show_counterexample(
   const goto_tracet &error_trace)
 {
-  const namespacet ns(goto_model.symbol_table);
+  const namespacet ns(symbol_table);
 
   switch(get_ui())
   {
   case ui_message_handlert::PLAIN:
-    std::cout << '\n' << "Counterexample:" << '\n';
+    std::cout << std::endl << "Counterexample:" << std::endl;
     show_goto_trace(std::cout, ns, error_trace);
     break;
-
+  
   case ui_message_handlert::XML_UI:
     {
       xmlt xml;
       convert(ns, error_trace, xml);
-      std::cout << xml << std::flush;
+      std::cout << xml << std::endl;
     }
     break;
-
+  
   default:
     assert(false);
   }
@@ -625,7 +742,7 @@ void symex_parse_optionst::report_failure()
   {
   case ui_message_handlert::PLAIN:
     break;
-
+    
   case ui_message_handlert::XML_UI:
     {
       xmlt xml("cprover-status");
@@ -634,7 +751,7 @@ void symex_parse_optionst::report_failure()
       std::cout << std::endl;
     }
     break;
-
+    
   default:
     assert(false);
   }
@@ -657,11 +774,11 @@ void symex_parse_optionst::help()
   std::cout <<
     "\n"
     "* *     Symex " CBMC_VERSION " - Copyright (C) 2013 ";
-
+    
   std::cout << "(" << (sizeof(void *)*8) << "-bit version)";
-
+    
   std::cout << "     * *\n";
-
+    
   std::cout <<
     "* *                    Daniel Kroening                      * *\n"
     "* *                 University of Oxford                    * *\n"
@@ -671,15 +788,6 @@ void symex_parse_optionst::help()
     "\n"
     " symex [-?] [-h] [--help]     show help\n"
     " symex file.c ...             source file names\n"
-    "\n"
-    "Analysis options:\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
-    " --show-properties            show the properties, but don't run analysis\n"
-    " --property id                only check one specific property\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
-    " --stop-on-fail               stop analysis once a failed property is detected\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
-    " --trace                      give a counterexample trace for failed properties\n"
     "\n"
     "Frontend options:\n"
     " -I path                      set include path (C/C++)\n"
@@ -693,7 +801,7 @@ void symex_parse_optionst::help()
     " --unsigned-char              make \"char\" unsigned by default\n"
     " --show-parse-tree            show parse tree\n"
     " --show-symbol-table          show symbol table\n"
-    HELP_SHOW_GOTO_FUNCTIONS
+    " --show-goto-functions        show goto program\n"
     " --ppc-macos                  set MACOS/PPC architecture\n"
     " --mm model                   set memory model (default: sc)\n"
     " --arch                       set architecture (default: "
@@ -705,24 +813,30 @@ void symex_parse_optionst::help()
     #endif
     " --no-arch                    don't set up an architecture\n"
     " --no-library                 disable built-in abstract C library\n"
-    // NOLINTNEXTLINE(whitespace/line_length)
     " --round-to-nearest           IEEE floating point rounding mode (default)\n"
     " --round-to-plus-inf          IEEE floating point rounding mode\n"
     " --round-to-minus-inf         IEEE floating point rounding mode\n"
     " --round-to-zero              IEEE floating point rounding mode\n"
-    " --function name              set main function name\n"
     "\n"
     "Program instrumentation options:\n"
-    HELP_GOTO_CHECK
+    " --bounds-check               enable array bounds checks\n"
+    " --div-by-zero-check          enable division by zero checks\n"
+    " --pointer-check              enable pointer checks\n"
+    " --memory-leak-check          enable memory leak checks\n"
+    " --signed-overflow-check      enable arithmetic over- and underflow checks\n"
+    " --unsigned-overflow-check    enable arithmetic over- and underflow checks\n"
+    " --nan-check                  check floating-point for NaN\n"
+    " --show-properties            show the properties\n"
     " --no-assertions              ignore user assertions\n"
     " --no-assumptions             ignore user assumptions\n"
     " --error-label label          check that label is unreachable\n"
     "\n"
     "Symex options:\n"
-    " --unwind nr                  unwind nr times\n"
+    " --function name              set main function name\n"
+    " --property nr                only check one specific property\n"
     " --depth nr                   limit search depth\n"
     " --context-bound nr           limit number of context switches\n"
-    " --branch-bound nr            limit number of branches taken\n"
+    " --unwind nr                  unwind nr times\n"
     "\n"
     "Other options:\n"
     " --version                    show version and exit\n"

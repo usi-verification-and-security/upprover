@@ -8,7 +8,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 #include <ostream>
-#include <string>
+
+#include <util/i2string.h>
 
 #include "aig.h"
 
@@ -26,7 +27,7 @@ Function: aigt::label
 
 std::string aigt::label(nodest::size_type v) const
 {
-  return "var("+std::to_string(v)+")";
+  return "var("+i2string(v)+")";
 }
 
 /*******************************************************************\
@@ -43,7 +44,7 @@ Function: aigt::dot_label
 
 std::string aigt::dot_label(nodest::size_type v) const
 {
-  return "var("+std::to_string(v)+")";
+  return "var("+i2string(v)+")";
 }
 
 /*******************************************************************\
@@ -81,13 +82,13 @@ const aigt::terminal_sett &aigt::get_terminals_rec(
   terminalst &terminals) const
 {
   terminalst::iterator it=terminals.find(n);
-
+  
   if(it!=terminals.end())
     return it->second; // already done
-
+  
   assert(n<nodes.size());
   const aig_nodet &node=nodes[n];
-
+  
   terminal_sett &t=terminals[n];
 
   if(node.is_and())
@@ -110,7 +111,7 @@ const aigt::terminal_sett &aigt::get_terminals_rec(
   {
     t.insert(n);
   }
-
+    
   return t;
 }
 
@@ -127,7 +128,7 @@ Function: aigt::print
 \*******************************************************************/
 
 void aigt::print(
-  std::ostream &out,
+  std::ostream& out,
   literalt a) const
 {
   if(a==const_literal(false))
@@ -148,24 +149,20 @@ void aigt::print(
 
     if(node.is_and())
     {
-      if(a.sign())
-        out << "!(";
+      if(a.sign()) out << "!(";
       print(out, node.a);
       out << " & ";
       print(out, node.b);
-      if(a.sign())
-        out << ")";
+      if(a.sign()) out << ")";
     }
     else if(node.is_var())
     {
-      if(a.sign())
-        out << "!";
+      if(a.sign()) out << "!";
       out << label(node_nr);\
     }
     else
     {
-      if(a.sign())
-        out << "!";
+      if(a.sign()) out << "!";
       out << "unknown(" << node_nr << ")";
     }
   }
@@ -215,7 +212,7 @@ Function: aigt::output_dot_edge
 \*******************************************************************/
 
 void aigt::output_dot_edge(
-  std::ostream &out,
+  std::ostream& out,
   nodest::size_type v,
   literalt l) const
 {
@@ -231,8 +228,7 @@ void aigt::output_dot_edge(
   else
   {
     out << l.var_no() << " -> " << v;
-    if(l.sign())
-      out << " [arrowhead=odiamond]";
+    if(l.sign()) out << " [arrowhead=odiamond]";
   }
 
   out << "\n";
@@ -250,7 +246,7 @@ Function: aigt::output_dot
 
 \*******************************************************************/
 
-void aigt::output_dot(std::ostream &out) const
+void aigt::output_dot(std::ostream& out) const
 {
   // constant TRUE
   out << "TRUE [label=\"TRUE\", shape=box]" << "\n";

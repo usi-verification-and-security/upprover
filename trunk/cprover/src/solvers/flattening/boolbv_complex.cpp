@@ -20,24 +20,23 @@ Function: boolbvt::convert_complex
 
 \*******************************************************************/
 
-bvt boolbvt::convert_complex(const exprt &expr)
+void boolbvt::convert_complex(const exprt &expr, bvt &bv)
 {
   std::size_t width=boolbv_width(expr.type());
-
+  
   if(width==0)
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
+    
+  bv.reserve(width);
 
   if(expr.type().id()==ID_complex)
   {
     const exprt::operandst &operands=expr.operands();
-
-    bvt bv;
-    bv.reserve(width);
-
+    
     if(operands.size()==2)
     {
       std::size_t op_width=width/operands.size();
-
+    
       forall_expr(it, operands)
       {
         const bvt &tmp=convert_bv(*it);
@@ -47,13 +46,13 @@ bvt boolbvt::convert_complex(const exprt &expr)
 
         forall_literals(it2, tmp)
           bv.push_back(*it2);
-      }
+      }   
     }
 
-    return bv;
+    return;
   }
-
-  return conversion_failed(expr);
+  
+  conversion_failed(expr, bv);
 }
 
 /*******************************************************************\
@@ -68,22 +67,20 @@ Function: boolbvt::convert_complex_real
 
 \*******************************************************************/
 
-bvt boolbvt::convert_complex_real(const exprt &expr)
+void boolbvt::convert_complex_real(const exprt &expr, bvt &bv)
 {
   std::size_t width=boolbv_width(expr.type());
-
+  
   if(width==0)
-    return conversion_failed(expr);
-
+    return conversion_failed(expr, bv);
+    
   if(expr.operands().size()!=1)
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
 
-  bvt bv=convert_bv(expr.op0());
+  bv=convert_bv(expr.op0());
 
-  assert(bv.size()==width*2);
-  bv.resize(width); // chop
-
-  return bv;
+  assert(bv.size()==width*2);  
+  bv.resize(width);
 }
 
 /*******************************************************************\
@@ -98,20 +95,19 @@ Function: boolbvt::convert_complex_imag
 
 \*******************************************************************/
 
-bvt boolbvt::convert_complex_imag(const exprt &expr)
+void boolbvt::convert_complex_imag(const exprt &expr, bvt &bv)
 {
   std::size_t width=boolbv_width(expr.type());
-
+  
   if(width==0)
-    return conversion_failed(expr);
-
+    return conversion_failed(expr, bv);
+    
   if(expr.operands().size()!=1)
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
 
-  bvt bv=convert_bv(expr.op0());
+  bv=convert_bv(expr.op0());
 
-  assert(bv.size()==width*2);
+  assert(bv.size()==width*2);  
   bv.erase(bv.begin(), bv.begin()+width);
-
-  return bv;
 }
+

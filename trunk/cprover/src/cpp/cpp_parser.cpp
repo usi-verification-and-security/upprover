@@ -40,3 +40,4 @@ bool cpp_parsert::parse()
 
   return cpp_parse();
 }
+

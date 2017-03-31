@@ -29,8 +29,7 @@ Function: simplify_exprt::simplify_member
 
 bool simplify_exprt::simplify_member(exprt &expr)
 {
-  if(expr.operands().size()!=1)
-    return true;
+  if(expr.operands().size()!=1) return true;
 
   const irep_idt &component_name=
     to_member_expr(expr).get_component_name();
@@ -42,7 +41,7 @@ bool simplify_exprt::simplify_member(exprt &expr)
   {
     // the following optimization only works on structs,
     // and not on unions
-
+  
     if(op.operands().size()>=3 &&
        op_type.id()==ID_struct)
     {
@@ -68,7 +67,7 @@ bool simplify_exprt::simplify_member(exprt &expr)
         else // something else, get rid of it
           operands.resize(operands.size()-2);
       }
-
+      
       if(op.operands().size()==1)
       {
         exprt tmp;
@@ -78,7 +77,7 @@ bool simplify_exprt::simplify_member(exprt &expr)
         simplify_member(expr);
       }
 
-      return false;
+      return false;      
     }
     else if(op_type.id()==ID_union)
     {
@@ -144,7 +143,7 @@ bool simplify_exprt::simplify_member(exprt &expr)
       const struct_typet &struct_type=to_struct_type(op_type);
       if(struct_type.has_component(component_name))
       {
-        std::size_t number=struct_type.component_number(component_name);
+        unsigned number=struct_type.component_number(component_name);
         exprt tmp;
         tmp.swap(op.operands()[number]);
         expr.swap(tmp);
@@ -159,7 +158,7 @@ bool simplify_exprt::simplify_member(exprt &expr)
     {
       // This rewrites byte_extract(s, o, struct_type).member
       // to byte_extract(s, o+member_offset, member_type)
-
+    
       const struct_typet &struct_type=to_struct_type(op_type);
       const struct_typet::componentt &component=
         struct_type.get_component(component_name);
@@ -169,9 +168,8 @@ bool simplify_exprt::simplify_member(exprt &expr)
 
       // add member offset to index
       mp_integer offset_int=member_offset(struct_type, component_name, ns);
-      if(offset_int==-1)
-        return true;
-
+      if(offset_int==-1) return true;
+ 
       const exprt &struct_offset=op.op1();
       exprt member_offset=from_integer(offset_int, struct_offset.type());
       plus_exprt final_offset(struct_offset, member_offset);
@@ -195,7 +193,7 @@ bool simplify_exprt::simplify_member(exprt &expr)
       expr.swap(tmp);
       return false;
     }
-
+    
     // need to convert!
     mp_integer target_size=
       pointer_offset_size(expr.type(), ns);
@@ -204,11 +202,11 @@ bool simplify_exprt::simplify_member(exprt &expr)
     {
       mp_integer target_bits=target_size*8;
       std::string bits=expr2bits(op, true);
-
+      
       if(mp_integer(bits.size())>=target_bits)
       {
-        std::string bits_cut=std::string(bits, 0, integer2size_t(target_bits));
-
+        std::string bits_cut=std::string(bits, 0, integer2long(target_bits));
+      
         exprt tmp=bits2expr(bits_cut, expr.type(), true);
 
         if(tmp.is_not_nil())
@@ -237,3 +235,4 @@ bool simplify_exprt::simplify_member(exprt &expr)
 
   return true;
 }
+

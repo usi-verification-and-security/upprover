@@ -27,9 +27,9 @@ void c_typecheck_baset::implicit_typecast(
   const typet &dest_type)
 {
   c_typecastt c_typecast(*this);
-
+  
   typet src_type=expr.type();
-
+  
   c_typecast.implicit_typecast(expr, dest_type);
 
   for(std::list<std::string>::const_iterator
@@ -37,28 +37,30 @@ void c_typecheck_baset::implicit_typecast(
       it!=c_typecast.errors.end();
       it++)
   {
-    error().source_location=expr.find_source_location();
-    error() << "in expression `" << to_string(expr) << "':\n"
-            << "conversion from `"
-            << to_string(src_type) << "' to `"
-            << to_string(dest_type) << "': "
-            << *it << eom;
+    err_location(expr);
+    str << "in expression `" << to_string(expr) << "':\n";
+    str << "conversion from `"
+        << to_string(src_type) << "' to `"
+        << to_string(dest_type) << "': "
+        << *it;
+    error_msg();
   }
-
+  
   if(!c_typecast.errors.empty())
     throw 0; // give up
-
+  
   for(std::list<std::string>::const_iterator
       it=c_typecast.warnings.begin();
       it!=c_typecast.warnings.end();
       it++)
   {
-    warning().source_location=expr.find_source_location();
-    warning() << "warning: conversion from `"
-              << to_string(src_type)
-              << "' to `"
-              << to_string(dest_type)
-              << "': " << *it << eom;
+    err_location(expr);
+    str << "warning: conversion from `"
+        << to_string(src_type)
+        << "' to `"
+        << to_string(dest_type)
+        << "': " << *it;
+    warning_msg();
   }
 }
 

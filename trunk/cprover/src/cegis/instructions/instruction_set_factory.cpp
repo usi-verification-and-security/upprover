@@ -1,28 +1,20 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <algorithm>
 #include <cstring>
 
 #include <goto-programs/goto_functions.h>
 
-#include <cegis/instrument/literals.h>
+#include <cegis/invariant/meta/literals.h>
 #include <cegis/invariant/util/copy_instructions.h>
 #include <cegis/instructions/instruction_set_factory.h>
 
 namespace
 {
+const char FIRST_PREFIX[]=CEGIS_PREFIX "opcode_first_";
+const char LAST_PREFIX[]=CEGIS_PREFIX "opcode_last_";
+const char SINGLE_PREFIX[]=CEGIS_PREFIX "opcode_";
+
 class execute_instruction_handlert
 {
-  const std::string first_prefix;
-  const std::string last_prefix;
-  const std::string single_prefix;
   copy_instructionst copy_instruction;
   instruction_sett &instruction_set;
   bool has_current_instr;
@@ -30,12 +22,9 @@ class execute_instruction_handlert
   size_t instr_idx;
   goto_programt::const_targett current_instr_offset;
 public:
-  execute_instruction_handlert(const std::string &first_prefix,
-      const std::string &last_prefix, const std::string &single_prefix,
-      instruction_sett &instruction_set) :
-      first_prefix(first_prefix), last_prefix(last_prefix), single_prefix(
-          single_prefix), instruction_set(instruction_set), has_current_instr(
-          false), is_last_in_range(false), instr_idx(0u)
+  execute_instruction_handlert(instruction_sett &instruction_set) :
+      instruction_set(instruction_set), has_current_instr(false), is_last_in_range(
+          false), instr_idx(0u)
   {
   }
 
@@ -45,21 +34,21 @@ public:
     const goto_programt::instructiont::labelst &labels=instr.labels;
     if (labels.empty()) return;
     const std::string &label=id2string(instr.labels.front());
-    if (std::string::npos != label.find(first_prefix))
+    if (std::string::npos != label.find(FIRST_PREFIX))
     {
       current_instr_offset=target;
       has_current_instr=true;
       is_last_in_range=false;
-      instr_idx=string2integer(label.substr(first_prefix.size())).to_ulong();
-    } else if (std::string::npos != label.find(last_prefix))
+      instr_idx=string2integer(label.substr(strlen(FIRST_PREFIX))).to_ulong();
+    } else if (std::string::npos != label.find(LAST_PREFIX))
     {
       is_last_in_range=true;
-      instr_idx=string2integer(label.substr(last_prefix.size())).to_ulong();
-    } else if (std::string::npos != label.find(single_prefix))
+      instr_idx=string2integer(label.substr(strlen(LAST_PREFIX))).to_ulong();
+    } else if (std::string::npos != label.find(SINGLE_PREFIX))
     {
       has_current_instr=true;
       is_last_in_range=true;
-      instr_idx=string2integer(label.substr(single_prefix.size())).to_ulong();
+      instr_idx=string2integer(label.substr(strlen(SINGLE_PREFIX))).to_ulong();
     }
   }
 
@@ -86,23 +75,11 @@ public:
 };
 }
 
-#define DEFAULT_FIRST CEGIS_PREFIX "opcode_first_"
-#define DEFAULT_LAST CEGIS_PREFIX "opcode_last_"
-#define DEFAULT_SINGLE CEGIS_PREFIX "opcode_"
-
-instruction_sett extract_instruction_set(const goto_programt &body)
-{
-  return extract_instruction_set(body, DEFAULT_FIRST, DEFAULT_LAST, DEFAULT_SINGLE);
-}
-
-instruction_sett extract_instruction_set(const goto_programt &body,
-    const std::string &first_prefix, const std::string &last_prefix,
-    const std::string &single_prefix)
+void extract_instruction_set(instruction_sett &instruction_set,
+    const goto_programt &body)
 {
   const goto_programt::instructionst &instrs=body.instructions;
-  instruction_sett instruction_set;
-  execute_instruction_handlert handler(first_prefix, last_prefix, single_prefix, instruction_set);
+  execute_instruction_handlert handler(instruction_set);
   for (goto_programt::const_targett it=instrs.begin(); it != instrs.end(); ++it)
     handler(it);
-  return instruction_set;
 }

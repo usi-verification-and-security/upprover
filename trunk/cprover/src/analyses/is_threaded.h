@@ -8,8 +8,8 @@ Date: October 2012
 
 \*******************************************************************/
 
-#ifndef CPROVER_ANALYSES_IS_THREADED_H
-#define CPROVER_ANALYSES_IS_THREADED_H
+#ifndef CPROVER_GOTO_PROGRAMS_IS_THREADED_H
+#define CPROVER_GOTO_PROGRAMS_IS_THREADED_H
 
 #include <set>
 
@@ -24,11 +24,11 @@ public:
     compute(goto_functions);
   }
 
-  bool operator()(const goto_programt::const_targett t) const
+  inline bool operator()(const goto_programt::const_targett t) const
   {
     return is_threaded_set.find(t)!=is_threaded_set.end();
   }
-
+  
 protected:
   typedef std::set<goto_programt::const_targett> is_threaded_sett;
   is_threaded_sett is_threaded_set;
@@ -37,4 +37,4 @@ protected:
     const goto_functionst &goto_functions);
 };
 
-#endif // CPROVER_ANALYSES_IS_THREADED_H
+#endif

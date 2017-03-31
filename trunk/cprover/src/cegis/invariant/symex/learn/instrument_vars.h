@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_INVARIANT_SYMEX_LEARN_INSTRUMENT_VARS_H
-#define CPROVER_CEGIS_INVARIANT_SYMEX_LEARN_INSTRUMENT_VARS_H
+#ifndef CEGIS_INVARIANT_INSTRUMENT_VARS_H_
+#define CEGIS_INVARIANT_INSTRUMENT_VARS_H_
 
 #include <util/irep.h>
 
@@ -19,7 +19,7 @@ Author: Daniel Kroening, kroening@kroening.com
  *
  * @details
  */
-typedef std::map<const irep_idt, size_t> operand_variable_idst;
+typedef std::map<const irep_idt, size_t> invariant_variable_idst;
 
 /**
  * @brief
@@ -70,11 +70,26 @@ goto_programt::targett set_rops_reference(const symbol_tablet &st,
  *
  * @details
  *
+ * @param st
+ * @param body
+ * @param pos
+ * @param name
+ * @param id
+ */
+goto_programt::targett set_ops_reference(const symbol_tablet &st,
+    goto_programt &body, const goto_programt::targett &pos,
+    const irep_idt &name, const unsigned int id);
+
+/**
+ * @brief
+ *
+ * @details
+ *
  * @param prog
  * @param var_ids
  */
 void link_user_program_variables(class invariant_programt &prog,
-    const operand_variable_idst &var_ids);
+    const invariant_variable_idst &var_ids);
 
 /**
  * @brief
@@ -87,6 +102,6 @@ void link_user_program_variables(class invariant_programt &prog,
  * @return
  */
 size_t get_invariant_variable_ids(const class symbol_tablet &st,
-    operand_variable_idst &ids);
+    invariant_variable_idst &ids);
 
-#endif // CPROVER_CEGIS_INVARIANT_SYMEX_LEARN_INSTRUMENT_VARS_H
+#endif /* CEGIS_INVARIANT_INSTRUMENT_VARS_H_ */

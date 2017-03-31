@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_UTIL_ERROR_H
-#define CPROVER_UTIL_ERROR_H
+#ifndef CPROVER_ERROR_H
+#define CPROVER_ERROR_H
 
 #include <exception>
 #include <sstream>
@@ -21,64 +21,64 @@ public:
   {
     return "";
   }
-
-  virtual ~error_baset() throw()
+  
+  virtual ~error_baset() throw ()
   {
   }
-
-  error_baset()
+  
+  inline error_baset()
   {
   }
-
-  explicit error_baset(const locationt &_location):location(_location)
+  
+  inline explicit error_baset(const locationt &_location):location(_location)
   {
   }
-
+  
   locationt location;
-};
+};          
 
-class error_streamt:public error_baset, public std::ostringstream
+class error_str:public error_baset, public std::ostringstream
 {
 public:
   virtual const char* what() const throw()
   {
     return str().c_str();
   }
-
-  virtual ~error_streamt() throw()
+  
+  virtual ~error_str() throw ()
   {
   }
-
-  error_streamt()
+  
+  inline error_str()
   {
   }
-
-  explicit error_streamt(const locationt &_location):
+  
+  explicit inline error_str(const locationt &_location):
     error_baset(_location), std::ostringstream()
   {
   }
-
-  explicit error_streamt(const char *string)
+  
+  explicit inline error_str(const char *string)
   {
     str(string);
   }
 
-  explicit error_streamt(const std::string &string)
+  explicit inline error_str(const std::string &string)
   {
     str(string);
   }
-
-  error_streamt(const error_streamt &other):std::ostringstream()
+  
+  inline error_str(const error_str &other):std::ostringstream()
   {
     str(other.str());
     location=other.location;
   }
 
-  error_streamt(const locationt &_location, const std::string &string):
+  inline error_str(const locationt &_location, const std::string &string):
     error_baset(_location)
   {
     str(string);
   }
 };
 
-#endif // CPROVER_UTIL_ERROR_H
+#endif

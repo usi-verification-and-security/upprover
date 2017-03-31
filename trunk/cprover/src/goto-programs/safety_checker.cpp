@@ -44,3 +44,4 @@ safety_checkert::safety_checkert(
   ns(_ns)
 {
 }
+

@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_CPP_LANGUAGE_H
-#define CPROVER_CPP_CPP_LANGUAGE_H
+#ifndef CPROVER_CPP_LANGUAGE_H
+#define CPROVER_CPP_LANGUAGE_H
 
 /*! \defgroup gr_cpp C++ front-end */
 
@@ -21,66 +21,66 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 class cpp_languaget:public languaget
 {
 public:
-  bool preprocess(
+  virtual bool preprocess(
     std::istream &instream,
     const std::string &path,
-    std::ostream &outstream) override;
+    std::ostream &outstream);
 
-  bool parse(
+  virtual bool parse(
     std::istream &instream,
-    const std::string &path) override;
+    const std::string &path);
 
-  bool typecheck(
+  virtual bool typecheck(
     symbol_tablet &symbol_table,
-    const std::string &module) override;
+    const std::string &module);
 
   bool merge_symbol_table(
     symbol_tablet &dest,
     symbol_tablet &src,
     const std::string &module,
-    class replace_symbolt &replace_symbol) const;
+    class replace_symbolt &replace_symbol) const; 
 
-  bool final(
-    symbol_tablet &symbol_table) override;
+  virtual bool final(
+    symbol_tablet &symbol_table);
 
-  void show_parse(std::ostream &out) override;
+  virtual void show_parse(std::ostream &out);
 
   // constructor, destructor
-  ~cpp_languaget() override;
+  virtual ~cpp_languaget();
   cpp_languaget() { }
 
   // conversion from expression into string
-  bool from_expr(
+  virtual bool from_expr(
     const exprt &expr,
     std::string &code,
-    const namespacet &ns) override;
+    const namespacet &ns);
 
   // conversion from type into string
-  bool from_type(
+  virtual bool from_type(
     const typet &type,
     std::string &code,
-    const namespacet &ns) override;
+    const namespacet &ns);
 
-  bool type_to_name(
+  virtual bool type_to_name(
     const typet &type,
     std::string &name,
-    const namespacet &ns) override;
+    const namespacet &ns);
 
   // conversion from string into expression
-  bool to_expr(
+  virtual bool to_expr(
     const std::string &code,
     const std::string &module,
     exprt &expr,
-    const namespacet &ns) override;
+    const namespacet &ns);
 
-  languaget *new_language() override
+  virtual languaget *new_language()
   { return new cpp_languaget; }
 
-  std::string id() const override { return "cpp"; }
-  std::string description() const override { return "C++"; }
-  std::set<std::string> extensions() const override;
+  virtual std::string id() const { return "cpp"; }
+  virtual std::string description() const { return "C++"; }
+  virtual std::set<std::string> extensions() const;
 
-  void modules_provided(std::set<std::string> &modules) override;
+  virtual void modules_provided(std::set<std::string> &modules);
 
 protected:
   cpp_parse_treet cpp_parse_tree;
@@ -88,7 +88,7 @@ protected:
 
   void show_parse(std::ostream &out, const cpp_itemt &item);
 
-  std::string main_symbol()
+  virtual std::string main_symbol()
   {
     return "main";
   }
@@ -96,4 +96,4 @@ protected:
 
 languaget *new_cpp_language();
 
-#endif // CPROVER_CPP_CPP_LANGUAGE_H
+#endif

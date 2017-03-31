@@ -11,6 +11,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/arith_tools.h>
 #include <util/std_expr.h>
 #include <util/simplify_expr.h>
+#include <util/i2string.h>
 
 #include "boolbv.h"
 
@@ -26,37 +27,35 @@ Function: boolbvt::convert_index
 
 \*******************************************************************/
 
-bvt boolbvt::convert_index(const index_exprt &expr)
+void boolbvt::convert_index(const index_exprt &expr, bvt &bv)
 {
   if(expr.id()!=ID_index)
     throw "expected index expression";
 
   if(expr.operands().size()!=2)
     throw "index takes two operands";
-
+    
   const exprt &array=expr.array();
   const exprt &index=expr.index();
-
+  
   const typet &array_op_type=ns.follow(array.type());
-
-  bvt bv;
-
+  
   if(array_op_type.id()==ID_array)
   {
     const array_typet &array_type=
       to_array_type(array_op_type);
 
     std::size_t width=boolbv_width(expr.type());
-
+    
     if(width==0)
-      return conversion_failed(expr);
-
+      return conversion_failed(expr, bv);
+    
     // see if the array size is constant
 
     if(is_unbounded_array(array_type))
     {
       // use array decision procedure
-
+    
       // free variables
 
       bv.resize(width);
@@ -73,21 +72,21 @@ bvt boolbvt::convert_index(const index_exprt &expr)
 
       // make sure we have the index in the cache
       convert_bv(index);
-
-      return bv;
+      
+      return;
     }
 
     // Must have a finite size
     mp_integer array_size;
     if(to_integer(array_type.size(), array_size))
       throw "failed to convert array size";
-
+    
     // see if the index address is constant
     // many of these are compacted by simplify_expr
     // but variable location writes will block this
     mp_integer index_value;
     if(!to_integer(index, index_value))
-      return convert_index(array, index_value);
+      return convert_index(array, index_value, bv);
 
     // Special case : arrays of one thing (useful for constants)
     // TODO : merge with ACTUAL_ARRAY_HACK so that ranges of the same
@@ -123,17 +122,15 @@ bvt boolbvt::convert_index(const index_exprt &expr)
 
       std::string identifier=
         "__CPROVER_internal_uniform_array_"+
-        std::to_string(uniform_array_counter++);
+        i2string(uniform_array_counter++);
 
       symbol_exprt result(identifier, expr.type());
       bv = convert_bv(result);
-
+      
       equal_exprt value_equality(result, array.op0());
-
-      binary_relation_exprt lower_bound(
-        from_integer(0, index.type()), ID_le, index);
-      binary_relation_exprt upper_bound(
-        index, ID_lt, from_integer(array_size, index.type()));
+      
+      binary_relation_exprt lower_bound(from_integer(0, index.type()), ID_le, index);
+      binary_relation_exprt upper_bound(index, ID_lt, from_integer(array_size, index.type()));
 
       if(lower_bound.lhs().is_nil() ||
          upper_bound.rhs().is_nil())
@@ -141,12 +138,11 @@ bvt boolbvt::convert_index(const index_exprt &expr)
 
       and_exprt range_condition(lower_bound, upper_bound);
       implies_exprt implication(range_condition, value_equality);
-
+      
       // Simplify may remove the lower bound if the type
       // is correct.
       prop.l_set_to_true(convert(simplify_expr(implication, ns)));
-
-      return bv;
+      return;
     }
     #endif
 
@@ -163,14 +159,14 @@ bvt boolbvt::convert_index(const index_exprt &expr)
 
       // Symbol for output
       static int actual_array_counter;  // Temporary hack
-
+      
       std::string identifier=
         "__CPROVER_internal_actual_array_"+
-        std::to_string(actual_array_counter++);
+        i2string(actual_array_counter++);
 
       symbol_exprt result(identifier, expr.type());
       bv = convert_bv(result);
-
+      
       // add implications
 
       equal_exprt index_equality;
@@ -183,9 +179,9 @@ bvt boolbvt::convert_index(const index_exprt &expr)
       bv_utils.equal_const_register(convert_bv(index));  // Definitely
       bv_utils.equal_const_register(convert_bv(result)); // Maybe
 #endif
-
+      
       exprt::operandst::const_iterator it = array.operands().begin();
-
+      
       for(mp_integer i=0; i<array_size; i=i+1)
       {
         index_equality.rhs()=from_integer(i, index_equality.lhs().type());
@@ -194,32 +190,32 @@ bvt boolbvt::convert_index(const index_exprt &expr)
           throw "number conversion failed (1)";
 
         assert(it != array.operands().end());
-
+        
         value_equality.rhs()=*it++;
 
         // Cache comparisons and equalities
         prop.l_set_to_true(convert(implies_exprt(index_equality,
                                                  value_equality)));
       }
-
-      return bv;
+      
+      return;
     }
-
+      
 #endif
-
-
+      
+      
     // TODO : As with constant index, there is a trade-off
     // of when it is best to flatten the whole array and
     // when it is best to use the array theory and then use
     // one or more of the above encoding strategies.
-
+      
     // get literals for the whole array
 
     const bvt &array_bv=convert_bv(array);
 
     if(array_size*width!=array_bv.size())
       throw "unexpected array size";
-
+      
     // TODO: maybe a shifter-like construction would be better
     // Would be a lot more compact but propagate worse
 
@@ -239,7 +235,7 @@ bvt boolbvt::convert_index(const index_exprt &expr)
 #ifdef COMPACT_EQUAL_CONST
       bv_utils.equal_const_register(convert_bv(index));  // Definitely
 #endif
-
+      
       bvt equal_bv;
       equal_bv.resize(width);
 
@@ -254,7 +250,7 @@ bvt boolbvt::convert_index(const index_exprt &expr)
 
         for(std::size_t j=0; j<width; j++)
           equal_bv[j]=prop.lequal(bv[j],
-                             array_bv[integer2size_t(offset+j)]);
+                             array_bv[integer2long(offset+j)]);
 
         prop.l_set_to_true(
           prop.limplies(convert(index_equality), prop.land(equal_bv)));
@@ -270,35 +266,33 @@ bvt boolbvt::convert_index(const index_exprt &expr)
 #ifdef COMPACT_EQUAL_CONST
       bv_utils.equal_const_register(convert_bv(index));  // Definitely
 #endif
-
+      
       typet constant_type=index.type(); // type of index operand
-
+      
       assert(array_size>0);
 
       for(mp_integer i=0; i<array_size; i=i+1)
       {
         equality.op1()=from_integer(i, constant_type);
-
+          
         literalt e=convert(equality);
 
         mp_integer offset=i*width;
 
         for(std::size_t j=0; j<width; j++)
         {
-          literalt l=array_bv[integer2size_t(offset+j)];
+          literalt l=array_bv[integer2long(offset+j)];
 
           if(i==0) // this initializes bv
             bv[j]=l;
           else
             bv[j]=prop.lselect(e, l, bv[j]);
         }
-      }
+      }    
     }
   }
   else
-    return conversion_failed(expr);
-
-  return bv;
+    return conversion_failed(expr, bv);
 }
 
 /*******************************************************************\
@@ -313,9 +307,10 @@ Function: boolbvt::convert_index
 
 \*******************************************************************/
 
-bvt boolbvt::convert_index(
+void boolbvt::convert_index(
   const exprt &array,
-  const mp_integer &index)
+  const mp_integer &index,
+  bvt &bv)
 {
   const array_typet &array_type=
     to_array_type(ns.follow(array.type()));
@@ -323,9 +318,8 @@ bvt boolbvt::convert_index(
   std::size_t width=boolbv_width(array_type.subtype());
 
   if(width==0)
-    return conversion_failed(array);
+    return conversion_failed(array, bv);
 
-  bvt bv;
   bv.resize(width);
 
   // TODO: If the underlying array can use one of the
@@ -336,7 +330,7 @@ bvt boolbvt::convert_index(
   // full flattening is amortised against all uses of
   // the array (constant and variable indexes) and updated
   // versions of it.
-
+  
   const bvt &tmp=convert_bv(array); // recursive call
 
   mp_integer offset=index*width;
@@ -346,15 +340,13 @@ bvt boolbvt::convert_index(
   {
     // in bounds
 
-    // The assertion below is disabled as we want to be able
-    // to run CBMC without simplifier.
     // Expression simplification should remove these cases
-    // assert(array.id()!=ID_array_of &&
-    //       array.id()!=ID_array);
+    assert(array.id()!=ID_array_of &&
+           array.id()!=ID_array);
     // If not there are large improvements possible as above
 
     for(std::size_t i=0; i<width; i++)
-      bv[i]=tmp[integer2size_t(offset+i)];
+      bv[i]=tmp[integer2long(offset+i)];
   }
   else
   {
@@ -362,6 +354,4 @@ bvt boolbvt::convert_index(
     for(std::size_t i=0; i<width; i++)
       bv[i]=prop.new_variable();
   }
-
-  return bv;
 }

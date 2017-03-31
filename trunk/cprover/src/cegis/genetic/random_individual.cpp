@@ -1,12 +1,3 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <cassert>
 #include <cstdlib>
 
@@ -79,8 +70,7 @@ program_individualt::x0t::value_type random_individualt::constant() const
 {
   const bv_spect spec(type);
   const unsigned int width=spec.width;
-  const mp_integer::llong_t v=spec.max_value().to_long();
-  const unsigned int wordmask=static_cast<unsigned int>(v);
+  const unsigned int wordmask=spec.max_value().to_ulong();
   const unsigned int r=rand() % 6u;
   switch (r)
   {
@@ -158,9 +148,4 @@ void random_individualt::post_process(program_individualt &ind) const
       break;
     }
   // XXX: Specific optimisation for PLDI 2016 submissions.
-}
-
-random_individualt::operator std::function<unsigned int()>() const
-{
-  return ::rand;
 }

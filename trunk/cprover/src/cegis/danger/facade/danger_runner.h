@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
 Module: Counterexample-Guided Inductive Synthesis
 
 Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+        Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_DANGER_FACADE_DANGER_RUNNER_H
-#define CPROVER_CEGIS_DANGER_FACADE_DANGER_RUNNER_H
+#ifndef CEGIS_DANGER_RUNNER_H_
+#define CEGIS_DANGER_RUNNER_H_
 
 #include <util/message.h>
 
@@ -28,4 +28,4 @@ Author: Daniel Kroening, kroening@kroening.com
 int run_danger(class optionst &options, messaget::mstreamt &result,
     const class symbol_tablet &st, const class goto_functionst &gf);
 
-#endif // CPROVER_CEGIS_DANGER_FACADE_DANGER_RUNNER_H
+#endif /* CEGIS_DANGER_RUNNER_H_ */

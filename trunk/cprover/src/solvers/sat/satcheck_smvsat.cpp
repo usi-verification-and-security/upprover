@@ -9,6 +9,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 #include <stack>
 
+#include <util/i2string.h>
 
 #include "satcheck_smvsat.h"
 
@@ -94,13 +95,12 @@ tvt satcheck_smvsatt::l_get(literalt a) const
 
   switch(sat_instance_value(satsolver, v))
   {
-    case 0: result=tvt(false); break;
-    case 1: result=tvt(true); break;
-    default: result=tvt(tvt::tv_enumt::TV_UNKNOWN); break;
+   case 0: result=tvt(false); break;
+   case 1: result=tvt(true); break;
+   default: result=tvt(tvt::tv_enumt::TV_UNKNOWN); break;
   }
 
-  if(a.sign())
-    result=!result;
+  if(a.sign()) result=!result;
 
   return result;
 }
@@ -137,23 +137,21 @@ Function: satcheck_smvsatt::lcnf
 void satcheck_smvsatt::lcnf(const bvt &bv)
 {
   bvt tmp;
-
+  
   if(process_clause(bv, tmp))
     return;
 
-  int *lits=new int[tmp.size()+1];
-
+  int lits[tmp.size()+1];
+    
   for(unsigned i=0; i<tmp.size(); i++)
     lits[i]=tmp[i].dimacs();
 
   // zero-terminated
   lits[tmp.size()]=0;
-
+  
   sat_instance_add_clause(satsolver, lits);
-
+  
   clause_counter++;
-
-  delete[] lits;
 }
 
 /*******************************************************************\
@@ -187,7 +185,7 @@ propt::resultt satcheck_smvsatt::prop_solve()
 
     default:
       msg="SAT checker failed: unknown result";
-      break;
+      break;    
     }
 
     messaget::status() << msg << messaget::eom;
@@ -206,7 +204,7 @@ propt::resultt satcheck_smvsatt::prop_solve()
   }
 
   status=ERROR;
-
+ 
   return P_ERROR;
 }
 
@@ -225,12 +223,12 @@ Function: satcheck_smvsat_coret::prop_solve
 propt::resultt satcheck_smvsat_coret::prop_solve()
 {
   propt::resultt result=satcheck_smvsatt::prop_solve();
-
+  
   if(result==P_UNSATISFIABLE)
   {
     // TODO
   }
-
+  
   return result;
 }
 
@@ -249,26 +247,24 @@ Function: satcheck_smvsat_interpolatort::lcnf
 void satcheck_smvsat_interpolatort::lcnf(const bvt &bv)
 {
   bvt tmp;
-
+  
   if(process_clause(bv, tmp))
     return;
 
-  int *lits=new int[tmp.size()+1];
-
+  int lits[tmp.size()+1];
+    
   for(unsigned i=0; i<tmp.size(); i++)
     lits[i]=tmp[i].dimacs();
 
   // zero-terminated
   lits[tmp.size()]=0;
-
+  
   unsigned clause_id=sat_instance_add_clause(satsolver, lits);
-
+      
   if(partition_numbers.size()<=clause_id)
     partition_numbers.resize(clause_id+1, -1);
-
+      
   partition_numbers[clause_id]=partition_no;
-
-  delete[] lits;
 }
 
 /*******************************************************************\
@@ -287,10 +283,9 @@ void satcheck_smvsat_interpolatort::interpolate(exprt &dest)
 {
   // crate instance
 
-  // NOLINTNEXTLINE(readability/identifiers)
   struct interpolator *interpolator_satsolver=
     new_interpolator(satsolver);
-
+    
   // set partition numbers
 
   for(unsigned i=0; i<partition_numbers.size(); i++)
@@ -299,11 +294,11 @@ void satcheck_smvsat_interpolatort::interpolate(exprt &dest)
     if(p!=-1)
       interpolator_satsolver->set_clause_partition(i, p);
   }
-
+  
   int output=interpolator_satsolver->interpolate(0, 0);
-
+  
   build_aig(*interpolator_satsolver, output, dest);
-
+  
   delete interpolator_satsolver;
 }
 
@@ -320,25 +315,24 @@ Function: satcheck_smvsat_interpolatort::build_aig
 \*******************************************************************/
 
 void satcheck_smvsat_interpolatort::build_aig(
-  // NOLINTNEXTLINE(readability/identifiers)
   struct interpolator &interpolator_satsolver,
   int output,
   exprt &dest)
 {
-  std::stack<entryt> stack;
-
-  stack.push(entryt(output, &dest));
+  std::stack<entry> stack;
+  
+  stack.push(entry(output, &dest));
 
   while(!stack.empty())
   {
-    entryt x=stack.top();
+    entry x=stack.top();
     stack.pop();
 
     bool invert=x.g<0;
     int n=invert?-x.g:x.g;
-
+    
     assert(n!=0);
-
+    
     exprt &e=*x.e;
 
     if(n==INT_MAX)
@@ -352,15 +346,16 @@ void satcheck_smvsat_interpolatort::build_aig(
     {
       e.id(ID_and);
       e.operands().resize(2);
-
+      
       unsigned g0=interpolator_satsolver.aig_arg(n, 0);
       unsigned g1=interpolator_satsolver.aig_arg(n, 1);
-
-      stack.push(entryt(g0, &e.op0()));
-      stack.push(entryt(g1, &e.op1()));
+      
+      stack.push(entry(g0, &e.op0()));
+      stack.push(entry(g1, &e.op1()));
     }
-
+    
     if(invert)
       e.make_not();
   }
 }
+

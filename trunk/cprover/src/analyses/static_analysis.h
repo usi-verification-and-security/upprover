@@ -6,16 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_ANALYSES_STATIC_ANALYSIS_H
-#define CPROVER_ANALYSES_STATIC_ANALYSIS_H
-
-#ifndef USE_DEPRECATED_STATIC_ANALYSIS_H
-#error Deprecated, use ai.h instead
-#endif
+#ifndef CPROVER_GOTO_PROGRAMS_STATIC_ANALYSIS_H
+#define CPROVER_GOTO_PROGRAMS_STATIC_ANALYSIS_H
 
 #include <map>
 #include <iosfwd>
-#include <unordered_set>
 
 #include <goto-programs/goto_functions.h>
 
@@ -31,7 +26,7 @@ public:
   virtual ~domain_baset()
   {
   }
-
+  
   typedef goto_programt::const_targett locationt;
 
   // will go away,
@@ -60,10 +55,10 @@ public:
     std::ostream &out) const
   {
   }
+  
+  typedef hash_set_cont<exprt, irep_hash> expr_sett;
 
-  typedef std::unordered_set<exprt, irep_hash> expr_sett;
-
-  // will go away
+  // will go away  
   virtual void get_reference_set(
     const namespacet &ns,
     const exprt &expr,
@@ -72,17 +67,17 @@ public:
     // dummy, overload me!
     dest.clear();
   }
-
+  
   // also add
   //
   //   bool merge(const T &b, locationt to);
   //
   // this computes the join between "this" and "b"
   // return true if "this" has changed
-
+  
 protected:
   bool seen;
-
+  
   friend class static_analysis_baset;
 };
 
@@ -99,7 +94,7 @@ public:
     initialized(false)
   {
   }
-
+  
   virtual void initialize(
     const goto_programt &goto_program)
   {
@@ -109,7 +104,7 @@ public:
       generate_states(goto_program);
     }
   }
-
+    
   virtual void initialize(
     const goto_functionst &goto_functions)
   {
@@ -119,13 +114,13 @@ public:
       generate_states(goto_functions);
     }
   }
-
+    
   virtual void update(const goto_programt &goto_program);
   virtual void update(const goto_functionst &goto_functions);
-
+    
   virtual void operator()(
     const goto_programt &goto_program);
-
+    
   virtual void operator()(
     const goto_functionst &goto_functions);
 
@@ -137,7 +132,7 @@ public:
   {
     initialized=false;
   }
-
+  
   virtual void output(
     const goto_functionst &goto_functions,
     std::ostream &out) const;
@@ -150,33 +145,33 @@ public:
   }
 
   virtual bool has_location(locationt l) const=0;
-
+  
   void insert(locationt l)
   {
     generate_state(l);
   }
 
-  // utilities
-
+  // utilities  
+  
   // get guard of a conditional edge
   static exprt get_guard(locationt from, locationt to);
-
+  
   // get lhs that return value is assigned to
   // for an edge that returns from a function
   static exprt get_return_lhs(locationt to);
 
 protected:
   const namespacet &ns;
-
+  
   virtual void output(
     const goto_programt &goto_program,
     const irep_idt &identifier,
     std::ostream &out) const;
 
   typedef std::map<unsigned, locationt> working_sett;
-
+  
   locationt get_next(working_sett &working_set);
-
+  
   void put_in_working_set(
     working_sett &working_set,
     locationt l)
@@ -189,7 +184,7 @@ protected:
   bool fixedpoint(
     const goto_programt &goto_program,
     const goto_functionst &goto_functions);
-
+    
   virtual void fixedpoint(
     const goto_functionst &goto_functions)=0;
 
@@ -204,31 +199,31 @@ protected:
     working_sett &working_set,
     const goto_programt &goto_program,
     const goto_functionst &goto_functions);
-
+    
   static locationt successor(locationt l)
   {
     l++;
     return l;
   }
-
+  
   virtual bool merge(statet &a, const statet &b, locationt to)=0;
   // for concurrent fixedpoint
   virtual bool merge_shared(statet &a, const statet &b, locationt to)=0;
-
+  
   typedef std::set<irep_idt> functions_donet;
   functions_donet functions_done;
 
   typedef std::set<irep_idt> recursion_sett;
   recursion_sett recursion_set;
-
+  
   void generate_states(
     const goto_functionst &goto_functions);
 
   void generate_states(
     const goto_programt &goto_program);
-
+    
   bool initialized;
-
+  
   // function calls
   void do_function_call_rec(
     locationt l_call, locationt l_return,
@@ -245,7 +240,7 @@ protected:
     statet &new_state);
 
   // abstract methods
-
+    
   virtual void generate_state(locationt l)=0;
   virtual statet &get_state(locationt l)=0;
   virtual const statet &get_state(locationt l) const=0;
@@ -272,24 +267,20 @@ public:
 
   typedef goto_programt::const_targett locationt;
 
-  T &operator[](locationt l)
+  inline T &operator[](locationt l)
   {
     typename state_mapt::iterator it=state_map.find(l);
-    if(it==state_map.end())
-      throw "failed to find state";
-
+    if(it==state_map.end()) throw "failed to find state";
     return it->second;
   }
-
-  const T &operator[](locationt l) const
+    
+  inline const T &operator[](locationt l) const
   {
     typename state_mapt::const_iterator it=state_map.find(l);
-    if(it==state_map.end())
-      throw "failed to find state";
-
+    if(it==state_map.end()) throw "failed to find state";
     return it->second;
   }
-
+  
   virtual void clear()
   {
     state_map.clear();
@@ -300,7 +291,7 @@ public:
   {
     return state_map.count(l)!=0;
   }
-
+  
 protected:
   typedef std::map<locationt, T> state_mapt;
   state_mapt state_map;
@@ -308,18 +299,14 @@ protected:
   virtual statet &get_state(locationt l)
   {
     typename state_mapt::iterator it=state_map.find(l);
-    if(it==state_map.end())
-      throw "failed to find state";
-
+    if(it==state_map.end()) throw "failed to find state";
     return it->second;
   }
 
   virtual const statet &get_state(locationt l) const
   {
     typename state_mapt::const_iterator it=state_map.find(l);
-    if(it==state_map.end())
-      throw "failed to find state";
-
+    if(it==state_map.end()) throw "failed to find state";
     return it->second;
   }
 
@@ -327,7 +314,7 @@ protected:
   {
     return static_cast<T &>(a).merge(static_cast<const T &>(b), to);
   }
-
+  
   virtual statet *make_temporary_state(statet &s)
   {
     return new T(static_cast<T &>(s));
@@ -351,7 +338,7 @@ protected:
     sequential_fixedpoint(goto_functions);
   }
 
-private:
+private:  
   // to enforce that T is derived from domain_baset
   void dummy(const T &s) { const statet &x=dummy1(s); (void)x; }
 
@@ -393,4 +380,4 @@ protected:
   }
 };
 
-#endif // CPROVER_ANALYSES_STATIC_ANALYSIS_H
+#endif

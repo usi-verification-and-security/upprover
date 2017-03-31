@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Util
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_CEGIS_UTIL_TASK_POOL_H
-#define CPROVER_CEGIS_CEGIS_UTIL_TASK_POOL_H
+#ifndef UTIL_TASK_POOL_H_
+#define UTIL_TASK_POOL_H_
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -108,4 +108,4 @@ public:
   void join_some();
 };
 
-#endif // CPROVER_CEGIS_CEGIS_UTIL_TASK_POOL_H
+#endif /* UTIL_TASK_POOL_H_ */

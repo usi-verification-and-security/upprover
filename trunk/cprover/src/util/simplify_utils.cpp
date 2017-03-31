@@ -40,8 +40,7 @@ bool sort_operands(exprt::operandst &operands)
     }
   }
 
-  if(!do_sort)
-    return true;
+  if(!do_sort) return true;
 
   std::sort(operands.begin(), operands.end());
 
@@ -99,7 +98,7 @@ struct saj_tablet
                irep_idt()  }},
   { ID_xor,   {ID_bool       ,
                irep_idt()  }},
-  { ID_bitand, {ID_unsignedbv ,
+  { ID_bitand,{ID_unsignedbv ,
                ID_signedbv   ,
                ID_floatbv    ,
                ID_fixedbv    ,
@@ -109,12 +108,12 @@ struct saj_tablet
                ID_floatbv    ,
                ID_fixedbv    ,
                irep_idt()  }},
-  { ID_bitxor, {ID_unsignedbv ,
+  { ID_bitxor,{ID_unsignedbv ,
                ID_signedbv   ,
                ID_floatbv    ,
                ID_fixedbv    ,
                irep_idt()  }},
-  { irep_idt(), { irep_idt() }}
+  { irep_idt(),{ irep_idt() }}
 };
 
 static bool sort_and_join(
@@ -158,8 +157,7 @@ bool sort_and_join(exprt &expr)
 {
   bool result=true;
 
-  if(!expr.has_operands())
-    return true;
+  if(!expr.has_operands()) return true;
 
   const struct saj_tablet &saj_entry=
     sort_and_join(expr.id(), expr.type().id());
@@ -199,3 +197,4 @@ bool sort_and_join(exprt &expr)
 
   return result;
 }
+

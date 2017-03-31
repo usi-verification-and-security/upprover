@@ -8,32 +8,30 @@ Date: June 2006
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_CC_GOTO_CC_MODE_H
-#define CPROVER_GOTO_CC_GOTO_CC_MODE_H
+#ifndef GOTO_CC_MODE_H
+#define GOTO_CC_MODE_H
 
 #include <langapi/language_ui.h>
 
 #include "goto_cc_cmdline.h"
 
-class goto_cc_modet:public messaget
+class goto_cc_modet:public language_uit
 {
 public:
+  std::string base_name;
+
   virtual int main(int argc, const char **argv);
-  virtual int doit()=0;
+  virtual bool doit()=0;
   virtual void help_mode()=0;
   virtual void help();
   virtual void usage_error();
 
-  goto_cc_modet(
-    goto_cc_cmdlinet &,
-    const std::string &_base_name,
-    message_handlert &);
+  explicit goto_cc_modet(goto_cc_cmdlinet &_cmdline);
   ~goto_cc_modet();
-
+  
 protected:
-  goto_cc_cmdlinet &cmdline;
-  const std::string base_name;
   void register_languages();
+  goto_cc_cmdlinet &cmdline;
 };
 
-#endif // CPROVER_GOTO_CC_GOTO_CC_MODE_H
+#endif /* GOTO_CC_MODE_H */

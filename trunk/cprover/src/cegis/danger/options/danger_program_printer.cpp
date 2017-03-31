@@ -1,15 +1,5 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <algorithm>
 
-#include <cegis/cegis-util/program_helper.h>
 #include <cegis/invariant/util/invariant_program_helper.h>
 #include <cegis/danger/options/danger_program.h>
 #include <cegis/danger/value/danger_goto_solution.h>
@@ -31,15 +21,8 @@ public:
 
   void operator()(const goto_programt::instructionst &prog) const
   {
-    /*goto_programt tmp;
-    tmp.instructions=prog;
-    tmp.compute_incoming_edges();
-    tmp.compute_target_numbers();
-    tmp.output(ns, "", os);*/
-    // XXX: Debug
     for (goto_programt::const_targett it=prog.begin(); it != prog.end(); ++it)
       body_printer.output_instruction(ns, "", os, it);
-    // XXX: Debug
   }
 
   void operator()(const danger_goto_solutiont::danger_programt &prog)

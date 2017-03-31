@@ -10,31 +10,10 @@ Date:   April 2010
 
 #include <cstring>
 #include <cassert>
-#include <iostream>
-#include <cstdio>
 
 #include <util/prefix.h>
-#include <util/tempfile.h>
 
 #include "goto_cc_cmdline.h"
-
-/*******************************************************************\
-
-Function: goto_cc_cmdlinet::~goto_cc_cmdlinet
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-goto_cc_cmdlinet::~goto_cc_cmdlinet()
-{
-  if(!stdin_file.empty())
-    remove(stdin_file.c_str());
-}
 
 /*******************************************************************\
 
@@ -55,7 +34,7 @@ bool goto_cc_cmdlinet::in_list(const char *option, const char **list)
     if(strcmp(option, list[i])==0)
       return true;
   }
-
+  
   return false;
 }
 
@@ -84,7 +63,7 @@ bool goto_cc_cmdlinet::prefix_in_list(
       return true;
     }
   }
-
+  
   return false;
 }
 
@@ -104,7 +83,7 @@ std::size_t goto_cc_cmdlinet::get_optnr(const std::string &opt_string)
 {
   int optnr;
   cmdlinet::optiont option;
-
+  
   if(has_prefix(opt_string, "--")) // starts with -- ?
   {
     if(opt_string.size()==3) // still "short"
@@ -149,37 +128,6 @@ std::size_t goto_cc_cmdlinet::get_optnr(const std::string &opt_string)
     options.push_back(option);
     return options.size()-1;
   }
-
+  
   return optnr;
-}
-
-/*******************************************************************\
-
-Function: goto_cc_cmdlinet::add_infile_arg
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void goto_cc_cmdlinet::add_infile_arg(const std::string &arg)
-{
-  parsed_argv.push_back(argt(arg));
-  parsed_argv.back().is_infile_name=true;
-
-  if(arg=="-")
-  {
-    stdin_file=get_temporary_file("goto-cc", "stdin");
-
-    FILE *tmp=fopen(stdin_file.c_str(), "wt");
-
-    char ch;
-    while(std::cin.read(&ch, 1))
-      fputc(ch, tmp);
-
-    fclose(tmp);
-  }
 }

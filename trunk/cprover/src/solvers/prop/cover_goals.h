@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_SOLVERS_PROP_COVER_GOALS_H
-#define CPROVER_SOLVERS_PROP_COVER_GOALS_H
+#ifndef CPROVER_COVER_GOALS_H
+#define CPROVER_COVER_GOALS_H
 
 #include <util/message.h>
 
@@ -26,71 +26,69 @@ Author: Daniel Kroening, kroening@kroening.com
 class cover_goalst:public messaget
 {
 public:
-  explicit cover_goalst(prop_convt &_prop_conv):
+  explicit inline cover_goalst(prop_convt &_prop_conv):
     prop_conv(_prop_conv)
   {
   }
-
+  
   virtual ~cover_goalst();
 
-  // returns result of last run on success
-  decision_proceduret::resultt operator()();
+  void operator()();
 
   // the goals
 
   struct goalt
   {
     literalt condition;
-    enum class statust { UNKNOWN, COVERED, UNCOVERED, ERROR } status;
-
-    goalt():status(statust::UNKNOWN)
+    bool covered;
+    
+    goalt():covered(false)
     {
     }
   };
 
   typedef std::list<goalt> goalst;
   goalst goals;
-
+  
   // statistics
 
-  std::size_t number_covered() const
+  inline std::size_t number_covered() const
   {
     return _number_covered;
   }
-
-  unsigned iterations() const
+  
+  inline unsigned iterations() const
   {
     return _iterations;
   }
-
-  goalst::size_type size() const
+  
+  inline goalst::size_type size() const
   {
     return goals.size();
   }
-
+  
   // managing the goals
 
-  void add(const literalt condition)
+  inline void add(const literalt condition)
   {
     goals.push_back(goalt());
     goals.back().condition=condition;
   }
-
+  
   // register an observer if you want to be told
   // about satisfying assignments
-
+  
   class observert
   {
   public:
-    virtual void goal_covered(const goalt &) { }
-    virtual void satisfying_assignment() { }
+    virtual void goal_covered(const goalt &)=0;
   };
-
-  void register_observer(observert &o)
+  
+  inline void register_observer(observert &o)
   {
     observers.push_back(&o);
   }
-
+  
 protected:
   std::size_t _number_covered;
   unsigned _iterations;
@@ -105,4 +103,4 @@ private:
   void freeze_goal_variables();
 };
 
-#endif // CPROVER_SOLVERS_PROP_COVER_GOALS_H
+#endif

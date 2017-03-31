@@ -11,13 +11,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/arith_tools.h>
 #include <util/std_expr.h>
 #include <util/threeval.h>
-#include <util/std_types.h>
-#include <util/simplify_expr.h>
 
 #include "boolbv.h"
 #include "boolbv_type.h"
 
-// #define DEBUG
+//#define DEBUG
 
 /*******************************************************************\
 
@@ -37,17 +35,17 @@ exprt boolbvt::get(const exprt &expr) const
      expr.id()==ID_nondet_symbol)
   {
     const irep_idt &identifier=expr.get(ID_identifier);
-
+    
     boolbv_mapt::mappingt::const_iterator it=
       map.mapping.find(identifier);
 
     if(it!=map.mapping.end())
     {
       const boolbv_mapt::map_entryt &map_entry=it->second;
-
+    
       if(is_unbounded_array(map_entry.type))
-        return bv_get_unbounded_array(expr);
-
+        return bv_get_unbounded_array(identifier, to_array_type(map_entry.type));
+        
       std::vector<bool> unknown;
       bvt bv;
       std::size_t width=map_entry.width;
@@ -100,7 +98,7 @@ exprt boolbvt::bv_get_rec(
     return bv_get_rec(bv, unknown, offset, ns.follow(type));
 
   std::size_t width=boolbv_width(type);
-
+  
   assert(bv.size()==unknown.size());
   assert(bv.size()>=offset+width);
 
@@ -148,15 +146,11 @@ exprt boolbvt::bv_get_rec(
     }
     else if(type.id()==ID_struct_tag)
     {
-      return
-        bv_get_rec(
-          bv, unknown, offset, ns.follow_tag(to_struct_tag_type(type)));
+      return bv_get_rec(bv, unknown, offset, ns.follow_tag(to_struct_tag_type(type)));
     }
     else if(type.id()==ID_union_tag)
     {
-      return
-        bv_get_rec(
-          bv, unknown, offset, ns.follow_tag(to_union_tag_type(type)));
+      return bv_get_rec(bv, unknown, offset, ns.follow_tag(to_union_tag_type(type)));
     }
     else if(type.id()==ID_struct)
     {
@@ -191,17 +185,17 @@ exprt boolbvt::bv_get_rec(
     {
       const union_typet &union_type=to_union_type(type);
       const union_typet::componentst &components=union_type.components();
-
+      
       assert(!components.empty());
 
-      // Any idea that's better than just returning the first component?
-      std::size_t component_nr=0;
+      // Any idea that's better than just returning the first component?      
+      std::size_t component_nr=0;      
 
       union_exprt value(union_type);
 
       value.set_component_name(
         components[component_nr].get_name());
-
+      
       const typet &subtype=components[component_nr].type();
 
       value.op()=bv_get_rec(bv, unknown, offset, subtype);
@@ -217,12 +211,12 @@ exprt boolbvt::bv_get_rec(
       {
         std::size_t size=width/sub_width;
         exprt value(ID_vector, type);
-        value.reserve_operands(size);
+        value.operands().resize(size);
 
         for(std::size_t i=0; i<size; i++)
-          value.operands().push_back(
-            bv_get_rec(bv, unknown, i*sub_width, subtype));
-
+          value.operands()[i]=
+            bv_get_rec(bv, unknown, i*sub_width, subtype);
+            
         return value;
       }
     }
@@ -238,7 +232,7 @@ exprt boolbvt::bv_get_rec(
 
         value.op0()=bv_get_rec(bv, unknown, 0*sub_width, subtype);
         value.op1()=bv_get_rec(bv, unknown, 1*sub_width, subtype);
-
+            
         return value;
       }
     }
@@ -252,7 +246,6 @@ exprt boolbvt::bv_get_rec(
     if(unknown[bit_nr])
       ch='0';
     else
-    {
       switch(prop.l_get(bv[bit_nr]).get_value())
       {
        case tvt::tv_enumt::TV_FALSE: ch='0'; break;
@@ -260,7 +253,6 @@ exprt boolbvt::bv_get_rec(
        case tvt::tv_enumt::TV_UNKNOWN: ch='0'; break;
        default: assert(false);
       }
-    }
 
     value=ch+value;
   }
@@ -268,19 +260,8 @@ exprt boolbvt::bv_get_rec(
   switch(bvtype)
   {
   case IS_UNKNOWN:
-    if(type.id()==ID_string)
-    {
-      mp_integer int_value=binary2integer(value, false);
-      irep_idt s;
-      if(int_value>=string_numbering.size())
-        s=irep_idt();
-      else
-        s=string_numbering[int_value.to_long()];
-
-      return constant_exprt(s, type);
-    }
     break;
-
+    
   case IS_RANGE:
     {
       mp_integer int_value=binary2integer(value, false);
@@ -291,14 +272,14 @@ exprt boolbvt::bv_get_rec(
       return value_expr;
     }
     break;
-
+    
   default:
   case IS_C_ENUM:
     constant_exprt value_expr(type);
     value_expr.set_value(value);
     return value_expr;
   }
-
+  
   return nil_exprt();
 }
 
@@ -337,7 +318,7 @@ exprt boolbvt::bv_get_cache(const exprt &expr) const
 {
   if(expr.type().id()==ID_bool) // boolean?
     return get(expr);
-
+    
   // look up literals in cache
   bv_cachet::const_iterator it=bv_cache.find(expr);
   if(it==bv_cache.end())
@@ -358,17 +339,17 @@ Function: boolbvt::bv_get_unbounded_array
 
 \*******************************************************************/
 
-exprt boolbvt::bv_get_unbounded_array(const exprt &expr) const
+exprt boolbvt::bv_get_unbounded_array(
+  const irep_idt &identifier,
+  const array_typet &type) const
 {
   // first, try to get size
-
-  const typet &type=expr.type();
-  const exprt &size_expr=to_array_type(type).size();
-  exprt size=simplify_expr(get(size_expr), ns);
-
+  
+  const exprt &size_expr=type.size();
+  exprt size=get(size_expr);
+  
   // no size, give up
-  if(size.is_nil())
-    return nil_exprt();
+  if(size.is_nil()) return nil_exprt();
 
   // get the numeric value, unless it's infinity
   mp_integer size_mpint;
@@ -393,17 +374,21 @@ exprt boolbvt::bv_get_unbounded_array(const exprt &expr) const
   {
     std::size_t number;
 
-    if(arrays.get_number(expr, number))
+    symbol_exprt array_expr;
+    array_expr.type()=type;
+    array_expr.set_identifier(identifier);
+
+    if(arrays.get_number(array_expr, number))
       return nil_exprt();
 
     // get root
     number=arrays.find_number(number);
-
+    
     assert(number<index_map.size());
     index_mapt::const_iterator it=index_map.find(number);
     assert(it!=index_map.end());
     const index_sett &index_set=it->second;
-
+    
     for(index_sett::const_iterator it1=
         index_set.begin();
         it1!=index_set.end();
@@ -411,12 +396,12 @@ exprt boolbvt::bv_get_unbounded_array(const exprt &expr) const
     {
       index_exprt index;
       index.type()=type.subtype();
-      index.array()=expr;
+      index.array()=array_expr;
       index.index()=*it1;
-
+      
       exprt value=bv_get_cache(index);
       exprt index_value=bv_get_cache(*it1);
-
+      
       if(!index_value.is_nil())
       {
         mp_integer index_mpint;
@@ -455,7 +440,7 @@ exprt boolbvt::bv_get_unbounded_array(const exprt &expr) const
     result=exprt(ID_array, type);
     result.type().set(ID_size, size);
 
-    std::size_t size_int=integer2size_t(size_mpint);
+    std::size_t size_int=integer2long(size_mpint);
 
     // allocate operands
     result.operands().resize(size_int);
@@ -469,9 +454,9 @@ exprt boolbvt::bv_get_unbounded_array(const exprt &expr) const
         it!=values.end();
         it++)
       if(it->first>=0 && it->first<size_mpint)
-        result.operands()[integer2size_t(it->first)].swap(it->second);
+        result.operands()[integer2long(it->first)].swap(it->second);
   }
-
+  
   return result;
 }
 
@@ -511,3 +496,4 @@ mp_integer boolbvt::get_value(
 
   return value;
 }
+  

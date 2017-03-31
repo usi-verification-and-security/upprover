@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_GENETIC_RANDOM_MUTATE_H
-#define CPROVER_CEGIS_GENETIC_RANDOM_MUTATE_H
+#ifndef CEGIS_GENETIC_RANDOM_MUTATE_H_
+#define CEGIS_GENETIC_RANDOM_MUTATE_H_
 
 #include <cegis/value/program_individual.h>
 
@@ -71,4 +71,4 @@ public:
   void post_process(program_individualt &ind) const;
 };
 
-#endif // CPROVER_CEGIS_GENETIC_RANDOM_MUTATE_H
+#endif /* CEGIS_GENETIC_RANDOM_MUTATE_H_ */

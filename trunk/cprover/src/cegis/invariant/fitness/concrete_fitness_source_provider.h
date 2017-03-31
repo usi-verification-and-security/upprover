@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_INVARIANT_FITNESS_CONCRETE_FITNESS_SOURCE_PROVIDER_H
-#define CPROVER_CEGIS_INVARIANT_FITNESS_CONCRETE_FITNESS_SOURCE_PROVIDER_H
+#ifndef CEGIS_CONCRETE_FITNESS_SOURCE_PROVIDER_H_
+#define CEGIS_CONCRETE_FITNESS_SOURCE_PROVIDER_H_
 
 #include <functional>
 
@@ -79,4 +79,4 @@ std::string &post_process_fitness_source(std::string &result,
 
 #include "concrete_fitness_source_provider.inc"
 
-#endif // CPROVER_CEGIS_INVARIANT_FITNESS_CONCRETE_FITNESS_SOURCE_PROVIDER_H
+#endif /* CEGIS_CONCRETE_FITNESS_SOURCE_PROVIDER_H_ */

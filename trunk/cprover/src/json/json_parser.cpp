@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <stdlib.h>
+#include <string.h>
+
 #include <fstream>
 
 #include "json_parser.h"
@@ -36,7 +39,7 @@ bool parse_json(
   json_parser.in=&in;
   json_parser.set_message_handler(message_handler);
 
-  bool result=json_parser.parse();
+  bool result=yyjsonparse()!=0;
 
   // save result
   if(json_parser.stack.size()==1)
@@ -45,7 +48,7 @@ bool parse_json(
   // save some memory
   json_parser.clear();
 
-  return result;
+  return result;  
 }
 
 /*******************************************************************\
@@ -66,10 +69,9 @@ bool parse_json(
   message_handlert &message_handler,
   jsont &dest)
 {
-  std::ifstream in(filename);
-
-  if(!in)
-    return true;
-
+  std::ifstream in(filename.c_str());
+  
+  if(!in) return true;
+ 
   return parse_json(in, filename, message_handler, dest);
 }

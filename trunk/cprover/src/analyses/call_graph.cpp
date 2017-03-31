@@ -19,7 +19,7 @@ Function: call_grapht::call_grapht
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -35,7 +35,7 @@ Function: call_grapht::call_grapht
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -56,7 +56,7 @@ Function: call_grapht::add
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -83,7 +83,7 @@ Function: call_grapht::add
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -102,7 +102,7 @@ Function: call_grapht::output_dot
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
@@ -110,14 +110,16 @@ void call_grapht::output_dot(std::ostream &out) const
 {
   out << "digraph call_graph {\n";
 
-  for(const auto &edge : graph)
+  for(grapht::const_iterator it=graph.begin();
+      it!=graph.end();
+      it++)
   {
-    out << "  \"" << edge.first << "\" -> "
-        << "\"" << edge.second << "\" "
+    out << "  \"" << it->first << "\" -> "
+        << "\"" << it->second << "\" "
         << " [arrowhead=\"vee\"];"
         << "\n";
   }
-
+  
   out << "}\n";
 }
 
@@ -129,15 +131,18 @@ Function: call_grapht::output
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
 void call_grapht::output(std::ostream &out) const
 {
-  for(const auto &edge : graph)
+  for(grapht::const_iterator
+      it=graph.begin();
+      it!=graph.end();
+      it++)
   {
-    out << edge.first << " -> " << edge.second << "\n";
+    out << it->first << " -> " << it->second << "\n";
   }
 }
 
@@ -149,18 +154,21 @@ Function: call_grapht::output_xml
 
  Outputs:
 
- Purpose:
+ Purpose: 
 
 \*******************************************************************/
 
 void call_grapht::output_xml(std::ostream &out) const
 {
-  for(const auto &edge : graph)
+  for(grapht::const_iterator
+      it=graph.begin();
+      it!=graph.end();
+      it++)
   {
     out << "<call_graph_edge caller=\"";
-    xmlt::escape_attribute(id2string(edge.first), out);
+    xmlt::escape_attribute(id2string(it->first), out);
     out << "\" callee=\"";
-    xmlt::escape_attribute(id2string(edge.second), out);
+    xmlt::escape_attribute(id2string(it->second), out);
     out << "\">\n";
   }
 }

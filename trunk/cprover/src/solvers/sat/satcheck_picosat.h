@@ -6,12 +6,11 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_SOLVERS_SAT_SATCHECK_PICOSAT_H
-#define CPROVER_SOLVERS_SAT_SATCHECK_PICOSAT_H
+#ifndef CPROVER_SATCHECK_PICOSAT_H
+#define CPROVER_SATCHECK_PICOSAT_H
 
 #include "cnf.h"
 
-// NOLINTNEXTLINE(readability/identifiers)
 struct PicoSAT;
 
 class satcheck_picosatt:public cnf_solvert
@@ -39,4 +38,4 @@ private:
   PicoSAT *picosat;
 };
 
-#endif // CPROVER_SOLVERS_SAT_SATCHECK_PICOSAT_H
+#endif

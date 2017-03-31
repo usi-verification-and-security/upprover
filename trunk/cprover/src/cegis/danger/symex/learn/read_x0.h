@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_DANGER_SYMEX_LEARN_READ_X0_H
-#define CPROVER_CEGIS_DANGER_SYMEX_LEARN_READ_X0_H
+#ifndef CEGIS_DANGER_READ_X0_H_
+#define CEGIS_DANGER_READ_X0_H_
 
 /**
  * @brief
@@ -34,4 +34,4 @@ void danger_read_x0(class danger_goto_solutiont &result,
 void danger_read_x0(class program_individualt &ind, const danger_programt &prog,
     const goto_tracet &trace);
 
-#endif // CPROVER_CEGIS_DANGER_SYMEX_LEARN_READ_X0_H
+#endif /* CEGIS_DANGER_READ_X0_H_ */

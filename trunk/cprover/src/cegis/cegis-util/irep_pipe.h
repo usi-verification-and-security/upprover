@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_CEGIS_UTIL_IREP_PIPE_H
-#define CPROVER_CEGIS_CEGIS_UTIL_IREP_PIPE_H
+#ifndef CEGIS_IREP_PIPE_H_
+#define CEGIS_IREP_PIPE_H_
 
 /**
  * @brief Helper for sending irep SDUs through pipes.
@@ -43,7 +43,7 @@ public:
    * should close automaticall, <code>false</code>
    * otherwise.
    */
-  explicit irep_pipet(bool auto_close);
+  irep_pipet(bool auto_close);
 
   /**
    * @brief Optionally closing destructor.
@@ -127,4 +127,4 @@ public:
   void auto_close();
 };
 
-#endif // CPROVER_CEGIS_CEGIS_UTIL_IREP_PIPE_H
+#endif /* CEGIS_IREP_PIPE_H_ */

@@ -21,11 +21,10 @@ const unsigned __CPROVER_constant_infinity_uint;
 typedef void __CPROVER_integer;
 typedef void __CPROVER_rational;
 void __CPROVER_initialize(void);
-void __CPROVER_cover(__CPROVER_bool condition);
-#endif
-
 void __CPROVER_input(const char *id, ...);
 void __CPROVER_output(const char *id, ...);
+void __CPROVER_cover(__CPROVER_bool condition);
+#endif
 
 // concurrency-related
 void __CPROVER_atomic_begin();

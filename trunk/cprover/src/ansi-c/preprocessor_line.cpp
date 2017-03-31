@@ -32,13 +32,12 @@ void preprocessor_line(
 {
   const char *ptr=text;
   std::string line_number;
-
+  
   // skip WS
   while(*ptr==' ' || *ptr=='\t') ptr++;
 
   // skip #
-  if(*ptr!='#')
-    return;
+  if(*ptr!='#') return;
   ptr++;
 
   // skip WS
@@ -59,7 +58,7 @@ void preprocessor_line(
     line_number+=*ptr;
     ptr++;
   }
-
+  
   // skip until "
   while(*ptr!='\n' && *ptr!='"') ptr++;
 
@@ -68,9 +67,9 @@ void preprocessor_line(
   // skip "
   if(*ptr!='"')
     return;
-
+  
   ptr++;
-
+  
   std::string file_name_tmp;
 
   // get file name
@@ -80,6 +79,7 @@ void preprocessor_line(
     ptr++;
   }
 
-  std::string file_name_tmp2=unescape_string(file_name_tmp);
+  std::string file_name_tmp2;
+  unescape_string(file_name_tmp, file_name_tmp2);
   parser.set_file(file_name_tmp2);
 }

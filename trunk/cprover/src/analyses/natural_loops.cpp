@@ -10,7 +10,7 @@ Author: Georg Weissenbacher, georg@weissenbacher.name
 
 #include "natural_loops.h"
 
-// #define DEBUG
+//#define DEBUG
 
 /*******************************************************************\
 
@@ -33,7 +33,8 @@ void show_natural_loops(const goto_functionst &goto_functions)
     natural_loopst natural_loops;
     natural_loops(it->second.body);
     natural_loops.output(std::cout);
-
+    
     std::cout << std::endl;
   }
 }
+

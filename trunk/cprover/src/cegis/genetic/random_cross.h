@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_GENETIC_RANDOM_CROSS_H
-#define CPROVER_CEGIS_GENETIC_RANDOM_CROSS_H
+#ifndef CEGIS_GENETIC_RANDOM_CROSS_H_
+#define CEGIS_GENETIC_RANDOM_CROSS_H_
 
 #include <cegis/value/program_individual.h>
 
@@ -32,7 +32,7 @@ public:
    *
    * @param random
    */
-  explicit random_crosst(random_individualt &random);
+  random_crosst(random_individualt &random);
 
   /**
    * @brief
@@ -52,4 +52,4 @@ public:
   void operator()(const individualst &parents, const individualst &children);
 };
 
-#endif // CPROVER_CEGIS_GENETIC_RANDOM_CROSS_H
+#endif /* CEGIS_GENETIC_RANDOM_CROSS_H_ */

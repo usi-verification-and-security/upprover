@@ -20,7 +20,7 @@ Function: boolbvt::convert_constraint_select_one
 
 \*******************************************************************/
 
-bvt boolbvt::convert_constraint_select_one(const exprt &expr)
+void boolbvt::convert_constraint_select_one(const exprt &expr, bvt &bv)
 {
   const exprt::operandst &operands=expr.operands();
 
@@ -32,9 +32,7 @@ bvt boolbvt::convert_constraint_select_one(const exprt &expr)
 
   if(expr.type()!=expr.op0().type())
     throw "constraint_select_one expects matching types";
-
-  bvt bv;
-
+ 
   if(prop.has_set_to())
   {
     std::size_t width=boolbv_width(expr.type());
@@ -68,7 +66,7 @@ bvt boolbvt::convert_constraint_select_one(const exprt &expr)
       else
       {
         if(op_bv.size()!=bv.size())
-          return conversion_failed(expr);
+          return conversion_failed(expr, bv);
 
         for(std::size_t i=0; i<op_bv.size(); i++)
           bv[i]=prop.lselect(prop.new_variable(), bv[i], op_bv[i]);
@@ -77,6 +75,5 @@ bvt boolbvt::convert_constraint_select_one(const exprt &expr)
       op_nr++;
     }
   }
-
-  return bv;
 }
+

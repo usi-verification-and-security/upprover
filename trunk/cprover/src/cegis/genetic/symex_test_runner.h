@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_GENETIC_SYMEX_TEST_RUNNER_H
-#define CPROVER_CEGIS_GENETIC_SYMEX_TEST_RUNNER_H
+#ifndef CEGIS_GENETIC_SYMEX_TEST_RUNNER_H_
+#define CEGIS_GENETIC_SYMEX_TEST_RUNNER_H_
 
 #include <util/expr.h>
 
@@ -33,7 +33,7 @@ private:
     individualt *individual;
   public:
     pid_t child_pid;
-    explicit bool_pipet(individualt *individual);
+    bool_pipet(individualt *individual);
     void run_test(const class optionst &options, configt &config,
         const counterexamplet &ce);
     void join();
@@ -82,4 +82,4 @@ public:
 
 #include "symex_test_runner.inc"
 
-#endif // CPROVER_CEGIS_GENETIC_SYMEX_TEST_RUNNER_H
+#endif /* CEGIS_GENETIC_SYMEX_TEST_RUNNER_H_ */

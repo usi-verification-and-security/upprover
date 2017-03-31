@@ -8,47 +8,49 @@ Date: June 2006
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_CC_GCC_MODE_H
-#define CPROVER_GOTO_CC_GCC_MODE_H
-
-#include <util/cout_message.h>
+#ifndef GOTO_CC_GCC_MODE_H
+#define GOTO_CC_GCC_MODE_H
 
 #include "goto_cc_mode.h"
+#include "gcc_cmdline.h"
 
 class gcc_modet:public goto_cc_modet
 {
 public:
-  int doit() final;
-  void help_mode() final;
+  virtual bool doit();
+  virtual void help_mode();
 
-  gcc_modet(
-    goto_cc_cmdlinet &_cmdline,
-    const std::string &_base_name,
-    bool _produce_hybrid_binary);
+  explicit gcc_modet(goto_cc_cmdlinet &_cmdline):
+    goto_cc_modet(_cmdline),
+    produce_hybrid_binary(false),
+    act_as_ld(false)
+  {
+  }
 
+  bool produce_hybrid_binary;
+  
 protected:
-  gcc_message_handlert gcc_message_handler;
-
-  const bool produce_hybrid_binary;
-
-  const bool act_as_ld;
-  std::string native_tool_name;
-
+  bool act_as_ld;
+  
   int preprocess(
     const std::string &language,
     const std::string &src,
-    const std::string &dest,
-    bool act_as_bcc);
+    const std::string &dest);
 
   int run_gcc(); // call gcc with original command line
-
+  
   int gcc_hybrid_binary();
-
-  int asm_output(
-    bool act_as_bcc,
-    const std::list<std::string> &preprocessed_source_files);
-
+  
   static bool needs_preprocessing(const std::string &);
+  
+  static inline const char *compiler_name()
+  {
+    #ifdef __FreeBSD__
+    return "clang";
+    #else
+    return "gcc";
+    #endif
+  }
 };
 
-#endif // CPROVER_GOTO_CC_GCC_MODE_H
+#endif /* GOTO_CC_GCC_MODE_H */

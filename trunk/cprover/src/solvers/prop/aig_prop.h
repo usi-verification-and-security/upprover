@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_SOLVERS_PROP_AIG_PROP_H
-#define CPROVER_SOLVERS_PROP_AIG_PROP_H
+#ifndef CPROVER_PROPSOLVE_AIG_PROP_H
+#define CPROVER_PROPSOLVE_AIG_PROP_H
 
 #include <cassert>
 
@@ -19,44 +19,44 @@ Author: Daniel Kroening, kroening@kroening.com
 class aig_prop_baset:public propt
 {
 public:
-  explicit aig_prop_baset(aigt &_dest):dest(_dest)
+  explicit inline aig_prop_baset(aigt &_dest):dest(_dest)
   {
   }
 
-  bool has_set_to() const override { return false; }
-  bool cnf_handled_well() const override { return false; }
+  virtual bool has_set_to() const { return false; }
+  virtual bool cnf_handled_well() const { return false; }
+ 
+  virtual literalt land(literalt a, literalt b);
+  virtual literalt lor(literalt a, literalt b);
+  virtual literalt land(const bvt &bv);
+  virtual literalt lor(const bvt &bv);
+  virtual void lcnf(const bvt &clause) { assert(false); }
+  virtual literalt lxor(literalt a, literalt b);
+  virtual literalt lxor(const bvt &bv);
+  virtual literalt lnand(literalt a, literalt b);
+  virtual literalt lnor(literalt a, literalt b);
+  virtual literalt lequal(literalt a, literalt b);
+  virtual literalt limplies(literalt a, literalt b);
+  virtual literalt lselect(literalt a, literalt b, literalt c); // a?b:c
+  virtual void set_equal(literalt a, literalt b);
 
-  literalt land(literalt a, literalt b) override;
-  literalt lor(literalt a, literalt b) override;
-  literalt land(const bvt &bv) override;
-  literalt lor(const bvt &bv) override;
-  void lcnf(const bvt &clause) override { assert(false); }
-  literalt lxor(literalt a, literalt b) override;
-  literalt lxor(const bvt &bv) override;
-  literalt lnand(literalt a, literalt b) override;
-  literalt lnor(literalt a, literalt b) override;
-  literalt lequal(literalt a, literalt b) override;
-  literalt limplies(literalt a, literalt b) override;
-  literalt lselect(literalt a, literalt b, literalt c) override; // a?b:c
-  void set_equal(literalt a, literalt b) override;
+  virtual void l_set_to(literalt a, bool value) { assert(false); }
 
-  void l_set_to(literalt a, bool value) override { assert(false); }
-
-  literalt new_variable() override
+  virtual literalt new_variable()
   {
     return dest.new_node();
   }
-
-  size_t no_variables() const override
+  
+  virtual size_t no_variables() const
   { return dest.number_of_nodes(); }
 
-  const std::string solver_text() override
+  virtual const std::string solver_text()
   { return "conversion into and-inverter graph"; }
 
-  tvt l_get(literalt a) const override
+  virtual tvt l_get(literalt a) const
   { assert(0); return tvt::unknown(); }
-
-  resultt prop_solve() override
+  
+  virtual resultt prop_solve()
   { assert(0); return P_ERROR; }
 
 protected:
@@ -66,21 +66,21 @@ protected:
 class aig_prop_constraintt:public aig_prop_baset
 {
 public:
-  explicit aig_prop_constraintt(aig_plus_constraintst &_dest):
+  inline explicit aig_prop_constraintt(aig_plus_constraintst &_dest):
     aig_prop_baset(_dest),
     dest(_dest)
   {
   }
 
   aig_plus_constraintst &dest;
-  bool has_set_to() const override { return true; }
-
-  void lcnf(const bvt &clause) override
+  virtual bool has_set_to() const { return true; }
+ 
+  virtual void lcnf(const bvt &clause)
   {
     l_set_to_true(lor(clause));
   }
-
-  void l_set_to(literalt a, bool value) override
+  
+  virtual void l_set_to(literalt a, bool value)
   {
     dest.constraints.push_back(a^!value);
   }
@@ -89,44 +89,34 @@ public:
 class aig_prop_solvert:public aig_prop_constraintt
 {
 public:
-  explicit aig_prop_solvert(propt &_solver):
+  explicit inline aig_prop_solvert(propt &_solver):
     aig_prop_constraintt(aig),
     solver(_solver)
   {
   }
-
+  
   aig_plus_constraintst aig;
 
-  const std::string solver_text() override
-  {
-    return
-      "conversion into and-inverter graph followed by "+
-      solver.solver_text();
-  }
+  virtual const std::string solver_text()
+  { return "conversion into and-inverter graph followed by "+
+           solver.solver_text(); }
 
-  tvt l_get(literalt a) const override;
-  resultt prop_solve() override;
-
-  void set_message_handler(message_handlert &m) override
+  virtual tvt l_get(literalt a) const;
+  virtual resultt prop_solve();
+  
+  virtual void set_message_handler(message_handlert &m)
   {
     aig_prop_constraintt::set_message_handler(m);
     solver.set_message_handler(m);
   }
-
+  
 protected:
   propt &solver;
-
+  
   void convert_aig();
-  void usage_count(
-    std::vector<unsigned> &p_usage_count, std::vector<unsigned> &n_usage_count);
+  void usage_count(std::vector<unsigned> &p_usage_count, std::vector<unsigned> &n_usage_count);
   void compute_phase(std::vector<bool> &n_pos, std::vector<bool> &n_neg);
-  void convert_node(
-    unsigned n,
-    const aigt::nodet &node,
-    bool n_pos,
-    bool n_neg,
-    std::vector<unsigned> &p_usage_count,
-    std::vector<unsigned> &n_usage_count);
+  void convert_node(unsigned n, const aigt::nodet &node, bool n_pos, bool n_neg, std::vector<unsigned> &p_usage_count, std::vector<unsigned> &n_usage_count);
 };
 
-#endif // CPROVER_SOLVERS_PROP_AIG_PROP_H
+#endif

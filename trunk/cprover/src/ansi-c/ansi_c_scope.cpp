@@ -26,10 +26,14 @@ void ansi_c_scopet::print(std::ostream &out) const
 {
   out << "Prefix: " << prefix << "\n";
 
-  for(const auto &name : name_map)
+  for(ansi_c_scopet::name_mapt::const_iterator
+      n_it=name_map.begin();
+      n_it!=name_map.end();
+      n_it++)
   {
-    out << "  ID: " << name.first
-        << " CLASS: " << name.second.id_class
+    out << "  ID: " << n_it->first
+        << " CLASS: " << n_it->second.id_class
         << "\n";
   }
 }
+

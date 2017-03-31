@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_DANGER_SYMEX_LEARN_ADD_VARIABLE_REFS_H
-#define CPROVER_CEGIS_DANGER_SYMEX_LEARN_ADD_VARIABLE_REFS_H
+#ifndef CEGIS_DANGER_INSTRUMENT_VARIABLE_REFS_H_
+#define CEGIS_DANGER_INSTRUMENT_VARIABLE_REFS_H_
 
 #include <cegis/invariant/symex/learn/instrument_vars.h>
 
@@ -24,4 +24,4 @@ Author: Daniel Kroening, kroening@kroening.com
 void link_meta_variables(danger_programt &prog, const size_t user_vars,
     const size_t max_solution_size);
 
-#endif // CPROVER_CEGIS_DANGER_SYMEX_LEARN_ADD_VARIABLE_REFS_H
+#endif /* CEGIS_DANGER_INSTRUMENT_VARIABLE_REFS_H_ */

@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_UTIL_IDENTIFIER_H
-#define CPROVER_UTIL_IDENTIFIER_H
+#ifndef CPROVER_IDENTIFIER_H
+#define CPROVER_IDENTIFIER_H
 
 #include <string>
 #include <vector>
@@ -17,7 +17,7 @@ Author: Daniel Kroening, kroening@kroening.com
 class identifiert
 {
 public:
-  explicit identifiert(const std::string &s)
+  identifiert(const std::string &s)
   { parse(s); }
 
   identifiert()
@@ -29,7 +29,7 @@ public:
   componentst components;
 
 protected:
-  void parse(const std::string &s);
+  void parse(const std::string &s);  
 };
 
-#endif // CPROVER_UTIL_IDENTIFIER_H
+#endif

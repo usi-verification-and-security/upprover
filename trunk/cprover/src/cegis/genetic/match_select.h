@@ -1,39 +1,47 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+ Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
-\*******************************************************************/
+ \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_GENETIC_MATCH_SELECT_H
-#define CPROVER_CEGIS_GENETIC_MATCH_SELECT_H
+#ifndef CEGIS_GENETIC_MATCH_SELECT_H_
+#define CEGIS_GENETIC_MATCH_SELECT_H_
 
-#include <functional>
-
-#include <cegis/genetic/family_selection.h>
+#include <cegis/value/program_individual.h>
 
 /**
  * @brief
  *
  * @details
  */
-template<class population_typet>
 class match_selectt
 {
 public:
-  typedef population_typet populationt;
-  typedef typename populationt::value_type individualt;
-  typedef family_selectiont<populationt> selectiont;
-  typedef typename selectiont::individualst individualst;
-  typedef typename populationt::iterator contestantt;
-  typedef std::map<const individualt *, std::list<bool> > test_case_datat;
+  typedef std::map<const program_individualt *, std::list<bool> > test_case_datat;
 private:
   const test_case_datat &test_case_data;
-  const std::function<unsigned int()> next_random_unsigned_int;
+  class random_individualt &random;
+  const size_t pop_size;
   const size_t rounds;
 public:
+  typedef program_populationt populationt;
+  typedef populationt::value_type individualt;
+  typedef std::deque<populationt::iterator> individualst;
+  class selectiont
+  {
+  public:
+    individualst parents;
+    individualst children;
+
+    bool can_mutate() const;
+    bool can_cross() const;
+    populationt::value_type &mutation_lhs();
+    const populationt::value_type &mutation_rhs() const;
+  };
+
   /**
    * @brief
    *
@@ -41,24 +49,11 @@ public:
    *
    * @param test_case_data
    * @param random
+   * @param pop_size
    * @param rounds
    */
-  match_selectt(
-      const test_case_datat &test_case_data,
-      std::function<unsigned int()> random,
-      size_t rounds);
-
-  /**
-   * @brief
-   *
-   * @details
-   *
-   * @param test_case_data
-   * @param rounds
-   */
-  match_selectt(
-      const test_case_datat &test_case_data,
-      size_t rounds);
+  match_selectt(const test_case_datat &test_case_data,
+      random_individualt &random, size_t pop_size, size_t rounds);
 
   /**
    * @brief
@@ -73,12 +68,19 @@ public:
    * @details
    *
    * @param population
+   */
+  void init(populationt &population);
+
+  /**
+   * @brief
+   *
+   * @details
+   *
+   * @param population
    *
    * @return
    */
-  selectiont select(populationt &population) const;
+  selectiont select(populationt &population);
 };
 
-#include "match_select.inc"
-
-#endif // CPROVER_CEGIS_GENETIC_MATCH_SELECT_H
+#endif /* CEGIS_GENETIC_MATCH_SELECT_H_ */

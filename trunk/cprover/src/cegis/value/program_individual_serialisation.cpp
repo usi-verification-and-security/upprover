@@ -1,17 +1,8 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <util/bv_arithmetic.h>
 
 #include <goto-programs/goto_trace.h>
 
-#include <cegis/instrument/literals.h>
+#include <cegis/invariant/meta/literals.h>
 #include <cegis/danger/options/danger_program.h>
 #include <cegis/danger/symex/learn/add_variable_refs.h>
 #include <cegis/danger/symex/learn/read_x0.h>
@@ -19,7 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cegis/genetic/instruction_set_info_factory.h>
 #include <cegis/value/program_individual_serialisation.h>
 
-bool is_program_individual_decl(const goto_trace_stept &step)
+bool is_program_indivdual_decl(const goto_trace_stept &step)
 {
   if (goto_trace_stept::DECL != step.type) return false;
   const exprt &value=step.full_lhs_value;
@@ -57,7 +48,7 @@ program_individualt to_program_individual(const invariant_programt &prog,
   program_individualt individual;
   individual.fitness=0u;
   for (const goto_trace_stept &step : trace.steps)
-    if (is_program_individual_decl(step))
+    if (is_program_indivdual_decl(step))
     {
       program_individualt::programt prog;
       for (const exprt &op : step.full_lhs_value.operands())
@@ -75,19 +66,6 @@ program_individualt to_program_individual(const danger_programt &prog,
 {
   const invariant_programt &inv_prog=prog;
   program_individualt individual(to_program_individual(inv_prog, trace));
-  const program_individualt::programt empty;
-  if (!prog.loops.empty() && prog.loops.front().skolem_choices.empty())
-  {
-    const size_t num_progs=individual.programs.size();
-    assert(num_progs == prog.use_ranking ? 2 : 1);
-    individual.programs.push_back(empty);
-  }
-  if (!prog.use_ranking)
-  {
-    assert(individual.programs.size() == 2);
-    individual.programs.insert(std::next(individual.programs.begin()), empty);
-    assert(individual.programs.at(1).empty());
-  }
   danger_read_x0(individual, prog, trace);
   return individual;
 }
@@ -186,7 +164,7 @@ void individual_to_danger_solution_deserialisert::operator ()(
 {
   program_individualt ind;
   deserialise(ind, sdu);
-  operand_variable_idst ids;
+  invariant_variable_idst ids;
   get_invariant_variable_ids(prog.st, ids);
   const instruction_sett &instrs=info_fac.get_instructions();
   create_danger_solution(result, prog, ind, instrs, ids);

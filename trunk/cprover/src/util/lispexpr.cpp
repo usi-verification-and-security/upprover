@@ -28,34 +28,33 @@ std::string lispexprt::expr2string() const
 
   switch(type)
   {
-    case Number:
-    case Symbol:
-      result=value;
-      break;
+   case Number:
+   case Symbol:
+    result=value;
+    break;
 
-    case List:
-      result="(";
-      for(unsigned j=0; j<size(); j++)
+   case List:
+    result="(";
+    for(unsigned j=0; j<size(); j++)
+    {
+      if((j+1)==size() && size()!=1)
       {
-        if((j+1)==size() && size()!=1)
-        {
-          if((*this)[j].is_nil())
-            break;
-          result+=" . ";
-        }
-        else if(j!=0)
-          result+=' ';
-
-        result+=(*this)[j].expr2string();
+        if((*this)[j].is_nil()) break;
+        result+=" . ";
       }
-      result+=')';
-      break;
+      else if(j!=0)
+        result+=' ';
 
-    case String:
-      result="\"";
-      result+=escape(value);
-      result+="\"";
-      break;
+      result+=(*this)[j].expr2string();
+    }
+    result+=')';
+    break;
+
+   case String:
+    result="\"";
+    result+=escape(value);
+    result+="\"";
+    break;
   }
 
   return result;
@@ -75,7 +74,7 @@ Function: lispexprt::parse
 
 bool lispexprt::parse(const std::string &s)
 {
-  std::string::size_type ptr=0;
+  unsigned ptr=0;
   return parse(s, ptr);
 }
 
@@ -91,20 +90,15 @@ Function: lispexprt::parse
 
 \*******************************************************************/
 
-bool lispexprt::parse(
-  const std::string &s,
-  std::string::size_type &ptr)
+bool lispexprt::parse(const std::string &s, unsigned &ptr)
 {
   clear();
   value="";
 
-  if(ptr==std::string::npos || ptr>=s.size())
-    return true;
+  if(ptr>=s.size()) return true;
 
   // we ignore whitespace
-  ptr=s.find_first_not_of(" \t", ptr);
-  if(ptr==std::string::npos)
-    return true;
+  for(; ptr<s.size() && (s[ptr]==' ' || s[ptr]=='\t'); ptr++);
 
   if(s[ptr]=='(') // LispCons
   {
@@ -121,8 +115,7 @@ bool lispexprt::parse(
         ptr++;
       }
 
-      if(expr.parse(s, ptr))
-        return true;
+      if(expr.parse(s, ptr)) return true;
       push_back(expr);
 
       if(ptr<s.size() && s[ptr]==')')
@@ -156,8 +149,7 @@ bool lispexprt::parse(
       }
     }
 
-    if(ptr<s.size())
-      ptr++;
+    if(ptr<s.size()) ptr++;
   }
   else if(isdigit(s[ptr])) // LispNumber
   {
@@ -178,7 +170,7 @@ bool lispexprt::parse(
   }
 
   // we ignore whitespace
-  ptr=s.find_first_not_of(" \t", ptr);
+  for(; ptr<s.size() && (s[ptr]==' ' || s[ptr]=='\t'); ptr++);
 
   return false;
 }
@@ -233,8 +225,7 @@ int test_lispexpr()
 
     while(true)
     {
-      if(!std::cin.read(&ch, 1))
-        return 0;
+      if(!std::cin.read(&ch, 1)) return 0;
 
       if(ch=='\n')
       {
@@ -253,3 +244,4 @@ int test_lispexpr()
 
   return 0;
 }
+

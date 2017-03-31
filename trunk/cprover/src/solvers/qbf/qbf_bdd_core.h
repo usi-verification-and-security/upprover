@@ -6,26 +6,27 @@ Author: CM Wintersteiger
 
 \*******************************************************************/
 
-#ifndef CPROVER_SOLVERS_QBF_QBF_BDD_CORE_H
-#define CPROVER_SOLVERS_QBF_QBF_BDD_CORE_H
+#ifndef CPROVER_QBF_BDD_CORE_H
+#define CPROVER_QBF_BDD_CORE_H
 
 #include <vector>
 
+#include <util/hash_cont.h>
 
 #include "qdimacs_core.h"
 
-class Cudd; // NOLINT(*)
-class BDD; // NOLINT(*)
+class Cudd;
+class BDD;
 
-class qbf_bdd_certificatet:public qdimacs_coret
+class qbf_bdd_certificatet : public qdimacs_coret
 {
 protected:
-  Cudd *bdd_manager;
+  Cudd* bdd_manager;
 
   typedef std::vector<BDD*> model_bddst;
   model_bddst model_bdds;
 
-  typedef std::unordered_map<unsigned, exprt> function_cachet;
+  typedef hash_map_cont<unsigned, exprt> function_cachet;
   function_cachet function_cache;
 
 public:
@@ -52,7 +53,7 @@ public:
   virtual ~qbf_bdd_coret();
 
   virtual literalt new_variable();
-
+  
   virtual void lcnf(const bvt &bv);
   virtual literalt lor(literalt a, literalt b);
   virtual literalt lor(const bvt &bv);
@@ -68,4 +69,4 @@ protected:
   void compress_certificate(void);
 };
 
-#endif // CPROVER_SOLVERS_QBF_QBF_BDD_CORE_H
+#endif /* QBF_BDD_CORE_H_ */

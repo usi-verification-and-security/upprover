@@ -32,38 +32,41 @@ bool dep_graph_domaint::merge(
   goto_programt::const_targett from,
   goto_programt::const_targett to)
 {
-  bool changed=has_values.is_false();
-  has_values=tvt::unknown();
+  bool change=false;
 
   depst::iterator it=control_deps.begin();
-  for(const auto &c_dep : src.control_deps)
+  for(depst::const_iterator ito=src.control_deps.begin();
+      ito!=src.control_deps.end();
+      ++ito)
   {
-    while(it!=control_deps.end() && *it<c_dep)
+    while(it!=control_deps.end() && *it<*ito)
       ++it;
-    if(it==control_deps.end() || c_dep<*it)
+    if(it==control_deps.end() || *ito<*it)
     {
-      control_deps.insert(it, c_dep);
-      changed=true;
+      control_deps.insert(it, *ito);
+      change=true;
     }
     else if(it!=control_deps.end())
       ++it;
   }
 
   it=data_deps.begin();
-  for(const auto &d_dep : src.data_deps)
+  for(depst::const_iterator ito=src.data_deps.begin();
+      ito!=src.data_deps.end();
+      ++ito)
   {
-    while(it!=data_deps.end() && *it<d_dep)
+    while(it!=data_deps.end() && *it<*ito)
       ++it;
-    if(it==data_deps.end() || d_dep<*it)
+    if(it==data_deps.end() || *ito<*it)
     {
-      data_deps.insert(it, d_dep);
-      changed=true;
+      data_deps.insert(it, *ito);
+      change=true;
     }
     else if(it!=data_deps.end())
       ++it;
   }
 
-  return changed;
+  return change;
 }
 
 /*******************************************************************\
@@ -116,10 +119,13 @@ void dep_graph_domaint::control_dependencies(
     const cfg_post_dominatorst::cfgt::nodet &m=
       dep_graph.cfg_post_dominators().cfg[e->second];
 
-    for(const auto &edge : m.out)
+    for(cfg_post_dominatorst::cfgt::edgest::const_iterator
+        s_it=m.out.begin();
+        s_it!=m.out.end();
+        ++s_it)
     {
       const cfg_post_dominatorst::cfgt::nodet &m_s=
-        dep_graph.cfg_post_dominators().cfg[edge.first];
+        dep_graph.cfg_post_dominators().cfg[s_it->first];
 
       if(m_s.dominators.find(to)!=m_s.dominators.end())
         post_dom_one=true;
@@ -135,8 +141,11 @@ void dep_graph_domaint::control_dependencies(
   }
 
   // add edges to the graph
-  for(const auto &c_dep : control_deps)
-    dep_graph.add_dep(dep_edget::CTRL, c_dep, to);
+  for(depst::const_iterator
+      it=control_deps.begin();
+      it!=control_deps.end();
+      ++it)
+    dep_graph.add_dep(dep_edget::CTRL, *it, to);
 }
 
 /*******************************************************************\
@@ -205,17 +214,25 @@ void dep_graph_domaint::data_dependencies(
     const rd_range_domaint::ranges_at_loct &w_ranges=
       dep_graph.reaching_definitions()[to].get(it->first);
 
-    for(const auto &w_range : w_ranges)
+    for(rd_range_domaint::ranges_at_loct::const_iterator
+        w_itl=w_ranges.begin();
+        w_itl!=w_ranges.end();
+        ++w_itl)
     {
       bool found=false;
-      for(const auto &wr : w_range.second)
-        for(const auto &r_range : r_ranges)
-          if(!found &&
-             may_be_def_use_pair(wr.first, wr.second,
-                                 r_range.first, r_range.second))
+      for(rd_range_domaint::rangest::const_iterator
+          w_it=w_itl->second.begin();
+          w_it!=w_itl->second.end() && !found;
+          ++w_it)
+        for(range_domaint::const_iterator
+            r_it=r_ranges.begin();
+            r_it!=r_ranges.end() && !found;
+            ++r_it)
+          if(may_be_def_use_pair(w_it->first, w_it->second,
+                                 r_it->first, r_it->second))
           {
             // found a def-use pair
-            data_deps.insert(w_range.first);
+            data_deps.insert(w_itl->first);
             found=true;
           }
     }
@@ -224,12 +241,15 @@ void dep_graph_domaint::data_dependencies(
   }
 
   // add edges to the graph
-  for(const auto &d_dep : data_deps)
+  for(depst::const_iterator
+      it=data_deps.begin();
+      it!=data_deps.end();
+      ++it)
   {
     // *it might be handled in a future call call to visit only,
     // depending on the sequence of successors; make sure it exists
-    dep_graph.get_state(d_dep);
-    dep_graph.add_dep(dep_edget::DATA, d_dep, to);
+    dep_graph.get_state(*it);
+    dep_graph.add_dep(dep_edget::DATA, *it, to);
   }
 }
 
@@ -265,12 +285,14 @@ void dep_graph_domaint::transform(
     assert(s!=0);
 
     depst::iterator it=s->control_deps.begin();
-    for(const auto &c_dep : control_deps)
+    for(depst::const_iterator ito=control_deps.begin();
+        ito!=control_deps.end();
+        ++ito)
     {
-      while(it!=s->control_deps.end() && *it<c_dep)
+      while(it!=s->control_deps.end() && *it<*ito)
         ++it;
-      if(it==s->control_deps.end() || c_dep<*it)
-        s->control_deps.insert(it, c_dep);
+      if(it==s->control_deps.end() || *ito<*it)
+        s->control_deps.insert(it, *ito);
       else if(it!=s->control_deps.end())
         ++it;
     }
@@ -308,8 +330,7 @@ void dep_graph_domaint::output(
         it!=control_deps.end();
         ++it)
     {
-      if(it!=control_deps.begin())
-        out << ",";
+      if(it!=control_deps.begin()) out << ",";
       out << (*it)->location_number;
     }
     out << std::endl;
@@ -323,8 +344,7 @@ void dep_graph_domaint::output(
         it!=data_deps.end();
         ++it)
     {
-      if(it!=data_deps.begin())
-        out << ",";
+      if(it!=data_deps.begin()) out << ",";
       out << (*it)->location_number;
     }
     out << std::endl;
@@ -348,14 +368,15 @@ void dependence_grapht::add_dep(
   goto_programt::const_targett from,
   goto_programt::const_targett to)
 {
-  const node_indext n_from=state_map[from].get_node_id();
+  const unsigned n_from=state_map[from].get_node_id();
   assert(n_from<size());
-  const node_indext n_to=state_map[to].get_node_id();
+  const unsigned n_to=state_map[to].get_node_id();
   assert(n_to<size());
 
   // add_edge is redundant as the subsequent operations also insert
   // entries into the edge maps (implicitly)
-  // add_edge(n_from, n_to);
+  //add_edge(n_from, n_to);
   nodes[n_from].out[n_to].add(kind);
   nodes[n_to].in[n_from].add(kind);
 }
+

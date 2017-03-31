@@ -27,14 +27,10 @@ Function: float_utilst::set_rounding_mode
 
 void float_utilst::set_rounding_mode(const bvt &src)
 {
-  bvt round_to_even=
-    bv_utils.build_constant(ieee_floatt::ROUND_TO_EVEN, src.size());
-  bvt round_to_plus_inf=
-    bv_utils.build_constant(ieee_floatt::ROUND_TO_PLUS_INF, src.size());
-  bvt round_to_minus_inf=
-    bv_utils.build_constant(ieee_floatt::ROUND_TO_MINUS_INF, src.size());
-  bvt round_to_zero=
-    bv_utils.build_constant(ieee_floatt::ROUND_TO_ZERO, src.size());
+  bvt round_to_even=bv_utils.build_constant(ieee_floatt::ROUND_TO_EVEN, src.size());
+  bvt round_to_plus_inf=bv_utils.build_constant(ieee_floatt::ROUND_TO_PLUS_INF, src.size());
+  bvt round_to_minus_inf=bv_utils.build_constant(ieee_floatt::ROUND_TO_MINUS_INF, src.size());
+  bvt round_to_zero=bv_utils.build_constant(ieee_floatt::ROUND_TO_ZERO, src.size());
 
   rounding_mode_bits.round_to_even=bv_utils.equal(src, round_to_even);
   rounding_mode_bits.round_to_plus_inf=bv_utils.equal(src, round_to_plus_inf);
@@ -113,9 +109,7 @@ Function: float_utilst::to_signed_integer
 
 \*******************************************************************/
 
-bvt float_utilst::to_signed_integer(
-  const bvt &src,
-  std::size_t dest_width)
+bvt float_utilst::to_signed_integer(const bvt &src, unsigned dest_width)
 {
   return to_integer(src, dest_width, true);
 }
@@ -132,9 +126,7 @@ Function: float_utilst::to_unsigned_integer
 
 \*******************************************************************/
 
-bvt float_utilst::to_unsigned_integer(
-  const bvt &src,
-  std::size_t dest_width)
+bvt float_utilst::to_unsigned_integer(const bvt &src, unsigned dest_width)
 {
   return to_integer(src, dest_width, false);
 }
@@ -153,7 +145,7 @@ Function: float_utilst::to_integer
 
 bvt float_utilst::to_integer(
   const bvt &src,
-  std::size_t dest_width,
+  unsigned dest_width,
   bool is_signed)
 {
   assert(src.size()==spec.width());
@@ -163,33 +155,27 @@ bvt float_utilst::to_integer(
   // The following is the usual case in ANSI-C, and we optimize for that.
   if(rounding_mode_bits.round_to_zero.is_true())
   {
-    bvt fraction=unpacked.fraction;
-
-    if(dest_width>fraction.size())
-    {
-      bvt lsb_extension=bv_utils.build_constant(0U, dest_width-fraction.size());
-      fraction.insert(fraction.begin(),
-                      lsb_extension.begin(),
-                      lsb_extension.end());
-    }
-
     // if the exponent is positive, shift right
-    bvt offset=bv_utils.build_constant(fraction.size()-1,
-                                       unpacked.exponent.size());
+    bvt offset=bv_utils.build_constant(spec.f, unpacked.exponent.size());
     bvt distance=bv_utils.sub(offset, unpacked.exponent);
-    bvt shift_result=bv_utils.shift(fraction, bv_utilst::LRIGHT, distance);
+    bvt shift_result=bv_utils.shift(unpacked.fraction, bv_utilst::LRIGHT, distance);
 
     // if the exponent is negative, we have zero anyways
     bvt result=shift_result;
     literalt exponent_sign=unpacked.exponent[unpacked.exponent.size()-1];
 
-    for(std::size_t i=0; i<result.size(); i++)
+    for(unsigned i=0; i<result.size(); i++)
       result[i]=prop.land(result[i], !exponent_sign);
 
     // chop out the right number of bits from the result
     if(result.size()>dest_width)
     {
       result.resize(dest_width);
+    }
+    else if(result.size()<dest_width)
+    {
+      // zero extend
+      result=bv_utils.zero_extension(result, dest_width);
     }
 
     assert(result.size()==dest_width);
@@ -262,14 +248,14 @@ bvt float_utilst::conversion(
   // can be converted to denormalised numbers in the
   // new format.  Note that this is rare and will only
   // happen with very non-standard formats.
-
-  int sourceSmallestNormalExponent=-((1 << (spec.e - 1)) - 1);
-  int sourceSmallestDenormalExponent =
+ 
+  int sourceSmallestNormalExponent = -((1 << (spec.e - 1)) - 1);
+  int sourceSmallestDenormalExponent = 
     sourceSmallestNormalExponent - spec.f;
 
   // Using the fact that f doesn't include the hidden bit
-
-  int destSmallestNormalExponent=-((1 << (dest_spec.e - 1)) - 1);
+   
+  int destSmallestNormalExponent = -((1 << (dest_spec.e - 1)) - 1);
 
   if(dest_spec.e>=spec.e &&
      dest_spec.f>=spec.f &&
@@ -277,12 +263,12 @@ bvt float_utilst::conversion(
   {
     unbiased_floatt unpacked_src=unpack(src);
     unbiased_floatt result;
-
+    
     // the fraction gets zero-padded
-    std::size_t padding=dest_spec.f-spec.f;
+    unsigned padding=dest_spec.f-spec.f;
     result.fraction=
       bv_utils.concatenate(bv_utils.zeros(padding), unpacked_src.fraction);
-
+    
     // the exponent gets sign-extended
     result.exponent=
       bv_utils.sign_extension(unpacked_src.exponent, dest_spec.e);
@@ -291,7 +277,7 @@ bvt float_utilst::conversion(
     // normalise it!
     if(dest_spec.e > spec.e)
     {
-      normalization_shift(result.fraction, result.exponent);
+      normalization_shift(result.fraction,result.exponent);
     }
 
     // the flags get copied
@@ -300,10 +286,10 @@ bvt float_utilst::conversion(
     result.infinity=unpacked_src.infinity;
 
     // no rounding needed!
-    spec=dest_spec;
+    spec=dest_spec; 
     return pack(bias(result));
   }
-  else // NOLINT(readability/braces)
+  else
   #endif
   {
     // we actually need to round
@@ -349,10 +335,8 @@ bvt float_utilst::subtract_exponents(
   const unbiased_floatt &src2)
 {
   // extend both
-  bvt extended_exponent1=
-    bv_utils.sign_extension(src1.exponent, src1.exponent.size()+1);
-  bvt extended_exponent2=
-    bv_utils.sign_extension(src2.exponent, src2.exponent.size()+1);
+  bvt extended_exponent1=bv_utils.sign_extension(src1.exponent, src1.exponent.size()+1);
+  bvt extended_exponent2=bv_utils.sign_extension(src2.exponent, src2.exponent.size()+1);
 
   assert(extended_exponent1.size()==extended_exponent2.size());
 
@@ -405,10 +389,8 @@ bvt float_utilst::add_sub(
   const bvt limited_dist=limit_distance(distance, spec.f+3);
 
   // pad fractions with 2 zeros from below
-  const bvt fraction1_padded=
-    bv_utils.concatenate(bv_utils.zeros(3), new_fraction1);
-  const bvt fraction2_padded=
-    bv_utils.concatenate(bv_utils.zeros(3), new_fraction2);
+  const bvt fraction1_padded=bv_utils.concatenate(bv_utils.zeros(3), new_fraction1);
+  const bvt fraction2_padded=bv_utils.concatenate(bv_utils.zeros(3), new_fraction2);
 
   // shift new_fraction2
   literalt sticky_bit;
@@ -421,10 +403,8 @@ bvt float_utilst::add_sub(
   fraction2_stickied[0]=prop.lor(fraction2_shifted[0], sticky_bit);
 
   // need to have two extra fraction bits for addition and rounding
-  const bvt fraction1_ext=
-    bv_utils.zero_extension(fraction1_shifted, fraction1_shifted.size()+2);
-  const bvt fraction2_ext=
-    bv_utils.zero_extension(fraction2_stickied, fraction2_stickied.size()+2);
+  const bvt fraction1_ext=bv_utils.zero_extension(fraction1_shifted, fraction1_shifted.size()+2);
+  const bvt fraction2_ext=bv_utils.zero_extension(fraction2_stickied, fraction2_stickied.size()+2);
 
   unbiased_floatt result;
 
@@ -441,8 +421,7 @@ bvt float_utilst::add_sub(
 
   // adjust the exponent for the fact that we added two bits to the fraction
   result.exponent=
-    bv_utils.add(
-      bv_utils.sign_extension(result.exponent, result.exponent.size()+1),
+    bv_utils.add(bv_utils.sign_extension(result.exponent, result.exponent.size()+1),
       bv_utils.build_constant(2, result.exponent.size()+1));
 
   // NaN?
@@ -463,7 +442,7 @@ bvt float_utilst::add_sub(
   //  2. Subnormals mean that addition or subtraction can't round to 0,
   //     thus we can perform this test now
   //  3. The rules for sign are different for zero
-  result.zero=prop.land(
+  result.zero = prop.land(
       !prop.lor(result.infinity, result.NaN),
       !prop.lor(result.fraction));
 
@@ -482,7 +461,7 @@ bvt float_utilst::add_sub(
                  prop.lor(unpacked1.sign, unpacked2.sign),
                  prop.land(unpacked1.sign, unpacked2.sign));
 
-  result.sign=prop.lselect(
+  result.sign=prop.lselect( 
     result.infinity,
     infinity_sign,
     prop.lselect(result.zero,
@@ -501,10 +480,10 @@ bvt float_utilst::add_sub(
   result.exponent.resize(spec.e, const_literal(false));
   result.NaN=const_literal(false);
   result.infinity=const_literal(false);
-  // for(std::size_t i=0; i<result.fraction.size(); i++)
+  //for(unsigned i=0; i<result.fraction.size(); i++)
   //  result.fraction[i]=const_literal(true);
 
-  for(std::size_t i=0; i<result.fraction.size(); i++)
+  for(unsigned i=0; i<result.fraction.size(); i++)
     result.fraction[i]=new_fraction2[i];
 
   return pack(bias(result));
@@ -526,10 +505,10 @@ Function: float_utilst::limit_distance
 \*******************************************************************/
 
 bvt float_utilst::limit_distance(
-  const bvt &dist,
-  mp_integer limit)
+    const bvt &dist,
+    mp_integer limit)
 {
-  std::size_t nb_bits=integer2unsigned(address_bits(limit));
+  unsigned nb_bits=integer2unsigned(address_bits(limit));
 
   bvt upper_bits=dist;
   upper_bits.erase(upper_bits.begin(), upper_bits.begin()+nb_bits);
@@ -542,7 +521,7 @@ bvt float_utilst::limit_distance(
   result.resize(lower_bits.size());
 
   // bitwise or with or_upper_bits
-  for(std::size_t i=0; i<result.size(); i++)
+  for(unsigned int i=0; i<result.size(); i++)
     result[i]=prop.lor(lower_bits[i], or_upper_bits);
 
   return result;
@@ -567,10 +546,8 @@ bvt float_utilst::mul(const bvt &src1, const bvt &src2)
   const unbiased_floatt unpacked2=unpack(src2);
 
   // zero-extend the fractions
-  const bvt fraction1=
-    bv_utils.zero_extension(unpacked1.fraction, unpacked1.fraction.size()*2);
-  const bvt fraction2=
-    bv_utils.zero_extension(unpacked2.fraction, unpacked2.fraction.size()*2);
+  const bvt fraction1=bv_utils.zero_extension(unpacked1.fraction, unpacked1.fraction.size()*2);
+  const bvt fraction2=bv_utils.zero_extension(unpacked2.fraction, unpacked2.fraction.size()*2);
 
   // multiply fractions
   unbiased_floatt result;
@@ -578,10 +555,8 @@ bvt float_utilst::mul(const bvt &src1, const bvt &src2)
 
   // extend exponents to account for overflow
   // add two bits, as we do extra arithmetic on it later
-  const bvt exponent1=
-    bv_utils.sign_extension(unpacked1.exponent, unpacked1.exponent.size()+2);
-  const bvt exponent2=
-    bv_utils.sign_extension(unpacked2.exponent, unpacked2.exponent.size()+2);
+  const bvt exponent1=bv_utils.sign_extension(unpacked1.exponent, unpacked1.exponent.size()+2);
+  const bvt exponent2=bv_utils.sign_extension(unpacked2.exponent, unpacked2.exponent.size()+2);
 
   bvt added_exponent=bv_utils.add(exponent1, exponent2);
 
@@ -629,8 +604,8 @@ bvt float_utilst::div(const bvt &src1, const bvt &src2)
   // unpack
   const unbiased_floatt unpacked1=unpack(src1);
   const unbiased_floatt unpacked2=unpack(src2);
-
-  std::size_t div_width=unpacked1.fraction.size()*2+1;
+  
+  unsigned div_width=unpacked1.fraction.size()*2+1;
 
   // pad fraction1 with zeros
   bvt fraction1=unpacked1.fraction;
@@ -646,22 +621,20 @@ bvt float_utilst::div(const bvt &src1, const bvt &src2)
   unbiased_floatt result;
   bvt rem;
   bv_utils.unsigned_divider(fraction1, fraction2, result.fraction, rem);
-
+  
   // is there a remainder?
   literalt have_remainder=bv_utils.is_not_zero(rem);
-
+  
   // we throw this into the result, as one additional bit,
   // to get the right rounding decision
   result.fraction.insert(
     result.fraction.begin(), have_remainder);
-
+    
   // We will subtract the exponents;
   // to account for overflow, we add a bit.
   // we add a second bit for the adjust by extra fraction bits
-  const bvt exponent1=
-    bv_utils.sign_extension(unpacked1.exponent, unpacked1.exponent.size()+2);
-  const bvt exponent2=
-    bv_utils.sign_extension(unpacked2.exponent, unpacked2.exponent.size()+2);
+  const bvt exponent1=bv_utils.sign_extension(unpacked1.exponent, unpacked1.exponent.size()+2);
+  const bvt exponent2=bv_utils.sign_extension(unpacked2.exponent, unpacked2.exponent.size()+2);
 
   // subtract exponents
   bvt added_exponent=bv_utils.sub(exponent1, exponent2);
@@ -696,7 +669,7 @@ bvt float_utilst::div(const bvt &src1, const bvt &src2)
   // Division by infinity produces zero, unless we have NaN
   literalt force_zero=
     prop.land(!unpacked1.NaN, unpacked2.infinity);
-
+  
   result.fraction=bv_utils.select(force_zero,
     bv_utils.zeros(result.fraction.size()), result.fraction);
 
@@ -860,7 +833,7 @@ literalt float_utilst::relation(
   }
   else
     assert(0);
-
+    
   // not reached
   return const_literal(false);
 }
@@ -1093,12 +1066,12 @@ void float_utilst::normalization_shift(bvt &fraction, bvt &exponent)
   bvt new_exponent=prop.new_variables(exponent.size());
 
   // i is the shift distance
-  for(std::size_t i=0; i<fraction.size(); i++)
+  for(unsigned i=0; i<fraction.size(); i++)
   {
     bvt equal;
 
     // the bits above need to be zero
-    for(std::size_t j=0; j<i; j++)
+    for(unsigned j=0; j<i; j++)
       equal.push_back(
         !fraction[fraction.size()-1-j]);
 
@@ -1124,7 +1097,7 @@ void float_utilst::normalization_shift(bvt &fraction, bvt &exponent)
   bvt zero_fraction;
   zero_fraction.resize(fraction.size(), const_literal(false));
   bv_utils.cond_implies_equal(fraction_all_zero, zero_fraction, new_fraction);
-
+  
   fraction=new_fraction;
   exponent=new_exponent;
 
@@ -1133,38 +1106,38 @@ void float_utilst::normalization_shift(bvt &fraction, bvt &exponent)
   // n-log-n alignment shifter.
   // The worst-case shift is the number of fraction
   // bits minus one, in case the faction is one exactly.
-  assert(!fraction.empty());
+  assert(!fraction.empty());  
   unsigned depth=integer2unsigned(address_bits(fraction.size()-1));
-
+  
   if(exponent.size()<depth)
     exponent=bv_utils.sign_extension(exponent, depth);
-
+  
   bvt exponent_delta=bv_utils.zeros(exponent.size());
-
+  
   for(int d=depth-1; d>=0; d--)
   {
-    std::size_t distance=(1<<d);
+    unsigned distance=(1<<d);
     assert(fraction.size()>distance);
-
+    
     // check if first 'distance'-many bits are zeros
     const bvt prefix=bv_utils.extract_msb(fraction, distance);
     literalt prefix_is_zero=bv_utils.is_zero(prefix);
-
+    
     // If so, shift the zeros out left by 'distance'.
     // Otherwise, leave as is.
     const bvt shifted=
       bv_utils.shift(fraction, bv_utilst::LEFT, distance);
-
+    
     fraction=
       bv_utils.select(prefix_is_zero, shifted, fraction);
-
+      
     // add corresponding weight to exponent
     assert(d<(signed)exponent_delta.size());
     exponent_delta[d]=prefix_is_zero;
-  }
-
+  }  
+    
   exponent=bv_utils.sub(exponent, exponent_delta);
-
+  
   #endif
 }
 
@@ -1191,7 +1164,7 @@ void float_utilst::denormalization_shift(bvt &fraction, bvt &exponent)
   // Note that 1-bias is the exponent represented by 0...01,
   // i.e. the exponent of the smallest normal number and thus the 'base'
   // exponent for subnormal numbers.
-
+  
   assert(exponent.size()>=spec.e);
 
 #if 1
@@ -1200,7 +1173,7 @@ void float_utilst::denormalization_shift(bvt &fraction, bvt &exponent)
   // of the exponent range and then range must not have been
   // previously extended as add, multiply, etc. do.  This is primarily
   // to handle casting down from larger ranges.
-  exponent=bv_utils.sign_extension(exponent, exponent.size() + 1);
+  exponent = bv_utils.sign_extension(exponent, exponent.size() + 1);
 #endif
 
   bvt distance=bv_utils.sub(
@@ -1214,20 +1187,20 @@ void float_utilst::denormalization_shift(bvt &fraction, bvt &exponent)
 #if 1
   // Care must be taken to not loose information required for the
   // guard and sticky bits.  +3 is for the hidden, guard and sticky bits.
-  if(fraction.size() < (spec.f + 3))
-  {
+  if (fraction.size() < (spec.f + 3)) 
+  { 
     // Add zeros at the LSB end for the guard bit to shift into
     fraction=
       bv_utils.concatenate(bv_utils.zeros((spec.f + 3) - fraction.size()),
                            fraction);
   }
 
-  bvt denormalisedFraction=fraction;
+  bvt denormalisedFraction = fraction;
 
-  literalt sticky_bit=const_literal(false);
-  denormalisedFraction =
+  literalt sticky_bit = const_literal(false);
+  denormalisedFraction = 
     sticky_right_shift(fraction, distance, sticky_bit);
-  denormalisedFraction[0]=prop.lor(denormalisedFraction[0], sticky_bit);
+  denormalisedFraction[0] = prop.lor(denormalisedFraction[0], sticky_bit);
 
   fraction=
     bv_utils.select(
@@ -1271,9 +1244,9 @@ bvt float_utilst::rounder(const unbiased_floatt &src)
       aligned_exponent=src.exponent;
 
   {
-    std::size_t exponent_bits=
-      std::max((std::size_t)integer2size_t(address_bits(spec.f)),
-               (std::size_t)spec.e)+1;
+    unsigned exponent_bits=
+      std::max((unsigned long)integer2long(address_bits(spec.f)),
+               (unsigned long)spec.e)+1;
 
     // before normalization, make sure exponent is large enough
     if(aligned_exponent.size()<exponent_bits)
@@ -1314,14 +1287,14 @@ Function: float_utilst::fraction_rounding_decision
 \*******************************************************************/
 
 literalt float_utilst::fraction_rounding_decision(
-  const std::size_t dest_bits,
+  const unsigned dest_bits,
   const literalt sign,
   const bvt &fraction)
 {
   assert(dest_bits<fraction.size());
 
   // we have too many fraction bits
-  std::size_t extra_bits=fraction.size()-dest_bits;
+  unsigned extra_bits=fraction.size()-dest_bits;
 
   // more than two extra bits are superflus, and are
   // turned into a sticky bit
@@ -1347,7 +1320,7 @@ literalt float_utilst::fraction_rounding_decision(
   literalt round_to_even=
     prop.land(rounding_bit,
               prop.lor(rounding_least, sticky_bit));
-
+  
   // round up
   literalt round_to_plus_inf=
     prop.land(!sign,
@@ -1368,7 +1341,7 @@ literalt float_utilst::fraction_rounding_decision(
          prop.lselect(rounding_mode_bits.round_to_minus_inf, round_to_minus_inf,
          prop.lselect(rounding_mode_bits.round_to_zero, round_to_zero,
            prop.new_variable())))); // otherwise non-det
-}
+}                
 
 /*******************************************************************\
 
@@ -1384,13 +1357,13 @@ Function: float_utilst::round_fraction
 
 void float_utilst::round_fraction(unbiased_floatt &result)
 {
-  std::size_t fraction_size=spec.f+1;
+  unsigned fraction_size=spec.f+1;
 
   // do we need to enlarge the fraction?
   if(result.fraction.size()<fraction_size)
   {
     // pad with zeros at bottom
-    std::size_t padding=fraction_size-result.fraction.size();
+    unsigned padding=fraction_size-result.fraction.size();
 
     result.fraction=bv_utils.concatenate(
       bv_utils.zeros(padding),
@@ -1404,10 +1377,10 @@ void float_utilst::round_fraction(unbiased_floatt &result)
   }
   else // fraction gets smaller -- rounding
   {
-    std::size_t extra_bits=result.fraction.size()-fraction_size;
+    unsigned extra_bits=result.fraction.size()-fraction_size;
     assert(extra_bits>=1);
 
-    // this computes the rounding decision
+    // this computes the rounding decision    
     literalt increment=fraction_rounding_decision(
       fraction_size, result.sign, result.fraction);
 
@@ -1449,7 +1422,7 @@ void float_utilst::round_fraction(unbiased_floatt &result)
     //  2. If the number is the largest subnormal, the increment
     //     can change the MSB making it normal.  Thus the exponent
     //     must be incremented but the fraction will be OK.
-    literalt oldMSB=result.fraction.back();
+    literalt oldMSB = result.fraction.back();
 
     result.fraction=bv_utils.incrementer(result.fraction, increment);
 
@@ -1463,14 +1436,15 @@ void float_utilst::round_fraction(unbiased_floatt &result)
     // In case of an overflow or subnormal to normal conversion,
     // the exponent has to be incremented.
     result.exponent=
-      bv_utils.incrementer(result.exponent,
+      bv_utils.incrementer(result.exponent, 
                            prop.lor(overflow, subnormal_to_normal));
 
     // post normalization of the fraction
     // In the case of overflow, set the MSB to 1
     // The subnormal case will have (only) the MSB set to 1
-    result.fraction.back()=prop.lor(result.fraction.back(), overflow);
+    result.fraction.back() = prop.lor(result.fraction.back(), overflow);
 #endif
+
   }
 }
 
@@ -1542,7 +1516,7 @@ void float_utilst::round_exponent(unbiased_floatt &result)
                       bv_utils.inverted(bv_utils.zeros(result.fraction.size())),
                       result.fraction);
 
-    result.infinity=prop.lor(result.infinity,
+    result.infinity=prop.lor(result.infinity, 
                              prop.land(exponent_too_large,
                                        overflow_to_inf));
 #else
@@ -1585,7 +1559,7 @@ float_utilst::biased_floatt float_utilst::bias(const unbiased_floatt &src)
 
   // make exponent zero if its denormal
   // (includes zero)
-  for(std::size_t i=0; i<result.exponent.size(); i++)
+  for(unsigned i=0; i<result.exponent.size(); i++)
     result.exponent[i]=
       prop.land(result.exponent[i], !denormal);
 
@@ -1704,13 +1678,13 @@ bvt float_utilst::pack(const biased_floatt &src)
     prop.lor(src.NaN, src.infinity);
 
   // just copy fraction
-  for(std::size_t i=0; i<spec.f; i++)
+  for(unsigned i=0; i<spec.f; i++)
     result[i]=prop.land(src.fraction[i], !infinity_or_NaN);
 
   result[0]=prop.lor(result[0], src.NaN);
 
   // do exponent
-  for(std::size_t i=0; i<spec.e; i++)
+  for(unsigned i=0; i<spec.e; i++)
     result[i+spec.f]=prop.lor(
       src.exponent[i],
       infinity_or_NaN);
@@ -1734,7 +1708,7 @@ ieee_floatt float_utilst::get(const bvt &src) const
 {
   mp_integer int_value=0;
 
-  for(std::size_t i=0; i<src.size(); i++)
+  for(unsigned i=0; i<src.size(); i++)
     int_value+=power(2, i)*prop.l_get(src[i]).is_true();
 
   ieee_floatt result;
@@ -1761,11 +1735,11 @@ bvt float_utilst::sticky_right_shift(
   const bvt &dist,
   literalt &sticky)
 {
-  std::size_t d=1;
+  unsigned d=1;
   bvt result=op;
   sticky=const_literal(false);
 
-  for(std::size_t stage=0; stage<dist.size(); stage++)
+  for(unsigned stage=0; stage<dist.size(); stage++)
   {
     if(dist[stage]!=const_literal(false))
     {
@@ -1779,7 +1753,7 @@ bvt float_utilst::sticky_right_shift(
         lost_bits=result;
 
       sticky=prop.lor(
-          prop.land(dist[stage], prop.lor(lost_bits)),
+          prop.land(dist[stage],prop.lor(lost_bits)),
           sticky);
 
       result=bv_utils.select(dist[stage], tmp, result);
@@ -1828,3 +1802,4 @@ bvt float_utilst::debug2(
 {
   return op0;
 }
+

@@ -6,21 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_SYMEX_ADJUST_FLOAT_EXPRESSIONS_H
-#define CPROVER_GOTO_SYMEX_ADJUST_FLOAT_EXPRESSIONS_H
-
-class exprt;
-class namespacet;
-class goto_functionst;
-class goto_modelt;
+#include <util/expr.h>
+#include <util/namespace.h>
 
 void adjust_float_expressions(
   exprt &expr,
   const namespacet &ns);
-
-void adjust_float_expressions(
-  goto_functionst &goto_functions,
-  const namespacet &ns);
-void adjust_float_expressions(goto_modelt &goto_model);
-
-#endif // CPROVER_GOTO_SYMEX_ADJUST_FLOAT_EXPRESSIONS_H

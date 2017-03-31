@@ -2,8 +2,8 @@
 
 // Whatever is necessary to use alloca().
 
-#ifndef CPROVER_BIG_INT_ALLOCAINC_H
-#define CPROVER_BIG_INT_ALLOCAINC_H
+#ifndef ALLOCAINC_H
+#define ALLOCAINC_H
 
 
 #if defined linux || defined __linux__		\
@@ -41,11 +41,11 @@ extern "C" void *alloca (unsigned);
 
 # define alloca(X) __builtin_alloca(X)
 
-#elif defined __FreeBSD__ || defined __FreeBSD_kernel__ || defined __OpenBSD__
+#elif defined __FreeBSD__ || defined __FreeBSD_kernel__
 
 # include <stdlib.h>
 
 #endif
 
 
-#endif // CPROVER_BIG_INT_ALLOCAINC_H
+#endif//ndef ALLOCAINC_H

@@ -1,21 +1,21 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_INVARIANT_SYMEX_LEARN_ADD_COUNTEREXAMPLES_H
-#define CPROVER_CEGIS_INVARIANT_SYMEX_LEARN_ADD_COUNTEREXAMPLES_H
+#ifndef CEGIS_INVARIANT_ADD_COUNTEREXAMPLES_H_
+#define CEGIS_INVARIANT_ADD_COUNTEREXAMPLES_H_
 
 #include <deque>
 #include <functional>
 
 #include <util/expr.h>
 
-#include <cegis/instrument/literals.h>
+#include <cegis/invariant/meta/literals.h>
 
 /**
  * @brief
@@ -108,4 +108,4 @@ void invariant_add_constraint(invariant_programt &prog,
     const constraint_factoryt constraint,
     const goto_programt::targett &ce_loop_end);
 
-#endif // CPROVER_CEGIS_INVARIANT_SYMEX_LEARN_ADD_COUNTEREXAMPLES_H
+#endif /* CEGIS_INVARIANT_ADD_COUNTEREXAMPLES_H_ */

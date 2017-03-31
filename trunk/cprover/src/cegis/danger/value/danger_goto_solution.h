@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
-Module: Counterexample-Guided Inductive Synthesis
+ Module: Counterexample-Guided Inductive Synthesis
 
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+ Author: Daniel Kroening, kroening@kroening.com
+         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_DANGER_VALUE_DANGER_GOTO_SOLUTION_H
-#define CPROVER_CEGIS_DANGER_VALUE_DANGER_GOTO_SOLUTION_H
+#ifndef CEGIS_DANGER_GOTO_SOLUTION_H_
+#define CEGIS_DANGER_GOTO_SOLUTION_H_
 
 #include <goto-programs/goto_program.h>
 
@@ -38,4 +38,4 @@ public:
   nondet_choicest x0_choices;
 };
 
-#endif // CPROVER_CEGIS_DANGER_VALUE_DANGER_GOTO_SOLUTION_H
+#endif /* CEGIS_DANGER_GOTO_SOLUTION_H_ */

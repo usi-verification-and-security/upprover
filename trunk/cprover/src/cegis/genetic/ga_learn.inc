@@ -1,17 +1,18 @@
 #include <util/options.h>
 
-#include <cegis/options/parameters.h>
+template<class selectt, class mutatet, class crosst, class fitnesst,
+    class convertt>
+ga_learnt<selectt, mutatet, crosst, fitnesst, convertt>::ga_learnt(
+    const optionst &options, selectt &select, mutatet &mutate, crosst &cross,
+    fitnesst &fitness, convertt &convert) :
+    options(options), select(select), mutate(mutate), cross(cross), fitness(
+        fitness), convert(convert), is_population_initialised(false)
+{
+}
 
 template<class selectt, class mutatet, class crosst, class fitnesst,
     class convertt>
-template<class randomt>
-ga_learnt<selectt, mutatet, crosst, fitnesst, convertt>::ga_learnt(
-    const optionst &options, randomt &random, selectt &select, mutatet &mutate,
-    crosst &cross, fitnesst &fitness, convertt &convert) :
-    options(options), havoc([&random](individualt &ind)
-    { random.havoc(ind);}), select(select), mutate(mutate), cross(cross), fitness(
-        fitness), convert(convert), program_startup(clockt::now()), max_runtime_in_seconds(
-        options.get_unsigned_int_option(CEGIS_MAX_RUNTIME))
+ga_learnt<selectt, mutatet, crosst, fitnesst, convertt>::~ga_learnt()
 {
 }
 
@@ -22,13 +23,6 @@ void ga_learnt<selectt, mutatet, crosst, fitnesst, convertt>::seed(
     seedt &seeder)
 {
   fitness.seed(seeder);
-  const size_t pop_size=options.get_unsigned_int_option(CEGIS_POPSIZE);
-  pop.resize(pop_size);
-  for (individualt &ind : pop)
-    havoc(ind);
-  typename populationt::iterator ind=pop.begin();
-  std::advance(ind, rand() % pop.size());
-  convert.convert(current_candidate, *ind);
 }
 
 template<class selectt, class mutatet, class crosst, class fitnesst,
@@ -60,18 +54,30 @@ bool should_replace(const optionst &opt)
 template<class selectt, class mutatet, class crosst, class fitnesst,
     class convertt>
 bool ga_learnt<selectt, mutatet, crosst, fitnesst, convertt>::set_fitness(
-    individualt &ind)
+    typename selectt::individualt &ind)
 {
   // XXX: Specific optimisation for PLDI 2016 submissions.
   mutate.post_process(ind);
   // XXX: Specific optimisation for PLDI 2016 submissions.
   fitness.set_fitness(ind);
-  typedef typename individualt::fitnesst target_fitnesst;
+  typedef typename selectt::individualt::fitnesst target_fitnesst;
   const target_fitnesst target_fitness=fitness.get_target_fitness();
   const bool have_solution=(target_fitness == ind.fitness);
   if (have_solution) convert.convert(current_candidate, ind);
   return have_solution;
 }
+
+// XXX: Graceful exit for PLDI benchmarks
+#include <iostream>
+#include <chrono>
+
+namespace
+{
+typedef std::chrono::high_resolution_clock clockt;
+typedef clockt::time_point time_pointt;
+time_pointt program_startup=clockt::now();
+}
+// XXX: Graceful exit for PLDI benchmarks
 
 template<class selectt, class mutatet, class crosst, class fitnesst,
     class convertt>
@@ -79,6 +85,12 @@ template<class itert>
 bool ga_learnt<selectt, mutatet, crosst, fitnesst, convertt>::learn(itert first,
     const itert &last)
 {
+  if (!is_population_initialised)
+  {
+    select.init(pop);
+    is_population_initialised=true;
+  }
+
   for (; first != last; ++first)
     fitness.add_test_case(*first);
 
@@ -92,18 +104,21 @@ bool ga_learnt<selectt, mutatet, crosst, fitnesst, convertt>::learn(itert first,
   typename selectt::selectiont selection;
   while (!is_evolving || is_evolving())
   {
-    if (std::chrono::duration_cast<std::chrono::milliseconds>(clockt::now() - program_startup)
-        > std::chrono::seconds(max_runtime_in_seconds)) return false;
+    // XXX: Graceful exit for PLDI benchmarks
+    if (std::chrono::duration_cast < std::chrono::milliseconds
+        > (clockt::now() - program_startup) > std::chrono::minutes(5))
+      return false;
+    // XXX: Graceful exit for PLDI benchmarks
     selection=select.select(pop);
     if (should_mutate(options))
     {
       if (!selection.can_mutate()) return false;
-      individualt &lhs=selection.mutation_lhs();
+      typename selectt::individualt &lhs=selection.mutation_lhs();
       mutate(lhs, selection.mutation_rhs());
       if (set_fitness(lhs)) return true;
     } else if (should_replace(options))
     {
-      individualt &ind=*selection.children.back();
+      typename selectt::individualt &ind=*selection.children.back();
       mutate.havoc(ind);
       if (set_fitness(ind)) return true;
     } else
@@ -152,7 +167,7 @@ void ga_learnt<selectt, mutatet, crosst, fitnesst, convertt>::set_solution_size_
 template<class selectt, class mutatet, class crosst, class fitnesst,
     class convertt>
 void ga_learnt<selectt, mutatet, crosst, fitnesst, convertt>::add_paragon(
-    individualt ind)
+    typename selectt::individualt ind)
 {
   const size_t num_sacrifices=std::max(size_t(1u), pop.size() / 200);
   const size_t rounds=10u;

@@ -6,15 +6,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_ANSI_C_LITERALS_UNESCAPE_STRING_H
-#define CPROVER_ANSI_C_LITERALS_UNESCAPE_STRING_H
+#ifndef CPROVER_C_TYPECHECK_UNESCAPE_STRING_H
+#define CPROVER_C_TYPECHECK_UNESCAPE_STRING_H
 
 #include <string>
 
-std::string unescape_string(const std::string &);
-std::basic_string<unsigned int> unescape_wide_string(const std::string &);
+void unescape_string(
+  const std::string &src,
+  std::string &dest);
 
-unsigned hex_to_unsigned(const char *, std::size_t digits);
-unsigned octal_to_unsigned(const char *, std::size_t digits);
+void unescape_wide_string(
+  const std::string &src,
+  std::basic_string<unsigned int> &dest);
 
-#endif // CPROVER_ANSI_C_LITERALS_UNESCAPE_STRING_H
+#endif

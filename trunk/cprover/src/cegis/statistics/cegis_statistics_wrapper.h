@@ -1,14 +1,14 @@
-/*******************************************************************\
+/*******************************************************************
 
 Module: Counterexample-Guided Inductive Synthesis
 
 Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+        Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_STATISTICS_CEGIS_STATISTICS_WRAPPER_H
-#define CPROVER_CEGIS_STATISTICS_CEGIS_STATISTICS_WRAPPER_H
+#ifndef CEGIS_STATISTICS_WRAPPER_H_
+#define CEGIS_STATISTICS_WRAPPER_H_
 
 #include <chrono>
 
@@ -30,7 +30,6 @@ class cegis_statistics_wrappert
   millisecondst learner_time;
   millisecondst verifier_time;
   std::chrono::high_resolution_clock::time_point start_time;
-  const bool show_iterations;
 public:
   typedef typename learnt::counterexamplet counterexamplet;
   typedef typename learnt::candidatet candidatet;
@@ -44,13 +43,8 @@ public:
    * @param learner
    * @param verifier
    * @param os
-   * @param options
    */
-  cegis_statistics_wrappert(
-      learnt &learner,
-      verifyt &verifier,
-      mstreamt &os,
-      const optionst &options);
+  cegis_statistics_wrappert(learnt &learner, verifyt &verifier, mstreamt &os);
 
   /**
    * @brief
@@ -84,4 +78,4 @@ public:
 
 #include "cegis_statistics_wrapper.inc"
 
-#endif // CPROVER_CEGIS_STATISTICS_CEGIS_STATISTICS_WRAPPER_H
+#endif /* CEGIS_STATISTICS_WRAPPER_H_ */

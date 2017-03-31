@@ -20,18 +20,17 @@ Function: boolbvt::convert_constant
 
 \*******************************************************************/
 
-bvt boolbvt::convert_constant(const constant_exprt &expr)
+void boolbvt::convert_constant(const constant_exprt &expr, bvt &bv)
 {
   std::size_t width=boolbv_width(expr.type());
-
+  
   if(width==0)
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
 
-  bvt bv;
   bv.resize(width);
-
+  
   const typet &expr_type=expr.type();
-
+  
   if(expr_type.id()==ID_array)
   {
     std::size_t op_width=width/expr.operands().size();
@@ -42,32 +41,22 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
       const bvt &tmp=convert_bv(*it);
 
       if(tmp.size()!=op_width)
-      {
-        error().source_location=expr.find_source_location();
-        error() << "convert_constant: unexpected operand width" << eom;
-        throw 0;
-      }
+        throw "convert_constant: unexpected operand width";
 
       for(std::size_t j=0; j<op_width; j++)
         bv[offset+j]=tmp[j];
 
       offset+=op_width;
-    }
-
-    return bv;
-  }
-  else if(expr_type.id()==ID_string)
-  {
-    // we use the numbering for strings
-    std::size_t number=string_numbering(expr.get_value());
-    return bv_utils.build_constant(number, bv.size());
+    }   
+    
+    return;
   }
   else if(expr_type.id()==ID_range)
   {
     mp_integer from=to_range_type(expr_type).get_from();
     mp_integer value=string2integer(id2string(expr.get_value()));
     mp_integer v=value-from;
-
+    
     std::string binary=integer2binary(v, width);
 
     for(std::size_t i=0; i<width; i++)
@@ -76,7 +65,7 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
       bv[i]=const_literal(bit);
     }
 
-    return bv;
+    return;
   }
   else if(expr_type.id()==ID_unsignedbv ||
           expr_type.id()==ID_signedbv ||
@@ -92,12 +81,7 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
     const std::string &binary=id2string(expr.get_value());
 
     if(binary.size()!=width)
-    {
-      error().source_location=expr.find_source_location();
-      error() << "wrong value length in constant: "
-              << expr.pretty() << eom;
-      throw 0;
-    }
+      throw "wrong value length in constant: "+expr.to_string();
 
     for(std::size_t i=0; i<width; i++)
     {
@@ -105,7 +89,7 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
       bv[i]=const_literal(bit);
     }
 
-    return bv;
+    return;
   }
   else if(expr_type.id()==ID_enumeration)
   {
@@ -114,7 +98,10 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
 
     for(std::size_t i=0; i<elements.size(); i++)
       if(elements[i].id()==value)
-        return bv_utils.build_constant(i, width);
+      {
+        bv=bv_utils.build_constant(i, width);
+        return;
+      }
   }
   else if(expr_type.id()==ID_verilog_signedbv ||
           expr_type.id()==ID_verilog_unsignedbv)
@@ -122,12 +109,7 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
     const std::string &binary=id2string(expr.get_value());
 
     if(binary.size()*2!=width)
-    {
-      error().source_location=expr.find_source_location();
-      error() << "wrong value length in constant: "
-              << expr.pretty() << eom;
-      throw 0;
-    }
+      throw "wrong value length in constant: "+expr.to_string();
 
     for(std::size_t i=0; i<binary.size(); i++)
     {
@@ -139,33 +121,30 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
         bv[i*2]=const_literal(false);
         bv[i*2+1]=const_literal(false);
         break;
-
+      
       case '1':
         bv[i*2]=const_literal(true);
         bv[i*2+1]=const_literal(false);
         break;
-
+      
       case 'x':
         bv[i*2]=const_literal(false);
         bv[i*2+1]=const_literal(true);
         break;
-
+      
       case 'z':
       case '?':
         bv[i*2]=const_literal(true);
         bv[i*2+1]=const_literal(true);
         break;
-
+        
       default:
-        error().source_location=expr.find_source_location();
-        error() << "unknown character in Verilog constant:"
-                << expr.pretty() << eom;
-        throw 0;
+        throw "unknown character in Verilog constant:"+expr.to_string();
       }
     }
 
-    return bv;
+    return;
   }
-
-  return conversion_failed(expr);
+  
+  conversion_failed(expr, bv);
 }

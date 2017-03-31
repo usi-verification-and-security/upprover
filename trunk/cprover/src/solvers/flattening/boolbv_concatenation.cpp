@@ -20,20 +20,19 @@ Function: boolbvt::convert_concatenation
 
 \*******************************************************************/
 
-bvt boolbvt::convert_concatenation(const exprt &expr)
+void boolbvt::convert_concatenation(const exprt &expr, bvt &bv)
 {
   std::size_t width=boolbv_width(expr.type());
-
+  
   if(width==0)
-    return conversion_failed(expr);
-
+    return conversion_failed(expr, bv);
+    
   const exprt::operandst &operands=expr.operands();
 
   if(operands.empty())
     throw "concatenation takes at least one operand";
 
   std::size_t offset=width;
-  bvt bv;
   bv.resize(width);
 
   forall_expr(it, operands)
@@ -47,10 +46,8 @@ bvt boolbvt::convert_concatenation(const exprt &expr)
 
     for(std::size_t i=0; i<op.size(); i++)
       bv[offset+i]=op[i];
-  }
+  }    
 
   if(offset!=0)
     throw "concatenation operand width too small";
-
-  return bv;
 }

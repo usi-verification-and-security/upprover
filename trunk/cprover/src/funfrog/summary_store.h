@@ -11,6 +11,7 @@ Author: Ondrej Sery
 
 #include <ostream>
 #include <unordered_set>
+#include <unordered_map>
 #include <map>
 #include "solvers/itp.h"
 #include "solvers/smtcheck_opensmt2.h"

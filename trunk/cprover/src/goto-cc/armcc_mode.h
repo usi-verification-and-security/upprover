@@ -8,10 +8,8 @@ Date: June 2006
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_CC_ARMCC_MODE_H
-#define CPROVER_GOTO_CC_ARMCC_MODE_H
-
-#include <util/cout_message.h>
+#ifndef GOTO_CC_ARMCC_MODE_H
+#define GOTO_CC_ARMCC_MODE_H
 
 #include "goto_cc_mode.h"
 #include "armcc_cmdline.h"
@@ -19,20 +17,17 @@ Date: June 2006
 class armcc_modet:public goto_cc_modet
 {
 public:
-  int doit() final;
-  void help_mode() final;
+  virtual bool doit();
+  virtual void help_mode();
 
-  armcc_modet(
-    armcc_cmdlinet &_armcc_cmdline,
-    const std::string &_base_name):
-    goto_cc_modet(_armcc_cmdline, _base_name, message_handler),
+  explicit armcc_modet(armcc_cmdlinet &_armcc_cmdline):
+    goto_cc_modet(_armcc_cmdline),
     cmdline(_armcc_cmdline)
   {
   }
-
+  
 protected:
   armcc_cmdlinet &cmdline;
-  gcc_message_handlert message_handler;
 };
 
-#endif // CPROVER_GOTO_CC_ARMCC_MODE_H
+#endif /* GOTO_CC_ARMCC_MODE_H */

@@ -9,9 +9,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 #include <map>
 #include <set>
+#include <iostream>
+#include <cstdlib> // abort()
 
 #include <util/symbol.h>
 #include <util/mp_arith.h>
+#include <util/i2string.h>
 #include <util/arith_tools.h>
 #include <util/replace_expr.h>
 #include <util/std_types.h>
@@ -27,7 +30,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "../floatbv/float_utils.h"
 
-// #define DEBUG
+//#define DEBUG
 
 /*******************************************************************\
 
@@ -61,14 +64,12 @@ bool boolbvt::literal(
       boolbv_mapt::mappingt::const_iterator it_m=
         map.mapping.find(identifier);
 
-      if(it_m==map.mapping.end())
-        return true;
+      if(it_m==map.mapping.end()) return true;
 
       const boolbv_mapt::map_entryt &map_entry=it_m->second;
-
+      
       assert(bit<map_entry.literal_map.size());
-      if(!map_entry.literal_map[bit].is_set)
-        return true;
+      if(!map_entry.literal_map[bit].is_set) return true;
 
       dest=map_entry.literal_map[bit].l;
       return false;
@@ -78,7 +79,7 @@ bool boolbvt::literal(
       const index_exprt &index_expr=to_index_expr(expr);
 
       std::size_t element_width=boolbv_width(index_expr.type());
-
+      
       if(element_width==0)
         throw "literal expects a bit-vector type";
 
@@ -137,32 +138,29 @@ Function: boolbvt::convert_bv
 
 \*******************************************************************/
 
-const bvt &boolbvt::convert_bv(const exprt &expr)
+const bvt& boolbvt::convert_bv(const exprt &expr)
 {
   // check cache first
   std::pair<bv_cachet::iterator, bool> cache_result=
     bv_cache.insert(std::make_pair(expr, bvt()));
   if(!cache_result.second)
   {
-    #ifdef DEBUG
-    std::cout << "Cache hit on " << expr << "\n";
-    #endif
+    //std::cerr << "Cache hit on " << expr << "\n";
     return cache_result.first->second;
   }
-
+  
   // Iterators into hash_maps supposedly stay stable
   // even though we are inserting more elements recursively.
 
-  cache_result.first->second=convert_bitvector(expr);
+  convert_bitvector(expr, cache_result.first->second);
 
   // check
-  forall_literals(it, cache_result.first->second)
+  forall_literals(it, cache_result.first->second) 
   {
-    if(freeze_all && !it->is_constant())
-      prop.set_frozen(*it);
+    if(freeze_all && !it->is_constant()) prop.set_frozen(*it);
     if(it->var_no()==literalt::unused_var_no())
     {
-      error() << "unused_var_no: " << expr.pretty() << eom;
+      std::cout << "unused_var_no: " << expr.pretty() << std::endl;
       assert(false);
     }
   }
@@ -182,13 +180,17 @@ Function: boolbvt::conversion_failed
 
 \*******************************************************************/
 
-bvt boolbvt::conversion_failed(const exprt &expr)
+void boolbvt::conversion_failed(const exprt &expr, bvt &bv)
 {
   ignoring(expr);
 
   // try to make it free bits
   std::size_t width=boolbv_width(expr.type());
-  return prop.new_variables(width);
+
+  bv.resize(width);
+
+  for(std::size_t i=0; i<width; i++)
+    bv[i]=prop.new_variable();
 }
 
 /*******************************************************************\
@@ -203,7 +205,7 @@ Function: boolbvt::convert_bitvector
 
 \*******************************************************************/
 
-bvt boolbvt::convert_bitvector(const exprt &expr)
+void boolbvt::convert_bitvector(const exprt &expr, bvt &bv)
 {
   #ifdef DEBUG
   std::cout << "BV: " << expr.pretty() << std::endl;
@@ -211,156 +213,175 @@ bvt boolbvt::convert_bitvector(const exprt &expr)
 
   if(expr.type().id()==ID_bool)
   {
-    bvt bv;
     bv.resize(1);
     bv[0]=convert(expr);
-    return bv;
+    return;
   }
 
   if(expr.id()==ID_index)
-    return convert_index(to_index_expr(expr));
+    return convert_index(to_index_expr(expr), bv);
   else if(expr.id()==ID_constraint_select_one)
-    return convert_constraint_select_one(expr);
+    return convert_constraint_select_one(expr, bv);
   else if(expr.id()==ID_member)
-    return convert_member(to_member_expr(expr));
+    return convert_member(to_member_expr(expr), bv);
   else if(expr.id()==ID_with)
-    return convert_with(expr);
+    return convert_with(expr, bv);
   else if(expr.id()==ID_update)
-    return convert_update(expr);
+    return convert_update(expr, bv);
   else if(expr.id()==ID_width)
   {
     std::size_t result_width=boolbv_width(expr.type());
 
     if(result_width==0)
-      return conversion_failed(expr);
+      return conversion_failed(expr, bv);
 
     if(expr.operands().size()!=1)
-      return conversion_failed(expr);
+      return conversion_failed(expr, bv);
 
     std::size_t op_width=boolbv_width(expr.op0().type());
 
     if(op_width==0)
-      return conversion_failed(expr);
+      return conversion_failed(expr, bv);
+
+    bv.resize(result_width);
 
     if(expr.type().id()==ID_unsignedbv ||
        expr.type().id()==ID_signedbv)
-      return bv_utils.build_constant(op_width/8, result_width);
+    {
+      std::string binary=integer2binary(op_width/8, result_width);
+
+      for(std::size_t i=0; i<result_width; i++)
+      {
+        bool bit=(binary[binary.size()-i-1]=='1');
+        bv[i]=const_literal(bit);
+      }
+
+      return;
+    }
   }
   else if(expr.id()==ID_case)
-    return convert_case(expr);
+    return convert_case(expr, bv);
   else if(expr.id()==ID_cond)
-    return convert_cond(expr);
+    return convert_cond(expr, bv);
   else if(expr.id()==ID_if)
-    return convert_if(to_if_expr(expr));
+    return convert_if(to_if_expr(expr), bv);
   else if(expr.id()==ID_constant)
-    return convert_constant(to_constant_expr(expr));
+    return convert_constant(to_constant_expr(expr), bv);
   else if(expr.id()==ID_typecast)
-    return convert_bv_typecast(to_typecast_expr(expr));
+    return convert_typecast(to_typecast_expr(expr), bv);
   else if(expr.id()==ID_symbol)
-    return convert_symbol(to_symbol_expr(expr));
+    return convert_symbol(to_symbol_expr(expr), bv);
   else if(expr.id()==ID_bv_literals)
-    return convert_bv_literals(expr);
+    return convert_bv_literals(expr, bv);
   else if(expr.id()==ID_plus || expr.id()==ID_minus ||
           expr.id()=="no-overflow-plus" ||
           expr.id()=="no-overflow-minus")
-    return convert_add_sub(expr);
+    return convert_add_sub(expr, bv);
   else if(expr.id()==ID_mult ||
           expr.id()=="no-overflow-mult")
-    return convert_mult(expr);
+    return convert_mult(expr, bv);
   else if(expr.id()==ID_div)
-    return convert_div(to_div_expr(expr));
+    return convert_div(to_div_expr(expr), bv);
   else if(expr.id()==ID_mod)
-    return convert_mod(to_mod_expr(expr));
+    return convert_mod(to_mod_expr(expr), bv);
   else if(expr.id()==ID_shl || expr.id()==ID_ashr || expr.id()==ID_lshr)
-    return convert_shift(to_shift_expr(expr));
+    return convert_shift(to_shift_expr(expr), bv);
   else if(expr.id()==ID_floatbv_plus || expr.id()==ID_floatbv_minus ||
           expr.id()==ID_floatbv_mult || expr.id()==ID_floatbv_div ||
           expr.id()==ID_floatbv_rem)
-    return convert_floatbv_op(expr);
+    return convert_floatbv_op(expr, bv);
   else if(expr.id()==ID_floatbv_typecast)
-    return convert_floatbv_typecast(to_floatbv_typecast_expr(expr));
+    return convert_floatbv_typecast(to_floatbv_typecast_expr(expr), bv);
   else if(expr.id()==ID_concatenation)
-    return convert_concatenation(expr);
+    return convert_concatenation(expr, bv);
   else if(expr.id()==ID_replication)
-    return convert_replication(to_replication_expr(expr));
+    return convert_replication(to_replication_expr(expr), bv);
   else if(expr.id()==ID_extractbits)
-    return convert_extractbits(to_extractbits_expr(expr));
+    return convert_extractbits(to_extractbits_expr(expr), bv);
   else if(expr.id()==ID_bitnot || expr.id()==ID_bitand ||
           expr.id()==ID_bitor || expr.id()==ID_bitxor ||
           expr.id()==ID_bitxnor || expr.id()==ID_bitnor ||
           expr.id()==ID_bitnand)
-    return convert_bitwise(expr);
+    return convert_bitwise(expr, bv);
   else if(expr.id()==ID_unary_minus ||
           expr.id()=="no-overflow-unary-minus")
-    return convert_unary_minus(to_unary_expr(expr));
+    return convert_unary_minus(to_unary_expr(expr), bv);
   else if(expr.id()==ID_unary_plus)
   {
     assert(expr.operands().size()==1);
-    return convert_bitvector(expr.op0());
+    return convert_bitvector(expr.op0(), bv);
   }
   else if(expr.id()==ID_abs)
-    return convert_abs(expr);
+    return convert_abs(expr, bv);
   else if(expr.id()==ID_byte_extract_little_endian ||
           expr.id()==ID_byte_extract_big_endian)
-    return convert_byte_extract(to_byte_extract_expr(expr));
+    return convert_byte_extract(to_byte_extract_expr(expr), bv);
   else if(expr.id()==ID_byte_update_little_endian ||
           expr.id()==ID_byte_update_big_endian)
-    return convert_byte_update(to_byte_update_expr(expr));
+    return convert_byte_update(to_byte_update_expr(expr), bv);
   else if(expr.id()==ID_nondet_symbol ||
           expr.id()=="quant_symbol")
-    return convert_symbol(expr);
+    return convert_symbol(expr, bv);
   else if(expr.id()==ID_struct)
-    return convert_struct(to_struct_expr(expr));
+    return convert_struct(to_struct_expr(expr), bv);
   else if(expr.id()==ID_union)
-    return convert_union(to_union_expr(expr));
+    return convert_union(to_union_expr(expr), bv);
   else if(expr.id()==ID_string_constant)
     return convert_bitvector(
-      to_string_constant(expr).to_array_expr());
+      to_string_constant(expr).to_array_expr(), bv);
   else if(expr.id()==ID_array)
-    return convert_array(expr);
+    return convert_array(expr, bv);
   else if(expr.id()==ID_vector)
-    return convert_vector(expr);
+    return convert_vector(expr, bv);
   else if(expr.id()==ID_complex)
-    return convert_complex(expr);
+    return convert_complex(expr, bv);
   else if(expr.id()==ID_complex_real)
-    return convert_complex_real(expr);
+    return convert_complex_real(expr, bv);
   else if(expr.id()==ID_complex_imag)
-    return convert_complex_imag(expr);
+    return convert_complex_imag(expr, bv);
   else if(expr.id()==ID_lambda)
-    return convert_lambda(expr);
+    return convert_lambda(expr, bv);
   else if(expr.id()==ID_array_of)
-    return convert_array_of(to_array_of_expr(expr));
+    return convert_array_of(to_array_of_expr(expr), bv);
   else if(expr.id()==ID_let)
   {
-    // const let_exprt &let_expr=to_let_expr(expr);
+    //const let_exprt &let_expr=to_let_expr(expr);
     throw "let is todo";
   }
   else if(expr.id()==ID_function_application)
   {
-    return convert_function_application(to_function_application_expr(expr));
+    // make it free bits
+    bv=prop.new_variables(boolbv_width(expr.type()));
+
+    // record
+    functions.record(to_function_application_expr(expr));
+    
+    return;
   }
   else if(expr.id()==ID_reduction_or  || expr.id()==ID_reduction_and  ||
           expr.id()==ID_reduction_nor || expr.id()==ID_reduction_nand ||
           expr.id()==ID_reduction_xor || expr.id()==ID_reduction_xnor)
-    return convert_bv_reduction(to_unary_expr(expr));
+    return convert_reduction(to_unary_expr(expr), bv);
   else if(expr.id()==ID_not)
-    return convert_not(to_not_expr(expr));
+    return convert_not(to_not_expr(expr), bv);
   else if(expr.id()==ID_power)
-     return convert_power(to_binary_expr(expr));
+    return convert_power(to_binary_expr(expr), bv);
   else if(expr.id()==ID_float_debug1 ||
           expr.id()==ID_float_debug2)
   {
     assert(expr.operands().size()==2);
-    bvt bv0=convert_bitvector(expr.op0());
-    bvt bv1=convert_bitvector(expr.op1());
-    float_utilst float_utils(prop, to_floatbv_type(expr.type()));
-    bvt bv=expr.id()==ID_float_debug1?
+    bvt bv0, bv1;
+    convert_bitvector(expr.op0(), bv0);
+    convert_bitvector(expr.op1(), bv1);
+    float_utilst float_utils(prop);
+    float_utils.spec=to_floatbv_type(expr.type());
+    bv=expr.id()==ID_float_debug1?
       float_utils.debug1(bv0, bv1):
       float_utils.debug2(bv0, bv1);
-    return bv;
+    return;
   }
 
-  return conversion_failed(expr);
+  return conversion_failed(expr, bv);
 }
 
 /*******************************************************************\
@@ -375,18 +396,18 @@ Function: boolbvt::convert_lambda
 
 \*******************************************************************/
 
-bvt boolbvt::convert_lambda(const exprt &expr)
+void boolbvt::convert_lambda(const exprt &expr, bvt &bv)
 {
   std::size_t width=boolbv_width(expr.type());
 
   if(width==0)
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
 
   if(expr.operands().size()!=2)
     throw "lambda takes two operands";
 
   if(expr.type().id()!=ID_array)
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
 
   const exprt &array_size=
     to_array_type(expr.type()).size();
@@ -394,12 +415,9 @@ bvt boolbvt::convert_lambda(const exprt &expr)
   mp_integer size;
 
   if(to_integer(array_size, size))
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
 
   typet counter_type=expr.op0().type();
-
-  bvt bv;
-  bv.resize(width);
 
   for(mp_integer i=0; i<size; ++i)
   {
@@ -418,8 +436,6 @@ bvt boolbvt::convert_lambda(const exprt &expr)
     for(std::size_t j=0; j<tmp.size(); j++)
       bv[offset+j]=tmp[j];
   }
-
-  return bv;
 }
 
 /*******************************************************************\
@@ -434,14 +450,13 @@ Function: boolbvt::convert_bv_literals
 
 \*******************************************************************/
 
-bvt boolbvt::convert_bv_literals(const exprt &expr)
+void boolbvt::convert_bv_literals(const exprt &expr, bvt &bv)
 {
   std::size_t width=boolbv_width(expr.type());
-
+  
   if(width==0)
-    return conversion_failed(expr);
+    return conversion_failed(expr, bv);
 
-  bvt bv;
   bv.resize(width);
 
   const irept::subt &bv_sub=expr.find(ID_bv).get_sub();
@@ -451,8 +466,6 @@ bvt boolbvt::convert_bv_literals(const exprt &expr)
 
   for(std::size_t i=0; i<width; i++)
     bv[i].set(unsafe_string2int(id2string(bv_sub[i].id())));
-
-  return bv;
 }
 
 /*******************************************************************\
@@ -467,14 +480,13 @@ Function: boolbvt::convert_symbol
 
 \*******************************************************************/
 
-bvt boolbvt::convert_symbol(const exprt &expr)
+void boolbvt::convert_symbol(const exprt &expr, bvt &bv)
 {
   const typet &type=expr.type();
   std::size_t width=boolbv_width(type);
 
-  bvt bv;
   bv.resize(width);
-
+  
   const irep_idt &identifier=expr.get(ID_identifier);
 
   if(identifier.empty())
@@ -493,38 +505,11 @@ bvt boolbvt::convert_symbol(const exprt &expr)
       if(it->var_no()>=prop.no_variables() &&
         !it->is_constant())
       {
-        error() << identifier << eom;
-        assert(false);
+        std::cout << identifier << std::endl; abort();
       }
   }
-
-  return bv;
 }
-
-
-/*******************************************************************\
-
-Function: boolbvt::convert_function_application
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-bvt boolbvt::convert_function_application(
-  const function_application_exprt &expr)
-{
-  // record
-  functions.record(expr);
-
-  // make it free bits
-  return prop.new_variables(boolbv_width(expr.type()));
-}
-
-
+   
 /*******************************************************************\
 
 Function: boolbvt::convert_rest
@@ -541,11 +526,10 @@ literalt boolbvt::convert_rest(const exprt &expr)
 {
   if(expr.type().id()!=ID_bool)
   {
-    error() << "boolbvt::convert_rest got non-boolean operand: "
-            << expr.pretty() << eom;
-    throw 0;
+    std::cerr << expr << std::endl;
+    throw "boolbvt::convert_rest got non-boolean operand";
   }
-
+  
   const exprt::operandst &operands=expr.operands();
 
   if(expr.id()==ID_typecast)
@@ -559,8 +543,9 @@ literalt boolbvt::convert_rest(const exprt &expr)
   {
     if(expr.operands().size()!=2)
       throw "notequal expects two operands";
-
-    return !convert_equality(equal_exprt(expr.op0(), expr.op1()));
+    
+    return !convert_equality(
+        equal_exprt(expr.op0(), expr.op1()));
   }
   else if(expr.id()==ID_ieee_float_equal ||
           expr.id()==ID_ieee_float_notequal)
@@ -576,8 +561,9 @@ literalt boolbvt::convert_rest(const exprt &expr)
     return convert_quantifier(expr);
   else if(expr.id()==ID_index)
   {
-    bvt bv=convert_index(to_index_expr(expr));
-
+    bvt bv;
+    convert_index(to_index_expr(expr), bv);
+    
     if(bv.size()!=1)
       throw "convert_index returned non-bool bitvector";
 
@@ -585,8 +571,9 @@ literalt boolbvt::convert_rest(const exprt &expr)
   }
   else if(expr.id()==ID_member)
   {
-    bvt bv=convert_member(to_member_expr(expr));
-
+    bvt bv;
+    convert_member(to_member_expr(expr), bv);
+    
     if(bv.size()!=1)
       throw "convert_member returned non-bool bitvector";
 
@@ -594,7 +581,8 @@ literalt boolbvt::convert_rest(const exprt &expr)
   }
   else if(expr.id()==ID_case)
   {
-    bvt bv=convert_case(expr);
+    bvt bv;
+    convert_case(expr, bv);
 
     if(bv.size()!=1)
       throw "convert_case returned non-bool bitvector";
@@ -603,7 +591,8 @@ literalt boolbvt::convert_rest(const exprt &expr)
   }
   else if(expr.id()==ID_cond)
   {
-    bvt bv=convert_cond(expr);
+    bvt bv;
+    convert_cond(expr, bv);
 
     if(bv.size()!=1)
       throw "convert_cond returned non-bool bitvector";
@@ -643,10 +632,11 @@ literalt boolbvt::convert_rest(const exprt &expr)
       throw "isnan expects one operand";
 
     const bvt &bv=convert_bv(operands[0]);
-
+    
     if(expr.op0().type().id()==ID_floatbv)
     {
-      float_utilst float_utils(prop, to_floatbv_type(expr.op0().type()));
+      float_utilst float_utils(prop);
+      float_utils.spec=to_floatbv_type(expr.op0().type());
       return float_utils.is_NaN(bv);
     }
     else if(expr.op0().type().id()==ID_fixedbv)
@@ -658,10 +648,11 @@ literalt boolbvt::convert_rest(const exprt &expr)
       throw "isfinite expects one operand";
 
     const bvt &bv=convert_bv(operands[0]);
-
+    
     if(expr.op0().type().id()==ID_floatbv)
     {
-      float_utilst float_utils(prop, to_floatbv_type(expr.op0().type()));
+      float_utilst float_utils(prop);
+      float_utils.spec=to_floatbv_type(expr.op0().type());
       return prop.land(
         !float_utils.is_infinity(bv),
         !float_utils.is_NaN(bv));
@@ -675,10 +666,11 @@ literalt boolbvt::convert_rest(const exprt &expr)
       throw "isinf expects one operand";
 
     const bvt &bv=convert_bv(operands[0]);
-
+    
     if(expr.op0().type().id()==ID_floatbv)
     {
-      float_utilst float_utils(prop, to_floatbv_type(expr.op0().type()));
+      float_utilst float_utils(prop);
+      float_utils.spec=to_floatbv_type(expr.op0().type());
       return float_utils.is_infinity(bv);
     }
     else if(expr.op0().type().id()==ID_fixedbv)
@@ -690,10 +682,11 @@ literalt boolbvt::convert_rest(const exprt &expr)
       throw "isnormal expects one operand";
 
     const bvt &bv=convert_bv(operands[0]);
-
+    
     if(expr.op0().type().id()==ID_floatbv)
     {
-      float_utilst float_utils(prop, to_floatbv_type(expr.op0().type()));
+      float_utilst float_utils(prop);
+      float_utils.spec=to_floatbv_type(expr.op0().type());
       return float_utils.is_normal(bv);
     }
     else if(expr.op0().type().id()==ID_fixedbv)
@@ -717,8 +710,7 @@ Function: boolbvt::boolbv_set_equality_to_true
 
 bool boolbvt::boolbv_set_equality_to_true(const equal_exprt &expr)
 {
-  if(!equality_propagation)
-    return true;
+  if(!equality_propagation) return true;
 
   const typet &type=ns.follow(expr.lhs().type());
 
@@ -731,14 +723,13 @@ bool boolbvt::boolbv_set_equality_to_true(const equal_exprt &expr)
       return true;
 
     const bvt &bv1=convert_bv(expr.rhs());
-
+    
     const irep_idt &identifier=
       to_symbol_expr(expr.lhs()).get_identifier();
 
     map.set_literals(identifier, type, bv1);
 
-    if(freeze_all)
-      set_frozen(bv1);
+    if(freeze_all) set_frozen(bv1);
 
     return false;
   }
@@ -762,9 +753,8 @@ void boolbvt::set_to(const exprt &expr, bool value)
 {
   if(expr.type().id()!=ID_bool)
   {
-    error() << "boolbvt::set_to got non-boolean operand: "
-            << expr.pretty() << eom;
-    throw 0;
+    std::cerr << expr << std::endl;
+    throw "boolbvt::set_to got non-boolean operand";
   }
 
   if(value)
@@ -799,7 +789,7 @@ void boolbvt::make_bv_expr(const typet &type, const bvt &bv, exprt &dest)
   bv_sub.resize(bv.size());
 
   for(std::size_t i=0; i<bv.size(); i++)
-    bv_sub[i].id(std::to_string(bv[i].get()));
+    bv_sub[i].id(i2string(bv[i].get()));
 }
 
 /*******************************************************************\
@@ -819,10 +809,7 @@ void boolbvt::make_free_bv_expr(const typet &type, exprt &dest)
   std::size_t width=boolbv_width(type);
 
   if(width==0)
-  {
-    error() << "failed to get width of " << type.pretty() << eom;
-    throw 0;
-  }
+    throw "failed to get width of "+type.to_string();
 
   bvt bv;
   bv.resize(width);
@@ -848,20 +835,16 @@ Function: boolbvt::is_unbounded_array
 
 bool boolbvt::is_unbounded_array(const typet &type) const
 {
-  if(type.id()==ID_symbol)
-    return is_unbounded_array(ns.follow(type));
+  if(type.id()==ID_symbol) return is_unbounded_array(ns.follow(type));
 
-  if(type.id()!=ID_array)
-    return false;
-
-  if(unbounded_array==U_ALL)
-    return true;
-
+  if(type.id()!=ID_array) return false;
+  
+  if(unbounded_array==U_ALL) return true;
+  
   const exprt &size=to_array_type(type).size();
-
+  
   mp_integer s;
-  if(to_integer(size, s))
-    return true;
+  if(to_integer(size, s)) return true;
 
   if(unbounded_array==U_AUTO)
     if(s>1000) // magic number!

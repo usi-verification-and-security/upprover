@@ -22,7 +22,6 @@ Function: ansi_c_typecheckt::typecheck
 
 void ansi_c_typecheckt::typecheck()
 {
-  start_typecheck_code();
   for(ansi_c_parse_treet::itemst::iterator
       it=parse_tree.items.begin();
       it!=parse_tree.items.end();
@@ -86,18 +85,20 @@ bool ansi_c_typecheck(
 
   catch(int)
   {
-    ansi_c_typecheck.error();
+    ansi_c_typecheck.error_msg();
   }
 
   catch(const char *e)
   {
-    ansi_c_typecheck.error() << e << messaget::eom;
+    ansi_c_typecheck.str << e;
+    ansi_c_typecheck.error_msg();
   }
 
   catch(const std::string &e)
   {
-    ansi_c_typecheck.error() << e << messaget::eom;
+    ansi_c_typecheck.str << e;
+    ansi_c_typecheck.error_msg();
   }
-
+  
   return ansi_c_typecheck.get_error_found();
 }

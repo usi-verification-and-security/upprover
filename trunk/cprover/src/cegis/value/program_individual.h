@@ -1,20 +1,18 @@
-/*******************************************************************\
+/*******************************************************************
 
 Module: Counterexample-Guided Inductive Synthesis
 
 Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+        Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_VALUE_PROGRAM_INDIVIDUAL_H
-#define CPROVER_CEGIS_VALUE_PROGRAM_INDIVIDUAL_H
+#ifndef CEGIS_GENETIC_INDIVIDUAL_H_
+#define CEGIS_GENETIC_INDIVIDUAL_H_
 
 #include <cstddef>
 #include <deque>
 #include <vector>
-
-#include <cegis/genetic/family_selection.h>
 
 /**
  * @brief
@@ -50,18 +48,6 @@ public:
   fitnesst fitness;
 };
 
-/**
- * @brief
- *
- * @details
- */
 typedef std::vector<program_individualt> program_populationt;
 
-/**
- * @brief
- *
- * @details
- */
-typedef family_selectiont<program_populationt> program_individual_selectiont;
-
-#endif // CPROVER_CEGIS_VALUE_PROGRAM_INDIVIDUAL_H
+#endif /* CEGIS_GENETIC_INDIVIDUAL_H_ */

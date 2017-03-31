@@ -1,23 +1,13 @@
-/*******************************************************************\
-
-Module: Loop Acceleration
-
-Author: Matt Lewis
-
-\*******************************************************************/
-
-#ifndef CPROVER_GOTO_INSTRUMENT_ACCELERATE_SUBSUMED_H
-#define CPROVER_GOTO_INSTRUMENT_ACCELERATE_SUBSUMED_H
+#ifndef SUBSUMED_H
+#define SUBSUMED_H
 
 #include "path.h"
 
 #include <list>
 
-class subsumed_patht
-{
-public:
-  explicit subsumed_patht(patht &_subsumed)
-  {
+class subsumed_patht {
+ public:
+  subsumed_patht(patht &_subsumed) {
     patht::iterator it = subsumed.begin();
     subsumed.insert(it, _subsumed.begin(), _subsumed.end());
   }
@@ -27,6 +17,6 @@ public:
   patht residue;
 };
 
-typedef std::list<subsumed_patht> subsumed_pathst;
+typedef list<subsumed_patht> subsumed_pathst;
 
-#endif // CPROVER_GOTO_INSTRUMENT_ACCELERATE_SUBSUMED_H
+#endif // SUBSUMED_H

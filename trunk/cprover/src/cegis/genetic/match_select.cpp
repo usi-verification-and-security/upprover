@@ -1,12 +1,3 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <cegis/genetic/random_individual.h>
 #include <cegis/genetic/match_select.h>
 
@@ -56,7 +47,7 @@ class is_contestant_less_thant
 {
   const contestantt no_contestant;
 public:
-  explicit is_contestant_less_thant(const contestantt &no_contestant) :
+  is_contestant_less_thant(const contestantt &no_contestant) :
       no_contestant(no_contestant)
   {
   }

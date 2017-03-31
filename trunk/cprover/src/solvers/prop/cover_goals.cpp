@@ -41,23 +41,25 @@ Function: cover_goalst::mark
 
 void cover_goalst::mark()
 {
-  // notify observers
-  for(const auto &o : observers)
-    o->satisfying_assignment();
-
-  for(auto &g : goals)
-    if(g.status==goalt::statust::UNKNOWN &&
-       prop_conv.l_get(g.condition).is_true())
+  for(std::list<goalt>::iterator
+      g_it=goals.begin();
+      g_it!=goals.end();
+      g_it++)
+    if(!g_it->covered &&
+       prop_conv.l_get(g_it->condition).is_true())
     {
-      g.status=goalt::statust::COVERED;
+      g_it->covered=true;
       _number_covered++;
-
+      
       // notify observers
-      for(const auto &o : observers)
-        o->goal_covered(g);
+      for(observerst::const_iterator o_it=observers.begin();
+          o_it!=observers.end(); o_it++)
+      {
+        (*o_it)->goal_covered(*g_it);
+      }
     }
 }
-
+  
 /*******************************************************************\
 
 Function: cover_goalst::constaint
@@ -74,14 +76,11 @@ void cover_goalst::constraint()
 {
   exprt::operandst disjuncts;
 
-  // cover at least one unknown goal
-
   for(std::list<goalt>::const_iterator
       g_it=goals.begin();
       g_it!=goals.end();
       g_it++)
-    if(g_it->status==goalt::statust::UNKNOWN &&
-       !g_it->condition.is_false())
+    if(!g_it->covered && !g_it->condition.is_false())
       disjuncts.push_back(literal_exprt(g_it->condition));
 
   // this is 'false' if there are no disjuncts
@@ -122,41 +121,40 @@ Function: cover_goalst::operator()
 
 \*******************************************************************/
 
-decision_proceduret::resultt cover_goalst::operator()()
+void cover_goalst::operator()()
 {
   _iterations=_number_covered=0;
-
+  
   decision_proceduret::resultt dec_result;
-
+  
   // We use incremental solving, so need to freeze some variables
-  // to prevent them from being eliminated.
+  // to prevent them from being eliminated.      
   freeze_goal_variables();
 
   do
   {
     // We want (at least) one of the remaining goals, please!
     _iterations++;
-
+    
     constraint();
     dec_result=prop_conv.dec_solve();
-
+    
     switch(dec_result)
     {
     case decision_proceduret::D_UNSATISFIABLE: // DONE
-      return dec_result;
+      break;
 
     case decision_proceduret::D_SATISFIABLE:
       // mark the goals we got, and notify observers
-      mark();
+      mark(); 
       break;
 
     default:
       error() << "decision procedure has failed" << eom;
-      return dec_result;
+      return;
     }
   }
   while(dec_result==decision_proceduret::D_SATISFIABLE &&
         number_covered()<size());
-
-  return decision_proceduret::D_SATISFIABLE;
 }
+

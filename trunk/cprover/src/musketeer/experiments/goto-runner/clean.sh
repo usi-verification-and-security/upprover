@@ -16,3 +16,4 @@ do
     rm -rf "$F"
   fi
 done
+

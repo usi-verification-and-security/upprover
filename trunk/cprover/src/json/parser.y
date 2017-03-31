@@ -7,7 +7,7 @@
 
 int yyjsonlex();
 extern char *yyjsontext;
-extern int yyjsonleng; // really an int, not a size_t
+extern std::size_t yyjsonleng;
 
 static std::string convert_TOK_STRING()
 {
@@ -58,19 +58,19 @@ int yyjsonerror(const std::string &error)
 
 %}
 
-%token TOK_STRING
-%token TOK_NUMBER
-%token TOK_TRUE
-%token TOK_FALSE
-%token TOK_NULL
+%token	TOK_STRING
+%token	TOK_NUMBER
+%token	TOK_TRUE
+%token	TOK_FALSE
+%token	TOK_NULL
 
 %%
 
 document: value
         ;
 
-object  : '{' { json_parser.push(json_objectt()); } '}'
-        | '{' { json_parser.push(json_objectt()); } key_value_sequence '}'
+object  : '{' { json_parser.push(jsont::json_object()); } '}'
+        | '{' { json_parser.push(jsont::json_object()); } key_value_sequence '}'
         ;
 
 key_value_sequence:
@@ -95,8 +95,8 @@ key_value_pair:
         }
         ;
 
-array   : '[' { json_parser.push(json_arrayt()); } ']'
-        | '[' { json_parser.push(json_arrayt()); } array_value_sequence ']'
+array   : '[' { json_parser.push(jsont::json_array()); } ']'
+        | '[' { json_parser.push(jsont::json_array()); } array_value_sequence ']'
         ;
 
 array_value_sequence:
@@ -114,16 +114,16 @@ array_value:
         ;
 
 value   : TOK_STRING
-        { json_parser.push(json_stringt(convert_TOK_STRING())); }
+        { json_parser.push(jsont::json_string(convert_TOK_STRING())); }
         | TOK_NUMBER
-        { json_parser.push(json_numbert(convert_TOK_NUMBER())); }
+        { json_parser.push(jsont::json_number(convert_TOK_NUMBER())); }
         | object
         | array
         | TOK_TRUE
-        { json_parser.push(json_truet()); }
+        { json_parser.push(jsont::json_true()); }
         | TOK_FALSE
-        { json_parser.push(json_falset()); }
+        { json_parser.push(jsont::json_false()); }
         | TOK_NULL
-        { json_parser.push(json_nullt()); }
+        { json_parser.push(jsont::json_null()); }
         ;
 

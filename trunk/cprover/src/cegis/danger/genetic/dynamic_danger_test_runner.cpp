@@ -1,16 +1,6 @@
-/*******************************************************************\
-
-Module: Counterexample-Guided Inductive Synthesis
-
-Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
-
-\*******************************************************************/
-
 #include <cstdlib>
 
-#include <cegis/instrument/literals.h>
-#include <cegis/genetic/serialise_individual.h>
+#include <cegis/invariant/meta/literals.h>
 #include <cegis/genetic/dynamic_test_runner_helper.h>
 #include <cegis/danger/genetic/dynamic_danger_test_runner.h>
 

@@ -8,7 +8,9 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include <algorithm>
 
+#include <util/expr_util.h>
 #include <util/arith_tools.h>
+#include <util/i2string.h>
 #include <util/source_location.h>
 #include <util/symbol.h>
 
@@ -19,65 +21,6 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include "expr2cpp.h"
 #include "cpp_convert_type.h"
 #include "cpp_declarator.h"
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void cpp_typecheckt::convert(cpp_itemt &item)
-{
-  if(item.is_declaration())
-    convert(to_cpp_declaration(item));
-  else if(item.is_linkage_spec())
-    convert(item.get_linkage_spec());
-  else if(item.is_namespace_spec())
-    convert(item.get_namespace_spec());
-  else if(item.is_using())
-    convert(item.get_using());
-  else if(item.is_static_assert())
-    convert(item.get_static_assert());
-  else
-  {
-    error().source_location=item.source_location();
-    error() << "unknown parse-tree element: " << item.id() << eom;
-    throw 0;
-  }
-}
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::typecheck
-
-  Inputs:
-
- Outputs:
-
- Purpose: typechecking main method
-
-\*******************************************************************/
-
-void cpp_typecheckt::typecheck()
-{
-  // default linkage is "automatic"
-  current_linkage_spec=ID_auto;
-
-  for(auto &item : cpp_parse_tree.items)
-    convert(item);
-
-  static_and_dynamic_initialization();
-
-  do_not_typechecked();
-
-  clean_up();
-}
 
 /*******************************************************************\
 
@@ -140,6 +83,67 @@ std::string cpp_typecheckt::to_string(const typet &type)
 
 /*******************************************************************\
 
+Function: cpp_typecheckt::convert
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void cpp_typecheckt::convert(cpp_itemt &item)
+{
+  if(item.is_declaration())
+    convert(to_cpp_declaration(item));
+  else if(item.is_linkage_spec())
+    convert(item.get_linkage_spec());
+  else if(item.is_namespace_spec())
+    convert(item.get_namespace_spec());
+  else if(item.is_using())
+    convert(item.get_using());
+  else if(item.is_static_assert())
+    convert(item.get_static_assert());
+  else
+  {
+    err_location(item);
+    throw "unknown parse-tree element: "+item.id_string();
+  }
+}
+
+/*******************************************************************\
+
+Function: cpp_typecheckt::typecheck
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void cpp_typecheckt::typecheck()
+{
+  // default linkage is "automatic"
+  current_linkage_spec=ID_auto;
+  
+  for(cpp_parse_treet::itemst::iterator
+      it=cpp_parse_tree.items.begin();
+      it!=cpp_parse_tree.items.end();
+      it++)
+    convert(*it);
+
+  static_and_dynamic_initialization();
+
+  do_not_typechecked();
+
+  clean_up();
+}
+
+/*******************************************************************\
+
 Function: cpp_typecheck
 
   Inputs:
@@ -156,8 +160,7 @@ bool cpp_typecheck(
   const std::string &module,
   message_handlert &message_handler)
 {
-  cpp_typecheckt cpp_typecheck(
-    cpp_parse_tree, symbol_table, module, message_handler);
+  cpp_typecheckt cpp_typecheck(cpp_parse_tree, symbol_table, module, message_handler);
   return cpp_typecheck.typecheck_main();
 }
 
@@ -191,17 +194,19 @@ bool cpp_typecheck(
 
   catch(int)
   {
-    cpp_typecheck.error();
+    cpp_typecheck.error_msg();
   }
 
   catch(const char *e)
   {
-    cpp_typecheck.error() << e << messaget::eom;
+    cpp_typecheck.str << e;
+    cpp_typecheck.error_msg();
   }
 
   catch(const std::string &e)
   {
-    cpp_typecheck.error() << e << messaget::eom;
+    cpp_typecheck.str << e;
+    cpp_typecheck.error_msg();
   }
 
   return cpp_typecheck.get_error_found();
@@ -238,14 +243,17 @@ void cpp_typecheckt::static_and_dynamic_initialization()
 
   disable_access_control = true;
 
-  for(const auto &d_it : dynamic_initializations)
+  for(dynamic_initializationst::const_iterator
+      d_it=dynamic_initializations.begin();
+      d_it!=dynamic_initializations.end();
+      d_it++)
   {
-    symbolt &symbol=symbol_table.symbols.find(d_it)->second;
+    symbolt &symbol=symbol_table.symbols.find(*d_it)->second;
 
     if(symbol.is_extern)
       continue;
-
-    // PODs are always statically initialized
+    
+    // PODs are always statically initialized  
     if(cpp_is_pod(symbol.type))
       continue;
 
@@ -279,10 +287,10 @@ void cpp_typecheckt::static_and_dynamic_initialization()
         init_block.move_to_operands(call);
     }
   }
-
+  
   dynamic_initializations.clear();
 
-  // block_sini.move_to_operands(block_dini);
+  //block_sini.move_to_operands(block_dini);
 
   // Create the dynamic initialization procedure
   symbolt init_symbol;
@@ -293,7 +301,8 @@ void cpp_typecheckt::static_and_dynamic_initialization()
   init_symbol.mode=ID_cpp;
   init_symbol.module=module;
   init_symbol.type=code_typet();
-  init_symbol.type.add(ID_return_type)=typet(ID_constructor);
+  init_symbol.type.add(ID_return_type)=typet(ID_empty);
+  init_symbol.type.set("initialization", true);
   init_symbol.is_type=false;
   init_symbol.is_macro=false;
 
@@ -343,7 +352,7 @@ void cpp_typecheckt::do_not_typechecked()
         }
         else if(symbol.value.operands().size()==1)
         {
-          exprt tmp = symbol.value.op0();
+          exprt tmp = symbol.value.operands()[0];
           symbol.value.swap(tmp);
           convert_function(symbol);
           cont=true;
@@ -378,7 +387,7 @@ Function: cpp_typecheckt::clean_up
 void cpp_typecheckt::clean_up()
 {
   symbol_tablet::symbolst::iterator it=symbol_table.symbols.begin();
-
+  
   while(it!=symbol_table.symbols.end())
   {
     symbol_tablet::symbolst::iterator cur_it = it;
@@ -386,7 +395,6 @@ void cpp_typecheckt::clean_up()
 
     symbolt &symbol = cur_it->second;
 
-    // erase templates
     if(symbol.type.get_bool(ID_is_template))
     {
       symbol_table.symbols.erase(cur_it);
@@ -395,7 +403,6 @@ void cpp_typecheckt::clean_up()
     else if(symbol.type.id()==ID_struct ||
             symbol.type.id()==ID_union)
     {
-      // remove methods from 'components'
       struct_union_typet &struct_union_type=
         to_struct_union_type(symbol.type);
 
@@ -408,23 +415,26 @@ void cpp_typecheckt::clean_up()
       struct_union_typet::componentst &function_members=
         (struct_union_typet::componentst &)
         (struct_union_type.add(ID_methods).get_sub());
-
+        
       function_members.reserve(components.size());
 
-      for(const auto &compo_it : components)
+      for(struct_typet::componentst::const_iterator
+          compo_it=components.begin();
+          compo_it!=components.end();
+          compo_it++)
       {
-        if(compo_it.get_bool(ID_is_static) ||
-           compo_it.get_bool(ID_is_type))
+        if(compo_it->get_bool(ID_is_static) ||
+           compo_it->get_bool(ID_is_type))
         {
           // skip it
         }
-        else if(compo_it.type().id()==ID_code)
+        else if(compo_it->type().id()==ID_code)
         {
-          function_members.push_back(compo_it);
+          function_members.push_back(*compo_it);
         }
         else
         {
-          data_members.push_back(compo_it);
+          data_members.push_back(*compo_it);
         }
       }
 

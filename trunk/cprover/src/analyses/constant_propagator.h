@@ -6,8 +6,8 @@ Author: Peter Schrammel
 
 \*******************************************************************/
 
-#ifndef CPROVER_ANALYSES_CONSTANT_PROPAGATOR_H
-#define CPROVER_ANALYSES_CONSTANT_PROPAGATOR_H
+#ifndef CPROVER_CONSTANT_PROPAGATOR_H
+#define CPROVER_CONSTANT_PROPAGATOR_H
 
 #include "ai.h"
 
@@ -16,47 +16,37 @@ Author: Peter Schrammel
 class constant_propagator_domaint:public ai_domain_baset
 {
 public:
-  void transform(
-    locationt,
-    locationt,
-    ai_baset &,
-    const namespacet &) final;
-  void output(
-    std::ostream &,
-    const ai_baset &,
-    const namespacet &) const final;
-  void make_top() final { values.set_to_top(); }
-  void make_bottom() final { values.set_to_bottom(); }
-  void make_entry() final { values.set_to_top(); }
+  virtual void transform(locationt, locationt, ai_baset &, const namespacet &);
+  virtual void output(std::ostream &, const ai_baset &, const namespacet &) const;
   bool merge(const constant_propagator_domaint &, locationt, locationt);
 
   struct valuest
   {
   public:
     valuest():is_bottom(true) { }
-
+    
     // maps variables to constants
     replace_symbol_extt replace_const;
     bool is_bottom;
-
+    
     void output(std::ostream &, const namespacet &) const;
-
+    
     bool merge(const valuest &src);
     bool meet(const valuest &src);
-
-    void set_to_bottom()
+    
+    inline void set_to_bottom()
     {
       replace_const.clear();
       is_bottom = true;
     }
-
-    void set_to(const irep_idt &lhs_id, const exprt &rhs_val)
+    
+    inline void set_to(const irep_idt &lhs_id, const exprt &rhs_val)
     {
       replace_const.expr_map[lhs_id] = rhs_val;
       is_bottom = false;
     }
 
-    void set_to(const symbol_exprt &lhs, const exprt &rhs_val)
+    inline void set_to(const symbol_exprt &lhs, const exprt &rhs_val)
     {
       set_to(lhs.get_identifier(), rhs_val);
     }
@@ -65,12 +55,12 @@ public:
     bool is_constant_address_of(const exprt &expr) const;
     bool set_to_top(const irep_idt &id);
 
-    bool set_to_top(const symbol_exprt &expr)
+    inline bool set_to_top(const symbol_exprt &expr)
     {
       return set_to_top(expr.get_identifier());
     }
-
-    void set_to_top()
+    
+    inline void set_to_top()
     {
       replace_const.clear();
       is_bottom = false;
@@ -78,23 +68,20 @@ public:
   };
 
   valuest values;
-
-private:
+  
+protected:
   void assign(
     valuest &dest,
     const symbol_exprt &lhs,
     exprt rhs,
     const namespacet &ns) const;
 
-  void assign_rec(
-    valuest &values,
-    const exprt &lhs,
-    const exprt &rhs,
-    const namespacet &ns);
+  void assign_rec(valuest &values,
+                  const exprt &lhs, const exprt &rhs,
+                  const namespacet &ns);
 
-  bool two_way_propagate_rec(
-    const exprt &expr,
-    const namespacet &ns);
+  bool two_way_propagate_rec(const exprt &expr,
+                             const namespacet &ns);
 };
 
 class constant_propagator_ait:public ait<constant_propagator_domaint>
@@ -117,6 +104,8 @@ public:
   }
 
 protected:
+  friend class constant_propagator_domaint;
+
   void replace(
     goto_functionst::goto_functiont &,
     const namespacet &);
@@ -126,8 +115,8 @@ protected:
     const namespacet &);
 
   void replace_types_rec(
-    const replace_symbolt &replace_const,
+    const replace_symbolt &replace_const, 
     exprt &expr);
 };
 
-#endif // CPROVER_ANALYSES_CONSTANT_PROPAGATOR_H
+#endif

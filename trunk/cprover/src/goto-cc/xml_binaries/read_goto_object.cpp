@@ -1,17 +1,17 @@
 /*******************************************************************\
-
+ 
 Module: Read goto object files.
-
+ 
 Author: CM Wintersteiger
-
+ 
 Date: June 2006
-
+ 
 \*******************************************************************/
 
 #include <xmllang/xml_parser.h>
 #include <util/namespace.h>
 #include <util/base_type.h>
-#include <util/message.h>
+#include <util/message_stream.h>
 
 #define XML_VERSION "1.4"
 
@@ -23,16 +23,16 @@ Date: June 2006
 #include "xml_symbol_hashing.h"
 
 /*******************************************************************\
-
+ 
 Function: read_goto_object
-
+ 
   Inputs: input stream, symbol_table, functions
-
+ 
  Outputs: true on error, false otherwise
-
- Purpose: reads a goto object xml file back into a symbol and a
+ 
+ Purpose: reads a goto object xml file back into a symbol and a 
           function table
-
+ 
 \*******************************************************************/
 
 bool read_goto_object(
@@ -41,41 +41,42 @@ bool read_goto_object(
   symbol_tablet &symbol_table,
   goto_functionst &functions,
   message_handlert &message_handler)
-{
-  messaget message(message_handler);
+{ 
+  message_streamt message_stream(message_handler);
 
   xml_parser.clear();
   xml_parser.filename = filename;
   xml_parser.in = &in;
   xml_parser.set_message_handler(message_handler);
 
-  if(xml_parser.parse())
+  if (xml_parser.parse())
     return true;
 
   xmlt &top = xml_parser.parse_tree.element;
-
-  if(top.get_attribute("version")!=XML_VERSION)
+  
+  if (top.get_attribute("version")!=XML_VERSION) 
   {
-    message.error() <<
+    message_stream.str <<
       "The input was compiled with a different version of "
-      "goto-cc, please recompile." << messaget::eom;
+      "goto-cc, please recompile.";
+    message_stream.error();
     return true;
   }
-
+  
   xml_irep_convertt::ireps_containert ic;
   xml_irep_convertt irepconverter(ic);
   xml_symbol_convertt symbolconverter(ic);
   xml_goto_function_convertt gfconverter(ic);
-
+  
   if(top.name.substr(0, 11)=="goto-object")
-  {
+  {    
     for(xmlt::elementst::const_iterator
         sec_it=top.elements.begin();
         sec_it != top.elements.end();
         sec_it++)
     {
-      xmlt sec = *sec_it;
-      if(sec.name=="irep_hash_map")
+      xmlt sec = *sec_it;      
+      if (sec.name=="irep_hash_map") 
       {
         for(xmlt::elementst::const_iterator
             irep_it = sec.elements.begin();
@@ -87,8 +88,8 @@ bool read_goto_object(
           irepconverter.insert(irep_it->get_attribute("id"), i);
         }
       }
-      else if(sec.name=="symbols")
-      {
+      else if (sec.name=="symbols")
+      {        
         for(xmlt::elementst::const_iterator
             sym_it = sec.elements.begin();
             sym_it != sec.elements.end();
@@ -106,36 +107,38 @@ bool read_goto_object(
             functions.function_map[symbol.name].type=
               to_code_type(symbol.type);
           }
-          symbol_table.add(symbol);
+          symbol_table.add(symbol);          
         }
       }
-      else if(sec.name=="functions")
-      {
+      else if (sec.name=="functions")
+      {        
         for(xmlt::elementst::const_iterator
             fun_it = sec.elements.begin();
             fun_it != sec.elements.end();
             fun_it++)
         {
           std::string fname = fun_it->get_attribute("name");
-          // std::cout << "Adding function body: " << fname << std::endl;
+          //std::cout << "Adding function body: " << fname << std::endl;          
           goto_functionst::goto_functiont &f = functions.function_map[fname];
           gfconverter.convert(*fun_it, f);
         }
       }
       else
       {
-        message.error() << "Unknown Section '" << sec.name
-                        << "' in object file." << messaget::eom;
+        message_stream.str << "Unknown Section '"
+          << sec.name << "' in object file.";
+        message_stream.error();
         return true;
       }
+
     }
   }
   else
   {
-    message.error() << "no goto-object" << messaget::eom;
+    message_stream.error("no goto-object");
     return true;
-  }
-
+  }  
+    
   xml_parser.clear();
   return false;
 }
