@@ -959,20 +959,20 @@ void symex_assertion_sumt::store_modified_globals(
     //        ns.follow(it->type())); 
         
     // SSA Symbol   
-    symbol_exprt lhs_ssa_symbol(ssa_exprt(*it).get(ID_identifier), ns.follow(it->type()));
+    symbol_exprt lhs_ssa_symbol(ssa_exprt(*it).get(ID_identifier), it->type());
     
     // Pure Symbol
     state.get_original_name(*it); // KE: Don't like this solution, but that's the only way it works        
-    ssa_exprt rhs_symbol(symbol_exprt(ssa_exprt(*it).get(ID_identifier), ns.follow(it->type())));   
+    symbol_exprt rhs_symbol(ssa_exprt(*it).get(ID_identifier), ns.follow(it->type()));   
       
     code_assignt assignment(
             lhs_ssa_symbol,
             rhs_symbol);
-  
+
     assert( ns.follow(assignment.lhs().type()) ==
             ns.follow(assignment.rhs().type()));
 
-    raw_assignment(state, assignment.lhs(), assignment.rhs(), ns, false);
+    raw_assignment(state, assignment.lhs(), assignment.rhs(), ns);
   }
   constant_propagation = old_cp;
 }
@@ -1008,7 +1008,7 @@ void symex_assertion_sumt::store_return_value(
   // Emit the assignment
   bool old_cp = constant_propagation;
   constant_propagation = false;
-  raw_assignment(state, assignment.lhs(), assignment.rhs(), ns, false);
+  raw_assignment(state, assignment.lhs(), assignment.rhs(), ns);
   constant_propagation = old_cp;
 }
 /*******************************************************************
@@ -1451,8 +1451,8 @@ void symex_assertion_sumt::raw_assignment(
         statet &state,
         exprt &lhs,
         const exprt &rhs,
-        const namespacet &ns,
-        bool record_value)
+        const namespacet &ns)
+        //bool record_value) = false always!
 {
 
   symbol_exprt rhs_symbol = to_symbol_expr(rhs);

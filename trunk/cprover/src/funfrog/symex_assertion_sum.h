@@ -306,8 +306,8 @@ private:
         statet &state,
         exprt &lhs,
         const exprt &rhs,
-        const namespacet &ns,
-        bool record_value);
+        const namespacet &ns); 
+        //bool record_value); //Always false, removed
 
   // Adds the given symbol to the current context. If dead, the identifier
   // is only marked as dead (it is not added as a new symbol).
