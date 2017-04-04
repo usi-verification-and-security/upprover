@@ -972,7 +972,7 @@ void symex_assertion_sumt::store_modified_globals(
     assert( ns.follow(assignment.lhs().type()) ==
             ns.follow(assignment.rhs().type()));
 
-    raw_assignment(state, assignment.lhs(), assignment.rhs(), ns);
+    raw_assignment(state, *it, assignment.lhs(), assignment.rhs(), ns);
   }
   constant_propagation = old_cp;
 }
@@ -1008,7 +1008,7 @@ void symex_assertion_sumt::store_return_value(
   // Emit the assignment
   bool old_cp = constant_propagation;
   constant_propagation = false;
-  raw_assignment(state, assignment.lhs(), assignment.rhs(), ns);
+  raw_assignment(state, assignment.lhs(), assignment.lhs(), assignment.rhs(), ns);
   constant_propagation = old_cp;
 }
 /*******************************************************************
@@ -1449,6 +1449,7 @@ irep_idt symex_assertion_sumt::get_current_l2_name(statet &state, const irep_idt
 \*******************************************************************/
 void symex_assertion_sumt::raw_assignment(
         statet &state,
+        exprt &lhs_orig,
         exprt &lhs,
         const exprt &rhs,
         const namespacet &ns)
@@ -1458,7 +1459,7 @@ void symex_assertion_sumt::raw_assignment(
   symbol_exprt rhs_symbol = to_symbol_expr(rhs);
   rhs_symbol.set(ID_identifier, get_current_l2_name(state, rhs_symbol.get_identifier()));
 
-  assert(lhs.id()==ID_symbol);
+  assert(lhs_orig.id()==ID_symbol);
 
   // the type might need renaming
   ssa_exprt ssa_lhs = ssa_exprt(lhs); // KE: If cause a bug, change lhs_identifier to be without the #1,#2,#3 etc.
@@ -1471,8 +1472,8 @@ void symex_assertion_sumt::raw_assignment(
   // KE: it seems that the field of original names isn't in use any more in L2, but is in the state class
   // const irep_idt &identifier = lhs.get(ID_identifier);
   // irep_idt l1_identifier=state.level2.get_original_name(identifier);
-  irep_idt l1_identifier = lhs.get(ID_identifier);
-  state.get_original_name(lhs);
+  irep_idt l1_identifier = lhs_orig.get(ID_identifier);
+  state.get_original_name(lhs_orig);
 
   state.propagation.remove(l1_identifier);
   // KE: old code, not sure about it!

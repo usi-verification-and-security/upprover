@@ -304,6 +304,7 @@ private:
   // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
   void raw_assignment(
         statet &state,
+        exprt &lhs_orig,  
         exprt &lhs,
         const exprt &rhs,
         const namespacet &ns); 

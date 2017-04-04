@@ -218,9 +218,14 @@ void prop_itpt::generalize(const prop_conv_solvert& decider,
     
 #   ifdef DEBUG_ITP
     std::cout << " -> '" << it->get_identifier() << "' - " << entry.width << std::endl;
+    assert(id2string(it->get_identifier()).find("#") != std::string::npos);
 #   endif
 
-   
+    // Check there are no issues with SSA translation that leaked here:
+    // that it is always an SSA not an original symbol!
+    //assert(id2string(it->get_identifier()).find("#") != std::string::npos);
+    // KE: activate after fixing the bug with SSA of Globals
+    
     for (boolbv_mapt::literal_mapt::const_iterator it2 = entry.literal_map.begin();
             it2 != entry.literal_map.end();
             ++it2) {
