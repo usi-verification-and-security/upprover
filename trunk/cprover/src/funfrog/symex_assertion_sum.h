@@ -304,8 +304,7 @@ private:
   // Makes an assignment without increasing the version of the
   // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
   void raw_assignment(
-        statet &state,
-        exprt &lhs_orig,  
+        statet &state, 
         exprt &lhs,
         const exprt &rhs,
         const namespacet &ns); 

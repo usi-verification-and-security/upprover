@@ -954,20 +954,21 @@ void symex_assertion_sumt::store_modified_globals(
   
   state.record_events=false; // expr-s are build ins 
   // therefore we don't want to use parallel built-ins
-  for (std::vector<symbol_exprt>::iterator it = 
+  for (std::vector<symbol_exprt>::const_iterator it = 
           partition_iface.out_arg_symbols.begin();
           it != partition_iface.out_arg_symbols.end();
           ++it) {
-
+ 
     //symbol_exprt rhs(state.get_original_name(it->get_identifier()), 
     //        ns.follow(it->type())); 
         
-    // SSA Symbol   
-    symbol_exprt lhs_ssa_symbol(ssa_exprt(*it).get(ID_identifier), it->type());
-    
+    // SSA Symbol - copy so (*it) is the same after this code!
+    symbol_exprt lhs_ssa_symbol(*it);  
+      
     // Pure Symbol
-    state.get_original_name(*it); // KE: Don't like this solution, but that's the only way it works        
-    symbol_exprt rhs_symbol(ssa_exprt(*it).get(ID_identifier), ns.follow(it->type()));   
+    symbol_exprt rhs_ssa_symbol(*it);  
+    state.get_original_name(rhs_ssa_symbol); // KE: Don't like this solution, but that's the only way it works        
+    symbol_exprt rhs_symbol(ssa_exprt(rhs_ssa_symbol).get(ID_identifier), ns.follow(rhs_ssa_symbol.type()));   
       
     code_assignt assignment(
             lhs_ssa_symbol,
@@ -976,7 +977,7 @@ void symex_assertion_sumt::store_modified_globals(
     assert( ns.follow(assignment.lhs().type()) ==
             ns.follow(assignment.rhs().type()));
 
-    raw_assignment(state, *it, assignment.lhs(), assignment.rhs(), ns);
+    raw_assignment(state, assignment.lhs(), assignment.rhs(), ns);    
   }
   constant_propagation = old_cp;
 }
@@ -1012,7 +1013,7 @@ void symex_assertion_sumt::store_return_value(
   // Emit the assignment
   bool old_cp = constant_propagation;
   constant_propagation = false;
-  raw_assignment(state, assignment.lhs(), assignment.lhs(), assignment.rhs(), ns);
+  raw_assignment(state, assignment.lhs(), assignment.rhs(), ns);
   constant_propagation = old_cp;
 }
 /*******************************************************************
@@ -1204,6 +1205,7 @@ void symex_assertion_sumt::fill_inverted_summary(
   
   partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION, 0);
   
+  std::cout << ";; Call test 123 " << std::endl;
   partition_iface.share_symbols(inlined_iface);
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
@@ -1453,13 +1455,13 @@ irep_idt symex_assertion_sumt::get_current_l2_name(statet &state, const irep_idt
 \*******************************************************************/
 void symex_assertion_sumt::raw_assignment(
         statet &state,
-        exprt &lhs_orig,
         exprt &lhs,
         const exprt &rhs,
         const namespacet &ns)
         //bool record_value) = false always!
 {
-
+  exprt lhs_orig(lhs); // to modify only here
+  
   symbol_exprt rhs_symbol = to_symbol_expr(rhs);
   rhs_symbol.set(ID_identifier, get_current_l2_name(state, rhs_symbol.get_identifier()));
 
@@ -1476,10 +1478,10 @@ void symex_assertion_sumt::raw_assignment(
   // KE: it seems that the field of original names isn't in use any more in L2, but is in the state class
   // const irep_idt &identifier = lhs.get(ID_identifier);
   // irep_idt l1_identifier=state.level2.get_original_name(identifier);
-  irep_idt l1_identifier = lhs_orig.get(ID_identifier);
   state.get_original_name(lhs_orig);
+  irep_idt l1_identifier = lhs_orig.get(ID_identifier);
 
-  state.propagation.remove(l1_identifier);
+  state.propagation.remove(l1_identifier); // pure name
   // KE: old code, not sure about it!
   
   // update value sets

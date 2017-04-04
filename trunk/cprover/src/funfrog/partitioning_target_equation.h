@@ -262,10 +262,10 @@ protected:
     const partition_ifacet& iface = partition.get_iface();
     common_symbols.reserve(iface.argument_symbols.size() +
       iface.out_arg_symbols.size()+4);
-    common_symbols = iface.argument_symbols;
+    common_symbols = iface.argument_symbols; // Add SSA instances of funcs
     common_symbols.insert(common_symbols.end(),
       iface.out_arg_symbols.begin(),
-      iface.out_arg_symbols.end());
+      iface.out_arg_symbols.end()); // Add globals
     common_symbols.push_back(iface.callstart_symbol);
     common_symbols.push_back(iface.callend_symbol);
     if (iface.assertion_in_subtree) {
