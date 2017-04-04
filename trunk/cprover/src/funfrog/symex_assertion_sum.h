@@ -238,7 +238,8 @@ private:
   void mark_accessed_global_symbols(
     const irep_idt &function_id,
     statet &state,
-    partition_ifacet &partition_iface);
+    partition_ifacet &partition_iface,
+    bool is_init_stage);
 
   // L2 rename - new code
   void level2_rename_init(statet &state, const symbol_exprt &expr);

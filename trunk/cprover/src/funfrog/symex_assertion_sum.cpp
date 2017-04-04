@@ -584,7 +584,7 @@ void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
   mark_argument_symbols(goto_function.type, state, partition_iface);
 
   // Mark accessed global variables as well
-  mark_accessed_global_symbols(identifier, state, partition_iface);
+  mark_accessed_global_symbols(identifier, state, partition_iface, false);
   
   // FIXME: We need to store the SSA_steps.size() here, so that 
   // SSA_exec_order is correctly ordered.
@@ -645,7 +645,8 @@ void symex_assertion_sumt::assign_function_arguments(
   mark_argument_symbols(goto_function.type, state, partition_iface);
 
   // Mark accessed global variables as well
-  mark_accessed_global_symbols(identifier, state, partition_iface);
+  bool is_init_stage = (id2string(identifier).find("__CPROVER_initialize") != std::string::npos);
+  mark_accessed_global_symbols(identifier, state, partition_iface, is_init_stage);
   
   // FIXME: We need to store the SSA_steps.size() here, so that 
   // SSA_exec_order is correctly ordered.
@@ -740,7 +741,8 @@ void symex_assertion_sumt::mark_argument_symbols(
 void symex_assertion_sumt::mark_accessed_global_symbols(
     const irep_idt &function_id,
     statet &state,
-    partition_ifacet &partition_iface) 
+    partition_ifacet &partition_iface,
+    bool is_init_stage) 
 {
   const function_infot::lex_sorted_idst& globals_accessed = 
     summarization_context.get_function_info(function_id).get_accessed_globals();
@@ -753,16 +755,18 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
           it != globals_accessed.end();
           ++it) 
   {
-    // The symbol is not yet in l2 renaming
-    if (state.level2.current_names.find(*it) == state.level2.current_names.end()) {
+    // The symbol is not yet in l2 renaming - Add it during init stage only
+    if (is_init_stage) {
+        assert (state.level2.current_names.find(*it) == state.level2.current_names.end());
         // Original code: state.level2.rename(*it, 0);
         level2_rename_init(state, (ns.lookup(*it)).symbol_expr());
              
-        // GF: should there be assert(0) ?
+        // GF: should there be assert(0) ? 
+        // KE: only if the init stage can init - else will assert after this if
 #       ifdef DEBUG_PARTITIONING
             std::cerr << "\n * WARNING: Forcing '" << *it << 
               "' into l2 renaming. " << std::endl;
-#       endif
+#       endif    
     }
 
     // Check we have items in *it location
