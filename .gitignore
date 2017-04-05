@@ -3,6 +3,10 @@
 # /
 /*.d
 /*.o
+/*.swp
+/*.c~
+/*.h~
+/*.txt~
 
 # /cprover/
 /trunk/cprover/*.d
