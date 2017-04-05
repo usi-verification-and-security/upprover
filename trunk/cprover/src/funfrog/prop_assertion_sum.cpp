@@ -248,7 +248,7 @@ void build_exec_order_goto_trace(
 
 void prop_assertion_sumt::error_trace(const prop_conv_solvert &prop_conv, const namespacet &ns)
 {
-  status() << ("Building error trace");
+  status() << "Building error trace" << eom;
 
   goto_tracet goto_trace;
 
