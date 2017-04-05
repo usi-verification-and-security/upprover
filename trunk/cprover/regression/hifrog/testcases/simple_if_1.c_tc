@@ -1,0 +1,9 @@
+../benchmarks/simple_if_1.c --logic prop
+0
+../benchmarks/simple_if_1.c --logic qflra
+0
+../benchmarks/simple_if_1.c --logic qfcuf --theoref
+0
+../benchmarks/simple_if_1.c --logic qfcuf --theoref --custom 0,1,2,3,4,5,6,7,8,
+0
+
