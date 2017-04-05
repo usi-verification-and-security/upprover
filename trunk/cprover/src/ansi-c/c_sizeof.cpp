@@ -32,7 +32,7 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
   // this implementation will eventually be replaced
   // by size_of_expr in util/pointer_offset_size.h
   exprt dest;
-  
+
   if(type.id()==ID_signedbv ||
      type.id()==ID_unsignedbv ||
      type.id()==ID_floatbv ||
@@ -43,7 +43,8 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
     // See special treatment for bit-fields below.
     std::size_t bits=to_bitvector_type(type).get_width();
     std::size_t bytes=bits/8;
-    if((bits%8)!=0) bytes++;
+    if((bits%8)!=0)
+      bytes++;
     dest=from_integer(bytes, size_type());
   }
   else if(type.id()==ID_incomplete_c_enum)
@@ -66,10 +67,11 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
     // the following is an MS extension
     if(type.get_bool(ID_C_ptr32))
       return from_integer(4, size_type());
-             
+
     std::size_t bits=config.ansi_c.pointer_width;
     std::size_t bytes=bits/8;
-    if((bits%8)!=0) bytes++;
+    if((bits%8)!=0)
+      bytes++;
     dest=from_integer(bytes, size_type());
   }
   else if(type.id()==ID_bool)
@@ -82,7 +84,7 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
   {
     const exprt &size_expr=
       to_array_type(type).size();
-      
+
     if(size_expr.is_nil())
     {
       // treated like an empty array
@@ -119,17 +121,14 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
       to_struct_type(type).components();
 
     dest=from_integer(0, size_type());
-    
+
     mp_integer bit_field_width=0;
 
-    for(struct_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
+    for(const auto &comp : components)
     {
-      const typet &sub_type=ns.follow(it->type());
+      const typet &sub_type=ns.follow(comp.type());
 
-      if(it->get_bool(ID_is_type))
+      if(comp.get_bool(ID_is_type))
       {
       }
       else if(sub_type.id()==ID_code)
@@ -151,7 +150,7 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
         dest=plus_exprt(dest, tmp);
       }
     }
-    
+
     if(bit_field_width!=0)
       dest=plus_exprt(dest, from_integer(bit_field_width/8, size_type()));
   }
@@ -159,20 +158,17 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
   {
     // the empty union will have size 0
     exprt max_size=from_integer(0, size_type());
-    
+
     const union_typet::componentst &components=
       to_union_type(type).components();
 
-    for(union_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
+    for(const auto &comp : components)
     {
-      if(it->get_bool(ID_is_type) || it->type().id()==ID_code)
+      if(comp.get_bool(ID_is_type) || comp.type().id()==ID_code)
         continue;
 
-      const typet &sub_type=it->type();
-      
+      const typet &sub_type=comp.type();
+
       exprt tmp;
 
       if(sub_type.id()==ID_c_bit_field)
@@ -212,7 +208,7 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
     // simply multiply
     const exprt &size_expr=
       to_vector_type(type).size();
-      
+
     exprt tmp_dest=sizeof_rec(type.subtype());
 
     if(tmp_dest.is_nil())
@@ -258,7 +254,7 @@ exprt c_sizeoft::sizeof_rec(const typet &type)
     // meaningful size.
     dest.make_nil();
   }
-  
+
   return dest;
 }
 
@@ -282,26 +278,23 @@ exprt c_sizeoft::c_offsetof(
     type.components();
 
   exprt dest=from_integer(0, size_type());
-  
+
   mp_integer bit_field_width=0;
 
-  for(struct_typet::componentst::const_iterator
-      it=components.begin();
-      it!=components.end();
-      it++)
+  for(const auto &comp : components)
   {
-    if(it->get_name()==component_name)
+    if(comp.get_name()==component_name)
     {
       // done
       if(bit_field_width!=0)
         dest=plus_exprt(dest, from_integer(bit_field_width/8, size_type()));
       return dest;
     }
-  
-    if(it->get_bool(ID_is_type))
+
+    if(comp.get_bool(ID_is_type))
       continue;
-      
-    const typet &sub_type=ns.follow(it->type());
+
+    const typet &sub_type=ns.follow(comp.type());
 
     if(sub_type.id()==ID_code)
     {
@@ -369,4 +362,3 @@ exprt c_offsetof(
   simplify(tmp, ns);
   return tmp;
 }
-

@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 #include <iterator>
 
@@ -5,6 +14,7 @@
 
 #include <goto-programs/goto_program.h>
 
+#include <cegis/instrument/literals.h>
 #include <cegis/invariant/options/invariant_program.h>
 #include <cegis/invariant/util/invariant_constraint_variables.h>
 
@@ -26,13 +36,11 @@ bool is_local_or_constant(const symbolt &symbol)
   return is_const(symbol.type);
 }
 
-#define INVARIANT_CONSTANT_PREFIX "INVARIANT_CONSTANT_"
-
 bool is_meta(const irep_idt &id, const typet &type)
 {
   if (ID_code == type.id()) return true;
   const std::string &name=id2string(id);
-  if (std::string::npos != name.find(INVARIANT_CONSTANT_PREFIX)) return true;
+  if (std::string::npos != name.find(CEGIS_CONSTANT_PREFIX)) return true;
   if (std::string::npos != name.find("#return_value")) return true;
   return std::string::npos != name.find(CPROVER_PREFIX);
 }
@@ -41,7 +49,7 @@ class counterexample_variable_collectort
 {
   invariant_symbol_set &vars;
 public:
-  counterexample_variable_collectort(invariant_symbol_set &vars) :
+  explicit counterexample_variable_collectort(invariant_symbol_set &vars) :
       vars(vars)
   {
   }

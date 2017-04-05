@@ -6,16 +6,19 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#ifndef CPROVER_ANSI_C_C_SIZEOF_H
+#define CPROVER_ANSI_C_C_SIZEOF_H
+
 #include <util/namespace.h>
 #include <util/expr.h>
 
 class c_sizeoft
 {
 public:
-  c_sizeoft(const namespacet &_ns):ns(_ns)
+  explicit c_sizeoft(const namespacet &_ns):ns(_ns)
   {
   }
-  
+
   virtual ~c_sizeoft()
   {
   }
@@ -43,3 +46,5 @@ exprt c_offsetof(
   const struct_typet &src,
   const irep_idt &component_name,
   const namespacet &ns);
+
+#endif // CPROVER_ANSI_C_C_SIZEOF_H

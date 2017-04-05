@@ -13,7 +13,6 @@ Author: Daniel Kroening, kroening@kroening.com
 // convert expression to boolean formula
 //
 
-#include <util/hash_cont.h>
 #include <util/mp_arith.h>
 #include <util/expr.h>
 #include <util/byte_operators.h>
@@ -42,28 +41,28 @@ public:
     map(_prop, _ns, boolbv_width)
   {
   }
- 
-  virtual const bvt& convert_bv(const exprt &expr); // check cache
-  virtual void convert_bitvector(const exprt &expr, bvt &bv); // no cache
+
+  virtual const bvt &convert_bv(const exprt &expr); // check cache
+  virtual bvt convert_bitvector(const exprt &expr); // no cache
 
   // overloading
-  virtual exprt get(const exprt &expr) const;
-  virtual void set_to(const exprt &expr, bool value);
-  virtual void print_assignment(std::ostream &out) const;
-  
-  virtual void clear_cache()
+  exprt get(const exprt &expr) const override;
+  void set_to(const exprt &expr, bool value) override;
+  void print_assignment(std::ostream &out) const override;
+
+  void clear_cache() override
   {
     SUB::clear_cache();
     bv_cache.clear();
   }
 
-  virtual void post_process()
+  void post_process() override
   {
     post_process_quantifiers();
     functions.post_process();
     SUB::post_process();
   }
-  
+
   // get literals for variables/expressions, if available
   virtual bool literal(
     const exprt &expr,
@@ -71,7 +70,7 @@ public:
     literalt &literal) const;
 
   using arrayst::literal;
-    
+
   typedef enum { U_NONE, U_ALL, U_AUTO } unbounded_arrayt;
   unbounded_arrayt unbounded_array;
 
@@ -79,9 +78,9 @@ public:
   {
     return get_value(bv, 0, bv.size());
   }
-  
+
   mp_integer get_value(const bvt &bv, std::size_t offset, std::size_t width);
-  
+
   const boolbv_mapt &get_map() const
   {
     return map;
@@ -91,28 +90,34 @@ public:
 
 protected:
   bv_utilst bv_utils;
-  
+
   // uninterpreted functions
   functionst functions;
 
   // the mapping from identifiers to literals
-  boolbv_mapt map;  
-  
+  boolbv_mapt map;
+
   // overloading
-  virtual literalt convert_rest(const exprt &expr);
+  virtual literalt convert_rest(const exprt &expr) override;
   virtual bool boolbv_set_equality_to_true(const equal_exprt &expr);
-  
+
+  // NOLINTNEXTLINE(readability/identifiers)
   typedef arrayst SUB;
 
-  void conversion_failed(const exprt &expr, bvt &bv);
+  void conversion_failed(const exprt &expr, bvt &bv)
+  {
+    bv=conversion_failed(expr);
+  }
 
-  typedef hash_map_cont<const exprt, bvt, irep_hash> bv_cachet;
+  bvt conversion_failed(const exprt &expr);
+
+  typedef std::unordered_map<const exprt, bvt, irep_hash> bv_cachet;
   bv_cachet bv_cache;
 
   bool type_conversion(
     const typet &src_type, const bvt &src,
     const typet &dest_type, bvt &dest);
-  
+
   virtual literalt convert_bv_rel(const exprt &expr);
   virtual literalt convert_typecast(const typecast_exprt &expr);
   virtual literalt convert_reduction(const unary_exprt &expr);
@@ -120,50 +125,53 @@ protected:
   virtual literalt convert_extractbit(const extractbit_exprt &expr);
   virtual literalt convert_overflow(const exprt &expr);
   virtual literalt convert_equality(const equal_exprt &expr);
-  virtual literalt convert_verilog_case_equality(const binary_relation_exprt &expr);
+  virtual literalt convert_verilog_case_equality(
+    const binary_relation_exprt &expr);
   virtual literalt convert_ieee_float_rel(const exprt &expr);
   virtual literalt convert_quantifier(const exprt &expr);
 
-  virtual void convert_index(const exprt &array, const mp_integer &index, bvt &bv);
-  virtual void convert_index(const index_exprt &expr, bvt &bv);
-  virtual void convert_byte_extract(const byte_extract_exprt &expr, bvt &bv);
-  virtual void convert_byte_update(const byte_update_exprt &expr, bvt &bv);
-  virtual void convert_constraint_select_one(const exprt &expr, bvt &bv);
-  virtual void convert_if(const if_exprt &expr, bvt &bv);
-  virtual void convert_struct(const struct_exprt &expr, bvt &bv);
-  virtual void convert_array(const exprt &expr, bvt &bv);
-  virtual void convert_vector(const exprt &expr, bvt &bv);
-  virtual void convert_complex(const exprt &expr, bvt &bv);
-  virtual void convert_complex_real(const exprt &expr, bvt &bv);
-  virtual void convert_complex_imag(const exprt &expr, bvt &bv);
-  virtual void convert_lambda(const exprt &expr, bvt &bv);
-  virtual void convert_array_of(const array_of_exprt &expr, bvt &bv);
-  virtual void convert_union(const union_exprt &expr, bvt &bv);
-  virtual void convert_typecast(const typecast_exprt &expr, bvt &bv);
-  virtual void convert_add_sub(const exprt &expr, bvt &bv);
-  virtual void convert_mult(const exprt &expr, bvt &bv);
-  virtual void convert_div(const div_exprt &expr, bvt &bv);
-  virtual void convert_mod(const mod_exprt &expr, bvt &bv);
-  virtual void convert_floatbv_op(const exprt &expr, bvt &bv);
-  virtual void convert_floatbv_typecast(const floatbv_typecast_exprt &expr, bvt &bv);
-  virtual void convert_member(const member_exprt &expr, bvt &bv);
-  virtual void convert_with(const exprt &expr, bvt &bv);
-  virtual void convert_update(const exprt &expr, bvt &bv);
-  virtual void convert_case(const exprt &expr, bvt &bv);
-  virtual void convert_cond(const exprt &expr, bvt &bv);
-  virtual void convert_shift(const binary_exprt &expr, bvt &bv);
-  virtual void convert_bitwise(const exprt &expr, bvt &bv);
-  virtual void convert_unary_minus(const unary_exprt &expr, bvt &bv);
-  virtual void convert_abs(const exprt &expr, bvt &bv);
-  virtual void convert_concatenation(const exprt &expr, bvt &bv);
-  virtual void convert_replication(const replication_exprt &expr, bvt &bv);
-  virtual void convert_bv_literals(const exprt &expr, bvt &bv);
-  virtual void convert_constant(const constant_exprt &expr, bvt &bv);
-  virtual void convert_extractbits(const extractbits_exprt &expr, bvt &bv);
-  virtual void convert_symbol(const exprt &expr, bvt &bv);
-  virtual void convert_reduction(const unary_exprt &expr, bvt &bv);
-  virtual void convert_not(const not_exprt &expr, bvt &bv);
-  virtual void convert_power(const binary_exprt &expr, bvt &bv);
+  virtual bvt convert_index(const exprt &array, const mp_integer &index);
+  virtual bvt convert_index(const index_exprt &expr);
+  virtual bvt convert_byte_extract(const byte_extract_exprt &expr);
+  virtual bvt convert_byte_update(const byte_update_exprt &expr);
+  virtual bvt convert_constraint_select_one(const exprt &expr);
+  virtual bvt convert_if(const if_exprt &expr);
+  virtual bvt convert_struct(const struct_exprt &expr);
+  virtual bvt convert_array(const exprt &expr);
+  virtual bvt convert_vector(const exprt &expr);
+  virtual bvt convert_complex(const exprt &expr);
+  virtual bvt convert_complex_real(const exprt &expr);
+  virtual bvt convert_complex_imag(const exprt &expr);
+  virtual bvt convert_lambda(const exprt &expr);
+  virtual bvt convert_array_of(const array_of_exprt &expr);
+  virtual bvt convert_union(const union_exprt &expr);
+  virtual bvt convert_bv_typecast(const typecast_exprt &expr);
+  virtual bvt convert_add_sub(const exprt &expr);
+  virtual bvt convert_mult(const exprt &expr);
+  virtual bvt convert_div(const div_exprt &expr);
+  virtual bvt convert_mod(const mod_exprt &expr);
+  virtual bvt convert_floatbv_op(const exprt &expr);
+  virtual bvt convert_floatbv_typecast(const floatbv_typecast_exprt &expr);
+  virtual bvt convert_member(const member_exprt &expr);
+  virtual bvt convert_with(const exprt &expr);
+  virtual bvt convert_update(const exprt &expr);
+  virtual bvt convert_case(const exprt &expr);
+  virtual bvt convert_cond(const exprt &expr);
+  virtual bvt convert_shift(const binary_exprt &expr);
+  virtual bvt convert_bitwise(const exprt &expr);
+  virtual bvt convert_unary_minus(const unary_exprt &expr);
+  virtual bvt convert_abs(const exprt &expr);
+  virtual bvt convert_concatenation(const exprt &expr);
+  virtual bvt convert_replication(const replication_exprt &expr);
+  virtual bvt convert_bv_literals(const exprt &expr);
+  virtual bvt convert_constant(const constant_exprt &expr);
+  virtual bvt convert_extractbits(const extractbits_exprt &expr);
+  virtual bvt convert_symbol(const exprt &expr);
+  virtual bvt convert_bv_reduction(const unary_exprt &expr);
+  virtual bvt convert_not(const not_exprt &expr);
+  virtual bvt convert_power(const binary_exprt &expr);
+  virtual bvt convert_function_application(
+    const function_application_exprt &expr);
 
   virtual void make_bv_expr(const typet &type, const bvt &bv, exprt &dest);
   virtual void make_free_bv_expr(const typet &type, exprt &dest);
@@ -211,10 +219,8 @@ protected:
     const exprt &new_value,
     bvt &bv);
 
-  virtual exprt bv_get_unbounded_array(
-    const irep_idt &identifier,
-    const array_typet &type) const;
-                    
+  virtual exprt bv_get_unbounded_array(const exprt &) const;
+
   virtual exprt bv_get_rec(
     const bvt &bv,
     const std::vector<bool> &unknown,
@@ -223,11 +229,10 @@ protected:
 
   exprt bv_get(const bvt &bv, const typet &type) const;
   exprt bv_get_cache(const exprt &expr) const;
-                          
-  // unbounded arrays
 
-  bool is_unbounded_array(const typet &type) const;
-  
+  // unbounded arrays
+  bool is_unbounded_array(const typet &type) const override;
+
   // quantifier instantiations
   class quantifiert
   {
@@ -238,11 +243,14 @@ protected:
 
   typedef std::list<quantifiert> quantifier_listt;
   quantifier_listt quantifier_list;
-  
+
   void post_process_quantifiers();
-  
+
   typedef std::vector<std::size_t> offset_mapt;
   void build_offset_map(const struct_typet &src, offset_mapt &dest);
+
+  // strings
+  numbering<irep_idt> string_numbering;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_FLATTENING_BOOLBV_H

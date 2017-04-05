@@ -40,97 +40,89 @@ bool write_goto_binary_v3(
   {
     // Since version 2, symbols are not converted to ireps,
     // instead they are saved in a custom binary format
-    
-    const symbolt &sym = it->second;        
-    
+
+    const symbolt &sym = it->second;
+
     irepconverter.reference_convert(sym.type, out);
     irepconverter.reference_convert(sym.value, out);
     irepconverter.reference_convert(sym.location, out);
-    
+
     irepconverter.write_string_ref(out, sym.name);
     irepconverter.write_string_ref(out, sym.module);
     irepconverter.write_string_ref(out, sym.base_name);
     irepconverter.write_string_ref(out, sym.mode);
     irepconverter.write_string_ref(out, sym.pretty_name);
-    
+
     write_gb_word(out, 0); // old: sym.ordering
 
-    unsigned flags=0;    
-    flags = (flags << 1) | (int)sym.is_type; 
-    flags = (flags << 1) | (int)sym.is_property;
-    flags = (flags << 1) | (int)sym.is_macro;
-    flags = (flags << 1) | (int)sym.is_exported;
-    flags = (flags << 1) | (int)sym.is_input;
-    flags = (flags << 1) | (int)sym.is_output;
-    flags = (flags << 1) | (int)sym.is_state_var;
-    flags = (flags << 1) | (int)sym.is_parameter;
-    flags = (flags << 1) | (int)sym.is_auxiliary;
-    flags = (flags << 1) | (int)false; // sym.binding;
-    flags = (flags << 1) | (int)sym.is_lvalue;
-    flags = (flags << 1) | (int)sym.is_static_lifetime;
-    flags = (flags << 1) | (int)sym.is_thread_local;
-    flags = (flags << 1) | (int)sym.is_file_local;
-    flags = (flags << 1) | (int)sym.is_extern;
-    flags = (flags << 1) | (int)sym.is_volatile;
-    
+    unsigned flags=0;
+    flags = (flags << 1) | static_cast<int>(sym.is_weak);
+    flags = (flags << 1) | static_cast<int>(sym.is_type);
+    flags = (flags << 1) | static_cast<int>(sym.is_property);
+    flags = (flags << 1) | static_cast<int>(sym.is_macro);
+    flags = (flags << 1) | static_cast<int>(sym.is_exported);
+    flags = (flags << 1) | static_cast<int>(sym.is_input);
+    flags = (flags << 1) | static_cast<int>(sym.is_output);
+    flags = (flags << 1) | static_cast<int>(sym.is_state_var);
+    flags = (flags << 1) | static_cast<int>(sym.is_parameter);
+    flags = (flags << 1) | static_cast<int>(sym.is_auxiliary);
+    flags = (flags << 1) | static_cast<int>(false); // sym.binding;
+    flags = (flags << 1) | static_cast<int>(sym.is_lvalue);
+    flags = (flags << 1) | static_cast<int>(sym.is_static_lifetime);
+    flags = (flags << 1) | static_cast<int>(sym.is_thread_local);
+    flags = (flags << 1) | static_cast<int>(sym.is_file_local);
+    flags = (flags << 1) | static_cast<int>(sym.is_extern);
+    flags = (flags << 1) | static_cast<int>(sym.is_volatile);
+
     write_gb_word(out, flags);
   }
 
   // now write functions, but only those with body
 
   unsigned cnt=0;
-  forall_goto_functions(it, functions)  
+  forall_goto_functions(it, functions)
     if(it->second.body_available())
       cnt++;
 
   write_gb_word(out, cnt);
 
-  for(goto_functionst::function_mapt::const_iterator
-      it=functions.function_map.begin();
-      it!=functions.function_map.end();
-      it++)
+  for(const auto &fct : functions.function_map)
   {
-    if(it->second.body_available())
-    {      
+    if(fct.second.body_available())
+    {
       // Since version 2, goto functions are not converted to ireps,
-      // instead they are saved in a custom binary format      
-      
-      write_gb_string(out, id2string(it->first)); // name      
-      write_gb_word(out, it->second.body.instructions.size()); // # instructions
-      
-      forall_goto_program_instructions(i_it, it->second.body)
+      // instead they are saved in a custom binary format
+
+      write_gb_string(out, id2string(fct.first)); // name
+      write_gb_word(out, fct.second.body.instructions.size()); // # instructions
+
+      forall_goto_program_instructions(i_it, fct.second.body)
       {
         const goto_programt::instructiont &instruction = *i_it;
-        
+
         irepconverter.reference_convert(instruction.code, out);
         irepconverter.write_string_ref(out, instruction.function);
         irepconverter.reference_convert(instruction.source_location, out);
         write_gb_word(out, (long)instruction.type);
-        irepconverter.reference_convert(instruction.guard, out);        
+        irepconverter.reference_convert(instruction.guard, out);
         irepconverter.write_string_ref(out, irep_idt()); // former event
         write_gb_word(out, instruction.target_number);
-                
+
         write_gb_word(out, instruction.targets.size());
 
-        for(goto_programt::targetst::const_iterator
-            t_it=instruction.targets.begin();
-            t_it!=instruction.targets.end();
-            t_it++)
-          write_gb_word(out, (*t_it)->target_number);
-          
+        for(const auto &t_it : instruction.targets)
+          write_gb_word(out, t_it->target_number);
+
         write_gb_word(out, instruction.labels.size());
 
-        for(goto_programt::instructiont::labelst::const_iterator
-            l_it=instruction.labels.begin();
-            l_it!=instruction.labels.end();
-            l_it++)
-          irepconverter.write_string_ref(out, *l_it);
+        for(const auto &l_it : instruction.labels)
+          irepconverter.write_string_ref(out, l_it);
       }
     }
   }
 
-  //irepconverter.output_map(f);
-  //irepconverter.output_string_map(f);  
+  // irepconverter.output_map(f);
+  // irepconverter.output_string_map(f);
 
   return false;
 }
@@ -158,25 +150,25 @@ bool write_goto_binary(
   write_gb_word(out, version);
 
   irep_serializationt::ireps_containert irepc;
-  irep_serializationt irepconverter(irepc);    
-    
+  irep_serializationt irepconverter(irepc);
+
   switch(version)
   {
-  case 1: 
+  case 1:
     throw "version 1 no longer supported";
 
   case 2:
     throw "version 2 no longer supported";
-    
+
   case 3:
     return write_goto_binary_v3(
       out, lsymbol_table, functions,
       irepconverter);
 
-  default: 
-    throw "Unknown goto binary version";
+  default:
+    throw "unknown goto binary version";
   }
-  
+
   return false;
 }
 
@@ -198,16 +190,15 @@ bool write_goto_binary(
   const goto_functionst &goto_functions,
   message_handlert &message_handler)
 {
-  std::ofstream out(filename.c_str(), std::ios::binary);
+  std::ofstream out(filename, std::ios::binary);
 
   if(!out)
   {
     messaget message(message_handler);
-    message.error() << 
+    message.error() <<
       "Failed to open `" << filename << "'";
     return true;
   }
 
   return write_goto_binary(out, symbol_table, goto_functions);
 }
-

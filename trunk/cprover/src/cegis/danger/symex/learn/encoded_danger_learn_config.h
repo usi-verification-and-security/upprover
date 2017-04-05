@@ -1,14 +1,14 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_ENCODED_DANGER_LEARN_CONFIG_H_
-#define CEGIS_ENCODED_DANGER_LEARN_CONFIG_H_
+#ifndef CPROVER_CEGIS_DANGER_SYMEX_LEARN_ENCODED_DANGER_LEARN_CONFIG_H
+#define CPROVER_CEGIS_DANGER_SYMEX_LEARN_ENCODED_DANGER_LEARN_CONFIG_H
 
 #include <cegis/value/program_individual.h>
 
@@ -34,7 +34,7 @@ public:
    *
    * @param program
    */
-  encoded_danger_learn_configt(const danger_programt &program);
+  explicit encoded_danger_learn_configt(const danger_programt &program);
 
   /**
    * @brief
@@ -122,4 +122,4 @@ public:
   size_t get_num_consts() const;
 };
 
-#endif /* CEGIS_ENCODED_DANGER_LEARN_CONFIG_H_ */
+#endif // CPROVER_CEGIS_DANGER_SYMEX_LEARN_ENCODED_DANGER_LEARN_CONFIG_H

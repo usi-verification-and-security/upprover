@@ -1,14 +1,14 @@
 /*******************************************************************\
 
-Module: ILP construction for cycles affecting user-assertions 
+Module: ILP construction for cycles affecting user-assertions
         and resolution
 
 Author: Vincent Nimal
 
 \*******************************************************************/
 
-#ifndef CPROVER_FENCE_ASSERT_H
-#define CPROVER_FENCE_ASSERT_H
+#ifndef CPROVER_MUSKETEER_FENCE_ASSERT_H
+#define CPROVER_MUSKETEER_FENCE_ASSERT_H
 
 #include <set>
 
@@ -18,7 +18,7 @@ Author: Vincent Nimal
 
 class instrumentert;
 
-class fence_assert_insertert : public fence_insertert
+class fence_assert_insertert:public fence_insertert
 {
 protected:
   std::set<unsigned> selected_cycles;
@@ -46,4 +46,4 @@ public:
   }
 };
 
-#endif
+#endif // CPROVER_MUSKETEER_FENCE_ASSERT_H

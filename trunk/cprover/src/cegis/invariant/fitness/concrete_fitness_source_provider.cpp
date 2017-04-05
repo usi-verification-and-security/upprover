@@ -1,11 +1,22 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <cstring>
 
 #include <util/substitute.h>
 
 #include <goto-instrument/dump_c.h>
 
-#include <cegis/invariant/meta/literals.h>
-#include <cegis/invariant/symex/learn/invariant_library.h>
+#include <cegis/genetic/program_individual_test_runner_helper.h>
+#include <cegis/instrument/cegis_library.h>
+#include <cegis/instrument/literals.h>
+#include <cegis/danger/meta/literals.h>
 #include <cegis/invariant/fitness/concrete_fitness_source_provider.h>
 
 namespace
@@ -23,8 +34,8 @@ void add_danger_execute(std::string &source, const size_t num_vars,
     const size_t num_consts, const size_t max_prog_size,
     const std::string &exec_func_name)
 {
-  std::string text=get_invariant_library_text(num_vars, num_consts,
-      max_prog_size, exec_func_name);
+  std::string text=get_cegis_library_text(num_vars, num_consts, max_prog_size,
+      exec_func_name);
   substitute(text, "#define opcode program[i].opcode",
       "const opcodet opcode=program[i].opcode;");
   substitute(text, "#line 1 \"<builtin-library>\"",
@@ -58,16 +69,22 @@ bool contains(const std::string &haystack, const std::string &needle)
   return std::string::npos != haystack.find(needle);
 }
 
-bool handle_start(std::string &source, const std::string &line)
+bool handle_start(
+  const goto_functionst &gf,
+  std::string &source,
+  const std::string &line)
 {
-  if ("void _start(void)" != line) return false;
+  std::ostringstream start_sig;
+  start_sig << "void " << gf.entry_point() << "(void)";
+  if(start_sig.str()!=line)
+    return false;
   source+="int main(const int argc, const char * const argv[])\n";
   return true;
 }
 
 bool handle_return_value(const std::string &line)
 {
-  return contains(line, "main#return_value");
+  return contains(line, "main#return_value") || contains(line, "_return'");
 }
 
 #define PROG_PREFIX "  struct " CEGIS_PREFIX "instructiont "
@@ -98,7 +115,9 @@ void replace_danger_execute_size(std::string &line)
 
 void replace_return_values(std::string &line)
 {
+  substitute(line, "OUTPUT(\"return\", return')", "");
   substitute(line, "#return_value", "__return_value");
+  substitute(line, "return'", "__return_value");
 }
 
 void fix_cprover_names(std::string &line)
@@ -199,17 +218,24 @@ bool handle_internals(const std::string &line)
       || "static signed int assert#return_value;" == line;
 }
 
-std::string &post_process(std::string &source, std::stringstream &ss)
+void post_process(
+  const goto_functionst &gf,
+  std::string &source,
+  std::stringstream &ss)
 {
   bool deserialise_initialised=false;
   bool ce_initialised=false;
   for (std::string line; std::getline(ss, line);)
   {
-    if (handle_start(source, line) || handle_return_value(line)
-        || handle_ce_loop(line, ss) || handle_internals(line)
-        || handle_programs(source, deserialise_initialised, line)
-        || handle_x0(source, line) || handle_ce(source, ce_initialised, line)
-        || handle_second_instr_struct(source, line)) continue;
+    if(handle_start(gf, source, line) ||
+       handle_return_value(line) ||
+       handle_ce_loop(line, ss) ||
+       handle_internals(line) ||
+       handle_programs(source, deserialise_initialised, line) ||
+       handle_x0(source, line) ||
+       handle_ce(source, ce_initialised, line) ||
+       handle_second_instr_struct(source, line))
+      continue;
     replace_ce_index(line);
     replace_assume(line);
     fix_cprover_names(line);
@@ -218,7 +244,6 @@ std::string &post_process(std::string &source, std::stringstream &ss)
     source+=line;
     source+='\n';
   }
-  return source;
 }
 
 void add_first_prog_offset(std::string &source, const size_t num_ce_vars)
@@ -234,11 +259,15 @@ std::string &post_process_fitness_source(std::string &result,
     const size_t num_ce_vars, const size_t num_vars, const size_t num_consts,
     const size_t max_prog_size, const std::string &exec)
 {
+  const bool danger=DANGER_EXECUTE == exec;
+  implement_program_individual_deserialise(result, danger);
   const namespacet ns(st);
   std::stringstream ss;
   dump_c(gf, true, ns, ss);
   add_first_prog_offset(result, num_ce_vars);
   add_assume_implementation(result);
   add_danger_execute(result, num_vars, num_consts, max_prog_size, exec);
-  return post_process(result, ss);
+  post_process(gf, result, ss);
+  transform_program_individual_main_to_lib(result, danger);
+  return result;
 }

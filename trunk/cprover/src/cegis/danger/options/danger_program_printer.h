@@ -1,14 +1,14 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_DANGER_PROGRAM_PRINTER_H_
-#define CEGIS_DANGER_PROGRAM_PRINTER_H_
+#ifndef CPROVER_CEGIS_DANGER_OPTIONS_DANGER_PROGRAM_PRINTER_H
+#define CPROVER_CEGIS_DANGER_OPTIONS_DANGER_PROGRAM_PRINTER_H
 
 #include <util/message.h>
 
@@ -25,4 +25,4 @@ void print_danger_program(messaget::mstreamt &os,
     const class danger_programt &program,
     const class danger_goto_solutiont &solution);
 
-#endif /* CEGIS_DANGER_PROGRAM_PRINTER_H_ */
+#endif // CPROVER_CEGIS_DANGER_OPTIONS_DANGER_PROGRAM_PRINTER_H

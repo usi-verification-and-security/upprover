@@ -75,6 +75,23 @@ inline FILE *fopen(const char *filename, const char *mode)
   return fopen_result;
 }
 
+/* FUNCTION: freopen */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+inline FILE* freopen(const char *filename, const char *mode, FILE *f)
+{
+  __CPROVER_HIDE:;
+  (void)*filename;
+  (void)*mode;
+  (void)*f;
+
+  return f;
+}
+
 /* FUNCTION: fclose */
 
 #ifndef __CPROVER_STDIO_H_INCLUDED
@@ -228,11 +245,11 @@ inline int ferror(FILE *stream)
   int return_value;
   (void)*stream;
 
-  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS    
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
                    "feof file must be open");
   #endif
-  
+
   return return_value;
 }
 
@@ -296,11 +313,12 @@ inline int fflush(FILE *stream)
   // just return nondet
   __CPROVER_HIDE:;
   int return_value;
-  (void)*stream;
+  (void)stream;
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
-  __CPROVER_assert(__CPROVER_get_must(stream, "open"),
-                   "fflush file must be open");
+  if(stream)
+    __CPROVER_assert(__CPROVER_get_must(stream, "open"),
+                     "fflush file must be open");
   #endif
 
   return return_value;
@@ -343,6 +361,8 @@ inline int fgetc(FILE *stream)
   // it's a byte or EOF (-1)
   __CPROVER_assume(return_value>=-1 && return_value<=255);
 
+  __CPROVER_input("fgetc", return_value);
+
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
                    "fgetc file must be open");
@@ -371,6 +391,9 @@ inline int getc(FILE *stream)
 
   // It's a byte or EOF, which we fix to -1.
   __CPROVER_assume(return_value>=-1 && return_value<=255);
+
+  __CPROVER_input("getc", return_value);
+
   return return_value;
 }
 
@@ -387,6 +410,7 @@ inline int getchar()
   int return_value;
   // it's a byte or EOF
   __CPROVER_assume(return_value>=-1 && return_value<=255);
+  __CPROVER_input("getchar", return_value);
   return return_value;
 }
 
@@ -407,6 +431,8 @@ inline int getw(FILE *stream)
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
                    "getw file must be open");
   #endif
+
+  __CPROVER_input("getw", return_value);
 
   // it's any int, no restriction
   return return_value;
@@ -521,7 +547,7 @@ void perror(const char *s)
     if(s[0]!=0)
       printf("%s: ", s);
   }
-  
+
   // TODO: print errno error
 }
 
@@ -696,6 +722,7 @@ inline int fprintf(FILE *stream, const char *restrict format, ...)
 inline int vfprintf(FILE *stream, const char *restrict format, va_list arg)
 {
   __CPROVER_HIDE:;
+
   int result;
   (void)*stream;
   (void)*format;
@@ -708,4 +735,3 @@ inline int vfprintf(FILE *stream, const char *restrict format, va_list arg)
 
   return result;
 }
-

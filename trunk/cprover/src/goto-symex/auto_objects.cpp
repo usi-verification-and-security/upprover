@@ -6,7 +6,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/i2string.h>
 #include <util/prefix.h>
 #include <util/cprover_prefix.h>
 #include <util/symbol_table.h>
@@ -29,11 +28,11 @@ Function: goto_symext::make_auto_object
 exprt goto_symext::make_auto_object(const typet &type)
 {
   dynamic_counter++;
-  
+
   // produce auto-object symbol
   symbolt symbol;
 
-  symbol.base_name="auto_object"+i2string(dynamic_counter);
+  symbol.base_name="auto_object"+std::to_string(dynamic_counter);
   symbol.name="symex::"+id2string(symbol.base_name);
   symbol.is_lvalue=true;
   symbol.type=type;
@@ -61,21 +60,17 @@ void goto_symext::initialize_auto_object(
   statet &state)
 {
   const typet &type=ns.follow(expr.type());
-  
+
   if(type.id()==ID_struct)
   {
     const struct_typet &struct_type=to_struct_type(type);
-    const struct_typet::componentst &components=struct_type.components();
-    
-    for(struct_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
+
+    for(const auto &comp : struct_type.components())
     {
       member_exprt member_expr;
       member_expr.struct_op()=expr;
-      member_expr.set_component_name(it->get_name());
-      member_expr.type()=it->type();
+      member_expr.set_component_name(comp.get_name());
+      member_expr.type()=comp.type();
 
       initialize_auto_object(member_expr, state);
     }
@@ -84,14 +79,14 @@ void goto_symext::initialize_auto_object(
   {
     const pointer_typet &pointer_type=to_pointer_type(type);
     const typet &subtype=ns.follow(type.subtype());
-    
+
     // we don't like function pointers and
     // we don't like void *
     if(subtype.id()!=ID_code &&
        subtype.id()!=ID_empty)
     {
       // could be NULL nondeterministically
-      
+
       address_of_exprt address_of_expr=
         address_of_exprt(make_auto_object(type.subtype()));
 
@@ -99,7 +94,7 @@ void goto_symext::initialize_auto_object(
         side_effect_expr_nondett(bool_typet()),
         null_pointer_exprt(pointer_type),
         address_of_expr);
-      
+
       code_assignt assignment(expr, rhs);
       symex_assign_rec(state, assignment);
     }
@@ -127,12 +122,12 @@ void goto_symext::trigger_auto_object(
   {
     const ssa_exprt &ssa_expr=to_ssa_expr(expr);
     const irep_idt &obj_identifier=ssa_expr.get_object_name();
-    
+
     if(obj_identifier!="goto_symex::\\guard")
     {
       const symbolt &symbol=
         ns.lookup(obj_identifier);
-        
+
       if(has_prefix(id2string(symbol.base_name), "auto_object"))
       {
         // done already?

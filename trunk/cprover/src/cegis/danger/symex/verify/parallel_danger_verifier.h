@@ -1,14 +1,14 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_PARALLEL_DANGER_VERIFIER_H_
-#define CEGIS_PARALLEL_DANGER_VERIFIER_H_
+#ifndef CPROVER_CEGIS_DANGER_SYMEX_VERIFY_PARALLEL_DANGER_VERIFIER_H
+#define CPROVER_CEGIS_DANGER_SYMEX_VERIFY_PARALLEL_DANGER_VERIFIER_H
 
 #include <cegis/danger/symex/verify/danger_verify_config.h>
 
@@ -94,6 +94,17 @@ public:
    * @return <code>true</code> if the last solution holds, <code>false</code> otherwise.
    */
   bool success() const;
+
+  /**
+   * @brief
+   *
+   * @details
+   *
+   * @param counterexample
+   */
+  void show_counterexample(
+      messaget::mstreamt &os,
+      const counterexamplet &counterexample) const;
 };
 
-#endif /* CEGIS_PARALLEL_DANGER_VERIFIER_H_ */
+#endif // CPROVER_CEGIS_DANGER_SYMEX_VERIFY_PARALLEL_DANGER_VERIFIER_H

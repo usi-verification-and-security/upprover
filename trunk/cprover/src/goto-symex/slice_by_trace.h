@@ -14,12 +14,13 @@ Author: Alex Groce (agroce@gmail.com)
 class symex_slice_by_tracet
 {
 public:
-  symex_slice_by_tracet(const namespacet &_ns):ns(_ns)
+  explicit symex_slice_by_tracet(const namespacet &_ns):ns(_ns)
   {
   }
 
-  void slice_by_trace(std::string trace_files,
-                      symex_target_equationt &equation);
+  void slice_by_trace(
+    std::string trace_files,
+    symex_target_equationt &equation);
 
  protected:
   const namespacet &ns;
@@ -34,11 +35,11 @@ public:
   event_tracet sigma;
 
   typedef std::vector<std::vector<irep_idt> > value_tracet;
-  
+
   value_tracet sigma_vals;
-  
+
   typedef std::vector<exprt> trace_conditionst;
-  
+
   trace_conditionst t;
 
   std::set<exprt> sliced_guards;
@@ -56,7 +57,7 @@ public:
   bool parse_alphabet(std::string read_line);
 
   void parse_events(std::string read_line);
-  
+
   void compute_ts_fd(symex_target_equationt &equation);
 
   void compute_ts_back(symex_target_equationt &equation);
@@ -69,9 +70,9 @@ public:
 
   void assign_merges(symex_target_equationt &equation);
 
-  std::set<exprt> implied_guards (exprt e);
+  std::set<exprt> implied_guards(exprt e);
 
-  bool implies_false (exprt e);
+  bool implies_false(exprt e);
 };
 
-#endif
+#endif // CPROVER_GOTO_SYMEX_SLICE_BY_TRACE_H

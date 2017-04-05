@@ -1,14 +1,14 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_GENETIC_PREPROCESSING_H_
-#define CEGIS_GENETIC_PREPROCESSING_H_
+#ifndef CPROVER_CEGIS_GENETIC_GENETIC_PREPROCESSING_H
+#define CPROVER_CEGIS_GENETIC_GENETIC_PREPROCESSING_H
 
 /**
  * @brief
@@ -65,4 +65,4 @@ public:
 
 #include "genetic_preprocessing.inc"
 
-#endif /* CEGIS_GENETIC_PREPROCESSING_H_ */
+#endif // CPROVER_CEGIS_GENETIC_GENETIC_PREPROCESSING_H

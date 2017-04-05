@@ -63,7 +63,8 @@ bool simplify_exprt::simplify_index(exprt &expr)
 
     const exprt &lambda_expr=array;
 
-    if(lambda_expr.operands().size()!=2) return true;
+    if(lambda_expr.operands().size()!=2)
+      return true;
 
     if(expr.op1().type()==lambda_expr.op0().type())
     {
@@ -76,11 +77,12 @@ bool simplify_exprt::simplify_index(exprt &expr)
   else if(array.id()==ID_with)
   {
     // we have (a WITH [i:=e])[j]
-  
+
     const exprt &with_expr=array;
 
-    if(with_expr.operands().size()!=3) return true;
-    
+    if(with_expr.operands().size()!=3)
+      return true;
+
     if(with_expr.op1()==expr.op1())
     {
       // simplify (e with [i:=v])[i] to v
@@ -93,12 +95,12 @@ bool simplify_exprt::simplify_index(exprt &expr)
       // Turn (a with i:=x)[j] into (i==j)?x:a[j].
       // watch out that the type of i and j might be different.
       equal_exprt equality_expr(expr.op1(), with_expr.op1());
-      
+
       if(equality_expr.lhs().type()!=equality_expr.rhs().type())
         equality_expr.rhs().make_typecast(equality_expr.lhs().type());
 
       simplify_inequality(equality_expr);
-      
+
       index_exprt new_index_expr;
       new_index_expr.type()=expr.type();
       new_index_expr.array()=with_expr.op0();
@@ -106,12 +108,18 @@ bool simplify_exprt::simplify_index(exprt &expr)
 
       simplify_index(new_index_expr); // recursive call
 
-      exprt if_expr(ID_if, expr.type());
-      if_expr.reserve_operands(3);
-      if_expr.move_to_operands(equality_expr);
-      if_expr.copy_to_operands(with_expr.op2());
-      if_expr.move_to_operands(new_index_expr);
+      if(equality_expr.is_true())
+      {
+        expr=with_expr.op2();
+        return false;
+      }
+      else if(equality_expr.is_false())
+      {
+        expr.swap(new_index_expr);
+        return false;
+      }
 
+      if_exprt if_expr(equality_expr, with_expr.op2(), new_index_expr);
       simplify_if(if_expr);
 
       expr.swap(if_expr);
@@ -123,7 +131,7 @@ bool simplify_exprt::simplify_index(exprt &expr)
           array.id()==ID_array)
   {
     mp_integer i;
-    
+
     if(to_integer(expr.op1(), i))
     {
     }
@@ -134,7 +142,7 @@ bool simplify_exprt::simplify_index(exprt &expr)
     else
     {
       // ok
-      exprt tmp=array.operands()[integer2long(i)];
+      exprt tmp=array.operands()[integer2size_t(i)];
       expr.swap(tmp);
       return false;
     }
@@ -142,9 +150,9 @@ bool simplify_exprt::simplify_index(exprt &expr)
   else if(array.id()==ID_string_constant)
   {
     mp_integer i;
-    
+
     const irep_idt &value=array.get(ID_value);
-  
+
     if(to_integer(expr.op1(), i))
     {
     }
@@ -155,7 +163,7 @@ bool simplify_exprt::simplify_index(exprt &expr)
     else
     {
       // terminating zero?
-      char v=(i==value.size())?0:value[integer2long(i)];
+      char v=(i==value.size())?0:value[integer2size_t(i)];
       exprt tmp=from_integer(v, expr.type());
       expr.swap(tmp);
       return false;
@@ -197,7 +205,8 @@ bool simplify_exprt::simplify_index(exprt &expr)
       // to byte_extract(s, o+offset, sub_type)
 
       mp_integer sub_size=pointer_offset_size(array_type.subtype(), ns);
-      if(sub_size==-1) return true;
+      if(sub_size==-1)
+        return true;
 
       // add offset to index
       mult_exprt offset(from_integer(sub_size, array.op1().type()), index);
@@ -231,4 +240,3 @@ bool simplify_exprt::simplify_index(exprt &expr)
 
   return result;
 }
-

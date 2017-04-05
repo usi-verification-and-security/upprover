@@ -1,15 +1,22 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 
 #include <util/arith_tools.h>
 #include <util/bv_arithmetic.h>
-#include <util/namespace_utils.h>
 
 #include <cegis/cegis-util/constant_width.h>
-
+#include <cegis/instrument/meta_variables.h>
 #include <cegis/invariant/options/invariant_program.h>
 #include <cegis/invariant/constant/add_constant.h>
 #include <cegis/invariant/constant/literals_constant_strategy.h>
-#include <cegis/invariant/instrument/meta_variables.h>
 
 namespace
 {
@@ -17,7 +24,7 @@ class compare_constantt
 {
   const namespacet ns;
 public:
-  compare_constantt(const invariant_programt &program) :
+  explicit compare_constantt(const invariant_programt &program) :
       ns(program.st)
   {
   }
@@ -48,7 +55,7 @@ public:
     if (ID_unsignedbv != type_id && ID_signedbv != type_id) return;
     const constant_exprt constant(to_constant_expr(expr));
     const bv_arithmetict bv(constant);
-    const mp_integer::ullong_t value=bv.to_integer().to_ulong();
+    const mp_integer value=bv.to_integer();
     constants.insert(from_integer(value, type));
     // XXX: Add constant +/- 1?
     //constants.insert(from_integer(value + 1, type));
@@ -58,6 +65,7 @@ public:
   void operator()(const goto_programt::instructiont &instr)
   {
     instr.code.visit(*this);
+    instr.guard.visit(*this);
   }
 
   void operator()(const invariant_programt::invariant_loopt *loop)
@@ -67,7 +75,7 @@ public:
 
   constant_expr_visitort(const invariant_programt &prog,
       constant_sett &constants) :
-      ns(prog.st), type(invariant_meta_type()), constants(constants)
+      ns(prog.st), type(cegis_default_integer_type()), constants(constants)
   {
     const invariant_programt::const_invariant_loopst loops=prog.get_loops();
     constant_expr_visitort &op=*this;

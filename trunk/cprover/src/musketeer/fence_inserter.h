@@ -6,8 +6,8 @@ Author: Vincent Nimal
 
 \*******************************************************************/
 
-#ifndef CPROVER_FENCE_INSERTER_H
-#define CPROVER_FENCE_INSERTER_H
+#ifndef CPROVER_MUSKETEER_FENCE_INSERTER_H
+#define CPROVER_MUSKETEER_FENCE_INSERTER_H
 
 #include <goto-instrument/wmm/event_graph.h>
 #include <goto-instrument/wmm/wmm.h>
@@ -27,22 +27,22 @@ class ilpt;
 // TODO: can be indirectly replaced by a list without redundancy
 // (not a set though)
 struct mip_vart
-{ 
+{
   typedef event_grapht::critical_cyclet::delayt edget;
 
-  unsigned unique;
+  event_idt unique;
 
-  std::map<unsigned, edget> map_to_e;
-  std::map<edget, unsigned> map_from_e;
+  std::map<event_idt, edget> map_to_e;
+  std::map<edget, event_idt> map_from_e;
 
-  unsigned add_edge(const edget &e)
+  event_idt add_edge(const edget &e)
   {
     if(map_from_e.find(e) != map_from_e.end())
       return map_from_e[e];
     else
     {
       ++unique;
-      map_to_e.insert(std::pair<unsigned, edget>(unique, e));
+      map_to_e.insert(std::pair<event_idt, edget>(unique, e));
       map_from_e[e] = unique;
       return unique;
     }
@@ -62,21 +62,23 @@ public:
   instrumentert &instrumenter;
 
   /* normal variables used almost everytime */
-  std::map<unsigned, edget>& map_to_e;
-  std::map<edget, unsigned>& map_from_e;
-  inline unsigned add_edge(const edget& e) { return var.add_edge(e); }
-  inline unsigned add_invisible_edge(const edget& e) {
-    return invisible_var.add_edge(e);}
+  std::map<event_idt, edget> &map_to_e;
+  std::map<edget, event_idt> &map_from_e;
+  event_idt add_edge(const edget &e) { return var.add_edge(e); }
+  event_idt add_invisible_edge(const edget &e)
+  {
+    return invisible_var.add_edge(e);
+  }
 
   /* number of contraints */
-  unsigned constraints_number;
+  std::size_t constraints_number;
   const memory_modelt model;
 
   /* to retrieve the concrete graph edges involved in the (abstract) cycles */
   const_graph_visitort const_graph_visitor;
 
 protected:
-  unsigned& unique;
+  event_idt &unique;
   unsigned fence_options;
 
   /* MIP variables to edges in po^+/\C */
@@ -86,9 +88,12 @@ protected:
   mip_vart invisible_var;
 
   /* MIP matrix construction */
-  void mip_set_var(ilpt& ilp, unsigned& i);
-  void mip_set_cst(ilpt& ilp, unsigned& i);
-  void mip_fill_matrix(ilpt& ilp, unsigned& i, unsigned const_constraints_number,
+  void mip_set_var(ilpt &ilp, unsigned &i);
+  void mip_set_cst(ilpt &ilp, unsigned &i);
+  void mip_fill_matrix(
+    ilpt &ilp,
+    unsigned &i,
+    unsigned const_constraints_number,
     unsigned const_unique);
 
   /* preprocessing (necessary as glpk static) and solving */
@@ -101,12 +106,12 @@ protected:
   std::string to_string(fence_typet f) const;
 
   /* for the preprocessing */
-  std::set<unsigned> po;
-  std::list<std::set<unsigned> > powr_constraints;
-  std::list<std::set<unsigned> > poww_constraints;
-  std::list<std::set<unsigned> > porw_constraints;
-  std::list<std::set<unsigned> > porr_constraints;
-  std::list<std::set<unsigned> > com_constraints;
+  std::set<event_idt> po;
+  std::list<std::set<event_idt> > powr_constraints;
+  std::list<std::set<event_idt> > poww_constraints;
+  std::list<std::set<event_idt> > porw_constraints;
+  std::list<std::set<event_idt> > porr_constraints;
+  std::list<std::set<event_idt> > com_constraints;
 
   /* to retrieve the edges involved in the cycles */
   cycles_visitort cycles_visitor;
@@ -125,7 +130,7 @@ protected:
 
   /* computes the fence options */
   void compute_fence_options();
- 
+
   /* debug */
   void print_vars() const;
 
@@ -134,9 +139,9 @@ protected:
 
 public:
   explicit fence_insertert(instrumentert &instr):
-    instrumenter(instr), map_to_e(var.map_to_e), map_from_e(var.map_from_e), 
-    constraints_number(0), model(TSO),  const_graph_visitor(*this), 
-    unique(var.unique), fence_options(0), cycles_visitor(*this), 
+    instrumenter(instr), map_to_e(var.map_to_e), map_from_e(var.map_from_e),
+    constraints_number(0), model(TSO),  const_graph_visitor(*this),
+    unique(var.unique), fence_options(0), cycles_visitor(*this),
     epsilon(0.001), with_freq(false)
   {
   }
@@ -144,13 +149,13 @@ public:
   fence_insertert(instrumentert &instr, memory_modelt _model):
     instrumenter(instr), map_to_e(var.map_to_e), map_from_e(var.map_from_e),
     constraints_number(0), model(_model),  const_graph_visitor(*this),
-    unique(var.unique), fence_options(0), cycles_visitor(*this), 
+    unique(var.unique), fence_options(0), cycles_visitor(*this),
     epsilon(0.001), with_freq(false)
   {
   }
 
   /* do it */
-  void compute(); 
+  void compute();
 
   /* selection methods */
   // Note: process_selection updates the selection of cycles in instrumenter,
@@ -163,9 +168,9 @@ public:
   void print_to_file_2();
   void print_to_file_3();
   void print_to_file_4();
-  
+
   /* TODO: to be replaced eventually by ns.lookup and basename */
-  static std::string remove_extra(const irep_idt& id)
+  static std::string remove_extra(const irep_idt &id)
   {
      const std::string copy=id2string(id);
      return remove_extra(copy);
@@ -180,9 +185,9 @@ public:
 
   typet get_type(const irep_idt &id);
   typet type_component(
-    std::list<std::string>::const_iterator it, 
+    std::list<std::string>::const_iterator it,
     std::list<std::string>::const_iterator end,
     const typet &type);
 };
 
-#endif
+#endif // CPROVER_MUSKETEER_FENCE_INSERTER_H

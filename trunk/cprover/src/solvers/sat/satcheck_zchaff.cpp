@@ -8,13 +8,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
-#include <util/i2string.h>
 
 #include "satcheck_zchaff.h"
 
 #include <zchaff_solver.h>
-
-//#define DEBUG
 
 /*******************************************************************\
 
@@ -78,12 +75,13 @@ tvt satcheck_zchaff_baset::l_get(literalt a) const
 
   switch(solver->variable(a.var_no()).value())
   {
-   case 0: result=tvt(false); break;
-   case 1: result=tvt(true); break;
-   default: result=tvt(tvt::tv_enumt::TV_UNKNOWN); break;
+    case 0: result=tvt(false); break;
+    case 1: result=tvt(true); break;
+    default: result=tvt(tvt::tv_enumt::TV_UNKNOWN); break;
   }
 
-  if(a.sign()) result=!result;
+  if(a.sign())
+    result=!result;
 
   return result;
 }
@@ -127,7 +125,8 @@ void satcheck_zchaff_baset::copy_cnf()
   for(clausest::const_iterator it=clauses.begin();
       it!=clauses.end();
       it++)
-    solver->add_orig_clause((int *)&((*it)[0]), it->size());
+    solver->add_orig_clause(
+      reinterpret_cast<int*>(&((*it)[0])), it->size());
 }
 
 /*******************************************************************\
@@ -146,13 +145,13 @@ propt::resultt satcheck_zchaff_baset::prop_solve()
 {
   // this is *not* incremental
   assert(status==INIT);
-  
+
   copy_cnf();
 
   {
     std::string msg=
-      i2string(solver->num_variables())+" variables, "+
-      i2string(solver->clauses().size())+" clauses";
+      std::to_string(solver->num_variables())+" variables, "+
+      std::to_string(solver->clauses().size())+" clauses";
     messaget::status() << msg << messaget::eom;
   }
 
@@ -185,11 +184,11 @@ propt::resultt satcheck_zchaff_baset::prop_solve()
 
      case ABORTED:
       msg="SAT checker failed: ABORTED";
-      break;    
+      break;
 
      default:
       msg="SAT checker failed: unknown result";
-      break;    
+      break;
     }
 
     messaget::status() << msg << messaget::eom;
@@ -222,9 +221,9 @@ propt::resultt satcheck_zchaff_baset::prop_solve()
     status=SAT;
     return P_SATISFIABLE;
   }
- 
+
   status=ERROR;
- 
+
   return P_ERROR;
 }
 

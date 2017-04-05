@@ -1,1 +1,6 @@
-#define CBMC_VERSION "5.4"
+#ifndef CPROVER_CBMC_VERSION_H
+#define CPROVER_CBMC_VERSION_H
+
+#define CBMC_VERSION "5.7"
+
+#endif // CPROVER_CBMC_VERSION_H

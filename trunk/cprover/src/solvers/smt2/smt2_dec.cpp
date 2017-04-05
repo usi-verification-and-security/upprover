@@ -21,7 +21,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_types.h>
 #include <util/tempfile.h>
 #include <util/arith_tools.h>
-#include <util/i2string.h>
 #include <util/ieee_float.h>
 
 #include "smt2_dec.h"
@@ -73,8 +72,7 @@ smt2_temp_filet::smt2_temp_filet()
 
   temp_out.open(
     temp_out_filename.c_str(),
-    std::ios_base::out | std::ios_base::trunc
-  );
+    std::ios_base::out | std::ios_base::trunc);
 }
 
 /*******************************************************************\
@@ -116,7 +114,7 @@ decision_proceduret::resultt smt2_dect::dec_solve()
 {
   // we write the problem into a file
   smt2_temp_filet smt2_temp_file;
-  
+
   // copy from string buffer into file
   smt2_temp_file.temp_out << stringstream.str();
 
@@ -209,12 +207,12 @@ decision_proceduret::resultt smt2_dect::dec_solve()
   int res=system(command.c_str());
   if(res<0)
   {
-    error() << "error running SMT2 soler" << eom;
+    error() << "error running SMT2 solver" << eom;
     return decision_proceduret::D_ERROR;
   }
 
   std::ifstream in(smt2_temp_file.temp_result_filename.c_str());
-  
+
   return read_result(in);
 }
 
@@ -238,13 +236,13 @@ decision_proceduret::resultt smt2_dect::read_result(std::istream &in)
   boolean_assignment.clear();
   boolean_assignment.resize(no_boolean_variables, false);
 
-  typedef hash_map_cont<irep_idt, irept, irep_id_hash> valuest;
+  typedef std::unordered_map<irep_idt, irept, irep_id_hash> valuest;
   valuest values;
 
   while(in)
   {
     irept parsed=smt2irep(in);
-    
+
     if(parsed.id()=="sat")
       res=D_SATISFIABLE;
     else if(parsed.id()=="unsat")
@@ -259,7 +257,7 @@ decision_proceduret::resultt smt2_dect::read_result(std::istream &in)
       // Examples:
       // ( (B0 true) )
       // ( (|__CPROVER_pipe_count#1| (_ bv0 32)) )
-      
+
       values[s0.id()]=s1;
     }
     else if(parsed.id()=="" &&
@@ -290,10 +288,9 @@ decision_proceduret::resultt smt2_dect::read_result(std::istream &in)
   // Booleans
   for(unsigned v=0; v<no_boolean_variables; v++)
   {
-    const irept &value=values["B"+i2string(v)];
+    const irept &value=values["B"+std::to_string(v)];
     boolean_assignment[v]=(value.id()==ID_true);
   }
 
   return res;
 }
-

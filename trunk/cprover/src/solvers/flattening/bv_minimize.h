@@ -3,7 +3,7 @@
 Module: SAT-optimizer for minimizing expressions
 
 Author: Georg Weissenbacher
-    
+
 Date: July 2006
 
 Purpose: Find a satisfying assignment that minimizes a given set
@@ -11,8 +11,8 @@ Purpose: Find a satisfying assignment that minimizes a given set
 
 \*******************************************************************/
 
-#ifndef CPROVER_BV_MINIMIZER_H
-#define CPROVER_BV_MINIMIZER_H
+#ifndef CPROVER_SOLVERS_FLATTENING_BV_MINIMIZE_H
+#define CPROVER_SOLVERS_FLATTENING_BV_MINIMIZE_H
 
 #include <solvers/flattening/bv_pointers.h>
 #include <solvers/sat/satcheck.h>
@@ -26,12 +26,12 @@ public:
     boolbv(_boolbv)
   {
   }
-  
+
   void operator()(const minimization_listt &objectives);
-  
+
 protected:
   boolbvt &boolbv;
-  
+
   void add_objective(
     class prop_minimizet &prop_minimize,
     const exprt &objective);
@@ -41,7 +41,7 @@ class bv_minimizing_dect:public bv_pointerst
 {
 public:
   virtual const std::string description()
-  { 
+  {
     return "Bit vector minimizing SAT";
   }
 
@@ -60,4 +60,4 @@ public:
   satcheckt satcheck;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_FLATTENING_BV_MINIMIZE_H

@@ -1,16 +1,18 @@
-/*******************************************************************
+/*******************************************************************\
 
 Module: Counterexample-Guided Inductive Synthesis
 
 Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_SAFETY_VERIFY_CONFIG_H_
-#define CEGIS_SAFETY_VERIFY_CONFIG_H_
+#ifndef CPROVER_CEGIS_SAFETY_SYMEX_VERIFY_SAFETY_VERIFY_CONFIG_H
+#define CPROVER_CEGIS_SAFETY_SYMEX_VERIFY_SAFETY_VERIFY_CONFIG_H
 
 #include <deque>
+
+#include <util/message.h>
 
 #include <cegis/safety/options/safety_program.h>
 #include <cegis/safety/value/safety_goto_solution.h>
@@ -49,7 +51,7 @@ public:
    *
    * @param program
    */
-  safety_verify_configt(const safety_programt &program);
+  explicit safety_verify_configt(const safety_programt &program);
 
   /**
    * @brief
@@ -95,6 +97,17 @@ public:
    */
   void convert(counterexamplest &counterexamples,
       const class goto_tracet &trace);
+
+  /**
+   * @brief
+   *
+   * @details
+   *
+   * @param counterexample
+   */
+  void show_counterexample(
+      messaget::mstreamt &os,
+      const counterexamplet &counterexample) const;
 };
 
-#endif /* CEGIS_SAFETY_VERIFY_CONFIG_H_ */
+#endif // CPROVER_CEGIS_SAFETY_SYMEX_VERIFY_SAFETY_VERIFY_CONFIG_H

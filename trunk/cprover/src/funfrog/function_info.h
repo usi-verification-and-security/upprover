@@ -53,7 +53,7 @@ public:
   // Helper struct with lexicographical ordering for dstring
   struct dstring_lex_ordering
   {
-    bool operator()(const dstring& s1, const dstring& s2) const
+    bool operator()(const dstringt& s1, const dstringt& s2) const
     {
       return s1.compare(s2) < 0;
     }

@@ -32,19 +32,47 @@ struct xml_graph_nodet:public graph_nodet<xml_edget>
   irep_idt line;
   unsigned thread_nr;
   bool is_violation;
+  bool has_invariant;
+  std::string invariant;
+  std::string invariant_scope;
 };
 
-typedef graph<xml_graph_nodet> graphmlt;
+class graphmlt:public grapht<xml_graph_nodet>
+{
+public:
+  bool has_node(const std::string &node_name) const
+  {
+    for(const auto &n : nodes)
+      if(n.node_name==node_name)
+        return true;
+
+    return false;
+  }
+
+  node_indext add_node_if_not_exists(std::string node_name)
+  {
+    for(node_indext i=0; i<nodes.size(); ++i)
+    {
+      if(nodes[i].node_name==node_name)
+        return i;
+    }
+
+    return grapht<xml_graph_nodet>::add_node();
+  }
+
+  typedef std::map<std::string, std::string> key_valuest;
+  key_valuest key_values;
+};
 
 bool read_graphml(
   std::istream &is,
   graphmlt &dest,
-  unsigned &entry);
+  graphmlt::node_indext &entry);
 bool read_graphml(
   const std::string &filename,
   graphmlt &dest,
-  unsigned &entry);
+  graphmlt::node_indext &entry);
 
 bool write_graphml(const graphmlt &src, std::ostream &os);
 
-#endif
+#endif // CPROVER_XMLLANG_GRAPHML_H

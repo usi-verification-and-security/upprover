@@ -379,7 +379,7 @@ void dependency_checkert::print_dependents(map<string,bool> dependents, std::ost
   }
 }
 
-std::string dependency_checkert::variable_name(dstring name)
+std::string dependency_checkert::variable_name(dstringt name)
 {
   return variable_name(as_string(name));
 }

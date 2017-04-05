@@ -20,13 +20,13 @@ public:
   {
     clear();
   }
-  
+
   explicit c_qualifierst(const typet &src)
   {
     clear();
     read(src);
   }
-  
+
   void clear()
   {
     is_constant=false;
@@ -40,21 +40,21 @@ public:
 
   // standard ones
   bool is_constant, is_volatile, is_restricted, is_atomic, is_noreturn;
-  
+
   // MS Visual Studio extension
   bool is_ptr32, is_ptr64;
-  
+
   // gcc extension
   bool is_transparent_union;
-  
+
   // will likely add alignment here as well
-  
+
   std::string as_string() const;
   void read(const typet &src);
   void write(typet &src) const;
-  
+
   static void clear(typet &dest);
-  
+
   bool is_subset_of(const c_qualifierst &q) const
   {
     return (!is_constant || q.is_constant) &&
@@ -67,30 +67,25 @@ public:
 
     // is_transparent_union isn't checked
   }
-  
-  friend bool operator == (
-    const c_qualifierst &a,
-    const c_qualifierst &b)
+
+  bool operator==(const c_qualifierst &other) const
   {
-    return a.is_constant==b.is_constant &&
-           a.is_volatile==b.is_volatile &&
-           a.is_restricted==b.is_restricted &&
-           a.is_atomic==b.is_atomic &&
-           a.is_ptr32==b.is_ptr32 &&
-           a.is_ptr64==b.is_ptr64 &&
-           a.is_transparent_union==b.is_transparent_union &&
-           a.is_noreturn==b.is_noreturn;
+    return is_constant==other.is_constant &&
+           is_volatile==other.is_volatile &&
+           is_restricted==other.is_restricted &&
+           is_atomic==other.is_atomic &&
+           is_ptr32==other.is_ptr32 &&
+           is_ptr64==other.is_ptr64 &&
+           is_transparent_union==other.is_transparent_union &&
+           is_noreturn==other.is_noreturn;
   }
 
-  friend bool operator != (
-    const c_qualifierst &a,
-    const c_qualifierst &b)
+  bool operator!=(const c_qualifierst &other) const
   {
-    return !(a==b);
+    return !(*this==other);
   }
-  
-  c_qualifierst &operator += (
-    const c_qualifierst &b)
+
+  c_qualifierst &operator+=(const c_qualifierst &b)
   {
     is_constant|=b.is_constant;
     is_volatile|=b.is_volatile;
@@ -102,14 +97,14 @@ public:
     is_noreturn|=b.is_noreturn;
     return *this;
   }
-  
-  friend unsigned count(const c_qualifierst &q)
+
+  unsigned count() const
   {
-    return q.is_constant+q.is_volatile+q.is_restricted+q.is_atomic+
-           q.is_ptr32+q.is_ptr64+q.is_noreturn;
+    return is_constant+is_volatile+is_restricted+is_atomic+
+           is_ptr32+is_ptr64+is_noreturn;
   }
 };
 
 std::ostream &operator << (std::ostream &, const c_qualifierst &);
 
-#endif
+#endif // CPROVER_ANSI_C_C_QUALIFIERS_H

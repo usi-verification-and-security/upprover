@@ -52,7 +52,7 @@ protected:
 
 public:
   void compute(exprt &dest);
-  
+
 protected:
   void compute_address_of(exprt &dest);
 };
@@ -84,7 +84,8 @@ void precondition(
   {
     preconditiont precondition(ns, value_sets, target, *it, s);
     precondition.compute(dest);
-    if(dest.is_false()) return;
+    if(dest.is_false())
+      return;
   }
 }
 
@@ -166,19 +167,19 @@ void preconditiont::compute_rec(exprt &dest)
     assert(dest.operands().size()==1);
 
     const irep_idt &lhs_identifier=SSA_step.ssa_lhs.get_object_name();
-  
+
     // aliasing may happen here
 
     value_setst::valuest expr_set;
     value_sets.get_values(target, dest.op0(), expr_set);
-    hash_set_cont<irep_idt, irep_id_hash> symbols;
+    std::unordered_set<irep_idt, irep_id_hash> symbols;
 
     for(value_setst::valuest::const_iterator
         it=expr_set.begin();
         it!=expr_set.end();
         it++)
       find_symbols(*it, symbols);
-    
+
     if(symbols.find(lhs_identifier)!=symbols.end())
     {
       // may alias!

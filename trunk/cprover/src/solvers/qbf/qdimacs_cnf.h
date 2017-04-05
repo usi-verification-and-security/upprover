@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_QBF_QDIMACS_CNF_H
-#define CPROVER_QBF_QDIMACS_CNF_H
+#ifndef CPROVER_SOLVERS_QBF_QDIMACS_CNF_H
+#define CPROVER_SOLVERS_QBF_QDIMACS_CNF_H
 
 #include <set>
 #include <iosfwd>
@@ -44,9 +44,9 @@ public:
     {
     }
 
-    friend bool operator==(const quantifiert &a, const quantifiert &b)
+    bool operator==(const quantifiert &other) const
     {
-      return a.type==b.type && a.var_no==b.var_no;
+      return type==other.type && var_no==other.var_no;
     }
 
     size_t hash() const
@@ -64,17 +64,17 @@ public:
     quantifiers.push_back(quantifier);
   }
 
-  inline void add_quantifier(const quantifiert::typet type, const literalt l)
+  void add_quantifier(const quantifiert::typet type, const literalt l)
   {
     add_quantifier(quantifiert(type, l));
   }
 
-  inline void add_existential_quantifier(const literalt l)
+  void add_existential_quantifier(const literalt l)
   {
     add_quantifier(quantifiert(quantifiert::EXISTENTIAL, l));
   }
 
-  inline void add_universal_quantifier(const literalt l)
+  void add_universal_quantifier(const literalt l)
   {
     add_quantifier(quantifiert(quantifiert::UNIVERSAL, l));
   }
@@ -85,11 +85,12 @@ public:
   virtual void set_quantifier(const quantifiert::typet type, const literalt l);
   void copy_to(qdimacs_cnft &cnf) const;
 
-  friend bool operator==(const qdimacs_cnft &a, const qdimacs_cnft &b);
+  bool operator==(const qdimacs_cnft &other) const;
+
   size_t hash() const;
 
 protected:
   void write_prefix(std::ostream &out) const;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_QBF_QDIMACS_CNF_H

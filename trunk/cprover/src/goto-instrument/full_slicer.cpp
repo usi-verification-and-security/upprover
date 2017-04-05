@@ -9,14 +9,10 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/find_symbols.h>
 #include <util/cprover_prefix.h>
 #ifdef DEBUG_FULL_SLICERT
-#include <util/i2string.h>
 #endif
 
 #include <goto-programs/remove_skip.h>
 
-#include <analyses/dependence_graph.h>
-
-#include "full_slicer.h"
 #include "full_slicer_class.h"
 
 /*******************************************************************\
@@ -100,7 +96,8 @@ void full_slicert::add_decl_dead(
   queuet &queue,
   decl_deadt &decl_dead)
 {
-  if(decl_dead.empty()) return;
+  if(decl_dead.empty())
+    return;
 
   find_symbols_sett syms;
   find_symbols(node.PC->code, syms);
@@ -112,7 +109,8 @@ void full_slicert::add_decl_dead(
       ++it)
   {
     decl_deadt::iterator entry=decl_dead.find(*it);
-    if(entry==decl_dead.end()) continue;
+    if(entry==decl_dead.end())
+      continue;
 
     while(!entry->second.empty())
     {
@@ -139,7 +137,7 @@ Function: full_slicert::add_jumps
 void full_slicert::add_jumps(
   queuet &queue,
   jumpst &jumps,
-  const cfg_post_dominatorst &cfg_post_dominators)
+  const dependence_grapht::post_dominators_mapt &post_dominators)
 {
   // Based on:
   // On slicing programs with jump statements
@@ -196,11 +194,16 @@ void full_slicert::add_jumps(
       continue;
     }
 
+    const irep_idt id=goto_programt::get_function_id(j.PC);
+    const cfg_post_dominatorst &pd=post_dominators.at(id);
+
     cfg_post_dominatorst::cfgt::entry_mapt::const_iterator e=
-      cfg_post_dominators.cfg.entry_map.find(j.PC);
-    assert(e!=cfg_post_dominators.cfg.entry_map.end());
+      pd.cfg.entry_map.find(j.PC);
+
+    assert(e!=pd.cfg.entry_map.end());
+
     const cfg_post_dominatorst::cfgt::nodet &n=
-      cfg_post_dominators.cfg[e->second];
+      pd.cfg[e->second];
 
     // find the nearest post-dominator in slice
     if(n.dominators.find(lex_succ)==n.dominators.end())
@@ -225,11 +228,16 @@ void full_slicert::add_jumps(
 
         if(cfg[entry->second].node_required)
         {
+          const irep_idt id2=goto_programt::get_function_id(*d_it);
+          assert(id==id2);
+
           cfg_post_dominatorst::cfgt::entry_mapt::const_iterator e2=
-            cfg_post_dominators.cfg.entry_map.find(*d_it);
-          assert(e2!=cfg_post_dominators.cfg.entry_map.end());
+            pd.cfg.entry_map.find(*d_it);
+
+          assert(e2!=pd.cfg.entry_map.end());
+
           const cfg_post_dominatorst::cfgt::nodet &n2=
-            cfg_post_dominators.cfg[e2->second];
+            pd.cfg[e2->second];
 
           if(n2.dominators.size()>post_dom_size)
           {
@@ -270,7 +278,7 @@ void full_slicert::fixedpoint(
 {
   std::vector<cfgt::entryt> dep_node_to_cfg;
   dep_node_to_cfg.reserve(dep_graph.size());
-  for(unsigned i=0; i<dep_graph.size(); ++i)
+  for(dependence_grapht::node_indext i=0; i<dep_graph.size(); ++i)
   {
     cfgt::entry_mapt::const_iterator entry=
       cfg.entry_map.find(dep_graph[i].PC);
@@ -326,10 +334,16 @@ static bool implicit(goto_programt::const_targett target)
 {
   // some variables are used during symbolic execution only
 
-  if(!target->is_assign()) return false;
+  const irep_idt &statement=target->code.get_statement();
+  if(statement==ID_array_copy)
+    return true;
+
+  if(!target->is_assign())
+    return false;
 
   const code_assignt &a=to_code_assign(target->code);
-  if(a.lhs().id()!=ID_symbol) return false;
+  if(a.lhs().id()!=ID_symbol)
+    return false;
 
   const symbol_exprt &s=to_symbol_expr(a.lhs());
 
@@ -409,15 +423,16 @@ void full_slicert::operator()(
 #ifdef DEBUG_FULL_SLICERT
         else
         {
-          std::string c="ins:"+i2string(i_it->location_number);
+          std::string c="ins:"+std::to_string(i_it->location_number);
           c+=" req by:";
           for(std::set<unsigned>::const_iterator
               req_it=cfg[e].required_by.begin();
               req_it!=cfg[e].required_by.end();
               ++req_it)
           {
-            if(req_it!=cfg[e].required_by.begin()) c+=",";
-            c+=i2string(*req_it);
+            if(req_it!=cfg[e].required_by.begin())
+              c+=",";
+            c+=std::to_string(*req_it);
           }
           i_it->source_location.set_column(c);  // for show-goto-functions
           i_it->source_location.set_comment(c); // for dump-c
@@ -473,6 +488,27 @@ void full_slicer(
 
 /*******************************************************************\
 
+Function: property_slicer
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void property_slicer(
+  goto_functionst &goto_functions,
+  const namespacet &ns,
+  const std::list<std::string> &properties)
+{
+  properties_criteriont p(properties);
+  full_slicert()(goto_functions, ns, p);
+}
+
+/*******************************************************************\
+
 Function: slicing_criteriont::~slicing_criteriont
 
   Inputs:
@@ -486,4 +522,3 @@ Function: slicing_criteriont::~slicing_criteriont
 slicing_criteriont::~slicing_criteriont()
 {
 }
-

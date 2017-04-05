@@ -7,7 +7,6 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <util/find_symbols.h>
-#include <util/expr_util.h>
 #include <util/std_expr.h>
 
 #include "goto_symex_state.h"
@@ -48,7 +47,7 @@ protected:
 
 public:
   void compute(exprt &dest);
-  
+
 protected:
   void strengthen(exprt &dest);
   void weaken(exprt &dest);
@@ -82,7 +81,8 @@ void postcondition(
   {
     postconditiont postcondition(ns, value_set, *it, s);
     postcondition.compute(dest);
-    if(dest.is_false()) return;
+    if(dest.is_false())
+      return;
   }
 }
 
@@ -124,7 +124,7 @@ bool postconditiont::is_used_address_of(
     assert(expr.operands().size()==1);
     return is_used(expr.op0(), identifier);
   }
-  
+
   return false;
 }
 
@@ -144,7 +144,7 @@ void postconditiont::compute(exprt &dest)
 {
   // weaken due to assignment
   weaken(dest);
-  
+
   // strengthen due to assignment
   strengthen(dest);
 }
@@ -168,20 +168,20 @@ void postconditiont::weaken(exprt &dest)
   {
     Forall_operands(it, dest)
       weaken(*it);
-      
+
     return;
   }
 
   // we are lazy:
   // if lhs is mentioned in dest, we use "true".
-  
+
   const irep_idt &lhs_identifier=SSA_step.ssa_lhs.get_object_name();
 
   if(is_used(dest, lhs_identifier))
     dest=true_exprt();
-    
+
   // otherwise, no weakening needed
-}  
+}
 
 /*******************************************************************\
 
@@ -205,7 +205,7 @@ void postconditiont::strengthen(exprt &dest)
     if(SSA_step.ssa_lhs.type().id()==ID_array ||
        SSA_step.ssa_lhs.type().id()==ID_struct)
       return;
-  
+
     equal_exprt equality(SSA_step.ssa_lhs, SSA_step.ssa_rhs);
     s.get_original_name(equality);
 
@@ -214,7 +214,7 @@ void postconditiont::strengthen(exprt &dest)
     else
       dest=and_exprt(dest, equality);
   }
-}  
+}
 
 /*******************************************************************\
 
@@ -255,8 +255,8 @@ bool postconditiont::is_used(
 
     value_setst::valuest expr_set;
     value_set.get_value_set(expr.op0(), expr_set, ns);
-    hash_set_cont<irep_idt, irep_id_hash> symbols;
-    
+    std::unordered_set<irep_idt, irep_id_hash> symbols;
+
     for(value_setst::valuest::const_iterator
         it=expr_set.begin();
         it!=expr_set.end();
@@ -266,13 +266,13 @@ bool postconditiont::is_used(
       s.get_original_name(tmp);
       find_symbols(tmp, symbols);
     }
-    
+
     return symbols.find(identifier)!=symbols.end();
   }
   else
     forall_operands(it, expr)
       if(is_used(*it, identifier))
         return true;
-        
+
   return false;
 }

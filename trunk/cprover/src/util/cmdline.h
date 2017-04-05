@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_CMDLINE_H
-#define CPROVER_CMDLINE_H
+#ifndef CPROVER_UTIL_CMDLINE_H
+#define CPROVER_UTIL_CMDLINE_H
 
 #include <vector>
 #include <list>
@@ -32,23 +32,32 @@ public:
 
   typedef std::vector<std::string> argst;
   argst args;
-  
+
   cmdlinet();
   virtual ~cmdlinet();
-  
+
 protected:
   struct optiont
   {
-    bool isset, hasval, islong;
+    bool isset;
+    bool hasval;
+    bool islong;
     char optchar;
     std::string optstring;
     std::list<std::string> values;
+  public:
+    optiont():
+      isset(false),
+      hasval(false),
+      islong(false),
+      optchar(0)
+      {}
   };
-   
+
   std::vector<optiont> options;
 
   int getoptnr(char option) const;
   int getoptnr(const std::string &option) const;
 };
 
-#endif
+#endif // CPROVER_UTIL_CMDLINE_H

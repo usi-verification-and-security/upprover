@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_FORMAT_SPEC_H
-#define CPROVER_FORMAT_SPEC_H
+#ifndef CPROVER_UTIL_FORMAT_SPEC_H
+#define CPROVER_UTIL_FORMAT_SPEC_H
 
 // this mimics the 'printf' format string for a single 'directive'
 
@@ -17,7 +17,7 @@ public:
   unsigned min_width;
   unsigned precision;
   bool zero_padding;
-  
+
   // 'printf' equivalents:
   // fF: DECIMAL
   // eE: SCIENTIFIC
@@ -25,7 +25,7 @@ public:
 
   typedef enum { DECIMAL, SCIENTIFIC, AUTOMATIC } stylet;
   stylet style;
-  
+
   format_spect():
     min_width(0),
     precision(6),
@@ -53,4 +53,4 @@ public:
   }
 };
 
-#endif
+#endif // CPROVER_UTIL_FORMAT_SPEC_H

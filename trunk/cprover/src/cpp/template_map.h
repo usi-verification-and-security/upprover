@@ -46,11 +46,11 @@ public:
     type_map.clear();
     expr_map.clear();
   }
-  
+
   void set(
     const template_parametert &parameter,
     const exprt &value);
-  
+
   void build(
     const template_typet &template_type,
     const cpp_template_args_tct &template_args);
@@ -65,7 +65,7 @@ public:
 class cpp_saved_template_mapt
 {
 public:
-  cpp_saved_template_mapt(template_mapt &map):
+  explicit cpp_saved_template_mapt(template_mapt &map):
     old_map(map), map(map)
   {
   }
@@ -83,4 +83,4 @@ private:
   template_mapt &map;
 };
 
-#endif
+#endif // CPROVER_CPP_TEMPLATE_MAP_H

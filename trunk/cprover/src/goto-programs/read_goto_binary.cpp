@@ -16,6 +16,7 @@ Author:
 #endif
 
 #include <fstream>
+#include <unordered_set>
 
 #include <util/message.h>
 #include <util/unicode.h>
@@ -73,9 +74,9 @@ bool read_goto_binary(
   message_handlert &message_handler)
 {
   #ifdef _MSC_VER
-  std::ifstream in(widen(filename).c_str(), std::ios::binary);
+  std::ifstream in(widen(filename), std::ios::binary);
   #else
-  std::ifstream in(filename.c_str(), std::ios::binary);
+  std::ifstream in(filename, std::ios::binary);
   #endif
 
   if(!in)
@@ -85,11 +86,11 @@ bool read_goto_binary(
                     << messaget::eom;
     return true;
   }
-  
+
   char hdr[4];
   hdr[0]=in.get();
   hdr[1]=in.get();
-  hdr[2]=in.get();    
+  hdr[2]=in.get();
   hdr[3]=in.get();
   in.seekg(0);
 
@@ -105,7 +106,7 @@ bool read_goto_binary(
     try
     {
       elf_readert elf_reader(in);
-      
+
       for(unsigned i=0; i<elf_reader.number_of_sections; i++)
         if(elf_reader.section_name(i)=="goto-cc")
         {
@@ -113,12 +114,12 @@ bool read_goto_binary(
           return read_bin_goto_object(
             in, filename, symbol_table, goto_functions, message_handler);
         }
-        
+
       // section not found
       messaget(message_handler).error() <<
         "failed to find goto-cc section in ELF binary" << messaget::eom;
     }
-    
+
     catch(const char *s)
     {
       messaget(message_handler).error() << s << messaget::eom;
@@ -138,9 +139,10 @@ bool read_goto_binary(
         tempname=get_temporary_file("tmp.goto-binary", ".gb");
         osx_fat_reader.extract_gb(filename, tempname);
 
-        std::ifstream temp_in(tempname.c_str(), std::ios::binary);
+        std::ifstream temp_in(tempname, std::ios::binary);
         if(!temp_in)
-          messaget(message_handler).error() << "failed to read temp binary" << messaget::eom;
+          messaget(message_handler).error() << "failed to read temp binary"
+                                            << messaget::eom;
         const bool read_err=read_bin_goto_object(
           temp_in, filename, symbol_table, goto_functions, message_handler);
         temp_in.close();
@@ -166,7 +168,7 @@ bool read_goto_binary(
     messaget(message_handler).error() <<
       "not a goto binary" << messaget::eom;
   }
-  
+
   return true;
 }
 
@@ -185,13 +187,14 @@ Function: is_goto_binary
 bool is_goto_binary(const std::string &filename)
 {
   #ifdef _MSC_VER
-  std::ifstream in(widen(filename).c_str(), std::ios::binary);
+  std::ifstream in(widen(filename), std::ios::binary);
   #else
-  std::ifstream in(filename.c_str(), std::ios::binary);
+  std::ifstream in(filename, std::ios::binary);
   #endif
-  
-  if(!in) return false;
-  
+
+  if(!in)
+    return false;
+
   // We accept two forms:
   // 1. goto binaries, marked with 0x7f GBF
   // 2. ELF binaries, marked with 0x7f ELF
@@ -199,7 +202,7 @@ bool is_goto_binary(const std::string &filename)
   char hdr[4];
   hdr[0]=in.get();
   hdr[1]=in.get();
-  hdr[2]=in.get();    
+  hdr[2]=in.get();
   hdr[3]=in.get();
 
   if(hdr[0]==0x7f && hdr[1]=='G' && hdr[2]=='B' && hdr[3]=='F')
@@ -213,9 +216,10 @@ bool is_goto_binary(const std::string &filename)
     {
       in.seekg(0);
       elf_readert elf_reader(in);
-      if(elf_reader.has_section("goto-cc")) return true;
+      if(elf_reader.has_section("goto-cc"))
+        return true;
     }
-    
+
     catch(...)
     {
       // ignore any errors
@@ -228,15 +232,16 @@ bool is_goto_binary(const std::string &filename)
     {
       in.seekg(0);
       osx_fat_readert osx_fat_reader(in);
-      if(osx_fat_reader.has_gb()) return true;
+      if(osx_fat_reader.has_gb())
+        return true;
     }
-    
+
     catch(...)
     {
       // ignore any errors
     }
   }
-  
+
   return false;
 }
 
@@ -281,11 +286,13 @@ Function: link_functions
 static bool link_functions(
   symbol_tablet &dest_symbol_table,
   goto_functionst &dest_functions,
-  symbol_tablet &src_symbol_table,
+  const symbol_tablet &src_symbol_table,
   goto_functionst &src_functions,
-  const rename_symbolt &rename_symbol)
+  const rename_symbolt &rename_symbol,
+  const std::unordered_set<irep_idt, irep_id_hash> &weak_symbols)
 {
   namespacet ns(dest_symbol_table);
+  namespacet src_ns(src_symbol_table);
 
   // merge functions
   Forall_goto_functions(src_it, src_functions)
@@ -320,7 +327,8 @@ static bool link_functions(
 
       goto_functionst::goto_functiont &src_func=src_it->second;
 
-      if(in_dest_symbol_table.body.instructions.empty())
+      if(in_dest_symbol_table.body.instructions.empty() ||
+         weak_symbols.find(final_id)!=weak_symbols.end())
       {
         // the one with body wins!
         rename_symbols_in_function(src_func, rename_symbol);
@@ -328,7 +336,8 @@ static bool link_functions(
         in_dest_symbol_table.body.swap(src_func.body);
         in_dest_symbol_table.type=src_func.type;
       }
-      else if(src_func.body.instructions.empty())
+      else if(src_func.body.instructions.empty() ||
+              src_ns.lookup(src_it->first).is_weak)
       {
         // just keep the old one in dest
       }
@@ -344,6 +353,33 @@ static bool link_functions(
       }
     }
   }
+
+  // apply macros
+  rename_symbolt macro_application;
+
+  forall_symbols(it, dest_symbol_table.symbols)
+    if(it->second.is_macro)
+    {
+      const symbolt &symbol=it->second;
+
+      assert(symbol.value.id()==ID_symbol);
+      const irep_idt &id=to_symbol_expr(symbol.value).get_identifier();
+
+      #if 0
+      if(!base_type_eq(symbol.type, ns.lookup(id).type, ns))
+      {
+        std::cerr << symbol << std::endl;
+        std::cerr << ns.lookup(id) << std::endl;
+      }
+      assert(base_type_eq(symbol.type, ns.lookup(id).type, ns));
+      #endif
+
+      macro_application.insert_expr(symbol.name, id);
+    }
+
+  if(!macro_application.expr_map.empty())
+    Forall_goto_functions(dest_it, dest_functions)
+      rename_symbols_in_function(dest_it->second, macro_application);
 
   return false;
 }
@@ -364,56 +400,61 @@ bool read_object_and_link(
   const std::string &file_name,
   symbol_tablet &symbol_table,
   goto_functionst &functions,
-  language_uit &language_ui)
+  message_handlert &message_handler)
 {
-  language_ui.print(8, "Reading: " + file_name);
+  messaget(message_handler).statistics() << "Reading: "
+                                         << file_name << messaget::eom;
 
-  // we read into a temporary symbol_table
-  symbol_tablet temp_symbol_table;
-  goto_functionst temp_functions;
+  // we read into a temporary model
+  goto_modelt temp_model;
 
   if(read_goto_binary(
       file_name,
-      temp_symbol_table,
-      temp_functions,
-      language_ui.get_message_handler()))
+      temp_model,
+      message_handler))
     return true;
 
-  std::set<irep_idt> seen_modes;
-
-  for(symbol_tablet::symbolst::const_iterator
-      it=temp_symbol_table.symbols.begin();
-      it!=temp_symbol_table.symbols.end();
-      it++)
-  {
-    if(it->second.mode!="")
-      seen_modes.insert(it->second.mode);
-  }
-
-  seen_modes.erase(ID_cpp);
-  seen_modes.erase(ID_C);
-
-  if(!seen_modes.empty())
-  {
-    language_ui.error() << "Multi-language linking not supported"
-                        << messaget::eom;
-    return true;
-  }
-
-  // hardwired to C-style linking
+  typedef std::unordered_set<irep_idt, irep_id_hash> id_sett;
+  id_sett weak_symbols;
+  forall_symbols(it, symbol_table.symbols)
+    if(it->second.is_weak)
+      weak_symbols.insert(it->first);
 
   linkingt linking(symbol_table,
-                   temp_symbol_table,
-                   language_ui.get_message_handler());
+                   temp_model.symbol_table,
+                   message_handler);
 
   if(linking.typecheck_main())
     return true;
 
   if(link_functions(symbol_table, functions,
-                    temp_symbol_table, temp_functions,
-                    linking.rename_symbol))
+                    temp_model.symbol_table, temp_model.goto_functions,
+                    linking.rename_symbol, weak_symbols))
     return true;
 
   return false;
 }
 
+/*******************************************************************\
+
+Function: read_object_and_link
+
+  Inputs: a file_name
+
+ Outputs: true on error, false otherwise
+
+ Purpose: reads an object file
+
+\*******************************************************************/
+
+bool read_object_and_link(
+  const std::string &file_name,
+  goto_modelt &goto_model,
+  message_handlert &message_handler)
+{
+  return read_object_and_link(
+    file_name,
+    goto_model.symbol_table,
+    goto_model.goto_functions,
+    message_handler);
+}

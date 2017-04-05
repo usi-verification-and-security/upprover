@@ -20,12 +20,12 @@ Function: boolbvt::convert_bitwise
 
 \*******************************************************************/
 
-void boolbvt::convert_bitwise(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_bitwise(const exprt &expr)
 {
   std::size_t width=boolbv_width(expr.type());
-  
+
   if(width==0)
-    return conversion_failed(expr, bv);
+    return conversion_failed(expr);
 
   if(expr.id()==ID_bitnot)
   {
@@ -33,30 +33,29 @@ void boolbvt::convert_bitwise(const exprt &expr, bvt &bv)
       throw "bitnot takes one operand";
 
     const exprt &op0=expr.op0();
-    
+
     const bvt &op_bv=convert_bv(op0);
 
     if(op_bv.size()!=width)
       throw "convert_bitwise: unexpected operand width";
 
-    bv=bv_utils.inverted(op_bv);
-
-    return;
+    return bv_utils.inverted(op_bv);
   }
   else if(expr.id()==ID_bitand || expr.id()==ID_bitor ||
-          expr.id()==ID_bitxor || 
+          expr.id()==ID_bitxor ||
           expr.id()==ID_bitnand || expr.id()==ID_bitnor ||
           expr.id()==ID_bitxnor)
   {
+    bvt bv;
     bv.resize(width);
-    
+
     forall_operands(it, expr)
     {
       const bvt &op=convert_bv(*it);
 
       if(op.size()!=width)
         throw "convert_bitwise: unexpected operand width";
-        
+
       if(it==expr.operands().begin())
         bv=op;
       else
@@ -79,10 +78,10 @@ void boolbvt::convert_bitwise(const exprt &expr, bvt &bv)
             throw "unexpected operand";
         }
       }
-    }    
+    }
 
-    return;
+    return bv;
   }
- 
+
   throw "unexpected bitwise operand";
 }

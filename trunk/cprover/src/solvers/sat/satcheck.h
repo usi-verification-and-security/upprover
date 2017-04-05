@@ -6,19 +6,19 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_SATCHECK_H
-#define CPROVER_SATCHECK_H
+#ifndef CPROVER_SOLVERS_SAT_SATCHECK_H
+#define CPROVER_SOLVERS_SAT_SATCHECK_H
 
 // this picks the "default" SAT solver
 
-//#define SATCHECK_ZCHAFF
-//#define SATCHECK_MINISAT1
+// #define SATCHECK_ZCHAFF
+// #define SATCHECK_MINISAT1
 #define SATCHECK_MINISAT2
-//#define SATCHECK_GLUCOSE
-//#define SATCHECK_BOOLEFORCE
-//#define SATCHECK_PRECOSAT
-//#define SATCHECK_PICOSAT
-//#define SATCHECK_LINGELING
+// #define SATCHECK_GLUCOSE
+// #define SATCHECK_BOOLEFORCE
+// #define SATCHECK_PRECOSAT
+// #define SATCHECK_PICOSAT
+// #define SATCHECK_LINGELING
 
 #if defined SATCHECK_ZCHAFF
 
@@ -78,4 +78,4 @@ typedef satcheck_glucose_no_simplifiert satcheck_no_simplifiert;
 
 #endif
 
-#endif
+#endif // CPROVER_SOLVERS_SAT_SATCHECK_H

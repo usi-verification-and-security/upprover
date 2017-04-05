@@ -617,8 +617,8 @@ float sqrtf(float f)
   if ( f < 0.0f )
     return 0.0f/0.0f; // NaN
   else if (__CPROVER_isinff(f) ||   // +Inf only
-	   f == 0.0f          ||   // Includes -0
-	   __CPROVER_isnanf(f))
+           f == 0.0f          ||   // Includes -0
+           __CPROVER_isnanf(f))
     return f;
   else if (__CPROVER_isnormalf(f))
   {
@@ -636,7 +636,7 @@ float sqrtf(float f)
     float upperSquare = upper * upper;  // Might be +Inf
 
     // Restrict these to bound f and thus compute the possible
-    // values for the square root.  Note that the lower bound 
+    // values for the square root.  Note that the lower bound
     // can be equal, this is important to catch edge cases such as
     // 0x1.fffffep+127f and relies on the smallest normal number
     // being a perfect square (which it will be for any sensible
@@ -702,8 +702,8 @@ double sqrt(double d)
   if ( d < 0.0 )
     return 0.0/0.0; // NaN
   else if (__CPROVER_isinfd(d) ||   // +Inf only
-	   d == 0.0            ||   // Includes -0
-	   __CPROVER_isnand(d))
+           d == 0.0            ||   // Includes -0
+           __CPROVER_isnand(d))
     return d;
   else if (__CPROVER_isnormald(d))
   {
@@ -771,8 +771,8 @@ long double sqrtl(long double d)
   if(d < 0.0l)
     return 0.0l/0.0l; // NaN
   else if (__CPROVER_isinfld(d) ||   // +Inf only
-	   d == 0.0l            ||   // Includes -0
-	   __CPROVER_isnanld(d))
+           d == 0.0l            ||   // Includes -0
+           __CPROVER_isnanld(d))
     return d;
   else if (__CPROVER_isnormalld(d))
   {

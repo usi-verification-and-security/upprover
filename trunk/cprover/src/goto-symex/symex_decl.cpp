@@ -8,11 +8,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
-#include <util/expr_util.h>
 #include <util/rename.h>
 #include <util/std_expr.h>
 
 #include <pointer-analysis/add_failed_symbols.h>
+
+//#include <analyses/dirty.h>
 
 #include "goto_symex.h"
 
@@ -39,7 +40,7 @@ void goto_symext::symex_decl(statet &state)
 
   if(code.operands().size()!=1)
     throw "decl expects one operand";
-  
+
   if(code.op0().id()!=ID_symbol)
     throw "decl expects symbol as first operand";
 
@@ -62,7 +63,7 @@ void goto_symext::symex_decl(statet &state, const symbol_exprt &expr)
 {
   // We increase the L2 renaming to make these non-deterministic.
   // We also prevent propagation of old values.
-  
+
   ssa_exprt ssa(expr);
   state.rename(ssa, ns, goto_symex_statet::L1);
   const irep_idt &l1_identifier=ssa.get_identifier();
@@ -76,9 +77,9 @@ void goto_symext::symex_decl(statet &state, const symbol_exprt &expr)
   {
     exprt failed=
       get_failed_symbol(expr, ns);
-    
+
     exprt rhs;
-    
+
     if(failed.is_not_nil())
     {
       address_of_exprt address_of_expr;
@@ -88,11 +89,11 @@ void goto_symext::symex_decl(statet &state, const symbol_exprt &expr)
     }
     else
       rhs=exprt(ID_invalid);
-    
+
     state.rename(rhs, ns, goto_symex_statet::L1);
     state.value_set.assign(ssa, rhs, ns, true, false);
   }
-  
+
   // prevent propagation
   state.propagation.remove(l1_identifier);
 
@@ -103,18 +104,30 @@ void goto_symext::symex_decl(statet &state, const symbol_exprt &expr)
      state.level2.current_names.end())
     state.level2.current_names[l1_identifier]=std::make_pair(ssa, 0);
   state.level2.increase_counter(l1_identifier);
+  const bool record_events=state.record_events;
+  state.record_events=false;
   state.rename(ssa, ns);
-  
+  state.record_events=record_events;
+
   // we hide the declaration of auxiliary variables
   // and if the statement itself is hidden
   bool hidden=
     ns.lookup(expr.get_identifier()).is_auxiliary ||
     state.top().hidden_function ||
     state.source.pc->source_location.get_hide();
-  
+
   target.decl(
     state.guard.as_expr(),
     ssa,
     state.source,
     hidden?symex_targett::HIDDEN:symex_targett::STATE);
+
+  //assert(state.dirty);
+  //if((*state.dirty)(ssa.get_object_name()) &&
+  //   state.atomic_section_id==0)
+  //  target.shared_write(
+  //    state.guard.as_expr(),
+  //    ssa,
+  //    state.atomic_section_id,
+  //    state.source);
 }

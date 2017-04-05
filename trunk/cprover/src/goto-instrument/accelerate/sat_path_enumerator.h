@@ -1,5 +1,13 @@
-#ifndef DISJUNCTIVE_POLYNOMIAL_ACCELERATION_H
-#define DISJUNCTIVE_POLYNOMIAL_ACCELERATION_H
+/*******************************************************************\
+
+Module: Loop Acceleration
+
+Author: Matt Lewis
+
+\*******************************************************************/
+
+#ifndef CPROVER_GOTO_INSTRUMENT_ACCELERATE_SAT_PATH_ENUMERATOR_H
+#define CPROVER_GOTO_INSTRUMENT_ACCELERATE_SAT_PATH_ENUMERATOR_H
 
 #include <map>
 #include <set>
@@ -20,22 +28,22 @@
 #include "cone_of_influence.h"
 #include "acceleration_utils.h"
 
-using namespace std;
-
-class sat_path_enumeratort : public path_enumeratort {
- public:
-  sat_path_enumeratort(symbol_tablet &_symbol_table,
-                       goto_functionst &_goto_functions,
-                       goto_programt &_goto_program,
-                       natural_loops_mutablet::natural_loopt &_loop,
-                       goto_programt::targett _loop_header) :
-      symbol_table(_symbol_table),
-      ns(symbol_table),
-      goto_functions(_goto_functions),
-      goto_program(_goto_program),
-      loop(_loop),
-      loop_header(_loop_header),
-      utils(symbol_table, goto_functions, loop_counter)
+class sat_path_enumeratort:public path_enumeratort
+{
+public:
+  sat_path_enumeratort(
+    symbol_tablet &_symbol_table,
+    goto_functionst &_goto_functions,
+    goto_programt &_goto_program,
+    natural_loops_mutablet::natural_loopt &_loop,
+    goto_programt::targett _loop_header):
+    symbol_table(_symbol_table),
+    ns(symbol_table),
+    goto_functions(_goto_functions),
+    goto_program(_goto_program),
+    loop(_loop),
+    loop_header(_loop_header),
+    utils(symbol_table, goto_functions, loop_counter)
   {
     find_distinguishing_points();
     build_fixed();
@@ -43,7 +51,7 @@ class sat_path_enumeratort : public path_enumeratort {
 
   bool next(patht &path);
 
- protected:
+protected:
   void find_distinguishing_points();
 
   void build_path(scratch_programt &scratch_program, patht &path);
@@ -58,16 +66,16 @@ class sat_path_enumeratort : public path_enumeratort {
   natural_loops_mutablet::natural_loopt &loop;
   goto_programt::targett loop_header;
 
-  typedef map<goto_programt::targett, exprt> distinguish_mapt;
-  typedef map<exprt, bool> distinguish_valuest;
+  typedef std::map<goto_programt::targett, exprt> distinguish_mapt;
+  typedef std::map<exprt, bool> distinguish_valuest;
 
   acceleration_utilst utils;
   exprt loop_counter;
   distinguish_mapt distinguishing_points;
-  list<exprt> distinguishers;
+  std::list<exprt> distinguishers;
   expr_sett modified;
   goto_programt fixed;
-  list<distinguish_valuest> accelerated_paths;
+  std::list<distinguish_valuest> accelerated_paths;
 };
 
-#endif // DISJUNCTIVE_POLYNOMIAL_ACCELERATION_H
+#endif // CPROVER_GOTO_INSTRUMENT_ACCELERATE_SAT_PATH_ENUMERATOR_H

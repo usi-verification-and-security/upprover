@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 #include <cstdlib>
 
@@ -63,7 +72,7 @@ class arenat
     return father == c || mother == c || son == c || daughter == c;
   }
 public:
-  arenat(tournament_selectt::populationt &pop) :
+  explicit arenat(tournament_selectt::populationt &pop) :
       no_contestant(pop.end()), father(no_contestant), mother(no_contestant), son(
           no_contestant), daughter(no_contestant)
   {

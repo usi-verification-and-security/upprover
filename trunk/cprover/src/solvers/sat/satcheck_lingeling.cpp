@@ -8,12 +8,12 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 #include <cassert>
 
-#include <util/i2string.h>
 #include <util/threeval.h>
 
 #include "satcheck_lingeling.h"
 
-extern "C" {
+extern "C"
+{
 #include <lglib.h>
 }
 
@@ -86,7 +86,7 @@ Function: satcheck_lingelingt::lcnf
 void satcheck_lingelingt::lcnf(const bvt &bv)
 {
   bvt new_bv;
-  
+
   if(process_clause(bv, new_bv))
     return;
 
@@ -117,11 +117,11 @@ propt::resultt satcheck_lingelingt::prop_solve()
   // We start counting at 1, thus there is one variable fewer.
   {
     std::string msg=
-      i2string(no_variables()-1)+" variables, "+
-      i2string(clause_counter)+" clauses";
+      std::to_string(no_variables()-1)+" variables, "+
+      std::to_string(clause_counter)+" clauses";
     messaget::status() << msg << messaget::eom;
   }
-  
+
   std::string msg;
 
   forall_literals(it, assumptions)
@@ -257,4 +257,3 @@ bool satcheck_lingelingt::is_in_conflict(literalt a) const
   assert(!a.is_constant());
   return lglfailed(solver, a.dimacs())!=0;
 }
-

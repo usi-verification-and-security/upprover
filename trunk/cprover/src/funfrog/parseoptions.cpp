@@ -61,8 +61,8 @@
 funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
   parse_options_baset(FUNFROG_OPTIONS, argc, argv),
   xml_interfacet(cmdline),
-  language_uit((std::string("FUNFROG") + FUNFROG_VERSION), cmdline)      
-  //language_uit(cmdline, *(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
+  //language_uit((std::string("FUNFROG") + FUNFROG_VERSION), cmdline)      
+  language_uit(cmdline, *(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
 {
 }
 
@@ -78,7 +78,8 @@ bool funfrog_parseoptionst::process_goto_program(
         symbol_table, get_message_handler(), goto_functions);
 
     cbmc_status_interface("Function Pointer Removal");
-    remove_function_pointers(symbol_table, goto_functions,
+    remove_function_pointers(get_message_handler(),
+      symbol_table, goto_functions,
       cmdline.isset("pointer-check"));
 
     cbmc_status_interface("Partial Inlining");

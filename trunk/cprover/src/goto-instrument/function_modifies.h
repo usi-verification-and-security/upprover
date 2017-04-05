@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_MODIFIES_H
-#define CPROVER_MODIFIES_H
+#ifndef CPROVER_GOTO_INSTRUMENT_FUNCTION_MODIFIES_H
+#define CPROVER_GOTO_INSTRUMENT_FUNCTION_MODIFIES_H
 
 #include <goto-programs/goto_functions.h>
 #include <analyses/local_may_alias.h>
@@ -32,12 +32,12 @@ public:
     const goto_programt::const_targett,
     const exprt &lhs,
     modifiest &);
-  
+
   void get_modifies_function(
     const exprt &,
-    modifiest &);    
-    
-  inline void operator()(const exprt &function, modifiest &modifies)
+    modifiest &);
+
+  void operator()(const exprt &function, modifiest &modifies)
   {
     get_modifies_function(function, modifies);
   }
@@ -49,4 +49,4 @@ protected:
   function_mapt function_map;
 };
 
-#endif
+#endif // CPROVER_GOTO_INSTRUMENT_FUNCTION_MODIFIES_H

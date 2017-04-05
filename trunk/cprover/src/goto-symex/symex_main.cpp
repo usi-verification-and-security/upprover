@@ -13,6 +13,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/symbol_table.h>
 #include <util/replace_symbol.h>
 
+//#include <analyses/dirty.h>
+
 #include "goto_symex.h"
 
 /*******************************************************************\
@@ -57,16 +59,17 @@ void goto_symext::vcc(
   // we are willing to re-write some quantified expressions
   rewrite_quantifiers(expr, state);
 
-  // now rename, enables propagation    
+  // now rename, enables propagation
   state.rename(expr, ns);
-  
+
   // now try simplifier on it
   do_simplify(expr);
 
-  if(expr.is_true()) return;
-  
+  if(expr.is_true())
+    return;
+
   state.guard.guard_expr(expr);
-  
+
   remaining_vccs++;
   target.assertion(state.guard.as_expr(), expr, msg, state.source);
 }
@@ -89,7 +92,8 @@ void goto_symext::symex_assume(statet &state, const exprt &cond)
 
   do_simplify(simplified_cond);
 
-  if(simplified_cond.is_true()) return;
+  if(simplified_cond.is_true())
+    return;
 
   if(state.threads.size()==1)
   {
@@ -164,22 +168,26 @@ void goto_symext::operator()(
   state.top().end_of_function=--goto_program.instructions.end();
   state.top().calling_location.pc=state.top().end_of_function;
   state.symex_target=&target;
-  
+  //state.dirty=new dirtyt(goto_functions);
+
   assert(state.top().end_of_function->is_end_function());
 
   while(!state.call_stack().empty())
   {
     symex_step(goto_functions, state);
-    
+
     // is there another thread to execute?
     if(state.call_stack().empty() &&
        state.source.thread_nr+1<state.threads.size())
     {
       unsigned t=state.source.thread_nr+1;
-      //std::cout << "********* Now executing thread " << t << std::endl;
+      // std::cout << "********* Now executing thread " << t << std::endl;
       state.switch_to_thread(t);
     }
   }
+
+  //delete state.dirty;
+  //state.dirty=0;
 }
 
 /*******************************************************************\
@@ -244,10 +252,10 @@ void goto_symext::symex_step(
   statet &state)
 {
   #if 0
-  std::cout << "\ninstruction type is " << state.source.pc->type << std::endl;
-  std::cout << "Location: " << state.source.pc->source_location << std::endl;
-  std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << std::endl;
-  std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << std::endl;
+  std::cout << "\ninstruction type is " << state.source.pc->type << '\n';
+  std::cout << "Location: " << state.source.pc->source_location << '\n';
+  std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << '\n';
+  std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << '\n';
   #endif
 
   assert(!state.threads.empty());
@@ -280,17 +288,17 @@ void goto_symext::symex_step(
     symex_end_of_function(state);
     state.source.pc++;
     break;
-  
+
   case LOCATION:
     if(!state.guard.is_false())
       target.location(state.guard.as_expr(), state.source);
     state.source.pc++;
     break;
-  
+
   case GOTO:
     symex_goto(state);
     break;
-    
+
   case ASSUME:
     if(!state.guard.is_false())
     {
@@ -307,7 +315,8 @@ void goto_symext::symex_step(
     if(!state.guard.is_false())
     {
       std::string msg=id2string(state.source.pc->source_location.get_comment());
-      if(msg=="") msg="assertion";
+      if(msg=="")
+        msg="assertion";
       exprt tmp(instruction.guard);
       clean_expr(tmp, state, false);
       vcc(tmp, msg, state);
@@ -315,7 +324,7 @@ void goto_symext::symex_step(
 
     state.source.pc++;
     break;
-    
+
   case RETURN:
     if(!state.guard.is_false())
       return_assignment(state);
@@ -343,7 +352,7 @@ void goto_symext::symex_step(
 
       Forall_expr(it, deref_code.arguments())
         clean_expr(*it, state, false);
-    
+
       symex_function_call(goto_functions, state, deref_code);
     }
     else
@@ -373,37 +382,37 @@ void goto_symext::symex_step(
     symex_start_thread(state);
     state.source.pc++;
     break;
-  
+
   case END_THREAD:
     // behaves like assume(0);
     if(!state.guard.is_false())
       state.guard.add(false_exprt());
     state.source.pc++;
     break;
-  
+
   case ATOMIC_BEGIN:
     symex_atomic_begin(state);
     state.source.pc++;
     break;
-    
+
   case ATOMIC_END:
     symex_atomic_end(state);
     state.source.pc++;
     break;
-    
+
   case CATCH:
     symex_catch(state);
     state.source.pc++;
     break;
-  
+
   case THROW:
     symex_throw(state);
     state.source.pc++;
     break;
-    
+
   case NO_INSTRUCTION_TYPE:
     throw "symex got NO_INSTRUCTION";
-  
+
   default:
     throw "symex got unexpected instruction";
   }

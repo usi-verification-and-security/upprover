@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <cstdlib>
 #include <fstream>
 #include <stdexcept>
@@ -9,7 +18,7 @@
 #include <util/bv_arithmetic.h>
 #include <util/mp_arith.h>
 
-#include <cegis/invariant/meta/literals.h>
+#include <cegis/instrument/literals.h>
 #include <cegis/genetic/concrete_test_runner.h>
 
 #define EXECUTABLE_PREFIX "test_runner"
@@ -51,7 +60,7 @@ void implement_deserialise(std::string &source)
 
 }
 
-void write_file(const char * const path, const std::string &content)
+void write_file(const std::string &path, const std::string &content)
 {
   std::ofstream ofs(path);
   ofs << content;
@@ -71,7 +80,7 @@ void prepare_executable(bool &executable_compiled,
   std::string source;
   implement_deserialise(source);
   source+=source_code_provider();
-  write_file(source_file_name.c_str(), source);
+  write_file(source_file_name, source);
   std::string compile_command(COMPILE_COMMAND);
   compile_command+=source_file_name;
   compile_command+=ARTIFACT_SEPARATOR;

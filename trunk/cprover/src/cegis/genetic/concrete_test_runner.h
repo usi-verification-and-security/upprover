@@ -1,14 +1,14 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_GENETIC_CONCRETE_TEST_RUNNER_H_
-#define CEGIS_GENETIC_CONCRETE_TEST_RUNNER_H_
+#ifndef CPROVER_CEGIS_GENETIC_CONCRETE_TEST_RUNNER_H
+#define CPROVER_CEGIS_GENETIC_CONCRETE_TEST_RUNNER_H
 
 #include <functional>
 
@@ -41,7 +41,7 @@ public:
    *
    * @param source_code_provider
    */
-  concrete_test_runnert(std::function<std::string(void)> source_code_provider);
+  explicit concrete_test_runnert(std::function<std::string(void)> source_code_provider);
 
   /**
    * @brief
@@ -68,4 +68,4 @@ public:
   void join();
 };
 
-#endif /* CEGIS_GENETIC_CONCRETE_TEST_RUNNER_H_ */
+#endif // CPROVER_CEGIS_GENETIC_CONCRETE_TEST_RUNNER_H

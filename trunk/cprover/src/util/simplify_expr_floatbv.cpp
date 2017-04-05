@@ -29,19 +29,20 @@ Function: simplify_exprt::simplify_isinf
 
 bool simplify_exprt::simplify_isinf(exprt &expr)
 {
-  if(expr.operands().size()!=1) return true;
+  if(expr.operands().size()!=1)
+    return true;
 
   if(ns.follow(expr.op0().type()).id()!=ID_floatbv)
     return true;
- 
+
   if(expr.op0().is_constant())
   {
     ieee_floatt value(to_constant_expr(expr.op0()));
     expr.make_bool(value.is_infinity());
     return false;
   }
-  
-  return true; 
+
+  return true;
 }
 
 /*******************************************************************\
@@ -58,16 +59,17 @@ Function: simplify_exprt::simplify_isnan
 
 bool simplify_exprt::simplify_isnan(exprt &expr)
 {
-  if(expr.operands().size()!=1) return true;
- 
+  if(expr.operands().size()!=1)
+    return true;
+
   if(expr.op0().is_constant())
   {
     ieee_floatt value(to_constant_expr(expr.op0()));
     expr.make_bool(value.is_NaN());
     return false;
   }
-  
-  return true; 
+
+  return true;
 }
 
 /*******************************************************************\
@@ -84,16 +86,17 @@ Function: simplify_exprt::simplify_isnormal
 
 bool simplify_exprt::simplify_isnormal(exprt &expr)
 {
-  if(expr.operands().size()!=1) return true;
- 
+  if(expr.operands().size()!=1)
+    return true;
+
   if(expr.op0().is_constant())
   {
     ieee_floatt value(to_constant_expr(expr.op0()));
     expr.make_bool(value.is_normal());
     return false;
   }
-  
-  return true; 
+
+  return true;
 }
 
 /*******************************************************************\
@@ -111,12 +114,13 @@ Function: simplify_exprt::simplify_abs
 #if 0
 bool simplify_exprt::simplify_abs(exprt &expr)
 {
-  if(expr.operands().size()!=1) return true;
- 
+  if(expr.operands().size()!=1)
+    return true;
+
   if(expr.op0().is_constant())
   {
     const typet &type=ns.follow(expr.op0().type());
-    
+
     if(type.id()==ID_floatbv)
     {
       ieee_floatt value(to_constant_expr(expr.op0()));
@@ -144,8 +148,8 @@ bool simplify_exprt::simplify_abs(exprt &expr)
       }
     }
   }
-  
-  return true; 
+
+  return true;
 }
 #endif
 
@@ -164,12 +168,13 @@ Function: simplify_exprt::simplify_sign
 #if 0
 bool simplify_exprt::simplify_sign(exprt &expr)
 {
-  if(expr.operands().size()!=1) return true;
- 
+  if(expr.operands().size()!=1)
+    return true;
+
   if(expr.op0().is_constant())
   {
     const typet &type=ns.follow(expr.op0().type());
-    
+
     if(type.id()==ID_floatbv)
     {
       ieee_floatt value(to_constant_expr(expr.op0()));
@@ -187,8 +192,8 @@ bool simplify_exprt::simplify_sign(exprt &expr)
       }
     }
   }
-  
-  return true; 
+
+  return true;
 }
 #endif
 
@@ -207,9 +212,9 @@ Function: simplify_exprt::simplify_floatbv_typecast
 bool simplify_exprt::simplify_floatbv_typecast(exprt &expr)
 {
   // These casts usually reduce precision, and thus, usually round.
-  
+
   assert(expr.operands().size()==2);
-        
+
   const typet &dest_type=ns.follow(expr.type());
   const typet &src_type=ns.follow(expr.op0().type());
 
@@ -219,10 +224,10 @@ bool simplify_exprt::simplify_floatbv_typecast(exprt &expr)
     expr=expr.op0();
     return false;
   }
-  
+
   exprt op0=expr.op0();
   exprt op1=expr.op1(); // rounding mode
-  
+
   // We can soundly re-write (float)((double)x op (double)y)
   // to x op y. True for any rounding mode!
 
@@ -253,7 +258,7 @@ bool simplify_exprt::simplify_floatbv_typecast(exprt &expr)
   }
   #endif
 
-  // constant folding  
+  // constant folding
   if(op0.is_constant() && op1.is_constant())
   {
     mp_integer rounding_mode;
@@ -264,8 +269,10 @@ bool simplify_exprt::simplify_floatbv_typecast(exprt &expr)
         if(dest_type.id()==ID_floatbv) // float to float
         {
           ieee_floatt result(to_constant_expr(op0));
-          result.rounding_mode=(ieee_floatt::rounding_modet)integer2long(rounding_mode);
-          result.change_spec(to_floatbv_type(dest_type));
+          result.rounding_mode=
+            (ieee_floatt::rounding_modet)integer2size_t(rounding_mode);
+          result.change_spec(
+            ieee_float_spect(to_floatbv_type(dest_type)));
           expr=result.to_expr();
           return false;
         }
@@ -275,7 +282,8 @@ bool simplify_exprt::simplify_floatbv_typecast(exprt &expr)
           if(rounding_mode==ieee_floatt::ROUND_TO_ZERO)
           {
             ieee_floatt result(to_constant_expr(op0));
-            result.rounding_mode=(ieee_floatt::rounding_modet)integer2long(rounding_mode);
+            result.rounding_mode=
+              (ieee_floatt::rounding_modet)integer2size_t(rounding_mode);
             mp_integer value=result.to_integer();
             expr=from_integer(value, dest_type);
             return false;
@@ -290,9 +298,9 @@ bool simplify_exprt::simplify_floatbv_typecast(exprt &expr)
         {
           if(dest_type.id()==ID_floatbv) // int to float
           {
-            ieee_floatt result;
-            result.rounding_mode=(ieee_floatt::rounding_modet)integer2long(rounding_mode);
-            result.spec=to_floatbv_type(dest_type);
+            ieee_floatt result(to_floatbv_type(dest_type));
+            result.rounding_mode=
+              (ieee_floatt::rounding_modet)integer2size_t(rounding_mode);
             result.from_integer(value);
             expr=result.to_expr();
             return false;
@@ -307,8 +315,18 @@ bool simplify_exprt::simplify_floatbv_typecast(exprt &expr)
   if(expr.op0().id()==ID_if &&
      expr.op0().operands().size()==3)
   {
-    exprt tmp_op1=binary_exprt(expr.op0().op1(), ID_floatbv_typecast, expr.op1(), dest_type);
-    exprt tmp_op2=binary_exprt(expr.op0().op2(), ID_floatbv_typecast, expr.op1(), dest_type);
+    exprt tmp_op1=
+      binary_exprt(
+        expr.op0().op1(),
+        ID_floatbv_typecast,
+        expr.op1(),
+        dest_type);
+    exprt tmp_op2=
+      binary_exprt(
+        expr.op0().op2(),
+        ID_floatbv_typecast,
+        expr.op1(),
+        dest_type);
     simplify_floatbv_typecast(tmp_op1);
     simplify_floatbv_typecast(tmp_op2);
     expr=if_exprt(expr.op0().op0(), tmp_op1, tmp_op2, dest_type);
@@ -316,7 +334,7 @@ bool simplify_exprt::simplify_floatbv_typecast(exprt &expr)
     return false;
   }
   #endif
-  
+
   return true;
 }
 
@@ -335,12 +353,12 @@ Function: simplify_exprt::simplify_floatbv_op
 bool simplify_exprt::simplify_floatbv_op(exprt &expr)
 {
   const typet &type=ns.follow(expr.type());
-  
+
   if(type.id()!=ID_floatbv)
     return true;
 
   assert(expr.operands().size()==3);
-  
+
   exprt op0=expr.op0();
   exprt op1=expr.op1();
   exprt op2=expr.op2(); // rounding mode
@@ -349,9 +367,9 @@ bool simplify_exprt::simplify_floatbv_op(exprt &expr)
   assert(ns.follow(op1.type())==type);
 
   // Remember that floating-point addition is _NOT_ associative.
-  // Thus, we don't re-sort the operands.  
+  // Thus, we don't re-sort the operands.
   // We only merge constants!
-  
+
   if(op0.is_constant() && op1.is_constant() && op2.is_constant())
   {
     ieee_floatt v0(to_constant_expr(op0));
@@ -360,11 +378,12 @@ bool simplify_exprt::simplify_floatbv_op(exprt &expr)
     mp_integer rounding_mode;
     if(!to_integer(op2, rounding_mode))
     {
-      v0.rounding_mode=(ieee_floatt::rounding_modet)integer2long(rounding_mode);
+      v0.rounding_mode=
+        (ieee_floatt::rounding_modet)integer2size_t(rounding_mode);
       v1.rounding_mode=v0.rounding_mode;
-      
+
       ieee_floatt result=v0;
-      
+
       if(expr.id()==ID_floatbv_plus)
         result+=v1;
       else if(expr.id()==ID_floatbv_minus)
@@ -382,15 +401,15 @@ bool simplify_exprt::simplify_floatbv_op(exprt &expr)
   }
 
   // division by one? Exact for all rounding modes.
-  if (expr.id()==ID_floatbv_div &&
-      op1.is_constant() && op1.is_one())
-  { 
+  if(expr.id()==ID_floatbv_div &&
+     op1.is_constant() && op1.is_one())
+  {
     exprt tmp;
     tmp.swap(op0);
     expr.swap(tmp);
     return false;
   }
-  
+
   return true;
 }
 
@@ -413,9 +432,11 @@ bool simplify_exprt::simplify_ieee_float_relation(exprt &expr)
 
   exprt::operandst &operands=expr.operands();
 
-  if(expr.type().id()!=ID_bool) return true;
+  if(expr.type().id()!=ID_bool)
+    return true;
 
-  if(operands.size()!=2) return true;
+  if(operands.size()!=2)
+    return true;
 
   // types must match
   if(expr.op0().type()!=expr.op1().type())
@@ -433,12 +454,12 @@ bool simplify_exprt::simplify_ieee_float_relation(exprt &expr)
     ieee_floatt f1(to_constant_expr(expr.op1()));
 
     if(expr.id()==ID_ieee_float_notequal)
-      expr.make_bool(ieee_not_equal(f0, f1));
+      expr.make_bool(f0.ieee_not_equal(f1));
     else if(expr.id()==ID_ieee_float_equal)
-      expr.make_bool(ieee_equal(f0, f1));
+      expr.make_bool(f0.ieee_equal(f1));
     else
       assert(false);
-  
+
     return false;
   }
 
@@ -455,11 +476,10 @@ bool simplify_exprt::simplify_ieee_float_relation(exprt &expr)
       isnan.make_not();
     else
       assert(false);
-  
+
     expr.swap(isnan);
     return false;
   }
 
   return true;
 }
-

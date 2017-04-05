@@ -100,7 +100,7 @@ propt::resultt qbf_qubet::prop_solve()
     return P_SATISFIABLE;
 
   {
-    messaget::status() << 
+    messaget::status() <<
       "QuBE: " <<
       no_variables() << " variables, " <<
       no_clauses() << " clauses" << eom;
@@ -116,14 +116,12 @@ propt::resultt qbf_qubet::prop_solve()
     write_qdimacs_cnf(out);
   }
 
-  //std::string options=" --equivalences=0";
   std::string options="";
 
   // solve it
-  int res=system(("QuBE "+qbf_tmp_file+
-         options+
-         " > "+result_tmp_file).c_str());
-  assert(0 == res);
+  int res=system(
+    ("QuBE "+qbf_tmp_file+options+" > "+result_tmp_file).c_str());
+  assert(0==res);
 
   bool result=false;
 
@@ -175,4 +173,3 @@ propt::resultt qbf_qubet::prop_solve()
 
   return P_ERROR;
 }
-

@@ -6,8 +6,8 @@ Author:
 
 \*******************************************************************/
 
-#ifndef CPROVER_UTIL_PIPE_STREAM
-#define CPROVER_UTIL_PIPE_STREAM
+#ifndef CPROVER_UTIL_PIPE_STREAM_H
+#define CPROVER_UTIL_PIPE_STREAM_H
 
 #include <iosfwd>
 #include <string>
@@ -22,21 +22,22 @@ Author:
 
 // a class much like __gnu_cxx::stdio_filebuf
 
-class filedescriptor_streambuf:public std::streambuf
+class filedescriptor_streambuft:public std::streambuf
 {
 public:
   #ifndef _WIN32
+  // NOLINTNEXTLINE(readability/identifiers)
   typedef int HANDLE;
   #endif
 
-  filedescriptor_streambuf();
-  
+  filedescriptor_streambuft();
+
   // these are closed automatically on destruction
   void set_in(HANDLE in) { proc_in=in; }
   void set_out(HANDLE out) { proc_out=out; }
 
-  ~filedescriptor_streambuf();
-  
+  ~filedescriptor_streambuft();
+
 protected:
   HANDLE proc_in, proc_out;
   char *in_buffer;
@@ -48,10 +49,10 @@ protected:
   std::streamsize showmanyc();
 };
 
-class pipe_stream:public std::iostream
+class pipe_streamt:public std::iostream
 {
 public:
-  pipe_stream(
+  pipe_streamt(
     const std::string &_executable,
     const std::list<std::string> &_args);
 
@@ -68,7 +69,7 @@ protected:
   pid_t pid;
   #endif
 
-  filedescriptor_streambuf buffer;
+  filedescriptor_streambuft buffer;
 };
 
-#endif
+#endif // CPROVER_UTIL_PIPE_STREAM_H

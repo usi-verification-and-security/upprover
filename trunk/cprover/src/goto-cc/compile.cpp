@@ -22,11 +22,10 @@ Date: June 2006
 #include <util/unicode.h>
 #include <util/irep_serialization.h>
 #include <util/suffix.h>
+#include <util/get_base_name.h>
 
 #include <ansi-c/ansi_c_language.h>
-
-#include <linking/linking_class.h>
-#include <linking/entry_point.h>
+#include <ansi-c/ansi_c_entry_point.h>
 
 #include <goto-programs/goto_convert.h>
 #include <goto-programs/goto_convert_functions.h>
@@ -38,7 +37,6 @@ Date: June 2006
 
 #include <cbmc/version.h>
 
-#include "get_base_name.h"
 #include "compile.h"
 
 #define DOTGRAPHSETTINGS  "color=black;" \
@@ -96,7 +94,8 @@ bool compilet::doit()
       it++)
   {
     if(!find_library(*it))
-      warning() << "Library not found: " << *it << " (ignoring)" << eom;
+      // GCC is going to complain if this doesn't exist
+      debug() << "Library not found: " << *it << " (ignoring)" << eom;
   }
 
   statistics() << "No. of source files: " << source_files.size() << eom;
@@ -123,15 +122,17 @@ bool compilet::doit()
   }
 
   if(source_files.size()>0)
-    if(compile()) return true;
+    if(compile())
+      return true;
 
   if(mode==LINK_LIBRARY ||
      mode==COMPILE_LINK ||
      mode==COMPILE_LINK_EXECUTABLE)
   {
-    if(link()) return true;
+    if(link())
+      return true;
   }
-  
+
   return false;
 }
 
@@ -152,7 +153,7 @@ bool compilet::add_input_file(const std::string &file_name)
 {
   // first of all, try to open the file
   {
-    std::ifstream in(file_name.c_str());
+    std::ifstream in(file_name);
     if(!in)
     {
       error() << "failed to open file `" << file_name << "'" << eom;
@@ -165,9 +166,11 @@ bool compilet::add_input_file(const std::string &file_name)
   if(r==std::string::npos)
   {
     // a file without extension; will ignore
+    warning() << "input file `" << file_name
+              << "' has no extension, not considered" << eom;
     return false;
   }
-  
+
   std::string ext = file_name.substr(r+1, file_name.length());
 
   if(ext=="c" ||
@@ -180,7 +183,8 @@ bool compilet::add_input_file(const std::string &file_name)
      ext=="i" ||
      ext=="ii" ||
      ext=="class" ||
-     ext=="jar")
+     ext=="jar" ||
+     ext=="jsil")
   {
     source_files.push_back(file_name);
   }
@@ -209,37 +213,21 @@ bool compilet::add_input_file(const std::string &file_name)
     }
 
     // unpack now
-    #ifdef _WIN32
-    if(file_name[0]!='/' && file_name[1]!=':')
-    #else
-    if(file_name[0]!='/')
-    #endif
-    {
-      cmd << "ar x " <<
-      #ifdef _WIN32
-        working_directory << "\\" << file_name;
-      #else
-        working_directory << "/" << file_name;
-      #endif
-    }
-    else
-    {
-      cmd << "ar x " << file_name;
-    }
-    
+    cmd << "ar x " << concat_dir_file(working_directory, file_name);
+
     FILE *stream;
 
     stream=popen(cmd.str().c_str(), "r");
     pclose(stream);
-    
+
     cmd.clear();
     cmd.str("");
-    
+
     // add the files from "ar t"
     #ifdef _WIN32
-    if(file_name[0]!='/' && file_name[1]!=':')
+    if(file_name[0]!='/' && file_name[1]!=':') // NOLINT(readability/braces)
     #else
-    if(file_name[0]!='/')
+    if(file_name[0]!='/') // NOLINT(readability/braces)
     #endif
     {
       cmd << "ar t " <<
@@ -264,7 +252,7 @@ bool compilet::add_input_file(const std::string &file_name)
       {
         if(ch!='\n')
         {
-          line+=(char)ch;
+          line+=static_cast<char>(ch);
         }
         else
         {
@@ -328,7 +316,7 @@ bool compilet::find_library(const std::string &name)
     tmp = *it + "/lib";
     #endif
 
-    std::ifstream in((tmp+name+".a").c_str());
+    std::ifstream in(tmp+name+".a");
 
     if(in.is_open())
       return !add_input_file(tmp+name+".a");
@@ -345,7 +333,7 @@ bool compilet::find_library(const std::string &name)
       }
     }
   }
-  
+
   return false;
 }
 
@@ -366,7 +354,7 @@ bool compilet::is_elf_file(const std::string &file_name)
 {
   std::fstream in;
 
-  in.open(file_name.c_str(), std::ios::in);
+  in.open(file_name, std::ios::in);
   if(in.is_open())
   {
     char buf[4];
@@ -405,22 +393,31 @@ bool compilet::link()
     object_files.pop_front();
 
     if(read_object_and_link(file_name, symbol_table,
-                            compiled_functions, *this))
+                            compiled_functions, get_message_handler()))
       return true;
   }
 
   // produce entry point?
-  
+
   if(mode==COMPILE_LINK_EXECUTABLE)
   {
-    if(entry_point(symbol_table, "main", ui_message_handler))
+    // new symbols may have been added to a previously linked file
+    // make sure a new entry point is created that contains all
+    // static initializers
+    compiled_functions.function_map.erase("__CPROVER_initialize");
+
+    symbol_table.remove(goto_functionst::entry_point());
+    compiled_functions.function_map.erase(goto_functionst::entry_point());
+
+    if(ansi_c_entry_point(symbol_table, "main", ui_message_handler))
       return true;
 
     // entry_point may (should) add some more functions.
     convert_symbols(compiled_functions);
   }
 
-  if(write_object_file(output_file_executable, symbol_table, compiled_functions))
+  if(write_object_file(
+      output_file_executable, symbol_table, compiled_functions))
     return true;
 
   return false;
@@ -445,14 +442,27 @@ bool compilet::compile()
   {
     std::string file_name=source_files.front();
     source_files.pop_front();
-    
+
     // Visual Studio always prints the name of the file it's doing
     if(echo_file_name)
       status() << file_name << eom;
 
     bool r=parse_source(file_name); // don't break the program!
 
-    if(r) return true; // parser/typecheck error
+    if(r)
+    {
+      const std::string &debug_outfile=
+        cmdline.get_value("print-rejected-preprocessed-source");
+      if(!debug_outfile.empty())
+      {
+        std::ifstream in(file_name, std::ios::binary);
+        std::ofstream out(debug_outfile, std::ios::binary);
+        out << in.rdbuf();
+        warning() << "Failed sources in " << debug_outfile << eom;
+      }
+
+      return true; // parser/typecheck error
+    }
 
     if(mode==COMPILE_ONLY || mode==ASSEMBLE_ONLY)
     {
@@ -462,9 +472,9 @@ bool compilet::compile()
       convert_symbols(compiled_functions);
 
       std::string cfn;
-      
+
       if(output_file_object=="")
-        cfn=get_base_name(file_name) + "." + object_file_extension;
+        cfn=get_base_name(file_name, true)+"."+object_file_extension;
       else
         cfn=output_file_object;
 
@@ -475,7 +485,7 @@ bool compilet::compile()
       compiled_functions.clear();
     }
   }
-  
+
   return false;
 }
 
@@ -493,12 +503,13 @@ Function: compilet::parse
 
 bool compilet::parse(const std::string &file_name)
 {
-  if(file_name=="-") return parse_stdin();
+  if(file_name=="-")
+    return parse_stdin();
 
   #ifdef _MSC_VER
-  std::ifstream infile(widen(file_name).c_str());
+  std::ifstream infile(widen(file_name));
   #else
-  std::ifstream infile(file_name.c_str());
+  std::ifstream infile(file_name);
   #endif
 
   if(!infile)
@@ -508,10 +519,10 @@ bool compilet::parse(const std::string &file_name)
   }
 
   languaget *languagep;
-  
+
   // Using '-x', the type of a file can be overridden;
   // otherwise, it's guessed from the extension.
-  
+
   if(override_language!="")
   {
     if(override_language=="c++" || override_language=="c++-header")
@@ -530,11 +541,11 @@ bool compilet::parse(const std::string &file_name)
 
   languaget &language=*languagep;
   language.set_message_handler(get_message_handler());
-  
+
   language_filet language_file;
 
-  std::pair<language_filest::filemapt::iterator, bool>
-  res=language_files.filemap.insert(
+  std::pair<language_filest::file_mapt::iterator, bool>
+  res=language_files.file_map.insert(
     std::pair<std::string, language_filet>(file_name, language_file));
 
   language_filet &lf=res.first->second;
@@ -550,12 +561,12 @@ bool compilet::parse(const std::string &file_name)
 
     if(cmdline.isset('o'))
     {
-      ofs.open(cmdline.get_value('o').c_str());
+      ofs.open(cmdline.get_value('o'));
       os = &ofs;
 
       if(!ofs.is_open())
       {
-        error() << "failed to open output file `" 
+        error() << "failed to open output file `"
                 << cmdline.get_value('o') << "'" << eom;
         return true;
       }
@@ -594,7 +605,7 @@ Function: compilet::parse_stdin
 bool compilet::parse_stdin()
 {
   ansi_c_languaget language;
-  
+
   language.set_message_handler(get_message_handler());
 
   print(8, "Parsing: (stdin)");
@@ -606,7 +617,7 @@ bool compilet::parse_stdin()
 
     if(cmdline.isset('o'))
     {
-      ofs.open(cmdline.get_value('o').c_str());
+      ofs.open(cmdline.get_value('o'));
       os = &ofs;
 
       if(!ofs.is_open())
@@ -671,14 +682,14 @@ bool compilet::write_bin_object_file(
   const symbol_tablet &lsymbol_table,
   goto_functionst &functions)
 {
-  statistics() << "Writing binary format object `" 
+  statistics() << "Writing binary format object `"
                << file_name << "'" << eom;
 
   // symbols
   statistics() << "Symbols in table: "
                << lsymbol_table.symbols.size() << eom;
 
-  std::ofstream outfile(file_name.c_str(), std::ios::binary);
+  std::ofstream outfile(file_name, std::ios::binary);
 
   if(!outfile.is_open())
   {
@@ -691,8 +702,8 @@ bool compilet::write_bin_object_file(
 
   unsigned cnt=function_body_count(functions);
 
-  debug() << "Functions: " << functions.function_map.size()
-          << "; " << cnt << " have a body." << eom;
+  statistics() << "Functions: " << functions.function_map.size()
+               << "; " << cnt << " have a body." << eom;
 
   outfile.close();
 
@@ -715,17 +726,17 @@ bool compilet::parse_source(const std::string &file_name)
 {
   if(parse(file_name))
     return true;
-    
+
   if(typecheck()) // we just want to typecheck this one file here
     return true;
-    
+
   if((has_suffix(file_name, ".class") ||
       has_suffix(file_name, ".jar")) &&
      final())
     return true;
 
   // so we remove it from the list afterwards
-  language_files.filemap.erase(file_name);
+  language_files.file_map.erase(file_name);
   return false;
 }
 
@@ -742,7 +753,8 @@ Function: compilet::compilet
 \*******************************************************************/
 
 compilet::compilet(cmdlinet &_cmdline):
-  language_uit("goto-cc " CBMC_VERSION, _cmdline),
+  language_uit(_cmdline, ui_message_handler),
+  ui_message_handler(_cmdline, "goto-cc " CBMC_VERSION),
   ns(symbol_table),
   cmdline(_cmdline)
 {
@@ -835,14 +847,14 @@ void compilet::convert_symbols(goto_functionst &dest)
   // the compilation may add symbols!
 
   symbol_tablet::symbolst::size_type before=0;
-  
+
   while(before!=symbol_table.symbols.size())
   {
     before=symbol_table.symbols.size();
 
     typedef std::set<irep_idt> symbols_sett;
     symbols_sett symbols;
-  
+
     Forall_symbols(it, symbol_table.symbols)
       symbols.insert(it->first);
 
@@ -856,6 +868,7 @@ void compilet::convert_symbols(goto_functionst &dest)
       assert(s_it!=symbol_table.symbols.end());
 
       if(s_it->second.type.id()==ID_code &&
+         !s_it->second.is_macro &&
           s_it->second.value.id()!="compiled" &&
           s_it->second.value.is_not_nil())
       {

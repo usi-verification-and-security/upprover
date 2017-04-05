@@ -14,7 +14,6 @@
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
 #include <ui_message.h>
-#include <message_stream.h>
 #include "assertion_info.h"
 #include "unwind.h"
 

@@ -20,7 +20,7 @@ Function: cpp_typecheckt::find_dtor
 
 \*******************************************************************/
 
-bool cpp_typecheckt::find_dtor(const symbolt& symbol) const
+bool cpp_typecheckt::find_dtor(const symbolt &symbol) const
 {
   const irept &components=
     symbol.type.find(ID_components);
@@ -121,13 +121,13 @@ codet cpp_typecheckt::dtor(const symbolt &symbol)
       cpp_namet cppname;
       cppname.move_to_sub(name);
 
-      const symbolt &virtual_table_symbol_type = 
+      const symbolt &virtual_table_symbol_type =
         namespacet(symbol_table).lookup(
           cit->type().subtype().get(ID_identifier));
 
       const symbolt &virtual_table_symbol_var  =
         namespacet(symbol_table).lookup(
-          id2string(virtual_table_symbol_type.name) + "@" + id2string(symbol.name));
+          id2string(virtual_table_symbol_type.name)+"@"+id2string(symbol.name));
 
       exprt var=virtual_table_symbol_var.symbol_expr();
       address_of_exprt address(var);
@@ -179,7 +179,7 @@ codet cpp_typecheckt::dtor(const symbolt &symbol)
     if(dtor_code.is_not_nil())
       block.move_to_operands(dtor_code);
   }
-  
+
   const irept::subt &bases=symbol.type.find(ID_bases).get_sub();
 
   // call the base destructors in the reverse order
@@ -190,7 +190,7 @@ codet cpp_typecheckt::dtor(const symbolt &symbol)
   {
     assert(bit->id()==ID_base);
     assert(bit->find(ID_type).id()==ID_symbol);
-    const symbolt& psymb = lookup(bit->find(ID_type).get(ID_identifier));
+    const symbolt &psymb = lookup(bit->find(ID_type).get(ID_identifier));
 
     exprt object(ID_dereference);
     object.operands().push_back(exprt("cpp-this"));
@@ -205,4 +205,3 @@ codet cpp_typecheckt::dtor(const symbolt &symbol)
 
   return block;
 }
-

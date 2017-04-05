@@ -8,9 +8,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/simplify_expr.h>
 #include <util/arith_tools.h>
-#include <util/expr_util.h>
 #include <util/decision_procedure.h>
-#include <util/i2string.h>
 
 #include <ansi-c/c_types.h>
 
@@ -19,8 +17,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-symex/adjust_float_expressions.h>
 
 #include "path_symex_state.h"
-
-//#define DEBUG
 
 #ifdef DEBUG
 #include <iostream>
@@ -45,18 +41,18 @@ path_symex_statet initial_state(
   path_symex_historyt &path_symex_history)
 {
   path_symex_statet s(var_map, locs, path_symex_history);
-  
+
   // create one new thread
   path_symex_statet::threadt &thread=s.add_thread();
   thread.pc=locs.entry_loc; // set its PC
   s.set_current_thread(0);
-  
+
   return s;
 }
 
 /*******************************************************************\
 
-Function: path_symex_statet::output
+Function: path_symex_statet::get_pc
 
   Inputs:
 
@@ -66,10 +62,10 @@ Function: path_symex_statet::output
 
 \*******************************************************************/
 
-goto_programt::const_targett path_symex_statet::get_instruction() const
+loc_reft path_symex_statet::get_pc() const
 {
   assert(current_thread<threads.size());
-  return locs[threads[current_thread].pc].target;
+  return threads[current_thread].pc;
 }
 
 /*******************************************************************\
@@ -137,7 +133,8 @@ path_symex_statet::var_statet &path_symex_statet::get_var_state(
 
   var_valt &var_val=
     var_info.is_shared()?shared_vars:threads[current_thread].local_vars;
-  if(var_val.size()<=var_info.number) var_val.resize(var_info.number+1);
+  if(var_val.size()<=var_info.number)
+    var_val.resize(var_info.number+1);
   return var_val[var_info.number];
 }
 
@@ -159,10 +156,13 @@ void path_symex_statet::record_step()
   if(!history.is_nil() &&
      history->thread_nr!=current_thread)
     no_thread_interleavings++;
-    
+
   // update our statistics
   depth++;
-  
+
+  if(get_instruction()->is_goto())
+    no_branches++;
+
   // add the step
   history.generate_successor();
   stept &step=*history;
@@ -190,17 +190,17 @@ bool path_symex_statet::is_feasible(
 {
   // feed path constraint to decision procedure
   decision_procedure << history;
-  
+
   // check whether SAT
   switch(decision_procedure())
   {
   case decision_proceduret::D_SATISFIABLE: return true;
-  
+
   case decision_proceduret::D_UNSATISFIABLE: return false;
-  
-  case decision_proceduret::D_ERROR: throw "error from decsion procedure";
+
+  case decision_proceduret::D_ERROR: throw "error from decision procedure";
   }
-  
+
   return true; // not really reachable
 }
 
@@ -226,9 +226,10 @@ bool path_symex_statet::check_assertion(
 
   // the assertion in SSA
   exprt assertion=read(instruction.guard);
-  
+
   // trivial?
-  if(assertion.is_true()) return true; // no error
+  if(assertion.is_true())
+    return true; // no error
 
   // the path constraint
   decision_procedure << history;
@@ -236,19 +237,18 @@ bool path_symex_statet::check_assertion(
   // negate the assertion
   decision_procedure.set_to(assertion, false);
 
-  // check whether SAT  
+  // check whether SAT
   switch(decision_procedure.dec_solve())
   {
   case decision_proceduret::D_SATISFIABLE:
     return false; // error
-   
+
   case decision_proceduret::D_UNSATISFIABLE:
     return true; // no error
-  
+
   default:
     throw "error from decision procedure";
   }
 
   return true; // not really reachable
 }
-

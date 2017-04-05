@@ -36,7 +36,7 @@ xmlt xml(const source_locationt &location)
   xmlt result;
 
   result.name="location";
-  
+
   if(!location.get_file().empty())
     result.set_attribute("file", id2string(location.get_file()));
 
@@ -48,7 +48,7 @@ xmlt xml(const source_locationt &location)
 
   if(!location.get_function().empty())
     result.set_attribute("function", id2string(location.get_function()));
-  
+
   return result;
 }
 
@@ -126,19 +126,19 @@ xmlt xml(
   {
     result.name="vector";
     result.new_element("subtype").new_element()=xml(type.subtype(), ns);
-    result.new_element("size").new_element()=xml(to_vector_type(type).size(), ns);
+    result.new_element("size").new_element()=
+      xml(to_vector_type(type).size(), ns);
   }
   else if(type.id()==ID_struct)
   {
     result.name="struct";
     const struct_typet::componentst &components=
       to_struct_type(type).components();
-    for(struct_typet::componentst::const_iterator
-        it=components.begin(); it!=components.end(); it++)
+    for(const auto &component : components)
     {
       xmlt &e=result.new_element("member");
-      e.set_attribute("name", id2string(it->get_name()));
-      e.new_element("type").new_element()=xml(it->type(), ns);
+      e.set_attribute("name", id2string(component.get_name()));
+      e.new_element("type").new_element()=xml(component.type(), ns);
     }
   }
   else if(type.id()==ID_union)
@@ -146,12 +146,11 @@ xmlt xml(
     result.name="union";
     const union_typet::componentst &components=
       to_union_type(type).components();
-    for(union_typet::componentst::const_iterator
-        it=components.begin(); it!=components.end(); it++)
+    for(const auto &component : components)
     {
       xmlt &e=result.new_element("member");
-      e.set_attribute("name", id2string(it->get_name()));
-      e.new_element("type").new_element()=xml(it->type(), ns);
+      e.set_attribute("name", id2string(component.get_name()));
+      e.new_element("type").new_element()=xml(component.type(), ns);
     }
   }
   else
@@ -177,7 +176,7 @@ xmlt xml(
   const namespacet &ns)
 {
   xmlt result;
-  
+
   const typet &type=ns.follow(expr.type());
 
   if(expr.id()==ID_constant)
@@ -187,17 +186,17 @@ xmlt xml(
        type.id()==ID_c_bit_field)
     {
       std::size_t width=to_bitvector_type(type).get_width();
-    
+
       result.name="integer";
       result.set_attribute("binary", expr.get_string(ID_value));
       result.set_attribute("width", width);
-      
+
       const typet &underlying_type=
         type.id()==ID_c_bit_field?type.subtype():
         type;
 
       bool is_signed=underlying_type.id()==ID_signedbv;
-        
+
       std::string sig=is_signed?"":"unsigned ";
 
       if(width==config.ansi_c.char_width)
@@ -265,6 +264,15 @@ xmlt xml(
       result.set_attribute("binary", expr.is_true()?"1":"0");
       result.data=expr.is_true()?"TRUE":"FALSE";
     }
+    else if(type.id()==ID_c_bool)
+    {
+      result.name="integer";
+      result.set_attribute("c_type", "_Bool");
+      result.set_attribute("binary", expr.get_string(ID_value));
+      mp_integer b;
+      to_integer(to_constant_expr(expr), b);
+      result.data=integer2string(b);
+    }
     else
     {
       result.name="unknown";
@@ -273,9 +281,9 @@ xmlt xml(
   else if(expr.id()==ID_array)
   {
     result.name="array";
-    
+
     unsigned index=0;
-    
+
     forall_operands(it, expr)
     {
       xmlt &e=result.new_element("element");
@@ -287,7 +295,7 @@ xmlt xml(
   else if(expr.id()==ID_struct)
   {
     result.name="struct";
-    
+
     // these are expected to have a struct type
     if(type.id()==ID_struct)
     {
@@ -304,14 +312,15 @@ xmlt xml(
     }
   }
   else if(expr.id()==ID_union)
-  { 
+  {
     result.name="union";
-    
+
     assert(expr.operands().size()==1);
-    
+
     xmlt &e=result.new_element("member");
     e.new_element(xml(expr.op0(), ns));
-    e.set_attribute("member_name",
+    e.set_attribute(
+      "member_name",
       id2string(to_union_expr(expr).get_component_name()));
   }
   else
@@ -319,4 +328,3 @@ xmlt xml(
 
   return result;
 }
-

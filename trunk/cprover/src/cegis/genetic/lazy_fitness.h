@@ -1,39 +1,39 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_GENETIC_SYMEX_FITNESS_H_
-#define CEGIS_GENETIC_SYMEX_FITNESS_H_
-
-#include <cegis/value/program_individual.h>
-#include <util/expr.h>
-
-typedef std::map<const program_individualt *, std::list<bool> > test_case_datat;
+#ifndef CPROVER_CEGIS_GENETIC_LAZY_FITNESS_H
+#define CPROVER_CEGIS_GENETIC_LAZY_FITNESS_H
 
 /**
  * @brief
  *
  * @details
+ *
+ * @tparam populationt
+ * @tparam test_runnert
+ * @tparam counterexample_typet
  */
-template<class test_runnert, class cet>
+template<class populationt, class test_runnert, class counterexample_typet>
 class lazy_fitnesst
 {
 public:
-  typedef cet counterexamplet;
+  typedef counterexample_typet counterexamplet;
   typedef std::deque<counterexamplet> counterexamplest;
-  typedef program_populationt populationt;
-  typedef program_individualt individualt;
+  typedef typename populationt::value_type individualt;
+  typedef typename populationt::iterator iterator;
+  typedef std::map<const individualt *, std::list<bool> > test_case_datat;
 private:
   test_runnert &test_runner;
   counterexamplest counterexamples;
   test_case_datat test_case_data;
 
-  populationt::iterator find_candidate(populationt &pop);
+  iterator find_candidate(populationt &pop);
 public:
   /**
    * @brief
@@ -42,7 +42,7 @@ public:
    *
    * @param test_runner
    */
-  lazy_fitnesst(test_runnert &);
+  explicit lazy_fitnesst(test_runnert &);
 
   /**
    * @brief
@@ -78,7 +78,7 @@ public:
    *
    * @param pop
    */
-  populationt::iterator init(populationt &pop);
+  iterator init(populationt &pop);
 
   /**
    * @brief
@@ -94,7 +94,7 @@ public:
    *
    * @details
    */
-  individualt::fitnesst get_target_fitness() const;
+  typename individualt::fitnesst get_target_fitness() const;
 
   /**
    * @brief
@@ -108,4 +108,4 @@ public:
 
 #include "lazy_fitness.inc"
 
-#endif /* CEGIS_GENETIC_SYMEX_FITNESS_H_ */
+#endif // CPROVER_CEGIS_GENETIC_LAZY_FITNESS_H

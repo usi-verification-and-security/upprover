@@ -20,7 +20,7 @@ class typecast_exprt;
 class dereferencet
 {
 public:
-  /*! \brief Constructor 
+  /*! \brief Constructor
    * \param _ns Namespace
    * \param _new_symbol_table A symbol_table to store new symbols in
    * \param _options Options, in particular whether pointer checks are
@@ -34,8 +34,8 @@ public:
   }
 
   ~dereferencet() { }
-  
-  /*! 
+
+  /*!
    * The operator '()' dereferences the
    * given pointer-expression.
    *
@@ -44,7 +44,7 @@ public:
   */
 
   exprt operator()(const exprt &pointer);
-    
+
 private:
   const namespacet &ns;
 
@@ -82,10 +82,10 @@ private:
     const typet &type);
 };
 
-static inline exprt dereference(const exprt &pointer, const namespacet &ns)
+inline exprt dereference(const exprt &pointer, const namespacet &ns)
 {
   dereferencet dereference_object(ns);
   return dereference_object(pointer);
 }
 
-#endif
+#endif // CPROVER_POINTER_ANALYSIS_DEREFERENCE_H

@@ -24,66 +24,67 @@ public:
   class namet:public irept
   {
   public:
-    inline namet():irept(ID_name)
+    namet():irept(ID_name)
     {
     }
 
-    explicit inline namet(const irep_idt &base_name):irept(ID_name)
+    explicit namet(const irep_idt &base_name):irept(ID_name)
     {
       set(ID_identifier, base_name);
     }
 
-    inline namet(
+    namet(
       const irep_idt &_base_name,
       const source_locationt &_source_location):irept(ID_name)
     {
       set(ID_identifier, _base_name);
       add_source_location()=_source_location;
     }
-    
-    inline source_locationt &add_source_location()
+
+    source_locationt &add_source_location()
     {
       return static_cast<source_locationt &>(add(ID_C_source_location));
     }
 
-    inline const source_locationt &source_location() const
+    const source_locationt &source_location() const
     {
       return static_cast<const source_locationt &>(find(ID_C_source_location));
     }
   };
 
-  inline cpp_namet():irept(ID_cpp_name)
+  cpp_namet():irept(ID_cpp_name)
   {
   }
-  
-  inline explicit cpp_namet(const irep_idt &base_name):irept(ID_cpp_name)
+
+  explicit cpp_namet(const irep_idt &base_name):irept(ID_cpp_name)
   {
     get_sub().push_back(namet(base_name));
   }
 
-  inline cpp_namet(
+  cpp_namet(
     const irep_idt &_base_name,
     const source_locationt &_source_location):irept(ID_cpp_name)
   {
     get_sub().push_back(namet(_base_name, _source_location));
   }
 
-  inline const source_locationt &source_location() const
+  const source_locationt &source_location() const
   {
     if(get_sub().empty())
       return static_cast<const source_locationt &>(get_nil_irep());
     else
-      return static_cast<const source_locationt &>(get_sub().front().find(ID_C_source_location));
+      return static_cast<const source_locationt &>(
+        get_sub().front().find(ID_C_source_location));
   }
 
-  //void convert(std::string &identifier, std::string &base_name) const;
+  // void convert(std::string &identifier, std::string &base_name) const;
   irep_idt get_base_name() const;
-  
+
   // one of three:
   // 'identifier'
   // 'operator X'
   // '~identifier'
-  inline bool is_simple_name() const
+  bool is_simple_name() const
   {
     const subt &sub=get_sub();
     return (sub.size()==1 && sub.front().id()==ID_name) ||
@@ -93,7 +94,8 @@ public:
 
   bool is_operator() const
   {
-    if(get_sub().empty()) return false;
+    if(get_sub().empty())
+      return false;
     return get_sub().front().id()==ID_operator;
   }
 
@@ -109,7 +111,7 @@ public:
         return true;
     return false;
   }
-  
+
   bool is_destructor() const
   {
     return get_sub().size()>=1 && get_sub().front().id()=="~";
@@ -125,7 +127,7 @@ public:
   }
 
   std::string to_string() const;
-  
+
   const exprt &as_expr() const
   {
     return static_cast<const exprt &>(static_cast<const irept &>(*this));
@@ -149,4 +151,4 @@ inline const cpp_namet &to_cpp_name(const irept &cpp_name)
   return static_cast<const cpp_namet &>(cpp_name);
 }
 
-#endif
+#endif // CPROVER_CPP_CPP_NAME_H

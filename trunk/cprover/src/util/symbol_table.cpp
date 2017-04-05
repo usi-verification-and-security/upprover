@@ -26,9 +26,11 @@ bool symbol_tablet::add(const symbolt &symbol)
 {
   if(!symbols.insert(std::pair<irep_idt, symbolt>(symbol.name, symbol)).second)
     return true;
-    
-  symbol_base_map.insert(std::pair<irep_idt, irep_idt>(symbol.base_name, symbol.name));
-  symbol_module_map.insert(std::pair<irep_idt, irep_idt>(symbol.module, symbol.name));
+
+  symbol_base_map.insert(
+    std::pair<irep_idt, irep_idt>(symbol.base_name, symbol.name));
+  symbol_module_map.insert(
+    std::pair<irep_idt, irep_idt>(symbol.module, symbol.name));
 
   return false;
 }
@@ -57,9 +59,11 @@ bool symbol_tablet::move(symbolt &symbol, symbolt *&new_symbol)
     new_symbol=&result.first->second;
     return true;
   }
-    
-  symbol_base_map.insert(std::pair<irep_idt, irep_idt>(symbol.base_name, symbol.name));
-  symbol_module_map.insert(std::pair<irep_idt, irep_idt>(symbol.module, symbol.name));
+
+  symbol_base_map.insert(
+    std::pair<irep_idt, irep_idt>(symbol.base_name, symbol.name));
+  symbol_module_map.insert(
+    std::pair<irep_idt, irep_idt>(symbol.module, symbol.name));
 
   result.first->second.swap(symbol);
   new_symbol=&result.first->second;
@@ -82,7 +86,7 @@ Function: symbol_tablet::remove
 bool symbol_tablet::remove(const irep_idt &name)
 {
   symbolst::iterator entry=symbols.find(name);
-  
+
   if(entry==symbols.end())
     return true;
 
@@ -148,10 +152,10 @@ Function: symbol_tablet::lookup
 const symbolt &symbol_tablet::lookup(const irep_idt &identifier) const
 {
   symbolst::const_iterator it=symbols.find(identifier);
-      
+
   if(it==symbols.end())
     throw "symbol "+id2string(identifier)+" not found";
-                    
+
   return it->second;
 }
 
@@ -170,10 +174,10 @@ Function: symbol_tablet::lookup
 symbolt &symbol_tablet::lookup(const irep_idt &identifier)
 {
   symbolst::iterator it=symbols.find(identifier);
-      
+
   if(it==symbols.end())
     throw "symbol "+id2string(identifier)+" not found";
-                    
+
   return it->second;
 }
 

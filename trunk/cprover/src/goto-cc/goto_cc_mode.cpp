@@ -25,17 +25,21 @@ Author: CM Wintersteiger, 2006
 
 Function: goto_cc_modet::goto_cc_modet
 
-  Inputs: 
+  Inputs:
 
- Outputs: 
+ Outputs:
 
  Purpose: constructor
 
 \*******************************************************************/
 
-goto_cc_modet::goto_cc_modet(goto_cc_cmdlinet &_cmdline):
-  language_uit("goto-cc " CBMC_VERSION, _cmdline),
-  cmdline(_cmdline)
+goto_cc_modet::goto_cc_modet(
+  goto_cc_cmdlinet &_cmdline,
+  const std::string &_base_name,
+  message_handlert &_message_handler):
+  messaget(_message_handler),
+  cmdline(_cmdline),
+  base_name(_base_name)
 {
   register_languages();
 }
@@ -44,9 +48,9 @@ goto_cc_modet::goto_cc_modet(goto_cc_cmdlinet &_cmdline):
 
 Function: goto_cc_modet::~goto_cc_modet
 
-  Inputs: 
+  Inputs:
 
- Outputs: 
+ Outputs:
 
  Purpose: constructor
 
@@ -72,6 +76,7 @@ void goto_cc_modet::help()
 {
   std::cout <<
   "\n"
+  // NOLINTNEXTLINE(whitespace/line_length)
   "* *         goto-cc " CBMC_VERSION "  - Copyright (C) 2006-2014          * *\n"
   "* *        Daniel Kroening, Christoph Wintersteiger         * *\n"
   "* *                 kroening@kroening.com                   * *\n"
@@ -83,6 +88,12 @@ void goto_cc_modet::help()
   "Usage:                       Purpose:\n"
   "\n"
   " --verbosity #               verbosity level\n"
+  " --function name             set entry point to name\n"
+  " --native-compiler cmd       command to invoke as preprocessor/compiler\n"
+  " --native-linker cmd         command to invoke as linker\n"
+  " --native-assembler cmd      command to invoke as assembler (goto-as only)\n"
+  " --print-rejected-preprocessed-source file\n"
+  "                             copy failing (preprocessed) source to file\n"
   "\n";
 }
 
@@ -108,10 +119,7 @@ int goto_cc_modet::main(int argc, const char **argv)
 
   try
   {
-    if(doit())
-      return EX_USAGE; // error
-    else
-      return EX_OK;
+    return doit();
   }
 
   catch(const char *e)
@@ -126,11 +134,11 @@ int goto_cc_modet::main(int argc, const char **argv)
     return EX_SOFTWARE;
   }
 
-  catch(int e)
+  catch(int)
   {
     return EX_SOFTWARE;
   }
-  
+
   catch(std::bad_alloc)
   {
     error() << "Out of memory" << eom;

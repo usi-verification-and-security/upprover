@@ -1,5 +1,15 @@
+/*******************************************************************\
+
+Module: Loop Acceleration
+
+Author: Matt Lewis
+
+\*******************************************************************/
+
+#ifndef CPROVER_GOTO_INSTRUMENT_ACCELERATE_ACCELERATE_H
+#define CPROVER_GOTO_INSTRUMENT_ACCELERATE_ACCELERATE_H
+
 #include <util/namespace.h>
-#include <util/hash_cont.h>
 #include <util/expr.h>
 
 #include <analyses/natural_loops.h>
@@ -13,7 +23,8 @@
 #include "scratch_program.h"
 #include "acceleration_utils.h"
 
-class acceleratet {
+class acceleratet
+{
  public:
   acceleratet(goto_programt &_program,
               goto_functionst &_goto_functions,
@@ -79,7 +90,7 @@ class acceleratet {
                            symbol_exprt next_state,
                            scratch_programt &state_machine);
 
-  symbolt make_symbol(string name, typet type);
+  symbolt make_symbol(std::string name, typet type);
   void decl(symbol_exprt &sym, goto_programt::targett t);
   void decl(symbol_exprt &sym, goto_programt::targett t, exprt init);
 
@@ -93,7 +104,8 @@ class acceleratet {
   subsumed_pathst subsumed;
   acceleration_utilst utils;
 
-  typedef map<goto_programt::targett, goto_programt::targetst> overflow_mapt;
+  typedef std::map<goto_programt::targett, goto_programt::targetst>
+    overflow_mapt;
   overflow_mapt overflow_locs;
 
   expr_mapt dirty_vars_map;
@@ -105,3 +117,5 @@ void accelerate_functions(
   goto_functionst &functions,
   symbol_tablet &ns,
   bool use_z3);
+
+#endif // CPROVER_GOTO_INSTRUMENT_ACCELERATE_ACCELERATE_H

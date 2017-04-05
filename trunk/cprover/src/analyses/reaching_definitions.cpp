@@ -42,12 +42,9 @@ void rd_range_domaint::populate_cache(const irep_idt &identifier) const
 
   ranges_at_loct &export_entry=export_cache[identifier];
 
-  for(values_innert::const_iterator
-      it=v_entry->second.begin();
-      it!=v_entry->second.end();
-      ++it)
+  for(const auto &id : v_entry->second)
   {
-    const reaching_definitiont &v=bv_container->get(*it);
+    const reaching_definitiont &v=bv_container->get(id);
 
     export_entry[v.definition_at].insert(
       std::make_pair(v.bit_begin, v.bit_end));
@@ -124,11 +121,8 @@ void rd_range_domaint::transform(
            (!rd->get_is_threaded()(from) ||
             (!symbol_ptr->is_shared() &&
              !rd->get_is_dirty()(identifier))))
-          for(range_domaint::const_iterator
-              r_it=ranges.begin();
-              r_it!=ranges.end();
-              ++r_it)
-            kill(identifier, r_it->first, r_it->second);
+          for(const auto &range : ranges)
+            kill(identifier, range.first, range.second);
       }
     }
   }
@@ -151,7 +145,7 @@ void rd_range_domaint::transform_dead(
   const namespacet &ns,
   locationt from)
 {
-  const irep_idt& identifier=
+  const irep_idt &identifier=
     to_symbol_expr(to_code_dead(from->code).symbol()).get_identifier();
 
   valuest::iterator entry=values.find(identifier);
@@ -249,22 +243,19 @@ void rd_range_domaint::transform_function_call(
         ++it;
     }
 
-    const symbol_exprt& fn_symbol_expr=to_symbol_expr(code.function());
+    const symbol_exprt &fn_symbol_expr=to_symbol_expr(code.function());
     const code_typet &code_type=
       to_code_type(ns.lookup(fn_symbol_expr.get_identifier()).type);
 
-    const code_typet::parameterst &parameters=code_type.parameters();
-    for(code_typet::parameterst::const_iterator it=parameters.begin();
-        it!=parameters.end();
-        ++it)
+    for(const auto &param : code_type.parameters())
     {
-      const irep_idt &identifier=it->get_identifier();
+      const irep_idt &identifier=param.get_identifier();
 
       if(identifier.empty())
         continue;
 
       range_spect size=
-        to_range_spect(pointer_offset_bits(it->type(), ns));
+        to_range_spect(pointer_offset_bits(param.type(), ns));
       gen(from, identifier, 0, size);
     }
   }
@@ -304,31 +295,24 @@ void rd_range_domaint::transform_end_function(
   new_values.swap(values);
   values=rd[call].values;
 
-  for(valuest::const_iterator
-      it=new_values.begin();
-      it!=new_values.end();
-      ++it)
+  for(const auto &new_value : new_values)
   {
-    const irep_idt &identifier=it->first;
+    const irep_idt &identifier=new_value.first;
 
     if(!rd.get_is_threaded()(call) ||
        (!ns.lookup(identifier).is_shared() &&
         !rd.get_is_dirty()(identifier)))
-      for(values_innert::const_iterator
-          i_it=it->second.begin();
-          i_it!=it->second.end();
-          ++i_it)
+    {
+      for(const auto &id : new_value.second)
       {
-        const reaching_definitiont &v=bv_container->get(*i_it);
+        const reaching_definitiont &v=bv_container->get(id);
         kill(v.identifier, v.bit_begin, v.bit_end);
       }
+    }
 
-    for(values_innert::const_iterator
-        i_it=it->second.begin();
-        i_it!=it->second.end();
-        ++i_it)
+    for(const auto &id : new_value.second)
     {
-      const reaching_definitiont &v=bv_container->get(*i_it);
+      const reaching_definitiont &v=bv_container->get(id);
       gen(v.definition_at, v.identifier, v.bit_begin, v.bit_end);
     }
   }
@@ -336,12 +320,9 @@ void rd_range_domaint::transform_end_function(
   const code_typet &code_type=
     to_code_type(ns.lookup(from->function).type);
 
-  const code_typet::parameterst &parameters=code_type.parameters();
-  for(code_typet::parameterst::const_iterator p_it=parameters.begin();
-      p_it!=parameters.end();
-      ++p_it)
+  for(const auto &param : code_type.parameters())
   {
-    const irep_idt &identifier=p_it->get_identifier();
+    const irep_idt &identifier=param.get_identifier();
 
     if(identifier.empty())
       continue;
@@ -405,17 +386,11 @@ void rd_range_domaint::transform_assign(
        (!rd.get_is_threaded()(from) ||
         (!symbol_ptr->is_shared() &&
          !rd.get_is_dirty()(identifier))))
-      for(range_domaint::const_iterator
-          r_it=ranges.begin();
-          r_it!=ranges.end();
-          ++r_it)
-        kill(identifier, r_it->first, r_it->second);
+      for(const auto &range : ranges)
+        kill(identifier, range.first, range.second);
 
-    for(range_domaint::const_iterator
-        r_it=ranges.begin();
-        r_it!=ranges.end();
-        ++r_it)
-      gen(from, identifier, r_it->first, r_it->second);
+    for(const auto &range : ranges)
+      gen(from, identifier, range.first, range.second);
   }
 }
 
@@ -515,20 +490,17 @@ void rd_range_domaint::kill(
     export_cache.erase(identifier);
 
   values_innert::iterator it=entry->second.begin();
-  for(values_innert::const_iterator
-      itn=new_values.begin();
-      itn!=new_values.end();
-      ++itn)
+  for(const auto &id : new_values)
   {
-    while(it!=entry->second.end() && *it<*itn)
+    while(it!=entry->second.end() && *it<id)
       ++it;
-    if(it==entry->second.end() || *itn<*it)
+    if(it==entry->second.end() || id<*it)
     {
-      entry->second.insert(it, *itn);
+      entry->second.insert(it, id);
     }
     else if(it!=entry->second.end())
     {
-      assert(*it==*itn);
+      assert(*it==id);
       ++it;
     }
   }
@@ -679,12 +651,16 @@ Function: rd_range_domaint::output
 void rd_range_domaint::output(std::ostream &out) const
 {
   out << "Reaching definitions:" << std::endl;
-  for(valuest::const_iterator
-      it=values.begin();
-      it!=values.end();
-      ++it)
+
+  if(has_values.is_known())
   {
-    const irep_idt &identifier=it->first;
+    out << has_values.to_string() << '\n';
+    return;
+  }
+
+  for(const auto &value : values)
+  {
+    const irep_idt &identifier=value.first;
 
     const ranges_at_loct &ranges=get(identifier);
 
@@ -731,25 +707,21 @@ bool rd_range_domaint::merge_inner(
 
 #if 0
   ranges_at_loct::iterator itr=it->second.begin();
-  for(ranges_at_loct::const_iterator itro=ito->second.begin();
-      itro!=ito->second.end();
-      ++itro)
+  for(const auto &o : ito->second)
   {
-    while(itr!=it->second.end() && itr->first<itro->first)
+    while(itr!=it->second.end() && itr->first<o.first)
       ++itr;
-    if(itr==it->second.end() || itro->first<itr->first)
+    if(itr==it->second.end() || o.first<itr->first)
     {
-      it->second.insert(*itro);
+      it->second.insert(o);
       more=true;
     }
     else if(itr!=it->second.end())
     {
-      assert(itr->first==itro->first);
+      assert(itr->first==o.first);
 
-      for(rangest::const_iterator itrro=itro->second.begin();
-          itrro!=itro->second.end();
-          ++itrro)
-        more=gen(itr->second, itrro->first, itrro->second) ||
+      for(const auto &o_range : o.second)
+        more=gen(itr->second, o_range.first, o_range.second) ||
           more;
 
       ++itr;
@@ -757,21 +729,18 @@ bool rd_range_domaint::merge_inner(
   }
 #else
   values_innert::iterator itr=dest.begin();
-  for(values_innert::const_iterator
-      itro=other.begin();
-      itro!=other.end();
-      ++itro)
+  for(const auto &id : other)
   {
-    while(itr!=dest.end() && *itr<*itro)
+    while(itr!=dest.end() && *itr<id)
       ++itr;
-    if(itr==dest.end() || *itro<*itr)
+    if(itr==dest.end() || id<*itr)
     {
-      dest.insert(itr, *itro);
+      dest.insert(itr, id);
       more=true;
     }
     else if(itr!=dest.end())
     {
-      assert(*itr==*itro);
+      assert(*itr==id);
       ++itr;
     }
   }
@@ -797,27 +766,26 @@ bool rd_range_domaint::merge(
   locationt from,
   locationt to)
 {
-  bool more=false;
+  bool changed=has_values.is_false();
+  has_values=tvt::unknown();
 
   valuest::iterator it=values.begin();
-  for(valuest::const_iterator ito=other.values.begin();
-      ito!=other.values.end();
-      ++ito)
+  for(const auto &value : other.values)
   {
-    while(it!=values.end() && it->first<ito->first)
+    while(it!=values.end() && it->first<value.first)
       ++it;
-    if(it==values.end() || ito->first<it->first)
+    if(it==values.end() || value.first<it->first)
     {
-      values.insert(*ito);
-      more=true;
+      values.insert(value);
+      changed=true;
     }
     else if(it!=values.end())
     {
-      assert(it->first==ito->first);
+      assert(it->first==value.first);
 
-      if(merge_inner(it->second, ito->second))
+      if(merge_inner(it->second, value.second))
       {
-        more=true;
+        changed=true;
         export_cache.erase(it->first);
       }
 
@@ -825,7 +793,7 @@ bool rd_range_domaint::merge(
     }
   }
 
-  return more;
+  return changed;
 }
 
 /*******************************************************************\
@@ -853,33 +821,32 @@ bool rd_range_domaint::merge_shared(
   assert(rd!=0);
 #endif
 
-  bool more=false;
+  bool changed=has_values.is_false();
+  has_values=tvt::unknown();
 
   valuest::iterator it=values.begin();
-  for(valuest::const_iterator ito=other.values.begin();
-      ito!=other.values.end();
-      ++ito)
+  for(const auto &value : other.values)
   {
-    const irep_idt &identifier=ito->first;
+    const irep_idt &identifier=value.first;
 
-    if(!ns.lookup(identifier).is_shared() /*&&
-       !rd.get_is_dirty()(identifier)*/)
+    if(!ns.lookup(identifier).is_shared()
+       /*&& !rd.get_is_dirty()(identifier)*/)
       continue;
 
-    while(it!=values.end() && it->first<ito->first)
+    while(it!=values.end() && it->first<value.first)
       ++it;
-    if(it==values.end() || ito->first<it->first)
+    if(it==values.end() || value.first<it->first)
     {
-      values.insert(*ito);
-      more=true;
+      values.insert(value);
+      changed=true;
     }
     else if(it!=values.end())
     {
-      assert(it->first==ito->first);
+      assert(it->first==value.first);
 
-      if(merge_inner(it->second, ito->second))
+      if(merge_inner(it->second, value.second))
       {
-        more=true;
+        changed=true;
         export_cache.erase(it->first);
       }
 
@@ -887,7 +854,7 @@ bool rd_range_domaint::merge_shared(
     }
   }
 
-  return more;
+  return changed;
 }
 
 /*******************************************************************\
@@ -902,7 +869,7 @@ Function: rd_range_domaint::get
 
 \*******************************************************************/
 
-const rd_range_domaint::ranges_at_loct& rd_range_domaint::get(
+const rd_range_domaint::ranges_at_loct &rd_range_domaint::get(
   const irep_idt &identifier) const
 {
   populate_cache(identifier);
@@ -931,9 +898,12 @@ Function: reaching_definitions_analysist::~reaching_definitions_analysist
 
 reaching_definitions_analysist::~reaching_definitions_analysist()
 {
-  if(is_dirty) delete is_dirty;
-  if(is_threaded) delete is_threaded;
-  if(value_sets) delete value_sets;
+  if(is_dirty)
+    delete is_dirty;
+  if(is_threaded)
+    delete is_threaded;
+  if(value_sets)
+    delete value_sets;
 }
 
 /*******************************************************************\
@@ -961,4 +931,3 @@ void reaching_definitions_analysist::initialize(
 
   concurrency_aware_ait<rd_range_domaint>::initialize(goto_functions);
 }
-

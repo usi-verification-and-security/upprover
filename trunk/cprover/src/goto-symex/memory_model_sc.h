@@ -6,21 +6,21 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_MEMORY_MODEL_SC_H
-#define CPROVER_MEMORY_MODEL_SC_H
+#ifndef CPROVER_GOTO_SYMEX_MEMORY_MODEL_SC_H
+#define CPROVER_GOTO_SYMEX_MEMORY_MODEL_SC_H
 
 #include "memory_model.h"
 
 class memory_model_sct:public memory_model_baset
 {
 public:
-  inline explicit memory_model_sct(const namespacet &_ns):
+  explicit memory_model_sct(const namespacet &_ns):
     memory_model_baset(_ns)
   {
   }
 
   virtual void operator()(symex_target_equationt &equation);
-  
+
 protected:
   virtual exprt before(event_it e1, event_it e2);
   virtual bool program_order_is_relaxed(
@@ -38,5 +38,4 @@ protected:
   void write_serialization_external(symex_target_equationt &equation);
 };
 
-#endif
-
+#endif // CPROVER_GOTO_SYMEX_MEMORY_MODEL_SC_H

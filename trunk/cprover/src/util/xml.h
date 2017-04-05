@@ -1,13 +1,13 @@
 /*******************************************************************\
- 
+
 Module:
- 
+
 Author: Daniel Kroening, kroening@kroening.com
- 
+
 \*******************************************************************/
 
-#ifndef XML_H
-#define XML_H
+#ifndef CPROVER_UTIL_XML_H
+#define CPROVER_UTIL_XML_H
 
 #include <list>
 #include <map>
@@ -22,10 +22,10 @@ Author: Daniel Kroening, kroening@kroening.com
 class xmlt
 {
 public:
-  inline xmlt()
+  xmlt()
   { }
 
-  inline explicit xmlt(const std::string &_name):name(_name)
+  explicit xmlt(const std::string &_name):name(_name)
   { }
 
   typedef std::list<xmlt> elementst;
@@ -45,6 +45,14 @@ public:
 
   void set_attribute(
     const std::string &attribute,
+    unsigned long value);
+
+  void set_attribute(
+    const std::string &attribute,
+    unsigned long long value);
+
+  void set_attribute(
+    const std::string &attribute,
     const std::string &value);
 
   std::string get_attribute(
@@ -52,11 +60,11 @@ public:
   {
     attributest::const_iterator i=attributes.find(attribute);
     if(i!=attributes.end())
-      return i->second;                    
+      return i->second;
     return "";
   }
 
-  inline void set_attribute_bool(
+  void set_attribute_bool(
     const std::string &attribute,
     bool value)
   {
@@ -66,31 +74,33 @@ public:
   bool get_attribute_bool(const std::string &attribute) const
   {
     attributest::const_iterator i=attributes.find(attribute);
-    if(i!=attributes.end()) return (i->second=="true");
+    if(i!=attributes.end())
+      return (i->second=="true");
     return false;
   }
 
-  inline std::string get_element(const std::string &element) const
+  std::string get_element(const std::string &element) const
   {
     elementst::const_iterator i=find(element);
-    if(i!=elements.end()) return i->data;
+    if(i!=elements.end())
+      return i->data;
     return "";
   }
 
-  inline xmlt &new_element(const std::string &name)
+  xmlt &new_element(const std::string &name)
   {
     elements.push_back(xmlt());
     elements.back().name=name;
     return elements.back();
   }
 
-  inline xmlt &new_element(const xmlt &xml)
+  xmlt &new_element(const xmlt &xml)
   {
     elements.push_back(xml);
     return elements.back();
   }
 
-  inline xmlt &new_element()
+  xmlt &new_element()
   {
     elements.push_back(xmlt());
     return elements.back();
@@ -114,7 +124,7 @@ protected:
     unsigned indent);
 };
 
-extern inline std::ostream& operator <<(
+inline std::ostream &operator<<(
   std::ostream &out,
   const xmlt &xml)
 {
@@ -122,4 +132,4 @@ extern inline std::ostream& operator <<(
   return out;
 }
 
-#endif
+#endif // CPROVER_UTIL_XML_H

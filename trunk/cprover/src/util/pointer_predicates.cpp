@@ -7,6 +7,7 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include "cprover_prefix.h"
+#include "namespace.h"
 #include "std_expr.h"
 #include "expr_util.h"
 #include "arith_tools.h"
@@ -240,26 +241,40 @@ exprt good_pointer_def(
   exprt good_dynamic_tmp1=
     or_exprt(
       not_exprt(malloc_object(pointer, ns)),
-      and_exprt(not_exprt(dynamic_object_lower_bound(pointer)),
-                not_exprt(dynamic_object_upper_bound(pointer, dereference_type, ns))));
+      and_exprt(
+        not_exprt(
+          dynamic_object_lower_bound(
+            pointer,
+            ns,
+            nil_exprt())),
+        not_exprt(
+          dynamic_object_upper_bound(
+            pointer,
+            dereference_type,
+            ns,
+            size_of_expr(dereference_type, ns)))));
 
   exprt good_dynamic_tmp2=
     and_exprt(not_exprt(deallocated(pointer, ns)),
               good_dynamic_tmp1);
 
   exprt good_dynamic=
-    or_exprt(not_exprt(dynamic_object(pointer)), 
+    or_exprt(not_exprt(dynamic_object(pointer)),
              good_dynamic_tmp2);
 
   exprt not_null=
     not_exprt(null_pointer(pointer));
-  
+
   exprt not_invalid=
     not_exprt(invalid_pointer(pointer));
-    
+
   exprt bad_other=
-    or_exprt(object_lower_bound(pointer),
-             object_upper_bound(pointer, dereference_type, ns));
+    or_exprt(object_lower_bound(pointer, ns, nil_exprt()),
+             object_upper_bound(
+               pointer,
+               dereference_type,
+               ns,
+               size_of_expr(dereference_type, ns)));
 
   exprt good_other=
     or_exprt(dynamic_object(pointer),
@@ -356,9 +371,12 @@ Function: dynamic_object_lower_bound
 
 \*******************************************************************/
 
-exprt dynamic_object_lower_bound(const exprt &pointer)
+exprt dynamic_object_lower_bound(
+  const exprt &pointer,
+  const namespacet &ns,
+  const exprt &offset)
 {
-  return object_lower_bound(pointer);
+  return object_lower_bound(pointer, ns, offset);
 }
 
 /*******************************************************************\
@@ -376,25 +394,31 @@ Function: dynamic_object_upper_bound
 exprt dynamic_object_upper_bound(
   const exprt &pointer,
   const typet &dereference_type,
-  const namespacet &ns)
+  const namespacet &ns,
+  const exprt &access_size)
 {
   // this is
-  // POINTER_OFFSET(p)+size>__CPROVER_malloc_size
-  
+  // POINTER_OFFSET(p)+access_size>__CPROVER_malloc_size
+
   exprt malloc_size=dynamic_size(ns);
 
   exprt object_offset=pointer_offset(pointer);
 
-  exprt size=size_of_expr(dereference_type, ns);
-
   // need to add size
-  exprt sum=plus_exprt(object_offset, size);
+  irep_idt op=ID_ge;
+  exprt sum=object_offset;
+
+  if(access_size.is_not_nil())
+  {
+    op=ID_gt;
+    sum=plus_exprt(object_offset, access_size);
+  }
 
   if(ns.follow(sum.type())!=
      ns.follow(malloc_size.type()))
     sum.make_typecast(malloc_size.type());
 
-  return binary_relation_exprt(sum, ID_gt, malloc_size);
+  return binary_relation_exprt(sum, op, malloc_size);
 }
 
 /*******************************************************************\
@@ -412,25 +436,32 @@ Function: object_upper_bound
 exprt object_upper_bound(
   const exprt &pointer,
   const typet &dereference_type,
-  const namespacet &ns)
+  const namespacet &ns,
+  const exprt &access_size)
 {
   // this is
-  // POINTER_OFFSET(p)+size>OBJECT_SIZE(pointer)
-  
+  // POINTER_OFFSET(p)+access_size>OBJECT_SIZE(pointer)
+
   exprt object_size_expr=object_size(pointer);
 
   exprt object_offset=pointer_offset(pointer);
 
-  exprt size=size_of_expr(dereference_type, ns);
-
   // need to add size
-  exprt sum=plus_exprt(object_offset, size);
+  irep_idt op=ID_ge;
+  exprt sum=object_offset;
+
+  if(access_size.is_not_nil())
+  {
+    op=ID_gt;
+    sum=plus_exprt(object_offset, access_size);
+  }
+
 
   if(ns.follow(sum.type())!=
      ns.follow(object_size_expr.type()))
     sum.make_typecast(object_size_expr.type());
 
-  return binary_relation_exprt(sum, ID_gt, object_size_expr);
+  return binary_relation_exprt(sum, op, object_size_expr);
 }
 
 /*******************************************************************\
@@ -445,12 +476,24 @@ Function: object_lower_bound
 
 \*******************************************************************/
 
-exprt object_lower_bound(const exprt &pointer)
+exprt object_lower_bound(
+  const exprt &pointer,
+  const namespacet &ns,
+  const exprt &offset)
 {
-  exprt offset=pointer_offset(pointer);
+  exprt p_offset=pointer_offset(pointer);
 
-  exprt zero=gen_zero(offset.type());
+  exprt zero=from_integer(0, p_offset.type());
   assert(zero.is_not_nil());
 
-  return binary_relation_exprt(offset, ID_lt, zero);
+  if(offset.is_not_nil())
+  {
+    if(ns.follow(p_offset.type())!=ns.follow(offset.type()))
+      p_offset=
+        plus_exprt(p_offset, typecast_exprt(offset, p_offset.type()));
+    else
+      p_offset=plus_exprt(p_offset, offset);
+  }
+
+  return binary_relation_exprt(p_offset, ID_lt, zero);
 }

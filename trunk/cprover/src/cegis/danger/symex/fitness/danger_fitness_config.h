@@ -1,14 +1,14 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_DANGER_FITNESS_CONFIG_H_
-#define CEGIS_DANGER_FITNESS_CONFIG_H_
+#ifndef CPROVER_CEGIS_DANGER_SYMEX_FITNESS_DANGER_FITNESS_CONFIG_H
+#define CPROVER_CEGIS_DANGER_SYMEX_FITNESS_DANGER_FITNESS_CONFIG_H
 
 #include <cegis/danger/options/danger_program.h>
 
@@ -117,4 +117,4 @@ public:
   void show(messaget::mstreamt &os, const candidatet &candidate) const;
 };
 
-#endif /* CEGIS_DANGER_FITNESS_CONFIG_H_ */
+#endif // CPROVER_CEGIS_DANGER_SYMEX_FITNESS_DANGER_FITNESS_CONFIG_H

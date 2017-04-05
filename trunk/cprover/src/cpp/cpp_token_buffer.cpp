@@ -53,7 +53,8 @@ int cpp_token_buffert::get_token(cpp_tokent &token)
 {
   assert(current_pos<=token_vector.size());
 
-  if(token_vector.size()==current_pos) read_token();
+  if(token_vector.size()==current_pos)
+    read_token();
 
   token=*token_vector[current_pos];
 
@@ -78,8 +79,9 @@ int cpp_token_buffert::get_token()
 {
   assert(current_pos<=token_vector.size());
 
-  if(token_vector.size()==current_pos) read_token();
-  
+  if(token_vector.size()==current_pos)
+    read_token();
+
   int kind=token_vector[current_pos]->kind;
 
   current_pos++;
@@ -134,7 +136,7 @@ void cpp_token_buffert::read_token()
   token_vector.push_back(--tokens.end());
 
   int kind;
-  
+
   ansi_c_parser.stack.clear();
   kind=yyansi_clex();
   tokens.back().text=yyansi_ctext;
@@ -143,14 +145,14 @@ void cpp_token_buffert::read_token()
     tokens.back().data=ansi_c_parser.stack.front();
     tokens.back().line_no=ansi_c_parser.get_line_no();
     tokens.back().filename=ansi_c_parser.get_file();
-  }  
+  }
 
-  //std::cout << "TOKEN: " << kind << " " << tokens.back().text << std::endl;
+  // std::cout << "TOKEN: " << kind << " " << tokens.back().text << std::endl;
 
   tokens.back().kind=kind;
 
-  //std::cout << "II: " << token_vector.back()->kind << std::endl;
-  //std::cout << "I2: " << token_vector.size() << std::endl;
+  // std::cout << "II: " << token_vector.back()->kind << std::endl;
+  // std::cout << "I2: " << token_vector.size() << std::endl;
 }
 
 /*******************************************************************\
@@ -203,7 +205,8 @@ void cpp_token_buffert::Replace(const cpp_tokent &token)
 {
   assert(current_pos<=token_vector.size());
 
-  if(token_vector.size()==current_pos) read_token();
+  if(token_vector.size()==current_pos)
+    read_token();
 
   *token_vector[current_pos]=token;
 }

@@ -8,7 +8,6 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 #include <limits>
 
-#include <util/i2string.h>
 #include <util/arith_tools.h>
 #include <util/simplify_expr.h>
 
@@ -18,7 +17,7 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 Function: partial_order_concurrencyt::~partial_order_concurrencyt
 
-  Inputs: 
+  Inputs:
 
  Outputs:
 
@@ -35,7 +34,7 @@ partial_order_concurrencyt::partial_order_concurrencyt(
 
 Function: partial_order_concurrencyt::~partial_order_concurrencyt
 
-  Inputs: 
+  Inputs:
 
  Outputs:
 
@@ -51,7 +50,7 @@ partial_order_concurrencyt::~partial_order_concurrencyt()
 
 Function: partial_order_concurrencyt::add_init_writes
 
-  Inputs: 
+  Inputs:
 
  Outputs:
 
@@ -62,7 +61,7 @@ Function: partial_order_concurrencyt::add_init_writes
 void partial_order_concurrencyt::add_init_writes(
   symex_target_equationt &equation)
 {
-  hash_set_cont<irep_idt, irep_id_hash> init_done;
+  std::unordered_set<irep_idt, irep_id_hash> init_done;
   bool spawn_seen=false;
 
   symex_target_equationt::SSA_stepst init_steps;
@@ -72,21 +71,22 @@ void partial_order_concurrencyt::add_init_writes(
       e_it!=equation.SSA_steps.end();
       e_it++)
   {
-    if(is_spawn(e_it))
+    if(e_it->is_spawn())
     {
       spawn_seen=true;
       continue;
     }
-    else if(!is_shared_read(e_it) &&
-            !is_shared_write(e_it))
+    else if(!e_it->is_shared_read() &&
+            !e_it->is_shared_write())
       continue;
 
     const irep_idt &a=address(e_it);
 
-    if(init_done.find(a)!=init_done.end()) continue;
+    if(init_done.find(a)!=init_done.end())
+      continue;
 
     if(spawn_seen ||
-       is_shared_read(e_it) ||
+       e_it->is_shared_read() ||
        !e_it->guard.is_true())
     {
       init_steps.push_back(symex_target_equationt::SSA_stept());
@@ -111,7 +111,7 @@ void partial_order_concurrencyt::add_init_writes(
 
 Function: partial_order_concurrencyt::build_event_lists
 
-  Inputs: 
+  Inputs:
 
  Outputs:
 
@@ -132,17 +132,17 @@ void partial_order_concurrencyt::build_event_lists(
       e_it!=equation.SSA_steps.end();
       e_it++)
   {
-    if(is_shared_read(e_it) ||
-       is_shared_write(e_it) ||
-       is_spawn(e_it))
+    if(e_it->is_shared_read() ||
+       e_it->is_shared_write() ||
+       e_it->is_spawn())
     {
       unsigned thread_nr=e_it->source.thread_nr;
 
-      if(!is_spawn(e_it))
+      if(!e_it->is_spawn())
       {
         a_rect &a_rec=address_map[address(e_it)];
 
-        if(is_shared_read(e_it))
+        if(e_it->is_shared_read())
           a_rec.reads.push_back(e_it);
         else // must be write
           a_rec.writes.push_back(e_it);
@@ -153,13 +153,27 @@ void partial_order_concurrencyt::build_event_lists(
       numbering[e_it]=cnt;
     }
   }
+
+  for(address_mapt::const_iterator
+      a_it=address_map.begin();
+      a_it!=address_map.end();
+      a_it++)
+  {
+    const a_rect &a_rec=a_it->second;
+    if(a_rec.reads.empty())
+      continue;
+
+    statistics() << "Shared " << a_it->first << ": "
+                 << a_rec.reads.size() << "R/"
+                 << a_rec.writes.size() << "W" << eom;
+  }
 }
 
 /*******************************************************************\
 
 Function: partial_order_concurrencyt::rw_clock_id
 
-  Inputs: 
+  Inputs:
 
  Outputs:
 
@@ -172,9 +186,9 @@ irep_idt partial_order_concurrencyt::rw_clock_id(
   axiomt axiom)
 {
   if(event->is_shared_write())
-    return id2string(id(event))+"$wclk$"+i2string(axiom);
+    return id2string(id(event))+"$wclk$"+std::to_string(axiom);
   else if(event->is_shared_read())
-    return id2string(id(event))+"$rclk$"+i2string(axiom);
+    return id2string(id(event))+"$rclk$"+std::to_string(axiom);
   else
     assert(false);
 
@@ -185,7 +199,7 @@ irep_idt partial_order_concurrencyt::rw_clock_id(
 
 Function: partial_order_concurrencyt::clock
 
-  Inputs: 
+  Inputs:
 
  Outputs:
 
@@ -201,21 +215,14 @@ symbol_exprt partial_order_concurrencyt::clock(
   assert(!numbering.empty());
 
   if(event->is_shared_write())
-  {
-    assert(is_shared_write(event));
     identifier=rw_clock_id(event, axiom);
-  }
   else if(event->is_shared_read())
-  {
-    assert(is_shared_read(event));
     identifier=rw_clock_id(event, axiom);
-  }
   else if(event->is_spawn())
   {
-    assert(is_spawn(event));
     identifier=
-      "t"+i2string(event->source.thread_nr+1)+"$"+
-      i2string(numbering[event])+"$spwnclk$"+i2string(axiom);
+      "t"+std::to_string(event->source.thread_nr+1)+"$"+
+      std::to_string(numbering[event])+"$spwnclk$"+std::to_string(axiom);
   }
   else
     assert(false);
@@ -225,53 +232,9 @@ symbol_exprt partial_order_concurrencyt::clock(
 
 /*******************************************************************\
 
-Function: partial_order_concurrencyt::is_shared_write
-
-  Inputs: 
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-bool partial_order_concurrencyt::is_shared_write(event_it event) const
-{
-  if(!event->is_shared_write()) return false;
-  const irep_idt obj_identifier=event->ssa_lhs.get_object_name();
-  if(obj_identifier=="goto_symex::\\guard") return false;
-
-  const symbolt &symbol=ns.lookup(obj_identifier);
-  return !symbol.is_thread_local;
-}
-
-/*******************************************************************\
-
-Function: partial_order_concurrencyt::is_shared_read
-
-  Inputs: 
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-bool partial_order_concurrencyt::is_shared_read(event_it event) const
-{
-  if(!event->is_shared_read()) return false;
-  const irep_idt obj_identifier=event->ssa_lhs.get_object_name();
-  if(obj_identifier=="goto_symex::\\guard") return false;
-
-  const symbolt &symbol=ns.lookup(obj_identifier);
-  return !symbol.is_thread_local;
-}
-
-/*******************************************************************\
-
 Function: partial_order_concurrencyt::build_clock_type
 
-  Inputs: 
+  Inputs:
 
  Outputs:
 
@@ -293,7 +256,7 @@ void partial_order_concurrencyt::build_clock_type(
 
 Function: partial_order_concurrencyt::before
 
-  Inputs: 
+  Inputs:
 
  Outputs:
 
@@ -304,11 +267,13 @@ Function: partial_order_concurrencyt::before
 exprt partial_order_concurrencyt::before(
   event_it e1, event_it e2, unsigned axioms)
 {
-  const axiomt axiom_bits[]={
+  const axiomt axiom_bits[]=
+  {
     AX_SC_PER_LOCATION,
     AX_NO_THINAIR,
     AX_OBSERVATION,
-    AX_PROPAGATION };
+    AX_PROPAGATION
+  };
 
   exprt::operandst ops;
   ops.reserve(sizeof(axiom_bits)/sizeof(axiomt));
@@ -317,7 +282,8 @@ exprt partial_order_concurrencyt::before(
   {
     const axiomt ax=axiom_bits[i];
 
-    if((axioms & ax)==0) continue;
+    if((axioms &ax)==0)
+      continue;
 
     if(e1->atomic_section_id!=0 &&
        e1->atomic_section_id==e2->atomic_section_id)
@@ -336,7 +302,7 @@ exprt partial_order_concurrencyt::before(
 
 Function: partial_order_concurrencyt::add_constraint
 
-  Inputs: 
+  Inputs:
 
  Outputs:
 
@@ -355,4 +321,3 @@ void partial_order_concurrencyt::add_constraint(
 
   equation.constraint(tmp, msg, source);
 }
-

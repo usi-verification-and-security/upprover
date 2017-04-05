@@ -6,8 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#ifndef CPROVER_UTIL_EXPR_UTIL_H
+#define CPROVER_UTIL_EXPR_UTIL_H
+
 /*! \file util/expr_util.h
- * \brief Deprecated expression utility functions 
+ * \brief Deprecated expression utility functions
  *
  * \author Daniel Kroening <kroening@kroening.com>
  * \date   Sun Jul 31 21:54:44 BST 2011
@@ -27,21 +30,9 @@ class namespacet;
 /*! \deprecated This function will eventually be removed. Use functions from
  * \ref util/std_expr.h instead.
 */
-exprt gen_zero(const typet &type);
-/*! \copydoc gen_zero(const typet &) */
-exprt gen_one(const typet &type);
-/*! \copydoc gen_zero(const typet &) */
-exprt gen_not_old(const exprt &op);
-
-/*! \copydoc gen_zero(const typet &) */
-void gen_and_old(exprt &expr);
-/*! \copydoc gen_zero(const typet &) */
-void gen_or_old(exprt &expr);
-
-/*! \copydoc gen_zero(const typet &) */
 void make_next_state(exprt &);
 
-/*! \copydoc splits an expression with >=3 operands into nested binary expressions */
+/*! splits an expression with >=3 operands into nested binary expressions */
 exprt make_binary(const exprt &);
 
 /*! converts an udpate expr into a (possibly nested) with expression */
@@ -60,3 +51,4 @@ bool has_subexpr(const exprt &, const irep_idt &);
 /*! lift up an if_exprt one level */
 if_exprt lift_if(const exprt &, std::size_t operand_number);
 
+#endif // CPROVER_UTIL_EXPR_UTIL_H

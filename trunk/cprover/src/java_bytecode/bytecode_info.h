@@ -1,3 +1,16 @@
+/*******************************************************************\
+
+Module:
+
+Author: Daniel Kroening, kroening@kroening.com
+
+\*******************************************************************/
+
+#ifndef CPROVER_JAVA_BYTECODE_BYTECODE_INFO_H
+#define CPROVER_JAVA_BYTECODE_BYTECODE_INFO_H
+
+#include <cstdint>
+
 // http://en.wikipedia.org/wiki/Java_bytecode_instruction_listings
 
 // The 'result_type' is one of the following:
@@ -38,3 +51,13 @@ struct bytecode_infot
 
 extern struct bytecode_infot const bytecode_info[];
 
+typedef uint8_t  u1; // NOLINT(readability/identifiers)
+typedef uint16_t u2; // NOLINT(readability/identifiers)
+typedef uint32_t u4; // NOLINT(readability/identifiers)
+typedef uint64_t u8; // NOLINT(readability/identifiers)
+typedef int8_t  s1; // NOLINT(readability/identifiers)
+typedef int16_t s2; // NOLINT(readability/identifiers)
+typedef int32_t s4; // NOLINT(readability/identifiers)
+typedef int64_t s8; // NOLINT(readability/identifiers)
+
+#endif // CPROVER_JAVA_BYTECODE_BYTECODE_INFO_H

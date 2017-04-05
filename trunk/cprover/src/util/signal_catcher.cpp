@@ -2,22 +2,31 @@
 
 Module:
 
-Author:
+Author: Daniel Kroening, kroening@kroening.com
 
 Date:
 
 \*******************************************************************/
 
 #if defined(_WIN32)
-
+#include <process.h>
 #else
-#include <signal.h>
 #include <cstdlib>
-
 #include <csignal>
 #endif
 
+#include <vector>
+
 #include "signal_catcher.h"
+
+// Here we have an instance of an ugly global object.
+// It keeps track of any child processes that we'll kill
+// when we are told to terminate.
+
+#ifdef _WIN32
+#else
+std::vector<pid_t> pids_of_children;
+#endif
 
 /*******************************************************************\
 
@@ -36,6 +45,7 @@ void install_signal_catcher()
   #if defined(_WIN32)
   #else
   // declare act to deal with action on signal set
+  // NOLINTNEXTLINE(readability/identifiers)
   static struct sigaction act;
 
   act.sa_handler=signal_catcher;
@@ -43,6 +53,34 @@ void install_signal_catcher()
   sigfillset(&(act.sa_mask));
 
   // install signal handler
+  sigaction(SIGTERM, &act, NULL);
+  #endif
+}
+
+/*******************************************************************\
+
+Function: remove_signal_catcher
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void remove_signal_catcher()
+{
+  #if defined(_WIN32)
+  #else
+  // declare act to deal with action on signal set
+  // NOLINTNEXTLINE(readability/identifiers)
+  static struct sigaction act;
+
+  act.sa_handler=SIG_DFL;
+  act.sa_flags=0;
+  sigfillset(&(act.sa_mask));
+
   sigaction(SIGTERM, &act, NULL);
   #endif
 }
@@ -63,9 +101,16 @@ void signal_catcher(int sig)
 {
   #if defined(_WIN32)
   #else
+
+  #if 1
   // kill any children by killing group
   killpg(0, sig);
+  #else
+  // pass on to any children
+  for(const auto &pid : pids_of_children)
+    kill(pid, sig);
+  #endif
 
-  exit(sig);
+  exit(sig); // should contemplate something from sysexits.h
   #endif
 }

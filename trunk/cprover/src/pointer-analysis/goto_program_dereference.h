@@ -19,6 +19,10 @@ Author: Daniel Kroening, kroening@kroening.com
 class goto_program_dereferencet:protected dereference_callbackt
 {
 public:
+  // Note: this currently doesn't specify a source language
+  // for the final argument to value_set_dereferencet.
+  // This means that language-inappropriate values such as
+  // (struct A*)some_integer_value in Java, may be returned.
   goto_program_dereferencet(
     const namespacet &_ns,
     symbol_tablet &_new_symbol_table,
@@ -27,7 +31,7 @@ public:
     options(_options),
     ns(_ns),
     value_sets(_value_sets),
-    dereference(_ns, _new_symbol_table, _options, *this) { }
+    dereference(_ns, _new_symbol_table, _options, *this, ID_nil) { }
 
   void dereference_program(
     goto_programt &goto_program,
@@ -43,11 +47,11 @@ public:
   void dereference_expression(
     goto_programt::const_targett target,
     exprt &expr);
-    
+
   virtual ~goto_program_dereferencet()
   {
   }
-    
+
 protected:
   const optionst &options;
   const namespacet &ns;
@@ -72,13 +76,17 @@ protected:
     bool checks_only=false);
 
 protected:
-  void dereference_rec(exprt &expr, guardt &guard, const value_set_dereferencet::modet mode);
-  void dereference_expr(exprt &expr, const bool checks_only, const value_set_dereferencet::modet mode);
-  
+  void dereference_rec(
+    exprt &expr, guardt &guard, const value_set_dereferencet::modet mode);
+  void dereference_expr(
+    exprt &expr,
+    const bool checks_only,
+    const value_set_dereferencet::modet mode);
+
   const std::set<irep_idt> *valid_local_variables;
   source_locationt dereference_location;
   goto_programt::const_targett current_target;
-  
+
   std::set<exprt> assertions;
   goto_programt new_code;
 };
@@ -111,4 +119,4 @@ void pointer_checks(
   const optionst &options,
   value_setst &value_sets);
 
-#endif
+#endif // CPROVER_POINTER_ANALYSIS_GOTO_PROGRAM_DEREFERENCE_H

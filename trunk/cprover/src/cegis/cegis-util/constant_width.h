@@ -1,14 +1,14 @@
-/*******************************************************************
+/*******************************************************************\
 
 Module: Counterexample-Guided Inductive Synthesis
 
 Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef UTIL_CONSTANT_WIDTH_H_
-#define UTIL_CONSTANT_WIDTH_H_
+#ifndef CPROVER_CEGIS_CEGIS_UTIL_CONSTANT_WIDTH_H
+#define CPROVER_CEGIS_CEGIS_UTIL_CONSTANT_WIDTH_H
 
 #include <cstddef>
 
@@ -24,4 +24,4 @@ Author: Daniel Kroening, kroening@kroening.com
  */
 size_t get_min_word_width(const class exprt &expr);
 
-#endif /* UTIL_CONSTANT_WIDTH_H_ */
+#endif // CPROVER_CEGIS_CEGIS_UTIL_CONSTANT_WIDTH_H

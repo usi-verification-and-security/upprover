@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_TEMPLATE_TYPE_H
-#define CPROVER_CPP_TEMPLATE_TYPE_H
+#ifndef CPROVER_CPP_CPP_TEMPLATE_TYPE_H
+#define CPROVER_CPP_CPP_TEMPLATE_TYPE_H
 
 #include <util/type.h>
 #include <util/expr.h>
@@ -17,18 +17,18 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 class template_typet:public typet
 {
 public:
-  inline template_typet():typet(ID_template)
+  template_typet():typet(ID_template)
   {
   }
 
   typedef std::vector<template_parametert> template_parameterst;
 
-  inline template_parameterst &template_parameters()
+  template_parameterst &template_parameters()
   {
     return (template_parameterst &)add(ID_template_parameters).get_sub();
   }
 
-  inline const template_parameterst &template_parameters() const
+  const template_parameterst &template_parameters() const
   {
     return (const template_parameterst &)find(ID_template_parameters).get_sub();
   }
@@ -62,4 +62,4 @@ inline typet &template_subtype(typet &type)
   return type;
 }
 
-#endif
+#endif // CPROVER_CPP_CPP_TEMPLATE_TYPE_H

@@ -1,6 +1,6 @@
 /*******************************************************************\
 
-Module: 
+Module:
 
 Author: CM Wintersteiger
 
@@ -44,21 +44,21 @@ std::string get_temporary_directory(const std::string &name_template)
 {
   std::string result;
 
-  #ifdef _WIN32    
+  #ifdef _WIN32
     DWORD dwBufSize = MAX_PATH;
     char lpPathBuffer[MAX_PATH];
     DWORD dwRetVal = GetTempPathA(dwBufSize, lpPathBuffer);
 
     if(dwRetVal > dwBufSize || (dwRetVal == 0))
-      throw "GetTempPath failed";
-      
+      throw "GetTempPath failed"; // NOLINT(readability/throw)
+
     char t[MAX_PATH];
-    
+
     strncpy(t, name_template.c_str(), MAX_PATH);
 
     UINT uRetVal=GetTempFileNameA(lpPathBuffer, "TLO", 0, t);
     if(uRetVal == 0)
-      throw "GetTempFileName failed";
+      throw "GetTempFileName failed"; // NOLINT(readability/throw)
 
     unlink(t);
     if(_mkdir(t)!=0)
@@ -78,10 +78,11 @@ std::string get_temporary_directory(const std::string &name_template)
     char t[1000];
     strncpy(t, prefixed_name_template.c_str(), 1000);
     const char *td = mkdtemp(t);
-    if(!td) throw "mkdtemp failed";
+    if(!td)
+      throw "mkdtemp failed";
     result=std::string(td);
   #endif
-    
+
   return result;
 }
 
@@ -116,11 +117,7 @@ Function: temp_dirt::operator()
 
 std::string temp_dirt::operator()(const std::string &file)
 {
-  #ifdef _WIN32
-  return path+"\\"+file;
-  #else
-  return path+"/"+file;
-  #endif
+  return concat_dir_file(path, file);
 }
 
 /*******************************************************************\
@@ -194,4 +191,3 @@ temp_working_dirt::~temp_working_dirt()
   if(chdir(old_working_directory.c_str())!=0)
     assert(false);
 }
-

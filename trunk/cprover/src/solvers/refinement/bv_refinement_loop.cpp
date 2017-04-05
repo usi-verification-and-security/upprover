@@ -8,7 +8,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <iostream>
 
-#include <util/i2string.h>
 #include <util/xml.h>
 
 #include "bv_refinement.h"
@@ -73,21 +72,21 @@ decision_proceduret::resultt bv_refinementt::dec_solve()
   post_process();
 
   debug() << "Solving with " << prop.solver_text() << eom;
-  
+
   unsigned iteration=0;
-  
+
   // now enter the loop
   while(true)
   {
     iteration++;
-  
+
     status() << "BV-Refinement: iteration " << iteration << eom;
 
     // output the very same information in a structured fashion
     if(ui==ui_message_handlert::XML_UI)
     {
       xmlt xml("refinement-iteration");
-      xml.data=i2string(iteration);
+      xml.data=std::to_string(iteration);
       std::cout << xml << '\n';
     }
 
@@ -102,21 +101,24 @@ decision_proceduret::resultt bv_refinementt::dec_solve()
         return D_SATISFIABLE;
       }
       else
-        status() << "BV-Refinement: got SAT, and it is spurious, refining" << eom;
+        status() << "BV-Refinement: got SAT, and it is spurious, refining"
+                 << eom;
       break;
 
     case D_UNSATISFIABLE:
       check_UNSAT();
       if(!progress)
       {
-        status() << "BV-Refinement: got UNSAT, and the proof passes => UNSAT" << eom;
+        status() << "BV-Refinement: got UNSAT, and the proof passes => UNSAT"
+                 << eom;
         status() << "Total iterations: " << iteration << eom;
         return D_UNSATISFIABLE;
       }
       else
-        status() << "BV-Refinement: got UNSAT, and the proof fails, refining" << eom;
+        status() << "BV-Refinement: got UNSAT, and the proof fails, refining"
+                 << eom;
       break;
-    
+
     default:
       return D_ERROR;
     }
@@ -138,7 +140,7 @@ Function: bv_refinementt::prop_solve
 decision_proceduret::resultt bv_refinementt::prop_solve()
 {
   // this puts the underapproximations into effect
-  bvt assumptions = parent_assumptions;
+  bvt assumptions=parent_assumptions;
 
   for(approximationst::const_iterator
       a_it=approximations.begin();
@@ -156,12 +158,12 @@ decision_proceduret::resultt bv_refinementt::prop_solve()
   prop.set_assumptions(assumptions);
   propt::resultt result=prop.prop_solve();
   prop.set_assumptions(parent_assumptions);
- 
+
   switch(result)
   {
-   case propt::P_SATISFIABLE: return D_SATISFIABLE;
-   case propt::P_UNSATISFIABLE: return D_UNSATISFIABLE;
-   default: return D_ERROR;
+    case propt::P_SATISFIABLE: return D_SATISFIABLE;
+    case propt::P_UNSATISFIABLE: return D_UNSATISFIABLE;
+    default: return D_ERROR;
   }
 }
 
@@ -180,7 +182,7 @@ Function: bv_refinementt::check_SAT
 void bv_refinementt::check_SAT()
 {
   progress=false;
-  
+
   arrays_overapproximated();
 
   for(approximationst::iterator
@@ -232,9 +234,11 @@ void bv_refinementt::set_to(const exprt &expr, bool value)
   SUB::set_to(expr, value);
   unsigned n=prop.no_variables()-prev;
   std::cout << n << " EEE " << expr.id() << "@" << expr.type().id();
-  forall_operands(it, expr) std::cout << " " << it->id() << "@" << it->type().id();
+  forall_operands(it, expr)
+    std::cout << " " << it->id() << "@" << it->type().id();
   if(expr.id()=="=" && expr.operands().size()==2)
-    forall_operands(it, expr.op1()) std::cout << " " << it->id() << "@" << it->type().id();
+    forall_operands(it, expr.op1())
+      std::cout << " " << it->id() << "@" << it->type().id();
   std::cout << std::endl;
   #else
   SUB::set_to(expr, value);
@@ -253,7 +257,8 @@ Function: bv_refinementt::set_assumptions
 
 \*******************************************************************/
 
-void bv_refinementt::set_assumptions(const bvt &_assumptions) {
-  parent_assumptions = _assumptions;
+void bv_refinementt::set_assumptions(const bvt &_assumptions)
+{
+  parent_assumptions=_assumptions;
   prop.set_assumptions(_assumptions);
 }

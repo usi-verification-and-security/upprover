@@ -6,8 +6,8 @@ Author:
 
 \*******************************************************************/
 
-#ifndef CPROVER_OSX_FAT_READER_H
-#define CPROVER_OSX_FAT_READER_H
+#ifndef CPROVER_GOTO_PROGRAMS_OSX_FAT_READER_H
+#define CPROVER_GOTO_PROGRAMS_OSX_FAT_READER_H
 
 #include <fstream>
 #include <string>
@@ -20,7 +20,7 @@ class osx_fat_readert
 public:
   explicit osx_fat_readert(std::ifstream &in);
 
-  inline bool has_gb() const { return has_gb_arch; }
+  bool has_gb() const { return has_gb_arch; }
 
   bool extract_gb(
     const std::string &source,
@@ -32,4 +32,4 @@ private:
 
 bool is_osx_fat_magic(char hdr[4]);
 
-#endif
+#endif // CPROVER_GOTO_PROGRAMS_OSX_FAT_READER_H

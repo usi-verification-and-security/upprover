@@ -79,7 +79,7 @@
 
 int yyjsonlex();
 extern char *yyjsontext;
-extern std::size_t yyjsonleng;
+extern int yyjsonleng; // really an int, not a size_t
 
 static std::string convert_TOK_STRING()
 {
@@ -1286,13 +1286,13 @@ yyreduce:
     {
         case 3:
 #line 72 "parser.y" /* yacc.c:1646  */
-    { json_parser.push(jsont::json_object()); }
+    { json_parser.push(json_objectt()); }
 #line 1291 "json_y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 5:
 #line 73 "parser.y" /* yacc.c:1646  */
-    { json_parser.push(jsont::json_object()); }
+    { json_parser.push(json_objectt()); }
 #line 1297 "json_y.tab.cpp" /* yacc.c:1646  */
     break;
 
@@ -1325,13 +1325,13 @@ yyreduce:
 
   case 11:
 #line 98 "parser.y" /* yacc.c:1646  */
-    { json_parser.push(jsont::json_array()); }
+    { json_parser.push(json_arrayt()); }
 #line 1330 "json_y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 13:
 #line 99 "parser.y" /* yacc.c:1646  */
-    { json_parser.push(jsont::json_array()); }
+    { json_parser.push(json_arrayt()); }
 #line 1336 "json_y.tab.cpp" /* yacc.c:1646  */
     break;
 
@@ -1347,31 +1347,31 @@ yyreduce:
 
   case 18:
 #line 117 "parser.y" /* yacc.c:1646  */
-    { json_parser.push(jsont::json_string(convert_TOK_STRING())); }
+    { json_parser.push(json_stringt(convert_TOK_STRING())); }
 #line 1352 "json_y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 19:
 #line 119 "parser.y" /* yacc.c:1646  */
-    { json_parser.push(jsont::json_number(convert_TOK_NUMBER())); }
+    { json_parser.push(json_numbert(convert_TOK_NUMBER())); }
 #line 1358 "json_y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 22:
 #line 123 "parser.y" /* yacc.c:1646  */
-    { json_parser.push(jsont::json_true()); }
+    { json_parser.push(json_truet()); }
 #line 1364 "json_y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 23:
 #line 125 "parser.y" /* yacc.c:1646  */
-    { json_parser.push(jsont::json_false()); }
+    { json_parser.push(json_falset()); }
 #line 1370 "json_y.tab.cpp" /* yacc.c:1646  */
     break;
 
   case 24:
 #line 127 "parser.y" /* yacc.c:1646  */
-    { json_parser.push(jsont::json_null()); }
+    { json_parser.push(json_nullt()); }
 #line 1376 "json_y.tab.cpp" /* yacc.c:1646  */
     break;
 

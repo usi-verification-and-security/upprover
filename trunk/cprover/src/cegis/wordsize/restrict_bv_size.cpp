@@ -1,3 +1,12 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <goto-programs/goto_functions.h>
 
 #include <cegis/wordsize/restrict_bv_size.h>
@@ -41,7 +50,7 @@ class restrict_bv_size_visitort: public expr_visitort
 {
   const size_t width_in_bits;
 public:
-  restrict_bv_size_visitort(const size_t width_in_bits) :
+  explicit restrict_bv_size_visitort(const size_t width_in_bits) :
       width_in_bits(width_in_bits)
   {
   }

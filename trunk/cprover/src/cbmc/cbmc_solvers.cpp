@@ -42,24 +42,24 @@ smt1_dect::solvert cbmc_solverst::get_smt1_solver_type() const
 {
   assert(options.get_bool_option("smt1"));
 
-  smt1_dect::solvert s = smt1_dect::GENERIC;
-  
+  smt1_dect::solvert s=smt1_dect::GENERIC;
+
   if(options.get_bool_option("boolector"))
-    s = smt1_dect::BOOLECTOR;
+    s=smt1_dect::BOOLECTOR;
   else if(options.get_bool_option("mathsat"))
-    s = smt1_dect::MATHSAT;
+    s=smt1_dect::MATHSAT;
   else if(options.get_bool_option("cvc3"))
-    s = smt1_dect::CVC3;
+    s=smt1_dect::CVC3;
   else if(options.get_bool_option("cvc4"))
-    s = smt1_dect::CVC4;
+    s=smt1_dect::CVC4;
   else if(options.get_bool_option("opensmt"))
-    s = smt1_dect::OPENSMT;
+    s=smt1_dect::OPENSMT;
   else if(options.get_bool_option("yices"))
-    s = smt1_dect::YICES;
+    s=smt1_dect::YICES;
   else if(options.get_bool_option("z3"))
-    s = smt1_dect::Z3;
+    s=smt1_dect::Z3;
   else if(options.get_bool_option("generic"))
-    s = smt1_dect::GENERIC;
+    s=smt1_dect::GENERIC;
 
   return s;
 }
@@ -80,123 +80,27 @@ smt2_dect::solvert cbmc_solverst::get_smt2_solver_type() const
 {
   assert(options.get_bool_option("smt2"));
 
-  smt2_dect::solvert s = smt2_dect::GENERIC;
-  
+  smt2_dect::solvert s=smt2_dect::GENERIC;
+
   if(options.get_bool_option("boolector"))
-    s = smt2_dect::BOOLECTOR;
+    s=smt2_dect::BOOLECTOR;
   else if(options.get_bool_option("mathsat"))
-    s = smt2_dect::MATHSAT;
+    s=smt2_dect::MATHSAT;
   else if(options.get_bool_option("cvc3"))
-    s = smt2_dect::CVC3;
+    s=smt2_dect::CVC3;
   else if(options.get_bool_option("cvc4"))
-    s = smt2_dect::CVC4;
+    s=smt2_dect::CVC4;
   else if(options.get_bool_option("opensmt"))
-    s = smt2_dect::OPENSMT;
+    s=smt2_dect::OPENSMT;
   else if(options.get_bool_option("yices"))
-    s = smt2_dect::YICES;
+    s=smt2_dect::YICES;
   else if(options.get_bool_option("z3"))
-    s = smt2_dect::Z3;
+    s=smt2_dect::Z3;
   else if(options.get_bool_option("generic"))
-    s = smt2_dect::GENERIC;
+    s=smt2_dect::GENERIC;
 
   return s;
 }
-
-/*******************************************************************\
-
-   Class: cbmc_solver_with_propt
-
- Purpose: Solvers with additional objects
-
-\*******************************************************************/
-
-class cbmc_solver_with_propt: public cbmc_solverst::solvert
-{
-public:
-
-  cbmc_solver_with_propt(
-    prop_convt *_prop_conv,
-    propt *_prop):
-    cbmc_solverst::solvert(_prop_conv),
-    prop(_prop)
-  {
-    assert(_prop!=NULL);
-  }
-  
-  ~cbmc_solver_with_propt()
-  {
-    delete prop;
-  }
-
-protected:
-  propt *prop;
-};
-
-/*******************************************************************\
-
-   Class: cbmc_solver_with_aigpropt
-
- Purpose: Solvers with additional objects
-
-\*******************************************************************/
-
-class cbmc_solver_with_aigpropt: public cbmc_solver_with_propt
-{
-public:
-
-  cbmc_solver_with_aigpropt(
-    prop_convt *_prop_conv,
-    propt *_prop,
-    aigt *_aig):
-    cbmc_solver_with_propt(_prop_conv, _prop),
-    aig(_aig)
-  {
-    assert(_aig!=NULL);
-  }
-
-  ~cbmc_solver_with_aigpropt()
-  {
-    // delete prop before the AIG
-    delete prop;
-    prop=NULL;
-    delete aig;
-  }
-
-protected:
-  aigt *aig;
-};
-
-/*******************************************************************\
-
-   Class: cbmc_solver_with_filet
-
- Purpose: Solvers with additional objects
-
-\*******************************************************************/
-
-class cbmc_solver_with_filet:public cbmc_solverst::solvert
-{
-public:
-  cbmc_solver_with_filet(
-    prop_convt *_prop_conv,
-    std::ofstream *_out):
-    cbmc_solverst::solvert(_prop_conv),
-    out(_out)
-  {
-    assert(_out!=NULL);
-  }
-
-  ~cbmc_solver_with_filet()
-  {
-    // delete the prop before the file
-    delete prop_conv_ptr;
-    prop_conv_ptr=NULL;
-    delete out;
-  }
-
-protected:
-  std::ofstream *out;
-};
 
 /*******************************************************************\
 
@@ -212,44 +116,29 @@ Function: cbmc_solverst::get_default
 
 cbmc_solverst::solvert* cbmc_solverst::get_default()
 {
-  solvert *solver;
-  
-  if(options.get_bool_option("beautify") || 
+  solvert *solver=new solvert;
+
+  if(options.get_bool_option("beautify") ||
      !options.get_bool_option("sat-preprocessor")) // no simplifier
   {
     // simplifier won't work with beautification
-    propt* prop = new satcheck_no_simplifiert();
-    prop->set_message_handler(get_message_handler());
-    
-    bv_cbmct* bv_cbmc = new bv_cbmct(ns, *prop);
-    
-    if(options.get_option("arrays-uf")=="never")
-      bv_cbmc->unbounded_array=bv_cbmct::U_NONE;
-    else if(options.get_option("arrays-uf")=="always")
-      bv_cbmc->unbounded_array=bv_cbmct::U_ALL;
-   
-    solver = new cbmc_solver_with_propt(bv_cbmc, prop);
+    solver->set_prop(new satcheck_no_simplifiert());
   }
   else // with simplifier
   {
-  #if 1
-    propt* prop = new satcheckt();
-    prop->set_message_handler(get_message_handler());
-    bv_cbmct* bv_cbmc = new bv_cbmct(ns, *prop);
-    solver = new cbmc_solver_with_propt(bv_cbmc, prop);
-  #else
-    aigt* aig = new aigt();
-    propt* prop = new aig_propt(*aig);
-    prop->set_message_handler(get_message_handler());
-    bv_cbmct* bv_cbmc = new bv_cbmct(ns, *prop);
-    solver = new cbmc_solver_with_aigpropt(bv_cbmc, prop, aig);
-  #endif
-
-    if(options.get_option("arrays-uf")=="never")
-      bv_cbmc->unbounded_array=bv_cbmct::U_NONE;
-    else if(options.get_option("arrays-uf")=="always")
-      bv_cbmc->unbounded_array=bv_cbmct::U_ALL;
+    solver->set_prop(new satcheckt());
   }
+
+  solver->prop().set_message_handler(get_message_handler());
+
+  bv_cbmct *bv_cbmc=new bv_cbmct(ns, solver->prop());
+
+  if(options.get_option("arrays-uf")=="never")
+    bv_cbmc->unbounded_array=bv_cbmct::U_NONE;
+  else if(options.get_option("arrays-uf")=="always")
+    bv_cbmc->unbounded_array=bv_cbmct::U_ALL;
+
+  solver->set_prop_conv(bv_cbmc);
 
   return solver;
 }
@@ -265,7 +154,7 @@ Function: cbmc_solverst::get_dimacs
  Purpose:
 
 \*******************************************************************/
- 
+
 cbmc_solverst::solvert* cbmc_solverst::get_dimacs()
 {
   no_beautification();
@@ -273,10 +162,10 @@ cbmc_solverst::solvert* cbmc_solverst::get_dimacs()
 
   dimacs_cnft *prop=new dimacs_cnft();
   prop->set_message_handler(get_message_handler());
-  
+
   std::string filename=options.get_option("outfile");
-  
-  return new cbmc_solver_with_propt(new cbmc_dimacst(ns, *prop, filename), prop);
+
+  return new solvert(new cbmc_dimacst(ns, *prop, filename), prop);
 }
 
 /*******************************************************************\
@@ -290,7 +179,7 @@ Function: cbmc_solverst::get_bv_refinement
  Purpose:
 
 \*******************************************************************/
- 
+
 cbmc_solverst::solvert* cbmc_solverst::get_bv_refinement()
 {
   propt *prop;
@@ -303,23 +192,23 @@ cbmc_solverst::solvert* cbmc_solverst::get_bv_refinement()
   }
   else
     prop=new satcheck_no_simplifiert();
-  
+
   prop->set_message_handler(get_message_handler());
 
-  bv_refinementt *bv_refinement = new bv_refinementt(ns, *prop);
+  bv_refinementt *bv_refinement=new bv_refinementt(ns, *prop);
   bv_refinement->set_ui(ui);
 
-  // we allow setting some parameters  
+  // we allow setting some parameters
   if(options.get_option("max-node-refinement")!="")
-    bv_refinement->max_node_refinement = 
+    bv_refinement->max_node_refinement =
       options.get_unsigned_int_option("max-node-refinement");
 
-  bv_refinement->do_array_refinement = 
+  bv_refinement->do_array_refinement =
     options.get_bool_option("refine-arrays");
-  bv_refinement->do_arithmetic_refinement = 
+  bv_refinement->do_arithmetic_refinement =
     options.get_bool_option("refine-arithmetic");
 
-  return new cbmc_solver_with_propt(bv_refinement, prop);
+  return new solvert(bv_refinement, prop);
 }
 
 /*******************************************************************\
@@ -333,37 +222,42 @@ Function: cbmc_solverst::get_smt1
  Purpose:
 
 \*******************************************************************/
- 
+
 cbmc_solverst::solvert* cbmc_solverst::get_smt1(smt1_dect::solvert solver)
 {
   no_beautification();
   no_incremental_check();
 
   const std::string &filename=options.get_option("outfile");
-  
+
   if(filename=="")
   {
     if(solver==smt1_dect::GENERIC)
-      throw "please use --outfile";
+    {
+      error() << "please use --outfile" << eom;
+      throw 0;
+    }
 
-    smt1_dect* smt1_dec = new smt1_dect(
-      ns,
-      "cbmc",
-      "Generated by CBMC " CBMC_VERSION,
-      "QF_AUFBV",
-      solver);
+    smt1_dect *smt1_dec=
+      new smt1_dect(
+        ns,
+        "cbmc",
+        "Generated by CBMC " CBMC_VERSION,
+        "QF_AUFBV",
+        solver);
 
     return new solvert(smt1_dec);
   }
   else if(filename=="-")
   {
-    smt1_convt* smt1_conv = new smt1_convt(
-      ns,
-      "cbmc",
-      "Generated by CBMC " CBMC_VERSION,
-      "QF_AUFBV",
-      solver,
-      std::cout);
+    smt1_convt *smt1_conv=
+      new smt1_convt(
+        ns,
+        "cbmc",
+        "Generated by CBMC " CBMC_VERSION,
+        "QF_AUFBV",
+        solver,
+        std::cout);
 
     smt1_conv->set_message_handler(get_message_handler());
 
@@ -372,28 +266,32 @@ cbmc_solverst::solvert* cbmc_solverst::get_smt1(smt1_dect::solvert solver)
   else
   {
     #ifdef _MSC_VER
-    std::ofstream *out=new std::ofstream(widen(filename).c_str());
+    std::ofstream *out=new std::ofstream(widen(filename));
     #else
-    std::ofstream *out=new std::ofstream(filename.c_str());
+    std::ofstream *out=new std::ofstream(filename);
     #endif
-    
-    if(!out)
-      throw "failed to open "+filename;
 
-    smt1_convt* smt1_conv = new smt1_convt(
-      ns,
-      "cbmc",
-      "Generated by CBMC " CBMC_VERSION,
-      "QF_AUFBV",
-      solver,
-      *out);
+    if(!out)
+    {
+      error() << "failed to open " << filename << eom;
+      throw 0;
+    }
+
+    smt1_convt *smt1_conv=
+      new smt1_convt(
+        ns,
+        "cbmc",
+        "Generated by CBMC " CBMC_VERSION,
+        "QF_AUFBV",
+        solver,
+        *out);
 
     smt1_conv->set_message_handler(get_message_handler());
 
-    return new cbmc_solver_with_filet(smt1_conv, out);
+    return new solvert(smt1_conv, out);
   }
 }
-  
+
 /*******************************************************************\
 
 Function: cbmc_solverst::get_smt2
@@ -405,24 +303,28 @@ Function: cbmc_solverst::get_smt2
  Purpose:
 
 \*******************************************************************/
-   
+
 cbmc_solverst::solvert* cbmc_solverst::get_smt2(smt2_dect::solvert solver)
 {
   no_beautification();
 
   const std::string &filename=options.get_option("outfile");
-  
+
   if(filename=="")
   {
     if(solver==smt2_dect::GENERIC)
-      throw "please use --outfile";
-  
-    smt2_dect* smt2_dec = new smt2_dect(
-      ns,
-      "cbmc",
-      "Generated by CBMC " CBMC_VERSION,
-      "QF_AUFBV",
-      solver);
+    {
+      error() << "please use --outfile" << eom;
+      throw 0;
+    }
+
+    smt2_dect *smt2_dec=
+      new smt2_dect(
+        ns,
+        "cbmc",
+        "Generated by CBMC " CBMC_VERSION,
+        "QF_AUFBV",
+        solver);
 
     if(options.get_bool_option("fpa"))
       smt2_dec->use_FPA_theory=true;
@@ -431,13 +333,14 @@ cbmc_solverst::solvert* cbmc_solverst::get_smt2(smt2_dect::solvert solver)
   }
   else if(filename=="-")
   {
-    smt2_convt* smt2_conv = new smt2_convt(
-      ns,
-      "cbmc",
-      "Generated by CBMC " CBMC_VERSION,
-      "QF_AUFBV",
-      solver,
-      std::cout);
+    smt2_convt *smt2_conv=
+      new smt2_convt(
+        ns,
+        "cbmc",
+        "Generated by CBMC " CBMC_VERSION,
+        "QF_AUFBV",
+        solver,
+        std::cout);
 
     if(options.get_bool_option("fpa"))
       smt2_conv->use_FPA_theory=true;
@@ -449,28 +352,32 @@ cbmc_solverst::solvert* cbmc_solverst::get_smt2(smt2_dect::solvert solver)
   else
   {
     #ifdef _MSC_VER
-    std::ofstream *out=new std::ofstream(widen(filename).c_str());
+    std::ofstream *out=new std::ofstream(widen(filename));
     #else
-    std::ofstream *out=new std::ofstream(filename.c_str());
+    std::ofstream *out=new std::ofstream(filename);
     #endif
-    
-    if(!*out)
-      throw "failed to open "+filename;
 
-    smt2_convt* smt2_conv = new smt2_convt(
-      ns,
-      "cbmc",
-      "Generated by CBMC " CBMC_VERSION,
-      "QF_AUFBV",
-      solver,
-      *out);
+    if(!*out)
+    {
+      error() << "failed to open " << filename << eom;
+      throw 0;
+    }
+
+    smt2_convt *smt2_conv=
+      new smt2_convt(
+        ns,
+        "cbmc",
+        "Generated by CBMC " CBMC_VERSION,
+        "QF_AUFBV",
+        solver,
+        *out);
 
     if(options.get_bool_option("fpa"))
       smt2_conv->use_FPA_theory=true;
 
     smt2_conv->set_message_handler(get_message_handler());
 
-    return new cbmc_solver_with_filet(smt2_conv, out);
+    return new solvert(smt2_conv, out);
   }
 }
 
@@ -489,7 +396,10 @@ Function: cbmc_solverst::no_beautification
 void cbmc_solverst::no_beautification()
 {
   if(options.get_bool_option("beautify"))
-    throw "sorry, this solver does not support beautification";
+  {
+    error() << "sorry, this solver does not support beautification" << eom;
+    throw 0;
+  }
 }
 
 /*******************************************************************\
@@ -509,5 +419,8 @@ void cbmc_solverst::no_incremental_check()
   if(options.get_bool_option("all-properties") ||
      options.get_option("cover")!="" ||
      options.get_option("incremental-check")!="")
-    throw "sorry, this solver does not support incremental solving";
+  {
+    error() << "sorry, this solver does not support incremental solving" << eom;
+    throw 0;
+  }
 }

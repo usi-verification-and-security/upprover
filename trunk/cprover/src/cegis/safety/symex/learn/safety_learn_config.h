@@ -1,14 +1,14 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_SAFETY_LEARN_CONFIG_H_
-#define CEGIS_SAFETY_LEARN_CONFIG_H_
+#ifndef CPROVER_CEGIS_SAFETY_SYMEX_LEARN_SAFETY_LEARN_CONFIG_H
+#define CPROVER_CEGIS_SAFETY_SYMEX_LEARN_SAFETY_LEARN_CONFIG_H
 
 #include <deque>
 
@@ -60,7 +60,7 @@ public:
    *
    * @param program
    */
-  safety_learn_configt(const safety_programt &program);
+  explicit safety_learn_configt(const safety_programt &program);
 
   /**
    * @brief
@@ -176,4 +176,4 @@ public:
   size_t get_num_consts() const;
 };
 
-#endif /* CEGIS_SAFETY_LEARN_CONFIG_H_ */
+#endif // CPROVER_CEGIS_SAFETY_SYMEX_LEARN_SAFETY_LEARN_CONFIG_H

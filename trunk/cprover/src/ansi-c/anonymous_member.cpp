@@ -34,7 +34,7 @@ static exprt make_member_expr(
   if(struct_union.get_bool(ID_C_lvalue))
     result.set(ID_C_lvalue, true);
 
-  // todo: should to typedef chains properly    
+  // todo: should to typedef chains properly
   const typet &type=
     ns.follow(struct_union.type());
 
@@ -42,7 +42,7 @@ static exprt make_member_expr(
      type.get_bool(ID_C_constant) ||
      struct_union.type().get_bool(ID_C_constant))
     result.set(ID_C_constant, true);
-    
+
   return result;
 }
 
@@ -69,26 +69,24 @@ exprt get_component_rec(
   const struct_union_typet::componentst &components=
     struct_union_type.components();
 
-  for(struct_union_typet::componentst::const_iterator
-      it=components.begin();
-      it!=components.end();
-      it++)
+  for(const auto &comp : components)
   {
-    const typet &type=ns.follow(it->type());
-  
-    if(it->get_name()==component_name)
+    const typet &type=ns.follow(comp.type());
+
+    if(comp.get_name()==component_name)
     {
-      return make_member_expr(struct_union, *it, ns);
+      return make_member_expr(struct_union, comp, ns);
     }
-    else if(it->get_anonymous() &&
+    else if(comp.get_anonymous() &&
             (type.id()==ID_struct || type.id()==ID_union))
     {
-      exprt tmp=make_member_expr(struct_union, *it, ns);
+      exprt tmp=make_member_expr(struct_union, comp, ns);
       exprt result=get_component_rec(tmp, component_name, ns);
-      if(result.is_not_nil()) return result;
+      if(result.is_not_nil())
+        return result;
     }
   }
-  
+
   return nil_exprt();
 }
 
@@ -115,21 +113,18 @@ bool has_component_rec(
   const struct_union_typet::componentst &components=
     struct_union_type.components();
 
-  for(struct_union_typet::componentst::const_iterator
-      it=components.begin();
-      it!=components.end();
-      it++)
+  for(const auto &comp : components)
   {
-    if(it->get_name()==component_name)
+    if(comp.get_name()==component_name)
     {
       return true;
     }
-    else if(it->get_anonymous())
+    else if(comp.get_anonymous())
     {
-      if(has_component_rec(it->type(), component_name, ns))
+      if(has_component_rec(comp.type(), component_name, ns))
         return true;
     }
   }
-  
+
   return false;
 }

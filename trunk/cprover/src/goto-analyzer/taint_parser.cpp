@@ -48,7 +48,7 @@ bool taint_parser(
                     << json << messaget::eom;
     return true;
   }
-  
+
   for(jsont::arrayt::const_iterator
       it=json.array.begin();
       it!=json.array.end();
@@ -57,20 +57,21 @@ bool taint_parser(
     if(!it->is_object())
     {
       messaget message(message_handler);
-      message.error() << "expecting an array of objects in the taint file, but got "
+      message.error() << "expecting an array of objects "
+                      << "in the taint file, but got "
                       << *it << messaget::eom;
       return true;
     }
-    
+
     taint_parse_treet::rulet rule;
-    
+
     const std::string kind=(*it)["kind"].value;
     const std::string function=(*it)["function"].value;
     const std::string where=(*it)["where"].value;
     const std::string taint=(*it)["taint"].value;
     const std::string message=(*it)["message"].value;
     const std::string id=(*it)["id"].value;
-    
+
     if(kind=="source")
       rule.kind=taint_parse_treet::rulet::SOURCE;
     else if(kind=="sink")
@@ -85,7 +86,7 @@ bool taint_parser(
                       << messaget::eom;
       return true;
     }
-    
+
     if(function.empty())
     {
       messaget message(message_handler);
@@ -114,18 +115,19 @@ bool taint_parser(
     {
       messaget message(message_handler);
       message.error() << "taint rule must have \"where\""
-                      << " which is \"return_value\" or \"this\" or \"parameter1\"..."
+                      << " which is \"return_value\" or \"this\" "
+                      << "or \"parameter1\"..."
                       << messaget::eom;
       return true;
     }
-    
+
     rule.taint=taint;
     rule.message=message;
     rule.id=id;
-    
+
     dest.rules.push_back(rule);
   }
-  
+
   return false;
 }
 
@@ -143,7 +145,8 @@ Function: taint_parse_treet::rulet::output
 
 void taint_parse_treet::rulet::output(std::ostream &out) const
 {
-  if(!id.empty()) out << id << ": ";
+  if(!id.empty())
+    out << id << ": ";
 
   switch(kind)
   {
@@ -151,16 +154,17 @@ void taint_parse_treet::rulet::output(std::ostream &out) const
   case SINK: out << "SINK "; break;
   case SANITIZER: out << "SANITIZER "; break;
   }
-  
+
   out << taint << " on ";
-  
+
   switch(where)
   {
   case THIS: out << "this in " << function_identifier; break;
-  case PARAMETER: out << "parameter " << parameter_number << " of " << function_identifier; break;
+  case PARAMETER: out << "parameter " << parameter_number << " of "
+                      << function_identifier; break;
   case RETURN_VALUE: out << "return value of " << function_identifier; break;
   }
-  
+
   out << '\n';
 }
 
@@ -178,7 +182,6 @@ Function: taint_parse_treet::output
 
 void taint_parse_treet::output(std::ostream &out) const
 {
-  for(const auto & rule : rules)
+  for(const auto &rule : rules)
     rule.output(out);
 }
-

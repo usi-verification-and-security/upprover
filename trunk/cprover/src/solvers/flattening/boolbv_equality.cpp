@@ -8,7 +8,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <iostream>
 
-#include <util/i2string.h>
 #include <util/std_expr.h>
 #include <util/base_type.h>
 
@@ -46,16 +45,15 @@ literalt boolbvt::convert_equality(const equal_exprt &expr)
     if(has_byte_operator(expr))
     {
       exprt tmp=flatten_byte_operators(expr, ns);
-      //std::cout << "X: " << from_expr(ns, "", tmp) << std::endl;
       return record_array_equality(to_equal_expr(tmp));
     }
-    
+
     return record_array_equality(expr);
   }
 
   const bvt &bv0=convert_bv(expr.lhs());
   const bvt &bv1=convert_bv(expr.rhs());
-    
+
   if(bv0.size()!=bv1.size())
   {
     std::cerr << "lhs: " << expr.lhs().pretty() << std::endl;
@@ -87,7 +85,8 @@ Function: boolbvt::convert_verilog_case_equality
 
 \*******************************************************************/
 
-literalt boolbvt::convert_verilog_case_equality(const binary_relation_exprt &expr)
+literalt boolbvt::convert_verilog_case_equality(
+  const binary_relation_exprt &expr)
 {
   // This is 4-valued comparison, i.e., z===z, x===x etc.
   // The result is always Boolean.
@@ -101,7 +100,7 @@ literalt boolbvt::convert_verilog_case_equality(const binary_relation_exprt &exp
 
   const bvt &bv0=convert_bv(expr.lhs());
   const bvt &bv1=convert_bv(expr.rhs());
-    
+
   if(bv0.size()!=bv1.size())
   {
     std::cerr << "lhs: " << expr.lhs().pretty() << std::endl;

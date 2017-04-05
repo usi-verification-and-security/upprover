@@ -8,47 +8,100 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include <cassert>
 
+#include <util/namespace.h>
 #include <util/std_types.h>
 #include <util/std_expr.h>
 #include <util/symbol.h>
-#include <util/hash_cont.h>
+#include <util/arith_tools.h>
 
+#include <ansi-c/c_qualifiers.h>
+#include <ansi-c/c_misc.h>
 #include <ansi-c/expr2c_class.h>
 
 #include "java_types.h"
 #include "expr2java.h"
 
-class expr2javat:public expr2ct
+/*******************************************************************\
+
+Function: expr2javat::convert_code_function_call
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+std::string expr2javat::convert_code_function_call(
+  const code_function_callt &src,
+  unsigned indent)
 {
-public:
-  expr2javat(const namespacet &_ns):expr2ct(_ns) { }
-
-  virtual std::string convert(const exprt &src)
+  if(src.operands().size()!=3)
   {
-    return expr2ct::convert(src);
+    unsigned precedence;
+    return convert_norep(src, precedence);
   }
 
-  virtual std::string convert(const typet &src)
+  std::string dest=indent_str(indent);
+
+  if(src.lhs().is_not_nil())
   {
-    return expr2ct::convert(src);
+    unsigned p;
+    std::string lhs_str=convert(src.lhs(), p);
+
+    dest+=lhs_str;
+    dest+='=';
   }
 
-protected:
-  virtual std::string convert(const exprt &src, unsigned &precedence);
-  virtual std::string convert_java_this(const exprt &src, unsigned precedence);
-  virtual std::string convert_java_new(const exprt &src, unsigned precedence);
-  virtual std::string convert_code_java_delete(const exprt &src, unsigned precedence);
-  virtual std::string convert_struct(const exprt &src, unsigned &precedence);
-  virtual std::string convert_code(const codet &src, unsigned indent);
-  virtual std::string convert_constant(const constant_exprt &src, unsigned &precedence);
+  const code_typet &code_type=
+    to_code_type(src.function().type());
 
-  virtual std::string convert_rec(
-    const typet &src,
-    const c_qualifierst &qualifiers,
-    const std::string &declarator);
+  bool has_this=code_type.has_this() &&
+                !src.arguments().empty();
 
-  typedef hash_set_cont<std::string, string_hash> id_sett;
-};
+  if(has_this)
+  {
+    unsigned p;
+    std::string this_str=convert(src.arguments()[0], p);
+    dest+=this_str;
+    dest+=" . "; // extra spaces for readability
+  }
+
+  {
+    unsigned p;
+    std::string function_str=convert(src.function(), p);
+    dest+=function_str;
+  }
+
+  dest+='(';
+
+  const exprt::operandst &arguments=src.arguments();
+
+  bool first=true;
+
+  forall_expr(it, arguments)
+  {
+    if(has_this && it==arguments.begin())
+    {
+    }
+    else
+    {
+      unsigned p;
+      std::string arg_str=convert(*it, p);
+
+      if(first)
+        first=false;
+      else
+        dest+=", ";
+      dest+=arg_str;
+    }
+  }
+
+  dest+=");";
+
+  return dest;
+}
 
 /*******************************************************************\
 
@@ -144,11 +197,72 @@ std::string expr2javat::convert_constant(
 {
   if(src.type().id()==ID_bool)
   {
-    // C++ has built-in Boolean constants, in contrast to C
+    // Java has built-in Boolean constants, in contrast to C
     if(src.is_true())
       return "true";
     else if(src.is_false())
       return "false";
+  }
+  else if(src.type().id()==ID_pointer)
+  {
+    // Java writes 'null' for the null reference
+    if(src.is_zero())
+      return "null";
+  }
+  else if(src.type()==java_char_type())
+  {
+    std::string dest;
+    dest.reserve(char_representation_length);
+
+    mp_integer int_value;
+    if(to_integer(src, int_value))
+      assert(false);
+
+    dest+="(char)'";
+
+    if(int_value>=' ' && int_value<127)
+      dest+=static_cast<char>(int_value.to_long());
+    else
+    {
+      std::string hex=integer2string(int_value, 16);
+      while(hex.size()<4) hex='0'+hex;
+      dest+='\\';
+      dest+='u';
+      dest+=hex;
+    }
+
+    dest+='\'';
+    return dest;
+  }
+  else if(src.type()==java_byte_type())
+  {
+    // No byte-literals in Java, so just cast:
+    mp_integer int_value;
+    if(to_integer(src, int_value))
+      assert(false);
+    std::string dest="(byte)";
+    dest+=integer2string(int_value);
+    return dest;
+  }
+  else if(src.type()==java_short_type())
+  {
+    // No short-literals in Java, so just cast:
+    mp_integer int_value;
+    if(to_integer(src, int_value))
+      assert(false);
+    std::string dest="(short)";
+    dest+=integer2string(int_value);
+    return dest;
+  }
+  else if(src.type()==java_long_type())
+  {
+    // long integer literals must have 'L' at the end
+    mp_integer int_value;
+    if(to_integer(src, int_value))
+      assert(false);
+    std::string dest=integer2string(int_value);
+    dest+='L';
+    return dest;
   }
 
   return expr2ct::convert_constant(src, precedence);
@@ -173,10 +287,10 @@ std::string expr2javat::convert_rec(
 {
   c_qualifierst new_qualifiers(qualifiers);
   new_qualifiers.read(src);
-  
+
   const std::string d=
     declarator==""?declarator:(" "+declarator);
-    
+
   const std::string q=
     new_qualifiers.as_string();
 
@@ -195,7 +309,9 @@ std::string expr2javat::convert_rec(
   else if(src==java_double_type())
     return q+"double"+d;
   else if(src==java_boolean_type())
-    return q+"bool"+d;
+    return q+"boolean"+d;
+  else if(src==java_byte_type())
+    return q+"byte"+d;
   else if(src.id()==ID_code)
   {
     const code_typet &code_type=to_code_type(src);
@@ -203,7 +319,7 @@ std::string expr2javat::convert_rec(
     // Java doesn't really have syntax for function types,
     // so we make one up, loosley inspired by the syntax
     // of lamda expressions.
-  
+
     std::string dest="";
 
     dest+='(';
@@ -219,15 +335,16 @@ std::string expr2javat::convert_rec(
 
       dest+=convert(it->type());
     }
-    
+
     if(code_type.has_ellipsis())
     {
-      if(!parameters.empty()) dest+=", ";
+      if(!parameters.empty())
+        dest+=", ";
       dest+="...";
     }
 
     dest+=')';
-    
+
     const typet &return_type=code_type.return_type();
     dest+=" -> "+convert(return_type);
 
@@ -254,6 +371,31 @@ std::string expr2javat::convert_java_this(
   unsigned precedence)
 {
   return "this";
+}
+
+/*******************************************************************\
+
+Function: expr2javat::convert_java_instanceof
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+std::string expr2javat::convert_java_instanceof(
+  const exprt &src,
+  unsigned precedence)
+{
+  if(src.operands().size()!=2)
+  {
+    unsigned precedence;
+    return convert_norep(src, precedence);
+  }
+
+  return convert(src.op0())+" instanceof "+convert(src.op1().type());
 }
 
 /*******************************************************************\
@@ -340,8 +482,11 @@ std::string expr2javat::convert(
   const exprt &src,
   unsigned &precedence)
 {
+  const typet &type=ns.follow(src.type());
   if(src.id()=="java-this")
     return convert_java_this(src, precedence=15);
+  if(src.id()==ID_java_instanceof)
+    return convert_java_instanceof(src, precedence=15);
   else if(src.id()==ID_side_effect &&
           (src.get(ID_statement)==ID_java_new ||
            src.get(ID_statement)==ID_java_new_array))
@@ -355,6 +500,23 @@ std::string expr2javat::convert(
     return "?";
   else if(src.id()=="pod_constructor")
     return "pod_constructor";
+  else if(src.id()==ID_virtual_function)
+  {
+    return "VIRTUAL_FUNCTION(" +
+      id2string(src.get(ID_C_class)) +
+      "." +
+      id2string(src.get(ID_component_name)) +
+      ")";
+  }
+  else if(src.id()==ID_java_string_literal)
+    return '"'+MetaString(src.get_string(ID_value))+'"';
+  else if(src.id()==ID_constant && (type.id()==ID_bool || type.id()==ID_c_bool))
+  {
+    if(src.is_true())
+      return "true";
+    else
+      return "false";
+  }
   else
     return expr2ct::convert(src, precedence);
 }
@@ -379,7 +541,10 @@ std::string expr2javat::convert_code(
 
   if(statement==ID_java_new ||
      statement==ID_java_new_array)
-    return convert_java_new(src,indent);
+    return convert_java_new(src, indent);
+
+  if(statement==ID_function_call)
+    return convert_code_function_call(to_code_function_call(src), indent);
 
   return expr2ct::convert_code(src, indent);
 }

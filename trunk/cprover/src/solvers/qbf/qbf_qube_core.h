@@ -6,12 +6,12 @@ Author: CM Wintersteiger
 
 \*******************************************************************/
 
-#ifndef CPROVER_QBF_QUBE_CORE_H
-#define CPROVER_QBF_QUBE_CORE_H
+#ifndef CPROVER_SOLVERS_QBF_QBF_QUBE_CORE_H
+#define CPROVER_SOLVERS_QBF_QBF_QUBE_CORE_H
 
 #include "qdimacs_core.h"
 
-class qbf_qube_coret : public qdimacs_coret
+class qbf_qube_coret:public qdimacs_coret
 {
 protected:
   std::string qbf_tmp_file;
@@ -32,14 +32,14 @@ public:
   {
     unsigned v=a.var_no();
 
-    assignmentt::const_iterator fit = assignment.find(v);
+    assignmentt::const_iterator fit=assignment.find(v);
 
     if(fit!=assignment.end())
       return a.sign()?tvt(!fit->second) : tvt(fit->second);
     else
-    {      
+    {
       // throw "Missing toplevel assignment from QuBE";
-      // We assume this is a don't-care and return unknown      
+      // We assume this is a don't-care and return unknown
     }
 
 
@@ -50,8 +50,8 @@ public:
 
   virtual const exprt f_get(literalt l)
   {
-    throw "Qube does not support full certificates.";
+    throw "qube does not support full certificates.";
   }
 };
 
-#endif
+#endif // CPROVER_SOLVERS_QBF_QBF_QUBE_CORE_H

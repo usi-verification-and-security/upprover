@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#ifndef CPROVER_GOTO_INSTRUMENT_GOTO_PROGRAM2CODE_H
+#define CPROVER_GOTO_INSTRUMENT_GOTO_PROGRAM2CODE_H
+
 #include <list>
 
 #include <analyses/natural_loops.h>
@@ -13,9 +16,10 @@ Author: Daniel Kroening, kroening@kroening.com
 class goto_program2codet
 {
   typedef std::list<irep_idt> id_listt;
-  typedef hash_set_cont<irep_idt,irep_id_hash> id_sett;
-  typedef std::map<goto_programt::const_targett, goto_programt::const_targett> loopt;
-  typedef hash_map_cont<irep_idt, unsigned, irep_id_hash> dead_mapt;
+  typedef std::unordered_set<irep_idt, irep_id_hash> id_sett;
+  typedef std::map<goto_programt::const_targett, goto_programt::const_targett>
+    loopt;
+  typedef std::unordered_map<irep_idt, unsigned, irep_id_hash> dead_mapt;
   typedef std::list<std::pair<goto_programt::const_targett, bool> >
     loop_last_stackt;
 
@@ -75,7 +79,7 @@ protected:
   id_listt &local_static;
   id_listt &type_names;
   std::set<std::string> &system_headers;
-  hash_set_cont<exprt, irep_hash> va_list_expr;
+  std::unordered_set<exprt, irep_hash> va_list_expr;
 
   natural_loopst loops;
   loopt loop_map;
@@ -210,3 +214,4 @@ protected:
       codet &dest);
 };
 
+#endif // CPROVER_GOTO_INSTRUMENT_GOTO_PROGRAM2CODE_H

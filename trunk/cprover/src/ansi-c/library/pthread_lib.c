@@ -75,7 +75,7 @@ inline int pthread_mutex_init(
   __CPROVER_HIDE:;
   *((__CPROVER_mutex_t *)mutex)=0;
   if(mutexattr!=0) (void)*mutexattr;
-  
+
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_cleanup(mutex, pthread_mutex_cleanup);
   __CPROVER_set_must(mutex, "mutex-init");
@@ -219,7 +219,7 @@ inline int pthread_mutex_unlock(pthread_mutex_t *mutex)
                    "mutex must not be destroyed");
 
   __CPROVER_clear_may(mutex, "mutex-locked");
-  
+
   #else
 
   // the fence must be before the unlock
@@ -330,6 +330,43 @@ inline int pthread_join(pthread_t thread, void **value_ptr)
   return 0;
 }
 
+/* FUNCTION: _pthread_join */
+
+// This is for Apple
+
+#ifndef __CPROVER_PTHREAD_H_INCLUDED
+#include <pthread.h>
+#define __CPROVER_PTHREAD_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_ERRNO_H_INCLUDED
+#include <errno.h>
+#define __CPROVER_ERRNO_H_INCLUDED
+#endif
+
+#ifdef __APPLE__
+extern __CPROVER_bool __CPROVER_threads_exited[];
+extern __CPROVER_thread_local unsigned long __CPROVER_thread_id;
+extern unsigned long __CPROVER_next_thread_id;
+
+inline int _pthread_join(pthread_t thread, void **value_ptr)
+{
+  __CPROVER_HIDE:;
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
+  __CPROVER_assert(__CPROVER_get_must(&thread, "pthread-id"),
+                   "phtread_join must be given valid thread ID");
+  #endif
+
+  if((unsigned long)thread>__CPROVER_next_thread_id) return ESRCH;
+  if((unsigned long)thread==__CPROVER_thread_id) return EDEADLK;
+  if(value_ptr!=0) (void)**(char**)value_ptr;
+  __CPROVER_assume(__CPROVER_threads_exited[(unsigned long)thread]);
+
+  return 0;
+}
+#endif
+
 /* FUNCTION: pthread_rwlock_destroy */
 
 #ifndef __CPROVER_PTHREAD_H_INCLUDED
@@ -343,8 +380,8 @@ inline int pthread_rwlock_destroy(pthread_rwlock_t *lock)
   __CPROVER_assert(*((signed char *)lock)==0,
     "rwlock held upon destroy");
   *((signed char *)lock)=-1;
-  
-  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS   
+
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_set_must(lock, "rwlock_destroyed");
   #endif
 
@@ -358,7 +395,7 @@ inline int pthread_rwlock_destroy(pthread_rwlock_t *lock)
 #define __CPROVER_PTHREAD_H_INCLUDED
 #endif
 
-#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS  
+#ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
 inline void pthread_rwlock_cleanup(void *p)
 {
   __CPROVER_HIDE:;
@@ -367,14 +404,14 @@ inline void pthread_rwlock_cleanup(void *p)
 }
 #endif
 
-inline int pthread_rwlock_init(pthread_rwlock_t *lock, 
+inline int pthread_rwlock_init(pthread_rwlock_t *lock,
   const pthread_rwlockattr_t *attr)
 {
   __CPROVER_HIDE:;
   (*(signed char *)lock)=0;
   if(attr!=0) (void)*attr;
 
-  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS    
+  #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_cleanup(lock, pthread_rwlock_cleanup);
   #endif
 
@@ -411,7 +448,7 @@ inline int pthread_rwlock_tryrdlock(pthread_rwlock_t *lock)
 {
   __CPROVER_HIDE:;
   __CPROVER_atomic_begin();
-  if((*(signed char *)lock & 2)!=0) { __CPROVER_atomic_end(); return 1; }
+  if((*(signed char *)lock &2)!=0) { __CPROVER_atomic_end(); return 1; }
   (*(signed char *)lock)|=1;
   __CPROVER_atomic_end();
   return 0;
@@ -492,7 +529,7 @@ inline int pthread_create(
   __CPROVER_atomic_begin();
   this_thread_id=++__CPROVER_next_thread_id;
   __CPROVER_atomic_end();
-  
+
   if(thread)
   {
     #ifdef __APPLE__
@@ -508,10 +545,10 @@ inline int pthread_create(
   #endif
 
   if(attr) (void)*attr;
-  
+
   __CPROVER_ASYNC_1:
     __CPROVER_thread_id=this_thread_id,
-    #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS    
+    #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
     // Clear all locked mutexes; locking must happen in same thread.
     __CPROVER_clear_must(0, "mutex-locked"),
     __CPROVER_clear_may(0, "mutex-locked"),
@@ -623,7 +660,7 @@ int pthread_spin_lock(pthread_spinlock_t *lock)
   __CPROVER_assume(!*((unsigned *)lock));
   (*((unsigned *)lock))=1;
   __CPROVER_atomic_end();
-  
+
   __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence",
                   "WWcumul", "RRcumul", "RWcumul", "WRcumul");
   return 0;
@@ -678,7 +715,7 @@ int pthread_spin_trylock(pthread_spinlock_t *lock)
     (*((unsigned *)lock))=1;
   }
   __CPROVER_atomic_end();
-  
+
   __CPROVER_fence("WWfence", "RRfence", "RWfence", "WRfence",
                   "WWcumul", "RRcumul", "RWcumul", "WRcumul");
   return result;
@@ -692,6 +729,8 @@ int pthread_spin_trylock(pthread_spinlock_t *lock)
 #define __CPROVER_PTHREAD_H_INCLUDED
 #endif
 
+// no pthread_barrier_t on the Mac
+#ifndef __APPLE__
 inline int pthread_barrier_init(
   pthread_barrier_t *restrict barrier,
   const pthread_barrierattr_t *restrict attr, unsigned count)
@@ -700,15 +739,16 @@ inline int pthread_barrier_init(
   (void)barrier;
   (void)attr;
   (void)count;
-  
+
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_set_must(barrier, "barrier-init");
   __CPROVER_clear_may(barrier, "barrier-destroyed");
   #endif
-  
+
   int result;
   return result;
-}       
+}
+#endif
 
 /* FUNCTION: pthread_barrier_destroy */
 
@@ -717,12 +757,14 @@ inline int pthread_barrier_init(
 #define __CPROVER_PTHREAD_H_INCLUDED
 #endif
 
+// no pthread_barrier_t on the Mac
+#ifndef __APPLE__
 inline int pthread_barrier_destroy(pthread_barrier_t *barrier)
 {
   __CPROVER_HIDE:;
-  
+
   (void)barrier;
-  
+
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(barrier, "barrier-init"),
                    "pthread barrier must be initialized");
@@ -734,6 +776,7 @@ inline int pthread_barrier_destroy(pthread_barrier_t *barrier)
   int result;
   return result;
 }
+#endif
 
 /* FUNCTION: pthread_barrier_wait */
 
@@ -742,12 +785,14 @@ inline int pthread_barrier_destroy(pthread_barrier_t *barrier)
 #define __CPROVER_PTHREAD_H_INCLUDED
 #endif
 
+// no pthread_barrier_t on the Mac
+#ifndef __APPLE__
 inline int pthread_barrier_wait(pthread_barrier_t *barrier)
 {
   __CPROVER_HIDE:;
-  
+
   (void)barrier;
-  
+
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(barrier, "barrier-init"),
                    "pthread barrier must be initialized");
@@ -758,3 +803,4 @@ inline int pthread_barrier_wait(pthread_barrier_t *barrier)
   int result;
   return result;
 }
+#endif

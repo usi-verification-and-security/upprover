@@ -1,6 +1,6 @@
 /*******************************************************************\
 
-Module: Main Module 
+Module: Main Module
 
 Author:
 
@@ -11,6 +11,7 @@ Author:
 #include <memory>
 
 #include <util/config.h>
+#include <util/options.h>
 #include <util/string2int.h>
 
 #include <goto-programs/remove_function_pointers.h>
@@ -32,7 +33,6 @@ Author:
 #include <pointer-analysis/add_failed_symbols.h>
 
 #include <analyses/local_may_alias.h>
-#include <analyses/goto_check.h>
 
 #include <goto-instrument/rw_set.h>
 #include <goto-instrument/wmm/weak_memory.h>
@@ -61,11 +61,12 @@ Function: goto_fence_inserter_parse_optionst::set_verbosity
 void goto_fence_inserter_parse_optionst::set_verbosity()
 {
   unsigned int v=8; // default
-  
+
   if(cmdline.isset("verbosity"))
   {
     v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
-    if(v>10) v=10;
+    if(v>10)
+      v=10;
   }
 
   ui_message_handler.set_verbosity(v);
@@ -87,16 +88,16 @@ int goto_fence_inserter_parse_optionst::doit()
 {
   if(cmdline.isset("version"))
   {
-    std::cout << GOTO_FENCE_INSERTER_VERSION << std::endl;
+    std::cout << MUSKETEER_VERSION << std::endl;
     return 0;
   }
-  
+
   if(cmdline.args.size()!=1 && cmdline.args.size()!=2)
   {
     help();
     return 0;
   }
-  
+
   set_verbosity();
 
   try
@@ -108,12 +109,12 @@ int goto_fence_inserter_parse_optionst::doit()
     get_goto_program(goto_functions);
 
     instrument_goto_program(goto_functions);
-    
+
     // write new binary?
     if(cmdline.args.size()==2)
     {
       status() << "Writing GOTO program to " << cmdline.args[1] << eom;
-      
+
       if(write_goto_binary(
         cmdline.args[1], symbol_table, goto_functions, get_message_handler()))
         return 1;
@@ -121,7 +122,7 @@ int goto_fence_inserter_parse_optionst::doit()
         return 0;
     }
 
-    //help();
+    // help();
     return 0;
   }
 
@@ -136,12 +137,12 @@ int goto_fence_inserter_parse_optionst::doit()
     error() << e << eom;
     return 11;
   }
-  
+
   catch(int)
   {
     return 11;
   }
-  
+
   catch(std::bad_alloc)
   {
     error() << "Out of memory" << eom;
@@ -160,7 +161,7 @@ Function: goto_fence_inserter_parse_optionst::get_goto_program
  Purpose:
 
 \*******************************************************************/
-  
+
 void goto_fence_inserter_parse_optionst::get_goto_program(
   goto_functionst &goto_functions)
 {
@@ -184,13 +185,13 @@ Function: goto_fence_inserter_parse_optionst::instrument_goto_program
  Purpose:
 
 \*******************************************************************/
-  
+
 void goto_fence_inserter_parse_optionst::instrument_goto_program(
   goto_functionst &goto_functions)
 {
   optionst options;
 
-  // unwind loops 
+  // unwind loops
   if(cmdline.isset("unwind"))
   {
     status() << "Unwinding loops" << eom;
@@ -198,29 +199,30 @@ void goto_fence_inserter_parse_optionst::instrument_goto_program(
   }
 
   // we add the library, as some analyses benefit
-  
-  status() << "Adding CPROVER library" << eom;      
+
   link_to_library(symbol_table, goto_functions, ui_message_handler);
 
   namespacet ns(symbol_table);
 
-  // add generic checks, if needed
-  goto_check(ns, options, goto_functions);
- 
   if( cmdline.isset("mm")
       || cmdline.isset("all-shared")
-      || cmdline.isset("volatile") 
-      || cmdline.isset("pensieve") 
-      || cmdline.isset("naive") 
+      || cmdline.isset("volatile")
+      || cmdline.isset("pensieve")
+      || cmdline.isset("naive")
       || cmdline.isset("all-shared-aeg") )
   {
-    if(cmdline.isset("remove-function-pointers")) {
+    if(cmdline.isset("remove-function-pointers"))
+    {
       status() << "remove soundly function pointers" << eom;
-      remove_function_pointers(symbol_table, goto_functions, 
+      remove_function_pointers(
+        get_message_handler(),
+        symbol_table,
+        goto_functions,
         cmdline.isset("pointer-check"));
     }
 
-    if(cmdline.isset("async")) {
+    if(cmdline.isset("async"))
+    {
       status() << "Replace pthread_creates by __CPROVER_ASYNC_0:" << eom;
       replace_async(ns, goto_functions);
       goto_functions.update();
@@ -230,18 +232,19 @@ void goto_fence_inserter_parse_optionst::instrument_goto_program(
     status() << "Partial Inlining" << eom;
     goto_partial_inline(goto_functions, ns, ui_message_handler);
 
-    if( cmdline.isset("const-function-pointer-propagation") ) {
+    if(cmdline.isset("const-function-pointer-propagation"))
+    {
       /* propagate const pointers to functions */
       status() << "Propagate Constant Function Pointers" << eom;
-      propagate_const_function_pointers(symbol_table, goto_functions, 
+      propagate_const_function_pointers(symbol_table, goto_functions,
         get_message_handler());
     }
 
-    //goto_functions.output(ns, std::cout);
-    //return;
+    // goto_functions.output(ns, std::cout);
+    // return;
 #if 0
     status() << "Function Pointer Removal" << eom;
-    remove_function_pointers(symbol_table, goto_functions, 
+    remove_function_pointers(symbol_table, goto_functions,
       cmdline.isset("pointer-check"));
 #endif
 
@@ -266,7 +269,8 @@ void goto_fence_inserter_parse_optionst::instrument_goto_program(
     remove_asm(symbol_table, goto_functions);
     goto_functions.update();
 
-    if(cmdline.isset("all-shared")) {
+    if(cmdline.isset("all-shared"))
+    {
       status() << "Shared variables accesses detection" << eom;
       fence_all_shared(get_message_handler(), value_set_analysis, symbol_table,
         goto_functions);
@@ -274,35 +278,38 @@ void goto_fence_inserter_parse_optionst::instrument_goto_program(
       // does not transform the goto-binary
       return;
     }
-    if(cmdline.isset("all-shared-aeg")) {
+    if(cmdline.isset("all-shared-aeg"))
+    {
       status() << "Shared variables accesses detection (CF)" << eom;
-      fence_all_shared_aeg(get_message_handler(), value_set_analysis, 
+      fence_all_shared_aeg(get_message_handler(), value_set_analysis,
         symbol_table, goto_functions);
       // simple analysis, coupled with script to insert;
       // does not transform the goto-binary
       return;
     }
-    else if(cmdline.isset("volatile")) {
+    else if(cmdline.isset("volatile"))
+    {
       status() << "Detection of variables declared volatile" << eom;
 
-      fence_volatile(get_message_handler(), value_set_analysis, symbol_table, 
+      fence_volatile(get_message_handler(), value_set_analysis, symbol_table,
         goto_functions);
       // simple analysis, coupled with script to insert;
       // does not transform the goto-binary
       return;
     }
-    else if(cmdline.isset("pensieve") || cmdline.isset("naive")) {
+    else if(cmdline.isset("pensieve") || cmdline.isset("naive"))
+    {
       status() << "Delay-set analysis" << eom;
 
-      const unsigned unwind_loops =
-        ( cmdline.isset("unwind") ? 
-          unsafe_string2unsigned(cmdline.get_value("unwind")) : 0 );
+      const unsigned unwind_loops=
+        cmdline.isset("unwind") ?
+        unsafe_string2unsigned(cmdline.get_value("unwind")) : 0;
 
-      const unsigned max_po_trans =
-        ( cmdline.isset("max-po-trans") ?
-          unsafe_string2unsigned(cmdline.get_value("max-po-trans")) : 0 );
+      const unsigned max_po_trans=
+        cmdline.isset("max-po-trans") ?
+        unsafe_string2unsigned(cmdline.get_value("max-po-trans")) : 0;
 
-      fence_pensieve(         
+      fence_pensieve(
         value_set_analysis,
         symbol_table,
         goto_functions,
@@ -322,7 +329,7 @@ void goto_fence_inserter_parse_optionst::instrument_goto_program(
       std::string mm=cmdline.get_value("mm");
       memory_modelt model;
 
-      status() << "Fence detection for " << mm 
+      status() << "Fence detection for " << mm
         << " via critical cycles and ILP" << eom;
 
       // strategy of instrumentation
@@ -340,18 +347,18 @@ void goto_fence_inserter_parse_optionst::instrument_goto_program(
       else
         /* default: instruments all unsafe pairs */
         inst_strategy=all;
-      
-      const unsigned unwind_loops = 
-        ( cmdline.isset("unwind") ? 
-          unsafe_string2unsigned(cmdline.get_value("unwind")) : 0 );
+
+      const unsigned unwind_loops =
+        cmdline.isset("unwind") ?
+        unsafe_string2unsigned(cmdline.get_value("unwind")) : 0;
 
       const unsigned max_var =
-        ( cmdline.isset("max-var") ?
-          unsafe_string2unsigned(cmdline.get_value("max-var")) : 0 );
+        cmdline.isset("max-var") ?
+        unsafe_string2unsigned(cmdline.get_value("max-var")) : 0;
 
       const unsigned max_po_trans =
-        ( cmdline.isset("max-po-trans") ?
-          unsafe_string2unsigned(cmdline.get_value("max-po-trans")) : 0 );
+        cmdline.isset("max-po-trans") ?
+        unsafe_string2unsigned(cmdline.get_value("max-po-trans")) : 0;
 
       if(mm=="tso")
       {
@@ -381,7 +388,7 @@ void goto_fence_inserter_parse_optionst::instrument_goto_program(
 
       /* inference mode */
       infer_modet infer_mode=INFER;
-      
+
       if(cmdline.isset("userdef"))
         infer_mode=USER_DEF;
 
@@ -416,17 +423,17 @@ void goto_fence_inserter_parse_optionst::instrument_goto_program(
           get_message_handler(),
           cmdline.isset("ignore-arrays"));
     }
-  }  
+  }
 
   // add failed symbols
   add_failed_symbols(symbol_table);
-  
+
   // recalculate numbers, etc.
   goto_functions.update();
 
   // add loop ids
   goto_functions.compute_loop_numbers();
-  
+
   // label the assertions
   label_properties(goto_functions);
 }
@@ -447,7 +454,7 @@ void goto_fence_inserter_parse_optionst::help()
 {
   std::cout <<
     "\n"
-    "* *     musketeer " GOTO_FENCE_INSERTER_VERSION "     * *\n"
+    "* *     musketeer " MUSKETEER_VERSION "     * *\n"
     "\n"
     "              ~__\n"
     "               |)\n"
@@ -462,18 +469,23 @@ void goto_fence_inserter_parse_optionst::help()
     "\n"
     "Main options:\n"
     "\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --mm <tso,pso,rmo,power>     detects all the fences to insert for a weak\n"
     "                              memory model\n"
     "\n"
     "Alternative methods:\n"
     "\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --all-shared                 detects and fences all the accesses to shared\n"
     "                              variables (context insensitive)\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --all-shared-aeg             detects all the accesses to shared variables\n"
     "                              (context sensitive)\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --volatile                   detects all the accesses to volatile variables\n"
     " --pensieve                   detects all the pairs to be delayed with\n"
     "                              Pensieve's criteria (context sensitive)\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --naive                      detects all the pairs to be delayed in a naive\n"
     "                              approach (context sensitive)\n"
     "\n"
@@ -481,17 +493,23 @@ void goto_fence_inserter_parse_optionst::help()
     "\n"
     " --remove-function-pointers   removes soundly function pointers based on\n"
     "                              their signatures\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --async                      replaces all the pthread_creates by CPROVER_ASYNC\n"
     " --const-function-pointer-propagation\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     "                              propagates the constant pointers to functions\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --scc                        detects cycles in parallel (one thread/SCC)\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --force-loop-duplication     duplicates the bodies of all the loops, and not\n"
     "                              only those with arrays accesses\n"
     " --no-loop-duplication        constructs back-edges for all the loops\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --no-dependencies            ignores existing dependencies in the program\n"
     " --print-graph                prints the AEG into graph.dot\n"
     " --max-po-var <n>             limits the number of variables per cycle\n"
     " --max-po-trans <n>           limits the size of pos^+ in terms of pos\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
     " --ignore-arrays              ignores cycles with multiple accesses to the\n"
     "                              same array\n"
     "\n";

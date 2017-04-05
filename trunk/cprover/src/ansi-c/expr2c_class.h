@@ -6,22 +6,23 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_EXPR2C_CLASS_H
-#define CPROVER_EXPR2C_CLASS_H
+#ifndef CPROVER_ANSI_C_EXPR2C_CLASS_H
+#define CPROVER_ANSI_C_EXPR2C_CLASS_H
 
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 
-#include <util/expr.h>
 #include <util/std_code.h>
 #include <util/std_expr.h>
-#include <util/namespace.h>
 
-#include "c_qualifiers.h"
+class c_qualifierst;
+class namespacet;
 
 class expr2ct
 {
 public:
-  expr2ct(const namespacet &_ns):ns(_ns), sizeof_nesting(0) { }
+  explicit expr2ct(const namespacet &_ns):ns(_ns), sizeof_nesting(0) { }
   virtual ~expr2ct() { }
 
   virtual std::string convert(const typet &src);
@@ -37,12 +38,35 @@ protected:
     const c_qualifierst &qualifiers,
     const std::string &declarator);
 
+  virtual std::string convert_struct_type(
+    const typet &src,
+    const std::string &qualifiers_str,
+    const std::string &declarator_str);
+
+  std::string convert_struct_type(
+    const typet &src,
+    const std::string &qualifer_str,
+    const std::string &declarator_str,
+    bool inc_struct_body,
+    bool inc_padding_components);
+
+  virtual std::string convert_array_type(
+    const typet &src,
+    const c_qualifierst &qualifiers,
+    const std::string &declarator_str);
+
+  std::string convert_array_type(
+    const typet &src,
+    const c_qualifierst &qualifiers,
+    const std::string &declarator_str,
+    bool inc_size_if_possible);
+
   static std::string indent_str(unsigned indent);
 
-  hash_map_cont<irep_idt,
-                hash_set_cont<irep_idt, irep_id_hash>,
+  std::unordered_map<irep_idt,
+                std::unordered_set<irep_idt, irep_id_hash>,
                 irep_id_hash> ns_collision;
-  hash_map_cont<irep_idt, irep_idt, irep_id_hash> shorthands;
+  std::unordered_map<irep_idt, irep_idt, irep_id_hash> shorthands;
 
   unsigned sizeof_nesting;
 
@@ -51,10 +75,12 @@ protected:
   std::string convert_typecast(
     const typecast_exprt &src, unsigned &precedence);
 
-  std::string convert_pointer_arithmetic(const exprt &src,
+  std::string convert_pointer_arithmetic(
+    const exprt &src,
     unsigned &precedence);
 
-  std::string convert_pointer_difference(const exprt &src,
+  std::string convert_pointer_difference(
+    const exprt &src,
     unsigned &precedence);
 
   std::string convert_binary(
@@ -133,7 +159,7 @@ protected:
     unsigned precedence);
 
   std::string convert_complex(
-    const exprt &src, 
+    const exprt &src,
     unsigned precedence);
 
   std::string convert_comma(
@@ -145,11 +171,13 @@ protected:
   std::string convert_code(const codet &src);
   virtual std::string convert_code(const codet &src, unsigned indent);
   std::string convert_code_label(const code_labelt &src, unsigned indent);
+  // NOLINTNEXTLINE(whitespace/line_length)
   std::string convert_code_switch_case(const code_switch_caset &src, unsigned indent);
   std::string convert_code_asm(const code_asmt &src, unsigned indent);
   std::string convert_code_assign(const code_assignt &src, unsigned indent);
   std::string convert_code_free(const codet &src, unsigned indent);
   std::string convert_code_init(const codet &src, unsigned indent);
+  // NOLINTNEXTLINE(whitespace/line_length)
   std::string convert_code_ifthenelse(const code_ifthenelset &src, unsigned indent);
   std::string convert_code_for(const code_fort &src, unsigned indent);
   std::string convert_code_while(const code_whilet &src, unsigned indent);
@@ -166,35 +194,44 @@ protected:
   std::string convert_code_decl(const codet &src, unsigned indent);
   std::string convert_code_decl_block(const codet &src, unsigned indent);
   std::string convert_code_dead(const codet &src, unsigned indent);
+  // NOLINTNEXTLINE(whitespace/line_length)
   std::string convert_code_function_call(const code_function_callt &src, unsigned indent);
   std::string convert_code_lock(const codet &src, unsigned indent);
   std::string convert_code_unlock(const codet &src, unsigned indent);
   std::string convert_code_printf(const codet &src, unsigned indent);
   std::string convert_code_fence(const codet &src, unsigned indent);
   std::string convert_code_input(const codet &src, unsigned indent);
+  std::string convert_code_output(const codet &src, unsigned indent);
   std::string convert_code_array_set(const codet &src, unsigned indent);
   std::string convert_code_array_copy(const codet &src, unsigned indent);
 
   virtual std::string convert(const exprt &src, unsigned &precedence);
 
+  // NOLINTNEXTLINE(whitespace/line_length)
   std::string convert_function_application(const function_application_exprt &src, unsigned &precedence);
+  // NOLINTNEXTLINE(whitespace/line_length)
   std::string convert_side_effect_expr_function_call(const side_effect_expr_function_callt &src, unsigned &precedence);
   std::string convert_malloc(const exprt &src, unsigned &precedence);
   std::string convert_nondet(const exprt &src, unsigned &precedence);
   std::string convert_prob_coin(const exprt &src, unsigned &precedence);
   std::string convert_prob_uniform(const exprt &src, unsigned &precedence);
+  // NOLINTNEXTLINE(whitespace/line_length)
   std::string convert_statement_expression(const exprt &src, unsigned &precendence);
 
   virtual std::string convert_symbol(const exprt &src, unsigned &precedence);
   std::string convert_predicate_symbol(const exprt &src, unsigned &precedence);
+  // NOLINTNEXTLINE(whitespace/line_length)
   std::string convert_predicate_next_symbol(const exprt &src, unsigned &precedence);
+  // NOLINTNEXTLINE(whitespace/line_length)
   std::string convert_predicate_passive_symbol(const exprt &src, unsigned &precedence);
   std::string convert_nondet_symbol(const exprt &src, unsigned &precedence);
   std::string convert_quantified_symbol(const exprt &src, unsigned &precedence);
   std::string convert_nondet_bool(const exprt &src, unsigned &precedence);
   std::string convert_object_descriptor(const exprt &src, unsigned &precedence);
   std::string convert_literal(const exprt &src, unsigned &precedence);
+  // NOLINTNEXTLINE(whitespace/line_length)
   virtual std::string convert_constant(const constant_exprt &src, unsigned &precedence);
+  virtual std::string convert_constant_bool(bool boolean_value);
 
   std::string convert_norep(const exprt &src, unsigned &precedence);
 
@@ -204,9 +241,15 @@ protected:
   std::string convert_array(const exprt &src, unsigned &precedence);
   std::string convert_array_list(const exprt &src, unsigned &precedence);
   std::string convert_initializer_list(const exprt &src, unsigned &precedence);
+  // NOLINTNEXTLINE(whitespace/line_length)
   std::string convert_designated_initializer(const exprt &src, unsigned &precedence);
   std::string convert_concatenation(const exprt &src, unsigned &precedence);
   std::string convert_sizeof(const exprt &src, unsigned &precedence);
+
+  std::string convert_struct(
+    const exprt &src,
+    unsigned &precedence,
+    bool include_padding_components);
 };
 
-#endif
+#endif // CPROVER_ANSI_C_EXPR2C_CLASS_H

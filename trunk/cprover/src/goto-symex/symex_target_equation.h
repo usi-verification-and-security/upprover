@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_BASIC_SYMEX_EQUATION_H
-#define CPROVER_BASIC_SYMEX_EQUATION_H
+#ifndef CPROVER_GOTO_SYMEX_SYMEX_TARGET_EQUATION_H
+#define CPROVER_GOTO_SYMEX_SYMEX_TARGET_EQUATION_H
 
 #include <list>
 #include <iosfwd>
@@ -54,7 +54,7 @@ public:
     const exprt &ssa_rhs,
     const sourcet &source,
     assignment_typet assignment_type);
-    
+
   // declare fresh variable - lhs must be symbol
   virtual void decl(
     const exprt &guard,
@@ -84,14 +84,14 @@ public:
   virtual void location(
     const exprt &guard,
     const sourcet &source);
-  
+
   // output
   virtual void output(
     const exprt &guard,
     const sourcet &source,
     const irep_idt &fmt,
     const std::list<exprt> &args);
-  
+
   // output, formatted
   virtual void output_fmt(
     const exprt &guard,
@@ -99,14 +99,14 @@ public:
     const irep_idt &output_id,
     const irep_idt &fmt,
     const std::list<exprt> &args);
-  
+
   // input
   virtual void input(
     const exprt &guard,
     const sourcet &source,
     const irep_idt &input_id,
     const std::list<exprt> &args);
-  
+
   // record an assumption
   virtual void assumption(
     const exprt &guard,
@@ -169,27 +169,36 @@ public:
   public:
     sourcet source;
     goto_trace_stept::typet type;
-    
+
     bool is_assert() const          { return type==goto_trace_stept::ASSERT; }
     bool is_assume() const          { return type==goto_trace_stept::ASSUME; }
+    // NOLINTNEXTLINE(whitespace/line_length)
     bool is_assignment() const      { return type==goto_trace_stept::ASSIGNMENT; }
     bool is_goto() const            { return type==goto_trace_stept::GOTO; }
+    // NOLINTNEXTLINE(whitespace/line_length)
     bool is_constraint() const      { return type==goto_trace_stept::CONSTRAINT; }
     bool is_location() const        { return type==goto_trace_stept::LOCATION; }
     bool is_output() const          { return type==goto_trace_stept::OUTPUT; }
     bool is_decl() const            { return type==goto_trace_stept::DECL; }
+    // NOLINTNEXTLINE(whitespace/line_length)
     bool is_function_call() const   { return type==goto_trace_stept::FUNCTION_CALL; }
+    // NOLINTNEXTLINE(whitespace/line_length)
     bool is_function_return() const { return type==goto_trace_stept::FUNCTION_RETURN; }
+    // NOLINTNEXTLINE(whitespace/line_length)
     bool is_shared_read() const     { return type==goto_trace_stept::SHARED_READ; }
+    // NOLINTNEXTLINE(whitespace/line_length)
     bool is_shared_write() const    { return type==goto_trace_stept::SHARED_WRITE; }
     bool is_spawn() const           { return type==goto_trace_stept::SPAWN; }
+    // NOLINTNEXTLINE(whitespace/line_length)
     bool is_memory_barrier() const  { return type==goto_trace_stept::MEMORY_BARRIER; }
+    // NOLINTNEXTLINE(whitespace/line_length)
     bool is_atomic_begin() const    { return type==goto_trace_stept::ATOMIC_BEGIN; }
+    // NOLINTNEXTLINE(whitespace/line_length)
     bool is_atomic_end() const      { return type==goto_trace_stept::ATOMIC_END; }
 
     // we may choose to hide
     bool hidden;
-    
+
     exprt guard;
     literalt guard_literal;
 
@@ -198,70 +207,74 @@ public:
     exprt ssa_full_lhs, original_full_lhs;
     exprt ssa_rhs;
     assignment_typet assignment_type;
-    
+
     // for ASSUME/ASSERT/GOTO/CONSTRAINT
-    exprt cond_expr; 
+    exprt cond_expr;
     literalt cond_literal;
     std::string comment;
-    
+
     // for INPUT/OUTPUT
     irep_idt format_string, io_id;
     bool formatted;
     std::list<exprt> io_args;
     std::list<exprt> converted_io_args;
-    
+
     // for function call/return
     irep_idt identifier;
 
     // for SHARED_READ/SHARED_WRITE and ATOMIC_BEGIN/ATOMIC_END
     unsigned atomic_section_id;
-    
+
     // for slicing
     bool ignore;
-    
+
     SSA_stept():
       type(goto_trace_stept::NONE),
       hidden(false),
       guard(static_cast<const exprt &>(get_nil_irep())),
+      guard_literal(const_literal(false)),
       ssa_lhs(static_cast<const ssa_exprt &>(get_nil_irep())),
       ssa_full_lhs(static_cast<const exprt &>(get_nil_irep())),
       original_full_lhs(static_cast<const exprt &>(get_nil_irep())),
       ssa_rhs(static_cast<const exprt &>(get_nil_irep())),
       cond_expr(static_cast<const exprt &>(get_nil_irep())),
+      cond_literal(const_literal(false)),
       formatted(false),
       atomic_section_id(0),
       ignore(false)
     {
     }
-    
+
     void output(
       const namespacet &ns,
       std::ostream &out) const;
   };
-  
+
   unsigned count_assertions() const
   {
     unsigned i=0;
     for(SSA_stepst::const_iterator
         it=SSA_steps.begin();
         it!=SSA_steps.end(); it++)
-      if(it->is_assert()) i++;
+      if(it->is_assert())
+        i++;
     return i;
   }
-  
+
   unsigned count_ignored_SSA_steps() const
   {
     unsigned i=0;
     for(SSA_stepst::const_iterator
         it=SSA_steps.begin();
         it!=SSA_steps.end(); it++)
-      if(it->ignore) i++;
+      if(it->ignore)
+        i++;
     return i;
   }
 
   typedef std::list<SSA_stept> SSA_stepst;
   SSA_stepst SSA_steps;
-  
+
   SSA_stepst::iterator get_SSA_step(unsigned s)
   {
     SSA_stepst::iterator it=SSA_steps.begin();
@@ -274,12 +287,12 @@ public:
   }
 
   void output(std::ostream &out) const;
-  
+
   void clear()
   {
     SSA_steps.clear();
   }
-  
+
   bool has_threads() const
   {
     for(SSA_stepst::const_iterator it=SSA_steps.begin();
@@ -290,7 +303,7 @@ public:
 
     return false;
   }
-  
+
 protected:
   const namespacet &ns;
 
@@ -299,14 +312,18 @@ protected:
   void merge_ireps(SSA_stept &SSA_step);
 };
 
-extern inline bool operator<(
+inline bool operator<(
   const symex_target_equationt::SSA_stepst::const_iterator a,
   const symex_target_equationt::SSA_stepst::const_iterator b)
 {
   return &(*a)<&(*b);
 }
 
-std::ostream &operator<<(std::ostream &out, const symex_target_equationt::SSA_stept &step);
-std::ostream &operator<<(std::ostream &out, const symex_target_equationt &equation);
+std::ostream &operator<<(
+  std::ostream &out,
+  const symex_target_equationt::SSA_stept &step);
+std::ostream &operator<<(
+  std::ostream &out,
+  const symex_target_equationt &equation);
 
-#endif
+#endif // CPROVER_GOTO_SYMEX_SYMEX_TARGET_EQUATION_H

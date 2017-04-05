@@ -2,24 +2,21 @@
 
 // inline functions
 
-namespace miniBDD
-{
-
-BDD::BDD():node(0)
+inline mini_bddt::mini_bddt():node(0)
 {
 }
 
-BDD::BDD(const BDD &x):node(x.node)
+inline mini_bddt::mini_bddt(const mini_bddt &x):node(x.node)
 {
   if(is_initialized()) node->add_reference();
 }
 
-BDD::BDD(class node *_node):node(_node)
+inline mini_bddt::mini_bddt(class mini_bdd_nodet *_node):node(_node)
 {
   if(is_initialized()) node->add_reference();
 }
 
-BDD &BDD::operator=(const BDD &x)
+inline mini_bddt &mini_bddt::operator=(const mini_bddt &x)
 {
   assert(&x!=this);
   clear();
@@ -31,56 +28,56 @@ BDD &BDD::operator=(const BDD &x)
   return *this;
 }
 
-BDD::~BDD()
+inline mini_bddt::~mini_bddt()
 {
   clear();
 }
 
-bool BDD::is_constant() const
+inline bool mini_bddt::is_constant() const
 {
   assert(is_initialized());
   return node->node_number<=1;
 }
 
-bool BDD::is_true() const
+inline bool mini_bddt::is_true() const
 {
   assert(is_initialized());
   return node->node_number==1;
 }
 
-bool BDD::is_false() const
+inline bool mini_bddt::is_false() const
 {
   assert(is_initialized());
   return node->node_number==0;
 }
 
-unsigned BDD::var() const
+inline unsigned mini_bddt::var() const
 {
   assert(is_initialized());
   return node->var;
 }
 
-unsigned BDD::node_number() const
+inline unsigned mini_bddt::node_number() const
 {
   assert(is_initialized());
   return node->node_number;
 }
 
-const BDD &BDD::low() const
+inline const mini_bddt &mini_bddt::low() const
 {
   assert(is_initialized());
   assert(node->node_number>=2);
   return node->low;
 }
 
-const BDD &BDD::high() const
+inline const mini_bddt &mini_bddt::high() const
 {
   assert(is_initialized());
   assert(node->node_number>=2);
   return node->high;
 }
 
-void BDD::clear()
+inline void mini_bddt::clear()
 {
   if(is_initialized())
   {
@@ -89,45 +86,43 @@ void BDD::clear()
   }
 }
 
-node::node(
-  class mgr *_mgr,
+inline mini_bdd_nodet::mini_bdd_nodet(
+  class mini_bdd_mgrt *_mgr,
   unsigned _var, unsigned _node_number,
-  const BDD &_low, const BDD &_high):
+  const mini_bddt &_low, const mini_bddt &_high):
   mgr(_mgr), var(_var), node_number(_node_number),
   reference_counter(0),
   low(_low), high(_high)
 {
 }
 
-mgr::var_table_entryt::var_table_entryt(
+inline mini_bdd_mgrt::var_table_entryt::var_table_entryt(
   const std::string &_label):label(_label)
 {
 }
 
-const BDD &mgr::True() const
+inline const mini_bddt &mini_bdd_mgrt::True() const
 {
   return true_bdd;
 }
 
-const BDD &mgr::False() const
+inline const mini_bddt &mini_bdd_mgrt::False() const
 {
   return false_bdd;
 }
-  
-void node::add_reference()
+
+inline void mini_bdd_nodet::add_reference()
 {
   reference_counter++;
 }
-  
-mgr::reverse_keyt::reverse_keyt(
-  unsigned _var, const BDD &_low, const BDD &_high):
+
+inline mini_bdd_mgrt::reverse_keyt::reverse_keyt(
+  unsigned _var, const mini_bddt &_low, const mini_bddt &_high):
   var(_var), low(_low.node->node_number), high(_high.node->node_number)
 {
 }
 
-std::size_t mgr::number_of_nodes()
+inline std::size_t mini_bdd_mgrt::number_of_nodes()
 {
   return nodes.size()-free.size();
 }
-
-} // namespace miniBDD

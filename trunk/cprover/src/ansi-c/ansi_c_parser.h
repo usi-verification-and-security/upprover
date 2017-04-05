@@ -6,17 +6,16 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_ANSI_C_PARSER_H
-#define CPROVER_ANSI_C_PARSER_H
+#ifndef CPROVER_ANSI_C_ANSI_C_PARSER_H
+#define CPROVER_ANSI_C_ANSI_C_PARSER_H
 
 #include <cassert>
 
 #include <util/parser.h>
 #include <util/expr.h>
-#include <util/hash_cont.h>
 #include <util/string_hash.h>
-#include <util/i2string.h>
 #include <util/mp_arith.h>
+#include <util/config.h>
 
 #include "ansi_c_parse_tree.h"
 #include "ansi_c_scope.h"
@@ -27,30 +26,30 @@ class ansi_c_parsert:public parsert
 {
 public:
   ansi_c_parse_treet parse_tree;
-  
+
   ansi_c_parsert():
     cpp98(false), cpp11(false),
     for_has_scope(false)
   {
   }
-  
-  virtual bool parse()
+
+  virtual bool parse() override
   {
     return yyansi_cparse()!=0;
   }
 
-  virtual void clear()
+  virtual void clear() override
   {
     parsert::clear();
     parse_tree.clear();
-    
+
     // scanner state
     tag_following=false;
     asm_block_following=false;
     parenthesis_counter=0;
     string_literal.clear();
     pragma_pack.clear();
-    
+
     // setup global scope
     scopes.clear();
     scopes.push_back(scopet());
@@ -62,43 +61,37 @@ public:
   unsigned parenthesis_counter;
   std::string string_literal;
   std::list<exprt> pragma_pack;
-  
-  typedef enum { ANSI, GCC, MSC, ICC, CW, ARM } modet;
-  modet mode;
-  // ANSI is strict ANSI-C
-  // GCC is, well, gcc
-  // MSC is Microsoft Visual Studio
-  // ICC is Intel's C compiler
-  // CW is CodeWarrior (with GCC extensions enabled)
-  // ARM is ARM's RealView
 
-  // recognize C++98 and C++11 keywords  
+  typedef configt::ansi_ct::flavourt modet;
+  modet mode;
+
+  // recognize C++98 and C++11 keywords
   bool cpp98, cpp11;
-  
+
   // in C99 and upwards, for(;;) has a scope
   bool for_has_scope;
 
-  typedef ansi_c_identifiert identifiert;  
+  typedef ansi_c_identifiert identifiert;
   typedef ansi_c_scopet scopet;
 
   typedef std::list<scopet> scopest;
   scopest scopes;
-  
+
   scopet &root_scope()
   {
     return scopes.front();
   }
-  
+
   const scopet &root_scope() const
   {
     return scopes.front();
   }
-  
+
   void pop_scope()
   {
     scopes.pop_back();
   }
-   
+
   scopet &current_scope()
   {
     assert(!scopes.empty());
@@ -118,7 +111,7 @@ public:
     assert(declaration.id()==ID_declaration);
     parse_tree.items.push_back(declaration);
   }
-   
+
   void new_scope(const std::string &prefix)
   {
     const scopet &current=current_scope();
@@ -127,17 +120,18 @@ public:
   }
 
   ansi_c_id_classt lookup(
-    std::string &name,
+    const irep_idt &base_name, // in
+    irep_idt &identifier, // out
     bool tag,
     bool label);
 
   static ansi_c_id_classt get_class(const typet &type);
-  
-  irep_idt lookup_label(const irep_idt id)
+
+  irep_idt lookup_label(const irep_idt base_name)
   {
-    std::string name=id2string(id);
-    lookup(name, false, true);
-    return name;
+    irep_idt identifier;
+    lookup(base_name, identifier, false, true);
+    return identifier;
   }
 };
 
@@ -146,4 +140,4 @@ extern ansi_c_parsert ansi_c_parser;
 int yyansi_cerror(const std::string &error);
 void ansi_c_scanner_init();
 
-#endif
+#endif // CPROVER_ANSI_C_ANSI_C_PARSER_H

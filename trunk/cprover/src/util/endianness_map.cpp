@@ -33,7 +33,8 @@ void endianness_mapt::output(std::ostream &out) const
       it!=map.end();
       ++it)
   {
-    if(it!=map.begin()) out << ", ";
+    if(it!=map.begin())
+      out << ", ";
     out << *it;
   }
 }
@@ -73,9 +74,10 @@ Function: endianness_mapt::build_little_endian
 void endianness_mapt::build_little_endian(const typet &src)
 {
   mp_integer s=pointer_offset_bits(src, ns); // error is -1
-  if(s<=0) return;
-  
-  std::size_t new_size=map.size()+integer2long(s);
+  if(s<=0)
+    return;
+
+  std::size_t new_size=map.size()+integer2size_t(s);
   map.reserve(new_size);
 
   for(std::size_t i=map.size(); i<new_size; ++i)
@@ -111,7 +113,7 @@ void endianness_mapt::build_big_endian(const typet &src)
     mp_integer bits=pointer_offset_bits(src, ns); // error is -1
     assert(bits>=0);
 
-    size_t bits_int=integer2long(bits), base=map.size();
+    size_t bits_int=integer2size_t(bits), base=map.size();
 
     for(size_t bit=0; bit<bits_int; bit++)
     {
@@ -121,7 +123,7 @@ void endianness_mapt::build_big_endian(const typet &src)
   else if(src.id()==ID_struct)
   {
     const struct_typet &struct_type=to_struct_type(src);
-    
+
     // todo: worry about padding being in wrong order
     for(struct_typet::componentst::const_iterator
         it=struct_type.components().begin();
@@ -165,9 +167,10 @@ void endianness_mapt::build_big_endian(const typet &src)
     // everything else (unions in particular)
     // is treated like a byte-array
     mp_integer s=pointer_offset_bits(src, ns); // error is -1
-    if(s<=0) return;
+    if(s<=0)
+      return;
 
-    std::size_t new_size=map.size()+integer2long(s);
+    std::size_t new_size=map.size()+integer2size_t(s);
     map.reserve(new_size);
 
     for(std::size_t i=map.size(); i<new_size; ++i)

@@ -6,10 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_CUSTOM_BITVECTOR_ANALYSIS_H
-#define CPROVER_CUSTOM_BITVECTOR_ANALYSIS_H
+#ifndef CPROVER_ANALYSES_CUSTOM_BITVECTOR_ANALYSIS_H
+#define CPROVER_ANALYSES_CUSTOM_BITVECTOR_ANALYSIS_H
 
 #include <util/numbering.h>
+#include <util/threeval.h>
 
 #include "ai.h"
 #include "local_may_alias.h"
@@ -17,7 +18,7 @@ Author: Daniel Kroening, kroening@kroening.com
 /*******************************************************************\
 
    Class: custom_bitvector_domaint
-   
+
  Purpose:
 
 \*******************************************************************/
@@ -27,36 +28,34 @@ class custom_bitvector_analysist;
 class custom_bitvector_domaint:public ai_domain_baset
 {
 public:
-  virtual void transform(
+  void transform(
     locationt from,
     locationt to,
     ai_baset &ai,
-    const namespacet &ns);
+    const namespacet &ns) final;
 
-  virtual void output(
+  void output(
     std::ostream &out,
     const ai_baset &ai,
-    const namespacet &ns) const;
+    const namespacet &ns) const final;
 
-  virtual void make_bottom()
+  void make_bottom() final
   {
     may_bits.clear();
     must_bits.clear();
-    is_bottom=true;
+    has_values=tvt(false);
   }
 
-  virtual void make_top()
+  void make_top() final
   {
     may_bits.clear();
     must_bits.clear();
-    is_bottom=false;
+    has_values=tvt(true);
   }
 
-  virtual void make_entry()
+  void make_entry() final
   {
-    may_bits.clear();
-    must_bits.clear();
-    is_bottom=false;
+    make_top();
   }
 
   bool merge(
@@ -65,9 +64,9 @@ public:
     locationt to);
 
   typedef unsigned long long bit_vectort;
-  
+
   typedef std::map<irep_idt, bit_vectort> bitst;
-  
+
   struct vectorst
   {
     bit_vectort may_bits, must_bits;
@@ -75,7 +74,7 @@ public:
     {
     }
   };
-  
+
   static vectorst merge(const vectorst &a, const vectorst &b)
   {
     vectorst result;
@@ -83,17 +82,17 @@ public:
     result.must_bits=a.must_bits&b.must_bits;
     return result;
   }
-  
+
   bitst may_bits, must_bits;
-  
+
   void assign_lhs(const exprt &, const vectorst &);
   void assign_lhs(const irep_idt &, const vectorst &);
   vectorst get_rhs(const exprt &) const;
   vectorst get_rhs(const irep_idt &) const;
 
-  bool is_bottom;
-  
-  custom_bitvector_domaint():is_bottom(true)
+  tvt has_values;
+
+  custom_bitvector_domaint():has_values(true)
   {
   }
 
@@ -102,7 +101,7 @@ public:
     const exprt &src,
     custom_bitvector_analysist &) const;
 
-protected:  
+private:
   typedef enum { SET_MUST, CLEAR_MUST, SET_MAY, CLEAR_MAY } modet;
 
   void set_bit(const exprt &, unsigned bit_nr, modet);
@@ -112,28 +111,31 @@ protected:
   {
     dest|=(1ll<<bit_nr);
   }
-  
+
   static inline void clear_bit(bit_vectort &dest, unsigned bit_nr)
   {
     dest|=(1ll<<bit_nr);
     dest^=(1ll<<bit_nr);
-  }  
-  
+  }
+
   static inline bool get_bit(const bit_vectort src, unsigned bit_nr)
   {
     return (src&(1ll<<bit_nr))!=0;
   }
-  
-  void erase_blank_vectors(bitst &);  
-  
+
+  void erase_blank_vectors(bitst &);
+
   static irep_idt object2id(const exprt &);
 };
 
-class custom_bitvector_analysist:public ait<custom_bitvector_domaint> 
+class custom_bitvector_analysist:public ait<custom_bitvector_domaint>
 {
 public:
   void instrument(goto_functionst &);
-  void check(const namespacet &, const goto_functionst &, bool xml, std::ostream &);
+  void check(
+    const namespacet &,
+    const goto_functionst &,
+    bool xml, std::ostream &);
 
   exprt eval(const exprt &src, locationt loc)
   {
@@ -141,6 +143,9 @@ public:
   }
 
   unsigned get_bit_nr(const exprt &);
+
+  typedef numbering<irep_idt> bitst;
+  bitst bits;
 
 protected:
   virtual void initialize(const goto_functionst &_goto_functions)
@@ -150,11 +155,9 @@ protected:
 
   friend class custom_bitvector_domaint;
 
-  numbering<irep_idt> bits;
-  
   local_may_alias_factoryt local_may_alias_factory;
-  
+
   std::set<exprt> aliases(const exprt &, locationt loc);
 };
 
-#endif
+#endif // CPROVER_ANALYSES_CUSTOM_BITVECTOR_ANALYSIS_H

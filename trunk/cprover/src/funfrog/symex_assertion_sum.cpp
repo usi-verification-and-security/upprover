@@ -1512,12 +1512,12 @@ void symex_assertion_sumt::phi_function(
   statet &dest_state)
 {
   // go over all variables to see what changed
-  hash_set_cont<ssa_exprt, irep_hash> variables;
+  unordered_set<ssa_exprt, irep_hash> variables;
 
   goto_state.level2_get_variables(variables);
   dest_state.level2.get_variables(variables);
 
-  for(hash_set_cont<ssa_exprt, irep_hash>::const_iterator
+  for(unordered_set<ssa_exprt, irep_hash>::const_iterator
       it=variables.begin();
       it!=variables.end();
       it++)

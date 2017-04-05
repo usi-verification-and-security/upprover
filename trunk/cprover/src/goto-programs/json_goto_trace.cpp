@@ -10,42 +10,11 @@ Author: Daniel Kroening
 
 #include <cassert>
 
-#include <util/i2string.h>
+#include <util/json_expr.h>
 
 #include <langapi/language_util.h>
 
 #include "json_goto_trace.h"
-
-/*******************************************************************\
-
-Function: json
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-jsont json(const source_locationt &source_location)
-{
-  jsont result=jsont::json_object();
-
-  if(!source_location.get_file().empty())
-    result["file"]=jsont(id2string(source_location.get_file()));
-
-  if(!source_location.get_line().empty())
-    result["line"]=jsont::json_number(id2string(source_location.get_line()));
-
-  if(!source_location.get_column().empty())
-    result["column"]=jsont::json_number(id2string(source_location.get_column()));
-
-  if(!source_location.get_function().empty())
-    result["function"]=jsont(id2string(source_location.get_function()));
-    
-  return result;
-}
 
 /*******************************************************************\
 
@@ -64,78 +33,74 @@ void convert(
   const goto_tracet &goto_trace,
   jsont &dest)
 {
-  dest=jsont::json_array();
-  
+  json_arrayt &dest_array=dest.make_array();
+
   source_locationt previous_source_location;
 
-  for(goto_tracet::stepst::const_iterator
-      it=goto_trace.steps.begin();
-      it!=goto_trace.steps.end();
-      it++)
+  for(const auto &step : goto_trace.steps)
   {
-    const source_locationt &source_location=it->pc->source_location;
+    const source_locationt &source_location=step.pc->source_location;
 
     jsont json_location;
 
     if(source_location.is_not_nil() && source_location.get_file()!="")
       json_location=json(source_location);
     else
-      json_location=jsont::json_null();
-    
-    switch(it->type)
+      json_location=json_nullt();
+
+    switch(step.type)
     {
     case goto_trace_stept::ASSERT:
-      if(!it->cond_value)
+      if(!step.cond_value)
       {
         irep_idt property_id;
-        
-        if(it->pc->is_assert())
+
+        if(step.pc->is_assert())
           property_id=source_location.get_property_id();
-        else if(it->pc->is_goto()) // unwinding, we suspect
+        else if(step.pc->is_goto()) // unwinding, we suspect
         {
           property_id=
-            id2string(it->pc->source_location.get_function())+".unwind."+
-            i2string(it->pc->loop_number);
+            id2string(step.pc->source_location.get_function())+
+            ".unwind."+std::to_string(step.pc->loop_number);
         }
-      
-        jsont &json_failure=dest.push_back(jsont::json_object());
-        
-        json_failure["step_type"]=jsont("failure");
-        json_failure["hidden"]=jsont::json_boolean(it->hidden);
-        json_failure["thread"]=jsont::json_number(i2string(it->thread_nr));
-        json_failure["reason"]=jsont(id2string(it->comment));
-        json_failure["property"]=jsont(id2string(property_id));
+
+        json_objectt &json_failure=dest_array.push_back().make_object();
+
+        json_failure["stepType"]=json_stringt("failure");
+        json_failure["hidden"]=jsont::json_boolean(step.hidden);
+        json_failure["thread"]=json_numbert(std::to_string(step.thread_nr));
+        json_failure["reason"]=json_stringt(id2string(step.comment));
+        json_failure["property"]=json_stringt(id2string(property_id));
 
         if(!json_location.is_null())
-          json_failure["source_location"]=json_location;
+          json_failure["sourceLocation"]=json_location;
       }
       break;
-      
+
     case goto_trace_stept::ASSIGNMENT:
     case goto_trace_stept::DECL:
       {
-        irep_idt identifier=it->lhs_object.get_identifier();
-        jsont &json_assignment=dest.push_back(jsont::json_object());
-        
-        json_assignment["step_type"]=jsont("assignment");
+        irep_idt identifier=step.lhs_object.get_identifier();
+        json_objectt &json_assignment=dest_array.push_back().make_object();
+
+        json_assignment["stepType"]=json_stringt("assignment");
 
         if(!json_location.is_null())
-          json_assignment["source_location"]=json_location;
+          json_assignment["sourceLocation"]=json_location;
 
-        std::string value_string, binary_string, type_string,
-                    full_lhs_string, full_lhs_value_string;
-        
-        //if(it->lhs_object_value.is_not_nil())
-        //  value_string=from_expr(ns, identifier, it->lhs_object_value);
+        std::string value_string, binary_string, type_string, full_lhs_string;
+        json_objectt full_lhs_value;
 
-        if(it->full_lhs.is_not_nil())
-          full_lhs_string=from_expr(ns, identifier, it->full_lhs);
+        if(step.full_lhs.is_not_nil())
+          full_lhs_string=from_expr(ns, identifier, step.full_lhs);
 
-        if(it->full_lhs_value.is_not_nil())
-          full_lhs_value_string=from_expr(ns, identifier, it->full_lhs_value);
+#if 0
+        if(it.full_lhs_value.is_not_nil())
+          full_lhs_value_string=from_expr(ns, identifier, it.full_lhs_value);
+#endif
 
-        //if(it->lhs_object_value.type().is_not_nil())
-        //  type_string=from_type(ns, identifier, it->lhs_object_value.type());
+        if(step.full_lhs_value.is_not_nil())
+          full_lhs_value = json(step.full_lhs_value, ns);
 
         const symbolt *symbol;
         irep_idt base_name, display_name;
@@ -147,61 +112,104 @@ void convert(
           if(type_string=="")
             type_string=from_type(ns, identifier, symbol->type);
 
-          json_assignment["mode"]=jsont(id2string(symbol->mode));
+          json_assignment["mode"]=json_stringt(id2string(symbol->mode));
         }
 
-        json_assignment["value"]=jsont(full_lhs_value_string);
-        json_assignment["lhs"]=jsont(full_lhs_string);
-        json_assignment["hidden"]=jsont::json_boolean(it->hidden);
-        json_assignment["thread"]=jsont::json_number(i2string(it->thread_nr));
+        json_assignment["value"]=full_lhs_value;
+        json_assignment["lhs"]=json_stringt(full_lhs_string);
+        json_assignment["hidden"]=jsont::json_boolean(step.hidden);
+        json_assignment["thread"]=json_numbert(std::to_string(step.thread_nr));
 
-        json_assignment["assignment_type"]=
-          jsont(it->assignment_type==goto_trace_stept::ACTUAL_PARAMETER?"actual_parameter":
-                "variable");
+        json_assignment["assignmentType"]=
+          json_stringt(step.assignment_type==goto_trace_stept::ACTUAL_PARAMETER?
+                       "actual-parameter":"variable");
       }
       break;
-      
+
     case goto_trace_stept::OUTPUT:
-      // TODO
+      {
+        json_objectt &json_output=dest_array.push_back().make_object();
+
+        json_output["stepType"]=json_stringt("output");
+        json_output["hidden"]=jsont::json_boolean(step.hidden);
+        json_output["thread"]=json_numbert(std::to_string(step.thread_nr));
+        json_output["outputID"]=json_stringt(id2string(step.io_id));
+
+        json_arrayt &json_values=json_output["values"].make_array();
+
+        for(const auto &arg : step.io_args)
+        {
+          if(arg.is_nil())
+            json_values.push_back(json_stringt(""));
+          else
+            json_values.push_back(json(arg, ns));
+        }
+
+        if(!json_location.is_null())
+          json_output["sourceLocation"]=json_location;
+      }
       break;
-      
+
     case goto_trace_stept::INPUT:
-      // TODO
+      {
+        json_objectt &json_input=dest_array.push_back().make_object();
+
+        json_input["stepType"]=json_stringt("input");
+        json_input["hidden"]=jsont::json_boolean(step.hidden);
+        json_input["thread"]=json_numbert(std::to_string(step.thread_nr));
+        json_input["inputID"]=json_stringt(id2string(step.io_id));
+
+        json_arrayt &json_values=json_input["values"].make_array();
+
+        for(const auto &arg : step.io_args)
+        {
+          if(arg.is_nil())
+            json_values.push_back(json_stringt(""));
+          else
+            json_values.push_back(json(arg, ns));
+        }
+
+        if(!json_location.is_null())
+          json_input["sourceLocation"]=json_location;
+      }
       break;
-      
+
     case goto_trace_stept::FUNCTION_CALL:
     case goto_trace_stept::FUNCTION_RETURN:
       {
         std::string tag=
-          (it->type==goto_trace_stept::FUNCTION_CALL)?"function_call":"function_return";
-        jsont &json_call_return=dest.push_back(jsont::json_object());
-        
-        json_call_return["step_type"]=jsont(tag);
-        json_call_return["hidden"]=jsont::json_boolean(it->hidden);
-        json_call_return["thread"]=jsont::json_number(i2string(it->thread_nr));
+          (step.type==goto_trace_stept::FUNCTION_CALL)?
+            "function-call":"function-return";
+        json_objectt &json_call_return=dest_array.push_back().make_object();
 
-        const symbolt &symbol=ns.lookup(it->identifier);
-        jsont &json_function=json_call_return["function"];
-        json_function=jsont::json_object();
-        json_function["display_name"]=jsont(id2string(symbol.display_name()));
-        json_function["identifier"]=jsont(id2string(it->identifier));
-        json_function["source_location"]=json(symbol.location);
+        json_call_return["stepType"]=json_stringt(tag);
+        json_call_return["hidden"]=jsont::json_boolean(step.hidden);
+        json_call_return["thread"]=json_numbert(std::to_string(step.thread_nr));
+
+        const symbolt &symbol=ns.lookup(step.identifier);
+        json_objectt &json_function=json_call_return["function"].make_object();
+        json_function["displayName"]=
+          json_stringt(id2string(symbol.display_name()));
+        json_function["identifier"]=json_stringt(id2string(step.identifier));
+        json_function["sourceLocation"]=json(symbol.location);
 
         if(!json_location.is_null())
-          json_call_return["source_location"]=json_location;
+          json_call_return["sourceLocation"]=json_location;
       }
       break;
-      
+
     default:
       if(source_location!=previous_source_location)
       {
         // just the source location
         if(!json_location.is_null())
         {
-          jsont &json_location_only=dest["location-only"];
-          json_location_only["hidden"]=jsont::json_boolean(it->hidden);
-          json_location_only["thread"]=jsont::json_number(i2string(it->thread_nr));
-          json_location_only["source_location"]=json_location;
+          json_objectt &json_location_only=dest_array.push_back().make_object();
+          json_location_only["stepType"]=json_stringt("location-only");
+          json_location_only["hidden"]=jsont::json_boolean(step.hidden);
+          json_location_only["thread"]=
+            json_numbert(std::to_string(step.thread_nr));
+          json_location_only["sourceLocation"]=json_location;
         }
       }
     }

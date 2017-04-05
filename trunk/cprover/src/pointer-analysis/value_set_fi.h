@@ -7,10 +7,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef VALUE_SET_FI_H_
-#define VALUE_SET_FI_H_
+#ifndef CPROVER_POINTER_ANALYSIS_VALUE_SET_FI_H
+#define CPROVER_POINTER_ANALYSIS_VALUE_SET_FI_H
 
+#include <map>
 #include <set>
+#include <unordered_set>
 
 #include <util/mp_arith.h>
 #include <util/namespace.h>
@@ -29,51 +31,51 @@ public:
   unsigned to_target_index, from_target_index;
   static object_numberingt object_numbering;
   static hash_numbering<irep_idt, irep_id_hash> function_numbering;
-  
-  void set_from(const irep_idt& function, unsigned inx)
+
+  void set_from(const irep_idt &function, unsigned inx)
   {
     from_function = function_numbering.number(function);
     from_target_index = inx;
   }
-  
+
   void set_to(const irep_idt &function, unsigned inx)
   {
-    to_function = function_numbering.number(function);      
+    to_function = function_numbering.number(function);
     to_target_index = inx;
   }
 
   typedef irep_idt idt;
-  
+
   class objectt
   {
   public:
     objectt():offset_is_set(false)
     {
     }
-  
+
     explicit objectt(const mp_integer &_offset):
       offset(_offset),
       offset_is_set(true)
     {
     }
-  
+
     mp_integer offset;
     bool offset_is_set;
     bool offset_is_zero() const
     { return offset_is_set && offset.is_zero(); }
   };
-  
+
   class object_map_dt:public std::map<unsigned, objectt>
   {
   public:
     object_map_dt() {}
-    const static object_map_dt blank;
+    static const object_map_dt blank;
   };
-  
+
   exprt to_expr(object_map_dt::const_iterator it) const;
-  
+
   typedef reference_counting<object_map_dt> object_mapt;
-  
+
   void set(object_mapt &dest, object_map_dt::const_iterator it) const
   {
     dest.write()[it->first]=it->second;
@@ -88,14 +90,17 @@ public:
   {
     return insert(dest, object_numbering.number(src), objectt());
   }
-  
-  bool insert(object_mapt &dest, const exprt &src, const mp_integer &offset) const
+
+  bool insert(
+    object_mapt &dest,
+    const exprt &src,
+    const mp_integer &offset) const
   {
     return insert(dest, object_numbering.number(src), objectt(offset));
   }
-  
+
   bool insert(object_mapt &dest, unsigned n, const objectt &object) const
-  {    
+  {
     if(dest.read().find(n)==dest.read().end())
     {
       // new
@@ -105,7 +110,7 @@ public:
     else
     {
       objectt &old=dest.write()[n];
-      
+
       if(old.offset_is_set && object.offset_is_set)
       {
         if(old.offset==object.offset)
@@ -125,43 +130,45 @@ public:
       }
     }
   }
-  
+
   bool insert(object_mapt &dest, const exprt &expr, const objectt &object) const
   {
     return insert(dest, object_numbering.number(expr), object);
   }
-  
+
   struct entryt
   {
     object_mapt object_map;
     idt identifier;
     std::string suffix;
-    
+
     entryt()
     {
     }
-    
+
     entryt(const idt &_identifier, const std::string _suffix):
       identifier(_identifier),
       suffix(_suffix)
     {
     }
   };
-  
-  typedef hash_set_cont<exprt, irep_hash> expr_sett;
 
-  #ifdef USE_DSTRING   
+  typedef std::unordered_set<exprt, irep_hash> expr_sett;
+
+  typedef std::unordered_set<unsigned int> dynamic_object_id_sett;
+
+  #ifdef USE_DSTRING
   typedef std::map<idt, entryt> valuest;
   typedef std::set<idt> flatten_seent;
-  typedef hash_set_cont<idt, irep_id_hash> gvs_recursion_sett;
-  typedef hash_set_cont<idt, irep_id_hash> recfind_recursion_sett;
-  typedef hash_set_cont<idt, irep_id_hash> assign_recursion_sett;
+  typedef std::unordered_set<idt, irep_id_hash> gvs_recursion_sett;
+  typedef std::unordered_set<idt, irep_id_hash> recfind_recursion_sett;
+  typedef std::unordered_set<idt, irep_id_hash> assign_recursion_sett;
   #else
-  typedef hash_map_cont<idt, entryt, string_hash> valuest;
-  typedef hash_set_cont<idt, string_hash> flatten_seent;
-  typedef hash_set_cont<idt, string_hash> gvs_recursion_sett;
-  typedef hash_set_cont<idt, string_hash> recfind_recursion_sett;
-  typedef hash_set_cont<idt, string_hash> assign_recursion_sett;
+  typedef std::unordered_map<idt, entryt, string_hash> valuest;
+  typedef std::unordered_set<idt, string_hash> flatten_seent;
+  typedef std::unordered_set<idt, string_hash> gvs_recursion_sett;
+  typedef std::unordered_set<idt, string_hash> recfind_recursion_sett;
+  typedef std::unordered_set<idt, string_hash> assign_recursion_sett;
   #endif
 
   void get_value_set(
@@ -177,12 +184,12 @@ public:
   {
     values.clear();
   }
-  
+
   void clear()
   {
     values.clear();
   }
-  
+
   void add_var(const idt &id, const std::string &suffix)
   {
     get_entry(id, suffix);
@@ -192,12 +199,12 @@ public:
   {
     get_entry(e.identifier, e.suffix);
   }
-  
+
   entryt &get_entry(const idt &id, const std::string &suffix)
   {
     return get_entry(entryt(id, suffix));
   }
-  
+
   entryt &get_entry(const entryt &e)
   {
     std::string index=id2string(e.identifier)+e.suffix;
@@ -207,7 +214,7 @@ public:
 
     return r.first->second;
   }
-  
+
   void add_vars(const std::list<entryt> &vars)
   {
     for(std::list<entryt>::const_iterator
@@ -220,11 +227,11 @@ public:
   void output(
     const namespacet &ns,
     std::ostream &out) const;
-    
+
   valuest values;
-  
+
   bool changed;
-  
+
   // true = added s.th. new
   bool make_union(object_mapt &dest, const object_mapt &src) const;
 
@@ -236,7 +243,7 @@ public:
   {
     return make_union(new_values.values);
   }
-  
+
   void apply_code(
     const exprt &code,
     const namespacet &ns);
@@ -266,7 +273,7 @@ protected:
     const exprt &expr,
     expr_sett &expr_set,
     const namespacet &ns) const;
-    
+
   void get_value_set_rec(
     const exprt &expr,
     object_mapt &dest,
@@ -308,12 +315,13 @@ protected:
   void do_free(
     const exprt &op,
     const namespacet &ns);
-    
+
   void flatten(const entryt &e, object_mapt &dest) const;
-  
-  void flatten_rec( const entryt&, 
-                    object_mapt&, 
-                    flatten_seent&) const;
+
+  void flatten_rec(
+    const entryt&,
+    object_mapt&,
+    flatten_seent&) const;
 };
 
-#endif /*VALUE_SET_FI_H_*/
+#endif // CPROVER_POINTER_ANALYSIS_VALUE_SET_FI_H

@@ -8,7 +8,6 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 #include <cassert>
 
-#include <util/i2string.h>
 #include <util/threeval.h>
 
 #include "satcheck_precosat.h"
@@ -86,7 +85,7 @@ Function: satcheck_precosatt::lcnf
 void satcheck_precosatt::lcnf(const bvt &bv)
 {
   bvt new_bv;
-  
+
   if(process_clause(bv, new_bv))
     return;
 
@@ -117,11 +116,11 @@ propt::resultt satcheck_precosatt::prop_solve()
   // We start counting at 1, thus there is one variable fewer.
   {
     std::string msg=
-      i2string(no_variables()-1)+" variables, "+
-      i2string(solver->getAddedOrigClauses())+" clauses";
+      std::to_string(no_variables()-1)+" variables, "+
+      std::to_string(solver->getAddedOrigClauses())+" clauses";
     messaget::status() << msg << messaget::eom;
   }
-  
+
   std::string msg;
 
   const int res=solver->solve();
@@ -216,4 +215,3 @@ void satcheck_precosatt::set_assumptions(const bvt &bv)
     assert(!it->is_constant());
 }
 */
-

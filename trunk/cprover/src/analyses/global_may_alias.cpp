@@ -16,7 +16,7 @@ Function: global_may_alias_domaint::assign_lhs_aliases
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -30,11 +30,9 @@ void global_may_alias_domaint::assign_lhs_aliases(
 
     aliases.isolate(identifier);
 
-    for(std::set<irep_idt>::const_iterator it=alias_set.begin();
-        it!=alias_set.end();
-        it++)
+    for(const auto &alias : alias_set)
     {
-      aliases.make_union(identifier, *it);
+      aliases.make_union(identifier, alias);
     }
   }
 }
@@ -47,7 +45,7 @@ Function: global_may_alias_domaint::get_rhs_aliases
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -59,12 +57,10 @@ void global_may_alias_domaint::get_rhs_aliases(
   {
     irep_idt identifier=to_symbol_expr(rhs).get_identifier();
     alias_set.insert(identifier);
-    
-    for(aliasest::const_iterator it=aliases.begin();
-        it!=aliases.end();
-        it++)
-      if(aliases.same_set(*it, identifier))
-        alias_set.insert(*it);
+
+    for(const auto &alias : alias_set)
+      if(aliases.same_set(alias, identifier))
+        alias_set.insert(alias);
   }
   else if(rhs.id()==ID_if)
   {
@@ -89,7 +85,7 @@ Function: global_may_alias_domaint::get_rhs_aliases_address_of
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -120,7 +116,7 @@ Function: global_may_alias_domaint::transform
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -130,6 +126,9 @@ void global_may_alias_domaint::transform(
   ai_baset &ai,
   const namespacet &ns)
 {
+  if(has_values.is_false())
+    return;
+
   const goto_programt::instructiont &instruction=*from;
 
   switch(instruction.type)
@@ -137,7 +136,7 @@ void global_may_alias_domaint::transform(
   case ASSIGN:
     {
       const code_assignt &code_assign=to_code_assign(instruction.code);
-      
+
       std::set<irep_idt> aliases;
       get_rhs_aliases(code_assign.rhs(), aliases);
       assign_lhs_aliases(code_assign.lhs(), aliases);
@@ -158,7 +157,9 @@ void global_may_alias_domaint::transform(
     }
     break;
 
-  default:;
+  default:
+    {
+    }
   }
 }
 
@@ -170,7 +171,7 @@ Function: global_may_alias_domaint::output
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -179,12 +180,18 @@ void global_may_alias_domaint::output(
   const ai_baset &ai,
   const namespacet &ns) const
 {
+  if(has_values.is_known())
+  {
+    out << has_values.to_string() << '\n';
+    return;
+  }
+
   for(aliasest::const_iterator a_it1=aliases.begin();
       a_it1!=aliases.end();
       a_it1++)
   {
     bool first=true;
-  
+
     for(aliasest::const_iterator a_it2=aliases.begin();
         a_it2!=aliases.end();
         a_it2++)
@@ -192,12 +199,17 @@ void global_may_alias_domaint::output(
       if(aliases.is_root(a_it1) && a_it1!=a_it2 &&
          aliases.same_set(a_it1, a_it2))
       {
-        if(first) { out << "Aliases: " << *a_it1; first=false; }
+        if(first)
+        {
+          out << "Aliases: " << *a_it1;
+          first=false;
+        }
         out << ' ' << *a_it2;
       }
     }
 
-    if(!first) out << '\n';
+    if(!first)
+      out << '\n';
   }
 }
 
@@ -209,7 +221,7 @@ Function: global_may_alias_domaint::merge
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -218,14 +230,15 @@ bool global_may_alias_domaint::merge(
   locationt from,
   locationt to)
 {
-  bool changed=false;
+  bool changed=has_values.is_false();
+  has_values=tvt::unknown();
 
   // do union
   for(aliasest::const_iterator it=b.aliases.begin();
       it!=b.aliases.end(); it++)
   {
     irep_idt b_root=b.aliases.find(it);
-    
+
     if(!aliases.same_set(*it, b_root))
     {
       aliases.make_union(*it, b_root);
@@ -242,6 +255,6 @@ bool global_may_alias_domaint::merge(
       aliases.isolate(it);
   }
   #endif
-  
+
   return changed;
 }

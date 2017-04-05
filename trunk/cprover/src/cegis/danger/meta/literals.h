@@ -1,17 +1,17 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_DANGER_LITERALS_H_
-#define CEGIS_DANGER_LITERALS_H_
+#ifndef CPROVER_CEGIS_DANGER_META_LITERALS_H
+#define CPROVER_CEGIS_DANGER_META_LITERALS_H
 
 #define DANGER_PREFIX "__CPROVER_danger_"
 #define DANGER_EXECUTE DANGER_PREFIX "execute"
 #define DANGER_X0_PLACEHOLDER_PREFIX DANGER_PREFIX "x0_"
 
-#endif /* CEGIS_DANGER_LITERALS_H_ */
+#endif // CPROVER_CEGIS_DANGER_META_LITERALS_H

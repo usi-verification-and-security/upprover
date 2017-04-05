@@ -63,7 +63,7 @@ void remove_returnst::replace_returns(
   typet return_type=f_it->second.type.return_type();
 
   const irep_idt function_id=f_it->first;
-  
+
   // returns something but void?
   bool has_return_value=return_type!=empty_typet();
 
@@ -84,7 +84,8 @@ void remove_returnst::replace_returns(
     auxiliary_symbolt new_symbol;
     new_symbol.is_static_lifetime=true;
     new_symbol.module=function_symbol.module;
-    new_symbol.base_name=id2string(function_symbol.base_name)+RETURN_VALUE_SUFFIX;
+    new_symbol.base_name=
+      id2string(function_symbol.base_name)+RETURN_VALUE_SUFFIX;
     new_symbol.name=id2string(function_symbol.name)+RETURN_VALUE_SUFFIX;
     new_symbol.mode=function_symbol.mode;
     new_symbol.type=return_type;
@@ -93,7 +94,7 @@ void remove_returnst::replace_returns(
   }
 
   goto_programt &goto_program=f_it->second.body;
-  
+
   if(goto_program.empty())
     return;
 
@@ -147,7 +148,8 @@ void remove_returnst::do_function_calls(
       // Do we return anything?
       if(old_type.return_type()!=empty_typet())
       {
-        // replace "lhs=f(...)" by "f(...); lhs=f#return_value; DEAD f#return_value;"
+        // replace "lhs=f(...)" by
+        // "f(...); lhs=f#return_value; DEAD f#return_value;"
         assert(function_call.function().id()==ID_symbol);
 
         const irep_idt function_id=
@@ -158,28 +160,29 @@ void remove_returnst::do_function_calls(
           f_it=goto_functions.function_map.find(function_id);
 
         if(f_it==goto_functions.function_map.end())
-          throw "failed to find function `"+id2string(function_id)+"' in function map";
+          throw
+            "failed to find function `"+id2string(function_id)+
+            "' in function map";
 
         // fix the type
-        to_code_type(function_call.function().type()).return_type()=empty_typet();
+        to_code_type(function_call.function().type()).return_type()=
+          empty_typet();
 
         if(function_call.lhs().is_not_nil())
         {
           exprt rhs;
-          
+
           if(f_it->second.body_available())
           {
             symbol_exprt return_value;
             return_value.type()=function_call.lhs().type();
-            return_value.set_identifier(id2string(function_id)+RETURN_VALUE_SUFFIX);
+            return_value.set_identifier(
+              id2string(function_id)+RETURN_VALUE_SUFFIX);
             rhs=return_value;
           }
           else
           {
-            // no body available
-            exprt nondet_value=side_effect_expr_nondett(function_call.lhs().type());
-            nondet_value.add_source_location()=i_it->source_location;
-            rhs=nondet_value;
+            rhs=side_effect_expr_nondett(function_call.lhs().type());
           }
 
           goto_programt::targett t_a=goto_program.insert_after(i_it);
@@ -266,6 +269,46 @@ void remove_returns(goto_modelt &goto_model)
 
 /*******************************************************************\
 
+Function: original_return_type
+
+Inputs:
+
+Outputs:
+
+Purpose:
+
+\*******************************************************************/
+
+code_typet original_return_type(
+  const symbol_tablet &symbol_table,
+  const irep_idt &function_id)
+{
+  code_typet type;
+  type.make_nil();
+
+  // do we have X#return_value?
+  std::string rv_name=id2string(function_id)+RETURN_VALUE_SUFFIX;
+
+  symbol_tablet::symbolst::const_iterator rv_it=
+    symbol_table.symbols.find(rv_name);
+
+  if(rv_it!=symbol_table.symbols.end())
+  {
+    // look up the function symbol
+    symbol_tablet::symbolst::const_iterator s_it=
+      symbol_table.symbols.find(function_id);
+
+    assert(s_it!=symbol_table.symbols.end());
+
+    type=to_code_type(s_it->second.type);
+    type.return_type()=rv_it->second.type;
+  }
+
+  return type;
+}
+
+/*******************************************************************\
+
 Function: remove_returnst::restore_returns
 
 Inputs:
@@ -298,7 +341,7 @@ bool remove_returnst::restore_returns(
   symbolt &function_symbol=s_it->second;
 
   // restore the return type
-  f_it->second.type.return_type()=rv_it->second.type;
+  f_it->second.type=original_return_type(symbol_table, function_id);
   function_symbol.type=f_it->second.type;
 
   // remove the return_value symbol from the symbol_table
@@ -319,26 +362,29 @@ bool remove_returnst::restore_returns(
       // replace "fkt#return_value=x;" by "return x;"
       code_returnt return_code(assign.rhs());
 
-      // now turn the `return' into `assignment'
-      i_it->type=RETURN;
-      i_it->code=return_code;
+      // the assignment might be a goto target
+      i_it->make_skip();
+      i_it++;
 
-      // remove the subsequent goto (and possibly dead)
-      goto_programt::instructionst::iterator next=i_it;
-      ++next;
-      assert(next!=goto_program.instructions.end());
-
-      if(next->is_dead())
+      while(!i_it->is_goto() && !i_it->is_end_function())
       {
-        assert(to_code_dead(next->code).symbol()==
-               return_code.return_value());
-        next=goto_program.instructions.erase(next);
-        assert(next!=goto_program.instructions.end());
+        assert(i_it->is_dead());
+        i_it++;
       }
 
-      assert(next->is_goto());
-      // i_it remains valid
-      goto_program.instructions.erase(next);
+      if(i_it->is_goto())
+      {
+        goto_programt::const_targett target=i_it->get_target();
+        assert(target->is_end_function());
+      }
+      else
+      {
+        assert(i_it->is_end_function());
+        i_it=goto_program.instructions.insert(i_it, *i_it);
+      }
+
+      i_it->make_return();
+      i_it->code=return_code;
     }
   }
 
@@ -384,8 +430,6 @@ void remove_returnst::undo_function_calls(
 
       // find "f(...); lhs=f#return_value; DEAD f#return_value;"
       // and revert to "lhs=f(...);"
-      // nondet assignments when the body of f isn't available are
-      // not reverted
       goto_programt::instructionst::iterator next=i_it;
       ++next;
       assert(next!=goto_program.instructions.end());
@@ -462,4 +506,3 @@ void restore_returns(
   remove_returnst rr(symbol_table);
   rr.restore(goto_functions);
 }
-

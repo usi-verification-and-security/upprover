@@ -6,8 +6,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-//#define DEBUG
-
 #ifdef DEBUG
 #include <iostream>
 #endif
@@ -102,17 +100,13 @@ literalt equalityt::equality2(const exprt &e1, const exprt &e2)
     if(result==equalities.end())
     {
       l=prop.new_variable();
-      if(freeze_all && !l.is_constant()) prop.set_frozen(l);
+      if(freeze_all && !l.is_constant())
+        prop.set_frozen(l);
       equalities.insert(equalitiest::value_type(u, l));
     }
     else
       l=result->second;
   }
-
-  #ifdef DEBUG
-  std::cout << "EQUALITY " << l << "<=>" 
-            << e1 << "=" << e2 << std::endl;
-  #endif
 
   return l;
 }
@@ -172,7 +166,7 @@ void equalityt::add_equality_constraints(const typestructt &typestruct)
   }
 
   // generate equality constraints
-  
+
   bv_utilst bv_utils(prop);
 
   for(equalitiest::const_iterator
@@ -182,8 +176,7 @@ void equalityt::add_equality_constraints(const typestructt &typestruct)
   {
     const bvt &bv1=eq_bvs[it->first.first];
     const bvt &bv2=eq_bvs[it->first.second];
-    
+
     prop.set_equal(bv_utils.equal(bv1, bv2), it->second);
   }
 }
-

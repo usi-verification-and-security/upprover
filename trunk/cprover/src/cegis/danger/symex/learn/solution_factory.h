@@ -1,21 +1,21 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_DANGER_SOLUTION_FACTORY_H_
-#define CEGIS_DANGER_SOLUTION_FACTORY_H_
+#ifndef CPROVER_CEGIS_DANGER_SYMEX_LEARN_SOLUTION_FACTORY_H
+#define CPROVER_CEGIS_DANGER_SYMEX_LEARN_SOLUTION_FACTORY_H
 
 #include <goto-programs/goto_program.h>
 
 #include <cegis/value/program_individual.h>
 
 typedef std::map<size_t, goto_programt::instructionst> instruction_sett;
-typedef std::map<const irep_idt, size_t> invariant_variable_idst;
+typedef std::map<const irep_idt, size_t> operand_variable_idst;
 
 /**
  * @brief
@@ -32,7 +32,7 @@ typedef std::map<const irep_idt, size_t> invariant_variable_idst;
  */
 void create_danger_solution(class danger_goto_solutiont &result,
     const class danger_programt &prog, const class goto_tracet &trace,
-    const invariant_variable_idst &ids, const size_t max_solution_size);
+    const operand_variable_idst &ids, const size_t max_solution_size);
 
 /**
  * @brief
@@ -47,7 +47,7 @@ void create_danger_solution(class danger_goto_solutiont &result,
  */
 void create_danger_solution(danger_goto_solutiont &result,
     const danger_programt &prog, const program_individualt &ind,
-    const instruction_sett &instr, const invariant_variable_idst &ids);
+    const instruction_sett &instr, const operand_variable_idst &ids);
 
 /**
  * @brief
@@ -61,6 +61,6 @@ void create_danger_solution(danger_goto_solutiont &result,
  */
 void create_danger_solution(danger_goto_solutiont &result,
     const danger_programt &prog, const program_individualt &ind,
-    const invariant_variable_idst &ids);
+    const operand_variable_idst &ids);
 
-#endif /* CEGIS_DANGER_SOLUTION_FACTORY_H_ */
+#endif // CPROVER_CEGIS_DANGER_SYMEX_LEARN_SOLUTION_FACTORY_H

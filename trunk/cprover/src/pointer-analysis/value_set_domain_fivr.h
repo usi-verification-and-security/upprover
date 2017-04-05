@@ -7,8 +7,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef VALUE_SET_DOMAIN_INCR_H_
-#define VALUE_SET_DOMAIN_INCR_H_
+#ifndef CPROVER_POINTER_ANALYSIS_VALUE_SET_DOMAIN_FIVR_H
+#define CPROVER_POINTER_ANALYSIS_VALUE_SET_DOMAIN_FIVR_H
 
 #include <analyses/flow_insensitive_analysis.h>
 
@@ -19,7 +19,7 @@ class value_set_domain_fivrt:public flow_insensitive_abstract_domain_baset
 public:
   value_set_fivrt value_set;
 
-  // overloading  
+  // overloading
 
   virtual void output(
     const namespacet &ns,
@@ -27,11 +27,11 @@ public:
   {
     value_set.output(ns, out);
   }
-    
+
   virtual void initialize(
     const namespacet &ns)
   {
-    value_set.clear();    
+    value_set.clear();
   }
 
   virtual bool transform(
@@ -46,12 +46,11 @@ public:
   {
     value_set.get_reference_set(expr, expr_set, ns);
   }
-  
-  virtual void clear( void )
+
+  virtual void clear(void)
   {
     value_set.clear();
   }
-  
 };
 
-#endif /*VALUE_SET_DOMAIN_INCR_H_*/
+#endif // CPROVER_POINTER_ANALYSIS_VALUE_SET_DOMAIN_FIVR_H

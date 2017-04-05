@@ -8,31 +8,65 @@ Date: January 2010
 
 \*******************************************************************/
 
-#include "static_analysis.h"
+#ifndef CPROVER_ANALYSES_UNINITIALIZED_DOMAIN_H
+#define CPROVER_ANALYSES_UNINITIALIZED_DOMAIN_H
 
-class uninitialized_domaint:public domain_baset
+#include <util/threeval.h>
+
+#include "ai.h"
+
+class uninitialized_domaint:public ai_domain_baset
 {
 public:
-  // locals that are not initialized
+  uninitialized_domaint():has_values(false)
+  {
+  }
+
+  // Locals that are declared but may not be initialized
   typedef std::set<irep_idt> uninitializedt;
   uninitializedt uninitialized;
 
-  virtual void transform(
-    const namespacet &ns,
+  void transform(
+    locationt from,
+    locationt to,
+    ai_baset &ai,
+    const namespacet &ns) final;
+
+  void output(
+    std::ostream &out,
+    const ai_baset &ai,
+    const namespacet &ns) const final;
+
+  void make_top() final
+  {
+    uninitialized.clear();
+    has_values=tvt(true);
+  }
+
+  void make_bottom() final
+  {
+    uninitialized.clear();
+    has_values=tvt(false);
+  }
+
+  void make_entry() final
+  {
+    make_top();
+  }
+
+  // returns true iff there is s.th. new
+  bool merge(
+    const uninitialized_domaint &other,
     locationt from,
     locationt to);
 
-  virtual void output(
-    const namespacet &ns,
-    std::ostream &out) const;
-  
-  // returns true iff there is s.th. new
-  bool merge(const uninitialized_domaint &other, locationt to);
-  
-protected:
+private:
+  tvt has_values;
+
   void assign(const exprt &lhs);
 };
 
-typedef static_analysist<uninitialized_domaint>
+typedef ait<uninitialized_domaint>
   uninitialized_analysist;
 
+#endif // CPROVER_ANALYSES_UNINITIALIZED_DOMAIN_H

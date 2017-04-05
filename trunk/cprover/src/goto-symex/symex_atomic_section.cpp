@@ -22,13 +22,14 @@ Function: goto_symext::symex_atomic_begin
 
 void goto_symext::symex_atomic_begin(statet &state)
 {
-  if(state.guard.is_false()) return;
+  if(state.guard.is_false())
+    return;
 
   // we don't allow any nesting of atomic sections
   if(state.atomic_section_id!=0)
     throw "nested atomic section detected at "+
       state.source.pc->source_location.as_string();
-    
+
   state.atomic_section_id=++atomic_section_counter;
   state.read_in_atomic_section.clear();
   state.written_in_atomic_section.clear();
@@ -53,11 +54,12 @@ Function: goto_symext::symex_atomic_end
 
 void goto_symext::symex_atomic_end(statet &state)
 {
-  if(state.guard.is_false()) return;
-  
+  if(state.guard.is_false())
+    return;
+
   if(state.atomic_section_id==0)
-    throw "ATOMIC_END unmatched";
-  
+    throw "ATOMIC_END unmatched"; // NOLINT(readability/throw)
+
   const unsigned atomic_section_id=state.atomic_section_id;
   state.atomic_section_id=0;
 

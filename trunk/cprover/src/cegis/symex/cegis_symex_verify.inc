@@ -1,7 +1,5 @@
 #include <goto-programs/safety_checker.h>
-
-#include <cbmc/cbmc_solvers.h>
-#include <cbmc/bmc.h>
+#include <cegis/cegis-util/cbmc_runner.h>
 
 template<class verify_configurationt>
 cegis_symex_verifyt<verify_configurationt>::cegis_symex_verifyt(
@@ -28,12 +26,8 @@ void cegis_symex_verifyt<verify_configurationt>::verify(
   config.process(candidate);
   const symbol_tablet &st=config.get_symbol_table();
   const goto_functionst &gf=config.get_goto_functions();
-  null_message_handlert msg;
-  cbmc_solverst solvers(options, st, msg);
-  const std::unique_ptr<cbmc_solverst::solvert> solver=solvers.get_solver();
-  bmct bmc(options, st, msg, solver->prop_conv());
-  const safety_checkert::resultt result=bmc(gf);
-  const goto_tracet &trace=bmc.safety_checkert::error_trace;
+  cbmc_resultt cbmc_result;
+  const safety_checkert::resultt result=run_cbmc(st, gf, cbmc_result, options);
   switch (result)
   {
   case safety_checkert::SAFE:
@@ -41,7 +35,7 @@ void cegis_symex_verifyt<verify_configurationt>::verify(
   case safety_checkert::ERROR:
     return;
   default:
-    config.convert(current_counterexamples, trace);
+    config.convert(current_counterexamples, cbmc_result.trace);
   }
 }
 
@@ -69,4 +63,11 @@ template<class verify_configurationt>
 bool cegis_symex_verifyt<verify_configurationt>::success() const
 {
   return !is_failure;
+}
+
+template<class verify_configurationt>
+void cegis_symex_verifyt<verify_configurationt>::show_counterexample(
+    messaget::mstreamt &os, const counterexamplet &counterexample) const
+{
+  config.show_counterexample(os, counterexample);
 }

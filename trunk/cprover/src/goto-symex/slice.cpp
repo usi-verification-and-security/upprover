@@ -6,7 +6,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/hash_cont.h>
 #include <util/std_expr.h>
 
 #include "slice.h"
@@ -65,7 +64,7 @@ Function: symex_slicet::slice
 \*******************************************************************/
 
 void symex_slicet::slice(
-  symex_target_equationt &equation, 
+  symex_target_equationt &equation,
   const expr_listt &exprs)
 {
   // collect dependencies
@@ -137,15 +136,15 @@ void symex_slicet::slice(symex_target_equationt::SSA_stept &SSA_step)
   case goto_trace_stept::DECL:
     slice_decl(SSA_step);
     break;
-    
+
   case goto_trace_stept::OUTPUT:
   case goto_trace_stept::INPUT:
     break;
-    
+
   case goto_trace_stept::DEAD:
     // ignore for now
     break;
-    
+
   case goto_trace_stept::CONSTRAINT:
   case goto_trace_stept::SHARED_READ:
   case goto_trace_stept::SHARED_WRITE:
@@ -155,14 +154,14 @@ void symex_slicet::slice(symex_target_equationt::SSA_stept &SSA_step)
   case goto_trace_stept::MEMORY_BARRIER:
     // ignore for now
     break;
-    
+
   case goto_trace_stept::FUNCTION_CALL:
   case goto_trace_stept::FUNCTION_RETURN:
     // ignore for now
     break;
-    
+
   default:
-    assert(false);  
+    assert(false);
   }
 }
 
@@ -233,7 +232,7 @@ Function: symex_slice_classt::collect_open_variables
 \*******************************************************************/
 
 void symex_slicet::collect_open_variables(
-  const symex_target_equationt &equation, 
+  const symex_target_equationt &equation,
   symbol_sett &open_variables)
 {
   symbol_sett lhs;
@@ -286,12 +285,12 @@ void symex_slicet::collect_open_variables(
       break;
 
     default:
-      assert(false);  
+      assert(false);
     }
   }
-  
+
   open_variables=depends;
-  
+
   // remove the ones that are defined
   open_variables.erase(lhs.begin(), lhs.end());
 }
@@ -329,7 +328,7 @@ Function: collect_open_variables
 \*******************************************************************/
 
 void collect_open_variables(
-  const symex_target_equationt &equation, 
+  const symex_target_equationt &equation,
   symbol_sett &open_variables)
 {
   symex_slicet symex_slice;
@@ -349,7 +348,7 @@ Function: slice
 
 \*******************************************************************/
 
-void slice(symex_target_equationt &equation, 
+void slice(symex_target_equationt &equation,
            const expr_listt &expressions)
 {
   symex_slicet symex_slice;
@@ -373,7 +372,7 @@ void simple_slice(symex_target_equationt &equation)
   // just find the last assertion
   symex_target_equationt::SSA_stepst::iterator
     last_assertion=equation.SSA_steps.end();
-  
+
   for(symex_target_equationt::SSA_stepst::iterator
       it=equation.SSA_steps.begin();
       it!=equation.SSA_steps.end();
@@ -387,9 +386,10 @@ void simple_slice(symex_target_equationt &equation)
     last_assertion;
 
   if(s_it!=equation.SSA_steps.end())
+  {
     for(s_it++;
         s_it!=equation.SSA_steps.end();
         s_it++)
       s_it->ignore=true;
+  }
 }
-

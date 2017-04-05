@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_FLOAT_UTILS_H
-#define CPROVER_FLOAT_UTILS_H
+#ifndef CPROVER_SOLVERS_FLOATBV_FLOAT_UTILS_H
+#define CPROVER_SOLVERS_FLOATBV_FLOAT_UTILS_H
 
 #include <util/ieee_float.h>
 
@@ -32,7 +32,7 @@ public:
       round_to_minus_inf(const_literal(false))
     {
     }
-    
+
     void set(const ieee_floatt::rounding_modet mode)
     {
       round_to_even=round_to_zero=round_to_plus_inf=round_to_minus_inf=
@@ -43,24 +43,24 @@ public:
       case ieee_floatt::ROUND_TO_EVEN:
         round_to_even=const_literal(true);
         break;
-        
+
       case ieee_floatt::ROUND_TO_MINUS_INF:
         round_to_minus_inf=const_literal(true);
         break;
-        
+
       case ieee_floatt::ROUND_TO_PLUS_INF:
         round_to_plus_inf=const_literal(true);
         break;
-        
+
       case ieee_floatt::ROUND_TO_ZERO:
         round_to_zero=const_literal(true);
         break;
-          
-      default:;
+
+      default: assert(false);
       }
     }
   };
-  
+
   rounding_mode_bitst rounding_mode_bits;
 
   explicit float_utilst(propt &_prop):
@@ -68,7 +68,14 @@ public:
     bv_utils(_prop)
   {
   }
-  
+
+  float_utilst(propt &_prop, const floatbv_typet &type):
+    spec(ieee_float_spect(type)),
+    prop(_prop),
+    bv_utils(_prop)
+  {
+  }
+
   void set_rounding_mode(const bvt &);
 
   virtual ~float_utilst()
@@ -97,8 +104,16 @@ public:
 
   // add/sub
   virtual bvt add_sub(const bvt &src1, const bvt &src2, bool subtract);
-  bvt add(const bvt &src1, const bvt &src2) { return add_sub(src1, src2, false); }
-  bvt sub(const bvt &src1, const bvt &src2) { return add_sub(src1, src2, true); }
+
+  bvt add(const bvt &src1, const bvt &src2)
+  {
+    return add_sub(src1, src2, false);
+  }
+
+  bvt sub(const bvt &src1, const bvt &src2)
+  {
+    return add_sub(src1, src2, true);
+  }
 
   // mul/div/rem
   virtual bvt mul(const bvt &src1, const bvt &src2);
@@ -111,9 +126,9 @@ public:
   // conversion
   bvt from_unsigned_integer(const bvt &);
   bvt from_signed_integer(const bvt &);
-  bvt to_integer(const bvt &src, unsigned int_width, bool is_signed);
-  bvt to_signed_integer(const bvt &src, unsigned int_width);
-  bvt to_unsigned_integer(const bvt &src, unsigned int_width);
+  bvt to_integer(const bvt &src, std::size_t int_width, bool is_signed);
+  bvt to_signed_integer(const bvt &src, std::size_t int_width);
+  bvt to_unsigned_integer(const bvt &src, std::size_t int_width);
   bvt conversion(const bvt &src, const ieee_float_spect &dest_spec);
 
   // relations
@@ -127,7 +142,7 @@ public:
   literalt exponent_all_ones(const bvt &);
   literalt exponent_all_zeros(const bvt &);
   literalt fraction_all_zeros(const bvt &);
-    
+
   // debugging hooks
   bvt debug1(const bvt &op0, const bvt &op1);
   bvt debug2(const bvt &op0, const bvt &op1);
@@ -180,10 +195,10 @@ protected:
 
   void round_fraction(unbiased_floatt &result);
   void round_exponent(unbiased_floatt &result);
-  
+
   // rounding decision for fraction
   literalt fraction_rounding_decision(
-    const unsigned dest_bits,
+    const std::size_t dest_bits,
     const literalt sign,
     const bvt &fraction);
 
@@ -201,4 +216,4 @@ protected:
     literalt &sticky);
 };
 
-#endif
+#endif // CPROVER_SOLVERS_FLOATBV_FLOAT_UTILS_H

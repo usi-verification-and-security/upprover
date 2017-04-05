@@ -8,7 +8,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/std_types.h>
 #include <util/std_expr.h>
-#include <util/expr_util.h>
 #include <util/arith_tools.h>
 #include <util/base_type.h>
 #include <util/endianness_map.h>
@@ -28,23 +27,35 @@ Function: boolbvt::convert_with
 
 \*******************************************************************/
 
-void boolbvt::convert_with(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_with(const exprt &expr)
 {
   if(expr.operands().size()<3)
-    throw "with takes at least three operands";
+  {
+    error().source_location=expr.find_source_location();
+    error() << "with takes at least three operands" << eom;
+    throw 0;
+  }
 
   if((expr.operands().size()%2)!=1)
-    throw "with takes an odd number of operands";
+  {
+    error().source_location=expr.find_source_location();
+    error() << "with takes an odd number of operands" << eom;
+    throw 0;
+  }
 
-  bv=convert_bv(expr.op0());
+  bvt bv=convert_bv(expr.op0());
 
   std::size_t width=boolbv_width(expr.type());
 
   if(width==0)
-    return conversion_failed(expr, bv);
+    return conversion_failed(expr);
 
   if(bv.size()!=width)
-    throw "unexpected operand 0 width";
+  {
+    error().source_location=expr.find_source_location();
+    error() << "unexpected operand 0 width" << eom;
+    throw 0;
+  }
 
   bvt prev_bv;
   prev_bv.resize(width);
@@ -55,12 +66,15 @@ void boolbvt::convert_with(const exprt &expr, bvt &bv)
   {
     bv.swap(prev_bv);
 
-    convert_with(expr.op0().type(),
-                 ops[op_no],
-                 ops[op_no+1],
-                 prev_bv,
-                 bv);
+    convert_with(
+      expr.op0().type(),
+      ops[op_no],
+      ops[op_no+1],
+      prev_bv,
+      bv);
   }
+
+  return bv;
 }
 
 /*******************************************************************\
@@ -93,13 +107,16 @@ void boolbvt::convert_with(
           type.id()==ID_signedbv)
     return convert_with_bv(type, op1, op2, prev_bv, next_bv);
   else if(type.id()==ID_struct)
-    return convert_with_struct(to_struct_type(type), op1, op2, prev_bv, next_bv);
+    return
+      convert_with_struct(to_struct_type(type), op1, op2, prev_bv, next_bv);
   else if(type.id()==ID_union)
     return convert_with_union(to_union_type(type), op1, op2, prev_bv, next_bv);
   else if(type.id()==ID_symbol)
     return convert_with(ns.follow(type), op1, op2, prev_bv, next_bv);
 
-  throw "unexpected with type: "+id2string(type.id());
+  error().source_location=type.source_location();
+  error() << "unexpected with type: " << type.id();
+  throw 0;
 }
 
 /*******************************************************************\
@@ -123,8 +140,10 @@ void boolbvt::convert_with_array(
 {
   if(is_unbounded_array(type))
   {
-    // can't do this    
-    throw "convert_with_array called for unbounded array";
+    // can't do this
+    error().source_location=type.source_location();
+    error() << "convert_with_array called for unbounded array" << eom;
+    throw 0;
   }
 
   const exprt &array_size=type.size();
@@ -132,12 +151,20 @@ void boolbvt::convert_with_array(
   mp_integer size;
 
   if(to_integer(array_size, size))
-    throw "convert_with_array expects constant array size";
-    
+  {
+    error().source_location=type.source_location();
+    error() << "convert_with_array expects constant array size" << eom;
+    throw 0;
+  }
+
   const bvt &op2_bv=convert_bv(op2);
 
   if(size*op2_bv.size()!=prev_bv.size())
-    throw "convert_with_array: unexpected operand 2 width";
+  {
+    error().source_location=type.source_location();
+    error() << "convert_with_array: unexpected operand 2 width" << eom;
+    throw 0;
+  }
 
   // Is the index a constant?
   mp_integer op1_value;
@@ -200,7 +227,7 @@ void boolbvt::convert_with_bv(
     next_bv=prev_bv;
 
     if(op1_value<next_bv.size())
-      next_bv[integer2long(op1_value)]=l;
+      next_bv[integer2size_t(op1_value)]=l;
 
     return;
   }
@@ -251,7 +278,6 @@ void boolbvt::convert_with_struct(
       it!=components.end();
       it++)
   {
-
     const typet &subtype=it->type();
 
     std::size_t sub_width=boolbv_width(subtype);
@@ -259,17 +285,26 @@ void boolbvt::convert_with_struct(
     if(it->get_name()==component_name)
     {
       if(!base_type_eq(subtype, op2.type(), ns))
-        throw "with/struct: component `"+id2string(component_name)+
-          "' type does not match: "+
-          subtype.to_string()+" vs. "+
-          op2.type().to_string();
+      {
+        error().source_location=type.source_location();
+        error() << "with/struct: component `" << component_name
+                << "' type does not match: "
+                << subtype.pretty() << " vs. "
+                << op2.type().pretty() << eom;
+        throw 0;
+      }
 
       if(sub_width!=op2_bv.size())
-        throw "convert_with_struct: unexpected operand op2 width";
+      {
+        error().source_location=type.source_location();
+        error() << "convert_with_struct: unexpected operand op2 width"
+                << eom;
+        throw 0;
+      }
 
       for(std::size_t i=0; i<sub_width; i++)
         next_bv[offset+i]=op2_bv[i];
-        
+
       break; // done
     }
 
@@ -301,7 +336,11 @@ void boolbvt::convert_with_union(
   const bvt &op2_bv=convert_bv(op2);
 
   if(next_bv.size()<op2_bv.size())
-    throw "convert_with_union: unexpected operand op2 width";
+  {
+    error().source_location=type.source_location();
+    error() << "convert_with_union: unexpected operand op2 width" << eom;
+    throw 0;
+  }
 
   if(config.ansi_c.endianness==configt::ansi_ct::endiannesst::IS_LITTLE_ENDIAN)
   {
@@ -310,7 +349,8 @@ void boolbvt::convert_with_union(
   }
   else
   {
-    assert(config.ansi_c.endianness==configt::ansi_ct::endiannesst::IS_BIG_ENDIAN);
+    assert(
+      config.ansi_c.endianness==configt::ansi_ct::endiannesst::IS_BIG_ENDIAN);
 
     endianness_mapt map_u(type, false, ns);
     endianness_mapt map_op2(op2.type(), false, ns);
@@ -319,4 +359,3 @@ void boolbvt::convert_with_union(
       next_bv[map_u.map_bit(i)]=op2_bv[map_op2.map_bit(i)];
   }
 }
-

@@ -8,12 +8,12 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 #include <cassert>
 
-#include <util/i2string.h>
 #include <util/threeval.h>
 
 #include "satcheck_picosat.h"
 
-extern "C" {
+extern "C"
+{
 #include <picosat.h>
 }
 
@@ -40,7 +40,7 @@ tvt satcheck_picosatt::l_get(literalt a) const
 
   tvt result;
 
-  if((int)a.var_no()>picosat_variables(picosat))
+  if(static_cast<int>(a.var_no())>picosat_variables(picosat))
     return tvt(tvt::tv_enumt::TV_UNKNOWN);
 
   const int val=picosat_deref(picosat, a.dimacs());
@@ -86,7 +86,7 @@ Function: satcheck_picosatt::lcnf
 void satcheck_picosatt::lcnf(const bvt &bv)
 {
   bvt new_bv;
-  
+
   if(process_clause(bv, new_bv))
     return;
 
@@ -118,11 +118,11 @@ propt::resultt satcheck_picosatt::prop_solve()
 
   {
     std::string msg=
-      i2string(_no_variables-1)+" variables, "+
-      i2string(picosat_added_original_clauses(picosat))+" clauses";
+      std::to_string(_no_variables-1)+" variables, "+
+      std::to_string(picosat_added_original_clauses(picosat))+" clauses";
     messaget::status() << msg << messaget::eom;
   }
-  
+
   std::string msg;
 
   forall_literals(it, assumptions)
@@ -236,4 +236,3 @@ void satcheck_picosatt::set_assumptions(const bvt &bv)
   forall_literals(it, assumptions)
     assert(!it->is_constant());
 }
-

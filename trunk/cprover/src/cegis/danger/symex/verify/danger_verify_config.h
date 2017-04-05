@@ -1,16 +1,18 @@
-/*******************************************************************
+/*******************************************************************\
 
 Module: Counterexample-Guided Inductive Synthesis
 
 Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_DANGER_VERIFY_CONFIG_H_
-#define CEGIS_DANGER_VERIFY_CONFIG_H_
+#ifndef CPROVER_CEGIS_DANGER_SYMEX_VERIFY_DANGER_VERIFY_CONFIG_H
+#define CPROVER_CEGIS_DANGER_SYMEX_VERIFY_DANGER_VERIFY_CONFIG_H
 
 #include <deque>
+
+#include <util/message.h>
 
 #include <cegis/danger/options/danger_program.h>
 
@@ -50,7 +52,7 @@ public:
    *
    * @param program
    */
-  danger_verify_configt(const danger_programt &program);
+  explicit danger_verify_configt(const danger_programt &program);
 
   /**
    * @brief
@@ -132,6 +134,17 @@ public:
    * @param size
    */
   void set_max_ce_width(size_t size);
+
+  /**
+   * @brief
+   *
+   * @details
+   *
+   * @param counterexample
+   */
+  void show_counterexample(
+      messaget::mstreamt &os,
+      const counterexamplet &counterexample) const;
 };
 
-#endif /* CEGIS_DANGER_VERIFY_CONFIG_H_ */
+#endif // CPROVER_CEGIS_DANGER_SYMEX_VERIFY_DANGER_VERIFY_CONFIG_H

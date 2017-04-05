@@ -1,14 +1,16 @@
-/*******************************************************************
+/*******************************************************************\
 
 Module: Counterexample-Guided Inductive Synthesis
 
 Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CPROVER_CEGIS_H
-#define CPROVER_CEGIS_H
+#ifndef CPROVER_CEGIS_FACADE_CEGIS_H
+#define CPROVER_CEGIS_FACADE_CEGIS_H
+
+#include <cstddef>
 
 /**
  * @brief CEGIS template algorithm.
@@ -48,4 +50,4 @@ int run_cegis(learnt &learn, oraclet &oracle, preproct &preproc, seedt &seed, si
   return 10;
 }
 
-#endif /* CPROVER_CEGIS_H */
+#endif // CPROVER_CEGIS_FACADE_CEGIS_H

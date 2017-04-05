@@ -6,10 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PROP_DPLIB_CONV_H
-#define CPROVER_PROP_DPLIB_CONV_H
+#ifndef CPROVER_SOLVERS_DPLIB_DPLIB_CONV_H
+#define CPROVER_SOLVERS_DPLIB_DPLIB_CONV_H
 
-#include <util/hash_cont.h>
 
 #include <solvers/prop/prop_conv.h>
 #include <solvers/flattening/pointer_logic.h>
@@ -38,7 +37,7 @@ protected:
   virtual void convert_address_of_rec(const exprt &expr);
 
   pointer_logict pointer_logic;
-  
+
 private:
   void convert_identifier(const std::string &identifier);
   void find_symbols(const exprt &expr);
@@ -51,23 +50,23 @@ private:
   static std::string array_index_type();
   static std::string array_index(unsigned i);
   static std::string dplib_pointer_type();
-  
+
   struct identifiert
   {
     typet type;
     exprt value;
-    
+
     identifiert()
     {
       type.make_nil();
       value.make_nil();
     }
   };
-  
-  typedef hash_map_cont<irep_idt, identifiert, irep_id_hash>
+
+  typedef std::unordered_map<irep_idt, identifiert, irep_id_hash>
     identifier_mapt;
 
   identifier_mapt identifier_map;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_DPLIB_DPLIB_CONV_H

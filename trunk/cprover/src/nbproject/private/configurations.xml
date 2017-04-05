@@ -2,28 +2,6 @@
 <configurationDescriptor version="97">
   <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
     <df root="." name="0">
-      <df name="aa-path-symex">
-        <in>build_goto_trace.cpp</in>
-        <in>build_goto_trace.h</in>
-        <in>loc_ref.h</in>
-        <in>locs.cpp</in>
-        <in>locs.h</in>
-        <in>path_symex.cpp</in>
-        <in>path_symex.h</in>
-        <in>path_symex_history.cpp</in>
-        <in>path_symex_history.h</in>
-        <in>path_symex_state.cpp</in>
-        <in>path_symex_state.h</in>
-        <in>var_map.cpp</in>
-        <in>var_map.h</in>
-      </df>
-      <df name="aa-symex">
-        <in>path_search.cpp</in>
-        <in>path_search.h</in>
-        <in>symex_main.cpp</in>
-        <in>symex_parseoptions.cpp</in>
-        <in>symex_parseoptions.h</in>
-      </df>
       <df name="analyses">
         <in>ai.cpp</in>
         <in>ai.h</in>
@@ -38,6 +16,8 @@
         <in>dependence_graph.h</in>
         <in>dirty.cpp</in>
         <in>dirty.h</in>
+        <in>does_remove_const.cpp</in>
+        <in>does_remove_const.h</in>
         <in>escape_analysis.cpp</in>
         <in>escape_analysis.h</in>
         <in>flow_insensitive_analysis.cpp</in>
@@ -52,6 +32,7 @@
         <in>interval_analysis.h</in>
         <in>interval_domain.cpp</in>
         <in>interval_domain.h</in>
+        <in>interval_template.h</in>
         <in>intervals.h</in>
         <in>invariant_propagation.cpp</in>
         <in>invariant_propagation.h</in>
@@ -96,6 +77,8 @@
           <in>inet.c</in>
           <in>intrin.c</in>
           <in>java.io.c</in>
+          <in>jsa.h</in>
+          <in>locale.c</in>
           <in>math.c</in>
           <in>netdb.c</in>
           <in>new.c</in>
@@ -137,6 +120,7 @@
         <in>ansi_c_declaration.cpp</in>
         <in>ansi_c_declaration.h</in>
         <in>ansi_c_entry_point.cpp</in>
+        <in>ansi_c_entry_point.h</in>
         <in>ansi_c_internal_additions.cpp</in>
         <in>ansi_c_internal_additions.h</in>
         <in>ansi_c_language.cpp</in>
@@ -155,6 +139,7 @@
         <in>arm_builtin_headers.h</in>
         <in>arm_builtin_headers.inc</in>
         <in>c_misc.cpp</in>
+        <in>c_misc.h</in>
         <in>c_preprocess.cpp</in>
         <in>c_preprocess.h</in>
         <in>c_qualifiers.cpp</in>
@@ -230,6 +215,7 @@
       </df>
       <df name="cbmc">
         <in>all_properties.cpp</in>
+        <in>all_properties_class.h</in>
         <in>bmc.cpp</in>
         <in>bmc.h</in>
         <in>bmc_cover.cpp</in>
@@ -247,10 +233,12 @@
         <in>counterexample_beautification.h</in>
         <in>cover.cpp</in>
         <in>fault_localization.cpp</in>
+        <in>fault_localization.h</in>
         <in>show_vcc.cpp</in>
         <in>symex_bmc.cpp</in>
         <in>symex_bmc.h</in>
         <in>symex_coverage.cpp</in>
+        <in>symex_coverage.h</in>
         <in>version.h</in>
         <in>xml_interface.cpp</in>
         <in>xml_interface.h</in>
@@ -259,12 +247,93 @@
         <df name="bmc">
         </df>
         <df name="cegis-util">
+          <in>cbmc_runner.cpp</in>
+          <in>cbmc_runner.h</in>
           <in>constant_width.cpp</in>
           <in>constant_width.h</in>
+          <in>counterexample_vars.cpp</in>
+          <in>counterexample_vars.h</in>
+          <in>goto_range.h</in>
+          <in>inline_user_program.cpp</in>
+          <in>inline_user_program.h</in>
+          <in>instruction_iterator.cpp</in>
+          <in>instruction_iterator.h</in>
           <in>irep_pipe.cpp</in>
           <in>irep_pipe.h</in>
+          <in>iterator_helper.h</in>
+          <in>iterator_helper.inc</in>
+          <in>labelled_assignments.h</in>
+          <in>module_helper.cpp</in>
+          <in>module_helper.h</in>
+          <in>program_helper.cpp</in>
+          <in>program_helper.h</in>
+          <in>string_helper.cpp</in>
+          <in>string_helper.h</in>
           <in>task_pool.cpp</in>
           <in>task_pool.h</in>
+          <in>temporary_output_block.cpp</in>
+          <in>temporary_output_block.h</in>
+          <in>type_helper.cpp</in>
+          <in>type_helper.h</in>
+        </df>
+        <df name="constant">
+          <in>add_constant.cpp</in>
+          <in>add_constant.h</in>
+          <in>default_cegis_constant_strategy.cpp</in>
+          <in>default_cegis_constant_strategy.h</in>
+          <in>literals_collector.cpp</in>
+          <in>literals_collector.h</in>
+        </df>
+        <df name="control">
+          <df name="facade">
+            <in>control_runner.cpp</in>
+            <in>control_runner.h</in>
+          </df>
+          <df name="learn">
+            <in>control_symex_learn.h</in>
+            <in>control_symex_learn.inc</in>
+            <in>nondet_solution.cpp</in>
+            <in>nondet_solution.h</in>
+            <in>print_control_solution.cpp</in>
+            <in>print_control_solution.h</in>
+            <in>rational_solution_configuration.cpp</in>
+            <in>rational_solution_configuration.h</in>
+            <in>vector_solution_configuration.cpp</in>
+            <in>vector_solution_configuration.h</in>
+          </df>
+          <df name="options">
+            <in>control_program.cpp</in>
+            <in>control_program.h</in>
+          </df>
+          <df name="preprocessing">
+            <in>control_preprocessing.cpp</in>
+            <in>control_preprocessing.h</in>
+            <in>propagate_controller_sizes.cpp</in>
+            <in>propagate_controller_sizes.h</in>
+          </df>
+          <df name="simplify">
+            <in>remove_unused_elements.cpp</in>
+            <in>remove_unused_elements.h</in>
+          </df>
+          <df name="value">
+            <in>control_counterexample.h</in>
+            <in>control_solution.h</in>
+            <in>control_types.cpp</in>
+            <in>control_types.h</in>
+            <in>control_vars.h</in>
+            <in>control_vector_solution.cpp</in>
+            <in>control_vector_solution.h</in>
+            <in>float_helper.cpp</in>
+            <in>float_helper.h</in>
+          </df>
+          <df name="verify">
+            <in>control_symex_verify.h</in>
+            <in>control_symex_verify.inc</in>
+            <in>insert_solution.cpp</in>
+            <in>insert_solution.h</in>
+            <in>zero_solutions.cpp</in>
+            <in>zero_solutions.h</in>
+          </df>
         </df>
         <df name="danger">
           <df name="constant">
@@ -348,12 +417,17 @@
         </df>
         <df name="facade">
           <in>cegis.h</in>
+          <in>runner_helper.h</in>
+          <in>runner_helper.inc</in>
         </df>
         <df name="genetic">
           <in>concrete_test_runner.cpp</in>
           <in>concrete_test_runner.h</in>
           <in>dynamic_test_runner_helper.cpp</in>
           <in>dynamic_test_runner_helper.h</in>
+          <in>dynamic_test_runner_helper.inc</in>
+          <in>family_selection.h</in>
+          <in>family_selection.inc</in>
           <in>ga_learn.h</in>
           <in>ga_learn.inc</in>
           <in>genetic_constant_strategy.cpp</in>
@@ -369,22 +443,41 @@
           <in>lazy_fitness.inc</in>
           <in>lazy_genetic_settings.h</in>
           <in>lazy_genetic_settings.inc</in>
+          <in>learn_preprocess_seed.h</in>
+          <in>learn_preprocess_seed.inc</in>
           <in>match_select.cpp</in>
           <in>match_select.h</in>
+          <in>match_select.inc</in>
+          <in>program_individual_test_runner_helper.cpp</in>
+          <in>program_individual_test_runner_helper.h</in>
           <in>random_cross.cpp</in>
           <in>random_cross.h</in>
           <in>random_individual.cpp</in>
           <in>random_individual.h</in>
           <in>random_mutate.cpp</in>
           <in>random_mutate.h</in>
+          <in>serialise_individual.cpp</in>
+          <in>serialise_individual.h</in>
           <in>symex_test_runner.h</in>
           <in>symex_test_runner.inc</in>
           <in>tournament_select.cpp</in>
           <in>tournament_select.h</in>
+          <in>tournament_select.inc</in>
         </df>
         <df name="instructions">
           <in>instruction_set_factory.cpp</in>
           <in>instruction_set_factory.h</in>
+        </df>
+        <df name="instrument">
+          <in>cegis_library.cpp</in>
+          <in>cegis_library.h</in>
+          <in>find_cprover_initialize.cpp</in>
+          <in>find_cprover_initialize.h</in>
+          <in>instrument_var_ops.cpp</in>
+          <in>instrument_var_ops.h</in>
+          <in>literals.h</in>
+          <in>meta_variables.cpp</in>
+          <in>meta_variables.h</in>
         </df>
         <df name="invariant">
           <df name="constant">
@@ -456,13 +549,198 @@
             <in>invariant_program_helper.h</in>
           </df>
         </df>
+        <df name="jsa">
+          <df name="constraint">
+            <in>jsa_constraint_factory.cpp</in>
+            <in>jsa_constraint_factory.h</in>
+          </df>
+          <df name="converters">
+            <in>counterexample.cpp</in>
+            <in>counterexample.h</in>
+            <in>replace_operators.cpp</in>
+            <in>replace_operators.h</in>
+            <in>solution.cpp</in>
+            <in>solution.h</in>
+            <in>translate_to_goto_program.cpp</in>
+            <in>translate_to_goto_program.h</in>
+          </df>
+          <df name="facade">
+            <in>jsa_runner.cpp</in>
+            <in>jsa_runner.h</in>
+          </df>
+          <df name="genetic">
+            <in>dynamic_jsa_test_runner.cpp</in>
+            <in>dynamic_jsa_test_runner.h</in>
+            <in>jsa_genetic_convert.cpp</in>
+            <in>jsa_genetic_convert.h</in>
+            <in>jsa_paragon_wrapper.cpp</in>
+            <in>jsa_paragon_wrapper.h</in>
+            <in>jsa_random.cpp</in>
+            <in>jsa_random.h</in>
+            <in>jsa_serialiser.cpp</in>
+            <in>jsa_serialiser.h</in>
+            <in>jsa_source_provider.cpp</in>
+            <in>jsa_source_provider.h</in>
+            <in>random_jsa_cross.cpp</in>
+            <in>random_jsa_cross.h</in>
+            <in>random_jsa_mutate.cpp</in>
+            <in>random_jsa_mutate.h</in>
+            <in>solution_helper.cpp</in>
+            <in>solution_helper.h</in>
+          </df>
+          <df name="instrument">
+            <in>jsa_meta_data.cpp</in>
+            <in>jsa_meta_data.h</in>
+            <in>temps_helper.cpp</in>
+            <in>temps_helper.h</in>
+          </df>
+          <df name="learn">
+            <in>execute_jsa_programs.cpp</in>
+            <in>execute_jsa_programs.h</in>
+            <in>extract_candidate.cpp</in>
+            <in>extract_candidate.h</in>
+            <in>insert_counterexample.cpp</in>
+            <in>insert_counterexample.h</in>
+            <in>insert_predicates_and_queries.cpp</in>
+            <in>insert_predicates_and_queries.h</in>
+            <in>instrument_pred_ops.cpp</in>
+            <in>instrument_pred_ops.h</in>
+            <in>jsa_symex_learn.cpp</in>
+            <in>jsa_symex_learn.h</in>
+          </df>
+          <df name="options">
+            <in>jsa_program.cpp</in>
+            <in>jsa_program.h</in>
+            <in>jsa_program_info.cpp</in>
+            <in>jsa_program_info.h</in>
+          </df>
+          <df name="preprocessing">
+            <in>add_constraint_meta_variables.cpp</in>
+            <in>add_constraint_meta_variables.h</in>
+            <in>add_synthesis_library.cpp</in>
+            <in>add_synthesis_library.h</in>
+            <in>clone_heap.cpp</in>
+            <in>clone_heap.h</in>
+            <in>collect_variables.cpp</in>
+            <in>collect_variables.h</in>
+            <in>create_temp_variables.cpp</in>
+            <in>create_temp_variables.h</in>
+            <in>default_jsa_constant_strategy.cpp</in>
+            <in>default_jsa_constant_strategy.h</in>
+            <in>inline_user_program.cpp</in>
+            <in>inline_user_program.h</in>
+            <in>jsa_preprocessing.cpp</in>
+            <in>jsa_preprocessing.h</in>
+            <in>remove_loop.cpp</in>
+            <in>remove_loop.h</in>
+          </df>
+          <df name="value">
+            <in>default_solution.cpp</in>
+            <in>default_solution.h</in>
+            <in>jsa_counterexample.h</in>
+            <in>jsa_counterexample_printer.cpp</in>
+            <in>jsa_counterexample_printer.h</in>
+            <in>jsa_counterexample_printer.inc</in>
+            <in>jsa_genetic_counterexample.h</in>
+            <in>jsa_genetic_solution.h</in>
+            <in>jsa_genetic_synthesis.h</in>
+            <in>jsa_solution.cpp</in>
+            <in>jsa_solution.h</in>
+            <in>jsa_solution_printer.cpp</in>
+            <in>jsa_solution_printer.h</in>
+            <in>jsa_types.cpp</in>
+            <in>jsa_types.h</in>
+            <in>pred_ops.h</in>
+          </df>
+          <df name="verify">
+            <in>extract_counterexample.cpp</in>
+            <in>extract_counterexample.h</in>
+            <in>insert_solution.cpp</in>
+            <in>insert_solution.h</in>
+            <in>jsa_symex_verify.cpp</in>
+            <in>jsa_symex_verify.h</in>
+            <in>renondet_inputs.cpp</in>
+            <in>renondet_inputs.h</in>
+          </df>
+        </df>
         <df name="learn">
           <in>concurrent_learn.h</in>
           <in>concurrent_learn.inc</in>
+          <in>constraint_helper.cpp</in>
+          <in>constraint_helper.h</in>
+          <in>insert_counterexample.cpp</in>
+          <in>insert_counterexample.h</in>
         </df>
         <df name="options">
+          <in>parameters.h</in>
+        </df>
+        <df name="refactor">
+          <df name="constraint">
+            <in>constraint_factory.cpp</in>
+            <in>constraint_factory.h</in>
+          </df>
+          <df name="environment">
+            <in>instrument_state_vars.cpp</in>
+            <in>instrument_state_vars.h</in>
+          </df>
+          <df name="facade">
+            <in>refactor_runner.cpp</in>
+            <in>refactor_runner.h</in>
+          </df>
+          <df name="instructionset">
+            <in>cegis_instruction_factory.cpp</in>
+            <in>cegis_instruction_factory.h</in>
+            <in>cegis_processor_body_factory.cpp</in>
+            <in>cegis_processor_body_factory.h</in>
+            <in>create_cegis_processor.cpp</in>
+            <in>create_cegis_processor.h</in>
+            <in>execute_cegis_program.cpp</in>
+            <in>execute_cegis_program.h</in>
+            <in>instruction_description.cpp</in>
+            <in>instruction_description.h</in>
+            <in>operand_data.h</in>
+            <in>processor_symbols.cpp</in>
+            <in>processor_symbols.h</in>
+            <in>processor_types.cpp</in>
+            <in>processor_types.h</in>
+          </df>
+          <df name="learn">
+            <in>instrument_counterexamples.cpp</in>
+            <in>instrument_counterexamples.h</in>
+            <in>refactor_candidate_printer.cpp</in>
+            <in>refactor_candidate_printer.h</in>
+            <in>refactor_symex_learn.cpp</in>
+            <in>refactor_symex_learn.h</in>
+          </df>
+          <df name="nullobject">
+            <in>nullable_analysis.cpp</in>
+            <in>nullable_analysis.h</in>
+            <in>range_collector.cpp</in>
+            <in>range_collector.h</in>
+          </df>
+          <df name="options">
+            <in>refactor_program.cpp</in>
+            <in>refactor_program.h</in>
+            <in>refactoring_type.cpp</in>
+            <in>refactoring_type.h</in>
+          </df>
+          <df name="preprocessing">
+            <in>collect_counterexamples.cpp</in>
+            <in>collect_counterexamples.h</in>
+            <in>refactor_preprocessing.cpp</in>
+            <in>refactor_preprocessing.h</in>
+          </df>
+          <df name="value">
+            <in>refactor_counterexample.h</in>
+            <in>refactor_solution.h</in>
+          </df>
+          <df name="verify">
+            <in>refactor_symex_verify.cpp</in>
+            <in>refactor_symex_verify.h</in>
+          </df>
         </df>
         <df name="runner">
+          <in>cegis_languages.cpp</in>
           <in>cegis_main.cpp</in>
           <in>cegis_parse_options.cpp</in>
           <in>cegis_parse_options.h</in>
@@ -545,6 +823,8 @@
           <in>cegis_symex_verify.inc</in>
         </df>
         <df name="value">
+          <in>assignments_printer.cpp</in>
+          <in>assignments_printer.h</in>
           <in>program_individual.h</in>
           <in>program_individual_serialisation.cpp</in>
           <in>program_individual_serialisation.h</in>
@@ -737,11 +1017,13 @@
         <in>goto_analyzer_parse_options.cpp</in>
         <in>goto_analyzer_parse_options.h</in>
         <in>static_analyzer.cpp</in>
+        <in>static_analyzer.h</in>
         <in>taint_analysis.cpp</in>
         <in>taint_analysis.h</in>
         <in>taint_parser.cpp</in>
         <in>taint_parser.h</in>
         <in>unreachable_instructions.cpp</in>
+        <in>unreachable_instructions.h</in>
       </df>
       <df name="goto-cc">
         <df name="xml_binaries">
@@ -767,9 +1049,13 @@
         <in>armcc_mode.cpp</in>
         <in>armcc_mode.h</in>
         <in>as86_cmdline.cpp</in>
+        <in>as86_cmdline.h</in>
         <in>as_cmdline.cpp</in>
+        <in>as_cmdline.h</in>
         <in>as_mode.cpp</in>
+        <in>as_mode.h</in>
         <in>bcc_cmdline.cpp</in>
+        <in>bcc_cmdline.h</in>
         <in>compile.cpp</in>
         <in>compile.h</in>
         <in>cw_mode.cpp</in>
@@ -798,13 +1084,21 @@
         <in>run.h</in>
       </df>
       <df name="goto-diff">
+        <df name="scripts">
+        </df>
         <in>change_impact.cpp</in>
+        <in>change_impact.h</in>
+        <in>goto_diff.h</in>
         <in>goto_diff_base.cpp</in>
         <in>goto_diff_languages.cpp</in>
+        <in>goto_diff_languages.h</in>
         <in>goto_diff_main.cpp</in>
         <in>goto_diff_parse_options.cpp</in>
+        <in>goto_diff_parse_options.h</in>
         <in>syntactic_diff.cpp</in>
+        <in>syntactic_diff.h</in>
         <in>unified_diff.cpp</in>
+        <in>unified_diff.h</in>
       </df>
       <df name="goto-instrument">
         <df name="accelerate">
@@ -872,11 +1166,13 @@
         <in>call_sequences.cpp</in>
         <in>call_sequences.h</in>
         <in>code_contracts.cpp</in>
+        <in>code_contracts.h</in>
         <in>concurrency.cpp</in>
         <in>concurrency.h</in>
         <in>count_eloc.cpp</in>
         <in>count_eloc.h</in>
         <in>cover.cpp</in>
+        <in>cover.h</in>
         <in>document_properties.cpp</in>
         <in>document_properties.h</in>
         <in>dot.cpp</in>
@@ -906,9 +1202,11 @@
         <in>k_induction.cpp</in>
         <in>k_induction.h</in>
         <in>loop_utils.cpp</in>
+        <in>loop_utils.h</in>
         <in>mmio.cpp</in>
         <in>mmio.h</in>
         <in>model_argc_argv.cpp</in>
+        <in>model_argc_argv.h</in>
         <in>nondet_static.cpp</in>
         <in>nondet_static.h</in>
         <in>nondet_volatile.cpp</in>
@@ -932,6 +1230,8 @@
         <in>stack_depth.h</in>
         <in>thread_instrumentation.cpp</in>
         <in>thread_instrumentation.h</in>
+        <in>undefined_functions.cpp</in>
+        <in>undefined_functions.h</in>
         <in>uninitialized.cpp</in>
         <in>uninitialized.h</in>
         <in>unwind.cpp</in>
@@ -943,7 +1243,9 @@
         <in>builtin_functions.cpp</in>
         <in>cfg.h</in>
         <in>class_hierarchy.cpp</in>
+        <in>class_hierarchy.h</in>
         <in>class_identifier.cpp</in>
+        <in>class_identifier.h</in>
         <in>compute_called_functions.cpp</in>
         <in>compute_called_functions.h</in>
         <in>destructor.cpp</in>
@@ -953,6 +1255,7 @@
         <in>format_strings.cpp</in>
         <in>format_strings.h</in>
         <in>get_goto_model.cpp</in>
+        <in>get_goto_model.h</in>
         <in>goto_asm.cpp</in>
         <in>goto_clean_expr.cpp</in>
         <in>goto_convert.cpp</in>
@@ -983,6 +1286,7 @@
         <in>graphml_goto_trace.cpp</in>
         <in>graphml_goto_trace.h</in>
         <in>graphml_witness.cpp</in>
+        <in>graphml_witness.h</in>
         <in>interpreter.cpp</in>
         <in>interpreter.h</in>
         <in>interpreter_class.h</in>
@@ -1009,14 +1313,20 @@
         <in>remove_asm.h</in>
         <in>remove_complex.cpp</in>
         <in>remove_complex.h</in>
+        <in>remove_const_function_pointers.cpp</in>
+        <in>remove_const_function_pointers.h</in>
+        <in>remove_exceptions.cpp</in>
+        <in>remove_exceptions.h</in>
         <in>remove_function_pointers.cpp</in>
         <in>remove_function_pointers.h</in>
         <in>remove_instanceof.cpp</in>
+        <in>remove_instanceof.h</in>
         <in>remove_returns.cpp</in>
         <in>remove_returns.h</in>
         <in>remove_skip.cpp</in>
         <in>remove_skip.h</in>
         <in>remove_static_init_loops.cpp</in>
+        <in>remove_static_init_loops.h</in>
         <in>remove_unreachable.cpp</in>
         <in>remove_unreachable.h</in>
         <in>remove_unused_functions.cpp</in>
@@ -1024,17 +1334,23 @@
         <in>remove_vector.cpp</in>
         <in>remove_vector.h</in>
         <in>remove_virtual_functions.cpp</in>
+        <in>remove_virtual_functions.h</in>
         <in>safety_checker.cpp</in>
         <in>safety_checker.h</in>
         <in>set_properties.cpp</in>
         <in>set_properties.h</in>
         <in>show_goto_functions.cpp</in>
+        <in>show_goto_functions.h</in>
         <in>show_goto_functions_json.cpp</in>
+        <in>show_goto_functions_json.h</in>
         <in>show_goto_functions_xml.cpp</in>
+        <in>show_goto_functions_xml.h</in>
         <in>show_properties.cpp</in>
         <in>show_properties.h</in>
         <in>show_symbol_table.cpp</in>
+        <in>show_symbol_table.h</in>
         <in>slice_global_inits.cpp</in>
+        <in>slice_global_inits.h</in>
         <in>string_abstraction.cpp</in>
         <in>string_abstraction.h</in>
         <in>string_instrumentation.cpp</in>
@@ -1113,7 +1429,10 @@
         <in>java_bytecode_convert.cpp</in>
         <in>java_bytecode_convert.h</in>
         <in>java_bytecode_convert_class.cpp</in>
+        <in>java_bytecode_convert_class.h</in>
         <in>java_bytecode_convert_method.cpp</in>
+        <in>java_bytecode_convert_method.h</in>
+        <in>java_bytecode_convert_method_class.h</in>
         <in>java_bytecode_internal_additions.cpp</in>
         <in>java_bytecode_internal_additions.h</in>
         <in>java_bytecode_language.cpp</in>
@@ -1133,28 +1452,44 @@
         <in>java_bytecode_vtable.h</in>
         <in>java_class_loader.cpp</in>
         <in>java_class_loader.h</in>
+        <in>java_class_loader_limit.cpp</in>
+        <in>java_class_loader_limit.h</in>
         <in>java_entry_point.cpp</in>
         <in>java_entry_point.h</in>
         <in>java_local_variable_table.cpp</in>
         <in>java_object_factory.cpp</in>
+        <in>java_object_factory.h</in>
         <in>java_pointer_casts.cpp</in>
+        <in>java_pointer_casts.h</in>
         <in>java_root_class.cpp</in>
+        <in>java_root_class.h</in>
         <in>java_types.cpp</in>
         <in>java_types.h</in>
         <in>java_utils.cpp</in>
+        <in>java_utils.h</in>
       </df>
       <df name="jsil">
         <in>expr2jsil.cpp</in>
+        <in>expr2jsil.h</in>
         <in>jsil_convert.cpp</in>
+        <in>jsil_convert.h</in>
         <in>jsil_entry_point.cpp</in>
+        <in>jsil_entry_point.h</in>
         <in>jsil_internal_additions.cpp</in>
+        <in>jsil_internal_additions.h</in>
         <in>jsil_language.cpp</in>
+        <in>jsil_language.h</in>
         <in>jsil_lex.yy.cpp</in>
         <in>jsil_parse_tree.cpp</in>
+        <in>jsil_parse_tree.h</in>
         <in>jsil_parser.cpp</in>
+        <in>jsil_parser.h</in>
         <in>jsil_typecheck.cpp</in>
+        <in>jsil_typecheck.h</in>
         <in>jsil_types.cpp</in>
+        <in>jsil_types.h</in>
         <in>jsil_y.tab.cpp</in>
+        <in>jsil_y.tab.h</in>
       </df>
       <df name="json">
         <in>json_lex.yy.cpp</in>
@@ -1182,6 +1517,7 @@
         <in>remove_internal_symbols.cpp</in>
         <in>remove_internal_symbols.h</in>
         <in>static_lifetime_init.cpp</in>
+        <in>static_lifetime_init.h</in>
         <in>zero_initializer.cpp</in>
         <in>zero_initializer.h</in>
       </df>
@@ -1195,6 +1531,10 @@
         <in>mmcc_main.cpp</in>
         <in>mmcc_parse_options.cpp</in>
         <in>mmcc_parse_options.h</in>
+      </df>
+      <df name="miniz">
+        <in>miniz.cpp</in>
+        <in>miniz.h</in>
       </df>
       <df name="musketeer">
         <df name="experiments">
@@ -1393,6 +1733,7 @@
           <in>float_utils.h</in>
         </df>
         <df name="miniBDD">
+          <in>example.cpp</in>
           <in>miniBDD.cpp</in>
           <in>miniBDD.h</in>
           <in>miniBDD.inc</in>
@@ -1450,6 +1791,22 @@
           <in>bv_refinement_loop.cpp</in>
           <in>refine_arithmetic.cpp</in>
           <in>refine_arrays.cpp</in>
+          <in>refined_string_type.cpp</in>
+          <in>refined_string_type.h</in>
+          <in>string_constraint.h</in>
+          <in>string_constraint_generator.h</in>
+          <in>string_constraint_generator_code_points.cpp</in>
+          <in>string_constraint_generator_comparison.cpp</in>
+          <in>string_constraint_generator_concat.cpp</in>
+          <in>string_constraint_generator_constants.cpp</in>
+          <in>string_constraint_generator_indexof.cpp</in>
+          <in>string_constraint_generator_insert.cpp</in>
+          <in>string_constraint_generator_main.cpp</in>
+          <in>string_constraint_generator_testing.cpp</in>
+          <in>string_constraint_generator_transformation.cpp</in>
+          <in>string_constraint_generator_valueof.cpp</in>
+          <in>string_refinement.cpp</in>
+          <in>string_refinement.h</in>
         </df>
         <df name="sat">
           <in>cnf.cpp</in>
@@ -1567,9 +1924,12 @@
         <in>format_constant.cpp</in>
         <in>format_constant.h</in>
         <in>format_spec.h</in>
+        <in>fresh_symbol.cpp</in>
+        <in>fresh_symbol.h</in>
         <in>gcd.cpp</in>
         <in>gcd.h</in>
         <in>get_base_name.cpp</in>
+        <in>get_base_name.h</in>
         <in>get_module.cpp</in>
         <in>get_module.h</in>
         <in>graph.cpp</in>
@@ -1583,6 +1943,7 @@
         <in>identifier.h</in>
         <in>ieee_float.cpp</in>
         <in>ieee_float.h</in>
+        <in>infix.h</in>
         <in>interval.h</in>
         <in>irep.cpp</in>
         <in>irep.h</in>
@@ -1599,7 +1960,9 @@
         <in>json.cpp</in>
         <in>json.h</in>
         <in>json_expr.cpp</in>
+        <in>json_expr.h</in>
         <in>json_irep.cpp</in>
+        <in>json_irep.h</in>
         <in>language.cpp</in>
         <in>language.h</in>
         <in>language_file.cpp</in>
@@ -1615,7 +1978,6 @@
         <in>message.cpp</in>
         <in>message.h</in>
         <in>message_stream.cpp</in>
-        <in>message_stream.h</in>
         <in>mp_arith.cpp</in>
         <in>mp_arith.h</in>
         <in>namespace.cpp</in>
@@ -1656,7 +2018,11 @@
         <in>replace_symbol.cpp</in>
         <in>replace_symbol.h</in>
         <in>run.cpp</in>
+        <in>run.h</in>
+        <in>safe_pointer.h</in>
         <in>set_stack.h</in>
+        <in>sharing_map.h</in>
+        <in>sharing_node.h</in>
         <in>signal_catcher.cpp</in>
         <in>signal_catcher.h</in>
         <in>simplify_expr.cpp</in>
@@ -1685,9 +2051,11 @@
         <in>string2int.h</in>
         <in>string_container.cpp</in>
         <in>string_container.h</in>
+        <in>string_expr.h</in>
         <in>string_hash.cpp</in>
         <in>string_hash.h</in>
         <in>string_utils.cpp</in>
+        <in>string_utils.h</in>
         <in>substitute.cpp</in>
         <in>substitute.h</in>
         <in>suffix.h</in>

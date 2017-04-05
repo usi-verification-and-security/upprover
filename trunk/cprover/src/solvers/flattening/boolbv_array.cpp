@@ -20,14 +20,12 @@ Function: boolbvt::convert_array
 
 \*******************************************************************/
 
-void boolbvt::convert_array(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_array(const exprt &expr)
 {
   std::size_t width=boolbv_width(expr.type());
 
   if(width==0)
-    return conversion_failed(expr, bv);
-    
-  bv.reserve(width);
+    return conversion_failed(expr);
 
   if(expr.type().id()==ID_array)
   {
@@ -35,7 +33,10 @@ void boolbvt::convert_array(const exprt &expr, bvt &bv)
     const exprt::operandst &operands=expr.operands();
     assert(!operands.empty());
     std::size_t op_width=width/operands.size();
-    
+
+    bvt bv;
+    bv.reserve(width);
+
     forall_expr(it, operands)
     {
       const bvt &tmp=convert_bv(*it);
@@ -45,11 +46,10 @@ void boolbvt::convert_array(const exprt &expr, bvt &bv)
 
       forall_literals(it2, tmp)
         bv.push_back(*it2);
-    }   
+    }
 
-    return;
+    return bv;
   }
-  
-  conversion_failed(expr, bv);
-}
 
+  return conversion_failed(expr);
+}

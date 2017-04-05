@@ -9,9 +9,9 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <iterator>
 #include <algorithm>
 
+#include <util/arith_tools.h>
 #include <util/std_expr.h>
 #include <util/std_code.h>
-#include <util/expr_util.h>
 
 #include <ansi-c/c_types.h>
 #include <langapi/language_util.h>
@@ -33,7 +33,7 @@ Function: local_may_aliast::loc_infot::merge
 bool local_may_aliast::loc_infot::merge(const loc_infot &src)
 {
   bool changed=false;
-  
+
   // do union; this should be amortized linear
   for(std::size_t i=0; i<src.aliases.size(); i++)
   {
@@ -45,7 +45,7 @@ bool local_may_aliast::loc_infot::merge(const loc_infot &src)
       changed=true;
     }
   }
-  
+
   return changed;
 }
 
@@ -57,7 +57,7 @@ Function: local_may_aliast::assign_lhs
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -75,10 +75,10 @@ void local_may_aliast::assign_lhs(
 
       // isolate the lhs pointer
       loc_info_dest.aliases.isolate(dest_pointer);
-      
+
       object_sett rhs_set;
       get_rec(rhs_set, rhs, loc_info_src);
-      
+
       // make these all aliases
       for(object_sett::const_iterator
           p_it=rhs_set.begin();
@@ -100,14 +100,14 @@ void local_may_aliast::assign_lhs(
       {
         if(objects[i].id()==ID_symbol)
         {
-          const irep_idt &identifier=to_symbol_expr(objects[i]).get_identifier();
+          const irep_idt &identifier=
+            to_symbol_expr(objects[i]).get_identifier();
 
           if(dirty(identifier) || !locals.is_local(identifier))
           {
             loc_info_dest.aliases.isolate(i);
             loc_info_dest.aliases.make_union(i, unknown_object);
           }
-             
         }
       }
     }
@@ -118,7 +118,8 @@ void local_may_aliast::assign_lhs(
   }
   else if(lhs.id()==ID_member)
   {
-    assign_lhs(to_member_expr(lhs).struct_op(), rhs, loc_info_src, loc_info_dest);
+    assign_lhs(
+      to_member_expr(lhs).struct_op(), rhs, loc_info_src, loc_info_dest);
   }
   else if(lhs.id()==ID_typecast)
   {
@@ -130,7 +131,7 @@ void local_may_aliast::assign_lhs(
     assign_lhs(to_if_expr(lhs).false_case(), rhs, loc_info_src, loc_info_dest);
   }
 }
- 
+
 /*******************************************************************\
 
 Function: local_may_aliast::get
@@ -139,7 +140,7 @@ Function: local_may_aliast::get
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -148,11 +149,11 @@ std::set<exprt> local_may_aliast::get(
   const exprt &rhs) const
 {
   local_cfgt::loc_mapt::const_iterator loc_it=cfg.loc_map.find(t);
-  
+
   assert(loc_it!=cfg.loc_map.end());
-  
+
   const loc_infot &loc_info_src=loc_infos[loc_it->second];
-  
+
   object_sett result_tmp;
   get_rec(result_tmp, rhs, loc_info_src);
 
@@ -165,7 +166,7 @@ std::set<exprt> local_may_aliast::get(
   {
     result.insert(objects[*it]);
   }
-  
+
   return result;
 }
 
@@ -177,7 +178,7 @@ Function: local_may_aliast::aliases
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -186,11 +187,11 @@ bool local_may_aliast::aliases(
   const exprt &src1, const exprt &src2) const
 {
   local_cfgt::loc_mapt::const_iterator loc_it=cfg.loc_map.find(t);
-  
+
   assert(loc_it!=cfg.loc_map.end());
-  
+
   const loc_infot &loc_info_src=loc_infos[loc_it->second];
-  
+
   object_sett tmp1, tmp2;
   get_rec(tmp1, src1, loc_info_src);
   get_rec(tmp2, src2, loc_info_src);
@@ -200,12 +201,12 @@ bool local_may_aliast::aliases(
     return true;
 
   std::list<unsigned> result;
-  
+
   std::set_intersection(
     tmp1.begin(), tmp1.end(),
     tmp2.begin(), tmp2.end(),
     std::back_inserter(result));
-  
+
   return !result.empty();
 }
 
@@ -217,7 +218,7 @@ Function: local_may_aliast::get_rec
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -238,9 +239,9 @@ void local_may_aliast::get_rec(
     if(rhs.type().id()==ID_pointer)
     {
       unsigned src_pointer=objects.number(rhs);
-      
+
       dest.insert(src_pointer);
-      
+
       for(std::size_t i=0; i<loc_info_src.aliases.size(); i++)
         if(loc_info_src.aliases.same_set(src_pointer, i))
           dest.insert(i);
@@ -256,7 +257,7 @@ void local_may_aliast::get_rec(
   else if(rhs.id()==ID_address_of)
   {
     const exprt &object=to_address_of_expr(rhs).object();
-    
+
     if(object.id()==ID_symbol)
     {
       unsigned object_nr=objects.number(rhs);
@@ -272,7 +273,7 @@ void local_may_aliast::get_rec(
       if(index_expr.array().id()==ID_symbol)
       {
         index_exprt tmp1=index_expr;
-        tmp1.index()=gen_zero(index_type());
+        tmp1.index()=from_integer(0, index_type());
         address_of_exprt tmp2(tmp1);
         unsigned object_nr=objects.number(tmp2);
         dest.insert(object_nr);
@@ -284,7 +285,7 @@ void local_may_aliast::get_rec(
       else if(index_expr.array().id()==ID_string_constant)
       {
         index_exprt tmp1=index_expr;
-        tmp1.index()=gen_zero(index_type());
+        tmp1.index()=from_integer(0, index_type());
         address_of_exprt tmp2(tmp1);
         unsigned object_nr=objects.number(tmp2);
         dest.insert(object_nr);
@@ -307,7 +308,8 @@ void local_may_aliast::get_rec(
   {
     if(rhs.operands().size()>=3)
     {
-      get_rec(dest, make_binary(rhs), loc_info_src);
+      assert(rhs.op0().type().id()==ID_pointer);
+      get_rec(dest, rhs.op0(), loc_info_src);
     }
     else if(rhs.operands().size()==2)
     {
@@ -366,7 +368,7 @@ void local_may_aliast::get_rec(
   else
     dest.insert(unknown_object);
 }
- 
+
 /*******************************************************************\
 
 Function: local_may_aliast::build
@@ -375,24 +377,25 @@ Function: local_may_aliast::build
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
 void local_may_aliast::build(const goto_functiont &goto_function)
 {
-  if(cfg.nodes.empty()) return;
+  if(cfg.nodes.empty())
+    return;
 
   work_queuet work_queue;
 
-  // put all nodes into work queue  
+  // put all nodes into work queue
   for(local_cfgt::node_nrt n=0; n<cfg.nodes.size(); n++)
-    work_queue.push(n);  
-  
+    work_queue.push(n);
+
   unknown_object=objects.number(exprt(ID_unknown));
-  
+
   loc_infos.resize(cfg.nodes.size());
-  
+
   #if 0
   // feed in sufficiently bad defaults
   for(code_typet::parameterst::const_iterator
@@ -402,7 +405,8 @@ void local_may_aliast::build(const goto_functiont &goto_function)
   {
     const irep_idt &identifier=it->get_identifier();
     if(is_tracked(identifier))
-      loc_infos[0].points_to[objects.number(identifier)].objects.insert(unknown_object);
+      loc_infos[0].points_to[objects.number(identifier)].objects.insert(
+        unknown_object);
   }
   #endif
 
@@ -413,7 +417,8 @@ void local_may_aliast::build(const goto_functiont &goto_function)
       l_it++)
   {
     if(is_tracked(l_it->first))
-      loc_infos[0].aliases.make_union(objects.number(l_it->second), unknown_object);
+      loc_infos[0].aliases.make_union(
+        objects.number(l_it->second), unknown_object);
   }
   #endif
 
@@ -423,38 +428,43 @@ void local_may_aliast::build(const goto_functiont &goto_function)
     const local_cfgt::nodet &node=cfg.nodes[loc_nr];
     const goto_programt::instructiont &instruction=*node.t;
     work_queue.pop();
-    
+
     const loc_infot &loc_info_src=loc_infos[loc_nr];
     loc_infot loc_info_dest=loc_infos[loc_nr];
-    
+
     switch(instruction.type)
     {
     case ASSIGN:
       {
         const code_assignt &code_assign=to_code_assign(instruction.code);
-        assign_lhs(code_assign.lhs(), code_assign.rhs(), loc_info_src, loc_info_dest);
+        assign_lhs(
+          code_assign.lhs(), code_assign.rhs(), loc_info_src, loc_info_dest);
       }
       break;
 
     case DECL:
       {
         const code_declt &code_decl=to_code_decl(instruction.code);
-        assign_lhs(code_decl.symbol(), nil_exprt(), loc_info_src, loc_info_dest);
+        assign_lhs(
+          code_decl.symbol(), nil_exprt(), loc_info_src, loc_info_dest);
       }
       break;
 
     case DEAD:
       {
         const code_deadt &code_dead=to_code_dead(instruction.code);
-        assign_lhs(code_dead.symbol(), nil_exprt(), loc_info_src, loc_info_dest);
+        assign_lhs(
+          code_dead.symbol(), nil_exprt(), loc_info_src, loc_info_dest);
       }
       break;
 
     case FUNCTION_CALL:
       {
-        const code_function_callt &code_function_call=to_code_function_call(instruction.code);
+        const code_function_callt &code_function_call=
+          to_code_function_call(instruction.code);
         if(code_function_call.lhs().is_not_nil())
-          assign_lhs(code_function_call.lhs(), nil_exprt(), loc_info_src, loc_info_dest);
+          assign_lhs(
+            code_function_call.lhs(), nil_exprt(), loc_info_src, loc_info_dest);
 
         // this might invalidate all pointers that are
         // a) local and dirty
@@ -463,20 +473,22 @@ void local_may_aliast::build(const goto_functiont &goto_function)
         {
           if(objects[i].id()==ID_symbol)
           {
-            const irep_idt &identifier=to_symbol_expr(objects[i]).get_identifier();
+            const irep_idt &identifier=
+              to_symbol_expr(objects[i]).get_identifier();
 
             if(dirty(identifier) || !locals.is_local(identifier))
             {
               loc_info_dest.aliases.isolate(i);
               loc_info_dest.aliases.make_union(i, unknown_object);
             }
-               
           }
         }
       }
       break;
 
-    default:;
+    default:
+      {
+      }
     }
 
     for(local_cfgt::successorst::const_iterator
@@ -498,7 +510,7 @@ Function: local_may_aliast::output
 
  Outputs:
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -514,7 +526,7 @@ void local_may_aliast::output(
     out << "**** " << i_it->source_location << "\n";
 
     const loc_infot &loc_info=loc_infos[l];
-    
+
     for(std::size_t i=0; i<loc_info.aliases.size(); i++)
     {
       if(loc_info.aliases.count(i)!=1 &&
@@ -527,7 +539,7 @@ void local_may_aliast::output(
             assert(j<objects.size());
             out << ' ' << from_expr(ns, "", objects[j]);
           }
-        
+
         out << " }";
         out << "\n";
       }
@@ -536,8 +548,7 @@ void local_may_aliast::output(
     out << "\n";
     goto_function.body.output_instruction(ns, "", out, i_it);
     out << "\n";
-    
+
     l++;
   }
 }
-

@@ -6,14 +6,19 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_PROGRAMS_FULL_SLICER_H
-#define CPROVER_GOTO_PROGRAMS_FULL_SLICER_H
+#ifndef CPROVER_GOTO_INSTRUMENT_FULL_SLICER_H
+#define CPROVER_GOTO_INSTRUMENT_FULL_SLICER_H
 
 #include <goto-programs/goto_functions.h>
 
 void full_slicer(
   goto_functionst &goto_functions,
   const namespacet &ns);
+
+void property_slicer(
+  goto_functionst &goto_functions,
+  const namespacet &ns,
+  const std::list<std::string> &properties);
 
 class slicing_criteriont
 {
@@ -27,4 +32,4 @@ void full_slicer(
   const namespacet &ns,
   slicing_criteriont &criterion);
 
-#endif
+#endif // CPROVER_GOTO_INSTRUMENT_FULL_SLICER_H

@@ -6,8 +6,8 @@ Author: Vincent Nimal
 
 \*******************************************************************/
 
-#ifndef CPROVER_PENSIEVE_H
-#define CPROVER_PENSIEVE_H
+#ifndef CPROVER_MUSKETEER_PENSIEVE_H
+#define CPROVER_MUSKETEER_PENSIEVE_H
 
 #include <goto-instrument/wmm/wmm.h>
 #include <goto-instrument/wmm/weak_memory.h>
@@ -27,6 +27,6 @@ void fence_pensieve(
   bool render_file,
   bool render_function,
   bool naive_mode,
-  message_handlert& message_handler);
+  message_handlert &message_handler);
 
-#endif
+#endif // CPROVER_MUSKETEER_PENSIEVE_H

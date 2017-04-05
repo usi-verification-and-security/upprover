@@ -1,14 +1,16 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
- Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
- \*******************************************************************/
+\*******************************************************************/
 
-#ifndef CEGIS_DANGER_CEGIS_SYMEX_LEARN_H_
-#define CEGIS_DANGER_CEGIS_SYMEX_LEARN_H_
+#ifndef CPROVER_CEGIS_SYMEX_CEGIS_SYMEX_LEARN_H
+#define CPROVER_CEGIS_SYMEX_CEGIS_SYMEX_LEARN_H
+
+#include <functional>
 
 #include <goto-programs/safety_checker.h>
 
@@ -32,9 +34,10 @@ private:
   size_t current_solution_size;
   size_t max_solution_size;
   candidatet current_candidate;
+  const std::function<void(candidatet &)> default_candidate;
   counterexamplest counterexamples;
 
-  safety_checkert::resultt run_bmc(message_handlert &msg, const optionst &opt);
+  safety_checkert::resultt run_bmc();
   bool learn_at_current_size();
 public:
   /**
@@ -46,15 +49,26 @@ public:
    * @param preproc
    * @param config
    */
-  cegis_symex_learnt(const optionst &options, preproct &preproc,
+  cegis_symex_learnt(
+      const optionst &options,
+      preproct &preproc,
       learn_configurationt &config);
 
   /**
    * @brief
    *
    * @details
+   *
+   * @param options
+   * @param preproc
+   * @param config
+   * @param default_candidate
    */
-  ~cegis_symex_learnt();
+  cegis_symex_learnt(
+      const optionst &options,
+      preproct &preproc,
+      learn_configurationt &config,
+      const std::function<void(candidatet &)> &default_candidate);
 
   /**
    * @brief
@@ -73,7 +87,7 @@ public:
    *
    * @return The next candidate.
    */
-  const candidatet &next_candidate() const;
+  const candidatet &next_candidate();
 
   /**
    * @brief Generates a candidate solution.
@@ -124,4 +138,4 @@ public:
 
 #include "cegis_symex_learn.inc"
 
-#endif /* CEGIS_DANGER_CEGIS_SYMEX_LEARN_H_ */
+#endif // CPROVER_CEGIS_SYMEX_CEGIS_SYMEX_LEARN_H

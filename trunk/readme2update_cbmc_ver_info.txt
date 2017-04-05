@@ -1,5 +1,5 @@
-CBMC Version 5.7 from Git - 64-bit version (CBMC version 5.6 64-bit x86_64 linux)
-Date: 31/03/2017
+CBMC Version 5.7 from Git - 64-bit version (CBMC version 5.7 64-bit x86_64 linux)
+Date: 05/04/2017
 
 ** CURRENTLY ONLY WORKS WITH OPENSMT2 OLD VERSION **
 git checkout 2df821308c568b0d22b4937b79a6d3ffa015cea6
@@ -13,6 +13,7 @@ File Changed:
 - trunk/cprover/util/expr.h/.cpp - add a function
 - trunk/cprover/src/config.inc (change: add ../ to minisat2 path)
 - trunk/cprover/src/Makefile
+- Remove dirty - where found
 
 minisat-2.2.1:
 ==============
@@ -42,5 +43,11 @@ Special modifications in HiFrog:
   const std::string print_number_2smt() const; // hckd!!
 - expr.cpp add function impl
 - Issues with dirty analysis
-
+  - Removed from goto-symex/symex_main.cpp
+                 goto-symex/goto_symex_state.cpp
+                 goto-symex/goto_symex_state.h
+                 goto-symex/symex_function_call.cpp
+                 goto-symex/symex_goto.cpp
+                 goto-symex/symex_decl.cpp
+                 
 

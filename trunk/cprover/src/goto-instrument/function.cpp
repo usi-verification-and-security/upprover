@@ -6,10 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <util/arith_tools.h>
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
 #include <util/std_expr.h>
-#include <util/expr_util.h>
 
 #include <ansi-c/c_types.h>
 #include <ansi-c/string_constant.h>
@@ -34,16 +34,16 @@ code_function_callt function_to_call(
   const irep_idt &argument)
 {
   // already there?
-  
+
   symbol_tablet::symbolst::const_iterator s_it=
     symbol_table.symbols.find(id);
-    
+
   if(s_it==symbol_table.symbols.end())
   {
     // not there
     pointer_typet p(char_type());
     p.subtype().set(ID_C_constant, true);
-    
+
     code_typet function_type;
     function_type.return_type()=empty_typet();
     function_type.parameters().push_back(
@@ -53,7 +53,7 @@ code_function_callt function_to_call(
     new_symbol.name=id;
     new_symbol.base_name=id;
     new_symbol.type=function_type;
-    
+
     symbol_table.move(new_symbol);
 
     s_it=symbol_table.symbols.find(id);
@@ -69,7 +69,7 @@ code_function_callt function_to_call(
     std::string error="function `"+id2string(id)+"' has wrong signature";
     throw error;
   }
-  
+
   string_constantt function_id_string(argument);
 
   code_function_callt call;
@@ -79,8 +79,9 @@ code_function_callt function_to_call(
   call.arguments().resize(1);
   call.arguments()[0]=
     typecast_exprt(
-      address_of_exprt(index_exprt(
-        function_id_string, gen_zero(index_type()))),
+      address_of_exprt(
+        index_exprt(
+          function_id_string, from_integer(0, index_type()))),
       to_code_type(s_it->second.type).parameters()[0].type());
 
   return call;
@@ -108,15 +109,15 @@ void function_enter(
     // don't instrument our internal functions
     if(has_prefix(id2string(f_it->first), CPROVER_PREFIX))
       continue;
-    
+
     // don't instrument the function to be called,
     // or otherwise this will be recursive
     if(f_it->first==id)
       continue;
-    
+
     // patch in a call to `id' at the entry point
     goto_programt &body=f_it->second.body;
-    
+
     goto_programt::targett t=
       body.insert_before(body.instructions.begin());
     t->make_function_call(
@@ -147,15 +148,15 @@ void function_exit(
     // don't instrument our internal functions
     if(has_prefix(id2string(f_it->first), CPROVER_PREFIX))
       continue;
-    
+
     // don't instrument the function to be called,
     // or otherwise this will be recursive
     if(f_it->first==id)
       continue;
-    
+
     // patch in a call to `id' at the exit points
     goto_programt &body=f_it->second.body;
-    
+
     // make sure we have END_OF_FUNCTION
     if(body.instructions.empty() ||
        !body.instructions.back().is_end_function())
@@ -173,9 +174,9 @@ void function_exit(
 
         // move on
         i_it++;
-      }    
+      }
     }
-      
+
     // exiting without return
     goto_programt::targett last=body.instructions.end();
     last--;
@@ -183,7 +184,7 @@ void function_exit(
 
     // is there already a return?
     bool has_return=false;
-    
+
     if(last!=body.instructions.begin())
     {
       goto_programt::targett before_last=last;
@@ -191,7 +192,7 @@ void function_exit(
       if(before_last->is_return())
         has_return=true;
     }
-    
+
     if(!has_return)
     {
       goto_programt::instructiont call;
@@ -202,4 +203,3 @@ void function_exit(
     }
   }
 }
-

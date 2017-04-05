@@ -10,10 +10,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/std_expr.h>
 #include <util/std_code.h>
-#include <util/expr_util.h>
 #include <util/message.h>
 #include <util/arith_tools.h>
-#include <util/i2string.h>
 #include <util/type_eq.h>
 
 #include <ansi-c/c_types.h>
@@ -33,13 +31,16 @@ Function: string_abstractiont::build_wrap
 
 \*******************************************************************/
 
-bool string_abstractiont::build_wrap(const exprt &object, exprt &dest, bool write)
+bool string_abstractiont::build_wrap(
+  const exprt &object,
+  exprt &dest, bool write)
 {
   // debugging
-  if(build(object, dest, write)) return true;
+  if(build(object, dest, write))
+    return true;
 
   // extra consistency check
-  // use 
+  // use
   // #define build_wrap(a,b,c) build(a,b,c)
   // to avoid it
   const typet &a_t=build_abstraction_type(object.type());
@@ -263,7 +264,7 @@ Function: string_abstractiont::add_str_arguments
 \*******************************************************************/
 
 void string_abstractiont::add_str_arguments(
-    const irep_idt & name,
+    const irep_idt &name,
     goto_functionst::goto_functiont &fct)
 {
   symbol_tablet::symbolst::iterator sym_entry=symbol_table.symbols.find(name);
@@ -284,7 +285,8 @@ void string_abstractiont::add_str_arguments(
       continue;
 
     const irep_idt &identifier=it->get_identifier();
-    if(identifier=="") continue; // ignore
+    if(identifier=="")
+      continue; // ignore
 
     add_argument(str_args, fct_symbol, abstract_type,
         id2string(it->get_base_name())+arg_suffix,
@@ -296,7 +298,8 @@ void string_abstractiont::add_str_arguments(
   parameters.insert(parameters.end(), str_args.begin(), str_args.end());
   code_typet::parameterst &symb_parameters=
     to_code_type(fct_symbol.type).parameters();
-  symb_parameters.insert(symb_parameters.end(), str_args.begin(), str_args.end());
+  symb_parameters.insert(
+    symb_parameters.end(), str_args.begin(), str_args.end());
 }
 
 /*******************************************************************\
@@ -358,7 +361,8 @@ void string_abstractiont::abstract(goto_programt &dest)
   Forall_goto_program_instructions(it, dest)
     it=abstract(dest, it);
 
-  if(locals.empty()) return;
+  if(locals.empty())
+    return;
 
   // go over it again for the newly added locals
   declare_define_locals(dest);
@@ -379,7 +383,7 @@ Function: string_abstractiont::declare_define_locals
 
 void string_abstractiont::declare_define_locals(goto_programt &dest)
 {
-  typedef hash_map_cont<irep_idt, goto_programt::targett, irep_id_hash>
+  typedef std::unordered_map<irep_idt, goto_programt::targett, irep_id_hash>
     available_declst;
   available_declst available_decls;
 
@@ -391,14 +395,12 @@ void string_abstractiont::declare_define_locals(goto_programt &dest)
             to_code_decl(it->code).get_identifier(), it));
 
   // declare (and, if necessary, define) locals
-  for(localst::const_iterator l_it=locals.begin();
-      l_it!=locals.end();
-      ++l_it)
+  for(const auto &l : locals)
   {
     goto_programt::targett ref_instr=dest.instructions.begin();
     bool has_decl=false;
 
-    available_declst::const_iterator entry=available_decls.find(l_it->first);
+    available_declst::const_iterator entry=available_decls.find(l.first);
 
     if(available_declst::const_iterator(available_decls.end())!=entry)
     {
@@ -407,9 +409,10 @@ void string_abstractiont::declare_define_locals(goto_programt &dest)
     }
 
     goto_programt tmp;
-    make_decl_and_def(tmp, ref_instr, l_it->second, l_it->first);
+    make_decl_and_def(tmp, ref_instr, l.second, l.first);
 
-    if(has_decl) ++ref_instr;
+    if(has_decl)
+      ++ref_instr;
     dest.insert_before_swap(ref_instr, tmp);
   }
 }
@@ -513,10 +516,10 @@ exprt string_abstractiont::make_val_or_dummy_rec(goto_programt &dest,
         continue;
 
       const typet &eff_sub_type=ns.follow(it2->type());
-      if(eff_sub_type.id() == ID_pointer ||
-          eff_sub_type.id() == ID_array ||
-          eff_sub_type.id() == ID_struct ||
-          eff_sub_type.id() == ID_union)
+      if(eff_sub_type.id()==ID_pointer ||
+          eff_sub_type.id()==ID_array ||
+          eff_sub_type.id()==ID_struct ||
+          eff_sub_type.id()==ID_union)
       {
         symbol_exprt sym_expr=add_dummy_symbol_and_value(
             dest, ref_instr, symbol, it2->get_name(),
@@ -602,7 +605,8 @@ symbol_exprt string_abstractiont::add_dummy_symbol_and_value(
     make_type(new_symbol.value.op2(), build_type(SIZE));
   }
   else
-    new_symbol.value=make_val_or_dummy_rec(dest, ref_instr, new_symbol, source_type);
+    new_symbol.value=
+      make_val_or_dummy_rec(dest, ref_instr, new_symbol, source_type);
 
   if(new_symbol.value.is_not_nil())
   {
@@ -747,7 +751,8 @@ void string_abstractiont::abstract_function_call(
       it2++, it1++)
   {
     const typet &abstract_type=build_abstraction_type(it2->type());
-    if(abstract_type.is_nil()) continue;
+    if(abstract_type.is_nil())
+      continue;
 
     if(it1==arguments.end())
     {
@@ -767,7 +772,7 @@ void string_abstractiont::abstract_function_call(
       assert(type_eq(str_args.back().type().subtype(),
           abstract_type.subtype(), ns));
 
-      index_exprt idx(str_args.back(), gen_zero(index_type()));
+      index_exprt idx(str_args.back(), from_integer(0, index_type()));
       // disable bounds check on that one
       idx.set("bounds_check", false);
 
@@ -878,7 +883,8 @@ exprt string_abstractiont::build(
   }
 
   exprt str_struct;
-  if(build_wrap(pointer, str_struct, write)) assert(false);
+  if(build_wrap(pointer, str_struct, write))
+    assert(false);
 
   exprt result=member(str_struct, what);
 
@@ -907,12 +913,12 @@ Function: string_abstractiont::build_abstraction_type
 
 \*******************************************************************/
 
-const typet& string_abstractiont::build_abstraction_type(const typet &type)
+const typet &string_abstractiont::build_abstraction_type(const typet &type)
 {
   const typet &eff_type=ns.follow(type);
   abstraction_types_mapt::const_iterator map_entry=
     abstraction_types_map.find(eff_type);
-  if(map_entry!=abstraction_types_map.end()) 
+  if(map_entry!=abstraction_types_map.end())
     return map_entry->second;
 
   abstraction_types_mapt tmp;
@@ -938,7 +944,7 @@ Function: string_abstractiont::build_abstraction_type_rec
 
 \*******************************************************************/
 
-const typet& string_abstractiont::build_abstraction_type_rec(const typet &type,
+const typet &string_abstractiont::build_abstraction_type_rec(const typet &type,
     const abstraction_types_mapt &known)
 {
   const typet &eff_type=ns.follow(type);
@@ -949,18 +955,18 @@ const typet& string_abstractiont::build_abstraction_type_rec(const typet &type,
   ::std::pair< abstraction_types_mapt::iterator, bool > map_entry(
       abstraction_types_map.insert(::std::make_pair(
           eff_type, nil_typet())));
-  if(!map_entry.second) 
+  if(!map_entry.second)
     return map_entry.first->second;
 
   if(eff_type.id()==ID_array || eff_type.id()==ID_pointer)
   {
     // char* or void* or char[]
     if(is_char_type(eff_type.subtype()) ||
-        eff_type.subtype().id() == ID_empty)
+        eff_type.subtype().id()==ID_empty)
       map_entry.first->second=pointer_typet(string_struct);
     else
     {
-      const typet& subt=build_abstraction_type_rec(eff_type.subtype(), known);
+      const typet &subt=build_abstraction_type_rec(eff_type.subtype(), known);
       if(!subt.is_nil())
       {
         if(eff_type.id()==ID_array)
@@ -975,22 +981,20 @@ const typet& string_abstractiont::build_abstraction_type_rec(const typet &type,
   else if(eff_type.id()==ID_struct || eff_type.id()==ID_union)
   {
     const struct_union_typet &struct_union_type=to_struct_union_type(eff_type);
-    const struct_union_typet::componentst &components=
-      struct_union_type.components();
 
     struct_union_typet::componentst new_comp;
-    for(struct_union_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
+    for(const auto &comp : struct_union_type.components())
     {
-      if(it->get_anonymous()) continue;
-      typet subt=build_abstraction_type_rec(it->type(), known);
-      if(subt.is_nil()) continue; // also precludes structs with pointers to the same datatype
+      if(comp.get_anonymous())
+        continue;
+      typet subt=build_abstraction_type_rec(comp.type(), known);
+      if(subt.is_nil())
+        // also precludes structs with pointers to the same datatype
+        continue;
 
       new_comp.push_back(struct_union_typet::componentt());
-      new_comp.back().set_name(it->get_name());
-      new_comp.back().set_pretty_name(it->get_pretty_name());
+      new_comp.back().set_name(comp.get_name());
+      new_comp.back().set_pretty_name(comp.get_pretty_name());
       new_comp.back().type()=subt;
     }
     if(!new_comp.empty())
@@ -1019,7 +1023,8 @@ Function: string_abstractiont::build
 bool string_abstractiont::build(const exprt &object, exprt &dest, bool write)
 {
   const typet &abstract_type=build_abstraction_type(object.type());
-  if(abstract_type.is_nil()) return true;
+  if(abstract_type.is_nil())
+    return true;
 
   if(object.id()==ID_typecast)
   {
@@ -1099,7 +1104,8 @@ bool string_abstractiont::build_if(const if_exprt &o_if,
   // recursive calls
   bool op1_err=build_wrap(o_if.true_case(), new_if.true_case(), write);
   bool op2_err=build_wrap(o_if.false_case(), new_if.false_case(), write);
-  if(op1_err && op2_err) return true;
+  if(op1_err && op2_err)
+    return true;
   // at least one of them gave proper results
   if(op1_err)
   {
@@ -1136,12 +1142,14 @@ bool string_abstractiont::build_array(const array_exprt &object,
   assert(is_char_type(object.type().subtype()));
 
   // writing is invalid
-  if(write) return true;
+  if(write)
+    return true;
 
   const exprt &a_size=to_array_type(object.type()).size();
   mp_integer size;
   // don't do anything, if we cannot determine the size
-  if (to_integer(a_size, size)) return true;
+  if(to_integer(a_size, size))
+    return true;
   assert(size==object.operands().size());
 
   exprt::operandst::const_iterator it=object.operands().begin();
@@ -1178,9 +1186,11 @@ bool string_abstractiont::build_pointer(const exprt &object,
       return build_wrap(to_index_expr(a.object()).array(), dest, write);
 
     // writing is invalid
-    if(write) return true;
+    if(write)
+      return true;
 
-    if(build_wrap(a.object(), dest, write)) return true;
+    if(build_wrap(a.object(), dest, write))
+      return true;
     dest=address_of_exprt(dest);
     return false;
   }
@@ -1250,7 +1260,8 @@ exprt string_abstractiont::build_unknown(const typet &type, bool write)
   // create an uninitialized dummy symbol
   // because of a lack of contextual information we can't build a nice name
   // here, but moving that into locals should suffice for proper operation
-  irep_idt identifier="$tmp::nondet_str#str$"+i2string(++temporary_counter);
+  irep_idt identifier=
+    "$tmp::nondet_str#str$"+std::to_string(++temporary_counter);
   // ensure decl and initialization
   locals[identifier]=identifier;
 
@@ -1333,8 +1344,9 @@ void string_abstractiont::build_new_symbol(const symbolt &symbol,
   new_symbol.module=symbol.module;
   new_symbol.base_name=id2string(symbol.base_name)+sym_suffix;
   new_symbol.mode=symbol.mode;
-  new_symbol.pretty_name=id2string(
-      symbol.pretty_name.empty()?symbol.base_name:symbol.pretty_name)+sym_suffix;
+  new_symbol.pretty_name=
+    id2string(symbol.pretty_name.empty()?symbol.base_name:symbol.pretty_name)+
+    sym_suffix;
   new_symbol.is_static_lifetime=symbol.is_static_lifetime;
   new_symbol.is_thread_local=symbol.is_thread_local;
 
@@ -1361,8 +1373,10 @@ Function: string_abstractiont::build_symbol_constant
 
 \*******************************************************************/
 
-bool string_abstractiont::build_symbol_constant(const mp_integer &zero_length,
-    const mp_integer &buf_size, exprt &dest)
+bool string_abstractiont::build_symbol_constant(
+  const mp_integer &zero_length,
+  const mp_integer &buf_size,
+  exprt &dest)
 {
   irep_idt base="$string_constant_str_"+integer2string(zero_length)
     +"_"+integer2string(buf_size);
@@ -1453,11 +1467,13 @@ goto_programt::targett string_abstractiont::abstract_pointer_assign(
   while(rhsp->id()==ID_typecast)
     rhsp=&(rhsp->op0());
 
-  const typet& abstract_type=build_abstraction_type(lhs.type());
-  if(abstract_type.is_nil()) return target;
+  const typet &abstract_type=build_abstraction_type(lhs.type());
+  if(abstract_type.is_nil())
+    return target;
 
   exprt new_lhs, new_rhs;
-  if(build_wrap(lhs, new_lhs, true)) return target;
+  if(build_wrap(lhs, new_lhs, true))
+    return target;
 
   bool unknown=(abstract_type!=build_abstraction_type(rhsp->type()) ||
       build_wrap(rhs, new_rhs, false));
@@ -1541,8 +1557,15 @@ goto_programt::targett string_abstractiont::abstract_char_assign(
       assert(i2.is_not_nil());
 
       make_type(ptr.offset, build_type(LENGTH));
-      return char_assign(dest, target, new_lhs, i2,
-          ptr.offset.is_nil()?gen_zero(build_type(LENGTH)):ptr.offset);
+      return
+        char_assign(
+          dest,
+          target,
+          new_lhs,
+          i2,
+          ptr.offset.is_nil()?
+            from_integer(0, build_type(LENGTH)):
+            ptr.offset);
     }
   }
 
@@ -1611,9 +1634,10 @@ Function: string_abstractiont::value_assignments
 \*******************************************************************/
 
 goto_programt::targett string_abstractiont::value_assignments(
-    goto_programt &dest,
-    goto_programt::targett target,
-    const exprt& lhs, const exprt& rhs)
+  goto_programt &dest,
+  goto_programt::targett target,
+  const exprt &lhs,
+  const exprt &rhs)
 {
   if(rhs.id()==ID_if)
     return value_assignments_if(dest, target, lhs, to_if_expr(rhs));
@@ -1625,7 +1649,8 @@ goto_programt::targett string_abstractiont::value_assignments(
     const exprt &a_size=to_array_type(lhs.type()).size();
     mp_integer size;
     // don't do anything, if we cannot determine the size
-    if (to_integer(a_size, size)) return target;
+    if(to_integer(a_size, size))
+      return target;
     for(mp_integer i=0; i<size; ++i)
       target=value_assignments(dest, target,
           index_exprt(lhs, from_integer(i, a_size.type())),
@@ -1639,20 +1664,16 @@ goto_programt::targett string_abstractiont::value_assignments(
     return value_assignments_string_struct(dest, target, lhs, rhs);
   else if(lhs.type().id()==ID_struct || lhs.type().id()==ID_union)
   {
-    const struct_union_typet &struct_union_type=to_struct_union_type(lhs.type());
-    const struct_union_typet::componentst &components=
-      struct_union_type.components();
+    const struct_union_typet &struct_union_type=
+      to_struct_union_type(lhs.type());
 
-    for(struct_union_typet::componentst::const_iterator
-        it=components.begin();
-        it!=components.end();
-        it++)
+    for(const auto &comp : struct_union_type.components())
     {
-      assert(!it->get_name().empty());
+      assert(!comp.get_name().empty());
 
       target=value_assignments(dest, target,
-          member_exprt(lhs, it->get_name(), it->type()),
-          member_exprt(rhs, it->get_name(), it->type()));
+          member_exprt(lhs, comp.get_name(), comp.type()),
+          member_exprt(rhs, comp.get_name(), comp.type()));
     }
   }
 
@@ -1672,9 +1693,9 @@ Function: string_abstractiont::value_assignments_if
 \*******************************************************************/
 
 goto_programt::targett string_abstractiont::value_assignments_if(
-    goto_programt &dest,
-    goto_programt::targett target,
-    const exprt& lhs, const if_exprt& rhs)
+  goto_programt &dest,
+  goto_programt::targett target,
+  const exprt &lhs, const if_exprt &rhs)
 {
   goto_programt tmp;
 
@@ -1724,7 +1745,7 @@ Function: string_abstractiont::value_assignments_string_struct
 goto_programt::targett string_abstractiont::value_assignments_string_struct(
     goto_programt &dest,
     goto_programt::targett target,
-    const exprt& lhs, const exprt& rhs)
+    const exprt &lhs, const exprt &rhs)
 {
   // copy all the values
   goto_programt tmp;
@@ -1781,7 +1802,8 @@ Function: string_abstractiont::member
 
 exprt string_abstractiont::member(const exprt &a, whatt what)
 {
-  if(a.is_nil()) return a;
+  if(a.is_nil())
+    return a;
   assert(type_eq(a.type(), string_struct, ns) ||
       is_ptr_string_struct(a.type()));
 
@@ -1798,4 +1820,3 @@ exprt string_abstractiont::member(const exprt &a, whatt what)
 
   return result;
 }
-

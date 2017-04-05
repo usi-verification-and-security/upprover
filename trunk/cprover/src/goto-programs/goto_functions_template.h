@@ -8,14 +8,15 @@ Date: June 2003
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_FUNCTIONS_TEMPLATE_H
-#define CPROVER_GOTO_FUNCTIONS_TEMPLATE_H
+#ifndef CPROVER_GOTO_PROGRAMS_GOTO_FUNCTIONS_TEMPLATE_H
+#define CPROVER_GOTO_PROGRAMS_GOTO_FUNCTIONS_TEMPLATE_H
 
 #include <ostream>
 #include <cassert>
 
 #include <util/std_types.h>
 #include <util/symbol.h>
+#include <util/cprover_prefix.h>
 
 template <class bodyT>
 class goto_function_templatet
@@ -23,26 +24,26 @@ class goto_function_templatet
 public:
   bodyT body;
   code_typet type;
-  
+
   typedef std::vector<irep_idt> parameter_identifierst;
   parameter_identifierst parameter_identifiers;
 
-  inline bool body_available() const
+  bool body_available() const
   {
     return !body.instructions.empty();
   }
 
-  inline bool is_inlined() const
+  bool is_inlined() const
   {
     return type.get_bool(ID_C_inlined);
   }
-  
-  inline bool is_hidden() const
+
+  bool is_hidden() const
   {
     return type.get_bool(ID_C_hide);
   }
-  
-  inline void make_hidden()
+
+  void make_hidden()
   {
     type.set(ID_C_hide, true);
   }
@@ -50,7 +51,7 @@ public:
   goto_function_templatet()
   {
   }
-  
+
   void clear()
   {
     body.clear();
@@ -87,8 +88,8 @@ public:
   typedef goto_function_templatet<bodyT> goto_functiont;
   typedef std::map<irep_idt, goto_functiont> function_mapt;
   function_mapt function_map;
-  
-  inline goto_functions_templatet()
+
+  goto_functions_templatet()
   {
   }
 
@@ -97,16 +98,16 @@ public:
   {
     assert(src.function_map.empty());
   }
-  
-  inline void clear()
+
+  void clear()
   {
     function_map.clear();
   }
-  
+
   void output(
     const namespacet &ns,
     std::ostream &out) const;
-    
+
   void compute_location_numbers();
   void compute_loop_numbers();
   void compute_target_numbers();
@@ -117,28 +118,25 @@ public:
     compute_incoming_edges();
     compute_target_numbers();
     compute_location_numbers();
+    compute_loop_numbers();
   }
 
   static inline irep_idt entry_point()
   {
     // do not confuse with C's "int main()"
-    return ID__start;
+    return CPROVER_PREFIX "_start";
   }
-  
-  inline void swap(goto_functions_templatet &other)
+
+  void swap(goto_functions_templatet &other)
   {
     function_map.swap(other.function_map);
   }
-  
+
   void copy_from(const goto_functions_templatet &other)
   {
-    for(typename function_mapt::const_iterator
-        f_it=other.function_map.begin();
-        f_it!=other.function_map.end();
-        f_it++)
-      function_map[f_it->first].copy_from(f_it->second);
+    for(const auto &fun : other.function_map)
+      function_map[fun.first].copy_from(fun.second);
   }
-
 };
 
 /*******************************************************************\
@@ -156,21 +154,18 @@ Function: goto_functions_templatet::output
 template <class bodyT>
 void goto_functions_templatet<bodyT>::output(
   const namespacet &ns,
-  std::ostream& out) const
+  std::ostream &out) const
 {
-  for(typename function_mapt::const_iterator
-      it=function_map.begin();
-      it!=function_map.end();
-      it++)
+  for(const auto &fun : function_map)
   {
-    if(it->second.body_available())
+    if(fun.second.body_available())
     {
       out << "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n\n";
-      
-      const symbolt &symbol=ns.lookup(it->first);
+
+      const symbolt &symbol=ns.lookup(fun.first);
       out << symbol.display_name() << " /* " << symbol.name << " */\n";
-      it->second.body.output(ns, symbol.name, out);
-      
+      fun.second.body.output(ns, symbol.name, out);
+
       out << std::flush;
     }
   }
@@ -265,5 +260,5 @@ void goto_functions_templatet<bodyT>::compute_loop_numbers()
       it++)
     it->second.body.compute_loop_numbers();
 }
-  
-#endif
+
+#endif // CPROVER_GOTO_PROGRAMS_GOTO_FUNCTIONS_TEMPLATE_H

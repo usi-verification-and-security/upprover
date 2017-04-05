@@ -1,20 +1,28 @@
-#ifndef CONE_OF_INFLUENCE_H
-#define CONE_OF_INFLUENCE_H
+/*******************************************************************\
+
+Module: Loop Acceleration
+
+Author: Matt Lewis
+
+\*******************************************************************/
+
+#ifndef CPROVER_GOTO_INSTRUMENT_ACCELERATE_CONE_OF_INFLUENCE_H
+#define CPROVER_GOTO_INSTRUMENT_ACCELERATE_CONE_OF_INFLUENCE_H
 
 #include <goto-programs/goto_program.h>
 
 #include <util/std_expr.h>
 #include <util/ref_expr_set.h>
-#include <util/hash_cont.h>
 #include <util/symbol_table.h>
 
-typedef hash_set_cont<exprt, irep_hash> expr_sett;
+typedef std::unordered_set<exprt, irep_hash> expr_sett;
 
 void cone_of_influence(goto_programt &program,
     expr_sett &targets,
     expr_sett &cone);
 
-class cone_of_influencet {
+class cone_of_influencet
+{
  public:
   cone_of_influencet(const goto_programt &_program,
       const symbol_tablet &symbol_table) :
@@ -34,11 +42,11 @@ class cone_of_influencet {
       expr_sett &targets);
   void gather_rvalues(const exprt &expr, expr_sett &rvals);
 
-  typedef hash_map_cont<unsigned int, expr_sett> cone_mapt;
+  typedef std::unordered_map<unsigned int, expr_sett> cone_mapt;
   cone_mapt cone_map;
 
   const goto_programt &program;
   const namespacet ns;
 };
 
-#endif // CONE_OF_INFLUENCE_H
+#endif // CPROVER_GOTO_INSTRUMENT_ACCELERATE_CONE_OF_INFLUENCE_H

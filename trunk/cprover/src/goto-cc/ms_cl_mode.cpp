@@ -6,12 +6,21 @@ Author: CM Wintersteiger, 2006
 
 \*******************************************************************/
 
+#ifdef _WIN32
+#define EX_OK 0
+#define EX_USAGE 64
+#define EX_SOFTWARE 70
+#else
+#include <sysexits.h>
+#endif
+
 #include <iostream>
 
 #include <util/string2int.h>
 #include <util/message.h>
 #include <util/prefix.h>
 #include <util/config.h>
+#include <util/get_base_name.h>
 
 #include <cbmc/version.h>
 
@@ -32,26 +41,27 @@ Function: ms_cl_modet::doit
 
 static bool is_directory(const std::string &s)
 {
-  if(s.size()<1) return false;
+  if(s.empty())
+    return false;
   char last_char=s[s.size()-1];
   // Visual CL recognizes both
   return last_char=='\\' || last_char=='/';
 }
 
-bool ms_cl_modet::doit()
+int ms_cl_modet::doit()
 {
-  if(cmdline.isset('?') || 
+  if(cmdline.isset('?') ||
      cmdline.isset("help"))
   {
     help();
-    return false;
+    return EX_OK;
   }
 
   unsigned int verbosity=1;
 
   compilet compiler(cmdline);
 
-  #if 0  
+  #if 0
   bool act_as_ld=
     has_prefix(base_name, "link") ||
     has_prefix(base_name, "goto-link");
@@ -60,17 +70,17 @@ bool ms_cl_modet::doit()
   if(cmdline.isset("verbosity"))
     verbosity=unsafe_string2unsigned(cmdline.get_value("verbosity"));
 
-  compiler.ui_message_handler.set_verbosity(verbosity);
-  ui_message_handler.set_verbosity(verbosity);
+  compiler.set_message_handler(get_message_handler());
+  message_handler.set_verbosity(verbosity);
 
   debug() << "Visual Studio mode" << eom;
-  
+
   // get configuration
   config.set(cmdline);
 
-  config.ansi_c.mode=configt::ansi_ct::flavourt::MODE_VISUAL_STUDIO_C_CPP;
+  config.ansi_c.mode=configt::ansi_ct::flavourt::VISUAL_STUDIO;
   compiler.object_file_extension="obj";
-  
+
   // determine actions to be undertaken
 
   if(cmdline.isset('E') || cmdline.isset('P'))
@@ -79,7 +89,7 @@ bool ms_cl_modet::doit()
     compiler.mode=compilet::COMPILE_ONLY;
   else
     compiler.mode=compilet::COMPILE_LINK_EXECUTABLE;
-                     
+
   compiler.echo_file_name=true;
 
   if(cmdline.isset("Fo"))
@@ -87,11 +97,10 @@ bool ms_cl_modet::doit()
     compiler.output_file_object=cmdline.get_value("Fo");
 
     // this could be a directory
-    if(is_directory(compiler.output_file_object))
-    {
-      if(cmdline.args.size()>=1)
-        compiler.output_file_object+=get_base_name(cmdline.args[0])+".obj";
-    }
+    if(is_directory(compiler.output_file_object) &&
+       cmdline.args.size()>=1)
+      compiler.output_file_object+=
+        get_base_name(cmdline.args[0], true)+".obj";
   }
 
   if(cmdline.isset("Fe"))
@@ -99,20 +108,20 @@ bool ms_cl_modet::doit()
     compiler.output_file_executable=cmdline.get_value("Fe");
 
     // this could be a directory
-    if(is_directory(compiler.output_file_executable))
-    {
-      if(cmdline.args.size()>=1)
-        compiler.output_file_executable+=get_base_name(cmdline.args[0])+".exe";
-    }
+    if(is_directory(compiler.output_file_executable) &&
+       cmdline.args.size()>=1)
+      compiler.output_file_executable+=
+        get_base_name(cmdline.args[0], true)+".exe";
   }
   else
   {
     // We need at least one argument.
     // CL uses the first file name it gets!
     if(cmdline.args.size()>=1)
-      compiler.output_file_executable=get_base_name(cmdline.args[0])+".exe";
+      compiler.output_file_executable=
+        get_base_name(cmdline.args[0], true)+".exe";
   }
-  
+
   if(cmdline.isset('J'))
     config.ansi_c.char_is_unsigned=true;
 
@@ -160,12 +169,14 @@ bool ms_cl_modet::doit()
       std::cout << "  " << (*it) << std::endl;
     }
 
-    std::cout << "Output file (object): " << compiler.output_file_object << std::endl;
-    std::cout << "Output file (executable): " << compiler.output_file_executable << std::endl;
+    std::cout << "Output file (object): "
+              << compiler.output_file_object << std::endl;
+    std::cout << "Output file (executable): "
+              << compiler.output_file_executable << std::endl;
   }
 
   // Parse input program, convert to goto program, write output
-  return compiler.doit();
+  return compiler.doit() ? EX_USAGE : EX_OK;
 }
 
 /*******************************************************************\
@@ -184,5 +195,3 @@ void ms_cl_modet::help_mode()
 {
   std::cout << "goto-cl understands the options of CL plus the following.\n\n";
 }
-
-

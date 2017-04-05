@@ -57,6 +57,7 @@ if
 symbol
 next_symbol
 nondet_symbol
+predicate
 predicate_symbol
 predicate_next_symbol
 nondet_bool
@@ -197,7 +198,7 @@ false
 address_of
 dereference
 C_lvalue #lvalue
-C_cformat #cformat
+C_base #base
 destination
 main
 expression
@@ -209,6 +210,7 @@ cpp_new_array cpp_new[]
 cpp_delete_array cpp_delete[]
 java_new
 java_new_array
+java_string_literal
 printf
 input
 output
@@ -249,6 +251,7 @@ concatenation
 infinity
 return_type
 typedef
+C_typedef #typedef
 extern
 static
 auto
@@ -389,7 +392,6 @@ C_volatile #volatile
 C_restricted #restricted
 C_identifier #identifier
 C_implicit #implicit
-C_qualifier #qualifier
 C_ptr32 #ptr32
 C_ptr64 #ptr64
 C_atomic #atomic
@@ -419,6 +421,7 @@ bp_schoose
 bp_dead
 instance
 cover
+coverage_criterion
 initializer
 anonymous
 C_is_anonymous #is_anonymous
@@ -527,7 +530,6 @@ explicit
 storage_spec
 member_spec
 msc_declspec
-gcc_attribute
 packed
 C_packed #packed
 transparent_union
@@ -680,7 +682,6 @@ read
 write
 native
 final
-_start
 compound_literal
 custom_bv
 custom_unsignedbv
@@ -692,6 +693,7 @@ C_full_identifier #full_identifier
 L0
 L1
 L2
+L1_object_identifier
 already_typechecked
 C_va_arg_type #va_arg_type
 smt2_symbol
@@ -715,3 +717,88 @@ noreturn
 C_noreturn #noreturn
 process
 signal
+weak
+is_weak
+C_spec_loop_invariant #spec_loop_invariant
+C_spec_requires #spec_requires
+C_spec_ensures #spec_ensures
+virtual_function
+C_element_type #element_type
+working_directory
+section
+msb
+lsb
+verilog_signed_vector
+verilog_unsigned_vector
+verilog_array
+low
+high
+bswap
+java_bytecode_index
+java_instanceof
+java_super_method_call
+java_enum_static_unwind
+push_catch
+string_constraint
+string_not_contains_constraint
+cprover_char_literal_func
+cprover_string_literal_func
+cprover_string_char_at_func
+cprover_string_char_set_func
+cprover_string_code_point_at_func
+cprover_string_code_point_before_func
+cprover_string_code_point_count_func
+cprover_string_offset_by_code_point_func
+cprover_string_compare_to_func
+cprover_string_concat_func
+cprover_string_concat_int_func
+cprover_string_concat_long_func
+cprover_string_concat_char_func
+cprover_string_concat_bool_func
+cprover_string_concat_double_func
+cprover_string_concat_float_func
+cprover_string_concat_code_point_func
+cprover_string_contains_func
+cprover_string_copy_func
+cprover_string_delete_func
+cprover_string_delete_char_at_func
+cprover_string_equal_func
+cprover_string_equals_ignore_case_func
+cprover_string_empty_string_func
+cprover_string_endswith_func
+cprover_string_format_func
+cprover_string_hash_code_func
+cprover_string_index_of_func
+cprover_string_intern_func
+cprover_string_insert_func
+cprover_string_insert_int_func
+cprover_string_insert_long_func
+cprover_string_insert_bool_func
+cprover_string_insert_char_func
+cprover_string_insert_float_func
+cprover_string_insert_double_func
+cprover_string_insert_char_array_func
+cprover_string_is_prefix_func
+cprover_string_is_suffix_func
+cprover_string_is_empty_func
+cprover_string_last_index_of_func
+cprover_string_length_func
+cprover_string_data_func
+cprover_string_of_int_func
+cprover_string_of_int_hex_func
+cprover_string_of_long_func
+cprover_string_of_bool_func
+cprover_string_of_float_func
+cprover_string_of_double_func
+cprover_string_of_char_func
+cprover_string_of_char_array_func
+cprover_string_parse_int_func
+cprover_string_replace_func
+cprover_string_set_length_func
+cprover_string_startswith_func
+cprover_string_substring_func
+cprover_string_to_char_array_func
+cprover_string_to_lower_case_func
+cprover_string_to_upper_case_func
+cprover_string_trim_func
+cprover_string_value_of_func

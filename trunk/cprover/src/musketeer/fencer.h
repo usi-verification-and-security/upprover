@@ -6,8 +6,8 @@ Author: Vincent Nimal
 
 \*******************************************************************/
 
-#ifndef CPROVER_FENCER_H
-#define CPROVER_FENCER_H
+#ifndef CPROVER_MUSKETEER_FENCER_H
+#define CPROVER_MUSKETEER_FENCER_H
 
 #include <goto-instrument/wmm/wmm.h>
 #include <goto-instrument/wmm/weak_memory.h>
@@ -39,7 +39,7 @@ void fence_weak_memory(
   bool hide_internals,
   bool print_graph,
   infer_modet mode,
-  message_handlert& message_handler,
+  message_handlert &message_handler,
   bool ignore_arrays);
 
-#endif
+#endif // CPROVER_MUSKETEER_FENCER_H

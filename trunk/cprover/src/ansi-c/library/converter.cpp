@@ -1,3 +1,11 @@
+/*******************************************************************\
+
+Module:
+
+Author: Daniel Kroening, kroening@kroening.com
+
+\*******************************************************************/
+
 #include <iostream>
 #include <string>
 
@@ -10,26 +18,31 @@ int main()
 {
   std::string line;
   bool first=true;
-  
+
   std::cout << "{\n";
 
   while(getline(std::cin, line))
   {
     if(has_prefix(line, "/* FUNCTION: "))
     {
-      if(first) first=false; else std::cout << "},\n";
-    
+      if(first)
+        first=false;
+      else
+        std::cout << "},\n";
+
       std::string function=std::string(line, 13, std::string::npos);
       std::size_t pos=function.find(' ');
-      if(pos!=std::string::npos) function=std::string(function, 0, pos);
+      if(pos!=std::string::npos)
+        function=std::string(function, 0, pos);
 
       std::cout << "{ \"" << function << "\",\n";
-      std::cout << "  \"#line 1 \\\"<builtin-library-" << function << ">\\\"\\n\"\n";
+      std::cout << "  \"#line 1 \\\"<builtin-library-"
+                << function << ">\\\"\\n\"\n";
     }
     else if(!first)
     {
       std::cout << "  \"";
-      
+
       for(unsigned i=0; i<line.size(); i++)
       {
         const char ch=line[i];
@@ -43,14 +56,15 @@ int main()
         else
           std::cout << ch;
       }
-      
+
       std::cout << "\\n\"" << std::endl;
     }
   }
-  
-  if(!first) std::cout << "},\n";
 
-  std::cout << 
+  if(!first)
+    std::cout << "},\n";
+
+  std::cout <<
     "{ 0, 0 }\n"
     "}";
 }

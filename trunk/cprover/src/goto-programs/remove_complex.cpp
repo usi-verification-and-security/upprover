@@ -8,12 +8,9 @@ Date:   September 2014
 
 \*******************************************************************/
 
-#include <util/expr_util.h>
+#include <util/arith_tools.h>
 
 #include "remove_complex.h"
-
-void remove_complex(typet &);
-void remove_complex(exprt &);
 
 /*******************************************************************\
 
@@ -23,11 +20,11 @@ Inputs:
 
 Outputs:
 
-Purpose: 
+Purpose:
 
 \*******************************************************************/
 
-exprt complex_member(const exprt &expr, irep_idt id)
+static exprt complex_member(const exprt &expr, irep_idt id)
 {
   if(expr.id()==ID_struct && expr.operands().size()==2)
   {
@@ -50,6 +47,90 @@ exprt complex_member(const exprt &expr, irep_idt id)
 
 /*******************************************************************\
 
+Function: have_to_remove_complex
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+static bool have_to_remove_complex(const typet &type);
+
+static bool have_to_remove_complex(const exprt &expr)
+{
+  if(expr.id()==ID_typecast &&
+     to_typecast_expr(expr).op().type().id()==ID_complex &&
+     expr.type().id()!=ID_complex)
+    return true;
+
+  if(expr.type().id()==ID_complex)
+  {
+    if(expr.id()==ID_plus || expr.id()==ID_minus ||
+       expr.id()==ID_mult || expr.id()==ID_div)
+      return true;
+    else if(expr.id()==ID_unary_minus)
+      return true;
+    else if(expr.id()==ID_complex)
+      return true;
+    else if(expr.id()==ID_typecast)
+      return true;
+  }
+
+  if(expr.id()==ID_complex_real)
+    return true;
+  else if(expr.id()==ID_complex_imag)
+    return true;
+
+  if(have_to_remove_complex(expr.type()))
+     return true;
+
+  forall_operands(it, expr)
+    if(have_to_remove_complex(*it))
+      return true;
+
+  return false;
+}
+
+/*******************************************************************\
+
+Function: have_to_remove_complex
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+static bool have_to_remove_complex(const typet &type)
+{
+  if(type.id()==ID_struct || type.id()==ID_union)
+  {
+    const struct_union_typet &struct_union_type=
+      to_struct_union_type(type);
+    for(struct_union_typet::componentst::const_iterator
+        it=struct_union_type.components().begin();
+        it!=struct_union_type.components().end();
+        it++)
+      if(have_to_remove_complex(it->type()))
+        return true;
+  }
+  else if(type.id()==ID_pointer ||
+          type.id()==ID_vector ||
+          type.id()==ID_array)
+    return have_to_remove_complex(type.subtype());
+  else if(type.id()==ID_complex)
+    return true;
+
+  return false;
+}
+
+/*******************************************************************\
+
 Function: remove_complex
 
 Inputs:
@@ -60,8 +141,13 @@ Purpose: removes complex data type
 
 \*******************************************************************/
 
-void remove_complex(exprt &expr)
+static void remove_complex(typet &);
+
+static void remove_complex(exprt &expr)
 {
+  if(!have_to_remove_complex(expr))
+    return;
+
   if(expr.id()==ID_typecast)
   {
     assert(expr.operands().size()==1);
@@ -101,13 +187,13 @@ void remove_complex(exprt &expr)
                      complex_member(expr.op1(), ID_real));
 
       struct_expr.op0().add_source_location()=expr.source_location();
-      
+
       struct_expr.op1()=
         binary_exprt(complex_member(expr.op0(), ID_imag), expr.id(),
-                     complex_member(expr.op1(), ID_imag));      
+                     complex_member(expr.op1(), ID_imag));
 
       struct_expr.op1().add_source_location()=expr.source_location();
-      
+
       expr=struct_expr;
     }
     else if(expr.id()==ID_unary_minus)
@@ -122,12 +208,12 @@ void remove_complex(exprt &expr)
         unary_minus_exprt(complex_member(expr.op0(), ID_real));
 
       struct_expr.op0().add_source_location()=expr.source_location();
-      
+
       struct_expr.op1()=
         unary_minus_exprt(complex_member(expr.op0(), ID_imag));
 
       struct_expr.op1().add_source_location()=expr.source_location();
-      
+
       expr=struct_expr;
     }
     else if(expr.id()==ID_complex)
@@ -151,13 +237,13 @@ void remove_complex(exprt &expr)
           typecast_exprt(complex_member(expr.op0(), ID_real), subtype);
 
         struct_expr.op0().add_source_location()=expr.source_location();
-        
+
         struct_expr.op1()=
           typecast_exprt(complex_member(expr.op0(), ID_imag), subtype);
 
         struct_expr.op1().add_source_location()=expr.source_location();
-        
-        expr=struct_expr;        
+
+        expr=struct_expr;
       }
       else
       {
@@ -166,9 +252,9 @@ void remove_complex(exprt &expr)
         struct_expr.operands().resize(2);
 
         struct_expr.op0()=typecast_exprt(expr.op0(), subtype);
-        struct_expr.op1()=gen_zero(subtype);
+        struct_expr.op1()=from_integer(0, subtype);
         struct_expr.add_source_location()=expr.source_location();
-        
+
         expr=struct_expr;
       }
     }
@@ -200,8 +286,11 @@ Purpose: removes complex data type
 
 \*******************************************************************/
 
-void remove_complex(typet &type)
+static void remove_complex(typet &type)
 {
+  if(!have_to_remove_complex(type))
+    return;
+
   if(type.id()==ID_struct || type.id()==ID_union)
   {
     struct_union_typet &struct_union_type=
@@ -223,7 +312,7 @@ void remove_complex(typet &type)
   else if(type.id()==ID_complex)
   {
     remove_complex(type.subtype());
-    
+
     // Replace by a struct with two members.
     // The real part goes first.
     struct_typet struct_type;
@@ -232,8 +321,8 @@ void remove_complex(typet &type)
     struct_type.components()[0].type()=type.subtype();
     struct_type.components()[0].set_name(ID_real);
     struct_type.components()[1].type()=type.subtype();
-    struct_type.components()[1].set_name(ID_imag);    
-    
+    struct_type.components()[1].set_name(ID_imag);
+
     type=struct_type;
   }
 }
@@ -250,7 +339,7 @@ Purpose: removes complex data type
 
 \*******************************************************************/
 
-void remove_complex(symbolt &symbol)
+static void remove_complex(symbolt &symbol)
 {
   remove_complex(symbol.value);
   remove_complex(symbol.type);
@@ -286,7 +375,8 @@ Purpose: removes complex data type
 
 \*******************************************************************/
 
-void remove_complex(goto_functionst::goto_functiont &goto_function)
+static void remove_complex(
+  goto_functionst::goto_functiont &goto_function)
 {
   remove_complex(goto_function.type);
 
@@ -309,7 +399,7 @@ Purpose: removes complex data type
 
 \*******************************************************************/
 
-void remove_complex(goto_functionst &goto_functions)
+static void remove_complex(goto_functionst &goto_functions)
 {
   Forall_goto_functions(it, goto_functions)
     remove_complex(it->second);
@@ -351,4 +441,3 @@ void remove_complex(goto_modelt &goto_model)
 {
   remove_complex(goto_model.symbol_table, goto_model.goto_functions);
 }
-

@@ -6,12 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-//#define DEBUG
-
 #ifdef DEBUG
 #include <iostream>
 #endif
 
+#include <util/simplify_expr.h>
 #include <util/std_expr.h>
 #include <util/arith_tools.h>
 
@@ -30,30 +29,37 @@ Function: interval_domaint::output
 \*******************************************************************/
 
 void interval_domaint::output(
-  const namespacet &ns,
-  std::ostream &out) const
+  std::ostream &out,
+  const ai_baset &ai,
+  const namespacet &ns) const
 {
-  for(int_mapt::const_iterator
-      i_it=int_map.begin(); i_it!=int_map.end(); i_it++)
+  if(bottom)
   {
-    if(i_it->second.is_top()) continue;
-    if(i_it->second.lower_set)
-      out << i_it->second.lower << " <= ";
-    out << i_it->first;
-    if(i_it->second.upper_set)
-      out << " <= " << i_it->second.lower;
+    out << "BOTTOM\n";
+    return;
+  }
+
+  for(const auto &interval : int_map)
+  {
+    if(interval.second.is_top())
+      continue;
+    if(interval.second.lower_set)
+      out << interval.second.lower << " <= ";
+    out << interval.first;
+    if(interval.second.upper_set)
+      out << " <= " << interval.second.upper;
     out << "\n";
   }
 
-  for(float_mapt::const_iterator
-      i_it=float_map.begin(); i_it!=float_map.end(); i_it++)
+  for(const auto &interval : float_map)
   {
-    if(i_it->second.is_top()) continue;
-    if(i_it->second.lower_set)
-      out << i_it->second.lower << " <= ";
-    out << i_it->first;
-    if(i_it->second.upper_set)
-      out << " <= " << i_it->second.lower;
+    if(interval.second.is_top())
+      continue;
+    if(interval.second.lower_set)
+      out << interval.second.lower << " <= ";
+    out << interval.first;
+    if(interval.second.upper_set)
+      out << " <= " << interval.second.upper;
     out << "\n";
   }
 }
@@ -71,9 +77,10 @@ Function: interval_domaint::transform
 \*******************************************************************/
 
 void interval_domaint::transform(
-  const namespacet &ns,
   locationt from,
-  locationt to)
+  locationt to,
+  ai_baset &ai,
+  const namespacet &ns)
 {
   const goto_programt::instructiont &instruction=*from;
   switch(instruction.type)
@@ -81,30 +88,30 @@ void interval_domaint::transform(
   case DECL:
     havoc_rec(to_code_decl(instruction.code).symbol());
     break;
-    
+
   case DEAD:
     havoc_rec(to_code_dead(instruction.code).symbol());
     break;
-  
+
   case ASSIGN:
     assign(to_code_assign(instruction.code));
     break;
-  
+
   case GOTO:
     {
       locationt next=from;
       next++;
       if(next==to)
-        assume_rec(not_exprt(instruction.guard));
+        assume(not_exprt(instruction.guard), ns);
       else
-        assume_rec(instruction.guard);
+        assume(instruction.guard, ns);
     }
     break;
-  
+
   case ASSUME:
-    assume_rec(instruction.guard);
+    assume(instruction.guard, ns);
     break;
-  
+
   case FUNCTION_CALL:
     {
       const code_function_callt &code_function_call=
@@ -113,8 +120,10 @@ void interval_domaint::transform(
         havoc_rec(code_function_call.lhs());
     }
     break;
-  
-  default:;
+
+  default:
+    {
+    }
   }
 }
 
@@ -130,30 +139,39 @@ Function: interval_domaint::merge
 
 \*******************************************************************/
 
-bool interval_domaint::merge(const interval_domaint &b, locationt to)
+bool interval_domaint::merge(
+  const interval_domaint &b,
+  locationt from,
+  locationt to)
 {
-  if(!b.seen) return false;
-  if(!seen) { *this=b; return true; }
+  if(b.bottom)
+    return false;
+  if(bottom)
+  {
+    *this=b;
+    return true;
+  }
 
   bool result=false;
-  
+
   for(int_mapt::iterator it=int_map.begin();
       it!=int_map.end(); ) // no it++
   {
-    const int_mapt::const_iterator b_it=b.int_map.begin();
+    //search for the variable that needs to be merged
+    //containers have different size and variable order
+    const int_mapt::const_iterator b_it=b.int_map.find(it->first);
     if(b_it==b.int_map.end())
     {
-      int_mapt::iterator next=it;
-      next++; // will go away with C++11, as erase() returns next
-      int_map.erase(it);
-      it=next;
+      it=int_map.erase(it);
       result=true;
     }
     else
     {
-      if(it->second.join(b_it->second))
+      integer_intervalt previous=it->second;
+      it->second.join(b_it->second);
+      if(it->second!=previous)
         result=true;
-        
+
       it++;
     }
   }
@@ -164,17 +182,16 @@ bool interval_domaint::merge(const interval_domaint &b, locationt to)
     const float_mapt::const_iterator b_it=b.float_map.begin();
     if(b_it==b.float_map.end())
     {
-      float_mapt::iterator next=it;
-      next++; // will go away with C++11, as erase() returns next
-      float_map.erase(it);
-      it=next;
+      it=float_map.erase(it);
       result=true;
     }
     else
     {
-      if(it->second.join(b_it->second))
+      ieee_float_intervalt previous=it->second;
+      it->second.join(b_it->second);
+      if(it->second!=previous)
         result=true;
-        
+
       it++;
     }
   }
@@ -261,71 +278,92 @@ void interval_domaint::assume_rec(
     assume_rec(lhs, ID_le, rhs);
     return;
   }
-  
+
+  if(id==ID_notequal)
+    return; // won't do split
+
   if(id==ID_ge)
-    return assume_rec(rhs, ID_le, lhs);    
-    
+    return assume_rec(rhs, ID_le, lhs);
+
   if(id==ID_gt)
-    return assume_rec(rhs, ID_lt, lhs);    
-    
+    return assume_rec(rhs, ID_lt, lhs);
+
   // we now have lhs <  rhs or
   //             lhs <= rhs
 
   assert(id==ID_lt || id==ID_le);
 
-  #ifdef DEBUG  
-  std::cout << "assume_rec: " 
+  #ifdef DEBUG
+  std::cout << "assume_rec: "
             << from_expr(lhs) << " " << id << " "
             << from_expr(rhs) << "\n";
   #endif
-  
+
   if(lhs.id()==ID_symbol && rhs.id()==ID_constant)
   {
     irep_idt lhs_identifier=to_symbol_expr(lhs).get_identifier();
-    
+
     if(is_int(lhs.type()) && is_int(rhs.type()))
     {
       mp_integer tmp;
       to_integer(rhs, tmp);
-      if(id==ID_lt) --tmp;
-      int_map[lhs_identifier].make_le_than(tmp);
+      if(id==ID_lt)
+        --tmp;
+      integer_intervalt &ii=int_map[lhs_identifier];
+      ii.make_le_than(tmp);
+      if(ii.is_bottom())
+        make_bottom();
     }
     else if(is_float(lhs.type()) && is_float(rhs.type()))
     {
       ieee_floatt tmp(to_constant_expr(rhs));
-      if(id==ID_lt) tmp.decrement();
-      float_map[lhs_identifier].make_le_than(tmp);
+      if(id==ID_lt)
+        tmp.decrement();
+      ieee_float_intervalt &fi=float_map[lhs_identifier];
+      fi.make_le_than(tmp);
+      if(fi.is_bottom())
+        make_bottom();
     }
   }
   else if(lhs.id()==ID_constant && rhs.id()==ID_symbol)
   {
     irep_idt rhs_identifier=to_symbol_expr(rhs).get_identifier();
-    
+
     if(is_int(lhs.type()) && is_int(rhs.type()))
     {
       mp_integer tmp;
       to_integer(lhs, tmp);
-      if(id==ID_lt) ++tmp;
-      int_map[rhs_identifier].make_ge_than(tmp);
+      if(id==ID_lt)
+        ++tmp;
+      integer_intervalt &ii=int_map[rhs_identifier];
+      ii.make_ge_than(tmp);
+      if(ii.is_bottom())
+        make_bottom();
     }
     else if(is_float(lhs.type()) && is_float(rhs.type()))
     {
       ieee_floatt tmp(to_constant_expr(lhs));
-      if(id==ID_lt) tmp.increment();
-      float_map[rhs_identifier].make_ge_than(tmp);
+      if(id==ID_lt)
+        tmp.increment();
+      ieee_float_intervalt &fi=float_map[rhs_identifier];
+      fi.make_ge_than(tmp);
+      if(fi.is_bottom())
+        make_bottom();
     }
   }
   else if(lhs.id()==ID_symbol && rhs.id()==ID_symbol)
   {
     irep_idt lhs_identifier=to_symbol_expr(lhs).get_identifier();
     irep_idt rhs_identifier=to_symbol_expr(rhs).get_identifier();
-    
+
     if(is_int(lhs.type()) && is_int(rhs.type()))
     {
       integer_intervalt &lhs_i=int_map[lhs_identifier];
       integer_intervalt &rhs_i=int_map[rhs_identifier];
       lhs_i.meet(rhs_i);
       rhs_i=lhs_i;
+      if(rhs_i.is_bottom())
+        make_bottom();
     }
     else if(is_float(lhs.type()) && is_float(rhs.type()))
     {
@@ -333,6 +371,8 @@ void interval_domaint::assume_rec(
       ieee_float_intervalt &rhs_i=float_map[rhs_identifier];
       lhs_i.meet(rhs_i);
       rhs_i=lhs_i;
+      if(rhs_i.is_bottom())
+        make_bottom();
     }
   }
 }
@@ -349,7 +389,28 @@ Function: interval_domaint::assume_rec
 
 \*******************************************************************/
 
-void interval_domaint::assume_rec(const exprt &cond, bool negation)
+void interval_domaint::assume(
+  const exprt &cond,
+  const namespacet &ns)
+{
+  assume_rec(simplify_expr(cond, ns), false);
+}
+
+/*******************************************************************\
+
+Function: interval_domaint::assume_rec
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void interval_domaint::assume_rec(
+  const exprt &cond,
+  bool negation)
 {
   if(cond.id()==ID_lt || cond.id()==ID_le ||
      cond.id()==ID_gt || cond.id()==ID_ge ||
@@ -410,49 +471,57 @@ exprt interval_domaint::make_expression(const symbol_exprt &src) const
   if(is_int(src.type()))
   {
     int_mapt::const_iterator i_it=int_map.find(src.get_identifier());
-    if(i_it==int_map.end()) return true_exprt();
+    if(i_it==int_map.end())
+      return true_exprt();
+
     const integer_intervalt &interval=i_it->second;
-    if(interval.is_top()) return true_exprt();
-    if(interval.is_bottom()) return false_exprt();
+    if(interval.is_top())
+      return true_exprt();
+    if(interval.is_bottom())
+      return false_exprt();
 
     exprt::operandst conjuncts;
 
-    if(interval.upper_set) 
+    if(interval.upper_set)
     {
       exprt tmp=from_integer(interval.upper, src.type());
       conjuncts.push_back(binary_relation_exprt(src, ID_le, tmp));
     }
 
-    if(interval.lower_set) 
+    if(interval.lower_set)
     {
       exprt tmp=from_integer(interval.lower, src.type());
       conjuncts.push_back(binary_relation_exprt(tmp, ID_le, src));
     }
-  
+
     return conjunction(conjuncts);
   }
   else if(is_float(src.type()))
   {
     float_mapt::const_iterator i_it=float_map.find(src.get_identifier());
-    if(i_it==float_map.end()) return true_exprt();
+    if(i_it==float_map.end())
+      return true_exprt();
+
     const ieee_float_intervalt &interval=i_it->second;
-    if(interval.is_top()) return true_exprt();
-    if(interval.is_bottom()) return false_exprt();
+    if(interval.is_top())
+      return true_exprt();
+    if(interval.is_bottom())
+      return false_exprt();
 
     exprt::operandst conjuncts;
 
-    if(interval.upper_set) 
+    if(interval.upper_set)
     {
       exprt tmp=interval.upper.to_expr();
       conjuncts.push_back(binary_relation_exprt(src, ID_le, tmp));
     }
 
-    if(interval.lower_set) 
+    if(interval.lower_set)
     {
       exprt tmp=interval.lower.to_expr();
       conjuncts.push_back(binary_relation_exprt(tmp, ID_le, src));
     }
-  
+
     return conjunction(conjuncts);
   }
   else

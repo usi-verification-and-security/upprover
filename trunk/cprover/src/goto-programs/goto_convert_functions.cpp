@@ -17,7 +17,6 @@ Date: June 2003
 
 #include "goto_convert_functions.h"
 #include "goto_inline.h"
-#include "remove_skip.h"
 
 /*******************************************************************\
 
@@ -39,7 +38,7 @@ goto_convert_functionst::goto_convert_functionst(
   functions(_functions)
 {
 }
-  
+
 /*******************************************************************\
 
 Function: goto_convert_functionst::~goto_convert_functionst
@@ -78,21 +77,20 @@ void goto_convert_functionst::goto_convert()
   forall_symbols(it, symbol_table.symbols)
   {
     if(!it->second.is_type &&
+       !it->second.is_macro &&
        it->second.type.id()==ID_code &&
        (it->second.mode==ID_C ||
         it->second.mode==ID_cpp ||
-        it->second.mode==ID_java))
+        it->second.mode==ID_java ||
+        it->second.mode=="jsil"))
       symbol_list.push_back(it->first);
   }
-  
-  for(symbol_listt::const_iterator
-      it=symbol_list.begin();
-      it!=symbol_list.end();
-      it++)
+
+  for(const auto &id : symbol_list)
   {
-    convert_function(*it);
+    convert_function(id);
   }
-  
+
   functions.compute_location_numbers();
 
   // this removes the parse tree of the bodies from memory
@@ -121,21 +119,13 @@ Function: goto_convert_functionst::hide
 
 bool goto_convert_functionst::hide(const goto_programt &goto_program)
 {
-  for(goto_programt::instructionst::const_iterator
-      i_it=goto_program.instructions.begin();
-      i_it!=goto_program.instructions.end();
-      i_it++)
+  forall_goto_program_instructions(i_it, goto_program)
   {
-    for(goto_programt::instructiont::labelst::const_iterator
-        l_it=i_it->labels.begin();
-        l_it!=i_it->labels.end();
-        l_it++)
-    {
-      if(*l_it=="__CPROVER_HIDE")
+    for(const auto &label : i_it->labels)
+      if(label=="__CPROVER_HIDE")
         return true;
-    }
   }
-  
+
   return false;
 }
 
@@ -159,7 +149,7 @@ void goto_convert_functionst::add_return(
   if(!f.body.instructions.empty() &&
      f.body.instructions.back().is_return())
     return; // not needed, we have one already
-    
+
   // see if we have an unconditional goto at the end
   if(!f.body.instructions.empty() &&
      f.body.instructions.back().is_goto() &&
@@ -180,7 +170,7 @@ void goto_convert_functionst::add_return(
          last_instruction->guard.is_true())
         return;
 
-      // return?        
+      // return?
       if(last_instruction->is_return())
         return;
 
@@ -193,16 +183,15 @@ void goto_convert_functionst::add_return(
         break; // give up
     }
   }
-  
+
   #endif
+
+  side_effect_expr_nondett rhs(f.type.return_type());
 
   goto_programt::targett t=f.body.add_instruction();
   t->make_return();
-  t->code=code_returnt();
+  t->code=code_returnt(rhs);
   t->source_location=source_location;
-
-  side_effect_expr_nondett rhs(f.type.return_type());
-  t->code.move_to_operands(rhs);
 }
 
 /*******************************************************************\
@@ -221,26 +210,29 @@ void goto_convert_functionst::convert_function(const irep_idt &identifier)
 {
   const symbolt &symbol=ns.lookup(identifier);
   goto_functionst::goto_functiont &f=functions.function_map[identifier];
-  
+
   // make tmp variables local to function
   tmp_symbol_prefix=id2string(symbol.name)+"::$tmp::";
   temporary_counter=0;
-  
+
   f.type=to_code_type(symbol.type);
-  if(f.body_available()) return; // already converted
+  if(f.body_available())
+    return; // already converted
 
   if(symbol.value.is_nil() ||
      symbol.value.id()=="compiled") /* goto_inline may have removed the body */
     return;
-  
+
   if(symbol.value.id()!=ID_code)
   {
-    err_location(symbol.value);
-    throw "got invalid code for function `"+id2string(identifier)+"'";
+    error().source_location=symbol.value.find_source_location();
+    error() << "got invalid code for function `" << identifier << "'"
+            << eom;
+    throw 0;
   }
-  
+
   const codet &code=to_code(symbol.value);
-  
+
   source_locationt end_location;
 
   if(code.get_statement()==ID_block)
@@ -262,11 +254,11 @@ void goto_convert_functionst::convert_function(const irep_idt &identifier)
     f.type.return_type().id()!=ID_destructor;
 
   goto_convert_rec(code, f.body);
-  
+
   // add non-det return value, if needed
   if(targets.has_return_value)
     add_return(f, end_location);
-      
+
   // handle SV-COMP's __VERIFIER_atomic_
   if(!f.body.instructions.empty() &&
       has_prefix(id2string(identifier), "__VERIFIER_atomic_"))
@@ -293,11 +285,6 @@ void goto_convert_functionst::convert_function(const irep_idt &identifier)
   // do function tags
   Forall_goto_program_instructions(i_it, f.body)
     i_it->function=identifier;
-  
-  // remove_skip depends on the target numbers
-  f.body.compute_target_numbers();
-
-  remove_skip(f.body);
 
   f.body.update();
 
@@ -345,31 +332,29 @@ void goto_convert(
 {
   goto_convert_functionst goto_convert_functions(
     symbol_table, functions, message_handler);
-  
+
   try
-  {  
+  {
     goto_convert_functions.goto_convert();
   }
 
   catch(int)
   {
-    goto_convert_functions.error_msg();
+    goto_convert_functions.error();
+    throw 0;
   }
 
   catch(const char *e)
   {
-    goto_convert_functions.str << e;
-    goto_convert_functions.error_msg();
+    goto_convert_functions.error() << e << messaget::eom;
+    throw 0;
   }
 
   catch(const std::string &e)
   {
-    goto_convert_functions.str << e;
-    goto_convert_functions.error_msg();
-  }
-
-  if(goto_convert_functions.get_error_found())
+    goto_convert_functions.error() << e << messaget::eom;
     throw 0;
+  }
 }
 
 /*******************************************************************\
@@ -392,31 +377,27 @@ void goto_convert(
 {
   goto_convert_functionst goto_convert_functions(
     symbol_table, functions, message_handler);
-  
+
   try
-  {  
+  {
     goto_convert_functions.convert_function(identifier);
   }
 
   catch(int)
   {
-    goto_convert_functions.error_msg();
+    goto_convert_functions.error();
+    throw 0;
   }
 
   catch(const char *e)
   {
-    goto_convert_functions.str << e;
-    goto_convert_functions.error_msg(e);
+    goto_convert_functions.error() << e << messaget::eom;
+    throw 0;
   }
 
   catch(const std::string &e)
   {
-    goto_convert_functions.str << e;
-    goto_convert_functions.error_msg(e);
-  }
-
-  if(goto_convert_functions.get_error_found())
+    goto_convert_functions.error() << e << messaget::eom;
     throw 0;
+  }
 }
-
-

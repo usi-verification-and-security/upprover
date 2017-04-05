@@ -1,14 +1,14 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_DANGER_PREPROCESSING_H_
-#define CEGIS_DANGER_PREPROCESSING_H_
+#ifndef CPROVER_CEGIS_DANGER_PREPROCESS_DANGER_PREPROCESSING_H
+#define CPROVER_CEGIS_DANGER_PREPROCESS_DANGER_PREPROCESSING_H
 
 #include <cegis/invariant/constant/constant_strategy.h>
 #include <cegis/danger/options/danger_program.h>
@@ -78,4 +78,4 @@ public:
   const danger_programt &get_danger_program() const;
 };
 
-#endif /* CEGIS_DANGER_PREPROCESSING_H_ */
+#endif // CPROVER_CEGIS_DANGER_PREPROCESS_DANGER_PREPROCESSING_H

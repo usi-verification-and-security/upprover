@@ -8,11 +8,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
-#include <util/i2string.h>
 
 #include "satcheck_booleforce.h"
 
-extern "C" {
+extern "C"
+{
 #include "booleforce.h"
 }
 
@@ -102,7 +102,8 @@ tvt satcheck_booleforce_baset::l_get(literalt a) const
   else
     result=tvt(tvt::tv_enumt::TV_UNKNOWN);
 
-  if(a.sign()) result=!result;
+  if(a.sign())
+    result=!result;
 
   return result;
 }
@@ -139,7 +140,7 @@ Function: satcheck_booleforce_baset::lcnf
 void satcheck_booleforce_baset::lcnf(const bvt &bv)
 {
   bvt tmp;
-  
+
   if(process_clause(bv, tmp))
     return;
 
@@ -148,7 +149,7 @@ void satcheck_booleforce_baset::lcnf(const bvt &bv)
 
   // zero-terminated
   booleforce_add(0);
-  
+
   clause_counter++;
 }
 
@@ -185,7 +186,7 @@ propt::resultt satcheck_booleforce_baset::prop_solve()
 
     default:
       msg="SAT checker failed: unknown result";
-      break;    
+      break;
     }
 
     messaget::status() << msg << messaget::eom;
@@ -202,9 +203,9 @@ propt::resultt satcheck_booleforce_baset::prop_solve()
     status=SAT;
     return P_SATISFIABLE;
   }
-  
+
   status=ERROR;
- 
+
   return P_ERROR;
 }
 

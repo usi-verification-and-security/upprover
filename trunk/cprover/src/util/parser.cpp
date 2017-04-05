@@ -7,7 +7,6 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include "parser.h"
-#include "i2string.h"
 
 #ifdef _WIN32
 int isatty(int f)
@@ -56,8 +55,9 @@ void parsert::parse_error(
   const std::string &before)
 {
   std::string tmp=message;
-  if(before!="") tmp+=" before `"+before+"'";
-  
+  if(before!="")
+    tmp+=" before `"+before+"'";
+
   #if 0
   source_locationt tmp_source_location=source_location;
   tmp_source_location.set_column(column-before.size());
@@ -66,4 +66,3 @@ void parsert::parse_error(
   print(1, tmp, -1, source_location);
   #endif
 }
-

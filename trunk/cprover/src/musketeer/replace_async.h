@@ -8,8 +8,8 @@ Date: December 2013
 
 \*******************************************************************/
 
-#ifndef REPLACE_ASYNC_H
-#define REPLACE_ASYNC_H
+#ifndef CPROVER_MUSKETEER_REPLACE_ASYNC_H
+#define CPROVER_MUSKETEER_REPLACE_ASYNC_H
 
 #include <goto-programs/goto_program.h>
 #include <util/std_code.h>
@@ -23,7 +23,7 @@ void replace_async(
 {
   Forall_goto_functions(f_it, goto_functions)
   {
-    goto_programt& program=f_it->second.body;
+    goto_programt &program=f_it->second.body;
 
     Forall_goto_program_instructions(i_it, program)
     {
@@ -35,19 +35,22 @@ void replace_async(
         if(fct.function().id() == ID_symbol)
         {
           const symbol_exprt &fsym=to_symbol_expr(fct.function());
-           
+
           if(ns.lookup(fsym.get_identifier()).base_name == "pthread_create")
           {
             assert(fct.arguments().size()>=4);
             code_function_callt new_call;
             /* takes the 3rd argument (pointer to the function to call) */
-            const exprt& fct_name=fct.arguments()[2];
+            const exprt &fct_name=fct.arguments()[2];
 
-            if(fct_name.id()==ID_address_of) {
+            if(fct_name.id()==ID_address_of)
+            {
               /* pointer to function */
-              new_call.function()=to_address_of_expr(fct.arguments()[2]).object();
+              new_call.function()=
+                to_address_of_expr(fct.arguments()[2]).object();
             }
-            else {
+            else
+            {
               /* other (e.g. local copy) */
               new_call.function()=fct_name;
             }
@@ -56,11 +59,12 @@ void replace_async(
             /* takes the 4th argument (argument of the function to call) */
             new_call.arguments()[0]=fct.arguments()[3];
 
-            /* __CPROVER_ASYNC labels only evaluated at C parsing time; we 
+            /* __CPROVER_ASYNC labels only evaluated at C parsing time; we
                reproduce here the effects of the evaluation of this label */
             i_it->labels.push_front("__CPROVER_ASYNC_0");
             i_it->clear(START_THREAD);
-            /* CP_AC_0: f(); -> CP_AC_0: start_th; goto 2; 1: f(); end_th; 2: ... */
+            /* CP_AC_0: f(); -> CP_AC_0: start_th; goto 2;
+               1: f(); end_th; 2: ... */
 
             goto_programt::targett goto2=program.insert_after(i_it);
             goto_programt::targett call=program.insert_after(goto2);
@@ -78,4 +82,4 @@ void replace_async(
   }
 }
 
-#endif
+#endif // CPROVER_MUSKETEER_REPLACE_ASYNC_H

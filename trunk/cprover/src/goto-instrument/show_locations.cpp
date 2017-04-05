@@ -9,7 +9,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <iostream>
 
 #include <util/xml.h>
-#include <util/i2string.h>
 #include <util/xml_irep.h>
 
 #include <langapi/language_util.h>
@@ -39,26 +38,27 @@ void show_locations(
       it++)
   {
     const source_locationt &source_location=it->source_location;
-      
+
     switch(ui)
     {
     case ui_message_handlert::XML_UI:
       {
         xmlt xml("program_location");
         xml.new_element("function").data=id2string(function_id);
-        xml.new_element("id").data=i2string(it->location_number);
-        
+        xml.new_element("id").data=std::to_string(it->location_number);
+
         xmlt &l=xml.new_element();
         l.name="location";
-        
+
         l.new_element("line").data=id2string(source_location.get_line());
         l.new_element("file").data=id2string(source_location.get_file());
-        l.new_element("function").data=id2string(source_location.get_function());
-        
+        l.new_element("function").data=
+          id2string(source_location.get_function());
+
         std::cout << xml << std::endl;
       }
       break;
-      
+
     case ui_message_handlert::PLAIN:
       std::cout << function_id << " "
                 << it->location_number << " "

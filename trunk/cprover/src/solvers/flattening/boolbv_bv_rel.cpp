@@ -29,7 +29,7 @@ literalt boolbvt::convert_bv_rel(const exprt &expr)
 {
   const exprt::operandst &operands=expr.operands();
   const irep_idt &rel=expr.id();
-  
+
   if(operands.size()==2)
   {
     const exprt &op0=expr.op0();
@@ -46,8 +46,7 @@ literalt boolbvt::convert_bv_rel(const exprt &expr)
     {
       if(bvtype0==IS_FLOAT)
       {
-        float_utilst float_utils(prop);
-        float_utils.spec=to_floatbv_type(op0.type());
+        float_utilst float_utils(prop, to_floatbv_type(op0.type()));
 
         if(rel==ID_le)
           return float_utils.relation(bv0, float_utilst::LE, bv1);
@@ -75,7 +74,7 @@ literalt boolbvt::convert_bv_rel(const exprt &expr)
         #if 1
 
         return bv_utils.rel(bv0, expr.id(), bv1, rep);
-        
+
         #else
         literalt literal=bv_utils.rel(bv0, expr.id(), bv1, rep);
 
@@ -90,9 +89,9 @@ literalt boolbvt::convert_bv_rel(const exprt &expr)
               prop.l_set_to_true(prop.limplies(equal_lit, literal));
             else
               prop.l_set_to_true(prop.limplies(equal_lit, !literal));
-          }          
+          }
         }
- 
+
         return literal;
         #endif
       }
@@ -102,16 +101,16 @@ literalt boolbvt::convert_bv_rel(const exprt &expr)
       {
         // extract number bits
         bvt extract0, extract1;
-        
+
         extract0.resize(bv0.size()/2);
         extract1.resize(bv1.size()/2);
-        
+
         for(std::size_t i=0; i<extract0.size(); i++)
           extract0[i]=bv0[i*2];
-        
+
         for(std::size_t i=0; i<extract1.size(); i++)
           extract1[i]=bv1[i*2];
-          
+
         bv_utilst::representationt rep=bv_utilst::UNSIGNED;
 
         // now compare
@@ -122,4 +121,3 @@ literalt boolbvt::convert_bv_rel(const exprt &expr)
 
   return SUB::convert_rest(expr);
 }
-

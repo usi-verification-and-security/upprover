@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PROP_MINIMIZE_H
-#define CPROVER_PROP_MINIMIZE_H
+#ifndef CPROVER_SOLVERS_PROP_MINIMIZE_H
+#define CPROVER_SOLVERS_PROP_MINIMIZE_H
 
 #include <map>
 
@@ -27,7 +27,7 @@ Author: Daniel Kroening, kroening@kroening.com
 class prop_minimizet:public messaget
 {
 public:
-  explicit inline prop_minimizet(prop_convt &_prop_conv):
+  explicit prop_minimizet(prop_convt &_prop_conv):
     _number_objectives(0),
     prop_conv(_prop_conv)
   {
@@ -37,23 +37,23 @@ public:
 
   // statistics
 
-  inline std::size_t number_satisfied() const
+  std::size_t number_satisfied() const
   {
     return _number_satisfied;
   }
-  
-  inline unsigned iterations() const
+
+  unsigned iterations() const
   {
     return _iterations;
   }
-  
-  inline std::size_t size() const
+
+  std::size_t size() const
   {
     return _number_objectives;
   }
-  
+
   // managing the objectives
-  
+
   typedef long long signed int weightt;
 
   // adds an objective with given weight
@@ -65,7 +65,7 @@ public:
   {
     literalt condition;
     bool fixed;
-    
+
     explicit objectivet(const literalt _condition):
       condition(_condition), fixed(false)
     {
@@ -84,8 +84,8 @@ protected:
 
   literalt constraint();
   void fix_objectives();
-  
+
   objectivest::reverse_iterator current;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_PROP_MINIMIZE_H

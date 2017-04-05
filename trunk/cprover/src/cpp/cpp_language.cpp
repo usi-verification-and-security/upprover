@@ -12,12 +12,12 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 #include <util/config.h>
 #include <util/replace_symbol.h>
+#include <util/get_base_name.h>
 
 #include <linking/linking.h>
-#include <linking/entry_point.h>
 
+#include <ansi-c/ansi_c_entry_point.h>
 #include <ansi-c/c_preprocess.h>
-#include <ansi-c/trans_unit.h>
 
 #include "cpp_internal_additions.h"
 #include "cpp_language.h"
@@ -41,14 +41,14 @@ Function: cpp_languaget::extensions
 std::set<std::string> cpp_languaget::extensions() const
 {
   std::set<std::string> s;
-  
+
   s.insert("cpp");
   s.insert("CPP");
   s.insert("cc");
   s.insert("c++");
   s.insert("ii");
   s.insert("cxx");
-  
+
   #ifndef _WIN32
   s.insert("C");
   #endif
@@ -70,7 +70,7 @@ Function: cpp_languaget::modules_provided
 
 void cpp_languaget::modules_provided(std::set<std::string> &modules)
 {
-  modules.insert(translation_unit(parse_path));
+  modules.insert(get_base_name(parse_path, true));
 }
 
 /*******************************************************************\
@@ -90,9 +90,6 @@ bool cpp_languaget::preprocess(
   const std::string &path,
   std::ostream &outstream)
 {
-  if(config.ansi_c.mode==configt::ansi_ct::flavourt::MODE_GCC_C)
-    config.ansi_c.mode=configt::ansi_ct::flavourt::MODE_GCC_CPP;
-
   if(path=="")
     return c_preprocess(instream, outstream, get_message_handler());
 
@@ -101,7 +98,7 @@ bool cpp_languaget::preprocess(
   const char *ext=strrchr(path.c_str(), '.');
   if(ext!=NULL && std::string(ext)==".ipp")
   {
-    std::ifstream infile(path.c_str());
+    std::ifstream infile(path);
 
     char ch;
 
@@ -151,33 +148,7 @@ bool cpp_languaget::parse(
   cpp_parser.set_file(path);
   cpp_parser.in=&i_preprocessed;
   cpp_parser.set_message_handler(get_message_handler());
-
-  switch(config.ansi_c.mode)
-  {
-  case configt::ansi_ct::flavourt::MODE_CODEWARRIOR_C_CPP:
-    cpp_parser.mode=ansi_c_parsert::CW;
-    break;
-   
-  case configt::ansi_ct::flavourt::MODE_VISUAL_STUDIO_C_CPP:
-    cpp_parser.mode=ansi_c_parsert::MSC;
-    break;
-    
-  case configt::ansi_ct::flavourt::MODE_ANSI_C_CPP:
-    cpp_parser.mode=ansi_c_parsert::ANSI;
-    break;
-    
-  case configt::ansi_ct::flavourt::MODE_GCC_C:
-  case configt::ansi_ct::flavourt::MODE_GCC_CPP:
-    cpp_parser.mode=ansi_c_parsert::GCC;
-    break;
-    
-  case configt::ansi_ct::flavourt::MODE_ARM_C_CPP:
-    cpp_parser.mode=ansi_c_parsert::ARM;
-    break;
-    
-  default:
-    assert(false);
-  }
+  cpp_parser.mode=config.ansi_c.mode;
 
   bool result=cpp_parser.parse();
 
@@ -206,11 +177,13 @@ bool cpp_languaget::typecheck(
   symbol_tablet &symbol_table,
   const std::string &module)
 {
-  if(module=="") return false;
+  if(module=="")
+    return false;
 
   symbol_tablet new_symbol_table;
 
-  if(cpp_typecheck(cpp_parse_tree, new_symbol_table, module, get_message_handler()))
+  if(cpp_typecheck(
+      cpp_parse_tree, new_symbol_table, module, get_message_handler()))
     return true;
 
   return linking(symbol_table, new_symbol_table, get_message_handler());
@@ -230,7 +203,7 @@ Function: cpp_languaget::final
 
 bool cpp_languaget::final(symbol_tablet &symbol_table)
 {
-  if(entry_point(symbol_table, "main", get_message_handler()))
+  if(ansi_c_entry_point(symbol_table, "main", get_message_handler()))
     return true;
 
   return false;
@@ -312,7 +285,7 @@ void cpp_languaget::show_parse(
     out << "USING ";
     if(cpp_using.get_namespace())
       out << "NAMESPACE ";
-    out << cpp_using.name() << std::endl;
+    out << cpp_using.name().pretty() << std::endl;
     out << std::endl;
   }
   else if(item.is_declaration())
@@ -320,7 +293,7 @@ void cpp_languaget::show_parse(
     item.get_declaration().output(out);
   }
   else
-    out << "UNKNOWN: " << item << std::endl;
+    out << "UNKNOWN: " << item.pretty() << std::endl;
 }
 
 /*******************************************************************\
@@ -441,7 +414,7 @@ bool cpp_languaget::to_expr(
   else
   {
     // TODO
-    //expr.swap(cpp_parser.parse_tree.declarations.front());
+    // expr.swap(cpp_parser.parse_tree.declarations.front());
 
     // typecheck it
     result=cpp_typecheck(expr, get_message_handler(), ns);

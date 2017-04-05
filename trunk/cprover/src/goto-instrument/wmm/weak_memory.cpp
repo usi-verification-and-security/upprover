@@ -20,7 +20,6 @@ Date: September 2011
 
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
-#include <util/i2string.h>
 #include <util/message.h>
 
 #include <goto-programs/remove_skip.h>
@@ -51,7 +50,7 @@ void introduce_temporaries(
 #ifdef LOCAL_MAY
   const goto_functionst::goto_functiont &goto_function,
 #endif
-  messaget& message)
+  messaget &message)
 {
   namespacet ns(symbol_table);
   unsigned tmp_counter=0;
@@ -74,22 +73,24 @@ void introduce_temporaries(
 #ifdef LOCAL_MAY
       , local_may
 #endif
-      );
-      if(rw_set.empty()) continue;
-      
+      ); // NOLINT(whitespace/parens)
+      if(rw_set.empty())
+        continue;
+
       symbolt new_symbol;
       new_symbol.base_name="$tmp_guard";
-      new_symbol.name=id2string(function)+"$tmp_guard"+i2string(tmp_counter++);
+      new_symbol.name=
+        id2string(function)+"$tmp_guard"+std::to_string(tmp_counter++);
       new_symbol.type=bool_typet();
       new_symbol.is_static_lifetime=true;
       new_symbol.is_thread_local=true;
       new_symbol.value.make_nil();
-      
+
       symbol_exprt symbol_expr=new_symbol.symbol_expr();
-      
+
       symbolt *symbol_ptr;
       symbol_table.move(new_symbol, symbol_ptr);
-      
+
       goto_programt::instructiont new_i;
       new_i.make_assignment();
       new_i.code=code_assignt(symbol_expr, instruction.guard);
@@ -123,8 +124,8 @@ Function: weak_memory
 
 void weak_memory(
   memory_modelt model,
-  value_setst& value_sets,
-  symbol_tablet& symbol_table,
+  value_setst &value_sets,
+  symbol_tablet &symbol_table,
   goto_functionst &goto_functions,
   bool SCC,
   instrumentation_strategyt event_strategy,
@@ -138,8 +139,8 @@ void weak_memory(
   bool render_file,
   bool render_function,
   bool cav11_option,
-  bool hide_internals, 
-  message_handlert& message_handler,
+  bool hide_internals,
+  message_handlert &message_handler,
   bool ignore_arrays)
 {
   messaget message(message_handler);
@@ -156,8 +157,8 @@ void weak_memory(
   Forall_goto_functions(f_it, goto_functions)
     if(f_it->first!=CPROVER_PREFIX "initialize" &&
       f_it->first!=goto_functionst::entry_point())
-      introduce_temporaries(value_sets, symbol_table, f_it->first, 
-        f_it->second.body, 
+      introduce_temporaries(value_sets, symbol_table, f_it->first,
+        f_it->second.body,
 #ifdef LOCAL_MAY
         f_it->second,
 #endif
@@ -167,7 +168,7 @@ void weak_memory(
 
   unsigned max_thds = 0;
   instrumentert instrumenter(symbol_table, goto_functions, message);
-  max_thds=instrumenter.goto2graph_cfg(value_sets, model, no_dependencies, 
+  max_thds=instrumenter.goto2graph_cfg(value_sets, model, no_dependencies,
     duplicate_body);
   message.status()<<"abstraction completed"<<messaget::eom;
 
@@ -177,7 +178,7 @@ void weak_memory(
       input_max_po_trans, ignore_arrays);
   else
     instrumenter.set_parameters_collection(max_thds, ignore_arrays);
-  
+
   if(SCC)
   {
     instrumenter.collect_cycles_by_SCCs(model);
@@ -221,9 +222,9 @@ void weak_memory(
   // collects instructions to instrument, depending on the strategy selected
   if(event_strategy == my_events)
   {
-    const std::set<unsigned> events_set = instrumentert::extract_my_events();
+    const std::set<event_idt> events_set = instrumentert::extract_my_events();
     instrumenter.instrument_my_events(events_set);
-  }  
+  }
   else
     instrumenter.instrument_with_strategy(event_strategy);
 
@@ -243,26 +244,27 @@ void weak_memory(
   shared_buffers.cycles_r_loc = instrumenter.id2cycloc; // places in the cycles
 
   // for reads delays
-  shared_buffers.affected_by_delay(symbol_table,value_sets,goto_functions);
+  shared_buffers.affected_by_delay(symbol_table, value_sets, goto_functions);
 
   for(std::set<irep_idt>::iterator it=
-    shared_buffers.affected_by_delay_set.begin(); 
+    shared_buffers.affected_by_delay_set.begin();
     it!=shared_buffers.affected_by_delay_set.end();
     it++)
     message.debug()<<id2string(*it)<<messaget::eom;
 
   message.status()<<"I instrument:"<<messaget::eom;
-  for(std::set<irep_idt>::iterator it=shared_buffers.cycles.begin(); 
+  for(std::set<irep_idt>::iterator it=shared_buffers.cycles.begin();
     it!=shared_buffers.cycles.end(); it++)
   {
-    typedef std::multimap<irep_idt,source_locationt>::iterator m_itt;
-    const std::pair<m_itt,m_itt> ran=
+    typedef std::multimap<irep_idt, source_locationt>::iterator m_itt;
+    const std::pair<m_itt, m_itt> ran=
       shared_buffers.cycles_loc.equal_range(*it);
     for(m_itt ran_it=ran.first; ran_it!=ran.second; ran_it++)
-      message.result() << ((*it)==""?"fence":*it)<<", "<<ran_it->second<<messaget::eom;
+      message.result() << ((*it)==""?"fence":*it) << ", "
+                       << ran_it->second << messaget::eom;
   }
 
-  shared_bufferst::cfg_visitort visitor(shared_buffers, symbol_table, 
+  shared_bufferst::cfg_visitort visitor(shared_buffers, symbol_table,
     goto_functions);
   visitor.weak_memory(value_sets, goto_functions.entry_point(), model);
 
@@ -272,7 +274,7 @@ void weak_memory(
 
   // initialization code for buffers
   shared_buffers.add_initialization_code(goto_functions);
-  
+
   // update counters etc.
   goto_functions.update();
 

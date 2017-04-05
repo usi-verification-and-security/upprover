@@ -6,17 +6,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PROP_WRAPPER_H
-#define CPROVER_PROP_WRAPPER_H
+#ifndef CPROVER_SOLVERS_PROP_PROP_WRAPPER_H
+#define CPROVER_SOLVERS_PROP_PROP_WRAPPER_H
 
 #include "prop.h"
 
 class prop_wrappert:public virtual propt
 {
  public:
-  prop_wrappert(propt &_prop):propt(_prop), p(_prop) { }
+  explicit prop_wrappert(propt &_prop):propt(_prop), p(_prop) { }
   virtual ~prop_wrappert() { }
-  
+
   virtual literalt constant(bool value)
   { return p.constant(value); }
 
@@ -60,26 +60,26 @@ class prop_wrappert:public virtual propt
 
   virtual void l_set_to(literalt a, bool value)
     { p.l_set_to(a, value); }
-    
+
   // literals
   virtual literalt new_variable()
   { return p.new_variable(); }
 
   virtual std::size_t no_variables() const
   { return p.no_variables(); }
-  
+
   // solving
   virtual const std::string solver_text()
   { return p.solver_text(); }
 
   virtual tvt l_get(literalt a) const
   { return p.l_get(a); }
- 
+
   virtual resultt prop_solve()
   { return p.prop_solve(); }
-  
+
  protected:
   propt &p;
 };
 
-#endif
+#endif // CPROVER_SOLVERS_PROP_PROP_WRAPPER_H

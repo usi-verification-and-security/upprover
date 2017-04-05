@@ -6,15 +6,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <util/arith_tools.h>
 #include <util/std_expr.h>
-#include <util/expr_util.h>
 #include <util/cprover_prefix.h>
 #include <util/base_type.h>
 
 #include <ansi-c/c_types.h>
 
-#include "adjust_float_expressions.h"
-#include "rewrite_union.h"
 #include "goto_symex.h"
 
 /*******************************************************************\
@@ -78,7 +76,7 @@ void goto_symext::process_array_expr_rec(
     byte_extract_exprt be(byte_extract_id());
     be.type()=type;
     be.op()=expr;
-    be.offset()=gen_zero(index_type());
+    be.offset()=from_integer(0, index_type());
 
     expr.swap(be);
   }
@@ -162,7 +160,7 @@ void goto_symext::replace_array_equal(exprt &expr)
   if(expr.id()==ID_array_equal)
   {
     assert(expr.operands().size()==2);
-   
+
     // we expect two index expressions
     process_array_expr(expr.op0());
     process_array_expr(expr.op1());
@@ -199,9 +197,7 @@ void goto_symext::clean_expr(
   statet &state,
   const bool write)
 {
-  rewrite_union(expr, ns);
   replace_nondet(expr);
   dereference(expr, state, write);
   replace_array_equal(expr);
-  adjust_float_expressions(expr, ns);
 }

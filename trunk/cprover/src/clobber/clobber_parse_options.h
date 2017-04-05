@@ -6,22 +6,24 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_CLOBBER_PARSEOPTIONS_H
-#define CPROVER_CLOBBER_PARSEOPTIONS_H
+#ifndef CPROVER_CLOBBER_CLOBBER_PARSE_OPTIONS_H
+#define CPROVER_CLOBBER_CLOBBER_PARSE_OPTIONS_H
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
 
 #include <langapi/language_ui.h>
 
+#include <analyses/goto_check.h>
+#include <goto-programs/show_goto_functions.h>
+
 class goto_functionst;
 class optionst;
 
 #define CLOBBER_OPTIONS \
   "(depth):(context-bound):(unwind):" \
-  "(bounds-check)(pointer-check)(div-by-zero-check)(memory-leak-check)" \
-  "(signed-overflow-check)(unsigned-overflow-check)(nan-check)" \
-  "(float-overflow-check)" \
+  OPT_GOTO_CHECK \
+  OPT_SHOW_GOTO_FUNCTIONS \
   "(no-assertions)(no-assumptions)" \
   "(error-label):(verbosity):(no-library)" \
   "(version)" \
@@ -44,6 +46,8 @@ public:
     const std::string &extra_options);
 
 protected:
+  ui_message_handlert ui_message_handler;
+
   void get_command_line_options(optionst &options);
 
   bool get_goto_program(
@@ -53,14 +57,14 @@ protected:
   bool process_goto_program(
     const optionst &options,
     goto_functionst &goto_functions);
-    
+
   bool set_properties(goto_functionst &goto_functions);
 
   void report_success();
   void report_failure();
   void show_counterexample(const class goto_tracet &);
-            
+
   void eval_verbosity();
 };
 
-#endif
+#endif // CPROVER_CLOBBER_CLOBBER_PARSE_OPTIONS_H

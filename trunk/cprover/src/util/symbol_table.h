@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_SYMBOL_TABLE_H
-#define CPROVER_SYMBOL_TABLE_H
+#ifndef CPROVER_UTIL_SYMBOL_TABLE_H
+#define CPROVER_UTIL_SYMBOL_TABLE_H
 
 /*! \file util/symbol_table.h
  * \brief Symbol table
@@ -20,8 +20,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <iosfwd>
 #include <map>
+#include <unordered_map>
 
-#include "hash_cont.h"
 #include "symbol.h"
 
 #define forall_symbols(it, expr) \
@@ -51,20 +51,20 @@ typedef std::multimap<irep_idt, irep_idt> symbol_module_mapt;
 class symbol_tablet
 {
 public:
-  typedef hash_map_cont<irep_idt, symbolt, irep_id_hash> symbolst;
+  typedef std::unordered_map<irep_idt, symbolt, irep_id_hash> symbolst;
 
   symbolst symbols;
   symbol_base_mapt symbol_base_map;
   symbol_module_mapt symbol_module_map;
-  
+
   bool add(const symbolt &symbol);
-  
+
   bool move(symbolt &symbol, symbolt *&new_symbol);
 
   // this will go away, use add instead
   bool move(symbolt &symbol)
   { symbolt *new_symbol; return move(symbol, new_symbol); }
-   
+
   void clear()
   {
     symbols.clear();
@@ -73,17 +73,17 @@ public:
   }
 
   bool remove(const irep_idt &name);
-   
+
   void show(std::ostream &out) const;
-  
-  inline void swap(symbol_tablet &other)
+
+  void swap(symbol_tablet &other)
   {
     symbols.swap(other.symbols);
     symbol_base_map.swap(other.symbol_base_map);
     symbol_module_map.swap(other.symbol_module_map);
   }
-  
-  inline bool has_symbol(const irep_idt &name) const
+
+  bool has_symbol(const irep_idt &name) const
   {
     return symbols.find(name)!=symbols.end();
   }
@@ -96,4 +96,4 @@ std::ostream &operator << (
   std::ostream &out,
   const symbol_tablet &symbol_table);
 
-#endif
+#endif // CPROVER_UTIL_SYMBOL_TABLE_H

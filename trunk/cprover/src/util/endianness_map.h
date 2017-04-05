@@ -17,18 +17,18 @@ Author: Daniel Kroening, kroening@kroening.com
 */
 
 #include <cassert>
+#include <iosfwd>
 #include <vector>
 
-#include "expr.h"
-
 class namespacet;
+class typet;
 
 /*! \brief Maps a big-endian offset to a little-endian offset
 */
 class endianness_mapt
 {
 public:
-  inline endianness_mapt(
+  endianness_mapt(
     const typet &type,
     bool little_endian,
     const namespacet &_ns):ns(_ns)
@@ -36,21 +36,21 @@ public:
     build(type, little_endian);
   }
 
-  inline size_t map_bit(size_t bit) const
+  size_t map_bit(size_t bit) const
   {
     assert(bit<map.size());
     size_t result=map[bit];
     assert(result<map.size());
     return result;
   }
-  
-  inline size_t number_of_bits() const
+
+  size_t number_of_bits() const
   {
     return map.size();
   }
-  
+
   void build(const typet &type, bool little_endian);
-  
+
   void output(std::ostream &) const;
 
 protected:
@@ -61,7 +61,7 @@ protected:
   void build_big_endian(const typet &type);
 };
 
-extern inline std::ostream &operator << (
+inline std::ostream &operator<<(
   std::ostream &out,
   const endianness_mapt &m)
 {
@@ -69,4 +69,4 @@ extern inline std::ostream &operator << (
   return out;
 }
 
-#endif
+#endif // CPROVER_UTIL_ENDIANNESS_MAP_H

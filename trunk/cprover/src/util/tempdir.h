@@ -1,13 +1,13 @@
 /*******************************************************************\
 
-Module: 
+Module:
 
 Author: CM Wintersteiger
 
 \*******************************************************************/
 
-#ifndef CPROVER_TEMPDIR_H
-#define CPROVER_TEMPDIR_H
+#ifndef CPROVER_UTIL_TEMPDIR_H
+#define CPROVER_UTIL_TEMPDIR_H
 
 #include <string>
 
@@ -21,9 +21,9 @@ public:
   std::string path;
 
   std::string operator()(const std::string &file);
-  
+
   void clear();
-  
+
   explicit temp_dirt(const std::string &name_template);
   ~temp_dirt();
 };
@@ -36,9 +36,9 @@ class temp_working_dirt:public temp_dirt
 {
 public:
   std::string old_working_directory;
-  
-  explicit temp_working_dirt(const std::string &name_template);  
+
+  explicit temp_working_dirt(const std::string &name_template);
   ~temp_working_dirt();
 };
 
-#endif
+#endif // CPROVER_UTIL_TEMPDIR_H

@@ -10,6 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cassert>
 
+#include <util/arith_tools.h>
 #include <util/config.h>
 #include <util/expr_util.h>
 #include <util/std_expr.h>
@@ -106,7 +107,7 @@ bool is_void_pointer(const typet &type)
   {
     if(type.subtype().id()==ID_empty)
       return true;
-  
+
     return is_void_pointer(type.subtype());
   }
   else
@@ -129,15 +130,16 @@ bool check_c_implicit_typecast(
   const typet &src_type,
   const typet &dest_type)
 {
-  // check qualifiers  
+  // check qualifiers
 
   if(src_type.id()==ID_pointer && dest_type.id()==ID_pointer &&
      src_type.subtype().get_bool(ID_C_constant) &&
      !dest_type.subtype().get_bool(ID_C_constant))
     return true;
 
-  if(src_type==dest_type) return false;
-  
+  if(src_type==dest_type)
+    return false;
+
   const irep_idt &src_type_id=src_type.id();
 
   if(src_type_id==ID_c_bit_field)
@@ -148,60 +150,65 @@ bool check_c_implicit_typecast(
 
   if(src_type_id==ID_natural)
   {
-    if(dest_type.id()==ID_bool) return false;
-    if(dest_type.id()==ID_c_bool) return false;
-    if(dest_type.id()==ID_integer) return false;
-    if(dest_type.id()==ID_real) return false;
-    if(dest_type.id()==ID_complex) return false;
-    if(dest_type.id()==ID_unsignedbv) return false;
-    if(dest_type.id()==ID_signedbv) return false;
-    if(dest_type.id()==ID_floatbv) return false;
-    if(dest_type.id()==ID_complex) return false;
+    if(dest_type.id()==ID_bool ||
+       dest_type.id()==ID_c_bool ||
+       dest_type.id()==ID_integer ||
+       dest_type.id()==ID_real ||
+       dest_type.id()==ID_complex ||
+       dest_type.id()==ID_unsignedbv ||
+       dest_type.id()==ID_signedbv ||
+       dest_type.id()==ID_floatbv ||
+       dest_type.id()==ID_complex)
+      return false;
   }
   else if(src_type_id==ID_integer)
   {
-    if(dest_type.id()==ID_bool) return false;
-    if(dest_type.id()==ID_c_bool) return false;
-    if(dest_type.id()==ID_real) return false;
-    if(dest_type.id()==ID_complex) return false;
-    if(dest_type.id()==ID_unsignedbv) return false;
-    if(dest_type.id()==ID_signedbv) return false;
-    if(dest_type.id()==ID_floatbv) return false;
-    if(dest_type.id()==ID_fixedbv) return false;
-    if(dest_type.id()==ID_pointer) return false;
-    if(dest_type.id()==ID_complex) return false;
+    if(dest_type.id()==ID_bool ||
+       dest_type.id()==ID_c_bool ||
+       dest_type.id()==ID_real ||
+       dest_type.id()==ID_complex ||
+       dest_type.id()==ID_unsignedbv ||
+       dest_type.id()==ID_signedbv ||
+       dest_type.id()==ID_floatbv ||
+       dest_type.id()==ID_fixedbv ||
+       dest_type.id()==ID_pointer ||
+       dest_type.id()==ID_complex)
+      return false;
   }
   else if(src_type_id==ID_real)
   {
-    if(dest_type.id()==ID_bool) return false;
-    if(dest_type.id()==ID_c_bool) return false;
-    if(dest_type.id()==ID_complex) return false;
-    if(dest_type.id()==ID_floatbv) return false;
-    if(dest_type.id()==ID_fixedbv) return false;
-    if(dest_type.id()==ID_complex) return false;
+    if(dest_type.id()==ID_bool ||
+       dest_type.id()==ID_c_bool ||
+       dest_type.id()==ID_complex ||
+       dest_type.id()==ID_floatbv ||
+       dest_type.id()==ID_fixedbv ||
+       dest_type.id()==ID_complex)
+      return false;
   }
   else if(src_type_id==ID_rational)
   {
-    if(dest_type.id()==ID_bool) return false;
-    if(dest_type.id()==ID_c_bool) return false;
-    if(dest_type.id()==ID_complex) return false;
-    if(dest_type.id()==ID_floatbv) return false;
-    if(dest_type.id()==ID_fixedbv) return false;
-    if(dest_type.id()==ID_complex) return false;
+    if(dest_type.id()==ID_bool ||
+       dest_type.id()==ID_c_bool ||
+       dest_type.id()==ID_complex ||
+       dest_type.id()==ID_floatbv ||
+       dest_type.id()==ID_fixedbv ||
+       dest_type.id()==ID_complex)
+      return false;
   }
   else if(src_type_id==ID_bool)
   {
-    if(dest_type.id()==ID_c_bool) return false;
-    if(dest_type.id()==ID_integer) return false;
-    if(dest_type.id()==ID_real) return false;
-    if(dest_type.id()==ID_unsignedbv) return false;
-    if(dest_type.id()==ID_signedbv) return false;
-    if(dest_type.id()==ID_pointer) return false;
-    if(dest_type.id()==ID_floatbv) return false;
-    if(dest_type.id()==ID_fixedbv) return false;
-    if(dest_type.id()==ID_c_enum) return false;
-    if(dest_type.id()==ID_c_enum_tag) return false;
-    if(dest_type.id()==ID_complex) return false;
+    if(dest_type.id()==ID_c_bool ||
+       dest_type.id()==ID_integer ||
+       dest_type.id()==ID_real ||
+       dest_type.id()==ID_unsignedbv ||
+       dest_type.id()==ID_signedbv ||
+       dest_type.id()==ID_pointer ||
+       dest_type.id()==ID_floatbv ||
+       dest_type.id()==ID_fixedbv ||
+       dest_type.id()==ID_c_enum ||
+       dest_type.id()==ID_c_enum_tag ||
+       dest_type.id()==ID_complex)
+      return false;
   }
   else if(src_type_id==ID_unsignedbv ||
           src_type_id==ID_signedbv ||
@@ -210,34 +217,36 @@ bool check_c_implicit_typecast(
           src_type_id==ID_incomplete_c_enum ||
           src_type_id==ID_c_bool)
   {
-    if(dest_type.id()==ID_unsignedbv) return false;
-    if(dest_type.id()==ID_bool) return false;
-    if(dest_type.id()==ID_c_bool) return false;
-    if(dest_type.id()==ID_integer) return false;
-    if(dest_type.id()==ID_real) return false;
-    if(dest_type.id()==ID_rational) return false;
-    if(dest_type.id()==ID_signedbv) return false;
-    if(dest_type.id()==ID_floatbv) return false;
-    if(dest_type.id()==ID_fixedbv) return false;
-    if(dest_type.id()==ID_pointer) return false;
-    if(dest_type.id()==ID_c_enum) return false;
-    if(dest_type.id()==ID_c_enum_tag) return false;
-    if(dest_type.id()==ID_incomplete_c_enum) return false;
-    if(dest_type.id()==ID_complex) return false;
+    if(dest_type.id()==ID_unsignedbv ||
+       dest_type.id()==ID_bool ||
+       dest_type.id()==ID_c_bool ||
+       dest_type.id()==ID_integer ||
+       dest_type.id()==ID_real ||
+       dest_type.id()==ID_rational ||
+       dest_type.id()==ID_signedbv ||
+       dest_type.id()==ID_floatbv ||
+       dest_type.id()==ID_fixedbv ||
+       dest_type.id()==ID_pointer ||
+       dest_type.id()==ID_c_enum ||
+       dest_type.id()==ID_c_enum_tag ||
+       dest_type.id()==ID_incomplete_c_enum ||
+       dest_type.id()==ID_complex)
+      return false;
   }
   else if(src_type_id==ID_floatbv ||
           src_type_id==ID_fixedbv)
   {
-    if(dest_type.id()==ID_bool) return false;
-    if(dest_type.id()==ID_c_bool) return false;
-    if(dest_type.id()==ID_integer) return false;
-    if(dest_type.id()==ID_real) return false;
-    if(dest_type.id()==ID_rational) return false;
-    if(dest_type.id()==ID_signedbv) return false;
-    if(dest_type.id()==ID_unsignedbv) return false;
-    if(dest_type.id()==ID_floatbv) return false;
-    if(dest_type.id()==ID_fixedbv) return false;
-    if(dest_type.id()==ID_complex) return false;
+    if(dest_type.id()==ID_bool ||
+       dest_type.id()==ID_c_bool ||
+       dest_type.id()==ID_integer ||
+       dest_type.id()==ID_real ||
+       dest_type.id()==ID_rational ||
+       dest_type.id()==ID_signedbv ||
+       dest_type.id()==ID_unsignedbv ||
+       dest_type.id()==ID_floatbv ||
+       dest_type.id()==ID_fixedbv ||
+       dest_type.id()==ID_complex)
+      return false;
   }
   else if(src_type_id==ID_complex)
   {
@@ -251,7 +260,7 @@ bool check_c_implicit_typecast(
       // imaginary part of the complex value is discarded and the value of the
       // real part is converted according to the conversion rules for the
       // corresponding real type.
-      
+
       return check_c_implicit_typecast(src_type.subtype(), dest_type);
     }
   }
@@ -269,14 +278,16 @@ bool check_c_implicit_typecast(
               is_void_pointer(dest_type))  // to void from anything
         return false;
     }
-    
-    if(dest_type.id()==ID_array &&
-       src_type.subtype()==dest_type.subtype()) return false;
 
-    if(dest_type.id()==ID_bool) return false;
-    if(dest_type.id()==ID_c_bool) return false;
-    if(dest_type.id()==ID_unsignedbv) return false;
-    if(dest_type.id()==ID_signedbv) return false;
+    if(dest_type.id()==ID_array &&
+       src_type.subtype()==dest_type.subtype())
+      return false;
+
+    if(dest_type.id()==ID_bool ||
+       dest_type.id()==ID_c_bool ||
+       dest_type.id()==ID_unsignedbv ||
+       dest_type.id()==ID_signedbv)
+      return false;
   }
   else if(src_type_id==ID_vector)
   {
@@ -311,13 +322,14 @@ Function: c_typecastt::follow_with_qualifiers
 
 typet c_typecastt::follow_with_qualifiers(const typet &src_type)
 {
-  if(src_type.id()!=ID_symbol) return src_type;
-  
+  if(src_type.id()!=ID_symbol)
+    return src_type;
+
   typet result_type=src_type;
-  
+
   // collect qualifiers
   c_qualifierst qualifiers(src_type);
-  
+
   while(result_type.id()==ID_symbol)
   {
     const symbolt &followed_type_symbol=
@@ -383,8 +395,7 @@ c_typecastt::c_typet c_typecastt::get_c_type(
     return BOOL;
   else if(type.id()==ID_c_bool)
     return BOOL;
-  else if(type.id()==ID_floatbv ||
-          type.id()==ID_fixedbv)
+  else if(type.id()==ID_floatbv)
   {
     if(width<=config.ansi_c.single_width)
       return SINGLE;
@@ -394,6 +405,10 @@ c_typecastt::c_typet c_typecastt::get_c_type(
       return LONGDOUBLE;
     else if(width<=128)
       return FLOAT128;
+  }
+  else if(type.id()==ID_fixedbv)
+  {
+    return FIXEDBV;
   }
   else if(type.id()==ID_pointer)
   {
@@ -422,8 +437,8 @@ c_typecastt::c_typet c_typecastt::get_c_type(
     return COMPLEX;
   else if(type.id()==ID_c_bit_field)
     return get_c_type(to_c_bit_field_type(type).subtype());
-    
-  return OTHER;  
+
+  return OTHER;
 }
 
 /*******************************************************************\
@@ -443,9 +458,9 @@ void c_typecastt::implicit_typecast_arithmetic(
   c_typet c_type)
 {
   typet new_type;
-  
+
   const typet &expr_type=ns.follow(expr.type());
-  
+
   switch(c_type)
   {
   case PTR:
@@ -471,6 +486,7 @@ void c_typecastt::implicit_typecast_arithmetic(
   case SINGLE:     new_type=float_type(); break;
   case DOUBLE:     new_type=double_type(); break;
   case LONGDOUBLE: new_type=long_double_type(); break;
+  // NOLINTNEXTLINE(whitespace/line_length)
   case FLOAT128:   new_type=ieee_float_spect::quadruple_precision().to_type(); break;
   case RATIONAL:   new_type=rational_typet(); break;
   case REAL:       new_type=real_typet(); break;
@@ -561,10 +577,10 @@ Function: c_typecastt::implicit_typecast
 void c_typecastt::implicit_typecast(
   exprt &expr,
   const typet &type)
-{    
+{
   typet src_type=follow_with_qualifiers(expr.type()),
         dest_type=follow_with_qualifiers(type);
-  
+
   typet type_qual=type;
   c_qualifierst qualifiers(dest_type);
   qualifiers.write(type_qual);
@@ -607,23 +623,18 @@ void c_typecastt::implicit_typecast_followed(
     if(src_type.id()==ID_pointer &&
        src_type.subtype().get_bool(ID_C_constant))
       src_type_no_const.subtype().remove(ID_C_constant);
-    
-    // Check union members.
-    const union_typet &dest_union_type=to_union_type(dest_type);
 
-    for(union_typet::componentst::const_iterator
-        it=dest_union_type.components().begin();
-        it!=dest_union_type.components().end();
-        it++)
+    // Check union members.
+    for(const auto &comp : to_union_type(dest_type).components())
     {
-      if(!check_c_implicit_typecast(src_type_no_const, it->type()))
+      if(!check_c_implicit_typecast(src_type_no_const, comp.type()))
       {
         // build union constructor
         exprt union_expr(ID_union, orig_dest_type);
         union_expr.move_to_operands(expr);
-        if(!full_eq(src_type, src_type_no_const))
+        if(!src_type.full_eq(src_type_no_const))
           do_typecast(union_expr.op0(), src_type_no_const);
-        union_expr.set(ID_component_name, it->get_name());
+        union_expr.set(ID_component_name, comp.get_name());
         expr=union_expr;
         return; // ok
       }
@@ -644,12 +655,12 @@ void c_typecastt::implicit_typecast_followed(
       expr.set(ID_value, ID_NULL);
       return; // ok
     }
-  
+
     if(src_type.id()==ID_pointer ||
        src_type.id()==ID_array)
     {
       // we are quite generous about pointers
-      
+
       const typet &src_sub=ns.follow(src_type.subtype());
       const typet &dest_sub=ns.follow(dest_type.subtype());
 
@@ -668,8 +679,12 @@ void c_typecastt::implicit_typecast_followed(
       {
         // ok
       }
-      else if((is_number(src_sub) || src_sub.id()==ID_c_enum || src_sub.id()==ID_c_enum_tag) &&
-              (is_number(dest_sub) || dest_sub.id()==ID_c_enum || src_sub.id()==ID_c_enum_tag))
+      else if((is_number(src_sub) ||
+               src_sub.id()==ID_c_enum ||
+               src_sub.id()==ID_c_enum_tag) &&
+              (is_number(dest_sub) ||
+               dest_sub.id()==ID_c_enum ||
+               src_sub.id()==ID_c_enum_tag))
       {
         // Also generous: between any to scalar types it's ok.
         // We should probably check the size.
@@ -699,7 +714,7 @@ void c_typecastt::implicit_typecast_followed(
       return; // ok
     }
   }
-  
+
   if(check_c_implicit_typecast(src_type, dest_type))
     errors.push_back("implicit conversion not permitted");
   else if(src_type!=dest_type)
@@ -733,9 +748,9 @@ void c_typecastt::implicit_typecast_arithmetic(
   if(max_type==LARGE_SIGNED_INT || max_type==LARGE_UNSIGNED_INT)
   {
     // get the biggest width of both
-    unsigned width1=type1.get_int(ID_width);
-    unsigned width2=type2.get_int(ID_width);
-    
+    std::size_t width1=type1.get_size_t(ID_width);
+    std::size_t width2=type2.get_size_t(ID_width);
+
     // produce type
     typet result_type;
 
@@ -753,7 +768,31 @@ void c_typecastt::implicit_typecast_arithmetic(
 
     do_typecast(expr1, result_type);
     do_typecast(expr2, result_type);
-    
+
+    return;
+  }
+  else if(max_type==FIXEDBV)
+  {
+    typet result_type;
+
+    if(c_type1==FIXEDBV && c_type2==FIXEDBV)
+    {
+      // get bigger of both
+      std::size_t width1=to_fixedbv_type(type1).get_width();
+      std::size_t width2=to_fixedbv_type(type2).get_width();
+      if(width1>=width2)
+        result_type=type1;
+      else
+        result_type=type2;
+    }
+    else if(c_type1==FIXEDBV)
+      result_type=type1;
+    else
+      result_type=type2;
+
+    do_typecast(expr1, result_type);
+    do_typecast(expr2, result_type);
+
     return;
   }
   else if(max_type==COMPLEX)
@@ -794,14 +833,18 @@ void c_typecastt::implicit_typecast_arithmetic(
   implicit_typecast_arithmetic(expr1, max_type);
   implicit_typecast_arithmetic(expr2, max_type);
 
+  // arithmetic typecasts only, otherwise this can't be used from
+  // typecheck_expr_trinary
+  #if 0
   if(max_type==PTR)
   {
     if(c_type1==VOIDPTR)
       do_typecast(expr1, expr2.type());
-    
+
     if(c_type2==VOIDPTR)
       do_typecast(expr2, expr1.type());
   }
+  #endif
 }
 
 /*******************************************************************\
@@ -820,14 +863,14 @@ void c_typecastt::do_typecast(exprt &expr, const typet &dest_type)
 {
   // special case: array -> pointer is actually
   // something like address_of
-  
+
   const typet &src_type=ns.follow(expr.type());
 
   if(src_type.id()==ID_array)
   {
     index_exprt index;
     index.array()=expr;
-    index.index()=gen_zero(index_type());
+    index.index()=from_integer(0, index_type());
     index.type()=src_type.subtype();
     expr=address_of_exprt(index);
     if(ns.follow(expr.type())!=ns.follow(dest_type))
@@ -841,7 +884,7 @@ void c_typecastt::do_typecast(exprt &expr, const typet &dest_type)
     // explicit comparision with zero.
     // Note that this requires ieee_float_notequal
     // in case of floating-point numbers.
-    
+
     if(dest_type.get(ID_C_c_type)==ID_bool)
     {
       expr=is_not_zero(expr, ns);
@@ -852,7 +895,7 @@ void c_typecastt::do_typecast(exprt &expr, const typet &dest_type)
       expr=is_not_zero(expr, ns);
     }
     else
-    {    
+    {
       expr.make_typecast(dest_type);
     }
   }

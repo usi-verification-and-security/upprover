@@ -6,10 +6,10 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_TEMPLATE_ARGS_H
-#define CPROVER_CPP_TEMPLATE_ARGS_H
+#ifndef CPROVER_CPP_CPP_TEMPLATE_ARGS_H
+#define CPROVER_CPP_CPP_TEMPLATE_ARGS_H
 
-#include <util/irep.h>
+#include <util/expr.h>
 
 // A data structures for template arguments, i.e.,
 // a sequence of types/expressions of the form <E1, T2, ...>.
@@ -22,7 +22,7 @@ public:
   {
   }
 
-  typedef std::vector<exprt> argumentst;
+  typedef exprt::operandst argumentst;
 
   argumentst &arguments()
   {
@@ -41,13 +41,15 @@ class cpp_template_args_non_tct:public cpp_template_args_baset
 {
 };
 
-extern inline cpp_template_args_non_tct &to_cpp_template_args_non_tc(irept &irep)
+inline cpp_template_args_non_tct &to_cpp_template_args_non_tc(
+  irept &irep)
 {
   assert(irep.id()==ID_template_args);
   return static_cast<cpp_template_args_non_tct &>(irep);
 }
 
-extern inline const cpp_template_args_non_tct &to_cpp_template_args_non_tc(const irept &irep)
+inline const cpp_template_args_non_tct &to_cpp_template_args_non_tc(
+  const irept &irep)
 {
   assert(irep.id()==ID_template_args);
   return static_cast<const cpp_template_args_non_tct &>(irep);
@@ -68,21 +70,21 @@ public:
       if(it->id()==ID_unassigned ||
          it->type().id()==ID_unassigned)
         return true;
-        
+
     return false;
   }
 };
 
-extern inline cpp_template_args_tct &to_cpp_template_args_tc(irept &irep)
+inline cpp_template_args_tct &to_cpp_template_args_tc(irept &irep)
 {
   assert(irep.id()==ID_template_args);
   return static_cast<cpp_template_args_tct &>(irep);
 }
 
-extern inline const cpp_template_args_tct &to_cpp_template_args_tc(const irept &irep)
+inline const cpp_template_args_tct &to_cpp_template_args_tc(const irept &irep)
 {
   assert(irep.id()==ID_template_args);
   return static_cast<const cpp_template_args_tct &>(irep);
 }
 
-#endif
+#endif // CPROVER_CPP_CPP_TEMPLATE_ARGS_H

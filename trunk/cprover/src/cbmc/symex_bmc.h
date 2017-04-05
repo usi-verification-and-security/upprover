@@ -9,10 +9,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef CPROVER_CBMC_SYMEX_BMC_H
 #define CPROVER_CBMC_SYMEX_BMC_H
 
-#include <util/hash_cont.h>
 #include <util/message.h>
 
 #include <goto-symex/goto_symex.h>
+
+#include "symex_coverage.h"
 
 class symex_bmct:
   public goto_symext,
@@ -25,16 +26,16 @@ public:
     symex_targett &_target);
 
   // To show progress
-  irept last_source_location;
+  source_locationt last_source_location;
 
   // Control unwinding.
-  
+
   void set_unwind_limit(unsigned limit)
   {
     max_unwind=limit;
     max_unwind_is_set=true;
   }
-  
+
   void set_unwind_thread_loop_limit(
     unsigned thread_nr,
     const irep_idt &id,
@@ -50,7 +51,16 @@ public:
     loop_limits[id]=limit;
   }
 
-protected:  
+  bool output_coverage_report(
+    const goto_functionst &goto_functions,
+    const std::string &path) const
+  {
+    return symex_coverage.generate_report(goto_functions, path);
+  }
+
+  bool record_coverage;
+
+protected:
   // We have
   // 1) a global limit (max_unwind)
   // 2) a limit per loop, all threads
@@ -60,9 +70,9 @@ protected:
   unsigned max_unwind;
   bool max_unwind_is_set;
 
-  typedef hash_map_cont<irep_idt, unsigned, irep_id_hash> loop_limitst;
+  typedef std::unordered_map<irep_idt, unsigned, irep_id_hash> loop_limitst;
   loop_limitst loop_limits;
-  
+
   typedef std::map<unsigned, loop_limitst> thread_loop_limitst;
   thread_loop_limitst thread_loop_limits;
 
@@ -71,6 +81,10 @@ protected:
   //
   virtual void symex_step(
     const goto_functionst &goto_functions,
+    statet &state);
+
+  virtual void merge_goto(
+    const statet::goto_statet &goto_state,
     statet &state);
 
   // for loop unwinding
@@ -82,10 +96,12 @@ protected:
     const irep_idt &identifier,
     const unsigned thread_nr,
     unsigned unwind);
-    
+
   virtual void no_body(const irep_idt &identifier);
-  
-  hash_set_cont<irep_idt, irep_id_hash> body_warnings;
+
+  std::unordered_set<irep_idt, irep_id_hash> body_warnings;
+
+  symex_coveraget symex_coverage;
 };
 
-#endif
+#endif // CPROVER_CBMC_SYMEX_BMC_H

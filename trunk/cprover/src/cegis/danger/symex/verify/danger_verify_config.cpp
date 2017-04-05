@@ -1,6 +1,16 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 #include <iterator>
 
+#include <cegis/value/assignments_printer.h>
 #include <cegis/wordsize/restrict_bv_size.h>
 #include <cegis/invariant/symex/verify/extract_counterexample.h>
 #include <cegis/invariant/symex/verify/insert_constraint.h>
@@ -21,7 +31,8 @@ void danger_verify_configt::process(const candidatet &candidate)
 {
   program=original_program;
   quantifiers.clear();
-  invariant_insert_constraint(quantifiers, program, create_danger_constraint);
+  const danger_constraint constraint(program.use_ranking);
+  invariant_insert_constraint(quantifiers, program, std::cref(constraint));
   danger_insert_candidate(program, candidate);
   goto_functionst &gf=program.gf;
   if (limit_ce) restrict_bv_size(program.st, gf, max_ce_width);
@@ -69,4 +80,12 @@ void danger_verify_configt::set_max_ce_width(const size_t size)
 {
   limit_ce=true;
   max_ce_width=size;
+}
+
+void danger_verify_configt::show_counterexample(messaget::mstreamt &os,
+    const counterexamplet &counterexample) const
+{
+  os << "<danger_counterexample>" << messaget::endl;
+  print_assignments(os, get_symbol_table(), counterexample);
+  os << "</danger_counterexample>" << messaget::endl << messaget::eom;
 }

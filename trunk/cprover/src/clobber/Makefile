@@ -1,6 +1,7 @@
 SRC = clobber_main.cpp clobber_parse_options.cpp
 
 OBJ += ../ansi-c/ansi-c$(LIBEXT) \
+       ../cpp/cpp$(LIBEXT) \
        ../linking/linking$(LIBEXT) \
        ../big-int/big-int$(LIBEXT) \
        ../goto-programs/goto-programs$(LIBEXT) \
@@ -14,7 +15,8 @@ OBJ += ../ansi-c/ansi-c$(LIBEXT) \
        ../goto-symex/rewrite_union$(OBJEXT) \
        ../pointer-analysis/dereference$(OBJEXT) \
        ../goto-instrument/dump_c$(OBJEXT) \
-       ../goto-instrument/goto_program2code$(OBJEXT)
+       ../goto-instrument/goto_program2code$(OBJEXT) \
+       ../miniz/miniz$(OBJEXT)
 
 INCLUDES= -I ..
 
@@ -30,11 +32,6 @@ all: clobber$(EXEEXT)
 ifneq ($(wildcard ../bv_refinement/Makefile),)
   OBJ += ../bv_refinement/bv_refinement$(LIBEXT)
   CP_CXXFLAGS += -DHAVE_BV_REFINEMENT
-endif
-
-ifneq ($(wildcard ../cpp/Makefile),)
-  OBJ += ../cpp/cpp$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_CPP
 endif
 
 ifneq ($(wildcard ../java_bytecode/Makefile),)
@@ -61,4 +58,3 @@ clobber$(EXEEXT): $(OBJ)
 
 clobber-mac-signed: cbmc$(EXEEXT)
 	strip clobber$(EXEEXT) ; codesign -v -s $(OSX_IDENTITY) clobber$(EXEEXT)
-

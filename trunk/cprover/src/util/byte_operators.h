@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_BYTE_OPERATORS_H
-#define CPROVER_BYTE_OPERATORS_H
+#ifndef CPROVER_UTIL_BYTE_OPERATORS_H
+#define CPROVER_UTIL_BYTE_OPERATORS_H
 
 /*! \file util/byte_operators.h
  * \brief Expression classes for byte-level operators
@@ -23,18 +23,18 @@ Author: Daniel Kroening, kroening@kroening.com
 class byte_extract_exprt:public exprt
 {
 public:
-  explicit inline byte_extract_exprt(irep_idt _id):exprt(_id)
+  explicit byte_extract_exprt(irep_idt _id):exprt(_id)
   {
     operands().resize(2);
   }
 
-  explicit inline byte_extract_exprt(irep_idt _id, const typet &_type):
+  explicit byte_extract_exprt(irep_idt _id, const typet &_type):
     exprt(_id, _type)
   {
     operands().resize(2);
   }
 
-  inline byte_extract_exprt(
+  byte_extract_exprt(
     irep_idt _id,
     const exprt &_op, const exprt &_offset, const typet &_type):
     exprt(_id, _type)
@@ -42,20 +42,20 @@ public:
     copy_to_operands(_op, _offset);
   }
 
-  inline exprt &op() { return op0(); }
-  inline exprt &offset() { return op1(); }
+  exprt &op() { return op0(); }
+  exprt &offset() { return op1(); }
 
-  inline const exprt &op() const { return op0(); }
-  inline const exprt &offset() const { return op1(); }
+  const exprt &op() const { return op0(); }
+  const exprt &offset() const { return op1(); }
 };
 
-extern inline const byte_extract_exprt &to_byte_extract_expr(const exprt &expr)
+inline const byte_extract_exprt &to_byte_extract_expr(const exprt &expr)
 {
   assert(expr.operands().size()==2);
   return static_cast<const byte_extract_exprt &>(expr);
 }
 
-extern inline byte_extract_exprt &to_byte_extract_expr(exprt &expr)
+inline byte_extract_exprt &to_byte_extract_expr(exprt &expr)
 {
   assert(expr.operands().size()==2);
   return static_cast<byte_extract_exprt &>(expr);
@@ -69,20 +69,21 @@ irep_idt byte_update_id();
 class byte_extract_little_endian_exprt:public byte_extract_exprt
 {
 public:
-  inline byte_extract_little_endian_exprt():
+  byte_extract_little_endian_exprt():
     byte_extract_exprt(ID_byte_extract_little_endian)
   {
   }
-
 };
 
-extern inline const byte_extract_little_endian_exprt &to_byte_extract_little_endian_expr(const exprt &expr)
+inline const byte_extract_little_endian_exprt
+  &to_byte_extract_little_endian_expr(const exprt &expr)
 {
   assert(expr.id()==ID_byte_extract_little_endian && expr.operands().size()==2);
   return static_cast<const byte_extract_little_endian_exprt &>(expr);
 }
 
-extern inline byte_extract_little_endian_exprt &to_byte_extract_little_endian_expr(exprt &expr)
+inline byte_extract_little_endian_exprt
+  &to_byte_extract_little_endian_expr(exprt &expr)
 {
   assert(expr.id()==ID_byte_extract_little_endian && expr.operands().size()==2);
   return static_cast<byte_extract_little_endian_exprt &>(expr);
@@ -93,7 +94,7 @@ extern inline byte_extract_little_endian_exprt &to_byte_extract_little_endian_ex
 class byte_extract_big_endian_exprt:public byte_extract_exprt
 {
 public:
-  inline byte_extract_big_endian_exprt():
+  byte_extract_big_endian_exprt():
     byte_extract_exprt(ID_byte_extract_big_endian)
   {
   }
@@ -105,13 +106,15 @@ public:
   }
 };
 
-extern inline const byte_extract_big_endian_exprt &to_byte_extract_big_endian_expr(const exprt &expr)
+inline const byte_extract_big_endian_exprt
+  &to_byte_extract_big_endian_expr(const exprt &expr)
 {
   assert(expr.id()==ID_byte_extract_big_endian && expr.operands().size()==2);
   return static_cast<const byte_extract_big_endian_exprt &>(expr);
 }
 
-extern inline byte_extract_big_endian_exprt &to_byte_extract_big_endian_expr(exprt &expr)
+inline byte_extract_big_endian_exprt
+  &to_byte_extract_big_endian_expr(exprt &expr)
 {
   assert(expr.id()==ID_byte_extract_big_endian && expr.operands().size()==2);
   return static_cast<byte_extract_big_endian_exprt &>(expr);
@@ -122,35 +125,41 @@ extern inline byte_extract_big_endian_exprt &to_byte_extract_big_endian_expr(exp
 class byte_update_exprt:public exprt
 {
 public:
-  explicit inline byte_update_exprt(irep_idt _id):exprt(_id)
+  explicit byte_update_exprt(irep_idt _id):exprt(_id)
   {
     operands().resize(3);
   }
 
-  inline byte_update_exprt(
+  byte_update_exprt(irep_idt _id, const typet &_type):
+    exprt(_id, _type)
+  {
+    operands().resize(3);
+  }
+
+  byte_update_exprt(
     irep_idt _id,
     const exprt &_op, const exprt &_offset, const exprt &_value):
     exprt(_id, _op.type())
   {
     copy_to_operands(_op, _offset, _value);
   }
-  
-  inline exprt &op() { return op0(); }
-  inline exprt &offset() { return op1(); }
-  inline exprt &value() { return op2(); }
 
-  inline const exprt &op() const { return op0(); }
-  inline const exprt &offset() const { return op1(); }
-  inline const exprt &value() const { return op2(); }
+  exprt &op() { return op0(); }
+  exprt &offset() { return op1(); }
+  exprt &value() { return op2(); }
+
+  const exprt &op() const { return op0(); }
+  const exprt &offset() const { return op1(); }
+  const exprt &value() const { return op2(); }
 };
 
-extern inline const byte_update_exprt &to_byte_update_expr(const exprt &expr)
+inline const byte_update_exprt &to_byte_update_expr(const exprt &expr)
 {
   assert(expr.operands().size()==3);
   return static_cast<const byte_update_exprt &>(expr);
 }
 
-extern inline byte_update_exprt &to_byte_update_expr(exprt &expr)
+inline byte_update_exprt &to_byte_update_expr(exprt &expr)
 {
   assert(expr.operands().size()==3);
   return static_cast<byte_update_exprt &>(expr);
@@ -161,26 +170,27 @@ extern inline byte_update_exprt &to_byte_update_expr(exprt &expr)
 class byte_update_little_endian_exprt:public byte_update_exprt
 {
 public:
-  inline byte_update_little_endian_exprt():
+  byte_update_little_endian_exprt():
     byte_update_exprt(ID_byte_update_little_endian)
   {
   }
 
-  inline byte_update_little_endian_exprt(
+  byte_update_little_endian_exprt(
     const exprt &_op, const exprt &_offset, const exprt &_value):
     byte_update_exprt(ID_byte_update_little_endian, _op, _offset, _value)
   {
   }
-
 };
 
-extern inline const byte_update_little_endian_exprt &to_byte_update_little_endian_expr(const exprt &expr)
+inline const byte_update_little_endian_exprt
+  &to_byte_update_little_endian_expr(const exprt &expr)
 {
   assert(expr.id()==ID_byte_update_little_endian && expr.operands().size()==3);
   return static_cast<const byte_update_little_endian_exprt &>(expr);
 }
 
-extern inline byte_update_little_endian_exprt &to_byte_update_little_endian_expr(exprt &expr)
+inline byte_update_little_endian_exprt
+  &to_byte_update_little_endian_expr(exprt &expr)
 {
   assert(expr.id()==ID_byte_update_little_endian && expr.operands().size()==3);
   return static_cast<byte_update_little_endian_exprt &>(expr);
@@ -191,29 +201,30 @@ extern inline byte_update_little_endian_exprt &to_byte_update_little_endian_expr
 class byte_update_big_endian_exprt:public byte_update_exprt
 {
 public:
-  inline byte_update_big_endian_exprt():
+  byte_update_big_endian_exprt():
     byte_update_exprt(ID_byte_update_big_endian)
   {
   }
 
-  inline byte_update_big_endian_exprt(
+  byte_update_big_endian_exprt(
     const exprt &_op, const exprt &_offset, const exprt &_value):
     byte_update_exprt(ID_byte_update_big_endian, _op, _offset, _value)
   {
   }
-
 };
 
-extern inline const byte_update_big_endian_exprt &to_byte_update_big_endian_expr(const exprt &expr)
+inline const byte_update_big_endian_exprt
+  &to_byte_update_big_endian_expr(const exprt &expr)
 {
   assert(expr.id()==ID_byte_update_big_endian && expr.operands().size()==3);
   return static_cast<const byte_update_big_endian_exprt &>(expr);
 }
 
-extern inline byte_update_big_endian_exprt &to_byte_update_big_endian_expr(exprt &expr)
+inline byte_update_big_endian_exprt
+  &to_byte_update_big_endian_expr(exprt &expr)
 {
   assert(expr.id()==ID_byte_update_big_endian && expr.operands().size()==3);
   return static_cast<byte_update_big_endian_exprt &>(expr);
 }
 
-#endif
+#endif // CPROVER_UTIL_BYTE_OPERATORS_H

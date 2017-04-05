@@ -9,8 +9,9 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <iostream>
 
 #include <util/xml.h>
-#include <util/i2string.h>
 #include <util/xml_expr.h>
+#include <util/json.h>
+#include <util/json_expr.h>
 
 #include <langapi/language_util.h>
 
@@ -36,66 +37,51 @@ void show_properties(
   ui_message_handlert::uit ui,
   const goto_programt &goto_program)
 {
-  for(goto_programt::instructionst::const_iterator
-      it=goto_program.instructions.begin();
-      it!=goto_program.instructions.end();
-      it++)
+  for(const auto &ins : goto_program.instructions)
   {
-    if(!it->is_assert())
+    if(!ins.is_assert())
       continue;
-      
-    const source_locationt &source_location=it->source_location;
-      
+
+    const source_locationt &source_location=ins.source_location;
+
     const irep_idt &comment=source_location.get_comment();
-    //const irep_idt &function=location.get_function();
     const irep_idt &property_class=source_location.get_property_class();
     const irep_idt description=
       (comment==""?"assertion":comment);
-      
+
     irep_idt property_id=source_location.get_property_id();
-    
+
     switch(ui)
     {
     case ui_message_handlert::XML_UI:
       {
-        #if 0
-        xmlt xml_claim("claim"); // this will go away, use below
-        xml_claim.new_element("number").data=id2string(property_id); // will go away
-        xml_claim.new_element("name").data=id2string(property_id); // will go away
-        xml_claim.set_attribute("name", id2string(property_id)); // use this one
-        
-        xmlt &l=xml_claim.new_element();
-        l=xml(it->source_location);
-        
-        xml_claim.new_element("description").data=id2string(description);        
-        xml_claim.new_element("property").data=id2string(property_class);
-        xml_claim.new_element("expression").data=from_expr(ns, identifier, it->guard);
-        xml_claim.new_element("source").data="";
-
-        std::cout << xml_claim << std::endl;
-        #endif
-
         // use me instead
         xmlt xml_property("property");
-        xml_property.set_attribute("name", id2string(property_id)); // use this one
-        xml_property.set_attribute("class", id2string(property_class)); // use this one
-        
+        xml_property.set_attribute("name", id2string(property_id));
+        xml_property.set_attribute("class", id2string(property_class));
+
         xmlt &property_l=xml_property.new_element();
-        property_l=xml(it->source_location);
-        
-        xml_property.new_element("description").data=id2string(description);        
-        xml_property.new_element("expression").data=from_expr(ns, identifier, it->guard);
+        property_l=xml(source_location);
+
+        xml_property.new_element("description").data=id2string(description);
+        xml_property.new_element("expression").data=
+          from_expr(ns, identifier, ins.guard);
 
         std::cout << xml_property << std::endl;
       }
       break;
-      
+
+    case ui_message_handlert::JSON_UI:
+      assert(false);
+      break;
+
     case ui_message_handlert::PLAIN:
       std::cout << "Property " << property_id << ":" << std::endl;
 
-      std::cout << "  " << it->source_location << std::endl
+      std::cout << "  " << ins.source_location << std::endl
                 << "  " << description << std::endl
-                << "  " << from_expr(ns, identifier, it->guard) << std::endl;
+                << "  " << from_expr(ns, identifier, ins.guard)
+                        << std::endl;
 
       std::cout << std::endl;
       break;
@@ -104,6 +90,82 @@ void show_properties(
       assert(false);
     }
   }
+}
+
+
+/*******************************************************************\
+
+Function: cbmc_parseoptionst::show_properties_json
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void show_properties_json(
+  json_arrayt &json_properties,
+  const namespacet &ns,
+  const irep_idt &identifier,
+  const goto_programt &goto_program)
+{
+  for(const auto &ins : goto_program.instructions)
+  {
+    if(!ins.is_assert())
+      continue;
+
+    const source_locationt &source_location=ins.source_location;
+
+    const irep_idt &comment=source_location.get_comment();
+    // const irep_idt &function=location.get_function();
+    const irep_idt &property_class=source_location.get_property_class();
+    const irep_idt description=
+      (comment==""?"assertion":comment);
+
+    irep_idt property_id=source_location.get_property_id();
+
+    json_objectt &json_property=
+      json_properties.push_back(jsont()).make_object();
+    json_property["name"]=json_stringt(id2string(property_id));
+    json_property["class"]=json_stringt(id2string(property_class));
+    json_property["sourceLocation"]=json(source_location);
+    json_property["description"]=json_stringt(id2string(description));
+    json_property["expression"]=
+      json_stringt(from_expr(ns, identifier, ins.guard));
+  }
+}
+
+/*******************************************************************\
+
+Function: show_properties_json
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void show_properties_json(
+  const namespacet &ns,
+  const goto_functionst &goto_functions)
+{
+  json_arrayt json_properties;
+
+  for(const auto &fct : goto_functions.function_map)
+    if(!fct.second.is_inlined())
+      show_properties_json(
+        json_properties,
+        ns,
+        fct.first,
+        fct.second.body);
+
+  json_objectt json_result;
+  json_result["properties"] = json_properties;
+  std::cout << ",\n" << json_result;
 }
 
 /*******************************************************************\
@@ -123,12 +185,12 @@ void show_properties(
   ui_message_handlert::uit ui,
   const goto_functionst &goto_functions)
 {
-  for(goto_functionst::function_mapt::const_iterator
-      it=goto_functions.function_map.begin();
-      it!=goto_functions.function_map.end();
-      it++)
-    if(!it->second.is_inlined())
-      show_properties(ns, it->first, ui, it->second.body);
+  if(ui == ui_message_handlert::JSON_UI)
+    show_properties_json(ns, goto_functions);
+  else
+    for(const auto &fct : goto_functions.function_map)
+      if(!fct.second.is_inlined())
+        show_properties(ns, fct.first, ui, fct.second.body);
 }
 
 /*******************************************************************\
@@ -148,6 +210,8 @@ void show_properties(
   ui_message_handlert::uit ui)
 {
   const namespacet ns(goto_model.symbol_table);
-  show_properties(ns, ui, goto_model.goto_functions);
+  if(ui == ui_message_handlert::JSON_UI)
+    show_properties_json(ns, goto_model.goto_functions);
+  else
+    show_properties(ns, ui, goto_model.goto_functions);
 }
-

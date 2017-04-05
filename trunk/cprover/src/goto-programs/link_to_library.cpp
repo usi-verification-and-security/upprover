@@ -6,6 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <util/config.h>
+
 #include <ansi-c/cprover_library.h>
 
 #include "link_to_library.h"
@@ -54,54 +56,53 @@ void link_to_library(
   // this needs a fixedpoint, as library functions
   // may depend on other library functions
 
+  messaget message(message_handler);
+
+  message.status() << "Adding CPROVER library ("
+                   << config.ansi_c.arch << ")" << messaget::eom;
+
   std::set<irep_idt> added_functions;
 
   while(true)
   {
     std::set<irep_idt> called_functions;
     compute_called_functions(goto_functions, called_functions);
-  
+
     // eliminate those for which we already have a body
 
     std::set<irep_idt> missing_functions;
 
-    for(std::set<irep_idt>::const_iterator
-        it=called_functions.begin();
-        it!=called_functions.end();
-        it++)
+    for(const auto &id : called_functions)
     {
       goto_functionst::function_mapt::const_iterator
-        f_it=goto_functions.function_map.find(*it);
-      
+        f_it=goto_functions.function_map.find(id);
+
       if(f_it!=goto_functions.function_map.end() &&
          f_it->second.body_available())
       {
         // it's overridden!
       }
-      else if(added_functions.find(*it)!=added_functions.end())
+      else if(added_functions.find(id)!=added_functions.end())
       {
         // already added
       }
       else
-        missing_functions.insert(*it);
+        missing_functions.insert(id);
     }
-    
+
     // done?
-    if(missing_functions.empty()) break;
-    
+    if(missing_functions.empty())
+      break;
+
     add_cprover_library(missing_functions, symbol_table, message_handler);
 
     // convert to CFG
-    for(std::set<irep_idt>::const_iterator
-        it=missing_functions.begin();
-        it!=missing_functions.end();
-        it++)
+    for(const auto &id : missing_functions)
     {
-      if(symbol_table.symbols.find(*it)!=symbol_table.symbols.end())
-        goto_convert(*it, symbol_table, goto_functions, message_handler);
-        
-      added_functions.insert(*it);
+      if(symbol_table.symbols.find(id)!=symbol_table.symbols.end())
+        goto_convert(id, symbol_table, goto_functions, message_handler);
+
+      added_functions.insert(id);
     }
-    
   }
 }

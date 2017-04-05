@@ -10,7 +10,6 @@ Revisions: Roberto Bruttomesso, roberto.bruttomesso@unisi.ch
 
 #include <cassert>
 
-#include <util/i2string.h>
 
 #include "smt1_prop.h"
 
@@ -94,7 +93,7 @@ literalt smt1_propt::land(const bvt &bv)
 
   out << ":assumption ; land" << "\n";
   out << " (iff " << smt1_literal(l) << " (and";
-  
+
   forall_literals(it, bv)
     out << " " << smt1_literal(*it);
 
@@ -102,7 +101,7 @@ literalt smt1_propt::land(const bvt &bv)
 
   return l;
 }
-  
+
 /*******************************************************************\
 
 Function: smt1_propt::lor
@@ -131,7 +130,7 @@ literalt smt1_propt::lor(const bvt &bv)
 
   return l;
 }
-  
+
 /*******************************************************************\
 
 Function: smt1_propt::lxor
@@ -146,8 +145,10 @@ Function: smt1_propt::lxor
 
 literalt smt1_propt::lxor(const bvt &bv)
 {
-  if(bv.empty()) return const_literal(false);
-  if(bv.size()==1) return bv[0];
+  if(bv.empty())
+    return const_literal(false);
+  if(bv.size()==1)
+    return bv[0];
 
   out << "\n";
 
@@ -163,7 +164,7 @@ literalt smt1_propt::lxor(const bvt &bv)
 
   return l;
 }
-  
+
 /*******************************************************************\
 
 Function: smt1_propt::land
@@ -178,11 +179,16 @@ Function: smt1_propt::land
 
 literalt smt1_propt::land(literalt a, literalt b)
 {
-  if(a==const_literal(true)) return b;
-  if(b==const_literal(true)) return a;
-  if(a==const_literal(false)) return const_literal(false);
-  if(b==const_literal(false)) return const_literal(false);
-  if(a==b) return a;
+  if(a==const_literal(true))
+    return b;
+  if(b==const_literal(true))
+    return a;
+  if(a==const_literal(false))
+    return const_literal(false);
+  if(b==const_literal(false))
+    return const_literal(false);
+  if(a==b)
+    return a;
 
   out << "\n";
 
@@ -211,12 +217,17 @@ Function: smt1_propt::lor
 
 literalt smt1_propt::lor(literalt a, literalt b)
 {
-  if(a==const_literal(false)) return b;
-  if(b==const_literal(false)) return a;
-  if(a==const_literal(true)) return const_literal(true);
-  if(b==const_literal(true)) return const_literal(true);
-  if(a==b) return a;
-  
+  if(a==const_literal(false))
+    return b;
+  if(b==const_literal(false))
+    return a;
+  if(a==const_literal(true))
+    return const_literal(true);
+  if(b==const_literal(true))
+    return const_literal(true);
+  if(a==b)
+    return a;
+
   out << "\n";
 
   literalt l=new_variable();
@@ -244,10 +255,14 @@ Function: smt1_propt::lxor
 
 literalt smt1_propt::lxor(literalt a, literalt b)
 {
-  if(a==const_literal(false)) return b;
-  if(b==const_literal(false)) return a;
-  if(a==const_literal(true)) return !b;
-  if(b==const_literal(true)) return !a;
+  if(a==const_literal(false))
+    return b;
+  if(b==const_literal(false))
+    return a;
+  if(a==const_literal(true))
+    return !b;
+  if(b==const_literal(true))
+    return !a;
 
   out << "\n";
 
@@ -343,15 +358,22 @@ Function: smt1_propt::lselect
 \*******************************************************************/
 
 literalt smt1_propt::lselect(literalt a, literalt b, literalt c)
-{ 
-  if(a==const_literal(true)) return b;
-  if(a==const_literal(false)) return c;
-  if(b==c) return b;
+{
+  if(a==const_literal(true))
+    return b;
+  if(a==const_literal(false))
+    return c;
+  if(b==c)
+    return b;
 
-  if(a==const_literal(false)) return b;
-  if(b==const_literal(false)) return a;
-  if(a==const_literal(true)) return !b;
-  if(b==const_literal(true)) return !a;
+  if(a==const_literal(false))
+    return b;
+  if(b==const_literal(false))
+    return a;
+  if(a==const_literal(true))
+    return !b;
+  if(b==const_literal(true))
+    return !a;
 
   out << "\n";
 
@@ -382,7 +404,7 @@ literalt smt1_propt::new_variable()
   literalt l;
   l.set(_no_variables, false);
   _no_variables++;
-  
+
   out << ":extrapreds((" << smt1_literal(l) << "))" << "\n";
 
   return l;
@@ -413,7 +435,7 @@ void smt1_propt::lcnf(const bvt &bv)
   else
   {
     out << "(or";
-    
+
     for(bvt::const_iterator it=bv.begin(); it!=bv.end(); it++)
       out << " " << smt1_literal(*it);
 
@@ -441,11 +463,11 @@ std::string smt1_propt::smt1_literal(literalt l)
     return "false";
   else if(l==const_literal(true))
     return "true";
-    
-  std::string v="B"+i2string(l.var_no());
+
+  std::string v="B"+std::to_string(l.var_no());
 
   if(l.sign())
-    return "(not "+v+")";  
+    return "(not "+v+")";
 
   return v;
 }
@@ -464,11 +486,14 @@ Function: smt1_propt::l_get
 
 tvt smt1_propt::l_get(literalt literal) const
 {
-  if(literal.is_true()) return tvt(true);
-  if(literal.is_false()) return tvt(false);
+  if(literal.is_true())
+    return tvt(true);
+  if(literal.is_false())
+    return tvt(false);
 
   unsigned v=literal.var_no();
-  if(v>=assignment.size()) return tvt(tvt::tv_enumt::TV_UNKNOWN);
+  if(v>=assignment.size())
+    return tvt(tvt::tv_enumt::TV_UNKNOWN);
   tvt r=assignment[v];
   return literal.sign()?!r:r;
 }
@@ -487,7 +512,8 @@ Function: smt1_propt::set_assignment
 
 void smt1_propt::set_assignment(literalt literal, bool value)
 {
-  if(literal.is_true() || literal.is_false()) return;
+  if(literal.is_true() || literal.is_false())
+    return;
 
   unsigned v=literal.var_no();
   assert(v<assignment.size());

@@ -1,16 +1,17 @@
-/*******************************************************************
+/*******************************************************************\
 
 Module: Counterexample-Guided Inductive Synthesis
 
 Author: Daniel Kroening, kroening@kroening.com
-        Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_SYMEX_CEGIS_SYMEX_VERIFY_H_
-#define CEGIS_SYMEX_CEGIS_SYMEX_VERIFY_H_
+#ifndef CPROVER_CEGIS_SYMEX_CEGIS_SYMEX_VERIFY_H
+#define CPROVER_CEGIS_SYMEX_CEGIS_SYMEX_VERIFY_H
 
 #include <deque>
+#include <util/message.h>
 
 /**
  * @brief
@@ -93,8 +94,19 @@ public:
    * @return <code>true</code> if the last solution holds, <code>false</code> otherwise.
    */
   bool success() const;
+
+  /**
+   * @brief
+   *
+   * @details
+   *
+   * @param counterexample
+   */
+  void show_counterexample(
+      messaget::mstreamt &os,
+      const counterexamplet &counterexample) const;
 };
 
 #include "cegis_symex_verify.inc"
 
-#endif /* CEGIS_SYMEX_CEGIS_SYMEX_VERIFY_H_ */
+#endif // CPROVER_CEGIS_SYMEX_CEGIS_SYMEX_VERIFY_H

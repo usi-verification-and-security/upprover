@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_TYPECHECK_H
-#define CPROVER_CPP_TYPECHECK_H
+#ifndef CPROVER_CPP_CPP_TYPECHECK_H
+#define CPROVER_CPP_CPP_TYPECHECK_H
 
 #include <cassert>
 #include <set>
@@ -118,7 +118,7 @@ protected:
   void convert_initializer(symbolt &symbol);
   void convert_function(symbolt &symbol);
 
-  void convert_pmop(exprt& expr);
+  void convert_pmop(exprt &expr);
 
   void convert_anonymous_union(
     cpp_declarationt &declaration,
@@ -135,11 +135,6 @@ protected:
   void salvage_default_arguments(
     const template_typet &old_type,
     template_typet &new_type);
-
-  void check_template_restrictions(
-    const irept &cpp_name,
-    const irep_idt &final_identifier,
-    const typet &final_type);
 
   void convert_template_declaration(cpp_declarationt &declaration);
 
@@ -161,7 +156,7 @@ protected:
     const irep_idt &base_name,
     const template_typet &template_type,
     const cpp_template_args_non_tct &partial_specialization_args);
-    
+
   std::string function_template_identifier(
     const irep_idt &base_name,
     const template_typet &template_type,
@@ -172,7 +167,7 @@ protected:
     const symbolt &template_symbol,
     const cpp_template_args_non_tct &template_args);
 
-  // template instantiations    
+  // template instantiations
   class instantiationt
   {
   public:
@@ -183,9 +178,9 @@ protected:
 
   typedef std::list<instantiationt> instantiation_stackt;
   instantiation_stackt instantiation_stack;
-  
+
   void show_instantiation_stack(std::ostream &);
-  
+
   class instantiation_levelt
   {
   public:
@@ -195,21 +190,21 @@ protected:
     {
       instantiation_stack.push_back(instantiationt());
     }
-    
+
     ~instantiation_levelt()
     {
       instantiation_stack.pop_back();
     }
-    
+
   private:
     instantiation_stackt &instantiation_stack;
   };
-  
+
   const symbolt &class_template_symbol(
     const source_locationt &source_location,
     const symbolt &template_symbol,
     const cpp_template_args_tct &specialization_template_args,
-    const cpp_template_args_tct &full_template_args);  
+    const cpp_template_args_tct &full_template_args);
 
   void elaborate_class_template(
     const typet &type);
@@ -251,15 +246,15 @@ protected:
     cpp_declarationt &ctor) const;
 
   void default_cpctor(
-    const symbolt&, cpp_declarationt& cpctor) const;
+    const symbolt&, cpp_declarationt &cpctor) const;
 
   void default_assignop(
-      const symbolt& symbol, cpp_declarationt& cpctor);
+      const symbolt &symbol, cpp_declarationt &cpctor);
 
   void default_assignop_value(
-      const symbolt& symbol, cpp_declaratort& declarator);
+      const symbolt &symbol, cpp_declaratort &declarator);
 
-  void default_dtor(const symbolt& symb, cpp_declarationt& dtor);
+  void default_dtor(const symbolt &symb, cpp_declarationt &dtor);
 
   codet dtor(const symbolt &symb);
 
@@ -276,20 +271,20 @@ protected:
     const struct_union_typet &struct_union_type,
     irept &initializers);
 
-  bool find_cpctor(const symbolt& symbol)const;
-  bool find_assignop(const symbolt& symbol)const;
-  bool find_dtor(const symbolt& symbol)const;
+  bool find_cpctor(const symbolt &symbol)const;
+  bool find_assignop(const symbolt &symbol)const;
+  bool find_dtor(const symbolt &symbol)const;
 
   bool find_parent(
-    const symbolt& symb,
+    const symbolt &symb,
     const irep_idt &base_name,
     irep_idt &identifier);
 
   bool get_component(
     const source_locationt &source_location,
-    const exprt& object,
-    const irep_idt& component_name,
-    exprt& member);
+    const exprt &object,
+    const irep_idt &component_name,
+    exprt &member);
 
   void new_temporary(const source_locationt &source_location,
                      const typet &,
@@ -307,45 +302,45 @@ protected:
 
   void add_base_components(
         const struct_typet &from,
-        const irep_idt& access,
+        const irep_idt &access,
         struct_typet &to,
-        std::set<irep_idt>& bases,
-        std::set<irep_idt>& vbases,
+        std::set<irep_idt> &bases,
+        std::set<irep_idt> &vbases,
         bool is_virtual);
 
   bool cast_away_constness(const typet &t1,
                            const typet &t2) const;
 
-  void do_virtual_table(const symbolt& symbol);
+  void do_virtual_table(const symbolt &symbol);
 
   // we need to be able to delay the typechecking
-  // of function bodies to handle methods with
+  // of method bodies to handle methods with
   // bodies in the class definition
-  struct function_bodyt
+  struct method_bodyt
   {
   public:
-    function_bodyt(
-      symbolt *_function_symbol,
+    method_bodyt(
+      symbolt *_method_symbol,
       const template_mapt &_template_map,
       const instantiation_stackt &_instantiation_stack):
-      function_symbol(_function_symbol),
+      method_symbol(_method_symbol),
       template_map(_template_map),
       instantiation_stack(_instantiation_stack)
     {
     }
-    
-    symbolt *function_symbol;
+
+    symbolt *method_symbol;
     template_mapt template_map;
     instantiation_stackt instantiation_stack;
   };
-  
-  typedef std::list<function_bodyt> function_bodiest;
-  function_bodiest function_bodies;
-  
-  void add_function_body(symbolt *_function_symbol)
+
+  typedef std::list<method_bodyt> method_bodiest;
+  method_bodiest method_bodies;
+
+  void add_method_body(symbolt *_method_symbol)
   {
-    function_bodies.push_back(function_bodyt(
-      _function_symbol, template_map, instantiation_stack));
+    method_bodies.push_back(method_bodyt(
+      _method_symbol, template_map, instantiation_stack));
   }
 
   // types
@@ -382,9 +377,9 @@ protected:
 
   void put_compound_into_scope(const struct_union_typet::componentt &component);
   void typecheck_compound_body(symbolt &symbol);
-  void typecheck_compound_body(struct_union_typet &type) { assert(false); };
+  void typecheck_compound_body(struct_union_typet &type) { assert(false); }
   void typecheck_enum_body(symbolt &symbol);
-  void typecheck_function_bodies();
+  void typecheck_method_bodies(method_bodiest &);
   void typecheck_compound_bases(struct_typet &type);
   void add_anonymous_members_to_scope(const symbolt &struct_union_symbol);
 
@@ -403,7 +398,7 @@ protected:
     const typet &method_qualifier,
     exprt &value);
 
-  void adjust_method_type(
+  void add_this_to_method_type(
     const irep_idt &compound_identifier,
     typet &method_type,
     const typet &method_qualifier);
@@ -566,7 +561,7 @@ public:
 
   void make_ptr_typecast(
     exprt &expr,
-    const typet & dest_type);
+    const typet &dest_type);
 
   // the C++ typecasts
 
@@ -598,4 +593,4 @@ private:
   bool disable_access_control;           // Disable protect and private
 };
 
-#endif
+#endif // CPROVER_CPP_CPP_TYPECHECK_H

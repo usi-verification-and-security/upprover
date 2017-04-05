@@ -1,5 +1,15 @@
+/*******************************************************************\
+
+Module: Counterexample-Guided Inductive Synthesis
+
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
+
+\*******************************************************************/
+
 #include <algorithm>
 
+#include <cegis/cegis-util/program_helper.h>
 #include <cegis/invariant/options/target_copy_helper.h>
 #include <cegis/invariant/util/invariant_program_helper.h>
 #include <cegis/safety/options/safety_program.h>

@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_GOTO_PROGRAM_FULL_SLICER_CLASS_H
-#define CPROVER_GOTO_PROGRAM_FULL_SLICER_CLASS_H
+#ifndef CPROVER_GOTO_INSTRUMENT_FULL_SLICER_CLASS_H
+#define CPROVER_GOTO_INSTRUMENT_FULL_SLICER_CLASS_H
 
 #include <stack>
 #include <vector>
@@ -16,21 +16,21 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/goto_functions.h>
 #include <goto-programs/cfg.h>
 
-#include <analyses/cfg_dominators.h>
+#include <analyses/dependence_graph.h>
 
-//#define DEBUG_FULL_SLICERT
+#include "full_slicer.h"
+
+// #define DEBUG_FULL_SLICERT
 #if 0
-useful for debugging:
+useful for debugging (remove NOLINT)
 goto-instrument --full-slice a.out c.out
 goto-instrument --show-goto-functions c.out > c.goto
 echo 'digraph g {' > c.dot ; cat c.goto | \
-  grep 'ins:[[:digit:]]\+ req by' | grep '^[[:space:]]*//' | \
-  perl -n -e '/file .*(.) line (\d+) column ins:(\d+) req by:([\d,]+).*/; $f=$3; $t=$4; @tt=split(",",$t); print "n$f [label=\"$f\"];\n"; print "n$f -> n$_;\n" foreach(@tt);' >> c.dot ; \
+  NOLINT(*) grep 'ins:[[:digit:]]\+ req by' | grep '^[[:space:]]*//' | \
+  NOLINT(*) perl -n -e '/file .*(.) line (\d+) column ins:(\d+) req by:([\d,]+).*/; $f=$3; $t=$4; @tt=split(",",$t); print "n$f [label=\"$f\"];\n"; print "n$f -> n$_;\n" foreach(@tt);' >> c.dot ; \
   echo '}' >> c.dot ; tred c.dot > c-red.dot ; \
   dot -Tpdf -oc-red.pdf c-red.dot
 #endif
-
-class dependence_grapht;
 
 /*******************************************************************\
 
@@ -67,7 +67,7 @@ protected:
   typedef std::vector<cfgt::entryt> dep_node_to_cfgt;
   typedef std::stack<cfgt::entryt> queuet;
   typedef std::list<cfgt::entryt> jumpst;
-  typedef hash_map_cont<irep_idt, queuet, irep_id_hash> decl_deadt;
+  typedef std::unordered_map<irep_idt, queuet, irep_id_hash> decl_deadt;
 
   void fixedpoint(
     goto_functionst &goto_functions,
@@ -95,9 +95,9 @@ protected:
   void add_jumps(
     queuet &queue,
     jumpst &jumps,
-    const cfg_post_dominatorst &cfg_post_dominators);
+    const dependence_grapht::post_dominators_mapt &post_dominators);
 
-  inline void add_to_queue(
+  void add_to_queue(
     queuet &queue,
     const cfgt::entryt &entry,
     goto_programt::const_targett reason)
@@ -118,4 +118,35 @@ public:
   }
 };
 
-#endif
+class properties_criteriont:public slicing_criteriont
+{
+public:
+  explicit properties_criteriont(
+    const std::list<std::string> &properties):
+    property_ids(properties)
+  {
+  }
+
+  virtual bool operator()(goto_programt::const_targett target)
+  {
+    if(!target->is_assert())
+      return false;
+
+    const std::string &p_id=
+      id2string(target->source_location.get_property_id());
+
+    for(std::list<std::string>::const_iterator
+        it=property_ids.begin();
+        it!=property_ids.end();
+        ++it)
+      if(p_id==*it)
+        return true;
+
+    return false;
+  }
+
+protected:
+  const std::list<std::string> &property_ids;
+};
+
+#endif // CPROVER_GOTO_INSTRUMENT_FULL_SLICER_CLASS_H

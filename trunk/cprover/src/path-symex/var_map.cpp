@@ -10,12 +10,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/symbol.h>
 #include <util/std_expr.h>
-#include <util/i2string.h>
 #include <util/prefix.h>
 
 #include "var_map.h"
-
-// #define DEBUG
 
 /*******************************************************************\
 
@@ -29,7 +26,7 @@ Function: var_mapt::var_infot::operator()
 
 \*******************************************************************/
 
-var_mapt::var_infot & var_mapt::operator()(
+var_mapt::var_infot &var_mapt::operator()(
   const irep_idt &symbol,
   const irep_idt &suffix,
   const typet &type)
@@ -52,7 +49,7 @@ var_mapt::var_infot & var_mapt::operator()(
     result.first->second.type=type;
     init(result.first->second);
   }
-  
+
   return result.first->second;
 }
 
@@ -82,13 +79,13 @@ void var_mapt::var_infot::output(std::ostream &out) const
   case THREAD_LOCAL: out << "THREAD_LOCAL"; break;
   case SHARED: out << "SHARED"; break;
   }
-  
+
   out << "\n";
-  
+
   out << "number: " << number << "\n";
-  
-  out << "type: " << type << "\n";
-  
+
+  out << "type: " << type.pretty() << "\n";
+
   out << "\n";
 }
 
@@ -112,26 +109,29 @@ void var_mapt::init(var_infot &var_info)
   }
   else
   {
-    try
+    // Check for the presence of va_args
+    std::size_t found=id2string(var_info.symbol).find("::va_arg");
+    if(found != std::string::npos)
     {
-      const symbolt &symbol=ns.lookup(var_info.symbol);
+      var_info.kind=var_infot::PROCEDURE_LOCAL;
+    }
+    else
+    {
+      const symbolt *symbol=0;
+      if(ns.lookup(var_info.symbol, symbol))
+        throw "var_mapt::init identifier \""
+          +id2string(var_info.full_identifier)
+          +"\" lookup in ns failed";
 
-      if(symbol.is_static_lifetime)
+      if(symbol->is_static_lifetime)
       {
-        if(symbol.is_thread_local)
+        if(symbol->is_thread_local)
           var_info.kind=var_infot::THREAD_LOCAL;
         else
           var_info.kind=var_infot::SHARED;
       }
       else
         var_info.kind=var_infot::PROCEDURE_LOCAL;
-    }
-    
-    catch(std::string s)
-    {
-      throw "var_mapt::init identifier \"" +
-            id2string(var_info.full_identifier)+
-            "\" lookup in ns failed";
     }
   }
 
@@ -156,7 +156,7 @@ Function: var_mapt::var_infot::ssa_identifier
 irep_idt var_mapt::var_infot::ssa_identifier() const
 {
   return id2string(full_identifier)+
-         "#"+i2string(ssa_counter);
+         "#"+std::to_string(ssa_counter);
 }
 
 /*******************************************************************\

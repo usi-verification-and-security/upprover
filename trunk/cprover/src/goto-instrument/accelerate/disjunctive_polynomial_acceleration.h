@@ -1,5 +1,13 @@
-#ifndef DISJUNCTIVE_POLYNOMIAL_ACCELERATION_H
-#define DISJUNCTIVE_POLYNOMIAL_ACCELERATION_H
+/*******************************************************************\
+
+Module: Loop Acceleration
+
+Author: Matt Lewis
+
+\*******************************************************************/
+
+#ifndef CPROVER_GOTO_INSTRUMENT_ACCELERATE_DISJUNCTIVE_POLYNOMIAL_ACCELERATION_H
+#define CPROVER_GOTO_INSTRUMENT_ACCELERATE_DISJUNCTIVE_POLYNOMIAL_ACCELERATION_H
 
 #include <map>
 #include <set>
@@ -19,22 +27,22 @@
 #include "cone_of_influence.h"
 #include "acceleration_utils.h"
 
-using namespace std;
-
-class disjunctive_polynomial_accelerationt : public loop_accelerationt {
- public:
-  disjunctive_polynomial_accelerationt(symbol_tablet &_symbol_table,
-                          goto_functionst &_goto_functions,
-                          goto_programt &_goto_program,
-                          natural_loops_mutablet::natural_loopt &_loop,
-                          goto_programt::targett _loop_header) :
-      symbol_table(_symbol_table),
-      ns(symbol_table),
-      goto_functions(_goto_functions),
-      goto_program(_goto_program),
-      loop(_loop),
-      loop_header(_loop_header),
-      utils(symbol_table, goto_functions, loop_counter)
+class disjunctive_polynomial_accelerationt:public loop_accelerationt
+{
+public:
+  disjunctive_polynomial_accelerationt(
+    symbol_tablet &_symbol_table,
+    goto_functionst &_goto_functions,
+    goto_programt &_goto_program,
+    natural_loops_mutablet::natural_loopt &_loop,
+    goto_programt::targett _loop_header):
+    symbol_table(_symbol_table),
+    ns(symbol_table),
+    goto_functions(_goto_functions),
+    goto_program(_goto_program),
+    loop(_loop),
+    loop_header(_loop_header),
+    utils(symbol_table, goto_functions, loop_counter)
   {
     loop_counter = nil_exprt();
     find_distinguishing_points();
@@ -44,19 +52,21 @@ class disjunctive_polynomial_accelerationt : public loop_accelerationt {
 
   virtual bool accelerate(path_acceleratort &accelerator);
 
-  bool fit_polynomial(exprt &target,
-                      polynomialt &polynomial,
-                      patht &path);
+  bool fit_polynomial(
+    exprt &target,
+    polynomialt &polynomial,
+    patht &path);
 
   bool find_path(patht &path);
 
- protected:
-  void assert_for_values(scratch_programt &program,
-                         map<exprt, exprt> &values,
-                         set<pair<expr_listt, exprt> > &coefficients,
-                         int num_unwindings,
-                         goto_programt &loop_body,
-                         exprt &target);
+protected:
+  void assert_for_values(
+    scratch_programt &program,
+    std::map<exprt, exprt> &values,
+    std::set<std::pair<expr_listt, exprt> > &coefficients,
+    int num_unwindings,
+    goto_programt &loop_body,
+    exprt &target);
   void cone_of_influence(const exprt &target, expr_sett &cone);
 
   void find_distinguishing_points();
@@ -75,16 +85,17 @@ class disjunctive_polynomial_accelerationt : public loop_accelerationt {
   natural_loops_mutablet::natural_loopt &loop;
   goto_programt::targett loop_header;
 
-  typedef map<goto_programt::targett, exprt> distinguish_mapt;
-  typedef map<exprt, bool> distinguish_valuest;
+  typedef std::map<goto_programt::targett, exprt> distinguish_mapt;
+  typedef std::map<exprt, bool> distinguish_valuest;
 
   acceleration_utilst utils;
   exprt loop_counter;
   distinguish_mapt distinguishing_points;
-  list<exprt> distinguishers;
+  std::list<exprt> distinguishers;
   expr_sett modified;
   goto_programt fixed;
-  list<distinguish_valuest> accelerated_paths;
+  std::list<distinguish_valuest> accelerated_paths;
 };
 
-#endif // DISJUNCTIVE_POLYNOMIAL_ACCELERATION_H
+// NOLINTNEXTLINE(whitespace/line_length)
+#endif // CPROVER_GOTO_INSTRUMENT_ACCELERATE_DISJUNCTIVE_POLYNOMIAL_ACCELERATION_H

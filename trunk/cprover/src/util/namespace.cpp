@@ -37,7 +37,8 @@ unsigned get_max(
   forall_symbols(it, symbols)
     if(has_prefix(id2string(it->first), prefix))
       max_nr=
-        std::max(unsafe_c_str2unsigned(it->first.c_str()+prefix.size()),
+        std::max(unsafe_string2unsigned(
+                  id2string(it->first).substr(prefix.size())),
                  max_nr);
 
   return max_nr;
@@ -108,7 +109,8 @@ Function: namespace_baset::follow
 
 const typet &namespace_baset::follow(const typet &src) const
 {
-  if(src.id()!=ID_symbol) return src;
+  if(src.id()!=ID_symbol)
+    return src;
 
   const symbolt *symbol=&lookup(src);
 
@@ -116,7 +118,8 @@ const typet &namespace_baset::follow(const typet &src) const
   while(true)
   {
     assert(symbol->is_type);
-    if(symbol->type.id()!=ID_symbol) return symbol->type;
+    if(symbol->type.id()!=ID_symbol)
+      return symbol->type;
     symbol=&lookup(symbol->type);
   }
 }
@@ -251,7 +254,7 @@ Function: namespacet::lookup
 
 bool namespacet::lookup(
   const irep_idt &name,
-  const symbolt *&symbol) const  
+  const symbolt *&symbol) const
 {
   symbol_tablet::symbolst::const_iterator it;
 
@@ -319,7 +322,7 @@ Function: multi_namespacet::lookup
 
 bool multi_namespacet::lookup(
   const irep_idt &name,
-  const symbolt *&symbol) const  
+  const symbolt *&symbol) const
 {
   symbol_tablet::symbolst::const_iterator s_it;
 

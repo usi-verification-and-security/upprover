@@ -33,21 +33,21 @@ literalt boolbvt::convert_extractbit(const extractbit_exprt &expr)
 
   if(operands.size()!=2)
     throw "extractbit takes two operands";
-    
+
   const bvt &bv0=convert_bv(operands[0]);
 
   // constant?
   if(operands[1].is_constant())
   {
     mp_integer o;
-  
+
     if(to_integer(operands[1], o))
       throw "extractbit failed to convert constant index";
 
     if(o<0 || o>=bv0.size())
       return prop.new_variable(); // out of range!
     else
-      return bv0[integer2long(o)];
+      return bv0[integer2size_t(o)];
   }
 
   if(operands[0].type().id()==ID_verilog_signedbv ||
@@ -104,6 +104,6 @@ literalt boolbvt::convert_extractbit(const extractbit_exprt &expr)
       return l;
     }
   }
-   
+
   return SUB::convert_rest(expr);
 }

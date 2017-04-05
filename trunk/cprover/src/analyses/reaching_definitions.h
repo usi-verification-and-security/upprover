@@ -9,8 +9,10 @@ Date: February 2013
 
 \*******************************************************************/
 
-#ifndef CPROVER_REACHING_DEFINITIONS_H
-#define CPROVER_REACHING_DEFINITIONS_H
+#ifndef CPROVER_ANALYSES_REACHING_DEFINITIONS_H
+#define CPROVER_ANALYSES_REACHING_DEFINITIONS_H
+
+#include <util/threeval.h>
 
 #include "ai.h"
 #include "goto_rw.h"
@@ -25,13 +27,13 @@ template<typename V>
 class sparse_bitvector_analysist
 {
 public:
-  inline const V& get(const std::size_t value_index) const
+  const V &get(const std::size_t value_index) const
   {
     assert(value_index<values.size());
     return values[value_index]->first;
   }
 
-  inline std::size_t add(const V& value)
+  std::size_t add(const V &value)
   {
     inner_mapt &m=value_map[value.identifier];
 
@@ -44,10 +46,16 @@ public:
     return entry.first->second;
   }
 
+  void clear()
+  {
+    value_map.clear();
+    values.clear();
+  }
+
 protected:
   typedef typename std::map<V, std::size_t> inner_mapt;
   std::vector<typename inner_mapt::const_iterator> values;
-  hash_map_cont<irep_idt, inner_mapt, irep_id_hash> value_map;
+  std::unordered_map<irep_idt, inner_mapt, irep_id_hash> value_map;
 };
 
 struct reaching_definitiont
@@ -62,14 +70,20 @@ inline bool operator<(
   const reaching_definitiont &a,
   const reaching_definitiont &b)
 {
-  if(a.definition_at<b.definition_at) return true;
-  if(b.definition_at<a.definition_at) return false;
+  if(a.definition_at<b.definition_at)
+    return true;
+  if(b.definition_at<a.definition_at)
+    return false;
 
-  if(a.bit_begin<b.bit_begin) return true;
-  if(b.bit_begin<a.bit_begin) return false;
+  if(a.bit_begin<b.bit_begin)
+    return true;
+  if(b.bit_begin<a.bit_begin)
+    return false;
 
-  if(a.bit_end<b.bit_end) return true;
-  if(b.bit_end<a.bit_end) return false;
+  if(a.bit_end<b.bit_end)
+    return true;
+  if(b.bit_end<a.bit_end)
+    return false;
 
   // we do not expect comparison of unrelated definitions
   // as this operator< is only used in sparse_bitvector_analysist
@@ -83,28 +97,50 @@ class rd_range_domaint:public ai_domain_baset
 public:
   rd_range_domaint():
     ai_domain_baset(),
+    has_values(false),
     bv_container(0)
   {
   }
 
-  inline void set_bitvector_container(
+  void set_bitvector_container(
     sparse_bitvector_analysist<reaching_definitiont> &_bv_container)
   {
     bv_container=&_bv_container;
   }
 
-  virtual void transform(
-      locationt from,
-      locationt to,
-      ai_baset &ai,
-      const namespacet &ns);
+  void transform(
+    locationt from,
+    locationt to,
+    ai_baset &ai,
+    const namespacet &ns) final;
 
-  virtual void output(
-      std::ostream &out,
-      const ai_baset &ai,
-      const namespacet &ns) const
+  void output(
+    std::ostream &out,
+    const ai_baset &ai,
+    const namespacet &ns) const final
   {
     output(out);
+  }
+
+  void make_top() final
+  {
+    values.clear();
+    if(bv_container)
+      bv_container->clear();
+    has_values=tvt(true);
+  }
+
+  void make_bottom() final
+  {
+    values.clear();
+    if(bv_container)
+      bv_container->clear();
+    has_values=tvt(false);
+  }
+
+  void make_entry() final
+  {
+    make_top();
   }
 
   // returns true iff there is s.th. new
@@ -112,6 +148,7 @@ public:
     const rd_range_domaint &other,
     locationt from,
     locationt to);
+
   bool merge_shared(
     const rd_range_domaint &other,
     locationt from,
@@ -122,27 +159,29 @@ public:
   typedef std::multimap<range_spect, range_spect> rangest;
   typedef std::map<locationt, rangest> ranges_at_loct;
 
-  const ranges_at_loct& get(const irep_idt &identifier) const;
-  inline const void clear_cache(const irep_idt &identifier) const
+  const ranges_at_loct &get(const irep_idt &identifier) const;
+  void clear_cache(const irep_idt &identifier) const
   {
     export_cache[identifier].clear();
   }
 
-protected:
+private:
+  tvt has_values;
+
   sparse_bitvector_analysist<reaching_definitiont> *bv_container;
 
   typedef std::set<std::size_t> values_innert;
   #ifdef USE_DSTRING
   typedef std::map<irep_idt, values_innert> valuest;
   #else
-  typedef hash_map_cont<irep_idt, values_innert, irep_id_hash> valuest;
+  typedef std::unordered_map<irep_idt, values_innert, irep_id_hash> valuest;
   #endif
   valuest values;
 
   #ifdef USE_DSTRING
   typedef std::map<irep_idt, ranges_at_loct> export_cachet;
   #else
-  typedef hash_map_cont<irep_idt, ranges_at_loct, irep_id_hash>
+  typedef std::unordered_map<irep_idt, ranges_at_loct, irep_id_hash>
     export_cachet;
   #endif
   mutable export_cachet export_cache;
@@ -191,7 +230,7 @@ protected:
     const values_innert &other);
 };
 
-class reaching_definitions_analysist :
+class reaching_definitions_analysist:
   public concurrency_aware_ait<rd_range_domaint>,
   public sparse_bitvector_analysist<reaching_definitiont>
 {
@@ -248,5 +287,4 @@ protected:
   dirtyt * is_dirty;
 };
 
-#endif
-
+#endif // CPROVER_ANALYSES_REACHING_DEFINITIONS_H

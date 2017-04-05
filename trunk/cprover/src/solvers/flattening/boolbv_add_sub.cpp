@@ -26,10 +26,10 @@ Function: boolbvt::convert_add_sub
 
 \*******************************************************************/
 
-void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_add_sub(const exprt &expr)
 {
   const typet &type=ns.follow(expr.type());
-  
+
   if(type.id()!=ID_unsignedbv &&
      type.id()!=ID_signedbv &&
      type.id()!=ID_fixedbv &&
@@ -37,13 +37,13 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
      type.id()!=ID_range &&
      type.id()!=ID_complex &&
      type.id()!=ID_vector)
-    return conversion_failed(expr, bv);
+    return conversion_failed(expr);
 
   std::size_t width=boolbv_width(type);
-  
+
   if(width==0)
-    return conversion_failed(expr, bv);
-    
+    return conversion_failed(expr);
+
   const exprt::operandst &operands=expr.operands();
 
   if(operands.empty())
@@ -57,14 +57,14 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
     throw "add/sub with mixed types";
   }
 
-  bv=convert_bv(op0);
+  bvt bv=convert_bv(op0);
 
   if(bv.size()!=width)
     throw "convert_add_sub: unexpected operand 0 width";
 
   bool subtract=(expr.id()==ID_minus ||
                  expr.id()=="no-overflow-minus");
-                 
+
   bool no_overflow=(expr.id()=="no-overflow-plus" ||
                     expr.id()=="no-overflow-minus");
 
@@ -95,7 +95,7 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
     if(type.id()==ID_vector || type.id()==ID_complex)
     {
       const typet &subtype=ns.follow(type.subtype());
-    
+
       std::size_t sub_width=boolbv_width(subtype);
 
       if(sub_width==0 || width%sub_width!=0)
@@ -114,7 +114,7 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
           assert(i*sub_width+j<op.size());
           tmp_op[j]=op[i*sub_width+j];
         }
-        
+
         bvt tmp_result;
         tmp_result.resize(sub_width);
 
@@ -123,19 +123,18 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
           assert(i*sub_width+j<bv.size());
           tmp_result[j]=bv[i*sub_width+j];
         }
-        
+
         if(type.subtype().id()==ID_floatbv)
         {
           // needs to change due to rounding mode
-          float_utilst float_utils(prop);
-          float_utils.spec=to_floatbv_type(subtype);
+          float_utilst float_utils(prop, to_floatbv_type(subtype));
           tmp_result=float_utils.add_sub(tmp_result, tmp_op, subtract);
         }
         else
           tmp_result=bv_utils.add_sub(tmp_result, tmp_op, subtract);
-      
+
         assert(tmp_result.size()==sub_width);
-        
+
         for(std::size_t j=0; j<tmp_result.size(); j++)
         {
           assert(i*sub_width+j<bv.size());
@@ -146,8 +145,7 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
     else if(type.id()==ID_floatbv)
     {
       // needs to change due to rounding mode
-      float_utilst float_utils(prop);
-      float_utils.spec=to_floatbv_type(arithmetic_type);
+      float_utilst float_utils(prop, to_floatbv_type(arithmetic_type));
       bv=float_utils.add_sub(bv, op, subtract);
     }
     else if(no_overflow)
@@ -155,5 +153,6 @@ void boolbvt::convert_add_sub(const exprt &expr, bvt &bv)
     else
       bv=bv_utils.add_sub(bv, op, subtract);
   }
-}
 
+  return bv;
+}

@@ -6,7 +6,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/expr_util.h>
 #include <util/pointer_offset_size.h>
 #include <util/arith_tools.h>
 #include <util/base_type.h>
@@ -68,7 +67,7 @@ void goto_symext::dereference_rec_address_of(
   else
   {
     // give up and dereference
-    
+
     dereference_rec(expr, state, guard, false);
   }
 }
@@ -150,7 +149,7 @@ exprt goto_symext::address_arithmetic(
       for(const typet *t=&(ns.follow(a.type().subtype()));
           t->id()==ID_array && !base_type_eq(expr.type(), *t, ns);
           t=&(ns.follow(*t).subtype()))
-        a.object()=index_exprt(a.object(), gen_zero(index_type()));
+        a.object()=index_exprt(a.object(), from_integer(0, index_type()));
     }
 
     // do (expr.type() *)(((char *)op)+offset)
@@ -204,7 +203,7 @@ exprt goto_symext::address_arithmetic(
 
     // the condition is not an address
     dereference_rec(if_expr.cond(), state, guard, false);
-    
+
     // recursive call
     if_expr.true_case()=
       address_arithmetic(if_expr.true_case(), state, guard, keep_array);
@@ -224,7 +223,7 @@ exprt goto_symext::address_arithmetic(
 
     // turn &array into &array[0]
     if(ns.follow(result.type()).id()==ID_array && !keep_array)
-      result=index_exprt(result, gen_zero(index_type()));
+      result=index_exprt(result, from_integer(0, index_type()));
 
     // handle field-sensitive SSA symbol
     mp_integer offset=0;
@@ -284,7 +283,7 @@ void goto_symext::dereference_rec(
 
     exprt tmp1;
     tmp1.swap(expr.op0());
-    
+
     // first make sure there are no dereferences in there
     dereference_rec(tmp1, state, guard, false);
 
@@ -295,15 +294,19 @@ void goto_symext::dereference_rec(
       ns,
       new_symbol_table,
       options,
-      symex_dereference_state);      
-    
+      symex_dereference_state,
+      language_mode);
+
     // std::cout << "**** " << from_expr(ns, "", tmp1) << std::endl;
-    exprt tmp2=dereference.dereference(
-      tmp1, guard, write?value_set_dereferencet::WRITE:value_set_dereferencet::READ);
-    //std::cout << "**** " << from_expr(ns, "", tmp2) << std::endl;
+    exprt tmp2=
+      dereference.dereference(
+        tmp1,
+        guard,
+        write?value_set_dereferencet::WRITE:value_set_dereferencet::READ);
+    // std::cout << "**** " << from_expr(ns, "", tmp2) << std::endl;
 
     expr.swap(tmp2);
-    
+
     // this may yield a new auto-object
     trigger_auto_object(expr, state);
   }
@@ -315,9 +318,9 @@ void goto_symext::dereference_rec(
     // This is an expression of the form x.a[i],
     // where a is a zero-sized array. This gets
     // re-written into *(&x.a+i)
-    
+
     index_exprt index_expr=to_index_expr(expr);
-    
+
     address_of_exprt address_of_expr(index_expr.array());
     address_of_expr.type()=pointer_typet(expr.type());
 
@@ -334,13 +337,13 @@ void goto_symext::dereference_rec(
   else if(expr.id()==ID_index &&
           to_index_expr(expr).array().type().id()==ID_pointer)
   {
-    // old stuff, will go away  
+    // old stuff, will go away
     assert(false);
   }
   else if(expr.id()==ID_address_of)
   {
     address_of_exprt &address_of_expr=to_address_of_expr(expr);
-    
+
     exprt &object=address_of_expr.object();
 
     const typet &expr_type=ns.follow(expr.type());
@@ -359,9 +362,11 @@ void goto_symext::dereference_rec(
          pointer_typet(to_address_of_expr(tc_op).object().type().subtype()),
          ns))
     {
-      expr=address_of_exprt(index_exprt(
-          to_address_of_expr(tc_op).object(),
-          gen_zero(index_type())));;
+      expr=
+        address_of_exprt(
+          index_exprt(
+            to_address_of_expr(tc_op).object(),
+            from_integer(0, index_type())));
 
       dereference_rec(expr, state, guard, write);
     }
@@ -402,7 +407,7 @@ void goto_symext::dereference(
   state.rename(expr, ns, goto_symex_statet::L1);
 
   // start the recursion!
-  guardt guard;  
+  guardt guard;
   dereference_rec(expr, state, guard, write);
   // dereferencing may introduce new symbol_exprt
   // (like __CPROVER_memory)

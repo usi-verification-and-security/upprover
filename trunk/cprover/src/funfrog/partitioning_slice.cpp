@@ -286,7 +286,7 @@ void partitioning_slicet::prepare_assignment(
   assert(SSA_step.ssa_lhs.id() == ID_symbol);
 
   const irep_idt &id = SSA_step.ssa_lhs.get(ID_identifier);
-  const irep_idt &id2 = SSA_step.ssa_rhs.get(ID_identifier);
+  //const irep_idt &id2 = SSA_step.ssa_rhs.get(ID_identifier);
   def_map.insert(def_mapt::value_type(id, &SSA_step));
 }
 

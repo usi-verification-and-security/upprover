@@ -6,17 +6,19 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PATH_SYMEX_H
-#define CPROVER_PATH_SYMEX_H
+// NOLINT(build/header_guard) as this file is also symlinked
+#ifndef CPROVER_PATH_SYMEX_PATH_SYMEX_H
+#define CPROVER_PATH_SYMEX_PATH_SYMEX_H
 
-#include "locs.h"
 #include "path_symex_state.h"
 
 // Transform a state by executing a single statement.
 // May occasionally yield more than one successor state
-// (branches, function calls with trinary operator),
+// (branches, function calls with ternary operator),
 // which are put into "further_states".
 
+// \pre: "!further_states.empty()" because "state" must
+//       be stored inside "further_states"
 void path_symex(
   path_symex_statet &state,
   std::list<path_symex_statet> &further_states);
@@ -36,4 +38,4 @@ void path_symex_goto(
 void path_symex_assert_fail(
   path_symex_statet &state);
 
-#endif
+#endif // CPROVER_PATH_SYMEX_PATH_SYMEX_H

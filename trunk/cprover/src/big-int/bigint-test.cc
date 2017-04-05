@@ -6,9 +6,9 @@
 #include "allocainc.h"
 
 #include <new>
-#include <errno.h>
-#include <stdio.h>
-#include <string.h>
+#include <cerrno>
+#include <cstdio>
+#include <cstring>
 
 
 // =====================================================================
@@ -298,7 +298,7 @@ run_floorPow2_tests ()
 
   for (unsigned i = 0; i < 512; ++i) {
     unsigned x = 512 - i;
-    N = pow(2,x);
+    N = pow(BigInt(2),x);
     M.setPower2(x);
 
     if (!(N == M)) {
@@ -324,10 +324,10 @@ run_floorPow2_tests ()
     } else {
       putchar ('X');
     }
-    
+
   }
 
-  N = pow(2,0);  // 1
+  N = pow(BigInt(2),0);  // 1
   M.setPower2(0);
 
   if (!(N == M)) {
@@ -339,14 +339,14 @@ run_floorPow2_tests ()
   } else {
     putchar ('X');
   }
-  
+
   N -= 1;        // 0
   if (N.floorPow2() == 0) {
     putchar ('.');
   } else {
     putchar ('X');
   }
-  
+
   N += 2;        // 2
   if (N.floorPow2() == 1) {
     putchar ('.');

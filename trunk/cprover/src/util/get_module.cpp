@@ -6,11 +6,22 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <list>
 #include <set>
 
 #include "get_module.h"
 #include "message.h"
 #include "symbol_table.h"
+
+typedef std::list<const symbolt *> symbolptr_listt;
+
+#define forall_symbolptr_list(it, list) \
+  for(symbolptr_listt::const_iterator it=(list).begin(); \
+      it!=(list).end(); ++it)
+
+#define Forall_symbolptr_list(it, list) \
+  for(symbolptr_listt::iterator it=(list).begin(); \
+      it!=(list).end(); ++it)
 
 /*******************************************************************\
 
@@ -34,7 +45,8 @@ const symbolt &get_module_by_name(
 
   forall_symbol_base_map(it, symbol_table.symbol_base_map, module)
   {
-    symbol_tablet::symbolst::const_iterator it2=symbol_table.symbols.find(it->second);
+    symbol_tablet::symbolst::const_iterator it2=
+      symbol_table.symbols.find(it->second);
 
     if(it2==symbol_table.symbols.end())
       continue;
@@ -43,7 +55,7 @@ const symbolt &get_module_by_name(
 
     if(s.is_type || s.type.id()!=ID_module)
       continue;
-    
+
     symbolptr_list.push_back(&s);
   }
 
@@ -94,14 +106,14 @@ const symbolt &get_module(
   forall_symbols(it, symbol_table.symbols)
   {
     const symbolt &s=it->second;
-    
+
     if(s.type.id()!=ID_module)
       continue;
 
-    // this is our default    
+    // this is our default
     if(s.base_name==ID_main)
       return get_module_by_name(symbol_table, "main", message_handler);
-    
+
     symbolptr_list.push_back(&s);
   }
 
@@ -117,19 +129,18 @@ const symbolt &get_module(
 
     forall_symbolptr_list(it, symbolptr_list)
       modules.insert(id2string((*it)->pretty_name));
-  
+
     message.error() << "multiple modules found, please select one:\n";
-    
-    for(std::set<std::string>::const_iterator
-        s_it=modules.begin(); s_it!=modules.end(); s_it++)
-      message.error() << "  " << *s_it << '\n';
+
+    for(const auto &s_it : modules)
+      message.error() << "  " << s_it << '\n';
 
     message.error() << messaget::eom;
     throw 0;
   }
 
   // symbolptr_list has exactly one element
-  
+
   const symbolt &symbol=*symbolptr_list.front();
 
   message.status() << "Using module `" << symbol.pretty_name << "'"
@@ -137,4 +148,3 @@ const symbolt &get_module(
 
   return symbol;
 }
-

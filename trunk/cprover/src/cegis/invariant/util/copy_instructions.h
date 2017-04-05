@@ -1,14 +1,14 @@
-/*******************************************************************
+/*******************************************************************\
 
- Module: Counterexample-Guided Inductive Synthesis
+Module: Counterexample-Guided Inductive Synthesis
 
- Author: Daniel Kroening, kroening@kroening.com
-         Pascal Kesseli, pascal.kesseil@cs.ox.ac.uk
+Author: Daniel Kroening, kroening@kroening.com
+        Pascal Kesseli, pascal.kesseli@cs.ox.ac.uk
 
 \*******************************************************************/
 
-#ifndef CEGIS_DANGER_COPY_INSTRUCTIONS_H_
-#define CEGIS_DANGER_COPY_INSTRUCTIONS_H_
+#ifndef CPROVER_CEGIS_INVARIANT_UTIL_COPY_INSTRUCTIONS_H
+#define CPROVER_CEGIS_INVARIANT_UTIL_COPY_INSTRUCTIONS_H
 
 #include <goto-programs/goto_program.h>
 
@@ -27,27 +27,37 @@ public:
    *
    * @details
    *
-   * @param old_offset
-   */
-  copy_instructionst();
-
-  /**
-   * @brief
-   *
-   * @details
-   */
-  ~copy_instructionst();
-
-  /**
-   * @brief
-   *
-   * @details
-   *
    * @param new_target
    * @param old_target
    */
   void operator()(const goto_programt::targett &new_target,
       const goto_programt::const_targett &old_target);
+
+  /**
+   * @brief
+   *
+   * @details
+   *
+   * @param new_instrs
+   * @param old_instrs
+   */
+  void operator()(
+      goto_programt::instructionst &new_instrs,
+      const goto_programt::instructionst &old_instrs);
+
+  /**
+   * @brief
+   *
+   * @details
+   *
+   * @param new_instrs
+   * @param pos
+   * @param old_instrs
+   */
+  goto_programt::targett operator()(
+      goto_programt::instructionst &new_instrs,
+      goto_programt::targett pos,
+      const goto_programt::instructionst &old_instrs);
 
   /**
    * @brief
@@ -77,4 +87,30 @@ public:
  */
 void invariant_make_presentable(goto_programt::instructionst &instrs);
 
-#endif /* SRC_CEGIS_DANGER_UTIL_COPY_INSTRUCTIONS_H_ */
+/**
+ * @brief
+ *
+ * @details
+ *
+ * @param target
+ * @param source
+ */
+void copy_instructions(
+    goto_programt::instructionst &target,
+    const goto_programt::instructionst &source);
+
+/**
+ * @brief
+ *
+ * @details
+ *
+ * @param target
+ * @param pos
+ * @param source
+ */
+goto_programt::targett copy_instructions(
+    goto_programt::instructionst &target,
+    goto_programt::targett pos,
+    const goto_programt::instructionst &source);
+
+#endif // CPROVER_CEGIS_INVARIANT_UTIL_COPY_INSTRUCTIONS_H

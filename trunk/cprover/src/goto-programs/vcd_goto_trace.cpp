@@ -35,7 +35,7 @@ std::string as_vcd_binary(
   const namespacet &ns)
 {
   const typet &type=ns.follow(expr.type());
-  
+
   if(expr.id()==ID_constant)
   {
     if(type.id()==ID_unsignedbv ||
@@ -52,7 +52,7 @@ std::string as_vcd_binary(
 
     forall_operands(it, expr)
       result+=as_vcd_binary(*it, ns);
-    
+
     return result;
   }
   else if(expr.id()==ID_struct)
@@ -61,15 +61,15 @@ std::string as_vcd_binary(
 
     forall_operands(it, expr)
       result+=as_vcd_binary(*it, ns);
-    
+
     return result;
   }
   else if(expr.id()==ID_union)
-  { 
+  {
     assert(expr.operands().size()==1);
     return as_vcd_binary(expr.op0(), ns);
   }
-  
+
   // build "xxx"
 
   mp_integer width;
@@ -85,15 +85,8 @@ std::string as_vcd_binary(
     width=pointer_offset_size(type, ns)*8;
 
   if(width>=0)
-  {
-    std::string result;
+    return std::string(integer2size_t(width), 'x');
 
-    for(; width!=0; --width)
-      result+='x';
-
-    return result;
-  }
-  
   return "";
 }
 
@@ -117,25 +110,22 @@ void output_vcd(
   time_t t;
   time(&t);
   out << "$date\n  " << ctime(&t) << "$end" << "\n";
-  
+
   // this is pretty arbitrary
   out << "$timescale 1 ns $end" << "\n";
 
   // we first collect all variables that are assigned
-  
+
   numbering<irep_idt> n;
 
-  for(goto_tracet::stepst::const_iterator
-      it=goto_trace.steps.begin();
-      it!=goto_trace.steps.end();
-      it++)
+  for(const auto &step : goto_trace.steps)
   {
-    if(it->is_assignment())
+    if(step.is_assignment())
     {
-      irep_idt identifier=it->lhs_object.get_identifier();
-      const typet &type=it->lhs_object.type();
-        
-      unsigned number=n.number(identifier);
+      irep_idt identifier=step.lhs_object.get_identifier();
+      const typet &type=step.lhs_object.type();
+
+      const auto number=n.number(identifier);
 
       mp_integer width;
 
@@ -143,56 +133,55 @@ void output_vcd(
         width=1;
       else
         width=pointer_offset_bits(type, ns);
-        
+
       if(width>=1)
         out << "$var reg " << width << " V" << number << " "
             << identifier << " $end" << "\n";
     }
-  }  
+  }
 
   // end of header
   out << "$enddefinitions $end" << "\n";
 
   unsigned timestamp=0;
 
-  for(goto_tracet::stepst::const_iterator
-      it=goto_trace.steps.begin();
-      it!=goto_trace.steps.end();
-      it++)
+  for(const auto &step : goto_trace.steps)
   {
-    switch(it->type)
+    switch(step.type)
     {
     case goto_trace_stept::ASSIGNMENT:
       {
-        irep_idt identifier=it->lhs_object.get_identifier();
-        const typet &type=it->lhs_object.type();
+        irep_idt identifier=step.lhs_object.get_identifier();
+        const typet &type=step.lhs_object.type();
 
         out << '#' << timestamp << "\n";
         timestamp++;
 
-        unsigned number=n.number(identifier);
-        
+        const auto number=n.number(identifier);
+
         // booleans are special in VCD
         if(type.id()==ID_bool)
         {
-          if(it->lhs_object_value.is_true())
+          if(step.lhs_object_value.is_true())
             out << "1" << "V" << number << "\n";
-          else if(it->lhs_object_value.is_false())
+          else if(step.lhs_object_value.is_false())
             out << "0" << "V" << number << "\n";
           else
             out << "x" << "V" << number << "\n";
         }
         else
         {
-          std::string binary=as_vcd_binary(it->lhs_object_value, ns);
+          std::string binary=as_vcd_binary(step.lhs_object_value, ns);
 
           if(binary!="")
             out << "b" << binary << " V" << number << " " << "\n";
         }
       }
       break;
-      
-    default:;
+
+    default:
+      {
+      }
     }
   }
 }
