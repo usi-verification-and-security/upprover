@@ -1,6 +1,6 @@
-../benchmarks/simple_if_5.c --logic prop
-0
-../benchmarks/simple_if_5.c --logic qflra
-0
-../benchmarks/simple_if_5.c --logic qfuf
-0
+benchmarks/simple_if_5.c,prop
+R
+benchmarks/simple_if_5.c,qflra
+R
+benchmarks/simple_if_5.c,qfuf
+R

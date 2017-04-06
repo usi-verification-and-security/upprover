@@ -1,2 +1,2 @@
-../benchmarks/simple_if_4.c --logic qflra
-0
+benchmarks/simple_if_4.c,qflra
+R
