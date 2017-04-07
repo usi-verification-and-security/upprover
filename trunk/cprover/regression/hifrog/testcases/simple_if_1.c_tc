@@ -1,7 +1,4 @@
 benchmarks/simple_if_1.c,prop
-R
 benchmarks/simple_if_1.c,qflra
-R
 benchmarks/simple_if_1.c,qfcuf,--theoref
-R
 

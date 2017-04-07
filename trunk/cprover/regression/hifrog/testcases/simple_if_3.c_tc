@@ -1,6 +1,3 @@
 benchmarks/simple_if_3.c,prop
-R
 benchmarks/simple_if_3.c,qflra
-R
 benchmarks/simple_if_3.c,qfcuf,--theoref,
-R
