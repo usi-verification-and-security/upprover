@@ -8,7 +8,7 @@ BOOL QueryPerformanceFrequency(LARGE_INTEGER *lpFrequency)
   __CPROVER_HIDE:;
   __int64 result;
   lpFrequency->QuadPart=result;
-  _Bool error;
+  __CPROVER_bool error;
   if(error) return 0;
   __CPROVER_assume(result!=0);
   return 1;
@@ -46,7 +46,7 @@ inline HANDLE CreateThread(
 
   if(lpThreadId) *lpThreadId=thread_id;
   __CPROVER_ASYNC_1: lpStartAddress(lpParameter);
-  
+
   HANDLE handle;
   return handle;
 }

@@ -1,11 +1,7 @@
 #ifndef CPROVER_DEPENDECY_CHECKER_H
 #define CPROVER_DEPENDECY_CHECKER_H
 
-#include <queue>
-
 #include <goto-programs/goto_program.h>
-//#include <solvers/flattening/sat_minimizer.h>
-#include <solvers/flattening/bv_pointers.h>
 
 #include <namespace.h>
 #include <symbol.h>
@@ -13,35 +9,43 @@
 
 #include <base_type.h>
 #include <time_stopping.h>
-
-#include "partitioning_target_equation.h"
 #include "partitioning_slice.h"
 #include "subst_scenario.h"
 
-
 #include <map>
+#include <queue>
 
 #include <boost/pending/disjoint_sets.hpp>
 
 using namespace std;
 using namespace boost;
 
+#define INDEPT false
+#define DEPT true
+
+#define NOTIMP false
+#define IMP true
+
+#define VERBOSE false
+
+#define IMIN(i, j) ((int)(i)<(int)(j))?(int)(i):(int)(j)
+#define IMAX(i, j) ((int)(i)<(int)(j))?(int)(j):(int)(i)
+
 class dependency_checkert : public messaget
 {
 public:
     dependency_checkert(
           const namespacet &_ns,
-          partitioning_target_equationt &_target,
           ui_message_handlert &_message_handler,
           const goto_programt &_goto_program,
           subst_scenariot &_omega,
           //int percentage
-          int fraction
+          int fraction,
+          unsigned int SSA_steps_size
     ) :
           goto_program(_goto_program),
           ns(_ns),
           message_handler (_message_handler),
-          equation(_target),
           omega(_omega)
     {
           set_message_handler(_message_handler);
@@ -51,11 +55,11 @@ public:
           // FIXME: make treshold parametrized
           treshold = fraction; //equation.SSA_steps.size() / fraction;
           //treshold = percentage * equation.SSA_steps.size() / 100;
-          std::cout << "Using the treshold of " << treshold << " out of " << equation.SSA_steps.size() << " SSA steps\n";
+          std::cout << "Using the treshold of " << treshold << " out of " << SSA_steps_size << " SSA steps\n";
           std::cout << "Assuming a timeout of " << (impl_timeout/1000) << "." << (impl_timeout%1000)/10 << " seconds." << std::endl;
     }
 
-  void do_it();
+  void do_it(partitioning_target_equationt &equation);
 
   typedef std::list<symex_target_equationt::SSA_stept*> SSA_stepst;
   typedef SSA_stepst::iterator SSA_step_reft;
@@ -67,7 +71,7 @@ public:
 
   void find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2);
   void find_assert_deps();
-  long find_implications();
+  virtual long find_implications()=0;
   void get_minimals();
 
   void print_SSA_steps_infos();
@@ -77,18 +81,16 @@ public:
   void print_expr_symbols(ostream &out, exprt expr);
   void print_expr_symbols(ostream &out, symbol_sett& s);
   string variable_name(string name);
-  string variable_name(dstring name);
+  string variable_name(dstringt name);
   void print_dependents(map<string,bool> dependents, ostream &out);
 
-  pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2);
+  virtual pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2)=0;
   bool compare_assertions(SSA_step_reft &a, SSA_step_reft &b);
 
-private:
+protected:
   const goto_programt &goto_program;
   const namespacet &ns;
   ui_message_handlert &message_handler;
-
-  partitioning_target_equationt &equation;
   subst_scenariot &omega;
 
   int last_label;
@@ -106,18 +108,8 @@ private:
   std::map<exprt, exprt> SSA_map;
   vector<string> equation_symbols;
   unsigned long impl_timeout;
-
-  void deep_convert_guards(prop_convt &prop_conv, exprt exp);
-  void set_guards_to_true(prop_convt &prop_conv, exprt exp);
-
-  void convert_delta_SSA(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assignments(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assumptions(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assertions(prop_convt &prop_conv, SSA_step_reft &it2);
-  void convert_guards(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_io(prop_convt &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-
-  void reconstruct_exec_SSA_order();
+  
+  void reconstruct_exec_SSA_order(partitioning_target_equationt &equation);
 };
 
 extern inline bool operator<(

@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PROP_SMT2_DEC_H
-#define CPROVER_PROP_SMT2_DEC_H
+#ifndef CPROVER_SOLVERS_SMT2_SMT2_DEC_H
+#define CPROVER_SOLVERS_SMT2_SMT2_DEC_H
 
 /*! \defgroup gr_smt2 SMT-LIB 2.x Interface */
 
@@ -21,62 +21,40 @@ public:
   smt2_temp_filet();
   ~smt2_temp_filet();
 
-protected:  
   std::ofstream temp_out;
   std::string temp_out_filename, temp_result_filename;
+};
+
+class smt2_stringstreamt
+{
+protected:
+  std::stringstream stringstream;
 };
 
 /*! \brief Decision procedure interface for various SMT 2.x solvers
     \ingroup gr_smt2
 */
-class smt2_dect:protected smt2_temp_filet, public smt2_convt
+class smt2_dect:protected smt2_stringstreamt, public smt2_convt
 {
 public:
-  typedef enum { BOOLECTOR, CVC3, MATHSAT, YICES, Z3 } solvert;
-
   smt2_dect(
     const namespacet &_ns,
     const std::string &_benchmark,
     const std::string &_notes,
     const std::string &_logic,
     solvert _solver):
-    smt2_temp_filet(),
-    smt2_convt(_ns, _benchmark, _notes, _logic, false, temp_out),
-    logic(_logic),
-    solver(_solver)
+    smt2_convt(_ns, _benchmark, _notes, _logic, _solver, stringstream)
   {
   }
 
-  smt2_dect(
-    const namespacet &_ns,
-    const std::string &_benchmark,
-    const std::string &_notes,
-    const std::string &_logic,
-    solvert _solver,
-    bool _core_enabled):
-    smt2_temp_filet(),
-    smt2_convt(_ns, _benchmark, _notes, _logic, _core_enabled, temp_out),
-    logic(_logic),
-    solver(_solver)
-  {
-  }
-  
   virtual resultt dec_solve();
   virtual std::string decision_procedure_text() const;
-  
-protected:
-  std::string logic;
-  solvert solver;
 
-  resultt read_result_boolector(std::istream &in);
-  resultt read_result_cvc3(std::istream &in);
-  resultt read_result_mathsat(std::istream &in);
-  resultt read_result_yices(std::istream &in);
-  resultt read_result_z3(std::istream &in);
-  
-  bool string_to_expr_z3(
-    const typet &type, 
-    const std::string &value, exprt &e) const;  
+  // yes, we are incremental!
+  virtual bool has_set_assumptions() const { return true; }
+
+protected:
+  resultt read_result(std::istream &in);
 };
 
-#endif
+#endif // CPROVER_SOLVERS_SMT2_SMT2_DEC_H

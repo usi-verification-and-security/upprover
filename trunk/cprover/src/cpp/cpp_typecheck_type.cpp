@@ -6,7 +6,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#include <util/location.h>
+#include <util/source_location.h>
 
 #include <ansi-c/c_qualifiers.h>
 
@@ -36,17 +36,17 @@ void cpp_typecheckt::typecheck_type(typet &type)
     cpp_convert_plain_type(type);
   }
 
-  catch(const char *error)
+  catch(const char *err)
   {
-    err_location(type);
-    str << error;
+    error().source_location=type.source_location();
+    error() << err << eom;
     throw 0;
   }
 
-  catch(const std::string &error)
+  catch(const std::string &err)
   {
-    err_location(type);
-    str << error;
+    error().source_location=type.source_location();
+    error() << err << eom;
     throw 0;
   }
 
@@ -64,18 +64,18 @@ void cpp_typecheckt::typecheck_type(typet &type)
 
     if(symbol_expr.id()!=ID_type)
     {
-      err_location(type);
-      str << "error: expected type";
+      error().source_location=type.source_location();
+      error() << "error: expected type" << eom;
       throw 0;
     }
-    
+
     type=symbol_expr.type();
     assert(type.is_not_nil());
 
     if(type.get_bool(ID_C_constant))
       qualifiers.is_constant = true;
 
-     qualifiers.write(type);
+    qualifiers.write(type);
   }
   else if(type.id()==ID_struct ||
           type.id()==ID_union)
@@ -103,34 +103,23 @@ void cpp_typecheckt::typecheck_type(typet &type)
 
       typecheck_type(class_object);
 
-      // there may be arguments if this is a pointer to member function
+      // there may be parameters if this is a pointer to member function
       if(type.subtype().id()==ID_code)
       {
-        irept::subt &args=type.subtype().add(ID_arguments).get_sub();
+        irept::subt &parameters=type.subtype().add(ID_parameters).get_sub();
 
-        if(args.empty() ||
-           args.front().get(ID_C_base_name)!=ID_this)
+        if(parameters.empty() ||
+           parameters.front().get(ID_C_base_name)!=ID_this)
         {
-          // Add 'this' to the arguments
-          exprt a0(ID_argument);
+          // Add 'this' to the parameters
+          exprt a0(ID_parameter);
           a0.set(ID_C_base_name, ID_this);
           a0.type().id(ID_pointer);
           a0.type().subtype() = class_object;
-          args.insert(args.begin(),a0);
+          parameters.insert(parameters.begin(), a0);
         }
       }
     }
-
-    // now do qualifier
-    if(type.find(ID_C_qualifier).is_not_nil())
-    {
-      typet &t=static_cast<typet &>(type.add(ID_C_qualifier));
-      cpp_convert_plain_type(t);
-      c_qualifierst q(t);
-      q.write(type);
-    }
-
-    type.remove(ID_C_qualifier);
   }
   else if(type.id()==ID_array)
   {
@@ -152,19 +141,17 @@ void cpp_typecheckt::typecheck_type(typet &type)
     code_typet &code_type=to_code_type(type);
     typecheck_type(code_type.return_type());
 
-    code_typet::argumentst &arguments=code_type.arguments();
+    code_typet::parameterst &parameters=code_type.parameters();
 
-    for(code_typet::argumentst::iterator it=arguments.begin();
-        it!=arguments.end();
-        it++)
+    for(auto &param : parameters)
     {
-      typecheck_type(it->type());
+      typecheck_type(param.type());
 
       // see if there is a default value
-      if(it->has_default_value())
+      if(param.has_default_value())
       {
-        typecheck_expr(it->default_value());
-        implicit_typecast(it->default_value(), it->type());
+        typecheck_expr(param.default_value());
+        implicit_typecast(param.default_value(), param.type());
       }
     }
   }
@@ -176,9 +163,12 @@ void cpp_typecheckt::typecheck_type(typet &type)
   {
     typecheck_enum_type(type);
   }
-  else if(type.id()==ID_c_bitfield)
+  else if(type.id()==ID_c_enum_tag)
   {
-    typecheck_c_bit_field_type(type);
+  }
+  else if(type.id()==ID_c_bit_field)
+  {
+    typecheck_c_bit_field_type(to_c_bit_field_type(type));
   }
   else if(type.id()==ID_unsignedbv ||
           type.id()==ID_signedbv ||
@@ -244,7 +234,7 @@ void cpp_typecheckt::typecheck_type(typet &type)
   }
   else if(type.id()==ID_unassigned)
   {
-    // ignore, for template argument guessing
+    // ignore, for template parameter guessing
   }
   else if(type.id()==ID_template_class_instance)
   {
@@ -255,12 +245,15 @@ void cpp_typecheckt::typecheck_type(typet &type)
     // This is an Apple extension for lambda-like constructs.
     // http://thirdcog.eu/pwcblocks/
   }
+  else if(type.id()==ID_nullptr)
+  {
+  }
   else
   {
-    err_location(type);
-    str << "unexpected type: " << type.pretty();
+    error().source_location=type.source_location();
+    error() << "unexpected cpp type: " << type.pretty() << eom;
     throw 0;
   }
-  
+
   assert(type.is_not_nil());
 }

@@ -15,6 +15,7 @@
 #include "summary_info.h"
 #include "summarization_context.h"
 #include "partitioning_target_equation.h"
+#include "solvers/smtcheck_opensmt2.h"
 
 class refiner_assertion_sumt:public messaget
 {
@@ -22,16 +23,13 @@ public:
   refiner_assertion_sumt(
           summarization_contextt &_summarization_context,
           subst_scenariot &_omega,
-          partitioning_target_equationt &_target,
           refinement_modet _mode,
           message_handlert &_message_handler,
-          //std::ostream &_out,
           const unsigned _last_assertion_loc,
           bool _valid
           ) :
           summarization_context(_summarization_context),
           omega(_omega),
-          equation(_target),
           mode(_mode),
           //out(_out),
           message_handler(_message_handler),
@@ -39,7 +37,6 @@ public:
           valid (_valid)
           {set_message_handler(_message_handler);};
 
-  void refine(const prop_convt &decider, summary_infot& summary);
   std::list<summary_infot*>& get_refined_functions(){ return refined_functions; }
   void set_refine_mode(refinement_modet _mode){ mode = _mode; }
 
@@ -50,9 +47,6 @@ protected:
 
   // substituting scenario
   subst_scenariot &omega;
-
-  // Store for the symex result
-  partitioning_target_equationt &equation;
 
   // Mode of refinement
   refinement_modet mode;
@@ -71,7 +65,6 @@ protected:
 
   void reset_inline(summary_infot& summary);
   void reset_random(summary_infot& summary);
-  void reset_depend(const prop_convt &decider, summary_infot& summary);
 
   // not in use now
   void reset_depend_rec(std::vector<summary_infot*>& dep, summary_infot& summary);

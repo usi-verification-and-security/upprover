@@ -7,8 +7,9 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <cassert>
-#include <iostream>
 
+#include <util/namespace.h>
+#include <util/simplify_expr.h>
 #include <util/config.h>
 #include <util/arith_tools.h>
 #include <util/std_types.h>
@@ -30,7 +31,7 @@ Function: ansi_c_convert_typet::convert
 void ansi_c_convert_typet::read(const typet &type)
 {
   clear();
-  location=type.location();
+  source_location=type.source_location();
   read_rec(type);
 }
 
@@ -65,12 +66,28 @@ void ansi_c_convert_typet::read_rec(const typet &type)
     c_qualifiers.is_volatile=true;
   else if(type.id()==ID_asm)
   {
-    // ignore for now
+    if(type.has_subtype() &&
+       type.subtype().id()==ID_string_constant)
+      c_storage_spec.asm_label=type.subtype().get(ID_value);
+  }
+  else if(type.id()==ID_section &&
+          type.has_subtype() &&
+          type.subtype().id()==ID_string_constant)
+  {
+    c_storage_spec.section=type.subtype().get(ID_value);
   }
   else if(type.id()==ID_const)
     c_qualifiers.is_constant=true;
   else if(type.id()==ID_restrict)
     c_qualifiers.is_restricted=true;
+  else if(type.id()==ID_atomic)
+    c_qualifiers.is_atomic=true;
+  else if(type.id()==ID_atomic_type_specifier)
+  {
+    // this gets turned into the qualifier, uh
+    c_qualifiers.is_atomic=true;
+    read_rec(type.subtype());
+  }
   else if(type.id()==ID_char)
     char_cnt++;
   else if(type.id()==ID_int)
@@ -89,46 +106,46 @@ void ansi_c_convert_typet::read_rec(const typet &type)
     gcc_int128_cnt++;
   else if(type.id()==ID_gcc_attribute_mode)
   {
-    const exprt &size_expr=
-      static_cast<const exprt &>(type.find(ID_size));
-      
-    if(size_expr.id()=="__QI__")
-      gcc_mode_QI=true;
-    else if(size_expr.id()=="__HI__")
-      gcc_mode_HI=true;
-    else if(size_expr.id()=="__SI__")
-      gcc_mode_SI=true;
-    else if(size_expr.id()=="__DI__")
-      gcc_mode_DI=true;
-    else if(size_expr.id()=="__TI__")
-      gcc_mode_TI=true;
-    else
-    {
-      // we ignore without whining
-    }
+    gcc_attribute_mode=type;
   }
-  else if(type.id()==ID_bv)
+  else if(type.id()==ID_msc_based)
+  {
+    const exprt &as_expr=
+      static_cast<const exprt &>(static_cast<const irept &>(type));
+    assert(as_expr.operands().size()==1);
+    msc_based=as_expr.op0();
+  }
+  else if(type.id()==ID_custom_bv)
   {
     bv_cnt++;
     const exprt &size_expr=
       static_cast<const exprt &>(type.find(ID_size));
 
-    mp_integer size_int;
-    if(to_integer(size_expr, size_int))
-    {
-      err_location(location);
-      error("bit vector width has to be constant");
-      throw 0;
-    }
-    
-    if(size_int<1 || size_int>1024)
-    {
-      err_location(location);
-      error("bit vector width invalid");
-      throw 0;
-    }
-    
-    bv_width=integer2long(size_int);
+    bv_width=size_expr;
+  }
+  else if(type.id()==ID_custom_floatbv)
+  {
+    floatbv_cnt++;
+
+    const exprt &size_expr=
+      static_cast<const exprt &>(type.find(ID_size));
+    const exprt &fsize_expr=
+      static_cast<const exprt &>(type.find(ID_f));
+
+    bv_width=size_expr;
+    fraction_width=fsize_expr;
+  }
+  else if(type.id()==ID_custom_fixedbv)
+  {
+    fixedbv_cnt++;
+
+    const exprt &size_expr=
+      static_cast<const exprt &>(type.find(ID_size));
+    const exprt &fsize_expr=
+      static_cast<const exprt &>(type.find(ID_f));
+
+    bv_width=size_expr;
+    fraction_width=fsize_expr;
   }
   else if(type.id()==ID_short)
     short_cnt++;
@@ -138,7 +155,7 @@ void ansi_c_convert_typet::read_rec(const typet &type)
     double_cnt++;
   else if(type.id()==ID_float)
     float_cnt++;
-  else if(type.id()==ID_bool)
+  else if(type.id()==ID_c_bool)
     c_bool_cnt++;
   else if(type.id()==ID_proper_bool)
     proper_bool_cnt++;
@@ -156,6 +173,8 @@ void ansi_c_convert_typet::read_rec(const typet &type)
     c_storage_spec.is_typedef=true;
   else if(type.id()==ID_register)
     c_storage_spec.is_register=true;
+  else if(type.id()==ID_weak)
+    c_storage_spec.is_weak=true;
   else if(type.id()==ID_auto)
   {
     // ignore
@@ -185,6 +204,38 @@ void ansi_c_convert_typet::read_rec(const typet &type)
     tmp.id(ID_empty);
     other.push_back(tmp);
   }
+  else if(type.id()==ID_msc_declspec)
+  {
+    const exprt &as_expr=
+      static_cast<const exprt &>(static_cast<const irept &>(type));
+
+    forall_operands(it, as_expr)
+    {
+      // these are symbols
+      const irep_idt &id=it->get(ID_identifier);
+
+      if(id==ID_thread)
+        c_storage_spec.is_thread_local=true;
+      else if(id=="align")
+      {
+        assert(it->operands().size()==1);
+        aligned=true;
+        alignment=it->op0();
+      }
+    }
+  }
+  else if(type.id()==ID_noreturn)
+    c_qualifiers.is_noreturn=true;
+  else if(type.id()==ID_constructor)
+    constructor=true;
+  else if(type.id()==ID_destructor)
+    destructor=true;
+  else if(type.id()==ID_alias &&
+          type.has_subtype() &&
+          type.subtype().id()==ID_string_constant)
+  {
+    c_storage_spec.alias=type.subtype().get(ID_value);
+  }
   else
     other.push_back(type);
 }
@@ -204,7 +255,7 @@ Function: ansi_c_convert_typet::write
 void ansi_c_convert_typet::write(typet &type)
 {
   type.clear();
-  
+
   // first, do "other"
 
   if(!other.empty())
@@ -215,19 +266,51 @@ void ansi_c_convert_typet::write(typet &type)
        int8_cnt || int16_cnt || int32_cnt || int64_cnt ||
        gcc_float128_cnt || gcc_int128_cnt || bv_cnt)
     {
-      err_location(location);
-      error("illegal type modifier for defined type");
+      error().source_location=source_location;
+      error() << "illegal type modifier for defined type" << eom;
       throw 0;
     }
 
     if(other.size()!=1)
     {
-      err_location(location);
-      error("illegal combination of defined types");
+      error().source_location=source_location;
+      error() << "illegal combination of defined types" << eom;
       throw 0;
     }
 
     type.swap(other.front());
+
+    if(constructor || destructor)
+    {
+      if(constructor && destructor)
+      {
+        error().source_location=source_location;
+        error() << "combining constructor and destructor not supported"
+                << eom;
+        throw 0;
+      }
+
+      typet *type_p=&type;
+      if(type.id()==ID_code)
+        type_p=&(to_code_type(type).return_type());
+
+      else if(type_p->id()!=ID_empty)
+      {
+        error().source_location=source_location;
+        error() << "constructor and destructor required to be type void, "
+                << "found " << type_p->pretty() << eom;
+        throw 0;
+      }
+
+      type_p->id(constructor ? ID_constructor : ID_destructor);
+    }
+  }
+  else if(constructor || destructor)
+  {
+    error().source_location=source_location;
+    error() << "constructor and destructor required to be type void, "
+            << "found " << type.pretty() << eom;
+    throw 0;
   }
   else if(gcc_float128_cnt)
   {
@@ -236,15 +319,15 @@ void ansi_c_convert_typet::write(typet &type)
        gcc_int128_cnt || bv_cnt ||
        short_cnt || char_cnt)
     {
-      err_location(location);
-      error("cannot combine integer type with float");
+      error().source_location=source_location;
+      error() << "cannot combine integer type with float" << eom;
       throw 0;
     }
 
     if(long_cnt || double_cnt || float_cnt)
     {
-      err_location(location);
-      error("conflicting type modifiers");
+      error().source_location=source_location;
+      error() << "conflicting type modifiers" << eom;
       throw 0;
     }
 
@@ -258,15 +341,15 @@ void ansi_c_convert_typet::write(typet &type)
        gcc_int128_cnt|| bv_cnt ||
        short_cnt || char_cnt)
     {
-      err_location(location);
-      error("cannot combine integer type with float");
+      error().source_location=source_location;
+      error() << "cannot combine integer type with float" << eom;
       throw 0;
     }
 
     if(double_cnt && float_cnt)
     {
-      err_location(location);
-      error("conflicting type modifiers");
+      error().source_location=source_location;
+      error() << "conflicting type modifiers" << eom;
       throw 0;
     }
 
@@ -283,15 +366,15 @@ void ansi_c_convert_typet::write(typet &type)
         type=long_double_type();
       else
       {
-        err_location(location);
-        error("conflicting type modifiers");
+        error().source_location=source_location;
+        error() << "conflicting type modifiers" << eom;
         throw 0;
       }
     }
     else
     {
-      err_location(location);
-      error("illegal type modifier for float");
+      error().source_location=source_location;
+      error() << "illegal type modifier for float" << eom;
       throw 0;
     }
   }
@@ -302,8 +385,8 @@ void ansi_c_convert_typet::write(typet &type)
        gcc_float128_cnt || bv_cnt || proper_bool_cnt ||
        char_cnt || long_cnt)
     {
-      err_location(location);
-      error("illegal type modifier for C boolean type");
+      error().source_location=source_location;
+      error() << "illegal type modifier for C boolean type" << eom;
       throw 0;
     }
 
@@ -316,14 +399,15 @@ void ansi_c_convert_typet::write(typet &type)
        gcc_float128_cnt || bv_cnt ||
        char_cnt || long_cnt)
     {
-      err_location(location);
-      error("illegal type modifier for proper boolean type");
+      error().source_location=source_location;
+      error() << "illegal type modifier for proper boolean type" << eom;
       throw 0;
     }
 
     type.id(ID_bool);
   }
-  else if(complex_cnt && !char_cnt && !signed_cnt && !unsigned_cnt && !short_cnt && !gcc_int128_cnt)
+  else if(complex_cnt && !char_cnt && !signed_cnt && !unsigned_cnt &&
+          !short_cnt && !gcc_int128_cnt)
   {
     // the "default" for complex is double
     type=double_type();
@@ -334,15 +418,15 @@ void ansi_c_convert_typet::write(typet &type)
        int8_cnt || int16_cnt || int32_cnt || int64_cnt ||
        gcc_float128_cnt || bv_cnt || proper_bool_cnt)
     {
-      err_location(location);
-      error("illegal type modifier for char type");
+      error().source_location=source_location;
+      error() << "illegal type modifier for char type" << eom;
       throw 0;
     }
 
     if(signed_cnt && unsigned_cnt)
     {
-      err_location(location);
-      error("conflicting type modifiers");
+      error().source_location=source_location;
+      error() << "conflicting type modifiers" << eom;
       throw 0;
     }
     else if(unsigned_cnt)
@@ -355,13 +439,13 @@ void ansi_c_convert_typet::write(typet &type)
   else
   {
     // it is integer -- signed or unsigned?
-    
+
     bool is_signed=true; // default
 
     if(signed_cnt && unsigned_cnt)
     {
-      err_location(location);
-      error("conflicting type modifiers");
+      error().source_location=source_location;
+      error() << "conflicting type modifiers" << eom;
       throw 0;
     }
     else if(unsigned_cnt)
@@ -369,40 +453,15 @@ void ansi_c_convert_typet::write(typet &type)
     else if(signed_cnt)
       is_signed=true;
 
-    // get width
-
-    if(gcc_mode_QI || gcc_mode_HI || gcc_mode_SI || gcc_mode_DI || gcc_mode_TI)
-    {
-      if(gcc_mode_QI) // 8 bits
-        type=is_signed?signed_char_type():unsigned_char_type();
-      else if(gcc_mode_HI) // 16 bits
-        type=is_signed?signed_short_int_type():unsigned_short_int_type();
-      else if(gcc_mode_SI) // 32 bits
-        type=is_signed?signed_int_type():unsigned_int_type();
-      else if(gcc_mode_DI) // 64 bits
-      {
-        if(config.ansi_c.long_int_width==64)
-          type=is_signed?signed_long_int_type():unsigned_long_int_type();
-        else
-        {
-          assert(config.ansi_c.long_long_int_width==64);
-          type=is_signed?signed_long_long_int_type():unsigned_long_long_int_type();
-        }
-      }
-      else if(gcc_mode_TI) // 128 bits
-        type=is_signed?gcc_signed_int128_type():gcc_unsigned_int128_type();
-      else
-        assert(false);
-    }
-    else if(int8_cnt || int16_cnt || int32_cnt || int64_cnt)
+    if(int8_cnt || int16_cnt || int32_cnt || int64_cnt)
     {
       if(long_cnt || char_cnt || short_cnt || gcc_int128_cnt || bv_cnt)
       {
-        err_location(location);
-        error("conflicting type modifiers");
+        error().source_location=source_location;
+        error() << "conflicting type modifiers" << eom;
         throw 0;
       }
-      
+
       if(int8_cnt)
         type=is_signed?signed_char_type():unsigned_char_type();
       else if(int16_cnt)
@@ -410,7 +469,8 @@ void ansi_c_convert_typet::write(typet &type)
       else if(int32_cnt)
         type=is_signed?signed_int_type():unsigned_int_type();
       else if(int64_cnt) // Visual Studio: equivalent to long long int
-        type=is_signed?signed_long_long_int_type():unsigned_long_long_int_type();
+        type=
+          is_signed?signed_long_long_int_type():unsigned_long_long_int_type();
       else
         assert(false);
     }
@@ -423,18 +483,28 @@ void ansi_c_convert_typet::write(typet &type)
     }
     else if(bv_cnt)
     {
-      // explicitly given width
-      type.id(is_signed?ID_signedbv:ID_unsignedbv);
-      type.set(ID_width, bv_width);
-      
-      // need to decide on ID_C_c_type to set
+      // explicitly-given expression for width
+      type.id(is_signed?ID_custom_signedbv:ID_custom_unsignedbv);
+      type.set(ID_size, bv_width);
+    }
+    else if(floatbv_cnt)
+    {
+      type.id(ID_custom_floatbv);
+      type.set(ID_size, bv_width);
+      type.set(ID_f, fraction_width);
+    }
+    else if(fixedbv_cnt)
+    {
+      type.id(ID_custom_fixedbv);
+      type.set(ID_size, bv_width);
+      type.set(ID_f, fraction_width);
     }
     else if(short_cnt)
     {
       if(long_cnt || char_cnt)
       {
-        err_location(location);
-        error("conflicting type modifiers");
+        error().source_location=source_location;
+        error() << "conflicting type modifiers" << eom;
         throw 0;
       }
 
@@ -454,8 +524,8 @@ void ansi_c_convert_typet::write(typet &type)
     }
     else
     {
-      err_location(location);
-      error("illegal type modifier for integer type");
+      error().source_location=source_location;
+      error() << "illegal type modifier for integer type" << eom;
       throw 0;
     }
   }
@@ -464,16 +534,23 @@ void ansi_c_convert_typet::write(typet &type)
   {
     vector_typet new_type;
     new_type.size()=vector_size;
-    new_type.location()=vector_size.location();
+    new_type.add_source_location()=vector_size.source_location();
     new_type.subtype().swap(type);
     type=new_type;
   }
-  
+
   if(complex_cnt)
   {
     // These take more or less arbitrary subtypes.
     complex_typet new_type;
-    new_type.location()=location;
+    new_type.add_source_location()=source_location;
+    new_type.subtype()=type;
+    type.swap(new_type);
+  }
+
+  if(gcc_attribute_mode.is_not_nil())
+  {
+    typet new_type=gcc_attribute_mode;
     new_type.subtype()=type;
     type.swap(new_type);
   }

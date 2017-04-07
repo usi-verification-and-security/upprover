@@ -8,18 +8,19 @@ Date: February 2012
 
 \*******************************************************************/
 
-#ifndef FENCE_H
-#define FENCE_H
+#ifndef CPROVER_GOTO_INSTRUMENT_WMM_FENCE_H
+#define CPROVER_GOTO_INSTRUMENT_WMM_FENCE_H
 
-#include <util/symbol_table.h>
 #include <goto-programs/goto_program.h>
 
+class namespacet;
+
 bool is_fence(
-  goto_programt::instructiont instruction,
-  namespacet &ns);
+  const goto_programt::instructiont &instruction,
+  const namespacet &ns);
 
 bool is_lwfence(
-  goto_programt::instructiont instruction,
-  namespacet &ns);
+  const goto_programt::instructiont &instruction,
+  const namespacet &ns);
 
-#endif
+#endif // CPROVER_GOTO_INSTRUMENT_WMM_FENCE_H

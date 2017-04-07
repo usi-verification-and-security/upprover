@@ -39,6 +39,9 @@ void satcheck_opensmt2t::convert(const bvt &bv, vec<PTRef> &args)
 {
   for(unsigned i=0; i<bv.size(); i++) {
     const literalt& lit = bv[i];
+    
+    // we never use 'unused_var_no' (cnf.cpp)
+    assert(lit.var_no()!=literalt::unused_var_no());
 
     PTRef var = ptrefs[lit.var_no()];
 
@@ -96,12 +99,12 @@ literalt satcheck_opensmt2t::extract_itp_rec(PTRef ptref,
   prop_itpt& target_itp, ptref_cachet& ptref_cache) const
 {
   ptref_cachet::const_iterator cached_it = ptref_cache.find(ptref);
-  literalt result;
 
   if (cached_it != ptref_cache.end()) {
     return cached_it->second;
   }
 
+  literalt result;
   if(logic->getTerm_true() == ptref){
       result = const_literal(true);
   }
@@ -141,6 +144,9 @@ literalt satcheck_opensmt2t::extract_itp_rec(PTRef ptref,
       assert(ptm.size() == 0);
       result.set(decode_id(logic->getSymName(ptref)), false);
   } 
+   
+  // we never use 'unused_var_no' (cnf.cpp)
+  assert(result.var_no()!=literalt::unused_var_no());
     
   ptref_cache.insert(ptref_cachet::value_type(ptref, result));
   return result;
@@ -185,7 +191,9 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   // Set labeling function
   const char* msg;
-  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
+//  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
+//  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(0), msg);
+  osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
 
   SimpSMTSolver& solver = osmt->getSolver();
 
@@ -201,10 +209,11 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   for(unsigned i = 0; i < itp_ptrefs.size(); ++i)
   {
-      prop_itpt itp;
-      extract_itp(itp_ptrefs[i], itp);
-      interpolants.push_back(prop_itpt());
-      interpolants.back().swap(itp);
+      itpt* itp = new prop_itpt();
+      itpt* itp_empty = new prop_itpt();
+      extract_itp(itp_ptrefs[i], *(dynamic_cast <prop_itpt*> (itp)));
+      interpolants.push_back(*&itp_empty);
+      interpolants.back()->swap(*itp);
   }
 }
 
@@ -241,12 +250,18 @@ Function: satcheck_opensmt2t::l_get
 
 tvt satcheck_opensmt2t::l_get(literalt a) const
 {
+  // we never use index 0 (cnf.cpp)
+  assert(a.var_no()!=0);
+    
+  // we never use 'unused_var_no' (cnf.cpp)
+  assert(a.var_no()!=literalt::unused_var_no());
+    
   if (a.is_true())
     return tvt(true);
   else if (a.is_false())
     return tvt(false);
 
-  tvt tvtresult(tvt::TV_UNKNOWN);
+  tvt tvtresult(tvt::tv_enumt::TV_UNKNOWN);
   ValPair a_p = mainSolver->getValue(ptrefs[a.var_no()]);
   lbool lresult = (*a_p.val == *true_str) ? l_True : l_False;
 

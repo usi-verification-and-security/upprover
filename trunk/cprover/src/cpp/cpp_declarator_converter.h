@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_DECLARATOR_CONVERTER_H
-#define CPROVER_CPP_DECLARATOR_CONVERTER_H
+#ifndef CPROVER_CPP_CPP_DECLARATOR_CONVERTER_H
+#define CPROVER_CPP_CPP_DECLARATOR_CONVERTER_H
 
 #include <util/symbol.h>
 
@@ -27,7 +27,7 @@ public:
 
   bool is_typedef;
   bool is_template;
-  bool is_template_argument;
+  bool is_template_parameter;
   bool is_friend;
   irep_idt linkage_spec;
 
@@ -85,9 +85,9 @@ protected:
   }
 
   void combine_types(
-    const locationt &location,
+    const source_locationt &source_location,
     const typet &decl_type,
     symbolt &symbol);
 };
 
-#endif
+#endif // CPROVER_CPP_CPP_DECLARATOR_CONVERTER_H

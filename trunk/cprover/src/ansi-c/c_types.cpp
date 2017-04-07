@@ -31,36 +31,20 @@ typet index_type()
 
 /*******************************************************************\
 
-Function: enum_type
+Function: enum_constant_type
 
   Inputs:
 
  Outputs:
 
- Purpose:
+ Purpose: return type of enum constants
 
 \*******************************************************************/
 
-typet enum_type()
+typet enum_constant_type()
 {
-  // same as 'int', but might be unsigned
-  return signed_int_type();
-}
-
-/*******************************************************************\
-
-Function: int_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-typet int_type()
-{
+  // usually same as 'int',
+  // but might be unsigned, or shorter than 'int'
   return signed_int_type();
 }
 
@@ -78,7 +62,7 @@ Function: signed_int_type
 
 typet signed_int_type()
 {
-  typet result=signedbv_typet(config.ansi_c.int_width);  
+  typet result=signedbv_typet(config.ansi_c.int_width);
   result.set(ID_C_c_type, ID_signed_int);
   return result;
 }
@@ -104,23 +88,6 @@ typet signed_short_int_type()
 
 /*******************************************************************\
 
-Function: uint_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-typet uint_type()
-{
-  return unsigned_int_type();
-}
-
-/*******************************************************************\
-
 Function: unsigned_int_type
 
   Inputs:
@@ -133,7 +100,7 @@ Function: unsigned_int_type
 
 typet unsigned_int_type()
 {
-  typet result=unsignedbv_typet(config.ansi_c.int_width);  
+  typet result=unsignedbv_typet(config.ansi_c.int_width);
   result.set(ID_C_c_type, ID_unsigned_int);
   return result;
 }
@@ -152,7 +119,7 @@ Function: unsigned_short_int_type
 
 typet unsigned_short_int_type()
 {
-  typet result=unsignedbv_typet(config.ansi_c.short_int_width);  
+  typet result=unsignedbv_typet(config.ansi_c.short_int_width);
   result.set(ID_C_c_type, ID_unsigned_short_int);
   return result;
 }
@@ -205,23 +172,6 @@ typet signed_size_type()
 
 /*******************************************************************\
 
-Function: long_int_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-typet long_int_type()
-{
-  return signed_long_int_type();
-}
-
-/*******************************************************************\
-
 Function: signed_long_int_type
 
   Inputs:
@@ -237,23 +187,6 @@ typet signed_long_int_type()
   typet result=signedbv_typet(config.ansi_c.long_int_width);
   result.set(ID_C_c_type, ID_signed_long_int);
   return result;
-}
-
-/*******************************************************************\
-
-Function: long_long_int_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-typet long_long_int_type()
-{
-  return signed_long_long_int_type();
 }
 
 /*******************************************************************\
@@ -277,23 +210,6 @@ typet signed_long_long_int_type()
 
 /*******************************************************************\
 
-Function: long_uint_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-typet long_uint_type()
-{
-  return unsigned_long_int_type();
-}
-
-/*******************************************************************\
-
 Function: unsigned_long_int_type
 
   Inputs:
@@ -306,26 +222,9 @@ Function: unsigned_long_int_type
 
 typet unsigned_long_int_type()
 {
-  typet result=unsignedbv_typet(config.ansi_c.long_int_width);  
+  typet result=unsignedbv_typet(config.ansi_c.long_int_width);
   result.set(ID_C_c_type, ID_unsigned_long_int);
   return result;
-}
-
-/*******************************************************************\
-
-Function: long_long_uint_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-typet long_long_uint_type()
-{
-  return unsigned_long_long_int_type();
 }
 
 /*******************************************************************\
@@ -361,9 +260,7 @@ Function: c_bool_type
 
 typet c_bool_type()
 {
-  // we model it as unsigned, but this doesn't matter
-  typet result=unsignedbv_typet(config.ansi_c.bool_width);
-  result.set(ID_C_c_type, ID_bool);
+  typet result=c_bool_typet(config.ansi_c.bool_width);
   return result;
 }
 
@@ -392,9 +289,9 @@ typet char_type()
 
   // There are 3 char types, i.e., this one is
   // different from either signed char or unsigned char!
-    
+
   result.set(ID_C_c_type, ID_char);
-    
+
   return result;
 }
 
@@ -415,7 +312,7 @@ typet unsigned_char_type()
   typet result=unsignedbv_typet(config.ansi_c.char_width);
 
   result.set(ID_C_c_type, ID_unsigned_char);
-  
+
   return result;
 }
 
@@ -436,7 +333,7 @@ typet signed_char_type()
   typet result=signedbv_typet(config.ansi_c.char_width);
 
   result.set(ID_C_c_type, ID_signed_char);
-  
+
   return result;
 }
 
@@ -455,13 +352,14 @@ Function: wchar_t_type
 typet wchar_t_type()
 {
   typet result;
-  
+
   if(config.ansi_c.wchar_t_is_unsigned)
     result=unsignedbv_typet(config.ansi_c.wchar_t_width);
   else
     result=signedbv_typet(config.ansi_c.wchar_t_width);
 
   result.set(ID_C_c_type, ID_wchar_t);
+
   return result;
 }
 
@@ -481,16 +379,13 @@ typet char16_t_type()
 {
   typet result;
 
-  /*  
-  if(config.ansi_c.wchar_t_is_unsigned)
-    result=unsignedbv_typet(config.ansi_c.wchar_t_width);
-  else
-    result=signedbv_typet(config.ansi_c.wchar_t_width);
-  */
-
+  // Types char16_t and char32_t denote distinct types with the same size,
+  // signedness, and alignment as uint_least16_t and uint_least32_t,
+  // respectively, in <stdint.h>, called the underlying types.
   result=unsignedbv_typet(16);
 
-  //result.set(ID_C_c_type, ID_wchar_t);
+  result.set(ID_C_c_type, ID_char16_t);
+
   return result;
 }
 
@@ -509,17 +404,14 @@ Function: char32_t_type
 typet char32_t_type()
 {
   typet result;
-  
-  /*
-  if(config.ansi_c.wchar_t_is_unsigned)
-    result=unsignedbv_typet(config.ansi_c.wchar_t_width);
-  else
-    result=signedbv_typet(config.ansi_c.wchar_t_width);
-  */
 
+  // Types char16_t and char32_t denote distinct types with the same size,
+  // signedness, and alignment as uint_least16_t and uint_least32_t,
+  // respectively, in <stdint.h>, called the underlying types.
   result=unsignedbv_typet(32);
 
-  //result.set(ID_C_c_type, ID_wchar_t);
+  result.set(ID_C_c_type, ID_char32_t);
+
   return result;
 }
 
@@ -538,7 +430,7 @@ Function: float_type
 typet float_type()
 {
   typet result;
-  
+
   if(config.ansi_c.use_fixed_for_float)
   {
     fixedbv_typet tmp;
@@ -550,6 +442,7 @@ typet float_type()
     result=ieee_float_spect::single_precision().to_type();
 
   result.set(ID_C_c_type, ID_float);
+
   return result;
 }
 
@@ -568,7 +461,7 @@ Function: double_type
 typet double_type()
 {
   typet result;
-  
+
   if(config.ansi_c.use_fixed_for_float)
   {
     fixedbv_typet tmp;
@@ -578,8 +471,9 @@ typet double_type()
   }
   else
     result=ieee_float_spect::double_precision().to_type();
-  
+
   result.set(ID_C_c_type, ID_double);
+
   return result;
 }
 
@@ -598,7 +492,7 @@ Function: long_double_type
 typet long_double_type()
 {
   typet result;
-  
+
   if(config.ansi_c.use_fixed_for_float)
   {
     fixedbv_typet tmp;
@@ -612,14 +506,24 @@ typet long_double_type()
       result=ieee_float_spect::quadruple_precision().to_type();
     else if(config.ansi_c.long_double_width==64)
       result=ieee_float_spect::double_precision().to_type();
+    else if(config.ansi_c.long_double_width==80)
+    {
+      // x86 extended precision has 80 bits in total, and
+      // deviating from IEEE, does not use a hidden bit.
+      // We use the closest we have got, but the below isn't accurate.
+      result=ieee_float_spect(63, 15).to_type();
+    }
     else if(config.ansi_c.long_double_width==96)
+    {
       result=ieee_float_spect(80, 15).to_type();
-      // not quite right. Intel's extended precision isn't IEEE.
+      // not quite right. The extra bits beyond 80 are usually padded.
+    }
     else
       assert(false);
   }
-  
+
   result.set(ID_C_c_type, ID_long_double);
+
   return result;
 }
 
@@ -638,7 +542,7 @@ Function: gcc_float128_type
 typet gcc_float128_type()
 {
   typet result;
-  
+
   if(config.ansi_c.use_fixed_for_float)
   {
     fixedbv_typet tmp;
@@ -651,8 +555,9 @@ typet gcc_float128_type()
     result=ieee_float_spect::quadruple_precision().to_type();
   }
 
-  // not same as long double!  
+  // not same as long double!
   result.set(ID_C_c_type, ID_gcc_float128);
+
   return result;
 }
 
@@ -685,6 +590,40 @@ typet pointer_diff_type()
 
 /*******************************************************************\
 
+Function: pointer_type
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+typet pointer_type(const typet &subtype)
+{
+  return pointer_typet(subtype);
+}
+
+/*******************************************************************\
+
+Function: void_type
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+typet void_type()
+{
+  return empty_typet();
+}
+
+/*******************************************************************\
+
 Function: gcc_unsigned_int128_type
 
   Inputs:
@@ -697,7 +636,7 @@ Function: gcc_unsigned_int128_type
 
 typet gcc_unsigned_int128_type()
 {
-  typet result=signedbv_typet(128);
+  typet result=unsignedbv_typet(128);
   result.set(ID_C_c_type, ID_unsigned_int128);
   return result;
 }
@@ -721,3 +660,62 @@ typet gcc_signed_int128_type()
   return result;
 }
 
+/*******************************************************************\
+
+Function: c_type_as_string
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+std::string c_type_as_string(const irep_idt &c_type)
+{
+  if(c_type==ID_signed_int)
+    return "signed int";
+  else if(c_type==ID_signed_short_int)
+    return "signed short int";
+  else if(c_type==ID_unsigned_int)
+    return "unsigned int";
+  else if(c_type==ID_unsigned_short_int)
+    return "unsigned short int";
+  else if(c_type==ID_signed_long_int)
+    return "signed long int";
+  else if(c_type==ID_signed_long_long_int)
+    return "signed long long int";
+  else if(c_type==ID_unsigned_long_int)
+    return "unsigned long int";
+  else if(c_type==ID_unsigned_long_long_int)
+    return "unsigned long long int";
+  else if(c_type==ID_bool)
+    return "_Bool";
+  else if(c_type==ID_char)
+    return "char";
+  else if(c_type==ID_unsigned_char)
+    return "unsigned char";
+  else if(c_type==ID_signed_char)
+    return "signed char";
+  else if(c_type==ID_wchar_t)
+    return "wchar_t";
+  else if(c_type==ID_char16_t)
+    return "char16_t";
+  else if(c_type==ID_char32_t)
+    return "char32_t";
+  else if(c_type==ID_float)
+    return "float";
+  else if(c_type==ID_double)
+    return "double";
+  else if(c_type==ID_long_double)
+    return "long double";
+  else if(c_type==ID_gcc_float128)
+    return "__float128";
+  else if(c_type==ID_unsigned_int128)
+    return "unsigned __int128";
+  else if(c_type==ID_signed_int128)
+    return "signed __int128";
+  else
+    return "";
+}

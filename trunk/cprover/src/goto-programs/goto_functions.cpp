@@ -27,17 +27,15 @@ void get_local_identifiers(
   std::set<irep_idt> &dest)
 {
   goto_function.body.get_decl_identifiers(dest);
-  
-  const code_typet::argumentst &arguments=
-    goto_function.type.arguments();
-  
-  // add arguments
-  for(code_typet::argumentst::const_iterator
-      a_it=arguments.begin();
-      a_it!=arguments.end();
-      a_it++)
+
+  const code_typet::parameterst &parameters=
+    goto_function.type.parameters();
+
+  // add parameters
+  for(const auto &param : parameters)
   {
-    const irep_idt &identifier=a_it->get_identifier();
-    if(identifier!="") dest.insert(identifier);
+    const irep_idt &identifier=param.get_identifier();
+    if(identifier!="")
+      dest.insert(identifier);
   }
-} 
+}

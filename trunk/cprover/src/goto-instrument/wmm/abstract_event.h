@@ -8,10 +8,10 @@ Date: 2012
 
 \*******************************************************************/
 
-#ifndef ABSTRACT_EVENT_H
-#define ABSTRACT_EVENT_H
+#ifndef CPROVER_GOTO_INSTRUMENT_WMM_ABSTRACT_EVENT_H
+#define CPROVER_GOTO_INSTRUMENT_WMM_ABSTRACT_EVENT_H
 
-#include <util/location.h>
+#include <util/source_location.h>
 #include <util/graph.h>
 
 #include "wmm.h"
@@ -20,10 +20,10 @@ Date: 2012
                           abstract event
 \*******************************************************************/
 
-class abstract_eventt:public graph_nodet<empty_nodet>
+class abstract_eventt:public graph_nodet<empty_edget>
 {
 protected:
-  bool unsafe_pair_lwfence_param(const abstract_eventt& next,
+  bool unsafe_pair_lwfence_param(const abstract_eventt &next,
     memory_modelt model, bool lwsync_met) const;
 
 public:
@@ -34,7 +34,7 @@ public:
   unsigned thread;
   irep_idt variable;
   unsigned id;
-  locationt location;
+  source_locationt source_location;
   bool local;
 
   // for ASMfence
@@ -52,48 +52,66 @@ public:
 
   abstract_eventt(
     operationt _op, unsigned _th, irep_idt _var,
-    unsigned _id, locationt _loc, bool _local)
+    unsigned _id, source_locationt _loc, bool _local)
     :operation(_op), thread(_th), variable(_var), id(_id),
-    location(_loc), local(_local)
+    source_location(_loc), local(_local)
   {
   }
 
-  abstract_eventt(operationt _op, unsigned _th, irep_idt _var,
-    unsigned _id, locationt _loc, bool _local,
-    bool WRf, bool WWf, bool RRf, bool RWf, bool WWc, bool RWc, bool RRc)
-    :operation(_op), thread(_th), variable(_var), id(_id),
-      location(_loc), local(_local), WRfence(RWf), WWfence(WWf), RRfence(RRf),
-      RWfence(WRf), WWcumul(WWc), RWcumul(RWc), RRcumul(RRc)
+  abstract_eventt(
+    operationt _op,
+    unsigned _th,
+    irep_idt _var,
+    unsigned _id,
+    source_locationt _loc,
+    bool _local,
+    bool WRf,
+    bool WWf,
+    bool RRf,
+    bool RWf,
+    bool WWc,
+    bool RWc,
+    bool RRc):
+    operation(_op),
+    thread(_th),
+    variable(_var),
+    id(_id),
+    source_location(_loc),
+    local(_local),
+    WRfence(RWf),
+    WWfence(WWf),
+    RRfence(RRf),
+    RWfence(WRf),
+    WWcumul(WWc),
+    RWcumul(RWc),
+    RRcumul(RRc)
   {
   }
 
   /* post declaration (through graph) -- doesn't copy */
-  void operator()(const abstract_eventt& other)
+  void operator()(const abstract_eventt &other)
   {
     operation=other.operation;
     thread=other.thread;
     variable=other.variable;
     id=other.id;
-    location=other.location;
+    source_location=other.source_location;
     local=other.local;
   }
 
-  inline bool operator==(const abstract_eventt& other) const
+  bool operator==(const abstract_eventt &other) const
   {
     return (id == other.id);
   }
 
-  inline bool operator<(const abstract_eventt& other) const
+  bool operator<(const abstract_eventt &other) const
   {
     return (id < other.id);
   }
 
-  inline bool is_fence() const {
-    return operation==Fence || operation==Lwfence || operation==ASMfence;}
-
-  friend std::ostream& operator<<(std::ostream& s, const abstract_eventt& e)
+  bool is_fence() const
   {
-    return s << e.get_operation() << e.variable;
+    return operation==Fence || operation==Lwfence || operation==ASMfence;
   }
 
   /* checks the safety of the pair locally (i.e., w/o taking fences
@@ -101,14 +119,14 @@ public:
      critical cycle for this) */
   bool unsafe_pair(const abstract_eventt &next, memory_modelt model) const
   {
-    return unsafe_pair_lwfence_param(next,model,false);
+    return unsafe_pair_lwfence_param(next, model, false);
   }
 
   bool unsafe_pair_lwfence(
     const abstract_eventt &next,
     memory_modelt model) const
   {
-    return unsafe_pair_lwfence_param(next,model,true);
+    return unsafe_pair_lwfence_param(next, model, true);
   }
 
   bool unsafe_pair_asm(
@@ -130,16 +148,20 @@ public:
     return "?";
   }
 
-  bool is_corresponding_fence(const abstract_eventt& first,
-    const abstract_eventt& second) const
+  bool is_corresponding_fence(const abstract_eventt &first,
+    const abstract_eventt &second) const
   {
-    return (WRfence && first.operation==Write && second.operation==Read)
-      || ((WWfence||WWcumul) && first.operation==Write
-         && second.operation==Write)
-      || ((RWfence||RWcumul) && first.operation==Read
-         && second.operation==Write)
-      || ((RRfence||RRcumul) && first.operation==Read
-         && second.operation==Read);
+    return
+      (WRfence && first.operation==Write && second.operation==Read) ||
+      ((WWfence || WWcumul) &&
+       first.operation==Write &&
+       second.operation==Write) ||
+      ((RWfence || RWcumul) &&
+       first.operation==Read &&
+       second.operation==Write) ||
+      ((RRfence || RRcumul) &&
+       first.operation==Read &&
+       second.operation==Read);
   }
 
   bool is_direct() const { return WWfence || WRfence || RRfence || RWfence; }
@@ -152,5 +174,12 @@ public:
     return value;
   }
 };
-#endif
 
+inline std::ostream &operator<<(
+  std::ostream &s,
+  const abstract_eventt &e)
+{
+  return s << e.get_operation() << e.variable;
+}
+
+#endif // CPROVER_GOTO_INSTRUMENT_WMM_ABSTRACT_EVENT_H

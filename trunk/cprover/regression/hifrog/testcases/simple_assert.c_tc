@@ -1,0 +1,4 @@
+benchmarks/simple_assert.c,prop
+benchmarks/simple_assert.c,qflra
+benchmarks/simple_assert.c,qfuf
+benchmarks/simple_assert.c,qfcuf

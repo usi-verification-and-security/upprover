@@ -11,7 +11,7 @@
 #ifndef CPROVER_ASSERTION_INFO_H
 #define CPROVER_ASSERTION_INFO_H
 
-#include <loopfrog/call_stack.h>
+#include "call_stack.h"
 
 // Unique identification of an assertion to be checked
 class assertion_infot {

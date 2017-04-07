@@ -9,11 +9,11 @@
 #include <fstream>
 #include <ui_message.h>
 #include <xml.h>
-#include <i2string.h>
 #include <xml_irep.h>
 
 #include <ansi-c/expr2c.h>
 #include "summarizing_checker.h"
+#include "theory_refiner.h"
 #include "check_claims.h"
 
 
@@ -160,24 +160,42 @@ void check_claims(
 
   symbol_tablet temp_table;
   namespacet ns1(ns.get_symbol_table(), temp_table);
+
+  if (options.get_bool_option("theoref")){
+
+      // GF: currently works only for one assertion (either specified in --claim or the first one)
+      while(ass_ptr != leaping_program.instructions.end() &&
+              (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
+      {
+        ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_unsigned_int_option("unwind"));
+      }
+
+	  theory_refinert th_checker(leaping_program,
+	        goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
+
+	  th_checker.initialize();
+	  th_checker.assertion_holds_smt(ass_ptr, true);
+	  return;
+  }
+
   summarizing_checkert sum_checker(leaping_program,
         goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
 
   sum_checker.initialize();
 
-  if (options.get_bool_option("all-claims") || options.get_bool_option("claims-order")){
+  if (options.get_bool_option("all-claims") || options.get_bool_option("claims-opt")){
     sum_checker.assertion_holds(assertion_infot(), true);
   } else while(true) {
     // Next assertion (or next occurrence of the same assertion)
-    ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_int_option("unwind"));
+    ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_unsigned_int_option("unwind"));
     while(ass_ptr != leaping_program.instructions.end() && 
             (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
     {
-      ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_int_option("unwind"));
+      ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_unsigned_int_option("unwind"));
     }
     if (ass_ptr == leaping_program.instructions.end()){
       if (seen_claims == 0)
-        res.status("Assertion is not reachable");
+        res.status() << "Assertion is not reachable";
       break;
 
     }
@@ -187,8 +205,8 @@ void check_claims(
     if(!multi_assert)
     {
       seen_claims++;
-      res.status(std::string("\r    Checking Claim #") + i2string(claim_numbers[ass_ptr]) + std::string(" (") +
-    		    i2string((int)(100*seen_claims/(double)(assert_grouping ? claim_numbers.size() : inlined_claims))) +
+      res.status() << (std::string("\r    Checking Claim #") + std::to_string(claim_numbers[ass_ptr]) + std::string(" (") +
+    		    std::to_string((int)(100*seen_claims/(double)(assert_grouping ? claim_numbers.size() : inlined_claims))) +
     		    std::string("%) ..."));
     }
 
@@ -301,11 +319,11 @@ void show_claims(const namespacet &ns,
   {
     assert(it->second->type==ASSERT);
 
-    const locationt &location=it->second->location;
+    const source_locationt &location=it->second->source_location; // KE: locationt is now source_locationt (in CBMC 5.5)
       
     const irep_idt &comment=location.get_comment();
     const irep_idt &function=location.get_function();
-    const irep_idt &property=location.get_property();
+    const irep_idt &property=location.get_property_id(); // KE: was just get_property(), can be either get_property_id or get_property_class
     const irep_idt &line=location.get_line();
     const irep_idt &file=location.get_file();
     const irep_idt description=
@@ -313,7 +331,7 @@ void show_claims(const namespacet &ns,
 
     claim_numberst::const_iterator nr_it = claim_numbers.find(it->second);
 
-    std::string claim_name = i2string(nr_it->second);
+    std::string claim_name = std::to_string(nr_it->second);
     
     switch(ui)
     {
@@ -384,7 +402,7 @@ void store_claims(const namespacet &ns,
   {
     assert(it->second->type==ASSERT);
 
-    mapping << i2string(claim_numbers.find(it->second)->second) << " "
-        << (it->second->location).get_claim().c_str() << std::endl;
+    mapping << std::to_string(claim_numbers.find(it->second)->second) << " "
+        << (it->second->source_location).get_property_id().c_str() << std::endl; // KE: get_claim doesn't exist anymore - I think all just becomes a property
   }
 }

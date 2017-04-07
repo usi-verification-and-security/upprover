@@ -1,0 +1,4 @@
+benchmarks/simple_if_1.c,prop
+benchmarks/simple_if_1.c,qflra
+benchmarks/simple_if_1.c,qfcuf,--theoref
+

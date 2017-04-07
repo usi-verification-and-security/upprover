@@ -6,7 +6,6 @@ Author: CM Wintersteiger
 
 \*******************************************************************/
 
-#include <util/i2string.h>
 
 #include "qbf_squolem.h"
 
@@ -22,7 +21,8 @@ Function: qbf_squolemt::qbf_squolemt
 
 \*******************************************************************/
 
-qbf_squolemt::qbf_squolemt() : early_decision(false)
+qbf_squolemt::qbf_squolemt():
+  early_decision(false)
 {
 }
 
@@ -94,12 +94,13 @@ propt::resultt qbf_squolemt::prop_solve()
   {
     std::string msg=
       "Squolem: "+
-      i2string(no_variables())+" variables, "+
-      i2string(no_clauses())+" clauses";
-    messaget::status(msg);
+      std::to_string(no_variables())+" variables, "+
+      std::to_string(no_clauses())+" clauses";
+    messaget::status() << msg << messaget::eom;
   }
 
-  if(early_decision) return P_UNSATISFIABLE;
+  if(early_decision)
+    return P_UNSATISFIABLE;
 
 //  squolem.options.set_showStatus(true);
   squolem.options.set_freeOnExit(true);
@@ -109,16 +110,16 @@ propt::resultt qbf_squolemt::prop_solve()
   squolem.options.set_saveDebugFile(true);
 
   squolem.endOfOriginals();
-  bool result = squolem.decide();
+  bool result=squolem.decide();
 
   if(result)
   {
-    messaget::status("Squolem: VALID");
+    messaget::status() << "Squolem: VALID" << messaget::eom;
     return P_SATISFIABLE;
   }
   else
   {
-    messaget::status("Squolem: INVALID");
+    messaget::status() << "Squolem: INVALID" << messaget::eom;
     return P_UNSATISFIABLE;
   }
 
@@ -139,14 +140,15 @@ Function: qbf_squolemt::lcnf
 
 void qbf_squolemt::lcnf(const bvt &bv)
 {
-  if(early_decision) return; // we don't need no more...
+  if(early_decision)
+    return; // we don't need no more...
 
   bvt new_bv;
 
   if(process_clause(bv, new_bv))
     return;
 
-  if(new_bv.size()==0)
+  if(new_bv.empty())
   {
     early_decision=true;
     return;
@@ -159,7 +161,7 @@ void qbf_squolemt::lcnf(const bvt &bv)
     buffer[i]=new_bv[i].dimacs();
     i++;
   }
-  while (i<new_bv.size());
+  while(i<new_bv.size());
 
   if(!squolem.addClause(buffer))
     early_decision=true;
@@ -179,8 +181,9 @@ Function: qbf_squolemt::add_quantifier
 
 void qbf_squolemt::add_quantifier(const quantifiert &quantifier)
 {
-  squolem.quantifyVariableInner(quantifier.var_no,
-                                quantifier.type==quantifiert::UNIVERSAL);
+  squolem.quantifyVariableInner(
+    quantifier.var_no,
+    quantifier.type==quantifiert::UNIVERSAL);
 
   qdimacs_cnft::add_quantifier(quantifier); // necessary?
 }

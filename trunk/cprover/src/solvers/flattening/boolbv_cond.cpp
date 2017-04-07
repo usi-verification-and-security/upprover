@@ -22,20 +22,17 @@ Function: boolbvt::convert_cond
 
 \*******************************************************************/
 
-void boolbvt::convert_cond(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_cond(const exprt &expr)
 {
   const exprt::operandst &operands=expr.operands();
 
-  unsigned width=boolbv_width(expr.type());
-  
+  std::size_t width=boolbv_width(expr.type());
+
   if(width==0)
-    return conversion_failed(expr, bv);
+    return conversion_failed(expr);
 
+  bvt bv;
   bv.resize(width);
-
-  // make it free variables
-  Forall_literals(it, bv)
-    *it=prop.new_variable();
 
   if(operands.size()<2)
     throw "cond takes at least two operands";
@@ -49,12 +46,16 @@ void boolbvt::convert_cond(const exprt &expr, bvt &bv)
     literalt previous_cond=const_literal(false);
     literalt cond_literal=const_literal(false);
 
+    // make it free variables
+    Forall_literals(it, bv)
+      *it=prop.new_variable();
+
     forall_operands(it, expr)
     {
       if(condition)
       {
         cond_literal=convert(*it);
-        cond_literal=prop.land(prop.lnot(previous_cond), cond_literal);
+        cond_literal=prop.land(!previous_cond, cond_literal);
 
         previous_cond=prop.lor(previous_cond, cond_literal);
       }
@@ -84,7 +85,7 @@ void boolbvt::convert_cond(const exprt &expr, bvt &bv)
   else
   {
     // functional version -- go backwards
-    for(unsigned i=expr.operands().size(); i!=0; i-=2)
+    for(std::size_t i=expr.operands().size(); i!=0; i-=2)
     {
       assert(i>=2);
       const exprt &cond=expr.operands()[i-2];
@@ -97,8 +98,10 @@ void boolbvt::convert_cond(const exprt &expr, bvt &bv)
       if(bv.size()!=op.size())
         throw "unexpected operand size in convert_cond";
 
-      for(unsigned i=0; i<bv.size(); i++)
+      for(std::size_t i=0; i<bv.size(); i++)
         bv[i]=prop.lselect(cond_literal, op[i], bv[i]);
     }
   }
+
+  return bv;
 }

@@ -20,6 +20,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <ansi-c/c_types.h>
 
+#include <goto-programs/goto_functions.h>
+
 #include "entry_point.h"
 #include "zero_initializer.h"
 
@@ -36,14 +38,14 @@ Function: build_function_environment
 \*******************************************************************/
 
 exprt::operandst build_function_environment(
-  const code_typet::argumentst &arguments)
+  const code_typet::parameterst &parameters)
 {
   exprt::operandst result;
-  result.resize(arguments.size());
+  result.resize(parameters.size());
 
-  for(unsigned i=0; i<arguments.size(); i++)
+  for(unsigned i=0; i<parameters.size(); i++)
   {
-    result[i]=side_effect_expr_nondett(arguments[i].type());
+    result[i]=side_effect_expr_nondett(parameters[i].type());
   }
   
   return result;
@@ -63,50 +65,61 @@ Function: static_lifetime_init
 
 bool static_lifetime_init(
   symbol_tablet &symbol_table,
-  const locationt &location,
+  const source_locationt &source_location,
   message_handlert &message_handler)
 {
   namespacet ns(symbol_table);
       
   symbol_tablet::symbolst::iterator s_it=
-    symbol_table.symbols.find("c::__CPROVER_initialize");
+    symbol_table.symbols.find(CPROVER_PREFIX "initialize");
 
   if(s_it==symbol_table.symbols.end()) return false;
 
   symbolt &init_symbol=s_it->second;
   
   init_symbol.value=code_blockt();
-  init_symbol.value.location()=location;
+  init_symbol.value.add_source_location()=source_location;
 
   code_blockt &dest=to_code_block(to_code(init_symbol.value));
+
+  // add the magic label to hide
+  dest.add(code_labelt("__CPROVER_HIDE", code_skipt()));
   
   // do assignments based on "value"
 
-  forall_symbols(it, symbol_table.symbols)
-  {
-    const irep_idt &identifier=it->first;
-  
-    if(!it->second.is_static_lifetime) continue;
+  // sort alphabetically for reproducible results
+  std::set<std::string> symbols;
 
-    if(it->second.is_type) continue;
+  forall_symbols(it, symbol_table.symbols)
+    symbols.insert(id2string(it->first));
+
+  for(const std::string &id : symbols)
+  {
+    const symbolt &symbol=ns.lookup(id);
+
+    const irep_idt &identifier=symbol.name;
+  
+    if(!symbol.is_static_lifetime) continue;
+
+    if(symbol.is_type) continue;
 
     // special values
     if(identifier==CPROVER_PREFIX "constant_infinity_uint" ||
        identifier==CPROVER_PREFIX "memory" ||
-       identifier=="c::__func__" ||
-       identifier=="c::__FUNCTION__" ||
-       identifier=="c::__PRETTY_FUNCTION__" ||
-       identifier=="c::argc'" ||
-       identifier=="c::argv'" ||
-       identifier=="c::envp'" ||
-       identifier=="c::envp_size'")
+       identifier=="__func__" ||
+       identifier=="__FUNCTION__" ||
+       identifier=="__PRETTY_FUNCTION__" ||
+       identifier=="argc'" ||
+       identifier=="argv'" ||
+       identifier=="envp'" ||
+       identifier=="envp_size'")
       continue;
       
     // just for linking
-    if(has_prefix(id2string(identifier), CPROVER_PREFIX "architecture_"))
+    if(has_prefix(id, CPROVER_PREFIX "architecture_"))
       continue;
   
-    const typet &type=ns.follow(it->second.type);
+    const typet &type=ns.follow(symbol.type);
       
     // check type
     if(type.id()==ID_code ||
@@ -116,32 +129,41 @@ bool static_lifetime_init(
     // We won't try to initialize any symbols that have 
     // remained incomplete.
 
-    if(it->second.value.is_nil() &&
-       it->second.is_extern)
+    if(symbol.value.is_nil() &&
+       symbol.is_extern)
       // Compilers would usually complain about these
       // symbols being undefined.
       continue;
 
     if(type.id()==ID_array &&
        to_array_type(type).size().is_nil())
-      continue; // do not initialize
+    {
+      // C standard 6.9.2, paragraph 5
+      // adjust the type to an array of size 1
+      symbol_tablet::symbolst::iterator it=
+        symbol_table.symbols.find(identifier);
+      assert(it!=symbol_table.symbols.end());
+
+      it->second.type=type;
+      it->second.type.set(ID_size, gen_one(size_type()));
+    }
       
     if(type.id()==ID_incomplete_struct ||
        type.id()==ID_incomplete_union)
       continue; // do not initialize
       
-    if(it->second.value.id()==ID_nondet)
+    if(symbol.value.id()==ID_nondet)
       continue; // do not initialize
 
     exprt rhs;
       
-    if(it->second.value.is_nil())
+    if(symbol.value.is_nil())
     {
     
       try
       {
         namespacet ns(symbol_table);
-        rhs=zero_initializer(it->second.type, it->second.location, ns, message_handler);
+        rhs=zero_initializer(symbol.type, symbol.location, ns, message_handler);
         assert(rhs.is_not_nil());
       }
       
@@ -151,26 +173,26 @@ bool static_lifetime_init(
       }
     }
     else
-      rhs=it->second.value;
+      rhs=symbol.value;
     
-    symbol_exprt symbol(it->second.name, it->second.type);
- 
-    code_assignt code(symbol, rhs);
-    code.location()=it->second.location;
+    code_assignt code(symbol.symbol_expr(), rhs);
+    code.add_source_location()=symbol.location;
 
     dest.move_to_operands(code);
   }
 
   // call designated "initialization" functions
 
-  forall_symbols(it, symbol_table.symbols)
+  for(const std::string &id : symbols)
   {
-    if(it->second.type.get_bool("initialization") &&
-       it->second.type.id()==ID_code)
+    const symbolt &symbol=ns.lookup(id);
+
+    if(symbol.type.get_bool("initialization") &&
+       symbol.type.id()==ID_code)
     {
       code_function_callt function_call;      
-      function_call.function()=symbol_expr(it->second);
-      function_call.location()=location;
+      function_call.function()=symbol.symbol_expr();
+      function_call.add_source_location()=source_location;
       dest.move_to_operands(function_call);
     }
   }
@@ -196,7 +218,8 @@ bool entry_point(
   message_handlert &message_handler)
 {
   // check if main is already there
-  if(symbol_table.symbols.find(ID_main)!=symbol_table.symbols.end())
+  if(symbol_table.symbols.find(goto_functionst::entry_point())!=
+     symbol_table.symbols.end())
     return false; // silently ignore
 
   irep_idt main_symbol;
@@ -220,14 +243,16 @@ bool entry_point(
     if(matches.empty())
     {
       messaget message(message_handler);
-      message.error("main symbol `"+config.main+"' not found");
+      message.error() << "main symbol `" << config.main 
+                      << "' not found" << messaget::eom;
       return true; // give up
     }
     
     if(matches.size()>=2)
     {
       messaget message(message_handler);
-      message.error("main symbol `"+config.main+"' is ambiguous");
+      message.error() << "main symbol `" << config.main 
+                      << "' is ambiguous" << messaget::eom;
       return true;
     }
 
@@ -242,7 +267,8 @@ bool entry_point(
   if(s_it==symbol_table.symbols.end())
   {
     messaget message(message_handler);
-    message.error("main symbol `"+id2string(main_symbol)+"' not in symbol table");
+    message.error() << "main symbol `" << id2string(main_symbol) 
+                    << "' not in symbol table" << messaget::eom;
     return true; // give up, no main
   }
     
@@ -252,7 +278,8 @@ bool entry_point(
   if(symbol.value.is_nil())
   {
     messaget message(message_handler);
-    message.error("main symbol `"+id2string(main_symbol)+"' has no body");
+    message.error() << "main symbol `" << id2string(main_symbol)
+                    << "' has no body" << messaget::eom;
     return false; // give up
   }
 
@@ -265,15 +292,15 @@ bool entry_point(
 
   {
     symbol_tablet::symbolst::iterator init_it=
-      symbol_table.symbols.find("c::__CPROVER_initialize");
+      symbol_table.symbols.find(CPROVER_PREFIX "initialize");
 
     if(init_it==symbol_table.symbols.end())
-      throw "failed to find __CPROVER_initialize symbol";
+      throw "failed to find " CPROVER_PREFIX "initialize symbol";
   
     code_function_callt call_init;
     call_init.lhs().make_nil();
-    call_init.location()=symbol.location;
-    call_init.function()=symbol_expr(init_it->second);
+    call_init.add_source_location()=symbol.location;
+    call_init.function()=init_it->second.symbol_expr();
 
     init_code.move_to_operands(call_init);
   }
@@ -281,31 +308,32 @@ bool entry_point(
   // build call to main function
   
   code_function_callt call_main;
-  call_main.location()=symbol.location;
-  call_main.function()=symbol_expr(symbol);
+  call_main.add_source_location()=symbol.location;
+  call_main.function()=symbol.symbol_expr();
+  call_main.function().add_source_location()=symbol.location;
 
-  const code_typet::argumentst &arguments=
-    to_code_type(symbol.type).arguments();
+  const code_typet::parameterst &parameters=
+    to_code_type(symbol.type).parameters();
 
   if(symbol.name==standard_main)
   {
-    if(arguments.size()==0)
+    if(parameters.empty())
     {
       // ok
     }
-    else if(arguments.size()==2 || arguments.size()==3)
+    else if(parameters.size()==2 || parameters.size()==3)
     {
       namespacet ns(symbol_table);
 
-      const symbolt &argc_symbol=ns.lookup("c::argc'");
-      const symbolt &argv_symbol=ns.lookup("c::argv'");
+      const symbolt &argc_symbol=ns.lookup("argc'");
+      const symbolt &argv_symbol=ns.lookup("argv'");
       
       {
         // assume argc is at least one
         exprt one=from_integer(1, argc_symbol.type);
         
         exprt ge(ID_ge, typet(ID_bool));
-        ge.copy_to_operands(symbol_expr(argc_symbol), one);
+        ge.copy_to_operands(argc_symbol.symbol_expr(), one);
         
         codet assumption;
         assumption.set_statement(ID_assume);
@@ -321,7 +349,7 @@ bool entry_point(
         exprt bound_expr=from_integer(upper_bound, argc_symbol.type);
         
         exprt le(ID_le, typet(ID_bool));
-        le.copy_to_operands(symbol_expr(argc_symbol), bound_expr);
+        le.copy_to_operands(argc_symbol.symbol_expr(), bound_expr);
         
         codet assumption;
         assumption.set_statement(ID_assume);
@@ -329,9 +357,9 @@ bool entry_point(
         init_code.move_to_operands(assumption);
       }
       
-      if(arguments.size()==3)
+      if(parameters.size()==3)
       {        
-        const symbolt &envp_size_symbol=ns.lookup("c::envp_size'");
+        const symbolt &envp_size_symbol=ns.lookup("envp_size'");
 
         // assume envp_size is INTMAX-1
         mp_integer max;
@@ -350,7 +378,7 @@ bool entry_point(
         exprt max_minus_one=from_integer(max-1, envp_size_symbol.type);
         
         exprt le(ID_le, bool_typet());
-        le.copy_to_operands(symbol_expr(envp_size_symbol), max_minus_one);
+        le.copy_to_operands(envp_size_symbol.symbol_expr(), max_minus_one);
         
         codet assumption;
         assumption.set_statement(ID_assume);
@@ -379,7 +407,7 @@ bool entry_point(
         array_of.copy_to_operands(address_of);
         
         init_code.copy_to_operands(
-          code_assignt(symbol_expr(argv_symbol), array_of));
+          code_assignt(argv_symbol.symbol_expr(), array_of));
         */
       }
 
@@ -390,8 +418,8 @@ bool entry_point(
         
         exprt index_expr(ID_index, argv_symbol.type.subtype());
         index_expr.copy_to_operands(
-          symbol_expr(argv_symbol),
-          symbol_expr(argc_symbol));
+          argv_symbol.symbol_expr(),
+          argc_symbol.symbol_expr());
           
         // disable bounds check on that one
         index_expr.set("bounds_check", false);
@@ -399,10 +427,10 @@ bool entry_point(
         init_code.copy_to_operands(code_assignt(index_expr, null));
       }
 
-      if(arguments.size()==3)
+      if(parameters.size()==3)
       {        
-        const symbolt &envp_symbol=ns.lookup("c::envp'");
-        const symbolt &envp_size_symbol=ns.lookup("c::envp_size'");
+        const symbolt &envp_symbol=ns.lookup("envp'");
+        const symbolt &envp_size_symbol=ns.lookup("envp_size'");
         
         // assume envp[envp_size] is NULL
         exprt null(ID_constant, envp_symbol.type.subtype());
@@ -410,8 +438,8 @@ bool entry_point(
         
         exprt index_expr(ID_index, envp_symbol.type.subtype());
         index_expr.copy_to_operands(
-          symbol_expr(envp_symbol),
-          symbol_expr(envp_size_symbol));
+          envp_symbol.symbol_expr(),
+          envp_size_symbol.symbol_expr());
           
         // disable bounds check on that one
         index_expr.set("bounds_check", false);
@@ -428,7 +456,7 @@ bool entry_point(
       {
         exprt::operandst &operands=call_main.arguments();
 
-        if(arguments.size()==3)
+        if(parameters.size()==3)
           operands.resize(3);
         else 
           operands.resize(2);
@@ -436,13 +464,13 @@ bool entry_point(
         exprt &op0=operands[0];
         exprt &op1=operands[1];
         
-        op0=symbol_expr(argc_symbol);
+        op0=argc_symbol.symbol_expr();
         
         {
-          const exprt &arg1=arguments[1];
+          const exprt &arg1=parameters[1];
 
           exprt index_expr(ID_index, arg1.type().subtype());
-          index_expr.copy_to_operands(symbol_expr(argv_symbol), gen_zero(index_type()));
+          index_expr.copy_to_operands(argv_symbol.symbol_expr(), gen_zero(index_type()));
 
           // disable bounds check on that one
           index_expr.set("bounds_check", false);
@@ -452,16 +480,16 @@ bool entry_point(
         }
 
         // do we need envp?
-        if(arguments.size()==3)
+        if(parameters.size()==3)
         {
-          const symbolt &envp_symbol=ns.lookup("c::envp'");
+          const symbolt &envp_symbol=ns.lookup("envp'");
           exprt &op2=operands[2];
 
-          const exprt &arg2=arguments[2];
+          const exprt &arg2=parameters[2];
           
           exprt index_expr(ID_index, arg2.type().subtype());
           index_expr.copy_to_operands(
-            symbol_expr(envp_symbol), gen_zero(index_type()));
+            envp_symbol.symbol_expr(), gen_zero(index_type()));
             
           op2=exprt(ID_address_of, arg2.type());
           op2.move_to_operands(index_expr);
@@ -474,7 +502,7 @@ bool entry_point(
   else
   {
     // produce nondet arguments
-    call_main.arguments()=build_function_environment(arguments);
+    call_main.arguments()=build_function_environment(parameters);
   }
 
   init_code.move_to_operands(call_main);
@@ -485,7 +513,7 @@ bool entry_point(
   code_typet main_type;
   main_type.return_type()=empty_typet();
   
-  new_symbol.name=ID_main;
+  new_symbol.name=goto_functionst::entry_point();
   new_symbol.type.swap(main_type);
   new_symbol.value.swap(init_code);
   
@@ -493,7 +521,7 @@ bool entry_point(
   {
     messaget message;
     message.set_message_handler(message_handler);
-    message.error("failed to move main symbol");
+    message.error() << "failed to move main symbol" << messaget::eom;
     return true;
   }
   

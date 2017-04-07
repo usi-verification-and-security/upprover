@@ -6,10 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_THREEVAL_H
-#define CPROVER_THREEVAL_H
+#ifndef CPROVER_UTIL_THREEVAL_H
+#define CPROVER_UTIL_THREEVAL_H
 
-#include <ostream>
+#include <iosfwd>
 
 //
 // three valued logic
@@ -18,15 +18,24 @@ Author: Daniel Kroening, kroening@kroening.com
 class tvt
 {
 public:
-  typedef enum { TV_FALSE, TV_UNKNOWN, TV_TRUE } tv_enumt;
+  // NOLINTNEXTLINE(readability/identifiers)
+  enum class tv_enumt : unsigned char { TV_FALSE, TV_UNKNOWN, TV_TRUE };
 
-  bool is_true() const { return value==TV_TRUE; }
-  bool is_false() const { return value==TV_FALSE; }
-  bool is_unknown() const { return value==TV_UNKNOWN; }
-  bool is_known() const { return value==TV_TRUE || value==TV_FALSE; }
+  bool is_true() const { return value==tv_enumt::TV_TRUE; }
+  bool is_false() const { return value==tv_enumt::TV_FALSE; }
+  bool is_unknown() const { return value==tv_enumt::TV_UNKNOWN; }
+  bool is_known() const
+  {
+    return value==tv_enumt::TV_TRUE || value==tv_enumt::TV_FALSE;
+  }
+
+  static inline tvt unknown()
+  {
+    return tvt(tv_enumt::TV_UNKNOWN);
+  }
 
   const char *to_string() const;
-  
+
   tv_enumt get_value() const
   {
     return value;
@@ -35,8 +44,8 @@ public:
   tvt()
   {
   }
-  
-  explicit tvt(bool b):value(b?TV_TRUE:TV_FALSE)
+
+  explicit tvt(bool b):value(b?tv_enumt::TV_TRUE:tv_enumt::TV_FALSE)
   {
   }
 
@@ -44,45 +53,50 @@ public:
   {
   }
 
-  friend bool operator ==(const tvt a, const tvt b)
+  bool operator==(const tvt other) const
   {
-    return a.value==b.value;
+    return value==other.value;
   }
 
-  friend bool operator !=(const tvt a, const tvt b)
+  bool operator!=(const tvt other) const
   {
-    return a.value!=b.value;
+    return value!=other.value;
   }
 
-  friend tvt operator &&(const tvt a, const tvt b)
+  tvt operator&&(const tvt other) const
   {
-    if(a.value==TV_FALSE || b.value==TV_FALSE) return tvt(TV_FALSE);
-    if(a.value==TV_TRUE  && b.value==TV_TRUE)  return tvt(TV_TRUE);
-    return tvt(TV_UNKNOWN);
+    if(is_false() || other.is_false())
+      return tvt(false);
+    if(is_true() && other.is_true())
+      return tvt(true);
+
+    return unknown();
   }
 
-  friend tvt operator ||(const tvt a, const tvt b)
+  tvt operator||(const tvt other)
   {
-    if(a.value==TV_TRUE  || b.value==TV_TRUE)  return tvt(TV_TRUE);
-    if(a.value==TV_FALSE && b.value==TV_FALSE) return tvt(TV_FALSE);
-    return tvt(TV_UNKNOWN);
+    if(is_true() || other.is_true())
+      return tvt(true);
+    if(is_false() && other.is_false())
+      return tvt(false);
+
+    return unknown();
   }
 
-  friend tvt operator !(const tvt a)
+  tvt operator!() const
   {
-    if(a.value==TV_UNKNOWN) return tvt(TV_UNKNOWN);
-    if(a.value==TV_TRUE) return tvt(TV_FALSE);
-    return tvt(TV_TRUE);
-  }
+    if(is_unknown())
+      return unknown();
+    if(is_true())
+      return tvt(false);
 
-  friend std::ostream &operator << (std::ostream &out, const tvt &a)
-  {
-    return out << a.to_string();
+    return tvt(true);
   }
 
 protected:
   tv_enumt value;
 };
 
+std::ostream &operator << (std::ostream &out, const tvt &a);
 
-#endif
+#endif // CPROVER_UTIL_THREEVAL_H

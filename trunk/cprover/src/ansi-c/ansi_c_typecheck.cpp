@@ -22,25 +22,13 @@ Function: ansi_c_typecheckt::typecheck
 
 void ansi_c_typecheckt::typecheck()
 {
+  start_typecheck_code();
   for(ansi_c_parse_treet::itemst::iterator
       it=parse_tree.items.begin();
       it!=parse_tree.items.end();
       it++)
   {
-    if(it->id()==ID_declaration)
-    {
-      ansi_c_declarationt &declaration=
-        to_ansi_c_declaration(*it);
-
-      symbolt symbol;
-      declaration.to_symbol(symbol);
-      typecheck_symbol(symbol);
-    }
-    else if(it->id()==ID_initializer)
-    {
-    }
-    else
-      assert(false);
+    typecheck_declaration(*it);
   }
 }
 
@@ -103,13 +91,13 @@ bool ansi_c_typecheck(
 
   catch(const char *e)
   {
-    ansi_c_typecheck.error(e);
+    ansi_c_typecheck.error() << e << messaget::eom;
   }
 
   catch(const std::string &e)
   {
-    ansi_c_typecheck.error(e);
+    ansi_c_typecheck.error() << e << messaget::eom;
   }
-  
+
   return ansi_c_typecheck.get_error_found();
 }

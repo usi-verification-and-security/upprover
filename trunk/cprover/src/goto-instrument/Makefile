@@ -1,20 +1,33 @@
-SRC = main.cpp parseoptions.cpp document_claims.cpp \
-      goto_instrument_languages.cpp \
+SRC = goto_instrument_parse_options.cpp rw_set.cpp \
+      document_properties.cpp goto_instrument_languages.cpp \
       uninitialized.cpp full_slicer.cpp k_induction.cpp \
       object_id.cpp show_locations.cpp points_to.cpp \
-      alignment_checks.cpp race_check.cpp rw_set.cpp \
+      alignment_checks.cpp race_check.cpp \
       nondet_volatile.cpp interrupt.cpp function.cpp branch.cpp \
       mmio.cpp stack_depth.cpp nondet_static.cpp \
       concurrency.cpp dump_c.cpp dot.cpp havoc_loops.cpp \
-      wmm/weak_memory.cpp wmm/fence.cpp wmm/event_graph.cpp \
-      wmm/goto2graph.cpp wmm/data_dp.cpp wmm/abstract_event.cpp \
-      wmm/instrumenter_strategies.cpp wmm/cycle_collection.cpp \
-      call_sequences.cpp unwind.cpp \
+      call_sequences.cpp unwind.cpp function_modifies.cpp \
       accelerate/accelerate.cpp accelerate/polynomial.cpp \
       accelerate/scratch_program.cpp accelerate/polynomial_accelerator.cpp \
-      accelerate/util.cpp
+      accelerate/util.cpp accelerate/trace_automaton.cpp \
+      accelerate/enumerating_loop_acceleration.cpp \
+      accelerate/all_paths_enumerator.cpp \
+      accelerate/sat_path_enumerator.cpp \
+      accelerate/disjunctive_polynomial_acceleration.cpp \
+      accelerate/cone_of_influence.cpp accelerate/overflow_instrumenter.cpp\
+      accelerate/path.cpp accelerate/acceleration_utils.cpp \
+      count_eloc.cpp reachability_slicer.cpp goto_program2code.cpp \
+      wmm/abstract_event.cpp wmm/fence.cpp wmm/shared_buffers.cpp \
+      wmm/cycle_collection.cpp wmm/goto2graph.cpp wmm/weak_memory.cpp \
+      wmm/data_dp.cpp wmm/instrumenter_strategies.cpp \
+      wmm/event_graph.cpp wmm/pair_collection.cpp \
+      goto_instrument_main.cpp horn_encoding.cpp \
+      thread_instrumentation.cpp skip_loops.cpp loop_utils.cpp \
+      code_contracts.cpp cover.cpp model_argc_argv.cpp \
+      undefined_functions.cpp
 
 OBJ += ../ansi-c/ansi-c$(LIBEXT) \
+      ../cpp/cpp$(LIBEXT) \
       ../linking/linking$(LIBEXT) \
       ../big-int/big-int$(LIBEXT) \
       ../goto-programs/goto-programs$(LIBEXT) \
@@ -23,8 +36,11 @@ OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../pointer-analysis/pointer-analysis$(LIBEXT) \
       ../analyses/analyses$(LIBEXT) \
       ../langapi/langapi$(LIBEXT) \
+      ../xmllang/xmllang$(LIBEXT) \
       ../util/util$(LIBEXT) \
-      ../solvers/solvers$(LIBEXT)
+      ../solvers/solvers$(LIBEXT) \
+      ../miniz/miniz$(OBJEXT) \
+      ../json/json$(LIBEXT)
 
 INCLUDES= -I ..
 
@@ -37,24 +53,14 @@ include ../common
 
 all: goto-instrument$(EXEEXT)
 
-ifneq ($(wildcard ../cpp/Makefile),)
-  OBJ += ../cpp/cpp$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_CPP
+ifneq ($(wildcard ../java_bytecode/Makefile),)
+  OBJ += ../java_bytecode/java_bytecode$(LIBEXT)
+  CP_CXXFLAGS += -DHAVE_JAVA_BYTECODE
 endif
 
-ifneq ($(wildcard ../java/Makefile),)
-  OBJ += ../java/java$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_JAVA
-endif
-
-ifneq ($(wildcard ../specc/Makefile),)
-  OBJ += ../specc/specc$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_SPECC
-endif
-
-ifneq ($(wildcard ../php/Makefile),)
-  OBJ += ../php/php$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_PHP
+ifneq ($(LIB_GLPK),)
+  LIBS += $(LIB_GLPK)
+  CP_CXXFLAGS += -DHAVE_GLPK
 endif
 
 ###############################################################################
@@ -66,4 +72,3 @@ goto-instrument$(EXEEXT): $(OBJ)
 
 goto-instrument-mac-signed: goto-instrument$(EXEEXT)
 	codesign -v -s $(OSX_IDENTITY) goto-instrument$(EXEEXT)
-

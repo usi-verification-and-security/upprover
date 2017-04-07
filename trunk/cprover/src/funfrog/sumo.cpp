@@ -82,9 +82,10 @@ int main(int argc, const char** argv) {
     
   } else if (do_optimize) {
     // Try to optimize
-    fine_timet before, after;
+	absolute_timet before, after;
     before=current_time();
   
+    // TODO: KE - need to fix this code to work for summary of smt or sat
     function_infot::optimize_all_summaries(summary_store, f_infos);
     
     after=current_time();

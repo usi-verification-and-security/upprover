@@ -6,7 +6,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#include <util/location.h>
+#include <util/source_location.h>
 
 #include "cpp_typecheck.h"
 
@@ -27,7 +27,7 @@ void cpp_typecheckt::convert(cpp_usingt &cpp_using)
   // there are two forms of using clauses:
   // a) using namespace SCOPE;  ("using directive")
   // b) using SCOPE::id;        ("using declaration")
-  
+
   cpp_typecheck_resolvet resolver(*this);
   cpp_save_scopet save_scope(this->cpp_scopes);
 
@@ -40,16 +40,16 @@ void cpp_typecheckt::convert(cpp_usingt &cpp_using)
 
   cpp_scopes.current_scope().lookup(
     base_name, qualified?cpp_scopet::QUALIFIED:cpp_scopet::RECURSIVE, id_set);
-    
+
   bool using_directive=cpp_using.get_namespace();
 
   if(id_set.empty())
   {
-    err_location(cpp_using.name().location());
-    str << "using "
-        << (using_directive?"namespace":"identifier")
-        << " `"
-        << base_name << "' not found";
+    error().source_location=cpp_using.name().source_location();
+    error() << "using "
+            << (using_directive?"namespace":"identifier")
+            << " `"
+            << base_name << "' not found" << eom;
     throw 0;
   }
 
@@ -64,7 +64,8 @@ void cpp_typecheckt::convert(cpp_usingt &cpp_using)
     if(using_directive)
     {
       if((*it)->id_class==cpp_idt::NAMESPACE)
-        cpp_scopes.current_scope().add_using_scope(static_cast<cpp_scopet &>(**it));
+        cpp_scopes.current_scope().add_using_scope(
+          static_cast<cpp_scopet &>(**it));
       else
       {
         // we should likely complain about this
@@ -73,7 +74,7 @@ void cpp_typecheckt::convert(cpp_usingt &cpp_using)
     else // declaration
     {
       // we copy all 'normal' identifiers into the current scope
-      if((*it)->id_class!=cpp_idt::TEMPLATE_ARGUMENT &&
+      if((*it)->id_class!=cpp_idt::TEMPLATE_PARAMETER &&
          (*it)->id_class!=cpp_idt::NAMESPACE)
         cpp_scopes.current_scope().insert(**it);
     }

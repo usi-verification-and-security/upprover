@@ -20,25 +20,20 @@ Function: boolbvt::convert_if
 
 \*******************************************************************/
 
-void boolbvt::convert_if(const exprt &expr, bvt &bv)
+bvt boolbvt::convert_if(const if_exprt &expr)
 {
-  const exprt::operandst &operands=expr.operands();
-  
-  unsigned width=boolbv_width(expr.type());
+  std::size_t width=boolbv_width(expr.type());
 
   if(width==0)
-    return conversion_failed(expr, bv);
+    return bvt(); // An empty bit-vector if.
 
-  if(operands.size()!=3)
-    throw "if takes three operands";
+  literalt cond=convert(expr.cond());
 
-  literalt op0=convert(operands[0]);
-  
-  const bvt &op1_bv=convert_bv(operands[1]);
-  const bvt &op2_bv=convert_bv(operands[2]);
+  const bvt &op1_bv=convert_bv(expr.true_case());
+  const bvt &op2_bv=convert_bv(expr.false_case());
 
   if(op1_bv.size()!=width || op2_bv.size()!=width)
-    throw "operand size mismatch for if";
+    throw "operand size mismatch for if "+expr.pretty();
 
-  bv=bv_utils.select(op0, op1_bv, op2_bv);
+  return bv_utils.select(cond, op1_bv, op2_bv);
 }

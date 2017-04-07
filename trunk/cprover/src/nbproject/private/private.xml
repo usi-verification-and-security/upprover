@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <code-assistance-data xmlns="http://www.netbeans.org/ns/make-project-private/1">
+        <code-model-enabled>true</code-model-enabled>
+    </code-assistance-data>
+    <data xmlns="http://www.netbeans.org/ns/make-project-private/1">
+        <activeConfTypeElem>0</activeConfTypeElem>
+        <activeConfIndexElem>0</activeConfIndexElem>
+    </data>
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+    <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+        <group>
+            <file>file:/home/karinek/workspace/tools/hifrog_theory_ref/hifrog/trunk/cprover/src/funfrog/solvers/smtcheck_opensmt2.cpp</file>
+            <file>file:/home/karinek/workspace/tools/hifrog_theory_ref/hifrog/trunk/cprover/src/funfrog/solvers/smtcheck_opensmt2_lra.cpp</file>
+            <file>file:/home/karinek/workspace/tools/hifrog_theory_ref/hifrog/trunk/cprover/src/funfrog/solvers/smtcheck_opensmt2_lra.h</file>
+            <file>file:/home/karinek/workspace/tools/hifrog_theory_ref/hifrog/trunk/cprover/src/funfrog/partitioning_target_equation.h</file>
+            <file>file:/home/karinek/workspace/tools/hifrog_theory_ref/hifrog/trunk/cprover/src/funfrog/solvers/smtcheck_opensmt2.h</file>
+            <file>file:/home/karinek/workspace/tools/hifrog_theory_ref/hifrog/trunk/cprover/src/funfrog/error_trace.cpp</file>
+        </group>
+    </open-files>
+</project-private>

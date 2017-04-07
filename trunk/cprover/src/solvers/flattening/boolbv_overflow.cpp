@@ -6,10 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cstdlib>
 #include <cassert>
 
 #include <util/prefix.h>
+#include <util/string2int.h>
 
 #include "boolbv.h"
 
@@ -72,8 +72,8 @@ literalt boolbvt::convert_overflow(const exprt &expr)
       throw "operand type mismatch on overflow-*";
 
     assert(bv0.size()==bv1.size());
-    unsigned old_size=bv0.size();
-    unsigned new_size=old_size*2;
+    std::size_t old_size=bv0.size();
+    std::size_t new_size=old_size*2;
 
     // sign/zero extension
     bv0=bv_utils.extension(bv0, new_size, rep);
@@ -87,7 +87,7 @@ literalt boolbvt::convert_overflow(const exprt &expr)
       bv_overflow.reserve(old_size);
 
       // get top result bits
-      for(unsigned i=old_size; i<result.size(); i++)
+      for(std::size_t i=old_size; i<result.size(); i++)
         bv_overflow.push_back(result[i]);
 
       return prop.lor(bv_overflow);
@@ -99,13 +99,13 @@ literalt boolbvt::convert_overflow(const exprt &expr)
 
       // get top result bits, plus one more
       assert(old_size!=0);
-      for(unsigned i=old_size-1; i<result.size(); i++)
+      for(std::size_t i=old_size-1; i<result.size(); i++)
         bv_overflow.push_back(result[i]);
 
       // these need to be either all 1's or all 0's
       literalt all_one=prop.land(bv_overflow);
-      literalt all_zero=prop.lnot(prop.lor(bv_overflow));
-      return prop.lnot(prop.lor(all_one, all_zero));
+      literalt all_zero=!prop.lor(bv_overflow);
+      return !prop.lor(all_one, all_zero);
     }
   }
   else if(expr.id()==ID_overflow_unary_minus)
@@ -114,30 +114,30 @@ literalt boolbvt::convert_overflow(const exprt &expr)
       throw "operator "+expr.id_string()+" takes one operand";
 
     const bvt &bv=convert_bv(operands[0]);
-      
+
     return bv_utils.overflow_negate(bv);
   }
   else if(has_prefix(expr.id_string(), "overflow-typecast-"))
   {
-    unsigned bits=atoi(expr.id().c_str()+18);
+    std::size_t bits=unsafe_string2unsigned(id2string(expr.id()).substr(18));
 
     const exprt::operandst &operands=expr.operands();
 
     if(operands.size()!=1)
       throw "operator "+expr.id_string()+" takes one operand";
-      
+
     const exprt &op=operands[0];
 
     const bvt &bv=convert_bv(op);
 
     if(bits>=bv.size() || bits==0)
       throw "overflow-typecast got wrong number of bits";
-      
+
     // signed or unsigned?
     if(op.type().id()==ID_signedbv)
     {
       bvt tmp_bv;
-      for(unsigned i=bits; i<bv.size(); i++)
+      for(std::size_t i=bits; i<bv.size(); i++)
         tmp_bv.push_back(prop.lxor(bv[bits-1], bv[i]));
 
       return prop.lor(tmp_bv);
@@ -145,7 +145,7 @@ literalt boolbvt::convert_overflow(const exprt &expr)
     else
     {
       bvt tmp_bv;
-      for(unsigned i=bits; i<bv.size(); i++)
+      for(std::size_t i=bits; i<bv.size(); i++)
         tmp_bv.push_back(bv[i]);
 
       return prop.lor(tmp_bv);

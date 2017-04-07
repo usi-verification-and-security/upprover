@@ -6,99 +6,111 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_PROPDEC_LITERAL_H
-#define CPROVER_PROPDEC_LITERAL_H
+#ifndef CPROVER_SOLVERS_PROP_LITERAL_H
+#define CPROVER_SOLVERS_PROP_LITERAL_H
 
 #include <vector>
+#include <iosfwd>
 
 // a pair of a variable number and a sign, encoded as follows:
 //
 // sign='false' means positive
 // sign='true' means negative
 //
+// The top bit is used to indicate that the literal is constant
+// true or false.
 
 class literalt
 {
 public:
+  // We deliberately don't use size_t here to save some memory
+  // on 64-bit machines; i.e., in practice, we restrict ourselves
+  // to SAT instances with no more than 2^31 variables.
+  typedef unsigned var_not;
+
   // constructors
   literalt()
   {
     set(unused_var_no(), false);
   }
 
-  literalt(unsigned v, bool sign)
+  literalt(var_not v, bool sign)
   {
     set(v, sign);
   }
 
-  class literalt negation() const
+  bool operator==(const literalt other) const
+  {
+    return l==other.l;
+  }
+
+  bool operator!=(const literalt other) const
+  {
+    return l!=other.l;
+  }
+
+  // for sets
+  bool operator<(const literalt other) const
+  {
+    return l<other.l;
+  }
+
+  // negates if 'b' is true
+  literalt operator^(const bool b) const
+  {
+    literalt result(*this);
+    result.l^=(var_not)b;
+    return result;
+  }
+
+  // negates the literal
+  literalt operator!() const
   {
     literalt result(*this);
     result.invert();
     return result;
   }
-  
-  class literalt cond_negation(bool cond) const
+
+  literalt operator^=(const bool a)
   {
-    literalt result(*this);
-    result.cond_invert(cond);
-    return result;
-  }
-  
-  friend inline bool operator ==(const literalt a, const literalt b)
-  {
-    return a.l==b.l;
+    // we use the least significant bit to store the sign
+    l^=(var_not)a;
+    return *this;
   }
 
-  friend inline bool operator !=(const literalt a, const literalt b)
-  {
-    return a.l!=b.l;
-  }
-
-  // for sets  
-  friend inline bool operator <(const literalt a, const literalt b)
-  {
-    return a.l<b.l;
-  }
-  
-  inline unsigned var_no() const
+  var_not var_no() const
   {
     return l>>1;
   }
-  
-  inline bool sign() const
+
+  bool sign() const
   {
     return l&1;
   }
-  
-  inline void set(unsigned _l)
+
+  void set(var_not _l)
   {
     l=_l;
   }
-  
-  inline void set(unsigned v, bool sign)
+
+  void set(var_not v, bool sign)
   {
-    l=(v<<1)|((unsigned)sign);
+    l=(v<<1)|((var_not)sign);
   }
-  
-  inline unsigned get() const
+
+  var_not get() const
   {
     return l;
   }
-  
-  inline void invert()
+
+  void invert()
   {
-    l^=1;
-  }
-  
-  inline void cond_invert(bool a)
-  {
-    l^=(a?1:0);
+    l^=(var_not)1;
   }
 
   //
-  // Returns a literal in the dimacs CNF encoding
-  // A negative integer denotes a negated literal
+  // Returns a literal in the dimacs CNF encoding.
+  // A negative integer denotes a negated literal.
   //
   int dimacs() const
   {
@@ -109,80 +121,78 @@ public:
 
     return result;
   }
-  
+
   void from_dimacs(int d)
   {
     bool sign=d<0;
-    if(sign) d=-d;
+    if(sign)
+      d=-d;
     set(d, sign);
   }
-  
+
   void clear()
   {
     l=0;
   }
-  
-  inline void swap(literalt &x)
+
+  void swap(literalt &x)
   {
     std::swap(x.l, l);
   }
-  
+
   // constants
-  inline void make_true()
+  void make_true()
   {
     set(const_var_no(), true);
   }
-  
-  inline void make_false()
+
+  void make_false()
   {
     set(const_var_no(), false);
   }
-  
-  inline bool is_true() const
+
+  bool is_true() const
   {
     return is_constant() && sign();
   }
-  
-  inline bool is_false() const
+
+  bool is_false() const
   {
     return is_constant() && !sign();
   }
 
-  friend inline literalt const_literal(bool value)
-  {
-    literalt l;
-    l.set(literalt::const_var_no(), value);
-    return l;
-  }
-  
-  inline bool is_constant() const
+  bool is_constant() const
   {
     return var_no()==const_var_no();
   }
 
-  friend inline literalt neg(literalt a) { return a.negation(); }
-  friend inline literalt pos(literalt a) { return a; }
-
-  static inline unsigned const_var_no()
+  static inline var_not const_var_no()
   {
-    return (unsigned(-1)<<1)>>1;
+    return (var_not(-1)<<1)>>1;
   }
 
-  static inline unsigned unused_var_no()
+  static inline var_not unused_var_no()
   {
-    return (unsigned(-2)<<1)>>1;
+    return (var_not(-2)<<1)>>1;
   }
 
 protected:
-  unsigned l;  
+  var_not l;
 };
 
+std::ostream &operator << (std::ostream &out, literalt l);
+
 // constants
-literalt const_literal(bool value);
+inline literalt const_literal(bool value)
+{
+  return literalt(literalt::const_var_no(), value);
+}
 
-literalt neg(literalt a);
-literalt pos(literalt a);
+inline literalt neg(literalt a) { return !a; }
+inline literalt pos(literalt a) { return a; }
 
+
+// bit-vectors
 typedef std::vector<literalt> bvt;
 
 #define forall_literals(it, bv) \
@@ -193,5 +203,4 @@ typedef std::vector<literalt> bvt;
   for(bvt::iterator it=(bv).begin(); \
       it!=(bv).end(); ++it)
 
-
-#endif
+#endif // CPROVER_SOLVERS_PROP_LITERAL_H

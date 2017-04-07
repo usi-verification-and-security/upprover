@@ -2,39 +2,22 @@
 
 Module: File Utilities
 
-Author: 
+Author:
 
 Date: January 2012
 
 \*******************************************************************/
 
-#ifdef __linux__
-#include <unistd.h>
 #include <cerrno>
-#include <dirent.h>
-#include <cstdlib>
-#include <cstdio>
-#endif
 
-#ifdef __FreeBSD_kernel__
+#if defined(__linux__) || \
+    defined(__FreeBSD_kernel__) || \
+    defined(__GNU__) || \
+    defined(__unix__) || \
+    defined(__CYGWIN__) || \
+    defined(__MACH__)
+#include <sys/stat.h>
 #include <unistd.h>
-#include <cerrno>
-#include <dirent.h>
-#include <cstdlib>
-#include <cstdio>
-#endif
-
-#ifdef __MACH__
-#include <unistd.h>
-#include <cerrno>
-#include <dirent.h>
-#include <cstdlib>
-#include <cstdio>
-#endif
-
-#ifdef __CYGWIN__
-#include <unistd.h>
-#include <cerrno>
 #include <dirent.h>
 #include <cstdlib>
 #include <cstdio>
@@ -44,10 +27,12 @@ Date: January 2012
 #include <io.h>
 #include <windows.h>
 #include <direct.h>
-#include <cerrno>
+#include <util/unicode.h>
 #define chdir _chdir
 #define popen _popen
 #define pclose _pclose
+#else
+#include <cstring>
 #endif
 
 #include "file_util.h"
@@ -60,7 +45,7 @@ Function: get_current_working_directory
 
  Outputs: current working directory
 
- Purpose: 
+ Purpose:
 
 \*******************************************************************/
 
@@ -68,20 +53,21 @@ std::string get_current_working_directory()
 {
   unsigned bsize=50;
 
-  char *buf=(char*)malloc(sizeof(char)*bsize);
-  if(!buf) abort();
-  
+  char *buf=reinterpret_cast<char*>(malloc(sizeof(char)*bsize));
+  if(!buf)
+    abort();
+
   errno=0;
-  
+
   while(buf && getcwd(buf, bsize-1)==NULL && errno==ERANGE)
   {
     bsize*=2;
-    buf=(char*)realloc(buf, sizeof(char)*bsize);
+    buf=reinterpret_cast<char*>(realloc(buf, sizeof(char)*bsize));
   }
 
   std::string working_directory=buf;
   free(buf);
-  
+
   return working_directory;
 }
 
@@ -97,40 +83,89 @@ Function: delete_directory
 
 \*******************************************************************/
 
+#ifdef _WIN32
+
+void delete_directory_utf16(const std::wstring &path)
+{
+  std::wstring pattern=path + L"\\*";
+  // NOLINTNEXTLINE(readability/identifiers)
+  struct _wfinddata_t info;
+  intptr_t hFile=_wfindfirst(pattern.c_str(), &info);
+  if(hFile!=-1)
+  {
+    do
+    {
+      if(wcscmp(info.name, L".")==0 || wcscmp(info.name, L"..")==0)
+        continue;
+      std::wstring sub_path=path+L"\\"+info.name;
+      if(info.attrib & _A_SUBDIR)
+        delete_directory_utf16(sub_path);
+      else
+        DeleteFileW(sub_path.c_str());
+    }
+    while(_wfindnext(hFile, &info)==0);
+    _findclose(hFile);
+    RemoveDirectoryW(path.c_str());
+  }
+}
+
+#endif
+
 void delete_directory(const std::string &path)
 {
-  #ifdef _WIN32
-  
-  std::string pattern=path+"\\*";
-  
-  struct _finddata_t info;
-  
-  intptr_t handle=_findfirst(pattern.c_str(), &info);
-  
-  if(handle!=-1)
-  {
-    unlink(info.name);
-    
-    while(_findnext(handle, &info)!=-1)
-      unlink(info.name);
-  }
-  
-  #else
-
+#ifdef _WIN32
+  delete_directory_utf16(utf8_to_utf16_little_endian(path));
+#else
   DIR *dir=opendir(path.c_str());
-
   if(dir!=NULL)
   {
     struct dirent *ent;
-
     while((ent=readdir(dir))!=NULL)
-      remove((path + "/" + ent->d_name).c_str());
+    {
+      // Needed for Alpine Linux
+      if(strcmp(ent->d_name, ".")==0 || strcmp(ent->d_name, "..")==0)
+        continue;
 
+      std::string sub_path=path+"/"+ent->d_name;
+
+      struct stat stbuf;
+      stat(sub_path.c_str(), &stbuf);
+
+      if(S_ISDIR(stbuf.st_mode))
+        delete_directory(sub_path);
+      else
+        remove(sub_path.c_str());
+    }
     closedir(dir);
   }
-
-  #endif
-
   rmdir(path.c_str());
+#endif
 }
 
+/*******************************************************************\
+
+Function: concat_dir_file
+
+  Inputs: directory name and file name
+
+ Outputs: concatenation of directory and file, if the file path is
+          relative
+
+ Purpose:
+
+\*******************************************************************/
+
+std::string concat_dir_file(
+  const std::string &directory,
+  const std::string &file_name)
+{
+  #ifdef _WIN32
+  return  (file_name.size()>1 &&
+           file_name[0]!='/' &&
+           file_name[1]!=':') ?
+           file_name : directory+"\\"+file_name;
+  #else
+  return (!file_name.empty() && file_name[0]=='/') ?
+          file_name : directory+"/"+file_name;
+  #endif
+}

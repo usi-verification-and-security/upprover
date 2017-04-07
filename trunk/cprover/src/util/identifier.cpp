@@ -1,6 +1,6 @@
 /*******************************************************************\
 
-Module: 
+Module:
 
 Author: Daniel Kroening, kroening@kroening.com
 
@@ -29,7 +29,8 @@ std::string identifiert::as_string() const
   for(componentst::const_iterator it=components.begin();
       it!=components.end(); it++)
   {
-    if(it!=components.begin()) result+=ID_SEPARATOR;
+    if(it!=components.begin())
+      result+=ID_SEPARATOR;
     result+=*it;
   }
 
@@ -52,7 +53,7 @@ void identifiert::parse(const std::string &s)
 {
   std::string component;
 
-  for(unsigned i=0; i<s.size();)
+  for(size_t i=0; i<s.size();)
   {
     for(; i<s.size(); i++)
     {
@@ -67,5 +68,5 @@ void identifiert::parse(const std::string &s)
 
     components.push_back(component);
     component="";
-  }  
+  }
 }

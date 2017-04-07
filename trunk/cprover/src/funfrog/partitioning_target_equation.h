@@ -10,6 +10,11 @@ Author: Ondrej Sery
 #ifndef CPROVER_PARTITIONING_TARGET_EQUATION_H
 #define CPROVER_PARTITIONING_TARGET_EQUATION_H
 
+// Debugging flags:
+//#define DEBUG_SSA_PRINT // Print the SSA encoding
+//#define DEBUG_SSA // General debug prints
+// End of working debugging flags
+
 #include <goto-symex/symex_target_equation.h>
 #include <symbol.h>
 
@@ -49,7 +54,8 @@ public:
 		  out_partition(out_local_partition),
 		  terms_counter(0),
 		  is_first_call(true),
-		  first_call_expr(0)
+		  first_call_expr(0),
+                  io_count_global(0)
 		  {
 	  partition_smt_decl = new std::map <std::string,exprt>();
 	  out_terms.rdbuf(&terms_buf);
@@ -64,10 +70,6 @@ public:
 	  delete partition_smt_decl;
 	  first_call_expr = 0; // Not here to do the delete
   }
-
-  // Convert all the SSA steps into the corresponding formulas in
-  // the corresponding partitions
-  void convert(prop_convt &prop_conv, interpolating_solvert &interpolator);
 
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
@@ -172,11 +174,6 @@ public:
   // processing and conversion
   void prepare_partitions();
 
-  // Extract interpolants corresponding to the created partitions
-  void extract_interpolants(
-    interpolating_solvert& interpolator, const prop_convt& decider,
-    interpolant_mapt& interpolant_map);
-
   // Returns SSA steps ordered in the order of program execution (i.e., as they
   // would be normally ordered in symex_target_equation).
   const SSA_steps_orderingt& get_steps_exec_order() {
@@ -205,7 +202,7 @@ public:
 
   unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
 
-private:
+protected:
   // Current summarization context
   summarization_contextt& summarization_context;
 
@@ -229,6 +226,8 @@ private:
   int terms_counter; // for prints SSA - remove later
   bool is_first_call; // for prints SSA - remove later
   const exprt* first_call_expr; // for prints SSA - remove later
+  
+  unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
 
   // Print decl (later change to create)
   std::ostream& print_decl_smt(std::ostream& out);
@@ -238,28 +237,6 @@ private:
   void saveFirstCallExpr(const exprt& expr);
   bool isFirstCallExpr(const exprt& expr);
   void getFirstCallExpr();
-
-  // Convert a specific partition of SSA steps
-  void convert_partition(prop_convt &prop_conv,
-    interpolating_solvert &interpolator, partitiont& partition);
-  // Convert a specific partition guards of SSA steps
-  void convert_partition_guards(prop_convt &prop_conv,
-    partitiont& partition);
-  // Convert a specific partition assignments of SSA steps
-  void convert_partition_assignments(prop_convt &prop_conv,
-    partitiont& partition);
-  // Convert a specific partition assumptions of SSA steps
-  void convert_partition_assumptions(prop_convt &prop_conv,
-    partitiont& partition);
-  // Convert a specific partition assertions of SSA steps
-  void convert_partition_assertions(prop_convt &prop_conv,
-    partitiont& partition);
-  // Convert a specific partition io of SSA steps
-  void convert_partition_io(prop_convt &prop_conv,
-    partitiont& partition);
-  // Convert a summary partition (i.e., assert its summary)
-  void convert_partition_summary(prop_convt &prop_conv,
-    partitiont& partition);
 
   unsigned count_partition_assertions(partitiont& partition) const
   {
@@ -285,10 +262,10 @@ private:
     const partition_ifacet& iface = partition.get_iface();
     common_symbols.reserve(iface.argument_symbols.size() +
       iface.out_arg_symbols.size()+4);
-    common_symbols = iface.argument_symbols;
+    common_symbols = iface.argument_symbols; // Add SSA instances of funcs
     common_symbols.insert(common_symbols.end(),
       iface.out_arg_symbols.begin(),
-      iface.out_arg_symbols.end());
+      iface.out_arg_symbols.end()); // Add globals
     common_symbols.push_back(iface.callstart_symbol);
     common_symbols.push_back(iface.callend_symbol);
     if (iface.assertion_in_subtree) {
@@ -300,7 +277,7 @@ private:
   }
 
   // Fill in ids of all the child partitions
-  void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
+  virtual void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
 
   // Fills in the SSA_steps_exec_order holding pointers to SSA steps ordered
   // in the order of program execution (i.e., as they would be normally
@@ -311,7 +288,7 @@ private:
   // If the given SSA step is a callend assumption, the corresponding target
   // partition is returned. If not, NULL is returned.
   const partitiont* find_target_partition(const SSA_stept& step);
-
+  
   // Collection of all the partitions
   partitionst partitions;
 
@@ -336,6 +313,9 @@ private:
   std::vector<unsigned>& clauses;
 
   friend class partitioning_slicet;
+  
+protected:
+    virtual bool is_smt_encoding()=0; // KE: Temp. Just to force virtual for compilation
 };
 
 #endif

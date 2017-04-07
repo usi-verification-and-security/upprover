@@ -1,0 +1,53 @@
+CBMC Version 5.7 from Git - 64-bit version (CBMC version 5.7 64-bit x86_64 linux)
+Date: 05/04/2017
+
+** CURRENTLY ONLY WORKS WITH OPENSMT2 OLD VERSION **
+git checkout 2df821308c568b0d22b4937b79a6d3ffa015cea6
+
+File Changed:
+=============
+- trunk/cprover/src/solvers/prop/prop_conv.h (move to public: propt &prop; // KE: change for hifrog)
+- trunk/cprover/src/goto-symex/goto_symex.h (set virtual phi_function method)
+- trunk/cprover/src/goto-symex/goto_symex_state.h (Move a method to public - get_l1_name())
+- trunk/cprover/src/goto-symex/goto_symex_state.cpp // Fix to ignor issues of parallel MC (two locations)
+- trunk/cprover/util/expr.h/.cpp - add a function
+- trunk/cprover/src/config.inc (change: add ../ to minisat2 path)
+- trunk/cprover/src/Makefile
+- Remove dirty - where found
+
+minisat-2.2.1:
+==============
+run "patch -p1 < ../scripts/minisat-2.2.1-patch"
+It shall modify the following files:
+trunk/minisat-2.2.1/minisat/core/Solver.cc
+trunk/minisat-2.2.1/minisat/core/SolverTypes.h
+trunk/minisat-2.2.1/minisat/mtl/IntTypes.h
+trunk/minisat-2.2.1/minisat/mtl/Vec.h
+trunk/minisat-2.2.1/minisat/simp/SimpSolver.cc
+trunk/minisat-2.2.1/minisat/utils/Options.h
+trunk/minisat-2.2.1/minisat/utils/ParseUtils.h
+
+Taken from Git:
+===============
+https://github.com/diffblue/cbmc
+(found by git remote show origin)
+http://www.cprover.org/svn/cbmc/trunk/COMPILING
+
+Special modifications in HiFrog:
+================================
+- symex_assertion_sum.h: Phi and vcc methods are virtual.
+- To public: get_l1_name
+  // only required for value_set.assign
+  void get_l1_name(exprt &expr) const; // KE: changes for hifrog
+- expr.h add function:
+  const std::string print_number_2smt() const; // hckd!!
+- expr.cpp add function impl
+- Issues with dirty analysis
+  - Removed from goto-symex/symex_main.cpp
+                 goto-symex/goto_symex_state.cpp
+                 goto-symex/goto_symex_state.h
+                 goto-symex/symex_function_call.cpp
+                 goto-symex/symex_goto.cpp
+                 goto-symex/symex_decl.cpp
+                 
+

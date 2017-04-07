@@ -10,7 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_ANSI_C_DESIGNATOR_H
 
 #include <vector>
-#include <ostream>
+#include <iosfwd>
 
 #include <util/type.h>
 
@@ -19,21 +19,21 @@ class designatort
 public:
   struct entryt
   {
-    unsigned index;
-    unsigned size;
+    size_t index;
+    size_t size;
     typet type, subtype;
-    
+
     entryt():index(0), size(0)
     {
     }
   };
 
-  bool empty() const { return index_list.empty(); }  
-  unsigned size() const { return index_list.size(); }
-  const entryt &operator[](unsigned i) const { return index_list[i]; }
-  entryt &operator[](unsigned i) { return index_list[i]; }
-  const entryt &back() const { return index_list.back(); };
-  const entryt &front() const { return index_list.front(); };
+  bool empty() const { return index_list.empty(); }
+  size_t size() const { return index_list.size(); }
+  const entryt &operator[](size_t i) const { return index_list[i]; }
+  entryt &operator[](size_t i) { return index_list[i]; }
+  const entryt &back() const { return index_list.back(); }
+  const entryt &front() const { return index_list.front(); }
 
   designatort() { }
 
@@ -41,11 +41,13 @@ public:
   {
     index_list.push_back(entry);
   }
-  
+
   void pop_entry()
   {
     index_list.pop_back();
   }
+
+  void print(std::ostream &out) const;
 
 protected:
   // a list of indices into arrays or structs
@@ -53,6 +55,10 @@ protected:
   index_listt index_list;
 };
 
-std::ostream &operator << (std::ostream &, const designatort &);
+inline std::ostream &operator << (std::ostream &os, const designatort &d)
+{
+  d.print(os);
+  return os;
+}
 
-#endif
+#endif // CPROVER_ANSI_C_DESIGNATOR_H

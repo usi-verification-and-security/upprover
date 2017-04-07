@@ -9,10 +9,9 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <cassert>
 
 #include <util/arith_tools.h>
-#include <util/i2string.h>
 #include <util/std_expr.h>
 
-#include <ansi-c/c_types.h>
+#include "../c_types.h"
 
 #include "unescape_string.h"
 #include "convert_character_literal.h"
@@ -34,21 +33,21 @@ exprt convert_character_literal(
   bool force_integer_type)
 {
   assert(src.size()>=2);
-  
+
   exprt result;
 
   if(src[0]=='L' || src[0]=='u' || src[0]=='U')
   {
     assert(src[1]=='\'');
     assert(src[src.size()-1]=='\'');
-  
-    std::basic_string<unsigned int> value;
-    unescape_wide_string(std::string(src, 2, src.size()-3), value);
-    
+
+    std::basic_string<unsigned int> value=
+      unescape_wide_string(std::string(src, 2, src.size()-3));
+
     // L is wchar_t, u is char16_t, U is char32_t
     typet type=wchar_t_type();
-    
-    if(value.size()==0)
+
+    if(value.empty())
       throw "empty wide character literal";
     else if(value.size()==1)
     {
@@ -71,7 +70,7 @@ exprt convert_character_literal(
       result=from_integer(x, type);
     }
     else
-      throw "wide literals with "+i2string(value.size())+
+      throw "wide literals with "+std::to_string(value.size())+
             " characters are not supported";
   }
   else
@@ -79,10 +78,10 @@ exprt convert_character_literal(
     assert(src[0]=='\'');
     assert(src[src.size()-1]=='\'');
 
-    std::string value;
-    unescape_string(std::string(src, 1, src.size()-2), value);
+    std::string value=
+      unescape_string(std::string(src, 1, src.size()-2));
 
-    if(value.size()==0)
+    if(value.empty())
       throw "empty character literal";
     else if(value.size()==1)
     {
@@ -104,9 +103,9 @@ exprt convert_character_literal(
       result=from_integer(x, signed_int_type());
     }
     else
-      throw "literals with "+i2string(value.size())+
+      throw "literals with "+std::to_string(value.size())+
             " characters are not supported";
   }
-  
+
   return result;
 }

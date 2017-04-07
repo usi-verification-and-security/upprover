@@ -6,10 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include <iostream>
+#include <sstream>
 #include <cassert>
 
-#include <util/expr_util.h>
-#include <util/i2string.h>
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
 #include <util/arith_tools.h>
@@ -18,6 +18,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/symbol_table.h>
 
 #include <ansi-c/c_types.h>
+
+//#include <analyses/dirty.h>
 
 #include "goto_symex.h"
 
@@ -35,6 +37,7 @@ Function: goto_symext::get_unwind_recursion
 
 bool goto_symext::get_unwind_recursion(
   const irep_idt &identifier,
+  const unsigned thread_nr,
   unsigned unwind)
 {
   return false;
@@ -42,7 +45,7 @@ bool goto_symext::get_unwind_recursion(
 
 /*******************************************************************\
 
-Function: goto_symext::argument_assignments
+Function: goto_symext::parameter_assignments
 
   Inputs:
 
@@ -52,110 +55,133 @@ Function: goto_symext::argument_assignments
 
 \*******************************************************************/
 
-void goto_symext::argument_assignments(
+void goto_symext::parameter_assignments(
   const irep_idt function_identifier,
-  const code_typet &function_type,
+  const goto_functionst::goto_functiont &goto_function,
   statet &state,
   const exprt::operandst &arguments)
 {
-  // iterates over the operands
+  const code_typet &function_type=goto_function.type;
+
+  // iterates over the arguments
   exprt::operandst::const_iterator it1=arguments.begin();
 
-  // these are the types of the arguments
-  const code_typet::argumentst &argument_types=function_type.arguments();
+  // these are the types of the parameters
+  const code_typet::parameterst &parameter_types=
+    function_type.parameters();
 
-  // iterates over the types of the arguments
-  for(code_typet::argumentst::const_iterator
-      it2=argument_types.begin();
-      it2!=argument_types.end();
+  // iterates over the types of the parameters
+  for(code_typet::parameterst::const_iterator
+      it2=parameter_types.begin();
+      it2!=parameter_types.end();
       it2++)
   {
+    const code_typet::parametert &parameter=*it2;
+
+    // this is the type that the n-th argument should have
+    const typet &parameter_type=parameter.type();
+
+    const irep_idt &identifier=parameter.get_identifier();
+
+    if(identifier==irep_idt())
+      throw "no identifier for function parameter";
+
+    const symbolt &symbol=ns.lookup(identifier);
+    symbol_exprt lhs=symbol.symbol_expr();
+
+    exprt rhs;
+
     // if you run out of actual arguments there was a mismatch
     if(it1==arguments.end())
     {
-      std::string error=
+      std::string warn=
         "call to `"+id2string(function_identifier)+"': "
-        "not enough arguments";
-      throw error;
+        "not enough arguments, inserting non-deterministic value\n";
+      std::cerr << state.source.pc->source_location.as_string()+": "+warn;
+
+      rhs=side_effect_expr_nondett(parameter_type);
     }
+    else
+      rhs=*it1;
 
-    const code_typet::argumentt &argument=*it2;
-
-    // this is the type the n-th argument should be
-    const typet &arg_type=argument.type();
-
-    const irep_idt &identifier=argument.get_identifier();
-    
-    if(identifier==irep_idt())
-      throw "no identifier for function argument";
-
-    const symbolt &symbol=ns.lookup(identifier);
-    symbol_exprt lhs=symbol_expr(symbol);
-
-    if(it1->is_nil())
+    if(rhs.is_nil())
     {
       // 'nil' argument doesn't get assigned
     }
     else
     {
-      exprt rhs=*it1;
-
-      // it should be the same exact type
-      if(!base_type_eq(arg_type, rhs.type(), ns))
+      // It should be the same exact type.
+      if(!base_type_eq(parameter_type, rhs.type(), ns))
       {
-        const typet &f_arg_type=ns.follow(arg_type);
+        const typet &f_parameter_type=ns.follow(parameter_type);
         const typet &f_rhs_type=ns.follow(rhs.type());
-      
-        // we are willing to do some limited conversion
-        if((f_arg_type.id()==ID_signedbv ||
-            f_arg_type.id()==ID_unsignedbv ||
-            f_arg_type.id()==ID_bool ||
-            f_arg_type.id()==ID_pointer) &&
+
+        // But we are willing to do some limited conversion.
+        // This is highly dubious, obviously.
+        if((f_parameter_type.id()==ID_signedbv ||
+            f_parameter_type.id()==ID_unsignedbv ||
+            f_parameter_type.id()==ID_c_enum_tag ||
+            f_parameter_type.id()==ID_bool ||
+            f_parameter_type.id()==ID_pointer ||
+            f_parameter_type.id()==ID_union) &&
            (f_rhs_type.id()==ID_signedbv ||
             f_rhs_type.id()==ID_unsignedbv ||
+            f_rhs_type.id()==ID_c_bit_field ||
+            f_rhs_type.id()==ID_c_enum_tag ||
             f_rhs_type.id()==ID_bool ||
-            f_rhs_type.id()==ID_pointer))
+            f_rhs_type.id()==ID_pointer ||
+            f_rhs_type.id()==ID_union))
         {
-          rhs.make_typecast(arg_type);
+          rhs=
+            byte_extract_exprt(
+              byte_extract_id(),
+              rhs,
+              from_integer(0, index_type()),
+              parameter_type);
         }
         else
         {
-          std::string error="function call: argument \""+
-            id2string(identifier)+"\" type mismatch: got "+
-            it1->type().to_string()+", expected "+
-            arg_type.to_string();
-          throw error;
+          std::ostringstream error;
+          error << "function call: parameter \"" << identifier
+                << "\" type mismatch: got " << rhs.type().pretty()
+                << ", expected " << parameter_type.pretty();
+          throw error.str();
         }
       }
-      
-      guardt guard;
-      state.rename(lhs, ns, goto_symex_statet::L1);
-      symex_assign_symbol(state, lhs, nil_exprt(), rhs, guard, VISIBLE);
+
+      symex_assign_rec(state, code_assignt(lhs, rhs));
     }
 
-    it1++;
+    if(it1!=arguments.end())
+      it1++;
   }
 
   if(function_type.has_ellipsis())
   {
-    // These are va_arg arguments.
-    for(unsigned va_count=0; it1!=arguments.end(); it1++, va_count++)
+    // These are va_arg arguments; their types may differ from call to call
+    unsigned va_count=0;
+    const symbolt *va_sym=0;
+    while(!ns.lookup(
+        id2string(function_identifier)+"::va_arg"+std::to_string(va_count),
+        va_sym))
+      ++va_count;
+
+    for( ; it1!=arguments.end(); it1++, va_count++)
     {
-      irep_idt id=id2string(function_identifier)+"::va_arg"+i2string(va_count);
-      
+      irep_idt id=
+        id2string(function_identifier)+"::va_arg"+std::to_string(va_count);
+
       // add to symbol table
       symbolt symbol;
       symbol.name=id;
-      symbol.base_name="va_arg"+i2string(va_count);
+      symbol.base_name="va_arg"+std::to_string(va_count);
       symbol.type=it1->type();
-      
+
       new_symbol_table.move(symbol);
-      
+
       symbol_exprt lhs=symbol_exprt(id, it1->type());
 
-      guardt guard;
-      state.rename(lhs, ns, goto_symex_statet::L1);
-      symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, VISIBLE);
+      symex_assign_rec(state, code_assignt(lhs, *it1));
     }
   }
   else if(it1!=arguments.end())
@@ -216,8 +242,8 @@ void goto_symext::symex_function_call_symbol(
 
   const irep_idt &identifier=
     to_symbol_expr(code.function()).get_identifier();
-    
-  if(identifier=="c::CBMC_trace")
+
+  if(identifier=="CBMC_trace")
   {
     symex_trace(state, code);
   }
@@ -252,9 +278,9 @@ void goto_symext::symex_function_call_code(
 {
   const irep_idt &identifier=
     to_symbol_expr(call.function()).get_identifier();
-  
+
   // find code in function map
-  
+
   goto_functionst::function_mapt::const_iterator it=
     goto_functions.function_map.find(identifier);
 
@@ -262,65 +288,86 @@ void goto_symext::symex_function_call_code(
     throw "failed to find `"+id2string(identifier)+"' in function_map";
 
   const goto_functionst::goto_functiont &goto_function=it->second;
-  
-  unsigned &unwinding_counter=function_unwind[identifier];
+
+  const bool stop_recursing=get_unwind_recursion(
+    identifier,
+    state.source.thread_nr,
+    state.top().loop_iterations[identifier].count);
 
   // see if it's too much
-  if(get_unwind_recursion(identifier, unwinding_counter))
+  if(stop_recursing)
   {
-    if(options.get_bool_option("unwinding-assertions"))
-      claim(false_exprt(), "recursion unwinding assertion", state);
-
-    state.source.pc++;
-    return;
-  }
-  
-  // record the call
-  target.function_call(state.guard.as_expr(), identifier, state.source);
-
-  if(!goto_function.body_available)
-  {
-    no_body(identifier);
-    
-    // record the return
-    target.function_return(state.guard.as_expr(), identifier, state.source);
-  
-    if(call.lhs().is_not_nil())
+    if(options.get_bool_option("partial-loops"))
     {
-      exprt rhs=exprt(ID_nondet_symbol, call.lhs().type());
-      rhs.set(ID_identifier, "symex::"+i2string(nondet_count++));
-      rhs.location()=call.location();
-      state.rename(rhs, ns, goto_symex_statet::L1);
-      code_assignt code(call.lhs(), rhs);
-      symex_assign(state, to_code_assign(code)); /* TODO: clean_expr? */
+      // it's ok, ignore
+    }
+    else
+    {
+      if(options.get_bool_option("unwinding-assertions"))
+        vcc(false_exprt(), "recursion unwinding assertion", state);
+
+      // add to state guard to prevent further assignments
+      state.guard.add(false_exprt());
     }
 
     state.source.pc++;
     return;
   }
-  
+
+  // record the call
+  target.function_call(state.guard.as_expr(), identifier, state.source);
+
+  if(!goto_function.body_available())
+  {
+    no_body(identifier);
+
+    // record the return
+    target.function_return(state.guard.as_expr(), identifier, state.source);
+
+    if(call.lhs().is_not_nil())
+    {
+      side_effect_expr_nondett rhs(call.lhs().type());
+      rhs.add_source_location()=call.source_location();
+      code_assignt code(call.lhs(), rhs);
+      symex_assign_rec(state, code);
+    }
+
+    state.source.pc++;
+    return;
+  }
+
   // read the arguments -- before the locality renaming
   exprt::operandst arguments=call.arguments();
   for(unsigned i=0; i<arguments.size(); i++)
     state.rename(arguments[i], ns);
-  
-  // increase unwinding counter
-  unwinding_counter++;
-  
+
   // produce a new frame
   assert(!state.call_stack().empty());
   goto_symex_statet::framet &frame=state.new_frame();
-  
+
   // preserve locality of local variables
   locality(identifier, state, goto_function);
 
-  // assign arguments
-  argument_assignments(identifier, goto_function.type, state, arguments);
+  // assign actuals to formal parameters
+  parameter_assignments(identifier, goto_function, state, arguments);
 
   frame.end_of_function=--goto_function.body.instructions.end();
   frame.return_value=call.lhs();
   frame.calling_location=state.source;
   frame.function_identifier=identifier;
+  frame.hidden_function=goto_function.is_hidden();
+
+  const goto_symex_statet::framet &p_frame=state.previous_frame();
+  for(goto_symex_statet::framet::loop_iterationst::const_iterator
+      it=p_frame.loop_iterations.begin();
+      it!=p_frame.loop_iterations.end();
+      ++it)
+    if(it->second.is_recursion)
+      frame.loop_iterations.insert(*it);
+
+  // increase unwinding counter
+  frame.loop_iterations[identifier].is_recursion=true;
+  frame.loop_iterations[identifier].count++;
 
   state.source.is_set=true;
   state.source.pc=goto_function.body.instructions.begin();
@@ -347,22 +394,33 @@ void goto_symext::pop_frame(statet &state)
 
     // restore program counter
     state.source.pc=frame.calling_location.pc;
-  
+
     // restore L1 renaming
     state.level1.restore_from(frame.old_level1);
-  
-    // clear function-locals from L2 renaming
-    for(statet::framet::local_variablest::const_iterator
-        it=frame.local_variables.begin();
-        it!=frame.local_variables.end();
-        it++)
-      state.level2.remove(*it);
 
-    // decrease recursion unwinding counter
-    if(frame.function_identifier!="")
-      function_unwind[frame.function_identifier]--;
+    // clear function-locals from L2 renaming
+    //assert(state.dirty);
+    for(goto_symex_statet::renaming_levelt::current_namest::iterator
+        c_it=state.level2.current_names.begin();
+        c_it!=state.level2.current_names.end();
+       ) // no ++c_it
+    {
+      const irep_idt l1_o_id=c_it->second.first.get_l1_object_identifier();
+      // could use iteration over local_objects as l1_o_id is prefix
+      if(frame.local_objects.find(l1_o_id)==frame.local_objects.end() ||
+         (state.threads.size()>1 /*&&
+          (*state.dirty)(c_it->second.first.get_object_name())*/))
+      {
+        ++c_it;
+        continue;
+      }
+      goto_symex_statet::renaming_levelt::current_namest::iterator
+        cur=c_it;
+      ++c_it;
+      state.level2.current_names.erase(cur);
+    }
   }
-  
+
   state.pop_frame();
 }
 
@@ -412,7 +470,7 @@ void goto_symext::locality(
   frame_nr++;
 
   std::set<irep_idt> local_identifiers;
-  
+
   get_local_identifiers(goto_function, local_identifiers);
 
   statet::framet &frame=state.top();
@@ -423,7 +481,9 @@ void goto_symext::locality(
       it++)
   {
     // get L0 name
-    irep_idt l0_name=state.rename(*it, ns, goto_symex_statet::L0);
+    ssa_exprt ssa(ns.lookup(*it).symbol_expr());
+    state.rename(ssa, ns, goto_symex_statet::L0);
+    const irep_idt l0_name=ssa.get_identifier();
 
     // save old L1 name for popping the frame
     statet::level1t::current_namest::const_iterator c_it=
@@ -431,24 +491,28 @@ void goto_symext::locality(
 
     if(c_it!=state.level1.current_names.end())
       frame.old_level1[l0_name]=c_it->second;
-    
+
     // do L1 renaming -- these need not be unique, as
     // identifiers may be shared among functions
     // (e.g., due to inlining or other code restructuring)
-    
-    irep_idt l1_name;
+
+    state.level1.current_names[l0_name]=
+      std::make_pair(ssa, frame_nr);
+    state.rename(ssa, ns, goto_symex_statet::L1);
+
+    irep_idt l1_name=ssa.get_identifier();
     unsigned offset=0;
-    
-    do
+
+    while(state.l1_history.find(l1_name)!=state.l1_history.end())
     {
-      state.level1.rename(l0_name, frame_nr+offset);
-      l1_name=state.level1(l0_name);
-      offset++;
+      state.level1.increase_counter(l0_name);
+      ++offset;
+      ssa.set_level_1(frame_nr+offset);
+      l1_name=ssa.get_identifier();
     }
-    while(state.l1_history.find(l1_name)!=state.l1_history.end());
-    
+
     // now unique -- store
-    frame.local_variables.insert(l1_name);
+    frame.local_objects.insert(l1_name);
     state.l1_history.insert(l1_name);
   }
 }
@@ -479,15 +543,19 @@ void goto_symext::return_assignment(statet &state)
   {
     exprt value=code.op0();
 
-    clean_expr(value, state, false);
-  
     if(frame.return_value.is_not_nil())
     {
       code_assignt assignment(frame.return_value, value);
 
-      assert(base_type_eq(assignment.lhs().type(),
-            assignment.rhs().type(), ns));
-      symex_assign(state, assignment);
+      if(!base_type_eq(assignment.lhs().type(),
+                       assignment.rhs().type(), ns))
+        throw
+          "goto_symext::return_assignment type mismatch at "+
+          instruction.source_location.as_string()+":\n"+
+          "assignment.lhs().type():\n"+assignment.lhs().type().pretty()+"\n"+
+          "assignment.rhs().type():\n"+assignment.rhs().type().pretty();
+
+      symex_assign_rec(state, assignment);
     }
   }
   else
@@ -496,50 +564,3 @@ void goto_symext::return_assignment(statet &state)
       throw "return with unexpected value";
   }
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_return
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void goto_symext::symex_return(statet &state)
-{
-  return_assignment(state);
-
-  // we treat this like an unconditional
-  // goto to the end of the function
-
-  // put into state-queue
-  statet::goto_state_listt &goto_state_list=
-    state.top().goto_state_map[state.top().end_of_function];
-
-  goto_state_list.push_back(statet::goto_statet(state));
-
-  // kill this one
-  state.guard.make_false();
-}
-
-/*******************************************************************\
-
-Function: goto_symext::symex_step_return
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void goto_symext::symex_step_return(statet &state)
-{
-  return_assignment(state);
-}
-

@@ -7,8 +7,9 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <cassert>
-#include <cstdlib>
+#include <ostream>
 
+#include "string2int.h"
 #include "arith_tools.h"
 #include "std_types.h"
 #include "std_expr.h"
@@ -28,7 +29,8 @@ Function: bv_spect::to_type
 
 typet bv_spect::to_type() const
 {
-  if(is_signed) return signedbv_typet(width);
+  if(is_signed)
+    return signedbv_typet(width);
   return unsignedbv_typet(width);
 }
 
@@ -88,8 +90,8 @@ void bv_spect::from_type(const typet &type)
     is_signed=true;
   else
     assert(0);
-  
-  width=atoi(type.get(ID_width).c_str());
+
+  width=unsafe_string2unsigned(type.get_string(ID_width));
 }
 
 /*******************************************************************\
@@ -183,7 +185,8 @@ Function: bv_arithmetict::pack
 
 mp_integer bv_arithmetict::pack() const
 {
-  if(value>=0) return value;
+  if(value>=0)
+    return value;
   return value+power(2, spec.width);
 }
 
@@ -218,14 +221,14 @@ Function: operator /=
 
 \*******************************************************************/
 
-bv_arithmetict &bv_arithmetict::operator /= (const bv_arithmetict &other)
+bv_arithmetict &bv_arithmetict::operator/=(const bv_arithmetict &other)
 {
   assert(other.spec==spec);
 
   if(other.value==0)
     value=0;
   else
-    value/=other.value;  
+    value/=other.value;
 
   return *this;
 }
@@ -242,13 +245,13 @@ Function: operator *=
 
 \*******************************************************************/
 
-bv_arithmetict &bv_arithmetict::operator *= (const bv_arithmetict &other)
+bv_arithmetict &bv_arithmetict::operator*=(const bv_arithmetict &other)
 {
   assert(other.spec==spec);
-  
+
   value*=other.value;
   adjust();
-  
+
   return *this;
 }
 
@@ -264,7 +267,7 @@ Function: operator +=
 
 \*******************************************************************/
 
-bv_arithmetict &bv_arithmetict::operator += (const bv_arithmetict &other)
+bv_arithmetict &bv_arithmetict::operator+=(const bv_arithmetict &other)
 {
   assert(other.spec==spec);
 
@@ -308,7 +311,7 @@ Function: operator %=
 
 \*******************************************************************/
 
-bv_arithmetict &bv_arithmetict::operator %= (const bv_arithmetict &other)
+bv_arithmetict &bv_arithmetict::operator%=(const bv_arithmetict &other)
 {
   assert(other.spec==spec);
 
@@ -330,14 +333,14 @@ Function: operator <
 
 \*******************************************************************/
 
-bool operator < (const bv_arithmetict &a, const bv_arithmetict &b)
+bool bv_arithmetict::operator<(const bv_arithmetict &other)
 {
-  return a.value<b.value;
+  return value<other.value;
 }
 
 /*******************************************************************\
 
-Function: operator <=
+Function: bv_arithmetict::operator<=
 
   Inputs:
 
@@ -347,14 +350,14 @@ Function: operator <=
 
 \*******************************************************************/
 
-bool operator <=(const bv_arithmetict &a, const bv_arithmetict &b)
+bool bv_arithmetict::operator<=(const bv_arithmetict &other)
 {
-  return a.value<=b.value;
+  return value<=other.value;
 }
 
 /*******************************************************************\
 
-Function: operator >
+Function: bv_arithmetict::operator>
 
   Inputs:
 
@@ -364,14 +367,14 @@ Function: operator >
 
 \*******************************************************************/
 
-bool operator > (const bv_arithmetict &a, const bv_arithmetict &b)
+bool bv_arithmetict::operator>(const bv_arithmetict &other)
 {
-  return a.value>b.value;
+  return value>other.value;
 }
 
 /*******************************************************************\
 
-Function: operator >=
+Function: bv_arithmetict::operator>=
 
   Inputs:
 
@@ -381,14 +384,14 @@ Function: operator >=
 
 \*******************************************************************/
 
-bool operator >=(const bv_arithmetict &a, const bv_arithmetict &b)
+bool bv_arithmetict::operator>=(const bv_arithmetict &other)
 {
-  return a.value>=b.value;
+  return value>=other.value;
 }
 
 /*******************************************************************\
 
-Function: operator ==
+Function: bv_arithmetict::operator==
 
   Inputs:
 
@@ -398,14 +401,14 @@ Function: operator ==
 
 \*******************************************************************/
 
-bool operator ==(const bv_arithmetict &a, const bv_arithmetict &b)
+bool bv_arithmetict::operator==(const bv_arithmetict &other)
 {
-  return a.value==b.value;
+  return value==other.value;
 }
 
 /*******************************************************************\
 
-Function: operator ==
+Function: bv_arithmetict::operator==
 
   Inputs:
 
@@ -415,14 +418,14 @@ Function: operator ==
 
 \*******************************************************************/
 
-bool operator ==(const bv_arithmetict &a, int i)
+bool bv_arithmetict::operator==(int i)
 {
-  return a.value==i;
+  return value==i;
 }
 
 /*******************************************************************\
 
-Function: operator !=
+Function: bv_arithmetict::operator!=
 
   Inputs:
 
@@ -432,9 +435,9 @@ Function: operator !=
 
 \*******************************************************************/
 
-bool operator !=(const bv_arithmetict &a, const bv_arithmetict &b)
+bool bv_arithmetict::operator!=(const bv_arithmetict &other)
 {
-  return a.value!=b.value;
+  return value!=other.value;
 }
 
 /*******************************************************************\
@@ -470,6 +473,6 @@ Function: bv_arithmetict::from_expr
 void bv_arithmetict::from_expr(const exprt &expr)
 {
   assert(expr.is_constant());
-  spec=expr.type();
+  spec=bv_spect(expr.type());
   value=binary2integer(expr.get_string(ID_value), spec.is_signed);
 }

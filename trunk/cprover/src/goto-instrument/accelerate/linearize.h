@@ -1,5 +1,13 @@
-#ifndef LINEARIZE_H
-#define LINEARIZE_H
+/*******************************************************************\
+
+Module: Loop Acceleration
+
+Author: Matt Lewis
+
+\*******************************************************************/
+
+#ifndef CPROVER_GOTO_INSTRUMENT_ACCELERATE_LINEARIZE_H
+#define CPROVER_GOTO_INSTRUMENT_ACCELERATE_LINEARIZE_H
 
 #include <vector>
 
@@ -7,8 +15,6 @@
 #include <goto-symex/symex_target_equation.h>
 
 #include "Eigen/Eigen"
-
-using namespace Eigen;
 
 /*
  * The idea here is that a linear_recurrencet describes a linear recurrence in
@@ -19,11 +25,14 @@ using namespace Eigen;
  * i.e. the next value of the vars vector is calculated by applying the matrix
  * to the current vars vector.
  */
-typedef struct linear_recurrence {
-  MatrixXd matrix;
+struct linear_recurrencet
+{
+  Eigen::MatrixXd matrix;
   std::vector<exprt> vars;
-} linear_recurrencet;
+};
 
-bool linearize(symex_target_equationt &equation, linear_recurrencet &recurrence);
+bool linearize(
+  symex_target_equationt &equation,
+  linear_recurrencet &recurrence);
 
-#endif // LINEARIZE_H
+#endif // CPROVER_GOTO_INSTRUMENT_ACCELERATE_LINEARIZE_H

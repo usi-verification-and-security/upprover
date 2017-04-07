@@ -29,17 +29,17 @@ bool typecheckt::typecheck_main()
 
   catch(int)
   {
-    error();
+    error_found=true;
   }
 
   catch(const char *e)
   {
-    error(e);
+    error() << e << eom;
   }
 
   catch(const std::string &e)
   {
-    error(e);
+    error() << e << eom;
   }
 
   return error_found;

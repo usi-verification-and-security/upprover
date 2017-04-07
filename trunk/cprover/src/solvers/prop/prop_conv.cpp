@@ -16,12 +16,29 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "prop.h"
 #include "prop_conv.h"
-
-//#define DEBUG
+#include "literal_expr.h"
 
 /*******************************************************************\
 
-Function: prop_convt::literal
+Function: prop_convt::is_in_conflict
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: determine whether a variable is in the final conflict
+
+\*******************************************************************/
+
+bool prop_convt::is_in_conflict(literalt l) const
+{
+  assert(false);
+  return false;
+}
+
+/*******************************************************************\
+
+Function: prop_convt::set_assumptions
 
   Inputs:
 
@@ -31,7 +48,60 @@ Function: prop_convt::literal
 
 \*******************************************************************/
 
-bool prop_convt::literal(const exprt &expr, literalt &dest) const
+void prop_convt::set_assumptions(const bvt &)
+{
+  assert(false);
+}
+
+/*******************************************************************\
+
+Function: prop_convt::set_frozen
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void prop_convt::set_frozen(const literalt)
+{
+  assert(false);
+}
+
+/*******************************************************************\
+
+Function: prop_convt::set_frozen
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void prop_convt::set_frozen(const bvt &bv)
+{
+  for(unsigned i=0; i<bv.size(); i++)
+    if(!bv[i].is_constant())
+      set_frozen(bv[i]);
+}
+
+/*******************************************************************\
+
+Function: prop_conv_solvert::literal
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+bool prop_conv_solvert::literal(const exprt &expr, literalt &dest) const
 {
   assert(expr.type().id()==ID_bool);
 
@@ -42,7 +112,8 @@ bool prop_convt::literal(const exprt &expr, literalt &dest) const
 
     symbolst::const_iterator result=symbols.find(identifier);
 
-    if(result==symbols.end()) return true;
+    if(result==symbols.end())
+      return true;
     dest=result->second;
     return false;
   }
@@ -52,7 +123,7 @@ bool prop_convt::literal(const exprt &expr, literalt &dest) const
 
 /*******************************************************************\
 
-Function: prop_convt::get_literal
+Function: prop_conv_solvert::get_literal
 
   Inputs:
 
@@ -62,7 +133,7 @@ Function: prop_convt::get_literal
 
 \*******************************************************************/
 
-literalt prop_convt::get_literal(const irep_idt &identifier)
+literalt prop_conv_solvert::get_literal(const irep_idt &identifier)
 {
   std::pair<symbolst::iterator, bool> result=
     symbols.insert(std::pair<irep_idt, literalt>(identifier, literalt()));
@@ -72,7 +143,7 @@ literalt prop_convt::get_literal(const irep_idt &identifier)
 
   // produce new variable
   literalt literal=prop.new_variable();
-  
+
   // set the name of the new variable
   prop.set_variable_name(literal, id2string(identifier));
 
@@ -84,7 +155,7 @@ literalt prop_convt::get_literal(const irep_idt &identifier)
 
 /*******************************************************************\
 
-Function: prop_convt::get_bool
+Function: prop_conv_solvert::get_bool
 
   Inputs:
 
@@ -94,7 +165,7 @@ Function: prop_convt::get_bool
 
 \*******************************************************************/
 
-bool prop_convt::get_bool(const exprt &expr, tvt &value) const
+bool prop_conv_solvert::get_bool(const exprt &expr, tvt &value) const
 {
   // trivial cases
 
@@ -112,8 +183,9 @@ bool prop_convt::get_bool(const exprt &expr, tvt &value) const
   {
     symbolst::const_iterator result=
       symbols.find(to_symbol_expr(expr).get_identifier());
-      
-    if(result==symbols.end()) return true;
+
+    if(result==symbols.end())
+      return true;
 
     value=prop.l_get(result->second);
     return false;
@@ -126,7 +198,8 @@ bool prop_convt::get_bool(const exprt &expr, tvt &value) const
     if(expr.type().id()==ID_bool &&
        expr.operands().size()==1)
     {
-      if(get_bool(expr.op0(), value)) return true;
+      if(get_bool(expr.op0(), value))
+        return true;
       value=!value;
       return false;
     }
@@ -141,17 +214,26 @@ bool prop_convt::get_bool(const exprt &expr, tvt &value) const
       forall_operands(it, expr)
       {
         tvt tmp;
-        if(get_bool(*it, tmp)) return true;
+        if(get_bool(*it, tmp))
+          return true;
 
         if(expr.id()==ID_and)
         {
-          if(tmp.is_false()) { value=tvt(false); return false; }
+          if(tmp.is_false())
+          {
+            value=tvt(false);
+            return false;
+          }
 
           value=value && tmp;
         }
         else // or
         {
-          if(tmp.is_true()) { value=tvt(true); return false; }
+          if(tmp.is_true())
+          {
+            value=tvt(true);
+            return false;
+          }
 
           value=value || tmp;
         }
@@ -164,7 +246,8 @@ bool prop_convt::get_bool(const exprt &expr, tvt &value) const
   // check cache
 
   cachet::const_iterator cache_result=cache.find(expr);
-  if(cache_result==cache.end()) return true;
+  if(cache_result==cache.end())
+    return true;
 
   value=prop.l_get(cache_result->second);
   return false;
@@ -172,7 +255,7 @@ bool prop_convt::get_bool(const exprt &expr, tvt &value) const
 
 /*******************************************************************\
 
-Function: prop_convt::convert
+Function: prop_conv_solvert::convert
 
   Inputs:
 
@@ -182,13 +265,17 @@ Function: prop_convt::convert
 
 \*******************************************************************/
 
-literalt prop_convt::convert(const exprt &expr)
+literalt prop_conv_solvert::convert(const exprt &expr)
 {
-  if(!use_cache || 
+  if(!use_cache ||
      expr.id()==ID_symbol ||
      expr.id()==ID_constant)
-    return convert_bool(expr);
-
+  {
+    literalt literal=convert_bool(expr);
+    if(freeze_all && !literal.is_constant())
+      prop.set_frozen(literal);
+    return literal;
+  }
   // check cache first
 
   std::pair<cachet::iterator, bool> result=
@@ -202,6 +289,8 @@ literalt prop_convt::convert(const exprt &expr)
   // insert into cache
 
   result.first->second=literal;
+  if(freeze_all && !literal.is_constant())
+    prop.set_frozen(literal);
 
   #if 0
   std::cout << literal << "=" << expr << std::endl;
@@ -212,7 +301,7 @@ literalt prop_convt::convert(const exprt &expr)
 
 /*******************************************************************\
 
-Function: prop_convt::convert_bool
+Function: prop_conv_solvert::convert_bool
 
   Inputs:
 
@@ -222,13 +311,13 @@ Function: prop_convt::convert_bool
 
 \*******************************************************************/
 
-literalt prop_convt::convert_bool(const exprt &expr)
+literalt prop_conv_solvert::convert_bool(const exprt &expr)
 {
   if(expr.type().id()!=ID_bool)
   {
     std::string msg="prop_convt::convert_bool got "
-                    "non-boolean expression:\n";
-    msg+=expr.to_string();
+                    "non-boolean expression: ";
+    msg+=expr.pretty();
     throw msg;
   }
 
@@ -241,7 +330,7 @@ literalt prop_convt::convert_bool(const exprt &expr)
     else if(expr.is_false())
       return const_literal(false);
     else
-      throw "unknown boolean constant: "+expr.to_string();
+      throw "unknown boolean constant: "+expr.pretty();
   }
   else if(expr.id()==ID_symbol)
   {
@@ -249,9 +338,7 @@ literalt prop_convt::convert_bool(const exprt &expr)
   }
   else if(expr.id()==ID_literal)
   {
-    literalt l;
-    l.set(atoi(expr.get(ID_literal).c_str()));
-    return l;
+    return to_literal_expr(expr).get_literal();
   }
   else if(expr.id()==ID_nondet_symbol)
   {
@@ -298,8 +385,8 @@ literalt prop_convt::convert_bool(const exprt &expr)
   else if(expr.id()==ID_or || expr.id()==ID_and || expr.id()==ID_xor ||
           expr.id()==ID_nor || expr.id()==ID_nand)
   {
-    if(op.size()==0)
-      throw "operator "+expr.id_string()+" takes at least one operand";
+    if(op.empty())
+      throw "operator `"+expr.id_string()+"' takes at least one operand";
 
     bvt bv;
 
@@ -311,12 +398,12 @@ literalt prop_convt::convert_bool(const exprt &expr)
       if(expr.id()==ID_or)
         return prop.lor(bv);
       else if(expr.id()==ID_nor)
-        return prop.lnot(prop.lor(bv));
+        return !prop.lor(bv);
       else if(expr.id()==ID_and)
         return prop.land(bv);
       else if(expr.id()==ID_nand)
-        return prop.lnot(prop.land(bv));
-      else if(expr.id()==ID_xor) 
+        return !prop.land(bv);
+      else if(expr.id()==ID_xor)
         return prop.lxor(bv);
     }
   }
@@ -325,7 +412,7 @@ literalt prop_convt::convert_bool(const exprt &expr)
     if(op.size()!=1)
       throw "not takes one operand";
 
-    return prop.lnot(convert(op[0]));
+    return !convert(op.front());
   }
   else if(expr.id()==ID_equal || expr.id()==ID_notequal)
   {
@@ -343,13 +430,18 @@ literalt prop_convt::convert_bool(const exprt &expr)
         equal?prop.lequal(tmp1, tmp2):prop.lxor(tmp1, tmp2);
     }
   }
+  else if(expr.id()==ID_let)
+  {
+    // const let_exprt &let_expr=to_let_expr(expr);
+    throw "let is todo";
+  }
 
   return convert_rest(expr);
 }
 
 /*******************************************************************\
 
-Function: prop_convt::convert_rest
+Function: prop_conv_solvert::convert_rest
 
   Inputs:
 
@@ -359,7 +451,7 @@ Function: prop_convt::convert_rest
 
 \*******************************************************************/
 
-literalt prop_convt::convert_rest(const exprt &expr)
+literalt prop_conv_solvert::convert_rest(const exprt &expr)
 {
   // fall through
   ignoring(expr);
@@ -368,7 +460,7 @@ literalt prop_convt::convert_rest(const exprt &expr)
 
 /*******************************************************************\
 
-Function: prop_convt::set_equality_to_true
+Function: prop_conv_solvert::set_equality_to_true
 
   Inputs:
 
@@ -378,30 +470,28 @@ Function: prop_convt::set_equality_to_true
 
 \*******************************************************************/
 
-bool prop_convt::set_equality_to_true(const exprt &expr)
+bool prop_conv_solvert::set_equality_to_true(const equal_exprt &expr)
 {
-  if(!equality_propagation) return true;
+  if(!equality_propagation)
+    return true;
 
-  if(expr.operands().size()==2)
+  // optimization for constraint of the form
+  // new_variable = value
+
+  if(expr.lhs().id()==ID_symbol)
   {
-    // optimization for constraint of the form
-    // new_variable = value
+    const irep_idt &identifier=
+      to_symbol_expr(expr.lhs()).get_identifier();
 
-    if(expr.op0().id()==ID_symbol)
-    {
-      const irep_idt &identifier=
-        to_symbol_expr(expr.op0()).get_identifier();
+    literalt tmp=convert(expr.rhs());
 
-      literalt tmp=convert(expr.op1());
+    std::pair<symbolst::iterator, bool> result=
+      symbols.insert(std::pair<irep_idt, literalt>(identifier, tmp));
 
-      std::pair<symbolst::iterator, bool> result=
-        symbols.insert(std::pair<irep_idt, literalt>(identifier, tmp));
+    if(result.second)
+      return false; // ok, inserted!
 
-      if(result.second)
-        return false; // ok, inserted!
-        
-      // nah, already there
-    }
+    // nah, already there
   }
 
   return true;
@@ -409,7 +499,7 @@ bool prop_convt::set_equality_to_true(const exprt &expr)
 
 /*******************************************************************\
 
-Function: prop_convt::set_to
+Function: prop_conv_solvert::set_to
 
   Inputs:
 
@@ -419,18 +509,16 @@ Function: prop_convt::set_to
 
 \*******************************************************************/
 
-#include <iostream>
-
-void prop_convt::set_to(const exprt &expr, bool value)
+void prop_conv_solvert::set_to(const exprt &expr, bool value)
 {
   if(expr.type().id()!=ID_bool)
   {
     std::string msg="prop_convt::set_to got "
-                    "non-boolean expression:\n";
-    msg+=expr.to_string();
+                    "non-boolean expression: ";
+    msg+=expr.pretty();
     throw msg;
   }
-  
+
   bool boolean=true;
 
   forall_operands(it, expr)
@@ -465,6 +553,9 @@ void prop_convt::set_to(const exprt &expr, bool value)
         }
         else if(expr.id()==ID_or)
         {
+          // Special case for a CNF-clause,
+          // i.e., a constraint that's a disjunction.
+
           if(expr.operands().size()>0)
           {
             bvt bv;
@@ -481,17 +572,15 @@ void prop_convt::set_to(const exprt &expr, bool value)
         {
           if(expr.operands().size()==2)
           {
-            bvt bv;
-            bv.resize(2);
-            bv[0]=prop.lnot(convert(expr.op0()));
-            bv[1]=convert(expr.op1());
-            prop.lcnf(bv);
+            literalt l0=convert(expr.op0());
+            literalt l1=convert(expr.op1());
+            prop.lcnf(!l0, l1);
             return;
           }
         }
         else if(expr.id()==ID_equal)
         {
-          if(!set_equality_to_true(expr))
+          if(!set_equality_to_true(to_equal_expr(expr)))
             return;
         }
       }
@@ -521,7 +610,7 @@ void prop_convt::set_to(const exprt &expr, bool value)
 
 /*******************************************************************\
 
-Function: prop_convt::ignoring
+Function: prop_conv_solvert::ignoring
 
   Inputs:
 
@@ -531,7 +620,7 @@ Function: prop_convt::ignoring
 
 \*******************************************************************/
 
-void prop_convt::ignoring(const exprt &expr)
+void prop_conv_solvert::ignoring(const exprt &expr)
 {
   // fall through
 
@@ -542,7 +631,7 @@ void prop_convt::ignoring(const exprt &expr)
 
 /*******************************************************************\
 
-Function: prop_convt::post_process
+Function: prop_conv_solvert::post_process
 
   Inputs:
 
@@ -552,13 +641,13 @@ Function: prop_convt::post_process
 
 \*******************************************************************/
 
-void prop_convt::post_process()
+void prop_conv_solvert::post_process()
 {
 }
 
 /*******************************************************************\
 
-Function: prop_convt::solve
+Function: prop_conv_solvert::solve
 
   Inputs:
 
@@ -568,9 +657,15 @@ Function: prop_convt::solve
 
 \*******************************************************************/
 
-decision_proceduret::resultt prop_convt::dec_solve()
+decision_proceduret::resultt prop_conv_solvert::dec_solve()
 {
-  post_process();
+  // post-processing isn't incremental yet
+  if(!post_processing_done)
+  {
+    print(8, "Post-processing");
+    post_process();
+    post_processing_done=true;
+  }
 
   print(7, "Solving with "+prop.solver_text());
 
@@ -578,9 +673,9 @@ decision_proceduret::resultt prop_convt::dec_solve()
 
   switch(result)
   {
-   case propt::P_SATISFIABLE: return D_SATISFIABLE;
-   case propt::P_UNSATISFIABLE: return D_UNSATISFIABLE;
-   default: return D_ERROR;
+    case propt::P_SATISFIABLE: return D_SATISFIABLE;
+    case propt::P_UNSATISFIABLE: return D_UNSATISFIABLE;
+    default: return D_ERROR;
   }
 
   return D_ERROR;
@@ -588,7 +683,7 @@ decision_proceduret::resultt prop_convt::dec_solve()
 
 /*******************************************************************\
 
-Function: prop_convt::get
+Function: prop_conv_solvert::get
 
   Inputs:
 
@@ -598,7 +693,7 @@ Function: prop_convt::get
 
 \*******************************************************************/
 
-exprt prop_convt::get(const exprt &expr) const
+exprt prop_conv_solvert::get(const exprt &expr) const
 {
   tvt value;
 
@@ -607,14 +702,14 @@ exprt prop_convt::get(const exprt &expr) const
   {
     switch(value.get_value())
     {
-     case tvt::TV_TRUE:  return true_exprt();
-     case tvt::TV_FALSE: return false_exprt();
-     case tvt::TV_UNKNOWN: return false_exprt(); // default
+     case tvt::tv_enumt::TV_TRUE:  return true_exprt();
+     case tvt::tv_enumt::TV_FALSE: return false_exprt();
+     case tvt::tv_enumt::TV_UNKNOWN: return false_exprt(); // default
     }
   }
-  
+
   exprt tmp=expr;
-  
+
   Forall_operands(it, tmp)
   {
     exprt tmp_op=get(*it);
@@ -626,7 +721,7 @@ exprt prop_convt::get(const exprt &expr) const
 
 /*******************************************************************\
 
-Function: prop_convt::print_assignment
+Function: prop_conv_solvert::print_assignment
 
   Inputs:
 
@@ -636,11 +731,10 @@ Function: prop_convt::print_assignment
 
 \*******************************************************************/
 
-void prop_convt::print_assignment(std::ostream &out) const
+void prop_conv_solvert::print_assignment(std::ostream &out) const
 {
   for(symbolst::const_iterator it=symbols.begin();
       it!=symbols.end();
       it++)
-    out << it->first << " = " << prop.l_get(it->second) << std::endl;
+    out << it->first << " = " << prop.l_get(it->second) << "\n";
 }
-

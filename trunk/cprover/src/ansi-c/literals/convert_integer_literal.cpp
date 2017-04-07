@@ -7,14 +7,13 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <cassert>
-#include <cstdlib>
 #include <cctype>
 
 #include <util/arith_tools.h>
 #include <util/config.h>
 #include <util/std_types.h>
 #include <util/std_expr.h>
-#include <util/expr_util.h>
+#include <util/string2int.h>
 
 #include "convert_integer_literal.h"
 
@@ -36,10 +35,10 @@ exprt convert_integer_literal(const std::string &src)
   unsigned long_cnt=0;
   unsigned width_suffix=0;
   unsigned base=10;
-  
+
   for(unsigned i=0; i<src.size(); i++)
   {
-    register char ch=src[i];
+    char ch=src[i];
 
     if(ch=='u' || ch=='U')
       is_unsigned=true;
@@ -51,8 +50,8 @@ exprt convert_integer_literal(const std::string &src)
       // and "10i" (imaginary) for GCC.
       // If it's followed by a number, we do MS mode.
       if((i+1)<src.size() && isdigit(src[i+1]))
-        width_suffix=atoi(src.c_str()+i+1);
-      else 
+        width_suffix=unsafe_string2int(src.substr(i+1));
+      else
         is_imaginary=true;
     }
     else if(ch=='j' || ch=='J')
@@ -92,7 +91,7 @@ exprt convert_integer_literal(const std::string &src)
   {
     // this is a Microsoft extension
     irep_idt c_type;
-    
+
     if(width_suffix<=config.ansi_c.int_width)
       c_type=is_unsigned?ID_unsigned_int:ID_signed_int;
     else if(width_suffix<=config.ansi_c.long_int_width)
@@ -105,18 +104,17 @@ exprt convert_integer_literal(const std::string &src)
     type.set(ID_C_c_type, c_type);
 
     exprt result=from_integer(value, type);
-    result.set(ID_C_cformat, src);
-    
-    return result;    
+
+    return result;
   }
-    
+
   mp_integer value_abs=value;
 
   if(value<0)
     value_abs.negate();
 
   bool is_hex_or_oct_or_bin=(base==8) || (base==16) || (base==2);
-  
+
   #define FITS(width, signed) \
     ((signed?!is_unsigned:(is_unsigned || is_hex_or_oct_or_bin)) && \
     (power(2, signed?width-1:width)>value_abs))
@@ -143,7 +141,8 @@ exprt convert_integer_literal(const std::string &src)
     is_signed=true;
     c_type=ID_signed_long_int;
   }
-  else if(FITS(config.ansi_c.long_int_width, false) && long_cnt!=2) // unsigned long int
+  // unsigned long int
+  else if(FITS(config.ansi_c.long_int_width, false) && long_cnt!=2)
   {
     width=config.ansi_c.long_int_width;
     is_signed=false;
@@ -155,7 +154,8 @@ exprt convert_integer_literal(const std::string &src)
     is_signed=true;
     c_type=ID_signed_long_long_int;
   }
-  else if(FITS(config.ansi_c.long_long_int_width, false)) // unsigned long long int
+  // unsigned long long int
+  else if(FITS(config.ansi_c.long_long_int_width, false))
   {
     width=config.ansi_c.long_long_int_width;
     is_signed=false;
@@ -174,10 +174,10 @@ exprt convert_integer_literal(const std::string &src)
     else
       c_type=ID_signed_long_long_int;
   }
-  
+
   typet type=typet(is_signed?ID_signedbv:ID_unsignedbv);
 
-  type.set(ID_width, width);  
+  type.set(ID_width, width);
   type.set(ID_C_c_type, c_type);
 
   exprt result;
@@ -188,13 +188,13 @@ exprt convert_integer_literal(const std::string &src)
     complex_type.subtype()=type;
     result=exprt(ID_complex, complex_type);
     result.operands().resize(2);
-    result.op0()=gen_zero(type);
+    result.op0()=from_integer(0, type);
     result.op1()=from_integer(value, type);
   }
   else
   {
     result=from_integer(value, type);
-    result.set(ID_C_cformat, src);
+    result.set(ID_C_base, base);
   }
 
   return result;

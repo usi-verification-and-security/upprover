@@ -19,7 +19,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "xml_interface.h"
 
 #include <util/ui_message.h>
-#include <util/parseoptions.h>
+#include <util/parse_options.h>
 
 #include <goto-programs/goto_functions.h>
 #include <pointer-analysis/value_sets.h>
@@ -29,8 +29,6 @@ class value_set_alloc_adaptort;
 #define FUNFROG_OPTIONS \
   "D:I:(16)(32)(64)(v):(version)" \
   "(i386-linux)(i386-macos)(ppc-macos)" \
-  "(show-leaping-program)(show-instrumented-program)" \
-  "(save-leaping-program)(save-instrumented-program)" \
   "(show-program)(show-fpfreed-program)(show-dereferenced-program)" \
   "(save-program)(save-fpfreed-program)(save-dereferenced-program)" \
   "(show-transformed-program)(show-inlined-program)" \
@@ -42,22 +40,26 @@ class value_set_alloc_adaptort;
   "(show-symbol-table)(show-value-sets)" \
   "(save-claims)" \
   "(xml-ui)(xml-interface)" \
-  "(init-upgrade-check)(do-upgrade-check):" \
   "(no-slicing)(no-assert-grouping)(no-summary-optimization)" \
   "(pointer-check)(bounds-check)(div-by-zero-check)(overflow-check)(nan-check)" \
   "(string-abstraction)(assertions)" \
   "(show-pass)(suppress-fail)(no-progress)" \
-  "(show-claims)(all-claims)(claims-order):(claim):(claimset):" \
+  "(show-claims)(all-claims)(claims-opt):(claim):(claimset):" \
+  "(theoref)(force)(custom):(bitwidth):" \
   "(save-queries)(save-change-impact):" \
-  "(tree-interpolants)(proof-trans):(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
+  "(tree-interpolants)(proof-trans):(reduce-proof)(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
   "(random-seed):(no-itp)(verbose-solver):" \
-  "(itp-algorithm): (check-itp) (part-itp):" \
+  "(itp-algorithm): (itp-uf-algorithm): (itp-lra-algorithm):(itp-lra-factor): (check-itp): (part-itp):" \
   "(unwind):(unwindset):" \
+  "(type-constraints):" \
   "(inlining-limit):(testclaim):" \
   "(pobj)(eq)(neq)(ineq)" \
-  "(refine-mode):(init-mode):"
+  "(no-error-trace)" \
+  "(refine-mode):(init-mode):(logic):(list-templates)"\
+  "(dump-query)"
+
 class funfrog_parseoptionst:
-  public parseoptions_baset,
+  public parse_options_baset,
   public xml_interfacet,
   public language_uit
 {
@@ -67,7 +69,7 @@ public:
   virtual void register_languages();
 
   void ssos(){
-	  status("Partial Inlining");
+	  cbmc_status_interface("Partial Inlining");
   }
   funfrog_parseoptionst(int argc, const char **argv);
 
@@ -94,6 +96,10 @@ protected:
 
   optionst options;
   std::ofstream statfile;
+
+private:
+  void cbmc_error_interface(std::string error_msg) { error() << error_msg << eom; } // KE: adjust for CBMC 5.5 interface
+  void cbmc_status_interface(std::string msg) { status() << msg << eom; } // KE: adjust for CBMC 5.5 interface
 };
 
 #endif

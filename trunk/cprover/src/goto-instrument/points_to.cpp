@@ -29,13 +29,13 @@ void points_tot::fixedpoint()
   do
   {
     added=false;
-  
+
     for(cfgt::entry_mapt::iterator
         e_it=cfg.entry_map.begin();
         e_it!=cfg.entry_map.end();
         e_it++)
     {
-      if(transform(&e_it->second))
+      if(transform(cfg[e_it->second]))
         added=true;
     }
   }
@@ -70,7 +70,7 @@ void points_tot::output(std::ostream &out) const
     {
       out << " " << *o_it;
     }
-    
+
     out << std::endl;
   }
 }
@@ -87,30 +87,31 @@ Function: points_tot::transform
 
 \*******************************************************************/
 
-bool points_tot::transform(cfgt::iterator e)
+bool points_tot::transform(const cfgt::nodet &e)
 {
   bool result=false;
-  const goto_programt::instructiont &instruction=*(e->PC);
+  const goto_programt::instructiont &instruction=*(e.PC);
 
   switch(instruction.type)
   {
   case RETURN:
     // TODO
     break;
-    
+
   case ASSIGN:
     {
       // const code_assignt &code_assign=to_code_assign(instruction.code);
-      
-    }    
+    }
     break;
-  
+
   case FUNCTION_CALL:
     // these are like assignments for the arguments
     break;
-  
-  default:;
+
+  default:
+    {
+    }
   }
-  
+
   return result;
 }

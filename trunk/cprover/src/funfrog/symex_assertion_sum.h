@@ -46,7 +46,9 @@ public:
           const goto_programt &_goto_program,
           unsigned _last_assertion_loc,
           bool _single_assertion_check,
-          bool _use_slicing=true
+          bool _use_slicing=true,
+	  bool _do_guard_expl=true,
+          bool _use_smt=true
           ) :
           symex_bmct(_ns, _new_symbol_table, _target),
           summarization_context(_summarization_context),
@@ -59,7 +61,9 @@ public:
           last_assertion_loc(_last_assertion_loc),
           loc(0),
           single_assertion_check(_single_assertion_check),
-          use_slicing(_use_slicing)
+          use_slicing(_use_slicing),
+	  do_guard_expl(_do_guard_expl),
+          use_smt(_use_smt)
           {set_message_handler(_message_handler);}
           
   virtual ~symex_assertion_sumt();
@@ -92,6 +96,8 @@ public:
     return &(it->second);
   };
 
+  std::map<irep_idt, std::string> guard_expln;
+
 private:
   
   // Symex state holding the renaming levels
@@ -102,7 +108,7 @@ private:
   void end_symex(statet &state);
 
   // Mapping from summary_info to the corresponding partition_iface
-  typedef hash_map_cont<const summary_infot*,partition_iface_ptrst> partition_iface_mapt;
+  typedef std::unordered_map<const summary_infot*,partition_iface_ptrst> partition_iface_mapt;
   partition_iface_mapt partition_iface_map;
 
   class deferred_functiont {
@@ -151,6 +157,10 @@ private:
   bool single_assertion_check;
 
   bool use_slicing;
+
+  bool do_guard_expl;
+  
+  bool use_smt; // for slicing 
 
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
@@ -228,7 +238,11 @@ private:
   void mark_accessed_global_symbols(
     const irep_idt &function_id,
     statet &state,
-    partition_ifacet &partition_iface);
+    partition_ifacet &partition_iface,
+    bool is_init_stage);
+
+  // L2 rename - new code
+  void level2_rename_init(statet &state, const symbol_exprt &expr);
 
   // Assigns values from the modified global variables. Marks the SSA symbol 
   // of the global variables for later use when processing the deferred function
@@ -236,6 +250,13 @@ private:
     const irep_idt &function_id,
     statet &state,
     partition_ifacet &partition_iface);
+
+  // AFter upgrade of CPROVER need to do rename and SSA creation alone
+  void level2_rename_and_2ssa(
+    statet &state, 
+    const irep_idt identifier, 
+    const typet& type,
+    symbol_exprt& ret_symbol); 
 
   // Assigns return value from a new SSA symbols to the lhs at
   // call site. Marks the SSA symbol of the return value temporary
@@ -274,16 +295,20 @@ private:
   // assigning to it. Constant propagation is stopped for the given symbol.
   irep_idt get_new_symbol_version(
         const irep_idt& identifier,
-        statet &state);
+        statet &state,
+        typet type);
+
+  // Replace old interface of get current name from counter
+  irep_idt get_current_l2_name(statet &state, const irep_idt &identifier) const;
 
   // Makes an assignment without increasing the version of the
   // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
   void raw_assignment(
-        statet &state,
+        statet &state, 
         exprt &lhs,
         const exprt &rhs,
-        const namespacet &ns,
-        bool record_value);
+        const namespacet &ns); 
+        //bool record_value); //Always false, removed
 
   // Adds the given symbol to the current context. If dead, the identifier
   // is only marked as dead (it is not added as a new symbol).
@@ -295,6 +320,7 @@ private:
       s.base_name = id;
       s.name = id;
       s.type = type;
+      s.mode=ID_C;
       new_symbol_table.add(s);
     }
   }
@@ -329,7 +355,7 @@ protected:
     const statet::goto_statet &goto_state,
     statet &state);
 
-  virtual void claim(
+  virtual void vcc(
     const exprt &claim_expr,
     const std::string &msg,
     statet &state);

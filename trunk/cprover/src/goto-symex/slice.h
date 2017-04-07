@@ -18,15 +18,15 @@ void slice(symex_target_equationt &equation);
 void simple_slice(symex_target_equationt &equation);
 
 // Slice the symex trace with respect to a list of given expressions
-void slice(symex_target_equationt &equation, 
+void slice(symex_target_equationt &equation,
            const expr_listt &expressions);
 
 // Collects "open" variables that are used but not assigned
 
-typedef hash_set_cont<irep_idt, irep_id_hash> symbol_sett;
+typedef std::unordered_set<irep_idt, irep_id_hash> symbol_sett;
 
 void collect_open_variables(
-  const symex_target_equationt &equation, 
+  const symex_target_equationt &equation,
   symbol_sett &open_variables);
 
-#endif
+#endif // CPROVER_GOTO_SYMEX_SLICE_H

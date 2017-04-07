@@ -6,11 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/expr_util.h>
+#include <util/fresh_symbol.h>
+#include <util/simplify_expr.h>
 #include <util/std_expr.h>
 #include <util/rename.h>
 #include <util/cprover_prefix.h>
-#include <util/i2string.h>
 
 #include <ansi-c/c_types.h>
 
@@ -18,7 +18,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 /*******************************************************************\
 
-Function: goto_convertt::make_static_symbol
+Function: goto_convertt::make_compound_literal
 
   Inputs:
 
@@ -28,39 +28,43 @@ Function: goto_convertt::make_static_symbol
 
 \*******************************************************************/
 
-symbol_exprt goto_convertt::make_static_symbol(
+symbol_exprt goto_convertt::make_compound_literal(
   const exprt &expr,
-  const std::string &suffix,
   goto_programt &dest)
 {
-  const locationt location=expr.find_location();
-  
-  symbolt new_symbol;
-  symbolt *symbol_ptr;
-  
-  do
-  {
-    new_symbol.base_name="static_"+suffix+"$"+i2string(++temporary_counter);
-    new_symbol.name=tmp_symbol_prefix+id2string(new_symbol.base_name);
-    new_symbol.is_lvalue=true;
-    new_symbol.is_thread_local=false;
-    new_symbol.is_static_lifetime=true;
-    new_symbol.is_file_local=true;
-    new_symbol.value=expr;
-    new_symbol.type=expr.type();
-    new_symbol.location=location;
-  }
-  while(symbol_table.move(new_symbol, symbol_ptr));    
+  const source_locationt source_location=expr.find_source_location();
+
+  symbolt &new_symbol=
+    get_fresh_aux_symbol(
+      expr.type(),
+      tmp_symbol_prefix,
+      "literal",
+      source_location,
+      irep_idt(),
+      symbol_table);
+  new_symbol.is_static_lifetime=source_location.get_function().empty();
+  new_symbol.value=expr;
 
   // The value might depend on a variable, thus
   // generate code for this.
 
-  symbol_exprt result=symbol_expr(*symbol_ptr);
-  result.location()=location;
-  
+  symbol_exprt result=new_symbol.symbol_expr();
+  result.add_source_location()=source_location;
+
+  // The lifetime of compound literals is really that of
+  // the block they are in.
+  copy(code_declt(result), DECL, dest);
+
   code_assignt code_assign(result, expr);
-  code_assign.location()=location;
+  code_assign.add_source_location()=source_location;
   convert(code_assign, dest);
+
+  // now create a 'dead' instruction
+  if(!new_symbol.is_static_lifetime)
+  {
+    code_deadt code_dead(result);
+    targets.destructor_stack.push_back(code_dead);
+  }
 
   return result;
 }
@@ -79,14 +83,23 @@ Function: goto_convertt::needs_cleaning
 
 bool goto_convertt::needs_cleaning(const exprt &expr)
 {
-  if(expr.id()==ID_index ||
-     expr.id()==ID_dereference ||
-     expr.id()==ID_sideeffect ||
-     expr.id()==ID_struct ||
-     expr.id()==ID_array ||
-     expr.id()==ID_union ||
+  if(expr.id()==ID_dereference ||
+     expr.id()==ID_side_effect ||
+     expr.id()==ID_compound_literal ||
      expr.id()==ID_comma)
     return true;
+
+  if(expr.id()==ID_index)
+  {
+    // Will usually clean index expressions because of possible
+    // memory violation in case of out-of-bounds indices.
+    // We do an exception for "string-lit"[0], which is safe.
+    if(to_index_expr(expr).array().id()==ID_string_constant &&
+       to_index_expr(expr).index().is_zero())
+      return false;
+
+    return true;
+  }
 
   // We can't flatten quantified expressions by introducing new literals for
   // conditional expressions.  This is because the body of the quantified
@@ -104,11 +117,11 @@ bool goto_convertt::needs_cleaning(const exprt &expr)
   // forall (i : int) (g1 || g2)
   if(expr.id()==ID_forall || expr.id()==ID_exists)
     return false;
-  
+
   forall_operands(it, expr)
     if(needs_cleaning(*it))
       return true;
-      
+
   return false;
 }
 
@@ -127,31 +140,42 @@ Function: goto_convertt::rewrite_boolean
 void goto_convertt::rewrite_boolean(exprt &expr)
 {
   assert(expr.id()==ID_and || expr.id()==ID_or);
-  
+
   if(!expr.is_boolean())
-    throw "`"+expr.id_string()+"' "
-          "must be Boolean, but got "+expr.pretty();
+  {
+    error().source_location=expr.find_source_location();
+    error() << "`" << expr.id() << "' must be Boolean, but got "
+            << expr.pretty() << eom;
+    throw 0;
+  }
 
   // re-write "a && b" into nested a?b:0
   // re-write "a || b" into nested a?1:b
 
   exprt tmp;
-  
+
   if(expr.id()==ID_and)
     tmp=true_exprt();
   else // ID_or
     tmp=false_exprt();
-    
+
   exprt::operandst &ops=expr.operands();
 
   // start with last one
-  for(int i=int(ops.size())-1; i>=0; i--)
+  for(exprt::operandst::reverse_iterator
+      it=ops.rbegin();
+      it!=ops.rend();
+      ++it)
   {
-    exprt &op=ops[i];
+    exprt &op=*it;
 
     if(!op.is_boolean())
-     throw "`"+expr.id_string()+"' takes Boolean "
-           "operands only, but got "+op.pretty();
+    {
+      error().source_location=expr.find_source_location();
+      error() << "`" << expr.id() << "' takes Boolean "
+              << "operands only, but got " << op.pretty() << eom;
+      throw 0;
+    }
 
     if(expr.id()==ID_and)
     {
@@ -189,16 +213,18 @@ void goto_convertt::clean_expr(
   //   && || ?: comma (control-dependency)
   //   function calls
   //   object constructors like arrays, string constants, structs
-  //   ++ --
+  //   ++ -- (pre and post)
   //   compound assignments
+  //   compound literals
 
-  if(!needs_cleaning(expr)) return;
+  if(!needs_cleaning(expr))
+    return;
 
   if(expr.id()==ID_and || expr.id()==ID_or)
   {
     // rewrite into ?:
     rewrite_boolean(expr);
-    
+
     // recursive call
     clean_expr(expr, dest, result_is_used);
     return;
@@ -217,36 +243,61 @@ void goto_convertt::clean_expr(
     if_exprt if_expr=to_if_expr(expr);
 
     if(!if_expr.cond().is_boolean())
-      throw "first argument of `if' must be boolean, but got "
-        +if_expr.cond().to_string();
+    {
+      error().source_location=if_expr.find_source_location();
+      error() << "first argument of `if' must be boolean, but got "
+              << if_expr.cond().pretty() << eom;
+      throw 0;
+    }
 
-    const locationt location=expr.find_location();
-  
+    const source_locationt source_location=expr.find_source_location();
+
+    #if 0
+    // We do some constant-folding here, to mimic
+    // what typical compilers do.
+    {
+      exprt tmp_cond=if_expr.cond();
+      simplify(tmp_cond, ns);
+      if(tmp_cond.is_true())
+      {
+        clean_expr(if_expr.true_case(), dest, result_is_used);
+        expr=if_expr.true_case();
+        return;
+      }
+      else if(tmp_cond.is_false())
+      {
+        clean_expr(if_expr.false_case(), dest, result_is_used);
+        expr=if_expr.false_case();
+        return;
+      }
+    }
+    #endif
+
     goto_programt tmp_true;
     clean_expr(if_expr.true_case(), tmp_true, result_is_used);
 
     goto_programt tmp_false;
     clean_expr(if_expr.false_case(), tmp_false, result_is_used);
-    
+
     if(result_is_used)
     {
       symbolt &new_symbol=
-        new_tmp_symbol(expr.type(), "if_expr", dest, location);
+        new_tmp_symbol(expr.type(), "if_expr", dest, source_location);
 
       code_assignt assignment_true;
-      assignment_true.lhs()=symbol_expr(new_symbol);
+      assignment_true.lhs()=new_symbol.symbol_expr();
       assignment_true.rhs()=if_expr.true_case();
-      assignment_true.location()=location;
+      assignment_true.add_source_location()=source_location;
       convert(assignment_true, tmp_true);
 
       code_assignt assignment_false;
-      assignment_false.lhs()=symbol_expr(new_symbol);
+      assignment_false.lhs()=new_symbol.symbol_expr();
       assignment_false.rhs()=if_expr.false_case();
-      assignment_false.location()=location;
+      assignment_false.add_source_location()=source_location;
       convert(assignment_false, tmp_false);
 
       // overwrites expr
-      expr=symbol_expr(new_symbol);  
+      expr=new_symbol.symbol_expr();
     }
     else
     {
@@ -256,20 +307,20 @@ void goto_convertt::clean_expr(
         code_expressiont code_expression(if_expr.true_case());
         convert(code_expression, tmp_true);
       }
-      
+
       if(if_expr.false_case().is_not_nil())
       {
         code_expressiont code_expression(if_expr.false_case());
         convert(code_expression, tmp_false);
       }
-      
+
       expr=nil_exprt();
     }
 
-    // generate guard for argument side-effects    
+    // generate guard for argument side-effects
     generate_ifthenelse(
       if_expr.cond(), tmp_true, tmp_false,
-      location, dest);
+      source_location, dest);
 
     return;
   }
@@ -278,11 +329,11 @@ void goto_convertt::clean_expr(
     if(result_is_used)
     {
       exprt result;
-    
+
       Forall_operands(it, expr)
       {
         bool last=(it==--expr.operands().end());
-        
+
         // special treatment for last one
         if(last)
         {
@@ -311,30 +362,34 @@ void goto_convertt::clean_expr(
         if(it->is_not_nil())
           convert(code_expressiont(*it), dest);
       }
-      
+
       expr=nil_exprt();
     }
-    
+
     return;
   }
   else if(expr.id()==ID_typecast)
   {
     if(expr.operands().size()!=1)
-      throw "typecast takes one argument";
+    {
+      error().source_location=expr.find_source_location();
+      error() << "typecast takes one argument" << eom;
+      throw 0;
+    }
 
     // preserve 'result_is_used'
     clean_expr(expr.op0(), dest, result_is_used);
-    
+
     if(expr.op0().is_nil())
       expr.make_nil();
-    
+
     return;
   }
-  else if(expr.id()==ID_sideeffect)
+  else if(expr.id()==ID_side_effect)
   {
     // some of the side-effects need special treatment!
     const irep_idt statement=to_side_effect_expr(expr).get_statement();
-    
+
     if(statement==ID_gcc_conditional_expression)
     {
       // need to do separately
@@ -345,7 +400,8 @@ void goto_convertt::clean_expr(
     {
       // need to do separately to prevent that
       // the operands of expr get 'cleaned'
-      remove_statement_expression(to_side_effect_expr(expr), dest, result_is_used);
+      remove_statement_expression(
+        to_side_effect_expr(expr), dest, result_is_used);
       return;
     }
     else if(statement==ID_assign)
@@ -353,7 +409,7 @@ void goto_convertt::clean_expr(
       // we do a special treatment for x=f(...)
       assert(expr.operands().size()==2);
 
-      if(expr.op1().id()==ID_sideeffect &&
+      if(expr.op1().id()==ID_side_effect &&
          to_side_effect_expr(expr.op1()).get_statement()==ID_function_call)
       {
         clean_expr(expr.op0(), dest);
@@ -363,7 +419,7 @@ void goto_convertt::clean_expr(
         code_assignt assignment;
         assignment.lhs()=lhs;
         assignment.rhs()=expr.op1();
-        assignment.location()=expr.location();
+        assignment.add_source_location()=expr.source_location();
         convert_assign(assignment, dest);
 
         if(result_is_used)
@@ -376,7 +432,9 @@ void goto_convertt::clean_expr(
     else if(statement==ID_function_call)
     {
       if(to_side_effect_expr_function_call(expr).function().id()==ID_symbol &&
-         to_symbol_expr(to_side_effect_expr_function_call(expr).function()).get_identifier()=="c::__noop")
+         to_symbol_expr(
+           to_side_effect_expr_function_call(expr).
+           function()).get_identifier()=="__noop")
       {
         // __noop needs special treatment, as arguments are not
         // evaluated
@@ -391,7 +449,18 @@ void goto_convertt::clean_expr(
     goto_programt tmp;
     clean_expr(expr.op1(), tmp, true);
     if(tmp.instructions.empty())
-      throw "no side-effects in quantified expressions allowed";
+    {
+      error().source_location=expr.find_source_location();
+      error() << "no side-effects in quantified expressions allowed"
+              << eom;
+      throw 0;
+    }
+    return;
+  }
+  else if(expr.id()==ID_address_of)
+  {
+    assert(expr.operands().size()==1);
+    clean_expr_address_of(expr.op0(), dest);
     return;
   }
 
@@ -400,20 +469,21 @@ void goto_convertt::clean_expr(
   Forall_operands(it, expr)
     clean_expr(*it, dest);
 
-  if(expr.id()==ID_sideeffect)
+  if(expr.id()==ID_side_effect)
   {
     remove_side_effect(to_side_effect_expr(expr), dest, result_is_used);
   }
-  else if(expr.id()==ID_address_of)
+  else if(expr.id()==ID_compound_literal)
   {
+    // This is simply replaced by the literal
     assert(expr.operands().size()==1);
-    address_of_replace_objects(expr.op0(), dest);
+    expr=expr.op0();
   }
 }
 
 /*******************************************************************\
 
-Function: goto_convertt::address_of_replace_objects
+Function: goto_convertt::clean_expr_address_of
 
   Inputs:
 
@@ -423,24 +493,67 @@ Function: goto_convertt::address_of_replace_objects
 
 \*******************************************************************/
 
-void goto_convertt::address_of_replace_objects(
+void goto_convertt::clean_expr_address_of(
   exprt &expr,
   goto_programt &dest)
 {
-  if(expr.id()==ID_struct)
-    expr=make_static_symbol(expr, "struct", dest);
-  else if(expr.id()==ID_union)
-    expr=make_static_symbol(expr, "union", dest);
-  else if(expr.id()==ID_array)
-    expr=make_static_symbol(expr, "array", dest);
+  // The address of object constructors can be taken,
+  // which is re-written into the address of a variable.
+
+  if(expr.id()==ID_compound_literal)
+  {
+    assert(expr.operands().size()==1);
+    clean_expr(expr.op0(), dest);
+    expr=make_compound_literal(expr.op0(), dest);
+  }
   else if(expr.id()==ID_string_constant)
   {
     // Leave for now, but long-term these might become static symbols.
     // LLVM appears to do precisely that.
   }
+  else if(expr.id()==ID_index)
+  {
+    assert(expr.operands().size()==2);
+    clean_expr_address_of(expr.op0(), dest);
+    clean_expr(expr.op1(), dest);
+  }
+  else if(expr.id()==ID_dereference)
+  {
+    assert(expr.operands().size()==1);
+    clean_expr(expr.op0(), dest);
+  }
+  else if(expr.id()==ID_comma)
+  {
+    // Yes, one can take the address of a comma expression.
+    // Treatment is similar to clean_expr() above.
+
+    exprt result;
+
+    Forall_operands(it, expr)
+    {
+      bool last=(it==--expr.operands().end());
+
+      // special treatment for last one
+      if(last)
+        result.swap(*it);
+      else
+      {
+        clean_expr(*it, dest, false);
+
+        // get any side-effects
+        if(it->is_not_nil())
+          convert(code_expressiont(*it), dest);
+      }
+    }
+
+    expr.swap(result);
+
+    // do again
+    clean_expr_address_of(expr, dest);
+  }
   else
     Forall_operands(it, expr)
-      address_of_replace_objects(*it, dest);
+      clean_expr_address_of(*it, dest);
 }
 
 /*******************************************************************\
@@ -460,7 +573,11 @@ void goto_convertt::remove_gcc_conditional_expression(
   goto_programt &dest)
 {
   if(expr.operands().size()!=2)
-    throw "conditional_expression takes two operands";
+  {
+    error().source_location=expr.find_source_location();
+    error() << "conditional_expression takes two operands" << eom;
+    throw 0;
+  }
 
   // first remove side-effects from condition
   clean_expr(expr.op0(), dest);
@@ -472,13 +589,13 @@ void goto_convertt::remove_gcc_conditional_expression(
   if_expr.true_case()=expr.op0();
   if_expr.false_case()=expr.op1();
   if_expr.type()=expr.type();
-  if_expr.location()=expr.location();
+  if_expr.add_source_location()=expr.source_location();
 
   if(if_expr.cond().type()!=bool_typet())
     if_expr.cond().make_typecast(bool_typet());
-  
+
   expr.swap(if_expr);
 
-  // there might still be junk in expr.op2()  
+  // there might still be junk in expr.op2()
   clean_expr(expr, dest);
 }

@@ -6,8 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <stdlib.h>
-#include <ctype.h>
+#include <cctype>
+
+#include <util/string2int.h>
+#include <util/parser.h>
 
 #include "literals/unescape_string.h"
 #include "preprocessor_line.h"
@@ -26,17 +28,17 @@ Function: preprocessor_line
 
 void preprocessor_line(
   const char *text,
-  unsigned &line_no,
-  irep_idt &file_name)
+  parsert &parser)
 {
   const char *ptr=text;
   std::string line_number;
-  
+
   // skip WS
   while(*ptr==' ' || *ptr=='\t') ptr++;
 
   // skip #
-  if(*ptr!='#') return;
+  if(*ptr!='#')
+    return;
   ptr++;
 
   // skip WS
@@ -57,18 +59,18 @@ void preprocessor_line(
     line_number+=*ptr;
     ptr++;
   }
-  
+
   // skip until "
   while(*ptr!='\n' && *ptr!='"') ptr++;
 
-  line_no=atoi(line_number.c_str());
+  parser.set_line_no(unsafe_string2unsigned(line_number));
 
   // skip "
   if(*ptr!='"')
     return;
-  
+
   ptr++;
-  
+
   std::string file_name_tmp;
 
   // get file name
@@ -78,7 +80,6 @@ void preprocessor_line(
     ptr++;
   }
 
-  std::string file_name_tmp2;
-  unescape_string(file_name_tmp, file_name_tmp2);
-  file_name=file_name_tmp2;
+  std::string file_name_tmp2=unescape_string(file_name_tmp);
+  parser.set_file(file_name_tmp2);
 }

@@ -16,11 +16,11 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/replace_expr.h>
 #include <util/guard.h>
 #include <util/std_code.h>
-#include <util/message_stream.h>
+#include <util/message.h>
 
 #include "goto_program.h"
 
-class goto_convertt:public message_streamt
+class goto_convertt:public messaget
 {
 public:
   void goto_convert(const codet &code, goto_programt &dest);
@@ -28,18 +28,18 @@ public:
   goto_convertt(
     symbol_tablet &_symbol_table,
     message_handlert &_message_handler):
-    message_streamt(_message_handler),
+    messaget(_message_handler),
     symbol_table(_symbol_table),
     ns(_symbol_table),
     temporary_counter(0),
-    tmp_symbol_prefix("goto_convertt::")
+    tmp_symbol_prefix("goto_convertt")
   {
   }
-  
+
   virtual ~goto_convertt()
   {
   }
-  
+
 protected:
   symbol_tablet &symbol_table;
   namespacet ns;
@@ -50,61 +50,92 @@ protected:
 
   //
   // tools for symbols
-  // 
+  //
   void new_name(symbolt &symbol);
-  const symbolt &lookup(const irep_idt &identifier) const;
-  
+  const symbolt &lookup(const irep_idt &identifier);
+
   symbolt &new_tmp_symbol(
     const typet &type,
     const std::string &suffix,
     goto_programt &dest,
-    const locationt &location);
-  
-  symbol_exprt make_static_symbol(
+    const source_locationt &);
+
+  symbol_exprt make_compound_literal(
     const exprt &expr,
-    const std::string &suffix,
     goto_programt &dest);
-  
-  typedef std::list<irep_idt> tmp_symbolst;
-  tmp_symbolst tmp_symbols;
 
   //
   // translation of C expressions (with side effects)
   // into the program logic
   //
-  
+
   void clean_expr(
     exprt &expr,
     goto_programt &dest,
     bool result_is_used=true);
 
+  void clean_expr_address_of(
+    exprt &expr,
+    goto_programt &dest);
+
   static bool needs_cleaning(const exprt &expr);
-  
+
   void make_temp_symbol(
     exprt &expr,
     const std::string &suffix,
-    goto_programt &dest);
-
-  void address_of_replace_objects(
-    exprt &expr,
-    goto_programt &dest);
+    goto_programt &);
 
   void rewrite_boolean(exprt &dest);
 
   static bool has_sideeffect(const exprt &expr);
   static bool has_function_call(const exprt &expr);
-  
-  void remove_side_effect(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
-  void remove_assignment(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
-  void remove_pre(side_effect_exprt &expr, goto_programt &dest);
-  void remove_post(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
-  void remove_function_call(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
-  void remove_cpp_new(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
-  void remove_cpp_delete(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
-  void remove_malloc(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
-  void remove_temporary_object(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
-  void remove_statement_expression(side_effect_exprt &expr, goto_programt &dest, bool result_is_used);
-  void remove_gcc_conditional_expression(exprt &expr, goto_programt &dest);
+
+  void remove_side_effect(
+    side_effect_exprt &expr,
+    goto_programt &dest,
+    bool result_is_used);
+  void remove_push_catch(
+    side_effect_exprt &expr,
+    goto_programt &dest);
+  void remove_assignment(
+    side_effect_exprt &expr,
+    goto_programt &dest,
+    bool result_is_used);
+  void remove_pre(
+    side_effect_exprt &expr,
+    goto_programt &dest,
+    bool result_is_used);
+  void remove_post(
+    side_effect_exprt &expr,
+    goto_programt &dest,
+    bool result_is_used);
+  void remove_function_call(
+    side_effect_exprt &expr,
+    goto_programt &dest,
+    bool result_is_used);
+  void remove_cpp_new(
+    side_effect_exprt &expr,
+    goto_programt &dest,
+    bool result_is_used);
+  void remove_cpp_delete(
+    side_effect_exprt &expr,
+    goto_programt &dest,
+    bool result_is_used);
+  void remove_malloc(
+    side_effect_exprt &expr,
+    goto_programt &dest,
+    bool result_is_used);
+  void remove_temporary_object(
+    side_effect_exprt &expr,
+    goto_programt &dest,
+    bool result_is_used);
+  void remove_statement_expression(
+    side_effect_exprt &expr,
+    goto_programt &dest,
+    bool result_is_used);
+  void remove_gcc_conditional_expression(
+    exprt &expr,
+    goto_programt &dest);
 
   virtual void do_cpp_new(
     const exprt &lhs,
@@ -112,6 +143,11 @@ protected:
     goto_programt &dest);
 
   void do_java_new(
+    const exprt &lhs,
+    const side_effect_exprt &rhs,
+    goto_programt &dest);
+
+  void do_java_new_array(
     const exprt &lhs,
     const side_effect_exprt &rhs,
     goto_programt &dest);
@@ -126,9 +162,9 @@ protected:
     goto_programt &dest);
 
   //
-  // function calls  
+  // function calls
   //
-  
+
   virtual void do_function_call(
     const exprt &lhs,
     const exprt &function,
@@ -137,13 +173,13 @@ protected:
 
   virtual void do_function_call_if(
     const exprt &lhs,
-    const exprt &function,
+    const if_exprt &function,
     const exprt::operandst &arguments,
     goto_programt &dest);
 
   virtual void do_function_call_symbol(
     const exprt &lhs,
-    const exprt &function,
+    const symbol_exprt &function,
     const exprt::operandst &arguments,
     goto_programt &dest);
 
@@ -151,12 +187,12 @@ protected:
   {
   }
 
-  virtual void do_function_call_dereference(
+  virtual void do_function_call_other(
     const exprt &lhs,
     const exprt &function,
     const exprt::operandst &arguments,
     goto_programt &dest);
-  
+
   //
   // conversion
   //
@@ -166,6 +202,7 @@ protected:
   void convert_expression(const code_expressiont &code, goto_programt &dest);
   void convert_assign(const code_assignt &code, goto_programt &dest);
   void convert_cpp_delete(const codet &code, goto_programt &dest);
+  void convert_loop_invariant(const codet &code, goto_programt::targett loop);
   void convert_for(const code_fort &code, goto_programt &dest);
   void convert_while(const code_whilet &code, goto_programt &dest);
   void convert_dowhile(const codet &code, goto_programt &dest);
@@ -178,12 +215,16 @@ protected:
   void convert_ifthenelse(const code_ifthenelset &code, goto_programt &dest);
   void convert_init(const codet &code, goto_programt &dest);
   void convert_goto(const codet &code, goto_programt &dest);
-  void convert_computed_goto(const codet &code, goto_programt &dest);
+  void convert_gcc_computed_goto(const codet &code, goto_programt &dest);
   void convert_skip(const codet &code, goto_programt &dest);
   void convert_non_deterministic_goto(const codet &code, goto_programt &dest);
   void convert_label(const code_labelt &code, goto_programt &dest);
   void convert_gcc_local_label(const codet &code, goto_programt &dest);
-  void convert_function_call(const code_function_callt &code, goto_programt &dest);
+  void convert_switch_case(const code_switch_caset &code, goto_programt &dest);
+  void convert_gcc_switch_case_range(const codet &code, goto_programt &dest);
+  void convert_function_call(
+    const code_function_callt &code,
+    goto_programt &dest);
   void convert_specc_notify(const codet &code, goto_programt &dest);
   void convert_specc_wait(const codet &code, goto_programt &dest);
   void convert_specc_par(const codet &code, goto_programt &dest);
@@ -198,42 +239,55 @@ protected:
   void convert_msc_try_finally(const codet &code, goto_programt &dest);
   void convert_msc_try_except(const codet &code, goto_programt &dest);
   void convert_msc_leave(const codet &code, goto_programt &dest);
-  void convert_catch(const codet &code, goto_programt &dest);
+  void convert_try_catch(const codet &code, goto_programt &dest);
+  void convert_java_try_catch(const codet &code, goto_programt &dest);
   void convert_CPROVER_try_catch(const codet &code, goto_programt &dest);
   void convert_CPROVER_try_finally(const codet &code, goto_programt &dest);
   void convert_CPROVER_throw(const codet &code, goto_programt &dest);
-  void convert_asm(const codet &code, goto_programt &dest);
+  void convert_asm(const code_asmt &code, goto_programt &dest);
 
   void convert(const codet &code, goto_programt &dest);
 
-  void copy(const codet &code, goto_program_instruction_typet type, goto_programt &dest);
-  
+  void copy(
+    const codet &code,
+    goto_program_instruction_typet type,
+    goto_programt &dest);
+
   //
   // exceptions
   //
-  
+
+  typedef std::vector<codet> destructor_stackt;
+
   symbol_exprt exception_flag();
   void unwind_destructor_stack(
-    const locationt &location,
-    unsigned stack_size,
+    const source_locationt &,
+    std::size_t stack_size,
+    goto_programt &dest);
+  void unwind_destructor_stack(
+    const source_locationt &,
+    std::size_t stack_size,
     goto_programt &dest,
-    bool do_dead=true);
+    destructor_stackt &stack);
 
   //
   // gotos
   //
 
-  void finish_gotos();
+  void finish_gotos(goto_programt &dest);
   void finish_computed_gotos(goto_programt &dest);
+  void finish_guarded_gotos(goto_programt &dest);
 
-  typedef std::vector<codet> destructor_stackt;
-  typedef std::map<irep_idt, goto_programt::targett> labelst;
-  typedef std::list<goto_programt::targett> gotost;
+  typedef std::map<irep_idt,
+                   std::pair<goto_programt::targett, destructor_stackt>>
+    labelst;
+  typedef std::list<std::pair<goto_programt::targett, destructor_stackt>>
+    gotost;
   typedef std::list<goto_programt::targett> computed_gotost;
   typedef exprt::operandst caset;
   typedef std::list<std::pair<goto_programt::targett, caset> > casest;
   typedef std::map<goto_programt::targett, casest::iterator> cases_mapt;
-  
+
   struct targetst
   {
     bool return_set, has_return_value, break_set, continue_set,
@@ -247,11 +301,11 @@ protected:
     casest cases;
     cases_mapt cases_map;
 
-    goto_programt::targett break_target, continue_target,
+    goto_programt::targett return_target, break_target, continue_target,
       default_target, throw_target, leave_target;
-    
-    unsigned break_stack_size, continue_stack_size, throw_stack_size,
-             leave_stack_size;
+
+    std::size_t break_stack_size, continue_stack_size, throw_stack_size,
+                leave_stack_size;
 
     targetst():
       return_set(false),
@@ -284,6 +338,12 @@ protected:
       default_target=_default_target;
     }
 
+    void set_return(goto_programt::targett _return_target)
+    {
+      return_set=true;
+      return_target=_return_target;
+    }
+
     void set_throw(goto_programt::targett _throw_target)
     {
       throw_set=true;
@@ -297,13 +357,12 @@ protected:
       leave_target=_leave_target;
       leave_stack_size=destructor_stack.size();
     }
-
   } targets;
-  
+
   struct break_continue_targetst
   {
     // for 'while', 'for', 'dowhile'
-    
+
     explicit break_continue_targetst(const targetst &targets)
     {
       break_set=targets.break_set;
@@ -322,13 +381,13 @@ protected:
 
     goto_programt::targett break_target;
     goto_programt::targett continue_target;
-    bool break_set, continue_set;  
+    bool break_set, continue_set;
   };
-  
+
   struct break_switch_targetst
   {
     // for 'switch'
-    
+
     explicit break_switch_targetst(const targetst &targets)
     {
       break_set=targets.break_set;
@@ -339,7 +398,7 @@ protected:
       cases=targets.cases;
       cases_map=targets.cases_map;
     }
-    
+
     void restore(targetst &targets)
     {
       targets.break_set=break_set;
@@ -352,13 +411,13 @@ protected:
 
     goto_programt::targett break_target;
     goto_programt::targett default_target;
-    bool break_set, default_set;  
-    unsigned break_stack_size;
+    bool break_set, default_set;
+    std::size_t break_stack_size;
 
     casest cases;
     cases_mapt cases_map;
   };
-  
+
   struct throw_targett
   {
     // for 'try...catch' and the like
@@ -378,9 +437,9 @@ protected:
 
     goto_programt::targett throw_target;
     bool throw_set;
-    unsigned throw_stack_size;
+    std::size_t throw_stack_size;
   };
-  
+
   struct leave_targett
   {
     // for 'try...leave...finally'
@@ -400,20 +459,28 @@ protected:
 
     goto_programt::targett leave_target;
     bool leave_set;
-    unsigned leave_stack_size;
+    std::size_t leave_stack_size;
   };
-  
-  void case_guard(
+
+  struct guarded_gotot
+  {
+    goto_programt::targett ifiter;
+    goto_programt::targett gotoiter;
+    exprt guard;
+  };
+  typedef std::list<guarded_gotot> guarded_gotost;
+  guarded_gotost guarded_gotos;
+
+  exprt case_guard(
     const exprt &value,
-    const caset &case_op,
-    exprt &dest);
+    const caset &case_op);
 
   // if(cond) { true_case } else { false_case }
   void generate_ifthenelse(
     const exprt &cond,
     goto_programt &true_case,
     goto_programt &false_case,
-    const locationt &location,
+    const source_locationt &,
     goto_programt &dest);
 
   // if(guard) goto target_true; else goto target_false;
@@ -421,16 +488,16 @@ protected:
     const exprt &guard,
     goto_programt::targett target_true,
     goto_programt::targett target_false,
-    const locationt &location,
+    const source_locationt &,
     goto_programt &dest);
 
   // if(guard) goto target;
   void generate_conditional_branch(
     const exprt &guard,
     goto_programt::targett target_true,
-    const locationt &location,
+    const source_locationt &,
     goto_programt &dest);
-    
+
   // turn a OP b OP c into a list a, b, c
   static void collect_operands(
     const exprt &expr,
@@ -440,24 +507,73 @@ protected:
   //
   // misc
   //
-  const irep_idt get_string_constant(const exprt &expr);
+  irep_idt get_string_constant(const exprt &expr);
+  bool get_string_constant(const exprt &expr, irep_idt &);
   exprt get_constant(const exprt &expr);
 
-  // some built-in functions    
-  void do_atomic_begin  (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
-  void do_atomic_end    (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
-  void do_create_thread (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
-  void do_array_set     (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
-  void do_array_equal   (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
-  void do_array_copy    (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
-  void do_printf        (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
-  void do_input         (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
-  void do_output        (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
-  void do_cover         (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
-  void do_prob_coin     (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
-  void do_prob_uniform  (const exprt &lhs, const exprt &rhs, const exprt::operandst &arguments, goto_programt &dest);
+  // some built-in functions
+  void do_atomic_begin(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
+  void do_atomic_end(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
+  void do_create_thread(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
+  void do_array_set(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
+  void do_array_equal(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
+  void do_array_copy(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
+  void do_printf(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
+  void do_scanf(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
+  void do_input(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
+  void do_output(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
+  void do_prob_coin(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
+  void do_prob_uniform(
+    const exprt &lhs,
+    const exprt &rhs,
+    const exprt::operandst &arguments,
+    goto_programt &dest);
 
   exprt get_array_argument(const exprt &src);
 };
 
-#endif
+#endif // CPROVER_GOTO_PROGRAMS_GOTO_CONVERT_CLASS_H

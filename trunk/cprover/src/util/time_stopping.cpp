@@ -20,11 +20,13 @@ Date: February 2004
 #include "time_stopping.h"
 
 #if defined(_WIN32) && !defined(__MINGW32__)
+// NOLINTNEXTLINE(readability/identifiers)
 struct timezone
 {
   int dummy;
 };
 
+// NOLINTNEXTLINE(readability/identifiers)
 void gettimeofday(struct timeval* p, struct timezone *tz)
 {
   union
@@ -33,8 +35,8 @@ void gettimeofday(struct timeval* p, struct timezone *tz)
     FILETIME ft;
   } _now;
 
-  GetSystemTimeAsFileTime( &(_now.ft) );
-  p->tv_usec=(long)((_now.ns100 / 10LL) % 1000000LL );
+  GetSystemTimeAsFileTime(&(_now.ft));
+  p->tv_usec=(long)((_now.ns100 / 10LL) % 1000000LL);
   p->tv_sec= (long)((_now.ns100-(116444736000000000LL))/10000000LL);
 }
 #endif
@@ -51,19 +53,21 @@ Function: current_time
 
 \*******************************************************************/
 
-fine_timet current_time()
+absolute_timet current_time()
 {
+  // NOLINTNEXTLINE(readability/identifiers)
   struct timeval tv;
+  // NOLINTNEXTLINE(readability/identifiers)
   struct timezone tz;
 
   gettimeofday(&tv, &tz);
 
-  return fine_timet(tv.tv_usec/1000+(unsigned long long)tv.tv_sec*1000);
+  return absolute_timet(tv.tv_usec/1000+(unsigned long long)tv.tv_sec*1000);
 }
 
 /*******************************************************************\
 
-Function: operator << 
+Function: operator <<
 
   Inputs:
 
@@ -73,14 +77,14 @@ Function: operator <<
 
 \*******************************************************************/
 
-std::ostream &operator << (std::ostream &out, const fine_timet &fine_time)
+std::ostream &operator << (std::ostream &out, const time_periodt &period)
 {
-  return out << (double)(fine_time.get_t())/1000;
+  return out << static_cast<double>(period.get_t())/1000;
 }
 
 /*******************************************************************\
 
-Function: fine_timet::as_string
+Function: time_periodt::as_string
 
   Inputs:
 
@@ -90,10 +94,9 @@ Function: fine_timet::as_string
 
 \*******************************************************************/
 
-std::string fine_timet::as_string() const
+std::string time_periodt::as_string() const
 {
   std::ostringstream out;
   out << *this;
   return out.str();
 }
-

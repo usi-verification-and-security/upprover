@@ -70,47 +70,37 @@ void value_set_analysis_fivrnst::add_vars(
   const goto_programt &goto_program)
 {
   typedef std::list<value_set_fivrnst::entryt> entry_listt;
-  
+
   // get the globals
   entry_listt globals;
   get_globals(globals);
-  
+
   // get the locals
   goto_programt::decl_identifierst locals;
   goto_program.get_decl_identifiers(locals);
 
-  // cache the list for the locals to speed things up  
-  typedef hash_map_cont<irep_idt, entry_listt, irep_id_hash> entry_cachet;
+  // cache the list for the locals to speed things up
+  typedef std::unordered_map<irep_idt, entry_listt, irep_id_hash> entry_cachet;
   entry_cachet entry_cache;
-  
+
   value_set_fivrnst &v=state.value_set;
+  v.add_vars(globals);
 
-  for(goto_programt::instructionst::const_iterator
-      i_it=goto_program.instructions.begin();
-      i_it!=goto_program.instructions.end();
-      i_it++)
-  {    
-    v.add_vars(globals);
-    
-    for(goto_programt::decl_identifierst::const_iterator
-        l_it=locals.begin();
-        l_it!=locals.end();
-        l_it++)
+  for(auto l : locals)
+  {
+    // cache hit?
+    entry_cachet::const_iterator e_it=entry_cache.find(l);
+
+    if(e_it==entry_cache.end())
     {
-      // cache hit?
-      entry_cachet::const_iterator e_it=entry_cache.find(*l_it);
+      const symbolt &symbol=ns.lookup(l);
 
-      if(e_it==entry_cache.end())
-      {
-        const symbolt &symbol=ns.lookup(*l_it);
-        
-        std::list<value_set_fivrnst::entryt> &entries=entry_cache[*l_it];
-        get_entries(symbol, entries);
-        v.add_vars(entries);
-      }
-      else
-        v.add_vars(e_it->second);
+      std::list<value_set_fivrnst::entryt> &entries=entry_cache[l];
+      get_entries(symbol, entries);
+      v.add_vars(entries);
     }
+    else
+      v.add_vars(e_it->second);
   }
 }
 
@@ -157,9 +147,9 @@ void value_set_analysis_fivrnst::get_entries_rec(
      t.id()==ID_union)
   {
     const struct_typet &struct_type=to_struct_type(t);
-    
+
     const struct_typet::componentst &c=struct_type.components();
-    
+
     for(struct_typet::componentst::const_iterator
         it=c.begin();
         it!=c.end();
@@ -200,36 +190,26 @@ void value_set_analysis_fivrnst::add_vars(
   // get the globals
   std::list<value_set_fivrnst::entryt> globals;
   get_globals(globals);
-  
+
   value_set_fivrnst &v=state.value_set;
+  v.add_vars(globals);
 
-  for(goto_functionst::function_mapt::const_iterator
-      f_it=goto_functions.function_map.begin();
-      f_it!=goto_functions.function_map.end();
-      f_it++)
+  forall_goto_functions(f_it, goto_functions)
   {
-    // get the locals  
-    std::set<irep_idt> locals;  
-    get_local_identifiers(f_it->second, locals);  
+    // get the locals
+    std::set<irep_idt> locals;
+    get_local_identifiers(f_it->second, locals);
 
-    forall_goto_program_instructions(i_it, f_it->second.body)
-    {    
-      v.add_vars(globals);
-      
-      for(std::set<irep_idt>::const_iterator
-          l_it=locals.begin();
-          l_it!=locals.end();
-          l_it++)
-      {
-        const symbolt &symbol=ns.lookup(*l_it);
-        
-        std::list<value_set_fivrnst::entryt> entries;
-        get_entries(symbol, entries);
-        v.add_vars(entries);
-      }
+    for(auto l : locals)
+    {
+      const symbolt &symbol=ns.lookup(l);
+
+      std::list<value_set_fivrnst::entryt> entries;
+      get_entries(symbol, entries);
+      v.add_vars(entries);
     }
   }
-}    
+}
 
 /*******************************************************************\
 
@@ -251,7 +231,7 @@ void value_set_analysis_fivrnst::get_globals(
     if(it->second.is_lvalue &&
        it->second.is_static_lifetime)
       get_entries(it->second, dest);
-}    
+}
 
 /*******************************************************************\
 
@@ -269,7 +249,8 @@ bool value_set_analysis_fivrnst::check_type(const typet &type)
 {
     if(type.id()==ID_pointer)
     {
-      switch(track_options) {
+      switch(track_options)
+      {
         case TRACK_ALL_POINTERS:
           { return true; break; }
         case TRACK_FUNCTION_POINTERS:
@@ -277,14 +258,14 @@ bool value_set_analysis_fivrnst::check_type(const typet &type)
           if(type.id()==ID_pointer)
           {
             const typet *t = &type;
-            while (t->id()==ID_pointer) t = &(t->subtype());
-                    
+            while(t->id()==ID_pointer) t = &(t->subtype());
+
             return (t->id()==ID_code);
           }
-          
+
           break;
         }
-        default: // don't track. 
+        default: // don't track.
           break;
       }
     }
@@ -292,22 +273,23 @@ bool value_set_analysis_fivrnst::check_type(const typet &type)
             type.id()==ID_union)
     {
       const struct_typet &struct_type=to_struct_type(type);
-      
+
       const struct_typet::componentst &components=
         struct_type.components();
-  
+
       for(struct_typet::componentst::const_iterator
           it=components.begin();
           it!=components.end();
           it++)
       {
-        if(check_type(it->type())) return true;
-      }    
+        if(check_type(it->type()))
+          return true;
+      }
     }
     else if(type.id()==ID_array)
       return check_type(type.subtype());
     else if(type.id()==ID_symbol)
       return check_type(ns.follow(type));
-  
-  return false;      
-}    
+
+  return false;
+}

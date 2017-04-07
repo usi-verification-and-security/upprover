@@ -6,8 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/location.h>
-#include <util/i2string.h>
+#include <limits>
+
+#include <util/source_location.h>
+#include <util/simplify_expr.h>
 
 #include "symex_bmc.h"
 
@@ -27,7 +29,10 @@ symex_bmct::symex_bmct(
   const namespacet &_ns,
   symbol_tablet &_new_symbol_table,
   symex_targett &_target):
-  goto_symext(_ns, _new_symbol_table, _target)
+  goto_symext(_ns, _new_symbol_table, _target),
+  record_coverage(false),
+  max_unwind_is_set(false),
+  symex_coverage(_ns)
 {
 }
 
@@ -47,19 +52,79 @@ void symex_bmct::symex_step(
   const goto_functionst &goto_functions,
   statet &state)
 {
-  const locationt &location=state.source.pc->location;
+  const source_locationt &source_location=state.source.pc->source_location;
 
-  if(!location.is_nil() && last_location!=location)
+  if(!source_location.is_nil() && last_source_location!=source_location)
   {
-    debug() << "BMC at file " << location.get_file()
-            << " line " << location.get_line()
-            << " function " << location.get_function()
+    debug() << "BMC at file " << source_location.get_file()
+            << " line " << source_location.get_line()
+            << " function " << source_location.get_function()
             << eom;
 
-    last_location=location;
+    last_source_location=source_location;
+  }
+
+  const goto_programt::const_targett cur_pc=state.source.pc;
+
+  if(!state.guard.is_false() &&
+     state.source.pc->is_assume() &&
+     simplify_expr(state.source.pc->guard, ns).is_false())
+  {
+    statistics() << "aborting path on assume(false) at "
+                 << state.source.pc->source_location
+                 << " thread " << state.source.thread_nr;
+
+    const irep_idt &c=state.source.pc->source_location.get_comment();
+    if(!c.empty())
+      statistics() << ": " << c;
+
+    statistics() << eom;
   }
 
   goto_symext::symex_step(goto_functions, state);
+
+  if(record_coverage &&
+     // is the instruction being executed
+     !state.guard.is_false() &&
+     // avoid an invalid iterator in state.source.pc
+     (!cur_pc->is_end_function() ||
+      cur_pc->function!=goto_functions.entry_point()) &&
+     // ignore transition to next instruction when goto points elsewhere
+     (!cur_pc->is_goto() ||
+      cur_pc->get_target()==state.source.pc ||
+      !cur_pc->guard.is_true()))
+    symex_coverage.covered(cur_pc, state.source.pc);
+}
+
+/*******************************************************************\
+
+Function: symex_bmct::merge_goto
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+void symex_bmct::merge_goto(
+  const statet::goto_statet &goto_state,
+  statet &state)
+{
+  const goto_programt::const_targett prev_pc=goto_state.source.pc;
+  const guardt prev_guard=goto_state.guard;
+
+  goto_symext::merge_goto(goto_state, state);
+
+  assert(prev_pc->is_goto());
+  if(record_coverage &&
+     // could the branch possibly be taken?
+     !prev_guard.is_false() &&
+     !state.guard.is_false() &&
+     // branches only, no single-successor goto
+     !prev_pc->guard.is_true())
+    symex_coverage.covered(prev_pc, state.source.pc);
 }
 
 /*******************************************************************\
@@ -78,22 +143,41 @@ bool symex_bmct::get_unwind(
   const symex_targett::sourcet &source,
   unsigned unwind)
 {
-  irep_idt id=(source.thread_nr!=0?(i2string(source.thread_nr)+":"):"")+
-              id2string(source.pc->function)+"."+
-              i2string(source.pc->loop_number);
-  unsigned long this_loop_max_unwind=max_unwind;
+  const irep_idt id=goto_programt::loop_id(source.pc);
 
-  if(unwind_set.count(id)!=0)
-    this_loop_max_unwind=unwind_set[id];
+  // We use the most specific limit we have,
+  // and 'infinity' when we have none.
 
-  #if 1
-  statistics() << "Unwinding loop " << id << " iteration "
-               << unwind << " " << source.pc->location
+  unsigned this_loop_limit=std::numeric_limits<unsigned>::max();
+
+  loop_limitst &this_thread_limits=
+    thread_loop_limits[source.thread_nr];
+
+  loop_limitst::const_iterator l_it=this_thread_limits.find(id);
+  if(l_it!=this_thread_limits.end())
+    this_loop_limit=l_it->second;
+  else
+  {
+    l_it=loop_limits.find(id);
+    if(l_it!=loop_limits.end())
+      this_loop_limit=l_it->second;
+    else if(max_unwind_is_set)
+      this_loop_limit=max_unwind;
+  }
+
+  bool abort=unwind>=this_loop_limit;
+
+  statistics() << (abort?"Not unwinding":"Unwinding")
+               << " loop " << id << " iteration "
+               << unwind;
+
+  if(this_loop_limit!=std::numeric_limits<unsigned>::max())
+    statistics() << " (" << this_loop_limit << " max)";
+
+  statistics() << " " << source.pc->source_location
                << " thread " << source.thread_nr << eom;
-  #endif
 
-  return this_loop_max_unwind!=0 &&
-         unwind>=this_loop_max_unwind;
+  return abort;
 }
 
 /*******************************************************************\
@@ -109,29 +193,48 @@ Function: symex_bmct::get_unwind_recursion
 \*******************************************************************/
 
 bool symex_bmct::get_unwind_recursion(
-  const irep_idt &identifier,
+  const irep_idt &id,
+  const unsigned thread_nr,
   unsigned unwind)
 {
-  unsigned long this_loop_max_unwind=max_unwind;
+  // We use the most specific limit we have,
+  // and 'infinity' when we have none.
 
-  #if 1
-  if(unwind!=0)
+  unsigned this_loop_limit=std::numeric_limits<unsigned>::max();
+
+  loop_limitst &this_thread_limits=
+    thread_loop_limits[thread_nr];
+
+  loop_limitst::const_iterator l_it=this_thread_limits.find(id);
+  if(l_it!=this_thread_limits.end())
+    this_loop_limit=l_it->second;
+  else
   {
-    const symbolt &symbol=ns.lookup(identifier);
+    l_it=loop_limits.find(id);
+    if(l_it!=loop_limits.end())
+      this_loop_limit=l_it->second;
+    else if(max_unwind_is_set)
+      this_loop_limit=max_unwind;
+  }
 
-    statistics() << "Unwinding recursion "
+  bool abort=unwind>this_loop_limit;
+
+  if(unwind>0 || abort)
+  {
+    const symbolt &symbol=ns.lookup(id);
+
+    statistics() << (abort?"Not unwinding":"Unwinding")
+                 << " recursion "
                  << symbol.display_name()
                  << " iteration " << unwind;
-      
-    if(this_loop_max_unwind!=0)
-      statistics() << " (" << this_loop_max_unwind << " max)";
+
+    if(this_loop_limit!=std::numeric_limits<unsigned>::max())
+      statistics() << " (" << this_loop_limit << " max)";
 
     statistics() << eom;
   }
-  #endif
 
-  return this_loop_max_unwind!=0 &&
-         unwind>=this_loop_max_unwind;
+  return abort;
 }
 
 /*******************************************************************\

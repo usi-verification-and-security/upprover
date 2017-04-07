@@ -8,19 +8,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <cstdlib>
 
-#ifdef __linux__
-#include <unistd.h>
-#endif
-
-#ifdef __FreeBSD_kernel__
-#include <unistd.h>
-#endif
-
-#ifdef __GNU__
-#include <unistd.h>
-#endif
-
-#ifdef __MACH__
+#if defined(__linux__) || \
+    defined(__FreeBSD_kernel__) || \
+    defined(__GNU__) || \
+    defined(__unix__) || \
+    defined(__CYGWIN__) || \
+    defined(__MACH__)
 #include <unistd.h>
 #endif
 
@@ -28,7 +21,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_types.h>
 #include <util/tempfile.h>
 #include <util/arith_tools.h>
-#include <util/i2string.h>
 #include <util/string2int.h>
 #include <util/prefix.h>
 
@@ -49,11 +41,13 @@ Function: smt1_dect::decision_procedure_text
 std::string smt1_dect::decision_procedure_text() const
 {
   return "SMT1 "+logic+" using "+
-    (solver==BOOLECTOR?"Boolector":
+    (solver==GENERIC?"Generic":
+     solver==BOOLECTOR?"Boolector":
      solver==CVC3?"CVC3":
+     solver==CVC4?"CVC3":
+     solver==MATHSAT?"MathSAT":
      solver==OPENSMT?"OpenSMT":
      solver==YICES?"Yices":
-     solver==MATHSAT?"MathSAT":
      solver==Z3?"Z3":
      "(unknown)");
 }
@@ -76,8 +70,7 @@ smt1_temp_filet::smt1_temp_filet()
 
   temp_out.open(
     temp_out_filename.c_str(),
-    std::ios_base::out | std::ios_base::trunc
-  );
+    std::ios_base::out | std::ios_base::trunc);
 }
 
 /*******************************************************************\
@@ -121,10 +114,8 @@ decision_proceduret::resultt smt1_dect::dec_solve()
   assert(!dec_solve_was_called);
   dec_solve_was_called=true;
 
-  post_process();
-
   // this closes the SMT benchmark
-  smt1_prop.finalize();
+  write_footer();
   temp_out.close();
 
   temp_result_filename=
@@ -134,6 +125,17 @@ decision_proceduret::resultt smt1_dect::dec_solve()
 
   switch(solver)
   {
+  case BOOLECTOR:
+    // -rwl0 disables rewriting, which makes things slower,
+    // but in return values for arrays appear
+    // command = "boolector -rwl0 --smt "
+    // Removed as not necessarily needed on newer versions
+    command = "boolector --smt "
+            + temp_out_filename
+            + " --model --output "
+            + temp_result_filename;
+    break;
+
   case CVC3:
     command = "cvc3 +model -lang smtlib -output-lang smtlib "
             + temp_out_filename
@@ -141,24 +143,8 @@ decision_proceduret::resultt smt1_dect::dec_solve()
             + temp_result_filename;
     break;
 
-  case BOOLECTOR:
-    // -rwl0 disables rewriting, which makes things slower,
-    // but in return values for arrays appear
-    command = "boolector -rwl0 --smt "
-            + temp_out_filename
-            + " -m --output "
-            + temp_result_filename;
-    break;
-
-  case OPENSMT:
-    command = "todo "
-            + temp_out_filename
-            + " > "
-            + temp_result_filename;
-    break;
-
-  case YICES:
-    command = "yices -smt -e "
+  case CVC4:
+    command = "cvc4 -L smt1 "
             + temp_out_filename
             + " > "
             + temp_result_filename;
@@ -170,8 +156,23 @@ decision_proceduret::resultt smt1_dect::dec_solve()
             + " > "+temp_result_filename;
     break;
 
+  case OPENSMT:
+    command = "opensmt "
+            + temp_out_filename
+            + " > "
+            + temp_result_filename;
+    break;
+
+  case YICES:
+    //    command = "yices -smt -e "   // Calling convention for older versions
+    command = "yices-smt --full-model "  //  Calling for 2.2.1
+            + temp_out_filename
+            + " > "
+            + temp_result_filename;
+    break;
+
   case Z3:
-    command = "z3 -m "
+    command = "z3 -smt "
             + temp_out_filename
             + " > "
             + temp_result_filename;
@@ -185,7 +186,12 @@ decision_proceduret::resultt smt1_dect::dec_solve()
   command+=" 2>&1";
   #endif
 
-  system(command.c_str());
+  int res=system(command.c_str());
+  if(res<0)
+  {
+    error() << "error running SMT1 solver" << eom;
+    return decision_proceduret::D_ERROR;
+  }
 
   std::ifstream in(temp_result_filename.c_str());
 
@@ -197,20 +203,26 @@ decision_proceduret::resultt smt1_dect::dec_solve()
   case CVC3:
     return read_result_cvc3(in);
 
+  case CVC4:
+    error() << "no support for CVC4 with SMT1, use SMT2 instead" << eom;
+    return decision_proceduret::D_ERROR;
+
+  case MATHSAT:
+    return read_result_mathsat(in);
+
   case OPENSMT:
     return read_result_opensmt(in);
 
   case YICES:
     return read_result_yices(in);
 
-  case MATHSAT:
-    return read_result_mathsat(in);
-
   case Z3:
     return read_result_z3(in);
 
+  case GENERIC:
   default:
-    assert(false);
+    error() << "Generic solver can't solve" << eom;
+    return decision_proceduret::D_ERROR;
   }
 }
 
@@ -234,9 +246,10 @@ decision_proceduret::resultt smt1_dect::read_result_boolector(std::istream &in)
 
   if(line=="sat")
   {
-    smt1_prop.reset_assignment();
+    boolean_assignment.clear();
+    boolean_assignment.resize(no_boolean_variables, false);
 
-    typedef hash_map_cont<std::string, valuet, string_hash> valuest;
+    typedef std::unordered_map<std::string, valuet, string_hash> valuest;
     valuest values;
 
     while(std::getline(in, line))
@@ -246,17 +259,17 @@ decision_proceduret::resultt smt1_dect::read_result_boolector(std::istream &in)
       {
         std::string id=std::string(line, 0, pos);
         std::string value=std::string(line, pos+1, std::string::npos);
-      
+
         // Boolector offers array values as follows:
         //
         // ID[INDEX] VALUE
         //
         // There may be more than one line per ID
-        
+
         if(id!="" && id[id.size()-1]==']') // array?
         {
           std::size_t pos2=id.find('[');
-          
+
           if(pos2!=std::string::npos)
           {
             std::string new_id=std::string(id, 0, pos2);
@@ -283,17 +296,19 @@ decision_proceduret::resultt smt1_dect::read_result_boolector(std::istream &in)
       for(valuet::index_value_mapt::const_iterator
           i_it=v.index_value_map.begin(); i_it!=v.index_value_map.end(); i_it++)
         set_value(it->second, i_it->first, i_it->second);
-        
-      if(v.value!="") set_value(it->second, "", v.value);
+
+      if(v.value!="")
+        set_value(it->second, "", v.value);
     }
 
     // Booleans
 
-    for(unsigned v=0; v<smt1_prop.no_variables(); v++)
+    for(unsigned v=0; v<no_boolean_variables; v++)
     {
-      std::string value=values["B"+i2string(v)].value;
-      if(value=="") continue;
-      smt1_prop.set_assignment(literalt(v, false), value=="1");
+      std::string value=values["B"+std::to_string(v)].value;
+      if(value=="")
+        continue;
+      boolean_assignment[v]=(value=="1");
     }
 
     return D_SATISFIABLE;
@@ -301,7 +316,7 @@ decision_proceduret::resultt smt1_dect::read_result_boolector(std::istream &in)
   else if(line=="unsat")
     return D_UNSATISFIABLE;
   else
-    error("Unexpected result from SMT-Solver: "+line);
+    error() << "Unexpected result from SMT-Solver: " << line << eom;
 
   return D_ERROR;
 }
@@ -341,23 +356,23 @@ decision_proceduret::resultt smt1_dect::read_result_yices(std::istream &in)
 
   while(std::getline(in, line))
   {
-    if (line=="sat")
+    if(line=="sat")
     {
       // fixme: read values
       return D_SATISFIABLE;
     }
-    else if (line=="unsat")
+    else if(line=="unsat")
       return D_UNSATISFIABLE;
   }
 
-  error("Unexpected result from SMT-Solver");
+  error() << "Unexpected result from SMT-Solver" << eom;
 
   return D_ERROR;
 }
 
 /*******************************************************************\
 
-Function: smt1_dect::read_result_mathsat
+Function: smt1_dect::mathsat_value
 
   Inputs:
 
@@ -371,15 +386,16 @@ std::string smt1_dect::mathsat_value(const std::string &src)
 {
   std::size_t pos=src.find('[');
 
-  if(std::string(src, 0, 2)=="bv" && 
+  if(std::string(src, 0, 2)=="bv" &&
      pos!=std::string::npos &&
-     src[src.size()-1]==']') 
+     src[src.size()-1]==']')
   {
-    unsigned width=safe_string2unsigned(std::string(src, pos+1, src.size()-pos-2));
+    unsigned width=
+      safe_string2unsigned(std::string(src, pos+1, src.size()-pos-2));
     mp_integer i=string2integer(std::string(src, 2, pos-2));
     return integer2binary(i, width);
   }
-  
+
   return "";
 }
 
@@ -400,9 +416,10 @@ decision_proceduret::resultt smt1_dect::read_result_mathsat(std::istream &in)
   std::string line;
   decision_proceduret::resultt res = D_ERROR;
 
-  smt1_prop.reset_assignment();
+  boolean_assignment.clear();
+  boolean_assignment.resize(no_boolean_variables, false);
 
-  typedef hash_map_cont<std::string, valuet, string_hash> valuest;
+  typedef std::unordered_map<std::string, valuet, string_hash> valuest;
   valuest values;
 
   while(std::getline(in, line))
@@ -413,6 +430,7 @@ decision_proceduret::resultt smt1_dect::read_result_mathsat(std::istream &in)
       res=D_UNSATISFIABLE;
     else if(line.size()>=1 && line[0]=='(')
     {
+      // (iff B0 true)
       // (= c_h39__h39___CPROVER_malloc_size_h39_35_h39_1 bv0[64])
       // (= (select __h64_0 bv0[32]) bv5[8])
       std::size_t pos1=line.find(' ');
@@ -452,11 +470,12 @@ decision_proceduret::resultt smt1_dect::read_result_mathsat(std::istream &in)
   }
 
   // Booleans
-  for(unsigned v=0; v<smt1_prop.no_variables(); v++)
+  for(unsigned v=0; v<no_boolean_variables; v++)
   {
-    std::string value=values["B"+i2string(v)].value;
-    if(value=="") continue;
-    smt1_prop.set_assignment(literalt(v, false), value=="true");
+    std::string value=values["B"+std::to_string(v)].value;
+    if(value=="")
+      continue;
+    boolean_assignment[v]=(value=="true");
   }
 
   return res;
@@ -479,9 +498,10 @@ decision_proceduret::resultt smt1_dect::read_result_z3(std::istream &in)
   std::string line;
   decision_proceduret::resultt res = D_ERROR;
 
-  smt1_prop.reset_assignment();
+  boolean_assignment.clear();
+  boolean_assignment.resize(no_boolean_variables, false);
 
-  typedef hash_map_cont<std::string, std::string, string_hash> valuest;
+  typedef std::unordered_map<std::string, std::string, string_hash> valuest;
   valuest values;
 
   while(std::getline(in, line))
@@ -507,7 +527,8 @@ decision_proceduret::resultt smt1_dect::read_result_z3(std::istream &in)
     it->second.value.make_nil();
     std::string conv_id=convert_identifier(it->first);
     std::string value=values[conv_id];
-    if(value=="") continue;
+    if(value=="")
+      continue;
 
     exprt e;
     if(string_to_expr_z3(it->second.type, value, e))
@@ -517,11 +538,12 @@ decision_proceduret::resultt smt1_dect::read_result_z3(std::istream &in)
   }
 
   // Booleans
-  for(unsigned v=0; v<smt1_prop.no_variables(); v++)
+  for(unsigned v=0; v<no_boolean_variables; v++)
   {
-    std::string value=values["B"+i2string(v)];
-    if(value=="") continue;
-    smt1_prop.set_assignment(literalt(v, false), value=="true");
+    std::string value=values["B"+std::to_string(v)];
+    if(value=="")
+      continue;
+    boolean_assignment[v]=(value=="true");
   }
 
   return res;
@@ -544,14 +566,14 @@ bool smt1_dect::string_to_expr_z3(
   const std::string &value,
   exprt &e) const
 {
-  if(value.substr(0,2)=="bv")
+  if(value.substr(0, 2)=="bv")
   {
     std::string v=value.substr(2, value.find('[')-2);
     size_t p = value.find('[')+1;
     std::string w=value.substr(p, value.find(']')-p);
 
-    std::string binary=integer2binary(string2integer(v,10),
-                                      string2integer(w,10).to_ulong());
+    std::string binary=integer2binary(string2integer(v, 10),
+                                      integer2unsigned(string2integer(w, 10)));
 
     if(type.id()==ID_struct)
     {
@@ -570,15 +592,16 @@ bool smt1_dect::string_to_expr_z3(
 
     return true;
   }
-  else if(value.substr(0,6)=="(const") // const arrays
+  else if(value.substr(0, 6)=="(const") // const arrays
   {
     std::string av = value.substr(7, value.length()-8);
 
     exprt ae;
-    if(!string_to_expr_z3(type.subtype(), av, ae)) return false;
+    if(!string_to_expr_z3(type.subtype(), av, ae))
+      return false;
 
     array_of_exprt ao;
-    ao.type() = typet("array");
+    ao.type() = typet(ID_array);
     ao.type().subtype()=ae.type();
     ao.what() = ae;
 
@@ -586,7 +609,7 @@ bool smt1_dect::string_to_expr_z3(
 
     return true;
   }
-  else if(value.substr(0,6)=="(store")
+  else if(value.substr(0, 6)=="(store")
   {
     size_t p1=value.rfind(' ')+1;
     size_t p2=value.rfind(' ', p1-2)+1;
@@ -598,13 +621,16 @@ bool smt1_dect::string_to_expr_z3(
     std::string array = value.substr(7, p2-8);
 
     exprt old;
-    if(!string_to_expr_z3(type, array, old)) return false;
+    if(!string_to_expr_z3(type, array, old))
+      return false;
 
     exprt where;
-    if(!string_to_expr_z3(array_index_type(), inx, where)) return false;
+    if(!string_to_expr_z3(array_index_type(), inx, where))
+      return false;
 
     exprt new_val;
-    if(!string_to_expr_z3(type.subtype(), elem, new_val)) return false;
+    if(!string_to_expr_z3(type.subtype(), elem, new_val))
+      return false;
 
     e = with_exprt(old, where, new_val);
 
@@ -620,14 +646,15 @@ bool smt1_dect::string_to_expr_z3(
     e = true_exprt();
     return true;
   }
-  else if(value.substr(0,8)=="array_of")
+  else if(value.substr(0, 8)=="array_of")
   {
     // We assume that array_of has only concrete arguments...
     irep_idt id(value);
     array_of_mapt::const_iterator fit=array_of_map.begin();
     while(fit!=array_of_map.end() && fit->second!=id) fit++;
 
-    if(fit==array_of_map.end()) return false;
+    if(fit==array_of_map.end())
+      return false;
 
     e = fit->first;
 
@@ -638,7 +665,7 @@ bool smt1_dect::string_to_expr_z3(
     constant_exprt result;
     result.type()=rational_typet();
 
-    if(value.substr(0,4)=="val!")
+    if(value.substr(0, 4)=="val!")
       result.set_value(value.substr(4));
     else
       result.set_value(value);
@@ -667,9 +694,10 @@ decision_proceduret::resultt smt1_dect::read_result_cvc3(std::istream &in)
   std::string line;
   decision_proceduret::resultt res = D_ERROR;
 
-  smt1_prop.reset_assignment();
+  boolean_assignment.clear();
+  boolean_assignment.resize(no_boolean_variables, false);
 
-  typedef hash_map_cont<std::string, std::string, string_hash> valuest;
+  typedef std::unordered_map<std::string, std::string, string_hash> valuest;
   valuest values;
 
   while(std::getline(in, line))
@@ -680,10 +708,12 @@ decision_proceduret::resultt smt1_dect::read_result_cvc3(std::istream &in)
       res = D_UNSATISFIABLE;
     else if(line.find("Current scope level")!=std::string::npos ||
             line.find("Variable Assignment")!=std::string::npos)
-      ; //ignore
+    {
+      // ignore
+    }
     else
     {
-      assert(line.substr(0,13)=="  :assumption");
+      assert(line.substr(0, 13)=="  :assumption");
       std::size_t pos=line.find('(');
 
       if(pos!=std::string::npos)
@@ -698,17 +728,17 @@ decision_proceduret::resultt smt1_dect::read_result_cvc3(std::istream &in)
           var = ops.substr(0, blank);
           val = ops.substr(blank+1, ops.length()-blank);
 
-          if((var.length()>=4 && var.substr(0,4)=="cvc3") ||
-             (val.length()>=4 && val.substr(0,4)=="cvc3") ||
+          if((var.length()>=4 && var.substr(0, 4)=="cvc3") ||
+             (val.length()>=4 && val.substr(0, 4)=="cvc3") ||
              var==val)
             continue;
-          else if((var.substr(0,9)=="array_of'") ||
-                  (var.substr(0,2)=="bv" && val.substr(0,2)!="bv"))
+          else if((var.substr(0, 9)=="array_of'") ||
+                  (var.substr(0, 2)=="bv" && val.substr(0, 2)!="bv"))
           {
             std::string t=var; var=val; val=t;
           }
         }
-        else if(line.substr(pos+1,3)=="not")
+        else if(line.substr(pos+1, 3)=="not")
         {
           var = line.substr(pos+5, line.length()-pos-6);
           val = "false";
@@ -733,24 +763,27 @@ decision_proceduret::resultt smt1_dect::read_result_cvc3(std::istream &in)
     it->second.value.make_nil();
     std::string conv_id=convert_identifier(it->first);
     std::string value=values[conv_id];
-    if(value=="") continue;
+    if(value=="")
+      continue;
 
-    if(value.substr(0,2)=="bv")
+    if(value.substr(0, 2)=="bv")
     {
       std::string v=value.substr(2, value.find('[')-2);
       size_t p = value.find('[')+1;
       std::string w=value.substr(p, value.find(']')-p);
 
-      std::string binary=integer2binary(string2integer(v,10),
-                                        string2integer(w,10).to_ulong());
+      std::string binary=
+        integer2binary(
+          string2integer(v, 10),
+          integer2unsigned(string2integer(w, 10)));
 
       set_value(it->second, "", binary);
     }
     else if(value=="false")
-      it->second.value.make_false();
+      it->second.value=false_exprt();
     else if(value=="true")
-      it->second.value.make_true();
-    else if(value.substr(0,8)=="array_of")
+      it->second.value=true_exprt();
+    else if(value.substr(0, 8)=="array_of")
     {
       // We assume that array_of has only concrete arguments...
       irep_idt id(value);
@@ -765,13 +798,13 @@ decision_proceduret::resultt smt1_dect::read_result_cvc3(std::istream &in)
   }
 
   // Booleans
-  for(unsigned v=0; v<smt1_prop.no_variables(); v++)
+  for(unsigned v=0; v<no_boolean_variables; v++)
   {
-    std::string value=values["B"+i2string(v)];
-    if(value=="") continue;
-    smt1_prop.set_assignment(literalt(v, false), value=="true");
+    std::string value=values["B"+std::to_string(v)];
+    if(value=="")
+      continue;
+    boolean_assignment[v]=(value=="true");
   }
 
   return res;
 }
-

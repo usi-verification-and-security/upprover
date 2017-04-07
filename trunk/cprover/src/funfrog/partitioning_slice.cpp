@@ -7,7 +7,6 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
-#include <hash_cont.h>
 #include <std_expr.h>
 
 #include "partitioning_slice.h"
@@ -74,7 +73,7 @@ Function: partitioning_slicet::slice
 \*******************************************************************/
 
 void partitioning_slicet::slice(partitioning_target_equationt &equation,
-        summary_storet& summary_store)
+        summary_storet* summary_store, bool use_smt)
 {
   // Mark assignments as ignored
   for(symex_target_equationt::SSA_stepst::iterator it = 
@@ -93,7 +92,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
       // We can only slice standard summaries, not inverted and not summaries
       // with assertion in subtree
       if (it->inverted_summary || it->get_iface().assertion_in_subtree) {
-        mark_summary_symbols(summary_store, *it);
+        mark_summary_symbols(summary_store, *it, use_smt);
         it->ignore = false;
       } else {
         it->ignore = true;
@@ -133,6 +132,8 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
         get_symbols(it->second->guard, depends);
         get_symbols(it->second->cond_expr, depends);
         it->second->ignore = false;
+
+
       }
     }
     
@@ -142,7 +143,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
       partitiont& partition = *(sum_it->second.first);
       partition_ifacet& partition_iface = partition.get_iface();
       const summary_idst& itps = *partition.summaries;
-      unsigned symbol_idx = sum_it->second.second;
+      //unsigned symbol_idx = sum_it->second.second;
 
       // Any of the summaries can match, we need to go through all of them
       // (this may be optimized by precomputation)
@@ -155,7 +156,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
                 partition.applicable_summaries.end())
           continue;
         
-        summaryt& summary = summary_store.find_summary(summary_id);
+        summaryt& summary = summary_store->find_summary(summary_id);
         // Does not restrict the given symbol
         //if (!summary.get_symbol_mask()[symbol_idx]) // TODO: seems broken
         //  continue;
@@ -167,8 +168,11 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
                 partition_iface.argument_symbols.begin();
                 it2 != partition_iface.argument_symbols.end();
                 ++it2, ++idx) {
-          if (summary.get_symbol_mask()[idx])
-            get_symbols(*it2, depends);
+            // SAT checks idx, SMT checks it2
+            if(summary.usesVar(*it2,idx))
+            {
+                get_symbols(*it2, depends);
+            }
         }
       }
       partition.ignore = false;
@@ -282,6 +286,7 @@ void partitioning_slicet::prepare_assignment(
   assert(SSA_step.ssa_lhs.id() == ID_symbol);
 
   const irep_idt &id = SSA_step.ssa_lhs.get(ID_identifier);
+  //const irep_idt &id2 = SSA_step.ssa_rhs.get(ID_identifier);
   def_map.insert(def_mapt::value_type(id, &SSA_step));
 }
 
@@ -398,7 +403,17 @@ Function: partitioning_slicet::mark_summary_symbols
 
 \*******************************************************************/
 
-void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store, 
+void partitioning_slicet::mark_summary_symbols(summary_storet* summary_store, 
+        partitiont &partition, bool use_smt) {
+    
+    if (!use_smt)
+        mark_summary_symbols_sat(summary_store, partition);
+    else
+        mark_summary_symbols_smt(summary_store, partition);
+}
+
+// For SAT version
+void partitioning_slicet::mark_summary_symbols_sat(summary_storet* summary_store, 
         partitiont &partition) {
   // Mark all used symbols as directly as dependent
   partition_ifacet& partition_iface = partition.get_iface();
@@ -427,7 +442,72 @@ void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store,
       continue;
     }
 
-    summaryt& summary = summary_store.find_summary(summary_id);
+    /* THIS CODE IS FOR PROP-LOGIC ONLY. IF Gets here with something else assert! */
+    prop_summaryt& summary = dynamic_cast <prop_summaryt&> 
+            (summary_store->find_summary(summary_id)); // KE: SMT code shall not use this!
+
+    // Add only symbols constrained by the summary
+    unsigned idx = 0;
+    partition.applicable_summaries.insert(summary_id);
+    symbol_exprt stub_v; // Stub var
+    // Input argument symbols
+    for (std::vector<symbol_exprt>::iterator it2 =
+            partition_iface.argument_symbols.begin();
+            it2 != partition_iface.argument_symbols.end();
+            ++it2, ++idx) {
+      // SAT checks idx, SMT checks it2
+      if(summary.usesVar(stub_v,idx)) // Only SAT uses it
+        get_symbols(*it2, depends);
+    }
+    // Output argument symbols
+    for (std::vector<symbol_exprt>::iterator it2 =
+            partition_iface.out_arg_symbols.begin();
+            it2 != partition_iface.out_arg_symbols.end();
+            ++it2, ++idx) {
+      // SAT checks idx, SMT checks it2
+      if(summary.usesVar(stub_v,idx)) // Only SAT uses it
+        get_symbols(*it2, depends);
+    }
+    // Return value symbol
+    if (partition_iface.returns_value) {
+      // SAT checks idx, SMT checks it2
+      if(summary.usesVar(stub_v,idx)) // Only SAT uses it
+        get_symbols(partition_iface.retval_symbol, depends);
+    }
+  }
+}
+
+void partitioning_slicet::mark_summary_symbols_smt(summary_storet* summary_store, 
+        partitiont &partition) {
+  // Mark all used symbols as directly as dependent
+  partition_ifacet& partition_iface = partition.get_iface();
+  const summary_idst& itps = *partition.summaries;
+
+  // Mark all the used symbols in all summaries
+  for (summary_idst::const_iterator it = itps.begin();
+          it != itps.end(); ++it) {
+    summary_idt summary_id = *it;
+    
+    // Skip summaries that were not used in the last verification run
+    if (partition.inverted_summary &&
+            partition.used_summaries.find(summary_id) ==
+            partition.used_summaries.end()) {
+      
+#     ifdef DEBUG_SLICER      
+      std::cerr << "Unused summary in inverted summary: " << summary_id << " (used: ";
+      for (summary_ids_sett::const_iterator it2 = partition.used_summaries.begin();
+              it2 != partition.used_summaries.end();
+              ++it2) {
+        std::cerr << *it2;
+      }
+      std::cerr << ")" << std::endl;
+#     endif
+      
+      continue;
+    }
+
+    smt_summaryt& summary = dynamic_cast <smt_summaryt&> 
+            (summary_store->find_summary(summary_id));
 
     // Add only symbols constrained by the summary
     unsigned idx = 0;
@@ -437,7 +517,8 @@ void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store,
             partition_iface.argument_symbols.begin();
             it2 != partition_iface.argument_symbols.end();
             ++it2, ++idx) {
-      if (summary.get_symbol_mask()[idx])
+      // SAT checks idx, SMT checks it2
+      if(summary.usesVar(*it2,idx))
         get_symbols(*it2, depends);
     }
     // Output argument symbols
@@ -445,13 +526,17 @@ void partitioning_slicet::mark_summary_symbols(summary_storet& summary_store,
             partition_iface.out_arg_symbols.begin();
             it2 != partition_iface.out_arg_symbols.end();
             ++it2, ++idx) {
-      if (summary.get_symbol_mask()[idx])
+      // SAT checks idx, SMT checks it2
+      if(summary.usesVar(*it2,idx))
         get_symbols(*it2, depends);
     }
-    // Return value symbol
+    // Return value symbol, 
+    //KE: get_symbols is stab now, so have no idea what it should be here
+    // Comment out when get_symbols is implimented
     if (partition_iface.returns_value) {
-      if (summary.get_symbol_mask()[idx])
-        get_symbols(partition_iface.retval_symbol, depends);
+      // SAT checks idx, SMT checks it2
+    //  if(summary.usesVar(*it2,idx))
+    //    get_symbols(partition_iface.retval_symbol, depends);
     }
   }
 }
@@ -469,8 +554,8 @@ Function: partitioning_slice
 \*******************************************************************/
 
 void partitioning_slice(partitioning_target_equationt &equation,
-        summary_storet& summary_store)
+        summary_storet* summary_store, bool use_smt)
 {
   partitioning_slicet slice;
-  slice.slice(equation, summary_store);
+  slice.slice(equation, summary_store, use_smt);
 }

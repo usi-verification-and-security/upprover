@@ -6,12 +6,11 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#ifndef CPROVER_CPP_SCOPES_H
-#define CPROVER_CPP_SCOPES_H
+#ifndef CPROVER_CPP_CPP_SCOPES_H
+#define CPROVER_CPP_CPP_SCOPES_H
 
 #include <set>
 
-#include <util/hash_cont.h>
 #include <util/symbol.h>
 #include <util/string_hash.h>
 
@@ -33,10 +32,13 @@ public:
     return *current_scope_ptr;
   }
 
-  cpp_scopet &new_scope(const irep_idt &new_scope_name)
+  cpp_scopet &new_scope(
+    const irep_idt &new_scope_name,
+    cpp_idt::id_classt id_class)
   {
     assert(!new_scope_name.empty());
     cpp_scopet &n=current_scope_ptr->new_scope(new_scope_name);
+    n.id_class=id_class;
     id_map[n.identifier]=&n;
     current_scope_ptr=&n;
     return n;
@@ -44,9 +46,7 @@ public:
 
   cpp_scopet &new_namespace(const irep_idt &new_scope_name)
   {
-    cpp_scopet &n=new_scope(new_scope_name);
-    n.id_class=cpp_idt::NAMESPACE;
-    return n;
+    return new_scope(new_scope_name, cpp_idt::NAMESPACE);
   }
 
   cpp_scopet &new_block_scope();
@@ -62,7 +62,7 @@ public:
   }
 
   // mapping from function/class/scope names to their cpp_idt
-  typedef hash_map_cont<irep_idt, cpp_idt *, irep_id_hash> id_mapt;
+  typedef std::unordered_map<irep_idt, cpp_idt *, irep_id_hash> id_mapt;
   id_mapt id_map;
 
   cpp_scopet *current_scope_ptr;
@@ -101,7 +101,7 @@ public:
   void go_to(cpp_idt &id)
   {
     assert(id.is_scope);
-    current_scope_ptr=(cpp_scopet *)&id;
+    current_scope_ptr=static_cast<cpp_scopet*>(&id);
   }
 
   // move up to next global scope
@@ -109,7 +109,7 @@ public:
   {
     current_scope_ptr=&get_global_scope();
   }
-  
+
   cpp_scopet &get_global_scope()
   {
     return current_scope().get_global_scope();
@@ -125,7 +125,7 @@ protected:
 class cpp_save_scopet
 {
 public:
-  cpp_save_scopet(cpp_scopest &_cpp_scopes):
+  explicit cpp_save_scopet(cpp_scopest &_cpp_scopes):
     cpp_scopes(_cpp_scopes),
     saved_scope(_cpp_scopes.current_scope_ptr)
   {
@@ -146,4 +146,4 @@ protected:
   cpp_scopet *saved_scope;
 };
 
-#endif
+#endif // CPROVER_CPP_CPP_SCOPES_H

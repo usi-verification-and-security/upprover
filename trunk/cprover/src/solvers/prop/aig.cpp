@@ -7,9 +7,8 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <cassert>
-#include <iostream>
-
-#include <util/i2string.h>
+#include <ostream>
+#include <string>
 
 #include "aig.h"
 
@@ -25,9 +24,9 @@ Function: aigt::label
 
 \*******************************************************************/
 
-std::string aigt::label(unsigned v) const
+std::string aigt::label(nodest::size_type v) const
 {
-  return "var("+i2string(v)+")";
+  return "var("+std::to_string(v)+")";
 }
 
 /*******************************************************************\
@@ -42,9 +41,9 @@ Function: aigt::dot_label
 
 \*******************************************************************/
 
-std::string aigt::dot_label(unsigned v) const
+std::string aigt::dot_label(nodest::size_type v) const
 {
-  return "var("+i2string(v)+")";
+  return "var("+std::to_string(v)+")";
 }
 
 /*******************************************************************\
@@ -61,7 +60,7 @@ Function: aigt::get_terminals
 
 void aigt::get_terminals(terminalst &terminals) const
 {
-  for(unsigned n=0; n<nodes.size(); n++)
+  for(nodest::size_type n=0; n<nodes.size(); n++)
     get_terminals_rec(n, terminals);
 }
 
@@ -78,30 +77,32 @@ Function: aigt::get_terminals_rec
 \*******************************************************************/
 
 const aigt::terminal_sett &aigt::get_terminals_rec(
-  unsigned n,
+  literalt::var_not n,
   terminalst &terminals) const
 {
   terminalst::iterator it=terminals.find(n);
-  
+
   if(it!=terminals.end())
     return it->second; // already done
-  
+
   assert(n<nodes.size());
   const aig_nodet &node=nodes[n];
-  
+
   terminal_sett &t=terminals[n];
 
   if(node.is_and())
   {
     if(!node.a.is_constant())
     {
-      const std::set<unsigned> &ta=get_terminals_rec(node.a.var_no(), terminals);
+      const std::set<literalt::var_not> &ta=
+        get_terminals_rec(node.a.var_no(), terminals);
       t.insert(ta.begin(), ta.end());
     }
 
     if(!node.b.is_constant())
     {
-      const std::set<unsigned> &tb=get_terminals_rec(node.b.var_no(), terminals);
+      const std::set<literalt::var_not> &tb=
+        get_terminals_rec(node.b.var_no(), terminals);
       t.insert(tb.begin(), tb.end());
     }
   }
@@ -109,7 +110,7 @@ const aigt::terminal_sett &aigt::get_terminals_rec(
   {
     t.insert(n);
   }
-    
+
   return t;
 }
 
@@ -126,7 +127,7 @@ Function: aigt::print
 \*******************************************************************/
 
 void aigt::print(
-  std::ostream& out,
+  std::ostream &out,
   literalt a) const
 {
   if(a==const_literal(false))
@@ -140,28 +141,31 @@ void aigt::print(
     return;
   }
 
-  unsigned node_nr=a.var_no();
+  literalt::var_not node_nr=a.var_no();
 
   {
     const aig_nodet &node=nodes[node_nr];
 
-    switch(node.type)
+    if(node.is_and())
     {
-    case aig_nodet::AND:
-      if(a.sign()) out << "!(";
+      if(a.sign())
+        out << "!(";
       print(out, node.a);
       out << " & ";
       print(out, node.b);
-      if(a.sign()) out << ")";
-      break;
-      
-    case aig_nodet::VAR:
-      if(a.sign()) out << "!";
-      out << label(node_nr);
-      break;
-      
-    default:
-      if(a.sign()) out << "!";
+      if(a.sign())
+        out << ")";
+    }
+    else if(node.is_var())
+    {
+      if(a.sign())
+        out << "!";
+      out << label(node_nr);\
+    }
+    else
+    {
+      if(a.sign())
+        out << "!";
       out << "unknown(" << node_nr << ")";
     }
   }
@@ -181,20 +185,20 @@ Function: aigt::output_dot_node
 
 void aigt::output_dot_node(
   std::ostream &out,
-  unsigned v) const
+  nodest::size_type v) const
 {
   const aig_nodet &node=nodes[v];
 
   if(node.is_and())
   {
-    out << v << " [label=\"" << v << "\"]" << std::endl;
+    out << v << " [label=\"" << v << "\"]" << "\n";
     output_dot_edge(out, v, node.a);
     output_dot_edge(out, v, node.b);
   }
   else // the node is a terminal
   {
     out << v << " [label=\"" << dot_label(v) << "\""
-        << ",shape=box]" << std::endl;
+        << ",shape=box]" << "\n";
   }
 }
 
@@ -211,8 +215,8 @@ Function: aigt::output_dot_edge
 \*******************************************************************/
 
 void aigt::output_dot_edge(
-  std::ostream& out,
-  unsigned v,
+  std::ostream &out,
+  nodest::size_type v,
   literalt l) const
 {
   if(l.is_true())
@@ -227,10 +231,11 @@ void aigt::output_dot_edge(
   else
   {
     out << l.var_no() << " -> " << v;
-    if(l.sign()) out << " [arrowhead=odiamond]";
+    if(l.sign())
+      out << " [arrowhead=odiamond]";
   }
 
-  out << std::endl;
+  out << "\n";
 }
 
 /*******************************************************************\
@@ -245,13 +250,13 @@ Function: aigt::output_dot
 
 \*******************************************************************/
 
-void aigt::output_dot(std::ostream& out) const
+void aigt::output_dot(std::ostream &out) const
 {
   // constant TRUE
-  out << "TRUE [label=\"TRUE\", shape=box]" << std::endl;
+  out << "TRUE [label=\"TRUE\", shape=box]" << "\n";
 
   // now the nodes
-  for(unsigned n=0; n<number_of_nodes(); n++)
+  for(nodest::size_type n=0; n<number_of_nodes(); n++)
     output_dot_node(out, n);
 }
 
@@ -269,13 +274,13 @@ Function: aigt::print
 
 void aigt::print(std::ostream &out) const
 {
-  for(unsigned n=0; n<number_of_nodes(); n++)
+  for(nodest::size_type n=0; n<number_of_nodes(); n++)
   {
     out << "n" << n << " = ";
     literalt l;
     l.set(n, false);
     print(out, l);
-    out << std::endl;
+    out << "\n";
   }
 }
 

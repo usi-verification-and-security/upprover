@@ -18,7 +18,6 @@
 #include <io.h>
 #endif
 
-#include <i2string.h>
 #include <std_expr.h>
 #include <arith_tools.h>
 #include <prefix.h>
@@ -27,8 +26,8 @@
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/goto_inline.h>
-#include <goto-programs/show_claims.h>
-#include <goto-programs/set_claims.h>
+#include <goto-programs/show_properties.h>
+#include <goto-programs/set_properties.h>
 #include <goto-programs/read_goto_binary.h>
 #include <goto-programs/interpreter.h>
 #include <goto-programs/string_abstraction.h>
@@ -43,7 +42,6 @@
 #include <langapi/mode.h>
 
 #include "check_claims.h"
-#include "upgrade_checker.h"
 #include "version.h"
 #include "parseoptions.h"
 
@@ -61,9 +59,10 @@
  \*******************************************************************/
 
 funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
-  parseoptions_baset(FUNFROG_OPTIONS, argc, argv),
+  parse_options_baset(FUNFROG_OPTIONS, argc, argv),
   xml_interfacet(cmdline),
-  language_uit("FUNFROG" FUNFROG_VERSION, cmdline)
+  //language_uit((std::string("FUNFROG") + FUNFROG_VERSION), cmdline)      
+  language_uit(cmdline, *(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
 {
 }
 
@@ -78,21 +77,22 @@ bool funfrog_parseoptionst::process_goto_program(
       string_instrumentation(
         symbol_table, get_message_handler(), goto_functions);
 
-    status("Function Pointer Removal");
-    remove_function_pointers(symbol_table, goto_functions,
+    cbmc_status_interface("Function Pointer Removal");
+    remove_function_pointers(get_message_handler(),
+      symbol_table, goto_functions,
       cmdline.isset("pointer-check"));
 
-    status("Partial Inlining");
+    cbmc_status_interface("Partial Inlining");
     // do partial inlining
     goto_partial_inline(goto_functions, ns, ui_message_handler);
 
-    status("Generic Property Instrumentation");
+    cbmc_status_interface("Generic Property Instrumentation");
     // add generic checks
     goto_check(ns, options, goto_functions);
 
     if(cmdline.isset("string-abstraction"))
     {
-      status("String Abstraction");
+      cbmc_status_interface("String Abstraction");
       string_abstraction(symbol_table,
         get_message_handler(), goto_functions);
     }
@@ -110,13 +110,13 @@ bool funfrog_parseoptionst::process_goto_program(
 
   catch(const char *e)
   {
-    error(e);
+    cbmc_error_interface(e);
     return true;
   }
 
   catch(const std::string e)
   {
-    error(e);
+    cbmc_error_interface(e);
     return true;
   }
 
@@ -127,7 +127,7 @@ bool funfrog_parseoptionst::process_goto_program(
 
   catch(std::bad_alloc)
   {
-    error("Out of memory");
+    cbmc_error_interface("Out of memory");
     return true;
   }
 
@@ -142,7 +142,7 @@ bool funfrog_parseoptionst::get_goto_program(
 {
   if(cmdline.args.size()==0)
   {
-    error("Please provide a program to verify");
+    cbmc_error_interface("Please provide a program to verify");
     return true;
   }
 
@@ -151,17 +151,17 @@ bool funfrog_parseoptionst::get_goto_program(
     if(cmdline.args.size()==1 &&
        is_goto_binary(filename))
     {
-      status("Reading GOTO program from file");
+      cbmc_status_interface("Reading GOTO program from file");
 
       if(read_goto_binary(filename,
            symbol_table, goto_functions, get_message_handler()))
         return true;
 
-      config.ansi_c.set_from_symbol_table(symbol_table);
+      config.set_from_symbol_table(symbol_table);
 
-      if(symbol_table.symbols.find(ID_main)==symbol_table.symbols.end())
+      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
       {
-        error("The goto binary has no entry point; please complete linking");
+        cbmc_error_interface("The goto binary has no entry point; please complete linking");
         return true;
       }
     }
@@ -174,13 +174,13 @@ bool funfrog_parseoptionst::get_goto_program(
       // we no longer need any parse trees or language files
       clear_parse();
 
-      if(symbol_table.symbols.find(ID_main)==symbol_table.symbols.end())
+      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
       {
-        error("No entry point; please provide a main function");
+        cbmc_error_interface("No entry point; please provide a main function");
         return true;
       }
 
-      status("Generating GOTO Program");
+      cbmc_status_interface("Generating GOTO Program");
 
       goto_convert(symbol_table, goto_functions, ui_message_handler);
 
@@ -196,13 +196,13 @@ bool funfrog_parseoptionst::get_goto_program(
 
   catch(const char *e)
   {
-    error(e);
+    cbmc_error_interface(e);
     return true;
   }
 
   catch(const std::string e)
   {
-    error(e);
+    cbmc_error_interface(e);
     return true;
   }
 
@@ -213,7 +213,7 @@ bool funfrog_parseoptionst::get_goto_program(
 
   catch(std::bad_alloc)
   {
-    error("Out of memory");
+    cbmc_error_interface("Out of memory");
     return true;
   }
 
@@ -233,11 +233,11 @@ bool funfrog_parseoptionst::get_goto_program(
 
 int funfrog_parseoptionst::doit()
 {
-  if (config.set(cmdline))
-  {
-    usage_error();
-    exit(1);
-  }
+	  if (config.set(cmdline))
+	  {
+	    usage_error();
+	    exit(1);
+	  }
 
   if(cmdline.isset("version"))
   {
@@ -254,33 +254,34 @@ int funfrog_parseoptionst::doit()
   int verbosity=6;
   if(cmdline.isset("v"))
   {
-    verbosity=atoi(cmdline.getval("v"));
-    set_verbosity(verbosity);
+    verbosity=atoi(cmdline.get_value("v").c_str());
+    //set_verbosity(verbosity);
+    ui_message_handler.set_verbosity(verbosity);
   }
 
   if(cmdline.args.size()==0)
   {
-    error("Please provide an input file.");
+    cbmc_error_interface("Please provide an input file.");
     return 1;
   }
   else if (cmdline.args.size()>1)
   {
-    error("Multiple input files not supported.");
+    cbmc_error_interface("Multiple input files not supported.");
     return 1;
   }
 
   std::ifstream infile(cmdline.args[0].c_str());
   if (!infile)
   {
-    error(std::string("Error opening file `")+cmdline.args[0]+"'.");
+    cbmc_error_interface(std::string("Error opening file `")+cmdline.args[0]+"'.");
     return 1;
   }
 
   goto_functionst goto_functions;
   namespacet ns(symbol_table);
-  fine_timet before, after;
+  absolute_timet before, after;
 
-  status(std::string("Loading `")+cmdline.args[0]+"' ...");
+  cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
   before=current_time();
   
   if(get_goto_program(cmdline.args[0], ns, options, goto_functions))
@@ -290,7 +291,7 @@ int funfrog_parseoptionst::doit()
   status() << "    LOAD Time: " << (after-before) << " sec." << eom;
 
 
-  label_claims(goto_functions);
+  label_properties(goto_functions);
 
   if (cmdline.isset("show-symbol-table"))
   {
@@ -305,14 +306,14 @@ int funfrog_parseoptionst::doit()
   }
 
 //  if (cmdline.isset("reduce-proof-graph") && cmdline.isset("reduce-proof-time")){
-//    status("Please set either ratio or time for reduction or number of proof traversals.");
+//    cbmc_status_interface("Please set either ratio or time for reduction or number of proof traversals.");
 //    return false;
 //  }
 
   if(check_function_summarization(ns, goto_functions))
     return 1;
 
-  status("#X: Done.");
+  cbmc_status_interface("#X: Done.");
 
   return 0;
 }
@@ -332,7 +333,7 @@ int funfrog_parseoptionst::doit()
 void funfrog_parseoptionst::help()
 {
   std::cout <<"\n"
-    "* * *                HiFrog (Propositional) " << HIFROG_VERSION
+    "* * *                HiFrog " << HIFROG_VERSION
 //    " - Copyright (C) 2016                    * * *\n"
 //    "          Ondrej Sery, Grigory Fedyukovich & Natasha Sharygina\n\n"
 //    "                based on FUNFROG " << FUNFROG_VERSION
@@ -359,21 +360,66 @@ void funfrog_parseoptionst::help()
 //  "--nan-check                    check floating-point for NaN\n"
   "--claim <int>                  check a specific claim\n"
   "--all-claims                   check all claims in one run\n"
+  "--claims-opt <steps>           remove weaker claims using the given treshold\n"
+  "                               (treshold = number of SSA steps)\n"
+  "                               and check stronger claims at once\n"
   "--unwind <bound>               loop unwind bound\n"
+  "--type-constraints             LRA's basic constraints on numerical data type\n"
+  "                                 0 for no additional constraints,\n"
+  "                                 1 for type constraints on non-deterministic input\n"
+  "                                 2 for type constraints on variables\n"
   "--no-slicing                   no slicing of the SSA program form (slower\n"
   "                               computation, more dependable result)\n"
   "--no-assert-grouping           do not group checks for the same assertion\n"
   "                               with different call stack\n"
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
-  "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
+  "--no-error-trace               disable the counter example's print once a real bug found\n"
+  "--no-itp                       do not construct summaries (just report SAFE/BUG)\n\n"
+  "\nSMT, Interpolation and Proof Reduction options:\n"
+  "--theoref                      use experimental Theory Refining algorithm\n"
+  "--force                        force refining CUF to BV without counterexamples\n"
+  "--custom <n1,n2,..>            program statement ids to be refined (without counterexamples)\n"
+  "--bitwidth <n>                 bitwidth for the CUF BV mode\n\n"
+  "--logic <logic>                [qfuf, qfcuf, qflra, prop] if not present qfuf is used\n"
   "--itp-algorithm                propositional interpolation algorithm: \n"
   "                                 0 for McMillan_s,\n"
   "                                 1 for Pudlak,\n"
   "                                 2 for McMillan_w\n"
-  "--reduce-proof                 enables Proof Reduction\n"
+  "--itp-uf-algorithm             EUF interpolation algorithm:\n"
+  "                                 0 for Strong,\n"
+  "                                 2 for Weak,\n"
+  "                                 3 for Random\n"
+  "--itp-lra-algorithm            LRA interpolation algorithm:\n"
+  "                                 0 for Strong,\n"
+  "                                 2 for Weak\n"
+  "                                 3 for custom factor.\n"
+  "--itp-lra-factor               LRA interpolation strength factor:\n"
+  "                               must be a fraction in the interval [0,1)\n"
+  "--reduce-proof                 enable Proof Reduction\n"
   "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
   "--reduce-proof-loops           number of reduction iterations\n"
+  "--list-templates               dump the templates of the functions for user-defined summaries\n"
+  "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n"
+//  "\nRefinement options:\n"
+//  "--refine-mode <mode>:\n"
+//  "  0 | \"force-inlining\"         inline every function call\n"
+//  "                               after an unsuccessful attempt\n"
+//  "                               of summary substitution\n"
+//  "  1 | \"random-substitution\"    try to randomly choose function calls\n"
+//  "                               to be inlined\n"
+//  "  2 | \"slicing-result\"         try to choose function calls to be inlined\n"
+//  "                               based on slicing results\n"
+//  "\nOptions of first refinement iteration:\n"
+//  "--init-mode <mode>\n"
+//  "  0 | \"havoc-all\"              start with nondeterministic assignments\n"
+//  "                               for all function calls\n"
+//  "  1 | \"use-summaries\"          start with substituting all existent summaries\n"
+//  "                               for all function calls\n"
+//  "                               is being disabled by \"force-inlining\"\n"
+//  "\nI/O options:\n"
+//  "--xml-ui                       use XML-formatted output\n"
+//  "--xml-interface                stdio-XML interface\n"
   "\n";
 }
 
@@ -432,96 +478,62 @@ bool funfrog_parseoptionst::check_function_summarization(
   claim_numberst claim_numbers;
 
   
-  status("Checking claims in program...");
+  cbmc_status_interface("Checking claims in program...");
 
   unsigned claim_nr=0;
 
   get_claims(goto_functions, claim_map, claim_numbers);
 
-  if(cmdline.isset("show-claims"))
+  if(cmdline.isset("show-claims")|| // will go away
+	 cmdline.isset("show-properties")) // use this one
   {
-    show_claims(ns, claim_map, claim_numbers, get_ui());
-    return 0;
+	  const namespacet ns(symbol_table);
+	  show_properties(ns, get_ui(), goto_functions);
+	  return 0;
+	  // Old code - KE
+      //show_claims(ns, claim_map, claim_numbers, get_ui());
+      //return 0;
   }
-
-  bool init_upg_check = cmdline.isset("init-upgrade-check");
-  bool upg_check = cmdline.isset("do-upgrade-check");
-
-  if (upg_check || init_upg_check){
-    // a bit of hack
-    options.set_option("no-slicing", true);
-
-    // perform the upgrade check (or preparation to it)
-    if(cmdline.isset("testclaim") || cmdline.isset("claim") ||
-        cmdline.isset("claimset") || cmdline.isset("no-itp"))
-    {
-      error("Upgrade checking mode does not allow checking specific claims and needs interpolation");
-      return 1;
-    }
-
-    bool init_ready = true; // the checks of existence of __omega and upg. version will be later
-    if (init_upg_check){
-      init_ready = check_initial(ns, goto_functions.function_map[ID_main].body,
-              goto_functions, options, ui_message_handler, !cmdline.isset("no-progress"));
-    }
-
-    if (upg_check && init_ready){
-      goto_functionst goto_functions_new;
-      status(std::string("Loading an upgrade: `")+cmdline.getval("do-upgrade-check")+"' ...");
-      before=current_time();
-
-      if(get_goto_program(cmdline.getval("do-upgrade-check"), ns, options, goto_functions_new))
-        return 6;
-
-      after=current_time();
-      status() << "    LOAD Time: " << (after-before) << " sec." << eom;
-      check_upgrade(ns,
-              // OLD!
-              goto_functions.function_map[ID_main].body, goto_functions,
-              // NEW!
-              goto_functions_new.function_map[ID_main].body, goto_functions_new,
-              options, ui_message_handler, !cmdline.isset("no-progress"));
-    }
-  } else {
     // perform standalone check (all the functionality remains the same)
   
     if(cmdline.isset("claim") &&
         (cmdline.isset("all-claims") || cmdline.isset("claimset") || cmdline.isset("claims-order"))) {
-      error("A specific claim cannot be specified if any other claim specification is set.");
+      cbmc_error_interface("A specific claim cannot be specified if any other claim specification is set.");
       return 1;
     }
 
     if(cmdline.isset("all-claims") &&
         (cmdline.isset("claimset") || cmdline.isset("claims-order"))) {
-      error("All claims cannot be specified if any other claim specification is set.");
+      cbmc_error_interface("All claims cannot be specified if any other claim specification is set.");
       return 1;
     }
 
     if(cmdline.isset("claimset") && cmdline.isset("claims-order")) {
-      error("A specific claimset cannot be specified if any other claim specification is set.");
+      cbmc_error_interface("A specific claimset cannot be specified if any other claim specification is set.");
       return 1;
     }
     else if(cmdline.isset("claim")) {
-      claim_nr=atoi(cmdline.getval("claim"));
+      claim_nr=atoi(cmdline.get_value("claim").c_str());
       if (claim_nr == 0 || claim_nr > claim_numbers.size()) {
-        error("Testclaim not found.");
+    	cbmc_error_interface("Testclaim not found.");
         return 1;
       }
     }
 
-    if (cmdline.isset("claims-order"))
+    if (cmdline.isset("claims-opt"))
       store_claims(ns, claim_map, claim_numbers);
 
+    // ID_main is the entry point that is now changed to be ID__start
+    // KE: or is it goto_functionst::entry_point()?
+    // So instead of c::main we have now _start (cbmc 5.5)
     check_claims(ns,
-                                      goto_functions.function_map[ID_main].body,
+                                      goto_functions.function_map[goto_functionst::entry_point()].body,
                                       goto_functions,
                                       claim_map,
                                       claim_numbers,
                                       options,
                                       ui_message_handler,
                                       claim_nr);
-  }
-
   return 0;
 }
 
@@ -546,7 +558,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("unsigned-overflow-check", cmdline.isset("overflow-check"));
   options.set_option("nan-check", cmdline.isset("nan-check"));
   options.set_option("string-abstraction", cmdline.isset("string-abstraction"));
-  options.set_option("assertions", cmdline.isset("assertions"));
   options.set_option("all-claims", cmdline.isset("all-claims"));
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
@@ -554,8 +565,20 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
-  options.set_option("init-upgrade-check", cmdline.isset("init-upgrade-check"));
   options.set_option("check-itp", cmdline.isset("check-itp"));
+  options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
+  options.set_option("list-templates", cmdline.isset("list-templates"));
+  options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
+  options.set_option("theoref", cmdline.isset("theoref"));
+  options.set_option("force", cmdline.isset("force"));
+  options.set_option("custom", cmdline.get_value("custom"));
+  if (cmdline.isset("bitwidth")) {
+    options.set_option("bitwidth", cmdline.get_value("bitwidth"));
+  } else {
+    options.set_option("bitwidth", 8);
+  }
+  if (cmdline.isset("dump-query"))
+      options.set_option("dump-query", true);
 
   // always check assertions
   options.set_option("assertions", true);
@@ -563,80 +586,109 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   // always use assumptions
   options.set_option("assumptions", true);
 
-  if (cmdline.isset("itp-algorithm")) {
-    options.set_option("itp-algorithm", cmdline.getval("itp-algorithm"));
+  // Use basic check as defualt
+  options.set_option("type-constraints", 1);
+
+  if(cmdline.isset("logic")) {
+//    options.set_option("logic", cmdline.getval("logic"));
+    options.set_option("logic", cmdline.get_value("logic"));
+  } else { // Set to qfuf - defualt
+    options.set_option("logic", "qfuf"); 
+  }
+  
+  if (cmdline.isset("check-itp")) {
+//    options.set_option("check-itp", cmdline.getval("check-itp"));
+    options.set_option("check-itp", cmdline.get_value("check-itp"));
+  }
+  if (cmdline.isset("itp-algorithm")) { // In Help Menu
+    options.set_option("itp-algorithm", cmdline.get_value("itp-algorithm"));
   }
 
-  if (cmdline.isset("part-itp")) {
-    options.set_option("part-itp", cmdline.getval("part-itp"));
+  if (cmdline.isset("itp-uf-algorithm")) { // In Help Menu
+    options.set_option("itp-uf-algorithm", cmdline.get_value("itp-uf-algorithm"));
   }
-  if (cmdline.isset("proof-trans")) {
-    options.set_option("proof-trans", cmdline.getval("proof-trans"));
+
+  if (cmdline.isset("itp-lra-algorithm")) { // In Help Menu
+    options.set_option("itp-lra-algorithm", cmdline.get_value("itp-lra-algorithm"));
   }
+  if (cmdline.isset("itp-lra-factor")) { // In Help Menu
+    options.set_option("itp-lra-factor", cmdline.get_value("itp-lra-factor"));
+  }
+  //if (cmdline.isset("part-itp")) {
+  //  options.set_option("part-itp", cmdline.get_value("part-itp"));
+  //}
+  //if (cmdline.isset("proof-trans")) {
+  //  options.set_option("proof-trans", cmdline.get_value("proof-trans"));
+  //}
   if (cmdline.isset("unwind")) {
-    options.set_option("unwind", cmdline.getval("unwind"));
+    options.set_option("unwind", cmdline.get_value("unwind"));
+  } else { // Set to max - KE: find a better way to do so
+    options.set_option("unwind", "4294967295"); 
   }
-  if (cmdline.isset("unwindset")) {
-    options.set_option("unwindset", cmdline.getval("unwindset"));
+  //if (cmdline.isset("unwindset")) {
+  //  options.set_option("unwindset", cmdline.get_value("unwindset"));
+  //}
+  if (cmdline.isset("type-constraints")) { // In Help Menu
+    options.set_option("type-constraints", cmdline.get_value("type-constraints"));
   }
   if (cmdline.isset("claimset")) {
-    options.set_option("claimset", cmdline.getval("claimset"));
+    options.set_option("claimset", cmdline.get_value("claimset"));
   }
-  if (cmdline.isset("claims-order")) {
-    options.set_option("claims-order", cmdline.getval("claims-order"));
+  if (cmdline.isset("claims-opt")) { // In Help Menu
+    options.set_option("claims-opt", cmdline.get_value("claims-opt"));
   }
-  if (cmdline.isset("do-upgrade-check")) {
-    options.set_option("do-upgrade-check", cmdline.getval("do-upgrade-check"));
-  }
+  //if (cmdline.isset("do-upgrade-check")) { // KE: not working
+  //  options.set_option("do-upgrade-check", cmdline.get_value("do-upgrade-check"));
+  //}
   if (cmdline.isset("save-summaries")) {
-    options.set_option("save-summaries", cmdline.getval("save-summaries"));
+    options.set_option("save-summaries", cmdline.get_value("save-summaries"));
   } else {
     options.set_option("save-summaries", "__summaries");
   }
   if (cmdline.isset("save-omega")) {
-    options.set_option("save-omega", cmdline.getval("save-omega"));
+    options.set_option("save-omega", cmdline.get_value("save-omega"));
   } else {
     options.set_option("save-omega", "__omega");
   }
   if (cmdline.isset("load-summaries")) {
-    options.set_option("load-summaries", cmdline.getval("load-summaries"));
+    options.set_option("load-summaries", cmdline.get_value("load-summaries"));
   } else {
     options.set_option("load-summaries", "__summaries");
   }
   if (cmdline.isset("load-omega")) {
-    options.set_option("load-omega", cmdline.getval("load-omega"));
+    options.set_option("load-omega", cmdline.get_value("load-omega"));
   } else {
     options.set_option("load-omega", "__omega");
   }
   if (cmdline.isset("save-change-impact")) {
-    options.set_option("save-change-impact", cmdline.getval("save-change-impact"));
+    options.set_option("save-change-impact", cmdline.get_value("save-change-impact"));
   } else {
     options.set_option("save-change-impact", "__calltree.xml");
   }
-  if (cmdline.isset("reduce-proof-time")) {
-    options.set_option("reduce-proof-time", cmdline.getval("reduce-proof-time"));
+  //if (cmdline.isset("reduce-proof-time")) {
+  //  options.set_option("reduce-proof-time", cmdline.get_value("reduce-proof-time"));
+//  }
+  if (cmdline.isset("reduce-proof-graph")) { // In Help Menu
+    options.set_option("reduce-proof-graph", cmdline.get_value("reduce-proof-graph"));
   }
-  if (cmdline.isset("reduce-proof-graph")) {
-    options.set_option("reduce-proof-graph", cmdline.getval("reduce-proof-graph"));
-  }
-  if (cmdline.isset("reduce-proof-loops")) {
-    options.set_option("reduce-proof-loops", cmdline.getval("reduce-proof-loops"));
+  if (cmdline.isset("reduce-proof-loops")) { // In Help Menu
+    options.set_option("reduce-proof-loops", cmdline.get_value("reduce-proof-loops"));
   }
   if (cmdline.isset("random-seed")) {
-    options.set_option("random-seed", cmdline.getval("random-seed"));
+    options.set_option("random-seed", cmdline.get_value("random-seed"));
   }
   if (cmdline.isset("color-proof")) {
-    options.set_option("color-proof", cmdline.getval("color-proof"));
+    options.set_option("color-proof", cmdline.get_value("color-proof"));
   } else {
     options.set_option("color-proof", "-1");
   }
   if (cmdline.isset("verbose-solver")) {
-    options.set_option("verbose-solver", cmdline.getval("verbose-solver"));
+    options.set_option("verbose-solver", cmdline.get_value("verbose-solver"));
   }
-  if (cmdline.isset("refine-mode")) {
-    options.set_option("refine-mode", cmdline.getval("refine-mode"));
-  }
-  if (cmdline.isset("init-mode")) {
-    options.set_option("init-mode", cmdline.getval("init-mode"));
-  }
+  //if (cmdline.isset("refine-mode")) {
+  //  options.set_option("refine-mode", cmdline.get_value("refine-mode"));
+  //}
+  //if (cmdline.isset("init-mode")) {
+  //  options.set_option("init-mode", cmdline.get_value("init-mode"));
+  //}
 }

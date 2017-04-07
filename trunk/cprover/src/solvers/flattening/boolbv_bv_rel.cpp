@@ -41,13 +41,12 @@ literalt boolbvt::convert_bv_rel(const exprt &expr)
     bvtypet bvtype0=get_bvtype(op0.type());
     bvtypet bvtype1=get_bvtype(op1.type());
 
-    if(bv0.size()==bv1.size() && bv0.size()!=0 &&
+    if(bv0.size()==bv1.size() && !bv0.empty() &&
        bvtype0==bvtype1)
     {
       if(bvtype0==IS_FLOAT)
       {
-        float_utilst float_utils(prop);
-        float_utils.spec=to_floatbv_type(op0.type());
+        float_utilst float_utils(prop, to_floatbv_type(op0.type()));
 
         if(rel==ID_le)
           return float_utils.relation(bv0, float_utilst::LE, bv1);
@@ -67,19 +66,17 @@ literalt boolbvt::convert_bv_rel(const exprt &expr)
                bvtype0==IS_FIXED)
       {
         literalt literal;
-        bool or_equal=(rel==ID_le || rel==ID_ge);
 
         bv_utilst::representationt rep=
           ((bvtype0==IS_SIGNED) || (bvtype0==IS_FIXED))?bv_utilst::SIGNED:
                                                         bv_utilst::UNSIGNED;
 
-        if(rel==ID_le || rel==ID_lt)
-          literal=bv_utils.lt_or_le(or_equal, bv0, bv1, rep);
-        else if(rel==ID_ge || rel==ID_gt)
-          literal=bv_utils.lt_or_le(or_equal, bv1, bv0, rep);
-                                              // swapped
-        else
-          return SUB::convert_rest(expr);
+        #if 1
+
+        return bv_utils.rel(bv0, expr.id(), bv1, rep);
+
+        #else
+        literalt literal=bv_utils.rel(bv0, expr.id(), bv1, rep);
 
         if(prop.has_set_to())
         {
@@ -91,15 +88,36 @@ literalt boolbvt::convert_bv_rel(const exprt &expr)
             if(or_equal)
               prop.l_set_to_true(prop.limplies(equal_lit, literal));
             else
-              prop.l_set_to_true(prop.limplies(equal_lit, prop.lnot(literal)));
-          }          
+              prop.l_set_to_true(prop.limplies(equal_lit, !literal));
+          }
         }
- 
+
         return literal;
+        #endif
+      }
+      else if((bvtype0==IS_VERILOG_SIGNED ||
+               bvtype0==IS_VERILOG_UNSIGNED) &&
+              op0.type()==op1.type())
+      {
+        // extract number bits
+        bvt extract0, extract1;
+
+        extract0.resize(bv0.size()/2);
+        extract1.resize(bv1.size()/2);
+
+        for(std::size_t i=0; i<extract0.size(); i++)
+          extract0[i]=bv0[i*2];
+
+        for(std::size_t i=0; i<extract1.size(); i++)
+          extract1[i]=bv1[i*2];
+
+        bv_utilst::representationt rep=bv_utilst::UNSIGNED;
+
+        // now compare
+        return bv_utils.rel(extract0, expr.id(), extract1, rep);
       }
     }
   }
 
   return SUB::convert_rest(expr);
 }
-

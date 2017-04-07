@@ -1,6 +1,0 @@
-2P_Joints_TG3_e.c	347	assert( vPeak != x2 );
-P2P_Joints_TG3_e.c	351	assert( totalTime >= 0 );
-P2P_Joints_TG3_e.c	351	assert( jl[0] >= jp[0].v );
-P2P_Joints_TG3_e.c	381	assert( newV != totalTime );
-P2P_Joints_TG3_e.c	385	assert( x >= 0 );
-P2P_Joints_TG3_e.c	434	assert( num != v0 );

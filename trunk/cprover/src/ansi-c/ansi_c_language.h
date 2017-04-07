@@ -6,8 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#ifndef CPROVER_ANSI_C_LANGUAGE_H
-#define CPROVER_ANSI_C_LANGUAGE_H
+#ifndef CPROVER_ANSI_C_ANSI_C_LANGUAGE_H
+#define CPROVER_ANSI_C_ANSI_C_LANGUAGE_H
 
 /*! \defgroup gr_ansi_c ANSI-C front-end */
 
@@ -21,62 +21,62 @@ Author: Daniel Kroening, kroening@kroening.com
 class ansi_c_languaget:public languaget
 {
 public:
-  virtual bool preprocess(
+  bool preprocess(
     std::istream &instream,
     const std::string &path,
-    std::ostream &outstream,
-    message_handlert &message_handler);
+    std::ostream &outstream) override;
 
-  virtual bool parse(
+  bool parse(
     std::istream &instream,
-    const std::string &path,
-    message_handlert &message_handler);
-             
-  virtual bool typecheck(
-    symbol_tablet &symbol_table,
-    const std::string &module,
-    message_handlert &message_handler);
+    const std::string &path) override;
 
-  virtual bool final(
+  bool typecheck(
     symbol_tablet &symbol_table,
-    message_handlert &message_handler);
+    const std::string &module) override;
 
-  virtual void show_parse(std::ostream &out);
-  
-  virtual ~ansi_c_languaget();
+  bool final(
+    symbol_tablet &symbol_table) override;
+
+  void show_parse(std::ostream &out) override;
+
+  ~ansi_c_languaget() override;
   ansi_c_languaget() { }
-  
-  virtual bool from_expr(
+
+  bool from_expr(
     const exprt &expr,
     std::string &code,
-    const namespacet &ns);
+    const namespacet &ns) override;
 
-  virtual bool from_type(
+  bool from_type(
     const typet &type,
     std::string &code,
-    const namespacet &ns);
+    const namespacet &ns) override;
 
-  virtual bool to_expr(
+  bool type_to_name(
+    const typet &type,
+    std::string &name,
+    const namespacet &ns) override;
+
+  bool to_expr(
     const std::string &code,
     const std::string &module,
     exprt &expr,
-    message_handlert &message_handler,
-    const namespacet &ns);
-                       
-  virtual languaget *new_language()
-  { return new ansi_c_languaget; }
-   
-  virtual std::string id() const { return "C"; }
-  virtual std::string description() const { return "ANSI-C 99"; }
-  virtual std::set<std::string> extensions() const;
+    const namespacet &ns) override;
 
-  virtual void modules_provided(std::set<std::string> &modules);  
-  
+  languaget *new_language() override
+  { return new ansi_c_languaget; }
+
+  std::string id() const override { return "C"; }
+  std::string description() const override { return "ANSI-C 99"; }
+  std::set<std::string> extensions() const override;
+
+  void modules_provided(std::set<std::string> &modules) override;
+
 protected:
   ansi_c_parse_treet parse_tree;
   std::string parse_path;
 };
- 
+
 languaget *new_ansi_c_language();
- 
-#endif
+
+#endif // CPROVER_ANSI_C_ANSI_C_LANGUAGE_H

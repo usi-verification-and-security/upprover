@@ -11,8 +11,12 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include <util/std_types.h>
 #include <util/std_expr.h>
 #include <util/symbol.h>
-#include <util/hash_cont.h>
+#include <util/lispirep.h>
+#include <util/lispexpr.h>
+#include <util/namespace.h>
 
+#include <ansi-c/c_misc.h>
+#include <ansi-c/c_qualifiers.h>
 #include <ansi-c/expr2c_class.h>
 
 #include "expr2cpp.h"
@@ -20,35 +24,36 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 class expr2cppt:public expr2ct
 {
 public:
-  expr2cppt(const namespacet &_ns):expr2ct(_ns) { }
+  explicit expr2cppt(const namespacet &_ns):expr2ct(_ns) { }
 
-  virtual std::string convert(const exprt &src)
+  std::string convert(const exprt &src) override
   {
     return expr2ct::convert(src);
   }
 
-  virtual std::string convert(const typet &src)
+  std::string convert(const typet &src) override
   {
     return expr2ct::convert(src);
   }
 
 protected:
-  virtual std::string convert(const exprt &src, unsigned &precedence);
-  virtual std::string convert_cpp_this(const exprt &src, unsigned precedence);
-  virtual std::string convert_cpp_new(const exprt &src, unsigned precedence);
-  virtual std::string convert_extractbit(const exprt &src, unsigned precedence);
-  virtual std::string convert_extractbits(const exprt &src, unsigned precedence);
-  virtual std::string convert_code_cpp_delete(const exprt &src, unsigned precedence);
-  virtual std::string convert_struct(const exprt &src, unsigned &precedence);
-  virtual std::string convert_code(const codet &src, unsigned indent);
-  virtual std::string convert_constant(const exprt &src, unsigned &precedence);
+  std::string convert(const exprt &src, unsigned &precedence) override;
+  std::string convert_cpp_this(const exprt &src, unsigned precedence);
+  std::string convert_cpp_new(const exprt &src, unsigned precedence);
+  std::string convert_extractbit(const exprt &src, unsigned precedence);
+  std::string convert_extractbits(const exprt &src, unsigned precedence);
+  std::string convert_code_cpp_delete(const exprt &src, unsigned precedence);
+  std::string convert_struct(const exprt &src, unsigned &precedence) override;
+  std::string convert_code(const codet &src, unsigned indent) override;
+  // NOLINTNEXTLINE(whitespace/line_length)
+  std::string convert_constant(const constant_exprt &src, unsigned &precedence) override;
 
-  virtual std::string convert_rec(
+  std::string convert_rec(
     const typet &src,
     const c_qualifierst &qualifiers,
-    const std::string &declarator);
+    const std::string &declarator) override;
 
-  typedef hash_set_cont<std::string, string_hash> id_sett;
+  typedef std::unordered_set<std::string, string_hash> id_sett;
 };
 
 /*******************************************************************\
@@ -84,7 +89,7 @@ std::string expr2cppt::convert_struct(
   exprt::operandst::const_iterator o_it=src.operands().begin();
 
   bool first=true;
-  unsigned last_size=0;
+  size_t last_size=0;
 
   for(struct_typet::componentst::const_iterator
       c_it=components.begin();
@@ -113,9 +118,9 @@ std::string expr2cppt::convert_struct(
       }
 
       dest+=sep;
-      dest+=".";
+      dest+='.';
       dest+=c_it->get_string(ID_pretty_name);
-      dest+="=";
+      dest+='=';
       dest+=tmp;
     }
 
@@ -140,7 +145,7 @@ Function: expr2cppt::convert_constant
 \*******************************************************************/
 
 std::string expr2cppt::convert_constant(
-  const exprt &src,
+  const constant_exprt &src,
   unsigned &precedence)
 {
   if(src.type().id()==ID_bool)
@@ -174,10 +179,10 @@ std::string expr2cppt::convert_rec(
 {
   c_qualifierst new_qualifiers(qualifiers);
   new_qualifiers.read(src);
-  
+
   const std::string d=
     declarator==""?declarator:(" "+declarator);
-    
+
   const std::string q=
     new_qualifiers.as_string();
 
@@ -239,7 +244,7 @@ std::string expr2cppt::convert_rec(
        symbol.type.id()==ID_incomplete_struct)
     {
       std::string dest=q;
-      
+
       if(symbol.type.get_bool(ID_C_class))
         dest+="class";
       else if(symbol.type.get_bool(ID_C_interface))
@@ -306,7 +311,8 @@ std::string expr2cppt::convert_rec(
 
     forall_irep(it, arguments)
     {
-      if(it!=arguments.begin()) dest+=", ";
+      if(it!=arguments.begin())
+        dest+=", ";
 
       const exprt &argument=(const exprt &)*it;
 
@@ -318,11 +324,19 @@ std::string expr2cppt::convert_rec(
       else if(argument.id()==ID_type)
         dest+=convert(argument.type());
       else
-        dest+=argument.to_string();
+      {
+        lispexprt lisp;
+        irep2lisp(argument, lisp);
+        dest+="irep(\""+MetaString(lisp.expr2string())+"\")";
+      }
     }
 
     dest+="> "+convert(src.subtype());
     return dest;
+  }
+  else if(src.id()==ID_pointer && src.subtype().id()==ID_nullptr)
+  {
+    return "std::nullptr_t";
   }
   else if(src.id()==ID_pointer &&
           src.find("to-member").is_not_nil())
@@ -331,24 +345,27 @@ std::string expr2cppt::convert_rec(
     typet member;
     member.swap(tmp.add("to-member"));
 
-    std::string dest = "(" + convert_rec(member, c_qualifierst(), "") + ":: *)";
+    std::string dest="("+convert_rec(member, c_qualifierst(), "")+":: *)";
 
     if(src.subtype().id()==ID_code)
     {
-      const code_typet& code_type = to_code_type(src.subtype());
-      const typet& return_type = code_type.return_type();
-      dest = convert_rec(return_type, c_qualifierst(), "") +" " + dest;
+      const code_typet &code_type = to_code_type(src.subtype());
+      const typet &return_type = code_type.return_type();
+      dest=convert_rec(return_type, c_qualifierst(), "")+" "+dest;
 
-      const code_typet::argumentst &args = code_type.arguments();
-      dest += "(";
+      const code_typet::parameterst &args = code_type.parameters();
+      dest+="(";
 
-      if(args.size() > 0)
-        dest+=convert_rec(args[0].type(), c_qualifierst(), "");
+      for(code_typet::parameterst::const_iterator it=args.begin();
+          it!=args.end();
+          ++it)
+      {
+        if(it!=args.begin())
+          dest+=", ";
+        dest+=convert_rec(it->type(), c_qualifierst(), "");
+      }
 
-      for(unsigned i = 1; i < args.size();i++)
-        dest += ", " +convert_rec(args[i].type(), c_qualifierst(), "");
-
-      dest += ")";
+      dest+=")";
       dest+=d;
     }
     else
@@ -356,7 +373,8 @@ std::string expr2cppt::convert_rec(
 
     return dest;
   }
-  else if(src.id()==ID_verilogbv)
+  else if(src.id()==ID_verilog_signedbv ||
+          src.id()==ID_verilog_unsignedbv)
     return "sc_lv["+id2string(src.get(ID_width))+"]"+d;
   else if(src.id()==ID_unassigned)
     return "?";
@@ -366,35 +384,47 @@ std::string expr2cppt::convert_rec(
 
     // C doesn't really have syntax for function types,
     // so we use C++11 trailing return types!
-  
-    std::string dest="auto ";
 
-    dest+="(";
-    const code_typet::argumentst &arguments=code_type.arguments();
+    std::string dest="auto";
 
-    for(code_typet::argumentst::const_iterator
-        it=arguments.begin();
-        it!=arguments.end();
+    // qualifiers, declarator?
+    if(d.empty())
+      dest+=' ';
+    else
+      dest+=d;
+
+    dest+='(';
+    const code_typet::parameterst &parameters=code_type.parameters();
+
+    for(code_typet::parameterst::const_iterator
+        it=parameters.begin();
+        it!=parameters.end();
         it++)
     {
-      if(it!=arguments.begin())
+      if(it!=parameters.begin())
         dest+=", ";
 
       dest+=convert(it->type());
     }
-    
+
     if(code_type.has_ellipsis())
     {
-      if(!arguments.empty()) dest+=", ";
+      if(!parameters.empty())
+        dest+=", ";
       dest+="...";
     }
 
-    dest+=")";
-    
+    dest+=')';
+
     const typet &return_type=code_type.return_type();
     dest+=" -> "+convert(return_type);
 
     return dest;
+  }
+  else if(src.id()==ID_initializer_list)
+  {
+    // only really used in error messages
+    return "{ ... }";
   }
   else
     return expr2ct::convert_rec(src, qualifiers, declarator);
@@ -444,11 +474,11 @@ std::string expr2cppt::convert_cpp_new(
     std::string tmp_size=
       convert(static_cast<const exprt &>(src.find(ID_size)));
 
-    dest+=" ";
+    dest+=' ';
     dest+=convert(src.type().subtype());
-    dest+="[";
+    dest+='[';
     dest+=tmp_size;
-    dest+="]";
+    dest+=']';
   }
   else
     dest="new "+convert(src.type().subtype());
@@ -509,12 +539,19 @@ std::string expr2cppt::convert(
     return convert_extractbit(src, precedence=15);
   else if(src.id()==ID_extractbits)
     return convert_extractbits(src, precedence=15);
-  else if(src.id()==ID_sideeffect &&
+  else if(src.id()==ID_side_effect &&
           (src.get(ID_statement)==ID_cpp_new ||
            src.get(ID_statement)==ID_cpp_new_array))
     return convert_cpp_new(src, precedence=15);
-  else if(src.is_constant() && src.type().id() == ID_verilogbv)
-    return "'" + id2string(src.get(ID_value)) + "'";
+  else if(src.id()==ID_side_effect &&
+          src.get(ID_statement)==ID_throw)
+    return convert_function(src, "throw", precedence=16);
+  else if(src.is_constant() && src.type().id()==ID_verilog_signedbv)
+    return "'"+id2string(src.get(ID_value))+"'";
+  else if(src.is_constant() && src.type().id()==ID_verilog_unsignedbv)
+    return "'"+id2string(src.get(ID_value))+"'";
+  else if(src.is_constant() && to_constant_expr(src).get_value()==ID_nullptr)
+    return "nullptr";
   else if(src.id()==ID_unassigned)
     return "?";
   else if(src.id()=="pod_constructor")
@@ -547,15 +584,14 @@ std::string expr2cppt::convert_code(
 
   if(statement==ID_cpp_new ||
      statement==ID_cpp_new_array)
-    return convert_cpp_new(src,indent);
+    return convert_cpp_new(src, indent);
 
   return expr2ct::convert_code(src, indent);
 }
 
-
 /*******************************************************************\
 
-Function: expr2cppt::extractbit
+Function: expr2cppt::convert_extractbit
 
   Inputs:
 
@@ -569,13 +605,13 @@ std::string expr2cppt::convert_extractbit(
   const exprt &src,
   unsigned precedence)
 {
-  assert(src.operands().size() == 2);
-  return convert(src.op0()) + "[" + convert(src.op1()) + "]";
+  assert(src.operands().size()==2);
+  return convert(src.op0())+"["+convert(src.op1())+"]";
 }
 
 /*******************************************************************\
 
-Function: expr2cppt::extractbit
+Function: expr2cppt::convert_extractbits
 
   Inputs:
 
@@ -589,9 +625,10 @@ std::string expr2cppt::convert_extractbits(
   const exprt &src,
   unsigned precedence)
 {
-  assert(src.operands().size() == 3);
-  return convert(src.op0()) + ".range(" + convert(src.op1()) + ","
-         + convert(src.op2()) + ")";
+  assert(src.operands().size()==3);
+  return
+    convert(src.op0())+".range("+convert(src.op1())+ ","+
+    convert(src.op2())+")";
 }
 
 /*******************************************************************\

@@ -1,6 +1,4 @@
-SRC = xml_language.cpp xml_parser.cpp \
-      xml_y.tab.cpp xml_lex.yy.cpp xml_typecheck.cpp \
-      xml_parse_tree.cpp
+SRC = xml_parser.cpp xml_y.tab.cpp xml_lex.yy.cpp xml_parse_tree.cpp graphml.cpp
 
 INCLUDES= -I ..
 
@@ -32,4 +30,3 @@ generated_files: xml_lex.yy.cpp xml_y.tab.cpp xml_y.tab.h
 # extra dependencies
 xml_y.tab$(OBJEXT): xml_y.tab.cpp xml_y.tab.h
 xml_lex.yy$(OBJEXT): xml_y.tab.cpp xml_lex.yy.cpp xml_y.tab.h
-

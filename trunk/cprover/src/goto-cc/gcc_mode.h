@@ -8,36 +8,47 @@ Date: June 2006
 
 \*******************************************************************/
 
-#ifndef GOTO_CC_GCC_MODE_H
-#define GOTO_CC_GCC_MODE_H
+#ifndef CPROVER_GOTO_CC_GCC_MODE_H
+#define CPROVER_GOTO_CC_GCC_MODE_H
+
+#include <util/cout_message.h>
 
 #include "goto_cc_mode.h"
-#include "gcc_cmdline.h"
 
 class gcc_modet:public goto_cc_modet
 {
 public:
-  virtual bool doit();
-  virtual void help_mode();
+  int doit() final;
+  void help_mode() final;
 
-  explicit gcc_modet(goto_cc_cmdlinet &_cmdline):
-    goto_cc_modet(_cmdline),
-    produce_hybrid_binary(false),
-    act_as_ld(false)
-  {
-  }
+  gcc_modet(
+    goto_cc_cmdlinet &_cmdline,
+    const std::string &_base_name,
+    bool _produce_hybrid_binary);
 
-  bool produce_hybrid_binary;
-  
 protected:
-  bool act_as_ld;
-  
-  int preprocess(const std::string &src, const std::string &dest);
+  gcc_message_handlert gcc_message_handler;
+
+  const bool produce_hybrid_binary;
+
+  const bool act_as_ld;
+  std::string native_tool_name;
+
+  int preprocess(
+    const std::string &language,
+    const std::string &src,
+    const std::string &dest,
+    bool act_as_bcc);
+
   int run_gcc(); // call gcc with original command line
-  
-  int gcc_hybrid_binary(const cmdlinet::argst &input_files);
-  
-  static bool is_supported_source_file(const std::string &);
+
+  int gcc_hybrid_binary();
+
+  int asm_output(
+    bool act_as_bcc,
+    const std::list<std::string> &preprocessed_source_files);
+
+  static bool needs_preprocessing(const std::string &);
 };
 
-#endif /* GOTO_CC_GCC_MODE_H */
+#endif // CPROVER_GOTO_CC_GCC_MODE_H

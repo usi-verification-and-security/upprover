@@ -6,11 +6,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cstdlib>
 #include <cassert>
 
 #include <stack>
+#include <sstream>
 
+#include "string2int.h"
 #include "mp_arith.h"
 #include "fixedbv.h"
 #include "ieee_float.h"
@@ -140,8 +141,10 @@ Function: exprt::copy_to_operands
 
 \*******************************************************************/
 
-void exprt::copy_to_operands(const exprt &e1, const exprt &e2,
-                             const exprt &e3)
+void exprt::copy_to_operands(
+  const exprt &e1,
+  const exprt &e2,
+  const exprt &e3)
 {
   operandst &op=operands();
   #ifndef USE_LIST
@@ -190,12 +193,12 @@ void exprt::make_not()
 {
   if(is_true())
   {
-    make_false();
+    *this=false_exprt();
     return;
   }
   else if(is_false())
   {
-    make_true();
+    *this=true_exprt();
     return;
   }
 
@@ -325,23 +328,6 @@ void exprt::make_false()
 
 /*******************************************************************\
 
-Function: operator<
-
-  Inputs:
-
- Outputs:
-
- Purpose: defines ordering on expressions for canonicalization
-
-\*******************************************************************/
-
-bool operator<(const exprt &X, const exprt &Y)
-{
-  return (irept &)X < (irept &)Y;
-}
-
-/*******************************************************************\
-
 Function: exprt::negate
 
   Inputs:
@@ -363,7 +349,7 @@ void exprt::negate()
     if(is_constant())
     {
       const irep_idt &value=get(ID_value);
-      
+
       if(type_id==ID_integer)
       {
         set(ID_value, integer2string(-string2integer(id2string(value))));
@@ -450,38 +436,38 @@ bool exprt::is_zero() const
 {
   if(is_constant())
   {
-    const irep_idt value=get_string(ID_value);
+    const constant_exprt &constant=to_constant_expr(*this);
     const irep_idt &type_id=type().id_string();
 
     if(type_id==ID_integer || type_id==ID_natural)
     {
-      mp_integer int_value=string2integer(id2string(value));
-      if(int_value==0) return true;
+      return constant.value_is_zero_string();
     }
     else if(type_id==ID_rational)
     {
       rationalt rat_value;
-      if(to_rational(*this, rat_value)) assert(false);
+      if(to_rational(*this, rat_value))
+        assert(false);
       return rat_value.is_zero();
     }
     else if(type_id==ID_unsignedbv || type_id==ID_signedbv)
     {
-      mp_integer int_value=binary2integer(id2string(value), false);
-      if(int_value==0) return true;
+      return constant.value_is_zero_string();
     }
     else if(type_id==ID_fixedbv)
     {
-      if(fixedbvt(to_constant_expr(*this))==0) return true;
+      if(fixedbvt(constant)==0)
+        return true;
     }
     else if(type_id==ID_floatbv)
     {
-      if(ieee_floatt(to_constant_expr(*this))==0) return true;
+      if(ieee_floatt(constant)==0)
+        return true;
     }
     else if(type_id==ID_pointer)
     {
-      if(value==ID_NULL) return true;
-      mp_integer int_value=binary2integer(id2string(value), false);
-      if(int_value==0) return true;
+      return constant.value_is_zero_string() ||
+             constant.get_value()==ID_NULL;
     }
   }
 
@@ -510,18 +496,21 @@ bool exprt::is_one() const
     if(type_id==ID_integer || type_id==ID_natural)
     {
       mp_integer int_value=string2integer(value);
-      if(int_value==1) return true;
+      if(int_value==1)
+        return true;
     }
     else if(type_id==ID_rational)
     {
       rationalt rat_value;
-      if(to_rational(*this, rat_value)) assert(false);
+      if(to_rational(*this, rat_value))
+        assert(false);
       return rat_value.is_one();
     }
     else if(type_id==ID_unsignedbv || type_id==ID_signedbv)
     {
       mp_integer int_value=binary2integer(value, false);
-      if(int_value==1) return true;
+      if(int_value==1)
+        return true;
     }
     else if(type_id==ID_fixedbv)
     {
@@ -540,6 +529,84 @@ bool exprt::is_one() const
 
 /*******************************************************************\
 
+Function: exprt::print_number - hckd¬!!
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+const std::string exprt::print_number_2smt() const
+{
+  if(is_constant())
+  {
+    const std::string &value=get_string(ID_value);
+    const irep_idt &type_id=type().id_string();
+
+    if(type_id==ID_integer || type_id==ID_natural)
+    {
+      mp_integer int_value=string2integer(value);
+      return integer2string(int_value);
+    }
+    else if(type_id==ID_rational)
+    {
+      std::stringstream convert; // stringstream used for the conversion
+      convert.precision(1);
+      rationalt rat_value;
+      if(to_rational(*this, rat_value)) assert(false);
+      convert << rat_value;
+      return convert.str();
+    }
+    else if (type_id==ID_unsignedbv ||
+          type_id==ID_signedbv ||
+          type_id==ID_c_bit_field ||
+          type_id==ID_c_bool)
+    { // from expre2c.cpp code
+      mp_integer int_value=binary2integer(id2string(value), 
+              type_id==ID_signedbv);
+      return integer2string(int_value);
+    } else {
+    	if (is_zero()) return "0";
+    	if (is_one()) return "1";
+
+    	// Else try to extract the number
+    	std::string temp_try1(get(ID_C_member_name).c_str()); // KE: need testing!
+    	if (temp_try1.size() > 0)
+    	{ 	
+            // WIll get here only for positive numbers, the rest will try differently
+            return temp_try1;
+    	}
+    	else if(type_id==ID_fixedbv)
+        {
+           return (fixedbvt(to_constant_expr(*this))).to_ansi_c_string();
+        }
+        else if(type_id==ID_floatbv)
+        {
+           ieee_floatt temp = ieee_floatt(to_constant_expr(*this));
+           std::string ans_cand = temp.to_ansi_c_string();
+           if (ans_cand.find("e+") != std::string::npos)
+               return temp.to_string_decimal(ans_cand.size());
+           if (ans_cand.find("e-") != std::string::npos)
+               return temp.to_string_decimal(ans_cand.size());
+           if (ans_cand != "0.000000" && ans_cand != "-0.000000" && ans_cand != "0" && ans_cand != "-0") {
+               return ans_cand; // If the translation makes sense - returns it
+           } else { // Else try to get something closer.
+               double temp_double = temp.to_double(); if (temp_double == 0) return "0";
+               std::ostringstream s; s << temp_double;
+               return s.str();
+           }
+        }
+    }
+  }
+
+  return "";
+}
+
+/*******************************************************************\
+
 Function: exprt::sum
 
   Inputs:
@@ -552,8 +619,10 @@ Function: exprt::sum
 
 bool exprt::sum(const exprt &expr)
 {
-  if(!is_constant() || !expr.is_constant()) return true;
-  if(type()!=expr.type()) return true;
+  if(!is_constant() || !expr.is_constant())
+    return true;
+  if(type()!=expr.type())
+    return true;
 
   const irep_idt &type_id=type().id();
 
@@ -579,7 +648,7 @@ bool exprt::sum(const exprt &expr)
     set(ID_value, integer2binary(
       binary2integer(get_string(ID_value), false)+
       binary2integer(expr.get_string(ID_value), false),
-      atoi(type().get(ID_width).c_str())));
+      unsafe_string2unsigned(type().get_string(ID_width))));
     return false;
   }
   else if(type_id==ID_fixedbv)
@@ -587,7 +656,7 @@ bool exprt::sum(const exprt &expr)
     set(ID_value, integer2binary(
       binary2integer(get_string(ID_value), false)+
       binary2integer(expr.get_string(ID_value), false),
-      atoi(type().get(ID_width).c_str())));
+      unsafe_string2unsigned(type().get_string(ID_width))));
     return false;
   }
   else if(type_id==ID_floatbv)
@@ -615,8 +684,10 @@ Function: exprt::mul
 
 bool exprt::mul(const exprt &expr)
 {
-  if(!is_constant() || !expr.is_constant()) return true;
-  if(type()!=expr.type()) return true;
+  if(!is_constant() || !expr.is_constant())
+    return true;
+  if(type()!=expr.type())
+    return true;
 
   const irep_idt &type_id=type().id();
 
@@ -643,7 +714,7 @@ bool exprt::mul(const exprt &expr)
     set(ID_value, integer2binary(
       binary2integer(get_string(ID_value), false)*
       binary2integer(expr.get_string(ID_value), false),
-      atoi(type().get(ID_width).c_str())));
+      unsafe_string2unsigned(type().get_string(ID_width))));
     return false;
   }
   else if(type_id==ID_fixedbv)
@@ -678,9 +749,11 @@ Function: exprt::subtract
 
 bool exprt::subtract(const exprt &expr)
 {
-  if(!is_constant() || !expr.is_constant()) return true;
+  if(!is_constant() || !expr.is_constant())
+    return true;
 
-  if(type()!=expr.type()) return true;
+  if(type()!=expr.type())
+    return true;
 
   const irep_idt &type_id=type().id();
 
@@ -706,7 +779,7 @@ bool exprt::subtract(const exprt &expr)
     set(ID_value, integer2binary(
       binary2integer(get_string(ID_value), false)-
       binary2integer(expr.get_string(ID_value), false),
-      atoi(type().get(ID_width).c_str())));
+      unsafe_string2unsigned(type().get_string(ID_width))));
     return false;
   }
 
@@ -715,7 +788,7 @@ bool exprt::subtract(const exprt &expr)
 
 /*******************************************************************\
 
-Function: exprt::find_location
+Function: exprt::find_source_location
 
   Inputs:
 
@@ -725,19 +798,21 @@ Function: exprt::find_location
 
 \*******************************************************************/
 
-const locationt &exprt::find_location() const
+const source_locationt &exprt::find_source_location() const
 {
-  const locationt &l=location();
+  const source_locationt &l=source_location();
 
-  if(l.is_not_nil()) return l;
+  if(l.is_not_nil())
+    return l;
 
   forall_operands(it, (*this))
   {
-    const locationt &l=it->find_location();
-    if(l.is_not_nil()) return l;
+    const source_locationt &l=it->find_source_location();
+    if(l.is_not_nil())
+      return l;
   }
 
-  return static_cast<const locationt &>(get_nil_irep());
+  return static_cast<const source_locationt &>(get_nil_irep());
 }
 
 /*******************************************************************\
@@ -755,7 +830,7 @@ Function: exprt::visit
 void exprt::visit(expr_visitort &visitor)
 {
   std::stack<exprt *> stack;
-  
+
   stack.push(this);
 
   while(!stack.empty())
@@ -785,7 +860,7 @@ Function: exprt::visit
 void exprt::visit(const_expr_visitort &visitor) const
 {
   std::stack<const exprt *> stack;
-  
+
   stack.push(this);
 
   while(!stack.empty())
