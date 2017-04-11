@@ -19,7 +19,7 @@ function check_result {
 function test_one {
 
   INPUT="$1"
-  PREFIX=${INPUT: : -2}
+  PREFIX=$PATH_reg${INPUT: : -2}
   FILE_PREFIX="${PREFIX}/${OUTPUT_DIR}_$2"
   SUMMARIES="${PREFIX}/__summaries_${OUTPUT_DIR}_$2"
   HIFROG_OUTPUT="${FILE_PREFIX}_hifrog.txt"
@@ -37,8 +37,8 @@ function test_one {
   fi
   
   #stupid way to do it, but it works. If needed add more params
-  echo ">> Run test case: $hifrog $1 --logic $2 --save-summaries ${SUMMARIES} $3 $4 $5"
-  $hifrog $1 --logic $2 --save-summaries ${SUMMARIES} $3 $4 $5 >> ${HIFROG_OUTPUT} 2>&1
+  echo ">> Run test case: $hifrog $PATH_reg$1 --logic $2 --save-summaries ${SUMMARIES} $3 $4 $5"
+  $hifrog $PATH_reg$1 --logic $2 --save-summaries ${SUMMARIES} $3 $4 $5 >> ${HIFROG_OUTPUT} 2>&1
   if [[ $? -gt 0 ]]; then
     error "HiFrog analysis failed (see ${HIFROG_OUTPUT})"
   fi
@@ -53,15 +53,23 @@ function test_one {
 
 
 ################### MAIN ###############################
+PATH_reg=$(readlink -f $0)
+PATH_reg=${PATH_reg: : -11}
 echo "This is the script for running regression tests"
 echo " - date: $(date '+%Y-%m-%d at %H:%M.%S')"
 echo " - host name $(hostname -f)"
 echo " - script path: $(readlink -f $0)"
+echo " - path regression tests: $PATH_reg"
 
 FILTER_RESULT="./filter-result.sh"
 FILTER_TIME="./filter-time.sh"
-hifrog=./../../src/funfrog/hifrog
 OUTPUT_DIR="output"
+
+# If works with absolute paths (when copying sub-folders of the regression and running somewhere)
+# then please also state your absolute path of hifrog. If you are running it from the original
+# location, you may ignore this comment
+hifrog=./../../src/funfrog/hifrog 
+
 
 # Iterating over all the test cases - When result shall match the known results
 for filename in testcases/*.c_tc 
