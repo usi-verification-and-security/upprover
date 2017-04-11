@@ -63,8 +63,13 @@ echo " - path regression tests: $PATH_reg"
 
 FILTER_RESULT="./filter-result.sh"
 FILTER_TIME="./filter-time.sh"
-hifrog=./../../src/funfrog/hifrog
 OUTPUT_DIR="output"
+
+# If works with absolute paths (when copying sub-folders of the regression and running somewhere)
+# then please also state your absolute path of hifrog. If you are running it from the original
+# location, you may ignore this comment
+hifrog=./../../src/funfrog/hifrog 
+
 
 # Iterating over all the test cases - When result shall match the known results
 for filename in testcases/*.c_tc 
