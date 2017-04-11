@@ -1,4 +1,5 @@
 include ../config.inc
+-include local
 
 SHARED_SRC := \
       expr_pretty_print.cpp \
