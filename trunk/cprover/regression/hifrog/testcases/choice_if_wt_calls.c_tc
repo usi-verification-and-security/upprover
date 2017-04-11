@@ -1,3 +1,3 @@
 benchmarks/choice_if_wt_calls.c,prop
 benchmarks/choice_if_wt_calls.c,qflra
-benchmarks/choice_if_wt_calls.c,qfuf
+benchmarks/choice_if_wt_calls.c,qfcuf,--theoref
