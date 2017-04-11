@@ -1,0 +1,4 @@
+benchmarks/simple_no_branch.c,prop
+benchmarks/simple_no_branch.c,qflra
+benchmarks/simple_no_branch.c,qfuf
+benchmarks/simple_no_branch.c,qfcuf
