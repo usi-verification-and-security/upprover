@@ -1,0 +1,4 @@
+benchmarks/simple_assert_float.c,prop
+benchmarks/simple_assert_float.c,qflra
+benchmarks/simple_assert_float.c,qfuf
+benchmarks/simple_assert_float.c,qfcuf
