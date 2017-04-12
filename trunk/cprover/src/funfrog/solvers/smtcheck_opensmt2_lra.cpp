@@ -115,10 +115,20 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
     PTRef rconst = PTRef_Undef;
     if(num.size() <= 0)
     {
-        if ((expr.type().id() == ID_c_enum) ||
-            (expr.type().id() == ID_c_enum_tag))
+        if (expr.type().id() == ID_c_enum)
         {
             string enum_tag = expr.type().find(ID_tag).pretty();
+            rconst = lralogic->mkRealVar(enum_tag.c_str());
+            PTRef zero = lralogic->getTerm_RealZero();
+            vec<PTRef> args;
+            args.push(rconst);
+            args.push(zero);
+            PTRef ge = lralogic->mkRealGeq(args);
+            set_to_true(ge);
+        }
+        else if (expr.type().id() == ID_c_enum_tag)
+        {
+            string enum_tag = id2string(to_constant_expr(expr).get_value());
             rconst = lralogic->mkRealVar(enum_tag.c_str());
             PTRef zero = lralogic->getTerm_RealZero();
             vec<PTRef> args;

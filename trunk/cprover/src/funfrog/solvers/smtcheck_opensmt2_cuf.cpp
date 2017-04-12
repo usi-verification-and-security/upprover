@@ -186,6 +186,12 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
     } else {
         // General number (not just 0 or 1)
         std::string str = expr.print_number_2smt();
+        if (str.size() <= 0)
+            if (expr.type().id() == ID_c_enum)
+                str = expr.type().find(ID_tag).pretty();
+            else if (expr.type().id() == ID_c_enum_tag)
+                str= id2string(to_constant_expr(expr).get_value());
+            
         if ((str.compare("inf") == 0) || (str.compare("-inf") == 0))
         {
             // No inf values in toy models!
@@ -753,9 +759,13 @@ literalt smtcheck_opensmt2t_cuf::const_var_Real(const exprt &expr)
     PTRef rconst = PTRef_Undef;
     if (num.size() <= 0)
     {
-        if (expr.type().id() == ID_c_enum ||  expr.type().id() == ID_c_enum_tag)
+        if (expr.type().id() == ID_c_enum)
         {
             num = expr.type().find(ID_tag).pretty();
+        }
+        else if (expr.type().id() == ID_c_enum_tag)
+        {
+            num = id2string(to_constant_expr(expr).get_value());
         }
         else
         {

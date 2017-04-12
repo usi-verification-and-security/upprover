@@ -222,10 +222,14 @@ literalt smtcheck_opensmt2t_uf::const_var_Real(const exprt &expr)
     PTRef rconst = PTRef_Undef;
     if(num.size() <= 0)
     {
-        if ((expr.type().id() == ID_c_enum) ||
-            (expr.type().id() == ID_c_enum_tag))
+        if (expr.type().id() == ID_c_enum)
         {
             string enum_tag = expr.type().find(ID_tag).pretty();
+            rconst = logic->mkConst(sort_ureal, enum_tag.c_str());
+        }
+        else if (expr.type().id() == ID_c_enum_tag)
+        {
+            string enum_tag = id2string(to_constant_expr(expr).get_value());
             rconst = logic->mkConst(sort_ureal, enum_tag.c_str());
         }
         else
