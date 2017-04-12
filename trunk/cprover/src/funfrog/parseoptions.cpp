@@ -495,7 +495,7 @@ bool funfrog_parseoptionst::check_function_summarization(
       //show_claims(ns, claim_map, claim_numbers, get_ui());
       //return 0;
     } else if(cmdline.isset("claims-count")) {
-        std::cout <<"(claims-count) "<< claim_numbers.size() << std::endl;
+        std::cout <<"(claims-count),"<< claim_numbers.size() << std::endl;
         return 0;
     }
 
