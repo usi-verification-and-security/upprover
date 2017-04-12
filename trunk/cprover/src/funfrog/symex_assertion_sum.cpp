@@ -749,11 +749,12 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
           ++it) 
   {
     // The symbol is not yet in l2 renaming - Add it during init stage only
-    if (is_init_stage) {
+    if (is_init_stage) { // first init, which makes sense to force to 0
         assert (state.level2.current_names.find(*it) == state.level2.current_names.end());
         // Original code: state.level2.rename(*it, 0);
         level2_rename_init(state, (ns.lookup(*it)).symbol_expr());
-             
+    } else if (state.level2.current_names.count(*it) == 0) { // after init stage - forcing 0
+        level2_rename_init(state, (ns.lookup(*it)).symbol_expr());
         // GF: should there be assert(0) ? 
         // KE: only if the init stage can init - else will assert after this if
 #       ifdef DEBUG_PARTITIONING
