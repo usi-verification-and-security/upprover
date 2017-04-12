@@ -44,7 +44,7 @@ class value_set_alloc_adaptort;
   "(pointer-check)(bounds-check)(div-by-zero-check)(overflow-check)(nan-check)" \
   "(string-abstraction)(assertions)" \
   "(show-pass)(suppress-fail)(no-progress)" \
-  "(show-claims)(all-claims)(claims-opt):(claim):(claimset):" \
+  "(show-claims)(claims-count)(all-claims)(claims-opt):(claim):(claimset):" \
   "(theoref)(force)(custom):(bitwidth):" \
   "(save-queries)(save-change-impact):" \
   "(tree-interpolants)(proof-trans):(reduce-proof)(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \

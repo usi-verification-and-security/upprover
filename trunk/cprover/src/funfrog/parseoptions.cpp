@@ -353,6 +353,7 @@ void funfrog_parseoptionst::help()
   "--load-summaries <filename>    load function summaries\n"
   "                               from the given file\n"
   "--show-claims                  output the claims list\n"
+  "--claims-count                 output the total number of claims\n"
 //  "--bounds-check                 enable array bounds checks\n"
 //  "--div-by-zero-check            enable division by zero checks\n"
 //  "--pointer-check                enable pointer checks\n"
@@ -472,28 +473,32 @@ bool funfrog_parseoptionst::check_function_summarization(
   goto_functionst &goto_functions)
 {
 
-  fine_timet before, after;
+    //fine_timet before, after;
   
-  claim_mapt claim_map;
-  claim_numberst claim_numbers;
+    claim_mapt claim_map;
+    claim_numberst claim_numbers;
 
-  
-  cbmc_status_interface("Checking claims in program...");
+    
+    cbmc_status_interface("Checking claims in program...");
 
-  unsigned claim_nr=0;
+    unsigned claim_nr=0;
 
-  get_claims(goto_functions, claim_map, claim_numbers);
+    get_claims(goto_functions, claim_map, claim_numbers);
 
-  if(cmdline.isset("show-claims")|| // will go away
+    if(cmdline.isset("show-claims")|| // will go away
 	 cmdline.isset("show-properties")) // use this one
-  {
+    {
 	  const namespacet ns(symbol_table);
 	  show_properties(ns, get_ui(), goto_functions);
 	  return 0;
 	  // Old code - KE
       //show_claims(ns, claim_map, claim_numbers, get_ui());
       //return 0;
-  }
+    } else if(cmdline.isset("claims-count")) {
+        std::cout <<"(claims-count) "<< claim_numbers.size() << std::endl;
+        return 0;
+    }
+
     // perform standalone check (all the functionality remains the same)
   
     if(cmdline.isset("claim") &&
@@ -518,8 +523,8 @@ bool funfrog_parseoptionst::check_function_summarization(
     	cbmc_error_interface("Testclaim not found.");
         return 1;
       }
-    }
-
+    } 
+    
     if (cmdline.isset("claims-opt"))
       store_claims(ns, claim_map, claim_numbers);
 
