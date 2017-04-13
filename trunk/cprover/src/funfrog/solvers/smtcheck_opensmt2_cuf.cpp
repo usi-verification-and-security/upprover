@@ -506,6 +506,10 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             ptl = (args.size() > 2) ?
                 split_exprs_bv(_id, args) : bvlogic->mkBVBwOr(args);
 
+        } else if (_id == ID_bitnot) { // KE: not sure about it
+        
+            ptl = unsupported2var_bv(expr);
+            
         } else if (_id == ID_shl) {
         
             ptl = (args.size() > 2) ?
@@ -967,12 +971,14 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (_id == ID_bitxor) {
             ptl = uflogic->mkCUFBwXor(args); 
         } else if (_id == ID_bitor) {
-            ptl = uflogic->mkCUFBwOr(args);             
+            ptl = uflogic->mkCUFBwOr(args);  
+        } else if (_id == ID_bitnot) { // KE: not sure about it
+            ptl = literals[lunsupported2var(expr).var_no()];             
         } else if (_id == ID_not) {
             // TODO: to cuf, look many locations!
-            ptl = logic->mkNot(args);
+            ptl = uflogic->mkCUFNot(args);
         } else if (_id == ID_implies) {
-            ptl = logic->mkImpl(args);
+            ptl = uflogic->mkImpl(args);
         } else if (_id == ID_ge) {
             // uflogic To avoid dynamic cast - till the end of this section            
             ptl = uflogic->mkCUFGeq(args);
