@@ -480,7 +480,8 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             ptl = runsupported2var(expr);
 #endif
         }
-		l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
+        
+        l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
     }
     converted_exprs[expr.hash()] = l;
 #ifdef SMT_DEBUG

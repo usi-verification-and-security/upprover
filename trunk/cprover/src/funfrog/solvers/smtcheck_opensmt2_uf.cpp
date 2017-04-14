@@ -486,7 +486,8 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
             // Do we need them now?
         }
-            l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
+        
+        l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
     }
     converted_exprs[expr.hash()] = l;
 #ifdef SMT_DEBUG

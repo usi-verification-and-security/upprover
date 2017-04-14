@@ -355,10 +355,18 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         
         ptl = unsupported2var_bv(expr); // stub for now  
 
+    } else if (_id == ID_isfinite) {
+        
+        ptl = unsupported2var_bv(expr); // stub for now  
+        
     } else if (_id == ID_isnormal) {
         
         ptl = unsupported2var_bv(expr); // stub for now  
          
+    } else if (_id == ID_sign) { // for macro signbit
+      
+        ptl = unsupported2var_bv(expr); // stub for now 
+        
     } else if (_id == ID_byte_extract_little_endian) {
         
         ptl = unsupported2var_bv(expr); // stub for now  
@@ -1084,9 +1092,13 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (_id == ID_isnan) {
             ptl =literals[lunsupported2var(expr).var_no()];   
         } else if (_id == ID_isinf) {
-            ptl =literals[lunsupported2var(expr).var_no()];  
+            ptl =literals[lunsupported2var(expr).var_no()]; 
+        } else if (_id == ID_isfinite) {
+            ptl =literals[lunsupported2var(expr).var_no()];     
         } else if (_id == ID_isnormal) {
-            ptl =literals[lunsupported2var(expr).var_no()];      
+            ptl =literals[lunsupported2var(expr).var_no()]; 
+        } else if (_id == ID_sign) { // for macro signbit
+            ptl =literals[lunsupported2var(expr).var_no()]; 
         } else {
             cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << endl;
