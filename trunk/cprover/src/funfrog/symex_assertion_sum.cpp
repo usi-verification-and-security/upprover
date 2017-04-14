@@ -280,7 +280,7 @@ void symex_assertion_sumt::symex_step(
       state.guard.add(false_exprt());
   state.depth++;
    
-  // KE: This switch-case is taken from: symex_assertion_sumt::symex_step
+  // KE: This switch-case is taken from: Function: goto_symext::symex_step
   switch(instruction.type)
   {
   case SKIP:
