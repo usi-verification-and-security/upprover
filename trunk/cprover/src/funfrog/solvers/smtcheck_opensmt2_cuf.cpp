@@ -115,9 +115,9 @@ void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
 bool smtcheck_opensmt2t_cuf::convert_bv_eq_ite(const exprt &expr, PTRef& ptl)
 {
 #ifdef DEBUG_SMT_BB
-        cout << "; IT IS A EQ ITE " << endl;
+        cout << "; IT IS A EQ ITE " << expr.id() << endl;
 #endif   
-    assert (expr.id() == ID_equal);
+    assert (expr.id() == ID_equal || expr.id() == ID_ieee_float_equal);
     exprt sing;
     exprt ite;
     if (expr.operands()[0].id() == ID_if){
