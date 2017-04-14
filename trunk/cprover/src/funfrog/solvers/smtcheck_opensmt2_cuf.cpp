@@ -346,7 +346,19 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     } else if (_id == ID_string_constant) {
         
         ptl = unsupported2var_bv(expr); // stub for now  
-                  
+     
+    } else if (_id == ID_isnan) {
+        
+        ptl = unsupported2var_bv(expr); // stub for now  
+
+    } else if (_id == ID_isinf) {
+        
+        ptl = unsupported2var_bv(expr); // stub for now  
+
+    } else if (_id == ID_isnormal) {
+        
+        ptl = unsupported2var_bv(expr); // stub for now  
+         
     } else if (_id == ID_byte_extract_little_endian) {
         
         ptl = unsupported2var_bv(expr); // stub for now  
@@ -1068,7 +1080,13 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (_id==ID_dynamic_object) {
             ptl =literals[lunsupported2var(expr).var_no()]; 
         } else if (_id == ID_string_constant) {
-            ptl =literals[lunsupported2var(expr).var_no()];    
+            ptl =literals[lunsupported2var(expr).var_no()];   
+        } else if (_id == ID_isnan) {
+            ptl =literals[lunsupported2var(expr).var_no()];   
+        } else if (_id == ID_isinf) {
+            ptl =literals[lunsupported2var(expr).var_no()];  
+        } else if (_id == ID_isnormal) {
+            ptl =literals[lunsupported2var(expr).var_no()];      
         } else {
             cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << endl;
