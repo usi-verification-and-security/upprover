@@ -44,7 +44,7 @@ public:
   virtual literalt lnotequal(literalt l1, literalt l2);
 
   virtual literalt lvar(const exprt &expr);
-
+  
   PTRef var_bv(const exprt &expr); // lvar for bv logic
   
   PTRef get_bv_var(const char* name);
@@ -58,6 +58,8 @@ public:
   bool convert_bv_eq_ite(const exprt &expr, PTRef& ptl);
   
   PTRef type_cast_bv(const exprt &expr);
+  
+  PTRef labs_bv(const exprt &expr); // from convert for ID_abs
 
   int check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model,
                std::set<int>& refined, std::set<int>& weak, int start, int heuri  = 1);

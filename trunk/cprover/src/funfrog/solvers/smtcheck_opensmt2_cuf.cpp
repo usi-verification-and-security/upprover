@@ -300,6 +300,48 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
     return ptl;
 }
 
+PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr) 
+{
+    
+    // ABS - all refers as real
+    PTRef ptl_inner = convert_bv((expr.operands())[0]); // Create the inner part
+    
+    const irep_idt &type_id = ((expr.operands())[0]).type().id();
+    assert(type_id != ID_pointer); // TODO
+            
+    bool is_unsigned = (type_id == ID_unsignedbv ||
+                            type_id == ID_natural);
+    
+    // Unsigned: no need to do something
+    if (is_unsigned)
+        return ptl_inner;
+    
+    // If signed we need to do something :
+    vec<PTRef> args;
+    args.push(bvlogic->mkBVSlt(ptl_inner, this->get_bv_const(0))); // IF a
+    args.push(bvlogic->mkBVNeg(ptl_inner)); // then b
+    args.push(ptl_inner);
+    
+    PTRef ptl = bvlogic->mkBVLand(
+                    bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]),
+                    bvlogic->mkBVLor(args[0], args[2])
+                    ); 
+    
+    //PTRef ptl = logic->mkIte(
+    //                    bvlogic->mkBVSlt(ptl_inner, bvlogic->getTerm_RealZero()),  // IF
+    //                    bvlogic->mkBVNeg(ptl_inner),                 // Then
+    //                    ptl_inner);                                     // Else
+    
+#ifdef SMT_DEBUG
+    char* s = getPTermString(l);
+    cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    free(s);
+#endif
+
+    return ptl;
+}
+
+
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 {
 #ifdef DEBUG_SMT_BB
@@ -343,6 +385,11 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         cout << "; CREAT A CONSTANT in OPENSMT2 " << s << endl;
         free(s);
 #endif          
+        
+    } else if (_id == ID_abs) {
+    
+        ptl = labs_bv(expr);
+        
     } else if (_id == ID_string_constant) {
         
         ptl = unsupported2var_bv(expr); // stub for now  
@@ -489,14 +536,26 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         cout << "; IT IS A " << _id.c_str() << endl;
 #endif
         if (_id == ID_if) {
-            ptl = bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]); 
+            if (args.size() == 2) {
+                ptl = bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]); 
+            } else if (args.size() == 3) {
+                ptl = bvlogic->mkBVLand(
+                    bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]),
+                    bvlogic->mkBVLor(args[0], args[2])
+                    ); 
+            } else {
+                assert(0);
+            }
             //assert(0);
             // KE: isn't it like implies if inside expr?
             // GF: this should be handled by convert_bv_eq_ite.
             //     but if ID_if appears in any other type of expr than equality,
-            //     then we should handle it in a somewhat way.
+            //     then we should handle it in a somewhat way.   
         } else if (_id == ID_ifthenelse) {
-            assert(0);
+            ptl = bvlogic->mkBVLand(
+                    bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]),
+                    bvlogic->mkBVLor(args[0], args[2])
+                    ); 
             // GF: TODO
         } else if (_id ==  ID_implies) {
             ptl = bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]);
