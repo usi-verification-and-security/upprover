@@ -125,7 +125,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   // Trivial case
   if(assertion.is_trivially_true())
   {
-    status() << ("ASSERTION IS TRIVIALLY TRUE");
+    status() << ("Assertion(s) hold trivially.");
     report_success();
     return true;
   }
