@@ -1098,7 +1098,9 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         } else if (_id == ID_isnormal) {
             ptl =literals[lunsupported2var(expr).var_no()]; 
         } else if (_id == ID_sign) { // for macro signbit
-            ptl =literals[lunsupported2var(expr).var_no()]; 
+            ptl =literals[lunsupported2var(expr).var_no()];
+        } else if (_id == ID_abs) { // Can't in UF
+            ptl =literals[lunsupported2var(expr).var_no()];    
         } else {
             cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
                         << expr.id() << ")" << endl;
@@ -1161,7 +1163,7 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
     } else if (id == ID_bitxor) {
         ptl = uflogic->mkCUFBwXor(args_current); 
     } else if (id == ID_bitor) {
-        ptl = uflogic->mkCUFBwOr(args_current);                 
+        ptl = uflogic->mkCUFBwOr(args_current);  
     } else {
         assert(0); // need to add the case!
     }

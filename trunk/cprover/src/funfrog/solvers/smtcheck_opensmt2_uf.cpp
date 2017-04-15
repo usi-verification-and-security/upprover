@@ -521,7 +521,7 @@ literalt smtcheck_opensmt2t_uf::lunsupported2var(exprt expr)
 }
 
 literalt smtcheck_opensmt2t_uf::lnotequal(literalt l1, literalt l2){
-	literalt l;
+    literalt l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
@@ -547,7 +547,7 @@ literalt smtcheck_opensmt2t_uf::lvar(const exprt &expr)
 #endif
 
     // Else if it is really a var, continue and declare it!
-	literalt l;
+    literalt l;
     PTRef var;
     if(is_number(expr.type()))
         //TODO: Check this
