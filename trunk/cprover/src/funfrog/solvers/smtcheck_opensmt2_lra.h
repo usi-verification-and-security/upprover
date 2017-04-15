@@ -42,6 +42,8 @@ public:
   virtual literalt lvar(const exprt &expr);
     
   virtual literalt lassert_var() { literalt l; l = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); return l;}
+  
+  literalt labs(const exprt &expr); // from convert for ID_abs
 
   void check_ce(std::vector<exprt>& exprs); // checking spuriousness of the error trace (not refinement here)
 

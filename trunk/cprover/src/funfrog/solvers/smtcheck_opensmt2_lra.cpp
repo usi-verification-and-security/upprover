@@ -311,6 +311,8 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     #else
         l = lunsupported2var(expr);
     #endif
+    } else if (_id == ID_abs) {
+        l = labs(expr);
     } else {
     #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
@@ -583,6 +585,28 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 #endif
 
 	return l;
+}
+
+literalt smtcheck_opensmt2t_lra::labs(const exprt &expr) 
+{
+    literalt l;
+    
+    // ABS - all refers as real
+    literalt lt = convert((expr.operands())[0]); // Create the inner part
+    PTRef ptl = logic->mkIte(
+                        lralogic->mkRealLt(literals[lt.var_no()], lralogic->getTerm_RealZero()),  // IF
+                        lralogic->mkRealNeg(literals[lt.var_no()]),                 // Then
+                        literals[lt.var_no()]);                                     // Else
+    l = push_variable(ptl); // Keeps the new literal + index it
+
+
+#ifdef SMT_DEBUG
+    char* s = getPTermString(l);
+    cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    free(s);
+#endif
+
+    return l;
 }
 
 std::string smtcheck_opensmt2t_lra::create_bound_string(std::string base, int exp)
