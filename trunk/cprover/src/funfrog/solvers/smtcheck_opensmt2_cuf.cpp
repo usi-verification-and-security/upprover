@@ -70,9 +70,12 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
         str = quote_varname(str);
     }
 #ifdef DEBUG_SMT_BB
-        cout << "; IT IS AN UNSUPPORTED VAR " << str << endl;
+        cout << "; IT IS AN UNSUPPORTED VAR " << str 
+                << " of TYPE " << expr.type().id_string() << endl;
 #endif   
         
+    _fails_type_id = expr.type().id_string(); // KE: keep the reason for failing
+    
     return get_bv_var(str.c_str());
 }
 

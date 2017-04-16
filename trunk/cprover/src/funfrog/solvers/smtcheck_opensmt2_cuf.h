@@ -73,6 +73,12 @@ public:
   PTRef split_exprs(irep_idt id, vec<PTRef>& args);
   PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
 
+  std::string getFails2RefineReason() {
+      if (unsupported2var == 0) return "";
+       
+      return "Cannot refine due to " + std::to_string(unsupported2var) + 
+              " unsupported operators;e.g., " + id2string(_fails_type_id);
+  }
 protected:
   BVLogic* bvlogic; // Extra var, inner use only - Helps to avoid dynamic cast!
   CUFLogic* uflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
@@ -84,7 +90,9 @@ protected:
   __int128 max_num; // w.r.t. current bitwidth
 
   map<size_t, PTRef> converted_bitblasted_exprs;
-  
+
+  irep_idt _fails_type_id; // Reason 2 fail of CUF theoref
+        
   void bindBB(const exprt& expr, PTRef pt1);
 
   void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
