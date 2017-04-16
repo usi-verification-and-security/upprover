@@ -191,6 +191,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       status() << endl << "Obtained counter-examples are refined" << endl;
                       status() << "(" << refined.size() << " / "
                                       << exprs.size()  << " expressions bit-blasted)" << endl;
+                      std::string reason = decider->getFails2RefineReason();
+                      if (reason.size() > 0)
+                      status() << "(" << reason << ")" << endl; 
                       status() << "ASSERTION DOES NOT HOLD" << eom;
                       report_failure();
                       break;

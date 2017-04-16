@@ -168,6 +168,16 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         mp_integer int_value=string2integer(expr.get_string(ID_value));
         ptl = get_bv_const(mp_integer2int(int_value));
         
+    } else if(type_id==ID_c_enum || type_id==ID_c_enum_tag) {
+        const irep_idt helper_id= // Taken from cprover expr2.cpp
+            type_id==ID_c_enum
+                ?to_c_enum_type(expr.type()).subtype().id()
+                :to_c_enum_tag_type(expr.type()).subtype().id();
+        
+        mp_integer int_value=binary2integer(id2string(expr.get_string(ID_value))
+                                            , helper_id==ID_signedbv);
+        ptl = get_bv_const(mp_integer2int(int_value));
+        
     } else if (type_id==ID_unsignedbv || type_id==ID_signedbv ||
                type_id==ID_c_bit_field || type_id==ID_c_bool) {
         mp_integer int_value=binary2integer(id2string(expr.get_string(ID_value))
@@ -597,8 +607,11 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             ptl = (args.size() > 2) ?
                 split_exprs_bv(_id, args) : bvlogic->mkBVLshift(args);
         
-        } else if (_id == ID_shr || // KE: not sure about shr
-                    _id == ID_lshr) {
+        } else if (_id == ID_shr) {
+            
+            assert(0); // KE: need example
+            
+        } else if (_id == ID_lshr) {
             
             ptl = (args.size() > 2) ?
                 split_exprs_bv(_id, args) : bvlogic->mkBVLRshift(args); 
@@ -719,7 +732,11 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
 
         ptl = bvlogic->mkBVLshift(args_current);
 
-    } else if (id == ID_shr || id == ID_lshr) { // KE: not sure about shr
+    } else if (id == ID_shr) {
+            
+            assert(0); // KE: need example
+            
+    } else if (id == ID_lshr) { // KE: not sure about shr
 
         ptl = bvlogic->mkBVLRshift(args_current); 
             
