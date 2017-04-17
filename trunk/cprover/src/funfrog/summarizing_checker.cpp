@@ -231,7 +231,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
         }
         if (summaries_count == 0)
         {
-          status() << ("ASSERTION(S) HOLD(S)"); //TODO change the message to something more clear (like, everything was inlined...)
+          status() << ("ASSERTION(S) HOLD(S) "); //TODO change the message to something more clear (like, everything was inlined...)
         } else {
           status() << "FUNCTION SUMMARIES (for " << summaries_count
         	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
@@ -369,7 +369,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         }
         if (summaries_count == 0)
         {
-          status() << ("ASSERTION(S) HOLD(S)"); //TODO change the message to something more clear (like, everything was inlined...)
+          status() << ("ASSERTION(S) HOLD(S) "); //TODO change the message to something more clear (like, everything was inlined...)
         } else {
           status() << "FUNCTION SUMMARIES (for " << summaries_count
         	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;

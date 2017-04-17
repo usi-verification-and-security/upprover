@@ -79,6 +79,7 @@ public:
       return "Cannot refine due to " + std::to_string(unsupported2var) + 
               " unsupported operators;e.g., " + id2string(_fails_type_id);
   }
+  
 protected:
   BVLogic* bvlogic; // Extra var, inner use only - Helps to avoid dynamic cast!
   CUFLogic* uflogic; // Extra var, inner use only - Helps to avoid dynamic cast!

@@ -9,6 +9,8 @@
 #include "error_trace.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 
+#define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
+
 void theory_refinert::initialize()
 {
   decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"));
@@ -85,6 +87,10 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   if (end)
   {
+#ifdef _NO_OPTIMIZATION
+      std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
+      if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
+#endif
       status() << "ASSERTION HOLDS" << endl << eom;
       report_success();
   } else {
@@ -129,6 +135,10 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   status() << endl << "Custom refinement successful" << endl;
                   status() << "(" << exprs_ids.size() << " / "
                                   << exprs.size()  << " expressions bit-blasted)" << endl;
+#ifdef _NO_OPTIMIZATION                  
+                  std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
+                  if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
+#endif                  
                   status() << "ASSERTION HOLDS" << eom;
                   report_success();
               }
@@ -138,11 +148,19 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
               if (decider->force_refine_ce(exprs, refined)){
                   status() << "ASSERTION DOES NOT HOLD" << eom;
+#ifdef _NO_OPTIMIZATION                  
+                  std::string reason = decider->getFails2RefineReason();
+                  if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
+#endif
                   report_failure();
               } else {
                   status() << endl << "Naive refinement successful" << endl;
                   status() << "(" << exprs.size() << " / "
                                   << exprs.size()  << " expressions bit-blasted)" << endl;
+#ifdef _NO_OPTIMIZATION
+                  std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
+                  if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
+#endif
                   status() << "ASSERTION HOLDS" << eom;
                   report_success();
               }
@@ -183,6 +201,10 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                           for (auto it = refined.begin(); it != refined.end(); ++it){
                               status() << *it << ",";
                           }
+#ifdef _NO_OPTIMIZATION                          
+                          std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
+                          if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
+#endif
                           status() << endl << "ASSERTION HOLDS" << eom;
                           report_success();
                           break;
@@ -191,9 +213,10 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       status() << endl << "Obtained counter-examples are refined" << endl;
                       status() << "(" << refined.size() << " / "
                                       << exprs.size()  << " expressions bit-blasted)" << endl;
+#ifdef _NO_OPTIMIZATION                      
                       std::string reason = decider->getFails2RefineReason();
-                      if (reason.size() > 0)
-                      status() << "(" << reason << ")" << endl; 
+                      if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl; 
+#endif
                       status() << "ASSERTION DOES NOT HOLD" << eom;
                       report_failure();
                       break;
@@ -204,6 +227,10 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       for (int i = 0; i < exprs.size(); i++){
                           status() << i << ",";
                       }
+#ifdef _NO_OPTIMIZATION                      
+                      std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
+                      if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
+#endif
                       status() << endl << "ASSERTION HOLDS" << eom;
                       report_success();
                       break;

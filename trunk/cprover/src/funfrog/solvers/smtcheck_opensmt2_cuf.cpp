@@ -1402,7 +1402,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
 
     std::set<exprt> encoded_vars;
 
-    for (int i = start; i < exprs.size(); i++){
+    for (unsigned int i = start; i < exprs.size(); i++){
 
         if (refined.find(i) != refined.end()) continue;
 
@@ -1461,7 +1461,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
                 std::set<exprt> dep_vars;
                 getVarsInExpr(exprs[i], dep_vars);
 
-                for (int j = i + 1; j < exprs.size(); j++){
+                for (unsigned int j = i + 1; j < exprs.size(); j++){
 
                     if (refined.find(j) != refined.end()) continue;
 
@@ -1573,7 +1573,7 @@ bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::set<i
 
 bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set<int>& refined)
 {
-    for (int i = 0; i < exprs.size(); i++){
+    for (unsigned int i = 0; i < exprs.size(); i++){
         if (refined.find(i) != refined.end()) continue;
         refine_ce_one_iter(exprs, i);
     }
