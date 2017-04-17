@@ -163,7 +163,13 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
             ptl = get_bv_const(0); // false
         else 
             assert(0); // TODO: check what's here
+       
+    } else if (expr.is_one()) {
+        ptl = get_bv_const(1);
         
+    } else if (expr.is_zero()) {
+        ptl = get_bv_const(0);
+               
     } else if(type_id==ID_integer || type_id==ID_natural) {
         mp_integer int_value=string2integer(expr.get_string(ID_value));
         ptl = get_bv_const(mp_integer2int(int_value));
@@ -183,13 +189,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         mp_integer int_value=binary2integer(id2string(expr.get_string(ID_value))
                                             , type_id==ID_signedbv);
         ptl = get_bv_const(mp_integer2int(int_value));
-        
-    } else if (expr.is_one()) {
-        ptl = get_bv_const(1);
-        
-    } else if (expr.is_zero()) {
-        ptl = get_bv_const(0);
-        
+         
     } else if ("true" == id2string(to_constant_expr(expr).get_value())) {
         ptl = get_bv_const(1);
         

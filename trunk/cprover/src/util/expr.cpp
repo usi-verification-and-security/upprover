@@ -551,6 +551,18 @@ const std::string exprt::print_number_2smt() const
       mp_integer int_value=string2integer(value);
       return integer2string(int_value);
     }
+    else if(type_id==ID_c_enum || type_id==ID_c_enum_tag) 
+    {
+        const irep_idt helper_id= // Taken from cprover expr2.cpp
+            type_id==ID_c_enum
+                ?to_c_enum_type(type()).subtype().id()
+                :to_c_enum_tag_type(type()).subtype().id();
+        
+        mp_integer int_value=binary2integer(id2string(get_string(ID_value))
+                                            , helper_id==ID_signedbv);
+        
+        return integer2string(int_value);
+    }
     else if(type_id==ID_rational)
     {
       std::stringstream convert; // stringstream used for the conversion
