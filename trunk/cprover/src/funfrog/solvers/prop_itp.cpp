@@ -366,7 +366,7 @@ void prop_itpt::generalize(const prop_conv_solvert& decider,
 
       int idx = it2->var_no() - min_var;
       // Sanity check, all variables used in the interpolant should be mapped.
-      assert (idx >= 0);
+      assert (idx >= 0 && "Failed to generalize interpolant; Index of represented_symbol is out of bound");
       assert(renaming[idx] != UINT_MAX);
       it2->set(renaming[idx], it2->sign());
       used_symbols[represented_symbol[idx]] = true;
