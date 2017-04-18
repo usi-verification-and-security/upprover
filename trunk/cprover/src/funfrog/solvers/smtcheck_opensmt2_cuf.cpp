@@ -92,6 +92,7 @@ PTRef smtcheck_opensmt2t_cuf::var_bv(const exprt &expr)
                          (type_id==ID_range) ||
                          (type_id==ID_array) ||
                          (type_id==ID_pointer) ||
+                         (type_id==ID_code) ||
                          (type_id==ID_class));
     
     if (isSupported)
@@ -154,6 +155,11 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
     assert(expr.is_constant()); // If not a constant then assert
          
     const irep_idt &type_id=expr.type().id_string(); // Check by type how to convert
+    
+#ifdef DEBUG_SMT_BB     
+    std::cout << ";; Extract constant number : " << expr.print_number_2smt() << " Of Type "
+            << type_id << std::endl;
+#endif    
     
     PTRef ptl;            
     if (expr.is_boolean()) {
@@ -366,8 +372,11 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     const irep_idt &_id=expr.id(); // KE: gets the id once for performance
     
     PTRef ptl;
-    if (_id==ID_symbol || _id==ID_nondet_symbol)
-    {
+    if (_id==ID_code) {
+        
+        ptl = unsupported2var_bv(expr); // stub for now
+        
+    } else if (_id==ID_symbol || _id==ID_nondet_symbol) {
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A VAR" << endl;
 #endif
@@ -951,7 +960,11 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
     
     /* Check which case it is */
     literalt l;
-    if (_id==ID_symbol || _id==ID_nondet_symbol) {
+    if (_id==ID_code) {
+        
+        l = lunsupported2var(expr);
+        
+    } else if (_id==ID_symbol || _id==ID_nondet_symbol) {
 #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;
 #endif

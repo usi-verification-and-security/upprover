@@ -286,7 +286,11 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     
     /* Check which case it is */
     literalt l;
-    if(_id==ID_symbol || _id==ID_nondet_symbol){
+    if (_id==ID_code) {
+        
+        l = lunsupported2var(expr);
+        
+    } else if(_id==ID_symbol || _id==ID_nondet_symbol){
     #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;
     #endif

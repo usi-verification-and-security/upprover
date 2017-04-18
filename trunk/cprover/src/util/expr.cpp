@@ -580,7 +580,19 @@ const std::string exprt::print_number_2smt() const
       mp_integer int_value=binary2integer(id2string(value), 
               type_id==ID_signedbv);
       return integer2string(int_value);
-    } else {
+      
+    }
+    else if (is_boolean()) 
+    {
+        if (is_true() || is_one())
+            return "1";
+        else if (is_false() || is_zero()) 
+            return "0";
+        else 
+            return "";
+    }
+    else 
+    {
     	if (is_zero()) return "0";
     	if (is_one()) return "1";
 
