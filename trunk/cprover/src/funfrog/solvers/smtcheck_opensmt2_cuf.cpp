@@ -204,18 +204,15 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
 PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
 {
     const exprt &expr_op0 = (expr.operands())[0];
-    const irep_idt &_id0=expr_op0.id(); // KE: gets the id once for performance
-    if (_id0 == ID_floatbv_typecast) 
-        assert(0); // Type-cast of float - KE: show me that!
+    const irep_idt &_id0=expr_op0.id();  // KE: gets the id once for performance
+    assert(_id0 != ID_floatbv_typecast); // Type-cast of float - KE: show me that!
         
 #ifdef DEBUG_SMT_BB
     std::cout << ";;; Start (TYPE_CAST) for " << expr.type().id() 
                << " to " << (expr_op0.type().id()) << std::endl;
 #endif  
 
-    /* For Operators - TYPE CAST OP AS SHL, =, or another TYPE_CAST */    
-    PTRef ptl; // Return Val
-    
+    /* For Operators - TYPE CAST OP AS SHL, =, or another TYPE_CAST */        
     // KE: New Cprover code - patching
     bool is_expr_bool = expr.is_boolean() || (expr.type().id() == ID_c_bool); 
     bool is_operands_bool = expr_op0.is_boolean() ||
@@ -225,10 +222,10 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
     // Unless it is constant bool, that needs different code:
     if ((expr.id()== ID_typecast) && (_id0 == ID_typecast) 
             && (expr_op0.operands().size() == 1)) { // Recursive typecast  
-        ptl = type_cast_bv(expr_op0);
+        PTRef ptl = type_cast_bv(expr_op0);
         if (is_expr_bool && is_number(expr_op0.type())) {
             ptl = bvlogic->mkBVNot(bvlogic->mkBVEq(ptl, get_bv_const(0)));
-        }
+        } 
 
 #ifdef DEBUG_SMT_BB
         std::cout << ";;; Start (TYPE_CAST) for bv operator inner 0 " << expr.type().id() 
@@ -237,64 +234,52 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
            << (expr.operands())[0].id() << " to inner id " 
            << (expr_op0.operands())[0].id() << std::endl;
 #endif
-           
+        return ptl;   
     } else if ((expr.id()== ID_typecast) && (_id0 == ID_typecast)) {
         assert(0); // No arguments - KE: show me that!
     } else if (expr.type().id() == expr_op0.type().id()) {
-        ptl = convert_bv(expr_op0);
+        return convert_bv(expr_op0);
     } else if (is_expr_bool && expr_op0.is_constant()) {
         std::string val = extract_expr_str_number(expr_op0);
         bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
 #ifdef DEBUG_SMT_BB        
         std::cout << ";;; IS THIS ZERO? " << val_const_zero << std::endl;
 #endif        
-        ptl = get_bv_const(val_const_zero? "0" : "1");       
+        return get_bv_const(val_const_zero? "0" : "1");       
     } else if (is_expr_bool && is_number(expr_op0.type())) {
         // Cast from Real to Boolean - Add
-        PTRef lt = convert_bv(expr_op0); // Creating the Bool expression
-        ptl = bvlogic->mkBVNot(bvlogic->mkBVEq(lt, get_bv_const(0)));
-    } else if (is_number(expr.type()) && is_operands_bool) {
+
+        return bvlogic->mkBVNot(bvlogic->mkBVEq(convert_bv(expr_op0), get_bv_const(0)));
+    } else {
+        //} else if (is_number(expr.type()) && is_operands_bool) {
         // Cast from Boolean to Real - Add
         // As bool is signedbv, then no need to do anything in BVP
-        ptl = convert_bv(expr_op0);
-    } else {
-	ptl = convert_bv(expr_op0);
-    }
+        // Unify with the main case
 
-    return ptl;
+	return convert_bv(expr_op0);
+    }
 }
 
 PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr) 
 {
-    
-    // ABS - all refers as real
-    PTRef ptl_inner = convert_bv((expr.operands())[0]); // Create the inner part
-    
     const irep_idt &type_id = ((expr.operands())[0]).type().id();
     assert(type_id != ID_pointer); // TODO
-            
-    bool is_unsigned = (type_id == ID_unsignedbv ||
-                            type_id == ID_natural);
     
+    // ABS - all refers as real
+    PTRef ptl_inner = convert_bv((expr.operands())[0]); // Create the inner part        
+    if (type_id == ID_unsignedbv || type_id == ID_natural) 
     // Unsigned: no need to do something
-    if (is_unsigned)
         return ptl_inner;
     
     // If signed we need to do something :
     vec<PTRef> args;
     args.push(bvlogic->mkBVSlt(ptl_inner, this->get_bv_const(0))); // IF a
     args.push(bvlogic->mkBVNeg(ptl_inner)); // then b
-    args.push(ptl_inner);
-    
+    args.push(ptl_inner);    
     PTRef ptl = bvlogic->mkBVLand(
                     bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]),
                     bvlogic->mkBVLor(args[0], args[2])
                     ); 
-    
-    //PTRef ptl = logic->mkIte(
-    //                    bvlogic->mkBVSlt(ptl_inner, bvlogic->getTerm_RealZero()),  // IF
-    //                    bvlogic->mkBVNeg(ptl_inner),                 // Then
-    //                    ptl_inner);                                     // Else
     
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
@@ -1544,4 +1529,3 @@ bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set
 
     return solve();
 }
-
