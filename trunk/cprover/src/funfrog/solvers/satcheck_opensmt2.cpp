@@ -190,7 +190,7 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   assert(ready_to_interpolate);
 
   // Set labeling function
-  const char* msg;
+//  const char* msg;
 //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
 //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(0), msg);
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
