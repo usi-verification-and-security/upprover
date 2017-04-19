@@ -160,6 +160,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
     PTRef ptl;            
         
     std::string str = expr.print_number_2smt();
+    int isFirstchSign = (str[0] == '-' || str[0] == '+')? 1 : 0;
     assert("Check support for new data-type in Const converstion." && str.size() != 0);
     
     if ((str.compare("inf") == 0) || (str.compare("-inf") == 0))
@@ -173,8 +174,8 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         // Else - unsupported!
         ptl = unsupported2var_bv(expr); // stub for now
         
-    } else if (!(std::all_of(str.begin(), str.end(), ::isdigit))) {
-        
+    } else if (!(std::all_of(str.begin() + isFirstchSign, str.end(), ::isdigit))) {
+        std::cout << "Abstract " << str << std::endl;
         // E.g., floats - unsupported!
         ptl = unsupported2var_bv(expr); // stub for now
         
