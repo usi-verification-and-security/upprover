@@ -40,14 +40,10 @@ void smtcheck_opensmt2t_cuf::initializeSolver()
   literals[0] = logic->getTerm_true(); // Which is .x =0
   // KE: End of fix
 
-  max_num = pow (2, bitwidth) - 1;
+  max_num = (mp_integer::ullong_t) (pow (2, bitwidth) - 1);
   
   // how the check is implemented in malloc.c in the GNU C Library (glibc)
-  if ((bitwidth != 0) && !(bitwidth & (bitwidth - 1))) return;
-  
-  std::cout << "EXIT on Error --bitwidth " << bitwidth
-          <<". Please re-run with bit-width parameter that is a pow of 2! \n";
-  assert((bitwidth != 0) && !(bitwidth & (bitwidth - 1)));
+  assert("Please re-run with bit-width parameter that is a pow of 2!" && ((bitwidth != 0) && !(bitwidth & (bitwidth - 1))));
 }
 
 // Free all inner objects
@@ -106,7 +102,7 @@ PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
     return bvlogic->mkBVNumVar(name);
 }
 
-PTRef smtcheck_opensmt2t_cuf::get_bv_const(int val)
+PTRef smtcheck_opensmt2t_cuf::get_bv_const(const char* val)
 {
     return bvlogic->mkBVConst(val);
 }
@@ -141,8 +137,8 @@ bool smtcheck_opensmt2t_cuf::convert_bv_eq_ite(const exprt &expr, PTRef& ptl)
     PTRef guard_bv = convert_bv(ite_guard);
     PTRef tru_eq = bvlogic->mkBVEq(sing_bv, convert_bv(ite_tru_choice));
     PTRef fls_eq = bvlogic->mkBVEq(sing_bv, convert_bv(ite_fls_choice));
-    PTRef guard_tru = bvlogic->mkBVEq(guard_bv, get_bv_const(1));
-    PTRef guard_fls = bvlogic->mkBVEq(guard_bv, get_bv_const(0));
+    PTRef guard_tru = bvlogic->mkBVEq(guard_bv, get_bv_const("1"));
+    PTRef guard_fls = bvlogic->mkBVEq(guard_bv, get_bv_const("0"));
 
     ptl = bvlogic->mkBVLor(
             bvlogic->mkBVLand(guard_tru, tru_eq),
@@ -162,91 +158,39 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
 #endif    
     
     PTRef ptl;            
-    if (expr.is_boolean()) {
-        if (expr.is_true() || expr.is_one())
-            ptl = get_bv_const(1); // true
-        else if (expr.is_false() || expr.is_zero()) 
-            ptl = get_bv_const(0); // false
-        else 
-            assert(0); // TODO: check what's here
-       
-    } else if (expr.is_one()) {
-        ptl = get_bv_const(1);
         
-    } else if (expr.is_zero()) {
-        ptl = get_bv_const(0);
-               
-    } else if(type_id==ID_integer || type_id==ID_natural) {
-        mp_integer int_value=string2integer(expr.get_string(ID_value));
-        ptl = get_bv_const(mp_integer2int(int_value));
+    std::string str = expr.print_number_2smt();
+    assert("Check support for new data-type in Const converstion." && str.size() != 0);
+    
+    if ((str.compare("inf") == 0) || (str.compare("-inf") == 0))
+    {
+        // No inf values in toy models!
+        if ((bitwidth != 32) && (bitwidth != 64) && (bitwidth != 128)) {
+            cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+            exit(0);
+        }
+
+        // Else - unsupported!
+        ptl = unsupported2var_bv(expr); // stub for now
         
-    } else if(type_id==ID_c_enum || type_id==ID_c_enum_tag) {
-        const irep_idt helper_id= // Taken from cprover expr2.cpp
-            type_id==ID_c_enum
-                ?to_c_enum_type(expr.type()).subtype().id()
-                :to_c_enum_tag_type(expr.type()).subtype().id();
+    } else if (!(std::all_of(str.begin(), str.end(), ::isdigit))) {
         
-        mp_integer int_value=binary2integer(id2string(expr.get_string(ID_value))
-                                            , helper_id==ID_signedbv);
-        ptl = get_bv_const(mp_integer2int(int_value));
-        
-    } else if (type_id==ID_unsignedbv || type_id==ID_signedbv ||
-               type_id==ID_c_bit_field || type_id==ID_c_bool) {
-        mp_integer int_value=binary2integer(id2string(expr.get_string(ID_value))
-                                            , type_id==ID_signedbv);
-        ptl = get_bv_const(mp_integer2int(int_value));
-         
-    } else if ("true" == id2string(to_constant_expr(expr).get_value())) {
-        ptl = get_bv_const(1);
-        
-    } else if ("false" == id2string(to_constant_expr(expr).get_value())) {
-        ptl = get_bv_const(0); 
+        // E.g., floats - unsupported!
+        ptl = unsupported2var_bv(expr); // stub for now
         
     } else {
-        // General number (not just 0 or 1)
-        std::string str = expr.print_number_2smt();
-        if (str.size() <= 0)
-            if (expr.type().id() == ID_c_enum)
-                str = expr.type().find(ID_tag).pretty();
-            else if (expr.type().id() == ID_c_enum_tag)
-                str= id2string(to_constant_expr(expr).get_value());
-            
-        if ((str.compare("inf") == 0) || (str.compare("-inf") == 0))
+        // Check if fits
+        mp_integer int_value=string2integer(str);
+        if (int_value < -max_num || max_num < int_value)
         {
-            // No inf values in toy models!
-            if ((bitwidth != 32) && (bitwidth != 64) && (bitwidth != 128)) {
-                cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                exit(0);
-            }
-                
-            assert(0); // KE: Not sure what to do with it, please show me the case        
-        } else {
-            long num;
-            try {
-                num= stoi(str);
-            } catch(std::invalid_argument& e){
-                cout << "\nNo support for constant or symbol " << str << " so far.\n\n";
-                exit(0);
-            }
-            catch(std::out_of_range& e){
-                cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                exit(0);
-            }
-            catch(...) {
-                assert(0); // unknown: need to add code probably!
-            }
-            
-            // Check if fits
-            if ((num < -max_num || max_num < num))
-            {
-                cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                exit(0);
-            } else {
-                ptl = get_bv_const(num);
-            }
+            cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+            exit(0);
         } 
-    } // General case
-
+        
+        // Create the constant as string in OpenSMT2
+        ptl = get_bv_const(str.c_str());
+    }
+    
     return ptl;
 }
 
@@ -303,7 +247,7 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB        
         std::cout << ";;; IS THIS ZERO? " << val_const_zero << std::endl;
 #endif        
-        ptl = get_bv_const(!val_const_zero);       
+        ptl = get_bv_const(val_const_zero? "0" : "1");       
     } else if (is_expr_bool && is_number(expr_op0.type())) {
         // Cast from Real to Boolean - Add
         PTRef lt = convert_bv(expr_op0); // Creating the Bool expression
@@ -1433,7 +1377,8 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
                 assert(0);
             }
 #endif
-            PTRef ce_term = bvlogic->mkBVEq(convert_bv(*it), get_bv_const(model[*it]));
+            PTRef ce_term = bvlogic->mkBVEq(convert_bv(*it), 
+                    get_bv_const(std::to_string(model[*it]).c_str())); // KE: not sure what to do here!
             BVRef tmp;
             bitblaster->insertEq(ce_term, tmp);
             encoded_vars.insert(*it);

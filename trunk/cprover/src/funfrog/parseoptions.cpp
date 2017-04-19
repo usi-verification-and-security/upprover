@@ -473,8 +473,6 @@ bool funfrog_parseoptionst::check_function_summarization(
   goto_functionst &goto_functions)
 {
 
-    //fine_timet before, after;
-  
     claim_mapt claim_map;
     claim_numberst claim_numbers;
 
@@ -491,9 +489,6 @@ bool funfrog_parseoptionst::check_function_summarization(
 	  const namespacet ns(symbol_table);
 	  show_properties(ns, get_ui(), goto_functions);
 	  return 0;
-	  // Old code - KE
-      //show_claims(ns, claim_map, claim_numbers, get_ui());
-      //return 0;
     } else if(cmdline.isset("claims-count")) {
         std::cout <<"(claims-count),"<< claim_numbers.size() << std::endl;
         return 0;
@@ -527,6 +522,19 @@ bool funfrog_parseoptionst::check_function_summarization(
     
     if (cmdline.isset("claims-opt"))
       store_claims(ns, claim_map, claim_numbers);
+    
+    // If we set bitwidth, check it sets right, it will be by defualt 8
+    if (options.get_option("logic") == "qfcuf") // bitwidth exists only in cuf
+    {
+        unsigned bitwidth = options.get_unsigned_int_option("bitwidth");  
+        if (!((bitwidth != 0) && !(bitwidth & (bitwidth - 1)))) {
+            cbmc_error_interface("Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
+                + ". Please re-run with bit-width parameter that is a pow of 2!");
+            exit(0);
+        } else if (bitwidth > 32) {
+            cbmc_status_interface("Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf");   
+        }  
+    }
 
     // ID_main is the entry point that is now changed to be ID__start
     // KE: or is it goto_functionst::entry_point()?
@@ -577,7 +585,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("theoref", cmdline.isset("theoref"));
   options.set_option("force", cmdline.isset("force"));
   options.set_option("custom", cmdline.get_value("custom"));
-  if (cmdline.isset("bitwidth")) {
+  if (cmdline.isset("bitwidth")) {                
     options.set_option("bitwidth", cmdline.get_value("bitwidth"));
   } else {
     options.set_option("bitwidth", 8);
@@ -595,24 +603,20 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("type-constraints", 1);
 
   if(cmdline.isset("logic")) {
-//    options.set_option("logic", cmdline.getval("logic"));
     options.set_option("logic", cmdline.get_value("logic"));
   } else { // Set to qfuf - defualt
     options.set_option("logic", "qfuf"); 
   }
   
   if (cmdline.isset("check-itp")) {
-//    options.set_option("check-itp", cmdline.getval("check-itp"));
     options.set_option("check-itp", cmdline.get_value("check-itp"));
   }
   if (cmdline.isset("itp-algorithm")) { // In Help Menu
     options.set_option("itp-algorithm", cmdline.get_value("itp-algorithm"));
   }
-
   if (cmdline.isset("itp-uf-algorithm")) { // In Help Menu
     options.set_option("itp-uf-algorithm", cmdline.get_value("itp-uf-algorithm"));
   }
-
   if (cmdline.isset("itp-lra-algorithm")) { // In Help Menu
     options.set_option("itp-lra-algorithm", cmdline.get_value("itp-lra-algorithm"));
   }
@@ -672,7 +676,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   }
   //if (cmdline.isset("reduce-proof-time")) {
   //  options.set_option("reduce-proof-time", cmdline.get_value("reduce-proof-time"));
-//  }
+  //}
   if (cmdline.isset("reduce-proof-graph")) { // In Help Menu
     options.set_option("reduce-proof-graph", cmdline.get_value("reduce-proof-graph"));
   }

@@ -49,7 +49,7 @@ public:
   
   PTRef get_bv_var(const char* name);
 
-  PTRef get_bv_const(int val);
+  PTRef get_bv_const(const char* val);
 
   void set_equal_bv(PTRef l1, PTRef l2);
 
@@ -88,7 +88,7 @@ protected:
 
   unsigned bitwidth;
 
-  __int128 max_num; // w.r.t. current bitwidth
+  mp_integer max_num; // w.r.t. current bitwidth
 
   map<size_t, PTRef> converted_bitblasted_exprs;
 
