@@ -33,7 +33,7 @@ void summarizing_checkert::initialize_solver()
     else 
     {
         std::cout << ("Unsupported theory: " +  _logic + "\n");
-        assert(0); //Unsupported 
+        exit(0); //Unsupported 
     }
   
   // Set all the rest of the option - KE: check what to shift to the part of SMT only
