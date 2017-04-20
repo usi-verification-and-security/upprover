@@ -671,13 +671,13 @@ Function: summarizing_checkert::report_success
 
 void summarizing_checkert::report_success()
 {
-  //status() << ("VERIFICATION SUCCESSFUL");
+  //result() << ("VERIFICATION SUCCESSFUL");
 
   switch(message_handler.get_ui())
   {
   
   case ui_message_handlert::PLAIN:
-	std::cout << std::endl << std::endl << "VERIFICATION SUCCESSFUL" << std::endl;
+	result() << "\n\nVERIFICATION SUCCESSFUL" << eom;
 	break;
 
   case ui_message_handlert::XML_UI:
@@ -712,7 +712,7 @@ void summarizing_checkert::report_failure()
   {
 
   case ui_message_handlert::PLAIN:
-	std::cout << std::endl << std::endl << "VERIFICATION FAILED" << std::endl;
+	result() << "\n\nVERIFICATION FAILED" << eom;;
 	break;
 
   case ui_message_handlert::XML_UI:

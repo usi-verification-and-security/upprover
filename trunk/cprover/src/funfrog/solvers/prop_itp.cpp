@@ -9,12 +9,13 @@ Author: Ondrej Sery
 #include <string.h>
 #include "prop_itp.h"
 #include <stdlib.h>
-#include <iostream>
-
 #include "time_stopping.h"
 #include <symbol_table.h>
 
 //#define DEBUG_ITP
+# ifdef DEBUG_ITP
+#include <iostream>
+#endif
 
 /*******************************************************************\
 

@@ -7,6 +7,9 @@ Author: Ondrej Sery
 \*******************************************************************/
 
 #include "expr_pretty_print.h"
+
+//#define DEBUG_SSA_SMT
+#ifdef DEBUG_SSA_PRINT
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
@@ -19,9 +22,6 @@ Author: Ondrej Sery
 #define NORMAL_COLOR "\033[0m"
 #define DEBUG_COLOR "\E[47;34m"
 
-//#define DEBUG_SSA_SMT
-
-#ifdef DEBUG_SSA_PRINT
 std::string expr_pretty_printt::addToDeclMap(const exprt &expr) {
 	if (partition_smt_decl == NULL) return "";
 

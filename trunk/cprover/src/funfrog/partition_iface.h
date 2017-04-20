@@ -11,7 +11,10 @@
 #ifndef CPROVER_PARTITION_IFACE_H
 #define	CPROVER_PARTITION_IFACE_H
 
+#ifdef DEBUG_SSA_PRINT
 #include <iostream>
+#endif
+
 #include <list>
 #include <type.h>
 #include <symbol.h>

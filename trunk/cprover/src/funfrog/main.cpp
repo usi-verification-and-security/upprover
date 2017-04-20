@@ -14,6 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <signal.h>
 #include "parseoptions.h"
+#include <iostream>
 
 /*******************************************************************\
 

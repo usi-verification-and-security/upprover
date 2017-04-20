@@ -46,6 +46,7 @@ public:
           store_summaries_with_assertion(_store_summaries_with_assertion),
           coloring_mode(_coloring_mode),
           clauses(_clauses),
+#         ifdef DEBUG_SSA_PRINT                   
 		  out_local_terms(0),
 		  out_terms(out_local_terms),
 		  out_local_basic(0),
@@ -55,20 +56,24 @@ public:
 		  terms_counter(0),
 		  is_first_call(true),
 		  first_call_expr(0),
+#endif                  
                   io_count_global(0)
 		  {
+#         ifdef DEBUG_SSA_PRINT  
 	  partition_smt_decl = new std::map <std::string,exprt>();
 	  out_terms.rdbuf(&terms_buf);
 	  out_basic.rdbuf(&basic_buf);
 	  out_partition.rdbuf(&partition_buf);
-
+#endif
   }
 
   // First this called and then the parent d'tor due to the use of virtual
   virtual ~partitioning_target_equationt() {
+#         ifdef DEBUG_SSA_PRINT        
 	  partition_smt_decl->clear();
-	  delete partition_smt_decl;
+	  delete partition_smt_decl;        
 	  first_call_expr = 0; // Not here to do the delete
+#         endif
   }
 
   // Reserve a partition id for later use. The newly reserved partition
@@ -209,6 +214,7 @@ protected:
   // Id of the currently selected partition
   partition_idt current_partition_id;
 
+#ifdef DEBUG_SSA_PRINT  
   // For SMT-Lib Translation - Move it later to a new class
   std::map <std::string,exprt>* partition_smt_decl;
   std::ostream out_local_terms; //for prints SSA - remove later
@@ -226,19 +232,20 @@ protected:
   int terms_counter; // for prints SSA - remove later
   bool is_first_call; // for prints SSA - remove later
   const exprt* first_call_expr; // for prints SSA - remove later
+#endif  
   
   unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
 
   // Print decl (later change to create)
+#ifdef DEBUG_SSA_PRINT  
   std::ostream& print_decl_smt(std::ostream& out);
   void print_all_partition(std::ostream& out);
-  void print_partition();
-#ifdef DEBUG_SSA_PRINT  
+  void print_partition();  
   void addToDeclMap(const exprt &expr);
-#endif
   void saveFirstCallExpr(const exprt& expr);
   bool isFirstCallExpr(const exprt& expr);
   void getFirstCallExpr();
+#endif
 
   unsigned count_partition_assertions(partitiont& partition) const
   {

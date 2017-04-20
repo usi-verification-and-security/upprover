@@ -18,6 +18,7 @@
 #include <io.h>
 #endif
 
+#include <iostream>
 #include <std_expr.h>
 #include <arith_tools.h>
 #include <prefix.h>

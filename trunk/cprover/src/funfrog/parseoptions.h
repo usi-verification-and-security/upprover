@@ -12,7 +12,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_FUNFROG_PARSEOPTIONS_H
 
 #include <fstream>
-#include <iostream>
 #include <cstdlib>
 #include <langapi/language_ui.h>
 #include <options.h>

@@ -3,10 +3,12 @@
 #include <string.h>
 #include "smt_itp.h"
 #include <stdlib.h>
-#include <iostream>
 #include "smtcheck_opensmt2.h"
 
 //#define DEBUG_ITP
+# ifdef DEBUG_ITP
+#include <iostream>
+#endif
 
 bool
 smt_itpt::usesVar(symbol_exprt& symb, unsigned idx)

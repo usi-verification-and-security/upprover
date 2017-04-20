@@ -31,10 +31,13 @@ Author: Ondrej Sery
 void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
           interpolating_solvert &interpolator)
 {
+#ifdef DEBUG_SSA_PRINT    
+    getFirstCallExpr(); // Save the first call to the first function
+#endif  
+        
 	// KE: prop_conv change into prop_conv_solvert and use it from here - does cast + error check
 	//prop_conv_solvert&prop_conv_solver = dynamic_cast<prop_conv_solvert&> (prop_conv);
-	//assert(prop_conv_solver != 0); // KE: if null it says we never created it as prop_conv_solver - go back to prop_assertion_sum and fix it!
-	getFirstCallExpr(); // Save the first call to the first function
+	//assert(prop_conv_solver != 0); // KE: if null it says we never created it as prop_conv_solver - go back to prop_assertion_sum and fix it!      
   int part_id = partitions.size();
   for (partitionst::reverse_iterator it = partitions.rbegin();
           it != partitions.rend(); ++it) {
@@ -66,7 +69,9 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
     convert_partition(prop_conv, interpolator, *it);
 
     // Print partition into a buffer after the headers: basic and code
+#ifdef DEBUG_SSA_PRINT    
     print_partition();
+#endif    
 
 #   ifdef DEBUG_ENCODING
     unsigned vars_after = prop_conv.prop.no_variables();

@@ -178,7 +178,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
                   std::set<int> weak;
 
-                  int last = 0;
+                  unsigned int last = 0;
                   while (last != -1 || last == exprs.size()){
                       // local CUF solver
                       smtcheck_opensmt2t_cuf* decider2 = new smtcheck_opensmt2t_cuf(bw);
@@ -224,7 +224,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       status() << endl << "Naive refinement successful" << endl;
                       status() << "(" << refined.size() << " counter-examples + refine everything else)" << endl;
                       status() << "Command-line options to double-check: --theoref --custom ";
-                      for (int i = 0; i < exprs.size(); i++){
+                      for (unsigned int i = 0; i < exprs.size(); i++){
                           status() << i << ",";
                       }
 #ifdef _NO_OPTIMIZATION                      
@@ -303,7 +303,7 @@ void theory_refinert::report_success()
   {
   
   case ui_message_handlert::PLAIN:
-    std::cout << std::endl << std::endl << "VERIFICATION SUCCESSFUL" << std::endl;
+    result() << "\n\nVERIFICATION SUCCESSFUL" << eom;
     break;
 
   case ui_message_handlert::XML_UI:
@@ -338,7 +338,7 @@ void theory_refinert::report_failure()
   {
 
   case ui_message_handlert::PLAIN:
-    std::cout << std::endl << std::endl << "VERIFICATION FAILED" << std::endl;
+    result() << "\n\nVERIFICATION FAILED" << eom;
     break;
 
   case ui_message_handlert::XML_UI:
