@@ -113,22 +113,20 @@ bool smtcheck_opensmt2t::is_assignemt_true(literalt a) const
 // For using symbol only when creating the interpolant (in smt_itpt::substitute)
 PTRef smtcheck_opensmt2t::convert_symbol(const exprt &expr)
 {
-	// Assert if not symbol_exprt
-	assert(expr.id()==ID_symbol || expr.id()==ID_nondet_symbol);
+    // Assert if not symbol_exprt
+    assert(expr.id()==ID_symbol || expr.id()==ID_nondet_symbol);
 
-	// If it is a symbol create the PTRef for it and returns it
-	literalt l = convert(expr);
-	return literals[l.var_no()];
+    // If it is a symbol create the PTRef for it and returns it
+    literalt l = convert(expr);
+    return literals[l.var_no()];
 }
 
 literalt smtcheck_opensmt2t::const_var(bool val)
 {
-	literalt l;
+    PTRef c = val ? logic->getTerm_true() : logic->getTerm_false();
+    literalt l = push_variable(c); // Keeps the new PTRef + create for it a new index/literal
 
-	PTRef c = val ? logic->getTerm_true() : logic->getTerm_false();
-	l = push_variable(c); // Keeps the new PTRef + create for it a new index/literal
-
-	return l;
+    return l;
 }
 
 void smtcheck_opensmt2t::set_to_true(PTRef ptr)
@@ -168,45 +166,41 @@ void smtcheck_opensmt2t::set_to_false(const exprt &expr)
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     vec<PTRef> args;
-    literalt l;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
-    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
     assert(ans != PTRef_Undef);
     current_partition->push(ans);
 }
 
 literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
-	literalt l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkImpl(args);
-    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
     return l;
 }
 
 literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
-    literalt l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkAnd(args);
-    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
     return l;
 }
 
 literalt smtcheck_opensmt2t::land(bvt b){
-    literalt l;
     vec<PTRef> args;
     for(bvt::iterator it = b.begin(); it != b.end(); ++it)
     {
@@ -214,7 +208,7 @@ literalt smtcheck_opensmt2t::land(bvt b){
         args.push(tmpp);
     }
     PTRef ans = logic->mkAnd(args);
-    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
     return l;
 }
@@ -233,7 +227,6 @@ literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
 }
 
 literalt smtcheck_opensmt2t::lor(bvt b){
-    literalt l;
     vec<PTRef> args;
     for(bvt::iterator it = b.begin(); it != b.end(); ++it)
     {
@@ -241,37 +234,32 @@ literalt smtcheck_opensmt2t::lor(bvt b){
         args.push(tmpp);
     }
     PTRef ans = logic->mkOr(args);
-    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
 	return l;
 }
 
 literalt smtcheck_opensmt2t::lnot(literalt l){
-    literalt ln;
     vec<PTRef> args;
     PTRef pl1 = literals[l.var_no()];
     args.push(pl1);
     PTRef ans = logic->mkNot(args);
-    ln = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+    literalt ln = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
     return ln;
 }
 
-literalt smtcheck_opensmt2t::lconst(const exprt &expr)
-{
-    literalt l;
+literalt smtcheck_opensmt2t::lconst(const exprt &expr){
     if (expr.is_boolean()) {
-        l = const_var(expr.is_true());
+        return const_var(expr.is_true());
     } else if (expr.type().id() == ID_c_bool) { // KE: New Cprover code - patching
         std::string num(expr.get_string(ID_value));
         assert(num.size() == 8); // if not 8, but longer, please add the case
-        l = const_var(num.compare("00000000") != 0);
+        return const_var(num.compare("00000000") != 0);
         //std::cout << "Check? " << (num.compare("00000000") != 0) << " for string " << num << std::endl;
     } else {
-        l = const_var_Real(expr);
+        return const_var_Real(expr);
     }
-
-    return l;
 }
 
 void smtcheck_opensmt2t::extract_itp(PTRef ptref, smt_itpt& itp) const

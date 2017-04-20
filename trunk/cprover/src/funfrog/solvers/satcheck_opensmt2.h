@@ -86,17 +86,8 @@ protected:
   unsigned solver_verbosity;
   // Mapping from variable indices to their E-nodes in PeRIPLO
   std::string id_str;
-  // Can we interpolate?
-  bool ready_to_interpolate;
   
   vec<PTRef> top_level_formulas;
-
-  int reduction_loops;
-
-  int reduction_graph;
-
-  // 1 - stronger, 2 - weaker (GF: not working at the moment)
-  int proof_trans;
 
 //  Mapping from variable indices to their PTRefs in OpenSMT
   std::vector<PTRef> ptrefs;

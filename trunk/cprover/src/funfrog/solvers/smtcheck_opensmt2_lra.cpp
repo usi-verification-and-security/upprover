@@ -110,7 +110,6 @@ exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
 
 literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
 {
-    literalt l;
     string num = extract_expr_str_number(expr);
     PTRef rconst = PTRef_Undef;
     if(num.size() <= 0)
@@ -159,23 +158,17 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
     	//TODO: when support array fully add assert here
     }
 
-    l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
-
-    return l;
+    return push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
 }
 
 literalt smtcheck_opensmt2t_lra::const_from_str(const char* num)
 {
-    literalt l;
     PTRef rconst = lralogic->mkConst(num); // Can have a wrong conversion sometimes!
-    l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
-    return l;
+    return push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
 }
 
 literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr) 
-{
-    literalt l;
-    
+{    
     // KE: New Cprover code - patching
     bool is_expr_bool = (expr.is_boolean() || (expr.type().id() == ID_c_bool)); 
     bool is_operands_bool = ((expr.operands())[0].is_boolean() 
@@ -184,32 +177,24 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
     // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code:
     if (expr.type().id() == (expr.operands())[0].type().id()) {
-        l = convert((expr.operands())[0]);
+        return convert((expr.operands())[0]);
     } else if (is_expr_bool && (expr.operands())[0].is_constant()) {
     	std::string val = extract_expr_str_number((expr.operands())[0]);
     	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
-    	l = const_var(!val_const_zero);
+    	return const_var(!val_const_zero);
     } else if (is_number(expr.type()) && is_operands_bool) {
     	// Cast from Boolean to Real - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	PTRef ptl = logic->mkIte(literals[lt.var_no()], lralogic->mkConst("1"), lralogic->mkConst("0"));
-    	l = push_variable(ptl); // Keeps the new literal + index it
+    	return push_variable(ptl); // Keeps the new literal + index it
     } else if (is_expr_bool && is_number((expr.operands())[0].type())) {
     	// Cast from Real to Boolean - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], lralogic->mkConst("0")));
-    	l = push_variable(ptl); // Keeps the new literal + index it
+    	return push_variable(ptl); // Keeps the new literal + index it
     } else {
-    	l = convert((expr.operands())[0]);
+    	return convert((expr.operands())[0]);
     }
-
-#ifdef SMT_DEBUG
-    char* s = getPTermString(l);
-    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
-#endif
-
-    return l;
 }
 
 PTRef smtcheck_opensmt2t_lra::mult_real(const exprt &expr, vec<PTRef> &args) 
@@ -305,9 +290,14 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
     #endif
-                // KE: Take care of type cast - recursion of convert take care of it anyhow
+        // KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
         l = type_cast(expr);
+    #ifdef SMT_DEBUG
+    char* s = getPTermString(l);
+    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    free(s);
+    #endif        
     } else if (_id == ID_typecast) {
     #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")" << endl;
@@ -500,16 +490,13 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 }
 
 literalt smtcheck_opensmt2t_lra::lnotequal(literalt l1, literalt l2){
-    literalt l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkNot(logic->mkEq(args));
-    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
-
-    return l;
+    return push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 }
 
 
@@ -533,12 +520,8 @@ PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt expr)
 
 literalt smtcheck_opensmt2t_lra::lunsupported2var(const exprt expr)
 {
-	literalt l;
-
-	PTRef var = runsupported2var(expr);
-	l = push_variable(var);
-
-	return l;
+    PTRef var = runsupported2var(expr);
+    return push_variable(var);
 }
 
 literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
@@ -555,7 +538,6 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 #endif
 
     // Else if it is really a var, continue and declare it!
-    literalt l;
     PTRef var;
     if(is_number(expr.type()))
     	var = lralogic->mkRealVar(str.c_str());
@@ -576,7 +558,7 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 #endif
     }
 
-    l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
+    literalt l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
 
     if (type_constraints_level > 0)
     	add_constraints2type(expr, var);
@@ -593,16 +575,14 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 
 literalt smtcheck_opensmt2t_lra::labs(const exprt &expr) 
 {
-    literalt l;
-    
     // ABS - all refers as real
     literalt lt = convert((expr.operands())[0]); // Create the inner part
     PTRef ptl = logic->mkIte(
                         lralogic->mkRealLt(literals[lt.var_no()], lralogic->getTerm_RealZero()),  // IF
                         lralogic->mkRealNeg(literals[lt.var_no()]),                 // Then
                         literals[lt.var_no()]);                                     // Else
-    l = push_variable(ptl); // Keeps the new literal + index it
-
+ 
+    literalt l = push_variable(ptl); // Keeps the new literal + index it
 
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
@@ -722,8 +702,8 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
     int size = var_type.get_int("width");
     //const irep_idt type = var_type.get("#c_type");
     const irep_idt &type_id=var_type.id_string();
-    bool is_add_constraints = false;
     bool is_non_det = (expr.id() == ID_nondet_symbol);
+    bool is_add_constraints = false;
 
     // Start checking what it is
     if(type_id==ID_integer || type_id==ID_natural)

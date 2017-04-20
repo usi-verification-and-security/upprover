@@ -140,13 +140,8 @@ protected:
   bool is_var_constraints_empty;
 
   map<size_t, literalt> converted_exprs;
-
-  bool ready_to_interpolate;
   
   unsigned no_literals;
-
-  // 1 - stronger, 2 - weaker (GF: not working at the moment)
-  int proof_trans;
 
   //  Mapping from boolean variable indexes to their PTRefs
   std::vector<PTRef> literals;

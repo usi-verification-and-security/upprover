@@ -129,6 +129,8 @@ protected:
   //  List of clauses that are part of this partition (a.k.a. assert in smt2lib)
   vec<PTRef>* current_partition;
   
+  // 1 - stronger, 2 - weaker (GF: not working at the moment)
+  int proof_trans;  
   
   // OpenSMT2 Params
   bool reduction;
@@ -146,6 +148,9 @@ protected:
   int verbosity;
 
   int certify;
+  
+  // Can we interpolate?
+  bool ready_to_interpolate;
 };
 
 #endif

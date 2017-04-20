@@ -150,9 +150,8 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
 {
     assert(expr.is_constant()); // If not a constant then assert
          
-    const irep_idt &type_id=expr.type().id_string(); // Check by type how to convert
-    
-#ifdef DEBUG_SMT_BB     
+#ifdef DEBUG_SMT_BB 
+    const irep_idt &type_id=expr.type().id_string(); // Check by type how to convert    
     std::cout << ";; Extract constant number : " << expr.print_number_2smt() << " Of Type "
             << type_id << std::endl;
 #endif    
@@ -215,8 +214,6 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
     /* For Operators - TYPE CAST OP AS SHL, =, or another TYPE_CAST */        
     // KE: New Cprover code - patching
     bool is_expr_bool = expr.is_boolean() || (expr.type().id() == ID_c_bool); 
-    bool is_operands_bool = expr_op0.is_boolean() ||
-                            (expr_op0.type().id() == ID_c_bool); 
         
     // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code:
@@ -831,8 +828,6 @@ literalt smtcheck_opensmt2t_cuf::const_var_Real(const exprt &expr)
 //    (RegionAllocator<T>::Ref) const [with T = unsigned int; 
 //     RegionAllocator<T>::Ref = unsigned int]: Assertion `r < sz' failed.
 literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
-    literalt l;
-
     // KE: New Cprover code - patching
     bool is_expr_bool = (expr.is_boolean() || (expr.type().id() == ID_c_bool)); 
     bool is_operands_bool = ((expr.operands())[0].is_boolean() 
@@ -841,36 +836,28 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
     // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code: 
     if (expr.type().id() == (expr.operands())[0].type().id()) {
-        l = convert((expr.operands())[0]);
+        return convert((expr.operands())[0]);
     } else if (is_expr_bool && (expr.operands())[0].is_constant()) {
         std::string val = extract_expr_str_number((expr.operands())[0]);
         bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
 #ifdef SMT_DEBUG       
         std::cout << " IS THIS ZERO? :" << val_const_zero << std::endl;
 #endif
-        l = const_var(!val_const_zero);
+        return const_var(!val_const_zero);
     } else if (is_number(expr.type()) && is_operands_bool) {
-        // Cast from Boolean to Real - Add
+        // Cast from Boolean to Real - Addliteral
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
         PTRef ptl = logic->mkIte(literals[lt.var_no()], uflogic->mkCUFConst(1), uflogic->mkCUFConst(0));
-        l = push_variable(ptl); // Keeps the new literal + index it
+        return push_variable(ptl); // Keeps the new literal + index it
     } else if (is_expr_bool && is_number((expr.operands())[0].type())) {
         // Cast from Real to Boolean - Add
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
         // TODO: to cuf, look many locations!
         PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], uflogic->mkCUFConst(0)));
-        l = push_variable(ptl); // Keeps the new literal + index it
+        return push_variable(ptl); // Keeps the new literal + index it
     } else {
-        l = convert((expr.operands())[0]);
+        return convert((expr.operands())[0]);
     }
-
-#ifdef SMT_DEBUG
-    char* s = getPTermString(l);
-    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
-#endif
-
-    return l;
 }
 
 literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
@@ -912,6 +899,11 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         // KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
         l = type_cast(expr);
+#ifdef SMT_DEBUG
+    char* s = getPTermString(l);
+    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    free(s);
+#endif        
     } else if (_id==ID_typecast || _id==ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
         cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << expr.id() << ")" << endl;
@@ -1221,13 +1213,11 @@ literalt smtcheck_opensmt2t_cuf::lunsupported2var(exprt expr)
     
     
     // Create a new unsupported var
-    literalt l;
-    PTRef var;
-           
     std::string str =smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
     str = quote_varname(str);
     
     // Create the correct type in opensmt
+    PTRef var;
     if (expr.is_boolean()) 
         var = logic->mkBoolVar(str.c_str());
     else if (expr.type().id() == ID_c_bool) 
@@ -1236,7 +1226,7 @@ literalt smtcheck_opensmt2t_cuf::lunsupported2var(exprt expr)
     else
         var = uflogic->mkCUFNumVar(str.c_str()); // create unsupported var for expression we don't support
 
-    l = push_variable(var);
+    literalt l = push_variable(var);
     
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS AN UNSUPPORTED VAR " << str << endl;
@@ -1246,14 +1236,13 @@ literalt smtcheck_opensmt2t_cuf::lunsupported2var(exprt expr)
 }
 
 literalt smtcheck_opensmt2t_cuf::lnotequal(literalt l1, literalt l2){
-    literalt l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
     args.push(pl1);
     args.push(pl2);
     PTRef ans = uflogic->mkCUFNeq(args); // uflogic to avoid dynamic cast
-    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 
     return l;
 }
@@ -1272,7 +1261,6 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
 #endif
 
     // Else if it is really a var, continue and declare it!
-    literalt l;
     PTRef var;
     if(is_number(expr.type()))
         //TODO: Check this
@@ -1297,7 +1285,7 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
 #endif
     }
 
-    l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
+    literalt l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
 
 #ifdef DEBUG_SMT2SOLVER
     std::string add_var = str + " () " + getVarData(var);
