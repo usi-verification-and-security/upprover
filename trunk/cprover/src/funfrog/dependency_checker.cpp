@@ -418,6 +418,7 @@ void dependency_checkert::print_expr_symbols(std::ostream &out, symbol_sett& s)
     //s.clear();
 }
 
+#ifdef DEBUG_SSA_PRINT
 void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int indent)
 {
   if (expr.has_operands())
@@ -438,6 +439,7 @@ void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int
           }
   }
 }
+#endif
 
 void dependency_checkert::print_SSA_steps()
 {

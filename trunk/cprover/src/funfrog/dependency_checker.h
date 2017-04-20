@@ -76,7 +76,9 @@ public:
 
   void print_SSA_steps_infos();
   void print_SSA_steps();
+#ifdef DEBUG_SSA_PRINT  
   void print_expr_operands(ostream &out, exprt expr, int indent);
+#endif
   void get_expr_symbols(const exprt &expr, symbol_sett& symbols);
   void print_expr_symbols(ostream &out, exprt expr);
   void print_expr_symbols(ostream &out, symbol_sett& s);

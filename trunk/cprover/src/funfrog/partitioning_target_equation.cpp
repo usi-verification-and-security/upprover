@@ -233,6 +233,7 @@ void partitioning_target_equationt::print_all_partition(std::ostream& out) {
 }
 
 // Not in use here
+#   ifdef DEBUG_SSA_PRINT
 void partitioning_target_equationt::addToDeclMap(const exprt &expr) {
     if (partition_smt_decl == NULL)
         return;
@@ -247,6 +248,7 @@ void partitioning_target_equationt::addToDeclMap(const exprt &expr) {
     if (partition_smt_decl->find(key) == partition_smt_decl->end())
         partition_smt_decl->insert(make_pair(key, expr));
 }
+#   endif
 
 void partitioning_target_equationt::getFirstCallExpr() 
 {

@@ -11,6 +11,7 @@ Author: Ondrej Sery
 
 #include <expr.h>
 
+#ifdef DEBUG_SSA_PRINT
 class expr_pretty_printt
 {
 public:
@@ -67,5 +68,6 @@ std::ostream& expr_pretty_print(std::ostream& out, const exprt& expr,
 
 std::ostream& expr_ssa_print_guard(std::ostream& out, const exprt& expr,
 		std::map <std::string,exprt>* partition_smt_decl);
+#endif
 
 #endif

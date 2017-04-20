@@ -11,7 +11,7 @@ Author: Ondrej Sery
 #define CPROVER_PARTITIONING_TARGET_EQUATION_H
 
 // Debugging flags:
-//#define DEBUG_SSA_PRINT // Print the SSA encoding
+//#define DEBUG_SSA_PRINT // Print the SSA encoding + recompile expr_pretty_print class
 //#define DEBUG_SSA // General debug prints
 // End of working debugging flags
 
@@ -233,7 +233,9 @@ protected:
   std::ostream& print_decl_smt(std::ostream& out);
   void print_all_partition(std::ostream& out);
   void print_partition();
+#ifdef DEBUG_SSA_PRINT  
   void addToDeclMap(const exprt &expr);
+#endif
   void saveFirstCallExpr(const exprt& expr);
   bool isFirstCallExpr(const exprt& expr);
   void getFirstCallExpr();

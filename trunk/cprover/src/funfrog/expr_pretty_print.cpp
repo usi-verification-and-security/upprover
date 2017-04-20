@@ -21,6 +21,7 @@ Author: Ondrej Sery
 
 //#define DEBUG_SSA_SMT
 
+#ifdef DEBUG_SSA_PRINT
 std::string expr_pretty_printt::addToDeclMap(const exprt &expr) {
 	if (partition_smt_decl == NULL) return "";
 
@@ -303,3 +304,4 @@ bool expr_pretty_printt::isWithRoundingModel(const exprt& expr) {
 	// End of check - shall be on a procedure!
 	return is_div_wtrounding;
 }
+#endif
