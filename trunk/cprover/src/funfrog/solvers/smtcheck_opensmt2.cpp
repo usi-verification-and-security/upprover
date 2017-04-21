@@ -124,9 +124,7 @@ PTRef smtcheck_opensmt2t::convert_symbol(const exprt &expr)
 literalt smtcheck_opensmt2t::const_var(bool val)
 {
     PTRef c = val ? logic->getTerm_true() : logic->getTerm_false();
-    literalt l = push_variable(c); // Keeps the new PTRef + create for it a new index/literal
-
-    return l;
+    return push_variable(c); // Keeps the new PTRef + create for it a new index/literal
 }
 
 void smtcheck_opensmt2t::set_to_true(PTRef ptr)
@@ -183,9 +181,7 @@ literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkImpl(args);
-    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
-
-    return l;
+    return push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 }
 
 literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
@@ -195,9 +191,7 @@ literalt smtcheck_opensmt2t::land(literalt l1, literalt l2){
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkAnd(args);
-    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
-
-    return l;
+    return push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 }
 
 literalt smtcheck_opensmt2t::land(bvt b){
@@ -208,22 +202,17 @@ literalt smtcheck_opensmt2t::land(bvt b){
         args.push(tmpp);
     }
     PTRef ans = logic->mkAnd(args);
-    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
-
-    return l;
+    return push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 }
 
 literalt smtcheck_opensmt2t::lor(literalt l1, literalt l2){
-	literalt l;
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkOr(args);
-    l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
-
-    return l;
+    return push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 }
 
 literalt smtcheck_opensmt2t::lor(bvt b){
@@ -234,9 +223,7 @@ literalt smtcheck_opensmt2t::lor(bvt b){
         args.push(tmpp);
     }
     PTRef ans = logic->mkOr(args);
-    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
-
-	return l;
+    return push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 }
 
 literalt smtcheck_opensmt2t::lnot(literalt l){
@@ -244,9 +231,7 @@ literalt smtcheck_opensmt2t::lnot(literalt l){
     PTRef pl1 = literals[l.var_no()];
     args.push(pl1);
     PTRef ans = logic->mkNot(args);
-    literalt ln = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
-
-    return ln;
+    return push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 }
 
 literalt smtcheck_opensmt2t::lconst(const exprt &expr){

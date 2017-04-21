@@ -46,7 +46,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 #ifdef DEBUG_SSA_PRINT    
     getFirstCallExpr(); // Save the first call to the first function
 #endif
-    
+
     decider.start_encoding_partitions();
     for (partitionst::reverse_iterator it = partitions.rbegin(); it
             != partitions.rend(); ++it) {
@@ -73,10 +73,10 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 #   endif
     }
 
-    # ifdef DEBUG_SSA_PRINT
+    #ifdef DEBUG_SSA_PRINT
     // Print all after the headers: decl and code
     print_all_partition(std::cout);
-    # endif
+    #endif
 }
 
 /*******************************************************************

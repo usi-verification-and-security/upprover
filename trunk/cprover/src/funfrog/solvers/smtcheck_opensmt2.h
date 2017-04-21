@@ -140,7 +140,7 @@ protected:
   bool is_var_constraints_empty;
 
   map<size_t, literalt> converted_exprs;
-  
+
   unsigned no_literals;
 
   //  Mapping from boolean variable indexes to their PTRefs

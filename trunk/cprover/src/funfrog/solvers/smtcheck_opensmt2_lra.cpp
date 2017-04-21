@@ -168,7 +168,7 @@ literalt smtcheck_opensmt2t_lra::const_from_str(const char* num)
 }
 
 literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr) 
-{    
+{
     // KE: New Cprover code - patching
     bool is_expr_bool = (expr.is_boolean() || (expr.type().id() == ID_c_bool)); 
     bool is_operands_bool = ((expr.operands())[0].is_boolean() 
@@ -297,7 +297,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     char* s = getPTermString(l);
     cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
     free(s);
-    #endif        
+    #endif
     } else if (_id == ID_typecast) {
     #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")" << endl;
@@ -581,7 +581,7 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
                         lralogic->mkRealLt(literals[lt.var_no()], lralogic->getTerm_RealZero()),  // IF
                         lralogic->mkRealNeg(literals[lt.var_no()]),                 // Then
                         literals[lt.var_no()]);                                     // Else
- 
+
     literalt l = push_variable(ptl); // Keeps the new literal + index it
 
 #ifdef SMT_DEBUG
@@ -703,8 +703,10 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
     //const irep_idt type = var_type.get("#c_type");
     const irep_idt &type_id=var_type.id_string();
     bool is_non_det = (expr.id() == ID_nondet_symbol);
+#ifdef SMT_DEBUG_VARS_BOUNDS    
     bool is_add_constraints = false;
-
+#endif
+    
     // Start checking what it is
     if(type_id==ID_integer || type_id==ID_natural)
     {
@@ -721,7 +723,10 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #endif
     	std::string lower_bound = "0";
     	std::string upper_bound = ((size==32) ? "4294967295" : "18446744073709551615");
-    	is_add_constraints = push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+#ifdef SMT_DEBUG_VARS_BOUNDS        
+    	is_add_constraints = 
+#endif
+            push_constraints2type(var, is_non_det, lower_bound, upper_bound);
     }
     else if(type_id==ID_signedbv) // int = 32, long = 64
     {
@@ -730,7 +735,10 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #endif
     	std::string lower_bound = ((size==32) ? "-2147483648" : "-9223372036854775808");
     	std::string upper_bound = ((size==32) ? "2147483647" : "9223372036854775807");
-    	is_add_constraints = push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+#ifdef SMT_DEBUG_VARS_BOUNDS        
+    	is_add_constraints = 
+#endif 
+            push_constraints2type(var, is_non_det, lower_bound, upper_bound);
     }
     else if(type_id==ID_fixedbv)
     {
@@ -745,7 +753,10 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 				("-" + create_bound_string("34028234", 38)) : ("-" + create_bound_string("17976931348623157", 308)));
     	std::string upper_bound = ((size==32) ?
 				create_bound_string("34028234", 38) : create_bound_string("17976931348623157", 308));
-    	is_add_constraints = push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+#ifdef SMT_DEBUG_VARS_BOUNDS        
+    	is_add_constraints = 
+#endif 
+            push_constraints2type(var, is_non_det, lower_bound, upper_bound);
     }
     else
     {

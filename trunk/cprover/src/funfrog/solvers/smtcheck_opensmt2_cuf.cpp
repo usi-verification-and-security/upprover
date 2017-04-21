@@ -149,8 +149,8 @@ bool smtcheck_opensmt2t_cuf::convert_bv_eq_ite(const exprt &expr, PTRef& ptl)
 PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
 {
     assert(expr.is_constant()); // If not a constant then assert
-         
-#ifdef DEBUG_SMT_BB 
+    
+#ifdef DEBUG_SMT_BB
     const irep_idt &type_id=expr.type().id_string(); // Check by type how to convert    
     std::cout << ";; Extract constant number : " << expr.print_number_2smt() << " Of Type "
             << type_id << std::endl;
@@ -903,7 +903,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
     char* s = getPTermString(l);
     cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
     free(s);
-#endif        
+#endif
     } else if (_id==ID_typecast || _id==ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
         cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << expr.id() << ")" << endl;
@@ -1242,9 +1242,7 @@ literalt smtcheck_opensmt2t_cuf::lnotequal(literalt l1, literalt l2){
     args.push(pl1);
     args.push(pl2);
     PTRef ans = uflogic->mkCUFNeq(args); // uflogic to avoid dynamic cast
-    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
-
-    return l;
+    return push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 }
 
 literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
@@ -1333,7 +1331,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const e
 
     std::set<exprt> encoded_vars;
 
-    for (int i = start; i != end; i = i + step){
+    for (unsigned int i = start; i < exprs.size(); i++){
 
         if (refined.find(i) != refined.end()) continue;
 
