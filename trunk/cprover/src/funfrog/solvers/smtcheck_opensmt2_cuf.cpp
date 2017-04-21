@@ -1319,8 +1319,8 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
   }
 }
 
-int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
-           std::map<const exprt, int>& model, std::set<int>& refined, std::set<int>& weak, int start, int heuri)
+int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model,
+       std::set<int>& refined, std::set<int>& weak, int start, int end, int step, int do_dep)
 {
 #ifdef DEBUG_SMT_BB
     cout << "Check CE for " <<exprs.size() << " terms " << std::endl;
@@ -1333,7 +1333,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
 
     std::set<exprt> encoded_vars;
 
-    for (unsigned int i = start; i < exprs.size(); i++){
+    for (int i = start; i != end; i = i + step){
 
         if (refined.find(i) != refined.end()) continue;
 
@@ -1389,11 +1389,11 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
             weak.insert(i);
 
             // heuristic to get weak "candidates" based on dependency analysis
-            if (heuri == 1){
+            if (do_dep == 1){
                 std::set<exprt> dep_vars;
                 getVarsInExpr(exprs[i], dep_vars);
 
-                for (unsigned int j = i + 1; j < exprs.size(); j++){
+                for (int j = i + step; j != end; j = j + step){
 
                     if (refined.find(j) != refined.end()) continue;
 
@@ -1421,7 +1421,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs,
 #endif
                 }
             }
-            return (i + 1);
+            return (i + step);
         }
     }
 

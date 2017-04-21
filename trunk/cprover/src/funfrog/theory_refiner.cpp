@@ -168,6 +168,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
               status() << "(driven by iterative CE-analysis)" << endl << eom;
               unsigned bw = options.get_unsigned_int_option("bitwidth");
+              unsigned heuristic = options.get_unsigned_int_option("heuristic");
 
               while (true){
 
@@ -177,12 +178,62 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                         *(dynamic_cast<smtcheck_opensmt2t *> (decider)));
 
                   std::set<int> weak;
+                  int last;
+                  smtcheck_opensmt2t_cuf* decider2;
 
-                  unsigned int last = 0;
-                  while (last != -1 || last == exprs.size()){
-                      // local CUF solver
-                      smtcheck_opensmt2t_cuf* decider2 = new smtcheck_opensmt2t_cuf(bw);
-                      last = decider2->check_ce(exprs, model, refined, weak, last);
+                  switch(heuristic) {
+                    case 0 :
+                      //   forward
+                      decider2 = new smtcheck_opensmt2t_cuf(bw);
+                      decider2->check_ce(exprs, model, refined, weak, 0, exprs.size(), 1, 0);
+                      break;
+                    case 1 :
+                      //   backward
+                      decider2 = new smtcheck_opensmt2t_cuf(bw);
+                      decider2->check_ce(exprs, model, refined, weak, exprs.size()-1, -1, -1, 0);
+                      break;
+                    case 2 :
+                      //   forward with multiple refinement
+                      last = 0;
+                      while (last != -1 || last == exprs.size()){
+                        decider2 = new smtcheck_opensmt2t_cuf(bw);
+                        last = decider2->check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 0);
+                      }
+                      break;
+                    case 3 :
+                      //   backward with multiple refinement
+                      last = exprs.size()-1;
+                      while (last >= 0){
+                        decider2 = new smtcheck_opensmt2t_cuf(bw);
+                        last = decider2->check_ce(exprs, model, refined, weak, last, -1, -1, 0);
+                      }
+                      break;
+                    case 4 :
+                      //   forward with dependencies
+                      decider2 = new smtcheck_opensmt2t_cuf(bw);
+                      decider2->check_ce(exprs, model, refined, weak, 0, exprs.size(), 1, 1);
+                      break;
+                    case 5 :
+                      //   backward with dependencies
+                      decider2 = new smtcheck_opensmt2t_cuf(bw);
+                      decider2->check_ce(exprs, model, refined, weak, exprs.size()-1, -1, -1, 1);
+                      break;
+                    case 6 :
+                      //   forward with multiple refinement & dependencies
+                      last = 0;
+                      while (last != -1 || last == exprs.size()){
+                        decider2 = new smtcheck_opensmt2t_cuf(bw);
+                        last = decider2->check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 1);
+                      }
+                      break;
+                    case 7 :
+                      //   backward with multiple refinement & dependencies
+                      last = exprs.size()-1;
+                      while (last >= 0){
+                        decider2 = new smtcheck_opensmt2t_cuf(bw);
+                        last = decider2->check_ce(exprs, model, refined, weak, last, -1, -1, 1);
+                      }
+                      break;
                   }
 
                   if (weak.size() > 0){

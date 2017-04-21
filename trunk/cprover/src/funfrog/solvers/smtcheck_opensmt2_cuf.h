@@ -62,7 +62,7 @@ public:
   PTRef labs_bv(const exprt &expr); // from convert for ID_abs
 
   int check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model,
-               std::set<int>& refined, std::set<int>& weak, int start, int heuri  = 1);
+               std::set<int>& refined, std::set<int>& weak, int start, int end, int step, int do_dep);
 
   bool refine_ce_solo(std::vector<exprt>& exprs, int i); // refine only exprs[i]
 

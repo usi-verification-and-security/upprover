@@ -382,6 +382,15 @@ void funfrog_parseoptionst::help()
   "--theoref                      use experimental Theory Refining algorithm\n"
   "--force                        force refining CUF to BV without counterexamples\n"
   "--custom <n1,n2,..>            program statement ids to be refined (without counterexamples)\n"
+  "--heuristic <n>                refinement schema:\n"
+  "                                 0 - forward\n"
+  "                                 1 - backward\n"
+  "                                 2 - forward with multiple refinement\n"
+  "                                 3 - backward with multiple refinement\n"
+  "                                 4 - forward with dependencies\n"
+  "                                 5 - backward with dependencies\n"
+  "                                 6 - forward with multiple refinement & dependencies\n"
+  "                                 7 - backward with multiple refinement & dependencies\n"
   "--bitwidth <n>                 bitwidth for the CUF BV mode\n\n"
   "--logic <logic>                [qfuf, qfcuf, qflra, prop] if not present qfuf is used\n"
   "--itp-algorithm                propositional interpolation algorithm: \n"
@@ -586,6 +595,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("theoref", cmdline.isset("theoref"));
   options.set_option("force", cmdline.isset("force"));
   options.set_option("custom", cmdline.get_value("custom"));
+  options.set_option("heuristic", cmdline.get_value("heuristic"));
   if (cmdline.isset("bitwidth")) {                
     options.set_option("bitwidth", cmdline.get_value("bitwidth"));
   } else {
