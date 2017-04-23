@@ -24,10 +24,10 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class smtcheck_opensmt2t_uf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_uf() :
+  smtcheck_opensmt2t_uf(const char* name) :
       smtcheck_opensmt2t(false, 3, 2) // Is last always!
   {
-    initializeSolver();
+    initializeSolver(name);
   }
 
   virtual ~smtcheck_opensmt2t_uf(); // d'tor
@@ -48,7 +48,7 @@ protected:
 
   virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
-  virtual void initializeSolver();
+  virtual void initializeSolver(const char* name);
   
   static const char *tk_sort_ureal;
   static const char *tk_mult;

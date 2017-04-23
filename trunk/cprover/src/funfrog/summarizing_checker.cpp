@@ -23,13 +23,18 @@ void summarizing_checkert::initialize_solver()
     string _logic = options.get_option("logic");
     int _type_constraints = options.get_unsigned_int_option("type-constraints");
     if(_logic == "qfuf")
-        decider = new smtcheck_opensmt2t_uf();
+        decider = new smtcheck_opensmt2t_uf("uf checker");
     else if(_logic == "qfcuf")
-        decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"));
+        decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"), "cuf checker");
     else if(_logic == "qflra")
-        decider = new smtcheck_opensmt2t_lra(_type_constraints);
-    else if (_logic == "prop")
-        decider = new satcheck_opensmt2t();
+        decider = new smtcheck_opensmt2t_lra(_type_constraints, "lra checker");
+    else if (_logic == "prop" && !options.get_bool_option("no-partitions"))    
+        decider = new satcheck_opensmt2t("prop checker");
+    else if (_logic == "prop" && options.get_bool_option("no-partitions"))
+    {
+        std::cout << ("--no-partitions option is not supported in theory: " +  _logic + "\n");
+        exit(0); //Unsupported 
+    }
     else 
     {
         std::cout << ("Unsupported theory: " +  _logic + "\n");
@@ -200,7 +205,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
     
     // Init the next iteration context
     {
-        decider = (new satcheck_opensmt2t())->set_prop_conv_solver(
+        decider = (new satcheck_opensmt2t("sat checker"))->set_prop_conv_solver(
                 (dynamic_cast<prop_conv_solvert *> (decider_prop.get())));
 
         interpolator.reset(decider);

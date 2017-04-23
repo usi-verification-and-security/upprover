@@ -24,10 +24,10 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class satcheck_opensmt2t:public cnf_solvert, public check_opensmt2t
 {
 public:
-  satcheck_opensmt2t() :
+  satcheck_opensmt2t(const char* name) :
       check_opensmt2t(false, 3, 2) // Is last always!
   {
-    initializeSolver();
+    initializeSolver(name);
   }
 
   virtual ~satcheck_opensmt2t() {
@@ -86,7 +86,7 @@ protected:
   unsigned solver_verbosity;
   // Mapping from variable indices to their E-nodes in PeRIPLO
   std::string id_str;
-  
+
   vec<PTRef> top_level_formulas;
 
 //  Mapping from variable indices to their PTRefs in OpenSMT
@@ -101,7 +101,7 @@ protected:
   void setup_proof_transformation();
   
   // Initialize the OpenSMT context
-  virtual void initializeSolver();
+  virtual void initializeSolver(const char*);
 
   // Free all resources related to PeRIPLO
   virtual void freeSolver();

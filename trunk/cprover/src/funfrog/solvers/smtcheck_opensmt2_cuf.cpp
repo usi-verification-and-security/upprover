@@ -14,9 +14,9 @@ Author: Grigory Fedyukovich
 //#define DEBUG_SMT_BB
 //#define DEBUG_SMT2SOLVER
 
-void smtcheck_opensmt2t_cuf::initializeSolver()
+void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
 {
-  osmt = new Opensmt(opensmt_logic::qf_cuf, bitwidth);
+  osmt = new Opensmt(opensmt_logic::qf_cuf, name, bitwidth);
   logic = &(osmt->getCUFLogic());
   uflogic = &(osmt->getCUFLogic());
   bvlogic = &((BVLogic&)osmt->getLogic());
@@ -845,7 +845,7 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
 #endif
         return const_var(!val_const_zero);
     } else if (is_number(expr.type()) && is_operands_bool) {
-        // Cast from Boolean to Real - Addliteral
+        // Cast from Boolean to Real - Add
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
         PTRef ptl = logic->mkIte(literals[lt.var_no()], uflogic->mkCUFConst(1), uflogic->mkCUFConst(0));
         return push_variable(ptl); // Keeps the new literal + index it

@@ -15,11 +15,11 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_lra : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_lra(int _type_constraints_level) :
+  smtcheck_opensmt2t_lra(int _type_constraints_level, const char* name) :
       type_constraints_level(_type_constraints_level),
       smtcheck_opensmt2t(false, 3, 2)
   {
-    initializeSolver();
+    initializeSolver(name);
   }
       
   virtual ~smtcheck_opensmt2t_lra(); // d'tor
@@ -54,7 +54,7 @@ protected:
 
   int type_constraints_level; // The level of checks in LRA for numerical checks of overflow
 
-  virtual void initializeSolver();
+  virtual void initializeSolver(const char*);
 
   PTRef mult_real(const exprt &expr, vec<PTRef> &args);
 

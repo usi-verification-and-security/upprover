@@ -24,11 +24,11 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class smtcheck_opensmt2t_cuf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_cuf(unsigned bitwidth) :
+  smtcheck_opensmt2t_cuf(unsigned bitwidth, const char* name) :
       smtcheck_opensmt2t(false, 3, 2) // Is last always!
     , bitwidth(bitwidth)
   {
-    initializeSolver();
+    initializeSolver(name);
   }
 
   virtual ~smtcheck_opensmt2t_cuf(); // d'tor
@@ -104,7 +104,7 @@ protected:
   
   PTRef lconst_bv(const exprt &expr); // For bv only!
   
-  virtual void initializeSolver();
+  virtual void initializeSolver(const char*);
 
 };
 

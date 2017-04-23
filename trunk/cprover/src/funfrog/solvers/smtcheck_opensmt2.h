@@ -163,7 +163,7 @@ protected:
 
   void setup_proof_transformation();
   
-  virtual void initializeSolver()=0;
+  virtual void initializeSolver(const char*)=0;
 
   void produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants); // Common to all
 

@@ -812,7 +812,7 @@ void prop_itpt::deserialize(std::istream& in)
 
 bool prop_itpt::check_implies(const itpt& second) const 
 {
-  satcheck_opensmt2t prop_solver;
+  satcheck_opensmt2t prop_solver("implies checker");
   prop_solver.new_partition();        // initialize assert on the solver side
 
   symbol_tablet ctx;

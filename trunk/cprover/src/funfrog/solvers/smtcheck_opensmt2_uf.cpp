@@ -26,9 +26,9 @@ const char* smtcheck_opensmt2t_uf::tk_le = "<=";
 const char* smtcheck_opensmt2t_uf::tk_gt = ">";
 const char* smtcheck_opensmt2t_uf::tk_ge = ">=";
 
-void smtcheck_opensmt2t_uf::initializeSolver()
+void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
 {
-  osmt = new Opensmt(opensmt_logic::qf_uf);
+  osmt = new Opensmt(opensmt_logic::qf_uf, name);
   logic = &(osmt->getLogic());
   mainSolver = &(osmt->getMainSolver());
   const char* msg2=NULL;
@@ -92,7 +92,7 @@ PTRef
 smtcheck_opensmt2t_uf::mkURealDiv(vec<PTRef>& args)
 {
     char *msg=NULL;
-    PTRef ret =  logic->mkFun(s_div, args, &msg);
+    PTRef ret = logic->mkFun(s_div, args, &msg);
     if (msg != NULL) free(msg);
     return ret;
 }
@@ -112,7 +112,7 @@ smtcheck_opensmt2t_uf::mkURealMinus(vec<PTRef>& args)
     char *msg=NULL;
     PTRef ret = logic->mkFun(s_minus, args, &msg);
     if (msg != NULL) free(msg);
-    return ret;    
+    return ret;
 }
 
 PTRef
@@ -122,7 +122,7 @@ smtcheck_opensmt2t_uf::mkURealLt(vec<PTRef>& args)
     char *msg=NULL;
     PTRef ret = logic->mkFun(s_lt, args, &msg);
     if (msg != NULL) free(msg);
-    return ret;    
+    return ret;
 }
     
 PTRef
@@ -132,7 +132,7 @@ smtcheck_opensmt2t_uf::mkURealLe(vec<PTRef>& args)
     char *msg=NULL;
     PTRef ret = logic->mkFun(s_le, args, &msg);
     if (msg != NULL) free(msg);
-    return ret;    
+    return ret;
 }
 
 PTRef
@@ -142,7 +142,7 @@ smtcheck_opensmt2t_uf::mkURealGt(vec<PTRef>& args)
     char *msg=NULL;
     PTRef ret = logic->mkFun(s_gt, args, &msg);
     if (msg != NULL) free(msg);
-    return ret;    
+    return ret;
 }
     
 PTRef
@@ -152,7 +152,7 @@ smtcheck_opensmt2t_uf::mkURealGe(vec<PTRef>& args)
     char *msg=NULL;
     PTRef ret = logic->mkFun(s_ge, args, &msg);
     if (msg != NULL) free(msg);
-    return ret;    
+    return ret;
 }
 
 // Free all inner objects
@@ -333,7 +333,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
     char* s = getPTermString(l);
     cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
     free(s);
-#endif    
+#endif  
     } else if (_id == ID_typecast) {
 #ifdef SMT_DEBUG
 		cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << _id << ")" << endl;

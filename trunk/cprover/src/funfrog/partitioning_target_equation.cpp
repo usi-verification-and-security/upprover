@@ -29,7 +29,7 @@
 
  \*******************************************************************/
 
-void partitioning_target_equationt::prepare_partitions() {
+void partitioning_target_equationt::prepare_partitions() { // for hifrog only
 	// Fill in the partition start and end iterator for easier access during
 	// the conversion process
 	unsigned idx = 0;

@@ -19,7 +19,7 @@ pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_step_reft
   try{
 
   std::auto_ptr<prop_conv_solvert> decider;
-  satcheck_opensmt2t* opensmt = new satcheck_opensmt2t();
+  satcheck_opensmt2t* opensmt = new satcheck_opensmt2t("prop dependency checker");
   bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
   deciderp->unbounded_array = bv_pointerst::U_AUTO;
   decider.reset(deciderp);

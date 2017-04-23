@@ -8,9 +8,9 @@ Author: Grigory Fedyukovich
 
 #include "satcheck_opensmt2.h"
 
-void satcheck_opensmt2t::initializeSolver()
+void satcheck_opensmt2t::initializeSolver(const char* name)
 {
-    osmt = new Opensmt(opensmt_logic::qf_bool);
+    osmt = new Opensmt(opensmt_logic::qf_bool, name);
     logic = &(osmt->getLogic());
     mainSolver = &(osmt->getMainSolver());
     const char* msg=NULL;
@@ -191,7 +191,7 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   assert(ready_to_interpolate);
 
   // Set labeling function
-  //  const char* msg = NULL;
+  //  const char* msg=NULL;
   //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
   //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(0), msg);
   //  if (msg != NULL) free((char *)msg);

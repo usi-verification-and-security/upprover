@@ -114,7 +114,7 @@ public:
   
 protected:
   // Initialize the OpenSMT context
-  virtual void initializeSolver()=0;
+  virtual void initializeSolver(const char*)=0;
 
   // Free context/data in OpenSMT
   virtual void freeSolver()=0;
