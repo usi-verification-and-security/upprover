@@ -73,10 +73,11 @@ public:
 
   void set_random_seed(unsigned int i)
   {
-      const char* msg;
-      random_seed = i;
-      if (osmt != NULL)
-          osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
+    random_seed = i;
+    if (osmt != NULL) {
+        const char* msg;
+        osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
+    }
   }
 
 
@@ -87,9 +88,10 @@ public:
 
   void set_dump_query(bool f)
   {
-      const char* msg;
-      if (osmt != NULL)
-          osmt->getConfig().setOption(SMTConfig::o_dump_query, SMTOption(f), msg);
+    if (osmt != NULL) {
+        const char* msg;
+        osmt->getConfig().setOption(SMTConfig::o_dump_query, SMTOption(f), msg);
+    }
   }
 
   MainSolver * getMainSolver() { return mainSolver; }

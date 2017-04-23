@@ -10,11 +10,11 @@ Author: Grigory Fedyukovich
 
 void satcheck_opensmt2t::initializeSolver()
 {
-  osmt = new Opensmt(opensmt_logic::qf_bool);
-  logic = &(osmt->getLogic());
-  mainSolver = &(osmt->getMainSolver());
-  const char* msg;
-  osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
+    osmt = new Opensmt(opensmt_logic::qf_bool);
+    logic = &(osmt->getLogic());
+    mainSolver = &(osmt->getMainSolver());
+    const char* msg;
+    osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
 }
 
 // Free all resources related to OpenSMT2
@@ -190,9 +190,9 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   assert(ready_to_interpolate);
 
   // Set labeling function
-//  const char* msg;
-//  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
-//  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(0), msg);
+  //  const char* msg;
+  //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
+  //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(0), msg);
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
 
   SimpSMTSolver& solver = osmt->getSolver();
