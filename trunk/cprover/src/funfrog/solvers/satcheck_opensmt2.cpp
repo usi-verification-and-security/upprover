@@ -13,14 +13,15 @@ void satcheck_opensmt2t::initializeSolver()
     osmt = new Opensmt(opensmt_logic::qf_bool);
     logic = &(osmt->getLogic());
     mainSolver = &(osmt->getMainSolver());
-    const char* msg;
+    const char* msg=NULL;
     osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
+    //if (msg != NULL) free((char *)msg); // if finds an error consider to print it
 }
 
 // Free all resources related to OpenSMT2
 void satcheck_opensmt2t::freeSolver()
 {
-  if (osmt != NULL) delete osmt;
+    if (osmt != NULL) delete osmt;
 }
 
 /*******************************************************************\
@@ -190,9 +191,10 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   assert(ready_to_interpolate);
 
   // Set labeling function
-  //  const char* msg;
+  //  const char* msg = NULL;
   //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(itp_algorithm), msg);
   //  osmt->getConfig().setOption(SMTConfig::o_itp_bool_alg, SMTOption(0), msg);
+  //  if (msg != NULL) free((char *)msg);
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
 
   SimpSMTSolver& solver = osmt->getSolver();
@@ -367,9 +369,10 @@ Function: satcheck_opensmt2t::prop_solve
 
 propt::resultt satcheck_opensmt2t::prop_solve() {
 
-  char *msg;
   if (dump_queries){
+    char *msg=NULL;
     mainSolver->writeSolverState_smtlib2("__SAT_query", &msg);
+    if (msg != NULL) free(msg); // If there is an error consider printing the msg
   }
 
   assert(status != ERROR);
@@ -380,7 +383,10 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
   }
 
   for(int i = 0; i < top_level_formulas.size(); ++i) {
+      char *msg=NULL;
       mainSolver->insertFormula(top_level_formulas[i], &msg);
+      if (msg != NULL) { free(msg); msg = NULL;} 
+      // If there is an error consider printing the msg
   }
 
   add_variables();

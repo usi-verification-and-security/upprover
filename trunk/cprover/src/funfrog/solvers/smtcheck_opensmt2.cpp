@@ -22,13 +22,13 @@ unsigned smtcheck_opensmt2t::unsupported2var = 0;
 // Free all resources related to OpenSMT2
 void smtcheck_opensmt2t::freeSolver()
 {
-  if (osmt != NULL) delete osmt;
+    if (osmt != NULL) delete osmt;
 }
 
 // Free all inner objects
 smtcheck_opensmt2t::~smtcheck_opensmt2t()
 {
-	// Shall/When need to: freeSolver() ?
+    // Shall/When need to: freeSolver() ?
 }
 
 /*******************************************************************\
@@ -600,9 +600,12 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 {
   assert(ready_to_interpolate);
 
-  const char* msg2;
+  const char* msg2=NULL;
   osmt->getConfig().setOption(SMTConfig::o_verbosity, verbosity, msg2);
+  //if (msg2!=NULL) { free((char *)msg2); msg2=NULL; } // If there is an error consider printing the msg
   osmt->getConfig().setOption(SMTConfig::o_certify_inter, SMTOption(certify), msg2);
+  //if (msg2!=NULL) free((char *)msg2); // If there is an error consider printing the msg
+  
   // Set labeling functions
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
   osmt->getConfig().setEUFInterpolationAlgorithm(itp_euf_algorithm);
@@ -676,8 +679,9 @@ Function: smtcheck_opensmt2t::prop_solve
 bool smtcheck_opensmt2t::solve() {
 
   //if (dump_queries){
-    //char* msg1;
-    //mainSolver->writeSolverState_smtlib2("__SMT_query", &msg1);
+  //  char* msg1=NULL;
+  //  mainSolver->writeSolverState_smtlib2("__SMT_query", &msg1);
+  //  if (msg1 != NULL) free(msg1);
   //}
 
   ready_to_interpolate = false;
@@ -690,31 +694,36 @@ bool smtcheck_opensmt2t::solve() {
   logic->dumpHeaderToFile(cout);
 #endif
 //  add_variables();
-  char *msg;
-  for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
+    char *msg=NULL;
+    for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
 #ifdef DEBUG_SMT_EUF
-	  char* s = logic->printTerm(top_level_formulas[i]);
-      cout << "\n(assert\n" << s << "\n)" << endl;
-      free(s);
+        char* s = logic->printTerm(top_level_formulas[i]);
+        cout << "\n(assert\n" << s << "\n)" << endl;
+        free(s);
 #endif
-      mainSolver->insertFormula(top_level_formulas[i], &msg);
-  }
-  pushed_formulas = top_level_formulas.size();
+        mainSolver->insertFormula(top_level_formulas[i], &msg);
+	if (msg != NULL) {
+            free(msg); // If there is an error, consider print msg
+	    msg=NULL;
+	}
+    }
+    
+    pushed_formulas = top_level_formulas.size();
 #ifdef DEBUG_SMT2SOLVER
-  dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
+    dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
 #endif
 
-  sstat r = mainSolver->check();
+    sstat r = mainSolver->check();
 
-  if (r == s_True) {
-    return true;
-  } else if (r == s_False) {
-    ready_to_interpolate = true;
-  } else {
-    throw "Unexpected OpenSMT result.";
-  }
+    if (r == s_True) {
+        return true;
+    } else if (r == s_False) {
+        ready_to_interpolate = true;
+    } else {
+        throw "Unexpected OpenSMT result.";
+    }
 
-  return false;
+    return false;
 }
 
 

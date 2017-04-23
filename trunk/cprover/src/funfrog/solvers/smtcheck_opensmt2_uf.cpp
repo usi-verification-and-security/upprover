@@ -31,8 +31,9 @@ void smtcheck_opensmt2t_uf::initializeSolver()
   osmt = new Opensmt(opensmt_logic::qf_uf);
   logic = &(osmt->getLogic());
   mainSolver = &(osmt->getMainSolver());
-  const char* msg2;
+  const char* msg2=NULL;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
+  //if (msg2!=NULL) free((char *)msg2);
 
   // KE: Fix a strange bug can be related to the fact we are pushing
   // a struct into std::vector and use [] before any push_back
@@ -43,7 +44,7 @@ void smtcheck_opensmt2t_uf::initializeSolver()
 
   //Initialize the stuff to fake UF
   //Create new sort UReal
-  char* msg;
+  char* msg=NULL;
   sort_ureal = logic->declareSort(tk_sort_ureal, &msg);
 
   vec<SRef> args;
@@ -76,71 +77,88 @@ void smtcheck_opensmt2t_uf::initializeSolver()
   s_gt = logic->declareFun(tk_gt, logic->getSort_bool(), args, &msg, true);
   s_ge = logic->declareFun(tk_ge, logic->getSort_bool(), args, &msg, true);
 
+  if (msg!=NULL) free(msg);
 }
 
 PTRef
 smtcheck_opensmt2t_uf::mkURealMult(vec<PTRef>& args)
 {
-    char *msg;
-    return logic->mkFun(s_mult, args, &msg);
+    char *msg=NULL;
+    PTRef ret = logic->mkFun(s_mult, args, &msg);
+    if (msg != NULL) free(msg);
+    return ret;
 }
 PTRef
 smtcheck_opensmt2t_uf::mkURealDiv(vec<PTRef>& args)
 {
-    char *msg;
-    return logic->mkFun(s_div, args, &msg);
+    char *msg=NULL;
+    PTRef ret =  logic->mkFun(s_div, args, &msg);
+    if (msg != NULL) free(msg);
+    return ret;
 }
 
 PTRef
 smtcheck_opensmt2t_uf::mkURealPlus(vec<PTRef>& args)
 {
-    char *msg;
-    return logic->mkFun(s_plus, args, &msg);
+    char *msg=NULL;
+    PTRef ret = logic->mkFun(s_plus, args, &msg);
+    if (msg != NULL) free(msg);
+    return ret;
 }
 
 PTRef
 smtcheck_opensmt2t_uf::mkURealMinus(vec<PTRef>& args)
 {
-    char *msg;
-    return logic->mkFun(s_minus, args, &msg);
+    char *msg=NULL;
+    PTRef ret = logic->mkFun(s_minus, args, &msg);
+    if (msg != NULL) free(msg);
+    return ret;    
 }
 
 PTRef
 smtcheck_opensmt2t_uf::mkURealLt(vec<PTRef>& args)
 {
     assert(args.size() == 2);
-    char *msg;
-    return logic->mkFun(s_lt, args, &msg);
+    char *msg=NULL;
+    PTRef ret = logic->mkFun(s_lt, args, &msg);
+    if (msg != NULL) free(msg);
+    return ret;    
 }
     
 PTRef
 smtcheck_opensmt2t_uf::mkURealLe(vec<PTRef>& args)
 {
     assert(args.size() == 2);
-    char *msg;
-    return logic->mkFun(s_le, args, &msg);
+    char *msg=NULL;
+    PTRef ret = logic->mkFun(s_le, args, &msg);
+    if (msg != NULL) free(msg);
+    return ret;    
 }
 
 PTRef
 smtcheck_opensmt2t_uf::mkURealGt(vec<PTRef>& args)
 {
     assert(args.size() == 2);
-    char *msg;
-    return logic->mkFun(s_gt, args, &msg);
+    char *msg=NULL;
+    PTRef ret = logic->mkFun(s_gt, args, &msg);
+    if (msg != NULL) free(msg);
+    return ret;    
 }
     
 PTRef
 smtcheck_opensmt2t_uf::mkURealGe(vec<PTRef>& args)
 {
     assert(args.size() == 2);
-    char *msg;
-    return logic->mkFun(s_ge, args, &msg);
+    char *msg=NULL;
+    PTRef ret = logic->mkFun(s_ge, args, &msg);
+    if (msg != NULL) free(msg);
+    return ret;    
 }
 
 // Free all inner objects
 smtcheck_opensmt2t_uf::~smtcheck_opensmt2t_uf()
 {
-	// Shall/When need to: freeSolver() ?
+    // Shall/When need to: freeSolver() ?
 }
 
 exprt smtcheck_opensmt2t_uf::get_value(const exprt &expr)

@@ -17,8 +17,9 @@ void smtcheck_opensmt2t_lra::initializeSolver()
     lralogic = &(osmt->getLRALogic());
     logic = &(osmt->getLRALogic());
     mainSolver = &(osmt->getMainSolver());
-    const char* msg;
+    const char* msg=NULL;
     osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
+    if (msg==NULL) free((char *)msg);
 
     // KE: Fix a strange bug can be related to the fact we are pushing
     // a struct into std::vector and use [] before any push_back
@@ -814,22 +815,24 @@ bool smtcheck_opensmt2t_lra::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 {
 	// this method is used for testing mostly
-	char *msg;
+	char *msg=NULL;
 
 	for (int i = 0; i < top_level_formulas.size(); i++){
                 char *s = logic->printTerm(top_level_formulas[i]);
 		cout << "\nCE:  " << s << endl;
                 free(s);
 		mainSolver->insertFormula(top_level_formulas[i], &msg);
+		if (msg !=NULL) { free(msg); msg = NULL; }
 	}
 	mainSolver->push();
 
 	bool res = true;
 	unsigned int i = 0;
 	while (i < exprs.size() && res){
-		literalt l = convert(exprs[i]);
-		PTRef lp = literals[l.var_no()];
-		mainSolver->insertFormula(lp, &msg);
+	    literalt l = convert(exprs[i]);
+	    PTRef lp = literals[l.var_no()];
+	    mainSolver->insertFormula(lp, &msg);
+	    if (msg !=NULL) { free(msg); msg = NULL; }
 	    res = (s_True == mainSolver->check());
 	    if (!res){
 	    	cout << "\n  Problem could be here: " << logic->printTerm(lp) << endl;

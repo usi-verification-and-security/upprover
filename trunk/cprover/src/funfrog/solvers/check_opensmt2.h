@@ -75,8 +75,9 @@ public:
   {
     random_seed = i;
     if (osmt != NULL) {
-        const char* msg;
+        const char* msg=NULL;
         osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
+        if (msg != NULL) free((char *)msg); // If there is an error consider printing the msg
     }
   }
 
@@ -89,8 +90,9 @@ public:
   void set_dump_query(bool f)
   {
     if (osmt != NULL) {
-        const char* msg;
+        const char* msg=NULL;
         osmt->getConfig().setOption(SMTConfig::o_dump_query, SMTOption(f), msg);
+        if (msg != NULL) free((char *)msg); // If there is an error consider printing the msg
     }
   }
 

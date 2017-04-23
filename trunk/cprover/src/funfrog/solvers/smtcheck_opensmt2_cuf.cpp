@@ -28,10 +28,10 @@ void smtcheck_opensmt2t_cuf::initializeSolver()
   vec<PTRef> foo;
   bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *bvlogic, asgns, deds, foo);
 
-  const char* msg2;
+  const char* msg2=NULL;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
-
   osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)get_random_seed()), msg2);
+  //if (msg2 != NULL) { free((char *)msg2);}
 
   // KE: Fix a strange bug can be related to the fact we are pushing
   // a struct into std::vector and use [] before any push_back
