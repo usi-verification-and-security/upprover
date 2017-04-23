@@ -43,17 +43,13 @@ void smtcheck_opensmt2t_uf::initializeSolver()
 
   //Initialize the stuff to fake UF
   //Create new sort UReal
-  IdRef idr = IdRef_Undef;
-  idr = logic->newIdentifier(tk_sort_ureal);
-  vec<SRef> tmp;
-  sort_ureal = logic->newSort(idr, tk_sort_ureal, tmp);
-  logic->declare_sort_hook(sort_ureal);
+  char* msg;
+  sort_ureal = logic->declareSort(tk_sort_ureal, &msg);
 
   vec<SRef> args;
   args.push(sort_ureal);
   args.push(sort_ureal);
 
-  char *msg;
   //Declare operations
   s_mult = logic->declareFun(tk_mult, sort_ureal, args, &msg, true);
   s_div = logic->declareFun(tk_div, sort_ureal, args, &msg, true);
