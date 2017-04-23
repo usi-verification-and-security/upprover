@@ -114,10 +114,12 @@ void smtcheck_opensmt2t_cuf::set_equal_bv(PTRef l1, PTRef l2)
 
 bool smtcheck_opensmt2t_cuf::convert_bv_eq_ite(const exprt &expr, PTRef& ptl)
 {
-#ifdef DEBUG_SMT_BB
-        cout << "; IT IS A EQ ITE " << expr.id() << endl;
-#endif   
     assert (expr.id() == ID_equal || expr.id() == ID_ieee_float_equal);
+    
+#ifdef DEBUG_SMT_BB
+    cout << "; IT IS A EQ ITE " << expr.id() << endl;
+#endif
+    
     exprt sing;
     exprt ite;
     if (expr.operands()[0].id() == ID_if){
@@ -154,9 +156,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
     const irep_idt &type_id=expr.type().id_string(); // Check by type how to convert    
     std::cout << ";; Extract constant number : " << expr.print_number_2smt() << " Of Type "
             << type_id << std::endl;
-#endif    
-    
-    PTRef ptl;            
+#endif       
         
     std::string str = expr.print_number_2smt();
     int isFirstchSign = (str[0] == '-' || str[0] == '+')? 1 : 0;
@@ -171,12 +171,12 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         }
 
         // Else - unsupported!
-        ptl = unsupported2var_bv(expr); // stub for now
+        return unsupported2var_bv(expr); // stub for now
         
     } else if (!(std::all_of(str.begin() + isFirstchSign, str.end(), ::isdigit))) {
         std::cout << "Abstract " << str << std::endl;
         // E.g., floats - unsupported!
-        ptl = unsupported2var_bv(expr); // stub for now
+        return unsupported2var_bv(expr); // stub for now
         
     } else {
         // Check if fits
@@ -188,10 +188,8 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         } 
         
         // Create the constant as string in OpenSMT2
-        ptl = get_bv_const(str.c_str());
+        return get_bv_const(str.c_str());
     }
-    
-    return ptl;
 }
 
 // KE: Got here and this failed? Please use the debug print at the end of this

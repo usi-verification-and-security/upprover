@@ -17,6 +17,7 @@ void smtcheck_opensmt2t_lra::initializeSolver(const char* name)
     lralogic = &(osmt->getLRALogic());
     logic = &(osmt->getLRALogic());
     mainSolver = &(osmt->getMainSolver());
+    
     const char* msg=NULL;
     osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
     if (msg==NULL) free((char *)msg);
@@ -45,10 +46,9 @@ smtcheck_opensmt2t_lra::~smtcheck_opensmt2t_lra()
 
 exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
 {
-    PTRef ptrf;
     if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
         literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
-        ptrf = literals[l.var_no()];
+        PTRef ptrf = literals[l.var_no()];
 
         // Get the value of the PTRef
         if (logic->isIteVar(ptrf)) // true/false - evaluation of a branching
@@ -280,20 +280,24 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;
     #endif
+
         l = lvar(expr);
+        
     } else if (_id==ID_constant) {
     #ifdef SMT_DEBUG
         cout << "; IT IS A CONSTANT " << endl;
     #endif
+
         l = lconst(expr);
+        
     } else if (_id == ID_typecast && expr.has_operands()) {
     #ifdef SMT_DEBUG
         bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
     #endif
-        // KE: Take care of type cast - recursion of convert take care of it anyhow
-        // Unless it is constant bool, that needs different code:
+        
         l = type_cast(expr);
+        
     #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
@@ -307,8 +311,10 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         l = lunsupported2var(expr);
     #endif
     } else if (_id == ID_abs) {
+        
         l = labs(expr);
-    } else {
+        
+    } else { // General case:
     #ifdef SMT_DEBUG
         cout << "; IT IS AN OPERATOR" << endl;
 

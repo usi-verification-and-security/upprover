@@ -31,6 +31,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   osmt = new Opensmt(opensmt_logic::qf_uf, name);
   logic = &(osmt->getLogic());
   mainSolver = &(osmt->getMainSolver());
+
   const char* msg2=NULL;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
   //if (msg2!=NULL) free((char *)msg2);
@@ -163,10 +164,9 @@ smtcheck_opensmt2t_uf::~smtcheck_opensmt2t_uf()
 
 exprt smtcheck_opensmt2t_uf::get_value(const exprt &expr)
 {
-    PTRef ptrf;
     if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
         literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
-        ptrf = literals[l.var_no()];
+        PTRef ptrf = literals[l.var_no()];
 
         // Get the value of the PTRef
 

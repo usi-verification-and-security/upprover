@@ -783,14 +783,14 @@ Function: smtcheck_opensmt2t::getVars
 \*******************************************************************/
 std::set<PTRef>* smtcheck_opensmt2t::getVars()
 {
-	std::set<PTRef>* ret = new std::set<PTRef>();
-	for(it_literals it = literals.begin(); it != literals.end(); it++)
-	{
-		if ((logic->isVar(*it)) && (ret->count(*it) < 1))
-			ret->insert(*it);
-	}
+    std::set<PTRef>* ret = new std::set<PTRef>();
+    for(it_literals it = literals.begin(); it != literals.end(); it++)
+    {
+        if ((logic->isVar(*it)) && (ret->count(*it) < 1))
+            ret->insert(*it);
+    }
 
-	return ret;
+    return ret;
 }
 
 /*******************************************************************\
@@ -810,17 +810,17 @@ Function: smtcheck_opensmt2t::extract_expr_str_number
 \*******************************************************************/
 std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
 {
-	std::string const_val = expr.print_number_2smt(); // DO NOT CHANGE TO cprover util code as it works only for positive or unsigned!
-	//(unless upgrade, please keep the checks/assert!)
-	// If can be that we missed more cases... use the debug prints to check conversions!!
+    std::string const_val = expr.print_number_2smt(); // DO NOT CHANGE TO cprover util code as it works only for positive or unsigned!
+    //(unless upgrade, please keep the checks/assert!)
+    // If can be that we missed more cases... use the debug prints to check conversions!!
 #ifdef DEBUG_SSA_SMT_NUMERIC_CONV
-	cout << "; EXTRACTING NUMBER " << const_val 
-                << " (ORIG-EXPR " << expr.get(ID_value) 
-                << " :: " << expr.type().id() << ")" << endl;
-	//cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << " with TYPE " << expr.type().id_string() << endl;
+    cout << "; EXTRACTING NUMBER " << const_val 
+            << " (ORIG-EXPR " << expr.get(ID_value) 
+            << " :: " << expr.type().id() << ")" << endl;
+    //cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << " with TYPE " << expr.type().id_string() << endl;
 #endif
 
-	return const_val;
+    return const_val;
 }
 
 /*******************************************************************\
@@ -836,31 +836,31 @@ Function: smtcheck_opensmt2t::extract_expr_str_name
 \*******************************************************************/
 std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 {
-	string str = id2string(expr.get(ID_identifier));
-	assert (str.size() != 0); // Check the we really got something
+    string str = id2string(expr.get(ID_identifier));
+    assert (str.size() != 0); // Check the we really got something
 
-	if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
-		str = str.replace(0,7, "symex::nondet");
+    if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
+            str = str.replace(0,7, "symex::nondet");
 
-	if (str.find("__CPROVER_rounding_mode#") != std::string::npos) {
-	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
-            cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
-	#else
-            cout << "EXIT WITH ERROR: Using Rounding Model not in propositional logic" << str << endl;
-            assert(false);
-	#endif
-	}
-        
-        if (str.find("__CPROVER_") != std::string::npos) {
-	#ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
-            cout << "; " << str << " :: " << expr.id() << " - Should Not Add Cprover Built-ins\n" << expr.pretty() << endl;
-	#else
-            cout << "EXIT WITH ERROR: Using CPROVER built-in variables not in propositional logic " << str << endl;
-            //assert(false); KE: when found all reasons - uncomment
-	#endif
-	}
+    if (str.find("__CPROVER_rounding_mode#") != std::string::npos) {
+    #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
+        cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << endl;
+    #else
+        cout << "EXIT WITH ERROR: Using Rounding Model not in propositional logic" << str << endl;
+        assert(false);
+    #endif
+    }
 
-	return str;
+    if (str.find("__CPROVER_") != std::string::npos) {
+    #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
+        cout << "; " << str << " :: " << expr.id() << " - Should Not Add Cprover Built-ins\n" << expr.pretty() << endl;
+    #else
+        cout << "EXIT WITH ERROR: Using CPROVER built-in variables not in propositional logic " << str << endl;
+        //assert(false); KE: when found all reasons - uncomment
+    #endif
+    }
+
+    return str;
 }
 
 /*******************************************************************\
@@ -875,31 +875,31 @@ Function: smtcheck_opensmt2t::dump_on_error
 
 \*******************************************************************/
 void smtcheck_opensmt2t::dump_on_error(std::string location) {
-	  //If have problem with declaration of vars - uncommen this!
+    //If have problem with declaration of vars - uncommen this!
 #ifdef DEBUG_SMT2SOLVER
-	  cout << "; XXX SMT-lib --> Current Logic Translation XXX" << endl;
-	  cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
-	  cout << "; Declarations from Hifrog :" << endl;
-	  for(it_var_set_str iterator = var_set_str.begin(); iterator != var_set_str.end(); iterator++) {
-	  	  cout << "(declare-fun " << *iterator << ")" << endl;
-	  }
-	  cout << "; Declarations from OpenSMT2 :" << endl;
+    cout << "; XXX SMT-lib --> Current Logic Translation XXX" << endl;
+    cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
+    cout << "; Declarations from Hifrog :" << endl;
+    for(it_var_set_str iterator = var_set_str.begin(); iterator != var_set_str.end(); iterator++) {
+            cout << "(declare-fun " << *iterator << ")" << endl;
+    }
+    cout << "; Declarations from OpenSMT2 :" << endl;
 #endif
-	  logic->dumpHeaderToFile(cout);
-	  cout << "(assert\n  (and" << endl;
-	  for(int i = 0; i < top_level_formulas.size(); ++i) {
-		  PTRef tmp;
-		  logic->conjoinExtras(top_level_formulas[i], tmp);
-		  char *s = logic->printTerm(tmp);
-	      cout << "; XXX Partition: " << i << endl << "    " << s << endl;
-	      free(s);
-	  }
+    logic->dumpHeaderToFile(cout);
+    cout << "(assert\n  (and" << endl;
+    for(int i = 0; i < top_level_formulas.size(); ++i) {
+        PTRef tmp;
+        logic->conjoinExtras(top_level_formulas[i], tmp);
+        char *s = logic->printTerm(tmp);
+        cout << "; XXX Partition: " << i << endl << "    " << s << endl;
+        free(s);
+    }
 
-	  // If code - once needed uncomment this debug flag in the header
+    // If code - once needed uncomment this debug flag in the header
 #ifdef DEBUG_SMT2SOLVER
-	  for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
-		  cout << "; XXX oite symbol: " << iterator->first << endl << iterator->second << endl;
-	  }
+    for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
+            cout << "; XXX oite symbol: " << iterator->first << endl << iterator->second << endl;
+    }
 #endif
-	  cout << "))" << endl << "(check-sat)" << endl;
+    cout << "))" << endl << "(check-sat)" << endl;
 }
