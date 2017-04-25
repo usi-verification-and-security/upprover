@@ -1318,18 +1318,16 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
 int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model,
        std::set<int>& refined, std::set<int>& weak, int start, int end, int step, int do_dep)
 {
+    assert(step == -1 || step == 1);
+    assert((step == 1) == (end - start >= 0));
+
 #ifdef DEBUG_SMT_BB
     cout << "Check CE for " <<exprs.size() << " terms " << std::endl;
 #endif
 
-    // GF: sometimes, it makes sense to iterate over exprs in the reverse order:
-    //     for (int i = exprs.size() - 1; i >= 0; i--)
-    //     however, it causes some inconsistencies (SAFE / BUG),
-    //     probably, because of binding.. need to debug it when time permits...
-
     std::set<exprt> encoded_vars;
 
-    for (unsigned int i = start; i < exprs.size(); i++){
+    for (int i = start; i != end; i = i + step){
 
         if (refined.find(i) != refined.end()) continue;
 

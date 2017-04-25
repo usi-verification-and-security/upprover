@@ -204,7 +204,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       //   backward with multiple refinement
                       last = exprs.size()-1;
                       while (last >= 0){
-                        decider2 = new smtcheck_opensmt2t_cuf(bw, "backward multiple refinere");
+                        decider2 = new smtcheck_opensmt2t_cuf(bw, "backward multiple refiner");
                         last = decider2->check_ce(exprs, model, refined, weak, last, -1, -1, 0);
                       }
                       break;
