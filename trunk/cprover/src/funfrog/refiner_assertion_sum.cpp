@@ -16,7 +16,7 @@
 void refiner_assertion_sumt::set_inline_sum(summary_infot& summary)
 {
   if (summary.get_call_location() <= last_assertion_loc){
-    status() << (std::string("*** REFINING function: ") + summary.get_function_id().c_str());
+    status() << (std::string("*** REFINING function: ") + summary.get_function_id().c_str()) << eom;
     summary.set_inline();
     refined_functions.push_back(&summary);
   }
@@ -31,7 +31,7 @@ void refiner_assertion_sumt::reset_inline(summary_infot& summary)
     if ((it->second).get_precision() != INLINE){
       set_inline_sum(it->second);
       if ((it->second).is_recursion_nondet()){
-          status() << "Automatically increasing unwinding bound for " << (it->second).get_function_id() << "\n";
+          status() << "Automatically increasing unwinding bound for " << (it->second).get_function_id() << eom;
           omega.refine_recursion_call(it->second);
       }
     } else {
@@ -75,7 +75,7 @@ void refiner_assertion_sumt::reset_depend_rec(std::vector<summary_infot*>& dep, 
             std::cout << "The call " << call.get_function_id() << " cannot be refined because the maximum unwinding bound is exceeded\n";
           } else {*/
             if (call.is_recursion_nondet()){
-              status() << "Automatically increasing unwinding bound for " << call.get_function_id() << "\n";
+              status() << "Automatically increasing unwinding bound for " << call.get_function_id() << eom;
               omega.refine_recursion_call(call);
             }
             set_inline_sum(call);

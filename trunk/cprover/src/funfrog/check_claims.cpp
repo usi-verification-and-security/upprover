@@ -78,7 +78,7 @@ goto_programt::const_targett claim_statst::find_assertion(
       decrement_unwinding_counter(name);
       if(stack.size()==0)
       {
-        // this must be the end.
+        // this must be the end. 
         return (++it);
       }
       else
@@ -195,7 +195,7 @@ void check_claims(
     }
     if (ass_ptr == leaping_program.instructions.end()){
       if (seen_claims == 0)
-        res.status() << "Assertion is not reachable";
+        res.status() << "\nAssertion is not reachable\n" << res.eom;
       break;
 
     }
@@ -207,7 +207,7 @@ void check_claims(
       seen_claims++;
       res.status() << (std::string("\r    Checking Claim #") + std::to_string(claim_numbers[ass_ptr]) + std::string(" (") +
     		    std::to_string((int)(100*seen_claims/(double)(assert_grouping ? claim_numbers.size() : inlined_claims))) +
-    		    std::string("%) ..."));
+    		    std::string("%) ...")) << res.eom;
     }
 
     std::ofstream out;

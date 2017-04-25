@@ -1158,7 +1158,7 @@ void symex_assertion_sumt::summarize_function_call(
 {
   // We should use an already computed summary as an abstraction
   // of the function body
-  status() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << endl;
+  status() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << eom;
   
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
@@ -1259,7 +1259,7 @@ void symex_assertion_sumt::havoc_function_call(
 {
   // We should treat the function as nondeterministic, havocing
   // all data it touches.
-  status() << (std::string("*** NONDET abstraction used for function: ") + function_id.c_str());
+  status() << (std::string("*** NONDET abstraction used for function: ") + function_id.c_str()) << eom;
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 

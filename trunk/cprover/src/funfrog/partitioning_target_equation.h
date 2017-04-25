@@ -46,7 +46,7 @@ public:
           store_summaries_with_assertion(_store_summaries_with_assertion),
           coloring_mode(_coloring_mode),
           clauses(_clauses),
-#         ifdef DEBUG_SSA_PRINT                   
+#         ifdef DEBUG_SSA_PRINT
 		  out_local_terms(0),
 		  out_terms(out_local_terms),
 		  out_local_basic(0),
@@ -57,7 +57,7 @@ public:
 		  is_first_call(true),
 		  first_call_expr(0),
 #endif                  
-                  io_count_global(0)
+                  io_count_global(0)                
 		  {
 #         ifdef DEBUG_SSA_PRINT  
 	  partition_smt_decl = new std::map <std::string,exprt>();
@@ -232,12 +232,8 @@ protected:
   int terms_counter; // for prints SSA - remove later
   bool is_first_call; // for prints SSA - remove later
   const exprt* first_call_expr; // for prints SSA - remove later
-#endif  
   
-  unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
-
-  // Print decl (later change to create)
-#ifdef DEBUG_SSA_PRINT  
+  // Print decl (later change to create) 
   std::ostream& print_decl_smt(std::ostream& out);
   void print_all_partition(std::ostream& out);
   void print_partition();  
@@ -246,6 +242,7 @@ protected:
   bool isFirstCallExpr(const exprt& expr);
   void getFirstCallExpr();
 #endif
+  unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
 
   unsigned count_partition_assertions(partitiont& partition) const
   {

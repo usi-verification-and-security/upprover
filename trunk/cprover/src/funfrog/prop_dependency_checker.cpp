@@ -46,12 +46,12 @@ delete opensmt;
   {
     case decision_proceduret::D_UNSATISFIABLE:
     {
-      if (VERBOSE) status() << ("UNSAT - it holds!");
+      if (VERBOSE) status() << ("UNSAT - it holds!") << eom;
       return make_pair(true, duration);
     }
     case decision_proceduret::D_SATISFIABLE:
     {
-      if (VERBOSE) status() << ("SAT - doesn't hold");
+      if (VERBOSE) status() << ("SAT - doesn't hold") << eom;
       return make_pair(false, duration);
     }
 

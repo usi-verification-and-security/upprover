@@ -9,7 +9,7 @@
 \*******************************************************************/
 
 #include <config.h>
-
+#include <iostream>
 #include <sys/time.h>
 #include <sys/stat.h>
 #ifndef _WIN32
@@ -18,7 +18,6 @@
 #include <io.h>
 #endif
 
-#include <iostream>
 #include <std_expr.h>
 #include <arith_tools.h>
 #include <prefix.h>
@@ -188,7 +187,7 @@ bool funfrog_parseoptionst::get_goto_program(
     }
 
     // finally add the library
-    status() << "Adding CPROVER library" << eom;
+    cbmc_status_interface("Adding CPROVER library");
     link_to_library(symbol_table, goto_functions, ui_message_handler);
 
     if(process_goto_program(ns, options, goto_functions))
@@ -289,7 +288,7 @@ int funfrog_parseoptionst::doit()
     return 6;
 
   after=current_time();
-  status() << "    LOAD Time: " << (after-before) << " sec." << eom;
+  cbmc_status_interface(std::string("    LOAD Time: ") + (after-before).as_string() + std::string(" sec."));
 
 
   label_properties(goto_functions);
@@ -377,7 +376,8 @@ void funfrog_parseoptionst::help()
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
   "--no-error-trace               disable the counter example's print once a real bug found\n"
-  "--no-itp                       do not construct summaries (just report SAFE/BUG)\n\n"
+  "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
+  "--no-partitions                do not use partitions to create the bmc formula\n\n"        
   "\nSMT, Interpolation and Proof Reduction options:\n"
   "--theoref                      use experimental Theory Refining algorithm\n"
   "--force                        force refining CUF to BV without counterexamples\n"
@@ -585,6 +585,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
   options.set_option("no-itp", cmdline.isset("no-itp"));
+  options.set_option("no-partitions", cmdline.isset("no-partitions"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
@@ -618,6 +619,10 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   } else { // Set to qfuf - defualt
     options.set_option("logic", "qfuf"); 
   }
+  
+  // If not partitions - no itp too, going back to pure cbcm
+  if(cmdline.isset("no-partitions"))
+      options.set_option("no-itp", true);
   
   if (cmdline.isset("check-itp")) {
     options.set_option("check-itp", cmdline.get_value("check-itp"));

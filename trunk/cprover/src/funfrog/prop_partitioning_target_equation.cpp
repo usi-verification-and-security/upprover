@@ -181,6 +181,7 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
  //   std::cout << "skipping converting assertions\n";
  // }
   convert_partition_io(prop_conv, partition);
+  convert_partition_goto_instructions(prop_conv, partition);
   // FIXME: Only use in the incremental solver mode (not yet implemented)
   // partition.processed = true;
 }
@@ -336,6 +337,43 @@ void prop_partitioning_target_equationt::convert_partition_assumptions(
   }
 }
 
+/*******************************************************************
+ Function: prop_partitioning_target_equationt::convert_partition_goto_instructions
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Convert a specific partition go-tos of SSA steps
+
+ *  KE: added after the cprover upgrade
+ \*******************************************************************/
+void prop_partitioning_target_equationt::convert_partition_goto_instructions(
+    prop_conv_solvert &prop_conv, partitiont& partition)
+{
+    for(SSA_stepst::iterator it = partition.start_it;
+      it != partition.end_it; ++it)
+    {
+        if(it->is_goto())
+        {
+            if(it->ignore)
+                it->cond_literal=const_literal(true);
+            else
+            {
+                exprt tmp(it->cond_expr);
+
+#           ifdef DEBUG_SSA_PRINT // Only for prop version!
+                //Print "GOTO-OUT:"
+                expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
+                terms_counter++;
+#           endif
+
+                it->cond_literal=prop_conv.convert(tmp);
+            }           
+        }
+    }    
+}
+
 /*******************************************************************\
 
 Function: prop_partitioning_target_equationt::convert_partition_assertions
@@ -351,18 +389,18 @@ Function: prop_partitioning_target_equationt::convert_partition_assertions
 void prop_partitioning_target_equationt::convert_partition_assertions(
   prop_conv_solvert &prop_conv, partitiont& partition)
 {
-  unsigned number_of_assertions = count_partition_assertions(partition);
-  unsigned number_of_assumptions = 0;
-  const partition_ifacet& partition_iface = partition.get_iface();
+    unsigned number_of_assertions = count_partition_assertions(partition); 
+    unsigned number_of_assumptions = 0;
+    const partition_ifacet& partition_iface = partition.get_iface();
 
-  bvt bv;
-  if (partition_iface.assertion_in_subtree) {
-    bv.reserve(number_of_assertions + partition.child_ids.size());
-  }
+    bvt bv;
+    if (partition_iface.assertion_in_subtree) {
+        bv.reserve(number_of_assertions + partition.child_ids.size());
+    }
 
-  literalt assumption_literal=const_literal(true);
+    literalt assumption_literal=const_literal(true);
 
-  for (SSA_stepst::iterator it = partition.start_it;
+    for (SSA_stepst::iterator it = partition.start_it;
     it != partition.end_it; ++it) {
 
     if ((it->is_assert()) && !(it->ignore))

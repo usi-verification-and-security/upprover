@@ -67,6 +67,9 @@ protected:
   // Convert a summary partition (i.e., assert its summary)
   void convert_partition_summary(smtcheck_opensmt2t &decider,
     partitiont& partition);
+  // Convert a specific partition gotos of SSA steps
+  void convert_partition_goto_instructions(smtcheck_opensmt2t &decider,
+    partitiont& partition);
   
   virtual bool is_smt_encoding() {return true;} // KE: Temp. Just to force virtual for compilation
 

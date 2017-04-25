@@ -41,7 +41,7 @@ bool smt_assertion_sumt::assertion_holds(const assertion_infot &assertion, const
   after=current_time();
 //  global_sat_conversion_time += (after-before);
 
-  status() << "CONVERSION TIME: " << (after-before) << endl;
+  status() << "CONVERSION TIME: " << (after-before) << eom;
 
   // Decides the equation
   sat = is_satisfiable(decider);
@@ -77,7 +77,7 @@ bool smt_assertion_sumt::is_satisfiable(
   after=current_time();
   solving_time = (after-before);
   global_satsolver_time += (after-before);
-  status() << "SOLVER TIME: " << (after-before) << endl;
+  status() << "SOLVER TIME: " << (after-before) << eom;
   status() << "RESULT: ";
 
   // solve it
@@ -95,7 +95,7 @@ void smt_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespac
 		std::map<irep_idt, std::string>& guard_expln)
 {      
     // Only if can build an error trace - give notice to the user
-    status() << ("Building error trace");
+    status() << ("Building error trace") << eom;
     
     error_tracet error_trace;
     

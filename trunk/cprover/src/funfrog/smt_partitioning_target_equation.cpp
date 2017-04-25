@@ -163,6 +163,7 @@ void smt_partitioning_target_equationt::convert_partition(
 	//   std::cout << "skipping converting assertions\n";
 	// }
 	convert_partition_io(decider, partition);
+        convert_partition_goto_instructions(decider, partition);
 	// FIXME: Only use in the incremental solver mode (not yet implemented)
 	// partition.processed = true;
 }
@@ -250,24 +251,25 @@ void smt_partitioning_target_equationt::convert_partition_assignments(
     }
 }
 
-bool smt_partitioning_target_equationt::isRoundModelEq(const exprt &expr) {
-	if (!expr.has_operands())
-		return false;
-	if (expr.operands().size() > 2)
-		return false;
+bool smt_partitioning_target_equationt::isRoundModelEq(const exprt &expr)
+{
+    if (!expr.has_operands())
+        return false;
+    if (expr.operands().size() > 2)
+        return false;
 
-	// Start checking if it is auto gen code for rounding model
-	if (expr.operands().size() == 2) {
-		string str = id2string((expr.operands()[1]).get(ID_identifier));
-		if (str.find("__CPROVER_") != std::string::npos)
-			return true;
-	}
+    // Start checking if it is auto gen code for rounding model
+    string str = id2string((expr.operands()[0]).get(ID_identifier));
+    if (str.find("__CPROVER_") != std::string::npos)
+        return true;
+    
+    if (expr.operands().size() < 2) return false;
+    
+    str = id2string((expr.operands()[1]).get(ID_identifier));
+    if (str.find("__CPROVER_") != std::string::npos)
+        return true;
 
-	string str = id2string((expr.operands()[0]).get(ID_identifier));
-	if (str.find("__CPROVER_") != std::string::npos)
-		return true;
-
-	return false;
+    return false;
 }
 
 /*******************************************************************
@@ -319,26 +321,60 @@ void smt_partitioning_target_equationt::convert_partition_guards(
  \*******************************************************************/
 
 void smt_partitioning_target_equationt::convert_partition_assumptions(
-		smtcheck_opensmt2t &decider, partitiont& partition) {
-	for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
-		if (it->is_assume()) {
-			if (it->ignore) {
-#     	ifdef DEBUG_SSA_SMT_CALL
-				cout << "Before decider::const_var(ASSUME-OUT) --> true" << endl;
-#	endif
-				it->cond_literal = decider.const_var(true);
-				// GF
-			} else {
-				exprt tmp(it->cond_expr);
-#     	ifdef DEBUG_SSA_SMT_CALL
-				expr_ssa_print_smt_dbg(
-						cout << "Before decider::convert(ASSUME-OUT) --> ",
-						tmp, false);
-#	endif
-				it->cond_literal = decider.convert(tmp);
-			}
-		}
-	}
+    smtcheck_opensmt2t &decider, partitiont& partition) {
+    for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
+        if (it->is_assume()) {
+            if (it->ignore) {
+#               ifdef DEBUG_SSA_SMT_CALL
+                cout << "Before decider::const_var(ASSUME-OUT) --> true" << endl;
+#               endif
+                it->cond_literal = decider.const_var(true);
+                // GF
+            } else {
+                exprt tmp(it->cond_expr);
+#               ifdef DEBUG_SSA_SMT_CALL
+                expr_ssa_print_smt_dbg(
+                cout << "Before decider::convert(ASSUME-OUT) --> ",
+                        tmp, false);
+#               endif
+                it->cond_literal = decider.convert(tmp);
+            }
+        }
+    }
+}
+/*******************************************************************
+ Function: smt_partitioning_target_equationt::convert_partition_goto_instructions
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Convert a specific partition go-tos of SSA steps
+
+ *  KE: added after the cprover upgrade
+ \*******************************************************************/
+void smt_partitioning_target_equationt::convert_partition_goto_instructions(
+    smtcheck_opensmt2t &decider, partitiont& partition)
+{
+    for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
+        if (it->is_goto()) {
+            if (it->ignore) {
+#           ifdef DEBUG_SSA_SMT_CALL
+                cout << "Before decider::const_var(GOTO-OUT) --> true" << endl;
+#           endif
+                it->cond_literal = decider.const_var(true);
+                // GF
+            } else {
+                exprt tmp(it->cond_expr);
+#               ifdef DEBUG_SSA_SMT_CALL
+                    expr_ssa_print_smt_dbg(
+                            cout << "Before decider::convert(GOTO-OUT) --> ",
+                            tmp, false);
+#               endif
+                it->cond_literal = decider.convert(tmp);
+            }
+        }
+    }
 }
 
 /*******************************************************************
@@ -354,22 +390,22 @@ void smt_partitioning_target_equationt::convert_partition_assumptions(
 
 void smt_partitioning_target_equationt::convert_partition_assertions(
 		smtcheck_opensmt2t &decider, partitiont& partition) {
-	unsigned number_of_assertions = count_partition_assertions(partition);
-	unsigned number_of_assumptions = 0;
-	const partition_ifacet& partition_iface = partition.get_iface();
+    unsigned number_of_assertions = count_partition_assertions(partition);   
+    unsigned number_of_assumptions = 0;
+    const partition_ifacet& partition_iface = partition.get_iface();
 
-	bvt bv;
-	if (partition_iface.assertion_in_subtree) {
-		bv.reserve(number_of_assertions + partition.child_ids.size());
-	}
+    bvt bv;
+    if (partition_iface.assertion_in_subtree) {
+        bv.reserve(number_of_assertions + partition.child_ids.size());
+    }
 
 # ifdef DEBUG_SSA_SMT_CALL
-	cout << "Before decider::const_var(ASSERT-OUT) --> true" << endl;
+    cout << "Before decider::const_var(ASSERT-OUT) --> true" << endl;
 # endif
-	literalt assumption_literal = decider.const_var(true);
-	for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
+    literalt assumption_literal = decider.const_var(true);
+    for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
 
-		if ((it->is_assert()) && !(it->ignore)) {
+        if ((it->is_assert()) && !(it->ignore)) {
 
 		    // GF: probably move it from here later:
             exprt tmp(it->cond_expr);

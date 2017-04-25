@@ -32,12 +32,12 @@ void summarizing_checkert::initialize_solver()
         decider = new satcheck_opensmt2t("prop checker");
     else if (_logic == "prop" && options.get_bool_option("no-partitions"))
     {
-        std::cout << ("--no-partitions option is not supported in theory: " +  _logic + "\n");
+        error() << ("--no-partitions option is not supported in theory: " +  _logic + "\n") << eom;
         exit(0); //Unsupported 
     }
     else 
     {
-        std::cout << ("Unsupported theory: " +  _logic + "\n");
+        error() << ("Unsupported theory: " +  _logic + "\n") << eom;
         exit(0); //Unsupported 
     }
   
@@ -130,7 +130,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   // Trivial case
   if(assertion.is_trivially_true())
   {
-    status() << ("Assertion(s) hold trivially.");
+    status() << ("Assertion(s) hold trivially.") << eom;
     report_success();
     return true;
   }
@@ -220,7 +220,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
       if (options.get_bool_option("claims-opt") && count == 1){
         prop_dependency_checkert(ns, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
                 .do_it(equation);
-        status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps()));
+        status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
       }
 
       end = prop.assertion_holds(assertion, ns, *(dynamic_cast<prop_conv_solvert *> (decider_prop.get())), *(interpolator.get())); // KE: strange conversion after shift to cbmc 5.5 - I think the bv_pointerst is changed
@@ -229,14 +229,14 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
       if (end && interpolator->can_interpolate())
       {
         if (options.get_bool_option("no-itp")){
-          status() << ("Skip generating interpolants");
+          status() << ("Skip generating interpolants") << eom;
         } else {
-          status() << ("Start generating interpolants...");
+          status() << ("Start generating interpolants...") << eom;
           extract_interpolants_prop(prop, equation, decider_prop, interpolator);
         }
         if (summaries_count == 0)
         {
-          status() << ("ASSERTION(S) HOLD(S) "); //TODO change the message to something more clear (like, everything was inlined...)
+          status() << ("ASSERTION(S) HOLD(S) ") << eom; //TODO change the message to something more clear (like, everything was inlined...)
         } else {
           status() << "FUNCTION SUMMARIES (for " << summaries_count
         	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
@@ -256,17 +256,17 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 
           if (refiner.get_refined_functions().size() == 0){
             prop.error_trace(*decider_prop, ns);
-            status() << ("A real bug found.") << endl << endl;
+            status() << ("A real bug found.") << endl << eom;
             report_failure();
             break;
           } else {
             //status("Counterexample is spurious");
-            status() << ("Go to next iteration") << endl;
+            status() << ("Go to next iteration") << eom;
           }
         } else {
           prop.error_trace(*decider_prop, ns);
           status() << ("ASSERTION(S) DO(ES)N'T HOLD") << endl;
-          status() << ("A real bug found") << endl << endl;
+          status() << ("A real bug found") << endl << eom;
           report_failure();
           break;
         }
@@ -356,7 +356,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
       if (options.get_bool_option("claims-opt") && count == 1){
         smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
                 .do_it(equation);
-        status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps()));
+        status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
       }
 
       end = prop.assertion_holds(assertion, ns, 
@@ -367,14 +367,14 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
       if (end && decider->can_interpolate())
       {
         if (options.get_bool_option("no-itp")){
-          status() << ("Skip generating interpolants") << endl;
+          status() << ("Skip generating interpolants") << eom;
         } else {
-          status() << ("Start generating interpolants...") << endl;
+          status() << ("Start generating interpolants...") << eom;
           extract_interpolants_smt(prop, equation);
         }
         if (summaries_count == 0)
         {
-          status() << ("ASSERTION(S) HOLD(S) "); //TODO change the message to something more clear (like, everything was inlined...)
+          status() << ("ASSERTION(S) HOLD(S) ") << eom; //TODO change the message to something more clear (like, everything was inlined...)
         } else {
           status() << "FUNCTION SUMMARIES (for " << summaries_count
         	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
@@ -397,7 +397,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
             break;
           } else {
             //status("Counterexample is spurious");
-            status() << ("Go to next iteration") << endl;
+            status() << ("Go to next iteration") << eom;
           }
         } else {
           assertion_violated(prop, symex.guard_expln);
@@ -438,9 +438,9 @@ void summarizing_checkert::assertion_violated (smt_assertion_sumt& prop,
         prop.error_trace(*decider_smt, ns, guard_expln);
     if (decider_smt->has_unsupported_vars()){
     	status() << "\nA bug found." << endl;
-    	status() << "WARNING: Possibly due to the Theory conversion." << endl;
+    	status() << "WARNING: Possibly due to the Theory conversion." << eom;
     } else {
-    	status() << "A real bug found." << endl;
+    	status() << "A real bug found." << eom;
     }
     report_failure();
 

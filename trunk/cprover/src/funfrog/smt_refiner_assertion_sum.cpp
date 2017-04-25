@@ -74,7 +74,7 @@ void smt_refiner_assertion_sumt::reset_depend(
 #       endif
         if (ipart.summary_info.get_precision() != INLINE){
           if (ipart.summary_info.is_recursion_nondet()){
-              status() << "Automatically increasing unwinding bound for " << ipart.summary_info.get_function_id() << "\n";
+              status() << "Automatically increasing unwinding bound for " << ipart.summary_info.get_function_id() << eom;
               omega.refine_recursion_call(ipart.summary_info);
           }
           set_inline_sum(ipart.summary_info);

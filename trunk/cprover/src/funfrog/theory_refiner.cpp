@@ -113,7 +113,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
       } else {
 
-          status() << endl << "Trying to refine with CUF+BitBlast" << endl;
+          status() << endl << "Trying to refine with CUF+BitBlast" << eom;
 
           std::set<int> exprs_ids;
           get_numbers(exprs_ids, options.get_option("custom"));

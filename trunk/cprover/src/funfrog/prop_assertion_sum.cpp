@@ -53,12 +53,12 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 
   if (!sat)
   {
-    status() << ("ASSERTION IS TRUE");
+    status() << ("ASSERTION IS TRUE") << eom;
     return true;
   }
   else
   {
-    status() << ("ASSERTION IS VIOLATED");
+    status() << ("ASSERTION IS VIOLATED") << eom;
     /* error_trace(decider, ns);
     //std::cout << std::endl << "NONDET assigns:" << std::endl;
 
@@ -136,12 +136,12 @@ bool prop_assertion_sumt::is_satisfiable(
   {
     case decision_proceduret::D_UNSATISFIABLE:
     {
-      status() << ("UNSAT - it holds!");
+      status() << ("UNSAT - it holds!") << eom;
       return false;
     }
     case decision_proceduret::D_SATISFIABLE:
     {
-      status() << ("SAT - doesn't hold");
+      status() << ("SAT - doesn't hold") << eom;
       return true;
     }
 

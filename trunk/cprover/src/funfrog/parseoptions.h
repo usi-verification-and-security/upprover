@@ -47,7 +47,7 @@ class value_set_alloc_adaptort;
   "(theoref)(force)(custom):(heuristic):(bitwidth):" \
   "(save-queries)(save-change-impact):" \
   "(tree-interpolants)(proof-trans):(reduce-proof)(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
-  "(random-seed):(no-itp)(verbose-solver):" \
+  "(random-seed):(no-partitions)(no-itp)(verbose-solver):" \
   "(itp-algorithm): (itp-uf-algorithm): (itp-lra-algorithm):(itp-lra-factor): (check-itp): (part-itp):" \
   "(unwind):(unwindset):" \
   "(type-constraints):" \

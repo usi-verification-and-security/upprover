@@ -59,6 +59,9 @@ protected:
   // Convert a summary partition (i.e., assert its summary)
   void convert_partition_summary(prop_conv_solvert &prop_conv,
     partitiont& partition);
+  // Convert a specific partition gotos of SSA steps
+  void convert_partition_goto_instructions(prop_conv_solvert &prop_conv,
+    partitiont& partition);
   
   // Override
   virtual void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
