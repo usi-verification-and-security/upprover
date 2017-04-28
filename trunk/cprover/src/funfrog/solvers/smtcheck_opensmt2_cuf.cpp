@@ -104,6 +104,7 @@ PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_const(const char* val)
 {
+    assert(val != NULL);
     return bvlogic->mkBVConst(val);
 }
 
@@ -219,7 +220,7 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
             && (expr_op0.operands().size() == 1)) { // Recursive typecast  
         PTRef ptl = type_cast_bv(expr_op0);
         if (is_expr_bool && is_number(expr_op0.type())) {
-            ptl = bvlogic->mkBVNot(bvlogic->mkBVEq(ptl, get_bv_const(0)));
+            ptl = bvlogic->mkBVNot(bvlogic->mkBVEq(ptl, get_bv_const("0")));
         } 
 
 #ifdef DEBUG_SMT_BB
@@ -244,7 +245,7 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
     } else if (is_expr_bool && is_number(expr_op0.type())) {
         // Cast from Real to Boolean - Add
 
-        return bvlogic->mkBVNot(bvlogic->mkBVEq(convert_bv(expr_op0), get_bv_const(0)));
+        return bvlogic->mkBVNot(bvlogic->mkBVEq(convert_bv(expr_op0), get_bv_const("0")));
     } else {
         //} else if (is_number(expr.type()) && is_operands_bool) {
         // Cast from Boolean to Real - Add
@@ -268,7 +269,7 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
     
     // If signed we need to do something :
     vec<PTRef> args;
-    args.push(bvlogic->mkBVSlt(ptl_inner, this->get_bv_const(0))); // IF a
+    args.push(bvlogic->mkBVSlt(ptl_inner, this->get_bv_const("0"))); // IF a
     args.push(bvlogic->mkBVNeg(ptl_inner)); // then b
     args.push(ptl_inner);    
     PTRef ptl = bvlogic->mkBVLand(
