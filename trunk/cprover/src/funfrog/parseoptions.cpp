@@ -376,7 +376,9 @@ void funfrog_parseoptionst::help()
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
   "--no-error-trace               disable the counter example's print once a real bug found\n"
+#ifdef PRODUCE_PROOF          
   "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
+#endif
   "--no-partitions                do not use partitions to create the bmc formula\n\n"        
   "\nSMT, Interpolation and Proof Reduction options:\n"
   "--theoref                      use experimental Theory Refining algorithm\n"
@@ -393,6 +395,7 @@ void funfrog_parseoptionst::help()
   "                                 7 - backward with multiple refinement & dependencies\n"
   "--bitwidth <n>                 bitwidth for the CUF BV mode\n\n"
   "--logic <logic>                [qfuf, qfcuf, qflra, prop] if not present qfuf is used\n"
+#ifdef PRODUCE_PROOF           
   "--itp-algorithm                propositional interpolation algorithm: \n"
   "                                 0 for McMillan_s,\n"
   "                                 1 for Pudlak,\n"
@@ -410,6 +413,7 @@ void funfrog_parseoptionst::help()
   "--reduce-proof                 enable Proof Reduction\n"
   "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
   "--reduce-proof-loops           number of reduction iterations\n"
+#endif          
   "--list-templates               dump the templates of the functions for user-defined summaries\n"
   "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n"
 //  "\nRefinement options:\n"
@@ -584,7 +588,13 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("all-claims", cmdline.isset("all-claims"));
   options.set_option("save-queries", cmdline.isset("save-queries"));
   options.set_option("no-slicing", cmdline.isset("no-slicing"));
+#ifdef PRODUCE_PROOF   
   options.set_option("no-itp", cmdline.isset("no-itp"));
+  status() << "\n*** USING INTERPOLATION AND SUMMARIES (DPRODUCE_PROOF is on) ***\n" << eom;
+#else
+  options.set_option("no-itp", true); // If not using itp, this flag is true always!
+  status() << "\n*** NO ITERPOLATION MODE, NOT USING SUMMARY FILES (DPRODUCE_PROOF is off) ***\n" << eom;
+#endif  
   options.set_option("no-partitions", cmdline.isset("no-partitions"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));

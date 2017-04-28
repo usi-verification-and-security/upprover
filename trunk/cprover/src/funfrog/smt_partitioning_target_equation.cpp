@@ -18,6 +18,7 @@
 void
 smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*>& templates)
 {
+#ifdef PRODUCE_PROOF     
     for(partitionst::iterator it = partitions.begin(); it != partitions.end(); ++it)
     {
         vector<symbol_exprt> common;
@@ -27,6 +28,9 @@ smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &d
         decider.adjust_function(*sum, common, fun_name, false);
         templates.push_back(sum);
     }
+#else
+    assert(0);
+#endif
 }
 
 
@@ -774,6 +778,7 @@ void smt_partitioning_target_equationt::convert_partition_io(
 void smt_partitioning_target_equationt::extract_interpolants(
 		interpolating_solvert& interpolator, const smtcheck_opensmt2t& decider,
 		interpolant_mapt& interpolant_map) {
+#ifdef PRODUCE_PROOF    
     // Prepare the interpolation task. NOTE: ignore the root partition!
     unsigned valid_tasks = 0;
     summary_storet* summary_store = summarization_context.get_summary_store();
@@ -884,6 +889,9 @@ void smt_partitioning_target_equationt::extract_interpolants(
     }
     
     summary_store = NULL;
+#else
+    assert(0);
+#endif
 }
 
 #ifdef DEBUG_SSA_SMT_CALL

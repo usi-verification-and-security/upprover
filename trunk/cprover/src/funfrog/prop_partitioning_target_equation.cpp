@@ -671,6 +671,7 @@ void prop_partitioning_target_equationt::extract_interpolants(
   interpolating_solvert& interpolator, const prop_conv_solvert& decider,
   interpolant_mapt& interpolant_map)
 {
+#ifdef PRODUCE_PROOF     
   // Prepare the interpolation task. NOTE: ignore the root partition!
   unsigned valid_tasks = 0;
   summary_storet* summary_store = summarization_context.get_summary_store();
@@ -780,6 +781,9 @@ void prop_partitioning_target_equationt::extract_interpolants(
   }
   
   summary_store = NULL;
+#else
+  assert(0);
+#endif
 }
 
 /*******************************************************************\

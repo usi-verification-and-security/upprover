@@ -78,9 +78,11 @@ protected:
   init_modet init;
   
   void setup_unwind(symex_bmct& symex);
+#ifdef PRODUCE_PROOF  
   void extract_interpolants_smt (smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation);
   void extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
             std::auto_ptr<prop_conv_solvert> decider_prop, std::auto_ptr<interpolating_solvert> interpolator);
+#endif
   void report_success();
   void report_failure();
   void assertion_violated(smt_assertion_sumt& prop,

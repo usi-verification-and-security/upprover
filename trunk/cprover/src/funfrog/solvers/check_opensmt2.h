@@ -33,6 +33,7 @@ public:
       dump_queries(false),
       partition_count(0),
       current_partition(0),
+#ifdef PRODUCE_PROOF              
       itp_algorithm(itp_alg_mcmillan),
       itp_euf_algorithm(itp_euf_alg_strong),
       itp_lra_algorithm(itp_lra_alg_strong),
@@ -40,6 +41,7 @@ public:
       reduction(reduction),
       reduction_graph(reduction_graph),
       reduction_loops(reduction_loops),
+#endif
       random_seed(1),
       verbosity(0),
       certify(0)
@@ -49,7 +51,8 @@ public:
 
   virtual prop_conv_solvert* get_prop_conv_solver()=0;
   
-  
+
+#ifdef PRODUCE_PROOF  
   /* General method to set OpenSMT2 */
   void set_itp_bool_alg(int x)
   {
@@ -70,7 +73,12 @@ public:
   {
       itp_lra_factor = f;
   }
-
+  
+  void set_reduce_proof(bool r) { reduction = r; }
+  void set_reduce_proof_graph(int r) { reduction_graph = r; }
+  void set_reduce_proof_loops(int r) { reduction_loops = r; }
+#endif
+  
   void set_random_seed(unsigned int i)
   {
     random_seed = i;
@@ -104,10 +112,6 @@ public:
   
   void set_certify(int r) { certify = r; }
   
-  void set_reduce_proof(bool r) { reduction = r; }
-  void set_reduce_proof_graph(int r) { reduction_graph = r; }
-  void set_reduce_proof_loops(int r) { reduction_loops = r; }
-  
   /* General consts for prop version */
   const char* false_str = "false";
   const char* true_str = "true";
@@ -133,6 +137,7 @@ protected:
   //  List of clauses that are part of this partition (a.k.a. assert in smt2lib)
   vec<PTRef>* current_partition;
   
+#ifdef PRODUCE_PROOF   
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
   int proof_trans;  
   
@@ -146,15 +151,17 @@ protected:
   ItpAlgorithm itp_euf_algorithm;
   ItpAlgorithm itp_lra_algorithm;
   const char * itp_lra_factor;
-
+  
+  // Can we interpolate?
+  bool ready_to_interpolate;
+#endif
+  
   unsigned random_seed;
 
   int verbosity;
 
   int certify;
   
-  // Can we interpolate?
-  bool ready_to_interpolate;
 };
 
 #endif

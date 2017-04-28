@@ -61,6 +61,7 @@ public:
   // returns a unique partition id
   virtual fle_part_idt new_partition();
 
+#ifdef PRODUCE_PROOF  
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants);
   
@@ -72,7 +73,8 @@ public:
   // Simple recursive extraction of clauses from OpenSMT Egraph
   literalt extract_itp_rec(PTRef ptref, prop_itpt& target_itp,
     ptref_cachet& ptref_cache) const;
- 
+#endif
+  
   const std::string& get_last_var() { return id_str; }
 
   const char* false_str = "false";
@@ -94,18 +96,21 @@ protected:
  
   void convert(const bvt &bv, vec<PTRef> &args);
 
+#ifdef PRODUCE_PROOF  
   void setup_reduction();
 
   void setup_interpolation();
 
   void setup_proof_transformation();
   
+   void produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants);
+#endif  
+  
   // Initialize the OpenSMT context
   virtual void initializeSolver(const char*);
 
   // Free all resources related to PeRIPLO
   virtual void freeSolver();
-  void produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants);
 
   void add_variables();
   void increase_id();

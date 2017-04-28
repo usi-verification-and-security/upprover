@@ -31,6 +31,7 @@ public:
   // returns a unique partition id
   virtual fle_part_idt new_partition()=0;
 
+#ifdef PRODUCE_PROOF  
   // Extracts the symmetric interpolant of the specified set of
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
@@ -43,7 +44,7 @@ public:
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT
   virtual bool can_interpolate() const=0;
-
+#endif
 };
 
 #endif

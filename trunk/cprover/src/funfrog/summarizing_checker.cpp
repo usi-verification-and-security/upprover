@@ -43,11 +43,13 @@ void summarizing_checkert::initialize_solver()
     }
   
   // Set all the rest of the option - KE: check what to shift to the part of SMT only
+  decider->set_verbosity(options.get_unsigned_int_option("verbose-solver"));
+#ifdef PRODUCE_PROOF   
   decider->set_itp_bool_alg(options.get_unsigned_int_option("itp-algorithm"));
   decider->set_itp_euf_alg(options.get_unsigned_int_option("itp-uf-algorithm"));
   decider->set_itp_lra_alg(options.get_unsigned_int_option("itp-lra-algorithm"));
-  if(options.get_option("itp-lra-factor").size() > 0) decider->set_itp_lra_factor(options.get_option("itp-lra-factor").c_str());
-  decider->set_verbosity(options.get_unsigned_int_option("verbose-solver"));
+  if(options.get_option("itp-lra-factor").size() > 0) 
+      decider->set_itp_lra_factor(options.get_option("itp-lra-factor").c_str());
   decider->set_certify(options.get_unsigned_int_option("check-itp"));
   if(options.get_bool_option("reduce-proof"))
   {
@@ -55,6 +57,7 @@ void summarizing_checkert::initialize_solver()
     if(options.get_unsigned_int_option("reduce-proof-graph")) decider->set_reduce_proof_graph(options.get_unsigned_int_option("reduce-proof-graph"));
     if(options.get_unsigned_int_option("reduce-proof-loops")) decider->set_reduce_proof_loops(options.get_unsigned_int_option("reduce-proof-loops"));
   }
+#endif
   if(options.get_unsigned_int_option("random-seed")) decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
   if (options.get_bool_option("dump-query"))
       decider->set_dump_query(true);
@@ -229,13 +232,21 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
       end = prop.assertion_holds(assertion, ns, *(dynamic_cast<prop_conv_solvert *> (decider_prop.get())), *(interpolator.get())); // KE: strange conversion after shift to cbmc 5.5 - I think the bv_pointerst is changed
       unsigned summaries_count = omega.get_summaries_count();
       unsigned nondet_count = omega.get_nondets_count();
+#ifdef PRODUCE_PROOF      
       if (end && interpolator->can_interpolate())
+#else
+      if (end)
+#endif
       {
         if (options.get_bool_option("no-itp")){
           status() << ("Skip generating interpolants") << eom;
         } else {
+#ifdef PRODUCE_PROOF            
           status() << ("Start generating interpolants...") << eom;
           extract_interpolants_prop(prop, equation, decider_prop, interpolator);
+#else
+          assert(0);
+#endif
         }
         if (summaries_count == 0)
         {
@@ -366,13 +377,21 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               *(dynamic_cast<interpolating_solvert *> (decider)));
       unsigned summaries_count = omega.get_summaries_count();
       unsigned nondet_count = omega.get_nondets_count();
+#ifdef PRODUCE_PROOF      
       if (end && decider->can_interpolate())
+#else
+      if (end)
+#endif
       {
         if (options.get_bool_option("no-itp")){
           status() << ("Skip generating interpolants") << eom;
         } else {
+#ifdef PRODUCE_PROOF            
           status() << ("Start generating interpolants...") << eom;
           extract_interpolants_smt(prop, equation);
+#else
+          assert(0);
+#endif
         }
         if (summaries_count == 0)
         {
@@ -633,6 +652,7 @@ void summarizing_checkert::list_templates(smt_assertion_sumt& prop, smt_partitio
     }
 }
 
+#ifdef PRODUCE_PROOF
 /*******************************************************************\
 
 Function: summarizing_checkert::extract_interpolants_smt
@@ -729,6 +749,7 @@ void summarizing_checkert::extract_interpolants_prop (prop_assertion_sumt& prop,
         omega.get_summary_info());
   }
 }
+#endif
 
 /*******************************************************************\
 

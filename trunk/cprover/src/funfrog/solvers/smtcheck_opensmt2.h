@@ -94,6 +94,7 @@ public:
 
   void close_partition(); // Common to all
 
+#ifdef PRODUCE_PROOF  
   void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants); // Common to all
 
@@ -101,9 +102,10 @@ public:
 
   // Extract interpolant form OpenSMT files/data
   void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
-
+  
   void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true); // Common to all
-
+#endif
+  
   static int get_index(const string& varname);
   static std::string insert_index(const string& varname, const string& idx); // Common to all
   static std::string insert_index(const string& varname, int idx); // Common to all
@@ -118,9 +120,10 @@ public:
   // Common to all
   void start_encoding_partitions() {
 	  if (partition_count > 0){
+#ifdef PRODUCE_PROOF              
 		  if (ready_to_interpolate) cout << "EXIT WITH ERROR: Try using --claim parameter" << std::endl;
 		  assert (!ready_to_interpolate); // GF: checking of previous assertion run was successful (unsat)
-		  	  	  	  	  	  	  	  	  // TODO: reset opensmt context
+#endif		  	  	  	  	  	  	  	  	  // TODO: reset opensmt context
 
 		  std::cout << "Incrementally adding partitions to the SMT solver\n";
 	  }
@@ -157,15 +160,17 @@ protected:
 
   literalt push_variable(PTRef ptl); // Common to all
 
+#ifdef PRODUCE_PROOF  
   void setup_reduction();
 
   void setup_interpolation();
 
   void setup_proof_transformation();
   
-  virtual void initializeSolver(const char*)=0;
-
   void produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants); // Common to all
+#endif  
+  
+  virtual void initializeSolver(const char*)=0;
 
   virtual void freeSolver(); // Common to all
 

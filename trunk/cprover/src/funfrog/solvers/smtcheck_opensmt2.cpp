@@ -247,75 +247,12 @@ literalt smtcheck_opensmt2t::lconst(const exprt &expr){
     }
 }
 
+#ifdef PRODUCE_PROOF
 void smtcheck_opensmt2t::extract_itp(PTRef ptref, smt_itpt& itp) const
 {
-  //ptref_cachet cache;
-  //  target_itp.set_no_original_variables(no_literals);
-  //target_itp.root_literal = extract_itp_rec(ptref, target_itp, cache);
-
   // KE : interpolant adjustments/remove var indices shall come here
   itp.setInterpolant(ptref);
 }
-
-/* KE: Remove code - Will use OpenSMT2 to do so + using only PTref as is
-// GF: this all should be rewritten, prop_itpt should be replaces by theory_itpt
-//     or, maybe, we can extract interpolants straight to CProver exprt?
-literalt smtcheck_opensmt2t::extract_itp_rec(PTRef ptref,
-  prop_itpt& target_itp, ptref_cachet& ptref_cache) const
-{
-  ptref_cachet::const_iterator cached_it = ptref_cache.find(ptref);
-  literalt result;
-
-  if (cached_it != ptref_cache.end()) {
-    return cached_it->second;
-  }
-
-  if(logic->getTerm_true() == ptref){
-      result = const_literal(true);
-  }
-  else if(logic->getTerm_false() == ptref){
-      result = const_literal(false);
-  }
-  else if(logic->isAnd(ptref))
-  {
-      Pterm& ptm = logic->getPterm(ptref);
-      assert(ptm.size() >= 2);
-      result = target_itp.land(
-              extract_itp_rec(ptm[0], target_itp, ptref_cache),
-              extract_itp_rec(ptm[1], target_itp, ptref_cache));
-      for(int i = 2; i < ptm.size(); ++i)
-          result = target_itp.land(result, extract_itp_rec(ptm[i], target_itp, ptref_cache));
-  }
-  else if(logic->isOr(ptref))
-  {
-      Pterm& ptm = logic->getPterm(ptref);
-      assert(ptm.size() >= 2);
-      result = target_itp.lor(
-              extract_itp_rec(ptm[0], target_itp, ptref_cache),
-              extract_itp_rec(ptm[1], target_itp, ptref_cache));
-      for(int i = 2; i < ptm.size(); ++i)
-          result = target_itp.lor(result, extract_itp_rec(ptm[i], target_itp, ptref_cache));
-  }
-  else if(logic->isNot(ptref))
-  {
-      Pterm& ptm = logic->getPterm(ptref);
-      assert(ptm.size() == 1);
-      result = target_itp.lnot(
-              extract_itp_rec(ptm[0], target_itp, ptref_cache));
-  }
-  else
-  {
-      Pterm& ptm = logic->getPterm(ptref);
-      cout << "; error " << logic->getSymName(ptref) << endl;
-      assert(ptm.size() == 0);
-//      result.set(decode_id(logic->getSymName(ptref)), false);
-      //GF: hack
-  } 
-    
-  ptref_cache.insert(ptref_cachet::value_type(ptref, result));
-  return result;
-}
-*/
 
 // helper interpolation method taken from opensmt
 void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants)
@@ -335,6 +272,7 @@ void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const vector< vector<i
     solver.getSingleInterpolant(interpolants, mask);
   }
 }
+#endif
 
 string
 smtcheck_opensmt2t::unquote_varname(const string& varname)
@@ -395,6 +333,7 @@ smtcheck_opensmt2t::quote_varname(const string& varname)
     return ans;
 }
 
+#ifdef PRODUCE_PROOF
 void
 smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbs, string _fun_name, bool substitute)
 {
@@ -521,10 +460,12 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     itp.setTterm(*tterm);
     itp.setLogic(logic);
 }
+#endif 
 
 void
 smtcheck_opensmt2t::fill_vars(PTRef itp, map<string, PTRef>& subst)
 {
+#ifdef PRODUCE_PROOF
     set<PTRef> visited;
     queue<PTRef> q;
     q.push(itp);
@@ -544,6 +485,9 @@ smtcheck_opensmt2t::fill_vars(PTRef itp, map<string, PTRef>& subst)
         }
         visited.insert(p);
     }
+#else
+    assert(0);
+#endif
 }
 
 bool
@@ -596,10 +540,11 @@ Function: smtcheck_opensmt2t::get_interpolant
 \*******************************************************************/
 // KE : Shall add the code using new outputs from OpenSMT2 + apply some changes to variable indices
 //      if the code is too long split to the method - extract_itp, which is now commented (its body).
+#ifdef PRODUCE_PROOF 
 void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids, interpolantst& interpolants)
-{
+{   
   assert(ready_to_interpolate);
-
+  
   const char* msg2=NULL;
   osmt->getConfig().setOption(SMTConfig::o_verbosity, verbosity, msg2);
   //if (msg2!=NULL) { free((char *)msg2); msg2=NULL; } // If there is an error consider printing the msg
@@ -646,7 +591,6 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   }
 }
 
-
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t::can_interpolate
@@ -663,6 +607,7 @@ bool smtcheck_opensmt2t::can_interpolate() const
 {
   return ready_to_interpolate;
 }
+#endif
 
 /*******************************************************************\
 
@@ -684,8 +629,10 @@ bool smtcheck_opensmt2t::solve() {
   //  if (msg1 != NULL) free(msg1);
   //}
 
+#ifdef PRODUCE_PROOF    
   ready_to_interpolate = false;
-
+#endif
+  
   if (current_partition != NULL) {
     close_partition();
   }
@@ -718,7 +665,9 @@ bool smtcheck_opensmt2t::solve() {
     if (r == s_True) {
         return true;
     } else if (r == s_False) {
+#ifdef PRODUCE_PROOF        
         ready_to_interpolate = true;
+#endif
     } else {
         throw "Unexpected OpenSMT result.";
     }

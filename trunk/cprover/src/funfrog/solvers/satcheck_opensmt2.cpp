@@ -88,6 +88,7 @@ fle_part_idt satcheck_opensmt2t::new_partition()
   return partition_count++;
 }
 
+#ifdef PRODUCE_PROOF
 void satcheck_opensmt2t::extract_itp(PTRef ptref,
   prop_itpt& target_itp) const
 {
@@ -237,6 +238,7 @@ bool satcheck_opensmt2t::can_interpolate() const
 {
   return ready_to_interpolate;
 }
+#endif
 
 /*******************************************************************\
 
@@ -249,7 +251,6 @@ Function: satcheck_opensmt2t::l_get
  Purpose:
 
 \*******************************************************************/
-
 tvt satcheck_opensmt2t::l_get(literalt a) const
 {
   // we never use index 0 (cnf.cpp)
@@ -376,8 +377,10 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
   }
 
   assert(status != ERROR);
+#ifdef PRODUCE_PROOF  
   ready_to_interpolate = false;
-
+#endif
+  
   if (current_partition != NULL) {
     close_partition();
   }
@@ -397,7 +400,9 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
     status = SAT;
     return P_SATISFIABLE;
   } else if (r == s_False) {
+#ifdef PRODUCE_PROOF      
     ready_to_interpolate = true;
+#endif
   } else {
     throw "Unexpected OpenSMT result.";
   }
