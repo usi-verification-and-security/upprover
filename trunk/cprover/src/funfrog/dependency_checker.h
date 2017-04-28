@@ -11,6 +11,7 @@
 #include <time_stopping.h>
 #include "partitioning_slice.h"
 #include "subst_scenario.h"
+#include "nopartition/smt_symex_target_equation.h"
 
 #include <map>
 #include <queue>
@@ -60,6 +61,7 @@ public:
     }
 
   void do_it(partitioning_target_equationt &equation);
+  void do_it(smt_symex_target_equationt &equation);
 
   typedef std::list<symex_target_equationt::SSA_stept*> SSA_stepst;
   typedef SSA_stepst::iterator SSA_step_reft;

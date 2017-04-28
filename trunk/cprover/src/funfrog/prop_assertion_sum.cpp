@@ -44,7 +44,6 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 
 
   after=current_time();
-//  global_sat_conversion_time += (after-before);
 
   status() << "CONVERSION TIME: " << (after-before) << eom;
 

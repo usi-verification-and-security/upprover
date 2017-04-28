@@ -21,6 +21,7 @@
 #include "refiner_assertion_sum.h"
 #include "prop_partitioning_target_equation.h"
 #include "smt_partitioning_target_equation.h"
+#include "nopartition/smt_assertion_no_partition.h"
 
 class summarizing_checkert:public messaget
 {
@@ -56,6 +57,8 @@ public:
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
   bool assertion_holds_prop(const assertion_infot& assertion, bool store_summaries_with_assertion);
   bool assertion_holds_smt(const assertion_infot& assertion, bool store_summaries_with_assertion);
+  bool assertion_holds_smt_no_partition(const assertion_infot& assertion, 
+          bool store_summaries_with_assertion); // BMC alike version
   void serialize(){
     omega.serialize(options.get_option("save-omega"));
   };
@@ -74,7 +77,7 @@ protected:
   subst_scenariot omega;
   init_modet init;
   
-  void setup_unwind(symex_assertion_sumt& symex);
+  void setup_unwind(symex_bmct& symex);
   void extract_interpolants_smt (smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation);
   void extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
             std::auto_ptr<prop_conv_solvert> decider_prop, std::auto_ptr<interpolating_solvert> interpolator);
@@ -82,6 +85,8 @@ protected:
   void report_failure();
   void assertion_violated(smt_assertion_sumt& prop,
 		  std::map<irep_idt, std::string> &guard_expln);
+  void assertion_violated (smt_assertion_no_partitiont& prop,
+                  std::map<irep_idt, std::string> &guard_expln);
 };
 
 init_modet get_init_mode(const std::string& str);

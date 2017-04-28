@@ -20,6 +20,7 @@ FUNFROG_SRC := \
       partitioning_target_equation.cpp \
       prop_partitioning_target_equation.cpp \
       smt_partitioning_target_equation.cpp \
+      nopartition/smt_symex_target_equation.cpp \
       partitioning_slice.cpp \
       summary_info.cpp \
       subst_scenario.cpp \
@@ -32,10 +33,12 @@ FUNFROG_SRC := \
       smt_refiner_assertion_sum.cpp \
       prop_assertion_sum.cpp \
       smt_assertion_sum.cpp \
+      nopartition/smt_assertion_no_partition.cpp \
       dependency_checker.cpp \
       prop_dependency_checker.cpp \
       smt_dependency_checker.cpp \
       symex_assertion_sum.cpp \
+      nopartition/symex_no_partition.cpp \
       theory_refiner.cpp \
       summarizing_checker.cpp \
       main.cpp

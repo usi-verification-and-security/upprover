@@ -20,7 +20,6 @@
 #include "partitioning_target_equation.h"
 
 extern time_periodt global_satsolver_time;
-extern time_periodt global_sat_conversion_time;
 
 class assertion_sumt:public messaget
 {

@@ -5,6 +5,7 @@
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "partitioning_target_equation.h"
 #include "smt_partitioning_target_equation.h"
+#include "nopartition/smt_symex_target_equation.h"
 
 #include "assertion_info.h"
 #include "summarization_context.h"
@@ -42,6 +43,10 @@ public:
 	  std::map<const exprt, int>& model,
 	  smtcheck_opensmt2t &decider);
 
+        void build_goto_trace (
+          smt_symex_target_equationt &target,
+          smtcheck_opensmt2t &decider);
+        
 	void show_goto_trace(
 	  smtcheck_opensmt2t &decider,
 	  std::ostream &out,

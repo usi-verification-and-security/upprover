@@ -632,3 +632,137 @@ bool error_tracet::is_index_member_symbol(const exprt &src)
     else
       return false;
 }
+
+/*******************************************************************\
+
+Function: error_trace::build_exec_order_goto_trace - for NO PARTITON VERISION
+
+  Inputs: SSA translation of the code and solver
+
+ Outputs: a concrete trace (error trace with value)
+
+ Purpose: To create a concrete error trace with concrete values
+
+ Note: Copied from build_goto_tarce.cpp
+ * 
+ * ANY PROBLEMS with values, you should start look for here!
+
+\*******************************************************************/
+void error_tracet::build_goto_trace (
+  smt_symex_target_equationt &target,
+  smtcheck_opensmt2t &decider)
+{
+
+  unsigned step_nr=0;
+
+  for(symex_target_equationt::SSA_stepst::iterator
+      it=target.SSA_steps.begin();
+      it!=target.SSA_steps.end();
+      it++)
+  {
+    const symex_target_equationt::SSA_stept &SSA_step=(*it);
+    if(!decider.is_assignemt_true(SSA_step.guard_literal))
+      continue;
+
+    if(SSA_step.is_assignment() &&
+       SSA_step.assignment_type==symex_target_equationt::HIDDEN)
+      continue;
+
+    std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
+    if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
+    	continue;
+    
+    if (str.find("__CPROVER_")!=std::string::npos)
+    	continue;
+
+    if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
+        continue;
+    
+    if(SSA_step.ssa_lhs.id()==ID_symbol &&
+       str.find("#return_value!")!=std::string::npos)
+        continue;
+    
+    if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
+        continue;
+
+    if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
+        continue;
+
+    step_nr++;
+
+    goto_trace.steps.push_back(goto_trace_stept());
+    goto_trace_stept &goto_trace_step=goto_trace.steps.back();
+
+    goto_trace_step.thread_nr=SSA_step.source.thread_nr;
+    goto_trace_step.pc=SSA_step.source.pc;
+    goto_trace_step.comment=SSA_step.comment;
+    goto_trace_step.type=SSA_step.type;
+    goto_trace_step.hidden=SSA_step.hidden;
+    goto_trace_step.step_nr=step_nr;
+    goto_trace_step.format_string=SSA_step.format_string;
+    goto_trace_step.io_id=SSA_step.io_id;
+    goto_trace_step.formatted=SSA_step.formatted;
+    goto_trace_step.identifier=SSA_step.identifier;
+    
+    if(SSA_step.ssa_lhs.is_not_nil()) {
+        if (str.find("goto_symex::\\guard#") == 0){
+            goto_trace_step.lhs_object=SSA_step.ssa_lhs;
+        } else {
+            //goto_trace_step.lhs_object=SSA_step.original_lhs_object;
+            goto_trace_step.lhs_object=ssa_exprt(SSA_step.ssa_lhs.get_original_expr());
+        }
+    } else {
+        goto_trace_step.lhs_object.make_nil();
+    }
+
+    if(SSA_step.ssa_full_lhs.is_not_nil())
+    {
+    	exprt val;
+        if(is_index_member_symbol(SSA_step.ssa_full_lhs)){
+            val=decider.get_value(SSA_step.ssa_full_lhs);
+        }
+        else {
+            val=decider.get_value(SSA_step.ssa_lhs);
+        }
+        goto_trace_step.full_lhs_value=val;
+
+    }
+    
+    /* Print nice return value info */
+    if (str.find("::?return_value") < str.size() ||
+	str.find("::?return_value_tmp")	< str.size())
+    {
+        goto_trace_step.format_string = "function return value";
+    } else {
+        goto_trace_step.format_string=SSA_step.format_string;
+    }
+    
+    for(std::list<exprt>::const_iterator
+        j=SSA_step.converted_io_args.begin();
+        j!=SSA_step.converted_io_args.end();
+        j++)
+    {
+      const exprt &arg=*j;
+      if(arg.is_constant() ||
+         arg.id()==ID_string_constant)
+        goto_trace_step.io_args.push_back(arg);
+      else
+      {
+        exprt tmp=decider.get_value(arg);
+        goto_trace_step.io_args.push_back(tmp);
+      }
+    }
+    
+    // Stop condition + adding data to assume and assert steps
+    if(SSA_step.is_assert() || SSA_step.is_assume())
+    {
+      goto_trace_step.cond_expr=SSA_step.cond_expr;
+      goto_trace_step.cond_value=
+    		  decider.is_assignemt_true(SSA_step.cond_literal);
+
+      // we stop after a violated assertion
+      if(SSA_step.is_assert() && !goto_trace_step.cond_value)
+    	  break;
+    }
+  }
+}

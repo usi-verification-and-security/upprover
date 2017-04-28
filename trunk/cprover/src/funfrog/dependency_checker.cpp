@@ -87,6 +87,76 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 //  std::cout << "TIME FOR get_minimals: " << (initial - final) << endl;
 }
 
+// For no partition version
+void dependency_checkert::do_it(smt_symex_target_equationt &equation){
+
+    absolute_timet initial, temp_end;
+    time_periodt duration, durationto;
+
+    //reconstruct_exec_SSA_order(equation); // the only place where partition_target_equation is used.
+    for(symex_target_equationt::SSA_stepst::iterator
+      it=equation.SSA_steps.begin();
+      it!=equation.SSA_steps.end();
+      it++)
+    {
+      symex_target_equationt::SSA_stept& SSA_step=(*it);
+      this->SSA_steps.push_back(&SSA_step);
+      SSA_map[SSA_step.ssa_full_lhs] = SSA_step.cond_expr;
+    }
+
+    initial=current_time();
+
+    ofstream hl_list;
+    hl_list.open ("__hl_list");
+    for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
+    {
+      if ((*it)->is_assert() && !omega.is_assertion_in_loop((*it)->source.pc)){
+        asserts.push_back(it);
+        //cout << "ID: " << it->source.pc->location.get_claim() << " Condition: " << from_expr(ns, "", it->cond_expr) << endl;
+        instances[(*it)->source.pc->source_location.get_property_id().c_str()]++;
+        hl_list << "Assertion: " << (*it)->source.pc->source_location.get_property_id().c_str() << endl;
+      }
+    }
+
+    hl_list.close();
+
+//    cout << "SSA Assertions: " << asserts.size();
+//    cout << endl;
+
+    temp_end = current_time();
+    duration = temp_end - initial;
+    //std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << endl;
+
+    initial=current_time();
+
+    // TODO: this takes a lot of time. Oct.2014: optimized a little bit
+    find_assert_deps();
+
+    temp_end = current_time();
+    duration = temp_end - initial;
+    std::cout << "TIME FOR find_assert_deps: " << (duration) << endl;
+
+    initial = current_time();
+
+    //TODO: FIX THIS!
+    absolute_timet to_time(find_implications());
+
+    temp_end = current_time();
+    duration = temp_end - initial;
+    absolute_timet duration_cast(duration.get_t());
+    durationto = duration_cast - to_time;
+
+    time_periodt to_time_cast(to_time.get_t());
+
+    std::cout << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << endl;
+
+    //TODO: make a proper cmd-parameter
+    ifstream just_dep;
+    just_dep.open ("__just_hl_dep");
+    if (just_dep.good()) {cout << "__just_hl_dep file is in the current directory. Exiting... " << endl; just_dep.close(); exit(1);}
+    just_dep.close();
+}
+
 void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2)
 {
 
