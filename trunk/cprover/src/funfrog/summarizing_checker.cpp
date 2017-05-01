@@ -136,6 +136,10 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   {
     status() << ("Assertion(s) hold trivially.") << eom;
     report_success();
+    status() << "\n\nChecked Assertion: " <<
+        assertion.get_location()->source_location.get_file() <<
+        " (" << assertion.get_location()->source_location.get_line() << ")" <<
+        "\", function \"" << assertion.get_location()->source_location.get_function() << eom;
     return true;
   }
   
@@ -296,6 +300,10 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
   }
   status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+  status() << "\n\nChecked Assertion: " <<
+        assertion.get_location()->source_location.get_file() <<
+        " (" << assertion.get_location()->source_location.get_line() << ")" <<
+        "\", function \"" << assertion.get_location()->source_location.get_function() << eom;
   return end;
 }
 
@@ -436,6 +444,10 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
   }
   status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+  status() << "\n\nChecked Assertion: " <<
+        assertion.get_location()->source_location.get_file() <<
+        " (" << assertion.get_location()->source_location.get_line() << ")" <<
+        "\", function \"" << assertion.get_location()->source_location.get_function() << eom;
   return end;
 }
 
@@ -571,6 +583,10 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
   }
   status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+  status() << "\n\nChecked Assertion: " <<
+        assertion.get_location()->source_location.get_file() <<
+        " (" << assertion.get_location()->source_location.get_line() << ")" <<
+        "\", function \"" << assertion.get_location()->source_location.get_function() << eom;
   
   return end;
 }

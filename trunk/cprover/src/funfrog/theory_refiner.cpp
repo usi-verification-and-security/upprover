@@ -178,7 +178,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                         *(dynamic_cast<smtcheck_opensmt2t *> (decider)));
 
                   std::set<int> weak;
-                  int last;
+                  int last; // compared with -1, must be signed
                   smtcheck_opensmt2t_cuf* decider2;
 
                   switch(heuristic) {
@@ -294,6 +294,11 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   final = current_time();
 
   status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+  
+  status() << "\n\nChecked Assertion: " <<
+        assertion.get_location()->source_location.get_file() <<
+        " (" << assertion.get_location()->source_location.get_line() << ")" <<
+        "\", function \"" << assertion.get_location()->source_location.get_function() << eom;
   return end;
 }
 
