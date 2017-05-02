@@ -43,7 +43,6 @@ FUNFROG_SRC := \
       summarizing_checker.cpp \
       main.cpp
 
-
 SUMO_SRC := \
       sumo.cpp
 
@@ -80,11 +79,11 @@ SRC := ${FUNFROG_SRC} ${SHARED_SRC}
 
 include ../common
 
-INCLUDES :=  -I .. -I ../util -I/home/asadis/dev/opensmt/include
+INCLUDES :=  -I .. -I ../util -I /usr/local/include/opensmt
 
-LIBS = -L/home/asadis/dev/opensmt/lib
+#LIBS = -L/home/asadis/dev/opensmt/lib
+LiBS = -L/usr/local/lib
 
-#CXXFLAGS += -std=c++11 -MMD -MP -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING $(INCLUDES)
 CXXFLAGS += -std=c++11 -MMD -MP -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ $(INCLUDES)
 
 all: hifrog$(EXEEXT) 
