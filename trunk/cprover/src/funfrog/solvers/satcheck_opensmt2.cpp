@@ -186,6 +186,7 @@ Function: satcheck_opensmt2t::get_interpolant
  the formula with an UNSAT result.
 
 \*******************************************************************/
+#ifdef PRODUCE_PROOF 
 void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids,
     interpolantst& interpolants)
 {
@@ -219,7 +220,7 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
       interpolants.back()->swap(*itp);
   }
 }
-
+#endif
 
 
 /*******************************************************************\
