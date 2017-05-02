@@ -297,8 +297,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   
   status() << "\n\nChecked Assertion: " <<
         assertion.get_location()->source_location.get_file() <<
-        " (" << assertion.get_location()->source_location.get_line() << ")" <<
-        "\", function \"" << assertion.get_location()->source_location.get_function() << eom;
+        " (line:" << assertion.get_location()->source_location.get_line() << ")" <<
+        ", function: " << assertion.get_location()->source_location.get_function() << eom;
+  
   return end;
 }
 
