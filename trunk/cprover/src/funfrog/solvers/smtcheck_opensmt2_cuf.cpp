@@ -40,7 +40,7 @@ void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
   literals[0] = logic->getTerm_true(); // Which is .x =0
   // KE: End of fix
 
-  max_num = (mp_integer::ullong_t) (pow (2, bitwidth) - 1);
+  max_num.setPower2(bitwidth);  
   
   // how the check is implemented in malloc.c in the GNU C Library (glibc)
   assert("Please re-run with bit-width parameter that is a pow of 2!" && ((bitwidth != 0) && !(bitwidth & (bitwidth - 1))));
@@ -167,7 +167,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
     {
         // No inf values in toy models!
         if ((bitwidth != 32) && (bitwidth != 64) && (bitwidth != 128)) {
-            cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+            cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far (inf).\n\n";
             exit(0);
         }
 
@@ -179,17 +179,21 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         // E.g., floats - unsupported!
         return unsupported2var_bv(expr); // stub for now
         
-    } else {
+    } else if (max_num != 0) {
         // Check if fits
-        mp_integer int_value=string2integer(str);
-        if (int_value < -max_num || max_num < int_value)
+        BigInt int_value(str.c_str());
+        if (int_value <= -max_num || max_num < int_value)
         {
             cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+            cout << "\n  Data " << int_value << "(" << str << ")" << " is not in between " 
+                    << (-max_num) << " and " << (max_num-1) << std::endl;
             exit(0);
         } 
-        
+                    
         // Create the constant as string in OpenSMT2
         return get_bv_const(str.c_str());
+    } else {
+        assert(0 && "Max number value is invalid (0)"); // Fix max_num set in the constructor
     }
 }
 
