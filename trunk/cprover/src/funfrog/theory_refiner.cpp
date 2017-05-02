@@ -296,9 +296,12 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
   
   status() << "\n\nChecked Assertion: " <<
-        assertion.get_location()->source_location.get_file() <<
-        " (line:" << assertion.get_location()->source_location.get_line() << ")" <<
-        ", function: " << assertion.get_location()->source_location.get_function() << eom;
+        "\n  file " << assertion.get_location()->source_location.get_file() <<
+        " line " << assertion.get_location()->source_location.get_line() <<
+        " function " << assertion.get_location()->source_location.get_function() << 
+        "\n  " << ((assertion.get_location()->is_assert()) ? "assertion" : "code") <<
+        "\n  " << from_expr(ns, "", assertion.get_location()->guard)  
+        << eom;
   
   return end;
 }
