@@ -25,6 +25,15 @@
 
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
+#include <goto-programs/remove_asm.h>
+#include <goto-programs/remove_virtual_functions.h>
+#include <goto-programs/remove_exceptions.h>
+#include <goto-programs/remove_instanceof.h>
+#include <goto-programs/remove_returns.h>
+#include <goto-programs/remove_vector.h>
+#include <goto-programs/remove_complex.h>
+#include <goto-symex/rewrite_union.h>
+#include <goto-symex/adjust_float_expressions.h>
 #include <goto-programs/goto_inline.h>
 #include <goto-programs/show_properties.h>
 #include <goto-programs/set_properties.h>
@@ -73,28 +82,57 @@ bool funfrog_parseoptionst::process_goto_program(
 {
   try
   {
-   if(cmdline.isset("string-abstraction"))
+    // KE: update  new cprover version - taken from: cbmc_parseoptionst::process_goto_program
+    // Consider adding more optimizations as full slicing or non-det statics
+      
+    // Remove inline assembler; this needs to happen before
+    // adding the library.
+    remove_asm(symbol_table, goto_functions);
+
+    // add the library
+    link_to_library(symbol_table, goto_functions, ui_message_handler);  
+      
+    if(cmdline.isset("string-abstraction"))
       string_instrumentation(
         symbol_table, get_message_handler(), goto_functions);
 
-    cbmc_status_interface("Function Pointer Removal");
-    remove_function_pointers(get_message_handler(),
-      symbol_table, goto_functions,
+    status() << "Removal of function pointers and virtual functions" << eom;
+    remove_function_pointers(
+      get_message_handler(),
+      symbol_table,
+      goto_functions,
       cmdline.isset("pointer-check"));
+    // Java virtual functions -> explicit dispatch tables:
+    remove_virtual_functions(symbol_table, goto_functions);
+    // remove catch and throw
+    remove_exceptions(symbol_table, goto_functions);
+    // Similar removal of RTTI inspection:
+    remove_instanceof(symbol_table, goto_functions);
 
-    cbmc_status_interface("Partial Inlining");
     // do partial inlining
+    status() << "Partial Inlining" << eom;
     goto_partial_inline(goto_functions, ns, ui_message_handler);
 
-    cbmc_status_interface("Generic Property Instrumentation");
+    // remove returns, gcc vectors, complex
+    remove_returns(symbol_table, goto_functions);
+    remove_vector(symbol_table, goto_functions);
+    remove_complex(symbol_table, goto_functions);
+    rewrite_union(goto_functions, ns);
+
     // add generic checks
+    status() << "Generic Property Instrumentation" << eom;
     goto_check(ns, options, goto_functions);
 
+    // checks don't know about adjusted float expressions
+    adjust_float_expressions(goto_functions, ns);
+    
     if(cmdline.isset("string-abstraction"))
     {
-      cbmc_status_interface("String Abstraction");
-      string_abstraction(symbol_table,
-        get_message_handler(), goto_functions);
+      status() << "String Abstraction" << eom;
+      string_abstraction(
+        symbol_table,
+        get_message_handler(),
+        goto_functions);
     }
 
     // add failed symbols
