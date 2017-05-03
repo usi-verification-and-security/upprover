@@ -136,7 +136,8 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   {
     status() << ("Assertion(s) hold trivially.") << eom;
     report_success();
-    
+
+#ifdef PRODUCE_PROOF    
     status() << "\n\nChecked Assertion: " <<
         "\n  file " << assertion.get_location()->source_location.get_file() <<
         " line " << assertion.get_location()->source_location.get_line() <<
@@ -144,6 +145,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
         "\n  " << ((assertion.get_location()->is_assert()) ? "assertion" : "code") <<
         "\n  " << from_expr(ns, "", assertion.get_location()->guard)  
         << eom;
+#endif
     
     return true;
   }
@@ -305,6 +307,8 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
   }
   status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+  
+#ifdef PRODUCE_PROOF  
   status() << "\n\nChecked Assertion: " <<
         "\n  file " << assertion.get_location()->source_location.get_file() <<
         " line " << assertion.get_location()->source_location.get_line() <<
@@ -312,6 +316,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
         "\n  " << ((assertion.get_location()->is_assert()) ? "assertion" : "code") <<
         "\n  " << from_expr(ns, "", assertion.get_location()->guard)  
         << eom; 
+#endif
   
   return end;
 }
@@ -453,6 +458,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
   }
   status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+ 
+#ifdef PRODUCE_PROOF  
   status() << "\n\nChecked Assertion: " <<
         "\n  file " << assertion.get_location()->source_location.get_file() <<
         " line " << assertion.get_location()->source_location.get_line() <<
@@ -460,6 +467,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         "\n  " << ((assertion.get_location()->is_assert()) ? "assertion" : "code") <<
         "\n  " << from_expr(ns, "", assertion.get_location()->guard)  
         << eom;  
+#endif
   
   return end;
 }
@@ -596,6 +604,8 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
   }
   status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+ 
+#ifdef PRODUCE_PROOF 
   status() << "\n\nChecked Assertion: " <<
         "\n  file " << assertion.get_location()->source_location.get_file() <<
         " line " << assertion.get_location()->source_location.get_line() <<
@@ -603,6 +613,7 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
         "\n  " << ((assertion.get_location()->is_assert()) ? "assertion" : "code") <<
         "\n  " << from_expr(ns, "", assertion.get_location()->guard)  
         << eom;  
+#endif
   
   return end;
 }
