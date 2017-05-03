@@ -163,19 +163,25 @@ void check_claims(
 
   if (options.get_bool_option("theoref")){
 
-      // GF: currently works only for one assertion (either specified in --claim or the first one)
-      while(ass_ptr != leaping_program.instructions.end() &&
+    // GF: currently works only for one assertion (either specified in --claim or the first one)
+    while(ass_ptr != leaping_program.instructions.end() &&
               (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
-      {
-        ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_unsigned_int_option("unwind"));
-      }
+    {
+      ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_unsigned_int_option("unwind"));
+    }
+      
+    if (ass_ptr == leaping_program.instructions.end()){
+      if (seen_claims == 0) // In case we set the multi assert mode working here
+        res.status() << "\nAssertion is not reachable\n" << res.eom;
+      return;
+    } 
 
-	  theory_refinert th_checker(leaping_program,
+    theory_refinert th_checker(leaping_program,
 	        goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
 
-	  th_checker.initialize();
-	  th_checker.assertion_holds_smt(ass_ptr, true);
-	  return;
+    th_checker.initialize();
+    th_checker.assertion_holds_smt(ass_ptr, true);
+    return;
   }
 
   summarizing_checkert sum_checker(leaping_program,

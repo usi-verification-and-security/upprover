@@ -109,7 +109,7 @@ bool symex_no_partitiont::process_planned(statet &state, const goto_functionst &
             status() << "SLICER TIME: " << (after-before) << eom;
         }
     } else {
-        status() << "Assertion(s) hold trivially." << eom;
+        status() << "Assertion(s) hold trivially(.)" << eom;
         return true;
     }
     return false;

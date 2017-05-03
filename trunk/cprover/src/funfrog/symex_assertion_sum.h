@@ -356,7 +356,7 @@ protected:
     statet &state);
 
   virtual void vcc(
-    const exprt &claim_expr,
+    const exprt &vcc_expr,
     const std::string &msg,
     statet &state);
 };
