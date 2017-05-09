@@ -56,10 +56,10 @@ void symex_bmct::symex_step(
 
   if(!source_location.is_nil() && last_source_location!=source_location)
   {
-    debug() << "BMC at file " << source_location.get_file()
-            << " line " << source_location.get_line()
-            << " function " << source_location.get_function()
-            << eom;
+    //debug() << "BMC at file " << source_location.get_file()
+    //        << " line " << source_location.get_line()
+    //        << " function " << source_location.get_function()
+    //        << eom;
 
     last_source_location=source_location;
   }

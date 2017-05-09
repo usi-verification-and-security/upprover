@@ -10,6 +10,7 @@ File Changed:
 - trunk/cprover/src/goto-symex/goto_symex.h (set virtual phi_function method)
 - trunk/cprover/src/goto-symex/goto_symex_state.h (Move a method to public - get_l1_name())
 - trunk/cprover/src/goto-symex/goto_symex_state.cpp // Fix to ignor issues of parallel MC (two locations)
+- trunk/cprover/src/cbmc/symex_bmc.cpp (remove debug massege to show progress: void symex_bmct::symex_step).
 - trunk/cprover/util/expr.h/.cpp - add a function
 - trunk/cprover/src/config.inc (change: add ../ to minisat2 path)
 - trunk/cprover/src/Makefile
