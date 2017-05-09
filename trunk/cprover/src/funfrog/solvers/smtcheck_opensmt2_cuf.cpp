@@ -1221,11 +1221,9 @@ literalt smtcheck_opensmt2t_cuf::lunsupported2var(exprt expr)
     
     // Create the correct type in opensmt
     PTRef var;
-    if (expr.is_boolean()) 
+    assert(str.size() > 0);
+    if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool))
         var = logic->mkBoolVar(str.c_str());
-    else if (expr.type().id() == ID_c_bool) 
-        // KE: New Cprover code - patching
-        var = logic->mkBoolVar((expr.get_string(ID_value)).c_str());
     else
         var = uflogic->mkCUFNumVar(str.c_str()); // create unsupported var for expression we don't support
 
@@ -1263,16 +1261,12 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
 
     // Else if it is really a var, continue and declare it!
     PTRef var;
+    assert(str.size() > 0);
     if(is_number(expr.type()))
         //TODO: Check this
         var = uflogic->mkCUFNumVar(str.c_str());//Main CufNumVar, for symbols
-    else if (expr.is_boolean())
+    else if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool))    
         var = logic->mkBoolVar(str.c_str());
-    else if (expr.type().id() == ID_c_bool) 
-    { // KE: New Cprover code - patching
-        std::string num(expr.get_string(ID_value));
-        var = logic->mkBoolVar(num.c_str());
-    }
     else { // Is a function with index, array, pointer
 #ifdef SMT_DEBUG
         cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "

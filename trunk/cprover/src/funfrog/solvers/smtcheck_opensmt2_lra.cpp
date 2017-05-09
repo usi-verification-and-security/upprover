@@ -512,13 +512,9 @@ PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt expr)
     PTRef var;
 
     const string str = smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
-    if (expr.is_boolean())
+    assert(str.size() > 0);
+    if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
         var = logic->mkBoolVar(str.c_str());
-    else if (expr.type().id() == ID_c_bool) 
-    { // KE: New Cprover code - patching
-        std::string num(expr.get_string(ID_value));
-        var = logic->mkBoolVar(num.c_str());
-    }
     else
         var = lralogic->mkRealVar(str.c_str());
 
@@ -546,15 +542,11 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 
     // Else if it is really a var, continue and declare it!
     PTRef var;
+    assert(str.size() > 0);
     if(is_number(expr.type()))
     	var = lralogic->mkRealVar(str.c_str());
-    else if (expr.is_boolean())
+    else if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
     	var = logic->mkBoolVar(str.c_str());
-    else if (expr.type().id() == ID_c_bool) 
-    { // KE: New Cprover code - patching
-        std::string num(expr.get_string(ID_value));
-        var = logic->mkBoolVar(num.c_str());
-    }
     else { // Is a function with index, array, pointer
 #ifdef SMT_DEBUG
     	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
