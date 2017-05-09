@@ -23,14 +23,26 @@ void summarizing_checkert::initialize_solver()
 {
     string _logic = options.get_option("logic");
     int _type_constraints = options.get_unsigned_int_option("type-constraints");
-    if(_logic == "qfuf")
+    if(_logic == "qfuf") 
+    {
         decider = new smtcheck_opensmt2t_uf("uf checker");
+        status() << ("Use QF_UF logic.") << eom;
+    }
     else if(_logic == "qfcuf")
+    {
         decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"), "cuf checker");
-    else if(_logic == "qflra")
+        status() << ("Use QF_CUF logic.") << eom;
+    }
+    else if(_logic == "qflra") 
+    {
         decider = new smtcheck_opensmt2t_lra(_type_constraints, "lra checker");
-    else if (_logic == "prop" && !options.get_bool_option("no-partitions"))    
+        status() << ("Use QF_LRA logic.") << eom;
+    }
+    else if (_logic == "prop" && !options.get_bool_option("no-partitions"))
+    {
         decider = new satcheck_opensmt2t("prop checker");
+        status() << ("Use propositional logic.") << eom;
+    }
     else if (_logic == "prop" && options.get_bool_option("no-partitions"))
     {
         error() << ("--no-partitions option is not supported in theory: " +  _logic + "\n") << eom;
