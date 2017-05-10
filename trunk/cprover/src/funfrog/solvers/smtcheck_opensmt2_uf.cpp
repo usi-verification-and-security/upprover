@@ -12,7 +12,6 @@ Author: Grigory Fedyukovich
 //#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
-//#define DEBUG_ITP_VARS
 //#define DEBUG_SMT_EUF
 //#define DEBUG_SMT_ITP
 
