@@ -5,8 +5,8 @@
 #include <stdlib.h>
 #include "smtcheck_opensmt2.h"
 
-//#define DEBUG_ITP
-# ifdef DEBUG_ITP
+//#define DEBUG_ITP_SMT
+# ifdef DEBUG_ITP_SMT
 #include <iostream>
 #endif
 
@@ -195,7 +195,7 @@ void smt_itpt::generalize(const prop_conv_solvert& mapping,
     return;
   }
 
-# ifdef DEBUG_ITP
+# ifdef DEBUG_ITP_SMT
   std::cout << "--------------- Generalizing -------------" << std::endl;
 # endif
 
@@ -287,7 +287,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
   boolbv_mapt& map = const_cast<boolbv_mapt&>(dynamic_cast<boolbvt&>(decider).get_map());
   literalt* renaming = new literalt[_no_variables];
 
-# ifdef DEBUG_ITP
+# ifdef DEBUG_ITP_SMT
   std::cout << "--------------- Substituting -------------" << std::endl;
 # endif
   
@@ -301,7 +301,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
     if (it->type().id() == ID_bool) {
       literalt l = decider.convert(*it);
       
-#     ifdef DEBUG_ITP
+#     ifdef DEBUG_ITP_SMT
       std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
       std::cout << it->get_identifier().c_str() << " (1)" << std::endl;
 #     endif
@@ -310,7 +310,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
       continue;
     }
 
-#   ifdef DEBUG_ITP
+#   ifdef DEBUG_ITP_SMT
     std::cout << it->get_identifier().c_str() << " (" << 
             map.get_map_entry(it->get_identifier(), it->type()).width <<
             ")" << std::endl;
@@ -322,13 +322,13 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
       it->get_identifier(), it->type(), width, literals);
     for (unsigned i = 0; i < width; ++i) {
       literalt l = literals[i];
-#     ifdef DEBUG_ITP
+#     ifdef DEBUG_ITP_SMT
       std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
 #     endif
       assert(cannon_var_no < _no_variables);
       renaming[cannon_var_no++] = l;
     }
-#   ifdef DEBUG_ITP
+#   ifdef DEBUG_ITP_SMT
     std::cout << std::endl;
 #   endif
   }
@@ -429,7 +429,7 @@ literalt smt_itpt::raw_assert(propt& prop_decider) const
       }
     }
 
-#   ifdef DEBUG_ITP
+#   ifdef DEBUG_ITP_SMT
     print_clause(std::cout, tmp_clause);
     std::cout << std::endl;
 #   endif

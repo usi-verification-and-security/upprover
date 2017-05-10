@@ -13,7 +13,6 @@
 #include "solvers/sat/cnf.h"
  
 //#define DEBUG_SSA
-//#define DEBUG_ITP
 //#define DEBUG_ENCODING
 //#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
 

@@ -15,7 +15,7 @@ Author: Ondrej Sery
 #include "solvers/sat/cnf.h"
 #include "solvers/satcheck_opensmt2.h"
 
-
+//#define DEBUG_ITP 
 /*******************************************************************\
 
  Function: prop_partitioning_target_equationt::convert

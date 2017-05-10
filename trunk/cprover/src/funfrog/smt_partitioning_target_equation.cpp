@@ -14,6 +14,7 @@
 #include "solvers/smtcheck_opensmt2.h"
 
 //#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
+//#define DEBUG_ITP_SMT
 
 void
 smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*>& templates)
@@ -861,7 +862,7 @@ void smt_partitioning_target_equationt::extract_interpolants(
         // Generalize the interpolant
         fill_common_symbols(partition, common_symbs);
 
-#   ifdef DEBUG_ITP
+#   ifdef DEBUG_ITP_SMT
         std::cout << "Interpolant for function: " <<
         partition.get_iface().function_id.c_str() << std::endl;
         std::cout << "Common symbols (" << common_symbs.size() << "):" << std::endl;
