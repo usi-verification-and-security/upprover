@@ -893,7 +893,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         cout << "; IT IS A CONSTANT " << endl;
 #endif
         l = lconst(expr);
-    } else if (_id==ID_typecast && expr.has_operands()) {
+    } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) && expr.has_operands()) {
 #ifdef SMT_DEBUG
         bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;

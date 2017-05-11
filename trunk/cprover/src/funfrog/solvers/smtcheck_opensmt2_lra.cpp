@@ -153,6 +153,7 @@ literalt smtcheck_opensmt2t_lra::const_from_str(const char* num)
     return push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
 }
 
+// All is Real in LRA so suppose to work id number to number
 literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr) 
 {
     // KE: New Cprover code - patching
@@ -178,7 +179,7 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], lralogic->mkConst("0")));
     	return push_variable(ptl); // Keeps the new literal + index it
-    } else {
+    } else { // All types of number to number, will take the inner value as the converted one
     	return convert((expr.operands())[0]);
     }
 }
@@ -275,7 +276,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 
         l = lconst(expr);
         
-    } else if (_id == ID_typecast && expr.has_operands()) {
+    } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) && expr.has_operands()) {
     #ifdef SMT_DEBUG
         bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
@@ -288,7 +289,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
     free(s);
     #endif
-    } else if (_id == ID_typecast) {
+    } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
     #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")" << endl;
             assert(false); // Need to take care of - typecast no operands

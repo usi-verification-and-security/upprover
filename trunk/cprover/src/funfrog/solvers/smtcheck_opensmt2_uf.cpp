@@ -315,7 +315,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
         cout << "; IT IS A CONSTANT " << endl;
 #endif
         l = lconst(expr);
-    } else if (_id == ID_typecast && expr.has_operands()) {
+    } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) && expr.has_operands()) {
 #ifdef SMT_DEBUG
 		bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
@@ -329,7 +329,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
     cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
     free(s);
 #endif  
-    } else if (_id == ID_typecast) {
+    } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
 		cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << _id << ")" << endl;
 		assert(false); // Need to take care of - typecast no operands
