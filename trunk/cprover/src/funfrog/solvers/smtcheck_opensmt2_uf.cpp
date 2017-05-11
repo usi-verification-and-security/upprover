@@ -236,23 +236,19 @@ literalt smtcheck_opensmt2t_uf::const_var_Real(const exprt &expr)
     {
         if (expr.type().id() == ID_c_enum)
         {
-            string enum_tag = expr.type().find(ID_tag).pretty();
-            rconst = logic->mkConst(sort_ureal, enum_tag.c_str());
+            num = expr.type().find(ID_tag).pretty();
         }
         else if (expr.type().id() == ID_c_enum_tag)
         {
-            string enum_tag = id2string(to_constant_expr(expr).get_value());
-            rconst = logic->mkConst(sort_ureal, enum_tag.c_str());
+            num = id2string(to_constant_expr(expr).get_value());
         }
         else
         {
             assert(0);
         }
     }
-    else
-    {
-	    rconst = logic->mkConst(sort_ureal, num.c_str());
-    }
+    
+    rconst = logic->mkConst(sort_ureal, num.c_str());
     assert(rconst != PTRef_Undef);
 
     return push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal

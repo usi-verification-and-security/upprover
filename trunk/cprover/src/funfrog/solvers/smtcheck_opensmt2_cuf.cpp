@@ -815,8 +815,7 @@ literalt smtcheck_opensmt2t_cuf::const_var_Real(const exprt &expr)
         }
     }
 
-    rconst = uflogic->mkCUFConst(atoi(num.c_str())); // uflogic To avoid dynamic cast
-    
+    rconst = uflogic->mkCUFConst(atoi(num.c_str())); // uflogic To avoid dynamic cast 
     assert(rconst != PTRef_Undef);
 
     l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal

@@ -117,35 +117,20 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
     {
         if (expr.type().id() == ID_c_enum)
         {
-            string enum_tag = expr.type().find(ID_tag).pretty();
-            rconst = lralogic->mkRealVar(enum_tag.c_str());
-            PTRef zero = lralogic->getTerm_RealZero();
-            vec<PTRef> args;
-            args.push(rconst);
-            args.push(zero);
-            PTRef ge = lralogic->mkRealGeq(args);
-            set_to_true(ge);
+            num = expr.type().find(ID_tag).pretty();
         }
         else if (expr.type().id() == ID_c_enum_tag)
         {
-            string enum_tag = id2string(to_constant_expr(expr).get_value());
-            rconst = lralogic->mkRealVar(enum_tag.c_str());
-            PTRef zero = lralogic->getTerm_RealZero();
-            vec<PTRef> args;
-            args.push(rconst);
-            args.push(zero);
-            PTRef ge = lralogic->mkRealGeq(args);
-            set_to_true(ge);
+            num = id2string(to_constant_expr(expr).get_value());
         }
         else
         {
             assert(0);
         }
     }
-    else
-    {
-        rconst = lralogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
-    }
+    
+    rconst = lralogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
+    assert(rconst != PTRef_Undef);
 
     // Check the conversion from string to real was done properly - do not erase!
     assert(!lralogic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
