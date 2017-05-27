@@ -239,7 +239,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 
         interpolator.reset(decider);
         bv_pointerst *deciderp = new bv_pointerst(ns, *(dynamic_cast<satcheck_opensmt2t *> (decider)));
-        deciderp->unbounded_array = bv_pointerst::U_AUTO;
+        deciderp->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;
         decider_prop.reset(deciderp);
     }
     
@@ -925,11 +925,11 @@ void summarizing_checkert::report_success()
   switch(message_handler.get_ui())
   {
   
-  case ui_message_handlert::PLAIN:
+    case ui_message_handlert::uit::PLAIN:
 	result() << "\n\nVERIFICATION SUCCESSFUL" << eom;
 	break;
 
-  case ui_message_handlert::XML_UI:
+    case ui_message_handlert::uit::XML_UI:
     {
       xmlt xml("cprover-status");
       xml.data="SUCCESS";
@@ -960,11 +960,11 @@ void summarizing_checkert::report_failure()
   switch(message_handler.get_ui())
   {
 
-  case ui_message_handlert::PLAIN:
+    case ui_message_handlert::uit::PLAIN:
 	result() << "\n\nVERIFICATION FAILED" << eom;;
 	break;
 
-  case ui_message_handlert::XML_UI:
+    case ui_message_handlert::uit::XML_UI:
     {
       xmlt xml("cprover-status");
       xml.data="FAILURE";

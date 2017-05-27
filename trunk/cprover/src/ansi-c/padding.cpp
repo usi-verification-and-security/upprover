@@ -203,7 +203,7 @@ void add_padding(struct_typet &type, const namespacet &ns)
       it!=components.end();
       it++)
   {
-    const typet &it_type=it->type();
+    const typet it_type=it->type();
     mp_integer a=1;
 
     const bool packed=it_type.get_bool(ID_C_packed) ||
@@ -338,6 +338,9 @@ void add_padding(union_typet &type, const namespacet &ns)
 {
   mp_integer max_alignment=alignment(type, ns)*8;
   mp_integer size_bits=pointer_offset_bits(type, ns);
+
+  if(size_bits<0)
+    throw "type of unknown size:\n"+type.pretty();
 
   union_typet::componentst &components=type.components();
 

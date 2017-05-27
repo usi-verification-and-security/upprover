@@ -341,7 +341,7 @@ void show_claims(const namespacet &ns,
     
     switch(ui)
     {
-    case ui_message_handlert::XML_UI:
+      case ui_message_handlert::uit::XML_UI:
       {
         xmlt xml("claim");
         xml.new_element("number").data=claim_name;
@@ -363,7 +363,7 @@ void show_claims(const namespacet &ns,
       }
       break;
 
-    case ui_message_handlert::PLAIN:
+      case ui_message_handlert::uit::PLAIN:
       {
         const irep_idt description=
           (comment==""?"user supplied assertion":comment);

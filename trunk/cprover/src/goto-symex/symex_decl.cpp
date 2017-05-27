@@ -120,14 +120,16 @@ void goto_symext::symex_decl(statet &state, const symbol_exprt &expr)
     state.guard.as_expr(),
     ssa,
     state.source,
-    hidden?symex_targett::HIDDEN:symex_targett::STATE);
+    hidden?
+      symex_targett::assignment_typet::HIDDEN:
+      symex_targett::assignment_typet::STATE);
 
   //assert(state.dirty);
-  //if((*state.dirty)(ssa.get_object_name()) &&
-  //   state.atomic_section_id==0)
-  //  target.shared_write(
-  //    state.guard.as_expr(),
-  //    ssa,
-  //    state.atomic_section_id,
-  //    state.source);
+  if(/*(*state.dirty)(ssa.get_object_name()) &&*/
+     state.atomic_section_id==0)
+    target.shared_write(
+      state.guard.as_expr(),
+      ssa,
+      state.atomic_section_id,
+      state.source);
 }

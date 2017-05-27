@@ -1286,12 +1286,16 @@ static int make_identifier()
   return TOK_IDENTIFIER;
 }
 
+#include <util/pragma_wsign_compare.def>
+#include <util/pragma_wnull_conversion.def>
+#include <util/pragma_wdeprecated_register.def>
 
 
 
 
 
-#line 67 "scanner.l"
+
+#line 71 "scanner.l"
 void jsil_scanner_init()
 {
   // yyjsildebug=1;
@@ -1299,7 +1303,7 @@ void jsil_scanner_init()
   BEGIN(0);
 }
 /* %option debug */
-#line 1303 "jsil_lex.yy.cpp"
+#line 1307 "jsil_lex.yy.cpp"
 
 #define INITIAL 0
 #define GRAMMAR 1
@@ -1499,10 +1503,10 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 76 "scanner.l"
+#line 80 "scanner.l"
 
 
-#line 1506 "jsil_lex.yy.cpp"
+#line 1510 "jsil_lex.yy.cpp"
 
 	if ( !(yy_init) )
 		{
@@ -1588,7 +1592,7 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 78 "scanner.l"
+#line 82 "scanner.l"
 { 
                   BEGIN(GRAMMAR);
                   yyless(0);    /* start again with this character */
@@ -1597,7 +1601,7 @@ YY_RULE_SETUP
 
 case 2:
 YY_RULE_SETUP
-#line 84 "scanner.l"
+#line 88 "scanner.l"
 {
                   yy_push_state(COMMENT); /* begin comment state */
                   // make the compiler happy
@@ -1608,71 +1612,71 @@ YY_RULE_SETUP
 
 case 3:
 YY_RULE_SETUP
-#line 92 "scanner.l"
+#line 96 "scanner.l"
 { yy_pop_state(); } /* end comment state, back to GRAMMAR */
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 93 "scanner.l"
+#line 97 "scanner.l"
 { yyjsilerror("Probably nested comments"); }
 	YY_BREAK
 case YY_STATE_EOF(COMMENT):
-#line 94 "scanner.l"
+#line 98 "scanner.l"
 { yyjsilerror("Unterminated comment"); return TOK_SCANNER_ERROR; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 95 "scanner.l"
+#line 99 "scanner.l"
 { } /* ignore every char except '*' and NL (performance!) */
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 96 "scanner.l"
+#line 100 "scanner.l"
 { } /* all single characters within comments are ignored */
 	YY_BREAK
 case 7:
 /* rule 7 can match eol */
 YY_RULE_SETUP
-#line 97 "scanner.l"
+#line 101 "scanner.l"
 { }
 	YY_BREAK
 
 
 case 8:
 YY_RULE_SETUP
-#line 101 "scanner.l"
+#line 105 "scanner.l"
 { yy_pop_state(); } /* end comment state, back to STRING_LITERAL */
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 102 "scanner.l"
+#line 106 "scanner.l"
 { yyjsilerror("Probably nested comments"); }
 	YY_BREAK
 case YY_STATE_EOF(STRING_LITERAL_COMMENT):
-#line 103 "scanner.l"
+#line 107 "scanner.l"
 { yyjsilerror("Unterminated comment"); return TOK_SCANNER_ERROR; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 104 "scanner.l"
+#line 108 "scanner.l"
 { } /* ignore every char except '*' and NL (performance!) */
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 105 "scanner.l"
+#line 109 "scanner.l"
 { } /* all single characters within comments are ignored */
 	YY_BREAK
 case 12:
 /* rule 12 can match eol */
 YY_RULE_SETUP
-#line 106 "scanner.l"
+#line 110 "scanner.l"
 { }
 	YY_BREAK
 
 
 case 13:
 YY_RULE_SETUP
-#line 110 "scanner.l"
+#line 114 "scanner.l"
 {
                   PARSER.string_literal.clear();
                   PARSER.string_literal.append(yyjsiltext);
@@ -1686,23 +1690,23 @@ YY_RULE_SETUP
 
 case 14:
 YY_RULE_SETUP
-#line 121 "scanner.l"
+#line 125 "scanner.l"
 { PARSER.string_literal.append(yyjsiltext); }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 122 "scanner.l"
+#line 126 "scanner.l"
 { } /* ignore */
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 123 "scanner.l"
+#line 127 "scanner.l"
 { yy_push_state(STRING_LITERAL_COMMENT); } /* C comment, ignore */
 	YY_BREAK
 case 17:
 /* rule 17 can match eol */
 YY_RULE_SETUP
-#line 124 "scanner.l"
+#line 128 "scanner.l"
 { // anything else: back to normal
                   source_locationt l=stack(yyjsillval).source_location();
                   stack(yyjsillval)=convert_string_literal(PARSER.string_literal);
@@ -1716,292 +1720,292 @@ YY_RULE_SETUP
 
 case 18:
 YY_RULE_SETUP
-#line 135 "scanner.l"
+#line 139 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 136 "scanner.l"
+#line 140 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 137 "scanner.l"
+#line 141 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 138 "scanner.l"
+#line 142 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 139 "scanner.l"
+#line 143 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; } 
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 140 "scanner.l"
+#line 144 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 141 "scanner.l"
+#line 145 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 142 "scanner.l"
+#line 146 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 143 "scanner.l"
+#line 147 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 144 "scanner.l"
+#line 148 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 145 "scanner.l"
+#line 149 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 146 "scanner.l"
+#line 150 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 147 "scanner.l"
+#line 151 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 148 "scanner.l"
+#line 152 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 149 "scanner.l"
+#line 153 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 33:
 YY_RULE_SETUP
-#line 150 "scanner.l"
+#line 154 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 34:
 YY_RULE_SETUP
-#line 151 "scanner.l"
+#line 155 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 35:
 YY_RULE_SETUP
-#line 152 "scanner.l"
+#line 156 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 36:
 YY_RULE_SETUP
-#line 153 "scanner.l"
+#line 157 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 37:
 YY_RULE_SETUP
-#line 154 "scanner.l"
+#line 158 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 38:
 YY_RULE_SETUP
-#line 155 "scanner.l"
+#line 159 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 39:
 YY_RULE_SETUP
-#line 156 "scanner.l"
+#line 160 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 40:
 YY_RULE_SETUP
-#line 157 "scanner.l"
+#line 161 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 41:
 YY_RULE_SETUP
-#line 158 "scanner.l"
+#line 162 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 42:
 YY_RULE_SETUP
-#line 159 "scanner.l"
+#line 163 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 43:
 YY_RULE_SETUP
-#line 160 "scanner.l"
+#line 164 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 44:
 YY_RULE_SETUP
-#line 161 "scanner.l"
+#line 165 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 45:
 YY_RULE_SETUP
-#line 162 "scanner.l"
+#line 166 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 46:
 YY_RULE_SETUP
-#line 163 "scanner.l"
+#line 167 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
-#line 164 "scanner.l"
+#line 168 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
-#line 165 "scanner.l"
+#line 169 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
-#line 166 "scanner.l"
+#line 170 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_IDENTIFIER; }
 	YY_BREAK
 case 50:
 YY_RULE_SETUP
-#line 168 "scanner.l"
+#line 172 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 51:
 YY_RULE_SETUP
-#line 169 "scanner.l"
+#line 173 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 52:
 YY_RULE_SETUP
-#line 170 "scanner.l"
+#line 174 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 53:
 YY_RULE_SETUP
-#line 171 "scanner.l"
+#line 175 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 54:
 YY_RULE_SETUP
-#line 172 "scanner.l"
+#line 176 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 55:
 YY_RULE_SETUP
-#line 173 "scanner.l"
+#line 177 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 56:
 YY_RULE_SETUP
-#line 174 "scanner.l"
+#line 178 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 57:
 YY_RULE_SETUP
-#line 175 "scanner.l"
+#line 179 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 58:
 YY_RULE_SETUP
-#line 176 "scanner.l"
+#line 180 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 59:
 YY_RULE_SETUP
-#line 177 "scanner.l"
+#line 181 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 60:
 YY_RULE_SETUP
-#line 178 "scanner.l"
+#line 182 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 61:
 YY_RULE_SETUP
-#line 179 "scanner.l"
+#line 183 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 62:
 YY_RULE_SETUP
-#line 180 "scanner.l"
+#line 184 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 63:
 YY_RULE_SETUP
-#line 181 "scanner.l"
+#line 185 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 64:
 YY_RULE_SETUP
-#line 182 "scanner.l"
+#line 186 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 65:
 YY_RULE_SETUP
-#line 183 "scanner.l"
+#line 187 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 66:
 YY_RULE_SETUP
-#line 184 "scanner.l"
+#line 188 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 67:
 YY_RULE_SETUP
-#line 185 "scanner.l"
+#line 189 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 68:
 YY_RULE_SETUP
-#line 186 "scanner.l"
+#line 190 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 69:
 YY_RULE_SETUP
-#line 187 "scanner.l"
+#line 191 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 188 "scanner.l"
+#line 192 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 189 "scanner.l"
+#line 193 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; } 
 	YY_BREAK
 case 72:
 YY_RULE_SETUP
-#line 190 "scanner.l"
+#line 194 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 73:
 YY_RULE_SETUP
-#line 191 "scanner.l"
+#line 195 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 74:
 YY_RULE_SETUP
-#line 192 "scanner.l"
+#line 196 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 case 75:
 YY_RULE_SETUP
-#line 193 "scanner.l"
+#line 197 "scanner.l"
 { make_identifier(); return TOK_SPEC_IDENTIFIER; }
 	YY_BREAK
 
@@ -2009,50 +2013,50 @@ YY_RULE_SETUP
 case 76:
 /* rule 76 can match eol */
 YY_RULE_SETUP
-#line 197 "scanner.l"
+#line 201 "scanner.l"
 { } /* skipped */
 	YY_BREAK
 case 77:
 YY_RULE_SETUP
-#line 198 "scanner.l"
+#line 202 "scanner.l"
 { } /* skipped */
 	YY_BREAK
 /*** keywords ***/
 case 78:
 YY_RULE_SETUP
-#line 202 "scanner.l"
+#line 206 "scanner.l"
 { loc(); return TOK_PROCEDURE; }
 	YY_BREAK
 case 79:
 YY_RULE_SETUP
-#line 203 "scanner.l"
+#line 207 "scanner.l"
 { loc(); return TOK_RETURNS; }
 	YY_BREAK
 case 80:
 YY_RULE_SETUP
-#line 204 "scanner.l"
+#line 208 "scanner.l"
 { loc(); return TOK_TO; }
 	YY_BREAK
 case 81:
 YY_RULE_SETUP
-#line 205 "scanner.l"
+#line 209 "scanner.l"
 { loc(); return TOK_THROWS; }
 	YY_BREAK
 /*** scanner parsed tokens (these have a value!) ***/
 case 82:
 YY_RULE_SETUP
-#line 209 "scanner.l"
+#line 213 "scanner.l"
 { return make_identifier(); }
 	YY_BREAK
 case 83:
 YY_RULE_SETUP
-#line 211 "scanner.l"
+#line 215 "scanner.l"
 { loc(); BEGIN(STATEMENTS); return '{'; }
 	YY_BREAK
 /* This catches all one-character operators */
 case 84:
 YY_RULE_SETUP
-#line 213 "scanner.l"
+#line 217 "scanner.l"
 { loc(); return yyjsiltext[0]; }
 	YY_BREAK
 
@@ -2060,275 +2064,275 @@ YY_RULE_SETUP
 case 85:
 /* rule 85 can match eol */
 YY_RULE_SETUP
-#line 217 "scanner.l"
+#line 221 "scanner.l"
 { loc(); return TOK_NEWLINE; }
 	YY_BREAK
 case 86:
 YY_RULE_SETUP
-#line 218 "scanner.l"
+#line 222 "scanner.l"
 { } /* skipped */
 	YY_BREAK
 case 87:
 YY_RULE_SETUP
-#line 220 "scanner.l"
+#line 224 "scanner.l"
 { loc(); return TOK_EVAL; }
 	YY_BREAK
 case 88:
 YY_RULE_SETUP
-#line 221 "scanner.l"
+#line 225 "scanner.l"
 { loc(); return TOK_LABEL; }
 	YY_BREAK
 case 89:
 YY_RULE_SETUP
-#line 222 "scanner.l"
+#line 226 "scanner.l"
 { loc(); return TOK_GOTO; }
 	YY_BREAK
 case 90:
 YY_RULE_SETUP
-#line 223 "scanner.l"
+#line 227 "scanner.l"
 { loc(); return TOK_SKIP; }
 	YY_BREAK
 case 91:
 YY_RULE_SETUP
-#line 224 "scanner.l"
+#line 228 "scanner.l"
 { loc(); return TOK_WITH; }
 	YY_BREAK
 case 92:
 YY_RULE_SETUP
-#line 225 "scanner.l"
+#line 229 "scanner.l"
 { loc(); return TOK_NEW; }
 	YY_BREAK
 case 93:
 YY_RULE_SETUP
-#line 226 "scanner.l"
+#line 230 "scanner.l"
 { loc(); return TOK_HAS_FIELD; }
 	YY_BREAK
 case 94:
 YY_RULE_SETUP
-#line 227 "scanner.l"
+#line 231 "scanner.l"
 { loc(); return TOK_DELETE; }
 	YY_BREAK
 case 95:
 YY_RULE_SETUP
-#line 228 "scanner.l"
+#line 232 "scanner.l"
 { loc(); return TOK_PROTO_FIELD; }
 	YY_BREAK
 case 96:
 YY_RULE_SETUP
-#line 229 "scanner.l"
+#line 233 "scanner.l"
 { loc(); return TOK_PROTO_OBJ; }
 	YY_BREAK
 case 97:
 YY_RULE_SETUP
-#line 230 "scanner.l"
+#line 234 "scanner.l"
 { loc(); return TOK_REF; }
 	YY_BREAK
 case 98:
 YY_RULE_SETUP
-#line 231 "scanner.l"
+#line 235 "scanner.l"
 { loc(); return TOK_FIELD; }
 	YY_BREAK
 case 99:
 YY_RULE_SETUP
-#line 232 "scanner.l"
+#line 236 "scanner.l"
 { loc(); return TOK_BASE; }
 	YY_BREAK
 case 100:
 YY_RULE_SETUP
-#line 233 "scanner.l"
+#line 237 "scanner.l"
 { loc(); return TOK_TYPEOF; }
 	YY_BREAK
 case 101:
 YY_RULE_SETUP
-#line 234 "scanner.l"
+#line 238 "scanner.l"
 { loc(); return TOK_NULL; }
 	YY_BREAK
 case 102:
 YY_RULE_SETUP
-#line 235 "scanner.l"
+#line 239 "scanner.l"
 { loc(); return TOK_UNDEFINED; }
 	YY_BREAK
 case 103:
 YY_RULE_SETUP
-#line 236 "scanner.l"
+#line 240 "scanner.l"
 { loc(); return TOK_EMPTY; }
 	YY_BREAK
 case 104:
 YY_RULE_SETUP
-#line 237 "scanner.l"
+#line 241 "scanner.l"
 { loc(); return TOK_TRUE; }
 	YY_BREAK
 case 105:
 YY_RULE_SETUP
-#line 238 "scanner.l"
+#line 242 "scanner.l"
 { loc(); return TOK_FALSE; }
 	YY_BREAK
 case 106:
 YY_RULE_SETUP
-#line 239 "scanner.l"
+#line 243 "scanner.l"
 { loc(); return TOK_PROTO; }
 	YY_BREAK
 case 107:
 YY_RULE_SETUP
-#line 240 "scanner.l"
+#line 244 "scanner.l"
 { loc(); return TOK_FID; }
 	YY_BREAK
 case 108:
 YY_RULE_SETUP
-#line 241 "scanner.l"
+#line 245 "scanner.l"
 { loc(); return TOK_SCOPE; }
 	YY_BREAK
 case 109:
 YY_RULE_SETUP
-#line 242 "scanner.l"
+#line 246 "scanner.l"
 { loc(); return TOK_CONSTRUCTID; }
 	YY_BREAK
 case 110:
 YY_RULE_SETUP
-#line 243 "scanner.l"
+#line 247 "scanner.l"
 { loc(); return TOK_PRIMVALUE; }
 	YY_BREAK
 case 111:
 YY_RULE_SETUP
-#line 244 "scanner.l"
+#line 248 "scanner.l"
 { loc(); return TOK_TARGETFUNCTION; }
 	YY_BREAK
 case 112:
 YY_RULE_SETUP
-#line 245 "scanner.l"
+#line 249 "scanner.l"
 { loc(); return TOK_CLASS; }
 	YY_BREAK
 case 113:
 YY_RULE_SETUP
-#line 246 "scanner.l"
+#line 250 "scanner.l"
 { loc(); return TOK_NUM_TO_STRING; }
 	YY_BREAK
 case 114:
 YY_RULE_SETUP
-#line 247 "scanner.l"
+#line 251 "scanner.l"
 { loc(); return TOK_STRING_TO_NUM; }
 	YY_BREAK
 case 115:
 YY_RULE_SETUP
-#line 248 "scanner.l"
+#line 252 "scanner.l"
 { loc(); return TOK_NUM_TO_INT32; }
 	YY_BREAK
 case 116:
 YY_RULE_SETUP
-#line 249 "scanner.l"
+#line 253 "scanner.l"
 { loc(); return TOK_NUM_TO_UINT32; }
 	YY_BREAK
 case 117:
 YY_RULE_SETUP
-#line 250 "scanner.l"
+#line 254 "scanner.l"
 { loc(); return TOK_MEMBER_REFERENCE; }
 	YY_BREAK
 case 118:
 YY_RULE_SETUP
-#line 251 "scanner.l"
+#line 255 "scanner.l"
 { loc(); return TOK_VARIABLE_REFERENCE; }
 	YY_BREAK
 /*** type classes ***/
 case 119:
 YY_RULE_SETUP
-#line 255 "scanner.l"
+#line 259 "scanner.l"
 { loc(); return TOK_T_NULL; }
 	YY_BREAK
 case 120:
 YY_RULE_SETUP
-#line 256 "scanner.l"
+#line 260 "scanner.l"
 { loc(); return TOK_T_UNDEFINED; }
 	YY_BREAK
 case 121:
 YY_RULE_SETUP
-#line 257 "scanner.l"
+#line 261 "scanner.l"
 { loc(); return TOK_T_BOOLEAN; }
 	YY_BREAK
 case 122:
 YY_RULE_SETUP
-#line 258 "scanner.l"
+#line 262 "scanner.l"
 { loc(); return TOK_T_STRING; }
 	YY_BREAK
 case 123:
 YY_RULE_SETUP
-#line 259 "scanner.l"
+#line 263 "scanner.l"
 { loc(); return TOK_T_NUMBER; }
 	YY_BREAK
 case 124:
 YY_RULE_SETUP
-#line 260 "scanner.l"
+#line 264 "scanner.l"
 { loc(); return TOK_T_BUILTIN_OBJECT; }
 	YY_BREAK
 case 125:
 YY_RULE_SETUP
-#line 261 "scanner.l"
+#line 265 "scanner.l"
 { loc(); return TOK_T_USER_OBJECT; }
 	YY_BREAK
 case 126:
 YY_RULE_SETUP
-#line 262 "scanner.l"
+#line 266 "scanner.l"
 { loc(); return TOK_T_OBJECT; }
 	YY_BREAK
 case 127:
 YY_RULE_SETUP
-#line 263 "scanner.l"
+#line 267 "scanner.l"
 { loc(); return TOK_T_REFERENCE; }
 	YY_BREAK
 /*** multi-character operators ***/
 case 128:
 YY_RULE_SETUP
-#line 267 "scanner.l"
+#line 271 "scanner.l"
 { loc(); return TOK_DEFEQ; }
 	YY_BREAK
 case 129:
 YY_RULE_SETUP
-#line 268 "scanner.l"
+#line 272 "scanner.l"
 { loc(); return TOK_LEQ; }
 	YY_BREAK
 case 130:
 YY_RULE_SETUP
-#line 269 "scanner.l"
+#line 273 "scanner.l"
 { loc(); return TOK_AND; }
 	YY_BREAK
 case 131:
 YY_RULE_SETUP
-#line 270 "scanner.l"
+#line 274 "scanner.l"
 { loc(); return TOK_OR; }
 	YY_BREAK
 case 132:
 YY_RULE_SETUP
-#line 271 "scanner.l"
+#line 275 "scanner.l"
 { loc(); return TOK_SUBTYPE_OF; }
 	YY_BREAK
 case 133:
 YY_RULE_SETUP
-#line 272 "scanner.l"
+#line 276 "scanner.l"
 { loc(); return TOK_LEFT_SHIFT; }
 	YY_BREAK
 case 134:
 YY_RULE_SETUP
-#line 273 "scanner.l"
+#line 277 "scanner.l"
 { loc(); return TOK_SIGNED_RIGHT_SHIFT; }
 	YY_BREAK
 case 135:
 YY_RULE_SETUP
-#line 274 "scanner.l"
+#line 278 "scanner.l"
 { loc(); return TOK_UNSIGNED_RIGHT_SHIFT; }
 	YY_BREAK
 case 136:
 YY_RULE_SETUP
-#line 275 "scanner.l"
+#line 279 "scanner.l"
 { loc(); return TOK_NOT; }
 	YY_BREAK
 /*** scanner parsed tokens (these have a value!) ***/
 case 137:
 YY_RULE_SETUP
-#line 279 "scanner.l"
+#line 283 "scanner.l"
 { return make_identifier(); }
 	YY_BREAK
 case 138:
 YY_RULE_SETUP
-#line 281 "scanner.l"
+#line 285 "scanner.l"
 {
                        newstack(yyjsillval); 
                        stack(yyjsillval)=convert_float_literal(yyjsiltext);
@@ -2338,223 +2342,223 @@ YY_RULE_SETUP
 	YY_BREAK
 case 139:
 YY_RULE_SETUP
-#line 288 "scanner.l"
+#line 292 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 140:
 YY_RULE_SETUP
-#line 289 "scanner.l"
+#line 293 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 141:
 YY_RULE_SETUP
-#line 290 "scanner.l"
+#line 294 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 142:
 YY_RULE_SETUP
-#line 291 "scanner.l"
+#line 295 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 143:
 YY_RULE_SETUP
-#line 292 "scanner.l"
+#line 296 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 144:
 YY_RULE_SETUP
-#line 293 "scanner.l"
+#line 297 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; } 
 	YY_BREAK
 case 145:
 YY_RULE_SETUP
-#line 294 "scanner.l"
+#line 298 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 146:
 YY_RULE_SETUP
-#line 295 "scanner.l"
+#line 299 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 147:
 YY_RULE_SETUP
-#line 296 "scanner.l"
+#line 300 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 148:
 YY_RULE_SETUP
-#line 297 "scanner.l"
+#line 301 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 149:
 YY_RULE_SETUP
-#line 298 "scanner.l"
+#line 302 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 150:
 YY_RULE_SETUP
-#line 299 "scanner.l"
+#line 303 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 151:
 YY_RULE_SETUP
-#line 300 "scanner.l"
+#line 304 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 152:
 YY_RULE_SETUP
-#line 301 "scanner.l"
+#line 305 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 153:
 YY_RULE_SETUP
-#line 302 "scanner.l"
+#line 306 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 154:
 YY_RULE_SETUP
-#line 303 "scanner.l"
+#line 307 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 155:
 YY_RULE_SETUP
-#line 304 "scanner.l"
+#line 308 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 156:
 YY_RULE_SETUP
-#line 305 "scanner.l"
+#line 309 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 157:
 YY_RULE_SETUP
-#line 306 "scanner.l"
+#line 310 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 158:
 YY_RULE_SETUP
-#line 307 "scanner.l"
+#line 311 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 159:
 YY_RULE_SETUP
-#line 308 "scanner.l"
+#line 312 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 160:
 YY_RULE_SETUP
-#line 309 "scanner.l"
+#line 313 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 161:
 YY_RULE_SETUP
-#line 310 "scanner.l"
+#line 314 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 162:
 YY_RULE_SETUP
-#line 311 "scanner.l"
+#line 315 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 163:
 YY_RULE_SETUP
-#line 312 "scanner.l"
+#line 316 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 164:
 YY_RULE_SETUP
-#line 313 "scanner.l"
+#line 317 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 165:
 YY_RULE_SETUP
-#line 314 "scanner.l"
+#line 318 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; } 
 	YY_BREAK
 case 166:
 YY_RULE_SETUP
-#line 315 "scanner.l"
+#line 319 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 167:
 YY_RULE_SETUP
-#line 316 "scanner.l"
+#line 320 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 168:
 YY_RULE_SETUP
-#line 317 "scanner.l"
+#line 321 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 169:
 YY_RULE_SETUP
-#line 318 "scanner.l"
+#line 322 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 170:
 YY_RULE_SETUP
-#line 319 "scanner.l"
+#line 323 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 171:
 YY_RULE_SETUP
-#line 320 "scanner.l"
+#line 324 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 172:
 YY_RULE_SETUP
-#line 321 "scanner.l"
+#line 325 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 173:
 YY_RULE_SETUP
-#line 322 "scanner.l"
+#line 326 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 174:
 YY_RULE_SETUP
-#line 323 "scanner.l"
+#line 327 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 175:
 YY_RULE_SETUP
-#line 324 "scanner.l"
+#line 328 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 176:
 YY_RULE_SETUP
-#line 325 "scanner.l"
+#line 329 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 177:
 YY_RULE_SETUP
-#line 326 "scanner.l"
+#line 330 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 178:
 YY_RULE_SETUP
-#line 327 "scanner.l"
+#line 331 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 179:
 YY_RULE_SETUP
-#line 328 "scanner.l"
+#line 332 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 180:
 YY_RULE_SETUP
-#line 329 "scanner.l"
+#line 333 "scanner.l"
 { make_identifier(); return TOK_BUILTIN_LOC; }
 	YY_BREAK
 case 181:
 YY_RULE_SETUP
-#line 331 "scanner.l"
+#line 335 "scanner.l"
 { loc(); BEGIN(GRAMMAR); return '}'; }
 	YY_BREAK
 /* This catches all one-character operators */
 case 182:
 YY_RULE_SETUP
-#line 333 "scanner.l"
+#line 337 "scanner.l"
 { loc(); return yyjsiltext[0]; }
 	YY_BREAK
 
@@ -2562,15 +2566,15 @@ case YY_STATE_EOF(INITIAL):
 case YY_STATE_EOF(GRAMMAR):
 case YY_STATE_EOF(STRING_LITERAL):
 case YY_STATE_EOF(STATEMENTS):
-#line 336 "scanner.l"
+#line 340 "scanner.l"
 { yyterminate(); /* done! */ }
 	YY_BREAK
 case 183:
 YY_RULE_SETUP
-#line 338 "scanner.l"
+#line 342 "scanner.l"
 ECHO;
 	YY_BREAK
-#line 2574 "jsil_lex.yy.cpp"
+#line 2578 "jsil_lex.yy.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -3574,7 +3578,7 @@ void yyjsilfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 338 "scanner.l"
+#line 342 "scanner.l"
 
 
 

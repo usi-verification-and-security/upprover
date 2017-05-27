@@ -538,7 +538,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
       
     guardt guard;
     state.record_events=false;
-    symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, symex_targett::HIDDEN);
+    symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, symex_targett::assignment_typet::HIDDEN);
   }
 }
 
@@ -1493,7 +1493,7 @@ void symex_assertion_sumt::raw_assignment(
     lhs, l1_lhs,
     rhs_symbol,
     state.source,
-    symex_targett::STATE);
+    symex_targett::assignment_typet::STATE);
 }
 
 /*******************************************************************\
@@ -1606,7 +1606,7 @@ void symex_assertion_sumt::phi_function(
       new_lhs, new_lhs, new_lhs.get_original_expr(),
       rhs,
       dest_state.source,
-      symex_targett::PHI);
+      symex_targett::assignment_typet::PHI);
   }
 }
 

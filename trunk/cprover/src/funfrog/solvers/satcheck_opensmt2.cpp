@@ -377,7 +377,7 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
     if (msg != NULL) free(msg); // If there is an error consider printing the msg
   }
 
-  assert(status != ERROR);
+  assert(status != statust::ERROR);
 #ifdef PRODUCE_PROOF  
   ready_to_interpolate = false;
 #endif
@@ -398,8 +398,8 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
   sstat r = mainSolver->check();
 
   if (r == s_True) {
-    status = SAT;
-    return P_SATISFIABLE;
+    status = statust::SAT;
+    return resultt::P_SATISFIABLE;
   } else if (r == s_False) {
 #ifdef PRODUCE_PROOF      
     ready_to_interpolate = true;
@@ -408,8 +408,8 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
     throw "Unexpected OpenSMT result.";
   }
 
-  status = UNSAT;
-  return P_UNSATISFIABLE;
+  status = statust::UNSAT;
+  return resultt::P_UNSATISFIABLE;
 }
 
 /*******************************************************************\

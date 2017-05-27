@@ -37,7 +37,7 @@ void error_tracet::build_goto_trace (
       continue;
 
     if(SSA_step.is_assignment() &&
-       SSA_step.assignment_type==symex_target_equationt::HIDDEN)
+       SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
@@ -168,7 +168,7 @@ void error_tracet::build_goto_trace_formula (
       continue;
 
     if(SSA_step.is_assignment() &&
-       SSA_step.assignment_type==symex_target_equationt::HIDDEN)
+       SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
@@ -399,30 +399,30 @@ void error_tracet::show_goto_trace(
         switch(it->type)
         {
             // Don't print artificial instructions added for verification
-            case goto_trace_stept::ASSUME:
-            case goto_trace_stept::LOCATION:
-            case goto_trace_stept::FUNCTION_CALL:
-            case goto_trace_stept::FUNCTION_RETURN:
-            case goto_trace_stept::SPAWN:
-            case goto_trace_stept::ATOMIC_BEGIN:
-            case goto_trace_stept::ATOMIC_END:
-            case goto_trace_stept::DECL:
-            case goto_trace_stept::MEMORY_BARRIER:
-            case goto_trace_stept::DEAD:  
-            case goto_trace_stept::GOTO:    
+            case goto_trace_stept::typet::ASSUME:
+            case goto_trace_stept::typet::LOCATION:
+            case goto_trace_stept::typet::FUNCTION_CALL:
+            case goto_trace_stept::typet::FUNCTION_RETURN:
+            case goto_trace_stept::typet::SPAWN:
+            case goto_trace_stept::typet::ATOMIC_BEGIN:
+            case goto_trace_stept::typet::ATOMIC_END:
+            case goto_trace_stept::typet::DECL:
+            case goto_trace_stept::typet::MEMORY_BARRIER:
+            case goto_trace_stept::typet::DEAD:  
+            case goto_trace_stept::typet::GOTO:    
                     break;
 
-            case goto_trace_stept::CONSTRAINT:
+            case goto_trace_stept::typet::CONSTRAINT:
               assert(false); // KE: show me this case!
               break;
 
-            case goto_trace_stept::SHARED_READ:
-            case goto_trace_stept::SHARED_WRITE:
+            case goto_trace_stept::typet::SHARED_READ:
+            case goto_trace_stept::typet::SHARED_WRITE:
               // Unsupported here, probably is unsupported var
               isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
               break;
 
-            case goto_trace_stept::ASSERT:
+            case goto_trace_stept::typet::ASSERT:
                 if(!it->cond_value)
                 {
                     out << std::endl;
@@ -436,7 +436,7 @@ void error_tracet::show_goto_trace(
                 }
                 break;
 
-            case goto_trace_stept::ASSIGNMENT:
+            case goto_trace_stept::typet::ASSIGNMENT:
                 if(it->pc->is_assign() ||
                         it->pc->is_return() || // returns have a lhs!
                         it->pc->is_function_call() ||
@@ -459,7 +459,7 @@ void error_tracet::show_goto_trace(
             }
                 break;
 
-            case goto_trace_stept::OUTPUT:
+            case goto_trace_stept::typet::OUTPUT:
                 if(it->formatted)
                 {
                     printf_formattert printf_formatter(ns);
@@ -485,7 +485,7 @@ void error_tracet::show_goto_trace(
                 }
                 break;
 
-            case goto_trace_stept::INPUT:
+            case goto_trace_stept::typet::INPUT:
                 show_state_header(out, it->thread_nr, it->pc->source_location, it->step_nr);
                 out << "  INPUT " << it->io_id << ":";
 
@@ -502,7 +502,7 @@ void error_tracet::show_goto_trace(
                 break;
 
             default:
-                std::cout << "Error " << it->type << std::endl;
+                //std::cout << "Error " << it->type << std::endl;
                 assert(false);
         }
     }
@@ -665,7 +665,7 @@ void error_tracet::build_goto_trace (
       continue;
 
     if(SSA_step.is_assignment() &&
-       SSA_step.assignment_type==symex_target_equationt::HIDDEN)
+       SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());

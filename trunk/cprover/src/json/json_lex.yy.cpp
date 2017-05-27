@@ -521,7 +521,12 @@ static int isatty(int) { return 0; }
 
 #include "json_parser.h"
 #include "json_y.tab.h"
-#line 525 "json_lex.yy.cpp"
+
+#include <util/pragma_wsign_compare.def>
+#include <util/pragma_wnull_conversion.def>
+#include <util/pragma_wdeprecated_register.def>
+
+#line 530 "json_lex.yy.cpp"
 
 #define INITIAL 0
 
@@ -706,10 +711,10 @@ YY_DECL
 	register char *yy_cp, *yy_bp;
 	register int yy_act;
     
-#line 36 "scanner.l"
+#line 41 "scanner.l"
 
 
-#line 713 "json_lex.yy.cpp"
+#line 718 "json_lex.yy.cpp"
 
 	if ( !(yy_init) )
 		{
@@ -795,46 +800,46 @@ do_action:	/* This label is used only to access EOF actions. */
 case 1:
 /* rule 1 can match eol */
 YY_RULE_SETUP
-#line 38 "scanner.l"
+#line 43 "scanner.l"
 { return TOK_STRING; }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 39 "scanner.l"
+#line 44 "scanner.l"
 { return TOK_NUMBER; }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 40 "scanner.l"
+#line 45 "scanner.l"
 { return TOK_TRUE; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 41 "scanner.l"
+#line 46 "scanner.l"
 { return TOK_FALSE; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 42 "scanner.l"
+#line 47 "scanner.l"
 { return TOK_NULL; }
 	YY_BREAK
 case 6:
 /* rule 6 can match eol */
 YY_RULE_SETUP
-#line 44 "scanner.l"
+#line 49 "scanner.l"
 { /* eat */ }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 45 "scanner.l"
+#line 50 "scanner.l"
 { return yyjsontext[0]; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 47 "scanner.l"
+#line 52 "scanner.l"
 YY_FATAL_ERROR( "flex scanner jammed" );
 	YY_BREAK
-#line 838 "json_lex.yy.cpp"
+#line 843 "json_lex.yy.cpp"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1795,4 +1800,4 @@ void yyjsonfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 47 "scanner.l"
+#line 52 "scanner.l"

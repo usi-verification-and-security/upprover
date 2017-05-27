@@ -833,7 +833,7 @@ bool prop_itpt::check_implies(const itpt& second) const
   after = current_time();
   std::cerr << "SOLVER TIME: "<< after-before << std::endl;
   
-  if (res == propt::P_UNSATISFIABLE) {
+  if (res == propt::resultt::P_UNSATISFIABLE) {
     std::cerr << "UNSAT" << std::endl;
     return true;
   } else {

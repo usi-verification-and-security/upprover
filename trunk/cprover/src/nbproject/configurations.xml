@@ -154,6 +154,10 @@
         <in>template_map.cpp</in>
       </df>
       <df name="funfrog">
+        <df name="nopartition">
+          <in>smt_assertion_no_partition.cpp</in>
+          <in>symex_no_partition.cpp</in>
+        </df>
         <df name="solvers">
           <in>prop_itp.cpp</in>
           <in>satcheck_opensmt2.cpp</in>
@@ -1055,9 +1059,9 @@
           </incDir>
         </ccTool>
       </item>
-      <item path="ansi-c/file_converter.cpp" ex="false" tool="1" flavor2="0">
+      <item path="ansi-c/file_converter.cpp" ex="false" tool="1" flavor2="4">
       </item>
-      <item path="ansi-c/library/converter.cpp" ex="false" tool="1" flavor2="0">
+      <item path="ansi-c/library/converter.cpp" ex="false" tool="1" flavor2="4">
       </item>
       <item path="ansi-c/literals/convert_character_literal.cpp"
             ex="false"
@@ -1480,6 +1484,13 @@
           </preprocessorList>
         </ccTool>
       </folder>
+      <folder path="0/funfrog/nopartition">
+        <ccTool>
+          <incDir>
+            <pElem>funfrog</pElem>
+          </incDir>
+        </ccTool>
+      </folder>
       <folder path="0/funfrog/solvers">
         <ccTool>
           <incDir>
@@ -1661,6 +1672,20 @@
         </ccTool>
       </item>
       <item path="funfrog/main.cpp" ex="false" tool="1" flavor2="8">
+        <ccTool flags="1">
+        </ccTool>
+      </item>
+      <item path="funfrog/nopartition/smt_assertion_no_partition.cpp"
+            ex="false"
+            tool="1"
+            flavor2="8">
+        <ccTool flags="1">
+        </ccTool>
+      </item>
+      <item path="funfrog/nopartition/symex_no_partition.cpp"
+            ex="false"
+            tool="1"
+            flavor2="8">
         <ccTool flags="1">
         </ccTool>
       </item>
@@ -3822,7 +3847,7 @@
           </incDir>
         </ccTool>
       </item>
-      <item path="util/irep_ids_convert.cpp" ex="false" tool="1" flavor2="0">
+      <item path="util/irep_ids_convert.cpp" ex="false" tool="1" flavor2="4">
       </item>
       <item path="util/irep_serialization.cpp" ex="false" tool="1" flavor2="8">
         <ccTool flags="0">

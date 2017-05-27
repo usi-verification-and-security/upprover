@@ -168,7 +168,7 @@ void goto_symext::operator()(
   state.top().end_of_function=--goto_program.instructions.end();
   state.top().calling_location.pc=state.top().end_of_function;
   state.symex_target=&target;
-  //state.dirty=new dirtyt(goto_functions);
+  //state.dirty=new dirtyt(goto_functions);
 
   assert(state.top().end_of_function->is_end_function());
 
@@ -181,7 +181,7 @@ void goto_symext::operator()(
        state.source.thread_nr+1<state.threads.size())
     {
       unsigned t=state.source.thread_nr+1;
-      // std::cout << "********* Now executing thread " << t << std::endl;
+      // std::cout << "********* Now executing thread " << t << '\n';
       state.switch_to_thread(t);
     }
   }

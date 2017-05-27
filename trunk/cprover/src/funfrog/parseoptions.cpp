@@ -71,7 +71,8 @@ funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
   parse_options_baset(FUNFROG_OPTIONS, argc, argv),
   xml_interfacet(cmdline),
   //language_uit((std::string("FUNFROG") + FUNFROG_VERSION), cmdline)      
-  language_uit(cmdline, *(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
+  //language_uit(cmdline, *(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
+  language_uit(cmdline, *(new ui_message_handlert(cmdline, "FUNFROG " FUNFROG_VERSION)))
 {
 }
 

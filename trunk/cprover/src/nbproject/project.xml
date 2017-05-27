@@ -6,7 +6,7 @@
             <name>src</name>
             <c-extensions>c</c-extensions>
             <cpp-extensions>cc,cpp</cpp-extensions>
-            <header-extensions>h,hh,inc</header-extensions>
+            <header-extensions>def,h,hh,inc</header-extensions>
             <sourceEncoding>UTF-8</sourceEncoding>
             <make-dep-projects/>
             <sourceRootList>

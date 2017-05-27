@@ -9,7 +9,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/arith_tools.h>
 
 #include <ansi-c/c_qualifiers.h>
-#include <ansi-c/c_types.h>
+#include <util/c_types.h>
 
 #include "cpp_typecheck.h"
 #include "cpp_enum_type.h"
@@ -83,7 +83,7 @@ void cpp_typecheckt::typecheck_enum_body(symbolt &enum_symbol)
     cpp_idt &scope_identifier=
       cpp_scopes.put_into_scope(*new_symbol);
 
-    scope_identifier.id_class=cpp_idt::SYMBOL;
+    scope_identifier.id_class=cpp_idt::id_classt::SYMBOL;
 
     ++i;
   }
@@ -212,7 +212,7 @@ void cpp_typecheckt::typecheck_enum_type(typet &type)
     cpp_idt &scope_identifier=
       cpp_scopes.put_into_scope(*new_symbol, dest_scope);
 
-    scope_identifier.id_class=cpp_idt::CLASS;
+    scope_identifier.id_class=cpp_idt::id_classt::CLASS;
 
     typecheck_enum_body(*new_symbol);
   }

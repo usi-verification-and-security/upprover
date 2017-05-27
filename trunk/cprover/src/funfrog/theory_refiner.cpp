@@ -364,11 +364,11 @@ void theory_refinert::report_success()
   switch(message_handler.get_ui())
   {
   
-  case ui_message_handlert::PLAIN:
+    case ui_message_handlert::uit::PLAIN:
     result() << "\n\nVERIFICATION SUCCESSFUL" << eom;
     break;
 
-  case ui_message_handlert::XML_UI:
+    case ui_message_handlert::uit::XML_UI:
     {
       xmlt xml("cprover-status");
       xml.data="SUCCESS";
@@ -399,11 +399,11 @@ void theory_refinert::report_failure()
   switch(message_handler.get_ui())
   {
 
-  case ui_message_handlert::PLAIN:
+  case ui_message_handlert::uit::PLAIN:
     result() << "\n\nVERIFICATION FAILED" << eom;
     break;
 
-  case ui_message_handlert::XML_UI:
+  case ui_message_handlert::uit::XML_UI:
     {
       xmlt xml("cprover-status");
       xml.data="FAILURE";

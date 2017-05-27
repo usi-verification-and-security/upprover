@@ -21,7 +21,7 @@ pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_step_reft
   std::auto_ptr<prop_conv_solvert> decider;
   satcheck_opensmt2t* opensmt = new satcheck_opensmt2t("prop dependency checker");
   bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
-  deciderp->unbounded_array = bv_pointerst::U_AUTO;
+  deciderp->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;
   decider.reset(deciderp);
 
   convert_delta_SSA(*decider, c1, c2);
@@ -44,12 +44,12 @@ delete opensmt;
   // solve it
   switch (r)
   {
-    case decision_proceduret::D_UNSATISFIABLE:
+    case decision_proceduret::resultt::D_UNSATISFIABLE:
     {
       if (VERBOSE) status() << ("UNSAT - it holds!") << eom;
       return make_pair(true, duration);
     }
-    case decision_proceduret::D_SATISFIABLE:
+    case decision_proceduret::resultt::D_SATISFIABLE:
     {
       if (VERBOSE) status() << ("SAT - doesn't hold") << eom;
       return make_pair(false, duration);

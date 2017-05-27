@@ -106,14 +106,14 @@ void smt2_convt::write_header()
 
   switch(solver)
   {
-  case GENERIC: break;
-  case BOOLECTOR: out << "; Generated for Boolector\n"; break;
-  case CVC3: out << "; Generated for CVC 3\n"; break;
-  case CVC4: out << "; Generated for CVC 4\n"; break;
-  case MATHSAT: out << "; Generated for MathSAT\n"; break;
-  case OPENSMT: out << "; Generated for OPENSMT\n"; break;
-  case YICES: out << "; Generated for Yices\n"; break;
-  case Z3: out << "; Generated for Z3\n"; break;
+  case solvert::GENERIC: break;
+  case solvert::BOOLECTOR: out << "; Generated for Boolector\n"; break;
+  case solvert::CVC3: out << "; Generated for CVC 3\n"; break;
+  case solvert::CVC4: out << "; Generated for CVC 4\n"; break;
+  case solvert::MATHSAT: out << "; Generated for MathSAT\n"; break;
+  case solvert::OPENSMT: out << "; Generated for OPENSMT\n"; break;
+  case solvert::YICES: out << "; Generated for Yices\n"; break;
+  case solvert::Z3: out << "; Generated for Z3\n"; break;
   }
 
   out << "(set-info :source \"" << notes << "\")" << "\n";
@@ -163,7 +163,7 @@ void smt2_convt::write_footer(std::ostream &out)
   out << "(check-sat)" << "\n";
   out << "\n";
 
-  if(solver!=BOOLECTOR)
+  if(solver!=solvert::BOOLECTOR)
   {
     for(const auto &id : smt2_identifiers)
       out << "(get-value (|" << id << "|))" << "\n";
@@ -241,7 +241,7 @@ decision_proceduret::resultt smt2_convt::dec_solve()
 {
   write_footer(out);
   out.flush();
-  return decision_proceduret::D_ERROR;
+  return decision_proceduret::resultt::D_ERROR;
 }
 
 /*******************************************************************\
@@ -694,6 +694,7 @@ void smt2_convt::convert_address_of_rec(
         member_expr.get_component_name();
 
       mp_integer offset=member_offset(struct_type, component_name, ns);
+      assert(offset>=0);
 
       unsignedbv_typet index_type;
       index_type.set_width(boolbv_width(result_type));
@@ -739,9 +740,9 @@ void smt2_convt::convert_byte_extract(const byte_extract_exprt &expr)
 {
   // we just run the flattener
   exprt flattened_expr=flatten_byte_extract(expr, ns);
-  unflatten(BEGIN, expr.type());
+  unflatten(wheret::BEGIN, expr.type());
   convert_expr(flattened_expr);
-  unflatten(END, expr.type());
+  unflatten(wheret::END, expr.type());
 }
 
 /*******************************************************************\
@@ -854,9 +855,9 @@ void smt2_convt::convert_byte_update(const byte_update_exprt &expr)
   exprt ext_value=typecast_exprt(expr.value(), one_mask.type());
   exprt or_expr=bitor_exprt(and_expr, shl_exprt(ext_value, distance));
 
-  unflatten(BEGIN, expr.type());
+  unflatten(wheret::BEGIN, expr.type());
   flatten2bv(or_expr);
-  unflatten(END, expr.type());
+  unflatten(wheret::END, expr.type());
   #endif
 }
 
@@ -1972,7 +1973,7 @@ void smt2_convt::convert_expr(const exprt &expr)
   else if(expr.id()==ID_forall ||
           expr.id()==ID_exists)
   {
-    if(solver==MATHSAT)
+    if(solver==solvert::MATHSAT)
       // NOLINTNEXTLINE(readability/throw)
       throw "MathSAT does not support quantifiers";
 
@@ -3253,6 +3254,7 @@ void smt2_convt::convert_plus(const plus_exprt &expr)
 
       mp_integer element_size=
         pointer_offset_size(expr.type().subtype(), ns);
+      assert(element_size>0);
 
       out << "(bvadd ";
       convert_expr(p);
@@ -3469,6 +3471,7 @@ void smt2_convt::convert_minus(const minus_exprt &expr)
       // Pointer difference.
       mp_integer element_size=
         pointer_offset_size(expr.op0().type().subtype(), ns);
+      assert(element_size>0);
 
       if(element_size>=2)
         out << "(bvsdiv ";
@@ -4111,7 +4114,7 @@ void smt2_convt::convert_index(const index_exprt &expr)
       std::size_t array_width=boolbv_width(array_type);
       assert(array_width!=0);
 
-      unflatten(BEGIN, array_type.subtype());
+      unflatten(wheret::BEGIN, array_type.subtype());
 
       std::size_t sub_width=boolbv_width(array_type.subtype());
       std::size_t index_width=boolbv_width(expr.index().type());
@@ -4139,7 +4142,7 @@ void smt2_convt::convert_index(const index_exprt &expr)
 
       out << ")))"; // mult, bvlshr, extract
 
-      unflatten(END, array_type.subtype());
+      unflatten(wheret::END, array_type.subtype());
     }
   }
   else if(array_op_type.id()==ID_vector)
@@ -4238,7 +4241,7 @@ void smt2_convt::convert_member(const member_exprt &expr)
     if(width==0)
       INVALIDEXPR("failed to get union member width");
 
-    unflatten(BEGIN, expr.type());
+    unflatten(wheret::BEGIN, expr.type());
 
     out << "((_ extract "
            << (width-1)
@@ -4246,7 +4249,7 @@ void smt2_convt::convert_member(const member_exprt &expr)
     convert_expr(struct_op);
     out << ")";
 
-    unflatten(END, expr.type());
+    unflatten(wheret::END, expr.type());
   }
   else
     UNEXPECTEDCASE(
@@ -4383,7 +4386,7 @@ void smt2_convt::unflatten(
 
   if(type.id()==ID_bool)
   {
-    if(where==BEGIN)
+    if(where==wheret::BEGIN)
       out << "(= "; // produces a bool
     else
       out << " #b1)";
@@ -4406,7 +4409,7 @@ void smt2_convt::unflatten(
       if(to_integer(vector_type.size(), size))
         INVALIDEXPR("failed to convert vector size to constant");
 
-      if(where==BEGIN)
+      if(where==wheret::BEGIN)
         out << "(let ((?ufop" << nesting << " ";
       else
       {
@@ -4419,10 +4422,10 @@ void smt2_convt::unflatten(
         for(mp_integer i=0; i!=size; ++i, offset+=subtype_width)
         {
           out << " ";
-          unflatten(BEGIN, vector_type.subtype(), nesting+1);
+          unflatten(wheret::BEGIN, vector_type.subtype(), nesting+1);
           out << "((_ extract " << offset+subtype_width-1 << " "
               << offset << ") ?ufop" << nesting << ")";
-          unflatten(END, vector_type.subtype(), nesting+1);
+          unflatten(wheret::END, vector_type.subtype(), nesting+1);
         }
 
         out << "))"; // mk-, let
@@ -4438,7 +4441,7 @@ void smt2_convt::unflatten(
     if(use_datatypes)
     {
       // extract members
-      if(where==BEGIN)
+      if(where==wheret::BEGIN)
         out << "(let ((?ufop" << nesting << " ";
       else
       {
@@ -4467,10 +4470,10 @@ void smt2_convt::unflatten(
           std::size_t member_width=boolbv_width(it->type());
 
           out << " ";
-          unflatten(BEGIN, it->type(), nesting+1);
+          unflatten(wheret::BEGIN, it->type(), nesting+1);
           out << "((_ extract " << offset+member_width-1 << " "
               << offset << ") ?ufop" << nesting << ")";
-          unflatten(END, it->type(), nesting+1);
+          unflatten(wheret::END, it->type(), nesting+1);
           offset+=member_width;
         }
 

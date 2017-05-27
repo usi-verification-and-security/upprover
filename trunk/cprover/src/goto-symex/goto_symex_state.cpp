@@ -13,7 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_expr.h>
 #include <util/prefix.h>
 
-//#include <analyses/dirty.h> KE: remove dirty analysis
+//#include <analyses/dirty.h> KE: remove dirty analysis
 
 #include "goto_symex_state.h"
 
@@ -98,7 +98,7 @@ void goto_symex_statet::level0t::operator()(
 
   if(ns.lookup(obj_identifier, s))
   {
-    std::cerr << "level0: failed to find " << obj_identifier << std::endl;
+    std::cerr << "level0: failed to find " << obj_identifier << '\n';
     abort();
   }
 
@@ -375,7 +375,7 @@ static void assert_l1_renaming(const exprt &expr)
   #if 1
   if(check_renaming_l1(expr))
   {
-    std::cerr << expr.pretty() << std::endl;
+    std::cerr << expr.pretty() << '\n';
     assert(false);
   }
   #else
@@ -388,7 +388,7 @@ static void assert_l2_renaming(const exprt &expr)
   #if 1
   if(check_renaming(expr))
   {
-    std::cerr << expr.pretty() << std::endl;
+    std::cerr << expr.pretty() << '\n';
     assert(false);
   }
   #else
@@ -455,9 +455,9 @@ void goto_symex_statet::assignment(
   }
 
   #if 0
-  std::cout << "Assigning " << l1_identifier << std::endl;
+  std::cout << "Assigning " << l1_identifier << '\n';
   value_set.output(ns, std::cout);
-  std::cout << "**********************" << std::endl;
+  std::cout << "**********************\n";
   #endif
 }
 
@@ -764,8 +764,9 @@ bool goto_symex_statet::l2_thread_read_encoding(
           ssa_l1.get_original_expr(),
           tmp,
           source,
-          symex_targett::PHI);
+          symex_targett::assignment_typet::PHI);
     }
+
 
     set_ssa_indices(ssa_l1, ns, L2);
     expr=ssa_l1;
@@ -828,7 +829,7 @@ bool goto_symex_statet::l2_thread_write_encoding(
   const irep_idt &obj_identifier=expr.get_object_name();
   if(obj_identifier=="goto_symex::\\guard" ||
      (!ns.lookup(obj_identifier).is_shared()/* &&
-      !(*dirty)(obj_identifier)*/)) 
+      !(*dirty)(obj_identifier)*/))
     return false; // not shared
 
   // see whether we are within an atomic section
@@ -1142,3 +1143,4 @@ void goto_symex_statet::switch_to_thread(unsigned t)
 
   guard=threads[t].guard;
 }
+

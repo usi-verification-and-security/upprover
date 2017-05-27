@@ -142,7 +142,7 @@ public:
     }
   } propagation;
 
-  typedef enum { L0=0, L1=1, L2=2 } levelt;
+  enum levelt { L0=0, L1=1, L2=2 };
 
   // performs renaming _up to_ the given level
   void rename(exprt &expr, const namespacet &ns, levelt level=L2);
@@ -179,7 +179,7 @@ protected:
 
 public:
   void get_l1_name(exprt &expr) const; // KE: moved to public
-
+  
   // uses level 1 names, and is used to
   // do dereferencing
   value_sett value_set;
@@ -342,5 +342,4 @@ public:
   bool record_events;
   //const dirtyt * dirty;
 };
-
 #endif // CPROVER_GOTO_SYMEX_GOTO_SYMEX_STATE_H

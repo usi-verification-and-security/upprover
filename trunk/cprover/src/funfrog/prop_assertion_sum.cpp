@@ -133,12 +133,12 @@ bool prop_assertion_sumt::is_satisfiable(
   // solve it
   switch (r)
   {
-    case decision_proceduret::D_UNSATISFIABLE:
+    case decision_proceduret::resultt::D_UNSATISFIABLE:
     {
       status() << ("UNSAT - it holds!") << eom;
       return false;
     }
-    case decision_proceduret::D_SATISFIABLE:
+    case decision_proceduret::resultt::D_SATISFIABLE:
     {
       status() << ("SAT - doesn't hold") << eom;
       return true;
@@ -170,7 +170,7 @@ void build_exec_order_goto_trace(
       continue;
 
     if(SSA_step.is_assignment() &&
-       SSA_step.assignment_type==symex_target_equationt::HIDDEN)
+       SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)
       continue;
 
     step_nr++;
@@ -274,12 +274,12 @@ void prop_assertion_sumt::error_trace(const prop_conv_solvert &prop_conv, const 
 
   switch(message_handler.get_ui())
   {
-  case ui_message_handlert::PLAIN:
+    case ui_message_handlert::uit::PLAIN:
     std::cout << std::endl << "Counterexample:" << std::endl;
     show_goto_trace(std::cout, ns, goto_trace);
     break;
 
-  case ui_message_handlert::XML_UI:
+    case ui_message_handlert::uit::XML_UI:
     {
       xmlt xml;
       convert(ns, goto_trace, xml);
