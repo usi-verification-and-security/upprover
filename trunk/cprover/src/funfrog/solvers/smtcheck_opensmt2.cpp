@@ -12,8 +12,8 @@ Author: Grigory Fedyukovich
 //#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
-//#define DEBUG_SMT_EUF
 //#define DEBUG_SMT_ITP
+//#define DEBUG_SMT2SOLVER
 
 const string smtcheck_opensmt2t::_unsupported_var_str = "hifrog::c::unsupported_op2var!0#";
 unsigned smtcheck_opensmt2t::unsupported2var = 0;
@@ -636,13 +636,13 @@ bool smtcheck_opensmt2t::solve() {
     close_partition();
   }
 
-#ifdef DEBUG_SMT_EUF
+#ifdef DEBUG_SMT4SOLVER
   logic->dumpHeaderToFile(cout);
 #endif
 //  add_variables();
     char *msg=NULL;
     for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
-#ifdef DEBUG_SMT_EUF
+#ifdef DEBUG_SMT4SOLVER
         char* s = logic->printTerm(top_level_formulas[i]);
         cout << "\n(assert\n" << s << "\n)" << endl;
         free(s);
@@ -655,7 +655,7 @@ bool smtcheck_opensmt2t::solve() {
     }
     
     pushed_formulas = top_level_formulas.size();
-#ifdef DEBUG_SMT2SOLVER
+#ifdef DEBUG_SMT4SOLVER
     dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
 #endif
 
@@ -824,7 +824,7 @@ Function: smtcheck_opensmt2t::dump_on_error
 \*******************************************************************/
 void smtcheck_opensmt2t::dump_on_error(std::string location) {
     //If have problem with declaration of vars - uncommen this!
-#ifdef DEBUG_SMT2SOLVER
+#ifdef DEBUG_SMT4SOLVER
     cout << "; XXX SMT-lib --> Current Logic Translation XXX" << endl;
     cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
     cout << "; Declarations from Hifrog :" << endl;
@@ -844,7 +844,7 @@ void smtcheck_opensmt2t::dump_on_error(std::string location) {
     }
 
     // If code - once needed uncomment this debug flag in the header
-#ifdef DEBUG_SMT2SOLVER
+#ifdef DEBUG_SMT4SOLVER
     for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
             cout << "; XXX oite symbol: " << iterator->first << endl << iterator->second << endl;
     }

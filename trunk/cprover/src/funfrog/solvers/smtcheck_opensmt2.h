@@ -7,7 +7,7 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_OPENSMT2_H
 #define CPROVER_SMTCHECK_OPENSMT2_H
 
-//#define DEBUG_SMT2SOLVER
+//#define DEBUG_SMT4SOLVER // TO PRINT FROM HIFROG ENCODING + ITE DEF.
 
 #include <map>
 #include <vector>
@@ -210,7 +210,7 @@ protected:
     return (toInt(v1) == 0);
   }
 
-#ifdef DEBUG_SMT2SOLVER
+#ifdef DEBUG_SMT4SOLVER
   std::map <std::string,std::string> ite_map_str;
   std::set <std::string> var_set_str;
   typedef std::map<std::string,std::string>::iterator it_ite_map_str;

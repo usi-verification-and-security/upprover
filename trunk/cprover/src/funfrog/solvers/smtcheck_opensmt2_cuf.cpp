@@ -12,7 +12,6 @@ Author: Grigory Fedyukovich
 
 //#define SMT_DEBUG
 //#define DEBUG_SMT_BB
-//#define DEBUG_SMT2SOLVER
 
 void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
 {
@@ -988,12 +987,12 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             ptl = logic->mkEq(args);
         } else if (_id==ID_if) {
             ptl = logic->mkIte(args);
-#ifdef DEBUG_SMT2SOLVER
+#ifdef DEBUG_SMT4SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)), logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
         } else if (_id == ID_ifthenelse) {
             ptl = logic->mkIte(args);
-#ifdef DEBUG_SMT2SOLVER
+#ifdef DEBUG_SMT4SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
         } else if (_id == ID_and) {
@@ -1281,7 +1280,7 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
 
     literalt l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
 
-#ifdef DEBUG_SMT2SOLVER
+#ifdef DEBUG_SMT4SOLVER
     std::string add_var = str + " () " + getVarData(var);
     if (var_set_str.end() == var_set_str.find(add_var)) {
         var_set_str.insert(add_var);
