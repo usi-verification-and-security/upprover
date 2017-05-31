@@ -61,7 +61,7 @@ public:
 #endif                  
                   io_count_global(0)                
 		  {
-#         ifdef DEBUG_SSA_PRINT  
+#ifdef DEBUG_SSA_PRINT  
 	  partition_smt_decl = new std::map <std::string,exprt>();
 	  out_terms.rdbuf(&terms_buf);
 	  out_basic.rdbuf(&basic_buf);

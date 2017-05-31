@@ -12,6 +12,7 @@
  */
 
 #include "smt_symex_target_equation.h"
+#include "../expr_pretty_print.h"
 
 void smt_symex_target_equationt::convert(smtcheck_opensmt2t &decider) 
 {
@@ -28,6 +29,12 @@ void smt_symex_target_equationt::convert(smtcheck_opensmt2t &decider)
   convert_io(decider);
   //convert_constraints(decider);
   convert_summary(decider);
+  
+#ifdef DEBUG_SSA_PRINT
+    // Print all after the headers: decl and code
+    print_partition();
+    print_all_partition(std::cout);
+#endif
   
   // KE: not sure we are not suppose to add all these to the flow
 }
@@ -251,3 +258,85 @@ bool smt_symex_target_equationt::isRoundModelEq(const exprt &expr)
 
     return false;
 }
+
+#ifdef DEBUG_SSA_PRINT
+std::ostream& smt_symex_target_equationt::print_decl_smt(std::ostream& out) {
+	if (partition_smt_decl->empty())
+		return out;
+	else {
+		// Print all decl
+		for (std::map<std::string, exprt>::iterator it =
+				partition_smt_decl->begin(); it != partition_smt_decl->end(); ++it) {
+			out << "(declare-fun " << it->first << ")" << std::endl;
+		}
+
+		// At the end of the loop
+		partition_smt_decl->clear(); //Ready for the next partition
+		return out;
+	}
+}
+
+void smt_symex_target_equationt::print_partition() {
+	// When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
+	out_partition << "; " << basic_buf.str();
+	if (terms_buf.str().length() > 0) {
+		out_partition << "(assert\n";
+		if (terms_counter > 1)
+			out_partition << "  (and\n" << terms_buf.str() << "  )\n)" << endl;
+		else
+			out_partition << terms_buf.str() << ")" << endl;
+	}
+
+	// Init for reuse
+	terms_buf.str("");
+	basic_buf.str("");
+	terms_counter = 0;
+}
+
+void smt_symex_target_equationt::print_all_partition(std::ostream& out) {
+	// Print only if the flag is on!
+	// Print header - not part of temp debug print!
+	cout << "\nXXX SSA --> SMT-lib Translation XXX\n";
+
+	// for prints later on
+	std::ostream out_decl(0);
+	std::stringbuf decl_buf;
+	out_decl.rdbuf(&decl_buf);
+
+	// When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
+	print_decl_smt(out_decl); // print the symbol decl
+	cout << decl_buf.str() << partition_buf.str() << "(check-sat)\n";
+}
+
+// Not in use here
+void smt_symex_target_equationt::addToDeclMap(const exprt &expr) {
+    if (partition_smt_decl == NULL)
+        return;
+
+    std::ostream out_code(0);
+    std::stringbuf code_buf;
+    out_code.rdbuf(&code_buf);
+
+    out_code << expr.id().c_str() << " " << expr.type().id();
+    std::string key = code_buf.str();
+
+    if (partition_smt_decl->find(key) == partition_smt_decl->end())
+        partition_smt_decl->insert(make_pair(key, expr));
+}
+
+void smt_symex_target_equationt::saveFirstCallExpr(const exprt& expr) {
+    if (!is_first_call)
+        return;
+    
+    is_first_call = false;
+    first_call_expr = &expr;
+}
+
+bool smt_symex_target_equationt::isFirstCallExpr(const exprt& expr) {
+    if (is_first_call)
+        return false;
+
+    //return (first_call_expr->compare(expr) != 0); // for debug
+    return (first_call_expr->pretty().compare(expr.pretty()) != 0);
+}
+#endif

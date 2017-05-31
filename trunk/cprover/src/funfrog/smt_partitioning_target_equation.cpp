@@ -58,23 +58,26 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
         if (it->fle_part_id < 0) continue;
 
 #   ifdef DEBUG_SSA
-#     ifndef DEBUG_SSA_PRINT
-        cout
-#     else
-        out_basic
-#     endif
-            << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
+        cout << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
+                << it->get_iface().assertion_in_subtree << ")" << " - "
+                << it->get_iface().function_id.c_str() << " (loc: "
+                << it->get_iface().summary_info.get_call_location() << ", "
+                << ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
+                    : ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
+#   endif
+        
+// Print partition into a buffer after the headers: basic and code
+#   ifdef DEBUG_SSA_PRINT
+        out_basic << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
                 << it->get_iface().assertion_in_subtree << ")" << " - "
                 << it->get_iface().function_id.c_str() << " (loc: "
                 << it->get_iface().summary_info.get_call_location() << ", "
                 << ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
                     : ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
 
-        // Print partition into a buffer after the headers: basic and code
-#       ifdef DEBUG_SSA_PRINT
         print_partition();
-#       endif
-#   endif
+#   endif        
+        
     }
 
     #ifdef DEBUG_SSA_PRINT

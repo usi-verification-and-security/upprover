@@ -21,6 +21,9 @@
 #include "../solvers/itp.h"
 #include "../solvers/smtcheck_opensmt2.h"
 
+//#define DEBUG_SSA_PRINT // Print the SSA encoding + recompile expr_pretty_print class
+
+
 // No need to take anything from partition_target_equation, only from the
 // sub smt class of it
 class smt_symex_target_equationt:public symex_target_equationt 
@@ -30,10 +33,35 @@ public:
             std::vector<unsigned>& _clauses) :
         symex_target_equationt(_ns),
         clauses(_clauses),
+#       ifdef DEBUG_SSA_PRINT
+            out_local_terms(0),
+            out_terms(out_local_terms),
+            out_local_basic(0),
+            out_basic(out_local_basic),
+            out_local_partition(0),
+            out_partition(out_local_partition),
+            terms_counter(0),
+            is_first_call(true),
+            first_call_expr(0),
+        #endif                                  
         io_count_global(0)
-    {}
+    {
+#ifdef DEBUG_SSA_PRINT  
+	  partition_smt_decl = new std::map <std::string,exprt>();
+	  out_terms.rdbuf(&terms_buf);
+	  out_basic.rdbuf(&basic_buf);
+	  out_partition.rdbuf(&partition_buf);
+#endif            
+    }
         
-    virtual ~smt_symex_target_equationt() {}
+    virtual ~smt_symex_target_equationt() 
+    {
+#         ifdef DEBUG_SSA_PRINT        
+	  partition_smt_decl->clear();
+	  delete partition_smt_decl;        
+	  first_call_expr = 0; // Not here to do the delete
+#         endif
+    }
 
     // Convert all the SSA steps into the corresponding formulas in
     // the corresponding partitions
@@ -76,6 +104,35 @@ private:
     
     bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
 
+#ifdef DEBUG_SSA_PRINT  
+    // For SMT-Lib Translation - Move it later to a new class
+    std::map <std::string,exprt>* partition_smt_decl;
+    std::ostream out_local_terms; //for prints SSA - remove later
+    std::ostream& out_terms; // for prints SSA - remove later
+    std::stringbuf terms_buf; // for prints SSA - remove later
+
+    std::ostream out_local_basic; //for prints SSA - remove later
+    std::ostream& out_basic; // for prints SSA - remove later
+    std::stringbuf basic_buf; // for prints SSA - remove later
+
+    std::ostream out_local_partition; //for prints SSA - remove later
+    std::ostream& out_partition; // for prints SSA - remove later
+    std::stringbuf partition_buf; // for prints SSA - remove later
+
+    int terms_counter; // for prints SSA - remove later
+    bool is_first_call; // for prints SSA - remove later
+    const exprt* first_call_expr; // for prints SSA - remove later
+
+    // Print decl (later change to create) 
+    std::ostream& print_decl_smt(std::ostream& out);
+    void print_all_partition(std::ostream& out);
+    void print_partition();  
+    void addToDeclMap(const exprt &expr);
+    void saveFirstCallExpr(const exprt& expr);
+    bool isFirstCallExpr(const exprt& expr);
+#endif
+    
+    
 };
 
 #endif /* SMT_SYMEX_TARGET_EQUATIONT_H */

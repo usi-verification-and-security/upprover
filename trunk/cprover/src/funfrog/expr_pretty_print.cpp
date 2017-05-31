@@ -8,7 +8,6 @@ Author: Ondrej Sery
 
 #include "expr_pretty_print.h"
 
-//#define DEBUG_SSA_SMT
 #ifdef DEBUG_SSA_PRINT
 #include <iostream>
 #include <sstream>
@@ -23,40 +22,40 @@ Author: Ondrej Sery
 #define DEBUG_COLOR "\E[47;34m"
 
 std::string expr_pretty_printt::addToDeclMap(const exprt &expr) {
-	if (partition_smt_decl == NULL) return "";
+    if (partition_smt_decl == NULL) return "";
 
-	std::stringstream convert; // stringstream used for the conversion
+    std::stringstream convert; // stringstream used for the conversion
 
-	// Fix the type - SSA type => SMT type
-	convert << expr.type().id();//add the value of Number to the characters in the stream
-	std::string type_expr = convert.str();
-	type_expr[0] = toupper(type_expr[0]);
-	if (type_expr.compare("Signedbv") == 0) type_expr = "Real";
-	convert.str(""); // for reuse
+    // Fix the type - SSA type => SMT type
+    convert << expr.type().id();//add the value of Number to the characters in the stream
+    std::string type_expr = convert.str();
+    type_expr[0] = toupper(type_expr[0]);
+    if (type_expr.compare("Signedbv") == 0) type_expr = "Real";
+    convert.str(""); // for reuse
 
-	// Fix Variable name - sometimes "nondet" name is missing, add it for these cases
-	convert << expr.get(ID_identifier);
-	std::string name_expr = convert.str();
-	if (expr.id() == ID_nondet_symbol) {
-		if (name_expr.find("nondet") == std::string::npos)
-			name_expr = name_expr.replace(0,7, "symex::nondet");
-	}
-	convert.str(""); // for reuse
-	if (name_expr.find("__CPROVER_rounding_mode#") != std::string::npos) return "";
+    // Fix Variable name - sometimes "nondet" name is missing, add it for these cases
+    convert << expr.get(ID_identifier);
+    std::string name_expr = convert.str();
+    if (expr.id() == ID_nondet_symbol) {
+            if (name_expr.find("nondet") == std::string::npos)
+                    name_expr = name_expr.replace(0,7, "symex::nondet");
+    }
+    convert.str(""); // for reuse
+    if (name_expr.find("__CPROVER_rounding_mode#") != std::string::npos) return "";
 
-	// Create the output
-	std::ostream out_code(0);
-	std::stringbuf code_buf;
-	out_code.rdbuf(&code_buf);
-	out_code << SYMBOL_COLOR << "|" << name_expr << "|" << " () " << TYPE_COLOR << type_expr << NORMAL_COLOR;
-	std::string key = code_buf.str();
+    // Create the output
+    std::ostream out_code(0);
+    std::stringbuf code_buf;
+    out_code.rdbuf(&code_buf);
+    out_code << SYMBOL_COLOR << "|" << name_expr << "|" << " () " << TYPE_COLOR << type_expr << NORMAL_COLOR;
+    std::string key = code_buf.str();
 
-	// Insert the variable decl into a map of vars
-	//std::cout << "** Debug ** " << key << std::endl;
-	if (partition_smt_decl->find(key) == partition_smt_decl->end())
-		partition_smt_decl->insert(make_pair(key,expr));
+    // Insert the variable decl into a map of vars
+    //std::cout << "** Debug ** " << key << std::endl;
+    if (partition_smt_decl->find(key) == partition_smt_decl->end())
+            partition_smt_decl->insert(make_pair(key,expr));
 
-	return name_expr;
+    return name_expr;
 }
 
 double expr_pretty_printt::convertBinaryIntoDec(const exprt &expr) {
