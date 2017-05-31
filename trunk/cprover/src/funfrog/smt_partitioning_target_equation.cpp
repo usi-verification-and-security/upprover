@@ -293,26 +293,27 @@ bool smt_partitioning_target_equationt::isRoundModelEq(const exprt &expr)
 void smt_partitioning_target_equationt::convert_partition_guards(
 		smtcheck_opensmt2t &decider, partitiont& partition) {
 	for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
-		if (it->ignore) {
+            if (it->ignore) {
 #       ifdef DEBUG_SSA_SMT_CALL
             cout << "Before decider::const_var(GUARD-OUT) --> false" << endl;
 #       endif
-			it->guard_literal = decider.const_var(false);
-		} else {
-			exprt tmp(it->guard);
+                it->guard_literal = decider.const_var(false);
+            } else {		
 #       ifdef DEBUG_SSA_PRINT
-			//expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
-			expr_ssa_print_guard(out_terms, tmp, partition_smt_decl);
-			if (!tmp.is_boolean())
-				terms_counter++; // SSA -> SMT shall be all in a new function
+                exprt tmp(it->guard);
+                //expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
+                expr_ssa_print_guard(out_terms, tmp, partition_smt_decl);
+                if (!tmp.is_boolean())
+                        terms_counter++; // SSA -> SMT shall be all in a new function
 #       endif
 #       ifdef DEBUG_SSA_SMT_CALL
-			expr_ssa_print_smt_dbg(
-					cout << "Before decider::convert(GUARD-OUT) --> ", tmp,
-					false);
+                exprt tmp2(it->guard);
+                expr_ssa_print_smt_dbg(
+                                cout << "Before decider::convert(GUARD-OUT) --> ", tmp2,
+                                false);
 #	endif
-			it->guard_literal = decider.convert(tmp);
-		}
+                it->guard_literal = decider.convert(it->guard);
+            }
 	}
 }
 
@@ -338,13 +339,13 @@ void smt_partitioning_target_equationt::convert_partition_assumptions(
                 it->cond_literal = decider.const_var(true);
                 // GF
             } else {
-                exprt tmp(it->cond_expr);
 #               ifdef DEBUG_SSA_SMT_CALL
+                exprt tmp(it->cond_expr);
                 expr_ssa_print_smt_dbg(
                 cout << "Before decider::convert(ASSUME-OUT) --> ",
                         tmp, false);
 #               endif
-                it->cond_literal = decider.convert(tmp);
+                it->cond_literal = decider.convert(it->cond_expr);
             }
         }
     }
@@ -372,13 +373,13 @@ void smt_partitioning_target_equationt::convert_partition_goto_instructions(
                 it->cond_literal = decider.const_var(true);
                 // GF
             } else {
-                exprt tmp(it->cond_expr);
 #               ifdef DEBUG_SSA_SMT_CALL
+                    exprt tmp(it->cond_expr);
                     expr_ssa_print_smt_dbg(
                             cout << "Before decider::convert(GOTO-OUT) --> ",
                             tmp, false);
 #               endif
-                it->cond_literal = decider.convert(tmp);
+                it->cond_literal = decider.convert(it->cond_expr);
             }
         }
     }
