@@ -40,9 +40,9 @@ public:
 private:
   std::ostream& out;
   std::string indent;
-  unsigned int orig_indent;
   bool last;
   bool is_prev_token; // is token or space
+  unsigned int orig_indent;
   std::map <std::string,exprt>* partition_smt_decl;
 
   std::string addToDeclMap(const exprt &expr);
