@@ -100,7 +100,7 @@ public:
     if (osmt != NULL) {
         const char* msg=NULL;
         osmt->getConfig().setOption(SMTConfig::o_dump_query, SMTOption(f), msg);
-        if (msg != NULL) free((char *)msg); // If there is an error consider printing the msg
+//        if (msg != NULL) free((char *)msg); // If there is an error consider printing the msg
     }
   }
 
