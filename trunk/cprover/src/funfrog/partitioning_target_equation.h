@@ -13,6 +13,8 @@ Author: Ondrej Sery
 // Debugging flags:
 //#define DEBUG_SSA_PRINT // Print the SSA encoding + recompile expr_pretty_print class
 //#define DEBUG_SSA // General debug prints
+//#define DEBUG_ENCODING
+//#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
 // End of working debugging flags
 
 #include <goto-symex/symex_target_equation.h>

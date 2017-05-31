@@ -13,8 +13,7 @@
 #include "solvers/sat/cnf.h"
 #include "solvers/smtcheck_opensmt2.h"
 
-//#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
-//#define DEBUG_ITP_SMT
+//#define DEBUG_ITP_SMT // ITP of SMT - testing
 
 void
 smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*>& templates)

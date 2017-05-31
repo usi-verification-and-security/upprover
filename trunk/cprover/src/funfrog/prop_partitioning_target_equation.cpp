@@ -15,7 +15,8 @@ Author: Ondrej Sery
 #include "solvers/sat/cnf.h"
 #include "solvers/satcheck_opensmt2.h"
 
-//#define DEBUG_ITP 
+//#define DEBUG_ITP // ITP of SAT - testing
+
 /*******************************************************************\
 
  Function: prop_partitioning_target_equationt::convert
@@ -35,9 +36,9 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
     getFirstCallExpr(); // Save the first call to the first function
 #endif  
 
-	// KE: prop_conv change into prop_conv_solvert and use it from here - does cast + error check
-	//prop_conv_solvert&prop_conv_solver = dynamic_cast<prop_conv_solvert&> (prop_conv);
-	//assert(prop_conv_solver != 0); // KE: if null it says we never created it as prop_conv_solver - go back to prop_assertion_sum and fix it!      
+    // KE: prop_conv change into prop_conv_solvert and use it from here - does cast + error check
+    //prop_conv_solvert&prop_conv_solver = dynamic_cast<prop_conv_solvert&> (prop_conv);
+    //assert(prop_conv_solver != 0); // KE: if null it says we never created it as prop_conv_solver - go back to prop_assertion_sum and fix it!      
   int part_id = partitions.size();
   for (partitionst::reverse_iterator it = partitions.rbegin();
           it != partitions.rend(); ++it) {
@@ -250,15 +251,14 @@ void prop_partitioning_target_equationt::convert_partition_assignments(
   {
     if(it->is_assignment() && !it->ignore)
     {
-      exprt tmp(it->cond_expr);
-
 #     ifdef DEBUG_SSA_PRINT
+      exprt tmp(it->cond_expr);  
       //Print "ASSIGN-OUT:"
       expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
       terms_counter++;
 #     endif
 
-      prop_conv.set_to_true(tmp);
+      prop_conv.set_to_true(it->cond_expr);
     }
   }
 }
@@ -360,15 +360,14 @@ void prop_partitioning_target_equationt::convert_partition_goto_instructions(
                 it->cond_literal=const_literal(true);
             else
             {
-                exprt tmp(it->cond_expr);
-
 #           ifdef DEBUG_SSA_PRINT // Only for prop version!
-                //Print "GOTO-OUT:"
+                exprt tmp(it->cond_expr);
+                //Print "GOTO-OUT:" -- Caused a bug with Global Vars. --
                 expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
                 terms_counter++;
 #           endif
 
-                it->cond_literal=prop_conv.convert(tmp);
+                it->cond_literal=prop_conv.convert(it->cond_expr);
             }           
         }
     }    
