@@ -289,9 +289,7 @@ smtcheck_opensmt2t::insert_index(const string& _varname, int _idx)
 {
     string unidx = remove_index(_varname);
     string varname = unquote_varname(unidx);
-    stringstream ss;
-    ss << _idx;
-    return quote_varname(varname + "#" + ss.str());
+    return quote_varname(varname + "#" + std::to_string(_idx));
 }
 
 string

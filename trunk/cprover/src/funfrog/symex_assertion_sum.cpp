@@ -271,6 +271,13 @@ void symex_assertion_sumt::symex_step(
   assert(!state.threads.empty());
   assert(!state.call_stack().empty());
 
+#ifdef DEBUG_PARTITIONING
+  std::cout << "\ninstruction type is " << state.source.pc->type << '\n';
+  std::cout << "Location: " << state.source.pc->source_location << '\n';
+  std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << '\n';
+  std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << '\n';
+#endif
+
   const goto_programt::instructiont &instruction=*state.source.pc;
   loc++;
   merge_gotos(state);
@@ -313,7 +320,7 @@ void symex_assertion_sumt::symex_step(
           catch (const std::string &s) { str = ""; }
         }
       }
-
+      
       symex_goto(state); // Original code from Cprover follow with break
 
       if (do_guard_expl &&store_expln && str != "")
@@ -337,13 +344,20 @@ void symex_assertion_sumt::symex_step(
     if(!state.guard.is_false())
     {
       if (get_current_deferred_function().summary_info.is_assertion_enabled(state.source.pc)) {
+        
+        /* This is the code from ASSERT originally */
         std::string msg=id2string(state.source.pc->source_location.get_comment());
-        if(msg=="") msg="assertion";
+        if(msg=="") 
+            msg="assertion";
+        
         exprt tmp(instruction.guard);
         clean_expr(tmp, state, false);
         vcc(tmp, msg, state);
+        /* END: This is the code from ASSERT originally */
+        
         if ((single_assertion_check) ||
-            (loc >= last_assertion_loc && max_unwind <= 1)){
+            (loc >= last_assertion_loc && max_unwind <= 1))
+        {
           end_symex(state);
           return;
         }
@@ -646,9 +660,9 @@ void symex_assertion_sumt::assign_function_arguments(
   // NOTE: The exec_order is not used now.
   
   if (goto_function.type.return_type().id() != ID_empty) {
-      //std::cout << "; Before call " << (function_call.lhs().is_nil()) << std::endl;
-      //expr_pretty_print(std::cout << "check: ", function_call); std::cout << std::endl;
-      //std::cout << (function_call.lhs().get(ID_identifier) == "return'!0") << " and code: " << function_call.pretty() << std::endl;
+    //std::cout << "; Before call " << (function_call.lhs().is_nil()) << std::endl;
+    //expr_pretty_print(std::cout << "check: ", function_call); std::cout << std::endl;
+    //std::cout << (function_call.lhs().get(ID_identifier) == "return'!0") << " and code: " << function_call.pretty() << std::endl;
     // Add return value assignment from a temporary variable and
     // store the temporary return value symbol somewhere (so that we can
     // use it later, when processing the deferred function).
@@ -894,11 +908,11 @@ void symex_assertion_sumt::return_assignment_and_mark(
             as_string(function_id) + "::?return_value_tmp");
     
     // return_value_tmp - create new symbol
-    add_symbol(retval_tmp_id, type, false);
+    add_symbol(retval_tmp_id, type, false, function_type.source_location());
     symbol_exprt retval_tmp(retval_tmp_id, type);
 
     // return_value - create new symbol
-    add_symbol(retval_symbol_id, type, false); // Need to be in the table since rename l0 needs it
+    add_symbol(retval_symbol_id, type, false, function_type.source_location()); // Need to be in the table since rename l0 needs it
     symbol_exprt retval_symbol;	
     level2_rename_and_2ssa(state, retval_symbol_id, type, retval_symbol); // We do rename alone...
 
@@ -1304,13 +1318,13 @@ void symex_assertion_sumt::produce_callsite_symbols(
   partition_iface.callend_symbol.set_identifier(
           get_new_symbol_version(callend_id, state,typet(ID_bool)));
 
-  add_symbol(callstart_id, typet(ID_bool), true);
-  add_symbol(callend_id, typet(ID_bool), true);
-
+  add_symbol(callstart_id, typet(ID_bool), true, partition_iface.callstart_symbol.source_location());
+  add_symbol(callend_id, typet(ID_bool), true, partition_iface.callend_symbol.source_location());
+  
   if (partition_iface.assertion_in_subtree) {
     partition_iface.error_symbol.set_identifier(
           get_new_symbol_version(error_id, state,typet(ID_bool)));
-    add_symbol(error_id, typet(ID_bool), true);
+    add_symbol(error_id, typet(ID_bool), true, partition_iface.error_symbol.source_location());
   }
 }
 
@@ -1419,7 +1433,7 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 
     // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
     irep_idt new_l2_name = id2string(identifier) + "#" + std::to_string(state.level2.current_count(identifier));
-
+  
     return new_l2_name;
 }
 

@@ -528,13 +528,10 @@ bool funfrog_parseoptionst::check_function_summarization(
 
     claim_mapt claim_map;
     claim_numberst claim_numbers;
-
-    
-    cbmc_status_interface("Checking claims in program...");
-
     unsigned claim_nr=0;
 
     get_claims(goto_functions, claim_map, claim_numbers);
+    cbmc_status_interface("Checking claims in program...(" + std::to_string(claim_numbers.size())+")");
 
     if(cmdline.isset("show-claims")|| // will go away
 	 cmdline.isset("show-properties")) // use this one

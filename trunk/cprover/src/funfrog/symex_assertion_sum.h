@@ -312,16 +312,20 @@ private:
 
   // Adds the given symbol to the current context. If dead, the identifier
   // is only marked as dead (it is not added as a new symbol).
-  void add_symbol(const irep_idt& id, const typet& type, bool dead) {
+  void add_symbol(const irep_idt& base_id, 
+                    const typet& type, 
+                    bool dead, 
+                    const source_locationt source_location) {
     if (dead) {
-      dead_identifiers.insert(id);
-    } else if (!new_symbol_table.has_symbol(id)) {
-      symbolt s;
-      s.base_name = id;
-      s.name = id;
-      s.type = type;
-      s.mode=ID_C;
-      new_symbol_table.add(s);
+      dead_identifiers.insert(base_id);
+    } else if (!new_symbol_table.has_symbol(base_id)) {
+        symbolt s;
+        s.base_name = base_id;
+        s.name = base_id;
+        s.type = type;
+        s.mode=irep_idt();
+        s.location = source_location;            
+        new_symbol_table.add(s);
     }
   }
 

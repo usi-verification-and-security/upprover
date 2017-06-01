@@ -24,32 +24,26 @@ Author: Ondrej Sery
 std::string expr_pretty_printt::addToDeclMap(const exprt &expr) {
     if (partition_smt_decl == NULL) return "";
 
-    std::stringstream convert; // stringstream used for the conversion
-
     // Fix the type - SSA type => SMT type
-    convert << expr.type().id();//add the value of Number to the characters in the stream
-    std::string type_expr = convert.str();
+    std::string type_expr = expr.type().id().c_str();
     type_expr[0] = toupper(type_expr[0]);
     if (type_expr.compare("Signedbv") == 0) type_expr = "Real";
-    convert.str(""); // for reuse
 
     // Fix Variable name - sometimes "nondet" name is missing, add it for these cases
-    convert << expr.get(ID_identifier);
-    std::string name_expr = convert.str();
+    std::string name_expr = expr.get(ID_identifier).c_str();
     if (expr.id() == ID_nondet_symbol) {
             if (name_expr.find("nondet") == std::string::npos)
                     name_expr = name_expr.replace(0,7, "symex::nondet");
     }
-    convert.str(""); // for reuse
     if (name_expr.find("__CPROVER_rounding_mode#") != std::string::npos) return "";
 
     // Create the output
     std::ostream out_code(0);
     std::stringbuf code_buf;
     out_code.rdbuf(&code_buf);
-    out_code << SYMBOL_COLOR << "|" << name_expr << "|" << " () " << TYPE_COLOR << type_expr << NORMAL_COLOR;
+    out_code << SYMBOL_COLOR << "|" << name_expr.c_str() << "| () " << TYPE_COLOR << type_expr.c_str() << NORMAL_COLOR;
     std::string key = code_buf.str();
-
+    
     // Insert the variable decl into a map of vars
     //std::cout << "** Debug ** " << key << std::endl;
     if (partition_smt_decl->find(key) == partition_smt_decl->end())
@@ -89,8 +83,7 @@ expr_pretty_printt::operator()(const exprt &expr)
 			out << CONSTANT_COLOR << expr.get(ID_value) << NORMAL_COLOR;
 		} else {
 			if (is_prev_token) out << " ";
-			std::stringstream convert; // stringstream used for the conversion
-			convert << expr.get(ID_value);//add the value of Number to the characters in the stream
+			//convert = expr.get(ID_value).c_str();//add the value of Number to the characters in the stream
 			out << CONSTANT_COLOR << convertBinaryIntoDec(expr) << NORMAL_COLOR;
 			if (!last) {out << " "; is_prev_token = false;}
 			else is_prev_token = true;
