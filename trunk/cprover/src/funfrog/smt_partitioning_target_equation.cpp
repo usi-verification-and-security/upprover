@@ -339,13 +339,14 @@ void smt_partitioning_target_equationt::convert_partition_assumptions(
                 it->cond_literal = decider.const_var(true);
                 // GF
             } else {
+                it->cond_literal = decider.convert(it->cond_expr);
+                
 #               ifdef DEBUG_SSA_SMT_CALL
                 exprt tmp(it->cond_expr);
                 expr_ssa_print_smt_dbg(
                 cout << "Before decider::convert(ASSUME-OUT) --> ",
                         tmp, false);
 #               endif
-                it->cond_literal = decider.convert(it->cond_expr);
             }
         }
     }

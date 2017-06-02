@@ -308,24 +308,29 @@ void symex_assertion_sumt::symex_step(
     break;
   
   case GOTO:
+    if (do_guard_expl)
     {
-      bool store_expln;
-      string str;
-      if (do_guard_expl) {
+        bool store_expln;
+        string str;
+
         store_expln = state.source.pc->guard.has_operands();
         if (store_expln) {
-          try { str = from_expr(state.source.pc->guard.op0()); }
-          catch (const std::string &s) { str = ""; }
+            try { str = from_expr(state.source.pc->guard.op0()); }
+            catch (const std::string &s) { str = ""; }
         }
-      }
       
-      symex_goto(state); // Original code from Cprover follow with break
+        symex_goto(state); // Original code from Cprover follow with break
 
-      if (do_guard_expl &&store_expln && str != "")
-        guard_expln[state.guard.as_expr().get("identifier")] = str;
-
-      break;
+        if (do_guard_expl &&store_expln && str != "")
+        {
+            guard_expln[state.guard.as_expr().get("identifier")] = str;
+        }
+    } else {
+        symex_goto(state); // Original code from Cprover follow with break
     }
+
+    break;
+    
   case ASSUME:
     if(!state.guard.is_false())
     {
@@ -944,10 +949,10 @@ void symex_assertion_sumt::return_assignment_and_mark(
         symex_assign(state, assignment);
         constant_propagation = old_cp;
     } 
-    //# ifdef DEBUG_PARTITIONING
+    # ifdef DEBUG_PARTITIONING
       expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
       expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
-    //# endif
+    # endif
 
     partition_iface.retval_symbol = retval_symbol;
     partition_iface.retval_tmp = retval_tmp;

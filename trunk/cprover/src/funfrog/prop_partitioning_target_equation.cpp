@@ -323,9 +323,9 @@ void prop_partitioning_target_equationt::convert_partition_assumptions(
       if(it->ignore)
         it->cond_literal=const_literal(true);
       else
-      {
+      {          
         it->cond_literal=prop_conv.convert(it->cond_expr);
-        
+                
 #	ifdef DEBUG_SSA_PRINT // Only for prop version!
         exprt tmp(it->cond_expr);  
         //Print "ASSUME-OUT:"

@@ -25,14 +25,17 @@
 
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
-#include <goto-programs/remove_asm.h>
 #include <goto-programs/remove_virtual_functions.h>
-#include <goto-programs/remove_exceptions.h>
 #include <goto-programs/remove_instanceof.h>
 #include <goto-programs/remove_returns.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
+#include <goto-programs/remove_returns.h>
+#include <goto-programs/remove_skip.h>
+#include <goto-programs/remove_exceptions.h>
+#include <goto-programs/remove_asm.h>
 #include <goto-symex/rewrite_union.h>
+#include <goto-programs/mm_io.h>
 #include <goto-symex/adjust_float_expressions.h>
 #include <goto-programs/goto_inline.h>
 #include <goto-programs/show_properties.h>
@@ -109,6 +112,8 @@ bool funfrog_parseoptionst::process_goto_program(
     remove_exceptions(symbol_table, goto_functions);
     // Similar removal of RTTI inspection:
     remove_instanceof(symbol_table, goto_functions);
+    
+    mm_io(symbol_table, goto_functions);
 
     // do partial inlining
     status() << "Partial Inlining" << eom;
@@ -145,6 +150,10 @@ bool funfrog_parseoptionst::process_goto_program(
 
     // add loop ids
     goto_functions.compute_loop_numbers();
+    
+    // remove skips
+    remove_skip(goto_functions);
+    goto_functions.update();
   }
 
   catch(const char *e)
@@ -756,6 +765,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   if (cmdline.isset("verbose-solver")) {
     options.set_option("verbose-solver", cmdline.get_value("verbose-solver"));
   }
+  //options.set_option("simplify-if", false); // Try to avoid compications with if
   //if (cmdline.isset("refine-mode")) {
   //  options.set_option("refine-mode", cmdline.get_value("refine-mode"));
   //}
