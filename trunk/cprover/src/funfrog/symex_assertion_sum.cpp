@@ -19,8 +19,6 @@
 #include "symex_assertion_sum.h"
 #include "expr_pretty_print.h"
 
-//#define DEBUG_PARTITIONING
-
 /*******************************************************************
 
  Function: symex_assertion_sumt::~symex_assertion_sumt
@@ -910,6 +908,19 @@ void symex_assertion_sumt::return_assignment_and_mark(
     // Gets a new symbol per function call:
     get_new_name(retval_symbol_id,ns);
     get_new_name(retval_tmp_id,ns);
+
+// Check the symbol was created correctly    
+#ifdef DEBUG_PARTITIONING
+    if (!_return_vals.empty())
+    {
+        assert("Return value symbol is in use for another call of this function" 
+                && (_return_vals.count(as_string(retval_symbol_id)) == 0));
+        assert("Temp return value symbols are in use for another call of this function" 
+                && (_return_vals.count(as_string(retval_tmp_id)) == 0));
+    }
+    _return_vals.insert(as_string(retval_symbol_id));
+    _return_vals.insert(as_string(retval_tmp_id));
+#endif
     
     // return_value_tmp - create new symbol with versions to support unwinding
     add_symbol(retval_tmp_id, type, false, function_type.source_location());

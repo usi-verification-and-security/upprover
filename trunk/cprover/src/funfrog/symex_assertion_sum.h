@@ -33,6 +33,8 @@
 #include "partitioning_target_equation.h"
 #include "unwind.h"
 
+//#define DEBUG_PARTITIONING // Debug this class
+
 class symex_assertion_sumt : public symex_bmct
 {
 public:
@@ -363,5 +365,9 @@ protected:
     const exprt &vcc_expr,
     const std::string &msg,
     statet &state);
+  
+  #ifdef DEBUG_PARTITIONING
+    std::set<std::string> _return_vals; // Check for duplicated symbol creation
+  #endif
 };
 #endif
