@@ -464,6 +464,7 @@ void funfrog_parseoptionst::help()
 #endif          
   "--list-templates               dump the templates of the functions for user-defined summaries\n"
   "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n"
+  "--dump-query-name <base>       base name for the files where queries are dumped\n"
 //  "\nRefinement options:\n"
 //  "--refine-mode <mode>:\n"
 //  "  0 | \"force-inlining\"         inline every function call\n"
@@ -652,13 +653,19 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("force", cmdline.isset("force"));
   options.set_option("custom", cmdline.get_value("custom"));
   options.set_option("heuristic", cmdline.get_value("heuristic"));
-  if (cmdline.isset("bitwidth")) {                
+  if (cmdline.isset("bitwidth")) {
     options.set_option("bitwidth", cmdline.get_value("bitwidth"));
   } else {
     options.set_option("bitwidth", 8);
   }
   if (cmdline.isset("dump-query"))
       options.set_option("dump-query", true);
+
+  if (cmdline.isset("dump-query-name")) {
+      options.set_option("dump-query-name", cmdline.get_value("dump-query-name"));
+  } else { // Set to empty string and let osmt choose the name
+      options.set_option("dump-query-name", "");
+  }
 
   // always check assertions
   options.set_option("assertions", true);
@@ -674,6 +681,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   } else { // Set to qfuf - defualt
     options.set_option("logic", "qfuf"); 
   }
+
   
   // If not partitions - no itp too, going back to pure cbcm
   if(cmdline.isset("no-partitions"))
