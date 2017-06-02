@@ -944,10 +944,10 @@ void symex_assertion_sumt::return_assignment_and_mark(
         symex_assign(state, assignment);
         constant_propagation = old_cp;
     } 
-    //# ifdef DEBUG_PARTITIONING
+    # ifdef DEBUG_PARTITIONING
       expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
       expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
-    //# endif
+    # endif
 
     partition_iface.retval_symbol = retval_symbol;
     partition_iface.retval_tmp = retval_tmp;
