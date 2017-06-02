@@ -20,6 +20,10 @@ void theory_refinert::initialize()
   if (options.get_bool_option("dump-query"))
       decider->set_dump_query(true);
 
+  const std::string& dump_query_name = options.get_option("dump-query-name");
+  if (dump_query_name != "")
+      decider->set_dump_query_name(dump_query_name);
+
   summarization_context.analyze_functions(ns);
   omega.initialize_summary_info (omega.get_summary_info(), goto_program);
   omega.setup_default_precision(ALL_SUBSTITUTING);

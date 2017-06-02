@@ -73,6 +73,7 @@ void summarizing_checkert::initialize_solver()
   if(options.get_unsigned_int_option("random-seed")) decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
   if (options.get_bool_option("dump-query"))
       decider->set_dump_query(true);
+  decider->set_dump_query_name(options.get_option("dump-query-name"));
 }
 
 void summarizing_checkert::initialize()
