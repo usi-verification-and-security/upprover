@@ -93,6 +93,8 @@ protected:
     void convert_summary(smtcheck_opensmt2t &decider);
     // Convert Gotos of SSA steps
     void convert_goto_instructions(smtcheck_opensmt2t &decider);
+    // Convert constraints
+    void convert_constraints(smtcheck_opensmt2t &decider) const;
 
   
     virtual bool is_smt_encoding() {return true;} // KE: Temp. Just to force virtual for compilation

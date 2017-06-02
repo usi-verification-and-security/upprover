@@ -26,7 +26,7 @@ void smt_symex_target_equationt::convert(smtcheck_opensmt2t &decider)
   convert_assertions(decider);
   convert_goto_instructions(decider);
   convert_io(decider);
-  //convert_constraints(decider);
+  convert_constraints(decider);
   convert_summary(decider);
   
 #ifdef DEBUG_SSA_PRINT
@@ -86,6 +86,20 @@ void smt_symex_target_equationt::convert_assignments(smtcheck_opensmt2t &decider
         }
         
     }
+}
+
+void smt_symex_target_equationt::convert_constraints(smtcheck_opensmt2t &decider) const
+{
+  for(const auto &step : SSA_steps)
+  {
+    if(step.is_constraint())
+    {
+      if(step.ignore)
+        continue;
+
+      decider.set_to_true(step.cond_expr);
+    }
+  }
 }
 
 // Convert a specific partition assumptions of SSA steps
