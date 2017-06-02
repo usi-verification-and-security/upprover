@@ -11,7 +11,6 @@ Author: Ondrej Sery
 #define CPROVER_PARTITIONING_TARGET_EQUATION_H
 
 // Debugging flags:
-//#define DEBUG_SSA_PRINT // Print the SSA encoding + recompile expr_pretty_print class
 //#define DEBUG_SSA // General debug prints
 //#define DEBUG_ENCODING
 //#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
@@ -22,6 +21,7 @@ Author: Ondrej Sery
 
 #include "partition_iface.h"
 #include "summarization_context.h"
+#include "expr_pretty_print.h"
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 

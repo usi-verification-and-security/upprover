@@ -9,7 +9,6 @@
 #include <std_expr.h>
 
 #include "partitioning_target_equation.h"
-#include "expr_pretty_print.h"
 #include "solvers/sat/cnf.h"
 
 
