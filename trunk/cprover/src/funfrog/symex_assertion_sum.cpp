@@ -13,7 +13,7 @@
 #include <expr_util.h>
 #include <goto-symex/goto_symex_state.h>
 #include <pointer-analysis/add_failed_symbols.h>
-//#include <util/rename.h> // KE: we should do rename with it, but I didn't find how yet...
+#include <util/rename.h> // KE: we should do rename with it, but I didn't find how yet...
 
 #include "partitioning_slice.h"
 #include "symex_assertion_sum.h"
@@ -907,11 +907,15 @@ void symex_assertion_sumt::return_assignment_and_mark(
     irep_idt retval_tmp_id(
             as_string(function_id) + "::?return_value_tmp");
     
-    // return_value_tmp - create new symbol
+    // Gets a new symbol per function call:
+    get_new_name(retval_symbol_id,ns);
+    get_new_name(retval_tmp_id,ns);
+    
+    // return_value_tmp - create new symbol with versions to support unwinding
     add_symbol(retval_tmp_id, type, false, function_type.source_location());
     symbol_exprt retval_tmp(retval_tmp_id, type);
 
-    // return_value - create new symbol
+    // return_value - create new symbol with versions to support unwinding
     add_symbol(retval_symbol_id, type, false, function_type.source_location()); // Need to be in the table since rename l0 needs it
     symbol_exprt retval_symbol;	
     level2_rename_and_2ssa(state, retval_symbol_id, type, retval_symbol); // We do rename alone...
@@ -929,10 +933,10 @@ void symex_assertion_sumt::return_assignment_and_mark(
         symex_assign(state, assignment);
         constant_propagation = old_cp;
     } 
-    # ifdef DEBUG_PARTITIONING
+    //# ifdef DEBUG_PARTITIONING
       expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
       expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
-    # endif
+    //# endif
 
     partition_iface.retval_symbol = retval_symbol;
     partition_iface.retval_tmp = retval_tmp;
