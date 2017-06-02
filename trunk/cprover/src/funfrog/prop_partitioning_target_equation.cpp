@@ -285,15 +285,17 @@ void prop_partitioning_target_equationt::convert_partition_guards(
       it->guard_literal=const_literal(false);
     else
     {
+      it->guard_literal=prop_conv.convert(it->guard);
+      
 #     ifdef DEBUG_SSA_PRINT
       //Print "GUARD-OUT:"
       exprt tmp(it->guard);  
-      expr_ssa_print_guard(out_terms , tmp, partition_smt_decl);
-      if (!tmp.is_boolean()) 
+      expr_ssa_print_guard(out_terms, tmp, partition_smt_decl);
+      if (!tmp.is_boolean())
+      {
           terms_counter++; // SSA -> SMT shall be all in a new function
+      }
 #     endif
-
-      it->guard_literal=prop_conv.convert(it->guard);
     }
   }
 }
@@ -322,14 +324,14 @@ void prop_partitioning_target_equationt::convert_partition_assumptions(
         it->cond_literal=const_literal(true);
       else
       {
+        it->cond_literal=prop_conv.convert(it->cond_expr);
+        
 #	ifdef DEBUG_SSA_PRINT // Only for prop version!
         exprt tmp(it->cond_expr);  
         //Print "ASSUME-OUT:"
         expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
         terms_counter++;
 #       endif
-
-        it->cond_literal=prop_conv.convert(it->cond_expr);
       }
     }
   }
@@ -358,14 +360,14 @@ void prop_partitioning_target_equationt::convert_partition_goto_instructions(
                 it->cond_literal=const_literal(true);
             else
             {
+                it->cond_literal=prop_conv.convert(it->cond_expr);
+                
 #           ifdef DEBUG_SSA_PRINT // Only for prop version!
                 exprt tmp(it->cond_expr);
                 //Print "GOTO-OUT:" -- Caused a bug with Global Vars. --
                 expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
                 terms_counter++;
 #           endif
-
-                it->cond_literal=prop_conv.convert(it->cond_expr);
             }           
         }
     }    

@@ -335,7 +335,9 @@ void goto_convertt::do_scanf(
 
               copy(array_copy_statement, OTHER, dest);
               #else
-              exprt lhs=dereference_exprt(ptr, type.subtype());
+              exprt lhs=
+                index_exprt(
+                  dereference_exprt(ptr, type), from_integer(0, index_type()));
               exprt rhs=side_effect_expr_nondett(type.subtype());
               code_assignt assign(lhs, rhs);
               assign.add_source_location()=function.source_location();
@@ -994,7 +996,7 @@ exprt goto_convertt::get_array_argument(const exprt &src)
 
 /*******************************************************************\
 
-Function: goto_convertt::do_array_set
+Function: goto_convertt::do_array_op
 
   Inputs:
 
@@ -1004,7 +1006,8 @@ Function: goto_convertt::do_array_set
 
 \*******************************************************************/
 
-void goto_convertt::do_array_set(
+void goto_convertt::do_array_op(
+  const irep_idt &id,
   const exprt &lhs,
   const exprt &function,
   const exprt::operandst &arguments,
@@ -1013,47 +1016,16 @@ void goto_convertt::do_array_set(
   if(arguments.size()!=2)
   {
     error().source_location=function.find_source_location();
-    error() << "array_set expects two arguments" << eom;
+    error() << id << " expects two arguments" << eom;
     throw 0;
   }
 
-  codet array_set_statement;
-  array_set_statement.set_statement(ID_array_set);
-  array_set_statement.operands()=arguments;
+  codet array_op_statement;
+  array_op_statement.set_statement(id);
+  array_op_statement.operands()=arguments;
+  array_op_statement.add_source_location()=function.source_location();
 
-  copy(array_set_statement, OTHER, dest);
-}
-
-/*******************************************************************\
-
-Function: goto_convertt::do_array_copy
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void goto_convertt::do_array_copy(
-  const exprt &lhs,
-  const exprt &function,
-  const exprt::operandst &arguments,
-  goto_programt &dest)
-{
-  if(arguments.size()!=2)
-  {
-    error().source_location=function.find_source_location();
-    error() << "array_copy expects two arguments" << eom;
-    throw 0;
-  }
-
-  codet array_copy_statement;
-  array_copy_statement.set_statement(ID_array_copy);
-  array_copy_statement.operands()=arguments;
-
-  copy(array_copy_statement, OTHER, dest);
+  copy(array_op_statement, OTHER, dest);
 }
 
 /*******************************************************************\
@@ -1106,6 +1078,7 @@ void goto_convertt::do_array_equal(
     assignment.lhs()=lhs;
     assignment.rhs()=binary_exprt(
       lhs_array, ID_array_equal, rhs_array, lhs.type());
+    assignment.add_source_location()=function.source_location();
 
     convert(assignment, dest);
   }
@@ -1437,19 +1410,21 @@ void goto_convertt::do_function_call_symbol(
     assignment.add_source_location()=function.source_location();
     copy(assignment, ASSIGN, dest);
   }
-  else if(has_prefix(id2string(identifier), CPROVER_PREFIX "array_set"))
-  {
-    do_array_set(lhs, function, arguments, dest);
-  }
-  else if(identifier==CPROVER_PREFIX "array_equal" ||
-          identifier=="__CPROVER::array_equal")
+  else if(identifier==CPROVER_PREFIX "array_equal")
   {
     do_array_equal(lhs, function, arguments, dest);
   }
-  else if(identifier==CPROVER_PREFIX "array_copy" ||
-          identifier=="__CPROVER::array_equal")
+  else if(identifier==CPROVER_PREFIX "array_set")
   {
-    do_array_copy(lhs, function, arguments, dest);
+    do_array_op(ID_array_set, lhs, function, arguments, dest);
+  }
+  else if(identifier==CPROVER_PREFIX "array_copy")
+  {
+    do_array_op(ID_array_copy, lhs, function, arguments, dest);
+  }
+  else if(identifier==CPROVER_PREFIX "array_replace")
+  {
+    do_array_op(ID_array_replace, lhs, function, arguments, dest);
   }
   else if(identifier=="printf")
   /*
@@ -1555,8 +1530,18 @@ void goto_convertt::do_function_call_symbol(
       throw 0;
     }
 
-    const irep_idt description=
-      "assertion "+id2string(get_string_constant(arguments[3]));
+    irep_idt description;
+    try
+    {
+      description="assertion "+id2string(get_string_constant(arguments[3]));
+    }
+    catch(int)
+    {
+      // we might be building newlib, where __assert_func is passed
+      // a pointer-typed symbol; the warning will still have been
+      // printed
+      description="assertion";
+    }
 
     goto_programt::targett t=dest.add_instruction(ASSERT);
     t->guard=false_exprt();

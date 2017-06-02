@@ -459,6 +459,11 @@ void c_typecheck_baset::typecheck_expr_main(exprt &expr)
           expr.id()==ID_gcc_asm_clobbered_register)
   {
   }
+  else if(expr.id()==ID_lshr || expr.id()==ID_ashr ||
+          expr.id()==ID_assign_lshr || expr.id()==ID_assign_ashr)
+  {
+    // already type checked
+  }
   else
   {
     err_location(expr);
@@ -2473,9 +2478,11 @@ exprt c_typecheck_baset::do_special_functions(
       throw 0;
     }
 
-    exprt pointer_offset_expr=exprt(ID_pointer_offset, expr.type());
-    pointer_offset_expr.operands()=expr.arguments();
+    exprt pointer_offset_expr=pointer_offset(expr.arguments().front());
     pointer_offset_expr.add_source_location()=source_location;
+
+    if(expr.type()!=pointer_offset_expr.type())
+      pointer_offset_expr.make_typecast(expr.type());
 
     return pointer_offset_expr;
   }

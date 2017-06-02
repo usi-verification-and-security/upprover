@@ -13,7 +13,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_expr.h>
 #include <util/prefix.h>
 
-//#include <analyses/dirty.h> KE: remove dirty analysis
+//#include <analyses/dirty.h>
 
 #include "goto_symex_state.h"
 
@@ -767,7 +767,6 @@ bool goto_symex_statet::l2_thread_read_encoding(
           symex_targett::assignment_typet::PHI);
     }
 
-
     set_ssa_indices(ssa_l1, ns, L2);
     expr=ssa_l1;
 
@@ -844,13 +843,17 @@ bool goto_symex_statet::l2_thread_write_encoding(
 
   // record a shared write
   if (symex_target != NULL)
+  {
       symex_target->shared_write(
         guard.as_expr(),
         expr,
         atomic_section_id,
         source);
+  }
   else
+  {
       printf(";; Warning: shared write not recorded\n");
+  }      
 
   // do we have threads?
   return threads.size()>1;
@@ -1143,4 +1146,3 @@ void goto_symex_statet::switch_to_thread(unsigned t)
 
   guard=threads[t].guard;
 }
-

@@ -621,8 +621,7 @@ const std::string exprt::print_number_2smt() const
                return ans_cand; // If the translation makes sense - returns it
            } else { // Else try to get something closer.
                double temp_double = temp.to_double(); if (temp_double == 0) return "0";
-               std::ostringstream s; s << temp_double;
-               return s.str();
+               return std::to_string(temp_double);
            }
         }
     }
@@ -630,6 +629,7 @@ const std::string exprt::print_number_2smt() const
 
   return "";
 }
+
 
 /*******************************************************************\
 

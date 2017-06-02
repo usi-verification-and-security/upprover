@@ -179,7 +179,7 @@ protected:
 
 public:
   void get_l1_name(exprt &expr) const; // KE: moved to public
-  
+
   // uses level 1 names, and is used to
   // do dereferencing
   value_sett value_set;
@@ -342,4 +342,5 @@ public:
   bool record_events;
   //const dirtyt * dirty;
 };
+
 #endif // CPROVER_GOTO_SYMEX_GOTO_SYMEX_STATE_H

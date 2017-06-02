@@ -1,8 +1,5 @@
 CBMC Version 5.7 from Git - 64-bit version (CBMC version 5.7 64-bit x86_64 linux)
-Date: 26/05/2017
-
-** CURRENTLY ONLY WORKS WITH OPENSMT2 OLD VERSION **
-git checkout 2df821308c568b0d22b4937b79a6d3ffa015cea6
+Date: 02/06/2017
 
 File Changed:
 =============
