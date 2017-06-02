@@ -297,7 +297,7 @@ void symex_assertion_sumt::symex_step(
   case END_FUNCTION:
 
     //decrement_unwinding_counter(); 
-    store_return_value(state, get_current_deferred_function());
+    //store_return_value(state, get_current_deferred_function());
     end_symex(state);
     break;
   
@@ -372,7 +372,10 @@ void symex_assertion_sumt::symex_step(
     
   case RETURN:
     if(!state.guard.is_false())
+    {
+      store_return_value(state, get_current_deferred_function());  
       return_assignment(state);
+    }
     
     state.source.pc++;
     break;
@@ -935,7 +938,8 @@ void symex_assertion_sumt::return_assignment_and_mark(
     add_symbol(retval_symbol_id, type, false, function_type.source_location()); // Need to be in the table since rename l0 needs it
     symbol_exprt retval_symbol;	
     level2_rename_and_2ssa(state, retval_symbol_id, type, retval_symbol); // We do rename alone...
-
+    
+    // Connect the return value to the variable in the calling site 
     if (!skip_assignment) {
         code_assignt assignment(*lhs, retval_symbol);
         //expr_pretty_print(std::cout << "lhs: ", assignment.lhs()); std::cout << std::endl;
