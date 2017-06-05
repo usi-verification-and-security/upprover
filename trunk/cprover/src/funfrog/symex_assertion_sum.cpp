@@ -297,8 +297,9 @@ void symex_assertion_sumt::symex_step(
   case END_FUNCTION:
 
     //decrement_unwinding_counter(); 
-    //store_return_value(state, get_current_deferred_function());
+    store_return_value(state, get_current_deferred_function());
     end_symex(state);
+    is_wait_for_end_func = false; // All OK (Return eventually End_Function)
     break;
   
   case LOCATION:
@@ -372,9 +373,9 @@ void symex_assertion_sumt::symex_step(
     
   case RETURN:
     if(!state.guard.is_false())
-    {
-      store_return_value(state, get_current_deferred_function());  
+    { 
       return_assignment(state);
+      is_wait_for_end_func = true; // Return requires end of func
     }
     
     state.source.pc++;
@@ -388,8 +389,9 @@ void symex_assertion_sumt::symex_step(
     break;
 
   case FUNCTION_CALL:
+    assert(!is_wait_for_end_func); // Cannot start a new function if didn't close the old one
     if(!state.guard.is_false())
-    {
+    {  
       code_function_callt deref_code=
         to_code_function_call(instruction.code);
       // Process the function call according to the call_summary
