@@ -35,7 +35,7 @@ public:
     assert(matching_type == NO_ASSERT_GROUPING); 
     return *target_stack;
   }
-  const goto_programt::const_targett& get_location() const {
+  const goto_programt::const_targett& get_location() const { 
     assert(matching_type != ANY && matching_type != MULTI_ASSERT);
     return location;
   }
@@ -108,7 +108,12 @@ public:
   {
     return (matching_type == MULTI_ASSERT);
   }
-
+ 
+  bool is_single_assert() const
+  {
+      return (!((matching_type == MULTI_ASSERT) || (matching_type == ANY)));
+  }
+  
 private:
   typedef enum {ANY, ASSERT_GROUPING, NO_ASSERT_GROUPING, MULTI_ASSERT} matching_typet;
   
