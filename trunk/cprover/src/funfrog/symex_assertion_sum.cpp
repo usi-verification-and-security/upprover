@@ -1551,12 +1551,22 @@ void symex_assertion_sumt::phi_function(
   statet &dest_state)
 {
   // go over all variables to see what changed
-  unordered_set<ssa_exprt, irep_hash> variables;
+  std::unordered_set<ssa_exprt, irep_hash> variables;
 
   goto_state.level2_get_variables(variables);
   dest_state.level2.get_variables(variables);
 
-  for(unordered_set<ssa_exprt, irep_hash>::const_iterator
+  guardt diff_guard;
+
+  if(!variables.empty())
+  {
+    diff_guard=goto_state.guard;
+
+    // this gets the diff between the guards
+    diff_guard-=dest_state.guard;
+  }
+
+  for(std::unordered_set<ssa_exprt, irep_hash>::const_iterator
       it=variables.begin();
       it!=variables.end();
       it++)
@@ -1582,7 +1592,8 @@ void symex_assertion_sumt::phi_function(
 
     // shared?
     if(dest_state.atomic_section_id==0 &&
-       dest_state.threads.size()>=2 && symbol.is_shared())
+       dest_state.threads.size()>=2 &&
+       (symbol.is_shared()))
       continue; // no phi nodes for shared stuff
 
     // don't merge (thread-)locals across different threads, which
@@ -1602,8 +1613,9 @@ void symex_assertion_sumt::phi_function(
       if(p_it!=goto_state.propagation.values.end())
         goto_state_rhs=p_it->second;
       else
-        to_ssa_expr(goto_state_rhs).set_level_2(goto_state.level2_current_count(l1_identifier));
-      }
+        to_ssa_expr(goto_state_rhs).set_level_2(
+          goto_state.level2_current_count(l1_identifier));
+    }
 
     {
       goto_symex_statet::propagationt::valuest::const_iterator p_it=
@@ -1612,9 +1624,10 @@ void symex_assertion_sumt::phi_function(
       if(p_it!=dest_state.propagation.values.end())
         dest_state_rhs=p_it->second;
       else
-        to_ssa_expr(dest_state_rhs).set_level_2(dest_state.level2.current_count(l1_identifier));
+        to_ssa_expr(dest_state_rhs).set_level_2(
+          dest_state.level2.current_count(l1_identifier));
         //dest_state_rhs=symbol_exprt(dest_state.level2.current_name(l1_identifier), type);
-      }
+    }
 
     exprt rhs;
 
@@ -1624,12 +1637,7 @@ void symex_assertion_sumt::phi_function(
       rhs=dest_state_rhs;
     else
     {
-      guardt tmp_guard(goto_state.guard);
-
-      // this gets the diff between the guards
-      tmp_guard-=dest_state.guard;
-
-      rhs=if_exprt(tmp_guard.as_expr(), goto_state_rhs, dest_state_rhs);
+      rhs=if_exprt(diff_guard.as_expr(), goto_state_rhs, dest_state_rhs);
       do_simplify(rhs);
     }
 
