@@ -269,12 +269,12 @@ void symex_assertion_sumt::symex_step(
   assert(!state.threads.empty());
   assert(!state.call_stack().empty());
 
-//#ifdef DEBUG_PARTITIONING
+#ifdef DEBUG_PARTITIONING
   std::cout << "\ninstruction type is " << state.source.pc->type << '\n';
   std::cout << "Location: " << state.source.pc->source_location << '\n';
   std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << '\n';
   std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << '\n';
-//#endif
+#endif
 
   const goto_programt::instructiont &instruction=*state.source.pc;
   loc++;
@@ -359,8 +359,8 @@ void symex_assertion_sumt::symex_step(
         vcc(tmp, msg, state);
         /* END: This is the code from ASSERT originally */
         
-        if ((single_assertion_check) ||
-            (loc >= last_assertion_loc && max_unwind <= 1))
+        //if ((single_assertion_check) || // KE: Removed, causes a bug in unwinding
+        if (loc >= last_assertion_loc && max_unwind <= 1)
         {
           end_symex(state);
           return;
@@ -955,10 +955,10 @@ void symex_assertion_sumt::return_assignment_and_mark(
         symex_assign(state, assignment);
         constant_propagation = old_cp;
     } 
-//    # ifdef DEBUG_PARTITIONING
+    # ifdef DEBUG_PARTITIONING
       expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
       expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
-//    # endif
+    # endif
 
     partition_iface.retval_symbol = retval_symbol;
     partition_iface.retval_tmp = retval_tmp;
