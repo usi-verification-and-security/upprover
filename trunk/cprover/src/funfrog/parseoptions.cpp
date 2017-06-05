@@ -579,6 +579,15 @@ bool funfrog_parseoptionst::check_function_summarization(
         return 1;
       }
     } 
+    else if(!cmdline.isset("all-claims") && 
+              !cmdline.isset("claimset") && 
+              !cmdline.isset("claims-order") &&
+              !cmdline.isset("claim"))
+    {
+      cbmc_error_interface("A specific claim is not set, nor any other claim specification is set. ");
+      cbmc_error_interface("\n** Please Re-run with a claim number or other claim specification arguments **");
+      return 1;        
+    }
     
     if (cmdline.isset("claims-opt"))
       store_claims(ns, claim_map, claim_numbers);
