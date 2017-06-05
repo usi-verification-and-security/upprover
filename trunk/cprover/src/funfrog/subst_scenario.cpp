@@ -218,6 +218,7 @@ bool subst_scenariot::is_assertion_in_loop(const unsigned ass_loc)
   for (unsigned j = 0; j < goto_ranges.size(); j++){
     std::pair<unsigned, unsigned> r = goto_ranges[j];
     if (r.first <= ass_loc && ass_loc <= r.second){
+        return true;
     }
   }
 
@@ -297,6 +298,7 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
   std::cout << "Last assertion location: " << last_assertion_loc << " / " << global_loc << " ( " << proc_count << ")" << std::endl;
 
   single_assertion_check = (count == 1) && !is_assertion_in_loop(last_assertion_loc);
+  std::cout << ";;;; Is assertion in loop? " << (!is_assertion_in_loop(last_assertion_loc)) << std::endl;
 
   functions_root.mark_enabled_assertions(assertion, 0, true, last_assertion_loc);
 }
