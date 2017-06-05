@@ -216,8 +216,6 @@ void check_claims(
     		    std::string("%) ...")) << res.eom;
     }
 
-    std::ofstream out;
-
     bool pass = false;
     if (multi_assert){
       bool ok = false;
