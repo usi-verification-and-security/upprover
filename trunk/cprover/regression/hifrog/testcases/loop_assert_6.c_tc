@@ -1,0 +1,4 @@
+benchmarks/loop_assert_6.c,prop,--claim,1,--unwind,2
+benchmarks/loop_assert_6.c,qflra,--claim,1,--unwind,2
+benchmarks/loop_assert_6.c,prop,--claim,2,--unwind,2
+benchmarks/loop_assert_6.c,qflra,--claim,2,--unwind,2
