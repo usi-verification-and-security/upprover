@@ -13,7 +13,7 @@ int main()
     while(1)
     {
         assert(a0 != 5);
-        a0 = 5;
+        a0 = calculate_output(a0);
     }
 
     assert(a0 < 5);
