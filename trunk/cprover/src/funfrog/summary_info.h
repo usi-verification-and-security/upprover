@@ -33,7 +33,7 @@ public:
   summary_infot(summary_infot *_parent, unsigned _call_location)
           : function_id(ID_nil), parent(_parent), assertion_in_subtree(false),
             precision(HAVOC), call_location(_call_location),
-            preserved_node(false), preserved_edge(false), unwind_exceeded(false), recursion_nondet(false) { }
+            preserved_node(false), preserved_edge(false), unwind_exceeded(false), recursion_nondet(false), in_loop(false) { }
 
   void clear() { call_sites.clear(); }
 
@@ -127,6 +127,14 @@ public:
     return recursion_nondet;
   }
 
+  void set_in_loop(bool _in_loop){
+    in_loop = _in_loop;
+  }
+
+  bool is_in_loop(){
+    return in_loop;
+  }
+
 private:
   call_sitest call_sites;
   location_mapt assertions;
@@ -142,6 +150,7 @@ private:
   bool preserved_edge;
   bool unwind_exceeded;
   bool recursion_nondet;
+  bool in_loop;
   
   void set_initial_precision(
         summary_precisiont default_precision,

@@ -359,8 +359,8 @@ void symex_assertion_sumt::symex_step(
         vcc(tmp, msg, state);
         /* END: This is the code from ASSERT originally */
         
-        //if ((single_assertion_check) || // KE: Removed, causes a bug in unwinding
-        if (loc >= last_assertion_loc && max_unwind <= 1)
+        if ((single_assertion_check  && !get_current_deferred_function().summary_info.is_in_loop()) 
+           || (loc >= last_assertion_loc && max_unwind <= 1))
         {
           end_symex(state);
           return;

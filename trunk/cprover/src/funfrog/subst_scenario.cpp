@@ -46,6 +46,16 @@ void subst_scenariot::initialize_summary_info(
              global_loc - (dst_location - tgt_location),
              global_loc));
         //std::cout << "backwards goto: " << global_loc - (dst_location - tgt_location) << " -> " << global_loc <<"\n";
+        for (call_sitest::iterator it = summary_info.get_call_sites().begin();
+            it != summary_info.get_call_sites().end(); ++it)
+          {
+             if ((it->first)->location_number < dst_location &&
+                 (it->first)->location_number > tgt_location)
+               {
+                  (it->second).set_in_loop(true);
+                  // TODO: also, all nested function calls
+               }
+          }
       } else {
         goto_ranges_upwards.push_back(tgt_location);
       }
