@@ -65,8 +65,7 @@ public:
           single_assertion_check(_single_assertion_check),
           use_slicing(_use_slicing),
 	  do_guard_expl(_do_guard_expl),
-          use_smt(_use_smt),
-          is_wait_for_end_func(false)
+          use_smt(_use_smt)
           {set_message_handler(_message_handler);}
           
   virtual ~symex_assertion_sumt();
@@ -165,7 +164,9 @@ private:
   
   bool use_smt; // for slicing 
   
-  bool is_wait_for_end_func; // To see the End_Function is not missing
+  // To see the End_Function is not missing
+  bool is_wait_for_end_func;
+  long wait_for_end_func;
 
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
