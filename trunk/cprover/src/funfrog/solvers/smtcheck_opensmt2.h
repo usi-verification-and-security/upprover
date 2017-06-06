@@ -7,7 +7,7 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_OPENSMT2_H
 #define CPROVER_SMTCHECK_OPENSMT2_H
 
-//#define DEBUG_SMT4SOLVER // TO PRINT FROM HIFROG ENCODING + ITE DEF.
+#define DEBUG_SMT4SOLVER // TO PRINT FROM HIFROG ENCODING + ITE DEF.
 
 #include <map>
 #include <vector>
@@ -130,7 +130,16 @@ public:
   }
 
   bool has_unsupported_vars() { return unsupported2var > 0; } // Common to all
-
+  
+  static bool is_cprover_rounding_mode_var(const exprt& e)
+  {
+      return is_cprover_rounding_mode_var(id2string(e.get(ID_identifier)));
+  }
+  static bool is_cprover_rounding_mode_var(const std::string str)
+  {
+      return (str.find("__CPROVER_rounding_mode!") != std::string::npos);
+  }
+  
   // Common to all
   std::set<PTRef>* getVars(); // Get all variables from literals for the counter example phase
 

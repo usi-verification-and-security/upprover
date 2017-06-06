@@ -11,7 +11,7 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2_cuf.h"
 
 //#define SMT_DEBUG
-//#define DEBUG_SMT_BB
+#define DEBUG_SMT_BB
 
 void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
 {
@@ -456,32 +456,25 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
                     bvlogic->mkBVEq(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1])));
         
-    } else if (_id == ID_mod) {
-#ifdef DEBUG_SMT_BB
-            cout << "; IT IS A MOD (%) " << endl;
-#endif        
-        ptl = bvlogic->mkBVMod(convert_bv(expr.operands()[0]),
-                                    convert_bv(expr.operands()[1]));
-    
-    } else if ((_id == ID_div) || (_id == ID_floatbv_div)) {
-#ifdef DEBUG_SMT_BB
-            cout << "; IT IS A DIV " << endl;
-#endif
-        ptl = bvlogic->mkBVDiv(convert_bv(expr.operands()[0]),
-                                    convert_bv(expr.operands()[1]));
-    
     } else {
 
         // For all operators that can have more than 2 args
         vec<PTRef> args;
         int i = 0;
         forall_operands(it, expr)
-        {
-            PTRef cp = convert_bv(*it);
-            assert(cp != PTRef_Undef);
-            args.push(cp);
+        {   
+            if (is_cprover_rounding_mode_var(*it)) 
+            {
+                // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
+            }
+            else 
+            {
+                PTRef cp = convert_bv(*it);
+                assert(cp != PTRef_Undef);
+                args.push(cp);
 
-            i++;
+                i++;
+            }
         }
 
 #ifdef DEBUG_SMT_BB
@@ -605,6 +598,18 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             
             ptl = (args.size() > 2) ?
                 split_exprs_bv(_id, args) : bvlogic->mkBVTimes(args);
+        
+        } else if (_id == ID_mod) {
+            
+            assert(args.size() <= 2);
+            ptl = bvlogic->mkBVMod(convert_bv(expr.operands()[0]),
+                                    convert_bv(expr.operands()[1]));
+    
+        } else if ((_id == ID_div) || (_id == ID_floatbv_div)) {
+
+            assert(args.size() <= 2);
+            ptl = bvlogic->mkBVDiv(convert_bv(expr.operands()[0]),
+                                    convert_bv(expr.operands()[1]));
                 
         } else {
             
@@ -922,39 +927,15 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         forall_operands(it, expr)
         {
             // KE: recursion in case the expr is not simple - shall be in a visitor
-            if (id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode!")!=std::string::npos) {
+            if (is_cprover_rounding_mode_var(*it)) {
                 // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
             } else { // All the rest of the operators
                 literalt cl = convert(*it);
                 PTRef cp = literals[cl.var_no()];
                 assert(cp != PTRef_Undef);
                 args.push(cp);
-#ifdef DEBUG_SMT2SOLVER
-                char *s = logic->printTerm(cp);
-                cout << "; On inner iteration " << i
-                     << " Op to command is var no " << cl.var_no()
-                     << " inner index " << cp.x
-                     << " with hash code " << (*it).full_hash()
-                     << " and the other one " << (*it).hash()
-                     << " in address " << (void *)&(*it)
-                     << " of term " << s
-                     << " from |" << (*it).get(ID_identifier)
-                     << "| these should be the same !" << endl; // Monitor errors in the table!
-
-                // Auto catch this kind if problem and throws and assert!
-                if ((*it).id()==ID_symbol || (*it).id()==ID_nondet_symbol) {
-                    std::stringstream convert, convert2; // stringstream used for the conversion
-                    convert << s; std::string str_expr1 = convert.str();
-                    convert2 << "|" << (*it).get(ID_identifier) << "|"; std::string str_expr2 = convert2.str();
-                    str_expr2.erase(std::remove(str_expr2.begin(),str_expr2.end(),'\\'),str_expr2.end());
-                    if ((*it).id() == ID_nondet_symbol && str_expr2.find("nondet") == std::string::npos)
-                        str_expr2 = str_expr2.replace(1,7, "symex::nondet");
-                    assert(str_expr1.compare(str_expr2) == 0);
-                }
-                free(s);
-#endif
+                i++; // Only if really add an item to mult/div inc the counter
             }
-            i++;
         }
 
         PTRef ptl;

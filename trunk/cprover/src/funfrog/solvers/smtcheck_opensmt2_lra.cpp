@@ -329,8 +329,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         bool is_no_support = false;
         forall_operands(it, expr)
         {	// KE: recursion in case the expr is not simple - shall be in a visitor
-            bool is_builtin_rounding_mode =
-                            (id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode!")!=std::string::npos);
+            bool is_builtin_rounding_mode = is_cprover_rounding_mode_var(*it);
             if ((is_div_wtrounding && i >= 2) || is_builtin_rounding_mode)
             {
                 // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
@@ -345,11 +344,13 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                 }
             }
             else
-            { // All the rest of the operators
+            { 
+                // All the rest of the operators
                 literalt cl = convert(*it);
                 PTRef cp = literals[cl.var_no()];
                 assert(cp != PTRef_Undef);
                 args.push(cp);
+                i++; // Only if really add an item to mult/div inc the counter
 #ifdef SMT_DEBUG
                 char *s = logic->printTerm(cp);
                 cout << "; On inner iteration " << i
@@ -375,7 +376,6 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                 }
                 free(s);
 #endif
-                i++; // Only if really add an item to mult/div inc the counter
             }
         }
 

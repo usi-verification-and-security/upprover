@@ -342,41 +342,18 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
         vec<PTRef> args;
         int i = 0;
         forall_operands(it, expr)
-        {	// KE: recursion in case the expr is not simple - shall be in a visitor
-			if (id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode!")!=std::string::npos) {
-				// Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
-			} else { // All the rest of the operators
-				literalt cl = convert(*it);
-				PTRef cp = literals[cl.var_no()];
-				assert(cp != PTRef_Undef);
-	 			args.push(cp);
-#ifdef DEBUG_SMT_LRA
-	 			char *s = logic->printTerm(cp);
-				cout << "; On inner iteration " << i
-						<< " Op to command is var no " << cl.var_no()
-						<< " inner index " << cp.x
-						<< " with hash code " << (*it).full_hash()
-						<< " and the other one " << (*it).hash()
-						<< " in address " << (void *)&(*it)
-						<< " of term " << s
-						<< " from |" << (*it).get(ID_identifier)
-						<< "| these should be the same !" << endl; // Monitor errors in the table!
-
-				// Auto catch this kind if problem and throws and assert!
-				if((*it).id()==ID_symbol || (*it).id()==ID_nondet_symbol){
-					std::stringstream convert, convert2; // stringstream used for the conversion
-					convert << s; std::string str_expr1 = convert.str();
-					convert2 << "|" << (*it).get(ID_identifier) << "|"; std::string str_expr2 = convert2.str();
-					str_expr2.erase(std::remove(str_expr2.begin(),str_expr2.end(),'\\'),str_expr2.end());
-					if((*it).id() == ID_nondet_symbol && str_expr2.find("nondet") == std::string::npos)
-						str_expr2 = str_expr2.replace(1,7, "symex::nondet");
-					assert(str_expr1.compare(str_expr2) == 0);
-				}
-				free(s);
-#endif
-			}
-			i++;
-		}
+        {	
+            // KE: recursion in case the expr is not simple - shall be in a visitor
+            if (is_cprover_rounding_mode_var(*it)) {
+                // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
+            } else { // All the rest of the operators
+                literalt cl = convert(*it);
+                PTRef cp = literals[cl.var_no()];
+                assert(cp != PTRef_Undef);
+                args.push(cp);
+                i++; // Only if really add an item to mult/div inc the counter
+            }
+        }
 
         PTRef ptl;
         if (_id==ID_notequal) {
