@@ -269,12 +269,12 @@ void symex_assertion_sumt::symex_step(
   assert(!state.threads.empty());
   assert(!state.call_stack().empty());
 
-//#ifdef DEBUG_PARTITIONING
+#ifdef DEBUG_PARTITIONING
   std::cout << "\ninstruction type is " << state.source.pc->type << '\n';
   std::cout << "Location: " << state.source.pc->source_location << '\n';
   std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << '\n';
   std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << '\n';
-//#endif
+#endif
 
   const goto_programt::instructiont &instruction=*state.source.pc;
   loc++;
