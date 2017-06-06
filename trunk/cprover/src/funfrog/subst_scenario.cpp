@@ -305,11 +305,10 @@ void subst_scenariot::setup_last_assertion_loc(const assertion_infot& assertion)
       last_assertion_loc = r.second;
     }
   }
-  std::cout << "Last assertion location: " << last_assertion_loc << " / " << global_loc << " ( " << proc_count << ")" << std::endl;
+  std::cout << "Last assertion location: " << last_assertion_loc << " / " << global_loc << " (" << proc_count << ")" << std::endl;
 
   single_assertion_check = (count == 1) && !is_assertion_in_loop(last_assertion_loc);
-  std::cout << ";;;; Is assertion in loop? " << (!is_assertion_in_loop(last_assertion_loc)) << std::endl;
-
+  
   functions_root.mark_enabled_assertions(assertion, 0, true, last_assertion_loc);
 }
 
