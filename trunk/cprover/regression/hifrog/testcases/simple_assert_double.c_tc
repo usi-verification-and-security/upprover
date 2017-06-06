@@ -1,4 +1,4 @@
-benchmarks/simple_assert_double.c,prop
-benchmarks/simple_assert_double.c,qflra
-benchmarks/simple_assert_double.c,qfuf
-benchmarks/simple_assert_double.c,qfcuf
+benchmarks/simple_assert_double.c,prop,--claim,1
+benchmarks/simple_assert_double.c,qflra,--claim,1
+benchmarks/simple_assert_double.c,qfuf,--claim,1
+benchmarks/simple_assert_double.c,qfcuf,--claim,1

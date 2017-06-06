@@ -32,21 +32,6 @@ int choice(int a, int b) {
 int main() {
     int x, y, t;
 
-//    x = getchar();
-//    y = getchar();
-
-//    if (x == EOF || y == EOF)
-//        return 0;
-
-//    t = choice(x, y);
-//    assert (t == x || t == y);
-
-//    t = choice(1, 1);
-//    assert (t == 1);
-
     t = choice(10, 20);
     assert (t >= 10 || t <= 20);
-
-//    t = choice(-1, -1);
-//    assert (t == ERROR);
 }

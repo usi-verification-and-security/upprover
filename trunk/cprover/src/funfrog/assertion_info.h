@@ -109,6 +109,9 @@ public:
     return (matching_type == MULTI_ASSERT);
   }
  
+  /* For prints notify which assert was checked in the end of each claim check 
+   This returns true if user used --claim to specify a claim number (else false)
+   */
   bool is_single_assert() const
   {
       return (!((matching_type == MULTI_ASSERT) || (matching_type == ANY)));

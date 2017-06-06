@@ -149,10 +149,11 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   {
     status() << ("Assertion(s) hold trivially.") << eom;
     report_success();
-
-#ifdef PRODUCE_PROOF    
-    if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
-        status() << "\n\nChecked Assertion: " <<
+    
+#ifdef PRODUCE_PROOF      
+    if (assertion.is_single_assert()) // If Any or Multi cannot use get_location()
+        status() << ((assertion.is_assert_grouping()) 
+                ? "\n\nMain Checked Assertion: " : "\n\nChecked Assertion: ") <<
             "\n  file " << assertion.get_location()->source_location.get_file() <<
             " line " << assertion.get_location()->source_location.get_line() <<
             " function " << assertion.get_location()->source_location.get_function() << 
@@ -324,7 +325,8 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
   
 #ifdef PRODUCE_PROOF  
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
-        status() << "\n\nChecked Assertion: " <<
+        status() << ((assertion.is_assert_grouping()) 
+                ? "\n\nMain Checked Assertion: " : "\n\nChecked Assertion: ") <<
               "\n  file " << assertion.get_location()->source_location.get_file() <<
               " line " << assertion.get_location()->source_location.get_line() <<
               " function " << assertion.get_location()->source_location.get_function() << 
@@ -476,7 +478,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
  
 #ifdef PRODUCE_PROOF  
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
-        status() << "\n\nChecked Assertion: " <<
+        status() << ((assertion.is_assert_grouping()) 
+                ? "\n\nMain Checked Assertion: " : "\n\nChecked Assertion: ") <<
               "\n  file " << assertion.get_location()->source_location.get_file() <<
               " line " << assertion.get_location()->source_location.get_line() <<
               " function " << assertion.get_location()->source_location.get_function() << 
@@ -623,7 +626,8 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
  
 #ifdef PRODUCE_PROOF 
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
-        status() << "\n\nChecked Assertion: " <<
+        status() << ((assertion.is_assert_grouping()) 
+                ? "\n\nMain Checked Assertion: " : "\n\nChecked Assertion: ") <<
               "\n  file " << assertion.get_location()->source_location.get_file() <<
               " line " << assertion.get_location()->source_location.get_line() <<
               " function " << assertion.get_location()->source_location.get_function() << 

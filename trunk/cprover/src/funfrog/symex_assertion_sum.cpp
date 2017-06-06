@@ -348,22 +348,27 @@ void symex_assertion_sumt::symex_step(
     if(!state.guard.is_false())
     {
       if (get_current_deferred_function().summary_info.is_assertion_enabled(state.source.pc)) {
-        
-        /* This is the code from ASSERT originally */
-        std::string msg=id2string(state.source.pc->source_location.get_comment());
-        if(msg=="") 
-            msg="assertion";
-        
-        exprt tmp(instruction.guard);
-        clean_expr(tmp, state, false);
-        vcc(tmp, msg, state);
-        /* END: This is the code from ASSERT originally */
-        
-        if ((single_assertion_check  && !get_current_deferred_function().summary_info.is_in_loop()) 
-           || (loc >= last_assertion_loc && max_unwind <= 1))
+          
+        // Skip asserts that are not currently being checked
+        if (current_assertion->assertion_matches(state.depth, state.source.pc))
         {
-          end_symex(state);
-          return;
+            /* This is the code from ASSERT originally */
+            std::string msg=id2string(state.source.pc->source_location.get_comment());
+            if(msg=="") 
+                msg="assertion";
+
+            exprt tmp(instruction.guard);
+            clean_expr(tmp, state, false);
+            vcc(tmp, msg, state);
+            /* END: This is the code from ASSERT originally */
+
+            /* Optimization to remove code that after the current checked assert + remove any other asserts */
+            if ((single_assertion_check  && !get_current_deferred_function().summary_info.is_in_loop()) 
+               || (loc >= last_assertion_loc && max_unwind <= 1))
+            {
+              end_symex(state);
+              return;
+            }
         }
       }
     }
