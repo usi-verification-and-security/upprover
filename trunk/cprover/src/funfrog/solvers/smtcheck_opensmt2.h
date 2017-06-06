@@ -139,6 +139,14 @@ public:
   {
       return (str.find("__CPROVER_rounding_mode!") != std::string::npos);
   }
+  static bool is_cprover_builtins_var(const exprt& e)
+  {
+      return is_cprover_builtins_var(id2string(e.get(ID_identifier)));
+  }
+  static bool is_cprover_builtins_var(const std::string str)
+  {
+      return (str.find("__CPROVER") != std::string::npos);
+  }
   
   // Common to all
   std::set<PTRef>* getVars(); // Get all variables from literals for the counter example phase

@@ -111,9 +111,9 @@ protected:
 inline void getVarsInExpr(exprt& e, std::set<exprt>& vars)
 {
   if(e.id()==ID_symbol){
-    if (smtcheck_opensmt2t::is_cprover_rounding_mode_var(e)) 
+    if (smtcheck_opensmt2t::is_cprover_builtins_var(e)) 
     { 
-        // Skip rounding_mode
+        // Skip rounding_mode or any other builtins vars
     } 
     else
     {
