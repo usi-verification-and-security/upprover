@@ -1,3 +1,2 @@
 benchmarks/simpleArith_7.c,prop,--claim,1
-benchmarks/simpleArith_7.c,qflra,--claim,1
 benchmarks/simpleArith_7.c,qfcuf,--theoref,--claim,1
