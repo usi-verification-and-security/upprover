@@ -275,7 +275,7 @@ void symex_assertion_sumt::symex_step(
   std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << '\n';
   std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << '\n';
 #endif
-
+  
   const goto_programt::instructiont &instruction=*state.source.pc;
   loc++;
   merge_gotos(state);
@@ -361,10 +361,27 @@ void symex_assertion_sumt::symex_step(
             vcc(tmp, msg, state);
             /* END: This is the code from ASSERT originally */
 
+            // Checks which assert it is, and if we end the loop here
+            #ifdef DEBUG_PARTITIONING
+                bool is_exit = 
+                 ((single_assertion_check  && !get_current_deferred_function().summary_info.is_in_loop()) 
+                  || (loc >= last_assertion_loc && (max_unwind == 1)));
+                
+                std::cout << "Parsing Assert: " <<
+                "\n  file " << state.source.pc->source_location.get_file() <<
+                " line " << state.source.pc->source_location.get_line() <<
+                " function " << state.source.pc->source_location.get_function() << 
+                "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
+                "\n  " << from_expr(ns, "", state.source.pc->guard) 
+                "\n  " << (is_exit ? "End before in location :" : " current location ") 
+                       << loc << "(out of " << last_assertion_loc << ")"       
+                       << std::endl;
+            #endif 
+        
             /* Optimization to remove code that after the current checked assert + remove any other asserts */
             if ((single_assertion_check  && !get_current_deferred_function().summary_info.is_in_loop()) 
-               || (loc >= last_assertion_loc && max_unwind <= 1))
-            {
+               || (loc >= last_assertion_loc && (max_unwind == 1))) // unwind exactly 1, see line 37 unwind.h to understand why
+            {  
               end_symex(state);
               return;
             }
@@ -423,7 +440,7 @@ void symex_assertion_sumt::symex_step(
 
   case START_THREAD:
     throw "START_THREAD not yet implemented";
-  
+    
   case END_THREAD:
     {
       // behaves like assume(0);
