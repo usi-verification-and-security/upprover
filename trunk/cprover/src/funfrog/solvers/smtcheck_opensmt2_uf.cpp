@@ -343,7 +343,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
         int i = 0;
         forall_operands(it, expr)
         {	// KE: recursion in case the expr is not simple - shall be in a visitor
-			if (id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode#")!=std::string::npos) {
+			if (id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode!")!=std::string::npos) {
 				// Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
 			} else { // All the rest of the operators
 				literalt cl = convert(*it);

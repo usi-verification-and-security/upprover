@@ -41,7 +41,7 @@ void error_tracet::build_goto_trace (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
+    if (str.find("__CPROVER_rounding_mode!")!=std::string::npos)
     	continue;
     
     if (str.find("__CPROVER_")!=std::string::npos)
@@ -172,7 +172,7 @@ void error_tracet::build_goto_trace_formula (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
+    if (str.find("__CPROVER_rounding_mode!")!=std::string::npos)
     	continue;
     
     if (str.find("__CPROVER_")!=std::string::npos)
@@ -669,7 +669,7 @@ void error_tracet::build_goto_trace (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find("__CPROVER_rounding_mode#")!=std::string::npos)
+    if (str.find("__CPROVER_rounding_mode!")!=std::string::npos)
     	continue;
     
     if (str.find("__CPROVER_")!=std::string::npos)

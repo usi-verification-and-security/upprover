@@ -319,9 +319,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 #endif
         // Check if for div op there is a rounding variable
         bool is_div_wtrounding = // need to take care differently!
-        		((_id == ID_floatbv_minus || _id == ID_minus ||
-        		  _id == ID_floatbv_plus || _id == ID_plus ||
-                          _id == ID_floatbv_div || _id == ID_div ||
+        		((_id == ID_floatbv_div || _id == ID_div ||
                           _id == ID_floatbv_mult || _id == ID_mult)
                         &&
                         ((expr.operands()).size() > 2));
@@ -332,7 +330,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         forall_operands(it, expr)
         {	// KE: recursion in case the expr is not simple - shall be in a visitor
             bool is_builtin_rounding_mode =
-                            (id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode#")!=std::string::npos);
+                            (id2string(it->get(ID_identifier)).find("__CPROVER_rounding_mode!")!=std::string::npos);
             if ((is_div_wtrounding && i >= 2) || is_builtin_rounding_mode)
             {
                 // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
@@ -340,7 +338,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 #ifdef SMT_DEBUG
                     cout << "EXIT WITH ERROR: * and / operators with more than 2 arguments have no support yet in the LRA version (token: "
                                     << _id << ")" << endl;
-                    assert(false); // No support yet for more than two arguments for these operators
+                    assert(false); // No support yet for rounding operator
 #else
                     is_no_support = true; // Will cause to over approx all
 #endif

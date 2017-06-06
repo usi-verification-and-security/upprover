@@ -35,7 +35,7 @@ std::string expr_pretty_printt::addToDeclMap(const exprt &expr) {
             if (name_expr.find("nondet") == std::string::npos)
                     name_expr = name_expr.replace(0,7, "symex::nondet");
     }
-    if (name_expr.find("__CPROVER_rounding_mode#") != std::string::npos) return "";
+    if (name_expr.find("__CPROVER_rounding_mode!") != std::string::npos) return "";
 
     // Create the output
     std::ostream out_code(0);
