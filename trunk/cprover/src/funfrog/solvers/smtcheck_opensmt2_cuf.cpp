@@ -11,7 +11,7 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2_cuf.h"
 
 //#define SMT_DEBUG
-#define DEBUG_SMT_BB
+//#define DEBUG_SMT_BB
 
 void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
 {
