@@ -2,10 +2,10 @@
 #define EOF -1
 #define ERROR -2
 
-int nondet_int();·
+int nondet_int();
 
 int getchar(int z) {
-  int x = nondet_int();·
+  int x = nondet_int();
 
   __CPROVER_assume(x <= 255);
   __CPROVER_assume(x >= -1);
