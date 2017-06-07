@@ -15,34 +15,34 @@ Author: Grigory Fedyukovich
 
 void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
 {
-  osmt = new Opensmt(opensmt_logic::qf_cuf, name, bitwidth);
-  logic = &(osmt->getCUFLogic());
-  uflogic = &(osmt->getCUFLogic());
-  bvlogic = &((BVLogic&)osmt->getLogic());
-  mainSolver = &(osmt->getMainSolver());
+    osmt = new Opensmt(opensmt_logic::qf_cuf, name, bitwidth);
+    logic = &(osmt->getCUFLogic());
+    uflogic = &(osmt->getCUFLogic());
+    bvlogic = &((BVLogic&)osmt->getLogic());
+    mainSolver = &(osmt->getMainSolver());
 
-  SolverId id = { 0 };
-  vec<PtAsgn> asgns;
-  vec<DedElem> deds;
-  vec<PTRef> foo;
-  bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *bvlogic, asgns, deds, foo);
+    SolverId id = { 0 };
+    vec<PtAsgn> asgns;
+    vec<DedElem> deds;
+    vec<PTRef> foo;
+    bitblaster = new BitBlaster(id, osmt->getConfig(), *mainSolver, *bvlogic, asgns, deds, foo);
 
-  const char* msg2=NULL;
-  osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
-  osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)get_random_seed()), msg2);
-  //if (msg2 != NULL) { free((char *)msg2);}
+    const char* msg2=NULL;
+    osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
+    osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)get_random_seed()), msg2);
+    //if (msg2 != NULL) { free((char *)msg2);}
 
-  // KE: Fix a strange bug can be related to the fact we are pushing
-  // a struct into std::vector and use [] before any push_back
-  literals.push_back(PTRef());
-  new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
-  literals[0] = logic->getTerm_true(); // Which is .x =0
-  // KE: End of fix
+    // KE: Fix a strange bug can be related to the fact we are pushing
+    // a struct into std::vector and use [] before any push_back
+    literals.push_back(PTRef());
+    new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
+    literals[0] = logic->getTerm_true(); // Which is .x =0
+    // KE: End of fix
 
-  max_num.setPower2(bitwidth);  
-  
-  // how the check is implemented in malloc.c in the GNU C Library (glibc)
-  assert("Please re-run with bit-width parameter that is a pow of 2!" && ((bitwidth != 0) && !(bitwidth & (bitwidth - 1))));
+    max_num.setPower2(bitwidth);  
+
+    // how the check is implemented in malloc.c in the GNU C Library (glibc)
+    assert("Please re-run with bit-width parameter that is a pow of 2!" && ((bitwidth != 0) && !(bitwidth & (bitwidth - 1))));
 }
 
 // Free all inner objects
@@ -82,18 +82,23 @@ PTRef smtcheck_opensmt2t_cuf::var_bv(const exprt &expr)
    
     // Check if we suppose to have a support for this
     const irep_idt &type_id=expr.type().id_string();
-    bool isSupported = !((type_id==ID_union) || 
-                         (type_id==ID_struct) ||
-                         (type_id==ID_range) ||
-                         (type_id==ID_array) ||
-                         (type_id==ID_pointer) ||
-                         (type_id==ID_code) ||
-                         (type_id==ID_class));
+    bool isSupported =  (!((type_id==ID_union) || 
+                           (type_id==ID_struct) ||
+                           (type_id==ID_range) ||
+                           (type_id==ID_array) ||
+                           (type_id==ID_pointer) ||
+                           (type_id==ID_code) ||
+                           (type_id==ID_class))
+                        );
     
     if (isSupported)
+    {
         return get_bv_var(expr.get("identifier").c_str());
+    }
     else
+    {
         return unsupported2var_bv(expr);
+    }
 }
 
 PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
@@ -211,16 +216,18 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB
     std::cout << ";;; Start (TYPE_CAST) for " << expr.type().id() 
                << " to " << (expr_op0.type().id()) << std::endl;
+    std::cout << ";;; Of ID: " << expr.id().c_str() << " and " << _id0.c_str() << std::endl; 
 #endif  
 
     /* For Operators - TYPE CAST OP AS SHL, =, or another TYPE_CAST */        
-    // KE: New Cprover code - patching
     bool is_expr_bool = expr.is_boolean() || (expr.type().id() == ID_c_bool); 
         
     // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code:
     if ((expr.id()== ID_typecast) && (_id0 == ID_typecast) 
-            && (expr_op0.operands().size() == 1)) { // Recursive typecast  
+            && (expr_op0.operands().size() == 1)) 
+    { 
+        // Recursive typecast  
         PTRef ptl = type_cast_bv(expr_op0);
         if (is_expr_bool && is_number(expr_op0.type())) {
             ptl = bvlogic->mkBVNot(bvlogic->mkBVEq(ptl, get_bv_const("0")));
@@ -234,21 +241,32 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
            << (expr_op0.operands())[0].id() << std::endl;
 #endif
         return ptl;   
+    
     } else if ((expr.id()== ID_typecast) && (_id0 == ID_typecast)) {
         assert(0); // No arguments - KE: show me that!
+    
     } else if (expr.type().id() == expr_op0.type().id()) {
         return convert_bv(expr_op0);
+    
     } else if (is_expr_bool && expr_op0.is_constant()) {
         std::string val = extract_expr_str_number(expr_op0);
         bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
 #ifdef DEBUG_SMT_BB        
         std::cout << ";;; IS THIS ZERO? " << val_const_zero << std::endl;
 #endif        
-        return get_bv_const(val_const_zero? "0" : "1");       
+        return get_bv_const(val_const_zero? "0" : "1");
+        
     } else if (is_expr_bool && is_number(expr_op0.type())) {
         // Cast from Real to Boolean - Add
 
         return bvlogic->mkBVNot(bvlogic->mkBVEq(convert_bv(expr_op0), get_bv_const("0")));
+        
+    } else if ((expr.type().id() == ID_floatbv) 
+            && (expr_op0.type().id() != ID_floatbv) 
+            && is_number(expr_op0.type()))                 {
+        // TODO: Translate 8.2 into int or bit-vector
+        return unsupported2var_bv(expr); // stub for now
+        
     } else {
         //} else if (is_number(expr.type()) && is_operands_bool) {
         // Cast from Boolean to Real - Add
@@ -266,9 +284,11 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
     
     // ABS - all refers as real
     PTRef ptl_inner = convert_bv((expr.operands())[0]); // Create the inner part        
-    if (type_id == ID_unsignedbv || type_id == ID_natural) 
-    // Unsigned: no need to do something
+    if ((type_id == ID_unsignedbv) || (type_id == ID_natural)) 
+    {
+        // Unsigned: no need to do something
         return ptl_inner;
+    }
     
     // If signed we need to do something :
     vec<PTRef> args;
@@ -293,10 +313,11 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 {
 #ifdef DEBUG_SMT_BB
-        std::cout << "Bit-blasting expression type " << expr.id() 
-                << " " << expr.type().pretty() << " "
-               << ((expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) ?
-                   expr.get("identifier") : "") << std::endl;
+        std::cout   << "Bit-blasting expression type " << expr.id() 
+                    << " " << expr.type().pretty() << " "
+                    << ((expr.id()==ID_symbol || expr.id()==ID_nondet_symbol) ?
+                                    expr.get("identifier") : "") 
+                    << std::endl;
 #endif
     
     const irep_idt &_id=expr.id(); // KE: gets the id once for performance
@@ -310,7 +331,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A VAR" << endl;
 #endif
-       ptl = var_bv(expr);
+        ptl = var_bv(expr);
        
 #ifdef DEBUG_SMT_BB
         char* s = logic->printTerm(ptl);
@@ -322,6 +343,20 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         cout << "; IT IS A TYPE-CAST " << endl;
 #endif           
         ptl = type_cast_bv(expr);
+
+    } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) 
+                                  && expr.operands().size() == 2) {
+#ifdef DEBUG_SMT_BB
+        cout << "; IT IS A TYPE-CAST WITH ROUNDING MODEL" << endl;
+#endif  
+        if (is_cprover_rounding_mode_var(expr.op1()))
+        {
+            ptl = type_cast_bv(expr);
+        }
+        else
+        {
+            ptl = unsupported2var_bv(expr); // stub for now
+        }
         
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
         // KE: TODO, don't know how to do it yet...
