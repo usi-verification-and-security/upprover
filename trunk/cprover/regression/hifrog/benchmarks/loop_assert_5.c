@@ -2,7 +2,7 @@ int calculate_output();
 
 int a0 = 0;
 
-int calculate_output() {
+void calculate_output() {
     if (a0 == 0)
         a0 = 1;
 }
