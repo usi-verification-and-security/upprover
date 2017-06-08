@@ -73,42 +73,45 @@ expr_pretty_printt::operator()(const exprt &expr)
 	out << DEBUG_COLOR << "; EXPR OP " << expr.id() << NORMAL_COLOR << '\n';
 #endif
 
-	if (expr.id() == ID_symbol) {
-		if (is_prev_token) out << " ";
-		out << SYMBOL_COLOR << "|" << expr.get(ID_identifier) << "|" << NORMAL_COLOR;
-		is_prev_token = true;
-		addToDeclMap(expr); // Add the symbol to the symbol table
-	} else if (expr.id() == ID_constant) {
-		if (expr.is_boolean()) { // true or false
-			out << CONSTANT_COLOR << expr.get(ID_value) << NORMAL_COLOR;
-		} else {
-			if (is_prev_token) out << " ";
-			//convert = expr.get(ID_value).c_str();//add the value of Number to the characters in the stream
-			out << CONSTANT_COLOR << convertBinaryIntoDec(expr) << NORMAL_COLOR;
-			if (!last) {out << " "; is_prev_token = false;}
-			else is_prev_token = true;
-		}
-	} else if (expr.id() == ID_nondet_symbol) {
-		std::string name = addToDeclMap(expr); // Add the symbol to the symbol table
-		if (is_prev_token) out << " ";
-		out << OPERATOR_COLOR << "|" << (name.size() > 0 ? name : expr.get(ID_identifier)) << "|" << NORMAL_COLOR;
-		is_prev_token = true;
-	} else if (expr.id() == ID_notequal) {
-		out << OPERATOR_COLOR << "not (=" << NORMAL_COLOR;
-		out << " "; is_prev_token = false;
-	} else if (expr.id() == ID_if) {
-		out << OPERATOR_COLOR << "ite" << NORMAL_COLOR;
-		out << " "; is_prev_token = false;
-	} else {
-		std::string checkOp = expr.id_string();
-		if (checkOp.size() > 2) {
-			if (checkOp.substr(0,5).compare("unary") == 0) {
-				checkOp = "* " + checkOp.substr(5,1) + "1";
-			}
-		}
-		out << OPERATOR_COLOR << checkOp << NORMAL_COLOR;
-		out << " "; is_prev_token = false;
-	}
+    if (isTypeCast2Convert(expr)) { 
+        // Take care of recurisve typecasting
+        convertTypecast(expr);
+    } else if (expr.id() == ID_symbol) {
+        if (is_prev_token) out << " ";
+        out << SYMBOL_COLOR << "|" << expr.get(ID_identifier) << "|" << NORMAL_COLOR;
+        is_prev_token = true;
+        addToDeclMap(expr); // Add the symbol to the symbol table
+    } else if (expr.id() == ID_constant) {
+        if (expr.is_boolean()) { // true or false
+            out << CONSTANT_COLOR << expr.get(ID_value) << NORMAL_COLOR;
+        } else {
+            if (is_prev_token) out << " ";
+            //convert = expr.get(ID_value).c_str();//add the value of Number to the characters in the stream
+            out << CONSTANT_COLOR << convertBinaryIntoDec(expr) << NORMAL_COLOR;
+            if (!last) {out << " "; is_prev_token = false;}
+            else is_prev_token = true;
+        }
+    } else if (expr.id() == ID_nondet_symbol) {
+        std::string name = addToDeclMap(expr); // Add the symbol to the symbol table
+        if (is_prev_token) out << " ";
+        out << OPERATOR_COLOR << "|" << (name.size() > 0 ? name : expr.get(ID_identifier)) << "|" << NORMAL_COLOR;
+        is_prev_token = true;
+    } else if (expr.id() == ID_notequal) {
+        out << OPERATOR_COLOR << "not (=" << NORMAL_COLOR;
+        out << " "; is_prev_token = false;
+    } else if (expr.id() == ID_if) {
+        out << OPERATOR_COLOR << "ite" << NORMAL_COLOR;
+        out << " "; is_prev_token = false;
+    } else {
+        std::string checkOp = expr.id_string();
+        if (checkOp.size() > 2) {
+            if (checkOp.substr(0,5).compare("unary") == 0) {
+                checkOp = "* " + checkOp.substr(5,1) + "1";
+            }
+        }
+        out << OPERATOR_COLOR << checkOp << NORMAL_COLOR;
+        out << " "; is_prev_token = false;
+    }
 }
 
 void
@@ -207,93 +210,107 @@ expr_ssa_print_guard(std::ostream& out, const exprt& expr, std::map <std::string
 
 // Recursive inner order SSA representation
 void
-expr_pretty_printt::visit_SSA(const exprt& expr) {
-	bool isNegIn = false;
-	if (expr.id() == ID_notequal) isNegIn = true;
+expr_pretty_printt::visit_SSA(const exprt& expr) 
+{
+    bool isNegIn = false;
+    if (expr.id() == ID_notequal) 
+        isNegIn = true;
+    
+    if (isTypeCast2Convert(expr)) 
+    { 
+        convertTypecast(expr);
+        if (isNegIn) out << ")"; /* Skip on that case the visit since changed typecast 0 to false */
+    }
+    else 
+    {
+        if (expr.has_operands()) {
+            if (is_prev_token) 
+                out << " ";
+            
+            out << "("; is_prev_token = true;
+        }
 
-	bool isHasOperands = false;
-	if(expr.has_operands()) {
-	  isHasOperands = true;
-	} // before expression
+        (*this)(expr);
 
-	bool isTypeCast0 = false;
-	if ((expr.id() == ID_typecast 
-            || expr.id() == ID_floatbv_typecast) 
-                && isHasOperands) 
-        {
-		if ((expr.operands())[0].is_constant()) {
-			isTypeCast0 = true;
-			if (is_prev_token) out << " ";
-			if (expr.is_boolean()) {
-				if ((expr.operands())[0].is_zero()) {
-					out << CONSTANT_COLOR << "false" << NORMAL_COLOR;
-				} else {
-					out << CONSTANT_COLOR << "true" << NORMAL_COLOR;
-				}
-			} else { /* Translate only if not boolean */
-				double val_cast = convertBinaryIntoDec((expr.operands())[0]);
-				last_convered_value = val_cast; isAlreadyConverted = true;
-				out << CONSTANT_COLOR << val_cast << NORMAL_COLOR;
-			}
-			is_prev_token = true;
-		} else {
-			// GF: sometimes typecast is applied to variables, e.g.:
-			//     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
-			//     in this case, we should replace it by the variable itself, i.e.:
-			//     (not (= |c::main::1::c!0#4| -2147483648))
-			isTypeCast0 = true; operator()(expr.operands()[0]);
-		}
-	}
+        bool is_rdmd = isWithRoundingModel(expr); int i = 0; // If with rounding model and not BV then remove it
+        last = false;
+        forall_operands(it, expr) {
+            if (is_rdmd) { // Divide with 3 operators
+                if (i >= 2) {
+                    // Skip - we don't need the rounding variable for non-bv logics
+                } else {
+                    if ((it == --expr.operands().end()) || (i ==1)) {
+                        last = true;
+                    }
+                    this->visit_SSA(*it);
+                    i++;
+                }
+            } else { // common regular case
+                if (it == --expr.operands().end()) {
+                  last = true;
+                }
+                this->visit_SSA(*it);
+            }
+        }
 
-	if (isTypeCast0) { if (isNegIn) out << ")"; /* Skip on that case the visit since changed typecast 0 to false */}
-	else {
-		if (isHasOperands) {
-		  if (is_prev_token) out << " ";
-		  out << "("; is_prev_token = true;
-		}
+        // After all the expression parts printed
+        if (isNegIn) out << ")";
+        if (expr.has_operands()) {out << ")"; is_prev_token = true;}
+    }
 
-		(*this)(expr);
-
-		bool is_rdmd = isWithRoundingModel(expr); int i = 0; // If with rounding model and not BV then remove it
-		last = false;
-		forall_operands(it, expr) {
-			if (is_rdmd) { // Divide with 3 operators
-				if (i >= 2) {
-					// Skip - we don't need the rounding variable for non-bv logics
-				} else {
-					if ((it == --expr.operands().end()) || (i ==1)) {
-					  last = true;
-					}
-					this->visit_SSA(*it);
-					i++;
-				}
-			} else { // common regular case
-				if (it == --expr.operands().end()) {
-				  last = true;
-				}
-				this->visit_SSA(*it);
-			}
-		}
-
-		// After all the expression parts printed
-		if (isNegIn) out << ")";
-		if (isHasOperands) {out << ")"; is_prev_token = true;}
-	}
-
-	last_convered_value = 0; isAlreadyConverted = false;
+    last_convered_value = 0; isAlreadyConverted = false;
 }
 
 bool expr_pretty_printt::isWithRoundingModel(const exprt& expr) {
-	// Check if for div op there is a rounding variable
-	bool is_div_wtrounding = false;
-	if (expr.id() == ID_floatbv_minus || expr.id() == ID_minus ||
-		expr.id() == ID_floatbv_plus || expr.id() == ID_plus ||
-		expr.id() == ID_floatbv_div || expr.id() == ID_div ||
-		expr.id() == ID_floatbv_mult || expr.id() == ID_mult) {
-		if ((expr.operands()).size() > 2)
-			is_div_wtrounding = true; // need to take care differently!
-	}
-	// End of check - shall be on a procedure!
-	return is_div_wtrounding;
+    // Check if for div op there is a rounding variable
+    bool is_div_wtrounding = false;
+    if (expr.id() == ID_floatbv_minus || expr.id() == ID_minus ||
+        expr.id() == ID_floatbv_plus || expr.id() == ID_plus ||
+        expr.id() == ID_floatbv_div || expr.id() == ID_div ||
+        expr.id() == ID_floatbv_mult || expr.id() == ID_mult) {
+        if ((expr.operands()).size() > 2)
+            is_div_wtrounding = true; // need to take care differently!
+    }
+    // End of check - shall be on a procedure!
+    return is_div_wtrounding;
+}
+
+bool expr_pretty_printt::isTypeCast2Convert(const exprt& expr)
+{
+    if (!expr.has_operands()) return false;
+    
+    
+    if (expr.id() == ID_typecast) return true;
+    if (expr.id() == ID_floatbv_typecast) return true; 
+    
+    return false;
+}
+
+void expr_pretty_printt::convertTypecast(const exprt& expr)
+{
+    assert(expr.operands().size() == 1); // If more than that check why
+
+    if ((expr.operands())[0].is_constant()) {
+        if (is_prev_token) out << " ";
+        if (expr.is_boolean()) {
+            if ((expr.operands())[0].is_zero()) {
+                out << CONSTANT_COLOR << "false" << NORMAL_COLOR;
+            } else {
+                out << CONSTANT_COLOR << "true" << NORMAL_COLOR;
+            }
+        } else { /* Translate only if not boolean */
+            double val_cast = convertBinaryIntoDec((expr.operands())[0]);
+            last_convered_value = val_cast; isAlreadyConverted = true;
+            out << CONSTANT_COLOR << val_cast << NORMAL_COLOR;
+        }
+        is_prev_token = true;
+    } else {
+        // GF: sometimes typecast is applied to variables, e.g.:
+        //     (not (= (typecast |c::main::1::c!0#4|) -2147483648))
+        //     in this case, we should replace it by the variable itself, i.e.:
+        //     (not (= |c::main::1::c!0#4| -2147483648))
+        // There is a whole expression in it!
+        visit_SSA(expr.operands()[0]);
+    }      
 }
 #endif

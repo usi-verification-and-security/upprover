@@ -48,6 +48,8 @@ private:
   std::string addToDeclMap(const exprt &expr);
   double convertBinaryIntoDec(const exprt &expr);
   bool isWithRoundingModel(const exprt& expr);
+  bool isTypeCast2Convert(const exprt& expr);
+  void convertTypecast(const exprt& expr);
 
   // Can do it only because refer to const!!
   bool isAlreadyConverted;
