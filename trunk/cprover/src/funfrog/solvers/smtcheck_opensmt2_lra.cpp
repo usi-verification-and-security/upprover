@@ -387,11 +387,20 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         } else if(_id == ID_equal) {
             ptl = logic->mkEq(args);
         } else if (_id==ID_if) {
-            ptl = logic->mkIte(args);
+            assert(args.size() >= 2); // KE: check the case if so and add the needed code!
+            
+            // If a then b, (without else) is a => b
+            if (args.size() == 2)
+            { 
+                ptl = logic->mkImpl(args);
+            } else {
+                ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT4SOLVER
-    ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
+                ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
+            }
         } else if(_id == ID_ifthenelse) {
+            assert(args.size() >= 3); // KE: check the case if so and add the needed code!
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT4SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
