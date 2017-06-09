@@ -13,7 +13,9 @@
 
 void theory_refinert::initialize()
 {
-  decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"), "theory refiner");
+  decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"),
+          options.get_unsigned_int_option("type-byte-constraints"),
+          "theory refiner");
 
   if (options.get_unsigned_int_option("random-seed")) decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
 
@@ -189,14 +191,18 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                     case 0 :
                       //   forward
                       {
-                          smtcheck_opensmt2t_cuf decider2(bw, "forward checker");
+                          smtcheck_opensmt2t_cuf decider2(bw, 
+                                  options.get_unsigned_int_option("type-byte-constraints"),
+                                  "forward checker");
                           decider2.check_ce(exprs, model, refined, weak, 0, exprs.size(), 1, 0);
                       }
                       break;
                     case 1 :
                       //   backward
                       {
-                          smtcheck_opensmt2t_cuf decider2(bw, "backward checker");
+                          smtcheck_opensmt2t_cuf decider2(bw, 
+                                  options.get_unsigned_int_option("type-byte-constraints"),
+                                  "backward checker");
                           decider2.check_ce(exprs, model, refined, weak, exprs.size()-1, -1, -1, 0);
                       }
                       break;
@@ -205,7 +211,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       last = 0;
                       {
                           while (last != -1 || last == exprs.size()){
-                            smtcheck_opensmt2t_cuf decider2(bw, "forward multiple checker");
+                            smtcheck_opensmt2t_cuf decider2(bw, 
+                                    options.get_unsigned_int_option("type-byte-constraints"),
+                                    "forward multiple checker");
                             last = decider2.check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 0);
                           }
                       }
@@ -215,7 +223,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       last = exprs.size()-1;
                       {
                           while (last >= 0){
-                            smtcheck_opensmt2t_cuf decider2(bw, "backward multiple refiner");
+                            smtcheck_opensmt2t_cuf decider2(bw, 
+                                    options.get_unsigned_int_option("type-byte-constraints"),
+                                    "backward multiple refiner");
                             last = decider2.check_ce(exprs, model, refined, weak, last, -1, -1, 0);
                           }
                       }
@@ -223,14 +233,18 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                     case 4 :
                       //   forward with dependencies
                       {
-                          smtcheck_opensmt2t_cuf decider2(bw, "Forward dependency checker");
+                          smtcheck_opensmt2t_cuf decider2(bw, 
+                                  options.get_unsigned_int_option("type-byte-constraints"),
+                                  "Forward dependency checker");
                           decider2.check_ce(exprs, model, refined, weak, 0, exprs.size(), 1, 1);
                       }
                       break;
                     case 5 :
                       //   backward with dependencies
                       {
-                          smtcheck_opensmt2t_cuf decider2(bw, "Backward dependency checker");
+                          smtcheck_opensmt2t_cuf decider2(bw,
+                                  options.get_unsigned_int_option("type-byte-constraints"),
+                                  "Backward dependency checker");
                           decider2.check_ce(exprs, model, refined, weak, exprs.size()-1, -1, -1, 1);
                       }
                       break;
@@ -239,7 +253,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       last = 0;
                       {
                           while (last != -1 || last == exprs.size()){
-                            smtcheck_opensmt2t_cuf decider2(bw, "Foward with multiple refinements & dependencies");
+                            smtcheck_opensmt2t_cuf decider2(bw, 
+                                    options.get_unsigned_int_option("type-byte-constraints"),
+                                    "Foward with multiple refinements & dependencies");
                             decider2.check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 1);
                           }
                       }
@@ -249,7 +265,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       last = exprs.size()-1;
                       {
                           while (last >= 0){
-                            smtcheck_opensmt2t_cuf decider2(bw, "backward with multiple refinement & dependencies");
+                            smtcheck_opensmt2t_cuf decider2(bw,
+                                    options.get_unsigned_int_option("type-byte-constraints"),
+                                    "backward with multiple refinement & dependencies");
                             decider2.check_ce(exprs, model, refined, weak, last, -1, -1, 1);
                           }
                       }

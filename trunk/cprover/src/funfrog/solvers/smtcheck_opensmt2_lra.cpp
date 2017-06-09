@@ -690,7 +690,7 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #endif
     
     /* Test if needs to add */
-    if(!((is_number(expr.type())) || (type_id_c == ID_char))) return ;
+    if(!is_number(expr.type())) return; // KE: shall also catch the case of char
     if (var_type.is_nil()) return;
     if (expr.is_constant()) return;
 

@@ -24,9 +24,10 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class smtcheck_opensmt2t_cuf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_cuf(unsigned bitwidth, const char* name) :
+  smtcheck_opensmt2t_cuf(unsigned bitwidth, int _type_constraints_level, const char* name) :
+      type_constraints_level(_type_constraints_level),
+      bitwidth(bitwidth),        
       smtcheck_opensmt2t(false, 3, 2) // Is last always!
-    , bitwidth(bitwidth)
   {
     initializeSolver(name);
   }
@@ -50,8 +51,6 @@ public:
   PTRef get_bv_var(const char* name);
 
   PTRef get_bv_const(const char* val);
-
-  void set_equal_bv(PTRef l1, PTRef l2);
 
   PTRef convert_bv(const exprt &expr);
 
@@ -87,6 +86,8 @@ protected:
   BitBlaster* bitblaster;
 
   unsigned bitwidth;
+  
+  int type_constraints_level; // The level of checks in BV logic for numerical checks possible values
 
   mp_integer max_num; // w.r.t. current bitwidth
 
@@ -106,7 +107,7 @@ protected:
   
   virtual void initializeSolver(const char*);
   
-  PTRef add_constraints4chars_bv(const exprt &expr, PTRef &var);
+  void add_constraints4chars_bv(const exprt &expr, PTRef &var);
 
 };
 

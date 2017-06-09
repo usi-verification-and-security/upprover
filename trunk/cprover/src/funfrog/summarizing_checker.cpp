@@ -30,7 +30,8 @@ void summarizing_checkert::initialize_solver()
     }
     else if(_logic == "qfcuf")
     {
-        decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"), "cuf checker");
+        decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"), 
+                options.get_unsigned_int_option("type-byte-constraints"), "cuf checker");
         status() << ("Use QF_CUF logic.") << eom;
     }
     else if(_logic == "qflra") 

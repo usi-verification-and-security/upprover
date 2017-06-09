@@ -416,7 +416,11 @@ void funfrog_parseoptionst::help()
   "--type-constraints             LRA's basic constraints on numerical data type\n"
   "                                 0 for no additional constraints,\n"
   "                                 1 for type constraints on non-deterministic input\n"
-  "                                 2 for type constraints on variables\n"
+  "                                 2 for type constraints on variables\n"   
+  "--type-byte-constraints        CUF's basic constraints on numerical data type\n"
+  "                                 0 for no additional constraints,\n"
+  "                                 1 for type constraints on char data type\n"
+  "                                 2 for type constraints on all numerical data types\n"             
   "--no-slicing                   no slicing of the SSA program form (slower\n"
   "                               computation, more dependable result)\n"
   "--no-assert-grouping           do not group checks for the same assertion\n"
@@ -684,6 +688,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 
   // Use basic check as defualt
   options.set_option("type-constraints", 1);
+  options.set_option("type-byte-constraints", 0);
 
   if(cmdline.isset("logic")) {
     options.set_option("logic", cmdline.get_value("logic"));
@@ -728,6 +733,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   if (cmdline.isset("type-constraints")) { // In Help Menu
     options.set_option("type-constraints", cmdline.get_value("type-constraints"));
   }
+  if (cmdline.isset("type-byte-constraints")) { // In Help Menu
+    options.set_option("type-byte-constraints", cmdline.get_value("type-byte-constraints"));
+  }  
   if (cmdline.isset("claimset")) {
     options.set_option("claimset", cmdline.get_value("claimset"));
   }
