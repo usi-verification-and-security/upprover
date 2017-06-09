@@ -890,6 +890,13 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
         // Cast from Boolean to Real - Add
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
         PTRef ptl = logic->mkIte(literals[lt.var_no()], uflogic->mkCUFConst(1), uflogic->mkCUFConst(0));
+        
+#ifdef DEBUG_SMT4SOLVER
+        ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
+        cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")" 
+            << string(getPTermString(ptl)) << endl << logic->printTerm(logic->getTopLevelIte(ptl)) << endl;
+#endif          
+        
         return push_variable(ptl); // Keeps the new literal + index it
     } else if (is_expr_bool && is_number((expr.operands())[0].type())) {
         // Cast from Real to Boolean - Add

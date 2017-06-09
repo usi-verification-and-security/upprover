@@ -821,7 +821,8 @@ Function: smtcheck_opensmt2t::dump_on_error
  Purpose: To know what is the problem while encoding the formula
 
 \*******************************************************************/
-void smtcheck_opensmt2t::dump_on_error(std::string location) {
+void smtcheck_opensmt2t::dump_on_error(std::string location) 
+{
     //If have problem with declaration of vars - uncommen this!
 #ifdef DEBUG_SMT4SOLVER
     cout << "; XXX SMT-lib --> Current Logic Translation XXX" << endl;
@@ -844,8 +845,12 @@ void smtcheck_opensmt2t::dump_on_error(std::string location) {
 
     // If code - once needed uncomment this debug flag in the header
 #ifdef DEBUG_SMT4SOLVER
+    int size_oite = ite_map_str.size()-1; // since goes from 0-(n-1) 
+    int i = 0;
     for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
-            cout << "; XXX oite symbol: " << iterator->first << endl << iterator->second << endl;
+        cout << "; XXX oite symbol: (" << i << " out of " << size_oite << ")" 
+                << iterator->first << endl << iterator->second << endl;
+        i++;
     }
 #endif
     cout << "))" << endl << "(check-sat)" << endl;

@@ -173,6 +173,13 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
     	// Cast from Boolean to Real - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	PTRef ptl = logic->mkIte(literals[lt.var_no()], lralogic->mkConst("1"), lralogic->mkConst("0"));
+      
+#ifdef DEBUG_SMT4SOLVER
+        ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
+        cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")" 
+            << string(getPTermString(ptl)) << endl << logic->printTerm(logic->getTopLevelIte(ptl)) << endl;
+#endif        
+        
     	return push_variable(ptl); // Keeps the new literal + index it
     } else if (is_expr_bool && is_number((expr.operands())[0].type())) {
     	// Cast from Real to Boolean - Add
@@ -397,6 +404,8 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                 ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT4SOLVER
                 ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
+                cout << "; XXX oite symbol: (" << ite_map_str.size() << ")" 
+                    << string(getPTermString(ptl)) << endl << logic->printTerm(logic->getTopLevelIte(ptl)) << endl;
 #endif
             }
         } else if(_id == ID_ifthenelse) {
@@ -404,6 +413,8 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             ptl = logic->mkIte(args);
 #ifdef DEBUG_SMT4SOLVER
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
+            cout << "; XXX oite symbol: (" << ite_map_str.size() << ")" 
+                    << string(getPTermString(ptl)) << endl << logic->printTerm(logic->getTopLevelIte(ptl)) << endl;
 #endif
         } else if(_id == ID_and) {
             ptl = logic->mkAnd(args);
@@ -574,6 +585,12 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
                         lralogic->mkRealNeg(literals[lt.var_no()]),                 // Then
                         literals[lt.var_no()]);                                     // Else
 
+    #ifdef DEBUG_SMT4SOLVER
+                ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
+                cout << "; XXX oite symbol (labs):  (" << ite_map_str.size() << ")" 
+                    << string(getPTermString(ptl)) << endl << logic->printTerm(logic->getTopLevelIte(ptl)) << endl;
+    #endif
+    
     literalt l = push_variable(ptl); // Keeps the new literal + index it
 
 #ifdef SMT_DEBUG
@@ -674,10 +691,18 @@ bool smtcheck_opensmt2t_lra::push_constraints2type(
 // If the expression is a number adds constraints
 void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 {
-    if(!is_number(expr.type())) return ;
-
     typet var_type = expr.type(); // Get the current type
+    //const irep_idt type = var_type.get("#c_type");
+    const irep_idt &type_id=var_type.id_string();
+ 
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    std::cout << "; Try to add type constraints to " << type_id << std::endl;
+#endif
+    
+    /* Test if needs to add */
+    if(!((is_number(expr.type())) || (type_id == ID_char))) return ;
     if (var_type.is_nil()) return;
+    if (expr.is_constant()) return;
 
     // Check the id is a var
     assert((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol));
@@ -692,15 +717,51 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 
     //gets the property
     int size = var_type.get_int("width");
-    //const irep_idt type = var_type.get("#c_type");
-    const irep_idt &type_id=var_type.id_string();
     bool is_non_det = (expr.id() == ID_nondet_symbol);
 #ifdef SMT_DEBUG_VARS_BOUNDS   
     bool is_add_constraints = false;
 #endif
 
     // Start checking what it is
-    if(type_id==ID_integer || type_id==ID_natural)
+    if (type_id == ID_signed_char)
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    	cout << "; Adding new constraint for char signed" << endl;
+#endif
+    	std::string lower_bound = ("-" + create_bound_string("128", 0));
+    	std::string upper_bound = create_bound_string("127", 0);
+#ifdef SMT_DEBUG_VARS_BOUNDS   
+    	is_add_constraints = 
+#endif 
+        push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+    }
+    else if (type_id == ID_char)
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    	cout << "; Adding new constraint for char unsigned" << endl;
+#endif
+    	std::string lower_bound = ("-" + create_bound_string("0", 0));
+    	std::string upper_bound = create_bound_string("255", 0);
+#ifdef SMT_DEBUG_VARS_BOUNDS   
+    	is_add_constraints = 
+#endif 
+        push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+    }    
+    else if (type_id == ID_char)
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    	cout << "; Adding new constraint for char " << ((type_id==ID_signedbv) ? "signed" : "unsigned") << endl;
+#endif
+    	std::string lower_bound = ((type_id==ID_signedbv) ? 
+                                ("-" + create_bound_string("128", 0)) : ("-" + create_bound_string("0", 0)));
+    	std::string upper_bound = ((type_id==ID_signedbv) ?
+				create_bound_string("127", 0) : create_bound_string("255", 0));
+#ifdef SMT_DEBUG_VARS_BOUNDS   
+    	is_add_constraints = 
+#endif 
+        push_constraints2type(var, is_non_det, lower_bound, upper_bound);
+    }
+    else if(type_id==ID_integer || type_id==ID_natural)
     {
     	assert(0); // need to see an example!
     }
@@ -742,9 +803,9 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
     	cout << "; Adding new constraint for unsigned " << ((size==32) ? "float" : "double") << endl;
 #endif
     	std::string lower_bound = ((size==32) ?
-				("-" + create_bound_string("34028234", 38)) : ("-" + create_bound_string("17976931348623157", 308)));
+				("-" + create_bound_string("34028234", 38)) : ("-" + create_bound_string("17976931348623158", 308)));
     	std::string upper_bound = ((size==32) ?
-				create_bound_string("34028234", 38) : create_bound_string("17976931348623157", 308));
+				create_bound_string("34028233", 38) : create_bound_string("17976931348623157", 308));
 #ifdef SMT_DEBUG_VARS_BOUNDS   
     	is_add_constraints = 
 #endif 
@@ -755,13 +816,13 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
     	assert(0); // need to see an example!
     }
 
-	// For numbers add constraints of upper and lower bounds
+    // For numbers add constraints of upper and lower bounds
 #ifdef SMT_DEBUG_VARS_BOUNDS
     if (is_add_constraints)
     	cout << "; Add bounds constraints for type "
-			<< var_type.get("#c_type") << " "
-			<< var_type.get_int("width") << "bits"
-			<< endl;
+            << var_type.get("#c_type") << " "
+            << var_type.get_int("width") << "bits"
+            << endl;
 #endif
 }
 
