@@ -48,7 +48,9 @@ public:
   { }
   
   virtual ~check_opensmt2t() {
-      if (osmt) delete osmt;
+      //if (osmt) delete osmt;
+      // KE: not created here, so don't free it here!
+      // This is common to all logics: prop, lra, qfuf, qfcuf
   }
 
   virtual prop_conv_solvert* get_prop_conv_solver()=0;

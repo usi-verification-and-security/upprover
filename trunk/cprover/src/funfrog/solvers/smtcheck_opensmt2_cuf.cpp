@@ -346,7 +346,6 @@ PTRef smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef 
         assert(0); //KE: show me the case!
     }
 
-    vec<PTRef> args;
     vec<PTRef> args1; args1.push(get_bv_const(lower_bound.c_str())); args1.push(var);
     vec<PTRef> args2; args2.push(var); args2.push(get_bv_const(upper_bound.c_str()));
     PTRef ptl1 = (type_id_c == ID_unsigned_char) ? bvlogic->mkBVUleq(args1) : bvlogic->mkBVSleq(args1);
@@ -376,9 +375,9 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A VAR" << endl;
 #endif
-        PTRef ptl_var = var_bv(expr);
-        ptl = add_constraints4chars_bv(expr,ptl_var);
-        //ptl = var_bv(expr);
+        //PTRef ptl_var = var_bv(expr);
+        //ptl = add_constraints4chars_bv(expr,ptl_var);
+        ptl = var_bv(expr);
        
 #ifdef DEBUG_SMT_BB
         char* s = logic->printTerm(ptl);

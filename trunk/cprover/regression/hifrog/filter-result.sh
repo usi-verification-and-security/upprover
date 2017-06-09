@@ -1,6 +1,6 @@
 #!/bin/bash
 
-awk '/VERIFICATION|SUCCESSFUL|FAILED|Aborted|identical/{
+awk '/VERIFICATION|SUCCESSFUL|FAILED|Aborted|UNKNOWN|identical/{
  print
 }
 { a[++d]=$0}
