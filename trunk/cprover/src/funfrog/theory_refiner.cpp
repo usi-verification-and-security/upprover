@@ -135,7 +135,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
               if (decider->refine_ce_mul(exprs, exprs_ids)){
                   status() << "ASSERTION UNKNOWN" << endl;
                   status() << "(further refinement needed)" << eom;
-                  report_failure();
+                  //report_failure(); // KE: confusing, it is UNKNOWN and SAT at the same time?!
               } else {
                   status() << endl << "Custom refinement successful" << endl;
                   status() << "(" << exprs_ids.size() << " / "

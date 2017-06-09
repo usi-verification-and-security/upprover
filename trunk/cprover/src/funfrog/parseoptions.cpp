@@ -584,9 +584,9 @@ bool funfrog_parseoptionst::check_function_summarization(
               !cmdline.isset("claims-order") &&
               !cmdline.isset("claim"))
     {
-      cbmc_error_interface("A specific claim is not set, nor any other claim specification is set. ");
-      cbmc_error_interface("\n** Please Re-run with a claim number or other claim specification arguments **");
-      return 1;        
+      cbmc_error_interface("A specific claim is not set, nor any other claim specification is set.");
+      cbmc_status_interface("Warrning: --claim is set to 1.");
+      claim_nr = 1; // Set as defualt
     }
     
     if (cmdline.isset("claims-opt"))
