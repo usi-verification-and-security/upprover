@@ -309,6 +309,49 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
     return ptl;
 }
 
+// If the expression is a number adds constraints
+PTRef smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &var)
+{
+    typet var_type = expr.type(); // Get the current type
+    const irep_idt type_id_c = var_type.get("#c_type");
+    if (type_id_c != ID_char) return var;
+    if (var_type.is_nil()) return var;
+    if (expr.is_constant()) return var;
+
+    // Check the id is a var
+    assert((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol));
+
+    std::string lower_bound = ""; 
+    std::string upper_bound = "";
+    if (type_id_c == ID_signed_char)
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    	cout << "; Adding new constraint for char signed" << endl;
+#endif
+    	lower_bound = ("-" + create_bound_string("128", 0));
+    	upper_bound = create_bound_string("127", 0);
+    }
+    else if (type_id_c == ID_unsigned_char)
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+    	cout << "; Adding new constraint for char unsigned" << endl;
+#endif
+    	lower_bound = ("-" + create_bound_string("0", 0));
+    	upper_bound = create_bound_string("255", 0);
+    } 
+    else 
+    {
+        assert(0); //KE: show me the case!
+    }
+
+    vec<PTRef> args;
+    vec<PTRef> args1; args1.push(get_bv_const(lower_bound.c_str())); args1.push(var);
+    vec<PTRef> args2; args2.push(var); args2.push(get_bv_const(upper_bound.c_str()));
+    PTRef ptl1 = (type_id_c == ID_unsigned_char) ? bvlogic->mkBVUleq(args1) : bvlogic->mkBVSleq(args1);
+    PTRef ptl2 = (type_id_c == ID_unsigned_char) ? bvlogic->mkBVUleq(args2) : bvlogic->mkBVSleq(args2);
+    
+    return bvlogic->mkBVLand(var, (bvlogic->mkBVLand(ptl1,ptl2)));
+}
 
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 {
@@ -331,7 +374,9 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A VAR" << endl;
 #endif
-        ptl = var_bv(expr);
+        PTRef ptl_var = var_bv(expr);
+        ptl = add_constraints4chars_bv(expr,ptl_var);
+        //ptl = var_bv(expr);
        
 #ifdef DEBUG_SMT_BB
         char* s = logic->printTerm(ptl);

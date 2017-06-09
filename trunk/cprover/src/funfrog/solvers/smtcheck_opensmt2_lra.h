@@ -87,8 +87,6 @@ protected:
   		PTRef &var,
   		std::string lower_b,
   		std::string upper_b); // create a formula with the constraints
-
-  std::string create_bound_string(std::string base, int exp); // build the string of the upper and lower bounds
 };
 
 #endif

@@ -105,6 +105,8 @@ protected:
   PTRef lconst_bv(const exprt &expr); // For bv only!
   
   virtual void initializeSolver(const char*);
+  
+  PTRef add_constraints4chars_bv(const exprt &expr, PTRef &var);
 
 };
 

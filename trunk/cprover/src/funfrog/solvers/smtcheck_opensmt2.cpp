@@ -856,3 +856,13 @@ void smtcheck_opensmt2t::dump_on_error(std::string location)
 #endif
     cout << "))" << endl << "(check-sat)" << endl;
 }
+
+std::string smtcheck_opensmt2t::create_bound_string(std::string base, int exp)
+{
+    std::string ret = base;
+    int size = exp - base.size() + 1; // for format 3.444444
+    for (int i=0; i<size;i++)
+        ret+= "0";
+
+    return ret;
+}

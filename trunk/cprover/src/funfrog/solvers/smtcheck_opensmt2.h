@@ -241,6 +241,9 @@ protected:
 
   // Basic prints for debug - KE: Hope I did it right :-)
   char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
+  
+  // build the string of the upper and lower bounds
+  std::string create_bound_string(std::string base, int exp); 
 
 public:
   char* getPTermString(const literalt &l) { return getPTermString(literals[l.var_no()]); }

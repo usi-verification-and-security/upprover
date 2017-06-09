@@ -602,16 +602,6 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
     return l;
 }
 
-std::string smtcheck_opensmt2t_lra::create_bound_string(std::string base, int exp)
-{
-    std::string ret = base;
-    int size = exp - base.size() + 1; // for format 3.444444
-    for (int i=0; i<size;i++)
-        ret+= "0";
-
-    return ret;
-}
-
 literalt smtcheck_opensmt2t_lra::create_constraints2type(
 		PTRef &var,
 		std::string lower_b,
