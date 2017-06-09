@@ -47,7 +47,7 @@ public:
       certify(0)
   { }
   
-  ~check_opensmt2t() {
+  virtual ~check_opensmt2t() {
       if (osmt) delete osmt;
   }
 

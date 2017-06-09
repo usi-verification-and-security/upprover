@@ -31,7 +31,7 @@ public:
     initializeSolver(name);
   }
 
-  ~smtcheck_opensmt2t_cuf(); // d'tor
+  virtual ~smtcheck_opensmt2t_cuf(); // d'tor
 
   virtual exprt get_value(const exprt &expr);
 
