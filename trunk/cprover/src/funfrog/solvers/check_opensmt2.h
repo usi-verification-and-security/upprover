@@ -47,7 +47,9 @@ public:
       certify(0)
   { }
   
-  virtual ~check_opensmt2t() { }
+  virtual ~check_opensmt2t() {
+      if (osmt) delete osmt;
+  }
 
   virtual prop_conv_solvert* get_prop_conv_solver()=0;
   
