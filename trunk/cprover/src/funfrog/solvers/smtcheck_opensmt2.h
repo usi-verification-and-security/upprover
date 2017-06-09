@@ -43,7 +43,7 @@ public:
         check_opensmt2t(reduction, reduction_graph, reduction_loops)
   { /* No init of solver - done for inherit check_opensmt2 */}
     
-  virtual ~smtcheck_opensmt2t(); // d'tor
+  ~smtcheck_opensmt2t(); // d'tor
 
   virtual prop_conv_solvert* get_prop_conv_solver(){return NULL;} // Common to all
 

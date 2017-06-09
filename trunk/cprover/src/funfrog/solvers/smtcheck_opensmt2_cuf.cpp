@@ -48,6 +48,8 @@ void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
 // Free all inner objects
 smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
 {
+    if (bitblaster)
+        delete bitblaster;
     // Shall/When need to: freeSolver() ?
 }
 
