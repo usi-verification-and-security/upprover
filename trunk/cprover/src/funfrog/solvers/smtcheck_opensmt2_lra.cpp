@@ -692,15 +692,15 @@ bool smtcheck_opensmt2t_lra::push_constraints2type(
 void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 {
     typet var_type = expr.type(); // Get the current type
-    //const irep_idt type = var_type.get("#c_type");
+    const irep_idt type_id_c = var_type.get("#c_type");
     const irep_idt &type_id=var_type.id_string();
- 
+    
 #ifdef SMT_DEBUG_VARS_BOUNDS
     std::cout << "; Try to add type constraints to " << type_id << std::endl;
 #endif
     
     /* Test if needs to add */
-    if(!((is_number(expr.type())) || (type_id == ID_char))) return ;
+    if(!((is_number(expr.type())) || (type_id_c == ID_char))) return ;
     if (var_type.is_nil()) return;
     if (expr.is_constant()) return;
 
@@ -723,7 +723,7 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #endif
 
     // Start checking what it is
-    if (type_id == ID_signed_char)
+    if (type_id_c == ID_signed_char)
     {
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for char signed" << endl;
@@ -735,7 +735,7 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #endif 
         push_constraints2type(var, is_non_det, lower_bound, upper_bound);
     }
-    else if (type_id == ID_char)
+    else if (type_id_c == ID_unsigned_char)
     {
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for char unsigned" << endl;
@@ -747,7 +747,7 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #endif 
         push_constraints2type(var, is_non_det, lower_bound, upper_bound);
     }    
-    else if (type_id == ID_char)
+    else if (type_id_c == ID_char)
     {
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for char " << ((type_id==ID_signedbv) ? "signed" : "unsigned") << endl;
