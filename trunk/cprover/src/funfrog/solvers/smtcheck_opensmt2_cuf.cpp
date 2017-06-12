@@ -387,6 +387,8 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
         }
         else
         {
+            std::cout << ";; No type Constraints were added to the solver (" <<
+                    type_id.c_str() << std::endl;
             return; // Need to create the cases for it
         }
     }
