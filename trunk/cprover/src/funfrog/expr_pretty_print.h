@@ -27,12 +27,14 @@ public:
   void visit(const exprt& expr);
   void visit_SSA(const exprt& expr);
 
-  void set_indent(unsigned _indent) {
+  void set_indent(unsigned _indent) 
+  {
     orig_indent = _indent;
     indent.assign(_indent, ' ');
   }
   
-  void set_indent(const std::string& indent_str) {
+  void set_indent(const std::string& indent_str) 
+  {
     orig_indent = indent_str.length();
     indent = indent_str;
   }

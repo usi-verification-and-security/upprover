@@ -605,14 +605,26 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
     expr_ssa_print(out_terms << "    (=> ", partition_iface.callend_symbol, partition_smt_decl, false, true);
 	std::ostream out_temp(0); std::stringbuf temp_buf; out_temp.rdbuf(&temp_buf); // Pre-order printing
     int assume_counter=0;
-	for (symex_target_equationt::SSA_stepst::iterator it2 = partition.start_it; it2 != partition.end_it; ++it2) {
-	  if (it2->is_assume() && !it2->ignore) {
-		if (assume_counter == 0 && isFirstCallExpr(it2->cond_expr)) {assume_counter++; expr_ssa_print(out_temp << "        ", it2->guard, partition_smt_decl, false);}
-		assume_counter++; expr_ssa_print(out_temp << "        ", it2->cond_expr, partition_smt_decl, false);
-	  }
-	}
-    if (assume_counter > 1) out_terms << "\n      (and \n" << temp_buf.str() << "      )\n" << "    )\n";
-    else out_terms << "\n" << temp_buf.str() << "    )\n";
+    for (symex_target_equationt::SSA_stepst::iterator it2 = partition.start_it; it2 != partition.end_it; ++it2) {
+        if (it2->is_assume() && !it2->ignore) 
+        {
+            if (assume_counter == 0 && isFirstCallExpr(it2->cond_expr)) {
+                assume_counter++; 
+                expr_ssa_print(out_temp << "        ", it2->guard, partition_smt_decl, false);
+            }
+            assume_counter++; 
+            expr_ssa_print(out_temp << "        ", it2->cond_expr, partition_smt_decl, false);
+        }
+    }
+    /* End the End Call print - print all */
+    if (assume_counter > 1) 
+    {
+        out_terms << "\n      (and \n" << temp_buf.str() << "      )\n" << "    )\n";
+    }
+    else
+    {
+        out_terms << "\n" << temp_buf.str() << "    )\n";
+    }
 #   endif
   }
 }

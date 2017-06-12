@@ -65,7 +65,8 @@ public:
           single_assertion_check(_single_assertion_check),
           use_slicing(_use_slicing),
 	  do_guard_expl(_do_guard_expl),
-          use_smt(_use_smt)
+          use_smt(_use_smt),
+          prev_unwind_counter(0)
           {set_message_handler(_message_handler);}
           
   virtual ~symex_assertion_sumt();
@@ -369,6 +370,13 @@ protected:
     const exprt &vcc_expr,
     const std::string &msg,
     statet &state);
+  
+  /* Temporary fix to deal with loops
+   * taken from void goto_symext::symex_goto(statet &state)
+   * in symex_goto.cpp
+   */
+  bool is_unwind_loop(statet &state);
+  unsigned int prev_unwind_counter;
   
   #ifdef DEBUG_PARTITIONING
     std::set<std::string> _return_vals; // Check for duplicated symbol creation

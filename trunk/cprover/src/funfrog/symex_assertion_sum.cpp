@@ -274,6 +274,11 @@ void symex_assertion_sumt::symex_step(
   std::cout << "Location: " << state.source.pc->source_location << '\n';
   std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << '\n';
   std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << '\n';
+  std::cout << "Unwind: " << state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count << '\n';
+  std::cout << "Unwind Info."
+            << " unwind in last goto was " << prev_unwind_counter 
+            << " a function " << (state.top().loop_iterations.empty() ? "with no" : "with") << " loops"
+            << " and is now" << ((is_unwind_loop(state) ? " in loop " : " out of any loop")) << '\n';
 #endif
   
   const goto_programt::instructiont &instruction=*state.source.pc;
@@ -299,6 +304,7 @@ void symex_assertion_sumt::symex_step(
     //decrement_unwinding_counter(); 
     store_return_value(state, get_current_deferred_function());
     end_symex(state);
+    prev_unwind_counter = 0; // Exit a function, init the unwind state
     break;
   
   case LOCATION:
@@ -319,6 +325,7 @@ void symex_assertion_sumt::symex_step(
             catch (const std::string &s) { str = ""; }
         }
       
+        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
         symex_goto(state); // Original code from Cprover follow with break
 
         if (do_guard_expl &&store_expln && str != "")
@@ -326,21 +333,10 @@ void symex_assertion_sumt::symex_step(
             guard_expln[state.guard.as_expr().get("identifier")] = str;
         }
     } else {
+        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
         symex_goto(state); // Original code from Cprover follow with break
     }
-    
-    #ifdef DEBUG_PARTITIONING
-        std::cout << "Parsing Guard: " <<
-        "\n  file " << state.source.pc->source_location.get_file() <<
-        " line " << state.source.pc->source_location.get_line() <<
-        " function " << state.source.pc->source_location.get_function() << 
-        "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
-        "\n  " << from_expr(ns, "", state.source.pc->guard) <<
-        "\n  " << " current location "
-               << loc << "(out of " << last_assertion_loc << ")"       
-               << std::endl;
-    #endif
-    
+        
     break;
     
   case ASSUME:
@@ -376,7 +372,9 @@ void symex_assertion_sumt::symex_step(
             // Checks which assert it is, and if we end the loop here
             #ifdef DEBUG_PARTITIONING
                 bool is_exit = 
-                 ((single_assertion_check  && !get_current_deferred_function().summary_info.is_in_loop()) 
+                 ((single_assertion_check  
+                    && (!is_unwind_loop(state))
+                    && (!get_current_deferred_function().summary_info.is_in_loop())) 
                   || (loc >= last_assertion_loc && (max_unwind == 1)));
                 
                 std::cout << "Parsing Assert: " <<
@@ -385,14 +383,18 @@ void symex_assertion_sumt::symex_step(
                 " function " << state.source.pc->source_location.get_function() << 
                 "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
                 "\n  " << from_expr(ns, "", state.source.pc->guard) <<
-                "\n  " << (is_exit ? "End before in location :" : " current location ") 
-                       << loc << "(out of " << last_assertion_loc << ")"       
+                "\n  " << (is_exit ? "End before in location :" : "Current location ") 
+                       << loc << "(out of " << last_assertion_loc << ")" 
+                       << " is in loop? " << state.source.pc->loop_number // Check when this will become active
                        << std::endl;
             #endif 
                     
             /* Optimization to remove code that after the current checked assert + remove any other asserts */
-            // KE:  change later (when supported) to state.source.pc->loop_number
-            if ((single_assertion_check  && !get_current_deferred_function().summary_info.is_in_loop()) 
+            // KE: change later (when supported) to state.source.pc->loop_number
+            // KE: Use get_current_unwind(state), if greater than 0 it is inside a loop
+            if ((single_assertion_check  
+                    && (!is_unwind_loop(state))
+                    && (!get_current_deferred_function().summary_info.is_in_loop())) 
                || (loc >= last_assertion_loc && (max_unwind == 1))) // unwind exactly 1, see line 37 unwind.h to understand why
             {  
               end_symex(state);
@@ -1730,4 +1732,31 @@ void symex_assertion_sumt::end_symex(statet &state)
   deferred_functions.pop();
 
   dequeue_deferred_function(state);
+}
+
+bool symex_assertion_sumt::is_unwind_loop(statet &state)
+{
+    statet::framet &frame=state.top();
+    
+    unsigned int unwind_counter;
+    if (frame.loop_iterations[goto_programt::loop_id(state.source.pc)].count > 0)
+    {
+        // If we are opening the loop iterations, we are in a loop
+        return true;
+    } 
+    else if (frame.loop_iterations[goto_programt::loop_id(state.source.pc)].is_recursion)
+    {
+        // If we are in recursion - we are in a loop, return true
+        return true;
+    } 
+    else if ((!frame.loop_iterations.empty()) && (prev_unwind_counter <= unwind_counter)) 
+    {
+        // If there are loops in this function, and we are still opening it, we are in a loop
+        return true;
+    } 
+    else 
+    {
+        // 1. Not in a loop, 2. Not in recursion, 3. out of loops if unwind 9 --> unwind 0 (e.g.,)
+        return false;
+    }
 }

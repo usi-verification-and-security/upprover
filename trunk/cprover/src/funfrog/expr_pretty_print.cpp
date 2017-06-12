@@ -21,22 +21,38 @@ Author: Ondrej Sery
 #define NORMAL_COLOR "\033[0m"
 #define DEBUG_COLOR "\E[47;34m"
 
-std::string expr_pretty_printt::addToDeclMap(const exprt &expr) {
-    if (partition_smt_decl == NULL) return "";
-
+std::string 
+expr_pretty_printt::addToDeclMap(const exprt &expr) 
+{
+    /* Exit if we don't save the prints for out stream in the end */
+    if (partition_smt_decl == NULL) 
+    {
+        return "";
+    }
+    
     // Fix the type - SSA type => SMT type
     std::string type_expr = expr.type().id().c_str();
     type_expr[0] = toupper(type_expr[0]);
-    if (type_expr.compare("Signedbv") == 0) type_expr = "Real";
-
+    if (type_expr.compare("Signedbv") == 0) 
+    {
+        type_expr = "Real";
+    }
+    
     // Fix Variable name - sometimes "nondet" name is missing, add it for these cases
     std::string name_expr = expr.get(ID_identifier).c_str();
-    if (expr.id() == ID_nondet_symbol) {
-            if (name_expr.find("nondet") == std::string::npos)
-                    name_expr = name_expr.replace(0,7, "symex::nondet");
+    if (expr.id() == ID_nondet_symbol) 
+    {
+        if (name_expr.find("nondet") == std::string::npos)
+        {
+            name_expr = name_expr.replace(0,7, "symex::nondet");
+        }
     }
-    if (name_expr.find("__CPROVER_rounding_mode!") != std::string::npos) return "";
-
+    if (name_expr.find("__CPROVER_rounding_mode!") != std::string::npos) 
+    {
+        // We don't save __cprover built-ins
+        return "";
+    }
+    
     // Create the output
     std::ostream out_code(0);
     std::stringbuf code_buf;
@@ -47,23 +63,31 @@ std::string expr_pretty_printt::addToDeclMap(const exprt &expr) {
     // Insert the variable decl into a map of vars
     //std::cout << "** Debug ** " << key << std::endl;
     if (partition_smt_decl->find(key) == partition_smt_decl->end())
+    {
             partition_smt_decl->insert(make_pair(key,expr));
-
+    }
+    
+    // Return the clean expression name (SMT-LIB style)
     return name_expr;
 }
 
-double expr_pretty_printt::convertBinaryIntoDec(const exprt &expr) {
-	// convert once per expt const - why? because if you "get" twice from the same object you don't get the same result
-	if (isAlreadyConverted) {
-		isAlreadyConverted = false;
-		return last_convered_value;
-	}
+double 
+expr_pretty_printt::convertBinaryIntoDec(const exprt &expr) 
+{
+    // convert once per expt const - why? because if you "get" twice from the same object you don't get the same result
+    if (isAlreadyConverted) 
+    {
+        isAlreadyConverted = false;
+        return last_convered_value;
+    }
 
-	std::string test = expr.print_number_2smt();
-	if (test.size() > 0)
-		return stod(test);
+    std::string test = expr.print_number_2smt();
+    if (test.size() > 0)
+    {
+        return stod(test);
+    }
 
-	return 0;
+    return 0;
 }
 
 void
@@ -288,7 +312,13 @@ bool expr_pretty_printt::isTypeCast2Convert(const exprt& expr)
 
 void expr_pretty_printt::convertTypecast(const exprt& expr)
 {
-    assert(expr.operands().size() == 1); // If more than that check why
+    assert(!expr.operands().empty()); // Shall have symbol the type cast refers to
+    
+    // If more than that check why
+    assert( ((expr.operands().size() == 1) && (expr.id() == ID_typecast))
+            ||
+            ((expr.operands().size() == 2) && (expr.id() == ID_floatbv_typecast))
+          );
 
     if ((expr.operands())[0].is_constant()) {
         if (is_prev_token) out << " ";
