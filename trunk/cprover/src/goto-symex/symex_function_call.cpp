@@ -40,6 +40,7 @@ bool goto_symext::get_unwind_recursion(
   const unsigned thread_nr,
   unsigned unwind)
 {
+  assert(0); // KE: when is it needed?
   return false;
 }
 
