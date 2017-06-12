@@ -328,7 +328,19 @@ void symex_assertion_sumt::symex_step(
     } else {
         symex_goto(state); // Original code from Cprover follow with break
     }
-
+    
+    #ifdef DEBUG_PARTITIONING
+        std::cout << "Parsing Guard: " <<
+        "\n  file " << state.source.pc->source_location.get_file() <<
+        " line " << state.source.pc->source_location.get_line() <<
+        " function " << state.source.pc->source_location.get_function() << 
+        "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
+        "\n  " << from_expr(ns, "", state.source.pc->guard) <<
+        "\n  " << " current location "
+               << loc << "(out of " << last_assertion_loc << ")"       
+               << std::endl;
+    #endif
+    
     break;
     
   case ASSUME:
@@ -372,13 +384,14 @@ void symex_assertion_sumt::symex_step(
                 " line " << state.source.pc->source_location.get_line() <<
                 " function " << state.source.pc->source_location.get_function() << 
                 "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
-                "\n  " << from_expr(ns, "", state.source.pc->guard) 
+                "\n  " << from_expr(ns, "", state.source.pc->guard) <<
                 "\n  " << (is_exit ? "End before in location :" : " current location ") 
                        << loc << "(out of " << last_assertion_loc << ")"       
                        << std::endl;
             #endif 
-        
+                    
             /* Optimization to remove code that after the current checked assert + remove any other asserts */
+            // KE:  change later (when supported) to state.source.pc->loop_number
             if ((single_assertion_check  && !get_current_deferred_function().summary_info.is_in_loop()) 
                || (loc >= last_assertion_loc && (max_unwind == 1))) // unwind exactly 1, see line 37 unwind.h to understand why
             {  
