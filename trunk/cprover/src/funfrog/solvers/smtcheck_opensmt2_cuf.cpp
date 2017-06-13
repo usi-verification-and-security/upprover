@@ -181,12 +181,11 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         return unsupported2var_bv(expr); // stub for now
         
     } else if (max_num != 0) {
-        // Check if fits
-        BigInt int_value(str.c_str());
-        if (int_value <= -max_num || max_num < int_value)
+        // Check if fits - using cprover information
+        if (expr.type().get_int("width") > this->bitwidth)
         {
             cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-            cout << "\n  Data " << int_value << "(" << str << ")" << " is not in between " 
+            cout << "\n  Data " << str << " is not in between " 
                     << (-max_num) << " and " << (max_num-1) << std::endl;
             exit(0);
         } 

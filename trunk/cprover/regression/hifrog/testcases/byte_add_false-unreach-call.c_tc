@@ -1,4 +1,4 @@
 benchmarks/byte_add_false-unreach-call.c,prop,--claim,1,--unwind,20
-benchmarks/byte_add_false-unreach-call.c,qfcuf,--claim,1,--theoref,--no-itp,--bitwidth,32,--unwind,10--type-byte-constraints,2,--heuristic,4
+benchmarks/byte_add_false-unreach-call.c,qfcuf,--claim,1,--theoref,--no-itp,--bitwidth,32,--unwind,10,--type-byte-constraints,2,--heuristic,4
 
 
