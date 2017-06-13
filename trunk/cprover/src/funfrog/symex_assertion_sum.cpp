@@ -269,16 +269,19 @@ void symex_assertion_sumt::symex_step(
   assert(!state.threads.empty());
   assert(!state.call_stack().empty());
 
-#ifdef DEBUG_PARTITIONING
+#ifdef DEBUG_PARTITIONING    
   std::cout << "\ninstruction type is " << state.source.pc->type << '\n';
   std::cout << "Location: " << state.source.pc->source_location << '\n';
-  std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << '\n';
-  std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << '\n';
-  std::cout << "Unwind: " << state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count << '\n';
-  std::cout << "Unwind Info."
-            << " unwind in last goto was " << prev_unwind_counter 
-            << " a function " << (state.top().loop_iterations.empty() ? "with no" : "with") << " loops"
-            << " and is now" << ((is_unwind_loop(state) ? " in loop " : " out of any loop")) << '\n';
+  if (state.source.pc->type != DEAD)
+  {
+    std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << '\n';
+    std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << '\n';
+    std::cout << "Unwind: " << state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count << '\n';
+    std::cout << "Unwind Info."
+              << " unwind in last goto was " << prev_unwind_counter 
+              << " a function " << (state.top().loop_iterations.empty() ? "with no" : "with") << " loops"
+              << " and is now" << ((is_unwind_loop(state) ? " in loop " : " out of any loop")) << '\n';
+  }
 #endif
   
   const goto_programt::instructiont &instruction=*state.source.pc;
@@ -304,7 +307,7 @@ void symex_assertion_sumt::symex_step(
     //decrement_unwinding_counter(); 
     store_return_value(state, get_current_deferred_function());
     end_symex(state);
-    prev_unwind_counter = 0; // Exit a function, init the unwind state
+    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
     break;
   
   case LOCATION:
@@ -430,7 +433,8 @@ void symex_assertion_sumt::symex_step(
         to_code_function_call(instruction.code);
       // Process the function call according to the call_summary
       handle_function_call(state, deref_code);
-    }      
+    }  
+    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;    
     state.source.pc++;
     break;
 
@@ -1734,6 +1738,12 @@ void symex_assertion_sumt::end_symex(statet &state)
   dequeue_deferred_function(state);
 }
 
+/*
+ Check if in loop or recursion.
+ * Fit to the version of Cprover where the unwind counter
+ * goes from 0 to (unwind -1). If this changes, then change the
+ * method accordingly.
+ */
 bool symex_assertion_sumt::is_unwind_loop(statet &state)
 {
     statet::framet &frame=state.top();

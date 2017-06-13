@@ -58,9 +58,19 @@ function test_one {
 
   p9="${9%\"}"
   p9="${p9#\"}"
+
+  p10="${10%\"}"
+  p10="${p10#\"}"
+
+  p11="${11%\"}"
+  p11="${p11#\"}"
+
+  p12="${12%\"}"
+  p12="${p12#\"}"
+
   #stupid way to do it, but it works. If needed add more params
-  echo ">> Run test case: $hifrog $PATH_reg$1 --logic $2 --save-summaries ${SUMMARIES}" $p3 $p4 $p5 $p6 $p7 $p8 $p9
-  $hifrog $PATH_reg$1 --logic $2 --save-summaries ${SUMMARIES} $p3 $p4 $p5 $p6 $p7 $p8 $p9 >> ${HIFROG_OUTPUT} 2>&1
+  echo ">> Run test case: $hifrog $PATH_reg$1 --logic $2 --save-summaries ${SUMMARIES}" $p3 $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12
+  $hifrog $PATH_reg$1 --logic $2 --save-summaries ${SUMMARIES} $p3 $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 >> ${HIFROG_OUTPUT} 2>&1
   if [[ $? -gt 0 ]]; then
     echo "HiFrog analysis failed (see ${HIFROG_OUTPUT})"
   fi
@@ -112,7 +122,7 @@ do
 		rm -r ${arr[0]: : -2}
 		mkdir "${arr[0]: : -2}"
         fi
-	test_one ${arr[0]} ${arr[1]} ${arr[2]} ${arr[3]} ${arr[4]} ${arr[5]} ${arr[6]} ${arr[7]} ${arr[8]} ${arr[9]}
+	test_one ${arr[0]} ${arr[1]} ${arr[2]} ${arr[3]} ${arr[4]} ${arr[5]} ${arr[6]} ${arr[7]} ${arr[8]} ${arr[9]} ${arr[10]} ${arr[11]} ${arr[12]}
     done
 done
 
