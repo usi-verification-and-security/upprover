@@ -185,7 +185,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         if (expr.type().get_int("width") > this->bitwidth)
         {
             cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-            cout << "\n  Data " << str << " is not in between " 
+            cout << "\n  Data " << str << "(width " << expr.type().get_int("width") << ")" << " is not in between " 
                     << (-max_num) << " and " << (max_num-1) << std::endl;
             exit(0);
         } 
