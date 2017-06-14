@@ -1167,6 +1167,7 @@ void symex_assertion_sumt::handle_function_call(
   Forall_expr(it, function_call.arguments())
   clean_expr(*it, state, false);
 
+
   // Do we have the body?
   if(!goto_function.body_available())
   {
@@ -1187,10 +1188,23 @@ void symex_assertion_sumt::handle_function_call(
     return;
   }
 
+
+    bool is_exit =
+     ((single_assertion_check
+        && (!is_unwind_loop(state))
+        && (!get_current_deferred_function().summary_info.is_in_loop()))
+      || (loc >= last_assertion_loc && (max_unwind == 1)));
+
+  // KE: to support loops, we not only checking the location,
+  //     but also if we are in loop. E.g., while(1) { assert(x>5); func2updateX(x); }
   loc = summary_info.get_call_location();
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);
-  if(summary_info.get_call_location() < last_assertion_loc){
+  bool is_deferred_func =
+		  (summary_info.get_call_location() < last_assertion_loc)
+           ||
+          ((is_unwind_loop(state) || get_current_deferred_function().summary_info.is_in_loop()) && (max_unwind != 1));
+  if(is_deferred_func){
     switch (summary_info.get_precision()){
     case HAVOC:
       havoc_function_call(deferred_function, state, function_id);
