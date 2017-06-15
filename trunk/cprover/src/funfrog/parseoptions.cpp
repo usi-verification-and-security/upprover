@@ -93,8 +93,26 @@ bool funfrog_parseoptionst::process_goto_program(
     // adding the library.
     remove_asm(symbol_table, goto_functions);
 
-    // add the library
-    link_to_library(symbol_table, goto_functions, ui_message_handler);  
+    // KE: Only to prop logic
+    if(cmdline.isset("logic")) 
+    {
+        if (cmdline.get_value("logic") == "prop") 
+        {
+            // There is a message in the method, no need to print it twice
+            
+            // add the library
+            link_to_library(symbol_table, goto_functions, ui_message_handler);
+        } 
+        else
+        {
+            cbmc_status_interface("Ignoring CPROVER library");
+        }
+    }
+    else
+    {
+        cbmc_status_interface("Ignoring CPROVER library");
+    }
+  
       
     if(cmdline.isset("string-abstraction"))
       string_instrumentation(
@@ -233,10 +251,6 @@ bool funfrog_parseoptionst::get_goto_program(
       goto_convert(symbol_table, goto_functions, ui_message_handler);
 
     }
-
-    // finally add the library
-    cbmc_status_interface("Adding CPROVER library");
-    link_to_library(symbol_table, goto_functions, ui_message_handler);
 
     if(process_goto_program(ns, options, goto_functions))
       return true;
@@ -505,14 +519,18 @@ void funfrog_parseoptionst::help()
 
 unsigned funfrog_parseoptionst::count(const goto_functionst &goto_functions) const
 {
-  unsigned long c=0;
-  for(goto_functionst::function_mapt::const_iterator it =
-        goto_functions.function_map.begin();
-      it!=goto_functions.function_map.end();
-      it++)
-    c += it->second.body.instructions.size();
-  std::cout << "    Instruction count: " << c << std::endl;
-  return c;
+    unsigned long c=0;
+    for(goto_functionst::function_mapt::const_iterator it =
+          goto_functions.function_map.begin();
+        it!=goto_functions.function_map.end();
+        it++)
+    {
+        c += it->second.body.instructions.size();
+    }
+
+    std::cout << "    Instruction count: " << c << std::endl;
+
+    return c;
 }
 
 /*******************************************************************\
@@ -613,13 +631,13 @@ bool funfrog_parseoptionst::check_function_summarization(
     // KE: or is it goto_functionst::entry_point()?
     // So instead of c::main we have now _start (cbmc 5.5)
     check_claims(ns,
-                                      goto_functions.function_map[goto_functionst::entry_point()].body,
-                                      goto_functions,
-                                      claim_map,
-                                      claim_numbers,
-                                      options,
-                                      ui_message_handler,
-                                      claim_nr);
+                goto_functions.function_map[goto_functionst::entry_point()].body,
+                goto_functions,
+                claim_map,
+                claim_numbers,
+                options,
+                ui_message_handler,
+                claim_nr);
   return 0;
 }
 
