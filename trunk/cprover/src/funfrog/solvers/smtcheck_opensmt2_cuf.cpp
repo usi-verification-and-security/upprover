@@ -305,7 +305,11 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
     return ptl;
 }
 
-// If the expression is a number adds constraints
+/* 
+ *  If the expression is a number adds constraints 
+ * 
+ *  Consider using size to create the bounds!
+ */
 void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &var)
 {
     assert(type_constraints_level == 0 || type_constraints_level == 1 || type_constraints_level == 2);
@@ -328,16 +332,16 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for char signed" << endl;
 #endif
-    	lower_bound = ("-" + create_bound_string("128", 0));
-    	upper_bound = create_bound_string("127", 0);
+    	lower_bound = "-129";
+    	upper_bound = "128";
     }
     else if (type_id_c == ID_unsigned_char)
     {
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for char unsigned" << endl;
 #endif
-    	lower_bound = ("-" + create_bound_string("0", 0));
-    	upper_bound = create_bound_string("255", 0);
+    	lower_bound = "-1";
+    	upper_bound = "256";
     } 
     else  
     {
@@ -350,10 +354,8 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     #ifdef SMT_DEBUG_VARS_BOUNDS
             cout << "; Adding new constraint for char " << ((type_id==ID_signedbv) ? "signed" : "unsigned") << endl;
     #endif
-            lower_bound = ((type_id==ID_signedbv) ? 
-                                    ("-" + create_bound_string("128", 0)) : ("-" + create_bound_string("0", 0)));
-            upper_bound = ((type_id==ID_signedbv) ?
-                                    create_bound_string("127", 0) : create_bound_string("255", 0));
+            lower_bound = ((type_id==ID_signedbv) ? "-129" : "-1");
+            upper_bound = ((type_id==ID_signedbv) ? "128" : "256");
             
         }
         else if(type_id==ID_unsignedbv) // unsigned int = 32, unsigned long = 64
@@ -361,8 +363,8 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     #ifdef SMT_DEBUG_VARS_BOUNDS
             cout << "; Adding new constraint for unsigned " << ((size==32) ? "int" : "long") << endl;
     #endif
-            lower_bound = "0";
-            upper_bound = ((size==32) ? "4294967295" : "18446744073709551615");
+            lower_bound = "-1";
+            upper_bound = ((size==32) ? "4294967296" : "18446744073709551616");
 
         }
         else if(type_id==ID_signedbv) // int = 32, long = 64
@@ -370,8 +372,8 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     #ifdef SMT_DEBUG_VARS_BOUNDS
             cout << "; Adding new constraint for " << ((size==32) ? "int" : "long") << endl;
     #endif
-            lower_bound = ((size==32) ? "-2147483648" : "-9223372036854775808");
-            upper_bound = ((size==32) ? "2147483647" : "9223372036854775807");
+            lower_bound = ((size==32) ? "-2147483649" : "-9223372036854775809");
+            upper_bound = ((size==32) ? "2147483648" : "9223372036854775808");
         }
         else if(type_id==ID_floatbv) // float = 32, double = 64
         {
@@ -379,9 +381,9 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
             cout << "; Adding new constraint for unsigned " << ((size==32) ? "float" : "double") << endl;
     #endif
             lower_bound = ((size==32) ?
-                                    ("-" + create_bound_string("34028234", 38)) : ("-" + create_bound_string("17976931348623158", 308)));
+                                    ("-" + create_bound_string("34028235", 38)) : ("-" + create_bound_string("17976931348623159", 308)));
             upper_bound = ((size==32) ?
-                                    create_bound_string("34028233", 38) : create_bound_string("17976931348623157", 308));
+                                    create_bound_string("34028234", 38) : create_bound_string("17976931348623158", 308));
             
         }
         else
@@ -392,16 +394,23 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
         }
     }
 
+    // checks we really created bounds
+    assert(upper_bound.size() > 0);
+    assert(lower_bound.size() > 0);
+    assert(lower_bound.front() == '-');
+    
+    // BB uses slt or ult, thus we also write it that way!
     vec<PTRef> args1; args1.push(get_bv_const(lower_bound.c_str())); args1.push(var);
     vec<PTRef> args2; args2.push(var); args2.push(get_bv_const(upper_bound.c_str()));
-    PTRef ptl1 = (type_id_c == ID_unsigned_char) ? bvlogic->mkBVUleq(args1) : bvlogic->mkBVSleq(args1);
-    PTRef ptl2 = (type_id_c == ID_unsigned_char) ? bvlogic->mkBVUleq(args2) : bvlogic->mkBVSleq(args2);
+    PTRef ptl1 = (type_id_c == ID_unsigned_char) ? bvlogic->mkBVUlt(args1) : bvlogic->mkBVSlt(args1);
+    PTRef ptl2 = (type_id_c == ID_unsigned_char) ? bvlogic->mkBVUlt(args2) : bvlogic->mkBVSlt(args2);
     
     // Add it directly to the solver of the BV logic
     PTRef ptl = bvlogic->mkBVLand(ptl1,ptl2);
     PTRef lp = bvlogic->mkBVEq(get_bv_const("1"),ptl);
     
     BVRef tmp;
+    
     bitblaster->insertEq(lp, tmp);
 }
 
