@@ -154,10 +154,16 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
               status() << "(all statements at once)" << endl << eom;
 
               if (decider->force_refine_ce(exprs, refined)){
-                  status() << "ASSERTION DOES NOT HOLD" << eom;
 #ifdef _NO_OPTIMIZATION                  
                   std::string reason = decider->getFails2RefineReason();
-                  if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
+                  if (reason.size() > 0) 
+                  {
+                      status() << "ASSERTION UNKNOWN" << endl;
+                      status() << "(further refinement needed)" << eom;
+                      status() << "\n\n(" << reason << ")" << endl;
+                  } else {
+                      status() << "ASSERTION DOES NOT HOLD" << eom;
+                  }
 #endif
                   report_failure();
               } else {
@@ -304,9 +310,15 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                                       << exprs.size()  << " expressions bit-blasted)" << endl;
 #ifdef _NO_OPTIMIZATION                      
                       std::string reason = decider->getFails2RefineReason();
-                      if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl; 
+                      if (reason.size() > 0) 
+                      {
+                        status() << "ASSERTION UNKNOWN" << endl;
+                        status() << "(further refinement needed)" << eom;
+                        status() << "\n\n(" << reason << ")" << endl;
+                      } else {
+                        status() << "ASSERTION DOES NOT HOLD" << eom;
+                      }
 #endif
-                      status() << "ASSERTION DOES NOT HOLD" << eom;
                       report_failure();
                       break;
                   } else {

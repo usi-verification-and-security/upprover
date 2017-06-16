@@ -159,11 +159,18 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
     std::cout << ";; Extract constant number : " << expr.print_number_2smt() << " Of Type "
             << type_id << std::endl;
 #endif       
-        
+    
+    // If one, zero, true and false can convert without checks!
+    if (expr.is_boolean() && expr.is_one())
+        return get_bv_const("1");
+    if (expr.is_boolean() && expr.is_zero())
+        return get_bv_const("0");
+    // KE: not sure about this code, DO NOT add is_one and is_zero, why? think of a shift op in 64 or 32 bit of 1.
+    
     std::string str = expr.print_number_2smt();
     int isFirstchSign = (str[0] == '-' || str[0] == '+')? 1 : 0;
     assert("Check support for new data-type in Const converstion." && str.size() != 0);
-    
+     
     if ((str.compare("inf") == 0) || (str.compare("-inf") == 0))
     {
         // No inf values in toy models!
