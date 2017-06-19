@@ -112,7 +112,9 @@ PTRef smtcheck_opensmt2t_cuf::get_bv_const(const char* val)
 {
     assert(val != NULL);
     PTRef lconst = bvlogic->mkBVConst(val);
-    std::cout << "Const " << val << " is OpenSMT " << logic->printTerm(lconst) << std::endl;
+#ifdef DEBUG_SMT_BB    
+    std::cout << "Const " << val << " is in OpenSMT " << logic->printTerm(lconst) << std::endl;
+#endif    
     return lconst;
 }
 
@@ -189,13 +191,25 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         return unsupported2var_bv(expr); // stub for now
         
     } else if (max_num != 0) {
+        // If basic ture/false no need for checks
+        if (expr.is_one() || expr.is_zero() || expr.is_true() || expr.is_false())
+        {
+            return get_bv_const(str.c_str());
+        }
+        
         // Check if fits - using cprover information
         if (expr.type().get_int("width") > this->bitwidth)
         {
             cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
             cout << "\n  Data " << str << "(width " << expr.type().get_int("width") << ")" << " is not in between " 
                     << (-max_num) << " and " << (max_num-1) << std::endl;
-            exit(0);
+                
+            /* Report always, but only exit if must to */
+            BigInt int_value(str.c_str());
+            if (int_value <= -max_num || max_num < int_value)
+            {
+                exit(0);
+            }
         } 
                     
         // Create the constant as string in OpenSMT2
