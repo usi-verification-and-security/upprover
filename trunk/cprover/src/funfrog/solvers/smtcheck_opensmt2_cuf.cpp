@@ -183,7 +183,6 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         return unsupported2var_bv(expr); // stub for now
         
     } else if (!(std::all_of(str.begin() + isFirstchSign, str.end(), ::isdigit))) {
-        std::cout << "Abstract " << str << std::endl;
         // E.g., floats - unsupported!
         return unsupported2var_bv(expr); // stub for now
         
@@ -210,12 +209,19 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
 // hifrog: ../../src/common/Alloc.h:64: const T& RegionAllocator<T>::operator[]
 //    (RegionAllocator<T>::Ref) const [with T = unsigned int; 
 //     RegionAllocator<T>::Ref = unsigned int]: Assertion `r < sz' failed.
+// expr is dest, expr.op0 is source
 PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
 {
     const exprt &expr_op0 = (expr.operands())[0];
     const irep_idt &_id0=expr_op0.id();  // KE: gets the id once for performance
     assert(_id0 != ID_floatbv_typecast); // Type-cast of float - KE: show me that!
         
+    // Check the format is valid
+    assert((expr.id() == ID_typecast) || (expr.id() == ID_floatbv_typecast));
+    assert(!expr.operands().empty());
+    assert((expr.id() != ID_typecast) || (expr.operands().size() == 1));
+    assert((expr.id() != ID_floatbv_typecast) || (expr.operands().size() == 2));
+    
 #ifdef DEBUG_SMT_BB
     std::cout << ";;; Start (TYPE_CAST) for " << expr.type().id() 
                << " to " << (expr_op0.type().id()) << std::endl;
@@ -227,8 +233,7 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
         
     // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code:
-    if ((expr.id()== ID_typecast) && (_id0 == ID_typecast) 
-            && (expr_op0.operands().size() == 1)) 
+    if ((expr.id()== ID_typecast) && (_id0 == ID_typecast))
     { 
         // Recursive typecast  
         PTRef ptl = type_cast_bv(expr_op0);
@@ -245,9 +250,6 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
 #endif
         return ptl;   
     
-    } else if ((expr.id()== ID_typecast) && (_id0 == ID_typecast)) {
-        assert(0); // No arguments - KE: show me that!
-    
     } else if (expr.type().id() == expr_op0.type().id()) {
         return convert_bv(expr_op0);
     
@@ -261,14 +263,56 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
         
     } else if (is_expr_bool && is_number(expr_op0.type())) {
         // Cast from Real to Boolean - Add
-
         return bvlogic->mkBVNot(bvlogic->mkBVEq(convert_bv(expr_op0), get_bv_const("0")));
+
+    } else if (expr_op0.is_constant() && (expr.id() == ID_floatbv_typecast)) {
+        /* Constant to constant case */
         
-    } else if ((expr.type().id() == ID_floatbv) 
-            && (expr_op0.type().id() != ID_floatbv) 
-            && is_number(expr_op0.type()))                 {
-        // TODO: Translate 8.2 into int or bit-vector
+        // Check first that we don't need larger reg.
+        if (expr.type().id() == ID_floatbv) 
+        {
+            if (expr.type().get_int("width") > this->bitwidth)
+            {
+                cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+                cout << "\n  Data " << expr.print_number_2smt() << "(width " << expr.type().get_int("width") << ")" << " is not in between " 
+                        << (-max_num) << " and " << (max_num-1) << std::endl;
+                exit(0);
+            }
+            
+            // All OK with the Dest. reg. size
+        }
+   
+        // int to float
+        if ((expr.type().id() == ID_floatbv) && (expr_op0.type().id() != ID_floatbv))             
+            return convert_bv(expr_op0); 
+        
+        // float to float
+        if ((expr.type().id() == ID_floatbv) && (expr_op0.type().id() == ID_floatbv))
+            return convert_bv(expr_op0);
+        
+        
         return unsupported2var_bv(expr); // stub for now
+        
+        // KE: TODO
+        // float to int
+        if ((expr.type().id() != ID_floatbv) && (expr_op0.type().id() == ID_floatbv))
+        {
+            std::cout << expr.pretty() << std::endl;
+            assert(0);
+        }
+        
+        assert(0); // Not suppose to get here!
+
+    } else if (is_number(expr.type()) && is_number(expr_op0.type()) && 
+                                        (expr.id() == ID_floatbv_typecast)) {
+        
+        return unsupported2var_bv(expr); // stub for now
+        
+        // KE: TODO        
+        /* number to number case (excluding bool) */
+        std::cout << expr.pretty() << std::endl;
+        std::cout << expr_op0.pretty() << std::endl;
+        assert(0);
         
     } else {
         //} else if (is_number(expr.type()) && is_operands_bool) {
@@ -292,7 +336,7 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
         // Unsigned: no need to do something
         return ptl_inner;
     }
-    
+      
     // If signed we need to do something :
     vec<PTRef> args;
     args.push(bvlogic->mkBVSlt(ptl_inner, this->get_bv_const("0"))); // IF a
@@ -320,7 +364,10 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
 void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &var)
 {
     assert(type_constraints_level == 0 || type_constraints_level == 1 || type_constraints_level == 2);
-    if (type_constraints_level == 0) return;
+    if (type_constraints_level == 0) 
+    {
+        return;
+    }
     
     // Start adding the constraints
     typet var_type = expr.type(); // Get the current type
@@ -419,6 +466,10 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     BVRef tmp;
     
     bitblaster->insertEq(lp, tmp);
+#ifdef DEBUG_SMT_BB
+        cout <<  "\n;; Type Byte Constraints: (" << lower_bound << " to "
+                << upper_bound << ")\n" << logic->printTerm(ptl) << endl;
+#endif    
 }
 
 PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
@@ -452,26 +503,13 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         cout << "; CREATE A VAR in OPENSMT2 " << s << " of type " << expr.type().id_string() << endl;
         free(s);
 #endif
-    } else if (_id == ID_typecast && expr.operands().size() == 1) {
+    } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) 
+                                                && !expr.operands().empty()) {
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A TYPE-CAST " << endl;
 #endif           
         ptl = type_cast_bv(expr);
 
-    } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) 
-                                  && expr.operands().size() == 2) {
-#ifdef DEBUG_SMT_BB
-        cout << "; IT IS A TYPE-CAST WITH ROUNDING MODEL" << endl;
-#endif  
-        if (is_cprover_rounding_mode_var(expr.op1()))
-        {
-            ptl = type_cast_bv(expr);
-        }
-        else
-        {
-            ptl = unsupported2var_bv(expr); // stub for now
-        }
-        
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
         // KE: TODO, don't know how to do it yet...
         ptl = unsupported2var_bv(expr); // stub for now
@@ -592,7 +630,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     } else if (_id == ID_not) {
 #ifdef DEBUG_SMT_BB
             cout << "; IT IS ! " << endl;
-#endif
+#endif 
         ptl = bvlogic->mkBVNot(
                     convert_bv(expr.operands()[0]));
 
@@ -600,7 +638,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
                (_id == ID_ieee_float_notequal)) {
 #ifdef DEBUG_SMT_BB
             cout << "; IT IS != " << endl;
-#endif
+#endif       
         ptl = bvlogic->mkBVNot(
                     bvlogic->mkBVEq(convert_bv(expr.operands()[0]),
                                     convert_bv(expr.operands()[1])));
@@ -629,7 +667,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A " << _id.c_str() << endl;
 #endif
-        if (_id == ID_if) {
+        if (_id == ID_if) {       
             if (args.size() == 2) {
                 ptl = bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]); 
             } else if (args.size() == 3) {
@@ -645,13 +683,13 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
             // GF: this should be handled by convert_bv_eq_ite.
             //     but if ID_if appears in any other type of expr than equality,
             //     then we should handle it in a somewhat way.   
-        } else if (_id == ID_ifthenelse) {
+        } else if (_id == ID_ifthenelse) {                
             ptl = bvlogic->mkBVLand(
                     bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]),
                     bvlogic->mkBVLor(args[0], args[2])
                     ); 
             // GF: TODO
-        } else if (_id ==  ID_implies) {
+        } else if (_id ==  ID_implies) {                 
             ptl = bvlogic->mkBVLor(bvlogic->mkBVNot(args[0]), args[1]);
             
         } else if (_id ==  ID_and) {
