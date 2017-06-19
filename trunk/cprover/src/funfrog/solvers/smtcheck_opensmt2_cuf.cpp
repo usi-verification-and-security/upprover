@@ -111,7 +111,9 @@ PTRef smtcheck_opensmt2t_cuf::get_bv_var(const char* name)
 PTRef smtcheck_opensmt2t_cuf::get_bv_const(const char* val)
 {
     assert(val != NULL);
-    return bvlogic->mkBVConst(val);
+    PTRef lconst = bvlogic->mkBVConst(val);
+    std::cout << "Const " << val << " is OpenSMT " << logic->printTerm(lconst) << std::endl;
+    return lconst;
 }
 
 bool smtcheck_opensmt2t_cuf::convert_bv_eq_ite(const exprt &expr, PTRef& ptl)
@@ -379,46 +381,61 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     // Check the id is a var
     assert((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol));
 
+    int size = var_type.get_int("width");
+    assert("Data type constraints for Bytes are valid for 8 bit-width or up" 
+                && (size >= 8));
+        
     std::string lower_bound = ""; 
     std::string upper_bound = "";
+    bool isSigned = true;
     if (type_id_c == ID_signed_char)
     {
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for char signed" << endl;
 #endif
-    	lower_bound = "-129";
-    	upper_bound = "128";
+        // Is from -128 to 127
+    	lower_bound = "-128";
+    	upper_bound = "127";
     }
     else if (type_id_c == ID_unsigned_char)
     {
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for char unsigned" << endl;
 #endif
-    	lower_bound = "-1";
-    	upper_bound = "256";
+        // Is from 0 to 255
+    	lower_bound = "0";
+    	upper_bound = "255";
+        isSigned = false;
     } 
+    else if (type_id_c == ID_char)
+    {
+#ifdef SMT_DEBUG_VARS_BOUNDS
+        cout << "; Adding new constraint for char " << ((type_id==ID_signedbv) ? "signed" : "unsigned") << endl;
+#endif
+        // Is either from -128 to 127 or from 0 to 255
+        const irep_idt &type_id=var_type.id_string();
+        lower_bound = ((type_id==ID_signedbv) ? "-128" : "0");
+        upper_bound = ((type_id==ID_signedbv) ? "127" : "255");
+
+    }
     else  
     {
         // Numbers conversion
         if (type_constraints_level == 1) return;
-        int size = var_type.get_int("width");
+        assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
+                && (size == 32 || size == 64 || size == 128 || size == 256));
+        
+
         const irep_idt &type_id=var_type.id_string();
-        if (type_id_c == ID_char)
-        {
-    #ifdef SMT_DEBUG_VARS_BOUNDS
-            cout << "; Adding new constraint for char " << ((type_id==ID_signedbv) ? "signed" : "unsigned") << endl;
-    #endif
-            lower_bound = ((type_id==ID_signedbv) ? "-129" : "-1");
-            upper_bound = ((type_id==ID_signedbv) ? "128" : "256");
-            
-        }
-        else if(type_id==ID_unsignedbv) // unsigned int = 32, unsigned long = 64
+        if(type_id==ID_unsignedbv) // unsigned int = 32, unsigned long = 64
         {
     #ifdef SMT_DEBUG_VARS_BOUNDS
             cout << "; Adding new constraint for unsigned " << ((size==32) ? "int" : "long") << endl;
     #endif
-            lower_bound = "-1";
-            upper_bound = ((size==32) ? "4294967296" : "18446744073709551616");
+            // Is from 0 to (2^size-1)
+            lower_bound = "0";
+            upper_bound = ((size==32) ? "4294967295" : "18446744073709551615");
+            isSigned = false;
 
         }
         else if(type_id==ID_signedbv) // int = 32, long = 64
@@ -426,8 +443,8 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     #ifdef SMT_DEBUG_VARS_BOUNDS
             cout << "; Adding new constraint for " << ((size==32) ? "int" : "long") << endl;
     #endif
-            lower_bound = ((size==32) ? "-2147483649" : "-9223372036854775809");
-            upper_bound = ((size==32) ? "2147483648" : "9223372036854775808");
+            lower_bound = ((size==32) ? "-2147483648" : "-9223372036854775808");
+            upper_bound = ((size==32) ? "2147483647" : "9223372036854775807");
         }
         else if(type_id==ID_floatbv) // float = 32, double = 64
         {
@@ -435,9 +452,9 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
             cout << "; Adding new constraint for unsigned " << ((size==32) ? "float" : "double") << endl;
     #endif
             lower_bound = ((size==32) ?
-                                    ("-" + create_bound_string("34028235", 38)) : ("-" + create_bound_string("17976931348623159", 308)));
+				("-" + create_bound_string("34028234", 38)) : ("-" + create_bound_string("17976931348623158", 308)));
             upper_bound = ((size==32) ?
-                                    create_bound_string("34028234", 38) : create_bound_string("17976931348623158", 308));
+				create_bound_string("34028233", 38) : create_bound_string("17976931348623157", 308));
             
         }
         else
@@ -456,8 +473,8 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     // BB uses slt or ult, thus we also write it that way!
     vec<PTRef> args1; args1.push(get_bv_const(lower_bound.c_str())); args1.push(var);
     vec<PTRef> args2; args2.push(var); args2.push(get_bv_const(upper_bound.c_str()));
-    PTRef ptl1 = (type_id_c == ID_unsigned_char) ? bvlogic->mkBVUlt(args1) : bvlogic->mkBVSlt(args1);
-    PTRef ptl2 = (type_id_c == ID_unsigned_char) ? bvlogic->mkBVUlt(args2) : bvlogic->mkBVSlt(args2);
+    PTRef ptl1 = (isSigned ? bvlogic->mkBVSleq(args1) : bvlogic->mkBVUleq(args1));
+    PTRef ptl2 = (isSigned ? bvlogic->mkBVSleq(args2) : bvlogic->mkBVUleq(args2));
     
     // Add it directly to the solver of the BV logic
     PTRef ptl = bvlogic->mkBVLand(ptl1,ptl2);
