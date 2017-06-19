@@ -468,7 +468,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     // checks we really created bounds
     assert(upper_bound.size() > 0);
     assert(lower_bound.size() > 0);
-    assert(lower_bound.front() == '-');
+    assert(lower_bound.front() == '-' || !isSigned);
     
     // BB uses slt or ult, thus we also write it that way!
     vec<PTRef> args1; args1.push(get_bv_const(lower_bound.c_str())); args1.push(var);
