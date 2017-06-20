@@ -436,19 +436,20 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     {
         // Numbers conversion
         if (type_constraints_level == 1) return;
-        assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
-                && (size == 32 || size == 64 || size == 128 || size == 256));
-        
-
         const irep_idt &type_id=var_type.id_string();
         if(type_id==ID_unsignedbv) // unsigned int = 32, unsigned long = 64
         {
     #ifdef SMT_DEBUG_VARS_BOUNDS
             cout << "; Adding new constraint for unsigned " << ((size==32) ? "int" : "long") << endl;
     #endif
+            // The implementation contains support to: 16,32 and 64 bits only
+            assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
+                && (size == 16 || size == 32 || size == 64));
+                    
             // Is from 0 to (2^size-1)
             lower_bound = "0";
-            upper_bound = ((size==32) ? "4294967295" : "18446744073709551615");
+            upper_bound = ((size==64) ? "18446744073709551615" : 
+                                ((size==32) ? "4294967295" : "65535"));
             isSigned = false;
 
         }
@@ -457,19 +458,28 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     #ifdef SMT_DEBUG_VARS_BOUNDS
             cout << "; Adding new constraint for " << ((size==32) ? "int" : "long") << endl;
     #endif
-            lower_bound = ((size==32) ? "-2147483648" : "-9223372036854775808");
-            upper_bound = ((size==32) ? "2147483647" : "9223372036854775807");
+            // The implementation contains support to: 16,32 and 64 bits only
+            assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
+                && (size == 16 || size == 32 || size == 64));
+            
+            lower_bound = ((size==64) ? "-9223372036854775808" : 
+                                ((size==32) ? "-2147483648" : "-32768"));
+            upper_bound = ((size==64) ? "9223372036854775807" : 
+                                ((size==32) ? "2147483647" : "32767"));
         }
         else if(type_id==ID_floatbv) // float = 32, double = 64
         {
     #ifdef SMT_DEBUG_VARS_BOUNDS
             cout << "; Adding new constraint for unsigned " << ((size==32) ? "float" : "double") << endl;
     #endif
+            // The implementation contains support to: 32 and 64 bits only
+            assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
+                        && (size == 32 || size == 64));
+            
             lower_bound = ((size==32) ?
 				("-" + create_bound_string("34028234", 38)) : ("-" + create_bound_string("17976931348623158", 308)));
             upper_bound = ((size==32) ?
-				create_bound_string("34028233", 38) : create_bound_string("17976931348623157", 308));
-            
+				create_bound_string("34028233", 38) : create_bound_string("17976931348623157", 308));   
         }
         else
         {
