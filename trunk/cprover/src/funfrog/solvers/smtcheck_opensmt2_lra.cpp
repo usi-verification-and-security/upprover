@@ -718,8 +718,9 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for char signed" << endl;
 #endif
-    	std::string lower_bound = ("-" + create_bound_string("128", 0));
-    	std::string upper_bound = create_bound_string("127", 0);
+        // Is from -128 to 127
+    	std::string lower_bound = "-128";
+    	std::string upper_bound = "127";
 #ifdef SMT_DEBUG_VARS_BOUNDS   
     	is_add_constraints = 
 #endif 
@@ -730,8 +731,9 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for char unsigned" << endl;
 #endif
-    	std::string lower_bound = ("-" + create_bound_string("0", 0));
-    	std::string upper_bound = create_bound_string("255", 0);
+        // Is from 0 to 255
+    	std::string lower_bound = "0";
+    	std::string upper_bound = "255";
 #ifdef SMT_DEBUG_VARS_BOUNDS   
     	is_add_constraints = 
 #endif 
@@ -742,10 +744,9 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for char " << ((type_id==ID_signedbv) ? "signed" : "unsigned") << endl;
 #endif
-    	std::string lower_bound = ((type_id==ID_signedbv) ? 
-                                ("-" + create_bound_string("128", 0)) : ("-" + create_bound_string("0", 0)));
-    	std::string upper_bound = ((type_id==ID_signedbv) ?
-				create_bound_string("127", 0) : create_bound_string("255", 0));
+    	std::string lower_bound = ((type_id==ID_signedbv) ? "-128" : "0");
+        std::string upper_bound = ((type_id==ID_signedbv) ? "127" : "255");
+        
 #ifdef SMT_DEBUG_VARS_BOUNDS   
     	is_add_constraints = 
 #endif 
@@ -764,8 +765,13 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for unsigned " << ((size==32) ? "int" : "long") << endl;
 #endif
+        // The implementation contains support to: 16,32 and 64 bits only
+        assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
+                && (size == 16 || size == 32 || size == 64));
+            
     	std::string lower_bound = "0";
-    	std::string upper_bound = ((size==32) ? "4294967295" : "18446744073709551615");
+    	std::string upper_bound = ((size==64) ? "18446744073709551615" : 
+                                        ((size==32) ? "4294967295" : "65535"));
 #ifdef SMT_DEBUG_VARS_BOUNDS   
     	is_add_constraints = 
 #endif
@@ -776,8 +782,14 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for " << ((size==32) ? "int" : "long") << endl;
 #endif
-    	std::string lower_bound = ((size==32) ? "-2147483648" : "-9223372036854775808");
-    	std::string upper_bound = ((size==32) ? "2147483647" : "9223372036854775807");
+        // The implementation contains support to: 16,32 and 64 bits only
+        assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
+            && (size == 16 || size == 32 || size == 64));
+
+        std::string lower_bound = ((size==64) ? "-9223372036854775808" : 
+                            ((size==32) ? "-2147483648" : "-32768"));
+        std::string upper_bound = ((size==64) ? "9223372036854775807" : 
+                            ((size==32) ? "2147483647" : "32767"));
 #ifdef SMT_DEBUG_VARS_BOUNDS   
     	is_add_constraints = 
 #endif 
@@ -792,6 +804,10 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
 #ifdef SMT_DEBUG_VARS_BOUNDS
     	cout << "; Adding new constraint for unsigned " << ((size==32) ? "float" : "double") << endl;
 #endif
+        // The implementation contains support to: 32 and 64 bits only
+        assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
+                    && (size == 32 || size == 64));
+        
     	std::string lower_bound = ((size==32) ?
 				("-" + create_bound_string("34028234", 38)) : ("-" + create_bound_string("17976931348623158", 308)));
     	std::string upper_bound = ((size==32) ?

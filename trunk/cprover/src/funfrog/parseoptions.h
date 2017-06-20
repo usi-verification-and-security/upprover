@@ -50,7 +50,7 @@ class value_set_alloc_adaptort;
   "(random-seed):(no-partitions)(no-itp)(verbose-solver):" \
   "(itp-algorithm): (itp-uf-algorithm): (itp-lra-algorithm):(itp-lra-factor): (check-itp): (part-itp):" \
   "(unwind):(unwindset):" \
-  "(type-constraints)(type-byte-constraints):" \
+  "(type-constraints):(type-byte-constraints):" \
   "(inlining-limit):(testclaim):" \
   "(pobj)(eq)(neq)(ineq)" \
   "(no-error-trace)" \
