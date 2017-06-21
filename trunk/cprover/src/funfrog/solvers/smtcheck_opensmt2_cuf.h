@@ -108,7 +108,12 @@ protected:
   virtual void initializeSolver(const char*);
   
   void add_constraints4chars_bv(const exprt &expr, PTRef &var);
+  
+  void add_constraints4chars_bv_char(PTRef &var, const irep_idt type_id_c, const irep_idt type_id);
 
+  void add_constraints4chars_bv_bool(const exprt &expr, PTRef &var, int size, const irep_idt type_id);
+  
+  void add_constraints4chars_numeric(PTRef &var, int size, const irep_idt type_id);
 };
 
 inline void getVarsInExpr(exprt& e, std::set<exprt>& vars)
