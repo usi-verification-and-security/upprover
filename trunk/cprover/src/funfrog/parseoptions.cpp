@@ -27,27 +27,32 @@
 #include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/remove_virtual_functions.h>
 #include <goto-programs/remove_instanceof.h>
-#include <goto-programs/remove_returns.h>
+//#include <goto-programs/remove_returns.h>
+#include <goto-programs/remove_exceptions.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
-#include <goto-programs/remove_returns.h>
-#include <goto-programs/remove_skip.h>
-#include <goto-programs/remove_exceptions.h>
 #include <goto-programs/remove_asm.h>
-#include <goto-symex/rewrite_union.h>
+#include <goto-programs/remove_unused_functions.h>
+#include <goto-programs/remove_static_init_loops.h>
 #include <goto-programs/mm_io.h>
-#include <goto-symex/adjust_float_expressions.h>
 #include <goto-programs/goto_inline.h>
 #include <goto-programs/show_properties.h>
 #include <goto-programs/set_properties.h>
 #include <goto-programs/read_goto_binary.h>
-#include <goto-programs/interpreter.h>
 #include <goto-programs/string_abstraction.h>
 #include <goto-programs/string_instrumentation.h>
 #include <goto-programs/loop_ids.h>
 #include <goto-programs/link_to_library.h>
+#include <goto-programs/remove_skip.h>
+#include <goto-programs/show_goto_functions.h>
 
-#include <pointer-analysis/goto_program_dereference.h>
+#include <goto-symex/rewrite_union.h>
+#include <goto-symex/adjust_float_expressions.h>
+
+#include <goto-instrument/full_slicer.h>
+#include <goto-instrument/nondet_static.h>
+#include <goto-instrument/cover.h>
+
 #include <pointer-analysis/add_failed_symbols.h>
 
 #include <analyses/goto_check.h>
@@ -89,6 +94,8 @@ bool funfrog_parseoptionst::process_goto_program(
     // KE: update  new cprover version - taken from: cbmc_parseoptionst::process_goto_program
     // Consider adding more optimizations as full slicing or non-det statics
       
+    namespacet ns(symbol_table);
+    
     // Remove inline assembler; this needs to happen before
     // adding the library.
     remove_asm(symbol_table, goto_functions);
