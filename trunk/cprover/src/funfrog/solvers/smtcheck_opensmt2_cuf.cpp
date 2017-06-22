@@ -71,7 +71,8 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
                 << " of TYPE " << expr.type().id_string() << endl;
 #endif   
         
-    _fails_type_id = expr.id_string(); // KE: keep the reason for failing
+    _fails_type_id = (((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol)))
+            ? expr.type().id_string() : expr.id_string(); // KE: keep the reason for failing
     
     return get_bv_var(str.c_str());
 }
