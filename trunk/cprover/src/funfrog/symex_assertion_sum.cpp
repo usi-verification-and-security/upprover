@@ -18,6 +18,7 @@
 #include "partitioning_slice.h"
 #include "symex_assertion_sum.h"
 #include "expr_pretty_print.h"
+#include "hifrog.h"
 
 /*******************************************************************
 
@@ -698,7 +699,7 @@ void symex_assertion_sumt::assign_function_arguments(
   mark_argument_symbols(goto_function.type, state, partition_iface);
 
   // Mark accessed global variables as well
-  bool is_init_stage = (id2string(identifier).find("__CPROVER_initialize") != std::string::npos);
+  bool is_init_stage = (id2string(identifier).find(INITIALIZE) != std::string::npos);
   mark_accessed_global_symbols(identifier, state, partition_iface, is_init_stage);
   
   // FIXME: We need to store the SSA_steps.size() here, so that 
@@ -948,10 +949,8 @@ void symex_assertion_sumt::return_assignment_and_mark(
 
     const typet& type = function_type.return_type();
     const irep_idt &function_id = partition_iface.function_id;
-    irep_idt retval_symbol_id(
-            as_string(function_id) + "#return_value!"); // For goto_symext::symex_assign (101)
-    irep_idt retval_tmp_id(
-            as_string(function_id) + "?return_value!::$tmp::"); // tmp in cprover is a token
+    irep_idt retval_symbol_id(as_string(function_id) + FUNC_RETURN); // For goto_symext::symex_assign (101)
+    irep_idt retval_tmp_id(as_string(function_id) + TMP_FUNC_RETURN); // tmp in cprover is a token
     
     // Gets a new symbol per function call:
     get_new_name(retval_symbol_id,ns);
@@ -1510,7 +1509,7 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
     state.propagation.remove(identifier);
 
     // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
-    irep_idt new_l2_name = id2string(identifier) + "#" + std::to_string(state.level2.current_count(identifier));
+    irep_idt new_l2_name = id2string(identifier) + COUNTER + std::to_string(state.level2.current_count(identifier));
   
     return new_l2_name;
 }
@@ -1519,10 +1518,10 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 // We always with a counter!
 irep_idt symex_assertion_sumt::get_current_l2_name(statet &state, const irep_idt &identifier) const 
 {
-    if (id2string(identifier).find("#") != std::string::npos)
+    if (id2string(identifier).find(COUNTER) != std::string::npos)
         return identifier;
     
-    return id2string(identifier)+"#"+std::to_string(state.level2.current_count(identifier));
+    return id2string(identifier)+COUNTER+std::to_string(state.level2.current_count(identifier));
 }
 
 /*******************************************************************

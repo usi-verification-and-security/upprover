@@ -1,4 +1,5 @@
 #include "error_trace.h"
+#include "hifrog.h"
 
 //#define TRACE_DEBUG //Use it to debug the trace of an error build
 
@@ -41,17 +42,17 @@ void error_tracet::build_goto_trace (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find("__CPROVER_rounding_mode!")!=std::string::npos)
+    if (str.find(ROUNDING_MODE)!=std::string::npos)
     	continue;
     
-    if (str.find("__CPROVER_")!=std::string::npos)
+    if (str.find(CPROVER_BUILDINS)!=std::string::npos)
     	continue;
 
-    if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
+    if (str.find(DYNAMIC_OBJ)!=std::string::npos)
         continue;
     
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
-       str.find("#return_value!")!=std::string::npos)
+       str.find(FUNC_RETURN)!=std::string::npos)
         continue;
     
     if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
@@ -77,7 +78,7 @@ void error_tracet::build_goto_trace (
     goto_trace_step.identifier=SSA_step.identifier;
     
     if(SSA_step.ssa_lhs.is_not_nil()) {
-        if (str.find("goto_symex::\\guard#") == 0){
+        if (str.find(GOTO_GUARD) == 0){
             goto_trace_step.lhs_object=SSA_step.ssa_lhs;
         } else {
             //goto_trace_step.lhs_object=SSA_step.original_lhs_object;
@@ -101,8 +102,8 @@ void error_tracet::build_goto_trace (
     }
     
     /* Print nice return value info */
-    if (str.find("#return_value!") < str.size() ||
-	str.find("?return_value!::$tmp::")	< str.size())
+    if (str.find(FUNC_RETURN) < str.size() ||
+        str.find(TMP_FUNC_RETURN) < str.size())
     {
         goto_trace_step.format_string = "function return value";
     } else {
@@ -172,17 +173,17 @@ void error_tracet::build_goto_trace_formula (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find("__CPROVER_rounding_mode!")!=std::string::npos)
+    if (str.find(ROUNDING_MODE)!=std::string::npos)
     	continue;
     
-    if (str.find("__CPROVER_")!=std::string::npos)
+    if (str.find(CPROVER_BUILDINS)!=std::string::npos)
     	continue;
 
-    if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
+    if (str.find(DYNAMIC_OBJ)!=std::string::npos)
         continue;
     
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
-       str.find("#return_value!")!=std::string::npos)
+       str.find(FUNC_RETURN)!=std::string::npos)
         continue;
     
     
@@ -669,17 +670,17 @@ void error_tracet::build_goto_trace (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find("__CPROVER_rounding_mode!")!=std::string::npos)
+    if (str.find(ROUNDING_MODE)!=std::string::npos)
     	continue;
     
-    if (str.find("__CPROVER_")!=std::string::npos)
+    if (str.find(CPROVER_BUILDINS)!=std::string::npos)
     	continue;
 
-    if (str.find("symex_dynamic::dynamic_object")!=std::string::npos)
+    if (str.find(DYNAMIC_OBJ)!=std::string::npos)
         continue;
     
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
-       str.find("#return_value!")!=std::string::npos)
+       str.find(FUNC_RETURN)!=std::string::npos)
         continue;
     
     if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
@@ -705,7 +706,7 @@ void error_tracet::build_goto_trace (
     goto_trace_step.identifier=SSA_step.identifier;
     
     if(SSA_step.ssa_lhs.is_not_nil()) {
-        if (str.find("goto_symex::\\guard#") == 0){
+        if (str.find(GOTO_GUARD) == 0){
             goto_trace_step.lhs_object=SSA_step.ssa_lhs;
         } else {
             //goto_trace_step.lhs_object=SSA_step.original_lhs_object;
@@ -729,8 +730,8 @@ void error_tracet::build_goto_trace (
     }
     
     /* Print nice return value info */
-    if (str.find("#return_value!") < str.size() ||
-	str.find("?return_value!::$tmp::")	< str.size())
+    if (str.find(FUNC_RETURN) < str.size() ||
+	str.find(TMP_FUNC_RETURN) < str.size())
     {
         goto_trace_step.format_string = "function return value";
     } else {

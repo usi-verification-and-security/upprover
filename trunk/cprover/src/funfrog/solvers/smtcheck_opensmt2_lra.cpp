@@ -377,8 +377,8 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                     convert << s; std::string str_expr1 = convert.str();
                     convert2 << "|" << (*it).get(ID_identifier) << "|"; std::string str_expr2 = convert2.str();
                     str_expr2.erase(std::remove(str_expr2.begin(),str_expr2.end(),'\\'),str_expr2.end());
-                    if((*it).id() == ID_nondet_symbol && str_expr2.find("nondet") == std::string::npos)
-                            str_expr2 = str_expr2.replace(1,7, "symex::nondet");
+                    if((*it).id() == ID_nondet_symbol && str_expr2.find(NONDET) == std::string::npos)
+                            str_expr2 = str_expr2.replace(0,8, SYMEX_NONDET);
                     assert(str_expr1.compare(str_expr2) == 0);
                 }
                 free(s);

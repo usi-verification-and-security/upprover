@@ -18,6 +18,7 @@ Module: Wrapper for OpenSMT2
 #include "smt_itp.h"
 #include <opensmt/opensmt2.h>
 #include <expr.h>
+#include "../hifrog.h"
 
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
@@ -137,7 +138,7 @@ public:
   }
   static bool is_cprover_rounding_mode_var(const std::string str)
   {
-      return (str.find("__CPROVER_rounding_mode!") != std::string::npos);
+      return (str.find(ROUNDING_MODE) != std::string::npos);
   }
   static bool is_cprover_builtins_var(const exprt& e)
   {
@@ -145,7 +146,7 @@ public:
   }
   static bool is_cprover_builtins_var(const std::string str)
   {
-      return (str.find("__CPROVER") != std::string::npos);
+      return (str.find(CPROVER_BUILDINS) != std::string::npos);
   }
   
   // Common to all

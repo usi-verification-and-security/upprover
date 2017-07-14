@@ -12,6 +12,7 @@ Author: Ondrej Sery
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
+#include "hifrog.h"
 
 #define EDGE_COLOR "\033[2;37m"
 #define TYPE_COLOR "\033[0;37m"
@@ -42,12 +43,12 @@ expr_pretty_printt::addToDeclMap(const exprt &expr)
     std::string name_expr = expr.get(ID_identifier).c_str();
     if (expr.id() == ID_nondet_symbol) 
     {
-        if (name_expr.find("nondet") == std::string::npos)
+        if (name_expr.find(NONDET) == std::string::npos)
         {
-            name_expr = name_expr.replace(0,7, "symex::nondet");
+            name_expr = name_expr.replace(0,8, SYMEX_NONDET);
         }
     }
-    if (name_expr.find("__CPROVER_rounding_mode!") != std::string::npos) 
+    if (name_expr.find(ROUNDING_MODE) != std::string::npos) 
     {
         // We don't save __cprover built-ins
         return "";

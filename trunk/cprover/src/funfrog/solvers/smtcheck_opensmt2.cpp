@@ -289,7 +289,7 @@ smtcheck_opensmt2t::insert_index(const string& _varname, int _idx)
 {
     string unidx = remove_index(_varname);
     string varname = unquote_varname(unidx);
-    return quote_varname(varname + "#" + std::to_string(_idx));
+    return quote_varname(varname + COUNTER + std::to_string(_idx));
 }
 
 string
@@ -297,7 +297,7 @@ smtcheck_opensmt2t::insert_index(const string& _varname, const string& _idx)
 {
     string unidx = remove_index(_varname);
     string varname = unquote_varname(unidx);
-    return quote_varname(varname + "#" + _idx);
+    return quote_varname(varname + COUNTER + _idx);
 }
 
 int
@@ -349,7 +349,7 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
     {
         string _var_name = id2string(it->get_identifier());
         if(is_cprover_rounding_mode_var(_var_name)) continue;
-        if(_var_name.find("__CPROVER_") != string::npos) continue;
+        if(_var_name.find(CPROVER_BUILDINS) != string::npos) continue;
         if(_var_name.find("nil") != string::npos) continue;
         string var_name = remove_invalid(_var_name);
         var_name = quote_varname(var_name);
@@ -785,8 +785,8 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     string str = id2string(expr.get(ID_identifier));
     assert (str.size() != 0); // Check the we really got something
 
-    if(expr.id() == ID_nondet_symbol && str.find("nondet") == std::string::npos)
-            str = str.replace(0,7, "symex::nondet");
+    if(expr.id() == ID_nondet_symbol && str.find(NONDET) == std::string::npos)
+            str = str.replace(0,8, SYMEX_NONDET);
 
     if (is_cprover_rounding_mode_var(str)) 
     {
@@ -798,7 +798,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     #endif
     }
 
-    if (str.find("__CPROVER_") != std::string::npos) {
+    if (str.find(CPROVER_BUILDINS) != std::string::npos) {
     #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
         cout << "; " << str << " :: " << expr.id() << " - Should Not Add Cprover Built-ins\n" << expr.pretty() << endl;
     #else

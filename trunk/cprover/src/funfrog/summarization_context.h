@@ -128,7 +128,7 @@ public:
     function_infot::deserialize_infos(in, function_infos);
 
     if (in.fail()) {
-      throw "Failed to load function summaries.";
+      throw "Failed to load function summaries.(2)";
     }
 
     in.close();

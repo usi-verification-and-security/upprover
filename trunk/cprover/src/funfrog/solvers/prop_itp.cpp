@@ -11,6 +11,7 @@ Author: Ondrej Sery
 #include <stdlib.h>
 #include "time_stopping.h"
 #include <symbol_table.h>
+#include "../hifrog.h"
 
 //#define DEBUG_ITP
 # ifdef DEBUG_ITP
@@ -219,12 +220,12 @@ void prop_itpt::generalize(const prop_conv_solvert& decider,
     
 #   ifdef DEBUG_ITP
     std::cout << " -> '" << it->get_identifier() << "' - " << entry.width << std::endl;
-    assert(id2string(it->get_identifier()).find("#") != std::string::npos);
+    assert(id2string(it->get_identifier()).find(COUNTER) != std::string::npos);
 #   endif
 
     // Check there are no issues with SSA translation that leaked here:
     // that it is always an SSA not an original symbol!
-    assert(id2string(it->get_identifier()).find("#") != std::string::npos);
+    assert(id2string(it->get_identifier()).find(COUNTER) != std::string::npos);
     
     for (boolbv_mapt::literal_mapt::const_iterator it2 = entry.literal_map.begin();
             it2 != entry.literal_map.end();

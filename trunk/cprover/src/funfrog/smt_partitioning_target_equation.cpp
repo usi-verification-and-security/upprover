@@ -12,6 +12,7 @@
 #include "expr_pretty_print.h"
 #include "solvers/sat/cnf.h"
 #include "solvers/smtcheck_opensmt2.h"
+#include "hifrog.h"
 
 //#define DEBUG_ITP_SMT // ITP of SMT - testing
 
@@ -267,13 +268,13 @@ bool smt_partitioning_target_equationt::isRoundModelEq(const exprt &expr)
 
     // Start checking if it is auto gen code for rounding model
     string str = id2string((expr.operands()[0]).get(ID_identifier));
-    if (str.find("__CPROVER_") != std::string::npos)
+    if (str.find(CPROVER_BUILDINS) != std::string::npos)
         return true;
     
     if (expr.operands().size() < 2) return false;
     
     str = id2string((expr.operands()[1]).get(ID_identifier));
-    if (str.find("__CPROVER_") != std::string::npos)
+    if (str.find(CPROVER_BUILDINS) != std::string::npos)
         return true;
 
     return false;

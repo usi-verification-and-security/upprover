@@ -299,7 +299,7 @@ void function_infot::deserialize_infos(const std::string& file, function_infost&
   deserialize_infos(in, infos);
 
   if (in.fail()) {
-    throw "Failed to load function summaries.";
+    throw "Failed to load function summaries. (1)";
   }
 
   in.close();
