@@ -1,0 +1,3 @@
+benchmarks/simple_no_uf_assumption.c,prop,--claim,1
+benchmarks/simple_no_uf_assumption.c,qflra,--claim,1
+benchmarks/simple_no_uf_assumption.c,qfuf,--claim,1
