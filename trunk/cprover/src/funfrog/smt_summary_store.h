@@ -23,4 +23,6 @@ protected:
   virtual void deserialize(std::istream& in) {assert(0);} // must have the interface to opensmt2
 };
 
+void get_files(std::set<std::string>& files, std::string set);
+
 #endif

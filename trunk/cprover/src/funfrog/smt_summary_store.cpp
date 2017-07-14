@@ -32,35 +32,42 @@ void smt_summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *
 
     store.clear();
 
-    if(!decider->getMainSolver()->readFormulaFromFile(in.c_str()))
-        return;
-    vec<Tterm>& functions = decider->getLogic()->getFunctions();
-    for(int i = 0; i < functions.size(); ++i)
+    // KE: add support for many summary files for lattice refinement
+    std::set<std::string> summary_files;
+    get_files(summary_files, in);
+    for(auto it = summary_files.begin(); it != summary_files.end() ; ++it)
     {
-        summaryt *itp = new smt_summaryt();
-        Tterm &tterm = functions[i];
-        string fname = tterm.getName();
-        string qless = smtcheck_opensmt2t::unquote_varname(fname);
-        string idxless = smtcheck_opensmt2t::remove_index(qless);
-        int midx = get_max_id(idxless);
-        int fidx = smtcheck_opensmt2t::get_index(fname);
-        assert(fidx >= 0);
-        //assert(midx != fidx);
-        int next_idx = midx + 1;
-        ++max_ids[idxless];// = max(fidx, midx);
-        //string fixed_name = smtcheck_opensmt2t::quote_varname(qless);
-        string fixed_name = smtcheck_opensmt2t::insert_index(idxless, next_idx);
-        tterm.setName(fixed_name);
-        itp->setTterm(tterm);
-        itp->setLogic(decider->getLogic());
-        itp->setInterpolant(tterm.getBody());
-        itp->set_valid(1);
-        store.push_back(nodet(i, *itp));
-        repr_count++;
+        if(decider->getMainSolver()->readFormulaFromFile(it->c_str()))
+        {    
+            vec<Tterm>& functions = decider->getLogic()->getFunctions();
+            for(int i = 0; i < functions.size(); ++i)
+            {
+                summaryt *itp = new smt_summaryt();
+                Tterm &tterm = functions[i];
+                string fname = tterm.getName();
+                string qless = smtcheck_opensmt2t::unquote_varname(fname);
+                string idxless = smtcheck_opensmt2t::remove_index(qless);
+                int midx = get_max_id(idxless);
+                int fidx = smtcheck_opensmt2t::get_index(fname);
+                assert(fidx >= 0);
+                //assert(midx != fidx);
+                int next_idx = midx + 1;
+                ++max_ids[idxless];// = max(fidx, midx);
+                //string fixed_name = smtcheck_opensmt2t::quote_varname(qless);
+                string fixed_name = smtcheck_opensmt2t::insert_index(idxless, next_idx);
+                tterm.setName(fixed_name);
+                itp->setTterm(tterm);
+                itp->setLogic(decider->getLogic());
+                itp->setInterpolant(tterm.getBody());
+                itp->set_valid(1);
+                store.push_back(nodet(i, *itp));
+                repr_count++;
+            }
+
+            max_id += repr_count; // KE: We add new summaries so we need to inc the max
+        }
     }
     
-    max_id += repr_count; // KE: We add new summaries so we need to inc the max
-
     return;
 }
 
@@ -95,4 +102,21 @@ summary_idt smt_summary_storet::insert_summary(summaryt& summary)
   store.push_back(nodet(id, summary));
   repr_count++;
   return id;
+}
+
+/*
+ Returns a list of summary files
+ */
+void get_files(std::set<std::string>& files, std::string set){
+
+  int length=set.length();
+
+  for(int idx=0; idx<length; idx++)
+  {
+    std::string::size_type next=set.find(",", idx);
+    files.insert(set.substr(idx, next-idx));
+
+    if(next==std::string::npos) break;
+    idx=next;
+  }
 }
