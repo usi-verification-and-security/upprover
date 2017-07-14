@@ -41,12 +41,10 @@ expr_pretty_printt::addToDeclMap(const exprt &expr)
     
     // Fix Variable name - sometimes "nondet" name is missing, add it for these cases
     std::string name_expr = expr.get(ID_identifier).c_str();
-    if (expr.id() == ID_nondet_symbol) 
+    if ((expr.id() == ID_nondet_symbol) 
+            && (name_expr.find(NONDET) != std::string::npos))
     {
-        if (name_expr.find(NONDET) == std::string::npos)
-        {
-            name_expr = name_expr.replace(0,8, SYMEX_NONDET);
-        }
+        name_expr = name_expr.insert(7, SYMEX_NONDET);
     }
     if (name_expr.find(ROUNDING_MODE) != std::string::npos) 
     {

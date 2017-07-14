@@ -10,8 +10,9 @@
 #ifndef HIFROG_H
 #define HIFROG_H
 
-#define FUNC_RETURN "#return_value!"
-#define TMP_FUNC_RETURN "?return_value!::$tmp::"
+// For now we have only one thread any hows
+#define FUNC_RETURN "::#return_value!0"
+#define TMP_FUNC_RETURN "::$tmp::return_value!0"
 
 #define CPROVER_BUILDINS "__CPROVER_"
 #define ROUNDING_MODE "__CPROVER_rounding_mode!"
@@ -20,9 +21,9 @@
 #define GOTO_GUARD "goto_symex::\\guard#"
 
 #define NIL "nil"
-#define NONDET "nondet"
+#define NONDET "symex::" // Cprover nondet symbol
 #define COUNTER "#" // GOTO to SSA (e.g., hifrog::?fun_end to hifrog::?fun_end#1)
-#define SYMEX_NONDET "symex::nondet#"
+#define SYMEX_NONDET "nondet#" //"symex::nondet#"
 
 #endif /* HIFROG_H */
 

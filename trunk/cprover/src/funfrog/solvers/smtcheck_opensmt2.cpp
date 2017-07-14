@@ -785,8 +785,8 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     string str = id2string(expr.get(ID_identifier));
     assert (str.size() != 0); // Check the we really got something
 
-    if(expr.id() == ID_nondet_symbol && str.find(NONDET) == std::string::npos)
-            str = str.replace(0,8, SYMEX_NONDET);
+    if(expr.id() == ID_nondet_symbol && (str.find(NONDET) != std::string::npos))
+            str = str.insert(7, SYMEX_NONDET);
 
     if (is_cprover_rounding_mode_var(str)) 
     {
