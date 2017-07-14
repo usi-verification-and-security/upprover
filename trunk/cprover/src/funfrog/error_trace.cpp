@@ -101,8 +101,8 @@ void error_tracet::build_goto_trace (
     }
     
     /* Print nice return value info */
-    if (str.find("::?return_value") < str.size() ||
-	str.find("::?return_value_tmp")	< str.size())
+    if (str.find("#return_value!") < str.size() ||
+	str.find("?return_value!::$tmp::")	< str.size())
     {
         goto_trace_step.format_string = "function return value";
     } else {
@@ -729,8 +729,8 @@ void error_tracet::build_goto_trace (
     }
     
     /* Print nice return value info */
-    if (str.find("::?return_value") < str.size() ||
-	str.find("::?return_value_tmp")	< str.size())
+    if (str.find("#return_value!") < str.size() ||
+	str.find("?return_value!::$tmp::")	< str.size())
     {
         goto_trace_step.format_string = "function return value";
     } else {

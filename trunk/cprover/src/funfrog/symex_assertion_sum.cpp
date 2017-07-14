@@ -949,9 +949,9 @@ void symex_assertion_sumt::return_assignment_and_mark(
     const typet& type = function_type.return_type();
     const irep_idt &function_id = partition_iface.function_id;
     irep_idt retval_symbol_id(
-            as_string(function_id) + "::#return_value!"); // For goto_symext::symex_assign
+            as_string(function_id) + "#return_value!"); // For goto_symext::symex_assign (101)
     irep_idt retval_tmp_id(
-            as_string(function_id) + "::?return_value!::$tmp::"); // tmp in cprover is a token
+            as_string(function_id) + "?return_value!::$tmp::"); // tmp in cprover is a token
     
     // Gets a new symbol per function call:
     get_new_name(retval_symbol_id,ns);
