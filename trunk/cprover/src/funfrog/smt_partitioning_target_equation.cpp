@@ -100,80 +100,79 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 void smt_partitioning_target_equationt::convert_partition(
 		smtcheck_opensmt2t &decider, interpolating_solvert &interpolator,
 		partitiont& partition) {
-	if (partition.ignore || partition.processed || partition.invalid) {
+    if (partition.ignore || partition.processed || partition.invalid) {
 #   ifdef DEBUG_ENCODING
-		if (partition.invalid) {
-			std::cout << "  partition invalidated (refined)." << std::endl;
-		} else if (partition.ignore) {
-			assert (!partition.get_iface().assertion_in_subtree);
-			std::cout << "  partition sliced out." << std::endl;
-		} else if (partition.processed) {
-			std::cout << "  partition already processed." << std::endl;
-		}
+        if (partition.invalid) {
+            std::cout << "  partition invalidated (refined)." << std::endl;
+        } else if (partition.ignore) {
+            assert (!partition.get_iface().assertion_in_subtree);
+            std::cout << "  partition sliced out." << std::endl;
+        } else if (partition.processed) {
+            std::cout << "  partition already processed." << std::endl;
+        }
 #	endif
-		return;
-	}
+        return;
+    }
 # ifdef DEBUG_SSA_SMT_CALL
-	cout << "Before decider::convert - assumption propagation symbols" << endl;
+    cout << "Before decider::convert - assumption propagation symbols" << endl;
 # endif
-	// Convert the assumption propagation symbols
-	partition_ifacet &partition_iface = partition.get_iface();
-	partition_iface.callstart_literal = decider.convert(
-			partition_iface.callstart_symbol);
-	partition_iface.callend_literal = decider.convert(
-			partition_iface.callend_symbol);
-	if (partition_iface.assertion_in_subtree) {
-		partition_iface.error_literal = decider.convert(
-				partition_iface.error_symbol);
-	}
-	if (partition.stub) {
+    // Convert the assumption propagation symbols
+    partition_ifacet &partition_iface = partition.get_iface();
+    partition_iface.callstart_literal = decider.convert(
+                    partition_iface.callstart_symbol);
+    partition_iface.callend_literal = decider.convert(
+                    partition_iface.callend_symbol);
+    if (partition_iface.assertion_in_subtree) {
+        partition_iface.error_literal = decider.convert(partition_iface.error_symbol);
+    }
+    if (partition.stub) {
 #       ifdef DEBUG_ENCODING
-			std::cout << "  partition havoced." << std::endl;
+        std::cout << "  partition havoced." << std::endl;
 #	endif
-		return;
-	}
+        return;
+    }
 
-	//  if ((partition.summary &&
-	//          partition.applicable_summaries.empty())) {
-	//    assert(!partition.inverted_summary);
-	//#   ifdef DEBUG_SSA
-	//    std::cout << "  no applicable summary." << std::endl;
-	//#	endif
-	//    return;
-	//  }
+    //  if ((partition.summary &&
+    //          partition.applicable_summaries.empty())) {
+    //    assert(!partition.inverted_summary);
+    //#   ifdef DEBUG_SSA
+    //    std::cout << "  no applicable summary." << std::endl;
+    //#	endif
+    //    return;
+    //  }
 
-	// Tell the interpolator about the new partition.
-	partition.set_fle_part_id(interpolator.new_partition());
+    // Tell the interpolator about the new partition.
+    partition.set_fle_part_id(interpolator.new_partition());
 
-	// If this is a summary partition, apply the summary
-	if (partition.summary) {
-		convert_partition_summary(decider, partition);
-		// FIXME: Only use in the incremental solver mode (not yet implemented)
-		// partition.processed = true;
-		return;
-	}
+    // If this is a summary partition, apply the summary
+    if (partition.summary) {
+        convert_partition_summary(decider, partition);
+        // FIXME: Only use in the incremental solver mode (not yet implemented)
+        // partition.processed = true;
+        return;
+    }
 
-	// Reserve fresh variables for the partition boundary
-	std::vector < symbol_exprt > common_symbs;
-	fill_common_symbols(partition, common_symbs);
+    // Reserve fresh variables for the partition boundary
+    std::vector < symbol_exprt > common_symbs;
+    fill_common_symbols(partition, common_symbs);
 
-	// GF: hack
-	//  smt_interpolantt::reserve_variables(decider, common_symbs, partition.get_iface().common_symbols);
+    // GF: hack
+    //  smt_interpolantt::reserve_variables(decider, common_symbs, partition.get_iface().common_symbols);
 
-	// Convert the corresponding SSA steps
-	convert_partition_guards(decider, partition);
-	convert_partition_assignments(decider, partition);
-	convert_partition_assumptions(decider, partition);
-	// if (partition.get_iface().function_id.c_str() == "c::main"){
-	//   std::cout << "converting assertions\n";
-	convert_partition_assertions(decider, partition);
-	// } else {
-	//   std::cout << "skipping converting assertions\n";
-	// }
-	convert_partition_io(decider, partition);
-        convert_partition_goto_instructions(decider, partition);
-	// FIXME: Only use in the incremental solver mode (not yet implemented)
-	// partition.processed = true;
+    // Convert the corresponding SSA steps
+    convert_partition_guards(decider, partition);
+    convert_partition_assignments(decider, partition);
+    convert_partition_assumptions(decider, partition);
+    // if (partition.get_iface().function_id.c_str() == "c::main"){
+    //   std::cout << "converting assertions\n";
+    convert_partition_assertions(decider, partition);
+    // } else {
+    //   std::cout << "skipping converting assertions\n";
+    // }
+    convert_partition_io(decider, partition);
+    convert_partition_goto_instructions(decider, partition);
+    // FIXME: Only use in the incremental solver mode (not yet implemented)
+    // partition.processed = true;
 }
 /*******************************************************************
  Function: smt_partitioning_target_equationt::convert_partition_summary
@@ -206,11 +205,14 @@ void smt_partitioning_target_equationt::convert_partition_summary(
                     != partition.applicable_summaries.end(); ++it) {
 
         smt_summaryt& summary = dynamic_cast<smt_summaryt&> (summary_store->find_summary(*it));
-
+#       ifdef DEBUG_SSA_PRINT
+        out_terms << ";;; Substituting summary #" << *it << "\n";
+        summary.print(out_terms);
+#       endif
         if (summary.is_valid() && (!is_recursive || last_summary == i++)) {
-#ifdef DEBUG_SSA
+#           ifdef DEBUG_SSA
             std::cout << "Substituting summary #" << *it << std::endl;
-#endif
+#           endif
             summary.substitute(decider, common_symbs, partition.inverted_summary);
         }
     }
@@ -293,29 +295,29 @@ bool smt_partitioning_target_equationt::isRoundModelEq(const exprt &expr)
 
 void smt_partitioning_target_equationt::convert_partition_guards(
 		smtcheck_opensmt2t &decider, partitiont& partition) {
-	for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
-            if (it->ignore) {
+    for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
+        if (it->ignore) {
 #       ifdef DEBUG_SSA_SMT_CALL
-            cout << "Before decider::const_var(GUARD-OUT) --> false" << endl;
+        cout << "Before decider::const_var(GUARD-OUT) --> false" << endl;
 #       endif
-                it->guard_literal = decider.const_var(false);
-            } else {		
+            it->guard_literal = decider.const_var(false);
+        } else {		
 #       ifdef DEBUG_SSA_PRINT
-                exprt tmp(it->guard);
-                //expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
-                expr_ssa_print_guard(out_terms, tmp, partition_smt_decl);
-                if (!tmp.is_boolean())
-                        terms_counter++; // SSA -> SMT shall be all in a new function
+            exprt tmp(it->guard);
+            //expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
+            expr_ssa_print_guard(out_terms, tmp, partition_smt_decl);
+            if (!tmp.is_boolean())
+                    terms_counter++; // SSA -> SMT shall be all in a new function
 #       endif
 #       ifdef DEBUG_SSA_SMT_CALL
-                exprt tmp2(it->guard);
-                expr_ssa_print_smt_dbg(
-                                cout << "Before decider::convert(GUARD-OUT) --> ", tmp2,
-                                false);
+            exprt tmp2(it->guard);
+            expr_ssa_print_smt_dbg(
+                            cout << "Before decider::convert(GUARD-OUT) --> ", tmp2,
+                            false);
 #	endif
-                it->guard_literal = decider.convert(it->guard);
-            }
-	}
+            it->guard_literal = decider.convert(it->guard);
+        }
+    }
 }
 
 /*******************************************************************
@@ -417,7 +419,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
 
         if ((it->is_assert()) && !(it->ignore)) {
 
-		    // GF: probably move it from here later:
+            // GF: probably move it from here later:
             exprt tmp(it->cond_expr);
             exprt fl;
             fl.make_false();
@@ -436,305 +438,294 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
 
             op_ass.operands().push_back(fl);
             exprs.push_back(op_ass);
-		    // GF: <-- end
+            // GF: <-- end
 
-#       ifdef DEBUG_SSA_SMT_CALL
-			bool test = (isTypeCastConst(it->cond_expr));
-			expr_ssa_print_smt_dbg(
-					cout << "Before decider::convert and decider.limplies(ASSERT-OUT) " << (test ? "w/t " : "no ") << "TYPECAST --> "
-					, it->cond_expr, true);
-#	endif
-			// Collect ass \in assertions(f) in bv
-			literalt tmp_literal = (decider.is_exist_var_constraints()) ?
-					decider.land(decider.convert(it->cond_expr), decider.lassert_var())
-					:decider.convert(it->cond_expr);
-			it->cond_literal
-					= decider.limplies(assumption_literal, tmp_literal);
-			bv.push_back(decider.lnot(it->cond_literal));
-		} else if (it->is_assume() && !it->ignore) {
-			// If the assumption represents a call of the function g,
-			// encode callstart_g propagation formula:
-			//
-			// callstart_g <=>
-			//     path_cond \land
-			//     (\land_{ass \in {assumptions(f)}} ass)
-			//
-			const partitiont* target_partition = find_target_partition(*it);
+#           ifdef DEBUG_SSA_SMT_CALL
+                bool test = (isTypeCastConst(it->cond_expr));
+                expr_ssa_print_smt_dbg(
+                cout << "Before decider::convert and decider.limplies(ASSERT-OUT) " 
+                        << (test ? "w/t " : "no ") << "TYPECAST --> ", it->cond_expr, true);
+#           endif
+            // Collect ass \in assertions(f) in bv
+            literalt tmp_literal = (decider.is_exist_var_constraints()) ?
+                                    decider.land(decider.convert(it->cond_expr), decider.lassert_var())
+                                    :decider.convert(it->cond_expr);
+            it->cond_literal = decider.limplies(assumption_literal, tmp_literal);
+            bv.push_back(decider.lnot(it->cond_literal));
+        } else if (it->is_assume() && !it->ignore) {
+            // If the assumption represents a call of the function g,
+            // encode callstart_g propagation formula:
+            //
+            // callstart_g <=>
+            //     path_cond \land
+            //     (\land_{ass \in {assumptions(f)}} ass)
+            //
+            const partitiont* target_partition = find_target_partition(*it);
 
-			if (target_partition && !target_partition->ignore) {
-				const partition_ifacet& target_partition_iface =
-						target_partition->get_iface();
-				assert(
-						!target_partition->invalid
-								&& !target_partition->processed);
+            if (target_partition && !target_partition->ignore) {
+                const partition_ifacet& target_partition_iface =
+                                target_partition->get_iface();
+                assert(!target_partition->invalid && !target_partition->processed);
 
 #		ifdef DEBUG_SSA_SMT_CALL
-				expr_ssa_print_smt_dbg(
-						cout << "Before decider::land(GUARD-LITERAL of Call-START) --> ",
-						it->guard, false);
-				expr_ssa_print_smt_dbg(
-						cout << "Before decider::set_equal(Call-START) --> ",
-						target_partition_iface.callstart_symbol, false);
+                    expr_ssa_print_smt_dbg(
+                                    cout << "Before decider::land(GUARD-LITERAL of Call-START) --> ",
+                                    it->guard, false);
+                    expr_ssa_print_smt_dbg(
+                                    cout << "Before decider::set_equal(Call-START) --> ",
+                                    target_partition_iface.callstart_symbol, false);
 #		endif
-				literalt tmp = decider.land(assumption_literal,
-						it->guard_literal);
-				decider.set_equal(tmp, target_partition_iface.callstart_literal);
+
+                literalt tmp = decider.land(assumption_literal,
+                                it->guard_literal);
+                decider.set_equal(tmp, target_partition_iface.callstart_literal);
+                
 #		ifdef DEBUG_SSA_PRINT
-				//out_terms << "XXX Call START equality: \n";
-				terms_counter++;
-				std::ostream out_temp2(0);
-				std::stringbuf temp2_buf;
-				out_temp2.rdbuf(&temp2_buf); // Pre-order printing
-				int assume_counter = 0;
-				expr_ssa_print(out_temp2 << "    (= ",
-						target_partition_iface.callstart_symbol,
-						partition_smt_decl, false);
+                    //out_terms << "XXX Call START equality: \n";
+                    terms_counter++;
+                    std::ostream out_temp2(0);
+                    std::stringbuf temp2_buf;
+                    out_temp2.rdbuf(&temp2_buf); // Pre-order printing
+                    int assume_counter = 0;
+                    expr_ssa_print(out_temp2 << "    (= ",
+                                    target_partition_iface.callstart_symbol,
+                                    partition_smt_decl, false);
 
-				for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
-					if (it2->is_assume() && !it2->ignore) {
-						assume_counter++;
-						expr_ssa_print(out_temp2 << "        ", it2->cond_expr,
-								partition_smt_decl, false);
-					}
-				}
-				// If there are more than one term - add and
-				switch (assume_counter) {
-				case 0:
-					out_terms << temp2_buf.str() << "        true\n"
-							<< "    )\n";
-					break; // Shall be called only once at the beginning of the code
-				case 1:
-					out_terms << temp2_buf.str() << "    )\n";
-					break;
-				default:
-					out_terms << "    (and \n  " << temp2_buf.str()
-							<< "      )\n" << "    )\n";
-					break;
-				}
-#	    endif
-			}
+                    for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
+                            if (it2->is_assume() && !it2->ignore) {
+                                    assume_counter++;
+                                    expr_ssa_print(out_temp2 << "        ", it2->cond_expr,
+                                                    partition_smt_decl, false);
+                            }
+                    }
+                    // If there are more than one term - add and
+                    switch (assume_counter) {
+                    case 0:
+                            out_terms << temp2_buf.str() << "        true\n"
+                                            << "    )\n";
+                            break; // Shall be called only once at the beginning of the code
+                    case 1:
+                            out_terms << temp2_buf.str() << "    )\n";
+                            break;
+                    default:
+                            out_terms << "    (and \n  " << temp2_buf.str()
+                                            << "      )\n" << "    )\n";
+                            break;
+                    }
+#               endif
+            }
 
-			// Collect this assumption as:
-			//
-			//     assumption_literal = \land_{ass \in assumptions(f)} ass
-			//
+            // Collect this assumption as:
+            //
+            //     assumption_literal = \land_{ass \in assumptions(f)} ass
+            //
 #           ifdef DEBUG_SSA_SMT_CALL
-			cout << "Before decider::land(call-START) " << number_of_assumptions << endl;
+                cout << "Before decider::land(call-START) " << number_of_assumptions << endl;
 #	    endif
-			assumption_literal = decider.land(assumption_literal,
-					it->cond_literal);
-			number_of_assumptions++;
-		}
+            assumption_literal = decider.land(assumption_literal, it->cond_literal);
+            number_of_assumptions++;
 	}
+    }
 
-	for (partition_idst::const_iterator it = partition.child_ids.begin(); it
+    for (partition_idst::const_iterator it = partition.child_ids.begin(); it
 			!= partition.child_ids.end(); ++it) {
-		const partitiont& target_partition = partitions[*it];
+        const partitiont& target_partition = partitions[*it];
 
-		if (target_partition.get_iface().assertion_in_subtree) {
-			// Collect error_g, where g \in children(f) in bv
-			bv.push_back(target_partition.get_iface().error_literal);
-		}
-	}
+        if (target_partition.get_iface().assertion_in_subtree) {
+            // Collect error_g, where g \in children(f) in bv
+            bv.push_back(target_partition.get_iface().error_literal);
+        }
+    }
 
-	// Encode the collected assertions:
-	//
-	// error_f <=>
-	//     (\lor_{g \in children(f)} error_g) \lor
-	//     (\lor_{ass \in assertions(f)} ass)
-	//
-	if (!bv.empty()) {
-		assert(partition_iface.assertion_in_subtree);
+    // Encode the collected assertions:
+    //
+    // error_f <=>
+    //     (\lor_{g \in children(f)} error_g) \lor
+    //     (\lor_{ass \in assertions(f)} ass)
+    //
+    if (!bv.empty()) {
+        assert(partition_iface.assertion_in_subtree);
 
-		if (partition.parent_id == partitiont::NO_PARTITION
-				&& !upgrade_checking) {
+        if (partition.parent_id == partitiont::NO_PARTITION && !upgrade_checking) {
 #       ifdef DEBUG_SSA_SMT_CALL
-			cout << "Before decider::const_var(error in ROOT) --> true" << endl;
-			cout << "Before decider::land(error in ROOT)" << endl;
+            cout << "Before decider::const_var(error in ROOT) --> true" << endl;
+            cout << "Before decider::land(error in ROOT)" << endl;
 #	endif
-			decider.set_equal(decider.land(bv), decider.const_var(true));
+            decider.set_equal(decider.land(bv), decider.const_var(true));
+
+#       ifdef DEBUG_SSA_PRINT
+            //out_terms << "XXX Encoding error in ROOT: " << std::endl;
+
+            // Pre-order printing
+            std::ostream out_temp1(0);
+            std::stringbuf temp1_buf;
+            out_temp1.rdbuf(&temp1_buf);
+
+            int assert_counter = 0;
+            for (SSA_stepst::iterator it = partition.start_it; it
+                            != partition.end_it; ++it) {
+                if (it->is_assert() && !it->ignore) {
+                    assert_counter++;
+                    if (assert_counter == 1)
+                        expr_ssa_print(out_temp1, it->cond_expr,
+                                        partition_smt_decl, false);
+                    else
+                        expr_ssa_print(out_temp1 << "        ", it->cond_expr,
+                                        partition_smt_decl, false);
+                }
+            }
+            for (partition_idst::const_iterator it = partition.child_ids.begin(); 
+                    it != partition.child_ids.end(); ++it) {
+                const partitiont& target_partition = partitions[*it];
+                const partition_ifacet& target_partition_iface =
+                                                target_partition.get_iface();
+
+                if (!target_partition.ignore
+                                    && target_partition_iface.assertion_in_subtree) {
+                    assert_counter++;
+                    if (assert_counter == 1)
+                        expr_ssa_print(out_temp1, target_partition_iface.error_symbol,
+                                                partition_smt_decl, false);
+                    else
+                        expr_ssa_print(out_temp1 << "        ",
+                                                target_partition_iface.error_symbol,
+                                                partition_smt_decl, false);
+                }
+            }
+            if (assert_counter > 0) {
+                terms_counter++;
+                if (assert_counter == 1)
+                    out_terms << "    " << temp1_buf.str().substr(4);
+                else
+                    out_terms << "    (or \n      (" << temp1_buf.str()
+                                            << "      )\n" << "    )\n";
+            }
+#       endif
+        } else {
+#       ifdef DEBUG_SSA_SMT_CALL
+            cout << "Before decider::set_equal(ERROR) to " << bv.size() << " literals" << endl;
+#	endif
+            if (bv.size() == 1) { // Corner case: single literal for OR, it is just bv[0]
+                decider.set_equal(bv[0], partition_iface.error_literal);
+            } else {
+                decider.set_equal(decider.lor(bv), partition_iface.error_literal);
+            }
 
 #ifdef DEBUG_SSA_PRINT
-			//out_terms << "XXX Encoding error in ROOT: " << std::endl;
+            //out_terms << "XXX Encoding error_f: \n";
+            terms_counter++;
+            expr_ssa_print(out_terms << "    (= ",
+                            partition_iface.error_symbol, partition_smt_decl, false);
+            std::ostream out_temp_assert(0);
+            std::stringbuf temp_assert_buf;
+            out_temp_assert.rdbuf(&temp_assert_buf); // Pre-order printing
+            int assert_counter = 0;
+            for (SSA_stepst::iterator it = partition.start_it; it
+                            != partition.end_it; ++it) {
+                if (it->is_assert() && !it->ignore) {
+                    assert_counter++;
+                    expr_ssa_print(out_temp_assert << "          ",
+                                it->cond_expr, partition_smt_decl, false);
+                }
+            }
+            for (partition_idst::const_iterator it = partition.child_ids.begin(); 
+                        it != partition.child_ids.end(); ++it) {
+                const partitiont& target_partition = partitions[*it];
+                const partition_ifacet& target_partition_iface = target_partition.get_iface();
 
-			// Pre-order printing
-			std::ostream out_temp1(0);
-			std::stringbuf temp1_buf;
-			out_temp1.rdbuf(&temp1_buf);
-
-			int assert_counter = 0;
-			for (SSA_stepst::iterator it = partition.start_it; it
-					!= partition.end_it; ++it) {
-				if (it->is_assert() && !it->ignore) {
-					assert_counter++;
-					if (assert_counter == 1)
-						expr_ssa_print(out_temp1, it->cond_expr,
-								partition_smt_decl, false);
-					else
-						expr_ssa_print(out_temp1 << "        ", it->cond_expr,
-								partition_smt_decl, false);
-				}
-			}
-			for (partition_idst::const_iterator it =
-					partition.child_ids.begin(); it
-					!= partition.child_ids.end(); ++it) {
-				const partitiont& target_partition = partitions[*it];
-				const partition_ifacet& target_partition_iface =
-						target_partition.get_iface();
-
-				if (!target_partition.ignore
-						&& target_partition_iface.assertion_in_subtree) {
-					assert_counter++;
-					if (assert_counter == 1)
-						expr_ssa_print(out_temp1,
-								target_partition_iface.error_symbol,
-								partition_smt_decl, false);
-					else
-						expr_ssa_print(out_temp1 << "        ",
-								target_partition_iface.error_symbol,
-								partition_smt_decl, false);
-				}
-			}
-			if (assert_counter > 0) {
-				terms_counter++;
-				if (assert_counter == 1)
-					out_terms << "    " << temp1_buf.str().substr(4);
-				else
-					out_terms << "    (or \n      (" << temp1_buf.str()
-							<< "      )\n" << "    )\n";
-			}
+                if (!target_partition.ignore
+                                    && target_partition_iface.assertion_in_subtree) {
+                    assert_counter++;
+                    expr_ssa_print(out_temp_assert << "          ",
+                                        target_partition_iface.error_symbol,
+                                        partition_smt_decl, false);
+                }
+            }
+            std::ostream out_temp_assume(0);
+            std::stringbuf temp_assume_buf;
+            out_temp_assume.rdbuf(&temp_assume_buf); // Pre-order printing
+            int assume_counter = 0;
+            for (symex_target_equationt::SSA_stepst::iterator it2 = partition.start_it;
+                        it2 != partition.end_it; ++it2) {
+                if (it2->is_assume() && !it2->ignore) {
+                    assume_counter++;
+                    expr_ssa_print(out_temp_assume << "            ",
+                                    it2->cond_expr, partition_smt_decl, false);
+                }
+            }
+            std::string assume_code = "";
+            if (assume_counter > 1)
+                assume_code = "          (and \n" + temp_assume_buf.str() + "          )\n";
+            else
+                assume_code = temp_assume_buf.str();
+            if (assert_counter > 0) {
+                terms_counter++;
+                if (assert_counter == 1)
+                    out_terms << "      (not\n        (=>\n" << assume_code
+                                << temp_assert_buf.str()
+                                << "        )\n      )\n    )\n";
+                else
+                    out_terms << "      (not\n        (=>\n" << assume_code
+                                << "          (or \n  " << temp_assert_buf.str()
+                                << "          )\n        )\n      )\n    )\n";
+            }
 #endif
-		} else {
-#               ifdef DEBUG_SSA_SMT_CALL
-			cout << "Before decider::set_equal(ERROR) to " << bv.size()
-					<< " literals" << endl;
-#	        endif
-			if (bv.size() == 1) { // Corner case: single literal for OR, it is just bv[0]
-				decider.set_equal(bv[0], partition_iface.error_literal);
-			} else {
-				decider.set_equal(decider.lor(bv),
-						partition_iface.error_literal);
-			}
+        }
+    }
+    
+    //  // Emit error_root = true for the ROOT partition
+    //  if (partition.parent_id == partitiont::NO_PARTITION) {
+    //    decider.prop.l_set_to_true(partition_iface.error_literal);
+    //    #ifdef DEBUG_SSA
+    //    expr_pretty_print(std::cout << "XXX Asserting error_root: ",
+    //            partition_iface.error_symbol);
+    //    #endif
+    //  }
 
-#ifdef DEBUG_SSA_PRINT
-			//out_terms << "XXX Encoding error_f: \n";
-			terms_counter++;
-			expr_ssa_print(out_terms << "    (= ",
-					partition_iface.error_symbol, partition_smt_decl, false);
-			std::ostream out_temp_assert(0);
-			std::stringbuf temp_assert_buf;
-			out_temp_assert.rdbuf(&temp_assert_buf); // Pre-order printing
-			int assert_counter = 0;
-			for (SSA_stepst::iterator it = partition.start_it; it
-					!= partition.end_it; ++it) {
-				if (it->is_assert() && !it->ignore) {
-					assert_counter++;
-					expr_ssa_print(out_temp_assert << "          ",
-							it->cond_expr, partition_smt_decl, false);
-				}
-			}
-			for (partition_idst::const_iterator it =
-					partition.child_ids.begin(); it
-					!= partition.child_ids.end(); ++it) {
-				const partitiont& target_partition = partitions[*it];
-				const partition_ifacet& target_partition_iface =
-						target_partition.get_iface();
-
-				if (!target_partition.ignore
-						&& target_partition_iface.assertion_in_subtree) {
-					assert_counter++;
-					expr_ssa_print(out_temp_assert << "          ",
-							target_partition_iface.error_symbol,
-							partition_smt_decl, false);
-				}
-			}
-			std::ostream out_temp_assume(0);
-			std::stringbuf temp_assume_buf;
-			out_temp_assume.rdbuf(&temp_assume_buf); // Pre-order printing
-			int assume_counter = 0;
-			for (symex_target_equationt::SSA_stepst::iterator it2 =
-					partition.start_it; it2 != partition.end_it; ++it2) {
-				if (it2->is_assume() && !it2->ignore) {
-					assume_counter++;
-					expr_ssa_print(out_temp_assume << "            ",
-							it2->cond_expr, partition_smt_decl, false);
-				}
-			}
-			std::string assume_code = "";
-			if (assume_counter > 1)
-				assume_code = "          (and \n" + temp_assume_buf.str()
-						+ "          )\n";
-			else
-				assume_code = temp_assume_buf.str();
-			if (assert_counter > 0) {
-				terms_counter++;
-				if (assert_counter == 1)
-					out_terms << "      (not\n        (=>\n" << assume_code
-							<< temp_assert_buf.str()
-							<< "        )\n      )\n    )\n";
-				else
-					out_terms << "      (not\n        (=>\n" << assume_code
-							<< "          (or \n  " << temp_assert_buf.str()
-							<< "          )\n        )\n      )\n    )\n";
-			}
-#endif
-		}
-
-	}
-
-	//  // Emit error_root = true for the ROOT partition
-	//  if (partition.parent_id == partitiont::NO_PARTITION) {
-	//    decider.prop.l_set_to_true(partition_iface.error_literal);
-	//    #ifdef DEBUG_SSA
-	//    expr_pretty_print(std::cout << "XXX Asserting error_root: ",
-	//            partition_iface.error_symbol);
-	//    #endif
-	//  }
-
-	if (partition.parent_id != partitiont::NO_PARTITION) {
-		assert(number_of_assumptions > 0);
-		// Encode callend propagation formula for the partition:
-		//
-		// callend_f =>
-		//     (\land_{ass \in assumptions(f)} ass)
-		//
-		// NOTE: callstart_f \in assumptions(f)
-		//
-#   ifdef DEBUG_SSA_SMT_CALL
-		cout << "Before decider::limplies(CALL-END)" << endl;
+    if (partition.parent_id != partitiont::NO_PARTITION) {
+        assert(number_of_assumptions > 0);
+        // Encode callend propagation formula for the partition:
+        //
+        // callend_f =>
+        //     (\land_{ass \in assumptions(f)} ass)
+        //
+        // NOTE: callstart_f \in assumptions(f)
+        //
+#       ifdef DEBUG_SSA_SMT_CALL
+        cout << "Before decider::limplies(CALL-END)" << endl;
 #	endif
-		literalt tmp_end = decider.limplies(partition_iface.callend_literal, assumption_literal); // BUG!! - before didn't not use the result of it
-		decider.set_equal(tmp_end, decider.const_var(true)); // KE: maybe that's the missing call?
+        
+        literalt tmp_end = decider.limplies(partition_iface.callend_literal, assumption_literal); // BUG!! - before didn't not use the result of it
+        decider.set_equal(tmp_end, decider.const_var(true)); // KE: maybe that's the missing call?
 
-#   ifdef DEBUG_SSA_PRINT
-		//out_terms << "XXX Call END implication: \n";
-		terms_counter++;
-		expr_ssa_print(out_terms << "    (=> ", partition_iface.callend_symbol,
-				partition_smt_decl, false, true);
-		std::ostream out_temp(0);
-		std::stringbuf temp_buf;
-		out_temp.rdbuf(&temp_buf); // Pre-order printing
-		int assume_counter = 0;
-		for (symex_target_equationt::SSA_stepst::iterator it2 =
-				partition.start_it; it2 != partition.end_it; ++it2) {
-			if (it2->is_assume() && !it2->ignore) {
-				if (assume_counter == 0 && isFirstCallExpr(it2->cond_expr)) {
-					assume_counter++;
-					expr_ssa_print(out_temp << "        ", it2->guard,
-							partition_smt_decl, false);
-				}
-				assume_counter++;
-				expr_ssa_print(out_temp << "        ", it2->cond_expr,
-						partition_smt_decl, false);
-			}
-		}
-		if (assume_counter > 1)
-			out_terms << "\n      (and \n" << temp_buf.str() << "      )\n"
-					<< "    )\n";
-		else
-			out_terms << "\n" << temp_buf.str() << "    )\n";
+#       ifdef DEBUG_SSA_PRINT
+        //out_terms << "XXX Call END implication: \n";
+        terms_counter++;
+        expr_ssa_print(out_terms << "    (=> ", partition_iface.callend_symbol,
+                        partition_smt_decl, false, true);
+        std::ostream out_temp(0);
+        std::stringbuf temp_buf;
+        out_temp.rdbuf(&temp_buf); // Pre-order printing
+        int assume_counter = 0;
+        for (symex_target_equationt::SSA_stepst::iterator it2 =
+                        partition.start_it; it2 != partition.end_it; ++it2) {
+            if (it2->is_assume() && !it2->ignore) {
+                if (assume_counter == 0 && isFirstCallExpr(it2->cond_expr)) {
+                    assume_counter++;
+                    expr_ssa_print(out_temp << "        ", it2->guard,
+                                    partition_smt_decl, false);
+                }
+                assume_counter++;
+                expr_ssa_print(out_temp << "        ", it2->cond_expr,
+                                partition_smt_decl, false);
+            }
+        }
+        if (assume_counter > 1)
+            out_terms << "\n      (and \n" << temp_buf.str() << "      )\n" << "    )\n";
+        else
+            out_terms << "\n" << temp_buf.str() << "    )\n";
 #   endif
-	}
+    }
 }
 
 /*******************************************************************
@@ -751,6 +742,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
 void smt_partitioning_target_equationt::convert_partition_io(
 		smtcheck_opensmt2t &decider, partitiont& partition) {
     for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it)
+    {
         if (!it->ignore) {
             for (std::list<exprt>::const_iterator o_it = it->io_args.begin(); o_it
                             != it->io_args.end(); ++o_it) {
@@ -769,6 +761,7 @@ void smt_partitioning_target_equationt::convert_partition_io(
                 }
             }
         }
+    }
 }
 
 /*******************************************************************
@@ -795,24 +788,23 @@ void smt_partitioning_target_equationt::extract_interpolants(
 
     // Find partitions suitable for summary extraction
     for (unsigned i = 1; i < partitions.size(); ++i) {
-            partitiont& partition = partitions[i];
+        partitiont& partition = partitions[i];
 
-            // Mark the used summaries
-            if (partition.summary && !(partition.ignore || partition.invalid)) {
-                    for (summary_ids_sett::const_iterator it =
-                                    partition.applicable_summaries.begin(); it
-                                    != partition.applicable_summaries.end(); ++it) {
-                            partition.get_iface().summary_info.add_used_summary(*it);
-                    }
+        // Mark the used summaries
+        if (partition.summary && !(partition.ignore || partition.invalid)) {
+            for (summary_ids_sett::const_iterator it =
+                    partition.applicable_summaries.begin(); it
+                    != partition.applicable_summaries.end(); ++it) {
+                partition.get_iface().summary_info.add_used_summary(*it);
             }
+        }
 
-            if (!partition.is_inline()
-                            || (partition.get_iface().assertion_in_subtree
-                                            && !store_summaries_with_assertion)
-                            || partition.get_iface().summary_info.is_recursion_nondet())
-                    continue;
+        if (!partition.is_inline() || (partition.get_iface().assertion_in_subtree
+                    && !store_summaries_with_assertion)
+                    || partition.get_iface().summary_info.is_recursion_nondet())
+            continue;
 
-            valid_tasks++;
+        valid_tasks++;
     }
 
     // Only do the interpolation if there are some interpolation tasks
@@ -903,32 +895,24 @@ void smt_partitioning_target_equationt::extract_interpolants(
 #ifdef DEBUG_SSA_SMT_CALL
 // For the case when we have => with cast to bool condition
 bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
+    if (expr.id() != ID_typecast)
+        return false;
 
-        if (expr.id() != ID_typecast)
+    if (!expr.has_operands())
+        return false;
 
-                return false;
+    if (!(expr.operands())[0].is_constant())
+        return false;
 
-        if (!expr.has_operands())
+    // For LRA only: it will be taken care in the solver or before calling the solver
+    if ((expr.operands())[0].is_boolean() ||   // in the solver
+            expr.is_boolean())                 // in decider::convert
+        return false;
 
-                return false;
-
-        if (!(expr.operands())[0].is_constant())
-
-                return false;
-
-        // For LRA only: it will be taken care in the solver or before calling the solver
-
-        if ((expr.operands())[0].is_boolean() ||         // in the solver
-
-                        expr.is_boolean())                                         // in decider::convert
-
-                return false;
-
-        return true;
-
+    return true;
 }
 #else
-    bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
-        assert(0);
-    }
+bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
+    assert(0);
+}
 #endif

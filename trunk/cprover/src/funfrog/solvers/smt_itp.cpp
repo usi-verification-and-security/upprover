@@ -488,14 +488,14 @@ Function: smt_itpt::print
 
 void smt_itpt::print(std::ostream& out) const
 {
-  if (is_trivial()) {
-    out << "Prop. interpolant: trivial" << std::endl;
-  } else {
-    out << "Prop. interpolant (#v: " << _no_variables << ", #c: " << clauses.size() <<
-            ",root: " << root_literal.dimacs() << "):" << std::endl;
-
-// KE: Old code with bv only, need to be re-write for SMT
-  }
+    if (is_trivial()) {
+        out << ";; SMT. interpolant: trivial" << std::endl;
+    } else {
+        out << ";; SMT. interpolant (#v: " 
+            << _no_variables << ", #c: " << clauses.size() << ",root: "
+            << root_literal.dimacs() << "):" << std::endl
+            << logic->printTerm(interpolant) << std::endl;
+    }
 }
 
 /*******************************************************************\
