@@ -324,8 +324,11 @@ private:
                     bool dead, 
                     const source_locationt source_location) {
     if (dead) {
-      dead_identifiers.insert(base_id);
-    } else if (!new_symbol_table.has_symbol(base_id)) {
+        dead_identifiers.insert(base_id);
+    }  
+    
+    /* Even if dead adds it, else cannot get L1 name later on */
+    if (!new_symbol_table.has_symbol(base_id)) {
         symbolt s;
         s.base_name = base_id;
         s.name = base_id;

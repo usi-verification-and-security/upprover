@@ -17,9 +17,9 @@
 #define FUNC_RETURN "::#return_value!0"  // KE: appears in Cprover as "#return_value"
 #define TMP_FUNC_RETURN "::$tmp::return_value!0"
 
-#define CALLSTART_SYMBOL "hifrog::?fun_start";
-#define CALLEND_SYMBOL "hifrog::?fun_end";
-#define ERROR_SYMBOL "hifrog::?err";
+#define CALLSTART_SYMBOL "hifrog::?fun_start"
+#define CALLEND_SYMBOL "hifrog::?fun_end"
+#define ERROR_SYMBOL "hifrog::?err"
 
 #define CPROVER_BUILDINS "__CPROVER_"
 #define ROUNDING_MODE "__CPROVER_rounding_mode!"
@@ -29,9 +29,14 @@
 
 #define NIL "nil"
 #define NONDET "symex::" // Cprover nondet symbol
-#define COUNTER "#" // GOTO to SSA (e.g., hifrog::?fun_end to hifrog::?fun_end#1)
+#define COUNTER '#' // GOTO to SSA (e.g., hifrog::?fun_end to hifrog::?fun_end#1)
 #define SYMEX_NONDET "nondet#" //"symex::nondet#"
 
-irep_idt getSymbolName(const exprt &expr);
+irep_idt get_symbol_name(const exprt &expr);
+bool is_hifrog_inner_symbol_name(const exprt &expr);
+irep_idt extract_hifrog_inner_symbol_name(const exprt &expr);
+unsigned get_symbol_L2_counter(const exprt &expr);
+unsigned extract_hifrog_inner_symbol_L2_counter(const exprt &expr);
+
 #endif /* HIFROG_H */
 

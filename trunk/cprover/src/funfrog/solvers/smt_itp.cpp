@@ -1,9 +1,8 @@
 #include <algorithm>
 #include <limits.h>
 #include <string.h>
-#include "smt_itp.h"
 #include <stdlib.h>
-#include "smtcheck_opensmt2.h"
+#include "smtcheck_opensmt2.h" // this includes smt_itp.h too
 #include "../hifrog.h"
 
 //#define DEBUG_ITP_SMT
@@ -11,14 +10,21 @@
 #include <iostream>
 #endif
 
+/*
+ KE: Bugs?
+ * 
+ * Start looking at the manual-unsupported functions in smtcheck_opensmt2.cpp
+ * e.g., remove_index, get_index etc.
+ * 
+ * Try to replace all these ad-hoc calls in some proper methods of cprover
+ */
+
 bool
 smt_itpt::usesVar(symbol_exprt& symb, unsigned idx)
 {
     assert(tterm != NULL && logic != NULL);
-
-    string _var_name = id2string(symb.get_identifier());
-    string var_name = smtcheck_opensmt2t::remove_invalid(_var_name);
-    var_name = smtcheck_opensmt2t::remove_index(var_name);
+    
+    string var_name = smtcheck_opensmt2t::remove_invalid(get_symbol_name(symb).c_str());
     var_name = smtcheck_opensmt2t::quote_varname(var_name);
     const vec<PTRef>& args = tterm->getArgs();
     for(int i = 0; i < args.size(); ++i)
@@ -233,18 +239,17 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
     map<string, int[3]> occurrences;
     for(unsigned int i = 0; i < symbols.size(); ++i)
     {
-        string fixed_str = id2string(symbols[i].get_identifier());
-        string unidx = smtcheck_opensmt2t::remove_index(fixed_str);
+        string unidx = get_symbol_name(symbols[i]).c_str();
         if(occurrences.find(unidx) == occurrences.end())
         {
             occurrences[unidx][0] = 1;
-            occurrences[unidx][1] = smtcheck_opensmt2t::get_index(fixed_str);
+            occurrences[unidx][1] = get_symbol_L2_counter(symbols[i]);
         }
         else
         {
             ++occurrences[unidx][0];
             assert(occurrences[unidx][0] == 2);
-            int new_idx = smtcheck_opensmt2t::get_index(fixed_str);
+            int new_idx = get_symbol_L2_counter(symbols[i]);
             int old_idx = occurrences[unidx][1];
             if(new_idx < old_idx) std::swap(new_idx, old_idx);
             occurrences[unidx][1] = old_idx;
@@ -255,13 +260,12 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
 
     for(unsigned int i = 0; i < symbols.size(); ++i)
     {
-        // Gets L1 - KE: need to be re-write!
-        string fixed_str = id2string(symbols[i].get_identifier());
-        string unidx = smtcheck_opensmt2t::remove_index(fixed_str);
+        // Gets L1 - use a method dedicated for it - DO NOT change it!
+        string unidx = get_symbol_name(symbols[i]).c_str();
         string quoted_unidx = smtcheck_opensmt2t::quote_varname(unidx);
         
         // Get the instance number of the SSA
-        int idx = smtcheck_opensmt2t::get_index(fixed_str);
+        int idx = get_symbol_L2_counter(symbols[i]);
         for(int j = 0; j < args.size(); ++j)
         {
             string aname = string(logic->getSymName(args[j]));

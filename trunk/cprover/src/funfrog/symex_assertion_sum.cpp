@@ -1371,6 +1371,7 @@ void symex_assertion_sumt::havoc_function_call(
  Purpose: Creates new call site (start & end) symbols for the given
  deferred function
 
+ *  KE: shall use fabricate_cprover_SSA per id creation
 \*******************************************************************/
 void symex_assertion_sumt::produce_callsite_symbols(
         partition_ifacet& partition_iface,
@@ -1388,12 +1389,12 @@ void symex_assertion_sumt::produce_callsite_symbols(
   irep_idt callend_id = CALLEND_SYMBOL;
   irep_idt error_id = ERROR_SYMBOL;
 # endif
-
+	
   partition_iface.callstart_symbol.set_identifier(
           get_new_symbol_version(callstart_id, state,typet(ID_bool)));
   partition_iface.callend_symbol.set_identifier(
           get_new_symbol_version(callend_id, state,typet(ID_bool)));
-  
+    
   add_symbol(callstart_id, typet(ID_bool), true, partition_iface.callstart_symbol.source_location());
   add_symbol(callend_id, typet(ID_bool), true, partition_iface.callend_symbol.source_location());
   

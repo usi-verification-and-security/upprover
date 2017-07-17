@@ -300,6 +300,13 @@ smtcheck_opensmt2t::insert_index(const string& _varname, const string& _idx)
     return quote_varname(varname + COUNTER + _idx);
 }
 
+/*
+ * KE: remove it, we are using L1 and L2 cprover methods to get this info! 
+ * 
+ * Yes, it is tempting to use it, as it look quick and you control all,
+ * BUT! cprover is where the names are created, so to avoid bugs we shall
+ * use the same mechanism to create and to extract L1 and L2 names!
+ */
 int
 smtcheck_opensmt2t::get_index(const string& _varname)
 {
@@ -506,6 +513,13 @@ smtcheck_opensmt2t::remove_invalid(const string& varname)
     return ans;
 }
 
+/*
+ * KE: Shall be remove it, we are using L1 and L2 cprover methods to get this info! 
+ * 
+ * Yes, it is tempting to use it, as it look quick and you control all,
+ * BUT! cprover is where the names are created, so to avoid bugs we shall
+ * use the same mechanism to create and to extract L1 and L2 names!
+ */
 string
 smtcheck_opensmt2t::remove_index(string var)
 {
@@ -520,7 +534,6 @@ smtcheck_opensmt2t::remove_index(string var)
         return quote_varname(no_index);
     return no_index;
 }
-
 
 /*******************************************************************\
 
