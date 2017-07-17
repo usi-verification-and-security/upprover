@@ -313,7 +313,7 @@ smtcheck_opensmt2t::get_index(const string& _varname)
     string varname = unquote_varname(_varname);
     int i = 0;
     int s = varname.length();
-    while(i < s && varname[i++] != '#');
+    while(i < s && varname[i++] != COUNTER);
     if(i >= s) return -1;
     string num = string(varname.begin() + i, varname.end());
     stringstream ss(num);
@@ -524,7 +524,7 @@ string
 smtcheck_opensmt2t::remove_index(string var)
 {
     int i = var.length() - 1;
-    while(i >= 0 && var[i] != '#') --i;
+    while(i >= 0 && var[i] != COUNTER) --i;
     string no_index;
     if(i > 0)
         no_index = string(var.begin(), var.begin() + i);
