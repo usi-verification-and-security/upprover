@@ -4,6 +4,7 @@
 #include "smt_itp.h"
 #include <stdlib.h>
 #include "smtcheck_opensmt2.h"
+#include "../hifrog.h"
 
 //#define DEBUG_ITP_SMT
 # ifdef DEBUG_ITP_SMT
@@ -214,6 +215,9 @@ Function: smt_itpt::substitute
  Purpose: Renames propositional variables so that the interpolant is
  valid for the given set of identifiers. Moreover, the interpolant is
  asserted in the given propositional solver.
+ * 
+ * KE: I think this method is buggy. What is the original idea behind it?
+ * The comment is clearly out-of-date since it refers to prop vars(??)
 
 \*******************************************************************/
 
@@ -251,16 +255,21 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
 
     for(unsigned int i = 0; i < symbols.size(); ++i)
     {
+        // Gets L1 - KE: need to be re-write!
         string fixed_str = id2string(symbols[i].get_identifier());
         string unidx = smtcheck_opensmt2t::remove_index(fixed_str);
         string quoted_unidx = smtcheck_opensmt2t::quote_varname(unidx);
+        
+        // Get the instance number of the SSA
         int idx = smtcheck_opensmt2t::get_index(fixed_str);
         for(int j = 0; j < args.size(); ++j)
         {
             string aname = string(logic->getSymName(args[j]));
             string unidx_aname = smtcheck_opensmt2t::remove_index(aname);
+            assert(aname == unidx_aname || aname.find(FUNC_RETURN) != string::npos);
+            unidx_aname = aname;      
             string quoted_unidx_aname = smtcheck_opensmt2t::quote_varname(unidx_aname);
-            if(quoted_unidx == quoted_unidx_aname)
+            if (quoted_unidx == quoted_unidx_aname)
             {
                 if( (occurrences[unidx][0] == 1) ||
                         (idx == occurrences[unidx][1] && aname.find("#in") != string::npos) ||
@@ -270,7 +279,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
                     //cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << fixed_str << endl;
                     //literalt l = decider.convert(symbols[i]);
                     //PTRef tmp = decider.literal2ptref(l);
-        	        PTRef tmp = decider.convert_symbol(symbols[i]);
+        	    PTRef tmp = decider.convert_symbol(symbols[i]);
                     subst.insert(args[j], PtAsgn(tmp, l_True));
                 }
             }

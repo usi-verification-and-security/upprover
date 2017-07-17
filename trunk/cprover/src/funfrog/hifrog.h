@@ -10,6 +10,8 @@
 #ifndef HIFROG_H
 #define HIFROG_H
 
+#include <ssa_expr.h>
+
 // For now we have only one thread any hows
 #define FUNC_RETURN "::#return_value!0"
 #define TMP_FUNC_RETURN "::$tmp::return_value!0"
@@ -25,5 +27,6 @@
 #define COUNTER "#" // GOTO to SSA (e.g., hifrog::?fun_end to hifrog::?fun_end#1)
 #define SYMEX_NONDET "nondet#" //"symex::nondet#"
 
+irep_idt getSymbolName(const exprt &expr);
 #endif /* HIFROG_H */
 
