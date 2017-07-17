@@ -378,6 +378,11 @@ protected:
   bool is_unwind_loop(statet &state);
   unsigned int prev_unwind_counter; // Updated on branching: Goto, Funcation_Call and End_Function
   
+  void fabricate_cprover_SSA(irep_idt base_symbol_id, 
+        const typet& type, const source_locationt source_location, 
+        bool is_rename, bool is_dead, 
+        symbol_exprt& ret_symbol);
+  
   #ifdef DEBUG_PARTITIONING
     std::set<std::string> _return_vals; // Check for duplicated symbol creation
   #endif

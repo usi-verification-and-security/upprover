@@ -952,10 +952,6 @@ void symex_assertion_sumt::return_assignment_and_mark(
     irep_idt retval_symbol_id(as_string(function_id) + FUNC_RETURN); // For goto_symext::symex_assign (101)
     irep_idt retval_tmp_id(as_string(function_id) + TMP_FUNC_RETURN); // tmp in cprover is a token
     
-    // Gets a new symbol per function call:
-    get_new_name(retval_symbol_id,ns);
-    get_new_name(retval_tmp_id,ns);
-
 // Check the symbol was created correctly    
 #ifdef DEBUG_PARTITIONING
     if (!_return_vals.empty())
@@ -970,13 +966,16 @@ void symex_assertion_sumt::return_assignment_and_mark(
 #endif
     
     // return_value_tmp - create new symbol with versions to support unwinding
-    add_symbol(retval_tmp_id, type, false, function_type.source_location());
-    symbol_exprt retval_tmp(retval_tmp_id, type);
+    symbol_exprt retval_tmp;
+    fabricate_cprover_SSA(retval_tmp_id, type, 
+            function_type.source_location(),
+            false, false, retval_tmp); 
 
     // return_value - create new symbol with versions to support unwinding
-    add_symbol(retval_symbol_id, type, false, function_type.source_location()); // Need to be in the table since rename l0 needs it
     symbol_exprt retval_symbol;	
-    level2_rename_and_2ssa(state, retval_symbol_id, type, retval_symbol); // We do rename alone...
+    fabricate_cprover_SSA(retval_symbol_id, type, 
+        function_type.source_location(),
+        true, false, retval_symbol);
     
     // Connect the return value to the variable in the calling site 
     if (!skip_assignment) {
@@ -1385,16 +1384,16 @@ void symex_assertion_sumt::produce_callsite_symbols(
   irep_idt error_id = "hifrog::" + as_string(partition_iface.function_id) +
           "::?error_symbol";
 # else
-  irep_idt callstart_id = "hifrog::?fun_start";
-  irep_idt callend_id = "hifrog::?fun_end";
-  irep_idt error_id = "hifrog::?err";
+  irep_idt callstart_id = CALLSTART_SYMBOL;
+  irep_idt callend_id = CALLEND_SYMBOL;
+  irep_idt error_id = ERROR_SYMBOL;
 # endif
 
   partition_iface.callstart_symbol.set_identifier(
           get_new_symbol_version(callstart_id, state,typet(ID_bool)));
   partition_iface.callend_symbol.set_identifier(
           get_new_symbol_version(callend_id, state,typet(ID_bool)));
-
+  
   add_symbol(callstart_id, typet(ID_bool), true, partition_iface.callstart_symbol.source_location());
   add_symbol(callend_id, typet(ID_bool), true, partition_iface.callend_symbol.source_location());
   
@@ -1782,4 +1781,26 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
         // 1. Not in a loop, 2. Not in recursion, 3. out of loops if unwind 9 --> unwind 0 (e.g.,)
         return false;
     }
+}
+
+void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id, 
+        const typet& type, const source_locationt source_location, 
+        bool is_rename, bool is_dead, 
+        symbol_exprt& ret_symbol)
+{
+    // Gets a new symbol per function call:
+    get_new_name(base_symbol_id,ns);
+
+    // Create new symbol with versions to support unwinding
+    add_symbol(base_symbol_id, type, is_dead, source_location);
+
+    // If needed - rename alone
+    if (is_rename) {	
+        level2_rename_and_2ssa(state, base_symbol_id, type, ret_symbol); // We do rename alone...
+    } else {
+        ret_symbol = symbol_exprt(base_symbol_id, type);
+    }
+
+    // Return a symbol of ssa val with expression of original var
+    // ret_symbol
 }

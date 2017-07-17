@@ -4,7 +4,8 @@
  *
  * Created on 14 July 2017, 15:55
  * 
- * All constants of HiFrog
+ * All constants of HiFrog 
+ * And all things related to the interface to cprover framework
  */
 
 #ifndef HIFROG_H
@@ -13,8 +14,12 @@
 #include <ssa_expr.h>
 
 // For now we have only one thread any hows
-#define FUNC_RETURN "::#return_value!0"
+#define FUNC_RETURN "::#return_value!0"  // KE: appears in Cprover as "#return_value"
 #define TMP_FUNC_RETURN "::$tmp::return_value!0"
+
+#define CALLSTART_SYMBOL "hifrog::?fun_start";
+#define CALLEND_SYMBOL "hifrog::?fun_end";
+#define ERROR_SYMBOL "hifrog::?err";
 
 #define CPROVER_BUILDINS "__CPROVER_"
 #define ROUNDING_MODE "__CPROVER_rounding_mode!"
