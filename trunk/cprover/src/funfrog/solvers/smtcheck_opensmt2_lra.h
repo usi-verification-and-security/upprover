@@ -15,9 +15,9 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_lra : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_lra(int _type_constraints_level, const char* name) :
+  smtcheck_opensmt2t_lra(int _type_constraints_level, const char* name, bool _store_unsupported_info) :
       type_constraints_level(_type_constraints_level),
-      smtcheck_opensmt2t(false, 3, 2)
+      smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info)
   {
     initializeSolver(name);
   }
@@ -37,7 +37,7 @@ public:
   virtual literalt lnotequal(literalt l1, literalt l2);
 
   // for isnan, mod, arrays etc. that we have no support (or no support yet) create over-approx as nondet
-  virtual literalt lunsupported2var(const exprt expr);
+  virtual literalt lunsupported2var(const exprt &expr);
 
   virtual literalt lvar(const exprt &expr);
     
@@ -46,6 +46,9 @@ public:
   literalt labs(const exprt &expr); // from convert for ID_abs
 
   void check_ce(std::vector<exprt>& exprs); // checking spuriousness of the error trace (not refinement here)
+  
+  virtual std::string getStringSMTlibDatatype(const exprt& expr);
+  virtual SRef getSMTlibDatatype(const exprt& expr);
 
 protected:
   LRALogic* lralogic; // Extra var, inner use only - Helps to avoid dynamic cast!
@@ -60,12 +63,12 @@ protected:
 
   PTRef div_real(const exprt &expr, vec<PTRef> &args);
 
-  PTRef runsupported2var(const exprt expr);
+  PTRef runsupported2var(const exprt &expr);
 
   bool isLinearOp(const exprt &expr, vec<PTRef> &args); // Check if we don't do sth. like nondet*nondet, but only const*nondet (e.g.)
 
   /* Set of functions that add constraints to take care of overflow and underflow */
-  void add_constraints2type(const exprt &expr, PTRef &var); // add assume/assert on the data type
+  void add_constraints2type(const exprt &expr, PTRef& var); // add assume/assert on the data type
 
   bool push_constraints2type(
   		PTRef &var,

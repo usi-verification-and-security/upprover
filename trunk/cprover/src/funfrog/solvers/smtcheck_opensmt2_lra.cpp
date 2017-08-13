@@ -133,7 +133,8 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
     assert(rconst != PTRef_Undef);
 
     // Check the conversion from string to real was done properly - do not erase!
-    assert(!lralogic->isRealOne(rconst) || expr.is_one()); // Check the conversion works: One => one
+    assert(!lralogic->isRealOne(rconst) || expr.is_one() || // Check the conversion works: One => one
+            (expr.type().id()==ID_c_enum || expr.type().id()==ID_c_enum_tag)); // Cannot check enums
     if(expr.is_constant() && (expr.is_boolean() || is_number(expr.type()))){
     	exprt temp_check = exprt(expr); temp_check.negate();
         assert(!lralogic->isRealZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
@@ -511,24 +512,40 @@ literalt smtcheck_opensmt2t_lra::lnotequal(literalt l1, literalt l2){
 }
 
 
-PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt expr)
-{
+PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt &expr) {
+    const string str = create_new_unsupported_var();
+    
     PTRef var;
-
-    const string str = smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
-    assert(str.size() > 0);
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
         var = logic->mkBoolVar(str.c_str());
     else
         var = lralogic->mkRealVar(str.c_str());
+    
+    // Was taken from: literalt smtcheck_opensmt2t::store_new_unsupported_var
+    // If need to register the abstracted functions - add it here
+    if (store_unsupported_info) {
+        // Map the expression to its unsupported abstracted vat (in opensmt)
+        unsupported_info_map.insert(pair<PTRef, exprt> (var, expr));
+        cout << "**** Saved function as a candidate for lattice refinement. ";
+        cout << "Expression " << logic->printTerm(var) << " will be refine the operator " 
+              << expr.id() << " with " << expr.operands().size() << " operands." 
+              << endl;
+    }
 
     return var;
 }
 
-literalt smtcheck_opensmt2t_lra::lunsupported2var(const exprt expr)
+literalt smtcheck_opensmt2t_lra::lunsupported2var(const exprt &expr) 
 {
-    PTRef var = runsupported2var(expr);
-    return push_variable(var);
+    const string str = create_new_unsupported_var();
+    
+    PTRef var;
+    if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
+        var = logic->mkBoolVar(str.c_str());
+    else
+        var = lralogic->mkRealVar(str.c_str());
+    
+    return store_new_unsupported_var(expr, var);
 }
 
 literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
@@ -679,7 +696,7 @@ bool smtcheck_opensmt2t_lra::push_constraints2type(
 }
 
 // If the expression is a number adds constraints
-void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef &var)
+void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef& var)
 {
     typet var_type = expr.type(); // Get the current type
     const irep_idt type_id_c = var_type.get("#c_type");
@@ -899,4 +916,24 @@ void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 	    					// to get a segmfalut in the incremental solver
 	    i++;
     }
+}
+
+std::string smtcheck_opensmt2t_lra::getStringSMTlibDatatype(const exprt& expr)
+{ 
+    if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool))
+        return SMT_BOOL;
+    if (is_number(expr.type()))
+        return SMT_REAL;
+    
+    return SMT_UNKNOWN; // Shall not get here 
+}
+
+SRef smtcheck_opensmt2t_lra::getSMTlibDatatype(const exprt& expr)
+{ 
+    if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool))
+        return lralogic->getSort_bool(); //SMT_BOOL
+    if (is_number(expr.type()))
+        return lralogic->getSort_real(); // SMT_REAL
+    
+    assert(0); // Shall not get here 
 }

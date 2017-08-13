@@ -72,13 +72,18 @@ public:
   PTRef split_exprs(irep_idt id, vec<PTRef>& args);
   PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
 
-  std::string getFails2RefineReason() {
-      if (unsupported2var == 0) return "";
-       
+  std::string get_refinement_failure_reason() {
+      if (unsupported2var == 0) {
+          return ""; // No unsupported functions, no reason
+      }
+      
       return "Cannot refine due to " + std::to_string(unsupported2var) + 
               " unsupported operators;e.g., " + id2string(_fails_type_id);
   }
   
+  virtual std::string getStringSMTlibDatatype(const exprt& expr);
+  virtual SRef getSMTlibDatatype(const exprt& expr);
+
 protected:
   BVLogic* bvlogic; // Extra var, inner use only - Helps to avoid dynamic cast!
   CUFLogic* uflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
@@ -99,7 +104,7 @@ protected:
 
   void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
 
-  virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  virtual literalt lunsupported2var(const exprt &expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
   
   PTRef unsupported2var_bv(const exprt &expr); // for BVs
   

@@ -7,7 +7,7 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_OPENSMT2_H
 #define CPROVER_SMTCHECK_OPENSMT2_H
 
-//#define DEBUG_SMT4SOLVER // TO PRINT FROM HIFROG ENCODING + ITE DEF.
+#define DEBUG_SMT4SOLVER // TO PRINT FROM HIFROG ENCODING + ITE DEF.
 
 #include <map>
 #include <vector>
@@ -27,20 +27,22 @@ class smtcheck_opensmt2t : public check_opensmt2t
 {
 public:
   // Defualt C'tor
-  smtcheck_opensmt2t() :
+  smtcheck_opensmt2t(bool _store_unsupported_info=false) :
       no_literals(0),
       pushed_formulas(0),
       is_var_constraints_empty(true),
+      store_unsupported_info(_store_unsupported_info),
       check_opensmt2t(false, 3, 2) // Is last always!
   {
     /* No init of solver - done for inherit check_opensmt2 */
   }
 
   // C'tor to pass the value to main interface check_opensmt2
-  smtcheck_opensmt2t(bool reduction, int reduction_graph, int reduction_loops) :
+  smtcheck_opensmt2t(bool reduction, int reduction_graph, int reduction_loops, bool _store_unsupported_info=false) :
         no_literals(0),
         pushed_formulas(0),
         is_var_constraints_empty(true),
+        store_unsupported_info(_store_unsupported_info),
         check_opensmt2t(reduction, reduction_graph, reduction_loops)
   { /* No init of solver - done for inherit check_opensmt2 */}
     
@@ -62,6 +64,7 @@ public:
 
   void set_to_false(const exprt &expr); // Common to all
   void set_to_true(const exprt &expr); // Common to all
+  void set_to_true(literalt refined_l); // Common to all
   void set_to_true(PTRef); // Common to all
   void set_equal(literalt l1, literalt l2); // Common to all
 
@@ -130,7 +133,13 @@ public:
 	  }
   }
 
-  bool has_unsupported_vars() { return unsupported2var > 0; } // Common to all
+  bool has_unsupported_info() const { return store_unsupported_info && has_unsupported_vars(); } // Common to all
+  bool has_unsupported_vars() const { return (unsupported2var > 0); } // Common to all, affects several locations!
+  string create_new_unsupported_var(); // Common to all
+  map<PTRef,exprt>::const_iterator get_itr_unsupported_info_map() const { return unsupported_info_map.begin(); }
+  map<PTRef,exprt>::const_iterator get_itr_end_unsupported_info_map() const { return unsupported_info_map.end(); }
+  unsigned int get_unsupported_vars_count() const { assert(unsupported_info_map.size() == unsupported2var); return unsupported2var;}
+  
   
   static bool is_cprover_rounding_mode_var(const exprt& e)
   {
@@ -154,6 +163,17 @@ public:
 
   /* For unsupported var creation */
   static const string _unsupported_var_str;
+  
+public:
+  literalt bind_var2refined_var(PTRef ptref_coarse, PTRef ptref_refined); // common to all
+  
+  SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
+  
+  PTRef mkCustomFunction(SymRef decl, vec<PTRef>& args); // common to all
+  
+  virtual std::string getStringSMTlibDatatype(const exprt& expr)=0;
+  virtual SRef getSMTlibDatatype(const exprt& expr)=0; 
+  
 protected:
   
   vec<PTRef> top_level_formulas;
@@ -171,13 +191,17 @@ protected:
   unsigned pushed_formulas;
 
   static unsigned unsupported2var; // Create a new var hifrog::c::unsupported_op2var#i - smtcheck_opensmt2t::_unsupported_var_str
-
-  virtual literalt lunsupported2var(exprt expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  bool store_unsupported_info;
+  map<PTRef,exprt> unsupported_info_map;
+  
+  literalt store_new_unsupported_var(const exprt& expr, const PTRef var); // common to all 
+  
+  virtual literalt lunsupported2var(const exprt &expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
   literalt new_variable(); // Common to all
 
   literalt push_variable(PTRef ptl); // Common to all
-
+  
 #ifdef PRODUCE_PROOF  
   void setup_reduction();
 

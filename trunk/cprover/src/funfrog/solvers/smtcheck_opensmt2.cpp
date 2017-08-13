@@ -147,6 +147,13 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
     current_partition->push(tlp);
 }
 
+void smtcheck_opensmt2t::set_to_true(literalt refined_l)
+{
+    literalt l = refined_l;
+    PTRef lp = literals[l.var_no()];
+    set_to_true(lp);
+}
+
 void smtcheck_opensmt2t::set_to_false(const exprt &expr)
 {
     literalt l = convert(expr);
@@ -705,11 +712,11 @@ void smtcheck_opensmt2t::close_partition()
   if (partition_count > 0){
     if (current_partition->size() > 1){
       PTRef pand = logic->mkAnd(*current_partition);
-#ifdef DEBUG_SMT2SOLVER
+//#ifdef DEBUG_SMT2SOLVER
       char* s= logic->printTerm(pand);
       cout << "; Pushing to solver: " << s << endl;
       free(s);
-#endif
+//#endif
       top_level_formulas.push(pand);
     } else if (current_partition->size() == 1){
       PTRef pand = (*current_partition)[0];
@@ -795,12 +802,7 @@ Function: smtcheck_opensmt2t::extract_expr_str_name
 \*******************************************************************/
 std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 {
-    string str = id2string(expr.get(ID_identifier));
-    assert (str.size() != 0); // Check the we really got something
-
-    if(expr.id() == ID_nondet_symbol && (str.find(NONDET) != std::string::npos))
-            str = str.insert(7, SYMEX_NONDET);
-
+    string str = fix_symex_nondet_name(expr);
     if (is_cprover_rounding_mode_var(str)) 
     {
     #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
@@ -820,6 +822,11 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     #endif
     }
 
+    // KE: assure the encoding is not using the variables name as is (why there is nil here?)
+    assert("Error: using non-SSA symbol in the SMT encoding" 
+            && ((str.find(COUNTER) != std::string::npos) 
+                || (str.compare("nil") == 0) || IO_CONST));
+    
     return str;
 }
 
@@ -876,5 +883,97 @@ std::string smtcheck_opensmt2t::create_bound_string(std::string base, int exp)
     for (int i=0; i<size;i++)
         ret+= "0";
 
+    return ret;
+}
+
+string smtcheck_opensmt2t::create_new_unsupported_var()
+{
+    // Create a new unsupported var
+    std::string str = smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
+    str = quote_varname(str);
+    
+    assert(str.size() > 0);
+    
+#ifdef SMT_DEBUG
+        cout << "; IT IS AN UNSUPPORTED VAR " << str << endl;
+#endif 
+        
+    return str;
+}
+
+literalt smtcheck_opensmt2t::store_new_unsupported_var(const exprt& expr, const PTRef var) {
+    // If need to register the abstracted functions - add it here
+    if (store_unsupported_info) {
+        // Map the expression to its unsupported abstracted vat (in opensmt)
+        unsupported_info_map.insert(pair<PTRef, exprt> (var, expr));
+        cout << "**** Saved function as a candidate for lattice refinement. ";
+        cout << "Expression " << logic->printTerm(var) << " will be refine the operator " 
+              << expr.id() << " with " << expr.operands().size() << " operands." 
+              << endl;
+    }
+    
+    return push_variable(var);
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::bind_var2refined_var
+
+ Inputs: two ptref, one is a refined version of the other
+
+ Outputs: (= refined coarse)
+
+ Purpose: to connect the rest of the translation to the most refined version 
+ * of expression. 
+ * 
+ * TODO: add pop incase we need to refine more than once!
+
+\*******************************************************************/
+literalt smtcheck_opensmt2t::bind_var2refined_var(PTRef ptref_coarse, PTRef ptref_refined) {
+    // Pop the old version 
+    // TODO logic->pop(ptref_coarse); // KE: or something like this or push prev ret of it
+
+    // Create the new refined version
+    PTRef ret = logic->mkEq(ptref_coarse, ptref_refined);
+    
+    // Keep the new ptref and return the new one
+    return push_variable(ret);
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::get_smt_func_decl
+
+ Inputs: name of the function and its signature
+
+ Outputs: the function declarations
+
+ Purpose: to create new custom function to smt from summaries
+
+\*******************************************************************/
+SymRef smtcheck_opensmt2t::get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt) {
+    char *msg=NULL;
+    SymRef ret = logic->declareFun(op, in_dt, out_dt, &msg, true);
+    if (msg != NULL) free(msg);
+
+    return ret;    
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::mkCustomFunction
+
+ Inputs: function signature in SMTlib with arguments
+
+ Outputs: PTRef of it (with the concrete args)
+
+ Purpose: to use a new custom function to smt from summaries
+
+\*******************************************************************/
+PTRef smtcheck_opensmt2t::mkCustomFunction(SymRef decl, vec<PTRef>& args)
+{
+    char *msg=NULL;
+    PTRef ret = logic->mkFun(decl, args, &msg);
+    if (msg != NULL) free(msg);
     return ret;
 }

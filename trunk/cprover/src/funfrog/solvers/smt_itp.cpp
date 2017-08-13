@@ -294,6 +294,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
     logic->varsubstitute(templ, subst, part_sum);
     decider.set_to_true(part_sum);
     //cout << "; Template instantiated for function " << tterm->getName() << " is\n" << logic->printTerm(part_sum) << endl;
+    // KE: See here if the template contains ONLY L2 expressions, and not L1.
 
   /*
   // FIXME: Dirty cast.

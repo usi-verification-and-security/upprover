@@ -497,18 +497,17 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
     return l;
 }
 
-literalt smtcheck_opensmt2t_uf::lunsupported2var(exprt expr)
+literalt smtcheck_opensmt2t_uf::lunsupported2var(const exprt &expr)
 {
+    const string str = create_new_unsupported_var();
+    
     PTRef var;
-
-    const string str = smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
-    assert(str.size() > 0);
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
         var = logic->mkBoolVar(str.c_str());
     else
         var = logic->mkVar(sort_ureal, str.c_str());
 
-    return push_variable(var);
+    return store_new_unsupported_var(expr, var);
 }
 
 literalt smtcheck_opensmt2t_uf::lnotequal(literalt l1, literalt l2){
@@ -562,4 +561,24 @@ literalt smtcheck_opensmt2t_uf::lvar(const exprt &expr)
 #endif
 
     return l;
+}
+
+std::string smtcheck_opensmt2t_uf::getStringSMTlibDatatype(const exprt& expr)
+{ 
+    if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool))
+        return SMT_BOOL;
+    if (is_number(expr.type()))
+        return SMT_UREAL;
+
+    return SMT_UNKNOWN; // Shall not get here 
+}
+
+SRef smtcheck_opensmt2t_uf::getSMTlibDatatype(const exprt& expr)
+{ 
+    if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool))
+        return logic->getSort_bool();//SMT_BOOL;
+    if (is_number(expr.type()))
+        return sort_ureal; //SMT_UREAL;
+    
+    assert(0); // Shall not get here 
 }

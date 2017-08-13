@@ -63,8 +63,7 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
         PTRef ptrf = literals[l.var_no()];
         str = std::string(logic->printTerm(ptrf));
     } else {
-        str = smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
-        str = quote_varname(str);
+        str = create_new_unsupported_var();
     }
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS AN UNSUPPORTED VAR " << str 
@@ -74,7 +73,20 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
     _fails_type_id = (((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol)))
             ? expr.type().id_string() : expr.id_string(); // KE: keep the reason for failing
     
-    return get_bv_var(str.c_str());
+    PTRef var = get_bv_var(str.c_str());
+    
+    // Was taken from: literalt smtcheck_opensmt2t::store_new_unsupported_var
+    // If need to register the abstracted functions - add it here
+    if (store_unsupported_info) {
+        // Map the expression to its unsupported abstracted vat (in opensmt)
+        unsupported_info_map.insert(pair<PTRef, exprt> (var, expr));
+        cout << "**** Saved function as a candidate for lattice refinement. ";
+        cout << "Expression " << logic->printTerm(var) << " will be refine the operator " 
+              << expr.id() << " with " << expr.operands().size() << " operands." 
+              << endl;
+    }
+    
+    return var;
 }
 
 PTRef smtcheck_opensmt2t_cuf::var_bv(const exprt &expr)
@@ -1573,7 +1585,7 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs(irep_idt id, vec<PTRef>& args)
  *        unsupported data type please use: lnsupportedDatatype2var
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_cuf::lunsupported2var(exprt expr)
+literalt smtcheck_opensmt2t_cuf::lunsupported2var(const exprt &expr)
 {
     // Tries to map unsupported to another unsupported
     if (converted_exprs.find(expr.hash()) != converted_exprs.end())
@@ -1581,24 +1593,16 @@ literalt smtcheck_opensmt2t_cuf::lunsupported2var(exprt expr)
     
     
     // Create a new unsupported var
-    std::string str =smtcheck_opensmt2t::_unsupported_var_str + std::to_string(unsupported2var++);
-    str = quote_varname(str);
+    std::string str = create_new_unsupported_var();
     
     // Create the correct type in opensmt
     PTRef var;
-    assert(str.size() > 0);
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool))
         var = logic->mkBoolVar(str.c_str());
     else
-        var = uflogic->mkCUFNumVar(str.c_str()); // create unsupported var for expression we don't support
-
-    literalt l = push_variable(var);
+        var = uflogic->mkCUFNumVar(str.c_str()); // create unsupported var for expression we don't support 
     
-#ifdef DEBUG_SMT_BB
-        cout << "; IT IS AN UNSUPPORTED VAR " << str << endl;
-#endif     
-    
-    return l;
+    return store_new_unsupported_var(expr, var);
 }
 
 literalt smtcheck_opensmt2t_cuf::lnotequal(literalt l1, literalt l2){
@@ -1878,4 +1882,24 @@ bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set
     bitblaster->notifyEqualities();
 
     return solve();
+}
+
+std::string smtcheck_opensmt2t_cuf::getStringSMTlibDatatype(const exprt& expr)
+{ 
+    if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool))
+        return SMT_BOOL;
+    if (is_number(expr.type()))
+        return SMT_UREAL;
+    
+    return SMT_UNKNOWN; // Shall not get here 
+}
+
+SRef smtcheck_opensmt2t_cuf::getSMTlibDatatype(const exprt& expr)
+{ 
+    if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool))
+        return uflogic->getSort_bool();//SMT_BOOL;
+    if (is_number(expr.type()))
+        return uflogic->getSort_CUFNUM(); //SMT_UREAL;
+    
+    assert(0); // Shall not get here 
 }

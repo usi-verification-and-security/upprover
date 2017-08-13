@@ -24,8 +24,8 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class smtcheck_opensmt2t_uf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_uf(const char* name) :
-      smtcheck_opensmt2t(false, 3, 2) // Is last always!
+  smtcheck_opensmt2t_uf(const char* name, bool _store_unsupported_info) :
+      smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info) // Is last always!
   {
     initializeSolver(name);
   }
@@ -43,10 +43,13 @@ public:
   virtual literalt lnotequal(literalt l1, literalt l2);
 
   virtual literalt lvar(const exprt &expr);
+     
+  virtual std::string getStringSMTlibDatatype(const exprt& expr);
+  virtual SRef getSMTlibDatatype(const exprt& expr); 
 
 protected:
 
-  virtual literalt lunsupported2var(exprt expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  virtual literalt lunsupported2var(const exprt &expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
   virtual void initializeSolver(const char* name);
   
