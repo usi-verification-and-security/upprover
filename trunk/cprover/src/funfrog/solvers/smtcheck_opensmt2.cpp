@@ -712,11 +712,11 @@ void smtcheck_opensmt2t::close_partition()
   if (partition_count > 0){
     if (current_partition->size() > 1){
       PTRef pand = logic->mkAnd(*current_partition);
-//#ifdef DEBUG_SMT2SOLVER
+#ifdef DEBUG_SMT2SOLVER
       char* s= logic->printTerm(pand);
       cout << "; Pushing to solver: " << s << endl;
       free(s);
-//#endif
+#endif
       top_level_formulas.push(pand);
     } else if (current_partition->size() == 1){
       PTRef pand = (*current_partition)[0];
