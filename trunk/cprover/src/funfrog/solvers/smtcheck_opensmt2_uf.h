@@ -24,7 +24,7 @@ typedef std::map<PTRef, literalt> ptref_cachet;
 class smtcheck_opensmt2t_uf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_uf(const char* name, bool _store_unsupported_info) :
+  smtcheck_opensmt2t_uf(const char* name, bool _store_unsupported_info=false) :
       smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info) // Is last always!
   {
     initializeSolver(name);
