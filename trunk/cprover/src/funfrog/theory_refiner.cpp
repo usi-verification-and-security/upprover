@@ -155,7 +155,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
               if (decider->force_refine_ce(exprs, refined)){
 #ifdef _NO_OPTIMIZATION                  
-                  std::string reason = decider->getFails2RefineReason();
+                  std::string reason = decider->get_refinement_failure_reason();
                   if (reason.size() > 0) 
                   {
                       status() << "ASSERTION UNKNOWN" << endl;
@@ -309,7 +309,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       status() << "(" << refined.size() << " / "
                                       << exprs.size()  << " expressions bit-blasted)" << endl;
 #ifdef _NO_OPTIMIZATION                      
-                      std::string reason = decider->getFails2RefineReason();
+                      std::string reason = decider->get_refinement_failure_reason();
                       if (reason.size() > 0) 
                       {
                         status() << "ASSERTION UNKNOWN" << endl;
