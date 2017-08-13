@@ -70,3 +70,21 @@ unsigned extract_hifrog_inner_symbol_L2_counter(const exprt &expr){
  
     assert(0); // Add constants if needed
 }
+
+/* Assure the name is always symex::nondet#number */
+std::string fix_symex_nondet_name(const exprt &expr) {
+    // Fix Variable name - sometimes "nondet" name is missing, add it for these cases
+    
+    std::string name_expr = id2string(expr.get(ID_identifier));
+    assert (name_expr.size() != 0); // Check the we really got something
+    if (expr.id() == ID_nondet_symbol)
+    {
+        if (name_expr.find(NONDETv2) != std::string::npos) {
+            name_expr = name_expr.insert(13,1, COUNTER);
+        } else if (name_expr.find(NONDETv1) != std::string::npos) {
+            name_expr = name_expr.insert(7, SYMEX_NONDET);
+        }  
+    }
+    
+    return name_expr;
+}

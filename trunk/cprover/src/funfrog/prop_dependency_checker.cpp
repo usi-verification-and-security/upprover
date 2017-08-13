@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /* 
  * File:   prop_dependency_checkert.cpp
  * Author: karinek
@@ -351,7 +345,7 @@ void prop_dependency_checkert::convert_io(
         {
           symbol_exprt symbol;
           symbol.type()=tmp.type();
-          symbol.set_identifier("symex::io::"+std::to_string(io_count++));
+          symbol.set_identifier(IO_CONST+std::to_string(io_count++));
           decider.set_to(equal_exprt(tmp, symbol), true);
           (*it)->converted_io_args.push_back(symbol);
         }

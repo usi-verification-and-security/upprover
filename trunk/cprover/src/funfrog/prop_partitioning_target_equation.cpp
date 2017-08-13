@@ -659,7 +659,7 @@ void prop_partitioning_target_equationt::convert_partition_io(
           it->converted_io_args.push_back(tmp);
         else
         {
-          symbol_exprt symbol(("symex::io::"+std::to_string(io_count_global++)), tmp.type());
+          symbol_exprt symbol((IO_CONST+std::to_string(io_count_global++)), tmp.type());
           prop_conv.set_to(equal_exprt(tmp, symbol), true);
           it->converted_io_args.push_back(symbol);
         }

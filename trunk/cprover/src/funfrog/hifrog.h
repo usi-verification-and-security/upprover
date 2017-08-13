@@ -17,8 +17,8 @@
 #define FUNC_RETURN "::#return_value!0"  // KE: appears in Cprover as "#return_value"
 #define TMP_FUNC_RETURN "::$tmp::return_value!0"
 
-#define CALLSTART_SYMBOL "hifrog::?fun_start"
-#define CALLEND_SYMBOL "hifrog::?fun_end"
+#define CALLSTART_SYMBOL "hifrog::fun_start"
+#define CALLEND_SYMBOL "hifrog::fun_end"
 #define ERROR_SYMBOL "hifrog::?err"
 
 #define CPROVER_BUILDINS "__CPROVER_"
@@ -28,15 +28,24 @@
 #define GOTO_GUARD "goto_symex::\\guard#"
 
 #define NIL "nil"
-#define NONDET "symex::" // Cprover nondet symbol
+#define NONDETv1 "symex::" // Cprover nondet symbol
+#define NONDETv2 "symex::nondet" // Cprover nonder symbol too
 #define COUNTER '#' // GOTO to SSA (e.g., hifrog::?fun_end to hifrog::?fun_end#1)
-#define SYMEX_NONDET "nondet#" //"symex::nondet#"
+#define SYMEX_NONDET "nondet#" //"symex::nondet#" - fix to
+#define IO_CONST "symex::io::" // Update according to goto_symex/symex_target_equation
+
+// SMT consts of datatypes, add/change here only if needed
+#define SMT_BOOL "Bool"
+#define SMT_REAL "Real"
+#define SMT_UREAL "UReal"
+#define SMT_UNKNOWN "?"
 
 irep_idt get_symbol_name(const exprt &expr);
 bool is_hifrog_inner_symbol_name(const exprt &expr);
 irep_idt extract_hifrog_inner_symbol_name(const exprt &expr);
 unsigned get_symbol_L2_counter(const exprt &expr);
 unsigned extract_hifrog_inner_symbol_L2_counter(const exprt &expr);
+std::string fix_symex_nondet_name(const exprt &expr);
 
 #endif /* HIFROG_H */
 
