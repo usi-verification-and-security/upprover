@@ -9,6 +9,7 @@
 #define LATTICE_REFINERT_H
 
 #include "lattice_refiner_model.h"
+#include "lattice_refiner_expr.h"
 #include <options.h>
 #include <symbol_table.h>
 #include "solvers/smtcheck_opensmt2.h"
@@ -45,9 +46,8 @@ public:
 
   unsigned int get_models_count() const { return models.size(); }
   
-  unsigned int get_refined_functions_size(){ return refine_data.size(); } // KE: stub, todo
+  unsigned int get_refined_functions_size(){ return expr2refine.size(); } // KE: stub, todo
   
-  bool process_solver_result(); // KE: will call to SAT/UNSAT process result per expression
 private:
   const optionst &options; 
   smtcheck_opensmt2t &decider; // Current support: LRA and UF
@@ -57,15 +57,15 @@ private:
   /* Function declaration, head of the model - it is a map to support many models */
   std::map<std::string, lattice_refiner_modelt *> models; // Declare of func + its model
   std::map<std::string, SymRef> declare2literal; // Needed only for refine what openSMT can't express
-  std::map<exprt, deque<lattice_refiner_modelt *>> refine_data; // Keep per expression, next options to refine
+  std::set<lattice_refiner_exprt> expr2refine; // Keep per expression, next options to refine
   // Top is what we use currently to refine the expression
   
   void load_models(std::string list_of_models_fs); // Load all the models
   
-  // parent(s), current, siblings - walk on the lattice
-  bool process_SAT_result(const exprt &expr);
-  bool process_UNSAT_result(const exprt &expr);
-  lattice_refiner_modelt* get_refine_function(const exprt &expr);
+  // Check the result
+  bool process_SAT_result();
+  bool process_UNSAT_result();
+  bool process_solver_result(bool is_solver_ret_SAT); // KE: will call to SAT/UNSAT process result per expression
   
   bool can_refine(const smtcheck_opensmt2t &decider, 
                   const symex_assertion_sumt& symex) const;

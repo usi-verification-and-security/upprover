@@ -227,7 +227,7 @@ literalt lattice_refinert::refine_single_statement(const exprt &expr, const PTRe
     
     
     // Get next entry of refined functions
-    lattice_refiner_modelt *curr_node = get_refine_function(expr);
+    //lattice_refiner_modelt *curr_node = get_refine_function(expr);
     
     // Create a new PTRef which refine the original expression
     PTRef refined_var; // will add a call to the refined func, e.g., mod_C3(a,n)
@@ -259,19 +259,14 @@ literalt lattice_refinert::refine_single_statement(const exprt &expr, const PTRe
  * If SAT according to the model - return true, else false
 
 \*******************************************************************/
-bool lattice_refinert::process_SAT_result(const exprt &expr) {
-    assert(refine_data.find(expr) != refine_data.end());
-    deque<lattice_refiner_modelt *> orig_queue = refine_data.find(expr)->second;
-    if (orig_queue.empty()) 
-        return true;
-    
-    lattice_refiner_modelt* curr_check = orig_queue.front();
-    for (auto it : curr_check->childs) {
-        orig_queue.push_back(it);
+bool lattice_refinert::process_SAT_result() {  
+    bool ret = false;
+    for (auto it : expr2refine) {
+        it.process_SAT_result();
+        ret = ret || it.is_SAT();
     }
-    orig_queue.pop_front();
-    
-    return (curr_check->childs.size() == 0);
+       
+    return ret;
 }
 
 /*******************************************************************
@@ -282,76 +277,47 @@ bool lattice_refinert::process_SAT_result(const exprt &expr) {
 
  Outputs: 
 
- Purpose: 
+ Purpose: change the state of the model only - the SSA changes will 
+ * happen in refine_SSA, not here.
  * 
  * Going backward
 
 \*******************************************************************/
-bool lattice_refinert::process_UNSAT_result(const exprt &expr) {
-    assert(refine_data.find(expr) != refine_data.end());
-    deque<lattice_refiner_modelt *> orig_queue = refine_data.find(expr)->second;
-    deque<lattice_refiner_modelt *> candidates_queue;
-    if (orig_queue.empty()) return true; // It is a real UNSAT, quit
-    
-    // Else, pop till gets to a split
-    lattice_refiner_modelt* curr_check = orig_queue.front();
-    do {
-        orig_queue.erase(std::remove(orig_queue.begin(), orig_queue.end(), curr_check), orig_queue.end()); // prune this branch as it is valid (UNSAT)
-        for (auto it : curr_check->ancestors){
-            if (it->has_single_child()) {
-                candidates_queue.push_back(it);
-            }
-        }
-        
-        curr_check = candidates_queue.front();
-    } while (!orig_queue.empty() && !candidates_queue.empty());
-    
-    // need to pop expressions in case we backtrack to bot (one line lattice).
-    if (orig_queue.empty()) {
-        refine_data.erase(expr);
-    } 
-    
-    // TODO: need to pop father of a diamond? (not sure when this case can happen)
-    // TODO: sons that we need to pop in the other side of the diamond
-    
-    return true;
+bool lattice_refinert::process_UNSAT_result() {
+    bool ret = true;
+    for (auto it : expr2refine) {
+        it.process_UNSAT_result();
+        ret = ret && it.is_UNSAT();
+    }
+       
+    return ret;
 }
 
-/*******************************************************************
-
- Function: lattice_refinert::get_refine_function
-
- Inputs: expression we refine
-
- Outputs: the next summary to use to refine it (location on the search tree/lattice)
-
- Purpose: 
-
-\*******************************************************************/
-lattice_refiner_modelt* lattice_refinert::get_refine_function(const exprt &expr) {
-    if (refine_data.find(expr) != refine_data.end()) {
-        return refine_data.find(expr)->second.front(); 
-    }
-    
-    // Get the model for this instruction - find a better way to do it
-    std::string key_entry = gen_entry_point_name(expr);
-    lattice_refiner_modelt *model = models.find(key_entry)->second;
-    
-    // Create a new entry and return the root of the model
-    deque<lattice_refiner_modelt *> data;
-    for (auto it : model->childs) {
-        data.push_back(it);
-    }
-    refine_data.insert(pair<exprt, deque<lattice_refiner_modelt *>> (expr, data));
-    
-    return data.front();
-}
-  
 /*******************************************************************
 
  Function: lattice_refinert::refine_SSA
 
  Inputs: 
+
+ Outputs: false if we shall continue and refining, true else.
+
+ Purpose: move down/up in the lattice
+
+\*******************************************************************/
+bool lattice_refinert::process_solver_result(bool is_solver_ret_SAT) {
+    if (is_solver_ret_SAT) {
+        return process_SAT_result(); // return true if SAT
+    } else {
+        return process_UNSAT_result(); // return true if UNSAT
+    }
+    // Both will return false if there is no decision yet
+}
+
+/*******************************************************************
+
+ Function: lattice_refinert::refine_SSA
+
+ Inputs: the last result of the query to the solver, decider and symex objects
 
  Outputs: 
 
