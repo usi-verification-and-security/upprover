@@ -1,0 +1,226 @@
+;;;;; Start of Mod rules
+(declare-fun |_mod#0| (Real Real) Real)
+;;;;;
+;; C3 definition
+(define-fun |mod_C3#0| (
+    (|mod_C3::a!0| Real)
+    (|mod_C3::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool) 
+    (|mod_C3::#return_value!0| Real) )  Bool
+  (and 
+    (= |mod_C3::#return_value!0| (|_mod#0| |mod_C3::a!0| |mod_C3::n!0|))
+    (or (not |hifrog::fun_end|) (and |hifrog::fun_start|
+         (<= 0 |mod_C3::n!0|)
+    ))
+  )
+)
+;;;;;
+;; C2 definition
+(define-fun |mod_C2#0| (
+    (|mod_C2::a!0| Real)
+    (|mod_C2::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool) 
+    (|mod_C2::#return_value!0| Real) )  Bool
+  (and 
+    (= |mod_C2::#return_value!0| (|_mod#0| |mod_C2::a!0| |mod_C2::n!0|))
+    (or (not |hifrog::fun_end|) (and |hifrog::fun_start|
+          (= |mod_C2::n!0| 0)
+    ))
+  )
+)
+;;;;;
+;; n=1, n=2, n>2
+; Fact a
+(define-fun |mod_Ca#0| (
+    (|mod_Ca::a!0| Real)
+    (|mod_Ca::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool)
+    (|mod_Ca::#return_value!0| Real) )  Bool
+  (let ((?def999 |mod_Ca::#return_value!0|))
+  (let ((?def998 (= (|_mod#0| |mod_Ca::a!0| |mod_Ca::n!0|) ?def999)))
+  (let ((?def997 (= ?def999 0)))
+  (let ((?def996 (= |mod_Ca::n!0| 1)))
+  (let ((?def995 (=> ?def996 (and ?def997 ?def998))))
+  (let ((?def994 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| ?def996))))
+  (let ((?def900 (and ?def994 ?def995)))
+
+?def900
+))))))))
+;;;;;
+; Fact b
+(define-fun |mod_Cb#0| (
+    (|mod_Cb::a!0| Real)
+    (|mod_Cb::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool) 
+    (|mod_Cb::#return_value!0| Real) )  Bool
+  (let ((?def899 |mod_Cb::#return_value!0|))
+  (let ((?def898 (= (|_mod#0| |mod_Cb::a!0| |mod_Cb::n!0|) ?def899)))
+  (let ((?def897 (or (= ?def899 0) (= ?def899 1))))
+  (let ((?def896 (= |mod_Cb::n!0| 2)))
+  (let ((?def895 (=> ?def896 (and ?def897 ?def898))))
+  (let ((?def894 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| ?def896))))
+  (let ((?def800 (and ?def894 ?def895)))
+
+?def800
+))))))))
+;;;;;
+; Fact !a and !b
+(define-fun |mod_Cnotab#0| (
+    (|mod_Cnotab::a!0| Real)
+    (|mod_Cnotab::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool) 
+    (|mod_Cnotab::#return_value!0| Real) )  Bool
+  (and 
+    (= |mod_Cnotab::#return_value!0| (|_mod#0| |mod_Cnotab::a!0| |mod_Cnotab::n!0|))
+    (or (not |hifrog::fun_end|) (and |hifrog::fun_start|
+          (< 2 |mod_Cnotab::n!0|)
+    ))
+  )
+)
+;;;;;
+;; !C2 definition
+(define-fun |mod_C2not#0| (
+    (|mod_C2not::a!0| Real)
+    (|mod_C2not::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool) 
+    (|mod_C2not::#return_value!0| Real) )  Bool
+  (and 	
+    (= |mod_C2not::#return_value!0| (|_mod#0| |mod_C2not::a!0| |mod_C2not::n!0|))
+    (or (not |hifrog::fun_end|) (and |hifrog::fun_start|
+          (>= |mod_C2not::n!0| 1)
+    ))
+  )
+)
+;;;;;
+;; C4 define
+(define-fun |mod_C4#0| (
+    (|mod_C4::a!0| Real)
+    (|mod_C4::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool) 
+    (|mod_C4::#return_value!0| Real) )  Bool
+  (and 
+    (= |mod_C4::#return_value!0| (|_mod#0| |mod_C4::a!0| |mod_C4::n!0|))
+    (or (not |hifrog::fun_end|) (and |hifrog::fun_start|
+          (and (>= |mod_C4::n!0| 1) (<= 0 |mod_C4::a!0|))
+    ))
+  )
+)
+;;;;;
+;; d fact
+(define-fun |mod_Cd#0| ( 
+    (|mod_Cd::a!0| Real)
+    (|mod_Cd::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool) 
+    (|mod_Cd::#return_value!0| Real) )  Bool
+  (let ((?def799 |mod_Cd::#return_value!0|))
+  (let ((?def798 (= (|_mod#0| |mod_Cd::a!0| |mod_Cd::n!0|) ?def799)))
+  (let ((?def797 (= ?def799 0)))
+  (let ((?def796 (= |mod_Cd::n!0| |mod_Cd::a!0|)))
+  (let ((?def795 (=> ?def796 (and ?def797 ?def798))))
+  (let ((?def794 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| ?def796))))
+  (let ((?def700 (and ?def794 ?def795)))
+
+?def700
+))))))))
+;;;;;
+;; k fact
+(define-fun |mod_Ck#0| (
+    (|mod_Ck::a!0| Real)
+    (|mod_Ck::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool) 
+    (|mod_Ck::#return_value!0| Real) )  Bool
+  (let ((?def699 |mod_Ck::#return_value!0|))
+  (let ((?def698 (= (|_mod#0| (+ (|_mod#0| |mod_Ck::a!0| |mod_Ck::n!0|)
+			     (|_mod#0| (- |mod_Ck::a!0|) |mod_Ck::n!0|)
+			              ) |mod_Ck::n!0|) ?def699)))
+  (let ((?def697 (= ?def699 0)))
+  (let ((?def696 (and ?def698 ?def697)))
+  (let ((?def695 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| ?def696))))
+
+?def695
+))))))
+;;;;;
+;; c fact
+(define-fun |mod_Cc#0| (
+    (|mod_Cc::a!0| Real)
+    (|mod_Cc::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool) 
+    (|mod_Cc::#return_value!0| Real) )  Bool
+  (let ((?def599 |mod_Cc::#return_value!0|))
+  (let ((?def598 (= (|_mod#0| |mod_Cc::a!0| |mod_Cc::n!0|) ?def599)))
+  (let ((?def597 (= ?def599 0)))
+  (let ((?def596 (= 0 |mod_Cc::a!0|)))
+  (let ((?def595 (=> ?def596 (and ?def597 ?def598))))
+  (let ((?def594 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| ?def596))))
+  (let ((?def500 (and ?def594 ?def595)))
+
+?def500
+))))))))
+;;;;;
+;; l fact
+(define-fun |mod_Cl#0| (
+    (|mod_Cl::a!0| Real)
+    (|mod_Cl::b!0| Real)
+    (|mod_Cl::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool) 
+    (|mod_Cl::#return_value!0| Real) )  Bool
+  (let ((?def499 |mod_Cl::#return_value!0|))
+  (let ((?def498 (= (|_mod#0| (+ (|_mod#0| |mod_Cl::a!0| |mod_Cl::n!0|)
+			     (|_mod#0| |mod_Cl::b!0| |mod_Cl::n!0|)
+						  ) |mod_Cl::n!0|) ?def499)))
+  (let ((?def497 (= ?def499 (|_mod#0| (+ |mod_Cl::a!0| |mod_Cl::b!0|) |mod_Cl::n!0|))))
+  (let ((?def496 (and ?def498 ?def497)))
+  (let ((?def495 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| ?def496))))
+
+?def495
+))))))
+;;;;;
+;; fact f
+(define-fun |mod_Cf#0| (
+    (|mod_Cf::a!0| Real)
+    (|mod_Cf::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool)
+    (|mod_Cf::#return_value!0| Real) )  Bool
+  (let ((?def399 |mod_Cf::#return_value!0|))
+  (let ((?def398 (= (|_mod#0| |mod_Cf::a!0| |mod_Cf::n!0|) ?def399)))
+  (let ((?def397 (= ?def399 |mod_Cf::a!0|)))
+  (let ((?def396 (and (<= 0 |mod_Cf::a!0|) (< 0 |mod_Cf::n!0|))))
+  (let ((?def395 (< |mod_Cf::a!0| |mod_Cf::n!0|)))
+  (let ((?def394 (=> (and ?def395 ?def396) (and ?def397 ?def398))))
+  (let ((?def393 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| (and ?def395 ?def396)))))
+  (let ((?def300 (and ?def393 ?def394)))
+
+?def300
+)))))))))
+;;;;;
+;; fact g
+(define-fun |mod_Cg#0| (
+    (|mod_Cg::a!0| Real)
+    (|mod_Cg::n!0| Real)
+    (|hifrog::fun_start| Bool)
+    (|hifrog::fun_end| Bool) 
+    (|mod_Cg::#return_value!0| Real) )  Bool
+  (let ((?def299 |mod_Cg::#return_value!0|))
+  (let ((?def298 (= (|_mod#0| |mod_Cg::a!0| |mod_Cg::n!0|) ?def299)))
+  (let ((?def297 (and (<= 0 ?def299) (< ?def299 |mod_Cg::n!0|))))
+  (let ((?def296 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| ?def298))))
+  (let ((?def295 (and ?def297 ?def296)))
+
+?def295
+))))))
+;; If the limitation is on the input data - it must be part of 
+;; the |hifrog::fun_end| and |hifrog::fun_start| pattern. If not, it can be out side (or not -
+;; it is a matter of choice only).
+;; To use more than one fact, change Cg fact from < to <= om 297.
