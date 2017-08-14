@@ -38,9 +38,16 @@ public:
     set_message_handler(_message_handler);
   };
 
+  // KE: can we delete the object once deleting the refiner?
+  virtual ~theory_refinert() 
+  {
+    if (decider != NULL) delete decider; 
+  }
+  
   void initialize();
   bool assertion_holds_smt(const assertion_infot& assertion, bool store_summaries_with_assertion);
-
+  
+private:
   const goto_programt &goto_program;
   const namespacet &ns;
   symbol_tablet &symbol_table;

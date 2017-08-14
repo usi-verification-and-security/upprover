@@ -50,7 +50,8 @@ public:
           bool _single_assertion_check,
           bool _use_slicing=true,
 	  bool _do_guard_expl=true,
-          bool _use_smt=true
+          bool _use_smt=true,
+          bool _use_lattice_ref=false
           ) :
           symex_bmct(_ns, _new_symbol_table, _target),
           summarization_context(_summarization_context),
@@ -66,7 +67,9 @@ public:
           use_slicing(_use_slicing),
 	  do_guard_expl(_do_guard_expl),
           use_smt(_use_smt),
-          prev_unwind_counter(0)
+          prev_unwind_counter(0),
+          use_lattice_ref(_use_lattice_ref),
+          lattice_ref_candidates_counter(0)
           {set_message_handler(_message_handler);}
           
   virtual ~symex_assertion_sumt();
@@ -100,6 +103,12 @@ public:
   };
 
   std::map<irep_idt, std::string> guard_expln;
+  
+  bool has_missing_decl_func2refine() const {
+    return (use_lattice_ref && lattice_ref_candidates_counter > 0);
+  }
+  
+  unsigned int get_miss_decl_func_count() const { assert(use_lattice_ref); return lattice_ref_candidates_counter;}
 
 private:
   
@@ -165,9 +174,9 @@ private:
   
   bool use_smt; // for slicing 
   
-  // To see the End_Function is not missing
-  bool is_wait_for_end_func;
-  long wait_for_end_func;
+  bool use_lattice_ref; // for lattice ref. else opt. out the data needed for it only
+  unsigned int lattice_ref_candidates_counter;
+  map<string,exprt> lattice_ref_candidates_info_map;
 
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation

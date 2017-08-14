@@ -32,6 +32,9 @@ FUNFROG_SRC := \
       refiner_assertion_sum.cpp \
       prop_refiner_assertion_sum.cpp \
       smt_refiner_assertion_sum.cpp \
+      lattice_refiner_model.cpp \
+      lattice_refiner_expr.cpp \
+      lattice_refiner.cpp \
       prop_assertion_sum.cpp \
       smt_assertion_sum.cpp \
       nopartition/smt_assertion_no_partition.cpp \

@@ -750,7 +750,7 @@ void smt_partitioning_target_equationt::convert_partition_io(
                 if (tmp.is_constant() || tmp.id() == ID_string_constant)
                     it->converted_io_args.push_back(tmp);
                 else {
-                    symbol_exprt symbol(("symex::io::"+std::to_string(io_count_global++)), tmp.type());
+                    symbol_exprt symbol((IO_CONST+std::to_string(io_count_global++)), tmp.type());
 
 #ifdef DEBUG_SSA_SMT_CALL
                     expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true --> ",

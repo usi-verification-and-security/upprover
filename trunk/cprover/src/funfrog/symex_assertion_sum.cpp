@@ -293,7 +293,7 @@ void symex_assertion_sumt::symex_step(
   if(max_depth!=0 && state.depth>max_depth)
       state.guard.add(false_exprt());
   state.depth++;
-   
+
   // KE: This switch-case is taken from: Function: goto_symext::symex_step
   switch(instruction.type)
   {
@@ -1165,13 +1165,41 @@ void symex_assertion_sumt::handle_function_call(
   Forall_expr(it, function_call.arguments())
   clean_expr(*it, state, false);
 
-
+  // KE: need it for both cases, when we have the function, and when we don't have it
+  bool is_deferred_func =
+		  (summary_info.get_call_location() < last_assertion_loc)
+           ||
+          ((is_unwind_loop(state) || get_current_deferred_function().summary_info.is_in_loop()) && (max_unwind != 1));
+  
+  // KE: keep these functions for lattice refinement
+  bool can_refine_wt_lattice = (use_lattice_ref 
+          && (summary_info.get_precision() == SUMMARY) && (summary_info.is_preserved_node()) 
+          && is_deferred_func 
+          && (!goto_function.body_available()));
+  if  (can_refine_wt_lattice) 
+  {
+    status() << "**** Saved function as a candidate for lattice refinement. ";
+    status() << "Function " << function_id << " has" 
+              << (goto_function.type.get_bool(ID_C_incomplete) ? " no" : " a") 
+              << " declaration." << eom;
+    
+    // TODO: Save the functions
+    lattice_ref_candidates_counter++;
+    
+    // store_func2refine_expr
+    // Save to the map
+    //lattice_ref_candidates_info_map.insert(pair<string, exprt> (name_abs.c_str(), expr));
+    // const irep_idt &name_abs,
+    // const exprt& expr
+    // code_function_callt &function_call
+  }
+  
   // Do we have the body?
   if(!goto_function.body_available())
   {
     no_body(function_id);
-
-    if(function_call.lhs().is_not_nil())
+   
+    if (function_call.lhs().is_not_nil())
     {
       exprt rhs = exprt("nondet_symbol", function_call.lhs().type());
       rhs.set(ID_identifier, "symex::" + std::to_string(nondet_count++));
@@ -1181,27 +1209,24 @@ void symex_assertion_sumt::handle_function_call(
       rhs.add_source_location() = function_call.source_location(); 
       
       code_assignt code(function_call.lhs(), rhs);
-      symex_assign(state, code);
+      symex_assign(state, code);      
     }
     return;
   }
 
-
+  #ifdef DEBUG_PARTITIONING
     bool is_exit =
      ((single_assertion_check
         && (!is_unwind_loop(state))
         && (!get_current_deferred_function().summary_info.is_in_loop()))
       || (loc >= last_assertion_loc && (max_unwind == 1)));
-
+  #endif
+    
   // KE: to support loops, we not only checking the location,
   //     but also if we are in loop. E.g., while(1) { assert(x>5); func2updateX(x); }
   loc = summary_info.get_call_location();
   // Assign function parameters and return value
   assign_function_arguments(state, function_call, deferred_function);
-  bool is_deferred_func =
-		  (summary_info.get_call_location() < last_assertion_loc)
-           ||
-          ((is_unwind_loop(state) || get_current_deferred_function().summary_info.is_in_loop()) && (max_unwind != 1));
   if(is_deferred_func){
     switch (summary_info.get_precision()){
     case HAVOC:

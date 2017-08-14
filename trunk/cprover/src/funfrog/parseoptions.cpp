@@ -27,7 +27,7 @@
 #include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/remove_virtual_functions.h>
 #include <goto-programs/remove_instanceof.h>
-//#include <goto-programs/remove_returns.h>
+//#include <goto-programs/remove_returns.h> // KE: keep it that way for code in symex_assertion_sum
 #include <goto-programs/remove_exceptions.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
@@ -421,6 +421,8 @@ void funfrog_parseoptionst::help()
   "                               to the given file\n"
   "--load-summaries <filename1,>  load function summaries\n"
   "                               from the given file(s)\n"
+  "--load-sum-model <filename1,>  load a model of an unsupported function\n"
+  "                               as a set of summaries of the function\n"        
   "--show-claims                  output the claims list\n"
   "--claims-count                 output the total number of claims\n"
 //  "--bounds-check                 enable array bounds checks\n"
@@ -784,6 +786,11 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("load-summaries", cmdline.get_value("load-summaries"));
   } else {
     options.set_option("load-summaries", "__summaries");
+  }
+  if (cmdline.isset("load-sum-model")) {
+    options.set_option("load-sum-model", cmdline.get_value("load-sum-model"));
+  } else {
+    options.set_option("load-sum-model","");
   }
   if (cmdline.isset("load-omega")) {
     options.set_option("load-omega", cmdline.get_value("load-omega"));

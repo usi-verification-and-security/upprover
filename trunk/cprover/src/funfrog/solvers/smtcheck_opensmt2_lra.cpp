@@ -723,7 +723,7 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef& var)
 #endif
 
     //gets the property
-    int size = var_type.get_int("width");
+    int size = var_type.get_unsigned_int("width");
     bool is_non_det = (expr.id() == ID_nondet_symbol);
 #ifdef SMT_DEBUG_VARS_BOUNDS   
     bool is_add_constraints = false;
@@ -844,7 +844,7 @@ void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef& var)
     if (is_add_constraints)
     	cout << "; Add bounds constraints for type "
             << var_type.get("#c_type") << " "
-            << var_type.get_int("width") << "bits"
+            << var_type.get_unsigned_int("width") << "bits"
             << endl;
 #endif
 }

@@ -18,14 +18,16 @@
 #include "smt_dependency_checker.h"
 #include "prop_dependency_checker.h"
 #include "nopartition/symex_no_partition.h"
+#include "lattice_refiner.h"
 
 void summarizing_checkert::initialize_solver()
 {
     string _logic = options.get_option("logic");
     int _type_constraints = options.get_unsigned_int_option("type-constraints");
+    bool _store_unsupported_info = (options.get_option("load-sum-model").size()!=0);
     if(_logic == "qfuf") 
     {
-        decider = new smtcheck_opensmt2t_uf("uf checker");
+        decider = new smtcheck_opensmt2t_uf("uf checker", _store_unsupported_info);
         status() << ("Use QF_UF logic.") << eom;
     }
     else if(_logic == "qfcuf")
@@ -36,10 +38,10 @@ void summarizing_checkert::initialize_solver()
     }
     else if(_logic == "qflra") 
     {
-        decider = new smtcheck_opensmt2t_lra(_type_constraints, "lra checker");
+        decider = new smtcheck_opensmt2t_lra(_type_constraints, "lra checker", _store_unsupported_info);
         status() << ("Use QF_LRA logic.") << eom;
     }
-    else if (_logic == "prop" && !options.get_bool_option("no-partitions"))
+    else if (_logic == "prop" && !options.get_bool_option("no-partitions") && !_store_unsupported_info)
     {
         decider = new satcheck_opensmt2t("prop checker");
         status() << ("Use propositional logic.") << eom;
@@ -49,32 +51,37 @@ void summarizing_checkert::initialize_solver()
         error() << ("--no-partitions option is not supported in theory: " +  _logic + "\n") << eom;
         exit(0); //Unsupported 
     }
+    else if (_logic == "prop" && _store_unsupported_info)
+    {
+        error() << ("--load-sum-model option is not supported in theory: " +  _logic + "\n") << eom;
+        exit(0); //Unsupported 
+    }
     else 
     {
         error() << ("Unsupported theory: " +  _logic + "\n") << eom;
         exit(0); //Unsupported 
     }
   
-  // Set all the rest of the option - KE: check what to shift to the part of SMT only
-  decider->set_verbosity(options.get_unsigned_int_option("verbose-solver"));
+    // Set all the rest of the option - KE: check what to shift to the part of SMT only
+    decider->set_verbosity(options.get_unsigned_int_option("verbose-solver"));
 #ifdef PRODUCE_PROOF   
-  decider->set_itp_bool_alg(options.get_unsigned_int_option("itp-algorithm"));
-  decider->set_itp_euf_alg(options.get_unsigned_int_option("itp-uf-algorithm"));
-  decider->set_itp_lra_alg(options.get_unsigned_int_option("itp-lra-algorithm"));
-  if(options.get_option("itp-lra-factor").size() > 0) 
+    decider->set_itp_bool_alg(options.get_unsigned_int_option("itp-algorithm"));
+    decider->set_itp_euf_alg(options.get_unsigned_int_option("itp-uf-algorithm"));
+    decider->set_itp_lra_alg(options.get_unsigned_int_option("itp-lra-algorithm"));
+    if(options.get_option("itp-lra-factor").size() > 0) 
       decider->set_itp_lra_factor(options.get_option("itp-lra-factor").c_str());
-  decider->set_certify(options.get_unsigned_int_option("check-itp"));
-  if(options.get_bool_option("reduce-proof"))
-  {
-    decider->set_reduce_proof(options.get_bool_option("reduce-proof"));
-    if(options.get_unsigned_int_option("reduce-proof-graph")) decider->set_reduce_proof_graph(options.get_unsigned_int_option("reduce-proof-graph"));
-    if(options.get_unsigned_int_option("reduce-proof-loops")) decider->set_reduce_proof_loops(options.get_unsigned_int_option("reduce-proof-loops"));
-  }
+    decider->set_certify(options.get_unsigned_int_option("check-itp"));
+    if(options.get_bool_option("reduce-proof"))
+    {
+      decider->set_reduce_proof(options.get_bool_option("reduce-proof"));
+      if(options.get_unsigned_int_option("reduce-proof-graph")) decider->set_reduce_proof_graph(options.get_unsigned_int_option("reduce-proof-graph"));
+      if(options.get_unsigned_int_option("reduce-proof-loops")) decider->set_reduce_proof_loops(options.get_unsigned_int_option("reduce-proof-loops"));
+    }
 #endif
-  if(options.get_unsigned_int_option("random-seed")) decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
-  if (options.get_bool_option("dump-query"))
+    if(options.get_unsigned_int_option("random-seed")) decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
+    if (options.get_bool_option("dump-query"))
       decider->set_dump_query(true);
-  decider->set_dump_query_name(options.get_option("dump-query-name"));
+    decider->set_dump_query_name(options.get_option("dump-query-name"));
 }
 
 void summarizing_checkert::initialize()
@@ -213,7 +220,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, 
-            !no_smt_usage);
+            !no_smt_usage, false);
 
   setup_unwind(symex);
 
@@ -375,7 +382,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, !no_slicing_option, !no_ce_option);
+            single_assertion_check, !no_slicing_option, !no_ce_option, 
+            true, (options.get_option("load-sum-model").size()>0));
 
   setup_unwind(symex);
 
@@ -383,6 +391,10 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               summarization_context, omega,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
+  
+  // KE: lattice refinement works with summary refinement 
+  lattice_refinert lattice_refiner = lattice_refinert(options, message_handler, 
+                                *(dynamic_cast <smtcheck_opensmt2t*> (decider)));
 
   smt_assertion_sumt prop = smt_assertion_sumt(summarization_context,
           equation, message_handler, max_memory_used);
@@ -395,8 +407,11 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   while (!end)
   {
     count++;
-    end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
-
+    end = (count == 1) ? symex.prepare_SSA(assertion) : 
+        (symex.refine_SSA (assertion, refiner.get_refined_functions()) 
+            && lattice_refiner.refine_SSA(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex));
+        // Shall we refine? - here we can add new refinement algorithms
+    
     //LA: good place?
     if(options.get_bool_option("list-templates"))
     {
@@ -416,7 +431,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               *(dynamic_cast<smtcheck_opensmt2t *> (decider)), 
               *(dynamic_cast<interpolating_solvert *> (decider)));
       unsigned summaries_count = omega.get_summaries_count();
-      unsigned nondet_count = omega.get_nondets_count();
+      unsigned nondet_count = omega.get_nondets_count(); 
+      unsigned summaries_lattice_count = lattice_refiner.summaries_count2refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex);
 #ifdef PRODUCE_PROOF      
       if (end && decider->can_interpolate())
 #else
@@ -433,16 +449,22 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
           assert(0);
 #endif
         }
-        if (summaries_count == 0)
+        if (summaries_count == 0 && summaries_lattice_count == 0)
         {
-          status() << ("ASSERTION(S) HOLD(S) ") << eom; //TODO change the message to something more clear (like, everything was inlined...)
+          status() << ("ASSERTION(S) HOLD(S) ") << eom; 
+          //TODO change the message to something more clear (like, everything was inlined...)
         } else {
-          status() << "FUNCTION SUMMARIES (for " << summaries_count
+          status() << "FUNCTION SUMMARIES (for " << (summaries_count + summaries_lattice_count)
         	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
         }
         report_success();
-      } else { // !end
-        if (summaries_count > 0 || nondet_count > 0) {
+      } else { // !end                        
+        if (summaries_count > 0 || nondet_count > 0 || summaries_lattice_count > 0) {
+          if (summaries_lattice_count > 0) {
+            status() << "FUNCTION SUMMARIES (for " << summaries_lattice_count
+                   << " calls) ARE REFINED VIA "<< lattice_refiner.get_models_count() 
+                   << " MODEL(s)." << eom;
+          } 
           if (summaries_count > 0){
             status() << "FUNCTION SUMMARIES (for " << summaries_count
                    << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
@@ -452,8 +474,12 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
                    << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
           }
           refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), omega.get_summary_info(), equation);
+          
+          // KE: after refining the functions, also add lattice 
+          lattice_refiner.refine(equation, symex); 
 
-          if (refiner.get_refined_functions().size() == 0){
+          if ((refiner.get_refined_functions().size() == 0) 
+               && (lattice_refiner.get_refined_functions_size() == 0)) {
             assertion_violated(prop, symex.guard_expln);
             break;
           } else {

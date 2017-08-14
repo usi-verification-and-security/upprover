@@ -211,10 +211,10 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         }
         
         // Check if fits - using cprover information
-        if (expr.type().get_int("width") > this->bitwidth)
+        if (expr.type().get_unsigned_int("width") > this->bitwidth)
         {
             cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-            cout << "\n  Data " << str << "(width " << expr.type().get_int("width") << ")" << " is not in between " 
+            cout << "\n  Data " << str << "(width " << expr.type().get_unsigned_int("width") << ")" << " is not in between " 
                     << (-max_num) << " and " << (max_num-1) << std::endl;
                 
             /* Report always, but only exit if must to */
@@ -300,10 +300,10 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
         // Check first that we don't need larger reg.
         if (expr.type().id() == ID_floatbv) 
         {
-            if (expr.type().get_int("width") > this->bitwidth)
+            if (expr.type().get_unsigned_int("width") > this->bitwidth)
             {
                 cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                cout << "\n  Data " << expr.print_number_2smt() << "(width " << expr.type().get_int("width") << ")" << " is not in between " 
+                cout << "\n  Data " << expr.print_number_2smt() << "(width " << expr.type().get_unsigned_int("width") << ")" << " is not in between " 
                         << (-max_num) << " and " << (max_num-1) << std::endl;
                 exit(0);
             }
@@ -643,7 +643,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv(const exprt &expr, PTRef &
     // Check the id is a var
     assert((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol));
 
-    int size = var_type.get_int("width");
+    int size = var_type.get_unsigned_int("width");
     assert("Data type constraints for Bytes are valid for 8 bit-width or up" 
                 && (size >= 8 || expr.is_boolean()));
     

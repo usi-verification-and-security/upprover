@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /* 
  * File:   smt_dependency_checkert.cpp
  * Author: karinek
@@ -16,7 +10,7 @@
 pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
   try{
-  smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra(0, "implication checker");
+  smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra(0, "implication checker", false);
   decider->new_partition();
 
   convert_delta_SSA(*decider, c1, c2);
@@ -329,7 +323,7 @@ void smt_dependency_checkert::convert_io(
         {
           symbol_exprt symbol;
           symbol.type()=tmp.type();
-          symbol.set_identifier("symex::io::"+std::to_string(io_count++));
+          symbol.set_identifier(IO_CONST+std::to_string(io_count++));
           decider.set_to_true(equal_exprt(tmp, symbol));
           (*it)->converted_io_args.push_back(symbol);
         }
