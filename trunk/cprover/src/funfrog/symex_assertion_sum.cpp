@@ -1143,8 +1143,8 @@ void symex_assertion_sumt::handle_function_call(
         statet &state,
         code_function_callt &function_call)
 {
-  // What are we supposed to do with this precise function call?
-
+  // What are we supposed to do with this precise function call? 
+          
   summary_infot &summary_info = current_summary_info->get_call_sites().find(
       state.source.pc)->second;
   assert(get_current_deferred_function().partition_iface.partition_id != partitiont::NO_PARTITION);
@@ -1166,16 +1166,17 @@ void symex_assertion_sumt::handle_function_call(
   clean_expr(*it, state, false);
 
   // KE: need it for both cases, when we have the function, and when we don't have it
-  bool is_deferred_func =
-		  (summary_info.get_call_location() < last_assertion_loc)
-           ||
+  bool is_deferred_func = (summary_info.get_call_location() < last_assertion_loc) ||
           ((is_unwind_loop(state) || get_current_deferred_function().summary_info.is_in_loop()) && (max_unwind != 1));
   
   // KE: keep these functions for lattice refinement
   bool can_refine_wt_lattice = (use_lattice_ref 
-          && (summary_info.get_precision() == SUMMARY) && (summary_info.is_preserved_node()) 
+          && (summary_info.is_preserved_node()) 
           && is_deferred_func 
-          && (!goto_function.body_available()));
+          && (!goto_function.body_available())
+          && !goto_function.is_hidden());
+          // Or no declaration, or declaration with summary. KE: maybe there are more cases? 
+          // Be careful not to add nondet functions (that shall stay nondet)
   if  (can_refine_wt_lattice) 
   {
     status() << "**** Saved function as a candidate for lattice refinement. ";
@@ -1186,12 +1187,10 @@ void symex_assertion_sumt::handle_function_call(
     // TODO: Save the functions
     lattice_ref_candidates_counter++;
     
-    // store_func2refine_expr
     // Save to the map
-    //lattice_ref_candidates_info_map.insert(pair<string, exprt> (name_abs.c_str(), expr));
-    // const irep_idt &name_abs,
-    // const exprt& expr
-    // code_function_callt &function_call
+    lattice_ref_candidates_info_map.insert(
+            std::pair<exprt,std::pair<irep_idt, code_function_callt::argumentst>> 
+            (function_call.lhs(), std::make_pair(function_id, function_call.arguments())));
   }
   
   // Do we have the body?

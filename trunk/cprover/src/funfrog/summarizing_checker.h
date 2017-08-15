@@ -81,7 +81,7 @@ protected:
 #ifdef PRODUCE_PROOF  
   void extract_interpolants_smt (smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation);
   void extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
-            std::auto_ptr<prop_conv_solvert> decider_prop, std::auto_ptr<interpolating_solvert> interpolator);
+            std::unique_ptr<prop_conv_solvert>& decider_prop, std::unique_ptr<interpolating_solvert>& interpolator);
 #endif
   void report_success();
   void report_failure();

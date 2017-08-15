@@ -8,7 +8,6 @@
 #ifndef LATTICE_REFINERT_H
 #define LATTICE_REFINERT_H
 
-#include "lattice_refiner_model.h"
 #include "lattice_refiner_expr.h"
 #include <options.h>
 #include <symbol_table.h>
@@ -42,11 +41,9 @@ public:
   
   bool refine_SSA(const smtcheck_opensmt2t &decider, symex_assertion_sumt& symex);
   
-  unsigned int summaries_count2refine(const smtcheck_opensmt2t& decider, const symex_assertion_sumt& symex) const;
-
   unsigned int get_models_count() const { return models.size(); }
   
-  unsigned int get_refined_functions_size(){ return expr2refine.size(); } // KE: stub, todo
+  unsigned int get_refined_functions_size();
   
 private:
   const optionst &options; 
@@ -57,7 +54,7 @@ private:
   /* Function declaration, head of the model - it is a map to support many models */
   std::map<std::string, lattice_refiner_modelt *> models; // Declare of func + its model
   std::map<std::string, SymRef> declare2literal; // Needed only for refine what openSMT can't express
-  std::set<lattice_refiner_exprt> expr2refine; // Keep per expression, next options to refine
+  std::set<lattice_refiner_exprt *> expr2refine; // Keep per expression, next options to refine
   // Top is what we use currently to refine the expression
   
   void load_models(std::string list_of_models_fs); // Load all the models
@@ -70,8 +67,14 @@ private:
   bool can_refine(const smtcheck_opensmt2t &decider, 
                   const symex_assertion_sumt& symex) const;
   literalt refine_single_statement(const exprt &expr, const PTRef var);
-  SymRef get_entry_point(const exprt &expr);
-  std::string gen_entry_point_name(const exprt &expr);
+  SymRef get_entry_point(const std::string key_entry, 
+                        const exprt &expr, 
+                        const exprt::operandst &operands);
+  std::string gen_entry_point_name(const std::string key_entry_orig, 
+                                    const exprt &expr, 
+                                    const exprt::operandst &operands);
+  void add_expr_to_refine(symex_assertion_sumt& symex);
+  void set_front_heuristic() { /* TODO */ } // Will change the front/order of expr2refine
 };
 
 #endif /* LATTICE_REFINERT_H */

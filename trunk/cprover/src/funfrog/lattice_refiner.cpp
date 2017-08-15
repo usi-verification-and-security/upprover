@@ -63,40 +63,42 @@ bool lattice_refinert::can_refine(const smtcheck_opensmt2t &decider,
 
 /*******************************************************************
 
- Function: lattice_refinert::summaries_count2refine
+ Function: lattice_refinert::get_refined_functions_size
 
  Inputs: 
 
- Outputs: how many functions we can still be refined
+ Outputs: how many functions are in the queue to be refined
 
  Purpose: 
 
 \*******************************************************************/
-unsigned int lattice_refinert::summaries_count2refine(
-        const smtcheck_opensmt2t& decider, 
-        const symex_assertion_sumt& symex) const
-{
-    if (!can_refine(decider, symex))
+unsigned int lattice_refinert::get_refined_functions_size(){ 
+    if (!is_lattice_ref_on) 
         return 0;
+    if (refineTryNum > 10)
+        return 0; // Debug mode
     
-    return (decider.get_unsupported_vars_count() + symex.get_miss_decl_func_count());
+    int size_total = expr2refine.size(); 
+    for (auto it : expr2refine) {
+        if (it->is_SAT() || it->is_UNSAT()) size_total--;
+    } // If we have an answer, sat or unsat it is one less to refine.
+       
+    return size_total;
 }
 
 /*******************************************************************
 
  Function: lattice_refinert::refine
 
- Inputs: 
+ Inputs: Decider's unsupported expressions and symex abstracted functions
 
- Outputs: SMT code that connects the abstract expression to the call
- * of a summary that refines it (only to a **call**).
+ Outputs: 
 
- Purpose: main refine, add the smt side, and it is also where we shall
- * use the lattice model to refine the code
- * 
- * Here we do: unsupported#20 = "call of the set of functions that refines it"
- * The extract of the functions (which are summaries) is done not here
- * but in refine_SSA
+ Process: Push at arbitrary order all exprt to refine to some set
+ * Note: If we have a better huristics to do so, we can add it here
+
+ Purpose: Select which expression to refine, and will store the data 
+ * for later, when we will do the actual refinement in refine_SSA
 
 \*******************************************************************/
 void lattice_refinert::refine(smt_partitioning_target_equationt &equation,
@@ -106,41 +108,78 @@ void lattice_refinert::refine(smt_partitioning_target_equationt &equation,
     if (!can_refine(decider, symex))
         return;
     
-    // Start the refinement
+    // Start a new cycle of refinement
     ++refineTryNum;
     
     #ifdef DEBUG_LATTICE 
     status () << "Start refinement with " << models.size() 
                 << " lattice model(s), cycle(" << refineTryNum << ")." << eom;
     #endif
+
+    // Add all expr to refine to the table (all candidates)
+    add_expr_to_refine(symex); 
     
-    // KE: TODO, find a smarter way to select the next statement to refine
-    // Get all unsupported locations from the solver (candidates!) - and then check on the map
-    
-    // Refine functions abstracted by the solver (no OpenSMT support)
-    const map<PTRef,exprt>::const_iterator begin = decider.get_itr_unsupported_info_map();
-    const map<PTRef,exprt>::const_iterator end = decider.get_itr_end_unsupported_info_map();
-    for (auto it = begin; it != end; it++) {   
-        // if function has a definition, refine and add the refined term to a new partition
-        if (get_entry_point(it->second) != SymRef_Undef) {
-          decider.new_partition();  
-          decider.set_to_true(refine_single_statement(it->second, it->first));
-          
-          decider.close_partition(); 
-          //close the partition (but will solve later, after refine_SSA)
-        }
-    }
-    
-    // Refine functions abstracted by the SSA translation (no function body)
-    // KE: TODO with object symex
+    // Pick one to refine
+    set_front_heuristic();
     
 } // End this cycle of refinement
 
 /*******************************************************************
 
+ Function: lattice_refinert::add_expr_to_refine
+
+ Inputs: all the candidate expressions to refine
+
+ Outputs: add all of them to the table expr2refine
+
+ Purpose: 
+
+\*******************************************************************/
+void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
+    if (refineTryNum > 1) return; // TODO: keep a list of which expr to refine are already in expr2refine
+    
+    // Refine functions abstracted by the solver (no OpenSMT support)
+    const map<PTRef,exprt>::const_iterator begin = decider.get_itr_unsupported_info_map();
+    const map<PTRef,exprt>::const_iterator end = decider.get_itr_end_unsupported_info_map();
+    for (auto it = begin; it != end; it++) {
+        const exprt &call_info = it->second; // function and arguments
+        const PTRef lhs = it->first; // lhs
+        const exprt::operandst &call_info_operands = call_info.operands(); 
+        std::string key_entry = gen_entry_point_name(call_info.id().c_str(), call_info, call_info_operands);
+
+        // if function has a definition, refine and add the refined term to a new partition
+        if (get_entry_point(key_entry, call_info, call_info_operands) != SymRef_Undef) {
+            // ADD to the list to refine such as lhs = refine(key_entry, call_info);
+            exprt temp; temp.make_true();
+            expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), temp, lhs, call_info_operands, key_entry));
+        }
+    }
+    
+    // Refine functions abstracted by the SSA translation (no function body)
+    const map<exprt,pair<irep_idt, code_function_callt::argumentst>>::const_iterator 
+            begin_symex = symex.get_itr_nobody_func_info_map();
+    const map<exprt,pair<irep_idt, code_function_callt::argumentst>>::const_iterator 
+            end_symex = symex.get_itr_end_nobody_func_info_map();
+    for (auto it = begin_symex; it != end_symex; it++) {
+        const pair<irep_idt, code_function_callt::argumentst> &call_info = it->second; // function and arguments
+        const exprt &lhs = it->first; // lhs
+        const exprt::operandst &call_info_operands = call_info.second; 
+        std::string key_entry = gen_entry_point_name(call_info.first.c_str(), lhs, call_info_operands);
+
+        // if function has a definition, refine and add the refined term to a new partition
+        if (get_entry_point(key_entry, lhs, call_info_operands) != SymRef_Undef) {
+            // ADD to the list to refine, such as lhs = refine(key_entry, call_info);
+            expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), lhs, decider.getLogic()->getTerm_true(), call_info_operands, key_entry));
+        }
+    }    
+}
+
+/*******************************************************************
+
  Function: lattice_refinert::get_entry_point
 
- Inputs: original SSA expression we wish to refine
+ Inputs: the name, in and out parameters of the original SSA expression 
+ * we wish to refine
 
  Outputs: literal of the entry point
  * e.g. (declare-fun |_mod#0| (UReal UReal) UReal)
@@ -149,16 +188,12 @@ void lattice_refinert::refine(smt_partitioning_target_equationt &equation,
  * the summaries related to it - or the added one will be with meaning
 
 \*******************************************************************/
-SymRef lattice_refinert::get_entry_point(const exprt &expr)
+SymRef lattice_refinert::get_entry_point(
+                const std::string key_entry, 
+                const exprt &expr, 
+                const exprt::operandst &operands)
 {
     assert(models.size() > 0); // No meaning if there are no models
-    std::string key_entry = gen_entry_point_name(expr);
-    
-    #ifdef DEBUG_LATTICE    
-    status() << "Get an entry point of function " << expr.id() << " with " << expr.operands().size() << " operands" << eom;
-    status() << "Function signature is " << key_entry << " key " 
-            << ((declare2literal.count(key_entry) > 0) ? "exist" : "new") << "in the map" << eom;
-    #endif
     
     // Check against a map
     if (declare2literal.count(key_entry) > 0) {
@@ -171,8 +206,8 @@ SymRef lattice_refinert::get_entry_point(const exprt &expr)
       // Got at least one model!
       SRef in =  decider.getSMTlibDatatype(expr);
       vec<SRef> args;
-      forall_operands(it, expr) {
-        args.push(decider.getSMTlibDatatype(*it));
+      for (auto it : operands) {
+        args.push(decider.getSMTlibDatatype(it));
       }
       decl_func = decider.get_smt_func_decl(key_entry.c_str(), in, args);
       declare2literal.insert(pair<string, SymRef> (key_entry, decl_func));
@@ -185,7 +220,7 @@ SymRef lattice_refinert::get_entry_point(const exprt &expr)
 
  Function: lattice_refinert::gen_entry_point_name
 
- Inputs: original SSA expression we wish to refine
+ Inputs: id of the function call, in parameter, out parameter
 
  Outputs: string with the function decl - name + operands + data types
  * e.g. (declare-fun |_mod#0| (UReal UReal) UReal) or
@@ -195,16 +230,25 @@ SymRef lattice_refinert::get_entry_point(const exprt &expr)
  * two lattices for two different data type (inputs or output)
 
 \*******************************************************************/
-std::string lattice_refinert::gen_entry_point_name(const exprt &expr)
+std::string lattice_refinert::gen_entry_point_name(
+                const std::string key_entry_orig, 
+                const exprt &expr, 
+                const exprt::operandst &operands)
 {    
-    std::string key_entry(expr.id().c_str());
-    key_entry = "(declare-fun |_" + key_entry + "#0| (";
+    std::string key_entry = "(declare-fun |_" + key_entry_orig + "#0| (";
     
-    forall_operands(it, expr) {
-        key_entry += decider.getStringSMTlibDatatype(*it) + " ";
+    for (auto it : operands) {
+        key_entry += decider.getStringSMTlibDatatype(it) + " ";
     }
     
     key_entry += ") " + decider.getStringSMTlibDatatype(expr) + ")";
+    
+    #ifdef DEBUG_LATTICE    
+    status() << "Start processing the creation of an entry-point of the function " 
+            << key_entry_orig << " with " << operands.size() << " operands. Function signature is " 
+            << key_entry << ((declare2literal.count(key_entry) > 0) ? " exist" : " new") 
+            << " in the map" << eom;
+    #endif    
     
     return key_entry;
 }
@@ -262,8 +306,8 @@ literalt lattice_refinert::refine_single_statement(const exprt &expr, const PTRe
 bool lattice_refinert::process_SAT_result() {  
     bool ret = false;
     for (auto it : expr2refine) {
-        it.process_SAT_result();
-        ret = ret || it.is_SAT();
+        it->process_SAT_result();
+        ret = ret || it->is_SAT();
     }
        
     return ret;
@@ -286,8 +330,8 @@ bool lattice_refinert::process_SAT_result() {
 bool lattice_refinert::process_UNSAT_result() {
     bool ret = true;
     for (auto it : expr2refine) {
-        it.process_UNSAT_result();
-        ret = ret && it.is_UNSAT();
+        it->process_UNSAT_result();
+        ret = ret && it->is_UNSAT();
     }
        
     return ret;
@@ -321,7 +365,14 @@ bool lattice_refinert::process_solver_result(bool is_solver_ret_SAT) {
 
  Outputs: 
 
- Purpose: 
+ Purpose: Add the needed SSA instructions - refine
+ * 
+ * main refine, add the smt side, and it is also where we shall
+ * use the lattice model to refine the code
+ * 
+ * Here we do: unsupported#20 = "call of the set of functions that refines it"
+ * The extract of the functions (which are summaries) is done not here
+ * but in refine_SSA
 
 \*******************************************************************/
 bool lattice_refinert::refine_SSA(
@@ -336,11 +387,18 @@ bool lattice_refinert::refine_SSA(
     ///////////////////////////////////////////////////////////////////    
     
     // 1. from the solver side
-    const map<PTRef,exprt>::const_iterator begin = decider.get_itr_unsupported_info_map();
-    const map<PTRef,exprt>::const_iterator end = decider.get_itr_end_unsupported_info_map();
-    for (auto it = begin; it != end; it++) {   
-        
-    }
+    //const map<PTRef,exprt>::const_iterator begin = decider.get_itr_unsupported_info_map();
+    //const map<PTRef,exprt>::const_iterator end = decider.get_itr_end_unsupported_info_map();
+    //for (auto it = begin; it != end; it++) {   
+        // if function has a definition, refine and add the refined term to a new partition
+    //    if (get_entry_point(it->second) != SymRef_Undef) {
+    //      decider.new_partition();  
+    //      decider.set_to_true(refine_single_statement(it->second, it->first));
+          
+    //      decider.close_partition(); 
+          //close the partition (but will solve later, after refine_SSA)
+    //    }
+    //}
     
     
     // TODO:

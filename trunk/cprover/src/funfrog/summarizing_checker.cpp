@@ -237,8 +237,8 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 	  std::cout <<"";
   }
 
-  std::auto_ptr<prop_conv_solvert> decider_prop;
-  std::auto_ptr<interpolating_solvert> interpolator;
+  std::unique_ptr<prop_conv_solvert> decider_prop;
+  std::unique_ptr<interpolating_solvert> interpolator;
   while (!end)
   {
     count++;
@@ -431,8 +431,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               *(dynamic_cast<smtcheck_opensmt2t *> (decider)), 
               *(dynamic_cast<interpolating_solvert *> (decider)));
       unsigned summaries_count = omega.get_summaries_count();
-      unsigned nondet_count = omega.get_nondets_count(); 
-      unsigned summaries_lattice_count = lattice_refiner.summaries_count2refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex);
+      unsigned summaries_lattice_count = lattice_refiner.get_refined_functions_size();
 #ifdef PRODUCE_PROOF      
       if (end && decider->can_interpolate())
 #else
@@ -458,7 +457,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
         }
         report_success();
-      } else { // !end                        
+      } else { // !end  
+        unsigned nondet_count = omega.get_nondets_count();   
         if (summaries_count > 0 || nondet_count > 0 || summaries_lattice_count > 0) {
           if (summaries_lattice_count > 0) {
             status() << "FUNCTION SUMMARIES (for " << summaries_lattice_count
@@ -806,7 +806,7 @@ Function: summarizing_checkert::extract_interpolants_prop
 
 \*******************************************************************/
 void summarizing_checkert::extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
-            std::auto_ptr<prop_conv_solvert> decider_prop, std::auto_ptr<interpolating_solvert> interpolator)
+            std::unique_ptr<prop_conv_solvert>& decider_prop, std::unique_ptr<interpolating_solvert>& interpolator)
 {
   summary_storet* summary_store = summarization_context.get_summary_store();
   interpolant_mapt itp_map;

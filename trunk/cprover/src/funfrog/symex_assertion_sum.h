@@ -21,8 +21,7 @@
 #include <symbol.h>
 #include <ui_message.h>
 #include <util/options.h>
-
-
+#include <util/std_code.h>
 #include <base_type.h>
 #include <time_stopping.h>
 
@@ -104,11 +103,15 @@ public:
 
   std::map<irep_idt, std::string> guard_expln;
   
+  /* The data: lhs, original function data */
+  map<exprt,pair<irep_idt, code_function_callt::argumentst>>::const_iterator 
+        get_itr_nobody_func_info_map() const { return lattice_ref_candidates_info_map.begin(); }
+  map<exprt,pair<irep_idt, code_function_callt::argumentst>>::const_iterator 
+        get_itr_end_nobody_func_info_map() const { return lattice_ref_candidates_info_map.end(); }
   bool has_missing_decl_func2refine() const {
     return (use_lattice_ref && lattice_ref_candidates_counter > 0);
   }
-  
-  unsigned int get_miss_decl_func_count() const { assert(use_lattice_ref); return lattice_ref_candidates_counter;}
+  /* End of unsupported data for refinement info and data */
 
 private:
   
@@ -176,8 +179,8 @@ private:
   
   bool use_lattice_ref; // for lattice ref. else opt. out the data needed for it only
   unsigned int lattice_ref_candidates_counter;
-  map<string,exprt> lattice_ref_candidates_info_map;
-
+  map<exprt, std::pair<irep_idt, code_function_callt::argumentst>> lattice_ref_candidates_info_map; // lhs, original function data
+  
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
   void defer_function(const deferred_functiont &deferred_function);

@@ -133,12 +133,13 @@ public:
 	  }
   }
 
+  /* The data: lhs, original function data */
   bool has_unsupported_info() const { return store_unsupported_info && has_unsupported_vars(); } // Common to all
   bool has_unsupported_vars() const { return (unsupported2var > 0); } // Common to all, affects several locations!
   string create_new_unsupported_var(); // Common to all
   map<PTRef,exprt>::const_iterator get_itr_unsupported_info_map() const { return unsupported_info_map.begin(); }
   map<PTRef,exprt>::const_iterator get_itr_end_unsupported_info_map() const { return unsupported_info_map.end(); }
-  unsigned int get_unsupported_vars_count() const { assert(unsupported_info_map.size() == unsupported2var); return unsupported2var;}
+  /* End of unsupported data for refinement info and data */
   
   
   static bool is_cprover_rounding_mode_var(const exprt& e)
