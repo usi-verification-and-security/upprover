@@ -43,7 +43,7 @@ public:
   
   unsigned int get_models_count() const { return models.size(); }
   
-  unsigned int get_refined_functions_size();
+  unsigned int get_refined_functions_size(const symex_assertion_sumt& symex, bool is_first_iteration=false);
   
 private:
   const optionst &options; 
@@ -64,8 +64,7 @@ private:
   bool process_UNSAT_result();
   bool process_solver_result(bool is_solver_ret_SAT); // KE: will call to SAT/UNSAT process result per expression
   
-  bool can_refine(const smtcheck_opensmt2t &decider, 
-                  const symex_assertion_sumt& symex) const;
+  bool can_refine(const symex_assertion_sumt& symex) const;
   literalt refine_single_statement(const exprt &expr, const PTRef var);
   SymRef get_entry_point(const std::string key_entry, 
                         const exprt &expr, 

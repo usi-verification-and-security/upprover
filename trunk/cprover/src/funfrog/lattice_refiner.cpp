@@ -50,8 +50,7 @@ void lattice_refinert::load_models(std::string list_of_models_fs) {
  Purpose: Check if there is any instruction to refine - only if possible
 
 \*******************************************************************/
-bool lattice_refinert::can_refine(const smtcheck_opensmt2t &decider, 
-                const symex_assertion_sumt& symex) const
+bool lattice_refinert::can_refine(const symex_assertion_sumt& symex) const
 {
     if (!is_lattice_ref_on)
         return false;
@@ -72,9 +71,13 @@ bool lattice_refinert::can_refine(const smtcheck_opensmt2t &decider,
  Purpose: 
 
 \*******************************************************************/
-unsigned int lattice_refinert::get_refined_functions_size(){ 
-    if (!is_lattice_ref_on) 
+unsigned int lattice_refinert::get_refined_functions_size( 
+        const symex_assertion_sumt& symex, bool is_first_iteration){ 
+    if (!can_refine(symex))
         return 0;
+    else if (is_first_iteration)
+        return 1;
+    
     if (refineTryNum > 10)
         return 0; // Debug mode
     
@@ -105,7 +108,7 @@ void lattice_refinert::refine(smt_partitioning_target_equationt &equation,
               symex_assertion_sumt& symex)
 {
     // Shall we refine?
-    if (!can_refine(decider, symex))
+    if (!can_refine(symex))
         return;
     
     // Start a new cycle of refinement
@@ -380,7 +383,7 @@ bool lattice_refinert::refine_SSA(
             symex_assertion_sumt& symex) 
 {
     // Shall we refine?
-    if (!can_refine(decider, symex))
+    if (!can_refine(symex))
         return true;
     
     // Keep all the expression we can refine, which we didn't yet kept

@@ -431,7 +431,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               *(dynamic_cast<smtcheck_opensmt2t *> (decider)), 
               *(dynamic_cast<interpolating_solvert *> (decider)));
       unsigned summaries_count = omega.get_summaries_count();
-      unsigned summaries_lattice_count = lattice_refiner.get_refined_functions_size();
+      unsigned summaries_lattice_count = lattice_refiner.get_refined_functions_size(symex, count==1);
 #ifdef PRODUCE_PROOF      
       if (end && decider->can_interpolate())
 #else
@@ -479,7 +479,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
           lattice_refiner.refine(equation, symex); 
 
           if ((refiner.get_refined_functions().size() == 0) 
-               && (lattice_refiner.get_refined_functions_size() == 0)) {
+               && (lattice_refiner.get_refined_functions_size(symex) == 0)) {
             assertion_violated(prop, symex.guard_expln);
             break;
           } else {
