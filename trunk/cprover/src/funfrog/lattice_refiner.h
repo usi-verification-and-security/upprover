@@ -39,11 +39,13 @@ public:
   void refine(smt_partitioning_target_equationt &equation,
               symex_assertion_sumt& symex);
   
-  bool refine_SSA(const smtcheck_opensmt2t &decider, symex_assertion_sumt& symex);
+  bool refine_SSA(symex_assertion_sumt& symex, bool is_solver_ret_SAT);
   
-  unsigned int get_models_count() const { return models.size(); }
+  unsigned get_models_count() const { return models.size(); }
   
-  unsigned int get_refined_functions_size(const symex_assertion_sumt& symex, bool is_first_iteration=false);
+  unsigned get_refined_functions_size(const symex_assertion_sumt& symex);
+  
+  unsigned get_summaries_from_lattice_count(const symex_assertion_sumt& symex, bool is_first_iteration);
   
 private:
   const optionst &options; 

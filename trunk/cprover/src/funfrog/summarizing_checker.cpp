@@ -404,13 +404,21 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 	  std::cout <<"";
   }
 
+  bool ret_solver = false;
   while (!end)
   {
     count++;
-    end = (count == 1) ? symex.prepare_SSA(assertion) : 
-        (symex.refine_SSA (assertion, refiner.get_refined_functions()) 
-            && lattice_refiner.refine_SSA(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex));
-        // Shall we refine? - here we can add new refinement algorithms
+    //end = (count == 1) ? symex.prepare_SSA(assertion) : 
+    //    (symex.refine_SSA (assertion, refiner.get_refined_functions()) 
+    //        && lattice_refiner.refine_SSA(symex, ret_solver));
+    // Shall we refine? - here we can add new refinement algorithms
+    if (count == 1) {
+        end = symex.prepare_SSA(assertion);
+    } else {
+        bool end_1 = symex.refine_SSA (assertion, refiner.get_refined_functions());
+        bool end_2 = lattice_refiner.refine_SSA(symex, !ret_solver);
+        end = end_1 && end_2;
+    }
     
     //LA: good place?
     if(options.get_bool_option("list-templates"))
@@ -431,7 +439,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               *(dynamic_cast<smtcheck_opensmt2t *> (decider)), 
               *(dynamic_cast<interpolating_solvert *> (decider)));
       unsigned summaries_count = omega.get_summaries_count();
-      unsigned summaries_lattice_count = lattice_refiner.get_refined_functions_size(symex, count==1);
+      unsigned summaries_lattice_count = lattice_refiner.get_summaries_from_lattice_count(symex, count == 1);
+      ret_solver = end;
 #ifdef PRODUCE_PROOF      
       if (end && decider->can_interpolate())
 #else

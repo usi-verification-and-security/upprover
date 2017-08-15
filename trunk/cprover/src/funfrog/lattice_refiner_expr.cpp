@@ -48,14 +48,17 @@ lattice_refiner_modelt* lattice_refiner_exprt::get_refine_function() {
 void lattice_refiner_exprt::process_SAT_result() {
     if (refine_data.empty()) return;
     
-    m_is_SAT = m_is_SAT && (refine_data.front()->childs.size() == 0);
+    m_is_SAT = m_is_SAT || (refine_data.front()->childs.size() == 0);
     
     // Add the childs to the queue (if there is)
-    for (auto it : refine_data.front()->childs) {
-        if (refined_data_UNSAT.count(it) == 0) // If never check if (and got UNSAT)
-            refine_data.push_back(it); // Adds it to the queue to check later on
-    }
+    lattice_refiner_modelt *front = refine_data.front();
     refine_data.pop_front(); // Remove the node we used
+    
+    for (auto it : front->childs) {
+        // If never check if 
+        if (refined_data_UNSAT.count(it) == 0)
+            refine_data.push_front(it); // Adds it to the queue to check later on
+    }
 }
 
 /*******************************************************************

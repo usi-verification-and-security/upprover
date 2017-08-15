@@ -62,6 +62,33 @@ bool lattice_refinert::can_refine(const symex_assertion_sumt& symex) const
 
 /*******************************************************************
 
+ Function: lattice_refinert::get_summaries_from_lattice_count
+
+ Inputs: 
+
+ Outputs: how many functions are refined 
+ * (SUBSTITUTED SUCCESSFULLY VIA lattice)
+
+ Purpose: 
+
+\*******************************************************************/
+unsigned lattice_refinert::get_summaries_from_lattice_count(
+        const symex_assertion_sumt& symex, bool is_first_iteration) {    
+    if (!can_refine(symex))
+        return 0;
+    if (is_first_iteration)
+        return 1;
+    
+    int size_total = expr2refine.size(); 
+    for (auto it : expr2refine) {
+        if (it->is_SAT() || it->is_UNSAT()) size_total++;
+    } // If we have an answer, sat or unsat it is one less to refine.
+       
+    return size_total;    
+}
+
+/*******************************************************************
+
  Function: lattice_refinert::get_refined_functions_size
 
  Inputs: 
@@ -71,15 +98,10 @@ bool lattice_refinert::can_refine(const symex_assertion_sumt& symex) const
  Purpose: 
 
 \*******************************************************************/
-unsigned int lattice_refinert::get_refined_functions_size( 
-        const symex_assertion_sumt& symex, bool is_first_iteration){ 
+unsigned lattice_refinert::get_refined_functions_size( 
+        const symex_assertion_sumt& symex){ 
     if (!can_refine(symex))
         return 0;
-    else if (is_first_iteration)
-        return 1;
-    
-    if (refineTryNum > 10)
-        return 0; // Debug mode
     
     int size_total = expr2refine.size(); 
     for (auto it : expr2refine) {
@@ -378,34 +400,17 @@ bool lattice_refinert::process_solver_result(bool is_solver_ret_SAT) {
  * but in refine_SSA
 
 \*******************************************************************/
-bool lattice_refinert::refine_SSA(
-            const smtcheck_opensmt2t &decider, 
-            symex_assertion_sumt& symex) 
-{
+bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_ret_SAT) 
+{    
     // Shall we refine?
     if (!can_refine(symex))
         return true;
     
-    // Keep all the expression we can refine, which we didn't yet kept
-    ///////////////////////////////////////////////////////////////////    
+    if (process_solver_result(is_solver_ret_SAT))
+        return true;
     
-    // 1. from the solver side
-    //const map<PTRef,exprt>::const_iterator begin = decider.get_itr_unsupported_info_map();
-    //const map<PTRef,exprt>::const_iterator end = decider.get_itr_end_unsupported_info_map();
-    //for (auto it = begin; it != end; it++) {   
-        // if function has a definition, refine and add the refined term to a new partition
-    //    if (get_entry_point(it->second) != SymRef_Undef) {
-    //      decider.new_partition();  
-    //      decider.set_to_true(refine_single_statement(it->second, it->first));
-          
-    //      decider.close_partition(); 
-          //close the partition (but will solve later, after refine_SSA)
-    //    }
-    //}
-    
-    
-    // TODO:
-    // Else change the encoding, maybe only to add new partitions? KE
+    // Else we continue to the next loop of refinement
+    ///status ()
     
     
     return false;
