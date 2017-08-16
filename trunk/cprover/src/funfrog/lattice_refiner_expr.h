@@ -11,6 +11,7 @@
 #include <expr.h>
 #include <opensmt/opensmt2.h>
 #include "lattice_refiner_model.h"
+#include "solvers/smtcheck_opensmt2.h"
 
 class lattice_refiner_exprt {
 public:
@@ -30,13 +31,15 @@ public:
         
     virtual ~lattice_refiner_exprt() { refine_data.clear(); refined_data_UNSAT.clear();}
 
-    lattice_refiner_modelt* get_refine_function(); // refine_data.front()
+    set<lattice_refiner_modelt*> get_refine_functions(); // refine_data.front(), TODO: Add the path here
     bool is_SAT() { return m_is_SAT;}
     bool is_UNSAT() { return !m_is_SAT && refine_data.empty() && !refined_data_UNSAT.empty();}
     
     void process_SAT_result();
     void process_UNSAT_result();
-    
+
+    std::string print_expr(smtcheck_opensmt2t &decider);
+
 private:
     // Currently node in use in the lattice: refine_data.front()
     const exprt& lhs;

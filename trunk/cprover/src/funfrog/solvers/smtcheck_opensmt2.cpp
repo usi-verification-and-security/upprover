@@ -901,7 +901,7 @@ string smtcheck_opensmt2t::create_new_unsupported_var()
     return str;
 }
 
-literalt smtcheck_opensmt2t::store_new_unsupported_var(const exprt& expr, const PTRef var) {
+literalt smtcheck_opensmt2t::store_new_unsupported_var(const exprt& expr, const PTRef var) {        
     // If need to register the abstracted functions - add it here
     if (store_unsupported_info) {
         // Map the expression to its unsupported abstracted vat (in opensmt)

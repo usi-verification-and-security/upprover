@@ -410,8 +410,19 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
         return true;
     
     // Else we continue to the next loop of refinement
-    ///status ()
     
+    // Add all the functions on a path - need to retrieve it from lattice_refiner_exprt
+    for (auto expr : expr2refine) {
+        std::cout << "Refine (refine_SSA) : " << expr->print_expr(decider);
+        set<lattice_refiner_modelt*> ret = expr->get_refine_functions();
+        for (auto func : ret) {
+            std::cout << " | " << func->get_data_str();
+        }
+        std::cout << std::endl;
+    }
+    
+    // Update symex object
+    // symex.?
     
     return false;
 }

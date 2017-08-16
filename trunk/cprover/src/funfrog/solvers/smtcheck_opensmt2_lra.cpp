@@ -513,6 +513,11 @@ literalt smtcheck_opensmt2t_lra::lnotequal(literalt l1, literalt l2){
 
 
 PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt &expr) {
+    if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
+        literalt l = converted_exprs[expr.hash()];
+        return literals[l.var_no()];
+    }
+    
     const string str = create_new_unsupported_var();
     
     PTRef var;
@@ -537,6 +542,10 @@ PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt &expr) {
 
 literalt smtcheck_opensmt2t_lra::lunsupported2var(const exprt &expr) 
 {
+    // Tries to map unsupported to another unsupported
+    if (converted_exprs.find(expr.hash()) != converted_exprs.end())
+        return converted_exprs[expr.hash()]; // TODO: might be buggy;
+    
     const string str = create_new_unsupported_var();
     
     PTRef var;

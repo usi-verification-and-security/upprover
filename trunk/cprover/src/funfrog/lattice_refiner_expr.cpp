@@ -8,7 +8,6 @@
 #include "lattice_refiner_expr.h"
 #include <algorithm>
 
-
 /*******************************************************************
 
  Function: lattice_refiner_exprt::get_refine_function
@@ -20,11 +19,16 @@
  Purpose: 
 
 \*******************************************************************/
-lattice_refiner_modelt* lattice_refiner_exprt::get_refine_function() {
+set<lattice_refiner_modelt*> lattice_refiner_exprt::get_refine_functions() {
+    set<lattice_refiner_modelt*> ret;
+    ret.clear();
     if (m_is_SAT)
-        return 0;
+        return ret;
 
-    return refine_data.front(); 
+    ret.insert(refine_data.front());
+    // TODO: add the whole path
+    
+    return ret; 
 }
 
 
@@ -135,4 +139,34 @@ bool lattice_refiner_exprt::is_all_childs_leads_to_UNSAT(lattice_refiner_modelt 
     }
     
     return true;
+}
+
+/*******************************************************************
+
+ Function: lattice_refiner_exprt::print_expr
+
+ Inputs: 
+
+ Outputs: the assignment where we going to refine an operator
+
+ Purpose: Debug
+
+\*******************************************************************/
+std::string lattice_refiner_exprt::print_expr(smtcheck_opensmt2t &decider) {
+    std::string ret;
+
+    if (decider.getLogic()->isTrue(lhs_PTRef))
+        ret = lhs.get(ID_identifier).c_str();
+    else
+        ret = decider.getLogic()->printTerm(lhs_PTRef);
+    
+    ret += " = " + refined_function + " (";
+
+    for (auto it : call_info_operands) {
+        ret += it.get(ID_identifier).c_str();
+        ret += " ";
+    }
+    ret += ") ";
+
+    return ret;
 }

@@ -499,6 +499,10 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
 
 literalt smtcheck_opensmt2t_uf::lunsupported2var(const exprt &expr)
 {
+    // Tries to map unsupported to another unsupported
+    if (converted_exprs.find(expr.hash()) != converted_exprs.end())
+        return converted_exprs[expr.hash()]; // TODO: might be buggy;
+    
     const string str = create_new_unsupported_var();
     
     PTRef var;
