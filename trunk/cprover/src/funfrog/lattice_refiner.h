@@ -20,8 +20,10 @@ public:
     lattice_refinert(
         const optionst& _options,
         ui_message_handlert &_message_handler, 
+        summarization_contextt &_summarization_context,    
         smtcheck_opensmt2t &_decider)
         : options(_options),
+          summarization_context(_summarization_context),
           is_lattice_ref_on(options.get_option("load-sum-model").size()>0),
           decider(_decider),
           refineTryNum(0)
@@ -52,6 +54,9 @@ private:
   smtcheck_opensmt2t &decider; // Current support: LRA and UF
   bool is_lattice_ref_on;
   unsigned refineTryNum;
+  
+  // Shared information about summaries to be used during analysis
+  summarization_contextt &summarization_context;
 
   /* Function declaration, head of the model - it is a map to support many models */
   std::map<std::string, lattice_refiner_modelt *> models; // Declare of func + its model
@@ -76,6 +81,10 @@ private:
                                     const exprt::operandst &operands);
   void add_expr_to_refine(symex_assertion_sumt& symex);
   void set_front_heuristic() { /* TODO */ } // Will change the front/order of expr2refine
+  
+  smt_summaryt& get_summary(const irep_idt& function_id);
+  const summary_idst& get_summary_ids(const irep_idt& function_id);
+  
 };
 
 #endif /* LATTICE_REFINERT_H */

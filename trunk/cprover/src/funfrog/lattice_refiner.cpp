@@ -175,8 +175,18 @@ void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
         // if function has a definition, refine and add the refined term to a new partition
         if (get_entry_point(key_entry, call_info, call_info_operands) != SymRef_Undef) {
             // ADD to the list to refine such as lhs = refine(key_entry, call_info);
-            exprt temp; temp.make_true();
-            expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), temp, lhs, call_info_operands, key_entry));
+            char* lhs_id = decider.getLogic()->printTerm(lhs);
+            std::string lhs_str = std::string(lhs_id);
+            lhs_str = lhs_str.substr(1, lhs_str.size()-2);
+            irep_idt lhs_irep_idt = lhs_str;
+            
+            symbol_exprt* lhs_from_PTRef = new symbol_exprt();
+            symex.fabricate_cprover_SSA(lhs_irep_idt, call_info.type(), 
+                    call_info.source_location(), 
+                    false, false, *lhs_from_PTRef);
+            expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), 
+                    *lhs_from_PTRef, lhs, call_info_operands, key_entry));
+            free(lhs_id);
         }
     }
     
@@ -413,16 +423,78 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
     
     // Add all the functions on a path - need to retrieve it from lattice_refiner_exprt
     for (auto expr : expr2refine) {
+        #ifdef DEBUG_LATTICE 
         std::cout << "Refine (refine_SSA) : " << expr->print_expr(decider);
         set<lattice_refiner_modelt*> ret = expr->get_refine_functions();
         for (auto func : ret) {
             std::cout << " | " << func->get_data_str();
         }
         std::cout << std::endl;
+        #endif
+        
+        // Add the summaries
+        set<lattice_refiner_modelt*> funcs = expr->get_refine_functions();
+        for (auto func : funcs) {
+            for(auto it = func->data.begin(); it != func->data.end() ; ++it) {
+                const irep_idt& function_id = (*it).substr(0, it->size()-2); 
+                const summary_idst& sum_ids = get_summary_ids(function_id);
+                //curr_summary to partitiont& partition
+                
+                // Final call to create the partition with single fact
+                // symex.summarize_function_call(function_id, sum_ids);
+                
+                #ifdef DEBUG_LATTICE 
+                smt_summaryt& sum = get_summary(function_id);
+                sum.print(cout);
+                #endif
+            }
+        }
+        
+        // get the lhs and rhs
+        const exprt& lhs = expr->get_lhs();
+        const set<exprt>& rhs_set = expr->get_rhs(symex);
+        
+        // Create assumptions/eq per rhs fact
+        
     }
     
     // Update symex object
     // symex.?
     
     return false;
+}
+
+/*******************************************************************
+
+ Function: lattice_refinert::get_summary
+
+ Inputs: data from the lattice
+
+ Outputs: 
+
+ Purpose: retrieve the summary object - Debug
+
+\*******************************************************************/
+smt_summaryt& lattice_refinert::get_summary(const irep_idt& function_id) {
+    const summary_idst& sum_idst = summarization_context.get_summaries(function_id);
+    assert(sum_idst.size() == 1); // For this case, can either use lattice or summary refinement for the same func.
+
+    const summary_idt& sum_id = sum_idst.front();
+    return dynamic_cast<smt_summaryt&> (summarization_context.get_summary_store()->find_summary(sum_id));
+}
+
+
+/*******************************************************************
+
+ Function: lattice_refinert::get_summary
+
+ Inputs: data from the lattice
+
+ Outputs: 
+
+ Purpose: retrieve the set of the summary's ids 
+ 
+\*******************************************************************/
+const summary_idst& lattice_refinert::get_summary_ids(const irep_idt& function_id) {
+    return summarization_context.get_summaries(function_id);
 }

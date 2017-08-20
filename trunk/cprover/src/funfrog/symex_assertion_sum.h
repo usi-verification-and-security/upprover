@@ -85,7 +85,7 @@ public:
 
   // Generate SSA statements for the refined program starting from the given 
   // set of functions.
-  bool refine_SSA(const assertion_infot &assertion,
+  bool refine_SSA(
           const std::list<summary_infot*> &refined_function,
           bool force_check = false);
   
@@ -112,6 +112,16 @@ public:
     return (use_lattice_ref && lattice_ref_candidates_counter > 0);
   }
   /* End of unsupported data for refinement info and data */
+
+  // Shall be public for refinement
+  void fabricate_cprover_SSA(irep_idt base_symbol_id, 
+        const typet& type, const source_locationt source_location, 
+        bool is_rename, bool is_dead, 
+        symbol_exprt& ret_symbol);  
+  
+  // For lattice refinement
+  void summarize_function_call(
+        const irep_idt& function_id, const summary_idst& func_ids);
 
 private:
   
@@ -215,7 +225,7 @@ private:
         deferred_functiont& deferred_function,
         statet& state,
         const irep_idt& function_id);
-  
+    
   // Prepares a partition with an inverted summary. This is used
   // to verify that a function still implies its summary (in upgrade check).
   void fill_inverted_summary(summary_infot& summary_info,
@@ -375,7 +385,7 @@ private:
     it->second.push_back(item);
     return *item;
   }
-
+    
 protected:
   virtual void phi_function(
     const statet::goto_statet &goto_state,
@@ -392,11 +402,6 @@ protected:
    */
   bool is_unwind_loop(statet &state);
   unsigned int prev_unwind_counter; // Updated on branching: Goto, Funcation_Call and End_Function
-  
-  void fabricate_cprover_SSA(irep_idt base_symbol_id, 
-        const typet& type, const source_locationt source_location, 
-        bool is_rename, bool is_dead, 
-        symbol_exprt& ret_symbol);
   
   #ifdef DEBUG_PARTITIONING
     std::set<std::string> _return_vals; // Check for duplicated symbol creation

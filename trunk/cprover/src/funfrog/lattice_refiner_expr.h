@@ -12,6 +12,8 @@
 #include <opensmt/opensmt2.h>
 #include "lattice_refiner_model.h"
 #include "solvers/smtcheck_opensmt2.h"
+#include "symex_assertion_sum.h"
+
 
 class lattice_refiner_exprt {
 public:
@@ -39,6 +41,10 @@ public:
     void process_UNSAT_result();
 
     std::string print_expr(smtcheck_opensmt2t &decider);
+    
+    // Will have result = assumption1, assumption2.... so we have a single lhs with many assume as rhs
+    const exprt& get_lhs();
+    const set<exprt>& get_rhs(symex_assertion_sumt& symex);
 
 private:
     // Currently node in use in the lattice: refine_data.front()

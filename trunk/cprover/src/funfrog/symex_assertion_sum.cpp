@@ -162,8 +162,8 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
 
 \*******************************************************************/
 
-bool symex_assertion_sumt::refine_SSA(const assertion_infot &assertion,
-          const std::list<summary_infot*> &refined_functions, bool force_check)
+bool symex_assertion_sumt::refine_SSA( 
+        const std::list<summary_infot*> &refined_functions, bool force_check)
 {
   // Defer the functions
   for (std::list<summary_infot*>::const_iterator it = refined_functions.begin();
@@ -1191,6 +1191,10 @@ void symex_assertion_sumt::handle_function_call(
     lattice_ref_candidates_info_map.insert(
             std::pair<exprt,std::pair<irep_idt, code_function_callt::argumentst>> 
             (function_call.lhs(), std::make_pair(function_id, function_call.arguments())));
+    
+    //KE: Try to create the hook point for the lattice
+    //if (summary_info.is_preserved_node())
+    //    summarize_function_call(deferred_function, state, function_id);
   }
   
   // Do we have the body?
@@ -1284,6 +1288,36 @@ void symex_assertion_sumt::summarize_function_call(
   partition_idt partition_id = equation.reserve_partition(partition_iface);
   equation.fill_summary_partition(partition_id,
           &summarization_context.get_summaries(function_id));
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::summarize_function_call
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Summarizes the given function call for lattice refinement
+
+\*******************************************************************/
+void symex_assertion_sumt::summarize_function_call(
+        const irep_idt& function_id,
+        const summary_idst& func_ids)
+{
+  // We should use an already computed summary as an abstraction
+  // of the function body
+  status() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << eom;
+  
+  //partition_ifacet &partition_iface = deferred_function.partition_iface;
+
+  //produce_callsite_symbols(partition_iface, state);
+  //produce_callend_assumption(partition_iface, state);
+
+  status() << "Substituting interpolant" << eom;
+
+  partition_idt partition_id = 0; // TODO: equation.reserve_partition(partition_iface);
+  equation.fill_summary_partition(partition_id, &func_ids);
 }
 
 /*******************************************************************

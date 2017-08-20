@@ -170,3 +170,49 @@ std::string lattice_refiner_exprt::print_expr(smtcheck_opensmt2t &decider) {
 
     return ret;
 }
+
+
+/*******************************************************************
+
+ Function: lattice_refiner_exprt::get_lhs
+
+ Inputs: 
+
+ Outputs: lhs of the assume - a unique one per expression we refine
+ * E.g., x = a%b, lhs is x
+
+ Purpose: Building the injected assumes according to the lattice 
+
+\*******************************************************************/
+const exprt& lattice_refiner_exprt::get_lhs() {
+    return lhs;
+    // lhs is create correctly on the constuctor from expr or PTRef
+}
+
+/*******************************************************************
+
+ Function: lattice_refiner_exprt::get_rhs
+
+ Inputs: 
+
+ Outputs: rhs of the assume - a set of all th refining assumptions
+ * E.g., x = a%b, lhs is assume on a%b is a single entry in the set
+ * If we have several facts, we will have several expressions in the
+ * set
+
+ Purpose: Building the injected assumes according to the lattice 
+
+\*******************************************************************/
+const set<exprt>& lattice_refiner_exprt::get_rhs(symex_assertion_sumt& symex) {
+    set<exprt> ret;
+    
+    // For all facts in the node:
+    set<lattice_refiner_modelt*> funcs = get_refine_functions();
+    for (auto func : funcs) {
+        // call_info_operands     
+
+    }
+    
+    return ret;
+    
+}

@@ -254,7 +254,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
         decider_prop.reset(deciderp);
     }
     
-    end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (assertion, refiner.get_refined_functions());
+    end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (refiner.get_refined_functions());
 
     if (!end){
       if (options.get_bool_option("claims-opt") && count == 1){
@@ -394,7 +394,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   
   // KE: lattice refinement works with summary refinement 
   lattice_refinert lattice_refiner = lattice_refinert(options, message_handler, 
-                                *(dynamic_cast <smtcheck_opensmt2t*> (decider)));
+          summarization_context, *(dynamic_cast <smtcheck_opensmt2t*> (decider)));
 
   smt_assertion_sumt prop = smt_assertion_sumt(summarization_context,
           equation, message_handler, max_memory_used);
@@ -415,8 +415,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
     if (count == 1) {
         end = symex.prepare_SSA(assertion);
     } else {
-        bool end_1 = symex.refine_SSA (assertion, refiner.get_refined_functions());
         bool end_2 = lattice_refiner.refine_SSA(symex, !ret_solver);
+        bool end_1 = symex.refine_SSA(refiner.get_refined_functions());
         end = end_1 && end_2;
     }
     
