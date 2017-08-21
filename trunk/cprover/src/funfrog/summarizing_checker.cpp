@@ -609,7 +609,6 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
       end = prop.assertion_holds( 
               *(dynamic_cast<smtcheck_opensmt2t *> (decider)));
       unsigned summaries_count = omega.get_summaries_count();
-      unsigned nondet_count = omega.get_nondets_count();
       if (end)
       {
         if (options.get_bool_option("no-itp"))
@@ -625,6 +624,7 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
         report_success();
       } else {
           // TOOD - take care of the basic (old) refinement
+          //unsigned nondet_count = omega.get_nondets_count();
         /*if (summaries_count > 0 || nondet_count > 0) {
           if (summaries_count > 0){
             status() << "FUNCTION SUMMARIES (for " << summaries_count

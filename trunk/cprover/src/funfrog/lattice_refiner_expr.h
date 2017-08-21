@@ -23,12 +23,14 @@ public:
             const exprt &_lhs, 
             const PTRef _lhs_ptref,
             const exprt::operandst &_call_info_operands,
-            const std::string _refined_function) : 
+            const std::string _refined_function,
+            const irep_idt &_location_line) : 
         lhs(_lhs),
         lhs_PTRef(_lhs_ptref),
         call_info_operands(_call_info_operands),
         m_is_SAT(false),
-        refined_function(_refined_function)        
+        refined_function(_refined_function),
+        location_line(_location_line)
         { refine_data.push_front(_head);}
         
     virtual ~lattice_refiner_exprt() { refine_data.clear(); refined_data_UNSAT.clear();}
@@ -42,6 +44,9 @@ public:
 
     std::string print_expr(smtcheck_opensmt2t &decider);
     
+    // Not safe
+    unsigned get_location() { return ((location_line.empty()) ? 0 : atoi(location_line.c_str()));}
+    
     // Will have result = assumption1, assumption2.... so we have a single lhs with many assume as rhs
     const exprt& get_lhs();
     const set<exprt>& get_rhs(symex_assertion_sumt& symex);
@@ -53,6 +58,7 @@ private:
     const exprt::operandst &call_info_operands; // rhs part 
     bool m_is_SAT; // Will be true if one of the paths in the lattice ends with SAT evaluation
     const std::string refined_function;
+    const irep_idt location_line;
     
     std::deque<lattice_refiner_modelt *> refine_data; // Next nodes in the lattice to use for refining this expression
     std::set<lattice_refiner_modelt *> refined_data_UNSAT; // Paths that ended in UNSAT (if all ended in UNSAT => UNSAT) + bot is here!

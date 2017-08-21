@@ -104,9 +104,9 @@ public:
   std::map<irep_idt, std::string> guard_expln;
   
   /* The data: lhs, original function data */
-  map<exprt,pair<irep_idt, code_function_callt::argumentst>>::const_iterator 
+  map<exprt,pair<irep_idt, code_function_callt>>::const_iterator 
         get_itr_nobody_func_info_map() const { return lattice_ref_candidates_info_map.begin(); }
-  map<exprt,pair<irep_idt, code_function_callt::argumentst>>::const_iterator 
+  map<exprt,pair<irep_idt, code_function_callt>>::const_iterator 
         get_itr_end_nobody_func_info_map() const { return lattice_ref_candidates_info_map.end(); }
   bool has_missing_decl_func2refine() const {
     return (use_lattice_ref && lattice_ref_candidates_counter > 0);
@@ -121,7 +121,9 @@ public:
   
   // For lattice refinement
   void summarize_function_call(
-        const irep_idt& function_id, const summary_idst& func_ids);
+        const irep_idt& function_id,
+        const summary_idst& func_ids, 
+        unsigned call_loc);
 
 private:
   
@@ -189,7 +191,7 @@ private:
   
   bool use_lattice_ref; // for lattice ref. else opt. out the data needed for it only
   unsigned int lattice_ref_candidates_counter;
-  map<exprt, std::pair<irep_idt, code_function_callt::argumentst>> lattice_ref_candidates_info_map; // lhs, original function data
+  map<exprt, std::pair<irep_idt, code_function_callt>> lattice_ref_candidates_info_map; // lhs, original function data
   
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation

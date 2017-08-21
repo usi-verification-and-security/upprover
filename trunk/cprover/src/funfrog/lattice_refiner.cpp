@@ -171,7 +171,6 @@ void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
         const PTRef lhs = it->first; // lhs
         const exprt::operandst &call_info_operands = call_info.operands(); 
         std::string key_entry = gen_entry_point_name(call_info.id().c_str(), call_info, call_info_operands);
-
         // if function has a definition, refine and add the refined term to a new partition
         if (get_entry_point(key_entry, call_info, call_info_operands) != SymRef_Undef) {
             // ADD to the list to refine such as lhs = refine(key_entry, call_info);
@@ -185,26 +184,29 @@ void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
                     call_info.source_location(), 
                     false, false, *lhs_from_PTRef);
             expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), 
-                    *lhs_from_PTRef, lhs, call_info_operands, key_entry));
+                    *lhs_from_PTRef, lhs, call_info_operands, key_entry, 
+                    call_info.source_location().get_line()));
             free(lhs_id);
         }
     }
     
     // Refine functions abstracted by the SSA translation (no function body)
-    const map<exprt,pair<irep_idt, code_function_callt::argumentst>>::const_iterator 
+    const map<exprt,pair<irep_idt, code_function_callt>>::const_iterator 
             begin_symex = symex.get_itr_nobody_func_info_map();
-    const map<exprt,pair<irep_idt, code_function_callt::argumentst>>::const_iterator 
+    const map<exprt,pair<irep_idt, code_function_callt>>::const_iterator 
             end_symex = symex.get_itr_end_nobody_func_info_map();
     for (auto it = begin_symex; it != end_symex; it++) {
-        const pair<irep_idt, code_function_callt::argumentst> &call_info = it->second; // function and arguments
+        const pair<irep_idt, code_function_callt> &call_info = it->second; // function and arguments
         const exprt &lhs = it->first; // lhs
-        const exprt::operandst &call_info_operands = call_info.second; 
+        const exprt::operandst &call_info_operands = call_info.second.arguments(); 
         std::string key_entry = gen_entry_point_name(call_info.first.c_str(), lhs, call_info_operands);
 
         // if function has a definition, refine and add the refined term to a new partition
         if (get_entry_point(key_entry, lhs, call_info_operands) != SymRef_Undef) {
             // ADD to the list to refine, such as lhs = refine(key_entry, call_info);
-            expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), lhs, decider.getLogic()->getTerm_true(), call_info_operands, key_entry));
+            expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), 
+                    lhs, decider.getLogic()->getTerm_true(), call_info_operands, 
+                    key_entry, call_info.second.source_location().get_line()));
         }
     }    
 }
@@ -432,6 +434,10 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
         std::cout << std::endl;
         #endif
         
+        // get the lhs and rhs
+        const exprt& lhs = expr->get_lhs();
+        const set<exprt>& rhs_set = expr->get_rhs(symex);
+        
         // Add the summaries
         set<lattice_refiner_modelt*> funcs = expr->get_refine_functions();
         for (auto func : funcs) {
@@ -441,7 +447,7 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
                 //curr_summary to partitiont& partition
                 
                 // Final call to create the partition with single fact
-                // symex.summarize_function_call(function_id, sum_ids);
+                symex.summarize_function_call(function_id, sum_ids, expr->get_location());
                 
                 #ifdef DEBUG_LATTICE 
                 smt_summaryt& sum = get_summary(function_id);
@@ -449,10 +455,6 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
                 #endif
             }
         }
-        
-        // get the lhs and rhs
-        const exprt& lhs = expr->get_lhs();
-        const set<exprt>& rhs_set = expr->get_rhs(symex);
         
         // Create assumptions/eq per rhs fact
         

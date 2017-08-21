@@ -170,27 +170,29 @@ bool symex_assertion_sumt::refine_SSA(
           it != refined_functions.end();
           ++it) {
     const partition_iface_ptrst* partition_ifaces = get_partition_ifaces(**it);
-    assert(!(*it)->is_root());
+    assert(!(*it)->is_root() || use_lattice_ref);
 
-    if (partition_ifaces) {
-      for (partition_iface_ptrst::const_iterator it2 = partition_ifaces->begin();
-              it2 != partition_ifaces->end();
-              ++it2) {
+    if (!(*it)->is_root()) { // Set as root lattice ref (global assumes)       
+        if (partition_ifaces) {
+          for (partition_iface_ptrst::const_iterator it2 = partition_ifaces->begin();
+                  it2 != partition_ifaces->end();
+                  ++it2) {
 
-        partition_ifacet* partition_iface = *it2;
+            partition_ifacet* partition_iface = *it2;
 
-        if (partition_iface->partition_id != partitiont::NO_PARTITION) {
-          // assert(equation.get_partitions()[partition_iface->partition_id].summary);
-          std::cerr << "Invalidating partition: " << partition_iface->partition_id << std::endl;
-          equation.invalidate_partition(partition_iface->partition_id);
+            if (partition_iface->partition_id != partitiont::NO_PARTITION) {
+              // assert(equation.get_partitions()[partition_iface->partition_id].summary);
+              std::cerr << "Invalidating partition: " << partition_iface->partition_id << std::endl;
+              equation.invalidate_partition(partition_iface->partition_id);
+            }
+
+            defer_function(deferred_functiont(**it, *partition_iface));
+          }
+        } else {
+          std::cerr << "WARNING: Invalid call to refine_SSA <- " << 
+                  "refining previously unseen call \"" << 
+                  (*it)->get_function_id().c_str() << "\" (skipped)" << std::endl;
         }
-
-        defer_function(deferred_functiont(**it, *partition_iface));
-      }
-    } else {
-      std::cerr << "WARNING: Invalid call to refine_SSA <- " << 
-              "refining previously unseen call \"" << 
-              (*it)->get_function_id().c_str() << "\" (skipped)" << std::endl;
     }
   }
   
@@ -1189,8 +1191,8 @@ void symex_assertion_sumt::handle_function_call(
     
     // Save to the map
     lattice_ref_candidates_info_map.insert(
-            std::pair<exprt,std::pair<irep_idt, code_function_callt::argumentst>> 
-            (function_call.lhs(), std::make_pair(function_id, function_call.arguments())));
+            std::pair<exprt,std::pair<irep_idt, code_function_callt>> 
+            (function_call.lhs(), std::make_pair(function_id, function_call)));
     
     //KE: Try to create the hook point for the lattice
     //if (summary_info.is_preserved_node())
@@ -1303,20 +1305,26 @@ void symex_assertion_sumt::summarize_function_call(
 \*******************************************************************/
 void symex_assertion_sumt::summarize_function_call(
         const irep_idt& function_id,
-        const summary_idst& func_ids)
+        const summary_idst& func_ids, 
+        unsigned call_loc)
 {
   // We should use an already computed summary as an abstraction
   // of the function body
   status() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << eom;
   
-  //partition_ifacet &partition_iface = deferred_function.partition_iface;
+  summary_infot* temp = new summary_infot(0, call_loc);
+  temp->set_function_id(function_id);
+  
+  // marked as called from main
+  partition_ifacet &partition_iface = new_partition_iface(*temp, 2, call_loc); 
 
-  //produce_callsite_symbols(partition_iface, state);
-  //produce_callend_assumption(partition_iface, state);
+  
+  produce_callsite_symbols(partition_iface, state);
+  produce_callend_assumption(partition_iface, state);
 
   status() << "Substituting interpolant" << eom;
 
-  partition_idt partition_id = 0; // TODO: equation.reserve_partition(partition_iface);
+  partition_idt partition_id = equation.reserve_partition(partition_iface);
   equation.fill_summary_partition(partition_id, &func_ids);
 }
 
@@ -1345,7 +1353,6 @@ void symex_assertion_sumt::fill_inverted_summary(
   
   partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION, 0);
   
-  std::cout << ";; Call test 123 " << std::endl;
   partition_iface.share_symbols(inlined_iface);
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
