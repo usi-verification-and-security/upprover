@@ -16,6 +16,9 @@
 // For now we have only one thread any hows
 #define FUNC_RETURN "::#return_value!0"  // KE: appears in Cprover as "#return_value"
 #define TMP_FUNC_RETURN "::$tmp::return_value!0"
+#define OPENSMT_IN "#in"
+#define OPENSMT_OUT "#out"
+#define OPENSMT_INVS "#invs"
 
 #define CALLSTART_SYMBOL "hifrog::fun_start"
 #define CALLEND_SYMBOL "hifrog::fun_end"
