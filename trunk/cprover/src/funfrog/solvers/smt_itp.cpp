@@ -11,12 +11,18 @@
 #endif
 
 /*
- KE: Bugs?
+ KE: Bugs
  * 
  * Start looking at the manual-unsupported functions in smtcheck_opensmt2.cpp
  * e.g., remove_index, get_index etc.
  * 
  * Try to replace all these ad-hoc calls in some proper methods of cprover
+ * Check names coming from OpenSMT to see if it is not collide with the names in hifrog
+ * (e.g., #in, #out) It happens because Cprover uses # as coutner symbol and 
+ * OpenSMT uses it as system variables symbol
+ * 
+ * Known bugs: re-write many suammries again as a result of system (inner) variables
+ * that are related to the translations (SSA or SMT-Lib) and not the code itself
  */
 
 bool
@@ -270,14 +276,14 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
         {
             string aname = string(logic->getSymName(args[j]));
             string unidx_aname = smtcheck_opensmt2t::remove_index(aname);
-            assert(aname == unidx_aname || aname.find(FUNC_RETURN) != string::npos);
+            assert(aname == unidx_aname || is_system_translation_var(aname, false));
             unidx_aname = aname;      
             string quoted_unidx_aname = smtcheck_opensmt2t::quote_varname(unidx_aname);
             if (quoted_unidx == quoted_unidx_aname)
             {
                 if( (occurrences[unidx][0] == 1) ||
-                        (idx == occurrences[unidx][1] && aname.find("#in") != string::npos) ||
-                     (idx == occurrences[unidx][2] && aname.find("#out") != string::npos)
+                        (idx == occurrences[unidx][1] && aname.find(OPENSMT_IN) != string::npos) ||
+                     (idx == occurrences[unidx][2] && aname.find(OPENSMT_OUT) != string::npos)
                   )
                 {
                     //cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << fixed_str << endl;
@@ -623,4 +629,27 @@ void smt_itpt::deserialize(std::istream& in)
       bv.push_back(lit);
     }
   }
+}
+
+/*******************************************************************\
+
+Function: smt_itpt::is_system_translation_var
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Check if a var is L1 but looks like L2 because of naming inner 
+ * convention of Cprover or OpenSMT
+
+\*******************************************************************/
+bool smt_itpt::is_system_translation_var(std::string name, bool is_smt_only) const {
+    if (name.find(OPENSMT_IN) != string::npos) return true;
+    if (name.find(OPENSMT_OUT) != string::npos) return true;
+    if (name.find(OPENSMT_INVS) != string::npos) return true;
+
+    if (is_smt_only) 
+        return false;
+    else 
+        return (name.find(FUNC_RETURN) != string::npos);
 }
