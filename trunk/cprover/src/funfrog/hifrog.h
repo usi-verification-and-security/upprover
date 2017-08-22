@@ -36,6 +36,7 @@
 #define COUNTER '#' // GOTO to SSA (e.g., hifrog::?fun_end to hifrog::?fun_end#1)
 #define SYMEX_NONDET "nondet#" //"symex::nondet#" - fix to
 #define IO_CONST "symex::io::" // Update according to goto_symex/symex_target_equation
+#define RETURN_NIL_CPROVER "return'!0" // Check if changed; the nil (function_call.lhs().is_nil()), changed into |return'!0|
 
 // SMT consts of datatypes, add/change here only if needed
 #define SMT_BOOL "Bool"

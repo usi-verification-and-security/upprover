@@ -115,7 +115,7 @@ public:
 
   // Fill the (reserved) partition with the given summaries.
   void fill_summary_partition(partition_idt partition_id,
-    const summary_idst* summaries)
+    const summary_idst* summaries, bool is_lattice_fact=false)
   {
     partitiont& sum_partition = partitions.at(partition_id);
     assert(!sum_partition.filled);
@@ -123,6 +123,7 @@ public:
     sum_partition.filled = true;
     sum_partition.summary = true;
     sum_partition.summaries = summaries;
+    sum_partition.lattice_fact = is_lattice_fact;
 
     sum_partition.applicable_summaries.clear();
     for (summary_idst::const_iterator it = summaries->begin();

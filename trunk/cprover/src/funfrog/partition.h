@@ -28,7 +28,7 @@ public:
   
   partitiont(partition_idt _parent_id, partition_ifacet& _partition_iface) :
           filled(false), summary(false), stub(false), ignore(false), processed(false),
-          invalid(false), inverted_summary(false), summaries(NULL), 
+          invalid(false), inverted_summary(false), lattice_fact(false), summaries(NULL), 
           parent_id(_parent_id), partition_iface(&_partition_iface), fle_part_id(-1) { }
           
   void add_child_partition(partition_idt child_id, unsigned callsite) {
@@ -77,6 +77,7 @@ public:
   bool processed;
   bool invalid;
   bool inverted_summary;
+  bool lattice_fact;
   unsigned clauses;
   unsigned vars;
   // All summaries for the associated function

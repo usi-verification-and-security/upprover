@@ -18,7 +18,7 @@ int mod_Cf(int a, int n) {}
 int mod_Cg(int a, int n) {}
 int mod_C2not(int a, int n) {}
 int call__modd(int a, int n) {
-	int ret = _modd(a,n);
+	int ret = mod:(a,n);
  	//int ret = a % n;
 	__CPROVER_assume(mod_C3(a,n) == ret);
 	__CPROVER_assume(mod_C2not(a,n) == ret);

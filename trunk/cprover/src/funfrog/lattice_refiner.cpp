@@ -185,7 +185,7 @@ void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
                     false, false, *lhs_from_PTRef);
             expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), 
                     *lhs_from_PTRef, lhs, call_info_operands, key_entry, 
-                    call_info.source_location().get_line()));
+                    call_info.source_location()));
             free(lhs_id);
         }
     }
@@ -206,7 +206,7 @@ void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
             // ADD to the list to refine, such as lhs = refine(key_entry, call_info);
             expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), 
                     lhs, decider.getLogic()->getTerm_true(), call_info_operands, 
-                    key_entry, call_info.second.source_location().get_line()));
+                    key_entry, call_info.second.source_location()));
         }
     }    
 }
@@ -447,7 +447,9 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
                 //curr_summary to partitiont& partition
                 
                 // Final call to create the partition with single fact
-                symex.summarize_function_call(function_id, sum_ids, expr->get_location());
+                symex.summarize_function_call_lattice_facts(function_id, sum_ids, 
+                        expr->get_location(), lhs, expr->get_call_info_operands(),
+                        expr->get_source_location());
                 
                 #ifdef DEBUG_LATTICE 
                 smt_summaryt& sum = get_summary(function_id);

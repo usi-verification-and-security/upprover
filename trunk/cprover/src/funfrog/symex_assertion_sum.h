@@ -120,10 +120,27 @@ public:
         symbol_exprt& ret_symbol);  
   
   // For lattice refinement
-  void summarize_function_call(
+  void summarize_function_call_lattice_facts( 
         const irep_idt& function_id,
         const summary_idst& func_ids, 
-        unsigned call_loc);
+        unsigned call_loc, 
+        const exprt &lhs,
+        const exprt::operandst &call_info_operands,
+        const source_locationt &source_location);
+  void assign_function_arguments_lattice_facts(
+        statet &state,
+        partition_ifacet &partition_iface,
+        const irep_idt &identifier,
+        const exprt &lhs,
+        const exprt::operandst &call_info_operands,
+        const source_locationt &source_location);
+  void return_assignment_and_mark_lattice_facts(
+        const typet& type,
+        statet &state,
+        const exprt *lhs,
+        partition_ifacet &partition_iface,
+        const source_locationt& source_location,
+        bool skip_assignment);
 
 private:
   

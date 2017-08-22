@@ -28,7 +28,7 @@ signed char gcd_test(signed char a, signed char b)
     while (b != (signed char)0) {
         t = b;
         //b = a % t; // orig: a % b
- 	b = _modd(a,t);
+ 	b = mod(a,t);
 	__CPROVER_assume(mod_C2not(a,t) == b);
 	__CPROVER_assume(mod_C3(a,t) == b);
 	__CPROVER_assume(mod_C4(a,t) == b);
