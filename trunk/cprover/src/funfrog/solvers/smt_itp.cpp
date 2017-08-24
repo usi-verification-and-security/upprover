@@ -532,35 +532,9 @@ Function: smt_itpt::serialize
 
 void smt_itpt::serialize(std::ostream& out) const
 {
-    assert(logic && tterm);
-    logic->dumpFunction(out, *tterm);
-    return; 
-
-  out << _no_orig_variables << " ";
-  out << _no_variables << " ";
-  out << root_literal.get() << " ";
-  out << clauses.size() << std::endl;
-  out << symbol_mask.size() << std::endl;
-
-  for (std::vector<bool>::const_iterator it = symbol_mask.begin();
-          it != symbol_mask.end();
-          ++it) {
-    out << (*it ? '1' : '0');
-  }
-  out << std::endl;
-    
-  for (clausest::const_iterator it = clauses.begin();
-          it != clauses.end();
-          ++it) {
-    out << it->size();
-
-    for (bvt::const_iterator it2 = it->begin();
-            it2 != it->end();
-            ++it2) {
-      out << " " << it2->get();
-    }
-    out << std::endl;
-  }
+  assert(logic && tterm);
+  logic->dumpFunction(out, *tterm);
+  return; 
 }
 
 /*******************************************************************\
@@ -571,12 +545,14 @@ Function: smt_itpt::deserialize
 
  Outputs:
 
- Purpose:
+ Purpose: Not In USE
 
 \*******************************************************************/
 
 void smt_itpt::deserialize(std::istream& in)
 {
+  assert(0); // KE: when do we use it??
+    
   unsigned raw_root;
   unsigned nclauses;
   unsigned nsymbols;
@@ -629,7 +605,7 @@ void smt_itpt::deserialize(std::istream& in)
       bv.push_back(lit);
     }
   }
-}
+} // NOT IN USE
 
 /*******************************************************************\
 
