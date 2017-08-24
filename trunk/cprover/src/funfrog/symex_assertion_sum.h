@@ -141,6 +141,10 @@ public:
         partition_ifacet &partition_iface,
         const source_locationt& source_location,
         bool skip_assignment);
+  void mark_argument_symbols_lattice_facts(
+        const exprt::operandst &call_info_operands,
+        statet &state,
+        partition_ifacet &partition_iface);
 
 private:
   
@@ -404,7 +408,7 @@ private:
     it->second.push_back(item);
     return *item;
   }
-    
+   
 protected:
   virtual void phi_function(
     const statet::goto_statet &goto_state,

@@ -760,7 +760,7 @@ void symex_assertion_sumt::assign_function_arguments_lattice_facts(
 
   // Store the argument renamed symbols somewhere (so that we can use
   // them later, when processing the deferred function).
-  //mark_argument_symbols(lhs.type(), state, partition_iface);
+  mark_argument_symbols_lattice_facts(call_info_operands, state, partition_iface);
 
   // Mark accessed global variables as well
   bool is_init_stage = (id2string(identifier).find(INITIALIZE) != std::string::npos);
@@ -811,7 +811,58 @@ void symex_assertion_sumt::mark_argument_symbols(
     statet::level2t::current_namest::const_iterator it2 =
         state.level2.current_names.find(l0_name);
     if(it2==state.level2.current_names.end()) assert (0);
+    
+    // rename L2: update the level counters
+    ssa_exprt ssa_expr_lhs = to_ssa_expr(lhs);
+    state.level0(ssa_expr_lhs, ns, state.source.thread_nr);
+    state.level1(ssa_expr_lhs);
+    ssa_expr_lhs.set_level_2(state.level2.current_count(ssa_expr_lhs.get_identifier()));
 
+    to_ssa_expr(lhs).set_level_2(it2->second.second);
+    partition_iface.argument_symbols.push_back(lhs);
+
+#   ifdef DEBUG_PARTITIONING
+    std::cout << "Marking argument symbol: " << symbol << "\n";
+#   endif
+  }
+}
+
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::mark_argument_symbols
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Marks the SSA symbols of function arguments
+
+ * Call: foo(x,y) => connet x and y in the call site to the call function
+\*******************************************************************/
+void symex_assertion_sumt::mark_argument_symbols_lattice_facts(
+        const exprt::operandst &call_info_operands,
+        statet &state,
+        partition_ifacet &partition_iface) {
+    
+  for(exprt::operandst::const_iterator
+      it=call_info_operands.begin();
+      it!=call_info_operands.end();
+      it++)
+  {
+    const exprt &parameter=*it;
+    const irep_idt &identifier = to_ssa_expr(parameter).get_original_name();
+
+    const symbolt &symbol = ns.lookup(identifier);
+    symbol_exprt lhs = symbol.symbol_expr();
+    
+    state.rename(lhs, ns, goto_symex_statet::L1);
+
+    const irep_idt l0_name = lhs.get_identifier();
+    statet::level2t::current_namest::const_iterator it2 =
+        state.level2.current_names.find(l0_name);
+    if(it2==state.level2.current_names.end()) assert (0);
+    
     // rename L2: update the level counters
     ssa_exprt ssa_expr_lhs = to_ssa_expr(lhs);
     state.level0(ssa_expr_lhs, ns, state.source.thread_nr);

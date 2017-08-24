@@ -3,7 +3,7 @@
 #include <iostream>
 
 /* Get the name of an SSA expression without the instance number 
-   
+ *    
  * KE: please use it, as cprover framework keeps changeing all the time
  */
 irep_idt get_symbol_name(const exprt &expr) {
@@ -87,4 +87,4 @@ std::string fix_symex_nondet_name(const exprt &expr) {
     }
     
     return name_expr;
-}
+}  
