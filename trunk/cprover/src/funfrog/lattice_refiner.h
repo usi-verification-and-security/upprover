@@ -84,6 +84,11 @@ private:
   
   smt_summaryt& get_summary(const irep_idt& function_id);
   const summary_idst& get_summary_ids(const irep_idt& function_id);
+  const exprt::operandst &fabricate_parameters(
+        const irep_idt& function_id, 
+        symex_assertion_sumt& symex,
+        const source_locationt& source_location,
+        const exprt::operandst &call_info_operands);
   
 };
 

@@ -806,7 +806,7 @@ void symex_assertion_sumt::mark_argument_symbols(
     const symbolt &symbol = ns.lookup(identifier);
     symbol_exprt lhs = symbol.symbol_expr();
     state.rename(lhs, ns, goto_symex_statet::L1);
-
+    
     const irep_idt l0_name = lhs.get_identifier();
     statet::level2t::current_namest::const_iterator it2 =
         state.level2.current_names.find(l0_name);
@@ -850,17 +850,16 @@ void symex_assertion_sumt::mark_argument_symbols_lattice_facts(
       it!=call_info_operands.end();
       it++)
   {
-    const exprt &parameter=*it;
+    const exprt &parameter=*it; // It is already SSA expression
     const irep_idt &identifier = to_ssa_expr(parameter).get_original_name();
 
     const symbolt &symbol = ns.lookup(identifier);
     symbol_exprt lhs = symbol.symbol_expr();
-    
+
     state.rename(lhs, ns, goto_symex_statet::L1);
 
-    const irep_idt l0_name = lhs.get_identifier();
     statet::level2t::current_namest::const_iterator it2 =
-        state.level2.current_names.find(l0_name);
+        state.level2.current_names.find(identifier);
     if(it2==state.level2.current_names.end()) assert (0);
     
     // rename L2: update the level counters
@@ -871,7 +870,7 @@ void symex_assertion_sumt::mark_argument_symbols_lattice_facts(
 
     to_ssa_expr(lhs).set_level_2(it2->second.second);
     partition_iface.argument_symbols.push_back(lhs);
-
+    
 #   ifdef DEBUG_PARTITIONING
     std::cout << "Marking argument symbol: " << symbol << "\n";
 #   endif
@@ -1067,13 +1066,13 @@ void symex_assertion_sumt::return_assignment_and_mark(
     symbol_exprt retval_tmp;
     fabricate_cprover_SSA(retval_tmp_id, type, 
             function_type.source_location(),
-            false, false, retval_tmp); 
+            false, false, false, retval_tmp); 
 
     // return_value - create new symbol with versions to support unwinding
     symbol_exprt retval_symbol;	
     fabricate_cprover_SSA(retval_symbol_id, type, 
         function_type.source_location(),
-        true, false, retval_symbol);
+        true, false, true, retval_symbol);
     
     // Connect the return value to the variable in the calling site 
     if (!skip_assignment) {
@@ -1128,13 +1127,13 @@ void symex_assertion_sumt::return_assignment_and_mark_lattice_facts(
     symbol_exprt retval_tmp;
     fabricate_cprover_SSA(retval_tmp_id, type, 
             source_location,
-            false, false, retval_tmp); 
+            false, false, false, retval_tmp); 
 
     // return_value - create new symbol with versions to support unwinding
     symbol_exprt retval_symbol;	
     fabricate_cprover_SSA(retval_symbol_id, type, 
         source_location,
-        true, false, retval_symbol);
+        true, false, true, retval_symbol);
     
     // Connect the return value to the variable in the calling site 
     // Here connect the unsupported var to the return value - as assume!
@@ -1616,13 +1615,13 @@ void symex_assertion_sumt::produce_callsite_symbols(
   partition_iface.callend_symbol.set_identifier(
           get_new_symbol_version(callend_id, state,typet(ID_bool)));
     
-  add_symbol(callstart_id, typet(ID_bool), true, partition_iface.callstart_symbol.source_location());
-  add_symbol(callend_id, typet(ID_bool), true, partition_iface.callend_symbol.source_location());
+  add_symbol(callstart_id, typet(ID_bool), true, true, partition_iface.callstart_symbol.source_location());
+  add_symbol(callend_id, typet(ID_bool), true, true, partition_iface.callend_symbol.source_location());
   
   if (partition_iface.assertion_in_subtree) {
     partition_iface.error_symbol.set_identifier(
           get_new_symbol_version(error_id, state,typet(ID_bool)));
-    add_symbol(error_id, typet(ID_bool), true, partition_iface.error_symbol.source_location());
+    add_symbol(error_id, typet(ID_bool), true, true, partition_iface.error_symbol.source_location());
   }
 }
 
@@ -2007,17 +2006,17 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
 
 void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id, 
         const typet& type, const source_locationt source_location, 
-        bool is_rename, bool is_dead, 
+        bool is_rename, bool is_dead, bool is_shared,
         symbol_exprt& ret_symbol)
 {
     // Gets a new symbol per function call:
     get_new_name(base_symbol_id,ns);
 
     // Create new symbol with versions to support unwinding
-    add_symbol(base_symbol_id, type, is_dead, source_location);
+    add_symbol(base_symbol_id, type, is_dead, is_shared, source_location);
 
     // If needed - rename alone
-    if (is_rename) {	
+    if (is_rename) {
         level2_rename_and_2ssa(state, base_symbol_id, type, ret_symbol); // We do rename alone...
     } else {
         ret_symbol = symbol_exprt(base_symbol_id, type);

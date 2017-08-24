@@ -116,7 +116,7 @@ public:
   // Shall be public for refinement
   void fabricate_cprover_SSA(irep_idt base_symbol_id, 
         const typet& type, const source_locationt source_location, 
-        bool is_rename, bool is_dead, 
+        bool is_rename, bool is_dead, bool is_shared,
         symbol_exprt& ret_symbol);  
   
   // For lattice refinement
@@ -367,6 +367,7 @@ private:
   void add_symbol(const irep_idt& base_id, 
                     const typet& type, 
                     bool dead, 
+                    bool is_shared, // L0: not in use if shared
                     const source_locationt source_location) {
     if (dead) {
         dead_identifiers.insert(base_id);
@@ -379,7 +380,8 @@ private:
         s.name = base_id;
         s.type = type;
         s.mode=irep_idt();
-        s.location = source_location;            
+        s.location = source_location;
+        s.is_thread_local = !is_shared;
         new_symbol_table.add(s);
     }
   }

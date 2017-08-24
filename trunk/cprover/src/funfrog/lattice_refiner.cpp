@@ -182,7 +182,7 @@ void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
             symbol_exprt* lhs_from_PTRef = new symbol_exprt();
             symex.fabricate_cprover_SSA(lhs_irep_idt, call_info.type(), 
                     call_info.source_location(), 
-                    false, false, *lhs_from_PTRef);
+                    false, false, false, *lhs_from_PTRef);
             expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), 
                     *lhs_from_PTRef, lhs, call_info_operands, key_entry, 
                     call_info.source_location()));
@@ -444,11 +444,15 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
             for(auto it = func->data.begin(); it != func->data.end() ; ++it) {
                 const irep_idt& function_id = (*it).substr(0, it->size()-2); 
                 const summary_idst& sum_ids = get_summary_ids(function_id);
-                //curr_summary to partitiont& partition
+                
+                //Get parameters in the summary - and create expressions for them
+                const exprt::operandst &summary_parameters = 
+                            fabricate_parameters(function_id, symex,
+                            expr->get_source_location(), expr->get_call_info_operands());
                 
                 // Final call to create the partition with single fact
                 symex.summarize_function_call_lattice_facts(function_id, sum_ids, 
-                        expr->get_location(), lhs, expr->get_call_info_operands(),
+                        expr->get_location(), lhs, summary_parameters,
                         expr->get_source_location());
                 
                 #ifdef DEBUG_LATTICE 
@@ -476,7 +480,7 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
 
  Outputs: 
 
- Purpose: retrieve the summary object - Debug
+ Purpose: retrieve the summary object
 
 \*******************************************************************/
 smt_summaryt& lattice_refinert::get_summary(const irep_idt& function_id) {
@@ -501,4 +505,60 @@ smt_summaryt& lattice_refinert::get_summary(const irep_idt& function_id) {
 \*******************************************************************/
 const summary_idst& lattice_refinert::get_summary_ids(const irep_idt& function_id) {
     return summarization_context.get_summaries(function_id);
+}
+
+/*******************************************************************
+
+ Function: lattice_refinert::fabricate_parameters
+
+ Inputs: data from the lattice
+
+ Outputs: 
+
+ Purpose: retrieve the parameters in the summary
+
+\*******************************************************************/
+const exprt::operandst &lattice_refinert::fabricate_parameters(
+        const irep_idt& function_id, 
+        symex_assertion_sumt& symex,
+        const source_locationt& source_location,
+        const exprt::operandst &call_info_operands) 
+{
+    exprt::operandst *ret = new std::vector<exprt>();
+    smt_summaryt& summary = get_summary(function_id);
+    const vec<PTRef>& ptref_params = summary.getTterm()->getArgs(); 
+    int size = ptref_params.size();
+    
+    int i=0; 
+    for(exprt::operandst::const_iterator
+      it=call_info_operands.begin();
+      it!=call_info_operands.end();
+      it++)
+    {
+        const exprt &parameter=*it;        
+        PTRef curr = ptref_params[i];
+        char* name = decider.getLogic()->printTerm(curr);
+        std::string str_name(name); str_name = str_name.substr(1, str_name.size()-4);
+        irep_idt param_symbol_id(str_name);
+        
+        symbol_exprt param_symbol;	
+        symex.fabricate_cprover_SSA(
+            param_symbol_id, parameter.type(), 
+            source_location,
+            true, false, false, param_symbol);
+        
+        #ifdef DEBUG_LATTICE
+        status() << ";; Creating parameter (in " << function_id << ") " << param_symbol_id
+                << " type: " << parameter.type().pretty() << " called site sent: "
+                << parameter.get(ID_identifier) << eom;
+        #endif
+        
+        free(name);
+        assert(size > i);
+        i++;
+        
+        ret->push_back(param_symbol);
+    }
+    
+    return *ret;
 }
