@@ -48,12 +48,9 @@ public:
     // Not safe
     unsigned get_location() { return ((location.get_line().empty()) ? 0 : atoi(location.get_line().c_str()));}
     
-    // Will have result = assumption1, assumption2.... so we have a single lhs with many assume as rhs
-    const exprt& get_lhs();
-    const set<exprt>& get_rhs(symex_assertion_sumt& symex);
-    
+    // basic data to build the assumes later
+    const exprt& get_lhs();    
     const exprt::operandst& get_call_info_operands() { return call_info_operands;}
-    
     const source_locationt& get_source_location() { return location;}
 
 private:

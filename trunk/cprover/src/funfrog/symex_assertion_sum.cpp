@@ -19,6 +19,8 @@
 #include "symex_assertion_sum.h"
 #include "expr_pretty_print.h"
 #include "hifrog.h"
+#include <util/c_types.h>
+#include <util/arith_tools.h>
 
 /*******************************************************************
 
@@ -750,17 +752,18 @@ void symex_assertion_sumt::assign_function_arguments_lattice_facts(
         partition_ifacet &partition_iface,
         const irep_idt &identifier,
         const exprt &lhs,
-        const exprt::operandst &call_info_operands,
+        const exprt::operandst &caller_info_operands,
+        const exprt::operandst &callee_info_operands,
         const source_locationt &source_location)
 {
   // Add parameters assignment
   bool old_cp = constant_propagation;
   constant_propagation = false;
-  //parameter_assignments(identifier, goto_function, state, call_info_operands);
-
+ 
   // Store the argument renamed symbols somewhere (so that we can use
   // them later, when processing the deferred function).
-  mark_argument_symbols_lattice_facts(call_info_operands, state, partition_iface);
+  mark_argument_symbols_lattice_facts(callee_info_operands, state, partition_iface);
+  parameter_assignments_lattice_facts(identifier, callee_info_operands, state, caller_info_operands);
 
   // Mark accessed global variables as well
   bool is_init_stage = (id2string(identifier).find(INITIALIZE) != std::string::npos);
@@ -775,6 +778,117 @@ void symex_assertion_sumt::assign_function_arguments_lattice_facts(
   modified_globals_assignment_and_mark(identifier, state, partition_iface);
   
   constant_propagation = old_cp;
+}
+
+/*******************************************************************\
+
+Function: symex_assertion_sumt::parameter_assignments
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: taken from goto_symext::parameter_assignments
+ * Only for lattice refinement
+
+\*******************************************************************/
+
+void symex_assertion_sumt::parameter_assignments_lattice_facts(
+  const irep_idt function_identifier,
+  const exprt::operandst &goto_function_parameters, // callee
+  statet &state,
+  const exprt::operandst &arguments) // caller
+{
+  // Must be the same size (we assume it for lattice facts)
+  assert(goto_function_parameters.size() == arguments.size());  
+    
+  // iterates over the arguments
+  exprt::operandst::const_iterator it1=arguments.begin();
+  
+  // iterates over the types of the parameters
+  for(exprt::operandst::const_iterator
+      it2=goto_function_parameters.begin();
+      it2!=goto_function_parameters.end();
+      it2++)
+  {
+    const exprt &parameter=*it2;   
+
+    // this is the type that the n-th argument should have
+    const typet &parameter_type=parameter.type();
+
+    const irep_idt &identifier=parameter.get(ID_identifier);
+    if(identifier==irep_idt())
+      throw "no identifier for function parameter";
+
+    const symbolt &symbol=ns.lookup(identifier);
+    symbol_exprt lhs=symbol.symbol_expr();
+
+    exprt rhs;
+
+    // if you run out of actual arguments there was a mismatch
+    if(it1==arguments.end())
+    {
+      std::string warn=
+        "call to `"+id2string(function_identifier)+"': "
+        "not enough arguments, inserting non-deterministic value\n";
+      std::cerr << state.source.pc->source_location.as_string()+": "+warn;
+
+      rhs=side_effect_expr_nondett(parameter_type);
+    }
+    else
+      rhs=*it1;
+
+    if(rhs.is_nil())
+    {
+      // 'nil' argument doesn't get assigned
+    }
+    else
+    {
+      // It should be the same exact type.
+      if(!base_type_eq(parameter_type, rhs.type(), ns))
+      {
+        const typet &f_parameter_type=ns.follow(parameter_type);
+        const typet &f_rhs_type=ns.follow(rhs.type());
+
+        // But we are willing to do some limited conversion.
+        // This is highly dubious, obviously.
+        if((f_parameter_type.id()==ID_signedbv ||
+            f_parameter_type.id()==ID_unsignedbv ||
+            f_parameter_type.id()==ID_c_enum_tag ||
+            f_parameter_type.id()==ID_bool ||
+            f_parameter_type.id()==ID_pointer ||
+            f_parameter_type.id()==ID_union) &&
+           (f_rhs_type.id()==ID_signedbv ||
+            f_rhs_type.id()==ID_unsignedbv ||
+            f_rhs_type.id()==ID_c_bit_field ||
+            f_rhs_type.id()==ID_c_enum_tag ||
+            f_rhs_type.id()==ID_bool ||
+            f_rhs_type.id()==ID_pointer ||
+            f_rhs_type.id()==ID_union))
+        {
+          rhs=
+            byte_extract_exprt(
+              byte_extract_id(),
+              rhs,
+              from_integer(0, index_type()),
+              parameter_type);
+        }
+        else
+        {
+          std::ostringstream error;
+          error << "function call: parameter \"" << identifier
+                << "\" type mismatch: got " << rhs.type().pretty()
+                << ", expected " << parameter_type.pretty();
+          throw error.str();
+        }
+      }
+
+      symex_assign_rec(state, code_assignt(lhs, rhs));
+    }
+
+    if(it1!=arguments.end())
+      it1++;
+  }
 }
 
 /*******************************************************************
@@ -867,7 +981,7 @@ void symex_assertion_sumt::mark_argument_symbols_lattice_facts(
     state.level0(ssa_expr_lhs, ns, state.source.thread_nr);
     state.level1(ssa_expr_lhs);
     ssa_expr_lhs.set_level_2(state.level2.current_count(ssa_expr_lhs.get_identifier()));
-
+    
     to_ssa_expr(lhs).set_level_2(it2->second.second);
     partition_iface.argument_symbols.push_back(lhs);
     
@@ -1459,7 +1573,8 @@ void symex_assertion_sumt::summarize_function_call_lattice_facts(
         const summary_idst& func_ids, 
         unsigned call_loc,
         const exprt &lhs,
-        const exprt::operandst &call_info_operands,
+        const exprt::operandst &caller_info_operands,
+        const exprt::operandst &callee_info_operands,
         const source_locationt& source_location)
 {
   // We should use an already computed summary as an abstraction
@@ -1472,7 +1587,8 @@ void symex_assertion_sumt::summarize_function_call_lattice_facts(
   // marked as called from main
   partition_ifacet &partition_iface = new_partition_iface(*temp, 2, call_loc); 
   assign_function_arguments_lattice_facts(state, partition_iface, function_id, 
-          lhs, call_info_operands, source_location); // not in original code, but best place to call to
+          lhs, caller_info_operands, callee_info_operands, 
+          source_location); // not in original code, but best place to call to
   
   produce_callsite_symbols(partition_iface, state);
   produce_callend_assumption(partition_iface, state);

@@ -125,14 +125,16 @@ public:
         const summary_idst& func_ids, 
         unsigned call_loc, 
         const exprt &lhs,
-        const exprt::operandst &call_info_operands,
+        const exprt::operandst &caller_info_operands,
+        const exprt::operandst &callee_info_operands,
         const source_locationt &source_location);
   void assign_function_arguments_lattice_facts(
         statet &state,
         partition_ifacet &partition_iface,
         const irep_idt &identifier,
         const exprt &lhs,
-        const exprt::operandst &call_info_operands,
+        const exprt::operandst &caller_info_operands,
+        const exprt::operandst &callee_info_operands,
         const source_locationt &source_location);
   void return_assignment_and_mark_lattice_facts(
         const typet& type,
@@ -145,6 +147,11 @@ public:
         const exprt::operandst &call_info_operands,
         statet &state,
         partition_ifacet &partition_iface);
+  void parameter_assignments_lattice_facts(
+        const irep_idt function_identifier,
+        const exprt::operandst &goto_function_parameters,
+        statet &state,
+        const exprt::operandst &arguments);
 
 private:
   

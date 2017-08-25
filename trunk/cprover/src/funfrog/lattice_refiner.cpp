@@ -436,7 +436,6 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
         
         // get the lhs and rhs
         const exprt& lhs = expr->get_lhs();
-        const set<exprt>& rhs_set = expr->get_rhs(symex);
         
         // Add the summaries
         set<lattice_refiner_modelt*> funcs = expr->get_refine_functions();
@@ -451,8 +450,9 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
                             expr->get_source_location(), expr->get_call_info_operands());
                 
                 // Final call to create the partition with single fact
-                symex.summarize_function_call_lattice_facts(function_id, sum_ids, 
-                        expr->get_location(), lhs, summary_parameters,
+                symex.summarize_function_call_lattice_facts(function_id, 
+                        sum_ids, expr->get_location(), lhs, 
+                        expr->get_call_info_operands(), summary_parameters, // caller and callee
                         expr->get_source_location());
                 
                 #ifdef DEBUG_LATTICE 
@@ -461,13 +461,7 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
                 #endif
             }
         }
-        
-        // Create assumptions/eq per rhs fact
-        
     }
-    
-    // Update symex object
-    // symex.?
     
     return false;
 }
