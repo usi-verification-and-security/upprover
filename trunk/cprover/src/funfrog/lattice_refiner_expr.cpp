@@ -75,7 +75,7 @@ void lattice_refiner_exprt::process_SAT_result() {
 
  Purpose: 
  * 
- * Going backward
+ * Going backward, need to pop facts from the structure
 
 \*******************************************************************/
 void lattice_refiner_exprt::process_UNSAT_result() {
@@ -86,6 +86,8 @@ void lattice_refiner_exprt::process_UNSAT_result() {
     refine_data.pop_front(); // Remove the node we used
     
     remove_dequed_data(temp);
+    
+    const std::set<irep_idt>& to_pop = pop_facts_ids(refine_data.front());
 }
 
 /*******************************************************************
@@ -139,6 +141,45 @@ bool lattice_refiner_exprt::is_all_childs_leads_to_UNSAT(lattice_refiner_modelt 
     }
     
     return true;
+}
+
+/*******************************************************************
+
+ Function: lattice_refiner_exprt::pop_facts_ids
+
+ Inputs: next node in the lattice
+
+ Outputs: list of partitions to pop from the SSA tree
+
+ Purpose: remove all the facts that are not in use in the next node
+
+\*******************************************************************/
+const std::set<irep_idt>& lattice_refiner_exprt::pop_facts_ids(
+            lattice_refiner_modelt *curr)
+{
+    if (refine_data.empty()) return std::set<irep_idt>();
+    
+    std::set<irep_idt> temp_facts_instant;
+    std::set<irep_idt> *temp_facts_to_pop =  new std::set<irep_idt>();
+    
+    // get all the facts we keep for the current node
+    for(auto it = curr->data.begin(); it != curr->data.end() ; ++it) {
+        const irep_idt& function_id = (*it).substr(0, it->size()-2);
+        if (is_fact_instantiated(function_id)) {
+            temp_facts_instant.insert(function_id);
+        }
+    } 
+    
+    // Get all the facts we need to pop for the current node
+    for(auto it = instantiated_facts.begin(); it != instantiated_facts.end() ; ++it) {
+        const irep_idt& function_id = (*it);
+        if (temp_facts_instant.find(function_id) != temp_facts_instant.end()) {
+            temp_facts_to_pop->insert(function_id);
+            instantiated_facts.erase(function_id);
+        }
+    }
+    
+    return *temp_facts_to_pop;
 }
 
 /*******************************************************************

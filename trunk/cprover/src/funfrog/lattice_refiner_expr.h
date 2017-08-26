@@ -53,6 +53,11 @@ public:
     const exprt::operandst& get_call_info_operands() { return call_info_operands;}
     const source_locationt& get_source_location() { return location;}
 
+    void add_instantiated_fact(const irep_idt& fact_symbol) 
+    { instantiated_facts.insert(fact_symbol);}
+    
+    bool is_fact_instantiated(const irep_idt& fact_symbol) 
+    { return instantiated_facts.find(fact_symbol) != instantiated_facts.end(); }
 private:
     // Currently node in use in the lattice: refine_data.front()
     const exprt& lhs;
@@ -61,11 +66,13 @@ private:
     bool m_is_SAT; // Will be true if one of the paths in the lattice ends with SAT evaluation
     const std::string refined_function;
     const source_locationt& location;
+    std::set<irep_idt> instantiated_facts;
     
     std::deque<lattice_refiner_modelt *> refine_data; // Next nodes in the lattice to use for refining this expression
     std::set<lattice_refiner_modelt *> refined_data_UNSAT; // Paths that ended in UNSAT (if all ended in UNSAT => UNSAT) + bot is here!
     
     void remove_dequed_data(lattice_refiner_modelt *curr); // Remove from refine_data all nodes with paths only to UNSAT nodes.
+    const std::set<irep_idt>& pop_facts_ids(lattice_refiner_modelt *curr); // Remove from the instantite facts, all the facts that aren't in use (go backward)
     bool is_all_childs_leads_to_UNSAT(lattice_refiner_modelt *curr);
 };
     

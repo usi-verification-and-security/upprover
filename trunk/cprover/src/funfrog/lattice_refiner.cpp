@@ -387,8 +387,16 @@ bool lattice_refinert::process_UNSAT_result() {
 \*******************************************************************/
 bool lattice_refinert::process_solver_result(bool is_solver_ret_SAT) {
     if (is_solver_ret_SAT) {
+        #ifdef DEBUG_LATTICE
+        status() << "Process SAT result " << eom;
+        #endif
+        
         return process_SAT_result(); // return true if SAT
     } else {
+        #ifdef DEBUG_LATTICE
+        status() << "Process UNSAT result " << eom;
+        #endif
+        
         return process_UNSAT_result(); // return true if UNSAT
     }
     // Both will return false if there is no decision yet
@@ -442,23 +450,7 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
         for (auto func : funcs) {
             for(auto it = func->data.begin(); it != func->data.end() ; ++it) {
                 const irep_idt& function_id = (*it).substr(0, it->size()-2); 
-                const summary_idst& sum_ids = get_summary_ids(function_id);
-                
-                //Get parameters in the summary - and create expressions for them
-                const exprt::operandst &summary_parameters = 
-                            fabricate_parameters(function_id, symex,
-                            expr->get_source_location(), expr->get_call_info_operands());
-                
-                // Final call to create the partition with single fact
-                symex.summarize_function_call_lattice_facts(function_id, 
-                        sum_ids, expr->get_location(), lhs, 
-                        expr->get_call_info_operands(), summary_parameters, // caller and callee
-                        expr->get_source_location());
-                
-                #ifdef DEBUG_LATTICE 
-                smt_summaryt& sum = get_summary(function_id);
-                sum.print(cout);
-                #endif
+                instantiate_fact(function_id, expr, symex, lhs);
             }
         }
     }
@@ -555,4 +547,47 @@ const exprt::operandst &lattice_refinert::fabricate_parameters(
     }
     
     return *ret;
+}
+
+/*******************************************************************
+
+ Function: lattice_refinert::fabricate_parameters
+
+ Inputs: data from the lattice of a single fact to instantiate
+
+ Outputs: Push instantiation of a fact into SSA tree
+
+ Purpose: instantiate a fact
+
+\*******************************************************************/
+void lattice_refinert::instantiate_fact(const irep_idt& function_id, 
+        lattice_refiner_exprt *expr, symex_assertion_sumt& symex, const exprt& lhs) 
+{    
+    if (expr->is_fact_instantiated(function_id))
+        return;
+    
+    #ifdef DEBUG_LATTICE
+    status () << "ADDING FACT: " << function_id << " for function " << expr->print_expr(decider) << eom;
+    #endif
+    
+    // If not in the SSA tree yet, instantiate and add it to the tree
+    const summary_idst& sum_ids = get_summary_ids(function_id);
+
+    //Get parameters in the summary - and create expressions for them
+    const exprt::operandst &summary_parameters = 
+                fabricate_parameters(function_id, symex,
+                expr->get_source_location(), expr->get_call_info_operands());
+
+    // Final call to create the partition with single fact
+    symex.summarize_function_call_lattice_facts(function_id, 
+            sum_ids, expr->get_location(), lhs, 
+            expr->get_call_info_operands(), summary_parameters, // caller and callee
+            expr->get_source_location());
+
+    #ifdef DEBUG_LATTICE 
+    smt_summaryt& sum = get_summary(function_id);
+    sum.print(cout);
+    #endif
+
+    expr->add_instantiated_fact(function_id);
 }

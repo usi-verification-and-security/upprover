@@ -90,6 +90,8 @@ private:
         const source_locationt& source_location,
         const exprt::operandst &call_info_operands);
   
+  void instantiate_fact(const irep_idt& function_id, 
+        lattice_refiner_exprt *expr, symex_assertion_sumt& symex, const exprt& lhs);
 };
 
 #endif /* LATTICE_REFINERT_H */
