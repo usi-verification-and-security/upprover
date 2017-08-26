@@ -816,7 +816,7 @@ void symex_assertion_sumt::parameter_assignments_lattice_facts(
     // this is the type that the n-th argument should have
     const typet &parameter_type=parameter.type();
 
-    const irep_idt &identifier=parameter.get(ID_identifier);
+    const irep_idt &identifier=to_ssa_expr(parameter).get_original_name();
     if(identifier==irep_idt())
       throw "no identifier for function parameter";
 
