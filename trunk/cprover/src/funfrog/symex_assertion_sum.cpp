@@ -1126,7 +1126,7 @@ void symex_assertion_sumt::level2_rename_and_2ssa(
     
     // Change to SSA format: identifier: funfrog::netpoll_trap::\return_value#2
     code_var.set_identifier(get_new_symbol_version(identifier, state, type)); 
-    
+     
     // Adds L2 counter to the symbol (L2: 1 adds to the expression) 
     state.level0(code_var, ns, state.source.thread_nr);
     state.level1(code_var);
@@ -1252,14 +1252,33 @@ void symex_assertion_sumt::return_assignment_and_mark_lattice_facts(
     // Connect the return value to the variable in the calling site 
     // Here connect the unsupported var to the return value - as assume!
     if (!skip_assignment) {
-        exprt equal_cond=exprt(ID_equal, bool_typet());
-              equal_cond.operands().reserve(2);
-              equal_cond.copy_to_operands(*lhs);
-              equal_cond.copy_to_operands(retval_symbol);
+        // fabricate the callee temp; e.g., call__modd::$tmp::return_value_mod_Cd$1!0#2
+        irep_idt call_tmp_return_val_callee_id(LATTICE_TMP_FUNC_RETURN + as_string(function_id) + "!0");  
+        symbol_exprt call_tmp_return_val_callee;	
+        fabricate_cprover_SSA(call_tmp_return_val_callee_id, type, 
+        source_location,true, false, true, call_tmp_return_val_callee);
 
+        ssa_exprt lhs_callee_temp(to_ssa_expr(call_tmp_return_val_callee).get_original_expr());
+        assert(lhs_callee_temp.id()==ID_symbol);
+        assert(lhs_callee_temp.get_level_2().empty());
+        
         bool old_cp = constant_propagation;
         constant_propagation = false;
-        symex_assume(state, equal_cond);
+        symex_assign_rec(state, code_assignt(lhs_callee_temp, retval_symbol));
+        constant_propagation = old_cp;
+        
+        // Update the SSA object 
+        to_ssa_expr(call_tmp_return_val_callee).set_level_2(state.level2.current_count(lhs_callee_temp.get_identifier()));
+        
+        // And then add the assume  
+        exprt assume=exprt(ID_equal, bool_typet());
+              assume.operands().reserve(2);
+              assume.copy_to_operands(*lhs);
+              assume.copy_to_operands(call_tmp_return_val_callee);   
+
+        old_cp = constant_propagation;
+        constant_propagation = false;
+        symex_assume(state, assume);
         constant_propagation = old_cp;
     } 
     # ifdef DEBUG_PARTITIONING

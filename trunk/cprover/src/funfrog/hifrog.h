@@ -16,6 +16,7 @@
 // For now we have only one thread any hows
 #define FUNC_RETURN "::#return_value!0"  // KE: appears in Cprover as "#return_value"
 #define TMP_FUNC_RETURN "::$tmp::return_value!0"
+#define LATTICE_TMP_FUNC_RETURN "call__lattice::$tmp::return_value_"
 #define OPENSMT_IN "#in"
 #define OPENSMT_OUT "#out"
 #define OPENSMT_INVS "#invs"

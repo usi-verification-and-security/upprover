@@ -438,7 +438,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
         terms_counter++;
 	std::ostream out_temp2(0); std::stringbuf temp2_buf; out_temp2.rdbuf(&temp2_buf); // Pre-order printing
 	int assume_counter=0;
-        expr_ssa_print(out_temp2 << "    (= ", target_partition_iface.callstart_symbol, partition_smt_decl, false);
+        expr_ssa_print(out_terms << "    (= ", target_partition_iface.callstart_symbol, partition_smt_decl, false);
         for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
           if (it2->is_assume() && !it2->ignore) {
             assume_counter++;
@@ -449,7 +449,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
         switch (assume_counter) {
             case 0: out_terms << temp2_buf.str() << "        true\n" << "    )\n"; break; // Shall be called only once at the beginning of the code
             case 1: out_terms << temp2_buf.str() << "    )\n"; break;
-            default: out_terms << "    (and \n  " << temp2_buf.str() << "      )\n" << "    )\n"; break;
+            default: out_terms << "      (and \n" << temp2_buf.str() << "      )\n" << "    )\n"; break;
         }
         #endif
       }

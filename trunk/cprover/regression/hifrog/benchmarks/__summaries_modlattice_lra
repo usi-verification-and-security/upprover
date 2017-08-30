@@ -180,11 +180,12 @@
 			     (|_mod#0| |mod_Cl::b!0| |mod_Cl::n!0|)
 						  ) |mod_Cl::n!0|) ?def499)))
   (let ((?def497 (= ?def499 (|_mod#0| (+ |mod_Cl::a!0| |mod_Cl::b!0|) |mod_Cl::n!0|))))
-  (let ((?def496 (and ?def498 ?def497)))
-  (let ((?def495 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| ?def496))))
+  (let ((?def496 (< 0 ?def499)))
+  (let ((?def495 (and ?def496 (and ?def498 ?def497))))
+  (let ((?def494 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| ?def495))))
 
-?def495
-))))))
+?def494
+)))))))
 ;;;;;
 ;; fact f
 (define-fun |mod_Cf#0| (
