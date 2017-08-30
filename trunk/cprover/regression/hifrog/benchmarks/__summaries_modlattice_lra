@@ -124,12 +124,13 @@
   (let ((?def798 (= (|_mod#0| |mod_Cd::a!0| |mod_Cd::n!0|) ?def799)))
   (let ((?def797 (= ?def799 0)))
   (let ((?def796 (= |mod_Cd::n!0| |mod_Cd::a!0|)))
-  (let ((?def795 (=> ?def796 (and ?def797 ?def798))))
-  (let ((?def794 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| ?def796))))
-  (let ((?def700 (and ?def794 ?def795)))
+  (let ((?def795 (=> ?def796 ?def797)))
+  (let ((?def794 (or (not |hifrog::fun_end|) |hifrog::fun_start|)))
+  (let ((?def793 (<= 0 ?def799)))
+  (let ((?def700 (and (and ?def798 ?def793) (and ?def794 ?def795))))
 
 ?def700
-))))))))
+)))))))))
 ;;;;;
 ;; k fact
 (define-fun |mod_Ck#0| (
@@ -180,7 +181,7 @@
 			     (|_mod#0| |mod_Cl::b!0| |mod_Cl::n!0|)
 						  ) |mod_Cl::n!0|) ?def499)))
   (let ((?def497 (= ?def499 (|_mod#0| (+ |mod_Cl::a!0| |mod_Cl::b!0|) |mod_Cl::n!0|))))
-  (let ((?def496 (< 0 ?def499)))
+  (let ((?def496 (<= 0 ?def499)))
   (let ((?def495 (and ?def496 (and ?def498 ?def497))))
   (let ((?def494 (or (not |hifrog::fun_end|) (and |hifrog::fun_start| ?def495))))
 

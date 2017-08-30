@@ -1180,7 +1180,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
     symbol_exprt retval_tmp;
     fabricate_cprover_SSA(retval_tmp_id, type, 
             function_type.source_location(),
-            false, false, false, retval_tmp); 
+            false, false, true, retval_tmp); 
 
     // return_value - create new symbol with versions to support unwinding
     symbol_exprt retval_symbol;	
