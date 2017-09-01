@@ -1,0 +1,17 @@
+(declare-fun |_mod#0| (Real Real ) Real)
+_mod#0
+_mod#0,mod_C3#0
+mod_C3#0,mod_C2#0,mod_Ca#0,mod_Cb#0,mod_Cnotab#0
+mod_C2#0
+mod_Ca#0,mod_C2not#0
+mod_Cb#0,mod_C2not#0
+mod_Cnotab#0,mod_C2not#0
+mod_C2not#0,mod_C4#0
+mod_C4#0,mod_Cd#0,mod_Ck#0
+mod_Cd#0,mod_Cg#0
+mod_Ck#0,mod_Cc#0;mod_Cl#0
+mod_Cc#0;mod_Cl#0,mod_Cc#0,mod_Cl#0
+mod_Cg#0
+mod_Cc#0,mod_Cf#0
+mod_Cl#0
+mod_Cf#0,mod_Cg#0

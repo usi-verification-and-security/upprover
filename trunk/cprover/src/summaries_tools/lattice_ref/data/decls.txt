@@ -1,0 +1,8 @@
+(declare-fun a () Real)
+(declare-fun b () Real)
+(declare-fun n () Real)
+(declare-fun mod (Real Real) Real)
+(declare-fun index_hifrog_c_nondet0_1 () Real)
+(declare-fun index_hifrog_c_nondet0_2 () Real)
+(declare-fun mod_hifrog_c_unsupported_op2var0_1 () Real)
+(declare-fun mod_hifrog_c_unsupported_op2var0_2 () Real)

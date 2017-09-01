@@ -45,6 +45,8 @@
 #define SMT_UREAL "UReal"
 #define SMT_UNKNOWN "?"
 
+#define SUMMARY_START_END "(or (not |hifrog::fun_end|) |hifrog::fun_start|)"
+
 irep_idt get_symbol_name(const exprt &expr);
 bool is_hifrog_inner_symbol_name(const exprt &expr);
 irep_idt extract_hifrog_inner_symbol_name(const exprt &expr);

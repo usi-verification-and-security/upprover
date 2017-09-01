@@ -1,0 +1,208 @@
+;; We start with minimum with true
+;; C1 - mod replaced by uninterpeted function
+(declare-fun |c::mod!0| () Int)
+;; C3 + C2 define (unify once a fact is needed before other facts)
+;;pop();
+(declare-fun |c::mod!0| (Int Int) Int)
+;; C3 definition
+(define-fun |c::mod::C3!0| (
+  (((|c::mod::C3::a!0| Int)
+    (|c::mod::C3::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::C3?retval| Int) )  Bool
+  (and 
+    (>= |c::mod::C3::n!0| 0)
+    (= |c::mod::C3?retval| 
+	(|c::mod!0| (|c::mod::C3::a!0| |c::mod::C3::n!0|)))
+  ))
+)
+;; C2 definition
+;; Need to add n=0 before?
+(define-fun |c::mod::C2!0| (
+  (((|c::mod::C2::a!0| Int)
+    (|c::mod::C2::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::C2?retval| Int) )  Bool
+  (and 
+    (= |c::mod::C2::n!0| 0)
+    (= |c::mod::C2?retval| 
+	(|c::mod!0| (|c::mod::C2::a!0| |c::mod::C2::n!0|)))
+  ))
+)
+;; n=1, n=2, n>2
+(define-fun |c::mod::Ca!0| (
+  (((|c::mod::Ca::a!0| Int)
+    (|c::mod::Ca::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::Ca?retval| Int) )  Bool
+  (and 
+    (= |c::mod::Ca::n!0| 1)
+    (= |c::mod::Ca::calcExpr| (|c::mod!0| (|c::mod::Ca::a!0| |c::mod::Ca::n!0|)))
+    (= 0 |c::mod::Ca::calcExpr|)
+    (= |c::mod::Ca?retval| |c::mod::Ca::calcExpr|)
+  ))
+)
+(define-fun |c::mod::Cb!0| (
+  (((|c::mod::Cb::a!0| Int)
+    (|c::mod::Cb::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::Cb?retval| Int) )  Bool
+  (and 
+    (= |c::mod::Cb::n!0| 2)
+    (= |c::mod::Cb::calcExpr|) (|c::mod!0| (|c::mod::Cb::a!0| |c::mod::Cb::n!0|)))
+    (or 
+	(= 0 |c::mod::Cb::calcExpr|)
+        (= 1 |c::mod::Cb::calcExpr|))
+    (= |c::mod::Cb?retval| |c::mod::Cd::calcExpr|)
+  ))
+)
+(define-fun |c::mod::Cnotab!0| (
+  (((|c::mod::Cnotab::a!0| Int)
+    (|c::mod::Cnotab::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::Cnotab?retval| Int) )  Bool
+  (and 
+    (> |c::mod::Cnotab::n!0| 2)
+    (= |c::mod::Cnotab?retval| 
+	(|c::mod!0| (|c::mod::Cnotab::a!0| |c::mod::Cnotab::n!0|)))
+  ))
+)
+;; !C2 definition
+;; pop her C3 - how?
+(define-fun |c::mod::C2not!0| (
+  (((|c::mod::C2not::a!0| Int)
+    (|c::mod::C2not::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::C2not?retval| Int) )  Bool
+  (and 
+    (> |c::mod::C2not::n!0| 0)
+    (= |c::mod::C2not?retval|
+	(|c::mod!0| (|c::mod::C2not::a!0| |c::mod::C2not::n!0|)))
+  ))
+)
+;; C4 defintion
+;;pop()
+(define-fun |c::mod::C4!0| (
+  (((|c::mod::C4::a!0| Int)
+    (|c::mod::C4::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::C4?retval| Int) )  Bool
+  (and 
+    (> |c::mod::C4::n!0| 0)
+    (>= |c::mod::C4::a!0| 0)
+    (= |c::mod::C4?retval|
+	(|c::mod!0| (|c::mod::C4::a!0| |c::mod::C4::n!0|)))
+  ))
+)
+;; d fact
+(define-fun |c::mod::Cd!0| (
+  (((|c::mod::Cd::a!0| Int)
+    (|c::mod::Cd::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::Cd?retval| Int) )  Bool
+  (and 
+    (= |c::mod::Cd::n!0| |c::mod::Cd::a!0|)
+    (= |c::mod::Cd::calcExpr| (|c::mod!0| (|c::mod::Cd::a!0| |c::mod::Cd::n!0|))) 
+    (= |c::mod::Cd::calcExpr| 0)
+    (= |c::mod::Cd?retval| |c::mod::Cd::calcExpr|) 
+  ))
+)
+;; k fact
+(define-fun |c::mod::Ck!0| (
+  (((|c::mod::Ck::a!0| Int)
+    (|c::mod::Ck::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::Ck?retval| Int) )  Bool
+  (and 
+    (= |c::mod::Ck::calcExpr| 
+ 	(|c::mod!0| (
+	 (+ (|c::mod!0| (|c::mod::Ck::a!0| |c::mod::Ck::n!0|))
+	    (|c::mod!0| ((- |c::mod::Ck::a!0|) |c::mod::Ck::n!0|))
+         ) |c::mod::Ck::n!0|))))
+    (= |c::mod::Ck::calcExpr| 0)
+    (= |c::mod::Ck?retval| (= |c::mod::Ck::calcExpr|)
+  ))
+)
+;; c fact
+(define-fun |c::mod::Cc!0| (
+  (((|c::mod::Cc::a!0| Int)
+    (|c::mod::Cc::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::Cc?retval| Int) )  Bool
+  (and 
+    (= 0 |c::mod::Cc::a!0|)
+    (= |c::mod::Cc::calcExpr| (|c::mod!0| (|c::mod::Cc::a!0| |c::mod::Cc::n!0|))) 
+    (= |c::mod::Cc::calcExpr| 0)
+    (= |c::mod::Cc?retval| |c::mod::Cc::calcExpr|) 
+  ))
+)
+;; l fact
+(define-fun |c::mod::Cl!0| (
+  (((|c::mod::Cl::a!0| Int)
+    (|c::mod::Cl::b!0| Int)
+    (|c::mod::Cl::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::Cl?retval| Int) )  Bool
+  (and 
+    (= |c::mod::Cl::calcExpr| 
+ 	(|c::mod!0| (
+	 (+ (|c::mod!0| (|c::mod::Cl::a!0| |c::mod::Cl::n!0|))
+	    (|c::mod!0| (|c::mod::Cl::b!0| |c::mod::Cl::n!0|))
+         ) |c::mod::Cl::n!0|))))
+    (= |c::mod::Cl::calcExpr| 
+	(|c::mod!0| ((+ |c::mod::Cl::a!0| |c::mod::Cl::b!0|) |c::mod::Cl::n!0|)))
+    (= |c::mod::Cl?retval| (= |c::mod::Cl::calcExpr|)
+  ))
+)
+;; fact f
+(define-fun |c::mod::Cf!0| (
+  (((|c::mod::Cf::a!0| Int)
+    (|c::mod::Cf::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::Cf?retval| Int) )  Bool
+  (and 
+    (and (<= 0 |c::mod::Cf::a!0|) (< |c::mod::Cf::a!0| |c::mod::Cf::n!0|))
+    (= |c::mod::Cf::calcExpr| (|c::mod!0| (|c::mod::Cf::a!0| |c::mod::Cf::n!0|))) 
+    (= |c::mod::Cf::calcExpr| |c::mod::Cf::a!0|)
+    (= |c::mod::Cf?retval| |c::mod::Cf::calcExpr|) 
+  ))
+)
+;; fact g
+(define-fun |c::mod::Cg!0| (
+  (((|c::mod::Cg::a!0| Int)
+    (|c::mod::Cg::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::Cg?retval| Int) )  Bool
+  (and 
+    (and (<= 0 |c::mod::Cg::calcExpr|) (< |c::mod::Cg::calcExpr| |c::mod::Cg::n!0|))
+    (= |c::mod::Cg::calcExpr| (|c::mod!0| (|c::mod::Cg::a!0| |c::mod::Cg::n!0|))) 
+    (= |c::mod::Cg?retval| |c::mod::Cg::calcExpr|) 
+  ))
+)
+;; fact h
+(declare-fun |c::mod::Ch::index!0| () Int)
+(define-fun |c::mod::Ch!0| (
+  (((|c::mod::Ch::a!0| Int)
+    (|c::mod::Ch::n!0| Int)
+    (|hifrog::?fun::start| Bool)
+    (|hifrog::?fun::end| Bool) )
+   (|c::mod::Ch?retval| Int) )  Bool
+  (and 
+    (= |c::mod::Ch::a!0| (+ |c::mod::Ch::calcExpr| (* |c::mod::Ch::index!0| |c::mod::Ch::n!0|)))
+    (= |c::mod::Ch::calcExpr| (|c::mod!0| (|c::mod::Ch::a!0| |c::mod::Ch::n!0|))) 
+    (= |c::mod::Ch?retval| |c::mod::Ch::calcExpr|) 
+  ))
+)

@@ -1,0 +1,246 @@
+// As is facts
+(and (= 1 n) (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 1) (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 1)) ;; fact (a)
+(and (= 2 n) (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 2) (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 2)) ;; fact (b)
+(and (= a 0) (= mod_hifrog_c_unsupported_op2var0_1 a) (= b 0) (= mod_hifrog_c_unsupported_op2var0_2 b)) ;; fact (c)
+(and (= a n) (= mod_hifrog_c_unsupported_op2var0_1 0) (= b n) (= mod_hifrog_c_unsupported_op2var0_2 0)) ;; fact (d)
+(and (= a (* n n)) (= mod_hifrog_c_unsupported_op2var0_1 0) (= b (* n n)) (= mod_hifrog_c_unsupported_op2var0_2 0)) ;; fact (e)
+(and (< a n) (>= a 0) (= mod_hifrog_c_unsupported_op2var0_1 a) (< b n) (>= b 0) (= mod_hifrog_c_unsupported_op2var0_2 b)) ;;fact (f)
+(and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 n) (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 n)) ;; Fact (g)
+(and (= a (+ mod_hifrog_c_unsupported_op2var0_1 (* index_hifrog_c_nondet0_1 n))) (= b (+ mod_hifrog_c_unsupported_op2var0_2 (* index_hifrog_c_nondet0_2 n)))) ;; Fact (h) 
+(and (= a 0) (= a (* index_hifrog_c_nondet0_1 n)) (= b 0) (= b (* index_hifrog_c_nondet0_2 n))) ;; Fact (i) 
+(and (= mod_hifrog_c_unsupported_op2var0_1 (mod mod_hifrog_c_unsupported_op2var0_1 n)) (= mod_hifrog_c_unsupported_op2var0_2 (mod mod_hifrog_c_unsupported_op2var0_2 n)));; Fact (j)
+(and (= 0 (mod mod_hifrog_c_unsupported_op2var0_1 (mod (* -1 a) n))) (= 0 (mod mod_hifrog_c_unsupported_op2var0_2 (mod (* -1 b) n)))) ;; Fact (k)
+(and (= (mod (+ mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) (mod (+ a b) n)) (= (mod (+ mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) (mod (+ b a) n))) ;; Fact (l)
+(and (= (mod (* mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) (mod (* a b) n)) (= (mod (* mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) (mod (* b a) n))) ;; Fact (m)
+
+// For checking implications (a and (not b))
+(ite (= 1 n) (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 1) (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 1)) true) ;; fact (a)i
+(ite (= 2 n) (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 2) (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 2)) true) ;; fact (b)i
+(and (ite (= a 0) (= mod_hifrog_c_unsupported_op2var0_1 a) true) (ite (= b 0) (= mod_hifrog_c_unsupported_op2var0_2 b) true)) ;; fact (c)i
+(and (ite (= a n) (= mod_hifrog_c_unsupported_op2var0_1 0) true) (ite (= b n) (= mod_hifrog_c_unsupported_op2var0_2 0) true)) ;; fact (d)i
+(and (ite (= a (* n n)) (= mod_hifrog_c_unsupported_op2var0_1 0) true) (ite (= b (* n n)) (= mod_hifrog_c_unsupported_op2var0_2 0) true)) ;; fact (e)i
+(and (ite (and (< a n) (>= a 0)) (= a mod_hifrog_c_unsupported_op2var0_1) true) (ite (and (< b n) (>= b 0)) (= b mod_hifrog_c_unsupported_op2var0_2) true)) ;;fact (f)i
+(and (ite (= a 0) (= a (* index_hifrog_c_nondet0_1 n)) true) (ite (= b 0) (= b (* index_hifrog_c_nondet0_2 n)) true)) ;; Fact (i)i 
+(and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 n) (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 n)) ;; Fact (g)i
+(and (= a (+ mod_hifrog_c_unsupported_op2var0_1 (* index_hifrog_c_nondet0_1 n))) (= b (+ mod_hifrog_c_unsupported_op2var0_2 (* index_hifrog_c_nondet0_2 n)))) ;; Fact (h)i 
+(and (= mod_hifrog_c_unsupported_op2var0_1 (mod mod_hifrog_c_unsupported_op2var0_1 n)) (= mod_hifrog_c_unsupported_op2var0_2 (mod mod_hifrog_c_unsupported_op2var0_2 n)));; Fact (j)i
+(and (= 0 (mod mod_hifrog_c_unsupported_op2var0_1 (mod (* -1 a) n))) (= 0 (mod mod_hifrog_c_unsupported_op2var0_2 (mod (* -1 b) n)))) ;; Fact (k)i
+(and (= (mod (+ mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) (mod (+ a b) n)) (= (mod (+ mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) (mod (+ b a) n))) ;; Fact (l)i
+(and (= (mod (* mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) (mod (* a b) n)) (= (mod (* mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) (mod (* b a) n))) ;; Fact (m)i
+
+// For checking splits
+(= 1 n) ;; fact (a)c
+(= 2 n) ;; fact (b)c
+(and (= a 0) (= b 0)) ;; fact (c)c
+(and (= a n) (= b n)) ;; fact (d)c
+(and (= a (* n n)) (= b (* n n))) ;; fact (e)c
+(and (and (< a n) (>= a 0)) (and (< b n) (>= b 0))) ;;fact (f)c
+(and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 n) (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 n)) ;; Fact (g)c
+(and (= a (+ mod_hifrog_c_unsupported_op2var0_1 (* index_hifrog_c_nondet0_1 n))) (= b (+ mod_hifrog_c_unsupported_op2var0_2 (* index_hifrog_c_nondet0_2 n)))) ;; Fact (h)c 
+(and (= mod_hifrog_c_unsupported_op2var0_1 0) (= mod_hifrog_c_unsupported_op2var0_2 0)) ;; Fact (i)c
+(and (= mod_hifrog_c_unsupported_op2var0_1 (mod mod_hifrog_c_unsupported_op2var0_1 n)) (= mod_hifrog_c_unsupported_op2var0_2 (mod mod_hifrog_c_unsupported_op2var0_2 n)));; Fact (j)c
+(and (= a (- b)) (= b (- a)))  ;; Fact (k)c
+(and (= (mod (+ mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) (mod (+ a b) n)) (= (mod (+ mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) (mod (+ b a) n))) ;; Fact (l)c
+(and (= (mod (* mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) (mod (* a b) n)) (= (mod (* mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) (mod (* b a) n))) ;; Fact (m)c
+
+
+(declare-fun a () Int) 
+(declare-fun b () Int) 
+(declare-fun index_hifrog_c_nondet0_1 () Int) 
+(declare-fun index_hifrog_c_nondet0_2 () Int)
+(declare-fun index_hifrog_c_nondet0_3 () Int)
+(declare-fun index_hifrog_c_nondet0_4 () Int) 
+(declare-fun mod_hifrog_c_unsupported_op2var0_1 () Int) 
+(declare-fun mod_hifrog_c_unsupported_op2var0_2 () Int) 
+(declare-fun mod_hifrog_c_unsupported_op2var0_3 () Int) 
+(declare-fun mod_hifrog_c_unsupported_op2var0_4 () Int) 
+(declare-fun modd (Int Int) Int) 
+(declare-fun n () Int) 
+(assert (and 
+  (not (= 0 n)) 
+  (< 0 n)
+  (= mod_hifrog_c_unsupported_op2var0_1 (modd a n)) 
+  (= mod_hifrog_c_unsupported_op2var0_2 (modd b n)) 
+  (= mod_hifrog_c_unsupported_op2var0_3 (modd (+ a b) n))
+  (= mod_hifrog_c_unsupported_op2var0_4 (modd (* a b) n)) 
+  ;; fact (a)i
+  (or (not (= 1 n)) (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 1)
+                         (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 1) 
+                         (>= mod_hifrog_c_unsupported_op2var0_3 0) (< mod_hifrog_c_unsupported_op2var0_3 1) 
+                         (>= mod_hifrog_c_unsupported_op2var0_4 0) (< mod_hifrog_c_unsupported_op2var0_4 1) 
+                         ))
+  ;; fact (b)i
+  (or (not (= 2 n)) (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 2)
+                         (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 2) 
+                         (>= mod_hifrog_c_unsupported_op2var0_3 0) (< mod_hifrog_c_unsupported_op2var0_3 2) 
+                         (>= mod_hifrog_c_unsupported_op2var0_4 0) (< mod_hifrog_c_unsupported_op2var0_4 2) 
+                         ))
+  ;; fact (c)i
+  (or (not (= a 0)) (= mod_hifrog_c_unsupported_op2var0_1 0))
+  (or (not (= b 0)) (= mod_hifrog_c_unsupported_op2var0_2 0))
+  (or (not (= (+ a b) 0)) (= mod_hifrog_c_unsupported_op2var0_3 0)) 
+  (or (not (= (* a b) 0)) (= mod_hifrog_c_unsupported_op2var0_4 0)) 
+  ;; fact (d)i
+  (or (not (= a n)) (= mod_hifrog_c_unsupported_op2var0_1 0)) 
+  (or (not (= b n)) (= mod_hifrog_c_unsupported_op2var0_2 0))
+  (or (not (= (+ a b) n)) (= mod_hifrog_c_unsupported_op2var0_3 0)) 
+  (or (not (= (* a b) n)) (= mod_hifrog_c_unsupported_op2var0_4 0))
+  ;; fact (e)i
+  (or (not (= a (* n n))) (= mod_hifrog_c_unsupported_op2var0_1 0))
+  (or (not (= b (* n n))) (= mod_hifrog_c_unsupported_op2var0_2 0))
+  (or (not (= (+ a b) (* n n))) (= mod_hifrog_c_unsupported_op2var0_3 0)) 
+  (or (not (= (* a b) (* n n))) (= mod_hifrog_c_unsupported_op2var0_4 0)) 
+  ;;fact (f)i
+  (or (not (and (< a n) (>= a 0))) (= a mod_hifrog_c_unsupported_op2var0_1))
+  (or (not (and (< b n) (>= b 0))) (= b mod_hifrog_c_unsupported_op2var0_2))
+  (or (not (and (< (+ a b) n) (>= (+ a b) 0))) (= (+ a b) mod_hifrog_c_unsupported_op2var0_3))
+  (or (not (and (< (* a b) n) (>= (* a b) 0))) (= (* a b) mod_hifrog_c_unsupported_op2var0_4))
+  ;; Fact (g)i
+  (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 n))
+  (and (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 n))
+  (and (>= mod_hifrog_c_unsupported_op2var0_3 0) (< mod_hifrog_c_unsupported_op2var0_3 n))
+  (and (>= mod_hifrog_c_unsupported_op2var0_4 0) (< mod_hifrog_c_unsupported_op2var0_4 n))
+  ;; Fact (h)i - general
+  (= a (+ mod_hifrog_c_unsupported_op2var0_1 (* index_hifrog_c_nondet0_1 n))) 
+  (= b (+ mod_hifrog_c_unsupported_op2var0_2 (* index_hifrog_c_nondet0_2 n)))
+  (= (+ a b) (+ mod_hifrog_c_unsupported_op2var0_3 (* index_hifrog_c_nondet0_3 n)))
+  (= (* a b) (+ mod_hifrog_c_unsupported_op2var0_4 (* index_hifrog_c_nondet0_4 n))) 
+  ;; Fact (i)i - with 0
+  (and
+    (or (= mod_hifrog_c_unsupported_op2var0_1 0) (not (= a (* index_hifrog_c_nondet0_1 n))))
+    (or (not (= mod_hifrog_c_unsupported_op2var0_1 0)) (= a (* index_hifrog_c_nondet0_1 n))))
+  (and
+    (or (= mod_hifrog_c_unsupported_op2var0_2 0) (not (= b (* index_hifrog_c_nondet0_2 n))))
+    (or (not (= mod_hifrog_c_unsupported_op2var0_2 0)) (= b (* index_hifrog_c_nondet0_2 n))))
+  (and
+    (or (= mod_hifrog_c_unsupported_op2var0_3 0) (not (= (+ a b) (* index_hifrog_c_nondet0_3 n))))
+    (or (not (= mod_hifrog_c_unsupported_op2var0_3 0)) (= (+ a b) (* index_hifrog_c_nondet0_3 n))))
+  (and
+    (or (= mod_hifrog_c_unsupported_op2var0_4 0) (not (= (* a b) (* index_hifrog_c_nondet0_4 n))))
+    (or (not (= mod_hifrog_c_unsupported_op2var0_4 0)) (= (* a b) (* index_hifrog_c_nondet0_4 n))))  
+  ;; Fact (j)i
+  (= (modd mod_hifrog_c_unsupported_op2var0_1 n) mod_hifrog_c_unsupported_op2var0_1)
+  (= (modd mod_hifrog_c_unsupported_op2var0_2 n) mod_hifrog_c_unsupported_op2var0_2)
+  (= (modd mod_hifrog_c_unsupported_op2var0_3 n) mod_hifrog_c_unsupported_op2var0_3)
+  (= (modd mod_hifrog_c_unsupported_op2var0_4 n) mod_hifrog_c_unsupported_op2var0_4)
+  ;; DO NOT DOUBLE FROM HERE
+  ;; Fact (k)i
+  (and 
+    (or (not (= a (- b))) (= (modd (+ mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) 0))
+    (or (not (= b (- a))) (= (modd (+ mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) 0)))
+  ;; Fact (l)i
+  (and (= (modd (+ mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) (modd (+ a b) n)) 
+       (= (modd (+ mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) (modd (+ b a) n)))
+  ;; Fact (m)i     
+  (and (= (modd (* mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) (modd (* a b) n)) 
+       (= (modd (* mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) (modd (* b a) n)))
+))
+(check-sat)
+
+
+
+;; BASIC one
+(declare-fun a () Int) 
+(declare-fun b () Int) 
+(declare-fun index_hifrog_c_nondet0_1 () Int) 
+(declare-fun mod_hifrog_c_unsupported_op2var0_1 () Int) 
+(declare-fun modd (Int Int) Int) 
+(declare-fun n () Int) 
+(assert (and 
+  (not (= 0 n)) 
+  (< 0 n)
+  (= mod_hifrog_c_unsupported_op2var0_1 (modd a n)) 
+  (or (not (= 0 n)) (= mod_hifrog_c_unsupported_op2var0_1 (modd a n)))
+  ;; fact (a)i
+  (or (not (= 1 n)) (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 1)))
+  ;; fact (b)i
+  (or (not (= 2 n)) (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 2)))
+  ;; fact (c)i
+  (or (not (= a 0)) (= mod_hifrog_c_unsupported_op2var0_1 0))
+  ;; fact (d)i
+  (or (not (= a n)) (= mod_hifrog_c_unsupported_op2var0_1 0)) 
+  ;; fact (e)i
+  ;(or (not (= a (* n n))) (= mod_hifrog_c_unsupported_op2var0_1 0))
+  ;;fact (f)i
+  (or (not (and (< a n) (>= a 0))) (= a mod_hifrog_c_unsupported_op2var0_1))
+  ;; Fact (g)i
+  (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 n))
+  ;; Fact (h)i - general
+  (= a (+ mod_hifrog_c_unsupported_op2var0_1 (* index_hifrog_c_nondet0_1 n))) 
+  ;; Fact (i)i - with 0
+  (and
+    (or (= mod_hifrog_c_unsupported_op2var0_1 0) (not (= a (* index_hifrog_c_nondet0_1 n))))
+    (or (not (= mod_hifrog_c_unsupported_op2var0_1 0)) (= a (* index_hifrog_c_nondet0_1 n))))
+  ;; Fact (j)i
+  (= (modd mod_hifrog_c_unsupported_op2var0_1 n) mod_hifrog_c_unsupported_op2var0_1)
+))
+(check-sat)
+
+
+;;; Can solved in Z3:
+(declare-fun a () Int) 
+(declare-fun b () Int) 
+(declare-fun index_hifrog_c_nondet0_1 () Int) 
+(declare-fun index_hifrog_c_nondet0_2 () Int)
+(declare-fun index_hifrog_c_nondet0_3 () Int)
+(declare-fun index_hifrog_c_nondet0_4 () Int) 
+(declare-fun mod_hifrog_c_unsupported_op2var0_1 () Int) 
+(declare-fun mod_hifrog_c_unsupported_op2var0_2 () Int) 
+(declare-fun mod_hifrog_c_unsupported_op2var0_3 () Int) 
+(declare-fun mod_hifrog_c_unsupported_op2var0_4 () Int) 
+(declare-fun modd (Int Int) Int) 
+(declare-fun n () Int) 
+(assert (and 
+  (not (= 0 n)) 
+  (< 0 n)
+  (= mod_hifrog_c_unsupported_op2var0_1 (modd a n)) 
+  (= mod_hifrog_c_unsupported_op2var0_2 (modd b n)) 
+  (= mod_hifrog_c_unsupported_op2var0_3 (modd (+ a b) n))
+  (= mod_hifrog_c_unsupported_op2var0_4 (modd (* a b) n)) 
+  ;; fact (a)i
+  (or (not (= 1 n)) (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 1)
+                         (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 1) 
+                         (>= mod_hifrog_c_unsupported_op2var0_3 0) (< mod_hifrog_c_unsupported_op2var0_3 1) 
+                         (>= mod_hifrog_c_unsupported_op2var0_4 0) (< mod_hifrog_c_unsupported_op2var0_4 1) 
+                         ))
+  ;; fact (b)i
+  (or (not (= 2 n)) (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 2)
+                         (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 2) 
+                         (>= mod_hifrog_c_unsupported_op2var0_3 0) (< mod_hifrog_c_unsupported_op2var0_3 2) 
+                         (>= mod_hifrog_c_unsupported_op2var0_4 0) (< mod_hifrog_c_unsupported_op2var0_4 2) 
+                         ))
+  ;; fact (c)i
+  (or (not (= a 0)) (= mod_hifrog_c_unsupported_op2var0_1 0))
+  (or (not (= b 0)) (= mod_hifrog_c_unsupported_op2var0_2 0))
+  (or (not (= (+ a b) 0)) (= mod_hifrog_c_unsupported_op2var0_3 0)) 
+  (or (not (= (* a b) 0)) (= mod_hifrog_c_unsupported_op2var0_4 0)) 
+  ;; fact (d)i
+  (or (not (= a n)) (= mod_hifrog_c_unsupported_op2var0_1 0)) 
+  (or (not (= b n)) (= mod_hifrog_c_unsupported_op2var0_2 0))
+  (or (not (= (+ a b) n)) (= mod_hifrog_c_unsupported_op2var0_3 0)) 
+  (or (not (= (* a b) n)) (= mod_hifrog_c_unsupported_op2var0_4 0))
+  ;;fact (f)i
+  (or (not (and (< a n) (>= a 0))) (= a mod_hifrog_c_unsupported_op2var0_1))
+  (or (not (and (< b n) (>= b 0))) (= b mod_hifrog_c_unsupported_op2var0_2))
+  (or (not (and (< (+ a b) n) (>= (+ a b) 0))) (= (+ a b) mod_hifrog_c_unsupported_op2var0_3))
+  (or (not (and (< (* a b) n) (>= (* a b) 0))) (= (* a b) mod_hifrog_c_unsupported_op2var0_4))
+  ;; Fact (g)i
+  (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 n))
+  (and (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 n))
+  (and (>= mod_hifrog_c_unsupported_op2var0_3 0) (< mod_hifrog_c_unsupported_op2var0_3 n))
+  (and (>= mod_hifrog_c_unsupported_op2var0_4 0) (< mod_hifrog_c_unsupported_op2var0_4 n))
+  ;; Fact (h)i - general
+  (= a (+ mod_hifrog_c_unsupported_op2var0_1 (* index_hifrog_c_nondet0_1 n))) 
+  (= b (+ mod_hifrog_c_unsupported_op2var0_2 (* index_hifrog_c_nondet0_2 n)))
+  (= (+ a b) (+ mod_hifrog_c_unsupported_op2var0_3 (* index_hifrog_c_nondet0_3 n)))
+  (= (* a b) (+ mod_hifrog_c_unsupported_op2var0_4 (* index_hifrog_c_nondet0_4 n))) 
+  ;; DO NOT DOUBLE FROM HERE
+  ;; Fact (k)i
+  (and 
+    (or (not (= a (- b))) (= (modd (+ mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) 0))
+    (or (not (= b (- a))) (= (modd (+ mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) 0)))
+  ;; Fact (l)i
+  (and (= (modd (+ mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) (modd (+ a b) n)) 
+       (= (modd (+ mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) (modd (+ b a) n)))
+))
+(check-sat)
