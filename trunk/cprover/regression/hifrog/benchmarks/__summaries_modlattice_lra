@@ -10,9 +10,8 @@
     (|mod_C3::#return_value!0| Real) )  Bool
   (and 
     (= |mod_C3::#return_value!0| (|_mod#0| |mod_C3::a!0| |mod_C3::n!0|))
-    (or (not |hifrog::fun_end|) (and |hifrog::fun_start|
-         (<= 0 |mod_C3::n!0|)
-    ))
+    (<= 0 |mod_C3::n!0|)
+    (or (not |hifrog::fun_end|) |hifrog::fun_start|)
   )
 )
 ;;;;;
@@ -25,9 +24,8 @@
     (|mod_C2::#return_value!0| Real) )  Bool
   (and 
     (= |mod_C2::#return_value!0| (|_mod#0| |mod_C2::a!0| |mod_C2::n!0|))
-    (or (not |hifrog::fun_end|) (and |hifrog::fun_start|
-          (= |mod_C2::n!0| 0)
-    ))
+    (= |mod_C2::n!0| 0)
+    (or (not |hifrog::fun_end|) |hifrog::fun_start|)
   )
 )
 ;;;;;
@@ -39,7 +37,8 @@
     (|hifrog::fun_start| Bool)
     (|hifrog::fun_end| Bool)
     (|mod_Ca::#return_value!0| Real) )  Bool
-  (let ((?def999 |mod_Ca::#return_value!0|))
+  (let ((?def999  |mod_Ca::#return_value!0|))
+  (let ((?def9999 (<= 0 ?def999))) 
   (let ((?def998 (= (|_mod#0| |mod_Ca::a!0| |mod_Ca::n!0|) ?def999)))
   (let ((?def997 (= ?def999 0)))
   (let ((?def996 (= |mod_Ca::n!0| 1)))
@@ -48,7 +47,7 @@
   (let ((?def900 (and ?def994 ?def995)))
 
 ?def900
-))))))))
+)))))))))
 ;;;;;
 ; Fact b
 (define-fun |mod_Cb#0| (
@@ -57,7 +56,8 @@
     (|hifrog::fun_start| Bool)
     (|hifrog::fun_end| Bool) 
     (|mod_Cb::#return_value!0| Real) )  Bool
-  (let ((?def899 |mod_Cb::#return_value!0|))
+  (let ((?def899  |mod_Cb::#return_value!0|))
+  (let ((?def8999 (<= 0 ?def899))) 
   (let ((?def898 (= (|_mod#0| |mod_Cb::a!0| |mod_Cb::n!0|) ?def899)))
   (let ((?def897 (or (= ?def899 0) (= ?def899 1))))
   (let ((?def896 (= |mod_Cb::n!0| 2)))
@@ -66,7 +66,7 @@
   (let ((?def800 (and ?def894 ?def895)))
 
 ?def800
-))))))))
+)))))))))
 ;;;;;
 ; Fact !a and !b
 (define-fun |mod_Cnotab#0| (
