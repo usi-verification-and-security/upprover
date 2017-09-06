@@ -67,7 +67,9 @@ bool lattice_refinert::can_refine(const symex_assertion_sumt& symex) const
  Inputs: 
 
  Outputs: how many functions are refined 
- * (SUBSTITUTED SUCCESSFULLY VIA lattice)
+ * (SUBSTITUTED SUCCESSFULLY VIA lattice) - goes with
+ * get_summaries_refined_via_lattice_count - to get the number
+ * of function calls we actually refined
 
  Purpose: 
 
@@ -78,11 +80,30 @@ unsigned lattice_refinert::get_summaries_from_lattice_count(
         return 0;
     if (is_first_iteration)
         return 1;
+    return expr2refine.size();  
+}
+
+/*******************************************************************
+
+ Function: lattice_refinert::get_summaries_from_lattice_count
+
+ Inputs: 
+
+ Outputs: how many functions are already refined 
+ * (SUBSTITUTED SUCCESSFULLY VIA lattice)
+
+ Purpose: 
+
+\*******************************************************************/
+unsigned lattice_refinert::get_summaries_refined_via_lattice_count(
+        const symex_assertion_sumt& symex) {    
+    if (!can_refine(symex))
+        return 0;
     
-    int size_total = expr2refine.size(); 
+    int size_total = 0;
     for (auto it : expr2refine) {
         if (it->is_SAT() || it->is_UNSAT()) size_total++;
-    } // If we have an answer, sat or unsat it is one less to refine.
+    } // If we have an answer, sat or unsat +1 for the finished/refined one.
        
     return size_total;    
 }
@@ -344,9 +365,14 @@ bool lattice_refinert::process_SAT_result() {
     bool ret = false;
     for (auto it : expr2refine) {
         it->process_SAT_result();
+        // Take care of pops
         ret = ret || it->is_SAT();
     }
-       
+     
+    // Check only once if it is SAT - for final result
+    if (ret == true)
+        final_result_of_refinement = lattice_refinert::resultt::SAT;
+    
     return ret;
 }
 
@@ -368,9 +394,14 @@ bool lattice_refinert::process_UNSAT_result() {
     bool ret = true;
     for (auto it : expr2refine) {
         it->process_UNSAT_result();
+        //take care of pops
         ret = ret && it->is_UNSAT();
     }
-       
+
+    // Check only once if it is SAT - for final result
+    if (ret == true)
+        final_result_of_refinement = lattice_refinert::resultt::UNSAT;
+    
     return ret;
 }
 
@@ -386,6 +417,9 @@ bool lattice_refinert::process_UNSAT_result() {
 
 \*******************************************************************/
 bool lattice_refinert::process_solver_result(bool is_solver_ret_SAT) {
+    if (final_result_of_refinement != lattice_refinert::resultt::UNKNOWN)
+        return true;
+    
     if (is_solver_ret_SAT) {
         #ifdef DEBUG_LATTICE
         status() << "Process SAT result " << eom;
@@ -421,26 +455,37 @@ bool lattice_refinert::process_solver_result(bool is_solver_ret_SAT) {
 
 \*******************************************************************/
 bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_ret_SAT) 
-{    
+{ 
     // Shall we refine?
     if (!can_refine(symex))
         return true;
     
-    if (process_solver_result(is_solver_ret_SAT))
+    if (process_solver_result(is_solver_ret_SAT)) {
+        #ifdef DEBUG_LATTICE 
+        status () << "*** Solver result of: " << (is_solver_ret_SAT ? "SAT" : "UNSAT")  
+            << " ==> the refiner result: " 
+            << (final_result_of_refinement == lattice_refinert::resultt::UNSAT ? " UNSAT " : "") 
+            << (final_result_of_refinement == lattice_refinert::resultt::SAT ? " SAT " : "")
+            << (final_result_of_refinement == lattice_refinert::resultt::UNKNOWN ? " UNKNOWN " : "")
+            << eom;
+        #endif
+            
+        assert(final_result_of_refinement != lattice_refinert::resultt::UNKNOWN);
         return true;
+    }
     
     // Else we continue to the next loop of refinement
     
     // Add all the functions on a path - need to retrieve it from lattice_refiner_exprt
     for (auto expr : expr2refine) {
-        #ifdef DEBUG_LATTICE 
+        //#ifdef DEBUG_LATTICE 
         std::cout << "Refine (refine_SSA) : " << expr->print_expr(decider);
         set<lattice_refiner_modelt*> ret = expr->get_refine_functions();
         for (auto func : ret) {
             std::cout << " | " << func->get_data_str();
         }
         std::cout << std::endl;
-        #endif
+        //#endif
         
         // get the lhs and rhs
         const exprt& lhs = expr->get_lhs();
@@ -453,6 +498,7 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
                 instantiate_fact(function_id, expr, symex, lhs);
             }
         }
+        expr->print_facts_instantiated();
     }
     
     return false;
@@ -562,7 +608,7 @@ const exprt::operandst &lattice_refinert::fabricate_parameters(
 \*******************************************************************/
 void lattice_refinert::instantiate_fact(const irep_idt& function_id, 
         lattice_refiner_exprt *expr, symex_assertion_sumt& symex, const exprt& lhs) 
-{    
+{
     if (expr->is_fact_instantiated(function_id))
         return;
     

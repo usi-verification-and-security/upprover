@@ -40,8 +40,8 @@ public:
     bool is_SAT() { return m_is_SAT;}
     bool is_UNSAT() { return !m_is_SAT && refine_data.empty() && !refined_data_UNSAT.empty();}
     
-    void process_SAT_result();
-    void process_UNSAT_result();
+    const std::set<irep_idt>* process_SAT_result();
+    const std::set<irep_idt>* process_UNSAT_result();
 
     std::string print_expr(smtcheck_opensmt2t &decider);
     
@@ -57,7 +57,15 @@ public:
     { instantiated_facts.insert(fact_symbol);}
     
     bool is_fact_instantiated(const irep_idt& fact_symbol) 
-    { return instantiated_facts.find(fact_symbol) != instantiated_facts.end(); }
+    { return instantiated_facts.find(fact_symbol) != instantiated_facts.end();}
+    
+    void print_facts_instantiated() {
+        std::cout << "Facts in: ";
+        for (auto it : instantiated_facts) {
+            std::cout << it.c_str() << " ";
+        }
+        std::cout << std::endl;
+    }
 private:
     // Currently node in use in the lattice: refine_data.front()
     const exprt& lhs;
@@ -66,14 +74,21 @@ private:
     bool m_is_SAT; // Will be true if one of the paths in the lattice ends with SAT evaluation
     const std::string refined_function;
     const source_locationt& location;
-    std::set<irep_idt> instantiated_facts;
+    std::set<irep_idt> instantiated_facts; // Which facts was instantiated so far (that is, added a summary)
+    std::vector<lattice_refiner_modelt *> current_path; // the path we are in the lattice
     
     std::deque<lattice_refiner_modelt *> refine_data; // Next nodes in the lattice to use for refining this expression
     std::set<lattice_refiner_modelt *> refined_data_UNSAT; // Paths that ended in UNSAT (if all ended in UNSAT => UNSAT) + bot is here!
     
     void remove_dequed_data(lattice_refiner_modelt *curr); // Remove from refine_data all nodes with paths only to UNSAT nodes.
-    const std::set<irep_idt>& pop_facts_ids(lattice_refiner_modelt *curr); // Remove from the instantite facts, all the facts that aren't in use (go backward)
+    
+    // Remove from the instantiate facts, all the facts that aren't in use (go backward)
+    const std::set<irep_idt>* pop_facts_ids_UNSAT(lattice_refiner_modelt *curr);
     bool is_all_childs_leads_to_UNSAT(lattice_refiner_modelt *curr);
+    
+    // Remove from the instantiate facts, all the facts that aren't in use (go backward)
+    const std::set<irep_idt>* pop_facts_ids_SAT(lattice_refiner_modelt *curr);
+
 };
     
 #endif /* LATTICE_REFINER_EXPR_H */

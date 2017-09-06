@@ -28,4 +28,4 @@ mod_Cl
 mod_Cf
 (=> (and (< |mod_Cf::a!0| |mod_Cf::n!0|) (and (<= 0 |mod_Cf::a!0|) (< 0 |mod_Cf::n!0|))) (= |mod_Cf::#return_value!0| |mod_Cf::a!0|))
 mod_Cg
-(and (<= 0 |mod_Cg::#return_value!0|) (< |mod_Cg::#return_value!0| |mod_Cg::n!0|))
+(< |mod_Cg::#return_value!0| |mod_Cg::n!0|)

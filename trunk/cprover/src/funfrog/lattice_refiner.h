@@ -26,7 +26,8 @@ public:
           summarization_context(_summarization_context),
           is_lattice_ref_on(options.get_option("load-sum-model").size()>0),
           decider(_decider),
-          refineTryNum(0)
+          refineTryNum(0),
+          final_result_of_refinement(lattice_refinert::resultt::UNKNOWN)
     {
         set_message_handler(_message_handler);
         initialize();
@@ -48,6 +49,13 @@ public:
   unsigned get_refined_functions_size(const symex_assertion_sumt& symex);
   
   unsigned get_summaries_from_lattice_count(const symex_assertion_sumt& symex, bool is_first_iteration);
+  
+  unsigned get_summaries_refined_via_lattice_count(const symex_assertion_sumt& symex);
+ 
+protected:
+  enum class resultt { UNKNOWN=0, SAT, UNSAT };
+  
+  resultt final_result_of_refinement;
   
 private:
   const optionst &options; 

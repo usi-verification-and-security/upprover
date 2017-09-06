@@ -112,7 +112,7 @@
     (let ((?def163 |mod_Cg::#return_value!0|))
     (let ((?def164  (= (|_mod#0| |mod_Cg::a!0| |mod_Cg::n!0|) ?def163)))
     (let ((?def169  (<= 0 ?def163)))
-    (let ((?def165 (and (<= 0 ?def163) (< ?def163 |mod_Cg::n!0|))))
+    (let ((?def165 (< ?def163 |mod_Cg::n!0|)))
     (let ((?def166 (or (not |hifrog::fun_end|) |hifrog::fun_start|)))
     (let ((?def167 (and ?def165 ?def166)))
     (let ((?def168  (and ?def169 (and ?def164 ?def167))))
@@ -163,4 +163,3 @@
   
 ?def494
 )))))))
-

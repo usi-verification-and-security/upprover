@@ -470,8 +470,10 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         unsigned nondet_count = omega.get_nondets_count();   
         if (summaries_count > 0 || nondet_count > 0 || summaries_lattice_count > 0) {
           if (summaries_lattice_count > 0) {
-            status() << "FUNCTION SUMMARIES (for " << summaries_lattice_count
-                   << " calls) ARE REFINED VIA "<< lattice_refiner.get_models_count() 
+            status() << "FUNCTION SUMMARIES (for " 
+                   << lattice_refiner.get_summaries_refined_via_lattice_count(symex) 
+                   << " calls out of " << summaries_lattice_count
+                   << ") ARE REFINED VIA "<< lattice_refiner.get_models_count() 
                    << " MODEL(s)." << eom;
           } 
           if (summaries_count > 0){
