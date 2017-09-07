@@ -7,6 +7,7 @@
 
 #include "lattice_refiner.h"
 #include <list>
+#include <set>
 
 void lattice_refinert::initialize() {
     if (!is_lattice_ref_on) 
@@ -364,7 +365,19 @@ literalt lattice_refinert::refine_single_statement(const exprt &expr, const PTRe
 bool lattice_refinert::process_SAT_result() {  
     bool ret = false;
     for (auto it : expr2refine) {
-        it->process_SAT_result();
+        std::set<irep_idt>* to_pop = it->process_SAT_result();
+        if (to_pop != 0) {
+            // Pop! 
+            for (auto it_pop = to_pop->begin(); it_pop != to_pop->end(); it_pop++) {
+                const irep_idt& function_id = it->get_function_id(as_string(*it_pop));
+                it->remove_instantiated_fact(function_id); // Remove from the expr
+                // remove the partition
+            }
+            
+            // Free space
+            free(to_pop);
+        }
+        
         // Take care of pops
         ret = ret || it->is_SAT();
     }

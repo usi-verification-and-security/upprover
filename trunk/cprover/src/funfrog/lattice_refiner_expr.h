@@ -40,8 +40,8 @@ public:
     bool is_SAT() { return m_is_SAT;}
     bool is_UNSAT() { return !m_is_SAT && refine_data.empty() && !refined_data_UNSAT.empty();}
     
-    const std::set<irep_idt>* process_SAT_result();
-    const std::set<irep_idt>* process_UNSAT_result();
+    std::set<irep_idt>* process_SAT_result();
+    std::set<irep_idt>* process_UNSAT_result();
 
     std::string print_expr(smtcheck_opensmt2t &decider);
     
@@ -54,7 +54,10 @@ public:
     const source_locationt& get_source_location() { return location;}
 
     void add_instantiated_fact(const irep_idt& fact_symbol) 
-    { instantiated_facts.insert(fact_symbol);}
+    { assert(!refine_data.empty()); instantiated_facts.insert(fact_symbol); current_path.emplace_back(refine_data.front());}
+
+    void remove_instantiated_fact(const irep_idt& fact_symbol) // For pop
+    { instantiated_facts.erase(fact_symbol); }
     
     bool is_fact_instantiated(const irep_idt& fact_symbol) 
     { return instantiated_facts.find(fact_symbol) != instantiated_facts.end();}
@@ -65,6 +68,11 @@ public:
             std::cout << it.c_str() << " ";
         }
         std::cout << std::endl;
+    }
+    
+    const irep_idt get_function_id(std::string function_instance_name) { 
+        irep_idt function_id = function_instance_name.substr(0, function_instance_name.size()-2);
+        return function_id;
     }
 private:
     // Currently node in use in the lattice: refine_data.front()
@@ -83,12 +91,14 @@ private:
     void remove_dequed_data(lattice_refiner_modelt *curr); // Remove from refine_data all nodes with paths only to UNSAT nodes.
     
     // Remove from the instantiate facts, all the facts that aren't in use (go backward)
-    const std::set<irep_idt>* pop_facts_ids_UNSAT(lattice_refiner_modelt *curr);
+    std::set<irep_idt>* pop_facts_ids_UNSAT(lattice_refiner_modelt *curr);
     bool is_all_childs_leads_to_UNSAT(lattice_refiner_modelt *curr);
     
     // Remove from the instantiate facts, all the facts that aren't in use (go backward)
-    const std::set<irep_idt>* pop_facts_ids_SAT(lattice_refiner_modelt *curr);
-
+    std::set<irep_idt>* pop_facts_ids_SAT(lattice_refiner_modelt *curr);
+    
+    bool is_fact_ids_in_data(lattice_refiner_modelt *curr, const irep_idt id=irep_idt(""));
+    std::set<irep_idt> * subtract_prev_data_from_facts(lattice_refiner_modelt *curr, lattice_refiner_modelt *prev); 
 };
     
 #endif /* LATTICE_REFINER_EXPR_H */

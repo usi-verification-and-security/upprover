@@ -26,7 +26,7 @@ set<lattice_refiner_modelt*> lattice_refiner_exprt::get_refine_functions() {
         return ret;
 
     ret.insert(refine_data.front());
-    // TODO: add the whole path
+    // TODO: add the whole path - current_path
     
     return ret; 
 }
@@ -49,7 +49,7 @@ set<lattice_refiner_modelt*> lattice_refiner_exprt::get_refine_functions() {
  * SAT iff the current node had no childs and is SAT
 
 \*******************************************************************/
-const std::set<irep_idt>* lattice_refiner_exprt::process_SAT_result() {
+std::set<irep_idt>* lattice_refiner_exprt::process_SAT_result() {
     if (refine_data.empty()) return 0;
     
     m_is_SAT = m_is_SAT || (refine_data.front()->childs.size() == 0);
@@ -63,8 +63,8 @@ const std::set<irep_idt>* lattice_refiner_exprt::process_SAT_result() {
         if (refined_data_UNSAT.count(it) == 0)
             refine_data.push_front(it); // Adds it to the queue to check later on
     }
-    
-    return pop_facts_ids_SAT(front);
+      
+    return pop_facts_ids_SAT(refine_data.front());
 }
 
 /*******************************************************************
@@ -80,7 +80,7 @@ const std::set<irep_idt>* lattice_refiner_exprt::process_SAT_result() {
  * Going backward, need to pop facts from the structure
 
 \*******************************************************************/
-const std::set<irep_idt>* lattice_refiner_exprt::process_UNSAT_result() {
+std::set<irep_idt>* lattice_refiner_exprt::process_UNSAT_result() {
     if (refine_data.empty()) return 0;
     
     lattice_refiner_modelt *temp = refine_data.front();
@@ -90,7 +90,7 @@ const std::set<irep_idt>* lattice_refiner_exprt::process_UNSAT_result() {
     remove_dequed_data(temp);
     
     // what nodes to pop?
-    return pop_facts_ids_UNSAT(refine_data.front());;
+    return pop_facts_ids_UNSAT(refine_data.front());
 }
 
 /*******************************************************************
@@ -157,7 +157,7 @@ bool lattice_refiner_exprt::is_all_childs_leads_to_UNSAT(lattice_refiner_modelt 
  Purpose: remove all the facts that are not in use in the next node
 
 \*******************************************************************/
-const std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_UNSAT(
+std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_UNSAT(
             lattice_refiner_modelt *curr)
 {
     if (refine_data.empty()) return 0;
@@ -167,7 +167,7 @@ const std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_UNSAT(
     
     // get all the facts we keep for the current node
     for(auto it = curr->data.begin(); it != curr->data.end() ; ++it) {
-        const irep_idt& function_id = (*it).substr(0, it->size()-2);
+        const irep_idt& function_id = get_function_id(*it);
         if (is_fact_instantiated(function_id)) {
             temp_facts_instant.insert(function_id);
         }
@@ -196,20 +196,94 @@ const std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_UNSAT(
  Purpose: remove all the facts that are not in use in the next node
 
 \*******************************************************************/
-const std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_SAT(
+std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_SAT(
             lattice_refiner_modelt *curr)
 {
-    if (refine_data.empty()) return 0;
+    // Do we need to pop nodes? 
+    if (!is_fact_ids_in_data(curr)) return 0;
     
-        // what nodes to pop? 
+    // We need to pop data, since the current node is something like: x with ancestor: x&y; we remove y.    
+    std::set<irep_idt> *to_pop = new std::set<irep_idt>();
+    for (auto it_p : current_path) { // per node of the path
+        bool is_subtract_sets = false;
+        for (auto it : curr->data) { 
+            // Check if a fact from the current set was before 
+            if (is_fact_ids_in_data(it_p, it)) {
+                is_subtract_sets = true;
+                break;
+            }
+        }     
+        if (is_subtract_sets) {
+            std::set<irep_idt>* temp = subtract_prev_data_from_facts(curr, it_p);
+            to_pop->insert(temp->begin(), temp->end());
+            free(temp);
+        }
+    }
+    
+    return to_pop;
+}
+
+/*******************************************************************
+
+ Function: lattice_refiner_exprt::is_fact_ids_in_data
+
+ Inputs: id in the format with #0 in the end
+
+ Outputs: true if found the id in a set
+ * either an id is part of prev data set => true
+ * Or if the current set of ids was instantiated before (if no specific id 
+ * sent)
+ * in anyother case, returns false
+
+ Purpose: 
+
+\*******************************************************************/
+
+bool lattice_refiner_exprt::is_fact_ids_in_data(lattice_refiner_modelt *curr, const irep_idt id)
+{
+    // Do we need to pop nodes? 
     int count_inst = 0; 
     for (auto it : curr->data) {
-        count_inst += (is_fact_instantiated(it.substr(0, it.size()-2)) ? 1 : 0);
+        if (id.empty()) 
+            count_inst += (is_fact_instantiated(get_function_id(it)) ? 1 : 0);
+        else 
+            count_inst += ((id.compare(it) == 0) ? 1 : 0);
     }
+    return (count_inst > 0);
+}
+
+/*******************************************************************
+
+ Function: lattice_refiner_exprt::subtract_prev_data_from_facts
+
+ Inputs: two lattice nodes (current and prev in the path)
+
+ Outputs: all the facts that appears in the facts list+prev but not in curr
+
+ Purpose: pop facts when lattice splits a&c with edges to c or a (then a node 
+ * pops c, and c node pops a).
+
+\*******************************************************************/
+std::set<irep_idt>* lattice_refiner_exprt::subtract_prev_data_from_facts(
+        lattice_refiner_modelt *curr,
+        lattice_refiner_modelt *prev) 
+{
+    if (curr == 0 || prev == 0) return 0;
+ 
     std::set<irep_idt> *to_pop = new std::set<irep_idt>();
-    if (count_inst > 0) {
-        // We need to pop data, since the current node is
+    for (auto it_p : prev->data) {
+        bool is_exist_in_curr = false;
+        for (auto it_c : curr->data) {
+            if (it_c.compare(it_p) == 0) {
+                is_exist_in_curr = true;
+                break;
+            }
+        }
+        if ((!is_exist_in_curr) && (is_fact_instantiated(get_function_id(it_p)))) { 
+            to_pop->insert(it_p);
+        }
     }
+    
     
     return to_pop;
 }
