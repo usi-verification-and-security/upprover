@@ -370,8 +370,13 @@ bool lattice_refinert::process_SAT_result() {
             // Pop! 
             for (auto it_pop = to_pop->begin(); it_pop != to_pop->end(); it_pop++) {
                 const irep_idt& function_id = it->get_function_id(as_string(*it_pop));
-                it->remove_instantiated_fact(function_id); // Remove from the expr
+                
+                // Remove from the expr
+                it->remove_instantiated_fact(function_id); 
+                
                 // remove the partition
+                smt_summaryt& summary = get_summary(function_id);
+                summary.set_valid(false);
             }
             
             // Free space
@@ -491,14 +496,14 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
     
     // Add all the functions on a path - need to retrieve it from lattice_refiner_exprt
     for (auto expr : expr2refine) {
-        //#ifdef DEBUG_LATTICE 
+        #ifdef DEBUG_LATTICE 
         std::cout << "Refine (refine_SSA) : " << expr->print_expr(decider);
         set<lattice_refiner_modelt*> ret = expr->get_refine_functions();
         for (auto func : ret) {
             std::cout << " | " << func->get_data_str();
         }
         std::cout << std::endl;
-        //#endif
+        #endif
         
         // get the lhs and rhs
         const exprt& lhs = expr->get_lhs();
@@ -511,7 +516,7 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
                 instantiate_fact(function_id, expr, symex, lhs);
             }
         }
-        expr->print_facts_instantiated();
+        //expr->print_facts_instantiated();
     }
     
     return false;
@@ -622,8 +627,19 @@ const exprt::operandst &lattice_refinert::fabricate_parameters(
 void lattice_refinert::instantiate_fact(const irep_idt& function_id, 
         lattice_refiner_exprt *expr, symex_assertion_sumt& symex, const exprt& lhs) 
 {
+    // If already in the SSA - return 
     if (expr->is_fact_instantiated(function_id))
         return;
+    
+    // If was once, bring it back and return
+    if (expr->was_fact_instantiated(function_id)) {
+        // Then bring it back!
+        smt_summaryt& summary = get_summary(function_id);
+        summary.set_valid(true);
+        expr->add_instantiated_fact(function_id);
+        return;
+    }
+    // else, add it to the SSA
     
     #ifdef DEBUG_LATTICE
     status () << "ADDING FACT: " << function_id << " for function " << expr->print_expr(decider) << eom;

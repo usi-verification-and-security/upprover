@@ -54,13 +54,19 @@ public:
     const source_locationt& get_source_location() { return location;}
 
     void add_instantiated_fact(const irep_idt& fact_symbol) 
-    { assert(!refine_data.empty()); instantiated_facts.insert(fact_symbol); current_path.emplace_back(refine_data.front());}
+    { assert(!refine_data.empty()); 
+      instantiated_facts_old.erase(fact_symbol); instantiated_facts.insert(fact_symbol); 
+      current_path.emplace_back(refine_data.front());
+    }
 
     void remove_instantiated_fact(const irep_idt& fact_symbol) // For pop
-    { instantiated_facts.erase(fact_symbol); }
+    { instantiated_facts.erase(fact_symbol); instantiated_facts_old.insert(fact_symbol);}
     
     bool is_fact_instantiated(const irep_idt& fact_symbol) 
     { return instantiated_facts.find(fact_symbol) != instantiated_facts.end();}
+    
+    bool was_fact_instantiated(const irep_idt& fact_symbol) 
+    { return instantiated_facts_old.find(fact_symbol) != instantiated_facts_old.end();}
     
     void print_facts_instantiated() {
         std::cout << "Facts in: ";
@@ -83,6 +89,7 @@ private:
     const std::string refined_function;
     const source_locationt& location;
     std::set<irep_idt> instantiated_facts; // Which facts was instantiated so far (that is, added a summary)
+    std::set<irep_idt> instantiated_facts_old; // We already instantiated these, but removed locally due to the walk in the lattice
     std::vector<lattice_refiner_modelt *> current_path; // the path we are in the lattice
     
     std::deque<lattice_refiner_modelt *> refine_data; // Next nodes in the lattice to use for refining this expression
