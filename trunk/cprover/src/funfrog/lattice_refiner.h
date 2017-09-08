@@ -28,6 +28,7 @@ public:
           flag_can_refine(true),
           final_result_of_refinement(lattice_refinert::resultt::UNKNOWN)
     {
+        no_error_trace = options.get_bool_option("no-error-trace"); // KE: can be changed to some other indicator    
         set_message_handler(_message_handler);
         initialize();
     }
@@ -52,6 +53,11 @@ public:
   
   bool can_refine() { return flag_can_refine; } // We check once, before delete of decider, and keep it for later
  
+  bool is_end() { 
+    return ((!can_refine()) 
+          || (can_refine() && final_result_of_refinement != lattice_refinert::resultt::UNKNOWN)); 
+  }
+  
 protected:
   enum class resultt { UNKNOWN=0, SAT, UNSAT };
   
@@ -62,6 +68,7 @@ private:
   bool is_lattice_ref_on;
   bool flag_can_refine;
   unsigned refineTryNum;
+  bool no_error_trace;
   
   // Shared information about summaries to be used during analysis
   summarization_contextt &summarization_context;

@@ -65,10 +65,12 @@ std::set<irep_idt>* lattice_refiner_exprt::process_SAT_result() {
     }
     
     // If cannot use the lattice at all - pop all the summaries of this lattice
-    if (m_is_SAT) {
+    if (m_is_SAT && no_error_trace) {
         std::set<irep_idt>* to_pop = new std::set<irep_idt>();
         to_pop->insert(instantiated_facts.begin(), instantiated_facts.end());
         return to_pop;
+    } else if (m_is_SAT) {
+        return new std::set<irep_idt>();
     } else {
 
         // Else, remove only the facts that were with && with current facts

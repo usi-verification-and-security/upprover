@@ -25,13 +25,15 @@ public:
             const PTRef _lhs_ptref,
             const exprt::operandst &_call_info_operands,
             const std::string _refined_function,
-            const source_locationt &_location) : 
+            const source_locationt &_location,
+            bool _no_error_trace) : 
         lhs(_lhs),
         lhs_PTRef(_lhs_ptref),
         call_info_operands(_call_info_operands),
         m_is_SAT(false),
         refined_function(_refined_function),
-        location(_location)
+        location(_location),
+        no_error_trace(_no_error_trace)
         { refine_data.push_front(_head);}
         
     virtual ~lattice_refiner_exprt() { refine_data.clear(); refined_data_UNSAT.clear();}
@@ -89,6 +91,7 @@ private:
     const PTRef lhs_PTRef;
     const exprt::operandst &call_info_operands; // rhs part 
     bool m_is_SAT; // Will be true if one of the paths in the lattice ends with SAT evaluation
+    bool no_error_trace;
     const std::string refined_function;
     const source_locationt& location;
     std::set<irep_idt> instantiated_facts; // Which facts was instantiated so far (that is, added a summary)

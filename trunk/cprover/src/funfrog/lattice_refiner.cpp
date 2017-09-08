@@ -205,7 +205,7 @@ void lattice_refinert::add_expr_to_refine(smtcheck_opensmt2t &decider, symex_ass
                     false, false, false, *lhs_from_PTRef);
             expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), 
                     *lhs_from_PTRef, lhs, call_info_operands, key_entry, 
-                    call_info.source_location()));
+                    call_info.source_location(), no_error_trace));
             
             free(lhs_id);
         }
@@ -227,7 +227,7 @@ void lattice_refinert::add_expr_to_refine(smtcheck_opensmt2t &decider, symex_ass
             // ADD to the list to refine, such as lhs = refine(key_entry, call_info);
             expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), 
                     lhs, decider.getLogic()->getTerm_true(), call_info_operands, 
-                    key_entry, call_info.second.source_location()));
+                    key_entry, call_info.second.source_location(), no_error_trace));
         }
     }    
 }
