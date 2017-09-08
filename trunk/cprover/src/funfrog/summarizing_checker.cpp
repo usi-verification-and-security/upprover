@@ -393,8 +393,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               message_handler, last_assertion_loc, true);
   
   // KE: lattice refinement works with summary refinement 
-  lattice_refinert lattice_refiner = lattice_refinert(options, message_handler, 
-          summarization_context, *(dynamic_cast <smtcheck_opensmt2t*> (decider)));
+  lattice_refinert lattice_refiner = lattice_refinert(options, message_handler, summarization_context);
 
   smt_assertion_sumt prop = smt_assertion_sumt(summarization_context,
           equation, message_handler, max_memory_used);
@@ -415,7 +414,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
     if (count == 1) {
         end = symex.prepare_SSA(assertion);
     } else {
-        bool end_2 = lattice_refiner.refine_SSA(symex, !ret_solver);
+        bool end_2 = lattice_refiner.refine_SSA(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex, !ret_solver);
         bool end_1 = symex.refine_SSA(refiner.get_refined_functions());
         end = end_1 && end_2;
     }
@@ -439,7 +438,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               *(dynamic_cast<smtcheck_opensmt2t *> (decider)), 
               *(dynamic_cast<interpolating_solvert *> (decider)));
       unsigned summaries_count = omega.get_summaries_count();
-      unsigned summaries_lattice_count = lattice_refiner.get_summaries_from_lattice_count(symex, count == 1);
+      unsigned summaries_lattice_count = lattice_refiner.get_summaries_from_lattice_count(
+            *(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex, count == 1);
       ret_solver = end;
 #ifdef PRODUCE_PROOF      
       if (end && decider->can_interpolate())
@@ -471,7 +471,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         if (summaries_count > 0 || nondet_count > 0 || summaries_lattice_count > 0) {
           if (summaries_lattice_count > 0) {
             status() << "FUNCTION SUMMARIES (for " 
-                   << lattice_refiner.get_summaries_refined_via_lattice_count(symex) 
+                   << lattice_refiner.get_summaries_refined_via_lattice_count(
+                    *(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex) 
                    << " calls out of " << summaries_lattice_count
                    << ") ARE REFINED VIA "<< lattice_refiner.get_models_count() 
                    << " MODEL(s)." << eom;
@@ -487,10 +488,12 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
           refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), omega.get_summary_info(), equation);
           
           // KE: after refining the functions, also add lattice 
-          lattice_refiner.refine(equation, symex); 
+          lattice_refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex); 
 
           if ((refiner.get_refined_functions().size() == 0) 
-               && (lattice_refiner.get_refined_functions_size(symex) == 0)) {
+               && (lattice_refiner.get_refined_functions_size(
+                  *(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex) == 0)) 
+          {
             assertion_violated(prop, symex.guard_expln);
             break;
           } else {

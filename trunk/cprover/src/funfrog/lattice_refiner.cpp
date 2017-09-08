@@ -51,7 +51,7 @@ void lattice_refinert::load_models(std::string list_of_models_fs) {
  Purpose: Check if there is any instruction to refine - only if possible
 
 \*******************************************************************/
-bool lattice_refinert::can_refine(const symex_assertion_sumt& symex) const
+bool lattice_refinert::can_refine(const smtcheck_opensmt2t &decider, const symex_assertion_sumt& symex) const
 {
     if (!is_lattice_ref_on)
         return false;
@@ -76,8 +76,9 @@ bool lattice_refinert::can_refine(const symex_assertion_sumt& symex) const
 
 \*******************************************************************/
 unsigned lattice_refinert::get_summaries_from_lattice_count(
+        const smtcheck_opensmt2t &decider,
         const symex_assertion_sumt& symex, bool is_first_iteration) {    
-    if (!can_refine(symex))
+    if (!can_refine(decider, symex))
         return 0;
     if (is_first_iteration)
         return 1;
@@ -97,8 +98,8 @@ unsigned lattice_refinert::get_summaries_from_lattice_count(
 
 \*******************************************************************/
 unsigned lattice_refinert::get_summaries_refined_via_lattice_count(
-        const symex_assertion_sumt& symex) {    
-    if (!can_refine(symex))
+        const smtcheck_opensmt2t &decider, const symex_assertion_sumt& symex) {    
+    if (!can_refine(decider, symex))
         return 0;
     
     int size_total = 0;
@@ -121,8 +122,8 @@ unsigned lattice_refinert::get_summaries_refined_via_lattice_count(
 
 \*******************************************************************/
 unsigned lattice_refinert::get_refined_functions_size( 
-        const symex_assertion_sumt& symex){ 
-    if (!can_refine(symex))
+        const smtcheck_opensmt2t &decider, const symex_assertion_sumt& symex){ 
+    if (!can_refine(decider, symex))
         return 0;
     
     int size_total = expr2refine.size(); 
@@ -148,11 +149,10 @@ unsigned lattice_refinert::get_refined_functions_size(
  * for later, when we will do the actual refinement in refine_SSA
 
 \*******************************************************************/
-void lattice_refinert::refine(smt_partitioning_target_equationt &equation,
-              symex_assertion_sumt& symex)
+void lattice_refinert::refine(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex)
 {
     // Shall we refine?
-    if (!can_refine(symex))
+    if (!can_refine(decider, symex))
         return;
     
     // Start a new cycle of refinement
@@ -164,7 +164,7 @@ void lattice_refinert::refine(smt_partitioning_target_equationt &equation,
     #endif
 
     // Add all expr to refine to the table (all candidates)
-    add_expr_to_refine(symex); 
+    add_expr_to_refine(decider, symex); 
     
     // Pick one to refine
     set_front_heuristic();
@@ -182,7 +182,7 @@ void lattice_refinert::refine(smt_partitioning_target_equationt &equation,
  Purpose: 
 
 \*******************************************************************/
-void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
+void lattice_refinert::add_expr_to_refine(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex) {
     if (refineTryNum > 1) return; // TODO: keep a list of which expr to refine are already in expr2refine
     
     // Refine functions abstracted by the solver (no OpenSMT support)
@@ -192,9 +192,9 @@ void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
         const exprt &call_info = it->second; // function and arguments
         const PTRef lhs = it->first; // lhs
         const exprt::operandst &call_info_operands = call_info.operands(); 
-        std::string key_entry = gen_entry_point_name(call_info.id().c_str(), call_info, call_info_operands);
+        std::string key_entry = gen_entry_point_name(decider, call_info.id().c_str(), call_info, call_info_operands);
         // if function has a definition, refine and add the refined term to a new partition
-        if (get_entry_point(key_entry, call_info, call_info_operands) != SymRef_Undef) {
+        if (get_entry_point(decider, key_entry, call_info, call_info_operands) != SymRef_Undef) {
             // ADD to the list to refine such as lhs = refine(key_entry, call_info);
             char* lhs_id = decider.getLogic()->printTerm(lhs);
             
@@ -223,10 +223,10 @@ void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
         const pair<irep_idt, code_function_callt> &call_info = it->second; // function and arguments
         const exprt &lhs = it->first; // lhs
         const exprt::operandst &call_info_operands = call_info.second.arguments(); 
-        std::string key_entry = gen_entry_point_name(call_info.first.c_str(), lhs, call_info_operands);
+        std::string key_entry = gen_entry_point_name(decider, call_info.first.c_str(), lhs, call_info_operands);
 
         // if function has a definition, refine and add the refined term to a new partition
-        if (get_entry_point(key_entry, lhs, call_info_operands) != SymRef_Undef) {
+        if (get_entry_point(decider, key_entry, lhs, call_info_operands) != SymRef_Undef) {
             // ADD to the list to refine, such as lhs = refine(key_entry, call_info);
             expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), 
                     lhs, decider.getLogic()->getTerm_true(), call_info_operands, 
@@ -250,6 +250,7 @@ void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
 
 \*******************************************************************/
 SymRef lattice_refinert::get_entry_point(
+                smtcheck_opensmt2t &decider,  
                 const std::string key_entry, 
                 const exprt &expr, 
                 const exprt::operandst &operands)
@@ -292,6 +293,7 @@ SymRef lattice_refinert::get_entry_point(
 
 \*******************************************************************/
 std::string lattice_refinert::gen_entry_point_name(
+                smtcheck_opensmt2t &decider,
                 const std::string key_entry_orig, 
                 const exprt &expr, 
                 const exprt::operandst &operands)
@@ -314,39 +316,6 @@ std::string lattice_refinert::gen_entry_point_name(
     return key_entry;
 }
  
-/*******************************************************************
-
- Function: lattice_refinert::refine_single_statement
-
- Inputs: current SSA to SMT-lib translation with its original SSA expression
-
- Outputs: ? maybe the new refined ptref?
-
- Purpose: Refine too abstract translation of the SSA to SMT-lib
-
-\*******************************************************************/
-literalt lattice_refinert::refine_single_statement(const exprt &expr, const PTRef var)
-{
-    status() << "Refine original translation " << decider.getPTermString(expr) 
-            << " of " << expr.id() << " with " << expr.operands().size() << " operands" << eom;
-    
-    
-    // Get next entry of refined functions
-    //lattice_refiner_modelt *curr_node = get_refine_function(expr);
-    
-    // Create a new PTRef which refine the original expression
-    PTRef refined_var; // will add a call to the refined func, e.g., mod_C3(a,n)
-    //forall_operands(it, expr) {
-    //    literalt param_in = decider.convert(expr);
-    //    literalt arg_in;
-    //   literalt bind_param = decider.set_equal(param_in, arg_in);
-    //    decider.land(bind_param);
-    //}
-    
-    // Return (= var refined_var)
-    return decider.bind_var2refined_var(var, refined_var);
-}
-
 /*******************************************************************
 
  Function: lattice_refinert::process_SAT_result
@@ -474,10 +443,10 @@ bool lattice_refinert::process_solver_result(bool is_solver_ret_SAT) {
  * but in refine_SSA
 
 \*******************************************************************/
-bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_ret_SAT) 
+bool lattice_refinert::refine_SSA(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex, bool is_solver_ret_SAT) 
 { 
     // Shall we refine?
-    if (!can_refine(symex))
+    if (!can_refine(decider, symex))
         return true;
     
     if (process_solver_result(is_solver_ret_SAT)) {
@@ -516,7 +485,7 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
         for (auto func : funcs) {
             for(auto it = func->data.begin(); it != func->data.end() ; ++it) {
                 const irep_idt& function_id = (*it).substr(0, it->size()-2); 
-                instantiate_fact(function_id, expr, symex, lhs);
+                instantiate_fact(function_id, expr, decider, symex, lhs);
             }
         }
         //expr->print_facts_instantiated();
@@ -573,6 +542,7 @@ const summary_idst& lattice_refinert::get_summary_ids(const irep_idt& function_i
 \*******************************************************************/
 const exprt::operandst &lattice_refinert::fabricate_parameters(
         const irep_idt& function_id, 
+        smtcheck_opensmt2t &decider,
         symex_assertion_sumt& symex,
         const source_locationt& source_location,
         const exprt::operandst &call_info_operands) 
@@ -628,7 +598,9 @@ const exprt::operandst &lattice_refinert::fabricate_parameters(
 
 \*******************************************************************/
 void lattice_refinert::instantiate_fact(const irep_idt& function_id, 
-        lattice_refiner_exprt *expr, symex_assertion_sumt& symex, const exprt& lhs) 
+        lattice_refiner_exprt *expr, 
+        smtcheck_opensmt2t &decider, symex_assertion_sumt& symex, 
+        const exprt& lhs) 
 {
     // If already in the SSA - return 
     if (expr->is_fact_instantiated(function_id))
@@ -653,7 +625,7 @@ void lattice_refinert::instantiate_fact(const irep_idt& function_id,
 
     //Get parameters in the summary - and create expressions for them
     const exprt::operandst &summary_parameters = 
-                fabricate_parameters(function_id, symex,
+                fabricate_parameters(function_id, decider, symex,
                 expr->get_source_location(), expr->get_call_info_operands());
 
     // Final call to create the partition with single fact
