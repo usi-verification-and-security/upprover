@@ -197,6 +197,7 @@ void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
         if (get_entry_point(key_entry, call_info, call_info_operands) != SymRef_Undef) {
             // ADD to the list to refine such as lhs = refine(key_entry, call_info);
             char* lhs_id = decider.getLogic()->printTerm(lhs);
+            
             std::string lhs_str = std::string(lhs_id);
             lhs_str = lhs_str.substr(1, lhs_str.size()-2);
             irep_idt lhs_irep_idt = lhs_str;
@@ -208,6 +209,7 @@ void lattice_refinert::add_expr_to_refine(symex_assertion_sumt& symex) {
             expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), 
                     *lhs_from_PTRef, lhs, call_info_operands, key_entry, 
                     call_info.source_location()));
+            
             free(lhs_id);
         }
     }
@@ -493,6 +495,14 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
     }
     
     // Else we continue to the next loop of refinement
+    
+    // Pop the old version of summaries
+    if (refineTryNum > 0) {
+        status() << "** INITIALIZING SOLVER **" << eom;
+        //decider.clear_partitions_during_refinement();
+    }
+    // TODO: check that it works also when using summary refinement
+    
     
     // Add all the functions on a path - need to retrieve it from lattice_refiner_exprt
     for (auto expr : expr2refine) {

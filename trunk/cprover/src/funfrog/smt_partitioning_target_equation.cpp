@@ -205,13 +205,10 @@ void smt_partitioning_target_equationt::convert_partition_summary(
                     != partition.applicable_summaries.end(); ++it) {
 
         smt_summaryt& summary = dynamic_cast<smt_summaryt&> (summary_store->find_summary(*it));
-#       ifdef DEBUG_SSA_PRINT
-        out_terms << ";;; Substituting summary #" << *it << "\n";
-        summary.print(out_terms);
-#       endif
         if (summary.is_valid() && (!is_recursive || last_summary == i++)) {
-#           ifdef DEBUG_SSA
-            std::cout << "Substituting summary #" << *it << std::endl;
+#           ifdef DEBUG_SSA_PRINT
+            out_terms << ";;; Substituting summary #" << *it << "\n";
+            summary.print(out_terms);
 #           endif
             summary.substitute(decider, common_symbs, partition.inverted_summary);
         }
