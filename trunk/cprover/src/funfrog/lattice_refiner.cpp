@@ -496,13 +496,6 @@ bool lattice_refinert::refine_SSA(symex_assertion_sumt& symex, bool is_solver_re
     
     // Else we continue to the next loop of refinement
     
-    // Pop the old version of summaries
-    if (refineTryNum > 0) {
-        status() << "** INITIALIZING SOLVER **" << eom;
-        //decider.clear_partitions_during_refinement();
-    }
-    // TODO: check that it works also when using summary refinement
-    
     
     // Add all the functions on a path - need to retrieve it from lattice_refiner_exprt
     for (auto expr : expr2refine) {
