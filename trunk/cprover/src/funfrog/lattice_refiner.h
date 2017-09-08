@@ -81,6 +81,7 @@ private:
   
   bool can_refine(const smtcheck_opensmt2t &decider, const symex_assertion_sumt& symex) const;
   SymRef get_entry_point(smtcheck_opensmt2t &decider,
+                        const std::string key_entry_orig,
                         const std::string key_entry, 
                         const exprt &expr, 
                         const exprt::operandst &operands);

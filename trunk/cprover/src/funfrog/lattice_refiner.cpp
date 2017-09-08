@@ -191,7 +191,7 @@ void lattice_refinert::add_expr_to_refine(smtcheck_opensmt2t &decider, symex_ass
         const exprt::operandst &call_info_operands = call_info.operands(); 
         std::string key_entry = gen_entry_point_name(decider, call_info.id().c_str(), call_info, call_info_operands);
         // if function has a definition, refine and add the refined term to a new partition
-        if (get_entry_point(decider, key_entry, call_info, call_info_operands) != SymRef_Undef) {
+        if (get_entry_point(decider, call_info.id().c_str(), key_entry, call_info, call_info_operands) != SymRef_Undef) {
             // ADD to the list to refine such as lhs = refine(key_entry, call_info);
             char* lhs_id = decider.getLogic()->printTerm(lhs);
             
@@ -223,7 +223,7 @@ void lattice_refinert::add_expr_to_refine(smtcheck_opensmt2t &decider, symex_ass
         std::string key_entry = gen_entry_point_name(decider, call_info.first.c_str(), lhs, call_info_operands);
 
         // if function has a definition, refine and add the refined term to a new partition
-        if (get_entry_point(decider, key_entry, lhs, call_info_operands) != SymRef_Undef) {
+        if (get_entry_point(decider, call_info.first.c_str(), key_entry, lhs, call_info_operands) != SymRef_Undef) {
             // ADD to the list to refine, such as lhs = refine(key_entry, call_info);
             expr2refine.insert(new lattice_refiner_exprt(models.at(key_entry), 
                     lhs, decider.getLogic()->getTerm_true(), call_info_operands, 
@@ -247,7 +247,8 @@ void lattice_refinert::add_expr_to_refine(smtcheck_opensmt2t &decider, symex_ass
 
 \*******************************************************************/
 SymRef lattice_refinert::get_entry_point(
-                smtcheck_opensmt2t &decider,  
+                smtcheck_opensmt2t &decider, 
+                const std::string key_entry_orig,
                 const std::string key_entry, 
                 const exprt &expr, 
                 const exprt::operandst &operands)
@@ -268,7 +269,8 @@ SymRef lattice_refinert::get_entry_point(
       for (auto it : operands) {
         args.push(decider.getSMTlibDatatype(it));
       }
-      decl_func = decider.get_smt_func_decl(key_entry.c_str(), in, args);
+      std::string func_id = "|_" + key_entry_orig + "#0|";
+      decl_func = decider.get_smt_func_decl(func_id.c_str(), in, args);
       declare2literal.insert(pair<string, SymRef> (key_entry, decl_func));
     }
 
@@ -345,6 +347,10 @@ bool lattice_refinert::process_SAT_result() {
                 // remove the partition
                 smt_summaryt& summary = get_summary(function_id);
                 summary.set_valid(false);
+                
+                #ifdef DEBUG_LATTICE
+                status() << "** Pop fact: " << function_id << eom;
+                #endif
             }
             
             // Free space
@@ -609,6 +615,10 @@ void lattice_refinert::instantiate_fact(const irep_idt& function_id,
         smt_summaryt& summary = get_summary(function_id);
         summary.set_valid(true);
         expr->add_instantiated_fact(function_id);
+        
+        #ifdef DEBUG_LATTICE
+        status () << "Push back fact: " << function_id << eom;
+        #endif
         return;
     }
     // else, add it to the SSA
