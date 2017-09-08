@@ -438,8 +438,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               *(dynamic_cast<smtcheck_opensmt2t *> (decider)), 
               *(dynamic_cast<interpolating_solvert *> (decider)));
       unsigned summaries_count = omega.get_summaries_count();
-      unsigned summaries_lattice_count = lattice_refiner.get_summaries_from_lattice_count(
-            *(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex, count == 1);
+      unsigned summaries_lattice_count = lattice_refiner.get_summaries_from_lattice_count(count == 1);
       ret_solver = end;
 #ifdef PRODUCE_PROOF      
       if (end && decider->can_interpolate())
@@ -471,8 +470,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         if (summaries_count > 0 || nondet_count > 0 || summaries_lattice_count > 0) {
           if (summaries_lattice_count > 0) {
             status() << "FUNCTION SUMMARIES (for " 
-                   << lattice_refiner.get_summaries_refined_via_lattice_count(
-                    *(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex) 
+                   << lattice_refiner.get_summaries_refined_via_lattice_count() 
                    << " calls out of " << summaries_lattice_count
                    << ") ARE REFINED VIA "<< lattice_refiner.get_models_count() 
                    << " MODEL(s)." << eom;
@@ -491,8 +489,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
           lattice_refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex); 
 
           if ((refiner.get_refined_functions().size() == 0) 
-               && (lattice_refiner.get_refined_functions_size(
-                  *(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex) == 0)) 
+               && (lattice_refiner.get_refined_functions_size() == 0)) 
           {
             assertion_violated(prop, symex.guard_expln);
             break;

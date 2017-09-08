@@ -661,8 +661,9 @@ bool smtcheck_opensmt2t::solve() {
     char *msg=NULL;
     for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
 #ifdef DEBUG_SMT4SOLVER
+        cout << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
         char* s = logic->printTerm(top_level_formulas[i]);
-        cout << "\n(assert\n" << s << "\n)" << endl;
+        cout << "(assert\n" << s << "\n)" << endl;
         free(s);
 #endif
         mainSolver->insertFormula(top_level_formulas[i], &msg);
@@ -673,9 +674,9 @@ bool smtcheck_opensmt2t::solve() {
     }
     
     pushed_formulas = top_level_formulas.size();
-#ifdef DEBUG_SMT4SOLVER
-    dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
-#endif
+//#ifdef DEBUG_SMT4SOLVER // Use if there are issues with the variables
+//    dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
+//#endif
 
     sstat r = mainSolver->check();
 

@@ -77,7 +77,10 @@ public:
     }
     
     const irep_idt get_function_id(std::string function_instance_name) { 
-        irep_idt function_id = function_instance_name.substr(0, function_instance_name.size()-2);
+        bool is_wt_counter = (id2string(function_instance_name).find(COUNTER) != std::string::npos);
+        irep_idt function_id = (is_wt_counter 
+                ? function_instance_name.substr(0, function_instance_name.size()-2) 
+                : function_instance_name);
         return function_id;
     }
 private:

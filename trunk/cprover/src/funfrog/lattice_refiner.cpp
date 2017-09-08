@@ -75,10 +75,8 @@ bool lattice_refinert::can_refine(const smtcheck_opensmt2t &decider, const symex
  Purpose: 
 
 \*******************************************************************/
-unsigned lattice_refinert::get_summaries_from_lattice_count(
-        const smtcheck_opensmt2t &decider,
-        const symex_assertion_sumt& symex, bool is_first_iteration) {    
-    if (!can_refine(decider, symex))
+unsigned lattice_refinert::get_summaries_from_lattice_count(bool is_first_iteration) {    
+    if (!can_refine())
         return 0;
     if (is_first_iteration)
         return 1;
@@ -97,9 +95,8 @@ unsigned lattice_refinert::get_summaries_from_lattice_count(
  Purpose: 
 
 \*******************************************************************/
-unsigned lattice_refinert::get_summaries_refined_via_lattice_count(
-        const smtcheck_opensmt2t &decider, const symex_assertion_sumt& symex) {    
-    if (!can_refine(decider, symex))
+unsigned lattice_refinert::get_summaries_refined_via_lattice_count() {    
+    if (!can_refine())
         return 0;
     
     int size_total = 0;
@@ -121,9 +118,8 @@ unsigned lattice_refinert::get_summaries_refined_via_lattice_count(
  Purpose: 
 
 \*******************************************************************/
-unsigned lattice_refinert::get_refined_functions_size( 
-        const smtcheck_opensmt2t &decider, const symex_assertion_sumt& symex){ 
-    if (!can_refine(decider, symex))
+unsigned lattice_refinert::get_refined_functions_size(){ 
+    if (!can_refine())
         return 0;
     
     int size_total = expr2refine.size(); 
@@ -152,7 +148,8 @@ unsigned lattice_refinert::get_refined_functions_size(
 void lattice_refinert::refine(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex)
 {
     // Shall we refine?
-    if (!can_refine(decider, symex))
+    flag_can_refine = can_refine(decider, symex);
+    if (!flag_can_refine)
         return;
     
     // Start a new cycle of refinement
@@ -446,7 +443,7 @@ bool lattice_refinert::process_solver_result(bool is_solver_ret_SAT) {
 bool lattice_refinert::refine_SSA(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex, bool is_solver_ret_SAT) 
 { 
     // Shall we refine?
-    if (!can_refine(decider, symex))
+    if (!can_refine())
         return true;
     
     if (process_solver_result(is_solver_ret_SAT)) {

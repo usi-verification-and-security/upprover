@@ -25,6 +25,7 @@ public:
           summarization_context(_summarization_context),
           is_lattice_ref_on(options.get_option("load-sum-model").size()>0),
           refineTryNum(0),
+          flag_can_refine(true),
           final_result_of_refinement(lattice_refinert::resultt::UNKNOWN)
     {
         set_message_handler(_message_handler);
@@ -43,18 +44,13 @@ public:
   
   unsigned get_models_count() const { return models.size(); }
   
-  unsigned get_refined_functions_size(
-    const smtcheck_opensmt2t &decider, 
-    const symex_assertion_sumt& symex);
+  unsigned get_refined_functions_size();
   
-  unsigned get_summaries_from_lattice_count(
-    const smtcheck_opensmt2t &decider, 
-    const symex_assertion_sumt& symex, 
-    bool is_first_iteration);
+  unsigned get_summaries_from_lattice_count(bool is_first_iteration);
   
-  unsigned get_summaries_refined_via_lattice_count(
-    const smtcheck_opensmt2t &decider, 
-    const symex_assertion_sumt& symex);
+  unsigned get_summaries_refined_via_lattice_count();
+  
+  bool can_refine() { return flag_can_refine; } // We check once, before delete of decider, and keep it for later
  
 protected:
   enum class resultt { UNKNOWN=0, SAT, UNSAT };
@@ -64,6 +60,7 @@ protected:
 private:
   const optionst &options; 
   bool is_lattice_ref_on;
+  bool flag_can_refine;
   unsigned refineTryNum;
   
   // Shared information about summaries to be used during analysis

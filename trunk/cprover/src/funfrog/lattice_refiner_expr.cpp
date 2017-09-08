@@ -63,8 +63,17 @@ std::set<irep_idt>* lattice_refiner_exprt::process_SAT_result() {
         if (refined_data_UNSAT.count(it) == 0)
             refine_data.push_front(it); // Adds it to the queue to check later on
     }
-      
-    return pop_facts_ids_SAT(refine_data.front());
+    
+    // If cannot use the lattice at all - pop all the summaries of this lattice
+    if (m_is_SAT) {
+        std::set<irep_idt>* to_pop = new std::set<irep_idt>();
+        to_pop->insert(instantiated_facts.begin(), instantiated_facts.end());
+        return to_pop;
+    } else {
+
+        // Else, remove only the facts that were with && with current facts
+        return pop_facts_ids_SAT(refine_data.front());
+    }
 }
 
 /*******************************************************************
@@ -187,7 +196,7 @@ std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_UNSAT(
 
 /*******************************************************************
 
- Function: lattice_refiner_exprt::pop_facts_ids
+ Function: lattice_refiner_exprt::pop_facts_ids_SAT
 
  Inputs: next node in the lattice
 
@@ -219,7 +228,7 @@ std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_SAT(
             free(temp);
         }
     }
-    
+        
     return to_pop;
 }
 
