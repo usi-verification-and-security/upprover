@@ -99,6 +99,8 @@ private:
   void add_expr_to_refine(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex);
   void set_front_heuristic() { /* TODO */ } // Will change the front/order of expr2refine
   
+  void pop_summaries(std::set<irep_idt>* to_pop, lattice_refiner_exprt *node);
+  
   smt_summaryt& get_summary(const irep_idt& function_id);
   const summary_idst& get_summary_ids(const irep_idt& function_id);
   const exprt::operandst &fabricate_parameters(

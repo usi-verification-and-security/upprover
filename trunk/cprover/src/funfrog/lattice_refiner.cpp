@@ -336,26 +336,8 @@ bool lattice_refinert::process_SAT_result() {
     bool ret = false;
     for (auto it : expr2refine) {
         std::set<irep_idt>* to_pop = it->process_SAT_result();
-        if (to_pop != 0) {
-            // Pop! 
-            for (auto it_pop = to_pop->begin(); it_pop != to_pop->end(); it_pop++) {
-                const irep_idt& function_id = it->get_function_id(as_string(*it_pop));
-                
-                // Remove from the expr
-                it->remove_instantiated_fact(function_id); 
-                
-                // remove the partition
-                smt_summaryt& summary = get_summary(function_id);
-                summary.set_valid(false);
-                
-                #ifdef DEBUG_LATTICE
-                status() << "** Pop fact: " << function_id << eom;
-                #endif
-            }
-            
-            // Free space
-            free(to_pop);
-        }
+        pop_summaries(to_pop, it);
+        if (to_pop != 0) free(to_pop); // Free space
         
         // Take care of pops
         ret = ret || it->is_SAT();
@@ -385,7 +367,10 @@ bool lattice_refinert::process_SAT_result() {
 bool lattice_refinert::process_UNSAT_result() {
     bool ret = true;
     for (auto it : expr2refine) {
-        it->process_UNSAT_result();
+        std::set<irep_idt>* to_pop = it->process_UNSAT_result();
+        pop_summaries(to_pop, it);
+        if (to_pop != 0) free(to_pop); // Free space
+        
         //take care of pops
         ret = ret && it->is_UNSAT();
     }
@@ -647,4 +632,35 @@ void lattice_refinert::instantiate_fact(const irep_idt& function_id,
     #endif
 
     expr->add_instantiated_fact(function_id);
+}
+
+/*******************************************************************
+
+ Function: lattice_refinert::pop_summaries
+
+ Inputs: summaries to pop 
+
+ Outputs: 
+
+ Purpose: simulate backward walk in the lattice
+
+\*******************************************************************/
+void lattice_refinert::pop_summaries(std::set<irep_idt>* to_pop, lattice_refiner_exprt *node) {
+    if (to_pop == 0) return;
+    
+    // Pop! 
+    for (auto it_pop = to_pop->begin(); it_pop != to_pop->end(); it_pop++) {
+        const irep_idt& function_id = node->get_function_id(as_string(*it_pop));
+
+        // Remove from the expr
+        node->remove_instantiated_fact(function_id); 
+
+        // remove the partition
+        smt_summaryt& summary = get_summary(function_id);
+        summary.set_valid(false);
+
+        #ifdef DEBUG_LATTICE
+        status() << "** Pop fact: " << function_id << eom;
+        #endif
+    }
 }

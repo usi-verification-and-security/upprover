@@ -682,8 +682,10 @@ bool smtcheck_opensmt2t::solve() {
 
     if (r == s_True) {
         return true;
+    } else if (r == s_False && has_unsupported_info()) {
+        // skip 
     } else if (r == s_False) {
-#ifdef PRODUCE_PROOF        
+#ifdef PRODUCE_PROOF       
         ready_to_interpolate = true;
 #endif
     } else {

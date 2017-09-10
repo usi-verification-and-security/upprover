@@ -440,6 +440,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
       unsigned summaries_count = omega.get_summaries_count();
       unsigned summaries_lattice_count = lattice_refiner.get_summaries_from_lattice_count(count == 1);
       ret_solver = end;
+      end = end && lattice_refiner.is_end(); // so the lattice refinement will not stop after one path of UNSAT
 #ifdef PRODUCE_PROOF      
       if (end && decider->can_interpolate())
 #else
