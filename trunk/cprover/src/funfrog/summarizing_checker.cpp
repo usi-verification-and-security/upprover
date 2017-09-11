@@ -407,16 +407,15 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   while (!end)
   {
     count++;
-    //end = (count == 1) ? symex.prepare_SSA(assertion) : 
-    //    (symex.refine_SSA (assertion, refiner.get_refined_functions()) 
-    //        && lattice_refiner.refine_SSA(symex, ret_solver));
-    // Shall we refine? - here we can add new refinement algorithms
-    if (count == 1) {
-        end = symex.prepare_SSA(assertion);
-    } else {
-        bool end_2 = lattice_refiner.refine_SSA(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex, !ret_solver);
-        bool end_1 = symex.refine_SSA(refiner.get_refined_functions());
-        end = end_1 && end_2;
+    end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (refiner.get_refined_functions());
+    if ((count > 1) && (lattice_refiner.can_refine())) {
+        bool end_lattice = lattice_refiner.refine_SSA(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex, !ret_solver);
+        if (!end_lattice && lattice_refiner.is_required_init_solver()) 
+        { 
+            free(decider); initialize_solver(); 
+        }
+        
+        end = end && end_lattice;
     }
     
     //LA: good place?

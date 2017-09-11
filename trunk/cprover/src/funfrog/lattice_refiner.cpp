@@ -663,4 +663,6 @@ void lattice_refinert::pop_summaries(std::set<irep_idt>* to_pop, lattice_refiner
         status() << "** Pop fact: " << function_id << eom;
         #endif
     }
+    
+    is_did_pop = to_pop->size() > 0; 
 }

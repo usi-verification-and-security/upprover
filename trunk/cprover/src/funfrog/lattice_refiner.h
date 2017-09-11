@@ -26,7 +26,8 @@ public:
           is_lattice_ref_on(options.get_option("load-sum-model").size()>0),
           refineTryNum(0),
           flag_can_refine(true),
-          final_result_of_refinement(lattice_refinert::resultt::UNKNOWN)
+          final_result_of_refinement(lattice_refinert::resultt::UNKNOWN),
+          is_did_pop(false)
     {
         no_error_trace = options.get_bool_option("no-error-trace"); // KE: can be changed to some other indicator    
         set_message_handler(_message_handler);
@@ -58,6 +59,8 @@ public:
           || (can_refine() && final_result_of_refinement != lattice_refinert::resultt::UNKNOWN)); 
   }
   
+  bool is_required_init_solver() { return is_did_pop;} // Only if we did pop we must to reset the solver
+  
 protected:
   enum class resultt { UNKNOWN=0, SAT, UNSAT };
   
@@ -69,6 +72,7 @@ private:
   bool flag_can_refine;
   unsigned refineTryNum;
   bool no_error_trace;
+  bool is_did_pop;
   
   // Shared information about summaries to be used during analysis
   summarization_contextt &summarization_context;
