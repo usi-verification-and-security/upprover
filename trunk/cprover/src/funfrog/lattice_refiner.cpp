@@ -664,5 +664,5 @@ void lattice_refinert::pop_summaries(std::set<irep_idt>* to_pop, lattice_refiner
         #endif
     }
     
-    is_did_pop = to_pop->size() > 0; 
+    is_did_pop = (to_pop->size() > 0); 
 }

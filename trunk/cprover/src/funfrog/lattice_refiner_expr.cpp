@@ -26,7 +26,7 @@ set<lattice_refiner_modelt*> lattice_refiner_exprt::get_refine_functions() {
         return ret;
 
     ret.insert(refine_data.front());
-    // TODO: add the whole path - current_path
+    ret.insert(current_path.begin(), current_path.end());
     
     return ret; 
 }
@@ -52,30 +52,70 @@ set<lattice_refiner_modelt*> lattice_refiner_exprt::get_refine_functions() {
 std::set<irep_idt>* lattice_refiner_exprt::process_SAT_result() {
     if (refine_data.empty()) return 0;
     
-    m_is_SAT = m_is_SAT || (refine_data.front()->childs.size() == 0);
+    m_is_SAT = (m_is_SAT || (refine_data.front()->childs.size() == 0));
     
-    // Add the childs to the queue (if there is)
+    //Pop the last fact/node - going down the lattice
     lattice_refiner_modelt *front = refine_data.front();
     refine_data.pop_front(); // Remove the node we used
     
+    // Push facts - childs that never visited
     for (auto it : front->childs) {
         // If never check if 
         if (refined_data_UNSAT.count(it) == 0)
             refine_data.push_front(it); // Adds it to the queue to check later on
     }
     
-    // If cannot use the lattice at all - pop all the summaries of this lattice
+    // Pop facts
     if (m_is_SAT && no_error_trace) {
+        // If cannot use the lattice at all - pop all the summaries of this lattice
         std::set<irep_idt>* to_pop = new std::set<irep_idt>();
         to_pop->insert(instantiated_facts.begin(), instantiated_facts.end());
         return to_pop;
     } else if (m_is_SAT) {
+        // No pop, will use the facts to create the error trace
         return new std::set<irep_idt>();
     } else {
-
         // Else, remove only the facts that were with && with current facts
         return pop_facts_ids_SAT(refine_data.front());
     }
+}
+
+/*******************************************************************
+
+ Function: lattice_refiner_exprt::pop_facts_ids_SAT
+
+ Inputs: next node in the lattice
+
+ Outputs: list of partitions to pop from the SSA tree
+
+ Purpose: remove all the facts that are not in use in the next node
+
+\*******************************************************************/
+std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_SAT(
+            lattice_refiner_modelt *curr)
+{
+    // Do we need to pop nodes? 
+    if (!is_fact_ids_in_data(curr)) return 0;
+    
+    // We need to pop data, since the current node is something like: x with ancestor: x&y; we remove y.    
+    std::set<irep_idt> *to_pop = new std::set<irep_idt>();
+    for (auto it_p : current_path) { // per node of the path
+        bool is_subtract_sets = false;
+        for (auto it : curr->data) { 
+            // Check if a fact from the current set was before 
+            if (is_fact_ids_in_data(it_p, it)) {
+                is_subtract_sets = true;
+                break;
+            }
+        }     
+        if (is_subtract_sets) {
+            std::set<irep_idt>* temp = subtract_prev_data_from_facts(curr, it_p);
+            to_pop->insert(temp->begin(), temp->end());
+            free(temp);
+        }
+    }
+        
+    return to_pop;
 }
 
 /*******************************************************************
@@ -94,11 +134,11 @@ std::set<irep_idt>* lattice_refiner_exprt::process_SAT_result() {
 std::set<irep_idt>* lattice_refiner_exprt::process_UNSAT_result() {
     if (refine_data.empty()) return 0;
     
-    lattice_refiner_modelt *temp = refine_data.front();
-    refined_data_UNSAT.insert(temp);
+    lattice_refiner_modelt *prev_fact = refine_data.front();
+    refined_data_UNSAT.insert(prev_fact);
     refine_data.pop_front(); // Remove the node we used
     
-    remove_dequed_data(temp);
+    remove_dequed_data(prev_fact);
     
     // what nodes to pop?
     return pop_facts_ids_UNSAT(refine_data.front());
@@ -189,49 +229,10 @@ std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_UNSAT(
         const irep_idt& function_id = (*it);
         if (temp_facts_instant.find(function_id) != temp_facts_instant.end()) {
             temp_facts_to_pop->insert(function_id);
-            instantiated_facts.erase(function_id);
         }
     }
     
     return temp_facts_to_pop;
-}
-
-/*******************************************************************
-
- Function: lattice_refiner_exprt::pop_facts_ids_SAT
-
- Inputs: next node in the lattice
-
- Outputs: list of partitions to pop from the SSA tree
-
- Purpose: remove all the facts that are not in use in the next node
-
-\*******************************************************************/
-std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_SAT(
-            lattice_refiner_modelt *curr)
-{
-    // Do we need to pop nodes? 
-    if (!is_fact_ids_in_data(curr)) return 0;
-    
-    // We need to pop data, since the current node is something like: x with ancestor: x&y; we remove y.    
-    std::set<irep_idt> *to_pop = new std::set<irep_idt>();
-    for (auto it_p : current_path) { // per node of the path
-        bool is_subtract_sets = false;
-        for (auto it : curr->data) { 
-            // Check if a fact from the current set was before 
-            if (is_fact_ids_in_data(it_p, it)) {
-                is_subtract_sets = true;
-                break;
-            }
-        }     
-        if (is_subtract_sets) {
-            std::set<irep_idt>* temp = subtract_prev_data_from_facts(curr, it_p);
-            to_pop->insert(temp->begin(), temp->end());
-            free(temp);
-        }
-    }
-        
-    return to_pop;
 }
 
 /*******************************************************************
