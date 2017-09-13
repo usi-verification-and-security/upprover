@@ -207,7 +207,7 @@ void lattice_refinert::add_expr_to_refine(smtcheck_opensmt2t &decider, symex_ass
                     *lhs_from_PTRef, lhs, call_info_operands, key_entry, 
                     call_info.source_location(), no_error_trace));
             
-            delete lhs_id;
+            free(lhs_id); // comes from decider.getLogic() w/t malloc
         }
     }
     
