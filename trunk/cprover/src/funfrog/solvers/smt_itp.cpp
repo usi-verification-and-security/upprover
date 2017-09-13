@@ -297,6 +297,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
     }
     PTRef part_sum;
     PTRef templ = tterm->getBody();
+    //cout << ";; Template before : " << logic->printTerm(templ) << endl;
     logic->varsubstitute(templ, subst, part_sum);
     decider.set_to_true(part_sum);
     //cout << "; Template instantiated for function " << tterm->getName() << " is\n" << logic->printTerm(part_sum) << endl;
