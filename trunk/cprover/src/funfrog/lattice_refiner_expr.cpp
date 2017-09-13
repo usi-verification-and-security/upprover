@@ -132,16 +132,19 @@ std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_SAT(
 
 \*******************************************************************/
 std::set<irep_idt>* lattice_refiner_exprt::process_UNSAT_result() {
-    if (refine_data.empty()) return 0;
+    if (refine_data.empty()) return 0; // UNSAT globally
     
+    // Marks the current node as UNSAT result
     lattice_refiner_modelt *prev_fact = refine_data.front();
     refined_data_UNSAT.insert(prev_fact);
     refine_data.pop_front(); // Remove the node we used
     
+    // Remove all nodes on a straight path to the current UNSAT node
     remove_dequed_data(prev_fact);
+    if (refine_data.empty()) return 0; // UNSAT globally
     
     // what nodes to pop?
-    return pop_facts_ids_UNSAT(refine_data.front());
+    return pop_facts_ids_UNSAT(prev_fact, refine_data.front());
 }
 
 /*******************************************************************
@@ -199,9 +202,9 @@ bool lattice_refiner_exprt::is_all_childs_leads_to_UNSAT(lattice_refiner_modelt 
 
 /*******************************************************************
 
- Function: lattice_refiner_exprt::pop_facts_ids
+ Function: lattice_refiner_exprt::pop_facts_ids_UNSAT
 
- Inputs: next node in the lattice
+ Inputs: next node in the lattice and prev node(that was UNSAT)
 
  Outputs: list of partitions to pop from the SSA tree
 
@@ -209,30 +212,56 @@ bool lattice_refiner_exprt::is_all_childs_leads_to_UNSAT(lattice_refiner_modelt 
 
 \*******************************************************************/
 std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_UNSAT(
-            lattice_refiner_modelt *curr)
+            lattice_refiner_modelt *prev, lattice_refiner_modelt *curr)
 {
-    if (refine_data.empty()) return 0;
+    assert(!refine_data.empty());
     
-    std::set<irep_idt> temp_facts_instant;
+    // Find common ancestor
+    lattice_refiner_modelt *common = find_common_ancestor(prev, curr);
+    assert(common);  // not null!
+    
+    //Pop from current_path till common
     std::set<irep_idt> *temp_facts_to_pop = new std::set<irep_idt>();
+    while (current_path.back() != common) {
+        lattice_refiner_modelt *curr = current_path.back();
+        temp_facts_to_pop->insert(curr->data.begin(), curr->data.end());
+        current_path.pop_back();
+        assert(!current_path.empty()); // At least common shall be there
+    }
+    return temp_facts_to_pop;
+}
+
+/*******************************************************************
+
+ Function: lattice_refiner_exprt::find_common_ancestor
+
+ Inputs: two nodes
+
+ Outputs: their (least) common ancestor
+
+ Purpose:
+
+\*******************************************************************/
+lattice_refiner_modelt *lattice_refiner_exprt::find_common_ancestor(
+    lattice_refiner_modelt *nodeA, lattice_refiner_modelt *nodeB) 
+{
+    if ((nodeA == 0) || (nodeB == 0)) return 0;
+    if (nodeA->is_root()) return nodeA;
+    if (nodeB->is_root()) return nodeB;
     
-    // get all the facts we keep for the current node
-    for(auto it = curr->data.begin(); it != curr->data.end() ; ++it) {
-        const irep_idt& function_id = get_function_id(*it);
-        if (is_fact_instantiated(function_id)) {
-            temp_facts_instant.insert(function_id);
-        }
-    } 
-    
-    // Get all the facts we need to pop for the current node
-    for(auto it = instantiated_facts.begin(); it != instantiated_facts.end() ; ++it) {
-        const irep_idt& function_id = (*it);
-        if (temp_facts_instant.find(function_id) != temp_facts_instant.end()) {
-            temp_facts_to_pop->insert(function_id);
-        }
+    // Go on the path backward and find the first node that appears as ancestor
+    // of both nodeA and nodeB
+    for (vector<lattice_refiner_modelt *>::reverse_iterator 
+                                    itr_path = current_path.rbegin();
+                                    itr_path != current_path.rend(); itr_path++) 
+    {
+        lattice_refiner_modelt *curr = *itr_path;
+        if ((nodeA->ancestors.find(curr) != nodeA->ancestors.end()) &&
+            (nodeB->ancestors.find(curr) != nodeB->ancestors.end()))
+            return curr;
     }
     
-    return temp_facts_to_pop;
+    return 0;
 }
 
 /*******************************************************************

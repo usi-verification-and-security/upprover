@@ -104,7 +104,8 @@ private:
     void remove_dequed_data(lattice_refiner_modelt *curr); // Remove from refine_data all nodes with paths only to UNSAT nodes.
     
     // Remove from the instantiate facts, all the facts that aren't in use (go backward)
-    std::set<irep_idt>* pop_facts_ids_UNSAT(lattice_refiner_modelt *curr);
+    std::set<irep_idt>* pop_facts_ids_UNSAT(lattice_refiner_modelt *prev, lattice_refiner_modelt *curr);
+    lattice_refiner_modelt *find_common_ancestor(lattice_refiner_modelt *nodeA, lattice_refiner_modelt *nodeB);
     bool is_all_childs_leads_to_UNSAT(lattice_refiner_modelt *curr);
     
     // Remove from the instantiate facts, all the facts that aren't in use (go backward)
