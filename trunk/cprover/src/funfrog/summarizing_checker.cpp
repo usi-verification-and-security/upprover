@@ -412,7 +412,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         bool end_lattice = lattice_refiner.refine_SSA(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex, !ret_solver);
         if (!end_lattice && lattice_refiner.is_required_init_solver()) 
         { 
-            free(decider); initialize_solver(); 
+            delete decider; initialize_solver(); 
         }
         
         end = end && end_lattice;

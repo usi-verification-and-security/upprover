@@ -207,7 +207,7 @@ void lattice_refinert::add_expr_to_refine(smtcheck_opensmt2t &decider, symex_ass
                     *lhs_from_PTRef, lhs, call_info_operands, key_entry, 
                     call_info.source_location(), no_error_trace));
             
-            free(lhs_id);
+            delete lhs_id;
         }
     }
     
@@ -337,7 +337,7 @@ bool lattice_refinert::process_SAT_result() {
     for (auto it : expr2refine) {
         std::set<irep_idt>* to_pop = it->process_SAT_result();
         pop_summaries(to_pop, it);
-        if (to_pop != 0) free(to_pop); // Free space
+        if (to_pop != 0) delete to_pop; // Free space
         
         // Take care of pops
         ret = ret || it->is_SAT();
@@ -369,7 +369,7 @@ bool lattice_refinert::process_UNSAT_result() {
     for (auto it : expr2refine) {
         std::set<irep_idt>* to_pop = it->process_UNSAT_result();
         pop_summaries(to_pop, it);
-        if (to_pop != 0) free(to_pop); // Free space
+        if (to_pop != 0) delete to_pop; // Free space
         
         //take care of pops
         ret = ret && it->is_UNSAT();
@@ -394,6 +394,7 @@ bool lattice_refinert::process_UNSAT_result() {
 
 \*******************************************************************/
 bool lattice_refinert::process_solver_result(bool is_solver_ret_SAT) {
+    is_did_pop = false;
     if (final_result_of_refinement != lattice_refinert::resultt::UNKNOWN)
         return true;
     

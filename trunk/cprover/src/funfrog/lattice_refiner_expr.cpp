@@ -111,7 +111,7 @@ std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_SAT(
         if (is_subtract_sets) {
             std::set<irep_idt>* temp = subtract_prev_data_from_facts(curr, it_p);
             to_pop->insert(temp->begin(), temp->end());
-            free(temp);
+            delete temp;
         }
     }
         
