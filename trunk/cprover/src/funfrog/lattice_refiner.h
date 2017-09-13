@@ -52,7 +52,12 @@ public:
   
   unsigned get_summaries_refined_via_lattice_count();
   
-  bool can_refine() { return flag_can_refine; } // We check once, before delete of decider, and keep it for later
+  // We check once, before delete of decider, and keep it for later
+  bool can_refine() { 
+    if (!is_lattice_ref_on) return false; 
+  
+    return flag_can_refine; 
+  } 
  
   bool is_end() { 
     return ((!can_refine()) 

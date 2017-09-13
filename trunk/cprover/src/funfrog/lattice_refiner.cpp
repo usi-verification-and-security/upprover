@@ -660,9 +660,9 @@ void lattice_refinert::pop_summaries(std::set<irep_idt>* to_pop, lattice_refiner
         smt_summaryt& summary = get_summary(function_id);
         summary.set_valid(false);
 
-        #ifdef DEBUG_LATTICE
+        //#ifdef DEBUG_LATTICE
         status() << "** Pop fact: " << function_id << eom;
-        #endif
+        //#endif
     }
     
     is_did_pop = (to_pop->size() > 0); 
