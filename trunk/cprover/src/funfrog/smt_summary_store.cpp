@@ -30,7 +30,23 @@ void smt_summary_storet::refresh_summaries_tterms(const std::string& in, smtchec
     get_files(summary_files, in);
     for(auto it = summary_files.begin(); it != summary_files.end() ; ++it)
     {
-        decider->getMainSolver()->readFormulaFromFile(it->c_str());
+        if (decider->getMainSolver()->readFormulaFromFile(it->c_str())) 
+        {
+            vec<Tterm>& functions = decider->getLogic()->getFunctions();
+            storet::iterator itr = store.begin();
+            for(int i = 0; i < functions.size(); ++i)
+            {
+                Tterm &tterm = functions[i];
+                
+                // Get the old summary and update it
+                itr->summary->setTterm(tterm);
+                itr->summary->setLogic(decider->getLogic());
+                itr->summary->setInterpolant(tterm.getBody());
+                
+                // set for the next iteration
+                itr++;
+            }
+        }
     }
 }
 

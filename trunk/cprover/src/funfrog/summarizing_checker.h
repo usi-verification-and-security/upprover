@@ -53,6 +53,7 @@ public:
 
   void initialize();
   void initialize_solver();
+  void delete_and_initialize_solver(); // For replacing pop in the solver, remove once pop works
   bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
   bool assertion_holds_prop(const assertion_infot& assertion, bool store_summaries_with_assertion);

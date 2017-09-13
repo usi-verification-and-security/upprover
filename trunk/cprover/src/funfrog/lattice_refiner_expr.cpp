@@ -8,6 +8,8 @@
 #include "lattice_refiner_expr.h"
 #include <algorithm>
 
+//#define DEBUG_LATTICE_WALK
+
 /*******************************************************************
 
  Function: lattice_refiner_exprt::get_refine_function
@@ -58,11 +60,21 @@ std::set<irep_idt>* lattice_refiner_exprt::process_SAT_result() {
     lattice_refiner_modelt *front = refine_data.front();
     refine_data.pop_front(); // Remove the node we used
     
+    #ifdef DEBUG_LATTICE_WALK
+    std::cout << "** Finished (SAT) node " << front->get_data_str() << std::endl;
+    #endif
+    
     // Push facts - childs that never visited
     for (auto it : front->childs) {
         // If never check if 
-        if (refined_data_UNSAT.count(it) == 0)
+        if (refined_data_UNSAT.count(it) == 0) 
+        {
             refine_data.push_front(it); // Adds it to the queue to check later on
+            
+            #ifdef DEBUG_LATTICE_WALK
+            std::cout << "** Push for later (SAT) node " << it->get_data_str() << std::endl;
+            #endif
+        }
     }
     
     // Pop facts
@@ -114,7 +126,16 @@ std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_SAT(
             delete temp;
         }
     }
-        
+    
+    // If a diamond, pop the facts that this fact generalized
+    lattice_refiner_modelt *ancestor = get_join_meet_point(curr);
+    while (current_path.back() != ancestor) {
+        lattice_refiner_modelt *curr = current_path.back();
+        to_pop->insert(curr->data.begin(), curr->data.end());
+        current_path.pop_back();
+        assert(!current_path.empty()); // At least common shall be there
+    }
+    
     return to_pop;
 }
 
@@ -138,6 +159,10 @@ std::set<irep_idt>* lattice_refiner_exprt::process_UNSAT_result() {
     lattice_refiner_modelt *prev_fact = refine_data.front();
     refined_data_UNSAT.insert(prev_fact);
     refine_data.pop_front(); // Remove the node we used
+    
+    #ifdef DEBUG_LATTICE_WALK
+    std::cout << "** Finished (UNSAT) node " << prev_fact->get_data_str() << std::endl;
+    #endif
     
     // Remove all nodes on a straight path to the current UNSAT node
     remove_dequed_data(prev_fact);
@@ -170,6 +195,10 @@ void lattice_refiner_exprt::remove_dequed_data(lattice_refiner_modelt *curr) {
         if (is_all_childs_leads_to_UNSAT(*it)) // All my kids goes to UNSAT - remove too 
         {
             refine_data.erase(std::remove(refine_data.begin(), refine_data.end(), *it), refine_data.end()); // Remove the node we used
+    
+            #ifdef DEBUG_LATTICE_WALK
+            std::cout << "** Finished (UNSAT) node " << it->get_data_str() << std::endl;
+            #endif
             
             refined_data_UNSAT.insert(*it);
             remove_dequed_data(*it); // Go up the tree
@@ -177,6 +206,34 @@ void lattice_refiner_exprt::remove_dequed_data(lattice_refiner_modelt *curr) {
     }
 }
 
+
+/*******************************************************************
+
+ Function: lattice_refiner_exprt::remove_dequed_data
+
+ Inputs: cuurent node
+
+ Outputs: If a join, gets its meet
+
+ Purpose: 
+ 
+\*******************************************************************/
+lattice_refiner_modelt *lattice_refiner_exprt::get_join_meet_point(lattice_refiner_modelt *curr) 
+{
+    lattice_refiner_modelt *common_ret = 0;
+    std::set<lattice_refiner_modelt *>::iterator it = curr->ancestors.begin();
+    for (auto it_next = curr->ancestors.begin(); it_next != curr->ancestors.end(); ++it_next) {
+        it++;
+        if (it != curr->ancestors.end()) {
+            lattice_refiner_modelt *common = find_common_ancestor(*it, *it_next);
+            if (common_ret == 0) common_ret = common;
+            if (common_ret != common) return 0;
+        }
+    }
+    
+    return common_ret;
+}
+ 
 /*******************************************************************
 
  Function: lattice_refiner_exprt::is_all_childs_UNSAT
@@ -189,8 +246,6 @@ void lattice_refiner_exprt::remove_dequed_data(lattice_refiner_modelt *curr) {
 
 \*******************************************************************/
 bool lattice_refiner_exprt::is_all_childs_leads_to_UNSAT(lattice_refiner_modelt *curr) {
-    assert(!refine_data.empty());
-    
     // Per item in refine_data, if all its sons are in refined_data_UNSAT, remove it
     for(auto it = curr->childs.begin(); it != curr->childs.end() ; ++it) {
         if (refined_data_UNSAT.count(*it) == 0)
@@ -219,6 +274,11 @@ std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_UNSAT(
     // Find common ancestor
     lattice_refiner_modelt *common = find_common_ancestor(prev, curr);
     assert(common);  // not null!
+    
+    #ifdef DEBUG_LATTICE_WALK
+    std::cout << "Common ancestor is : " << common->get_data_str() << " of " <<
+            prev->get_data_str() << " and " << curr->get_data_str() << std::endl;
+    #endif
     
     //Pop from current_path till common
     std::set<irep_idt> *temp_facts_to_pop = new std::set<irep_idt>();
@@ -251,17 +311,43 @@ lattice_refiner_modelt *lattice_refiner_exprt::find_common_ancestor(
     
     // Go on the path backward and find the first node that appears as ancestor
     // of both nodeA and nodeB
+    bool optimized_A = (nodeA == current_path.back()); // A is an ancestor of itself
+    bool optimized_B = (nodeB == current_path.back()); // B is an ancestor of itself
     for (vector<lattice_refiner_modelt *>::reverse_iterator 
                                     itr_path = current_path.rbegin();
                                     itr_path != current_path.rend(); itr_path++) 
     {
-        lattice_refiner_modelt *curr = *itr_path;
-        if ((nodeA->ancestors.find(curr) != nodeA->ancestors.end()) &&
-            (nodeB->ancestors.find(curr) != nodeB->ancestors.end()))
-            return curr;
+        if ((optimized_A || is_ancestor(nodeA, *itr_path)) &&
+            (optimized_B || is_ancestor(nodeB, *itr_path))) 
+        {
+            return *itr_path;
+        }
     }
     
     return 0;
+}
+
+/*******************************************************************
+
+ Function: lattice_refiner_exprt::is_ancestor
+
+ Inputs: two nodes
+
+ Outputs: check if the second node is an ancestor of the first node
+
+ Purpose:
+
+\*******************************************************************/
+bool lattice_refiner_exprt::is_ancestor(lattice_refiner_modelt *child, lattice_refiner_modelt *ancestor) 
+{
+    if (child->is_root()) return ancestor->is_root(); // Assuming single root
+    if (child->ancestors.find(ancestor) != child->ancestors.end()) return true;
+    
+    for (auto it: child->ancestors) {
+        if (is_ancestor(it, ancestor)) return true;
+    }
+    
+    return false;
 }
 
 /*******************************************************************

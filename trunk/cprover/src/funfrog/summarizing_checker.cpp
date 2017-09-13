@@ -122,6 +122,21 @@ void summarizing_checkert::initialize()
   omega.setup_default_precision(init);
 }
 
+void summarizing_checkert::delete_and_initialize_solver()
+{
+    delete decider; initialize_solver(); 
+
+    // We need to refresh the summaries, so opensmt will know the vars
+    const std::string& summary_file = options.get_option("load-summaries");
+    if (!summary_file.empty()) 
+    {
+        //Refresh Variables
+        summarization_context.get_summary_store()->refresh_summaries_tterms(summary_file, dynamic_cast <smtcheck_opensmt2t*> (decider));
+        (dynamic_cast <smtcheck_opensmt2t*> (decider))->init_unsupported_counter();
+    }
+    // KE: not sure it is the best way to do so!
+}
+
 void get_ints(std::vector<unsigned>& claims, std::string set){
 
   unsigned int length=set.length();
@@ -411,17 +426,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
     if ((count > 1) && (lattice_refiner.can_refine())) {
         bool end_lattice = lattice_refiner.refine_SSA(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex, !ret_solver);
         if (!end_lattice && lattice_refiner.is_required_init_solver()) 
-        { 
-            delete decider; initialize_solver(); 
-            
-            // We need to refresh the summaries, so opensmt will know the vars
-            const std::string& summary_file = options.get_option("load-summaries");
-            if (!summary_file.empty()) {
-                //Refresh Variables
-                summarization_context.get_summary_store()->refresh_summaries_tterms(summary_file, dynamic_cast <smtcheck_opensmt2t*> (decider));
-            }
-            // KE: not sure it is the best way to do so!
-        }
+            delete_and_initialize_solver(); // Init solver when pop is not working
         
         end = end && end_lattice;
     }

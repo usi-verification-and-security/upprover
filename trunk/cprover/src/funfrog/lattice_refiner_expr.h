@@ -101,15 +101,18 @@ private:
     std::deque<lattice_refiner_modelt *> refine_data; // Next nodes in the lattice to use for refining this expression
     std::set<lattice_refiner_modelt *> refined_data_UNSAT; // Paths that ended in UNSAT (if all ended in UNSAT => UNSAT) + bot is here!
     
-    void remove_dequed_data(lattice_refiner_modelt *curr); // Remove from refine_data all nodes with paths only to UNSAT nodes.
-    
     // Remove from the instantiate facts, all the facts that aren't in use (go backward)
     std::set<irep_idt>* pop_facts_ids_UNSAT(lattice_refiner_modelt *prev, lattice_refiner_modelt *curr);
-    lattice_refiner_modelt *find_common_ancestor(lattice_refiner_modelt *nodeA, lattice_refiner_modelt *nodeB);
-    bool is_all_childs_leads_to_UNSAT(lattice_refiner_modelt *curr);
     
+    void remove_dequed_data(lattice_refiner_modelt *curr); // Remove from refine_data all nodes with paths only to UNSAT nodes.
+    bool is_all_childs_leads_to_UNSAT(lattice_refiner_modelt *curr);
+        
     // Remove from the instantiate facts, all the facts that aren't in use (go backward)
     std::set<irep_idt>* pop_facts_ids_SAT(lattice_refiner_modelt *curr);
+    
+    lattice_refiner_modelt *find_common_ancestor(lattice_refiner_modelt *nodeA, lattice_refiner_modelt *nodeB);
+    bool is_ancestor(lattice_refiner_modelt *nodeA, lattice_refiner_modelt *nodeB);
+    lattice_refiner_modelt *get_join_meet_point(lattice_refiner_modelt *curr);
     
     bool is_fact_ids_in_data(lattice_refiner_modelt *curr, const irep_idt id=irep_idt(""));
     std::set<irep_idt> * subtract_prev_data_from_facts(lattice_refiner_modelt *curr, lattice_refiner_modelt *prev); 
