@@ -37,6 +37,7 @@ public:
   // Serialization
   virtual void serialize(std::ostream& out) const=0;
   virtual void deserialize(const std::string& in, smtcheck_opensmt2t *decider = NULL)=0;
+  virtual void refresh_summaries_tterms(const std::string& in, smtcheck_opensmt2t *decider = NULL)=0;
 
   // Compacts the store representation, only representatives are kept.
   void compact_store(summary_infot& summary_info, 

@@ -22,6 +22,18 @@ void smt_summary_storet::serialize(std::ostream& out) const
   }
 }
 
+// In case we re-create the solver, we need to refresh the tterms in OpenSMT
+void smt_summary_storet::refresh_summaries_tterms(const std::string& in, smtcheck_opensmt2t *decider) 
+{
+    // KE: add support for many summary files for lattice refinement
+    std::set<std::string> summary_files;
+    get_files(summary_files, in);
+    for(auto it = summary_files.begin(); it != summary_files.end() ; ++it)
+    {
+        decider->getMainSolver()->readFormulaFromFile(it->c_str());
+    }
+}
+
 // SMT logics deser
 void smt_summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *decider)
 {

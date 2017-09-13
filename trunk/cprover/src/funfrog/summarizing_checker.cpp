@@ -413,6 +413,14 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         if (!end_lattice && lattice_refiner.is_required_init_solver()) 
         { 
             delete decider; initialize_solver(); 
+            
+            // We need to refresh the summaries, so opensmt will know the vars
+            const std::string& summary_file = options.get_option("load-summaries");
+            if (!summary_file.empty()) {
+                //Refresh Variables
+                summarization_context.get_summary_store()->refresh_summaries_tterms(summary_file, dynamic_cast <smtcheck_opensmt2t*> (decider));
+            }
+            // KE: not sure it is the best way to do so!
         }
         
         end = end && end_lattice;
