@@ -428,7 +428,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         if (!end_lattice && lattice_refiner.is_required_init_solver()) 
             delete_and_initialize_solver(); // Init solver when pop is not working
         
-        end = end && end_lattice;
+        end = end_lattice; // Don't allow "trivial" cases of summary refinement to interrupt the lattice refinement
     }
     
     //LA: good place?
