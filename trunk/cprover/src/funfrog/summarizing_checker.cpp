@@ -429,6 +429,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
             delete_and_initialize_solver(); // Init solver when pop is not working
         
         end = end_lattice; // Don't allow "trivial" cases of summary refinement to interrupt the lattice refinement
+        // However, will not interpolate as it refers this UNSAT as trivial (use the same flags as trivial)
+        // KE: when interpolation works with pops, enable it
     }
     
     //LA: good place?
