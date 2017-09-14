@@ -174,6 +174,8 @@ public:
   
   virtual std::string getStringSMTlibDatatype(const exprt& expr)=0;
   virtual SRef getSMTlibDatatype(const exprt& expr)=0; 
+
+  void init_unsupported_counter() { unsupported2var=0; } // KE: only for re-init solver use. Once we have pop in OpenSMT, please discard.
   
 protected:
   
@@ -198,7 +200,7 @@ protected:
   literalt store_new_unsupported_var(const exprt& expr, const PTRef var); // common to all 
   
   virtual literalt lunsupported2var(const exprt &expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
-
+  
   literalt new_variable(); // Common to all
 
   literalt push_variable(PTRef ptl); // Common to all

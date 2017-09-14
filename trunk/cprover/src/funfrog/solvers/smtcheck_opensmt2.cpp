@@ -16,7 +16,7 @@ Author: Grigory Fedyukovich
 //#define DEBUG_SMT2SOLVER
 
 const string smtcheck_opensmt2t::_unsupported_var_str = "hifrog::c::unsupported_op2var!0#";
-unsigned smtcheck_opensmt2t::unsupported2var = 0;
+unsigned smtcheck_opensmt2t::unsupported2var = 0; // Count how many instance of unsupported we have for all deciders
 
 // Free all resources related to OpenSMT2
 void smtcheck_opensmt2t::freeSolver()
