@@ -55,7 +55,7 @@ void error_tracet::build_goto_trace (
        str.find(FUNC_RETURN)!=std::string::npos)
         continue;
     
-    if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
+    if (str.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
@@ -187,7 +187,7 @@ void error_tracet::build_goto_trace_formula (
         continue;
     
     
-    if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
+    if (str.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
@@ -329,7 +329,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(smtcheck_opensmt2t 
 	// Print the var and its value
 	char* name = logic->printTerm(*iter);
 	std::string curr (name);
-	if (curr.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
+	if (curr.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
             isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
 #ifdef TRACE_DEBUG
 	else if (curr.find(skip_debug_print) != std::string::npos)
@@ -683,7 +683,7 @@ void error_tracet::build_goto_trace (
        str.find(FUNC_RETURN)!=std::string::npos)
         continue;
     
-    if (str.find(smtcheck_opensmt2t::_unsupported_var_str) != std::string::npos)
+    if (str.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)

@@ -1269,12 +1269,22 @@ void symex_assertion_sumt::return_assignment_and_mark_lattice_facts(
         
         // Update the SSA object 
         to_ssa_expr(call_tmp_return_val_callee).set_level_2(state.level2.current_count(lhs_callee_temp.get_identifier()));
+       
+        // Update the SSA object of lhs, if not injected at solver interface translation
+        ssa_exprt ssa_expr_lhs = to_ssa_expr(*lhs);
+        std::string test_unsupported(lhs->get(ID_identifier).c_str());
+        if (test_unsupported.find(UNSUPPORTED_VAR_NAME) == std::string::npos)
+        {
+            state.level0(ssa_expr_lhs, ns, state.source.thread_nr);
+            state.level1(ssa_expr_lhs);
+            ssa_expr_lhs.set_level_2(state.level2.current_count(ssa_expr_lhs.get_identifier()));
+        }
         
         // And then add the assume  
         exprt assume=exprt(ID_equal, bool_typet());
               assume.operands().reserve(2);
-              assume.copy_to_operands(*lhs);
-              assume.copy_to_operands(call_tmp_return_val_callee);   
+              assume.copy_to_operands(((test_unsupported.find(UNSUPPORTED_VAR_NAME) == std::string::npos) ? ssa_expr_lhs : *lhs));
+              assume.copy_to_operands(call_tmp_return_val_callee);         
 
         old_cp = constant_propagation;
         constant_propagation = false;

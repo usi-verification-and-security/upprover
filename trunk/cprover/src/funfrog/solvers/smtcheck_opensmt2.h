@@ -161,9 +161,6 @@ public:
   
   // Common to all
   std::set<PTRef>* getVars(); // Get all variables from literals for the counter example phase
-
-  /* For unsupported var creation */
-  static const string _unsupported_var_str;
   
 public:
   literalt bind_var2refined_var(PTRef ptref_coarse, PTRef ptref_refined); // common to all
