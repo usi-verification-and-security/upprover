@@ -319,7 +319,9 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(smtcheck_opensmt2t 
 #ifdef TRACE_DEBUG
     MainSolver *mainSolver = decider.getMainSolver();
 #endif
-    if (decider.has_unsupported_vars()) // KE: only if we used any unsupported var checks
+    if (decider.has_unsupported_vars() && !decider.has_unsupported_info()) 
+    // KE: only if we used any unsupported var checks and only if we didn't 
+    // try to refine these expr - Need to find a better solution 
     {
         Logic *logic = decider.getLogic();
         std::set<PTRef>* vars = decider.getVars();
@@ -331,7 +333,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(smtcheck_opensmt2t 
             // Print the var and its value
             char* name = logic->printTerm(*iter);
             std::string curr (name);
-	if (curr.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
+            if (curr.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
                 isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
     #ifdef TRACE_DEBUG
             else if (curr.find(skip_debug_print) != std::string::npos)
