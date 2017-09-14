@@ -106,32 +106,38 @@ std::set<irep_idt>* lattice_refiner_exprt::process_SAT_result() {
 std::set<irep_idt>* lattice_refiner_exprt::pop_facts_ids_SAT(
             lattice_refiner_modelt *curr)
 {
-    // Do we need to pop nodes? 
-    if (!is_fact_ids_in_data(curr)) return 0;
-    
     // We need to pop data, since the current node is something like: x with ancestor: x&y; we remove y.    
     std::set<irep_idt> *to_pop = new std::set<irep_idt>();
-    for (auto it_p : current_path) { // per node of the path
-        bool is_subtract_sets = false;
-        for (auto it : curr->data) { 
-            // Check if a fact from the current set was before 
-            if (is_fact_ids_in_data(it_p, it)) {
-                is_subtract_sets = true;
-                break;
+    
+    // Do we need to pop nodes? 
+    lattice_refiner_modelt *ancestor = get_join_meet_point(curr);
+    bool is_split_point = !is_fact_ids_in_data(curr);
+    if (!is_split_point && (ancestor==0)) 
+        return to_pop;
+    
+    // is a meet point?
+    if (is_split_point) 
+    {
+        for (auto it_p : current_path) { // per node of the path
+            bool is_subtract_sets = false;
+            for (auto it : curr->data) { 
+                // Check if a fact from the current set was before 
+                if (is_fact_ids_in_data(it_p, it)) {
+                    is_subtract_sets = true;
+                    break;
+                }
+            }     
+            if (is_subtract_sets) {
+                std::set<irep_idt>* temp = subtract_prev_data_from_facts(curr, it_p);
+                to_pop->insert(temp->begin(), temp->end());
+                delete temp;
             }
-        }     
-        if (is_subtract_sets) {
-            std::set<irep_idt>* temp = subtract_prev_data_from_facts(curr, it_p);
-            to_pop->insert(temp->begin(), temp->end());
-            delete temp;
         }
     }
     
-    // If a diamond, pop the facts that this fact generalized
-    lattice_refiner_modelt *ancestor = get_join_meet_point(curr);
-    while (current_path.back() != ancestor) {
-        lattice_refiner_modelt *curr = current_path.back();
-        to_pop->insert(curr->data.begin(), curr->data.end());
+    // is joint point? add the data in the diamond to pop till meet point
+    while ((ancestor != 0) && (current_path.back() != ancestor)) {
+        to_pop->insert(current_path.back()->data.begin(), current_path.back()->data.end());
         current_path.pop_back();
         assert(!current_path.empty()); // At least common shall be there
     }
