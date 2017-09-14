@@ -319,39 +319,42 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(smtcheck_opensmt2t 
 #ifdef TRACE_DEBUG
     MainSolver *mainSolver = decider.getMainSolver();
 #endif
-    Logic *logic = decider.getLogic();
-    std::set<PTRef>* vars = decider.getVars();
-    //std::string overapprox_str (smtcheck_opensmt2t::_unsupported_var_str);
-    //std::string skip_debug_print ("hifrog::?call"); // Skip the print of this value due to assertion
-    // violation in opensmt2 - worth debuging one day: Cnfizer.C:891: lbool Cnfizer::getTermValue(PTRef) const: Assertion `val != (lbool((uint8_t)2))' failed.
-    for(std::set<PTRef>::iterator iter = vars->begin(); iter != vars->end(); iter++)
+    if (decider.has_unsupported_vars()) // KE: only if we used any unsupported var checks
     {
-	// Print the var and its value
-	char* name = logic->printTerm(*iter);
-	std::string curr (name);
+        Logic *logic = decider.getLogic();
+        std::set<PTRef>* vars = decider.getVars();
+        //std::string overapprox_str (smtcheck_opensmt2t::_unsupported_var_str);
+        //std::string skip_debug_print ("hifrog::?call"); // Skip the print of this value due to assertion
+        // violation in opensmt2 - worth debuging one day: Cnfizer.C:891: lbool Cnfizer::getTermValue(PTRef) const: Assertion `val != (lbool((uint8_t)2))' failed.
+        for(std::set<PTRef>::iterator iter = vars->begin(); iter != vars->end(); iter++)
+        {
+            // Print the var and its value
+            char* name = logic->printTerm(*iter);
+            std::string curr (name);
 	if (curr.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
-            isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
-#ifdef TRACE_DEBUG
-	else if (curr.find(skip_debug_print) != std::string::npos)
-	{
-		// Skip print
-	}
-	else
-	{
-		cout << " \\ " << name ;
-		ValPair v1 = mainSolver->getValue(*iter);
-		if (logic->isIteVar((*iter)))
-			cout << ": (" << logic->printTerm(logic->getTopLevelIte(*iter)) << ")" << " = " << ((v1.val != 0) ? "true" : "false") << "\n";
-		else
-			cout << " = " << v1.val << "\n";
-	}
-#endif
-        free(name);
+                isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
+    #ifdef TRACE_DEBUG
+            else if (curr.find(skip_debug_print) != std::string::npos)
+            {
+                    // Skip print
+            }
+            else
+            {
+                    cout << " \\ " << name ;
+                    ValPair v1 = mainSolver->getValue(*iter);
+                    if (logic->isIteVar((*iter)))
+                            cout << ": (" << logic->printTerm(logic->getTopLevelIte(*iter)) << ")" << " = " << ((v1.val != 0) ? "true" : "false") << "\n";
+                    else
+                            cout << " = " << v1.val << "\n";
+            }
+    #endif
+            free(name);
+        }
+
+        // Clear all vars list before quit
+        vars->clear(); delete vars;
     }
-
-    // Clear all vars list before quit
-    vars->clear(); delete vars;
-
+    
     if (isOverAppox != error_tracet::isOverAppoxt::SPURIOUS)
     	isOverAppox = error_tracet::isOverAppoxt::REAL;
 

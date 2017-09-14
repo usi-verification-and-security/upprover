@@ -145,7 +145,7 @@ unsigned lattice_refinert::get_refined_functions_size(){
  * for later, when we will do the actual refinement in refine_SSA
 
 \*******************************************************************/
-void lattice_refinert::refine(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex)
+void lattice_refinert::refine(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex, bool is_solver_ret_SAT)
 {
     // Shall we refine?
     flag_can_refine = can_refine(decider, symex);
@@ -165,7 +165,20 @@ void lattice_refinert::refine(smtcheck_opensmt2t &decider, symex_assertion_sumt&
     
     // Pick one to refine
     set_front_heuristic();
-    
+
+    // Process the SAT/UNSAT result - prepare to the next cycle
+    if (process_solver_result(is_solver_ret_SAT)) {
+        #ifdef DEBUG_LATTICE 
+        status () << "*** Solver result of: " << (is_solver_ret_SAT ? "SAT" : "UNSAT")  
+            << " ==> the refiner result: " 
+            << (final_result_of_refinement == lattice_refinert::resultt::UNSAT ? " UNSAT " : "") 
+            << (final_result_of_refinement == lattice_refinert::resultt::SAT ? " SAT " : "")
+            << (final_result_of_refinement == lattice_refinert::resultt::UNKNOWN ? " UNKNOWN " : "")
+            << eom;
+        #endif
+            
+        assert(final_result_of_refinement != lattice_refinert::resultt::UNKNOWN);
+    }
 } // End this cycle of refinement
 
 /*******************************************************************
@@ -432,28 +445,15 @@ bool lattice_refinert::process_solver_result(bool is_solver_ret_SAT) {
  * but in refine_SSA
 
 \*******************************************************************/
-bool lattice_refinert::refine_SSA(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex, bool is_solver_ret_SAT) 
+bool lattice_refinert::refine_SSA(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex) 
 { 
-    // Shall we refine?
-    if (!can_refine())
+    // Shall we refine? - if not end
+    // Only if the refinement with lattice didn't end with either: 
+    // (1) SAT(to any of the paths) or, 
+    // (2) UNSAT(to all path)
+    if (is_end())
         return true;
-    
-    if (process_solver_result(is_solver_ret_SAT)) {
-        #ifdef DEBUG_LATTICE 
-        status () << "*** Solver result of: " << (is_solver_ret_SAT ? "SAT" : "UNSAT")  
-            << " ==> the refiner result: " 
-            << (final_result_of_refinement == lattice_refinert::resultt::UNSAT ? " UNSAT " : "") 
-            << (final_result_of_refinement == lattice_refinert::resultt::SAT ? " SAT " : "")
-            << (final_result_of_refinement == lattice_refinert::resultt::UNKNOWN ? " UNKNOWN " : "")
-            << eom;
-        #endif
-            
-        assert(final_result_of_refinement != lattice_refinert::resultt::UNKNOWN);
-        return true;
-    }
-    
     // Else we continue to the next loop of refinement
-    
     
     // Add all the functions on a path - need to retrieve it from lattice_refiner_exprt
     for (auto expr : expr2refine) {

@@ -77,14 +77,7 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
     
     // Was taken from: literalt smtcheck_opensmt2t::store_new_unsupported_var
     // If need to register the abstracted functions - add it here
-    if (store_unsupported_info) {
-        // Map the expression to its unsupported abstracted vat (in opensmt)
-        unsupported_info_map.insert(pair<PTRef, exprt> (var, expr));
-        cout << "**** Saved function as a candidate for lattice refinement. ";
-        cout << "Expression " << logic->printTerm(var) << " will be refine the operator " 
-              << expr.id() << " with " << expr.operands().size() << " operands." 
-              << endl;
-    }
+    store_new_unsupported_var(expr, var, false);
     
     return var;
 }

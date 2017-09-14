@@ -424,7 +424,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
     count++;
     end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (refiner.get_refined_functions());
     if ((count > 1) && (lattice_refiner.can_refine())) {
-        bool end_lattice = lattice_refiner.refine_SSA(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex, !ret_solver);
+        bool end_lattice = lattice_refiner.refine_SSA(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex);
         if (!end_lattice && lattice_refiner.is_required_init_solver()) 
             delete_and_initialize_solver(); // Init solver when pop is not working
         
@@ -501,7 +501,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
           refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), omega.get_summary_info(), equation);
           
           // KE: after refining the functions, also add lattice 
-          lattice_refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex); 
+          lattice_refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex, !ret_solver); 
 
           if ((refiner.get_refined_functions().size() == 0) 
                && (lattice_refiner.get_refined_functions_size() == 0)) 

@@ -141,7 +141,7 @@ public:
   map<PTRef,exprt>::const_iterator get_itr_end_unsupported_info_map() const { return unsupported_info_map.end(); }
   /* End of unsupported data for refinement info and data */
   
-  
+
   static bool is_cprover_rounding_mode_var(const exprt& e)
   {
       return is_cprover_rounding_mode_var(id2string(e.get(ID_identifier)));
@@ -194,7 +194,7 @@ protected:
   bool store_unsupported_info;
   map<PTRef,exprt> unsupported_info_map;
   
-  literalt store_new_unsupported_var(const exprt& expr, const PTRef var); // common to all 
+  literalt store_new_unsupported_var(const exprt& expr, const PTRef var, bool push_var=true); // common to all 
   
   virtual literalt lunsupported2var(const exprt &expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
   
