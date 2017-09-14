@@ -324,7 +324,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
             break;
           } else {
             //status("Counterexample is spurious");
-            status() << ("Go to next iteration") << eom;
+            status() << ("Go to next iteration\n") << eom;
           }
         } else {
           prop.error_trace(*decider_prop, ns);
@@ -508,7 +508,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
             break;
           } else {
             //status("Counterexample is spurious");
-            status() << ("Go to next iteration") << eom;
+            status() << ("Go to next iteration\n") << eom;
           }
         } else {
           assertion_violated(prop, symex.guard_expln);
@@ -656,7 +656,7 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
             break;
           } else {
             //status("Counterexample is spurious");
-            status() << ("Go to next iteration") << eom;
+            status() << ("Go to next iteration\n") << eom;
           }
         } else {*/
           assertion_violated(prop, symex.guard_expln);
