@@ -43,7 +43,7 @@ public:
   void refine(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex, bool is_solver_ret_SAT);
   
   bool refine_SSA(smtcheck_opensmt2t &decider, symex_assertion_sumt& symex);
-  
+
   unsigned get_models_count() const { return models.size(); }
   
   unsigned get_refined_functions_size();

@@ -166,6 +166,7 @@ void lattice_refinert::refine(smtcheck_opensmt2t &decider, symex_assertion_sumt&
     // Pick one to refine
     set_front_heuristic();
 
+    // AFTER adding the entry points, we can (and only then) process the result from solver
     // Process the SAT/UNSAT result - prepare to the next cycle
     if (process_solver_result(is_solver_ret_SAT)) {
         #ifdef DEBUG_LATTICE 

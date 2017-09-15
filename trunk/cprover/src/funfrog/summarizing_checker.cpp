@@ -418,7 +418,6 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 	  std::cout <<"";
   }
 
-  bool ret_solver = false;
   while (!end)
   {
     count++;
@@ -453,12 +452,10 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               *(dynamic_cast<interpolating_solvert *> (decider)));
       unsigned summaries_count = omega.get_summaries_count();
       unsigned summaries_lattice_count = lattice_refiner.get_summaries_from_lattice_count(count == 1);
-      ret_solver = end;
-      end = end && lattice_refiner.is_end(); // so the lattice refinement will not stop after one path of UNSAT
 #ifdef PRODUCE_PROOF      
-      if (end && decider->can_interpolate())
+      if (end && decider->can_interpolate() && lattice_refiner.is_end())
 #else
-      if (end)
+      if (end && lattice_refiner.is_end())
 #endif
       {
         if (options.get_bool_option("no-itp")){
@@ -480,7 +477,28 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
         }
         report_success();
-      } else { // !end  
+      } else { // !end   
+          
+        // KE: before summary refinement the functions, also add lattice 
+        lattice_refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex, !end);
+        end = end && lattice_refiner.is_end(); // End only if UNSAT and the lattice refiner ended too      
+        if (end) 
+        {
+          // UNSAT
+          status() << ("Skip generating interpolants") << eom;  
+          if (summaries_count == 0 && summaries_lattice_count == 0)
+          {
+            status() << ("ASSERTION(S) HOLD(S) ") << eom; 
+            //TODO change the message to something more clear (like, everything was inlined...)
+          } else {
+            status() << "FUNCTION SUMMARIES (for " << (summaries_count + summaries_lattice_count)
+        	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
+          }
+          report_success();
+          break;
+        } // KE: Find better way to do it 
+          
+        // Else, continue with the SUMMARY REFINEMENT !end code  
         unsigned nondet_count = omega.get_nondets_count();   
         if (summaries_count > 0 || nondet_count > 0 || summaries_lattice_count > 0) {
           if (summaries_lattice_count > 0) {
@@ -497,11 +515,8 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
           if (nondet_count > 0){
             status() << "HAVOCING (of " << nondet_count
                    << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-          }
+          }          
           refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), omega.get_summary_info(), equation);
-          
-          // KE: after refining the functions, also add lattice 
-          lattice_refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), symex, !ret_solver); 
 
           if ((refiner.get_refined_functions().size() == 0) 
                && (lattice_refiner.get_refined_functions_size() == 0)) 
