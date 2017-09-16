@@ -934,7 +934,7 @@ void symex_assertion_sumt::mark_argument_symbols(
 
     to_ssa_expr(lhs).set_level_2(it2->second.second);
     partition_iface.argument_symbols.push_back(lhs);
-
+    
 #   ifdef DEBUG_PARTITIONING
     std::cout << "Marking argument symbol: " << symbol << "\n";
 #   endif
@@ -969,7 +969,7 @@ void symex_assertion_sumt::mark_argument_symbols_lattice_facts(
 
     const symbolt &symbol = ns.lookup(identifier);
     symbol_exprt lhs = symbol.symbol_expr();
-
+    
     state.rename(lhs, ns, goto_symex_statet::L1);
 
     statet::level2t::current_namest::const_iterator it2 =
@@ -1126,7 +1126,7 @@ void symex_assertion_sumt::level2_rename_and_2ssa(
     
     // Change to SSA format: identifier: funfrog::netpoll_trap::\return_value#2
     code_var.set_identifier(get_new_symbol_version(identifier, state, type)); 
-     
+    
     // Adds L2 counter to the symbol (L2: 1 adds to the expression) 
     state.level0(code_var, ns, state.source.thread_nr);
     state.level1(code_var);

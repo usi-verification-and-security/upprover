@@ -4,9 +4,16 @@
 
 /* Get the name of an SSA expression without the instance number 
  *    
- * KE: please use it, as cprover framework keeps changeing all the time
+ * KE: please use it, as cprover framework keeps changing all the time
  */
 irep_idt get_symbol_name(const exprt &expr) {
+    if (is_hifrog_inner_symbol_name(expr))
+        return extract_hifrog_inner_symbol_name(expr);
+    
+    return to_ssa_expr(expr).get_original_name();
+}
+
+irep_idt get_symbol_L1_name(const exprt &expr) {
     if (is_hifrog_inner_symbol_name(expr))
         return extract_hifrog_inner_symbol_name(expr);
     

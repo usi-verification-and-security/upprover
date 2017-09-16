@@ -36,6 +36,8 @@
 #define NONDETv1 "symex::" // Cprover nondet symbol
 #define NONDETv2 "symex::nondet" // Cprover nonder symbol too
 #define COUNTER '#' // GOTO to SSA (e.g., hifrog::?fun_end to hifrog::?fun_end#1)
+#define SPERATOR "::" // split names in cprover
+#define SPERATOR_PREFIX "_" // Cprover const to split prefix from instance
 #define SYMEX_NONDET "nondet#" //"symex::nondet#" - fix to
 #define IO_CONST "symex::io::" // Update according to goto_symex/symex_target_equation
 #define RETURN_NIL_CPROVER "return'!0" // Check if changed; the nil (function_call.lhs().is_nil()), changed into |return'!0|
@@ -49,6 +51,7 @@
 #define SUMMARY_START_END "(or (not |hifrog::fun_end|) |hifrog::fun_start|)"
 
 irep_idt get_symbol_name(const exprt &expr);
+irep_idt get_symbol_L1_name(const exprt &expr);
 bool is_hifrog_inner_symbol_name(const exprt &expr);
 irep_idt extract_hifrog_inner_symbol_name(const exprt &expr);
 unsigned get_symbol_L2_counter(const exprt &expr);

@@ -371,7 +371,7 @@ private:
 
   // Adds the given symbol to the current context. If dead, the identifier
   // is only marked as dead (it is not added as a new symbol).
-  void add_symbol(const irep_idt& base_id, 
+  void add_symbol(const irep_idt& base_id,
                     const typet& type, 
                     bool dead, 
                     bool is_shared, // L0: not in use if shared

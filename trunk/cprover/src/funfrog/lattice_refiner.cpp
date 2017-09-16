@@ -551,7 +551,7 @@ const exprt::operandst &lattice_refinert::fabricate_parameters(
         const exprt &parameter=*it;        
         PTRef curr = ptref_params[i];
         char* name = decider.getLogic()->printTerm(curr);
-        std::string str_name(name); str_name = str_name.substr(1, str_name.size()-4);
+        std::string str_name(name); str_name = str_name.substr(1, str_name.size()-2);
         irep_idt param_symbol_id(str_name);
         
         symbol_exprt param_symbol;	

@@ -79,6 +79,7 @@ protected:
   void gate_or(literalt a, literalt b, literalt o);
   
   bool is_system_translation_var(std::string name, bool is_smt_only) const;
+  string get_and_check_L1_name_from_summary(PTRef arg_j) const;
 };
 
 typedef smt_itpt smt_interpolantt;

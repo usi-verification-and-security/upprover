@@ -228,8 +228,12 @@ Function: smt_itpt::substitute
  valid for the given set of identifiers. Moreover, the interpolant is
  asserted in the given propositional solver.
  * 
- * KE: I think this method is buggy. What is the original idea behind it?
- * The comment is clearly out-of-date since it refers to prop vars(??)
+ * KE: can still be buggy as there are still manual extrations of ids
+ * 
+ * Originally: tryied to edit L2 ids to be original symbols to match
+ * SSA expressions to summaries symbols
+ * 
+ * KE: not sure the code for #in #out #invs is correct
 
 \*******************************************************************/
 
@@ -264,40 +268,66 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
 
     }
 
+    // Here will change/remove symbols name for convert
+    int args_instantiated = 0; // if we didn't instantiated all args of a summary - we have a problem! 
     for(unsigned int i = 0; i < symbols.size(); ++i)
     {
         // Gets L1 - use a method dedicated for it - DO NOT change it!
         string unidx = get_symbol_name(symbols[i]).c_str();
+        
+        // We skip build-in of cprover
+        if (unidx.find(CPROVER_BUILDINS)!=std::string::npos) 
+        { 
+            args_instantiated++;
+            continue; // skip to the next iteration
+        } // else
+        
+        // Fix the name, in case we use the summary in a loop
+        if (!is_hifrog_inner_symbol_name(symbols[i]))
+            if (unidx.find_last_of(SPERATOR_PREFIX) > unidx.find_last_of(SPERATOR)) 
+                unidx = unidx.substr(0, unidx.find_last_of(SPERATOR_PREFIX));
+        // KE: find a better name to fix this name! 
+        // KE: can be buggy on the next cprover update
+        
+        // Else, continue and find the symbol in the summary that match the arg_i
         string quoted_unidx = smtcheck_opensmt2t::quote_varname(unidx);
+        
+        // Also check for temp/inner vars of opensmt that are part of the summary
+        string quoted_unidx_in = smtcheck_opensmt2t::quote_varname(unidx + OPENSMT_IN);
+        string quoted_unidx_out = smtcheck_opensmt2t::quote_varname(unidx + OPENSMT_OUT);
+        string quoted_unidx_invs = smtcheck_opensmt2t::quote_varname(unidx + OPENSMT_INVS);
         
         // Get the instance number of the SSA
         int idx = get_symbol_L2_counter(symbols[i]);
         for(int j = 0; j < args.size(); ++j)
         {
-            string aname = string(logic->getSymName(args[j]));
-            string unidx_aname = smtcheck_opensmt2t::remove_index(aname);
-            assert(aname == unidx_aname || is_system_translation_var(aname, false));
-            unidx_aname = aname;      
+            string unidx_aname = get_and_check_L1_name_from_summary(args[j]);  
             string quoted_unidx_aname = smtcheck_opensmt2t::quote_varname(unidx_aname);
-            if (quoted_unidx == quoted_unidx_aname)
+            //std::cout << "Compare: " << quoted_unidx << " to " << quoted_unidx_aname << std::endl;
+            if ((quoted_unidx.compare(quoted_unidx_aname) == 0) ||
+                (quoted_unidx_in.compare(quoted_unidx_aname) == 0) ||
+                (quoted_unidx_out.compare(quoted_unidx_aname) == 0) ||
+                (quoted_unidx_invs.compare(quoted_unidx_aname) == 0))
             {
+                unidx = get_symbol_name(symbols[i]).c_str();
                 if( (occurrences[unidx][0] == 1) ||
-                        (idx == occurrences[unidx][1] && aname.find(OPENSMT_IN) != string::npos) ||
-                     (idx == occurrences[unidx][2] && aname.find(OPENSMT_OUT) != string::npos)
+                        (idx == occurrences[unidx][1] && unidx_aname.find(OPENSMT_IN) != string::npos) ||
+                     (idx == occurrences[unidx][2] && unidx_aname.find(OPENSMT_OUT) != string::npos)
                   )
                 {
-                    //cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << fixed_str << endl;
-                    //literalt l = decider.convert(symbols[i]);
-                    //PTRef tmp = decider.literal2ptref(l);
         	    PTRef tmp = decider.convert_symbol(symbols[i]);
+                    //cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << logic->printTerm(tmp) << endl;
                     subst.insert(args[j], PtAsgn(tmp, l_True));
+                    args_instantiated++;
+                    continue; // we found what we need, skit the rest of the iterations
                 }
             }
         }
     }
+    assert("Error: Not all arguments of a summary of a function was instantiated." && symbols.size() == args_instantiated);
     PTRef part_sum;
     PTRef templ = tterm->getBody();
-    //cout << ";; Template before : " << logic->printTerm(templ) << endl;
+    //cout << ";; Template before : " << logic->printTerm(templ) << endl; // Template with symbols only
     logic->varsubstitute(templ, subst, part_sum);
     decider.set_to_true(part_sum);
     //cout << "; Template instantiated for function " << tterm->getName() << " is\n" << logic->printTerm(part_sum) << endl;
@@ -629,4 +659,26 @@ bool smt_itpt::is_system_translation_var(std::string name, bool is_smt_only) con
         return false;
     else 
         return (name.find(FUNC_RETURN) != string::npos);
+}
+
+/*******************************************************************\
+
+Function: smt_itpt::get_and_check_L1_name_from_summary
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Get the name of the parameter symbol from the args of 
+ * the summary (where the code of the func is not yet in the SSA tree)
+
+\*******************************************************************/
+string smt_itpt::get_and_check_L1_name_from_summary(PTRef arg_j) const {
+    string aname = string(logic->getSymName(arg_j));
+    if (is_system_translation_var(aname, false)) 
+        // These have # as part of the name and not the index - we skip the check
+        return aname;
+
+    assert(aname == smtcheck_opensmt2t::remove_index(aname));
+    return aname; 
 }

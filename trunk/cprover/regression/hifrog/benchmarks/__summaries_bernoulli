@@ -1,6 +1,6 @@
-(define-fun |bernoulli#0| ( (|bernoulli::x!0| Real) (|bernoulli::n!0| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) (|bernoulli::#return_value!0| Real) ) Bool 
+(define-fun |bernoulli#0| ( (|bernoulli::x| Real) (|bernoulli::n| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) (|bernoulli::#return_value!0| Real) ) Bool 
   (=> 
-    (>= |bernoulli::x!0| (- 1))
+    (>= |bernoulli::x| (- 1))
     (<= 1 |bernoulli::#return_value!0|)
   )
 )
