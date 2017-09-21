@@ -1,31 +1,31 @@
 mod
 (declare-fun |_mod#0| (Real Real ) Real)
-((|mod::a!0| Real) (|mod::n!0| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) (|mod::#return_value!0| Real) ) Bool
+((|mod::a| Real) (|mod::n| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) (|mod::#return_value!0| Real) ) Bool
 true
-|mod::a!0| |mod::n!0|
+|mod::a| |mod::n|
 mod_C3
-(<= 0 |mod_C3::n!0|)
+(<= 0 |mod_C3::n|)
 mod_C2
-(= |mod_C2::n!0| 0)
+(= |mod_C2::n| 0)
 mod_Ca
-(=> (= |mod_Ca::n!0| 1) (= |mod_Ca::#return_value!0| 0))
+(=> (= |mod_Ca::n| 1) (= |mod_Ca::#return_value!0| 0))
 mod_Cb
-(=> (= |mod_Cb::n!0| 2) (or (= |mod_Cb::#return_value!0| 0) (= |mod_Cb::#return_value!0| 1)))
+(=> (= |mod_Cb::n| 2) (or (= |mod_Cb::#return_value!0| 0) (= |mod_Cb::#return_value!0| 1)))
 mod_Cnotab
-(< 2 |mod_Cnotab::n!0|)
+(< 2 |mod_Cnotab::n|)
 mod_C2not
-(>= |mod_C2not::n!0| 1)
+(>= |mod_C2not::n| 1)
 mod_C4
-(and (>= |mod_C4::n!0| 1) (<= 0 |mod_C4::a!0|))
+(and (>= |mod_C4::n| 1) (<= 0 |mod_C4::a|))
 mod_Cd
-(=> (= |mod_Cd::n!0| |mod_Cd::a!0|) (= |mod_Cd::#return_value!0| 0))
+(=> (= |mod_Cd::n| |mod_Cd::a|) (= |mod_Cd::#return_value!0| 0))
 mod_Ck
-(and (= |mod_Ck::#return_value!0| 0) (= (|_mod#0| (+ (|_mod#0| |mod_Ck::a!0| |mod_Ck::n!0|) (|_mod#0| (- |mod_Ck::a!0|) |mod_Ck::n!0|)) |mod_Ck::n!0|) |mod_Ck::#return_value!0|))
+(and (= |mod_Ck::#return_value!0| 0) (= (|_mod#0| (+ (|_mod#0| |mod_Ck::a| |mod_Ck::n|) (|_mod#0| (- |mod_Ck::a|) |mod_Ck::n|)) |mod_Ck::n|) |mod_Ck::#return_value!0|))
 mod_Cc
-(=> (= 0 |mod_Cc::a!0|) (= |mod_Cc::#return_value!0| 0))
+(=> (= 0 |mod_Cc::a|) (= |mod_Cc::#return_value!0| 0))
 mod_Cl
-(and (= |mod_Cl::#return_value!0| (|_mod#0| (+ (|_mod#0| |mod_Cl::a!0| |mod_Cl::n!0|) (|_mod#0| |mod_Cl::b!0| |mod_Cl::n!0|)) |mod_Cl::n!0|)) (= |mod_Cl::#return_value!0| (|_mod#0| (+ |mod_Cl::a!0| |mod_Cl::b!0|) |mod_Cl::n!0|)))
+(and (= |mod_Cl::#return_value!0| (|_mod#0| (+ (|_mod#0| |mod_Cl::a| |mod_Cl::n|) (|_mod#0| |mod_Cl::b| |mod_Cl::n|)) |mod_Cl::n|)) (= |mod_Cl::#return_value!0| (|_mod#0| (+ |mod_Cl::a| |mod_Cl::b|) |mod_Cl::n|)))
 mod_Cf
-(=> (and (< |mod_Cf::a!0| |mod_Cf::n!0|) (and (<= 0 |mod_Cf::a!0|) (< 0 |mod_Cf::n!0|))) (= |mod_Cf::#return_value!0| |mod_Cf::a!0|))
+(=> (and (< |mod_Cf::a| |mod_Cf::n|) (and (<= 0 |mod_Cf::a|) (< 0 |mod_Cf::n|))) (= |mod_Cf::#return_value!0| |mod_Cf::a|))
 mod_Cg
-(< |mod_Cg::#return_value!0| |mod_Cg::n!0|)
+(< |mod_Cg::#return_value!0| |mod_Cg::n|)

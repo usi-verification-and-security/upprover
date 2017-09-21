@@ -1,0 +1,3 @@
+benchmarks/simple_mod_25.c,prop,--claim,1
+benchmarks/simple_mod_25.c,qflra,--claim,1,--load-summaries,benchmarks/__summaries_simple_mod_lra,--load-sum-model,benchmarks/modlattice_model_lra
+benchmarks/simple_mod_25.c,qfuf,--claim,1

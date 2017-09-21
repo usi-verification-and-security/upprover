@@ -8,6 +8,9 @@
 #include "facts_summary_builder.h"
 #include <iostream>
 
+// Call: ./smtbuild input_file_example__mod_facts_smt.txt __summaries_mod_lra
+// 1: input with all the facts
+// 2: output **new** summary files
 int main(int argc, const char **argv)
 {
     if (argc < 3) {

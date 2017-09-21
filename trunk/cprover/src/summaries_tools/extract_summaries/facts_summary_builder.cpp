@@ -114,7 +114,7 @@ void facts_summary_buildert::write_summary_facts(std::string file_name, std::set
         summary << "(define-fun |" << fact_name << "#0| " << header << "\n"
                 << "    " << let_ret << "\n" 
                 << "    " << let_orig_func_call << "\n" 
-                << "    " << let_ret_unsigned << "\n" 
+                << ((is_unsigned_ret_val) ? "    " : "") << let_ret_unsigned << ((is_unsigned_ret_val) ? "\n" : "") 
                 << "    " << let_fact << "\n" 
                 << "    " << let_fun_start_end << "\n"
                 << "    " << let_temp2 << "\n"
