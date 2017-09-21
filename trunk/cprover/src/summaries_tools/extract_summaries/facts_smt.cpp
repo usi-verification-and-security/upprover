@@ -79,11 +79,13 @@ bool facts_smtt::load_facts(std::string file_name) {
     std::string fact="";
     std::cout << "==> Reading facts: ";
     while (std::getline(input, name)) {
+        if (name[0] == ';') continue;
+        
         std::cout << name << " ";
         if (!std::getline(input, fact)) {
             return false;
         }
-        
+
         // Add name,fact
         facts.insert(pair<string, string> (name, fact));
     }
