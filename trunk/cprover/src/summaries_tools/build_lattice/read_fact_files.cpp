@@ -103,6 +103,8 @@ bool read_fact_filest::load_facts(string facts_decl_file_name, string facts_file
     }
     std::cout << std::endl;
     
+    std::cout << "** Added: " << facts.size() << " facts **" << std::endl;
+
     // Complete only if load facts
     return (facts.size() > 0);
 }
@@ -125,13 +127,16 @@ void read_fact_filest::save_facts_smt_queries(string facts_query_base_file_name)
     std::string smt_decl = "";
     for ( auto it = decls.begin(); it != decls.end(); it++ )
         smt_decl += (*it) + " \n";
+    std::cout << "** Loading Declarations **" << std::endl;
     
     // Create all the subsets of the current set of facts
     vector<pair<string,string>> set_facts;
     for (auto i = facts.begin(); i != facts.end(); ++i)
     	set_facts.push_back(pair<string, string> (i->first, i->second));
+    std::cout << "** Creating a vector of facts **" << std::endl;
 
     vector< vector<pair<string,string>> > subsets = create_all_subsets_of_facts(set_facts);
+    std::cout << "** Creating all subsets of the facts **" << std::endl;
 
     // Add all the subsets of facts to the file differnt files
     for (auto i = subsets.begin(); i != subsets.end(); ++i)
