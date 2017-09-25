@@ -2,9 +2,7 @@ include ../../config.inc
 -include local
 
 SHARED_SRC := \
-      facts_smt.cpp \
-      facts_coq.cpp \
-      facts_summary_builder.cpp 
+      read_fact_files.cpp
 
 SMTLATBUILD_SRC := \
       main.cpp
@@ -30,7 +28,7 @@ extractsum$(EXEEXT): $(OBJ)
 	$(LINKBIN) -O0 -g -lopensmt2 -lgmp -lgmpxx -lz -lreadline 
 
 clean:
-	rm -f *.o *.d extractsum __omega_* __calltree.xml
+	rm -f *.o *.d extractqCoXsmt __omega_* __calltree.xml
 	rm -f solvers/*.o solvers/*.d
 
 re: clean all
