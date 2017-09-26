@@ -27,7 +27,7 @@ public:
     void save_facts_smt_query(string facts_query_base_file_name);
     
 private:
-    std::set<std::string> decls;
+    std::list<std::string> decls;
     std::map<std::string,std::string> facts;
     int file_no; // When writting to avoid duplicate names
     

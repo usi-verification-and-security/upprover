@@ -39,7 +39,7 @@ bool read_fact_filest::load_facts(string facts_decl_file_name, string facts_file
     std::string line;
     while(std::getline(input_decl, line))
     {
-        decls.insert(line);
+        decls.push_back(line);
     }
     
     /* Reads the facts */
