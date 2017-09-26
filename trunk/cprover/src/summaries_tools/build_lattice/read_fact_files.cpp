@@ -146,10 +146,12 @@ void read_fact_filest::save_facts_smt_query(string facts_query_base_file_name)
         string fact_name = "all";
         string counter = "00";
 
-        if (facts.size() > 1)
-        {
-            query = "  (and \n" + query + "  )\n";
-        }
+        string params = original_params_function;
+        string func_name = original_function_name;
+        string return_val = "|" + func_name + FUNC_RETURN + "|" ;
+        string orig_func_call = "(= (|_" + func_name + "#0| " + params + ") " + return_val + ")";
+        
+        query = "  (and \n    " + orig_func_call + "\n" + query + "  )\n";
         query = "(assert \n" + query + ")\n(check-sat)\n";
 
         std::cout << "** Saving the Query **" << std::endl;
@@ -345,6 +347,10 @@ string read_fact_filest::create_params_args_connection(string fact_name)
         func_params_args_connection += " (= " + (*it1) + " " + (*it2) + ")";
         it1++; it2++;
     }
+    string return_val = "|" + fact_name + FUNC_RETURN + "|" ;
+    string return_val_orig = "|" + func_name + FUNC_RETURN + "|" ;
+    func_params_args_connection += " (= " + return_val + " " + return_val_orig + ")";
+    
     func_params_args_connection +=  ")";
     // Created: (and (= |_mod#0::a!0| |mod_Cd::a!0|) (= |_mod#0::n!0| |mod_Cd::n!0|))
     
