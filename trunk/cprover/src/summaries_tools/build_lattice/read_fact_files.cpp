@@ -134,7 +134,8 @@ void read_fact_filest::save_facts_smt_query(string facts_query_base_file_name)
     for (auto i = facts.begin(); i != facts.end(); ++i)
     {
         string outter_fact = create_string_of_single_fact(i->first, i->second);
-        query += outter_fact + "\n";
+        query += "    ;; " + i->first +"\n";
+        query += "    " + outter_fact + "\n";
     }
     
     std::cout << "** Building the Query **" << std::endl;
@@ -147,9 +148,9 @@ void read_fact_filest::save_facts_smt_query(string facts_query_base_file_name)
 
         if (facts.size() > 1)
         {
-            query = "(and " + query + ")\n";
+            query = "  (and \n" + query + "  )\n";
         }
-        query = "(assert \n" + query + "\n)\n(check-sat)\n";
+        query = "(assert \n" + query + ")\n(check-sat)\n";
 
         std::cout << "** Saving the Query **" << std::endl;
         
@@ -393,7 +394,7 @@ void read_fact_filest::write_smt_query(
     // Write to a file: (test_path + file_no)
     ofstream smtfile;
     smtfile.open (base_name + "_" + start_fact_name + "_" + counter + "__" + std::to_string(file_no) + ".smt2");
-    smtfile << decls_str << "\n";
+    smtfile << decls_str;
     smtfile << facts_str;
     smtfile.close();
 
