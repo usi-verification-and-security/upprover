@@ -24,6 +24,7 @@ public:
     
     bool load_facts(string facts_decl_file_name, string facts_file_name);
     void save_facts_smt_queries(string facts_query_base_file_name);
+    void save_facts_smt_query(string facts_query_base_file_name);
     
 private:
     std::set<std::string> decls;
@@ -32,6 +33,7 @@ private:
     
     string original_header_function;
     string original_function_name;
+    string original_params_function;
     
     string create_local_call_to_orig_func(string fact_name);
     string create_params_args_connection(string fact_name);

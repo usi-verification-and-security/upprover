@@ -84,6 +84,7 @@ bool read_fact_filest::load_facts(string facts_decl_file_name, string facts_file
         std::cout << "Error reading params_set_of_function \n";
         return false;
     }
+    original_params_function = line;
     // Skip it, we don't need if for this task
     
     // Load the rest of the facts
@@ -107,6 +108,55 @@ bool read_fact_filest::load_facts(string facts_decl_file_name, string facts_file
 
     // Complete only if load facts
     return (facts.size() > 0);
+}
+
+/*******************************************************************
+
+ Function: read_fact_filest::save_facts_smt_query
+
+ Inputs: facts
+  
+ Outputs: facts in smt-lib query
+
+ Purpose:
+ 
+\*******************************************************************/
+void read_fact_filest::save_facts_smt_query(string facts_query_base_file_name)
+{
+    // Create the declarations to the query (once to all queries)
+    std::string smt_decl = "";
+    for ( auto it = decls.begin(); it != decls.end(); it++ )
+        smt_decl += (*it) + " \n";
+    std::cout << "** Loading Declarations **" << std::endl;
+
+    // Add all the subsets of facts to the file differnt files
+    string query = "";
+    for (auto i = facts.begin(); i != facts.end(); ++i)
+    {
+        string outter_fact = create_string_of_single_fact(i->first, i->second);
+        query += outter_fact + "\n";
+    }
+    
+    std::cout << "** Building the Query **" << std::endl;
+    
+    // If not an empty set
+    if (facts.size() > 0)
+    {
+        string fact_name = "all";
+        string counter = "00";
+
+        if (facts.size() > 1)
+        {
+            query = "(and " + query + ")\n";
+        }
+        query = "(assert \n" + query + "\n)\n(check-sat)\n";
+
+        std::cout << "** Saving the Query **" << std::endl;
+        
+        // write fact with only one fact:
+        write_smt_query(query, smt_decl, facts_query_base_file_name, fact_name, counter);
+        std::cout << "Writing Query " << fact_name << "::" << counter << " to file." << std::endl;
+    }
 }
 
 /*******************************************************************
@@ -237,14 +287,15 @@ string read_fact_filest::create_string_of_single_fact(string fact_name, string f
 string read_fact_filest::create_local_call_to_orig_func(string fact_name) {
     // definition of the original function - connect to inner fact
     string return_val = "|" + fact_name + FUNC_RETURN + "|" ;
-    std::string params = original_header_function;
+    std::string params = original_params_function;
     std::string func_name = original_function_name;
     unsigned index = 0;
-    while ((index = params.find(func_name, index)) != std::string::npos) {
+    while (params.find(func_name, index) != std::string::npos) {
+        index = params.find(func_name, index);
         params = params.replace(index, func_name.size(),fact_name);
         index += fact_name.size();
     }
-    string orig_func_call = " (= (|_" + func_name + "#0| " + params + ") " + return_val + ")";
+    string orig_func_call = "(= (|_" + func_name + "#0| " + params + ") " + return_val + ")";
     // Created: (= (|_mod#0| |mod_Cd::a!0| |mod_Cd::n!0|) mod_Cd::return_value!0)
 
     return orig_func_call;
@@ -263,16 +314,18 @@ string read_fact_filest::create_local_call_to_orig_func(string fact_name) {
 \*******************************************************************/
 string read_fact_filest::create_params_args_connection(string fact_name) 
 {    
-    string func_params_args_connection = "(and ";
-    std::string args = original_header_function;
-    std::string params = original_header_function;
+    string func_params_args_connection = "(and";
+    std::string args = original_params_function;
+    std::string params = original_params_function;
     std::string func_name = original_function_name;
     unsigned index = 0;
-    while ((index = params.find(func_name, index)) != std::string::npos) {
+    while (params.find(func_name, index) != std::string::npos) 
+    {
+        index = params.find(func_name, index);
         params = params.replace(index, func_name.size(),fact_name);
         index += fact_name.size();
     }
-    
+
     // Create a list of all input args
     std::list<std::string> args_list;
     split(args_list,args," ");
@@ -280,7 +333,7 @@ string read_fact_filest::create_params_args_connection(string fact_name)
     // Create a list of all the in parameters
     std::list<std::string> params_list;
     split(params_list,params," ");
-    
+        
     // Add (= args params)
     assert(args_list.size() == params_list.size());
     auto it1 = args_list.begin();
@@ -288,7 +341,8 @@ string read_fact_filest::create_params_args_connection(string fact_name)
     
     while (it1 != args_list.end() && it2 != params_list.end())
     {
-        func_params_args_connection += "(= " + (*it1) + " " + (*it2) + ")"; 
+        func_params_args_connection += " (= " + (*it1) + " " + (*it2) + ")";
+        it1++; it2++;
     }
     func_params_args_connection +=  ")";
     // Created: (and (= |_mod#0::a!0| |mod_Cd::a!0|) (= |_mod#0::n!0| |mod_Cd::n!0|))
