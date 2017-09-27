@@ -422,7 +422,8 @@ void funfrog_parseoptionst::help()
   "--load-summaries <filename1,>  load function summaries\n"
   "                               from the given file(s)\n"
   "--load-sum-model <filename1,>  load a model of an unsupported function\n"
-  "                               as a set of summaries of the function\n"        
+  "                               as a set of summaries of the function\n" 
+  "--sum-model-single-UNSAT       Using the summaries model till the first UNSAT\n"        
   "--show-claims                  output the claims list\n"
   "--claims-count                 output the total number of claims\n"
 //  "--bounds-check                 enable array bounds checks\n"
@@ -792,6 +793,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   } else {
     options.set_option("load-sum-model","");
   }
+  if(cmdline.isset("sum-model-single-UNSAT"))
+    options.set_option("sum-model-single-UNSAT", true);
   if (cmdline.isset("load-omega")) {
     options.set_option("load-omega", cmdline.get_value("load-omega"));
   } else {

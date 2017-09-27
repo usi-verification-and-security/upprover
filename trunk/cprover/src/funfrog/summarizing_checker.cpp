@@ -418,6 +418,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 	  std::cout <<"";
   }
 
+  bool is_lattice_stop_1unsat = options.get_bool_option("sum-model-single-UNSAT");
   while (!end)
   {
     count++;
@@ -453,9 +454,9 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
       unsigned summaries_count = omega.get_summaries_count();
       unsigned summaries_lattice_count = lattice_refiner.get_summaries_from_lattice_count(count == 1);
 #ifdef PRODUCE_PROOF      
-      if (end && decider->can_interpolate() && lattice_refiner.is_end())
+      if (end && decider->can_interpolate() && (lattice_refiner.is_end() || is_lattice_stop_1unsat))
 #else
-      if (end && lattice_refiner.is_end())
+      if (end && (lattice_refiner.is_end() || is_lattice_stop_1unsat))
 #endif
       {
         if (options.get_bool_option("no-itp")){
