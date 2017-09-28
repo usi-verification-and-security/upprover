@@ -13,7 +13,8 @@
 #include <map>
 #include <vector>
 #include <set>
-//#include <algorithm>
+
+#include <algorithm>
 
 using namespace std;
 
@@ -22,11 +23,14 @@ public:
     read_fact_filest() :file_no(0) {}
     virtual ~read_fact_filest() {}
     
-    bool load_facts(string facts_decl_file_name, string facts_file_name);
+    bool load_facts(string facts_query_base_file_name, string facts_decl_file_name, string facts_file_name);
+    bool load_facts_names_only(string facts_file_name);
     void save_facts_smt_queries(string facts_query_base_file_name);
     void save_facts_smt_query(string facts_query_base_file_name);
+    void save_subset_facts_smt_query(string facts_query_base_file_name);
     
 private:
+    std::list<std::string> facts_subset;
     std::list<std::string> decls;
     std::map<std::string,std::string> facts;
     int file_no; // When writting to avoid duplicate names

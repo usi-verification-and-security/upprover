@@ -15,15 +15,22 @@ int main(int argc, const char **argv)
 
     // ouputs smt files with subsets of facts from the input file
     read_fact_filest* facts_subsets_writer = new read_fact_filest();
-    if (!facts_subsets_writer->load_facts(argv[1], argv[2])) {
+    if (!facts_subsets_writer->load_facts(argv[3], argv[1], argv[2])) {
         std::cerr << "Error reading the input file: " << argv[1] << " and/or " << argv[2] << std::endl;
         return 1;
     }
     bool is_all_subset = (string(argv[4]).compare("true") == 0);
     if (is_all_subset)
         facts_subsets_writer->save_facts_smt_queries(argv[3]);
-    else
-        facts_subsets_writer->save_facts_smt_query(argv[3]);
+    else 
+    {
+        if (argc >= 5) {
+            facts_subsets_writer->load_facts_names_only(argv[5]);
+            facts_subsets_writer->save_subset_facts_smt_query(argv[3]);
+        } else {
+            facts_subsets_writer->save_facts_smt_query(argv[3]);
+        }
+    }
     free(facts_subsets_writer);
     // End of .smt files query creation for co-exist test
 

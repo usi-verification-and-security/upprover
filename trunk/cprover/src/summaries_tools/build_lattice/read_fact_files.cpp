@@ -26,7 +26,7 @@ using namespace std;
           both stages, guard && fact and guard => facts.
  
 \*******************************************************************/
-bool read_fact_filest::load_facts(string facts_decl_file_name, string facts_file_name) 
+bool read_fact_filest::load_facts(string facts_query_base_file_name, string facts_decl_file_name, string facts_file_name) 
 {
     /* Reads Declarations of SMT file */
     std::ifstream input_decl(facts_decl_file_name);
@@ -41,6 +41,7 @@ bool read_fact_filest::load_facts(string facts_decl_file_name, string facts_file
     {
         decls.push_back(line);
     }
+    input_decl.close();
     
     /* Reads the facts */
     std::ifstream input_facts(facts_file_name);
@@ -91,10 +92,15 @@ bool read_fact_filest::load_facts(string facts_decl_file_name, string facts_file
     std::string name="";
     std::string fact="";
     std::cout << "==> Reading facts: ";
+    
+    ofstream facts_name_file; // write all the facts in a file for stage 3
+    facts_name_file.open (facts_query_base_file_name + "__facts_names.txt");
+    
     while (std::getline(input_facts, name)) {
         if (name[0] == ';') continue;
         
         std::cout << name << " ";
+        facts_name_file << name << "\n";
         if (!std::getline(input_facts, fact)) {
             return false;
         }
@@ -103,11 +109,47 @@ bool read_fact_filest::load_facts(string facts_decl_file_name, string facts_file
         facts.insert(pair<string, string> (name, fact));
     }
     std::cout << std::endl;
+    facts_name_file.close();
+    input_facts.close();
     
     std::cout << "** Added: " << facts.size() << " facts **" << std::endl;
 
     // Complete only if load facts
     return (facts.size() > 0);
+}
+
+/*******************************************************************
+
+ Function: read_fact_filest::load_facts_names_only
+
+ Inputs: file name with a partial list of facts name
+  
+ Outputs: 
+
+ Purpose: To slice facts file to have only sub-set of facts
+ 
+\*******************************************************************/
+bool read_fact_filest::load_facts_names_only(string facts_file_name) 
+{
+    /* Reads Declarations of SMT file */
+    std::ifstream facts_names(facts_file_name);
+    if (!facts_names.is_open())
+    {
+        std::cout << "Cannot find the facts' subset file name: " << facts_file_name << std::endl;
+        return false;
+    }
+    
+    std::string line;
+    std::cout << "==> Subset of facts: ";
+    while(std::getline(facts_names, line))
+    {
+        std::cout << " " << line;
+        facts_subset.push_back(line);
+    }
+    std::cout << std::endl;
+    facts_names.close();
+    
+    return (facts_subset.size() > 0);
 }
 
 /*******************************************************************
@@ -136,6 +178,63 @@ void read_fact_filest::save_facts_smt_query(string facts_query_base_file_name)
         string outter_fact = create_string_of_single_fact(i->first, i->second);
         query += "    ;; " + i->first +"\n";
         query += "    " + outter_fact + "\n";
+    }
+    
+    std::cout << "** Building the Query **" << std::endl;
+    
+    // If not an empty set
+    if (facts.size() > 0)
+    {
+        string fact_name = "all";
+        string counter = "00";
+
+        string params = original_params_function;
+        string func_name = original_function_name;
+        string return_val = "|" + func_name + FUNC_RETURN + "|" ;
+        string orig_func_call = "(= (|_" + func_name + "#0| " + params + ") " + return_val + ")";
+        
+        query = "  (and \n    " + orig_func_call + "\n" + query + "  )\n";
+        query = "(assert \n" + query + ")\n(check-sat)\n";
+
+        std::cout << "** Saving the Query **" << std::endl;
+        
+        // write fact with only one fact:
+        write_smt_query(query, smt_decl, facts_query_base_file_name, fact_name, counter);
+        std::cout << "Writing Query " << fact_name << "::" << counter << " to file." << std::endl;
+    }
+}
+
+/*******************************************************************
+
+ Function: read_fact_filest::save_subset_facts_smt_query
+
+ Inputs: facts
+  
+ Outputs: facts in smt-lib query
+
+ Purpose:
+ 
+\*******************************************************************/
+void read_fact_filest::save_subset_facts_smt_query(string facts_query_base_file_name)
+{
+    // Create the declarations to the query (once to all queries)
+    std::string smt_decl = "";
+    for ( auto it = decls.begin(); it != decls.end(); it++ )
+        smt_decl += (*it) + " \n";
+    std::cout << "** Loading Declarations **" << std::endl;
+
+    // Add all the subsets of facts to the file differnt files
+    string query = "";
+    for (auto i = facts.begin(); i != facts.end(); ++i)
+    {
+        string fact_name = i->first;
+        if(std::find(facts_subset.begin(), facts_subset.end(), fact_name)!=facts_subset.end()) 
+        {  
+            //else, add the fact
+            string outter_fact = create_string_of_single_fact(i->first, i->second);
+            query += "    ;; " + i->first +"\n";
+            query += "    " + outter_fact + "\n";
+        }
     }
     
     std::cout << "** Building the Query **" << std::endl;
