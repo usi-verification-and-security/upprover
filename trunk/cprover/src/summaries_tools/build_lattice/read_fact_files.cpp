@@ -445,7 +445,7 @@ void read_fact_filest::write_pairs_impl_query(string facts_query_base_file_name,
 void read_fact_filest::write_3_impl_query(string facts_query_base_file_name, 
         string smt_decl, pair<string,string> pos, pair<string,string> pos2, pair<string,string> neg)
 {
-    string fact_name = "_" + pos.first + "_" + neg.first;
+    string fact_name = "__" + pos.first + "++" + pos2.first + "__" + neg.first;
         
     string query = "";
     
