@@ -154,6 +154,37 @@ bool read_fact_filest::load_facts_names_only(string facts_file_name)
 
 /*******************************************************************
 
+ Function: read_fact_filest::load_subset_facts_names
+
+ Inputs: file name subsets of the facts as lists. Each entry is a string list
+  
+ Outputs: 
+
+ Purpose: Stage 4, build implications only in subsets
+ 
+\*******************************************************************/
+bool read_fact_filest::load_subset_facts_names(string facts_file_name)
+{
+    /* Reads Declarations of SMT file */
+    std::ifstream facts_names(facts_file_name);
+    if (!facts_names.is_open())
+    {
+        std::cout << "Cannot find the facts' subsets file name: " << facts_file_name << std::endl;
+        return false;
+    }
+    
+    std::string line;
+    while(std::getline(facts_names, line))
+    {
+        facts_subsets.push_back(line);
+    }
+    facts_names.close();
+    
+    return (facts_subsets.size() > 0);
+}
+
+/*******************************************************************
+
  Function: read_fact_filest::save_facts_smt_query
 
  Inputs: facts
@@ -259,6 +290,106 @@ void read_fact_filest::save_subset_facts_smt_query(string facts_query_base_file_
         write_smt_query(query, smt_decl, facts_query_base_file_name, fact_name, counter);
         std::cout << "Writing Query " << fact_name << "::" << counter << " to file." << std::endl;
     }
+}
+
+
+/*******************************************************************
+
+ Function: read_fact_filest::save_implies_pair_facts_smt_query
+
+ Inputs: facts
+  
+ Outputs: facts in smt-lib query
+
+ Purpose:
+ 
+\*******************************************************************/
+void read_fact_filest::save_implies_pair_facts_smt_query(string facts_query_base_file_name)
+{
+    // Create the declarations to the query (once to all queries)
+    std::string smt_decl = "";
+    for ( auto it = decls.begin(); it != decls.end(); it++ )
+        smt_decl += (*it) + " \n";
+    std::cout << "** Loading Declarations **" << std::endl;
+    
+    for (auto it1 = facts.begin(); it1 != facts.end(); ++it1){
+        for ( auto it2 = it1; it2 != facts.end(); it2++ ) {
+            if (((it2->first).compare(it1->first) != 0) && (is_same_set(it1->first, it2->first)))
+            {   
+                // Write two queries it1 && !it2, !it1 && it2
+                write_pairs_impl_query(facts_query_base_file_name, smt_decl, *it1, *it2);
+                write_pairs_impl_query(facts_query_base_file_name, smt_decl, *it2, *it1);
+            }
+        }
+    }
+}
+
+/*******************************************************************
+
+ Function: read_fact_filest::is_same_set
+
+ Inputs: two facts
+  
+ Outputs: true if there is a set where the two sets are together
+
+ Purpose:
+ 
+\*******************************************************************/
+bool read_fact_filest::is_same_set(string fact1, string fact2)
+{
+    string f1_s = " " + fact1 + " ";
+    string f2_s = " " + fact2 + " ";
+    for (auto fl = facts_subsets.begin(); fl != facts_subsets.end(); ++fl)
+    {
+        if ((fl->find(f1_s) != std::string::npos) && (fl->find(f2_s) != std::string::npos))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+/*******************************************************************
+
+ Function: read_fact_filest::write_pairs_impl_query
+
+ Inputs: two facts
+  
+ Outputs: facts in smt-lib query
+
+ Purpose:
+ 
+\*******************************************************************/
+void read_fact_filest::write_pairs_impl_query(string facts_query_base_file_name, 
+        string smt_decl, pair<string,string> pos, pair<string,string> neg)
+{
+    string fact_name = "_" + pos.first + "_" + neg.first;
+        
+    string query = "";
+    
+    //add pos fact
+    string outter_fact_pos = create_string_of_single_fact(pos.first, pos.second);
+    query += "    ;; " + pos.first +"\n";
+    query += "    " + outter_fact_pos + "\n";   
+    
+    //add neg fact
+    string outter_fact_neg = create_string_of_single_fact(neg.first, neg.second);
+    query += "    ;; not " + neg.first +" to check implication \n";
+    query += "    (not " + outter_fact_neg + ")\n"; 
+    
+    string params = original_params_function;
+    string func_name = original_function_name;
+    string return_val = "|" + func_name + FUNC_RETURN + "|" ;
+    string orig_func_call = "(= (|_" + func_name + "#0| " + params + ") " + return_val + ")";
+
+    query = "  (and \n    " + orig_func_call + "\n" + query + "  )\n";
+    query = "(assert \n" + query + ")\n(check-sat)\n";
+
+    std::cout << "** Saving the Query **" << std::endl;
+    
+    
+    // write fact with only one fact:
+    write_smt_query(query, smt_decl, facts_query_base_file_name, fact_name, "02");
 }
 
 /*******************************************************************

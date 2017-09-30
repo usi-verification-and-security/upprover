@@ -2,10 +2,9 @@
 #include <iostream>
 
 // Call: ./extractsum <declaration file name> <facts file name> <output smt file base name> <flag_all_subsets>
-// E.g., ./extractsum facts_decl.txt Coq_translate.txt build_output/smt_ false
+// E.g., ./extractsum facts_decl.txt Coq_translate_wt_implies.txt build_output/smt_impl_ __smt_all_facts_name_subset.txt
 // 1: input with all the facts
-// 2: output subsets of the facts for the build of the lattice (true flag)
-//    output an smt file with all the facts as query (false flag)
+// 2: output pairs to test a==>b true
 int main(int argc, const char **argv)
 {
     if (argc < 5) {
@@ -19,18 +18,11 @@ int main(int argc, const char **argv)
         std::cerr << "Error reading the input file: " << argv[1] << " and/or " << argv[2] << std::endl;
         return 1;
     }
-    bool is_all_subset = (string(argv[4]).compare("true") == 0);
-    if (is_all_subset)
-        facts_subsets_writer->save_facts_smt_queries(argv[3]);
-    else 
-    {
-        if (argc == 5) {
-            facts_subsets_writer->load_facts_names_only(argv[5]);
-            facts_subsets_writer->save_subset_facts_smt_query(argv[3]);
-        } else {
-            facts_subsets_writer->save_facts_smt_query(argv[3]);
-        }
-    }
+    
+    facts_subsets_writer->load_subset_facts_names(argv[4]);
+    facts_subsets_writer->save_implies_pair_facts_smt_query(argv[3]);
+    // add also a&b => c check
+
     free(facts_subsets_writer);
     // End of .smt files query creation for co-exist test
 
