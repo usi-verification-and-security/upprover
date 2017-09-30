@@ -326,6 +326,56 @@ void read_fact_filest::save_implies_pair_facts_smt_query(string facts_query_base
 
 /*******************************************************************
 
+ Function: read_fact_filest::save_implies_3_facts_smt_query
+
+ Inputs: facts
+  
+ Outputs: facts in smt-lib query
+
+ Purpose:
+ 
+\*******************************************************************/
+void read_fact_filest::save_implies_3_facts_smt_query(string facts_query_base_file_name)
+{
+    // Create the declarations to the query (once to all queries)
+    std::string smt_decl = "";
+    for ( auto it = decls.begin(); it != decls.end(); it++ )
+        smt_decl += (*it) + " \n";
+    std::cout << "** Loading Declarations **" << std::endl;
+    
+    for (auto it1 = facts.begin(); it1 != facts.end(); ++it1){
+        for ( auto it2 = it1; it2 != facts.end(); it2++ ) {
+            if (((it2->first).compare(it1->first) != 0) && (is_same_set(it1->first, it2->first)))
+            {   
+                for ( auto it3 = it2; it3 != facts.end(); it3++ ) 
+                {
+                    if (((it3->first).compare(it2->first) != 0) 
+                            && (is_same_set(it3->first, it1->first) && (is_same_set(it3->first, it2->first))))
+                    {
+                        // Write two queries it1 && !it2, !it1 && it2
+                        pair<string, string> curr = std::make_pair(
+                                string(it2->first +"+"+ it3->first), 
+                                string(it2->second + "\n    " + it3->second));
+                        write_pairs_impl_query(facts_query_base_file_name, smt_decl, curr, *it1);
+                        
+                        curr = std::make_pair(
+                                string(it1->first +"+"+ it3->first), 
+                                string(it1->second + "\n    " + it3->second));
+                        write_pairs_impl_query(facts_query_base_file_name, smt_decl, curr, *it2);
+                        
+                        curr = std::make_pair(
+                                string(it1->first +"+"+ it2->first), 
+                                string(it1->second + "\n    " + it2->second));
+                        write_pairs_impl_query(facts_query_base_file_name, smt_decl, curr, *it3);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/*******************************************************************
+
  Function: read_fact_filest::is_same_set
 
  Inputs: two facts
@@ -385,7 +435,7 @@ void read_fact_filest::write_pairs_impl_query(string facts_query_base_file_name,
     query = "  (and \n    " + orig_func_call + "\n" + query + "  )\n";
     query = "(assert \n" + query + ")\n(check-sat)\n";
 
-    std::cout << "** Saving the Query **" << std::endl;
+    //std::cout << "** Saving the Implies Query **" << std::endl;
     
     
     // write fact with only one fact:

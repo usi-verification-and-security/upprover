@@ -30,6 +30,7 @@ public:
     void save_facts_smt_query(string facts_query_base_file_name); // Stage 2
     void save_subset_facts_smt_query(string facts_query_base_file_name); // Stage 3
     void save_implies_pair_facts_smt_query(string facts_query_base_file_name); //Stage 4
+    void save_implies_3_facts_smt_query(string facts_query_base_file_name); //Stage 4
     
 private:
     std::list<std::string> facts_subset; // Stage 3
