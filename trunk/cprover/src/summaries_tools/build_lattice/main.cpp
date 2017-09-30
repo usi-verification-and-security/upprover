@@ -24,7 +24,7 @@ int main(int argc, const char **argv)
         facts_subsets_writer->save_facts_smt_queries(argv[3]);
     else 
     {
-        if (argc == 5) {
+        if (argc > 5) {
             facts_subsets_writer->load_facts_names_only(argv[5]);
             facts_subsets_writer->save_subset_facts_smt_query(argv[3]);
         } else {
