@@ -353,20 +353,9 @@ void read_fact_filest::save_implies_3_facts_smt_query(string facts_query_base_fi
                             && (is_same_set(it3->first, it1->first) && (is_same_set(it3->first, it2->first))))
                     {
                         // Write two queries it1 && !it2, !it1 && it2
-                        pair<string, string> curr = std::make_pair(
-                                string(it2->first +"+"+ it3->first), 
-                                string(it2->second + "\n    " + it3->second));
-                        write_pairs_impl_query(facts_query_base_file_name, smt_decl, curr, *it1);
-                        
-                        curr = std::make_pair(
-                                string(it1->first +"+"+ it3->first), 
-                                string(it1->second + "\n    " + it3->second));
-                        write_pairs_impl_query(facts_query_base_file_name, smt_decl, curr, *it2);
-                        
-                        curr = std::make_pair(
-                                string(it1->first +"+"+ it2->first), 
-                                string(it1->second + "\n    " + it2->second));
-                        write_pairs_impl_query(facts_query_base_file_name, smt_decl, curr, *it3);
+                        write_3_impl_query(facts_query_base_file_name, smt_decl, *it2, *it3, *it1);
+                        write_3_impl_query(facts_query_base_file_name, smt_decl, *it1, *it3, *it2);
+                        write_3_impl_query(facts_query_base_file_name, smt_decl, *it1, *it2, *it3);
                     }
                 }
             }
@@ -441,6 +430,54 @@ void read_fact_filest::write_pairs_impl_query(string facts_query_base_file_name,
     // write fact with only one fact:
     write_smt_query(query, smt_decl, facts_query_base_file_name, fact_name, "02");
 }
+
+/*******************************************************************
+
+ Function: read_fact_filest::write_3_impl_query
+
+ Inputs: two facts
+  
+ Outputs: facts in smt-lib query
+
+ Purpose:
+ 
+\*******************************************************************/
+void read_fact_filest::write_3_impl_query(string facts_query_base_file_name, 
+        string smt_decl, pair<string,string> pos, pair<string,string> pos2, pair<string,string> neg)
+{
+    string fact_name = "_" + pos.first + "_" + neg.first;
+        
+    string query = "";
+    
+    //add pos fact
+    string outter_fact_pos = create_string_of_single_fact(pos.first, pos.second);
+    query += "    ;; " + pos.first +"\n";
+    query += "    " + outter_fact_pos + "\n";   
+    
+    string outter_fact_pos2 = create_string_of_single_fact(pos2.first, pos2.second);
+    query += "    ;; " + pos2.first +"\n";
+    query += "    " + outter_fact_pos2 + "\n";  
+    
+    //add neg fact
+    string outter_fact_neg = create_string_of_single_fact(neg.first, neg.second);
+    query += "    ;; not " + neg.first +" to check implication \n";
+    query += "    (not " + outter_fact_neg + ")\n"; 
+    
+    string params = original_params_function;
+    string func_name = original_function_name;
+    string return_val = "|" + func_name + FUNC_RETURN + "|" ;
+    string orig_func_call = "(= (|_" + func_name + "#0| " + params + ") " + return_val + ")";
+
+    query = "  (and \n    " + orig_func_call + "\n" + query + "  )\n";
+    query = "(assert \n" + query + ")\n(check-sat)\n";
+
+    //std::cout << "** Saving the Implies Query **" << std::endl;
+    
+    
+    // write fact with only one fact:
+    write_smt_query(query, smt_decl, facts_query_base_file_name, fact_name, "02");
+}
+
 
 /*******************************************************************
 

@@ -52,6 +52,9 @@ private:
     void write_smt_query(string facts_str, string decls_str, string base_name, string start_fact_name, string counter);
     void write_pairs_impl_query(string facts_query_base_file_name, 
             string smt_decl, pair<string,string> pos, pair<string,string> neg);
+    void write_3_impl_query(string facts_query_base_file_name, 
+        string smt_decl, pair<string,string> pos, pair<string,string> pos2, 
+        pair<string,string> neg);
 
     void split(std::list<std::string>& strings, std::string list, std::string split_str);
 };
