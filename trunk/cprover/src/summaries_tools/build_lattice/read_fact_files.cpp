@@ -412,9 +412,10 @@ void read_fact_filest::write_pairs_impl_query(string facts_query_base_file_name,
     query += "    " + outter_fact_pos + "\n";   
     
     //add neg fact
-    string outter_fact_neg = create_string_of_single_fact(neg.first, neg.second);
+    string neg_fact = "    (not " + neg.second + ")\n";;
+    string outter_fact_neg = create_string_of_single_fact(neg.first, neg_fact);
     query += "    ;; not " + neg.first +" to check implication \n";
-    query += "    (not " + outter_fact_neg + ")\n"; 
+    query += outter_fact_neg + "\n"; 
     
     string params = original_params_function;
     string func_name = original_function_name;
@@ -459,10 +460,12 @@ void read_fact_filest::write_3_impl_query(string facts_query_base_file_name,
     query += "    " + outter_fact_pos2 + "\n";  
     
     //add neg fact
-    string outter_fact_neg = create_string_of_single_fact(neg.first, neg.second);
+    string neg_fact = "    (not " + neg.second + ")\n";;
+    string outter_fact_neg = create_string_of_single_fact(neg.first, neg_fact);
     query += "    ;; not " + neg.first +" to check implication \n";
-    query += "    (not " + outter_fact_neg + ")\n"; 
+    query += outter_fact_neg + "\n"; 
     
+    // Building the query
     string params = original_params_function;
     string func_name = original_function_name;
     string return_val = "|" + func_name + FUNC_RETURN + "|" ;
@@ -475,7 +478,7 @@ void read_fact_filest::write_3_impl_query(string facts_query_base_file_name,
     
     
     // write fact with only one fact:
-    write_smt_query(query, smt_decl, facts_query_base_file_name, fact_name, "02");
+    write_smt_query(query, smt_decl, facts_query_base_file_name, fact_name, "03");
 }
 
 
