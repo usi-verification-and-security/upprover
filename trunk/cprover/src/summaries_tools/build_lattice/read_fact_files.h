@@ -45,7 +45,7 @@ private:
     
     string create_local_call_to_orig_func(string fact_name);
     string create_params_args_connection(string fact_name);
-    string create_string_of_single_fact(string fact_name, string fact);
+    string create_string_of_single_fact(string fact_name, string fact, bool neg_fact=false);
     bool is_same_set(string fact1, string fact2);
 
     vector<vector<pair<string,string>>> create_all_subsets_of_facts(vector<pair<string,string>> set_facts);

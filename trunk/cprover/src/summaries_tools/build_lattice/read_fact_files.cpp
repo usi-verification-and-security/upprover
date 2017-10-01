@@ -413,7 +413,7 @@ void read_fact_filest::write_pairs_impl_query(string facts_query_base_file_name,
     
     //add neg fact
     string neg_fact = "    (not " + neg.second + ")\n";;
-    string outter_fact_neg = create_string_of_single_fact(neg.first, neg_fact);
+    string outter_fact_neg = create_string_of_single_fact(neg.first, neg_fact, true);
     query += "    ;; not " + neg.first +" to check implication \n";
     query += outter_fact_neg + "\n"; 
     
@@ -461,7 +461,7 @@ void read_fact_filest::write_3_impl_query(string facts_query_base_file_name,
     
     //add neg fact
     string neg_fact = "    (not " + neg.second + ")\n";;
-    string outter_fact_neg = create_string_of_single_fact(neg.first, neg_fact);
+    string outter_fact_neg = create_string_of_single_fact(neg.first, neg_fact, true);
     query += "    ;; not " + neg.first +" to check implication \n";
     query += outter_fact_neg + "\n"; 
     
@@ -582,7 +582,7 @@ vector< vector<pair<string,string>> > read_fact_filest::create_all_subsets_of_fa
  Purpose:
 
 \*******************************************************************/
-string read_fact_filest::create_string_of_single_fact(string fact_name, string fact)
+string read_fact_filest::create_string_of_single_fact(string fact_name, string fact, bool neg_fact)
 {
     // definition of the original function - connect to inner fact
     string orig_func_call = create_local_call_to_orig_func(fact_name);
@@ -591,9 +591,12 @@ string read_fact_filest::create_string_of_single_fact(string fact_name, string f
     string orig_params_connection = create_params_args_connection(fact_name);
     // Created: (and (= |_mod#0::a!0| |mod_Cd::a!0|) (= |_mod#0::n!0| |mod_Cd::n!0|))
 
-    string outter_fact = "(and " + fact + " (and " + orig_func_call + " " + orig_params_connection + "))";
-
-    return outter_fact;
+    // The form for negation only
+    if (neg_fact)
+        return (fact + "    (and " + orig_func_call + " " + orig_params_connection + ")");
+    
+    // The general form
+    return ("(and " + fact + " (and " + orig_func_call + " " + orig_params_connection + "))");
 }
 
 /*******************************************************************
