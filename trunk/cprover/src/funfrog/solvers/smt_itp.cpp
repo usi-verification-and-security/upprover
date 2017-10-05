@@ -301,9 +301,9 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
         int idx = get_symbol_L2_counter(symbols[i]);
         for(int j = 0; j < args.size(); ++j)
         {
-            string unidx_aname = get_and_check_L1_name_from_summary(args[j]);  
+            string unidx_aname = get_and_check_L0_name_from_summary(args[j]);  
             string quoted_unidx_aname = smtcheck_opensmt2t::quote_varname(unidx_aname);
-            //std::cout << "Compare: " << quoted_unidx << " to " << quoted_unidx_aname << std::endl;
+            std::cout << "Compare: " << quoted_unidx << " to " << quoted_unidx_aname << std::endl;
             if ((quoted_unidx.compare(quoted_unidx_aname) == 0) ||
                 (quoted_unidx_in.compare(quoted_unidx_aname) == 0) ||
                 (quoted_unidx_out.compare(quoted_unidx_aname) == 0) ||
@@ -316,7 +316,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
                   )
                 {
         	    PTRef tmp = decider.convert_symbol(symbols[i]);
-                    //cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << logic->printTerm(tmp) << endl;
+                    cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << logic->printTerm(tmp) << endl;
                     subst.insert(args[j], PtAsgn(tmp, l_True));
                     args_instantiated++;
                     continue; // we found what we need, skit the rest of the iterations
@@ -673,12 +673,18 @@ Function: smt_itpt::get_and_check_L1_name_from_summary
  * the summary (where the code of the func is not yet in the SSA tree)
 
 \*******************************************************************/
-string smt_itpt::get_and_check_L1_name_from_summary(PTRef arg_j) const {
+string smt_itpt::get_and_check_L0_name_from_summary(PTRef arg_j) const {
     string aname = string(logic->getSymName(arg_j));
     if (is_system_translation_var(aname, false)) 
         // These have # as part of the name and not the index - we skip the check
         return aname;
 
+    // Check if it is the name we expect
     assert(aname == smtcheck_opensmt2t::remove_index(aname));
+
+    // Remove !0, it can be also ! with any digits (it is one of the Cprover level of instanciation)
+    size_t pos = aname.find_last_of(COUNTER_L1);
+    if (pos != string::npos) return aname.substr(0,pos);
+    
     return aname; 
 }

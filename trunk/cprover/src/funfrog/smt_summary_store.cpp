@@ -116,6 +116,7 @@ summary_idt smt_summary_storet::insert_summary(summaryt& summary)
   summary_idt id = max_id++;
   summary.set_valid(1);
 
+  // Here gets the function names
   Tterm *tterm = summary.getTterm();
   assert(tterm);
   string fname = tterm->getName();

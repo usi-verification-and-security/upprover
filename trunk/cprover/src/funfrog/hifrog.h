@@ -35,7 +35,8 @@
 #define NIL "nil"
 #define NONDETv1 "symex::" // Cprover nondet symbol
 #define NONDETv2 "symex::nondet" // Cprover nonder symbol too
-#define COUNTER '#' // GOTO to SSA (e.g., hifrog::?fun_end to hifrog::?fun_end#1)
+#define COUNTER '#' // GOTO to SSA L2 (e.g., hifrog::?fun_end to hifrog::?fun_end#1)
+#define COUNTER_L1 '!' // GOTO to SSA L1
 #define SPERATOR "::" // split names in cprover
 #define SPERATOR_PREFIX "_" // Cprover const to split prefix from instance
 #define SYMEX_NONDET "nondet#" //"symex::nondet#" - fix to

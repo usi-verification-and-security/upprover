@@ -1,0 +1,94 @@
+(set-logic QF_LRA)
+(declare-fun |hifrog::fun_start#3| () Bool)
+(declare-fun |hifrog::fun_end#3| () Bool)
+(declare-fun |goto_symex::guard#1| () Bool)
+(declare-fun |max::n!0#2| () Real)
+(declare-fun |max::n!0#1| () Real)
+(declare-fun |a#8| () Real)
+(declare-fun |a#6| () Real)
+(declare-fun |a#9| () Real)
+(declare-fun |a#10| () Real)
+(declare-fun .oite0 () Real)
+(declare-fun |a#7| () Real)
+(declare-fun |hifrog::fun_start#2| () Bool)
+(declare-fun |hifrog::fun_end#2| () Bool)
+(declare-fun |hifrog::?err#1| () Bool)
+(declare-fun |main::1::p!0#2| () Real)
+(declare-fun |symex::nondet#0| () Real)
+(declare-fun |hifrog::fun_start#1| () Bool)
+(declare-fun |hifrog::fun_end#1| () Bool)
+(declare-fun |a#0| () Real)
+(declare-fun |a#1| () Real)
+(declare-fun |a#in| () Real)
+(declare-fun |a#out| () Real)
+(declare-fun |hifrog::fun_start| () Bool)
+(declare-fun |hifrog::fun_end| () Bool)
+(declare-fun |max::n!0| () Real)
+(declare-fun |a#4| () Real)
+(declare-fun |a#5| () Real)
+(declare-fun |hifrog::fun_start#3| () Bool)
+(declare-fun |hifrog::fun_end#3| () Bool)
+(declare-fun |max::n!0#1| () Real)
+(declare-fun |a#4| () Real)
+(declare-fun |a#5| () Real)
+(declare-fun |hifrog::fun_start#2| () Bool)
+(declare-fun |hifrog::fun_end#2| () Bool)
+(declare-fun |hifrog::?err#1| () Bool)
+(declare-fun |main::1::p!0#2| () Real)
+(declare-fun |symex::nondet#0| () Real)
+(declare-fun |hifrog::fun_end#1| () Bool)
+(declare-fun |goto_symex::guard#1| () Bool)
+(declare-fun |max::n!0#2| () Real)
+(declare-fun |a#6| () Real)
+(declare-fun |a#7| () Real)
+(declare-fun |a#8| () Real)
+(declare-fun |max::n!0| () Real)
+(declare-fun |a#in| () Real)
+(declare-fun |a#out| () Real)
+(declare-fun |hifrog::fun_start| () Bool)
+(declare-fun |hifrog::fun_end| () Bool)
+(define-fun |__CPROVER_initialize#0| ( (|a#in| Real) (|a#out| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) ) Bool(let ((?def0 true))
+
+?def0
+))
+(define-fun |max#0| ( (|max::n!0| Real) (|a#in| Real) (|a#out| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) ) Bool(let ((?def9 (not |hifrog::fun_end|)))
+(let ((?def10 (or |hifrog::fun_start| ?def9)))
+(let ((?def15 (and ?def10 (<= 0 (+ |a#out| (* |max::n!0| -1)))
+)))
+(let ((?def18 (or ?def15 (<= 0 (+ |a#in| (* |max::n!0| -1))))))
+(let ((?def19 (and ?def10 ?def18)))
+
+?def19
+))))))
+(define-fun |max#2| ( (|max::n!0| Real) (|a#in| Real) (|a#out| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) ) Bool(let ((?def0 true))
+
+?def0
+))
+(define-fun |max#3| ( (|max::n!0| Real) (|a#in| Real) (|a#out| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) ) Bool(let ((?def0 true))
+
+?def0
+))
+(define-fun |max#4| ( (|max::n!0| Real) (|a#in| Real) (|a#out| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) ) Bool(let ((?def0 true))
+
+?def0
+))
+(define-fun |max#5| ( (|max::n!0| Real) (|a#in| Real) (|a#out| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) ) Bool(let ((?def0 true))
+
+?def0
+))
+(define-fun |max#6| ( (|max::n!0| Real) (|a#in| Real) (|a#out| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) ) Bool(let ((?def0 true))
+
+?def0
+))
+(define-fun |max#7| ( (|max::n!0| Real) (|a#in| Real) (|a#out| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) ) Bool(let ((?def0 true))
+
+?def0
+))
+(define-fun |max#8| ( (|max::n!0| Real) (|a#in| Real) (|a#out| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) ) Bool(let ((?def0 true))
+
+?def0
+))
+(define-fun |max#9| ( (|max::n!0| Real) (|a#in| Real) (|a#out| Real) (|hifrog::fun_start| Bool) (|hifrog::fun_end| Bool) ) Bool(let ((?def0 true))
+
+?def0
+))
