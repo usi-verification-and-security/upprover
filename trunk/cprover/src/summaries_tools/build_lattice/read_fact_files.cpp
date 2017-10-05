@@ -363,6 +363,56 @@ void read_fact_filest::save_implies_3_facts_smt_query(string facts_query_base_fi
     }
 }
 
+
+/*******************************************************************
+
+ Function: read_fact_filest::save_implies_4_facts_smt_query
+
+ Inputs: facts
+  
+ Outputs: facts in smt-lib query
+
+ Purpose:
+ 
+\*******************************************************************/
+void read_fact_filest::save_implies_4_facts_smt_query(string facts_query_base_file_name)
+{
+    // Create the declarations to the query (once to all queries)
+    std::string smt_decl = "";
+    for ( auto it = decls.begin(); it != decls.end(); it++ )
+        smt_decl += (*it) + " \n";
+    std::cout << "** Loading Declarations **" << std::endl;
+    
+    for (auto it1 = facts.begin(); it1 != facts.end(); ++it1){
+        for ( auto it2 = it1; it2 != facts.end(); it2++ ) {
+            if (((it2->first).compare(it1->first) != 0) && (is_same_set(it1->first, it2->first)))
+            {   
+                for ( auto it3 = it2; it3 != facts.end(); it3++ ) 
+                {
+                    if (((it3->first).compare(it2->first) != 0) 
+                            && (is_same_set(it3->first, it1->first) && (is_same_set(it3->first, it2->first))))
+                    {
+                        for ( auto it4 = it3; it4 != facts.end(); it4++ ) 
+                        {
+                            if (((it4->first).compare(it3->first) != 0) 
+                                    && (is_same_set(it4->first, it1->first)
+                                    && (is_same_set(it4->first, it2->first)
+                                    && (is_same_set(it4->first, it3->first))))) 
+                            {
+                                // Write two queries it1 && !it2, !it1 && it2
+                                write_4_impl_query(facts_query_base_file_name, smt_decl, *it2, *it3, *it4, *it1);
+                                write_4_impl_query(facts_query_base_file_name, smt_decl, *it1, *it3, *it4, *it2);
+                                write_4_impl_query(facts_query_base_file_name, smt_decl, *it1, *it2, *it4, *it3);
+                                write_4_impl_query(facts_query_base_file_name, smt_decl, *it1, *it2, *it3, *it4);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /*******************************************************************
 
  Function: read_fact_filest::is_same_set
@@ -436,7 +486,7 @@ void read_fact_filest::write_pairs_impl_query(string facts_query_base_file_name,
 
  Function: read_fact_filest::write_3_impl_query
 
- Inputs: two facts
+ Inputs: 3 facts
   
  Outputs: facts in smt-lib query
 
@@ -481,6 +531,59 @@ void read_fact_filest::write_3_impl_query(string facts_query_base_file_name,
     write_smt_query(query, smt_decl, facts_query_base_file_name, fact_name, "03");
 }
 
+/*******************************************************************
+
+ Function: read_fact_filest::write_4_impl_query
+
+ Inputs: 3 facts
+  
+ Outputs: facts in smt-lib query
+
+ Purpose:
+ 
+\*******************************************************************/
+void read_fact_filest::write_4_impl_query(string facts_query_base_file_name, 
+        string smt_decl, pair<string,string> pos, pair<string,string> pos2, 
+        pair<string,string> pos3, pair<string,string> neg)
+{
+    string fact_name = "__" + pos.first + "++" + pos2.first + "++" + pos3.first + "__" + neg.first;
+        
+    string query = "";
+    
+    //add pos fact
+    string outter_fact_pos = create_string_of_single_fact(pos.first, pos.second);
+    query += "    ;; " + pos.first +"\n";
+    query += "    " + outter_fact_pos + "\n";   
+    
+    string outter_fact_pos2 = create_string_of_single_fact(pos2.first, pos2.second);
+    query += "    ;; " + pos2.first +"\n";
+    query += "    " + outter_fact_pos2 + "\n";  
+    
+    string outter_fact_pos3 = create_string_of_single_fact(pos3.first, pos3.second);
+    query += "    ;; " + pos3.first +"\n";
+    query += "    " + outter_fact_pos3 + "\n";
+    
+    //add neg fact
+    string neg_fact = "    (not " + neg.second + ")\n";;
+    string outter_fact_neg = create_string_of_single_fact(neg.first, neg_fact, true);
+    query += "    ;; not " + neg.first +" to check implication \n";
+    query += outter_fact_neg + "\n"; 
+    
+    // Building the query
+    string params = original_params_function;
+    string func_name = original_function_name;
+    string return_val = "|" + func_name + FUNC_RETURN + "|" ;
+    string orig_func_call = "(= (|_" + func_name + "#0| " + params + ") " + return_val + ")";
+
+    query = "  (and \n    " + orig_func_call + "\n" + query + "  )\n";
+    query = "(assert \n" + query + ")\n(check-sat)\n";
+
+    //std::cout << "** Saving the Implies Query **" << std::endl;
+    
+    
+    // write fact with only one fact:
+    write_smt_query(query, smt_decl, facts_query_base_file_name, fact_name, "04");
+}
 
 /*******************************************************************
 
