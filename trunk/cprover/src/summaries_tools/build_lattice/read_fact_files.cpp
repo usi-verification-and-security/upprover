@@ -471,6 +471,8 @@ void read_fact_filest::write_pairs_impl_query(string facts_query_base_file_name,
     string func_name = original_function_name;
     string return_val = "|" + func_name + FUNC_RETURN + "|" ;
     string orig_func_call = "(= (|_" + func_name + "#0| " + params + ") " + return_val + ")";
+    //string need_gaurd_def =  "\n    (not (= 0 |z_mod::n|))"; // for mod only
+    //orig_func_call += need_gaurd_def;
 
     query = "  (and \n    " + orig_func_call + "\n" + query + "  )\n";
     query = "(assert \n" + query + ")\n(check-sat)\n";
@@ -520,6 +522,8 @@ void read_fact_filest::write_3_impl_query(string facts_query_base_file_name,
     string func_name = original_function_name;
     string return_val = "|" + func_name + FUNC_RETURN + "|" ;
     string orig_func_call = "(= (|_" + func_name + "#0| " + params + ") " + return_val + ")";
+    //string need_gaurd_def =  "\n    (not (= 0 |z_mod::n|))"; // for mod only
+    //orig_func_call += need_gaurd_def;
 
     query = "  (and \n    " + orig_func_call + "\n" + query + "  )\n";
     query = "(assert \n" + query + ")\n(check-sat)\n";
@@ -574,6 +578,8 @@ void read_fact_filest::write_4_impl_query(string facts_query_base_file_name,
     string func_name = original_function_name;
     string return_val = "|" + func_name + FUNC_RETURN + "|" ;
     string orig_func_call = "(= (|_" + func_name + "#0| " + params + ") " + return_val + ")";
+    //string need_gaurd_def =  "\n    (not (= 0 |z_mod::n|))"; // for mod only
+    //orig_func_call += need_gaurd_def;
 
     query = "  (and \n    " + orig_func_call + "\n" + query + "  )\n";
     query = "(assert \n" + query + ")\n(check-sat)\n";

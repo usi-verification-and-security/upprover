@@ -20,8 +20,8 @@ int main(int argc, const char **argv)
     }
     
     facts_subsets_writer->load_subset_facts_names(argv[4]);
-    //facts_subsets_writer->save_implies_pair_facts_smt_query(argv[3]);
-    //facts_subsets_writer->save_implies_3_facts_smt_query(argv[3]);
+    facts_subsets_writer->save_implies_pair_facts_smt_query(argv[3]);
+    facts_subsets_writer->save_implies_3_facts_smt_query(argv[3]);
     facts_subsets_writer->save_implies_4_facts_smt_query(argv[3]);
     // add also a&b => c check
 
