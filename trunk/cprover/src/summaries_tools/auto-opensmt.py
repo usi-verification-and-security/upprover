@@ -1,3 +1,4 @@
+opensmtPath= " /home/asadis/opensmt2/opensmt "  #please specify it based on your machine
 import os
 import sys
 if __name__ == '__main__':
@@ -17,6 +18,6 @@ if __name__ == '__main__':
 	for f in onlyfiles:
 		pfix=f.split('.smt2')[0]
 		logfile=pfix+".txt"
-		cmnd = pathname+" /home/asadis/opensmt2/opensmt " + build_output+"/"+f +" > " + outmypath+ "/"+ logfile +" 2>&1 "
+		cmnd = pathname+ opensmtPath  + build_output+"/"+f +" > " + outmypath+ "/"+ logfile +" 2>&1 "
 		print(cmnd)
 		#os.system(cmnd)
