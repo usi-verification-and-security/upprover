@@ -303,7 +303,6 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
         {
             string unidx_aname = get_and_check_L0_name_from_summary(args[j]);  
             string quoted_unidx_aname = smtcheck_opensmt2t::quote_varname(unidx_aname);
-            std::cout << "Compare: " << quoted_unidx << " to " << quoted_unidx_aname << std::endl;
             if ((quoted_unidx.compare(quoted_unidx_aname) == 0) ||
                 (quoted_unidx_in.compare(quoted_unidx_aname) == 0) ||
                 (quoted_unidx_out.compare(quoted_unidx_aname) == 0) ||
@@ -316,7 +315,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
                   )
                 {
         	    PTRef tmp = decider.convert_symbol(symbols[i]);
-                    cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << logic->printTerm(tmp) << endl;
+                    //cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << logic->printTerm(tmp) << endl;
                     subst.insert(args[j], PtAsgn(tmp, l_True));
                     args_instantiated++;
                     continue; // we found what we need, skit the rest of the iterations
