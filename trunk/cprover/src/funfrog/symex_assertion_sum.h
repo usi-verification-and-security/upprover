@@ -49,8 +49,7 @@ public:
           bool _single_assertion_check,
           bool _use_slicing=true,
 	  bool _do_guard_expl=true,
-          bool _use_smt=true,
-          bool _use_lattice_ref=false
+          bool _use_smt=true
           ) :
           symex_bmct(_ns, _new_symbol_table, _target),
           summarization_context(_summarization_context),
@@ -66,9 +65,7 @@ public:
           use_slicing(_use_slicing),
 	  do_guard_expl(_do_guard_expl),
           use_smt(_use_smt),
-          prev_unwind_counter(0),
-          use_lattice_ref(_use_lattice_ref),
-          lattice_ref_candidates_counter(0)
+          prev_unwind_counter(0)
           {set_message_handler(_message_handler);}
           
   virtual ~symex_assertion_sumt();
@@ -102,16 +99,6 @@ public:
   };
 
   std::map<irep_idt, std::string> guard_expln;
-  
-  /* The data: lhs, original function data */
-  map<exprt,pair<irep_idt, code_function_callt>>::const_iterator 
-        get_itr_nobody_func_info_map() const { return lattice_ref_candidates_info_map.begin(); }
-  map<exprt,pair<irep_idt, code_function_callt>>::const_iterator 
-        get_itr_end_nobody_func_info_map() const { return lattice_ref_candidates_info_map.end(); }
-  bool has_missing_decl_func2refine() const {
-    return (use_lattice_ref && lattice_ref_candidates_counter > 0);
-  }
-  /* End of unsupported data for refinement info and data */
 
   // Shall be public for refinement
   void fabricate_cprover_SSA(irep_idt base_symbol_id, 
@@ -119,40 +106,6 @@ public:
         bool is_rename, bool is_dead, bool is_shared,
         symbol_exprt& ret_symbol);  
   
-  // For lattice refinement
-  void summarize_function_call_lattice_facts( 
-        const irep_idt& function_id,
-        const summary_idst& func_ids, 
-        unsigned call_loc, 
-        const exprt &lhs,
-        const exprt::operandst &caller_info_operands,
-        const exprt::operandst &callee_info_operands,
-        const source_locationt &source_location);
-  void assign_function_arguments_lattice_facts(
-        statet &state,
-        partition_ifacet &partition_iface,
-        const irep_idt &identifier,
-        const exprt &lhs,
-        const exprt::operandst &caller_info_operands,
-        const exprt::operandst &callee_info_operands,
-        const source_locationt &source_location);
-  void return_assignment_and_mark_lattice_facts(
-        const typet& type,
-        statet &state,
-        const exprt *lhs,
-        partition_ifacet &partition_iface,
-        const source_locationt& source_location,
-        bool skip_assignment);
-  void mark_argument_symbols_lattice_facts(
-        const exprt::operandst &call_info_operands,
-        statet &state,
-        partition_ifacet &partition_iface);
-  void parameter_assignments_lattice_facts(
-        const irep_idt function_identifier,
-        const exprt::operandst &goto_function_parameters,
-        statet &state,
-        const exprt::operandst &arguments);
-
 private:
   
   // Symex state holding the renaming levels
@@ -216,10 +169,6 @@ private:
   bool do_guard_expl;
   
   bool use_smt; // for slicing 
-  
-  bool use_lattice_ref; // for lattice ref. else opt. out the data needed for it only
-  unsigned int lattice_ref_candidates_counter;
-  map<exprt, std::pair<irep_idt, code_function_callt>> lattice_ref_candidates_info_map; // lhs, original function data
   
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation

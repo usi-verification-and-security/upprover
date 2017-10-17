@@ -1,2 +1,0 @@
-benchmarks/simple_mod_27_false.c,prop,--claim,1,--unwind,10
-benchmarks/simple_mod_27_false.c,qflra,--claim,1,--load-summaries,benchmarks/__summaries_simple_mod_lra,--load-sum-model,benchmarks/modlattice_model_lra,--unwind,10

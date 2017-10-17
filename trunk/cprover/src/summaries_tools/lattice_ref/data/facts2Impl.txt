@@ -1,9 +1,0 @@
-(ite (= 1 n) (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 1) (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 1)) true) ;; fact (a)i
-(ite (= 2 n) (and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 2) (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 2)) true) ;; fact (b)i
-(and (ite (= a 0) (= mod_hifrog_c_unsupported_op2var0_1 a) true) (ite (= b 0) (= mod_hifrog_c_unsupported_op2var0_2 b) true)) ;; fact (c)i
-(and (ite (= a n) (= mod_hifrog_c_unsupported_op2var0_1 0) true) (ite (= b n) (= mod_hifrog_c_unsupported_op2var0_2 0) true)) ;; fact (d)i
-(and (ite (and (< a n) (>= a 0)) (= a mod_hifrog_c_unsupported_op2var0_1) true) (ite (and (< b n) (>= b 0)) (= b mod_hifrog_c_unsupported_op2var0_2) true)) ;;fact (f)i
-(and (>= mod_hifrog_c_unsupported_op2var0_1 0) (< mod_hifrog_c_unsupported_op2var0_1 n) (>= mod_hifrog_c_unsupported_op2var0_2 0) (< mod_hifrog_c_unsupported_op2var0_2 n)) ;; Fact (g)i
-(and (= mod_hifrog_c_unsupported_op2var0_1 (mod mod_hifrog_c_unsupported_op2var0_1 n)) (= mod_hifrog_c_unsupported_op2var0_2 (mod mod_hifrog_c_unsupported_op2var0_2 n)));; Fact (j)i
-(and (= 0 (mod mod_hifrog_c_unsupported_op2var0_1 (mod (* -1 a) n))) (= 0 (mod mod_hifrog_c_unsupported_op2var0_2 (mod (* -1 b) n)))) ;; Fact (k)i
-(and (= (mod (+ mod_hifrog_c_unsupported_op2var0_1 mod_hifrog_c_unsupported_op2var0_2) n) (mod (+ a b) n)) (= (mod (+ mod_hifrog_c_unsupported_op2var0_2 mod_hifrog_c_unsupported_op2var0_1) n) (mod (+ b a) n))) ;; Fact (l)i

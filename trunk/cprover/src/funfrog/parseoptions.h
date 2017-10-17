@@ -35,7 +35,6 @@ class value_set_alloc_adaptort;
   "(show-claimed-program)(show-abstracted-program)" \
   "(save-claimed-program)(save-abstracted-program)" \
   "(save-summaries):(load-summaries):" \
-  "(sum-model-single-UNSAT):(load-sum-model):" \
   "(save-omega):(load-omega):" \
   "(show-symbol-table)(show-value-sets)" \
   "(save-claims)" \

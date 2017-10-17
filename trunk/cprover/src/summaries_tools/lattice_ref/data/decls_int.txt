@@ -1,8 +1,0 @@
-(declare-fun a () Int)
-(declare-fun b () Int)
-(declare-fun n () Int)
-(declare-fun modd (Int Int) Int)
-(declare-fun index_hifrog_c_nondet0_1 () Int)
-(declare-fun index_hifrog_c_nondet0_2 () Int)
-(declare-fun mod_hifrog_c_unsupported_op2var0_1 () Int)
-(declare-fun mod_hifrog_c_unsupported_op2var0_2 () Int)

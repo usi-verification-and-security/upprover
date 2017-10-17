@@ -172,9 +172,9 @@ bool symex_assertion_sumt::refine_SSA(
           it != refined_functions.end();
           ++it) {
     const partition_iface_ptrst* partition_ifaces = get_partition_ifaces(**it);
-    assert(!(*it)->is_root() || use_lattice_ref);
+    assert(!(*it)->is_root());
 
-    if (!(*it)->is_root()) { // Set as root for the lattice ref inputs (as global assumes)       
+    if (!(*it)->is_root()) {      
         if (partition_ifaces) {
           for (partition_iface_ptrst::const_iterator it2 = partition_ifaces->begin();
                   it2 != partition_ifaces->end();
@@ -736,163 +736,6 @@ void symex_assertion_sumt::assign_function_arguments(
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::assign_function_arguments
-
- Inputs:
-
- Outputs:
-
- Purpose: Instantiation of a summary for lattice facts
- Note: this shall be the exact flow/code as in original
-       symex_assertion_sumt::assign_function_arguments
-
-\*******************************************************************/
-void symex_assertion_sumt::assign_function_arguments_lattice_facts(
-        statet &state,
-        partition_ifacet &partition_iface,
-        const irep_idt &identifier,
-        const exprt &lhs,
-        const exprt::operandst &caller_info_operands,
-        const exprt::operandst &callee_info_operands,
-        const source_locationt &source_location)
-{
-  // Add parameters assignment
-  bool old_cp = constant_propagation;
-  constant_propagation = false;
- 
-  // Store the argument renamed symbols somewhere (so that we can use
-  // them later, when processing the deferred function).
-  mark_argument_symbols_lattice_facts(callee_info_operands, state, partition_iface);
-  parameter_assignments_lattice_facts(identifier, callee_info_operands, state, caller_info_operands);
-
-  // Mark accessed global variables as well
-  bool is_init_stage = (id2string(identifier).find(INITIALIZE) != std::string::npos);
-  mark_accessed_global_symbols(identifier, state, partition_iface, is_init_stage);
-  
-  // Never nil/null ret value in lattice facts (since these are math functions)
-  return_assignment_and_mark_lattice_facts(lhs.type(), state, &(lhs),
-        partition_iface, source_location, false);
-
-  
-  // Add also new assignments to all modified global variables
-  modified_globals_assignment_and_mark(identifier, state, partition_iface);
-  
-  constant_propagation = old_cp;
-}
-
-/*******************************************************************\
-
-Function: symex_assertion_sumt::parameter_assignments
-
-  Inputs:
-
- Outputs:
-
- Purpose: taken from goto_symext::parameter_assignments
- * Only for lattice refinement
-
-\*******************************************************************/
-
-void symex_assertion_sumt::parameter_assignments_lattice_facts(
-  const irep_idt function_identifier,
-  const exprt::operandst &goto_function_parameters, // callee
-  statet &state,
-  const exprt::operandst &arguments) // caller
-{
-  // Must be the same size (we assume it for lattice facts)
-  assert(goto_function_parameters.size() == arguments.size());  
-    
-  // iterates over the arguments
-  exprt::operandst::const_iterator it1=arguments.begin();
-  
-  // iterates over the types of the parameters
-  for(exprt::operandst::const_iterator
-      it2=goto_function_parameters.begin();
-      it2!=goto_function_parameters.end();
-      it2++)
-  {
-    const exprt &parameter=*it2;   
-
-    // this is the type that the n-th argument should have
-    const typet &parameter_type=parameter.type();
-
-    const irep_idt &identifier=to_ssa_expr(parameter).get_original_name();
-    if(identifier==irep_idt())
-      throw "no identifier for function parameter";
-
-    const symbolt &symbol=ns.lookup(identifier);
-    symbol_exprt lhs=symbol.symbol_expr();
-
-    exprt rhs;
-
-    // if you run out of actual arguments there was a mismatch
-    if(it1==arguments.end())
-    {
-      std::string warn=
-        "call to `"+id2string(function_identifier)+"': "
-        "not enough arguments, inserting non-deterministic value\n";
-      std::cerr << state.source.pc->source_location.as_string()+": "+warn;
-
-      rhs=side_effect_expr_nondett(parameter_type);
-    }
-    else
-      rhs=*it1;
-
-    if(rhs.is_nil())
-    {
-      // 'nil' argument doesn't get assigned
-    }
-    else
-    {
-      // It should be the same exact type.
-      if(!base_type_eq(parameter_type, rhs.type(), ns))
-      {
-        const typet &f_parameter_type=ns.follow(parameter_type);
-        const typet &f_rhs_type=ns.follow(rhs.type());
-
-        // But we are willing to do some limited conversion.
-        // This is highly dubious, obviously.
-        if((f_parameter_type.id()==ID_signedbv ||
-            f_parameter_type.id()==ID_unsignedbv ||
-            f_parameter_type.id()==ID_c_enum_tag ||
-            f_parameter_type.id()==ID_bool ||
-            f_parameter_type.id()==ID_pointer ||
-            f_parameter_type.id()==ID_union) &&
-           (f_rhs_type.id()==ID_signedbv ||
-            f_rhs_type.id()==ID_unsignedbv ||
-            f_rhs_type.id()==ID_c_bit_field ||
-            f_rhs_type.id()==ID_c_enum_tag ||
-            f_rhs_type.id()==ID_bool ||
-            f_rhs_type.id()==ID_pointer ||
-            f_rhs_type.id()==ID_union))
-        {
-          rhs=
-            byte_extract_exprt(
-              byte_extract_id(),
-              rhs,
-              from_integer(0, index_type()),
-              parameter_type);
-        }
-        else
-        {
-          std::ostringstream error;
-          error << "function call: parameter \"" << identifier
-                << "\" type mismatch: got " << rhs.type().pretty()
-                << ", expected " << parameter_type.pretty();
-          throw error.str();
-        }
-      }
-
-      symex_assign_rec(state, code_assignt(lhs, rhs));
-    }
-
-    if(it1!=arguments.end())
-      it1++;
-  }
-}
-
-/*******************************************************************
-
  Function: symex_assertion_sumt::mark_argument_symbols
 
  Inputs:
@@ -940,57 +783,6 @@ void symex_assertion_sumt::mark_argument_symbols(
 #   endif
   }
 }
-
-
-/*******************************************************************
-
- Function: symex_assertion_sumt::mark_argument_symbols
-
- Inputs:
-
- Outputs:
-
- Purpose: Marks the SSA symbols of function arguments
-
- * Call: foo(x,y) => connet x and y in the call site to the call function
-\*******************************************************************/
-void symex_assertion_sumt::mark_argument_symbols_lattice_facts(
-        const exprt::operandst &call_info_operands,
-        statet &state,
-        partition_ifacet &partition_iface) {
-    
-  for(exprt::operandst::const_iterator
-      it=call_info_operands.begin();
-      it!=call_info_operands.end();
-      it++)
-  {
-    const exprt &parameter=*it; // It is already SSA expression
-    const irep_idt &identifier = to_ssa_expr(parameter).get_original_name();
-
-    const symbolt &symbol = ns.lookup(identifier);
-    symbol_exprt lhs = symbol.symbol_expr();
-    
-    state.rename(lhs, ns, goto_symex_statet::L1);
-
-    statet::level2t::current_namest::const_iterator it2 =
-        state.level2.current_names.find(identifier);
-    if(it2==state.level2.current_names.end()) assert (0);
-    
-    // rename L2: update the level counters
-    ssa_exprt ssa_expr_lhs = to_ssa_expr(lhs);
-    state.level0(ssa_expr_lhs, ns, state.source.thread_nr);
-    state.level1(ssa_expr_lhs);
-    ssa_expr_lhs.set_level_2(state.level2.current_count(ssa_expr_lhs.get_identifier()));
-    
-    to_ssa_expr(lhs).set_level_2(it2->second.second);
-    partition_iface.argument_symbols.push_back(lhs);
-    
-#   ifdef DEBUG_PARTITIONING
-    std::cout << "Marking argument symbol: " << symbol << "\n";
-#   endif
-  }
-}
-
 
 /*******************************************************************
 
@@ -1214,98 +1006,6 @@ void symex_assertion_sumt::return_assignment_and_mark(
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::return_assignment_and_mark
-
- Inputs:
-
- Outputs:
-
- Purpose: Instantiation of a summary for lattice facts
- Note: this shall be the exact flow/code as in original
-       symex_assertion_sumt::return_assignment_and_mark
-
-\*******************************************************************/
-void symex_assertion_sumt::return_assignment_and_mark_lattice_facts(
-        const typet& type,
-        statet &state,
-        const exprt *lhs,
-        partition_ifacet &partition_iface,
-        const source_locationt &source_location,
-        bool skip_assignment)
-{
-    const irep_idt &function_id = partition_iface.function_id;
-    irep_idt retval_symbol_id(as_string(function_id) + FUNC_RETURN); // For goto_symext::symex_assign (101)
-    irep_idt retval_tmp_id(as_string(function_id) + TMP_FUNC_RETURN); // tmp in cprover is a token
-    
-    // return_value_tmp - create new symbol with versions to support unwinding
-    symbol_exprt retval_tmp;
-    fabricate_cprover_SSA(retval_tmp_id, type, 
-            source_location,
-            false, false, false, retval_tmp); 
-
-    // return_value - create new symbol with versions to support unwinding
-    symbol_exprt retval_symbol;	
-    fabricate_cprover_SSA(retval_symbol_id, type, 
-        source_location,
-        true, false, true, retval_symbol);
-    
-    // Connect the return value to the variable in the calling site 
-    // Here connect the unsupported var to the return value - as assume!
-    if (!skip_assignment) {
-        // fabricate the callee temp; e.g., call__modd::$tmp::return_value_mod_Cd$1!0#2
-        irep_idt call_tmp_return_val_callee_id(LATTICE_TMP_FUNC_RETURN + as_string(function_id) + "!0");  
-        symbol_exprt call_tmp_return_val_callee;	
-        fabricate_cprover_SSA(call_tmp_return_val_callee_id, type, 
-        source_location,true, false, true, call_tmp_return_val_callee);
-
-        ssa_exprt lhs_callee_temp(to_ssa_expr(call_tmp_return_val_callee).get_original_expr());
-        assert(lhs_callee_temp.id()==ID_symbol);
-        assert(lhs_callee_temp.get_level_2().empty());
-        
-        bool old_cp = constant_propagation;
-        constant_propagation = false;
-        symex_assign_rec(state, code_assignt(lhs_callee_temp, retval_symbol));
-        constant_propagation = old_cp;
-
-        // Add the assume:
-        exprt assume=exprt(ID_equal, bool_typet());
-        assume.operands().reserve(2);
-               
-        // ** OP0: Update the SSA object of lhs, if not injected at solver interface translation
-        std::string test_unsupported(lhs->get(ID_identifier).c_str());
-        if (test_unsupported.find(UNSUPPORTED_VAR_NAME) == std::string::npos)
-        {
-            ssa_exprt ssa_expr_lhs = to_ssa_expr(*lhs);
-            state.level0(ssa_expr_lhs, ns, state.source.thread_nr);
-            state.level1(ssa_expr_lhs);
-            ssa_expr_lhs.set_level_2(state.level2.current_count(ssa_expr_lhs.get_identifier()));
-            assume.copy_to_operands(ssa_expr_lhs);
-        } else {
-            assume.copy_to_operands(*lhs);
-        }
-        
-        // ** OP1: Update the SSA object 
-        to_ssa_expr(call_tmp_return_val_callee).set_level_2(state.level2.current_count(lhs_callee_temp.get_identifier()));
-        assume.copy_to_operands(call_tmp_return_val_callee);         
-        
-        
-        old_cp = constant_propagation;
-        constant_propagation = false;
-        symex_assume(state, assume);
-        constant_propagation = old_cp;
-    } 
-    # ifdef DEBUG_PARTITIONING
-      expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
-      expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
-    # endif
-
-    partition_iface.retval_symbol = retval_symbol;
-    partition_iface.retval_tmp = retval_tmp;
-    partition_iface.returns_value = true;
-}
-
-/*******************************************************************
-
  Function: symex_assertion_sumt::store_modified_globals
 
  Inputs:
@@ -1472,29 +1172,6 @@ void symex_assertion_sumt::handle_function_call(
   bool is_deferred_func = (summary_info.get_call_location() < last_assertion_loc) ||
           ((is_unwind_loop(state) || get_current_deferred_function().summary_info.is_in_loop()) && (max_unwind != 1));
   
-  // KE: keep these functions for lattice refinement
-  bool can_refine_wt_lattice = (use_lattice_ref 
-          && (summary_info.is_preserved_node()) 
-          && is_deferred_func 
-          && (!goto_function.body_available())
-          && !goto_function.is_hidden());
-          // Or no declaration, or declaration with summary. KE: maybe there are more cases? 
-          // Be careful not to add nondet functions (that shall stay nondet)
-  if  (can_refine_wt_lattice) 
-  {
-    status() << "**** Saved function as a candidate for lattice refinement. ";
-    status() << "Function " << function_id << " has" 
-              << (goto_function.type.get_bool(ID_C_incomplete) ? " no" : " a") 
-              << " declaration." << eom;
-    
-    // TODO: Save the functions
-    lattice_ref_candidates_counter++;
-    
-    // Save to the map
-    lattice_ref_candidates_info_map.insert(
-            std::pair<exprt,std::pair<irep_idt, code_function_callt>> 
-            (function_call.lhs(), std::make_pair(function_id, function_call)));
-  }
   
   // Do we have the body?
   if(!goto_function.body_available())
@@ -1587,48 +1264,6 @@ void symex_assertion_sumt::summarize_function_call(
   partition_idt partition_id = equation.reserve_partition(partition_iface);
   equation.fill_summary_partition(partition_id,
           &summarization_context.get_summaries(function_id));
-}
-
-/*******************************************************************
-
- Function: symex_assertion_sumt::summarize_function_call
-
- Inputs:
-
- Outputs:
-
- Purpose: Summaries the given function call for lattice refinement
-
-\*******************************************************************/
-void symex_assertion_sumt::summarize_function_call_lattice_facts(
-        const irep_idt& function_id,
-        const summary_idst& func_ids, 
-        unsigned call_loc,
-        const exprt &lhs,
-        const exprt::operandst &caller_info_operands,
-        const exprt::operandst &callee_info_operands,
-        const source_locationt& source_location)
-{
-  // We should use an already computed summary as an abstraction
-  // of the function body
-  status() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << eom;
-  
-  summary_infot* temp = new summary_infot(0, call_loc);
-  temp->set_function_id(function_id);
-  
-  // marked as called from main
-  partition_ifacet &partition_iface = new_partition_iface(*temp, 2, call_loc); 
-  assign_function_arguments_lattice_facts(state, partition_iface, function_id, 
-          lhs, caller_info_operands, callee_info_operands, 
-          source_location); // not in original code, but best place to call to
-  
-  produce_callsite_symbols(partition_iface, state);
-  produce_callend_assumption(partition_iface, state);
-
-  status() << "Substituting interpolant" << eom;
-
-  partition_idt partition_id = equation.reserve_partition(partition_iface);
-  equation.fill_summary_partition(partition_id, &func_ids, true);
 }
 
 /*******************************************************************
