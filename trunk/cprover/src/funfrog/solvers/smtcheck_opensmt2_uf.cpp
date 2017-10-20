@@ -209,7 +209,8 @@ exprt smtcheck_opensmt2t_uf::get_value(const exprt &expr)
         }
         else
         {
-            assert(0);
+            throw std::logic_error("Unknown case encountered in get_value");
+//            assert(0);
         }
     }
     else // Find the value inside the expression - recursive call
@@ -583,6 +584,6 @@ SRef smtcheck_opensmt2t_uf::getSMTlibDatatype(const exprt& expr)
         return logic->getSort_bool();//SMT_BOOL;
     if (is_number(expr.type()))
         return sort_ureal; //SMT_UREAL;
-    
+    throw std::logic_error("Unknown datatype encountered!");
     assert(0); // Shall not get here 
 }

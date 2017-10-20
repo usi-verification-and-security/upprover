@@ -54,8 +54,8 @@ irep_idt extract_hifrog_inner_symbol_name(const exprt &expr){
     if (test4inned_hifrog.find(ERROR_SYMBOL) != std::string::npos)
         return ERROR_SYMBOL;
  
-    assert(0); // Add constants if needed
-
+//    assert(0); // Add constants if needed
+    throw std::logic_error("Unknown symbol encountered!");
 }
 
 unsigned get_symbol_L2_counter(const exprt &expr) {
@@ -74,8 +74,9 @@ unsigned extract_hifrog_inner_symbol_L2_counter(const exprt &expr){
         (test4inned_hifrog.find(CALLEND_SYMBOL) != std::string::npos) ||
         (test4inned_hifrog.find(ERROR_SYMBOL) != std::string::npos))
         return atoi(test4inned_hifrog.substr(pos+1).c_str());
- 
-    assert(0); // Add constants if needed
+
+    throw std::logic_error("Unknown symbol encountered!");
+    //assert(0); // Add constants if needed
 }
 
 /* Assure the name is always symex::nondet#number */

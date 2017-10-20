@@ -226,9 +226,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
           equation, message_handler, max_memory_used);
   unsigned count = 0;
   bool end = false;
-  if(&message_handler!=NULL){
-	  std::cout <<"";
-  }
+  std::cout <<"";
 
   std::unique_ptr<prop_conv_solvert> decider_prop;
   std::unique_ptr<interpolating_solvert> interpolator;
@@ -388,9 +386,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
           equation, message_handler, max_memory_used);
   unsigned count = 0;
   bool end = false;
-  if(&message_handler!=NULL){
-	  std::cout <<"";
-  }
+  std::cout <<"";
 
   while (!end)
   {
@@ -545,9 +541,7 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
   
   unsigned count = 0;
   bool end = false;
-  if(&message_handler!=NULL){
-	  std::cout <<"";
-  }
+  std::cout <<"";
 
   
   while (!end)
@@ -667,7 +661,7 @@ void summarizing_checkert::assertion_violated (smt_assertion_sumt& prop,
     }
     report_failure();
 
-    decider_smt = NULL;
+    decider_smt = nullptr;
 }
 
 /*******************************************************************
@@ -696,7 +690,7 @@ void summarizing_checkert::assertion_violated (smt_assertion_no_partitiont& prop
     }
     report_failure();
 
-    decider_smt = NULL;
+    decider_smt = nullptr;
 }
 
 // Only for SMT version
@@ -706,7 +700,7 @@ void summarizing_checkert::list_templates(smt_assertion_sumt& prop, smt_partitio
     vector<summaryt*> templates;
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
     equation.fill_function_templates(*decider_smt, templates);
-    decider_smt = NULL;
+    decider_smt = nullptr;
     for(unsigned int i = 0; i < templates.size(); ++i)
         summary_store->insert_summary(*templates[i]);
     // Store the summaries
@@ -738,7 +732,7 @@ void summarizing_checkert::extract_interpolants_smt (smt_assertion_sumt& prop, s
   
   smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
   equation.extract_interpolants(*decider_smt, *decider_smt, itp_map);
-  decider_smt = NULL;
+  decider_smt = nullptr;
 
   after=current_time();
   status() << "INTERPOLATION TIME: " << (after-before) << eom;

@@ -906,6 +906,6 @@ bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
 }
 #else
 bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
-    assert(0);
+    throw std::logic_error("Should not be called in non-debug setting!");
 }
 #endif

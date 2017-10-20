@@ -34,17 +34,19 @@ public:
 
   virtual ~smtcheck_opensmt2t_cuf(); // d'tor
 
-  virtual exprt get_value(const exprt &expr);
+  virtual exprt get_value(const exprt &expr) override;
 
-  virtual literalt convert(const exprt &expr);
+  virtual literalt convert(const exprt &expr) override;
 
-  virtual literalt const_var_Real(const exprt &expr);
+  virtual literalt const_var_Real(const exprt &expr) override;
 
-  virtual literalt type_cast(const exprt &expr);
+  virtual literalt type_cast(const exprt &expr) override;
 
-  virtual literalt lnotequal(literalt l1, literalt l2);
+  virtual literalt lnotequal(literalt l1, literalt l2) override;
 
-  virtual literalt lvar(const exprt &expr);
+  virtual literalt lvar(const exprt &expr) override;
+
+  virtual literalt lassert_var() override { throw std::logic_error("Looks like this should not be called for this solver"); }
   
   PTRef var_bv(const exprt &expr); // lvar for bv logic
   
@@ -81,8 +83,8 @@ public:
               " unsupported operators;e.g., " + id2string(_fails_type_id);
   }
   
-  virtual std::string getStringSMTlibDatatype(const exprt& expr);
-  virtual SRef getSMTlibDatatype(const exprt& expr);
+  virtual std::string getStringSMTlibDatatype(const exprt& expr) override;
+  virtual SRef getSMTlibDatatype(const exprt& expr) override;
 
 protected:
   BVLogic* bvlogic; // Extra var, inner use only - Helps to avoid dynamic cast!
@@ -104,13 +106,13 @@ protected:
 
   void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
 
-  virtual literalt lunsupported2var(const exprt &expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  virtual literalt lunsupported2var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
   
   PTRef unsupported2var_bv(const exprt &expr); // for BVs
   
   PTRef lconst_bv(const exprt &expr); // For bv only!
   
-  virtual void initializeSolver(const char*);
+  virtual void initializeSolver(const char*) override;
   
   void add_constraints4chars_bv(const exprt &expr, PTRef &var);
   

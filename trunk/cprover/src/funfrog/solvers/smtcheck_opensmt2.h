@@ -56,7 +56,7 @@ public:
 
   virtual exprt get_value(const exprt &expr)=0;
 
-  virtual literalt lassert_var() { assert(0);}
+  virtual literalt lassert_var() = 0;
 
   bool is_exist_var_constraints() { return !is_var_constraints_empty;}
 

@@ -22,18 +22,18 @@ public:
   prop_itpt() :itpt() {}
   ~prop_itpt() {} 
 
-  virtual bool is_trivial() const { return root_literal.is_constant(); }
+  virtual bool is_trivial() const override { return root_literal.is_constant(); }
 
-  virtual literalt land(literalt a, literalt b);
-  virtual literalt lor(literalt a, literalt b);
-  virtual literalt lnot(literalt a);
-  virtual void print(std::ostream& out) const;
+  virtual literalt land(literalt a, literalt b) override;
+  virtual literalt lor(literalt a, literalt b) override;
+  virtual literalt lnot(literalt a) override;
+  virtual void print(std::ostream& out) const override;
 
-  virtual void setTterm(Tterm& t) { assert(0); }
-  virtual Tterm* getTterm() { assert(0); }
+  virtual void setTterm(Tterm& t) override { throw std::logic_error("Propositional interpolator does not deal with terms!"); }
+  virtual Tterm* getTterm() override { throw std::logic_error("Propositional interpolator does not deal with terms!"); }
   
-  virtual void swap(itpt& other) {other.swap(*this);}
-  virtual void swap(smt_itpt& other) override {assert(0);}
+  virtual void swap(itpt& other) override {other.swap(*this);}
+  virtual void swap(smt_itpt& other) override { throw std::logic_error("Cannot swap PROP and SMT interpolator"); }
   virtual void swap(prop_itpt& other) override {
     clauses.swap(other.clauses);
     std::swap(_no_variables, other._no_variables);
@@ -55,20 +55,20 @@ public:
     const std::vector<symbol_exprt>& symbols,
     bool inverted = false) const;
 
-  virtual literalt raw_assert(propt& decider) const;
+  virtual literalt raw_assert(propt& decider) const override;
 
   // Serialization
-  virtual void serialize(std::ostream& out) const;
-  virtual void deserialize(std::istream& in);
+  virtual void serialize(std::ostream& out) const override;
+  virtual void deserialize(std::istream& in) override;
 
-  virtual bool usesVar(symbol_exprt& symb, unsigned idx) 
+  virtual bool usesVar(symbol_exprt& symb, unsigned idx) override
   { 
       return get_symbol_mask()[idx];
   }
   
-  virtual bool check_implies(const itpt& second) const;
+  virtual bool check_implies(const itpt& second) const override;
   
-  virtual itpt* get_nodet() { return new prop_itpt(); }
+  virtual itpt* get_nodet() override { return new prop_itpt(); }
 
 protected:
   typedef std::vector<bvt> clausest;

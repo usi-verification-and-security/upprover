@@ -221,7 +221,8 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         // Create the constant as string in OpenSMT2
         return get_bv_const(str.c_str());
     } else {
-        assert(0 && "Max number value is invalid (0)"); // Fix max_num set in the constructor
+        throw std::logic_error("Max number value is invalid (0)");
+        //assert(0 && "Max number value is invalid (0)"); // Fix max_num set in the constructor
     }
 }
 
@@ -1051,7 +1052,7 @@ PTRef smtcheck_opensmt2t_cuf::split_exprs_bv(irep_idt id, vec<PTRef>& args)
 
     } else if (id == ID_shr) {
             
-            assert(0); // KE: need example
+        assert(0); // KE: need example
             
     } else if (id == ID_lshr) { // KE: not sure about shr
 
@@ -1154,7 +1155,8 @@ exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
         }
         else
         {
-            assert(0);
+            throw std::logic_error("Unknown case in get_value!");
+//            assert(0);
         }
     }
     else // Find the value inside the expression - recursive call
@@ -1169,6 +1171,7 @@ exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
 
         return tmp;
     }
+
 }
 
 literalt smtcheck_opensmt2t_cuf::const_var_Real(const exprt &expr)
@@ -1894,5 +1897,6 @@ SRef smtcheck_opensmt2t_cuf::getSMTlibDatatype(const exprt& expr)
     if (is_number(expr.type()))
         return uflogic->getSort_CUFNUM(); //SMT_UREAL;
     
-    assert(0); // Shall not get here 
+    //assert(0); // Shall not get here
+    throw std::logic_error("Unknown datatype encountered!");
 }

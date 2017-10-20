@@ -54,17 +54,17 @@ delete opensmt;
   }
   } catch (const bad_alloc &e)
   {
-    cout  << "smth is wrong: " << e.what()  << endl;
+    std::cout  << "smth is wrong: " << e.what()  << std::endl;
     return make_pair(true, (fine_timet)0);
   }
   catch (const char* e)
   {
-    std::cout << endl << "Caught exception: " << e << endl;
+    std::cout << std::endl << "Caught exception: " << e << std::endl;
     return make_pair(true, (fine_timet)0);
   }
   catch (const std::string &s)
   {
-    std::cout << endl << "Caught exception: " << s << endl;
+    std::cout << std::endl << "Caught exception: " << s << std::endl;
     return make_pair(true, (fine_timet)0);
   }
 }
@@ -84,20 +84,20 @@ long prop_dependency_checkert::find_implications()
   vector<bool> weaker(asserts.size(), true);
   
     /*
-    cout << "Printing assertions before ordering." << endl;
+    cout << "Printing assertions before ordering." << std::endl;
     for (it = asserts.begin(); it != asserts.end(); it++)
     {
-    	cout << from_expr(ns, "", (*it)->cond_expr) << endl;
+    	cout << from_expr(ns, "", (*it)->cond_expr) << std::endl;
     }
     */
 
     //sort(asserts.begin(), asserts.end(), compare_asserts);
 
     /*
-    cout << "Printing assertions after ordering." << endl;
+    cout << "Printing assertions after ordering." << std::endl;
     for (it = asserts.begin(); it != asserts.end(); it++)
     {
-    	cout << from_expr(ns, "", (*it)->cond_expr) << endl;
+    	cout << from_expr(ns, "", (*it)->cond_expr) << std::endl;
     }
     */
 
@@ -123,14 +123,14 @@ long prop_dependency_checkert::find_implications()
         {
           cout << "Comparing the assertions " <<
             from_expr(ns, "", (*assert_1)->cond_expr) << " and " <<
-            from_expr(ns, "", (*assert_2)->cond_expr) << endl;
+            from_expr(ns, "", (*assert_2)->cond_expr) << std::endl;
         }
                 checkres = check_implication(assert_1, assert_2);
 
         if (checkres.first == true)
         {
           true_time = true_time + checkres.second.get_t();
-          if (VERBOSE) {cout << "check_implication returned TRUE" << endl;}
+          if (VERBOSE) {cout << "check_implication returned TRUE" << std::endl;}
           if (checkres.second.get_t() <= impl_timeout)
           {
             assert_imps[assert_1][assert_2] = IMP;
@@ -138,7 +138,7 @@ long prop_dependency_checkert::find_implications()
             {
               std::cout << "Adding the assertion implication \n (" <<
                 from_expr(ns, "", (*assert_1)->cond_expr) << ") [" << (*assert_1)->source.pc->source_location.get_line() << "] [stronger] \n => \n (" <<
-                from_expr(ns, "", (*assert_2)->cond_expr) << ") [" << (*assert_2)->source.pc->source_location.get_line() << "] [weaker]" << endl;
+                from_expr(ns, "", (*assert_2)->cond_expr) << ") [" << (*assert_2)->source.pc->source_location.get_line() << "] [weaker]" << std::endl;
             }
 
             weaker[i] = false;
@@ -146,7 +146,7 @@ long prop_dependency_checkert::find_implications()
             hl_may_impl << (*assert_1)->source.pc->source_location.get_property_id() << " " <<
                 (*assert_2)->source.pc->source_location.get_property_id() << " " <<
                 distance(SSA_steps.begin(), assert_1) << " " <<
-                distance(SSA_steps.begin(), assert_2) << endl;
+                distance(SSA_steps.begin(), assert_2) << std::endl;
 
             discarded++;
           }
@@ -158,7 +158,7 @@ long prop_dependency_checkert::find_implications()
         else
         {
         	false_time = false_time + checkres.second.get_t();
-        	if (VERBOSE) { cout << "check_implication returned FALSE" << endl;}
+        	if (VERBOSE) { cout << "check_implication returned FALSE" << std::endl;}
         }
         if (checkres.second.get_t() > impl_timeout)
         {
@@ -166,25 +166,25 @@ long prop_dependency_checkert::find_implications()
         	cout << "Timeout " << (impl_timeout/1000) << "." <<
         	                      (impl_timeout%1000)/10 << " exceeded of " <<
         	                      (exceeding/1000) << "." <<
-        	                      (exceeding%1000)/10 << " seconds." << endl;
+        	                      (exceeding%1000)/10 << " seconds." << std::endl;
             to_time = to_time + exceeding;
         }
       }
     }
   }
 
-//    std::cout << "Printing assertion implications:" << endl;
+//    std::cout << "Printing assertion implications:" << std::endl;
 //    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
 //      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
-//      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << endl;
+//      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
 
   hl_may_impl.close();
 
-  cout << "Discarded assertions: " << discarded << endl;
-  if (notdisc > 0) cout << "WARNING: " << notdisc << " true implications exceeded timeout!" << endl;
+  cout << "Discarded assertions: " << discarded << std::endl;
+  if (notdisc > 0) cout << "WARNING: " << notdisc << " true implications exceeded timeout!" << std::endl;
 
-  cout << "Total number of implication checks: " << impchecks << endl;
-  cout << "Total number of comparisons: " << checks << endl;
+  cout << "Total number of implication checks: " << impchecks << std::endl;
+  cout << "Total number of comparisons: " << checks << std::endl;
 
   for (int i = asserts.size() - 1; i >= 0; i--)
   //for (unsigned i = 0; i < asserts.size(); i++)
@@ -205,16 +205,16 @@ long prop_dependency_checkert::find_implications()
     for (int i = asserts.size() - 1; i >= 0; i--){
       SSA_step_reft& ass = asserts[i];
       if (weaker[i] == true)
-        hl_weaker << (*ass)->source.pc->source_location.get_property_id().c_str() << endl;
+        hl_weaker << (*ass)->source.pc->source_location.get_property_id().c_str() << std::endl;
       if (stronger[i] == true)
-        hl_stronger << (*ass)->source.pc->source_location.get_property_id().c_str() << endl;
+        hl_stronger << (*ass)->source.pc->source_location.get_property_id().c_str() << std::endl;
     }
 
     hl_stronger.close();
     hl_weaker.close();
   }  catch (const bad_alloc &e)
   {
-    cout  << "smth is very wrong: " << e.what()  << endl;
+    cout  << "smth is very wrong: " << e.what()  << std::endl;
 
   }
   return to_time;

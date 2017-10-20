@@ -92,7 +92,8 @@ exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
         }
         else
         {
-            assert(0);
+            throw std::logic_error("Unknown case encountered in get_value");
+//            assert(0);
         }
     }
     else // Find the value inside the expression - recursive call
@@ -936,6 +937,6 @@ SRef smtcheck_opensmt2t_lra::getSMTlibDatatype(const exprt& expr)
         return lralogic->getSort_bool(); //SMT_BOOL
     if (is_number(expr.type()))
         return lralogic->getSort_real(); // SMT_REAL
-    
-    assert(0); // Shall not get here 
+    throw std::logic_error("Unknown datatype encountered!");
+//    assert(0); // Shall not get here
 }

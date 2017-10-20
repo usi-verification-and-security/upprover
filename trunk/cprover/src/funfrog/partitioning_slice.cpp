@@ -368,7 +368,7 @@ void partitioning_slicet::prepare_partition(partitiont &partition)
                 partition_iface.argument_symbols.size() +
                 partition_iface.out_arg_symbols.size() +
                 // Yes, this cannot happen in this branch, but just in case...
-                partition_iface.assertion_in_subtree ? 3 : 2)));
+                (partition_iface.assertion_in_subtree ? 3 : 2))));
       }
       unsigned symbol_idx = partition_iface.argument_symbols.size();
       for (std::vector<symbol_exprt>::iterator it2 =

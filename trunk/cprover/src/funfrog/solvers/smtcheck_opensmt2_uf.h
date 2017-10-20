@@ -32,26 +32,28 @@ public:
 
   virtual ~smtcheck_opensmt2t_uf(); // d'tor
   
-  virtual exprt get_value(const exprt &expr);
+  virtual exprt get_value(const exprt &expr) override;
 
-  virtual literalt convert(const exprt &expr);
+  virtual literalt convert(const exprt &expr) override;
 
-  virtual literalt const_var_Real(const exprt &expr);
+  virtual literalt const_var_Real(const exprt &expr) override;
   
-  virtual literalt type_cast(const exprt &expr);
+  virtual literalt type_cast(const exprt &expr) override;
 
-  virtual literalt lnotequal(literalt l1, literalt l2);
+  virtual literalt lnotequal(literalt l1, literalt l2) override;
 
-  virtual literalt lvar(const exprt &expr);
+  virtual literalt lvar(const exprt &expr) override;
+
+  virtual literalt lassert_var() override { throw std::logic_error("Looks like this should not be called for this solver"); }
      
-  virtual std::string getStringSMTlibDatatype(const exprt& expr);
-  virtual SRef getSMTlibDatatype(const exprt& expr); 
+  virtual std::string getStringSMTlibDatatype(const exprt& expr) override;
+  virtual SRef getSMTlibDatatype(const exprt& expr) override;
 
 protected:
 
-  virtual literalt lunsupported2var(const exprt &expr); // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  virtual literalt lunsupported2var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
-  virtual void initializeSolver(const char* name);
+  virtual void initializeSolver(const char* name) override;
   
   static const char *tk_sort_ureal;
   static const char *tk_mult;

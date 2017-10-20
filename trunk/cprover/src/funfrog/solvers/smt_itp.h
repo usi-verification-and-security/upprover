@@ -17,18 +17,18 @@ public:
   smt_itpt() :tterm(NULL), itpt() {}
   ~smt_itpt() {} // d'tor
 
-  virtual  bool is_trivial() const { return false; };
+  virtual  bool is_trivial() const override { return false; }
 
-  virtual literalt land(literalt a, literalt b);
-  virtual literalt lor(literalt a, literalt b);
-  virtual literalt lnot(literalt a);
-  virtual void print(std::ostream& out) const;
+  virtual literalt land(literalt a, literalt b) override;
+  virtual literalt lor(literalt a, literalt b) override;
+  virtual literalt lnot(literalt a) override;
+  virtual void print(std::ostream& out) const override;
 
-  virtual void setTterm(Tterm& t) { tterm = &t; }
-  virtual Tterm* getTterm() { return tterm; }
+  virtual void setTterm(Tterm& t) override { tterm = &t; }
+  virtual Tterm* getTterm() override { return tterm; }
   
-  virtual void swap(itpt& other) {other.swap(*this);}
-  virtual void swap(prop_itpt& other) override {assert(0);}
+  virtual void swap(itpt& other) override {other.swap(*this);}
+  virtual void swap(prop_itpt& other) override { throw std::logic_error("Cannot swap SMT and PROP interpolator!"); }
   virtual void swap(smt_itpt& other) override {
     clauses.swap(other.clauses);
     std::swap(_no_variables, other._no_variables);
@@ -51,17 +51,17 @@ public:
     const std::vector<symbol_exprt>& symbols,
     bool inverted = false) const;
 
-  virtual literalt raw_assert(propt& decider) const;
+  virtual literalt raw_assert(propt& decider) const override;
 
   // Serialization
-  virtual void serialize(std::ostream& out) const;
-  virtual void deserialize(std::istream& in);
+  virtual void serialize(std::ostream& out) const override;
+  virtual void deserialize(std::istream& in) override;
 
-  virtual bool usesVar(symbol_exprt&, unsigned);
+  virtual bool usesVar(symbol_exprt&, unsigned) override;
   
-  virtual bool check_implies(const itpt& second) const { return false;}
+  virtual bool check_implies(const itpt& second) const override { return false;}
   
-  virtual itpt* get_nodet() { return new smt_itpt(); }
+  virtual itpt* get_nodet() override { return new smt_itpt(); }
 
 protected:
   typedef std::vector<bvt> clausest;
