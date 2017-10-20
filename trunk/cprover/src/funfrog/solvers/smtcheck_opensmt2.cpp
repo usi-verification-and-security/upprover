@@ -392,7 +392,7 @@ smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& co
             assert(occurrences[unidx][0] == 2);
             int new_idx = get_index(*it);
             int old_idx = occurrences[unidx][1];
-            if(new_idx < old_idx) swap(new_idx, old_idx);
+            if(new_idx < old_idx) std::swap(new_idx, old_idx);
             occurrences[unidx][1] = old_idx;
             occurrences[unidx][2] = new_idx;
         }
@@ -477,7 +477,7 @@ smtcheck_opensmt2t::fill_vars(PTRef itp, map<string, PTRef>& subst)
 {
 #ifdef PRODUCE_PROOF
     set<PTRef> visited;
-    queue<PTRef> q;
+    std::queue<PTRef> q;
     q.push(itp);
     while(!q.empty())
     {
