@@ -17,7 +17,7 @@
 #define FUNC_RETURN "::#return_value!0"  // KE: appears in Cprover as "#return_value"
 #define TMP_FUNC_RETURN "::$tmp::return_value!0"
 #define LATTICE_TMP_FUNC_RETURN "call__lattice::$tmp::return_value_"
-#define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var!0#"
+#define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var#"
 #define OPENSMT_IN "#in"
 #define OPENSMT_OUT "#out"
 #define OPENSMT_INVS "#invs"

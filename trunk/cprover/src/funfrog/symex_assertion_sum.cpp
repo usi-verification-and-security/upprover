@@ -955,19 +955,6 @@ void symex_assertion_sumt::return_assignment_and_mark(
     irep_idt retval_symbol_id(as_string(function_id) + FUNC_RETURN); // For goto_symext::symex_assign (101)
     irep_idt retval_tmp_id(as_string(function_id) + TMP_FUNC_RETURN); // tmp in cprover is a token
     
-// Check the symbol was created correctly    
-#ifdef DEBUG_PARTITIONING
-    if (!_return_vals.empty())
-    {
-        assert("Return value symbol is in use for another call of this function" 
-                && (_return_vals.count(as_string(retval_symbol_id)) == 0));
-        assert("Temp return value symbols are in use for another call of this function" 
-                && (_return_vals.count(as_string(retval_tmp_id)) == 0));
-    }
-    _return_vals.insert(as_string(retval_symbol_id));
-    _return_vals.insert(as_string(retval_tmp_id));
-#endif
-    
     // return_value_tmp - create new symbol with versions to support unwinding
     symbol_exprt retval_tmp;
     fabricate_cprover_SSA(retval_tmp_id, type, 
@@ -979,7 +966,23 @@ void symex_assertion_sumt::return_assignment_and_mark(
     fabricate_cprover_SSA(retval_symbol_id, type, 
         function_type.source_location(),
         true, false, true, retval_symbol);
+   
+    // Check the symbol was created correctly    
+#ifdef DEBUG_PARTITIONING
+    string retval_id_L1 = as_string(to_ssa_expr(retval_symbol).get_l1_object_identifier());
+    string retval_tmp_id_L1 = as_string(retval_tmp.get_identifier());
     
+    if (!_return_vals.empty())
+    {
+        assert("Return value symbol is in use for another call of this function" 
+                && (_return_vals.count(retval_id_L1) == 0));
+        assert("Temp return value symbols are in use for another call of this function" 
+                && (_return_vals.count(retval_tmp_id_L1) == 0));
+    }
+    _return_vals.insert(retval_id_L1);
+    _return_vals.insert(retval_tmp_id_L1);
+#endif
+ 
     // Connect the return value to the variable in the calling site 
     if (!skip_assignment) {
         code_assignt assignment(*lhs, retval_symbol);

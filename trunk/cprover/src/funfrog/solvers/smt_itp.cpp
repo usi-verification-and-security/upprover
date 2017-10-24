@@ -670,20 +670,34 @@ Function: smt_itpt::get_and_check_L1_name_from_summary
 
  Purpose: Get the name of the parameter symbol from the args of 
  * the summary (where the code of the func is not yet in the SSA tree)
-
+ * 
+ * KE: REMOVE THIS METHOD ONCE WE FIX THE SUMMARIES WRITE
 \*******************************************************************/
 string smt_itpt::get_and_check_L0_name_from_summary(PTRef arg_j) const {
     string aname = string(logic->getSymName(arg_j));
-    if (is_system_translation_var(aname, false)) 
-        // These have # as part of the name and not the index - we skip the check
+    
+    // Return value has its own issues
+    if (aname.find(FUNC_RETURN) != string::npos)
+    {
+        // Remove !0, it can be also ! with any digits (it is one of the Cprover level of instanciation)
+        size_t pos = aname.find_last_of("!0_"); //!0_1  FUNC_RETURN 
+        return ((pos != string::npos) 
+                && (aname[aname.size()-1] != '0') && (aname[aname.size()-2] != '!')) 
+                ? aname.substr(0,pos) : aname;
+    }
+    
+    // Innet system Out,in,inv: these have # as part of the name and not the index - we skip the check 
+    if (is_system_translation_var(aname, true))      
         return aname;
-
+    
     // Check if it is the name we expect
     assert(aname == smtcheck_opensmt2t::remove_index(aname));
-
+    
     // Remove !0, it can be also ! with any digits (it is one of the Cprover level of instanciation)
     size_t pos = aname.find_last_of(COUNTER_L1);
     if (pos != string::npos) return aname.substr(0,pos);
     
     return aname; 
 }
+
+
