@@ -58,6 +58,7 @@ irep_idt extract_hifrog_inner_symbol_name(const exprt &expr);
 unsigned get_symbol_L2_counter(const exprt &expr);
 unsigned extract_hifrog_inner_symbol_L2_counter(const exprt &expr);
 std::string fix_symex_nondet_name(const exprt &expr);
+bool is_cprover_initialize_method(const std::string&);
 
 #endif /* HIFROG_H */
 

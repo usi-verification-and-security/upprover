@@ -767,8 +767,7 @@ void smt_partitioning_target_equationt::convert_partition_io(
  Purpose: Extract interpolants corresponding to the created partitions
 
  \*******************************************************************/
-void smt_partitioning_target_equationt::extract_interpolants(
-		interpolating_solvert& interpolator, const smtcheck_opensmt2t& decider,
+void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t& interpolator,
 		interpolant_mapt& interpolant_map) {
 #ifdef PRODUCE_PROOF    
     // Prepare the interpolation task. NOTE: ignore the root partition!
@@ -863,15 +862,13 @@ void smt_partitioning_target_equationt::extract_interpolants(
         std::cout << "Generalizing interpolant" << std::endl;
 #   endif
 
-        // GF: hack
-        //    itp.generalize(decider, common_symbs);
-
         if (itp->is_trivial()) {
             continue;
         }
 
         string fun_name = id2string(partition.get_iface().function_id);
-        interpolator.adjust_function(*itp, common_symbs, fun_name);
+        //interpolator.adjust_function(*itp, common_symbs, fun_name);
+        interpolator.generalize_summary(*itp, common_symbs, fun_name);
 
         // Store the interpolant
         summary_idt summary_id = summary_store->insert_summary(*itp);

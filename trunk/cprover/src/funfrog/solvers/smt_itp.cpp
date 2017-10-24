@@ -691,7 +691,7 @@ string smt_itpt::get_and_check_L0_name_from_summary(PTRef arg_j) const {
         return aname;
     
     // Check if it is the name we expect
-    assert(aname == smtcheck_opensmt2t::remove_index(aname));
+    //assert(aname == smtcheck_opensmt2t::remove_index(aname));
     
     // Remove !0, it can be also ! with any digits (it is one of the Cprover level of instanciation)
     size_t pos = aname.find_last_of(COUNTER_L1);

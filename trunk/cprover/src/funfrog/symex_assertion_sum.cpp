@@ -1383,19 +1383,10 @@ void symex_assertion_sumt::produce_callsite_symbols(
         partition_ifacet& partition_iface,
         statet& state)
 {
-# ifdef DEBUG_PARTITIONING
-  irep_idt callstart_id = "hifrog::" + as_string(partition_iface.function_id) +
-          "::?callstart_symbol";
-  irep_idt callend_id = "hifrog::" + as_string(partition_iface.function_id) +
-          "::?callend_symbol";
-  irep_idt error_id = "hifrog::" + as_string(partition_iface.function_id) +
-          "::?error_symbol";
-# else
   irep_idt callstart_id = CALLSTART_SYMBOL;
   irep_idt callend_id = CALLEND_SYMBOL;
   irep_idt error_id = ERROR_SYMBOL;
-# endif
-	
+
   partition_iface.callstart_symbol.set_identifier(
           get_new_symbol_version(callstart_id, state,typet(ID_bool)));
   partition_iface.callend_symbol.set_identifier(

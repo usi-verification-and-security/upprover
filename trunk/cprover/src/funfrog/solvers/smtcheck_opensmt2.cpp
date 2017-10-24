@@ -982,3 +982,42 @@ PTRef smtcheck_opensmt2t::mkCustomFunction(SymRef decl, vec<PTRef>& args)
     if (msg != NULL) free(msg);
     return ret;
 }
+
+void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<symbol_exprt> &common_symbols,
+                                            const std::string &fun_name)
+{
+    // Right now the term is not set, hence the assert, but this should actually be set somewhere else
+    assert(interpolant.getTterm() == nullptr);
+    // initialization of new Tterm, TODO: the basic should really be set already when interpolant object is created
+    Tterm* tt = new Tterm();
+    tt->setName(fun_name.c_str());
+    interpolant.setLogic(logic);
+    interpolant.setTterm(*tt);
+    tt->setBody(interpolant.getInterpolant());
+    if(is_cprover_initialize_method(fun_name)){
+        return;
+    }
+
+    // prepare the substituition map how OpenSMT expects it
+    Map<PTRef,PtAsgn,PTRefHash> subst;
+    for(const auto& expr : common_symbols){
+        // get the original PTRef for this expression
+        PTRef original = convert_symbol(expr);
+        // get the new name for the symbol; FIXME: what to do about global variables?
+        const char* symbol_name { get_symbol_name(expr).c_str() };
+        // get new PTRef for the variable with new name
+        PTRef new_var = logic->mkVar(logic->getSortRef(original), symbol_name);
+//        std::cout << "; Original variable: " << logic->printTerm(original) << '\n';
+//        std::cout << "; New variable: " << logic->printTerm(new_var) << '\n';
+        subst.insert(original, PtAsgn{ new_var, l_True });
+        tt->addArg(new_var);
+    }
+    //apply substituition to the interpolant
+    PTRef old_root = interpolant.getInterpolant();
+    PTRef new_root;
+    logic->varsubstitute(old_root, subst, new_root);
+//    std::cout << "; Old formula: " << logic->printTerm(old_root) << '\n';
+//    std::cout << "; New formula " << logic->printTerm(new_root) << std::endl;
+    interpolant.setInterpolant(new_root);
+    tt->setBody(new_root);
+}

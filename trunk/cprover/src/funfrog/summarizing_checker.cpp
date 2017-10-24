@@ -94,6 +94,7 @@ void summarizing_checkert::initialize()
 
     // Load older summaries
     {
+        //TODO: MB: How about checking if this file actually exists?
         const std::string& summary_file = options.get_option("load-summaries");
         if (!summary_file.empty()) {
             // Prop and SMT have different mechanism to load/store summaries
@@ -731,7 +732,7 @@ void summarizing_checkert::extract_interpolants_smt (smt_assertion_sumt& prop, s
   before=current_time();
   
   smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-  equation.extract_interpolants(*decider_smt, *decider_smt, itp_map);
+  equation.extract_interpolants(*decider_smt, itp_map);
   decider_smt = nullptr;
 
   after=current_time();

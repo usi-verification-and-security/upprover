@@ -36,9 +36,7 @@ public:
   void fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*> &templates);
   
   // Extract interpolants corresponding to the created partitions
-  void extract_interpolants(
-    interpolating_solvert& interpolator, const smtcheck_opensmt2t& decider,
-    interpolant_mapt& interpolant_map);
+  void extract_interpolants(smtcheck_opensmt2t& decider, interpolant_mapt& interpolant_map);
 
   std::vector<exprt>& get_exprs_to_refine () { return exprs; };
 

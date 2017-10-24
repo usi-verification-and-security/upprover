@@ -108,6 +108,8 @@ public:
   void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
   
   void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true); // Common to all
+
+  void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols, const std::string& fun_name);
 #endif
   
   static int get_index(const string& varname);
