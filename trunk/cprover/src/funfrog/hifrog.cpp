@@ -11,7 +11,7 @@ irep_idt get_symbol_name(const exprt &expr) {
     if (is_hifrog_inner_symbol_name(expr)) {
         return extract_hifrog_inner_symbol_name(expr);
     }
-    std::cout << "Get symbol name called for:\n" << expr.pretty() << '\n';
+    //std::cout << "Get symbol name called for:\n" << expr.pretty() << '\n';
     return to_ssa_expr(expr).get_original_name();
 }
 

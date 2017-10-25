@@ -915,12 +915,13 @@ void symex_assertion_sumt::level2_rename_and_2ssa(
 {
     // Create a general var: identifier: funfrog::netpoll_trap::\return_value
     ssa_exprt code_var(symbol_exprt(identifier, type));
-    
+        
     // Change to SSA format: identifier: funfrog::netpoll_trap::\return_value#2
     code_var.set_identifier(get_new_symbol_version(identifier, state, type)); 
     
     // Adds L2 counter to the symbol (L2: 1 adds to the expression) 
     state.level0(code_var, ns, state.source.thread_nr);
+    code_var.set_level_0(0);
     state.level1(code_var);
     code_var.set_level_2(state.level2.current_count(code_var.get_identifier())); 
     
@@ -1781,8 +1782,8 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
     }
 }
 
-void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id, 
-        const typet& type, const source_locationt source_location, 
+void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id,
+        const typet& type, const source_locationt source_location,
         bool is_rename, bool is_dead, bool is_shared,
         symbol_exprt& ret_symbol)
 {
