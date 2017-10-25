@@ -7,9 +7,11 @@
  * KE: please use it, as cprover framework keeps changing all the time
  */
 irep_idt get_symbol_name(const exprt &expr) {
-    if (is_hifrog_inner_symbol_name(expr))
+    // FIXME: everything except the last return line should be removed when we clear the problems with naming conventions
+    if (is_hifrog_inner_symbol_name(expr)) {
         return extract_hifrog_inner_symbol_name(expr);
-    
+    }
+    std::cout << "Get symbol name called for:\n" << expr.pretty() << '\n';
     return to_ssa_expr(expr).get_original_name();
 }
 
@@ -22,10 +24,10 @@ irep_idt get_symbol_L1_name(const exprt &expr) {
 
 bool is_hifrog_inner_symbol_name(const exprt &expr) {
     std::string test4inned_hifrog = id2string(expr.get(ID_identifier));
-    if (test4inned_hifrog.find(FUNC_RETURN) != std::string::npos)
-        return true;
-    if (test4inned_hifrog.find(TMP_FUNC_RETURN) != std::string::npos)
-        return true;
+//    if (test4inned_hifrog.find(FUNC_RETURN) != std::string::npos)
+//        return true;
+//    if (test4inned_hifrog.find(TMP_FUNC_RETURN) != std::string::npos)
+//        return true;
     if (test4inned_hifrog.find(CALLSTART_SYMBOL) != std::string::npos)
         return true;
     if (test4inned_hifrog.find(CALLEND_SYMBOL) != std::string::npos)
@@ -68,9 +70,7 @@ unsigned get_symbol_L2_counter(const exprt &expr) {
 unsigned extract_hifrog_inner_symbol_L2_counter(const exprt &expr){
     std::string test4inned_hifrog = id2string(expr.get(ID_identifier));
     size_t pos = extract_hifrog_inner_symbol_name(expr).size();
-    if ((test4inned_hifrog.find(FUNC_RETURN) != std::string::npos) ||
-        (test4inned_hifrog.find(TMP_FUNC_RETURN) != std::string::npos) ||
-        (test4inned_hifrog.find(CALLSTART_SYMBOL) != std::string::npos) ||
+    if ((test4inned_hifrog.find(CALLSTART_SYMBOL) != std::string::npos) ||
         (test4inned_hifrog.find(CALLEND_SYMBOL) != std::string::npos) ||
         (test4inned_hifrog.find(ERROR_SYMBOL) != std::string::npos))
         return atoi(test4inned_hifrog.substr(pos+1).c_str());

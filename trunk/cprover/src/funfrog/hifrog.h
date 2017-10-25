@@ -14,8 +14,8 @@
 #include <ssa_expr.h>
 
 // For now we have only one thread any hows
-#define FUNC_RETURN "::#return_value!0"  // KE: appears in Cprover as "#return_value"
-#define TMP_FUNC_RETURN "::$tmp::return_value!0"
+#define FUNC_RETURN "::#return_value"  // KE: appears in Cprover as "#return_value"
+#define TMP_FUNC_RETURN "::$tmp::return_value"
 #define LATTICE_TMP_FUNC_RETURN "call__lattice::$tmp::return_value_"
 #define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var#"
 #define OPENSMT_IN "#in"
