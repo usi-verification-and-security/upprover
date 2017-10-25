@@ -1001,6 +1001,10 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<s
     // prepare the substituition map how OpenSMT expects it
     Map<PTRef,PtAsgn,PTRefHash> subst;
     for(const auto& expr : common_symbols){
+        // Ignors Cprover builtins
+        if (id2string(expr.get_identifier()).find(CPROVER_BUILDINS)!=std::string::npos)
+            continue;
+        
         // get the original PTRef for this expression
         PTRef original = convert_symbol(expr);
         // get the new name for the symbol; FIXME: what to do about global variables?
