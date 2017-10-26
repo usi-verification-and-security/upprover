@@ -8,6 +8,7 @@
  */
 irep_idt get_symbol_name(const exprt &expr) {
     // FIXME: everything except the last return line should be removed when we clear the problems with naming conventions
+    // KE: need to use fabricate symbol in produce_callsite_symbols in symex_assertion_sum
     if (is_hifrog_inner_symbol_name(expr)) {
         return extract_hifrog_inner_symbol_name(expr);
     }
@@ -24,10 +25,6 @@ irep_idt get_symbol_L1_name(const exprt &expr) {
 
 bool is_hifrog_inner_symbol_name(const exprt &expr) {
     std::string test4inned_hifrog = id2string(expr.get(ID_identifier));
-//    if (test4inned_hifrog.find(FUNC_RETURN) != std::string::npos)
-//        return true;
-//    if (test4inned_hifrog.find(TMP_FUNC_RETURN) != std::string::npos)
-//        return true;
     if (test4inned_hifrog.find(CALLSTART_SYMBOL) != std::string::npos)
         return true;
     if (test4inned_hifrog.find(CALLEND_SYMBOL) != std::string::npos)

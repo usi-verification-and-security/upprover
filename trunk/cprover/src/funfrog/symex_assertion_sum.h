@@ -258,13 +258,6 @@ private:
     statet &state,
     partition_ifacet &partition_iface);
 
-  // AFter upgrade of CPROVER need to do rename and SSA creation alone
-  void level2_rename_and_2ssa(
-    statet &state, 
-    const irep_idt identifier, 
-    const typet& type,
-    symbol_exprt& ret_symbol); 
-
   // Assigns return value from a new SSA symbols to the lhs at
   // call site. Marks the SSA symbol of the return value temporary
   // variable for later use when processing the deferred function

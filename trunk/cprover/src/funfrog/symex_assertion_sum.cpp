@@ -51,6 +51,8 @@ symex_assertion_sumt::~symex_assertion_sumt() {
  Outputs:
 
  Purpose: Sanity check, we expect loop-free programs only.
+ * 
+ * KE: DEAD CODE
 
 \*******************************************************************/
 
@@ -896,41 +898,6 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::level2_rename_and_2ssa
-
- Inputs:
-
- Outputs:
-
- Purpose: Replace the old functionality of rename + new SSA in old
- 	  Also adds L2 counter to the symbol and increase L2 counter
- * CProver framework
-
-\*******************************************************************/
-void symex_assertion_sumt::level2_rename_and_2ssa(
-    statet &state, 
-    const irep_idt identifier, 
-    const typet& type,
-    symbol_exprt& ret_symbol)
-{
-    // Create a general var: identifier: funfrog::netpoll_trap::\return_value
-    ssa_exprt code_var(symbol_exprt(identifier, type));
-        
-    // Change to SSA format: identifier: funfrog::netpoll_trap::\return_value#2
-    code_var.set_identifier(get_new_symbol_version(identifier, state, type)); 
-    
-    // Adds L2 counter to the symbol (L2: 1 adds to the expression) 
-    state.level0(code_var, ns, state.source.thread_nr);
-    code_var.set_level_0(0);
-    state.level1(code_var);
-    code_var.set_level_2(state.level2.current_count(code_var.get_identifier())); 
-    
-    // Return a symbol of ssa val with expression of original var
-    ret_symbol = to_symbol_expr(code_var);
-}
-
-/*******************************************************************
-
  Function: symex_assertion_sumt::return_assignment_and_mark
 
  Inputs:
@@ -967,24 +934,6 @@ void symex_assertion_sumt::return_assignment_and_mark(
     fabricate_cprover_SSA(retval_symbol_id, type, 
         function_type.source_location(),
         true, false, retval_symbol);
-   
-    // Check the symbol was created correctly    
-#ifdef DEBUG_PARTITIONING
-    string retval_id_L1 = as_string(to_ssa_expr(retval_symbol).get_l1_object_identifier());
-    string retval_tmp_id_L1 = as_string(retval_tmp.get_identifier());
-
-    // MB: I commented these asserts because, now we are using the same L1 version of return value symbol
-    // for all calls to a function, they differ just by L2 suffix
-//    if (!_return_vals.empty())
-//    {
-//        assert("Return value symbol is in use for another call of this function"
-//                && (_return_vals.count(retval_id_L1) == 0));
-//        assert("Temp return value symbols are in use for another call of this function"
-//                && (_return_vals.count(retval_tmp_id_L1) == 0));
-//    }
-//    _return_vals.insert(retval_id_L1);
-//    _return_vals.insert(retval_tmp_id_L1);
-#endif
  
     // Connect the return value to the variable in the calling site 
     if (!skip_assignment) {
@@ -1005,6 +954,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
       expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
     # endif
     // FIXME MB: make these members ssa_exprt instead of symbol_exprt
+    // KE: I think these are suppose to be symbols, but check with Grigory
     partition_iface.retval_symbol = retval_symbol;
     partition_iface.retval_tmp = retval_tmp;
     partition_iface.returns_value = true;

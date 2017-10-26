@@ -278,17 +278,13 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
         // We skip build-in of cprover
         if (unidx.find(CPROVER_BUILDINS)!=std::string::npos) 
         { 
-            args_instantiated++;
-            continue; // skip to the next iteration
+            //args_instantiated++;
+            //continue; // skip to the next iteration
+            std::cerr << "Using CPROVER PROP. LOGIC INNER DATA IN NONE PROP. LOGIC CODE. EXIT." << std::endl;
+            exit(0);
+            // KE: it shall be assert here!
+            // This covers a bug in line 300 and on - in thw next for loop
         } // else
-        
-        // Fix the name, in case we use the summary in a loop
-        // MB: I commented this out, since it caused problems; in any case, we should not do any manual manipulations
-//        if (!is_hifrog_inner_symbol_name(symbols[i]))
-//            if (unidx.find_last_of(SPERATOR_PREFIX) > unidx.find_last_of(SPERATOR))
-//                unidx = unidx.substr(0, unidx.find_last_of(SPERATOR_PREFIX));
-        // KE: find a better name to fix this name! 
-        // KE: can be buggy on the next cprover update
         
         // Else, continue and find the symbol in the summary that match the arg_i
         string quoted_unidx = smtcheck_opensmt2t::quote_varname(unidx);
@@ -297,6 +293,7 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
         string quoted_unidx_in = smtcheck_opensmt2t::quote_varname(unidx + OPENSMT_IN);
         string quoted_unidx_out = smtcheck_opensmt2t::quote_varname(unidx + OPENSMT_OUT);
         string quoted_unidx_invs = smtcheck_opensmt2t::quote_varname(unidx + OPENSMT_INVS);
+        // FIXME
         
         // Get the instance number of the SSA
         int idx = get_symbol_L2_counter(symbols[i]);
@@ -311,16 +308,16 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
             {
                 unidx = get_symbol_name(symbols[i]).c_str();
                 if( (occurrences[unidx][0] == 1) ||
-                        (idx == occurrences[unidx][1] && unidx_aname.find(OPENSMT_IN) != string::npos) ||
+                     (idx == occurrences[unidx][1] && unidx_aname.find(OPENSMT_IN) != string::npos) ||
                      (idx == occurrences[unidx][2] && unidx_aname.find(OPENSMT_OUT) != string::npos)
                   )
                 {
         	    PTRef tmp = decider.convert_symbol(symbols[i]);
                     //cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << logic->printTerm(tmp) << endl;
                     subst.insert(args[j], PtAsgn(tmp, l_True));
-                    args_instantiated++;
+                    args_instantiated++;                    
                     continue; // we found what we need, skit the rest of the iterations
-                }
+                } // FIXME: symbols.size() contains multipule instances of the same vars, shall be like a set not an array!!
             }
         }
     }
