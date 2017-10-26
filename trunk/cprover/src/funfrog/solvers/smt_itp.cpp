@@ -283,9 +283,10 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
         } // else
         
         // Fix the name, in case we use the summary in a loop
-        if (!is_hifrog_inner_symbol_name(symbols[i]))
-            if (unidx.find_last_of(SPERATOR_PREFIX) > unidx.find_last_of(SPERATOR)) 
-                unidx = unidx.substr(0, unidx.find_last_of(SPERATOR_PREFIX));
+        // MB: I commented this out, since it caused problems; in any case, we should not do any manual manipulations
+//        if (!is_hifrog_inner_symbol_name(symbols[i]))
+//            if (unidx.find_last_of(SPERATOR_PREFIX) > unidx.find_last_of(SPERATOR))
+//                unidx = unidx.substr(0, unidx.find_last_of(SPERATOR_PREFIX));
         // KE: find a better name to fix this name! 
         // KE: can be buggy on the next cprover update
         
@@ -675,17 +676,7 @@ Function: smt_itpt::get_and_check_L1_name_from_summary
 \*******************************************************************/
 string smt_itpt::get_and_check_L0_name_from_summary(PTRef arg_j) const {
     string aname = string(logic->getSymName(arg_j));
-    
-    // Return value has its own issues
-    if (aname.find(FUNC_RETURN) != string::npos)
-    {
-        // Remove !0, it can be also ! with any digits (it is one of the Cprover level of instanciation)
-        size_t pos = aname.find_last_of("!0_"); //!0_1  FUNC_RETURN 
-        return ((pos != string::npos) 
-                && (aname[aname.size()-1] != '0') && (aname[aname.size()-2] != '!')) 
-                ? aname.substr(0,pos) : aname;
-    }
-    
+
     // Innet system Out,in,inv: these have # as part of the name and not the index - we skip the check 
     if (is_system_translation_var(aname, true))      
         return aname;

@@ -867,6 +867,11 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
         }
 
         string fun_name = id2string(partition.get_iface().function_id);
+        // MB: we do not want to store summary for the cprover initialize method;
+        // this check should probably be somewhere else, e.g. not computing summary for it at all
+        if (is_cprover_initialize_method(fun_name)) {
+            continue;
+        }
         //interpolator.adjust_function(*itp, common_symbs, fun_name);
         interpolator.generalize_summary(*itp, common_symbs, fun_name);
 

@@ -957,31 +957,33 @@ void symex_assertion_sumt::return_assignment_and_mark(
     irep_idt retval_tmp_id(as_string(function_id) + TMP_FUNC_RETURN); // tmp in cprover is a token
     
     // return_value_tmp - create new symbol with versions to support unwinding
-    symbol_exprt retval_tmp;
+    ssa_exprt retval_tmp;
     fabricate_cprover_SSA(retval_tmp_id, type, 
             function_type.source_location(),
-            false, false, true, retval_tmp); 
+            false, false, retval_tmp);
 
     // return_value - create new symbol with versions to support unwinding
-    symbol_exprt retval_symbol;	
+    ssa_exprt retval_symbol;
     fabricate_cprover_SSA(retval_symbol_id, type, 
         function_type.source_location(),
-        true, false, true, retval_symbol);
+        true, false, retval_symbol);
    
     // Check the symbol was created correctly    
 #ifdef DEBUG_PARTITIONING
     string retval_id_L1 = as_string(to_ssa_expr(retval_symbol).get_l1_object_identifier());
     string retval_tmp_id_L1 = as_string(retval_tmp.get_identifier());
-    
-    if (!_return_vals.empty())
-    {
-        assert("Return value symbol is in use for another call of this function" 
-                && (_return_vals.count(retval_id_L1) == 0));
-        assert("Temp return value symbols are in use for another call of this function" 
-                && (_return_vals.count(retval_tmp_id_L1) == 0));
-    }
-    _return_vals.insert(retval_id_L1);
-    _return_vals.insert(retval_tmp_id_L1);
+
+    // MB: I commented these asserts because, now we are using the same L1 version of return value symbol
+    // for all calls to a function, they differ just by L2 suffix
+//    if (!_return_vals.empty())
+//    {
+//        assert("Return value symbol is in use for another call of this function"
+//                && (_return_vals.count(retval_id_L1) == 0));
+//        assert("Temp return value symbols are in use for another call of this function"
+//                && (_return_vals.count(retval_tmp_id_L1) == 0));
+//    }
+//    _return_vals.insert(retval_id_L1);
+//    _return_vals.insert(retval_tmp_id_L1);
 #endif
  
     // Connect the return value to the variable in the calling site 
@@ -1002,7 +1004,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
       expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
       expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
     # endif
-
+    // FIXME MB: make these members ssa_exprt instead of symbol_exprt
     partition_iface.retval_symbol = retval_symbol;
     partition_iface.retval_tmp = retval_tmp;
     partition_iface.returns_value = true;
@@ -1499,7 +1501,7 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
     // Force Rename
     if(state.level2.current_names.find(identifier)==state.level2.current_names.end())
         level2_rename_init(state, symbol_exprt(identifier, type));
-    
+
     // rename
     state.level2.increase_counter(identifier);
     
@@ -1784,22 +1786,33 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
 
 void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id,
         const typet& type, const source_locationt source_location,
-        bool is_rename, bool is_dead, bool is_shared,
-        symbol_exprt& ret_symbol)
+        bool is_rename, bool is_dead,
+        ssa_exprt& ret_symbol)
 {
-    // Gets a new symbol per function call:
-    get_new_name(base_symbol_id,ns);
+    // MB: not sure, but we probably need to register new symbol;
+    // if it was registered before, nothing will change
+    add_symbol(base_symbol_id, type, is_dead, false, source_location);
 
-    // Create new symbol with versions to support unwinding
-    add_symbol(base_symbol_id, type, is_dead, is_shared, source_location);
-
-    // If needed - rename alone
-    if (is_rename) {
-        level2_rename_and_2ssa(state, base_symbol_id, type, ret_symbol); // We do rename alone...
-    } else {
-        ret_symbol = symbol_exprt(base_symbol_id, type);
+    // first create L1 version version of this symbol
+    symbol_exprt symbol(base_symbol_id, type);
+    state.rename(symbol, ns, goto_symex_statet::levelt::L1);
+    if(is_rename) {
+        // here we want to create the correct L2 version of the symbol
+        state.rename(symbol, ns, goto_symex_statet::levelt::L2);
+        // state.rename works fine if we also keep the information in state.level2.current_names up-to-date
+        ssa_exprt &ssa = to_ssa_expr(symbol);
+        if (state.level2.current_names.find(ssa.get_l1_object_identifier()) == state.level2.current_names.end()) {
+            // create the entry if it did not exist before
+            state.level2.current_names[ssa.get_l1_object_identifier()] = std::make_pair(ssa, 0);
+        }
+        // note that we have created new L2 version for this symbol -> increment the count
+        ++state.level2.current_names[ssa.get_l1_object_identifier()].second;
+        // assign the correct result
+        ret_symbol = ssa;
     }
-
-    // Return a symbol of ssa val with expression of original var
-    // ret_symbol
+    else{
+        // we are happy with the L1 version of the symbol
+        ret_symbol = to_ssa_expr(symbol);
+    }
+//    std::cout << "\n; New symbol: \n" << ret_symbol.pretty() << '\n';
 }

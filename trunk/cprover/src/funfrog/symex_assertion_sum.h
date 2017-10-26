@@ -103,8 +103,7 @@ public:
   // Shall be public for refinement
   void fabricate_cprover_SSA(irep_idt base_symbol_id, 
         const typet& type, const source_locationt source_location, 
-        bool is_rename, bool is_dead, bool is_shared,
-        symbol_exprt& ret_symbol);  
+        bool is_rename, bool is_dead, ssa_exprt& ret_symbol);
   
 private:
   
