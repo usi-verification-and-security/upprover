@@ -10,6 +10,7 @@ Author: Ondrej Sery
 #include <std_expr.h>
 
 #include "partitioning_slice.h"
+#include "partition_iface.h"
 
 //#define DEBUG_SLICER
 

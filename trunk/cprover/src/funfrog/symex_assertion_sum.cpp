@@ -9,18 +9,14 @@
     
 #include <memory>
 
-#include <time_stopping.h>
-#include <expr_util.h>
-#include <goto-symex/goto_symex_state.h>
+#include <util/expr_util.h>
+#include <goto-symex/goto_symex.h>
 #include <pointer-analysis/add_failed_symbols.h>
-#include <util/rename.h> // KE: we should do rename with it, but I didn't find how yet...
+#include <util/time_stopping.h>
+#include <util/base_type.h>
 
 #include "partitioning_slice.h"
 #include "symex_assertion_sum.h"
-#include "expr_pretty_print.h"
-#include "hifrog.h"
-#include <util/c_types.h>
-#include <util/arith_tools.h>
 
 /*******************************************************************
 
@@ -1751,12 +1747,13 @@ void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id,
         state.rename(symbol, ns, goto_symex_statet::levelt::L2);
         // state.rename works fine if we also keep the information in state.level2.current_names up-to-date
         ssa_exprt &ssa = to_ssa_expr(symbol);
-        if (state.level2.current_names.find(ssa.get_l1_object_identifier()) == state.level2.current_names.end()) {
+        auto ssa_l1_identifier = ssa.get_l1_object_identifier();
+        if (state.level2.current_names.find(ssa_l1_identifier) == state.level2.current_names.end()) {
             // create the entry if it did not exist before
-            state.level2.current_names[ssa.get_l1_object_identifier()] = std::make_pair(ssa, 0);
+            state.level2.current_names[ssa_l1_identifier] = std::make_pair(ssa, 0);
         }
         // note that we have created new L2 version for this symbol -> increment the count
-        ++state.level2.current_names[ssa.get_l1_object_identifier()].second;
+        state.level2.increase_counter(ssa_l1_identifier);
         // assign the correct result
         ret_symbol = ssa;
     }

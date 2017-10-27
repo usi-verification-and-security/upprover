@@ -13,16 +13,15 @@
 
 #ifdef DEBUG_SSA_PRINT
 #include <iostream>
+#include "expr_pretty_print.h"
 #endif
 
 #include <list>
 #include <type.h>
 #include <symbol.h>
 
-
 #include "summary_info.h"
 #include "partition.h"
-#include "expr_pretty_print.h"
 
 class partition_ifacet {
 public:

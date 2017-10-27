@@ -13,6 +13,7 @@ Author: Ondrej Sery
 #include "partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
+#include "partition_iface.h"
 
 
 // Two classes for smt and prop   

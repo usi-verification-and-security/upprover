@@ -18,10 +18,15 @@ Author: Ondrej Sery
 
 #include <goto-symex/symex_target_equation.h>
 #include <symbol.h>
+#include "partition.h"
 
-#include "partition_iface.h"
-#include "summarization_context.h"
+#ifdef DEBUG_SSA_PRINT
 #include "expr_pretty_print.h"
+#endif //DEBUG_SSA_PRINT
+
+class summarization_contextt;
+class partition_ifacet;
+
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 
@@ -80,38 +85,11 @@ public:
 
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
-  partition_idt reserve_partition(partition_ifacet& partition_iface)
-  {
-    partition_idt new_id = partitions.size();
-    partition_idt parent_id = partition_iface.parent_id;
-
-    partitions.push_back(partitiont(parent_id, partition_iface));
-
-    bool check = partition_map.insert(partition_mapt::value_type(
-      partition_iface.callend_symbol.get_identifier(), new_id)).second;
-    assert(check);
-
-    if (parent_id != partitiont::NO_PARTITION) {
-      partitions[parent_id].add_child_partition(new_id, partition_iface.call_loc);
-    }
-    partition_iface.partition_id = new_id;
-
-    return new_id;
-  }
+  partition_idt reserve_partition(partition_ifacet& partition_iface);
 
   // Marks the given partition as invalid. This is used in incremental SSA
   // generation to replace previously summarized partitions
-  void invalidate_partition(partition_idt partition_id)
-  {
-    partitiont& partition = partitions[partition_id];
-
-    partition.invalid = true;
-    partition_map.erase(partition.get_iface().callend_symbol.get_identifier());
-
-    if (partition.parent_id != partitiont::NO_PARTITION) {
-      partitions[partition.parent_id].remove_child_partition(partition_id);
-    }
-  }
+  void invalidate_partition(partition_idt partition_id);
 
   // Fill the (reserved) partition with the given summaries.
   void fill_summary_partition(partition_idt partition_id,
@@ -265,25 +243,7 @@ protected:
   // Fills in the list of symbols that the partition has in common with its
   // environment
   void fill_common_symbols(const partitiont& partition,
-    std::vector<symbol_exprt>& common_symbols) const
-  {
-    common_symbols.clear();
-    const partition_ifacet& iface = partition.get_iface();
-    common_symbols.reserve(iface.argument_symbols.size() +
-      iface.out_arg_symbols.size()+4);
-    common_symbols = iface.argument_symbols; // Add SSA instances of funcs
-    common_symbols.insert(common_symbols.end(),
-      iface.out_arg_symbols.begin(),
-      iface.out_arg_symbols.end()); // Add globals
-    common_symbols.push_back(iface.callstart_symbol);
-    common_symbols.push_back(iface.callend_symbol);
-    if (iface.assertion_in_subtree) {
-      common_symbols.push_back(iface.error_symbol);
-    }
-    if (iface.returns_value) {
-      common_symbols.push_back(iface.retval_symbol);
-    }
-  }
+    std::vector<symbol_exprt>& common_symbols) const;
 
   // Fill in ids of all the child partitions
   virtual void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
