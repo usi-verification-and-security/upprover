@@ -11,10 +11,9 @@ Author: Ondrej Sery
 #define CPROVER_SMT_PARTITIONING_TARGET_EQUATION_H
 
 #include "partitioning_target_equation.h"
-#include "solvers/smtcheck_opensmt2.h"
-#include "solvers/smtcheck_opensmt2_lra.h"
 #include "partition_iface.h"
 
+class smtcheck_opensmt2t;
 
 // Two classes for smt and prop   
 class partitioning_target_equationt;

@@ -4,11 +4,10 @@
 #include <memory>
 #include <options.h>
 #include <ui_message.h>
-#include "solvers/smtcheck_opensmt2_cuf.h"
-#include "symex_assertion_sum.h"
-#include "smt_assertion_sum.h"
-#include "smt_partitioning_target_equation.h"
 #include "subst_scenario.h"
+
+class smtcheck_opensmt2t_cuf;
+class symex_assertion_sumt;
 
 class theory_refinert:public messaget
 {
@@ -39,10 +38,7 @@ public:
   };
 
   // KE: can we delete the object once deleting the refiner?
-  virtual ~theory_refinert() 
-  {
-    if (decider != NULL) delete decider; 
-  }
+  virtual ~theory_refinert();
   
   void initialize();
   bool assertion_holds_smt(const assertion_infot& assertion, bool store_summaries_with_assertion);

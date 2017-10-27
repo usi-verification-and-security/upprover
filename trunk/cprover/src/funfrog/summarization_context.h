@@ -16,6 +16,7 @@
 #include <goto-programs/goto_functions.h>
 #include "summary_store.h"
 #include "function_info.h"
+#include "smt_summary_store.h"
 
 typedef enum {
   FORCE_INLINING,

@@ -7,14 +7,13 @@
 
 \*******************************************************************/
 
-#include <goto-symex/build_goto_trace.h>
-#include <goto-programs/xml_goto_trace.h>
-#include <find_symbols.h>
-#include <ansi-c/expr2c.h>
 #include <time_stopping.h>
-#include <ui_message.h>
 #include "smt_assertion_sum.h"
 #include "error_trace.h"
+#include "smt_partitioning_target_equation.h"
+#include "solvers/smtcheck_opensmt2.h"
+
+
 
 time_periodt global_satsolver_time;
 

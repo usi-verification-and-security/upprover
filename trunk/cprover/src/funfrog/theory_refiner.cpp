@@ -7,9 +7,20 @@
 \*******************************************************************/
 #include "theory_refiner.h"
 #include "error_trace.h"
+#include "solvers/smtcheck_opensmt2_cuf.h"
+#include "symex_assertion_sum.h"
+#include "smt_assertion_sum.h"
+#include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 
+
+
+
 #define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
+theory_refinert::~theory_refinert()
+{
+    if (decider != nullptr) delete decider;
+}
 
 void theory_refinert::initialize()
 {

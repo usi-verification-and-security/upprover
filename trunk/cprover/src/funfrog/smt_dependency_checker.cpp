@@ -6,6 +6,9 @@
  */
 
 #include "smt_dependency_checker.h"
+#include "hifrog.h"
+#include "solvers/smtcheck_opensmt2_lra.h"
+
 
 pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
@@ -27,7 +30,7 @@ pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft 
   // solve it
   return make_pair(!r, duration);
   
-  } catch (const bad_alloc &e)
+  } catch (const std::bad_alloc &e)
   {
     cout  << "smth is wrong: " << e.what()  << std::endl;
     return make_pair(true, (fine_timet)0);

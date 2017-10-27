@@ -1,5 +1,12 @@
 #include "error_trace.h"
 #include "hifrog.h"
+#include "solvers/smtcheck_opensmt2_cuf.h"
+#include <ansi-c/printf_formatter.h>
+#include "nopartition/smt_symex_target_equation.h"
+#include "smt_partitioning_target_equation.h"
+#include "solvers/smtcheck_opensmt2_lra.h"
+
+
 
 //#define TRACE_DEBUG //Use it to debug the trace of an error build
 

@@ -6,9 +6,11 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
-#include <string.h>
 #include "solvers/smt_itp.h"
 #include "smt_summary_store.h"
+#include "hifrog.h"
+#include "solvers/smtcheck_opensmt2.h"
+
 
 // Serialization SMT
 void smt_summary_storet::serialize(std::ostream& out) const
@@ -73,21 +75,21 @@ void smt_summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *
                 summaryt *itp = new smt_summaryt();
                 Tterm &tterm = functions[i];
                 string fname = tterm.getName();
-                string qless = smtcheck_opensmt2t::unquote_varname(fname);
-                string idxless = smtcheck_opensmt2t::remove_index(qless);
+                //string qless = unquote(fname);
+                string idxless = removeCounter(fname);
                 int midx = get_max_id(idxless);
-                int fidx = smtcheck_opensmt2t::get_index(fname);
-                assert(fidx >= 0);
+                //int fidx = smtcheck_opensmt2t::get_index(fname);
+                //assert(fidx >= 0);
                 //assert(midx != fidx);
                 int next_idx = midx + 1;
                 ++max_ids[idxless];// = max(fidx, midx);
                 //string fixed_name = smtcheck_opensmt2t::quote_varname(qless);
-                string fixed_name = smtcheck_opensmt2t::insert_index(idxless, next_idx);
-                tterm.setName(fixed_name);
+                //string fixed_name = smtcheck_opensmt2t::insert_index(idxless, next_idx);
+                //tterm.setName(fixed_name);
                 itp->setTterm(tterm);
                 itp->setLogic(decider->getLogic());
                 itp->setInterpolant(tterm.getBody());
-                itp->set_valid(1);
+                itp->set_valid(true);
                 store.push_back(nodet(i, *itp));
                 repr_count++;
             }
@@ -114,18 +116,18 @@ Function: summary_storet::insert_summary
 summary_idt smt_summary_storet::insert_summary(summaryt& summary)
 {
   summary_idt id = max_id++;
-  summary.set_valid(1);
+  summary.set_valid(true);
 
   // Here gets the function names
   Tterm *tterm = summary.getTterm();
   assert(tterm);
   string fname = tterm->getName();
-  string qless = smtcheck_opensmt2t::unquote_varname(fname);
-  string idxless = smtcheck_opensmt2t::remove_index(qless);
-  int midx = get_max_id(idxless);
+  //string qless = unquote(fname);
+  //string idxless = removeCounter(qless);
+  int midx = get_max_id(fname);
   int next_idx = midx + 1;
-  max_ids[idxless] = next_idx;// = max(fidx, midx);
-  string fixed_name = smtcheck_opensmt2t::insert_index(idxless, next_idx);
+  max_ids[fname] = next_idx;// = max(fidx, midx);
+  string fixed_name = quote(add_counter(fname, next_idx));
   tterm->setName(fixed_name);
 
   store.push_back(nodet(id, summary));

@@ -6,8 +6,11 @@ Author: Grigory Fedyukovich
 
 \*******************************************************************/
 #include <queue>
+#include <unordered_set>
 
 #include "smtcheck_opensmt2.h"
+#include "../hifrog.h"
+#include "smt_itp.h"
 
 //#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
@@ -279,198 +282,130 @@ void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const vector< vector<i
 }
 #endif
 
-string
-smtcheck_opensmt2t::unquote_varname(const string& varname)
-{
-    int s = varname.length();
-    int l = 0;
-    if(varname[l] == '|') ++l;
-    if(varname[s - 1] == '|')
-        return string(varname.begin() + l, varname.begin() + (s - 1));
-    return string(varname.begin() + l, varname.end());
-}
 
-string
-smtcheck_opensmt2t::insert_index(const string& _varname, int _idx)
-{
-    string unidx = remove_index(_varname);
-    string varname = unquote_varname(unidx);
-    return quote_varname(varname + COUNTER + std::to_string(_idx));
-}
-
-string
-smtcheck_opensmt2t::insert_index(const string& _varname, const string& _idx)
-{
-    string unidx = remove_index(_varname);
-    string varname = unquote_varname(unidx);
-    return quote_varname(varname + COUNTER + _idx);
-}
-
-/*
- * KE: remove it, we are using L1 and L2 cprover methods to get this info! 
- * 
- * Yes, it is tempting to use it, as it look quick and you control all,
- * BUT! cprover is where the names are created, so to avoid bugs we shall
- * use the same mechanism to create and to extract L1 and L2 names!
- */
-int
-smtcheck_opensmt2t::get_index(const string& _varname)
-{
-    string varname = unquote_varname(_varname);
-    int i = 0;
-    int s = varname.length();
-    while(i < s && varname[i++] != COUNTER);
-    if(i >= s) return -1;
-    string num = string(varname.begin() + i, varname.end());
-    stringstream ss(num);
-    int nnum;
-    ss >> nnum;
-    return nnum;
-}
-
-string
-smtcheck_opensmt2t::quote_varname(const string& varname)
-{
-    if(is_quoted_var(varname)) return varname;
-
-    string ans("");
-    assert(varname.length() > 0);
-    if(varname[0] != '|')
-        ans += '|';
-    ans += varname;
-    if(varname[varname.length() - 1] != '|')
-        ans += '|';
-    return ans;
-}
-
-#ifdef PRODUCE_PROOF
-void
-smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbs, string _fun_name, bool substitute)
-{
-    //map<string, PTRef> vars;
-    PTRef itp_pt = itp.getInterpolant();
-
-    string fun_name = quote_varname(_fun_name);
-
-    // retrieve variables
-    //fill_vars(itp_pt, vars);
-
-    // formatted names of common vars
-    std::vector<string> quoted_varnames;
-    std::map<string, PTRef> var2ptref;
-    for (std::vector<symbol_exprt>::iterator it = common_symbs.begin(); it != common_symbs.end(); ++it)
-    {
-        string _var_name = id2string(it->get_identifier());
-        if(is_cprover_rounding_mode_var(_var_name)) continue;
-        if(_var_name.find(CPROVER_BUILDINS) != string::npos) continue;
-        if(_var_name.find("nil") != string::npos) continue;
-        string var_name = remove_invalid(_var_name);
-        var_name = quote_varname(var_name);
-        quoted_varnames.push_back(var_name);
-        var2ptref[var_name] = convert_symbol(*it);
-    }
-
-    // build substitution map (removing indices)
-    // meanwhile, add the vars to Tterm
-    Tterm *tterm = new Tterm();
-    Map<PTRef,PtAsgn,PTRefHash> subst;
-
-    map<string, int[3]> occurrences;
-    // first we should account for repetitions in the non-indexed varnames
-    //for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
-    for(vector<string>::iterator it = quoted_varnames.begin(); it != quoted_varnames.end(); ++it)
-    {
-        string unidx = remove_index(*it);
-        if(occurrences.find(unidx) == occurrences.end())
-        {
-            occurrences[unidx][0] = 1;
-            occurrences[unidx][1] = get_index(*it);
-        }
-        else
-        {
-            ++occurrences[unidx][0];
-            assert(occurrences[unidx][0] == 2);
-            int new_idx = get_index(*it);
-            int old_idx = occurrences[unidx][1];
-            if(new_idx < old_idx) std::swap(new_idx, old_idx);
-            occurrences[unidx][1] = old_idx;
-            occurrences[unidx][2] = new_idx;
-        }
-    }
-
-    // now we can compute the substitutions properly
-    bool only_common_vars_in_itp = true;
-#ifdef DEBUG_SMT_ITP
-    cout << "; Variables in the interpolant: " << endl;
-#endif
-    //for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
-    for(vector<string>::iterator it = quoted_varnames.begin(); it != quoted_varnames.end(); ++it)
-    {
-#ifdef DEBUG_SMT_ITP
-        cout << " * " << *it << ' ';
-#endif
-        if (quoted_varnames.end() ==
-            find (quoted_varnames.begin(), quoted_varnames.end(), *it)){
-#ifdef DEBUG_SMT_ITP
-            cout << " ---> local var to A; should not be in the interpolant";
-#endif
-            only_common_vars_in_itp = false;
-        }
-
-        string unidx = remove_index(*it);
-        int occ = occurrences[unidx][0];
-        assert(occ >= 1 && occ <= 2);
-
-        string new_var_name = unidx;
-
-        if(occ == 2)
-        {
-            int idx = get_index(*it);
-            int l = occurrences[unidx][1];
-            int r = occurrences[unidx][2];
-            if(idx == l)
-                new_var_name = insert_index(new_var_name, "in");
-            else
-            {
-                assert(idx == r);
-                new_var_name = insert_index(new_var_name, "out");
-            }
-        }
-
-        PTRef var = PTRef_Undef;
-        var = var2ptref[*it];
-        assert(var != PTRef_Undef);
-        assert(new_var_name.size() > 0);
-        PTRef new_var = logic->mkVar(logic->getSortRef(var), new_var_name.c_str());
-        tterm->addArg(new_var);
-        subst.insert(var, PtAsgn(new_var, l_True));
-#ifdef DEBUG_SMT_ITP
-        cout << endl;
-#endif
-    }
-
-    assert(only_common_vars_in_itp);
-
-    PTRef new_root;
-    // substitute
-    if(substitute)
-    {
-        logic->varsubstitute(itp_pt, subst, new_root);
-        //cout << "; Formula " << logic->printTerm(itp.getInterpolant()) << " is now " << logic->printTerm(new_root) << endl;
-    }
-    else
-    {
-        new_root = logic->getTerm_true();
-    }
-    tterm->setBody(new_root);
-
-    tterm->setName(fun_name);
-    //logic->addFunction(tterm);
-    //logic->dumpFunction(cout, tterm);
-    itp.setTterm(*tterm);
-    itp.setLogic(logic);
-}
-#endif 
+//#ifdef PRODUCE_PROOF
+//void
+//smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbs, string _fun_name, bool substitute)
+//{
+//    //map<string, PTRef> vars;
+//    PTRef itp_pt = itp.getInterpolant();
+//
+//    // formatted names of common vars
+//    std::vector<string> quoted_varnames;
+//    std::map<string, PTRef> var2ptref;
+//    for (std::vector<symbol_exprt>::iterator it = common_symbs.begin(); it != common_symbs.end(); ++it)
+//    {
+//        string _var_name = id2string(it->get_identifier());
+//        if(is_cprover_rounding_mode_var(_var_name)) continue;
+//        if(_var_name.find(CPROVER_BUILDINS) != string::npos) continue;
+//        if(_var_name.find("nil") != string::npos) continue;
+//        string var_name = remove_invalid(_var_name);
+//        var_name = quote_varname(var_name);
+//        quoted_varnames.push_back(var_name);
+//        var2ptref[var_name] = convert_symbol(*it);
+//    }
+//
+//    // build substitution map (removing indices)
+//    // meanwhile, add the vars to Tterm
+//    Tterm *tterm = new Tterm();
+//    Map<PTRef,PtAsgn,PTRefHash> subst;
+//
+//    map<string, int[3]> occurrences;
+//    // first we should account for repetitions in the non-indexed varnames
+//    //for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
+//    for(vector<string>::iterator it = quoted_varnames.begin(); it != quoted_varnames.end(); ++it)
+//    {
+//        string unidx = remove_index(*it);
+//        if(occurrences.find(unidx) == occurrences.end())
+//        {
+//            occurrences[unidx][0] = 1;
+//            occurrences[unidx][1] = get_index(*it);
+//        }
+//        else
+//        {
+//            ++occurrences[unidx][0];
+//            assert(occurrences[unidx][0] == 2);
+//            int new_idx = get_index(*it);
+//            int old_idx = occurrences[unidx][1];
+//            if(new_idx < old_idx) std::swap(new_idx, old_idx);
+//            occurrences[unidx][1] = old_idx;
+//            occurrences[unidx][2] = new_idx;
+//        }
+//    }
+//
+//    // now we can compute the substitutions properly
+//    bool only_common_vars_in_itp = true;
+//#ifdef DEBUG_SMT_ITP
+//    cout << "; Variables in the interpolant: " << endl;
+//#endif
+//    //for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
+//    for(vector<string>::iterator it = quoted_varnames.begin(); it != quoted_varnames.end(); ++it)
+//    {
+//#ifdef DEBUG_SMT_ITP
+//        cout << " * " << *it << ' ';
+//#endif
+//        if (quoted_varnames.end() ==
+//            find (quoted_varnames.begin(), quoted_varnames.end(), *it)){
+//#ifdef DEBUG_SMT_ITP
+//            cout << " ---> local var to A; should not be in the interpolant";
+//#endif
+//            only_common_vars_in_itp = false;
+//        }
+//
+//        string unidx = remove_index(*it);
+//        int occ = occurrences[unidx][0];
+//        assert(occ >= 1 && occ <= 2);
+//
+//        string new_var_name = unidx;
+//
+//        if(occ == 2)
+//        {
+//            int idx = get_index(*it);
+//            int l = occurrences[unidx][1];
+//            int r = occurrences[unidx][2];
+//            if(idx == l)
+//                new_var_name = insert_index(new_var_name, "in");
+//            else
+//            {
+//                assert(idx == r);
+//                new_var_name = insert_index(new_var_name, "out");
+//            }
+//        }
+//
+//        PTRef var = PTRef_Undef;
+//        var = var2ptref[*it];
+//        assert(var != PTRef_Undef);
+//        assert(new_var_name.size() > 0);
+//        PTRef new_var = logic->mkVar(logic->getSortRef(var), new_var_name.c_str());
+//        tterm->addArg(new_var);
+//        subst.insert(var, PtAsgn(new_var, l_True));
+//#ifdef DEBUG_SMT_ITP
+//        cout << endl;
+//#endif
+//    }
+//
+//    assert(only_common_vars_in_itp);
+//
+//    PTRef new_root;
+//    // substitute
+//    if(substitute)
+//    {
+//        logic->varsubstitute(itp_pt, subst, new_root);
+//        //cout << "; Formula " << logic->printTerm(itp.getInterpolant()) << " is now " << logic->printTerm(new_root) << endl;
+//    }
+//    else
+//    {
+//        new_root = logic->getTerm_true();
+//    }
+//    tterm->setBody(new_root);
+//
+//    tterm->setName(fun_name);
+//    //logic->addFunction(tterm);
+//    //logic->dumpFunction(cout, tterm);
+//    itp.setTterm(*tterm);
+//    itp.setLogic(logic);
+//}
+//#endif
 
 void
 smtcheck_opensmt2t::fill_vars(PTRef itp, map<string, PTRef>& subst)
@@ -500,46 +435,6 @@ smtcheck_opensmt2t::fill_vars(PTRef itp, map<string, PTRef>& subst)
 #endif
 }
 
-bool
-smtcheck_opensmt2t::is_quoted_var(const string& varname)
-{
-    assert(varname.length() > 0);
-    return (varname[0] == '|') && (varname[varname.length() - 1] == '|');
-}
-
-string
-smtcheck_opensmt2t::remove_invalid(const string& varname)
-{
-    string ans("");
-    for(unsigned int i = 0; i < varname.length(); ++i)
-    {
-        if(varname[i] != '\\')
-            ans += varname[i];
-    }
-    return ans;
-}
-
-/*
- * KE: Shall be remove it, we are using L1 and L2 cprover methods to get this info! 
- * 
- * Yes, it is tempting to use it, as it look quick and you control all,
- * BUT! cprover is where the names are created, so to avoid bugs we shall
- * use the same mechanism to create and to extract L1 and L2 names!
- */
-string
-smtcheck_opensmt2t::remove_index(string var)
-{
-    int i = var.length() - 1;
-    while(i >= 0 && var[i] != COUNTER) --i;
-    string no_index;
-    if(i > 0)
-        no_index = string(var.begin(), var.begin() + i);
-    else
-        return var;
-    if(is_quoted_var(var))
-        return quote_varname(no_index);
-    return no_index;
-}
 
 /*******************************************************************\
 
@@ -826,7 +721,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 
     // KE: assure the encoding is not using the variables name as is (why there is nil here?)
     assert("Error: using non-SSA symbol in the SMT encoding" 
-            && ((str.find(COUNTER) != std::string::npos) 
+            && ((str.find(HifrogStringConstants::COUNTER_SEP) != std::string::npos)
                 || (str.compare("nil") == 0) || IO_CONST));
     
     return str;
@@ -983,34 +878,48 @@ PTRef smtcheck_opensmt2t::mkCustomFunction(SymRef decl, vec<PTRef>& args)
     return ret;
 }
 
+namespace {
+    bool is_global(const exprt& expr){
+        if(!expr.get_bool(ID_C_SSA_symbol)){
+            return false;
+        }
+        return to_ssa_expr(expr).get_level_0().empty();
+    }
+}
+
 void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<symbol_exprt> &common_symbols,
-                                            const std::string &fun_name)
+                                            const std::string &fun_name, bool substitute)
 {
     // Right now the term is not set, hence the assert, but this should actually be set somewhere else
     assert(interpolant.getTterm() == nullptr);
+    if(is_cprover_initialize_method(fun_name)){
+        throw std::logic_error("Summary generalize should not be called for CPROVER initialize method!");
+    }
     // initialization of new Tterm, TODO: the basic should really be set already when interpolant object is created
     Tterm* tt = new Tterm();
     tt->setName(fun_name.c_str());
     interpolant.setLogic(logic);
     interpolant.setTterm(*tt);
-    tt->setBody(interpolant.getInterpolant());
-    if(is_cprover_initialize_method(fun_name)){
-        return;
-    }
 
     // prepare the substituition map how OpenSMT expects it
     Map<PTRef,PtAsgn,PTRefHash> subst;
+    std::unordered_set<std::string> globals;
     for(const auto& expr : common_symbols){
-        // Ignors Cprover builtins
-        if (id2string(expr.get_identifier()).find(CPROVER_BUILDINS)!=std::string::npos)
-            continue;
-        
         // get the original PTRef for this expression
         PTRef original = convert_symbol(expr);
-        // get the new name for the symbol; FIXME: what to do about global variables?
-        const char* symbol_name { get_symbol_name(expr).c_str() };
+        // get the new name for the symbol;
+        std::string symbol_name { get_symbol_name(expr).c_str() };
+        if(is_global(expr)){
+            if(globals.find(symbol_name) != globals.end()){
+                // global symbol encountered second time -> must be in/out pair, add suffix to this out
+                symbol_name = symbol_name + HifrogStringConstants::GLOBAL_OUT_SUFFIX;
+            }
+            else{
+                globals.insert(symbol_name);
+            }
+        }
         // get new PTRef for the variable with new name
-        PTRef new_var = logic->mkVar(logic->getSortRef(original), symbol_name);
+        PTRef new_var = logic->mkVar(logic->getSortRef(original), symbol_name.c_str());
 //        std::cout << "; Original variable: " << logic->printTerm(original) << '\n';
 //        std::cout << "; New variable: " << logic->printTerm(new_var) << '\n';
         subst.insert(original, PtAsgn{ new_var, l_True });
@@ -1019,9 +928,42 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<s
     //apply substituition to the interpolant
     PTRef old_root = interpolant.getInterpolant();
     PTRef new_root;
-    logic->varsubstitute(old_root, subst, new_root);
+    if(substitute){
+        logic->varsubstitute(old_root, subst, new_root);
+    }
+    else{
+        new_root = logic->getTerm_true();
+    }
 //    std::cout << "; Old formula: " << logic->printTerm(old_root) << '\n';
 //    std::cout << "; New formula " << logic->printTerm(new_root) << std::endl;
     interpolant.setInterpolant(new_root);
     tt->setBody(new_root);
+}
+
+//FIXME remove this!
+string
+smtcheck_opensmt2t::remove_invalid(const string& varname)
+{
+    string ans("");
+    for(unsigned int i = 0; i < varname.length(); ++i)
+        {
+            if(varname[i] != '\\')
+                ans += varname[i];
+        }
+    return ans;
+}
+
+string
+smtcheck_opensmt2t::quote_varname(const string& varname)
+{
+    string ans("");
+    assert(varname.length() > 0);
+    if(varname[0] != '|'){
+        ans += '|';
+    }
+    ans += varname;
+    if(varname[varname.length() - 1] != '|'){
+        ans += '|';
+    }
+    return ans;
 }

@@ -14,16 +14,9 @@
 #ifndef SMT_SYMEX_TARGET_EQUATIONT_H
 #define SMT_SYMEX_TARGET_EQUATIONT_H
 
-#include "../expr_pretty_print.h"
 #include <goto-symex/symex_target_equation.h>
-#include <symbol.h>
-#include <type.h>
 
-#include "../solvers/itp.h"
-#include "../solvers/smtcheck_opensmt2.h"
-
-//#define DEBUG_SSA_PRINT // Print the SSA encoding + recompile expr_pretty_print class
-
+class smtcheck_opensmt2t;
 
 // No need to take anything from partition_target_equation, only from the
 // sub smt class of it

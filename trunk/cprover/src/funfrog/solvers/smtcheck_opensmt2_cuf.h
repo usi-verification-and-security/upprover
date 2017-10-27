@@ -10,14 +10,11 @@ Module: Wrapper for OpenSMT2
 #include <map>
 #include <vector>
 
-#include <util/threeval.h>
 #include "smtcheck_opensmt2.h"
-#include "interpolating_solver.h"
-#include "smt_itp.h"
-#include <opensmt/opensmt2.h>
-#include <opensmt/BitBlaster.h>
 #include <expr.h>
 
+
+class BitBlaster;
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
 
@@ -123,23 +120,7 @@ protected:
   void add_constraints4chars_numeric(PTRef &var, int size, const irep_idt type_id);
 };
 
-inline void getVarsInExpr(exprt& e, std::set<exprt>& vars)
-{
-  if(e.id()==ID_symbol){
-    if (smtcheck_opensmt2t::is_cprover_builtins_var(e)) 
-    { 
-        // Skip rounding_mode or any other builtins vars
-    } 
-    else
-    {
-        vars.insert(e);
-    }
-  } else if (e.has_operands()){
-    for (unsigned int i = 0; i < e.operands().size(); i++){
-      getVarsInExpr(e.operands()[i], vars);
-    }
-  }
-}
+void getVarsInExpr(exprt& e, std::set<exprt>& vars);
 
 // Taken from cprover framework: integer2unsigned, mp_arith.cpp
 inline int mp_integer2int(const mp_integer &n)

@@ -1,49 +1,26 @@
-#include <algorithm>
-#include <limits.h>
-#include <string.h>
-#include <stdlib.h>
-#include "smtcheck_opensmt2.h" // this includes smt_itp.h too
+#include "smtcheck_opensmt2.h"
 #include "../hifrog.h"
+#include "smt_itp.h"
 
 //#define DEBUG_ITP_SMT
 # ifdef DEBUG_ITP_SMT
 #include <iostream>
 #endif
 
-/*
- KE: Bugs
- * 
- * Start looking at the manual-unsupported functions in smtcheck_opensmt2.cpp
- * e.g., remove_index, get_index etc.
- * 
- * Try to replace all these ad-hoc calls in some proper methods of cprover
- * Check names coming from OpenSMT to see if it is not collide with the names in hifrog
- * (e.g., #in, #out) It happens because Cprover uses # as coutner symbol and 
- * OpenSMT uses it as system variables symbol
- * 
- * Known bugs: re-write many suammries again as a result of system (inner) variables
- * that are related to the translations (SSA or SMT-Lib) and not the code itself
- */
-
 bool
 smt_itpt::usesVar(symbol_exprt& symb, unsigned idx)
 {
     assert(tterm != NULL && logic != NULL);
-    
     string var_name = smtcheck_opensmt2t::remove_invalid(get_symbol_name(symb).c_str());
-    var_name = smtcheck_opensmt2t::quote_varname(var_name);
     const vec<PTRef>& args = tterm->getArgs();
     for(int i = 0; i < args.size(); ++i)
     {
         string pname = logic->getSymName(args[i]);
-        pname = smtcheck_opensmt2t::remove_index(pname);
-        pname = smtcheck_opensmt2t::quote_varname(pname);
+        //pname = smtcheck_opensmt2t::remove_index(pname);
         if(pname == var_name) return true;
     }
     return false;
 }
-
-
 /*******************************************************************\
 
 Function: smt_itpt::gate_and
@@ -216,6 +193,16 @@ void smt_itpt::generalize(const prop_conv_solvert& mapping,
 }
 
 
+namespace{
+    bool isGlobalName(const std::string& name){
+        return name.find(HifrogStringConstants::GLOBAL_OUT_SUFFIX) != std::string::npos;
+    }
+
+    std::string stripGlobalSuffix(const std::string& name){
+        return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_OUT_SUFFIX.length());
+    }
+}
+
 /*******************************************************************\
 
 Function: smt_itpt::substitute
@@ -241,185 +228,43 @@ void smt_itpt::substitute(smtcheck_opensmt2t& decider,
     const std::vector<symbol_exprt>& symbols,
     bool inverted) const
 {
+    //TODO remove the inverted parameter?
     assert(!is_trivial());
     assert(tterm && logic);
     const vec<PTRef>& args = tterm->getArgs();
+
+    // summary is defined as a function over arguments to Bool
+    // we need to match the arguments with the symbols and substitute
+    // the assumption is that arguments' names correspond to the base names of the symbols
+    // and they are in the same order
+    // one exception is if global variable is both on input and output, then the out argument was distinguished
+
     Map<PTRef, PtAsgn, PTRefHash> subst;
-
-    map<string, int[3]> occurrences;
-    for(unsigned int i = 0; i < symbols.size(); ++i)
-    {
-        string unidx = get_symbol_name(symbols[i]).c_str();
-        if(occurrences.find(unidx) == occurrences.end())
-        {
-            occurrences[unidx][0] = 1;
-            occurrences[unidx][1] = get_symbol_L2_counter(symbols[i]);
+    for(std::size_t i = 0; i < symbols.size(); ++i){
+        std::string symbol_name { get_symbol_name(symbols[i]).c_str() };
+        PTRef argument = args[i];
+        std::string argument_name { logic->getSymName(argument) };
+        if(isGlobalName(argument_name)){
+            argument_name = stripGlobalSuffix(argument_name);
         }
-        else
-        {
-            ++occurrences[unidx][0];
-            assert(occurrences[unidx][0] == 2);
-            int new_idx = get_symbol_L2_counter(symbols[i]);
-            int old_idx = occurrences[unidx][1];
-            if(new_idx < old_idx) std::swap(new_idx, old_idx);
-            occurrences[unidx][1] = old_idx;
-            occurrences[unidx][2] = new_idx;
+        if(symbol_name != argument_name){
+            std::stringstream ss;
+            ss << "Argument name read from summary do not match expected symbol name!\n"
+               << "Expected symbol name: " << symbol_name << "\nName read from summary: " << argument_name;
+
+            throw std::logic_error(ss.str());
         }
-
+        PTRef symbol_ptref = decider.convert_symbol(symbols[i]);
+        subst.insert(argument, PtAsgn(symbol_ptref, l_True));
     }
 
-    // Here will change/remove symbols name for convert
-    int args_instantiated = 0; // if we didn't instantiated all args of a summary - we have a problem! 
-    for(unsigned int i = 0; i < symbols.size(); ++i)
-    {
-        // Gets L1 - use a method dedicated for it - DO NOT change it!
-        string unidx = get_symbol_name(symbols[i]).c_str();
-        
-        // We skip build-in of cprover
-        if (unidx.find(CPROVER_BUILDINS)!=std::string::npos) 
-        { 
-            //args_instantiated++;
-            //continue; // skip to the next iteration
-            std::cerr << "Using CPROVER PROP. LOGIC INNER DATA IN NONE PROP. LOGIC CODE. EXIT." << std::endl;
-            exit(0);
-            // KE: it shall be assert here!
-            // This covers a bug in line 300 and on - in thw next for loop
-        } // else
-        
-        // Else, continue and find the symbol in the summary that match the arg_i
-        string quoted_unidx = smtcheck_opensmt2t::quote_varname(unidx);
-        
-        // Also check for temp/inner vars of opensmt that are part of the summary
-        string quoted_unidx_in = smtcheck_opensmt2t::quote_varname(unidx + OPENSMT_IN);
-        string quoted_unidx_out = smtcheck_opensmt2t::quote_varname(unidx + OPENSMT_OUT);
-        string quoted_unidx_invs = smtcheck_opensmt2t::quote_varname(unidx + OPENSMT_INVS);
-        // FIXME
-        
-        // Get the instance number of the SSA
-        int idx = get_symbol_L2_counter(symbols[i]);
-        for(int j = 0; j < args.size(); ++j)
-        {
-            string unidx_aname = get_and_check_L0_name_from_summary(args[j]);  
-            string quoted_unidx_aname = smtcheck_opensmt2t::quote_varname(unidx_aname);
-            if ((quoted_unidx.compare(quoted_unidx_aname) == 0) ||
-                (quoted_unidx_in.compare(quoted_unidx_aname) == 0) ||
-                (quoted_unidx_out.compare(quoted_unidx_aname) == 0) ||
-                (quoted_unidx_invs.compare(quoted_unidx_aname) == 0))
-            {
-                unidx = get_symbol_name(symbols[i]).c_str();
-                if( (occurrences[unidx][0] == 1) ||
-                     (idx == occurrences[unidx][1] && unidx_aname.find(OPENSMT_IN) != string::npos) ||
-                     (idx == occurrences[unidx][2] && unidx_aname.find(OPENSMT_OUT) != string::npos)
-                  )
-                {
-        	    PTRef tmp = decider.convert_symbol(symbols[i]);
-                    //cout << "VAR " << logic->printTerm(args[j]) << " WILL BE " << logic->printTerm(tmp) << endl;
-                    subst.insert(args[j], PtAsgn(tmp, l_True));
-                    args_instantiated++;                    
-                    continue; // we found what we need, skit the rest of the iterations
-                } // FIXME: symbols.size() contains multipule instances of the same vars, shall be like a set not an array!!
-            }
-        }
-    }
-    assert("Error: Not all arguments of a summary of a function was instantiated." && symbols.size() == args_instantiated);
-    PTRef part_sum;
-    PTRef templ = tterm->getBody();
-    //cout << ";; Template before : " << logic->printTerm(templ) << endl; // Template with symbols only
-    logic->varsubstitute(templ, subst, part_sum);
-    decider.set_to_true(part_sum);
-    //cout << "; Template instantiated for function " << tterm->getName() << " is\n" << logic->printTerm(part_sum) << endl;
-    // KE: See here if the template contains ONLY L2 expressions, and not L1.
+    // do the actual substiotuition
+    PTRef old_root = tterm->getBody();
+    PTRef new_root;
+    logic->varsubstitute(old_root, subst, new_root);
+    decider.set_to_true(new_root);
 
-  /*
-  // FIXME: Dirty cast.
-  boolbv_mapt& map = const_cast<boolbv_mapt&>(dynamic_cast<boolbvt&>(decider).get_map());
-  literalt* renaming = new literalt[_no_variables];
-
-# ifdef DEBUG_ITP_SMT
-  std::cout << "--------------- Substituting -------------" << std::endl;
-# endif
-  
-  // Fill the renaming table
-  unsigned cannon_var_no = 1;
-  for (std::vector<symbol_exprt>::const_iterator it = symbols.begin();
-          it != symbols.end();
-          ++it) {
-
-    // Bool symbols are not in the boolbv_map and have to be treated separatelly
-    if (it->type().id() == ID_bool) {
-      literalt l = decider.convert(*it);
-      
-#     ifdef DEBUG_ITP_SMT
-      std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
-      std::cout << it->get_identifier().c_str() << " (1)" << std::endl;
-#     endif
-      assert(cannon_var_no < _no_variables);
-      renaming[cannon_var_no++] = l;
-      continue;
-    }
-
-#   ifdef DEBUG_ITP_SMT
-    std::cout << it->get_identifier().c_str() << " (" << 
-            map.get_map_entry(it->get_identifier(), it->type()).width <<
-            ")" << std::endl;
-#   endif
-    bvt literals;
-    const unsigned width = map.get_map_entry(it->get_identifier(), it->type()).width;
-    literals.resize(width);
-    map.get_literals(
-      it->get_identifier(), it->type(), width, literals);
-    for (unsigned i = 0; i < width; ++i) {
-      literalt l = literals[i];
-#     ifdef DEBUG_ITP_SMT
-      std::cout << (l.sign() ? "-" : "") << l.var_no() << " ";
-#     endif
-      assert(cannon_var_no < _no_variables);
-      renaming[cannon_var_no++] = l;
-    }
-#   ifdef DEBUG_ITP_SMT
-    std::cout << std::endl;
-#   endif
-  }
-  // Allocate new variables for the auxiliary ones (present due to the Tseitin
-  // encoding to CNF)
-  for (unsigned i = _no_orig_variables; i < _no_variables; ++i) {
-    renaming[i] = decider.prop.new_variable();
-  }
-
-  // Rename and output the clauses
-  bvt tmp_clause;
-  for (clausest::const_iterator it = clauses.begin();
-          it != clauses.end();
-          ++it) {
-    tmp_clause = *it;
-
-    for (bvt::iterator it2 = tmp_clause.begin();
-            it2 != tmp_clause.end();
-            ++it2) {
-      // Rename
-      bool sign = it2->sign();
-      *it2 = renaming[it2->var_no()];
-      if (sign){
-       it2->invert();
-      }
-    }
-    // Assert the clause
-    decider.prop.lcnf(tmp_clause);
-  }
-
-  // Handle the root
-  bool sign = root_literal.sign();
-  literalt new_root_literal = renaming[root_literal.var_no()];
-  if (sign)
-    new_root_literal.invert();
-  
-  if (inverted)
-    new_root_literal.invert();
-
-  decider.prop.l_set_to_true(new_root_literal);
-
-  delete [] renaming;
-  */
+    // TODO: set the new root as new body?
 }
 
 
@@ -656,36 +501,6 @@ bool smt_itpt::is_system_translation_var(std::string name, bool is_smt_only) con
         return false;
     else 
         return (name.find(FUNC_RETURN) != string::npos);
-}
-
-/*******************************************************************\
-
-Function: smt_itpt::get_and_check_L1_name_from_summary
-
-  Inputs:
-
- Outputs:
-
- Purpose: Get the name of the parameter symbol from the args of 
- * the summary (where the code of the func is not yet in the SSA tree)
- * 
- * KE: REMOVE THIS METHOD ONCE WE FIX THE SUMMARIES WRITE
-\*******************************************************************/
-string smt_itpt::get_and_check_L0_name_from_summary(PTRef arg_j) const {
-    string aname = string(logic->getSymName(arg_j));
-
-    // Innet system Out,in,inv: these have # as part of the name and not the index - we skip the check 
-    if (is_system_translation_var(aname, true))      
-        return aname;
-    
-    // Check if it is the name we expect
-    //assert(aname == smtcheck_opensmt2t::remove_index(aname));
-    
-    // Remove !0, it can be also ! with any digits (it is one of the Cprover level of instanciation)
-    size_t pos = aname.find_last_of(COUNTER_L1);
-    if (pos != string::npos) return aname.substr(0,pos);
-    
-    return aname; 
 }
 
 

@@ -20,6 +20,8 @@
 #include "../error_trace.h"
 
 #include "smt_assertion_no_partition.h"
+#include "../solvers/smtcheck_opensmt2.h"
+
 
 extern time_periodt global_satsolver_time;
 

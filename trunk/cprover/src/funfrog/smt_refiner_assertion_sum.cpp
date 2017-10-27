@@ -12,6 +12,8 @@
  */
 
 #include "smt_refiner_assertion_sum.h"
+#include "solvers/smtcheck_opensmt2.h"
+
 
 /*******************************************************************
 

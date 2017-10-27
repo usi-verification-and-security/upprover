@@ -14,8 +14,8 @@ Author: Ondrej Sery
 #include <unordered_map>
 #include <map>
 #include "solvers/itp.h"
-#include "solvers/smtcheck_opensmt2.h"
-#include "solvers/satcheck_opensmt2.h"
+
+class smtcheck_opensmt2t;
 
 typedef itpt summaryt;
 typedef prop_itpt prop_summaryt;

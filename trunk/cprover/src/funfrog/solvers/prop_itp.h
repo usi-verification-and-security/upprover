@@ -61,7 +61,7 @@ public:
   virtual void serialize(std::ostream& out) const override;
   virtual void deserialize(std::istream& in) override;
 
-  virtual bool usesVar(symbol_exprt& symb, unsigned idx) override
+  bool usesVar(symbol_exprt& symb, unsigned idx) override
   { 
       return get_symbol_mask()[idx];
   }

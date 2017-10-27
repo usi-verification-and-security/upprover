@@ -17,6 +17,7 @@
 
 #include "partitioning_slice.h"
 #include "symex_assertion_sum.h"
+#include "hifrog.h"
 
 /*******************************************************************
 
@@ -841,7 +842,8 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     
     partition_iface.argument_symbols.push_back(symb_ex);
 #   ifdef DEBUG_PARTITIONING
-    expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex, " ");
+    expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex, "\n");
+    std::cout << '\n';
 #   endif
   }
 }
@@ -976,8 +978,8 @@ void symex_assertion_sumt::store_modified_globals(
   bool old_cp = constant_propagation;
   constant_propagation = false;
   partition_ifacet &partition_iface = deferred_function.partition_iface;
-  
-  state.record_events=false; // expr-s are build ins 
+
+  state.record_events=false; // expr-s are build ins
   // therefore we don't want to use parallel built-ins
   for (std::vector<symbol_exprt>::const_iterator it = 
           partition_iface.out_arg_symbols.begin();
@@ -1002,7 +1004,7 @@ void symex_assertion_sumt::store_modified_globals(
     assert( ns.follow(assignment.lhs().type()) ==
             ns.follow(assignment.rhs().type()));
 
-    raw_assignment(state, assignment.lhs(), assignment.rhs(), ns);    
+    raw_assignment(state, assignment.lhs(), assignment.rhs(), ns);
   }
   constant_propagation = old_cp;
 }
@@ -1028,17 +1030,15 @@ void symex_assertion_sumt::store_return_value(
   if (!partition_iface.returns_value)
     return;
   
-  code_assignt assignment(
-          partition_iface.retval_symbol,
-          partition_iface.retval_tmp);
+  ssa_exprt lhs = to_ssa_expr(partition_iface.retval_symbol);
+  const auto& rhs = partition_iface.retval_tmp;
   
-  assert( ns.follow(assignment.lhs().type()) ==
-          ns.follow(assignment.rhs().type()));
+  assert( ns.follow(lhs.type()) == ns.follow(rhs.type()));
   
   // Emit the assignment
   bool old_cp = constant_propagation;
   constant_propagation = false;
-  raw_assignment(state, assignment.lhs(), assignment.rhs(), ns);
+  raw_assignment(state, lhs, rhs, ns);
   constant_propagation = old_cp;
 }
 /*******************************************************************
@@ -1455,7 +1455,9 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
     state.propagation.remove(identifier);
 
     // Return Value, or any other SSA symbol. From version 5.6 of cbmc an index always starts in 0
-    irep_idt new_l2_name = id2string(identifier) + COUNTER + std::to_string(state.level2.current_count(identifier));
+    irep_idt new_l2_name = id2string(identifier)
+                           + HifrogStringConstants::COUNTER_SEP
+                           + std::to_string(state.level2.current_count(identifier));
   
     return new_l2_name;
 }
@@ -1464,10 +1466,12 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 // We always with a counter!
 irep_idt symex_assertion_sumt::get_current_l2_name(statet &state, const irep_idt &identifier) const 
 {
-    if (id2string(identifier).find(COUNTER) != std::string::npos)
+    if (id2string(identifier).find(HifrogStringConstants::COUNTER_SEP) != std::string::npos)
         return identifier;
     
-    return id2string(identifier)+COUNTER+std::to_string(state.level2.current_count(identifier));
+    return id2string(identifier)
+           + HifrogStringConstants::COUNTER_SEP
+           + std::to_string(state.level2.current_count(identifier));
 }
 
 /*******************************************************************
@@ -1531,6 +1535,38 @@ void symex_assertion_sumt::raw_assignment(
     rhs_symbol,
     state.source,
     symex_targett::assignment_typet::STATE);
+}
+
+void symex_assertion_sumt::raw_assignment(
+        statet &state,
+        ssa_exprt &lhs,
+        const symbol_exprt &rhs,
+        const namespacet &ns)
+{
+    ssa_exprt rhs_ssa {rhs};
+    state.rename(rhs_ssa, ns);
+    assert(!lhs.get_level_2().empty());
+
+    state.propagation.remove(lhs.get_l1_object_identifier());
+
+    // MB: looks like this has something to do with dereferencing; TODO: examine
+    // update value sets
+//    exprt l1_rhs(rhs_symbol);
+//    state.get_l1_name(l1_rhs);
+//
+//    ssa_exprt l1_lhs(lhs);
+//    state.get_l1_name(l1_lhs);
+//
+//    state.value_set.assign(l1_lhs, l1_rhs, ns, false, false);
+
+    guardt empty_guard;
+    target.assignment(
+            empty_guard.as_expr(),
+            lhs,
+            lhs, lhs.get_l1_object(),
+            rhs_ssa,
+            state.source,
+            symex_targett::assignment_typet::STATE);
 }
 
 /*******************************************************************\
@@ -1733,16 +1769,18 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
 void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id,
         const typet& type, const source_locationt source_location,
         bool is_rename, bool is_dead,
-        ssa_exprt& ret_symbol)
+        symbol_exprt& ret_symbol)
 {
     // MB: not sure, but we probably need to register new symbol;
     // if it was registered before, nothing will change
     add_symbol(base_symbol_id, type, is_dead, false, source_location);
 
-    // first create L1 version version of this symbol
+    //create the symbol expression
     symbol_exprt symbol(base_symbol_id, type);
-    state.rename(symbol, ns, goto_symex_statet::levelt::L1);
+
     if(is_rename) {
+        // first create L1 version version of this symbol\
+        state.rename(symbol, ns, goto_symex_statet::levelt::L1);
         // here we want to create the correct L2 version of the symbol
         state.rename(symbol, ns, goto_symex_statet::levelt::L2);
         // state.rename works fine if we also keep the information in state.level2.current_names up-to-date
@@ -1759,7 +1797,7 @@ void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id,
     }
     else{
         // we are happy with the L1 version of the symbol
-        ret_symbol = to_ssa_expr(symbol);
+        ret_symbol = symbol;
     }
 //    std::cout << "\n; New symbol: \n" << ret_symbol.pretty() << '\n';
 }

@@ -17,10 +17,9 @@
 #include "solvers/prop_itp.h"
 #include "solvers/smt_itp.h"
 #include "summary_store.h"
-#include "prop_summary_store.h"
-#include "smt_summary_store.h"
 
 class summarization_contextt;
+class smt_summary_storet;
 
 // Collected summarization info for a single function
 class function_infot {

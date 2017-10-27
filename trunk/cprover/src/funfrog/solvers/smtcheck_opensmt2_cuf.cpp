@@ -5,10 +5,10 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 Author: Grigory Fedyukovich
 
 \*******************************************************************/
-#include <queue>
-#include <math.h>
 
 #include "smtcheck_opensmt2_cuf.h"
+#include "../hifrog.h"
+#include <opensmt/BitBlaster.h>
 
 //#define SMT_DEBUG
 //#define DEBUG_SMT_BB
@@ -1899,4 +1899,22 @@ SRef smtcheck_opensmt2t_cuf::getSMTlibDatatype(const exprt& expr)
     
     //assert(0); // Shall not get here
     throw std::logic_error("Unknown datatype encountered!");
+}
+
+void getVarsInExpr(exprt& e, std::set<exprt>& vars)
+{
+    if(e.id()==ID_symbol){
+        if (is_cprover_builtins_var(e))
+        {
+            // Skip rounding_mode or any other builtins vars
+        }
+        else
+        {
+            vars.insert(e);
+        }
+    } else if (e.has_operands()){
+        for (unsigned int i = 0; i < e.operands().size(); i++){
+            getVarsInExpr(e.operands()[i], vars);
+        }
+    }
 }

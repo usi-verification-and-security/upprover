@@ -12,13 +12,9 @@ Module: Wrapper for OpenSMT2
 #include <map>
 #include <vector>
 
-#include <util/threeval.h>
 #include "check_opensmt2.h"
-#include "interpolating_solver.h"
-#include "smt_itp.h"
 #include <opensmt/opensmt2.h>
 #include <expr.h>
-#include "../hifrog.h"
 
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
@@ -107,21 +103,14 @@ public:
   // Extract interpolant form OpenSMT files/data
   void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
   
-  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true); // Common to all
+//  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true); // Common to all
 
-  void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols, const std::string& fun_name);
+  void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
+                          const std::string& fun_name, bool substitute);
 #endif
-  
-  static int get_index(const string& varname);
-  static std::string insert_index(const string& varname, const string& idx); // Common to all
-  static std::string insert_index(const string& varname, int idx); // Common to all
-  static std::string quote_varname(const string& varname); // Common to all
-  static std::string unquote_varname(const string& varname); // Common to all
-  
-  static std::string remove_index(std::string); // Common to all
-  static std::string remove_invalid(const string& varname); // Common to all
 
-  static bool is_quoted_var(const string& varname); // Common to all
+    static std::string quote_varname(const string& varname); // Common to all
+    static std::string remove_invalid(const string& varname); // Common to all
 
   // Common to all
   void start_encoding_partitions() {
@@ -142,24 +131,6 @@ public:
   map<PTRef,exprt>::const_iterator get_itr_unsupported_info_map() const { return unsupported_info_map.begin(); }
   map<PTRef,exprt>::const_iterator get_itr_end_unsupported_info_map() const { return unsupported_info_map.end(); }
   /* End of unsupported data for refinement info and data */
-  
-
-  static bool is_cprover_rounding_mode_var(const exprt& e)
-  {
-      return is_cprover_rounding_mode_var(id2string(e.get(ID_identifier)));
-  }
-  static bool is_cprover_rounding_mode_var(const std::string str)
-  {
-      return (str.find(ROUNDING_MODE) != std::string::npos);
-  }
-  static bool is_cprover_builtins_var(const exprt& e)
-  {
-      return is_cprover_builtins_var(id2string(e.get(ID_identifier)));
-  }
-  static bool is_cprover_builtins_var(const std::string str)
-  {
-      return (str.find(CPROVER_BUILDINS) != std::string::npos);
-  }
   
   // Common to all
   std::set<PTRef>* getVars(); // Get all variables from literals for the counter example phase

@@ -13,6 +13,8 @@
 
 #include "smt_symex_target_equation.h"
 #include "../hifrog.h"
+#include "../solvers/smtcheck_opensmt2.h"
+#include "../expr_pretty_print.h"
 
 void smt_symex_target_equationt::convert(smtcheck_opensmt2t &decider) 
 {

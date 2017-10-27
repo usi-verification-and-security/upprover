@@ -6,6 +6,7 @@ Author: Grigory Fedyukovich
 
 \*******************************************************************/
 #include "smtcheck_opensmt2_lra.h"
+#include "../hifrog.h"
 #include <util/type.h>
 
 //#define SMT_DEBUG

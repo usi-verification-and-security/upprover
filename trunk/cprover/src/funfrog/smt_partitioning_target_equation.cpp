@@ -26,7 +26,10 @@ smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &d
         fill_common_symbols(*it, common);
         smt_summaryt *sum = new smt_summaryt();
         string fun_name = id2string(it->get_iface().function_id);
-        decider.adjust_function(*sum, common, fun_name, false);
+        //decider.adjust_function(*sum, common, fun_name, false);
+        decider.generalize_summary(*sum, common, fun_name, false);
+        sum->setLogic(decider.getLogic());
+
         templates.push_back(sum);
     }
 #else
@@ -209,6 +212,7 @@ void smt_partitioning_target_equationt::convert_partition_summary(
 #           ifdef DEBUG_SSA_PRINT
             out_terms << ";;; Substituting summary #" << *it << "\n";
             summary.print(out_terms);
+            summary.print(std::cout);
 #           endif
             summary.substitute(decider, common_symbs, partition.inverted_summary);
         }
@@ -868,12 +872,12 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
 
         string fun_name = id2string(partition.get_iface().function_id);
         // MB: we do not want to store summary for the cprover initialize method;
-        // this check should probably be somewhere else, e.g. not computing summary for it at all
+        // FIXME this check should probably be somewhere else, e.g. not computing summary for it at all
         if (is_cprover_initialize_method(fun_name)) {
             continue;
         }
         //interpolator.adjust_function(*itp, common_symbs, fun_name);
-        interpolator.generalize_summary(*itp, common_symbs, fun_name);
+        interpolator.generalize_summary(*itp, common_symbs, fun_name, true);
 
         // Store the interpolant
         summary_idt summary_id = summary_store->insert_summary(*itp);

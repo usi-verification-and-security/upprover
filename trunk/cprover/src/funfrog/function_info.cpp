@@ -16,6 +16,8 @@
 #include "solvers/smtcheck_opensmt2.h"
 #include "solvers/satcheck_opensmt2.h"
 
+#include "hifrog.h"
+
 /*******************************************************************\
 
 Function: function_infot::add_summary
@@ -225,8 +227,7 @@ void function_infot::deserialize_infos(smt_summary_storet* store, function_infos
   for (unsigned i = 0; i < nfunctions; ++i)
   {
       Tterm *sum = store->find_summary(i).getTterm();
-      std::string f_name = smtcheck_opensmt2t::unquote_varname(sum->getName());
-      f_name = smtcheck_opensmt2t::remove_index(f_name);
+      std::string f_name = removeCounter((sum->getName()));
 
       irep_idt f_id(f_name);
       function_infost::iterator it = infos.find(f_id);

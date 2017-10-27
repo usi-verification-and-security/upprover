@@ -8,6 +8,7 @@ Author: Grigory Fedyukovich
 #include <queue>
 
 #include "smtcheck_opensmt2_uf.h"
+#include "../hifrog.h"
 
 //#define SMT_DEBUG
 //#define DEBUG_SSA_SMT

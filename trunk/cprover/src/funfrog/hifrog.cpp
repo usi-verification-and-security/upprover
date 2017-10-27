@@ -85,7 +85,7 @@ std::string fix_symex_nondet_name(const exprt &expr) {
     if (expr.id() == ID_nondet_symbol)
     {
         if (name_expr.find(NONDETv2) != std::string::npos) {
-            name_expr = name_expr.insert(13,1, COUNTER);
+            name_expr = name_expr.insert(13,1, HifrogStringConstants::COUNTER_SEP);
         } else if (name_expr.find(NONDETv1) != std::string::npos) {
             name_expr = name_expr.insert(7, SYMEX_NONDET);
         }  
@@ -97,3 +97,31 @@ std::string fix_symex_nondet_name(const exprt &expr) {
 bool is_cprover_initialize_method(const std::string & name) {
     return name == INITIALIZE;
 }
+
+namespace{
+    bool is_number(const std::string& s)
+    {
+        return !s.empty() && std::find_if(s.begin(),
+              s.end(), [](char c) { return !std::isdigit(c); }) == s.end();
+    }
+}
+
+std::string unquote(const std::string& name){
+    assert(name[0] == HifrogStringConstants::SMTLIB_QUOTE && name.back() == HifrogStringConstants::SMTLIB_QUOTE);
+    return name.substr(1, name.length() - 1);
+}
+
+std::string quote(const std::string& name){
+    return HifrogStringConstants::SMTLIB_QUOTE + name + HifrogStringConstants::SMTLIB_QUOTE;
+}
+
+std::string removeCounter(const std::string& name){
+    auto pos = name.find(HifrogStringConstants::COUNTER_SEP);
+    assert(pos != std::string::npos);
+    assert(is_number(name.substr(pos + 1)));
+    return name.substr(0, pos);
+}
+
+const std::string HifrogStringConstants::GLOBAL_OUT_SUFFIX { "#global_out" };
+const char HifrogStringConstants::SMTLIB_QUOTE = '|';
+const char HifrogStringConstants::COUNTER_SEP = '#';

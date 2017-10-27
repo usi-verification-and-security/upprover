@@ -15,8 +15,12 @@
 #define SMT_ASSERTION_SUM_H
 
 #include "assertion_sum.h"
-#include "solvers/smtcheck_opensmt2.h"
-#include "smt_partitioning_target_equation.h"
+
+class assertion_infot;
+class namespacet;
+class smt_partitioning_target_equationt;
+class smtcheck_opensmt2t;
+class interpolating_solvert;
 
 class smt_assertion_sumt : public assertion_sumt 
 {

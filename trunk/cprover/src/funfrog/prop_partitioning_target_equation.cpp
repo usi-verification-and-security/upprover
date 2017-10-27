@@ -14,6 +14,7 @@ Author: Ondrej Sery
 #include "expr_pretty_print.h"
 #include "solvers/sat/cnf.h"
 #include "solvers/satcheck_opensmt2.h"
+#include "hifrog.h"
 
 //#define DEBUG_ITP // ITP of SAT - testing
 

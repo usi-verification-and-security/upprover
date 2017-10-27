@@ -1,25 +1,23 @@
 #ifndef CPROVER_DEPENDECY_CHECKER_H
 #define CPROVER_DEPENDECY_CHECKER_H
 
-#include <goto-programs/goto_program.h>
-
-#include <namespace.h>
 #include <symbol.h>
 #include <ui_message.h>
-
-#include <base_type.h>
 #include <time_stopping.h>
-#include "partitioning_slice.h"
-#include "subst_scenario.h"
-#include "nopartition/smt_symex_target_equation.h"
 
-#include <map>
-#include <queue>
+#include <goto-symex/symex_target_equation.h>
+#include <goto-symex/slice.h>
 
 #include <boost/pending/disjoint_sets.hpp>
+#include <iostream>
+#include <map>
 
-using namespace std;
-using namespace boost;
+
+class smt_symex_target_equationt;
+class goto_programt;
+class namespacet;
+class subst_scenariot;
+class partitioning_target_equationt;
 
 #define INDEPT false
 #define DEPT true
@@ -66,12 +64,13 @@ public:
   typedef std::list<symex_target_equationt::SSA_stept*> SSA_stepst;
   typedef SSA_stepst::iterator SSA_step_reft;
 
-  typedef map<string, size_t> rank_t;
-  typedef map<string, string> parent_t;
+  typedef std::map<std::string, size_t> rank_t;
+  typedef std::map<std::string, std::string> parent_t;
 
-  typedef disjoint_sets<associative_property_map<rank_t>, associative_property_map<parent_t>, find_with_full_path_compression> str_disj_set;
+  typedef boost::disjoint_sets<boost::associative_property_map<rank_t>,
+          boost::associative_property_map<parent_t>, boost::find_with_full_path_compression> str_disj_set;
 
-  void find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2);
+  void find_var_deps(str_disj_set &deps_ds, std::map<std::string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2);
   void find_assert_deps();
   virtual long find_implications()=0;
   void get_minimals();
@@ -79,16 +78,16 @@ public:
   void print_SSA_steps_infos();
   void print_SSA_steps();
 #ifdef DEBUG_SSA_PRINT  
-  void print_expr_operands(ostream &out, exprt expr, int indent);
+  void print_expr_operands(std::ostream &out, exprt expr, int indent);
 #endif
   void get_expr_symbols(const exprt &expr, symbol_sett& symbols);
-  void print_expr_symbols(ostream &out, exprt expr);
-  void print_expr_symbols(ostream &out, symbol_sett& s);
-  string variable_name(string name);
-  string variable_name(dstringt name);
-  void print_dependents(map<string,bool> dependents, ostream &out);
+  void print_expr_symbols(std::ostream &out, exprt expr);
+  void print_expr_symbols(std::ostream &out, symbol_sett& s);
+  std::string variable_name(std::string name);
+  std::string variable_name(dstringt name);
+  void print_dependents(std::map<std::string,bool> dependents, std::ostream &out);
 
-  virtual pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2)=0;
+  virtual std::pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2)=0;
   bool compare_assertions(SSA_step_reft &a, SSA_step_reft &b);
 
 protected:
@@ -98,19 +97,19 @@ protected:
   subst_scenariot &omega;
 
   int last_label;
-  map<string,int*> label;
-  map<string,map<string,bool> > var_deps;
-  map<SSA_step_reft,map<SSA_step_reft,bool> > assert_deps;
-  map<SSA_step_reft,map<SSA_step_reft,bool> > assert_imps;
-  map<SSA_step_reft,bool> toCheck;
+  std::map<std::string,int*> label;
+  std::map<std::string,std::map<std::string,bool> > var_deps;
+  std::map<SSA_step_reft,std::map<SSA_step_reft,bool> > assert_deps;
+  std::map<SSA_step_reft,std::map<SSA_step_reft,bool> > assert_imps;
+  std::map<SSA_step_reft,bool> toCheck;
 
-  vector<SSA_step_reft> asserts;
-  map<string,int> instances;
+  std::vector<SSA_step_reft> asserts;
+  std::map<std::string,int> instances;
   unsigned treshold;
 
   SSA_stepst SSA_steps; // similar stuff to what symex_target_equationt has
   std::map<exprt, exprt> SSA_map;
-  vector<string> equation_symbols;
+  std::vector<std::string> equation_symbols;
   unsigned long impl_timeout;
   
   void reconstruct_exec_SSA_order(partitioning_target_equationt &equation);

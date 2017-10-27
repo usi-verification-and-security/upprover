@@ -7,6 +7,7 @@
  */
 
 #include "prop_dependency_checker.h"
+#include "hifrog.h"
 
 pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
@@ -52,7 +53,7 @@ delete opensmt;
     default:
       throw "unexpected result from dec_solve()";
   }
-  } catch (const bad_alloc &e)
+  } catch (const std::bad_alloc &e)
   {
     std::cout  << "smth is wrong: " << e.what()  << std::endl;
     return make_pair(true, (fine_timet)0);
@@ -212,7 +213,7 @@ long prop_dependency_checkert::find_implications()
 
     hl_stronger.close();
     hl_weaker.close();
-  }  catch (const bad_alloc &e)
+  }  catch (const std::bad_alloc &e)
   {
     cout  << "smth is very wrong: " << e.what()  << std::endl;
 
