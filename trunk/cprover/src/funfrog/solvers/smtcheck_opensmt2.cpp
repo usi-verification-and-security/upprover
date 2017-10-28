@@ -916,6 +916,7 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<s
             }
             else{
                 globals.insert(symbol_name);
+                symbol_name = symbol_name + HifrogStringConstants::GLOBAL_INPUT_SUFFIX;
             }
         }
         // get new PTRef for the variable with new name

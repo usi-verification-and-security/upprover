@@ -123,6 +123,7 @@ std::string removeCounter(const std::string& name){
     return name.substr(0, pos);
 }
 
-const std::string HifrogStringConstants::GLOBAL_OUT_SUFFIX { "#global_out" };
+const std::string HifrogStringConstants::GLOBAL_OUT_SUFFIX { "#out" };
+const std::string HifrogStringConstants::GLOBAL_INPUT_SUFFIX { "#in" };
 const char HifrogStringConstants::SMTLIB_QUOTE = '|';
 const char HifrogStringConstants::COUNTER_SEP = '#';

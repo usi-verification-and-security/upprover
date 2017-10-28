@@ -194,12 +194,27 @@ void smt_itpt::generalize(const prop_conv_solvert& mapping,
 
 
 namespace{
-    bool isGlobalName(const std::string& name){
+    inline bool isInputGlobalName(const std::string& name){
+        return name.find(HifrogStringConstants::GLOBAL_INPUT_SUFFIX) != std::string::npos;
+    }
+
+    inline bool isOutputGlobalName(const std::string& name){
         return name.find(HifrogStringConstants::GLOBAL_OUT_SUFFIX) != std::string::npos;
     }
 
+    bool isGlobalName(const std::string& name){
+        return isInputGlobalName(name) || isOutputGlobalName(name);
+    }
+
     std::string stripGlobalSuffix(const std::string& name){
-        return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_OUT_SUFFIX.length());
+        if(isInputGlobalName(name)){
+            return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_INPUT_SUFFIX.length());
+        }
+        else if(isOutputGlobalName(name)){
+            return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_OUT_SUFFIX.length());
+        }
+        assert(false);
+        return name;
     }
 }
 

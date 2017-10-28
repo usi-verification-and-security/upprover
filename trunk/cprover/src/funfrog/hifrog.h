@@ -85,6 +85,7 @@ std::string removeCounter(const std::string& name);
 
 struct HifrogStringConstants{
     static const std::string GLOBAL_OUT_SUFFIX;
+    static const std::string GLOBAL_INPUT_SUFFIX;
     static const char SMTLIB_QUOTE;
     static const char COUNTER_SEP;
 };
