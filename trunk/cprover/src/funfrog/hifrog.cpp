@@ -1,6 +1,7 @@
 #include "hifrog.h"
 #include <string.h>
 #include <iostream>
+#include <algorithm>
 
 /* Get the name of an SSA expression without the instance number 
  *    
