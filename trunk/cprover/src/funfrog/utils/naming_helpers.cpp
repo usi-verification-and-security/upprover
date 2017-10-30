@@ -4,6 +4,7 @@
 
 #include "naming_helpers.h"
 #include <cassert>
+#include <algorithm>
 
 namespace{
     bool is_number(const std::string& s)
