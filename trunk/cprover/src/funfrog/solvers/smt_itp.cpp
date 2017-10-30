@@ -1,22 +1,51 @@
 #include "smtcheck_opensmt2.h"
-#include "../hifrog.h"
+#include "../utils/naming_helpers.h"
 #include "smt_itp.h"
+#include "../hifrog.h"
 
 //#define DEBUG_ITP_SMT
 # ifdef DEBUG_ITP_SMT
 #include <iostream>
 #endif
 
+// helper functions for dealing with names of global variables in the summaries
+namespace{
+    inline bool isInputGlobalName(const std::string& name){
+        return name.find(HifrogStringConstants::GLOBAL_INPUT_SUFFIX) != std::string::npos;
+    }
+
+    inline bool isOutputGlobalName(const std::string& name){
+        return name.find(HifrogStringConstants::GLOBAL_OUT_SUFFIX) != std::string::npos;
+    }
+
+    bool isGlobalName(const std::string& name){
+        return isInputGlobalName(name) || isOutputGlobalName(name);
+    }
+
+    std::string stripGlobalSuffix(const std::string& name){
+        if(isInputGlobalName(name)){
+            return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_INPUT_SUFFIX.length());
+        }
+        else if(isOutputGlobalName(name)){
+            return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_OUT_SUFFIX.length());
+        }
+        assert(false);
+        return name;
+    }
+}
+
 bool
 smt_itpt::usesVar(symbol_exprt& symb, unsigned idx)
 {
     assert(tterm != NULL && logic != NULL);
-    string var_name = smtcheck_opensmt2t::remove_invalid(get_symbol_name(symb).c_str());
+    std::string var_name = get_symbol_name(symb).c_str();
     const vec<PTRef>& args = tterm->getArgs();
     for(int i = 0; i < args.size(); ++i)
     {
         string pname = logic->getSymName(args[i]);
-        //pname = smtcheck_opensmt2t::remove_index(pname);
+        if(isGlobalName(pname)){
+            pname = stripGlobalSuffix(pname);
+        }
         if(pname == var_name) return true;
     }
     return false;
@@ -192,31 +221,6 @@ void smt_itpt::generalize(const prop_conv_solvert& mapping,
  // TODO: Re-write the code for SMT (see the Prop version)
 }
 
-
-namespace{
-    inline bool isInputGlobalName(const std::string& name){
-        return name.find(HifrogStringConstants::GLOBAL_INPUT_SUFFIX) != std::string::npos;
-    }
-
-    inline bool isOutputGlobalName(const std::string& name){
-        return name.find(HifrogStringConstants::GLOBAL_OUT_SUFFIX) != std::string::npos;
-    }
-
-    bool isGlobalName(const std::string& name){
-        return isInputGlobalName(name) || isOutputGlobalName(name);
-    }
-
-    std::string stripGlobalSuffix(const std::string& name){
-        if(isInputGlobalName(name)){
-            return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_INPUT_SUFFIX.length());
-        }
-        else if(isOutputGlobalName(name)){
-            return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_OUT_SUFFIX.length());
-        }
-        assert(false);
-        return name;
-    }
-}
 
 /*******************************************************************\
 

@@ -11,6 +11,7 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2.h"
 #include "../hifrog.h"
 #include "smt_itp.h"
+#include "../utils/naming_helpers.h"
 
 //#define SMT_DEBUG
 //#define DEBUG_SSA_SMT

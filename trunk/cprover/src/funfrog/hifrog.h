@@ -78,22 +78,6 @@ static inline bool is_cprover_builtins_var(const exprt& e)
     return is_cprover_builtins_var(id2string(e.get(ID_identifier)));
 }
 
-std::string unquote(const std::string& name);
-std::string quote(const std::string& name);
-std::string removeCounter(const std::string& name);
-
-
-struct HifrogStringConstants{
-    static const std::string GLOBAL_OUT_SUFFIX;
-    static const std::string GLOBAL_INPUT_SUFFIX;
-    static const char SMTLIB_QUOTE;
-    static const char COUNTER_SEP;
-};
-
-static inline std::string add_counter(const std::string& name, int counter){
-    return name + HifrogStringConstants::COUNTER_SEP + std::to_string(counter);
-}
-
 
 #endif /* HIFROG_H */
 

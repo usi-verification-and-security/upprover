@@ -748,6 +748,7 @@ void summarizing_checkert::extract_interpolants_smt (smt_assertion_sumt& prop, s
             summarization_context.get_function_info(
             summary_info.get_function_id());
 
+    // MB TODO: check if this summary is not already in the store! (or do even more aggresive optimizations of the store
     function_info.add_summary(*summary_store, it->second, false);
            // !options.get_bool_option("no-summary-optimization"));
     

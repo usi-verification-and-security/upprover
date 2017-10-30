@@ -87,7 +87,7 @@ set(HIFROG_SOURCE_FILES
         version.h
         xml_interface.cpp
         xml_interface.h
-        )
+    utils/naming_helpers.h utils/naming_helpers.cpp)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../cmake_modules/")
 
@@ -99,6 +99,8 @@ target_compile_options(hifrog PRIVATE -Werror)
 
 target_compile_definitions(hifrog
         PUBLIC -DPRODUCE_PROOF)
+
+target_compile_definitions(hifrog PRIVATE -DDEBUG_PARTITIONING -DDEBUG_SSA_PRINT)
 
 target_link_libraries(hifrog -lopensmt2 ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 

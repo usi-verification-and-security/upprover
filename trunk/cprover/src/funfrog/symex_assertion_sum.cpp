@@ -18,6 +18,7 @@
 #include "partitioning_slice.h"
 #include "symex_assertion_sum.h"
 #include "hifrog.h"
+#include "utils/naming_helpers.h"
 
 /*******************************************************************
 
