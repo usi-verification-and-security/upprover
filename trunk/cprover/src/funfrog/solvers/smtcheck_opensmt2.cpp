@@ -879,6 +879,7 @@ PTRef smtcheck_opensmt2t::mkCustomFunction(SymRef decl, vec<PTRef>& args)
     return ret;
 }
 
+#ifdef PRODUCE_PROOF
 namespace {
     bool is_global(const exprt& expr){
         if(!expr.get_bool(ID_C_SSA_symbol)){
@@ -941,6 +942,7 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<s
     interpolant.setInterpolant(new_root);
     tt->setBody(new_root);
 }
+#endif // PRODUCE_PROOF
 
 //FIXME remove this!
 string
