@@ -2,6 +2,7 @@ include ../config.inc
 -include local
 
 SHARED_SRC := \
+      utils/naming_helpers.cpp \
       hifrog.cpp \
       expr_pretty_print.cpp \
       function_info.cpp \
