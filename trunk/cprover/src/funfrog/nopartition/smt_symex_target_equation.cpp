@@ -14,7 +14,11 @@
 #include "smt_symex_target_equation.h"
 #include "../hifrog.h"
 #include "../solvers/smtcheck_opensmt2.h"
+
+#ifdef DEBUG_SSA_PRINT
+#include <iostream>
 #include "../expr_pretty_print.h"
+#endif
 
 void smt_symex_target_equationt::convert(smtcheck_opensmt2t &decider) 
 {
@@ -263,13 +267,13 @@ bool smt_symex_target_equationt::isRoundModelEq(const exprt &expr)
 
     // Start checking if it is auto gen code for rounding model
     string str = id2string((expr.operands()[0]).get(ID_identifier));
-    if (str.find(CPROVER_BUILDINS) != std::string::npos)
+    if (is_cprover_builtins_var(str))
         return true;
     
     if (expr.operands().size() < 2) return false;
     
     str = id2string((expr.operands()[1]).get(ID_identifier));
-    if (str.find(CPROVER_BUILDINS) != std::string::npos)
+    if (is_cprover_builtins_var(str))
         return true;
 
     return false;

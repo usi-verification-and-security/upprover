@@ -16,17 +16,17 @@ Author: Ondrej Sery
 //#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
 // End of working debugging flags
 
-#include <goto-symex/symex_target_equation.h>
 #include <symbol.h>
-#include "partition.h"
-
 #ifdef DEBUG_SSA_PRINT
+#include <iostream>
 #include "expr_pretty_print.h"
-#endif //DEBUG_SSA_PRINT
+#endif
+
+#include <goto-symex/symex_target_equation.h>
+#include "partition.h"
 
 class summarization_contextt;
 class partition_ifacet;
-
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 

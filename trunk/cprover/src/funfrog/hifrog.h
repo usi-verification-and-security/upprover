@@ -11,6 +11,7 @@
 #ifndef HIFROG_H
 #define HIFROG_H
 
+//#define DEBUG_SSA_PRINT // To Enable SSA Tree print
 #include <ssa_expr.h>
 
 // For now we have only one thread any hows
@@ -18,9 +19,6 @@
 #define TMP_FUNC_RETURN "::$tmp::return_value"
 #define LATTICE_TMP_FUNC_RETURN "call__lattice::$tmp_return_value_"
 #define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var#"
-#define OPENSMT_IN "#in"
-#define OPENSMT_OUT "#out"
-#define OPENSMT_INVS "#invs"
 
 #define CALLSTART_SYMBOL "hifrog::fun_start"
 #define CALLEND_SYMBOL "hifrog::fun_end"
@@ -32,11 +30,8 @@
 #define DYNAMIC_OBJ "symex_dynamic::dynamic_object"
 #define GOTO_GUARD "goto_symex::\\guard#"
 
-#define NIL "nil"
 #define NONDETv1 "symex::" // Cprover nondet symbol
 #define NONDETv2 "symex::nondet" // Cprover nonder symbol too
-#define SPERATOR "::" // split names in cprover
-#define SPERATOR_PREFIX "_" // Cprover const to split prefix from instance
 #define SYMEX_NONDET "nondet#" //"symex::nondet#" - fix to
 #define IO_CONST "symex::io::" // Update according to goto_symex/symex_target_equation
 #define RETURN_NIL_CPROVER "return'!0" // Check if changed; the nil (function_call.lhs().is_nil()), changed into |return'!0|

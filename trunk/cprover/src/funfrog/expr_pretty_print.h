@@ -9,10 +9,10 @@ Author: Ondrej Sery
 #ifndef CPROVER_EXPR_PRETTY_PRINT_H
 #define CPROVER_EXPR_PRETTY_PRINT_H
 
-#include <expr.h>
-
-//#define DEBUG_SSA_PRINT
+#include "hifrog.h" // DEBUG_SSA_PRINT flag is defined there
 #ifdef DEBUG_SSA_PRINT
+#include <expr.h>
+//#include "hifrog.h"
 class expr_pretty_printt
 {
 public:

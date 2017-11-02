@@ -498,28 +498,3 @@ void smt_itpt::deserialize(std::istream& in)
     }
   }
 } // NOT IN USE
-
-/*******************************************************************\
-
-Function: smt_itpt::is_system_translation_var
-
-  Inputs:
-
- Outputs:
-
- Purpose: Check if a var is L1 but looks like L2 because of naming inner 
- * convention of Cprover or OpenSMT
-
-\*******************************************************************/
-bool smt_itpt::is_system_translation_var(std::string name, bool is_smt_only) const {
-    if (name.find(OPENSMT_IN) != string::npos) return true;
-    if (name.find(OPENSMT_OUT) != string::npos) return true;
-    if (name.find(OPENSMT_INVS) != string::npos) return true;
-
-    if (is_smt_only) 
-        return false;
-    else 
-        return (name.find(FUNC_RETURN) != string::npos);
-}
-
-

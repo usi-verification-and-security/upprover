@@ -49,10 +49,10 @@ void error_tracet::build_goto_trace (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find(ROUNDING_MODE)!=std::string::npos)
+    if (is_cprover_rounding_mode_var(str))
     	continue;
     
-    if (str.find(CPROVER_BUILDINS)!=std::string::npos)
+    if (is_cprover_builtins_var(str))
     	continue;
 
     if (str.find(DYNAMIC_OBJ)!=std::string::npos)
@@ -180,10 +180,10 @@ void error_tracet::build_goto_trace_formula (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find(ROUNDING_MODE)!=std::string::npos)
+    if (is_cprover_rounding_mode_var(str))
     	continue;
     
-    if (str.find(CPROVER_BUILDINS)!=std::string::npos)
+    if (is_cprover_builtins_var(str))
     	continue;
 
     if (str.find(DYNAMIC_OBJ)!=std::string::npos)
@@ -682,10 +682,10 @@ void error_tracet::build_goto_trace (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find(ROUNDING_MODE)!=std::string::npos)
+    if (is_cprover_rounding_mode_var(str))
     	continue;
     
-    if (str.find(CPROVER_BUILDINS)!=std::string::npos)
+    if (is_cprover_builtins_var(str))
     	continue;
 
     if (str.find(DYNAMIC_OBJ)!=std::string::npos)

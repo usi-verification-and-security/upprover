@@ -12,7 +12,6 @@ Author: Ondrej Sery
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
-#include "hifrog.h"
 
 #define EDGE_COLOR "\033[2;37m"
 #define TYPE_COLOR "\033[0;37m"
@@ -36,12 +35,12 @@ expr_pretty_printt::addToDeclMap(const exprt &expr)
     type_expr[0] = toupper(type_expr[0]);
     if (type_expr.compare("Signedbv") == 0) 
     {
-        type_expr = "Real";
+        type_expr = SMT_REAL + " ";
     }
     
     // Fix Variable name - sometimes "nondet" name is missing, add it for these cases
     std::string name_expr = fix_symex_nondet_name(expr);
-    if (name_expr.find(ROUNDING_MODE) != std::string::npos) 
+    if (is_cprover_rounding_mode_var(name_expr))
     {
         // We don't save __cprover built-ins
         return "";
