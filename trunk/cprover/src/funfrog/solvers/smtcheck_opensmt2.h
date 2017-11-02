@@ -110,7 +110,6 @@ public:
 #endif
 
     static std::string quote_varname(const string& varname); // Common to all
-    static std::string remove_invalid(const string& varname); // Common to all
 
   // Common to all
   void start_encoding_partitions() {

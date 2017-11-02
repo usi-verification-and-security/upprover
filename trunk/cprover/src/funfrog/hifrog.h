@@ -30,6 +30,7 @@
 #define DYNAMIC_OBJ "symex_dynamic::dynamic_object"
 #define GOTO_GUARD "goto_symex::\\guard#"
 
+#define NIL "nil"
 #define NONDETv1 "symex::" // Cprover nondet symbol
 #define NONDETv2 "symex::nondet" // Cprover nonder symbol too
 #define SYMEX_NONDET "nondet#" //"symex::nondet#" - fix to

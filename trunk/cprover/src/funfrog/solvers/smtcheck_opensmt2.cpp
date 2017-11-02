@@ -578,6 +578,7 @@ Function: smtcheck_opensmt2t::extract_expr_str_name
 std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 {
     string str = fix_symex_nondet_name(expr);
+    str.erase(std::remove(str.begin(),str.end(),'\\'),str.end());
     if (is_cprover_rounding_mode_var(str)) 
     {
     #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
@@ -600,7 +601,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     // KE: assure the encoding is not using the variables name as is (why there is nil here?)
     assert("Error: using non-SSA symbol in the SMT encoding" 
             && ((str.find(HifrogStringConstants::COUNTER_SEP) != std::string::npos)
-                || (str.compare("nil") == 0) || IO_CONST));
+                || (str.compare(NIL) == 0) || IO_CONST));
     
     return str;
 }
@@ -822,19 +823,6 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<s
     tt->setBody(new_root);
 }
 #endif // PRODUCE_PROOF
-
-//FIXME remove this!
-string
-smtcheck_opensmt2t::remove_invalid(const string& varname)
-{
-    string ans("");
-    for(unsigned int i = 0; i < varname.length(); ++i)
-        {
-            if(varname[i] != '\\')
-                ans += varname[i];
-        }
-    return ans;
-}
 
 //FIXME remove this!
 string

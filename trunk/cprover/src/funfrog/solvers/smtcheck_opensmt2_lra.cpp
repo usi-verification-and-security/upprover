@@ -554,12 +554,11 @@ literalt smtcheck_opensmt2t_lra::lunsupported2var(const exprt &expr)
 
 literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 {
-    const string _str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    string str = remove_invalid(_str);
+    string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
     str = quote_varname(str);
 
     // Nil is a special case - don't create a var but a val of true
-    if (_str.compare("nil") == 0) return const_var(true);
+    if (str.compare(NIL) == 0) return const_var(true);
 
 #ifdef SMT_DEBUG
     cout << "; (lvar) Create " << str << endl;

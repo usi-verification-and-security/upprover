@@ -614,7 +614,7 @@ void error_tracet::show_expr(
     if (is_removed) // only for the value check
         out << "(assignment removed)";
     else if (expr.id() == ID_nil)
-        out << "nil";
+        out << NIL;
     else if (expr.id() == ID_constant)
         out << expr.get(ID_value);
     else
