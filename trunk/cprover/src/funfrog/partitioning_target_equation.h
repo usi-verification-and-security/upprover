@@ -242,7 +242,7 @@ protected:
 
   // Fills in the list of symbols that the partition has in common with its
   // environment
-  void fill_common_symbols(const partitiont& partition,
+  virtual void fill_common_symbols(const partitiont& partition,
     std::vector<symbol_exprt>& common_symbols) const;
 
   // Fill in ids of all the child partitions
@@ -284,7 +284,7 @@ protected:
   friend class partitioning_slicet;
   
 protected:
-    virtual bool is_smt_encoding()=0; // KE: Temp. Just to force virtual for compilation
+    //virtual bool is_smt_encoding()=0; // KE: Temp. Just to force virtual for compilation
 };
 
 #endif

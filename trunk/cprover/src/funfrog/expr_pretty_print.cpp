@@ -35,7 +35,8 @@ expr_pretty_printt::addToDeclMap(const exprt &expr)
     type_expr[0] = toupper(type_expr[0]);
     if (type_expr.compare("Signedbv") == 0) 
     {
-        type_expr = SMT_REAL + " ";
+        type_expr = SMT_REAL;
+        type_expr += " ";
     }
     
     // Fix Variable name - sometimes "nondet" name is missing, add it for these cases

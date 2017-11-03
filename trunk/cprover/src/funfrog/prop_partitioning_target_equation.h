@@ -67,7 +67,7 @@ protected:
   // Override
   virtual void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
   
-  virtual bool is_smt_encoding() {return false;} // KE: Temp. Just to force virtual for compilation
+  //virtual bool is_smt_encoding() {return false;} // KE: Temp. Just to force virtual for compilation
 };
 
 #endif

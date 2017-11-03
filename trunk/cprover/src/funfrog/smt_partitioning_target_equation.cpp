@@ -243,7 +243,7 @@ void smt_partitioning_target_equationt::convert_partition_assignments(
             // Only if not an assignment to rounding model print it + add it to LRA statements
             if (!isRoundModelEq(tmp)) {
 #     ifdef DEBUG_SSA
-                expr_pretty_print(std::cout << "ASSIGN-OUT:" << std::endl, tmp, 2);
+                expr_pretty_print(std::cout << "\nASSIGN-OUT:" << std::endl, tmp, 2);
                 //expr_ssa_print_test(&partition_smt_decl, out_code << "(assign ", tmp);
 #     endif
 #     ifdef DEBUG_SSA_PRINT
@@ -914,4 +914,17 @@ bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
 bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
     throw std::logic_error("Should not be called in non-debug setting!");
 }
+
+void smt_partitioning_target_equationt::fill_common_symbols(const partitiont &partition,
+                                                            std::vector<symbol_exprt> &common_symbols) const {
+    partitioning_target_equationt::fill_common_symbols(partition, common_symbols);
+    // remove CPROVER_rounding_mode symbol from common symbols
+
+    common_symbols.erase(std::remove_if(common_symbols.begin(), common_symbols.end(), [](const symbol_exprt& expr){
+        bool present = is_cprover_rounding_mode_var(expr);
+        return present;
+    }),
+    common_symbols.end());
+}
+
 #endif

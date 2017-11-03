@@ -40,6 +40,9 @@ public:
 
   std::vector<exprt>& get_exprs_to_refine () { return exprs; };
 
+  void fill_common_symbols(const partitiont &partition,
+                           std::vector<symbol_exprt> &common_symbols) const override;
+
 protected:
 
   std::vector<exprt> exprs;
@@ -69,7 +72,7 @@ protected:
   void convert_partition_goto_instructions(smtcheck_opensmt2t &decider,
     partitiont& partition);
   
-  virtual bool is_smt_encoding() {return true;} // KE: Temp. Just to force virtual for compilation
+  //virtual bool is_smt_encoding() {return true;} // KE: Temp. Just to force virtual for compilation
 
 private:
   bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
