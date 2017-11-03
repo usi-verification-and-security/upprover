@@ -16,7 +16,6 @@ Module: Wrapper for OpenSMT2
 #include "smt_itp.h"
 #include <opensmt/opensmt2.h>
 #include <expr.h>
-#include "smtcheck_opensmt2.h"
 
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;

@@ -14,6 +14,7 @@
 #include "smt_symex_target_equation.h"
 #include "../hifrog.h"
 #include "../solvers/smtcheck_opensmt2.h"
+#include <solvers/prop/literal_expr.h>
 
 #ifdef DEBUG_SSA_PRINT
 #include <iostream>

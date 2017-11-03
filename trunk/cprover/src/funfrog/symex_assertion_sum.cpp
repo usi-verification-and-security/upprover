@@ -19,6 +19,8 @@
 #include "symex_assertion_sum.h"
 #include "hifrog.h"
 #include "utils/naming_helpers.h"
+#include "partition_iface.h"
+#include "summarization_context.h"
 
 /*******************************************************************
 
@@ -1743,7 +1745,7 @@ void symex_assertion_sumt::end_symex(statet &state)
 bool symex_assertion_sumt::is_unwind_loop(statet &state)
 {
     statet::framet &frame=state.top();
-    
+
     unsigned int unwind_counter;
     if (frame.loop_iterations[goto_programt::loop_id(state.source.pc)].count > 0)
     {
@@ -1754,7 +1756,8 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
     {
         // If we are in recursion - we are in a loop, return true
         return true;
-    } 
+    }
+        // FIXME: use of uninitialized variable unwind_counter!!!
     else if ((!frame.loop_iterations.empty()) && (prev_unwind_counter <= unwind_counter)) 
     {
         // If there are loops in this function, and we are still opening it, we are in a loop
@@ -1780,7 +1783,7 @@ void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id,
     symbol_exprt symbol(base_symbol_id, type);
 
     if(is_rename) {
-        // first create L1 version version of this symbol\
+        // first create L1 version version of this symbol
         state.rename(symbol, ns, goto_symex_statet::levelt::L1);
         // here we want to create the correct L2 version of the symbol
         state.rename(symbol, ns, goto_symex_statet::levelt::L2);
@@ -1801,4 +1804,31 @@ void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id,
         ret_symbol = symbol;
     }
 //    std::cout << "\n; New symbol: \n" << ret_symbol.pretty() << '\n';
+}
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::new_partition_iface
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Allocate new partition_interface
+
+\*******************************************************************/
+partition_ifacet& symex_assertion_sumt::new_partition_iface(summary_infot& summary_info,
+                                      partition_idt parent_id, unsigned call_loc) {
+    partition_ifacet* item = new partition_ifacet(summary_info, parent_id, call_loc);
+    partition_ifaces.push_back(item);
+
+    partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
+
+    if (it == partition_iface_map.end()) {
+        it = partition_iface_map.insert(partition_iface_mapt::value_type(
+                &summary_info, partition_iface_ptrst())).first;
+    }
+
+    it->second.push_back(item);
+    return *item;
 }

@@ -10,6 +10,7 @@
 
 #include <std_expr.h>
 #include "summary_info.h"
+#include "summarization_context.h"
 
 void summary_infot::set_initial_precision(
     summary_precisiont default_precision,
@@ -118,4 +119,14 @@ const goto_programt::const_targett* summary_infot::get_target()
   }
   assert(false);
   return NULL;
+}
+
+unsigned summary_infot::get_subtree_size(const summarization_contextt& summarization_context){
+    unsigned res = summarization_context.get_function(function_id).body.instructions.size();
+    for (call_sitest::iterator it = call_sites.begin();
+         it != call_sites.end(); ++it)
+    {
+        res += it->second.get_subtree_size(summarization_context);
+    }
+    return res;
 }

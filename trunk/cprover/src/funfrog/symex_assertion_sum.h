@@ -15,7 +15,7 @@
 #include <util/symbol.h>
 #include <util/ui_message.h>
 
-#include "partition_iface.h"
+#include "partition_iface_fwd.h"
 #include "partitioning_target_equation.h"
 
 //#define DEBUG_PARTITIONING // Debug this class
@@ -24,7 +24,7 @@ class goto_programt;
 class goto_functionst;
 class goto_symex_statet;
 class namespacet;
-class assertion_info;
+class assertion_infot;
 class summary_infot;
 class summarization_contextt;
 
@@ -343,20 +343,7 @@ private:
 
   // Allocate new partition_interface
   partition_ifacet& new_partition_iface(summary_infot& summary_info,
-          partition_idt parent_id, unsigned call_loc) {
-    partition_ifacet* item = new partition_ifacet(summary_info, parent_id, call_loc);
-    partition_ifaces.push_back(item);
-    
-    partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
-    
-    if (it == partition_iface_map.end()) {
-      it = partition_iface_map.insert(partition_iface_mapt::value_type(
-              &summary_info, partition_iface_ptrst())).first;
-    }
-    
-    it->second.push_back(item);
-    return *item;
-  }
+          partition_idt parent_id, unsigned call_loc);
    
 protected:
   virtual void phi_function(

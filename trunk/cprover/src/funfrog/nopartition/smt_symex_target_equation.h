@@ -94,9 +94,8 @@ protected:
 
     std::vector<exprt> exprs; // Expr to refine method
 private:
+    // MB: FIXME: this field is not used! Why it is here?
     std::vector<unsigned>& clauses;
-
-    unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
     
     bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
 
@@ -127,7 +126,8 @@ private:
     void saveFirstCallExpr(const exprt& expr);
     bool isFirstCallExpr(const exprt& expr);
 #endif
-    
+
+    unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
     
 };
 

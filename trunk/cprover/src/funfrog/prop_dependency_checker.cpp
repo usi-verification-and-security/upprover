@@ -8,6 +8,8 @@
 
 #include "prop_dependency_checker.h"
 #include "hifrog.h"
+#include <solvers/flattening/bv_pointers.h>
+#include "solvers/satcheck_opensmt2.h"
 
 pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
@@ -56,17 +58,17 @@ delete opensmt;
   } catch (const std::bad_alloc &e)
   {
     std::cout  << "smth is wrong: " << e.what()  << std::endl;
-    return make_pair(true, (fine_timet)0);
+    return make_pair(true, fine_timet(0));
   }
   catch (const char* e)
   {
     std::cout << std::endl << "Caught exception: " << e << std::endl;
-    return make_pair(true, (fine_timet)0);
+    return make_pair(true, fine_timet(0));
   }
   catch (const std::string &s)
   {
     std::cout << std::endl << "Caught exception: " << s << std::endl;
-    return make_pair(true, (fine_timet)0);
+    return make_pair(true, fine_timet(0));
   }
 }
 
@@ -81,8 +83,8 @@ long prop_dependency_checkert::find_implications()
   unsigned discarded = 0;
   int checks=0;
   int impchecks=0;
-  vector<bool> stronger(asserts.size(), true);
-  vector<bool> weaker(asserts.size(), true);
+  std::vector<bool> stronger(asserts.size(), true);
+  std::vector<bool> weaker(asserts.size(), true);
   
     /*
     cout << "Printing assertions before ordering." << std::endl;

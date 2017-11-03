@@ -18,20 +18,6 @@
 #include "function_info.h"
 #include "smt_summary_store.h"
 
-typedef enum {
-  FORCE_INLINING,
-  RANDOM_SUBSTITUTION,
-  SLICING_RESULT
-  // anything else?
-}
-  refinement_modet;
-
-typedef enum {
-  ALL_SUBSTITUTING,
-  ALL_HAVOCING
-  // anything else?
-}
-  init_modet; 
 
 // Information shared by a single summarization task.
 class summarization_contextt {

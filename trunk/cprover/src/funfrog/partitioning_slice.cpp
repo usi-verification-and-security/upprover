@@ -11,6 +11,8 @@ Author: Ondrej Sery
 
 #include "partitioning_slice.h"
 #include "partition_iface.h"
+#include "solvers/prop_itp.h"
+#include "solvers/smt_itp.h"
 
 //#define DEBUG_SLICER
 

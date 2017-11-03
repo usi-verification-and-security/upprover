@@ -7,7 +7,6 @@
 
 \*******************************************************************/
 #include "summarizing_checker.h"
-#include "partitioning_slice.h"
 #include "dependency_checker.h"
 
 #include "solvers/smtcheck_opensmt2_lra.h"
@@ -19,6 +18,15 @@
 #include "prop_dependency_checker.h"
 #include "nopartition/symex_no_partition.h"
 #include "prop_summary_store.h"
+#include "partition_iface.h"
+#include "nopartition/smt_assertion_no_partition.h"
+#include "prop_partitioning_target_equation.h"
+#include "smt_partitioning_target_equation.h"
+#include "prop_assertion_sum.h"
+#include "smt_assertion_sum.h"
+#include "symex_assertion_sum.h"
+#include <solvers/flattening/bv_pointers.h>
+
 
 void summarizing_checkert::initialize_solver()
 {
@@ -570,7 +578,8 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
       end = prop.assertion_holds( 
               *(dynamic_cast<smtcheck_opensmt2t *> (decider)));
       unsigned summaries_count = omega.get_summaries_count();
-      unsigned nondet_count = omega.get_nondets_count();
+      // MB: unused variable commented out
+      //unsigned nondet_count = omega.get_nondets_count();
       if (end)
       {
         if (options.get_bool_option("no-itp"))
@@ -699,7 +708,7 @@ void summarizing_checkert::assertion_violated (smt_assertion_no_partitiont& prop
 void summarizing_checkert::list_templates(smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation)
 {
     summary_storet* summary_store = summarization_context.get_summary_store();
-    vector<summaryt*> templates;
+    std::vector<summaryt*> templates;
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
     equation.fill_function_templates(*decider_smt, templates);
     decider_smt = nullptr;
@@ -866,14 +875,14 @@ Function: get_refine_mode
 refinement_modet get_refine_mode(const std::string& str)
 {
   if (str == "force-inlining" || str == "0"){
-    return FORCE_INLINING;
+    return refinement_modet::FORCE_INLINING;
   } else if (str == "random-substitution" || str == "1"){
-    return RANDOM_SUBSTITUTION;
+    return refinement_modet::RANDOM_SUBSTITUTION;
   } else if (str == "slicing-result" || str == "2"){
-    return SLICING_RESULT;
+    return refinement_modet::SLICING_RESULT;
   } else {
     // by default
-    return SLICING_RESULT;
+    return refinement_modet::SLICING_RESULT;
   }
 };
 
@@ -892,12 +901,12 @@ Function: get_initial_mode
 init_modet get_init_mode(const std::string& str)
 {
   if (str == "havoc-all" || str == "0"){
-    return ALL_HAVOCING;
+    return init_modet::ALL_HAVOCING;
   } else if (str == "use-summaries" || str == "1"){
-    return ALL_SUBSTITUTING;
+    return init_modet::ALL_SUBSTITUTING;
   } else {
     // by default
-    return ALL_SUBSTITUTING;
+    return init_modet::ALL_SUBSTITUTING;
   }
 };
 
@@ -905,12 +914,12 @@ init_modet get_init_mode(const std::string& str)
 coloring_modet get_coloring_mode(const std::string& str)
 {
   if (str == "0"){
-    return RANDOM_COLORING;
+    return coloring_modet::RANDOM_COLORING;
   } else if (str == "1"){
-    return COLORING_FROM_FILE;
+    return coloring_modet::COLORING_FROM_FILE;
   } else {
     // by default
-    return NO_COLORING;
+    return coloring_modet::NO_COLORING;
   }
 };
 

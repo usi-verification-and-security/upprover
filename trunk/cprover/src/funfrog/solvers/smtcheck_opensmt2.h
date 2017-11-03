@@ -15,6 +15,10 @@ Module: Wrapper for OpenSMT2
 #include "check_opensmt2.h"
 #include <opensmt/opensmt2.h>
 #include <expr.h>
+#include <symbol.h>
+#include <solvers/prop/literal.h>
+
+class smt_itpt;
 
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
@@ -24,22 +28,18 @@ class smtcheck_opensmt2t : public check_opensmt2t
 public:
   // Defualt C'tor
   smtcheck_opensmt2t(bool _store_unsupported_info=false) :
-      no_literals(0),
-      pushed_formulas(0),
-      is_var_constraints_empty(true),
-      store_unsupported_info(_store_unsupported_info),
-      check_opensmt2t(false, 3, 2) // Is last always!
+    smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info)
   {
     /* No init of solver - done for inherit check_opensmt2 */
   }
 
   // C'tor to pass the value to main interface check_opensmt2
   smtcheck_opensmt2t(bool reduction, int reduction_graph, int reduction_loops, bool _store_unsupported_info=false) :
+        check_opensmt2t(reduction, reduction_graph, reduction_loops),
+        is_var_constraints_empty(true),
         no_literals(0),
         pushed_formulas(0),
-        is_var_constraints_empty(true),
-        store_unsupported_info(_store_unsupported_info),
-        check_opensmt2t(reduction, reduction_graph, reduction_loops)
+        store_unsupported_info(_store_unsupported_info)
   { /* No init of solver - done for inherit check_opensmt2 */}
     
   virtual ~smtcheck_opensmt2t(); // d'tor

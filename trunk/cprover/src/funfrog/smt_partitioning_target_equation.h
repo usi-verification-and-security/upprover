@@ -11,7 +11,8 @@ Author: Ondrej Sery
 #define CPROVER_SMT_PARTITIONING_TARGET_EQUATION_H
 
 #include "partitioning_target_equation.h"
-#include "partition_iface.h"
+#include "partition_iface_fwd.h"
+#include "hifrog.h"
 
 class smtcheck_opensmt2t;
 

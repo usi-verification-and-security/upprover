@@ -12,6 +12,7 @@ Author: Ondrej Sery
 #include "time_stopping.h"
 #include <symbol_table.h>
 #include "../hifrog.h"
+#include "satcheck_opensmt2.h"
 
 //#define DEBUG_ITP
 # ifdef DEBUG_ITP
@@ -811,6 +812,7 @@ void prop_itpt::deserialize(std::istream& in)
   }
 }
 
+//MB FIXME: solver should know how to check implication and prop_itpt does not need to know (and should not know!) about solver
 bool prop_itpt::check_implies(const itpt& second) const 
 {
   satcheck_opensmt2t prop_solver("implies checker");

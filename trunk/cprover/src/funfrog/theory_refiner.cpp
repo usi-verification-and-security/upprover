@@ -13,9 +13,6 @@
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 
-
-
-
 #define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
 theory_refinert::~theory_refinert()
 {
@@ -39,7 +36,7 @@ void theory_refinert::initialize()
 
   summarization_context.analyze_functions(ns);
   omega.initialize_summary_info (omega.get_summary_info(), goto_program);
-  omega.setup_default_precision(ALL_SUBSTITUTING);
+  omega.setup_default_precision(init_modet::ALL_SUBSTITUTING);
 }
 
 void get_numbers(std::set<int>& nums, std::string set){
@@ -83,7 +80,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   std::vector<unsigned> ints;
 
   smt_partitioning_target_equationt equation(ns, summarization_context, false,
-      store_summaries_with_assertion, NO_COLORING, ints);
+      store_summaries_with_assertion, coloring_modet::NO_COLORING, ints);
 
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(

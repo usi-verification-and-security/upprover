@@ -24,20 +24,12 @@ Author: Ondrej Sery
 
 #include <goto-symex/symex_target_equation.h>
 #include "partition.h"
+#include "utils/coloring_mode.h"
 
 class summarization_contextt;
 class partition_ifacet;
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
-
-typedef enum {
-  NO_COLORING,
-  RANDOM_COLORING,
-  COLORING_FROM_FILE,
-  TBD
-  // anything else?
-}
-  coloring_modet;
 
 class partitioning_target_equationt:public symex_target_equationt
 {
@@ -49,10 +41,6 @@ public:
           symex_target_equationt(_ns),
           summarization_context(_summarization_context),
           current_partition_id(partitiont::NO_PARTITION),
-          upgrade_checking(_upgrade_checking),
-          store_summaries_with_assertion(_store_summaries_with_assertion),
-          coloring_mode(_coloring_mode),
-          clauses(_clauses),
 #         ifdef DEBUG_SSA_PRINT
 		  out_local_terms(0),
 		  out_terms(out_local_terms),
@@ -64,7 +52,11 @@ public:
 		  is_first_call(true),
 		  first_call_expr(0),
 #endif                  
-                  io_count_global(0)                
+          io_count_global(0),
+          upgrade_checking(_upgrade_checking),
+          store_summaries_with_assertion(_store_summaries_with_assertion),
+          coloring_mode(_coloring_mode),
+          clauses(_clauses)
 		  {
 #ifdef DEBUG_SSA_PRINT  
 	  partition_smt_decl = new std::map <std::string,exprt>();

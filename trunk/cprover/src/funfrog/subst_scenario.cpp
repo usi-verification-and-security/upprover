@@ -12,11 +12,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "summarization_context.h"
+
 void subst_scenariot::setup_default_precision(init_modet init)
 {
-  if (init == ALL_HAVOCING){
+  if (init == init_modet::ALL_HAVOCING){
      default_precision = HAVOC;
-   } else if (init == ALL_SUBSTITUTING){
+   } else if (init == init_modet::ALL_SUBSTITUTING){
      default_precision = INLINE;
    } else {
      assert(false);

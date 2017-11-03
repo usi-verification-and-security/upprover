@@ -16,8 +16,8 @@ class smtcheck_opensmt2t_lra : public smtcheck_opensmt2t
 {
 public:
   smtcheck_opensmt2t_lra(int _type_constraints_level, const char* name, bool _store_unsupported_info=false) :
-      type_constraints_level(_type_constraints_level),
-      smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info)
+          smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info),
+          type_constraints_level(_type_constraints_level)
   {
     initializeSolver(name);
   }

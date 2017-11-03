@@ -9,10 +9,10 @@
 #include <std_expr.h>
 
 #include "smt_partitioning_target_equation.h"
-#include "expr_pretty_print.h"
-#include "solvers/sat/cnf.h"
 #include "solvers/smtcheck_opensmt2.h"
-#include "hifrog.h"
+#include "solvers/smt_itp.h"
+#include "partition_iface.h"
+#include "summarization_context.h"
 
 //#define DEBUG_ITP_SMT // ITP of SMT - testing
 
@@ -922,7 +922,8 @@ void smt_partitioning_target_equationt::fill_common_symbols(const partitiont &pa
 
     // MB: In SMT mode, we do not care about CPROVER_rounding mode, that is needed only in PROP mode,
     // we do not want it to leak into the signature of the summary.
-    // TODO: Would be nicer if catcher earlier, e.g. do not consider it as an accessed global variable in the first place
+    // TODO: Would be nicer if caught earlier, e.g. do not consider it as an accessed global variable in the first place
+
     // remove CPROVER_rounding_mode symbol from the vector, if it was part of the interface
     common_symbols.erase(std::remove_if(common_symbols.begin(), common_symbols.end(), [](const symbol_exprt& expr){
         return is_cprover_rounding_mode_var(expr);

@@ -15,9 +15,8 @@
 #define PROP_DEPENDENCY_CHECKERT_H
 
 #include "dependency_checker.h"
-#include "partitioning_target_equation.h"
-#include "prop_partitioning_target_equation.h"
-#include <solvers/flattening/bv_pointers.h>
+
+class prop_conv_solvert;
 
 class prop_dependency_checkert :public dependency_checkert 
 {
@@ -32,7 +31,7 @@ public:
           _message_handler, _goto_program, _omega,fraction, SSA_steps_size) {}
     virtual ~prop_dependency_checkert() {}
     
-    virtual pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2);
+    virtual std::pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2);
     virtual long find_implications();
 private:
   void deep_convert_guards(prop_conv_solvert &prop_conv, exprt exp);

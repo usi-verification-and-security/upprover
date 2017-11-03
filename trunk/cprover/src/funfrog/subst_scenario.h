@@ -17,8 +17,10 @@
 #include <util/xml.h>
 
 #include "summary_info.h"
-#include "summarization_context.h"
 #include "unwind.h"
+#include "summarization_context_fwd.h"
+
+class summary_infot;
 
 class subst_scenariot:public unwindt {
 public:

@@ -15,17 +15,10 @@ Author: Ondrej Sery
 #include <map>
 #include "solvers/itp.h"
 
-class smtcheck_opensmt2t;
+#include "summary_store_fwd.h"
 
-typedef itpt summaryt;
-typedef prop_itpt prop_summaryt;
-typedef smt_itpt smt_summaryt;
-typedef long unsigned summary_idt;
-typedef std::vector<summary_idt> summary_idst;
-typedef std::unordered_set<summary_idt> summary_ids_sett;
+class smtcheck_opensmt2t;
 class summary_infot;
-class function_infot;
-typedef std::unordered_map<irep_idt, function_infot, irep_id_hash> function_infost;
 
 /*KE: Abstract class, has implementation as either prop_summary_storet or smt_summary_storet */
 class summary_storet

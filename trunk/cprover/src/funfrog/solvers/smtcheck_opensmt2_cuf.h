@@ -12,6 +12,7 @@ Module: Wrapper for OpenSMT2
 
 #include "smtcheck_opensmt2.h"
 #include <expr.h>
+#include <util/mp_arith.h>
 
 
 class BitBlaster;
@@ -22,9 +23,9 @@ class smtcheck_opensmt2t_cuf : public smtcheck_opensmt2t
 {
 public:
   smtcheck_opensmt2t_cuf(unsigned bitwidth, int _type_constraints_level, const char* name) :
-      type_constraints_level(_type_constraints_level),
-      bitwidth(bitwidth),        
-      smtcheck_opensmt2t(false, 3, 2) // Is last always!
+        smtcheck_opensmt2t(false, 3, 2), // Is last always!
+        bitwidth(bitwidth),
+        type_constraints_level(_type_constraints_level)
   {
     initializeSolver(name);
   }
