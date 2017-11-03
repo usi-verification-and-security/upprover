@@ -917,12 +917,15 @@ bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
 
 void smt_partitioning_target_equationt::fill_common_symbols(const partitiont &partition,
                                                             std::vector<symbol_exprt> &common_symbols) const {
+    // call the base method, which fills the common_symbols according to computed interface of the function
     partitioning_target_equationt::fill_common_symbols(partition, common_symbols);
-    // remove CPROVER_rounding_mode symbol from common symbols
 
+    // MB: In SMT mode, we do not care about CPROVER_rounding mode, that is needed only in PROP mode,
+    // we do not want it to leak into the signature of the summary.
+    // TODO: Would be nicer if catcher earlier, e.g. do not consider it as an accessed global variable in the first place
+    // remove CPROVER_rounding_mode symbol from the vector, if it was part of the interface
     common_symbols.erase(std::remove_if(common_symbols.begin(), common_symbols.end(), [](const symbol_exprt& expr){
-        bool present = is_cprover_rounding_mode_var(expr);
-        return present;
+        return is_cprover_rounding_mode_var(expr);
     }),
     common_symbols.end());
 }
