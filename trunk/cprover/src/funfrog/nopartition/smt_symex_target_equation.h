@@ -104,9 +104,9 @@ protected:
 
     std::vector<exprt> exprs; // Expr to refine method
 private:
+    // MB: FIXME: this field is not used! Why it is here?
+    // KE: a good question, maybe Grigory will have an answer. It is also in the partition version
     std::vector<unsigned>& clauses;
-
-    unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
     
     bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
 
@@ -140,6 +140,7 @@ private:
     bool isFirstCallExpr(const exprt& expr);
 #endif
        
+    unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
 };
 
 #endif /* SMT_SYMEX_TARGET_EQUATIONT_H */

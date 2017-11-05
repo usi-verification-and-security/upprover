@@ -9,12 +9,11 @@ Author: Ondrej Sery
 #ifndef CPROVER_PROP_ITP_H
 #define CPROVER_PROP_ITP_H
 
-#include <ostream>
-#include <std_expr.h>
+#include <iosfwd>
 #include <solvers/prop/literal.h>
-#include <solvers/flattening/boolbv.h>
 #include "itp.h"
-#include "satcheck_opensmt2.h"
+
+class symbol_exprt;
 
 class prop_itpt: public itpt
 {
@@ -86,7 +85,5 @@ protected:
 
   const std::vector<bool>& get_symbol_mask() const { return symbol_mask; }
 };
-
-typedef prop_itpt prop_interpolantt;
 
 #endif

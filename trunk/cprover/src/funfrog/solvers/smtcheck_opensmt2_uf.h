@@ -7,12 +7,7 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_OPENSMT2_UF_H
 #define CPROVER_SMTCHECK_OPENSMT2_UF_H
 
-#include <map>
-#include <vector>
-
-#include <util/threeval.h>
 #include "smtcheck_opensmt2.h"
-
 
 class smtcheck_opensmt2t_uf : public smtcheck_opensmt2t
 {

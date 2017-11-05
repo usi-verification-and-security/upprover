@@ -242,7 +242,7 @@ Function: smt_itpt::substitute
  * KE: not sure the code for #in #out #invs is correct
 
 \*******************************************************************/
-
+// MB: TODO: move this method to smtcheck_opensmt2t, that way smt_itp does not need to know about the solver
 void smt_itpt::substitute(smtcheck_opensmt2t& decider,
     const std::vector<symbol_exprt>& symbols,
     bool inverted) const

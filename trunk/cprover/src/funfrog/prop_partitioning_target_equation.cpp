@@ -14,6 +14,9 @@ Author: Ondrej Sery
 #include "solvers/sat/cnf.h"
 #include "solvers/satcheck_opensmt2.h"
 #include "hifrog.h"
+#include "partition_iface.h"
+#include "solvers/prop_itp.h"
+#include "summarization_context.h"
 
 //#define DEBUG_ITP // ITP of SAT - testing
 
@@ -186,7 +189,7 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
   // Reserve fresh variables for the partition boundary
   std::vector<symbol_exprt> common_symbs;
   fill_common_symbols(partition, common_symbs);
-  prop_interpolantt::reserve_variables(prop_conv, common_symbs, partition.get_iface().common_symbols);
+  prop_itpt::reserve_variables(prop_conv, common_symbs, partition.get_iface().common_symbols);
   // Convert the corresponding SSA steps
   convert_partition_guards(prop_conv, partition);
   convert_partition_assignments(prop_conv, partition);

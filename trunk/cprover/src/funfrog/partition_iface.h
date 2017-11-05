@@ -126,8 +126,5 @@ public:
 
 };
 
-typedef std::list<partition_ifacet*> partition_iface_ptrst;
-typedef std::vector<std::pair<partition_ifacet*, summary_idt> > interpolant_mapt;
-
 #endif	/* CPROVER_PARTITION_IFACE_H */
 

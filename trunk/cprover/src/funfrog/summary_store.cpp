@@ -10,6 +10,7 @@ Author: Ondrej Sery
 
 #include "summary_store.h"
 #include "summary_info.h"
+#include "function_info.h"
 
 summary_storet::nodet& summary_storet::find_repr(summary_idt id)
 {

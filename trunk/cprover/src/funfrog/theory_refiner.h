@@ -5,6 +5,7 @@
 #include <options.h>
 #include <ui_message.h>
 #include "subst_scenario.h"
+#include "summarization_context.h"
 
 class smtcheck_opensmt2t_cuf;
 class symex_assertion_sumt;

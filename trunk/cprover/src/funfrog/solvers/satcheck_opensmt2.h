@@ -15,8 +15,9 @@ Author: Grigory Fedyukovich
 #include <util/threeval.h>
 #include "check_opensmt2.h"
 #include "interpolating_solver.h"
-#include "prop_itp.h"
 #include <opensmt/opensmt2.h>
+
+class prop_itpt;
 
 // Cache of already visited interpolant ptrefs
 typedef std::map<PTRef, literalt> ptref_cachet;

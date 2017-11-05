@@ -14,7 +14,7 @@ class smtcheck_opensmt2t;
 class smt_itpt: public itpt
 {
 public:
-  smt_itpt() :tterm(NULL), itpt() {}
+  smt_itpt() :tterm(nullptr){}
   ~smt_itpt() {} // d'tor
 
   virtual  bool is_trivial() const override { return false; }

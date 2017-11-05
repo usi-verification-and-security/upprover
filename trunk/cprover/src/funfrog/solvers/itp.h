@@ -10,10 +10,11 @@
 
 class prop_itpt;
 class smt_itpt;
+
 class itpt
 {
 public:
-  itpt() : _no_variables(1), _no_orig_variables(1), logic(NULL) {}
+  itpt() : logic(nullptr), _no_variables(1), _no_orig_variables(1) {}
   virtual ~itpt() {} // d'tor
 
   virtual bool is_trivial() const =0;
@@ -77,8 +78,5 @@ protected:
   // a higher number are due to Tseitin encoding
   unsigned _no_orig_variables;
 };
-
-typedef itpt interpolantt;
-typedef std::vector<interpolantt*> interpolantst;
 
 #endif

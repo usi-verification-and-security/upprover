@@ -7,6 +7,7 @@ Author: Grigory Fedyukovich
 \*******************************************************************/
 
 #include "satcheck_opensmt2.h"
+#include "prop_itp.h"
 
 void satcheck_opensmt2t::initializeSolver(const char* name)
 {

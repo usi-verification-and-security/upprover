@@ -44,14 +44,14 @@ public:
           ) :
           symex_bmct(_ns, _new_symbol_table, _target),
           equation(_target),
+          goto_program(_goto_program),
           current_assertion(NULL),
           message_handler(_message_handler),
-          goto_program(_goto_program),
           last_assertion_loc(_last_assertion_loc),
           loc(0),
           single_assertion_check(_single_assertion_check),
           use_slicing(_use_slicing),
-	  do_guard_expl(_do_guard_expl),
+	      do_guard_expl(_do_guard_expl),
           use_smt(_use_smt)
           {set_message_handler(_message_handler);}
     
