@@ -7,13 +7,10 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_OPENSMT2_H
 #define CPROVER_SMTCHECK_OPENSMT2_H
 
-//#define DEBUG_SMT4SOLVER // TO PRINT FROM HIFROG ENCODING + ITE DEF.
-
 #include <map>
 #include <vector>
 
 #include "check_opensmt2.h"
-#include <opensmt/opensmt2.h>
 #include <expr.h>
 
 // Cache of already visited interpolant literals
@@ -224,7 +221,7 @@ protected:
     return (toInt(v1) == 0);
   }
 
-#ifdef DEBUG_SMT4SOLVER
+#ifdef DISABLE_OPTIMIZATIONS
   std::map <std::string,std::string> ite_map_str;
   std::set <std::string> var_set_str;
   typedef std::map<std::string,std::string>::iterator it_ite_map_str;

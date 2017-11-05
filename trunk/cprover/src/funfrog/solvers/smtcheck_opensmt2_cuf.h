@@ -11,12 +11,8 @@ Module: Wrapper for OpenSMT2
 #include <vector>
 
 #include "smtcheck_opensmt2.h"
-#include <expr.h>
-
 
 class BitBlaster;
-// Cache of already visited interpolant literals
-typedef std::map<PTRef, literalt> ptref_cachet;
 
 class smtcheck_opensmt2t_cuf : public smtcheck_opensmt2t
 {

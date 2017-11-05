@@ -225,7 +225,7 @@ void partitioning_target_equationt::fill_partition_ids(
 }
 
 /***************************************************************************/
-#ifdef DEBUG_SSA_PRINT
+#ifdef DISABLE_OPTIMIZATIONS
 std::ostream& partitioning_target_equationt::print_decl_smt(std::ostream& out) {
     if (partition_smt_decl->empty())
         return out;
@@ -262,7 +262,7 @@ void partitioning_target_equationt::print_partition() {
 void partitioning_target_equationt::print_all_partition(std::ostream& out) {
     // Print only if the flag is on!
     // Print header - not part of temp debug print!
-    cout << "\nXXX SSA --> SMT-lib Translation XXX\n";
+    out << "\nXXX SSA --> SMT-lib Translation XXX\n";
 
     // for prints later on
     std::ostream out_decl(0);
@@ -271,23 +271,7 @@ void partitioning_target_equationt::print_all_partition(std::ostream& out) {
 
     // When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
     print_decl_smt(out_decl); // print the symbol decl
-    cout << decl_buf.str() << partition_buf.str() << "(check-sat)\n";
-}
-
-// Not in use here
-void partitioning_target_equationt::addToDeclMap(const exprt &expr) {
-    if (partition_smt_decl == NULL)
-        return;
-
-    std::ostream out_code(0);
-    std::stringbuf code_buf;
-    out_code.rdbuf(&code_buf);
-
-    out_code << expr.id().c_str() << " " << expr.type().id();
-    std::string key = code_buf.str();
-
-    if (partition_smt_decl->find(key) == partition_smt_decl->end())
-        partition_smt_decl->insert(make_pair(key, expr));
+    out << decl_buf.str() << partition_buf.str() << "(check-sat)\n";
 }
 
 void partitioning_target_equationt::getFirstCallExpr() 

@@ -27,7 +27,7 @@ public:
             std::vector<unsigned>& _clauses) :
         symex_target_equationt(_ns),
         clauses(_clauses),
-#       ifdef DEBUG_SSA_PRINT
+#       ifdef DISABLE_OPTIMIZATIONS
             out_local_terms(0),
             out_terms(out_local_terms),
             out_local_basic(0),
@@ -37,10 +37,12 @@ public:
             terms_counter(0),
             is_first_call(true),
             first_call_expr(0),
+            dump_SSA_tree(false),
+            ssa_tree_file_name("__ssa_tree.smt2"),
         #endif                                  
         io_count_global(0)
     {
-#ifdef DEBUG_SSA_PRINT  
+#ifdef DISABLE_OPTIMIZATIONS  
 	  partition_smt_decl = new std::map <std::string,exprt>();
 	  out_terms.rdbuf(&terms_buf);
 	  out_basic.rdbuf(&basic_buf);
@@ -50,7 +52,7 @@ public:
         
     virtual ~smt_symex_target_equationt() 
     {
-#         ifdef DEBUG_SSA_PRINT        
+#         ifdef DISABLE_OPTIMIZATIONS        
 	  partition_smt_decl->clear();
 	  delete partition_smt_decl;        
 	  first_call_expr = 0; // Not here to do the delete
@@ -71,6 +73,14 @@ public:
 
     std::vector<exprt>& get_exprs_to_refine () { return exprs; }; 
     
+#ifdef DISABLE_OPTIMIZATIONS  
+    void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}
+    void set_dump_SSA_tree_name(const std::string& n)
+    {
+      ssa_tree_file_name = "__SSAt_" + n + ".smt2";
+    }
+#endif  
+  
 protected:
     // Convert a specific partition guards of SSA steps
     void convert_guards(smtcheck_opensmt2t &decider);
@@ -87,8 +97,8 @@ protected:
     // Convert Gotos of SSA steps
     void convert_goto_instructions(smtcheck_opensmt2t &decider);
     // Convert constraints
-    void convert_constraints(smtcheck_opensmt2t &decider) const;
-
+    void convert_constraints(smtcheck_opensmt2t &decider) const;  
+  
   
     virtual bool is_smt_encoding() {return true;} // KE: Temp. Just to force virtual for compilation
 
@@ -100,7 +110,10 @@ private:
     
     bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
 
-#ifdef DEBUG_SSA_PRINT  
+#ifdef DISABLE_OPTIMIZATIONS 
+    bool dump_SSA_tree;
+    std::string ssa_tree_file_name;
+    
     // For SMT-Lib Translation - Move it later to a new class
     std::map <std::string,exprt>* partition_smt_decl;
     std::ostream out_local_terms; //for prints SSA - remove later
@@ -119,16 +132,14 @@ private:
     bool is_first_call; // for prints SSA - remove later
     const exprt* first_call_expr; // for prints SSA - remove later
 
-    // Print decl (later change to create) 
+    // Print decl (later change to create) - Copied from the partition classes
     std::ostream& print_decl_smt(std::ostream& out);
     void print_all_partition(std::ostream& out);
     void print_partition();  
-    void addToDeclMap(const exprt &expr);
     void saveFirstCallExpr(const exprt& expr);
     bool isFirstCallExpr(const exprt& expr);
 #endif
-    
-    
+       
 };
 
 #endif /* SMT_SYMEX_TARGET_EQUATIONT_H */

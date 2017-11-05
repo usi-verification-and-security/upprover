@@ -275,7 +275,7 @@ void prop_assertion_sumt::error_trace(const prop_conv_solvert &prop_conv, const 
   switch(message_handler.get_ui())
   {
     case ui_message_handlert::uit::PLAIN:
-    std::cout << std::endl << "Counterexample:" << std::endl;
+    status() << "\nCounterexample:" << eom;
     show_goto_trace(std::cout, ns, goto_trace);
     break;
 
@@ -283,7 +283,7 @@ void prop_assertion_sumt::error_trace(const prop_conv_solvert &prop_conv, const 
     {
       xmlt xml;
       convert(ns, goto_trace, xml);
-      std::cout << xml << std::endl;
+      status() << xml << eom;
     }
     break;
 

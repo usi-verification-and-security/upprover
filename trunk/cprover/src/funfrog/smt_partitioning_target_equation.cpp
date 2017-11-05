@@ -9,12 +9,18 @@
 #include <std_expr.h>
 
 #include "smt_partitioning_target_equation.h"
-#include "expr_pretty_print.h"
 #include "solvers/sat/cnf.h"
 #include "solvers/smtcheck_opensmt2.h"
 #include "hifrog.h"
 
 //#define DEBUG_ITP_SMT // ITP of SMT - testing
+
+#ifdef DISABLE_OPTIMIZATIONS
+#include <fstream>
+using namespace std;
+
+#include "expr_pretty_print.h"
+#endif
 
 void
 smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*>& templates)
@@ -51,7 +57,7 @@ smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &d
  \*******************************************************************/
 void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 		interpolating_solvert &interpolator) {
-#ifdef DEBUG_SSA_PRINT    
+#ifdef DISABLE_OPTIMIZATIONS    
     getFirstCallExpr(); // Save the first call to the first function
 #endif
 
@@ -71,7 +77,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 #   endif
         
 // Print partition into a buffer after the headers: basic and code
-#   ifdef DEBUG_SSA_PRINT
+#   ifdef DISABLE_OPTIMIZATIONS
         out_basic << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
                 << it->get_iface().assertion_in_subtree << ")" << " - "
                 << it->get_iface().function_id.c_str() << " (loc: "
@@ -84,9 +90,17 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
         
     }
 
-    #ifdef DEBUG_SSA_PRINT
+    #ifdef DISABLE_OPTIMIZATIONS
+  if (dump_SSA_tree)
+  {
+    ofstream out_ssaT;
+    out_ssaT.open(ssa_tree_file_name); 
+  
     // Print all after the headers: decl and code
-    print_all_partition(std::cout);
+    print_all_partition(out_ssaT);
+    
+    out_ssaT.close();
+  }
     #endif
 }
 
@@ -209,7 +223,7 @@ void smt_partitioning_target_equationt::convert_partition_summary(
 
         smt_summaryt& summary = dynamic_cast<smt_summaryt&> (summary_store->find_summary(*it));
         if (summary.is_valid() && (!is_recursive || last_summary == i++)) {
-#           ifdef DEBUG_SSA_PRINT
+#           ifdef DISABLE_OPTIMIZATIONS
             out_terms << ";;; Substituting summary #" << *it << "\n";
             summary.print(out_terms);
             summary.print(std::cout);
@@ -242,11 +256,11 @@ void smt_partitioning_target_equationt::convert_partition_assignments(
 
             // Only if not an assignment to rounding model print it + add it to LRA statements
             if (!isRoundModelEq(tmp)) {
-#     ifdef DEBUG_SSA
+#     ifdef DEBUG_SSA && DISABLE_OPTIMIZATIONS
                 expr_pretty_print(std::cout << "\nASSIGN-OUT:" << std::endl, tmp, 2);
                 //expr_ssa_print_test(&partition_smt_decl, out_code << "(assign ", tmp);
 #     endif
-#     ifdef DEBUG_SSA_PRINT
+#     ifdef DISABLE_OPTIMIZATIONS
                 expr_ssa_print(out_terms << "    ", tmp, partition_smt_decl, false);
                 terms_counter++;
 #     endif
@@ -303,19 +317,19 @@ void smt_partitioning_target_equationt::convert_partition_guards(
 #       endif
             it->guard_literal = decider.const_var(false);
         } else {		
-#       ifdef DEBUG_SSA_PRINT
+#       ifdef DISABLE_OPTIMIZATIONS
             exprt tmp(it->guard);
             //expr_pretty_print(std::cout << "GUARD-OUT:" << std::endl, tmp, 2);
             expr_ssa_print_guard(out_terms, tmp, partition_smt_decl);
             if (!tmp.is_boolean())
                     terms_counter++; // SSA -> SMT shall be all in a new function
-#       endif
-#       ifdef DEBUG_SSA_SMT_CALL
+#         ifdef DEBUG_SSA_SMT_CALL
             exprt tmp2(it->guard);
             expr_ssa_print_smt_dbg(
                             cout << "Before decider::convert(GUARD-OUT) --> ", tmp2,
                             false);
-#	endif
+#	  endif
+#       endif            
             it->guard_literal = decider.convert(it->guard);
         }
     }
@@ -345,7 +359,7 @@ void smt_partitioning_target_equationt::convert_partition_assumptions(
             } else {
                 it->cond_literal = decider.convert(it->cond_expr);
                 
-#               ifdef DEBUG_SSA_SMT_CALL
+#               ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
                 exprt tmp(it->cond_expr);
                 expr_ssa_print_smt_dbg(
                 cout << "Before decider::convert(ASSUME-OUT) --> ",
@@ -378,7 +392,7 @@ void smt_partitioning_target_equationt::convert_partition_goto_instructions(
                 it->cond_literal = decider.const_var(true);
                 // GF
             } else {
-#               ifdef DEBUG_SSA_SMT_CALL
+#               ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
                     exprt tmp(it->cond_expr);
                     expr_ssa_print_smt_dbg(
                             cout << "Before decider::convert(GOTO-OUT) --> ",
@@ -442,7 +456,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
             exprs.push_back(op_ass);
             // GF: <-- end
 
-#           ifdef DEBUG_SSA_SMT_CALL
+#           ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
             bool test = (isTypeCastConst(it->cond_expr));
             expr_ssa_print_smt_dbg(
             cout << "Before decider::convert and decider.limplies(ASSERT-OUT) " 
@@ -469,7 +483,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
                                 target_partition->get_iface();
                 assert(!target_partition->invalid && !target_partition->processed);
 
-#		ifdef DEBUG_SSA_SMT_CALL
+#		ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
                 expr_ssa_print_smt_dbg(
                     cout << "Before decider::land(GUARD-LITERAL of Call-START) --> ",
                             it->guard, false);
@@ -481,7 +495,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
                 literalt tmp = decider.land(assumption_literal,it->guard_literal);
                 decider.set_equal(tmp, target_partition_iface.callstart_literal);
                 
-#		ifdef DEBUG_SSA_PRINT
+#		ifdef DISABLE_OPTIMIZATIONS
                     //out_terms << "XXX Call START equality: \n";
                     terms_counter++;
                     std::ostream out_temp2(0);
@@ -550,7 +564,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
 #	endif
             decider.set_equal(decider.land(bv), decider.const_var(true));
 
-#       ifdef DEBUG_SSA_PRINT
+#       ifdef DISABLE_OPTIMIZATIONS
             //out_terms << "XXX Encoding error in ROOT: " << std::endl;
 
             // Pre-order printing
@@ -608,7 +622,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
                 decider.set_equal(decider.lor(bv), partition_iface.error_literal);
             }
 
-#ifdef DEBUG_SSA_PRINT
+#ifdef DISABLE_OPTIMIZATIONS
             //out_terms << "XXX Encoding error_f: \n";
             terms_counter++;
             expr_ssa_print(out_terms << "    (= ",
@@ -673,7 +687,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
     //  // Emit error_root = true for the ROOT partition
     //  if (partition.parent_id == partitiont::NO_PARTITION) {
     //    decider.prop.l_set_to_true(partition_iface.error_literal);
-    //    #ifdef DEBUG_SSA
+    //    #ifdef DEBUG_SSA && DISABLE_OPTIMIZATIONS
     //    expr_pretty_print(std::cout << "XXX Asserting error_root: ",
     //            partition_iface.error_symbol);
     //    #endif
@@ -695,7 +709,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
         literalt tmp_end = decider.limplies(partition_iface.callend_literal, assumption_literal);
         decider.set_equal(tmp_end, decider.const_var(true)); // KE: maybe that's the missing call?
 
-#       ifdef DEBUG_SSA_PRINT
+#       ifdef DISABLE_OPTIMIZATIONS
         //out_terms << "XXX Call END implication: \n";
         terms_counter++;
         expr_ssa_print(out_terms << "    (=> ", partition_iface.callend_symbol,
@@ -749,7 +763,7 @@ void smt_partitioning_target_equationt::convert_partition_io(
                 else {
                     symbol_exprt symbol((IO_CONST+std::to_string(io_count_global++)), tmp.type());
 
-#ifdef DEBUG_SSA_SMT_CALL
+#ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
                     expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true --> ",
                         equal_exprt(tmp, symbol), false);
 #endif

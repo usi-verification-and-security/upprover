@@ -73,9 +73,13 @@ void summarizing_checkert::initialize_solver()
   }
 #endif
   if(options.get_unsigned_int_option("random-seed")) decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
+#ifdef DISABLE_OPTIMIZATIONS  
   if (options.get_bool_option("dump-query"))
       decider->set_dump_query(true);
+  if (options.get_bool_option("dump-pre-query"))
+      decider->set_dump_pre_query(true);
   decider->set_dump_query_name(options.get_option("dump-query-name"));
+#endif  
 }
 
 void summarizing_checkert::initialize()
@@ -210,6 +214,13 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
   prop_partitioning_target_equationt equation(ns, summarization_context, false,
       store_summaries_with_assertion, get_coloring_mode(options.get_option("color-proof")), ints);
 
+#ifdef DISABLE_OPTIMIZATIONS
+  if (options.get_bool_option("dump-SSA-tree")) {
+    equation.set_dump_SSA_tree(true);
+    equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
+  }
+#endif
+  
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
@@ -371,6 +382,13 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   smt_partitioning_target_equationt equation(ns, summarization_context, false,
       store_summaries_with_assertion, get_coloring_mode(options.get_option("color-proof")), ints);
 
+#ifdef DISABLE_OPTIMIZATIONS
+  if (options.get_bool_option("dump-SSA-tree")) {
+    equation.set_dump_SSA_tree(true);
+    equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
+  }
+#endif
+  
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
@@ -524,11 +542,18 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
   status() << "--no-partition activates also --no-itp flag, as there is no (yet) support for summaries/interpolations in this version" << eom;
   
   smt_symex_target_equationt equation(ns, ints);
+#ifdef DISABLE_OPTIMIZATIONS
+  if (options.get_bool_option("dump-SSA-tree")) {
+    equation.set_dump_SSA_tree(true);
+    equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
+  }
+#endif
+  
   symex_no_partitiont symex = symex_no_partitiont(ns, 
             symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option);
-
+  
   setup_unwind(symex);
   
   // KE: I think this says the same

@@ -9,9 +9,6 @@ Module: Wrapper for OpenSMT2
 
 #include "smtcheck_opensmt2.h"
 
-#include <opensmt/opensmt2.h>
-#include <expr.h>
-
 class smtcheck_opensmt2t_lra : public smtcheck_opensmt2t
 {
 public:

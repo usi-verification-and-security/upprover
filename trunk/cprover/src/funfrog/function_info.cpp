@@ -9,7 +9,9 @@
 
 #include "function_info.h"
 #include "summarization_context.h"
+#ifdef DISABLE_OPTIMIZATIONS
 #include "expr_pretty_print.h"
+#endif
 #include "time_stopping.h"
 #include <fstream>
 
@@ -453,7 +455,7 @@ void function_infot::add_to_set_if_global(const namespacet& ns,
 
   else {
     std::cerr << "WARNING: Unsupported index/member scheme - ignoring." << std::endl;
-#ifdef DEBUG_GLOBALS
+#ifdef DEBUG_GLOBALS && DISABLE_OPTIMIZATIONS
     expr_pretty_print(std::cerr << "Expr: ", ex);
     throw "Unsupported indexing scheme.";
 #endif

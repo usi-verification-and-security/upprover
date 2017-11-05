@@ -30,7 +30,11 @@ public:
       osmt  (NULL),
       logic (NULL),
       mainSolver (NULL),
+#ifdef DISABLE_OPTIMIZATIONS                
       dump_queries(false),
+      dump_pre_queries(false),
+      pre_queries_file_name("__pre_query.smt2"),
+#endif              
       partition_count(0),
       current_partition(0),
 #ifdef PRODUCE_PROOF              
@@ -99,6 +103,7 @@ public:
       return random_seed;
   }
 
+#ifdef DISABLE_OPTIMIZATIONS  
   void set_dump_query(bool f)
   {
     if (osmt != NULL) {
@@ -112,7 +117,12 @@ public:
       if (osmt != NULL) {
           osmt->getConfig().set_dump_query_name(n.c_str());
       }
+      
+      pre_queries_file_name = "__preq_" + n + ".smt2";
   }
+  
+  void set_dump_pre_query(bool f) { dump_pre_queries = f;}
+#endif
 
   MainSolver * getMainSolver() { return mainSolver; }
 
@@ -138,8 +148,12 @@ protected:
   Logic* logic;
   MainSolver* mainSolver;
 
+#ifdef DISABLE_OPTIMIZATIONS  
   // Dump all queries?
   bool dump_queries;
+  bool dump_pre_queries;
+  std::string pre_queries_file_name;
+#endif  
 
   // Count of the created partitions
   unsigned partition_count;

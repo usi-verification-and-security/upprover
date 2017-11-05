@@ -10,8 +10,10 @@ Author: Grigory Fedyukovich
 #include "../hifrog.h"
 #include <opensmt/BitBlaster.h>
 
+// Debug flags of this class:
 //#define SMT_DEBUG
 //#define DEBUG_SMT_BB
+//#define SMT_DEBUG_VARS_BOUNDS
 
 void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
 {
@@ -474,7 +476,7 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
     else if (expr.type().id() == ID_c_bool)
     {
     #ifdef SMT_DEBUG_VARS_BOUNDS
-            cout << "; Adding new constraint for C-bool" << endl;
+        cout << "; Adding new constraint for C-bool" << endl;
     #endif
         // The implementation contains support to: 16,32 and 64 bits only
         assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
@@ -1232,10 +1234,9 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
         PTRef ptl = logic->mkIte(literals[lt.var_no()], uflogic->mkCUFConst(1), uflogic->mkCUFConst(0));
         
-#ifdef DEBUG_SMT4SOLVER
-        ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
-        cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")" 
-            << string(getPTermString(ptl)) << endl << logic->printTerm(logic->getTopLevelIte(ptl)) << endl;
+#ifdef DISABLE_OPTIMIZATIONS
+        if (dump_pre_queries)
+            ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif          
         
         return push_variable(ptl); // Keeps the new literal + index it
@@ -1359,16 +1360,18 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
                 ptl = logic->mkImpl(args);
             } else {            
                 ptl = logic->mkIte(args);
-#ifdef DEBUG_SMT4SOLVER
-                ite_map_str.insert(make_pair(string(getPTermString(ptl)), logic->printTerm(logic->getTopLevelIte(ptl))));
+#ifdef DISABLE_OPTIMIZATIONS
+                if (dump_pre_queries)
+                    ite_map_str.insert(make_pair(string(getPTermString(ptl)), logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
             }
         } else if (_id == ID_ifthenelse) {
             assert(args.size() >= 3); // KE: check the case if so and add the needed code!
             
             ptl = logic->mkIte(args);
-#ifdef DEBUG_SMT4SOLVER
-            ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
+#ifdef DISABLE_OPTIMIZATIONS
+            if (dump_pre_queries)
+                ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
         } else if (_id == ID_and) {
             // TODO: to cuf
@@ -1646,7 +1649,7 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
 
     literalt l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
 
-#ifdef DEBUG_SMT4SOLVER
+#ifdef DISABLE_OPTIMIZATIONS
     std::string add_var = str + " () " + getVarData(var);
     if (var_set_str.end() == var_set_str.find(add_var)) {
         var_set_str.insert(add_var);

@@ -13,11 +13,19 @@ Author: Grigory Fedyukovich
 #include "smt_itp.h"
 #include "../utils/naming_helpers.h"
 
+// Debug flags of this class:
 //#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 //#define DEBUG_SMT_ITP
 //#define DEBUG_SMT2SOLVER
+
+#ifdef DISABLE_OPTIMIZATIONS
+#include <fstream>
+using namespace std;
+
+#include <iostream>
+#endif
 
 unsigned smtcheck_opensmt2t::unsupported2var = 0; // Count how many instance of unsupported we have for all deciders
 
@@ -412,12 +420,6 @@ Function: smtcheck_opensmt2t::prop_solve
 
 bool smtcheck_opensmt2t::solve() {
 
-  //if (dump_queries){
-  //  char* msg1=NULL;
-  //  mainSolver->writeSolverState_smtlib2("__SMT_query", &msg1);
-  //  if (msg1 != NULL) free(msg1);
-  //}
-
 #ifdef PRODUCE_PROOF    
   ready_to_interpolate = false;
 #endif
@@ -426,17 +428,24 @@ bool smtcheck_opensmt2t::solve() {
     close_partition();
   }
 
-#ifdef DEBUG_SMT4SOLVER
-  logic->dumpHeaderToFile(cout);
+#ifdef DISABLE_OPTIMIZATIONS
+  ofstream out_smt;
+  if (dump_pre_queries) {
+    out_smt.open(pre_queries_file_name);  
+    logic->dumpHeaderToFile(out_smt);
+  }
 #endif
 //  add_variables();
     char *msg=NULL;
     for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
-#ifdef DEBUG_SMT4SOLVER
-        cout << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
-        char* s = logic->printTerm(top_level_formulas[i]);
-        cout << "(assert\n" << s << "\n)" << endl;
-        free(s);
+#ifdef DISABLE_OPTIMIZATIONS
+        if (dump_pre_queries)
+        {
+            out_smt << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
+            char* s = logic->printTerm(top_level_formulas[i]);
+            out_smt << "(assert\n" << s << "\n)" << endl;
+            free(s);
+        }
 #endif
         mainSolver->insertFormula(top_level_formulas[i], &msg);
 	if (msg != NULL) {
@@ -444,12 +453,15 @@ bool smtcheck_opensmt2t::solve() {
 	    msg=NULL;
 	}
     }
-    
-    pushed_formulas = top_level_formulas.size();
-//#ifdef DEBUG_SMT4SOLVER // Use if there are issues with the variables
+ 
+#ifdef DISABLE_OPTIMIZATIONS   
+    if (dump_pre_queries) out_smt.close();
+#endif    
+//#ifdef DISABLE_OPTIMIZATIONS // Use if there are issues with the variables
 //    dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
 //#endif
 
+    pushed_formulas = top_level_formulas.size();
     sstat r = mainSolver->check();
 
     if (r == s_True) {
@@ -620,7 +632,7 @@ Function: smtcheck_opensmt2t::dump_on_error
 void smtcheck_opensmt2t::dump_on_error(std::string location) 
 {
     //If have problem with declaration of vars - uncommen this!
-#ifdef DEBUG_SMT4SOLVER
+#ifdef DISABLE_OPTIMIZATIONS
     cout << "; XXX SMT-lib --> Current Logic Translation XXX" << endl;
     cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
     cout << "; Declarations from Hifrog :" << endl;
@@ -640,7 +652,7 @@ void smtcheck_opensmt2t::dump_on_error(std::string location)
     }
 
     // If code - once needed uncomment this debug flag in the header
-#ifdef DEBUG_SMT4SOLVER
+#ifdef DISABLE_OPTIMIZATIONS
     int size_oite = ite_map_str.size()-1; // since goes from 0-(n-1) 
     int i = 0;
     for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {

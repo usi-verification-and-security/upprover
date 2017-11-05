@@ -17,7 +17,7 @@ Author: Ondrej Sery
 // End of working debugging flags
 
 #include <symbol.h>
-#ifdef DEBUG_SSA_PRINT
+#ifdef DISABLE_OPTIMIZATIONS
 #include <iostream>
 #include "expr_pretty_print.h"
 #endif
@@ -52,8 +52,8 @@ public:
           upgrade_checking(_upgrade_checking),
           store_summaries_with_assertion(_store_summaries_with_assertion),
           coloring_mode(_coloring_mode),
-          clauses(_clauses),
-#         ifdef DEBUG_SSA_PRINT
+          clauses(_clauses),                    
+#         ifdef DISABLE_OPTIMIZATIONS
 		  out_local_terms(0),
 		  out_terms(out_local_terms),
 		  out_local_basic(0),
@@ -63,10 +63,12 @@ public:
 		  terms_counter(0),
 		  is_first_call(true),
 		  first_call_expr(0),
+                  dump_SSA_tree(false),
+                  ssa_tree_file_name("__ssa_tree.smt2"),
 #endif                  
                   io_count_global(0)                
 		  {
-#ifdef DEBUG_SSA_PRINT  
+#ifdef DISABLE_OPTIMIZATIONS  
 	  partition_smt_decl = new std::map <std::string,exprt>();
 	  out_terms.rdbuf(&terms_buf);
 	  out_basic.rdbuf(&basic_buf);
@@ -76,7 +78,7 @@ public:
 
   // First this called and then the parent d'tor due to the use of virtual
   virtual ~partitioning_target_equationt() {
-#         ifdef DEBUG_SSA_PRINT        
+#         ifdef DISABLE_OPTIMIZATIONS        
 	  partition_smt_decl->clear();
 	  delete partition_smt_decl;        
 	  first_call_expr = 0; // Not here to do the delete
@@ -187,7 +189,15 @@ public:
   }
 
   unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
-
+ 
+#ifdef DISABLE_OPTIMIZATIONS  
+  void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}
+  void set_dump_SSA_tree_name(const std::string& n)
+  {
+    ssa_tree_file_name = "__SSAt_" + n + ".smt2";
+  }
+#endif
+  
 protected:
   // Current summarization context
   summarization_contextt& summarization_context;
@@ -195,7 +205,10 @@ protected:
   // Id of the currently selected partition
   partition_idt current_partition_id;
 
-#ifdef DEBUG_SSA_PRINT  
+#ifdef DISABLE_OPTIMIZATIONS  
+  bool dump_SSA_tree;
+  std::string ssa_tree_file_name;
+  
   // For SMT-Lib Translation - Move it later to a new class
   std::map <std::string,exprt>* partition_smt_decl;
   std::ostream out_local_terms; //for prints SSA - remove later
@@ -218,7 +231,6 @@ protected:
   std::ostream& print_decl_smt(std::ostream& out);
   void print_all_partition(std::ostream& out);
   void print_partition();  
-  void addToDeclMap(const exprt &expr);
   void saveFirstCallExpr(const exprt& expr);
   bool isFirstCallExpr(const exprt& expr);
   void getFirstCallExpr();
@@ -282,9 +294,6 @@ protected:
   std::vector<unsigned>& clauses;
 
   friend class partitioning_slicet;
-  
-protected:
-    //virtual bool is_smt_encoding()=0; // KE: Temp. Just to force virtual for compilation
 };
 
 #endif

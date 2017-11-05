@@ -8,10 +8,11 @@ Author: Ondrej Sery
 
 #include "expr_pretty_print.h"
 
-#ifdef DEBUG_SSA_PRINT
+#ifdef DISABLE_OPTIMIZATIONS
 #include <iostream>
 #include <sstream>
 #include <stdlib.h>
+#include "hifrog.h"
 
 #define EDGE_COLOR "\033[2;37m"
 #define TYPE_COLOR "\033[0;37m"

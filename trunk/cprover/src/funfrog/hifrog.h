@@ -11,7 +11,6 @@
 #ifndef HIFROG_H
 #define HIFROG_H
 
-//#define DEBUG_SSA_PRINT // To Enable SSA Tree print
 #include <ssa_expr.h>
 
 // For now we have only one thread any hows

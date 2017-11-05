@@ -711,6 +711,7 @@ void symex_assertion_sumt::assign_function_arguments(
   // NOTE: The exec_order is not used now.
   
   if (goto_function.type.return_type().id() != ID_empty) {
+    // Needs: DISABLE_OPTIMIZATIONS to work
     //std::cout << "; Before call " << (function_call.lhs().is_nil()) << std::endl;
     //expr_pretty_print(std::cout << "check: ", function_call); std::cout << std::endl;
     //std::cout << (function_call.lhs().get(ID_identifier) == "return'!0") << " and code: " << function_call.pretty() << std::endl;
@@ -842,7 +843,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     //KE: else some of the global ones are not ssa (but just symbol)
     
     partition_iface.argument_symbols.push_back(symb_ex);
-#   ifdef DEBUG_PARTITIONING
+#   ifdef DEBUG_PARTITIONING && DISABLE_OPTIMIZATIONS
     expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex, "\n");
     std::cout << '\n';
 #   endif
@@ -889,7 +890,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     symbol_exprt symb_ex(ssa_expr);
     partition_iface.out_arg_symbols.push_back(symb_ex);
 
-#   ifdef DEBUG_PARTITIONING
+#   ifdef DEBUG_PARTITIONING && DISABLE_OPTIMIZATIONS
     expr_pretty_print(std::cout << "Marking modified global symbol: ", symb_ex);
 #   endif
   }
@@ -937,6 +938,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
     // Connect the return value to the variable in the calling site 
     if (!skip_assignment) {
         code_assignt assignment(*lhs, retval_symbol);
+        // Needs DISABLE_OPTIMIZATIONS to work
         //expr_pretty_print(std::cout << "lhs: ", assignment.lhs()); std::cout << std::endl;
         //expr_pretty_print(std::cout << "rhs: ", assignment.rhs()); std::cout << std::endl;
 
@@ -948,7 +950,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
         symex_assign(state, assignment);
         constant_propagation = old_cp;
     } 
-    # ifdef DEBUG_PARTITIONING
+    # ifdef DEBUG_PARTITIONING && DISABLE_OPTIMIZATIONS
       expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
       expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
     # endif

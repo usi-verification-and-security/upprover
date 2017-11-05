@@ -12,14 +12,7 @@ Module: Wrapper for OpenSMT2
 
 #include <util/threeval.h>
 #include "smtcheck_opensmt2.h"
-#include "interpolating_solver.h"
-#include "smt_itp.h"
-#include <opensmt/opensmt2.h>
-#include <expr.h>
-#include "smtcheck_opensmt2.h"
 
-// Cache of already visited interpolant literals
-typedef std::map<PTRef, literalt> ptref_cachet;
 
 class smtcheck_opensmt2t_uf : public smtcheck_opensmt2t
 {

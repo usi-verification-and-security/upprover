@@ -4,7 +4,9 @@
 #include <expr_util.h>
 
 #include "dependency_checker.h"
+#ifdef DISABLE_OPTIMIZATIONS
 #include "expr_pretty_print.h"
+#endif
 #include <sstream>
 #include <map>
 
@@ -16,6 +18,8 @@
 #include "partitioning_target_equation.h"
 
 using namespace boost;
+
+//#include <iostream>
 
 void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
@@ -54,25 +58,25 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
     temp_end = current_time();
     duration = temp_end - initial;
-  	std::cout << "TIME FOR find_assert_deps: " << (duration) << '\n';
+    status () << "TIME FOR find_assert_deps: " << (duration) << eom;
 
-  	initial = current_time();
+    initial = current_time();
 
-  	//TODO: FIX THIS!
-  	absolute_timet to_time(find_implications());
+    //TODO: FIX THIS!
+    absolute_timet to_time(find_implications());
 
-  	temp_end = current_time();
-  	duration = temp_end - initial;
+    temp_end = current_time();
+    duration = temp_end - initial;
 
-  	//durationto = current_time();
-  	//durationto = durationto - initial;
-  	//durationto = durationto - to_time;
-  	absolute_timet duration_cast(duration.get_t());
-  	durationto = duration_cast - to_time;
+    //durationto = current_time();
+    //durationto = durationto - initial;
+    //durationto = durationto - to_time;
+    absolute_timet duration_cast(duration.get_t());
+    durationto = duration_cast - to_time;
 
-  	time_periodt to_time_cast(to_time.get_t());
+    time_periodt to_time_cast(to_time.get_t());
 
-  std::cout << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << '\n';
+    status() << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << eom;
 //  std::cout << "TIME exceeding timeouts: " << (to_time) << '\n';
 //  std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << '\n';
 
@@ -80,7 +84,7 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
   ifstream just_dep;
   just_dep.open ("__just_hl_dep");
   if (just_dep.good()) {
-      cout << "__just_hl_dep file is in the current directory. Exiting...\n";
+      status () << "__just_hl_dep file is in the current directory. Exiting..." << eom;
       just_dep.close();
       exit(1);
   }
@@ -139,7 +143,7 @@ void dependency_checkert::do_it(smt_symex_target_equationt &equation){
 
     temp_end = current_time();
     duration = temp_end - initial;
-    std::cout << "TIME FOR find_assert_deps: " << (duration) << '\n';
+    status () << "TIME FOR find_assert_deps: " << (duration) << eom;
 
     initial = current_time();
 
@@ -153,12 +157,12 @@ void dependency_checkert::do_it(smt_symex_target_equationt &equation){
 
     time_periodt to_time_cast(to_time.get_t());
 
-    std::cout << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << '\n';
+    status () << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << eom;
 
     //TODO: make a proper cmd-parameter
     ifstream just_dep;
     just_dep.open ("__just_hl_dep");
-    if (just_dep.good()) {cout << "__just_hl_dep file is in the current directory. Exiting... " << '\n'; just_dep.close(); exit(1);}
+    if (just_dep.good()) {status () << "__just_hl_dep file is in the current directory. Exiting... " << eom; just_dep.close(); exit(1);}
     just_dep.close();
 }
 
@@ -333,6 +337,7 @@ void dependency_checkert::get_minimals()
 
 }
 
+#ifdef DISABLE_OPTIMIZATIONS
 void dependency_checkert::print_SSA_steps_infos()
 {
 //TODO: integrate with new CProver
@@ -443,6 +448,7 @@ void dependency_checkert::print_SSA_steps_infos()
     }
     */
 }
+#endif
 
 void dependency_checkert::print_dependents(map<string,bool> dependents, std::ostream &out)
 {
@@ -493,7 +499,7 @@ void dependency_checkert::print_expr_symbols(std::ostream &out, symbol_sett& s)
     //s.clear();
 }
 
-#ifdef DEBUG_SSA_PRINT
+#ifdef DISABLE_OPTIMIZATIONS
 void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int indent)
 {
   if (expr.has_operands())
@@ -514,7 +520,6 @@ void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int
           }
   }
 }
-#endif
 
 void dependency_checkert::print_SSA_steps()
 {
@@ -523,6 +528,7 @@ void dependency_checkert::print_SSA_steps()
       (*it)->output(ns, std::cout);
     }
 }
+#endif
 
 // TODO: send equation as in parameter - requires no additional changes!
 void dependency_checkert::reconstruct_exec_SSA_order(partitioning_target_equationt &equation){

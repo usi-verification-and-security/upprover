@@ -9,7 +9,6 @@
 #include <goto-symex/slice.h>
 
 #include <boost/pending/disjoint_sets.hpp>
-#include <iostream>
 #include <map>
 
 
@@ -54,8 +53,8 @@ public:
           // FIXME: make treshold parametrized
           treshold = fraction; //equation.SSA_steps.size() / fraction;
           //treshold = percentage * equation.SSA_steps.size() / 100;
-          std::cout << "Using the treshold of " << treshold << " out of " << SSA_steps_size << " SSA steps\n";
-          std::cout << "Assuming a timeout of " << (impl_timeout/1000) << "." << (impl_timeout%1000)/10 << " seconds." << std::endl;
+          status () << "Using the treshold of " << treshold << " out of " << SSA_steps_size << " SSA steps\n";
+          status () << "Assuming a timeout of " << (impl_timeout/1000) << "." << (impl_timeout%1000)/10 << " seconds." << eom;
     }
 
   void do_it(partitioning_target_equationt &equation);
@@ -75,9 +74,9 @@ public:
   virtual long find_implications()=0;
   void get_minimals();
 
+#ifdef DISABLE_OPTIMIZATIONS   
   void print_SSA_steps_infos();
-  void print_SSA_steps();
-#ifdef DEBUG_SSA_PRINT  
+  void print_SSA_steps(); 
   void print_expr_operands(std::ostream &out, exprt expr, int indent);
 #endif
   void get_expr_symbols(const exprt &expr, symbol_sett& symbols);

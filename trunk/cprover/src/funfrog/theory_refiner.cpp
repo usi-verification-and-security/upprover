@@ -30,12 +30,17 @@ void theory_refinert::initialize()
 
   if (options.get_unsigned_int_option("random-seed")) decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
 
+#ifdef DISABLE_OPTIMIZATIONS  
   if (options.get_bool_option("dump-query"))
       decider->set_dump_query(true);
 
+  if (options.get_bool_option("dump-pre-query"))
+      decider->set_dump_pre_query(true);
+  
   const std::string& dump_query_name = options.get_option("dump-query-name");
   if (dump_query_name != "")
       decider->set_dump_query_name(dump_query_name);
+#endif  
 
   summarization_context.analyze_functions(ns);
   omega.initialize_summary_info (omega.get_summary_info(), goto_program);
@@ -85,6 +90,13 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   smt_partitioning_target_equationt equation(ns, summarization_context, false,
       store_summaries_with_assertion, NO_COLORING, ints);
 
+#ifdef DISABLE_OPTIMIZATIONS
+  if (options.get_bool_option("dump-SSA-tree")) {
+    equation.set_dump_SSA_tree(true);
+    equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
+  }
+#endif
+  
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,

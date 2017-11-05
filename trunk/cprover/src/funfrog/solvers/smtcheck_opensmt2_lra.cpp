@@ -5,10 +5,12 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 Author: Grigory Fedyukovich
 
 \*******************************************************************/
+
+#include <util/type.h>
 #include "smtcheck_opensmt2_lra.h"
 #include "../hifrog.h"
-#include <util/type.h>
 
+// Debug flags of this class:
 //#define SMT_DEBUG
 //#define SMT_DEBUG_VARS_BOUNDS // For debugging the option: type_constraints_level
 
@@ -177,10 +179,9 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
     	PTRef ptl = logic->mkIte(literals[lt.var_no()], lralogic->mkConst("1"), lralogic->mkConst("0"));
       
-#ifdef DEBUG_SMT4SOLVER
-        ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
-        cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")" 
-            << string(getPTermString(ptl)) << endl << logic->printTerm(logic->getTopLevelIte(ptl)) << endl;
+#ifdef DISABLE_OPTIMIZATIONS
+        if (dump_pre_queries)
+            ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif        
         
     	return push_variable(ptl); // Keeps the new literal + index it
@@ -295,14 +296,14 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         l = type_cast(expr);
         
     #ifdef SMT_DEBUG
-    char* s = getPTermString(l);
-    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+        char* s = getPTermString(l);
+        cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+        free(s);
     #endif
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
     #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")" << endl;
-            assert(false); // Need to take care of - typecast no operands
+        cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")" << endl;
+        assert(false); // Need to take care of - typecast no operands
     #else
         l = lunsupported2var(expr);
     #endif
@@ -315,17 +316,17 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         cout << "; IT IS AN OPERATOR" << endl;
 
         if (expr.has_operands() && expr.operands().size() > 1) {
-        	if ((expr.operands()[0] == expr.operands()[1]) &&
-        		(!expr.operands()[1].is_constant())	&&
-        		  ((_id == ID_div) ||
-        		   (_id == ID_floatbv_div) ||
-        	       (_id == ID_mult) ||
-        		   (_id == ID_floatbv_mult))
-        	){
-        		cout << "; IT IS AN OPERATOR BETWEEN SAME EXPR: NOT SUPPORTED FOR NONDET" << endl;
-        		assert(false);
-			}
-		}
+            if ((expr.operands()[0] == expr.operands()[1]) &&
+                    (!expr.operands()[1].is_constant())	&&
+                      ((_id == ID_div) ||
+                       (_id == ID_floatbv_div) ||
+                   (_id == ID_mult) ||
+                       (_id == ID_floatbv_mult))
+            ){
+                cout << "; IT IS AN OPERATOR BETWEEN SAME EXPR: NOT SUPPORTED FOR NONDET" << endl;
+                assert(false);
+            }
+        }
 #endif
         // Check if for div op there is a rounding variable
         bool is_div_wtrounding = // need to take care differently!
@@ -405,19 +406,17 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                 ptl = logic->mkImpl(args);
             } else {
                 ptl = logic->mkIte(args);
-#ifdef DEBUG_SMT4SOLVER
-                ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
-                cout << "; XXX oite symbol: (" << ite_map_str.size() << ")" 
-                    << string(getPTermString(ptl)) << endl << logic->printTerm(logic->getTopLevelIte(ptl)) << endl;
+#ifdef DISABLE_OPTIMIZATIONS
+                if (dump_pre_queries)
+                    ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
             }
         } else if(_id == ID_ifthenelse) {
             assert(args.size() >= 3); // KE: check the case if so and add the needed code!
             ptl = logic->mkIte(args);
-#ifdef DEBUG_SMT4SOLVER
-            ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
-            cout << "; XXX oite symbol: (" << ite_map_str.size() << ")" 
-                    << string(getPTermString(ptl)) << endl << logic->printTerm(logic->getTopLevelIte(ptl)) << endl;
+#ifdef DISABLE_OPTIMIZATIONS
+            if (dump_pre_queries)
+                ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
         } else if(_id == ID_and) {
             ptl = logic->mkAnd(args);
@@ -586,7 +585,7 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     if (type_constraints_level > 0)
     	add_constraints2type(expr, var);
 
-#ifdef DEBUG_SMT4SOLVER
+#ifdef DISABLE_OPTIMIZATIONS
 	std::string add_var = str + " () " + getVarData(var);
 	if (var_set_str.end() == var_set_str.find(add_var)) {
 		var_set_str.insert(add_var);
@@ -605,11 +604,10 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
                         lralogic->mkRealNeg(literals[lt.var_no()]),                 // Then
                         literals[lt.var_no()]);                                     // Else
 
-    #ifdef DEBUG_SMT4SOLVER
-                ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
-                cout << "; XXX oite symbol (labs):  (" << ite_map_str.size() << ")" 
-                    << string(getPTermString(ptl)) << endl << logic->printTerm(logic->getTopLevelIte(ptl)) << endl;
-    #endif
+#ifdef DISABLE_OPTIMIZATIONS
+    if (dump_pre_queries)
+        ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
+#endif
     
     literalt l = push_variable(ptl); // Keeps the new literal + index it
 
