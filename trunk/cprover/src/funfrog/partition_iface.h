@@ -87,7 +87,7 @@ public:
     returns_value = other.returns_value;
     call_loc = other.call_loc;
     
-#   if 0 && DISABLE_OPTIMIZATIONS // KE: unknown old debug code
+#   if 0 && defined(DISABLE_OPTIMIZATIONS) // KE: unknown old debug code
     std::cerr << " === Sharing symbols:" << std::endl;
     std::cerr << " = Argument symbols:" << std::endl;
     {

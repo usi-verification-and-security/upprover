@@ -72,7 +72,7 @@ void smt_symex_target_equationt::convert_guards(smtcheck_opensmt2t &decider)
             if (!tmp.is_boolean())
                 terms_counter++; // SSA -> SMT shall be all in a new function
 #       endif
-#       ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
+#       if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
             expr_ssa_print_smt_dbg(
                 cout << "Before decider::convert(GUARD-OUT) --> ", tmp,false);
 #	endif
@@ -133,7 +133,7 @@ void smt_symex_target_equationt::convert_assumptions(smtcheck_opensmt2t &decider
                 // GF
             } else {
                 exprt tmp(step.cond_expr);
-#               ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
+#               if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                     expr_ssa_print_smt_dbg(
                             cout << "Before decider::convert(ASSUME-OUT) --> ",
                             tmp, false);
@@ -157,7 +157,7 @@ void smt_symex_target_equationt::convert_goto_instructions(smtcheck_opensmt2t &d
                 // GF
             } else {
                 exprt tmp(step.cond_expr);
-#               ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
+#               if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                     expr_ssa_print_smt_dbg(
                             cout << "Before decider::convert(GOTO-OUT) --> ",
                             tmp, false);
@@ -246,7 +246,7 @@ void smt_symex_target_equationt::convert_io(smtcheck_opensmt2t &decider)
                 else {
                     symbol_exprt symbol((IO_CONST+std::to_string(io_count_global++)), tmp.type());
 
-#ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
+#if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                     expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true --> ",
                         equal_exprt(tmp, symbol), false);
 #endif

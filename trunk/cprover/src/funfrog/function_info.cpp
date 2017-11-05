@@ -455,7 +455,7 @@ void function_infot::add_to_set_if_global(const namespacet& ns,
 
   else {
     std::cerr << "WARNING: Unsupported index/member scheme - ignoring." << std::endl;
-#ifdef DEBUG_GLOBALS && DISABLE_OPTIMIZATIONS
+#if defined(DEBUG_GLOBALS) && defined(DISABLE_OPTIMIZATIONS)
     expr_pretty_print(std::cerr << "Expr: ", ex);
     throw "Unsupported indexing scheme.";
 #endif

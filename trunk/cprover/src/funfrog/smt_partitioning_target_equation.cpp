@@ -257,18 +257,18 @@ void smt_partitioning_target_equationt::convert_partition_assignments(
 
             // Only if not an assignment to rounding model print it + add it to LRA statements
             if (!isRoundModelEq(tmp)) {
-#     ifdef DEBUG_SSA && DISABLE_OPTIMIZATIONS
+#     if        defined(DEBUG_SSA) && defined(DISABLE_OPTIMIZATIONS)
                 expr_pretty_print(std::cout << "\nASSIGN-OUT:" << std::endl, tmp, 2);
                 //expr_ssa_print_test(&partition_smt_decl, out_code << "(assign ", tmp);
 #     endif
-#     ifdef DISABLE_OPTIMIZATIONS
+#     ifdef     DISABLE_OPTIMIZATIONS
                 expr_ssa_print(out_terms << "    ", tmp, partition_smt_decl, false);
                 terms_counter++;
-#     endif
-#     ifdef DEBUG_SSA_SMT_CALL
+#       ifdef   DEBUG_SSA_SMT_CALL
                 expr_ssa_print_smt_dbg(
                 cout << "Before decider::set_to_true(ASSIGN-OUT) --> ",
 						tmp, false);
+#       endif
 #     endif
                 decider.set_to_true(tmp);
                 exprs.push_back(tmp);
@@ -360,7 +360,7 @@ void smt_partitioning_target_equationt::convert_partition_assumptions(
             } else {
                 it->cond_literal = decider.convert(it->cond_expr);
                 
-#               ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
+#               if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                 exprt tmp(it->cond_expr);
                 expr_ssa_print_smt_dbg(
                 cout << "Before decider::convert(ASSUME-OUT) --> ",
@@ -393,7 +393,7 @@ void smt_partitioning_target_equationt::convert_partition_goto_instructions(
                 it->cond_literal = decider.const_var(true);
                 // GF
             } else {
-#               ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
+#               if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                     exprt tmp(it->cond_expr);
                     expr_ssa_print_smt_dbg(
                             cout << "Before decider::convert(GOTO-OUT) --> ",
@@ -457,7 +457,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
             exprs.push_back(op_ass);
             // GF: <-- end
 
-#           ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
+#           if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
             bool test = (isTypeCastConst(it->cond_expr));
             expr_ssa_print_smt_dbg(
             cout << "Before decider::convert and decider.limplies(ASSERT-OUT) " 
@@ -484,7 +484,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
                                 target_partition->get_iface();
                 assert(!target_partition->invalid && !target_partition->processed);
 
-#		ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
+#		if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                 expr_ssa_print_smt_dbg(
                     cout << "Before decider::land(GUARD-LITERAL of Call-START) --> ",
                             it->guard, false);
@@ -688,7 +688,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
     //  // Emit error_root = true for the ROOT partition
     //  if (partition.parent_id == partitiont::NO_PARTITION) {
     //    decider.prop.l_set_to_true(partition_iface.error_literal);
-    //    #ifdef DEBUG_SSA && DISABLE_OPTIMIZATIONS
+    //    #if defined(DEBUG_SSA) && defined(DISABLE_OPTIMIZATIONS)
     //    expr_pretty_print(std::cout << "XXX Asserting error_root: ",
     //            partition_iface.error_symbol);
     //    #endif
@@ -764,7 +764,7 @@ void smt_partitioning_target_equationt::convert_partition_io(
                 else {
                     symbol_exprt symbol((IO_CONST+std::to_string(io_count_global++)), tmp.type());
 
-#ifdef DEBUG_SSA_SMT_CALL && DISABLE_OPTIMIZATIONS
+#if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                     expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true --> ",
                         equal_exprt(tmp, symbol), false);
 #endif

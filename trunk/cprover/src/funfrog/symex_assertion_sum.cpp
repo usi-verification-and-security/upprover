@@ -845,7 +845,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
     //KE: else some of the global ones are not ssa (but just symbol)
     
     partition_iface.argument_symbols.push_back(symb_ex);
-#   ifdef DEBUG_PARTITIONING && DISABLE_OPTIMIZATIONS
+#   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
     expr_pretty_print(std::cout << "Marking accessed global symbol: ", symb_ex, "\n");
     std::cout << '\n';
 #   endif
@@ -892,7 +892,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     symbol_exprt symb_ex(ssa_expr);
     partition_iface.out_arg_symbols.push_back(symb_ex);
 
-#   ifdef DEBUG_PARTITIONING && DISABLE_OPTIMIZATIONS
+#   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
     expr_pretty_print(std::cout << "Marking modified global symbol: ", symb_ex);
 #   endif
   }
@@ -952,7 +952,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
         symex_assign(state, assignment);
         constant_propagation = old_cp;
     } 
-    # ifdef DEBUG_PARTITIONING && DISABLE_OPTIMIZATIONS
+    # if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
       expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
       expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
     # endif
