@@ -929,6 +929,7 @@ bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
 bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
     throw std::logic_error("Should not be called in non-debug setting!");
 }
+#endif //DEBUG_SSA_SMT_CALL
 
 void smt_partitioning_target_equationt::fill_common_symbols(const partitiont &partition,
                                                             std::vector<symbol_exprt> &common_symbols) const {
@@ -946,4 +947,3 @@ void smt_partitioning_target_equationt::fill_common_symbols(const partitiont &pa
     common_symbols.end());
 }
 
-#endif

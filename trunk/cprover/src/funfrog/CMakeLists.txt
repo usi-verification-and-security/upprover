@@ -101,7 +101,8 @@ target_compile_definitions(hifrog PUBLIC -DPRODUCE_PROOF)
 
 target_compile_definitions(hifrog PRIVATE
     #-DDEBUG_PARTITIONING
-    #-DDEBUG_SSA_PRINT
+    #-DDEBUG_SSA
+    #-DDEBUG_SSA_SMT_CALL
     #-DDEBUG_GLOBALS
     )
 
