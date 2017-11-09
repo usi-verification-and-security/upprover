@@ -128,7 +128,7 @@ def run_test_case(path_to_exec, testdir, configfile):
 
 # maps string representation of expected result to boolean
 def should_success(expected):
-    if expected == 'success':
+    if expected in ['success','succes', 'sucess']:
         return True
     if expected == 'fail':
         return False
