@@ -1,5 +1,8 @@
 .gitignore~
 
+# Mac OS file
+.DS_store
+
 # /
 /*.d
 /*.o
