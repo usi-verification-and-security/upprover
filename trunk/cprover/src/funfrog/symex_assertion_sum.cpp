@@ -978,7 +978,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
     symbol_exprt retval_symbol;	
     fabricate_cprover_SSA(retval_symbol_id, type, 
         function_type.source_location(),
-        true, false, true, retval_symbol);
+        true, true, true, retval_symbol);
     
     // Connect the return value to the variable in the calling site 
     if (!skip_assignment) {
