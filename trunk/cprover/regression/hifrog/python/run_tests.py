@@ -86,12 +86,23 @@ def run_single(args, shouldSuccess, folderpath):
 def run(path_to_exec):
     # where the testcases are located
     testdir = './testcases'
+    fails_in_tests = 0
     # process each configuration file you find there
     for subdirs, dirs, files in os.walk(testdir):
         for file in files:
             if file.endswith('.conf'):
-                run_test_case(path_to_exec, testdir, file)
-                
+                res = run_test_case(path_to_exec, testdir, file)
+                if not res:
+                    fails_in_tests = fails_in_tests + 1
+    print('')
+    note('Result of this test suite:\n')
+    if fails_in_tests > 0:
+        error('There were some failed tests!')
+        error('Number of failed tests: ' + str(fails_in_tests))
+    else:
+        success('All tests ran successfully!')
+
+
 # for a given configuration file, we look for the source file and 
 #run hifrog on that source file for each configuratiom found in config file
 def run_test_case(path_to_exec, testdir, configfile):
@@ -111,6 +122,7 @@ def run_test_case(path_to_exec, testdir, configfile):
         configurations = cfg.read().splitlines()
     # each configuration on one line, arguments separated from expected result by ';'
     separator = ';'
+    fail_count = 0
     for configuration in configurations:
         # ignore empty lines or lines starting wiht '#' -> comments
         if not configuration or configuration.startswith('#'):
@@ -123,8 +135,11 @@ def run_test_case(path_to_exec, testdir, configfile):
         args = fields[0].strip().split()
         # expected result
         exp_res = fields[1].strip()
-        run_single([path_to_exec] + args + [sourcepath], should_success(exp_res), testdir)
+        res = run_single([path_to_exec] + args + [sourcepath], should_success(exp_res), testdir)
+        if not res:
+            fail_count = fail_count + 1
         print('')
+    return fail_count == 0
 
 # maps string representation of expected result to boolean
 def should_success(expected):
