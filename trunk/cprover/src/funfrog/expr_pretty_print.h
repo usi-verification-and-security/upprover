@@ -8,7 +8,6 @@ Author: Ondrej Sery
 
 #ifndef CPROVER_EXPR_PRETTY_PRINT_H
 #define CPROVER_EXPR_PRETTY_PRINT_H
-
 #ifdef DISABLE_OPTIMIZATIONS
 #include <expr.h>
 class expr_pretty_printt

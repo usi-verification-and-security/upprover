@@ -1,1 +1,5 @@
+Violated property:
+  file benchmarks/loop_assert_7.c line 16 function main
+  assertion a0 != 5
+  a0 != 5
 VERIFICATION FAILED

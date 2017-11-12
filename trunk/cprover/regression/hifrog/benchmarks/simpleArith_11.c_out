@@ -1,1 +1,5 @@
+Violated property:
+  file benchmarks/simpleArith_11.c line 19 function main
+  assertion a == return_value_get2zero_test$1
+  a == return_value_get2zero_test$1
 VERIFICATION FAILED

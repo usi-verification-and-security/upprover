@@ -107,7 +107,7 @@ void smt_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespac
 
     error_trace.build_goto_trace(equation, decider);
 
-    status () << "\nCounterexample:\n";
-    error_trace.show_goto_trace(decider, std::cout, ns, guard_expln);
-    status () << eom;
+    result () << "\nCounterexample:\n";
+    error_trace.show_goto_trace(decider, result (), ns, guard_expln);
+    result () << eom;
 }

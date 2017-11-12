@@ -1,2 +1,2 @@
-benchmarks/non-global1.c,prop,--claim,1,--unwind,2
-benchmarks/non-global1.c,qflra,--claim,1,--unwind,2
+0,benchmarks/non-global1.c,prop,--claim,1,--unwind,2
+0,benchmarks/non-global1.c,qflra,--claim,1,--unwind,2

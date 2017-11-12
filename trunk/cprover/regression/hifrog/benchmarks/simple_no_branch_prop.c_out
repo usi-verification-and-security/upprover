@@ -1,0 +1,9 @@
+Violated assumption:
+  file benchmarks/simple_no_branch.c line 2
+
+
+Violated property:
+  file benchmarks/simple_no_branch.c line 4 function main
+  assertion
+  FALSE
+VERIFICATION FAILED

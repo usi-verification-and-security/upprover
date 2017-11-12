@@ -1,1 +1,5 @@
+Violated property:
+  file benchmarks/loop_assert_8.c line 9 function calculate_output
+  assertion 0
+  (_Bool)0
 VERIFICATION FAILED

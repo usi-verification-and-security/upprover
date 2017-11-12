@@ -1,0 +1,6 @@
+HAVOCING (of 50 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+Violated property:
+  file benchmarks/funfrog15_bench_mem_false_part.c line 1183 function start_simulation
+  assertion return_value_store$1
+  (_Bool)return_value_store$1
+VERIFICATION FAILED

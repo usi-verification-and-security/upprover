@@ -1,1 +1,5 @@
+Violated property:
+  file benchmarks/byte_add_false-unreach-call.c line 6 function __VERIFIER_assert
+  assertion
+  FALSE
 VERIFICATION FAILED

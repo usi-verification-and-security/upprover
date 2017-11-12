@@ -1,0 +1,8 @@
+SAT - doesn't hold
+HAVOCING (of 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+SAT - doesn't hold
+HAVOCING (of 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+Violated property:
+  file 17_recursion/rec3.c line 27 function main
+  assertion
+  (_Bool)0

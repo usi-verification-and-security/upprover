@@ -1,1 +1,5 @@
+Violated property:
+  file benchmarks/simple_if_5.c line 15 function main
+  assertion (double)z < 12.4
+  FLOAT_TYPECAST(z, double, __CPROVER_rounding_mode) < 12.4
 VERIFICATION FAILED

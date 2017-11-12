@@ -119,7 +119,7 @@ void goto_trace_stept::output(
   else if(pc->is_assert())
   {
     if(!cond_value)
-    {
+    {  
       out << "Violated property:" << "\n";
       if(pc->source_location.is_nil())
         out << "  " << pc->source_location << "\n";

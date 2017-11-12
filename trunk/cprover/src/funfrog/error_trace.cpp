@@ -438,12 +438,12 @@ void error_tracet::show_goto_trace(
             case goto_trace_stept::typet::ASSERT:
                 if(!it->cond_value)
                 {
+                    // KE: keep the same format of prints as in goto-programs/goto_trace.cpp
                     out << std::endl;
-                    cout << "Violated assertion at:\n" <<
-                    "  file \"" << it->pc->source_location.get_file() <<
-                    "\",\n  function \"" << it->pc->source_location.get_function() <<
-                    "\",\n  line " << it->pc->source_location.get_line() << ":\n  " <<
-                    from_expr(ns, "", it->pc->guard) << "\n";
+                    out << "Violated property:\n  " <<
+                        it->pc->source_location << 
+                        "\n  " << it->comment <<
+                        "\n  " << from_expr(ns, "", it->pc->guard);
 
                     out << std::endl;
                 }

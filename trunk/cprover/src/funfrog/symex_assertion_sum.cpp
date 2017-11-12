@@ -1748,7 +1748,8 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
 {
     statet::framet &frame=state.top();
 
-    unsigned int unwind_counter;
+    unsigned int unwind_counter = // KE: for case 3. Not sure, can be the other option
+            state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
     if (frame.loop_iterations[goto_programt::loop_id(state.source.pc)].count > 0)
     {
         // If we are opening the loop iterations, we are in a loop
@@ -1759,7 +1760,10 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
         // If we are in recursion - we are in a loop, return true
         return true;
     }
-        // FIXME: use of uninitialized variable unwind_counter!!!
+    // FIXME: use of uninitialized variable unwind_counter!!!
+    // KE: unwind_counter isn't init, my guess is case 3 described below
+    // Either shall be state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
+    // OR frame.loop_iterations[goto_programt::loop_id(state.source.pc)].count
     else if ((!frame.loop_iterations.empty()) && (prev_unwind_counter <= unwind_counter)) 
     {
         // If there are loops in this function, and we are still opening it, we are in a loop

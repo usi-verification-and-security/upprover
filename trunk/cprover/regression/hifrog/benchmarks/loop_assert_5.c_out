@@ -1,1 +1,6 @@
+HAVOCING (of 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+Violated property:
+  file benchmarks/loop_assert_5.c line 14 function main
+  assertion a0 != 1
+  a0 != 1
 VERIFICATION FAILED

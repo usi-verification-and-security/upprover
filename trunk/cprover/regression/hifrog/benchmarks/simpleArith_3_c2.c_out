@@ -1,0 +1,5 @@
+Violated property:
+  file benchmarks/simpleArith_3.c line 11 function main
+  assertion (double)x > 0
+  FLOAT_TYPECAST(x, double, __CPROVER_rounding_mode) > 0
+VERIFICATION FAILED

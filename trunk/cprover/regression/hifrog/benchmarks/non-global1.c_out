@@ -1,1 +1,5 @@
+Violated property:
+  file benchmarks/non-global1.c line 5 function calculate_output
+  assertion 0
+  (_Bool)0
 VERIFICATION FAILED

@@ -1,0 +1,5 @@
+Violated property:
+  file funfrog/01_choice/main2_err.c line 34 function main
+  assertion t != -2
+  t != -2
+VERIFICATION FAILED

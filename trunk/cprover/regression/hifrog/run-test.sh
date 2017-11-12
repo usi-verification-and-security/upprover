@@ -19,13 +19,14 @@ function check_result {
 function test_one {
 
   INPUT="$1"
-  PREFIX=$PATH_reg${INPUT: : -2}
-  FILE_PREFIX="${PREFIX}/${OUTPUT_DIR}_$2"
-  SUMMARIES="${PREFIX}/__summaries_${OUTPUT_DIR}_$2"
+  PREFIX=$PATH_reg$OUTDIR/${INPUT: : -2}
+  FILE_PREFIX="${PREFIX}/${OUTPUT_PREFIX}_$2"
+  SUMMARIES="${PREFIX}/__summaries_${OUTPUT_PREFIX}_$2"
   HIFROG_OUTPUT="${FILE_PREFIX}_hifrog_$IND.txt"
   HIFROG_RESULT="${FILE_PREFIX}_result.txt"
   HIFROG_TIME="${FILE_PREFIX}_time.txt"
   EXPECTED_OUTPUT="${INPUT}_out"
+  EXPECTED_OUTPUT_CUF="${FILE_PREFIX}_cuf_expected_res.txt"
   IND=$((IND+1))
 
   if [[ ! -r ${INPUT} ]] ; then
@@ -37,10 +38,15 @@ function test_one {
     return 1
   fi
   
-  #fixed so can pass params that are numbers
-  p3="${3%\"}"
-  p3="${p3#\"}"
- 
+  # $p3 is where is the expected output	
+  if (("${#3}" > 1))
+  then
+    p3="${3%\"}"
+    p3="${p3#\"}" 
+    EXPECTED_OUTPUT=$p3
+  fi
+
+  #fixed so can pass params that are numbers 
   p4="${4%\"}"
   p4="${p4#\"}"
   
@@ -77,40 +83,64 @@ function test_one {
   p15="${15%\"}"
   p15="${p15#\"}"
 
+  p16="${16%\"}"
+  p16="${p16#\"}"
+
   #stupid way to do it, but it works. If needed add more params
-  echo ">> Run test case: $hifrog $PATH_reg$1 --logic $2 --save-summaries ${SUMMARIES}" $p3 $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15
-  $hifrog $PATH_reg$1 --logic $2 --save-summaries ${SUMMARIES} $p3 $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 >> ${HIFROG_OUTPUT} 2>&1
+  echo ">> Run test case: $hifrog $1 --logic $2 --save-summaries ${SUMMARIES}" $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15
+  $hifrog $1 --logic $2 --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 $p16 >> ${HIFROG_OUTPUT} 2>&1
   if [[ $? -gt 0 ]]; then
     echo "HiFrog analysis failed (see ${HIFROG_OUTPUT})"
+    echo "Verify output against: $EXPECTED_OUTPUT"
   fi
 
-  # Filter the relevant information
-  cat ${HIFROG_OUTPUT} | ${FILTER_RESULT} > ${HIFROG_RESULT}
-  cat ${HIFROG_OUTPUT} | ${FILTER_TIME} > ${HIFROG_TIME}
-
-  # Check the result against the expected one
-  check_result ${HIFROG_RESULT} ${EXPECTED_OUTPUT}
+  # patch for cuf till it will support full functionality of hifrog (as other theories)
+  if [ "$2" == "$QFCUF" ]
+  then
+    # Filter the relevant information
+    cat ${HIFROG_OUTPUT} | ${FILTER_RESULT_CUF} > ${HIFROG_RESULT}
+    cat ${HIFROG_OUTPUT} | ${FILTER_TIME} > ${HIFROG_TIME}
+    cat ${EXPECTED_OUTPUT} | ${FILTER_RESULT_CUF} > ${EXPECTED_OUTPUT_CUF}
+   
+    # Check the result against the expected one
+    check_result ${HIFROG_RESULT} ${EXPECTED_OUTPUT_CUF} 
+  else
+    # Filter the relevant information
+    cat ${HIFROG_OUTPUT} | ${FILTER_RESULT} > ${HIFROG_RESULT}
+    cat ${HIFROG_OUTPUT} | ${FILTER_TIME} > ${HIFROG_TIME}
+   
+    # Check the result against the expected one
+    check_result ${HIFROG_RESULT} ${EXPECTED_OUTPUT} 
+  fi
 }
 
 
 ################### MAIN ###############################
 PATH_reg=$(readlink -f $0)
 PATH_reg=${PATH_reg: : -11}
-echo "This is the script for running regression tests"
+echo "This is the script for running regression tests;supports: prop,qflra,qfuf,qfcuf."
 echo " - date: $(date '+%Y-%m-%d at %H:%M.%S')"
 echo " - host name $(hostname -f)"
 echo " - script path: $(readlink -f $0)"
 echo " - path regression tests: $PATH_reg"
 
 FILTER_RESULT="./filter-result.sh"
+FILTER_RESULT_CUF="./filter-result-cuf.sh"
 FILTER_TIME="./filter-time.sh"
-OUTPUT_DIR="output"
+OUTPUT_PREFIX="output"
 IND=1
+QFCUF="qfcuf"
+
+#Prepare main output folder
+OUTDIR="mainReg_$OUTPUT_PREFIX"
+rm -r $OUTDIR
+mkdir $OUTDIR
 
 # If works with absolute paths (when copying sub-folders of the regression and running somewhere)
 # then please also state your absolute path of hifrog. If you are running it from the original
 # location, you may ignore this comment
-hifrog=./../../src/funfrog/hifrog 
+hifrog=./../../src/funfrog/hifrog
+
 
 
 # Iterating over all the test cases - When result shall match the known results
@@ -128,10 +158,10 @@ do
         then
 	  	isFirst=0
 	    	# Prepare the environment
-		rm -r ${arr[0]: : -2}
-		mkdir "${arr[0]: : -2}"
+		mkdir -p "$OUTDIR/${arr[1]: : -2}" 
+                echo "***** Create Directory for test-case ${arr[1]} *****" 
         fi
-	test_one ${arr[0]} ${arr[1]} ${arr[2]} ${arr[3]} ${arr[4]} ${arr[5]} ${arr[6]} ${arr[7]} ${arr[8]} ${arr[9]} ${arr[10]} ${arr[11]} ${arr[12]} ${arr[13]} ${arr[14]} ${arr[15]}
+	test_one ${arr[1]} ${arr[2]} ${arr[0]} ${arr[3]} ${arr[4]} ${arr[5]} ${arr[6]} ${arr[7]} ${arr[8]} ${arr[9]} ${arr[10]} ${arr[11]} ${arr[12]} ${arr[13]} ${arr[14]} ${arr[15]} ${arr[16]}
     done
 done
 

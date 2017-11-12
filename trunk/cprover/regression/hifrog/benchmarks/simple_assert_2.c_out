@@ -1,1 +1,5 @@
+Violated property:
+  file benchmarks/simple_assert_2.c line 5 function main
+  assertion y < 10
+  y < 10
 VERIFICATION FAILED

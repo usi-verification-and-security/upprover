@@ -115,8 +115,8 @@ void smt_assertion_no_partitiont::error_trace(smtcheck_opensmt2t &decider, const
 
     error_trace.build_goto_trace(equation, decider);
 
-    status() << "\nCounterexample:" << eom;
-    
-    error_trace.show_goto_trace(decider, std::cout, ns, guard_expln);
+    result() << "\nCounterexample:" << eom;
+    error_trace.show_goto_trace(decider, result (), ns, guard_expln);
+    result () << eom;
 }
 

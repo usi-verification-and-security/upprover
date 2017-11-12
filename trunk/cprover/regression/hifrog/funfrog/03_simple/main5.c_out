@@ -1,0 +1,6 @@
+SAT - doesn't hold
+Violated property:
+  file 03_simple/main5.c line 19 function main
+  assertion
+  i == j
+ASSERTION(S) DO(ES)N'T HOLD

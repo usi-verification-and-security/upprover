@@ -1,1 +1,6 @@
+HAVOCING (of 1 calls) AREN'T SUITABLE FOR CHECKING ASSERTION.
+Violated property:
+  file benchmarks/simple_no_uf_assumption.c line 9 function main
+  assertion z == x
+  z == x
 VERIFICATION FAILED

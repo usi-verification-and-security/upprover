@@ -1,1 +1,5 @@
+Violated property:
+  file benchmarks/simple_assert_double.c line 3 function main
+  assertion 0
+  (_Bool)0
 VERIFICATION FAILED

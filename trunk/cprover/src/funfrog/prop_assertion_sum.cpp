@@ -276,15 +276,16 @@ void prop_assertion_sumt::error_trace(const prop_conv_solvert &prop_conv, const 
   switch(message_handler.get_ui())
   {
     case ui_message_handlert::uit::PLAIN:
-    status() << "\nCounterexample:" << eom;
-    show_goto_trace(std::cout, ns, goto_trace);
+    result() << "\nCounterexample:" << eom;
+    show_goto_trace(result (), ns, goto_trace);
+    result () << eom;
     break;
 
     case ui_message_handlert::uit::XML_UI:
     {
       xmlt xml;
       convert(ns, goto_trace, xml);
-      status() << xml << eom;
+      result() << xml << eom;
     }
     break;
 

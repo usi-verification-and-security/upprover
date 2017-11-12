@@ -1,4 +1,4 @@
-benchmarks/simple_assert_float.c,prop,--claim,1
-benchmarks/simple_assert_float.c,qflra,--claim,1
-benchmarks/simple_assert_float.c,qfuf,--claim,1
-benchmarks/simple_assert_float.c,qfcuf,--claim,1
+0,benchmarks/simple_assert_float.c,prop,--claim,1
+0,benchmarks/simple_assert_float.c,qflra,--claim,1
+0,benchmarks/simple_assert_float.c,qfuf,--claim,1
+0,benchmarks/simple_assert_float.c,qfcuf,--claim,1
