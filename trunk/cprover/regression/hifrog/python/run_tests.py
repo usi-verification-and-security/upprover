@@ -1,8 +1,13 @@
 #!/usr/local/bin/python3
+#This script runs HiFrog twice(first without summary and second with reusing the summary) and then
+# checks with the expected results. It also dumps the verification results into a collected*.txt file 
+
+#usage: python3 run_tests.py <hifrog-executable-path>
 
 import subprocess
 import os
 import sys
+from datetime import datetime
 
 RED   = "\033[1;31m"
 BLUE  = "\033[0;34m"
@@ -13,8 +18,8 @@ def filtercomments(input_text):
     comment_start = ';'
     filtered = [ line for line in input_text.splitlines() if not line.startswith(comment_start) ]
     return '\n'.join(filtered)
-
-def run_single(args, shouldSuccess, folderpath):
+#-------------------------------------------------------
+def run_single(args, shouldSuccess, folderpath, testname):
     computes_summaries = (('--no-itp' not in args) and ('--theoref' not in args))
     summaries_name = '__summaries'
     summaries_path = os.path.join(folderpath, summaries_name)
@@ -23,9 +28,12 @@ def run_single(args, shouldSuccess, folderpath):
     newargs = args + ['--save-summaries', summaries_path]
     note('Executing command:' + ' '.join(newargs))
     out = subprocess.run(newargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdoutput = out.stdout.decode('utf-8')
+    stdoutput = out.stdout.decode('utf-8')   #First output
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
+    strarg=' '.join(newargs)
+    # collect verification time and results; dump the results in collected*.txt file corresponding to each arg in tescases
+    collect_data(stdoutput , testname , strarg)
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
     if not resultLines:
@@ -43,14 +51,18 @@ def run_single(args, shouldSuccess, folderpath):
     success('Test result as expected!')
     if (not shouldSuccess) or (not computes_summaries):
         return True
+
     #rerun with the computed summaries
     assert os.path.exists(summaries_path), 'Summaries for rerun not found!'
     newargs = newargs + ['--load-summaries', summaries_path]
-    note('Reruning the command to check the summaries')
+    note('Reruning the command to check the summaries:' + ' '.join(newargs))
     out = subprocess.run(newargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdoutput = out.stdout.decode('utf-8')
+    stdoutput = out.stdout.decode('utf-8')  #Second output with reusing summary
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
+    strnewarg=' '.join(newargs)
+    collect_data(stdoutput , testname , strnewarg)  # collect rerun time and results;
+    
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
     if not resultLines:
@@ -82,7 +94,7 @@ def run_single(args, shouldSuccess, folderpath):
     success('Re-verification with summaries successful!')
     os.remove(summaries_path)
     return True
-
+#-------------------------------------------------------
 def run(path_to_exec):
     # where the testcases are located
     testdir = './testcases'
@@ -102,7 +114,7 @@ def run(path_to_exec):
     else:
         success('All tests ran successfully!')
 
-
+#-------------------------------------------------------
 # for a given configuration file, we look for the source file and 
 #run hifrog on that source file for each configuratiom found in config file
 def run_test_case(path_to_exec, testdir, configfile):
@@ -135,12 +147,12 @@ def run_test_case(path_to_exec, testdir, configfile):
         args = fields[0].strip().split()
         # expected result
         exp_res = fields[1].strip()
-        res = run_single([path_to_exec] + args + [sourcepath], should_success(exp_res), testdir)
+        res = run_single([path_to_exec] + args + [sourcepath], should_success(exp_res), testdir, testname)
         if not res:
             fail_count = fail_count + 1
         print('')
     return fail_count == 0
-
+#-------------------------------------------------------
 # maps string representation of expected result to boolean
 def should_success(expected):
     if expected in ['success','succes', 'sucess']:
@@ -148,7 +160,51 @@ def should_success(expected):
     if expected == 'fail':
         return False
     assert False, 'Unknown expect status'
+#-------------------------------------------------------
+#collects and dumps the verification results into a collected*.txt file 
+def collect_data(flog , testname , strarg):  #flog is string!
+    fi = open(mypath+"/collected_" +datestring + ".txt", 'a')
+    fi.write( testname + '.c')
+    fi.write("   |  ")
+    time=''
+    res=''
+    
+    for line in flog.split('\n'):
+        if "TOTAL TIME FOR CHECKING THIS CLAIM" in line:
+            time=line.split(":")[1:][0] 
+        if line.find("real")!=-1:
+            time=line[5:]
+        if  "VERIFICATION SUCCESSFUL" in line:
+            res='UNSAT'
+        if  "VERIFICATION FAILED" in line:
+            res='SAT' 
+         
+    if res!='':
+        fi.write(res.rstrip())
+        fi.write("  |  ")
+    else:
+        fi.write(" NoResult")
+        fi.write("  |  ")
 
+    if time!='':
+        fi.write(time)
+        fi.write("  |  ")
+    else:
+        fi.write(" NoTime")     
+
+    if strarg!='':
+        tmplist=strarg.split(" ")[1:]
+        strarg=' '.join(tmplist)
+        fi.write(strarg)
+        fi.write('\n')
+    else:
+        fi.write(strarg)
+        fi.write("no args")
+        fi.write('\n')
+
+    fi.close()
+    return True 
+#-------------------------------------------------------
 def error(text):
     sys.stdout.write(RED)
     print(text)
@@ -168,5 +224,9 @@ if __name__ == '__main__':
     exec_path = './hifrog'
     if len(sys.argv) > 1:
         exec_path = sys.argv[1]
+    pathname = os.path.dirname(sys.argv[0])
+    mypath= os.path.abspath(pathname)
+    datestring = datetime.strftime(datetime.now(), '%Y.%m.%d_%H:%M')
+    #exec_path=' ulimit -Sv 12000000; ulimit -St 100; /usr/bin/time -p ' + exec_path 
     run(exec_path)
 
