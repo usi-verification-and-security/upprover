@@ -1,3 +1,3 @@
-benchmarks/simpleArith_6.c,prop,--claim,1
-benchmarks/simpleArith_6.c,qflra,--claim,1
-benchmarks/simpleArith_6.c,qfuf,--claim,1
+0,benchmarks/simpleArith_6.c,prop,--claim,1
+0,benchmarks/simpleArith_6.c,qflra,--claim,1
+0,benchmarks/simpleArith_6.c,qfuf,--claim,1

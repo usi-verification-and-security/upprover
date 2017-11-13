@@ -7,6 +7,7 @@ Author: Grigory Fedyukovich
 \*******************************************************************/
 
 #include "satcheck_opensmt2.h"
+#include "prop_itp.h"
 
 void satcheck_opensmt2t::initializeSolver(const char* name)
 {
@@ -371,11 +372,17 @@ Function: satcheck_opensmt2t::prop_solve
 
 propt::resultt satcheck_opensmt2t::prop_solve() {
 
+#ifdef DISABLE_OPTIMIZATIONS    
   if (dump_queries){
     char *msg=NULL;
     mainSolver->writeSolverState_smtlib2("__SAT_query", &msg);
     if (msg != NULL) free(msg); // If there is an error consider printing the msg
   }
+  
+  // TODO
+  if (dump_pre_queries)
+      std::cerr << "** (dump_pre_queries) OPTION IS NOT AVAILABLE IN PROPOSITIONAL LOGIC **" << std::endl;
+#endif 
 
   assert(status != statust::ERROR);
 #ifdef PRODUCE_PROOF  

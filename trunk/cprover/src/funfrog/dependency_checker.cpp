@@ -1,20 +1,25 @@
 #include <memory>
-
+#include <fstream>
 #include <time_stopping.h>
 #include <expr_util.h>
 
 #include "dependency_checker.h"
+#ifdef DISABLE_OPTIMIZATIONS
 #include "expr_pretty_print.h"
+#endif
 #include <sstream>
 #include <map>
 
 #include <util/language.h>
 #include <boost/pending/disjoint_sets.hpp>
 
-using namespace std;
+#include "nopartition/smt_symex_target_equation.h"
+#include "subst_scenario.h"
+#include "partitioning_target_equation.h"
+
 using namespace boost;
 
-#define endl std::endl
+//#include <iostream>
 
 void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
@@ -25,26 +30,26 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
   initial=current_time();
 
-  ofstream hl_list;
+  std::ofstream hl_list;
   hl_list.open ("__hl_list");
     for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
       if ((*it)->is_assert() && !omega.is_assertion_in_loop((*it)->source.pc)){
         asserts.push_back(it);
-        //cout << "ID: " << it->source.pc->location.get_claim() << " Condition: " << from_expr(ns, "", it->cond_expr) << endl;
+        //cout << "ID: " << it->source.pc->location.get_claim() << " Condition: " << from_expr(ns, "", it->cond_expr) << '\n';
         instances[(*it)->source.pc->source_location.get_property_id().c_str()]++;
-        hl_list << "Assertion: " << (*it)->source.pc->source_location.get_property_id().c_str() << endl;
+        hl_list << "Assertion: " << (*it)->source.pc->source_location.get_property_id().c_str() << '\n';
       }
     }
 
     hl_list.close();
 
 //    cout << "SSA Assertions: " << asserts.size();
-//    cout << endl;
+//    cout << '\n';
 
     temp_end = current_time();
     duration = temp_end - initial;
-    //std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << endl;
+    //std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << '\n';
 
     initial=current_time();
 
@@ -53,38 +58,42 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
     temp_end = current_time();
     duration = temp_end - initial;
-  	std::cout << "TIME FOR find_assert_deps: " << (duration) << endl;
+    status () << "TIME FOR find_assert_deps: " << (duration) << eom;
 
-  	initial = current_time();
+    initial = current_time();
 
-  	//TODO: FIX THIS!
-  	absolute_timet to_time(find_implications());
+    //TODO: FIX THIS!
+    absolute_timet to_time(find_implications());
 
-  	temp_end = current_time();
-  	duration = temp_end - initial;
+    temp_end = current_time();
+    duration = temp_end - initial;
 
-  	//durationto = current_time();
-  	//durationto = durationto - initial;
-  	//durationto = durationto - to_time;
-  	absolute_timet duration_cast(duration.get_t());
-  	durationto = duration_cast - to_time;
+    //durationto = current_time();
+    //durationto = durationto - initial;
+    //durationto = durationto - to_time;
+    absolute_timet duration_cast(duration.get_t());
+    durationto = duration_cast - to_time;
 
-  	time_periodt to_time_cast(to_time.get_t());
+    time_periodt to_time_cast(to_time.get_t());
 
-  std::cout << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << endl;
-//  std::cout << "TIME exceeding timeouts: " << (to_time) << endl;
-//  std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << endl;
+    status() << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << eom;
+//  std::cout << "TIME exceeding timeouts: " << (to_time) << '\n';
+//  std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << '\n';
 
   //TODO: make a proper cmd-parameter
-  ifstream just_dep;
+  std::ifstream just_dep;
   just_dep.open ("__just_hl_dep");
-  if (just_dep.good()) {cout << "__just_hl_dep file is in the current directory. Exiting... " << endl; just_dep.close(); exit(1);}
+  if (just_dep.good()) {
+      status () << "__just_hl_dep file is in the current directory. Exiting..." << eom;
+      just_dep.close();
+      exit(1);
+  }
   just_dep.close();
 
 //  get_minimals();
 
 //  initial = current_time();
-//  std::cout << "TIME FOR get_minimals: " << (initial - final) << endl;
+//  std::cout << "TIME FOR get_minimals: " << (initial - final) << '\n';
 }
 
 // For no partition version
@@ -106,26 +115,26 @@ void dependency_checkert::do_it(smt_symex_target_equationt &equation){
 
     initial=current_time();
 
-    ofstream hl_list;
+    std::ofstream hl_list;
     hl_list.open ("__hl_list");
     for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
       if ((*it)->is_assert() && !omega.is_assertion_in_loop((*it)->source.pc)){
         asserts.push_back(it);
-        //cout << "ID: " << it->source.pc->location.get_claim() << " Condition: " << from_expr(ns, "", it->cond_expr) << endl;
+        //cout << "ID: " << it->source.pc->location.get_claim() << " Condition: " << from_expr(ns, "", it->cond_expr) << '\n';
         instances[(*it)->source.pc->source_location.get_property_id().c_str()]++;
-        hl_list << "Assertion: " << (*it)->source.pc->source_location.get_property_id().c_str() << endl;
+        hl_list << "Assertion: " << (*it)->source.pc->source_location.get_property_id().c_str() << '\n';
       }
     }
 
     hl_list.close();
 
 //    cout << "SSA Assertions: " << asserts.size();
-//    cout << endl;
+//    cout << '\n';
 
     temp_end = current_time();
     duration = temp_end - initial;
-    //std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << endl;
+    //std::cout << "TIME FOR find_var_deps (should ~ be zero): " << (duration) << '\n';
 
     initial=current_time();
 
@@ -134,7 +143,7 @@ void dependency_checkert::do_it(smt_symex_target_equationt &equation){
 
     temp_end = current_time();
     duration = temp_end - initial;
-    std::cout << "TIME FOR find_assert_deps: " << (duration) << endl;
+    status () << "TIME FOR find_assert_deps: " << (duration) << eom;
 
     initial = current_time();
 
@@ -148,16 +157,16 @@ void dependency_checkert::do_it(smt_symex_target_equationt &equation){
 
     time_periodt to_time_cast(to_time.get_t());
 
-    std::cout << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << endl;
+    status () << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << eom;
 
     //TODO: make a proper cmd-parameter
-    ifstream just_dep;
+    std::ifstream just_dep;
     just_dep.open ("__just_hl_dep");
-    if (just_dep.good()) {cout << "__just_hl_dep file is in the current directory. Exiting... " << endl; just_dep.close(); exit(1);}
+    if (just_dep.good()) {status () << "__just_hl_dep file is in the current directory. Exiting... " << eom; just_dep.close(); exit(1);}
     just_dep.close();
 }
 
-void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2)
+void dependency_checkert::find_var_deps(str_disj_set &deps_ds, std::map<std::string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2)
 {
 
     // ============ DISJOINT SETS EDITING BEGINS
@@ -192,21 +201,21 @@ void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool>
                   equation_symbols.push_back(first_sym);
                   visited[first_sym] = true;
 //                  cout << "I have visited a variable: " << first_sym << " ["
-//                      << (visited[first_sym]?"true":"false") << "]" << endl;
+//                      << (visited[first_sym]?"true":"false") << "]" << '\n';
                 }
             }
 
 //            else
 //            {
-//            	cerr << "Empty list of symbols has been found. The corresponding instruction is printed below." << endl;
+//            	cerr << "Empty list of symbols has been found. The corresponding instruction is printed below." << '\n';
 //            	cerr << "Instruction type: ";
 //            	if ((*it)->is_assume()) cerr << "Assumption.";
 //            	else if ((*it)->is_assignment()) cerr << "Assignment.";
 //            	else cerr << "Neither assertion nor assignment.";
-//            	cerr << endl;
-//            	cerr << "Guard: " << from_expr(ns, "", (*it)->guard) << endl;
-//            	cerr << "Condition: " << from_expr(ns, "", (*it)->cond_expr) << endl;
-//            	cerr << "High level code line number: " << (*it)->source.pc->location.as_string() << endl;
+//            	cerr << '\n';
+//            	cerr << "Guard: " << from_expr(ns, "", (*it)->guard) << '\n';
+//            	cerr << "Condition: " << from_expr(ns, "", (*it)->cond_expr) << '\n';
+//            	cerr << "High level code line number: " << (*it)->source.pc->location.as_string() << '\n';
 //            }
 
             for (symbol_sett::iterator sym_it = all_symbols.begin(); sym_it != all_symbols.end(); ++sym_it)
@@ -218,12 +227,12 @@ void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool>
                 deps_ds.make_set(next_sym);
                 visited[next_sym] = true;
 //                cout << "I have visited a variable: " << next_sym << " ["
-//                    << (visited[next_sym]?"true":"false") << "]" << endl;
+//                    << (visited[next_sym]?"true":"false") << "]" << '\n';
               }
             	//cout << "Merging: " << as_string(*(all_symbols.begin())) << " and " <<  next_sym <<"\n";
               deps_ds.union_set(as_string(*(all_symbols.begin())), next_sym);
             	//string x = deps_ds->find_set(as_string(*sym_it));
-            	//cout << "Printing test of variable: " << x << endl;
+            	//cout << "Printing test of variable: " << x << '\n';
             	//exit(1);
             }
         }
@@ -232,7 +241,7 @@ void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool>
     //FIXME: Determine if compression is needed for greater efficiency
     //deps_ds.compress_sets(equation_symbols.begin(), equation_symbols.end());
 
-//    cout << "Number of disjoint variable sets: " << (int)deps_ds.count_sets(equation_symbols.begin(), equation_symbols.end()) << endl;
+//    cout << "Number of disjoint variable sets: " << (int)deps_ds.count_sets(equation_symbols.begin(), equation_symbols.end()) << '\n';
 
 }
 
@@ -249,7 +258,7 @@ void dependency_checkert::find_assert_deps()
     associative_property_map<parent_t> parent_pmap(parent_map);
 
     str_disj_set deps_ds(rank_pmap, parent_pmap);
-    map<string, bool> visited;
+    std::map<std::string, bool> visited;
 
     find_var_deps(deps_ds, visited, asserts[0], asserts[asserts.size()-1]);
 
@@ -288,17 +297,17 @@ void dependency_checkert::find_assert_deps()
                   //assert_deps[assert_2][assert_1] = DEPT;
                   doubleforbreak = true;
                   deps++;
-//                  cout << "The following assertions are dependent!" << endl;
-//                  cout << from_expr(ns, "", (*assert_1)->cond_expr) << endl;
-//                  cout << from_expr(ns, "", (*assert_2)->cond_expr) << endl;
+//                  cout << "The following assertions are dependent!" << '\n';
+//                  cout << from_expr(ns, "", (*assert_1)->cond_expr) << '\n';
+//                  cout << from_expr(ns, "", (*assert_2)->cond_expr) << '\n';
                 }
             }
           }
         }
     }
 
-//    cout << "Syntactic independencies found: " << (indeps - deps) << endl;
-//    cout << "Syntactic dependencies found: " << deps << endl;
+//    cout << "Syntactic independencies found: " << (indeps - deps) << '\n';
+//    cout << "Syntactic dependencies found: " << deps << '\n';
 
 }
 
@@ -314,13 +323,13 @@ bool dependency_checkert::compare_assertions(SSA_step_reft &a, SSA_step_reft &b)
 void dependency_checkert::get_minimals()
 {
   // TODO: it doesn't seem working
-  map<SSA_step_reft,int> inDegree;
+  std::map<SSA_step_reft,int> inDegree;
 
-    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
-      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
+    for (std::map<SSA_step_reft,std::map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
+      for (std::map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
         inDegree[dep_second_it->first]++;
 
-    map<SSA_step_reft, int>::iterator degree_it;
+    std::map<SSA_step_reft, int>::iterator degree_it;
     for (degree_it = inDegree.begin(); degree_it != inDegree.end(); degree_it++)
     {
       if (degree_it->second == 0) toCheck[degree_it->first] = true;
@@ -328,37 +337,38 @@ void dependency_checkert::get_minimals()
 
 }
 
+#ifdef DISABLE_OPTIMIZATIONS
 void dependency_checkert::print_SSA_steps_infos()
 {
 //TODO: integrate with new CProver
 /*  map<string,map<string,bool> > var_deps;
 
   //printf("Sono dentro la dependency analysis!\n");
-  std::cout << endl << "Printing SSA data" << endl << endl;
+  std::cout << '\n' << "Printing SSA data" << '\n' << '\n';
     for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
       it->output(ns, std::cout);
       std::cout << "Andrea's data:\n";
-      std::cout << "Guard = " << from_expr(ns, "", it->guard) << endl;
+      std::cout << "Guard = " << from_expr(ns, "", it->guard) << '\n';
       if (it->is_assignment())
       {
-            std::cout << "  Type = ASSIGNMENT" << endl;
+            std::cout << "  Type = ASSIGNMENT" << '\n';
             std::cout << "  Assignment type = ";
-            if (it->assignment_type == symex_targett::HIDDEN) std::cout << "HIDDEN" << endl;
-            else if (it->assignment_type == symex_targett::STATE) std::cout << "STATE" << endl;
-            else std::cout << "NOT EXPECTED" << endl;
-            std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << endl;
+            if (it->assignment_type == symex_targett::HIDDEN) std::cout << "HIDDEN" << '\n';
+            else if (it->assignment_type == symex_targett::STATE) std::cout << "STATE" << '\n';
+            else std::cout << "NOT EXPECTED" << '\n';
+            std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << '\n';
             std::cout << "Symbols in the expression: ";
             print_expr_symbols(std::cout, it->cond_expr);
-            std::cout << endl;
-            std::cout << "left-hand side: " << from_expr(ns, "", it->ssa_lhs) << endl;
+            std::cout << '\n';
+            std::cout << "left-hand side: " << from_expr(ns, "", it->ssa_lhs) << '\n';
             std::cout << "Symbols in the left-hand side: ";
             print_expr_symbols(std::cout, it->ssa_lhs);
-            std::cout << endl;
-            std::cout << "right-hand side: " << from_expr(ns, "", it->ssa_rhs) << endl;
+            std::cout << '\n';
+            std::cout << "right-hand side: " << from_expr(ns, "", it->ssa_rhs) << '\n';
             std::cout << "Symbols in the right-hand side: ";
             print_expr_symbols(std::cout, it->ssa_rhs);
-            std::cout << endl;
+            std::cout << '\n';
             symbol_sett lhs_symbols, rhs_symbols, guard_symbols;
             get_expr_symbols(it->ssa_lhs, lhs_symbols);
             get_expr_symbols(it->ssa_rhs, rhs_symbols);
@@ -370,51 +380,51 @@ void dependency_checkert::print_SSA_steps_infos()
                 for (symbol_sett::iterator rhs_it = rhs_symbols.begin(); rhs_it != rhs_symbols.end(); ++rhs_it)
                 {
                   string rid = as_string(*rhs_it);
-                  std::cout << "Dependency " << variable_name(*lhs_it) << " <- " << variable_name(*rhs_it) << " is being added." << endl;
+                  std::cout << "Dependency " << variable_name(*lhs_it) << " <- " << variable_name(*rhs_it) << " is being added." << '\n';
                   var_deps[lid][rid] = DEPT;
                 }
                 for (symbol_sett::iterator guard_it = guard_symbols.begin(); guard_it != guard_symbols.end(); ++guard_it)
                 {
                   string gid = as_string(*guard_it);
-                  std::cout << "Dependency " << variable_name(*lhs_it) << " <- " << variable_name(*guard_it) << " is being added." << endl;
+                  std::cout << "Dependency " << variable_name(*lhs_it) << " <- " << variable_name(*guard_it) << " is being added." << '\n';
                   var_deps[lid][gid] = DEPT;
                 }
             }
         }
       else if (it->is_assert())
       {
-        std::cout << "  Type = ASSERT" << endl;
-        std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << endl;
-        std::cout << "  Comment = " << it->comment << endl;
+        std::cout << "  Type = ASSERT" << '\n';
+        std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << '\n';
+        std::cout << "  Comment = " << it->comment << '\n';
       }
       else if (it->is_assume())
       {
-        std::cout << "  Type = ASSUME" << endl;
-        std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << endl;
+        std::cout << "  Type = ASSUME" << '\n';
+        std::cout << "  Condition expression = " << from_expr(ns, "", it->cond_expr) << '\n';
       }
       else if (it->is_location())
       {
-        std::cout << "  Type = LOCATION" << endl;
+        std::cout << "  Type = LOCATION" << '\n';
       }
       else if (it->is_output())
       {
-        std::cout << "  Type = OUTPUT" << endl;
+        std::cout << "  Type = OUTPUT" << '\n';
       }
       else
       {
-        std::cout << "  Type = NOT EXPECTED" << endl;
+        std::cout << "  Type = NOT EXPECTED" << '\n';
       }
         if(it->source.is_set)
         {
-          std::cout << "  Thread = " << it->source.thread_nr << endl;
+          std::cout << "  Thread = " << it->source.thread_nr << '\n';
           if(it->source.pc->location.is_not_nil())
-            std::cout << "  Location = " << it->source.pc->location << endl;
+            std::cout << "  Location = " << it->source.pc->location << '\n';
           else
-            std::cout << endl;
+            std::cout << '\n';
         }
         if (it->cond_expr.has_operands())
         {
-            std::cout << "  Operands:" << endl;
+            std::cout << "  Operands:" << '\n';
 
             int k = 0;
             Forall_operands(op, it->cond_expr)
@@ -426,22 +436,23 @@ void dependency_checkert::print_SSA_steps_infos()
             }
 
         }
-        std::cout << endl;
+        std::cout << '\n';
     }
-    std::cout << "Printing dependencies:" << endl;
+    std::cout << "Printing dependencies:" << '\n';
     map<string,map<string,bool> >::iterator dep_it;
     for ( dep_it=var_deps.begin() ; dep_it != var_deps.end(); dep_it++ )
     {
       std::cout << variable_name((*dep_it).first) << " <- ";
       print_dependents((*dep_it).second, std::cout);
-      std::cout << endl;
+      std::cout << '\n';
     }
     */
 }
+#endif
 
-void dependency_checkert::print_dependents(map<string,bool> dependents, std::ostream &out)
+void dependency_checkert::print_dependents(std::map<std::string,bool> dependents, std::ostream &out)
 {
-  map<string,bool>::iterator it;
+  std::map<std::string,bool>::iterator it;
   int count = 0;
   for ( it=dependents.begin() ; it != dependents.end(); it++ )
   {
@@ -488,7 +499,7 @@ void dependency_checkert::print_expr_symbols(std::ostream &out, symbol_sett& s)
     //s.clear();
 }
 
-#ifdef DEBUG_SSA_PRINT
+#ifdef DISABLE_OPTIMIZATIONS
 void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int indent)
 {
   if (expr.has_operands())
@@ -496,7 +507,7 @@ void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int
     expr_pretty_printt pretty(out);
     pretty(expr);
   }
-  else out << from_expr(ns, "", expr) << endl;
+  else out << from_expr(ns, "", expr) << '\n';
   if (expr.has_operands())
   {
     int k = 0;
@@ -509,7 +520,6 @@ void dependency_checkert::print_expr_operands(std::ostream &out, exprt expr, int
           }
   }
 }
-#endif
 
 void dependency_checkert::print_SSA_steps()
 {
@@ -518,6 +528,7 @@ void dependency_checkert::print_SSA_steps()
       (*it)->output(ns, std::cout);
     }
 }
+#endif
 
 // TODO: send equation as in parameter - requires no additional changes!
 void dependency_checkert::reconstruct_exec_SSA_order(partitioning_target_equationt &equation){

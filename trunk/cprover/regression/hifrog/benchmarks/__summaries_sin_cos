@@ -2,6 +2,6 @@
   (|nonlin::x| Real)
   (|hifrog::fun_start| Bool)
   (|hifrog::fun_end| Bool)
-  (|nonlin::#return_value!0| Real) )  Bool
-  (= 1 |nonlin::#return_value!0|)
+  (|nonlin::#return_value| Real) )  Bool
+  (= 1 |nonlin::#return_value|)
 )

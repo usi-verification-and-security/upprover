@@ -7,14 +7,13 @@
 
 \*******************************************************************/
 
-#include <goto-symex/build_goto_trace.h>
-#include <goto-programs/xml_goto_trace.h>
-#include <find_symbols.h>
-#include <ansi-c/expr2c.h>
 #include <time_stopping.h>
-#include <ui_message.h>
 #include "smt_assertion_sum.h"
 #include "error_trace.h"
+#include "smt_partitioning_target_equation.h"
+#include "solvers/smtcheck_opensmt2.h"
+
+
 
 time_periodt global_satsolver_time;
 
@@ -101,14 +100,14 @@ void smt_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespac
     if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS)
     {
         // Same as in funfrog/error_tracet::show_goto_trace
-        cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
-        cout << "         Use --logic with Different Logic to Try Creating an Error Trace. \n";
+        warning () << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
+        warning () << "         Use --logic with Different Logic to Try Creating an Error Trace." << eom;
         return; // Cannot really print a trace
     }
 
     error_trace.build_goto_trace(equation, decider);
 
-    std::cout << std::endl << "Counterexample:" << std::endl;
-    
-    error_trace.show_goto_trace(decider, std::cout, ns, guard_expln);
+    result () << "\nCounterexample:\n";
+    error_trace.show_goto_trace(decider, result (), ns, guard_expln);
+    result () << eom;
 }

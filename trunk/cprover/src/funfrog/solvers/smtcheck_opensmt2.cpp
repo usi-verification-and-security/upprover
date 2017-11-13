@@ -6,14 +6,26 @@ Author: Grigory Fedyukovich
 
 \*******************************************************************/
 #include <queue>
+#include <unordered_set>
 
 #include "smtcheck_opensmt2.h"
+#include "../hifrog.h"
+#include "smt_itp.h"
+#include "../utils/naming_helpers.h"
 
+// Debug flags of this class:
 //#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 //#define DEBUG_SMT_ITP
 //#define DEBUG_SMT2SOLVER
+
+#ifdef DISABLE_OPTIMIZATIONS
+#include <fstream>
+using namespace std;
+
+#include <iostream>
+#endif
 
 unsigned smtcheck_opensmt2t::unsupported2var = 0; // Count how many instance of unsupported we have for all deciders
 
@@ -279,199 +291,8 @@ void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const vector< vector<i
 }
 #endif
 
-string
-smtcheck_opensmt2t::unquote_varname(const string& varname)
-{
-    int s = varname.length();
-    int l = 0;
-    if(varname[l] == '|') ++l;
-    if(varname[s - 1] == '|')
-        return string(varname.begin() + l, varname.begin() + (s - 1));
-    return string(varname.begin() + l, varname.end());
-}
 
-string
-smtcheck_opensmt2t::insert_index(const string& _varname, int _idx)
-{
-    string unidx = remove_index(_varname);
-    string varname = unquote_varname(unidx);
-    return quote_varname(varname + COUNTER + std::to_string(_idx));
-}
-
-string
-smtcheck_opensmt2t::insert_index(const string& _varname, const string& _idx)
-{
-    string unidx = remove_index(_varname);
-    string varname = unquote_varname(unidx);
-    return quote_varname(varname + COUNTER + _idx);
-}
-
-/*
- * KE: remove it, we are using L1 and L2 cprover methods to get this info! 
- * 
- * Yes, it is tempting to use it, as it look quick and you control all,
- * BUT! cprover is where the names are created, so to avoid bugs we shall
- * use the same mechanism to create and to extract L1 and L2 names!
- */
-int
-smtcheck_opensmt2t::get_index(const string& _varname)
-{
-    string varname = unquote_varname(_varname);
-    int i = 0;
-    int s = varname.length();
-    while(i < s && varname[i++] != COUNTER);
-    if(i >= s) return -1;
-    string num = string(varname.begin() + i, varname.end());
-    stringstream ss(num);
-    int nnum;
-    ss >> nnum;
-    return nnum;
-}
-
-string
-smtcheck_opensmt2t::quote_varname(const string& varname)
-{
-    if(is_quoted_var(varname)) return varname;
-
-    string ans("");
-    assert(varname.length() > 0);
-    if(varname[0] != '|')
-        ans += '|';
-    ans += varname;
-    if(varname[varname.length() - 1] != '|')
-        ans += '|';
-    return ans;
-}
-
-#ifdef PRODUCE_PROOF
-void
-smtcheck_opensmt2t::adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbs, string _fun_name, bool substitute)
-{
-    //map<string, PTRef> vars;
-    PTRef itp_pt = itp.getInterpolant();
-
-    string fun_name = quote_varname(_fun_name);
-
-    // retrieve variables
-    //fill_vars(itp_pt, vars);
-
-    // formatted names of common vars
-    std::vector<string> quoted_varnames;
-    std::map<string, PTRef> var2ptref;
-    for (std::vector<symbol_exprt>::iterator it = common_symbs.begin(); it != common_symbs.end(); ++it)
-    {
-        string _var_name = id2string(it->get_identifier());
-        if(is_cprover_rounding_mode_var(_var_name)) continue;
-        if(_var_name.find(CPROVER_BUILDINS) != string::npos) continue;
-        if(_var_name.find("nil") != string::npos) continue;
-        string var_name = remove_invalid(_var_name);
-        var_name = quote_varname(var_name);
-        quoted_varnames.push_back(var_name);
-        var2ptref[var_name] = convert_symbol(*it);
-    }
-
-    // build substitution map (removing indices)
-    // meanwhile, add the vars to Tterm
-    Tterm *tterm = new Tterm();
-    Map<PTRef,PtAsgn,PTRefHash> subst;
-
-    map<string, int[3]> occurrences;
-    // first we should account for repetitions in the non-indexed varnames
-    //for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
-    for(vector<string>::iterator it = quoted_varnames.begin(); it != quoted_varnames.end(); ++it)
-    {
-        string unidx = remove_index(*it);
-        if(occurrences.find(unidx) == occurrences.end())
-        {
-            occurrences[unidx][0] = 1;
-            occurrences[unidx][1] = get_index(*it);
-        }
-        else
-        {
-            ++occurrences[unidx][0];
-            assert(occurrences[unidx][0] == 2);
-            int new_idx = get_index(*it);
-            int old_idx = occurrences[unidx][1];
-            if(new_idx < old_idx) std::swap(new_idx, old_idx);
-            occurrences[unidx][1] = old_idx;
-            occurrences[unidx][2] = new_idx;
-        }
-    }
-
-    // now we can compute the substitutions properly
-    bool only_common_vars_in_itp = true;
-#ifdef DEBUG_SMT_ITP
-    cout << "; Variables in the interpolant: " << endl;
-#endif
-    //for(map<string, PTRef>::iterator it = vars.begin(); it != vars.end(); ++it)
-    for(vector<string>::iterator it = quoted_varnames.begin(); it != quoted_varnames.end(); ++it)
-    {
-#ifdef DEBUG_SMT_ITP
-        cout << " * " << *it << ' ';
-#endif
-        if (quoted_varnames.end() ==
-            find (quoted_varnames.begin(), quoted_varnames.end(), *it)){
-#ifdef DEBUG_SMT_ITP
-            cout << " ---> local var to A; should not be in the interpolant";
-#endif
-            only_common_vars_in_itp = false;
-        }
-
-        string unidx = remove_index(*it);
-        int occ = occurrences[unidx][0];
-        assert(occ >= 1 && occ <= 2);
-
-        string new_var_name = unidx;
-
-        if(occ == 2)
-        {
-            int idx = get_index(*it);
-            int l = occurrences[unidx][1];
-            int r = occurrences[unidx][2];
-            if(idx == l)
-                new_var_name = insert_index(new_var_name, "in");
-            else
-            {
-                assert(idx == r);
-                new_var_name = insert_index(new_var_name, "out");
-            }
-        }
-
-        PTRef var = PTRef_Undef;
-        var = var2ptref[*it];
-        assert(var != PTRef_Undef);
-        assert(new_var_name.size() > 0);
-        PTRef new_var = logic->mkVar(logic->getSortRef(var), new_var_name.c_str());
-        tterm->addArg(new_var);
-        subst.insert(var, PtAsgn(new_var, l_True));
-#ifdef DEBUG_SMT_ITP
-        cout << endl;
-#endif
-    }
-
-    assert(only_common_vars_in_itp);
-
-    PTRef new_root;
-    // substitute
-    if(substitute)
-    {
-        logic->varsubstitute(itp_pt, subst, new_root);
-        //cout << "; Formula " << logic->printTerm(itp.getInterpolant()) << " is now " << logic->printTerm(new_root) << endl;
-    }
-    else
-    {
-        new_root = logic->getTerm_true();
-    }
-    tterm->setBody(new_root);
-
-    tterm->setName(fun_name);
-    //logic->addFunction(tterm);
-    //logic->dumpFunction(cout, tterm);
-    itp.setTterm(*tterm);
-    itp.setLogic(logic);
-}
-#endif 
-
+// FIXME: move to smt_itpt class
 void
 smtcheck_opensmt2t::fill_vars(PTRef itp, map<string, PTRef>& subst)
 {
@@ -500,46 +321,6 @@ smtcheck_opensmt2t::fill_vars(PTRef itp, map<string, PTRef>& subst)
 #endif
 }
 
-bool
-smtcheck_opensmt2t::is_quoted_var(const string& varname)
-{
-    assert(varname.length() > 0);
-    return (varname[0] == '|') && (varname[varname.length() - 1] == '|');
-}
-
-string
-smtcheck_opensmt2t::remove_invalid(const string& varname)
-{
-    string ans("");
-    for(unsigned int i = 0; i < varname.length(); ++i)
-    {
-        if(varname[i] != '\\')
-            ans += varname[i];
-    }
-    return ans;
-}
-
-/*
- * KE: Shall be remove it, we are using L1 and L2 cprover methods to get this info! 
- * 
- * Yes, it is tempting to use it, as it look quick and you control all,
- * BUT! cprover is where the names are created, so to avoid bugs we shall
- * use the same mechanism to create and to extract L1 and L2 names!
- */
-string
-smtcheck_opensmt2t::remove_index(string var)
-{
-    int i = var.length() - 1;
-    while(i >= 0 && var[i] != COUNTER) --i;
-    string no_index;
-    if(i > 0)
-        no_index = string(var.begin(), var.begin() + i);
-    else
-        return var;
-    if(is_quoted_var(var))
-        return quote_varname(no_index);
-    return no_index;
-}
 
 /*******************************************************************\
 
@@ -639,12 +420,6 @@ Function: smtcheck_opensmt2t::prop_solve
 
 bool smtcheck_opensmt2t::solve() {
 
-  //if (dump_queries){
-  //  char* msg1=NULL;
-  //  mainSolver->writeSolverState_smtlib2("__SMT_query", &msg1);
-  //  if (msg1 != NULL) free(msg1);
-  //}
-
 #ifdef PRODUCE_PROOF    
   ready_to_interpolate = false;
 #endif
@@ -653,17 +428,24 @@ bool smtcheck_opensmt2t::solve() {
     close_partition();
   }
 
-#ifdef DEBUG_SMT4SOLVER
-  logic->dumpHeaderToFile(cout);
+#ifdef DISABLE_OPTIMIZATIONS
+  ofstream out_smt;
+  if (dump_pre_queries) {
+    out_smt.open(pre_queries_file_name);  
+    logic->dumpHeaderToFile(out_smt);
+  }
 #endif
 //  add_variables();
     char *msg=NULL;
     for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
-#ifdef DEBUG_SMT4SOLVER
-        cout << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
-        char* s = logic->printTerm(top_level_formulas[i]);
-        cout << "(assert\n" << s << "\n)" << endl;
-        free(s);
+#ifdef DISABLE_OPTIMIZATIONS
+        if (dump_pre_queries)
+        {
+            out_smt << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
+            char* s = logic->printTerm(top_level_formulas[i]);
+            out_smt << "(assert\n" << s << "\n)" << endl;
+            free(s);
+        }
 #endif
         mainSolver->insertFormula(top_level_formulas[i], &msg);
 	if (msg != NULL) {
@@ -671,12 +453,15 @@ bool smtcheck_opensmt2t::solve() {
 	    msg=NULL;
 	}
     }
-    
-    pushed_formulas = top_level_formulas.size();
-//#ifdef DEBUG_SMT4SOLVER // Use if there are issues with the variables
+ 
+#ifdef DISABLE_OPTIMIZATIONS   
+    if (dump_pre_queries) out_smt.close();
+#endif    
+//#ifdef DISABLE_OPTIMIZATIONS // Use if there are issues with the variables
 //    dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
 //#endif
 
+    pushed_formulas = top_level_formulas.size();
     sstat r = mainSolver->check();
 
     if (r == s_True) {
@@ -805,6 +590,7 @@ Function: smtcheck_opensmt2t::extract_expr_str_name
 std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 {
     string str = fix_symex_nondet_name(expr);
+    str.erase(std::remove(str.begin(),str.end(),'\\'),str.end());
     if (is_cprover_rounding_mode_var(str)) 
     {
     #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
@@ -815,7 +601,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     #endif
     }
 
-    if (str.find(CPROVER_BUILDINS) != std::string::npos) {
+    if (is_cprover_builtins_var(str)) {
     #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
         cout << "; " << str << " :: " << expr.id() << " - Should Not Add Cprover Built-ins\n" << expr.pretty() << endl;
     #else
@@ -826,8 +612,8 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 
     // KE: assure the encoding is not using the variables name as is (why there is nil here?)
     assert("Error: using non-SSA symbol in the SMT encoding" 
-            && ((str.find(COUNTER) != std::string::npos) 
-                || (str.compare("nil") == 0) || IO_CONST));
+            && ((str.find(HifrogStringConstants::COUNTER_SEP) != std::string::npos)
+                || (str.compare(NIL) == 0) || IO_CONST));
     
     return str;
 }
@@ -846,7 +632,7 @@ Function: smtcheck_opensmt2t::dump_on_error
 void smtcheck_opensmt2t::dump_on_error(std::string location) 
 {
     //If have problem with declaration of vars - uncommen this!
-#ifdef DEBUG_SMT4SOLVER
+#ifdef DISABLE_OPTIMIZATIONS
     cout << "; XXX SMT-lib --> Current Logic Translation XXX" << endl;
     cout << "; Declarations from two source: if there is no diff use only one for testing the output" << endl;
     cout << "; Declarations from Hifrog :" << endl;
@@ -866,7 +652,7 @@ void smtcheck_opensmt2t::dump_on_error(std::string location)
     }
 
     // If code - once needed uncomment this debug flag in the header
-#ifdef DEBUG_SMT4SOLVER
+#ifdef DISABLE_OPTIMIZATIONS
     int size_oite = ite_map_str.size()-1; // since goes from 0-(n-1) 
     int i = 0;
     for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
@@ -981,4 +767,87 @@ PTRef smtcheck_opensmt2t::mkCustomFunction(SymRef decl, vec<PTRef>& args)
     PTRef ret = logic->mkFun(decl, args, &msg);
     if (msg != NULL) free(msg);
     return ret;
+}
+
+// FIXME: move to hifrog or util in hifrog
+#ifdef PRODUCE_PROOF
+namespace {
+    bool is_global(const exprt& expr){
+        if(!expr.get_bool(ID_C_SSA_symbol)){
+            return false;
+        }
+        return to_ssa_expr(expr).get_level_0().empty();
+    }
+}
+
+// FIXME: move to smt_itpt class
+void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<symbol_exprt> &common_symbols,
+                                            const std::string &fun_name, bool substitute)
+{
+    // Right now the term is not set, hence the assert, but this should actually be set somewhere else
+    assert(interpolant.getTterm() == nullptr);
+    if(is_cprover_initialize_method(fun_name)){
+        throw std::logic_error("Summary generalize should not be called for CPROVER initialize method!");
+    }
+    // initialization of new Tterm, TODO: the basic should really be set already when interpolant object is created
+    Tterm* tt = new Tterm();
+    tt->setName(fun_name.c_str());
+    interpolant.setLogic(logic);
+    interpolant.setTterm(*tt);
+
+    // prepare the substituition map how OpenSMT expects it
+    Map<PTRef,PtAsgn,PTRefHash> subst;
+    std::unordered_set<std::string> globals;
+    for(const auto& expr : common_symbols){
+        // get the original PTRef for this expression
+        PTRef original = convert_symbol(expr);
+        // get the new name for the symbol;
+        std::string symbol_name { get_symbol_name(expr).c_str() };
+        if(is_global(expr)){
+            if(globals.find(symbol_name) != globals.end()){
+                // global symbol encountered second time -> must be in/out pair, add suffix to this out
+                symbol_name = symbol_name + HifrogStringConstants::GLOBAL_OUT_SUFFIX;
+            }
+            else{
+                globals.insert(symbol_name);
+                symbol_name = symbol_name + HifrogStringConstants::GLOBAL_INPUT_SUFFIX;
+            }
+        }
+        // get new PTRef for the variable with new name
+        PTRef new_var = logic->mkVar(logic->getSortRef(original), symbol_name.c_str());
+//        std::cout << "; Original variable: " << logic->printTerm(original) << '\n';
+//        std::cout << "; New variable: " << logic->printTerm(new_var) << '\n';
+        subst.insert(original, PtAsgn{ new_var, l_True });
+        tt->addArg(new_var);
+    }
+    //apply substituition to the interpolant
+    PTRef old_root = interpolant.getInterpolant();
+    PTRef new_root;
+    if(substitute){
+        logic->varsubstitute(old_root, subst, new_root);
+    }
+    else{
+        new_root = logic->getTerm_true();
+    }
+//    std::cout << "; Old formula: " << logic->printTerm(old_root) << '\n';
+//    std::cout << "; New formula " << logic->printTerm(new_root) << std::endl;
+    interpolant.setInterpolant(new_root);
+    tt->setBody(new_root);
+}
+#endif // PRODUCE_PROOF
+
+//FIXME remove this!
+string
+smtcheck_opensmt2t::quote_varname(const string& varname)
+{
+    string ans("");
+    assert(varname.length() > 0);
+    if(varname[0] != '|'){
+        ans += '|';
+    }
+    ans += varname;
+    if(varname[varname.length() - 1] != '|'){
+        ans += '|';
+    }
+    return ans;
 }

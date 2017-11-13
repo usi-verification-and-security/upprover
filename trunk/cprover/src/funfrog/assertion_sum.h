@@ -9,15 +9,10 @@
 #ifndef CPROVER_PROP_ASSERTION_SUM_H
 #define CPROVER_PROP_ASSERTION_SUM_H
 
-#include <namespace.h>
 #include <ui_message.h>
 #include <time_stopping.h>
-#include <fstream>
-#include <util/threeval.h>
 
-#include "assertion_info.h"
-#include "summarization_context.h"
-#include "partitioning_target_equation.h"
+class summarization_contextt;
 
 extern time_periodt global_satsolver_time;
 

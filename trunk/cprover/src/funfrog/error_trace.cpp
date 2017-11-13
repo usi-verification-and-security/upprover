@@ -1,5 +1,12 @@
 #include "error_trace.h"
 #include "hifrog.h"
+#include "solvers/smtcheck_opensmt2_cuf.h"
+#include <ansi-c/printf_formatter.h>
+#include "nopartition/smt_symex_target_equation.h"
+#include "smt_partitioning_target_equation.h"
+#include "solvers/smtcheck_opensmt2_lra.h"
+
+
 
 //#define TRACE_DEBUG //Use it to debug the trace of an error build
 
@@ -42,10 +49,10 @@ void error_tracet::build_goto_trace (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find(ROUNDING_MODE)!=std::string::npos)
+    if (is_cprover_rounding_mode_var(str))
     	continue;
     
-    if (str.find(CPROVER_BUILDINS)!=std::string::npos)
+    if (is_cprover_builtins_var(str))
     	continue;
 
     if (str.find(DYNAMIC_OBJ)!=std::string::npos)
@@ -173,10 +180,10 @@ void error_tracet::build_goto_trace_formula (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find(ROUNDING_MODE)!=std::string::npos)
+    if (is_cprover_rounding_mode_var(str))
     	continue;
     
-    if (str.find(CPROVER_BUILDINS)!=std::string::npos)
+    if (is_cprover_builtins_var(str))
     	continue;
 
     if (str.find(DYNAMIC_OBJ)!=std::string::npos)
@@ -431,12 +438,12 @@ void error_tracet::show_goto_trace(
             case goto_trace_stept::typet::ASSERT:
                 if(!it->cond_value)
                 {
+                    // KE: keep the same format of prints as in goto-programs/goto_trace.cpp
                     out << std::endl;
-                    cout << "Violated assertion at:\n" <<
-                    "  file \"" << it->pc->source_location.get_file() <<
-                    "\",\n  function \"" << it->pc->source_location.get_function() <<
-                    "\",\n  line " << it->pc->source_location.get_line() << ":\n  " <<
-                    from_expr(ns, "", it->pc->guard) << "\n";
+                    out << "Violated property:\n  " <<
+                        it->pc->source_location << 
+                        "\n  " << it->comment <<
+                        "\n  " << from_expr(ns, "", it->pc->guard);
 
                     out << std::endl;
                 }
@@ -607,7 +614,7 @@ void error_tracet::show_expr(
     if (is_removed) // only for the value check
         out << "(assignment removed)";
     else if (expr.id() == ID_nil)
-        out << "nil";
+        out << NIL;
     else if (expr.id() == ID_constant)
         out << expr.get(ID_value);
     else
@@ -675,10 +682,10 @@ void error_tracet::build_goto_trace (
       continue;
 
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (str.find(ROUNDING_MODE)!=std::string::npos)
+    if (is_cprover_rounding_mode_var(str))
     	continue;
     
-    if (str.find(CPROVER_BUILDINS)!=std::string::npos)
+    if (is_cprover_builtins_var(str))
     	continue;
 
     if (str.find(DYNAMIC_OBJ)!=std::string::npos)

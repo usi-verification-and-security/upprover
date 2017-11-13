@@ -147,7 +147,6 @@ void check_claims(
   res.set_message_handler(_message_handler);
   res.total_claims = claim_map.size();
 
-  std::string fname;
   call_stackt stack;
   goto_programt::const_targett ass_ptr = leaping_program.instructions.begin();
   
@@ -246,14 +245,14 @@ void check_claims(
   }
 
   if (multi_assert){
-    std::cout << "Checking claims: ";
+    res.status() << "Checking claims: ";
     for (unsigned i = 0; i < claims.size(); i++){
-      std::cout << "\"" << claims[i] <<"\"";
+      res.status() << "\"" << claims[i] <<"\"";
       if (i < claims.size() - 1){
-        std::cout << ", ";
+        res.status() << ", ";
       }
     }
-    std::cout << " in a multi_assertion mode.\r\n";
+    res.status() << " in a multi_assertion mode.\r" << res.eom;
     sum_checker.assertion_holds(assert_grouping ?
                   assertion_infot(multi_assert_loc) : assertion_infot(stack, ass_ptr), false);
   }

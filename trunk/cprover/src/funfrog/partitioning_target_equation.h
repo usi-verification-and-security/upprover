@@ -16,23 +16,21 @@ Author: Ondrej Sery
 //#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
 // End of working debugging flags
 
-#include <goto-symex/symex_target_equation.h>
 #include <symbol.h>
-
-#include "partition_iface.h"
-#include "summarization_context.h"
+#ifdef DISABLE_OPTIMIZATIONS
+#include <iostream>
 #include "expr_pretty_print.h"
+#endif
+
+#include <goto-symex/symex_target_equation.h>
+#include "partition.h"
+#include "utils/coloring_mode.h"
+#include <iostream>
+
+class summarization_contextt;
+class partition_ifacet;
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
-
-typedef enum {
-  NO_COLORING,
-  RANDOM_COLORING,
-  COLORING_FROM_FILE,
-  TBD
-  // anything else?
-}
-  coloring_modet;
 
 class partitioning_target_equationt:public symex_target_equationt
 {
@@ -44,24 +42,27 @@ public:
           symex_target_equationt(_ns),
           summarization_context(_summarization_context),
           current_partition_id(partitiont::NO_PARTITION),
+#         ifdef DISABLE_OPTIMIZATIONS
+          dump_SSA_tree(false),
+          ssa_tree_file_name("__ssa_tree.smt2"),
+          out_local_terms(0),
+          out_terms(out_local_terms),
+          out_local_basic(0),
+          out_basic(out_local_basic),
+          out_local_partition(0),
+          out_partition(out_local_partition),
+          terms_counter(0),
+          is_first_call(true),
+          first_call_expr(0),
+
+#endif                  
+          io_count_global(0),
           upgrade_checking(_upgrade_checking),
           store_summaries_with_assertion(_store_summaries_with_assertion),
           coloring_mode(_coloring_mode),
-          clauses(_clauses),
-#         ifdef DEBUG_SSA_PRINT
-		  out_local_terms(0),
-		  out_terms(out_local_terms),
-		  out_local_basic(0),
-		  out_basic(out_local_basic),
-		  out_local_partition(0),
-		  out_partition(out_local_partition),
-		  terms_counter(0),
-		  is_first_call(true),
-		  first_call_expr(0),
-#endif                  
-                  io_count_global(0)                
+          clauses(_clauses)
 		  {
-#ifdef DEBUG_SSA_PRINT  
+#ifdef DISABLE_OPTIMIZATIONS  
 	  partition_smt_decl = new std::map <std::string,exprt>();
 	  out_terms.rdbuf(&terms_buf);
 	  out_basic.rdbuf(&basic_buf);
@@ -71,7 +72,7 @@ public:
 
   // First this called and then the parent d'tor due to the use of virtual
   virtual ~partitioning_target_equationt() {
-#         ifdef DEBUG_SSA_PRINT        
+#         ifdef DISABLE_OPTIMIZATIONS        
 	  partition_smt_decl->clear();
 	  delete partition_smt_decl;        
 	  first_call_expr = 0; // Not here to do the delete
@@ -80,38 +81,11 @@ public:
 
   // Reserve a partition id for later use. The newly reserved partition
   // will be dependent on the currently processed partition (if there is any).
-  partition_idt reserve_partition(partition_ifacet& partition_iface)
-  {
-    partition_idt new_id = partitions.size();
-    partition_idt parent_id = partition_iface.parent_id;
-
-    partitions.push_back(partitiont(parent_id, partition_iface));
-
-    bool check = partition_map.insert(partition_mapt::value_type(
-      partition_iface.callend_symbol.get_identifier(), new_id)).second;
-    assert(check);
-
-    if (parent_id != partitiont::NO_PARTITION) {
-      partitions[parent_id].add_child_partition(new_id, partition_iface.call_loc);
-    }
-    partition_iface.partition_id = new_id;
-
-    return new_id;
-  }
+  partition_idt reserve_partition(partition_ifacet& partition_iface);
 
   // Marks the given partition as invalid. This is used in incremental SSA
   // generation to replace previously summarized partitions
-  void invalidate_partition(partition_idt partition_id)
-  {
-    partitiont& partition = partitions[partition_id];
-
-    partition.invalid = true;
-    partition_map.erase(partition.get_iface().callend_symbol.get_identifier());
-
-    if (partition.parent_id != partitiont::NO_PARTITION) {
-      partitions[partition.parent_id].remove_child_partition(partition_id);
-    }
-  }
+  void invalidate_partition(partition_idt partition_id);
 
   // Fill the (reserved) partition with the given summaries.
   void fill_summary_partition(partition_idt partition_id,
@@ -209,7 +183,15 @@ public:
   }
 
   unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
-
+ 
+#ifdef DISABLE_OPTIMIZATIONS  
+  void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}
+  void set_dump_SSA_tree_name(const std::string& n)
+  {
+    ssa_tree_file_name = "__SSAt_" + n + ".smt2";
+  }
+#endif
+  
 protected:
   // Current summarization context
   summarization_contextt& summarization_context;
@@ -217,7 +199,10 @@ protected:
   // Id of the currently selected partition
   partition_idt current_partition_id;
 
-#ifdef DEBUG_SSA_PRINT  
+#ifdef DISABLE_OPTIMIZATIONS  
+  bool dump_SSA_tree;
+  std::string ssa_tree_file_name;
+  
   // For SMT-Lib Translation - Move it later to a new class
   std::map <std::string,exprt>* partition_smt_decl;
   std::ostream out_local_terms; //for prints SSA - remove later
@@ -240,7 +225,6 @@ protected:
   std::ostream& print_decl_smt(std::ostream& out);
   void print_all_partition(std::ostream& out);
   void print_partition();  
-  void addToDeclMap(const exprt &expr);
   void saveFirstCallExpr(const exprt& expr);
   bool isFirstCallExpr(const exprt& expr);
   void getFirstCallExpr();
@@ -264,26 +248,8 @@ protected:
 
   // Fills in the list of symbols that the partition has in common with its
   // environment
-  void fill_common_symbols(const partitiont& partition,
-    std::vector<symbol_exprt>& common_symbols) const
-  {
-    common_symbols.clear();
-    const partition_ifacet& iface = partition.get_iface();
-    common_symbols.reserve(iface.argument_symbols.size() +
-      iface.out_arg_symbols.size()+4);
-    common_symbols = iface.argument_symbols; // Add SSA instances of funcs
-    common_symbols.insert(common_symbols.end(),
-      iface.out_arg_symbols.begin(),
-      iface.out_arg_symbols.end()); // Add globals
-    common_symbols.push_back(iface.callstart_symbol);
-    common_symbols.push_back(iface.callend_symbol);
-    if (iface.assertion_in_subtree) {
-      common_symbols.push_back(iface.error_symbol);
-    }
-    if (iface.returns_value) {
-      common_symbols.push_back(iface.retval_symbol);
-    }
-  }
+  virtual void fill_common_symbols(const partitiont& partition,
+    std::vector<symbol_exprt>& common_symbols) const;
 
   // Fill in ids of all the child partitions
   virtual void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
@@ -322,9 +288,6 @@ protected:
   std::vector<unsigned>& clauses;
 
   friend class partitioning_slicet;
-  
-protected:
-    virtual bool is_smt_encoding()=0; // KE: Temp. Just to force virtual for compilation
 };
 
 #endif

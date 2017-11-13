@@ -11,18 +11,17 @@
 #ifndef CPROVER_PARTITION_IFACE_H
 #define	CPROVER_PARTITION_IFACE_H
 
-#ifdef DEBUG_SSA_PRINT
+#ifdef DISABLE_OPTIMIZATIONS
 #include <iostream>
+#include "expr_pretty_print.h"
 #endif
 
 #include <list>
 #include <type.h>
 #include <symbol.h>
 
-
 #include "summary_info.h"
 #include "partition.h"
-#include "expr_pretty_print.h"
 
 class partition_ifacet {
 public:
@@ -88,7 +87,7 @@ public:
     returns_value = other.returns_value;
     call_loc = other.call_loc;
     
-#   if 0
+#   if 0 && defined(DISABLE_OPTIMIZATIONS) // KE: unknown old debug code
     std::cerr << " === Sharing symbols:" << std::endl;
     std::cerr << " = Argument symbols:" << std::endl;
     {
@@ -126,9 +125,6 @@ public:
   }
 
 };
-
-typedef std::list<partition_ifacet*> partition_iface_ptrst;
-typedef std::vector<std::pair<partition_ifacet*, summary_idt> > interpolant_mapt;
 
 #endif	/* CPROVER_PARTITION_IFACE_H */
 

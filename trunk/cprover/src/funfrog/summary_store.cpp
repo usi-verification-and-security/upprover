@@ -10,6 +10,7 @@ Author: Ondrej Sery
 
 #include "summary_store.h"
 #include "summary_info.h"
+#include "function_info.h"
 
 summary_storet::nodet& summary_storet::find_repr(summary_idt id)
 {
@@ -55,12 +56,14 @@ void summary_storet::replace_summary(summary_idt old_summary_id,
   repr_count--;
 }
 
-int
-summary_storet::get_max_id(const string& fname) const
+/*
+ * Returns the next free id for a given function name.
+ * Adjust the counter to mark the returned value as taken
+ */
+int summary_storet::get_next_id(const std::string &fname)
 {
-    map<string, int>::const_iterator it = max_ids.find(fname);
-    if(it == max_ids.end()) return -1;
-    return it->second;
+  // uses the fact that if the key was not in the map, it is implicitly inserted with default value -> 0
+  return next_ids[fname]++;
 }
 
 /*******************************************************************\

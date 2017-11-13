@@ -486,10 +486,15 @@ void funfrog_parseoptionst::help()
   "--reduce-proof                 enable Proof Reduction\n"
   "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
   "--reduce-proof-loops           number of reduction iterations\n"
-#endif          
+#endif   
+#ifdef DISABLE_OPTIMIZATIONS   
+  "\nDebug Options:                 \n"          
   "--list-templates               dump the templates of the functions for user-defined summaries\n"
+  "--dump-SSA-tree                ask a dump of the SSA tree in smtlib format\n"
+  "--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n"
   "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n"
   "--dump-query-name <base>       base name for the files where queries are dumped\n"
+#endif
 //  "\nRefinement options:\n"
 //  "--refine-mode <mode>:\n"
 //  "  0 | \"force-inlining\"         inline every function call\n"
@@ -678,7 +683,26 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 #else
   options.set_option("no-itp", true); // If not using itp, this flag is true always!
   status() << "\n*** NO ITERPOLATION MODE, NOT USING SUMMARY FILES (DPRODUCE_PROOF is off) ***\n" << eom;
-#endif  
+#endif 
+#ifdef DISABLE_OPTIMIZATIONS  
+  if (cmdline.isset("dump-SSA-tree"))
+    options.set_option("dump-SSA-tree", true);
+  
+  if (cmdline.isset("dump-pre-query"))
+    options.set_option("dump-pre-query", true);
+  
+  if (cmdline.isset("dump-query"))
+    options.set_option("dump-query", true);
+
+  if (cmdline.isset("dump-query-name")) {
+      options.set_option("dump-query-name", cmdline.get_value("dump-query-name"));
+  } else { // Set to empty string and let osmt choose the name
+      options.set_option("dump-query-name", "");
+  }  
+  status() << "\n*** DEBUG MODE ON: QUERIES DUMP OPTIONS ARE ON (DDISABLE_OPTIMIZATIONS is on) ***\n" << eom;
+#else
+  status() << "\n*** EXECUTE WITH OPTIMIZATIONS (DDISABLE_OPTIMIZATIONS is off) ***\n" << eom;
+#endif     
   options.set_option("no-partitions", cmdline.isset("no-partitions"));
   options.set_option("no-assert-grouping", cmdline.isset("no-assert-grouping"));
   options.set_option("no-summary-optimization", cmdline.isset("no-summary-optimization"));
@@ -695,14 +719,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("bitwidth", cmdline.get_value("bitwidth"));
   } else {
     options.set_option("bitwidth", 8);
-  }
-  if (cmdline.isset("dump-query"))
-      options.set_option("dump-query", true);
-
-  if (cmdline.isset("dump-query-name")) {
-      options.set_option("dump-query-name", cmdline.get_value("dump-query-name"));
-  } else { // Set to empty string and let osmt choose the name
-      options.set_option("dump-query-name", "");
   }
 
   // always check assertions

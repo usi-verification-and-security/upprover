@@ -6,6 +6,9 @@
  */
 
 #include "smt_dependency_checker.h"
+#include "hifrog.h"
+#include "solvers/smtcheck_opensmt2_lra.h"
+
 
 pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
@@ -27,19 +30,19 @@ pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft 
   // solve it
   return make_pair(!r, duration);
   
-  } catch (const bad_alloc &e)
+  } catch (const std::bad_alloc &e)
   {
-    cout  << "smth is wrong: " << e.what()  << std::endl;
+    error ()  << "smth is wrong: " << e.what()  << eom;
     return make_pair(true, (fine_timet)0);
   }
   catch (const char* e)
   {
-    std::cout << std::endl << "Caught exception: " << e << std::endl;
+    error () << "\nCaught exception: " << e << eom;
     return make_pair(true, (fine_timet)0);
   }
   catch (const std::string &s)
   {
-    std::cout << std::endl << "Caught exception: " << s << std::endl;
+    error () << "\nCaught exception: " << s << eom;
     return make_pair(true, (fine_timet)0);
   }
 }
@@ -96,16 +99,16 @@ long smt_dependency_checkert::find_implications()
         impchecks++;
         if (VERBOSE)
         {
-          cout << "Comparing the assertions " <<
+          status () << "Comparing the assertions " <<
             from_expr(ns, "", (*assert_1)->cond_expr) << " and " <<
-            from_expr(ns, "", (*assert_2)->cond_expr) << std::endl;
+            from_expr(ns, "", (*assert_2)->cond_expr) << eom;
         }
                 checkres = check_implication(assert_1, assert_2);
 
         if (checkres.first == true)
         {
           true_time = true_time + checkres.second.get_t();
-          if (VERBOSE) {cout << "check_implication returned TRUE" << std::endl;}
+          if (VERBOSE) {status () << "check_implication returned TRUE" << eom;}
           if (checkres.second.get_t() <= impl_timeout)
           {
             assert_imps[assert_1][assert_2] = IMP;
@@ -133,15 +136,15 @@ long smt_dependency_checkert::find_implications()
         else
         {
         	false_time = false_time + checkres.second.get_t();
-        	if (VERBOSE) { cout << "check_implication returned FALSE" << std::endl;}
+        	if (VERBOSE) { status () << "check_implication returned FALSE" << eom;}
         }
         if (checkres.second.get_t() > impl_timeout)
         {
         	long exceeding = checkres.second.get_t() - impl_timeout;
-        	cout << "Timeout " << (impl_timeout/1000) << "." <<
+        	warning () << "Timeout " << (impl_timeout/1000) << "." <<
         	                      (impl_timeout%1000)/10 << " exceeded of " <<
         	                      (exceeding/1000) << "." <<
-        	                      (exceeding%1000)/10 << " seconds." << std::endl;
+        	                      (exceeding%1000)/10 << " seconds." << eom;
             to_time = to_time + exceeding;
         }
       }
@@ -167,11 +170,11 @@ long smt_dependency_checkert::find_implications()
     if (weaker[i] == true)
 	  {
 		  SSA_step_reft& removable = asserts[i];
-      cout << "\nRedundant assertion at:\n" <<
+      warning () << "\nRedundant assertion at:\n" <<
 	  "  file \"" << (*removable)->source.pc->source_location.get_file() <<
 	  "\",\n  function \"" << (*removable)->source.pc->source_location.get_function() <<
 	  "\",\n  line " << (*removable)->source.pc->source_location.get_line() << ":\n  " <<
-          from_expr(ns, "", (*removable)->source.pc->guard) << "\n\n";
+          from_expr(ns, "", (*removable)->source.pc->guard) << "\n" << eom;
 
 
       (*removable)->ignore = true;

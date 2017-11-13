@@ -16,7 +16,10 @@
 #include <goto-programs/goto_functions.h>
 
 #include "assertion_info.h"
-#include "summarization_context.h"
+#include "summary_store_fwd.h"
+
+class summarization_contextt;
+class summary_infot;
 
 // Type of summarization applied at a specific call-site
 typedef enum {HAVOC, SUMMARY, INLINE} summary_precisiont;
@@ -98,15 +101,7 @@ public:
   void set_preserved_node() { preserved_node = true; } // false by default
   void set_preserved_edge() { preserved_edge = true; } // false by default
 
-  unsigned get_subtree_size(const summarization_contextt& summarization_context){
-    unsigned res = summarization_context.get_function(function_id).body.instructions.size();
-    for (call_sitest::iterator it = call_sites.begin();
-            it != call_sites.end(); ++it)
-    {
-      res += it->second.get_subtree_size(summarization_context);
-    }
-    return res;
-  }
+  unsigned get_subtree_size(const summarization_contextt& summarization_context);
 
   bool is_recursive(){
     for (call_sitest::iterator it = call_sites.begin();

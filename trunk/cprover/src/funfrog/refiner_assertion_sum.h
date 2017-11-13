@@ -13,9 +13,10 @@
 #include "assertion_info.h"
 #include "subst_scenario.h"
 #include "summary_info.h"
-#include "summarization_context.h"
 #include "partitioning_target_equation.h"
-#include "solvers/smtcheck_opensmt2.h"
+#include <util/message.h>
+
+class summarization_contextt;
 
 class refiner_assertion_sumt:public messaget
 {

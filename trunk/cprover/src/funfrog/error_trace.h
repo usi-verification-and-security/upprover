@@ -1,20 +1,13 @@
 #ifndef ERROR_TRACE_H_
 #define ERROR_TRACE_H_
 
-#include "solvers/smtcheck_opensmt2.h"
-#include "solvers/smtcheck_opensmt2_cuf.h"
-#include "partitioning_target_equation.h"
-#include "smt_partitioning_target_equation.h"
-#include "nopartition/smt_symex_target_equation.h"
+#include <util/expr.h>
+#include <goto-programs/goto_trace.h>
 
-#include "assertion_info.h"
-#include "summarization_context.h"
-#include <util/std_expr.h>
-#include <goto-programs/goto_program.h>
-#include <util/arith_tools.h>
-#include <util/symbol.h>
-#include <ansi-c/printf_formatter.h>
-#include <langapi/language_util.h>
+class smtcheck_opensmt2t;
+class smt_symex_target_equationt;
+class smt_partitioning_target_equationt;
+class smtcheck_opensmt2t_lra;
 
 class error_tracet {
 public:

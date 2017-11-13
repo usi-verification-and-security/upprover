@@ -12,15 +12,16 @@
 
 #include <irep.h>
 #include <expr.h>
+#include <set>
 
-#include "solvers/interpolating_solver.h"
-#include "solvers/prop_itp.h"
-#include "solvers/smt_itp.h"
-#include "summary_store.h"
-#include "prop_summary_store.h"
-#include "smt_summary_store.h"
+#include "summary_store_fwd.h"
 
 class summarization_contextt;
+class smt_summary_storet;
+class namespacet;
+class itpt;
+
+typedef itpt interpolantt;
 
 // Collected summarization info for a single function
 class function_infot {

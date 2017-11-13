@@ -13,15 +13,19 @@
 #include <memory>
 #include <options.h>
 #include <ui_message.h>
-#include <solvers/flattening/bv_pointers.h>
-#include "symex_assertion_sum.h"
-#include "assertion_sum.h"
-#include "prop_assertion_sum.h"
-#include "smt_assertion_sum.h"
-#include "refiner_assertion_sum.h"
-#include "prop_partitioning_target_equation.h"
-#include "smt_partitioning_target_equation.h"
-#include "nopartition/smt_assertion_no_partition.h"
+#include "summarization_context.h"
+#include "summarization_context_fwd.h"
+#include "subst_scenario.h"
+#include "utils/coloring_mode.h"
+
+class smt_assertion_no_partitiont;
+class prop_partitioning_target_equationt;
+class smt_partitioning_target_equationt;
+class prop_assertion_sumt;
+class smt_assertion_sumt;
+class check_opensmt2t;
+class symex_bmct;
+class interpolating_solvert;
 
 class summarizing_checkert:public messaget
 {

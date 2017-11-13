@@ -20,6 +20,8 @@
 #include "../error_trace.h"
 
 #include "smt_assertion_no_partition.h"
+#include "../solvers/smtcheck_opensmt2.h"
+
 
 extern time_periodt global_satsolver_time;
 
@@ -106,15 +108,15 @@ void smt_assertion_no_partitiont::error_trace(smtcheck_opensmt2t &decider, const
     if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS)
     {
         // Same as in funfrog/error_tracet::show_goto_trace
-        cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
-        cout << "         Use --logic with Different Logic to Try Creating an Error Trace. \n";
+        status()  << "\nWARNING: Use over approximation. Cannot create an error trace." << eom;
+        status()  << "         Use --logic with Different Logic to Try Creating an Error Trace." << eom;
         return; // Cannot really print a trace
     }
 
     error_trace.build_goto_trace(equation, decider);
 
-    std::cout << std::endl << "Counterexample:" << std::endl;
-    
-    error_trace.show_goto_trace(decider, std::cout, ns, guard_expln);
+    result() << "\nCounterexample:" << eom;
+    error_trace.show_goto_trace(decider, result (), ns, guard_expln);
+    result () << eom;
 }
 

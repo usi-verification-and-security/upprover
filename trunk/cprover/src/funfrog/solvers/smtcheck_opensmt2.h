@@ -7,43 +7,38 @@ Module: Wrapper for OpenSMT2
 #ifndef CPROVER_SMTCHECK_OPENSMT2_H
 #define CPROVER_SMTCHECK_OPENSMT2_H
 
-//#define DEBUG_SMT4SOLVER // TO PRINT FROM HIFROG ENCODING + ITE DEF.
-
 #include <map>
 #include <vector>
 
-#include <util/threeval.h>
 #include "check_opensmt2.h"
-#include "interpolating_solver.h"
-#include "smt_itp.h"
-#include <opensmt/opensmt2.h>
 #include <expr.h>
-#include "../hifrog.h"
+#include <symbol.h>
+#include <solvers/prop/literal.h>
+
+class smt_itpt;
 
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
 
+// FIXME: add inheritance for class messaget, and replace couts in status/warning/error
+// This shall be to all smt interface classes
 class smtcheck_opensmt2t : public check_opensmt2t
 {
 public:
   // Defualt C'tor
   smtcheck_opensmt2t(bool _store_unsupported_info=false) :
-      no_literals(0),
-      pushed_formulas(0),
-      is_var_constraints_empty(true),
-      store_unsupported_info(_store_unsupported_info),
-      check_opensmt2t(false, 3, 2) // Is last always!
+    smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info)
   {
     /* No init of solver - done for inherit check_opensmt2 */
   }
 
   // C'tor to pass the value to main interface check_opensmt2
   smtcheck_opensmt2t(bool reduction, int reduction_graph, int reduction_loops, bool _store_unsupported_info=false) :
+        check_opensmt2t(reduction, reduction_graph, reduction_loops),
+        is_var_constraints_empty(true),
         no_literals(0),
         pushed_formulas(0),
-        is_var_constraints_empty(true),
-        store_unsupported_info(_store_unsupported_info),
-        check_opensmt2t(reduction, reduction_graph, reduction_loops)
+        store_unsupported_info(_store_unsupported_info)
   { /* No init of solver - done for inherit check_opensmt2 */}
     
   virtual ~smtcheck_opensmt2t(); // d'tor
@@ -107,19 +102,13 @@ public:
   // Extract interpolant form OpenSMT files/data
   void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
   
-  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true); // Common to all
-#endif
-  
-  static int get_index(const string& varname);
-  static std::string insert_index(const string& varname, const string& idx); // Common to all
-  static std::string insert_index(const string& varname, int idx); // Common to all
-  static std::string quote_varname(const string& varname); // Common to all
-  static std::string unquote_varname(const string& varname); // Common to all
-  
-  static std::string remove_index(std::string); // Common to all
-  static std::string remove_invalid(const string& varname); // Common to all
+//  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true); // Common to all
 
-  static bool is_quoted_var(const string& varname); // Common to all
+  void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
+                          const std::string& fun_name, bool substitute);
+#endif
+
+    static std::string quote_varname(const string& varname); // Common to all
 
   // Common to all
   void start_encoding_partitions() {
@@ -140,24 +129,6 @@ public:
   map<PTRef,exprt>::const_iterator get_itr_unsupported_info_map() const { return unsupported_info_map.begin(); }
   map<PTRef,exprt>::const_iterator get_itr_end_unsupported_info_map() const { return unsupported_info_map.end(); }
   /* End of unsupported data for refinement info and data */
-  
-
-  static bool is_cprover_rounding_mode_var(const exprt& e)
-  {
-      return is_cprover_rounding_mode_var(id2string(e.get(ID_identifier)));
-  }
-  static bool is_cprover_rounding_mode_var(const std::string str)
-  {
-      return (str.find(ROUNDING_MODE) != std::string::npos);
-  }
-  static bool is_cprover_builtins_var(const exprt& e)
-  {
-      return is_cprover_builtins_var(id2string(e.get(ID_identifier)));
-  }
-  static bool is_cprover_builtins_var(const std::string str)
-  {
-      return (str.find(CPROVER_BUILDINS) != std::string::npos);
-  }
   
   // Common to all
   std::set<PTRef>* getVars(); // Get all variables from literals for the counter example phase
@@ -252,7 +223,7 @@ protected:
     return (toInt(v1) == 0);
   }
 
-#ifdef DEBUG_SMT4SOLVER
+#ifdef DISABLE_OPTIMIZATIONS
   std::map <std::string,std::string> ite_map_str;
   std::set <std::string> var_set_str;
   typedef std::map<std::string,std::string>::iterator it_ite_map_str;

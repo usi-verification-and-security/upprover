@@ -6,14 +6,15 @@
  Author: Ondrej Sery
 
 \*******************************************************************/
-
+#include "prop_assertion_sum.h"
 #include <goto-symex/build_goto_trace.h>
 #include <goto-programs/xml_goto_trace.h>
-#include <find_symbols.h>
-#include <ansi-c/expr2c.h>
+//#include <find_symbols.h>
+//#include <ansi-c/expr2c.h>
 #include <time_stopping.h>
 #include <ui_message.h>
-#include "prop_assertion_sum.h"
+#include "solvers/prop/prop_conv.h"
+#include "prop_partitioning_target_equation.h"
 
 
 /*******************************************************************
@@ -275,15 +276,16 @@ void prop_assertion_sumt::error_trace(const prop_conv_solvert &prop_conv, const 
   switch(message_handler.get_ui())
   {
     case ui_message_handlert::uit::PLAIN:
-    std::cout << std::endl << "Counterexample:" << std::endl;
-    show_goto_trace(std::cout, ns, goto_trace);
+    result() << "\nCounterexample:" << eom;
+    show_goto_trace(result (), ns, goto_trace);
+    result () << eom;
     break;
 
     case ui_message_handlert::uit::XML_UI:
     {
       xmlt xml;
       convert(ns, goto_trace, xml);
-      std::cout << xml << std::endl;
+      result() << xml << eom;
     }
     break;
 

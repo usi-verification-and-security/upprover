@@ -8,8 +8,9 @@
 \*******************************************************************/
 
 
-#include <stdlib.h>
 #include "refiner_assertion_sum.h"
+
+#include "summarization_context.h"
 
 //#define DEBUG_REFINER
 

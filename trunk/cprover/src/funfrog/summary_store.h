@@ -14,18 +14,11 @@ Author: Ondrej Sery
 #include <unordered_map>
 #include <map>
 #include "solvers/itp.h"
-#include "solvers/smtcheck_opensmt2.h"
-#include "solvers/satcheck_opensmt2.h"
 
-typedef itpt summaryt;
-typedef prop_itpt prop_summaryt;
-typedef smt_itpt smt_summaryt;
-typedef long unsigned summary_idt;
-typedef std::vector<summary_idt> summary_idst;
-typedef std::unordered_set<summary_idt> summary_ids_sett;
+#include "summary_store_fwd.h"
+
+class smtcheck_opensmt2t;
 class summary_infot;
-class function_infot;
-typedef std::unordered_map<irep_idt, function_infot, irep_id_hash> function_infost;
 
 /*KE: Abstract class, has implementation as either prop_summary_storet or smt_summary_storet */
 class summary_storet
@@ -52,7 +45,7 @@ public:
   // Finds the representative of the given summary
   summaryt& find_summary(summary_idt new_id);
   unsigned n_of_summaries() { return store.size(); }
-  int get_max_id(const string& fname) const;
+  int get_next_id(const string &fname);
   
   // Reset the summary store
   void clear() { store.clear(); max_id = 0; repr_count = 0; }
@@ -101,7 +94,7 @@ protected:
     summary_idt repr_id;
   };
   
-  std::map<string, int> max_ids;
+  std::map<std::string, int> next_ids;
 
   nodet& find_repr(summary_idt id);
   void mark_used_summaries(summary_infot& summary_info, bool *used_mask);

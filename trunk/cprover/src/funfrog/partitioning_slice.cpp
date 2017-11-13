@@ -10,6 +10,10 @@ Author: Ondrej Sery
 #include <std_expr.h>
 
 #include "partitioning_slice.h"
+#include "partition_iface.h"
+#include "solvers/prop_itp.h"
+#include "solvers/smt_itp.h"
+#include "summary_store.h"
 
 //#define DEBUG_SLICER
 

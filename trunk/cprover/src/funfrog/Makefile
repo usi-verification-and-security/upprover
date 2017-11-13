@@ -2,6 +2,7 @@ include ../config.inc
 -include local
 
 SHARED_SRC := \
+      utils/naming_helpers.cpp \
       hifrog.cpp \
       expr_pretty_print.cpp \
       function_info.cpp \
@@ -84,7 +85,13 @@ INCLUDES :=  -I .. -I ../util
 
 LIBS =
 
-CXXFLAGS += -std=c++11 -MMD -MP -DPRODUCE_PROOF -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING $(INCLUDES)
+CXXFLAGS += -std=c++11 -MMD -MP  -DIGNORE_DL_THEORYPROPAGATION -DOSMT1_SUBSTITUTION -DCUSTOM_EL_ALLOC -DTERMS_HAVE_EXPLANATIONS -DUSE_GZ -DFULL_LABELING $(INCLUDES)
+# comment out to compile without PRODUCE_PROOF
+CXXFLAGS += -DPRODUCE_PROOF
+## comment out to compile without -DDISABLE_OPTIMIZATIONS
+CXXFLAGS += -DDISABLE_OPTIMIZATIONS
+# uncomment to enable printing of SSA
+# CXXFLAGS += -DDEBUG_SSA_PRINT
 
 all: hifrog$(EXEEXT) 
 

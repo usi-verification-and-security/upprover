@@ -1,1 +1,5 @@
+Violated property:
+  file benchmarks/if-else6.c line 32 function main
+  assertion t != -2
+  t != -2
 VERIFICATION FAILED

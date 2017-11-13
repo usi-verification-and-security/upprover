@@ -14,13 +14,10 @@
 #include <ssa_expr.h>
 
 // For now we have only one thread any hows
-#define FUNC_RETURN "::#return_value!0"  // KE: appears in Cprover as "#return_value"
-#define TMP_FUNC_RETURN "::$tmp::return_value!0"
-#define LATTICE_TMP_FUNC_RETURN "call__lattice::$tmp::return_value_"
-#define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var!0#"
-#define OPENSMT_IN "#in"
-#define OPENSMT_OUT "#out"
-#define OPENSMT_INVS "#invs"
+#define FUNC_RETURN "::#return_value"  // KE: appears in Cprover as "#return_value"
+#define TMP_FUNC_RETURN "::$tmp::return_value"
+#define LATTICE_TMP_FUNC_RETURN "call__lattice::$tmp_return_value_"
+#define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var#"
 
 #define CALLSTART_SYMBOL "hifrog::fun_start"
 #define CALLEND_SYMBOL "hifrog::fun_end"
@@ -35,10 +32,6 @@
 #define NIL "nil"
 #define NONDETv1 "symex::" // Cprover nondet symbol
 #define NONDETv2 "symex::nondet" // Cprover nonder symbol too
-#define COUNTER '#' // GOTO to SSA L2 (e.g., hifrog::?fun_end to hifrog::?fun_end#1)
-#define COUNTER_L1 '!' // GOTO to SSA L1
-#define SPERATOR "::" // split names in cprover
-#define SPERATOR_PREFIX "_" // Cprover const to split prefix from instance
 #define SYMEX_NONDET "nondet#" //"symex::nondet#" - fix to
 #define IO_CONST "symex::io::" // Update according to goto_symex/symex_target_equation
 #define RETURN_NIL_CPROVER "return'!0" // Check if changed; the nil (function_call.lhs().is_nil()), changed into |return'!0|
@@ -58,6 +51,28 @@ irep_idt extract_hifrog_inner_symbol_name(const exprt &expr);
 unsigned get_symbol_L2_counter(const exprt &expr);
 unsigned extract_hifrog_inner_symbol_L2_counter(const exprt &expr);
 std::string fix_symex_nondet_name(const exprt &expr);
+bool is_cprover_initialize_method(const std::string&);
+
+static inline bool is_cprover_rounding_mode_var(const std::string& str)
+{
+    return (str.find(ROUNDING_MODE) != std::string::npos);
+}
+
+static inline bool is_cprover_rounding_mode_var(const exprt& e)
+{
+    return is_cprover_rounding_mode_var(id2string(e.get(ID_identifier)));
+}
+
+static inline bool is_cprover_builtins_var(const std::string str)
+{
+    return (str.find(CPROVER_BUILDINS) != std::string::npos);
+}
+
+static inline bool is_cprover_builtins_var(const exprt& e)
+{
+    return is_cprover_builtins_var(id2string(e.get(ID_identifier)));
+}
+
 
 #endif /* HIFROG_H */
 

@@ -9,11 +9,12 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 
 #include <vector>
 
-#include <solvers/sat/cnf.h>
 #include <util/threeval.h>
 #include <opensmt/opensmt2.h>
 #include "interpolating_solver.h"
 
+class prop_conv_solvert;
+class literalt;
 /*
  TODO: think how to generalize this class and interpolating_solvert to be 
  * not related. Need also to change (split?) summarizing_checkert
@@ -30,7 +31,11 @@ public:
       osmt  (NULL),
       logic (NULL),
       mainSolver (NULL),
+#ifdef DISABLE_OPTIMIZATIONS                
       dump_queries(false),
+      dump_pre_queries(false),
+      pre_queries_file_name("__pre_query.smt2"),
+#endif              
       partition_count(0),
       current_partition(0),
 #ifdef PRODUCE_PROOF              
@@ -99,6 +104,7 @@ public:
       return random_seed;
   }
 
+#ifdef DISABLE_OPTIMIZATIONS  
   void set_dump_query(bool f)
   {
     if (osmt != NULL) {
@@ -112,7 +118,12 @@ public:
       if (osmt != NULL) {
           osmt->getConfig().set_dump_query_name(n.c_str());
       }
+      
+      pre_queries_file_name = "__preq_" + n + ".smt2";
   }
+  
+  void set_dump_pre_query(bool f) { dump_pre_queries = f;}
+#endif
 
   MainSolver * getMainSolver() { return mainSolver; }
 
@@ -138,8 +149,12 @@ protected:
   Logic* logic;
   MainSolver* mainSolver;
 
+#ifdef DISABLE_OPTIMIZATIONS  
   // Dump all queries?
   bool dump_queries;
+  bool dump_pre_queries;
+  std::string pre_queries_file_name;
+#endif  
 
   // Count of the created partitions
   unsigned partition_count;
@@ -149,20 +164,20 @@ protected:
   
 #ifdef PRODUCE_PROOF   
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
-  int proof_trans;  
-  
-  // OpenSMT2 Params
-  bool reduction;
-  int reduction_loops;
-  int reduction_graph;
+  int proof_trans;
 
   // itp_alg_mcmillan, itp_alg_pudlak, itp_alg_mcmillanp, etc...
   ItpAlgorithm itp_algorithm;
   ItpAlgorithm itp_euf_algorithm;
   ItpAlgorithm itp_lra_algorithm;
   const char * itp_lra_factor;
-  
-  // Can we interpolate?
+
+  // OpenSMT2 Params
+  bool reduction;
+  int reduction_graph;
+  int reduction_loops;
+
+    // Can we interpolate?
   bool ready_to_interpolate;
 #endif
   

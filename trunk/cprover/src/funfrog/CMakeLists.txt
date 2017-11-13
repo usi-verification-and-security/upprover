@@ -87,7 +87,7 @@ set(HIFROG_SOURCE_FILES
         version.h
         xml_interface.cpp
         xml_interface.h
-        )
+    utils/naming_helpers.h utils/naming_helpers.cpp partition_iface_fwd.h summary_store_fwd.h summarization_context_fwd.h utils/coloring_mode.h solvers/itp_fwd.h)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../cmake_modules/")
 
@@ -95,10 +95,17 @@ find_package(GMP REQUIRED)
 
 add_executable(hifrog ${HIFROG_SOURCE_FILES} $<TARGET_OBJECTS:cprover>)
 
-target_compile_options(hifrog PRIVATE -Werror)
+target_compile_options(hifrog PRIVATE  -Wall)
 
-target_compile_definitions(hifrog
-        PUBLIC -DPRODUCE_PROOF)
+target_compile_definitions(hifrog PUBLIC -DPRODUCE_PROOF)
+
+target_compile_definitions(hifrog PRIVATE
+    #-DDEBUG_PARTITIONING
+    #-DDEBUG_SSA
+    #-DDEBUG_SSA_SMT_CALL
+    #-DDEBUG_GLOBALS
+    #-DDISABLE_OPTIMIZATIONS
+    )
 
 target_link_libraries(hifrog -lopensmt2 ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
 

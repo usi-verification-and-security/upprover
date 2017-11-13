@@ -12,6 +12,7 @@ Author: Ondrej Sery
 
 #include "partitioning_target_equation.h"
 #include "solvers/satcheck_opensmt2.h"
+#include "partition_iface_fwd.h"
 
 
 // Two classes for smt and prop   
@@ -65,8 +66,6 @@ protected:
   
   // Override
   virtual void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
-  
-  virtual bool is_smt_encoding() {return false;} // KE: Temp. Just to force virtual for compilation
 };
 
 #endif

@@ -14,7 +14,7 @@ class smtcheck_opensmt2t;
 class smt_itpt: public itpt
 {
 public:
-  smt_itpt() :tterm(NULL), itpt() {}
+  smt_itpt() :tterm(nullptr){}
   ~smt_itpt() {} // d'tor
 
   virtual  bool is_trivial() const override { return false; }
@@ -58,7 +58,7 @@ public:
   virtual void deserialize(std::istream& in) override;
 
   virtual bool usesVar(symbol_exprt&, unsigned) override;
-  
+
   virtual bool check_implies(const itpt& second) const override { return false;}
   
   virtual itpt* get_nodet() override { return new smt_itpt(); }
@@ -77,9 +77,6 @@ protected:
 
   void gate_and(literalt a, literalt b, literalt o);
   void gate_or(literalt a, literalt b, literalt o);
-  
-  bool is_system_translation_var(std::string name, bool is_smt_only) const;
-  string get_and_check_L0_name_from_summary(PTRef arg_j) const;
 };
 
 typedef smt_itpt smt_interpolantt;

@@ -5,14 +5,12 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 Author: Grigory Fedyukovich
 
 \*******************************************************************/
-#include <queue>
 
 #include "smtcheck_opensmt2_uf.h"
+#include "../hifrog.h"
 
+// Debug flags of this class:
 //#define SMT_DEBUG
-//#define DEBUG_SSA_SMT
-//#define DEBUG_SSA_SMT_NUMERIC_CONV
-//#define DEBUG_SMT_ITP
 
 const char* smtcheck_opensmt2t_uf::tk_sort_ureal = "UReal";
 const char* smtcheck_opensmt2t_uf::tk_mult = "*";
@@ -273,12 +271,10 @@ literalt smtcheck_opensmt2t_uf::type_cast(const exprt &expr) {
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
         PTRef ptl = logic->mkIte(literals[lt.var_no()], logic->mkConst(sort_ureal, "1"), logic->mkConst(sort_ureal, "0"));
         
-#ifdef DEBUG_SMT4SOLVER
-        ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
-        cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")" 
-            << string(getPTermString(ptl)) << endl << logic->printTerm(logic->getTopLevelIte(ptl)) << endl;
+#ifdef  DISABLE_OPTIMIZATIONS
+        if (dump_pre_queries)
+            ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif          
-        
     	return push_variable(ptl); // Keeps the new literal + index it
     } else if (is_expr_bool && is_number((expr.operands())[0].type())) {
     	// Cast from Real to Boolean - Add
@@ -323,11 +319,11 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
         l = lconst(expr);
     } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) && expr.has_operands()) {
 #ifdef SMT_DEBUG
-		bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
+        bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
 #endif
-        // KE: Take care of type cast - recursion of convert take care of it anyhow
-        // Unless it is constant bool, that needs different code:
+    // KE: Take care of type cast - recursion of convert take care of it anyhow
+    // Unless it is constant bool, that needs different code:
     l = type_cast(expr);
 
 #ifdef SMT_DEBUG
@@ -337,10 +333,10 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
 #endif  
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
-		cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << _id << ")" << endl;
-		assert(false); // Need to take care of - typecast no operands
+        cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << _id << ")" << endl;
+        assert(false); // Need to take care of - typecast no operands
 #else
-		l = lunsupported2var(expr);
+        l = lunsupported2var(expr);
 #endif
     } else {
 #ifdef SMT_DEBUG
@@ -376,16 +372,18 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
                 ptl = logic->mkImpl(args);
             } else {            
                 ptl = logic->mkIte(args);
-#ifdef DEBUG_SMT4SOLVER
-                ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
+#ifdef          DISABLE_OPTIMIZATIONS
+                if (dump_pre_queries)
+                    ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
             }
         } else if(_id == ID_ifthenelse) {
             assert(args.size() >= 3); // KE: check the case if so and add the needed code!
             
             ptl = logic->mkIte(args);
-#ifdef DEBUG_SMT4SOLVER
-            ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
+#ifdef      DISABLE_OPTIMIZATIONS
+            if (dump_pre_queries)
+                ite_map_str.insert(make_pair(string(getPTermString(ptl)),logic->printTerm(logic->getTopLevelIte(ptl))));
 #endif
         } else if(_id == ID_and) {
             ptl = logic->mkAnd(args);
@@ -527,12 +525,11 @@ literalt smtcheck_opensmt2t_uf::lnotequal(literalt l1, literalt l2){
 
 literalt smtcheck_opensmt2t_uf::lvar(const exprt &expr)
 {
-    const string _str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    string str = remove_invalid(_str);
+    string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
     str = quote_varname(str);
 
     // Nil is a special case - don't create a var but a val of true
-    if (_str.compare("nil") == 0) return const_var(true);
+    if (str.compare(NIL) == 0) return const_var(true);
 
 #ifdef SMT_DEBUG
 	cout << "; (lvar) Create " << str << endl;
@@ -558,11 +555,10 @@ literalt smtcheck_opensmt2t_uf::lvar(const exprt &expr)
 
     literalt l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
 
-#ifdef DEBUG_SMT4SOLVER
-	std::string add_var = str + " () " + getVarData(var);
-	if (var_set_str.end() == var_set_str.find(add_var)) {
-		var_set_str.insert(add_var);
-	}
+#ifdef DISABLE_OPTIMIZATIONS
+    std::string add_var = str + " () " + getVarData(var);
+    if (var_set_str.end() == var_set_str.find(add_var)) 
+        var_set_str.insert(add_var);
 #endif
 
     return l;

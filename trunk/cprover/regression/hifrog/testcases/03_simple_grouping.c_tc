@@ -1,0 +1,2 @@
+0,funfrog/03_simple/grouping.c,prop,--claim,1,--refine-mode,2,--no-summary-optimization
+0,funfrog/03_simple/grouping.c,prop,--claim,2,--refine-mode,2,--no-summary-optimization,--load-summaries,mainReg_output/funfrog/03_simple/grouping/__summaries_output_prop

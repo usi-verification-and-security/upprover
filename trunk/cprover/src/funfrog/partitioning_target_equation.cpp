@@ -6,11 +6,39 @@
 
  \*******************************************************************/
 
-#include <std_expr.h>
-
 #include "partitioning_target_equation.h"
-#include "solvers/sat/cnf.h"
+#include "partition_iface.h"
 
+partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet& partition_iface)
+{
+    partition_idt new_id = partitions.size();
+    partition_idt parent_id = partition_iface.parent_id;
+
+    partitions.push_back(partitiont(parent_id, partition_iface));
+
+    bool check = partition_map.insert(partition_mapt::value_type(
+            partition_iface.callend_symbol.get_identifier(), new_id)).second;
+    assert(check);
+
+    if (parent_id != partitiont::NO_PARTITION) {
+        partitions[parent_id].add_child_partition(new_id, partition_iface.call_loc);
+    }
+    partition_iface.partition_id = new_id;
+
+    return new_id;
+}
+
+void partitioning_target_equationt::invalidate_partition(partition_idt partition_id)
+{
+    partitiont& partition = partitions[partition_id];
+
+    partition.invalid = true;
+    partition_map.erase(partition.get_iface().callend_symbol.get_identifier());
+
+    if (partition.parent_id != partitiont::NO_PARTITION) {
+        partitions[partition.parent_id].remove_child_partition(partition_id);
+    }
+}
 
 /*******************************************************************
  Function: partitioning_target_equationt::partitioning_target_equationt
@@ -59,6 +87,27 @@ void partitioning_target_equationt::prepare_partitions() { // for hifrog only
         }
         it->end_it = ssa_it;
         it->ignore = ignore & !it->get_iface().assertion_in_subtree;
+    }
+}
+
+void partitioning_target_equationt::fill_common_symbols(const partitiont& partition,
+                         std::vector<symbol_exprt>& common_symbols) const
+{
+    common_symbols.clear();
+    const partition_ifacet& iface = partition.get_iface();
+    common_symbols.reserve(iface.argument_symbols.size() +
+                           iface.out_arg_symbols.size()+4);
+    common_symbols = iface.argument_symbols; // Add SSA instances of funcs
+    common_symbols.insert(common_symbols.end(),
+                          iface.out_arg_symbols.begin(),
+                          iface.out_arg_symbols.end()); // Add globals
+    common_symbols.push_back(iface.callstart_symbol);
+    common_symbols.push_back(iface.callend_symbol);
+    if (iface.assertion_in_subtree) {
+        common_symbols.push_back(iface.error_symbol);
+    }
+    if (iface.returns_value) {
+        common_symbols.push_back(iface.retval_symbol);
     }
 }
 
@@ -176,7 +225,7 @@ void partitioning_target_equationt::fill_partition_ids(
 }
 
 /***************************************************************************/
-#ifdef DEBUG_SSA_PRINT
+#ifdef DISABLE_OPTIMIZATIONS
 std::ostream& partitioning_target_equationt::print_decl_smt(std::ostream& out) {
     if (partition_smt_decl->empty())
         return out;
@@ -199,9 +248,9 @@ void partitioning_target_equationt::print_partition() {
     if (terms_buf.str().length() > 0) {
         out_partition << "(assert\n";
         if (terms_counter > 1)
-            out_partition << "  (and\n" << terms_buf.str() << "  )\n)" << endl;
+            out_partition << "  (and\n" << terms_buf.str() << "  )\n)" << '\n';
         else
-            out_partition << terms_buf.str() << ")" << endl;
+            out_partition << terms_buf.str() << ")" << '\n';
     }
 
     // Init for reuse
@@ -213,7 +262,7 @@ void partitioning_target_equationt::print_partition() {
 void partitioning_target_equationt::print_all_partition(std::ostream& out) {
     // Print only if the flag is on!
     // Print header - not part of temp debug print!
-    cout << "\nXXX SSA --> SMT-lib Translation XXX\n";
+    out << "\nXXX SSA --> SMT-lib Translation XXX\n";
 
     // for prints later on
     std::ostream out_decl(0);
@@ -222,23 +271,7 @@ void partitioning_target_equationt::print_all_partition(std::ostream& out) {
 
     // When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
     print_decl_smt(out_decl); // print the symbol decl
-    cout << decl_buf.str() << partition_buf.str() << "(check-sat)\n";
-}
-
-// Not in use here
-void partitioning_target_equationt::addToDeclMap(const exprt &expr) {
-    if (partition_smt_decl == NULL)
-        return;
-
-    std::ostream out_code(0);
-    std::stringbuf code_buf;
-    out_code.rdbuf(&code_buf);
-
-    out_code << expr.id().c_str() << " " << expr.type().id();
-    std::string key = code_buf.str();
-
-    if (partition_smt_decl->find(key) == partition_smt_decl->end())
-        partition_smt_decl->insert(make_pair(key, expr));
+    out << decl_buf.str() << partition_buf.str() << "(check-sat)\n";
 }
 
 void partitioning_target_equationt::getFirstCallExpr() 

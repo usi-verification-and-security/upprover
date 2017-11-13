@@ -11,11 +11,21 @@ Author: Ondrej Sery
 #include <std_expr.h>
 
 #include "prop_partitioning_target_equation.h"
-#include "expr_pretty_print.h"
 #include "solvers/sat/cnf.h"
 #include "solvers/satcheck_opensmt2.h"
+#include "hifrog.h"
+#include "partition_iface.h"
+#include "solvers/prop_itp.h"
+#include "summarization_context.h"
 
 //#define DEBUG_ITP // ITP of SAT - testing
+
+#ifdef DISABLE_OPTIMIZATIONS
+#include <fstream>
+using namespace std;
+
+#include "expr_pretty_print.h"
+#endif
 
 /*******************************************************************\
 
@@ -32,7 +42,7 @@ Author: Ondrej Sery
 void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
           interpolating_solvert &interpolator)
 {
-#ifdef DEBUG_SSA_PRINT    
+#ifdef DISABLE_OPTIMIZATIONS    
     getFirstCallExpr(); // Save the first call to the first function
 #endif  
 
@@ -57,7 +67,7 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
             std::endl;
 #   endif
     // For debugging of the SSA to SMT encoding
-#   ifdef DEBUG_SSA_PRINT
+#   ifdef DISABLE_OPTIMIZATIONS
         out_basic << "XXX Partition: " << part_id <<
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
@@ -70,7 +80,7 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
     convert_partition(prop_conv, interpolator, *it);
 
     // Print partition into a buffer after the headers: basic and code
-#ifdef DEBUG_SSA_PRINT    
+#ifdef DISABLE_OPTIMIZATIONS    
     print_partition();
 #endif    
 
@@ -100,9 +110,18 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
 #   endif
   }
 
-# ifdef DEBUG_SSA_PRINT
-  // Print all after the headers: decl and code
-  print_all_partition(std::cout);
+
+# ifdef DISABLE_OPTIMIZATIONS
+  if (dump_SSA_tree)
+  {
+    ofstream out_ssaT;
+    out_ssaT.open(ssa_tree_file_name); 
+  
+    // Print all after the headers: decl and code
+    print_all_partition(out_ssaT);
+    
+    out_ssaT.close();
+  }
 # endif
 }
 
@@ -170,7 +189,7 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
   // Reserve fresh variables for the partition boundary
   std::vector<symbol_exprt> common_symbs;
   fill_common_symbols(partition, common_symbs);
-  prop_interpolantt::reserve_variables(prop_conv, common_symbs, partition.get_iface().common_symbols);
+  prop_itpt::reserve_variables(prop_conv, common_symbs, partition.get_iface().common_symbols);
   // Convert the corresponding SSA steps
   convert_partition_guards(prop_conv, partition);
   convert_partition_assignments(prop_conv, partition);
@@ -251,7 +270,7 @@ void prop_partitioning_target_equationt::convert_partition_assignments(
   {
     if(it->is_assignment() && !it->ignore)
     {
-#     ifdef DEBUG_SSA_PRINT
+#     ifdef DISABLE_OPTIMIZATIONS
       exprt tmp(it->cond_expr);  
       //Print "ASSIGN-OUT:"
       expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
@@ -287,7 +306,7 @@ void prop_partitioning_target_equationt::convert_partition_guards(
     {
       it->guard_literal=prop_conv.convert(it->guard);
       
-#     ifdef DEBUG_SSA_PRINT
+#     ifdef DISABLE_OPTIMIZATIONS
       //Print "GUARD-OUT:"
       exprt tmp(it->guard);  
       expr_ssa_print_guard(out_terms, tmp, partition_smt_decl);
@@ -326,7 +345,7 @@ void prop_partitioning_target_equationt::convert_partition_assumptions(
       {          
         it->cond_literal=prop_conv.convert(it->cond_expr);
                 
-#	ifdef DEBUG_SSA_PRINT // Only for prop version!
+#	ifdef DISABLE_OPTIMIZATIONS // Only for prop version!
         exprt tmp(it->cond_expr);  
         //Print "ASSUME-OUT:"
         expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
@@ -362,7 +381,7 @@ void prop_partitioning_target_equationt::convert_partition_goto_instructions(
             {
                 it->cond_literal=prop_conv.convert(it->cond_expr);
                 
-#           ifdef DEBUG_SSA_PRINT // Only for prop version!
+#           ifdef DISABLE_OPTIMIZATIONS // Only for prop version!
                 exprt tmp(it->cond_expr);
                 //Print "GOTO-OUT:" -- Caused a bug with Global Vars. --
                 expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
@@ -405,7 +424,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
     if ((it->is_assert()) && !(it->ignore))
     {
 
-#     ifdef DEBUG_SSA_PRINT // Only for BV version
+#     ifdef DISABLE_OPTIMIZATIONS // Only for BV version
       //Print "ASSERT-OUT:"
       expr_ssa_print(out_terms << "    " , it->cond_expr, partition_smt_decl, true);
       terms_counter++;
@@ -434,7 +453,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
         literalt tmp = prop_conv.prop.land(assumption_literal, it->guard_literal);
         prop_conv.prop.set_equal(tmp, target_partition_iface.callstart_literal);
       
-        #ifdef DEBUG_SSA_PRINT // Print of assert
+        #ifdef DISABLE_OPTIMIZATIONS // Print of assert
         terms_counter++;
 	std::ostream out_temp2(0); std::stringbuf temp2_buf; out_temp2.rdbuf(&temp2_buf); // Pre-order printing
 	int assume_counter=0;
@@ -486,7 +505,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
     {
       prop_conv.prop.lcnf(bv);
       
-      #ifdef DEBUG_SSA_PRINT // Root Encoding
+      #ifdef DISABLE_OPTIMIZATIONS // Root Encoding
 
       // Pre-order printing
       std::ostream out_temp1(0);
@@ -533,7 +552,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
       literalt tmp = prop_conv.prop.lor(bv);
       prop_conv.prop.set_equal(tmp, partition_iface.error_literal);
       
-      #ifdef DEBUG_SSA_PRINT // XXX Encoding error_f: ",
+      #ifdef DISABLE_OPTIMIZATIONS // XXX Encoding error_f: ",
       terms_counter++;
       expr_ssa_print(out_terms << "    (= ",
               partition_iface.error_symbol, partition_smt_decl, false);
@@ -600,7 +619,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
             assumption_literal);
     prop_conv.prop.l_set_to_true(tmp);
 
-#   ifdef DEBUG_SSA_PRINT // "XXX Call END implication: \n";
+#   ifdef DISABLE_OPTIMIZATIONS // "XXX Call END implication: \n";
     terms_counter++;
     expr_ssa_print(out_terms << "    (=> ", partition_iface.callend_symbol, partition_smt_decl, false, true);
 	std::ostream out_temp(0); std::stringbuf temp_buf; out_temp.rdbuf(&temp_buf); // Pre-order printing

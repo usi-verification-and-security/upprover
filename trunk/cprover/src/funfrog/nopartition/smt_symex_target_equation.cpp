@@ -13,6 +13,15 @@
 
 #include "smt_symex_target_equation.h"
 #include "../hifrog.h"
+#include "../solvers/smtcheck_opensmt2.h"
+#include <solvers/prop/literal_expr.h>
+
+#ifdef DISABLE_OPTIMIZATIONS
+#include <fstream>
+using namespace std;
+
+#include "../expr_pretty_print.h"
+#endif
 
 void smt_symex_target_equationt::convert(smtcheck_opensmt2t &decider) 
 {
@@ -30,10 +39,18 @@ void smt_symex_target_equationt::convert(smtcheck_opensmt2t &decider)
   convert_constraints(decider);
   convert_summary(decider);
   
-#ifdef DEBUG_SSA_PRINT
+#ifdef DISABLE_OPTIMIZATIONS
+  if (dump_SSA_tree)
+  {
+    ofstream out_ssaT;
+    out_ssaT.open(ssa_tree_file_name); 
+  
     // Print all after the headers: decl and code
     print_partition();
-    print_all_partition(std::cout);
+    print_all_partition(out_ssaT);
+    
+    out_ssaT.close();
+  }
 #endif
   
   // KE: not sure we are not suppose to add all these to the flow
@@ -50,12 +67,12 @@ void smt_symex_target_equationt::convert_guards(smtcheck_opensmt2t &decider)
             step.guard_literal = decider.const_var(false);
         } else {
             exprt tmp(step.guard);
-#       ifdef DEBUG_SSA_PRINT
+#       ifdef DISABLE_OPTIMIZATIONS
             expr_ssa_print_guard(out_terms, tmp, partition_smt_decl);
             if (!tmp.is_boolean())
                 terms_counter++; // SSA -> SMT shall be all in a new function
 #       endif
-#       ifdef DEBUG_SSA_SMT_CALL
+#       if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
             expr_ssa_print_smt_dbg(
                 cout << "Before decider::convert(GUARD-OUT) --> ", tmp,false);
 #	endif
@@ -73,14 +90,14 @@ void smt_symex_target_equationt::convert_assignments(smtcheck_opensmt2t &decider
 
             // Only if not an assignment to rounding model print it + add it to LRA statements
             if (!isRoundModelEq(tmp)) {
-#           ifdef DEBUG_SSA_PRINT
+#           ifdef DISABLE_OPTIMIZATIONS
                 expr_ssa_print(out_terms << "    ", tmp, partition_smt_decl, false);
                 terms_counter++;
-#           endif
-#           ifdef DEBUG_SSA_SMT_CALL
+#             ifdef DEBUG_SSA_SMT_CALL
                 expr_ssa_print_smt_dbg(
                 cout << "Before decider::set_to_true(ASSIGN-OUT) --> ", tmp, false);
-#           endif
+#             endif
+#           endif                
                 decider.set_to_true(tmp);
                 exprs.push_back(tmp);
             }
@@ -116,7 +133,7 @@ void smt_symex_target_equationt::convert_assumptions(smtcheck_opensmt2t &decider
                 // GF
             } else {
                 exprt tmp(step.cond_expr);
-#               ifdef DEBUG_SSA_SMT_CALL
+#               if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                     expr_ssa_print_smt_dbg(
                             cout << "Before decider::convert(ASSUME-OUT) --> ",
                             tmp, false);
@@ -140,7 +157,7 @@ void smt_symex_target_equationt::convert_goto_instructions(smtcheck_opensmt2t &d
                 // GF
             } else {
                 exprt tmp(step.cond_expr);
-#               ifdef DEBUG_SSA_SMT_CALL
+#               if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                     expr_ssa_print_smt_dbg(
                             cout << "Before decider::convert(GOTO-OUT) --> ",
                             tmp, false);
@@ -229,7 +246,7 @@ void smt_symex_target_equationt::convert_io(smtcheck_opensmt2t &decider)
                 else {
                     symbol_exprt symbol((IO_CONST+std::to_string(io_count_global++)), tmp.type());
 
-#ifdef DEBUG_SSA_SMT_CALL
+#if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                     expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true --> ",
                         equal_exprt(tmp, symbol), false);
 #endif
@@ -261,81 +278,65 @@ bool smt_symex_target_equationt::isRoundModelEq(const exprt &expr)
 
     // Start checking if it is auto gen code for rounding model
     string str = id2string((expr.operands()[0]).get(ID_identifier));
-    if (str.find(CPROVER_BUILDINS) != std::string::npos)
+    if (is_cprover_builtins_var(str))
         return true;
     
     if (expr.operands().size() < 2) return false;
     
     str = id2string((expr.operands()[1]).get(ID_identifier));
-    if (str.find(CPROVER_BUILDINS) != std::string::npos)
+    if (is_cprover_builtins_var(str))
         return true;
 
     return false;
 }
 
-#ifdef DEBUG_SSA_PRINT
+#ifdef DISABLE_OPTIMIZATIONS
 std::ostream& smt_symex_target_equationt::print_decl_smt(std::ostream& out) {
-	if (partition_smt_decl->empty())
-		return out;
-	else {
-		// Print all decl
-		for (std::map<std::string, exprt>::iterator it =
-				partition_smt_decl->begin(); it != partition_smt_decl->end(); ++it) {
-			out << "(declare-fun " << it->first << ")" << std::endl;
-		}
+    if (partition_smt_decl->empty())
+        return out;
+    else {
+        // Print all decl
+        for (std::map<std::string, exprt>::iterator it =
+                        partition_smt_decl->begin(); it != partition_smt_decl->end(); ++it) {
+            out << "(declare-fun " << it->first << ")" << std::endl;
+        }
 
-		// At the end of the loop
-		partition_smt_decl->clear(); //Ready for the next partition
-		return out;
-	}
+        // At the end of the loop
+        partition_smt_decl->clear(); //Ready for the next partition
+        return out;
+    }
 }
 
 void smt_symex_target_equationt::print_partition() {
-	// When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
-	out_partition << "; " << basic_buf.str();
-	if (terms_buf.str().length() > 0) {
-		out_partition << "(assert\n";
-		if (terms_counter > 1)
-			out_partition << "  (and\n" << terms_buf.str() << "  )\n)" << endl;
-		else
-			out_partition << terms_buf.str() << ")" << endl;
-	}
+    // When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
+    out_partition << "; " << basic_buf.str();
+    if (terms_buf.str().length() > 0) {
+        out_partition << "(assert\n";
+        if (terms_counter > 1)
+            out_partition << "  (and\n" << terms_buf.str() << "  )\n)" << endl;
+        else
+            out_partition << terms_buf.str() << ")" << endl;
+    }
 
-	// Init for reuse
-	terms_buf.str("");
-	basic_buf.str("");
-	terms_counter = 0;
+    // Init for reuse
+    terms_buf.str("");
+    basic_buf.str("");
+    terms_counter = 0;
 }
 
 void smt_symex_target_equationt::print_all_partition(std::ostream& out) {
-	// Print only if the flag is on!
-	// Print header - not part of temp debug print!
-	cout << "\nXXX SSA --> SMT-lib Translation XXX\n";
+    // Print only if the flag is on!
+    // Print header - not part of temp debug print!
+    out << "\nXXX SSA --> SMT-lib Translation XXX\n";
 
-	// for prints later on
-	std::ostream out_decl(0);
-	std::stringbuf decl_buf;
-	out_decl.rdbuf(&decl_buf);
+    // for prints later on
+    std::ostream out_decl(0);
+    std::stringbuf decl_buf;
+    out_decl.rdbuf(&decl_buf);
 
-	// When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
-	print_decl_smt(out_decl); // print the symbol decl
-	cout << decl_buf.str() << partition_buf.str() << "(check-sat)\n";
-}
-
-// Not in use here
-void smt_symex_target_equationt::addToDeclMap(const exprt &expr) {
-    if (partition_smt_decl == NULL)
-        return;
-
-    std::ostream out_code(0);
-    std::stringbuf code_buf;
-    out_code.rdbuf(&code_buf);
-
-    out_code << expr.id().c_str() << " " << expr.type().id();
-    std::string key = code_buf.str();
-
-    if (partition_smt_decl->find(key) == partition_smt_decl->end())
-        partition_smt_decl->insert(make_pair(key, expr));
+    // When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
+    print_decl_smt(out_decl); // print the symbol decl
+    out << decl_buf.str() << partition_buf.str() << "(check-sat)\n";
 }
 
 void smt_symex_target_equationt::saveFirstCallExpr(const exprt& expr) {
