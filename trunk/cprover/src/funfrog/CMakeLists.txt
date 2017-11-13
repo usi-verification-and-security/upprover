@@ -104,6 +104,7 @@ target_compile_definitions(hifrog PRIVATE
     #-DDEBUG_SSA
     #-DDEBUG_SSA_SMT_CALL
     #-DDEBUG_GLOBALS
+    #-DDISABLE_OPTIMIZATIONS
     )
 
 target_link_libraries(hifrog -lopensmt2 ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})

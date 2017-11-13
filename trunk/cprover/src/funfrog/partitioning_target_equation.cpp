@@ -248,9 +248,9 @@ void partitioning_target_equationt::print_partition() {
     if (terms_buf.str().length() > 0) {
         out_partition << "(assert\n";
         if (terms_counter > 1)
-            out_partition << "  (and\n" << terms_buf.str() << "  )\n)" << endl;
+            out_partition << "  (and\n" << terms_buf.str() << "  )\n)" << '\n';
         else
-            out_partition << terms_buf.str() << ")" << endl;
+            out_partition << terms_buf.str() << ")" << '\n';
     }
 
     // Init for reuse

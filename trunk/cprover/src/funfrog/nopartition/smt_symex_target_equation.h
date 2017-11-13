@@ -28,17 +28,17 @@ public:
         symex_target_equationt(_ns),
         clauses(_clauses),
 #       ifdef DISABLE_OPTIMIZATIONS
-            out_local_terms(0),
-            out_terms(out_local_terms),
-            out_local_basic(0),
-            out_basic(out_local_basic),
-            out_local_partition(0),
-            out_partition(out_local_partition),
-            terms_counter(0),
-            is_first_call(true),
-            first_call_expr(0),
-            dump_SSA_tree(false),
-            ssa_tree_file_name("__ssa_tree.smt2"),
+        dump_SSA_tree(false),
+        ssa_tree_file_name("__ssa_tree.smt2"),
+        out_local_terms(0),
+        out_terms(out_local_terms),
+        out_local_basic(0),
+        out_basic(out_local_basic),
+        out_local_partition(0),
+        out_partition(out_local_partition),
+        terms_counter(0),
+        is_first_call(true),
+        first_call_expr(0),
         #endif                                  
         io_count_global(0)
     {
