@@ -26,14 +26,14 @@ def run_single(args, shouldSuccess, folderpath, testname):
     if os.path.exists(summaries_path):
         os.remove(summaries_path)
     newargs = args + ['--save-summaries', summaries_path]
-    note('Executing command:' + ' '.join(newargs))
-    out = subprocess.run(newargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    command = ' '.join(newargs)
+    note('Executing command:' + command)
+    out = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     stdoutput = out.stdout.decode('utf-8')   #First output
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
-    strarg=' '.join(newargs)
     # collect verification time and results; dump the results in collected*.txt file corresponding to each arg in tescases
-    collect_data(stdoutput , testname , strarg)
+    collect_data(stdoutput , testname , command)
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
     if not resultLines:
@@ -55,13 +55,13 @@ def run_single(args, shouldSuccess, folderpath, testname):
     #rerun with the computed summaries
     assert os.path.exists(summaries_path), 'Summaries for rerun not found!'
     newargs = newargs + ['--load-summaries', summaries_path]
-    note('Reruning the command to check the summaries:' + ' '.join(newargs))
-    out = subprocess.run(newargs, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    command = ' '.join(newargs)
+    note('Reruning the command to check the summaries:' + command)
+    out = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     stdoutput = out.stdout.decode('utf-8')  #Second output with reusing summary
     stderror = out.stderr.decode('utf-8')
     filteredOutput = filtercomments(stdoutput)
-    strnewarg=' '.join(newargs)
-    collect_data(stdoutput , testname , strnewarg)  # collect rerun time and results;
+    collect_data(stdoutput, testname, command)  # collect rerun time and results;
     
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
@@ -227,6 +227,6 @@ if __name__ == '__main__':
     pathname = os.path.dirname(sys.argv[0])
     mypath= os.path.abspath(pathname)
     datestring = datetime.strftime(datetime.now(), '%Y.%m.%d_%H:%M')
-    #exec_path=' ulimit -Sv 12000000; ulimit -St 100; /usr/bin/time -p ' + exec_path 
+    exec_path=' ulimit -Sv 12000000; ulimit -St 100; /usr/bin/time -p ' + exec_path 
     run(exec_path)
 
