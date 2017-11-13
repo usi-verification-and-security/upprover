@@ -13,6 +13,7 @@ Author: Ondrej Sery
 #include "partition_iface.h"
 #include "solvers/prop_itp.h"
 #include "solvers/smt_itp.h"
+#include "summary_store.h"
 
 //#define DEBUG_SLICER
 

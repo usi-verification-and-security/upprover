@@ -14,6 +14,7 @@
 #include "subst_scenario.h"
 #include "summary_info.h"
 #include "partitioning_target_equation.h"
+#include <util/message.h>
 
 class summarization_contextt;
 

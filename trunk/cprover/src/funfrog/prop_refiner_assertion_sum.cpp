@@ -14,6 +14,7 @@
 #include "prop_refiner_assertion_sum.h"
 #include "partition_iface.h"
 #include "prop_partitioning_target_equation.h"
+#include "solvers/prop/prop_conv.h"
 
 
 /*******************************************************************

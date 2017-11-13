@@ -25,6 +25,7 @@ Author: Ondrej Sery
 #include <goto-symex/symex_target_equation.h>
 #include "partition.h"
 #include "utils/coloring_mode.h"
+#include <iostream>
 
 class summarization_contextt;
 class partition_ifacet;

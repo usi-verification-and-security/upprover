@@ -11,9 +11,7 @@ int calculate_output() {
 
 int main()
 {
-
- a0 = calculate_output(a0);
- a0 = calculate_output(a0);
+ calculate_output();
+ calculate_output();
 }
 
-//for unwind 2 should be SAT

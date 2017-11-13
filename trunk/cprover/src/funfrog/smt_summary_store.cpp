@@ -67,9 +67,7 @@ void smt_summary_storet::deserialize(const std::string &in, smtcheck_opensmt2t *
                 Tterm &tterm = functions[i];
                 std::string fname = tterm.getName();
                 clean_name(fname);
-                int midx = get_max_id(fname);
-                int next_idx = midx + 1;
-                ++max_ids[fname];
+                int next_idx = get_next_id(fname);
                 std::string summaryName = quote(add_counter(fname, next_idx));
                 tterm.setName(summaryName);
                 itp->setTterm(tterm);
@@ -110,9 +108,7 @@ summary_idt smt_summary_storet::insert_summary(summaryt &summary) {
     // at this point, there should be just the name of the original function
     assert(!is_quoted(fname));
     assert(!contains_counter(fname));
-    int midx = get_max_id(fname);
-    int next_idx = midx + 1;
-    max_ids[fname] = next_idx;// = max(fidx, midx);
+    int next_idx = get_next_id(fname);
     // as name of the summary, store the quoted version with counter from the store
     std::string fixed_name = quote(add_counter(fname, next_idx));
     tterm->setName(fixed_name);

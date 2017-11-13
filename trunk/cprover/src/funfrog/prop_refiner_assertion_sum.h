@@ -16,7 +16,9 @@
 
 #include "refiner_assertion_sum.h"
 
+
 class prop_partitioning_target_equationt;
+class prop_conv_solvert;
 
 class prop_refiner_assertion_sumt : public refiner_assertion_sumt 
 {

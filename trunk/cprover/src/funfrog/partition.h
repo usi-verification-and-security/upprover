@@ -13,7 +13,7 @@
 #include <goto-symex/symex_target_equation.h>
 
 #include "solvers/interpolating_solver.h"
-#include "summary_store.h"
+#include "summary_store_fwd.h"
 
 typedef int partition_idt;
 typedef std::list<partition_idt> partition_idst;

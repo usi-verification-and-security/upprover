@@ -468,7 +468,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
       } else { // !end
         if (summaries_count > 0 || nondet_count > 0) {
           if (summaries_count > 0){
-            status() << "FUNCTION SUMMARIES (for " << summaries_count
+            status() << "FUNCTION¸ SUMMARIES (for " << summaries_count
                    << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
           }
           if (nondet_count > 0){

@@ -1,5 +1,5 @@
 #include <memory>
-
+#include <fstream>
 #include <time_stopping.h>
 #include <expr_util.h>
 
@@ -30,7 +30,7 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
   initial=current_time();
 
-  ofstream hl_list;
+  std::ofstream hl_list;
   hl_list.open ("__hl_list");
     for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
@@ -81,7 +81,7 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 //  std::cout << "TIME FOR find_implications using a timeout: " << (durationto) << '\n';
 
   //TODO: make a proper cmd-parameter
-  ifstream just_dep;
+  std::ifstream just_dep;
   just_dep.open ("__just_hl_dep");
   if (just_dep.good()) {
       status () << "__just_hl_dep file is in the current directory. Exiting..." << eom;
@@ -115,7 +115,7 @@ void dependency_checkert::do_it(smt_symex_target_equationt &equation){
 
     initial=current_time();
 
-    ofstream hl_list;
+    std::ofstream hl_list;
     hl_list.open ("__hl_list");
     for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
@@ -160,13 +160,13 @@ void dependency_checkert::do_it(smt_symex_target_equationt &equation){
     status () << "TIME FOR ASSERTION OPTIMIZATIONS: " << (duration) << eom;
 
     //TODO: make a proper cmd-parameter
-    ifstream just_dep;
+    std::ifstream just_dep;
     just_dep.open ("__just_hl_dep");
     if (just_dep.good()) {status () << "__just_hl_dep file is in the current directory. Exiting... " << eom; just_dep.close(); exit(1);}
     just_dep.close();
 }
 
-void dependency_checkert::find_var_deps(str_disj_set &deps_ds, map<string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2)
+void dependency_checkert::find_var_deps(str_disj_set &deps_ds, std::map<std::string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2)
 {
 
     // ============ DISJOINT SETS EDITING BEGINS
@@ -258,7 +258,7 @@ void dependency_checkert::find_assert_deps()
     associative_property_map<parent_t> parent_pmap(parent_map);
 
     str_disj_set deps_ds(rank_pmap, parent_pmap);
-    map<string, bool> visited;
+    std::map<std::string, bool> visited;
 
     find_var_deps(deps_ds, visited, asserts[0], asserts[asserts.size()-1]);
 
@@ -323,13 +323,13 @@ bool dependency_checkert::compare_assertions(SSA_step_reft &a, SSA_step_reft &b)
 void dependency_checkert::get_minimals()
 {
   // TODO: it doesn't seem working
-  map<SSA_step_reft,int> inDegree;
+  std::map<SSA_step_reft,int> inDegree;
 
-    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
-      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
+    for (std::map<SSA_step_reft,std::map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
+      for (std::map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
         inDegree[dep_second_it->first]++;
 
-    map<SSA_step_reft, int>::iterator degree_it;
+    std::map<SSA_step_reft, int>::iterator degree_it;
     for (degree_it = inDegree.begin(); degree_it != inDegree.end(); degree_it++)
     {
       if (degree_it->second == 0) toCheck[degree_it->first] = true;
@@ -450,9 +450,9 @@ void dependency_checkert::print_SSA_steps_infos()
 }
 #endif
 
-void dependency_checkert::print_dependents(map<string,bool> dependents, std::ostream &out)
+void dependency_checkert::print_dependents(std::map<std::string,bool> dependents, std::ostream &out)
 {
-  map<string,bool>::iterator it;
+  std::map<std::string,bool>::iterator it;
   int count = 0;
   for ( it=dependents.begin() ; it != dependents.end(); it++ )
   {

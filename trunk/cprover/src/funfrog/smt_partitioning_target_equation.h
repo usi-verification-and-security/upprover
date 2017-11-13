@@ -34,7 +34,7 @@ public:
   // the corresponding partitions
   void convert(smtcheck_opensmt2t &decider, interpolating_solvert &interpolator);
   
-  void fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*> &templates);
+  void fill_function_templates(smtcheck_opensmt2t &decider, std::vector<summaryt*> &templates);
   
   // Extract interpolants corresponding to the created partitions
   void extract_interpolants(smtcheck_opensmt2t& decider, interpolant_mapt& interpolant_map);

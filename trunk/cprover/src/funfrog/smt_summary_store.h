@@ -16,8 +16,8 @@ class smt_summary_storet :public summary_storet
 {
 public:
   virtual void serialize(std::ostream& out) const;
-  virtual void deserialize(const std::string& in, smtcheck_opensmt2t *decider = NULL);
-  virtual void refresh_summaries_tterms(const std::string& in, smtcheck_opensmt2t *decider = NULL);
+  virtual void deserialize(const std::string& in, smtcheck_opensmt2t *decider = nullptr);
+  virtual void refresh_summaries_tterms(const std::string& in, smtcheck_opensmt2t *decider = nullptr);
   virtual summary_idt insert_summary(summaryt& summary);
 
 protected:
