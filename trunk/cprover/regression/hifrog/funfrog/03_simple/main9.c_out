@@ -1,6 +1,5 @@
-SAT - doesn't hold
 Violated property:
-  file 03_simple/main9.c line 39 function main
-  assertion
+  file funfrog/03_simple/main9.c line 39 function main
+  assertion x == 1
   x == 1
-ASSERTION(S) DO(ES)N'T HOLD
+VERIFICATION FAILED
