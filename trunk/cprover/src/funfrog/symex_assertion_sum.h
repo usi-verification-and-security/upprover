@@ -11,10 +11,9 @@
 
 #include <queue>
 
-#include <cbmc/symex_bmc.h>
 #include <util/symbol.h>
-#include <util/ui_message.h>
-
+#include <util/message.h>
+#include <goto-symex/goto_symex.h>
 #include "partition_iface_fwd.h"
 #include "partitioning_target_equation.h"
 
@@ -37,29 +36,26 @@ public:
           const namespacet &_ns,
           symbol_tablet &_new_symbol_table,
           partitioning_target_equationt &_target,
-          ui_message_handlert &_message_handler,
+          message_handlert &_message_handler,
           const goto_programt &_goto_program,
           unsigned _last_assertion_loc,
           bool _single_assertion_check,
           bool _use_slicing,
 	        bool _do_guard_expl,
           bool _use_smt,
-          unsigned int _max_unwind //this should set the max unsigned int value
+          unsigned int _max_unwind
           ) :
           goto_symext(_ns, _new_symbol_table, _target),
           summarization_context(_summarization_context),
           summary_info(_summary_info),
           current_summary_info(&_summary_info),
           equation(_target),
-          current_assertion(nullptr),
           goto_program(_goto_program),
           last_assertion_loc(_last_assertion_loc),
-          loc(0),
           single_assertion_check(_single_assertion_check),
           use_slicing(_use_slicing),
 	        do_guard_expl(_do_guard_expl),
           use_smt(_use_smt),
-          prev_unwind_counter(0),
           max_unwind(_max_unwind)
           {set_message_handler(_message_handler);}
           
@@ -86,10 +82,10 @@ public:
     goto_symex_statet &state) override;
   
   const partition_iface_ptrst* get_partition_ifaces(summary_infot &summary_info) { 
-    partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
+    auto it = partition_iface_map.find(&summary_info);
     
     if (it == partition_iface_map.end())
-      return NULL;
+      return nullptr;
     return &(it->second);
   };
 
@@ -145,13 +141,13 @@ private:
   std::set<irep_idt> dead_identifiers;
 
   // Current assertion
-  const assertion_infot* current_assertion;
+  const assertion_infot* current_assertion {nullptr};
 
   const goto_programt &goto_program;
 
   unsigned last_assertion_loc;
 
-  unsigned loc;
+  unsigned loc {0};
 
   bool single_assertion_check;
 
@@ -168,7 +164,7 @@ private:
   // Are there any more instructions in the current function or at least
   // a deferred function to dequeue?
   bool has_more_steps(const goto_symex_statet &state) {
-    return current_summary_info != NULL;
+    return current_summary_info != nullptr;
   }
   
   // Processes current code (pointed to by the state member variable) as well
@@ -313,7 +309,7 @@ private:
                     const typet& type, 
                     bool dead, 
                     bool is_shared, // L0: not in use if shared
-                    const source_locationt source_location) {
+                    const source_locationt & source_location) {
     if (dead) {
         dead_identifiers.insert(base_id);
     }  
@@ -368,7 +364,7 @@ protected:
    * in symex_goto.cpp
    */
   bool is_unwind_loop(goto_symex_statet &state);
-  unsigned int prev_unwind_counter; // Updated on branching: Goto, Funcation_Call and End_Function
+  unsigned int prev_unwind_counter {0}; // Updated on branching: Goto, Funcation_Call and End_Function
   
   #ifdef DEBUG_PARTITIONING
     std::set<std::string> _return_vals; // Check for duplicated symbol creation
