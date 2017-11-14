@@ -28,7 +28,7 @@ class assertion_infot;
 class summary_infot;
 class summarization_contextt;
 
-class symex_assertion_sumt : public symex_bmct
+class symex_assertion_sumt : public goto_symext, messaget
 {
 public:
   symex_assertion_sumt(
@@ -41,28 +41,29 @@ public:
           const goto_programt &_goto_program,
           unsigned _last_assertion_loc,
           bool _single_assertion_check,
-          bool _use_slicing=true,
-	  bool _do_guard_expl=true,
-          bool _use_smt=true
+          bool _use_slicing,
+	        bool _do_guard_expl,
+          bool _use_smt,
+          unsigned int _max_unwind //this should set the max unsigned int value
           ) :
-          symex_bmct(_ns, _new_symbol_table, _target),
+          goto_symext(_ns, _new_symbol_table, _target),
           summarization_context(_summarization_context),
           summary_info(_summary_info),
           current_summary_info(&_summary_info),
           equation(_target),
-          current_assertion(NULL),
-          message_handler(_message_handler),
+          current_assertion(nullptr),
           goto_program(_goto_program),
           last_assertion_loc(_last_assertion_loc),
           loc(0),
           single_assertion_check(_single_assertion_check),
           use_slicing(_use_slicing),
-	  do_guard_expl(_do_guard_expl),
+	        do_guard_expl(_do_guard_expl),
           use_smt(_use_smt),
-          prev_unwind_counter(0)
+          prev_unwind_counter(0),
+          max_unwind(_max_unwind)
           {set_message_handler(_message_handler);}
           
-  virtual ~symex_assertion_sumt();
+  virtual ~symex_assertion_sumt() override;
 
   void loop_free_check();
 
@@ -82,7 +83,7 @@ public:
   
   virtual void symex_step(
     const goto_functionst &goto_functions,
-    goto_symex_statet &state);
+    goto_symex_statet &state) override;
   
   const partition_iface_ptrst* get_partition_ifaces(summary_infot &summary_info) { 
     partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
@@ -145,9 +146,6 @@ private:
 
   // Current assertion
   const assertion_infot* current_assertion;
-
-  //std::ostream &out;
-  ui_message_handlert &message_handler;
 
   const goto_programt &goto_program;
 
@@ -348,13 +346,23 @@ private:
 protected:
   virtual void phi_function(
     const goto_symex_statet::goto_statet &goto_state,
-    goto_symex_statet &state);
+    goto_symex_statet &state) override;
 
   virtual void vcc(
     const exprt &vcc_expr,
     const std::string &msg,
-    goto_symex_statet &state);
-  
+    goto_symex_statet &state) override;
+
+  // for loop unwinding
+  virtual bool get_unwind(
+    const symex_targett::sourcet &source,
+    unsigned unwind) override
+  {
+    // returns true if we should not continue unwinding
+    // for support of different bounds in different loops, see how it's done in symex_bmct
+    return unwind >= max_unwind;
+  }
+
   /* Temporary fix to deal with loops
    * taken from void goto_symext::symex_goto(statet &state)
    * in symex_goto.cpp
@@ -365,5 +373,9 @@ protected:
   #ifdef DEBUG_PARTITIONING
     std::set<std::string> _return_vals; // Check for duplicated symbol creation
   #endif
+
+private:
+  // unwind option
+  unsigned int max_unwind;
 };
 #endif
