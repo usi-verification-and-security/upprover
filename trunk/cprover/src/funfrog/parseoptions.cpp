@@ -27,7 +27,6 @@
 #include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/remove_virtual_functions.h>
 #include <goto-programs/remove_instanceof.h>
-//#include <goto-programs/remove_returns.h>
 #include <goto-programs/remove_exceptions.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
@@ -49,10 +48,6 @@
 #include <goto-symex/rewrite_union.h>
 #include <goto-symex/adjust_float_expressions.h>
 
-#include <goto-instrument/full_slicer.h>
-#include <goto-instrument/nondet_static.h>
-#include <goto-instrument/cover.h>
-
 #include <pointer-analysis/add_failed_symbols.h>
 
 #include <analyses/goto_check.h>
@@ -61,6 +56,7 @@
 #include "check_claims.h"
 #include "version.h"
 #include "parseoptions.h"
+#include <limits>
 
 
 /*******************************************************************
@@ -766,7 +762,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.get_value("unwind"));
   } else { // Set to max - KE: find a better way to do so
-    options.set_option("unwind", "4294967295"); 
+    options.set_option("unwind", std::to_string(std::numeric_limits<unsigned int>::max()));
   }
   //if (cmdline.isset("unwindset")) {
   //  options.set_option("unwindset", cmdline.get_value("unwindset"));
