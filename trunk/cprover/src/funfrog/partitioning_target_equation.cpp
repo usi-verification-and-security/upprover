@@ -227,9 +227,8 @@ void partitioning_target_equationt::fill_partition_ids(
 /***************************************************************************/
 #ifdef DISABLE_OPTIMIZATIONS
 std::ostream& partitioning_target_equationt::print_decl_smt(std::ostream& out) {
-    if (partition_smt_decl->empty())
-        return out;
-    else {
+    if (!partition_smt_decl->empty())
+    {
         // Print all decl
         for (std::map<std::string, exprt>::iterator it =
                         partition_smt_decl->begin(); it != partition_smt_decl->end(); ++it) {
@@ -238,8 +237,8 @@ std::ostream& partitioning_target_equationt::print_decl_smt(std::ostream& out) {
 
         // At the end of the loop
         partition_smt_decl->clear(); //Ready for the next partition
-        return out;
     }
+    return out;
 }
 
 void partitioning_target_equationt::print_partition() {
