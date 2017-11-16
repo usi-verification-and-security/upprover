@@ -1,7 +1,7 @@
 #include "error_trace.h"
-#include "hifrog.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include <ansi-c/printf_formatter.h>
+#include <funfrog/utils/naming_helpers.h>
 #include "nopartition/smt_symex_target_equation.h"
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
@@ -59,7 +59,7 @@ void error_tracet::build_goto_trace (
         continue;
     
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
-       str.find(FUNC_RETURN)!=std::string::npos)
+       str.find(HifrogStringConstants::FUN_RETURN)!=std::string::npos)
         continue;
     
     if (str.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
@@ -109,8 +109,8 @@ void error_tracet::build_goto_trace (
     }
     
     /* Print nice return value info */
-    if (str.find(FUNC_RETURN) < str.size() ||
-        str.find(TMP_FUNC_RETURN) < str.size())
+    if (str.find(HifrogStringConstants::FUN_RETURN) < str.size() ||
+        str.find(HifrogStringConstants::TMP_RETURN) < str.size())
     {
         goto_trace_step.format_string = "function return value";
     } else {
@@ -190,7 +190,7 @@ void error_tracet::build_goto_trace_formula (
         continue;
     
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
-       str.find(FUNC_RETURN)!=std::string::npos)
+       str.find(HifrogStringConstants::FUN_RETURN)!=std::string::npos)
         continue;
     
     
@@ -692,7 +692,7 @@ void error_tracet::build_goto_trace (
         continue;
     
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
-       str.find(FUNC_RETURN)!=std::string::npos)
+       str.find(HifrogStringConstants::FUN_RETURN)!=std::string::npos)
         continue;
     
     if (str.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
@@ -742,8 +742,8 @@ void error_tracet::build_goto_trace (
     }
     
     /* Print nice return value info */
-    if (str.find(FUNC_RETURN) < str.size() ||
-	str.find(TMP_FUNC_RETURN) < str.size())
+    if (str.find(HifrogStringConstants::FUN_RETURN) < str.size() ||
+	str.find(HifrogStringConstants::TMP_RETURN) < str.size())
     {
         goto_trace_step.format_string = "function return value";
     } else {

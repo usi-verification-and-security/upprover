@@ -14,6 +14,7 @@
 #include <util/symbol.h>
 #include <util/message.h>
 #include <goto-symex/goto_symex.h>
+#include <funfrog/utils/naming_helpers.h>
 #include "partition_iface_fwd.h"
 #include "partitioning_target_equation.h"
 
@@ -224,20 +225,13 @@ private:
     deferred_functiont &deferred_function);
   
   // Marks the SSA symbols of function arguments
-  void mark_argument_symbols(
-    const code_typet &function_type,
-    goto_symex_statet &state,
-    partition_ifacet &partition_iface);
+  void mark_argument_symbols(const code_typet & function_type, partition_ifacet & partition_iface);
 
   // Marks the SSA symbols of accessed globals
-  void mark_accessed_global_symbols(
-    const irep_idt &function_id,
-    goto_symex_statet &state,
-    partition_ifacet &partition_iface,
-    bool is_init_stage);
+  void mark_accessed_global_symbols(const irep_idt & function_id, partition_ifacet & partition_iface);
 
   // L2 rename - new code
-  void level2_rename_init(goto_symex_statet &state, const symbol_exprt &expr);
+//  void level2_rename_init(goto_symex_statet &state, const symbol_exprt &expr);
 
   // Assigns values from the modified global variables. Marks the SSA symbol 
   // of the global variables for later use when processing the deferred function
@@ -281,25 +275,23 @@ private:
 
   // Helper function for renaming of an identifier without
   // assigning to it. Constant propagation is stopped for the given symbol.
-  irep_idt get_new_symbol_version(
-        const irep_idt& identifier,
-        goto_symex_statet &state,
-        typet type);
+//  irep_idt get_new_symbol_version(
+//        const irep_idt& identifier,
+//        goto_symex_statet &state,
+//        typet type);
 
-  // Replace old interface of get current name from counter
-  irep_idt get_current_l2_name(goto_symex_statet &state, const irep_idt &identifier) const;
 
   // Makes an assignment without increasing the version of the
   // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
-  void raw_assignment(goto_symex_statet &state,
-        exprt &lhs,
-        const exprt &rhs,
-        const namespacet &ns); 
-        //bool record_value); //Always false, removed
+//  void raw_assignment(goto_symex_statet &state,
+//        exprt &lhs,
+//        const exprt &rhs,
+//        const namespacet &ns);
+//        //bool record_value); //Always false, removed
 
     void raw_assignment(
             statet &state,
-            ssa_exprt &lhs,
+            const ssa_exprt &lhs,
             const symbol_exprt &rhs,
             const namespacet &ns);
 
@@ -359,6 +351,9 @@ protected:
     return unwind >= max_unwind;
   }
 
+  // unwind option
+  unsigned int max_unwind;
+
   /* Temporary fix to deal with loops
    * taken from void goto_symext::symex_goto(statet &state)
    * in symex_goto.cpp
@@ -371,7 +366,55 @@ protected:
   #endif
 
 private:
-  // unwind option
-  unsigned int max_unwind;
+
+  // Methods for manipulating symbols: creating new artifical symbols, getting the current L2 version of a symbol,
+  // getting the next version of a symbol, etc.
+
+  // this should be used only for artificial symbols that we have created with create_new_artificial_symbol method
+  bool knows_artificial_symbol(const irep_idt & symbol_id){
+    return new_symbol_table.has_symbol(symbol_id);
+  }
+
+  // this should be used only for symbols that we have created with create_new_artificial_symbol method
+  const symbolt & get_artificial_symbol(const irep_idt & id){
+    return new_symbol_table.lookup(id);
+  }
+
+  const symbolt & get_normal_symbol(const irep_idt & id){
+    return ns.lookup(id);
+  }
+
+  void create_new_artificial_symbol(const irep_idt & id, const typet & type, bool is_dead);
+
+  ssa_exprt get_current_version(const symbolt & symbol);
+
+//  ssa_exprt get_current_version(const irep_idt& id){
+//    return get_current_version(get_artificial_symbol_expr(id));
+//  }
+
+  // this works only for identifiers of artificial symbols
+  ssa_exprt get_next_version(const irep_idt& id) {
+    assert(knows_artificial_symbol(id));
+    return get_next_version(get_artificial_symbol(id));
+  }
+
+  // increments the L2 counter in the process
+  ssa_exprt get_next_version(const symbolt & symbol);
+
+  // Get L1 version of a symbol
+  ssa_exprt get_l1_ssa(const symbolt & symbol) {
+    ssa_exprt ssa { symbol.symbol_expr() };
+    state.rename(ssa, ns, goto_symex_statet::levelt::L1);
+    return ssa;
+  }
+
+  dstringt get_l1_identifier(const symbolt & symbol) {
+    return get_l1_ssa(symbol).get_l1_object_identifier();
+  }
+
+  symbolt get_tmp_ret_val_symbol(const partition_ifacet& iface);
+
+
+
 };
 #endif

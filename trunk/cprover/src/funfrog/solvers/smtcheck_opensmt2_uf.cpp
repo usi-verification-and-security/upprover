@@ -8,6 +8,7 @@ Author: Grigory Fedyukovich
 
 #include "smtcheck_opensmt2_uf.h"
 #include "../hifrog.h"
+#include <std_expr.h>
 
 // Debug flags of this class:
 //#define SMT_DEBUG

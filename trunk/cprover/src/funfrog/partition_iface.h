@@ -51,7 +51,7 @@ public:
   std::vector<symbol_exprt> in_arg_symbols;
   std::vector<symbol_exprt> out_arg_symbols;
   symbol_exprt retval_symbol;
-  symbol_exprt retval_tmp;
+  //symbol_exprt retval_tmp;
   symbol_exprt callstart_symbol;
   symbol_exprt callend_symbol;
   symbol_exprt error_symbol;
@@ -80,7 +80,7 @@ public:
     in_arg_symbols = other.in_arg_symbols;
     out_arg_symbols = other.out_arg_symbols;
     retval_symbol = other.retval_symbol;
-    retval_tmp = other.retval_tmp;
+    //retval_tmp = other.retval_tmp;
     callstart_symbol = other.callstart_symbol;
     callend_symbol = other.callend_symbol;
     error_symbol = other.error_symbol;

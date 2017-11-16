@@ -60,7 +60,7 @@ void summary_storet::replace_summary(summary_idt old_summary_id,
  * Returns the next free id for a given function name.
  * Adjust the counter to mark the returned value as taken
  */
-int summary_storet::get_next_id(const std::string &fname)
+std::size_t summary_storet::get_next_id(const std::string &fname)
 {
   // uses the fact that if the key was not in the map, it is implicitly inserted with default value -> 0
   return next_ids[fname]++;

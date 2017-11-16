@@ -6,13 +6,15 @@
 
  \*******************************************************************/
 
-#include <std_expr.h>
 
 #include "smt_partitioning_target_equation.h"
+
+#include <std_expr.h>
 #include "solvers/smtcheck_opensmt2.h"
 #include "solvers/smt_itp.h"
 #include "partition_iface.h"
 #include "summarization_context.h"
+#include "utils/naming_helpers.h"
 
 //#define DEBUG_ITP_SMT // ITP of SMT - testing
 
@@ -762,7 +764,7 @@ void smt_partitioning_target_equationt::convert_partition_io(
                 if (tmp.is_constant() || tmp.id() == ID_string_constant)
                     it->converted_io_args.push_back(tmp);
                 else {
-                    symbol_exprt symbol((IO_CONST+std::to_string(io_count_global++)), tmp.type());
+                    symbol_exprt symbol((CProverStringConstants::IO_CONST + std::to_string(io_count_global++)), tmp.type());
 
 #if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                     expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true --> ",
@@ -774,6 +776,24 @@ void smt_partitioning_target_equationt::convert_partition_io(
             }
         }
     }
+}
+
+namespace{
+  // helper methods for extract_interpolants
+
+  // MB: we are skipping main and __CPROVER_initialize because it is pointless to compute interpolants for these partitions
+  // and these methods are special with respect to the globals (see function_infot::analyze_globals_rec)
+  // which broke the computation of interpolant for __CPROVER_initialize
+  bool skip_partition_with_name(const std::string & name){
+    return is_cprover_initialize_method(name) || is_main(name);
+  }
+
+  bool skip_partition(partitiont & partition, bool store_summaries_with_assertion){
+    return !partition.is_inline() ||
+           (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
+           partition.get_iface().summary_info.is_recursion_nondet() ||
+           skip_partition_with_name(partition.get_iface().function_id.c_str());
+  }
 }
 
 /*******************************************************************
@@ -810,12 +830,9 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
             }
         }
 
-        if (!partition.is_inline() || (partition.get_iface().assertion_in_subtree
-                    && !store_summaries_with_assertion)
-                    || partition.get_iface().summary_info.is_recursion_nondet())
-            continue;
-
-        valid_tasks++;
+        if (!skip_partition(partition, store_summaries_with_assertion)){
+            valid_tasks++;
+        }
     }
 
     // Only do the interpolation if there are some interpolation tasks
@@ -826,12 +843,9 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
 
     for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
         partitiont& partition = partitions[pid];
-        partition_ifacet ipartition = partition.get_iface();
-        if (!partition.is_inline() || (ipartition.assertion_in_subtree
-                && !store_summaries_with_assertion)
-                || partition.get_iface().summary_info.is_recursion_nondet())
-            continue;
-        fill_partition_ids(pid, itp_task[tid++]);
+        if (!skip_partition(partition, store_summaries_with_assertion)){
+            fill_partition_ids(pid, itp_task[tid++]);
+        }
     }
 
     // Interpolate...
@@ -845,11 +859,9 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
     for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
         partitiont& partition = partitions[pid];
 
-        if (!partition.is_inline()
-                || (partition.get_iface().assertion_in_subtree
-                    && !store_summaries_with_assertion)
-                || partition.get_iface().summary_info.is_recursion_nondet())
+        if (skip_partition(partition, store_summaries_with_assertion)){
             continue;
+        }
 
         smt_itpt *itp = dynamic_cast <smt_itpt*> (itp_result[tid]);
 
@@ -886,11 +898,6 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
         }
 
         string fun_name = id2string(partition.get_iface().function_id);
-        // MB: we do not want to store summary for the cprover initialize method;
-        // FIXME this check should probably be somewhere else, e.g. not computing summary for it at all
-        if (is_cprover_initialize_method(fun_name)) {
-            continue;
-        }
         //interpolator.adjust_function(*itp, common_symbs, fun_name);
         interpolator.generalize_summary(*itp, common_symbs, fun_name, true);
 
@@ -899,8 +906,6 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
 
         interpolant_map.push_back(interpolant_mapt::value_type(&partition.get_iface(), summary_id));
     }
-    
-    summary_store = NULL;
 #else
     assert(0);
 #endif

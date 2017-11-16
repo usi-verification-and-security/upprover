@@ -231,11 +231,11 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 #endif
   
   summary_infot& summary_info = omega.get_summary_info();
-  symex_assertion_sumt symex = symex_assertion_sumt(
+  symex_assertion_sumt symex {
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, 
-            false, unwind_bound);
+            false, unwind_bound };
 
 //  setup_unwind(symex);
 

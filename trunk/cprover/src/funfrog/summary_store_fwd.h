@@ -13,7 +13,7 @@ class prop_itpt;
 class smt_itpt;
 class function_infot;
 
-typedef long unsigned summary_idt;
+typedef std::size_t summary_idt;
 typedef std::vector<summary_idt> summary_idst;
 typedef std::unordered_set<summary_idt> summary_ids_sett;
 typedef itpt summaryt;

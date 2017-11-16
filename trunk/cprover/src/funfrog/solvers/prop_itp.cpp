@@ -11,7 +11,6 @@ Author: Ondrej Sery
 #include <stdlib.h>
 #include "time_stopping.h"
 #include <symbol_table.h>
-#include "../hifrog.h"
 #include "satcheck_opensmt2.h"
 
 //#define DEBUG_ITP

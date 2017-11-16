@@ -15,6 +15,7 @@
 #include "../hifrog.h"
 #include "../solvers/smtcheck_opensmt2.h"
 #include <solvers/prop/literal_expr.h>
+#include "../utils/naming_helpers.h"
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
@@ -244,7 +245,7 @@ void smt_symex_target_equationt::convert_io(smtcheck_opensmt2t &decider)
                 if (tmp.is_constant() || tmp.id() == ID_string_constant)
                     step.converted_io_args.push_back(tmp);
                 else {
-                    symbol_exprt symbol((IO_CONST+std::to_string(io_count_global++)), tmp.type());
+                    symbol_exprt symbol((CProverStringConstants::IO_CONST + std::to_string(io_count_global++)), tmp.type());
 
 #if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                     expr_ssa_print_smt_dbg(cout << "Before decider::set_to_true --> ",

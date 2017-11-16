@@ -613,7 +613,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     // KE: assure the encoding is not using the variables name as is (why there is nil here?)
     assert("Error: using non-SSA symbol in the SMT encoding" 
             && ((str.find(HifrogStringConstants::COUNTER_SEP) != std::string::npos)
-                || (str.compare(NIL) == 0) || IO_CONST));
+                || (str.compare(NIL) == 0) || str.find(CProverStringConstants::IO_CONST) != std::string::npos));
     
     return str;
 }
