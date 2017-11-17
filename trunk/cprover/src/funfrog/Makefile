@@ -106,5 +106,7 @@ sumo$(EXEEXT): $(SUMO_OBJ)
 clean:
 	rm -f *.o *.d hifrog sumo __omega_* __calltree.xml
 	rm -f solvers/*.o solvers/*.d
+	rm -f nopartition/*.o nopartition/*.d
+	rm -f utils/*.o utils/*.d
 
 re: clean all
