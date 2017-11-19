@@ -753,8 +753,7 @@ void symex_assertion_sumt::mark_argument_symbols(const code_typet & function_typ
   for(const auto & parameter : function_type.parameters())
   {
     const auto& identifier = parameter.get_identifier();
-    // get the symbol for this identifier; MB: this is a normal variable in code so we use standard namespace
-    const auto & symbol = ns.lookup(identifier);
+    const auto & symbol = get_normal_symbol(identifier);
     auto current_version = get_current_version(symbol);
     partition_iface.argument_symbols.push_back(current_version);
 
@@ -779,8 +778,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(const irep_idt & functio
   const auto& globals_accessed = summarization_context.get_function_info(function_id).get_accessed_globals();
 
   for (auto global_id : globals_accessed) {
-    // get the symbol for this identifier; MB: this is a normal variable in code so we use standard namespace
-    const auto & symbol = ns.lookup(global_id);
+    const auto & symbol = get_normal_symbol(global_id);
     auto current_version = get_current_version(symbol);
     partition_iface.argument_symbols.push_back(current_version);
 
@@ -812,7 +810,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
   const auto& globals_modified = summarization_context.get_function_info(function_id).get_modified_globals();
 
   for (const auto & global_id : globals_modified){
-    const auto& symbol = ns.lookup(global_id);
+    const auto& symbol = get_normal_symbol(global_id);
     auto ssa_expr = get_next_version(symbol);
     partition_iface.out_arg_symbols.push_back(ssa_expr);
 
