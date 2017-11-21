@@ -95,7 +95,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
   if (dump_SSA_tree)
   {
     ofstream out_ssaT;
-    out_ssaT.open(ssa_tree_file_name); 
+    out_ssaT.open(ssa_tree_file_name+"_"+std::to_string(get_dump_current_index())+".smt2"); 
   
     // Print all after the headers: decl and code
     print_all_partition(out_ssaT);

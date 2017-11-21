@@ -98,3 +98,11 @@ std::string fix_symex_nondet_name(const exprt &expr) {
 bool is_cprover_initialize_method(const std::string & name) {
     return name == INITIALIZE;
 }
+
+// Get a unique index per query's dump
+unsigned int get_dump_current_index()
+{
+    static unsigned int index=0;
+    index+=1;
+    return index;
+}

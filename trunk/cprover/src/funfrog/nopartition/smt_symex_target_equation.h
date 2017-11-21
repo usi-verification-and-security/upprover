@@ -29,7 +29,7 @@ public:
         clauses(_clauses),
 #       ifdef DISABLE_OPTIMIZATIONS
         dump_SSA_tree(false),
-        ssa_tree_file_name("__ssa_tree.smt2"),
+        ssa_tree_file_name("__ssa_tree_default"),
         out_local_terms(0),
         out_terms(out_local_terms),
         out_local_basic(0),
@@ -77,7 +77,7 @@ public:
     void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}
     void set_dump_SSA_tree_name(const std::string& n)
     {
-      ssa_tree_file_name = "__SSAt_" + n + ".smt2";
+      ssa_tree_file_name = "__SSAt_" + n;
     }
 #endif  
   

@@ -52,6 +52,7 @@ unsigned get_symbol_L2_counter(const exprt &expr);
 unsigned extract_hifrog_inner_symbol_L2_counter(const exprt &expr);
 std::string fix_symex_nondet_name(const exprt &expr);
 bool is_cprover_initialize_method(const std::string&);
+unsigned int get_dump_current_index();
 
 static inline bool is_cprover_rounding_mode_var(const std::string& str)
 {
