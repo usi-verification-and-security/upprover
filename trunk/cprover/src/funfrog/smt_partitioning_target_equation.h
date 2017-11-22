@@ -12,9 +12,9 @@ Author: Ondrej Sery
 
 #include "partitioning_target_equation.h"
 #include "partition_iface_fwd.h"
-#include "hifrog.h"
 
 class smtcheck_opensmt2t;
+class interpolating_solvert;
 
 // Two classes for smt and prop   
 class partitioning_target_equationt;

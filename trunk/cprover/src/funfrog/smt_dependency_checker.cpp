@@ -9,7 +9,6 @@
 #include "utils/naming_helpers.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 
-
 pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
   try{

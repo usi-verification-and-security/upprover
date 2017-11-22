@@ -14,7 +14,8 @@
 #include "smt_refiner_assertion_sum.h"
 #include "solvers/smtcheck_opensmt2.h"
 #include "partition_iface.h"
-
+#include "subst_scenario.h"
+#include "smt_partitioning_target_equation.h"
 
 /*******************************************************************
 

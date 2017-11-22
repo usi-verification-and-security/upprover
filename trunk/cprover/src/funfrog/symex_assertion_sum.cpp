@@ -20,10 +20,49 @@
 #include "partitioning_slice.h"
 #include "partition_iface.h"
 #include "summarization_context.h"
+#include "utils/naming_helpers.h"
+#include "partitioning_target_equation.h"
+
 
 #ifdef DEBUG_SSA
 #include "utils/ssa_helpers.h"
 #endif // DEBUG_SSA
+
+/*******************************************************************
+
+ Function: symex_assertion_sumt::symex_assertion_sumt
+
+ Constructor
+
+\*******************************************************************/
+symex_assertion_sumt::symex_assertion_sumt(
+  summarization_contextt &_summarization_context,
+  summary_infot &_summary_info,
+  const namespacet &_ns,
+  symbol_tablet &_new_symbol_table,
+  partitioning_target_equationt &_target,
+  message_handlert &_message_handler,
+  const goto_programt &_goto_program,
+  unsigned _last_assertion_loc,
+  bool _single_assertion_check,
+  bool _use_slicing,
+  bool _do_guard_expl,
+  bool _use_smt,
+  unsigned int _max_unwind
+) :
+  goto_symext(_ns, _new_symbol_table, _target),
+  summarization_context(_summarization_context),
+  summary_info(_summary_info),
+  current_summary_info(&_summary_info),
+  equation(_target),
+  goto_program(_goto_program),
+  last_assertion_loc(_last_assertion_loc),
+  single_assertion_check(_single_assertion_check),
+  use_slicing(_use_slicing),
+  do_guard_expl(_do_guard_expl),
+  use_smt(_use_smt),
+  max_unwind(_max_unwind)
+{set_message_handler(_message_handler);}
 
 /*******************************************************************
 

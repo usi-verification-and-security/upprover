@@ -12,13 +12,9 @@
 
 #include <goto-symex/symex_target_equation.h>
 
-#include "solvers/interpolating_solver.h"
 #include "summary_store_fwd.h"
-
-typedef int partition_idt;
-typedef std::list<partition_idt> partition_idst;
-typedef std::map<irep_idt, partition_idt> partition_mapt;
-typedef std::list<unsigned> partition_locst;
+#include "partition_fwd.h"
+#include "solvers/interpolating_solver_fwd.h"
 
 class partition_ifacet;
 
@@ -95,8 +91,6 @@ public:
 private:
   partition_ifacet* partition_iface;
 };
-
-typedef std::vector<partitiont> partitionst;
 
 #endif	/* CPROVER_PARTITION_H */
 

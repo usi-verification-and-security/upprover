@@ -15,7 +15,9 @@
 #define SMT_REFINER_ASSERTION_SUMT_H
 
 #include "refiner_assertion_sum.h"
-#include "smt_partitioning_target_equation.h"
+
+class smtcheck_opensmt2t;
+class smt_partitioning_target_equationt;
 
 class smt_refiner_assertion_sumt : public refiner_assertion_sumt 
 {

@@ -15,6 +15,7 @@
 #include "partition_iface.h"
 #include "summarization_context.h"
 #include "utils/naming_helpers.h"
+#include "hifrog.h"
 
 //#define DEBUG_ITP_SMT // ITP of SMT - testing
 

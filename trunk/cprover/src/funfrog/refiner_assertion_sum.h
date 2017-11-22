@@ -9,14 +9,12 @@
 #ifndef CPROVER_REFINER_ASSERTION_SUM_H
 #define CPROVER_REFINER_ASSERTION_SUM_H
 
-#include <util/threeval.h>
-#include "assertion_info.h"
-#include "subst_scenario.h"
-#include "summary_info.h"
-#include "partitioning_target_equation.h"
 #include <util/message.h>
+#include "summarization_context_fwd.h"
 
 class summarization_contextt;
+class subst_scenariot;
+class summary_infot;
 
 class refiner_assertion_sumt:public messaget
 {

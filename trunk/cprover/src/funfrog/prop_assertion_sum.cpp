@@ -15,6 +15,7 @@
 #include <ui_message.h>
 #include "solvers/prop/prop_conv.h"
 #include "prop_partitioning_target_equation.h"
+#include "partition.h"
 
 
 /*******************************************************************

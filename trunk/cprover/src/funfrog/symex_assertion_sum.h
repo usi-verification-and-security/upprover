@@ -14,9 +14,8 @@
 #include <util/symbol.h>
 #include <util/message.h>
 #include <goto-symex/goto_symex.h>
-#include <funfrog/utils/naming_helpers.h>
 #include "partition_iface_fwd.h"
-#include "partitioning_target_equation.h"
+#include "partition_fwd.h"
 
 //#define DEBUG_PARTITIONING // Debug this class
 
@@ -27,6 +26,7 @@ class namespacet;
 class assertion_infot;
 class summary_infot;
 class summarization_contextt;
+class partitioning_target_equationt;
 
 class symex_assertion_sumt : public goto_symext, messaget
 {
@@ -45,20 +45,7 @@ public:
 	        bool _do_guard_expl,
           bool _use_smt,
           unsigned int _max_unwind
-          ) :
-          goto_symext(_ns, _new_symbol_table, _target),
-          summarization_context(_summarization_context),
-          summary_info(_summary_info),
-          current_summary_info(&_summary_info),
-          equation(_target),
-          goto_program(_goto_program),
-          last_assertion_loc(_last_assertion_loc),
-          single_assertion_check(_single_assertion_check),
-          use_slicing(_use_slicing),
-	        do_guard_expl(_do_guard_expl),
-          use_smt(_use_smt),
-          max_unwind(_max_unwind)
-          {set_message_handler(_message_handler);}
+          );
           
   virtual ~symex_assertion_sumt() override;
 

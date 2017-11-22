@@ -27,7 +27,7 @@ class partition_ifacet {
 public:
 
   partition_ifacet(summary_infot& _summary_info, partition_idt _parent_id, 
-          unsigned _call_loc) : 
+          unsigned _call_loc) :
           function_id(_summary_info.get_function_id()),
           summary_info(_summary_info),
           callstart_symbol(ID_nil, typet(ID_bool)),

@@ -15,8 +15,8 @@
 #define SMT_DEPENDENCY_CHECKERT_H
 
 #include "dependency_checker.h"
-#include "partitioning_target_equation.h"
-#include "smt_partitioning_target_equation.h"
+
+class smtcheck_opensmt2t;
 
 class smt_dependency_checkert :public dependency_checkert
 {
