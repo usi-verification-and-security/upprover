@@ -91,11 +91,6 @@ public:
   };
 
   std::map<irep_idt, std::string> guard_expln;
-
-  // Shall be public for refinement
-  void fabricate_cprover_SSA(irep_idt base_symbol_id, 
-        const typet& type, const source_locationt source_location, 
-        bool is_rename, bool is_dead, symbol_exprt& ret_symbol);
   
 private:
   
@@ -273,21 +268,9 @@ private:
   void produce_callend_assumption(
         const partition_ifacet& partition_iface, goto_symex_statet& state);
 
-  // Helper function for renaming of an identifier without
-  // assigning to it. Constant propagation is stopped for the given symbol.
-//  irep_idt get_new_symbol_version(
-//        const irep_idt& identifier,
-//        goto_symex_statet &state,
-//        typet type);
-
 
   // Makes an assignment without increasing the version of the
   // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
-//  void raw_assignment(goto_symex_statet &state,
-//        exprt &lhs,
-//        const exprt &rhs,
-//        const namespacet &ns);
-//        //bool record_value); //Always false, removed
 
     void raw_assignment(
             statet &state,
@@ -371,7 +354,7 @@ private:
   // getting the next version of a symbol, etc.
 
   // this should be used only for artificial symbols that we have created with create_new_artificial_symbol method
-  bool knows_artificial_symbol(const irep_idt & symbol_id){
+  bool knows_artificial_symbol(const irep_idt & symbol_id) const {
     return new_symbol_table.has_symbol(symbol_id);
   }
 
@@ -380,7 +363,7 @@ private:
     return new_symbol_table.lookup(id);
   }
 
-  const symbolt & get_normal_symbol(const irep_idt & id){
+  const symbolt & get_normal_symbol(const irep_idt & id) const {
     return ns.lookup(id);
   }
 
@@ -413,8 +396,5 @@ private:
   }
 
   symbolt get_tmp_ret_val_symbol(const partition_ifacet& iface);
-
-
-
 };
 #endif
