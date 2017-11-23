@@ -1033,19 +1033,15 @@ void symex_assertion_sumt::store_return_value(
   
   if (!partition_iface.returns_value)
     return;
-  
-  ssa_exprt lhs = to_ssa_expr(partition_iface.retval_symbol);
-  const auto& rhs = partition_iface.retval_tmp;
-  ssa_exprt rhs_ssa {rhs};
-  state.rename(rhs_ssa, ns);
-  assert(!lhs.get_level_2().empty());
-  
-  assert( ns.follow(lhs.type()) == ns.follow(rhs_ssa.type()));
+
+  code_assignt assignment(partition_iface.retval_symbol, partition_iface.retval_tmp);
+
+  assert( ns.follow(assignment.lhs().type()) == ns.follow(assignment.rhs().type()));
   
   // Emit the assignment
   bool old_cp = constant_propagation;
   constant_propagation = false;
-  raw_assignment(state, lhs, rhs_ssa, ns);
+  raw_assignment(state, assignment.lhs(), assignment.rhs(), ns);
   constant_propagation = old_cp;
 }
 /*******************************************************************
@@ -1544,35 +1540,6 @@ void symex_assertion_sumt::raw_assignment(
     symex_targett::assignment_typet::STATE);
 }
 
-void symex_assertion_sumt::raw_assignment(
-        statet &state,
-        ssa_exprt &lhs,
-        const ssa_exprt &rhs,
-        const namespacet &ns)
-{
-
-    state.propagation.remove(lhs.get_l1_object_identifier());
-
-    // MB: looks like this has something to do with dereferencing; TODO: examine
-    // update value sets
-//    exprt l1_rhs(rhs_symbol);
-//    state.get_l1_name(l1_rhs);
-//
-//    ssa_exprt l1_lhs(lhs);
-//    state.get_l1_name(l1_lhs);
-//
-//    state.value_set.assign(l1_lhs, l1_rhs, ns, false, false);
-
-    guardt empty_guard;
-    target.assignment(
-            empty_guard.as_expr(),
-            lhs,
-            lhs, lhs.get_l1_object(),
-            rhs,
-            state.source,
-            symex_targett::assignment_typet::STATE);
-}
-
 /*******************************************************************\
 
 Function: symex_assertion_sumt::phi_function
@@ -1778,7 +1745,7 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
 void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id,
         const typet& type, const source_locationt source_location,
         bool is_rename, bool is_dead,
-        symbol_exprt& ret_symbol)
+        ssa_exprt& ret_symbol)
 {
     // MB: not sure, but we probably need to register new symbol;
     // if it was registered before, nothing will change
@@ -1786,10 +1753,9 @@ void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id,
 
     //create the symbol expression
     symbol_exprt symbol(base_symbol_id, type);
-    
+    // first create L1 version version of this symbol
+    state.rename(symbol, ns, goto_symex_statet::levelt::L1);
     if(is_rename) {
-        // first create L1 version version of this symbol
-        state.rename(symbol, ns, goto_symex_statet::levelt::L1);
         // here we want to create the correct L2 version of the symbol
         state.rename(symbol, ns, goto_symex_statet::levelt::L2);
         // state.rename works fine if we also keep the information in state.level2.current_names up-to-date
@@ -1806,7 +1772,7 @@ void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id,
     }
     else{
         // we are happy with the L1 version of the symbol
-        ret_symbol = symbol;
+        ret_symbol = to_ssa_expr(symbol);
     }
 //    std::cout << "\n; New symbol: \n" << ret_symbol.pretty() << '\n';
 }

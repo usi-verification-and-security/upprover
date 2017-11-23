@@ -97,7 +97,7 @@ public:
   // Shall be public for refinement
   void fabricate_cprover_SSA(irep_idt base_symbol_id, 
         const typet& type, const source_locationt source_location, 
-        bool is_rename, bool is_dead, symbol_exprt& ret_symbol);
+        bool is_rename, bool is_dead, ssa_exprt& ret_symbol);
   
 private:
   
@@ -303,11 +303,6 @@ private:
         const namespacet &ns); 
         //bool record_value); //Always false, removed
 
-    void raw_assignment(
-            statet &state,
-            ssa_exprt &lhs,
-            const ssa_exprt &rhs,
-            const namespacet &ns);
 
   // Adds the given symbol to the current context. If dead, the identifier
   // is only marked as dead (it is not added as a new symbol).
