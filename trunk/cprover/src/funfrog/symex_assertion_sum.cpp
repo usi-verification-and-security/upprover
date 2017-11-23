@@ -1036,13 +1036,16 @@ void symex_assertion_sumt::store_return_value(
   
   ssa_exprt lhs = to_ssa_expr(partition_iface.retval_symbol);
   const auto& rhs = partition_iface.retval_tmp;
+  ssa_exprt rhs_ssa {rhs};
+  state.rename(rhs_ssa, ns);
+  assert(!lhs.get_level_2().empty());
   
-  assert( ns.follow(lhs.type()) == ns.follow(rhs.type()));
+  assert( ns.follow(lhs.type()) == ns.follow(rhs_ssa.type()));
   
   // Emit the assignment
   bool old_cp = constant_propagation;
   constant_propagation = false;
-  raw_assignment(state, lhs, rhs, ns);
+  raw_assignment(state, lhs, rhs_ssa, ns);
   constant_propagation = old_cp;
 }
 /*******************************************************************
@@ -1544,12 +1547,9 @@ void symex_assertion_sumt::raw_assignment(
 void symex_assertion_sumt::raw_assignment(
         statet &state,
         ssa_exprt &lhs,
-        const symbol_exprt &rhs,
+        const ssa_exprt &rhs,
         const namespacet &ns)
 {
-    ssa_exprt rhs_ssa {rhs};
-    state.rename(rhs_ssa, ns);
-    assert(!lhs.get_level_2().empty());
 
     state.propagation.remove(lhs.get_l1_object_identifier());
 
@@ -1568,7 +1568,7 @@ void symex_assertion_sumt::raw_assignment(
             empty_guard.as_expr(),
             lhs,
             lhs, lhs.get_l1_object(),
-            rhs_ssa,
+            rhs,
             state.source,
             symex_targett::assignment_typet::STATE);
 }
@@ -1786,7 +1786,7 @@ void symex_assertion_sumt::fabricate_cprover_SSA(irep_idt base_symbol_id,
 
     //create the symbol expression
     symbol_exprt symbol(base_symbol_id, type);
-
+    
     if(is_rename) {
         // first create L1 version version of this symbol
         state.rename(symbol, ns, goto_symex_statet::levelt::L1);

@@ -306,7 +306,7 @@ private:
     void raw_assignment(
             statet &state,
             ssa_exprt &lhs,
-            const symbol_exprt &rhs,
+            const ssa_exprt &rhs,
             const namespacet &ns);
 
   // Adds the given symbol to the current context. If dead, the identifier
