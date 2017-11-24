@@ -34,8 +34,8 @@ public:
 
   virtual literalt lassert_var() override { throw std::logic_error("Looks like this should not be called for this solver"); }
      
-  virtual std::string getStringSMTlibDatatype(const exprt& expr) override;
-  virtual SRef getSMTlibDatatype(const exprt& expr) override;
+  virtual std::string getStringSMTlibDatatype(const typet& type) override;
+  virtual SRef getSMTlibDatatype(const typet& type) override;
 
 protected:
 
@@ -52,10 +52,12 @@ protected:
   static const char *tk_le;
   static const char *tk_gt;
   static const char *tk_ge;
+  static const char *tk_neg;
 
   SRef sort_ureal; //Uninterpreted Real sort. Used to fake LRA.
   SymRef s_mult, s_div, s_plus, s_minus;
   SymRef s_lt, s_le, s_gt, s_ge;
+  SymRef s_neg;
 
   // Only for UF
   PTRef mkURealMult(vec<PTRef>& args);

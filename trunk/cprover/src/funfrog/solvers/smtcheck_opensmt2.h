@@ -17,9 +17,6 @@ Module: Wrapper for OpenSMT2
 
 class smt_itpt;
 
-// Cache of already visited interpolant literals
-typedef std::map<PTRef, literalt> ptref_cachet;
-
 // FIXME: add inheritance for class messaget, and replace couts in status/warning/error
 // This shall be to all smt interface classes
 class smtcheck_opensmt2t : public check_opensmt2t
@@ -112,20 +109,20 @@ public:
 
   // Common to all
   void start_encoding_partitions() {
-	  if (partition_count > 0){
+	if (partition_count > 0){
 #ifdef PRODUCE_PROOF              
-		  if (ready_to_interpolate) cout << "EXIT WITH ERROR: Try using --claim parameter" << std::endl;
-		  assert (!ready_to_interpolate); // GF: checking of previous assertion run was successful (unsat)
+            if (ready_to_interpolate) cout << "EXIT WITH ERROR: Try using --claim parameter" << std::endl;
+		assert (!ready_to_interpolate); // GF: checking of previous assertion run was successful (unsat)
 #endif		  	  	  	  	  	  	  	  	  // TODO: reset opensmt context
 
-		  std::cout << "Incrementally adding partitions to the SMT solver\n";
-	  }
+		std::cout << "Incrementally adding partitions to the SMT solver\n";
+	}
   }
 
   /* The data: lhs, original function data */
   bool has_unsupported_info() const { return store_unsupported_info && has_unsupported_vars(); } // Common to all
   bool has_unsupported_vars() const { return (unsupported2var > 0); } // Common to all, affects several locations!
-  string create_new_unsupported_var(); // Common to all
+  string create_new_unsupported_var(std::string type_name, bool no_rename=false); // Common to all
   map<PTRef,exprt>::const_iterator get_itr_unsupported_info_map() const { return unsupported_info_map.begin(); }
   map<PTRef,exprt>::const_iterator get_itr_end_unsupported_info_map() const { return unsupported_info_map.end(); }
   /* End of unsupported data for refinement info and data */
@@ -138,10 +135,10 @@ public:
   
   SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
   
-  PTRef mkCustomFunction(SymRef decl, vec<PTRef>& args); // common to all
-  
-  virtual std::string getStringSMTlibDatatype(const exprt& expr)=0;
-  virtual SRef getSMTlibDatatype(const exprt& expr)=0; 
+  std::string getStringSMTlibDatatype(const exprt& expr);
+  virtual std::string getStringSMTlibDatatype(const typet& type)=0;
+  SRef getSMTlibDatatype(const exprt& expr); 
+  virtual SRef getSMTlibDatatype(const typet& type)=0;
 
   void init_unsupported_counter() { unsupported2var=0; } // KE: only for re-init solver use. Once we have pop in OpenSMT, please discard.
   
@@ -164,14 +161,23 @@ protected:
   static unsigned unsupported2var; // Create a new var hifrog::c::unsupported_op2var#i - smtcheck_opensmt2t::_unsupported_var_str
   bool store_unsupported_info;
   map<PTRef,exprt> unsupported_info_map;
-  
+  std::map<std::string,SymRef> decl_uninterperted_func;
+
   literalt store_new_unsupported_var(const exprt& expr, const PTRef var, bool push_var=true); // common to all 
   
   virtual literalt lunsupported2var(const exprt &expr)=0; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
   
+  PTRef create_equation_for_unsupported(const exprt &expr); // common to all 
+
+  SymRef get_unsupported_op_func(const exprt &expr, const vec<PTRef>& args); // common to all
+  
+  void get_unsupported_op_args(const exprt &expr, vec<PTRef> &args); // common to all
+  
   literalt new_variable(); // Common to all
 
   literalt push_variable(PTRef ptl); // Common to all
+  
+  PTRef mkFun(SymRef decl, const vec<PTRef>& args); // Common to all
   
 #ifdef PRODUCE_PROOF  
   void setup_reduction();

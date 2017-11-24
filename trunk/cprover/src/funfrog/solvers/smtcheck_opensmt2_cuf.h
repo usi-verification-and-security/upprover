@@ -74,8 +74,8 @@ public:
               " unsupported operators;e.g., " + id2string(_fails_type_id);
   }
   
-  virtual std::string getStringSMTlibDatatype(const exprt& expr) override;
-  virtual SRef getSMTlibDatatype(const exprt& expr) override;
+  virtual std::string getStringSMTlibDatatype(const typet& type) override;
+  virtual SRef getSMTlibDatatype(const typet& type) override;
 
 protected:
   BVLogic* bvlogic; // Extra var, inner use only - Helps to avoid dynamic cast!

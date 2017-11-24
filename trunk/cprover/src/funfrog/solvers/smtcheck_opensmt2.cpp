@@ -334,9 +334,9 @@ Function: smtcheck_opensmt2t::get_interpolant
  partitions. This method can be called only after solving the
  the formula with an UNSAT result.
 
+ * KE : Shall add the code using new outputs from OpenSMT2 + apply some changes to variable indices
+ *      if the code is too long split to the method - extract_itp, which is now commented (its body).
 \*******************************************************************/
-// KE : Shall add the code using new outputs from OpenSMT2 + apply some changes to variable indices
-//      if the code is too long split to the method - extract_itp, which is now commented (its body).
 #ifdef PRODUCE_PROOF 
 void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids, interpolantst& interpolants)
 {   
@@ -455,7 +455,10 @@ bool smtcheck_opensmt2t::solve() {
     }
  
 #ifdef DISABLE_OPTIMIZATIONS   
-    if (dump_pre_queries) out_smt.close();
+    if (dump_pre_queries) {
+        out_smt << "(check-sat)\n" << endl;
+        out_smt.close();
+    }
 #endif    
 //#ifdef DISABLE_OPTIMIZATIONS // Use if there are issues with the variables
 //    dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
@@ -609,7 +612,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
         //assert(false); //KE: when found all reasons - uncomment
     #endif
     }
-    
+  
     bool is_L2_symbol = is_L2_SSA_symbol(expr);
     bool is_nil_or_symex = (str.compare(NIL) == 0) || (str.find(IO_CONST) != std::string::npos);
     if (!is_L2_symbol && !is_nil_or_symex) 
@@ -620,7 +623,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
         {
             // Error message before assert!
             std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree(" << str << ")\n" ;
-            return create_new_unsupported_var();
+            return create_new_unsupported_var(expr.type().id().c_str());
         }
     }
 
@@ -678,6 +681,17 @@ void smtcheck_opensmt2t::dump_on_error(std::string location)
     cout << "))" << endl << "(check-sat)" << endl;
 }
 
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::create_bound_string
+
+ Inputs: 
+
+ Outputs: 
+
+ Purpose: for type constraints of CUF and LRA
+
+\*******************************************************************/
 std::string smtcheck_opensmt2t::create_bound_string(std::string base, int exp)
 {
     std::string ret = base;
@@ -688,30 +702,67 @@ std::string smtcheck_opensmt2t::create_bound_string(std::string base, int exp)
     return ret;
 }
 
-string smtcheck_opensmt2t::create_new_unsupported_var()
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::create_new_unsupported_var
+
+ Inputs: 
+
+ Outputs: New unsupported global SSA name
+
+ Purpose:
+
+ FIXME: shall fabricate propperly the name as SSA expression
+ fabricate with l2, and return the name with l2
+
+\*******************************************************************/
+string smtcheck_opensmt2t::create_new_unsupported_var(std::string type_name, bool no_rename)
 {
-    // Create a new unsupported var
-    std::string str = UNSUPPORTED_VAR_NAME + std::to_string(unsupported2var++);
+    // Create a new unsupported va
+    std::string str = UNSUPPORTED_VAR_NAME + type_name;
+    if (!no_rename)
+    {
+    	// FIXME: SSA fabrication + rename
+    	std::string prefix = "!0#" + std::to_string(unsupported2var++);
+    	str += prefix;
+    }
+
     str = quote_varname(str);
     
     assert(str.size() > 0);
     
 #ifdef SMT_DEBUG
         cout << "; IT IS AN UNSUPPORTED VAR " << str << endl;
-#endif 
+#endif
         
     return str;
 }
- 
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::store_new_unsupported_var
+
+ Inputs: 
+
+ Outputs: 
+
+ Purpose: Keep which expressions are not supported and abstracted from 
+ * the smt encoding
+
+\*******************************************************************/
 literalt smtcheck_opensmt2t::store_new_unsupported_var(const exprt& expr, const PTRef var, bool push_var) {        
     // If need to register the abstracted functions - add it here
-    if (store_unsupported_info) {
+    const irep_idt &_id=expr.id(); // KE: gets the id once for performance
+    if ((store_unsupported_info) && (_id!=ID_symbol && _id!=ID_nondet_symbol && _id!=ID_constant))
+    {
         // Map the expression to its unsupported abstracted vat (in opensmt)
         unsupported_info_map.insert(pair<PTRef, exprt> (var, expr));
         cout << "**** Saved function as a candidate for lattice refinement. ";
-        cout << "Expression " << logic->printTerm(var) << " will be refine the operator " 
-              << expr.id() << " with " << expr.operands().size() << " operands." 
+        char *s = logic->printTerm(var);
+        cout << "Expression " << s << " will be refine the operator " 
+              << _id << " with " << expr.operands().size() << " operands." 
               << endl;
+        free(s);
     }
     
     if (push_var)
@@ -766,21 +817,170 @@ SymRef smtcheck_opensmt2t::get_smt_func_decl(const char* op, SRef& in_dt, vec<SR
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::mkCustomFunction
+Function: smtcheck_opensmt2t::create_equation_for_unsupported
 
- Inputs: function signature in SMTlib with arguments
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+ *  If not exist yet, creates a new declartion in OpenSMT with 
+ *  function name+size of args+type. 
+ *  Add a new ptref of the use for this expression
+\*******************************************************************/
+PTRef smtcheck_opensmt2t::create_equation_for_unsupported(const exprt &expr)
+{  
+    // extract parameters to the call
+    vec<PTRef> args; 
+    get_unsupported_op_args(expr, args);
+    
+    // Define the function if needed and check it is OK
+    SymRef decl = get_unsupported_op_func(expr, args);
+    
+#ifdef SMT_DEBUG    
+    std::cout << ";;; Use Unsupported function: " << logic->printSym(decl) << std::endl;
+#endif    
+    
+    return mkFun(decl, args);
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::get_unsupported_op_func
+
+  Inputs:
+
+ Outputs: the usupported operator symbol to be used later in
+ * mkFun method
+
+ Purpose:
+ *  If not exist yet, creates a new declartion in OpenSMT with 
+ *  function name+size of args+type. 
+\*******************************************************************/
+SymRef smtcheck_opensmt2t::get_unsupported_op_func(const exprt &expr, const vec<PTRef>& args)
+{
+    const irep_idt &_func_id=expr.id(); // Which function we will add as uninterpurted
+    std::string func_id(_func_id.c_str());
+    func_id = "uns_" + func_id;
+    
+    // First declare the function, if not exist
+    std::string key_func(func_id.c_str());
+    key_func += "," + getStringSMTlibDatatype(expr);
+    SRef out = getSMTlibDatatype(expr);
+
+    vec<SRef> args_decl;
+    for (int i=0; i < args.size(); i++) 
+    {
+        args_decl.push(logic->getSortRef(args[i]));
+        key_func += "," + std::string(logic->getSortName(logic->getSortRef(args[i])));
+    }
+     
+    // Define the function if needed and check it is OK
+    SymRef decl = SymRef_Undef;
+    if (decl_uninterperted_func.count(key_func) == 0) {
+        decl = get_smt_func_decl(func_id.c_str(), out, args_decl);
+        decl_uninterperted_func.insert(pair<string, SymRef> (key_func,decl));
+    } else {
+        decl = decl_uninterperted_func.at(key_func);
+    }
+    assert(decl != SymRef_Undef);
+    
+    return decl;
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::get_unsupported_op_args
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+void smtcheck_opensmt2t::get_unsupported_op_args(const exprt &expr, vec<PTRef> &args)
+{
+    // The we create the new call
+    forall_operands(it, expr)
+    {	
+        if (is_cprover_rounding_mode_var(*it)) continue;
+        // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
+
+        PTRef cp = literals[convert(*it).var_no()];
+        assert(cp != PTRef_Undef);
+        args.push(cp); // Add to call
+    }
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::mkFun
+
+  Inputs: function signature in SMTlib with arguments
 
  Outputs: PTRef of it (with the concrete args)
 
- Purpose: to use a new custom function to smt from summaries
+ Purpose: General mechanism to call uninturpruted functions
+          Mainly for a new custom function to smt from summaries
 
 \*******************************************************************/
-PTRef smtcheck_opensmt2t::mkCustomFunction(SymRef decl, vec<PTRef>& args)
+PTRef smtcheck_opensmt2t::mkFun(SymRef decl, const vec<PTRef>& args)
 {
     char *msg=NULL;
     PTRef ret = logic->mkFun(decl, args, &msg);
-    if (msg != NULL) free(msg);
+    if (msg != NULL) free(msg);  
+    
     return ret;
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::getStringSMTlibDatatype
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+std::string smtcheck_opensmt2t::getStringSMTlibDatatype(const exprt& expr)
+{
+    typet var_type = expr.type(); // Get the current type
+    if ((var_type.id()==ID_bool) || (var_type.id() == ID_c_bool) || (is_number(var_type)))
+        return getStringSMTlibDatatype(var_type);
+    else {
+        literalt l_unsupported = lunsupported2var(expr);
+        PTRef var = literals[l_unsupported.var_no()];
+        
+        return std::string(logic->getSortName(logic->getSortRef(var)));
+    }
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::getSMTlibDatatype
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+SRef smtcheck_opensmt2t::getSMTlibDatatype(const exprt& expr)
+{
+    typet var_type = expr.type(); // Get the current type
+    if ((var_type.id()==ID_bool) || (var_type.id() == ID_c_bool) || (is_number(var_type)))
+        return getSMTlibDatatype(var_type);
+    else {
+        literalt l_unsupported = lunsupported2var(expr);
+        PTRef var = literals[l_unsupported.var_no()];
+        
+        return logic->getSortRef(var);
+    }
 }
 
 // FIXME: move to hifrog or util in hifrog
