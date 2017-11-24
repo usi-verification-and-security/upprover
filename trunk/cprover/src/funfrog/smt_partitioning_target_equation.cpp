@@ -102,7 +102,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
     
     out_ssaT.close();
   }
-    #endif
+#endif
 }
 
 /*******************************************************************
@@ -227,7 +227,6 @@ void smt_partitioning_target_equationt::convert_partition_summary(
 #           ifdef DISABLE_OPTIMIZATIONS
             out_terms << ";;; Substituting summary #" << *it << "\n";
             summary.print(out_terms);
-            summary.print(std::cout);
 #           endif
             summary.substitute(decider, common_symbs, partition.inverted_summary);
         }

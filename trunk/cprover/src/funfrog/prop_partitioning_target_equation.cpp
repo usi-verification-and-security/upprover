@@ -11,8 +11,6 @@ Author: Ondrej Sery
 #include <std_expr.h>
 
 #include "prop_partitioning_target_equation.h"
-#include "solvers/sat/cnf.h"
-#include "solvers/satcheck_opensmt2.h"
 #include "hifrog.h"
 #include "partition_iface.h"
 #include "solvers/prop_itp.h"

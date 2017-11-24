@@ -17,7 +17,6 @@
 #include <util/message.h>
 
 class summarization_contextt;
-
 class refiner_assertion_sumt:public messaget
 {
 public:
