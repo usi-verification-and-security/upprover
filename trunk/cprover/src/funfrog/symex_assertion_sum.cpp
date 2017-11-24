@@ -1504,7 +1504,7 @@ void symex_assertion_sumt::raw_assignment(
   assert(lhs_orig.id()==ID_symbol);
 
   // the type might need renaming
-  ssa_exprt ssa_lhs = ssa_exprt(lhs); // KE: If cause a bug, change lhs_identifier to be without the #1,#2,#3 etc.
+  ssa_exprt ssa_lhs = to_ssa_expr(lhs); // KE: If cause a bug, change lhs_identifier to be without the #1,#2,#3 etc.
   const irep_idt &lhs_identifier = ssa_lhs.get_identifier();
 
   state.rename(lhs.type(), lhs_identifier, ns);
