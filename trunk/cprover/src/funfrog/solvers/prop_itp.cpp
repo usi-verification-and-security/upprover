@@ -5,9 +5,10 @@ Module: Propositional interpolant.  Based on code of cnft.
 Author: Ondrej Sery
 
 \*******************************************************************/
+#include "prop_itp.h"
+
 #include <limits.h>
 #include <string.h>
-#include "prop_itp.h"
 #include <stdlib.h>
 #include "time_stopping.h"
 #include <symbol_table.h>

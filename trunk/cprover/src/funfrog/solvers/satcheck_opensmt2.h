@@ -18,10 +18,6 @@ Author: Grigory Fedyukovich
 #include <opensmt/opensmt2.h>
 
 class prop_itpt;
-
-// Cache of already visited interpolant ptrefs
-typedef std::map<PTRef, literalt> ptref_cachet;
-
 class satcheck_opensmt2t:public cnf_solvert, public check_opensmt2t
 {
 public:

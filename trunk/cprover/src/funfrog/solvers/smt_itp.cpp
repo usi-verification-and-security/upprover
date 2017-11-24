@@ -1,7 +1,15 @@
-#include "smtcheck_opensmt2.h"
-#include "../utils/naming_helpers.h"
+/*******************************************************************\
+
+Module: SMT interpolant.  Based on code on prop_itp.
+
+Author: 
+
+\*******************************************************************/
+
 #include "smt_itp.h"
+#include "smtcheck_opensmt2.h"
 #include "../hifrog.h"
+#include "../utils/naming_helpers.h"
 
 //#define DEBUG_ITP_SMT
 # ifdef DEBUG_ITP_SMT

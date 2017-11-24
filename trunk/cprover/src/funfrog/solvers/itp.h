@@ -10,7 +10,6 @@
 
 class prop_itpt;
 class smt_itpt;
-
 class itpt
 {
 public:
