@@ -929,22 +929,20 @@ void symex_assertion_sumt::store_modified_globals(
         statet &state,
         const deferred_functiont &deferred_function)
 {
-  // TODO: MB: I think we do not need to stop constant propagation here
-  // Emit the assignment
-  bool old_cp = constant_propagation;
-  constant_propagation = false;
-  partition_ifacet &partition_iface = deferred_function.partition_iface;
-
-  state.record_events=false; // expr-s are build ins
-  // therefore we don't want to use parallel built-ins
+  // MB: constant propagation is used only in state.assignment,
+  // but we are deliberately working around it, because we already have proper L2 lhs and do not want to modify it
+//  bool old_cp = constant_propagation;
+//  constant_propagation = false;
+  const partition_ifacet &partition_iface = deferred_function.partition_iface;
 
   for (const auto & out_symbol : partition_iface.out_arg_symbols) {
     // get original symbol expression
     const symbol_exprt & rhs  = to_symbol_expr(to_ssa_expr(out_symbol).get_original_expr());
     assert(ns.follow(out_symbol.type()) == ns.follow(rhs.type()));
+    // Emit the assignment
     raw_assignment(state, to_ssa_expr(out_symbol), rhs, ns);
   }
-  constant_propagation = old_cp;
+//  constant_propagation = old_cp;
 }
 
 /*******************************************************************
@@ -963,7 +961,7 @@ void symex_assertion_sumt::store_return_value(
         statet &state,
         const deferred_functiont &deferred_function)
 {
-  partition_ifacet &partition_iface = deferred_function.partition_iface;
+  const partition_ifacet &partition_iface = deferred_function.partition_iface;
   
   if (!partition_iface.returns_value)
     return;
@@ -972,13 +970,15 @@ void symex_assertion_sumt::store_return_value(
   const auto& rhs = to_symbol_expr(state.top().return_value);
   
   assert( ns.follow(lhs.type()) == ns.follow(rhs.type()));
-  
+
+  // MB: constant propagation is used only in state.assignment,
+  // but we are deliberately working around it, because we already have proper L2 lhs and do not want to modify it
+//  bool old_cp = constant_propagation;
+//  constant_propagation = false;
+
   // Emit the assignment
-  // TODO: MB: I think we do not need to stop constant propagation here
-  bool old_cp = constant_propagation;
-  constant_propagation = false;
   raw_assignment(state, lhs, rhs, ns);
-  constant_propagation = old_cp;
+//  constant_propagation = old_cp;
 }
 /*******************************************************************
 
