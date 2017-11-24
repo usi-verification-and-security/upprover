@@ -609,11 +609,24 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
         //assert(false); //KE: when found all reasons - uncomment
     #endif
     }
+    
+    bool is_L2_symbol = is_L2_SSA_symbol(expr);
+    bool is_nil_or_symex = (str.compare(NIL) == 0) || (str.find(IO_CONST) != std::string::npos);
+    if (!is_L2_symbol && !is_nil_or_symex) 
+    {
+        if (str.find(HifrogStringConstants::COUNTER_SEP) != std::string::npos)
+            is_L2_symbol = true; // we are taking care of it somehow, e.g., static arrays
+        else 
+        {
+            // Error message before assert!
+            std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree(" << str << ")\n" ;
+            return create_new_unsupported_var();
+        }
+    }
 
     // KE: assure the encoding is not using the variables name as is (why there is nil here?)
     assert("Error: using non-SSA symbol in the SMT encoding" 
-            && ((str.find(HifrogStringConstants::COUNTER_SEP) != std::string::npos)
-                || (str.compare(NIL) == 0) || (str.find(IO_CONST) != std::string::npos)));
+            && (is_L2_symbol || is_nil_or_symex));
     // KE: we need to test how the rest of the symex vars are
     
     return str;

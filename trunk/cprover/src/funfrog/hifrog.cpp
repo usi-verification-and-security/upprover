@@ -106,3 +106,27 @@ unsigned int get_dump_current_index()
     index+=1;
     return index;
 }
+
+// Test if name is without L2 level
+bool is_L2_SSA_symbol(const exprt& expr)
+{
+    if (is_hifrog_inner_symbol_name(expr))
+        return true;
+    if (expr.id() == ID_nondet_symbol)
+        return true; // KE: need to be tested!
+    
+    // Else check program symbols
+    if (expr.id()!=ID_symbol)
+        return false;
+    if (!expr.get_bool(ID_C_SSA_symbol))
+        return false;
+    if (expr.has_operands())
+        return false;
+    if (expr.get(ID_identifier) == get_symbol_name(expr)){
+        return false;
+    }else if (expr.get(ID_identifier) == get_symbol_L1_name(expr)){
+        return false;
+    }
+    
+    return true;
+}

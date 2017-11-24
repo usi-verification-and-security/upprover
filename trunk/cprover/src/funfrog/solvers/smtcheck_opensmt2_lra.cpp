@@ -874,7 +874,11 @@ bool smtcheck_opensmt2t_lra::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 	// Must be false if there is more than one var
 	int count_var = 0;
 	for (int i=0; i< args.size(); i++) {
-		count_var += logic->isConstant(args[i]) ? 0 : 1;
+            bool is_linear = (logic->isConstant(args[i]) || 
+                                lralogic->isRealTerm(args[i]) || 
+                                lralogic->isRealPlus(args[i]) || 
+                                lralogic->isUF(args[i]));
+            count_var += is_linear ? 0 : 1;
 	}
 	if (count_var > 1) {
 #ifdef SMT_DEBUG
