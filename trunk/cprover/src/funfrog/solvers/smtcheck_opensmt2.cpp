@@ -433,6 +433,15 @@ bool smtcheck_opensmt2t::solve() {
   if (dump_pre_queries) {
     out_smt.open(pre_queries_file_name+"_"+std::to_string(get_dump_current_index())+".smt2");  
     logic->dumpHeaderToFile(out_smt);
+    
+    // Print the .oites terms
+    int size_oite = ite_map_str.size()-1; // since goes from 0-(n-1) 
+    int i = 0;
+    for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
+        out_smt << "; XXX oite symbol: (" << i << " out of " << size_oite << ") " 
+                << iterator->first << endl << "(assert "<< iterator->second << "\n)" << endl;
+        i++;
+    }
   }
 #endif
 //  add_variables();
@@ -443,7 +452,7 @@ bool smtcheck_opensmt2t::solve() {
         {
             out_smt << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
             char* s = logic->printTerm(top_level_formulas[i]);
-            out_smt << "(assert\n" << s << "\n)" << endl;
+            out_smt << "(assert (and \n" << s << "\n))" << endl;
             free(s);
         }
 #endif
@@ -673,7 +682,7 @@ void smtcheck_opensmt2t::dump_on_error(std::string location)
     int size_oite = ite_map_str.size()-1; // since goes from 0-(n-1) 
     int i = 0;
     for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
-        cout << "; XXX oite symbol: (" << i << " out of " << size_oite << ")" 
+        cout << "; XXX oite symbol: (" << i << " out of " << size_oite << ") " 
                 << iterator->first << endl << iterator->second << endl;
         i++;
     }
