@@ -408,7 +408,7 @@ bool smtcheck_opensmt2t::can_interpolate() const
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::prop_solve
+Function: smtcheck_opensmt2t::solve
 
   Inputs:
 
