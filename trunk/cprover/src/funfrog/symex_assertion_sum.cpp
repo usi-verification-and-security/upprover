@@ -597,7 +597,8 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     //symbol_exprt lhs(state.get_original_name(it1->get_identifier()), ns.follow(it1->type()));
     //symbol_exprt lhs = to_symbol_expr(to_ssa_expr(*it1).get_original_expr());
     ssa_exprt lhs(symbol_exprt((to_ssa_expr(*it1).get_original_expr()).get(ID_identifier), ns.follow(it1->type())));
-
+    //FIXME: unify rename/SSA fabrication
+    
     // Check before getting into symex_assign_symbol that lhs is correct
     assert(lhs.id()==ID_symbol &&
        lhs.get_bool(ID_C_SSA_symbol) &&
@@ -747,6 +748,7 @@ void symex_assertion_sumt::assign_function_arguments(
 
  Purpose: Marks the SSA symbols of function arguments
 
+ FIXME: unify rename/SSA fabrication
 \*******************************************************************/
 void symex_assertion_sumt::mark_argument_symbols(
         const code_typet &function_type,
@@ -796,6 +798,8 @@ void symex_assertion_sumt::mark_argument_symbols(
  Outputs:
 
  Purpose: Marks the SSA symbols of accessed globals
+ 
+ FIXME: unify rename/SSA fabrication
 
 \*******************************************************************/
 void symex_assertion_sumt::mark_accessed_global_symbols(
@@ -864,6 +868,8 @@ void symex_assertion_sumt::mark_accessed_global_symbols(
  symbol of the global variables for later use when processing the deferred 
  function
 
+ FIXME: unify rename/SSA fabrication
+
 \*******************************************************************/
 void symex_assertion_sumt::modified_globals_assignment_and_mark(
     const irep_idt &function_id,
@@ -924,7 +930,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
     const irep_idt &function_id = partition_iface.function_id;
     irep_idt retval_symbol_id(as_string(function_id) + FUNC_RETURN); // For goto_symext::symex_assign (101)
     irep_idt retval_tmp_id(as_string(function_id) + TMP_FUNC_RETURN); // tmp in cprover is a token
-    
+
     // return_value_tmp - create new symbol with versions to support unwinding
     ssa_exprt retval_tmp;
     fabricate_cprover_SSA(retval_tmp_id, type, 
@@ -973,6 +979,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
  Purpose: Assigns modified globals to the corresponding temporary SSA 
  symbols.
 
+ FIXME: unify rename/SSA fabrication
 \*******************************************************************/
 void symex_assertion_sumt::store_modified_globals(
         statet &state,
@@ -1330,6 +1337,7 @@ void symex_assertion_sumt::havoc_function_call(
  deferred function
 
  *  KE: shall use fabricate_cprover_SSA per id creation
+ *  FIXME: unify rename/SSA fabrication
 \*******************************************************************/
 void symex_assertion_sumt::produce_callsite_symbols(
         partition_ifacet& partition_iface,
@@ -1385,7 +1393,9 @@ void symex_assertion_sumt::produce_callend_assumption(
  Purpose: to do this Original code: state.level2.rename(*it, 0);
           in cprover 5.5 version
   
- Taken from goto_symext::symex_decl
+ NOTE: this code is taken from ****goto_symext::symex_decl****
+
+ FIXME: unify rename/SSA fabrication
 
 \*******************************************************************/
 void symex_assertion_sumt::level2_rename_init(statet &state, const symbol_exprt &expr) 
@@ -1467,6 +1477,7 @@ irep_idt symex_assertion_sumt::get_new_symbol_version(
 
 // Simplify what the old code of state L2 current_name does - it is only a stupid test that
 // We always with a counter!
+// FIXME: use the cprover framework
 irep_idt symex_assertion_sumt::get_current_l2_name(statet &state, const irep_idt &identifier) const 
 {
     if (id2string(identifier).find(HifrogStringConstants::COUNTER_SEP) != std::string::npos)
@@ -1670,7 +1681,8 @@ Function: symex_assertion_sumt::claim
 
  Outputs:
 
- Purpose:
+ Purpose: vcc and claim is the same (one is in the old version
+ and one is in the new version)
 
 \*******************************************************************/
 
@@ -1694,6 +1706,17 @@ void symex_assertion_sumt::vcc(
   target.assertion(state.guard.as_expr(), expr, msg, state.source);
 }
 
+/*******************************************************************\
+
+Function: symex_assertion_sumt::end_symex
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
 void symex_assertion_sumt::end_symex(statet &state)
 {
   store_modified_globals(state, get_current_deferred_function());

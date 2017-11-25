@@ -341,14 +341,16 @@ private:
           partition_idt parent_id, unsigned call_loc);
    
 protected:
+  // KE: override from goto_symex.h
   virtual void phi_function(
     const goto_symex_statet::goto_statet &goto_state,
-    goto_symex_statet &state);
+    goto_symex_statet &state) override;
 
+  // KE: override from goto_symex.h
   virtual void vcc(
     const exprt &vcc_expr,
     const std::string &msg,
-    goto_symex_statet &state);
+    goto_symex_statet &state) override;
   
   /* Temporary fix to deal with loops
    * taken from void goto_symext::symex_goto(statet &state)
