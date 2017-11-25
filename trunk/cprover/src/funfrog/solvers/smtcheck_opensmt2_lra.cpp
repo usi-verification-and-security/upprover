@@ -817,6 +817,11 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     	assert(false); // No support yet for arrays
 #else
     	var = runsupported2var(expr);
+   
+        // TODO: 
+        // Add new equation of an unknown function (acording to name)
+        //PTRef var_eq = create_equation_for_unsupported(expr);
+        //set_to_true(logic->mkEq(var,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
 #endif
     }
 

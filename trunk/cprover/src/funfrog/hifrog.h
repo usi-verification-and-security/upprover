@@ -16,7 +16,7 @@
 // For now we have only one thread any hows
 #define FUNC_RETURN "::#return_value"  // KE: appears in Cprover as "#return_value"
 #define TMP_FUNC_RETURN "::$tmp::return_value"
-#define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var#"
+#define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var"
 
 #define CALLSTART_SYMBOL "hifrog::fun_start"
 #define CALLEND_SYMBOL "hifrog::fun_end"

@@ -130,7 +130,7 @@ bool funfrog_parseoptionst::process_goto_program(
       get_message_handler(),
       symbol_table,
       goto_functions,
-      cmdline.isset("pointer-check"));
+      false); // HiFrog doesn't have pointer check, set the flag to false always
     // Java virtual functions -> explicit dispatch tables:
     remove_virtual_functions(symbol_table, goto_functions);
     // remove catch and throw

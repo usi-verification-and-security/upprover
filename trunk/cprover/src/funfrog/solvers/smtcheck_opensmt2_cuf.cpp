@@ -1982,6 +1982,11 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
         literalt l_unsupported = lunsupported2var(expr);
         var = literals[l_unsupported.var_no()];
         
+        // TODO           
+        // Add new equation of an unknown function (acording to name)
+        //PTRef var_eq = create_equation_for_unsupported(expr);
+        //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+        
         return l_unsupported; // No need to push it again, so return here
 #endif
     }

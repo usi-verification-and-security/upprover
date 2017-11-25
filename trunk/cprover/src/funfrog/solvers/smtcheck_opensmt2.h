@@ -134,7 +134,7 @@ public:
   literalt bind_var2refined_var(PTRef ptref_coarse, PTRef ptref_refined); // common to all
   
   SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
-  
+
   std::string getStringSMTlibDatatype(const exprt& expr);
   virtual std::string getStringSMTlibDatatype(const typet& type)=0;
   SRef getSMTlibDatatype(const exprt& expr); 
