@@ -31,6 +31,7 @@ class partitioning_target_equationt;
 class symex_assertion_sumt : public goto_symext, messaget
 {
 public:
+  // TODO: create some option class to group the options together, this starts to look ridiculous
   symex_assertion_sumt(
           summarization_contextt &_summarization_context,
           summary_infot &_summary_info,
@@ -44,7 +45,8 @@ public:
           bool _use_slicing,
 	        bool _do_guard_expl,
           bool _use_smt,
-          unsigned int _max_unwind
+          unsigned int _max_unwind,
+          bool partial_loops = true
           );
           
   virtual ~symex_assertion_sumt() override;

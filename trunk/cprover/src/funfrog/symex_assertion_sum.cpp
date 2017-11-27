@@ -48,7 +48,8 @@ symex_assertion_sumt::symex_assertion_sumt(
   bool _use_slicing,
   bool _do_guard_expl,
   bool _use_smt,
-  unsigned int _max_unwind
+  unsigned int _max_unwind,
+  bool partial_loops
 ) :
   goto_symext(_ns, _new_symbol_table, _target),
   summarization_context(_summarization_context),
@@ -61,8 +62,10 @@ symex_assertion_sumt::symex_assertion_sumt(
   use_slicing(_use_slicing),
   do_guard_expl(_do_guard_expl),
   use_smt(_use_smt),
-  max_unwind(_max_unwind)
-{set_message_handler(_message_handler);}
+  max_unwind(_max_unwind) {
+  set_message_handler(_message_handler);
+  options.set_option("partial-loops", partial_loops);
+}
 
 /*******************************************************************
 

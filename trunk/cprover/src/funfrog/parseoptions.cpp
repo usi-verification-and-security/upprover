@@ -711,6 +711,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("force", cmdline.isset("force"));
   options.set_option("custom", cmdline.get_value("custom"));
   options.set_option("heuristic", cmdline.get_value("heuristic"));
+  options.set_option("partial-loops", !cmdline.isset("no-partial-loops"));
   if (cmdline.isset("bitwidth")) {
     options.set_option("bitwidth", cmdline.get_value("bitwidth"));
   } else {

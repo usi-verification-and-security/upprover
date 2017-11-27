@@ -405,7 +405,9 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound);
+            single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound,
+            options.get_bool_option("partial-loops"));
+
 
 //  setup_unwind(symex);
 
