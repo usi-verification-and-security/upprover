@@ -22,6 +22,8 @@ Author: Ondrej Sery
 #include "expr_pretty_print.h"
 #endif
 
+#include <iostream>
+
 #include <goto-symex/symex_target_equation.h>
 #include "partition.h"
 #include "utils/coloring_mode.h"
