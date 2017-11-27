@@ -430,6 +430,7 @@ void funfrog_parseoptionst::help()
   "                               (treshold = number of SSA steps)\n"
   "                               and check stronger claims at once\n"
   "--unwind <bound>               loop unwind bound\n"
+  "--no-partial-loops             forbid paths with partial loop\n"
   "--type-constraints             LRA's basic constraints on numerical data type\n"
   "                                 0 for no additional constraints,\n"
   "                                 1 for type constraints on non-deterministic input\n"
