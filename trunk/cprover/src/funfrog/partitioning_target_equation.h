@@ -22,8 +22,6 @@ Author: Ondrej Sery
 #include "expr_pretty_print.h"
 #endif
 
-#include <iostream>
-
 #include <goto-symex/symex_target_equation.h>
 #include "partition.h"
 #include "utils/coloring_mode.h"
@@ -133,9 +131,9 @@ public:
     sum_partition.used_summaries = used_summaries;
     sum_partition.applicable_summaries = used_summaries;
 
-    std::cerr << "  --- (" << partition_id <<
-            ") sums: " << sum_partition.summaries->size() <<
-            " used: " << sum_partition.used_summaries.size() << std::endl;
+//    std::cerr << "  --- (" << partition_id <<
+//            ") sums: " << sum_partition.summaries->size() <<
+//            " used: " << sum_partition.used_summaries.size() << std::endl;
   }
 
   // Begin processing of the given (previously reserved) partition.
