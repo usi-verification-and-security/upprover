@@ -8,7 +8,6 @@
 
 #include "partitioning_target_equation.h"
 #include "partition_iface.h"
-#include <iostream>
 
 partitioning_target_equationt::partitioning_target_equationt(
   const namespacet & _ns,
@@ -312,9 +311,10 @@ void partitioning_target_equationt::fill_inverted_summary_partition(
     sum_partition.used_summaries = used_summaries;
     sum_partition.applicable_summaries = used_summaries;
 
-    std::cerr << "  --- (" << partition_id <<
-              ") sums: " << sum_partition.summaries->size() <<
-              " used: " << sum_partition.used_summaries.size() << std::endl;
+//    Commented out for now to remove dependency on iostream, this method is not used at the moment anyway
+//    std::cerr << "  --- (" << partition_id <<
+//              ") sums: " << sum_partition.summaries->size() <<
+//              " used: " << sum_partition.used_summaries.size() << std::endl;
 }
 
 unsigned partitioning_target_equationt::count_partition_assertions(const partitiont & partition) const {

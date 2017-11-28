@@ -1659,13 +1659,14 @@ partition_ifacet& symex_assertion_sumt::new_partition_iface(summary_infot& summa
 
 \*******************************************************************/
 ssa_exprt symex_assertion_sumt::get_current_version(const symbolt & symbol) {
-  symbol_exprt ssa = get_l1_ssa(symbol);
+  ssa_exprt ssa = get_l1_ssa(symbol);
   // before renaming to L2, make sure the symbol will not be simplified away by constant propagation
+
   state.propagation.remove(ssa.get_identifier());
   // get the current L2 version of the L1 symbol
   state.rename(ssa, ns, goto_symex_statet::levelt::L2);
   //TODO: find out if we need to restore propagation if removed
-  return to_ssa_expr(ssa);
+  return ssa;
 }
 
 /*******************************************************************
@@ -1724,8 +1725,9 @@ void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, con
 
   // let also state know about the new symbol
   // register the l1 version of the symbol to enable asking for current L2 version
-  auto l1_id = get_l1_identifier(symbol);
+  ssa_exprt l1_ssa = get_l1_ssa(symbol);
+  auto l1_id = l1_ssa.get_l1_object_identifier();
   assert(state.level2.current_names.find(l1_id) == state.level2.current_names.end());
   // MB: it seems the CPROVER puts L1 ssa expression as the first of the pair, so we do the same, but I fail to see the reason
-  state.level2.current_names[l1_id] = std::make_pair(get_l1_ssa(symbol),0);
+  state.level2.current_names[l1_id] = std::make_pair(l1_ssa,0);
 }
