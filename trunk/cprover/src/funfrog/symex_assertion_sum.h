@@ -21,7 +21,6 @@
 
 class goto_programt;
 class goto_functionst;
-class goto_symex_statet;
 class namespacet;
 class assertion_infot;
 class summary_infot;
@@ -69,7 +68,7 @@ public:
   
   virtual void symex_step(
     const goto_functionst &goto_functions,
-    goto_symex_statet &state) override;
+    statet &state) override;
   
   const partition_iface_ptrst* get_partition_ifaces(summary_infot &summary_info) { 
     auto it = partition_iface_map.find(&summary_info);
@@ -84,11 +83,11 @@ public:
 private:
   
   // Symex state holding the renaming levels
-  goto_symex_statet state;
+  statet state;
   // Allocated partition interfaces
   partition_iface_ptrst partition_ifaces;
 
-  void end_symex(goto_symex_statet &state);
+  void end_symex(statet &state);
 
   // Mapping from summary_info to the corresponding partition_iface
   typedef std::unordered_map<const summary_infot*,partition_iface_ptrst> partition_iface_mapt;
@@ -148,18 +147,18 @@ private:
 
   // Are there any more instructions in the current function or at least
   // a deferred function to dequeue?
-  bool has_more_steps(const goto_symex_statet &state) {
+  bool has_more_steps(const statet &state) {
     return current_summary_info != nullptr;
   }
   
   // Processes current code (pointed to by the state member variable) as well
   // as all the deferred functions
-  bool process_planned(goto_symex_statet &state, bool force_check = false);
+  bool process_planned(statet &state, bool force_check = false);
 
   // Take a deferred function from the queue and prepare it for symex
   // processing. This would also mark a corresponding partition in
   // the target equation.
-  void dequeue_deferred_function(goto_symex_statet &state);
+  void dequeue_deferred_function(statet &state);
 
   // The currently processed deferred function
   const deferred_functiont& get_current_deferred_function() const {
@@ -168,43 +167,43 @@ private:
 
   // Processes a function call based on the corresponding
   // summary type
-  void handle_function_call(goto_symex_statet &state,
+  void handle_function_call(statet &state,
     code_function_callt &function_call);
 
   // Summarizes the given function call
   void summarize_function_call(
         deferred_functiont& deferred_function,
-        goto_symex_statet& state,
+        statet& state,
         const irep_idt& function_id);
     
   // Prepares a partition with an inverted summary. This is used
   // to verify that a function still implies its summary (in upgrade check).
   void fill_inverted_summary(summary_infot& summary_info,
-                             goto_symex_statet& state, partition_ifacet& inlined_iface);
+                             statet& state, partition_ifacet& inlined_iface);
 
   // Inlines the given function call
   void inline_function_call(
         deferred_functiont& deferred_function,
-        goto_symex_statet& state,
+        statet& state,
         const irep_idt& function_id);
 
   // Abstract from the given function call (nondeterministic assignment to
   // all the possibly modified variables)
   void havoc_function_call(
         deferred_functiont& deferred_function,
-        goto_symex_statet& state,
+        statet& state,
         const irep_idt& function_id);
 
   // Creates fresh symbols for all the arguments, accessed globals and return
   // value. This is used in upgrade checking to unify symbols of the inverted
   // summary and the function subtree.
-  void prepare_fresh_arg_symbols(goto_symex_statet& state,
+  void prepare_fresh_arg_symbols(statet& state,
           partition_ifacet& partition_iface);
   
   // Assigns function arguments to new SSA symbols, also makes
   // assignment of the new SSA symbol of return value to the lhs of
   // the call site (if any)
-  void assign_function_arguments(goto_symex_statet &state,
+  void assign_function_arguments(statet &state,
     code_function_callt &function_call,
     deferred_functiont &deferred_function);
   
@@ -215,13 +214,13 @@ private:
   void mark_accessed_global_symbols(const irep_idt & function_id, partition_ifacet & partition_iface);
 
   // L2 rename - new code
-//  void level2_rename_init(goto_symex_statet &state, const symbol_exprt &expr);
+//  void level2_rename_init(statet &state, const symbol_exprt &expr);
 
   // Assigns values from the modified global variables. Marks the SSA symbol 
   // of the global variables for later use when processing the deferred function
   void modified_globals_assignment_and_mark(
     const irep_idt &function_id,
-    goto_symex_statet &state,
+    statet &state,
     partition_ifacet &partition_iface);
 
   // Assigns return value from a new SSA symbols to the lhs at
@@ -229,33 +228,33 @@ private:
   // variable for later use when processing the deferred function
   void return_assignment_and_mark(
     const code_typet &function_type,
-    goto_symex_statet &state,
+    statet &state,
     const exprt *lhs,
     partition_ifacet &partition_iface,
     bool skip_assignment = false);
 
   // Assigns modified globals to the corresponding temporary SSA symbols
   void store_modified_globals(
-          goto_symex_statet &state,
+          statet &state,
     const deferred_functiont &deferred_function);
 
   // Assigns return value to the corresponding temporary SSA symbol
   void store_return_value(
-          goto_symex_statet &state,
+          statet &state,
     const deferred_functiont &deferred_function);
 
   // Clear local symbols from the l2 cache.
-  void clear_locals_versions(goto_symex_statet &state);
+  void clear_locals_versions(statet &state);
   
   // Creates new call site (start & end) symbols for the given
   // deferred function
   void produce_callsite_symbols(partition_ifacet& partition_iface,
-                                goto_symex_statet& state);
+                                statet& state);
 
   // Inserts assumption that a given call ended (i.e., an assumption of
   // the callend symbol)
   void produce_callend_assumption(
-        const partition_ifacet& partition_iface, goto_symex_statet& state);
+        const partition_ifacet& partition_iface, statet& state);
 
 
   // Makes an assignment without increasing the version of the
@@ -305,13 +304,13 @@ private:
    
 protected:
   virtual void phi_function(
-    const goto_symex_statet::goto_statet &goto_state,
-    goto_symex_statet &state) override;
+    const statet::goto_statet &goto_state,
+    statet &state) override;
 
   virtual void vcc(
     const exprt &vcc_expr,
     const std::string &msg,
-    goto_symex_statet &state) override;
+    statet &state) override;
 
   // for loop unwinding
   virtual bool get_unwind(
@@ -330,7 +329,7 @@ protected:
    * taken from void goto_symext::symex_goto(statet &state)
    * in symex_goto.cpp
    */
-  bool is_unwind_loop(goto_symex_statet &state);
+  bool is_unwind_loop(statet &state);
   unsigned int prev_unwind_counter {0}; // Updated on branching: Goto, Funcation_Call and End_Function
   
   #ifdef DEBUG_PARTITIONING
@@ -376,7 +375,7 @@ private:
   // Get L1 version of a symbol
   ssa_exprt get_l1_ssa(const symbolt & symbol) {
     ssa_exprt ssa { symbol.symbol_expr() };
-    state.rename(ssa, ns, goto_symex_statet::levelt::L1);
+    state.rename(ssa, ns, statet::levelt::L1);
     return ssa;
   }
 
