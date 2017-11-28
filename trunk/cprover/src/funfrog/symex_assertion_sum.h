@@ -385,5 +385,17 @@ private:
   }
 
   symbolt get_tmp_ret_val_symbol(const partition_ifacet& iface);
+
+  // to be able to start with a fresh state
+  void reset_state(){
+    state = goto_symext::statet();
+    // since not supporting multiple threads, we do not need to record events;
+    turn_off_recording_events();
+  }
+
+  void turn_off_recording_events() {
+    // turns off doing some book-keeping related to handling multiple threads by CProver
+    state.record_events = false;
+  }
 };
 #endif

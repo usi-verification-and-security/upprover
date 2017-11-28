@@ -62,7 +62,8 @@ symex_assertion_sumt::symex_assertion_sumt(
   use_slicing(_use_slicing),
   do_guard_expl(_do_guard_expl),
   use_smt(_use_smt),
-  max_unwind(_max_unwind) {
+  max_unwind(_max_unwind)
+{
   set_message_handler(_message_handler);
   options.set_option("partial-loops", partial_loops);
 }
@@ -140,7 +141,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   }
 
   // Clear the state
-  state = goto_symext::statet();
+  reset_state();
 
   // Prepare the partitions and deferred functions
   partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION, 0);
@@ -172,7 +173,7 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
   current_assertion = &assertion;
 
   // Clear the state
-  state = goto_symext::statet();
+  reset_state();
 
   // Prepare a partition for the ROOT function and defer
   partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION, 0);
@@ -656,7 +657,9 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
        !lhs.has_operands());
       
     guardt guard;
-    state.record_events=false;
+    // MB without multithreading, no need to record events
+    //state.record_events=false;
+    assert(state.record_events == false);
     symex_assign_symbol(state, lhs, nil_exprt(), *it1, guard, symex_targett::assignment_typet::HIDDEN);
   }
 }
