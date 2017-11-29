@@ -1074,3 +1074,41 @@ smtcheck_opensmt2t::quote_varname(const string& varname)
     }
     return ans;
 }
+
+PTRef smtcheck_opensmt2t::substitute(smt_itpt & itp, const std::vector<symbol_exprt> & symbols) {
+  Tterm * tterm = itp.getTterm();
+  assert(!itp.is_trivial());
+  assert(tterm && logic);
+  const vec<PTRef>& args = tterm->getArgs();
+
+  // summary is defined as a function over arguments to Bool
+  // we need to match the arguments with the symbols and substitute
+  // the assumption is that arguments' names correspond to the base names of the symbols
+  // and they are in the same order
+  // one exception is if global variable is both on input and output, then the out argument was distinguished
+
+  Map<PTRef, PtAsgn, PTRefHash> subst;
+  for(std::size_t i = 0; i < symbols.size(); ++i){
+    std::string symbol_name { get_symbol_name(symbols[i]).c_str() };
+    PTRef argument = args[i];
+    std::string argument_name { logic->getSymName(argument) };
+    if(isGlobalName(argument_name)){
+      argument_name = stripGlobalSuffix(argument_name);
+    }
+    if(symbol_name != argument_name){
+      std::stringstream ss;
+      ss << "Argument name read from summary do not match expected symbol name!\n"
+         << "Expected symbol name: " << symbol_name << "\nName read from summary: " << argument_name;
+
+      throw std::logic_error(ss.str());
+    }
+    PTRef symbol_ptref = this->convert_symbol(symbols[i]);
+    subst.insert(argument, PtAsgn(symbol_ptref, l_True));
+  }
+
+  // do the actual substitution
+  PTRef old_root = tterm->getBody();
+  PTRef new_root;
+  logic->varsubstitute(old_root, subst, new_root);
+  return new_root;
+}

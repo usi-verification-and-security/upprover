@@ -10,7 +10,6 @@
 #include <opensmt/Tterm.h>
 #include "itp.h"
 
-class smtcheck_opensmt2t;
 class smt_itpt: public itpt
 {
 public:
@@ -47,9 +46,9 @@ public:
   void generalize(const prop_conv_solvert& mapping,
     const std::vector<symbol_exprt>& symbols);
 
-  void substitute(smtcheck_opensmt2t& decider,
-    const std::vector<symbol_exprt>& symbols,
-    bool inverted = false) const;
+//  void substitute(smtcheck_opensmt2t& decider,
+//    const std::vector<symbol_exprt>& symbols,
+//    bool inverted = false) const;
 
   virtual literalt raw_assert(propt& decider) const override;
 

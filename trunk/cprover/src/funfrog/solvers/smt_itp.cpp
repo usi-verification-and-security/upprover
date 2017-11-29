@@ -7,7 +7,8 @@ Author:
 \*******************************************************************/
 
 #include "smt_itp.h"
-#include "smtcheck_opensmt2.h"
+
+#include "../utils/naming_helpers.h"
 #include "../hifrog.h"
 #include "../utils/naming_helpers.h"
 
@@ -15,32 +16,6 @@ Author:
 # ifdef DEBUG_ITP_SMT
 #include <iostream>
 #endif
-
-// helper functions for dealing with names of global variables in the summaries
-namespace{
-    inline bool isInputGlobalName(const std::string& name){
-        return name.find(HifrogStringConstants::GLOBAL_INPUT_SUFFIX) != std::string::npos;
-    }
-
-    inline bool isOutputGlobalName(const std::string& name){
-        return name.find(HifrogStringConstants::GLOBAL_OUT_SUFFIX) != std::string::npos;
-    }
-
-    bool isGlobalName(const std::string& name){
-        return isInputGlobalName(name) || isOutputGlobalName(name);
-    }
-
-    std::string stripGlobalSuffix(const std::string& name){
-        if(isInputGlobalName(name)){
-            return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_INPUT_SUFFIX.length());
-        }
-        else if(isOutputGlobalName(name)){
-            return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_OUT_SUFFIX.length());
-        }
-        assert(false);
-        return name;
-    }
-}
 
 bool
 smt_itpt::usesVar(symbol_exprt& symb, unsigned idx)
@@ -227,71 +202,6 @@ void smt_itpt::generalize(const prop_conv_solvert& mapping,
 # endif
 
  // TODO: Re-write the code for SMT (see the Prop version)
-}
-
-
-/*******************************************************************\
-
-Function: smt_itpt::substitute
-
-  Inputs:
-
- Outputs:
-
- Purpose: Renames propositional variables so that the interpolant is
- valid for the given set of identifiers. Moreover, the interpolant is
- asserted in the given propositional solver.
- * 
- * KE: can still be buggy as there are still manual extrations of ids
- * 
- * Originally: tryied to edit L2 ids to be original symbols to match
- * SSA expressions to summaries symbols
- * 
- * KE: not sure the code for #in #out #invs is correct
-
-\*******************************************************************/
-// MB: TODO: move this method to smtcheck_opensmt2t, that way smt_itp does not need to know about the solver
-void smt_itpt::substitute(smtcheck_opensmt2t& decider,
-    const std::vector<symbol_exprt>& symbols,
-    bool inverted) const
-{
-    //TODO remove the inverted parameter?
-    assert(!is_trivial());
-    assert(tterm && logic);
-    const vec<PTRef>& args = tterm->getArgs();
-
-    // summary is defined as a function over arguments to Bool
-    // we need to match the arguments with the symbols and substitute
-    // the assumption is that arguments' names correspond to the base names of the symbols
-    // and they are in the same order
-    // one exception is if global variable is both on input and output, then the out argument was distinguished
-
-    Map<PTRef, PtAsgn, PTRefHash> subst;
-    for(std::size_t i = 0; i < symbols.size(); ++i){
-        std::string symbol_name { get_symbol_name(symbols[i]).c_str() };
-        PTRef argument = args[i];
-        std::string argument_name { logic->getSymName(argument) };
-        if(isGlobalName(argument_name)){
-            argument_name = stripGlobalSuffix(argument_name);
-        }
-        if(symbol_name != argument_name){
-            std::stringstream ss;
-            ss << "Argument name read from summary do not match expected symbol name!\n"
-               << "Expected symbol name: " << symbol_name << "\nName read from summary: " << argument_name;
-
-            throw std::logic_error(ss.str());
-        }
-        PTRef symbol_ptref = decider.convert_symbol(symbols[i]);
-        subst.insert(argument, PtAsgn(symbol_ptref, l_True));
-    }
-
-    // do the actual substiotuition
-    PTRef old_root = tterm->getBody();
-    PTRef new_root;
-    logic->varsubstitute(old_root, subst, new_root);
-    decider.set_to_true(new_root);
-
-    // TODO: set the new root as new body?
 }
 
 

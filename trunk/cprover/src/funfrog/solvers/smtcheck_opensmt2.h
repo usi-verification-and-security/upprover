@@ -16,6 +16,7 @@ Module: Wrapper for OpenSMT2
 #include <solvers/prop/literal.h>
 
 class smt_itpt;
+class symbol_exprt;
 
 // FIXME: add inheritance for class messaget, and replace couts in status/warning/error
 // This shall be to all smt interface classes
@@ -254,6 +255,8 @@ public:
 		  return getPTermString(converted_exprs[expr.hash()]);
 	  return 0;
   }
+
+  PTRef substitute(smt_itpt & itp, const std::vector<symbol_exprt>& symbols);
 };
 
 #endif

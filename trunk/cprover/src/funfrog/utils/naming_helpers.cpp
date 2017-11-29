@@ -6,36 +6,35 @@
 #include <cassert>
 #include <algorithm>
 
-namespace{
-    bool is_number(const std::string& s)
-    {
-        return !s.empty() && std::find_if(s.begin(),
-                                          s.end(), [](char c) { return !std::isdigit(c); }) == s.end();
-    }
+namespace {
+  bool is_number(const std::string & s) {
+    return !s.empty() && std::find_if(s.begin(),
+                                      s.end(), [](char c) { return !std::isdigit(c); }) == s.end();
+  }
 
-    void unquote(std::string& name){
-        assert(is_quoted(name));
-        name.erase(name.size() - 1);
-        name.erase(0,1);
-    }
+  void unquote(std::string & name) {
+    assert(is_quoted(name));
+    name.erase(name.size() - 1);
+    name.erase(0, 1);
+  }
 }
 
-void unquote_if_necessary(std::string& name){
-    if(is_quoted(name)){
-        unquote(name);
-    }
+void unquote_if_necessary(std::string & name) {
+  if (is_quoted(name)) {
+    unquote(name);
+  }
 }
 
 
-std::string quote(const std::string& name){
-    return HifrogStringConstants::SMTLIB_QUOTE + name + HifrogStringConstants::SMTLIB_QUOTE;
+std::string quote(const std::string & name) {
+  return HifrogStringConstants::SMTLIB_QUOTE + name + HifrogStringConstants::SMTLIB_QUOTE;
 }
 
-std::string removeCounter(const std::string& name){
-    auto pos = name.rfind(HifrogStringConstants::COUNTER_SEP);
-    assert(pos != std::string::npos);
-    assert(is_number(name.substr(pos + 1)));
-    return name.substr(0, pos);
+std::string removeCounter(const std::string & name) {
+  auto pos = name.rfind(HifrogStringConstants::COUNTER_SEP);
+  assert(pos != std::string::npos);
+  assert(is_number(name.substr(pos + 1)));
+  return name.substr(0, pos);
 }
 
 bool contains_counter(const std::string& name){
@@ -53,7 +52,16 @@ void clean_name(std::string& name){
     }
 }
 
-const std::string HifrogStringConstants::GLOBAL_OUT_SUFFIX { "#out" };
-const std::string HifrogStringConstants::GLOBAL_INPUT_SUFFIX { "#in" };
+std::string stripGlobalSuffix(const std::string & name) {
+  if (isInputGlobalName(name)) {
+    return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_INPUT_SUFFIX.length());
+  } else if (isOutputGlobalName(name)) {
+    return name.substr(0, name.length() - HifrogStringConstants::GLOBAL_OUT_SUFFIX.length());
+  }
+  throw std::logic_error("stripGlobalSuffix called on a name that does not belong to global variable");
+}
+
+const std::string HifrogStringConstants::GLOBAL_OUT_SUFFIX{"#out"};
+const std::string HifrogStringConstants::GLOBAL_INPUT_SUFFIX{"#in"};
 const char HifrogStringConstants::SMTLIB_QUOTE = '|';
 const char HifrogStringConstants::COUNTER_SEP = '#';
