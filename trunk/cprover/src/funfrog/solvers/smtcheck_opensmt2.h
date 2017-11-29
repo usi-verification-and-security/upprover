@@ -16,6 +16,7 @@ Module: Wrapper for OpenSMT2
 #include <solvers/prop/literal.h>
 
 class smt_itpt;
+class symbol_exprt;
 
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
@@ -248,6 +249,8 @@ public:
 		  return getPTermString(converted_exprs[expr.hash()]);
 	  return 0;
   }
+
+  PTRef substitute(smt_itpt & itp, const std::vector<symbol_exprt>& symbols);
 };
 
 #endif

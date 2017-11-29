@@ -207,36 +207,38 @@ void smt_partitioning_target_equationt::convert_partition(
  \*******************************************************************/
 
 void smt_partitioning_target_equationt::convert_partition_summary(
-		smtcheck_opensmt2t &decider, partitiont& partition) {
-    std::vector < symbol_exprt > common_symbs;
-    summary_storet* summary_store = summarization_context.get_summary_store();
-    fill_common_symbols(partition, common_symbs);
-    unsigned i = 0;
+  smtcheck_opensmt2t & decider, partitiont & partition) {
+  std::vector<symbol_exprt> common_symbs;
+  summary_storet * summary_store = summarization_context.get_summary_store();
+  fill_common_symbols(partition, common_symbs);
+  unsigned i = 0;
 
 #   ifdef DEBUG_SSA
-    std::cout << "Candidate summaries: " << partition.summaries->size()
-                << std::endl;
+  std::cout << "Candidate summaries: " << partition.summaries->size()
+              << std::endl;
 #   endif
 
-    bool is_recursive = partition.get_iface().summary_info.is_recursive(); //on_nondet();
-    unsigned last_summary = partition.applicable_summaries.size() - 1;
+  bool is_recursive = partition.get_iface().summary_info.is_recursive(); //on_nondet();
+  unsigned last_summary = partition.applicable_summaries.size() - 1;
 
-    for (summary_ids_sett::const_iterator it =
-                    partition.applicable_summaries.begin(); it
-                    != partition.applicable_summaries.end(); ++it) {
+  for (auto summary_id : partition.applicable_summaries)
+  {
+    smt_summaryt & summary = dynamic_cast<smt_summaryt &> (summary_store->find_summary(summary_id));
+    if (summary.is_valid() && (!is_recursive || last_summary == i++)) {
+      // we do not want to actually change the summary, because we might need the template later,
+      // we just get a PTRef to the substituted version
+      PTRef substituted_template = decider.substitute(summary, common_symbs);
 
-        smt_summaryt& summary = dynamic_cast<smt_summaryt&> (summary_store->find_summary(*it));
-        if (summary.is_valid() && (!is_recursive || last_summary == i++)) {
 #           ifdef DISABLE_OPTIMIZATIONS
-            out_terms << ";;; Substituting summary #" << *it << "\n";
-            summary.print(out_terms);
-            summary.print(std::cout);
+      out_terms << ";;; Substituting summary #" << summary_id << "\n";
+      out_terms << std::string {decider.getLogic()->printTerm(substituted_template)};
+      //summary.print(out_terms);
+      //summary.print(std::cout);
 #           endif
-            summary.substitute(decider, common_symbs, partition.inverted_summary);
-        }
+      // do not forget to include the summary in the program formula
+      decider.set_to_true(substituted_template);
     }
-        
-    summary_store = NULL;
+  }
 }
 
 /*******************************************************************
