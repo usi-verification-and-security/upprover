@@ -180,10 +180,12 @@ bool goto_symex_statet::constant_propagation(const exprt &expr) const
   else if(expr.id()==ID_mult)
   {
     // propagate stuff with sizeof in it
-    forall_operands(it, expr)
-      if(it->find(ID_C_c_sizeof_type).is_not_nil())
-        return true;
-
+    forall_operands(it, expr) {
+        if (it->find(ID_C_c_sizeof_type).is_not_nil())
+          return true;
+        else if(!constant_propagation(*it))
+          return false;
+      }
     return true;
   }
   else if(expr.id()==ID_array)
