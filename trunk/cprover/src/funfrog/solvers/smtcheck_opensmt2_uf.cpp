@@ -81,10 +81,11 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   sdiv.setLeftAssoc();
   splus.setLeftAssoc();
   sminus.setLeftAssoc();
-  smult.setCommutes();
-  sdiv.setCommutes();
-  splus.setCommutes();
-  sminus.setCommutes();
+//  MB: in UF we should not assume that these symbols are commutative!
+//  smult.setCommutes();
+//  sdiv.setCommutes();
+//  splus.setCommutes();
+//  sminus.setCommutes();
   
   //Declare relations
   s_lt = logic->declareFun(tk_lt, logic->getSort_bool(), args, &msg, true);
