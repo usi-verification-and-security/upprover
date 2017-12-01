@@ -45,6 +45,16 @@ partitioning_target_equationt::partitioning_target_equationt(
 #endif
 }
 
+/*******************************************************************
+ Function: partitioning_target_equationt::reserve_partition
+
+ Inputs:
+
+ Outputs:
+
+ Purpose:
+
+ \*******************************************************************/
 partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet& partition_iface)
 {
     partition_idt new_id = partitions.size();
@@ -64,6 +74,16 @@ partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet&
     return new_id;
 }
 
+/*******************************************************************
+ Function: partitioning_target_equationt::invalidate_partition
+
+ Inputs:
+
+ Outputs:
+
+ Purpose:
+
+ \*******************************************************************/
 void partitioning_target_equationt::invalidate_partition(partition_idt partition_id)
 {
     partitiont& partition = partitions[partition_id];
@@ -145,6 +165,16 @@ void partitioning_target_equationt::prepare_partitions() { // for hifrog only
     }
 }
 
+/*******************************************************************
+ Function: partitioning_target_equationt::fill_common_symbols
+
+ Inputs:
+
+ Outputs:
+
+ Purpose:
+
+ \*******************************************************************/
 void partitioning_target_equationt::fill_common_symbols(const partitiont& partition,
                          std::vector<symbol_exprt>& common_symbols) const
 {

@@ -63,6 +63,10 @@ public:
     return functions.function_map.find(function_id)->second;
   }
   
+  const bool exist_function_info(const irep_idt& function_id) const {
+      return function_infos.find(function_id) != function_infos.end();
+  }
+  
   const function_infot& get_function_info(const irep_idt& function_id) const {
     return function_infos.find(function_id)->second;
   }

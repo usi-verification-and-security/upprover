@@ -12,12 +12,6 @@ irep_idt get_symbol_name(const exprt &expr) {
     return to_ssa_expr(expr).get_original_name();
 }
 //
-//irep_idt get_symbol_L1_name(const exprt &expr) {
-//    if (is_hifrog_inner_symbol_name(expr))
-//        return extract_hifrog_inner_symbol_name(expr);
-//
-//    return to_ssa_expr(expr).get_l1_object_identifier();
-//}
 //
 //bool is_hifrog_inner_symbol_name(const exprt &expr) {
 //    std::string test4inned_hifrog = id2string(expr.get(ID_identifier));
@@ -79,4 +73,34 @@ std::string fix_symex_nondet_name(const exprt &expr) {
     }
     
     return name_expr;
+}
+
+// Get a unique index per query's dump
+unsigned int get_dump_current_index()
+{
+    static unsigned int index=0;
+    index+=1;
+    return index;
+}
+
+// Test if name is without L2 level
+bool is_L2_SSA_symbol(const exprt& expr)
+{
+    if (expr.id() == ID_nondet_symbol)
+        return true; // KE: need to be tested!
+    
+    // Else check program symbols
+    if (expr.id()!=ID_symbol)
+        return false;
+    if (!expr.get_bool(ID_C_SSA_symbol))
+        return false;
+    if (expr.has_operands())
+        return false;
+    if (expr.get(ID_identifier) == get_symbol_name(expr)){
+        return false;
+    }else if (expr.get(ID_identifier) == get_symbol_L1_name(expr)){
+        return false;
+    }
+    
+    return true;
 }

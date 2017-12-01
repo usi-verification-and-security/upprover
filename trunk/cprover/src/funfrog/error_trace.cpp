@@ -1,3 +1,11 @@
+/*******************************************************************
+
+ Module: Error Trace printing for SMT encoding in HiFrog
+
+ Author:
+
+\*******************************************************************/
+
 #include "error_trace.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include <ansi-c/printf_formatter.h>
@@ -5,9 +13,7 @@
 #include "nopartition/smt_symex_target_equation.h"
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
-#include "partition.h"
 #include "hifrog.h"
-
 
 //#define TRACE_DEBUG //Use it to debug the trace of an error build
 
@@ -23,7 +29,7 @@ Function: error_trace::build_exec_order_goto_trace
  Purpose: To create a concrete error trace with concrete values
 
  Note: Copied from build_goto_tarce.cpp
- * 
+ *
  * ANY PROBLEMS with values, you should start look for here!
 
 \*******************************************************************/
@@ -35,7 +41,7 @@ void error_tracet::build_goto_trace (
   unsigned step_nr=0;
 
   const SSA_steps_orderingt& SSA_steps = target.get_steps_exec_order();
-  
+
   for(SSA_steps_orderingt::const_iterator
       it=SSA_steps.begin();
       it!=SSA_steps.end();
@@ -52,17 +58,17 @@ void error_tracet::build_goto_trace (
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
     if (is_cprover_rounding_mode_var(str))
     	continue;
-    
+
     if (is_cprover_builtins_var(str))
     	continue;
 
     if (str.find(DYNAMIC_OBJ)!=std::string::npos)
         continue;
-    
+
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
        str.find(HifrogStringConstants::FUN_RETURN)!=std::string::npos)
         continue;
-    
+
     if (str.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
         continue;
 
@@ -84,7 +90,7 @@ void error_tracet::build_goto_trace (
     goto_trace_step.io_id=SSA_step.io_id;
     goto_trace_step.formatted=SSA_step.formatted;
     goto_trace_step.identifier=SSA_step.identifier;
-    
+
     if(SSA_step.ssa_lhs.is_not_nil()) {
         if (str.find(GOTO_GUARD) == 0){
             goto_trace_step.lhs_object=SSA_step.ssa_lhs;
@@ -108,7 +114,7 @@ void error_tracet::build_goto_trace (
         goto_trace_step.full_lhs_value=val;
 
     }
-    
+
     /* Print nice return value info */
     if (str.find(HifrogStringConstants::FUN_RETURN) < str.size() ||
         str.find(HifrogStringConstants::TMP_RETURN) < str.size())
@@ -117,7 +123,7 @@ void error_tracet::build_goto_trace (
     } else {
         goto_trace_step.format_string=SSA_step.format_string;
     }
-    
+
     for(std::list<exprt>::const_iterator
         j=SSA_step.converted_io_args.begin();
         j!=SSA_step.converted_io_args.end();
@@ -133,7 +139,7 @@ void error_tracet::build_goto_trace (
         goto_trace_step.io_args.push_back(tmp);
       }
     }
-    
+
     // Stop condition + adding data to assume and assert steps
     if(SSA_step.is_assert() || SSA_step.is_assume())
     {
@@ -183,24 +189,24 @@ void error_tracet::build_goto_trace_formula (
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
     if (is_cprover_rounding_mode_var(str))
     	continue;
-    
+
     if (is_cprover_builtins_var(str))
     	continue;
 
     if (str.find(DYNAMIC_OBJ)!=std::string::npos)
         continue;
-    
+
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
        str.find(HifrogStringConstants::FUN_RETURN)!=std::string::npos)
         continue;
-    
-    
+
+
     if (str.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
         continue;
-    
+
     if(SSA_step.ssa_full_lhs.is_not_nil())
     {
     	exprt val;
@@ -327,9 +333,9 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(smtcheck_opensmt2t 
 #ifdef TRACE_DEBUG
     MainSolver *mainSolver = decider.getMainSolver();
 #endif
-    if (decider.has_unsupported_vars() && !decider.has_unsupported_info()) 
-    // KE: only if we used any unsupported var checks and only if we didn't 
-    // try to refine these expr - Need to find a better solution 
+    if (decider.has_unsupported_vars() && !decider.has_unsupported_info())
+    // KE: only if we used any unsupported var checks and only if we didn't
+    // try to refine these expr - Need to find a better solution
     {
         Logic *logic = decider.getLogic();
         std::set<PTRef>* vars = decider.getVars();
@@ -364,7 +370,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(smtcheck_opensmt2t 
         // Clear all vars list before quit
         vars->clear(); delete vars;
     }
-    
+
     if (isOverAppox != error_tracet::isOverAppoxt::SPURIOUS)
     	isOverAppox = error_tracet::isOverAppoxt::REAL;
 
@@ -393,7 +399,7 @@ void error_tracet::show_goto_trace(
 {
     // In case we use over approximate to verify this example - gives a warning to the user!
     assert (isOverAppox != error_tracet::isOverAppoxt::UNKNOWN);
-    
+
     //if (is_trace_overapprox(decider)) {
     if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS) {
         cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
@@ -422,8 +428,8 @@ void error_tracet::show_goto_trace(
             case goto_trace_stept::typet::ATOMIC_END:
             case goto_trace_stept::typet::DECL:
             case goto_trace_stept::typet::MEMORY_BARRIER:
-            case goto_trace_stept::typet::DEAD:  
-            case goto_trace_stept::typet::GOTO:    
+            case goto_trace_stept::typet::DEAD:
+            case goto_trace_stept::typet::GOTO:
                     break;
 
             case goto_trace_stept::typet::CONSTRAINT:
@@ -442,7 +448,7 @@ void error_tracet::show_goto_trace(
                     // KE: keep the same format of prints as in goto-programs/goto_trace.cpp
                     out << std::endl;
                     out << "Violated property:\n  " <<
-                        it->pc->source_location << 
+                        it->pc->source_location <<
                         "\n  " << it->comment <<
                         "\n  " << from_expr(ns, "", it->pc->guard);
 
@@ -658,7 +664,7 @@ Function: error_trace::build_exec_order_goto_trace - for NO PARTITON VERISION
  Purpose: To create a concrete error trace with concrete values
 
  Note: Copied from build_goto_tarce.cpp
- * 
+ *
  * ANY PROBLEMS with values, you should start look for here!
 
 \*******************************************************************/
@@ -685,17 +691,17 @@ void error_tracet::build_goto_trace (
     std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
     if (is_cprover_rounding_mode_var(str))
     	continue;
-    
+
     if (is_cprover_builtins_var(str))
     	continue;
 
     if (str.find(DYNAMIC_OBJ)!=std::string::npos)
         continue;
-    
+
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
        str.find(HifrogStringConstants::FUN_RETURN)!=std::string::npos)
         continue;
-    
+
     if (str.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
         continue;
 
@@ -717,7 +723,7 @@ void error_tracet::build_goto_trace (
     goto_trace_step.io_id=SSA_step.io_id;
     goto_trace_step.formatted=SSA_step.formatted;
     goto_trace_step.identifier=SSA_step.identifier;
-    
+
     if(SSA_step.ssa_lhs.is_not_nil()) {
         if (str.find(GOTO_GUARD) == 0){
             goto_trace_step.lhs_object=SSA_step.ssa_lhs;
@@ -741,7 +747,7 @@ void error_tracet::build_goto_trace (
         goto_trace_step.full_lhs_value=val;
 
     }
-    
+
     /* Print nice return value info */
     if (str.find(HifrogStringConstants::FUN_RETURN) < str.size() ||
 	str.find(HifrogStringConstants::TMP_RETURN) < str.size())
@@ -750,7 +756,7 @@ void error_tracet::build_goto_trace (
     } else {
         goto_trace_step.format_string=SSA_step.format_string;
     }
-    
+
     for(std::list<exprt>::const_iterator
         j=SSA_step.converted_io_args.begin();
         j!=SSA_step.converted_io_args.end();
@@ -766,7 +772,7 @@ void error_tracet::build_goto_trace (
         goto_trace_step.io_args.push_back(tmp);
       }
     }
-    
+
     // Stop condition + adding data to assume and assert steps
     if(SSA_step.is_assert() || SSA_step.is_assume())
     {

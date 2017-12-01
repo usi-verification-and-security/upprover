@@ -1,7 +1,16 @@
+/*******************************************************************\
+
+Module: SMT interpolant.  Based on code on prop_itp.
+
+Author: 
+
+\*******************************************************************/
+
 #include "smt_itp.h"
 
 #include "../utils/naming_helpers.h"
 #include "../hifrog.h"
+#include "../utils/naming_helpers.h"
 
 //#define DEBUG_ITP_SMT
 # ifdef DEBUG_ITP_SMT

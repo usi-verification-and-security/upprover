@@ -14,8 +14,7 @@
 #include <ssa_expr.h>
 
 // For now we have only one thread any hows
-#define LATTICE_TMP_FUNC_RETURN "call__lattice::$tmp_return_value_"
-#define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var#"
+#define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var"
 
 #define CPROVER_BUILDINS "__CPROVER_"
 #define ROUNDING_MODE "__CPROVER_rounding_mode!"
@@ -43,7 +42,8 @@ irep_idt get_symbol_name(const exprt &expr);
 //unsigned get_symbol_L2_counter(const exprt &expr);
 //unsigned extract_hifrog_inner_symbol_L2_counter(const exprt &expr);
 std::string fix_symex_nondet_name(const exprt &expr);
-
+unsigned int get_dump_current_index();
+bool is_L2_SSA_symbol(const exprt& expr);
 
 static inline bool is_cprover_rounding_mode_var(const std::string& str)
 {
@@ -63,6 +63,10 @@ static inline bool is_cprover_builtins_var(const std::string str)
 static inline bool is_cprover_builtins_var(const exprt& e)
 {
     return is_cprover_builtins_var(id2string(e.get(ID_identifier)));
+}
+
+static inline irep_idt get_symbol_L1_name(const exprt &expr) {
+    return to_ssa_expr(expr).get_l1_object_identifier();
 }
 
 

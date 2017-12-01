@@ -213,9 +213,6 @@ private:
   // Marks the SSA symbols of accessed globals
   void mark_accessed_global_symbols(const irep_idt & function_id, partition_ifacet & partition_iface);
 
-  // L2 rename - new code
-//  void level2_rename_init(statet &state, const symbol_exprt &expr);
-
   // Assigns values from the modified global variables. Marks the SSA symbol 
   // of the global variables for later use when processing the deferred function
   void modified_globals_assignment_and_mark(
@@ -255,7 +252,6 @@ private:
   // the callend symbol)
   void produce_callend_assumption(
         const partition_ifacet& partition_iface, statet& state);
-
 
   // Makes an assignment without increasing the version of the
   // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
@@ -303,12 +299,14 @@ private:
           partition_idt parent_id, unsigned call_loc);
    
 protected:
+  // KE: override from goto_symex.h
   virtual void phi_function(
     const statet::goto_statet &goto_state,
     statet &state) override;
 
+  // KE: override from goto_symex.h
   virtual void vcc(
-    const exprt &vcc_expr,
+    const exprt &expr,
     const std::string &msg,
     statet &state) override;
 

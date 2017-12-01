@@ -34,7 +34,7 @@ public:
 #ifdef DISABLE_OPTIMIZATIONS                
       dump_queries(false),
       dump_pre_queries(false),
-      pre_queries_file_name("__pre_query.smt2"),
+      pre_queries_file_name("__pre_query_default"), // .smt2 file
 #endif              
       partition_count(0),
       current_partition(0),
@@ -119,7 +119,7 @@ public:
           osmt->getConfig().set_dump_query_name(n.c_str());
       }
       
-      pre_queries_file_name = "__preq_" + n + ".smt2";
+      pre_queries_file_name = "__preq_" + n;
   }
   
   void set_dump_pre_query(bool f) { dump_pre_queries = f;}

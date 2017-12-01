@@ -12,7 +12,6 @@
 #include "smt_assertion_sum.h"
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
-#include "partition.h"
 
 #define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
 theory_refinert::~theory_refinert()

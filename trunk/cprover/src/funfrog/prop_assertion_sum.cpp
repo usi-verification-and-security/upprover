@@ -9,13 +9,10 @@
 #include "prop_assertion_sum.h"
 #include <goto-symex/build_goto_trace.h>
 #include <goto-programs/xml_goto_trace.h>
-//#include <find_symbols.h>
-//#include <ansi-c/expr2c.h>
 #include <time_stopping.h>
 #include <ui_message.h>
 #include "solvers/prop/prop_conv.h"
 #include "prop_partitioning_target_equation.h"
-#include "partition.h"
 
 
 /*******************************************************************

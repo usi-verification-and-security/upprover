@@ -650,7 +650,8 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
     //symbol_exprt lhs(state.get_original_name(it1->get_identifier()), ns.follow(it1->type()));
     //symbol_exprt lhs = to_symbol_expr(to_ssa_expr(*it1).get_original_expr());
     ssa_exprt lhs(symbol_exprt((to_ssa_expr(*it1).get_original_expr()).get(ID_identifier), ns.follow(it1->type())));
-
+    //FIXME: unify rename/SSA fabrication
+    
     // Check before getting into symex_assign_symbol that lhs is correct
     assert(lhs.id()==ID_symbol &&
        lhs.get_bool(ID_C_SSA_symbol) &&
@@ -846,6 +847,8 @@ void symex_assertion_sumt::mark_accessed_global_symbols(const irep_idt & functio
  symbol of the global variables for later use when processing the deferred 
  function
 
+ FIXME: unify rename/SSA fabrication
+
 \*******************************************************************/
 void symex_assertion_sumt::modified_globals_assignment_and_mark(
     const irep_idt &function_id,
@@ -930,6 +933,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
  Purpose: Assigns modified globals to the corresponding temporary SSA 
  symbols.
 
+ FIXME: unify rename/SSA fabrication
 \*******************************************************************/
 void symex_assertion_sumt::store_modified_globals(
         statet &state,
@@ -1554,7 +1558,8 @@ Function: symex_assertion_sumt::claim
 
  Outputs:
 
- Purpose:
+ Purpose: vcc and claim is the same (one is in the old version
+ and one is in the new version)
 
 \*******************************************************************/
 
@@ -1578,6 +1583,17 @@ void symex_assertion_sumt::vcc(
   target.assertion(state.guard.as_expr(), expr, msg, state.source);
 }
 
+/*******************************************************************\
+
+Function: symex_assertion_sumt::end_symex
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
 void symex_assertion_sumt::end_symex(statet &state)
 {
   store_modified_globals(state, get_current_deferred_function());
@@ -1624,7 +1640,6 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
         return false;
     }
 }
-
 
 /*******************************************************************
 

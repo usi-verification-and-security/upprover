@@ -387,6 +387,11 @@ void function_infot::analyze_globals_rec(summarization_contextt& context,
       const irep_idt &target_function = to_symbol_expr(
               to_code_function_call(inst.code).function()).get_identifier();
       function_infot& target_info = context.get_function_info(target_function);
+      if (!context.exist_function_info(target_function)) {
+        // This function id is missing from context (the data comes from cprover without this id)
+        // the function id was not loaded into summarization_contextt (in c'tor)
+        std::cerr << "** Function ID " << target_function << " is not in the context tables **" << std::endl;
+      }
 
       if (functions_analyzed.find(target_function) == functions_analyzed.end()) {
         target_info.analyze_globals_rec(context, ns, functions_analyzed);
@@ -464,10 +469,21 @@ void function_infot::add_to_set_if_global(const namespacet& ns,
   } else if (ex.id() == ID_minus) {
     add_to_set_if_global(ns, to_minus_expr(ex).operands()[0], set);
     add_to_set_if_global(ns, to_minus_expr(ex).operands()[1], set);
-  }
 
-  else {
-    std::cerr << "WARNING: Unsupported index/member scheme - ignoring." << std::endl;
+  } else if (ex.id() == ID_mod) {
+    add_to_set_if_global(ns, to_mod_expr(ex).operands()[0], set);
+    add_to_set_if_global(ns, to_mod_expr(ex).operands()[1], set);
+
+  } else if (ex.id() == ID_div) {
+	    add_to_set_if_global(ns, to_div_expr(ex).operands()[0], set);
+	    add_to_set_if_global(ns, to_div_expr(ex).operands()[1], set);
+
+  } else if ((ex.id() == ID_shl) || (ex.id() == ID_ashr) || (ex.id() == ID_lshr)) { // ID_shl, ID_ashr, ID_lshr
+	add_to_set_if_global(ns, to_shift_expr(ex).operands()[0], set);
+	add_to_set_if_global(ns, to_shift_expr(ex).operands()[1], set);
+
+  } else {
+    std::cerr << "WARNING: Unsupported operator or index/member scheme - ignoring " << ex.id() << "." << std::endl;
 #if defined(DEBUG_GLOBALS) && defined(DISABLE_OPTIMIZATIONS)
     expr_pretty_print(std::cerr << "Expr: ", ex);
     throw "Unsupported indexing scheme.";

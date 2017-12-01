@@ -1,10 +1,10 @@
+#include "dependency_checker.h"
+
 #include <memory>
 #include <fstream>
 #include <time_stopping.h>
 #include <expr_util.h>
-#include "partition.h"
 
-#include "dependency_checker.h"
 #ifdef DISABLE_OPTIMIZATIONS
 #include "expr_pretty_print.h"
 #endif

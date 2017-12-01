@@ -12,8 +12,6 @@
 #include "error_trace.h"
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2.h"
-#include "partition.h"
-
 
 time_periodt global_satsolver_time;
 

@@ -5,6 +5,7 @@
 #include "naming_helpers.h"
 #include <cassert>
 #include <algorithm>
+#include <stdexcept>
 
 namespace {
   bool is_number(const std::string & s) {

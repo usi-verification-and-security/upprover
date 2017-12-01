@@ -5,13 +5,15 @@ Module: Propositional interpolant.  Based on code of cnft.
 Author: Ondrej Sery
 
 \*******************************************************************/
+#include "prop_itp.h"
+
 #include <limits.h>
 #include <string.h>
-#include "prop_itp.h"
 #include <stdlib.h>
 #include "time_stopping.h"
 #include <symbol_table.h>
 #include "satcheck_opensmt2.h"
+#include "../utils/naming_helpers.h"
 
 //#define DEBUG_ITP
 # ifdef DEBUG_ITP
@@ -220,7 +222,7 @@ void prop_itpt::generalize(const prop_conv_solvert& decider,
     
 #   ifdef DEBUG_ITP
     std::cout << " -> '" << it->get_identifier() << "' - " << entry.width << std::endl;
-    assert(id2string(it->get_identifier()).find(COUNTER) != std::string::npos);
+    assert(id2string(it->get_identifier()).find(HifrogStringConstants::COUNTER_SEP) != std::string::npos);
 #   endif
 
     // Check there are no issues with SSA translation that leaked here:

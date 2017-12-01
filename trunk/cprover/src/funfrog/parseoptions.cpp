@@ -126,7 +126,7 @@ bool funfrog_parseoptionst::process_goto_program(
       get_message_handler(),
       symbol_table,
       goto_functions,
-      cmdline.isset("pointer-check"));
+      false); // HiFrog doesn't have pointer check, set the flag to false always
     // Java virtual functions -> explicit dispatch tables:
     remove_virtual_functions(symbol_table, goto_functions);
     // remove catch and throw
@@ -487,9 +487,9 @@ void funfrog_parseoptionst::help()
 #ifdef DISABLE_OPTIMIZATIONS   
   "\nDebug Options:                 \n"          
   "--list-templates               dump the templates of the functions for user-defined summaries\n"
-  "--dump-SSA-tree                ask a dump of the SSA tree in smtlib format\n"
-  "--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n"
-  "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n"
+  "--dump-SSA-tree                ask a dump of the SSA tree in smtlib format\n" //the default is __SSAt__dump_1.smt2
+  "--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
+  "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
   "--dump-query-name <base>       base name for the files where queries are dumped\n"
 #endif
 //  "\nRefinement options:\n"
@@ -679,7 +679,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   status() << "\n*** USING INTERPOLATION AND SUMMARIES (DPRODUCE_PROOF is on) ***\n" << eom;
 #else
   options.set_option("no-itp", true); // If not using itp, this flag is true always!
-  status() << "\n*** NO ITERPOLATION MODE, NOT USING SUMMARY FILES (DPRODUCE_PROOF is off) ***\n" << eom;
+  status() << "\n*** NO INTERPOLATION MODE, NOT USING SUMMARY FILES (DPRODUCE_PROOF is off) ***\n" << eom;
 #endif 
 #ifdef DISABLE_OPTIMIZATIONS  
   if (cmdline.isset("dump-SSA-tree"))
@@ -693,8 +693,8 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 
   if (cmdline.isset("dump-query-name")) {
       options.set_option("dump-query-name", cmdline.get_value("dump-query-name"));
-  } else { // Set to empty string and let osmt choose the name
-      options.set_option("dump-query-name", "");
+  } else { // Set a default name in case no name was provided by user
+      options.set_option("dump-query-name", "_dump");
   }  
   status() << "\n*** DEBUG MODE ON: QUERIES DUMP OPTIONS ARE ON (DDISABLE_OPTIMIZATIONS is on) ***\n" << eom;
 #else

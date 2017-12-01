@@ -65,5 +65,4 @@ inline bool is_main(const std::string& name){
 
   std::string stripGlobalSuffix(const std::string& name);
 
-
 #endif //HIFROG_NAMING_HELPERS_H

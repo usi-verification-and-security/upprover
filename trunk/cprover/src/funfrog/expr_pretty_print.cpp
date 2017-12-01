@@ -98,6 +98,9 @@ expr_pretty_printt::operator()(const exprt &expr)
     } else if (expr.id() == ID_symbol) {
         if (is_prev_token) out << " ";
         out << SYMBOL_COLOR << "|" << expr.get(ID_identifier) << "|" << NORMAL_COLOR;
+        if (!is_L2_SSA_symbol(expr)) {
+            std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree(" << expr.get(ID_identifier) << ")\n" ;
+        }
         is_prev_token = true;
         addToDeclMap(expr); // Add the symbol to the symbol table
     } else if (expr.id() == ID_constant) {

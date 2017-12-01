@@ -23,15 +23,13 @@ Author: Ondrej Sery
 #endif
 
 #include <goto-symex/symex_target_equation.h>
-#include "partition_fwd.h"
 #include "utils/coloring_mode.h"
 #include "summary_store_fwd.h"
 #include "solvers/interpolating_solver_fwd.h"
-
+#include "partition.h"
 
 class summarization_contextt;
 class partition_ifacet;
-class partitiont;
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 
@@ -113,7 +111,7 @@ public:
   void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}
   void set_dump_SSA_tree_name(const std::string& n)
   {
-    ssa_tree_file_name = "__SSAt_" + n + ".smt2";
+    ssa_tree_file_name = "__SSAt_" + n;
   }
 #endif
   

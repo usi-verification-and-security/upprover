@@ -333,6 +333,10 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
         }
       }
     }
+      else{
+        // end is true -> report success (It is needed when the assertion trivially holds)
+        report_success();
+    }
   }
   final = current_time();
   omega.get_unwinding_depth();

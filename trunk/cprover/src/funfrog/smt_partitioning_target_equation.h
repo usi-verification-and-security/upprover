@@ -17,8 +17,7 @@ class smtcheck_opensmt2t;
 class interpolating_solvert;
 
 // Two classes for smt and prop   
-class partitioning_target_equationt;
-class smt_partitioning_target_equationt:public partitioning_target_equationt 
+class smt_partitioning_target_equationt:public partitioning_target_equationt
 {
 public:
   smt_partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
