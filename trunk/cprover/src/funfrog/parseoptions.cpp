@@ -7,6 +7,7 @@
          Ondrej Sery
 
 \*******************************************************************/
+#include "parseoptions.h"
 
 #include <config.h>
 #include <iostream>
@@ -55,7 +56,6 @@
 
 #include "check_claims.h"
 #include "version.h"
-#include "parseoptions.h"
 #include <limits>
 
 
@@ -430,7 +430,7 @@ void funfrog_parseoptionst::help()
   "                               (treshold = number of SSA steps)\n"
   "                               and check stronger claims at once\n"
   "--unwind <bound>               loop unwind bound\n"
-  "--no-partial-loops             forbid paths with partial loop\n"
+  "--partial-loops                do not forbid paths with unsufficient loop unwinding (due to unwind bound)\n"
   "--type-constraints             LRA's basic constraints on numerical data type\n"
   "                                 0 for no additional constraints,\n"
   "                                 1 for type constraints on non-deterministic input\n"
@@ -712,7 +712,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("force", cmdline.isset("force"));
   options.set_option("custom", cmdline.get_value("custom"));
   options.set_option("heuristic", cmdline.get_value("heuristic"));
-  options.set_option("partial-loops", !cmdline.isset("no-partial-loops"));
+  options.set_option("partial-loops", cmdline.isset("partial-loops"));
   if (cmdline.isset("bitwidth")) {
     options.set_option("bitwidth", cmdline.get_value("bitwidth"));
   } else {
