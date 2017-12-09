@@ -490,7 +490,7 @@ void funfrog_parseoptionst::help()
 #ifdef DISABLE_OPTIMIZATIONS   
   "\nDebug Options:                 \n"          
   "--list-templates               dump the templates of the functions for user-defined summaries\n"
-  "--dump-SSA-tree                ask a dump of the SSA tree in smtlib format\n" //the default is __SSAt__dump_1.smt2
+  "--dump-SSA-tree                ask a dump of the PBMC formula in smtlib format\n" //the default is __SSAt__dump_1.smt2
   "--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
   "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
   "--dump-query-name <base>       base name for the files where queries are dumped\n"
