@@ -36,7 +36,7 @@
 #include <goto-programs/remove_static_init_loops.h>
 #include <goto-programs/mm_io.h>
 #include <goto-programs/goto_inline.h>
-#include <goto-programs/show_properties.h>
+//#include <goto-programs/show_properties.h>
 #include <goto-programs/set_properties.h>
 #include <goto-programs/read_goto_binary.h>
 #include <goto-programs/string_abstraction.h>
@@ -62,7 +62,6 @@
 #include "version.h"
 #include "parseoptions.h"
 
-
 /*******************************************************************
 
  Function: funfrog_parseoptionst::funfrog_parseoptionst
@@ -84,6 +83,102 @@ funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
 {
 }
 
+/*******************************************************************\
+
+Function: cbmc_parseoptionst::show_properties (show-claims)
+
+Inputs:
+
+Outputs:
+
+Purpose: shows the info about each claim. This method is a modification to the
+ show_properties() function in the goto-programs/show_properties.cpp.
+
+\*******************************************************************/
+namespace {
+    void show_properties(
+            const namespacet &ns,
+            const irep_idt &identifier,
+            ui_message_handlert::uit ui,
+            const goto_programt &goto_program) {
+        static int total = 1;
+        for (const auto &ins : goto_program.instructions) {
+            if (!ins.is_assert())
+                continue;
+
+            const source_locationt &source_location = ins.source_location;
+
+            const irep_idt &comment = source_location.get_comment();
+            //const irep_idt &property_class=source_location.get_property_class();
+            const irep_idt description =
+                    (comment == "" ? "assertion" : comment);
+
+            irep_idt property_id = source_location.get_property_id();
+
+            switch (ui) {
+                /*   case ui_message_handlert::uit::XML_UI:
+                   {
+                     // use me instead
+                     xmlt xml_property("property");
+                     xml_property.set_attribute("name", id2string(property_id));
+                     xml_property.set_attribute("class", id2string(property_class));
+
+                     xmlt &property_l=xml_property.new_element();
+                     property_l=xml(source_location);
+
+                     xml_property.new_element("description").data=id2string(description);
+                     xml_property.new_element("expression").data=
+                             from_expr(ns, identifier, ins.guard);
+
+                     std::cout << xml_property << '\n';
+                   }
+                         break;*/
+
+                case ui_message_handlert::uit::JSON_UI:
+                    assert(false);
+                    break;
+
+                case ui_message_handlert::uit::PLAIN:
+                    std::cout << "#Claim[" << total << "]" << " *** Property " << property_id << ":\n";
+
+                    std::cout << "  At: " << ins.source_location << '\n'
+                              << "  Guard: " << description << '\n'
+                              //<< "  " << from_expr(ns, identifier, ins.guard)
+                              << '\n';
+                    total++;
+                    std::cout << '\n';
+                    break;
+
+                default:
+                    assert(false);
+            }
+        }
+    }
+
+}
+/*******************************************************************/
+namespace {
+    void show_properties(
+            const namespacet &ns,
+            ui_message_handlert::uit ui,
+            const goto_functionst &goto_functions) {
+        if (ui != ui_message_handlert::uit::JSON_UI)
+            for (const auto &fct : goto_functions.function_map)
+                if (!fct.second.is_inlined())
+                    show_properties(ns, fct.first, ui, fct.second.body);
+    }
+}
+/*******************************************************************
+
+ Function: funfrog_parseoptionst::process_goto_program
+
+ Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
 bool funfrog_parseoptionst::process_goto_program(
   namespacet& ns,
   optionst& options,
@@ -206,7 +301,17 @@ bool funfrog_parseoptionst::process_goto_program(
 
   return false;
 }
+/*******************************************************************
 
+ Function: funfrog_parseoptionst::get_goto_program
+
+ Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
 bool funfrog_parseoptionst::get_goto_program(
   const std::string &filename,
   namespacet& ns,
@@ -417,12 +522,13 @@ void funfrog_parseoptionst::help()
   " hifrog [options] <file>       run on goto-binary `file'\n"
   "\nGeneral Purpose options:\n"
   "--version                      show version information\n"
+
   "--save-summaries <filename>    save collected function summaries\n"
   "                               to the given file\n"
   "--load-summaries <filename1,>  load function summaries\n"
   "                               from the given file(s)\n"
   "--show-claims                  output the claims list\n"
-  "--claims-count                 output the total number of claims\n"
+  "                               and prints the total number of claims\n"
 //  "--bounds-check                 enable array bounds checks\n"
 //  "--div-by-zero-check            enable division by zero checks\n"
 //  "--pointer-check                enable pointer checks\n"
@@ -435,13 +541,13 @@ void funfrog_parseoptionst::help()
   "                               and check stronger claims at once\n"
   "--unwind <bound>               loop unwind bound\n"
   "--type-constraints             LRA's basic constraints on numerical data type\n"
-  "                                 0 for no additional constraints,\n"
-  "                                 1 for type constraints on non-deterministic input\n"
-  "                                 2 for type constraints on variables\n"   
+  "                                 0 - no additional constraints,\n"
+  "                                 1 - type constraints on non-deterministic input\n"
+  "                                 2 - type constraints on all variables according to their data-type\n"
   "--type-byte-constraints        CUF's basic constraints on numerical data type\n"
-  "                                 0 for no additional constraints,\n"
-  "                                 1 for type constraints on char data type\n"
-  "                                 2 for type constraints on all numerical data types\n"             
+  "                                 0 - no additional constraints,\n"
+  "                                 1 - type constraints on char data type\n"
+  "                                 2 - type constraints on all numerical data types\n"
   "--no-slicing                   no slicing of the SSA program form (slower\n"
   "                               computation, more dependable result)\n"
   "--no-assert-grouping           do not group checks for the same assertion\n"
@@ -449,11 +555,11 @@ void funfrog_parseoptionst::help()
   "--no-summary-optimization      do not attempt to remove superfluous\n"
   "                               summaries (saves few cheap SAT calls)\n"
   "--no-error-trace               disable the counter example's print once a real bug found\n"
-#ifdef PRODUCE_PROOF          
+#ifdef PRODUCE_PROOF
   "--no-itp                       do not construct summaries (just report SAFE/BUG)\n"
 #endif
-  "--no-partitions                do not use partitions to create the bmc formula\n\n"        
-  "\nSMT, Interpolation and Proof Reduction options:\n"
+  "--no-partitions                do not use partitions to create the BMC formula\n\n"
+  "\nTheory Refinement options:\n"
   "--theoref                      use experimental Theory Refining algorithm\n"
   "--force                        force refining CUF to BV without counterexamples\n"
   "--custom <n1,n2,..>            program statement ids to be refined (without counterexamples)\n"
@@ -467,34 +573,41 @@ void funfrog_parseoptionst::help()
   "                                 6 - forward with multiple refinement & dependencies\n"
   "                                 7 - backward with multiple refinement & dependencies\n"
   "--bitwidth <n>                 bitwidth for the CUF BV mode\n\n"
+
+#ifdef PRODUCE_PROOF
+  "\nSMT, Interpolation, and Proof Reduction options:\n"
   "--logic <logic>                [qfuf, qfcuf, qflra, prop] if not present qfuf is used\n"
-#ifdef PRODUCE_PROOF           
+
   "--itp-algorithm                propositional interpolation algorithm: \n"
-  "                                 0 for McMillan_s,\n"
-  "                                 1 for Pudlak,\n"
-  "                                 2 for McMillan_w\n"
+  "                                 0 - McMillan_s,\n"
+  "                                 1 - Pudlak,\n"
+  "                                 2 - McMillan_w\n"
   "--itp-uf-algorithm             EUF interpolation algorithm:\n"
-  "                                 0 for Strong,\n"
-  "                                 2 for Weak,\n"
-  "                                 3 for Random\n"
+  "                                 0 - Strong,\n"
+  "                                 2 - Weak,\n"
+  "                                 3 - Random\n"
   "--itp-lra-algorithm            LRA interpolation algorithm:\n"
-  "                                 0 for Strong,\n"
-  "                                 2 for Weak\n"
-  "                                 3 for custom factor.\n"
+  "                                 0 - Strong,\n"
+  "                                 2 - Weak\n"
+  "                                 3 - custom factor.\n"
   "--itp-lra-factor               LRA interpolation strength factor:\n"
   "                               must be a fraction in the interval [0,1)\n"
   "--reduce-proof                 enable Proof Reduction\n"
   "--reduce-proof-graph           number of graph traversals per reduction iteration\n"
   "--reduce-proof-loops           number of reduction iterations\n"
-#endif   
-#ifdef DISABLE_OPTIMIZATIONS   
-  "\nDebug Options:                 Options Valid Only in SMT-Based Verification\n"          
-  "--list-templates                 dump the templates of the functions for user-defined summaries\n"
-  "--dump-SSA-tree                  ask a dump of the PBMC formula in smtlib format\n" //the default is __SSAt__dump_1.smt2
-  "--dump-pre-query                 ask HiFrog to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
-  "--dump-query                     ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
-  "--dump-query-name <base>         base name for the files where queries are dumped\n"
 #endif
+
+#ifdef DISABLE_OPTIMIZATIONS   
+  "\nDebug Options:(Options Valid Only in SMT-Based Verification)\n"
+  "--list-templates               dump the templates of the functions for user-defined summaries\n"
+  "--dump-SSA                     ask a dump of SSA form in smt2 format\n" //the default is __SSA__dump_1.smt2
+  "--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
+  "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
+  "--dump-query-name <base>       base name for the files where queries are dumped\n"
+#endif
+  "\nProgram representations:\n"
+   "--show-symbol-table             show symbol table\n"
+   "--show-program                  show goto program\n"
 //  "\nRefinement options:\n"
 //  "--refine-mode <mode>:\n"
 //  "  0 | \"force-inlining\"         inline every function call\n"
@@ -577,17 +690,13 @@ bool funfrog_parseoptionst::check_function_summarization(
     get_claims(goto_functions, claim_map, claim_numbers);
     cbmc_status_interface("Checking claims in program...(" + std::to_string(claim_numbers.size())+")");
 
-    if(cmdline.isset("show-claims")|| // will go away
-	 cmdline.isset("show-properties")) // use this one
-    {
-	  const namespacet ns(symbol_table);
-	  show_properties(ns, get_ui(), goto_functions);
-	  return 0;
-    } else if(cmdline.isset("claims-count")) {
-        std::cout <<"(claims-count),"<< claim_numbers.size() << std::endl;
+    if(cmdline.isset("show-claims")||
+	 cmdline.isset("show-properties")) {
+      const namespacet ns(symbol_table);
+        show_properties(ns, get_ui(), goto_functions);
+        cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
         return 0;
-    }
-
+     }
     // perform standalone check (all the functionality remains the same)
   
     if(cmdline.isset("claim") &&

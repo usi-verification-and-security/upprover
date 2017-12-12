@@ -187,7 +187,7 @@ public:
   void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}
   void set_dump_SSA_tree_name(const std::string& n)
   {
-    ssa_tree_file_name = "__SSAt_" + n;
+    ssa_tree_file_name = "__SSA_" + n;
   }
 #endif
   
