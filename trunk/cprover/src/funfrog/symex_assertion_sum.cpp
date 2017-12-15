@@ -736,6 +736,7 @@ void symex_assertion_sumt::assign_function_arguments(
   const irep_idt &identifier=
     to_symbol_expr(function_call.function()).get_identifier();
 
+
   // find code in function map
   const auto it = summarization_context.get_functions().function_map.find(identifier);
 
@@ -947,10 +948,11 @@ void symex_assertion_sumt::store_modified_globals(
 
   for (const auto & out_symbol : partition_iface.out_arg_symbols) {
     // get original symbol expression
-    const symbol_exprt & rhs  = to_symbol_expr(to_ssa_expr(out_symbol).get_original_expr());
+    const ssa_exprt & iface_symbol_version = to_ssa_expr(out_symbol);
+    const symbol_exprt & rhs  = to_symbol_expr(iface_symbol_version.get_original_expr());
     assert(ns.follow(out_symbol.type()) == ns.follow(rhs.type()));
     // Emit the assignment
-    raw_assignment(state, to_ssa_expr(out_symbol), rhs, ns);
+    raw_assignment(state, iface_symbol_version, rhs, ns);
   }
 //  constant_propagation = old_cp;
 }
@@ -976,7 +978,7 @@ void symex_assertion_sumt::store_return_value(
   if (!partition_iface.returns_value)
     return;
   
-  ssa_exprt lhs = to_ssa_expr(partition_iface.retval_symbol);
+  const ssa_exprt & lhs = to_ssa_expr(partition_iface.retval_symbol);
   const auto& rhs = to_symbol_expr(state.top().return_value);
   
   assert( ns.follow(lhs.type()) == ns.follow(rhs.type()));
