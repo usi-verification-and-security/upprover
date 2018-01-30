@@ -25,6 +25,7 @@ Author: Ondrej Sery
 using namespace std;
 
 #include "expr_pretty_print.h"
+#include "hifrog.h"
 #endif
 
 /*******************************************************************\
