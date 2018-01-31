@@ -6,64 +6,30 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "config.h"
+
 #include <cstdlib>
 
 #include "namespace.h"
-#include "config.h"
 #include "symbol_table.h"
 #include "arith_tools.h"
 #include "cmdline.h"
 #include "simplify_expr.h"
 #include "std_expr.h"
 #include "cprover_prefix.h"
+#include "string2int.h"
 
 configt config;
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_16
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_16()
 {
   set_LP32();
 }
 
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_32
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void configt::ansi_ct::set_32()
 {
   set_ILP32();
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_64
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_64()
 {
@@ -74,18 +40,7 @@ void configt::ansi_ct::set_64()
   #endif
 }
 
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_LP64
-
-  Inputs:
-
- Outputs:
-
- Purpose: int=32, long=64, pointer=64
-
-\*******************************************************************/
-
+/// int=32, long=64, pointer=64
 void configt::ansi_ct::set_LP64()
 {
   bool_width=1*8;
@@ -105,18 +60,7 @@ void configt::ansi_ct::set_LP64()
   memory_operand_size=int_width/8;
 }
 
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_ILP64
-
-  Inputs:
-
- Outputs:
-
- Purpose: int=64, long=64, pointer=64
-
-\*******************************************************************/
-
+/// int=64, long=64, pointer=64
 // TODO: find the alignment restrictions (per type) of the different
 // architectures (currently: sizeof=alignedof)
 // TODO: implement the __attribute__((__aligned__(val)))
@@ -140,18 +84,7 @@ void configt::ansi_ct::set_ILP64()
   memory_operand_size=int_width/8;
 }
 
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_LLP64
-
-  Inputs:
-
- Outputs:
-
- Purpose: int=32, long=32, pointer=64
-
-\*******************************************************************/
-
+/// int=32, long=32, pointer=64
 void configt::ansi_ct::set_LLP64()
 {
   bool_width=1*8;
@@ -171,18 +104,7 @@ void configt::ansi_ct::set_LLP64()
   memory_operand_size=int_width/8;
 }
 
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_ILP32
-
-  Inputs:
-
- Outputs:
-
- Purpose: int=32, long=32, pointer=32
-
-\*******************************************************************/
-
+/// int=32, long=32, pointer=32
 void configt::ansi_ct::set_ILP32()
 {
   bool_width=1*8;
@@ -202,18 +124,7 @@ void configt::ansi_ct::set_ILP32()
   memory_operand_size=int_width/8;
 }
 
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_LP32
-
-  Inputs:
-
- Outputs:
-
- Purpose: int=16, long=32, pointer=32
-
-\*******************************************************************/
-
+/// int=16, long=32, pointer=32
 void configt::ansi_ct::set_LP32()
 {
   bool_width=1*8;
@@ -232,18 +143,6 @@ void configt::ansi_ct::set_LP32()
   alignment=1;
   memory_operand_size=int_width/8;
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_i386
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_i386()
 {
@@ -273,21 +172,9 @@ void configt::ansi_ct::set_arch_spec_i386()
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_x86_64
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_x86_64()
 {
@@ -322,21 +209,9 @@ void configt::ansi_ct::set_arch_spec_x86_64()
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_power
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_power(const irep_idt &subarch)
 {
@@ -395,21 +270,9 @@ void configt::ansi_ct::set_arch_spec_power(const irep_idt &subarch)
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_arm
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_arm(const irep_idt &subarch)
 {
@@ -450,21 +313,9 @@ void configt::ansi_ct::set_arch_spec_arm(const irep_idt &subarch)
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_alpha
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_alpha()
 {
@@ -491,21 +342,9 @@ void configt::ansi_ct::set_arch_spec_alpha()
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_mips
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_mips(const irep_idt &subarch)
 {
@@ -543,7 +382,7 @@ void configt::ansi_ct::set_arch_spec_mips(const irep_idt &subarch)
     break;
 
   case flavourt::VISUAL_STUDIO:
-    assert(false); // not supported by Visual Studio
+    UNREACHABLE; // not supported by Visual Studio
     break;
 
   case flavourt::APPLE:
@@ -553,21 +392,9 @@ void configt::ansi_ct::set_arch_spec_mips(const irep_idt &subarch)
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_s390
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_s390()
 {
@@ -584,7 +411,7 @@ void configt::ansi_ct::set_arch_spec_s390()
     break;
 
   case flavourt::VISUAL_STUDIO:
-    assert(false); // not supported by Visual Studio
+    UNREACHABLE; // not supported by Visual Studio
     break;
 
   case flavourt::APPLE:
@@ -594,21 +421,9 @@ void configt::ansi_ct::set_arch_spec_s390()
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_s390x
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_s390x()
 {
@@ -624,7 +439,7 @@ void configt::ansi_ct::set_arch_spec_s390x()
     break;
 
   case flavourt::VISUAL_STUDIO:
-    assert(false); // not supported by Visual Studio
+    UNREACHABLE; // not supported by Visual Studio
     break;
 
   case flavourt::APPLE:
@@ -634,21 +449,9 @@ void configt::ansi_ct::set_arch_spec_s390x()
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_sparc
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_sparc(const irep_idt &subarch)
 {
@@ -676,7 +479,7 @@ void configt::ansi_ct::set_arch_spec_sparc(const irep_idt &subarch)
     break;
 
   case flavourt::VISUAL_STUDIO:
-    assert(false); // not supported by Visual Studio
+    UNREACHABLE; // not supported by Visual Studio
     break;
 
   case flavourt::APPLE:
@@ -686,21 +489,9 @@ void configt::ansi_ct::set_arch_spec_sparc(const irep_idt &subarch)
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_ia64
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_ia64()
 {
@@ -729,21 +520,9 @@ void configt::ansi_ct::set_arch_spec_ia64()
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_x32
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_x32()
 {
@@ -766,7 +545,7 @@ void configt::ansi_ct::set_arch_spec_x32()
     break;
 
   case flavourt::VISUAL_STUDIO:
-    assert(false); // not supported by Visual Studio
+    UNREACHABLE; // not supported by Visual Studio
     break;
 
   case flavourt::APPLE:
@@ -776,22 +555,12 @@ void configt::ansi_ct::set_arch_spec_x32()
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
 
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_v850
-
-  Inputs: None
-
- Outputs: None
-
- Purpose: Sets up the widths of variables for the Renesas V850
-
-\*******************************************************************/
-
+/// Sets up the widths of variables for the Renesas V850
+/// \return None
 void configt::ansi_ct::set_arch_spec_v850()
 {
   // The Renesas V850 is a 32-bit microprocessor used in
@@ -815,18 +584,6 @@ void configt::ansi_ct::set_arch_spec_v850()
   // No preprocessor definitions due to lack of information
 }
 
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_hppa
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void configt::ansi_ct::set_arch_spec_hppa()
 {
   set_ILP32();
@@ -842,7 +599,7 @@ void configt::ansi_ct::set_arch_spec_hppa()
     break;
 
   case flavourt::VISUAL_STUDIO:
-    assert(false); // not supported by Visual Studio
+    UNREACHABLE; // not supported by Visual Studio
     break;
 
   case flavourt::APPLE:
@@ -852,21 +609,9 @@ void configt::ansi_ct::set_arch_spec_hppa()
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::set_arch_spec_sh4
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::ansi_ct::set_arch_spec_sh4()
 {
@@ -884,7 +629,7 @@ void configt::ansi_ct::set_arch_spec_sh4()
     break;
 
   case flavourt::VISUAL_STUDIO:
-    assert(false); // not supported by Visual Studio
+    UNREACHABLE; // not supported by Visual Studio
     break;
 
   case flavourt::APPLE:
@@ -894,21 +639,9 @@ void configt::ansi_ct::set_arch_spec_sh4()
     break;
 
   case flavourt::NONE:
-    assert(false);
+    UNREACHABLE;
   }
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::default_c_standard
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 configt::ansi_ct::c_standardt configt::ansi_ct::default_c_standard()
 {
@@ -923,34 +656,10 @@ configt::ansi_ct::c_standardt configt::ansi_ct::default_c_standard()
   #endif
 }
 
-/*******************************************************************\
-
-Function: configt::ansi_ct::default_cpp_standard
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 configt::cppt::cpp_standardt configt::cppt::default_cpp_standard()
 {
   return cpp_standardt::CPP98;
 }
-
-/*******************************************************************\
-
-Function: configt::set_arch
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::set_arch(const irep_idt &arch)
 {
@@ -1016,23 +725,15 @@ void configt::set_arch(const irep_idt &arch)
   }
 }
 
-/*******************************************************************\
-
-Function: configt::set
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool configt::set(const cmdlinet &cmdline)
 {
   // defaults -- we match the architecture we have ourselves
 
   cpp.cpp_standard=cppt::default_cpp_standard();
+
+  bv_encoding.object_bits=bv_encoding.default_object_bits;
+  // This will allow us to override by language defaults later.
+  bv_encoding.is_object_bits_default=true;
 
   ansi_c.single_precision_constant=false;
   ansi_c.for_has_scope=true; // C99 or later
@@ -1043,7 +744,7 @@ bool configt::set(const cmdlinet &cmdline)
   ansi_c.arch="none";
   ansi_c.lib=configt::ansi_ct::libt::LIB_NONE;
   // NOLINTNEXTLINE(readability/casting)
-  ansi_c.NULL_is_zero=reinterpret_cast<size_t>((void*)0)==0;
+  ansi_c.NULL_is_zero=reinterpret_cast<size_t>(nullptr)==0;
 
   // Default is ROUND_TO_EVEN, justified by C99:
   // 1 At program startup the floating-point environment is initialized as
@@ -1077,7 +778,7 @@ bool configt::set(const cmdlinet &cmdline)
   {
     // environment variable set?
     const char *CLASSPATH=getenv("CLASSPATH");
-    if(CLASSPATH!=NULL)
+    if(CLASSPATH!=nullptr)
       set_classpath(CLASSPATH);
     else
       set_classpath("."); // default
@@ -1159,6 +860,9 @@ bool configt::set(const cmdlinet &cmdline)
       #ifdef _WIN32
       ansi_c.defines.push_back("__CYGWIN__");
       #endif
+
+      // MinGW has extra defines
+      ansi_c.defines.push_back("__int64=long long");
     }
     else
     {
@@ -1311,20 +1015,22 @@ bool configt::set(const cmdlinet &cmdline)
   if(cmdline.isset("round-to-zero"))
     ansi_c.rounding_mode=ieee_floatt::ROUND_TO_ZERO;
 
+  if(cmdline.isset("object-bits"))
+  {
+    bv_encoding.object_bits=
+      unsafe_string2unsigned(cmdline.get_value("object-bits"));
+    bv_encoding.is_object_bits_default=false;
+
+    if(!(0<bv_encoding.object_bits &&
+         bv_encoding.object_bits<ansi_c.pointer_width))
+    {
+      throw "object-bits must be positive and less than the pointer width ("+
+        std::to_string(ansi_c.pointer_width)+") ";
+    }
+  }
+
   return false;
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::os_to_string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string configt::ansi_ct::os_to_string(ost os)
 {
@@ -1337,18 +1043,6 @@ std::string configt::ansi_ct::os_to_string(ost os)
   }
 }
 
-/*******************************************************************\
-
-Function: configt::ansi_ct::string_to_os
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 configt::ansi_ct::ost configt::ansi_ct::string_to_os(const std::string &os)
 {
   if(os=="linux")
@@ -1360,18 +1054,6 @@ configt::ansi_ct::ost configt::ansi_ct::string_to_os(const std::string &os)
   else
     return ost::NO_OS;
 }
-
-/*******************************************************************\
-
-Function: string_from_ns
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 static irep_idt string_from_ns(
   const namespacet &ns,
@@ -1399,18 +1081,6 @@ static irep_idt string_from_ns(
   return tmp.op0().op0().get(ID_value);
 }
 
-/*******************************************************************\
-
-Function: unsigned_from_ns
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 static unsigned unsigned_from_ns(
   const namespacet &ns,
   const std::string &what)
@@ -1436,18 +1106,6 @@ static unsigned unsigned_from_ns(
 
   return integer2unsigned(int_value);
 }
-
-/*******************************************************************\
-
-Function: configt::set_from_symbol_table
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void configt::set_from_symbol_table(
   const symbol_tablet &symbol_table)
@@ -1504,19 +1162,46 @@ void configt::set_from_symbol_table(
 
   // mode, preprocessor (and all preprocessor command line options),
   // lib, string_abstraction not stored in namespace
+
+  set_object_bits_from_symbol_table(symbol_table);
 }
 
-/*******************************************************************\
+/// Sets the number of bits used for object addresses
+/// \param symbol_table The symbol table
+void configt::set_object_bits_from_symbol_table(
+  const symbol_tablet &symbol_table)
+{
+  // has been overridden by command line option,
+  //   thus do not apply language defaults
+  if(!bv_encoding.is_object_bits_default)
+    return;
 
-Function: configt::ansi_ct::this_architecture
+  // set object_bits according to entry point language
+  if(const auto maybe_symbol=symbol_table.lookup(CPROVER_PREFIX "_start"))
+  {
+    const symbolt &entry_point_symbol=*maybe_symbol;
 
-  Inputs:
+    if(entry_point_symbol.mode==ID_java)
+      bv_encoding.object_bits=java.default_object_bits;
+    else if(entry_point_symbol.mode==ID_C)
+      bv_encoding.object_bits=ansi_c.default_object_bits;
+    else if(entry_point_symbol.mode==ID_cpp)
+      bv_encoding.object_bits=cpp.default_object_bits;
+    DATA_INVARIANT(
+      0<bv_encoding.object_bits && bv_encoding.object_bits<ansi_c.pointer_width,
+      "object_bits should fit into pointer width");
+  }
+}
 
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+std::string configt::object_bits_info()
+{
+  return "Running with "+std::to_string(bv_encoding.object_bits)+
+    " object bits, "+
+    std::to_string(ansi_c.pointer_width-bv_encoding.object_bits)+
+    " offset bits ("+
+    (bv_encoding.is_object_bits_default ? "default" : "user-specified")+
+    ")";
+}
 
 irep_idt configt::this_architecture()
 {
@@ -1599,18 +1284,6 @@ irep_idt configt::this_architecture()
   return this_arch;
 }
 
-/*******************************************************************\
-
-Function: configt::set_classpath
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void configt::set_classpath(const std::string &cp)
 {
   std::string current;
@@ -1639,18 +1312,6 @@ void configt::set_classpath(const std::string &cp)
   if(!current.empty())
     java.classpath.push_back(current);
 }
-
-/*******************************************************************\
-
-Function: configt::ansi_ct::this_operating_system
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 irep_idt configt::this_operating_system()
 {

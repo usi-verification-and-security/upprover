@@ -6,26 +6,18 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Slicing
+
+#include "full_slicer.h"
+#include "full_slicer_class.h"
+
 #include <util/find_symbols.h>
 #include <util/cprover_prefix.h>
 #ifdef DEBUG_FULL_SLICERT
 #endif
 
 #include <goto-programs/remove_skip.h>
-
-#include "full_slicer_class.h"
-
-/*******************************************************************\
-
-Function: full_slicert::add_dependencies
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void full_slicert::add_dependencies(
   const cfgt::nodet &node,
@@ -42,18 +34,6 @@ void full_slicert::add_dependencies(
       ++it)
     add_to_queue(queue, dep_node_to_cfg[it->first], node.PC);
 }
-
-/*******************************************************************\
-
-Function: full_slicert::add_dependencies
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void full_slicert::add_function_calls(
   const cfgt::nodet &node,
@@ -78,18 +58,6 @@ void full_slicert::add_function_calls(
       ++it)
     add_to_queue(queue, it->first, node.PC);
 }
-
-/*******************************************************************\
-
-Function: full_slicert::add_decl_dead
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void full_slicert::add_decl_dead(
   const cfgt::nodet &node,
@@ -121,18 +89,6 @@ void full_slicert::add_decl_dead(
     decl_dead.erase(entry);
   }
 }
-
-/*******************************************************************\
-
-Function: full_slicert::add_jumps
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void full_slicert::add_jumps(
   queuet &queue,
@@ -229,7 +185,8 @@ void full_slicert::add_jumps(
         if(cfg[entry->second].node_required)
         {
           const irep_idt id2=goto_programt::get_function_id(*d_it);
-          assert(id==id2);
+          INVARIANT(id==id2,
+                    "goto/jump expected to be within a single function");
 
           cfg_post_dominatorst::cfgt::entry_mapt::const_iterator e2=
             pd.cfg.entry_map.find(*d_it);
@@ -256,18 +213,6 @@ void full_slicert::add_jumps(
     it=next;
   }
 }
-
-/*******************************************************************\
-
-Function: full_slicert::fixedpoint
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void full_slicert::fixedpoint(
   goto_functionst &goto_functions,
@@ -318,18 +263,6 @@ void full_slicert::fixedpoint(
   }
 }
 
-/*******************************************************************\
-
-Function: implicit
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 static bool implicit(goto_programt::const_targett target)
 {
   // some variables are used during symbolic execution only
@@ -349,18 +282,6 @@ static bool implicit(goto_programt::const_targett target)
 
   return s.get_identifier()==CPROVER_PREFIX "rounding_mode";
 }
-
-/*******************************************************************\
-
-Function: full_slicert::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void full_slicert::operator()(
   goto_functionst &goto_functions,
@@ -446,18 +367,6 @@ void full_slicert::operator()(
   goto_functions.update();
 }
 
-/*******************************************************************\
-
-Function: full_slicer
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void full_slicer(
   goto_functionst &goto_functions,
   const namespacet &ns,
@@ -465,18 +374,6 @@ void full_slicer(
 {
   full_slicert()(goto_functions, ns, criterion);
 }
-
-/*******************************************************************\
-
-Function: full_slicer
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void full_slicer(
   goto_functionst &goto_functions,
@@ -486,17 +383,12 @@ void full_slicer(
   full_slicert()(goto_functions, ns, a);
 }
 
-/*******************************************************************\
-
-Function: property_slicer
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+void full_slicer(goto_modelt &goto_model)
+{
+  assert_criteriont a;
+  const namespacet ns(goto_model.symbol_table);
+  full_slicert()(goto_model.goto_functions, ns, a);
+}
 
 void property_slicer(
   goto_functionst &goto_functions,
@@ -507,17 +399,13 @@ void property_slicer(
   full_slicert()(goto_functions, ns, p);
 }
 
-/*******************************************************************\
-
-Function: slicing_criteriont::~slicing_criteriont
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+void property_slicer(
+  goto_modelt &goto_model,
+  const std::list<std::string> &properties)
+{
+  const namespacet ns(goto_model.symbol_table);
+  property_slicer(goto_model.goto_functions, ns, properties);
+}
 
 slicing_criteriont::~slicing_criteriont()
 {

@@ -8,22 +8,13 @@ Date: September 2011
 
 \*******************************************************************/
 
-#include <util/std_expr.h>
-#include <util/symbol_table.h>
+/// \file
+/// Volatile Variables
 
 #include "nondet_volatile.h"
 
-/*******************************************************************\
-
-Function: is_volatile
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <util/std_expr.h>
+#include <util/symbol_table.h>
 
 bool is_volatile(
   const symbol_tablet &symbol_table,
@@ -42,18 +33,6 @@ bool is_volatile(
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: nondet_volatile_rhs
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void nondet_volatile_rhs(const symbol_tablet &symbol_table, exprt &expr)
 {
@@ -74,18 +53,6 @@ void nondet_volatile_rhs(const symbol_tablet &symbol_table, exprt &expr)
     }
   }
 }
-
-/*******************************************************************\
-
-Function: nondet_volatile_lhs
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void nondet_volatile_lhs(const symbol_tablet &symbol_table, exprt &expr)
 {
@@ -109,18 +76,6 @@ void nondet_volatile_lhs(const symbol_tablet &symbol_table, exprt &expr)
     nondet_volatile_rhs(symbol_table, to_dereference_expr(expr).pointer());
   }
 }
-
-/*******************************************************************\
-
-Function: nondet_volatile
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void nondet_volatile(
   symbol_tablet &symbol_table,
@@ -164,24 +119,10 @@ void nondet_volatile(
   }
 }
 
-/*******************************************************************\
-
-Function: nondet_volatile
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void nondet_volatile(
-  symbol_tablet &symbol_table,
-  goto_functionst &goto_functions)
+void nondet_volatile(goto_modelt &goto_model)
 {
-  Forall_goto_functions(f_it, goto_functions)
-    nondet_volatile(symbol_table, f_it->second.body);
+  Forall_goto_functions(f_it, goto_model.goto_functions)
+    nondet_volatile(goto_model.symbol_table, f_it->second.body);
 
-  goto_functions.update();
+  goto_model.goto_functions.update();
 }

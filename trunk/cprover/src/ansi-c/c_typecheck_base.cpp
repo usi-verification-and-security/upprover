@@ -6,60 +6,29 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// ANSI-C Conversion / Type Checking
+
+#include "c_typecheck_base.h"
+
+#include <util/invariant.h>
 #include <util/std_types.h>
 #include <util/prefix.h>
 #include <util/config.h>
 
-#include "c_typecheck_base.h"
 #include "expr2c.h"
 #include "type2name.h"
 #include "c_storage_spec.h"
-
-/*******************************************************************\
-
-Function: c_typecheck_baset::to_string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string c_typecheck_baset::to_string(const exprt &expr)
 {
   return expr2c(expr, *this);
 }
 
-/*******************************************************************\
-
-Function: c_typecheck_baset::to_string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string c_typecheck_baset::to_string(const typet &type)
 {
   return type2c(type, *this);
 }
-
-/*******************************************************************\
-
-Function: c_typecheck_baset::move_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void c_typecheck_baset::move_symbol(symbolt &symbol, symbolt *&new_symbol)
 {
@@ -75,22 +44,8 @@ void c_typecheck_baset::move_symbol(symbolt &symbol, symbolt *&new_symbol)
   }
 }
 
-/*******************************************************************\
-
-Function: c_typecheck_baset::typecheck_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void c_typecheck_baset::typecheck_symbol(symbolt &symbol)
 {
-  current_symbol_id=symbol.name;
-
   bool is_function=symbol.type.id()==ID_code;
 
   const typet &final_type=follow(symbol.type);
@@ -145,7 +100,7 @@ void c_typecheck_baset::typecheck_symbol(symbolt &symbol)
   }
 
   // see if we have it already
-  symbol_tablet::symbolst::iterator old_it=
+  symbol_tablet::symbolst::const_iterator old_it=
     symbol_table.symbols.find(symbol.name);
 
   if(old_it==symbol_table.symbols.end())
@@ -166,24 +121,13 @@ void c_typecheck_baset::typecheck_symbol(symbolt &symbol)
       throw 0;
     }
 
+    symbolt & existing_symbol=*symbol_table.get_writeable(symbol.name);
     if(symbol.is_type)
-      typecheck_redefinition_type(old_it->second, symbol);
+      typecheck_redefinition_type(existing_symbol, symbol);
     else
-      typecheck_redefinition_non_type(old_it->second, symbol);
+      typecheck_redefinition_non_type(existing_symbol, symbol);
   }
 }
-
-/*******************************************************************\
-
-Function: c_typecheck_baset::typecheck_new_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void c_typecheck_baset::typecheck_new_symbol(symbolt &symbol)
 {
@@ -215,18 +159,6 @@ void c_typecheck_baset::typecheck_new_symbol(symbolt &symbol)
   }
 }
 
-/*******************************************************************\
-
-Function: c_typecheck_baset::typecheck_redefinition_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void c_typecheck_baset::typecheck_redefinition_type(
   symbolt &old_symbol,
   symbolt &new_symbol)
@@ -234,7 +166,7 @@ void c_typecheck_baset::typecheck_redefinition_type(
   const typet &final_old=follow(old_symbol.type);
   const typet &final_new=follow(new_symbol.type);
 
-  // see if we had s.th. incomplete before
+  // see if we had something incomplete before
   if(final_old.id()==ID_incomplete_struct ||
      final_old.id()==ID_incomplete_union ||
      final_old.id()==ID_incomplete_c_enum)
@@ -310,18 +242,6 @@ void c_typecheck_baset::typecheck_redefinition_type(
   }
 }
 
-/*******************************************************************\
-
-Function: c_typecheck_baset::typecheck_redefinition_non_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void c_typecheck_baset::typecheck_redefinition_non_type(
   symbolt &old_symbol,
   symbolt &new_symbol)
@@ -337,6 +257,16 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
   {
     // this is ok, just use old type
     new_symbol.type=old_symbol.type;
+  }
+  else if(final_old.id()==ID_array &&
+          to_array_type(final_old).size().is_nil() &&
+          initial_new.id()==ID_array &&
+          to_array_type(initial_new).size().is_not_nil() &&
+          final_old.subtype()==initial_new.subtype())
+  {
+    // update the type to enable the use of sizeof(x) on the
+    // right-hand side of a definition of x
+    old_symbol.type=new_symbol.type;
   }
 
   // do initializer, this may change the type
@@ -421,10 +351,10 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
           {
             const irep_idt &identifier=p_it->get_identifier();
 
-            symbol_tablet::symbolst::iterator p_s_it=
+            symbol_tablet::symbolst::const_iterator p_s_it=
               symbol_table.symbols.find(identifier);
             if(p_s_it!=symbol_table.symbols.end())
-              symbol_table.symbols.erase(p_s_it);
+              symbol_table.erase(p_s_it);
           }
         }
         else
@@ -468,36 +398,14 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
   if(final_old!=final_new)
   {
     if(final_old.id()==ID_array &&
-            to_array_type(final_old).size().is_nil() &&
-            final_new.id()==ID_array &&
-            to_array_type(final_new).size().is_not_nil() &&
-            final_old.subtype()==final_new.subtype())
+       to_array_type(final_old).size().is_nil() &&
+       final_new.id()==ID_array &&
+       to_array_type(final_new).size().is_not_nil() &&
+       final_old.subtype()==final_new.subtype())
     {
-      // this is also ok
-      if(old_symbol.type.id()==ID_symbol)
-      {
-        // fix the symbol, not just the type
-        const irep_idt identifier=
-          to_symbol_type(old_symbol.type).get_identifier();
-
-        symbol_tablet::symbolst::iterator s_it=
-          symbol_table.symbols.find(identifier);
-
-        if(s_it==symbol_table.symbols.end())
-        {
-          error().source_location=old_symbol.location;
-          error() << "typecheck_redefinition_non_type: "
-                  << "failed to find symbol `" << identifier << "'"
-                  << eom;
-          throw 0;
-        }
-
-        symbolt &symbol=s_it->second;
-
-        symbol.type=final_new;
-      }
-      else
-        old_symbol.type=new_symbol.type;
+      // we don't do symbol types for arrays anymore
+      PRECONDITION(old_symbol.type.id()!=ID_symbol);
+      old_symbol.type=new_symbol.type;
     }
     else if((final_old.id()==ID_incomplete_c_enum ||
              final_old.id()==ID_c_enum) &&
@@ -594,18 +502,6 @@ void c_typecheck_baset::typecheck_redefinition_non_type(
   // mismatch.
 }
 
-/*******************************************************************\
-
-Function: c_typecheck_baset::typecheck_function_body
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void c_typecheck_baset::typecheck_function_body(symbolt &symbol)
 {
   code_typet &code_type=to_code_type(symbol.type);
@@ -632,7 +528,7 @@ void c_typecheck_baset::typecheck_function_body(symbolt &symbol)
       p_it++)
   {
     // may be anonymous
-    if(p_it->get_base_name()==irep_idt())
+    if(p_it->get_base_name().empty())
     {
       irep_idt base_name="#anon"+std::to_string(anon_counter++);
       p_it->set_base_name(base_name);
@@ -675,18 +571,6 @@ void c_typecheck_baset::typecheck_function_body(symbolt &symbol)
     }
   }
 }
-
-/*******************************************************************\
-
-Function: c_typecheck_baset::apply_asm_label
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void c_typecheck_baset::apply_asm_label(
   const irep_idt &asm_label,
@@ -756,18 +640,6 @@ void c_typecheck_baset::apply_asm_label(
   }
 }
 
-/*******************************************************************\
-
-Function: c_typecheck_baset::typecheck_declaration
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void c_typecheck_baset::typecheck_declaration(
   ansi_c_declarationt &declaration)
 {
@@ -819,6 +691,7 @@ void c_typecheck_baset::typecheck_declaration(
 
       symbolt symbol;
       declaration.to_symbol(*d_it, symbol);
+      current_symbol=symbol;
 
       // now check other half of type
       typecheck_type(symbol.type);
@@ -860,10 +733,7 @@ void c_typecheck_baset::typecheck_declaration(
       // add code contract (if any); we typecheck this after the
       // function body done above, so as to have parameter symbols
       // available
-      symbol_tablet::symbolst::iterator s_it=
-        symbol_table.symbols.find(identifier);
-      assert(s_it!=symbol_table.symbols.end());
-      symbolt &new_symbol=s_it->second;
+      symbolt &new_symbol=*symbol_table.get_writeable(identifier);
 
       typecheck_spec_expr(contract, ID_C_spec_requires);
 

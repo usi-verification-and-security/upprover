@@ -8,6 +8,9 @@ Date: February 2006
 
 \*******************************************************************/
 
+/// \file
+/// Race Detection for Threaded Goto Programs
+
 #ifndef CPROVER_GOTO_INSTRUMENT_RW_SET_H
 #define CPROVER_GOTO_INSTRUMENT_RW_SET_H
 
@@ -20,7 +23,7 @@ Date: February 2006
 #include <util/namespace.h>
 #include <util/std_expr.h>
 
-#include <goto-programs/goto_functions.h>
+#include <goto-programs/goto_model.h>
 #include <pointer-analysis/value_sets.h>
 
 #ifdef LOCAL_MAY
@@ -200,12 +203,12 @@ class rw_set_functiont:public rw_set_baset
 public:
   rw_set_functiont(
     value_setst &_value_sets,
-    const namespacet &_ns,
-    const goto_functionst &_goto_functions,
+    const goto_modelt &_goto_model,
     const exprt &function):
-    rw_set_baset(_ns),
+    rw_set_baset(ns),
+    ns(_goto_model.symbol_table),
     value_sets(_value_sets),
-    goto_functions(_goto_functions)
+    goto_functions(_goto_model.goto_functions)
   {
     compute_rec(function);
   }
@@ -213,6 +216,7 @@ public:
   ~rw_set_functiont() {}
 
 protected:
+  const namespacet ns;
   value_setst &value_sets;
   const goto_functionst &goto_functions;
 
@@ -263,13 +267,13 @@ protected:
 
   void track_deref(const entryt &entry, bool read)
   {
-    if(dereferencing && dereferenced.size()==0)
+    if(dereferencing && dereferenced.empty())
     {
       dereferenced.insert(dereferenced.begin(), entry);
       if(read)
         set_reads.insert(entry.object);
     }
-    else if(dereferencing && dereferenced.size()>0)
+    else if(dereferencing && !dereferenced.empty())
       dereferenced_from.insert(
         std::make_pair(entry.object, dereferenced.front().object));
   }

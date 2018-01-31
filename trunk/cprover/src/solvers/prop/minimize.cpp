@@ -6,23 +6,16 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Minimize some target function incrementally
+
+#include "minimize.h"
+
 #include <util/threeval.h>
 
 #include "literal_expr.h"
-#include "minimize.h"
 
-/*******************************************************************\
-
-Function: prop_minimizet::objective
-
-  Inputs:
-
- Outputs:
-
- Purpose: Add an objective
-
-\*******************************************************************/
-
+/// Add an objective
 void prop_minimizet::objective(
   const literalt condition,
   const weightt weight)
@@ -39,18 +32,7 @@ void prop_minimizet::objective(
   }
 }
 
-/*******************************************************************\
-
-Function: prop_minimizet::fix
-
-  Inputs:
-
- Outputs:
-
- Purpose: Fix objectives that are satisfied
-
-\*******************************************************************/
-
+/// Fix objectives that are satisfied
 void prop_minimizet::fix_objectives()
 {
   std::vector<objectivet> &entry=current->second;
@@ -72,22 +54,10 @@ void prop_minimizet::fix_objectives()
     }
   }
 
-  assert(found);
+  POSTCONDITION(found);
 }
 
-/*******************************************************************\
-
-Function: prop_minimizet::constaint
-
-  Inputs:
-
- Outputs:
-
- Purpose: Build constraints that require us to improve on
-          at least one goal, greedily.
-
-\*******************************************************************/
-
+/// Build constraints that require us to improve on at least one goal, greedily.
 literalt prop_minimizet::constraint()
 {
   std::vector<objectivet> &entry=current->second;
@@ -119,18 +89,7 @@ literalt prop_minimizet::constraint()
   }
 }
 
-/*******************************************************************\
-
-Function: prop_minimizet::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose: Try to cover all objectives
-
-\*******************************************************************/
-
+/// Try to cover all objectives
 void prop_minimizet::operator()()
 {
   // we need to use assumptions

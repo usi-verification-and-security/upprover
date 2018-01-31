@@ -6,15 +6,20 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Abstract Interpretation
+
 #ifndef CPROVER_ANALYSES_AI_H
 #define CPROVER_ANALYSES_AI_H
 
-#include <map>
 #include <iosfwd>
+#include <map>
+#include <memory>
 
 #include <util/json.h>
 #include <util/xml.h>
 #include <util/expr.h>
+#include <util/make_unique.h>
 
 #include <goto-programs/goto_model.h>
 
@@ -26,6 +31,13 @@ class ai_baset;
 class ai_domain_baset
 {
 public:
+  enum class edge_typet
+  {
+    FUNCTION_LOCAL,
+    CALL,
+    RETURN,
+  };
+
   // The constructor is expected to produce 'false'
   // or 'bottom'
   ai_domain_baset()
@@ -48,7 +60,8 @@ public:
     locationt from,
     locationt to,
     ai_baset &ai,
-    const namespacet &ns)=0;
+    const namespacet &ns,
+    edge_typet edge_type) = 0;
 
   virtual void output(
     std::ostream &out,
@@ -74,6 +87,10 @@ public:
 
   // a reasonable entry-point state
   virtual void make_entry()=0;
+
+  virtual bool is_bottom() const=0;
+
+  virtual bool is_top() const=0;
 
   // also add
   //
@@ -124,6 +141,7 @@ public:
     initialize(goto_program);
     entry_state(goto_program);
     fixedpoint(goto_program, goto_functions, ns);
+    finalize();
   }
 
   void operator()(
@@ -133,6 +151,7 @@ public:
     initialize(goto_functions);
     entry_state(goto_functions);
     fixedpoint(goto_functions, ns);
+    finalize();
   }
 
   void operator()(const goto_modelt &goto_model)
@@ -141,6 +160,7 @@ public:
     initialize(goto_model.goto_functions);
     entry_state(goto_model.goto_functions);
     fixedpoint(goto_model.goto_functions, ns);
+    finalize();
   }
 
   void operator()(
@@ -151,6 +171,18 @@ public:
     initialize(goto_function);
     entry_state(goto_function.body);
     fixedpoint(goto_function.body, goto_functions, ns);
+    finalize();
+  }
+
+  /// Returns the abstract state before the given instruction
+  virtual const ai_domain_baset & abstract_state_before(
+    goto_programt::const_targett t) const = 0;
+
+  /// Returns the abstract state after the given instruction
+  virtual const ai_domain_baset & abstract_state_after(
+    goto_programt::const_targett t) const
+  {
+    return abstract_state_before(std::next(t));
   }
 
   virtual void clear()
@@ -244,6 +276,9 @@ protected:
   virtual void initialize(const goto_functionst::goto_functiont &);
   virtual void initialize(const goto_functionst &);
 
+  // override to add a cleanup step after fixedpoint has run
+  virtual void finalize();
+
   void entry_state(const goto_programt &);
   void entry_state(const goto_functionst &);
 
@@ -277,7 +312,7 @@ protected:
       std::pair<unsigned, locationt>(l->location_number, l));
   }
 
-  // true = found s.th. new
+  // true = found something new
   bool fixedpoint(
     const goto_programt &goto_program,
     const goto_functionst &goto_functions,
@@ -294,16 +329,13 @@ protected:
     const goto_functionst &goto_functions,
     const namespacet &ns);
 
-  // true = found s.th. new
+  // true = found something new
   bool visit(
     locationt l,
     working_sett &working_set,
     const goto_programt &goto_program,
     const goto_functionst &goto_functions,
     const namespacet &ns);
-
-  typedef std::set<irep_idt> recursion_sett;
-  recursion_sett recursion_set;
 
   // function calls
   bool do_function_call_rec(
@@ -331,7 +363,7 @@ protected:
     const namespacet &ns)=0;
   virtual statet &get_state(locationt l)=0;
   virtual const statet &find_state(locationt l) const=0;
-  virtual statet* make_temporary_state(const statet &s)=0;
+  virtual std::unique_ptr<statet> make_temporary_state(const statet &s)=0;
 };
 
 // domainT is expected to be derived from ai_domain_baseT
@@ -364,6 +396,12 @@ public:
     return it->second;
   }
 
+  const ai_domain_baset & abstract_state_before(
+    goto_programt::const_targett t) const override
+  {
+    return (*this)[t];
+  }
+
   void clear() override
   {
     state_map.clear();
@@ -371,7 +409,9 @@ public:
   }
 
 protected:
-  typedef std::unordered_map<locationt, domainT, const_target_hash> state_mapt;
+  typedef std::
+    unordered_map<locationt, domainT, const_target_hash, pointee_address_equalt>
+      state_mapt;
   state_mapt state_map;
 
   // this one creates states, if need be
@@ -397,9 +437,9 @@ protected:
       static_cast<const domainT &>(src), from, to);
   }
 
-  statet *make_temporary_state(const statet &s) override
+  std::unique_ptr<statet> make_temporary_state(const statet &s) override
   {
-    return new domainT(static_cast<const domainT &>(s));
+    return util_make_unique<domainT>(static_cast<const domainT &>(s));
   }
 
   void fixedpoint(

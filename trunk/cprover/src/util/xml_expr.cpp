@@ -8,6 +8,11 @@ Author: Daniel Kroening
 
 \*******************************************************************/
 
+/// \file
+/// Expressions in XML
+
+#include "xml_expr.h"
+
 #include "namespace.h"
 #include "expr.h"
 #include "xml.h"
@@ -17,25 +22,15 @@ Author: Daniel Kroening
 #include "std_expr.h"
 #include "config.h"
 
-#include "xml_expr.h"
-
-/*******************************************************************\
-
-Function: xml
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 xmlt xml(const source_locationt &location)
 {
   xmlt result;
 
   result.name="location";
+
+  if(!location.get_working_directory().empty())
+    result.set_attribute(
+      "working-directory", id2string(location.get_working_directory()));
 
   if(!location.get_file().empty())
     result.set_attribute("file", id2string(location.get_file()));
@@ -51,18 +46,6 @@ xmlt xml(const source_locationt &location)
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: xml
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 xmlt xml(
   const typet &type,
@@ -158,18 +141,6 @@ xmlt xml(
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: xml
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 xmlt xml(
   const exprt &expr,

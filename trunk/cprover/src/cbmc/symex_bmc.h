@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Bounded Model Checking for ANSI-C
+
 #ifndef CPROVER_CBMC_SYMEX_BMC_H
 #define CPROVER_CBMC_SYMEX_BMC_H
 
@@ -15,12 +18,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "symex_coverage.h"
 
-class symex_bmct:
-  public goto_symext,
-  public messaget
+class symex_bmct: public goto_symext
 {
 public:
   symex_bmct(
+    message_handlert &mh,
     const namespacet &_ns,
     symbol_tablet &_new_symbol_table,
     symex_targett &_target);

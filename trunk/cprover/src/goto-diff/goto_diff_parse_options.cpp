@@ -6,8 +6,13 @@ Author: Peter Schrammel
 
 \*******************************************************************/
 
-#include <fstream>
+/// \file
+/// GOTO-DIFF Command Line Option Processing
+
+#include "goto_diff_parse_options.h"
+
 #include <cstdlib> // exit()
+#include <fstream>
 #include <iostream>
 #include <memory>
 
@@ -15,6 +20,7 @@ Author: Peter Schrammel
 #include <util/config.h>
 #include <util/language.h>
 #include <util/options.h>
+#include <util/make_unique.h>
 
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
@@ -31,6 +37,7 @@ Author: Peter Schrammel
 #include <goto-programs/string_instrumentation.h>
 #include <goto-programs/loop_ids.h>
 #include <goto-programs/link_to_library.h>
+#include <goto-programs/remove_java_new.h>
 
 #include <pointer-analysis/add_failed_symbols.h>
 
@@ -38,23 +45,10 @@ Author: Peter Schrammel
 
 #include <cbmc/version.h>
 
-#include "goto_diff_parse_options.h"
 #include "goto_diff.h"
 #include "syntactic_diff.h"
 #include "unified_diff.h"
 #include "change_impact.h"
-
-/*******************************************************************\
-
-Function: goto_diff_parse_optionst::goto_diff_parse_optionst
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 goto_diff_parse_optionst::goto_diff_parse_optionst(int argc, const char **argv):
   parse_options_baset(GOTO_DIFF_OPTIONS, argc, argv),
@@ -63,18 +57,6 @@ goto_diff_parse_optionst::goto_diff_parse_optionst(int argc, const char **argv):
   languages2(cmdline, ui_message_handler)
 {
 }
-
-/*******************************************************************\
-
-Function: goto_diff_parse_optionst::goto_diff_parse_optionst
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 ::goto_diff_parse_optionst::goto_diff_parse_optionst(
   int argc,
@@ -86,18 +68,6 @@ Function: goto_diff_parse_optionst::goto_diff_parse_optionst
   languages2(cmdline, ui_message_handler)
 {
 }
-
-/*******************************************************************\
-
-Function: goto_diff_parse_optionst::eval_verbosity
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_diff_parse_optionst::eval_verbosity()
 {
@@ -113,18 +83,6 @@ void goto_diff_parse_optionst::eval_verbosity()
 
   ui_message_handler.set_verbosity(v);
 }
-
-/*******************************************************************\
-
-Function: goto_diff_parse_optionst::get_command_line_options
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_diff_parse_optionst::get_command_line_options(optionst &options)
 {
@@ -280,18 +238,7 @@ void goto_diff_parse_optionst::get_command_line_options(optionst &options)
   }
 }
 
-/*******************************************************************\
-
-Function: goto_diff_parse_optionst::doit
-
-  Inputs:
-
- Outputs:
-
- Purpose: invoke main modules
-
-\*******************************************************************/
-
+/// invoke main modules
 int goto_diff_parse_optionst::doit()
 {
   if(cmdline.isset("version"))
@@ -333,10 +280,27 @@ int goto_diff_parse_optionst::doit()
   if(get_goto_program_ret!=-1)
     return get_goto_program_ret;
 
-  if(cmdline.isset("show-goto-functions"))
+  if(cmdline.isset("show-loops"))
   {
-    show_goto_functions(goto_model1, get_ui());
-    show_goto_functions(goto_model2, get_ui());
+    show_loop_ids(get_ui(), goto_model1);
+    show_loop_ids(get_ui(), goto_model2);
+    return true;
+  }
+
+  if(
+    cmdline.isset("show-goto-functions") ||
+    cmdline.isset("list-goto-functions"))
+  {
+    show_goto_functions(
+      goto_model1,
+      get_message_handler(),
+      ui_message_handler.get_ui(),
+      cmdline.isset("list-goto-functions"));
+    show_goto_functions(
+      goto_model2,
+      get_message_handler(),
+      ui_message_handler.get_ui(),
+      cmdline.isset("list-goto-functions"));
     return 0;
   }
 
@@ -373,29 +337,13 @@ int goto_diff_parse_optionst::doit()
     return 0;
   }
 
-  std::unique_ptr<goto_difft> goto_diff;
-  goto_diff = std::unique_ptr<goto_difft>(
-    new syntactic_difft(goto_model1, goto_model2, get_message_handler()));
-  goto_diff->set_ui(get_ui());
-
-  (*goto_diff)();
-
-  goto_diff->output_functions(std::cout);
+  syntactic_difft sd(goto_model1, goto_model2, get_message_handler());
+  sd.set_ui(get_ui());
+  sd();
+  sd.output_functions(std::cout);
 
   return 0;
 }
-
-/*******************************************************************\
-
-Function: goto_diff_parse_optionst::get_goto_program
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 int goto_diff_parse_optionst::get_goto_program(
   const optionst &options,
@@ -414,7 +362,6 @@ int goto_diff_parse_optionst::get_goto_program(
       return 6;
 
     config.set(cmdline);
-    config.set_from_symbol_table(goto_model.symbol_table);
 
     // This one is done.
     cmdline.args.erase(cmdline.args.begin());
@@ -454,18 +401,6 @@ int goto_diff_parse_optionst::get_goto_program(
   return -1; // no error, continue
 }
 
-/*******************************************************************\
-
-Function: goto_diff_parse_optionst::process_goto_program
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool goto_diff_parse_optionst::process_goto_program(
   const optionst &options,
   goto_modelt &goto_model)
@@ -477,9 +412,11 @@ bool goto_diff_parse_optionst::process_goto_program(
   {
     namespacet ns(symbol_table);
 
+    remove_java_new(goto_model, get_message_handler());
+
     // Remove inline assembler; this needs to happen before
     // adding the library.
-    remove_asm(symbol_table, goto_functions);
+    remove_asm(goto_model);
 
     // add the library
     link_to_library(symbol_table, goto_functions, ui_message_handler);
@@ -510,20 +447,6 @@ bool goto_diff_parse_optionst::process_goto_program(
 
     // add loop ids
     goto_functions.compute_loop_numbers();
-
-    // show it?
-    if(cmdline.isset("show-loops"))
-    {
-      show_loop_ids(get_ui(), goto_functions);
-      return true;
-    }
-
-    // show it?
-    if(cmdline.isset("show-goto-functions"))
-    {
-      show_goto_functions(ns, get_ui(), goto_functions);
-      return true;
-    }
   }
 
   catch(const char *e)
@@ -532,7 +455,7 @@ bool goto_diff_parse_optionst::process_goto_program(
     return true;
   }
 
-  catch(const std::string e)
+  catch(const std::string &e)
   {
     error() << e << eom;
     return true;
@@ -543,7 +466,7 @@ bool goto_diff_parse_optionst::process_goto_program(
     return true;
   }
 
-  catch(std::bad_alloc)
+  catch(const std::bad_alloc &)
   {
     error() << "Out of memory" << eom;
     return true;
@@ -552,18 +475,7 @@ bool goto_diff_parse_optionst::process_goto_program(
   return false;
 }
 
-/*******************************************************************\
-
-Function: goto_diff_parse_optionst::help
-
-  Inputs:
-
- Outputs:
-
- Purpose: display command line help
-
-\*******************************************************************/
-
+/// display command line help
 void goto_diff_parse_optionst::help()
 {
   std::cout <<

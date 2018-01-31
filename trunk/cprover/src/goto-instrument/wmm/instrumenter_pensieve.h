@@ -6,22 +6,23 @@ Author:
 
 \*******************************************************************/
 
+/// \file
+/// Instrumenter
+
 #ifndef CPROVER_GOTO_INSTRUMENT_WMM_INSTRUMENTER_PENSIEVE_H
 #define CPROVER_GOTO_INSTRUMENT_WMM_INSTRUMENTER_PENSIEVE_H
 
 #include "event_graph.h"
 #include "goto2graph.h"
 
-class symbol_tablet;
-class goto_functionst;
+class goto_modelt;
 class namespacet;
 
 class instrumenter_pensievet:public instrumentert
 {
 public:
-  instrumenter_pensievet(symbol_tablet &_symbol_table,
-    goto_functionst &_goto_f, messaget &message)
-    : instrumentert(_symbol_table, _goto_f, message)
+  instrumenter_pensievet(goto_modelt &_goto_model, messaget &message)
+    : instrumentert(_goto_model, message)
   {
   }
 

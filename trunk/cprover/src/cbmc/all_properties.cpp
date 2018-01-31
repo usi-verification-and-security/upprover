@@ -6,7 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <iostream>
+/// \file
+/// Symbolic Execution of ANSI-C
+
+#include "all_properties_class.h"
 
 #include <util/time_stopping.h>
 #include <util/xml.h>
@@ -20,20 +23,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/json_goto_trace.h>
 
 #include "bv_cbmc.h"
-
-#include "all_properties_class.h"
-
-/*******************************************************************\
-
-Function: bmc_all_propertiest::goal_covered
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void bmc_all_propertiest::goal_covered(const cover_goalst::goalt &)
 {
@@ -60,18 +49,6 @@ void bmc_all_propertiest::goal_covered(const cover_goalst::goalt &)
     }
   }
 }
-
-/*******************************************************************\
-
-Function: bmc_all_propertiest::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 safety_checkert::resultt bmc_all_propertiest::operator()()
 {
@@ -178,28 +155,16 @@ safety_checkert::resultt bmc_all_propertiest::operator()()
   return safe?safety_checkert::resultt::SAFE:safety_checkert::resultt::UNSAFE;
 }
 
-/*******************************************************************\
-
-Function: bmc_all_propertiest::report()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void bmc_all_propertiest::report(const cover_goalst &cover_goals)
 {
   switch(bmc.ui)
   {
   case ui_message_handlert::uit::PLAIN:
     {
-      status() << "\n** Results:" << eom;
+      result() << "\n** Results:" << eom;
 
       for(const auto &goal_pair : goal_map)
-        status() << "[" << goal_pair.first << "] "
+        result() << "[" << goal_pair.first << "] "
                  << goal_pair.second.description << ": "
                  << goal_pair.second.status_string()
                  << eom;
@@ -209,10 +174,11 @@ void bmc_all_propertiest::report(const cover_goalst &cover_goals)
         for(const auto &g : goal_map)
           if(g.second.status==goalt::statust::FAILURE)
           {
-            std::cout << "\n" << "Trace for " << g.first << ":" << "\n";
-            show_goto_trace(std::cout, bmc.ns, g.second.goto_trace);
+            result() << "\n" << "Trace for " << g.first << ":" << "\n";
+            show_goto_trace(result(), bmc.ns, g.second.goto_trace);
           }
       }
+      result() << eom;
 
       status() << "\n** " << cover_goals.number_covered()
                << " of " << cover_goals.size() << " failed ("
@@ -233,7 +199,7 @@ void bmc_all_propertiest::report(const cover_goalst &cover_goals)
         if(g.second.status==goalt::statust::FAILURE)
           convert(bmc.ns, g.second.goto_trace, xml_result.new_element());
 
-        std::cout << xml_result << "\n";
+        result() << xml_result;
       }
       break;
     }
@@ -253,27 +219,15 @@ void bmc_all_propertiest::report(const cover_goalst &cover_goals)
         if(g.second.status==goalt::statust::FAILURE)
         {
           jsont &json_trace=result["trace"];
-          convert(bmc.ns, g.second.goto_trace, json_trace);
+          convert(bmc.ns, g.second.goto_trace, json_trace, bmc.trace_options());
         }
       }
 
-      std::cout << ",\n" << json_result;
+      result() << json_result;
     }
     break;
   }
 }
-
-/*******************************************************************\
-
-Function: bmct::all_properties
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 safety_checkert::resultt bmct::all_properties(
   const goto_functionst &goto_functions,

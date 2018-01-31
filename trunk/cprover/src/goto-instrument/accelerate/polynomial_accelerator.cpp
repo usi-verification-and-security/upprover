@@ -6,6 +6,11 @@ Author: Matt Lewis
 
 \*******************************************************************/
 
+/// \file
+/// Loop Acceleration
+
+#include "polynomial_accelerator.h"
+
 #include <iostream>
 #include <map>
 #include <set>
@@ -32,9 +37,7 @@ Author: Matt Lewis
 #include <util/simplify_expr.h>
 #include <util/replace_expr.h>
 #include <util/arith_tools.h>
-#include <util/config.h>
 
-#include "polynomial_accelerator.h"
 #include "accelerator.h"
 #include "util.h"
 #include "cone_of_influence.h"
@@ -56,7 +59,7 @@ bool polynomial_acceleratort::accelerate(
 
   expr_sett targets;
   std::map<exprt, polynomialt> polynomials;
-  scratch_programt program(symbol_table);
+  scratch_programt program(symbol_table, message_handler);
   goto_programt::instructionst assigns;
 
   utils.find_modified(body, targets);
@@ -68,7 +71,7 @@ bool polynomial_acceleratort::accelerate(
       it!=body.end();
       ++it)
   {
-    program.output_instruction(ns, "scratch", std::cout, it);
+    program.output_instruction(ns, "scratch", std::cout, *it);
   }
 
   std::cout << "Modified:\n";
@@ -154,17 +157,17 @@ bool polynomial_acceleratort::accelerate(
     }
   }
 
+#if 0
   if(polynomials.empty())
   {
     // return false;
   }
 
-  /*
   if (!utils.check_inductive(polynomials, assigns)) {
     // They're not inductive :-(
     return false;
   }
-  */
+#endif
 
   substitutiont stashed;
   stash_polynomials(program, polynomials, stashed, body);
@@ -178,7 +181,7 @@ bool polynomial_acceleratort::accelerate(
   {
     path_is_monotone=utils.do_assumptions(polynomials, loop, guard);
   }
-  catch (std::string s)
+  catch(const std::string &s)
   {
     // Couldn't do WP.
     std::cout << "Assumptions error: " << s << '\n';
@@ -285,7 +288,7 @@ bool polynomial_acceleratort::fit_polynomial_sliced(
   std::vector<expr_listt> parameters;
   std::set<std::pair<expr_listt, exprt> > coefficients;
   expr_listt exprs;
-  scratch_programt program(symbol_table);
+  scratch_programt program(symbol_table, message_handler);
   exprt overflow_var =
     utils.fresh_symbol("polynomial::overflow", bool_typet()).symbol_expr();
   overflow_instrumentert overflow(program, overflow_var, symbol_table);
@@ -341,9 +344,7 @@ bool polynomial_acceleratort::fit_polynomial_sliced(
     return false;
   }
 
-  unsigned width=to_bitvector_type(var.type()).get_width();
-  if(var.type().id()==ID_pointer)
-    width=config.ansi_c.pointer_width;
+  std::size_t width=to_bitvector_type(var.type()).get_width();
   assert(width>0);
 
   for(std::vector<expr_listt>::iterator it=parameters.begin();
@@ -423,7 +424,7 @@ bool polynomial_acceleratort::fit_polynomial_sliced(
       return true;
     }
   }
-  catch(std::string s)
+  catch(const std::string &s)
   {
     std::cout << "Error in fitting polynomial SAT check: " << s << '\n';
   }
@@ -455,7 +456,8 @@ bool polynomial_acceleratort::fit_const(
 {
   return false;
 
-  scratch_programt program(symbol_table);
+#if 0
+  scratch_programt program(symbol_table, message_handler);
 
   program.append(body);
   program.add_instruction(ASSERT)->guard=equal_exprt(target, not_exprt(target));
@@ -483,7 +485,7 @@ bool polynomial_acceleratort::fit_const(
       return true;
     }
   }
-  catch(std::string s)
+  catch(const std::string &s)
   {
     std::cout << "Error in fitting polynomial SAT check: " << s << '\n';
   }
@@ -493,6 +495,7 @@ bool polynomial_acceleratort::fit_const(
   }
 
   return false;
+#endif
 }
 
 void polynomial_acceleratort::assert_for_values(
@@ -665,7 +668,7 @@ bool polynomial_acceleratort::check_inductive(
   // assert (target1==polynomial1);
   // assert (target2==polynomial2);
   // ...
-  scratch_programt program(symbol_table);
+  scratch_programt program(symbol_table, message_handler);
   std::vector<exprt> polynomials_hold;
   substitutiont substitution;
 
@@ -716,7 +719,7 @@ bool polynomial_acceleratort::check_inductive(
       return true;
     }
   }
-  catch(std::string s)
+  catch(const std::string &s)
   {
     std::cout << "Error in inductiveness SAT check: " << s << '\n';
     return false;
@@ -767,7 +770,7 @@ void polynomial_acceleratort::stash_variables(
       it!=vars.end();
       ++it)
   {
-    symbolt orig=symbol_table.lookup(*it);
+    symbolt orig=*symbol_table.lookup(*it);
     symbolt stashed_sym=utils.fresh_symbol("polynomial::stash", orig.type);
     substitution[orig.symbol_expr()]=stashed_sym.symbol_expr();
     program.assign(stashed_sym.symbol_expr(), orig.symbol_expr());

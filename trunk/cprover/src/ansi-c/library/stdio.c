@@ -6,10 +6,13 @@
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+
 inline int putchar(int c)
 {
-  __CPROVER_bool error;
-  __CPROVER_HIDE: printf("%c", c);
+  __CPROVER_HIDE:;
+  __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
+  printf("%c", c);
   return (error?-1:c);
 }
 
@@ -20,11 +23,14 @@ inline int putchar(int c)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+int __VERIFIER_nondet_int();
+
 inline int puts(const char *s)
 {
   __CPROVER_HIDE:;
-  __CPROVER_bool error;
-  int ret;
+  __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
+  int ret=__VERIFIER_nondet_int();
   printf("%s\n", s);
   if(error) ret=-1; else __CPROVER_assume(ret>=0);
   return ret;
@@ -52,6 +58,8 @@ inline void fclose_cleanup(void *stream)
 }
 #endif
 
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+
 inline FILE *fopen(const char *filename, const char *mode)
 {
   __CPROVER_HIDE:;
@@ -64,8 +72,15 @@ inline FILE *fopen(const char *filename, const char *mode)
 
   FILE *fopen_result;
 
-  _Bool fopen_error;
+  __CPROVER_bool fopen_error=__VERIFIER_nondet___CPROVER_bool();
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   fopen_result=fopen_error?NULL:malloc(sizeof(FILE));
+  #else
+  // libraries need to expose the definition of FILE; this is the
+  // case for musl
+  fopen_result=fopen_error?NULL:malloc(sizeof(int));
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_set_must(fopen_result, "open");
@@ -87,7 +102,11 @@ inline FILE* freopen(const char *filename, const char *mode, FILE *f)
   __CPROVER_HIDE:;
   (void)*filename;
   (void)*mode;
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*f;
+  #else
+  (void)*(char*)f;
+  #endif
 
   return f;
 }
@@ -99,6 +118,13 @@ inline FILE* freopen(const char *filename, const char *mode, FILE *f)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+#ifndef __CPROVER_STDLIB_H_INCLUDED
+#include <stdlib.h>
+#define __CPROVER_STDLIB_H_INCLUDED
+#endif
+
+int __VERIFIER_nondet_int();
+
 inline int fclose(FILE *stream)
 {
   __CPROVER_HIDE:;
@@ -108,7 +134,7 @@ inline int fclose(FILE *stream)
   __CPROVER_clear_must(stream, "open");
   __CPROVER_set_must(stream, "closed");
   #endif
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
   free(stream);
   return return_value;
 }
@@ -135,10 +161,50 @@ inline FILE *fdopen(int handle, const char *mode)
     "fdopen zero-termination of 2nd argument");
   #endif
 
+  #if !defined(__linux__) || defined(__GLIBC__)
+  FILE *f=malloc(sizeof(FILE));
+  #else
+  // libraries need to expose the definition of FILE; this is the
+  // case for musl
+  FILE *f=malloc(sizeof(int));
+  #endif
+
+  return f;
+}
+
+/* FUNCTION: _fdopen */
+
+// This is for Apple; we cannot fall back to fdopen as we need
+// header files to have a definition of FILE available; the same
+// header files rename fdopen to _fdopen and would thus yield
+// unbounded recursion.
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDLIB_H_INCLUDED
+#include <stdlib.h>
+#define __CPROVER_STDLIB_H_INCLUDED
+#endif
+
+#ifdef __APPLE__
+inline FILE *_fdopen(int handle, const char *mode)
+{
+  __CPROVER_HIDE:;
+  (void)handle;
+  (void)*mode;
+  #ifdef __CPROVER_STRING_ABSTRACTION
+  __CPROVER_assert(__CPROVER_is_zero_string(mode),
+    "fdopen zero-termination of 2nd argument");
+  #endif
+
   FILE *f=malloc(sizeof(FILE));
 
   return f;
 }
+#endif
 
 /* FUNCTION: fgets */
 
@@ -147,13 +213,20 @@ inline FILE *fdopen(int handle, const char *mode)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
-inline char *fgets(char *str, int size, FILE *stream)
+__CPROVER_bool __VERIFIER_nondet___CPROVER_bool();
+int __VERIFIER_nondet_int();
+
+char *fgets(char *str, int size, FILE *stream)
 {
   __CPROVER_HIDE:;
-  __CPROVER_bool error;
+  __CPROVER_bool error=__VERIFIER_nondet___CPROVER_bool();
 
   (void)size;
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
@@ -169,6 +242,16 @@ inline char *fgets(char *str, int size, FILE *stream)
     __CPROVER_is_zero_string(str)=!error;
     __CPROVER_zero_string_length(str)=resulting_size;
   }
+  #else
+  if(size>0)
+  {
+    int str_length=__VERIFIER_nondet_int();
+    __CPROVER_assume(str_length>=0 && str_length<size);
+    char contents_nondet[str_length];
+    __CPROVER_array_replace(str, contents_nondet);
+    if(!error)
+      str[str_length]='\0';
+  }
   #endif
 
   return error?0:str;
@@ -181,6 +264,8 @@ inline char *fgets(char *str, int size, FILE *stream)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+size_t __VERIFIER_nondet_size_t();
+
 inline size_t fread(
   void *ptr,
   size_t size,
@@ -188,19 +273,22 @@ inline size_t fread(
   FILE *stream)
 {
   __CPROVER_HIDE:;
-  size_t nread;
+  size_t nread=__VERIFIER_nondet_size_t();
   size_t bytes=nread*size;
-  size_t i;
   __CPROVER_assume(nread<=nitems);
 
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
                    "fread file must be open");
   #endif
 
-  for(i=0; i<bytes; i++)
+  for(size_t i=0; i<bytes; i++)
   {
     char nondet_char;
     ((char *)ptr)[i]=nondet_char;
@@ -216,12 +304,19 @@ inline size_t fread(
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int feof(FILE *stream)
 {
   // just return nondet
   __CPROVER_HIDE:;
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
@@ -238,12 +333,19 @@ inline int feof(FILE *stream)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int ferror(FILE *stream)
 {
   // just return nondet
   __CPROVER_HIDE:;
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
@@ -260,12 +362,19 @@ inline int ferror(FILE *stream)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int fileno(FILE *stream)
 {
   // just return nondet
   __CPROVER_HIDE:;
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
@@ -282,16 +391,23 @@ inline int fileno(FILE *stream)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int fputs(const char *s, FILE *stream)
 {
   // just return nondet
   __CPROVER_HIDE:;
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
   #ifdef __CPROVER_STRING_ABSTRACTION
   __CPROVER_assert(__CPROVER_is_zero_string(s), "fputs zero-termination of 1st argument");
   #endif
   (void)*s;
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
@@ -308,11 +424,13 @@ inline int fputs(const char *s, FILE *stream)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int fflush(FILE *stream)
 {
   // just return nondet
   __CPROVER_HIDE:;
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
   (void)stream;
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
@@ -331,12 +449,19 @@ inline int fflush(FILE *stream)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int fpurge(FILE *stream)
 {
   // just return nondet
   __CPROVER_HIDE:;
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
@@ -353,11 +478,17 @@ inline int fpurge(FILE *stream)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int fgetc(FILE *stream)
 {
   __CPROVER_HIDE:;
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
   // it's a byte or EOF (-1)
   __CPROVER_assume(return_value>=-1 && return_value<=255);
 
@@ -378,11 +509,18 @@ inline int fgetc(FILE *stream)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int getc(FILE *stream)
 {
   __CPROVER_HIDE:;
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
@@ -404,10 +542,12 @@ inline int getc(FILE *stream)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int getchar()
 {
   __CPROVER_HIDE:;
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
   // it's a byte or EOF
   __CPROVER_assume(return_value>=-1 && return_value<=255);
   __CPROVER_input("getchar", return_value);
@@ -421,11 +561,18 @@ inline int getchar()
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int getw(FILE *stream)
 {
   __CPROVER_HIDE:;
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
@@ -445,11 +592,18 @@ inline int getw(FILE *stream)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int fseek(FILE *stream, long offset, int whence)
 {
   __CPROVER_HIDE:;
-  int return_value;
+  int return_value=__VERIFIER_nondet_int();
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
   (void)offset;
   (void)whence;
 
@@ -468,11 +622,18 @@ inline int fseek(FILE *stream, long offset, int whence)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+long __VERIFIER_nondet_long();
+
 inline long ftell(FILE *stream)
 {
   __CPROVER_HIDE:;
-  int return_value;
+  long return_value=__VERIFIER_nondet_long();
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
@@ -492,7 +653,12 @@ inline long ftell(FILE *stream)
 void rewind(FILE *stream)
 {
   __CPROVER_HIDE:
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
@@ -507,6 +673,8 @@ void rewind(FILE *stream)
 #define __CPROVER_STDIO_H_INCLUDED
 #endif
 
+size_t __VERIFIER_nondet_size_t();
+
 size_t fwrite(
   const void *ptr,
   size_t size,
@@ -516,14 +684,19 @@ size_t fwrite(
   __CPROVER_HIDE:;
   (void)*(char*)ptr;
   (void)size;
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
 
   #ifdef __CPROVER_CUSTOM_BITVECTOR_ANALYSIS
   __CPROVER_assert(__CPROVER_get_must(stream, "open"),
                    "fwrite file must be open");
   #endif
 
-  size_t nwrite;
+  size_t nwrite=__VERIFIER_nondet_size_t();
   __CPROVER_assume(nwrite<=nitems);
   return nwrite;
 }
@@ -629,11 +802,17 @@ inline int sscanf(const char *restrict s, const char *restrict format, ...)
 #define __CPROVER_STDARG_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int vfscanf(FILE *restrict stream, const char *restrict format, va_list arg)
 {
   __CPROVER_HIDE:;
-  int result;
+  int result=__VERIFIER_nondet_int();
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
   (void)*format;
   (void)arg;
 
@@ -675,10 +854,12 @@ inline int vscanf(const char *restrict format, va_list arg)
 #define __CPROVER_STDARG_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int vsscanf(const char *restrict s, const char *restrict format, va_list arg)
 {
   __CPROVER_HIDE:;
-  int result;
+  int result=__VERIFIER_nondet_int();
   (void)*s;
   (void)*format;
   (void)arg;
@@ -719,12 +900,19 @@ inline int fprintf(FILE *stream, const char *restrict format, ...)
 #define __CPROVER_STDARG_H_INCLUDED
 #endif
 
+int __VERIFIER_nondet_int();
+
 inline int vfprintf(FILE *stream, const char *restrict format, va_list arg)
 {
   __CPROVER_HIDE:;
 
-  int result;
+  int result=__VERIFIER_nondet_int();
+
+  #if !defined(__linux__) || defined(__GLIBC__)
   (void)*stream;
+  #else
+  (void)*(char*)stream;
+  #endif
   (void)*format;
   (void)arg;
 
@@ -734,4 +922,48 @@ inline int vfprintf(FILE *stream, const char *restrict format, va_list arg)
   #endif
 
   return result;
+}
+
+/* FUNCTION: vasprintf */
+
+#ifndef __CPROVER_STDIO_H_INCLUDED
+#include <stdio.h>
+#define __CPROVER_STDIO_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDARG_H_INCLUDED
+#include <stdarg.h>
+#define __CPROVER_STDARG_H_INCLUDED
+#endif
+
+#ifndef __CPROVER_STDLIB_H_INCLUDED
+#include <stdlib.h>
+#define __CPROVER_STDLIB_H_INCLUDED
+#endif
+
+char __VERIFIER_nondet_char();
+int __VERIFIER_nondet_int();
+
+inline int vasprintf(char **ptr, const char *fmt, va_list ap)
+{
+  (void)*fmt;
+  (void)ap;
+
+  int result_buffer_size=__VERIFIER_nondet_int();
+  if(result_buffer_size<=0)
+    return -1;
+
+  *ptr=malloc(result_buffer_size);
+  int i=0;
+  for( ; i<result_buffer_size; ++i)
+  {
+    char c=__VERIFIER_nondet_char();
+    (*ptr)[i]=c;
+    if(c=='\0')
+      break;
+  }
+
+  __CPROVER_assume(i<result_buffer_size);
+
+  return i;
 }

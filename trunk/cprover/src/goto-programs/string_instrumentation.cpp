@@ -6,31 +6,24 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <algorithm>
-
-#include <util/std_expr.h>
-#include <util/std_code.h>
-#include <util/message.h>
-#include <util/arith_tools.h>
-#include <util/config.h>
-#include <util/symbol_table.h>
-
-#include <goto-programs/format_strings.h>
-#include <util/c_types.h>
+/// \file
+/// String Abstraction
 
 #include "string_instrumentation.h"
 
-/*******************************************************************\
+#include <algorithm>
 
-Function: is_zero_string
+#include <util/arith_tools.h>
+#include <util/c_types.h>
+#include <util/config.h>
+#include <util/message.h>
+#include <util/std_expr.h>
+#include <util/std_code.h>
+#include <util/symbol_table.h>
 
-  Inputs:
+#include <goto-programs/format_strings.h>
+#include <goto-programs/goto_model.h>
 
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt is_zero_string(
   const exprt &what,
@@ -42,18 +35,6 @@ exprt is_zero_string(
   return result;
 }
 
-/*******************************************************************\
-
-Function: zero_string_length
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt zero_string_length(
   const exprt &what,
   bool write)
@@ -64,36 +45,12 @@ exprt zero_string_length(
   return result;
 }
 
-/*******************************************************************\
-
-Function: buffer_size
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt buffer_size(const exprt &what)
 {
   exprt result("buffer_size", size_type());
   result.copy_to_operands(what);
   return result;
 }
-
-/*******************************************************************\
-
-   Class: string_instrumentationt
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 class string_instrumentationt:public messaget
 {
@@ -169,16 +126,16 @@ protected:
     goto_programt &dest,
     goto_programt::const_targett target,
     const code_function_callt::argumentst &arguments,
-    unsigned format_string_inx,
-    unsigned argument_start_inx,
+    std::size_t format_string_inx,
+    std::size_t argument_start_inx,
     const std::string &function_name);
 
   void do_format_string_write(
     goto_programt &dest,
     goto_programt::const_targett target,
     const code_function_callt::argumentst &arguments,
-    unsigned format_string_inx,
-    unsigned argument_start_inx,
+    std::size_t format_string_inx,
+    std::size_t argument_start_inx,
     const std::string &function_name);
 
   bool is_string_type(const typet &t) const
@@ -197,18 +154,6 @@ protected:
     const mp_integer &limit);
 };
 
-/*******************************************************************\
-
-Function: string_instrumentation
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void string_instrumentation(
   symbol_tablet &symbol_table,
   message_handlert &message_handler,
@@ -217,18 +162,6 @@ void string_instrumentation(
   string_instrumentationt string_instrumentation(symbol_table, message_handler);
   string_instrumentation(dest);
 }
-
-/*******************************************************************\
-
-Function: string_instrumentation
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void string_instrumentation(
   symbol_tablet &symbol_table,
@@ -239,17 +172,15 @@ void string_instrumentation(
   string_instrumentation(dest);
 }
 
-/*******************************************************************\
-
-Function: string_instrumentationt::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+void string_instrumentation(
+  goto_modelt &goto_model,
+  message_handlert &message_handler)
+{
+  string_instrumentation(
+    goto_model.symbol_table,
+    message_handler,
+    goto_model.goto_functions);
+}
 
 void string_instrumentationt::operator()(goto_functionst &dest)
 {
@@ -262,35 +193,11 @@ void string_instrumentationt::operator()(goto_functionst &dest)
   }
 }
 
-/*******************************************************************\
-
-Function: string_instrumentationt::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void string_instrumentationt::operator()(goto_programt &dest)
 {
   Forall_goto_program_instructions(it, dest)
     instrument(dest, it);
 }
-
-/*******************************************************************\
-
-Function: string_instrumentationt::instrument
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void string_instrumentationt::instrument(
   goto_programt &dest,
@@ -310,18 +217,6 @@ void string_instrumentationt::instrument(
     }
   }
 }
-
-/*******************************************************************\
-
-Function: string_instrumentationt::do_function_call
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void string_instrumentationt::do_function_call(
   goto_programt &dest,
@@ -375,18 +270,6 @@ void string_instrumentationt::do_function_call(
   }
 }
 
-/*******************************************************************\
-
-Function: string_instrumentationt::do_sprintf
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void string_instrumentationt::do_sprintf(
   goto_programt &dest,
   goto_programt::targett target,
@@ -428,18 +311,6 @@ void string_instrumentationt::do_sprintf(
   target->make_skip();
   dest.insert_before_swap(target, tmp);
 }
-
-/*******************************************************************\
-
-Function: string_instrumentationt::do_snprintf
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void string_instrumentationt::do_snprintf(
   goto_programt &dest,
@@ -484,18 +355,6 @@ void string_instrumentationt::do_snprintf(
   dest.insert_before_swap(target, tmp);
 }
 
-/*******************************************************************\
-
-Function: string_instrumentationt::do_fscanf
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void string_instrumentationt::do_fscanf(
   goto_programt &dest,
   goto_programt::targett target,
@@ -529,24 +388,12 @@ void string_instrumentationt::do_fscanf(
   dest.insert_before_swap(target, tmp);
 }
 
-/*******************************************************************\
-
-Function: string_instrumentationt::do_format_string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void string_instrumentationt::do_format_string_read(
   goto_programt &dest,
   goto_programt::const_targett target,
   const code_function_callt::argumentst &arguments,
-  unsigned format_string_inx,
-  unsigned argument_start_inx,
+  std::size_t format_string_inx,
+  std::size_t argument_start_inx,
   const std::string &function_name)
 {
   const exprt &format_arg=arguments[format_string_inx];
@@ -558,7 +405,7 @@ void string_instrumentationt::do_format_string_read(
     format_token_listt token_list=
       parse_format_string(format_arg.op0().op0().get_string(ID_value));
 
-    unsigned args=0;
+    std::size_t args=0;
 
     for(const auto &token : token_list)
     {
@@ -612,7 +459,7 @@ void string_instrumentationt::do_format_string_read(
     comment += function_name;
     format_ass->source_location.set_comment(comment);
 
-    for(unsigned i=2; i<arguments.size(); i++)
+    for(std::size_t i=2; i<arguments.size(); i++)
     {
       const exprt &arg=arguments[i];
       const typet &arg_type=ns.follow(arguments[i].type());
@@ -644,24 +491,12 @@ void string_instrumentationt::do_format_string_read(
   }
 }
 
-/*******************************************************************\
-
-Function: string_instrumentationt::do_format_string_write
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void string_instrumentationt::do_format_string_write(
   goto_programt &dest,
   goto_programt::const_targett target,
   const code_function_callt::argumentst &arguments,
-  unsigned format_string_inx,
-  unsigned argument_start_inx,
+  std::size_t format_string_inx,
+  std::size_t argument_start_inx,
   const std::string &function_name)
 {
   const exprt &format_arg=arguments[format_string_inx];
@@ -673,7 +508,7 @@ void string_instrumentationt::do_format_string_write(
     format_token_listt token_list=
       parse_format_string(format_arg.op0().op0().get_string(ID_value));
 
-    unsigned args=0;
+    std::size_t args=0;
 
     for(const auto &token : token_list)
     {
@@ -765,7 +600,7 @@ void string_instrumentationt::do_format_string_write(
   }
   else // non-const format string
   {
-    for(unsigned i=argument_start_inx; i<arguments.size(); i++)
+    for(std::size_t i=argument_start_inx; i<arguments.size(); i++)
     {
       const typet &arg_type=ns.follow(arguments[i].type());
 
@@ -806,36 +641,12 @@ void string_instrumentationt::do_format_string_write(
   }
 }
 
-/*******************************************************************\
-
-Function: string_instrumentationt::do_strncmp
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void string_instrumentationt::do_strncmp(
   goto_programt &dest,
   goto_programt::targett target,
   code_function_callt &call)
 {
 }
-
-/*******************************************************************\
-
-Function: string_instrumentationt::do_strchr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void string_instrumentationt::do_strchr(
   goto_programt &dest,
@@ -864,18 +675,6 @@ void string_instrumentationt::do_strchr(
   dest.insert_before_swap(target, tmp);
 }
 
-/*******************************************************************\
-
-Function: string_instrumentationt::do_strrchr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void string_instrumentationt::do_strrchr(
   goto_programt &dest,
   goto_programt::targett target,
@@ -902,18 +701,6 @@ void string_instrumentationt::do_strrchr(
   target->make_skip();
   dest.insert_before_swap(target, tmp);
 }
-
-/*******************************************************************\
-
-Function: string_instrumentationt::do_strstr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void string_instrumentationt::do_strstr(
   goto_programt &dest,
@@ -949,18 +736,6 @@ void string_instrumentationt::do_strstr(
   dest.insert_before_swap(target, tmp);
 }
 
-/*******************************************************************\
-
-Function: string_instrumentationt::do_strtok
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void string_instrumentationt::do_strtok(
   goto_programt &dest,
   goto_programt::targett target,
@@ -994,18 +769,6 @@ void string_instrumentationt::do_strtok(
   target->make_skip();
   dest.insert_before_swap(target, tmp);
 }
-
-/*******************************************************************\
-
-Function: string_instrumentationt::do_strerror
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void string_instrumentationt::do_strerror(
   goto_programt &dest,
@@ -1046,8 +809,8 @@ void string_instrumentationt::do_strerror(
     new_symbol_buf.pretty_name=new_symbol_buf.base_name;
     new_symbol_buf.name=new_symbol_buf.base_name;
 
-    symbol_table.move(new_symbol_buf);
-    symbol_table.move(new_symbol_size);
+    symbol_table.insert(std::move(new_symbol_buf));
+    symbol_table.insert(std::move(new_symbol_size));
   }
 
   const symbolt &symbol_size=ns.lookup(identifier_size);
@@ -1074,14 +837,12 @@ void string_instrumentationt::do_strerror(
   }
 
   // return a pointer to some magic buffer
-  exprt index=exprt(ID_index, char_type());
-  index.copy_to_operands(
+  index_exprt index(
     symbol_buf.symbol_expr(),
-    from_integer(0, index_type()));
+    from_integer(0, index_type()),
+    char_type());
 
-  exprt ptr=exprt(ID_address_of, pointer_typet());
-  ptr.type().subtype()=char_type();
-  ptr.copy_to_operands(index);
+  address_of_exprt ptr(index);
 
   // make that zero-terminated
   {
@@ -1102,18 +863,6 @@ void string_instrumentationt::do_strerror(
   it->make_skip();
   dest.insert_before_swap(it, tmp);
 }
-
-/*******************************************************************\
-
-Function: string_instrumentationt::invalidate_buffer
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void string_instrumentationt::invalidate_buffer(
   goto_programt &dest,
@@ -1136,7 +885,7 @@ void string_instrumentationt::invalidate_buffer(
     new_symbol.is_lvalue=true;
     new_symbol.is_static_lifetime=true;
 
-    symbol_table.move(new_symbol);
+    symbol_table.insert(std::move(new_symbol));
   }
 
   const symbolt &cntr_sym=ns.lookup(cntr_id);

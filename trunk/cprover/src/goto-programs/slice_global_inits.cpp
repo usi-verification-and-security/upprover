@@ -8,6 +8,11 @@ Date:   December 2016
 
 \*******************************************************************/
 
+/// \file
+/// Remove initializations of unused global variables
+
+#include "slice_global_inits.h"
+
 #include <unordered_set>
 
 #include <analyses/call_graph.h>
@@ -20,63 +25,24 @@ Date:   December 2016
 #include <goto-programs/goto_functions.h>
 #include <goto-programs/remove_skip.h>
 
-#include "slice_global_inits.h"
+#include <linking/static_lifetime_init.h>
 
-/*******************************************************************\
-
-Function: slice_global_inits
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void slice_global_inits(
-  const namespacet &ns,
-  goto_functionst &goto_functions)
+void slice_global_inits(goto_modelt &goto_model)
 {
   // gather all functions reachable from the entry point
-
-  call_grapht call_graph(goto_functions);
-  const call_grapht::grapht &graph=call_graph.graph;
-
-  std::list<irep_idt> worklist;
-  std::unordered_set<irep_idt, irep_id_hash> functions_reached;
-
   const irep_idt entry_point=goto_functionst::entry_point();
+  goto_functionst &goto_functions=goto_model.goto_functions;
 
-  goto_functionst::function_mapt::const_iterator e_it;
-  e_it=goto_functions.function_map.find(entry_point);
-
-  if(e_it==goto_functions.function_map.end())
+  if(!goto_functions.function_map.count(entry_point))
     throw "entry point not found";
 
-  worklist.push_back(entry_point);
-
-  do
-  {
-    const irep_idt id=worklist.front();
-    worklist.pop_front();
-
-    functions_reached.insert(id);
-
-    const auto &p=graph.equal_range(id);
-
-    for(auto it=p.first; it!=p.second; it++)
-    {
-      const irep_idt callee=it->second;
-
-      if(functions_reached.find(callee)==functions_reached.end())
-        worklist.push_back(callee);
-    }
-  }
-  while(!worklist.empty());
-
-  const irep_idt initialize=CPROVER_PREFIX "initialize";
-  functions_reached.erase(initialize);
+  // Get the call graph restricted to functions reachable from
+  // the entry point:
+  call_grapht call_graph =
+    call_grapht::create_from_root_function(goto_model, entry_point, false);
+  const auto directed_graph = call_graph.get_directed_graph();
+  INVARIANT(
+    !directed_graph.empty(), "At least __CPROVER_start should be reachable");
 
   // gather all symbols used by reachable functions
 
@@ -98,10 +64,11 @@ void slice_global_inits(
 
   symbol_collectort visitor;
 
-  assert(!functions_reached.empty());
-
-  for(const irep_idt &id : functions_reached)
+  for(std::size_t node_idx = 0; node_idx < directed_graph.size(); ++node_idx)
   {
+    const irep_idt &id = directed_graph[node_idx].function;
+    if(id == INITIALIZE_FUNCTION)
+      continue;
     const goto_functionst::goto_functiont &goto_function
       =goto_functions.function_map.at(id);
     const goto_programt &goto_program=goto_function.body;
@@ -118,7 +85,7 @@ void slice_global_inits(
   // now remove unnecessary initializations
 
   goto_functionst::function_mapt::iterator f_it;
-  f_it=goto_functions.function_map.find(initialize);
+  f_it=goto_functions.function_map.find(INITIALIZE_FUNCTION);
   assert(f_it!=goto_functions.function_map.end());
 
   goto_programt &goto_program=f_it->second.body;

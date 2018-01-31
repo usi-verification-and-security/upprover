@@ -6,19 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// JAVA Bytecode Conversion / Type Checking
+
 #include "java_bytecode_typecheck.h"
-
-/*******************************************************************\
-
-Function: java_bytecode_typecheckt::typecheck_code
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void java_bytecode_typecheckt::typecheck_code(codet &code)
 {
@@ -75,5 +66,9 @@ void java_bytecode_typecheckt::typecheck_code(codet &code)
         a_it!=code_function_call.arguments().end();
         a_it++)
       typecheck_expr(*a_it);
+  }
+  else if(statement==ID_assert || statement==ID_assume)
+  {
+    typecheck_expr(code.op0());
   }
 }

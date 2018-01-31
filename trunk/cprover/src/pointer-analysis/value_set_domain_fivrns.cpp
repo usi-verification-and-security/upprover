@@ -7,21 +7,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/std_code.h>
+/// \file
+/// Value Set Domain (Flow Insensitive, Validity Regions)
 
 #include "value_set_domain_fivrns.h"
 
-/*******************************************************************\
-
-Function: value_set_domain_fivrnst::transform
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <util/std_code.h>
 
 bool value_set_domain_fivrnst::transform(
   const namespacet &ns,

@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Field-insensitive, location-sensitive bitvector analysis
+
 #ifndef CPROVER_ANALYSES_CUSTOM_BITVECTOR_ANALYSIS_H
 #define CPROVER_ANALYSES_CUSTOM_BITVECTOR_ANALYSIS_H
 
@@ -14,14 +17,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "ai.h"
 #include "local_may_alias.h"
-
-/*******************************************************************\
-
-   Class: custom_bitvector_domaint
-
- Purpose:
-
-\*******************************************************************/
 
 class custom_bitvector_analysist;
 
@@ -32,30 +27,47 @@ public:
     locationt from,
     locationt to,
     ai_baset &ai,
-    const namespacet &ns) final;
+    const namespacet &ns,
+    ai_domain_baset::edge_typet edge_type) final override;
 
   void output(
     std::ostream &out,
     const ai_baset &ai,
-    const namespacet &ns) const final;
+    const namespacet &ns) const final override;
 
-  void make_bottom() final
+  void make_bottom() final override
   {
     may_bits.clear();
     must_bits.clear();
     has_values=tvt(false);
   }
 
-  void make_top() final
+  void make_top() final override
   {
     may_bits.clear();
     must_bits.clear();
     has_values=tvt(true);
   }
 
-  void make_entry() final
+  void make_entry() final override
   {
     make_top();
+  }
+
+  bool is_bottom() const final override
+  {
+    DATA_INVARIANT(!has_values.is_false() ||
+                   (may_bits.empty() && must_bits.empty()),
+                   "If the domain is bottom, it must have no bits set");
+    return has_values.is_false();
+  }
+
+  bool is_top() const final override
+  {
+    DATA_INVARIANT(!has_values.is_true() ||
+                   (may_bits.empty() && must_bits.empty()),
+                   "If the domain is top, it must have no bits set");
+    return has_values.is_true();
   }
 
   bool merge(
@@ -85,6 +97,13 @@ public:
 
   bitst may_bits, must_bits;
 
+  void assign_struct_rec(
+    locationt from,
+    const exprt &lhs,
+    const exprt &rhs,
+    custom_bitvector_analysist &,
+    const namespacet &);
+
   void assign_lhs(const exprt &, const vectorst &);
   void assign_lhs(const irep_idt &, const vectorst &);
   vectorst get_rhs(const exprt &) const;
@@ -92,7 +111,7 @@ public:
 
   tvt has_values;
 
-  custom_bitvector_domaint():has_values(true)
+  custom_bitvector_domaint():has_values(false)
   {
   }
 
@@ -133,8 +152,7 @@ class custom_bitvector_analysist:public ait<custom_bitvector_domaint>
 public:
   void instrument(goto_functionst &);
   void check(
-    const namespacet &,
-    const goto_functionst &,
+    const goto_modelt &,
     bool xml, std::ostream &);
 
   exprt eval(const exprt &src, locationt loc)
@@ -150,6 +168,7 @@ public:
 protected:
   virtual void initialize(const goto_functionst &_goto_functions)
   {
+    ait<custom_bitvector_domaint>::initialize(_goto_functions);
     local_may_alias_factory(_goto_functions);
   }
 

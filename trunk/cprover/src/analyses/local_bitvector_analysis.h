@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Field-insensitive, location-sensitive bitvector analysis
+
 #ifndef CPROVER_ANALYSES_LOCAL_BITVECTOR_ANALYSIS_H
 #define CPROVER_ANALYSES_LOCAL_BITVECTOR_ANALYSIS_H
 
@@ -16,14 +19,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "locals.h"
 #include "dirty.h"
 #include "local_cfg.h"
-
-/*******************************************************************\
-
-   Class: local_bitvector_analysist
-
- Purpose:
-
-\*******************************************************************/
 
 class local_bitvector_analysist
 {
@@ -191,27 +186,20 @@ protected:
   // This is a vector, so it's fast.
   typedef expanding_vectort<flagst> points_tot;
 
-  // the information tracked per program location
-  class loc_infot
-  {
-  public:
-    points_tot points_to;
+  static bool merge(points_tot &a, points_tot &b);
 
-    bool merge(const loc_infot &src);
-  };
-
-  typedef std::vector<loc_infot> loc_infost;
+  typedef std::vector<points_tot> loc_infost;
   loc_infost loc_infos;
 
   void assign_lhs(
     const exprt &lhs,
     const exprt &rhs,
-    const loc_infot &loc_info_src,
-    loc_infot &loc_info_dest);
+    points_tot &loc_info_src,
+    points_tot &loc_info_dest);
 
   flagst get_rec(
     const exprt &rhs,
-    const loc_infot &loc_info_src);
+    points_tot &loc_info_src);
 
   bool is_tracked(const irep_idt &identifier);
 };

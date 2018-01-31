@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Function Entering and Exiting
+
+#include "function.h"
+
 #include <util/arith_tools.h>
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
@@ -13,20 +18,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/c_types.h>
 #include <ansi-c/string_constant.h>
-
-#include "function.h"
-
-/*******************************************************************\
-
-Function: function_to_call
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 code_function_callt function_to_call(
   symbol_tablet &symbol_table,
@@ -41,7 +32,7 @@ code_function_callt function_to_call(
   if(s_it==symbol_table.symbols.end())
   {
     // not there
-    pointer_typet p(char_type());
+    typet p=pointer_type(char_type());
     p.subtype().set(ID_C_constant, true);
 
     code_typet function_type;
@@ -54,7 +45,7 @@ code_function_callt function_to_call(
     new_symbol.base_name=id;
     new_symbol.type=function_type;
 
-    symbol_table.move(new_symbol);
+    symbol_table.insert(std::move(new_symbol));
 
     s_it=symbol_table.symbols.find(id);
     assert(s_it!=symbol_table.symbols.end());
@@ -87,24 +78,11 @@ code_function_callt function_to_call(
   return call;
 }
 
-/*******************************************************************\
-
-Function: function_enter
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void function_enter(
-  symbol_tablet &symbol_table,
-  goto_functionst &goto_functions,
+  goto_modelt &goto_model,
   const irep_idt &id)
 {
-  Forall_goto_functions(f_it, goto_functions)
+  Forall_goto_functions(f_it, goto_model.goto_functions)
   {
     // don't instrument our internal functions
     if(has_prefix(id2string(f_it->first), CPROVER_PREFIX))
@@ -121,29 +99,16 @@ void function_enter(
     goto_programt::targett t=
       body.insert_before(body.instructions.begin());
     t->make_function_call(
-      function_to_call(symbol_table, id, f_it->first));
+      function_to_call(goto_model.symbol_table, id, f_it->first));
     t->function=f_it->first;
   }
 }
 
-/*******************************************************************\
-
-Function: function_exit
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void function_exit(
-  symbol_tablet &symbol_table,
-  goto_functionst &goto_functions,
+  goto_modelt &goto_model,
   const irep_idt &id)
 {
-  Forall_goto_functions(f_it, goto_functions)
+  Forall_goto_functions(f_it, goto_model.goto_functions)
   {
     // don't instrument our internal functions
     if(has_prefix(id2string(f_it->first), CPROVER_PREFIX))
@@ -169,7 +134,7 @@ void function_exit(
         goto_programt::instructiont call;
         call.function=f_it->first;
         call.make_function_call(
-          function_to_call(symbol_table, id, f_it->first));
+          function_to_call(goto_model.symbol_table, id, f_it->first));
         body.insert_before_swap(i_it, call);
 
         // move on
@@ -197,7 +162,7 @@ void function_exit(
     {
       goto_programt::instructiont call;
       call.make_function_call(
-        function_to_call(symbol_table, id, f_it->first));
+        function_to_call(goto_model.symbol_table, id, f_it->first));
       call.function=f_it->first;
       body.insert_before_swap(last, call);
     }

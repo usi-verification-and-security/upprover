@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+/// \file
+/// C++ Language Parsing
+
+#include "cpp_parser.h"
+
 #include <cassert>
 #include <map>
 
@@ -15,9 +20,9 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include <util/std_types.h>
 
 #include <ansi-c/ansi_c_y.tab.h>
+#include <util/c_types.h>
 
 #include "cpp_token_buffer.h"
-#include "cpp_parser.h"
 #include "cpp_member_spec.h"
 #include "cpp_enum_type.h"
 
@@ -44,7 +49,7 @@ struct indenter // NOLINT(readability/identifiers)
 class new_scopet
 {
 public:
-  new_scopet():kind(kindt::NONE), anon_count(0), parent(NULL)
+  new_scopet():kind(kindt::NONE), anon_count(0), parent(nullptr)
   {
   }
 
@@ -134,7 +139,7 @@ public:
   typedef std::map<irep_idt, new_scopet> id_mapt;
   id_mapt id_map;
 
-  unsigned anon_count;
+  std::size_t anon_count;
 
   new_scopet *parent;
 
@@ -151,7 +156,7 @@ public:
 
   std::string full_name() const
   {
-    return (parent==NULL?"":(parent->full_name()+"::"))+
+    return (parent==nullptr?"":(parent->full_name()+"::"))+
            id2string(id);
   }
 
@@ -177,18 +182,6 @@ protected:
   new_scopet *old_scope;
 };
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void new_scopet::print_rec(std::ostream &out, unsigned indent) const
 {
   for(id_mapt::const_iterator
@@ -209,7 +202,8 @@ class Parser // NOLINT(readability/identifiers)
 public:
   explicit Parser(cpp_parsert &_cpp_parser):
     lex(_cpp_parser.token_buffer),
-    parser(_cpp_parser)
+    parser(_cpp_parser),
+    max_errors(10)
   {
     root_scope.kind=new_scopet::kindt::NAMESPACE;
     current_scope=&root_scope;
@@ -388,7 +382,7 @@ protected:
   bool rMSCuuidof(exprt &);
   bool rMSC_if_existsExpr(exprt &);
 
-  unsigned number_of_errors;
+  std::size_t number_of_errors;
   irep_idt current_function;
 
   void merge_types(const typet &src, typet &dest);
@@ -407,7 +401,7 @@ protected:
   {
     typet *p=&dest;
 
-    while(p->id()!=irep_idt() && p->is_not_nil())
+    while(!p->id().empty() && p->is_not_nil())
     {
       if(p->id()==ID_merged_type)
       {
@@ -424,18 +418,6 @@ protected:
   unsigned int max_errors;
 };
 
-/*******************************************************************\
-
-Function: Parser::add_id
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 new_scopet &Parser::add_id(const irept &cpp_name, new_scopet::kindt kind)
 {
   irep_idt id;
@@ -449,18 +431,6 @@ new_scopet &Parser::add_id(const irept &cpp_name, new_scopet::kindt kind)
   return add_id(id, kind);
 }
 
-/*******************************************************************\
-
-Function: Parser::add_id
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 new_scopet &Parser::add_id(const irep_idt &id, new_scopet::kindt kind)
 {
   new_scopet &s=current_scope->id_map[id];
@@ -472,53 +442,17 @@ new_scopet &Parser::add_id(const irep_idt &id, new_scopet::kindt kind)
   return s;
 }
 
-/*******************************************************************\
-
-Function: Parser::make_sub_scope
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void Parser::make_sub_scope(const irept &cpp_name, new_scopet::kindt kind)
 {
   new_scopet &s=add_id(cpp_name, kind);
   current_scope=&s;
 }
 
-/*******************************************************************\
-
-Function: Parser::make_sub_scope
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void Parser::make_sub_scope(const irep_idt &id, new_scopet::kindt kind)
 {
   new_scopet &s=add_id(id, kind);
   current_scope=&s;
 }
-
-/*******************************************************************\
-
-Function: Parser::rString
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool Parser::rString(cpp_tokent &tk)
 {
@@ -527,18 +461,6 @@ bool Parser::rString(cpp_tokent &tk)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function: Parser::merge_types
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void Parser::merge_types(const typet &src, typet &dest)
 {
@@ -560,25 +482,13 @@ void Parser::merge_types(const typet &src, typet &dest)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool Parser::SyntaxError()
 {
   #define ERROR_TOKENS 4
 
   cpp_tokent t[ERROR_TOKENS];
 
-  for(unsigned i=0; i<ERROR_TOKENS; i++)
+  for(std::size_t i=0; i<ERROR_TOKENS; i++)
     lex.LookAhead(i, t[i]);
 
   if(t[0].kind!='\0')
@@ -589,7 +499,7 @@ bool Parser::SyntaxError()
 
     std::string message="parse error before `";
 
-    for(unsigned i=0; i<ERROR_TOKENS; i++)
+    for(std::size_t i=0; i<ERROR_TOKENS; i++)
       if(t[i].kind!='\0')
       {
         if(i!=0)
@@ -605,18 +515,6 @@ bool Parser::SyntaxError()
 
   return ++number_of_errors < max_errors;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool Parser::rProgram(cpp_itemt &item)
 {
@@ -636,18 +534,6 @@ bool Parser::rProgram(cpp_itemt &item)
 
   return false;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   definition
@@ -696,18 +582,6 @@ bool Parser::rDefinition(cpp_itemt &item)
     return rDeclaration(item.make_declaration());
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool Parser::rNullDeclaration(cpp_declarationt &decl)
 {
   cpp_tokent tk;
@@ -719,18 +593,6 @@ bool Parser::rNullDeclaration(cpp_declarationt &decl)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   typedef
@@ -760,18 +622,6 @@ bool Parser::rTypedef(cpp_declarationt &declaration)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   USING Identifier '=' type.specifier ';'
@@ -825,36 +675,12 @@ bool Parser::rTypedefUsing(cpp_declarationt &declaration)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool Parser::rTypedefStatement(codet &statement)
 {
   statement=codet(ID_decl);
   statement.operands().resize(1);
   return rTypedef((cpp_declarationt &)statement.op0());
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   type.specifier
@@ -918,18 +744,6 @@ bool Parser::rTypeSpecifier(typet &tspec, bool check)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 // isTypeSpecifier() returns true if the next is probably a type specifier.
 
 bool Parser::isTypeSpecifier()
@@ -958,18 +772,6 @@ bool Parser::isTypeSpecifier()
 
   return false;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   linkage.spec
@@ -1008,18 +810,6 @@ bool Parser::rLinkageSpec(cpp_linkage_spect &linkage_spec)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   namespace.spec
@@ -1074,18 +864,6 @@ bool Parser::rNamespaceSpec(cpp_namespace_spect &namespace_spec)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   using.declaration : USING { NAMESPACE } name ';'
 */
@@ -1113,18 +891,6 @@ bool Parser::rUsing(cpp_usingt &cpp_using)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   static_assert.declaration : STATIC_ASSERT ( expression , expression ) ';'
@@ -1160,18 +926,6 @@ bool Parser::rStaticAssert(cpp_static_assertt &cpp_static_assert)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   linkage.body : '{' (definition)* '}'
 
@@ -1206,18 +960,6 @@ bool Parser::rLinkageBody(cpp_linkage_spect::itemst &items)
   lex.get_token(cp);
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   template.decl
@@ -1285,24 +1027,12 @@ bool Parser::rTemplateDecl(cpp_declarationt &decl)
     break;
 
    default:
-    assert(0);
+    UNREACHABLE;
     break;
   }
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool Parser::rTemplateDecl2(typet &decl, TemplateDeclKind &kind)
 {
@@ -1358,18 +1088,6 @@ bool Parser::rTemplateDecl2(typet &decl, TemplateDeclKind &kind)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   temp.arg.list
   : empty
@@ -1401,18 +1119,6 @@ bool Parser::rTempArgList(irept &args)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   temp.arg.declaration
@@ -1605,18 +1311,6 @@ bool Parser::rTempArgDeclaration(cpp_declarationt &declaration)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
    extern.template.decl
    : EXTERN TEMPLATE declaration
@@ -1639,18 +1333,6 @@ bool Parser::rExternTemplateDecl(irept &decl)
   //                               Ptree::List(new Leaf(tk2), body));
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   declaration
@@ -1768,18 +1450,6 @@ bool Parser::rDeclaration(cpp_declarationt &declaration)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /* single declaration, for use in a condition (controlling
    expression of switch/while/if) */
 bool Parser::rSimpleDeclaration(cpp_declarationt &declaration)
@@ -1839,18 +1509,6 @@ bool Parser::rSimpleDeclaration(cpp_declarationt &declaration)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool Parser::rIntegralDeclaration(
   cpp_declarationt &declaration,
@@ -1965,18 +1623,6 @@ bool Parser::rIntegralDeclaration(
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool Parser::rConstDeclaration(
   cpp_declarationt &declaration,
   cpp_storage_spect &storage_spec,
@@ -2001,18 +1647,6 @@ bool Parser::rConstDeclaration(
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool Parser::rOtherDeclaration(
   cpp_declarationt &declaration,
@@ -2061,7 +1695,7 @@ bool Parser::rOtherDeclaration(
 
     assert(!type_name.get_sub().empty());
 
-    for(unsigned i=0; i < type_name.get_sub().size(); i++)
+    for(std::size_t i=0; i < type_name.get_sub().size(); i++)
     {
       if(type_name.get_sub()[i].id() == ID_operator)
       {
@@ -2191,18 +1825,6 @@ bool Parser::rOtherDeclaration(
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   This returns true for an declaration like:
         T (a);
@@ -2241,18 +1863,6 @@ bool Parser::isConstructorDecl()
     return true;
   }
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   ptr.to.member
@@ -2311,18 +1921,6 @@ bool Parser::isPtrToMember(int i)
   return false;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   member.spec
   : (FRIEND | INLINE | VIRTUAL | EXPLICIT)+
@@ -2344,7 +1942,7 @@ bool Parser::optMemberSpec(cpp_member_spect &member_spec)
     case TOK_VIRTUAL:  member_spec.set_virtual(true); break;
     case TOK_FRIEND:   member_spec.set_friend(true); break;
     case TOK_EXPLICIT: member_spec.set_explicit(true); break;
-    default: assert(false);
+    default: UNREACHABLE;
     }
 
     t=lex.LookAhead(0);
@@ -2352,18 +1950,6 @@ bool Parser::optMemberSpec(cpp_member_spect &member_spec)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   storage.spec : STATIC | EXTERN | AUTO | REGISTER | MUTABLE | ASM |
@@ -2393,7 +1979,7 @@ bool Parser::optStorageSpec(cpp_storage_spect &storage_spec)
     case TOK_MUTABLE: storage_spec.set_mutable(); break;
     case TOK_GCC_ASM: storage_spec.set_asm(); break;
     case TOK_THREAD_LOCAL: storage_spec.set_thread_local(); break;
-    default: assert(false);
+    default: UNREACHABLE;
     }
 
     set_location(storage_spec, tk);
@@ -2401,18 +1987,6 @@ bool Parser::optStorageSpec(cpp_storage_spect &storage_spec)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   cv.qualify : (CONSTEXPR | CONST | VOLATILE | RESTRICT)+
@@ -2475,7 +2049,7 @@ bool Parser::optCvQualify(typet &cv)
         break;
 
       default:
-        assert(false);
+        UNREACHABLE;
         break;
       }
     }
@@ -2485,18 +2059,6 @@ bool Parser::optCvQualify(typet &cv)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   dcl.align
@@ -2541,18 +2103,6 @@ bool Parser::optAlignas(typet &cv)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool Parser::rAttribute()
 {
   cpp_tokent tk;
@@ -2576,18 +2126,6 @@ bool Parser::rAttribute()
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool Parser::optAttribute(cpp_declarationt &declaration)
 {
@@ -2620,18 +2158,6 @@ bool Parser::optAttribute(cpp_declarationt &declaration)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
 
@@ -2701,7 +2227,7 @@ bool Parser::optIntegralTypeOrClassSpec(typet &p)
     default: type_id=irep_idt();
     }
 
-    if(type_id!=irep_idt())
+    if(!type_id.empty())
     {
       cpp_tokent tk;
       typet kw;
@@ -2860,18 +2386,6 @@ bool Parser::optIntegralTypeOrClassSpec(typet &p)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   constructor.decl
   : '(' {arg.decl.list} ')' {cv.qualify} {throw.decl}
@@ -2990,18 +2504,6 @@ bool Parser::rConstructorDecl(
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   throw.decl : THROW '(' (name {','})* {name} ')'
              | THROW '(' '...' ')'
@@ -3070,18 +2572,6 @@ bool Parser::optThrowDecl(irept &throw_decl)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   declarators : declarator.with.init (',' declarator.with.init)*
 
@@ -3108,18 +2598,6 @@ bool Parser::rDeclarators(
       return true;
   }
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   declarator.with.init
@@ -3235,18 +2713,6 @@ bool Parser::rDeclaratorWithInit(
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /* __stdcall, __fastcall, __clrcall, __cdecl
 
    These are Visual-Studio specific.
@@ -3268,18 +2734,6 @@ bool Parser::rDeclaratorQualifier()
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   declarator
@@ -3312,7 +2766,7 @@ bool Parser::rDeclarator(
   std::cout << std::string(__indent, ' ') << "Parser::rDeclarator2 1\n";
   #endif
 
-  // we can have one or more declatator qualifiers
+  // we can have one or more declarator qualifiers
   if(!rDeclaratorQualifier())
     return false;
 
@@ -3326,7 +2780,7 @@ bool Parser::rDeclarator(
   if(!optPtrOperator(d_outer))
     return false;
 
-  // we can have another sequence of declatator qualifiers
+  // we can have another sequence of declarator qualifiers
   if(!rDeclaratorQualifier())
     return false;
 
@@ -3538,18 +2992,6 @@ bool Parser::rDeclarator(
   return true;
 }
 
-/*******************************************************************\
-
-Function: Parser::optPtrOperator
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   ptr.operator
   : (('*' | ptr.to.member)['&'] {cv.qualify})+
@@ -3574,7 +3016,7 @@ bool Parser::optPtrOperator(typet &ptrs)
 
     if(t=='*')
     {
-      pointer_typet op;
+      typet op(ID_frontend_pointer); // width gets set during conversion
       cpp_tokent tk;
       lex.get_token(tk);
       set_location(op, tk);
@@ -3637,7 +3079,7 @@ bool Parser::optPtrOperator(typet &ptrs)
     {
       cpp_tokent tk;
       lex.get_token(tk);
-      typet op(ID_pointer);
+      typet op(ID_frontend_pointer); // width gets set during conversion
       op.set(ID_C_reference, true);
       set_location(op, tk);
       t_list.push_front(op);
@@ -3646,7 +3088,7 @@ bool Parser::optPtrOperator(typet &ptrs)
     {
       cpp_tokent tk;
       lex.get_token(tk);
-      typet op(ID_pointer);
+      typet op(ID_frontend_pointer); // width gets set during conversion
       op.set(ID_C_rvalue_reference, true);
       set_location(op, tk);
       t_list.push_front(op);
@@ -3674,18 +3116,6 @@ bool Parser::optPtrOperator(typet &ptrs)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   member.initializers
@@ -3718,18 +3148,6 @@ bool Parser::rMemberInitializers(irept &init)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   member.init
@@ -3806,18 +3224,6 @@ bool Parser::rMemberInit(exprt &init)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   name : {'::'} name2 ('::' name2)*
@@ -3962,18 +3368,6 @@ bool Parser::rName(irept &name)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   operator.name
   : '+' | '-' | '*' | '/' | '%' | '^' | '&' | '|' | '~'
@@ -4076,25 +3470,13 @@ bool Parser::rOperatorName(irept &name)
     return rCastOperatorName(name);
   }
 
-  assert(operator_id!=irep_idt());
+  assert(!operator_id.empty());
   lex.get_token(tk);
   name=irept(operator_id);
   set_location(name, tk);
 
   return true;
 }
-
-/*******************************************************************\
-
-Function: Parser::rCastOperatorName
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   cast.operator.name
@@ -4138,18 +3520,6 @@ bool Parser::rCastOperatorName(irept &name)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   ptr.to.member
   : {'::'} (identifier {template.args} '::')+ '*'
@@ -4161,7 +3531,7 @@ bool Parser::rPtrToMember(irept &ptr_to_mem)
   std::cout << std::string(__indent, ' ') << "Parser::rPtrToMember 0\n";
   #endif
 
-  irept ptm(ID_pointer);
+  typet ptm(ID_frontend_pointer); // width gets set during conversion
   irept &name = ptm.add("to-member");
   name=cpp_namet();
   irept::subt &components=name.get_sub();
@@ -4243,18 +3613,6 @@ bool Parser::rPtrToMember(irept &ptr_to_mem)
   }
   return false;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   template.args
@@ -4399,18 +3757,6 @@ bool Parser::rTemplateArgs(irept &template_args)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   arg.decl.list.or.init
     : arg.decl.list
@@ -4456,18 +3802,6 @@ bool Parser::rArgDeclListOrInit(
     }
   }
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   arg.decl.list
@@ -4522,18 +3856,6 @@ bool Parser::rArgDeclList(irept &arglist)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   arg.declaration
     : {userdef.keyword | REGISTER} type.specifier arg.declarator
@@ -4576,18 +3898,6 @@ bool Parser::rArgDeclaration(cpp_declarationt &declaration)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   initialize.expr
@@ -4676,18 +3986,6 @@ bool Parser::rInitializeExpr(exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   function.arguments
   : empty
@@ -4727,18 +4025,6 @@ bool Parser::rFunctionArguments(exprt &args)
       lex.get_token(tk);
   }
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   enum.spec
@@ -4827,18 +4113,6 @@ bool Parser::rEnumSpec(typet &spec)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   enum.body
   : Identifier {'=' expression} (',' Identifier {'=' expression})* {','}
@@ -4890,18 +4164,6 @@ bool Parser::rEnumBody(irept &body)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   class.spec
   : {userdef.keyword} class.key class.body
@@ -4944,7 +4206,7 @@ bool Parser::rClassSpec(typet &spec)
   else if(t==TOK_UNION)
     spec=typet(ID_union);
   else
-    assert(false);
+    UNREACHABLE;
 
   set_location(spec, tk);
 
@@ -5010,18 +4272,6 @@ bool Parser::rClassSpec(typet &spec)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   base.specifiers
   : ':' base.specifier (',' base.specifier)*
@@ -5065,7 +4315,7 @@ bool Parser::rBaseSpecifiers(irept &bases)
         break;
 
        default:
-        assert(0);
+        UNREACHABLE;
       }
 
       t=lex.LookAhead(0);
@@ -5096,18 +4346,6 @@ bool Parser::rBaseSpecifiers(irept &bases)
       lex.get_token(tk);
   }
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   class.body : '{' (class.members)* '}'
@@ -5156,18 +4394,6 @@ bool Parser::rClassBody(exprt &body)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   class.member
   : (PUBLIC | PROTECTED | PRIVATE) ':'
@@ -5213,7 +4439,7 @@ bool Parser::rClassMember(cpp_itemt &member)
       break;
 
     default:
-      assert(0);
+      UNREACHABLE;
     }
 
     set_location(member, tk1);
@@ -5248,18 +4474,6 @@ bool Parser::rClassMember(cpp_itemt &member)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   access.decl
   : name ';'                e.g. <qualified class>::<member name>;
@@ -5279,18 +4493,6 @@ bool Parser::rAccessDecl(irept &mem)
   //                           Ptree::List(new Leaf(tk)));
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   comma.expression
@@ -5335,18 +4537,6 @@ bool Parser::rCommaExpression(exprt &exp)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   expression
@@ -5429,18 +4619,6 @@ bool Parser::rExpression(exprt &exp, bool template_args)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   conditional.expr
   : logical.or.expr {'?' comma.expression ':' conditional.expr}  right-to-left
@@ -5489,18 +4667,6 @@ bool Parser::rConditionalExpr(exprt &exp, bool template_args)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   logical.or.expr
   : logical.and.expr
@@ -5539,18 +4705,6 @@ bool Parser::rLogicalOrExpr(exprt &exp, bool template_args)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   logical.and.expr
@@ -5591,18 +4745,6 @@ bool Parser::rLogicalAndExpr(exprt &exp, bool template_args)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   inclusive.or.expr
   : exclusive.or.expr
@@ -5641,18 +4783,6 @@ bool Parser::rInclusiveOrExpr(exprt &exp, bool template_args)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   exclusive.or.expr
@@ -5693,18 +4823,6 @@ bool Parser::rExclusiveOrExpr(exprt &exp, bool template_args)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   and.expr
   : equality.expr
@@ -5743,18 +4861,6 @@ bool Parser::rAndExpr(exprt &exp, bool template_args)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   equality.expr
@@ -5795,18 +4901,6 @@ bool Parser::rEqualityExpr(exprt &exp, bool template_args)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   relational.expr
@@ -5860,18 +4954,6 @@ bool Parser::rRelationalExpr(exprt &exp, bool template_args)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   shift.expr
   : additive.expr
@@ -5911,18 +4993,6 @@ bool Parser::rShiftExpr(exprt &exp, bool template_args)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   additive.expr
@@ -5970,18 +5040,6 @@ bool Parser::rAdditiveExpr(exprt &exp)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   multiply.expr
@@ -6035,18 +5093,6 @@ bool Parser::rMultiplyExpr(exprt &exp)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   pm.expr        (pointer to member .*, ->*)
   : cast.expr
@@ -6091,18 +5137,6 @@ bool Parser::rPmExpr(exprt &exp)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   cast.expr
@@ -6165,18 +5199,6 @@ bool Parser::rCastExpr(exprt &exp)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   type.name
   : type.specifier cast.declarator
@@ -6213,18 +5235,6 @@ bool Parser::rTypeName(typet &tname)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   type.name
@@ -6403,18 +5413,6 @@ bool Parser::rTypeNameOrFunctionType(typet &tname)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   unary.expr
   : postfix.expr
@@ -6490,7 +5488,7 @@ bool Parser::rUnaryExpr(exprt &exp)
       break;
 
     default:
-      assert(0);
+      UNREACHABLE;
     }
 
     exp.move_to_operands(right);
@@ -6527,18 +5525,6 @@ bool Parser::rUnaryExpr(exprt &exp)
   else
     return rPostfixExpr(exp);
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   throw.expression
@@ -6577,18 +5563,6 @@ bool Parser::rThrowExpr(exprt &exp)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   typeid.expr
@@ -6653,18 +5627,6 @@ bool Parser::rTypeidExpr(exprt &exp)
 
   return false;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   sizeof.expr
@@ -6740,18 +5702,6 @@ bool Parser::rSizeofExpr(exprt &exp)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   alignof.expr
   | ALIGNOF '(' type.name ')'
@@ -6780,18 +5730,6 @@ bool Parser::rAlignofExpr(exprt &exp)
   set_location(exp, tk);
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   noexcept.expr
@@ -6841,18 +5779,6 @@ bool Parser::isAllocateExpr(int t)
 
   return t==TOK_NEW || t==TOK_DELETE;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   allocate.expr
@@ -6941,18 +5867,6 @@ bool Parser::rAllocateExpr(exprt &exp)
   else
     return false;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   allocate.type
@@ -7051,18 +5965,6 @@ bool Parser::rAllocateType(
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   new.declarator
   : empty
@@ -7097,18 +5999,6 @@ bool Parser::rNewDeclarator(typet &decl)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   allocate.initializer
@@ -7154,18 +6044,6 @@ bool Parser::rAllocateInitializer(exprt &init)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   postfix.exp
@@ -7318,18 +6196,6 @@ bool Parser::rPostfixExpr(exprt &exp)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   __uuidof( expression )
   __uuidof( type )
@@ -7380,18 +6246,6 @@ bool Parser::rMSCuuidof(exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   __if_exists ( identifier ) { token stream }
   __if_not_exists ( identifier ) { token stream }
@@ -7441,18 +6295,6 @@ bool Parser::rMSC_if_existsExpr(exprt &expr)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool Parser::rMSC_if_existsStatement(codet &code)
 {
@@ -7506,18 +6348,6 @@ bool Parser::rMSC_if_existsStatement(codet &code)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   __is_base_of ( base, derived )
   __is_convertible_to ( from, to )
@@ -7564,23 +6394,11 @@ bool Parser::rTypePredicate(exprt &expr)
     break;
 
   default:
-    assert(false);
+    UNREACHABLE;
   }
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   primary.exp
@@ -7660,7 +6478,8 @@ bool Parser::rPrimaryExpr(exprt &exp)
 
   case TOK_NULLPTR:
     lex.get_token(tk);
-    exp=constant_exprt(ID_NULL, pointer_typet(typet(ID_nullptr)));
+    // as an exception, we set the width of pointer
+    exp=constant_exprt(ID_NULL, pointer_type(typet(ID_nullptr)));
     set_location(exp, tk);
     #ifdef DEBUG
     std::cout << std::string(__indent, ' ') << "Parser::rPrimaryExpr 6\n";
@@ -7822,18 +6641,6 @@ bool Parser::rPrimaryExpr(exprt &exp)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   var.name : {'::'} name2 ('::' name2)*
 
@@ -7856,18 +6663,6 @@ bool Parser::rVarName(exprt &name)
   else
     return false;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool Parser::rVarNameCore(exprt &name)
 {
@@ -8002,18 +6797,6 @@ bool Parser::rVarNameCore(exprt &name)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool Parser::moreVarName()
 {
   if(lex.LookAhead(0)==TOK_SCOPE)
@@ -8025,18 +6808,6 @@ bool Parser::moreVarName()
 
   return false;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   template.args : '<' any* '>'
@@ -8139,18 +6910,6 @@ bool Parser::maybeTemplateArgs()
   return false;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   function.body  : compound.statement
                  | { asm }
@@ -8200,18 +6959,6 @@ bool Parser::rFunctionBody(cpp_declaratort &declarator)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   compound.statement
   : '{' (statement)* '}'
@@ -8257,18 +7004,6 @@ bool Parser::rCompoundStatement(codet &statement)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   statement
@@ -8549,18 +7284,6 @@ bool Parser::rStatement(codet &statement)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   if.statement
   : IF '(' comma.expression ')' statement { ELSE statement }
@@ -8609,18 +7332,6 @@ bool Parser::rIfStatement(codet &statement)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   switch.statement
   : SWITCH '(' comma.expression ')' statement
@@ -8654,18 +7365,6 @@ bool Parser::rSwitchStatement(codet &statement)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   while.statement
   : WHILE '(' comma.expression ')' statement
@@ -8698,18 +7397,6 @@ bool Parser::rWhileStatement(codet &statement)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   do.statement
@@ -8749,18 +7436,6 @@ bool Parser::rDoStatement(codet &statement)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   for.statement
@@ -8822,18 +7497,6 @@ bool Parser::rForStatement(codet &statement)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   try.statement
@@ -8929,18 +7592,6 @@ bool Parser::rTryStatement(codet &statement)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool Parser::rMSC_tryStatement(codet &statement)
 {
   // These are for 'structured exception handling',
@@ -8996,18 +7647,6 @@ bool Parser::rMSC_tryStatement(codet &statement)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool Parser::rMSC_leaveStatement(codet &statement)
 {
   // These are for 'structured exception handling',
@@ -9023,18 +7662,6 @@ bool Parser::rMSC_leaveStatement(codet &statement)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool Parser::rGCCAsmStatement(codet &statement)
 {
@@ -9137,18 +7764,6 @@ bool Parser::rGCCAsmStatement(codet &statement)
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool Parser::rMSCAsmStatement(codet &statement)
 {
   cpp_tokent tk;
@@ -9216,18 +7831,6 @@ bool Parser::rMSCAsmStatement(codet &statement)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   expr.statement
@@ -9310,18 +7913,6 @@ bool Parser::rExprStatement(codet &statement)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool Parser::rCondition(exprt &statement)
 {
   cpp_token_buffert::post pos=lex.Save();
@@ -9346,18 +7937,6 @@ bool Parser::rCondition(exprt &statement)
     return true;
   }
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
   declaration.statement
@@ -9437,18 +8016,6 @@ bool Parser::rDeclarationStatement(codet &statement)
   }
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 /*
   integral.decl.statement
   : decl.head integral.or.class.spec {cv.qualify} {declarators} ';'
@@ -9493,18 +8060,6 @@ bool Parser::rIntegralDeclStatement(
 
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 /*
    other.decl.statement
@@ -9560,34 +8115,10 @@ bool Parser::rOtherDeclStatement(
   return true;
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool Parser::MaybeTypeNameOrClassTemplate(cpp_tokent &)
 {
   return true;
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void Parser::SkipTo(int token)
 {
@@ -9602,18 +8133,6 @@ void Parser::SkipTo(int token)
       lex.get_token(tk);
   }
 }
-
-/*******************************************************************\
-
-Function: Parser::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool Parser::operator()()
 {
@@ -9634,18 +8153,6 @@ bool Parser::operator()()
 
   return number_of_errors!=0;
 }
-
-/*******************************************************************\
-
-Function: cpp_parse
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool cpp_parse()
 {

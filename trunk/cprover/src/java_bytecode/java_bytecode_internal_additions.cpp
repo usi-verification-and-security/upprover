@@ -6,26 +6,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/std_types.h>
-#include <util/cprover_prefix.h>
-
-#include <util/c_types.h>
-
 #include "java_bytecode_internal_additions.h"
 
-/*******************************************************************\
+#include <util/std_types.h>
+#include <util/cprover_prefix.h>
+#include <util/c_types.h>
+// For INFLIGHT_EXCEPTION_VARIABLE_NAME
+#include <goto-programs/remove_exceptions.h>
 
-Function: java_internal_additions
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void java_internal_additions(symbol_tablet &dest)
+void java_internal_additions(symbol_table_baset &dest)
 {
   // add __CPROVER_rounding_mode
 
@@ -47,11 +36,23 @@ void java_internal_additions(symbol_tablet &dest)
     symbolt symbol;
     symbol.base_name="__CPROVER_malloc_object";
     symbol.name=CPROVER_PREFIX "malloc_object";
-    symbol.type=pointer_typet(empty_typet());
+    symbol.type=pointer_type(empty_typet());
     symbol.mode=ID_C;
     symbol.is_lvalue=true;
     symbol.is_state_var=true;
     symbol.is_thread_local=true;
+    dest.add(symbol);
+  }
+
+  {
+    auxiliary_symbolt symbol;
+    symbol.base_name = INFLIGHT_EXCEPTION_VARIABLE_BASENAME;
+    symbol.name = INFLIGHT_EXCEPTION_VARIABLE_NAME;
+    symbol.mode = ID_java;
+    symbol.type = pointer_type(empty_typet());
+    symbol.value = null_pointer_exprt(to_pointer_type(symbol.type));
+    symbol.is_file_local = false;
+    symbol.is_static_lifetime = true;
     dest.add(symbol);
   }
 }

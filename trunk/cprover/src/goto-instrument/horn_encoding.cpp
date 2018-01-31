@@ -8,25 +8,15 @@ Date: June 2015
 
 \*******************************************************************/
 
-#include <ostream>
+/// \file
+/// Horn-clause Encoding
 
 #include "horn_encoding.h"
 
-/*******************************************************************\
-
-Function: horn_encoding
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <ostream>
 
 void horn_encoding(
-  const goto_functionst &,
-  const namespacet &,
+  const goto_modelt &,
   std::ostream &out)
 {
 }

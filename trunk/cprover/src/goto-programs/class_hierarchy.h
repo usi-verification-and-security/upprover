@@ -8,6 +8,9 @@ Date: April 2016
 
 \*******************************************************************/
 
+/// \file
+/// Class Hierarchy
+
 #ifndef CPROVER_GOTO_PROGRAMS_CLASS_HIERARCHY_H
 #define CPROVER_GOTO_PROGRAMS_CLASS_HIERARCHY_H
 
@@ -49,6 +52,7 @@ public:
   }
 
   void output(std::ostream &) const;
+  void output_dot(std::ostream &) const;
 
 protected:
   void get_children_trans_rec(const irep_idt &, idst &) const;

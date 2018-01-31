@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Function Inlining
+
+#include "goto_inline.h"
+
 #include <cassert>
 
 #include <util/prefix.h>
@@ -15,20 +20,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_expr.h>
 
 #include "remove_skip.h"
-#include "goto_inline.h"
 #include "goto_inline_class.h"
-
-/*******************************************************************\
-
-Function: goto_inline
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_inline(
   goto_modelt &goto_model,
@@ -42,18 +34,6 @@ void goto_inline(
     message_handler,
     adjust_function);
 }
-
-/*******************************************************************\
-
-Function: goto_inline
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_inline(
   goto_functionst &goto_functions,
@@ -69,40 +49,42 @@ void goto_inline(
 
   typedef goto_functionst::goto_functiont goto_functiont;
 
-    // find entry point
-    goto_functionst::function_mapt::iterator it=
-      goto_functions.function_map.find(goto_functionst::entry_point());
+  // find entry point
+  goto_functionst::function_mapt::iterator it=
+    goto_functions.function_map.find(goto_functionst::entry_point());
 
-    if(it==goto_functions.function_map.end())
-      return;
+  if(it==goto_functions.function_map.end())
+    return;
 
-    goto_functiont &goto_function=it->second;
-    assert(goto_function.body_available());
+  goto_functiont &goto_function=it->second;
+  DATA_INVARIANT(
+    goto_function.body_available(),
+    "body of entry point function must be available");
 
-    // gather all calls
-    // we use non-transitive inlining to avoid the goto program
-    // copying that goto_inlinet would do otherwise
-    goto_inlinet::inline_mapt inline_map;
+  // gather all calls
+  // we use non-transitive inlining to avoid the goto program
+  // copying that goto_inlinet would do otherwise
+  goto_inlinet::inline_mapt inline_map;
 
-    Forall_goto_functions(f_it, goto_functions)
+  Forall_goto_functions(f_it, goto_functions)
+  {
+    goto_functiont &goto_function=f_it->second;
+
+    if(!goto_function.body_available())
+      continue;
+
+    goto_inlinet::call_listt &call_list=inline_map[f_it->first];
+
+    goto_programt &goto_program=goto_function.body;
+
+    Forall_goto_program_instructions(i_it, goto_program)
     {
-      goto_functiont &goto_function=f_it->second;
-
-      if(!goto_function.body_available())
+      if(!i_it->is_function_call())
         continue;
 
-      goto_inlinet::call_listt &call_list=inline_map[f_it->first];
-
-      goto_programt &goto_program=goto_function.body;
-
-      Forall_goto_program_instructions(i_it, goto_program)
-      {
-        if(!goto_inlinet::is_call(i_it))
-          continue;
-
-        call_list.push_back(goto_inlinet::callt(i_it, false));
-      }
+      call_list.push_back(goto_inlinet::callt(i_it, false));
     }
+  }
 
   goto_inline.goto_inline(
     goto_functionst::entry_point(), goto_function, inline_map, true);
@@ -118,28 +100,13 @@ void goto_inline(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_partial_inline
-
-  Inputs:
-    goto_model:
-      Source of the symbol table and function map to use.
-    message_handler:
-      Message handler used by goto_inlinet.
-    smallfunc_limit:
-      The maximum number of instructions in functions to be inlined.
-    adjust_function:
-      Tell goto_inlinet to adjust function.
-
- Outputs:
-
- Purpose:
-    Inline all function calls to functions either marked as "inlined" or
-    smaller than smallfunc_limit (by instruction count).
-
-\*******************************************************************/
-
+/// Inline all function calls to functions either marked as "inlined" or
+/// smaller than smallfunc_limit (by instruction count).
+/// \param goto_model: Source of the symbol table and function map to use.
+/// \param message_handler: Message handler used by goto_inlinet.
+/// \param smallfunc_limit: The maximum number of instructions in functions to
+///   be inlined.
+/// \param adjust_function: Tell goto_inlinet to adjust function.
 void goto_partial_inline(
   goto_modelt &goto_model,
   message_handlert &message_handler,
@@ -155,31 +122,15 @@ void goto_partial_inline(
     adjust_function);
 }
 
-/*******************************************************************\
-
-Function: goto_partial_inline
-
-  Inputs:
-    goto_functions:
-      The function map to use to find functions containing calls and function
-      bodies.
-    ns:
-      Namespace used by goto_inlinet.
-    message_handler:
-      Message handler used by goto_inlinet.
-    smallfunc_limit:
-      The maximum number of instructions in functions to be inlined.
-    adjust_function:
-      Tell goto_inlinet to adjust function.
-
- Outputs:
-
- Purpose:
-    Inline all function calls to functions either marked as "inlined" or
-    smaller than smallfunc_limit (by instruction count).
-
-\*******************************************************************/
-
+/// Inline all function calls to functions either marked as "inlined" or
+/// smaller than smallfunc_limit (by instruction count).
+/// \param goto_functions: The function map to use to find functions containing
+///   calls and function bodies.
+/// \param ns: Namespace used by goto_inlinet.
+/// \param message_handler: Message handler used by goto_inlinet.
+/// \param smallfunc_limit: The maximum number of instructions in functions to
+///   be inlined.
+/// \param adjust_function: Tell goto_inlinet to adjust function.
 void goto_partial_inline(
   goto_functionst &goto_functions,
   const namespacet &ns,
@@ -215,14 +166,13 @@ void goto_partial_inline(
 
     Forall_goto_program_instructions(i_it, goto_program)
     {
-      if(!goto_inlinet::is_call(i_it))
+      if(!i_it->is_function_call())
         continue;
 
       exprt lhs;
       exprt function_expr;
       exprt::operandst arguments;
-      exprt constrain;
-      goto_inlinet::get_call(i_it, lhs, function_expr, arguments, constrain);
+      goto_inlinet::get_call(i_it, lhs, function_expr, arguments);
 
       if(function_expr.id()!=ID_symbol)
         // Can't handle pointers to functions
@@ -250,7 +200,7 @@ void goto_partial_inline(
       if(goto_function.is_inlined() ||
          goto_program.instructions.size()<=smallfunc_limit)
       {
-        assert(goto_inlinet::is_call(i_it));
+        INVARIANT(i_it->is_function_call(), "is a call");
         call_list.push_back(goto_inlinet::callt(i_it, false));
       }
     }
@@ -259,24 +209,12 @@ void goto_partial_inline(
   goto_inline.goto_inline(inline_map, false);
 }
 
-/*******************************************************************\
-
-Function: goto_function_inline
-
-  Inputs:
-    goto_model: Source of the symbol table and function map to use.
-    function: The function whose calls to inline.
-    message_handler: Message handler used by goto_inlinet.
-    adjust_function: Tell goto_inlinet to adjust function.
-    caching: Tell goto_inlinet to cache.
-
- Outputs:
-
- Purpose:
-    Inline all function calls made from a particular function
-
-\*******************************************************************/
-
+/// Inline all function calls made from a particular function
+/// \param goto_model: Source of the symbol table and function map to use.
+/// \param function: The function whose calls to inline.
+/// \param message_handler: Message handler used by goto_inlinet.
+/// \param adjust_function: Tell goto_inlinet to adjust function.
+/// \param caching: Tell goto_inlinet to cache.
 void goto_function_inline(
   goto_modelt &goto_model,
   const irep_idt function,
@@ -294,25 +232,13 @@ void goto_function_inline(
     caching);
 }
 
-/*******************************************************************\
-
-Function: goto_function_inline
-
-  Inputs:
-    goto_functions: The function map to use to find function bodies.
-    function: The function whose calls to inline.
-    ns: Namespace used by goto_inlinet.
-    message_handler: Message handler used by goto_inlinet.
-    adjust_function: Tell goto_inlinet to adjust function.
-    caching: Tell goto_inlinet to cache.
-
- Outputs:
-
- Purpose:
-    Inline all function calls made from a particular function
-
-\*******************************************************************/
-
+/// Inline all function calls made from a particular function
+/// \param goto_functions: The function map to use to find function bodies.
+/// \param function: The function whose calls to inline.
+/// \param ns: Namespace used by goto_inlinet.
+/// \param message_handler: Message handler used by goto_inlinet.
+/// \param adjust_function: Tell goto_inlinet to adjust function.
+/// \param caching: Tell goto_inlinet to cache.
 void goto_function_inline(
   goto_functionst &goto_functions,
   const irep_idt function,
@@ -348,7 +274,7 @@ void goto_function_inline(
 
   Forall_goto_program_instructions(i_it, goto_program)
   {
-    if(!goto_inlinet::is_call(i_it))
+    if(!i_it->is_function_call())
       continue;
 
     call_list.push_back(goto_inlinet::callt(i_it, true));
@@ -357,37 +283,26 @@ void goto_function_inline(
   goto_inline.goto_inline(function, goto_function, inline_map, true);
 }
 
-/*******************************************************************\
-
-Function: goto_function_inline_and_log
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 jsont goto_function_inline_and_log(
-  goto_functionst &goto_functions,
+  goto_modelt &goto_model,
   const irep_idt function,
-  const namespacet &ns,
   message_handlert &message_handler,
   bool adjust_function,
   bool caching)
 {
+  const namespacet ns(goto_model.symbol_table);
+
   goto_inlinet goto_inline(
-    goto_functions,
+    goto_model.goto_functions,
     ns,
     message_handler,
     adjust_function,
     caching);
 
   goto_functionst::function_mapt::iterator f_it=
-    goto_functions.function_map.find(function);
+    goto_model.goto_functions.function_map.find(function);
 
-  if(f_it==goto_functions.function_map.end())
+  if(f_it==goto_model.goto_functions.function_map.end())
     return jsont();
 
   goto_functionst::goto_functiont &goto_function=f_it->second;
@@ -405,15 +320,15 @@ jsont goto_function_inline_and_log(
 
   Forall_goto_program_instructions(i_it, goto_program)
   {
-    if(!goto_inlinet::is_call(i_it))
+    if(!i_it->is_function_call())
       continue;
 
     call_list.push_back(goto_inlinet::callt(i_it, true));
   }
 
   goto_inline.goto_inline(function, goto_function, inline_map, true);
-  goto_functions.update();
-  goto_functions.compute_loop_numbers();
+  goto_model.goto_functions.update();
+  goto_model.goto_functions.compute_loop_numbers();
 
   return goto_inline.output_inline_log_json();
 }

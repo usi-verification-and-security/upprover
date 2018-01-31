@@ -1,5 +1,6 @@
 SRC = ai.cpp \
       call_graph.cpp \
+      call_graph_helpers.cpp \
       constant_propagator.cpp \
       custom_bitvector_analysis.cpp \
       dependence_graph.cpp \
@@ -22,8 +23,8 @@ SRC = ai.cpp \
       locals.cpp \
       natural_loops.cpp \
       reaching_definitions.cpp \
-      replace_symbol_ext.cpp \
       static_analysis.cpp \
+      uncaught_exceptions_analysis.cpp \
       uninitialized_domain.cpp \
       # Empty last line
 

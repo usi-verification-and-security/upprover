@@ -7,21 +7,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/std_code.h>
+/// \file
+/// Value Set Domain (Flow Insensitive, Sharing, Validity Regions)
 
 #include "value_set_domain_fivr.h"
 
-/*******************************************************************\
-
-Function: value_set_domain_fivrt::transform
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <util/std_code.h>
 
 bool value_set_domain_fivrt::transform(
   const namespacet &ns,

@@ -6,29 +6,77 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution
+
+#include "goto_symex.h"
+
 #include <cassert>
 
 #include <util/arith_tools.h>
 #include <util/rename.h>
 #include <util/base_type.h>
 #include <util/std_expr.h>
+#include <util/std_code.h>
 #include <util/byte_operators.h>
 
 #include <util/c_types.h>
 
-#include "goto_symex.h"
+void goto_symext::havoc_rec(
+  statet &state,
+  const guardt &guard,
+  const exprt &dest)
+{
+  if(dest.id()==ID_symbol)
+  {
+    exprt lhs;
 
-/*******************************************************************\
+    if(guard.is_true())
+      lhs=dest;
+    else
+      lhs=if_exprt(
+        guard.as_expr(), dest, exprt("NULL-object", dest.type()));
 
-Function: goto_symext::symex_other
+    code_assignt assignment;
+    assignment.lhs()=lhs;
+    assignment.rhs()=side_effect_expr_nondett(dest.type());
 
-  Inputs:
+    symex_assign(state, assignment);
+  }
+  else if(dest.id()==ID_byte_extract_little_endian ||
+          dest.id()==ID_byte_extract_big_endian)
+  {
+    havoc_rec(state, guard, to_byte_extract_expr(dest).op());
+  }
+  else if(dest.id()==ID_if)
+  {
+    const if_exprt &if_expr=to_if_expr(dest);
 
- Outputs:
+    guardt guard_t=state.guard;
+    guard_t.add(if_expr.cond());
+    havoc_rec(state, guard_t, if_expr.true_case());
 
- Purpose:
-
-\*******************************************************************/
+    guardt guard_f=state.guard;
+    guard_f.add(not_exprt(if_expr.cond()));
+    havoc_rec(state, guard_f, if_expr.false_case());
+  }
+  else if(dest.id()==ID_typecast)
+  {
+    havoc_rec(state, guard, to_typecast_expr(dest).op());
+  }
+  else if(dest.id()==ID_index)
+  {
+    havoc_rec(state, guard, to_index_expr(dest).array());
+  }
+  else if(dest.id()==ID_member)
+  {
+    havoc_rec(state, guard, to_member_expr(dest).struct_op());
+  }
+  else
+  {
+    // consider printing a warning
+  }
+}
 
 void goto_symext::symex_other(
   const goto_functionst &goto_functions,
@@ -75,7 +123,7 @@ void goto_symext::symex_other(
   }
   else if(statement==ID_decl)
   {
-    assert(false); // see symex_decl.cpp
+    UNREACHABLE; // see symex_decl.cpp
   }
   else if(statement==ID_nondet)
   {
@@ -103,13 +151,21 @@ void goto_symext::symex_other(
     clean_code.op1()=d1;
 
     clean_expr(clean_code.op0(), state, true);
+    exprt op0_offset=from_integer(0, index_type());
     if(clean_code.op0().id()==byte_extract_id() &&
        clean_code.op0().type().id()==ID_empty)
+    {
+      op0_offset=to_byte_extract_expr(clean_code.op0()).offset();
       clean_code.op0()=clean_code.op0().op0();
+    }
     clean_expr(clean_code.op1(), state, false);
+    exprt op1_offset=from_integer(0, index_type());
     if(clean_code.op1().id()==byte_extract_id() &&
        clean_code.op1().type().id()==ID_empty)
+    {
+      op1_offset=to_byte_extract_expr(clean_code.op1()).offset();
       clean_code.op1()=clean_code.op1().op0();
+    }
 
     process_array_expr(clean_code.op0());
     clean_expr(clean_code.op0(), state, true);
@@ -118,23 +174,45 @@ void goto_symext::symex_other(
 
 
     if(!base_type_eq(clean_code.op0().type(),
-                     clean_code.op1().type(), ns))
+                     clean_code.op1().type(), ns) ||
+       !op0_offset.is_zero() || !op1_offset.is_zero())
     {
       byte_extract_exprt be(byte_extract_id());
-      be.offset()=from_integer(0, index_type());
 
       if(statement==ID_array_copy)
       {
         be.op()=clean_code.op1();
+        be.offset()=op1_offset;
         be.type()=clean_code.op0().type();
         clean_code.op1()=be;
+
+        if(!op0_offset.is_zero())
+        {
+          byte_extract_exprt op0(
+            byte_extract_id(),
+            clean_code.op0(),
+            op0_offset,
+            clean_code.op0().type());
+          clean_code.op0()=op0;
+        }
       }
       else
       {
         // ID_array_replace
         be.op()=clean_code.op0();
+        be.offset()=op0_offset;
         be.type()=clean_code.op1().type();
         clean_code.op0()=be;
+
+        if(!op1_offset.is_zero())
+        {
+          byte_extract_exprt op1(
+            byte_extract_id(),
+            clean_code.op1(),
+            op1_offset,
+            clean_code.op1().type());
+          clean_code.op1()=op1;
+        }
       }
     }
 
@@ -191,6 +269,17 @@ void goto_symext::symex_other(
   else if(statement==ID_fence)
   {
     target.memory_barrier(state.guard.as_expr(), state.source);
+  }
+  else if(statement==ID_havoc_object)
+  {
+    DATA_INVARIANT(code.operands().size()==1,
+                   "havoc_object must have one operand");
+
+    // we need to add dereferencing for the first operand
+    exprt object=dereference_exprt(code.op0(), empty_typet());
+    clean_expr(object, state, true);
+
+    havoc_rec(state, guardt(), object);
   }
   else
     throw "unexpected statement: "+id2string(statement);

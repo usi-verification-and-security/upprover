@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Taint Analysis
+
+#include "taint_analysis.h"
+
 #include <iostream>
 #include <fstream>
 
@@ -19,16 +24,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <analyses/custom_bitvector_analysis.h>
 
-#include "taint_analysis.h"
 #include "taint_parser.h"
-
-/*******************************************************************\
-
-   Class: taint_analysist
-
- Purpose:
-
-\*******************************************************************/
 
 class taint_analysist:public messaget
 {
@@ -52,18 +48,6 @@ protected:
   void instrument(const namespacet &, goto_functionst::goto_functiont &);
 };
 
-/*******************************************************************\
-
-Function: taint_analysist::instrument
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void taint_analysist::instrument(
   const namespacet &ns,
   goto_functionst &goto_functions)
@@ -71,18 +55,6 @@ void taint_analysist::instrument(
   for(auto &function : goto_functions.function_map)
     instrument(ns, function.second);
 }
-
-/*******************************************************************\
-
-Function: taint_analysist::instrument
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void taint_analysist::instrument(
   const namespacet &ns,
@@ -95,7 +67,7 @@ void taint_analysist::instrument(
   {
     const goto_programt::instructiont &instruction=*it;
 
-    goto_programt tmp;
+    goto_programt insert_before, insert_after;
 
     switch(instruction.type)
     {
@@ -192,7 +164,7 @@ void taint_analysist::instrument(
                   code_set_may.op0()=where;
                   code_set_may.op1()=
                     address_of_exprt(string_constantt(rule.taint));
-                  goto_programt::targett t=tmp.add_instruction();
+                  goto_programt::targett t=insert_after.add_instruction();
                   t->make_other(code_set_may);
                   t->source_location=instruction.source_location;
                 }
@@ -200,7 +172,7 @@ void taint_analysist::instrument(
 
               case taint_parse_treet::rulet::SINK:
                 {
-                  goto_programt::targett t=tmp.add_instruction();
+                  goto_programt::targett t=insert_before.add_instruction();
                   binary_predicate_exprt get_may("get_may");
                   get_may.op0()=where;
                   get_may.op1()=address_of_exprt(string_constantt(rule.taint));
@@ -219,7 +191,7 @@ void taint_analysist::instrument(
                   code_clear_may.op0()=where;
                   code_clear_may.op1()=
                     address_of_exprt(string_constantt(rule.taint));
-                  goto_programt::targett t=tmp.add_instruction();
+                  goto_programt::targett t=insert_after.add_instruction();
                   t->make_other(code_clear_may);
                   t->source_location=instruction.source_location;
                 }
@@ -236,26 +208,20 @@ void taint_analysist::instrument(
       }
     }
 
-    if(!tmp.empty())
+    if(!insert_before.empty())
     {
-      goto_programt::targett next=it;
-      next++;
-      goto_function.body.destructive_insert(next, tmp);
+      goto_function.body.insert_before_swap(it, insert_before);
+      // advance until we get back to the call
+      while(!it->is_function_call()) ++it;
+    }
+
+    if(!insert_after.empty())
+    {
+      goto_function.body.destructive_insert(
+        std::next(it), insert_after);
     }
   }
 }
-
-/*******************************************************************\
-
-Function: taint_analysist::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool taint_analysist::operator()(
   const std::string &taint_file_name,
@@ -440,21 +406,10 @@ bool taint_analysist::operator()(
   }
   catch(...)
   {
+    error() << "Caught unexpected error in taint_analysist::operator()" << eom;
     return true;
   }
 }
-
-/*******************************************************************\
-
-Function: taint_analysis
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool taint_analysis(
   goto_modelt &goto_model,

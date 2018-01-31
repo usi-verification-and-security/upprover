@@ -8,31 +8,53 @@ Date: May 2016
 
 \*******************************************************************/
 
+/// \file
+/// Coverage Instrumentation
+
 #ifndef CPROVER_GOTO_INSTRUMENT_COVER_H
 #define CPROVER_GOTO_INSTRUMENT_COVER_H
 
 #include <goto-programs/goto_model.h>
-#include <util/cmdline.h>
+
+class message_handlert;
+class cmdlinet;
+class optionst;
 
 enum class coverage_criteriont
 {
-  LOCATION, BRANCH, DECISION, CONDITION,
-  PATH, MCDC, ASSERTION, COVER };
+  LOCATION,
+  BRANCH,
+  DECISION,
+  CONDITION,
+  PATH,
+  MCDC,
+  ASSERTION,
+  COVER // __CPROVER_cover(x) annotations
+};
 
 void instrument_cover_goals(
-  const symbol_tablet &symbol_table,
-  goto_programt &goto_program,
-  coverage_criteriont);
+  const symbol_tablet &,
+  goto_functionst &,
+  coverage_criteriont,
+  message_handlert &message_handler);
 
 void instrument_cover_goals(
-  const symbol_tablet &symbol_table,
-  goto_functionst &goto_functions,
-  coverage_criteriont);
+  const symbol_tablet &,
+  goto_programt &,
+  coverage_criteriont,
+  message_handlert &message_handler);
+
+void parse_cover_options(const cmdlinet &, optionst &);
 
 bool instrument_cover_goals(
-  const cmdlinet &cmdline,
-  const symbol_tablet &symbol_table,
-  goto_functionst &goto_functions,
-  message_handlert &msgh);
+  const optionst &,
+  const symbol_tablet &,
+  goto_functionst &,
+  message_handlert &);
+
+bool instrument_cover_goals(
+  const optionst &,
+  goto_modelt &,
+  message_handlert &);
 
 #endif // CPROVER_GOTO_INSTRUMENT_COVER_H

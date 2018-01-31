@@ -6,6 +6,10 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#define USE_DEPRECATED_STATIC_ANALYZER_H
+#include "static_analyzer.h"
+#undef USE_DEPRECATED_STATIC_ANALYZER_H
+
 #include <fstream>
 
 #include <util/threeval.h>
@@ -13,8 +17,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/xml.h>
 
 #include <analyses/interval_domain.h>
-
-#include "static_analyzer.h"
 
 class static_analyzert:public messaget
 {
@@ -47,18 +49,6 @@ protected:
   tvt eval(goto_programt::const_targett);
 };
 
-/*******************************************************************\
-
-Function: static_analyzert::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool static_analyzert::operator()()
 {
   status() << "performing interval analysis" << eom;
@@ -74,18 +64,6 @@ bool static_analyzert::operator()()
   return false;
 }
 
-/*******************************************************************\
-
-Function: static_analyzert::eval
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 tvt static_analyzert::eval(goto_programt::const_targett t)
 {
   exprt guard=t->guard;
@@ -95,18 +73,6 @@ tvt static_analyzert::eval(goto_programt::const_targett t)
     return tvt(true);
   return tvt::unknown();
 }
-
-/*******************************************************************\
-
-Function: static_analyzert::plain_text_report
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void static_analyzert::plain_text_report()
 {
@@ -159,18 +125,6 @@ void static_analyzert::plain_text_report()
            << unknown << " unknown\n";
 }
 
-/*******************************************************************\
-
-Function: static_analyzert::json_report
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void static_analyzert::json_report(const std::string &file_name)
 {
   json_arrayt json_result;
@@ -217,18 +171,6 @@ void static_analyzert::json_report(const std::string &file_name)
   status() << "Writing report to `" << file_name << "'" << eom;
   out << json_result;
 }
-
-/*******************************************************************\
-
-Function: static_analyzert::xml_report
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void static_analyzert::xml_report(const std::string &file_name)
 {
@@ -277,18 +219,6 @@ void static_analyzert::xml_report(const std::string &file_name)
   out << xml_result;
 }
 
-/*******************************************************************\
-
-Function: static_analyzer
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool static_analyzer(
   const goto_modelt &goto_model,
   const optionst &options,
@@ -297,18 +227,6 @@ bool static_analyzer(
   return static_analyzert(
     goto_model, options, message_handler)();
 }
-
-/*******************************************************************\
-
-Function: show_intervals
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void show_intervals(
   const goto_modelt &goto_model,

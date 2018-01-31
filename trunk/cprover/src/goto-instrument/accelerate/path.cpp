@@ -6,11 +6,14 @@ Author: Matt Lewis
 
 \*******************************************************************/
 
+/// \file
+/// Loop Acceleration
+
+#include "path.h"
+
 #include <iostream>
 
 #include <goto-programs/goto_program.h>
-
-#include "path.h"
 
 void output_path(
   const patht &path,
@@ -19,5 +22,5 @@ void output_path(
   std::ostream &str)
 {
   for(const auto &step : path)
-    program.output_instruction(ns, "path", str, step.loc);
+    program.output_instruction(ns, "path", str, *step.loc);
 }

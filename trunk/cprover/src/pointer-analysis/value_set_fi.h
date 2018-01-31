@@ -7,6 +7,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Value Set (Flow Insensitive, Sharing)
+
 #ifndef CPROVER_POINTER_ANALYSIS_VALUE_SET_FI_H
 #define CPROVER_POINTER_ANALYSIS_VALUE_SET_FI_H
 
@@ -23,7 +26,10 @@ Author: Daniel Kroening, kroening@kroening.com
 class value_set_fit
 {
 public:
-  value_set_fit()
+  value_set_fit():
+  changed(false)
+  // to_function, to_target_index are set by set_to()
+  // from_function, from_target_index are set by set_from()
   {
   }
 
@@ -46,94 +52,119 @@ public:
 
   typedef irep_idt idt;
 
-  class objectt
+  /// Represents the offset into an object: either a unique integer offset,
+  /// or an unknown value, represented by `!offset`.
+  typedef optionalt<mp_integer> offsett;
+  bool offset_is_zero(const offsett &offset) const
   {
+    return offset && offset->is_zero();
+  }
+
+  class object_map_dt
+  {
+    typedef std::map<object_numberingt::number_type, offsett> data_typet;
+    data_typet data;
+
   public:
-    objectt():offset_is_set(false)
+    // NOLINTNEXTLINE(readability/identifiers)
+    typedef data_typet::iterator iterator;
+    // NOLINTNEXTLINE(readability/identifiers)
+    typedef data_typet::const_iterator const_iterator;
+    // NOLINTNEXTLINE(readability/identifiers)
+    typedef data_typet::value_type value_type;
+
+    iterator begin() { return data.begin(); }
+    const_iterator begin() const { return data.begin(); }
+    const_iterator cbegin() const { return data.cbegin(); }
+
+    iterator end() { return data.end(); }
+    const_iterator end() const { return data.end(); }
+    const_iterator cend() const { return data.cend(); }
+
+    size_t size() const { return data.size(); }
+
+    offsett &operator[](object_numberingt::number_type i)
     {
+      return data[i];
     }
 
-    explicit objectt(const mp_integer &_offset):
-      offset(_offset),
-      offset_is_set(true)
-    {
-    }
+    template <typename It>
+    void insert(It b, It e) { data.insert(b, e); }
 
-    mp_integer offset;
-    bool offset_is_set;
-    bool offset_is_zero() const
-    { return offset_is_set && offset.is_zero(); }
-  };
+    template <typename T>
+    const_iterator find(T &&t) const { return data.find(std::forward<T>(t)); }
 
-  class object_map_dt:public std::map<unsigned, objectt>
-  {
-  public:
-    object_map_dt() {}
     static const object_map_dt blank;
+
+  protected:
+    ~object_map_dt()=default;
   };
 
-  exprt to_expr(object_map_dt::const_iterator it) const;
+  exprt to_expr(const object_map_dt::value_type &it) const;
 
   typedef reference_counting<object_map_dt> object_mapt;
 
-  void set(object_mapt &dest, object_map_dt::const_iterator it) const
+  void set(object_mapt &dest, const object_map_dt::value_type &it) const
   {
-    dest.write()[it->first]=it->second;
+    dest.write()[it.first]=it.second;
   }
 
-  bool insert(object_mapt &dest, object_map_dt::const_iterator it) const
+  bool insert(object_mapt &dest, const object_map_dt::value_type &it) const
   {
-    return insert(dest, it->first, it->second);
+    return insert(dest, it.first, it.second);
   }
 
   bool insert(object_mapt &dest, const exprt &src) const
   {
-    return insert(dest, object_numbering.number(src), objectt());
+    return insert(dest, object_numbering.number(src), offsett());
   }
 
   bool insert(
     object_mapt &dest,
     const exprt &src,
-    const mp_integer &offset) const
+    const mp_integer &offset_value) const
   {
-    return insert(dest, object_numbering.number(src), objectt(offset));
+    return insert(dest, object_numbering.number(src), offsett(offset_value));
   }
 
-  bool insert(object_mapt &dest, unsigned n, const objectt &object) const
+  bool insert(
+    object_mapt &dest,
+    object_numberingt::number_type n,
+    const offsett &offset) const
   {
     if(dest.read().find(n)==dest.read().end())
     {
       // new
-      dest.write()[n]=object;
+      dest.write()[n] = offset;
       return true;
     }
     else
     {
-      objectt &old=dest.write()[n];
+      offsett &old_offset = dest.write()[n];
 
-      if(old.offset_is_set && object.offset_is_set)
+      if(old_offset && offset)
       {
-        if(old.offset==object.offset)
+        if(*old_offset == *offset)
           return false;
         else
         {
-          old.offset_is_set=false;
+          old_offset.reset();
           return true;
         }
       }
-      else if(!old.offset_is_set)
+      else if(!old_offset)
         return false;
       else
       {
-        old.offset_is_set=false;
+        old_offset.reset();
         return true;
       }
     }
   }
 
-  bool insert(object_mapt &dest, const exprt &expr, const objectt &object) const
+  bool insert(object_mapt &dest, const exprt &expr, const offsett &offset) const
   {
-    return insert(dest, object_numbering.number(expr), object);
+    return insert(dest, object_numbering.number(expr), offset);
   }
 
   struct entryt
@@ -232,13 +263,13 @@ public:
 
   bool changed;
 
-  // true = added s.th. new
+  // true = added something new
   bool make_union(object_mapt &dest, const object_mapt &src) const;
 
-  // true = added s.th. new
+  // true = added something new
   bool make_union(const valuest &new_values);
 
-  // true = added s.th. new
+  // true = added something new
   bool make_union(const value_set_fit &new_values)
   {
     return make_union(new_values.values);

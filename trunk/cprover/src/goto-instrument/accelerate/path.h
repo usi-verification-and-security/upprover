@@ -6,6 +6,9 @@ Author: Matt Lewis
 
 \*******************************************************************/
 
+/// \file
+/// Loop Acceleration
+
 #ifndef CPROVER_GOTO_INSTRUMENT_ACCELERATE_PATH_H
 #define CPROVER_GOTO_INSTRUMENT_ACCELERATE_PATH_H
 
@@ -33,7 +36,7 @@ public:
   {
   }
 
-  void output(const goto_programt &program, std::ostream &str);
+  void output(const goto_programt &program, std::ostream &str) const;
 
   goto_programt::targett loc;
   const exprt guard;

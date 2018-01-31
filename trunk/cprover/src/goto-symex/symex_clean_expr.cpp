@@ -6,26 +6,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution of ANSI-C
+
+#include "goto_symex.h"
+
 #include <util/arith_tools.h>
 #include <util/std_expr.h>
 #include <util/cprover_prefix.h>
 #include <util/base_type.h>
 
 #include <util/c_types.h>
-
-#include "goto_symex.h"
-
-/*******************************************************************\
-
-Function: goto_symext::process_array_expr_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::process_array_expr_rec(
   exprt &expr,
@@ -76,11 +67,13 @@ void goto_symext::process_array_expr_rec(
     expr.swap(tmp);
   }
   else
+  {
     Forall_operands(it, expr)
     {
       typet t=it->type();
       process_array_expr_rec(*it, t);
     }
+  }
 
   if(!base_type_eq(expr.type(), type, ns))
   {
@@ -92,18 +85,6 @@ void goto_symext::process_array_expr_rec(
     expr.swap(be);
   }
 }
-
-/*******************************************************************\
-
-Function: goto_symext::process_array_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::process_array_expr(exprt &expr)
 {
@@ -162,18 +143,6 @@ void goto_symext::process_array_expr(exprt &expr)
       process_array_expr(*it);
 }
 
-/*******************************************************************\
-
-Function: goto_symext::replace_array_equal
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_symext::replace_array_equal(exprt &expr)
 {
   if(expr.id()==ID_array_equal)
@@ -199,17 +168,27 @@ void goto_symext::replace_array_equal(exprt &expr)
     replace_array_equal(*it);
 }
 
-/*******************************************************************\
+/// Rewrite index/member expressions in byte_extract to offset
+static void adjust_byte_extract_rec(exprt &expr, const namespacet &ns)
+{
+  Forall_operands(it, expr)
+    adjust_byte_extract_rec(*it, ns);
 
-Function: goto_symext::clean_expr
+  if(expr.id()==ID_byte_extract_big_endian ||
+     expr.id()==ID_byte_extract_little_endian)
+  {
+    byte_extract_exprt &be=to_byte_extract_expr(expr);
+    if(be.op().id()==ID_symbol &&
+       to_ssa_expr(be.op()).get_original_expr().get_bool(ID_C_invalid_object))
+      return;
 
-  Inputs:
+    object_descriptor_exprt ode;
+    ode.build(expr, ns);
 
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+    be.op()=ode.root_object();
+    be.offset()=ode.offset();
+  }
+}
 
 void goto_symext::clean_expr(
   exprt &expr,
@@ -218,5 +197,12 @@ void goto_symext::clean_expr(
 {
   replace_nondet(expr);
   dereference(expr, state, write);
+
+  // make sure all remaining byte extract operations use the root
+  // object to avoid nesting of with/update and byte_update when on
+  // lhs
+  if(write)
+    adjust_byte_extract_rec(expr, ns);
+
   replace_array_equal(expr);
 }

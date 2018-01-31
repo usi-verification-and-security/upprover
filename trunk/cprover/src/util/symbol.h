@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_UTIL_SYMBOL_H
 #define CPROVER_UTIL_SYMBOL_H
 
@@ -108,6 +109,11 @@ public:
   {
     return !is_static_lifetime;
   }
+
+  bool is_function() const
+  {
+    return !is_type && !is_macro && type.id()==ID_code;
+  }
 };
 
 std::ostream &operator<<(std::ostream &out, const symbolt &symbol);
@@ -143,6 +149,14 @@ public:
     is_thread_local=true;
     is_file_local=true;
     is_auxiliary=true;
+  }
+
+  auxiliary_symbolt(const irep_idt &name, const typet &type):
+    auxiliary_symbolt()
+  {
+    this->name=name;
+    this->base_name=name;
+    this->type=type;
   }
 };
 

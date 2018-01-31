@@ -6,6 +6,9 @@ Author: Georg Weissenbacher, georg@weissenbacher.name
 
 \*******************************************************************/
 
+/// \file
+/// Compute natural loops in a goto_function
+
 #ifndef CPROVER_ANALYSES_NATURAL_LOOPS_H
 #define CPROVER_ANALYSES_NATURAL_LOOPS_H
 
@@ -13,8 +16,7 @@ Author: Georg Weissenbacher, georg@weissenbacher.name
 #include <iosfwd>
 #include <set>
 
-#include <goto-programs/goto_program.h>
-#include <goto-programs/goto_functions.h>
+#include <goto-programs/goto_model.h>
 
 #include "cfg_dominators.h"
 
@@ -67,20 +69,11 @@ class natural_loopst:
 typedef natural_loops_templatet<goto_programt, goto_programt::targett>
     natural_loops_mutablet;
 
-void show_natural_loops(const goto_functionst &goto_functions);
+void show_natural_loops(
+  const goto_modelt &,
+  std::ostream &out);
 
-/*******************************************************************\
-
-Function: natural_loops_templatet::compute
-
-  Inputs:
-
- Outputs:
-
- Purpose: Finds all back-edges and computes the natural loops
-
-\*******************************************************************/
-
+/// Finds all back-edges and computes the natural loops
 #ifdef DEBUG
 #include <iostream>
 #endif
@@ -101,41 +94,27 @@ void natural_loops_templatet<P, T>::compute(P &program)
   {
     if(m_it->is_backwards_goto())
     {
-      for(const auto &target : m_it->targets)
-      {
-        if(target->location_number<=m_it->location_number)
-        {
-          const nodet &node=
-            cfg_dominators.cfg[cfg_dominators.cfg.entry_map[m_it]];
+      const auto &target=m_it->get_target();
 
-#ifdef DEBUG
-          std::cout << "Computing loop for "
-                    << m_it->location_number << " -> "
-                    << target->location_number << "\n";
-#endif
-          if(node.dominators.find(target)!=node.dominators.end())
-          {
-            compute_natural_loop(m_it, target);
-          }
-        }
+      if(target->location_number<=m_it->location_number)
+      {
+        const nodet &node=
+          cfg_dominators.cfg[cfg_dominators.cfg.entry_map[m_it]];
+
+        #ifdef DEBUG
+        std::cout << "Computing loop for "
+                  << m_it->location_number << " -> "
+                  << target->location_number << "\n";
+        #endif
+
+        if(node.dominators.find(target)!=node.dominators.end())
+          compute_natural_loop(m_it, target);
       }
     }
   }
 }
 
-/*******************************************************************\
-
-Function: natural_loops_templatet::compute_natural_loop
-
-  Inputs:
-
- Outputs:
-
- Purpose: Computes the natural loop for a given back-edge
-          (see Muchnick section 7.4)
-
-\*******************************************************************/
-
+/// Computes the natural loop for a given back-edge (see Muchnick section 7.4)
 template<class P, class T>
 void natural_loops_templatet<P, T>::compute_natural_loop(T m, T n)
 {
@@ -170,18 +149,7 @@ void natural_loops_templatet<P, T>::compute_natural_loop(T m, T n)
   }
 }
 
-/*******************************************************************\
-
-Function: natural_loops_templatet::output
-
-  Inputs:
-
- Outputs:
-
- Purpose: Print all natural loops that were found
-
-\*******************************************************************/
-
+/// Print all natural loops that were found
 template<class P, class T>
 void natural_loops_templatet<P, T>::output(std::ostream &out) const
 {

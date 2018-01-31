@@ -6,57 +6,21 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "boolbv_width.h"
+
 #include <algorithm>
 
 #include <util/arith_tools.h>
-#include <util/config.h>
+#include <util/invariant.h>
 #include <util/std_types.h>
-
-#include "boolbv_width.h"
-
-/*******************************************************************\
-
-Function: boolbv_widtht::boolbv_widtht
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 boolbv_widtht::boolbv_widtht(const namespacet &_ns):ns(_ns)
 {
 }
 
-/*******************************************************************\
-
-Function: boolbv_widtht::~boolbv_widtht
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 boolbv_widtht::~boolbv_widtht()
 {
 }
-
-/*******************************************************************\
-
-Function: boolbv_widtht::get_entry
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
 {
@@ -229,11 +193,8 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
   {
     // no width
   }
-  else if(type_id==ID_pointer ||
-          type_id==ID_reference)
-  {
-    entry.total_width=config.ansi_c.pointer_width;
-  }
+  else if(type_id==ID_pointer)
+    entry.total_width = type_checked_cast<pointer_typet>(type).get_width();
   else if(type_id==ID_symbol)
     entry=get_entry(ns.follow(type));
   else if(type_id==ID_struct_tag)
@@ -251,18 +212,6 @@ const boolbv_widtht::entryt &boolbv_widtht::get_entry(const typet &type) const
 
   return entry;
 }
-
-/*******************************************************************\
-
-Function: boolbv_widtht::get_member
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 const boolbv_widtht::membert &boolbv_widtht::get_member(
   const struct_typet &type,

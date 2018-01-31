@@ -6,27 +6,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "ui_message.h"
+
 #include <fstream>
 #include <iostream>
 
 #include "xml.h"
 #include "json.h"
 #include "xml_expr.h"
+#include "json_expr.h"
 #include "cout_message.h"
-#include "ui_message.h"
 #include "cmdline.h"
-
-/*******************************************************************\
-
-Function: ui_message_handlert::ui_message_handlert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 ui_message_handlert::ui_message_handlert(
   uit __ui, const std::string &program):_ui(__ui)
@@ -60,18 +50,6 @@ ui_message_handlert::ui_message_handlert(
   }
 }
 
-/*******************************************************************\
-
-Function: ui_message_handlert::ui_message_handlert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 ui_message_handlert::ui_message_handlert(
   const class cmdlinet &cmdline,
   const std::string &program):
@@ -82,18 +60,6 @@ ui_message_handlert::ui_message_handlert(
     program)
 {
 }
-
-/*******************************************************************\
-
-Function: ui_message_handlert::~ui_message_handlert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 ui_message_handlert::~ui_message_handlert()
 {
@@ -112,18 +78,6 @@ ui_message_handlert::~ui_message_handlert()
   }
 }
 
-/*******************************************************************\
-
-Function: ui_message_handlert::level_string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 const char *ui_message_handlert::level_string(unsigned level)
 {
   if(level==1)
@@ -133,18 +87,6 @@ const char *ui_message_handlert::level_string(unsigned level)
   else
     return "STATUS-MESSAGE";
 }
-
-/*******************************************************************\
-
-Function: ui_message_handlert::print
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void ui_message_handlert::print(
   unsigned level,
@@ -173,17 +115,49 @@ void ui_message_handlert::print(
   }
 }
 
-/*******************************************************************\
+void ui_message_handlert::print(
+  unsigned level,
+  const xmlt &data)
+{
+  if(verbosity>=level)
+  {
+    switch(get_ui())
+    {
+    case uit::PLAIN:
+      INVARIANT(false, "Cannot print xml data on PLAIN UI");
+      break;
+    case uit::XML_UI:
+      std::cout << data << '\n';
+      flush(level);
+      break;
+    case uit::JSON_UI:
+      INVARIANT(false, "Cannot print xml data on JSON UI");
+      break;
+    }
+  }
+}
 
-Function: ui_message_handlert::print
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+void ui_message_handlert::print(
+  unsigned level,
+  const jsont &data)
+{
+  if(verbosity>=level)
+  {
+    switch(get_ui())
+    {
+    case uit::PLAIN:
+      INVARIANT(false, "Cannot print json data on PLAIN UI");
+      break;
+    case uit::XML_UI:
+      INVARIANT(false, "Cannot print json data on XML UI");
+      break;
+    case uit::JSON_UI:
+      std::cout << ',' << '\n' << data;
+      flush(level);
+      break;
+    }
+  }
+}
 
 void ui_message_handlert::print(
   unsigned level,
@@ -222,18 +196,6 @@ void ui_message_handlert::print(
   }
 }
 
-/*******************************************************************\
-
-Function: ui_message_handlert::ui_msg
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void ui_message_handlert::ui_msg(
   const std::string &type,
   const std::string &msg1,
@@ -255,18 +217,6 @@ void ui_message_handlert::ui_msg(
   }
 }
 
-/*******************************************************************\
-
-Function: ui_message_handlert::xml_ui_msg
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void ui_message_handlert::xml_ui_msg(
   const std::string &type,
   const std::string &msg1,
@@ -287,18 +237,6 @@ void ui_message_handlert::xml_ui_msg(
   std::cout << '\n';
 }
 
-/*******************************************************************\
-
-Function: ui_message_handlert::json_ui_msg
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void ui_message_handlert::json_ui_msg(
   const std::string &type,
   const std::string &msg1,
@@ -307,11 +245,9 @@ void ui_message_handlert::json_ui_msg(
 {
   json_objectt result;
 
-  #if 0
   if(location.is_not_nil() &&
      !location.get_file().empty())
-    result.new_element(xml(location));
-  #endif
+    result["sourceLocation"] = json(location);
 
   result["messageType"] = json_stringt(type);
   result["messageText"] = json_stringt(msg1);
@@ -321,18 +257,6 @@ void ui_message_handlert::json_ui_msg(
   //  a trailing comma.
   std::cout << ",\n" << result;
 }
-
-/*******************************************************************\
-
-Function: ui_message_handlert::flush
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void ui_message_handlert::flush(unsigned level)
 {

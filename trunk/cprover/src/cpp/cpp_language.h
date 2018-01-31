@@ -6,18 +6,21 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+/// \file
+/// C++ Language Module
+
 #ifndef CPROVER_CPP_CPP_LANGUAGE_H
 #define CPROVER_CPP_CPP_LANGUAGE_H
 
 /*! \defgroup gr_cpp C++ front-end */
 
+#include <memory>
+
 #include <util/language.h>
+#include <util/make_unique.h> // unique_ptr
 
 #include "cpp_parse_tree.h"
 
-/*! \brief TO_BE_DOCUMENTED
-    \ingroup gr_cpp
-*/
 class cpp_languaget:public languaget
 {
 public:
@@ -30,6 +33,9 @@ public:
     std::istream &instream,
     const std::string &path) override;
 
+  bool generate_support_functions(
+    symbol_tablet &symbol_table) override;
+
   bool typecheck(
     symbol_tablet &symbol_table,
     const std::string &module) override;
@@ -39,9 +45,6 @@ public:
     symbol_tablet &src,
     const std::string &module,
     class replace_symbolt &replace_symbol) const;
-
-  bool final(
-    symbol_tablet &symbol_table) override;
 
   void show_parse(std::ostream &out) override;
 
@@ -73,8 +76,8 @@ public:
     exprt &expr,
     const namespacet &ns) override;
 
-  languaget *new_language() override
-  { return new cpp_languaget; }
+  std::unique_ptr<languaget> new_language() override
+  { return util_make_unique<cpp_languaget>(); }
 
   std::string id() const override { return "cpp"; }
   std::string description() const override { return "C++"; }
@@ -94,6 +97,6 @@ protected:
   }
 };
 
-languaget *new_cpp_language();
+std::unique_ptr<languaget> new_cpp_language();
 
 #endif // CPROVER_CPP_CPP_LANGUAGE_H

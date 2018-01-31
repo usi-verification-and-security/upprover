@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Value Set
+
 #ifndef CPROVER_ANALYSES_INVARIANT_SET_DOMAIN_H
 #define CPROVER_ANALYSES_INVARIANT_SET_DOMAIN_H
 
@@ -41,7 +44,7 @@ public:
   void output(
     std::ostream &out,
     const ai_baset &ai,
-    const namespacet &ns) const final
+    const namespacet &ns) const final override
   {
     if(has_values.is_known())
       out << has_values.to_string() << '\n';
@@ -53,24 +56,35 @@ public:
     locationt from_l,
     locationt to_l,
     ai_baset &ai,
-    const namespacet &ns) final;
+    const namespacet &ns,
+    ai_domain_baset::edge_typet edge_type) final override;
 
-  void make_top() final
+  void make_top() final override
   {
     invariant_set.make_true();
     has_values=tvt(true);
   }
 
-  void make_bottom() final
+  void make_bottom() final override
   {
     invariant_set.make_false();
     has_values=tvt(false);
   }
 
-  void make_entry() final
+  void make_entry() final override
   {
     invariant_set.make_true();
     has_values=tvt(true);
+  }
+
+  bool is_top() const override final
+  {
+    return has_values.is_true();
+  }
+
+  bool is_bottom() const override final
+  {
+    return has_values.is_false();
   }
 };
 

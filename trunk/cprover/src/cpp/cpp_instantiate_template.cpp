@@ -6,25 +6,18 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+/// \file
+/// C++ Language Type Checking
+
+#include "cpp_typecheck.h"
+
 #include <util/arith_tools.h>
+#include <util/base_exceptions.h>
 #include <util/simplify_expr.h>
 
 #include <util/c_types.h>
 
 #include "cpp_type2name.h"
-#include "cpp_typecheck.h"
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::template_suffix
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string cpp_typecheckt::template_suffix(
   const cpp_template_args_tct &template_args)
@@ -88,18 +81,6 @@ std::string cpp_typecheckt::template_suffix(
   return result;
 }
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::show_instantiation_stack
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cpp_typecheckt::show_instantiation_stack(std::ostream &out)
 {
   for(instantiation_stackt::const_iterator
@@ -124,18 +105,6 @@ void cpp_typecheckt::show_instantiation_stack(std::ostream &out)
     out << "> at " << s_it->source_location << '\n';
   }
 }
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::class_template_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 const symbolt &cpp_typecheckt::class_template_symbol(
   const source_locationt &source_location,
@@ -162,7 +131,8 @@ const symbolt &cpp_typecheckt::class_template_symbol(
   cpp_scopet *template_scope=
     static_cast<cpp_scopet *>(cpp_scopes.id_map[template_symbol.name]);
 
-  assert(template_scope!=NULL);
+  INVARIANT_STRUCTURED(
+    template_scope!=nullptr, nullptr_exceptiont, "template_scope is null");
 
   irep_idt identifier=
     id2string(template_scope->prefix)+
@@ -212,18 +182,7 @@ const symbolt &cpp_typecheckt::class_template_symbol(
   return *s_ptr;
 }
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::elaborate_class_template
-
-  Inputs:
-
- Outputs:
-
- Purpose: elaborate class template instances
-
-\*******************************************************************/
-
+/// elaborate class template instances
 void cpp_typecheckt::elaborate_class_template(
   const typet &type)
 {
@@ -248,21 +207,10 @@ void cpp_typecheckt::elaborate_class_template(
   }
 }
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::instantiate_template
-
-  Inputs: location of the instantiation,
-          the identifier of the template symbol,
-          typechecked template arguments,
-          an (optional) specialization
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
+/// \par parameters: location of the instantiation,
+/// the identifier of the template symbol,
+/// typechecked template arguments,
+/// an (optional) specialization
 #define MAX_DEPTH 50
 
 const symbolt &cpp_typecheckt::instantiate_template(
@@ -330,7 +278,7 @@ const symbolt &cpp_typecheckt::instantiate_template(
   cpp_scopet *template_scope=
     static_cast<cpp_scopet *>(cpp_scopes.id_map[template_symbol.name]);
 
-  if(template_scope==NULL)
+  if(template_scope==nullptr)
   {
     error().source_location=source_location;
     error() << "identifier: " << template_symbol.name << '\n'
@@ -338,7 +286,8 @@ const symbolt &cpp_typecheckt::instantiate_template(
     throw 0;
   }
 
-  assert(template_scope!=NULL);
+  INVARIANT_STRUCTURED(
+    template_scope!=nullptr, nullptr_exceptiont, "template_scope is null");
 
   // produce new declaration
   cpp_declarationt new_decl=to_cpp_declaration(template_symbol.type);
@@ -387,7 +336,7 @@ const symbolt &cpp_typecheckt::instantiate_template(
 
     if(id_set.size()==1)
     {
-      // It has already been instantianted!
+      // It has already been instantiated!
       const cpp_idt &cpp_id = **id_set.begin();
 
       assert(cpp_id.id_class == cpp_idt::id_classt::CLASS ||
@@ -423,7 +372,7 @@ const symbolt &cpp_typecheckt::instantiate_template(
   // been instantiated using these arguments
   {
     // need non-const handle on template symbol
-    symbolt &s=symbol_table.symbols.find(template_symbol.name)->second;
+    symbolt &s=*symbol_table.get_writeable(template_symbol.name);
     irept &instantiated_with=s.value.add("instantiated_with");
     instantiated_with.get_sub().push_back(specialization_template_args);
   }
@@ -466,13 +415,13 @@ const symbolt &cpp_typecheckt::instantiate_template(
       static_cast<const exprt &>(
         template_symbol.value.find("template_methods"));
 
-    for(unsigned i=0; i<template_methods.operands().size(); i++)
+    for(auto &tm : template_methods.operands())
     {
       cpp_saved_scope.restore();
 
       cpp_declarationt method_decl=
         static_cast<const cpp_declarationt &>(
-          static_cast<const irept &>(template_methods.operands()[i]));
+          static_cast<const irept &>(tm));
 
       // copy the type of the template method
       template_typet method_type=
@@ -502,12 +451,7 @@ const symbolt &cpp_typecheckt::instantiate_template(
 
   if(is_template_method)
   {
-    symbol_tablet::symbolst::iterator it =
-      symbol_table.symbols.find(class_name);
-
-    assert(it!=symbol_table.symbols.end());
-
-    symbolt &symb = it->second;
+    symbolt &symb=*symbol_table.get_writeable(class_name);
 
     assert(new_decl.declarators().size() == 1);
 
@@ -540,7 +484,7 @@ const symbolt &cpp_typecheckt::instantiate_template(
     bool is_static=new_decl.storage_spec().is_static();
     irep_idt access = new_decl.get(ID_C_access);
 
-    assert(access != irep_idt());
+    assert(!access.empty());
     assert(symb.type.id()==ID_struct);
 
     typecheck_compound_declarator(

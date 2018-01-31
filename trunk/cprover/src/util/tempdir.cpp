@@ -6,13 +6,14 @@ Author: CM Wintersteiger
 
 \*******************************************************************/
 
+#include "tempdir.h"
+
 #ifdef _WIN32
 #include <windows.h>
 #include <io.h>
 #include <direct.h>
 #endif
 
-#include <cassert>
 #include <cstdlib>
 #include <cstring>
 
@@ -25,20 +26,8 @@ Author: CM Wintersteiger
 #include <unistd.h>
 #endif
 
-#include "tempdir.h"
+#include "invariant.h"
 #include "file_util.h"
-
-/*******************************************************************\
-
-Function: get_temporary_directory
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string get_temporary_directory(const std::string &name_template)
 {
@@ -69,7 +58,7 @@ std::string get_temporary_directory(const std::string &name_template)
   #else
     std::string prefixed_name_template="/tmp/";
     const char *TMPDIR_env=getenv("TMPDIR");
-    if(TMPDIR_env!=0)
+    if(TMPDIR_env!=nullptr)
       prefixed_name_template=TMPDIR_env;
     if(*prefixed_name_template.rbegin()!='/')
       prefixed_name_template+='/';
@@ -86,108 +75,36 @@ std::string get_temporary_directory(const std::string &name_template)
   return result;
 }
 
-/*******************************************************************\
-
-Function: temp_dirt::temp_dirt
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 temp_dirt::temp_dirt(const std::string &name_template)
 {
   path=get_temporary_directory(name_template);
 }
-
-/*******************************************************************\
-
-Function: temp_dirt::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string temp_dirt::operator()(const std::string &file)
 {
   return concat_dir_file(path, file);
 }
 
-/*******************************************************************\
-
-Function: temp_dirt::~temp_dirt
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void temp_dirt::clear()
 {
   delete_directory(path);
 }
-
-/*******************************************************************\
-
-Function: temp_dirt::~temp_dirt
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 temp_dirt::~temp_dirt()
 {
   clear();
 }
 
-/*******************************************************************\
-
-Function: temp_working_dirt::temp_working_dirt
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 temp_working_dirt::temp_working_dirt(const std::string &name_template):
   temp_dirt(name_template)
 {
   old_working_directory=get_current_working_directory();
   if(chdir(path.c_str())!=0)
-    assert(false);
+    CHECK_RETURN(false);
 }
-
-/*******************************************************************\
-
-Function: temp_working_dirt::~temp_working_dirt
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 temp_working_dirt::~temp_working_dirt()
 {
   if(chdir(old_working_directory.c_str())!=0)
-    assert(false);
+    CHECK_RETURN(false);
 }

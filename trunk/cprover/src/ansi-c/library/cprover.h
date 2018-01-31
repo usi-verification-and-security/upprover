@@ -10,7 +10,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #define CPROVER_ANSI_C_LIBRARY_CPROVER_H
 
 typedef __typeof__(sizeof(int)) __CPROVER_size_t;
-void *__CPROVER_malloc(__CPROVER_size_t size);
+void *__CPROVER_allocate(__CPROVER_size_t size, __CPROVER_bool zero);
 extern const void *__CPROVER_deallocated;
 extern const void *__CPROVER_malloc_object;
 extern __CPROVER_size_t __CPROVER_malloc_size;
@@ -19,6 +19,7 @@ extern const void *__CPROVER_memory_leak;
 
 void __CPROVER_assume(__CPROVER_bool assumption) __attribute__((__noreturn__));
 void __CPROVER_assert(__CPROVER_bool assertion, const char *description);
+void __CPROVER_precondition(__CPROVER_bool assertion, const char *description);
 
 __CPROVER_bool __CPROVER_is_zero_string(const void *);
 __CPROVER_size_t __CPROVER_zero_string_length(const void *);
@@ -92,6 +93,7 @@ double __CPROVER_inf(void);
 float __CPROVER_inff(void);
 long double __CPROVER_infl(void);
 //extern int __CPROVER_thread_local __CPROVER_rounding_mode;
+int __CPROVER_isgreaterd(double f, double g);
 
 // absolute value
 int __CPROVER_abs(int);

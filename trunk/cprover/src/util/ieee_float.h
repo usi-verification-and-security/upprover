@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_UTIL_IEEE_FLOAT_H
 #define CPROVER_UTIL_IEEE_FLOAT_H
 
@@ -237,7 +238,7 @@ public:
   void from_double(const double d);
   void from_float(const float f);
 
-  // perfroms conversions from IEEE float-point format
+  // performs conversions from IEEE float-point format
   // to something else
   double to_double() const;
   float to_float() const;
@@ -267,7 +268,7 @@ public:
   constant_exprt to_expr() const;
   void from_expr(const constant_exprt &expr);
 
-  // the usual opertors
+  // the usual operators
   ieee_floatt &operator/=(const ieee_floatt &other);
   ieee_floatt &operator*=(const ieee_floatt &other);
   ieee_floatt &operator+=(const ieee_floatt &other);

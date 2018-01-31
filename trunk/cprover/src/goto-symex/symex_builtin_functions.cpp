@@ -6,8 +6,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution of ANSI-C
+
+#include "goto_symex.h"
+
 #include <cassert>
 
+#include <util/expr_util.h>
+#include <util/message.h>
 #include <util/arith_tools.h>
 #include <util/cprover_prefix.h>
 #include <util/std_types.h>
@@ -18,25 +25,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/simplify_expr.h>
 #include <util/prefix.h>
 #include <util/string2int.h>
-
+#include <util/invariant_utils.h>
 #include <util/c_types.h>
 
 #include <linking/zero_initializer.h>
 
-#include "goto_symex.h"
 #include "goto_symex_state.h"
-
-/*******************************************************************\
-
-Function: goto_symext::symex_malloc
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 inline static typet c_sizeof_type_rec(const exprt &expr)
 {
@@ -59,13 +53,13 @@ inline static typet c_sizeof_type_rec(const exprt &expr)
   return nil_typet();
 }
 
-void goto_symext::symex_malloc(
+void goto_symext::symex_allocate(
   statet &state,
   const exprt &lhs,
   const side_effect_exprt &code)
 {
-  if(code.operands().size()!=1)
-    throw "malloc expected to have one operand";
+  if(code.operands().size()!=2)
+    throw "allocate expected to have two operands";
 
   if(lhs.is_nil())
     return; // ignore
@@ -173,20 +167,46 @@ void goto_symext::symex_malloc(
 
   new_symbol_table.add(value_symbol);
 
-  address_of_exprt rhs;
+  exprt zero_init=code.op1();
+  state.rename(zero_init, ns); // to allow constant propagation
+  simplify(zero_init, ns);
+
+  if(!zero_init.is_constant())
+    throw "allocate expects constant as second argument";
+
+  if(!zero_init.is_zero() && !zero_init.is_false())
+  {
+    null_message_handlert null_message;
+    exprt zero_value=
+      zero_initializer(
+        object_type,
+        code.source_location(),
+        ns,
+        null_message);
+
+    if(zero_value.is_not_nil())
+    {
+      code_assignt assignment(value_symbol.symbol_expr(), zero_value);
+      symex_assign_rec(state, assignment);
+    }
+    else
+      throw "failed to zero initialize dynamic object";
+  }
+
+  exprt rhs;
 
   if(object_type.id()==ID_array)
   {
-    rhs.type()=pointer_typet(value_symbol.type.subtype());
     index_exprt index_expr(value_symbol.type.subtype());
     index_expr.array()=value_symbol.symbol_expr();
     index_expr.index()=from_integer(0, index_type());
-    rhs.op0()=index_expr;
+    rhs=address_of_exprt(
+      index_expr, pointer_type(value_symbol.type.subtype()));
   }
   else
   {
-    rhs.op0()=value_symbol.symbol_expr();
-    rhs.type()=pointer_typet(value_symbol.type);
+    rhs=address_of_exprt(
+      value_symbol.symbol_expr(), pointer_type(value_symbol.type));
   }
 
   if(rhs.type()!=lhs.type())
@@ -194,18 +214,6 @@ void goto_symext::symex_malloc(
 
   symex_assign_rec(state, code_assignt(lhs, rhs));
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_gcc_builtin_va_arg_next
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 irep_idt get_symbol(const exprt &src)
 {
@@ -242,7 +250,7 @@ void goto_symext::symex_gcc_builtin_va_arg_next(
 
   exprt rhs=zero_initializer(lhs.type(), code.source_location(), ns);
 
-  if(id!=irep_idt())
+  if(!id.empty())
   {
     // strip last name off id to get function name
     std::size_t pos=id2string(id).rfind("::");
@@ -271,18 +279,6 @@ void goto_symext::symex_gcc_builtin_va_arg_next(
   symex_assign_rec(state, code_assignt(lhs, rhs));
 }
 
-/*******************************************************************\
-
-Function: goto_symext::get_string_argument_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 irep_idt get_string_argument_rec(const exprt &src)
 {
   if(src.id()==ID_typecast)
@@ -309,36 +305,12 @@ irep_idt get_string_argument_rec(const exprt &src)
   return "";
 }
 
-/*******************************************************************\
-
-Function: goto_symext::get_string_argument
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 irep_idt get_string_argument(const exprt &src, const namespacet &ns)
 {
   exprt tmp=src;
   simplify(tmp, ns);
   return get_string_argument_rec(tmp);
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_printf
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_printf(
   statet &state,
@@ -355,7 +327,7 @@ void goto_symext::symex_printf(
   const exprt::operandst &operands=tmp_rhs.operands();
   std::list<exprt> args;
 
-  for(unsigned i=1; i<operands.size(); i++)
+  for(std::size_t i=1; i<operands.size(); i++)
     args.push_back(operands[i]);
 
   const irep_idt format_string=
@@ -366,18 +338,6 @@ void goto_symext::symex_printf(
       state.guard.as_expr(),
       state.source, "printf", format_string, args);
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_input
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_input(
   statet &state,
@@ -392,7 +352,7 @@ void goto_symext::symex_input(
 
   std::list<exprt> args;
 
-  for(unsigned i=1; i<code.operands().size(); i++)
+  for(std::size_t i=1; i<code.operands().size(); i++)
   {
     args.push_back(code.operands()[i]);
     state.rename(args.back(), ns);
@@ -403,18 +363,6 @@ void goto_symext::symex_input(
 
   target.input(state.guard.as_expr(), state.source, input_id, args);
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_output(
   statet &state,
@@ -429,7 +377,7 @@ void goto_symext::symex_output(
 
   std::list<exprt> args;
 
-  for(unsigned i=1; i<code.operands().size(); i++)
+  for(std::size_t i=1; i<code.operands().size(); i++)
   {
     args.push_back(code.operands()[i]);
     state.rename(args.back(), ns);
@@ -441,18 +389,11 @@ void goto_symext::symex_output(
   target.output(state.guard.as_expr(), state.source, output_id, args);
 }
 
-/*******************************************************************\
-
-Function: goto_symext::symex_cpp_new
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
+/// Handles side effects of type 'new' for C++ and 'new array'
+/// for C++ and Java language modes
+/// \param state: Symex state
+/// \param lhs: left-hand side of assignment
+/// \param code: right-hand side containing side effect
 void goto_symext::symex_cpp_new(
   statet &state,
   const exprt &lhs,
@@ -463,7 +404,9 @@ void goto_symext::symex_cpp_new(
   if(code.type().id()!=ID_pointer)
     throw "new expected to return pointer";
 
-  do_array=(code.get(ID_statement)==ID_cpp_new_array);
+  do_array =
+    (code.get(ID_statement) == ID_cpp_new_array ||
+     code.get(ID_statement) == ID_java_new_array_data);
 
   dynamic_counter++;
 
@@ -476,7 +419,13 @@ void goto_symext::symex_cpp_new(
              "dynamic_"+count_string+"_value";
   symbol.name="symex_dynamic::"+id2string(symbol.base_name);
   symbol.is_lvalue=true;
-  symbol.mode=ID_cpp;
+  if(code.get(ID_statement)==ID_cpp_new_array ||
+     code.get(ID_statement)==ID_cpp_new)
+    symbol.mode=ID_cpp;
+  else if(code.get(ID_statement) == ID_java_new_array_data)
+    symbol.mode=ID_java;
+  else
+    INVARIANT_WITH_IREP(false, "Unexpected side effect expression", code);
 
   if(do_array)
   {
@@ -489,14 +438,13 @@ void goto_symext::symex_cpp_new(
   else
     symbol.type=code.type().subtype();
 
-  // symbol.type.set("#active", symbol_expr(active_symbol));
   symbol.type.set("#dynamic", true);
 
   new_symbol_table.add(symbol);
 
   // make symbol expression
 
-  exprt rhs(ID_address_of, pointer_typet());
+  exprt rhs(ID_address_of, code.type());
   rhs.type().subtype()=code.type().subtype();
 
   if(do_array)
@@ -513,36 +461,15 @@ void goto_symext::symex_cpp_new(
   symex_assign_rec(state, code_assignt(lhs, rhs));
 }
 
-/*******************************************************************\
-
-Function: goto_symext::symex_cpp_delete
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_symext::symex_cpp_delete(
   statet &state,
   const codet &code)
 {
-  // bool do_array=code.get(ID_statement)==ID_cpp_delete_array;
+  // TODO
+  #if 0
+  bool do_array=code.get(ID_statement)==ID_cpp_delete_array;
+  #endif
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_trace
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_trace(
   statet &state,
@@ -572,7 +499,7 @@ void goto_symext::symex_trace(
 
     irep_idt event=code.arguments()[1].op0().get(ID_value);
 
-    for(unsigned j=2; j<code.arguments().size(); j++)
+    for(std::size_t j=2; j<code.arguments().size(); j++)
     {
       exprt var(code.arguments()[j]);
       state.rename(var, ns);
@@ -582,18 +509,6 @@ void goto_symext::symex_trace(
     target.output(state.guard.as_expr(), state.source, event, vars);
   }
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_fkt
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_fkt(
   statet &state,
@@ -617,18 +532,6 @@ void goto_symext::symex_fkt(
   fc.swap(new_fc);
   #endif
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_macro
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_macro(
   statet &state,

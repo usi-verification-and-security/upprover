@@ -6,12 +6,14 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_UTIL_STD_CODE_H
 #define CPROVER_UTIL_STD_CODE_H
 
 #include <cassert>
 
 #include "expr.h"
+#include "expr_cast.h"
 
 /*! \brief A statement in a programming language
 */
@@ -44,6 +46,29 @@ public:
   const codet &last_statement() const;
   class code_blockt &make_block();
 };
+
+namespace detail // NOLINT
+{
+
+template<typename Tag>
+inline bool can_cast_code_impl(const exprt &expr, const Tag &tag)
+{
+  if(const auto ptr = expr_try_dynamic_cast<codet>(expr))
+  {
+    return ptr->get_statement() == tag;
+  }
+  return false;
+}
+
+} // namespace detail
+
+template<> inline bool can_cast_expr<codet>(const exprt &base)
+{
+  return base.id()==ID_code;
+}
+
+// to_code has no validation other than checking the id(), so no validate_expr
+// is provided for codet
 
 inline const codet &to_code(const exprt &expr)
 {
@@ -116,6 +141,14 @@ public:
   }
 };
 
+template<> inline bool can_cast_expr<code_blockt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_block);
+}
+
+// to_code_block has no validation other than checking the statement(), so no
+// validate_expr is provided for code_blockt
+
 inline const code_blockt &to_code_block(const codet &code)
 {
   assert(code.get_statement()==ID_block);
@@ -137,6 +170,13 @@ public:
   {
   }
 };
+
+template<> inline bool can_cast_expr<code_skipt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_skip);
+}
+
+// there is no to_code_skip, so no validate_expr is provided for code_skipt
 
 /*! \brief Assignment
 */
@@ -173,6 +213,16 @@ public:
     return op1();
   }
 };
+
+template<> inline bool can_cast_expr<code_assignt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_assign);
+}
+
+inline void validate_expr(const code_assignt & x)
+{
+  validate_operands(x, 2, "Assignment must have two operands");
+}
 
 inline const code_assignt &to_code_assign(const codet &code)
 {
@@ -213,6 +263,16 @@ public:
 
   const irep_idt &get_identifier() const;
 };
+
+template<> inline bool can_cast_expr<code_declt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_decl);
+}
+
+inline void validate_expr(const code_declt &x)
+{
+  validate_operands(x, 1, "Decls must have one or more operands", true);
+}
 
 inline const code_declt &to_code_decl(const codet &code)
 {
@@ -256,6 +316,16 @@ public:
   const irep_idt &get_identifier() const;
 };
 
+template<> inline bool can_cast_expr<code_deadt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_dead);
+}
+
+inline void validate_expr(const code_deadt &x)
+{
+  validate_operands(x, 1, "Dead code must have one operand");
+}
+
 inline const code_deadt &to_code_dead(const codet &code)
 {
   assert(code.get_statement()==ID_dead && code.operands().size()==1);
@@ -294,6 +364,14 @@ public:
   }
 };
 
+template<> inline bool can_cast_expr<code_assumet>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_assume);
+}
+
+// to_code_assume only checks the code statement, so no validate_expr is
+// provided for code_assumet
+
 inline const code_assumet &to_code_assume(const codet &code)
 {
   assert(code.get_statement()==ID_assume);
@@ -331,6 +409,14 @@ public:
     return op0();
   }
 };
+
+template<> inline bool can_cast_expr<code_assertt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_assert);
+}
+
+// to_code_assert only checks the code statement, so no validate_expr is
+// provided for code_assertt
 
 inline const code_assertt &to_code_assert(const codet &code)
 {
@@ -392,6 +478,16 @@ public:
   }
 };
 
+template<> inline bool can_cast_expr<code_ifthenelset>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_ifthenelse);
+}
+
+inline void validate_expr(const code_ifthenelset &x)
+{
+  validate_operands(x, 3, "If-then-else must have three operands");
+}
+
 inline const code_ifthenelset &to_code_ifthenelse(const codet &code)
 {
   assert(code.get_statement()==ID_ifthenelse &&
@@ -436,6 +532,16 @@ public:
     return static_cast<codet &>(op1());
   }
 };
+
+template<> inline bool can_cast_expr<code_switcht>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_switch);
+}
+
+inline void validate_expr(const code_switcht &x)
+{
+  validate_operands(x, 2, "Switch must have two operands");
+}
 
 inline const code_switcht &to_code_switch(const codet &code)
 {
@@ -482,6 +588,16 @@ public:
   }
 };
 
+template<> inline bool can_cast_expr<code_whilet>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_while);
+}
+
+inline void validate_expr(const code_whilet &x)
+{
+  validate_operands(x, 2, "While must have two operands");
+}
+
 inline const code_whilet &to_code_while(const codet &code)
 {
   assert(code.get_statement()==ID_while &&
@@ -526,6 +642,16 @@ public:
     return static_cast<codet &>(op1());
   }
 };
+
+template<> inline bool can_cast_expr<code_dowhilet>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_dowhile);
+}
+
+inline void validate_expr(const code_dowhilet &x)
+{
+  validate_operands(x, 2, "Do-while must have two operands");
+}
 
 inline const code_dowhilet &to_code_dowhile(const codet &code)
 {
@@ -593,6 +719,16 @@ public:
   }
 };
 
+template<> inline bool can_cast_expr<code_fort>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_for);
+}
+
+inline void validate_expr(const code_fort &x)
+{
+  validate_operands(x, 4, "For must have four operands");
+}
+
 inline const code_fort &to_code_for(const codet &code)
 {
   assert(code.get_statement()==ID_for &&
@@ -631,6 +767,16 @@ public:
     return get(ID_destination);
   }
 };
+
+template<> inline bool can_cast_expr<code_gotot>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_goto);
+}
+
+inline void validate_expr(const code_gotot &x)
+{
+  validate_operands(x, 0, "Goto must not have operands");
+}
 
 inline const code_gotot &to_code_goto(const codet &code)
 {
@@ -696,6 +842,14 @@ public:
   }
 };
 
+template<> inline bool can_cast_expr<code_function_callt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_function_call);
+}
+
+// to_code_function_call only checks the code statement, so no validate_expr is
+// provided for code_function_callt
+
 inline const code_function_callt &to_code_function_call(const codet &code)
 {
   assert(code.get_statement()==ID_function_call);
@@ -741,6 +895,14 @@ public:
     return return_value().is_not_nil();
   }
 };
+
+template<> inline bool can_cast_expr<code_returnt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_return);
+}
+
+// to_code_return only checks the code statement, so no validate_expr is
+// provided for code_returnt
 
 inline const code_returnt &to_code_return(const codet &code)
 {
@@ -798,6 +960,16 @@ public:
     return static_cast<const codet &>(op0());
   }
 };
+
+template<> inline bool can_cast_expr<code_labelt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_label);
+}
+
+inline void validate_expr(const code_labelt &x)
+{
+  validate_operands(x, 1, "Label must have one operand");
+}
 
 inline const code_labelt &to_code_label(const codet &code)
 {
@@ -858,6 +1030,16 @@ public:
   }
 };
 
+template<> inline bool can_cast_expr<code_switch_caset>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_switch_case);
+}
+
+inline void validate_expr(const code_switch_caset &x)
+{
+  validate_operands(x, 2, "Switch-case must have two operands");
+}
+
 inline const code_switch_caset &to_code_switch_case(const codet &code)
 {
   assert(code.get_statement()==ID_switch_case && code.operands().size()==2);
@@ -880,6 +1062,14 @@ public:
   }
 };
 
+template<> inline bool can_cast_expr<code_breakt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_break);
+}
+
+// to_code_break only checks the code statement, so no validate_expr is
+// provided for code_breakt
+
 inline const code_breakt &to_code_break(const codet &code)
 {
   assert(code.get_statement()==ID_break);
@@ -901,6 +1091,14 @@ public:
   {
   }
 };
+
+template<> inline bool can_cast_expr<code_continuet>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_continue);
+}
+
+// to_code_continue only checks the code statement, so no validate_expr is
+// provided for code_continuet
 
 inline const code_continuet &to_code_continue(const codet &code)
 {
@@ -939,6 +1137,14 @@ public:
   }
 };
 
+template<> inline bool can_cast_expr<code_asmt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_asm);
+}
+
+// to_code_asm only checks the code statement, so no validate_expr is
+// provided for code_asmt
+
 inline code_asmt &to_code_asm(codet &code)
 {
   assert(code.get_statement()==ID_asm);
@@ -976,6 +1182,16 @@ public:
     return op0();
   }
 };
+
+template<> inline bool can_cast_expr<code_expressiont>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_expression);
+}
+
+inline void validate_expr(const code_expressiont &x)
+{
+  validate_operands(x, 1, "Expression must have one operand");
+}
 
 inline code_expressiont &to_code_expression(codet &code)
 {
@@ -1019,6 +1235,29 @@ public:
   }
 };
 
+namespace detail // NOLINT
+{
+
+template<typename Tag>
+inline bool can_cast_side_effect_expr_impl(const exprt &expr, const Tag &tag)
+{
+  if(const auto ptr = expr_try_dynamic_cast<side_effect_exprt>(expr))
+  {
+    return ptr->get_statement() == tag;
+  }
+  return false;
+}
+
+} // namespace detail
+
+template<> inline bool can_cast_expr<side_effect_exprt>(const exprt &base)
+{
+  return base.id()==ID_side_effect;
+}
+
+// to_side_effect_expr only checks the id, so no validate_expr is provided for
+// side_effect_exprt
+
 inline side_effect_exprt &to_side_effect_expr(exprt &expr)
 {
   assert(expr.id()==ID_side_effect);
@@ -1038,13 +1277,49 @@ class side_effect_expr_nondett:public side_effect_exprt
 public:
   side_effect_expr_nondett():side_effect_exprt(ID_nondet)
   {
+    set_nullable(true);
   }
 
   explicit side_effect_expr_nondett(const typet &_type):
     side_effect_exprt(ID_nondet, _type)
   {
+    set_nullable(true);
+  }
+
+  void set_nullable(bool nullable)
+  {
+    set(ID_is_nondet_nullable, nullable);
+  }
+
+  bool get_nullable() const
+  {
+    return get_bool(ID_is_nondet_nullable);
   }
 };
+
+template<>
+inline bool can_cast_expr<side_effect_expr_nondett>(const exprt &base)
+{
+  return detail::can_cast_side_effect_expr_impl(base, ID_nondet);
+}
+
+// to_side_effect_expr_nondet only checks the id, so no validate_expr is
+// provided for side_effect_expr_nondett
+
+inline side_effect_expr_nondett &to_side_effect_expr_nondet(exprt &expr)
+{
+  auto &side_effect_expr_nondet=to_side_effect_expr(expr);
+  assert(side_effect_expr_nondet.get_statement()==ID_nondet);
+  return static_cast<side_effect_expr_nondett &>(side_effect_expr_nondet);
+}
+
+inline const side_effect_expr_nondett &to_side_effect_expr_nondet(
+  const exprt &expr)
+{
+  const auto &side_effect_expr_nondet=to_side_effect_expr(expr);
+  assert(side_effect_expr_nondet.get_statement()==ID_nondet);
+  return static_cast<const side_effect_expr_nondett &>(side_effect_expr_nondet);
+}
 
 /*! \brief A function call side effect
 */
@@ -1078,6 +1353,15 @@ public:
   }
 };
 
+template<>
+inline bool can_cast_expr<side_effect_expr_function_callt>(const exprt &base)
+{
+  return detail::can_cast_side_effect_expr_impl(base, ID_function_call);
+}
+
+// to_side_effect_expr_function_call only checks the id, so no validate_expr is
+// provided for side_effect_expr_function_callt
+
 inline side_effect_expr_function_callt
   &to_side_effect_expr_function_call(exprt &expr)
 {
@@ -1110,6 +1394,15 @@ public:
   }
 };
 
+template<>
+inline bool can_cast_expr<side_effect_expr_throwt>(const exprt &base)
+{
+  return detail::can_cast_side_effect_expr_impl(base, ID_throw);
+}
+
+// to_side_effect_expr_throw only checks the id, so no validate_expr is
+// provided for side_effect_expr_throwt
+
 inline side_effect_expr_throwt &to_side_effect_expr_throw(exprt &expr)
 {
   assert(expr.id()==ID_side_effect);
@@ -1124,34 +1417,177 @@ inline const side_effect_expr_throwt &to_side_effect_expr_throw(
   assert(expr.get(ID_statement)==ID_throw);
   return static_cast<const side_effect_expr_throwt &>(expr);
 }
-/*! \brief A side effect that pushes/pops a catch handler
-*/
-class side_effect_expr_catcht:public side_effect_exprt
+
+/// Pushes an exception handler, of the form:
+/// exception_tag1 -> label1
+/// exception_tag2 -> label2
+/// ...
+/// When used in a GOTO program instruction, the corresponding
+/// opcode must be CATCH, and the instruction's `targets` must
+/// be in one-to-one correspondence with the exception tags.
+/// The labels may be unspecified for the case where
+/// there is no corresponding source-language label, in whic
+/// case the GOTO instruction targets must be set at the same
+/// time.
+class code_push_catcht:public codet
 {
 public:
-  side_effect_expr_catcht():side_effect_exprt(ID_push_catch)
+  code_push_catcht():codet(ID_push_catch)
   {
+    set(ID_exception_list, irept(ID_exception_list));
   }
-  explicit side_effect_expr_catcht(const irept &exception_list):
-    side_effect_exprt(ID_push_catch)
+
+  class exception_list_entryt:public irept
   {
-    set(ID_exception_list, exception_list);
+  public:
+    exception_list_entryt()
+    {
+    }
+
+    explicit exception_list_entryt(const irep_idt &tag)
+    {
+      set(ID_tag, tag);
+    }
+
+    exception_list_entryt(const irep_idt &tag, const irep_idt &label)
+    {
+      set(ID_tag, tag);
+      set(ID_label, label);
+    }
+
+    void set_tag(const irep_idt &tag)
+    {
+      set(ID_tag, tag);
+    }
+
+    const irep_idt &get_tag() const {
+      return get(ID_tag);
+    }
+
+    void set_label(const irep_idt &label)
+    {
+      set(ID_label, label);
+    }
+
+    const irep_idt &get_label() const {
+      return get(ID_label);
+    }
+  };
+
+  typedef std::vector<exception_list_entryt> exception_listt;
+
+  code_push_catcht(
+    const irep_idt &tag,
+    const irep_idt &label):
+    codet(ID_push_catch)
+  {
+    set(ID_exception_list, irept(ID_exception_list));
+    exception_list().push_back(exception_list_entryt(tag, label));
+  }
+
+  exception_listt &exception_list() {
+    return (exception_listt &)find(ID_exception_list).get_sub();
+  }
+
+  const exception_listt &exception_list() const {
+    return (const exception_listt &)find(ID_exception_list).get_sub();
   }
 };
 
-static inline side_effect_expr_catcht &to_side_effect_expr_catch(exprt &expr)
+template<> inline bool can_cast_expr<code_push_catcht>(const exprt &base)
 {
-  assert(expr.id()==ID_side_effect);
-  assert(expr.get(ID_statement)==ID_push_catch);
-  return static_cast<side_effect_expr_catcht &>(expr);
+  return detail::can_cast_code_impl(base, ID_push_catch);
 }
 
-static inline const side_effect_expr_catcht &to_side_effect_expr_catch(
-  const exprt &expr)
+// to_code_push_catch only checks the code statement, so no validate_expr is
+// provided for code_push_catcht
+
+static inline code_push_catcht &to_code_push_catch(codet &code)
 {
-  assert(expr.id()==ID_side_effect);
-  assert(expr.get(ID_statement)==ID_push_catch);
-  return static_cast<const side_effect_expr_catcht &>(expr);
+  assert(code.get_statement()==ID_push_catch);
+  return static_cast<code_push_catcht &>(code);
+}
+
+static inline const code_push_catcht &to_code_push_catch(const codet &code)
+{
+  assert(code.get_statement()==ID_push_catch);
+  return static_cast<const code_push_catcht &>(code);
+}
+
+/// Pops an exception handler from the stack of active handlers
+/// (i.e. whichever handler was most recently pushed by a
+/// `code_push_catcht`).
+class code_pop_catcht:public codet
+{
+public:
+  code_pop_catcht():codet(ID_pop_catch)
+  {
+  }
+};
+
+template<> inline bool can_cast_expr<code_pop_catcht>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_pop_catch);
+}
+
+// to_code_pop_catch only checks the code statement, so no validate_expr is
+// provided for code_pop_catcht
+
+static inline code_pop_catcht &to_code_pop_catch(codet &code)
+{
+  assert(code.get_statement()==ID_pop_catch);
+  return static_cast<code_pop_catcht &>(code);
+}
+
+static inline const code_pop_catcht &to_code_pop_catch(const codet &code)
+{
+  assert(code.get_statement()==ID_pop_catch);
+  return static_cast<const code_pop_catcht &>(code);
+}
+
+/// A statement that catches an exception, assigning the exception
+/// in flight to an expression (e.g. Java catch(Exception e) might be expressed
+/// landingpadt(symbol_expr("e", ...)))
+class code_landingpadt:public codet
+{
+ public:
+  code_landingpadt():codet(ID_exception_landingpad)
+  {
+    operands().resize(1);
+  }
+  explicit code_landingpadt(const exprt &catch_expr):
+  codet(ID_exception_landingpad)
+  {
+    copy_to_operands(catch_expr);
+  }
+  const exprt &catch_expr() const
+  {
+    return op0();
+  }
+  exprt &catch_expr()
+  {
+    return op0();
+  }
+};
+
+template<> inline bool can_cast_expr<code_landingpadt>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_exception_landingpad);
+}
+
+// to_code_landingpad only checks the code statement, so no validate_expr is
+// provided for code_landingpadt
+
+static inline code_landingpadt &to_code_landingpad(codet &code)
+{
+  assert(code.get_statement()==ID_exception_landingpad);
+  return static_cast<code_landingpadt &>(code);
+}
+
+static inline const code_landingpadt &to_code_landingpad(const codet &code)
+{
+  assert(code.get_statement()==ID_exception_landingpad);
+  return static_cast<const code_landingpadt &>(code);
 }
 
 /*! \brief A try/catch block
@@ -1205,6 +1641,16 @@ public:
     copy_to_operands(code_catch);
   }
 };
+
+template<> inline bool can_cast_expr<code_try_catcht>(const exprt &base)
+{
+  return detail::can_cast_code_impl(base, ID_try_catch);
+}
+
+inline void validate_expr(const code_try_catcht &x)
+{
+  validate_operands(x, 3, "Try-catch must have three or more operands", true);
+}
 
 inline const code_try_catcht &to_code_try_catch(const codet &code)
 {

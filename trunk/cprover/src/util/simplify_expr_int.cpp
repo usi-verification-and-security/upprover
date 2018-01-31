@@ -6,11 +6,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "simplify_expr_class.h"
+
 #include <cassert>
 
 #include "base_type.h"
 #include "rational.h"
-#include "simplify_expr_class.h"
 #include "expr.h"
 #include "namespace.h"
 #include "config.h"
@@ -21,18 +22,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "fixedbv.h"
 #include "rational_tools.h"
 #include "ieee_float.h"
-
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_bswap
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool simplify_exprt::simplify_bswap(exprt &expr)
 {
@@ -65,18 +54,6 @@ bool simplify_exprt::simplify_bswap(exprt &expr)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_mult
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool simplify_exprt::simplify_mult(exprt &expr)
 {
@@ -182,18 +159,6 @@ bool simplify_exprt::simplify_mult(exprt &expr)
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_div
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool simplify_exprt::simplify_div(exprt &expr)
 {
@@ -315,18 +280,6 @@ bool simplify_exprt::simplify_div(exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_mod
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool simplify_exprt::simplify_mod(exprt &expr)
 {
   if(!is_number(expr.type()))
@@ -375,18 +328,6 @@ bool simplify_exprt::simplify_mod(exprt &expr)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_plus
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool simplify_exprt::simplify_plus(exprt &expr)
 {
@@ -545,18 +486,6 @@ bool simplify_exprt::simplify_plus(exprt &expr)
   return result;
 }
 
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_minus
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool simplify_exprt::simplify_minus(exprt &expr)
 {
   if(!is_number(expr.type()) &&
@@ -616,18 +545,6 @@ bool simplify_exprt::simplify_minus(exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_bitwise
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool simplify_exprt::simplify_bitwise(exprt &expr)
 {
   if(!is_bitvector_type(expr.type()))
@@ -664,7 +581,7 @@ bool simplify_exprt::simplify_bitwise(exprt &expr)
       else if(expr.id()==ID_bitxor)
         new_expr.id(ID_xor);
       else
-        assert(false);
+        UNREACHABLE;
 
       Forall_operands(it, new_expr)
       {
@@ -747,7 +664,7 @@ bool simplify_exprt::simplify_bitwise(exprt &expr)
     result=false;
   }
 
-  // now erase zeros out of bitor, bitxor
+  // now erase 'all zeros' out of bitor, bitxor
 
   if(expr.id()==ID_bitor || expr.id()==ID_bitxor)
   {
@@ -757,6 +674,28 @@ bool simplify_exprt::simplify_bitwise(exprt &expr)
         ) // no it++
     {
       if(it->is_zero() && expr.operands().size()>1)
+      {
+        it=expr.operands().erase(it);
+        result=false;
+      }
+      else
+        it++;
+    }
+  }
+
+  // now erase 'all ones' out of bitand
+
+  if(expr.id()==ID_bitand)
+  {
+    for(exprt::operandst::iterator
+        it=expr.operands().begin();
+        it!=expr.operands().end();
+        ) // no it++
+    {
+      if(it->is_constant() &&
+         id2string(to_constant_expr(*it).get_value()).find('0')==
+           std::string::npos &&
+         expr.operands().size()>1)
       {
         it=expr.operands().erase(it);
         result=false;
@@ -798,18 +737,6 @@ bool simplify_exprt::simplify_bitwise(exprt &expr)
   return result;
 }
 
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_extractbit
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool simplify_exprt::simplify_extractbit(exprt &expr)
 {
   const typet &op0_type=expr.op0().type();
@@ -843,18 +770,6 @@ bool simplify_exprt::simplify_extractbit(exprt &expr)
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_concatenation
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool simplify_exprt::simplify_concatenation(exprt &expr)
 {
@@ -942,18 +857,6 @@ bool simplify_exprt::simplify_concatenation(exprt &expr)
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_shifts
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool simplify_exprt::simplify_shifts(exprt &expr)
 {
@@ -1067,18 +970,6 @@ bool simplify_exprt::simplify_shifts(exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_power
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool simplify_exprt::simplify_power(exprt &expr)
 {
   if(!is_number(expr.type()))
@@ -1101,18 +992,7 @@ bool simplify_exprt::simplify_power(exprt &expr)
   return false;
 }
 
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_extractbits
-
-  Inputs:
-
- Outputs:
-
- Purpose: Simplifies extracting of bits from a constant.
-
-\*******************************************************************/
-
+/// Simplifies extracting of bits from a constant.
 bool simplify_exprt::simplify_extractbits(exprt &expr)
 {
   assert(expr.operands().size()==3);
@@ -1161,18 +1041,6 @@ bool simplify_exprt::simplify_extractbits(exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_unary_plus
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool simplify_exprt::simplify_unary_plus(exprt &expr)
 {
   if(expr.operands().size()!=1)
@@ -1182,18 +1050,6 @@ bool simplify_exprt::simplify_unary_plus(exprt &expr)
   expr=expr.op0();
   return false;
 }
-
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_unary_minus
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool simplify_exprt::simplify_unary_minus(exprt &expr)
 {
@@ -1272,18 +1128,6 @@ bool simplify_exprt::simplify_unary_minus(exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_bitnot
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool simplify_exprt::simplify_bitnot(exprt &expr)
 {
   if(!expr.has_operands())
@@ -1320,18 +1164,7 @@ bool simplify_exprt::simplify_bitnot(exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_inequality
-
-  Inputs:
-
- Outputs:
-
- Purpose: simplifies inequalities !=, <=, <, >=, >, and also ==
-
-\*******************************************************************/
-
+/// simplifies inequalities !=, <=, <, >=, >, and also ==
 bool simplify_exprt::simplify_inequality(exprt &expr)
 {
   exprt::operandst &operands=expr.operands();
@@ -1382,11 +1215,6 @@ bool simplify_exprt::simplify_inequality(exprt &expr)
      (expr.id()==ID_equal || expr.id()==ID_notequal))
     return simplify_inequality_pointer_object(expr);
 
-  // first see if we compare to a constant
-
-  bool op0_is_const=tmp0.is_constant();
-  bool op1_is_const=tmp1.is_constant();
-
   ns.follow_symbol(tmp0.type());
   ns.follow_symbol(tmp1.type());
 
@@ -1396,35 +1224,26 @@ bool simplify_exprt::simplify_inequality(exprt &expr)
   if(tmp1.type().id()==ID_c_enum_tag)
     tmp1.type()=ns.follow_tag(to_c_enum_tag_type(tmp1.type()));
 
-  // are _both_ constant?
-  if(op0_is_const && op1_is_const)
-  {
-    if(tmp0.type().id()==ID_bool)
-    {
-      bool v0=tmp0.is_true();
-      bool v1=tmp1.is_true();
+  const auto tmp0_const = expr_try_dynamic_cast<constant_exprt>(tmp0);
+  const auto tmp1_const = expr_try_dynamic_cast<constant_exprt>(tmp1);
 
-      if(expr.id()==ID_equal)
-      {
-        expr.make_bool(v0==v1);
-        return false;
-      }
-      else if(expr.id()==ID_notequal)
-      {
-        expr.make_bool(v0!=v1);
-        return false;
-      }
+  // are _both_ constant?
+  if(tmp0_const && tmp1_const)
+  {
+    if(expr.id() == ID_equal || expr.id() == ID_notequal)
+    {
+
+      bool equal = (tmp0_const->get_value() == tmp1_const->get_value());
+      expr.make_bool(expr.id() == ID_equal ? equal : !equal);
+      return false;
     }
-    else if(tmp0.type().id()==ID_fixedbv)
+
+    if(tmp0.type().id() == ID_fixedbv)
     {
       fixedbvt f0(to_constant_expr(tmp0));
       fixedbvt f1(to_constant_expr(tmp1));
 
-      if(expr.id()==ID_notequal)
-        expr.make_bool(f0!=f1);
-      else if(expr.id()==ID_equal)
-        expr.make_bool(f0==f1);
-      else if(expr.id()==ID_ge)
+      if(expr.id() == ID_ge)
         expr.make_bool(f0>=f1);
       else if(expr.id()==ID_le)
         expr.make_bool(f0<=f1);
@@ -1433,7 +1252,7 @@ bool simplify_exprt::simplify_inequality(exprt &expr)
       else if(expr.id()==ID_lt)
         expr.make_bool(f0<f1);
       else
-        assert(false);
+        UNREACHABLE;
 
       return false;
     }
@@ -1442,11 +1261,7 @@ bool simplify_exprt::simplify_inequality(exprt &expr)
       ieee_floatt f0(to_constant_expr(tmp0));
       ieee_floatt f1(to_constant_expr(tmp1));
 
-      if(expr.id()==ID_notequal)
-        expr.make_bool(f0!=f1);
-      else if(expr.id()==ID_equal)
-        expr.make_bool(f0==f1);
-      else if(expr.id()==ID_ge)
+      if(expr.id() == ID_ge)
         expr.make_bool(f0>=f1);
       else if(expr.id()==ID_le)
         expr.make_bool(f0<=f1);
@@ -1455,7 +1270,7 @@ bool simplify_exprt::simplify_inequality(exprt &expr)
       else if(expr.id()==ID_lt)
         expr.make_bool(f0<f1);
       else
-        assert(false);
+        UNREACHABLE;
 
       return false;
     }
@@ -1469,11 +1284,7 @@ bool simplify_exprt::simplify_inequality(exprt &expr)
       if(to_rational(tmp1, r1))
         return true;
 
-      if(expr.id()==ID_notequal)
-        expr.make_bool(r0!=r1);
-      else if(expr.id()==ID_equal)
-        expr.make_bool(r0==r1);
-      else if(expr.id()==ID_ge)
+      if(expr.id() == ID_ge)
         expr.make_bool(r0>=r1);
       else if(expr.id()==ID_le)
         expr.make_bool(r0<=r1);
@@ -1482,7 +1293,7 @@ bool simplify_exprt::simplify_inequality(exprt &expr)
       else if(expr.id()==ID_lt)
         expr.make_bool(r0<r1);
       else
-        assert(false);
+        UNREACHABLE;
 
       return false;
     }
@@ -1496,11 +1307,7 @@ bool simplify_exprt::simplify_inequality(exprt &expr)
       if(to_integer(tmp1, v1))
         return true;
 
-      if(expr.id()==ID_notequal)
-        expr.make_bool(v0!=v1);
-      else if(expr.id()==ID_equal)
-        expr.make_bool(v0==v1);
-      else if(expr.id()==ID_ge)
+      if(expr.id() == ID_ge)
         expr.make_bool(v0>=v1);
       else if(expr.id()==ID_le)
         expr.make_bool(v0<=v1);
@@ -1509,12 +1316,12 @@ bool simplify_exprt::simplify_inequality(exprt &expr)
       else if(expr.id()==ID_lt)
         expr.make_bool(v0<v1);
       else
-        assert(false);
+        UNREACHABLE;
 
       return false;
     }
   }
-  else if(op0_is_const)
+  else if(tmp0_const)
   {
     // we want the constant on the RHS
 
@@ -1533,7 +1340,7 @@ bool simplify_exprt::simplify_inequality(exprt &expr)
     simplify_inequality_constant(expr);
     return false;
   }
-  else if(op1_is_const)
+  else if(tmp1_const)
   {
     // one is constant
     return simplify_inequality_constant(expr);
@@ -1544,21 +1351,9 @@ bool simplify_exprt::simplify_inequality(exprt &expr)
     return simplify_inequality_not_constant(expr);
   }
 
-  assert(false);
+  UNREACHABLE;
   return false;
 }
-
-/*******************************************************************\
-
-Function: simplify_exprt::eliminate_common_addends
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool simplify_exprt::eliminate_common_addends(
   exprt &op0,
@@ -1607,18 +1402,6 @@ bool simplify_exprt::eliminate_common_addends(
 
   return true;
 }
-
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_inequality_not_constant
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool simplify_exprt::simplify_inequality_not_constant(exprt &expr)
 {
@@ -1707,7 +1490,7 @@ bool simplify_exprt::simplify_inequality_not_constant(exprt &expr)
         else
         {
           tmp=false;
-          assert(0);
+          UNREACHABLE;
         }
 
         if(first)
@@ -1746,18 +1529,7 @@ bool simplify_exprt::simplify_inequality_not_constant(exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function: simplify_exprt::simplify_inequality_constant
-
-  Inputs: an inequality with a constant on the RHS
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
+/// \par parameters: an inequality with a constant on the RHS
 bool simplify_exprt::simplify_inequality_constant(exprt &expr)
 {
   // the constant is always on the RHS

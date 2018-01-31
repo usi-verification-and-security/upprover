@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_UTIL_MESSAGE_H
 #define CPROVER_UTIL_MESSAGE_H
 
@@ -13,7 +14,10 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <iosfwd>
 #include <sstream>
 
+#include "invariant.h"
+#include "json.h"
 #include "source_location.h"
+#include "xml.h"
 
 class message_handlert
 {
@@ -22,7 +26,17 @@ public:
   {
   }
 
-  virtual void print(unsigned level, const std::string &message) = 0;
+  virtual void print(unsigned level, const std::string &message)=0;
+
+  virtual void print(unsigned level, const xmlt &xml)
+  {
+    // no-op by default
+  }
+
+  virtual void print(unsigned level, const jsont &json)
+  {
+    // no-op by default
+  }
 
   virtual void print(
     unsigned level,
@@ -124,21 +138,31 @@ public:
 
   message_handlert &get_message_handler()
   {
+    INVARIANT(
+      message_handler!=nullptr,
+      "message handler should be set before calling get_message_handler");
     return *message_handler;
   }
 
   // constructors, destructor
 
   messaget():
-    message_handler(NULL),
+    message_handler(nullptr),
     mstream(M_DEBUG, *this)
   {
   }
 
   messaget(const messaget &other):
     message_handler(other.message_handler),
-    mstream(other.mstream)
+    mstream(other.mstream, *this)
   {
+  }
+
+  messaget &operator=(const messaget &other)
+  {
+    message_handler=other.message_handler;
+    mstream.assign_from(other.mstream);
+    return *this;
   }
 
   explicit messaget(message_handlert &_message_handler):
@@ -160,16 +184,40 @@ public:
     {
     }
 
-    mstreamt(const mstreamt &other):
+    mstreamt(const mstreamt &other)=delete;
+
+    mstreamt(const mstreamt &other, messaget &_message):
       message_level(other.message_level),
-      message(other.message),
+      message(_message),
       source_location(other.source_location)
     {
     }
 
+    mstreamt &operator=(const mstreamt &other)=delete;
+
     unsigned message_level;
     messaget &message;
     source_locationt source_location;
+
+    mstreamt &operator << (const xmlt &data)
+    {
+      *this << eom; // force end of previous message
+      if(message.message_handler)
+      {
+        message.message_handler->print(message_level, data);
+      }
+      return *this;
+    }
+
+    mstreamt &operator << (const json_objectt &data)
+    {
+      *this << eom; // force end of previous message
+      if(message.message_handler)
+      {
+        message.message_handler->print(message_level, data);
+      }
+      return *this;
+    }
 
     template <class T>
     mstreamt &operator << (const T &x)
@@ -183,6 +231,16 @@ public:
     {
       return func(*this);
     }
+
+  private:
+    void assign_from(const mstreamt &other)
+    {
+      message_level=other.message_level;
+      source_location=other.source_location;
+      // message, the pointer to my enclosing messaget, remains unaltered.
+    }
+
+    friend class messaget;
   };
 
   // Feeding 'eom' into the stream triggers
@@ -211,50 +269,50 @@ public:
     return m;
   }
 
-  mstreamt &get_mstream(unsigned message_level)
+  mstreamt &get_mstream(unsigned message_level) const
   {
     mstream.message_level=message_level;
     return mstream;
   }
 
-  mstreamt &error()
+  mstreamt &error() const
   {
     return get_mstream(M_ERROR);
   }
 
-  mstreamt &warning()
+  mstreamt &warning() const
   {
     return get_mstream(M_WARNING);
   }
 
-  mstreamt &result()
+  mstreamt &result() const
   {
     return get_mstream(M_RESULT);
   }
 
-  mstreamt &status()
+  mstreamt &status() const
   {
     return get_mstream(M_STATUS);
   }
 
-  mstreamt &statistics()
+  mstreamt &statistics() const
   {
     return get_mstream(M_STATISTICS);
   }
 
-  mstreamt &progress()
+  mstreamt &progress() const
   {
     return get_mstream(M_PROGRESS);
   }
 
-  mstreamt &debug()
+  mstreamt &debug() const
   {
     return get_mstream(M_DEBUG);
   }
 
 protected:
   message_handlert *message_handler;
-  mstreamt mstream;
+  mutable mstreamt mstream;
 };
 
 #endif // CPROVER_UTIL_MESSAGE_H

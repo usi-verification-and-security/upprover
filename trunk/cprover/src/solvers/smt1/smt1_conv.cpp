@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// SMT Version 1 Backend
+
+#include "smt1_conv.h"
+
 #include <cassert>
 
 #include <util/arith_tools.h>
@@ -16,6 +21,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/base_type.h>
 #include <util/ieee_float.h>
 #include <util/byte_operators.h>
+#include <util/config.h>
+#include <util/c_types.h>
 
 #include <ansi-c/string_constant.h>
 
@@ -25,20 +32,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <solvers/flattening/pointer_logic.h>
 #include <solvers/flattening/flatten_byte_operators.h>
 #include <solvers/flattening/c_bit_field_replacement_type.h>
-
-#include "smt1_conv.h"
-
-/*******************************************************************\
-
-Function: smt1_convt::print_assignment
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::print_assignment(std::ostream &out) const
 {
@@ -50,18 +43,6 @@ void smt1_convt::print_assignment(std::ostream &out) const
   // others
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::l_get
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 tvt smt1_convt::l_get(literalt l) const
 {
   if(l.is_true())
@@ -72,36 +53,12 @@ tvt smt1_convt::l_get(literalt l) const
   return tvt(boolean_assignment[l.var_no()]^l.sign());
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::dec_solve
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 decision_proceduret::resultt smt1_convt::dec_solve()
 {
   write_footer();
   out.flush();
   return decision_proceduret::resultt::D_ERROR;
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::write_header
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::write_header()
 {
@@ -111,36 +68,12 @@ void smt1_convt::write_header()
   out << ":logic " << logic << " ; SMT1" << "\n";
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::write_footer()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::write_footer()
 {
   out << "\n";
   out << ":formula true" << "\n";
   out << ") ; benchmark" << "\n";
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::get
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt smt1_convt::get(const exprt &expr) const
 {
@@ -183,18 +116,6 @@ exprt smt1_convt::get(const exprt &expr) const
   return nil_exprt();
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::ce_value
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt smt1_convt::ce_value(
   const typet &type,
   const std::string &index,
@@ -233,12 +154,14 @@ exprt smt1_convt::ce_value(
     pointer_logict::pointert p;
     p.object=integer2unsigned(
       binary2integer(
-        value.substr(0, BV_ADDR_BITS), false));
+        value.substr(0, config.bv_encoding.object_bits), false));
 
     p.offset=
-      binary2integer(value.substr(BV_ADDR_BITS, std::string::npos), true);
+      binary2integer(
+        value.substr(config.bv_encoding.object_bits, std::string::npos), true);
 
-    result.copy_to_operands(pointer_logic.pointer_expr(p, type));
+    result.copy_to_operands(
+      pointer_logic.pointer_expr(p, to_pointer_type(type)));
 
     return result;
   }
@@ -309,36 +232,10 @@ exprt smt1_convt::ce_value(
   return nil_exprt();
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::array_index_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 typet smt1_convt::array_index_type() const
 {
-  signedbv_typet t;
-  t.set_width(array_index_bits);
-  return t;
+  return signedbv_typet(array_index_bits);
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::array_index
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::array_index(const exprt &expr)
 {
@@ -353,18 +250,6 @@ void smt1_convt::array_index(const exprt &expr)
   convert_expr(tmp, true);
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_address_of_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_address_of_rec(
   const exprt &expr,
   const pointer_typet &result_type)
@@ -376,8 +261,10 @@ void smt1_convt::convert_address_of_rec(
   {
     out
       << "(concat"
-      << " bv" << pointer_logic.add_object(expr) << "[" << BV_ADDR_BITS << "]"
-      << " bv0[" << boolbv_width(result_type)-BV_ADDR_BITS << "]"
+      << " bv" << pointer_logic.add_object(expr) << "["
+      << config.bv_encoding.object_bits << "]"
+      << " bv0["
+      << boolbv_width(result_type)-config.bv_encoding.object_bits << "]"
       << ")";
   }
   else if(expr.id()==ID_index)
@@ -403,12 +290,14 @@ void smt1_convt::convert_address_of_rec(
       exprt new_index_expr=expr;
       new_index_expr.op1()=from_integer(0, index.type());
 
-      exprt address_of_expr(ID_address_of, pointer_typet());
-      address_of_expr.type().subtype()=array.type().subtype();
-      address_of_expr.copy_to_operands(new_index_expr);
+      address_of_exprt address_of_expr(
+        new_index_expr,
+        pointer_type(array.type().subtype()));
 
-      exprt plus_expr(ID_plus, address_of_expr.type());
-      plus_expr.copy_to_operands(address_of_expr, index);
+      plus_exprt plus_expr(
+        address_of_expr,
+        index,
+        address_of_expr.type());
 
       convert_expr(plus_expr, true);
     }
@@ -467,18 +356,6 @@ void smt1_convt::convert_address_of_rec(
     throw "don't know how to take address of: "+expr.id_string();
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_byte_extract
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_byte_extract(
   const byte_extract_exprt &expr,
   bool bool_as_bv)
@@ -487,18 +364,6 @@ void smt1_convt::convert_byte_extract(
   exprt flattened_expr=flatten_byte_extract(expr, ns);
   convert_expr(flattened_expr, bool_as_bv);
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_byte_update
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::convert_byte_update(
   const exprt &expr,
@@ -577,18 +442,6 @@ void smt1_convt::convert_byte_update(
   }
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 literalt smt1_convt::convert(const exprt &expr)
 {
   assert(expr.type().id()==ID_bool);
@@ -624,18 +477,6 @@ literalt smt1_convt::convert(const exprt &expr)
 
   return l;
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_identifier
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string smt1_convt::convert_identifier(const irep_idt &identifier)
 {
@@ -690,18 +531,6 @@ std::string smt1_convt::convert_identifier(const irep_idt &identifier)
   return dest;
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_expr(const exprt &expr, bool bool_as_bv)
 {
   if(expr.id()==ID_symbol)
@@ -709,7 +538,7 @@ void smt1_convt::convert_expr(const exprt &expr, bool bool_as_bv)
     const typet &type=expr.type();
 
     irep_idt id=to_symbol_expr(expr).get_identifier();
-    assert(id!="");
+    DATA_INVARIANT(!id.empty(), "symbol must have identifier");
 
     // boolean symbols may have to be converted
     from_bool_begin(type, bool_as_bv);
@@ -722,8 +551,8 @@ void smt1_convt::convert_expr(const exprt &expr, bool bool_as_bv)
   {
     const typet &type=expr.type();
 
-    irep_idt id=expr.get(ID_identifier);
-    assert(id!="");
+    irep_idt id=to_nondet_symbol_expr(expr).get_identifier();
+    DATA_INVARIANT(!id.empty(), "symbol must have identifier");
 
     // boolean symbols may have to be converted
     from_bool_begin(type, bool_as_bv);
@@ -1063,8 +892,8 @@ void smt1_convt::convert_expr(const exprt &expr, bool bool_as_bv)
     assert(expr.operands().size()==1);
     assert(expr.op0().type().id()==ID_pointer);
     std::size_t op_width=boolbv_width(expr.op0().type());
-    out << "(zero_extend[" << BV_ADDR_BITS << "] (extract["
-        << (op_width-1-BV_ADDR_BITS)
+    out << "(zero_extend[" << config.bv_encoding.object_bits << "] (extract["
+        << (op_width-1-config.bv_encoding.object_bits)
         << ":0] ";
     convert_expr(expr.op0(), true);
     out << "))";
@@ -1075,7 +904,7 @@ void smt1_convt::convert_expr(const exprt &expr, bool bool_as_bv)
     assert(expr.operands().size()==1);
     assert(expr.op0().type().id()==ID_pointer);
     std::size_t op_width=boolbv_width(expr.op0().type());
-    signed int ext=boolbv_width(expr.type())-BV_ADDR_BITS;
+    signed int ext=boolbv_width(expr.type())-config.bv_encoding.object_bits;
 
     if(ext>0)
       out << "(zero_extend[" << ext << "] ";
@@ -1083,7 +912,7 @@ void smt1_convt::convert_expr(const exprt &expr, bool bool_as_bv)
     out << "(extract["
         << (op_width-1)
         << ":"
-        << op_width-1-BV_ADDR_BITS << "] ";
+        << op_width-1-config.bv_encoding.object_bits << "] ";
     convert_expr(expr.op0(), true);
     out << ")";
 
@@ -1107,10 +936,10 @@ void smt1_convt::convert_expr(const exprt &expr, bool bool_as_bv)
 
     out << "(= (extract["
         << (op_width-1)
-        << ":" << op_width-BV_ADDR_BITS << "] ";
+        << ":" << op_width-config.bv_encoding.object_bits << "] ";
     convert_expr(expr.op0(), true);
     out << ") bv" << pointer_logic.get_invalid_object()
-        << "[" << BV_ADDR_BITS << "])";
+        << "[" << config.bv_encoding.object_bits << "])";
 
     // this may have to be converted
     from_bool_end(type, bool_as_bv);
@@ -1511,18 +1340,6 @@ void smt1_convt::convert_expr(const exprt &expr, bool bool_as_bv)
           expr.id_string()+"' is unsupported";
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_typecast
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_typecast(
   const typecast_exprt &expr,
   bool bool_as_bv)
@@ -1904,18 +1721,6 @@ void smt1_convt::convert_typecast(
     throw "TODO typecast4 ? -> "+dest_type.id_string();
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_struct
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_struct(const exprt &expr)
 {
   const struct_typet &struct_type=to_struct_type(expr.type());
@@ -1970,18 +1775,6 @@ void smt1_convt::convert_struct(const exprt &expr)
   }
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_union
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_union(const exprt &expr)
 {
   const union_typet &union_type=to_union_type(expr.type());
@@ -2010,18 +1803,6 @@ void smt1_convt::convert_union(const exprt &expr)
     out << ")";
   }
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_constant
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::convert_constant(
   const constant_exprt &expr,
@@ -2075,8 +1856,8 @@ void smt1_convt::convert_constant(
       assert(boolbv_width(expr.type())!=0);
       out << "(concat"
           << " bv" << pointer_logic.get_null_object()
-          << "[" << BV_ADDR_BITS << "]"
-          << " bv0[" << boolbv_width(expr.type())-BV_ADDR_BITS
+          << "[" << config.bv_encoding.object_bits << "]"
+          << " bv0[" << boolbv_width(expr.type())-config.bv_encoding.object_bits
           << "]"
           << ")"; // concat
     }
@@ -2124,18 +1905,6 @@ void smt1_convt::convert_constant(
     throw "unknown constant: "+expr.type().id_string();
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_mod
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_mod(const mod_exprt &expr)
 {
   assert(expr.operands().size()==2);
@@ -2156,18 +1925,6 @@ void smt1_convt::convert_mod(const mod_exprt &expr)
   else
     throw "unsupported type for mod: "+expr.type().id_string();
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_is_dynamic_object
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::convert_is_dynamic_object(
   const exprt &expr,
@@ -2191,14 +1948,14 @@ void smt1_convt::convert_is_dynamic_object(
 
     out << "(let (?obj (extract["
         << (op_width-1)
-        << ":" << op_width-BV_ADDR_BITS << "] ";
+        << ":" << op_width-config.bv_encoding.object_bits << "] ";
     convert_expr(expr.op0(), true);
     out << ")) ";
 
     if(dynamic_objects.size()==1)
     {
       out << "(= bv" << dynamic_objects.front()
-          << "[" << BV_ADDR_BITS << "] ?obj)";
+          << "[" << config.bv_encoding.object_bits << "] ?obj)";
     }
     else
     {
@@ -2206,7 +1963,7 @@ void smt1_convt::convert_is_dynamic_object(
 
       for(const auto &obj : dynamic_objects)
         out << " (= bv" << obj
-            << "[" << BV_ADDR_BITS << "] ?obj)";
+            << "[" << config.bv_encoding.object_bits << "] ?obj)";
 
       out << ")"; // or
     }
@@ -2217,18 +1974,6 @@ void smt1_convt::convert_is_dynamic_object(
   // this may have to be converted
   from_bool_end(expr.type(), bool_as_bv);
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_relation
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::convert_relation(const exprt &expr, bool bool_as_bv)
 {
@@ -2294,18 +2039,6 @@ void smt1_convt::convert_relation(const exprt &expr, bool bool_as_bv)
   // this may have to be converted
   from_bool_end(expr.type(), bool_as_bv);
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_plus
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::convert_plus(const plus_exprt &expr)
 {
@@ -2388,18 +2121,6 @@ void smt1_convt::convert_plus(const plus_exprt &expr)
     throw "unsupported type for +: "+expr.type().id_string();
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_floatbv_plus
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_floatbv_plus(const exprt &expr)
 {
   assert(expr.operands().size()==3);
@@ -2407,18 +2128,6 @@ void smt1_convt::convert_floatbv_plus(const exprt &expr)
 
   throw "todo: floatbv_plus";
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_minus
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::convert_minus(const minus_exprt &expr)
 {
@@ -2459,18 +2168,6 @@ void smt1_convt::convert_minus(const minus_exprt &expr)
     throw "unsupported type for -: "+expr.type().id_string();
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_floatbv_minus
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_floatbv_minus(const exprt &expr)
 {
   assert(expr.operands().size()==3);
@@ -2478,18 +2175,6 @@ void smt1_convt::convert_floatbv_minus(const exprt &expr)
 
   throw "todo: floatbv_minus";
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_div
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::convert_div(const div_exprt &expr)
 {
@@ -2530,18 +2215,6 @@ void smt1_convt::convert_div(const div_exprt &expr)
     throw "unsupported type for /: "+expr.type().id_string();
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_floatbv_div
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_floatbv_div(const exprt &expr)
 {
   assert(expr.operands().size()==3);
@@ -2549,18 +2222,6 @@ void smt1_convt::convert_floatbv_div(const exprt &expr)
 
   throw "todo: floatbv_div";
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_mult
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::convert_mult(const mult_exprt &expr)
 {
@@ -2625,18 +2286,6 @@ void smt1_convt::convert_mult(const mult_exprt &expr)
     throw "unsupported type for *: "+expr.type().id_string();
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_floatbv_mult
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_floatbv_mult(const exprt &expr)
 {
   assert(expr.operands().size()==3);
@@ -2644,18 +2293,6 @@ void smt1_convt::convert_floatbv_mult(const exprt &expr)
 
   throw "todo: floatbv_mult";
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_with
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::convert_with(const exprt &expr)
 {
@@ -2997,18 +2634,6 @@ void smt1_convt::convert_with(const exprt &expr)
   }
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_update
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_update(const exprt &expr)
 {
   assert(expr.operands().size()==3);
@@ -3016,18 +2641,6 @@ void smt1_convt::convert_update(const exprt &expr)
   // todo
   throw "smt1_convt::convert_update to be implemented";
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_index
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::convert_index(const index_exprt &expr, bool bool_as_bv)
 {
@@ -3080,18 +2693,6 @@ void smt1_convt::convert_index(const index_exprt &expr, bool bool_as_bv)
   }
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_member
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_member(const member_exprt &expr, bool bool_as_bv)
 {
   assert(expr.operands().size()==1);
@@ -3142,33 +2743,9 @@ void smt1_convt::convert_member(const member_exprt &expr, bool bool_as_bv)
   from_bv_end(expr.type(), bool_as_bv);
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_overflow
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_overflow(const exprt &expr)
 {
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::set_to
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::set_to(const exprt &expr, bool value)
 {
@@ -3212,18 +2789,6 @@ void smt1_convt::set_to(const exprt &expr, bool value)
   out << "\n";
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::find_symbols
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::find_symbols(const exprt &expr)
 {
   const typet &type=expr.type();
@@ -3255,7 +2820,8 @@ void smt1_convt::find_symbols(const exprt &expr)
     if(expr.id()==ID_symbol)
       identifier=to_symbol_expr(expr).get_identifier();
     else
-      identifier="nondet_"+expr.get_string(ID_identifier);
+      identifier="nondet_"+
+        id2string(to_nondet_symbol_expr(expr).get_identifier());
 
     if(quantified_symbols.find(identifier)!=quantified_symbols.end())
       return; // Symbol is quantified, i.e., it doesn't require declaration.
@@ -3351,18 +2917,6 @@ void smt1_convt::find_symbols(const exprt &expr)
   }
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_type(const typet &type)
 {
   if(type.id()==ID_array)
@@ -3392,13 +2946,12 @@ void smt1_convt::convert_type(const typet &type)
 
     out << "BitVec[" << width << "]";
   }
-  else if(type.id()==ID_pointer ||
-          type.id()==ID_reference)
+  else if(type.id()==ID_pointer)
   {
     std::size_t width=boolbv_width(type);
 
     if(width==0)
-      throw "failed to get width of pointer/reference";
+      throw "failed to get width of pointer";
 
     out << "BitVec[" << width << "]";
   }
@@ -3425,18 +2978,6 @@ void smt1_convt::convert_type(const typet &type)
     throw "unsupported type: "+type.id_string();
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::convert_literal
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::convert_literal(const literalt l)
 {
   if(l==const_literal(false))
@@ -3455,36 +2996,12 @@ void smt1_convt::convert_literal(const literalt l)
   }
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::from_bv_begin
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::from_bv_begin(const typet &type, bool bool_as_bv)
 {
   // this turns bv[1] into a predicate if needed
   if(type.id()==ID_bool && !bool_as_bv)
     out << "(= ";
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::from_bv_end
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::from_bv_end(const typet &type, bool bool_as_bv)
 {
@@ -3493,36 +3010,12 @@ void smt1_convt::from_bv_end(const typet &type, bool bool_as_bv)
     out << " bv1[1])";
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::from_bool_begin
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::from_bool_begin(const typet &type, bool bool_as_bv)
 {
   // this turns a predicate into bv[1] if needed
   if(type.id()==ID_bool && bool_as_bv)
     out << "(ite ";
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::from_bool_end
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::from_bool_end(const typet &type, bool bool_as_bv)
 {
@@ -3531,35 +3024,11 @@ void smt1_convt::from_bool_end(const typet &type, bool bool_as_bv)
     out << " bv1[1] bv0[1])";
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::find_symbols
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void smt1_convt::find_symbols(const typet &type)
 {
   std::set<irep_idt> rec_stack;
   find_symbols_rec(type, rec_stack);
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::find_symbols_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::find_symbols_rec(
   const typet &type,
@@ -3611,18 +3080,6 @@ void smt1_convt::find_symbols_rec(
   }
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::binary2struct
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt smt1_convt::binary2struct(
   const struct_typet &type,
   const std::string &binary) const
@@ -3657,18 +3114,6 @@ exprt smt1_convt::binary2struct(
   return e;
 }
 
-/*******************************************************************\
-
-Function: smt1_convt::binary2union
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt smt1_convt::binary2union(
   const union_typet &type,
   const std::string &binary) const
@@ -3698,18 +3143,6 @@ exprt smt1_convt::binary2union(
 
   return e;
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::flatten_array
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::flatten_array(const exprt &op)
 {
@@ -3757,18 +3190,6 @@ void smt1_convt::flatten_array(const exprt &op)
   out << ")"; // let
   #endif
 }
-
-/*******************************************************************\
-
-Function: smt1_convt::convert_nary
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void smt1_convt::convert_nary(
   const exprt &expr,

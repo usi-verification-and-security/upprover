@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// ANSI-C Linking
+
 #ifndef CPROVER_LINKING_LINKING_CLASS_H
 #define CPROVER_LINKING_LINKING_CLASS_H
 
@@ -102,7 +105,7 @@ protected:
 
   void duplicate_type_symbol(
     symbolt &old_symbol,
-    symbolt &new_symbol);
+    const symbolt &new_symbol);
 
   std::string expr_to_string(
     const namespacet &ns,

@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Container for C-Strings
+
 #ifndef CPROVER_UTIL_STRING_CONTAINER_H
 #define CPROVER_UTIL_STRING_CONTAINER_H
 
@@ -86,7 +89,6 @@ protected:
   string_vectort string_vector;
 };
 
-// an ugly global object
-extern string_containert string_container;
+string_containert &get_string_container();
 
 #endif // CPROVER_UTIL_STRING_CONTAINER_H

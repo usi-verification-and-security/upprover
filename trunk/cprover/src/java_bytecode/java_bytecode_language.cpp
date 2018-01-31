@@ -6,47 +6,54 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "java_bytecode_language.h"
+
 #include <string>
 
 #include <util/symbol_table.h>
 #include <util/suffix.h>
 #include <util/config.h>
 #include <util/cmdline.h>
+#include <util/expr_iterator.h>
+#include <util/journalling_symbol_table.h>
 #include <util/string2int.h>
+#include <util/invariant.h>
 #include <json/json_parser.h>
 
 #include <goto-programs/class_hierarchy.h>
 
-#include "java_bytecode_language.h"
 #include "java_bytecode_convert_class.h"
 #include "java_bytecode_convert_method.h"
 #include "java_bytecode_internal_additions.h"
+#include "java_bytecode_instrument.h"
 #include "java_bytecode_typecheck.h"
 #include "java_entry_point.h"
 #include "java_bytecode_parser.h"
 #include "java_class_loader.h"
+#include "java_utils.h"
+#include <java_bytecode/ci_lazy_methods.h>
+#include <java_bytecode/generate_java_generic_type.h>
 
 #include "expr2java.h"
 
-/*******************************************************************\
-
-Function: java_bytecode_languaget::get_language_options
-
-  Inputs: Command-line options
-
- Outputs: None
-
- Purpose: Consume options that are java bytecode specific.
-
-\*******************************************************************/
-
+/// Consume options that are java bytecode specific.
+/// \param Command:line options
+/// \return None
 void java_bytecode_languaget::get_language_options(const cmdlinet &cmd)
 {
   assume_inputs_non_null=cmd.isset("java-assume-inputs-non-null");
-  string_refinement_enabled=cmd.isset("string-refine");
+  string_refinement_enabled=cmd.isset("refine-strings");
+  throw_runtime_exceptions=cmd.isset("java-throw-runtime-exceptions");
   if(cmd.isset("java-max-input-array-length"))
-    max_nondet_array_length=
+    object_factory_parameters.max_nondet_array_length=
       std::stoi(cmd.get_value("java-max-input-array-length"));
+  if(cmd.isset("java-max-input-tree-depth"))
+    object_factory_parameters.max_nondet_tree_depth=
+      std::stoi(cmd.get_value("java-max-input-tree-depth"));
+  if(cmd.isset("string-max-input-length"))
+    object_factory_parameters.max_nondet_string_length=
+      std::stoi(cmd.get_value("string-max-input-length"));
+  object_factory_parameters.string_printable = cmd.isset("string-printable");
   if(cmd.isset("java-max-vla-length"))
     max_user_array_length=std::stoi(cmd.get_value("java-max-vla-length"));
   if(cmd.isset("lazy-methods-context-sensitive"))
@@ -55,6 +62,28 @@ void java_bytecode_languaget::get_language_options(const cmdlinet &cmd)
     lazy_methods_mode=LAZY_METHODS_MODE_CONTEXT_INSENSITIVE;
   else
     lazy_methods_mode=LAZY_METHODS_MODE_EAGER;
+
+  if(cmd.isset("java-throw-runtime-exceptions"))
+  {
+    throw_runtime_exceptions = true;
+    java_load_classes.insert(
+        java_load_classes.end(),
+        exception_needed_classes.begin(),
+        exception_needed_classes.end());
+  }
+  if(cmd.isset("java-load-class"))
+  {
+    const auto &values = cmd.get_values("java-load-class");
+    java_load_classes.insert(
+        java_load_classes.end(), values.begin(), values.end());
+  }
+
+  const std::list<std::string> &extra_entry_points=
+    cmd.get_values("lazy-methods-extra-entry-point");
+  lazy_methods_extra_entry_points.insert(
+    lazy_methods_extra_entry_points.end(),
+    extra_entry_points.begin(),
+    extra_entry_points.end());
 
   if(cmd.isset("java-cp-include-files"))
   {
@@ -85,54 +114,21 @@ void java_bytecode_languaget::get_language_options(const cmdlinet &cmd)
   }
   else
     java_cp_include_files=".*";
+
+  language_options_initialized=true;
 }
-
-/*******************************************************************\
-
-Function: java_bytecode_languaget::extensions
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::set<std::string> java_bytecode_languaget::extensions() const
 {
   return { "class", "jar" };
 }
 
-/*******************************************************************\
-
-Function: java_bytecode_languaget::modules_provided
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void java_bytecode_languaget::modules_provided(std::set<std::string> &modules)
 {
   // modules.insert(translation_unit(parse_path));
 }
 
-/*******************************************************************\
-
-Function: java_bytecode_languaget::preprocess
-
-  Inputs:
-
- Outputs:
-
- Purpose: ANSI-C preprocessing
-
-\*******************************************************************/
-
+/// ANSI-C preprocessing
 bool java_bytecode_languaget::preprocess(
   std::istream &instream,
   const std::string &path,
@@ -142,24 +138,14 @@ bool java_bytecode_languaget::preprocess(
   return true;
 }
 
-/*******************************************************************\
-
-Function: java_bytecode_languaget::parse
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool java_bytecode_languaget::parse(
   std::istream &instream,
   const std::string &path)
 {
+  PRECONDITION(language_options_initialized);
   java_class_loader.set_message_handler(get_message_handler());
   java_class_loader.set_java_cp_include_files(java_cp_include_files);
+  java_class_loader.add_load_classes(java_load_classes);
 
   // look at extension
   if(has_suffix(path, ".class"))
@@ -169,23 +155,24 @@ bool java_bytecode_languaget::parse(
   }
   else if(has_suffix(path, ".jar"))
   {
+    // build an object to potentially limit which classes are loaded
     java_class_loader_limitt class_loader_limit(
       get_message_handler(),
       java_cp_include_files);
     if(config.java.main_class.empty())
     {
-      // Does it have a main class set in the manifest?
-      jar_filet::manifestt manifest=
+      auto manifest=
         java_class_loader.jar_pool(class_loader_limit, path).get_manifest();
       std::string manifest_main_class=manifest["Main-Class"];
 
+      // if the manifest declares a Main-Class line, we got a main class
       if(manifest_main_class!="")
         main_class=manifest_main_class;
     }
     else
       main_class=config.java.main_class;
 
-    // Do we have one now?
+    // do we have one now?
     if(main_class.empty())
     {
       status() << "JAR file without entry point: loading class files" << eom;
@@ -197,7 +184,7 @@ bool java_bytecode_languaget::parse(
       java_class_loader.add_jar_file(path);
   }
   else
-    assert(false);
+    UNREACHABLE;
 
   if(!main_class.empty())
   {
@@ -208,313 +195,80 @@ bool java_bytecode_languaget::parse(
   return false;
 }
 
-/*******************************************************************\
-
-Function: get_virtual_method_target
-
-  Inputs: `needed_classes`: set of classes that can be instantiated.
-            Any potential callee not in this set will be ignored.
-          `call_basename`: unqualified function name with type
-            signature (e.g. "f:(I)")
-          `classname`: class name that may define or override a
-            function named `call_basename`.
-          `symbol_table`: global symtab
-
- Outputs: Returns the fully qualified name of `classname`'s definition
-          of `call_basename` if found and `classname` is present in
-          `needed_classes`, or irep_idt() otherwise.
-
- Purpose: Find a virtual callee, if one is defined and the callee type
-          is known to exist.
-
-\*******************************************************************/
-
-static irep_idt get_virtual_method_target(
-  const std::set<irep_idt> &needed_classes,
-  const irep_idt &call_basename,
-  const irep_idt &classname,
-  const symbol_tablet &symbol_table)
+/// Infer fields that must exist on opaque types from field accesses against
+/// them. Note that we don't yet try to infer inheritence between opaque types
+/// here, so we may introduce the same field onto a type and its ancestor
+/// without realising that is in fact the same field, inherited from that
+/// ancestor. This can lead to incorrect results when opaque types are cast
+/// to other opaque types and their fields do not alias as intended.
+/// \param parse_tree: class parse tree
+/// \param symbol_table: global symbol table
+static void infer_opaque_type_fields(
+  const java_bytecode_parse_treet &parse_tree,
+  symbol_tablet &symbol_table)
 {
-  // Program-wide, is this class ever instantiated?
-  if(!needed_classes.count(classname))
-    return irep_idt();
-  auto methodid=id2string(classname)+"."+id2string(call_basename);
-  if(symbol_table.has_symbol(methodid))
-    return methodid;
-  else
-    return irep_idt();
-}
-
-/*******************************************************************\
-
-Function: get_virtual_method_target
-
-  Inputs: `c`: function call whose potential target functions should
-            be determined.
-          `needed_classes`: set of classes that can be instantiated.
-            Any potential callee not in this set will be ignored.
-          `symbol_table`: global symtab
-          `class_hierarchy`: global class hierarchy
-
- Outputs: Populates `needed_methods` with all possible `c` callees,
-          taking `needed_classes` into account (virtual function
-          overrides defined on classes that are not 'needed' are
-          ignored)
-
- Purpose: Find possible callees, excluding types that are not known
-          to be instantiated.
-
-\*******************************************************************/
-
-static void get_virtual_method_targets(
-  const code_function_callt &c,
-  const std::set<irep_idt> &needed_classes,
-  std::vector<irep_idt> &needed_methods,
-  symbol_tablet &symbol_table,
-  const class_hierarchyt &class_hierarchy)
-{
-  const auto &called_function=c.function();
-  assert(called_function.id()==ID_virtual_function);
-
-  const auto &call_class=called_function.get(ID_C_class);
-  assert(call_class!=irep_idt());
-  const auto &call_basename=called_function.get(ID_component_name);
-  assert(call_basename!=irep_idt());
-
-  auto old_size=needed_methods.size();
-
-  auto child_classes=class_hierarchy.get_children_trans(call_class);
-  for(const auto &child_class : child_classes)
+  namespacet ns(symbol_table);
+  for(const auto &method : parse_tree.parsed_class.methods)
   {
-    auto child_method=
-      get_virtual_method_target(
-        needed_classes,
-        call_basename,
-        child_class,
-        symbol_table);
-    if(child_method!=irep_idt())
-      needed_methods.push_back(child_method);
-  }
-
-  irep_idt parent_class_id=call_class;
-  while(1)
-  {
-    auto parent_method=
-      get_virtual_method_target(
-        needed_classes,
-        call_basename,
-        parent_class_id,
-        symbol_table);
-    if(parent_method!=irep_idt())
+    for(const auto &instruction : method.instructions)
     {
-      needed_methods.push_back(parent_method);
-      break;
-    }
-    else
-    {
-      auto findit=class_hierarchy.class_map.find(parent_class_id);
-      if(findit==class_hierarchy.class_map.end())
-        break;
-      else
+      if(instruction.statement == "getfield" ||
+         instruction.statement == "putfield")
       {
-        const auto &entry=findit->second;
-        if(entry.parents.empty())
-          break;
-        else
-          parent_class_id=entry.parents[0];
+        const exprt &fieldref = instruction.args[0];
+        const symbolt *class_symbol =
+          symbol_table.lookup(fieldref.get(ID_class));
+        INVARIANT(
+          class_symbol != nullptr, "all field types should have been loaded");
+
+        const class_typet *class_type = &to_class_type(class_symbol->type);
+        irep_idt class_symbol_id = fieldref.get(ID_class);
+        const irep_idt &component_name = fieldref.get(ID_component_name);
+        while(!class_type->has_component(component_name))
+        {
+          if(class_type->get_bool(ID_incomplete_class))
+          {
+            // Accessing a field of an incomplete (opaque) type.
+            symbolt &writable_class_symbol =
+              symbol_table.get_writeable_ref(class_symbol_id);
+            auto &add_to_components =
+              to_struct_type(writable_class_symbol.type).components();
+            add_to_components.push_back(
+              struct_typet::componentt(component_name, fieldref.type()));
+            add_to_components.back().set_base_name(component_name);
+            add_to_components.back().set_pretty_name(component_name);
+            break;
+          }
+          else
+          {
+            // Not present here: check the superclass.
+            INVARIANT(
+              class_type->bases().size() != 0,
+              "class missing an expected field should have a superclass");
+            const symbol_typet &superclass_type =
+              to_symbol_type(class_type->bases()[0].type());
+            class_symbol_id = superclass_type.get_identifier();
+            class_type = &to_class_type(ns.follow(superclass_type));
+          }
+        }
       }
     }
   }
-
-  if(needed_methods.size()==old_size)
-  {
-    // Didn't find any candidate callee. Generate a stub.
-    std::string stubname=id2string(call_class)+"."+id2string(call_basename);
-    symbolt symbol;
-    symbol.name=stubname;
-    symbol.base_name=call_basename;
-    symbol.type=c.function().type();
-    symbol.value.make_nil();
-    symbol.mode=ID_java;
-    symbol_table.add(symbol);
-  }
 }
-
-/*******************************************************************\
-
-Function: gather_virtual_callsites
-
-  Inputs: `e`: expression tree to search
-
- Outputs: Populates `result` with pointers to each function call
-            within e that calls a virtual function.
-
- Purpose: See output
-
-\*******************************************************************/
-
-static void gather_virtual_callsites(
-  const exprt &e,
-  std::vector<const code_function_callt *> &result)
-{
-  if(e.id()!=ID_code)
-    return;
-  const codet &c=to_code(e);
-  if(c.get_statement()==ID_function_call &&
-     to_code_function_call(c).function().id()==ID_virtual_function)
-    result.push_back(&to_code_function_call(c));
-  else
-    forall_operands(it, e)
-      gather_virtual_callsites(*it, result);
-}
-
-/*******************************************************************\
-
-Function: gather_needed_globals
-
-  Inputs: `e`: expression tree to search
-          `symbol_table`: global symtab
-
- Outputs: Populates `needed` with global variable symbols referenced
-          from `e` or its children.
-
- Purpose: See output
-
-\*******************************************************************/
-
-static void gather_needed_globals(
-  const exprt &e,
-  const symbol_tablet &symbol_table,
-  symbol_tablet &needed)
-{
-  if(e.id()==ID_symbol)
-  {
-    // If the symbol isn't in the symbol table at all, then it is defined
-    // on an opaque type (i.e. we don't have the class definition at this point)
-    // and will be created during the typecheck phase.
-    // We don't mark it as 'needed' as it doesn't exist yet to keep.
-    auto findit=symbol_table.symbols.find(to_symbol_expr(e).get_identifier());
-    if(findit!=symbol_table.symbols.end() &&
-       findit->second.is_static_lifetime)
-    {
-      needed.add(findit->second);
-    }
-  }
-  else
-    forall_operands(opit, e)
-      gather_needed_globals(*opit, symbol_table, needed);
-}
-
-/*******************************************************************\
-
-Function: gather_field_types
-
-  Inputs: `class_type`: root of class tree to search
-          `ns`: global namespace
-
- Outputs: Populates `lazy_methods` with all Java reference types
-            reachable starting at `class_type`. For example if
-            `class_type` is `symbol_typet("java::A")` and A has a B
-            field, then `B` (but not `A`) will noted as a needed class.
-
- Purpose: See output
-
-\*******************************************************************/
-
-static void gather_field_types(
-  const typet &class_type,
-  const namespacet &ns,
-  ci_lazy_methodst &lazy_methods)
-{
-  const auto &underlying_type=to_struct_type(ns.follow(class_type));
-  for(const auto &field : underlying_type.components())
-  {
-    if(field.type().id()==ID_struct || field.type().id()==ID_symbol)
-      gather_field_types(field.type(), ns, lazy_methods);
-    else if(field.type().id()==ID_pointer)
-    {
-      // Skip array primitive pointers, for example:
-      if(field.type().subtype().id()!=ID_symbol)
-        continue;
-      const auto &field_classid=
-        to_symbol_type(field.type().subtype()).get_identifier();
-      if(lazy_methods.add_needed_class(field_classid))
-        gather_field_types(field.type().subtype(), ns, lazy_methods);
-    }
-  }
-}
-
-/*******************************************************************\
-
-Function: initialize_needed_classes
-
-  Inputs: `entry_points`: list of fully-qualified function names that
-            we should assume are reachable
-          `ns`: global namespace
-          `ch`: global class hierarchy
-
- Outputs: Populates `lazy_methods` with all Java reference types
-            whose references may be passed, directly or indirectly,
-            to any of the functions in `entry_points`.
-
- Purpose: See output
-
-\*******************************************************************/
-
-static void initialize_needed_classes(
-  const std::vector<irep_idt> &entry_points,
-  const namespacet &ns,
-  const class_hierarchyt &ch,
-  ci_lazy_methodst &lazy_methods)
-{
-  for(const auto &mname : entry_points)
-  {
-    const auto &symbol=ns.lookup(mname);
-    const auto &mtype=to_code_type(symbol.type);
-    for(const auto &param : mtype.parameters())
-    {
-      if(param.type().id()==ID_pointer)
-      {
-        const auto &param_classid=
-          to_symbol_type(param.type().subtype()).get_identifier();
-        std::vector<irep_idt> class_and_parents=
-          ch.get_parents_trans(param_classid);
-        class_and_parents.push_back(param_classid);
-        for(const auto &classid : class_and_parents)
-          lazy_methods.add_needed_class(classid);
-        gather_field_types(param.type().subtype(), ns, lazy_methods);
-      }
-    }
-  }
-
-  // Also add classes whose instances are magically
-  // created by the JVM and so won't be spotted by
-  // looking for constructors and calls as usual:
-  lazy_methods.add_needed_class("java::java.lang.String");
-  lazy_methods.add_needed_class("java::java.lang.Class");
-  lazy_methods.add_needed_class("java::java.lang.Object");
-}
-
-/*******************************************************************\
-
-Function: java_bytecode_languaget::typecheck
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool java_bytecode_languaget::typecheck(
   symbol_tablet &symbol_table,
   const std::string &module)
 {
-  if(string_refinement_enabled)
-    character_preprocess.initialize_conversion_table();
+  PRECONDITION(language_options_initialized);
 
-  // first convert all
+  java_internal_additions(symbol_table);
+
+  if(string_refinement_enabled)
+    string_preprocess.initialize_conversion_table();
+
+  // first generate a new struct symbol for each class and a new function symbol
+  // for every method
   for(java_class_loadert::class_mapt::const_iterator
       c_it=java_class_loader.class_map.begin();
       c_it!=java_class_loader.class_map.end();
@@ -523,18 +277,44 @@ bool java_bytecode_languaget::typecheck(
     if(c_it->second.parsed_class.name.empty())
       continue;
 
-    debug() << "Converting class " << c_it->first << eom;
-
-    if(java_bytecode_convert_class(
-         c_it->second,
-         symbol_table,
-         get_message_handler(),
-         max_user_array_length,
-         lazy_methods,
-         lazy_methods_mode,
-         string_refinement_enabled,
-         character_preprocess))
+    if(
+      java_bytecode_convert_class(
+        c_it->second,
+        symbol_table,
+        get_message_handler(),
+        max_user_array_length,
+        method_bytecode,
+        lazy_methods_mode,
+        string_preprocess))
       return true;
+  }
+
+  // find and mark all implicitly generic class types
+  // this can only be done once all the class symbols have been created
+  for(const auto &c : java_class_loader.class_map)
+  {
+    if(c.second.parsed_class.name.empty())
+      continue;
+    try
+    {
+      mark_java_implicitly_generic_class_type(
+        c.second.parsed_class.name, symbol_table);
+    }
+    catch(missing_outer_class_symbol_exceptiont &)
+    {
+      messaget::warning()
+        << "Not marking class " << c.first
+        << " implicitly generic due to missing outer class symbols"
+        << messaget::eom;
+    }
+  }
+
+  // Infer fields on opaque types based on the method instructions just loaded.
+  // For example, if we don't have bytecode for field x of class A, but we can
+  // see an int-typed getfield instruction referring to it, add that field now.
+  for(const auto &c : java_class_loader.class_map)
+  {
+    infer_opaque_type_fields(c.second, symbol_table);
   }
 
   // Now incrementally elaborate methods
@@ -542,328 +322,262 @@ bool java_bytecode_languaget::typecheck(
   if(lazy_methods_mode==LAZY_METHODS_MODE_CONTEXT_INSENSITIVE)
   {
     // ci: context-insensitive.
-    if(do_ci_lazy_method_conversion(symbol_table, lazy_methods))
+    if(do_ci_lazy_method_conversion(symbol_table, method_bytecode))
       return true;
   }
+  else if(lazy_methods_mode==LAZY_METHODS_MODE_EAGER)
+  {
+    journalling_symbol_tablet journalling_symbol_table =
+      journalling_symbol_tablet::wrap(symbol_table);
+    // Convert all methods for which we have bytecode now
+    for(const auto &method_sig : method_bytecode)
+    {
+      convert_single_method(method_sig.first, journalling_symbol_table);
+    }
+    // Now convert all newly added string methods
+    for(const auto &fn_name : journalling_symbol_table.get_inserted())
+    {
+      if(string_preprocess.implements_function(fn_name))
+        convert_single_method(fn_name, symbol_table);
+    }
+  }
+  // Otherwise our caller is in charge of elaborating methods on demand.
+
+  // now instrument runtime exceptions
+  java_bytecode_instrument(
+    symbol_table,
+    throw_runtime_exceptions,
+    get_message_handler());
 
   // now typecheck all
-  if(java_bytecode_typecheck(
-       symbol_table, get_message_handler(), string_refinement_enabled))
-    return true;
-
-  return false;
+  return java_bytecode_typecheck(
+    symbol_table, get_message_handler(), string_refinement_enabled);
 }
 
-/*******************************************************************\
-
-Function: java_bytecode_languaget::do_ci_lazy_method_conversion
-
-  Inputs: `symbol_table`: global symbol table
-          `lazy_methods`: map from method names to relevant symbol
-                          and parsed-method objects.
-
- Outputs: Elaborates lazily-converted methods that may be reachable
-          starting from the main entry point (usually provided with
-          the --function command-line option) (side-effect on the
-          symbol_table). Returns false on success.
-
- Purpose: Uses a simple context-insensitive ('ci') analysis to
-          determine which methods may be reachable from the main
-          entry point. In brief, static methods are reachable if we
-          find a callsite in another reachable site, while virtual
-          methods are reachable if we find a virtual callsite
-          targeting a compatible type *and* a constructor callsite
-          indicating an object of that type may be instantiated (or
-          evidence that an object of that type exists before the
-          main function is entered, such as being passed as a
-          parameter).
-
-\*******************************************************************/
-
-bool java_bytecode_languaget::do_ci_lazy_method_conversion(
-  symbol_tablet &symbol_table,
-  lazy_methodst &lazy_methods)
+bool java_bytecode_languaget::generate_support_functions(
+  symbol_tablet &symbol_table)
 {
-  class_hierarchyt ch;
-  ch(symbol_table);
-
-  std::vector<irep_idt> method_worklist1;
-  std::vector<irep_idt> method_worklist2;
-
-  auto main_function=
-    get_main_symbol(symbol_table, main_class, get_message_handler(), true);
-  if(main_function.stop_convert)
-  {
-    // Failed, mark all functions in the given main class(es) reachable.
-    std::vector<irep_idt> reachable_classes;
-    if(!main_class.empty())
-      reachable_classes.push_back(main_class);
-    else
-      reachable_classes=main_jar_classes;
-    for(const auto &classname : reachable_classes)
-    {
-      const auto &methods=
-        java_class_loader.class_map.at(classname).parsed_class.methods;
-      for(const auto &method : methods)
-      {
-        const irep_idt methodid="java::"+id2string(classname)+"."+
-          id2string(method.name)+":"+
-          id2string(method.signature);
-        method_worklist2.push_back(methodid);
-      }
-    }
-  }
-  else
-    method_worklist2.push_back(main_function.main_function.name);
-
-  std::set<irep_idt> needed_classes;
-
-  {
-    std::vector<irep_idt> needed_clinits;
-    ci_lazy_methodst initial_lazy_methods(
-      needed_clinits,
-      needed_classes,
-      symbol_table);
-    initialize_needed_classes(
-      method_worklist2,
-      namespacet(symbol_table),
-      ch,
-      initial_lazy_methods);
-    method_worklist2.insert(
-      method_worklist2.end(),
-      needed_clinits.begin(),
-      needed_clinits.end());
-  }
-
-  std::set<irep_idt> methods_already_populated;
-  std::vector<const code_function_callt *> virtual_callsites;
-
-  bool any_new_methods;
-  do
-  {
-    any_new_methods=false;
-    while(method_worklist2.size()!=0)
-    {
-      std::swap(method_worklist1, method_worklist2);
-      for(const auto &mname : method_worklist1)
-      {
-        if(!methods_already_populated.insert(mname).second)
-          continue;
-        auto findit=lazy_methods.find(mname);
-        if(findit==lazy_methods.end())
-        {
-          debug() << "Skip " << mname << eom;
-          continue;
-        }
-        debug() << "CI lazy methods: elaborate " << mname << eom;
-        const auto &parsed_method=findit->second;
-        // Note this wraps *references* to method_worklist2, needed_classes:
-        ci_lazy_methodst lazy_methods(
-          method_worklist2,
-          needed_classes,
-          symbol_table);
-        java_bytecode_convert_method(
-          *parsed_method.first,
-          *parsed_method.second,
-          symbol_table,
-          get_message_handler(),
-          max_user_array_length,
-          safe_pointer<ci_lazy_methodst>::create_non_null(&lazy_methods),
-          character_preprocess);
-        gather_virtual_callsites(
-          symbol_table.lookup(mname).value,
-          virtual_callsites);
-        any_new_methods=true;
-      }
-      method_worklist1.clear();
-    }
-
-    // Given the object types we now know may be created, populate more
-    // possible virtual function call targets:
-
-    debug() << "CI lazy methods: add virtual method targets ("
-            << virtual_callsites.size()
-            << " callsites)"
-            << eom;
-
-    for(const auto &callsite : virtual_callsites)
-    {
-      // This will also create a stub if a virtual callsite has no targets.
-      get_virtual_method_targets(
-        *callsite,
-        needed_classes,
-        method_worklist2,
-        symbol_table,
-        ch);
-    }
-  }
-  while(any_new_methods);
-
-  // Remove symbols for methods that were declared but never used:
-  symbol_tablet keep_symbols;
-
-  for(const auto &sym : symbol_table.symbols)
-  {
-    if(sym.second.is_static_lifetime)
-      continue;
-    if(lazy_methods.count(sym.first) &&
-       !methods_already_populated.count(sym.first))
-    {
-      continue;
-    }
-    if(sym.second.type.id()==ID_code)
-      gather_needed_globals(sym.second.value, symbol_table, keep_symbols);
-    keep_symbols.add(sym.second);
-  }
-
-  debug() << "CI lazy methods: removed "
-          << symbol_table.symbols.size() - keep_symbols.symbols.size()
-          << " unreachable methods and globals"
-          << eom;
-
-  symbol_table.swap(keep_symbols);
-
-  return false;
-}
-
-/*******************************************************************\
-
-Function: java_bytecode_languaget::lazy_methods_provided
-
-  Inputs: None
-
- Outputs: Populates `methods` with the complete list of lazy methods
-          that are available to convert (those which are valid
-          parameters for `convert_lazy_method`)
-
- Purpose: Provide feedback to `language_filest` so that when asked
-          for a lazy method, it can delegate to this instance of
-          java_bytecode_languaget.
-
-\*******************************************************************/
-
-void java_bytecode_languaget::lazy_methods_provided(
-  std::set<irep_idt> &methods) const
-{
-  for(const auto &kv : lazy_methods)
-    methods.insert(kv.first);
-}
-
-/*******************************************************************\
-
-Function: java_bytecode_languaget::convert_lazy_method
-
-  Inputs: `id`: method ID to convert
-          `symtab`: global symbol table
-
- Outputs: Amends the symbol table entry for function `id`, which
-          should be a lazy method provided by this instance of
-          `java_bytecode_languaget`. It should initially have a nil
-          value. After this method completes, it will have a value
-          representing the method body, identical to that produced
-          using eager method conversion.
-
- Purpose: Promote a lazy-converted method (one whose type is known
-          but whose body hasn't been converted) into a fully-
-          elaborated one.
-
-\*******************************************************************/
-
-void java_bytecode_languaget::convert_lazy_method(
-  const irep_idt &id,
-  symbol_tablet &symtab)
-{
-  const auto &lazy_method_entry=lazy_methods.at(id);
-  java_bytecode_convert_method(
-    *lazy_method_entry.first,
-    *lazy_method_entry.second,
-    symtab,
-    get_message_handler(),
-    max_user_array_length,
-    character_preprocess);
-}
-
-/*******************************************************************\
-
-Function: java_bytecode_languaget::final
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-bool java_bytecode_languaget::final(symbol_tablet &symbol_table)
-{
-  /*
-  if(c_final(symbol_table, message_handler)) return true;
-  */
-  java_internal_additions(symbol_table);
-
+  PRECONDITION(language_options_initialized);
 
   main_function_resultt res=
     get_main_symbol(symbol_table, main_class, get_message_handler());
-  if(res.stop_convert)
-    return res.error_found;
+  if(!res.is_success())
+    return res.is_error();
 
-  symbolt entry=res.main_function;
+  // Load the main function into the symbol table to get access to its
+  // parameter names
+  convert_lazy_method(res.main_function.name, symbol_table);
 
-  return(
+  // generate the test harness in __CPROVER__start and a call the entry point
+  return
     java_entry_point(
       symbol_table,
       main_class,
       get_message_handler(),
       assume_inputs_non_null,
-      max_nondet_array_length));
+      object_factory_parameters,
+      get_pointer_type_selector());
 }
 
-/*******************************************************************\
+/// Uses a simple context-insensitive ('ci') analysis to determine which methods
+/// may be reachable from the main entry point. In brief, static methods are
+/// reachable if we find a callsite in another reachable site, while virtual
+/// methods are reachable if we find a virtual callsite targeting a compatible
+/// type *and* a constructor callsite indicating an object of that type may be
+/// instantiated (or evidence that an object of that type exists before the main
+/// function is entered, such as being passed as a parameter).
+/// \par parameters: `symbol_table`: global symbol table
+/// `method_bytecode`: map from method names to relevant symbol and
+///   parsed-method objects.
+/// \return Elaborates lazily-converted methods that may be reachable starting
+///   from the main entry point (usually provided with the --function command-
+///   line option) (side-effect on the symbol_table). Returns false on success.
+bool java_bytecode_languaget::do_ci_lazy_method_conversion(
+  symbol_tablet &symbol_table,
+  method_bytecodet &method_bytecode)
+{
+  const method_convertert method_converter =
+    [this, &symbol_table]
+      (const irep_idt &function_id, ci_lazy_methods_neededt lazy_methods_needed)
+    {
+      return convert_single_method(
+        function_id, symbol_table, std::move(lazy_methods_needed));
+    };
 
-Function: java_bytecode_languaget::show_parse
+  ci_lazy_methodst method_gather(
+    symbol_table,
+    main_class,
+    main_jar_classes,
+    lazy_methods_extra_entry_points,
+    java_class_loader,
+    java_load_classes,
+    get_pointer_type_selector(),
+    get_message_handler());
 
-  Inputs:
+  return method_gather(symbol_table, method_bytecode, method_converter);
+}
 
- Outputs:
+const select_pointer_typet &
+  java_bytecode_languaget::get_pointer_type_selector() const
+{
+  PRECONDITION(pointer_type_selector.get()!=nullptr);
+  return *pointer_type_selector;
+}
 
- Purpose:
+/// Provide feedback to `language_filest` so that when asked for a lazy method,
+/// it can delegate to this instance of java_bytecode_languaget.
+/// \return Populates `methods` with the complete list of lazy methods that are
+///   available to convert (those which are valid parameters for
+///   `convert_lazy_method`)
+void java_bytecode_languaget::methods_provided(id_sett &methods) const
+{
+  // Add all string solver methods to map
+  string_preprocess.get_all_function_names(methods);
+  // Add all concrete methods to map
+  for(const auto &kv : method_bytecode)
+    methods.insert(kv.first);
+}
 
-\*******************************************************************/
+/// \brief Promote a lazy-converted method (one whose type is known but whose
+/// body hasn't been converted) into a fully-elaborated one.
+/// \remarks Amends the symbol table entry for function `function_id`, which
+/// should be a method provided by this instance of `java_bytecode_languaget`
+/// to have a value representing the method body identical to that produced
+/// using eager method conversion.
+/// \param function_id: method ID to convert
+/// \param symtab: global symbol table
+void java_bytecode_languaget::convert_lazy_method(
+  const irep_idt &function_id,
+  symbol_table_baset &symtab)
+{
+  const symbolt &symbol = symtab.lookup_ref(function_id);
+  if(symbol.value.is_not_nil())
+    return;
+
+  journalling_symbol_tablet symbol_table=
+    journalling_symbol_tablet::wrap(symtab);
+
+  convert_single_method(function_id, symbol_table);
+
+  // Instrument runtime exceptions (unless symbol is a stub)
+  if(symbol.value.is_not_nil())
+  {
+    java_bytecode_instrument_symbol(
+      symbol_table,
+      symbol_table.get_writeable_ref(function_id),
+      throw_runtime_exceptions,
+      get_message_handler());
+  }
+
+  // now typecheck this function
+  java_bytecode_typecheck_updated_symbols(
+    symbol_table, get_message_handler(), string_refinement_enabled);
+}
+
+/// \brief Convert a method (one whose type is known but whose body hasn't
+///   been converted) but don't run typecheck, etc
+/// \remarks Amends the symbol table entry for function `function_id`, which
+///   should be a method provided by this instance of `java_bytecode_languaget`
+///   to have a value representing the method body.
+/// \param function_id: method ID to convert
+/// \param symbol_table: global symbol table
+/// \param needed_lazy_methods: optionally a collection of needed methods to
+///   update with any methods touched during the conversion
+bool java_bytecode_languaget::convert_single_method(
+  const irep_idt &function_id,
+  symbol_table_baset &symbol_table,
+  optionalt<ci_lazy_methods_neededt> needed_lazy_methods)
+{
+  const symbolt &symbol = symbol_table.lookup_ref(function_id);
+
+  // Nothing to do if body is already loaded
+  if(symbol.value.is_not_nil())
+    return false;
+
+  // Get bytecode for specified function if we have it
+  method_bytecodet::opt_reft cmb = method_bytecode.get(function_id);
+
+  // Check if have a string solver implementation
+  if(string_preprocess.implements_function(function_id))
+  {
+    symbolt &symbol = symbol_table.get_writeable_ref(function_id);
+    // Load parameter names from any extant bytecode before filling in body
+    if(cmb)
+    {
+      java_bytecode_initialize_parameter_names(
+        symbol, cmb->get().method.local_variable_table, symbol_table);
+    }
+    // Populate body of the function with code generated by string preprocess
+    exprt generated_code =
+      string_preprocess.code_for_function(symbol, symbol_table);
+    INVARIANT(
+      generated_code.is_not_nil(), "Couldn't retrieve code for string method");
+    // String solver can make calls to functions that haven't yet been seen.
+    // Add these to the needed_lazy_methods collection
+    if(needed_lazy_methods)
+    {
+      for(const_depth_iteratort it = generated_code.depth_cbegin();
+          it != generated_code.depth_cend();
+          ++it)
+      {
+        if(it->id() == ID_code)
+        {
+          const auto fn_call = expr_try_dynamic_cast<code_function_callt>(*it);
+          if(!fn_call)
+            continue;
+          // Only support non-virtual function calls for now, if string solver
+          // starts to introduce virtual function calls then we will need to
+          // duplicate the behavior of java_bytecode_convert_method where it
+          // handles the invokevirtual instruction
+          const symbol_exprt &fn_sym =
+            expr_dynamic_cast<symbol_exprt>(fn_call->function());
+          needed_lazy_methods->add_needed_method(fn_sym.get_identifier());
+        }
+      }
+    }
+    symbol.value = generated_code;
+    return false;
+  }
+
+  // No string solver implementation, check if have bytecode for it
+  if(cmb)
+  {
+    java_bytecode_convert_method(
+      symbol_table.lookup_ref(cmb->get().class_id),
+      cmb->get().method,
+      symbol_table,
+      get_message_handler(),
+      max_user_array_length,
+      std::move(needed_lazy_methods),
+      string_preprocess);
+    return false;
+  }
+
+  return true;
+}
+
+bool java_bytecode_languaget::final(symbol_table_baset &symbol_table)
+{
+  PRECONDITION(language_options_initialized);
+
+  return recreate_initialize(
+    symbol_table,
+    main_class,
+    get_message_handler(),
+    assume_inputs_non_null,
+    object_factory_parameters,
+    get_pointer_type_selector());
+}
 
 void java_bytecode_languaget::show_parse(std::ostream &out)
 {
   java_class_loader(main_class).output(out);
 }
 
-/*******************************************************************\
-
-Function: new_java_bytecode_language
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-languaget *new_java_bytecode_language()
+std::unique_ptr<languaget> new_java_bytecode_language()
 {
-  return new java_bytecode_languaget;
+  return util_make_unique<java_bytecode_languaget>();
 }
-
-/*******************************************************************\
-
-Function: java_bytecode_languaget::from_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool java_bytecode_languaget::from_expr(
   const exprt &expr,
@@ -874,18 +588,6 @@ bool java_bytecode_languaget::from_expr(
   return false;
 }
 
-/*******************************************************************\
-
-Function: java_bytecode_languaget::from_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool java_bytecode_languaget::from_type(
   const typet &type,
   std::string &code,
@@ -894,18 +596,6 @@ bool java_bytecode_languaget::from_type(
   code=type2java(type, ns);
   return false;
 }
-
-/*******************************************************************\
-
-Function: java_bytecode_languaget::to_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool java_bytecode_languaget::to_expr(
   const std::string &code,
@@ -953,18 +643,6 @@ bool java_bytecode_languaget::to_expr(
 
   return true; // fail for now
 }
-
-/*******************************************************************\
-
-Function: java_bytecode_languaget::~java_bytecode_languaget
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 java_bytecode_languaget::~java_bytecode_languaget()
 {

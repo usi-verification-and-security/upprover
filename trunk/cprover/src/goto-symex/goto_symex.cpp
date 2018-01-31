@@ -6,24 +6,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/simplify_expr.h>
+/// \file
+/// Symbolic Execution
 
 #include "goto_symex.h"
 
+#include <util/simplify_expr.h>
+
 unsigned goto_symext::nondet_count=0;
 unsigned goto_symext::dynamic_counter=0;
-
-/*******************************************************************\
-
-Function: goto_symext::do_simplify
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::do_simplify(exprt &expr)
 {
@@ -31,25 +22,13 @@ void goto_symext::do_simplify(exprt &expr)
     simplify(expr, ns);
 }
 
-/*******************************************************************\
-
-Function: goto_symext::replace_nondet
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_symext::replace_nondet(exprt &expr)
 {
   if(expr.id()==ID_side_effect &&
      expr.get(ID_statement)==ID_nondet)
   {
-    exprt new_expr(ID_nondet_symbol, expr.type());
-    new_expr.set(ID_identifier, "symex::nondet"+std::to_string(nondet_count++));
+    irep_idt identifier="symex::nondet"+std::to_string(nondet_count++);
+    nondet_symbol_exprt new_expr(identifier, expr.type());
     new_expr.add_source_location()=expr.source_location();
     expr.swap(new_expr);
   }

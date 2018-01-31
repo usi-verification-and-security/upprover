@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Value Set Propagation
+
+#include "value_set_analysis.h"
+
 #include <util/prefix.h>
 #include <util/cprover_prefix.h>
 #include <util/xml_expr.h>
@@ -13,60 +18,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <langapi/language_util.h>
 
-#include "value_set_analysis.h"
-
-/*******************************************************************\
-
-Function: value_set_analysist::initialize
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void value_set_analysist::initialize(
-  const goto_programt &goto_program)
-{
-  baset::initialize(goto_program);
-}
-
-/*******************************************************************\
-
-Function: value_set_analysist::initialize
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void value_set_analysist::initialize(
-  const goto_functionst &goto_functions)
-{
-  baset::initialize(goto_functions);
-}
-
-/*******************************************************************\
-
-Function: value_set_analysist::convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void value_set_analysist::convert(
+void value_sets_to_xml(
+  std::function<const value_sett &(goto_programt::const_targett)> get_value_set,
   const goto_programt &goto_program,
   const irep_idt &identifier,
-  xmlt &dest) const
+  xmlt &dest)
 {
   source_locationt previous_location;
 
@@ -77,11 +33,11 @@ void value_set_analysist::convert(
     if(location==previous_location)
       continue;
 
-    if(location.is_nil() || location.get_file()==irep_idt())
+    if(location.is_nil() || location.get_file().empty())
       continue;
 
     // find value set
-    const value_sett &value_set=(*this)[i_it].value_set;
+    const value_sett &value_set=get_value_set(i_it);
 
     xmlt &i=dest.new_element("instruction");
     i.new_element()=::xml(location);
@@ -114,17 +70,6 @@ void value_set_analysist::convert(
     }
   }
 }
-/*******************************************************************\
-
-Function: convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void convert(
   const goto_functionst &goto_functions,
@@ -143,18 +88,6 @@ void convert(
     value_set_analysis.convert(f_it->second.body, f_it->first, f);
   }
 }
-
-/*******************************************************************\
-
-Function: convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void convert(
   const goto_programt &goto_program,

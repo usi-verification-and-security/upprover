@@ -6,25 +6,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "cpp_internal_additions.h"
+
 #include <ostream>
 
 #include <util/config.h>
 
 #include <ansi-c/ansi_c_internal_additions.h>
-
-#include "cpp_internal_additions.h"
-
-/*******************************************************************\
-
-Function: c2cpp
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string c2cpp(const std::string &s)
 {
@@ -32,7 +20,7 @@ std::string c2cpp(const std::string &s)
 
   result.reserve(s.size());
 
-  for(unsigned i=0; i<s.size(); i++)
+  for(std::size_t i=0; i<s.size(); i++)
   {
     char ch=s[i];
 
@@ -48,18 +36,6 @@ std::string c2cpp(const std::string &s)
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: cpp_interal_additions
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_internal_additions(std::ostream &out)
 {
@@ -115,7 +91,8 @@ void cpp_internal_additions(std::ostream &out)
   out << "extern \"C\" const void *__CPROVER_dead_object=0;" << '\n';
 
   // malloc
-  out << "extern \"C\" void *__CPROVER_malloc(__CPROVER::size_t size);" << '\n';
+  out << "extern \"C\" void *__CPROVER_allocate(__CPROVER_size_t size,"
+      << " __CPROVER_bool zero);" << '\n';
   out << "extern \"C\" const void *__CPROVER_deallocated=0;" << '\n';
   out << "extern \"C\" const void *__CPROVER_malloc_object=0;" << '\n';
   out << "extern \"C\" __CPROVER::size_t __CPROVER_malloc_size;" << '\n';

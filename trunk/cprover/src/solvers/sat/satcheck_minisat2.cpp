@@ -6,16 +6,18 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "satcheck_minisat2.h"
+
 #ifndef _MSC_VER
 #include <inttypes.h>
+#include <signal.h>
+#include <unistd.h>
 #endif
 
-#include <cassert>
 #include <stack>
 
+#include <util/invariant.h>
 #include <util/threeval.h>
-
-#include "satcheck_minisat2.h"
 
 #include <minisat/core/Solver.h>
 #include <minisat/simp/SimpSolver.h>
@@ -23,18 +25,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #ifndef HAVE_MINISAT2
 #error "Expected HAVE_MINISAT2"
 #endif
-
-/*******************************************************************\
-
-Function: convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void convert(const bvt &bv, Minisat::vec<Minisat::Lit> &dest)
 {
@@ -44,18 +34,6 @@ void convert(const bvt &bv, Minisat::vec<Minisat::Lit> &dest)
     if(!it->is_false())
       dest.push(Minisat::mkLit(it->var_no(), it->sign()));
 }
-
-/*******************************************************************\
-
-Function: satcheck_minisat2_baset::l_get
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 template<typename T>
 tvt satcheck_minisat2_baset<T>::l_get(literalt a) const
@@ -85,71 +63,45 @@ tvt satcheck_minisat2_baset<T>::l_get(literalt a) const
   return result;
 }
 
-/*******************************************************************\
-
-Function: satcheck_minisat2_baset::set_polarity
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 template<typename T>
 void satcheck_minisat2_baset<T>::set_polarity(literalt a, bool value)
 {
-  assert(!a.is_constant());
-  add_variables();
-  solver->setPolarity(a.var_no(), value);
+  PRECONDITION(!a.is_constant());
+
+  try
+  {
+    add_variables();
+    solver->setPolarity(a.var_no(), value);
+  }
+  catch(Minisat::OutOfMemoryException)
+  {
+    messaget::error() << "SAT checker ran out of memory" << eom;
+    status = statust::ERROR;
+    throw std::bad_alloc();
+  }
 }
 
-/*******************************************************************\
+template<typename T>
+void satcheck_minisat2_baset<T>::interrupt()
+{
+  solver->interrupt();
+}
 
-Function: satcheck_minisat_no_simplifiert::solver_text
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+template<typename T>
+void satcheck_minisat2_baset<T>::clear_interrupt()
+{
+  solver->clearInterrupt();
+}
 
 const std::string satcheck_minisat_no_simplifiert::solver_text()
 {
   return "MiniSAT 2.2.1 without simplifier";
 }
 
-/*******************************************************************\
-
-Function: satcheck_minisat_simplifiert::solver_text
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 const std::string satcheck_minisat_simplifiert::solver_text()
 {
   return "MiniSAT 2.2.1 with simplifier";
 }
-
-/*******************************************************************\
-
-Function: satcheck_minisat2_baset::add_variables
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 template<typename T>
 void satcheck_minisat2_baset<T>::add_variables()
@@ -158,59 +110,58 @@ void satcheck_minisat2_baset<T>::add_variables()
     solver->newVar();
 }
 
-/*******************************************************************\
-
-Function: satcheck_minisat2_baset::lcnf
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 template<typename T>
 void satcheck_minisat2_baset<T>::lcnf(const bvt &bv)
 {
-  add_variables();
-
-  forall_literals(it, bv)
+  try
   {
-    if(it->is_true())
-      return;
-    else if(!it->is_false())
-      assert(it->var_no()<(unsigned)solver->nVars());
+    add_variables();
+
+    forall_literals(it, bv)
+    {
+      if(it->is_true())
+        return;
+      else if(!it->is_false())
+      {
+        INVARIANT(
+          it->var_no() < (unsigned)solver->nVars(), "variable not added yet");
+      }
+    }
+
+    Minisat::vec<Minisat::Lit> c;
+
+    convert(bv, c);
+
+    // Note the underscore.
+    // Add a clause to the solver without making superflous internal copy.
+
+    solver->addClause_(c);
+
+    clause_counter++;
   }
-
-  Minisat::vec<Minisat::Lit> c;
-
-  convert(bv, c);
-
-  // Note the underscore.
-  // Add a clause to the solver without making superflous internal copy.
-
-  solver->addClause_(c);
-
-  clause_counter++;
+  catch(Minisat::OutOfMemoryException)
+  {
+    messaget::error() << "SAT checker ran out of memory" << eom;
+    status = statust::ERROR;
+    throw std::bad_alloc();
+  }
 }
 
-/*******************************************************************\
+#ifndef _WIN32
 
-Function: satcheck_minisat2_baset::prop_solve
+static Minisat::Solver *solver_to_interrupt=nullptr;
 
-  Inputs:
+static void interrupt_solver(int signum)
+{
+  solver_to_interrupt->interrupt();
+}
 
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#endif
 
 template<typename T>
 propt::resultt satcheck_minisat2_baset<T>::prop_solve()
 {
-  assert(status!=statust::ERROR);
+  PRECONDITION(status != statust::ERROR);
 
   {
     messaget::status() <<
@@ -246,18 +197,63 @@ propt::resultt satcheck_minisat2_baset<T>::prop_solve()
         Minisat::vec<Minisat::Lit> solver_assumptions;
         convert(assumptions, solver_assumptions);
 
-        if(solver->solve(solver_assumptions))
+        using Minisat::lbool;
+
+#ifndef _WIN32
+
+        void (*old_handler)(int)=SIG_ERR;
+
+        if(time_limit_seconds!=0)
+        {
+          solver_to_interrupt=solver;
+          old_handler=signal(SIGALRM, interrupt_solver);
+          if(old_handler==SIG_ERR)
+            warning() << "Failed to set solver time limit" << eom;
+          else
+            alarm(time_limit_seconds);
+        }
+
+        lbool solver_result=solver->solveLimited(solver_assumptions);
+
+        if(old_handler!=SIG_ERR)
+        {
+          alarm(0);
+          signal(SIGALRM, old_handler);
+          solver_to_interrupt=solver;
+        }
+
+#else // _WIN32
+
+        if(time_limit_seconds!=0)
+        {
+          messaget::warning() <<
+            "Time limit ignored (not supported on Win32 yet)" << messaget::eom;
+        }
+
+        lbool solver_result=
+          solver->solve(solver_assumptions) ? l_True : l_False;
+
+#endif
+
+        if(solver_result==l_True)
         {
           messaget::status() <<
             "SAT checker: instance is SATISFIABLE" << eom;
-          assert(solver->model.size()!=0);
+          CHECK_RETURN(solver->model.size()>0);
           status=statust::SAT;
           return resultt::P_SATISFIABLE;
+        }
+        else if(solver_result==l_False)
+        {
+          messaget::status() <<
+            "SAT checker: instance is UNSATISFIABLE" << eom;
         }
         else
         {
           messaget::status() <<
-            "SAT checker: instance is UNSATISFIABLE" << eom;
+            "SAT checker: timed out or other error" << eom;
+          status=statust::ERROR;
+          return resultt::P_ERROR;
         }
       }
     }
@@ -274,61 +270,34 @@ propt::resultt satcheck_minisat2_baset<T>::prop_solve()
   }
 }
 
-/*******************************************************************\
-
-Function: satcheck_minisat2_baset::set_assignment
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 template<typename T>
 void satcheck_minisat2_baset<T>::set_assignment(literalt a, bool value)
 {
-  assert(!a.is_constant());
+  PRECONDITION(!a.is_constant());
 
-  unsigned v=a.var_no();
-  bool sign=a.sign();
+  try
+  {
+    unsigned v = a.var_no();
+    bool sign = a.sign();
 
-  // MiniSat2 kills the model in case of UNSAT
-  solver->model.growTo(v+1);
-  value^=sign;
-  solver->model[v]=Minisat::lbool(value);
+    // MiniSat2 kills the model in case of UNSAT
+    solver->model.growTo(v + 1);
+    value ^= sign;
+    solver->model[v] = Minisat::lbool(value);
+  }
+  catch(Minisat::OutOfMemoryException)
+  {
+    messaget::error() << "SAT checker ran out of memory" << eom;
+    status = statust::ERROR;
+    throw std::bad_alloc();
+  }
 }
-
-/*******************************************************************\
-
-Function: satcheck_minisat2_baset::satcheck_minisat2_baset
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 template<typename T>
 satcheck_minisat2_baset<T>::satcheck_minisat2_baset(T *_solver):
-  solver(_solver)
+  solver(_solver), time_limit_seconds(0)
 {
 }
-
-/*******************************************************************\
-
-Function: satcheck_minisat2_baset::~satcheck_minisat2_baset
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 template<>
 satcheck_minisat2_baset<Minisat::Solver>::~satcheck_minisat2_baset()
@@ -342,18 +311,6 @@ satcheck_minisat2_baset<Minisat::SimpSolver>::~satcheck_minisat2_baset()
   delete solver;
 }
 
-/*******************************************************************\
-
-Function: satcheck_minisat2_baset::is_in_conflict
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 template<typename T>
 bool satcheck_minisat2_baset<T>::is_in_conflict(literalt a) const
 {
@@ -365,18 +322,6 @@ bool satcheck_minisat2_baset<T>::is_in_conflict(literalt a) const
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: satcheck_minisat2_baset::set_assumptions
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 template<typename T>
 void satcheck_minisat2_baset<T>::set_assumptions(const bvt &bv)
@@ -391,76 +336,37 @@ void satcheck_minisat2_baset<T>::set_assumptions(const bvt &bv)
     }
 }
 
-/*******************************************************************\
-
-Function: satcheck_minisat_no_simplifiert::satcheck_minisat_no_simplifiert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 satcheck_minisat_no_simplifiert::satcheck_minisat_no_simplifiert():
   satcheck_minisat2_baset<Minisat::Solver>(new Minisat::Solver)
 {
 }
-
-/*******************************************************************\
-
-Function: satcheck_minisat_simplifiert::satcheck_minisat_simplifiert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 satcheck_minisat_simplifiert::satcheck_minisat_simplifiert():
   satcheck_minisat2_baset<Minisat::SimpSolver>(new Minisat::SimpSolver)
 {
 }
 
-/*******************************************************************\
-
-Function: satcheck_minisat_simplifiert::set_frozen
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void satcheck_minisat_simplifiert::set_frozen(literalt a)
 {
-  if(!a.is_constant())
+  try
   {
-    add_variables();
-    solver->setFrozen(a.var_no(), true);
+    if(!a.is_constant())
+    {
+      add_variables();
+      solver->setFrozen(a.var_no(), true);
+    }
+  }
+  catch(Minisat::OutOfMemoryException)
+  {
+    messaget::error() << "SAT checker ran out of memory" << eom;
+    status = statust::ERROR;
+    throw std::bad_alloc();
   }
 }
 
-/*******************************************************************\
-
-Function: satcheck_minisat_simplifiert::is_eliminated
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool satcheck_minisat_simplifiert::is_eliminated(literalt a) const
 {
-  assert(!a.is_constant());
+  PRECONDITION(!a.is_constant());
 
   return solver->isEliminated(a.var_no());
 }

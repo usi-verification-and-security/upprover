@@ -7,21 +7,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/std_code.h>
+/// \file
+/// Value Set Domain (Flow Insensitive)
 
 #include "value_set_domain_fi.h"
 
-/*******************************************************************\
-
-Function: value_set_domain_fit::transform
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <util/std_code.h>
 
 bool value_set_domain_fit::transform(
   const namespacet &ns,

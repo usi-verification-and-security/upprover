@@ -6,13 +6,16 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// JAVA Bytecode Language Type Checking
+
 #ifndef CPROVER_JAVA_BYTECODE_JAVA_BYTECODE_TYPECHECK_H
 #define CPROVER_JAVA_BYTECODE_JAVA_BYTECODE_TYPECHECK_H
 
 #include <set>
 #include <map>
 
-#include <util/symbol_table.h>
+#include <util/journalling_symbol_table.h>
 #include <util/typecheck.h>
 #include <util/namespace.h>
 #include <util/std_code.h>
@@ -20,7 +23,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_types.h>
 
 bool java_bytecode_typecheck(
-  symbol_tablet &symbol_table,
+  symbol_table_baset &symbol_table,
+  message_handlert &message_handler,
+  bool string_refinement_enabled);
+
+void java_bytecode_typecheck_updated_symbols(
+  journalling_symbol_tablet &symbol_table,
   message_handlert &message_handler,
   bool string_refinement_enabled);
 
@@ -33,7 +41,7 @@ class java_bytecode_typecheckt:public typecheckt
 {
 public:
   java_bytecode_typecheckt(
-    symbol_tablet &_symbol_table,
+    symbol_table_baset &_symbol_table,
     message_handlert &_message_handler,
     bool _string_refinement_enabled):
     typecheckt(_message_handler),
@@ -46,10 +54,11 @@ public:
   virtual ~java_bytecode_typecheckt() { }
 
   virtual void typecheck();
+  void typecheck(const journalling_symbol_tablet::changesett &identifiers);
   virtual void typecheck_expr(exprt &expr);
 
 protected:
-  symbol_tablet &symbol_table;
+  symbol_table_baset &symbol_table;
   const namespacet ns;
   bool string_refinement_enabled;
 

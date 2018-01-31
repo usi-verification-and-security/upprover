@@ -6,21 +6,12 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#include <util/source_location.h>
+/// \file
+/// C++ Language Type Checking
 
 #include "cpp_typecheck.h"
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <util/source_location.h>
 
 void cpp_typecheckt::convert(cpp_namespace_spect &namespace_spec)
 {
@@ -82,7 +73,7 @@ void cpp_typecheckt::convert(cpp_namespace_spect &namespace_spec)
     symbol.module=module;
     symbol.type=typet(ID_namespace);
 
-    if(symbol_table.move(symbol))
+    if(!symbol_table.insert(std::move(symbol)).second)
     {
       error().source_location=symbol.location;
       error() << "cpp_typecheckt::convert_namespace: symbol_table.move() failed"

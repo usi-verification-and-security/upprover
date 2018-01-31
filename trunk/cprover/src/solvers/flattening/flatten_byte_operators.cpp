@@ -19,23 +19,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "flatten_byte_operators.h"
 
-/*******************************************************************\
-
-Function: unpack_rec
-
-  Inputs:
-    src  object to unpack
-    little_endian  true, iff assumed endianness is little-endian
-    max_bytes  if not nil, use as upper bound of the number of bytes
-               to unpack
-    ns  namespace for type lookups
-
- Outputs: array of bytes in the sequence found in memory
-
- Purpose: rewrite an object into its individual bytes
-
-\*******************************************************************/
-
+/// rewrite an object into its individual bytes
+/// \par parameters: src  object to unpack
+/// little_endian  true, iff assumed endianness is little-endian
+/// max_bytes  if not nil, use as upper bound of the number of bytes to unpack
+/// ns  namespace for type lookups
+/// \return array of bytes in the sequence found in memory
 static exprt unpack_rec(
   const exprt &src,
   bool little_endian,
@@ -120,8 +109,8 @@ static exprt unpack_rec(
   }
   else if(type.id()!=ID_empty)
   {
-    // a basic type; we turn that into logical right shift and
-    // extractbits while considering endianness
+    // a basic type; we turn that into extractbits while considering
+    // endianness
     mp_integer bits=pointer_offset_bits(type, ns);
     if(bits<0)
     {
@@ -132,17 +121,12 @@ static exprt unpack_rec(
         bits*=8;
     }
 
-    // cast to generic bit-vector
-    typecast_exprt src_tc(src, unsignedbv_typet(integer2size_t(bits)));
-
     for(mp_integer i=0; i<bits; i+=8)
     {
-      lshr_exprt right_shift(src_tc, from_integer(i, index_type()));
-
       extractbits_exprt extractbits(
-        right_shift,
-        from_integer(7, index_type()),
-        from_integer(0, index_type()),
+        src,
+        from_integer(i+7, index_type()),
+        from_integer(i, index_type()),
         unsignedbv_typet(8));
 
       if(little_endian)
@@ -158,19 +142,8 @@ static exprt unpack_rec(
   return array;
 }
 
-/*******************************************************************\
-
-Function: flatten_byte_extract
-
-  Inputs:
-
- Outputs:
-
- Purpose: rewrite byte extraction from an array to byte extraction
-          from a concatenation of array index expressions
-
-\*******************************************************************/
-
+/// rewrite byte extraction from an array to byte extraction from a
+/// concatenation of array index expressions
 exprt flatten_byte_extract(
   const byte_extract_exprt &src,
   const namespacet &ns)
@@ -229,7 +202,7 @@ exprt flatten_byte_extract(
   else if(src.id()==ID_byte_extract_big_endian)
     little_endian=false;
   else
-    assert(false);
+    UNREACHABLE;
 
   // determine an upper bound of the number of bytes we might need
   exprt upper_bound=size_of_expr(src.type(), ns);
@@ -269,12 +242,12 @@ exprt flatten_byte_extract(
 
         byte_extract_exprt tmp(unpacked);
         tmp.type()=subtype;
-        tmp.offset()=simplify_expr(new_offset, ns);
+        tmp.offset()=new_offset;
 
         array.copy_to_operands(flatten_byte_extract(tmp, ns));
       }
 
-      return array;
+      return simplify_expr(array, ns);
     }
   }
   else if(type.id()==ID_struct)
@@ -304,11 +277,13 @@ exprt flatten_byte_extract(
 
       byte_extract_exprt tmp(unpacked);
       tmp.type()=comp.type();
-      tmp.offset()=simplify_expr(new_offset, ns);
+      tmp.offset()=new_offset;
+
+      s.move_to_operands(tmp);
     }
 
     if(!failed)
-      return s;
+      return simplify_expr(s, ns);
   }
 
   const exprt &root=unpacked.op();
@@ -317,7 +292,8 @@ exprt flatten_byte_extract(
   const array_typet &array_type=to_array_type(root.type());
   const typet &subtype=array_type.subtype();
 
-  assert(pointer_offset_bits(subtype, ns)==8);
+  DATA_INVARIANT(pointer_offset_bits(subtype, ns)==8,
+                 "offset bits are byte aligned");
 
   mp_integer size_bits=pointer_offset_bits(unpacked.type(), ns);
   if(size_bits<0)
@@ -357,21 +333,9 @@ exprt flatten_byte_extract(
   {
     concatenation_exprt concatenation(src.type());
     concatenation.operands().swap(op);
-    return concatenation;
+    return simplify_expr(concatenation, ns);
   }
 }
-
-/*******************************************************************\
-
-Function: flatten_byte_update
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt flatten_byte_update(
   const byte_update_exprt &src,
@@ -449,7 +413,7 @@ exprt flatten_byte_update(
           result.swap(with_expr);
         }
 
-        return result;
+        return simplify_expr(result, ns);
       }
       else // sub_size!=1
       {
@@ -548,7 +512,7 @@ exprt flatten_byte_update(
           result=with_expr;
         }
 
-        return result;
+        return simplify_expr(result, ns);
       }
     }
     else
@@ -619,7 +583,7 @@ exprt flatten_byte_update(
     // original_bits |= newvalue
     bitor_exprt bitor_expr(bitand_expr, value_shifted);
 
-    return bitor_expr;
+    return simplify_expr(bitor_expr, ns);
   }
   else
   {
@@ -628,36 +592,12 @@ exprt flatten_byte_update(
   }
 }
 
-/*******************************************************************\
-
-Function: flatten_byte_update
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt flatten_byte_update(
   const byte_update_exprt &src,
   const namespacet &ns)
 {
   return flatten_byte_update(src, ns, false);
 }
-
-/*******************************************************************\
-
-Function: has_byte_operators
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool has_byte_operator(const exprt &src)
 {
@@ -673,18 +613,6 @@ bool has_byte_operator(const exprt &src)
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: flatten_byte_operators
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt flatten_byte_operators(
   const exprt &src,

@@ -6,13 +6,14 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution
+
 #ifndef CPROVER_GOTO_SYMEX_GOTO_SYMEX_H
 #define CPROVER_GOTO_SYMEX_GOTO_SYMEX_H
 
-/*! \defgroup goto_symex Symbolic execution of goto programs
-*/
-
 #include <util/options.h>
+#include <util/message.h>
 #include <util/byte_operators.h>
 
 #include <goto-programs/goto_functions.h>
@@ -42,18 +43,20 @@ class goto_symext
 {
 public:
   goto_symext(
+    message_handlert &mh,
     const namespacet &_ns,
     symbol_tablet &_new_symbol_table,
-    symex_targett &_target):
-    total_vccs(0),
-    remaining_vccs(0),
-    constant_propagation(true),
-    new_symbol_table(_new_symbol_table),
-    language_mode(),
-    ns(_ns),
-    target(_target),
-    atomic_section_counter(0),
-    guard_identifier("goto_symex::\\guard")
+    symex_targett &_target)
+    : total_vccs(0),
+      remaining_vccs(0),
+      constant_propagation(true),
+      new_symbol_table(_new_symbol_table),
+      language_mode(),
+      ns(_ns),
+      target(_target),
+      atomic_section_counter(0),
+      log(mh),
+      guard_identifier("goto_symex::\\guard")
   {
     options.set_option("simplify", true);
     options.set_option("assertions", true);
@@ -80,6 +83,40 @@ public:
     const goto_functionst &goto_functions,
     const goto_programt &goto_program);
 
+  /// Symexes from the first instruction and the given state, terminating as
+  /// soon as the last instruction is reached.  This is useful to explicitly
+  /// symex certain ranges of a program, e.g. in an incremental decision
+  /// procedure.
+  /// \param state Symex state to start with.
+  /// \param goto_functions GOTO model to symex.
+  /// \param first Entry point in form of a first instruction.
+  /// \param limit Final instruction, which itself will not be symexed.
+  virtual void operator()(
+    statet &state,
+    const goto_functionst &goto_functions,
+    goto_programt::const_targett first,
+    goto_programt::const_targett limit);
+
+  /// Initialise the symbolic execution and the given state with <code>pc</code>
+  /// as entry point.
+  /// \param state Symex state to initialise.
+  /// \param goto_functions GOTO model to symex.
+  /// \param pc first instruction to symex
+  /// \param limit final instruction, which itself will not
+  /// be symexed.
+  void symex_entry_point(
+    statet &state,
+    const goto_functionst &goto_functions,
+    goto_programt::const_targett pc,
+    goto_programt::const_targett limit);
+
+  /// Invokes symex_step and verifies whether additional threads can be
+  /// executed.
+  /// \param state Current GOTO symex step.
+  /// \param goto_functions GOTO model to symex.
+  void symex_threaded_step(
+    statet &state, const goto_functionst &goto_functions);
+
   /** execute just one step */
   virtual void symex_step(
     const goto_functionst &goto_functions,
@@ -104,6 +141,8 @@ protected:
   const namespacet &ns;
   symex_targett &target;
   unsigned atomic_section_counter;
+
+  mutable messaget log;
 
   friend class symex_dereference_statet;
 
@@ -152,6 +191,16 @@ protected:
   irep_idt guard_identifier;
 
   // symex
+  virtual void symex_transition(
+    statet &state,
+    goto_programt::const_targett to,
+    bool is_backwards_goto=false);
+  virtual void symex_transition(statet &state)
+  {
+    goto_programt::const_targett next=state.source.pc;
+    ++next;
+    symex_transition(state, next);
+  }
 
   virtual void symex_goto(statet &state);
   virtual void symex_start_thread(statet &state);
@@ -183,7 +232,7 @@ protected:
     const statet::goto_statet &goto_state,
     statet &dest);
 
-  virtual void phi_function(
+  void phi_function(
     const statet::goto_statet &goto_state,
     statet &state);
 
@@ -252,6 +301,9 @@ protected:
   void symex_assign_rec(statet &state, const code_assignt &code);
   virtual void symex_assign(statet &state, const code_assignt &code);
 
+  // havocs the given object
+  void havoc_rec(statet &, const guardt &, const exprt &);
+
   typedef symex_targett::assignment_typet assignment_typet;
 
   void symex_assign_rec(
@@ -308,7 +360,7 @@ protected:
 
   virtual void symex_gcc_builtin_va_arg_next(
     statet &state, const exprt &lhs, const side_effect_exprt &code);
-  virtual void symex_malloc(
+  virtual void symex_allocate(
     statet &state, const exprt &lhs, const side_effect_exprt &code);
   virtual void symex_cpp_delete(statet &state, const codet &code);
   virtual void symex_cpp_new(

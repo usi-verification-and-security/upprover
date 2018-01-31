@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Show the symbol table
+
+#include "show_symbol_table.h"
+
 #include <iostream>
 #include <memory>
 
@@ -13,38 +18,49 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <langapi/mode.h>
 
 #include "goto_model.h"
-#include "show_symbol_table.h"
-
-/*******************************************************************\
-
-Function: show_symbol_table_xml_ui
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void show_symbol_table_xml_ui()
 {
 }
 
-/*******************************************************************\
+void show_symbol_table_brief_plain(
+  const symbol_tablet &symbol_table,
+  std::ostream &out)
+{
+  // we want to sort alphabetically
+  std::set<std::string> symbols;
 
-Function: show_symbol_table_plain
+  forall_symbols(it, symbol_table.symbols)
+    symbols.insert(id2string(it->first));
 
-  Inputs:
+  const namespacet ns(symbol_table);
 
- Outputs:
+  for(const std::string &id : symbols)
+  {
+    const symbolt &symbol=ns.lookup(id);
 
- Purpose:
+    std::unique_ptr<languaget> ptr;
 
-\*******************************************************************/
+    if(symbol.mode=="")
+      ptr=get_default_language();
+    else
+    {
+      ptr=get_language_from_mode(symbol.mode);
+      if(ptr==nullptr)
+        throw "symbol "+id2string(symbol.name)+" has unknown mode";
+    }
+
+    std::string type_str;
+
+    if(symbol.type.is_not_nil())
+      ptr->from_type(symbol.type, type_str, ns);
+
+    out << symbol.name << " " << type_str << '\n';
+  }
+}
 
 void show_symbol_table_plain(
-  const goto_modelt &goto_model,
+  const symbol_tablet &symbol_table,
   std::ostream &out)
 {
   out << '\n' << "Symbols:" << '\n' << '\n';
@@ -52,34 +68,36 @@ void show_symbol_table_plain(
   // we want to sort alphabetically
   std::set<std::string> symbols;
 
-  forall_symbols(it, goto_model.symbol_table.symbols)
+  forall_symbols(it, symbol_table.symbols)
     symbols.insert(id2string(it->first));
 
-  const namespacet ns(goto_model.symbol_table);
+  const namespacet ns(symbol_table);
 
   for(const std::string &id : symbols)
   {
     const symbolt &symbol=ns.lookup(id);
 
-    languaget *ptr;
+    std::unique_ptr<languaget> ptr;
 
     if(symbol.mode=="")
+    {
       ptr=get_default_language();
+    }
     else
     {
       ptr=get_language_from_mode(symbol.mode);
-      if(ptr==NULL)
-        throw "symbol "+id2string(symbol.name)+" has unknown mode";
     }
 
-    std::unique_ptr<languaget> p(ptr);
+    if(!ptr)
+      throw "symbol "+id2string(symbol.name)+" has unknown mode";
+
     std::string type_str, value_str;
 
     if(symbol.type.is_not_nil())
-      p->from_type(symbol.type, type_str, ns);
+      ptr->from_type(symbol.type, type_str, ns);
 
     if(symbol.value.is_not_nil())
-      p->from_expr(symbol.value, value_str, ns);
+      ptr->from_expr(symbol.value, value_str, ns);
 
     out << "Symbol......: " << symbol.name << '\n' << std::flush;
     out << "Pretty name.: " << symbol.pretty_name << '\n';
@@ -130,26 +148,14 @@ void show_symbol_table_plain(
   }
 }
 
-/*******************************************************************\
-
-Function: show_symbol_table
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void show_symbol_table(
-  const goto_modelt &goto_model,
+  const symbol_tablet &symbol_table,
   ui_message_handlert::uit ui)
 {
   switch(ui)
   {
   case ui_message_handlert::uit::PLAIN:
-    show_symbol_table_plain(goto_model, std::cout);
+    show_symbol_table_plain(symbol_table, std::cout);
     break;
 
   case ui_message_handlert::uit::XML_UI:
@@ -159,4 +165,37 @@ void show_symbol_table(
   default:
     break;
   }
+}
+
+void show_symbol_table(
+  const goto_modelt &goto_model,
+  ui_message_handlert::uit ui)
+{
+  show_symbol_table(goto_model.symbol_table, ui);
+}
+
+void show_symbol_table_brief(
+  const symbol_tablet &symbol_table,
+  ui_message_handlert::uit ui)
+{
+  switch(ui)
+  {
+  case ui_message_handlert::uit::PLAIN:
+    show_symbol_table_brief_plain(symbol_table, std::cout);
+    break;
+
+  case ui_message_handlert::uit::XML_UI:
+    show_symbol_table_xml_ui();
+    break;
+
+  default:
+    break;
+  }
+}
+
+void show_symbol_table_brief(
+  const goto_modelt &goto_model,
+  ui_message_handlert::uit ui)
+{
+  show_symbol_table_brief(goto_model.symbol_table, ui);
 }

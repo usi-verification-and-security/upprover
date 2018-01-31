@@ -6,24 +6,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// JAVA Pointer Casts
+
+#include "java_pointer_casts.h"
+
 #include <util/std_expr.h>
 #include <util/std_types.h>
 #include <util/namespace.h>
 
-#include "java_pointer_casts.h"
-
-/*******************************************************************\
-
-Function: clean_deref
-
-  Inputs: pointer
-
- Outputs: dereferenced pointer
-
- Purpose: dereference pointer expression
-
-\*******************************************************************/
-
+/// dereference pointer expression
+/// \return dereferenced pointer
 static exprt clean_deref(const exprt &ptr)
 {
   return ptr.id()==ID_address_of
@@ -31,19 +24,9 @@ static exprt clean_deref(const exprt &ptr)
              : dereference_exprt(ptr, ptr.type().subtype());
 }
 
-/*******************************************************************\
-
-Function: find_superclass_with_type
-
-  Inputs: pointer
-          target type to search
-
- Outputs: true iff a super class with target type is found
-
- Purpose:
-
-\*******************************************************************/
-
+/// \par parameters: pointer
+/// target type to search
+/// \return true iff a super class with target type is found
 bool find_superclass_with_type(
   exprt &ptr,
   const typet &target_type,
@@ -62,33 +45,27 @@ bool find_superclass_with_type(
     if(base_struct.components().empty())
       return false;
 
-    const typet &first_field_type=
-        ns.follow(base_struct.components()[0].type());
+    const typet &first_field_type=base_struct.components()[0].type();
     ptr=clean_deref(ptr);
+    // Careful not to use the followed type here, as stub types may be
+    // extended by later method conversion adding fields (e.g. an access
+    // against x->y might add a new field `y` to the type of `*x`)
     ptr=member_exprt(
       ptr,
       base_struct.components()[0].get_name(),
       first_field_type);
     ptr=address_of_exprt(ptr);
 
-    if(first_field_type==target_type)
+    // Compare the real (underlying) type, as target_type is already a non-
+    // symbolic type.
+    if(ns.follow(first_field_type)==target_type)
       return true;
   }
 }
 
 
-/*******************************************************************\
-
-Function: look_through_casts
-
-  Inputs: input expression
-
- Outputs: recursively search target of typecast
-
- Purpose:
-
-\*******************************************************************/
-
+/// \par parameters: input expression
+/// \return recursively search target of typecast
 static const exprt &look_through_casts(const exprt &in)
 {
   if(in.id()==ID_typecast)
@@ -101,30 +78,18 @@ static const exprt &look_through_casts(const exprt &in)
 }
 
 
-/*******************************************************************\
-
-Function: make_clean_pointer_cast
-
-  Inputs: raw pointer
-          target type
-          namespace
-
- Outputs: cleaned up typecast expression
-
- Purpose:
-
-\*******************************************************************/
-
+/// \par parameters: raw pointer
+/// target type
+/// namespace
+/// \return cleaned up typecast expression
 exprt make_clean_pointer_cast(
   const exprt &rawptr,
-  const typet &target_type,
+  const pointer_typet &target_type,
   const namespacet &ns)
 {
-  assert(
-    target_type.id()==ID_pointer &&
-    "Non-pointer target in make_clean_pointer_cast?");
-
   const exprt &ptr=look_through_casts(rawptr);
+
+  PRECONDITION(ptr.type().id()==ID_pointer);
 
   if(ptr.type()==target_type)
     return ptr;

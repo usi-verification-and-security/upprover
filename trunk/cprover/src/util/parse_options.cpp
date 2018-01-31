@@ -6,6 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "parse_options.h"
+
 #include <iostream>
 
 #if defined (_WIN32)
@@ -16,20 +18,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #endif
 
 #include "cmdline.h"
-#include "parse_options.h"
 #include "signal_catcher.h"
-
-/*******************************************************************\
-
-Function: parse_options_baset::parse_options_baset
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 parse_options_baset::parse_options_baset(
   const std::string &_optstring, int argc, const char **argv)
@@ -38,33 +27,9 @@ parse_options_baset::parse_options_baset(
   parse_result=cmdline.parse(argc, argv, optstring.c_str());
 }
 
-/*******************************************************************\
-
-Function: parse_options_baset::help
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void parse_options_baset::help()
 {
 }
-
-/*******************************************************************\
-
-Function: parse_options_baset::usage_error
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void parse_options_baset::usage_error()
 {
@@ -72,23 +37,20 @@ void parse_options_baset::usage_error()
   help();
 }
 
-/*******************************************************************\
-
-Function: parse_options_baset::main
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+/// Print an error message mentioning the option that was not recognized when
+/// parsing the command line.
+void parse_options_baset::unknown_option_msg()
+{
+  if(!cmdline.unknown_arg.empty())
+    std::cerr << "Unknown option: " << cmdline.unknown_arg << "\n";
+}
 
 int parse_options_baset::main()
 {
   if(parse_result)
   {
     usage_error();
+    unknown_option_msg();
     return EX_USAGE;
   }
 

@@ -6,6 +6,9 @@ Author: Michael Tautschnig, michael.tautschnig@cs.ox.ac.uk
 
 \*******************************************************************/
 
+/// \file
+/// Add constraints to equation encoding partial orders on events
+
 #ifndef CPROVER_GOTO_SYMEX_PARTIAL_ORDER_CONCURRENCY_H
 #define CPROVER_GOTO_SYMEX_PARTIAL_ORDER_CONCURRENCY_H
 
@@ -113,7 +116,7 @@ public:
     const ordered_evtst::size_type offset=ordered_evts.size();
     ordered_evts.push_back(&evt);
     if(!ordered_evts_map.insert(std::make_pair(&evt, offset)).second)
-      assert(false);
+      UNREACHABLE;
     assert(ordered_evts.size()==ordered_evts_map.size());
 
     if(evt.direction==evtt::D_SYNC ||

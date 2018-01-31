@@ -6,23 +6,11 @@ Author: Daniel Poetzl
 
 \*******************************************************************/
 
+#include "string_utils.h"
+
 #include <cassert>
 #include <cctype>
 #include <algorithm>
-
-#include "string_utils.h"
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string strip_string(const std::string &s)
 {
@@ -41,18 +29,6 @@ std::string strip_string(const std::string &s)
 
   return s.substr(i, (j-i+1));
 }
-
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void split_string(
   const std::string &s,
@@ -104,18 +80,6 @@ void split_string(
     result.push_back("");
 }
 
-/*******************************************************************\
-
-Function:
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void split_string(
   const std::string &s,
   char delim,
@@ -133,4 +97,15 @@ void split_string(
 
   left=result[0];
   right=result[1];
+}
+
+std::string trim_from_last_delimiter(
+  const std::string &s,
+  const char delim)
+{
+  std::string result="";
+  const size_t index=s.find_last_of(delim);
+  if(index!=std::string::npos)
+    result=s.substr(0, index);
+  return result;
 }

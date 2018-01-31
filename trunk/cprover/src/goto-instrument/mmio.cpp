@@ -8,6 +8,11 @@ Date: September 2011
 
 \*******************************************************************/
 
+/// \file
+/// Memory-mapped I/O Instrumentation for Goto Programs
+
+#include "mmio.h"
+
 #include <util/cprover_prefix.h>
 
 #include <goto-programs/goto_program.h>
@@ -27,20 +32,6 @@ Date: September 2011
 #ifdef LOCAL_MAY
 #include <analyses/local_may_alias.h>
 #endif
-
-#include "mmio.h"
-
-/*******************************************************************\
-
-Function: mmio
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void mmio(
   value_setst &value_sets,
@@ -171,37 +162,20 @@ void mmio(
   }
 }
 
-/*******************************************************************\
-
-Function: mmio
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void mmio(
   value_setst &value_sets,
-  class symbol_tablet &symbol_table,
-  goto_functionst &goto_functions)
+  goto_modelt &goto_model)
 {
-  // we first figure out which objects are read/written by the ISR
-
-
-
   // now instrument
 
-  Forall_goto_functions(f_it, goto_functions)
+  Forall_goto_functions(f_it, goto_model.goto_functions)
     if(f_it->first!=CPROVER_PREFIX "initialize" &&
        f_it->first!=goto_functionst::entry_point())
-      mmio(value_sets, symbol_table,
+      mmio(value_sets, goto_model.symbol_table,
 #ifdef LOCAL_MAY
         f_it->second,
 #endif
         f_it->second.body);
 
-  goto_functions.update();
+  goto_model.goto_functions.update();
 }

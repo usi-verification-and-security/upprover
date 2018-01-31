@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Query Called Functions
+
 #ifndef CPROVER_GOTO_PROGRAMS_COMPUTE_CALLED_FUNCTIONS_H
 #define CPROVER_GOTO_PROGRAMS_COMPUTE_CALLED_FUNCTIONS_H
 
@@ -14,24 +17,19 @@ Author: Daniel Kroening, kroening@kroening.com
 // compute the set of functions whose address is taken
 
 void compute_address_taken_functions(
-  const exprt &src,
-  std::set<irep_idt> &address_taken);
+  const exprt &,
+  std::set<irep_idt> &);
 
 void compute_address_taken_functions(
-  const goto_programt &goto_program,
-  std::set<irep_idt> &address_taken);
+  const goto_programt &,
+  std::set<irep_idt> &);
 
 void compute_address_taken_functions(
-  const goto_functionst &goto_functions,
-  std::set<irep_idt> &address_taken);
+  const goto_functionst &,
+  std::set<irep_idt> &);
 
 // computes the functions that are (potentially) called
-void compute_called_functions(
-  const goto_functionst &,
-  std::set<irep_idt> &functions);
-
-void compute_called_functions(
-  const goto_modelt &,
-  std::set<irep_idt> &functions);
+std::set<irep_idt> compute_called_functions(const goto_functionst &);
+std::set<irep_idt> compute_called_functions(const goto_modelt &);
 
 #endif // CPROVER_GOTO_PROGRAMS_COMPUTE_CALLED_FUNCTIONS_H

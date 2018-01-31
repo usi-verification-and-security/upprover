@@ -6,33 +6,61 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Interpreter for GOTO Programs
+
+#include "interpreter.h"
+
 #include <cctype>
 #include <cstdio>
 #include <iostream>
+#include <fstream>
 #include <algorithm>
+#include <string.h>
 
+#include <util/invariant.h>
 #include <util/std_types.h>
 #include <util/symbol_table.h>
+#include <util/ieee_float.h>
+#include <util/fixedbv.h>
+#include <util/std_expr.h>
+#include <util/message.h>
+#include <json/json_parser.h>
 
-#include "interpreter.h"
 #include "interpreter_class.h"
+#include "remove_returns.h"
 
-/*******************************************************************\
-
-Function: interpretert::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+const std::size_t interpretert::npos=std::numeric_limits<size_t>::max();
 
 void interpretert::operator()()
 {
+  status() << "0- Initialize:" << eom;
+  initialize(true);
+  try
+  {
+    status() << "Type h for help\n" << eom;
+
+    while(!done)
+      command();
+
+    status() << total_steps << "- Program End.\n" << eom;
+  }
+  catch (const char *e)
+  {
+    error() << e << "\n" << eom;
+  }
+
+  while(!done)
+    command();
+}
+
+/// Initializes the memory map of the interpreter and [optionally] runs up to
+/// the entry point (thus doing the cprover initialization)
+void interpretert::initialize(bool init)
+{
   build_memory_map();
 
+  total_steps=0;
   const goto_functionst::function_mapt::const_iterator
     main_it=goto_functions.function_map.find(goto_functionst::entry_point());
 
@@ -44,119 +72,199 @@ void interpretert::operator()()
   if(!goto_function.body_available())
     throw "main has no body";
 
-  PC=goto_function.body.instructions.begin();
+  pc=goto_function.body.instructions.begin();
   function=main_it;
 
   done=false;
-
-  while(!done)
+  if(init)
   {
+    stack_depth=call_stack.size()+1;
     show_state();
-    command();
-    if(!done)
+    step();
+    while(!done && (stack_depth<=call_stack.size()) && (stack_depth!=npos))
+    {
+      show_state();
       step();
+    }
+    while(!done && (call_stack.size()==0))
+    {
+      show_state();
+      step();
+    }
+    clear_input_flags();
+    input_vars.clear();
   }
 }
 
-/*******************************************************************\
-
-Function: interpretert::show_state
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
+/// displays the current position of the pc and corresponding code
 void interpretert::show_state()
 {
-  std::cout << "\n----------------------------------------------------\n";
+  if(!show)
+    return;
+  status() << "\n"
+           << total_steps+1
+           << " ----------------------------------------------------\n";
 
-  if(PC==function->second.body.instructions.end())
+  if(pc==function->second.body.instructions.end())
   {
-    std::cout << "End of function `"
-              << function->first << "'\n";
+    status() << "End of function `" << function->first << "'\n";
   }
   else
     function->second.body.output_instruction(
-      ns, function->first, std::cout, PC);
+      ns,
+      function->first,
+      status(),
+      *pc);
 
-  std::cout << '\n';
+  status() << eom;
 }
 
-/*******************************************************************\
-
-Function: interpretert::command
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
+/// reads a user command and executes it.
 void interpretert::command()
 {
   #define BUFSIZE 100
   char command[BUFSIZE];
-  if(fgets(command, BUFSIZE-1, stdin)==NULL)
+  if(fgets(command, BUFSIZE-1, stdin)==nullptr)
   {
     done=true;
     return;
   }
 
   char ch=tolower(command[0]);
-
   if(ch=='q')
     done=true;
+  else if(ch=='h')
+  {
+    status()
+      << "Interpreter help\n"
+      << "h: display this menu\n"
+      << "j: output json trace\n"
+      << "m: output memory dump\n"
+      << "o: output goto trace\n"
+      << "q: quit\n"
+      << "r: run until completion\n"
+      << "s#: step a number of instructions\n"
+      << "sa: step across a function\n"
+      << "so: step out of a function\n"
+      << eom;
+  }
+  else if(ch=='j')
+  {
+    jsont json_steps;
+    convert(ns, steps, json_steps);
+    ch=tolower(command[1]);
+    if(ch==' ')
+    {
+      std::ofstream file;
+      file.open(command+2);
+      if(file.is_open())
+      {
+        json_steps.output(file);
+        file.close();
+        return;
+      }
+    }
+    json_steps.output(result());
+  }
+  else if(ch=='m')
+  {
+    ch=tolower(command[1]);
+    print_memory(ch=='i');
+  }
+  else if(ch=='o')
+  {
+    ch=tolower(command[1]);
+    if(ch==' ')
+    {
+      std::ofstream file;
+      file.open(command+2);
+      if(file.is_open())
+      {
+        steps.output(ns, file);
+        file.close();
+        return;
+      }
+    }
+    steps.output(ns, result());
+  }
+  else if(ch=='r')
+  {
+    ch=tolower(command[1]);
+    initialize(ch!='0');
+  }
+  else if((ch=='s') || (ch==0))
+  {
+    num_steps=1;
+    stack_depth=npos;
+    ch=tolower(command[1]);
+    if(ch=='e')
+      num_steps=npos;
+    else if(ch=='o')
+      stack_depth=call_stack.size();
+    else if(ch=='a')
+      stack_depth=call_stack.size()+1;
+    else
+    {
+      num_steps=atoi(command+1);
+      if(num_steps==0)
+        num_steps=1;
+    }
+    while(!done && ((num_steps==npos) || ((num_steps--)>0)))
+    {
+      step();
+      show_state();
+    }
+    while(!done && (stack_depth<=call_stack.size()) && (stack_depth!=npos))
+    {
+      step();
+      show_state();
+    }
+    return;
+  }
+  show_state();
 }
 
-/*******************************************************************\
-
-Function: interpretert::step
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
+/// executes a single step and updates the program counter
 void interpretert::step()
 {
-  if(PC==function->second.body.instructions.end())
+  total_steps++;
+  if(pc==function->second.body.instructions.end())
   {
     if(call_stack.empty())
       done=true;
     else
     {
-      PC=call_stack.top().return_PC;
+      pc=call_stack.top().return_pc;
       function=call_stack.top().return_function;
-      stack_pointer=call_stack.top().old_stack_pointer;
+      // TODO: this increases memory size quite quickly.
+      // Should check alternatives
       call_stack.pop();
     }
 
     return;
   }
 
-  next_PC=PC;
-  next_PC++;
+  next_pc=pc;
+  next_pc++;
 
-  switch(PC->type)
+  steps.add_step(goto_trace_stept());
+  goto_trace_stept &trace_step=steps.get_last_step();
+  trace_step.thread_nr=thread_id;
+  trace_step.pc=pc;
+  switch(pc->type)
   {
   case GOTO:
+    trace_step.type=goto_trace_stept::typet::GOTO;
     execute_goto();
     break;
 
   case ASSUME:
+    trace_step.type=goto_trace_stept::typet::ASSUME;
     execute_assume();
     break;
 
   case ASSERT:
+    trace_step.type=goto_trace_stept::typet::ASSERT;
     execute_assert();
     break;
 
@@ -165,38 +273,46 @@ void interpretert::step()
     break;
 
   case DECL:
+    trace_step.type=goto_trace_stept::typet::DECL;
     execute_decl();
     break;
 
   case SKIP:
   case LOCATION:
+    trace_step.type=goto_trace_stept::typet::LOCATION;
+    break;
   case END_FUNCTION:
+    trace_step.type=goto_trace_stept::typet::FUNCTION_RETURN;
     break;
 
   case RETURN:
+    trace_step.type=goto_trace_stept::typet::FUNCTION_RETURN;
     if(call_stack.empty())
       throw "RETURN without call"; // NOLINT(readability/throw)
 
-    if(PC->code.operands().size()==1 &&
+    if(pc->code.operands().size()==1 &&
        call_stack.top().return_value_address!=0)
     {
-      std::vector<mp_integer> rhs;
-      evaluate(PC->code.op0(), rhs);
+      mp_vectort rhs;
+      evaluate(pc->code.op0(), rhs);
       assign(call_stack.top().return_value_address, rhs);
     }
 
-    next_PC=function->second.body.instructions.end();
+    next_pc=function->second.body.instructions.end();
     break;
 
   case ASSIGN:
+    trace_step.type=goto_trace_stept::typet::ASSIGNMENT;
     execute_assign();
     break;
 
   case FUNCTION_CALL:
+    trace_step.type=goto_trace_stept::typet::FUNCTION_CALL;
     execute_function_call();
     break;
 
   case START_THREAD:
+    trace_step.type=goto_trace_stept::typet::SPAWN;
     throw "START_THREAD not yet implemented"; // NOLINT(readability/throw)
 
   case END_THREAD:
@@ -204,215 +320,456 @@ void interpretert::step()
     break;
 
   case ATOMIC_BEGIN:
+    trace_step.type=goto_trace_stept::typet::ATOMIC_BEGIN;
     throw "ATOMIC_BEGIN not yet implemented"; // NOLINT(readability/throw)
 
   case ATOMIC_END:
+    trace_step.type=goto_trace_stept::typet::ATOMIC_END;
     throw "ATOMIC_END not yet implemented"; // NOLINT(readability/throw)
 
   case DEAD:
-    throw "DEAD not yet implemented"; // NOLINT(readability/throw)
-
+    trace_step.type=goto_trace_stept::typet::DEAD;
+    break;
+  case THROW:
+    trace_step.type=goto_trace_stept::typet::GOTO;
+    while(!done && (pc->type!=CATCH))
+    {
+      if(pc==function->second.body.instructions.end())
+      {
+        if(call_stack.empty())
+          done=true;
+        else
+        {
+          pc=call_stack.top().return_pc;
+          function=call_stack.top().return_function;
+          call_stack.pop();
+        }
+      }
+      else
+      {
+        next_pc=pc;
+        next_pc++;
+      }
+    }
+    break;
+  case CATCH:
+    break;
   default:
     throw "encountered instruction with undefined instruction type";
   }
-
-  PC=next_PC;
+  pc=next_pc;
 }
 
-/*******************************************************************\
-
-Function: interpretert::execute_goto
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
+/// executes a goto instruction
 void interpretert::execute_goto()
 {
-  if(evaluate_boolean(PC->guard))
+  if(evaluate_boolean(pc->guard))
   {
-    if(PC->targets.empty())
+    if(pc->targets.empty())
       throw "taken goto without target";
 
-    if(PC->targets.size()>=2)
+    if(pc->targets.size()>=2)
       throw "non-deterministic goto encountered";
 
-    next_PC=PC->targets.front();
+    next_pc=pc->targets.front();
   }
 }
 
-/*******************************************************************\
-
-Function: interpretert::execute_other
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
+/// executes side effects of 'other' instructions
 void interpretert::execute_other()
 {
-  const irep_idt &statement=PC->code.get_statement();
-
+  const irep_idt &statement=pc->code.get_statement();
   if(statement==ID_expression)
   {
-    assert(PC->code.operands().size()==1);
-    std::vector<mp_integer> rhs;
-    evaluate(PC->code.op0(), rhs);
+    DATA_INVARIANT(
+      pc->code.operands().size()==1,
+      "expression statement expected to have one operand");
+    mp_vectort rhs;
+    evaluate(pc->code.op0(), rhs);
+  }
+  else if(statement==ID_array_set)
+  {
+    mp_vectort tmp, rhs;
+    evaluate(pc->code.op1(), tmp);
+    mp_integer address=evaluate_address(pc->code.op0());
+    mp_integer size=get_size(pc->code.op0().type());
+    while(rhs.size()<size) rhs.insert(rhs.end(), tmp.begin(), tmp.end());
+    if(size!=rhs.size())
+      error() << "!! failed to obtain rhs (" << rhs.size() << " vs. "
+              << size << ")\n" << eom;
+    else
+    {
+      assign(address, rhs);
+    }
+  }
+  else if(statement==ID_output)
+  {
+    return;
   }
   else
     throw "unexpected OTHER statement: "+id2string(statement);
 }
 
-/*******************************************************************\
-
-Function: interpretert::execute_decl
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void interpretert::execute_decl()
 {
-  assert(PC->code.get_statement()==ID_decl);
+  PRECONDITION(pc->code.get_statement()==ID_decl);
 }
 
-/*******************************************************************\
+/// retrieves the member at offset
+/// \par parameters: an object and a memory offset
+struct_typet::componentt interpretert::get_component(
+  const irep_idt &object,
+  const mp_integer &offset)
+{
+  const symbolt &symbol=ns.lookup(object);
+  const typet real_type=ns.follow(symbol.type);
+  if(real_type.id()!=ID_struct)
+    throw "request for member of non-struct";
 
-Function: interpretert::execute_assign
+  const struct_typet &struct_type=to_struct_type(real_type);
+  const struct_typet::componentst &components=struct_type.components();
 
-  Inputs:
+  mp_integer tmp_offset=offset;
 
- Outputs:
+  for(const auto &c : components)
+  {
+    if(tmp_offset<=0)
+      return c;
 
- Purpose:
+    tmp_offset-=get_size(c.type());
+  }
 
-\*******************************************************************/
+  throw "access out of struct bounds";
+}
 
+/// returns the type object corresponding to id
+typet interpretert::get_type(const irep_idt &id) const
+{
+  dynamic_typest::const_iterator it=dynamic_types.find(id);
+  if(it==dynamic_types.end())
+    return symbol_table.lookup_ref(id).type;
+  return it->second;
+}
+
+/// retrives the constant value at memory location offset as an object of type
+/// type
+exprt interpretert::get_value(
+  const typet &type,
+  const mp_integer &offset,
+  bool use_non_det)
+{
+  const typet real_type=ns.follow(type);
+  if(real_type.id()==ID_struct)
+  {
+    exprt result=struct_exprt(real_type);
+    const struct_typet &struct_type=to_struct_type(real_type);
+    const struct_typet::componentst &components=struct_type.components();
+
+    // Retrieve the values for the individual members
+    result.reserve_operands(components.size());
+
+    mp_integer tmp_offset=offset;
+
+    for(const auto &c : components)
+    {
+      mp_integer size=get_size(c.type());
+      const exprt operand=get_value(c.type(), tmp_offset);
+      tmp_offset+=size;
+      result.copy_to_operands(operand);
+    }
+
+    return result;
+  }
+  else if(real_type.id()==ID_array)
+  {
+    // Get size of array
+    exprt result=array_exprt(to_array_type(real_type));
+    const exprt &size_expr=static_cast<const exprt &>(type.find(ID_size));
+    mp_integer subtype_size=get_size(type.subtype());
+    mp_integer count;
+    if(size_expr.id()!=ID_constant)
+    {
+      count=base_address_to_actual_size(offset)/subtype_size;
+    }
+    else
+    {
+      to_integer(size_expr, count);
+    }
+
+    // Retrieve the value for each member in the array
+    result.reserve_operands(integer2size_t(count));
+    for(mp_integer i=0; i<count; ++i)
+    {
+      const exprt operand=get_value(
+        type.subtype(),
+        offset+i*subtype_size);
+      result.copy_to_operands(operand);
+    }
+    return result;
+  }
+  if(use_non_det &&
+     memory[integer2ulong(offset)].initialized!=
+     memory_cellt::initializedt::WRITTEN_BEFORE_READ)
+    return side_effect_expr_nondett(type);
+  mp_vectort rhs;
+  rhs.push_back(memory[integer2ulong(offset)].value);
+  return get_value(type, rhs);
+}
+
+/// returns the value at offset in the form of type given a memory buffer rhs
+/// which is typically a structured type
+exprt interpretert::get_value(
+  const typet &type,
+  mp_vectort &rhs,
+  const mp_integer &offset)
+{
+  const typet real_type=ns.follow(type);
+  PRECONDITION(!rhs.empty());
+
+  if(real_type.id()==ID_struct)
+  {
+    exprt result=struct_exprt(real_type);
+    const struct_typet &struct_type=to_struct_type(real_type);
+    const struct_typet::componentst &components=struct_type.components();
+
+    // Retrieve the values for the individual members
+    result.reserve_operands(components.size());
+    mp_integer tmp_offset=offset;
+
+    for(const struct_union_typet::componentt &expr : components)
+    {
+      mp_integer size=get_size(expr.type());
+      const exprt operand=get_value(expr.type(), rhs, tmp_offset);
+      tmp_offset+=size;
+      result.copy_to_operands(operand);
+    }
+    return result;
+  }
+  else if(real_type.id()==ID_array)
+  {
+    exprt result(ID_constant, type);
+    const exprt &size_expr=static_cast<const exprt &>(type.find(ID_size));
+
+    // Get size of array
+    mp_integer subtype_size=get_size(type.subtype());
+
+    mp_integer count;
+    if(unbounded_size(type))
+    {
+      count=base_address_to_actual_size(offset)/subtype_size;
+    }
+    else
+    {
+      to_integer(size_expr, count);
+    }
+
+    // Retrieve the value for each member in the array
+    result.reserve_operands(integer2size_t(count));
+    for(mp_integer i=0; i<count; ++i)
+    {
+      const exprt operand=get_value(type.subtype(), rhs,
+          offset+i*subtype_size);
+      result.copy_to_operands(operand);
+    }
+    return result;
+  }
+  else if(real_type.id()==ID_floatbv)
+  {
+    ieee_floatt f(to_floatbv_type(type));
+    f.unpack(rhs[integer2size_t(offset)]);
+    return f.to_expr();
+  }
+  else if(real_type.id()==ID_fixedbv)
+  {
+    fixedbvt f;
+    f.from_integer(rhs[integer2size_t(offset)]);
+    return f.to_expr();
+  }
+  else if(real_type.id()==ID_bool)
+  {
+    if(rhs[integer2size_t(offset)]!=0)
+      return true_exprt();
+    else
+      false_exprt();
+  }
+  else if(real_type.id()==ID_c_bool)
+  {
+    return from_integer(rhs[integer2size_t(offset)]!=0?1:0, type);
+  }
+  else if((real_type.id()==ID_pointer) || (real_type.id()==ID_address_of))
+  {
+    if(rhs[integer2size_t(offset)]==0)
+    {
+      // NULL pointer
+      constant_exprt result(type);
+      result.set_value(ID_NULL);
+      return result;
+    }
+
+    if(rhs[integer2size_t(offset)]<memory.size())
+    {
+      // We want the symbol pointed to
+      mp_integer address=rhs[integer2size_t(offset)];
+      irep_idt identifier=address_to_identifier(address);
+      mp_integer offset=address_to_offset(address);
+      const typet type=get_type(identifier);
+      exprt symbol_expr(ID_symbol, type);
+      symbol_expr.set(ID_identifier, identifier);
+
+      if(offset==0)
+        return address_of_exprt(symbol_expr);
+
+      if(ns.follow(type).id()==ID_struct)
+      {
+        const auto c=get_component(identifier, offset);
+        member_exprt member_expr(symbol_expr, c);
+        return address_of_exprt(member_expr);
+      }
+
+      index_exprt index_expr(
+        symbol_expr,
+        from_integer(offset, integer_typet()));
+
+      return index_expr;
+    }
+
+    error() << "interpreter: invalid pointer " << rhs[integer2size_t(offset)]
+            << " > object count " << memory.size() << eom;
+
+    throw "interpreter: reading from invalid pointer";
+  }
+  else if(real_type.id()==ID_string)
+  {
+    // Strings are currently encoded by their irep_idt ID.
+    return constant_exprt(
+      irep_idt::make_from_table_index(rhs[integer2size_t(offset)].to_long()),
+      type);
+  }
+
+  // Retrieve value of basic data type
+  return from_integer(rhs[integer2ulong(offset)], type);
+}
+
+/// executes the assign statement at the current pc value
 void interpretert::execute_assign()
 {
   const code_assignt &code_assign=
-    to_code_assign(PC->code);
+    to_code_assign(pc->code);
 
-  std::vector<mp_integer> rhs;
+  mp_vectort rhs;
   evaluate(code_assign.rhs(), rhs);
 
   if(!rhs.empty())
   {
     mp_integer address=evaluate_address(code_assign.lhs());
-    unsigned size=get_size(code_assign.lhs().type());
+    mp_integer size=get_size(code_assign.lhs().type());
 
     if(size!=rhs.size())
-      std::cout << "!! failed to obtain rhs ("
-                << rhs.size() << " vs. "
-                << size << ")\n";
+      error() << "!! failed to obtain rhs ("
+              << rhs.size() << " vs. "
+              << size << ")\n"
+              << eom;
     else
-      assign(address, rhs);
-  }
-}
-
-/*******************************************************************\
-
-Function: interpretert::assign
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void interpretert::assign(
-  mp_integer address,
-  const std::vector<mp_integer> &rhs)
-{
-  for(unsigned i=0; i<rhs.size(); i++, ++address)
-  {
-    if(address<memory.size())
     {
-      memory_cellt &cell=memory[integer2unsigned(address)];
-      std::cout << "** assigning " << cell.identifier
-                << "[" << cell.offset << "]:=" << rhs[i] << '\n';
-      cell.value=rhs[i];
+      goto_trace_stept &trace_step=steps.get_last_step();
+      assign(address, rhs);
+      trace_step.full_lhs=code_assign.lhs();
+
+      // TODO: need to look at other cases on ssa_exprt
+      // (dereference should be handled on ssa)
+      if(ssa_exprt::can_build_identifier(trace_step.full_lhs))
+      {
+        trace_step.lhs_object=ssa_exprt(trace_step.full_lhs);
+      }
+      trace_step.full_lhs_value=get_value(trace_step.full_lhs.type(), rhs);
+      trace_step.lhs_object_value=trace_step.full_lhs_value;
+    }
+  }
+  else if(code_assign.rhs().id()==ID_side_effect)
+  {
+    side_effect_exprt side_effect=to_side_effect_expr(code_assign.rhs());
+    if(side_effect.get_statement()==ID_nondet)
+    {
+      mp_integer address=
+        integer2size_t(evaluate_address(code_assign.lhs()));
+
+      mp_integer size=
+        get_size(code_assign.lhs().type());
+
+      for(mp_integer i=0; i<size; ++i)
+      {
+        memory[integer2ulong(address+i)].initialized=
+          memory_cellt::initializedt::READ_BEFORE_WRITTEN;
+      }
     }
   }
 }
 
-/*******************************************************************\
-
-Function: interpretert::execute_assume
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+/// sets the memory at address with the given rhs value (up to sizeof(rhs))
+void interpretert::assign(
+  const mp_integer &address,
+  const mp_vectort &rhs)
+{
+  for(mp_integer i=0; i<rhs.size(); ++i)
+  {
+    if((address+i)<memory.size())
+    {
+      mp_integer address_val=address+i;
+      memory_cellt &cell=memory[integer2ulong(address_val)];
+      if(show)
+      {
+        status() << total_steps << " ** assigning "
+                 << address_to_identifier(address_val) << "["
+                 << address_to_offset(address_val) << "]:="
+                 << rhs[integer2size_t(i)]
+                 << "\n" << eom;
+      }
+      cell.value=rhs[integer2size_t(i)];
+      if(cell.initialized==memory_cellt::initializedt::UNKNOWN)
+        cell.initialized=memory_cellt::initializedt::WRITTEN_BEFORE_READ;
+    }
+  }
+}
 
 void interpretert::execute_assume()
 {
-  if(!evaluate_boolean(PC->guard))
+  if(!evaluate_boolean(pc->guard))
     throw "assumption failed";
 }
 
-/*******************************************************************\
-
-Function: interpretert::execute_assert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void interpretert::execute_assert()
 {
-  if(!evaluate_boolean(PC->guard))
-    throw "assertion failed";
+  if(!evaluate_boolean(pc->guard))
+  {
+    if((target_assert==pc) || stop_on_assertion)
+      throw "program assertion reached";
+    else if(show)
+      error() << "assertion failed at " << pc->location_number
+              << "\n" << eom;
+  }
 }
-
-/*******************************************************************\
-
-Function: interpretert::execute_function_call
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void interpretert::execute_function_call()
 {
   const code_function_callt &function_call=
-    to_code_function_call(PC->code);
+    to_code_function_call(pc->code);
 
   // function to be called
-  mp_integer a=evaluate_address(function_call.function());
+  mp_integer address=evaluate_address(function_call.function());
 
-  if(a==0)
+  if(address==0)
     throw "function call to NULL";
-  else if(a>=memory.size())
+  else if(address>=memory.size())
     throw "out-of-range function call";
 
-  const memory_cellt &cell=memory[integer2size_t(a)];
-  const irep_idt &identifier=cell.identifier;
+  // Retrieve the empty last trace step struct we pushed for this step
+  // of the interpreter run to fill it with the corresponding data
+  goto_trace_stept &trace_step=steps.get_last_step();
+#if 0
+  const memory_cellt &cell=memory[address];
+#endif
+  const irep_idt &identifier=address_to_identifier(address);
+  trace_step.identifier=identifier;
 
   const goto_functionst::function_mapt::const_iterator f_it=
     goto_functions.function_map.find(identifier);
@@ -430,7 +787,7 @@ void interpretert::execute_function_call()
     return_value_address=0;
 
   // values of the arguments
-  std::vector<std::vector<mp_integer> > argument_values;
+  std::vector<mp_vectort> argument_values;
 
   argument_values.resize(function_call.arguments().size());
 
@@ -444,7 +801,7 @@ void interpretert::execute_function_call()
     call_stack.push(stack_framet());
     stack_framet &frame=call_stack.top();
 
-    frame.return_PC=next_PC;
+    frame.return_pc=next_pc;
     frame.return_function=function;
     frame.old_stack_pointer=stack_pointer;
     frame.return_value_address=return_value_address;
@@ -456,24 +813,7 @@ void interpretert::execute_function_call()
     for(const auto &id : locals)
     {
       const symbolt &symbol=ns.lookup(id);
-      unsigned size=get_size(symbol.type);
-
-      if(size!=0)
-      {
-        frame.local_map[id]=stack_pointer;
-
-        for(unsigned i=0; i<stack_pointer; i++)
-        {
-          unsigned address=stack_pointer+i;
-          if(address>=memory.size())
-            memory.resize(address+1);
-          memory[address].value=0;
-          memory[address].identifier=id;
-          memory[address].offset=i;
-        }
-
-        stack_pointer+=size;
-      }
+      frame.local_map[id]=build_memory_map(id, symbol.type);
     }
 
     // assign the arguments
@@ -483,41 +823,49 @@ void interpretert::execute_function_call()
     if(argument_values.size()<parameters.size())
       throw "not enough arguments";
 
-    for(unsigned i=0; i<parameters.size(); i++)
+    for(std::size_t i=0; i<parameters.size(); i++)
     {
       const code_typet::parametert &a=parameters[i];
       exprt symbol_expr(ID_symbol, a.type());
       symbol_expr.set(ID_identifier, a.get_identifier());
-      assert(i<argument_values.size());
       assign(evaluate_address(symbol_expr), argument_values[i]);
     }
 
-    // set up new PC
+    // set up new pc
     function=f_it;
-    next_PC=f_it->second.body.instructions.begin();
+    next_pc=f_it->second.body.instructions.begin();
   }
   else
-    throw "no body for "+id2string(identifier);
+  {
+    list_input_varst::iterator it=
+        function_input_vars.find(function_call.function().get(ID_identifier));
+    if(it!=function_input_vars.end())
+    {
+      mp_vectort value;
+      PRECONDITION(!it->second.empty());
+      PRECONDITION(!it->second.front().return_assignments.empty());
+      evaluate(it->second.front().return_assignments.back().value, value);
+      if(return_value_address>0)
+      {
+        assign(return_value_address, value);
+      }
+      it->second.pop_front();
+      return;
+    }
+    if(show)
+      error() << "no body for "+id2string(identifier) << eom;
+  }
 }
 
-/*******************************************************************\
-
-Function: interpretert::build_memory_map
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
+/// Creates a memory map of all static symbols in the program
 void interpretert::build_memory_map()
 {
   // put in a dummy for NULL
   memory.resize(1);
-  memory[0].offset=0;
-  memory[0].identifier="NULL-OBJECT";
+  inverse_memory_map[0]="NULL-OBJECT";
+
+  num_dynamic_objects=0;
+  dynamic_types.clear();
 
   // now do regular static symbols
   for(const auto &s : symbol_table.symbols)
@@ -527,21 +875,9 @@ void interpretert::build_memory_map()
   stack_pointer=memory.size();
 }
 
-/*******************************************************************\
-
-Function: interpretert::build_memory_map
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void interpretert::build_memory_map(const symbolt &symbol)
 {
-  unsigned size=0;
+  mp_integer size=0;
 
   if(symbol.type.id()==ID_code)
   {
@@ -554,40 +890,107 @@ void interpretert::build_memory_map(const symbolt &symbol)
 
   if(size!=0)
   {
-    unsigned address=memory.size();
-    memory.resize(address+size);
+    mp_integer address=memory.size();
+    memory.resize(integer2ulong(address+size));
     memory_map[symbol.name]=address;
-
-    for(unsigned i=0; i<size; i++)
-    {
-      memory_cellt &cell=memory[address+i];
-      cell.identifier=symbol.name;
-      cell.offset=i;
-      cell.value=0;
-    }
+    inverse_memory_map[address]=symbol.name;
   }
 }
 
-/*******************************************************************\
-
-Function: interpretert::get_size
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-unsigned interpretert::get_size(const typet &type) const
+/// turns a variable length array type into a fixed array type
+typet interpretert::concretize_type(const typet &type)
 {
+  if(type.id()==ID_array)
+  {
+    const exprt &size_expr=static_cast<const exprt &>(type.find(ID_size));
+    mp_vectort computed_size;
+    evaluate(size_expr, computed_size);
+    if(computed_size.size()==1 &&
+       computed_size[0]>=0)
+    {
+      result() << "Concretized array with size " << computed_size[0]
+               << eom;
+      return
+        array_typet(
+          type.subtype(),
+          from_integer(computed_size[0], integer_typet()));
+    }
+    else
+    {
+      warning() << "Failed to concretize variable array" << eom;
+    }
+  }
+  return type;
+}
+
+/// Populates dynamic entries of the memory map
+/// \return Updates the memory map to include variable id if it does not exist
+mp_integer interpretert::build_memory_map(
+  const irep_idt &id,
+  const typet &type)
+{
+  typet alloc_type=concretize_type(type);
+  mp_integer size=get_size(alloc_type);
+  auto it=dynamic_types.find(id);
+
+  if(it!=dynamic_types.end())
+  {
+    mp_integer address=memory_map[id];
+    mp_integer current_size=base_address_to_alloc_size(address);
+    // current size <= size already recorded
+    if(size<=current_size)
+      return memory_map[id];
+  }
+
+  // The current size is bigger then the one previously recorded
+  // in the memory map
+
+  if(size==0)
+    size=1; // This is a hack to create existence
+
+  mp_integer address=memory.size();
+  memory.resize(integer2ulong(address+size));
+  memory_map[id]=address;
+  inverse_memory_map[address]=id;
+  dynamic_types.insert(std::pair<const irep_idt, typet>(id, alloc_type));
+
+  return address;
+}
+
+bool interpretert::unbounded_size(const typet &type)
+{
+  if(type.id()==ID_array)
+  {
+    const exprt &size=to_array_type(type).size();
+    if(size.id()==ID_infinity)
+      return true;
+    return unbounded_size(type.subtype());
+  }
+  else if(type.id()==ID_struct)
+  {
+    const auto &st=to_struct_type(type);
+    if(st.components().empty())
+      return false;
+    return unbounded_size(st.components().back().type());
+  }
+  return false;
+}
+
+/// Retrieves the actual size of the provided structured type. Unbounded objects
+/// get allocated 2^32 address space each (of a 2^64 sized space).
+/// \param type: a structured type
+/// \return Size of the given type
+mp_integer interpretert::get_size(const typet &type)
+{
+  if(unbounded_size(type))
+    return mp_integer(2) << 32;
+
   if(type.id()==ID_struct)
   {
     const struct_typet::componentst &components=
       to_struct_type(type).components();
 
-    unsigned sum=0;
+    mp_integer sum=0;
 
     for(const auto &comp : components)
     {
@@ -604,7 +1007,7 @@ unsigned interpretert::get_size(const typet &type) const
     const union_typet::componentst &components=
       to_union_type(type).components();
 
-    unsigned max_size=0;
+    mp_integer max_size=0;
 
     for(const auto &comp : components)
     {
@@ -620,38 +1023,74 @@ unsigned interpretert::get_size(const typet &type) const
   {
     const exprt &size_expr=static_cast<const exprt &>(type.find(ID_size));
 
-    unsigned subtype_size=get_size(type.subtype());
+    mp_integer subtype_size=get_size(type.subtype());
 
-    mp_integer i;
-    if(!to_integer(size_expr, i))
-      return subtype_size*integer2unsigned(i);
-    else
-      return subtype_size;
+    mp_vectort i;
+    evaluate(size_expr, i);
+    if(i.size()==1)
+    {
+      // Go via the binary representation to reproduce any
+      // overflow behaviour.
+      exprt size_const=from_integer(i[0], size_expr.type());
+      mp_integer size_mp;
+      bool ret=to_integer(size_const, size_mp);
+      CHECK_RETURN(!ret);
+      return subtype_size*size_mp;
+    }
+    return subtype_size;
   }
   else if(type.id()==ID_symbol)
   {
     return get_size(ns.follow(type));
   }
-  else
-    return 1;
+  return 1;
 }
 
-/*******************************************************************\
+exprt interpretert::get_value(const irep_idt &id)
+{
+  // The dynamic type and the static symbol type may differ for VLAs,
+  // where the symbol carries a size expression and the dynamic type
+  // registry contains its actual length.
+  auto findit=dynamic_types.find(id);
+  typet get_type;
+  if(findit!=dynamic_types.end())
+    get_type=findit->second;
+  else
+    get_type=symbol_table.lookup_ref(id).type;
 
-Function: interpreter
+  symbol_exprt symbol_expr(id, get_type);
+  mp_integer whole_lhs_object_address=evaluate_address(symbol_expr);
 
-  Inputs:
+  return get_value(get_type, whole_lhs_object_address);
+}
 
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+/// Prints the current state of the memory map Since messaget mdofifies class
+/// members, print functions are nonconst
+void interpretert::print_memory(bool input_flags)
+{
+  for(const auto &cell_address : memory)
+  {
+    mp_integer i=cell_address.first;
+    const memory_cellt &cell=cell_address.second;
+    const auto identifier=address_to_identifier(i);
+    const auto offset=address_to_offset(i);
+    debug() << identifier << "[" << offset << "]"
+            << "=" << cell.value << eom;
+    if(input_flags)
+      debug() << "(" << static_cast<int>(cell.initialized) << ")"
+              << eom;
+    debug() << eom;
+  }
+}
 
 void interpreter(
-  const symbol_tablet &symbol_table,
-  const goto_functionst &goto_functions)
+  const goto_modelt &goto_model,
+  message_handlert &message_handler)
 {
-  interpretert interpreter(symbol_table, goto_functions);
+  interpretert interpreter(
+    goto_model.symbol_table,
+    goto_model.goto_functions,
+    message_handler);
   interpreter();
 }
+

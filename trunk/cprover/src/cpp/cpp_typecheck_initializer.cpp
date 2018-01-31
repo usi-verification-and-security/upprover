@@ -6,28 +6,21 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+/// \file
+/// C++ Language Type Checking
+
+#include "cpp_typecheck.h"
+
 #include <util/arith_tools.h>
+#include <util/c_types.h>
+#include <util/pointer_offset_size.h>
 #include <util/std_expr.h>
 
 #include <linking/zero_initializer.h>
-#include <util/c_types.h>
-#include <ansi-c/c_sizeof.h>
 
-#include "cpp_typecheck.h"
 #include "cpp_util.h"
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::convert_initializer
-
-  Inputs:
-
- Outputs:
-
- Purpose: Initialize an object with a value
-
-\*******************************************************************/
-
+/// Initialize an object with a value
 void cpp_typecheckt::convert_initializer(symbolt &symbol)
 {
   // this is needed for template arguments that are types
@@ -128,7 +121,7 @@ void cpp_typecheckt::convert_initializer(symbolt &symbol)
         symbol.value.type().add("to-member") = resolved_expr.op0().type();
       }
       else
-        assert(false);
+        UNREACHABLE;
 
       if(symbol.type != symbol.value.type())
       {
@@ -179,18 +172,6 @@ void cpp_typecheckt::convert_initializer(symbolt &symbol)
   }
 }
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::zero_initializer
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cpp_typecheckt::zero_initializer(
   const exprt &object,
   const typet &type,
@@ -234,8 +215,8 @@ void cpp_typecheckt::zero_initializer(
     mp_integer size;
 
     bool to_int=to_integer(size_expr, size);
-    assert(!to_int);
-    assert(size>=0);
+    CHECK_RETURN(!to_int);
+    CHECK_RETURN(size>=0);
 
     exprt::operandst empty_operands;
     for(mp_integer i=0; i<size; ++i)
@@ -247,8 +228,6 @@ void cpp_typecheckt::zero_initializer(
   }
   else if(final_type.id()==ID_union)
   {
-    c_sizeoft c_sizeof(*this);
-
     // Select the largest component for zero-initialization
     mp_integer max_comp_size=0;
 
@@ -263,7 +242,7 @@ void cpp_typecheckt::zero_initializer(
       if(component.type().id()==ID_code)
         continue;
 
-      exprt component_size=c_sizeof(component.type());
+      exprt component_size=size_of_expr(component.type(), *this);
 
       mp_integer size_int;
       if(!to_integer(component_size, size_int))

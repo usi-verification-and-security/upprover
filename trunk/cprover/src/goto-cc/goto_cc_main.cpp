@@ -8,6 +8,9 @@ Date: May 2006
 
 \*******************************************************************/
 
+/// \file
+/// GOTO-CC Main Module
+
 #include <algorithm>
 #include <iostream>
 
@@ -28,36 +31,12 @@ Date: May 2006
 #include "armcc_mode.h"
 #include "as_mode.h"
 
-/*******************************************************************\
-
-Function: to_lower_string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string to_lower_string(const std::string &s)
 {
   std::string result=s;
   transform(result.begin(), result.end(), result.begin(), tolower);
   return result;
 }
-
-/*******************************************************************\
-
-Function: main
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 #ifdef _MSC_VER
 int wmain(int argc, const wchar_t **argv_wide)
@@ -66,10 +45,12 @@ int main(int argc, const char **argv)
 #endif
 {
   #ifdef _MSC_VER
-  const char **argv=narrow_argv(argc, argv_wide);
+  auto vec=narrow_argv(argc, argv_wide);
+  auto narrow=to_c_str_array(std::begin(vec), std::end(vec));
+  auto argv=narrow.data();
   #endif
 
-  if(argv==NULL || argc<1)
+  if(argv==nullptr || argc<1)
   {
     std::cerr << "failed to determine base name\n";
     return 1;

@@ -6,56 +6,33 @@ Author: Romain Brenguier, romain.brenguier@diffblue.com
 
 \*******************************************************************/
 
-#include <ansi-c/string_constant.h>
+/// \file
+/// Generates string constraints for constant strings
+
 #include <solvers/refinement/string_constraint_generator.h>
+
+#include <ansi-c/string_constant.h>
 #include <util/prefix.h>
 #include <util/unicode.h>
 
-/*******************************************************************\
-
-Function: string_constraint_generatort::extract_java_string
-
-  Inputs: a symbol expression representing a java literal
-
- Outputs: a string constant
-
- Purpose: extract java string from symbol expression when they are encoded
-          inside the symbol name
-
-\*******************************************************************/
-
-irep_idt string_constraint_generatort::extract_java_string(
-  const symbol_exprt &s)
+/// Add axioms ensuring that the provided string expression and constant are
+/// equal.
+/// \param res: array of characters for the result
+/// \param sval: a string constant
+/// \param guard: condition under which the axiom should apply, true by default
+/// \return integer expression equal to zero
+exprt string_constraint_generatort::add_axioms_for_constant(
+  const array_string_exprt &res,
+  irep_idt sval,
+  const exprt &guard)
 {
-  std::string tmp=id2string(s.get_identifier());
-  std::string prefix("java::java.lang.String.Literal.");
-  assert(has_prefix(tmp, prefix));
-  std::string value=tmp.substr(prefix.length());
-  return irep_idt(value);
-}
-
-/*******************************************************************\
-
-Function: string_constraint_generatort::add_axioms_for_constant
-
-  Inputs: a string constant
-
- Outputs: a string expression
-
- Purpose: add axioms saying the returned string expression should be equal
-          to the string constant
-
-\*******************************************************************/
-
-string_exprt string_constraint_generatort::add_axioms_for_constant(
-  irep_idt sval, const refined_string_typet &ref_type)
-{
-  string_exprt res=fresh_string(ref_type);
+  const typet &index_type = res.length().type();
+  const typet &char_type = res.content().type().subtype();
   std::string c_str=id2string(sval);
   std::wstring str;
 
-  // TODO: we should have a special treatment for java strings when the
-  // conversion function is available:
+/// \todo We should have a special treatment for java strings when the
+/// conversion function is available:
 #if 0
   if(mode==ID_java)
     str=utf8_to_utf16_little_endian(c_str);
@@ -65,81 +42,77 @@ string_exprt string_constraint_generatort::add_axioms_for_constant(
 
   for(std::size_t i=0; i<str.size(); i++)
   {
-    exprt idx=from_integer(i, ref_type.get_index_type());
-    exprt c=from_integer(str[i], ref_type.get_char_type());
-    equal_exprt lemma(res[idx], c);
-    axioms.push_back(lemma);
+    const exprt idx = from_integer(i, index_type);
+    const exprt c = from_integer(str[i], char_type);
+    const equal_exprt lemma(res[idx], c);
+    axioms.push_back(implies_exprt(guard, lemma));
   }
 
-  exprt s_length=from_integer(str.size(), ref_type.get_index_type());
+  const exprt s_length = from_integer(str.size(), index_type);
 
-  axioms.push_back(res.axiom_for_has_length(s_length));
-  return res;
+  axioms.push_back(implies_exprt(guard, equal_exprt(res.length(), s_length)));
+  return from_integer(0, get_return_code_type());
 }
 
-/*******************************************************************\
-
-Function: string_constraint_generatort::add_axioms_for_empty_string
-
-  Inputs: function application without argument
-
- Outputs: string expression
-
- Purpose: add axioms to say that the returned string expression is empty
-
-\*******************************************************************/
-
-string_exprt string_constraint_generatort::add_axioms_for_empty_string(
+/// Add axioms to say that the returned string expression is empty
+/// \param f: function application with arguments integer `length` and character
+///           pointer `ptr`.
+/// \return integer expression equal to zero
+exprt string_constraint_generatort::add_axioms_for_empty_string(
   const function_application_exprt &f)
 {
-  assert(f.arguments().empty());
-  const refined_string_typet &ref_type=to_refined_string_type(f.type());
-  string_exprt res=fresh_string(ref_type);
-  axioms.push_back(res.axiom_for_has_length(0));
-  return res;
+  PRECONDITION(f.arguments().size() == 2);
+  exprt length = f.arguments()[0];
+  axioms.push_back(equal_exprt(length, from_integer(0, length.type())));
+  return from_integer(0, get_return_code_type());
 }
 
-/*******************************************************************\
+/// Convert an expression of type string_typet to a string_exprt
+/// \param res: string expression for the result
+/// \param arg: expression of type string typet
+/// \param guard: condition under which `res` should be equal to arg
+/// \return 0 if constraints were added, 1 if expression could not be handled
+///         and no constraint was added. Expression we can handle are of the
+///         form \f$ e := "<string constant>" | (expr)? e : e \f$
+exprt string_constraint_generatort::add_axioms_for_cprover_string(
+  const array_string_exprt &res,
+  const exprt &arg,
+  const exprt &guard)
+{
+  if(const auto if_expr = expr_try_dynamic_cast<if_exprt>(arg))
+  {
+    const and_exprt guard_true(guard, if_expr->cond());
+    const exprt return_code_true =
+      add_axioms_for_cprover_string(res, if_expr->true_case(), guard_true);
 
-Function: string_constraint_generatort::add_axioms_from_literal
+    const and_exprt guard_false(guard, not_exprt(if_expr->cond()));
+    const exprt return_code_false =
+      add_axioms_for_cprover_string(res, if_expr->false_case(), guard_false);
 
-  Inputs: function application with an argument which is a string literal
+    return if_exprt(
+      equal_exprt(return_code_true, from_integer(0, get_return_code_type())),
+      return_code_false,
+      return_code_true);
+  }
+  else if(const auto constant_expr = expr_try_dynamic_cast<constant_exprt>(arg))
+    return add_axioms_for_constant(res, constant_expr->get_value(), guard);
+  else
+    return from_integer(1, get_return_code_type());
+}
 
- Outputs: string expression
-
- Purpose: add axioms to say that the returned string expression is equal to
-          the string literal
-
-\*******************************************************************/
-
-string_exprt string_constraint_generatort::add_axioms_from_literal(
+/// String corresponding to an internal cprover string
+///
+/// Add axioms ensuring that the returned string expression is equal to the
+/// string literal.
+/// \todo The name of the function should be changed to reflect what it does.
+/// \param f: function application with an argument which is a string literal
+/// that is a constant with a string value.
+/// \return string expression
+exprt string_constraint_generatort::add_axioms_from_literal(
   const function_application_exprt &f)
 {
   const function_application_exprt::argumentst &args=f.arguments();
-  assert(args.size()==1); // Bad args to string literal?
-
-  const exprt &arg=args[0];
-  irep_idt sval;
-
-  assert(arg.operands().size()==1);
-  if(arg.op0().operands().size()==2 &&
-     arg.op0().op0().id()==ID_string_constant)
-  {
-    // C string constant
-    const exprt &s=arg.op0().op0();
-    sval=to_string_constant(s).get_value();
-  }
-  else
-  {
-    // Java string constant
-    assert(refined_string_typet::is_unrefined_string_type(arg.type()));
-    const exprt &s=arg.op0();
-
-    // It seems the value of the string is lost,
-    // we need to recover it from the identifier
-    sval=extract_java_string(to_symbol_expr(s));
-  }
-
-  const refined_string_typet &ref_type=to_refined_string_type(f.type());
-  return add_axioms_for_constant(sval, ref_type);
+  PRECONDITION(args.size() == 3); // Bad args to string literal?
+  const array_string_exprt res = char_array_of_pointer(args[1], args[0]);
+  return add_axioms_for_cprover_string(res, args[2], true_exprt());
 }

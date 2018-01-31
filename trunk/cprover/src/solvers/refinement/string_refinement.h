@@ -2,7 +2,7 @@
 
 Module: String support via creating string constraints and progressively
         instantiating the universal constraints as needed.
-	The procedure is described in the PASS paper at HVC'13:
+        The procedure is described in the PASS paper at HVC'13:
         "PASS: String Solving with Parameterized Array and Interval Automaton"
         by Guodong Li and Indradeep Ghosh
 
@@ -10,108 +10,114 @@ Author: Alberto Griggio, alberto.griggio@gmail.com
 
 \*******************************************************************/
 
+/// \file
+/// String support via creating string constraints and progressively
+///   instantiating the universal constraints as needed. The procedure is
+///   described in the PASS paper at HVC'13: "PASS: String Solving with
+///   Parameterized Array and Interval Automaton" by Guodong Li and Indradeep
+///   Ghosh
+
 #ifndef CPROVER_SOLVERS_REFINEMENT_STRING_REFINEMENT_H
 #define CPROVER_SOLVERS_REFINEMENT_STRING_REFINEMENT_H
 
+#include <limits>
 #include <util/string_expr.h>
+#include <util/replace_expr.h>
+#include <util/union_find_replace.h>
 #include <solvers/refinement/string_constraint.h>
 #include <solvers/refinement/string_constraint_generator.h>
-
-// Defines a limit on the string witnesses we will output.
-// Longer strings are still concidered possible by the solver but
-// it will not output them.
-#define MAX_CONCRETE_STRING_SIZE 500
+#include <solvers/refinement/string_refinement_invariant.h>
 
 #define MAX_NB_REFINEMENT 100
+#define CHARACTER_FOR_UNKNOWN '?'
 
-class string_refinementt: public bv_refinementt
+struct index_set_pairt
 {
-public:
-  // refinement_bound is a bound on the number of refinement allowed
-  string_refinementt(
-    const namespacet &_ns, propt &_prop, unsigned refinement_bound);
+  std::map<exprt, std::set<exprt>> cumulative;
+  std::map<exprt, std::set<exprt>> current;
+};
 
-  void set_mode();
+struct string_axiomst
+{
+  std::vector<string_constraintt> universal;
+  std::vector<string_not_contains_constraintt> not_contains;
+};
 
-  // Should we use counter examples at each iteration?
-  bool use_counter_example;
-
-  virtual std::string decision_procedure_text() const
+class string_refinementt final: public bv_refinementt
+{
+private:
+  struct configt
   {
-    return "string refinement loop with "+prop.solver_text();
-  }
+    std::size_t refinement_bound=0;
+    /// Concretize strings after solver is finished
+    bool trace=false;
+    bool use_counter_example=true;
+  };
+public:
+  /// string_refinementt constructor arguments
+  struct infot:
+    public bv_refinementt::infot,
+    public string_constraint_generatort::infot,
+    public configt { };
 
-  static exprt is_positive(const exprt &x);
+  explicit string_refinementt(const infot &);
 
-protected:
-  typedef std::set<exprt> expr_sett;
+  std::string decision_procedure_text() const override
+  { return "string refinement loop with "+prop.solver_text(); }
 
-  virtual bvt convert_symbol(const exprt &expr);
-  virtual bvt convert_function_application(
-    const function_application_exprt &expr);
-
-  decision_proceduret::resultt dec_solve();
-
-  bvt convert_bool_bv(const exprt &boole, const exprt &orig);
+  exprt get(const exprt &expr) const override;
+  void set_to(const exprt &expr, bool value) override;
+  decision_proceduret::resultt dec_solve() override;
 
 private:
   // Base class
   typedef bv_refinementt supert;
 
-  unsigned initial_loop_bound;
+  string_refinementt(const infot &, bool);
 
+  const configt config_;
+  std::size_t loop_bound_;
   string_constraint_generatort generator;
 
   // Simple constraints that have been given to the solver
-  expr_sett seen_instances;
+  std::set<exprt> seen_instances;
 
-  std::vector<string_constraintt> universal_axioms;
-
-  std::vector<string_not_contains_constraintt> not_contains_axioms;
+  string_axiomst axioms;
 
   // Unquantified lemmas that have newly been added
-  std::vector<exprt> cur;
+  std::vector<exprt> current_constraints;
 
   // See the definition in the PASS article
   // Warning: this is indexed by array_expressions and not string expressions
-  std::map<exprt, expr_sett> current_index_set;
-  std::map<exprt, expr_sett> index_set;
 
-  void display_index_set();
+  index_set_pairt index_sets;
+  union_find_replacet symbol_resolve;
 
-  void add_lemma(const exprt &lemma, bool add_to_index_set=true);
+  std::vector<equal_exprt> equations;
+  std::list<std::pair<exprt, bool>> non_string_axioms;
 
-  bool boolbv_set_equality_to_true(const equal_exprt &expr);
+  // Map pointers to array symbols
+  std::map<exprt, symbol_exprt> pointer_map;
 
-  literalt convert_rest(const exprt &expr);
-
-  void add_instantiations();
-
-  bool check_axioms();
-
-  void update_index_set(const exprt &formula);
-  void update_index_set(const std::vector<exprt> &cur);
-  void initial_index_set(const string_constraintt &axiom);
-  void initial_index_set(const std::vector<string_constraintt> &string_axioms);
-
-  exprt instantiate(
-    const string_constraintt &axiom, const exprt &str, const exprt &val);
-
-  void instantiate_not_contains(
-    const string_not_contains_constraintt &axiom,
-    std::list<exprt> &new_lemmas);
-
-  exprt compute_inverse_function(
-    const exprt &qvar, const exprt &val, const exprt &f);
-
-  std::map<exprt, int> map_representation_of_sum(const exprt &f) const;
-  exprt sum_over_map(std::map<exprt, int> &m, bool negated=false) const;
-
-  exprt simplify_sum(const exprt &f) const;
-
-  exprt get_array(const exprt &arr, const exprt &size);
-
-  std::string string_of_array(const exprt &arr, const exprt &size) const;
+  void add_lemma(const exprt &lemma, const bool _simplify = true);
 };
+
+exprt substitute_array_lists(exprt expr, std::size_t string_max_length);
+exprt concretize_arrays_in_expression(
+  exprt expr,
+  std::size_t string_max_length,
+  const namespacet &ns);
+
+bool is_char_array_type(const typet &type, const namespacet &ns);
+
+bool has_subtype(
+  const typet &type,
+  const std::function<bool(const typet &)> &pred);
+
+// Declaration required for unit-test:
+union_find_replacet string_identifiers_resolution_from_equations(
+  std::vector<equal_exprt> &equations,
+  const namespacet &ns,
+  messaget::mstreamt &stream);
 
 #endif

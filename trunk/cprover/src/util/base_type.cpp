@@ -6,25 +6,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Base Type Computation
+
+#include "base_type.h"
+
 #include <cassert>
 #include <set>
 
 #include "std_types.h"
-#include "base_type.h"
 #include "namespace.h"
 #include "symbol.h"
-
-/*******************************************************************\
-
-Function: base_type_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void base_type_rec(
   typet &type, const namespacet &ns, std::set<irep_idt> &symb)
@@ -84,35 +76,11 @@ void base_type_rec(
   }
 }
 
-/*******************************************************************\
-
-Function: base_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void base_type(typet &type, const namespacet &ns)
 {
   std::set<irep_idt> symb;
   base_type_rec(type, ns, symb);
 }
-
-/*******************************************************************\
-
-Function: base_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void base_type(exprt &expr, const namespacet &ns)
 {
@@ -121,18 +89,6 @@ void base_type(exprt &expr, const namespacet &ns)
   Forall_operands(it, expr)
     base_type(*it, ns);
 }
-
-/*******************************************************************\
-
-Function: base_type_eqt::base_type_eq_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool base_type_eqt::base_type_eq_rec(
   const typet &type1,
@@ -203,7 +159,7 @@ bool base_type_eqt::base_type_eq_rec(
     if(components1.size()!=components2.size())
       return false;
 
-    for(unsigned i=0; i<components1.size(); i++)
+    for(std::size_t i=0; i<components1.size(); i++)
     {
       const typet &subtype1=components1[i].type();
       const typet &subtype2=components2[i].type();
@@ -234,7 +190,7 @@ bool base_type_eqt::base_type_eq_rec(
     if(parameters1.size()!=parameters2.size())
       return false;
 
-    for(unsigned i=0; i<parameters1.size(); i++)
+    for(std::size_t i=0; i<parameters1.size(); i++)
     {
       const typet &subtype1=parameters1[i].type();
       const typet &subtype2=parameters2[i].type();
@@ -282,18 +238,6 @@ bool base_type_eqt::base_type_eq_rec(
   return tmp1==tmp2;
 }
 
-/*******************************************************************\
-
-Function: base_type_eqt::base_type_eq_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool base_type_eqt::base_type_eq_rec(
   const exprt &expr1,
   const exprt &expr2)
@@ -323,18 +267,6 @@ bool base_type_eqt::base_type_eq_rec(
   return true;
 }
 
-/*******************************************************************\
-
-Function: base_type_eq
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool base_type_eq(
   const typet &type1,
   const typet &type2,
@@ -343,18 +275,6 @@ bool base_type_eq(
   base_type_eqt base_type_eq(ns);
   return base_type_eq.base_type_eq(type1, type2);
 }
-
-/*******************************************************************\
-
-Function: base_type_eq
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool base_type_eq(
   const exprt &expr1,

@@ -6,28 +6,34 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution
+
 #ifndef CPROVER_GOTO_SYMEX_GOTO_SYMEX_STATE_H
 #define CPROVER_GOTO_SYMEX_GOTO_SYMEX_STATE_H
 
 #include <cassert>
+#include <memory>
 #include <unordered_set>
 
 #include <util/guard.h>
 #include <util/std_expr.h>
 #include <util/ssa_expr.h>
+#include <util/make_unique.h>
 
 #include <pointer-analysis/value_set.h>
 #include <goto-programs/goto_functions.h>
 
 #include "symex_target.h"
 
-//class dirtyt;
+class dirtyt;
 
 // central data structure: state
-class goto_symex_statet
+class goto_symex_statet final
 {
 public:
   goto_symex_statet();
+  ~goto_symex_statet();
 
   // distance from entry
   unsigned depth;
@@ -35,8 +41,6 @@ public:
   guardt guard;
   symex_targett::sourcet source;
   symex_targett *symex_target;
-
-  void initialize(const goto_functionst &goto_functions);
 
   // we have a two-level renaming
 
@@ -171,15 +175,13 @@ protected:
 
   void set_ssa_indices(ssa_exprt &expr, const namespacet &ns, levelt level=L2);
   // only required for value_set.assign
-  //void get_l1_name(exprt &expr) const;
+  void get_l1_name(exprt &expr) const;
 
   // this maps L1 names to (L2) types
   typedef std::unordered_map<irep_idt, typet, irep_id_hash> l1_typest;
   l1_typest l1_types;
 
 public:
-  void get_l1_name(exprt &expr) const; // KE: moved to public
-
   // uses level 1 names, and is used to
   // do dereferencing
   value_sett value_set;
@@ -340,7 +342,7 @@ public:
 
   void switch_to_thread(unsigned t);
   bool record_events;
-  //const dirtyt * dirty;
+  std::unique_ptr<const dirtyt> dirty;
 };
 
 #endif // CPROVER_GOTO_SYMEX_GOTO_SYMEX_STATE_H

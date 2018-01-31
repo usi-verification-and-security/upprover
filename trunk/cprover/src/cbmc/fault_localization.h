@@ -6,13 +6,15 @@ Author: Peter Schrammel
 
 \*******************************************************************/
 
+/// \file
+/// Fault Localization
+
 #ifndef CPROVER_CBMC_FAULT_LOCALIZATION_H
 #define CPROVER_CBMC_FAULT_LOCALIZATION_H
 
 #include <util/namespace.h>
 #include <util/options.h>
 #include <util/threeval.h>
-#include <langapi/language_ui.h>
 
 #include <goto-symex/symex_target_equation.h>
 
@@ -86,6 +88,8 @@ protected:
     run_decision_procedure(prop_convt &prop_conv);
 
   void report(irep_idt goal_id);
+
+  xmlt report_xml(irep_idt goal_id);
 
   // override bmc_all_propertiest
   virtual void report(const cover_goalst &cover_goals);

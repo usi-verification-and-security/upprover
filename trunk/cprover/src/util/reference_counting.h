@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Reference Counting
+
 #ifndef CPROVER_UTIL_REFERENCE_COUNTING_H
 #define CPROVER_UTIL_REFERENCE_COUNTING_H
 
@@ -16,7 +19,7 @@ template<typename T>
 class reference_counting
 {
 public:
-  reference_counting():d(NULL)
+  reference_counting():d(nullptr)
   {
   }
 
@@ -28,7 +31,7 @@ public:
   // copy constructor
   reference_counting(const reference_counting &other):d(other.d)
   {
-    if(d!=NULL)
+    if(d!=nullptr)
     {
       assert(d->ref_count!=0);
       d->ref_count++;
@@ -47,7 +50,7 @@ public:
   ~reference_counting()
   {
     remove_ref(d);
-    d=NULL;
+    d=nullptr;
   }
 
   void swap(reference_counting &other)
@@ -58,19 +61,19 @@ public:
   void clear()
   {
     remove_ref(d);
-    d=NULL;
+    d=nullptr;
   }
 
   const T &read() const
   {
-    if(d==NULL)
+    if(d==nullptr)
       return T::blank;
     return *d;
   }
 
   T &write()
   {
-    detatch();
+    detach();
     return *d;
   }
 
@@ -89,7 +92,7 @@ protected:
 
   void remove_ref(dt *old_d);
 
-  void detatch();
+  void detach();
 
   void copy_from(const reference_counting &other)
   {
@@ -101,7 +104,7 @@ protected:
 
     remove_ref(d);
     d=other.d;
-    if(d!=NULL)
+    if(d!=nullptr)
       d->ref_count++;
   }
 
@@ -115,7 +118,7 @@ public:
 template<class T>
 void reference_counting<T>::remove_ref(dt *old_d)
 {
-  if(old_d==NULL)
+  if(old_d==nullptr)
     return;
 
   assert(old_d->ref_count!=0);
@@ -142,13 +145,13 @@ void reference_counting<T>::remove_ref(dt *old_d)
 }
 
 template<class T>
-void reference_counting<T>::detatch()
+void reference_counting<T>::detach()
 {
   #ifdef REFERENCE_COUNTING_DEBUG
-  std::cout << "DETATCH1: " << d << '\n';
+  std::cout << "DETACH1: " << d << '\n';
   #endif
 
-  if(d==NULL)
+  if(d==nullptr)
   {
     d=new dt;
 
@@ -172,7 +175,7 @@ void reference_counting<T>::detatch()
   assert(d->ref_count==1);
 
   #ifdef REFERENCE_COUNTING_DEBUG
-  std::cout << "DETATCH2: " << d << '\n'
+  std::cout << "DETACH2: " << d << '\n'
   #endif
 }
 

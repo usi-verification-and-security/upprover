@@ -6,38 +6,35 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// JAVA Bytecode Conversion / Type Checking
+
+#include "java_bytecode_typecheck.h"
+
 #include <iomanip>
 
-#include <util/std_expr.h>
-#include <util/prefix.h>
 #include <util/arith_tools.h>
 #include <util/unicode.h>
 
 #include <linking/zero_initializer.h>
 
-#include "java_bytecode_typecheck.h"
 #include "java_pointer_casts.h"
 #include "java_types.h"
-
-/*******************************************************************\
-
-Function: java_bytecode_typecheckt::typecheck_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include "java_utils.h"
+#include "java_root_class.h"
+#include "java_string_library_preprocess.h"
 
 void java_bytecode_typecheckt::typecheck_expr(exprt &expr)
 {
   if(expr.id()==ID_code)
     return typecheck_code(to_code(expr));
 
-  if(expr.id()==ID_typecast && expr.type().id()==ID_pointer)
-    expr=make_clean_pointer_cast(expr, expr.type(), ns);
+  if(expr.id()==ID_typecast &&
+     expr.type().id()==ID_pointer)
+    expr=make_clean_pointer_cast(
+      expr,
+      to_pointer_type(expr.type()),
+      ns);
 
   // do operands recursively
   Forall_operands(it, expr)
@@ -59,41 +56,17 @@ void java_bytecode_typecheckt::typecheck_expr(exprt &expr)
     typecheck_expr_member(to_member_expr(expr));
 }
 
-/*******************************************************************\
-
-Function: java_bytecode_typecheckt::typecheck_expr_java_new
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void java_bytecode_typecheckt::typecheck_expr_java_new(side_effect_exprt &expr)
 {
-  assert(expr.operands().empty());
+  PRECONDITION(expr.operands().empty());
   typet &type=expr.type();
   typecheck_type(type);
 }
 
-/*******************************************************************\
-
-Function: java_bytecode_typecheckt::typecheck_expr_java_new_array
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void java_bytecode_typecheckt::typecheck_expr_java_new_array(
   side_effect_exprt &expr)
 {
-  assert(expr.operands().size()>=1); // one per dimension
+  PRECONDITION(expr.operands().size()>=1); // one per dimension
   typet &type=expr.type();
   typecheck_type(type);
 }
@@ -117,49 +90,29 @@ static std::string escape_non_alnum(const std::string &toescape)
   return escaped.str();
 }
 
-/*******************************************************************\
-
-Function: utf16_to_array
-
-  Inputs: `in`: wide string to convert
-
- Outputs: Returns a Java char array containing the same wchars.
-
- Purpose: Convert UCS-2 or UTF-16 to an array expression.
-
-\*******************************************************************/
-
+/// Convert UCS-2 or UTF-16 to an array expression.
+/// \par parameters: `in`: wide string to convert
+/// \return Returns a Java char array containing the same wchars.
 static array_exprt utf16_to_array(const std::wstring &in)
 {
   const auto jchar=java_char_type();
-  array_exprt ret(array_typet(jchar, infinity_exprt(java_int_type())));
+  array_exprt ret(
+    array_typet(jchar, from_integer(in.length(), java_int_type())));
   for(const auto c : in)
     ret.copy_to_operands(from_integer(c, jchar));
   return ret;
 }
-
-/*******************************************************************\
-
-Function: java_bytecode_typecheckt::typecheck_expr_java_string_literal
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void java_bytecode_typecheckt::typecheck_expr_java_string_literal(exprt &expr)
 {
   const irep_idt value=expr.get(ID_value);
   const symbol_typet string_type("java::java.lang.String");
 
-  std::string escaped_symbol_name=
-    "java::java.lang.String.Literal.";
-  escaped_symbol_name+=escape_non_alnum(id2string(value));
+  const std::string escaped_symbol_name = escape_non_alnum(id2string(value));
+  const std::string escaped_symbol_name_with_prefix =
+    JAVA_STRING_LITERAL_PREFIX "." + escaped_symbol_name;
 
-  auto findit=symbol_table.symbols.find(escaped_symbol_name);
+  auto findit = symbol_table.symbols.find(escaped_symbol_name_with_prefix);
   if(findit!=symbol_table.symbols.end())
   {
     expr=address_of_exprt(findit->second.symbol_expr());
@@ -168,9 +121,9 @@ void java_bytecode_typecheckt::typecheck_expr_java_string_literal(exprt &expr)
 
   // Create a new symbol:
   symbolt new_symbol;
-  new_symbol.name=escaped_symbol_name;
+  new_symbol.name = escaped_symbol_name_with_prefix;
   new_symbol.type=string_type;
-  new_symbol.base_name="Literal";
+  new_symbol.base_name = escaped_symbol_name;
   new_symbol.pretty_name=value;
   new_symbol.mode=ID_java;
   new_symbol.is_type=false;
@@ -183,29 +136,26 @@ void java_bytecode_typecheckt::typecheck_expr_java_string_literal(exprt &expr)
   const auto &jlo_struct=to_struct_type(ns.follow(jlo_symbol));
   struct_exprt jlo_init(jlo_symbol);
   const auto &jls_struct=to_struct_type(ns.follow(string_type));
-
-  jlo_init.copy_to_operands(
-    constant_exprt(
-      "java::java.lang.String",
-      jlo_struct.components()[0].type()));
-  jlo_init.copy_to_operands(
-    from_integer(
-      0,
-      jlo_struct.components()[1].type()));
+  java_root_class_init(jlo_init, jlo_struct, false, "java::java.lang.String");
 
   // If string refinement *is* around, populate the actual
   // contents as well:
   if(string_refinement_enabled)
   {
     struct_exprt literal_init(new_symbol.type);
-    literal_init.move_to_operands(jlo_init);
+    literal_init.operands().resize(jls_struct.components().size());
+    const std::size_t jlo_nb = jls_struct.component_number("@java.lang.Object");
+    literal_init.operands()[jlo_nb] = jlo_init;
+
+    const std::size_t length_nb = jls_struct.component_number("length");
+    const typet &length_type = jls_struct.components()[length_nb].type();
+    const exprt length = from_integer(id2string(value).size(), length_type);
+    literal_init.operands()[length_nb] = length;
 
     // Initialize the string with a constant utf-16 array:
     symbolt array_symbol;
-    array_symbol.name=escaped_symbol_name+"_constarray";
-    array_symbol.type=array_typet(
-      java_char_type(), infinity_exprt(java_int_type()));
-    array_symbol.base_name="Literal_constarray";
+    array_symbol.name = escaped_symbol_name_with_prefix + "_constarray";
+    array_symbol.base_name = escaped_symbol_name + "_constarray";
     array_symbol.pretty_name=value;
     array_symbol.mode=ID_java;
     array_symbol.is_type=false;
@@ -213,19 +163,41 @@ void java_bytecode_typecheckt::typecheck_expr_java_string_literal(exprt &expr)
     // These are basically const global data:
     array_symbol.is_static_lifetime=true;
     array_symbol.is_state_var=true;
-    auto literal_array=utf16_to_array(
-      utf8_to_utf16_little_endian(id2string(value)));
-    array_symbol.value=literal_array;
+    array_symbol.value =
+      utf16_to_array(utf8_to_utf16_little_endian(id2string(value)));
+    array_symbol.type = array_symbol.value.type();
 
     if(symbol_table.add(array_symbol))
       throw "failed to add constarray symbol to symbol table";
 
-    literal_init.copy_to_operands(
-      from_integer(literal_array.operands().size(),
-                   jls_struct.components()[1].type()));
-    literal_init.copy_to_operands(
-      address_of_exprt(array_symbol.symbol_expr()));
+    const symbol_exprt array_expr = array_symbol.symbol_expr();
+    const address_of_exprt array_pointer(
+      index_exprt(array_expr, from_integer(0, java_int_type())));
 
+    const std::size_t data_nb = jls_struct.component_number("data");
+    literal_init.operands()[data_nb] = array_pointer;
+
+    // Associate array with pointer
+    symbolt return_symbol;
+    return_symbol.name = escaped_symbol_name_with_prefix + "_return_value";
+    return_symbol.base_name = escaped_symbol_name + "_return_value";
+    return_symbol.pretty_name =
+      escaped_symbol_name.length() > 10
+        ? escaped_symbol_name.substr(0, 10) + "..._return_value"
+        : escaped_symbol_name + "_return_value";
+    return_symbol.mode = ID_java;
+    return_symbol.is_type = false;
+    return_symbol.is_lvalue = true;
+    return_symbol.is_static_lifetime = true;
+    return_symbol.is_state_var = true;
+    return_symbol.value = make_function_application(
+      ID_cprover_associate_array_to_pointer_func,
+      {array_symbol.value, array_pointer},
+      java_int_type(),
+      symbol_table);
+    return_symbol.type = return_symbol.value.type();
+    if(symbol_table.add(return_symbol))
+      throw "failed to add return symbol to symbol table";
     new_symbol.value=literal_init;
   }
   else if(jls_struct.components().size()>=1 &&
@@ -264,18 +236,6 @@ void java_bytecode_typecheckt::typecheck_expr_java_string_literal(exprt &expr)
   expr=address_of_exprt(new_symbol.symbol_expr());
 }
 
-/*******************************************************************\
-
-Function: java_bytecode_typecheckt::typecheck_expr_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void java_bytecode_typecheckt::typecheck_expr_symbol(symbol_exprt &expr)
 {
   irep_idt identifier=expr.get_identifier();
@@ -286,7 +246,7 @@ void java_bytecode_typecheckt::typecheck_expr_symbol(symbol_exprt &expr)
 
   if(s_it==symbol_table.symbols.end())
   {
-    assert(has_prefix(id2string(identifier), "java::"));
+    PRECONDITION(has_prefix(id2string(identifier), "java::"));
 
     // no, create the symbol
     symbolt new_symbol;
@@ -315,7 +275,7 @@ void java_bytecode_typecheckt::typecheck_expr_symbol(symbol_exprt &expr)
   else
   {
     // yes!
-    assert(!s_it->second.is_type);
+    INVARIANT(!s_it->second.is_type, "symbol identifier should not be a type");
 
     const symbolt &symbol=s_it->second;
 
@@ -323,18 +283,6 @@ void java_bytecode_typecheckt::typecheck_expr_symbol(symbol_exprt &expr)
     expr.type()=symbol.type;
   }
 }
-
-/*******************************************************************\
-
-Function: java_bytecode_typecheckt::typecheck_expr_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void java_bytecode_typecheckt::typecheck_expr_member(member_exprt &expr)
 {
@@ -358,21 +306,6 @@ void java_bytecode_typecheckt::typecheck_expr_member(member_exprt &expr)
     // look at parent
     struct_typet::componentst &components=
       struct_type.components();
-
-    if(struct_type.get_bool(ID_incomplete_class))
-    {
-      // member doesn't exist. In this case struct_type should be an opaque
-      // stub, and we'll add the member to it.
-      symbolt &symbol_table_type=
-        symbol_table.lookup("java::"+id2string(struct_type.get_tag()));
-      auto &add_to_components=
-        to_struct_type(symbol_table_type.type).components();
-      add_to_components
-        .push_back(struct_typet::componentt(component_name, expr.type()));
-      add_to_components.back().set_base_name(component_name);
-      add_to_components.back().set_pretty_name(component_name);
-      return;
-    }
 
     if(components.empty())
       break;

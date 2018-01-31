@@ -89,11 +89,17 @@ set(HIFROG_SOURCE_FILES
         xml_interface.h
     utils/naming_helpers.h utils/naming_helpers.cpp partition_iface_fwd.h summary_store_fwd.h summarization_context_fwd.h utils/coloring_mode.h solvers/itp_fwd.h)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../cmake_modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modules/")
+
+message(${CMAKE_MODULE_PATH})
 
 find_package(GMP REQUIRED)
 
-add_executable(hifrog ${HIFROG_SOURCE_FILES} $<TARGET_OBJECTS:cprover>)
+add_executable(hifrog ${HIFROG_SOURCE_FILES}
+# $<TARGET_OBJECTS:cprover>
+)
+
+target_include_directories(hifrog PRIVATE ${PROJECT_SOURCE_DIR})
 
 target_compile_options(hifrog PRIVATE  -Wall)
 

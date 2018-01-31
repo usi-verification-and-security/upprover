@@ -7,6 +7,11 @@ Author: Daniel Kroening, kroening@kroening.com,
 
 \*******************************************************************/
 
+/// \file
+/// Value Set (Flow Insensitive, Sharing, Validity Regions)
+
+#include "value_set_fivr.h"
+
 #include <cassert>
 #include <ostream>
 
@@ -20,8 +25,6 @@ Author: Daniel Kroening, kroening@kroening.com,
 
 #include <langapi/language_util.h>
 #include <util/c_types.h>
-
-#include "value_set_fivr.h"
 
 const value_set_fivrt::object_map_dt value_set_fivrt::object_map_dt::blank;
 object_numberingt value_set_fivrt::object_numbering;
@@ -50,18 +53,6 @@ static const char *alloc_adapter_prefix="alloc_adaptor::";
       (it)!=(map).end(); \
       (it)++) \
     if((map).is_valid_at((it)->first, from_function, from_target_index)) /* NOLINT(*) */
-
-/*******************************************************************\
-
-Function: value_set_fivrt::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fivrt::output(
   const namespacet &ns,
@@ -113,7 +104,7 @@ void value_set_fivrt::output(
     }
 
     out << display_name << "={ ";
-    if(object_map.read().size()!=0)
+    if(!object_map.read().empty())
       out << "\n      ";
 
     std::size_t width=0;
@@ -152,8 +143,8 @@ void value_set_fivrt::output(
       {
         result+=from_expr(ns, identifier, o)+", ";
 
-        if(o_it->second.offset_is_set)
-          result+=integer2string(o_it->second.offset)+"";
+        if(o_it->second)
+          result += integer2string(*o_it->second) + "";
         else
           result+='*';
 
@@ -221,18 +212,6 @@ void value_set_fivrt::output(
   }
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::flatten
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fivrt::flatten(
         const entryt &e,
         object_mapt &dest) const
@@ -249,24 +228,12 @@ void value_set_fivrt::flatten(
   #endif
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::flatten_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fivrt::flatten_rec(
   const entryt &e,
   object_mapt &dest,
   flatten_seent &seen,
-        unsigned at_function,
-        unsigned at_index) const
+  unsigned at_function,
+  unsigned at_index) const
 {
   #if 0
   std::cout << "FLATTEN_REC: " << e.identifier << e.suffix << '\n';
@@ -334,13 +301,12 @@ void value_set_fivrt::flatten_rec(
                   t_it!=temp.write().end();
                   t_it++)
               {
-                if(t_it->second.offset_is_set &&
-                   it->second.offset_is_set)
+                if(t_it->second && it->second)
                 {
-                  t_it->second.offset += it->second.offset;
+                  *t_it->second += *it->second;
                 }
                 else
-                  t_it->second.offset_is_set=false;
+                  t_it->second.reset();
               }
 
               forall_objects(oit, temp.read())
@@ -358,7 +324,7 @@ void value_set_fivrt::flatten_rec(
   {
     Forall_objects(it, dest.write())
     {
-      it->second.offset_is_set=false;
+      it->second.reset();
       for(std::list<const object_map_dt::vrange_listt*>::const_iterator vit =
           add_ranges.begin();
           vit!=add_ranges.end();
@@ -376,18 +342,6 @@ void value_set_fivrt::flatten_rec(
   seen.erase(identifier + e.suffix);
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::to_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt value_set_fivrt::to_expr(object_map_dt::const_iterator it) const
 {
   const exprt &object=object_numbering[it->first];
@@ -400,25 +354,13 @@ exprt value_set_fivrt::to_expr(object_map_dt::const_iterator it) const
 
   od.object()=object;
 
-  if(it->second.offset_is_set)
-    od.offset()=from_integer(it->second.offset, index_type());
+  if(it->second)
+    od.offset() = from_integer(*it->second, index_type());
 
   od.type()=od.object().type();
 
   return od;
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::make_union
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool value_set_fivrt::make_union(
   object_mapt &dest,
@@ -435,18 +377,6 @@ bool value_set_fivrt::make_union(
   return result;
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrnst::make_valid_union
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool value_set_fivrt::make_valid_union(
   object_mapt &dest,
   const object_mapt &src) const
@@ -462,18 +392,6 @@ bool value_set_fivrt::make_valid_union(
   return result;
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::copy_objects
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fivrt::copy_objects(
   object_mapt &dest,
   const object_mapt &src) const
@@ -487,18 +405,6 @@ void value_set_fivrt::copy_objects(
                                      from_target_index));
   }
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::get_value_set
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fivrt::get_value_set(
   const exprt &expr,
@@ -529,13 +435,12 @@ void value_set_fivrt::get_value_set(
             t_it!=temp.write().end();
             t_it++)
         {
-          if(t_it->second.offset_is_set &&
-             it->second.offset_is_set)
+          if(t_it->second && it->second)
           {
-            t_it->second.offset += it->second.offset;
+            *t_it->second += *it->second;
           }
           else
-            t_it->second.offset_is_set=false;
+            t_it->second.reset();
 
           flat_map.write()[t_it->first]=t_it->second;
         }
@@ -564,18 +469,6 @@ void value_set_fivrt::get_value_set(
   #endif
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::get_value_set
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fivrt::get_value_set(
   const exprt &expr,
   object_mapt &dest,
@@ -587,18 +480,6 @@ void value_set_fivrt::get_value_set(
   gvs_recursion_sett recset;
   get_value_set_rec(tmp, dest, "", tmp.type(), ns, recset);
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::get_value_set_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fivrt::get_value_set_rec(
   const exprt &expr,
@@ -642,9 +523,10 @@ void value_set_fivrt::get_value_set_rec(
 
     const typet &type=ns.follow(expr.op0().type());
 
-    assert(type.id()==ID_array ||
-           type.id()==ID_incomplete_array ||
-           type.id()=="#REF#");
+    DATA_INVARIANT(type.id()==ID_array ||
+                   type.id()==ID_incomplete_array ||
+                   type.id()=="#REF#",
+                   "operand 0 of index expression must be an array");
 
     get_value_set_rec(expr.op0(), dest, "[]"+suffix,
                       original_type, ns, recursion_set);
@@ -659,10 +541,11 @@ void value_set_fivrt::get_value_set_rec(
     {
       const typet &type=ns.follow(expr.op0().type());
 
-      assert(type.id()==ID_struct ||
-             type.id()==ID_union ||
-             type.id()==ID_incomplete_struct ||
-             type.id()==ID_incomplete_union);
+      DATA_INVARIANT(type.id()==ID_struct ||
+                     type.id()==ID_union ||
+                     type.id()==ID_incomplete_struct ||
+                     type.id()==ID_incomplete_union,
+                     "operand 0 of member expression must be struct or union");
 
       const std::string &component_name=
         expr.get_string(ID_component_name);
@@ -785,18 +668,18 @@ void value_set_fivrt::get_value_set_rec(
     if(expr.type().id()==ID_pointer)
     {
       // find the pointer operand
-      const exprt *ptr_operand=NULL;
+      const exprt *ptr_operand=nullptr;
 
       forall_operands(it, expr)
         if(it->type().id()==ID_pointer)
         {
-          if(ptr_operand==NULL)
+          if(ptr_operand==nullptr)
             ptr_operand=&(*it);
           else
             throw "more than one pointer operand in pointer arithmetic";
         }
 
-      if(ptr_operand==NULL)
+      if(ptr_operand==nullptr)
         throw "pointer type sum expected to have pointer operand";
 
       object_mapt pointer_expr_set;
@@ -805,32 +688,31 @@ void value_set_fivrt::get_value_set_rec(
 
       forall_objects(it, pointer_expr_set.read())
       {
-        objectt object=it->second;
+        offsett offset = it->second;
 
-        if(object.offset_is_zero() &&
-           expr.operands().size()==2)
+        if(offset_is_zero(offset) && expr.operands().size() == 2)
         {
           if(expr.op0().type().id()!=ID_pointer)
           {
             mp_integer i;
             if(to_integer(expr.op0(), i))
-              object.offset_is_set=false;
+              offset.reset();
             else
-              object.offset=(expr.id()==ID_plus)? i : -i;
+              *offset = (expr.id() == ID_plus) ? i : -i;
           }
           else
           {
             mp_integer i;
             if(to_integer(expr.op1(), i))
-              object.offset_is_set=false;
+              offset.reset();
             else
-              object.offset=(expr.id()==ID_plus)? i : -i;
+              *offset = (expr.id() == ID_plus) ? i : -i;
           }
         }
         else
-          object.offset_is_set=false;
+          offset.reset();
 
-        insert_from(dest, it->first, object);
+        insert_from(dest, it->first, offset);
       }
 
       return;
@@ -845,7 +727,7 @@ void value_set_fivrt::get_value_set_rec(
       // these should be gone
       throw "unexpected function_call sideeffect";
     }
-    else if(statement==ID_malloc)
+    else if(statement==ID_allocate)
     {
       if(expr.type().id()!=ID_pointer)
         throw "malloc expected to return pointer type";
@@ -916,18 +798,6 @@ void value_set_fivrt::get_value_set_rec(
   insert_from(dest, exprt(ID_unknown, original_type));
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::dereference_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fivrt::dereference_rec(
   const exprt &src,
   exprt &dest) const
@@ -945,18 +815,6 @@ void value_set_fivrt::dereference_rec(
   else
     dest=src;
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::get_reference_set
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fivrt::get_reference_set(
   const exprt &expr,
@@ -989,13 +847,12 @@ void value_set_fivrt::get_reference_set(
             t_it!=omt.write().end();
             t_it++)
         {
-          if(t_it->second.offset_is_set &&
-             it->second.offset_is_set)
+          if(t_it->second && it->second)
           {
-            t_it->second.offset += it->second.offset;
+            *t_it->second += *it->second;
           }
           else
-            t_it->second.offset_is_set=false;
+            t_it->second.reset();
         }
 
         forall_objects(it, omt.read())
@@ -1006,18 +863,6 @@ void value_set_fivrt::get_reference_set(
       dest.insert(to_expr(it));
   }
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::get_reference_set_sharing
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fivrt::get_reference_set_sharing(
   const exprt &expr,
@@ -1030,18 +875,6 @@ void value_set_fivrt::get_reference_set_sharing(
   forall_objects(it, object_map.read())
     dest.insert(to_expr(it));
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::get_reference_set_sharing_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fivrt::get_reference_set_sharing_rec(
   const exprt &expr,
@@ -1102,13 +935,12 @@ void value_set_fivrt::get_reference_set_sharing_rec(
               t_it!=t2.write().end();
               t_it++)
           {
-            if(t_it->second.offset_is_set &&
-               it->second.offset_is_set)
+            if(t_it->second && it->second)
             {
-              t_it->second.offset += it->second.offset;
+              *t_it->second += *it->second;
             }
             else
-              t_it->second.offset_is_set=false;
+              t_it->second.reset();
           }
 
           forall_objects(it2, t2.read())
@@ -1165,17 +997,16 @@ void value_set_fivrt::get_reference_set_sharing_rec(
            ns.follow(object.type())!=array_type)
           index_expr.make_typecast(array.type());
 
-        objectt o=a_it->second;
+        offsett o = a_it->second;
         mp_integer i;
 
         if(offset.is_zero())
         {
         }
-        else if(!to_integer(offset, i) &&
-                o.offset_is_zero())
-          o.offset=i;
+        else if(!to_integer(offset, i) && offset_is_zero(o))
+          *o = i;
         else
-          o.offset_is_set=false;
+          o.reset();
 
         insert_from(dest, index_expr, o);
       }
@@ -1214,7 +1045,7 @@ void value_set_fivrt::get_reference_set_sharing_rec(
       }
       else
       {
-        objectt o=it->second;
+        offsett o = it->second;
 
         exprt member_expr(ID_member, expr.type());
         member_expr.copy_to_operands(object);
@@ -1242,18 +1073,6 @@ void value_set_fivrt::get_reference_set_sharing_rec(
 
   insert_from(dest, exprt(ID_unknown, expr.type()));
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::assign
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fivrt::assign(
   const exprt &lhs,
@@ -1284,7 +1103,7 @@ void value_set_fivrt::assign(
   {
     const struct_typet &struct_type=to_struct_type(type);
 
-    unsigned no=0;
+    std::size_t no=0;
 
     for(struct_typet::componentst::const_iterator
         c_it=struct_type.components().begin();
@@ -1414,18 +1233,6 @@ void value_set_fivrt::assign(
   }
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::do_free
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fivrt::do_free(
   const exprt &op,
   const namespacet &ns)
@@ -1487,7 +1294,7 @@ void value_set_fivrt::do_free(
         else
         {
           // adjust
-          objectt o=o_it->second;
+          offsett o = o_it->second;
           exprt tmp(object);
           to_dynamic_object_expr(tmp).valid()=exprt(ID_unknown);
           insert_to(new_object_map, tmp, o);
@@ -1506,18 +1313,6 @@ void value_set_fivrt::do_free(
     }
   }
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::assign_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fivrt::assign_rec(
   const exprt &lhs,
@@ -1628,9 +1423,10 @@ void value_set_fivrt::assign_rec(
 
     const typet &type=ns.follow(lhs.op0().type());
 
-    assert(type.id()==ID_array ||
-           type.id()==ID_incomplete_array ||
-           type.id()=="#REF#");
+    DATA_INVARIANT(type.id()==ID_array ||
+                   type.id()==ID_incomplete_array ||
+                   type.id()=="#REF#",
+                   "operand 0 of index expression must be an array");
 
     assign_rec(
       lhs.op0(), values_rhs, "[]"+suffix, ns, recursion_set, add_to_sets);
@@ -1647,10 +1443,11 @@ void value_set_fivrt::assign_rec(
 
     const typet &type=ns.follow(lhs.op0().type());
 
-    assert(type.id()==ID_struct ||
-           type.id()==ID_union ||
-           type.id()==ID_incomplete_struct ||
-           type.id()==ID_incomplete_union);
+    DATA_INVARIANT(type.id()==ID_struct ||
+                   type.id()==ID_union ||
+                   type.id()==ID_incomplete_struct ||
+                   type.id()==ID_incomplete_union,
+                   "operand 0 of member expression must be struct or union");
 
     assign_rec(lhs.op0(), values_rhs, "."+component_name+suffix,
                ns, recursion_set, add_to_sets);
@@ -1693,18 +1490,6 @@ void value_set_fivrt::assign_rec(
     throw "assign NYI: `"+lhs.id_string()+"'";
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::do_function_call
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fivrt::do_function_call(
   const irep_idt &function,
   const exprt::operandst &arguments,
@@ -1727,7 +1512,7 @@ void value_set_fivrt::do_function_call(
   to_function=from_function;
   to_target_index=from_target_index;
 
-  for(unsigned i=0; i<arguments.size(); i++)
+  for(std::size_t i=0; i<arguments.size(); i++)
   {
     const std::string identifier="value_set::" + id2string(function) + "::" +
                                  "argument$"+std::to_string(i);
@@ -1749,7 +1534,7 @@ void value_set_fivrt::do_function_call(
 
   // now assign to 'actual actuals'
 
-  unsigned i=0;
+  std::size_t i=0;
 
   for(code_typet::parameterst::const_iterator
       it=parameter_types.begin();
@@ -1772,18 +1557,6 @@ void value_set_fivrt::do_function_call(
   }
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::do_end_function
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fivrt::do_end_function(
   const exprt &lhs,
   const namespacet &ns)
@@ -1796,18 +1569,6 @@ void value_set_fivrt::do_end_function(
 
   assign(lhs, rhs, ns);
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::apply_code
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fivrt::apply_code(
   const exprt &code,
@@ -1823,7 +1584,7 @@ void value_set_fivrt::apply_code(
   else if(statement==ID_function_call)
   {
     // shouldn't be here
-    assert(false);
+    UNREACHABLE;
   }
   else if(statement==ID_assign ||
           statement==ID_init)
@@ -1852,7 +1613,7 @@ void value_set_fivrt::apply_code(
   }
   else if(statement==ID_expression)
   {
-    // can be ignored, we don't expect sideeffects here
+    // can be ignored, we don't expect side effects here
   }
   else if(statement==ID_cpp_delete ||
           statement==ID_cpp_delete_array)
@@ -1905,123 +1666,87 @@ void value_set_fivrt::apply_code(
       "value_set_fivrt: unexpected statement: "+id2string(statement);
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::insert_to
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool value_set_fivrt::insert_to(
   object_mapt &dest,
-  unsigned n,
-  const objectt &object) const
+  object_numberingt::number_type n,
+  const offsett &offset) const
 {
   object_map_dt &map=dest.write();
   if(map.find(n)==map.end())
   {
-//    std::cout << "NEW(" << n << "): " << object_numbering[n] << '\n';
+    //    std::cout << "NEW(" << n << "): " << object_numbering[n] << '\n';
     // new
-    map[n]=object;
+    map[n] = offset;
     map.set_valid_at(n, to_function, to_target_index);
     return true;
   }
   else
   {
-//    std::cout << "UPD " << n << '\n';
-    objectt &old=map[n];
+    //    std::cout << "UPD " << n << '\n';
+    offsett &old_offset = map[n];
 
-    bool res=map.set_valid_at(n, to_function, to_target_index);
+    bool res = map.set_valid_at(n, to_function, to_target_index);
 
-    if(old.offset_is_set && object.offset_is_set)
+    if(old_offset && offset)
     {
-      if(old.offset==object.offset)
+      if(*old_offset == *offset)
         return res;
       else
       {
-        old.offset_is_set=false;
+        old_offset.reset();
         return true;
       }
     }
-    else if(!old.offset_is_set)
+    else if(!old_offset)
       return res;
     else
     {
-      old.offset_is_set=false;
+      old_offset.reset();
       return true;
     }
   }
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::insert_from
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool value_set_fivrt::insert_from(
   object_mapt &dest,
-  unsigned n,
-  const objectt &object) const
+  object_numberingt::number_type n,
+  const offsett &offset) const
 {
   object_map_dt &map=dest.write();
   if(map.find(n)==map.end())
   {
-//    std::cout << "NEW(" << n << "): " << object_numbering[n] << '\n';
+    //    std::cout << "NEW(" << n << "): " << object_numbering[n] << '\n';
     // new
-    map[n]=object;
+    map[n] = offset;
     map.set_valid_at(n, from_function, from_target_index);
     return true;
   }
   else
   {
-//    std::cout << "UPD " << n << '\n';
-    objectt &old=map[n];
+    //    std::cout << "UPD " << n << '\n';
+    offsett &old_offset = map[n];
 
-    bool res=map.set_valid_at(n, from_function, from_target_index);
+    bool res = map.set_valid_at(n, from_function, from_target_index);
 
-    if(old.offset_is_set && object.offset_is_set)
+    if(old_offset && offset)
     {
-      if(old.offset==object.offset)
+      if(*old_offset == *offset)
         return res;
       else
       {
-        old.offset_is_set=false;
+        old_offset.reset();
         return true;
       }
     }
-    else if(!old.offset_is_set)
+    else if(!old_offset)
       return res;
     else
     {
-      old.offset_is_set=false;
+      old_offset.reset();
       return true;
     }
   }
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::object_map_dt::set_valid_at
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool value_set_fivrt::object_map_dt::set_valid_at(
   unsigned inx,
@@ -2035,18 +1760,6 @@ bool value_set_fivrt::object_map_dt::set_valid_at(
 
   return res;
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::object_map_dt::set_valid_at
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool value_set_fivrt::object_map_dt::set_valid_at(
   unsigned inx,
@@ -2119,18 +1832,6 @@ bool value_set_fivrt::object_map_dt::set_valid_at(
   return true;
 }
 
-/*******************************************************************\
-
-Function: value_set_fivrt::object_map_dt::is_valid_at
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool value_set_fivrt::object_map_dt::is_valid_at(
   unsigned inx,
   unsigned f,
@@ -2160,18 +1861,6 @@ bool value_set_fivrt::object_map_dt::is_valid_at(
   }
   return false;
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::recursive_find
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool value_set_fivrt::recursive_find(
   const irep_idt &ident,
@@ -2211,18 +1900,6 @@ bool value_set_fivrt::recursive_find(
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: value_set_fivrt::handover
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool value_set_fivrt::handover(void)
 {

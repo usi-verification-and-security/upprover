@@ -6,26 +6,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <ostream>
-#include <cassert>
+#include "endianness_map.h"
 
+#include <ostream>
+
+#include "invariant.h"
 #include "std_types.h"
 #include "pointer_offset_size.h"
 #include "arith_tools.h"
-#include "endianness_map.h"
 #include "namespace.h"
-
-/*******************************************************************\
-
-Function: endianness_mapt::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void endianness_mapt::output(std::ostream &out) const
 {
@@ -39,18 +28,6 @@ void endianness_mapt::output(std::ostream &out) const
   }
 }
 
-/*******************************************************************\
-
-Function: endianness_mapt::build
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void endianness_mapt::build(const typet &src, bool little_endian)
 {
   if(little_endian)
@@ -58,18 +35,6 @@ void endianness_mapt::build(const typet &src, bool little_endian)
   else
     build_big_endian(src);
 }
-
-/*******************************************************************\
-
-Function: endianness_mapt::build_little_endian
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void endianness_mapt::build_little_endian(const typet &src)
 {
@@ -83,18 +48,6 @@ void endianness_mapt::build_little_endian(const typet &src)
   for(std::size_t i=map.size(); i<new_size; ++i)
     map.push_back(i);
 }
-
-/*******************************************************************\
-
-Function: endianness_mapt::build_big_endian
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void endianness_mapt::build_big_endian(const typet &src)
 {
@@ -111,7 +64,7 @@ void endianness_mapt::build_big_endian(const typet &src)
   {
     // these do get re-ordered!
     mp_integer bits=pointer_offset_bits(src, ns); // error is -1
-    assert(bits>=0);
+    CHECK_RETURN(bits>=0);
 
     size_t bits_int=integer2size_t(bits), base=map.size();
 
@@ -154,7 +107,7 @@ void endianness_mapt::build_big_endian(const typet &src)
 
     mp_integer s;
     if(to_integer(vector_type.size(), s))
-      assert(false);
+      CHECK_RETURN(false);
 
     while(s>0)
     {

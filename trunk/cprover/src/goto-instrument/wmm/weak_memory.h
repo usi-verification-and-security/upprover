@@ -8,21 +8,27 @@ Date: September 2011
 
 \*******************************************************************/
 
+/// \file
+/// Weak Memory Instrumentation for Threaded Goto Programs
+
 #ifndef CPROVER_GOTO_INSTRUMENT_WMM_WEAK_MEMORY_H
 #define CPROVER_GOTO_INSTRUMENT_WMM_WEAK_MEMORY_H
 
 #include "wmm.h"
 
-class value_setst;
-class goto_functionst;
+#include <util/irep.h>
+
 class symbol_tablet;
+class value_setst;
+class goto_modelt;
 class message_handlert;
+class goto_programt;
+class messaget;
 
 void weak_memory(
   memory_modelt model,
-  value_setst &value_sets,
-  symbol_tablet &symbol_table,
-  goto_functionst &goto_functions,
+  value_setst &,
+  goto_modelt &,
   bool SCC,
   instrumentation_strategyt event_stategy,
   unsigned unwinding_bound,
@@ -36,14 +42,14 @@ void weak_memory(
   bool render_function,
   bool cav11_option,
   bool hide_internals,
-  message_handlert &message,
+  message_handlert &,
   bool ignore_arrays);
 
 void introduce_temporaries(
-  value_setst &value_sets,
-  symbol_tablet &symbol_table,
+  value_setst &,
+  symbol_tablet &,
   const irep_idt &function,
-  goto_programt &goto_program,
+  goto_programt &,
 #ifdef LOCAL_MAY
   const goto_functionst::goto_functiont &goto_function,
 #endif

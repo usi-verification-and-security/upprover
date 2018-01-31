@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Show Claims
+
+#include "show_properties.h"
+
 #include <iostream>
 
 #include <util/xml.h>
@@ -15,21 +20,32 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <langapi/language_util.h>
 
-#include "show_properties.h"
 #include "goto_functions.h"
 #include "goto_model.h"
 
-/*******************************************************************\
 
-Function: cbmc_parseoptionst::show_properties
+optionalt<source_locationt> find_property(
+    const irep_idt &property,
+    const goto_functionst & goto_functions)
+{
+  for(const auto &fct : goto_functions.function_map)
+  {
+    const goto_programt &goto_program = fct.second.body;
 
-  Inputs:
+    for(const auto &ins : goto_program.instructions)
+    {
+      if(ins.is_assert())
+      {
+        if(ins.source_location.get_property_id() == property)
+        {
+          return ins.source_location;
+        }
+      }
+    }
+  }
+  return { };
+}
 
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void show_properties(
   const namespacet &ns,
@@ -72,7 +88,7 @@ void show_properties(
       break;
 
     case ui_message_handlert::uit::JSON_UI:
-      assert(false);
+      UNREACHABLE;
       break;
 
     case ui_message_handlert::uit::PLAIN:
@@ -87,23 +103,11 @@ void show_properties(
       break;
 
     default:
-      assert(false);
+      UNREACHABLE;
     }
   }
 }
 
-
-/*******************************************************************\
-
-Function: cbmc_parseoptionst::show_properties_json
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void show_properties_json(
   json_arrayt &json_properties,
@@ -130,24 +134,16 @@ void show_properties_json(
       json_properties.push_back(jsont()).make_object();
     json_property["name"]=json_stringt(id2string(property_id));
     json_property["class"]=json_stringt(id2string(property_class));
+    if(!source_location.get_basic_block_covered_lines().empty())
+      json_property["coveredLines"]=
+        json_stringt(
+          id2string(source_location.get_basic_block_covered_lines()));
     json_property["sourceLocation"]=json(source_location);
     json_property["description"]=json_stringt(id2string(description));
     json_property["expression"]=
       json_stringt(from_expr(ns, identifier, ins.guard));
   }
 }
-
-/*******************************************************************\
-
-Function: show_properties_json
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void show_properties_json(
   const namespacet &ns,
@@ -168,18 +164,6 @@ void show_properties_json(
   std::cout << ",\n" << json_result;
 }
 
-/*******************************************************************\
-
-Function: show_properties
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void show_properties(
   const namespacet &ns,
   ui_message_handlert::uit ui,
@@ -192,18 +176,6 @@ void show_properties(
       if(!fct.second.is_inlined())
         show_properties(ns, fct.first, ui, fct.second.body);
 }
-
-/*******************************************************************\
-
-Function: show_properties
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void show_properties(
   const goto_modelt &goto_model,

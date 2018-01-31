@@ -8,6 +8,9 @@ Date: July 2005
 
 \*******************************************************************/
 
+/// \file
+/// Traces of GOTO Programs
+
 #ifndef CPROVER_GOTO_PROGRAMS_GOTO_TRACE_H
 #define CPROVER_GOTO_PROGRAMS_GOTO_TRACE_H
 
@@ -21,6 +24,8 @@ Date: July 2005
 #include <iosfwd>
 #include <vector>
 
+#include <util/namespace.h>
+#include <util/options.h>
 #include <util/ssa_expr.h>
 
 #include <goto-programs/goto_program.h>
@@ -31,7 +36,7 @@ Date: July 2005
 class goto_trace_stept
 {
 public:
-  unsigned step_nr;
+  std::size_t step_nr;
 
   bool is_assignment() const      { return type==typet::ASSIGNMENT; }
   bool is_assume() const          { return type==typet::ASSUME; }
@@ -80,6 +85,9 @@ public:
   // we may choose to hide a step
   bool hidden;
 
+  // this is related to an internal expression
+  bool internal;
+
   // we categorize
   enum class assignment_typet { STATE, ACTUAL_PARAMETER };
   assignment_typet assignment_type;
@@ -124,6 +132,7 @@ public:
     step_nr(0),
     type(typet::NONE),
     hidden(false),
+    internal(false),
     assignment_type(assignment_typet::STATE),
     thread_nr(0),
     cond_value(false),
@@ -171,6 +180,13 @@ public:
     steps.push_back(step);
   }
 
+  // retrieves the final step in the trace for manipulation
+  // (used to fill a trace from code, hence non-const)
+  inline goto_trace_stept &get_last_step()
+  {
+    return steps.back();
+  }
+
   // delete all steps after (not including) s
   void trim_after(stepst::iterator s)
   {
@@ -181,14 +197,43 @@ public:
 
 void show_goto_trace(
   std::ostream &out,
-  const namespacet &ns,
-  const goto_tracet &goto_trace);
+  const namespacet &,
+  const goto_tracet &);
 
 void trace_value(
   std::ostream &out,
-  const namespacet &ns,
+  const namespacet &,
   const ssa_exprt &lhs_object,
   const exprt &full_lhs,
   const exprt &value);
+
+
+struct trace_optionst
+{
+  bool json_full_lhs;
+
+  static const trace_optionst default_options;
+
+  explicit trace_optionst(const optionst &options)
+  {
+    json_full_lhs = options.get_bool_option("trace-json-extended");
+  };
+
+private:
+  trace_optionst()
+  {
+    json_full_lhs = false;
+  };
+};
+
+#define OPT_GOTO_TRACE "(trace-json-extended)"
+
+#define HELP_GOTO_TRACE                                                        \
+  " --trace-json-extended        add rawLhs property to trace\n"
+
+#define PARSE_OPTIONS_GOTO_TRACE(cmdline, options)                             \
+  if(cmdline.isset("trace-json-extended"))                                     \
+    options.set_option("trace-json-extended", true);
+
 
 #endif // CPROVER_GOTO_PROGRAMS_GOTO_TRACE_H

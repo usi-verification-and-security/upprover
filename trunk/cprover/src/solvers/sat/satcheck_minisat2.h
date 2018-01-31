@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_SOLVERS_SAT_SATCHECK_MINISAT2_H
 #define CPROVER_SOLVERS_SAT_SATCHECK_MINISAT2_H
 
@@ -41,12 +42,24 @@ public:
   // extra MiniSat feature: default branching decision
   void set_polarity(literalt a, bool value);
 
+  // extra MiniSat feature: interrupt running SAT query
+  void interrupt();
+
+  // extra MiniSat feature: permit previously interrupted SAT query to continue
+  void clear_interrupt();
+
   virtual bool is_in_conflict(literalt a) const override;
   virtual bool has_set_assumptions() const final { return true; }
   virtual bool has_is_in_conflict() const final { return true; }
 
+  void set_time_limit_seconds(uint32_t lim) override
+  {
+    time_limit_seconds=lim;
+  }
+
 protected:
   T *solver;
+  uint32_t time_limit_seconds;
 
   void add_variables();
   bvt assumptions;

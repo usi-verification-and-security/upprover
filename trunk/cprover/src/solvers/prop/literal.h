@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_SOLVERS_PROP_LITERAL_H
 #define CPROVER_SOLVERS_PROP_LITERAL_H
 
@@ -191,6 +192,9 @@ inline literalt const_literal(bool value)
 inline literalt neg(literalt a) { return !a; }
 inline literalt pos(literalt a) { return a; }
 
+
+inline bool is_false (const literalt &l) { return (l.is_false()); }
+inline bool is_true (const literalt &l) { return (l.is_true()); }
 
 // bit-vectors
 typedef std::vector<literalt> bvt;

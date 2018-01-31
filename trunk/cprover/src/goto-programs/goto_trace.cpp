@@ -8,6 +8,11 @@ Author: Daniel Kroening
 
 \*******************************************************************/
 
+/// \file
+/// Traces of GOTO Programs
+
+#include "goto_trace.h"
+
 #include <cassert>
 #include <ostream>
 
@@ -17,20 +22,6 @@ Author: Daniel Kroening
 #include <ansi-c/printf_formatter.h>
 #include <langapi/language_util.h>
 
-#include "goto_trace.h"
-
-/*******************************************************************\
-
-Function: goto_tracet::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_tracet::output(
   const class namespacet &ns,
   std::ostream &out) const
@@ -38,18 +29,6 @@ void goto_tracet::output(
   for(const auto &step : steps)
     step.output(ns, out);
 }
-
-/*******************************************************************\
-
-Function: goto_tracet::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_trace_stept::output(
   const namespacet &ns,
@@ -65,16 +44,21 @@ void goto_trace_stept::output(
   case goto_trace_stept::typet::ASSIGNMENT: out << "ASSIGNMENT"; break;
   case goto_trace_stept::typet::GOTO: out << "GOTO"; break;
   case goto_trace_stept::typet::DECL: out << "DECL"; break;
+  case goto_trace_stept::typet::DEAD: out << "DEAD"; break;
   case goto_trace_stept::typet::OUTPUT: out << "OUTPUT"; break;
   case goto_trace_stept::typet::INPUT: out << "INPUT"; break;
-  case goto_trace_stept::typet::ATOMIC_BEGIN: out << "ATOMC_BEGIN"; break;
+  case goto_trace_stept::typet::ATOMIC_BEGIN:
+    out << "ATOMIC_BEGIN";
+    break;
   case goto_trace_stept::typet::ATOMIC_END: out << "ATOMIC_END"; break;
   case goto_trace_stept::typet::SHARED_READ: out << "SHARED_READ"; break;
   case goto_trace_stept::typet::SHARED_WRITE: out << "SHARED WRITE"; break;
   case goto_trace_stept::typet::FUNCTION_CALL: out << "FUNCTION CALL"; break;
   case goto_trace_stept::typet::FUNCTION_RETURN:
     out << "FUNCTION RETURN"; break;
-  default: assert(false);
+  default:
+    out << "unknown type: " << static_cast<int>(type) << std::endl;
+    UNREACHABLE;
   }
 
   if(type==typet::ASSERT || type==typet::ASSUME || type==typet::GOTO)
@@ -109,7 +93,7 @@ void goto_trace_stept::output(
 
   out << "\n";
 
-  if(pc->is_other() || pc->is_assign())
+  if((pc->is_other() && lhs_object.is_not_nil()) || pc->is_assign())
   {
     irep_idt identifier=lhs_object.get_object_name();
     out << "  " << from_expr(ns, identifier, lhs_object.get_original_expr())
@@ -119,7 +103,7 @@ void goto_trace_stept::output(
   else if(pc->is_assert())
   {
     if(!cond_value)
-    {  
+    {
       out << "Violated property:" << "\n";
       if(pc->source_location.is_nil())
         out << "  " << pc->source_location << "\n";
@@ -133,18 +117,6 @@ void goto_trace_stept::output(
 
   out << "\n";
 }
-
-/*******************************************************************\
-
-Function: trace_value_binary
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string trace_value_binary(
   const exprt &expr,
@@ -209,18 +181,6 @@ std::string trace_value_binary(
   return "?";
 }
 
-/*******************************************************************\
-
-Function: trace_value
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void trace_value(
   std::ostream &out,
   const namespacet &ns,
@@ -251,18 +211,6 @@ void trace_value(
       << "\n";
 }
 
-/*******************************************************************\
-
-Function: show_state_header
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void show_state_header(
   std::ostream &out,
   const goto_trace_stept &state,
@@ -281,18 +229,6 @@ void show_state_header(
   out << "----------------------------------------------------" << "\n";
 }
 
-/*******************************************************************\
-
-Function: is_index_member_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool is_index_member_symbol(const exprt &src)
 {
   if(src.id()==ID_index)
@@ -304,18 +240,6 @@ bool is_index_member_symbol(const exprt &src)
   else
     return false;
 }
-
-/*******************************************************************\
-
-Function: show_goto_trace
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void show_goto_trace(
   std::ostream &out,
@@ -464,16 +388,13 @@ void show_goto_trace(
       break;
 
     case goto_trace_stept::typet::CONSTRAINT:
-      assert(false);
-      break;
-
     case goto_trace_stept::typet::SHARED_READ:
     case goto_trace_stept::typet::SHARED_WRITE:
-      assert(false);
-      break;
-
     default:
-      assert(false);
+      UNREACHABLE;
     }
   }
 }
+
+
+const trace_optionst trace_optionst::default_options = trace_optionst();

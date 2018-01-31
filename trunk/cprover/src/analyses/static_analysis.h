@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Static Analysis
+
 #ifndef CPROVER_ANALYSES_STATIC_ANALYSIS_H
 #define CPROVER_ANALYSES_STATIC_ANALYSIS_H
 
@@ -13,9 +16,12 @@ Author: Daniel Kroening, kroening@kroening.com
 #error Deprecated, use ai.h instead
 #endif
 
-#include <map>
 #include <iosfwd>
+#include <map>
+#include <memory>
 #include <unordered_set>
+
+#include <util/make_unique.h>
 
 #include <goto-programs/goto_functions.h>
 
@@ -185,7 +191,7 @@ protected:
       std::pair<unsigned, locationt>(l->location_number, l));
   }
 
-  // true = found s.th. new
+  // true = found something new
   bool fixedpoint(
     const goto_programt &goto_program,
     const goto_functionst &goto_functions);
@@ -198,7 +204,7 @@ protected:
   void concurrent_fixedpoint(
     const goto_functionst &goto_functions);
 
-  // true = found s.th. new
+  // true = found something new
   bool visit(
     locationt l,
     working_sett &working_set,
@@ -249,7 +255,7 @@ protected:
   virtual void generate_state(locationt l)=0;
   virtual statet &get_state(locationt l)=0;
   virtual const statet &get_state(locationt l) const=0;
-  virtual statet* make_temporary_state(statet &s)=0;
+  virtual std::unique_ptr<statet> make_temporary_state(statet &s)=0;
 
   typedef domain_baset::expr_sett expr_sett;
 
@@ -328,9 +334,9 @@ protected:
     return static_cast<T &>(a).merge(static_cast<const T &>(b), to);
   }
 
-  virtual statet *make_temporary_state(statet &s)
+  virtual std::unique_ptr<statet> make_temporary_state(statet &s)
   {
-    return new T(static_cast<T &>(s));
+    return util_make_unique<T>(static_cast<T &>(s));
   }
 
   virtual void generate_state(locationt l)

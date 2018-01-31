@@ -6,23 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <ostream>
-
 #include "json.h"
 
+#include <ostream>
+
 const jsont jsont::null_json_object(jsont::kindt::J_NULL);
-
-/*******************************************************************\
-
-Function: jsont::escape_string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void jsont::escape_string(const std::string &src, std::ostream &out)
 {
@@ -61,18 +49,6 @@ void jsont::escape_string(const std::string &src, std::ostream &out)
     }
   }
 }
-
-/*******************************************************************\
-
-Function: jsont::output_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void jsont::output_rec(std::ostream &out, unsigned indent) const
 {
@@ -156,18 +132,6 @@ void jsont::output_rec(std::ostream &out, unsigned indent) const
   case kindt::J_NULL: out << "null"; break;
   }
 }
-
-/*******************************************************************\
-
-Function: jsont::swap
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void jsont::swap(jsont &other)
 {

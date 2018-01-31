@@ -6,18 +6,13 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#include <util/std_types.h>
-#include <util/std_expr.h>
+/// \file
+/// C++ Language Type Checking
 
 #include "cpp_typecheck.h"
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::do_virtual_table
-
-Author: Daniel Kroening, kroening@kroening.com
-
-\*******************************************************************/
+#include <util/c_types.h>
+#include <util/std_expr.h>
 
 void cpp_typecheckt::do_virtual_table(const symbolt &symbol)
 {
@@ -28,7 +23,7 @@ void cpp_typecheckt::do_virtual_table(const symbolt &symbol)
 
   const struct_typet &struct_type=to_struct_type(symbol.type);
 
-  for(unsigned i=0; i < struct_type.components().size(); i++)
+  for(std::size_t i=0; i < struct_type.components().size(); i++)
   {
     const struct_typet::componentt &compo=struct_type.components()[i];
     if(!compo.get_bool("is_virtual"))
@@ -37,21 +32,20 @@ void cpp_typecheckt::do_virtual_table(const symbolt &symbol)
     const code_typet &code_type=to_code_type(compo.type());
     assert(code_type.parameters().size() > 0);
 
-    const pointer_typet &pointer_type =
-      static_cast<const pointer_typet&>(code_type.parameters()[0].type());
+    const pointer_typet &parameter_pointer_type=
+      to_pointer_type(code_type.parameters()[0].type());
 
-    irep_idt class_id=pointer_type.subtype().get("identifier");
+    irep_idt class_id=parameter_pointer_type.subtype().get("identifier");
 
     std::map<irep_idt, exprt> &value_map =
       vt_value_maps[class_id];
-
 
     exprt e=symbol_exprt(compo.get_name(), code_type);
 
     if(compo.get_bool("is_pure_virtual"))
     {
-      pointer_typet pointer_type(code_type);
-      e=null_pointer_exprt(pointer_type);
+      pointer_typet code_pointer_type=pointer_type(code_type);
+      e=null_pointer_exprt(code_pointer_type);
       value_map[compo.get("virtual_name")]=e;
     }
     else
@@ -89,7 +83,7 @@ void cpp_typecheckt::do_virtual_table(const symbolt &symbol)
 
     exprt values(ID_struct, symbol_typet(vt_symb_type.name));
 
-    for(unsigned i=0; i < vt_type.components().size(); i++)
+    for(std::size_t i=0; i < vt_type.components().size(); i++)
     {
       const struct_typet::componentt &compo=vt_type.components()[i];
       std::map<irep_idt, exprt>::const_iterator cit2 =
@@ -101,7 +95,7 @@ void cpp_typecheckt::do_virtual_table(const symbolt &symbol)
     }
     vt_symb_var.value=values;
 
-    bool failed=symbol_table.move(vt_symb_var);
-    assert(!failed);
+    bool failed=!symbol_table.insert(std::move(vt_symb_var)).second;
+    CHECK_RETURN(!failed);
   }
 }

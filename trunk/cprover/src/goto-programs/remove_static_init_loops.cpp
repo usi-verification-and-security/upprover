@@ -6,13 +6,16 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <algorithm>
-
-#include <util/message.h>
-#include <util/suffix.h>
-#include <util/string2int.h>
+/// \file
+/// Unwind loops in static initializers
 
 #include "remove_static_init_loops.h"
+#include "goto_model.h"
+
+#include <algorithm>
+
+#include <util/suffix.h>
+#include <util/string2int.h>
 
 class remove_static_init_loopst
 {
@@ -24,29 +27,24 @@ public:
 
   void unwind_enum_static(
     const goto_functionst &goto_functions,
-    optionst &options);
+    optionst &options,
+    message_handlert &);
 protected:
   const symbol_tablet &symbol_table;
 };
 
-/*******************************************************************\
-
-Function: unwind_enum_static
-
-  Inputs: goto_functions and options
-
- Outputs: side effect is adding <clinit> loops to unwindset
-
- Purpose: unwind static initialization loops of Java enums as far as
-          the enum has elements, thus flattening them completely
-
-\*******************************************************************/
-
+/// unwind static initialization loops of Java enums as far as the enum has
+/// elements, thus flattening them completely
+/// \par parameters: goto_functions and options
+/// \return side effect is adding <clinit> loops to unwindset
 void remove_static_init_loopst::unwind_enum_static(
   const goto_functionst &goto_functions,
-  optionst &options)
+  optionst &options,
+  message_handlert &msg)
 {
   size_t unwind_max=0;
+  messaget message;
+  message.set_message_handler(msg);
   forall_goto_functions(f, goto_functions)
   {
     auto &p=f->second.body;
@@ -59,15 +57,23 @@ void remove_static_init_loopst::unwind_enum_static(
         const std::string java_clinit="<clinit>:()V";
         const std::string &fname=id2string(ins.function);
         size_t class_prefix_length=fname.find_last_of('.');
+        // is the function symbol in the symbol table?
+        const auto maybe_symbol=symbol_table.lookup(ins.function);
+        if(!maybe_symbol)
+        {
+          message.warning() << "function `" << id2string(ins.function)
+                            << "` is not in symbol table" << messaget::eom;
+          continue;
+        }
         // is Java function and static init?
-        const symbolt &function_name=symbol_table.lookup(ins.function);
+        const symbolt &function_name=*maybe_symbol;
         if(!(function_name.mode==ID_java && has_suffix(fname, java_clinit)))
           continue;
         assert(
           class_prefix_length!=std::string::npos &&
           "could not identify class name");
         const std::string &classname=fname.substr(0, class_prefix_length);
-        const symbolt &class_symbol=symbol_table.lookup(classname);
+        const symbolt &class_symbol=*symbol_table.lookup(classname);
         const class_typet &class_type=to_class_type(class_symbol.type);
         size_t unwinds=class_type.get_size_t(ID_java_enum_static_unwind);
 
@@ -95,24 +101,28 @@ void remove_static_init_loopst::unwind_enum_static(
   }
 }
 
-/*******************************************************************\
-
-Function: remove_static_init_loops
-
-  Inputs: symbol table, goto_functions and options
-
- Outputs: side effect is adding <clinit> loops to unwindset
-
- Purpose: this is the entry point for the removal of loops in static
-          initialization code of Java enums
-
-\*******************************************************************/
+/// this is the entry point for the removal of loops in static initialization
+/// code of Java enums
+/// \par parameters: symbol table, goto_functions and options
+/// \return side effect is adding <clinit> loops to unwindset
+void remove_static_init_loops(
+  const goto_modelt &goto_model,
+  optionst &options,
+  message_handlert &msg)
+{
+  remove_static_init_loops(
+    goto_model.symbol_table,
+    goto_model.goto_functions,
+    options,
+    msg);
+}
 
 void remove_static_init_loops(
   const symbol_tablet &symbol_table,
   const goto_functionst &goto_functions,
-  optionst &options)
+  optionst &options,
+  message_handlert &msg)
 {
   remove_static_init_loopst remove_loops(symbol_table);
-  remove_loops.unwind_enum_static(goto_functions, options);
+  remove_loops.unwind_enum_static(goto_functions, options, msg);
 }

@@ -6,37 +6,23 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution of ANSI-C
+
+#include "bmc.h"
+
 #include <iostream>
 #include <fstream>
 
 #include <langapi/mode.h>
-#include <langapi/languages.h>
 #include <langapi/language_util.h>
-
-#include <ansi-c/ansi_c_language.h>
 
 #include <util/json.h>
 #include <util/json_expr.h>
 
-#include "bmc.h"
-
-/*******************************************************************\
-
-Function: bmct::show_vcc_plain
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void bmct::show_vcc_plain(std::ostream &out)
 {
   out << "\n" << "VERIFICATION CONDITIONS:" << "\n" << "\n";
-
-  languagest languages(ns, new_ansi_c_language());
 
   bool has_threads=equation.has_threads();
 
@@ -61,13 +47,13 @@ void bmct::show_vcc_plain(std::ostream &out)
     symex_target_equationt::SSA_stepst::const_iterator
       last_it=has_threads?equation.SSA_steps.end():s_it;
 
-    for(unsigned count=1; p_it!=last_it; p_it++)
+    for(std::size_t count=1; p_it!=last_it; p_it++)
       if(p_it->is_assume() || p_it->is_assignment() || p_it->is_constraint())
       {
         if(!p_it->ignore)
         {
-          std::string string_value;
-          languages.from_expr(p_it->cond_expr, string_value);
+          std::string string_value=
+            from_expr(ns, "", p_it->cond_expr);
           out << "{-" << count << "} " << string_value << "\n";
 
           #if 0
@@ -82,33 +68,19 @@ void bmct::show_vcc_plain(std::ostream &out)
 
     out << "|--------------------------" << "\n";
 
-    std::string string_value;
-    languages.from_expr(s_it->cond_expr, string_value);
+    std::string string_value=
+      from_expr(ns, "", s_it->cond_expr);
     out << "{" << 1 << "} " << string_value << "\n";
 
     out << "\n";
   }
 }
 
-/*******************************************************************\
-
-Function: bmct::show_vcc_json
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void bmct::show_vcc_json(std::ostream &out)
 {
   json_objectt json_result;
 
   json_arrayt &json_vccs=json_result["vccs"].make_array();
-
-  languagest languages(ns, new_ansi_c_language());
 
   bool has_threads=equation.has_threads();
 
@@ -146,31 +118,19 @@ void bmct::show_vcc_json(std::ostream &out)
          p_it->is_constraint()) &&
          !p_it->ignore)
       {
-        std::string string_value;
-        languages.from_expr(p_it->cond_expr, string_value);
+        std::string string_value=
+          from_expr(ns, "", p_it->cond_expr);
         json_constraints.push_back(json_stringt(string_value));
       }
     }
 
-    std::string string_value;
-    languages.from_expr(s_it->cond_expr, string_value);
+    std::string string_value=
+      from_expr(ns, "", s_it->cond_expr);
     object["expression"]=json_stringt(string_value);
   }
 
   out << ",\n" << json_result;
 }
-
-/*******************************************************************\
-
-Function: bmct::show_vcc
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void bmct::show_vcc()
 {

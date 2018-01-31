@@ -9,25 +9,21 @@ Date:   March 2017
 
 \*******************************************************************/
 
-#include <util/arith_tools.h>
-#include <util/std_expr.h>
+/// \file
+/// Preprocess a goto-programs so that calls to the java Character library are
+///   replaced by simple expressions.
+
 #include "character_refine_preprocess.h"
 
-/*******************************************************************\
+#include <util/arith_tools.h>
+#include <util/std_expr.h>
 
-Function: character_refine_preprocesst::convert_char_function
-
-  Inputs:
-    expr_function - A reference to a function on expressions
-    target - A position in a goto program
-
- Purpose: converts based on a function on expressions
-
-\*******************************************************************/
-
+/// converts based on a function on expressions
+/// \param expr_function: A reference to a function on expressions
+/// \param target: A position in a goto program
 codet character_refine_preprocesst::convert_char_function(
   exprt (*expr_function)(const exprt &chr, const typet &type),
-  conversion_input &target)
+  conversion_inputt &target)
 {
   const code_function_callt &function_call=target;
   assert(function_call.arguments().size()==1);
@@ -37,22 +33,12 @@ codet character_refine_preprocesst::convert_char_function(
   return code_assignt(result, expr_function(arg, type));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::in_interval_expr
-
-  Inputs:
-    arg - Expression we want to bound
-    lower_bound - Integer lower bound
-    upper_bound - Integer upper bound
-
- Outputs: A Boolean expression
-
- Purpose: The returned expression is true when the first argument is in the
-          interval defined by the lower and upper bounds (included)
-
-\*******************************************************************/
-
+/// The returned expression is true when the first argument is in the interval
+/// defined by the lower and upper bounds (included)
+/// \param arg: Expression we want to bound
+/// \param lower_bound: Integer lower bound
+/// \param upper_bound: Integer upper bound
+/// \return A Boolean expression
 exprt character_refine_preprocesst::in_interval_expr(
   const exprt &chr,
   const mp_integer &lower_bound,
@@ -63,21 +49,11 @@ exprt character_refine_preprocesst::in_interval_expr(
     binary_relation_exprt(chr, ID_le, from_integer(upper_bound, chr.type())));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::in_list_expr
-
-  Inputs:
-    chr - An expression of type character
-    list - A list of integer representing unicode characters
-
- Outputs: A Boolean expression
-
- Purpose: The returned expression is true when the given character
-          is equal to one of the element in the list
-
-\*******************************************************************/
-
+/// The returned expression is true when the given character is equal to one of
+/// the element in the list
+/// \param chr: An expression of type character
+/// \param list: A list of integer representing unicode characters
+/// \return A Boolean expression
 exprt character_refine_preprocesst::in_list_expr(
   const exprt &chr, const std::list<mp_integer> &list)
 {
@@ -87,21 +63,11 @@ exprt character_refine_preprocesst::in_list_expr(
   return disjunction(ops);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_char_count
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A integer expression of the given type
-
- Purpose: Determines the number of char values needed to represent
-          the specified character (Unicode code point).
-
-\*******************************************************************/
-
+/// Determines the number of char values needed to represent the specified
+/// character (Unicode code point).
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A integer expression of the given type
 exprt character_refine_preprocesst::expr_of_char_count(
   const exprt &chr, const typet &type)
 {
@@ -110,74 +76,38 @@ exprt character_refine_preprocesst::expr_of_char_count(
   return if_exprt(small, from_integer(1, type), from_integer(2, type));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_char_count
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.charCount:(I)I
-
-\*******************************************************************/
-
-codet character_refine_preprocesst::convert_char_count(conversion_input &target)
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.charCount:(I)I
+/// \param target: a position in a goto program
+codet character_refine_preprocesst::convert_char_count(
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_char_count, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_char_value
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: An expression of the given type
-
- Purpose: Casts the given expression to the given type
-
-\*******************************************************************/
-
+/// Casts the given expression to the given type
+/// \return An expression of the given type
 exprt character_refine_preprocesst::expr_of_char_value(
   const exprt &chr, const typet &type)
 {
   return typecast_exprt(chr, type);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_char_value
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.charValue:()C
-
-\*******************************************************************/
-
-codet character_refine_preprocesst::convert_char_value(conversion_input &target)
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.charValue:()C
+/// \param target: a position in a goto program
+codet character_refine_preprocesst::convert_char_value(
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_char_value, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_compare
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.compare:(CC)I
-
-\*******************************************************************/
-
-codet character_refine_preprocesst::convert_compare(conversion_input &target)
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.compare:(CC)I
+/// \param target: a position in a goto program
+codet character_refine_preprocesst::convert_compare(conversion_inputt &target)
 {
   const code_function_callt &function_call=target;
   assert(function_call.arguments().size()==2);
@@ -196,24 +126,23 @@ codet character_refine_preprocesst::convert_compare(conversion_input &target)
 }
 
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_digit_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.digit:(CI)I
-
-\*******************************************************************/
-
-codet character_refine_preprocesst::convert_digit_char(conversion_input &target)
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.digit:(CI)I. The function call has one character
+/// argument and an optional integer radix argument. If the radix is not given
+/// it is set to 36 by default.
+/// \param target: a position in a goto program
+/// \return code assigning the result of the Character.digit function to the
+///         left-hand-side of the given target
+codet character_refine_preprocesst::convert_digit_char(
+  conversion_inputt &target)
 {
   const code_function_callt &function_call=target;
-  assert(function_call.arguments().size()==2);
+  const std::size_t nb_args=function_call.arguments().size();
+  PRECONDITION(nb_args==1 || nb_args==2);
   const exprt &arg=function_call.arguments()[0];
-  const exprt &radix=function_call.arguments()[1];
+  // If there is no radix argument we set it to 36 which is the maximum possible
+  const exprt &radix=
+    nb_args>1?function_call.arguments()[1]:from_integer(36, arg.type());
   const exprt &result=function_call.lhs();
   const typet &type=result.type();
 
@@ -278,201 +207,110 @@ codet character_refine_preprocesst::convert_digit_char(conversion_input &target)
   return code_assignt(result, tc_expr);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_char_is_digit_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.digit:(II)I
-
-\*******************************************************************/
-
-codet character_refine_preprocesst::convert_digit_int(conversion_input &target)
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.digit:(II)I
+/// \param target: a position in a goto program
+codet character_refine_preprocesst::convert_digit_int(conversion_inputt &target)
 {
   return convert_digit_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_for_digit
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.forDigit:(II)I
-
-    TODO: For now the radix argument is ignored
-
-\*******************************************************************/
-
-codet character_refine_preprocesst::convert_for_digit(conversion_input &target)
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.forDigit:(II)C
+///
+///    TODO: For now the radix argument is ignored
+/// \param target: a position in a goto program
+codet character_refine_preprocesst::convert_for_digit(conversion_inputt &target)
 {
   const code_function_callt &function_call=target;
   assert(function_call.arguments().size()==2);
   const exprt &digit=function_call.arguments()[0];
   const exprt &result=function_call.lhs();
   const typet &type=result.type();
+  typecast_exprt casted_digit(digit, type);
 
   exprt d10=from_integer(10, type);
-  binary_relation_exprt small(digit, ID_le, d10);
-  plus_exprt value1(digit, from_integer('0', type));
-  minus_exprt value2(plus_exprt(digit, from_integer('a', digit.type())), d10);
+  binary_relation_exprt small(casted_digit, ID_le, d10);
+  plus_exprt value1(casted_digit, from_integer('0', type));
+  plus_exprt value2(minus_exprt(casted_digit, d10), from_integer('a', type));
   return code_assignt(result, if_exprt(small, value1, value2));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_get_directionality_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.getDirectionality:(C)I
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.getDirectionality:(C)I
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_get_directionality_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   // TODO: This is unimplemented for now as it requires analyzing
   // the UnicodeData file to find characters directionality.
   return target;
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_char_is_digit_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.getDirectionality:(I)I
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.getDirectionality:(I)I
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_get_directionality_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_get_directionality_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_get_numeric_value_char
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.getNumericValue:(C)I
-
-    TODO: For now this is only for ASCII characters
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.getNumericValue:(C)I
+///
+///    TODO: For now this is only for ASCII characters
 codet character_refine_preprocesst::convert_get_numeric_value_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_digit_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_get_numeric_value_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.getNumericValue:(C)I
-
-    TODO: For now this is only for ASCII characters
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.getNumericValue:(C)I
+///
+///    TODO: For now this is only for ASCII characters
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_get_numeric_value_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_digit_int(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_get_type_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.getType:(C)I
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.getType:(C)I
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_get_type_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   // TODO: This is unimplemented for now as it requires analyzing
   // the UnicodeData file to categorize characters.
   return target;
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_get_type_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.getType:(I)I
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.getType:(I)I
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_get_type_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_get_type_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_hash_code
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.hashCode:()I
-
-\*******************************************************************/
-
-codet character_refine_preprocesst::convert_hash_code(conversion_input &target)
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.hashCode:()I
+/// \param target: a position in a goto program
+codet character_refine_preprocesst::convert_hash_code(conversion_inputt &target)
 {
   return convert_char_value(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_high_surrogate
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: An expression of the given type
-
- Purpose: Returns the leading surrogate (a high surrogate code unit)
-          of the surrogate pair representing the specified
-          supplementary character (Unicode code point) in the UTF-16
-          encoding.
-
-\*******************************************************************/
-
+/// Returns the leading surrogate (a high surrogate code unit) of the surrogate
+/// pair representing the specified supplementary character (Unicode code point)
+/// in the UTF-16 encoding.
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return An expression of the given type
 exprt character_refine_preprocesst::expr_of_high_surrogate(
   const exprt &chr, const typet &type)
 {
@@ -484,84 +322,43 @@ exprt character_refine_preprocesst::expr_of_high_surrogate(
   return high_surrogate;
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_high_surrogate
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.highSurrogate:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.highSurrogate:(C)Z
 codet character_refine_preprocesst::convert_high_surrogate(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_high_surrogate, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_ascii_lower_case
-
-  Inputs:
-    chr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines if the specified character is an ASCII lowercase
-          character.
-
-\*******************************************************************/
-
+/// Determines if the specified character is an ASCII lowercase character.
+/// \param chr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_ascii_lower_case(
   const exprt &chr, const typet &type)
 {
   return in_interval_expr(chr, 'a', 'z');
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_ascii_upper_case
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines if the specified character is an ASCII uppercase
-          character.
-
-\*******************************************************************/
-
+/// Determines if the specified character is an ASCII uppercase character.
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_ascii_upper_case(
   const exprt &chr, const typet &type)
 {
   return in_interval_expr(chr, 'A', 'Z');
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_letter
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: An expression of the given type
-
- Purpose: Determines if the specified character is a letter.
-
-    TODO: for now this is only for ASCII characters, the
-          following unicode categories are not yet considered:
-          TITLECASE_LETTER MODIFIER_LETTER OTHER_LETTER LETTER_NUMBER
-
-\*******************************************************************/
-
+/// Determines if the specified character is a letter.
+///
+///    TODO: for now this is only for ASCII characters, the
+///          following unicode categories are not yet considered:
+///          TITLECASE_LETTER MODIFIER_LETTER OTHER_LETTER LETTER_NUMBER
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return An expression of the given type
 exprt character_refine_preprocesst::expr_of_is_letter(
   const exprt &chr, const typet &type)
 {
@@ -570,68 +367,38 @@ exprt character_refine_preprocesst::expr_of_is_letter(
     expr_of_is_ascii_lower_case(chr, type));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_alphabetic
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: An expression of the given type
-
- Purpose: Determines if the specified character (Unicode code point)
-          is alphabetic.
-
-    TODO: for now this is only for ASCII characters, the
-          following unicode categorise are not yet considered:
-          TITLECASE_LETTER MODIFIER_LETTER OTHER_LETTER LETTER_NUMBER
-          and contributory property Other_Alphabetic as defined by the
-          Unicode Standard.
-
-\*******************************************************************/
-
+/// Determines if the specified character (Unicode code point) is alphabetic.
+///
+///    TODO: for now this is only for ASCII characters, the
+///          following unicode categorise are not yet considered:
+///          TITLECASE_LETTER MODIFIER_LETTER OTHER_LETTER LETTER_NUMBER
+///          and contributory property Other_Alphabetic as defined by the
+///          Unicode Standard.
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return An expression of the given type
 exprt character_refine_preprocesst::expr_of_is_alphabetic(
   const exprt &chr, const typet &type)
 {
   return expr_of_is_letter(chr, type);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_alphabetic
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isAlphabetic:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isAlphabetic:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_alphabetic(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_alphabetic, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_bmp_code_point
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines whether the specified character (Unicode code
-          point) is in the Basic Multilingual Plane (BMP). Such code
-          points can be represented using a single char.
-
-\*******************************************************************/
-
+/// Determines whether the specified character (Unicode code point) is in the
+/// Basic Multilingual Plane (BMP). Such code points can be represented using a
+/// single char.
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_bmp_code_point(
   const exprt &chr, const typet &type)
 {
@@ -639,39 +406,20 @@ exprt character_refine_preprocesst::expr_of_is_bmp_code_point(
   return is_bmp;
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_bmp_code_point
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isBmpCodePoint:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isBmpCodePoint:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_bmp_code_point(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_bmp_code_point, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_for_is_defined
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: An expression of the given type
-
- Purpose: Determines if a character is defined in Unicode.
-
-\*******************************************************************/
-
+/// Determines if a character is defined in Unicode.
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return An expression of the given type
 exprt character_refine_preprocesst::expr_of_is_defined(
   const exprt &chr, const typet &type)
 {
@@ -703,67 +451,39 @@ exprt character_refine_preprocesst::expr_of_is_defined(
   return not_exprt(disjunction(intervals));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_defined_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isDefined:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isDefined:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_defined_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_defined, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_char_is_digit_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isDefined:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isDefined:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_defined_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_defined_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_digit
-
-  Inputs:
-    chr - An expression of type character
-    type - A type for the output
-
- Outputs: An expression of the given type
-
- Purpose: Determines if the specified character is a digit.
-          A character is a digit if its general category type,
-          provided by Character.getType(ch), is DECIMAL_DIGIT_NUMBER.
-
-   TODO: for now we only support these ranges of digits:
-         '\u0030' through '\u0039', ISO-LATIN-1 digits ('0' through '9')
-         '\u0660' through '\u0669', Arabic-Indic digits
-         '\u06F0' through '\u06F9', Extended Arabic-Indic digits
-         '\u0966' through '\u096F', Devanagari digits
-         '\uFF10' through '\uFF19', Fullwidth digits
-         Many other character ranges contain digits as well.
-
-\*******************************************************************/
-
+/// Determines if the specified character is a digit. A character is a digit if
+/// its general category type, provided by Character.getType(ch), is
+/// DECIMAL_DIGIT_NUMBER.
+///
+///   TODO: for now we only support these ranges of digits:
+///         '\u0030' through '\u0039', ISO-LATIN-1 digits ('0' through '9')
+///         '\u0660' through '\u0669', Arabic-Indic digits
+///         '\u06F0' through '\u06F9', Extended Arabic-Indic digits
+///         '\u0966' through '\u096F', Devanagari digits
+///         '\uFF10' through '\uFF19', Fullwidth digits
+///         Many other character ranges contain digits as well.
+/// \param chr: An expression of type character
+/// \param type: A type for the output
+/// \return An expression of the given type
 exprt character_refine_preprocesst::expr_of_is_digit(
   const exprt &chr, const typet &type)
 {
@@ -778,104 +498,54 @@ exprt character_refine_preprocesst::expr_of_is_digit(
   return digit;
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_digit_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isDigit:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isDigit:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_digit_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_digit, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_digit_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.digit:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.digit:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_digit_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_digit_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_high_surrogate
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines if the given char value is a Unicode
-          high-surrogate code unit (also known as leading-surrogate
-          code unit).
-
-\*******************************************************************/
-
+/// Determines if the given char value is a Unicode high-surrogate code unit
+/// (also known as leading-surrogate code unit).
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_high_surrogate(
   const exprt &chr, const typet &type)
 {
   return in_interval_expr(chr, 0xD800, 0xDBFF);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_high_surrogate
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isHighSurrogate:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isHighSurrogate:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_high_surrogate(
-    conversion_input &target)
+    conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_high_surrogate, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_identifier_ignorable
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines if the character is one of ignorable in a Java
-         identifier, that is, it is in one of these ranges:
-         '\u0000' through '\u0008'
-         '\u000E' through '\u001B'
-         '\u007F' through '\u009F'
-
-    TODO: For now, we ignore the FORMAT general category value
-
-\*******************************************************************/
-
+/// Determines if the character is one of ignorable in a Java identifier, that
+/// is, it is in one of these ranges: '\u0000' through '\u0008' '\u000E' through
+/// '\u001B' '\u007F' through '\u009F'
+///
+///    TODO: For now, we ignore the FORMAT general category value
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_identifier_ignorable(
   const exprt &chr, const typet &type)
 {
@@ -887,63 +557,34 @@ exprt character_refine_preprocesst::expr_of_is_identifier_ignorable(
   return ignorable;
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_identifier_ignorable_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method
-          Character.isIdentifierIgnorable:(C)Z
-
-    TODO: For now, we ignore the FORMAT general category value
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isIdentifierIgnorable:(C)Z
+///
+///    TODO: For now, we ignore the FORMAT general category value
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_identifier_ignorable_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_identifier_ignorable, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_identifier_ignorable_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method
-          Character.isIdentifierIgnorable:(I)Z
-
-    TODO: For now, we ignore the FORMAT general category value
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isIdentifierIgnorable:(I)Z
+///
+///    TODO: For now, we ignore the FORMAT general category value
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_identifier_ignorable_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_identifier_ignorable_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_ideographic
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isIdeographic:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isIdeographic:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_ideographic(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   const code_function_callt &function_call=target;
   assert(function_call.arguments().size()==1);
@@ -953,20 +594,11 @@ codet character_refine_preprocesst::convert_is_ideographic(
   return code_assignt(result, is_ideograph);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_ISO_control_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isISOControl:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isISOControl:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_ISO_control_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   const code_function_callt &function_call=target;
   assert(function_call.arguments().size()==1);
@@ -977,290 +609,154 @@ codet character_refine_preprocesst::convert_is_ISO_control_char(
   return code_assignt(result, iso);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_ISO_control_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isISOControl:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isISOControl:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_ISO_control_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_ISO_control_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_java_identifier_part_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isJavaIdentifierPart:(C)Z
-
-    TODO: For now we do not allow currency symbol, connecting punctuation,
-          combining mark, non-spacing mark
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isJavaIdentifierPart:(C)Z
+///
+///    TODO: For now we do not allow currency symbol, connecting punctuation,
+///          combining mark, non-spacing mark
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_java_identifier_part_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_unicode_identifier_part, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_java_identifier_part_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method isJavaIdentifierPart:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method isJavaIdentifierPart:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_java_identifier_part_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_unicode_identifier_part_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_java_identifier_start_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method isJavaIdentifierStart:(C)Z
-
-    TODO: For now we only allow letters and letter numbers.
-          The java specification for this function is not precise on the
-          other characters.
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method isJavaIdentifierStart:(C)Z
+///
+///    TODO: For now we only allow letters and letter numbers.
+///          The java specification for this function is not precise on the
+///          other characters.
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_java_identifier_start_char(
-    conversion_input &target)
+    conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_unicode_identifier_start, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_char_is_digit_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method isJavaIdentifierStart:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method isJavaIdentifierStart:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_java_identifier_start_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_java_identifier_start_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_java_letter
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isJavaLetter:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isJavaLetter:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_java_letter(
-    conversion_input &target)
+    conversion_inputt &target)
 {
   return convert_is_java_identifier_start_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_java_letter_or_digit
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method isJavaLetterOrDigit:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method isJavaLetterOrDigit:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_java_letter_or_digit(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_java_identifier_part_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_letter_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isLetter:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isLetter:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_letter_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_letter, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_letter_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isLetter:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isLetter:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_letter_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_letter_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_letter_or_digit
-
-  Inputs:
-    chr - An expression of type character
-    type - A type for the output
-
- Outputs: An expression of the given type
-
- Purpose: Determines if the specified character is a letter or digit.
-
-\*******************************************************************/
-
+/// Determines if the specified character is a letter or digit.
+/// \param chr: An expression of type character
+/// \param type: A type for the output
+/// \return An expression of the given type
 exprt character_refine_preprocesst::expr_of_is_letter_or_digit(
   const exprt &chr, const typet &type)
 {
   return or_exprt(expr_of_is_letter(chr, type), expr_of_is_digit(chr, type));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_letter_or_digit_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isLetterOrDigit:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isLetterOrDigit:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_letter_or_digit_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_digit, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_letter_or_digit_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isLetterOrDigit:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isLetterOrDigit:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_letter_or_digit_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_letter_or_digit_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_lower_case_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isLowerCase:(C)Z
-
-    TODO: For now we only consider ASCII characters
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isLowerCase:(C)Z
+///
+///    TODO: For now we only consider ASCII characters
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_lower_case_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_ascii_lower_case, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_lower_case_int()
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isLowerCase:(I)Z
-
-    TODO: For now we only consider ASCII characters
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isLowerCase:(I)Z
+///
+///    TODO: For now we only consider ASCII characters
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_lower_case_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_lower_case_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_low_surrogate
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isLowSurrogate:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isLowSurrogate:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_low_surrogate(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   const code_function_callt &function_call=target;
   assert(function_call.arguments().size()==1);
@@ -1270,103 +766,55 @@ codet character_refine_preprocesst::convert_is_low_surrogate(
   return code_assignt(result, is_low_surrogate);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_mirrored
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: An expression of the given type
-
- Purpose: Determines whether the character is mirrored according to
-          the Unicode specification.
-
-    TODO: For now only ASCII characters are considered
-
-\*******************************************************************/
-
+/// Determines whether the character is mirrored according to the Unicode
+/// specification.
+///
+///    TODO: For now only ASCII characters are considered
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return An expression of the given type
 exprt character_refine_preprocesst::expr_of_is_mirrored(
   const exprt &chr, const typet &type)
 {
   return in_list_expr(chr, {0x28, 0x29, 0x3C, 0x3E, 0x5B, 0x5D, 0x7B, 0x7D});
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_mirrored_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isMirrored:(C)Z
-
-    TODO: For now only ASCII characters are considered
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isMirrored:(C)Z
+///
+///    TODO: For now only ASCII characters are considered
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_mirrored_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_mirrored, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_mirrored_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isMirrored:(I)Z
-
-    TODO: For now only ASCII characters are considered
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isMirrored:(I)Z
+///
+///    TODO: For now only ASCII characters are considered
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_mirrored_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_mirrored_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_space
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isSpace:(C)Z
-
-\*******************************************************************/
-
-codet character_refine_preprocesst::convert_is_space(conversion_input &target)
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isSpace:(C)Z
+/// \param target: a position in a goto program
+codet character_refine_preprocesst::convert_is_space(conversion_inputt &target)
 {
   return convert_is_whitespace_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_space_char
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines if the specified character is white space
-          according to Unicode (SPACE_SEPARATOR, LINE_SEPARATOR, or
-          PARAGRAPH_SEPARATOR)
-
-\*******************************************************************/
-
+/// Determines if the specified character is white space according to Unicode
+/// (SPACE_SEPARATOR, LINE_SEPARATOR, or PARAGRAPH_SEPARATOR)
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_space_char(
   const exprt &chr, const typet &type)
 {
@@ -1377,138 +825,71 @@ exprt character_refine_preprocesst::expr_of_is_space_char(
   return or_exprt(condition0, condition1);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_space_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isSpaceChar:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isSpaceChar:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_space_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_space_char, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_space_char_int()
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isSpaceChar:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isSpaceChar:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_space_char_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_space_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_supplementary_code_point
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines whether the specified character (Unicode code
-          point) is in the supplementary character range.
-
-\*******************************************************************/
-
+/// Determines whether the specified character (Unicode code point) is in the
+/// supplementary character range.
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_supplementary_code_point(
   const exprt &chr, const typet &type)
 {
   return binary_relation_exprt(chr, ID_gt, from_integer(0xFFFF, chr.type()));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_supplementary_code_point
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method
-          Character.isSupplementaryCodePoint:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isSupplementaryCodePoint:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_supplementary_code_point(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_supplementary_code_point, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_surrogate
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines if the given char value is a Unicode surrogate
-          code unit.
-
-\*******************************************************************/
-
+/// Determines if the given char value is a Unicode surrogate code unit.
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_surrogate(
   const exprt &chr, const typet &type)
 {
   return in_interval_expr(chr, 0xD800, 0xDFFF);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_surrogate
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isSurrogate:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isSurrogate:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_surrogate(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_surrogate, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_surrogate_pair
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isSurrogatePair:(CC)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isSurrogatePair:(CC)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_surrogate_pair(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   const code_function_callt &function_call=target;
   assert(function_call.arguments().size()==2);
@@ -1520,20 +901,10 @@ codet character_refine_preprocesst::convert_is_surrogate_pair(
   return code_assignt(result, and_exprt(is_high_surrogate, is_low_surrogate));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_title_case
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines if the specified character is a titlecase character.
-
-\*******************************************************************/
-
+/// Determines if the specified character is a titlecase character.
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_title_case(
   const exprt &chr, const typet &type)
 {
@@ -1547,58 +918,30 @@ exprt character_refine_preprocesst::expr_of_is_title_case(
   return disjunction(conditions);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_title_case_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isTitleCase:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isTitleCase:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_title_case_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_title_case, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_title_case_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isTitleCase:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isTitleCase:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_title_case_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_title_case_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_letter_number
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines if the specified character is in the LETTER_NUMBER
-          category of Unicode
-
-\*******************************************************************/
-
+/// Determines if the specified character is in the LETTER_NUMBER category of
+/// Unicode
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_letter_number(
   const exprt &chr, const typet &type)
 {
@@ -1619,23 +962,13 @@ exprt character_refine_preprocesst::expr_of_is_letter_number(
 }
 
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_unicode_identifier_part
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines if the character may be part of a Unicode identifier.
-
-    TODO: For now we do not allow connecting punctuation, combining mark,
-          non-spacing mark
-
-\*******************************************************************/
-
+/// Determines if the character may be part of a Unicode identifier.
+///
+///    TODO: For now we do not allow connecting punctuation, combining mark,
+///          non-spacing mark
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_unicode_identifier_part(
   const exprt &chr, const typet &type)
 {
@@ -1646,60 +979,30 @@ exprt character_refine_preprocesst::expr_of_is_unicode_identifier_part(
   return disjunction(conditions);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_unicode_identifier_part_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method
-          Character.isUnicodeIdentifierPart:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isUnicodeIdentifierPart:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_unicode_identifier_part_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_unicode_identifier_part, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_unicode_identifier_part_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method
-          Character.isUnicodeIdentifierPart:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isUnicodeIdentifierPart:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_unicode_identifier_part_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_unicode_identifier_part_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_unicode_identifier_start
-
-  Inputs:
-    chr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines if the specified character is permissible as the
-          first character in a Unicode identifier.
-
-\*******************************************************************/
-
+/// Determines if the specified character is permissible as the first character
+/// in a Unicode identifier.
+/// \param chr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_unicode_identifier_start(
   const exprt &chr, const typet &type)
 {
@@ -1707,145 +1010,75 @@ exprt character_refine_preprocesst::expr_of_is_unicode_identifier_start(
     expr_of_is_letter(chr, type), expr_of_is_letter_number(chr, type));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_unicode_identifier_start_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method
-          Character.isUnicodeIdentifierStart:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isUnicodeIdentifierStart:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_unicode_identifier_start_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_unicode_identifier_start, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_unicode_identifier_start_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method
-          Character.isUnicodeIdentifierStart:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isUnicodeIdentifierStart:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_unicode_identifier_start_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_unicode_identifier_start_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_upper_case_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isUpperCase:(C)Z
-
-    TODO: For now we only consider ASCII characters
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isUpperCase:(C)Z
+///
+///    TODO: For now we only consider ASCII characters
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_upper_case_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_ascii_upper_case, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_upper_case_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isUpperCase:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isUpperCase:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_upper_case_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_upper_case_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_valid_code_point
-
-  Inputs:
-    chr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines whether the specified code point is a valid
-          Unicode code point value.
-          That is, in the range of integers from 0 to 0x10FFFF
-
-\*******************************************************************/
-
+/// Determines whether the specified code point is a valid Unicode code point
+/// value. That is, in the range of integers from 0 to 0x10FFFF
+/// \param chr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_valid_code_point(
   const exprt &chr, const typet &type)
 {
   return binary_relation_exprt(chr, ID_le, from_integer(0x10FFFF, chr.type()));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_valid_code_point
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isValidCodePoint:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isValidCodePoint:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_valid_code_point(
-    conversion_input &target)
+    conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_valid_code_point, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_is_whitespace
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A Boolean expression
-
- Purpose: Determines if the specified character is white space according
-          to Java. It is the case when it one of the following:
-          * a Unicode space character (SPACE_SEPARATOR, LINE_SEPARATOR, or
-            PARAGRAPH_SEPARATOR) but is not also a non-breaking space
-            ('\u00A0', '\u2007', '\u202F').
-          * it is one of these: U+0009  U+000A U+000B U+000C U+000D
-            U+001C U+001D U+001E U+001F
-
-\*******************************************************************/
-
+/// Determines if the specified character is white space according to Java. It
+/// is the case when it one of the following: * a Unicode space character
+/// (SPACE_SEPARATOR, LINE_SEPARATOR, or PARAGRAPH_SEPARATOR) but is not also a
+/// non-breaking space ('\u00A0', '\u2007', '\u202F'). * it is one of these:
+/// U+0009  U+000A U+000B U+000C U+000D U+001C U+001D U+001E U+001F
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A Boolean expression
 exprt character_refine_preprocesst::expr_of_is_whitespace(
   const exprt &chr, const typet &type)
 {
@@ -1860,60 +1093,31 @@ exprt character_refine_preprocesst::expr_of_is_whitespace(
   return disjunction(conditions);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_whitespace_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isWhitespace:(C)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isWhitespace:(C)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_whitespace_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_is_whitespace, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_is_whitespace_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.isWhitespace:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.isWhitespace:(I)Z
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_is_whitespace_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_is_whitespace_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_low_surrogate
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A integer expression of the given type
-
- Purpose: Returns the trailing surrogate (a low surrogate code unit)
-          of the surrogate pair representing the specified
-          supplementary character (Unicode code point) in the UTF-16
-          encoding.
-
-\*******************************************************************/
-
+/// Returns the trailing surrogate (a low surrogate code unit) of the surrogate
+/// pair representing the specified supplementary character (Unicode code point)
+/// in the UTF-16 encoding.
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A integer expression of the given type
 exprt character_refine_preprocesst::expr_of_low_surrogate(
   const exprt &chr, const typet &type)
 {
@@ -1922,40 +1126,21 @@ exprt character_refine_preprocesst::expr_of_low_surrogate(
   return plus_exprt(uDC00, mod_exprt(chr, u0400));
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_low_surrogate
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.lowSurrogate:(I)Z
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.lowSurrogate:(I)C
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_low_surrogate(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_low_surrogate, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_reverse_bytes
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A character expression of the given type
-
- Purpose: Returns the value obtained by reversing the order of the
-          bytes in the specified char value.
-
-\*******************************************************************/
-
+/// Returns the value obtained by reversing the order of the bytes in the
+/// specified char value.
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A character expression of the given type
 exprt character_refine_preprocesst::expr_of_reverse_bytes(
   const exprt &chr, const typet &type)
 {
@@ -1964,45 +1149,24 @@ exprt character_refine_preprocesst::expr_of_reverse_bytes(
   return plus_exprt(first_byte, second_byte);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_reverse_bytes
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.reverseBytes:(C)C
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.reverseBytes:(C)C
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_reverse_bytes(
-    conversion_input &target)
+    conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_reverse_bytes, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_to_chars
-
-  Inputs:
-    expr - An expression of type character
-    type - A type for the output
-
- Outputs: A character array expression of the given type
-
- Purpose: Converts the specified character (Unicode code point) to
-          its UTF-16 representation stored in a char array.
-          If the specified code point is a BMP (Basic Multilingual
-          Plane or Plane 0) value, the resulting char array has the
-          same value as codePoint.
-          If the specified code point is a supplementary code point,
-          the resulting char array has the corresponding surrogate pair.
-
-\*******************************************************************/
-
+/// Converts the specified character (Unicode code point) to its UTF-16
+/// representation stored in a char array. If the specified code point is a BMP
+/// (Basic Multilingual Plane or Plane 0) value, the resulting char array has
+/// the same value as codePoint. If the specified code point is a supplementary
+/// code point, the resulting char array has the corresponding surrogate pair.
+/// \param expr: An expression of type character
+/// \param type: A type for the output
+/// \return A character array expression of the given type
 exprt character_refine_preprocesst::expr_of_to_chars(
   const exprt &chr, const typet &type)
 {
@@ -2018,38 +1182,20 @@ exprt character_refine_preprocesst::expr_of_to_chars(
   return if_exprt(expr_of_is_bmp_code_point(chr, type), case1, case2);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_to_chars
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.toChars:(I)[C
-
-\*******************************************************************/
-
-codet character_refine_preprocesst::convert_to_chars(conversion_input &target)
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.toChars:(I)[C
+/// \param target: a position in a goto program
+codet character_refine_preprocesst::convert_to_chars(conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_to_chars, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_to_code_point
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.toCodePoint:(CC)I
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.toCodePoint:(CC)I
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_to_code_point(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   const code_function_callt &function_call=target;
   assert(function_call.arguments().size()==2);
@@ -2073,24 +1219,14 @@ codet character_refine_preprocesst::convert_to_code_point(
   return code_assignt(result, pair_value);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_to_lower_case
-
-  Inputs:
-    chr - An expression of type character
-    type - A type for the output
-
- Outputs: An expression of the given type
-
- Purpose: Converts the character argument to lowercase.
-
-    TODO: For now we only consider ASCII characters but ultimately
-          we should use case mapping information from the
-          UnicodeData file
-
-\*******************************************************************/
-
+/// Converts the character argument to lowercase.
+///
+///    TODO: For now we only consider ASCII characters but ultimately
+///          we should use case mapping information from the
+///          UnicodeData file
+/// \param chr: An expression of type character
+/// \param type: A type for the output
+/// \return An expression of the given type
 exprt character_refine_preprocesst::expr_of_to_lower_case(
   const exprt &chr, const typet &type)
 {
@@ -2101,57 +1237,29 @@ exprt character_refine_preprocesst::expr_of_to_lower_case(
   return res;
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_to_lower_case_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.toLowerCase:(C)C
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.toLowerCase:(C)C
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_to_lower_case_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_to_lower_case, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_to_lower_case_int()
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.toLowerCase:(I)I
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.toLowerCase:(I)I
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_to_lower_case_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_to_lower_case_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_to_title_case
-
-  Inputs:
-    chr - An expression of type character
-    type - A type for the output
-
- Outputs: An expression of the given type
-
- Purpose: Converts the character argument to titlecase.
-
-\*******************************************************************/
-
+/// Converts the character argument to titlecase.
+/// \param chr: An expression of type character
+/// \param type: A type for the output
+/// \return An expression of the given type
 exprt character_refine_preprocesst::expr_of_to_title_case(
   const exprt &chr, const typet &type)
 {
@@ -2185,61 +1293,33 @@ exprt character_refine_preprocesst::expr_of_to_title_case(
   return res;
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_to_title_case_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.toTitleCase:(C)C
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.toTitleCase:(C)C
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_to_title_case_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_to_title_case, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_to_title_case_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.toTitleCase:(I)I
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.toTitleCase:(I)I
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_to_title_case_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_to_title_case_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::expr_of_to_upper_case
-
-  Inputs:
-    chr - An expression of type character
-    type - A type for the output
-
- Outputs: An expression of the given type
-
- Purpose: Converts the character argument to uppercase.
-
-    TODO: For now we only consider ASCII characters but ultimately
-          we should use case mapping information from the
-          UnicodeData file
-
-\*******************************************************************/
-
+/// Converts the character argument to uppercase.
+///
+///    TODO: For now we only consider ASCII characters but ultimately
+///          we should use case mapping information from the
+///          UnicodeData file
+/// \param chr: An expression of type character
+/// \param type: A type for the output
+/// \return An expression of the given type
 exprt character_refine_preprocesst::expr_of_to_upper_case(
   const exprt &chr, const typet &type)
 {
@@ -2250,60 +1330,31 @@ exprt character_refine_preprocesst::expr_of_to_upper_case(
   return res;
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_to_upper_case_char
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.toUpperCase:(C)C
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.toUpperCase:(C)C
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_to_upper_case_char(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_char_function(
     &character_refine_preprocesst::expr_of_to_upper_case, target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::convert_to_upper_case_int
-
-  Inputs:
-    target - a position in a goto program
-
- Purpose: Converts function call to an assignment of an expression
-          corresponding to the java method Character.toUpperCase:(I)I
-
-\*******************************************************************/
-
+/// Converts function call to an assignment of an expression corresponding to
+/// the java method Character.toUpperCase:(I)I
+/// \param target: a position in a goto program
 codet character_refine_preprocesst::convert_to_upper_case_int(
-  conversion_input &target)
+  conversion_inputt &target)
 {
   return convert_to_upper_case_char(target);
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::replace_character_call
-
-  Inputs:
-    code - the code of a function call
-
- Outputs: code where character function call get replaced by
-          an simple instruction
-
- Purpose: replace function calls to functions of the Character by
-          an affectation if possible, returns the same code otherwise.
-          For this method to have an effect initialize_conversion_table
-          must have been called before.
-
-\*******************************************************************/
-
+/// replace function calls to functions of the Character by an affectation if
+/// possible, returns the same code otherwise. For this method to have an effect
+/// initialize_conversion_table must have been called before.
+/// \param code: the code of a function call
+/// \return code where character function call get replaced by an simple
+///   instruction
 codet character_refine_preprocesst::replace_character_call(
   const code_function_callt &code) const
 {
@@ -2319,15 +1370,7 @@ codet character_refine_preprocesst::replace_character_call(
   return code;
 }
 
-/*******************************************************************\
-
-Function: character_refine_preprocesst::initialize_conversion_table
-
- Purpose: fill maps with correspondance from java method names to
-          conversion functions
-
-\*******************************************************************/
-
+/// fill maps with correspondance from java method names to conversion functions
 void character_refine_preprocesst::initialize_conversion_table()
 {
   // All methods are listed here in alphabetic order
@@ -2351,7 +1394,7 @@ void character_refine_preprocesst::initialize_conversion_table()
   //   "(Ljava.lang.CharSequence;I)I"
   // Not supported "java::java.lang.Character.codePointCount:([CII)I"
   // Not supported "java::java.lang.Character.codePointCount:"
-  //   "(Ljava.lang.CharSequence;I)I"
+  //   "(Ljava.lang.CharSequence;II)I"
   // Not supported "java::java.lang.Character.compareTo:"
   //   "(Ljava.lang.Character;)I"
 
@@ -2379,11 +1422,11 @@ void character_refine_preprocesst::initialize_conversion_table()
       &character_refine_preprocesst::convert_get_numeric_value_int;
   conversion_table["java::java.lang.Character.getType:(C)I"]=
       &character_refine_preprocesst::convert_get_type_char;
-  conversion_table["java::java.lang.Character.getType:(I)Z"]=
+  conversion_table["java::java.lang.Character.getType:(I)I"]=
       &character_refine_preprocesst::convert_get_type_int;
   conversion_table["java::java.lang.Character.hashCode:()I"]=
       &character_refine_preprocesst::convert_hash_code;
-  conversion_table["java::java.lang.Character.highSurrogate:(C)Z"]=
+  conversion_table["java::java.lang.Character.highSurrogate:(I)C"]=
       &character_refine_preprocesst::convert_high_surrogate;
   conversion_table["java::java.lang.Character.isAlphabetic:(I)Z"]=
       &character_refine_preprocesst::convert_is_alphabetic;
@@ -2403,7 +1446,7 @@ void character_refine_preprocesst::initialize_conversion_table()
       &character_refine_preprocesst::convert_is_identifier_ignorable_char;
   conversion_table["java::java.lang.Character.isIdentifierIgnorable:(I)Z"]=
       &character_refine_preprocesst::convert_is_identifier_ignorable_int;
-  conversion_table["java::java.lang.Character.isIdeographic:(C)Z"]=
+  conversion_table["java::java.lang.Character.isIdeographic:(I)Z"]=
       &character_refine_preprocesst::convert_is_ideographic;
   conversion_table["java::java.lang.Character.isISOControl:(C)Z"]=
       &character_refine_preprocesst::convert_is_ISO_control_char;
@@ -2433,7 +1476,7 @@ void character_refine_preprocesst::initialize_conversion_table()
       &character_refine_preprocesst::convert_is_lower_case_char;
   conversion_table["java::java.lang.Character.isLowerCase:(I)Z"]=
       &character_refine_preprocesst::convert_is_lower_case_int;
-  conversion_table["java::java.lang.Character.isLowSurrogate:(I)Z"]=
+  conversion_table["java::java.lang.Character.isLowSurrogate:(C)Z"]=
       &character_refine_preprocesst::convert_is_low_surrogate;
   conversion_table["java::java.lang.Character.isMirrored:(C)Z"]=
       &character_refine_preprocesst::convert_is_mirrored_char;
@@ -2473,7 +1516,7 @@ void character_refine_preprocesst::initialize_conversion_table()
       &character_refine_preprocesst::convert_is_whitespace_char;
   conversion_table["java::java.lang.Character.isWhitespace:(I)Z"]=
       &character_refine_preprocesst::convert_is_whitespace_int;
-  conversion_table["java::java.lang.Character.lowSurrogate:(I)Z"]=
+  conversion_table["java::java.lang.Character.lowSurrogate:(I)C"]=
       &character_refine_preprocesst::convert_is_low_surrogate;
 
   // Not supported "java::java.lang.Character.offsetByCodePoints:([CIIII)I"
@@ -2485,7 +1528,7 @@ void character_refine_preprocesst::initialize_conversion_table()
   conversion_table["java::java.lang.Character.toChars:(I)[C"]=
       &character_refine_preprocesst::convert_to_chars;
 
-  // Not supported "java::java.lang.Character.toChars:(I[CI])I"
+  // Not supported "java::java.lang.Character.toChars:(I[CI)I"
 
   conversion_table["java::java.lang.Character.toCodePoint:(CC)I"]=
       &character_refine_preprocesst::convert_to_code_point;

@@ -6,6 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "bv_refinement.h"
+
 #include <util/bv_arithmetic.h>
 #include <util/ieee_float.h>
 #include <util/expr_util.h>
@@ -13,25 +15,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <langapi/language_util.h>
 
+#include <solvers/refinement/string_refinement_invariant.h>
 #include <solvers/floatbv/float_utils.h>
-
-#include "bv_refinement.h"
 
 // Parameters
 #define MAX_INTEGER_UNDERAPPROX 3
 #define MAX_FLOAT_UNDERAPPROX 10
-
-/*******************************************************************\
-
-Function: bv_refinementt::approximationt::add_over_assumption
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void bv_refinementt::approximationt::add_over_assumption(literalt l)
 {
@@ -40,18 +29,6 @@ void bv_refinementt::approximationt::add_over_assumption(literalt l)
     over_assumptions.push_back(l);
 }
 
-/*******************************************************************\
-
-Function: bv_refinementt::approximationt::add_under_assumption
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void bv_refinementt::approximationt::add_under_assumption(literalt l)
 {
   // if it's a constant already, give up
@@ -59,21 +36,9 @@ void bv_refinementt::approximationt::add_under_assumption(literalt l)
     under_assumptions.push_back(l);
 }
 
-/*******************************************************************\
-
-Function: bv_refinementt::convert_floatbv_op
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bvt bv_refinementt::convert_floatbv_op(const exprt &expr)
 {
-  if(!do_arithmetic_refinement)
+  if(!config_.refine_arithmetic)
     return SUB::convert_floatbv_op(expr);
 
   if(ns.follow(expr.type()).id()!=ID_floatbv ||
@@ -85,21 +50,9 @@ bvt bv_refinementt::convert_floatbv_op(const exprt &expr)
   return bv;
 }
 
-/*******************************************************************\
-
-Function: bv_refinementt::convert_mult
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bvt bv_refinementt::convert_mult(const exprt &expr)
 {
-  if(!do_arithmetic_refinement || expr.type().id()==ID_fixedbv)
+  if(!config_.refine_arithmetic || expr.type().id()==ID_fixedbv)
     return SUB::convert_mult(expr);
 
   // we catch any multiplication
@@ -109,7 +62,7 @@ bvt bv_refinementt::convert_mult(const exprt &expr)
 
   const typet &type=ns.follow(expr.type());
 
-  assert(operands.size()>=2);
+  PRECONDITION(operands.size()>=2);
 
   if(operands.size()>2)
     return convert_mult(make_binary(expr)); // make binary
@@ -145,27 +98,15 @@ bvt bv_refinementt::convert_mult(const exprt &expr)
   return bv;
 }
 
-/*******************************************************************\
-
-Function: bv_refinementt::convert_div
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bvt bv_refinementt::convert_div(const div_exprt &expr)
 {
-  if(!do_arithmetic_refinement || expr.type().id()==ID_fixedbv)
+  if(!config_.refine_arithmetic || expr.type().id()==ID_fixedbv)
     return SUB::convert_div(expr);
 
   // we catch any division
   // unless it's integer division by a constant
 
-  assert(expr.operands().size()==2);
+  PRECONDITION(expr.operands().size()==2);
 
   if(expr.op1().is_constant())
     return SUB::convert_div(expr);
@@ -175,27 +116,15 @@ bvt bv_refinementt::convert_div(const div_exprt &expr)
   return bv;
 }
 
-/*******************************************************************\
-
-Function: bv_refinementt::convert_mod
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bvt bv_refinementt::convert_mod(const mod_exprt &expr)
 {
-  if(!do_arithmetic_refinement || expr.type().id()==ID_fixedbv)
+  if(!config_.refine_arithmetic || expr.type().id()==ID_fixedbv)
     return SUB::convert_mod(expr);
 
   // we catch any mod
   // unless it's integer + constant
 
-  assert(expr.operands().size()==2);
+  PRECONDITION(expr.operands().size()==2);
 
   if(expr.op1().is_constant())
     return SUB::convert_mod(expr);
@@ -204,18 +133,6 @@ bvt bv_refinementt::convert_mod(const mod_exprt &expr)
   add_approximation(expr, bv);
   return bv;
 }
-
-/*******************************************************************\
-
-Function: bv_refinementt::get_values
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void bv_refinementt::get_values(approximationt &a)
 {
@@ -235,24 +152,13 @@ void bv_refinementt::get_values(approximationt &a)
     a.op2_value=get_value(a.op2_bv);
   }
   else
-    assert(0);
+    UNREACHABLE;
 
   a.result_value=get_value(a.result_bv);
 }
 
-/*******************************************************************\
-
-Function: bv_refinementt::check_SAT
-
-  Inputs:
-
- Outputs:
-
- Purpose: inspect if satisfying assignment extends to original
-          formula, otherwise refine overapproximation
-
-\*******************************************************************/
-
+/// inspect if satisfying assignment extends to original formula, otherwise
+/// refine overapproximation
 void bv_refinementt::check_SAT(approximationt &a)
 {
   // get values
@@ -264,8 +170,10 @@ void bv_refinementt::check_SAT(approximationt &a)
 
   if(type.id()==ID_floatbv)
   {
-    // these are all trinary
-    assert(a.expr.operands().size()==3);
+    // these are all ternary
+    INVARIANT(
+      a.expr.operands().size()==3,
+      string_refinement_invariantt("all floatbv typed exprs are ternary"));
 
     if(a.over_state==MAX_STATE)
       return;
@@ -297,7 +205,7 @@ void bv_refinementt::check_SAT(approximationt &a)
     else if(a.expr.id()==ID_floatbv_div)
       result/=o1;
     else
-      assert(false);
+      UNREACHABLE;
 
     if(result.pack()==a.result_value) // ok
       return;
@@ -320,7 +228,7 @@ void bv_refinementt::check_SAT(approximationt &a)
 
     // if(a.over_state==1) { debug() << "DISAGREEMENT!\n"; exit(1); }
 
-    if(a.over_state<max_node_refinement)
+    if(a.over_state<config_.max_node_refinement)
     {
       bvt r;
       float_utilst float_utils(prop);
@@ -365,9 +273,9 @@ void bv_refinementt::check_SAT(approximationt &a)
       else if(a.expr.id()==ID_floatbv_div)
         r=float_utils.div(op0, op1);
       else
-        assert(0);
+        UNREACHABLE;
 
-      assert(r.size()==res.size());
+      CHECK_RETURN(r.size()==res.size());
       bv_utils.set_equal(r, res);
     }
   }
@@ -375,7 +283,9 @@ void bv_refinementt::check_SAT(approximationt &a)
           type.id()==ID_unsignedbv)
   {
     // these are all binary
-    assert(a.expr.operands().size()==2);
+    INVARIANT(
+      a.expr.operands().size()==2,
+      string_refinement_invariantt("all (un)signedbv typed exprs are binary"));
 
     // already full interpretation?
     if(a.over_state>0)
@@ -399,7 +309,7 @@ void bv_refinementt::check_SAT(approximationt &a)
     else if(a.expr.id()==ID_mod)
       o0%=o1;
     else
-      assert(false);
+      UNREACHABLE;
 
     if(o0.pack()==a.result_value) // ok
       return;
@@ -433,21 +343,21 @@ void bv_refinementt::check_SAT(approximationt &a)
             bv_utilst::representationt::UNSIGNED);
       }
       else
-        assert(0);
+        UNREACHABLE;
 
       bv_utils.set_equal(r, a.result_bv);
     }
     else
-      assert(0);
+      UNREACHABLE;
   }
   else if(type.id()==ID_fixedbv)
   {
     // TODO: not implemented
-    assert(0);
+    TODO;
   }
   else
   {
-    assert(0);
+    UNREACHABLE;
   }
 
   status() << "Found spurious `" << a.as_string()
@@ -458,29 +368,18 @@ void bv_refinementt::check_SAT(approximationt &a)
     a.over_state++;
 }
 
-/*******************************************************************\
-
-Function: bv_refinementt::check_UNSAT
-
-  Inputs:
-
- Outputs:
-
- Purpose: inspect if proof holds on original formula,
-          otherwise refine underapproximation
-
-\*******************************************************************/
-
+/// inspect if proof holds on original formula, otherwise refine
+/// underapproximation
 void bv_refinementt::check_UNSAT(approximationt &a)
 {
   // part of the conflict?
-  if(!is_in_conflict(a))
+  if(!this->conflicts_with(a))
     return;
 
   status() << "Found assumption for `" << a.as_string()
            << "' in proof (state " << a.under_state << ")" << eom;
 
-  assert(!a.under_assumptions.empty());
+  PRECONDITION(!a.under_assumptions.empty());
 
   a.under_assumptions.clear();
 
@@ -558,19 +457,8 @@ void bv_refinementt::check_UNSAT(approximationt &a)
   progress=true;
 }
 
-/*******************************************************************\
-
-Function: bv_refinementt::is_in_conflict
-
-  Inputs:
-
- Outputs:
-
- Purpose: check if an under-approximation is part of the conflict
-
-\*******************************************************************/
-
-bool bv_refinementt::is_in_conflict(approximationt &a)
+/// check if an under-approximation is part of the conflict
+bool bv_refinementt::conflicts_with(approximationt &a)
 {
   for(std::size_t i=0; i<a.under_assumptions.size(); i++)
     if(prop.is_in_conflict(a.under_assumptions[i]))
@@ -578,18 +466,6 @@ bool bv_refinementt::is_in_conflict(approximationt &a)
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: bv_refinementt::initialize
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void bv_refinementt::initialize(approximationt &a)
 {
@@ -606,27 +482,15 @@ void bv_refinementt::initialize(approximationt &a)
     a.add_under_assumption(!a.op1_bv[i]);
 }
 
-/*******************************************************************\
-
-Function: bv_refinementt::add_approximation
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bv_refinementt::approximationt &
 bv_refinementt::add_approximation(
   const exprt &expr, bvt &bv)
 {
   approximations.push_back(approximationt(approximations.size()));
-  approximationt &a=approximations.back(); // stable!
+  approximationt &a=approximations.back();
 
   std::size_t width=boolbv_width(expr.type());
-  assert(width!=0);
+  PRECONDITION(width!=0);
 
   a.expr=expr;
   a.result_bv=prop.new_variables(width);
@@ -655,7 +519,7 @@ bv_refinementt::add_approximation(
     set_frozen(a.op2_bv);
   }
   else
-    assert(false);
+    UNREACHABLE;
 
   bv=a.result_bv;
 
@@ -663,18 +527,6 @@ bv_refinementt::add_approximation(
 
   return a;
 }
-
-/*******************************************************************\
-
-Function: bv_refinementt::approximationt::as_string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string bv_refinementt::approximationt::as_string() const
 {

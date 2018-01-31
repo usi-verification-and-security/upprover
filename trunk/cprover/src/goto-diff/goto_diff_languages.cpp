@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Language Registration
+
+#include "goto_diff_languages.h"
+
 #include <langapi/mode.h>
 
 #include <ansi-c/ansi_c_language.h>
@@ -15,23 +20,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <specc/specc_language.h>
 #endif
 
-#ifdef HAVE_JAVA_BYTECODE
 #include <java_bytecode/java_bytecode_language.h>
-#endif
-
-#include "goto_diff_languages.h"
-
-/*******************************************************************\
-
-Function: goto_diff_languagest::register_languages
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_diff_languagest::register_languages()
 {
@@ -42,7 +31,5 @@ void goto_diff_languagest::register_languages()
   register_language(new_specc_language);
   #endif
 
-  #ifdef HAVE_JAVA_BYTECODE
   register_language(new_java_bytecode_language);
-  #endif
 }

@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Pointer Logic
+
 #ifndef CPROVER_UTIL_POINTER_OFFSET_SIZE_H
 #define CPROVER_UTIL_POINTER_OFFSET_SIZE_H
 
@@ -38,6 +41,11 @@ public:
 };
 
 mp_integer member_offset(
+  const struct_typet &type,
+  const irep_idt &member,
+  const namespacet &ns);
+
+mp_integer member_offset_bits(
   const struct_typet &type,
   const irep_idt &member,
   const namespacet &ns);

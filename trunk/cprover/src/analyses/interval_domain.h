@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Interval Domain
+
 #ifndef CPROVER_ANALYSES_INTERVAL_DOMAIN_H
 #define CPROVER_ANALYSES_INTERVAL_DOMAIN_H
 
@@ -15,8 +18,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "ai.h"
 #include "interval_template.h"
 
-typedef interval_template<mp_integer> integer_intervalt;
-typedef interval_template<ieee_floatt> ieee_float_intervalt;
+typedef interval_templatet<mp_integer> integer_intervalt;
+typedef interval_templatet<ieee_floatt> ieee_float_intervalt;
 
 class interval_domaint:public ai_domain_baset
 {
@@ -33,12 +36,13 @@ public:
     locationt from,
     locationt to,
     ai_baset &ai,
-    const namespacet &ns) final;
+    const namespacet &ns,
+    ai_domain_baset::edge_typet edge_type) final override;
 
   void output(
     std::ostream &out,
     const ai_baset &ai,
-    const namespacet &ns) const final;
+    const namespacet &ns) const override;
 
 protected:
   bool join(const interval_domaint &b);
@@ -53,7 +57,7 @@ public:
   }
 
   // no states
-  void make_bottom() final
+  void make_bottom() final override
   {
     int_map.clear();
     float_map.clear();
@@ -61,16 +65,32 @@ public:
   }
 
   // all states
-  void make_top() final
+  void make_top() final override
   {
     int_map.clear();
     float_map.clear();
     bottom=false;
   }
 
-  void make_entry() final
+  void make_entry() final override
   {
     make_top();
+  }
+
+  bool is_bottom() const override final
+  {
+    #if 0
+    // This invariant should hold but is not correctly enforced at the moment.
+    DATA_INVARIANT(!bottom || (int_map.empty() && float_map.empty()),
+                   "If the domain is bottom the value maps must be empty");
+    #endif
+
+    return bottom;
+  }
+
+  bool is_top() const override final
+  {
+    return !bottom && int_map.empty() && float_map.empty();
   }
 
   exprt make_expression(const symbol_exprt &) const;
@@ -85,11 +105,6 @@ public:
   static bool is_float(const typet &src)
   {
     return src.id()==ID_floatbv;
-  }
-
-  bool is_bottom() const
-  {
-    return bottom;
   }
 
   virtual bool ai_simplify(

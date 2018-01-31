@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Field-insensitive, location-sensitive may-alias analysis
+
+#include "local_may_alias.h"
+
 #include <iterator>
 #include <algorithm>
 
@@ -16,20 +21,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/c_types.h>
 #include <langapi/language_util.h>
 
-#include "local_may_alias.h"
-
-/*******************************************************************\
-
-Function: local_may_aliast::loc_infot::merge
-
-  Inputs:
-
- Outputs: return 'true' iff changed
-
- Purpose:
-
-\*******************************************************************/
-
+/// \return return 'true' iff changed
 bool local_may_aliast::loc_infot::merge(const loc_infot &src)
 {
   bool changed=false;
@@ -48,18 +40,6 @@ bool local_may_aliast::loc_infot::merge(const loc_infot &src)
 
   return changed;
 }
-
-/*******************************************************************\
-
-Function: local_may_aliast::assign_lhs
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void local_may_aliast::assign_lhs(
   const exprt &lhs,
@@ -132,18 +112,6 @@ void local_may_aliast::assign_lhs(
   }
 }
 
-/*******************************************************************\
-
-Function: local_may_aliast::get
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::set<exprt> local_may_aliast::get(
   const goto_programt::const_targett t,
   const exprt &rhs) const
@@ -169,18 +137,6 @@ std::set<exprt> local_may_aliast::get(
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: local_may_aliast::aliases
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool local_may_aliast::aliases(
   const goto_programt::const_targett t,
@@ -209,18 +165,6 @@ bool local_may_aliast::aliases(
 
   return !result.empty();
 }
-
-/*******************************************************************\
-
-Function: local_may_aliast::get_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void local_may_aliast::get_rec(
   object_sett &dest,
@@ -354,7 +298,7 @@ void local_may_aliast::get_rec(
     const side_effect_exprt &side_effect_expr=to_side_effect_expr(rhs);
     const irep_idt &statement=side_effect_expr.get_statement();
 
-    if(statement==ID_malloc)
+    if(statement==ID_allocate)
     {
       dest.insert(objects.number(exprt(ID_dynamic_object)));
     }
@@ -368,18 +312,6 @@ void local_may_aliast::get_rec(
   else
     dest.insert(unknown_object);
 }
-
-/*******************************************************************\
-
-Function: local_may_aliast::build
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void local_may_aliast::build(const goto_functiont &goto_function)
 {
@@ -502,18 +434,6 @@ void local_may_aliast::build(const goto_functiont &goto_function)
   }
 }
 
-/*******************************************************************\
-
-Function: local_may_aliast::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void local_may_aliast::output(
   std::ostream &out,
   const goto_functiont &goto_function,
@@ -546,7 +466,7 @@ void local_may_aliast::output(
     }
 
     out << "\n";
-    goto_function.body.output_instruction(ns, "", out, i_it);
+    goto_function.body.output_instruction(ns, "", out, *i_it);
     out << "\n";
 
     l++;

@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Concrete Goto Program
+
 #ifndef CPROVER_GOTO_PROGRAMS_GOTO_PROGRAM_H
 #define CPROVER_GOTO_PROGRAMS_GOTO_PROGRAM_H
 
@@ -17,7 +20,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 /*! \brief A specialization of goto_program_templatet over
            goto programs in which instructions have codet type.
-    \ingroup gr_goto_programs
 */
 class goto_programt:public goto_program_templatet<codet, exprt>
 {
@@ -26,13 +28,7 @@ public:
     const class namespacet &ns,
     const irep_idt &identifier,
     std::ostream &out,
-    instructionst::const_iterator it) const;
-
-  std::ostream &output_instruction(
-    const class namespacet &ns,
-    const irep_idt &identifier,
-    std::ostream &out,
-    const instructiont &instruction) const;
+    const instructiont &instruction) const override;
 
   goto_programt() { }
 
@@ -74,10 +70,17 @@ public:
       it!=(program).instructions.end(); it++)
 
 inline bool operator<(
-  const goto_programt::const_targett i1,
-  const goto_programt::const_targett i2)
+  const goto_programt::const_targett &i1,
+  const goto_programt::const_targett &i2)
 {
   return order_const_target<codet, exprt>(i1, i2);
+}
+
+inline bool operator<(
+  const goto_programt::targett &i1,
+  const goto_programt::targett &i2)
+{
+  return &(*i1)<&(*i2);
 }
 
 // NOLINTNEXTLINE(readability/identifiers)
