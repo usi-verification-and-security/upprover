@@ -245,11 +245,15 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
 #ifdef DISABLE_OPTIMIZATIONS
         if (dump_pre_queries)
         {
-            char *s = logic->printTerm(logic->getTopLevelIte(ptl));
-            ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-            //cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")" 
-            //    << string(getPTermString(ptl)) << endl << s << endl;
-            free(s);    
+            // if the condition evaluated to constant, no ite was created
+            if(logic->isIte(ptl))
+            {
+              char *s = logic->printTerm(logic->getTopLevelIte(ptl));
+              ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
+              //cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")"
+              //    << string(getPTermString(ptl)) << endl << s << endl;
+              free(s);
+            }
         }
 #endif        
         
