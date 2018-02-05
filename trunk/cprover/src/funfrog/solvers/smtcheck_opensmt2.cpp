@@ -380,11 +380,12 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
       smt_itpt *new_itp = new smt_itpt();
       extract_itp(itp_ptrefs[i], *new_itp);
       interpolants.push_back(new_itp);
-      char *s = logic->printTerm(interpolants.back()->getInterpolant());
+
 #ifdef DEBUG_SMT_ITP
-      cout << "Interpolant " << i << " = " << s << endl;
+    char *s = logic->printTerm(interpolants.back()->getInterpolant());
+    cout << "Interpolant " << i << " = " << s << '\n';
+    free(s);
 #endif
-      free(s);
   }
 }
 
