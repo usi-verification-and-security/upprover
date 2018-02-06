@@ -626,8 +626,8 @@ set(SOURCE_FILES
         goto-programs/show_goto_functions_json.h
         goto-programs/show_goto_functions_xml.cpp
         goto-programs/show_goto_functions_xml.h
-        goto-programs/show_properties.cpp
-        goto-programs/show_properties.h
+        #goto-programs/show_properties.cpp
+        #goto-programs/show_properties.h
         goto-programs/show_symbol_table.cpp
         goto-programs/show_symbol_table.h
         goto-programs/slice_global_inits.cpp
