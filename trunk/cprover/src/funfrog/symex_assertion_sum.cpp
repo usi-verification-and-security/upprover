@@ -826,6 +826,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(const irep_idt & functio
 
   for (auto global_id : globals_accessed) {
     const auto & symbol = get_normal_symbol(global_id);
+    // this also stops constant propagation! see method description
     auto current_version = get_current_version(symbol);
     partition_iface.argument_symbols.push_back(current_version);
 
@@ -1680,12 +1681,11 @@ partition_ifacet& symex_assertion_sumt::new_partition_iface(summary_infot& summa
 \*******************************************************************/
 ssa_exprt symex_assertion_sumt::get_current_version(const symbolt & symbol) {
   ssa_exprt ssa = get_l1_ssa(symbol);
-  // before renaming to L2, make sure the symbol will not be simplified away by constant propagation
-
-  state.propagation.remove(ssa.get_identifier());
+  // before renaming to L2, we need to stop constant propagation, otherwise, it could be simplified to a constant,
+  // which is not an ssa_exprt anymore
+  stop_constant_propagation_for(ssa.get_identifier());
   // get the current L2 version of the L1 symbol
   state.rename(ssa, ns, goto_symex_statet::levelt::L2);
-  //TODO: find out if we need to restore propagation if removed
   return ssa;
 }
 

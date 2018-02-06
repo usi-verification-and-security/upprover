@@ -355,7 +355,12 @@ private:
 
   void create_new_artificial_symbol(const irep_idt & id, const typet & type, bool is_dead);
 
+  // NOTE: use only when versions for interface symbols are needed!
   ssa_exprt get_current_version(const symbolt & symbol);
+
+  void stop_constant_propagation_for(const irep_idt & id) {
+    state.propagation.remove(id);
+  }
 
 //  ssa_exprt get_current_version(const irep_idt& id){
 //    return get_current_version(get_artificial_symbol_expr(id));
@@ -367,6 +372,7 @@ private:
     return get_next_version(get_artificial_symbol(id));
   }
 
+  // NOTE: use only for interface symbols! (symbols at methods' interface)
   // increments the L2 counter in the process
   ssa_exprt get_next_version(const symbolt & symbol);
 
