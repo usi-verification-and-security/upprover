@@ -212,6 +212,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
   const bool no_ce_option = options.get_bool_option("no-error-trace");
   assert(options.get_option("logic") == "prop");
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
+  const bool partial_loops = options.get_bool_option("partial-loops");
 
   omega.set_initial_precision(assertion);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
@@ -235,7 +236,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, 
-            false, unwind_bound };
+            false, unwind_bound, partial_loops };
 
 //  setup_unwind(symex);
 

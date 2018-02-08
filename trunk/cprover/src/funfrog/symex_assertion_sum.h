@@ -45,7 +45,7 @@ public:
 	        bool _do_guard_expl,
           bool _use_smt,
           unsigned int _max_unwind,
-          bool partial_loops = true
+          bool partial_loops = false
           );
           
   virtual ~symex_assertion_sumt() override;
