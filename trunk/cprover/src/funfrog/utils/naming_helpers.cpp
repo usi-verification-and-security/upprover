@@ -31,7 +31,7 @@ std::string quote(const std::string & name) {
   return HifrogStringConstants::SMTLIB_QUOTE + name + HifrogStringConstants::SMTLIB_QUOTE;
 }
 
-std::string removeCounter(const std::string & name) {
+std::string remove_counter_from_fun_name(const std::string & name) {
   auto pos = name.rfind(HifrogStringConstants::COUNTER_SEP);
   assert(pos != std::string::npos);
   assert(is_number(name.substr(pos + 1)));
@@ -49,7 +49,7 @@ bool fun_name_contains_counter(const std::string & name) {
 void clean_name(std::string & name) {
   unquote_if_necessary(name);
   if (fun_name_contains_counter(name)) {
-    name = removeCounter(name);
+    name = remove_counter_from_fun_name(name);
   }
 }
 

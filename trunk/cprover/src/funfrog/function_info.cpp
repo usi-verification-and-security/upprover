@@ -230,7 +230,6 @@ void function_infot::deserialize_infos(smt_summary_storet* store, function_infos
   for (unsigned i = 0; i < nfunctions; ++i)
   {
       Tterm *sum = store->find_summary(i).getTterm();
-      //std::string f_name = removeCounter((sum->getName()));
       std::string f_name = sum->getName();
       clean_name(f_name);
       irep_idt f_id(f_name);

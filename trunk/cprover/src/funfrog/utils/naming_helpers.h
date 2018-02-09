@@ -38,7 +38,7 @@ inline bool is_quoted(const std::string & name) {
 
 void clean_name(std::string & name);
 //
-//std::string removeCounter(const std::string & name);
+//std::string remove_counter_from_fun_name(const std::string & name);
 //
 bool fun_name_contains_counter(const std::string & name);
 
