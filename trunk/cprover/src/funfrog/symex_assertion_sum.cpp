@@ -1478,7 +1478,7 @@ void symex_assertion_sumt::phi_function(
        dest_state.level2.current_count(l1_identifier))
       continue; // not at all changed
 
-    if (is_dead_identifier(l1_identifier))
+    if (is_dead_identifier(obj_identifier))
       continue;
 
     // changed!
