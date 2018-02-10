@@ -81,6 +81,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   omega.set_initial_precision(assertion);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
+  const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
+
 
   std::vector<unsigned> ints;
 
@@ -93,14 +95,14 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
     equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
   }
 #endif
-  
+
   summary_infot& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, true, true, true);
+            single_assertion_check, true, true, true, unwind_bound);
 
-  setup_unwind(symex);
+  //setup_unwind(symex);
 
   smt_assertion_sumt prop = smt_assertion_sumt(summarization_context,
           equation, message_handler, max_memory_used);
@@ -162,10 +164,10 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   status() << endl << "Custom refinement successful" << endl;
                   status() << "(" << exprs_ids.size() << " / "
                                   << exprs.size()  << " expressions bit-blasted)" << endl;
-#ifdef _NO_OPTIMIZATION                  
+#ifdef _NO_OPTIMIZATION
                   std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
                   if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
-#endif                  
+#endif
                   status() << "ASSERTION HOLDS" << eom;
                   report_success();
               }
@@ -174,9 +176,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
               status() << "(all statements at once)" << endl << eom;
 
               if (decider->force_refine_ce(exprs, refined)){
-#ifdef _NO_OPTIMIZATION                  
+#ifdef _NO_OPTIMIZATION
                   std::string reason = decider->get_refinement_failure_reason();
-                  if (reason.size() > 0) 
+                  if (reason.size() > 0)
                   {
                       status() << "ASSERTION UNKNOWN" << endl;
                       status() << "(further refinement needed)" << eom;
@@ -217,7 +219,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                     case 0 :
                       //   forward
                       {
-                          smtcheck_opensmt2t_cuf decider2(bw, 
+                          smtcheck_opensmt2t_cuf decider2(bw,
                                   options.get_unsigned_int_option("type-byte-constraints"),
                                   "forward checker");
                           decider2.check_ce(exprs, model, refined, weak, 0, exprs.size(), 1, 0);
@@ -226,7 +228,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                     case 1 :
                       //   backward
                       {
-                          smtcheck_opensmt2t_cuf decider2(bw, 
+                          smtcheck_opensmt2t_cuf decider2(bw,
                                   options.get_unsigned_int_option("type-byte-constraints"),
                                   "backward checker");
                           decider2.check_ce(exprs, model, refined, weak, exprs.size()-1, -1, -1, 0);
@@ -237,7 +239,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       last = 0;
                       {
                           while (last != -1 || last == exprs.size()){
-                            smtcheck_opensmt2t_cuf decider2(bw, 
+                            smtcheck_opensmt2t_cuf decider2(bw,
                                     options.get_unsigned_int_option("type-byte-constraints"),
                                     "forward multiple checker");
                             last = decider2.check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 0);
@@ -249,7 +251,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       last = exprs.size()-1;
                       {
                           while (last >= 0){
-                            smtcheck_opensmt2t_cuf decider2(bw, 
+                            smtcheck_opensmt2t_cuf decider2(bw,
                                     options.get_unsigned_int_option("type-byte-constraints"),
                                     "backward multiple refiner");
                             last = decider2.check_ce(exprs, model, refined, weak, last, -1, -1, 0);
@@ -259,7 +261,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                     case 4 :
                       //   forward with dependencies
                       {
-                          smtcheck_opensmt2t_cuf decider2(bw, 
+                          smtcheck_opensmt2t_cuf decider2(bw,
                                   options.get_unsigned_int_option("type-byte-constraints"),
                                   "Forward dependency checker");
                           decider2.check_ce(exprs, model, refined, weak, 0, exprs.size(), 1, 1);
@@ -279,7 +281,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       last = 0;
                       {
                           while (last != -1 || last == exprs.size()){
-                            smtcheck_opensmt2t_cuf decider2(bw, 
+                            smtcheck_opensmt2t_cuf decider2(bw,
                                     options.get_unsigned_int_option("type-byte-constraints"),
                                     "Foward with multiple refinements & dependencies");
                             decider2.check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 1);
@@ -316,7 +318,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                           for (auto it = refined.begin(); it != refined.end(); ++it){
                               status() << *it << ",";
                           }
-#ifdef _NO_OPTIMIZATION                          
+#ifdef _NO_OPTIMIZATION
                           std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
                           if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
 #endif
@@ -328,9 +330,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       status() << endl << "Obtained counter-examples are refined" << endl;
                       status() << "(" << refined.size() << " / "
                                       << exprs.size()  << " expressions bit-blasted)" << endl;
-#ifdef _NO_OPTIMIZATION                      
+#ifdef _NO_OPTIMIZATION
                       std::string reason = decider->get_refinement_failure_reason();
-                      if (reason.size() > 0) 
+                      if (reason.size() > 0)
                       {
                         status() << "ASSERTION UNKNOWN" << endl;
                         status() << "(further refinement needed)" << eom;
@@ -348,7 +350,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       for (unsigned int i = 0; i < exprs.size(); i++){
                           status() << i << ",";
                       }
-#ifdef _NO_OPTIMIZATION                      
+#ifdef _NO_OPTIMIZATION
                       std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
                       if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
 #endif
@@ -364,58 +366,58 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   final = current_time();
 
   status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
-  
-#ifdef PRODUCE_PROOF 
+
+#ifdef PRODUCE_PROOF
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
-        status() << ((assertion.is_assert_grouping()) 
+        status() << ((assertion.is_assert_grouping())
                 ? "\n\nMain Checked Assertion: " : "\n\nChecked Assertion: ") <<
             "\n  file " << assertion.get_location()->source_location.get_file() <<
             " line " << assertion.get_location()->source_location.get_line() <<
-            " function " << assertion.get_location()->source_location.get_function() << 
+            " function " << assertion.get_location()->source_location.get_function() <<
             "\n  " << ((assertion.get_location()->is_assert()) ? "assertion" : "code") <<
-            "\n  " << from_expr(ns, "", assertion.get_location()->guard)  
+            "\n  " << from_expr(ns, "", assertion.get_location()->guard)
             << eom;
 #endif
-  
+
   return end;
 }
 
-/*******************************************************************\
-
-Function: theory_refinert::setup_unwind
-
-  Inputs:
-
- Outputs:
-
- Purpose: Setup the unwind bounds.
-
-\*******************************************************************/
-
-void theory_refinert::setup_unwind(symex_assertion_sumt& symex)
-{
-  const std::string &set=options.get_option("unwindset");
-  unsigned int length=set.length();
-
-  for(unsigned int idx=0; idx<length; idx++)
-  {
-    std::string::size_type next=set.find(",", idx);
-    std::string val=set.substr(idx, next-idx);
-
-    if(val.rfind(":")!=std::string::npos)
-    {
-      std::string id=val.substr(0, val.rfind(":"));
-      unsigned long uw=atol(val.substr(val.rfind(":")+1).c_str());
-      //symex.unwind_set[id]=uw; // KE: changed in cbmc 5.5
-      symex.set_unwind_thread_loop_limit(1,id,uw); //KE: No threads support, assume main is in thread 1
-    }
-    
-    if(next==std::string::npos) break;
-    idx=next;
-  }
-
-  symex.set_unwind_limit(options.get_unsigned_int_option("unwind"));
-}
+///*******************************************************************\
+//
+//Function: theory_refinert::setup_unwind
+//
+//  Inputs:
+//
+// Outputs:
+//
+// Purpose: Setup the unwind bounds.
+//
+//\*******************************************************************/
+//
+//void theory_refinert::setup_unwind(symex_assertion_sumt& symex)
+//{
+//  const std::string &set=options.get_option("unwindset");
+//  unsigned int length=set.length();
+//
+//  for(unsigned int idx=0; idx<length; idx++)
+//  {
+//    std::string::size_type next=set.find(",", idx);
+//    std::string val=set.substr(idx, next-idx);
+//
+//    if(val.rfind(":")!=std::string::npos)
+//    {
+//      std::string id=val.substr(0, val.rfind(":"));
+//      unsigned long uw=atol(val.substr(val.rfind(":")+1).c_str());
+//      //symex.unwind_set[id]=uw; // KE: changed in cbmc 5.5
+//      symex.set_unwind_thread_loop_limit(1,id,uw); //KE: No threads support, assume main is in thread 1
+//    }
+//
+//    if(next==std::string::npos) break;
+//    idx=next;
+//  }
+//
+//  symex.set_unwind_limit(options.get_unsigned_int_option("unwind"));
+//}
 
 /*******************************************************************\
 

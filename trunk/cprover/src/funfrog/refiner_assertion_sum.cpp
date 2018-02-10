@@ -11,6 +11,8 @@
 #include "refiner_assertion_sum.h"
 
 #include "summarization_context.h"
+#include "subst_scenario.h"
+
 
 //#define DEBUG_REFINER
 

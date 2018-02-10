@@ -45,7 +45,7 @@ public:
   // Finds the representative of the given summary
   summaryt& find_summary(summary_idt new_id);
   unsigned n_of_summaries() { return store.size(); }
-  int get_next_id(const string &fname);
+  std::size_t get_next_id(const string &fname);
   
   // Reset the summary store
   void clear() { store.clear(); max_id = 0; repr_count = 0; }
@@ -94,7 +94,7 @@ protected:
     summary_idt repr_id;
   };
   
-  std::map<std::string, int> next_ids;
+  std::map<std::string, std::size_t> next_ids;
 
   nodet& find_repr(summary_idt id);
   void mark_used_summaries(summary_infot& summary_info, bool *used_mask);

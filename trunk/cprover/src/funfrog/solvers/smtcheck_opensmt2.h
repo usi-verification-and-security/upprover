@@ -18,6 +18,9 @@ Module: Wrapper for OpenSMT2
 class smt_itpt;
 class symbol_exprt;
 
+// Cache of already visited interpolant literals
+typedef std::map<PTRef, literalt> ptref_cachet;
+
 // FIXME: add inheritance for class messaget, and replace couts in status/warning/error
 // This shall be to all smt interface classes
 class smtcheck_opensmt2t : public check_opensmt2t

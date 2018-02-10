@@ -21,24 +21,25 @@ public:
       
   virtual ~smtcheck_opensmt2t_lra(); // d'tor
 
-  virtual exprt get_value(const exprt &expr);
+  virtual exprt get_value(const exprt &expr) override;
 
-  virtual literalt convert(const exprt &expr);
+  virtual literalt convert(const exprt &expr) override;
 
   virtual literalt const_from_str(const char* num);
 
-  virtual literalt const_var_Real(const exprt &expr);
+  virtual literalt const_var_Real(const exprt &expr) override;
 
-  virtual literalt type_cast(const exprt &expr);
+  virtual literalt type_cast(const exprt &expr) override;
   
-  virtual literalt lnotequal(literalt l1, literalt l2);
+  virtual literalt lnotequal(literalt l1, literalt l2) override;
 
   // for isnan, mod, arrays etc. that we have no support (or no support yet) create over-approx as nondet
-  virtual literalt lunsupported2var(const exprt &expr);
+  virtual literalt lunsupported2var(const exprt &expr) override;
 
-  virtual literalt lvar(const exprt &expr);
+  virtual literalt lvar(const exprt &expr) override;
     
-  virtual literalt lassert_var() { literalt l; l = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); return l;}
+  virtual literalt lassert_var() override
+	{ literalt l; l = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); return l;}
   
   literalt labs(const exprt &expr); // from convert for ID_abs
 
@@ -54,7 +55,7 @@ protected:
 
   int type_constraints_level; // The level of checks in LRA for numerical checks of overflow
 
-  virtual void initializeSolver(const char*);
+  virtual void initializeSolver(const char*) override;
 
   PTRef mult_real(const exprt &expr, vec<PTRef> &args);
 

@@ -11,10 +11,7 @@ Author: Ondrej Sery
 #define CPROVER_interpolating_solver_H
 
 #include "itp_fwd.h"
-
-typedef int fle_part_idt;
-typedef std::vector<fle_part_idt> fle_part_idst;
-typedef std::vector<fle_part_idst> interpolation_taskt;
+#include "interpolating_solver_fwd.h"
 
 class interpolating_solvert
 {

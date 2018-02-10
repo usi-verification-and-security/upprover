@@ -7,6 +7,7 @@
          Ondrej Sery
 
 \*******************************************************************/
+#include "parseoptions.h"
 
 #include <config.h>
 #include <iostream>
@@ -27,7 +28,6 @@
 #include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/remove_virtual_functions.h>
 #include <goto-programs/remove_instanceof.h>
-//#include <goto-programs/remove_returns.h>
 #include <goto-programs/remove_exceptions.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
@@ -49,10 +49,6 @@
 #include <goto-symex/rewrite_union.h>
 #include <goto-symex/adjust_float_expressions.h>
 
-#include <goto-instrument/full_slicer.h>
-#include <goto-instrument/nondet_static.h>
-#include <goto-instrument/cover.h>
-
 #include <pointer-analysis/add_failed_symbols.h>
 
 #include <analyses/goto_check.h>
@@ -60,7 +56,7 @@
 
 #include "check_claims.h"
 #include "version.h"
-#include "parseoptions.h"
+#include <limits>
 
 /*******************************************************************
 
@@ -540,6 +536,7 @@ void funfrog_parseoptionst::help()
   "                               (treshold = number of SSA steps)\n"
   "                               and check stronger claims at once\n"
   "--unwind <bound>               loop unwind bound\n"
+  "--partial-loops                do not forbid paths with unsufficient loop unwinding (due to unwind bound)\n"
   "--type-constraints             LRA's basic constraints on numerical data type\n"
   "                                 0 - no additional constraints,\n"
   "                                 1 - type constraints on non-deterministic input\n"
@@ -600,7 +597,7 @@ void funfrog_parseoptionst::help()
 #ifdef DISABLE_OPTIMIZATIONS   
   "\nDebug Options:(Options Valid Only in SMT-Based Verification)\n"
   "--list-templates               dump the templates of the functions for user-defined summaries\n"
-  "--dump-SSA                     ask a dump of SSA form in smt2 format\n" //the default is __SSA__dump_1.smt2
+  "--dump-SSA-tree                ask a dump of SSA form in smt2 format\n" //the default is __SSA__dump_1.smt2
   "--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
   "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
   "--dump-query-name <base>       base name for the files where queries are dumped\n"
@@ -824,6 +821,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("force", cmdline.isset("force"));
   options.set_option("custom", cmdline.get_value("custom"));
   options.set_option("heuristic", cmdline.get_value("heuristic"));
+  options.set_option("partial-loops", cmdline.isset("partial-loops"));
   if (cmdline.isset("bitwidth")) {
     options.set_option("bitwidth", cmdline.get_value("bitwidth"));
   } else {
@@ -875,7 +873,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   if (cmdline.isset("unwind")) {
     options.set_option("unwind", cmdline.get_value("unwind"));
   } else { // Set to max - KE: find a better way to do so
-    options.set_option("unwind", "4294967295"); 
+    options.set_option("unwind", std::to_string(std::numeric_limits<unsigned int>::max()));
   }
   //if (cmdline.isset("unwindset")) {
   //  options.set_option("unwindset", cmdline.get_value("unwindset"));

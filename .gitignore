@@ -3,6 +3,12 @@
 # Mac OS file
 .DS_store
 
+# CLion related folder
+.idea
+cmake-build-debug
+cmake-build-release
+cmake-build-relwithdebinfo
+
 # /
 /*.d
 /*.o

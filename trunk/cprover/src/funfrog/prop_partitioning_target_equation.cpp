@@ -11,7 +11,9 @@ Author: Ondrej Sery
 #include <std_expr.h>
 
 #include "prop_partitioning_target_equation.h"
-#include "hifrog.h"
+#include "solvers/sat/cnf.h"
+#include "solvers/satcheck_opensmt2.h"
+#include "utils/naming_helpers.h"
 #include "partition_iface.h"
 #include "solvers/prop_itp.h"
 #include "summarization_context.h"
@@ -23,6 +25,7 @@ Author: Ondrej Sery
 using namespace std;
 
 #include "expr_pretty_print.h"
+#include "hifrog.h"
 #endif
 
 /*******************************************************************\
@@ -676,12 +679,30 @@ void prop_partitioning_target_equationt::convert_partition_io(
           it->converted_io_args.push_back(tmp);
         else
         {
-          symbol_exprt symbol((IO_CONST+std::to_string(io_count_global++)), tmp.type());
+          symbol_exprt symbol((CProverStringConstants::IO_CONST + std::to_string(io_count_global++)), tmp.type());
           prop_conv.set_to(equal_exprt(tmp, symbol), true);
           it->converted_io_args.push_back(symbol);
         }
       }
     }
+}
+
+namespace{
+  // helper methods for extract_interpolants
+
+  // MB: we are skipping main and __CPROVER_initialize because it is pointless to compute interpolants for these partitions
+  // and these methods are special with respect to the globals (see function_infot::analyze_globals_rec)
+  // which broke the computation of interpolant for __CPROVER_initialize
+  bool skip_partition_with_name(const std::string & name){
+    return is_cprover_initialize_method(name) || is_main(name);
+  }
+
+  bool skip_partition(partitiont & partition, bool store_summaries_with_assertion){
+    return !partition.is_inline() ||
+    (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
+    partition.get_iface().summary_info.is_recursion_nondet() ||
+    skip_partition_with_name(partition.get_iface().function_id.c_str());
+  }
 }
 
 /*******************************************************************\
@@ -721,13 +742,9 @@ void prop_partitioning_target_equationt::extract_interpolants(
       }
     }
     
-    if (!partition.is_inline() ||
-            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
-        partition.get_iface().summary_info.is_recursion_nondet()
-    )
-      continue;
-    
-    valid_tasks++;
+    if (!skip_partition(partition, store_summaries_with_assertion)){
+      valid_tasks++;
+    }
   }
   
   // Only do the interpolation if there are some interpolation tasks
@@ -738,15 +755,10 @@ void prop_partitioning_target_equationt::extract_interpolants(
 
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
     partitiont& partition = partitions[pid];
-    partition_ifacet ipartition = partition.get_iface();
-    
-    if (!partition.is_inline() ||
-            (ipartition.assertion_in_subtree &&
-                !store_summaries_with_assertion)
-      || partition.get_iface().summary_info.is_recursion_nondet()
-            )
-      continue;
-    fill_partition_ids(pid, itp_task[tid++]);
+
+    if (!skip_partition(partition, store_summaries_with_assertion)){
+      fill_partition_ids(pid, itp_task[tid++]);
+    }
   }
 
   // Interpolate...
@@ -760,11 +772,9 @@ void prop_partitioning_target_equationt::extract_interpolants(
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
     partitiont& partition = partitions[pid];
 
-    if (!partition.is_inline() ||
-            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion)
-            || partition.get_iface().summary_info.is_recursion_nondet()
-    )
+    if (skip_partition(partition, store_summaries_with_assertion)) {
       continue;
+    }
 
     prop_itpt* itp = dynamic_cast <prop_itpt*> (itp_result[tid]);
 

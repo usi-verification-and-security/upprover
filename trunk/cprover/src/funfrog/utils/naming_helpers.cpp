@@ -31,26 +31,26 @@ std::string quote(const std::string & name) {
   return HifrogStringConstants::SMTLIB_QUOTE + name + HifrogStringConstants::SMTLIB_QUOTE;
 }
 
-std::string removeCounter(const std::string & name) {
+std::string remove_counter_from_fun_name(const std::string & name) {
   auto pos = name.rfind(HifrogStringConstants::COUNTER_SEP);
   assert(pos != std::string::npos);
   assert(is_number(name.substr(pos + 1)));
   return name.substr(0, pos);
 }
 
-bool contains_counter(const std::string& name){
-    auto pos = name.rfind(HifrogStringConstants::COUNTER_SEP);
-    if(pos != std::string::npos){
-        return is_number(name.substr(pos + 1));
-    }
-    return false;
+bool fun_name_contains_counter(const std::string & name) {
+  auto pos = name.rfind(HifrogStringConstants::COUNTER_SEP);
+  if (pos != std::string::npos) {
+    return is_number(name.substr(pos + 1));
+  }
+  return false;
 }
 
-void clean_name(std::string& name){
-    unquote_if_necessary(name);
-    if(contains_counter(name)){
-        name = removeCounter(name);
-    }
+void clean_name(std::string & name) {
+  unquote_if_necessary(name);
+  if (fun_name_contains_counter(name)) {
+    name = remove_counter_from_fun_name(name);
+  }
 }
 
 std::string stripGlobalSuffix(const std::string & name) {
@@ -66,3 +66,11 @@ const std::string HifrogStringConstants::GLOBAL_OUT_SUFFIX{"#out"};
 const std::string HifrogStringConstants::GLOBAL_INPUT_SUFFIX{"#in"};
 const char HifrogStringConstants::SMTLIB_QUOTE = '|';
 const char HifrogStringConstants::COUNTER_SEP = '#';
+const std::string HifrogStringConstants::FUN_RETURN{"#return_value"};
+const std::string HifrogStringConstants::TMP_RETURN{"$tmp::return_value"};
+const std::string HifrogStringConstants::CALLSTART_SYMBOL{"hifrog::fun_start"};
+const std::string HifrogStringConstants::CALLEND_SYMBOL{"hifrog::fun_end"};
+const std::string HifrogStringConstants::ERROR_SYMBOL{"hifrog::?err"};
+
+const std::string CProverStringConstants::INITIALIZE_METHOD{"__CPROVER_initialize"};
+const std::string CProverStringConstants::IO_CONST{"symex::io::"};

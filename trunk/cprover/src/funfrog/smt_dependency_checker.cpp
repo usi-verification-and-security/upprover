@@ -6,9 +6,8 @@
  */
 
 #include "smt_dependency_checker.h"
-#include "hifrog.h"
+#include "utils/naming_helpers.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
-
 
 pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
@@ -326,7 +325,7 @@ void smt_dependency_checkert::convert_io(
         {
           symbol_exprt symbol;
           symbol.type()=tmp.type();
-          symbol.set_identifier(IO_CONST+std::to_string(io_count++));
+          symbol.set_identifier(CProverStringConstants::IO_CONST + std::to_string(io_count++));
           decider.set_to_true(equal_exprt(tmp, symbol));
           (*it)->converted_io_args.push_back(symbol);
         }
