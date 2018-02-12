@@ -191,7 +191,6 @@ void smt_partitioning_target_equationt::convert_partition(
     //   std::cout << "skipping converting assertions\n";
     // }
     convert_partition_io(decider, partition);
-    convert_partition_goto_instructions(decider, partition);
     // FIXME: Only use in the incremental solver mode (not yet implemented)
     // partition.processed = true;
 }

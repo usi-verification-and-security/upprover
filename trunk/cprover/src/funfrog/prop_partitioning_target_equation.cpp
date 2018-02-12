@@ -202,7 +202,6 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
  //   std::cout << "skipping converting assertions\n";
  // }
   convert_partition_io(prop_conv, partition);
-  convert_partition_goto_instructions(prop_conv, partition);
   // FIXME: Only use in the incremental solver mode (not yet implemented)
   // partition.processed = true;
 }
