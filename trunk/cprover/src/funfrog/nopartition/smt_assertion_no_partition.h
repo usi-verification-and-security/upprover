@@ -14,9 +14,9 @@
 #ifndef SMT_ASSERTION_NO_PARTITION_H
 #define SMT_ASSERTION_NO_PARTITION_H
 
-#include <namespace.h>
-#include <ui_message.h>
-#include <time_stopping.h>
+#include <util/namespace.h>
+#include <util/ui_message.h>
+#include <util/time_stopping.h>
 #include <util/threeval.h>
 
 #include "../assertion_info.h"

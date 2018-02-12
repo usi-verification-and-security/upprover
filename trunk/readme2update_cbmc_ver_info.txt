@@ -1,4 +1,4 @@
-CBMC Version 5.7 from Git - 64-bit version (CBMC version 5.7 64-bit x86_64 linux)
+CBMC Version 5.7 from Git - 64-bit version (CBMC version 5.8 64-bit x86_64 linux)
 Date: 02/06/2017
 
 File Changed:
@@ -9,9 +9,9 @@ File Changed:
 - trunk/cprover/src/goto-symex/goto_symex_state.cpp // Fix to ignor issues of parallel MC (two locations) + KE: remove dirty analysis
 - trunk/cprover/src/goto-symex/symex_function_call.cpp // Add assert(0) - bool goto_symext::get_unwind_recursion, as long as the return is false.
 - trunk/cprover/src/cbmc/symex_bmc.cpp (remove debug massege to show progress: void symex_bmct::symex_step).
-- trunk/cprover/util/expr.h/.cpp - add a function
-- trunk/cprover/src/config.inc (change: add ../ to minisat2 path)
-- trunk/cprover/src/Makefile
+- trunk/cprover/util/expr.h/.cpp - add a function — I will need to add functions from old source to new one (those functions are created by the team and needed)
+- trunk/cprover/src/config.inc (change: add ../ to minisat2 path) —WE removed to CMAKE, therefore we do not need it anymore
+- trunk/cprover/src/Makefile - WE removed to CMAKE, therefore we do not need it anymore
 - Remove dirty - where found
 
 minisat-2.2.1:
@@ -34,7 +34,7 @@ http://www.cprover.org/svn/cbmc/trunk/COMPILING
 
 Special modifications in HiFrog:
 ================================
-- symex_assertion_sum.h: Phi and vcc methods are virtual.
+- symex_assertion_sum.h: Phi and vcc methods are virtual. — we check the signature whether it is as the same as the super class
 - To public: get_l1_name
   // only required for value_set.assign
   void get_l1_name(exprt &expr) const; // KE: changes for hifrog

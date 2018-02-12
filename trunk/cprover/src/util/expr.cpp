@@ -315,6 +315,119 @@ bool exprt::is_one() const
 
   return false;
 }
+/*******************************************************************\
+
+Function: exprt::print_number - hckd¬!!
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+
+const std::string exprt::print_number_2smt() const
+{
+  if(is_constant())
+  {
+    const std::string &value=get_string(ID_value);
+    const irep_idt &type_id=type().id_string();
+
+    if(type_id==ID_integer || type_id==ID_natural)
+    {
+      mp_integer int_value=string2integer(value);
+      return integer2string(int_value);
+    }
+    else if(type_id==ID_c_enum || type_id==ID_c_enum_tag)
+    {
+        const irep_idt helper_id= // Taken from cprover expr2.cpp
+            type_id==ID_c_enum
+                ?to_c_enum_type(type()).subtype().id()
+                :to_c_enum_tag_type(type()).subtype().id();
+
+        mp_integer int_value=binary2integer(id2string(get_string(ID_value))
+                                            , helper_id==ID_signedbv);
+
+        return integer2string(int_value);
+    }
+    else if(type_id==ID_rational)
+    {
+      std::stringstream convert; // stringstream used for the conversion
+      convert.precision(1);
+      rationalt rat_value;
+      if(to_rational(*this, rat_value)) assert(false);
+      convert << rat_value;
+      return convert.str();
+    }
+    else if (type_id==ID_unsignedbv ||
+          type_id==ID_signedbv ||
+          type_id==ID_c_bit_field ||
+          type_id==ID_c_bool)
+    { // from expre2c.cpp code
+      mp_integer int_value=binary2integer(id2string(value),
+              type_id==ID_signedbv);
+      return integer2string(int_value);
+
+    }
+    else if (is_boolean())
+    {
+        if (is_true() || is_one())
+            return "1";
+        else if (is_false() || is_zero())
+            return "0";
+        else
+            return "";
+    }
+    else
+    {
+    	if (is_zero()) return "0";
+    	if (is_one()) return "1";
+
+    	// Else try to extract the number
+    	std::string temp_try1(get(ID_C_member_name).c_str()); // KE: need testing!
+    	if (temp_try1.size() > 0)
+    	{
+            // WIll get here only for positive numbers, the rest will try differently
+            return temp_try1;
+    	}
+    	else if(type_id==ID_fixedbv)
+        {
+           return (fixedbvt(to_constant_expr(*this))).to_ansi_c_string();
+        }
+        else if(type_id==ID_floatbv)
+        {
+           ieee_floatt temp = ieee_floatt(to_constant_expr(*this));
+           std::string ans_cand = temp.to_ansi_c_string();
+           if (ans_cand.find("e+") != std::string::npos)
+               return temp.to_string_decimal(ans_cand.size());
+           if (ans_cand.find("e-") != std::string::npos)
+               return temp.to_string_decimal(ans_cand.size());
+           if (ans_cand != "0.000000" && ans_cand != "-0.000000" && ans_cand != "0" && ans_cand != "-0") {
+               return ans_cand; // If the translation makes sense - returns it
+           } else { // Else try to get something closer.
+               double temp_double = temp.to_double(); if (temp_double == 0) return "0";
+               return std::to_string(temp_double);
+           }
+        }
+    }
+  }
+
+  return "";
+}
+
+
+/*******************************************************************\
+
+Function: exprt::sum
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
 
 bool exprt::sum(const exprt &expr)
 {

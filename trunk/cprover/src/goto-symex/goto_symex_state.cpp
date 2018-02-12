@@ -19,14 +19,14 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_expr.h>
 #include <util/prefix.h>
 
-#include <analyses/dirty.h>
+//#include <analyses/dirty.h>
 
 goto_symex_statet::goto_symex_statet():
   depth(0),
   symex_target(nullptr),
   atomic_section_id(0),
-  record_events(true),
-  dirty(nullptr)
+  record_events(true)
+  //dirty(nullptr)
 {
   threads.resize(1);
   new_frame();
@@ -529,11 +529,11 @@ bool goto_symex_statet::l2_thread_read_encoding(
     return false;
 
   // is it a shared object?
-  INVARIANT_STRUCTURED(dirty!=nullptr, nullptr_exceptiont, "dirty is null");
+  //INVARIANT_STRUCTURED(dirty!=nullptr, nullptr_exceptiont, "dirty is null");
   const irep_idt &obj_identifier=expr.get_object_name();
   if(obj_identifier=="goto_symex::\\guard" ||
-     (!ns.lookup(obj_identifier).is_shared() &&
-      !(*dirty)(obj_identifier)))
+     (!ns.lookup(obj_identifier).is_shared() /*&&
+      !(*dirty)(obj_identifier)*/))
     return false;
 
   ssa_exprt ssa_l1=expr;
@@ -618,14 +618,20 @@ bool goto_symex_statet::l2_thread_read_encoding(
     assignment(ssa_l1, tmp, ns, true, true);
     record_events=record_events_bak;
 
-    symex_target->assignment(
-      guard.as_expr(),
-      ssa_l1,
-      ssa_l1,
-      ssa_l1.get_original_expr(),
-      tmp,
-      source,
-      symex_targett::assignment_typet::PHI);
+    if (symex_target == NULL) {
+        printf(";; Warning: assignment ignored from symex_target\n");
+    }
+    else
+    {
+        symex_target->assignment(
+          guard.as_expr(),
+          ssa_l1,
+          ssa_l1,
+          ssa_l1.get_original_expr(),
+          tmp,
+          source,
+          symex_targett::assignment_typet::PHI);
+    }
 
     set_ssa_indices(ssa_l1, ns, L2);
     expr=ssa_l1;
@@ -674,11 +680,11 @@ bool goto_symex_statet::l2_thread_write_encoding(
     return false;
 
   // is it a shared object?
-  INVARIANT_STRUCTURED(dirty!=nullptr, nullptr_exceptiont, "dirty is null");
+  //INVARIANT_STRUCTURED(dirty!=nullptr, nullptr_exceptiont, "dirty is null");
   const irep_idt &obj_identifier=expr.get_object_name();
   if(obj_identifier=="goto_symex::\\guard" ||
-     (!ns.lookup(obj_identifier).is_shared() &&
-      !(*dirty)(obj_identifier)))
+     (!ns.lookup(obj_identifier).is_shared() /*&&
+      !(*dirty)(obj_identifier)*/))
     return false; // not shared
 
   // see whether we are within an atomic section
@@ -692,11 +698,18 @@ bool goto_symex_statet::l2_thread_write_encoding(
   }
 
   // record a shared write
-  symex_target->shared_write(
-    guard.as_expr(),
-    expr,
-    atomic_section_id,
-    source);
+  if (symex_target != NULL)
+  {
+      symex_target->shared_write(
+        guard.as_expr(),
+        expr,
+        atomic_section_id,
+        source);
+  }
+  else
+  {
+      printf(";; Warning: shared write not recorded\n");
+  }
 
   // do we have threads?
   return threads.size()>1;

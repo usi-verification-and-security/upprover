@@ -232,7 +232,7 @@ protected:
     const statet::goto_statet &goto_state,
     statet &dest);
 
-  void phi_function(
+  virtual void phi_function(
     const statet::goto_statet &goto_state,
     statet &state);
 

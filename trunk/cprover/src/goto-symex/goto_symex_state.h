@@ -26,7 +26,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "symex_target.h"
 
-class dirtyt;
+//class dirtyt;
 
 // central data structure: state
 class goto_symex_statet final
@@ -175,13 +175,14 @@ protected:
 
   void set_ssa_indices(ssa_exprt &expr, const namespacet &ns, levelt level=L2);
   // only required for value_set.assign
-  void get_l1_name(exprt &expr) const;
+  //void get_l1_name(exprt &expr) const;
 
   // this maps L1 names to (L2) types
   typedef std::unordered_map<irep_idt, typet, irep_id_hash> l1_typest;
   l1_typest l1_types;
 
 public:
+  void get_l1_name(exprt &expr) const; // KE: moved to public
   // uses level 1 names, and is used to
   // do dereferencing
   value_sett value_set;

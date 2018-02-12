@@ -13,10 +13,10 @@
 
 #include <goto-symex/build_goto_trace.h>
 #include <goto-programs/xml_goto_trace.h>
-#include <find_symbols.h>
+#include <util/find_symbols.h>
 #include <ansi-c/expr2c.h>
-#include <time_stopping.h>
-#include <ui_message.h>
+#include <util/time_stopping.h>
+#include <util/ui_message.h>
 #include "../error_trace.h"
 
 #include "smt_assertion_no_partition.h"
