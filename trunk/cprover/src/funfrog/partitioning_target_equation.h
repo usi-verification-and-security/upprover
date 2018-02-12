@@ -178,6 +178,11 @@ protected:
   // If the given SSA step is a callend assumption, the corresponding target
   // partition is returned. If not, NULL is returned.
   const partitiont* find_target_partition(const SSA_stept& step);
+
+  virtual void goto_instruction(
+    const exprt &guard,
+    const exprt &cond,
+    const sourcet &source) override {}
   
   // Collection of all the partitions
   partitionst partitions;
