@@ -136,7 +136,7 @@ void goto_symext::symex_entry_point(
   state.top().end_of_function=limit;
   state.top().calling_location.pc=state.top().end_of_function;
   state.symex_target=&target;
-  state.dirty=util_make_unique<dirtyt>(goto_functions);
+ // state.dirty=util_make_unique<dirtyt>(goto_functions);
 
   symex_transition(state, state.source.pc);
 }
@@ -176,7 +176,7 @@ void goto_symext::operator()(
   while(!state.call_stack().empty())
     symex_threaded_step(state, goto_functions);
 
-  state.dirty=nullptr;
+  //state.dirty=nullptr;
 }
 
 void goto_symext::operator()(

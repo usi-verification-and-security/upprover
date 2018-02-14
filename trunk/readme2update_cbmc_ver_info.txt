@@ -9,7 +9,7 @@ File Changed:
 - trunk/cprover/src/goto-symex/goto_symex_state.cpp // Fix to ignor issues of parallel MC (two locations) + KE: remove dirty analysis
 - trunk/cprover/src/goto-symex/symex_function_call.cpp // Add assert(0) - bool goto_symext::get_unwind_recursion, as long as the return is false.
 - trunk/cprover/src/cbmc/symex_bmc.cpp (remove debug massege to show progress: void symex_bmct::symex_step).
-- trunk/cprover/util/expr.h/.cpp - add a function — I will need to add functions from old source to new one (those functions are created by the team and needed)
+- trunk/cprover/src/util/expr.h/.cpp - add a function — I will need to add functions from old source to new one (those functions are created by the team and needed)
 - trunk/cprover/src/config.inc (change: add ../ to minisat2 path) —WE removed to CMAKE, therefore we do not need it anymore
 - trunk/cprover/src/Makefile - WE removed to CMAKE, therefore we do not need it anymore
 - Remove dirty - where found

@@ -11,7 +11,7 @@
 #ifndef HIFROG_H
 #define HIFROG_H
 
-#include <ssa_expr.h>
+#include <util/ssa_expr.h>
 
 // For now we have only one thread any hows
 #define FUNC_RETURN "::#return_value"  // KE: appears in Cprover as "#return_value"

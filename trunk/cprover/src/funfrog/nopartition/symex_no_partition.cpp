@@ -10,11 +10,14 @@
  * 
  * Created on 20 April 2017, 17:51
  */
-#include <expr_util.h>
+#include <util/expr_util.h>
 #include <goto-symex/goto_symex_state.h>
 #include <goto-symex/symex_slice_class.h>
+#include <tclDecls.h>
+
 
 #include "symex_no_partition.h"
+
 
 bool symex_no_partitiont::prepare_SSA(const assertion_infot &assertion, const goto_functionst& goto_functions)
 {
@@ -40,6 +43,8 @@ bool symex_no_partitiont::prepare_SSA(const assertion_infot &assertion, const go
   loc = 0;
   return process_planned(state, goto_functions, false); // In it, in the end need to call convert
 }
+
+
 
 bool symex_no_partitiont::refine_SSA(const assertion_infot &assertion, bool force_check)
 {

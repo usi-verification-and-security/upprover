@@ -343,7 +343,7 @@ public:
 
   void switch_to_thread(unsigned t);
   bool record_events;
-  std::unique_ptr<const dirtyt> dirty;
+  //std::unique_ptr<const dirtyt> dirty;
 };
 
 #endif // CPROVER_GOTO_SYMEX_GOTO_SYMEX_STATE_H

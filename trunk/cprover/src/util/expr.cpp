@@ -12,6 +12,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "expr.h"
 #include <cassert>
 #include <stack>
+#include <sstream>
 #include "string2int.h"
 #include "mp_arith.h"
 #include "fixedbv.h"
@@ -22,6 +23,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include "rational_tools.h"
 #include "arith_tools.h"
 #include "std_expr.h"
+
+
 
 void exprt::move_to_operands(exprt &expr)
 {

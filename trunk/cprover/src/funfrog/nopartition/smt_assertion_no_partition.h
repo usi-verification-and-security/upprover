@@ -34,7 +34,7 @@ public:
             unsigned long &_max_memory_used) 
         : equation(_target),
           solving_time(0),
-          message_handler (_message_handler),
+          message_handler(_message_handler),
           max_memory_used(_max_memory_used)
           {set_message_handler(_message_handler);}
         
@@ -44,7 +44,7 @@ public:
 
     void error_trace(smtcheck_opensmt2t& decider, const namespacet &ns, std::map<irep_idt, std::string>& guard_expln);
 
-private:
+public:
     // Store for the symex result
     smt_symex_target_equationt &equation;
     
