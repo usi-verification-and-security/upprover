@@ -10,8 +10,8 @@ Author: Ondrej Sery
 #include <limits.h>
 #include <string.h>
 #include <stdlib.h>
-#include "time_stopping.h"
-#include <symbol_table.h>
+#include "util/time_stopping.h"
+#include <util/symbol_table.h>
 #include "../hifrog.h"
 #include "satcheck_opensmt2.h"
 #include "../utils/naming_helpers.h"
@@ -345,9 +345,8 @@ void prop_itpt::generalize(const prop_conv_solvert& decider,
 # endif
 
   // Do the renaming itself
-  bool used_symbols[symbols.size()];
-  memset(&used_symbols, 0, sizeof(used_symbols));
-  
+  std::vector<bool> used_symbols;
+  used_symbols.resize(symbols.size(), false);
   unsigned shift = _no_orig_variables - cannon_var_no;
   for (clausest::iterator it = clauses.begin();
           it != clauses.end();
