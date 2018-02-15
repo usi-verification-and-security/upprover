@@ -596,7 +596,7 @@ void funfrog_parseoptionst::help()
 
 #ifdef DISABLE_OPTIMIZATIONS   
   "\nDebug Options:(Options Valid Only in SMT-Based Verification)\n"
-  "--list-templates               dump the templates of the functions for user-defined summaries\n"
+  //"--list-templates               dump the templates of the functions for user-defined summaries\n"
   "--dump-SSA-tree                ask a dump of SSA form in smt2 format\n" //the default is __SSA__dump_1.smt2
   "--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
   "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
@@ -815,7 +815,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
   options.set_option("check-itp", cmdline.isset("check-itp"));
   options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
-  options.set_option("list-templates", cmdline.isset("list-templates"));
+  //options.set_option("list-templates", cmdline.isset("list-templates"));
   options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
   options.set_option("theoref", cmdline.isset("theoref"));
   options.set_option("force", cmdline.isset("force"));

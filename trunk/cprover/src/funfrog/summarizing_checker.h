@@ -68,7 +68,8 @@ public:
     omega.serialize(options.get_option("save-omega"));
   };
 
-    void list_templates(smt_assertion_sumt &prop, smt_partitioning_target_equationt &equation);
+    // MB: not used at the moment, as of 13.2.2018
+    //void list_templates(smt_assertion_sumt &prop, smt_partitioning_target_equationt &equation);
 protected:
 
   const goto_programt &goto_program;

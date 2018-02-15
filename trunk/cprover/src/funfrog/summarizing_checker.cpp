@@ -408,100 +408,116 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
             single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound,
             options.get_bool_option("partial-loops"));
 
-
-//  setup_unwind(symex);
-
   smt_refiner_assertion_sumt refiner = smt_refiner_assertion_sumt(
               summarization_context, omega,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
 
-  smt_assertion_sumt prop = smt_assertion_sumt(summarization_context,
+  smt_assertion_sumt decision_procedure = smt_assertion_sumt(summarization_context,
           equation, message_handler, max_memory_used);
-  unsigned count = 0;
-  bool end = false;
-  std::cout <<"";
 
-  while (!end)
-  {
-    count++;
-    end = (count == 1) ? symex.prepare_SSA(assertion) : symex.refine_SSA (refiner.get_refined_functions());
 
-    //LA: good place?
-    if(options.get_bool_option("list-templates"))
-    {
-        status() << "Listing templates\n" << eom;
-        list_templates(prop, equation);
-        return true;
-    }
+  unsigned iteration_counter = 0;
+  // in this phase we create SSA from the goto program, possibly skipping over some functions based on information in omega
+  bool end = symex.prepare_SSA(assertion);
 
-    if (!end){
-      if (options.get_bool_option("claims-opt") && count == 1){
-        smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
-                .do_it(equation);
-        status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
-      }
+//  MB: This should be handled elsewhere. Disabling option 'list-templates' until handled properly
+//  //LA: good place?
+//  if(options.get_bool_option("list-templates"))
+//  {
+//    status() << "Listing templates\n" << eom;
+//    list_templates(prop, equation);
+//    return true;
+//  }
 
-      end = prop.assertion_holds(assertion, ns, 
-              *(dynamic_cast<smtcheck_opensmt2t *> (decider)), 
-              *(dynamic_cast<interpolating_solvert *> (decider)));
-      unsigned summaries_count = omega.get_summaries_count();
-      unsigned nondet_count = omega.get_nondets_count();
-#ifdef PRODUCE_PROOF      
-      if (end && decider->can_interpolate())
-#else
-      if (end)
-#endif
-      {
-        if (options.get_bool_option("no-itp")){
-          status() << ("Skip generating interpolants") << eom;
-        } else {
-#ifdef PRODUCE_PROOF            
-          status() << ("Start generating interpolants...") << eom;
-          extract_interpolants_smt(prop, equation);
-#else
-          assert(0);
-#endif
-        }
-        if (summaries_count == 0)
-        {
-          status() << ("ASSERTION(S) HOLD(S) ") << eom; //TODO change the message to something more clear (like, everything was inlined...)
-        } else {
-          status() << "FUNCTION SUMMARIES (for " << summaries_count
-        	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
-        }
-        report_success();
-      } else { // !end
-        if (summaries_count > 0 || nondet_count > 0) {
-          if (summaries_count > 0){
-            status() << "FUNCTION¸ SUMMARIES (for " << summaries_count
-                   << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-          }
-          if (nondet_count > 0){
-            status() << "HAVOCING (of " << nondet_count
-                   << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-          }
-          refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), omega.get_summary_info(), equation);
-
-          if (refiner.get_refined_functions().size() == 0){
-            assertion_violated(prop, symex.guard_expln);
-            break;
-          } else {
-            //status("Counterexample is spurious");
-            status() << ("Go to next iteration\n") << eom;
-          }
-        } else {
-          assertion_violated(prop, symex.guard_expln);
-          break;
-        }
-      }
-    }
+  //
+  if(!end && options.get_bool_option("claims-opt")){
+    smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
+      .do_it(equation);
+    status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
   }
+
+  while (!end) {
+    iteration_counter++;
+    bool is_unsat = decision_procedure.assertion_holds(assertion, ns,
+                                                       *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
+                                                       *(decider));
+    end = is_unsat;
+    if (!is_unsat) {
+      // check for possible refinement
+//      MB: TODO: get this schema working
+//      if(refiner.can_refine())
+//      {
+//        refiner.refine();
+//      }
+      // this refiner can refine if we have summary or havoc representation of a function
+      if (omega.get_summaries_count() > 0 || omega.get_nondets_count() > 0) {
+        // REPORT part
+        {
+          const unsigned int summaries_used = omega.get_summaries_count();
+          if (summaries_used > 0){
+            status() << "FUNCTION¸ SUMMARIES (for " << summaries_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
+          }
+          const unsigned int nondet_used = omega.get_nondets_count();
+          if (nondet_used > 0){
+            status() << "HAVOCING (of " << nondet_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
+          }
+        } // END of REPORT
+
+        // figure out functions that can be refined
+        refiner.refine(*(dynamic_cast <smtcheck_opensmt2t *> (decider)), omega.get_summary_info(), equation);
+        bool refined = !refiner.get_refined_functions().empty();
+        if (!refined) {
+          // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
+          break;
+        } else {
+          // REPORT
+          status() << ("Go to next iteration\n") << eom;
+          // do the actual refinement of ssa
+          symex.refine_SSA(refiner.get_refined_functions());
+        }
+      }
+      else {
+        // nothing left to refine, cex is real -> break out of the refinement loop
+        break;
+      }
+    }
+  } // end of refinement loop
+  // the assertion has been successfully verified if we have (end == true)
+  const bool is_verified = end;
+  if (is_verified) {
+    // produce and store the summaries
+    if (!options.get_bool_option("no-itp")) {
+#ifdef PRODUCE_PROOF
+      if (decider->can_interpolate()) {
+        status() << ("Start generating interpolants...") << eom;
+        extract_interpolants_smt(decision_procedure, equation);
+      }
+#else
+      // if PRODUCE_PROOF is not defined, we should always use no-itp
+      assert(false);
+#endif
+    } else {
+      status() << ("Skip generating interpolants") << eom;
+    }
+    // report results
+    if(omega.get_summaries_count() > 0) {
+      status() << "FUNCTION SUMMARIES (for " << omega.get_summaries_count()
+               << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
+    }
+    report_success();
+  }
+  else // assertion was falsified
+  {
+    assertion_violated(decision_procedure, symex.guard_expln);
+  }
+  // FINAL REPORT
+
   final = current_time();
   omega.get_unwinding_depth();
 
   status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
-  status() << "Total number of steps: " << count << eom;
+  status() << "Total number of steps: " << iteration_counter << eom;
   if (omega.get_recursive_total() > 0){
     status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
   }
@@ -519,7 +535,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               << eom;  
 #endif
   
-  return end;
+  return is_verified;
 }
 
 /*******************************************************************
@@ -593,11 +609,11 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
             : symex.refine_SSA (assertion, false); // Missing sets of refined functions, TODO
 
     //LA: good place?
-    if(options.get_bool_option("list-templates"))
-    {
-        status() << "No listing templates option in this mode\n" << eom;
-        return true;
-    }
+//    if(options.get_bool_option("list-templates"))
+//    {
+//        status() << "No listing templates option in this mode\n" << eom;
+//        return true;
+//    }
 
     if (!end){
       if (options.get_bool_option("claims-opt") && count == 1){
@@ -735,24 +751,25 @@ void summarizing_checkert::assertion_violated (smt_assertion_no_partitiont& prop
     decider_smt = nullptr;
 }
 
-// Only for SMT version
-void summarizing_checkert::list_templates(smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation)
-{
-    summary_storet* summary_store = summarization_context.get_summary_store();
-    std::vector<summaryt*> templates;
-    smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-    equation.fill_function_templates(*decider_smt, templates);
-    decider_smt = nullptr;
-    for(unsigned int i = 0; i < templates.size(); ++i) {
-        summary_store->insert_summary(*templates[i]);
-    }
-    // Store the summaries
-    const std::string& summary_file = options.get_option("save-summaries");
-    if (!summary_file.empty()) {
-        summarization_context.serialize_infos_smt(summary_file, 
-            omega.get_summary_info());
-    }
-}
+// MB: not used at the moment
+//// Only for SMT version
+//void summarizing_checkert::list_templates(smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation)
+//{
+//    summary_storet* summary_store = summarization_context.get_summary_store();
+//    std::vector<summaryt*> templates;
+//    smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
+//    equation.fill_function_templates(*decider_smt, templates);
+//    decider_smt = nullptr;
+//    for(unsigned int i = 0; i < templates.size(); ++i) {
+//        summary_store->insert_summary(*templates[i]);
+//    }
+//    // Store the summaries
+//    const std::string& summary_file = options.get_option("save-summaries");
+//    if (!summary_file.empty()) {
+//        summarization_context.serialize_infos_smt(summary_file,
+//            omega.get_summary_info());
+//    }
+//}
 
 #ifdef PRODUCE_PROOF
 /*******************************************************************\
