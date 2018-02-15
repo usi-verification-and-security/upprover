@@ -221,8 +221,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
   std::vector<unsigned> ints;
   get_ints(ints, options.get_option("part-itp"));
 
-  prop_partitioning_target_equationt equation(ns, summarization_context, false,
-      store_summaries_with_assertion, get_coloring_mode(options.get_option("color-proof")), ints);
+  prop_partitioning_target_equationt equation(ns, summarization_context, store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {
@@ -380,24 +379,20 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         bool store_summaries_with_assertion)
 {
   absolute_timet initial, final;
-  initial=current_time();
+  initial = current_time();
   
   const bool no_slicing_option = options.get_bool_option("no-slicing");
   const bool no_ce_option = options.get_bool_option("no-error-trace");
   assert(options.get_option("logic") != "prop");
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
 
-
+  // prepare omega
   omega.set_initial_precision(assertion);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
 
-
-  std::vector<unsigned> ints;
-  get_ints(ints, options.get_option("part-itp"));
-
-  smt_partitioning_target_equationt equation(ns, summarization_context, false,
-      store_summaries_with_assertion, get_coloring_mode(options.get_option("color-proof")), ints);
+  smt_partitioning_target_equationt equation(ns, summarization_context,
+      store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {

@@ -83,11 +83,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   const bool single_assertion_check = omega.is_single_assertion_check();
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
 
-
-  std::vector<unsigned> ints;
-
-  smt_partitioning_target_equationt equation(ns, summarization_context, false,
-      store_summaries_with_assertion, coloring_modet::NO_COLORING, ints);
+  smt_partitioning_target_equationt equation(ns, summarization_context,
+      store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {

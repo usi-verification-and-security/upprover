@@ -501,7 +501,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
   if (!bv.empty()) {
     assert(partition_iface.assertion_in_subtree);
     
-    if (partition.parent_id == partitiont::NO_PARTITION && !upgrade_checking) 
+    if (partition.parent_id == partitiont::NO_PARTITION)
     {
       prop_conv.prop.lcnf(bv);
       

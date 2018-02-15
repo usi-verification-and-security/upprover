@@ -562,7 +562,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
     if (!bv.empty()) {
         assert(partition_iface.assertion_in_subtree);
 
-        if (partition.parent_id == partitiont::NO_PARTITION && !upgrade_checking) {
+        if (partition.parent_id == partitiont::NO_PARTITION) {
 #       ifdef DEBUG_SSA_SMT_CALL
             cout << "Before decider::const_var(error in ROOT) --> true" << endl;
             cout << "Before decider::land(error in ROOT)" << endl;

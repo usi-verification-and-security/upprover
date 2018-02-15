@@ -37,9 +37,7 @@ class partitioning_target_equationt:public symex_target_equationt
 {
 public:
   partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
-          _summarization_context, bool _upgrade_checking,
-          bool _store_summaries_with_assertion, coloring_modet _coloring_mode,
-          std::vector<unsigned>& _clauses);
+          _summarization_context, bool _store_summaries_with_assertion);
 
   // First this called and then the parent d'tor due to the use of virtual
   virtual ~partitioning_target_equationt() {
@@ -197,15 +195,9 @@ protected:
   // NOTE: Currently, the order is slightly broken by the glue variables
   SSA_steps_orderingt SSA_steps_exec_order;
 
-  // Mode of encoding. Are we doing upgrade check?
-  bool upgrade_checking;
   // Should we store summaries with assertion in subtree?
   // This is used in upgrade checking.
   bool store_summaries_with_assertion;
-
-  coloring_modet coloring_mode;
-
-  std::vector<unsigned>& clauses;
 
   friend class partitioning_slicet;
 };
