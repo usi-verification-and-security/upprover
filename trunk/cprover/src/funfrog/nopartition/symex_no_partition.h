@@ -37,7 +37,6 @@ public:
             const namespacet &_ns,
             symbol_tablet &_new_symbol_table,
             smt_symex_target_equationt &_target,
-            ui_message_handlert &_message_handler,
             const goto_programt &_goto_program,
             unsigned _last_assertion_loc,
             bool _single_assertion_check,
@@ -48,24 +47,33 @@ public:
           symex_bmct(mh, _ns, _new_symbol_table, _target),
           equation(_target),
           goto_program(_goto_program),
-          current_assertion(NULL),
-          message_handler(_message_handler),
-          last_assertion_loc(_last_assertion_loc),
-          loc(0),
-          single_assertion_check(_single_assertion_check),
-          use_slicing(_use_slicing),
-	      do_guard_expl(_do_guard_expl),
-          use_smt(_use_smt)
-          {set_message_handler(_message_handler);}
+          current_assertion(NULL)
+//          last_assertion_loc(_last_assertion_loc),
+//          loc(0),
+//          single_assertion_check(_single_assertion_check),
+//          use_slicing(_use_slicing),
+//	      do_guard_expl(_do_guard_expl),
+//          use_smt(_use_smt)
+          {}
     
     virtual ~symex_no_partitiont() {} // Here there are no partition to delete
 
-    virtual void set_message_handler(message_handlert &_message_handler); //the declaration of this function was missing
-    
 // Methods:    
     bool prepare_SSA(const assertion_infot &assertion, const goto_functionst& goto_functions);
     
     bool refine_SSA(const assertion_infot &assertion, bool force_check);
+
+    messaget::mstreamt & status() {
+        return log.status();
+    }
+
+    messaget::mstreamt & error() {
+        return log.error();
+    }
+
+    messaget::mstreamt & statistics() {
+        return log.statistics();
+    }
 
 
 // Data Members    
@@ -82,20 +90,23 @@ private:
     
     // Symex state holding the renaming levels
     goto_symext::statet state;
-  
-    ui_message_handlert &message_handler;    
-    
-    unsigned last_assertion_loc;
 
     unsigned loc;
-    
-    bool single_assertion_check;
 
     bool use_slicing;
 
-    bool do_guard_expl;
-  
-    bool use_smt; // for slicing  
+
+//    >> UNUSED private fields
+//    unsigned last_assertion_loc;
+//
+//
+//    bool single_assertion_check;
+//
+//
+//    bool do_guard_expl;
+//
+//    bool use_smt; // for slicing
+//    >> END OF UNUSED private fields
     
     bool process_planned(statet &state, const goto_functionst &goto_functions, bool force_check);
 

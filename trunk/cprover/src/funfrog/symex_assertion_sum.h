@@ -45,13 +45,12 @@ public:
 	  bool _do_guard_expl=true,
           bool _use_smt=true
           ) :
-          symex_bmct(_ns, _new_symbol_table, _target),
+          symex_bmct(_message_handler, _ns, _new_symbol_table, _target),
           summarization_context(_summarization_context),
           summary_info(_summary_info),
           current_summary_info(&_summary_info),
           equation(_target),
           current_assertion(NULL),
-          message_handler(_message_handler),
           goto_program(_goto_program),
           last_assertion_loc(_last_assertion_loc),
           loc(0),
@@ -60,7 +59,7 @@ public:
 	  do_guard_expl(_do_guard_expl),
           use_smt(_use_smt),
           prev_unwind_counter(0)
-          {set_message_handler(_message_handler);}
+          {}
           
   virtual ~symex_assertion_sumt();
 
@@ -145,9 +144,6 @@ private:
 
   // Current assertion
   const assertion_infot* current_assertion;
-
-  //std::ostream &out;
-  ui_message_handlert &message_handler;
 
   const goto_programt &goto_program;
 
