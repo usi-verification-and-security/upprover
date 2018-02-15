@@ -47,11 +47,11 @@ public:
           symex_bmct(mh, _ns, _new_symbol_table, _target),
           equation(_target),
           goto_program(_goto_program),
-          current_assertion(NULL)
+          current_assertion(NULL),
+          loc(0),
+          use_slicing(_use_slicing)
 //          last_assertion_loc(_last_assertion_loc),
-//          loc(0),
 //          single_assertion_check(_single_assertion_check),
-//          use_slicing(_use_slicing),
 //	      do_guard_expl(_do_guard_expl),
 //          use_smt(_use_smt)
           {}
