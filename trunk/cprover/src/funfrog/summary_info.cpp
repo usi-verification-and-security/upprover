@@ -64,7 +64,7 @@ void summary_infot::set_initial_precision(
       }
     }
     
-    // Recursive traversal
+    // Recursive traversal of func (DFS) 
     function.set_initial_precision(
             default_precision, summarization_context, last_assertion_loc);
   }

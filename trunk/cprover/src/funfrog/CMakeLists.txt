@@ -59,8 +59,8 @@ set(HIFROG_SOURCE_FILES
         prop_summary_store.h
         refiner_assertion_sum.cpp
         refiner_assertion_sum.h
-        smt_assertion_sum.cpp
-        smt_assertion_sum.h
+        prepare_smt_formula.cpp
+        prepare_smt_formula.h
         smt_dependency_checker.cpp
         smt_dependency_checker.h
         smt_partitioning_target_equation.cpp
@@ -97,7 +97,8 @@ set(HIFROG_SOURCE_FILES
         utils/ssa_helpers.h
         partition_fwd.h
         solvers/interpolating_solver_fwd.h
-    )
+        #reportt.cpp reportt.h
+        )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../cmake_modules/")
 

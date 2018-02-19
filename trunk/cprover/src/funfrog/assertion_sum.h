@@ -16,7 +16,7 @@ class summarization_contextt;
 
 extern time_periodt global_satsolver_time;
 
-class assertion_sumt:public messaget
+class assertion_sumt:public messaget       //This class is deletable
 {
 public:
     assertion_sumt(

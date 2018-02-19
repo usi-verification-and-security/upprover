@@ -23,7 +23,7 @@
 #include "prop_partitioning_target_equation.h"
 #include "smt_partitioning_target_equation.h"
 #include "prop_assertion_sum.h"
-#include "smt_assertion_sum.h"
+#include "prepare_smt_formula.h"
 #include "symex_assertion_sum.h"
 #include <solvers/flattening/bv_pointers.h>
 
@@ -362,7 +362,40 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
   
   return end;
 }
+/*******************************************************************
 
+ Function: summarizing_checkert::assertion_holds_smt
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Helper function Checks if the given equation holds in smt encoding
+
+\*******************************************************************/
+/*namespace{
+    bool is_satisfiable(smtcheck_opensmt2t & decider) {
+        absolute_timet before, after;
+        before=current_time();
+        bool is_sat = decider.solve();
+        after=current_time();
+        //solving_time = (after-before);
+        //for the report we should have proper method, since status cannot be used here directly
+        status << "SOLVER TIME: " << (after-before) << eom;
+        status() << "RESULT: ";
+
+        // solve it
+        if (!is_sat)
+        {
+            status() << "UNSAT - it holds!" << eom;
+            return false;
+        } else {
+            status() << "SAT - doesn't hold" << eom;
+            return true;
+        }
+        return is_sat;
+    }
+}*/
 /*******************************************************************
 
  Function: summarizing_checkert::assertion_holds_smt
@@ -413,7 +446,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
 
-  smt_assertion_sumt decision_procedure = smt_assertion_sumt(summarization_context,
+  prepare_smt_formulat ssaToSmt = prepare_smt_formulat(summarization_context,
           equation, message_handler, max_memory_used);
 
 
@@ -439,11 +472,15 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 
   while (!end) {
     iteration_counter++;
-    bool is_unsat = decision_procedure.assertion_holds(assertion, ns,
-                                                       *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
-                                                       *(decider));
-    end = is_unsat;
-    if (!is_unsat) {
+
+    //Converts SSA to SMT formula
+    ssaToSmt.convert_to_formula( *(dynamic_cast<smtcheck_opensmt2t *> (decider)), *(decider));
+
+    // Decides the equation
+    bool is_sat = ssaToSmt.is_satisfiable(*(dynamic_cast<smtcheck_opensmt2t *> (decider)));
+
+    end = !is_sat;
+    if (is_sat) {
       // check for possible refinement
 //      MB: TODO: get this schema working
 //      if(refiner.can_refine())
@@ -491,7 +528,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 #ifdef PRODUCE_PROOF
       if (decider->can_interpolate()) {
         status() << ("Start generating interpolants...") << eom;
-        extract_interpolants_smt(decision_procedure, equation);
+        extract_interpolants_smt(ssaToSmt, equation);
       }
 #else
       // if PRODUCE_PROOF is not defined, we should always use no-itp
@@ -509,7 +546,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   }
   else // assertion was falsified
   {
-    assertion_violated(decision_procedure, symex.guard_expln);
+    assertion_violated(ssaToSmt, symex.guard_expln);
   }
   // FINAL REPORT
 
@@ -704,7 +741,7 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
  Purpose: Prints the error trace for smt encoding
 
 \*******************************************************************/
-void summarizing_checkert::assertion_violated (smt_assertion_sumt& prop,
+void summarizing_checkert::assertion_violated (prepare_smt_formulat& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
@@ -753,7 +790,7 @@ void summarizing_checkert::assertion_violated (smt_assertion_no_partitiont& prop
 
 // MB: not used at the moment
 //// Only for SMT version
-//void summarizing_checkert::list_templates(smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation)
+//void summarizing_checkert::list_templates(prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation)
 //{
 //    summary_storet* summary_store = summarization_context.get_summary_store();
 //    std::vector<summaryt*> templates;
@@ -783,7 +820,7 @@ Function: summarizing_checkert::extract_interpolants_smt
  Purpose: Extract and store the interpolation summaries for smt only
 
 \*******************************************************************/
-void summarizing_checkert::extract_interpolants_smt (smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation)
+void summarizing_checkert::extract_interpolants_smt (prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation)
 {
   summary_storet* summary_store = summarization_context.get_summary_store();
   interpolant_mapt itp_map;
