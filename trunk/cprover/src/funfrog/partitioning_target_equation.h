@@ -16,7 +16,7 @@ Author: Ondrej Sery
 //#define DEBUG_SSA_SMT_CALL // Before call to smt interface add a debug print
 // End of working debugging flags
 
-#include <symbol.h>
+#include <util/symbol.h>
 #ifdef DISABLE_OPTIMIZATIONS
 #include <iostream>
 #include "expr_pretty_print.h"

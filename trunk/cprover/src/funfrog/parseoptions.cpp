@@ -8,7 +8,7 @@
 
 \*******************************************************************/
 
-#include <config.h>
+#include <util/config.h>
 #include <iostream>
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -18,10 +18,10 @@
 #include <io.h>
 #endif
 
-#include <std_expr.h>
-#include <arith_tools.h>
-#include <prefix.h>
-#include <time_stopping.h>
+#include <util/std_expr.h>
+#include <util/arith_tools.h>
+#include <util/prefix.h>
+#include <util/time_stopping.h>
 
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
@@ -193,7 +193,7 @@ bool funfrog_parseoptionst::process_goto_program(
     
     // Remove inline assembler; this needs to happen before
     // adding the library.
-    remove_asm(symbol_table, goto_functions);
+    remove_asm(goto_functions, symbol_table);
 
     // KE: Only to prop logic
     if(cmdline.isset("logic")) 
@@ -231,7 +231,7 @@ bool funfrog_parseoptionst::process_goto_program(
     // remove catch and throw
     remove_exceptions(symbol_table, goto_functions);
     // Similar removal of RTTI inspection:
-    remove_instanceof(symbol_table, goto_functions);
+    remove_instanceof(goto_functions, symbol_table);
     
     mm_io(symbol_table, goto_functions);
 

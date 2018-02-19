@@ -7,9 +7,9 @@
 \*******************************************************************/
 
 #include <fstream>
-#include <ui_message.h>
-#include <xml.h>
-#include <xml_irep.h>
+#include <util/ui_message.h>
+#include <util/xml.h>
+#include <util/xml_irep.h>
 
 #include <ansi-c/expr2c.h>
 #include "summarizing_checker.h"

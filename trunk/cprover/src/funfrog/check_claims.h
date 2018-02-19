@@ -10,10 +10,10 @@
 #define _CPROVER_LOOPFROG_CHECK_CLAIMS_H_
 
 #include <cstdlib>
-#include <options.h>
+#include <util/options.h>
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
-#include <ui_message.h>
+#include <util/ui_message.h>
 #include "assertion_info.h"
 #include "unwind.h"
 

@@ -1,7 +1,7 @@
 #include <memory>
 #include <fstream>
-#include <time_stopping.h>
-#include <expr_util.h>
+#include <util/time_stopping.h>
+#include <util/expr_util.h>
 
 #include "dependency_checker.h"
 #ifdef DISABLE_OPTIMIZATIONS

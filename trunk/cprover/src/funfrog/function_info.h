@@ -10,8 +10,8 @@
 #ifndef CPROVER_FUNCTION_INFO_H
 #define CPROVER_FUNCTION_INFO_H
 
-#include <irep.h>
-#include <expr.h>
+#include <util/irep.h>
+#include <util/expr.h>
 #include <set>
 
 #include "summary_store_fwd.h"

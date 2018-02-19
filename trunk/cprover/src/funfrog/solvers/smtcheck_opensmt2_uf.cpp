@@ -47,7 +47,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   // KE: Fix a strange bug can be related to the fact we are pushing
   // a struct into std::vector and use [] before any push_back
   literals.push_back(PTRef());
-  literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
+  //literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0] //commented out due to error:unsued variable
   literals[0] = logic->getTerm_true(); // Which is .x =0
   // KE: End of fix
 
@@ -61,7 +61,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   // One arg
   args.push(sort_ureal);
   s_neg = logic->declareFun(tk_neg, sort_ureal, args, &msg, true);
-  Symbol& sneg = logic->getSym(s_neg);
+  //Symbol& sneg = logic->getSym(s_neg); //commented out due to error:unsued variable
   
   // Two args
   args.push(sort_ureal);
