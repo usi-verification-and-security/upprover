@@ -8,7 +8,8 @@
 #ifndef SMT_ASSERTION_SUM_H
 #define SMT_ASSERTION_SUM_H
 
-#include "assertion_sum.h"
+#include <util/message.h>
+#include <util/ui_message.h>
 
 class assertion_infot;
 class namespacet;
@@ -16,18 +17,14 @@ class smt_partitioning_target_equationt;
 class smtcheck_opensmt2t;
 class interpolating_solvert;
 
-class prepare_smt_formulat :public assertion_sumt
+class prepare_smt_formulat :public messaget
 {
 public:
     prepare_smt_formulat(
-            summarization_contextt& _summarization_context,
             smt_partitioning_target_equationt &_target,
-            ui_message_handlert &_message_handler,
-            unsigned long &_max_memory_used
-            ) 
-        : assertion_sumt(_summarization_context,
-                        _message_handler, 
-                        _max_memory_used), 
+            ui_message_handlert &_message_handler
+            )
+        : messaget(_message_handler),
           equation(_target) {};
     
     void convert_to_formula(smtcheck_opensmt2t &decider,interpolating_solvert &interpolator);

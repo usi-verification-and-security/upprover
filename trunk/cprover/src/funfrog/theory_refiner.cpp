@@ -102,8 +102,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   //setup_unwind(symex);
 
-  prepare_smt_formulat ssaTosmt = prepare_smt_formulat(summarization_context,
-          equation, message_handler, max_memory_used);
+  prepare_smt_formulat ssaTosmt = prepare_smt_formulat(equation, message_handler);
 
   bool end = symex.prepare_SSA(assertion);
 

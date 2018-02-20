@@ -446,8 +446,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
 
-  prepare_smt_formulat ssaToSmt = prepare_smt_formulat(summarization_context,
-          equation, message_handler, max_memory_used);
+  prepare_smt_formulat ssaToSmt = prepare_smt_formulat(equation, message_handler);
 
 
   unsigned iteration_counter = 0;
