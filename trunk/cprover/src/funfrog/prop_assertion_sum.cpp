@@ -126,9 +126,6 @@ bool prop_assertion_sumt::is_satisfiable(
   after=current_time();
   status() << "SOLVER TIME: " << (after-before) << eom;
 
-  solving_time = (after-before);
-  global_satsolver_time += (after-before);
-
   // solve it
   switch (r)
   {

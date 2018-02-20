@@ -28,8 +28,6 @@ time_periodt global_satsolver_time;
 \*******************************************************************/
 void prepare_smt_formulat::convert_to_formula(smtcheck_opensmt2t &decider, interpolating_solvert &interpolator)
 {
-  bool sat=false;
-
   absolute_timet before, after;
   before=current_time();
   equation.convert(decider, interpolator);
@@ -58,8 +56,6 @@ bool prepare_smt_formulat::is_satisfiable(
   before=current_time();
   bool is_sat = decider.solve();
   after=current_time();
-  solving_time = (after-before);
-  global_satsolver_time += (after-before);
   status() << "SOLVER TIME: " << (after-before) << eom;
   status() << "RESULT: ";
 
