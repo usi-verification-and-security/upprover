@@ -61,6 +61,10 @@
 #include "check_claims.h"
 #include "version.h"
 #include "parseoptions.h"
+#include <util/exit_codes.h>
+#include <goto-programs/initialize_goto_model.h>
+#include <goto-programs/show_symbol_table.h>
+#include <util/string2int.h>
 
 /*******************************************************************
 
@@ -77,9 +81,8 @@
 funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
   parse_options_baset(FUNFROG_OPTIONS, argc, argv),
   xml_interfacet(cmdline),
-  //language_uit((std::string("FUNFROG") + FUNFROG_VERSION), cmdline)      
-  //language_uit(cmdline, *(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
-  language_uit(cmdline, *(new ui_message_handlert(cmdline, "FUNFROG " FUNFROG_VERSION)))
+  messaget(ui_message_handler),
+  ui_message_handler(cmdline, "HIFROG " HIFROG_VERSION)
 {
 }
 
@@ -180,20 +183,16 @@ namespace {
 
 \*******************************************************************/
 bool funfrog_parseoptionst::process_goto_program(
-  namespacet& ns,
-  optionst& options,
-  goto_functionst &goto_functions)
+  const optionst& options)
 {
   try
   {
-    // KE: update  new cprover version - taken from: cbmc_parseoptionst::process_goto_program
+    // MB: update to cprover version 5.8 - taken from: cbmc_parseoptionst::process_goto_program
     // Consider adding more optimizations as full slicing or non-det statics
       
-    namespacet ns(symbol_table);
-    
     // Remove inline assembler; this needs to happen before
     // adding the library.
-    remove_asm(goto_functions, symbol_table);
+    remove_asm(goto_model);
 
     // KE: Only to prop logic
     if(cmdline.isset("logic")) 
@@ -203,7 +202,7 @@ bool funfrog_parseoptionst::process_goto_program(
             // There is a message in the method, no need to print it twice
             
             // add the library
-            link_to_library(symbol_table, goto_functions, ui_message_handler);
+            link_to_library(goto_model, ui_message_handler);
         } 
         else
         {
@@ -218,62 +217,92 @@ bool funfrog_parseoptionst::process_goto_program(
       
     if(cmdline.isset("string-abstraction"))
       string_instrumentation(
-        symbol_table, get_message_handler(), goto_functions);
+        goto_model, get_message_handler());
 
     status() << "Removal of function pointers and virtual functions" << eom;
     remove_function_pointers(
       get_message_handler(),
-      symbol_table,
-      goto_functions,
+      goto_model,
       false); // HiFrog doesn't have pointer check, set the flag to false always
     // Java virtual functions -> explicit dispatch tables:
-    remove_virtual_functions(symbol_table, goto_functions);
+    remove_virtual_functions(goto_model);
     // remove catch and throw
-    remove_exceptions(symbol_table, goto_functions);
+    remove_exceptions(goto_model);
     // Similar removal of RTTI inspection:
-    remove_instanceof(goto_functions, symbol_table);
+    remove_instanceof(goto_model);
     
-    mm_io(symbol_table, goto_functions);
+    mm_io(goto_model);
 
     // do partial inlining
     status() << "Partial Inlining" << eom;
-    goto_partial_inline(goto_functions, ns, ui_message_handler);
+    goto_partial_inline(goto_model, ui_message_handler);
 
     // remove returns, gcc vectors, complex
-    // remove_returns(symbol_table, goto_functions); //KE: causes issues with theoref
-    remove_vector(symbol_table, goto_functions);
-    remove_complex(symbol_table, goto_functions);
-    rewrite_union(goto_functions, ns);
+    // remove_returns(goto_model); //KE: causes issues with theoref
+    remove_vector(goto_model);
+    remove_complex(goto_model);
+    rewrite_union(goto_model);
 
     // add generic checks
     status() << "Generic Property Instrumentation" << eom;
-    goto_check(ns, options, goto_functions);
+    goto_check(options, goto_model);
 
     // checks don't know about adjusted float expressions
-    adjust_float_expressions(goto_functions, ns);
-    
+    adjust_float_expressions(goto_model);
+
+    if(cmdline.isset("nondet-static"))
+    {
+      status() << "Adding nondeterministic initialization "
+          "of static/global variables" << eom;
+      nondet_static(goto_model);
+    }
+
     if(cmdline.isset("string-abstraction"))
     {
       status() << "String Abstraction" << eom;
       string_abstraction(
-        symbol_table,
-        get_message_handler(),
-        goto_functions);
+        goto_model,
+        get_message_handler());
     }
 
     // add failed symbols
     // needs to be done before pointer analysis
-    add_failed_symbols(symbol_table);
+    add_failed_symbols(goto_model.symbol_table);
 
     // recalculate numbers, etc.
-    goto_functions.update();
+    goto_model.goto_functions.update();
 
     // add loop ids
-    goto_functions.compute_loop_numbers();
-    
+    goto_model.goto_functions.compute_loop_numbers();
+
+    if(cmdline.isset("drop-unused-functions"))
+    {
+      // Entry point will have been set before and function pointers removed
+      status() << "Removing unused functions" << eom;
+      remove_unused_functions(goto_model, get_message_handler());
+    }
+
     // remove skips
-    remove_skip(goto_functions);
-    goto_functions.update();
+    remove_skip(goto_model);
+
+    // label the assertions
+    // This must be done after adding assertions and
+    // before using the argument of the "property" option.
+    // Do not re-label after using the property slicer because
+    // this would cause the property identifiers to change.
+    label_properties(goto_model);
+
+    // full slice?
+    if(cmdline.isset("full-slice"))
+    {
+      status() << "Performing a full slice" << eom;
+      if(cmdline.isset("property"))
+        property_slicer(goto_model, cmdline.get_values("property"));
+      else
+        full_slicer(goto_model);
+    }
+
+    remove_skip(goto_model);
   }
 
   catch(const char *e)
@@ -282,117 +311,192 @@ bool funfrog_parseoptionst::process_goto_program(
     return true;
   }
 
-  catch(const std::string e)
+  catch(const std::string& e)
   {
     cbmc_error_interface(e);
     return true;
   }
 
-  catch(int)
+  catch(int e)
   {
+    error() << "Numeric exception : " << e << eom;
     return true;
   }
 
   catch(std::bad_alloc)
   {
     cbmc_error_interface("Out of memory");
+    exit(CPROVER_EXIT_INTERNAL_OUT_OF_MEMORY);
     return true;
   }
 
   return false;
 }
-/*******************************************************************
+///*******************************************************************
+//
+// Function: funfrog_parseoptionst::get_goto_program
+//
+// Inputs:
+//
+// Outputs:
+//
+// Purpose:
+//
+//\*******************************************************************/
+//bool funfrog_parseoptionst::get_goto_program(
+//  const std::string &filename,
+//  namespacet& ns,
+//  optionst& options,
+//  goto_functionst &goto_functions)
+//{
+//  if(cmdline.args.size()==0)
+//  {
+//    cbmc_error_interface("Please provide a program to verify");
+//    return true;
+//  }
+//
+//  try
+//  {
+//    if(cmdline.args.size()==1 &&
+//       is_goto_binary(filename))
+//    {
+//      cbmc_status_interface("Reading GOTO program from file");
+//
+//      if(read_goto_binary(filename,
+//           symbol_table, goto_functions, get_message_handler()))
+//        return true;
+//
+//      config.set_from_symbol_table(symbol_table);
+//
+//      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
+//      {
+//        cbmc_error_interface("The goto binary has no entry point; please complete linking");
+//        return true;
+//      }
+//    }
+//    else
+//    {
+//      if(parse()) return true;
+//      if(typecheck()) return true;
+//      if(final()) return true;
+//
+//      // we no longer need any parse trees or language files
+//      clear_parse();
+//
+//      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
+//      {
+//        cbmc_error_interface("No entry point; please provide a main function");
+//        return true;
+//      }
+//
+//      cbmc_status_interface("Generating GOTO Program");
+//
+//      goto_convert(symbol_table, goto_functions, ui_message_handler);
+//
+//    }
+//
+//    if(process_goto_program(ns, options, goto_functions))
+//      return true;
+//  }
+//
+//  catch(const char *e)
+//  {
+//    cbmc_error_interface(e);
+//    return true;
+//  }
+//
+//  catch(const std::string e)
+//  {
+//    cbmc_error_interface(e);
+//    return true;
+//  }
+//
+//  catch(int)
+//  {
+//    return true;
+//  }
+//
+//  catch(std::bad_alloc)
+//  {
+//    cbmc_error_interface("Out of memory");
+//    return true;
+//  }
+//
+//  return false;
+//}
 
- Function: funfrog_parseoptionst::get_goto_program
-
- Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-bool funfrog_parseoptionst::get_goto_program(
-  const std::string &filename,
-  namespacet& ns,
-  optionst& options,
-  goto_functionst &goto_functions)
+int funfrog_parseoptionst::get_goto_program(
+        const optionst &options)
 {
-  if(cmdline.args.size()==0)
-  {
-    cbmc_error_interface("Please provide a program to verify");
-    return true;
-  }
-
-  try
-  {
-    if(cmdline.args.size()==1 &&
-       is_goto_binary(filename))
+    if(cmdline.args.empty())
     {
-      cbmc_status_interface("Reading GOTO program from file");
-
-      if(read_goto_binary(filename,
-           symbol_table, goto_functions, get_message_handler()))
-        return true;
-
-      config.set_from_symbol_table(symbol_table);
-
-      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
-      {
-        cbmc_error_interface("The goto binary has no entry point; please complete linking");
-        return true;
-      }
-    }
-    else
-    {
-      if(parse()) return true;
-      if(typecheck()) return true;
-      if(final()) return true;
-
-      // we no longer need any parse trees or language files
-      clear_parse();
-
-      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
-      {
-        cbmc_error_interface("No entry point; please provide a main function");
-        return true;
-      }
-
-      cbmc_status_interface("Generating GOTO Program");
-
-      goto_convert(symbol_table, goto_functions, ui_message_handler);
-
+        error() << "Please provide a program to verify" << eom;
+        return CPROVER_EXIT_INCORRECT_TASK;
     }
 
-    if(process_goto_program(ns, options, goto_functions))
-      return true;
-  }
+    try
+    {
+        goto_model=initialize_goto_model(cmdline, get_message_handler());
 
-  catch(const char *e)
-  {
-    cbmc_error_interface(e);
-    return true;
-  }
+        if(cmdline.isset("show-symbol-table"))
+        {
+            show_symbol_table(goto_model, ui_message_handler.get_ui());
+            return CPROVER_EXIT_SUCCESS;
+        }
 
-  catch(const std::string e)
-  {
-    cbmc_error_interface(e);
-    return true;
-  }
+        if(process_goto_program(options))
+            return CPROVER_EXIT_INTERNAL_ERROR;
 
-  catch(int)
-  {
-    return true;
-  }
+        // show it?
+        if(cmdline.isset("show-loops"))
+        {
+            show_loop_ids(ui_message_handler.get_ui(), goto_model);
+            return CPROVER_EXIT_SUCCESS;
+        }
 
-  catch(std::bad_alloc)
-  {
-    cbmc_error_interface("Out of memory");
-    return true;
-  }
+        // show it?
+        if(
+                cmdline.isset("show-goto-functions") ||
+                cmdline.isset("list-goto-functions"))
+        {
+            show_goto_functions(
+                    goto_model,
+                    get_message_handler(),
+                    ui_message_handler.get_ui(),
+                    cmdline.isset("list-goto-functions"));
+            return CPROVER_EXIT_SUCCESS;
+        }
 
-  return false;
+        status() << config.object_bits_info() << eom;
+    }
+
+    catch(const char *e)
+    {
+        error() << e << eom;
+        return CPROVER_EXIT_EXCEPTION;
+    }
+
+    catch(const std::string &e)
+    {
+        error() << e << eom;
+        return CPROVER_EXIT_EXCEPTION;
+    }
+
+    catch(int e)
+    {
+        error() << "Numeric exception : " << e << eom;
+        return CPROVER_EXIT_EXCEPTION;
+    }
+
+    catch(const std::bad_alloc &)
+    {
+        error() << "Out of memory" << eom;
+        return CPROVER_EXIT_INTERNAL_OUT_OF_MEMORY;
+    }
+
+    return -1; // no error, continue
 }
+
 /*******************************************************************
 
  Function: funfrog_parseoptionst::doit
@@ -419,19 +523,15 @@ int funfrog_parseoptionst::doit()
     return 1;
   }
   
-  register_languages();
-  set_options(cmdline);  
+  set_options(cmdline);
   
   //stream_message_handlert mh(std::cout);
   set_message_handler(ui_message_handler);
 
-  int verbosity=6;
-  if(cmdline.isset("v"))
-  {
-    verbosity=atoi(cmdline.get_value("v").c_str());
-    //set_verbosity(verbosity);
-    ui_message_handler.set_verbosity(verbosity);
-  }
+  eval_verbosity();
+
+  register_languages();
+
 
   if(cmdline.args.size()==0)
   {
@@ -451,31 +551,23 @@ int funfrog_parseoptionst::doit()
     return 1;
   }
 
-  goto_functionst goto_functions;
-  namespacet ns(symbol_table);
   absolute_timet before, after;
 
   cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
   before=current_time();
-  
-  if(get_goto_program(cmdline.args[0], ns, options, goto_functions))
-    return 6;
+
+  int get_goto_program_ret = get_goto_program(options);
+  if( get_goto_program_ret != -1){
+    return get_goto_program_ret;
+  }
 
   after=current_time();
   cbmc_status_interface(std::string("    LOAD Time: ") + (after-before).as_string() + std::string(" sec."));
 
 
-  label_properties(goto_functions);
-
-  if (cmdline.isset("show-symbol-table"))
-  {
-    show_symbol_table();
-    return true;
-  }
-
   if(cmdline.isset("show-program"))
   {
-    goto_functions.output(ns, std::cout);
+    goto_model.goto_functions.output(namespacet{goto_model.symbol_table}, std::cout);
     return true;
   }
 
@@ -484,7 +576,7 @@ int funfrog_parseoptionst::doit()
 //    return false;
 //  }
 
-  if(check_function_summarization(ns, goto_functions))
+  if(check_function_summarization())
     return 1;
 
   cbmc_status_interface("#X: Done.");
@@ -678,22 +770,20 @@ unsigned funfrog_parseoptionst::count(const goto_programt &goto_program) const
 }
 
 
-bool funfrog_parseoptionst::check_function_summarization(
-  namespacet &ns,
-  goto_functionst &goto_functions)
+bool funfrog_parseoptionst::check_function_summarization()
 {
 
     claim_mapt claim_map;
     claim_numberst claim_numbers;
     unsigned claim_nr=0;
 
-    get_claims(goto_functions, claim_map, claim_numbers);
+    get_claims(goto_model.goto_functions, claim_map, claim_numbers);
     cbmc_status_interface("Checking claims in program...(" + std::to_string(claim_numbers.size())+")");
 
     if(cmdline.isset("show-claims")||
 	 cmdline.isset("show-properties")) {
-      const namespacet ns(symbol_table);
-        show_properties(ns, get_ui(), goto_functions);
+      const namespacet ns(goto_model.symbol_table);
+        show_properties(ns, ui_message_handler.get_ui(), goto_model.goto_functions);
         cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
         return 0;
      }
@@ -733,7 +823,7 @@ bool funfrog_parseoptionst::check_function_summarization(
     }
     
     if (cmdline.isset("claims-opt"))
-      store_claims(ns, claim_map, claim_numbers);
+      store_claims(claim_map, claim_numbers);
     
     // If we set bitwidth, check it sets right, it will be by defualt 8
     if (options.get_option("logic") == "qfcuf") // bitwidth exists only in cuf
@@ -751,15 +841,31 @@ bool funfrog_parseoptionst::check_function_summarization(
     // ID_main is the entry point that is now changed to be ID__start
     // KE: or is it goto_functionst::entry_point()?
     // So instead of c::main we have now _start (cbmc 5.5)
-    check_claims(ns,
-                goto_functions.function_map[goto_functionst::entry_point()].body,
-                goto_functions,
+    check_claims(goto_model.symbol_table,
+                goto_model.goto_functions.function_map[goto_functionst::entry_point()].body,
+                goto_model.goto_functions,
                 claim_map,
                 claim_numbers,
                 options,
                 ui_message_handler,
                 claim_nr);
   return 0;
+}
+
+// MB: copied from cbmc_parse_options
+void funfrog_parseoptionst::eval_verbosity()
+{
+  // this is our default verbosity
+  unsigned int v=messaget::M_STATISTICS;
+
+  if(cmdline.isset("verbosity"))
+  {
+    v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
+    if(v>10)
+      v=10;
+  }
+
+  ui_message_handler.set_verbosity(v);
 }
 
 /*******************************************************************\
