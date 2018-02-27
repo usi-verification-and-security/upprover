@@ -44,7 +44,6 @@
 
 #include <goto-instrument/full_slicer.h>
 #include <goto-instrument/nondet_static.h>
-#include <goto-instrument/cover.h>
 
 #include <pointer-analysis/add_failed_symbols.h>
 
