@@ -68,8 +68,7 @@ class funfrog_parseoptionst:
 public:
   virtual int doit();
   virtual void help();
-  void register_languages();
-  void get_command_line_options(optionst &);
+
 
   void ssos(){
 	  cbmc_status_interface("Partial Inlining");
@@ -78,6 +77,9 @@ public:
 
 protected:
   goto_modelt goto_model;
+
+  void register_languages();
+  void get_command_line_options(optionst &);
 
   unsigned count(const goto_functionst &goto_functions) const;
   unsigned count(const goto_programt &goto_program) const;
