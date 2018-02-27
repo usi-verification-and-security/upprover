@@ -246,24 +246,26 @@ bool funfrog_parseoptionst::process_goto_program(
     {
       status() << "String Abstraction" << eom;
       string_abstraction(
-        symbol_table,
-        get_message_handler(),
-        goto_functions);
+        goto_model,
+        get_message_handler());
     }
 
     // add failed symbols
     // needs to be done before pointer analysis
-    add_failed_symbols(symbol_table);
+    add_failed_symbols(goto_model.symbol_table);
 
     // recalculate numbers, etc.
-    goto_functions.update();
+    goto_model.goto_functions.update();
 
     // add loop ids
-    goto_functions.compute_loop_numbers();
-    
+    goto_model.goto_functions.compute_loop_numbers();
+   
+
     // remove skips
-    remove_skip(goto_functions);
+    remove_skip(goto_model);
     goto_functions.update();
+
+    label_properties(goto_model);
   }
 
   catch(const char *e)
@@ -294,7 +296,7 @@ bool funfrog_parseoptionst::process_goto_program(
 /*******************************************************************
 
  Function: funfrog_parseoptionst::get_goto_program
-
+   
  Inputs:
 
  Outputs:
@@ -451,8 +453,6 @@ int funfrog_parseoptionst::doit()
   after=current_time();
   cbmc_status_interface(std::string("    LOAD Time: ") + (after-before).as_string() + std::string(" sec."));
 
-
-  label_properties(goto_functions);
 
   if (cmdline.isset("show-symbol-table"))
   {
