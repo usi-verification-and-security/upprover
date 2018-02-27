@@ -70,9 +70,9 @@
 funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
   parse_options_baset(FUNFROG_OPTIONS, argc, argv),
   xml_interfacet(cmdline),
-  //language_uit((std::string("FUNFROG") + FUNFROG_VERSION), cmdline)      
-  //language_uit(cmdline, *(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
-  language_uit(cmdline, *(new ui_message_handlert(cmdline, "FUNFROG " FUNFROG_VERSION)))
+  //messaget((std::string("FUNFROG") + FUNFROG_VERSION))
+  //messaget(*(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
+  messaget(*(new ui_message_handlert(cmdline, "FUNFROG " FUNFROG_VERSION)))
 {
 }
 
@@ -173,9 +173,7 @@ namespace {
 
 \*******************************************************************/
 bool funfrog_parseoptionst::process_goto_program(
-  namespacet& ns,
-  optionst& options,
-  goto_functionst &goto_functions)
+        const optionst &options)
 {
   try
   {
@@ -186,7 +184,7 @@ bool funfrog_parseoptionst::process_goto_program(
     
     // Remove inline assembler; this needs to happen before
     // adding the library.
-    remove_asm(symbol_table, goto_functions);
+    remove_asm(goto_model);
 
     // KE: Only to prop logic
     if(cmdline.isset("logic")) 
@@ -196,7 +194,7 @@ bool funfrog_parseoptionst::process_goto_program(
             // There is a message in the method, no need to print it twice
             
             // add the library
-            link_to_library(symbol_table, goto_functions, ui_message_handler);
+            link_to_library(goto_model, get_message_handler());
         } 
         else
         {
@@ -306,10 +304,7 @@ bool funfrog_parseoptionst::process_goto_program(
 
 \*******************************************************************/
 bool funfrog_parseoptionst::get_goto_program(
-  const std::string &filename,
-  namespacet& ns,
-  optionst& options,
-  goto_functionst &goto_functions)
+        const optionst &options)
 {
   if(cmdline.args.size()==0)
   {
