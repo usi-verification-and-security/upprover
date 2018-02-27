@@ -26,6 +26,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/goto_functions.h>
 #include <pointer-analysis/value_sets.h>
 
+#include <goto-programs/goto_model.h>
+
 class value_set_alloc_adaptort;
 
 #define FUNFROG_OPTIONS \
