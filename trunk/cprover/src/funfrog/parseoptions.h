@@ -14,7 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <fstream>
 #include <cstdlib>
 #include <langapi/language_ui.h>
-#include <options.h>
+#include <util/options.h>
 #include "xml_interface.h"
 
 #include <util/ui_message.h>

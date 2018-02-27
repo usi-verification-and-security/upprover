@@ -8,7 +8,7 @@
 
 \*******************************************************************/
 
-#include <config.h>
+#include <util/config.h>
 #include <iostream>
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -18,10 +18,10 @@
 #include <io.h>
 #endif
 
-#include <std_expr.h>
-#include <arith_tools.h>
-#include <prefix.h>
-#include <time_stopping.h>
+#include <util/std_expr.h>
+#include <util/arith_tools.h>
+#include <util/prefix.h>
+#include <util/time_stopping.h>
 
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
