@@ -95,6 +95,7 @@ protected:
  // unsigned long report_max_mem(unsigned long mem) const;
   
   void set_options(const cmdlinet &cmdline);
+  void eval_verbosity();
 
   optionst options;
   std::ofstream statfile;

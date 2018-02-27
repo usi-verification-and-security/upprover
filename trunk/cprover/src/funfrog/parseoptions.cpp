@@ -62,7 +62,8 @@
 #include <goto-programs/initialize_goto_model.h>
 #include <goto-programs/read_goto_binary.h>
 #include <goto-programs/instrument_preconditions.h>
-
+#include <util/string2int.h>
+#include <langapi/language_ui.h>
 
 /*******************************************************************
 
@@ -325,6 +326,7 @@ bool funfrog_parseoptionst::get_goto_program(
   try
   {
     goto_model=initialize_goto_model(cmdline, get_message_handler());
+
     if(cmdline.args.size()==1 &&
        is_goto_binary(filename))
     {
@@ -359,7 +361,7 @@ bool funfrog_parseoptionst::get_goto_program(
 
       cbmc_status_interface("Generating GOTO Program");
 
-      goto_convert(symbol_table, goto_functions, ui_message_handler);
+      goto_convert(goto_model, ui_message_handler);
 
     }
 
@@ -431,6 +433,7 @@ int funfrog_parseoptionst::doit()
     //set_verbosity(verbosity);
     ui_message_handler.set_verbosity(verbosity);
   }
+
 
   if(cmdline.args.size()==0)
   {
@@ -944,4 +947,18 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   //if (cmdline.isset("init-mode")) {
   //  options.set_option("init-mode", cmdline.get_value("init-mode"));
   //}
+}
+void funfrog_parseoptionst::eval_verbosity()
+{
+    // this is our default verbosity
+    unsigned int v=messaget::M_STATISTICS;
+
+    if(cmdline.isset("verbosity"))
+    {
+        v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
+        if(v>10)
+            v=10;
+    }
+
+    ui_message_handler.set_verbosity(v);
 }
