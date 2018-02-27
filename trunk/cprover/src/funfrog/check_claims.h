@@ -66,11 +66,12 @@ void show_claims(const namespacet &ns,
                  const claim_numberst &claim_numbers,
                  ui_message_handlert::uit ui);
 
-void store_claims(const claim_mapt &claim_map,
+void store_claims(const namespacet &ns,
+    const claim_mapt &claim_map,
     const claim_numberst &claim_numbers);
 
 void check_claims(
-  const symbol_tablet & symbol_table,
+  const namespacet &ns,
   goto_programt &leaping_program,
   const goto_functionst &goto_functions,
   claim_mapt &claim_map,

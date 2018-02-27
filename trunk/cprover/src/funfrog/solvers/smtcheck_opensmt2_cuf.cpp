@@ -1,4 +1,4 @@
-/****logic***************************************************************\
+/*******************************************************************\
 
 Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 
@@ -44,7 +44,6 @@ void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
     osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
     osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)get_random_seed()), msg2);
     //if (msg2 != NULL) { free((char *)msg2);}
-
     // KE: Fix a strange bug can be related to the fact we are pushing
     // a struct into std::vector and use [] before any push_back
     literals.push_back(PTRef());
@@ -2261,8 +2260,10 @@ Function: smtcheck_opensmt2t_cuf::refine_ce_mul
 bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::set<int>& is)
 {
     bool res = true;
+    int size = 0;
     for (auto it = is.begin(); it != is.end(); ++it){
-        if (exprs.size() <= *it) continue;
+        size = static_cast<int>(exprs.size()); // KE: cmake compilation error cast from int to unsinged
+        if (size <= *it) continue;
 
         refine_ce_one_iter(exprs, *it);
         res = false;

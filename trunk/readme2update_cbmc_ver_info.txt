@@ -11,20 +11,14 @@ File Changed:
 - trunk/cprover/src/cbmc/symex_bmc.cpp (remove debug massege to show progress: void symex_bmct::symex_step).
 - trunk/cprover/src/util/expr.h/.cpp - add a function — I will need to add functions from old source to new one (those functions are created by the team and needed)
 - trunk/cprover/src/config.inc (change: add ../ to minisat2 path) —WE removed to CMAKE, therefore we do not need it anymore
-- trunk/cprover/src/Makefile - WE removed to CMAKE, therefore we do not need it anymore
+- trunk/cprover/src/Makefile - WE removed to CMAKE, therefore we do not need it anymore - assure we don't override it with junk
 - Remove dirty - where found
 
 minisat-2.2.1:
 ==============
-run "patch -p1 < ../scripts/minisat-2.2.1-patch"
-It shall modify the following files:
-trunk/minisat-2.2.1/minisat/core/Solver.cc
-trunk/minisat-2.2.1/minisat/core/SolverTypes.h
-trunk/minisat-2.2.1/minisat/mtl/IntTypes.h
-trunk/minisat-2.2.1/minisat/mtl/Vec.h
-trunk/minisat-2.2.1/minisat/simp/SimpSolver.cc
-trunk/minisat-2.2.1/minisat/utils/Options.h
-trunk/minisat-2.2.1/minisat/utils/ParseUtils.h
+Shall be updated automatically with CMake. 
+Error means you work with the old version.
+
 
 Taken from Git:
 ===============

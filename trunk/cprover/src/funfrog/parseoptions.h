@@ -14,7 +14,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <fstream>
 #include <cstdlib>
 #include <langapi/language_ui.h>
-#include <util/options.h>
+#include <options.h>
 #include "xml_interface.h"
 
 #include <util/ui_message.h>
@@ -22,7 +22,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <goto-programs/goto_functions.h>
 #include <pointer-analysis/value_sets.h>
-#include <goto-programs/goto_model.h>
 
 class value_set_alloc_adaptort;
 
@@ -61,7 +60,7 @@ class value_set_alloc_adaptort;
 class funfrog_parseoptionst:
   public parse_options_baset,
   public xml_interfacet,
-  public messaget
+  public language_uit
 {
 public:
   virtual int doit();
@@ -77,29 +76,29 @@ protected:
   unsigned count(const goto_functionst &goto_functions) const;
   unsigned count(const goto_programt &goto_program) const;
 
-  bool process_goto_program(const optionst& options);
-//  bool get_goto_program(
-//    const std::string &filename,
-//    namespacet& ns,
-//    optionst& options,
-//    goto_functionst &goto_functions);
-
-  int get_goto_program (const optionst& options);
-  bool check_function_summarization();
+  bool process_goto_program(
+    namespacet& ns,
+    optionst& options,
+    goto_functionst &goto_functions);
+  bool get_goto_program(
+    const std::string &filename,
+    namespacet& ns,
+    optionst& options,
+    goto_functionst &goto_functions);
+  bool check_function_summarization(namespacet &ns,
+                                goto_functionst &goto_functions);
 
  // unsigned long report_mem(void) const;
  // unsigned long report_max_mem(unsigned long mem) const;
   
   void set_options(const cmdlinet &cmdline);
 
-  goto_modelt goto_model;
-  ui_message_handlert ui_message_handler;
   optionst options;
+  std::ofstream statfile;
 
 private:
   void cbmc_error_interface(std::string error_msg) { error() << error_msg << eom; } // KE: adjust for CBMC 5.5 interface
   void cbmc_status_interface(std::string msg) { status() << msg << eom; } // KE: adjust for CBMC 5.5 interface
-  void eval_verbosity();
 };
 
 #endif
