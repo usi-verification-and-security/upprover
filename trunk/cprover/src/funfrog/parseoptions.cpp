@@ -82,7 +82,8 @@ funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
   xml_interfacet(cmdline),
   //messaget((std::string("FUNFROG") + FUNFROG_VERSION))
   //messaget(*(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
-  messaget(*(new ui_message_handlert(cmdline, "FUNFROG " FUNFROG_VERSION)))
+  messaget(ui_message_handler),
+  ui_message_handler(cmdline, "FUNFROG " FUNFROG_VERSION)
 {
 }
 
@@ -656,7 +657,7 @@ bool funfrog_parseoptionst::check_function_summarization(
     if(cmdline.isset("show-claims")||
 	 cmdline.isset("show-properties")) {
       const namespacet ns(symbol_table);
-        show_properties(ns, get_ui(), goto_functions);
+        show_properties(ns, ui_message_handler.get_ui(), goto_functions);
         cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
         return 0;
      }
