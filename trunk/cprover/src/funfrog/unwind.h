@@ -34,7 +34,8 @@ private:
    */
   static bool is_default_max_unwind(unsigned max_unwind) 
   {
-      return (max_unwind == 0 || max_unwind == 4294967295 || max_unwind == (-1));
+      return (max_unwind == 0 || max_unwind == 4294967295); // || max_unwind == (-1));
+      // KE: needs testing
   } 
 public:
   static std::string getWarningMessageForUnwondedCode(unsigned in_param) {
