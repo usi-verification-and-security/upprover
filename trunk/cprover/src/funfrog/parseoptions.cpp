@@ -25,7 +25,6 @@
 
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
-#include <goto-programs/remove_virtual_functions.h>
 #include <goto-programs/remove_instanceof.h>
 //#include <goto-programs/remove_returns.h>
 #include <goto-programs/remove_exceptions.h>
@@ -34,17 +33,11 @@
 #include <goto-programs/remove_asm.h>
 #include <goto-programs/remove_unused_functions.h>
 #include <goto-programs/remove_static_init_loops.h>
-#include <goto-programs/mm_io.h>
-#include <goto-programs/goto_inline.h>
 //#include <goto-programs/show_properties.h>
 #include <goto-programs/set_properties.h>
 #include <goto-programs/read_goto_binary.h>
 #include <goto-programs/string_abstraction.h>
 #include <goto-programs/string_instrumentation.h>
-#include <goto-programs/loop_ids.h>
-#include <goto-programs/link_to_library.h>
-#include <goto-programs/remove_skip.h>
-#include <goto-programs/show_goto_functions.h>
 
 #include <goto-symex/rewrite_union.h>
 #include <goto-symex/adjust_float_expressions.h>
