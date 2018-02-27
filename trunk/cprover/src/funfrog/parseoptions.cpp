@@ -328,12 +328,12 @@ bool funfrog_parseoptionst::get_goto_program(
     goto_model=initialize_goto_model(cmdline, get_message_handler());
 
     if(cmdline.args.size()==1 &&
-       is_goto_binary(filename))
+       is_goto_binary(cmdline.args[0]))
     {
       cbmc_status_interface("Reading GOTO program from file");
 
-      if(read_goto_binary(filename,
-           goto_model, get_message_handler()))
+      if(read_goto_binary(cmdline.args[0],
+           symbol_table, goto_functions, get_message_handler()))
         return true;
 
       config.set_from_symbol_table(symbol_table);
@@ -365,7 +365,7 @@ bool funfrog_parseoptionst::get_goto_program(
 
     }
 
-    if(process_goto_program(ns, options, goto_functions))
+    if(process_goto_program(options))
       return true;
   }
 
@@ -460,7 +460,7 @@ int funfrog_parseoptionst::doit()
   cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
   before=current_time();
   
-  if(get_goto_program(cmdline.args[0], ns, options, goto_functions))
+  if(get_goto_program(options)
     return 6;
 
   after=current_time();
