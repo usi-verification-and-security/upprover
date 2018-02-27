@@ -53,6 +53,16 @@
 #include "check_claims.h"
 #include "version.h"
 #include "parseoptions.h"
+#include <goto-programs/link_to_library.h>
+#include <goto-programs/mm_io.h>
+#include <goto-programs/goto_inline.h>
+#include <goto-programs/remove_virtual_functions.h>
+#include <goto-programs/remove_skip.h>
+#include <goto-programs/goto_functions.h>
+#include <goto-programs/initialize_goto_model.h>
+#include <goto-programs/read_goto_binary.h>
+#include <goto-programs/instrument_preconditions.h>
+
 
 /*******************************************************************
 
@@ -179,7 +189,7 @@ bool funfrog_parseoptionst::process_goto_program(
     // KE: update  new cprover version - taken from: cbmc_parseoptionst::process_goto_program
     // Consider adding more optimizations as full slicing or non-det statics
       
-    namespacet ns(symbol_table);
+
     
     // Remove inline assembler; this needs to happen before
     // adding the library.
@@ -208,39 +218,37 @@ bool funfrog_parseoptionst::process_goto_program(
       
     if(cmdline.isset("string-abstraction"))
       string_instrumentation(
-        symbol_table, get_message_handler(), goto_functions);
+              goto_model, get_message_handler());
 
     status() << "Removal of function pointers and virtual functions" << eom;
     remove_function_pointers(
       get_message_handler(),
-      symbol_table,
-      goto_functions,
+      goto_model,
       false); // HiFrog doesn't have pointer check, set the flag to false always
     // Java virtual functions -> explicit dispatch tables:
-    remove_virtual_functions(symbol_table, goto_functions);
+    remove_virtual_functions(goto_model);
     // remove catch and throw
-    remove_exceptions(symbol_table, goto_functions);
+    remove_exceptions(goto_model);
     // Similar removal of RTTI inspection:
-    remove_instanceof(symbol_table, goto_functions);
+    remove_instanceof(goto_model);
     
-    mm_io(symbol_table, goto_functions);
+    mm_io(goto_model);
 
-    // do partial inlining
-    status() << "Partial Inlining" << eom;
-    goto_partial_inline(goto_functions, ns, ui_message_handler);
+      // instrument library preconditions
+      instrument_preconditions(goto_model);
 
     // remove returns, gcc vectors, complex
     // remove_returns(symbol_table, goto_functions); //KE: causes issues with theoref
-    remove_vector(symbol_table, goto_functions);
-    remove_complex(symbol_table, goto_functions);
-    rewrite_union(goto_functions, ns);
+    remove_vector(goto_model);
+    remove_complex(goto_model);
+    rewrite_union(goto_model);
 
     // add generic checks
     status() << "Generic Property Instrumentation" << eom;
-    goto_check(ns, options, goto_functions);
+      goto_check(options, goto_model);
 
     // checks don't know about adjusted float expressions
-    adjust_float_expressions(goto_functions, ns);
+      adjust_float_expressions(goto_model);
     
     if(cmdline.isset("string-abstraction"))
     {
@@ -263,7 +271,7 @@ bool funfrog_parseoptionst::process_goto_program(
 
     // remove skips
     remove_skip(goto_model);
-    goto_functions.update();
+      goto_model.goto_functions.update();
 
     label_properties(goto_model);
   }
@@ -307,21 +315,23 @@ bool funfrog_parseoptionst::process_goto_program(
 bool funfrog_parseoptionst::get_goto_program(
         const optionst &options)
 {
-  if(cmdline.args.size()==0)
+
+  if(cmdline.args.empty())
   {
-    cbmc_error_interface("Please provide a program to verify");
+    error() << "Please provide a program to verify" << eom;
     return true;
   }
 
   try
   {
+    goto_model=initialize_goto_model(cmdline, get_message_handler());
     if(cmdline.args.size()==1 &&
        is_goto_binary(filename))
     {
       cbmc_status_interface("Reading GOTO program from file");
 
       if(read_goto_binary(filename,
-           symbol_table, goto_functions, get_message_handler()))
+           goto_model, get_message_handler()))
         return true;
 
       config.set_from_symbol_table(symbol_table);
