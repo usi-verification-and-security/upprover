@@ -13,9 +13,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <fstream>
 #include <cstdlib>
-#include <langapi/language_ui.h>
+#include <util/language.h>
+
 #include <util/options.h>
 #include "xml_interface.h"
+
+#include <goto-programs/goto_trace.h>
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
@@ -60,12 +63,13 @@ class value_set_alloc_adaptort;
 class funfrog_parseoptionst:
   public parse_options_baset,
   public xml_interfacet,
-  public language_uit
+  public messaget
 {
 public:
   virtual int doit();
   virtual void help();
-  virtual void register_languages();
+  void register_languages();
+  void get_command_line_options(optionst &);
 
   void ssos(){
 	  cbmc_status_interface("Partial Inlining");
@@ -73,18 +77,13 @@ public:
   funfrog_parseoptionst(int argc, const char **argv);
 
 protected:
+  goto_modelt goto_model;
+
   unsigned count(const goto_functionst &goto_functions) const;
   unsigned count(const goto_programt &goto_program) const;
 
-  bool process_goto_program(
-    namespacet& ns,
-    optionst& options,
-    goto_functionst &goto_functions);
-  bool get_goto_program(
-    const std::string &filename,
-    namespacet& ns,
-    optionst& options,
-    goto_functionst &goto_functions);
+  bool process_goto_program(const optionst &);
+  bool get_goto_program(const optionst &);
   bool check_function_summarization(namespacet &ns,
                                 goto_functionst &goto_functions);
 
