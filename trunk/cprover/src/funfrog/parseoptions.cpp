@@ -327,66 +327,29 @@ bool funfrog_parseoptionst::get_goto_program(
   {
     goto_model=initialize_goto_model(cmdline, get_message_handler());
 
-    if(cmdline.args.size()==1 &&
-       is_goto_binary(cmdline.args[0]))
-    {
-      cbmc_status_interface("Reading GOTO program from file");
-
-      if(read_goto_binary(cmdline.args[0],
-           symbol_table, goto_functions, get_message_handler()))
-        return true;
-
-      config.set_from_symbol_table(symbol_table);
-
-      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
-      {
-        cbmc_error_interface("The goto binary has no entry point; please complete linking");
-        return true;
-      }
-    }
-    else
-    {
-      if(parse()) return true;
-      if(typecheck()) return true;
-      if(final()) return true;
-
-      // we no longer need any parse trees or language files
-      clear_parse();
-
-      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
-      {
-        cbmc_error_interface("No entry point; please provide a main function");
-        return true;
-      }
-
-      cbmc_status_interface("Generating GOTO Program");
-
-      goto_convert(goto_model, ui_message_handler);
-
-    }
-
     if(process_goto_program(options))
       return true;
   }
 
   catch(const char *e)
   {
-    cbmc_error_interface(e);
+    error() << e << eom;
     return true;
   }
 
-  catch(const std::string e)
+  catch(const std::string &e)
   {
-    cbmc_error_interface(e);
+    error() << e << eom;
     return true;
   }
 
-  catch(int)
+  catch(int e)
   {
+    error() << "Numeric exception : " << e << eom;
     return true;
   }
 
-  catch(std::bad_alloc)
+  catch(const std::bad_alloc &)
   {
     cbmc_error_interface("Out of memory");
     return true;
@@ -460,7 +423,7 @@ int funfrog_parseoptionst::doit()
   cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
   before=current_time();
   
-  if(get_goto_program(options)
+  if(get_goto_program(options))
     return 6;
 
   after=current_time();
