@@ -913,7 +913,7 @@ refinement_modet get_refine_mode(const std::string& str)
     // by default
     return refinement_modet::SLICING_RESULT;
   }
-};
+}
 
 /*******************************************************************\
 
@@ -937,7 +937,7 @@ init_modet get_init_mode(const std::string& str)
     // by default
     return init_modet::ALL_SUBSTITUTING;
   }
-};
+}
 
 
 coloring_modet get_coloring_mode(const std::string& str)
@@ -950,7 +950,7 @@ coloring_modet get_coloring_mode(const std::string& str)
     // by default
     return coloring_modet::NO_COLORING;
   }
-};
+}
 
 /*******************************************************************\
 

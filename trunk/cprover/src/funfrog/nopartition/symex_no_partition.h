@@ -33,18 +33,18 @@
 class symex_no_partitiont : public symex_bmct {
 public:
     symex_no_partitiont(
-            message_handlert &mh, //this parameter was missing
             const namespacet &_ns,
             symbol_tablet &_new_symbol_table,
             smt_symex_target_equationt &_target,
+            message_handlert &_message_handler,
             const goto_programt &_goto_program,
-            unsigned _last_assertion_loc,
+            unsigned _last_assertion_loc,  
             bool _single_assertion_check,
             bool _use_slicing=true,
-            bool _do_guard_expl=true,
+	    bool _do_guard_expl=true,
             bool _use_smt=true
           ) :
-          symex_bmct(mh, _ns, _new_symbol_table, _target),
+          symex_bmct(_message_handler, _ns, _new_symbol_table, _target),
           equation(_target),
           goto_program(_goto_program),
           current_assertion(NULL),
