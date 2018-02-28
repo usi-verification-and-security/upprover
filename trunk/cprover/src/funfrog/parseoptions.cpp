@@ -125,24 +125,7 @@ namespace {
             irep_idt property_id = source_location.get_property_id();
 
             switch (ui) {
-                /*   case ui_message_handlert::uit::XML_UI:
-                   {
-                     // use me instead
-                     xmlt xml_property("property");
-                     xml_property.set_attribute("name", id2string(property_id));
-                     xml_property.set_attribute("class", id2string(property_class));
-
-                     xmlt &property_l=xml_property.new_element();
-                     property_l=xml(source_location);
-
-                     xml_property.new_element("description").data=id2string(description);
-                     xml_property.new_element("expression").data=
-                             from_expr(ns, identifier, ins.guard);
-
-                     std::cout << xml_property << '\n';
-                   }
-                         break;*/
-/*
+               
                 case ui_message_handlert::uit::JSON_UI:
                     assert(false);
                     break;
@@ -669,7 +652,6 @@ bool funfrog_parseoptionst::check_function_summarization(
 
     if(cmdline.isset("show-claims")||
 	 cmdline.isset("show-properties")) {
-      //const namespacet ns(symbol_table);
         show_properties(
                 goto_model, get_message_handler(), ui_message_handler.get_ui());
         cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
