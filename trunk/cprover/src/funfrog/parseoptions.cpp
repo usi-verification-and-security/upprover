@@ -455,7 +455,7 @@ int funfrog_parseoptionst::doit()
 //    return false;
 //  }
 
-  if(check_function_summarization(ns, goto_functions))
+  if(check_function_summarization(goto_functions))
     return 1;
 
   cbmc_status_interface("#X: Done.");
@@ -649,8 +649,8 @@ unsigned funfrog_parseoptionst::count(const goto_programt &goto_program) const
 }
 
 
+// ns is changed to goto_model, if using ns check how to change it to goto_model
 bool funfrog_parseoptionst::check_function_summarization(
-  namespacet &ns,
   goto_functionst &goto_functions)
 {
 
@@ -663,7 +663,7 @@ bool funfrog_parseoptionst::check_function_summarization(
 
     if(cmdline.isset("show-claims")||
 	 cmdline.isset("show-properties")) {
-      const namespacet ns(symbol_table);
+      //const namespacet ns(symbol_table);
         show_properties(ns, ui_message_handler.get_ui(), goto_functions);
         cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
         return 0;
