@@ -54,10 +54,14 @@ symex_assertion_sumt::~symex_assertion_sumt() {
  * 
  * KE: DEAD CODE
 
+ * KE: not compiling, comment + assert(0);
+
 \*******************************************************************/
 
 void symex_assertion_sumt::loop_free_check(){
 # ifndef NDEBUG
+  assert(0); // Dead code
+/*
   forall_goto_program_instructions(it, goto_program)
     assert(!it->is_backwards_goto());
   forall_goto_functions(it, summarization_context.get_functions()) {
@@ -69,6 +73,7 @@ void symex_assertion_sumt::loop_free_check(){
       }
     }
   }
+*/
 # endif
 }
 
@@ -1425,12 +1430,7 @@ void symex_assertion_sumt::level2_rename_init(statet &state, const symbol_exprt 
       exprt rhs;
 
       if(failed.is_not_nil())
-      {
-        address_of_exprt address_of_expr;
-        address_of_expr.object()=failed;
-        address_of_expr.type()=expr.type();
-        rhs=address_of_expr;
-      }
+        rhs=address_of_exprt(failed, to_pointer_type(expr.type()));
       else
         rhs=exprt(ID_invalid);
 
