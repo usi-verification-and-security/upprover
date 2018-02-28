@@ -33,7 +33,7 @@
 #include <goto-programs/remove_asm.h>
 #include <goto-programs/remove_unused_functions.h>
 #include <goto-programs/remove_static_init_loops.h>
-//#include <goto-programs/show_properties.h>
+#include <goto-programs/show_properties.h>
 #include <goto-programs/set_properties.h>
 #include <goto-programs/read_goto_binary.h>
 #include <goto-programs/string_abstraction.h>
@@ -89,6 +89,8 @@ funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
 {
 }
 
+// KE: Comment out since there is no more ns object in the system!
+// Consider re-write but with proper documantation
 /*******************************************************************\
 
 Function: cbmc_parseoptionst::show_properties (show-claims)
@@ -101,6 +103,7 @@ Purpose: shows the info about each claim. This method is a modification to the
  show_properties() function in the goto-programs/show_properties.cpp.
 
 \*******************************************************************/
+/*
 namespace {
     void show_properties(
             const namespacet &ns,
@@ -139,7 +142,7 @@ namespace {
                      std::cout << xml_property << '\n';
                    }
                          break;*/
-
+/*
                 case ui_message_handlert::uit::JSON_UI:
                     assert(false);
                     break;
@@ -162,7 +165,9 @@ namespace {
     }
 
 }
+*/
 /*******************************************************************/
+/*
 namespace {
     void show_properties(
             const namespacet &ns,
@@ -174,6 +179,7 @@ namespace {
                     show_properties(ns, fct.first, ui, fct.second.body);
     }
 }
+*/
 /*******************************************************************
 
  Function: funfrog_parseoptionst::process_goto_program
@@ -704,7 +710,7 @@ bool funfrog_parseoptionst::check_function_summarization(
     }
     
     if (cmdline.isset("claims-opt"))
-      store_claims(ns, claim_map, claim_numbers);
+      store_claims(goto_model, claim_map, claim_numbers);
     
     // If we set bitwidth, check it sets right, it will be by defualt 8
     if (options.get_option("logic") == "qfcuf") // bitwidth exists only in cuf
@@ -722,7 +728,7 @@ bool funfrog_parseoptionst::check_function_summarization(
     // ID_main is the entry point that is now changed to be ID__start
     // KE: or is it goto_functionst::entry_point()?
     // So instead of c::main we have now _start (cbmc 5.5)
-    check_claims(ns,
+    check_claims(goto_model,
                 goto_functions.function_map[goto_functionst::entry_point()].body,
                 goto_functions,
                 claim_map,
