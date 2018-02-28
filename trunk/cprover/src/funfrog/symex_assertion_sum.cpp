@@ -92,7 +92,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   // these are quick...
   if(assertion.is_trivially_true())
   {
-    status() << "ASSERTION IS TRUE" << eom;
+    log.statistics() << "ASSERTION IS TRUE" << log.eom;
     return true;
   }
 
@@ -234,20 +234,20 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
   }
   after=current_time();
 
-  status() << "SYMEX TIME: " << (after-before) << eom;
+  log.statistics() << "SYMEX TIME: " << (after-before) << log.eom;
 
   if(remaining_vccs!=0 || force_check)
   {
     if (use_slicing) {
       before=current_time();
-      status() << "All SSA steps: " << equation.SSA_steps.size() << eom;
+      log.statistics() << "All SSA steps: " << equation.SSA_steps.size() << log.eom;
       partitioning_slice(equation, summarization_context.get_summary_store(), use_smt);
-      status() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
+      log.statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << log.eom;
       after=current_time();
-      status() << "SLICER TIME: " << (after-before) << eom;
+      log.statistics() << "SLICER TIME: " << (after-before) << log.eom;
     }
   } else {
-    status() << "Assertion(s) hold trivially." << eom;
+    log.statistics() << "Assertion(s) hold trivially." << log.eom;
     return true;
   }
   return false;
@@ -557,7 +557,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   const irep_idt& function_id = current_summary_info->get_function_id();
   loc = current_summary_info->get_call_location();
 
-  status () <<  (std::string("Processing a deferred function: ") + function_id.c_str()) << eom;
+  log.statistics () <<  (std::string("Processing a deferred function: ") + function_id.c_str()) << log.eom;
 
   // Select symex target equation to produce formulas into the corresponding
   // partition
@@ -1214,14 +1214,14 @@ void symex_assertion_sumt::summarize_function_call(
 {
   // We should use an already computed summary as an abstraction
   // of the function body
-  status() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << eom;
+  log.statistics() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << log.eom;
   
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
   produce_callsite_symbols(partition_iface, state);
   produce_callend_assumption(partition_iface, state);
 
-  status() << "Substituting interpolant" << eom;
+  log.statistics() << "Substituting interpolant" << log.eom;
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
   equation.fill_summary_partition(partition_id,
@@ -1249,7 +1249,7 @@ void symex_assertion_sumt::fill_inverted_summary(
   // of the function body
   const irep_idt& function_id = summary_info.get_function_id();
 
-  status() << "*** INVERTED SUMMARY used for function: " << function_id << eom;
+  log.statistics() << "*** INVERTED SUMMARY used for function: " << function_id << log.eom;
   
   partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION, 0);
   
@@ -1257,11 +1257,11 @@ void symex_assertion_sumt::fill_inverted_summary(
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
 
-  status() << "Substituting interpolant (part:" << partition_id << ")" << eom;
+  log.statistics() << "Substituting interpolant (part:" << partition_id << ")" << log.eom;
 
 //# ifdef DEBUG_PARTITIONING
-  status() << "   summaries available: " << summarization_context.get_summaries(function_id).size() << eom;
-  status() << "   summaries used: " << summary_info.get_used_summaries().size() << eom;
+  log.statistics() << "   summaries available: " << summarization_context.get_summaries(function_id).size() << log.eom;
+  log.statistics() << "   summaries used: " << summary_info.get_used_summaries().size() << log.eom;
 //# endif
 
   equation.fill_inverted_summary_partition(partition_id,
@@ -1286,7 +1286,7 @@ void symex_assertion_sumt::inline_function_call(
         const irep_idt& function_id)
 {
   // We should inline the body --> defer evaluation of the body for later
-  status() << (std::string("*** INLINING function: ") + function_id.c_str()) << eom;
+  log.statistics() << (std::string("*** INLINING function: ") + function_id.c_str()) << log.eom;
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
@@ -1314,7 +1314,7 @@ void symex_assertion_sumt::havoc_function_call(
 {
   // We should treat the function as nondeterministic, havocing
   // all data it touches.
-  status() << (std::string("*** NONDET abstraction used for function: ") + function_id.c_str()) << eom;
+  log.statistics() << (std::string("*** NONDET abstraction used for function: ") + function_id.c_str()) << log.eom;
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
