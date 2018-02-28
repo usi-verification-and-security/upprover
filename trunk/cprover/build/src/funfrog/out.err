@@ -1,3 +1,0 @@
-[  0%] Building CXX object src/funfrog/CMakeFiles/hifrog.dir/solvers/smtcheck_opensmt2_cuf.cpp.o
-CMakeFiles/Makefile2:2274: recipe for target 'src/funfrog/CMakeFiles/hifrog.dir/all' failed
-Makefile:94: recipe for target 'all' failed
