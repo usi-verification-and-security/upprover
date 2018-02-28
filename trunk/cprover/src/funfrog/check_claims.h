@@ -11,6 +11,7 @@
 
 #include <cstdlib>
 #include <util/options.h>
+#include <goto-programs/goto_model.h>
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
 #include <util/ui_message.h>
