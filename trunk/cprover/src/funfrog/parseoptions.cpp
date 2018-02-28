@@ -66,6 +66,7 @@
 #include <langapi/language_ui.h>
 #include <goto-programs/show_symbol_table.h>
 #include <goto-programs/show_goto_functions.h>
+#include <goto-programs/show_properties.h>
 
 /*******************************************************************
 
@@ -653,7 +654,7 @@ bool funfrog_parseoptionst::check_function_summarization(
     if(cmdline.isset("show-claims")||
 	 cmdline.isset("show-properties")) {
         show_properties(
-                goto_model, get_message_handler(), ui_message_handler.get_ui());
+                goto_model, ui_message_handler.get_ui());
         cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
         return 0;
      }
