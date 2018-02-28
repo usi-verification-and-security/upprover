@@ -64,6 +64,8 @@
 #include <goto-programs/instrument_preconditions.h>
 #include <util/string2int.h>
 #include <langapi/language_ui.h>
+#include <goto-programs/show_symbol_table.h>
+#include <goto-programs/show_goto_functions.h>
 
 /*******************************************************************
 
@@ -418,7 +420,7 @@ int funfrog_parseoptionst::doit()
   }
 
   goto_functionst goto_functions;
-  namespacet ns(symbol_table);
+  //namespacet ns (symbol_table);
   absolute_timet before, after;
 
   cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
@@ -433,13 +435,18 @@ int funfrog_parseoptionst::doit()
 
   if (cmdline.isset("show-symbol-table"))
   {
-    show_symbol_table();
+    show_symbol_table(goto_model, ui_message_handler.get_ui());
     return true;
   }
 
-  if(cmdline.isset("show-program"))
+  if(cmdline.isset("show-goto-functions"))
   {
-    goto_functions.output(ns, std::cout);
+
+    show_goto_functions(
+            goto_model,
+            get_message_handler(),
+            ui_message_handler.get_ui(),
+            false);
     return true;
   }
 
