@@ -155,7 +155,7 @@ void summary_storet::compact_store(summary_infot& summary_info,
         function_infost& function_infos)
 {
   // Mask unused representatives
-  bool used_mask[max_id];
+  bool *used_mask = new bool[max_id];
   memset(&used_mask, 0, sizeof(used_mask));
   
   mark_used_summaries(summary_info, used_mask);
@@ -172,7 +172,7 @@ void summary_storet::compact_store(summary_infot& summary_info,
   }
   
   // Fill remap for the representatives
-  summary_idt remap[max_id];
+  summary_idt* remap = new summary_idt[max_id];
   summary_idt new_id = 0;
   
   for (summary_idt i = 0; i < max_id; ++i) {

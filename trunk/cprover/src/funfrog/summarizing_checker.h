@@ -36,7 +36,7 @@ public:
     const namespacet &_ns,
     symbol_tablet &_symbol_table,
     const optionst& _options,
-    message_handlert &_message_handler,
+    ui_message_handlert &_message_handler,
 
     unsigned long &_max_memory_used
     ) :
@@ -76,7 +76,7 @@ protected:
   symbol_tablet &symbol_table;
   const optionst &options;
   summarization_contextt summarization_context;
-  message_handlert &message_handler;
+  ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
   check_opensmt2t* decider; // Can be Prop, LRA or UF solver!!
   subst_scenariot omega;
