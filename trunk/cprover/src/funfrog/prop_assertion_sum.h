@@ -3,6 +3,7 @@
 
 #include "assertion_sum.h"
 
+
 class assertion_infot;
 class prop_partitioning_target_equationt;
 class prop_conv_solvert;

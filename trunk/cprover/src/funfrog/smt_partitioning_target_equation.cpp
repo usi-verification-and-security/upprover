@@ -6,7 +6,7 @@
 
  \*******************************************************************/
 
-#include <std_expr.h>
+#include <util/std_expr.h>
 
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2.h"
