@@ -81,7 +81,7 @@ public:
   
   virtual void symex_step(
   const goto_functionst &goto_functions,
-    statet &state);
+    statet &state) override;
   
   const partition_iface_ptrst* get_partition_ifaces(summary_infot &summary_info) { 
     partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
