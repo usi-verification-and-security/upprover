@@ -670,7 +670,8 @@ bool funfrog_parseoptionst::check_function_summarization(
     if(cmdline.isset("show-claims")||
 	 cmdline.isset("show-properties")) {
       //const namespacet ns(symbol_table);
-        show_properties(ns, ui_message_handler.get_ui(), goto_functions);
+        show_properties(
+                goto_model, get_message_handler(), ui_message_handler.get_ui());
         cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
         return 0;
      }
