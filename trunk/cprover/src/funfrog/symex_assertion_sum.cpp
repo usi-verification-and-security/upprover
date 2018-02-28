@@ -288,7 +288,7 @@ void symex_assertion_sumt::symex_step(
   {
     std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << '\n';
     std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << '\n';
-    std::cout << "Unwind: " << state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count << '\n';
+    std::cout << "Unwind: " << state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count << '\n';
     std::cout << "Unwind Info."
               << " unwind in last goto was " << prev_unwind_counter 
               << " a function " << (state.top().loop_iterations.empty() ? "with no" : "with") << " loops"
@@ -319,7 +319,7 @@ void symex_assertion_sumt::symex_step(
     //decrement_unwinding_counter(); 
     store_return_value(state, get_current_deferred_function());
     end_symex(state);
-    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
+    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
     break;
   
   case LOCATION:
@@ -340,7 +340,7 @@ void symex_assertion_sumt::symex_step(
             catch (const std::string &s) { str = ""; }
         }
       
-        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
+        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
         symex_goto(state); // Original code from Cprover follow with break
 
         if (do_guard_expl &&store_expln && str != "")
@@ -348,7 +348,7 @@ void symex_assertion_sumt::symex_step(
             guard_expln[state.guard.as_expr().get("identifier")] = str;
         }
     } else {
-        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
+        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
         symex_goto(state); // Original code from Cprover follow with break
     }
         
@@ -446,7 +446,7 @@ void symex_assertion_sumt::symex_step(
       // Process the function call according to the call_summary
       handle_function_call(state, deref_code);
     }  
-    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;    
+    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
     state.source.pc++;
     break;
 
@@ -1738,13 +1738,13 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
     statet::framet &frame=state.top();
 
     unsigned int unwind_counter = // KE: for case 3. Not sure, can be the other option
-            state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
-    if (frame.loop_iterations[goto_programt::loop_id(state.source.pc)].count > 0)
+            state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
+    if (frame.loop_iterations[goto_programt::loop_id(*state.source.pc)].count > 0)
     {
         // If we are opening the loop iterations, we are in a loop
         return true;
     } 
-    else if (frame.loop_iterations[goto_programt::loop_id(state.source.pc)].is_recursion)
+    else if (frame.loop_iterations[goto_programt::loop_id(*state.source.pc)].is_recursion)
     {
         // If we are in recursion - we are in a loop, return true
         return true;
