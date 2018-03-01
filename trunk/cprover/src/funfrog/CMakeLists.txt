@@ -91,8 +91,6 @@ set(HIFROG_SOURCE_FILES
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modules/")
 
-message(${CMAKE_MODULE_PATH})
-
 find_package(GMP REQUIRED)
 
 add_executable(hifrog ${HIFROG_SOURCE_FILES}
@@ -113,9 +111,15 @@ target_compile_definitions(hifrog PRIVATE
     #-DDISABLE_OPTIMIZATIONS
     )
 
-target_link_libraries(hifrog -lopensmt2 ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
+target_link_libraries(hifrog -lopensmt2 ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
+    )
 
-message(${CMAKE_BINARY_DIR})
+target_link_libraries(hifrog
+    cbmc-lib
+    #analyses
+    #goto-symex
+    #goto-programs
+)
 
 set_target_properties(hifrog
 PROPERTIES
