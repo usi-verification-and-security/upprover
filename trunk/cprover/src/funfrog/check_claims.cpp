@@ -109,7 +109,7 @@ Function: check_claims
 \*******************************************************************/
 
 void check_claims(
-  const goto_modelt &goto_model,
+  const symbol_tablet &symbol_table,
   goto_programt &leaping_program,
   const goto_functionst &goto_functions,
   claim_mapt &claim_map,
@@ -158,7 +158,7 @@ void check_claims(
 
 
   symbol_tablet temp_table;
-  namespacet ns1(goto_model.symbol_table, temp_table);
+  namespacet ns1(symbol_table, temp_table);
 
   if (options.get_bool_option("theoref")){
 
@@ -385,8 +385,7 @@ void show_claims(const namespacet &ns,
 }
 */
 
-void store_claims(const goto_modelt &goto_model,
-                 const claim_mapt &claim_map,
+void store_claims(const claim_mapt &claim_map,
                  const claim_numberst &claim_numbers)
 {
   std::ofstream mapping;

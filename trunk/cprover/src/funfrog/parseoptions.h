@@ -89,7 +89,7 @@ protected:
 
   bool process_goto_program(const optionst &);
   bool get_goto_program(const optionst &);
-  bool check_function_summarization(goto_functionst &goto_functions);
+  bool check_function_summarization();
 
  // unsigned long report_mem(void) const;
  // unsigned long report_max_mem(unsigned long mem) const;

@@ -409,7 +409,6 @@ int funfrog_parseoptionst::doit()
     return 1;
   }
 
-  goto_functionst goto_functions;
   //namespacet ns (symbol_table);
   absolute_timet before, after;
 
@@ -445,7 +444,7 @@ int funfrog_parseoptionst::doit()
 //    return false;
 //  }
 
-  if(check_function_summarization(goto_functions))
+  if(check_function_summarization())
     return 1;
 
   cbmc_status_interface("#X: Done.");
@@ -640,15 +639,14 @@ unsigned funfrog_parseoptionst::count(const goto_programt &goto_program) const
 
 
 // ns is changed to goto_model, if using ns check how to change it to goto_model
-bool funfrog_parseoptionst::check_function_summarization(
-  goto_functionst &goto_functions)
+bool funfrog_parseoptionst::check_function_summarization()
 {
 
     claim_mapt claim_map;
     claim_numberst claim_numbers;
     unsigned claim_nr=0;
 
-    get_claims(goto_functions, claim_map, claim_numbers);
+    get_claims(goto_model.goto_functions, claim_map, claim_numbers);
     cbmc_status_interface("Checking claims in program...(" + std::to_string(claim_numbers.size())+")");
 
     if(cmdline.isset("show-claims")||
@@ -694,7 +692,7 @@ bool funfrog_parseoptionst::check_function_summarization(
     }
     
     if (cmdline.isset("claims-opt"))
-      store_claims(goto_model, claim_map, claim_numbers);
+      store_claims(claim_map, claim_numbers);
     
     // If we set bitwidth, check it sets right, it will be by defualt 8
     if (options.get_option("logic") == "qfcuf") // bitwidth exists only in cuf
@@ -712,9 +710,9 @@ bool funfrog_parseoptionst::check_function_summarization(
     // ID_main is the entry point that is now changed to be ID__start
     // KE: or is it goto_functionst::entry_point()?
     // So instead of c::main we have now _start (cbmc 5.5)
-    check_claims(goto_model,
-                goto_functions.function_map[goto_functionst::entry_point()].body,
-                goto_functions,
+    check_claims(goto_model.symbol_table,
+                goto_model.goto_functions.function_map[goto_functionst::entry_point()].body,
+                goto_model.goto_functions,
                 claim_map,
                 claim_numbers,
                 options,

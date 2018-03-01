@@ -70,12 +70,11 @@ void show_claims(const namespacet &ns,
                  ui_message_handlert::uit ui);
 */
 
-void store_claims(const goto_modelt &goto_model,
-    const claim_mapt &claim_map,
+void store_claims(const claim_mapt &claim_map,
     const claim_numberst &claim_numbers);
 
 void check_claims(
-  const goto_modelt &goto_model,
+  const symbol_tablet &symbol_table,
   goto_programt &leaping_program,
   const goto_functionst &goto_functions,
   claim_mapt &claim_map,
