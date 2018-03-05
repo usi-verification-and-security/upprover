@@ -20,7 +20,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/replace_symbol.h>
 #include <util/make_unique.h>
 
-#include <analyses/dirty.h>
+//#include <analyses/dirty.h>
 
 void goto_symext::symex_transition(
   statet &state,

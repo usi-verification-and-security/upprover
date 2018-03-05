@@ -1567,6 +1567,7 @@ Function: symex_assertion_sumt::phi_function
  Purpose: Modification of the goto_symext version. In contrast, we
  do not generate Phi functions for dead identifiers.
 
+ Note: to update check goto-symex::phi_function
 \*******************************************************************/
 void symex_assertion_sumt::phi_function(
   const statet::goto_statet &goto_state,
