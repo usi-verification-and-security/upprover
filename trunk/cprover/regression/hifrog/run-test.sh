@@ -135,6 +135,7 @@ QFCUF="qfcuf"
 OUTDIR="mainReg_$OUTPUT_PREFIX"
 rm -r $OUTDIR
 mkdir $OUTDIR
+echo " - create dir for output data of the regression tests: $OUTDIR"
 
 # If works with absolute paths (when copying sub-folders of the regression and running somewhere)
 # then please also state your absolute path of hifrog. If you are running it from the original

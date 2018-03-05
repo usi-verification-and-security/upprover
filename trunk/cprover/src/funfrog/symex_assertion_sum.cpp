@@ -270,7 +270,11 @@ Function: symex_assertion_sumt::symex_step
  on the goto_symex, but it handles function calls differently. 
  Creation of expressions representing the calls is postponed, so that
  the formulas representing the function bodies can be passed to 
- an interpolating solver as separate conjuncts.
+ an interpolating solver as separate conjuncts.i
+
+
+Note: when upgrading Cprover, please also update the case-switch here
+follwoing the changes in symex_main.cpp
 
 \*******************************************************************/
 
@@ -278,9 +282,6 @@ void symex_assertion_sumt::symex_step(
   const goto_functionst &goto_functions,
   statet &state)
 {
-  assert(!state.threads.empty());
-  assert(!state.call_stack().empty());
-
 #ifdef DEBUG_PARTITIONING    
   std::cout << "\ninstruction type is " << state.source.pc->type << '\n';
   std::cout << "Location: " << state.source.pc->source_location << '\n';
@@ -295,10 +296,14 @@ void symex_assertion_sumt::symex_step(
               << " and is now" << ((is_unwind_loop(state) ? " in loop " : " out of any loop")) << '\n';
   }
 #endif
-  
+
+  assert(!state.threads.empty());
+  assert(!state.call_stack().empty()); 
+ 
   const goto_programt::instructiont &instruction=*state.source.pc;
   loc++;
   merge_gotos(state);
+
   // depth exceeded?
   unsigned max_depth=atoi(options.get_option("depth").c_str());
   if(max_depth!=0 && state.depth>max_depth)
@@ -311,7 +316,7 @@ void symex_assertion_sumt::symex_step(
   case SKIP:
     if(!state.guard.is_false())
       target.location(state.guard.as_expr(), state.source);
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case END_FUNCTION:
@@ -325,7 +330,7 @@ void symex_assertion_sumt::symex_step(
   case LOCATION:
     if(!state.guard.is_false())
       target.location(state.guard.as_expr(), state.source);
-    state.source.pc++;
+    symex_transition(state);
     break;
   
   case GOTO:
@@ -363,7 +368,7 @@ void symex_assertion_sumt::symex_step(
       symex_assume(state, tmp);
     }
 
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case ASSERT:
@@ -419,7 +424,7 @@ void symex_assertion_sumt::symex_step(
       }
     }
 
-    state.source.pc++;
+    symex_transition(state);
     break;
     
   case RETURN:
@@ -428,14 +433,14 @@ void symex_assertion_sumt::symex_step(
       return_assignment(state);
     }
     
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case ASSIGN:      
     if(!state.guard.is_false()) 
       symex_assign_rec(state, to_code_assign(instruction.code));
           
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case FUNCTION_CALL:
@@ -447,26 +452,26 @@ void symex_assertion_sumt::symex_step(
       handle_function_call(state, deref_code);
     }  
     prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case OTHER:
     if(!state.guard.is_false())
       symex_other(goto_functions, state);
 
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case DECL:
     if(!state.guard.is_false())
       symex_decl(state);
 
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case DEAD:
     // ignore for now
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case START_THREAD:
@@ -479,13 +484,13 @@ void symex_assertion_sumt::symex_step(
       exprt tmp=state.guard.as_expr();
       target.assumption(state.guard.as_expr(), tmp, state.source);
     }
-    state.source.pc++;
+    symex_transition(state);
     break;
   
   case ATOMIC_BEGIN:
   case ATOMIC_END:
     // these don't have path semantics
-    state.source.pc++;
+    symex_transition(state);
     break;
   
   default:
