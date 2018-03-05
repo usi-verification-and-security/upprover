@@ -236,7 +236,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       //   forward with multiple refinement
                       last = 0;
                       {
-                          while (last != -1 || last == exprs.size()){
+                          while (last != -1 || last == (int) exprs.size()){
                             smtcheck_opensmt2t_cuf decider2(bw, 
                                     options.get_unsigned_int_option("type-byte-constraints"),
                                     "forward multiple checker");
@@ -278,7 +278,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       //   forward with multiple refinement & dependencies
                       last = 0;
                       {
-                          while (last != -1 || last == exprs.size()){
+                          while (last != -1 || last == (int) exprs.size()){
                             smtcheck_opensmt2t_cuf decider2(bw, 
                                     options.get_unsigned_int_option("type-byte-constraints"),
                                     "Foward with multiple refinements & dependencies");
