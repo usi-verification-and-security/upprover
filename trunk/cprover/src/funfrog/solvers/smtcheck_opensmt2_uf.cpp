@@ -49,6 +49,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   literals.push_back(PTRef());
   literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
   literals[0] = logic->getTerm_true(); // Which is .x =0
+  assert(l.var_no() != literalt::unused_var_no());
   // KE: End of fix
 
   //Initialize the stuff to fake UF

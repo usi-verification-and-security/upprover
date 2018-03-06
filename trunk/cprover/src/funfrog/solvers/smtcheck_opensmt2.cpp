@@ -190,6 +190,7 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     push_variable(ans);
     assert(ans != PTRef_Undef);
     current_partition->push(ans);
+    assert(l.var_no() != literalt::unused_var_no());
 }
 
 literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
