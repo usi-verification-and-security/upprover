@@ -71,9 +71,8 @@ public:
   virtual int doit();
   virtual void help();
 
-
   void ssos(){
-	  cbmc_status_interface("Partial Inlining");
+    cbmc_status_interface("Partial Inlining");
   }
   funfrog_parseoptionst(int argc, const char **argv);
 

@@ -26,7 +26,7 @@
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
 #include <goto-programs/remove_instanceof.h>
-//#include <goto-programs/remove_returns.h>
+//#include <goto-programs/remove_returns.h> // KE: never remove it from comment!
 #include <goto-programs/remove_exceptions.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
@@ -182,9 +182,8 @@ bool funfrog_parseoptionst::process_goto_program(
   {
     // KE: update  new cprover version - taken from: cbmc_parseoptionst::process_goto_program
     // Consider adding more optimizations as full slicing or non-det statics
-      
+    //      
 
-    
     // Remove inline assembler; this needs to happen before
     // adding the library.
     remove_asm(goto_model);
@@ -209,7 +208,6 @@ bool funfrog_parseoptionst::process_goto_program(
         cbmc_status_interface("Ignoring CPROVER library");
     }
   
-      
     if(cmdline.isset("string-abstraction"))
       string_instrumentation(
               goto_model, get_message_handler());
@@ -228,8 +226,8 @@ bool funfrog_parseoptionst::process_goto_program(
     
     mm_io(goto_model);
 
-      // instrument library preconditions
-      instrument_preconditions(goto_model);
+    // instrument library preconditions
+    instrument_preconditions(goto_model);
 
     // remove returns, gcc vectors, complex
     // remove_returns(symbol_table, goto_functions); //KE: causes issues with theoref
@@ -239,7 +237,7 @@ bool funfrog_parseoptionst::process_goto_program(
 
     // add generic checks
     status() << "Generic Property Instrumentation" << eom;
-      goto_check(options, goto_model);
+    goto_check(options, goto_model);
 
     // checks don't know about adjusted float expressions
       adjust_float_expressions(goto_model);
@@ -265,7 +263,7 @@ bool funfrog_parseoptionst::process_goto_program(
 
     // remove skips
     remove_skip(goto_model);
-      goto_model.goto_functions.update();
+    goto_model.goto_functions.update();
 
     label_properties(goto_model);
   }
@@ -360,7 +358,7 @@ bool funfrog_parseoptionst::get_goto_program(
 
  Purpose: invoke main modules
 
- \*******************************************************************/
+\*******************************************************************/
 
 int funfrog_parseoptionst::doit()
 {
@@ -382,13 +380,7 @@ int funfrog_parseoptionst::doit()
   //stream_message_handlert mh(std::cout);
   set_message_handler(ui_message_handler);
 
-  int verbosity=6;
-  if(cmdline.isset("v"))
-  {
-    verbosity=atoi(cmdline.get_value("v").c_str());
-    //set_verbosity(verbosity);
-    ui_message_handler.set_verbosity(verbosity);
-  }
+  eval_verbosity(); // KE: done is in cbmc code
 
 
   if(cmdline.args.size()==0)
@@ -462,8 +454,7 @@ int funfrog_parseoptionst::doit()
 
  Purpose: display command line help
 
- \*******************************************************************/
-
+\*******************************************************************/
 void funfrog_parseoptionst::help()
 {
   std::cout <<"\n"
@@ -610,7 +601,7 @@ unsigned funfrog_parseoptionst::count(const goto_functionst &goto_functions) con
         it!=goto_functions.function_map.end();
         it++)
     {
-        c += it->second.body.instructions.size();
+      c += it->second.body.instructions.size();
     }
 
     std::cout << "    Instruction count: " << c << std::endl;
@@ -637,11 +628,9 @@ unsigned funfrog_parseoptionst::count(const goto_programt &goto_program) const
   return goto_program.instructions.size();
 }
 
-
 // ns is changed to goto_model, if using ns check how to change it to goto_model
 bool funfrog_parseoptionst::check_function_summarization()
 {
-
     claim_mapt claim_map;
     claim_numberst claim_numbers;
     unsigned claim_nr=0;
@@ -649,13 +638,11 @@ bool funfrog_parseoptionst::check_function_summarization()
     get_claims(goto_model.goto_functions, claim_map, claim_numbers);
     cbmc_status_interface("Checking claims in program...(" + std::to_string(claim_numbers.size())+")");
 
-    if(cmdline.isset("show-claims")||
-	 cmdline.isset("show-properties")) {
-        show_properties(
-                goto_model, ui_message_handler.get_ui());
-        cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
-        return 0;
-     }
+    if(cmdline.isset("show-claims") || cmdline.isset("show-properties")) {
+      show_properties(goto_model, ui_message_handler.get_ui());
+      cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
+      return 0;
+    }
     // perform standalone check (all the functionality remains the same)
   
     if(cmdline.isset("claim") &&
@@ -697,14 +684,14 @@ bool funfrog_parseoptionst::check_function_summarization()
     // If we set bitwidth, check it sets right, it will be by defualt 8
     if (options.get_option("logic") == "qfcuf") // bitwidth exists only in cuf
     {
-        unsigned bitwidth = options.get_unsigned_int_option("bitwidth");  
-        if (!((bitwidth != 0) && !(bitwidth & (bitwidth - 1)))) {
-            cbmc_error_interface("Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
+      unsigned bitwidth = options.get_unsigned_int_option("bitwidth");  
+      if (!((bitwidth != 0) && !(bitwidth & (bitwidth - 1)))) {
+        cbmc_error_interface("Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
                 + ". Please re-run with bit-width parameter that is a pow of 2!");
-            exit(0);
-        } else if (bitwidth > 32) {
-            cbmc_status_interface("Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf");   
-        }  
+        exit(0);
+      } else if (bitwidth > 32) {
+        cbmc_status_interface("Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf");   
+      }  
     }
 
     // ID_main is the entry point that is now changed to be ID__start
@@ -732,7 +719,6 @@ bool funfrog_parseoptionst::check_function_summarization()
  Purpose: 
 
 \*******************************************************************/
-
 void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 {
   options.set_option("bounds-check", cmdline.isset("bounds-check"));
@@ -763,9 +749,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("dump-query", true);
 
   if (cmdline.isset("dump-query-name")) {
-      options.set_option("dump-query-name", cmdline.get_value("dump-query-name"));
+    options.set_option("dump-query-name", cmdline.get_value("dump-query-name"));
   } else { // Set a default name in case no name was provided by user
-      options.set_option("dump-query-name", "_dump");
+    options.set_option("dump-query-name", "_dump");
   }  
   status() << "\n*** DEBUG MODE ON: QUERIES DUMP OPTIONS ARE ON (DDISABLE_OPTIMIZATIONS is on) ***\n" << eom;
 #else
@@ -807,8 +793,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 
   
   // If not partitions - no itp too, going back to pure cbcm
-  if(cmdline.isset("no-partitions"))
-      options.set_option("no-itp", true);
+  if(cmdline.isset("no-partitions")) {
+    options.set_option("no-itp", true);
+  }
   
   if (cmdline.isset("check-itp")) {
     options.set_option("check-itp", cmdline.get_value("check-itp"));
@@ -907,6 +894,21 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   //  options.set_option("init-mode", cmdline.get_value("init-mode"));
   //}
 }
+
+/*******************************************************************\
+  
+ Function: 
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: 
+
+ Note: Taken from void cbmc_parse_optionst::eval_verbosity(), 
+       Update if needed (once upgrade cprover)
+
+\*******************************************************************/
 void funfrog_parseoptionst::eval_verbosity()
 {
     // this is our default verbosity
@@ -914,10 +916,11 @@ void funfrog_parseoptionst::eval_verbosity()
 
     if(cmdline.isset("verbosity"))
     {
-        v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
-        if(v>10)
-            v=10;
+      v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
+      if(v>10)
+        v=10;
     }
 
     ui_message_handler.set_verbosity(v);
 }
+
