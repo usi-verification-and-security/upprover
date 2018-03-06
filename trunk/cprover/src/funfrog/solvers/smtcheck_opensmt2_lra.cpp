@@ -389,6 +389,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 //    if(converted_exprs.find(expr.hash()) != converted_exprs.end())
 //        return converted_exprs[expr.hash()];
 
+    std::cout << "\n; Expression in Convert is: \n" << expr.pretty() << std::endl;
 #ifdef SMT_DEBUG
     cout << "; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< endl;
 #endif
@@ -431,6 +432,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     #endif
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
     #ifdef SMT_DEBUG
+        cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")" << endl;
         cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")" << endl;
         assert(false); // Need to take care of - typecast no operands
     #else
