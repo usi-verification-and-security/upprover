@@ -186,7 +186,7 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     args.push(pl1);
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
-    //literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal //this literal is unused and should be changed to work properly
+    literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
     push_variable(ans);
     assert(ans != PTRef_Undef);
     current_partition->push(ans);
