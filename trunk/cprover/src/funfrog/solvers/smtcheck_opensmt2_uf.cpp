@@ -62,7 +62,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   // One arg
   args.push(sort_ureal);
   s_neg = logic->declareFun(tk_neg, sort_ureal, args, &msg, true);
-  Symbol& sneg = logic->getSym(s_neg);
+  logic->getSym(s_neg);
   
   // Two args
   args.push(sort_ureal);
