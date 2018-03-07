@@ -38,7 +38,8 @@ public:
 
   virtual literalt lvar(const exprt &expr) override;
     
-  virtual literalt lassert_var() override { literalt l; l = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); return l;}
+  virtual literalt lassert_var() override
+	{ literalt l; l = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); return l;}
   
   literalt labs(const exprt &expr); // from convert for ID_abs
 

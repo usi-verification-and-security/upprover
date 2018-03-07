@@ -187,10 +187,10 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
     literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
-    push_variable(ans);
+    assert(l.var_no() != literalt::unused_var_no()); // KE: for cmake warnings
+    
     assert(ans != PTRef_Undef);
     current_partition->push(ans);
-    assert(l.var_no() != literalt::unused_var_no());
 }
 
 literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
@@ -382,11 +382,12 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
       smt_itpt *new_itp = new smt_itpt();
       extract_itp(itp_ptrefs[i], *new_itp);
       interpolants.push_back(new_itp);
-      char *s = logic->printTerm(interpolants.back()->getInterpolant());
+
 #ifdef DEBUG_SMT_ITP
-      cout << "Interpolant " << i << " = " << s << endl;
+    char *s = logic->printTerm(interpolants.back()->getInterpolant());
+    cout << "Interpolant " << i << " = " << s << '\n';
+    free(s);
 #endif
-      free(s);
   }
 }
 

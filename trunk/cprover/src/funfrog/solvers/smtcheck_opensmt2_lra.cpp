@@ -434,7 +434,6 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
     #ifdef SMT_DEBUG
         cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")" << endl;
-        cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")" << endl;
         assert(false); // Need to take care of - typecast no operands
     #else
         l = lunsupported2var(expr);
