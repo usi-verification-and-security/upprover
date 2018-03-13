@@ -97,8 +97,8 @@ protected:
   std::map<std::string, std::size_t> next_ids;
 
   nodet& find_repr(summary_idt id);
-  void mark_used_summaries(summary_infot& summary_info, bool *used_mask);
-  void remap_used_summaries(summary_infot& summary_info, summary_idt *remap);
+  void mark_used_summaries(summary_infot& summary_info, std::vector<bool> & used_mask);
+  void remap_used_summaries(summary_infot& summary_info, std::vector<summary_idt> & remap);
   
   // Maximal used id
   summary_idt max_id;
