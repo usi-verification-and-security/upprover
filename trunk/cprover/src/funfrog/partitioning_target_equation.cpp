@@ -9,6 +9,42 @@
 #include "partitioning_target_equation.h"
 #include "partition_iface.h"
 
+partitioning_target_equationt::partitioning_target_equationt(
+  const namespacet & _ns,
+  summarization_contextt & _summarization_context,
+  bool _upgrade_checking,
+  bool _store_summaries_with_assertion,
+  coloring_modet _coloring_mode,
+  std::vector<unsigned> & _clauses) :
+  symex_target_equationt(_ns),
+  summarization_context(_summarization_context),
+  current_partition_id(partitiont::NO_PARTITION),
+#         ifdef DISABLE_OPTIMIZATIONS
+    dump_SSA_tree(false),
+    ssa_tree_file_name("__ssa_tree.smt2"),
+    out_local_terms(0),
+    out_terms(out_local_terms),
+    out_local_basic(0),
+    out_basic(out_local_basic),
+    out_local_partition(0),
+    out_partition(out_local_partition),
+    terms_counter(0),
+    is_first_call(true),
+    first_call_expr(0),
+#endif
+  io_count_global(0),
+  upgrade_checking(_upgrade_checking),
+  store_summaries_with_assertion(_store_summaries_with_assertion),
+  coloring_mode(_coloring_mode),
+  clauses(_clauses) {
+#ifdef DISABLE_OPTIMIZATIONS
+    partition_smt_decl = new std::map <std::string,exprt>();
+    out_terms.rdbuf(&terms_buf);
+    out_basic.rdbuf(&basic_buf);
+    out_partition.rdbuf(&partition_buf);
+#endif
+}
+
 /*******************************************************************
  Function: partitioning_target_equationt::reserve_partition
 
@@ -57,6 +93,25 @@ void partitioning_target_equationt::invalidate_partition(partition_idt partition
 
     if (partition.parent_id != partitiont::NO_PARTITION) {
         partitions[partition.parent_id].remove_child_partition(partition_id);
+    }
+}
+
+void partitioning_target_equationt::fill_summary_partition(
+  partition_idt partition_id, const summary_idst* summaries, bool is_lattice_fact)
+{
+    partitiont& sum_partition = partitions.at(partition_id);
+    assert(!sum_partition.filled);
+
+    sum_partition.filled = true;
+    sum_partition.summary = true;
+    sum_partition.summaries = summaries;
+    sum_partition.lattice_fact = is_lattice_fact;
+
+    sum_partition.applicable_summaries.clear();
+    for (summary_idst::const_iterator it = summaries->begin();
+         it != summaries->end();
+         ++it) {
+        sum_partition.applicable_summaries.insert(*it);
     }
 }
 
@@ -254,12 +309,58 @@ void partitioning_target_equationt::fill_partition_ids(
     }
 }
 
+void partitioning_target_equationt::fill_stub_partition(partition_idt partition_id) {
+    partitiont & sum_partition = partitions.at(partition_id);
+    assert(!sum_partition.filled);
+
+    sum_partition.filled = true;
+    sum_partition.stub = true;
+}
+
+void partitioning_target_equationt::select_partition(partition_idt partition_id) {
+    if (current_partition_id != partitiont::NO_PARTITION) {
+        get_current_partition().end_idx = SSA_steps.size();
+        assert(!partitions.at(partition_id).filled);
+    }
+    // Select the new partition
+    current_partition_id = partition_id;
+    partitiont & new_partition = get_current_partition();
+    new_partition.filled = true;
+    new_partition.start_idx = SSA_steps.size();
+}
+
+void partitioning_target_equationt::fill_inverted_summary_partition(
+  partition_idt partition_id, const summary_idst * summaries, const summary_ids_sett & used_summaries) {
+    partitiont & sum_partition = partitions.at(partition_id);
+    assert(!sum_partition.filled);
+
+    sum_partition.filled = true;
+    sum_partition.summary = true;
+    sum_partition.inverted_summary = true;
+    sum_partition.summaries = summaries;
+    sum_partition.used_summaries = used_summaries;
+    sum_partition.applicable_summaries = used_summaries;
+
+//    Commented out for now to remove dependency on iostream, this method is not used at the moment anyway
+//    std::cerr << "  --- (" << partition_id <<
+//              ") sums: " << sum_partition.summaries->size() <<
+//              " used: " << sum_partition.used_summaries.size() << std::endl;
+}
+
+unsigned partitioning_target_equationt::count_partition_assertions(const partitiont & partition) const {
+    unsigned i = 0;
+    for (SSA_stepst::const_iterator
+           it = partition.start_it;
+         it != partition.end_it; it++)
+        if (it->is_assert()) i++;
+    return i;
+}
+
 /***************************************************************************/
 #ifdef DISABLE_OPTIMIZATIONS
 std::ostream& partitioning_target_equationt::print_decl_smt(std::ostream& out) {
-    if (partition_smt_decl->empty())
-        return out;
-    else {
+    if (!partition_smt_decl->empty())
+    {
         // Print all decl
         for (std::map<std::string, exprt>::iterator it =
                         partition_smt_decl->begin(); it != partition_smt_decl->end(); ++it) {
@@ -268,8 +369,8 @@ std::ostream& partitioning_target_equationt::print_decl_smt(std::ostream& out) {
 
         // At the end of the loop
         partition_smt_decl->clear(); //Ready for the next partition
-        return out;
     }
+    return out;
 }
 
 void partitioning_target_equationt::print_partition() {

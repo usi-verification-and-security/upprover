@@ -1,9 +1,10 @@
+#include "dependency_checker.h"
+
 #include <memory>
 #include <fstream>
 #include <util/time_stopping.h>
 #include <util/expr_util.h>
 
-#include "dependency_checker.h"
 #ifdef DISABLE_OPTIMIZATIONS
 #include "expr_pretty_print.h"
 #endif

@@ -11,7 +11,10 @@ Author: Ondrej Sery
 #define CPROVER_PARTITIONING_SLICE_H
 
 #include <goto-symex/slice.h>
-#include "partitioning_target_equation.h"
+
+class partitioning_target_equationt;
+class summary_storet;
+class partitiont;
 
 class partitioning_slicet
 {

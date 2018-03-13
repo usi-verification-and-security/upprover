@@ -19,6 +19,7 @@
 #include "solvers/satcheck_opensmt2.h"
 
 #include "utils/naming_helpers.h"
+#include "hifrog.h"
 
 /*******************************************************************\
 
@@ -229,7 +230,6 @@ void function_infot::deserialize_infos(smt_summary_storet* store, function_infos
   for (unsigned i = 0; i < nfunctions; ++i)
   {
       Tterm *sum = store->find_summary(i).getTterm();
-      //std::string f_name = removeCounter((sum->getName()));
       std::string f_name = sum->getName();
       clean_name(f_name);
       irep_idt f_id(f_name);
@@ -330,6 +330,15 @@ void function_infot::analyze_globals(summarization_contextt& context,
   analyze_globals_rec(context, ns, functions_analyzed);
 }
 
+namespace{
+  // TODO: move to naming utils
+
+  bool dont_need_globals(const dstringt & fun_name){
+    std::string name {fun_name.c_str()};
+    return is_cprover_initialize_method(name) || is_main(name);
+  }
+}
+
 /*******************************************************************\
 
 Function: function_infot::analyze_globals_rec
@@ -344,36 +353,38 @@ Function: function_infot::analyze_globals_rec
 \*******************************************************************/
 
 void function_infot::analyze_globals_rec(summarization_contextt& context,
-  const namespacet& ns, std::set<irep_idt>& functions_analyzed)
-{
+  const namespacet& ns, std::set<irep_idt>& functions_analyzed) {
   // FIXME: Handle also recursion using fixpoint calculation!
-  const goto_programt& body = context.get_function(function).body;
+  const goto_programt & body = context.get_function(function).body;
   std::list<exprt> read_list;
   std::list<exprt> write_list;
 
-  forall_goto_program_instructions(inst, body) {
-    const expr_listt& tmp_r = objects_read(*inst);
-    read_list.insert(read_list.begin(), tmp_r.begin(), tmp_r.end());
-    
-    const expr_listt& tmp_w = objects_written(*inst);
-    write_list.insert(write_list.begin(), tmp_w.begin(), tmp_w.end());
+  // MB: skip body of __CPROVER_initialize and main function
+  bool skip = dont_need_globals(function);
+  if (!skip) {
+    for (const auto & inst : body.instructions) {
+      const expr_listt & tmp_r = objects_read(inst);
+      read_list.insert(read_list.begin(), tmp_r.begin(), tmp_r.end());
+
+      const expr_listt & tmp_w = objects_written(inst);
+      write_list.insert(write_list.begin(), tmp_w.begin(), tmp_w.end());
+    }
+
+    // Accessed ids
+    add_objects_to_set(ns, read_list, globals_accessed);
+    add_objects_to_set(ns, write_list, globals_accessed);
+    // Modified idsfim
+    add_objects_to_set(ns, write_list, globals_modified);
   }
-
-  // Accessed ids
-  add_objects_to_set(ns, read_list, globals_accessed);
-  add_objects_to_set(ns, write_list, globals_accessed);
-  // Modified idsfim
-  add_objects_to_set(ns, write_list, globals_modified);
-
   // Mark this function as analyzed
   functions_analyzed.insert(function);
 
-  forall_goto_program_instructions(inst, body) {
-    if (inst->type == FUNCTION_CALL) {
+  for (auto const & inst : body.instructions) {
+    if (inst.type == FUNCTION_CALL) {
 
       // NOTE: Expects the function call to be a standard symbol call
       const irep_idt &target_function = to_symbol_expr(
-              to_code_function_call(inst->code).function()).get_identifier();
+              to_code_function_call(inst.code).function()).get_identifier();
       function_infot& target_info = context.get_function_info(target_function);
       if (!context.exist_function_info(target_function)) {
         // This function id is missing from context (the data comes from cprover without this id)
@@ -384,11 +395,12 @@ void function_infot::analyze_globals_rec(summarization_contextt& context,
       if (functions_analyzed.find(target_function) == functions_analyzed.end()) {
         target_info.analyze_globals_rec(context, ns, functions_analyzed);
       }
-
-      globals_accessed.insert(target_info.globals_accessed.begin(),
-              target_info.globals_accessed.end());
-      globals_modified.insert(target_info.globals_modified.begin(),
-              target_info.globals_modified.end());
+      if (!skip) {
+        globals_accessed.insert(target_info.globals_accessed.begin(),
+                                target_info.globals_accessed.end());
+        globals_modified.insert(target_info.globals_modified.begin(),
+                                target_info.globals_modified.end());
+      }
     }
   }
 
@@ -494,8 +506,9 @@ Function: function_infot::add_objects_to_set
 void function_infot::add_objects_to_set(const namespacet& ns,
         const expr_listt& exprs, lex_sorted_idst& set)
 {
-  forall_expr_list(ex, exprs) {
-    add_to_set_if_global(ns, *ex, set);
+  for(const auto & expression : exprs)
+  {
+    add_to_set_if_global(ns, expression, set);
   }
 }
 

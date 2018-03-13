@@ -14,6 +14,7 @@ Author: Ondrej Sery
 #include "solvers/prop_itp.h"
 #include "solvers/smt_itp.h"
 #include "summary_store.h"
+#include "partitioning_target_equation.h"
 
 //#define DEBUG_SLICER
 

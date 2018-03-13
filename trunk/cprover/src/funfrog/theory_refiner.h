@@ -55,7 +55,7 @@ private:
   smtcheck_opensmt2t_cuf* decider; // CUF solver
   subst_scenariot omega;
   
-  void setup_unwind(symex_assertion_sumt& symex);
+  //void setup_unwind(symex_assertion_sumt& symex);
   void report_success();
   void report_failure();
 };

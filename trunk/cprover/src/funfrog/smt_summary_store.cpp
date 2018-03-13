@@ -62,13 +62,13 @@ void smt_summary_storet::deserialize(const std::string &in, smtcheck_opensmt2t *
     for (auto it = summary_files.begin(); it != summary_files.end(); ++it) {
         if (decider->getMainSolver()->readFormulaFromFile(it->c_str())) {
             vec<Tterm> &functions = decider->getLogic()->getFunctions();
-            for (int i = 0; i < functions.size(); ++i) {
+            for (std::size_t i = 0; i < functions.size(); ++i) {
                 summaryt *itp = new smt_summaryt();
                 Tterm &tterm = functions[i];
                 std::string fname = tterm.getName();
                 clean_name(fname);
-                int next_idx = get_next_id(fname);
-                std::string summaryName = quote(add_counter(fname, next_idx));
+                auto next_idx = get_next_id(fname);
+                std::string summaryName = quote(add_counter_to_fun_name(fname, next_idx));
                 tterm.setName(summaryName);
                 itp->setTterm(tterm);
                 itp->setLogic(decider->getLogic());
@@ -107,10 +107,10 @@ summary_idt smt_summary_storet::insert_summary(summaryt &summary) {
     string fname = tterm->getName();
     // at this point, there should be just the name of the original function
     assert(!is_quoted(fname));
-    assert(!contains_counter(fname));
+    assert(!fun_name_contains_counter(fname));
     int next_idx = get_next_id(fname);
     // as name of the summary, store the quoted version with counter from the store
-    std::string fixed_name = quote(add_counter(fname, next_idx));
+    std::string fixed_name = quote(add_counter_to_fun_name(fname, next_idx));
     tterm->setName(fixed_name);
 
     store.push_back(nodet(id, summary));

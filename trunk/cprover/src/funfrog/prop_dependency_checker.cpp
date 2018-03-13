@@ -7,7 +7,7 @@
  */
 
 #include "prop_dependency_checker.h"
-#include "hifrog.h"
+#include "utils/naming_helpers.h"
 #include <solvers/flattening/bv_pointers.h>
 #include "solvers/satcheck_opensmt2.h"
 
@@ -348,7 +348,7 @@ void prop_dependency_checkert::convert_io(
         {
           symbol_exprt symbol;
           symbol.type()=tmp.type();
-          symbol.set_identifier(IO_CONST+std::to_string(io_count++));
+          symbol.set_identifier( CProverStringConstants::IO_CONST + std::to_string(io_count++));
           decider.set_to(equal_exprt(tmp, symbol), true);
           (*it)->converted_io_args.push_back(symbol);
         }

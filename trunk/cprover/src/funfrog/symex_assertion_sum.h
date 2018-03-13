@@ -11,57 +11,44 @@
 
 #include <queue>
 
-#include <cbmc/symex_bmc.h>
 #include <util/symbol.h>
-#include <util/ui_message.h>
-
+#include <util/message.h>
+#include <goto-symex/goto_symex.h>
 #include "partition_iface_fwd.h"
-#include "partitioning_target_equation.h"
+#include "partition_fwd.h"
 
 //#define DEBUG_PARTITIONING // Debug this class
 
 class goto_programt;
 class goto_functionst;
-class goto_symex_statet;
 class namespacet;
 class assertion_infot;
 class summary_infot;
 class summarization_contextt;
+class partitioning_target_equationt;
 
-class symex_assertion_sumt : public symex_bmct
+class symex_assertion_sumt : public goto_symext, messaget
 {
 public:
+  // TODO: create some option class to group the options together, this starts to look ridiculous
   symex_assertion_sumt(
           summarization_contextt &_summarization_context,
           summary_infot &_summary_info,
           const namespacet &_ns,
           symbol_tablet &_new_symbol_table,
           partitioning_target_equationt &_target,
-          ui_message_handlert &_message_handler,
+          message_handlert &_message_handler,
           const goto_programt &_goto_program,
           unsigned _last_assertion_loc,
           bool _single_assertion_check,
-          bool _use_slicing=true,
-	  bool _do_guard_expl=true,
-          bool _use_smt=true
-          ) :
-          symex_bmct(_message_handler, _ns, _new_symbol_table, _target),
-          summarization_context(_summarization_context),
-          summary_info(_summary_info),
-          current_summary_info(&_summary_info),
-          equation(_target),
-          current_assertion(NULL),
-          goto_program(_goto_program),
-          last_assertion_loc(_last_assertion_loc),
-          loc(0),
-          single_assertion_check(_single_assertion_check),
-          use_slicing(_use_slicing),
-	  do_guard_expl(_do_guard_expl),
-          use_smt(_use_smt),
-          prev_unwind_counter(0)
-          {}
+          bool _use_slicing,
+	        bool _do_guard_expl,
+          bool _use_smt,
+          unsigned int _max_unwind,
+          bool partial_loops = false
+          );
           
-  virtual ~symex_assertion_sumt();
+  virtual ~symex_assertion_sumt() override;
 
   void loop_free_check();
 
@@ -80,23 +67,18 @@ public:
           bool force_check = false);
   
   virtual void symex_step(
-  const goto_functionst &goto_functions,
+    const goto_functionst &goto_functions,
     statet &state) override;
   
   const partition_iface_ptrst* get_partition_ifaces(summary_infot &summary_info) { 
-    partition_iface_mapt::iterator it = partition_iface_map.find(&summary_info);
+    auto it = partition_iface_map.find(&summary_info);
     
     if (it == partition_iface_map.end())
-      return NULL;
+      return nullptr;
     return &(it->second);
   };
 
   std::map<irep_idt, std::string> guard_expln;
-
-  // Shall be public for refinement
-  void fabricate_cprover_SSA(irep_idt base_symbol_id, 
-        const typet& type, const source_locationt source_location, 
-        bool is_rename, bool is_dead, ssa_exprt& ret_symbol);
   
 private:
   
@@ -143,13 +125,13 @@ private:
   std::set<irep_idt> dead_identifiers;
 
   // Current assertion
-  const assertion_infot* current_assertion;
+  const assertion_infot* current_assertion {nullptr};
 
   const goto_programt &goto_program;
 
   unsigned last_assertion_loc;
 
-  unsigned loc;
+  unsigned loc {0};
 
   bool single_assertion_check;
 
@@ -166,7 +148,7 @@ private:
   // Are there any more instructions in the current function or at least
   // a deferred function to dequeue?
   bool has_more_steps(const statet &state) {
-    return current_summary_info != NULL;
+    return current_summary_info != nullptr;
   }
   
   // Processes current code (pointed to by the state member variable) as well
@@ -226,20 +208,10 @@ private:
     deferred_functiont &deferred_function);
   
   // Marks the SSA symbols of function arguments
-  void mark_argument_symbols(
-    const code_typet &function_type,
-    statet &state,
-    partition_ifacet &partition_iface);
+  void mark_argument_symbols(const code_typet & function_type, partition_ifacet & partition_iface);
 
   // Marks the SSA symbols of accessed globals
-  void mark_accessed_global_symbols(
-    const irep_idt &function_id,
-    statet &state,
-    partition_ifacet &partition_iface,
-    bool is_init_stage);
-
-  // L2 rename - new code
-  void level2_rename_init(statet &state, const symbol_exprt &expr);
+  void mark_accessed_global_symbols(const irep_idt & function_id, partition_ifacet & partition_iface);
 
   // Assigns values from the modified global variables. Marks the SSA symbol 
   // of the global variables for later use when processing the deferred function
@@ -281,24 +253,14 @@ private:
   void produce_callend_assumption(
         const partition_ifacet& partition_iface, statet& state);
 
-  // Helper function for renaming of an identifier without
-  // assigning to it. Constant propagation is stopped for the given symbol.
-  irep_idt get_new_symbol_version(
-        const irep_idt& identifier,
-        statet &state,
-        typet type);
-
-  // Replace old interface of get current name from counter
-  irep_idt get_current_l2_name(statet &state, const irep_idt &identifier) const;
-
   // Makes an assignment without increasing the version of the
   // lhs symbol (make sure that lhs symbol is not assigned elsewhere)
-  void raw_assignment(statet &state,
-        exprt &lhs,
-        const exprt &rhs,
-        const namespacet &ns); 
-        //bool record_value); //Always false, removed
 
+    void raw_assignment(
+            statet &state,
+            const ssa_exprt &lhs,
+            const symbol_exprt &rhs,
+            const namespacet &ns);
 
   // Adds the given symbol to the current context. If dead, the identifier
   // is only marked as dead (it is not added as a new symbol).
@@ -306,7 +268,7 @@ private:
                     const typet& type, 
                     bool dead, 
                     bool is_shared, // L0: not in use if shared
-                    const source_locationt source_location) {
+                    const source_locationt & source_location) {
     if (dead) {
         dead_identifiers.insert(base_id);
     }  
@@ -347,16 +309,100 @@ protected:
     const exprt &expr,
     const std::string &msg,
     statet &state) override;
-  
+
+  // for loop unwinding
+  virtual bool get_unwind(
+    const symex_targett::sourcet &source,
+    unsigned unwind) override
+  {
+    // returns true if we should not continue unwinding
+    // for support of different bounds in different loops, see how it's done in symex_bmct
+    return unwind >= max_unwind;
+  }
+
+  // unwind option
+  unsigned int max_unwind;
+
   /* Temporary fix to deal with loops
    * taken from void goto_symext::symex_goto(statet &state)
    * in symex_goto.cpp
    */
-  bool is_unwind_loop(goto_symex_statet &state);
-  unsigned int prev_unwind_counter; // Updated on branching: Goto, Funcation_Call and End_Function
+  bool is_unwind_loop(statet &state);
+  unsigned int prev_unwind_counter {0}; // Updated on branching: Goto, Funcation_Call and End_Function
   
   #ifdef DEBUG_PARTITIONING
     std::set<std::string> _return_vals; // Check for duplicated symbol creation
   #endif
+
+private:
+
+  // Methods for manipulating symbols: creating new artifical symbols, getting the current L2 version of a symbol,
+  // getting the next version of a symbol, etc.
+
+  // this should be used only for artificial symbols that we have created with create_new_artificial_symbol method
+  bool knows_artificial_symbol(const irep_idt & symbol_id) const {
+    return new_symbol_table.has_symbol(symbol_id);
+  }
+
+  // this should be used only for symbols that we have created with create_new_artificial_symbol method
+  const symbolt & get_artificial_symbol(const irep_idt & id){
+    const auto * symbol_p = new_symbol_table.lookup(id);
+    if(symbol_p){
+      return *symbol_p;
+    }
+    throw std::logic_error(std::string("Symbol for identifier ") + id.c_str() + " was not found!");
+  }
+
+  const symbolt & get_normal_symbol(const irep_idt & id) const {
+    return ns.lookup(id);
+  }
+
+  void create_new_artificial_symbol(const irep_idt & id, const typet & type, bool is_dead);
+
+  // NOTE: use only when versions for interface symbols are needed!
+  ssa_exprt get_current_version(const symbolt & symbol);
+
+  void stop_constant_propagation_for(const irep_idt & id) {
+    state.propagation.remove(id);
+  }
+
+//  ssa_exprt get_current_version(const irep_idt& id){
+//    return get_current_version(get_artificial_symbol_expr(id));
+//  }
+
+  // this works only for identifiers of artificial symbols
+  ssa_exprt get_next_version(const irep_idt& id) {
+    assert(knows_artificial_symbol(id));
+    return get_next_version(get_artificial_symbol(id));
+  }
+
+  // NOTE: use only for interface symbols! (symbols at methods' interface)
+  // increments the L2 counter in the process
+  ssa_exprt get_next_version(const symbolt & symbol);
+
+  // Get L1 version of a symbol
+  ssa_exprt get_l1_ssa(const symbolt & symbol) {
+    ssa_exprt ssa { symbol.symbol_expr() };
+    state.rename(ssa, ns, statet::levelt::L1);
+    return ssa;
+  }
+
+  dstringt get_l1_identifier(const symbolt & symbol) {
+    return get_l1_ssa(symbol).get_l1_object_identifier();
+  }
+
+  symbolt get_tmp_ret_val_symbol(const partition_ifacet& iface);
+
+  // to be able to start with a fresh state
+  void reset_state(){
+    state = goto_symext::statet();
+    // since not supporting multiple threads, we do not need to record events;
+    turn_off_recording_events();
+  }
+
+  void turn_off_recording_events() {
+    // turns off doing some book-keeping related to handling multiple threads by CProver
+    state.record_events = false;
+  }
 };
 #endif

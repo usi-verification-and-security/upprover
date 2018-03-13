@@ -87,7 +87,17 @@ set(HIFROG_SOURCE_FILES
         version.h
         xml_interface.cpp
         xml_interface.h
-    utils/naming_helpers.h utils/naming_helpers.cpp partition_iface_fwd.h summary_store_fwd.h summarization_context_fwd.h utils/coloring_mode.h solvers/itp_fwd.h)
+        utils/naming_helpers.h
+        utils/naming_helpers.cpp
+        partition_iface_fwd.h
+        summary_store_fwd.h
+        summarization_context_fwd.h
+        utils/coloring_mode.h
+        solvers/itp_fwd.h
+        utils/ssa_helpers.h
+        partition_fwd.h
+        solvers/interpolating_solver_fwd.h
+    )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modules/")
 

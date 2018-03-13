@@ -626,24 +626,16 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     }
   
     bool is_L2_symbol = is_L2_SSA_symbol(expr);
-    bool is_nil_or_symex = (str.compare(NIL) == 0) || (str.find(IO_CONST) != std::string::npos);
-    if (!is_L2_symbol && !is_nil_or_symex) 
+    // MB: the IO_CONST expressions does not follow normal versioning, but why NIL is here?
+    bool is_nil_or_symex = (str.compare(NIL) == 0) || (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
+    assert("Error: using non-SSA symbol in the SMT encoding"
+         && (is_L2_symbol || is_nil_or_symex));
+    if (!is_L2_symbol && !is_nil_or_symex)
     {
-        if (str.find(HifrogStringConstants::COUNTER_SEP) != std::string::npos)
-            is_L2_symbol = true; // we are taking care of it somehow, e.g., static arrays
-        else 
-        {
-            // Error message before assert!
-            std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree(" << str << ")\n" ;
-            return create_new_unsupported_var(expr.type().id().c_str());
-        }
+        // Error message before assert!
+        std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree(" << str << ")\n";
+        return create_new_unsupported_var(expr.type().id().c_str());
     }
-
-    // KE: assure the encoding is not using the variables name as is (why there is nil here?)
-    assert("Error: using non-SSA symbol in the SMT encoding" 
-            && (is_L2_symbol || is_nil_or_symex));
-    // KE: we need to test how the rest of the symex vars are
-    
     return str;
 }
 

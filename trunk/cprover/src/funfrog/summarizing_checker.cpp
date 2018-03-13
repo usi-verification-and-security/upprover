@@ -210,7 +210,9 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
   
   const bool no_slicing_option = options.get_bool_option("no-slicing");
   const bool no_ce_option = options.get_bool_option("no-error-trace");
-  const bool no_smt_usage = (options.get_option("logic") == "prop");
+  assert(options.get_option("logic") == "prop");
+  const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
+  const bool partial_loops = options.get_bool_option("partial-loops");
 
   omega.set_initial_precision(assertion);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
@@ -230,13 +232,13 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 #endif
   
   summary_infot& summary_info = omega.get_summary_info();
-  symex_assertion_sumt symex = symex_assertion_sumt(
+  symex_assertion_sumt symex {
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, 
-            !no_smt_usage);
+            false, unwind_bound, partial_loops };
 
-  setup_unwind(symex);
+//  setup_unwind(symex);
 
   prop_refiner_assertion_sumt refiner = prop_refiner_assertion_sumt(
               summarization_context, omega,
@@ -382,11 +384,14 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   
   const bool no_slicing_option = options.get_bool_option("no-slicing");
   const bool no_ce_option = options.get_bool_option("no-error-trace");
-  //const bool no_smt_usage = (options.get_option("logic") == "prop");
+  assert(options.get_option("logic") != "prop");
+  const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
+
 
   omega.set_initial_precision(assertion);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
+
 
   std::vector<unsigned> ints;
   get_ints(ints, options.get_option("part-itp"));
@@ -405,9 +410,11 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, !no_slicing_option, !no_ce_option);
+            single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound,
+            options.get_bool_option("partial-loops"));
 
-  setup_unwind(symex);
+
+//  setup_unwind(symex);
 
   smt_refiner_assertion_sumt refiner = smt_refiner_assertion_sumt(
               summarization_context, omega,
