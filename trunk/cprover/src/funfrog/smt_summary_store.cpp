@@ -62,7 +62,7 @@ void smt_summary_storet::deserialize(const std::string &in, smtcheck_opensmt2t *
     for (auto it = summary_files.begin(); it != summary_files.end(); ++it) {
         if (decider->getMainSolver()->readFormulaFromFile(it->c_str())) {
             vec<Tterm> &functions = decider->getLogic()->getFunctions();
-            for (std::size_t i = 0; i < functions.size(); ++i) {
+            for (std::size_t i = 0; i < (std::size_t)functions.size(); ++i) {
                 summaryt *itp = new smt_summaryt();
                 Tterm &tterm = functions[i];
                 std::string fname = tterm.getName();

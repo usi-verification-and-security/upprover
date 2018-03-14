@@ -382,18 +382,18 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   return end;
 }
 
-///*******************************************************************\
-//
-//Function: theory_refinert::setup_unwind
-//
-//  Inputs:
-//
-// Outputs:
-//
-// Purpose: Setup the unwind bounds.
-//
-//\*******************************************************************/
-//
+
+/*******************************************************************\
+
+Function: theory_refinert::setup_unwind
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Setup the unwind bounds.
+
+\*******************************************************************/
 //void theory_refinert::setup_unwind(symex_assertion_sumt& symex)
 //{
 //  const std::string &set=options.get_option("unwindset");
