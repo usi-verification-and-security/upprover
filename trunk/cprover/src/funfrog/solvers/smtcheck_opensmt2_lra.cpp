@@ -623,8 +623,9 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             { 
                 PTRef a = args.last(); args.pop();
                 PTRef b = args.last(); args.pop();
-            	PTRef temp = lralogic->mkRealMinus(a,b);
-                args.push(temp);
+            	PTRef temp = lralogic->mkRealMinus(lralogic->mkConst("0"),a);
+                PTRef temp_both = lralogic->mkRealMinus(temp,b);
+                args.push(temp_both);
             }
             assert(args.size() == 2);
             ptl = lralogic->mkRealMinus(args);
