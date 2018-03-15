@@ -292,9 +292,10 @@ PTRef smtcheck_opensmt2t_lra::mult_real(const exprt &expr, vec<PTRef> &args)
             PTRef ptl_uns = runsupported2var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-            
+            //PTRef var_eq = create_equation_for_unsupported(expr);
+            //set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            // Remove - consider again only when we have UF with LRA works
+
             return ptl_uns;
         }
 
@@ -311,9 +312,10 @@ PTRef smtcheck_opensmt2t_lra::mult_real(const exprt &expr, vec<PTRef> &args)
             PTRef ptl_uns = runsupported2var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-            
+            //PTRef var_eq = create_equation_for_unsupported(expr);
+            //set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            // Remove - consider again only when we have UF with LRA works            
+
             return ptl_uns;
         }
     #endif
@@ -345,9 +347,10 @@ PTRef smtcheck_opensmt2t_lra::div_real(const exprt &expr, vec<PTRef> &args)
             PTRef ptl_uns = runsupported2var(expr);
 
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-            
+            //PTRef var_eq = create_equation_for_unsupported(expr);
+            //set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            // Remove - consider again only when we have UF with LRA works            
+
             return ptl_uns;
         }
 
@@ -364,9 +367,10 @@ PTRef smtcheck_opensmt2t_lra::div_real(const exprt &expr, vec<PTRef> &args)
             PTRef ptl_uns = runsupported2var(expr);
                         
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-            
+            //PTRef var_eq = create_equation_for_unsupported(expr);
+            //set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            // Remove - consider again only when we have UF with LRA works            
+
             return ptl_uns;
         }
     #endif
@@ -394,7 +398,6 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 //    if(converted_exprs.find(expr.hash()) != converted_exprs.end())
 //        return converted_exprs[expr.hash()];
 
-    std::cout << "\n; Expression in Convert is: \n" << expr.pretty() << std::endl;
 #ifdef SMT_DEBUG
     cout << "; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< endl;
 #endif
@@ -498,6 +501,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                 assert(cp != PTRef_Undef);
                 args.push(cp);
                 i++; // Only if really add an item to mult/div inc the counter
+
 #ifdef SMT_DEBUG
                 char *s = logic->printTerm(cp);
                 cout << "; On inner iteration " << i
@@ -531,8 +535,9 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             ptl = runsupported2var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            //PTRef var_eq = create_equation_for_unsupported(expr);
+            //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            // Remove - consider again only when we have UF with LRA works
         } else if (_id==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
         } else if(_id == ID_equal) {
@@ -593,9 +598,11 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         } else if(_id == ID_plus) {
             ptl = lralogic->mkRealPlus(args);
         } else if(_id == ID_minus) {
+            assert(args.size() == 2);
             ptl = lralogic->mkRealMinus(args);
         } else if(_id == ID_unary_minus) {
-            ptl = lralogic->mkRealMinus(args);
+            assert(args.size() == 1); // KE: since unary, we have only one parameter, and we add "0" as first arg.
+            ptl = lralogic->mkRealMinus(lralogic->mkConst("0"), args.last());
         } else if(_id == ID_unary_plus) {
             ptl = lralogic->mkRealPlus(args);
         } else if(_id == ID_mult) {
@@ -611,6 +618,15 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         } else if(_id == ID_floatbv_plus) {
             ptl = lralogic->mkRealPlus(args);
         } else if(_id == ID_floatbv_minus) {
+            // Ad-hoc fix for the issue OpenSMT force exactly two args.
+            while (args.size() > 2) 
+            { 
+                PTRef a = args.last(); args.pop();
+                PTRef b = args.last(); args.pop();
+            	PTRef temp = lralogic->mkRealMinus(a,b);
+                args.push(temp);
+            }
+            assert(args.size() == 2);
             ptl = lralogic->mkRealMinus(args);
         } else if(_id == ID_floatbv_div) {
             ptl = div_real(expr,args);
@@ -625,8 +641,9 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             ptl = runsupported2var(expr);
                         
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            //PTRef var_eq = create_equation_for_unsupported(expr);
+            //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
+            // Remove - consider again only when we have UF with LRA works 
 #endif
         } else if((_id == ID_address_of) || (_id == ID_pointer_offset)) {
 #ifdef SMT_DEBUG
@@ -637,8 +654,9 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             ptl = runsupported2var(expr);
                                              
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            //PTRef var_eq = create_equation_for_unsupported(expr);
+            //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
+            // Remove - consider again only when we have UF with LRA works 
 #endif
         } else if (_id == ID_pointer_object) {
 #ifdef SMT_DEBUG
@@ -686,8 +704,9 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             ptl = runsupported2var(expr);
             
             // Add new equation of an unknown function (acording to name)
-            PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            //PTRef var_eq = create_equation_for_unsupported(expr);
+            //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            // Remove - consider again only when we have UF with LRA works
 #endif
         }
         
