@@ -598,10 +598,10 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         } else if(_id == ID_plus) {
             ptl = lralogic->mkRealPlus(args);
         } else if(_id == ID_minus) {
-            assert(args.size() == 2);
+            assert(args.size() <= 2); // KE: check before opensmt, to locate better errors
             ptl = lralogic->mkRealMinus(args);
         } else if(_id == ID_unary_minus) {
-            assert(args.size() == 1); // KE: since unary, we have only one parameter, and we add "0" as first arg.
+            assert(args.size() <= 2); // KE: check before opensmt, to locate better errors
             ptl = lralogic->mkRealMinus(lralogic->mkConst("0"), args.last());
         } else if(_id == ID_unary_plus) {
             ptl = lralogic->mkRealPlus(args);
@@ -618,16 +618,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         } else if(_id == ID_floatbv_plus) {
             ptl = lralogic->mkRealPlus(args);
         } else if(_id == ID_floatbv_minus) {
-            // Ad-hoc fix for the issue OpenSMT force exactly two args.
-            while (args.size() > 2) 
-            { 
-                PTRef a = args.last(); args.pop();
-                PTRef b = args.last(); args.pop();
-            	PTRef temp = lralogic->mkRealMinus(lralogic->mkConst("0"),a);
-                PTRef temp_both = lralogic->mkRealMinus(temp,b);
-                args.push(temp_both);
-            }
-            assert(args.size() == 2);
+            assert(args.size() <= 2); // KE: check before opensmt, to locate better errors
             ptl = lralogic->mkRealMinus(args);
         } else if(_id == ID_floatbv_div) {
             ptl = div_real(expr,args);

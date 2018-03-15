@@ -20,6 +20,7 @@
 #define ROUNDING_MODE "__CPROVER_rounding_mode!"
 #define DYNAMIC_OBJ "symex_dynamic::dynamic_object"
 #define GOTO_GUARD "goto_symex::\\guard#"
+#define BUILT_IN "<built-in-additions>"
 
 #define NIL "nil"
 #define NONDETv1 "symex::" // Cprover nondet symbol
@@ -45,6 +46,11 @@ std::string fix_symex_nondet_name(const exprt &expr);
 unsigned int get_dump_current_index();
 bool is_L2_SSA_symbol(const exprt& expr);
 
+static inline bool is_cprover_built_in_source(const std::string& str)
+{
+    return (str.find(BUILT_IN) != std::string::npos);
+}
+
 static inline bool is_cprover_rounding_mode_var(const std::string& str)
 {
     return (str.find(ROUNDING_MODE) != std::string::npos);
@@ -52,7 +58,10 @@ static inline bool is_cprover_rounding_mode_var(const std::string& str)
 
 static inline bool is_cprover_rounding_mode_var(const exprt& e)
 {
-    return is_cprover_rounding_mode_var(id2string(e.get(ID_identifier)));
+    return
+	is_cprover_built_in_source(id2string(e.source_location().get_file())) 
+	|| 
+	is_cprover_rounding_mode_var(id2string(e.get(ID_identifier)));
 }
 
 static inline bool is_cprover_builtins_var(const std::string str)
