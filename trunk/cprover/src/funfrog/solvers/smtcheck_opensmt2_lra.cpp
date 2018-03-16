@@ -588,12 +588,16 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         } else if(_id == ID_implies) {
             ptl = logic->mkImpl(args);
         } else if(_id == ID_ge) {
+            assert(args.size() == 2); // KE: get errors before opensmt
             ptl = lralogic->mkRealGeq(args);
         } else if(_id == ID_le) {
+            assert(args.size() == 2); // KE: get errors before opensmt
             ptl = lralogic->mkRealLeq(args);
         } else if(_id == ID_gt) {
+            assert(args.size() == 2); // KE: get errors before opensmt 
             ptl = lralogic->mkRealGt(args);
         } else if(_id == ID_lt) {
+            assert(args.size() == 2); // KE: get errors before opensmt
             ptl = lralogic->mkRealLt(args);
         } else if(_id == ID_plus) {
             ptl = lralogic->mkRealPlus(args);
