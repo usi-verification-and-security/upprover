@@ -19,7 +19,8 @@ function check_result {
 function test_one {
 
   INPUT="$1"
-  PREFIX=$PATH_reg$OUTDIR/${INPUT: : -2}
+  INPUT_NO_EXT=${INPUT%%.c*}
+  PREFIX=$PATH_reg$OUTDIR/$INPUT_NO_EXT
   FILE_PREFIX="${PREFIX}/${OUTPUT_PREFIX}_$2"
   SUMMARIES="${PREFIX}/__summaries_${OUTPUT_PREFIX}_$2"
   HIFROG_OUTPUT="${FILE_PREFIX}_hifrog_$IND.txt"
@@ -30,10 +31,10 @@ function test_one {
   IND=$((IND+1))
 
   if [[ ! -r ${INPUT} ]] ; then
-    error "The input file ${INPUT} does not exist or it is not readable."
+    echo "The input file ${INPUT} does not exist or it is not readable."
   fi
   if [[ ! -r ${EXPECTED_OUTPUT} ]] ; then
-    warning "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
+    echo "Test ignored due to missing file ${EXPECTED_OUTPUT} with expected result."
     ((IGNORED++))
     return 1
   fi
@@ -116,12 +117,12 @@ function test_one {
 
 
 ################### MAIN ###############################
-PATH_reg=$(readlink -f $0)
+PATH_reg=$(readlink $0)
 PATH_reg=${PATH_reg: : -11}
 echo "This is the script for running regression tests;supports: prop,qflra,qfuf,qfcuf."
 echo " - date: $(date '+%Y-%m-%d at %H:%M.%S')"
 echo " - host name $(hostname -f)"
-echo " - script path: $(readlink -f $0)"
+echo " - script path: $(readlink $0)"
 echo " - path regression tests: $PATH_reg"
 
 FILTER_RESULT="./filter-result.sh"
