@@ -189,6 +189,7 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
     	// Don't check here, it can be a pointer or some address.
     	// Yes, we can have also a bug here
     	//TODO: when support array fully add assert here
+        assert(0); // KE: check when get it. Please show me
     }
 
     return push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
@@ -451,22 +452,6 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         l = labs(expr);
         
     } else { // General case:
-    #ifdef SMT_DEBUG
-        cout << "; IT IS AN OPERATOR" << endl;
-
-        if (expr.has_operands() && expr.operands().size() > 1) {
-            if ((expr.operands()[0] == expr.operands()[1]) &&
-                    (!expr.operands()[1].is_constant())	&&
-                      ((_id == ID_div) ||
-                       (_id == ID_floatbv_div) ||
-                   (_id == ID_mult) ||
-                       (_id == ID_floatbv_mult))
-            ){
-                cout << "; IT IS AN OPERATOR BETWEEN SAME EXPR: NOT SUPPORTED FOR NONDET" << endl;
-                assert(false);
-            }
-        }
-#endif
         // Check if for div op there is a rounding variable
         bool is_div_wtrounding = // need to take care differently!
         		((_id == ID_floatbv_div || _id == ID_div ||

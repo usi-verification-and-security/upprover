@@ -58,10 +58,7 @@ static inline bool is_cprover_rounding_mode_var(const std::string& str)
 
 static inline bool is_cprover_rounding_mode_var(const exprt& e)
 {
-    return
-	is_cprover_built_in_source(id2string(e.source_location().get_file())) 
-	|| 
-	is_cprover_rounding_mode_var(id2string(e.get(ID_identifier)));
+    return is_cprover_rounding_mode_var(id2string(e.get(ID_identifier)));
 }
 
 static inline bool is_cprover_builtins_var(const std::string str)
