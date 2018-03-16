@@ -88,8 +88,8 @@ function test_one {
   p16="${p16#\"}"
 
   #stupid way to do it, but it works. If needed add more params
-  echo ">> Run test case: $hifrog $1 --logic $2 --save-summaries ${SUMMARIES}" $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15
-  $hifrog $1 --logic $2 --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 $p16 >> ${HIFROG_OUTPUT} 2>&1
+  echo ">> Run test case: $hifrog "$1" --logic "$2" --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15"
+  $hifrog "$1" --logic "$2" --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 $p16 >> ${HIFROG_OUTPUT} 2>&1
   if [[ $? -gt 0 ]]; then
     echo "HiFrog analysis failed (see ${HIFROG_OUTPUT})"
     echo "Verify output against: $EXPECTED_OUTPUT"
