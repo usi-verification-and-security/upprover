@@ -237,15 +237,15 @@ bool funfrog_parseoptionst::process_goto_program(
     remove_complex(goto_model);
     rewrite_union(goto_model);
 
+    // add generic checks
+    status() << "Generic Property Instrumentation" << eom;
+    goto_check(options, goto_model);
+            
     // HIFROG: We remove built-ins from smt logics
     if(cmdline.isset("logic")) 
     {
         if (cmdline.get_value("logic") == "prop") 
         {
-            // add generic checks
-            status() << "Generic Property Instrumentation" << eom;
-            goto_check(options, goto_model);
-
             // checks don't know about adjusted float expressions
             adjust_float_expressions(goto_model);
         }

@@ -463,20 +463,17 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         int i = 0;
         bool is_no_support = false;
         forall_operands(it, expr)
-        {	// KE: recursion in case the expr is not simple - shall be in a visitor
-            bool is_builtin_rounding_mode = is_cprover_rounding_mode_var(*it);
-            if ((is_div_wtrounding && i >= 2) || is_builtin_rounding_mode)
+        {
+            assert(!is_cprover_rounding_mode_var(*it)); // KE: we remove this before! 
+            if (is_div_wtrounding && i >= 2)
             {
-                // Skip - we don't need the rounding variable for non-bv logics + assure it is always rounding thing
-                if (!is_builtin_rounding_mode) {
-#ifdef SMT_DEBUG
-                    cout << "EXIT WITH ERROR: * and / operators with more than 2 arguments have no support yet in the LRA version (token: "
-                                    << _id << ")" << endl;
-                    assert(false); // No support yet for rounding operator
-#else
-                    is_no_support = true; // Will cause to over approx all
-#endif
-                }
+            #ifdef SMT_DEBUG
+                cout << "EXIT WITH ERROR: * and / operators with more than 2 arguments have no support yet in the LRA version (token: "
+                                << _id << ")" << endl;
+                assert(false); // No support yet for rounding operator
+            #else
+                is_no_support = true; // Will cause to over approx all
+            #endif
             }
             else
             { 
