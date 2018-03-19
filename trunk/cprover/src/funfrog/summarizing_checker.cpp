@@ -446,7 +446,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
 
-  prepare_smt_formulat ssaToSmt = prepare_smt_formulat(equation, message_handler);
+  prepare_smt_formulat ssaTosmt = prepare_smt_formulat(equation, message_handler);
 
 
   unsigned iteration_counter = 0;
@@ -473,10 +473,10 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
     iteration_counter++;
 
     //Converts SSA to SMT formula
-    ssaToSmt.convert_to_formula( *(dynamic_cast<smtcheck_opensmt2t *> (decider)), *(decider));
+    ssaTosmt.convert_to_formula( *(dynamic_cast<smtcheck_opensmt2t *> (decider)), *(decider));
 
     // Decides the equation
-    bool is_sat = ssaToSmt.is_satisfiable(*(dynamic_cast<smtcheck_opensmt2t *> (decider)));
+    bool is_sat = ssaTosmt.is_satisfiable(*(dynamic_cast<smtcheck_opensmt2t *> (decider)));
 
     end = !is_sat;
     if (is_sat) {
@@ -492,7 +492,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         {
           const unsigned int summaries_used = omega.get_summaries_count();
           if (summaries_used > 0){
-            status() << "FUNCTION¸ SUMMARIES (for " << summaries_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
+            status() << "FUNCTION SUMMARIES (for " << summaries_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
           }
           const unsigned int nondet_used = omega.get_nondets_count();
           if (nondet_used > 0){
@@ -527,7 +527,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 #ifdef PRODUCE_PROOF
       if (decider->can_interpolate()) {
         status() << ("Start generating interpolants...") << eom;
-        extract_interpolants_smt(ssaToSmt, equation);
+        extract_interpolants_smt(ssaTosmt, equation);
       }
 #else
       // if PRODUCE_PROOF is not defined, we should always use no-itp
@@ -545,7 +545,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
   }
   else // assertion was falsified
   {
-    assertion_violated(ssaToSmt, symex.guard_expln);
+    assertion_violated(ssaTosmt, symex.guard_expln);
   }
   // FINAL REPORT
 

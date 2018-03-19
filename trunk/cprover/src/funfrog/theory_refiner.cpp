@@ -107,8 +107,14 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   bool end = symex.prepare_SSA(assertion);
 
   if (!end)
-      ssaTosmt.convert_to_formula(*(dynamic_cast<smtcheck_opensmt2t *> (decider)),
-                                          *(dynamic_cast<interpolating_solvert *> (decider)));
+  {
+      //Converts SSA to SMT formula
+    ssaTosmt.convert_to_formula(*(dynamic_cast<smtcheck_opensmt2t *> (decider)), *(decider));
+
+      // Decides the equation
+    bool is_sat = ssaTosmt.is_satisfiable(*(dynamic_cast<smtcheck_opensmt2t *> (decider)));
+    end = !is_sat;
+  }
 
   if (end)
   {
@@ -118,7 +124,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 #endif
       status() << "ASSERTION HOLDS" << endl << eom;
       report_success();
-  } else {
+  } else {  //do refinement
 
       error_tracet error_trace;
       const std::string &log=options.get_option("logic");
