@@ -88,8 +88,8 @@ function test_one {
   p16="${p16#\"}"
 
   #stupid way to do it, but it works. If needed add more params
-  echo ">> Run test case: $hifrog "$1" --logic "$2" --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15"
-  $hifrog "$1" --logic "$2" --save-summaries ${SUMMARIES} "$p4" "$p5" "$p6" "$p7" "$p8" "$p9" "$p10" "$p11" "$p12" "$p13" "$p14" "$p15" "$p16" >> ${HIFROG_OUTPUT} 2>&1
+  echo ">> Run test case: $hifrog "$1" --logic "$2" --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 $p16"
+  $hifrog "$1" --logic "$2" --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 $p16 >> ${HIFROG_OUTPUT} 2>&1
   if [[ $? -gt 0 ]]; then
     echo "HiFrog analysis failed (see ${HIFROG_OUTPUT})"
     echo "Verify output against: $EXPECTED_OUTPUT"
@@ -150,17 +150,17 @@ for filename in testcases/*.c_tc
 do
     # Per file, run all its inner test cases. 0 => clear summaries
     isFirst=1
-    IFS=$'\n'
+    #IFS=$'\n'
     for next in `cat $filename`
     do
         temp="${next%\"}"
 	temp="${temp#\"}"
-	arr=(`echo $temp | sed 's/,/\n/g'`)
+	arr=(${temp//,/ })
         if (($isFirst==1))
         then
 	  	isFirst=0
 	    	# Prepare the environment
-		mkdir -p "$OUTDIR/${arr[1]: : -2}" 
+		mkdir -p "$OUTDIR/${arr[1]%.*}" 
                 echo "***** Create Directory for test-case ${arr[1]} *****" 
         fi
 	test_one ${arr[1]} ${arr[2]} ${arr[0]} ${arr[3]} ${arr[4]} ${arr[5]} ${arr[6]} ${arr[7]} ${arr[8]} ${arr[9]} ${arr[10]} ${arr[11]} ${arr[12]} ${arr[13]} ${arr[14]} ${arr[15]} ${arr[16]}
