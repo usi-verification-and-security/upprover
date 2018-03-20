@@ -185,10 +185,14 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
     	exprt temp_check = exprt(expr); temp_check.negate();
         assert(!lralogic->isRealZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
         // If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
+    } else if (expr.type().id() == ID_pointer) {
+        // when support pointers - change here too
+        rconst = runsupported2var(expr);
     } else {
     	// Don't check here, it can be a pointer or some address.
     	// Yes, we can have also a bug here
     	//TODO: when support array fully add assert here
+        //std::cout << expr.pretty() << std::endl;
         assert(0); // KE: check when get it. Please show me
     }
 
