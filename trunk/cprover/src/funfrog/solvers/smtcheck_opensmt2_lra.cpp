@@ -800,6 +800,12 @@ Function: smtcheck_opensmt2t_lra::lvar
 \*******************************************************************/
 literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 {
+    // IF code, set to be unsupported
+    if (expr.type().id()==ID_code) {
+        return lunsupported2var(expr);
+    }
+
+    // Else continue as before
     string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
     str = quote_varname(str);
 

@@ -629,7 +629,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     // MB: the IO_CONST expressions does not follow normal versioning, but why NIL is here?
     bool is_nil_or_symex = (str.compare(NIL) == 0) || (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
     assert("Error: using non-SSA symbol in the SMT encoding"
-         && (is_L2_symbol || is_nil_or_symex));
+         && (is_L2_symbol || is_nil_or_symex)); // KE: can be new type that we don't take care of yet
     if (!is_L2_symbol && !is_nil_or_symex)
     {
         // Error message before assert!
