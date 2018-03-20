@@ -1,5 +1,5 @@
-CBMC Version 5.7 from Git - 64-bit version (CBMC version 5.8 64-bit x86_64 linux)
-Date: 02/06/2017
+CBMC Version 5.8 from Git dev - 64-bit version (CBMC version 5.8 64-bit x86_64 linux)
+Date: 31/01/2018
 
 File Changed:
 =============
@@ -12,7 +12,7 @@ File Changed:
 - trunk/cprover/src/util/expr.h/.cpp - add a function — I will need to add functions from old source to new one (those functions are created by the team and needed)
 - trunk/cprover/src/config.inc (change: add ../ to minisat2 path) —WE removed to CMAKE, therefore we do not need it anymore
 - trunk/cprover/src/Makefile - WE removed to CMAKE, therefore we do not need it anymore - assure we don't override it with junk
-- Remove dirty - where found
+- Remove dirty - once found
 
 minisat-2.2.1:
 ==============
@@ -36,7 +36,7 @@ Special modifications in HiFrog:
   const std::string print_number_2smt() const; // hckd!!
 - expr.cpp add function impl
 - Issues with dirty analysis
-  - Removed from goto-symex/symex_main.cpp
+- Removed from goto-symex/symex_main.cpp
                  goto-symex/goto_symex_state.cpp
                  goto-symex/goto_symex_state.h
                  goto-symex/symex_function_call.cpp
