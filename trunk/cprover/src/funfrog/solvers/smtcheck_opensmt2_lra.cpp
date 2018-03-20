@@ -187,7 +187,7 @@ literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
         // If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
     } else if (expr.type().id() == ID_pointer) {
         // when support pointers - change here too
-        rconst = runsupported2var(expr);
+        // KE: not sure which code shall be here
     } else {
     	// Don't check here, it can be a pointer or some address.
     	// Yes, we can have also a bug here
