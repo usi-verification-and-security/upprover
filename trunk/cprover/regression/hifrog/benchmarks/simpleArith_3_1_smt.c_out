@@ -1,0 +1,5 @@
+Violated property:
+  file benchmarks/simpleArith_3.c line 10 function main
+  assertion (double)z > 0.0
+  (double)z > 0.0
+VERIFICATION FAILED
