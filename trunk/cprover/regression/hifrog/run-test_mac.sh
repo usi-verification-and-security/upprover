@@ -118,7 +118,7 @@ function test_one {
 
 ################### MAIN ###############################
 PATH_reg=$(readlink $0)
-PATH_reg=${PATH_reg: : -11}
+PATH_reg=${PATH_reg: : -16}
 echo "This is the script for running regression tests;supports: prop,qflra,qfuf,qfcuf."
 echo " - date: $(date '+%Y-%m-%d at %H:%M.%S')"
 echo " - host name $(hostname -f)"

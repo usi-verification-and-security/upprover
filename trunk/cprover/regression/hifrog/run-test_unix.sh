@@ -89,7 +89,7 @@ function test_one {
 
   #stupid way to do it, but it works. If needed add more params
   echo ">> Run test case: $hifrog "$1" --logic "$2" --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15"
-  $hifrog "$1" --logic "$2" --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 $p16 >> ${HIFROG_OUTPUT} 2>&1
+  $hifrog $1 --logic $2 --save-summaries ${SUMMARIES} $p4 $p5 $p6 $p7 $p8 $p9 $p10 $p11 $p12 $p13 $p14 $p15 $p16 >> ${HIFROG_OUTPUT} 2>&1
   if [[ $? -gt 0 ]]; then
     echo "HiFrog analysis failed (see ${HIFROG_OUTPUT})"
     echo "Verify output against: $EXPECTED_OUTPUT"
@@ -117,12 +117,12 @@ function test_one {
 
 
 ################### MAIN ###############################
-PATH_reg=$(readlink $0)
-PATH_reg=${PATH_reg: : -11}
+PATH_reg=$(readlink -f $0)
+PATH_reg=${PATH_reg: : -16}
 echo "This is the script for running regression tests;supports: prop,qflra,qfuf,qfcuf."
 echo " - date: $(date '+%Y-%m-%d at %H:%M.%S')"
 echo " - host name $(hostname -f)"
-echo " - script path: $(readlink $0)"
+echo " - script path: $(readlink -f $0)"
 echo " - path regression tests: $PATH_reg"
 
 FILTER_RESULT="./filter-result.sh"
