@@ -633,7 +633,8 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     if (!is_L2_symbol && !is_nil_or_symex)
     {
         // Error message before assert!
-        std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree(" << str << ")\n";
+        std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree(" 
+                << str <<  " : " << expr.type().id().c_str() << ")\n";
         return create_new_unsupported_var(expr.type().id().c_str());
     }
     return str;
