@@ -448,21 +448,10 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 
   prepare_smt_formulat ssaTosmt = prepare_smt_formulat(equation, message_handler);
 
-
   unsigned iteration_counter = 0;
   // in this phase we create SSA from the goto program, possibly skipping over some functions based on information in omega
   bool end = symex.prepare_SSA(assertion);
 
-//  MB: This should be handled elsewhere. Disabling option 'list-templates' until handled properly
-//  //LA: good place?
-//  if(options.get_bool_option("list-templates"))
-//  {
-//    status() << "Listing templates\n" << eom;
-//    list_templates(prop, equation);
-//    return true;
-//  }
-
-  //
   if(!end && options.get_bool_option("claims-opt")){
     smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
       .do_it(equation);
@@ -525,39 +514,39 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
     // produce and store the summaries
     if (!options.get_bool_option("no-itp")) {
 #ifdef PRODUCE_PROOF
-      if (decider->can_interpolate()) {
-        status() << ("Start generating interpolants...") << eom;
-        extract_interpolants_smt(ssaTosmt, equation);
-      }
+        if (decider->can_interpolate()) {
+            status() << ("Start generating interpolants...") << eom;
+            extract_interpolants_smt(ssaTosmt, equation);
+        }
 #else
-      // if PRODUCE_PROOF is not defined, we should always use no-itp
-      assert(false);
+        // if PRODUCE_PROOF is not defined, we should always use no-itp
+        assert(false);
 #endif
     } else {
-      status() << ("Skip generating interpolants") << eom;
+            status() << ("Skip generating interpolants") << eom;
+        }
+        // report results
+        if(omega.get_summaries_count() > 0) {
+            status() << "FUNCTION SUMMARIES (for " << omega.get_summaries_count()
+                       << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
+        }
+        report_success();
     }
-    // report results
-    if(omega.get_summaries_count() > 0) {
-      status() << "FUNCTION SUMMARIES (for " << omega.get_summaries_count()
-               << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
+    else // assertion was falsified
+    {
+        assertion_violated(ssaTosmt, symex.guard_expln);
     }
-    report_success();
-  }
-  else // assertion was falsified
-  {
-    assertion_violated(ssaTosmt, symex.guard_expln);
-  }
-  // FINAL REPORT
+    // FINAL REPORT
 
-  final = current_time();
-  omega.get_unwinding_depth();
+    final = current_time();
+    omega.get_unwinding_depth();
 
-  status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
-  status() << "Total number of steps: " << iteration_counter << eom;
-  if (omega.get_recursive_total() > 0){
-    status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
-  }
-  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
+    status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
+    status() << "Total number of steps: " << iteration_counter << eom;
+    if (omega.get_recursive_total() > 0){
+        status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
+    }
+    status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
  
 #ifdef PRODUCE_PROOF  
     if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
@@ -786,26 +775,6 @@ void summarizing_checkert::assertion_violated (smt_assertion_no_partitiont& prop
 
     decider_smt = nullptr;
 }
-
-// MB: not used at the moment
-//// Only for SMT version
-//void summarizing_checkert::list_templates(prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation)
-//{
-//    summary_storet* summary_store = summarization_context.get_summary_store();
-//    std::vector<summaryt*> templates;
-//    smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-//    equation.fill_function_templates(*decider_smt, templates);
-//    decider_smt = nullptr;
-//    for(unsigned int i = 0; i < templates.size(); ++i) {
-//        summary_store->insert_summary(*templates[i]);
-//    }
-//    // Store the summaries
-//    const std::string& summary_file = options.get_option("save-summaries");
-//    if (!summary_file.empty()) {
-//        summarization_context.serialize_infos_smt(summary_file,
-//            omega.get_summary_info());
-//    }
-//}
 
 #ifdef PRODUCE_PROOF
 /*******************************************************************\

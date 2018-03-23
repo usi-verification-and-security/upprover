@@ -5,6 +5,10 @@ set(HIFROG_SOURCE_FILES
         nopartition/smt_symex_target_equation.h
         nopartition/symex_no_partition.cpp
         nopartition/symex_no_partition.h
+        reports/Reporter.h
+        refinement/Refiner.h
+        refinement/SatisfyingAssignment.h
+        refinement/SatisfyingAssignment.cpp
         solvers/check_opensmt2.h
         solvers/interpolating_solver.h
         solvers/itp.h
@@ -83,6 +87,8 @@ set(HIFROG_SOURCE_FILES
         symex_assertion_sum.h
         theory_refiner.cpp
         theory_refiner.h
+        UserDefinedSummary.cpp
+        UserDefinedSummary.h
         unwind.h
         version.h
         xml_interface.cpp

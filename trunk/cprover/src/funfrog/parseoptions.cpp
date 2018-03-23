@@ -56,6 +56,7 @@
 
 #include "check_claims.h"
 #include "version.h"
+#include "UserDefinedSummary.h"
 #include <limits>
 
 /*******************************************************************
@@ -743,6 +744,32 @@ bool funfrog_parseoptionst::check_function_summarization(
         } else if (bitwidth > 32) {
             cbmc_status_interface("Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf");   
         }  
+    }
+    
+    // FIXME: complete the code inside dump_list_templates
+    // KE: this is the right location, not working yet
+    // templates for user defined summaries
+    if(cmdline.isset("list-templates") && (options.get_option("logic") != "prop"))
+    {
+        cbmc_status_interface("Listing templates\n");
+        
+        // Create the basic formula
+        UserDefinedSummaryt user_defined_summary;
+        std::string logic = std::string(options.get_option("logic"));
+
+        // dump the summary into a file
+        user_defined_summary.dump_list_templates(ns, 
+                goto_functions.function_map[goto_functionst::entry_point()].body,
+                goto_functions,
+                options.get_unsigned_int_option("unwind"),
+                logic,
+                options.get_option("save-summaries"));
+        
+        return 0;
+    } else if (cmdline.isset("list-templates")) {
+        cbmc_error_interface("Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
+                + ". Please re-run with bit-width parameter that is a pow of 2!");
+        exit(0);
     }
 
     // ID_main is the entry point that is now changed to be ID__start
