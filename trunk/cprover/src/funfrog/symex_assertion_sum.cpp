@@ -22,6 +22,7 @@
 #include "summarization_context.h"
 #include "utils/naming_helpers.h"
 #include "partitioning_target_equation.h"
+#include "hifrog.h"
 
 
 #ifdef DEBUG_SSA
@@ -861,11 +862,13 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
   for (const auto & global_id : globals_modified){
     const auto& symbol = get_normal_symbol(global_id);
     auto ssa_expr = get_next_version(symbol);
-    partition_iface.out_arg_symbols.push_back(ssa_expr);
+    symbol_exprt symb_ex(ssa_expr);
+    partition_iface.out_arg_symbols.push_back(symb_ex);
 
 #   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
-    expr_pretty_print(std::cout << "Marking modified global symbol: ", symbol.symbol_expr());
+    expr_pretty_print(std::cout << "Marking modified global symbol: ", symb_ex);
 #   endif
+    assert(is_L2_SSA_symbol(symb_ex)); // KE: avoid creating junk
   }
 }
 
