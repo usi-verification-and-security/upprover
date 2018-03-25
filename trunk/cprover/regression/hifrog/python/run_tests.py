@@ -37,7 +37,7 @@ def run_single(args, shouldSuccess, folderpath, testname):
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
     if not resultLines:
-        error("No verification result!")
+        error("No verification result! --> " + testname)
         return False
     if len(resultLines) > 1:
         error("Got multiple lines with verification result when only one was expected!")
@@ -46,7 +46,7 @@ def run_single(args, shouldSuccess, folderpath, testname):
     expectedResult = "VERIFICATION SUCCESSFUL" if shouldSuccess else "VERIFICATION FAILED"
     testPassed = (resultLine == expectedResult)
     if not testPassed:
-        error('Test result is different than the expected one!')
+        error('Test result is different than the expected one! --> '+ testname)
         return False
     success('Test result as expected!')
     if (not shouldSuccess) or (not computes_summaries):
@@ -66,7 +66,7 @@ def run_single(args, shouldSuccess, folderpath, testname):
     # get the line containing the verification result
     resultLines = [line for line in filteredOutput.splitlines() if "VERIFICATION" in line]
     if not resultLines:
-        error('The rerun did not return verificatiom result!')
+        error('The rerun did not return verification result!'+ testname)
         return False
     if len(resultLines) > 1:
         error('The rerun did not finish in one iteretion!')
@@ -142,6 +142,7 @@ def run_test_case(path_to_exec, testdir, configfile):
         fields = configuration.split(separator)
         if len(fields) < 2:
             error('Configuration not in correct format: ' + configuration)
+            error('bad config file is: '+ configpath +' for -->  '+ testname)  
             continue
         # arguments with which to run hifrog
         args = fields[0].strip().split()
@@ -227,6 +228,6 @@ if __name__ == '__main__':
     pathname = os.path.dirname(sys.argv[0])
     mypath= os.path.abspath(pathname)
     datestring = datetime.strftime(datetime.now(), '%Y.%m.%d_%H:%M')
-    exec_path=' ulimit -Sv 12000000; ulimit -St 100; /usr/bin/time -p ' + exec_path 
+    exec_path=' ulimit -Sv 12000000; ulimit -St 300; /usr/bin/time -p ' + exec_path 
     run(exec_path)
 
