@@ -93,16 +93,6 @@ public:
 
   partitionst& get_partitions() { return partitions; }
 
-//  MB: unused function
-//  bool any_applicable_summaries() {
-//    for (unsigned i = 0; i < partitions.size(); i++) {
-//      if (!partitions[i].applicable_summaries.empty()) {
-//        return true;
-//      }
-//    }
-//    return false;
-//  }
-
   unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
  
 #ifdef DISABLE_OPTIMIZATIONS  
@@ -121,6 +111,8 @@ protected:
   partition_idt current_partition_id;
 
 #ifdef DISABLE_OPTIMIZATIONS  
+  // KE: shall go to the reporter class!
+  // FIXME: move to SSA_Reportert class
   bool dump_SSA_tree;
   std::string ssa_tree_file_name;
   

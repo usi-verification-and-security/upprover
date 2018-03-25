@@ -33,8 +33,11 @@ void UserDefinedSummaryt::dump_list_templates(
     summarization_contextt summarization_context(goto_functions, unwind);
     summarization_context.set_summary_store(new smt_summary_storet());
     subst_scenariot omega = subst_scenariot(summarization_context, goto_program);
-    smt_partitioning_target_equationt equation = 
-            smt_partitioning_target_equationt(ns, summarization_context, true);
+    
+    // FIXME: remove pointer after SSA_Reportert class takes the code from 
+    // partitioning_target_equationt into the reportert code
+    smt_partitioning_target_equationt* equation =
+            new smt_partitioning_target_equationt(ns, summarization_context, true);
     
     /* TODO:
     symex_assertion_sumt symex = symex_assertion_sumt(
@@ -60,7 +63,7 @@ void UserDefinedSummaryt::dump_list_templates(
     summary_storet* summary_store = summarization_context.get_summary_store();
     std::vector<summaryt*> templates;
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-    equation.fill_function_templates(*decider_smt, templates);
+    equation->fill_function_templates(*decider_smt, templates);
     decider_smt = nullptr;
     for(unsigned int i = 0; i < templates.size(); ++i) {
         summary_store->insert_summary(*templates[i]);
