@@ -411,127 +411,152 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
         bool store_summaries_with_assertion)
 {
-  absolute_timet initial, final;
-  initial = current_time();
-  
-  const bool no_slicing_option = options.get_bool_option("no-slicing");
-  const bool no_ce_option = options.get_bool_option("no-error-trace");
-  assert(options.get_option("logic") != "prop");
-  const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
+    absolute_timet initial, final;
+    initial = current_time();
+ 
+    // Init the objects:
+    const bool no_slicing_option = options.get_bool_option("no-slicing");
+    const bool no_ce_option = options.get_bool_option("no-error-trace");
+    assert(options.get_option("logic") != "prop");
+    const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
 
-  // prepare omega
-  omega.set_initial_precision(assertion);
-  const unsigned last_assertion_loc = omega.get_last_assertion_loc();
-  const bool single_assertion_check = omega.is_single_assertion_check();
+    // prepare omega
+    omega.set_initial_precision(assertion);
+    const unsigned last_assertion_loc = omega.get_last_assertion_loc();
+    const bool single_assertion_check = omega.is_single_assertion_check();
 
-  smt_partitioning_target_equationt equation(ns, summarization_context,
-      store_summaries_with_assertion);
+    smt_partitioning_target_equationt equation(ns, summarization_context,
+                                                store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
-  if (options.get_bool_option("dump-SSA-tree")) {
-    equation.set_dump_SSA_tree(true);
-    equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
-  }
+    if (options.get_bool_option("dump-SSA-tree")) {
+        equation.set_dump_SSA_tree(true);
+        equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
+    }
 #endif
   
-  summary_infot& summary_info = omega.get_summary_info();
-  symex_assertion_sumt symex = symex_assertion_sumt(
+    summary_infot& summary_info = omega.get_summary_info();
+    symex_assertion_sumt symex = symex_assertion_sumt(
             summarization_context, summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound,
             options.get_bool_option("partial-loops"));
 
-  smt_refiner_assertion_sumt refiner = smt_refiner_assertion_sumt(
+    smt_refiner_assertion_sumt refiner = smt_refiner_assertion_sumt(
               summarization_context, omega,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
 
-  prepare_smt_formulat ssaTosmt = prepare_smt_formulat(equation, message_handler);
+    prepare_smt_formulat ssaTosmt = prepare_smt_formulat(equation, message_handler);
 
-  unsigned iteration_counter = 0;
-  // in this phase we create SSA from the goto program, possibly skipping over some functions based on information in omega
-  bool end = symex.prepare_SSA(assertion);
+    unsigned iteration_counter = 0;
+    // in this phase we create SSA from the goto program, possibly skipping over some functions based on information in omega
+    bool end = symex.prepare_SSA(assertion);
 
-  if(!end && options.get_bool_option("claims-opt")){
-    smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
-      .do_it(equation);
-    status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
-  }
+    if(!end && options.get_bool_option("claims-opt")){
+        smt_dependency_checkert(ns, 
+                    message_handler, 
+                    goto_program, 
+                    omega, 
+                    options.get_unsigned_int_option("claims-opt"), 
+                    equation.SSA_steps.size())
+                .do_it(equation);
+        status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
+    }
 
-  while (!end) {
-    iteration_counter++;
+    // the checker main loop:
+    unsigned summaries_used = 0;
+    while (!end) {
+        iteration_counter++;
 
-    //Converts SSA to SMT formula
-    ssaTosmt.convert_to_formula( *(dynamic_cast<smtcheck_opensmt2t *> (decider)), *(decider));
+        //Converts SSA to SMT formula
+        ssaTosmt.convert_to_formula( *(dynamic_cast<smtcheck_opensmt2t *> (decider)), *(decider));
 
-    // Decides the equation
-    bool is_sat = ssaTosmt.is_satisfiable(*(dynamic_cast<smtcheck_opensmt2t *> (decider)));
+        // Decides the equation
+        bool is_sat = ssaTosmt.is_satisfiable(*(dynamic_cast<smtcheck_opensmt2t *> (decider)));
+        summaries_used = omega.get_summaries_count();
+        
+        end = !is_sat;
+        if (is_sat) {
+        // check for possible refinement
+    //      MB: TODO: get this schema working
+    //      if(refiner.can_refine())
+    //      {
+    //        refiner.refine();
+    //      }
 
-    end = !is_sat;
-    if (is_sat) {
-      // check for possible refinement
-//      MB: TODO: get this schema working
-//      if(refiner.can_refine())
-//      {
-//        refiner.refine();
-//      }
-      // this refiner can refine if we have summary or havoc representation of a function
-      if (omega.get_summaries_count() > 0 || omega.get_nondets_count() > 0) {
-        // REPORT part
-        {
-          const unsigned int summaries_used = omega.get_summaries_count();
-          if (summaries_used > 0){
-            status() << "FUNCTION SUMMARIES (for " << summaries_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-          }
-          const unsigned int nondet_used = omega.get_nondets_count();
-          if (nondet_used > 0){
-            status() << "HAVOCING (of " << nondet_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-          }
-        } // END of REPORT
+            // this refiner can refine if we have summary or havoc representation of a function
+            // Else quit the loop! (shall move into a function)
+            if (omega.get_summaries_count() == 0 && omega.get_nondets_count() == 0) 
+                // nothing left to refine, cex is real -> break out of the refinement loop
+                break;
+            
+            // Else, report and try to refine!
+            
+            // REPORT part
+            if (summaries_used > 0){
+                status() << "FUNCTION SUMMARIES (for " << summaries_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
+            }
 
-        // figure out functions that can be refined
-        refiner.refine(*(dynamic_cast <smtcheck_opensmt2t *> (decider)), omega.get_summary_info(), equation);
-        bool refined = !refiner.get_refined_functions().empty();
-        if (!refined) {
-          // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
-          break;
+            const unsigned int nondet_used = omega.get_nondets_count();
+            if (nondet_used > 0){
+                status() << "HAVOCING (of " << nondet_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
+            }
+            // END of REPORT
+
+            // figure out functions that can be refined
+            refiner.refine(*(dynamic_cast <smtcheck_opensmt2t *> (decider)), omega.get_summary_info(), equation);
+            bool refined = !refiner.get_refined_functions().empty();
+            if (!refined) {
+                // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
+                break;
+            } else {
+                // REPORT
+                status() << ("Go to next iteration\n") << eom;
+
+                // do the actual refinement of ssa
+                symex.refine_SSA(refiner.get_refined_functions());
+            }
+        }
+    } // end of refinement loop
+  
+  
+    ////////////////// 
+    // Report Part: //
+    //////////////////
+  
+    // the assertion has been successfully verified if we have (end == true)
+    const bool is_verified = end;
+    if (is_verified) {
+        // produce and store the summaries
+        if (!options.get_bool_option("no-itp")) {
+            if (decider->can_interpolate()) {
+            #ifdef PRODUCE_PROOF            
+                status() << ("Start generating interpolants...") << eom;
+                extract_interpolants_smt(ssaTosmt, equation);
+            #else
+                assert(0); // Cannot produce proof in that case!
+            #endif
+            } else {
+                status() << ("Skip generating interpolants") << eom;
+            }
         } else {
-          // REPORT
-          status() << ("Go to next iteration\n") << eom;
-          // do the actual refinement of ssa
-          symex.refine_SSA(refiner.get_refined_functions());
-        }
-      }
-      else {
-        // nothing left to refine, cex is real -> break out of the refinement loop
-        break;
-      }
-    }
-  } // end of refinement loop
-  // the assertion has been successfully verified if we have (end == true)
-  const bool is_verified = end;
-  if (is_verified) {
-    // produce and store the summaries
-    if (!options.get_bool_option("no-itp")) {
-#ifdef PRODUCE_PROOF
-        if (decider->can_interpolate()) {
-            status() << ("Start generating interpolants...") << eom;
-            extract_interpolants_smt(ssaTosmt, equation);
-        }
-#else
-        // if PRODUCE_PROOF is not defined, we should always use no-itp
-        assert(false);
-#endif
-    } else {
             status() << ("Skip generating interpolants") << eom;
+        } // End Report interpolation gen.
+    
+        // Report Summaries use
+        if (summaries_used > 0)
+        {
+            status() << "FUNCTION SUMMARIES (for " << summaries_used
+                     << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
+        } else {
+            status() << ("ASSERTION(S) HOLD(S) WITH FULL INLINE") << eom;
         }
+
         // report results
-        if(omega.get_summaries_count() > 0) {
-            status() << "FUNCTION SUMMARIES (for " << omega.get_summaries_count()
-                       << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
-        }
         report_success();
-    }
+        
+    } // End of UNSAT section
     else // assertion was falsified
     {
         assertion_violated(ssaTosmt, symex.guard_expln);
