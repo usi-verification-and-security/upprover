@@ -54,8 +54,9 @@ class value_set_alloc_adaptort;
   "(inlining-limit):(testclaim):" \
   "(pobj)(eq)(neq)(ineq)" \
   "(no-error-trace)" \
-  "(refine-mode):(init-mode):(logic):(list-templates)"\
-  "(dump-query):(dump-pre-query):(dump-SSA-tree):(dump-query-name):" \
+  "(list-templates)" \
+  "(refine-mode):(init-mode):(logic):" \
+  "(dump-query)(dump-pre-query)(dump-SSA-tree)(dump-query-name):" \
   "(partial-loops)"
 
 class funfrog_parseoptionst:

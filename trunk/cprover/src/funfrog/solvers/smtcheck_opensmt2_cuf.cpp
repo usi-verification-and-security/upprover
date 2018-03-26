@@ -850,12 +850,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     if (_id==ID_code) {
         
         ptl = unsupported2var_bv(expr); // stub for now
-        
-    } else if (_id==ID_address_of) {
-        
-        ptl = unsupported2var_bv(expr); // stub for now
-        // NO support to this type
-            
+             
     } else if (_id==ID_symbol || _id==ID_nondet_symbol) {
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A VAR" << endl;
