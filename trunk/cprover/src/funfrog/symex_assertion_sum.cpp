@@ -447,7 +447,7 @@ void symex_assertion_sumt::symex_step(
                 "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
                 "\n  " << from_expr(ns, "", state.source.pc->guard) <<
                 "\n  " << (is_exit ? "End before in location :" : "Current location ") 
-                       << loc << "(out of " << last_assertion_loc << ")" 
+                       << loc << " (out of " << last_assertion_loc << ")" 
                        << " is in loop? " << state.source.pc->loop_number // Check when this will become active
                        << std::endl;
             #endif 

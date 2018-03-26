@@ -851,6 +851,11 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         
         ptl = unsupported2var_bv(expr); // stub for now
         
+    } else if (_id==ID_address_of) {
+        
+        ptl = unsupported2var_bv(expr); // stub for now
+        // NO support to this type
+            
     } else if (_id==ID_symbol || _id==ID_nondet_symbol) {
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A VAR" << endl;
@@ -1504,7 +1509,12 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         
         l = lunsupported2var(expr);
         // No support to this data type
+
+    } else if (_id==ID_address_of) {
         
+        l = lunsupported2var(expr);
+        // NO support to this type
+            
     } else if (_id==ID_symbol || _id==ID_nondet_symbol) {
 #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;

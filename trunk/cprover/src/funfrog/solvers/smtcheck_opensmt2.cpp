@@ -633,6 +633,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
                 << str <<  " : " << expr.type().id().c_str() << ")\n";
         //std::cout << expr.pretty() << std::endl;
         //return create_new_unsupported_var(expr.type().id().c_str());
+        exit(1);
     }
     assert("Error: using non-SSA symbol in the SMT encoding"
          && (is_L2_symbol || is_nil_or_symex)); // KE: can be new type that we don't take care of yet

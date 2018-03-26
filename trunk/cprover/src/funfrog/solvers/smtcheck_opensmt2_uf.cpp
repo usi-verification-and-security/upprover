@@ -453,6 +453,11 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
         l = lunsupported2var(expr);
         // No support this data type
         
+    } else if (_id==ID_address_of) {
+        
+        l = lunsupported2var(expr);
+        // NO support to this type
+             
     } else if(_id==ID_symbol || _id==ID_nondet_symbol){
 #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;
