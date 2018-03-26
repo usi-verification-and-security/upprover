@@ -401,7 +401,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     
     /* Check which case it is */
     literalt l;
-    if (_id==ID_code) {
+    if (_id==ID_code || expr.type().id()==ID_code) { //Init structs, arrays etc.
         
         l = lunsupported2var(expr);
         // NO support to this type
