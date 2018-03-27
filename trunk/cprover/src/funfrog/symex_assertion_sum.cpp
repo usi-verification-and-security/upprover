@@ -860,6 +860,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
 
 #   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
     expr_pretty_print(std::cout << "Marking modified global symbol: ", ssa_expr);
+    std::cout << '\n';
 #   endif
     assert(is_L2_SSA_symbol(ssa_expr)); // KE: avoid creating junk
   }
@@ -914,6 +915,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
 # if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
   expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
 //      expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
+  std::cout << '\n';
 # endif
   partition_iface.retval_symbol = retval_symbol;
   partition_iface.returns_value = true;
