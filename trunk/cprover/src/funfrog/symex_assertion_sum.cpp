@@ -859,7 +859,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     partition_iface.out_arg_symbols.push_back(ssa_expr);
 
 #   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
-    expr_pretty_print(std::cout << "Marking modified global symbol: ", symbol.symbol_expr());
+    expr_pretty_print(std::cout << "Marking modified global symbol: ", ssa_expr);
 #   endif
     assert(is_L2_SSA_symbol(ssa_expr)); // KE: avoid creating junk
   }
