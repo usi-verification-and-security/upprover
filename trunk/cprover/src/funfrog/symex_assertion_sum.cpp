@@ -798,7 +798,7 @@ void symex_assertion_sumt::mark_argument_symbols(const code_typet & function_typ
     auto current_version = get_current_version(symbol);
     partition_iface.argument_symbols.push_back(current_version);
 
-#   ifdef DEBUG_PARTITIONING
+#   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
     expr_pretty_print(std::cout << "Marking argument symbol: ", current_version, "\n");
     std::cout << '\n';
 #   endif
