@@ -1,4 +1,4 @@
-project(CBMC)
+project(HIFROG)
 
 find_package(BISON)
 find_package(FLEX)
@@ -57,8 +57,10 @@ endmacro(generic_flex)
 macro(generic_includes name)
     target_include_directories(${name}
         PUBLIC
-        ${CBMC_BINARY_DIR}
-        ${CBMC_SOURCE_DIR}
+        #${CBMC_BINARY_DIR}
+        #${CBMC_SOURCE_DIR}
+        ${PROJECT_SOURCE_DIR}
+        ${PROJECT_BINARY_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}
     )
@@ -87,7 +89,7 @@ add_subdirectory(big-int)
 add_subdirectory(cpp)
 add_subdirectory(goto-programs)
 add_subdirectory(goto-symex)
-add_subdirectory(jsil)
+#add_subdirectory(jsil)
 add_subdirectory(json)
 add_subdirectory(langapi)
 add_subdirectory(linking)
@@ -98,13 +100,13 @@ add_subdirectory(util)
 add_subdirectory(xmllang)
 add_subdirectory(java_bytecode)
 add_subdirectory(miniz)
-add_subdirectory(clobber)
+#add_subdirectory(clobber)
 
 add_subdirectory(cbmc)
-add_subdirectory(jbmc)
-add_subdirectory(goto-cc)
+#add_subdirectory(jbmc)
+#add_subdirectory(goto-cc)
 add_subdirectory(goto-instrument)
-add_subdirectory(goto-analyzer)
-add_subdirectory(goto-diff)
+#add_subdirectory(goto-analyzer)
+#add_subdirectory(goto-diff)
 
 add_subdirectory(funfrog)

@@ -64,15 +64,15 @@ list(REMOVE_ITEM sources
 
 add_library(solvers ${sources})
 
-include("${CBMC_SOURCE_DIR}/../cmake/DownloadProject.cmake")
+include("${PROJECT_SOURCE_DIR}/../cmake/DownloadProject.cmake")
 
 if("${sat_impl}" STREQUAL "minisat2")
     message(STATUS "Building solvers with minisat2")
 
     download_project(PROJ minisat2
         URL http://ftp.debian.org/debian/pool/main/m/minisat2/minisat2_2.2.1.orig.tar.gz
-        PATCH_COMMAND patch -p1 -i ${CBMC_SOURCE_DIR}/../scripts/minisat-2.2.1-patch
-        COMMAND cmake -E copy ${CBMC_SOURCE_DIR}/../scripts/minisat2_CMakeLists.txt CMakeLists.txt
+        PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/../scripts/minisat-2.2.1-patch
+        COMMAND cmake -E copy ${PROJECT_SOURCE_DIR}/../scripts/minisat2_CMakeLists.txt CMakeLists.txt
     )
 
     add_subdirectory(${minisat2_SOURCE_DIR} ${minisat2_BINARY_DIR})
@@ -89,8 +89,8 @@ elseif("${sat_impl}" STREQUAL "glucose")
 
     download_project(PROJ glucose
         URL http://www.labri.fr/perso/lsimon/downloads/softwares/glucose-syrup.tgz
-        PATCH_COMMAND patch -p1 -i ${CBMC_SOURCE_DIR}/../scripts/glucose-syrup-patch
-        COMMAND cmake -E copy ${CBMC_SOURCE_DIR}/../scripts/glucose_CMakeLists.txt CMakeLists.txt
+        PATCH_COMMAND patch -p1 -i ${PROJECT_SOURCE_DIR}/../scripts/glucose-syrup-patch
+        COMMAND cmake -E copy ${PROJECT_SOURCE_DIR}/../scripts/glucose_CMakeLists.txt CMakeLists.txt
     )
 
     add_subdirectory(${glucose_SOURCE_DIR} ${glucose_BINARY_DIR})

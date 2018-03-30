@@ -49,24 +49,24 @@ set_target_properties(
     big-int
     cbmc
     cbmc-lib
-    clobber
-    clobber-lib
+    #clobber
+    #clobber-lib
     cpp
 #    driver
-    goto-analyzer
-    goto-analyzer-lib
-    goto-cc
-    goto-cc-lib
-    goto-diff
-    goto-diff-lib
+#goto-analyzer
+#    goto-analyzer-lib
+#    goto-cc
+#    goto-cc-lib
+#    goto-diff
+#    goto-diff-lib
     goto-instrument
     goto-instrument-lib
     goto-programs
     goto-symex
     java_bytecode
-    jbmc
-    jbmc-lib
-    jsil
+#    jbmc
+#    jbmc-lib
+#    jsil
     json
     langapi
     linking

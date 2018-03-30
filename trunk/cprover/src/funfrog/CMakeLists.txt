@@ -104,7 +104,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modul
 find_package(GMP REQUIRED)
 
 add_executable(hifrog ${HIFROG_SOURCE_FILES}
-# $<TARGET_OBJECTS:cprover>
 )
 
 target_include_directories(hifrog PRIVATE ${PROJECT_SOURCE_DIR})
@@ -125,10 +124,13 @@ target_link_libraries(hifrog -lopensmt2 ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
     )
 
 target_link_libraries(hifrog
-    cbmc-lib
-    #analyses
-    #goto-symex
-    #goto-programs
+    ansi-c
+    cbmc-lib #this is here only because of no_partition, if that is done in a different way, remove this dependency
+    cpp
+    goto-symex
+    solvers
+    util
+    xml
 )
 
 set_target_properties(hifrog
