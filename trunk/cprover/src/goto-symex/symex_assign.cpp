@@ -6,27 +6,19 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution
+
+#include "goto_symex.h"
+
 #include <util/byte_operators.h>
 #include <util/cprover_prefix.h>
 
 #include <util/c_types.h>
 
-#include "goto_symex.h"
 #include "goto_symex_state.h"
 
 // #define USE_UPDATE
-
-/*******************************************************************\
-
-Function: goto_symext::symex_assign_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_assign_rec(
   statet &state,
@@ -39,18 +31,6 @@ void goto_symext::symex_assign_rec(
 
   symex_assign(state, deref_code);
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_assign
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_assign(
   statet &state,
@@ -79,11 +59,12 @@ void goto_symext::symex_assign(
 
       throw "symex_assign: unexpected function call: "+id2string(identifier);
     }
-    else if(statement==ID_cpp_new ||
-            statement==ID_cpp_new_array)
+    else if(
+      statement == ID_cpp_new || statement == ID_cpp_new_array ||
+      statement == ID_java_new_array_data)
       symex_cpp_new(state, lhs, side_effect_expr);
-    else if(statement==ID_malloc)
-      symex_malloc(state, lhs, side_effect_expr);
+    else if(statement==ID_allocate)
+      symex_allocate(state, lhs, side_effect_expr);
     else if(statement==ID_printf)
       symex_printf(state, lhs, side_effect_expr);
     else if(statement==ID_gcc_builtin_va_arg_next)
@@ -114,18 +95,6 @@ void goto_symext::symex_assign(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_symext::add_to_lhs
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt goto_symext::add_to_lhs(
   const exprt &lhs,
   const exprt &what)
@@ -155,18 +124,6 @@ exprt goto_symext::add_to_lhs(
   *p=tmp_what;
   return new_lhs;
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_assign_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_assign_rec(
   statet &state,
@@ -246,18 +203,6 @@ void goto_symext::symex_assign_rec(
     throw "assignment to `"+lhs.id_string()+"' not handled";
 }
 
-/*******************************************************************\
-
-Function: goto_symext::symex_assign_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_symext::symex_assign_symbol(
   statet &state,
   const ssa_exprt &lhs, // L1
@@ -266,6 +211,17 @@ void goto_symext::symex_assign_symbol(
   guardt &guard,
   assignment_typet assignment_type)
 {
+  // do not assign to L1 objects that have gone out of scope --
+  // pointer dereferencing may yield such objects; parameters do not
+  // have an L2 entry set up beforehand either, so exempt them from
+  // this check (all other L1 objects should have seen a declaration)
+  const symbolt *s;
+  if(!ns.lookup(lhs.get_object_name(), s) &&
+     !s->is_parameter &&
+     !lhs.get_level_1().empty() &&
+     state.level2.current_count(lhs.get_identifier())==0)
+    return;
+
   exprt ssa_rhs=rhs;
 
   // put assignment guard into the rhs
@@ -314,18 +270,6 @@ void goto_symext::symex_assign_symbol(
     assignment_type);
 }
 
-/*******************************************************************\
-
-Function: goto_symext::symex_assign_typecast
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_symext::symex_assign_typecast(
   statet &state,
   const typecast_exprt &lhs,
@@ -346,18 +290,6 @@ void goto_symext::symex_assign_typecast(
   symex_assign_rec(
     state, lhs.op0(), new_full_lhs, rhs_typecasted, guard, assignment_type);
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_assign_array
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_assign_array(
   statet &state,
@@ -414,18 +346,6 @@ void goto_symext::symex_assign_array(
     state, lhs_array, new_full_lhs, new_rhs, guard, assignment_type);
   #endif
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_assign_struct_member
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_assign_struct_member(
   statet &state,
@@ -501,18 +421,6 @@ void goto_symext::symex_assign_struct_member(
   #endif
 }
 
-/*******************************************************************\
-
-Function: goto_symext::symex_assign_if
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_symext::symex_assign_if(
   statet &state,
   const if_exprt &lhs,
@@ -546,18 +454,6 @@ void goto_symext::symex_assign_if(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_symext::symex_assign_byte_extract
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_symext::symex_assign_byte_extract(
   statet &state,
   const byte_extract_exprt &lhs,
@@ -576,7 +472,7 @@ void goto_symext::symex_assign_byte_extract(
   else if(lhs.id()==ID_byte_extract_big_endian)
     new_rhs.id(ID_byte_update_big_endian);
   else
-    assert(false);
+    UNREACHABLE;
 
   new_rhs.copy_to_operands(lhs.op(), lhs.offset(), rhs);
   new_rhs.type()=lhs.op().type();

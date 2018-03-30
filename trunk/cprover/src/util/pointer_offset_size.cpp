@@ -6,21 +6,22 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cassert>
+/// \file
+/// Pointer Logic
+
+#include "pointer_offset_size.h"
 
 #include "c_types.h"
 #include "expr.h"
+#include "invariant.h"
 #include "arith_tools.h"
 #include "std_types.h"
 #include "std_expr.h"
 #include "expr_util.h"
-#include "config.h"
 #include "simplify_expr.h"
 #include "namespace.h"
 #include "symbol.h"
 #include "ssa_expr.h"
-
-#include "pointer_offset_size.h"
 
 member_offset_iterator::member_offset_iterator(
   const struct_typet &_type,
@@ -57,18 +58,6 @@ member_offset_iterator &member_offset_iterator::operator++()
   return *this;
 }
 
-/*******************************************************************\
-
-Function: member_offset
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 mp_integer member_offset(
   const struct_typet &type,
   const irep_idt &member,
@@ -89,18 +78,30 @@ mp_integer member_offset(
   return offsets->second;
 }
 
-/*******************************************************************\
+mp_integer member_offset_bits(
+  const struct_typet &type,
+  const irep_idt &member,
+  const namespacet &ns)
+{
+  mp_integer offset=0;
+  const struct_typet::componentst &components=type.components();
 
-Function: pointer_offset_size
+  for(const auto &comp : components)
+  {
+    if(comp.get_name()==member)
+      break;
 
-  Inputs:
+    mp_integer member_bits=pointer_offset_bits(comp.type(), ns);
+    if(member_bits==-1)
+      return member_bits;
 
- Outputs:
+    offset+=member_bits;
+  }
 
- Purpose:
+  return offset;
+}
 
-\*******************************************************************/
-
+/// Compute the size of a type in bytes, rounding up to full bytes
 mp_integer pointer_offset_size(
   const typet &type,
   const namespacet &ns)
@@ -108,20 +109,8 @@ mp_integer pointer_offset_size(
   mp_integer bits=pointer_offset_bits(type, ns);
   if(bits==-1)
     return -1;
-  return bits/8+(((bits%8)==0)?0:1);
+  return (bits+7)/8;
 }
-
-/*******************************************************************\
-
-Function: pointer_offset_bits
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 mp_integer pointer_offset_bits(
   const typet &type,
@@ -221,13 +210,10 @@ mp_integer pointer_offset_bits(
           type.id()==ID_fixedbv ||
           type.id()==ID_floatbv ||
           type.id()==ID_bv ||
-          type.id()==ID_c_bool)
+          type.id()==ID_c_bool ||
+          type.id()==ID_c_bit_field)
   {
     return to_bitvector_type(type).get_width();
-  }
-  else if(type.id()==ID_c_bit_field)
-  {
-    return to_c_bit_field_type(type).get_width();
   }
   else if(type.id()==ID_c_enum)
   {
@@ -243,7 +229,11 @@ mp_integer pointer_offset_bits(
   }
   else if(type.id()==ID_pointer)
   {
-    return config.ansi_c.pointer_width;
+    // the following is an MS extension
+    if(type.get_bool(ID_C_ptr32))
+      return 32;
+
+    return to_bitvector_type(type).get_width();
   }
   else if(type.id()==ID_symbol)
   {
@@ -258,20 +248,8 @@ mp_integer pointer_offset_bits(
     return 32;
   }
   else
-    return mp_integer(-1);
+    return -1;
 }
-
-/*******************************************************************\
-
-Function: member_offset_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt member_offset_expr(
   const member_exprt &member_expr,
@@ -287,18 +265,6 @@ exprt member_offset_expr(
   else
     return nil_exprt();
 }
-
-/*******************************************************************\
-
-Function: member_offset_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt member_offset_expr(
   const struct_typet &type,
@@ -340,18 +306,6 @@ exprt member_offset_expr(
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: size_of_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt size_of_expr(
   const typet &type,
@@ -454,7 +408,8 @@ exprt size_of_expr(
     const union_typet::componentst &components=
       union_type.components();
 
-    mp_integer result=0;
+    mp_integer max_bytes=0;
+    exprt result=from_integer(0, size_type());
 
     // compute max
 
@@ -464,35 +419,52 @@ exprt size_of_expr(
         it++)
     {
       const typet &subtype=it->type();
-      mp_integer sub_size;
+      exprt sub_size;
 
-      if(subtype.id()==ID_c_bit_field)
+      mp_integer sub_bits=pointer_offset_bits(subtype, ns);
+
+      if(sub_bits==-1)
       {
-        std::size_t bits=to_c_bit_field_type(subtype).get_width();
-        sub_size=bits/8;
-        if((bits%8)!=0)
-          ++sub_size;
+        max_bytes=-1;
+
+        sub_size=size_of_expr(subtype, ns);
+        if(sub_size.is_nil())
+          return nil_exprt();
       }
       else
-        sub_size=pointer_offset_size(subtype, ns);
-
-      if(sub_size==-1)
       {
-        result=-1;
-        break;
+        mp_integer sub_bytes=(sub_bits+7)/8;
+
+        if(max_bytes>=0)
+        {
+          if(max_bytes<sub_bytes)
+          {
+            max_bytes=sub_bytes;
+            result=from_integer(sub_bytes, size_type());
+          }
+
+          continue;
+        }
+
+        sub_size=from_integer(sub_bytes, size_type());
       }
-      if(sub_size>result)
-        result=sub_size;
+
+      result=if_exprt(
+        binary_relation_exprt(result, ID_lt, sub_size),
+        sub_size, result);
+
+      simplify(result, ns);
     }
 
-    return from_integer(result, size_type());
+    return result;
   }
   else if(type.id()==ID_signedbv ||
           type.id()==ID_unsignedbv ||
           type.id()==ID_fixedbv ||
           type.id()==ID_floatbv ||
           type.id()==ID_bv ||
-          type.id()==ID_c_bool)
+          type.id()==ID_c_bool ||
+          type.id()==ID_c_bit_field)
   {
     std::size_t width=to_bitvector_type(type).get_width();
     std::size_t bytes=width/8;
@@ -518,7 +490,11 @@ exprt size_of_expr(
   }
   else if(type.id()==ID_pointer)
   {
-    std::size_t width=config.ansi_c.pointer_width;
+    // the following is an MS extension
+    if(type.get_bool(ID_C_ptr32))
+      return from_integer(4, size_type());
+
+    std::size_t width=to_bitvector_type(type).get_width();
     std::size_t bytes=width/8;
     if(bytes*8!=width)
       bytes++;
@@ -540,18 +516,6 @@ exprt size_of_expr(
     return nil_exprt();
 }
 
-/*******************************************************************\
-
-Function: compute_pointer_offset
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 mp_integer compute_pointer_offset(
   const exprt &expr,
   const namespacet &ns)
@@ -566,12 +530,13 @@ mp_integer compute_pointer_offset(
   }
   else if(expr.id()==ID_index)
   {
-    assert(expr.operands().size()==2);
+    const index_exprt &index_expr=to_index_expr(expr);
+    const typet &array_type=ns.follow(index_expr.array().type());
+    DATA_INVARIANT(
+      array_type.id()==ID_array,
+      "index into array expected, found "+array_type.id_string());
 
-    const typet &array_type=ns.follow(expr.op0().type());
-    assert(array_type.id()==ID_array);
-
-    mp_integer o=compute_pointer_offset(expr.op0(), ns);
+    mp_integer o=compute_pointer_offset(index_expr.array(), ns);
 
     if(o!=-1)
     {
@@ -580,7 +545,7 @@ mp_integer compute_pointer_offset(
 
       mp_integer i;
 
-      if(sub_size>0 && !to_integer(expr.op1(), i))
+      if(sub_size>0 && !to_integer(index_expr.index(), i))
         return o+i*sub_size;
     }
 
@@ -588,13 +553,11 @@ mp_integer compute_pointer_offset(
   }
   else if(expr.id()==ID_member)
   {
-    assert(expr.operands().size()==1);
-    const typet &type=ns.follow(expr.op0().type());
+    const member_exprt &member_expr=to_member_expr(expr);
+    const exprt &op=member_expr.struct_op();
+    const struct_union_typet &type=to_struct_union_type(ns.follow(op.type()));
 
-    assert(type.id()==ID_struct ||
-           type.id()==ID_union);
-
-    mp_integer o=compute_pointer_offset(expr.op0(), ns);
+    mp_integer o=compute_pointer_offset(op, ns);
 
     if(o!=-1)
     {
@@ -602,7 +565,7 @@ mp_integer compute_pointer_offset(
         return o;
 
       return o+member_offset(
-        to_struct_type(type), expr.get(ID_component_name), ns);
+        to_struct_type(type), member_expr.get_component_name(), ns);
     }
   }
   else if(expr.id()==ID_string_constant)
@@ -610,18 +573,6 @@ mp_integer compute_pointer_offset(
 
   return -1; // don't know
 }
-
-/*******************************************************************\
-
-Function: build_sizeof_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt build_sizeof_expr(
   const constant_exprt &expr,
@@ -641,8 +592,10 @@ exprt build_sizeof_expr(
      (type_size==0 && val>0))
     return nil_exprt();
 
-  assert(address_bits(val+1)<=config.ansi_c.pointer_width);
   const typet t(size_type());
+  DATA_INVARIANT(
+    address_bits(val+1)<=pointer_offset_bits(t, ns),
+    "sizeof value does not fit size_type");
 
   mp_integer remainder=0;
   if(type_size!=0)

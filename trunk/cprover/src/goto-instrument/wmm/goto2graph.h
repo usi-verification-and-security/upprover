@@ -8,6 +8,9 @@ Date: 2012
 
 \*******************************************************************/
 
+/// \file
+/// Instrumenter
+
 #ifndef CPROVER_GOTO_INSTRUMENT_WMM_GOTO2GRAPH_H
 #define CPROVER_GOTO_INSTRUMENT_WMM_GOTO2GRAPH_H
 
@@ -17,13 +20,12 @@ Date: 2012
 #include <util/namespace.h>
 #include <util/message.h>
 
-#include <goto-programs/goto_program.h>
+#include <goto-programs/goto_model.h>
 
 #include "event_graph.h"
 #include "wmm.h"
 
-class symbol_tablet;
-class goto_functionst;
+class goto_modelt;
 class value_setst;
 class local_may_aliast;
 
@@ -249,24 +251,24 @@ protected:
           function, empty_in, end_out);
         leave_function(function);
       }
-      catch(std::string s)
+      catch(const std::string &s)
       {
         instrumenter.message.warning() << s << messaget::eom;
       }
     }
 
-    // TODO: move the visitor outside, and inherit
+    /// TODO: move the visitor outside, and inherit
     virtual void visit_cfg_function(
-      /* value_sets and options */
+      /// value_sets and options
       value_setst &value_sets,
       memory_modelt model,
       bool no_dependencies,
       loop_strategyt duplicate_body,
-      /* functino to analyse */
+      /// function to analyse
       const irep_idt &function,
-      /* incoming edges */
+      /// incoming edges
       const std::set<nodet> &initial_vertex,
-      /* outcoming edges */
+      /// outcoming edges
       std::set<nodet> &ending_vertex);
 
     bool inline local(const irep_idt &i);
@@ -325,11 +327,17 @@ public:
   std::multimap<irep_idt, source_locationt> id2loc;
   std::multimap<irep_idt, source_locationt> id2cycloc;
 
-  instrumentert(symbol_tablet &_symbol_table, goto_functionst &_goto_f,
-    messaget &_message)
-    :ns(_symbol_table), goto_functions(_goto_f), render_po_aligned(true),
-      render_by_file(false), render_by_function(false), message(_message),
-      egraph(_message)
+  instrumentert(
+    goto_modelt &_goto_model,
+    messaget &_message):
+    ns(_goto_model.symbol_table),
+    goto_functions(_goto_model.goto_functions),
+    render_po_aligned(true),
+    render_by_file(false),
+    render_by_function(false),
+    message(_message),
+    egraph(_message),
+    num_sccs(0)
   {
   }
 

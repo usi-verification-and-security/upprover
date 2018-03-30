@@ -21,6 +21,14 @@ ifneq ($(MINISAT2),)
   CP_CXXFLAGS += -DHAVE_MINISAT2 -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 endif
 
+ifneq ($(IPASIR),)
+  IPASIR_SRC=sat/satcheck_ipasir.cpp
+  IPASIR_INCLUDE=-I $(IPASIR)
+  IPASIR_LIB=$(IPASIR)/ipasir.a
+  CP_CXXFLAGS += -DHAVE_IPASIR -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
+  override CXXFLAGS := $(filter-out -pedantic, $(CXXFLAGS))
+endif
+
 ifneq ($(GLUCOSE),)
   GLUCOSE_SRC=sat/satcheck_glucose.cpp
   GLUCOSE_INCLUDE=-I $(GLUCOSE)
@@ -69,17 +77,26 @@ ifneq ($(LINGELING),)
   CP_CXXFLAGS += -DHAVE_LINGELING
 endif
 
+ifneq ($(LIMMAT),)
+  LIMMAT_SRC=sat/satcheck_limmat.cpp
+  LIMMAT_INCLUDE=-I $(LIMMAT)
+  LIMMAT_LIB=$(LIMMAT)/liblimmat$(LIBEXT)
+  CP_CXXFLAGS += -DHAVE_LIMMAT
+endif
+
 SRC = $(BOOLEFORCE_SRC) \
       $(CHAFF_SRC) \
       $(CUDD_SRC) \
       $(GLUCOSE_SRC) \
       $(LINGELING_SRC) \
       $(MINISAT2_SRC) \
+      $(IPASIR_SRC) \
       $(MINISAT_SRC) \
       $(PICOSAT_SRC) \
       $(PRECOSAT_SRC) \
       $(SMVSAT_SRC) \
       $(SQUOLEM2_SRC) \
+      $(LIMMAT_SRC) \
       cvc/cvc_conv.cpp \
       cvc/cvc_dec.cpp \
       flattening/arrays.cpp \
@@ -138,6 +155,7 @@ SRC = $(BOOLEFORCE_SRC) \
       flattening/pointer_logic.cpp \
       floatbv/float_bv.cpp \
       floatbv/float_utils.cpp \
+      floatbv/float_approximation.cpp \
       miniBDD/miniBDD.cpp \
       prop/aig.cpp \
       prop/aig_prop.cpp \
@@ -158,6 +176,20 @@ SRC = $(BOOLEFORCE_SRC) \
       refinement/bv_refinement_loop.cpp \
       refinement/refine_arithmetic.cpp \
       refinement/refine_arrays.cpp \
+      refinement/string_refinement.cpp \
+      refinement/string_constraint_generator_code_points.cpp \
+      refinement/string_constraint_generator_comparison.cpp \
+      refinement/string_constraint_generator_concat.cpp \
+      refinement/string_constraint_generator_constants.cpp \
+      refinement/string_constraint_generator_indexof.cpp \
+      refinement/string_constraint_generator_insert.cpp \
+      refinement/string_constraint_generator_float.cpp \
+      refinement/string_constraint_generator_format.cpp \
+      refinement/string_constraint_generator_main.cpp \
+      refinement/string_constraint_generator_testing.cpp \
+      refinement/string_constraint_generator_transformation.cpp \
+      refinement/string_constraint_generator_valueof.cpp \
+      refinement/string_constraint_instantiation.cpp \
       sat/cnf.cpp \
       sat/cnf_clause_list.cpp \
       sat/dimacs_cnf.cpp \
@@ -175,6 +207,7 @@ SRC = $(BOOLEFORCE_SRC) \
 
 INCLUDES += -I .. \
   $(CHAFF_INCLUDE) $(BOOLEFORCE_INCLUDE) $(MINISAT_INCLUDE) $(MINISAT2_INCLUDE) \
+  $(IPASIR_INCLUDE) \
   $(SMVSAT_INCLUDE) $(SQUOLEM2_INC) $(CUDD_INCLUDE) $(GLUCOSE_INCLUDE) \
 	$(PRECOSAT_INCLUDE) $(PICOSAT_INCLUDE) $(LINGELING_INCLUDE)
 
@@ -199,4 +232,4 @@ endif
 solvers$(LIBEXT): $(OBJ) $(CHAFF_LIB) $(BOOLEFORCE_LIB) $(MINISAT_LIB) \
         $(MINISAT2_LIB) $(SMVSAT_LIB) $(SQUOLEM2_LIB) $(CUDD_LIB) \
 	$(PRECOSAT_LIB) $(PICOSAT_LIB) $(LINGELING_LIB) $(GLUCOSE_LIB)
-	$(LINKLIB)
+	$(LINKLIB) $(LIBSOLVER)

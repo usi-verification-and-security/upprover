@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+/// \file
+/// C++ Language Type Checking
+
 #ifndef CPROVER_CPP_CPP_ID_H
 #define CPROVER_CPP_CPP_ID_H
 
@@ -17,6 +20,7 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include <iosfwd>
 
 #include <util/expr.h>
+#include <util/invariant.h>
 #include <util/std_types.h>
 
 class cpp_scopet;
@@ -78,7 +82,7 @@ public:
 
   cpp_idt &get_parent() const
   {
-    assert(parent!=NULL);
+    PRECONDITION(parent!=nullptr);
     return *parent;
   }
 

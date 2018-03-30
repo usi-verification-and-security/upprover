@@ -8,21 +8,12 @@ Date: March 2013
 
 \*******************************************************************/
 
-#include <util/std_expr.h>
+/// \file
+/// Local variables whose address is taken
 
 #include "dirty.h"
 
-/*******************************************************************\
-
-Function: dirtyt::build
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <util/std_expr.h>
 
 void dirtyt::build(const goto_functiont &goto_function)
 {
@@ -32,18 +23,6 @@ void dirtyt::build(const goto_functiont &goto_function)
     find_dirty(it->guard);
   }
 }
-
-/*******************************************************************\
-
-Function: dirtyt::find_dirty
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void dirtyt::find_dirty(const exprt &expr)
 {
@@ -57,18 +36,6 @@ void dirtyt::find_dirty(const exprt &expr)
   forall_operands(it, expr)
     find_dirty(*it);
 }
-
-/*******************************************************************\
-
-Function: dirtyt::find_dirty_address_of
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void dirtyt::find_dirty_address_of(const exprt &expr)
 {
@@ -99,18 +66,6 @@ void dirtyt::find_dirty_address_of(const exprt &expr)
     find_dirty(to_if_expr(expr).cond());
   }
 }
-
-/*******************************************************************\
-
-Function: dirtyt::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void dirtyt::output(std::ostream &out) const
 {

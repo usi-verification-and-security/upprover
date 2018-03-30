@@ -6,27 +6,19 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/simplify_expr.h>
+/// \file
+/// Invariant Set Domain
 
 #include "invariant_set_domain.h"
 
-/*******************************************************************\
-
-Function: invariant_set_domaint::transform
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <util/simplify_expr.h>
 
 void invariant_set_domaint::transform(
   locationt from_l,
   locationt to_l,
   ai_baset &ai,
-  const namespacet &ns)
+  const namespacet &ns,
+  ai_domain_baset::edge_typet /*edge_type*/)
 {
   switch(from_l->type)
   {

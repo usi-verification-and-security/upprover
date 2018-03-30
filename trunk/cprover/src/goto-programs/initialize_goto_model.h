@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Initialize a Goto Program
+
 #ifndef CPROVER_GOTO_PROGRAMS_INITIALIZE_GOTO_MODEL_H
 #define CPROVER_GOTO_PROGRAMS_INITIALIZE_GOTO_MODEL_H
 
@@ -14,8 +17,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "goto_model.h"
 
-bool initialize_goto_model(
-  goto_modelt &goto_model,
+goto_modelt initialize_goto_model(
   const cmdlinet &cmdline,
   message_handlert &message_handler);
 

@@ -6,25 +6,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// C++ Language Type Checking
+
+#include "cpp_typecheck.h"
+
 #include <util/arith_tools.h>
 
 #include <ansi-c/c_qualifiers.h>
 #include <util/c_types.h>
 
-#include "cpp_typecheck.h"
 #include "cpp_enum_type.h"
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::typecheck_enum_body
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_typecheckt::typecheck_enum_body(symbolt &enum_symbol)
 {
@@ -89,18 +81,6 @@ void cpp_typecheckt::typecheck_enum_body(symbolt &enum_symbol)
   }
 }
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::typecheck_enum_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cpp_typecheckt::typecheck_enum_type(typet &type)
 {
   // first save qualifiers
@@ -141,14 +121,14 @@ void cpp_typecheckt::typecheck_enum_type(typet &type)
 
   // check if we have it
 
-  symbol_tablet::symbolst::iterator previous_symbol=
+  symbol_tablet::symbolst::const_iterator previous_symbol=
     symbol_table.symbols.find(symbol_name);
 
   if(previous_symbol!=symbol_table.symbols.end())
   {
     // we do!
 
-    symbolt &symbol=previous_symbol->second;
+    const symbolt &symbol=previous_symbol->second;
 
     if(has_body)
     {

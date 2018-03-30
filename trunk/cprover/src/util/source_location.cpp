@@ -6,23 +6,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "source_location.h"
+
 #include <ostream>
 
-#include "source_location.h"
 #include "file_util.h"
 
-/*******************************************************************\
-
-Function: source_locationt::as_string
-
-  Inputs: print_cwd, print the absolute path to the file
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
+/// \par parameters: print_cwd, print the absolute path to the file
 std::string source_locationt::as_string(bool print_cwd) const
 {
   std::string dest;
@@ -66,23 +56,20 @@ std::string source_locationt::as_string(bool print_cwd) const
   {
     if(dest!="")
       dest+=' ';
-    dest+="bytecode_index "+id2string(bytecode);
+    dest+="bytecode-index "+id2string(bytecode);
   }
 
   return dest;
 }
 
-/*******************************************************************\
-
-Function: operator<<
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+void source_locationt::merge(const source_locationt &from)
+{
+  forall_named_irep(it, from.get_named_sub())
+  {
+    if(get(it->first).empty())
+      set(it->first, it->second);
+  }
+}
 
 std::ostream &operator << (
   std::ostream &out,

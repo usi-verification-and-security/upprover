@@ -6,26 +6,17 @@ Author: Daniel Kroening
 
 \*******************************************************************/
 
+/// \file
+/// Remove symbols that are internal only
+
+#include "remove_internal_symbols.h"
+
 #include <util/symbol_table.h>
 #include <util/namespace.h>
 #include <util/find_symbols.h>
 #include <util/std_types.h>
 #include <util/cprover_prefix.h>
 #include <util/config.h>
-
-#include "remove_internal_symbols.h"
-
-/*******************************************************************\
-
-Function: get_symbols_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void get_symbols_rec(
   const namespacet &ns,
@@ -70,25 +61,16 @@ void get_symbols_rec(
   }
 }
 
-/*******************************************************************\
-
-Function: remove_internal_symbols
-
-  Inputs: symbol table
-
- Outputs: symbol table, with internal symbols removed
-
- Purpose: A symbol is EXPORTED if it is a
-          * non-static function with body that is not extern inline
-          * symbol used in an EXPORTED symbol
-          * type used in an EXPORTED symbol
-
-          Read
-          http://gcc.gnu.org/ml/gcc/2006-11/msg00006.html
-          on "extern inline"
-
-\*******************************************************************/
-
+/// Removes internal symbols from a symbol table
+/// A symbol is EXPORTED if it is a
+/// * non-static function with body that is not extern inline
+/// * symbol used in an EXPORTED symbol
+/// * type used in an EXPORTED symbol
+///
+///          Read
+///          http://gcc.gnu.org/ml/gcc/2006-11/msg00006.html
+///          on "extern inline"
+/// \param symbol_table: symbol table to clean up
 void remove_internal_symbols(
   symbol_tablet &symbol_table)
 {
@@ -167,16 +149,15 @@ void remove_internal_symbols(
   }
 
   // remove all that are _not_ exported!
-  for(symbol_tablet::symbolst::iterator
+  for(symbol_tablet::symbolst::const_iterator
       it=symbol_table.symbols.begin();
       it!=symbol_table.symbols.end();
       ) // no it++
   {
     if(exported.find(it->first)==exported.end())
     {
-      symbol_tablet::symbolst::iterator next=it;
-      ++next;
-      symbol_table.symbols.erase(it);
+      symbol_tablet::symbolst::const_iterator next=std::next(it);
+      symbol_table.erase(it);
       it=next;
     }
     else

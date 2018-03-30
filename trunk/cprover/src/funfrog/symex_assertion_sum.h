@@ -346,7 +346,11 @@ private:
 
   // this should be used only for symbols that we have created with create_new_artificial_symbol method
   const symbolt & get_artificial_symbol(const irep_idt & id){
-    return new_symbol_table.lookup(id);
+    const auto * symbol_p = new_symbol_table.lookup(id);
+    if(symbol_p){
+      return *symbol_p;
+    }
+    throw std::logic_error(std::string("Symbol for identifier ") + id.c_str() + " was not found!");
   }
 
   const symbolt & get_normal_symbol(const irep_idt & id) const {

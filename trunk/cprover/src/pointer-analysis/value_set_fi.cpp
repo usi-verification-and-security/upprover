@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Value Set (Flow Insensitive, Sharing)
+
+#include "value_set_fi.h"
+
 #include <cassert>
 #include <ostream>
 
@@ -20,9 +25,8 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <langapi/language_util.h>
 #include <util/c_types.h>
 
-#include "value_set_fi.h"
+const value_set_fit::object_map_dt value_set_fit::object_map_dt::blank{};
 
-const value_set_fit::object_map_dt value_set_fit::object_map_dt::blank;
 object_numberingt value_set_fit::object_numbering;
 hash_numbering<irep_idt, irep_id_hash> value_set_fit::function_numbering;
 
@@ -37,18 +41,6 @@ static const char *alloc_adapter_prefix="alloc_adaptor::";
   for(object_map_dt::iterator (it) = (map).begin(); \
   (it)!=(map).end(); \
   (it)++)
-
-/*******************************************************************\
-
-Function: value_set_fit::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fit::output(
   const namespacet &ns,
@@ -110,8 +102,8 @@ void value_set_fit::output(
       {
         result="<"+from_expr(ns, identifier, o)+", ";
 
-        if(o_it->second.offset_is_set)
-          result+=integer2string(o_it->second.offset)+"";
+        if(o_it->second)
+          result += integer2string(*o_it->second) + "";
         else
           result+='*';
 
@@ -144,18 +136,6 @@ void value_set_fit::output(
   }
 }
 
-/*******************************************************************\
-
-Function: value_set_fit::flatten
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fit::flatten(
   const entryt &e,
   object_mapt &dest) const
@@ -171,18 +151,6 @@ void value_set_fit::flatten(
   std::cout << "FLATTEN: Done.\n";
   #endif
 }
-
-/*******************************************************************\
-
-Function: value_set_fit::flatten_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fit::flatten_rec(
   const entryt &e,
@@ -229,47 +197,34 @@ void value_set_fit::flatten_rec(
             t_it!=temp.write().end();
             t_it++)
         {
-          if(t_it->second.offset_is_set &&
-             it->second.offset_is_set)
+          if(t_it->second && it->second)
           {
-            t_it->second.offset += it->second.offset;
+            *t_it->second += *it->second;
           }
           else
-            t_it->second.offset_is_set=false;
+            t_it->second.reset();
         }
 
         forall_objects(oit, temp.read())
-          insert(dest, oit);
+          insert(dest, *oit);
       }
     }
     else
-      insert(dest, it);
+      insert(dest, *it);
   }
 
   if(generalize_index) // this means we had recursive symbols in there
   {
     Forall_objects(it, dest.write())
-      it->second.offset_is_set = false;
+      it->second.reset();
   }
 
   seen.erase(identifier + e.suffix);
 }
 
-/*******************************************************************\
-
-Function: value_set_fit::to_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-exprt value_set_fit::to_expr(object_map_dt::const_iterator it) const
+exprt value_set_fit::to_expr(const object_map_dt::value_type &it) const
 {
-  const exprt &object=object_numbering[it->first];
+  const exprt &object=object_numbering[it.first];
 
   if(object.id()==ID_invalid ||
      object.id()==ID_unknown)
@@ -279,29 +234,17 @@ exprt value_set_fit::to_expr(object_map_dt::const_iterator it) const
 
   od.object()=object;
 
-  if(it->second.offset_is_set)
-    od.offset()=from_integer(it->second.offset, index_type());
+  if(it.second)
+    od.offset() = from_integer(*it.second, index_type());
 
   od.type()=od.object().type();
 
   return od;
 }
 
-/*******************************************************************\
-
-Function: value_set_fit::make_union
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool value_set_fit::make_union(const value_set_fit::valuest &new_values)
 {
-  assert(0);
+  UNREACHABLE;
   bool result=false;
 
   for(valuest::const_iterator
@@ -338,42 +281,18 @@ bool value_set_fit::make_union(const value_set_fit::valuest &new_values)
   return result;
 }
 
-/*******************************************************************\
-
-Function: value_set_fit::make_union
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool value_set_fit::make_union(object_mapt &dest, const object_mapt &src) const
 {
   bool result=false;
 
   forall_objects(it, src.read())
   {
-    if(insert(dest, it))
+    if(insert(dest, *it))
       result=true;
   }
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: value_set_fit::get_value_set
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fit::get_value_set(
   const exprt &expr,
@@ -404,13 +323,12 @@ void value_set_fit::get_value_set(
             t_it!=temp.write().end();
             t_it++)
         {
-          if(t_it->second.offset_is_set &&
-             it->second.offset_is_set)
+          if(t_it->second && it->second)
           {
-            t_it->second.offset += it->second.offset;
+            *t_it->second += *it->second;
           }
           else
-            t_it->second.offset_is_set=false;
+            t_it->second.reset();
 
           flat_map.write()[t_it->first]=t_it->second;
         }
@@ -421,7 +339,7 @@ void value_set_fit::get_value_set(
   }
 
   forall_objects(fit, flat_map.read())
-    value_set.push_back(to_expr(fit));
+    value_set.push_back(to_expr(*fit));
 
   #if 0
   // Sanity check!
@@ -437,18 +355,6 @@ void value_set_fit::get_value_set(
   #endif
 }
 
-/*******************************************************************\
-
-Function: value_set_fit::get_value_set
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fit::get_value_set(
   const exprt &expr,
   object_mapt &dest,
@@ -460,18 +366,6 @@ void value_set_fit::get_value_set(
   gvs_recursion_sett recset;
   get_value_set_rec(tmp, dest, "", tmp.type(), ns, recset);
 }
-
-/*******************************************************************\
-
-Function: value_set_fit::get_value_set_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fit::get_value_set_rec(
   const exprt &expr,
@@ -516,9 +410,10 @@ void value_set_fit::get_value_set_rec(
 
     const typet &type=ns.follow(expr.op0().type());
 
-    assert(type.id()==ID_array ||
-           type.id()==ID_incomplete_array ||
-           type.id()=="#REF#");
+    DATA_INVARIANT(type.id()==ID_array ||
+                   type.id()==ID_incomplete_array ||
+                   type.id()=="#REF#",
+                   "operand 0 of index expression must be an array");
 
     get_value_set_rec(expr.op0(), dest, "[]"+suffix,
                       original_type, ns, recursion_set);
@@ -533,10 +428,11 @@ void value_set_fit::get_value_set_rec(
     {
       const typet &type=ns.follow(expr.op0().type());
 
-      assert(type.id()==ID_struct ||
-             type.id()==ID_union ||
-             type.id()==ID_incomplete_struct ||
-             type.id()==ID_incomplete_union);
+      DATA_INVARIANT(type.id()==ID_struct ||
+                     type.id()==ID_union ||
+                     type.id()==ID_incomplete_struct ||
+                     type.id()==ID_incomplete_union,
+                     "operand 0 of member expression must be struct or union");
 
       const std::string &component_name=
         expr.get_string(ID_component_name);
@@ -655,18 +551,18 @@ void value_set_fit::get_value_set_rec(
     if(expr.type().id()==ID_pointer)
     {
       // find the pointer operand
-      const exprt *ptr_operand=NULL;
+      const exprt *ptr_operand=nullptr;
 
       forall_operands(it, expr)
         if(it->type().id()==ID_pointer)
         {
-          if(ptr_operand==NULL)
+          if(ptr_operand==nullptr)
             ptr_operand=&(*it);
           else
             throw "more than one pointer operand in pointer arithmetic";
         }
 
-      if(ptr_operand==NULL)
+      if(ptr_operand==nullptr)
         throw "pointer type sum expected to have pointer operand";
 
       object_mapt pointer_expr_set;
@@ -675,32 +571,31 @@ void value_set_fit::get_value_set_rec(
 
       forall_objects(it, pointer_expr_set.read())
       {
-        objectt object=it->second;
+        offsett offset = it->second;
 
-        if(object.offset_is_zero() &&
-           expr.operands().size()==2)
+        if(offset_is_zero(offset) && expr.operands().size() == 2)
         {
           if(expr.op0().type().id()!=ID_pointer)
           {
             mp_integer i;
             if(to_integer(expr.op0(), i))
-              object.offset_is_set=false;
+              offset.reset();
             else
-              object.offset=(expr.id()==ID_plus)? i : -i;
+              *offset = (expr.id() == ID_plus) ? i : -i;
           }
           else
           {
             mp_integer i;
             if(to_integer(expr.op1(), i))
-              object.offset_is_set=false;
+              offset.reset();
             else
-              object.offset=(expr.id()==ID_plus)? i : -i;
+              *offset = (expr.id() == ID_plus) ? i : -i;
           }
         }
         else
-          object.offset_is_set=false;
+          offset.reset();
 
-        insert(dest, it->first, object);
+        insert(dest, it->first, offset);
       }
 
       return;
@@ -715,7 +610,7 @@ void value_set_fit::get_value_set_rec(
       // these should be gone
       throw "unexpected function_call sideeffect";
     }
-    else if(statement==ID_malloc)
+    else if(statement==ID_allocate)
     {
       if(expr.type().id()!=ID_pointer)
         throw "malloc expected to return pointer type";
@@ -763,7 +658,7 @@ void value_set_fit::get_value_set_rec(
   else if(expr.id()==ID_array_of ||
           expr.id()==ID_array)
   {
-    // an array constructur, possibly containing addresses
+    // an array constructor, possibly containing addresses
     forall_operands(it, expr)
       get_value_set_rec(*it, dest, suffix, original_type, ns, recursion_set);
   }
@@ -790,18 +685,6 @@ void value_set_fit::get_value_set_rec(
   insert(dest, exprt(ID_unknown, original_type));
 }
 
-/*******************************************************************\
-
-Function: value_set_fit::dereference_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fit::dereference_rec(
   const exprt &src,
   exprt &dest) const
@@ -819,18 +702,6 @@ void value_set_fit::dereference_rec(
   else
     dest=src;
 }
-
-/*******************************************************************\
-
-Function: value_set_fit::get_reference_set
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fit::get_reference_set(
   const exprt &expr,
@@ -863,35 +734,22 @@ void value_set_fit::get_reference_set(
             t_it!=omt.write().end();
             t_it++)
         {
-          if(t_it->second.offset_is_set &&
-             it->second.offset_is_set)
+          if(t_it->second && it->second)
           {
-            t_it->second.offset += it->second.offset;
+            *t_it->second += *it->second;
           }
           else
-            t_it->second.offset_is_set=false;
+            t_it->second.reset();
         }
 
         forall_objects(it, omt.read())
-          dest.insert(to_expr(it));
+          dest.insert(to_expr(*it));
       }
     }
     else
-      dest.insert(to_expr(it));
+      dest.insert(to_expr(*it));
   }
 }
-
-/*******************************************************************\
-
-Function: value_set_fit::get_reference_set_sharing
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fit::get_reference_set_sharing(
   const exprt &expr,
@@ -902,20 +760,8 @@ void value_set_fit::get_reference_set_sharing(
   get_reference_set_sharing(expr, object_map, ns);
 
   forall_objects(it, object_map.read())
-    dest.insert(to_expr(it));
+    dest.insert(to_expr(*it));
 }
-
-/*******************************************************************\
-
-Function: value_set_fit::get_reference_set_sharing_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fit::get_reference_set_sharing_rec(
   const exprt &expr,
@@ -976,23 +822,22 @@ void value_set_fit::get_reference_set_sharing_rec(
               t_it!=t2.write().end();
               t_it++)
           {
-            if(t_it->second.offset_is_set &&
-               it->second.offset_is_set)
+            if(t_it->second && it->second)
             {
-              t_it->second.offset += it->second.offset;
+              *t_it->second += *it->second;
             }
             else
-              t_it->second.offset_is_set=false;
+              t_it->second.reset();
           }
 
           forall_objects(it2, t2.read())
-            insert(dest, it2);
+            insert(dest, *it2);
         }
         else
           insert(dest, exprt(ID_unknown, obj.type().subtype()));
       }
       else
-        insert(dest, it);
+        insert(dest, *it);
     }
 
     #if 0
@@ -1039,17 +884,16 @@ void value_set_fit::get_reference_set_sharing_rec(
            ns.follow(object.type())!=array_type)
           index_expr.make_typecast(array.type());
 
-        objectt o=a_it->second;
+        offsett o = a_it->second;
         mp_integer i;
 
         if(offset.is_zero())
         {
         }
-        else if(!to_integer(offset, i) &&
-                o.offset_is_zero())
-          o.offset=i;
+        else if(!to_integer(offset, i) && offset_is_zero(o))
+          *o = i;
         else
-          o.offset_is_set=false;
+          o.reset();
 
         insert(dest, index_expr, o);
       }
@@ -1086,7 +930,7 @@ void value_set_fit::get_reference_set_sharing_rec(
       }
       else
       {
-        objectt o=it->second;
+        offsett o = it->second;
 
         exprt member_expr(ID_member, expr.type());
         member_expr.copy_to_operands(object);
@@ -1115,18 +959,6 @@ void value_set_fit::get_reference_set_sharing_rec(
   insert(dest, exprt(ID_unknown, expr.type()));
 }
 
-/*******************************************************************\
-
-Function: value_set_fit::assign
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fit::assign(
   const exprt &lhs,
   const exprt &rhs,
@@ -1154,7 +986,7 @@ void value_set_fit::assign(
   {
     const struct_union_typet &struct_type=to_struct_union_type(type);
 
-    unsigned no=0;
+    std::size_t no=0;
 
     for(struct_typet::componentst::const_iterator
         c_it=struct_type.components().begin();
@@ -1290,18 +1122,6 @@ void value_set_fit::assign(
   }
 }
 
-/*******************************************************************\
-
-Function: value_set_fit::do_free
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fit::do_free(
   const exprt &op,
   const namespacet &ns)
@@ -1359,11 +1179,11 @@ void value_set_fit::do_free(
           to_dynamic_object_expr(object);
 
         if(to_mark.count(dynamic_object.get_instance())==0)
-          set(new_object_map, o_it);
+          set(new_object_map, *o_it);
         else
         {
           // adjust
-          objectt o=o_it->second;
+          offsett o = o_it->second;
           exprt tmp(object);
           to_dynamic_object_expr(tmp).valid()=exprt(ID_unknown);
           insert(new_object_map, tmp, o);
@@ -1371,25 +1191,13 @@ void value_set_fit::do_free(
         }
       }
       else
-        set(new_object_map, o_it);
+        set(new_object_map, *o_it);
     }
 
     if(changed)
       v_it->second.object_map=new_object_map;
   }
 }
-
-/*******************************************************************\
-
-Function: value_set_fit::assign_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fit::assign_rec(
   const exprt &lhs,
@@ -1478,9 +1286,10 @@ void value_set_fit::assign_rec(
 
     const typet &type=ns.follow(lhs.op0().type());
 
-    assert(type.id()==ID_array ||
-           type.id()==ID_incomplete_array ||
-           type.id()=="#REF#");
+    DATA_INVARIANT(type.id()==ID_array ||
+                   type.id()==ID_incomplete_array ||
+                   type.id()=="#REF#",
+                   "operand 0 of index expression must be an array");
 
     assign_rec(lhs.op0(), values_rhs, "[]"+suffix, ns, recursion_set);
   }
@@ -1496,10 +1305,11 @@ void value_set_fit::assign_rec(
 
     const typet &type=ns.follow(lhs.op0().type());
 
-    assert(type.id()==ID_struct ||
-           type.id()==ID_union ||
-           type.id()==ID_incomplete_struct ||
-           type.id()==ID_incomplete_union);
+    DATA_INVARIANT(type.id()==ID_struct ||
+                   type.id()==ID_union ||
+                   type.id()==ID_incomplete_struct ||
+                   type.id()==ID_incomplete_union,
+                   "operand 0 of member expression must be struct or union");
 
     assign_rec(lhs.op0(), values_rhs, "."+component_name+suffix,
                ns, recursion_set);
@@ -1541,18 +1351,6 @@ void value_set_fit::assign_rec(
     throw "assign NYI: `"+lhs.id_string()+"'";
 }
 
-/*******************************************************************\
-
-Function: value_set_fit::do_function_call
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fit::do_function_call(
   const irep_idt &function,
   const exprt::operandst &arguments,
@@ -1568,7 +1366,7 @@ void value_set_fit::do_function_call(
   // to avoid overwriting actuals that are needed for recursive
   // calls
 
-  for(unsigned i=0; i<arguments.size(); i++)
+  for(std::size_t i=0; i<arguments.size(); i++)
   {
     const std::string identifier="value_set::" + id2string(function) + "::" +
                                  "argument$"+std::to_string(i);
@@ -1579,7 +1377,7 @@ void value_set_fit::do_function_call(
 
   // now assign to 'actual actuals'
 
-  unsigned i=0;
+  std::size_t i=0;
 
   for(code_typet::parameterst::const_iterator
       it=parameter_types.begin();
@@ -1602,18 +1400,6 @@ void value_set_fit::do_function_call(
   }
 }
 
-/*******************************************************************\
-
-Function: value_set_fit::do_end_function
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void value_set_fit::do_end_function(
   const exprt &lhs,
   const namespacet &ns)
@@ -1626,18 +1412,6 @@ void value_set_fit::do_end_function(
 
   assign(lhs, rhs, ns);
 }
-
-/*******************************************************************\
-
-Function: value_set_fit::apply_code
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void value_set_fit::apply_code(
   const exprt &code,
@@ -1653,7 +1427,7 @@ void value_set_fit::apply_code(
   else if(statement==ID_function_call)
   {
     // shouldn't be here
-    assert(false);
+    UNREACHABLE;
   }
   else if(statement==ID_assign ||
           statement==ID_init)
@@ -1682,7 +1456,7 @@ void value_set_fit::apply_code(
   }
   else if(statement==ID_expression)
   {
-    // can be ignored, we don't expect sideeffects here
+    // can be ignored, we don't expect side effects here
   }
   else if(statement==ID_cpp_delete ||
           statement==ID_cpp_delete_array)

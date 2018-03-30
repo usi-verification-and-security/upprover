@@ -6,24 +6,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution of ANSI-C
+
 #ifndef CPROVER_CBMC_ALL_PROPERTIES_CLASS_H
 #define CPROVER_CBMC_ALL_PROPERTIES_CLASS_H
 
 #include <solvers/prop/cover_goals.h>
 
 #include "bmc.h"
-
-/*******************************************************************\
-
-   Class: bmc_all_propertiest
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 class bmc_all_propertiest:
   public cover_goalst::observert,
@@ -65,7 +56,7 @@ public:
       }
 
       // make some poor compilers happy
-      assert(false);
+      UNREACHABLE;
       return "";
     }
 

@@ -6,28 +6,19 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cassert>
-
-#include <util/c_types.h>
-#include <util/namespace.h>
-#include <util/simplify_expr.h>
-#include <util/config.h>
-#include <util/arith_tools.h>
-#include <util/std_types.h>
+/// \file
+/// SpecC Language Conversion
 
 #include "ansi_c_convert_type.h"
 
-/*******************************************************************\
+#include <cassert>
 
-Function: ansi_c_convert_typet::convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <util/c_types.h>
+#include <util/config.h>
+#include <util/namespace.h>
+#include <util/simplify_expr.h>
+#include <util/arith_tools.h>
+#include <util/std_types.h>
 
 void ansi_c_convert_typet::read(const typet &type)
 {
@@ -35,18 +26,6 @@ void ansi_c_convert_typet::read(const typet &type)
   source_location=type.source_location();
   read_rec(type);
 }
-
-/*******************************************************************\
-
-Function: ansi_c_convert_typet::read_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void ansi_c_convert_typet::read_rec(const typet &type)
 {
@@ -237,21 +216,25 @@ void ansi_c_convert_typet::read_rec(const typet &type)
   {
     c_storage_spec.alias=type.subtype().get(ID_value);
   }
+  else if(type.id()==ID_frontend_pointer)
+  {
+    // We turn ID_frontend_pointer to ID_pointer
+    // Pointers have a width, much like integers,
+    // which is added here.
+    pointer_typet tmp(type.subtype(), config.ansi_c.pointer_width);
+    tmp.add_source_location()=type.source_location();
+    const irep_idt typedef_identifier=type.get(ID_C_typedef);
+    if(!typedef_identifier.empty())
+      tmp.set(ID_C_typedef, typedef_identifier);
+    other.push_back(tmp);
+  }
+  else if(type.id()==ID_pointer)
+  {
+    UNREACHABLE;
+  }
   else
     other.push_back(type);
 }
-
-/*******************************************************************\
-
-Function: ansi_c_convert_typet::write
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void ansi_c_convert_typet::write(typet &type)
 {
@@ -493,7 +476,7 @@ void ansi_c_convert_typet::write(typet &type)
         else
           type=unsigned_long_long_int_type();
       else
-        assert(false);
+        UNREACHABLE;
     }
     else if(gcc_int128_cnt)
     {

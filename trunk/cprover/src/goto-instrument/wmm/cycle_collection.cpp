@@ -8,22 +8,15 @@ Date: 2012
 
 \*******************************************************************/
 
-#include <util/message.h>
+/// \file
+/// collection of cycles in graph of abstract events
 
 #include "event_graph.h"
 
-/*******************************************************************\
+#include <util/message.h>
 
-Function: event_grapht::graph_explorert::filter_thin_air
-
-  Inputs:
-
- Outputs:
-
- Purpose: after the collection, eliminates the executions forbidden
-          by an indirect thin-air
-
-\*******************************************************************/
+/// after the collection, eliminates the executions forbidden by an indirect
+/// thin-air
 void event_grapht::graph_explorert::filter_thin_air(
   std::set<critical_cyclet> &set_of_cycles)
 {
@@ -32,7 +25,7 @@ void event_grapht::graph_explorert::filter_thin_air(
   {
     std::set<critical_cyclet>::const_iterator next=it;
     ++next;
-    critical_cyclet::const_iterator e_it=it->begin();
+    auto e_it=it->begin();
     /* is there an event in the cycle not in thin-air events? */
     for(; e_it!=it->end(); ++e_it)
       if(thin_air_events.find(*e_it)==thin_air_events.end())
@@ -54,18 +47,7 @@ void event_grapht::graph_explorert::filter_thin_air(
 #endif
 }
 
-/*******************************************************************\
-
-Function: event_grapht::graph_explorert::collect_cycles
-
-  Inputs:
-
- Outputs:
-
- Purpose: Tarjan 1972 adapted and modified for events
-
-\*******************************************************************/
-
+/// Tarjan 1972 adapted and modified for events
 void event_grapht::graph_explorert::collect_cycles(
   std::set<critical_cyclet> &set_of_cycles,
   memory_modelt model)
@@ -74,7 +56,7 @@ void event_grapht::graph_explorert::collect_cycles(
   for(std::size_t i=0; i<egraph.size(); i++)
     mark[i]=false;
 
-  std::list<event_idt>* order=0;
+  std::list<event_idt>* order=nullptr;
   /* on Power, rfe pairs are also potentially unsafe */
   switch(model)
   {
@@ -123,20 +105,8 @@ void event_grapht::graph_explorert::collect_cycles(
     filter_thin_air(set_of_cycles);
 }
 
-/*******************************************************************\
-
-Function: event_grapht::graph_explorert::extract_cycle
-
-  Inputs:
-
- Outputs:
-
- Purpose: extracts a (whole, unreduced) cycle from the stack.
-          Note: it may not be a real cycle yet -- we cannot check
-          the size before a call to this function.
-
-\*******************************************************************/
-
+/// extracts a (whole, unreduced) cycle from the stack. Note: it may not be a
+/// real cycle yet -- we cannot check the size before a call to this function.
 event_grapht::critical_cyclet event_grapht::graph_explorert::extract_cycle(
   event_idt vertex,
   event_idt source,
@@ -176,18 +146,8 @@ event_grapht::critical_cyclet event_grapht::graph_explorert::extract_cycle(
   return new_cycle;
 }
 
-/*******************************************************************\
-
-Function: event_grapht::graph_explorert::backtrack
-
-  Inputs: get_po_only: used for po-transitivity
-
- Outputs:
-
- Purpose: see event_grapht::collect_cycles
-
-\*******************************************************************/
-
+/// see event_grapht::collect_cycles
+/// \param get_po_only: used for po-transitivity
 bool event_grapht::graph_explorert::backtrack(
   std::set<critical_cyclet> &set_of_cycles,
   event_idt source,
@@ -561,21 +521,21 @@ bool event_grapht::graph_explorert::backtrack(
 
       std::stack<event_idt> tmp;
 
-      while(marked_stack.size()>0 && marked_stack.top()!=vertex)
+      while(!marked_stack.empty() && marked_stack.top()!=vertex)
       {
         tmp.push(marked_stack.top());
         mark[marked_stack.top()]=false;
         marked_stack.pop();
       }
 
-      if(marked_stack.size()>0)
+      if(!marked_stack.empty())
       {
         assert(marked_stack.top()==vertex);
         mark[vertex]=true;
       }
       else
       {
-        while(tmp.size()>0)
+        while(!tmp.empty())
         {
           marked_stack.push(tmp.top());
           mark[tmp.top()]=true;

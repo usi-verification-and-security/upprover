@@ -6,6 +6,11 @@ Author: Daniel Kroening
 
 \*******************************************************************/
 
+/// \file
+/// Witnesses for Traces and Proofs
+
+#include "graphml_witness.h"
+
 #include <util/base_type.h>
 #include <util/byte_operators.h>
 #include <util/c_types.h>
@@ -13,19 +18,7 @@ Author: Daniel Kroening
 #include <util/prefix.h>
 #include <util/ssa_expr.h>
 
-#include "graphml_witness.h"
-
-/*******************************************************************\
-
-Function: graphml_witnesst::remove_l0_l1
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <goto-programs/goto_program_template.h>
 
 void graphml_witnesst::remove_l0_l1(exprt &expr)
 {
@@ -52,18 +45,6 @@ void graphml_witnesst::remove_l0_l1(exprt &expr)
   Forall_operands(it, expr)
     remove_l0_l1(*it);
 }
-
-/*******************************************************************\
-
-Function: graphml_witnesst::convert_assign_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string graphml_witnesst::convert_assign_rec(
   const irep_idt &identifier,
@@ -156,25 +137,13 @@ std::string graphml_witnesst::convert_assign_rec(
   return result;
 }
 
-/*******************************************************************\
-
-Function: filter_out
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 static bool filter_out(
   const goto_tracet &goto_trace,
   const goto_tracet::stepst::const_iterator &prev_it,
   goto_tracet::stepst::const_iterator &it)
 {
   if(it->hidden &&
-     (!it->is_assignment() ||
+     (!it->pc->is_assign() ||
       to_code_assign(it->pc->code).rhs().id()!=ID_side_effect ||
       to_code_assign(it->pc->code).rhs().get(ID_statement)!=ID_nondet))
     return true;
@@ -203,18 +172,7 @@ static bool filter_out(
   return false;
 }
 
-/*******************************************************************\
-
-Function: graphml_witnesst::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose: counterexample witness
-
-\*******************************************************************/
-
+/// counterexample witness
 void graphml_witnesst::operator()(const goto_tracet &goto_trace)
 {
   graphml.key_values["sourcecodelang"]="C";
@@ -285,10 +243,10 @@ void graphml_witnesst::operator()(const goto_tracet &goto_trace)
       continue;
     }
 
-    goto_tracet::stepst::const_iterator next=it;
-    for(++next;
-        next!=goto_trace.steps.end() &&
-        (step_to_node[next->step_nr]==sink || it->pc==next->pc);
+    auto next = std::next(it);
+    for(; next != goto_trace.steps.end() &&
+          (step_to_node[next->step_nr] == sink ||
+           pointee_address_equalt{}(it->pc, next->pc)); // NOLINT
         ++next)
     {
       // advance
@@ -398,18 +356,7 @@ void graphml_witnesst::operator()(const goto_tracet &goto_trace)
   }
 }
 
-/*******************************************************************\
-
-Function: graphml_witnesst::operator()
-
-  Inputs:
-
- Outputs:
-
- Purpose: proof witness
-
-\*******************************************************************/
-
+/// proof witness
 void graphml_witnesst::operator()(const symex_target_equationt &equation)
 {
   graphml.key_values["sourcecodelang"]="C";

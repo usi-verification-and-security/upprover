@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_UTIL_TYPE_H
 #define CPROVER_UTIL_TYPE_H
 
@@ -13,6 +14,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #define SUBTYPE_IN_GETSUB
 #define SUBTYPES_IN_GETSUB
+
+class namespacet;
 
 /*! \brief The type of an expression
 */
@@ -201,5 +204,10 @@ pre-defined types:
 
 bool is_number(const typet &type);
 // rational, real, integer, complex, unsignedbv, signedbv, floatbv
+
+// Is the passed in type const qualified?
+bool is_constant_or_has_constant_components(
+    const typet &type,
+    const namespacet &ns);
 
 #endif // CPROVER_UTIL_TYPE_H

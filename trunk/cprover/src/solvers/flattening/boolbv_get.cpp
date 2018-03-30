@@ -6,6 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "boolbv.h"
+
 #include <cassert>
 
 #include <util/arith_tools.h>
@@ -14,20 +16,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_types.h>
 #include <util/simplify_expr.h>
 
-#include "boolbv.h"
 #include "boolbv_type.h"
-
-/*******************************************************************\
-
-Function: boolbvt::get
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt boolbvt::get(const exprt &expr) const
 {
@@ -75,18 +64,6 @@ exprt boolbvt::get(const exprt &expr) const
 
   return SUB::get(expr);
 }
-
-/*******************************************************************\
-
-Function: boolbvt::bv_get_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt boolbvt::bv_get_rec(
   const bvt &bv,
@@ -300,36 +277,12 @@ exprt boolbvt::bv_get_rec(
   return nil_exprt();
 }
 
-/*******************************************************************\
-
-Function: boolbvt::bv_get
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt boolbvt::bv_get(const bvt &bv, const typet &type) const
 {
   std::vector<bool> unknown;
   unknown.resize(bv.size(), false);
   return bv_get_rec(bv, unknown, 0, type);
 }
-
-/*******************************************************************\
-
-Function: boolbvt::bv_get_cache
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt boolbvt::bv_get_cache(const exprt &expr) const
 {
@@ -343,18 +296,6 @@ exprt boolbvt::bv_get_cache(const exprt &expr) const
 
   return bv_get(it->second, expr.type());
 }
-
-/*******************************************************************\
-
-Function: boolbvt::bv_get_unbounded_array
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt boolbvt::bv_get_unbounded_array(const exprt &expr) const
 {
@@ -389,13 +330,14 @@ exprt boolbvt::bv_get_unbounded_array(const exprt &expr) const
   valuest values;
 
   {
-    std::size_t number;
-
-    if(arrays.get_number(expr, number))
+    const auto opt_num = arrays.get_number(expr);
+    if(!opt_num)
+    {
       return nil_exprt();
+    }
 
     // get root
-    number=arrays.find_number(number);
+    const auto number = arrays.find_number(*opt_num);
 
     assert(number<index_map.size());
     index_mapt::const_iterator it=index_map.find(number);
@@ -472,18 +414,6 @@ exprt boolbvt::bv_get_unbounded_array(const exprt &expr) const
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: boolbvt::get_value
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 mp_integer boolbvt::get_value(
   const bvt &bv,

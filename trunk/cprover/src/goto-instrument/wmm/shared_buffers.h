@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_GOTO_INSTRUMENT_WMM_SHARED_BUFFERS_H
 #define CPROVER_GOTO_INSTRUMENT_WMM_SHARED_BUFFERS_H
 
@@ -157,9 +158,11 @@ public:
 
   irep_idt choice(const irep_idt &function, const std::string &suffix)
   {
-    const std::string function_base_name = (symbol_table.has_symbol(function)?
-      id2string(symbol_table.lookup(function).base_name):
-      "main");
+    const auto maybe_symbol=symbol_table.lookup(function);
+    const std::string function_base_name =
+      maybe_symbol
+        ? id2string(maybe_symbol->base_name)
+        : "main";
     return add(function_base_name+"_weak_choice",
       function_base_name+"_weak_choice", suffix, bool_typet());
   }
@@ -221,7 +224,7 @@ public:
 protected:
   class symbol_tablet &symbol_table;
 
-  // number of threads interferring
+  // number of threads interfering
   unsigned nb_threads;
 
   // instrumentations (not to be instrumented again)

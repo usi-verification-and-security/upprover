@@ -6,19 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #include "boolbv.h"
-
-/*******************************************************************\
-
-Function: boolbvt::convert_constant
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bvt boolbvt::convert_constant(const constant_exprt &expr)
 {
@@ -59,7 +48,7 @@ bvt boolbvt::convert_constant(const constant_exprt &expr)
   else if(expr_type.id()==ID_string)
   {
     // we use the numbering for strings
-    std::size_t number=string_numbering(expr.get_value());
+    std::size_t number = string_numbering.number(expr.get_value());
     return bv_utils.build_constant(number, bv.size());
   }
   else if(expr_type.id()==ID_range)

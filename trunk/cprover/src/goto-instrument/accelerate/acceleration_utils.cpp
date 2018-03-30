@@ -6,6 +6,11 @@ Author: Matt Lewis
 
 \*******************************************************************/
 
+/// \file
+/// Loop Acceleration
+
+#include "acceleration_utils.h"
+
 #include <iostream>
 #include <map>
 #include <set>
@@ -36,7 +41,6 @@ Author: Matt Lewis
 #include <util/replace_expr.h>
 #include <util/arith_tools.h>
 
-#include "acceleration_utils.h"
 #include "accelerator.h"
 #include "util.h"
 #include "cone_of_influence.h"
@@ -124,7 +128,7 @@ bool acceleration_utilst::check_inductive(
   // assert (target1==polynomial1);
   // assert (target2==polynomial2);
   // ...
-  scratch_programt program(symbol_table);
+  scratch_programt program(symbol_table, message_handler);
   std::vector<exprt> polynomials_hold;
   substitutiont substitution;
 
@@ -177,7 +181,7 @@ bool acceleration_utilst::check_inductive(
       return true;
     }
   }
-  catch(std::string s)
+  catch(const std::string &s)
   {
     std::cout << "Error in inductiveness SAT check: " << s << '\n';
     return false;
@@ -229,7 +233,7 @@ void acceleration_utilst::stash_variables(
       it!=vars.end();
       ++it)
   {
-    symbolt orig=symbol_table.lookup(*it);
+    symbolt orig=*symbol_table.lookup(*it);
     symbolt stashed_sym=fresh_symbol("polynomial::stash", orig.type);
     substitution[orig.symbol_expr()]=stashed_sym.symbol_expr();
     program.assign(stashed_sym.symbol_expr(), orig.symbol_expr());
@@ -382,7 +386,7 @@ bool acceleration_utilst::do_assumptions(
   // assert(!precondition);
 
   exprt condition=precondition(path);
-  scratch_programt program(symbol_table);
+  scratch_programt program(symbol_table, message_handler);
 
   substitutiont substitution;
   stash_polynomials(program, polynomials, substitution, path);
@@ -454,7 +458,7 @@ bool acceleration_utilst::do_assumptions(
       return false;
     }
   }
-  catch(std::string s)
+  catch(const std::string &s)
   {
     std::cout << "Error in monotonicity SAT check: " << s << '\n';
      return false;
@@ -570,7 +574,7 @@ bool acceleration_utilst::do_arrays(
             << " array assignments\n";
 #endif
 
-  if(array_assignments.size()==0)
+  if(array_assignments.empty())
   {
     // The loop doesn't write to any arrays.  We're done!
     return true;

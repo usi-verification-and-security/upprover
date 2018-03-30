@@ -8,7 +8,7 @@ Author: Grigory Fedyukovich
 
 #include "smtcheck_opensmt2_uf.h"
 #include "../hifrog.h"
-#include <std_expr.h>
+#include <util/std_expr.h>
 
 // Debug flags of this class:
 //#define SMT_DEBUG
@@ -48,8 +48,9 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   // KE: Fix a strange bug can be related to the fact we are pushing
   // a struct into std::vector and use [] before any push_back
   literals.push_back(PTRef());
-  literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
+  literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0] - NEVER COMMENT THIS LINE!!!
   literals[0] = logic->getTerm_true(); // Which is .x =0
+  assert(l.var_no() != literalt::unused_var_no());  // KE: for cmake warnings
   // KE: End of fix
 
   //Initialize the stuff to fake UF
@@ -62,7 +63,6 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   // One arg
   args.push(sort_ureal);
   s_neg = logic->declareFun(tk_neg, sort_ureal, args, &msg, true);
-  Symbol& sneg = logic->getSym(s_neg);
   
   // Two args
   args.push(sort_ureal);
@@ -452,7 +452,12 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
         
         l = lunsupported2var(expr);
         // No support this data type
+     
+    } else if (_id==ID_address_of) {
         
+        l = lunsupported2var(expr);
+        // NO support to this type
+             
     } else if(_id==ID_symbol || _id==ID_nondet_symbol){
 #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;
@@ -736,6 +741,12 @@ Function: smtcheck_opensmt2t_uf::lvar
 \*******************************************************************/
 literalt smtcheck_opensmt2t_uf::lvar(const exprt &expr)
 {
+    // IF code, set to be unsupported
+    if (expr.type().id()==ID_code) {
+        return lunsupported2var(expr);
+    }
+
+    // Else continue as before
     string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
     str = quote_varname(str);
 

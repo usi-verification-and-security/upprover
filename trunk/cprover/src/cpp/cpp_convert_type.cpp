@@ -6,15 +6,19 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#include <cassert>
-
-#include <util/config.h>
-#include <util/arith_tools.h>
-#include <util/std_types.h>
-
-#include <util/c_types.h>
+/// \file
+/// C++ Language Type Conversion
 
 #include "cpp_convert_type.h"
+
+#include <cassert>
+
+#include <util/arith_tools.h>
+#include <util/c_types.h>
+#include <util/config.h>
+#include <util/invariant.h>
+#include <util/std_types.h>
+
 #include "cpp_declaration.h"
 #include "cpp_name.h"
 
@@ -42,18 +46,6 @@ protected:
   void read_template(const typet &type);
 };
 
-/*******************************************************************\
-
-Function: cpp_convert_typet::read
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cpp_convert_typet::read(const typet &type)
 {
   unsigned_cnt=signed_cnt=char_cnt=int_cnt=short_cnt=
@@ -71,18 +63,6 @@ void cpp_convert_typet::read(const typet &type)
 
   read_rec(type);
 }
-
-/*******************************************************************\
-
-Function: cpp_convert_typet::read_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_convert_typet::read_rec(const typet &type)
 {
@@ -179,23 +159,27 @@ void cpp_convert_typet::read_rec(const typet &type)
     tmp.id(ID_empty);
     other.push_back(tmp);
   }
+  else if(type.id()==ID_frontend_pointer)
+  {
+    // add width and turn into ID_pointer
+    pointer_typet tmp(type.subtype(), config.ansi_c.pointer_width);
+    tmp.add_source_location()=type.source_location();
+    if(type.get_bool(ID_C_reference))
+      tmp.set(ID_C_reference, true);
+    if(type.get_bool(ID_C_rvalue_reference))
+      tmp.set(ID_C_rvalue_reference, true);
+    other.push_back(tmp);
+  }
+  else if(type.id()==ID_pointer)
+  {
+    // ignore, we unfortunately convert multiple times
+    other.push_back(type);
+  }
   else
   {
     other.push_back(type);
   }
 }
-
-/*******************************************************************\
-
-Function: cpp_covnert_typet::read_template
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_convert_typet::read_template(const typet &type)
 {
@@ -224,18 +208,6 @@ void cpp_convert_typet::read_template(const typet &type)
     // TODO: initializer
   }
 }
-
-/*******************************************************************\
-
-Function: cpp_convert_typet::read_function_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_convert_typet::read_function_type(const typet &type)
 {
@@ -295,8 +267,8 @@ void cpp_convert_typet::read_function_type(const typet &type)
         // see if it's an array type
         if(final_type.id()==ID_array)
         {
-          final_type.id(ID_pointer);
-          final_type.remove(ID_size);
+          // turn into pointer type
+          final_type=pointer_type(final_type.subtype());
         }
 
         code_typet::parametert new_parameter(final_type);
@@ -329,7 +301,7 @@ void cpp_convert_typet::read_function_type(const typet &type)
       throw "ellipsis only allowed as last parameter";
     }
     else
-      assert(false);
+      UNREACHABLE;
   }
 
   // if we just have one parameter of type void, remove it
@@ -337,18 +309,6 @@ void cpp_convert_typet::read_function_type(const typet &type)
      parameters.get_sub().front().find(ID_type).id()==ID_empty)
     parameters.get_sub().clear();
 }
-
-/*******************************************************************\
-
-Function: cpp_convert_typet::write
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_convert_typet::write(typet &type)
 {
@@ -600,24 +560,11 @@ void cpp_convert_typet::write(typet &type)
     type.set(ID_C_volatile, true);
 }
 
-/*******************************************************************\
-
-Function: cpp_convert_plain_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cpp_convert_plain_type(typet &type)
 {
   if(type.id()==ID_cpp_name ||
      type.id()==ID_struct ||
      type.id()==ID_union ||
-     type.id()==ID_pointer ||
      type.id()==ID_array ||
      type.id()==ID_code ||
      type.id()==ID_unsignedbv ||

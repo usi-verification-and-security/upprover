@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_UTIL_PARSE_OPTIONS_H
 #define CPROVER_UTIL_PARSE_OPTIONS_H
 
@@ -30,6 +31,7 @@ public:
   virtual ~parse_options_baset() { }
 
 private:
+  void unknown_option_msg();
   bool parse_result;
 };
 

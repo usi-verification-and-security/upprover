@@ -14,9 +14,9 @@
 #ifndef SMT_ASSERTION_NO_PARTITION_H
 #define SMT_ASSERTION_NO_PARTITION_H
 
-#include <namespace.h>
-#include <ui_message.h>
-#include <time_stopping.h>
+#include <util/namespace.h>
+#include <util/ui_message.h>
+#include <util/time_stopping.h>
 #include <util/threeval.h>
 
 #include "../assertion_info.h"
@@ -34,7 +34,7 @@ public:
             unsigned long &_max_memory_used) 
         : equation(_target),
           solving_time(0),
-          message_handler (_message_handler),
+          message_handler(_message_handler),
           max_memory_used(_max_memory_used)
           {set_message_handler(_message_handler);}
         
@@ -44,7 +44,7 @@ public:
 
     void error_trace(smtcheck_opensmt2t& decider, const namespacet &ns, std::map<irep_idt, std::string>& guard_expln);
 
-private:
+public:
     // Store for the symex result
     smt_symex_target_equationt &equation;
     

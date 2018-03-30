@@ -8,6 +8,9 @@ Date: June 2003
 
 \*******************************************************************/
 
+/// \file
+/// Goto Programs with Functions
+
 #ifndef CPROVER_GOTO_PROGRAMS_GOTO_FUNCTIONS_TEMPLATE_H
 #define CPROVER_GOTO_PROGRAMS_GOTO_FUNCTIONS_TEMPLATE_H
 
@@ -100,7 +103,17 @@ public:
   typedef std::map<irep_idt, goto_functiont> function_mapt;
   function_mapt function_map;
 
-  goto_functions_templatet()
+private:
+  /// A location number such that numbers in the interval
+  /// [unused_location_number, MAX_UINT] are all unused. There might still be
+  /// unused numbers below this.
+  /// If numbering a new function or renumbering a function, starting from this
+  /// number is safe.
+  unsigned unused_location_number;
+
+public:
+  goto_functions_templatet():
+    unused_location_number(0)
   {
   }
 
@@ -108,7 +121,8 @@ public:
   goto_functions_templatet &operator=(const goto_functions_templatet &)=delete;
 
   goto_functions_templatet(goto_functions_templatet &&other):
-    function_map(std::move(other.function_map))
+    function_map(std::move(other.function_map)),
+    unused_location_number(other.unused_location_number)
   {
   }
 
@@ -117,6 +131,8 @@ public:
     function_map=std::move(other.function_map);
     return *this;
   }
+
+  void unload(const irep_idt &name) { function_map.erase(name); }
 
   void clear()
   {
@@ -128,6 +144,7 @@ public:
     std::ostream &out) const;
 
   void compute_location_numbers();
+  void compute_location_numbers(goto_programt &);
   void compute_loop_numbers();
   void compute_target_numbers();
   void compute_incoming_edges();
@@ -158,18 +175,6 @@ public:
   }
 };
 
-/*******************************************************************\
-
-Function: goto_functions_templatet::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 template <class bodyT>
 void goto_functions_templatet<bodyT>::output(
   const namespacet &ns,
@@ -190,94 +195,51 @@ void goto_functions_templatet<bodyT>::output(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_functions_templatet::compute_location_numbers
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 template <class bodyT>
 void goto_functions_templatet<bodyT>::compute_location_numbers()
 {
-  unsigned nr=0;
-
-  for(typename function_mapt::iterator
-      it=function_map.begin();
-      it!=function_map.end();
-      it++)
-    it->second.body.compute_location_numbers(nr);
+  unused_location_number = 0;
+  for(auto &func : function_map)
+  {
+    // Side-effect: bumps unused_location_number.
+    func.second.body.compute_location_numbers(unused_location_number);
+  }
 }
 
-/*******************************************************************\
-
-Function: goto_functions_templatet::compute_incoming_edges
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+template <class bodyT>
+void goto_functions_templatet<bodyT>::compute_location_numbers(
+  goto_programt &program)
+{
+  // Renumber just this single function. Use fresh numbers in case it has
+  // grown since it was last numbered.
+  program.compute_location_numbers(unused_location_number);
+}
 
 template <class bodyT>
 void goto_functions_templatet<bodyT>::compute_incoming_edges()
 {
-  for(typename function_mapt::iterator
-      it=function_map.begin();
-      it!=function_map.end();
-      it++)
-    it->second.body.compute_incoming_edges();
+  for(auto &func : function_map)
+  {
+    func.second.body.compute_incoming_edges();
+  }
 }
-
-/*******************************************************************\
-
-Function: goto_functions_templatet::compute_target_numbers
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 template <class bodyT>
 void goto_functions_templatet<bodyT>::compute_target_numbers()
 {
-  for(typename function_mapt::iterator
-      it=function_map.begin();
-      it!=function_map.end();
-      it++)
-    it->second.body.compute_target_numbers();
+  for(auto &func : function_map)
+  {
+    func.second.body.compute_target_numbers();
+  }
 }
-
-/*******************************************************************\
-
-Function: goto_functions_templatet::compute_loop_numbers
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 template <class bodyT>
 void goto_functions_templatet<bodyT>::compute_loop_numbers()
 {
-  for(typename function_mapt::iterator
-      it=function_map.begin();
-      it!=function_map.end();
-      it++)
-    it->second.body.compute_loop_numbers();
+  for(auto &func : function_map)
+  {
+    func.second.body.compute_loop_numbers();
+  }
 }
 
 #endif // CPROVER_GOTO_PROGRAMS_GOTO_FUNCTIONS_TEMPLATE_H

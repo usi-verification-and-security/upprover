@@ -8,28 +8,20 @@ Date: January 2010
 
 \*******************************************************************/
 
-#include <util/std_expr.h>
-#include <util/std_code.h>
+/// \file
+/// Detection for Uninitialized Local Variables
 
 #include "uninitialized_domain.h"
 
-/*******************************************************************\
-
-Function: uninitialized_domaint::transform
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <util/std_expr.h>
+#include <util/std_code.h>
 
 void uninitialized_domaint::transform(
   locationt from,
   locationt to,
   ai_baset &ai,
-  const namespacet &ns)
+  const namespacet &ns,
+  ai_domain_baset::edge_typet /*edge_type*/)
 {
   if(has_values.is_false())
     return;
@@ -60,18 +52,6 @@ void uninitialized_domaint::transform(
   }
 }
 
-/*******************************************************************\
-
-Function: uninitialized_domaint::assign
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void uninitialized_domaint::assign(const exprt &lhs)
 {
   if(lhs.id()==ID_index)
@@ -81,18 +61,6 @@ void uninitialized_domaint::assign(const exprt &lhs)
   else if(lhs.id()==ID_symbol)
     uninitialized.erase(to_symbol_expr(lhs).get_identifier());
 }
-
-/*******************************************************************\
-
-Function: uninitialized_domaint::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void uninitialized_domaint::output(
   std::ostream &out,
@@ -108,24 +76,13 @@ void uninitialized_domaint::output(
   }
 }
 
-/*******************************************************************\
-
-Function: uninitialized_domaint::merge
-
-  Inputs:
-
- Outputs: returns true iff there is s.th. new
-
- Purpose:
-
-\*******************************************************************/
-
+/// \return returns true iff there is something new
 bool uninitialized_domaint::merge(
   const uninitialized_domaint &other,
   locationt from,
   locationt to)
 {
-  unsigned old_uninitialized=uninitialized.size();
+  auto old_uninitialized=uninitialized.size();
 
   uninitialized.insert(
     other.uninitialized.begin(),

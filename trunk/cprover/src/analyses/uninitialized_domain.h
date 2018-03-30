@@ -8,6 +8,9 @@ Date: January 2010
 
 \*******************************************************************/
 
+/// \file
+/// Detection for Uninitialized Local Variables
+
 #ifndef CPROVER_ANALYSES_UNINITIALIZED_DOMAIN_H
 #define CPROVER_ANALYSES_UNINITIALIZED_DOMAIN_H
 
@@ -30,31 +33,46 @@ public:
     locationt from,
     locationt to,
     ai_baset &ai,
-    const namespacet &ns) final;
+    const namespacet &ns,
+    ai_domain_baset::edge_typet edge_type) final override;
 
   void output(
     std::ostream &out,
     const ai_baset &ai,
     const namespacet &ns) const final;
 
-  void make_top() final
+  void make_top() final override
   {
     uninitialized.clear();
     has_values=tvt(true);
   }
 
-  void make_bottom() final
+  void make_bottom() final override
   {
     uninitialized.clear();
     has_values=tvt(false);
   }
 
-  void make_entry() final
+  void make_entry() final override
   {
     make_top();
   }
 
-  // returns true iff there is s.th. new
+  bool is_top() const override final
+  {
+    DATA_INVARIANT(!has_values.is_true() || uninitialized.empty(),
+                   "If domain is top, the uninitialized set must be empty");
+    return has_values.is_true();
+  }
+
+  bool is_bottom() const override final
+  {
+    DATA_INVARIANT(!has_values.is_false() || uninitialized.empty(),
+                   "If domain is bottom, the uninitialized set must be empty");
+    return has_values.is_false();
+  }
+
+  // returns true iff there is something new
   bool merge(
     const uninitialized_domaint &other,
     locationt from,

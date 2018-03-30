@@ -19,6 +19,15 @@ SRC = accelerate/accelerate.cpp \
       concurrency.cpp \
       count_eloc.cpp \
       cover.cpp \
+      cover_basic_blocks.cpp \
+      cover_filter.cpp \
+      cover_instrument_branch.cpp \
+      cover_instrument_condition.cpp \
+      cover_instrument_decision.cpp \
+      cover_instrument_location.cpp \
+      cover_instrument_mcdc.cpp \
+      cover_instrument_other.cpp \
+      cover_util.cpp \
       document_properties.cpp \
       dot.cpp \
       dump_c.cpp \
@@ -46,6 +55,7 @@ SRC = accelerate/accelerate.cpp \
       rw_set.cpp \
       show_locations.cpp \
       skip_loops.cpp \
+      splice_call.cpp \
       stack_depth.cpp \
       thread_instrumentation.cpp \
       undefined_functions.cpp \
@@ -65,6 +75,7 @@ SRC = accelerate/accelerate.cpp \
 
 OBJ += ../ansi-c/ansi-c$(LIBEXT) \
       ../cpp/cpp$(LIBEXT) \
+      ../java_bytecode/java_bytecode$(LIBEXT) \
       ../linking/linking$(LIBEXT) \
       ../big-int/big-int$(LIBEXT) \
       ../goto-programs/goto-programs$(LIBEXT) \
@@ -89,11 +100,6 @@ include ../config.inc
 include ../common
 
 all: goto-instrument$(EXEEXT)
-
-ifneq ($(wildcard ../java_bytecode/Makefile),)
-  OBJ += ../java_bytecode/java_bytecode$(LIBEXT)
-  CP_CXXFLAGS += -DHAVE_JAVA_BYTECODE
-endif
 
 ifneq ($(LIB_GLPK),)
   LIBS += $(LIB_GLPK)

@@ -6,21 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <iostream>
-
 #include "lispexpr.h"
 
-/*******************************************************************\
-
-Function: lispexprt::expr2string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <iostream>
 
 std::string lispexprt::expr2string() const
 {
@@ -35,7 +23,7 @@ std::string lispexprt::expr2string() const
 
     case List:
       result="(";
-      for(unsigned j=0; j<size(); j++)
+      for(std::size_t j=0; j<size(); j++)
       {
         if((j+1)==size() && size()!=1)
         {
@@ -61,35 +49,11 @@ std::string lispexprt::expr2string() const
   return result;
 }
 
-/*******************************************************************\
-
-Function: lispexprt::parse
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool lispexprt::parse(const std::string &s)
 {
   std::string::size_type ptr=0;
   return parse(s, ptr);
 }
-
-/*******************************************************************\
-
-Function: lispexprt::parse
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool lispexprt::parse(
   const std::string &s,
@@ -183,23 +147,11 @@ bool lispexprt::parse(
   return false;
 }
 
-/*******************************************************************\
-
-Function: escape
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string escape(const std::string &s)
 {
   std::string result;
 
-  for(unsigned i=0; i<s.size(); i++)
+  for(std::size_t i=0; i<s.size(); i++)
   {
     if(s[i]=='\\' || s[i]=='"')
       result+='\\';
@@ -209,18 +161,6 @@ std::string escape(const std::string &s)
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: test_lispexpr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 int test_lispexpr()
 {

@@ -99,11 +99,14 @@ set(HIFROG_SOURCE_FILES
         solvers/interpolating_solver_fwd.h
     )
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/../cmake_modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modules/")
 
 find_package(GMP REQUIRED)
 
-add_executable(hifrog ${HIFROG_SOURCE_FILES} $<TARGET_OBJECTS:cprover>)
+add_executable(hifrog ${HIFROG_SOURCE_FILES}
+)
+
+target_include_directories(hifrog PRIVATE ${PROJECT_SOURCE_DIR})
 
 target_compile_options(hifrog PRIVATE  -Wall)
 
@@ -117,9 +120,18 @@ target_compile_definitions(hifrog PRIVATE
     #-DDISABLE_OPTIMIZATIONS
     )
 
-target_link_libraries(hifrog -lopensmt2 ${GMP_LIBRARIES} ${GMPXX_LIBRARIES})
+target_link_libraries(hifrog -lopensmt2 ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
+    )
 
-message(${CMAKE_BINARY_DIR})
+target_link_libraries(hifrog
+    ansi-c
+    cbmc-lib #this is here only because of no_partition, if that is done in a different way, remove this dependency
+    cpp
+    goto-symex
+    solvers
+    util
+    xml
+)
 
 set_target_properties(hifrog
 PROPERTIES

@@ -6,6 +6,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+#include "language_ui.h"
+
 #include <fstream>
 #include <memory>
 #include <iostream>
@@ -13,23 +15,12 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include <util/namespace.h>
 #include <util/language.h>
 #include <util/cmdline.h>
+#include <util/config.h>
 #include <util/unicode.h>
 
-#include "language_ui.h"
 #include "mode.h"
 
-/*******************************************************************\
-
-Function: language_uit::language_uit
-
-  Inputs:
-
- Outputs:
-
- Purpose: Constructor
-
-\*******************************************************************/
-
+/// Constructor
 language_uit::language_uit(
   const cmdlinet &cmdline,
   ui_message_handlert &_ui_message_handler):
@@ -39,56 +30,19 @@ language_uit::language_uit(
   set_message_handler(ui_message_handler);
 }
 
-/*******************************************************************\
-
-Function: language_uit::~language_uit
-
-  Inputs:
-
- Outputs:
-
- Purpose: Destructor
-
-\*******************************************************************/
-
+/// Destructor
 language_uit::~language_uit()
 {
 }
 
-/*******************************************************************\
-
-Function: language_uit::parse()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool language_uit::parse()
 {
-  for(unsigned i=0; i<_cmdline.args.size(); i++)
-  {
-    if(parse(_cmdline.args[i]))
+  for(const auto &filename : _cmdline.args)
+    if(parse(filename))
       return true;
-  }
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: language_uit::parse()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool language_uit::parse(const std::string &filename)
 {
@@ -104,16 +58,10 @@ bool language_uit::parse(const std::string &filename)
     return true;
   }
 
-  std::pair<language_filest::file_mapt::iterator, bool>
-    result=language_files.file_map.insert(
-      std::pair<std::string, language_filet>(filename, language_filet()));
-
-  language_filet &lf=result.first->second;
-
-  lf.filename=filename;
+  language_filet &lf=language_files.add_file(filename);
   lf.language=get_language_from_filename(filename);
 
-  if(lf.language==NULL)
+  if(lf.language==nullptr)
   {
     source_locationt location;
     location.set_file(filename);
@@ -141,18 +89,6 @@ bool language_uit::parse(const std::string &filename)
   return false;
 }
 
-/*******************************************************************\
-
-Function: language_uit::typecheck
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool language_uit::typecheck()
 {
   status() << "Converting" << eom;
@@ -168,21 +104,13 @@ bool language_uit::typecheck()
   return false;
 }
 
-/*******************************************************************\
-
-Function: language_uit::final
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool language_uit::final()
 {
   language_files.set_message_handler(*message_handler);
+
+  // Enable/disable stub generation for opaque methods
+  bool stubs_enabled=_cmdline.isset("generate-opaque-stubs");
+  language_files.set_should_generate_opaque_method_stubs(stubs_enabled);
 
   if(language_files.final(symbol_table))
   {
@@ -190,20 +118,10 @@ bool language_uit::final()
     return true;
   }
 
+  config.set_object_bits_from_symbol_table(symbol_table);
+
   return false;
 }
-
-/*******************************************************************\
-
-Function: language_uit::show_symbol_table
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void language_uit::show_symbol_table(bool brief)
 {
@@ -222,34 +140,10 @@ void language_uit::show_symbol_table(bool brief)
   }
 }
 
-/*******************************************************************\
-
-Function: language_uit::show_symbol_table_xml_ui
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void language_uit::show_symbol_table_xml_ui(bool brief)
 {
   error() << "cannot show symbol table in this format" << eom;
 }
-
-/*******************************************************************\
-
-Function: language_uit::show_symbol_table_plain
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void language_uit::show_symbol_table_plain(
   std::ostream &out,
@@ -270,25 +164,27 @@ void language_uit::show_symbol_table_plain(
   {
     const symbolt &symbol=ns.lookup(id);
 
-    languaget *ptr;
+    std::unique_ptr<languaget> ptr;
 
     if(symbol.mode=="")
+    {
       ptr=get_default_language();
+    }
     else
     {
       ptr=get_language_from_mode(symbol.mode);
-      if(ptr==NULL)
-        throw "symbol "+id2string(symbol.name)+" has unknown mode";
     }
 
-    std::unique_ptr<languaget> p(ptr);
+    if(!ptr)
+      throw "symbol "+id2string(symbol.name)+" has unknown mode";
+
     std::string type_str, value_str;
 
     if(symbol.type.is_not_nil())
-      p->from_type(symbol.type, type_str, ns);
+      ptr->from_type(symbol.type, type_str, ns);
 
     if(symbol.value.is_not_nil())
-      p->from_expr(symbol.value, value_str, ns);
+      ptr->from_expr(symbol.value, value_str, ns);
 
     if(brief)
     {

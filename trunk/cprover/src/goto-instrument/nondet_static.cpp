@@ -9,26 +9,18 @@ Date: November 2011
 
 \*******************************************************************/
 
+/// \file
+/// Nondeterministic initialization of certain global scope variables
+
+#include "nondet_static.h"
+
 #include <util/namespace.h>
 #include <util/std_expr.h>
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
 
+#include <goto-programs/goto_model.h>
 #include <goto-programs/goto_functions.h>
-
-#include "nondet_static.h"
-
-/*******************************************************************\
-
-Function: nondet_static
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void nondet_static(
   const namespacet &ns,
@@ -59,7 +51,7 @@ void nondet_static(
         continue;
 
       // constant?
-      if(sym.type().get_bool(ID_C_constant))
+      if(is_constant_or_has_constant_components(sym.type(), ns))
         continue;
 
       i_it=init.insert_before(++i_it);
@@ -79,19 +71,6 @@ void nondet_static(
   }
 }
 
-
-/*******************************************************************\
-
-Function: nondet_static
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void nondet_static(
   const namespacet &ns,
   goto_functionst &goto_functions)
@@ -100,4 +79,10 @@ void nondet_static(
 
   // update counters etc.
   goto_functions.update();
+}
+
+void nondet_static(goto_modelt &goto_model)
+{
+  const namespacet ns(goto_model.symbol_table);
+  nondet_static(ns, goto_model.goto_functions);
 }

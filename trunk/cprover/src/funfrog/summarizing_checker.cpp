@@ -547,11 +547,11 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
   initial=current_time();
   
   const bool no_slicing_option = options.get_bool_option("no-slicing");
-  const bool no_ce_option = options.get_bool_option("no-error-trace");
+//  const bool no_ce_option = options.get_bool_option("no-error-trace");
 
   omega.set_initial_precision(assertion);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
-  const bool single_assertion_check = omega.is_single_assertion_check();
+//  const bool single_assertion_check = omega.is_single_assertion_check();
 
   std::vector<unsigned> ints;
   get_ints(ints, options.get_option("part-itp"));
@@ -568,10 +568,7 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
   }
 #endif
   
-  symex_no_partitiont symex = symex_no_partitiont(ns, 
-            symbol_table,
-            equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, !no_slicing_option, !no_ce_option);
+  symex_no_partitiont symex = symex_no_partitiont(ns, symbol_table, equation, message_handler, goto_program,!no_slicing_option);
   
   setup_unwind(symex);
   
@@ -920,7 +917,7 @@ refinement_modet get_refine_mode(const std::string& str)
     // by default
     return refinement_modet::SLICING_RESULT;
   }
-};
+}
 
 /*******************************************************************\
 
@@ -944,7 +941,7 @@ init_modet get_init_mode(const std::string& str)
     // by default
     return init_modet::ALL_SUBSTITUTING;
   }
-};
+}
 
 
 coloring_modet get_coloring_mode(const std::string& str)
@@ -957,7 +954,7 @@ coloring_modet get_coloring_mode(const std::string& str)
     // by default
     return coloring_modet::NO_COLORING;
   }
-};
+}
 
 /*******************************************************************\
 

@@ -14,7 +14,7 @@ Author: Grigory Fedyukovich
 #include "../utils/naming_helpers.h"
 
 // Debug flags of this class:
-//#define SMT_DEBUG
+#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 //#define DEBUG_SMT_ITP
@@ -187,6 +187,8 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
     literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+    assert(l.var_no() != literalt::unused_var_no()); // KE: for cmake warnings
+    
     assert(ans != PTRef_Undef);
     current_partition->push(ans);
 }
@@ -626,14 +628,16 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     bool is_L2_symbol = is_L2_SSA_symbol(expr);
     // MB: the IO_CONST expressions does not follow normal versioning, but why NIL is here?
     bool is_nil_or_symex = (str.compare(NIL) == 0) || (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
-    assert("Error: using non-SSA symbol in the SMT encoding"
-         && (is_L2_symbol || is_nil_or_symex));
     if (!is_L2_symbol && !is_nil_or_symex)
     {
         // Error message before assert!
-        std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree(" << str << ")\n";
-        return create_new_unsupported_var(expr.type().id().c_str());
+        std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree(" 
+                << str <<  " : " << expr.type().id().c_str() << ")\n";
+        //std::cout << expr.pretty() << std::endl;
+        //return create_new_unsupported_var(expr.type().id().c_str());
     }
+    assert("Error: using non-SSA symbol in the SMT encoding"
+         && (is_L2_symbol || is_nil_or_symex)); // KE: can be new type that we don't take care of yet
     return str;
 }
 

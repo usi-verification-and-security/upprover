@@ -6,23 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "qbf_skizzo.h"
+
 #include <cassert>
 #include <cstdlib>
 #include <fstream>
-
-#include "qbf_skizzo.h"
-
-/*******************************************************************\
-
-Function: qbf_skizzot::qbf_skizzot
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 qbf_skizzot::qbf_skizzot()
 {
@@ -30,33 +18,9 @@ qbf_skizzot::qbf_skizzot()
   break_lines=false;
 }
 
-/*******************************************************************\
-
-Function: qbf_skizzot::~qbf_skizzot
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 qbf_skizzot::~qbf_skizzot()
 {
 }
-
-/*******************************************************************\
-
-Function: qbf_skizzot::l_get
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 tvt qbf_skizzot::l_get(literalt a) const
 {
@@ -64,34 +28,10 @@ tvt qbf_skizzot::l_get(literalt a) const
   return tvt(false);
 }
 
-/*******************************************************************\
-
-Function: qbf_skizzot::solver_text
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 const std::string qbf_skizzot::solver_text()
 {
   return "Skizzo";
 }
-
-/*******************************************************************\
-
-Function: qbf_skizzot::prop_solve
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 propt::resultt qbf_skizzot::prop_solve()
 {
@@ -121,7 +61,7 @@ propt::resultt qbf_skizzot::prop_solve()
   // solve it
   int res=system((
     "sKizzo "+qbf_tmp_file+options+" > "+result_tmp_file).c_str());
-  assert(0==res);
+  CHECK_RETURN(0==res);
 
   bool result=false;
 

@@ -6,6 +6,8 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+#include "language_util.h"
+
 #include <memory>
 
 #include <util/symbol_table.h>
@@ -13,22 +15,9 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 #include <util/language.h>
 #include <util/std_expr.h>
 
-#include "language_util.h"
 #include "mode.h"
 
-/*******************************************************************\
-
-Function: get_language
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-static languaget* get_language(
+static std::unique_ptr<languaget> get_language(
   const namespacet &ns,
   const irep_idt &identifier)
 {
@@ -39,26 +28,14 @@ static languaget* get_language(
      symbol->mode=="")
     return get_default_language();
 
-  languaget *ptr=get_language_from_mode(symbol->mode);
+  std::unique_ptr<languaget> ptr=get_language_from_mode(symbol->mode);
 
-  if(ptr==NULL)
+  if(ptr==nullptr)
     throw "symbol `"+id2string(symbol->name)+
       "' has unknown mode '"+id2string(symbol->mode)+"'";
 
   return ptr;
 }
-
-/*******************************************************************\
-
-Function: from_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string from_expr(
   const namespacet &ns,
@@ -73,18 +50,6 @@ std::string from_expr(
   return result;
 }
 
-/*******************************************************************\
-
-Function: from_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string from_type(
   const namespacet &ns,
   const irep_idt &identifier,
@@ -97,18 +62,6 @@ std::string from_type(
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: type_to_name
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string type_to_name(
   const namespacet &ns,
@@ -123,35 +76,11 @@ std::string type_to_name(
   return result;
 }
 
-/*******************************************************************\
-
-Function: from_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string from_expr(const exprt &expr)
 {
   symbol_tablet symbol_table;
   return from_expr(namespacet(symbol_table), "", expr);
 }
-
-/*******************************************************************\
-
-Function: from_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string from_type(const typet &type)
 {
@@ -159,24 +88,15 @@ std::string from_type(const typet &type)
   return from_type(namespacet(symbol_table), "", type);
 }
 
-/*******************************************************************\
-
-Function: to_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt to_expr(
   const namespacet &ns,
   const irep_idt &identifier,
   const std::string &src)
 {
   std::unique_ptr<languaget> p(get_language(ns, identifier));
+
+  null_message_handlert null_message_handler;
+  p->set_message_handler(null_message_handler);
 
   const symbolt &symbol=ns.lookup(identifier);
 
@@ -187,18 +107,6 @@ exprt to_expr(
 
   return expr;
 }
-
-/*******************************************************************\
-
-Function: type_to_name
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string type_to_name(const typet &type)
 {

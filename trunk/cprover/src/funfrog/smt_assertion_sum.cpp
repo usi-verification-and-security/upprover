@@ -7,7 +7,7 @@
 
 \*******************************************************************/
 
-#include <time_stopping.h>
+#include <util/time_stopping.h>
 #include "smt_assertion_sum.h"
 #include "error_trace.h"
 #include "smt_partitioning_target_equation.h"

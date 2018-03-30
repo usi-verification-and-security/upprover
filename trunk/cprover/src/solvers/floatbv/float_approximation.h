@@ -6,10 +6,13 @@ Author:
 
 \*******************************************************************/
 
+/// \file
+/// Floating Point with under/over-approximation
+
 #ifndef CPROVER_SOLVERS_FLOATBV_FLOAT_APPROXIMATION_H
 #define CPROVER_SOLVERS_FLOATBV_FLOAT_APPROXIMATION_H
 
-#include <floatbv/float_utils.h>
+#include "float_utils.h"
 
 class float_approximationt:public float_utilst
 {

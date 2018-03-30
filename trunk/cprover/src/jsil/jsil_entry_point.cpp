@@ -6,6 +6,11 @@ Author: Michael Tautschnig, tautschn@amazon.com
 
 \*******************************************************************/
 
+/// \file
+/// Jsil Language
+
+#include "jsil_entry_point.h"
+
 #include <util/arith_tools.h>
 #include <util/config.h>
 #include <util/symbol_table.h>
@@ -15,21 +20,7 @@ Author: Michael Tautschnig, tautschn@amazon.com
 
 #include <goto-programs/goto_functions.h>
 
-#include "jsil_entry_point.h"
-
 #define INITIALIZE CPROVER_PREFIX "initialize"
-
-/*******************************************************************\
-
-Function: create_initialize
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 static void create_initialize(symbol_tablet &symbol_table)
 {
@@ -57,18 +48,6 @@ static void create_initialize(symbol_tablet &symbol_table)
   if(symbol_table.add(initialize))
     throw "failed to add " CPROVER_PREFIX "initialize";
 }
-
-/*******************************************************************\
-
-Function: jsil_entry_point
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool jsil_entry_point(
   symbol_tablet &symbol_table,
@@ -150,7 +129,7 @@ bool jsil_entry_point(
   // build call to initialization function
 
   {
-    symbol_tablet::symbolst::iterator init_it=
+    symbol_tablet::symbolst::const_iterator init_it=
       symbol_table.symbols.find(CPROVER_PREFIX "initialize");
 
     if(init_it==symbol_table.symbols.end())
@@ -183,7 +162,7 @@ bool jsil_entry_point(
   new_symbol.type.swap(main_type);
   new_symbol.value.swap(init_code);
 
-  if(symbol_table.move(new_symbol))
+  if(!symbol_table.insert(std::move(new_symbol)).second)
   {
     messaget message;
     message.set_message_handler(message_handler);

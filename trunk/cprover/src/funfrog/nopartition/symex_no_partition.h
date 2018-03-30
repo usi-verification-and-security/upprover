@@ -19,9 +19,9 @@
 #include <goto-symex/goto_symex.h>
 #include <goto-symex/goto_symex_state.h>
 #include <cbmc/symex_bmc.h>
-#include <namespace.h>
-#include <symbol.h>
-#include <ui_message.h>
+#include <util/namespace.h>
+#include <util/symbol.h>
+#include <util/ui_message.h>
 #include <util/options.h>
 #include <util/time_stopping.h>
 
@@ -31,41 +31,44 @@
 class symex_no_partitiont : public symex_bmct {
 public:
     symex_no_partitiont(
-          const namespacet &_ns,
-          symbol_tablet &_new_symbol_table,
-          smt_symex_target_equationt &_target,
-          ui_message_handlert &_message_handler,
-          const goto_programt &_goto_program,
-          unsigned _last_assertion_loc,  
-          bool _single_assertion_check,
-          bool _use_slicing=true,
-	  bool _do_guard_expl=true,
-          bool _use_smt=true
+            const namespacet &_ns,
+            symbol_tablet &_new_symbol_table,
+            smt_symex_target_equationt &_target,
+            message_handlert &_message_handler,
+            const goto_programt &_goto_program,
+            bool _use_slicing=true
           ) :
-          symex_bmct(_ns, _new_symbol_table, _target),
+          symex_bmct(_message_handler, _ns, _new_symbol_table, _target),
           equation(_target),
           goto_program(_goto_program),
-          current_assertion(NULL),
-          message_handler(_message_handler),
-          last_assertion_loc(_last_assertion_loc),
+          current_assertion(nullptr),
           loc(0),
-          single_assertion_check(_single_assertion_check),
-          use_slicing(_use_slicing),
-	      do_guard_expl(_do_guard_expl),
-          use_smt(_use_smt)
-          {set_message_handler(_message_handler);}
+          use_slicing(_use_slicing)
+          {}
     
     virtual ~symex_no_partitiont() {} // Here there are no partition to delete
-    
+
 // Methods:    
     bool prepare_SSA(const assertion_infot &assertion, const goto_functionst& goto_functions);
     
     bool refine_SSA(const assertion_infot &assertion, bool force_check);
 
+    messaget::mstreamt & status() {
+        return log.status();
+    }
+
+    messaget::mstreamt & error() {
+        return log.error();
+    }
+
+    messaget::mstreamt & statistics() {
+        return log.statistics();
+    }
+
 
 // Data Members    
     std::map<irep_idt, std::string> guard_expln;
-    
+
 private:
     // Store for the symex result
     smt_symex_target_equationt &equation;
@@ -77,20 +80,10 @@ private:
     
     // Symex state holding the renaming levels
     goto_symext::statet state;
-  
-    ui_message_handlert &message_handler;    
-    
-    unsigned last_assertion_loc;
 
     unsigned loc;
-    
-    bool single_assertion_check;
 
     bool use_slicing;
-
-    bool do_guard_expl;
-  
-    bool use_smt; // for slicing  
     
     bool process_planned(statet &state, const goto_functionst &goto_functions, bool force_check);
 

@@ -8,6 +8,11 @@ Date: September 2011
 
 \*******************************************************************/
 
+/// \file
+/// Interrupt Instrumentation
+
+#include "interrupt.h"
+
 #include <util/cprover_prefix.h>
 #include <util/std_expr.h>
 #include <util/std_code.h>
@@ -16,24 +21,11 @@ Date: September 2011
 
 #include <goto-programs/goto_functions.h>
 
-#include "interrupt.h"
 #include "rw_set.h"
 
 #ifdef LOCAL_MAY
 #include <analyses/local_may_alias.h>
 #endif
-
-/*******************************************************************\
-
-Function: poential_race_on_read
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool potential_race_on_read(
   const rw_set_baset &code_rw_set,
@@ -48,18 +40,6 @@ bool potential_race_on_read(
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: poential_race_on_write
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool potential_race_on_write(
   const rw_set_baset &code_rw_set,
@@ -77,18 +57,6 @@ bool potential_race_on_write(
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: interrupt
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void interrupt(
   value_setst &value_sets,
@@ -185,18 +153,6 @@ void interrupt(
   }
 }
 
-/*******************************************************************\
-
-Function: get_isr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 symbol_exprt get_isr(
   const symbol_tablet &symbol_table,
   const irep_idt &interrupt_handler)
@@ -231,44 +187,31 @@ symbol_exprt get_isr(
   return isr;
 }
 
-/*******************************************************************\
-
-Function: interrupt
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void interrupt(
   value_setst &value_sets,
-  const symbol_tablet &symbol_table,
-  goto_functionst &goto_functions,
+  goto_modelt &goto_model,
   const irep_idt &interrupt_handler)
 {
   // look up the ISR
-  symbol_exprt isr=get_isr(symbol_table, interrupt_handler);
+  symbol_exprt isr=
+    get_isr(goto_model.symbol_table, interrupt_handler);
 
   // we first figure out which objects are read/written by the ISR
-  const namespacet ns(symbol_table);
   rw_set_functiont isr_rw_set(
-    value_sets, ns, goto_functions, isr);
+    value_sets, goto_model, isr);
 
   // now instrument
 
-  Forall_goto_functions(f_it, goto_functions)
+  Forall_goto_functions(f_it, goto_model.goto_functions)
     if(f_it->first!=CPROVER_PREFIX "initialize" &&
        f_it->first!=goto_functionst::entry_point() &&
        f_it->first!=isr.get_identifier())
       interrupt(
-        value_sets, symbol_table,
+        value_sets, goto_model.symbol_table,
 #ifdef LOCAL_MAY
         f_it->second,
 #endif
         f_it->second.body, isr, isr_rw_set);
 
-  goto_functions.update();
+  goto_model.goto_functions.update();
 }

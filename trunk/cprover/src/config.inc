@@ -1,11 +1,12 @@
 # Build platform (use one of AUTO, Unix, OSX_Universal, MSVC, Cygwin, MinGW)
 BUILD_ENV = AUTO
 
-# Enable all warnings
-#CXXFLAGS += -Wall -Wno-long-long -Wno-sign-compare -Wno-parentheses -Wno-strict-aliasing -pedantic
-
-# Treat warnings as errors
-#CXXFLAGS += -Werror
+# Enable all warnings and treat them as errors
+ifeq ($(BUILD_ENV),MSVC)
+  #CXXFLAGS += /Wall /WX
+else
+  CXXFLAGS += -Wall -pedantic -Werror
+endif
 
 # Select optimisation or debug info
 #CXXFLAGS += -O2 -DNDEBUG
@@ -21,9 +22,50 @@ BUILD_ENV = AUTO
 #CHAFF = ../../zChaff
 #BOOLEFORCE = ../../booleforce-0.4
 #MINISAT = ../../MiniSat-p_v1.14
-MINISAT2 = ../../../minisat-2.2.1
+#MINISAT2 = ../../minisat-2.2.1
+#IPASIR = ../../ipasir
 #GLUCOSE = ../../glucose-syrup
 #SMVSAT =
+
+# Extra library for SAT solver. This should link to the archive file to be used
+# when linking against an IPASIR solver.
+LIBSOLVER =
+
+ifneq ($(PRECOSAT),)
+  CP_CXXFLAGS += -DSATCHECK_PRECOSAT
+endif
+
+ifneq ($(PICOSAT),)
+  CP_CXXFLAGS += -DSATCHECK_PICOSAT
+endif
+
+ifneq ($(LINGELING),)
+  CP_CXXFLAGS += -DSATCHECK_LINGELING
+endif
+
+ifneq ($(CHAFF),)
+  CP_CXXFLAGS += -DSATCHECK_CHAFF
+endif
+
+ifneq ($(BOOLEFORCE),)
+  CP_CXXFLAGS += -DSATCHECK_BOOLEFORCE
+endif
+
+ifneq ($(MINISAT),)
+  CP_CXXFLAGS += -DSATCHECK_MINISAT
+endif
+
+ifneq ($(MINISAT2),)
+  CP_CXXFLAGS += -DSATCHECK_MINISAT2
+endif
+
+ifneq ($(GLUCOSE),)
+  CP_CXXFLAGS += -DSATCHECK_GLUCOSE
+endif
+
+ifneq ($(SMVSAT),)
+  CP_CXXFLAGS += -DSATCHECK_SMVSAT
+endif
 
 # Signing identity for MacOS Gatekeeper
 

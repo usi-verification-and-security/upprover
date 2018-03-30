@@ -6,13 +6,18 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Subgoal Documentation
+
+#include "document_properties.h"
+
 #include <fstream>
 
 #include <util/string2int.h>
 
 #include <ansi-c/expr2c.h>
 
-#include "document_properties.h"
+#include <goto-programs/goto_model.h>
 
 #define MAXWIDTH 62
 
@@ -23,7 +28,8 @@ public:
     const goto_functionst &_goto_functions,
     std::ostream &_out):
     goto_functions(_goto_functions),
-    out(_out)
+    out(_out),
+    format(HTML)
   {
   }
 
@@ -65,18 +71,6 @@ private:
   void doit();
 };
 
-/*******************************************************************\
-
-Function: document_propertiest::strip_space
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void document_propertiest::strip_space(std::list<linet> &lines)
 {
   unsigned strip=50;
@@ -84,7 +78,7 @@ void document_propertiest::strip_space(std::list<linet> &lines)
   for(std::list<linet>::const_iterator it=lines.begin();
       it!=lines.end(); it++)
   {
-    for(unsigned j=0; j<strip && j<it->text.size(); j++)
+    for(std::size_t j=0; j<strip && j<it->text.size(); j++)
       if(it->text[j]!=' ')
       {
         strip=j;
@@ -106,23 +100,11 @@ void document_propertiest::strip_space(std::list<linet> &lines)
   }
 }
 
-/*******************************************************************\
-
-Function: escape_latex
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string escape_latex(const std::string &s, bool alltt)
 {
   std::string dest;
 
-  for(unsigned i=0; i<s.size(); i++)
+  for(std::size_t i=0; i<s.size(); i++)
   {
     if(s[i]=='\\' || s[i]=='{' || s[i]=='}')
       dest+="\\";
@@ -139,23 +121,11 @@ std::string escape_latex(const std::string &s, bool alltt)
   return dest;
 }
 
-/*******************************************************************\
-
-Function: escape_html
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string escape_html(const std::string &s)
 {
   std::string dest;
 
-  for(unsigned i=0; i<s.size(); i++)
+  for(std::size_t i=0; i<s.size(); i++)
   {
     switch(s[i])
     {
@@ -169,38 +139,14 @@ std::string escape_html(const std::string &s)
   return dest;
 }
 
-/*******************************************************************\
-
-Function: is_empty
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool is_empty(const std::string &s)
 {
-  for(unsigned i=0; i<s.size(); i++)
+  for(std::size_t i=0; i<s.size(); i++)
     if(isgraph(s[i]))
       return false;
 
   return true;
 }
-
-/*******************************************************************\
-
-Function: document_propertiest::get_code
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void document_propertiest::get_code(
   const source_locationt &source_location,
@@ -324,18 +270,6 @@ void document_propertiest::get_code(
   }
 }
 
-/*******************************************************************\
-
-Function: document_propertiest::doit
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void document_propertiest::doit()
 {
   typedef std::map<source_locationt, doc_claimt> claim_sett;
@@ -428,40 +362,16 @@ void document_propertiest::doit()
   }
 }
 
-/*******************************************************************\
-
-Function: document_properties_html
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void document_properties_html(
-  const goto_functionst &goto_functions,
+  const goto_modelt &goto_model,
   std::ostream &out)
 {
-  document_propertiest(goto_functions, out).html();
+  document_propertiest(goto_model.goto_functions, out).html();
 }
 
-/*******************************************************************\
-
-Function: document_properties_latex
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void document_properties_latex(
-  const goto_functionst &goto_functions,
+  const goto_modelt &goto_model,
   std::ostream &out)
 {
-  document_propertiest(goto_functions, out).latex();
+  document_propertiest(goto_model.goto_functions, out).latex();
 }

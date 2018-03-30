@@ -8,6 +8,9 @@ Date: September 2011
 
 \*******************************************************************/
 
+/// \file
+/// Weak Memory Instrumentation for Threaded Goto Programs
+
 /*
  * Strategy: we first overapproximate all the read/write sequences of
  * the program executions with a read/write graph. We then detect the
@@ -15,6 +18,8 @@ Date: September 2011
  * of the program. We finally insert the corresponding instrumentations
  * in the program.
  */
+
+#include "weak_memory.h"
 
 #include <set>
 
@@ -26,22 +31,10 @@ Date: September 2011
 
 #include "../rw_set.h"
 
-#include "weak_memory.h"
 #include "shared_buffers.h"
 #include "goto2graph.h"
 
-/*******************************************************************\
-
-Function: introduce_temporaries
-
-  Inputs:
-
- Outputs:
-
- Purpose: all access to shared variables is pushed into assignments
-
-\*******************************************************************/
-
+/// all access to shared variables is pushed into assignments
 void introduce_temporaries(
   value_setst &value_sets,
   symbol_tablet &symbol_table,
@@ -110,23 +103,10 @@ void introduce_temporaries(
   }
 }
 
-/*******************************************************************\
-
-Function: weak_memory
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void weak_memory(
   memory_modelt model,
   value_setst &value_sets,
-  symbol_tablet &symbol_table,
-  goto_functionst &goto_functions,
+  goto_modelt &goto_model,
   bool SCC,
   instrumentation_strategyt event_strategy,
   unsigned unwinding_bound,
@@ -154,10 +134,10 @@ void weak_memory(
   message.status() << "--------" << messaget::eom;
 
   // all access to shared variables is pushed into assignments
-  Forall_goto_functions(f_it, goto_functions)
+  Forall_goto_functions(f_it, goto_model.goto_functions)
     if(f_it->first!=CPROVER_PREFIX "initialize" &&
       f_it->first!=goto_functionst::entry_point())
-      introduce_temporaries(value_sets, symbol_table, f_it->first,
+      introduce_temporaries(value_sets, goto_model.symbol_table, f_it->first,
         f_it->second.body,
 #ifdef LOCAL_MAY
         f_it->second,
@@ -167,7 +147,7 @@ void weak_memory(
   message.status() << "Temp added" << messaget::eom;
 
   unsigned max_thds = 0;
-  instrumentert instrumenter(symbol_table, goto_functions, message);
+  instrumentert instrumenter(goto_model, message);
   max_thds=instrumenter.goto2graph_cfg(value_sets, model, no_dependencies,
     duplicate_body);
   message.status()<<"abstraction completed"<<messaget::eom;
@@ -209,7 +189,7 @@ void weak_memory(
       <<" cycles found"<<messaget::eom;
 
     /* if no cycle, no need to instrument */
-    if(instrumenter.set_of_cycles.size() == 0)
+    if(instrumenter.set_of_cycles.empty())
     {
       message.status()<<"program safe -- no need to instrument"<<messaget::eom;
       return;
@@ -233,7 +213,8 @@ void weak_memory(
   instrumenter.print_outputs(model, hide_internals);
 
   // now adds buffers
-  shared_bufferst shared_buffers(symbol_table, max_thds, message);
+  shared_bufferst shared_buffers(
+    goto_model.symbol_table, max_thds, message);
 
   if(cav11_option)
     shared_buffers.set_cav11(model);
@@ -244,7 +225,8 @@ void weak_memory(
   shared_buffers.cycles_r_loc = instrumenter.id2cycloc; // places in the cycles
 
   // for reads delays
-  shared_buffers.affected_by_delay(symbol_table, value_sets, goto_functions);
+  shared_buffers.affected_by_delay(
+    goto_model.symbol_table, value_sets, goto_model.goto_functions);
 
   for(std::set<irep_idt>::iterator it=
     shared_buffers.affected_by_delay_set.begin();
@@ -264,19 +246,19 @@ void weak_memory(
                        << ran_it->second << messaget::eom;
   }
 
-  shared_bufferst::cfg_visitort visitor(shared_buffers, symbol_table,
-    goto_functions);
-  visitor.weak_memory(value_sets, goto_functions.entry_point(), model);
+  shared_bufferst::cfg_visitort visitor(
+    shared_buffers, goto_model.symbol_table, goto_model.goto_functions);
+  visitor.weak_memory(
+    value_sets, goto_model.goto_functions.entry_point(), model);
 
   /* removes potential skips */
-  Forall_goto_functions(f_it, goto_functions)
-    remove_skip(f_it->second.body);
+  remove_skip(goto_model);
 
   // initialization code for buffers
-  shared_buffers.add_initialization_code(goto_functions);
+  shared_buffers.add_initialization_code(goto_model.goto_functions);
 
   // update counters etc.
-  goto_functions.update();
+  goto_model.goto_functions.update();
 
   message.status()<< "Goto-program instrumented" << messaget::eom;
 }

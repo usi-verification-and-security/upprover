@@ -9,26 +9,17 @@ Date: August 2013
 
 \*******************************************************************/
 
+/// \file
+/// Field-Sensitive Program Dependence Analysis, Litvak et al., FSE 2010
+
+#include "dependence_graph.h"
+
 #include <cassert>
 
 #include <util/json.h>
 #include <util/json_expr.h>
 
 #include "goto_rw.h"
-
-#include "dependence_graph.h"
-
-/*******************************************************************\
-
-Function: dep_graph_domaint::merge
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool dep_graph_domaint::merge(
   const dep_graph_domaint &src,
@@ -68,18 +59,6 @@ bool dep_graph_domaint::merge(
 
   return changed;
 }
-
-/*******************************************************************\
-
-Function: dep_graph_domaint::control_dependencies
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void dep_graph_domaint::control_dependencies(
   goto_programt::const_targett from,
@@ -141,23 +120,7 @@ void dep_graph_domaint::control_dependencies(
 
     it=next;
   }
-
-  // add edges to the graph
-  for(const auto &c_dep : control_deps)
-    dep_graph.add_dep(dep_edget::kindt::CTRL, c_dep, to);
 }
-
-/*******************************************************************\
-
-Function: may_be_def_use_pair
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 static bool may_be_def_use_pair(
   const mp_integer &w_start,
@@ -179,18 +142,6 @@ static bool may_be_def_use_pair(
   else
     return false;
 }
-
-/*******************************************************************\
-
-Function: dep_graph_domaint::data_depdendencies
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void dep_graph_domaint::data_dependencies(
   goto_programt::const_targett from,
@@ -230,34 +181,14 @@ void dep_graph_domaint::data_dependencies(
 
     dep_graph.reaching_definitions()[to].clear_cache(it->first);
   }
-
-  // add edges to the graph
-  for(const auto &d_dep : data_deps)
-  {
-    // *it might be handled in a future call call to visit only,
-    // depending on the sequence of successors; make sure it exists
-    dep_graph.get_state(d_dep);
-    dep_graph.add_dep(dep_edget::kindt::DATA, d_dep, to);
-  }
 }
-
-/*******************************************************************\
-
-Function: dep_graph_domaint::transform
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void dep_graph_domaint::transform(
   goto_programt::const_targett from,
   goto_programt::const_targett to,
   ai_baset &ai,
-  const namespacet &ns)
+  const namespacet &ns,
+  ai_domain_baset::edge_typet edge_type)
 {
   dependence_grapht *dep_graph=dynamic_cast<dependence_grapht*>(&ai);
   assert(dep_graph!=nullptr);
@@ -265,10 +196,9 @@ void dep_graph_domaint::transform(
   // propagate control dependencies across function calls
   if(from->is_function_call())
   {
-    goto_programt::const_targett next=from;
-    ++next;
+    const goto_programt::const_targett next = std::next(from);
 
-    if(next==to)
+    if(edge_type == ai_domain_baset::edge_typet::FUNCTION_LOCAL)
     {
       control_dependencies(from, to, *dep_graph);
     }
@@ -299,18 +229,6 @@ void dep_graph_domaint::transform(
 
   data_dependencies(from, to, *dep_graph, ns);
 }
-
-/*******************************************************************\
-
-Function: dep_graph_domaint::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void dep_graph_domaint::output(
   std::ostream &out,
@@ -348,18 +266,9 @@ void dep_graph_domaint::output(
   }
 }
 
-/*******************************************************************\
-
-Function: dep_graph_domaint::output_json
-
-  Inputs: The abstract interpreter and the namespace.
-
- Outputs: The domain, formatted as a JSON object.
-
- Purpose: Outputs the current value of the domain.
-
-\*******************************************************************/
-
+/// Outputs the current value of the domain.
+/// \par parameters: The abstract interpreter and the namespace.
+/// \return The domain, formatted as a JSON object.
 jsont dep_graph_domaint::output_json(
   const ai_baset &ai,
   const namespacet &ns) const
@@ -388,18 +297,6 @@ jsont dep_graph_domaint::output_json(
   return graph;
 }
 
-/*******************************************************************\
-
-Function: dependence_grapht::add_dep
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void dependence_grapht::add_dep(
   dep_edget::kindt kind,
   goto_programt::const_targett from,
@@ -415,4 +312,14 @@ void dependence_grapht::add_dep(
   // add_edge(n_from, n_to);
   nodes[n_from].out[n_to].add(kind);
   nodes[n_to].in[n_from].add(kind);
+}
+
+void dep_graph_domaint::populate_dep_graph(
+  dependence_grapht &dep_graph, goto_programt::const_targett this_loc) const
+{
+  for(const auto &c_dep : control_deps)
+    dep_graph.add_dep(dep_edget::kindt::CTRL, c_dep, this_loc);
+
+  for(const auto &d_dep : data_deps)
+    dep_graph.add_dep(dep_edget::kindt::DATA, d_dep, this_loc);
 }

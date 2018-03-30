@@ -8,66 +8,30 @@ Date: June 2003
 
 \*******************************************************************/
 
+#include "goto_convert_functions.h"
+
 #include <cassert>
 
 #include <util/base_type.h>
 #include <util/std_code.h>
 #include <util/symbol_table.h>
 #include <util/prefix.h>
+#include <util/fresh_symbol.h>
 
-#include "goto_convert_functions.h"
 #include "goto_inline.h"
 
-/*******************************************************************\
-
-Function: goto_convert_functionst::goto_convert_functionst
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 goto_convert_functionst::goto_convert_functionst(
-  symbol_tablet &_symbol_table,
-  goto_functionst &_functions,
+  symbol_table_baset &_symbol_table,
   message_handlert &_message_handler):
-  goto_convertt(_symbol_table, _message_handler),
-  functions(_functions)
+  goto_convertt(_symbol_table, _message_handler)
 {
 }
-
-/*******************************************************************\
-
-Function: goto_convert_functionst::~goto_convert_functionst
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 goto_convert_functionst::~goto_convert_functionst()
 {
 }
 
-/*******************************************************************\
-
-Function: goto_convert_functionst::goto_convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void goto_convert_functionst::goto_convert()
+void goto_convert_functionst::goto_convert(goto_functionst &functions)
 {
   // warning! hash-table iterators are not stable
 
@@ -88,7 +52,7 @@ void goto_convert_functionst::goto_convert()
 
   for(const auto &id : symbol_list)
   {
-    convert_function(id);
+    convert_function(id, functions.function_map[id]);
   }
 
   functions.compute_location_numbers();
@@ -105,18 +69,6 @@ void goto_convert_functionst::goto_convert()
   #endif
 }
 
-/*******************************************************************\
-
-Function: goto_convert_functionst::hide
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool goto_convert_functionst::hide(const goto_programt &goto_program)
 {
   forall_goto_program_instructions(i_it, goto_program)
@@ -128,18 +80,6 @@ bool goto_convert_functionst::hide(const goto_programt &goto_program)
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: goto_convert_functionst::add_return
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_convert_functionst::add_return(
   goto_functionst::goto_functiont &f,
@@ -194,30 +134,21 @@ void goto_convert_functionst::add_return(
   t->source_location=source_location;
 }
 
-/*******************************************************************\
-
-Function: goto_convert_functionst::convert_function
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void goto_convert_functionst::convert_function(const irep_idt &identifier)
+void goto_convert_functionst::convert_function(
+  const irep_idt &identifier,
+  goto_functionst::goto_functiont &f)
 {
   const symbolt &symbol=ns.lookup(identifier);
-  goto_functionst::goto_functiont &f=functions.function_map[identifier];
+
+  if(f.body_available())
+    return; // already converted
 
   // make tmp variables local to function
   tmp_symbol_prefix=id2string(symbol.name)+"::$tmp::";
   temporary_counter=0;
+  reset_temporary_counter();
 
   f.type=to_code_type(symbol.type);
-  if(f.body_available())
-    return; // already converted
 
   if(symbol.value.is_nil() ||
      symbol.value.id()=="compiled") /* goto_inline may have removed the body */
@@ -292,53 +223,29 @@ void goto_convert_functionst::convert_function(const irep_idt &identifier)
     f.make_hidden();
 }
 
-/*******************************************************************\
-
-Function: goto_convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_convert(
-  symbol_tablet &symbol_table,
   goto_modelt &goto_model,
   message_handlert &message_handler)
 {
-  goto_convert(symbol_table, goto_model.goto_functions, message_handler);
-  goto_model.symbol_table.swap(symbol_table);
+  goto_convert(
+    goto_model.symbol_table,
+    goto_model.goto_functions,
+    message_handler);
 }
 
-/*******************************************************************\
-
-Function: goto_convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_convert(
-  symbol_tablet &symbol_table,
+  symbol_table_baset &symbol_table,
   goto_functionst &functions,
   message_handlert &message_handler)
 {
   const unsigned errors_before=
     message_handler.get_message_count(messaget::M_ERROR);
 
-  goto_convert_functionst goto_convert_functions(
-    symbol_table, functions, message_handler);
+  goto_convert_functionst goto_convert_functions(symbol_table, message_handler);
 
   try
   {
-    goto_convert_functions.goto_convert();
+    goto_convert_functions.goto_convert(functions);
   }
 
   catch(int)
@@ -360,33 +267,21 @@ void goto_convert(
     throw 0;
 }
 
-/*******************************************************************\
-
-Function: goto_convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_convert(
   const irep_idt &identifier,
-  symbol_tablet &symbol_table,
+  symbol_table_baset &symbol_table,
   goto_functionst &functions,
   message_handlert &message_handler)
 {
   const unsigned errors_before=
     message_handler.get_message_count(messaget::M_ERROR);
 
-  goto_convert_functionst goto_convert_functions(
-    symbol_table, functions, message_handler);
+  goto_convert_functionst goto_convert_functions(symbol_table, message_handler);
 
   try
   {
-    goto_convert_functions.convert_function(identifier);
+    goto_convert_functions.convert_function(
+      identifier, functions.function_map[identifier]);
   }
 
   catch(int)

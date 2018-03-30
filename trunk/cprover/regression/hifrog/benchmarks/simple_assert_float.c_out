@@ -1,5 +1,5 @@
 Violated property:
   file benchmarks/simple_assert_float.c line 3 function main
-  assertion 0f
-  (_Bool)0f
+  assertion 0.0f
+  (_Bool)0.0f
 VERIFICATION FAILED

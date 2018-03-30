@@ -13,15 +13,20 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <fstream>
 #include <cstdlib>
-#include <langapi/language_ui.h>
-#include <options.h>
+#include <util/language.h>
+
+#include <util/options.h>
 #include "xml_interface.h"
+
+#include <goto-programs/goto_trace.h>
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
 
 #include <goto-programs/goto_functions.h>
 #include <pointer-analysis/value_sets.h>
+
+#include <goto-programs/goto_model.h>
 
 class value_set_alloc_adaptort;
 
@@ -54,45 +59,44 @@ class value_set_alloc_adaptort;
   "(inlining-limit):(testclaim):" \
   "(pobj)(eq)(neq)(ineq)" \
   "(no-error-trace)" \
-  "(refine-mode):(init-mode):(logic):(list-templates)"\
+  "(list-templates)" \
+  "(refine-mode):(init-mode):(logic):" \
   "(dump-query)(dump-pre-query)(dump-SSA-tree)(dump-query-name):" \
   "(partial-loops)"
 
 class funfrog_parseoptionst:
   public parse_options_baset,
   public xml_interfacet,
-  public language_uit
+  public messaget
 {
 public:
   virtual int doit();
   virtual void help();
-  virtual void register_languages();
 
   void ssos(){
-	  cbmc_status_interface("Partial Inlining");
+    cbmc_status_interface("Partial Inlining");
   }
   funfrog_parseoptionst(int argc, const char **argv);
 
 protected:
+  goto_modelt goto_model;
+  ui_message_handlert ui_message_handler; // KE: due to chnage from register_languages to messaget
+
+  void register_languages();
+  void get_command_line_options(optionst &);
+
   unsigned count(const goto_functionst &goto_functions) const;
   unsigned count(const goto_programt &goto_program) const;
 
-  bool process_goto_program(
-    namespacet& ns,
-    optionst& options,
-    goto_functionst &goto_functions);
-  bool get_goto_program(
-    const std::string &filename,
-    namespacet& ns,
-    optionst& options,
-    goto_functionst &goto_functions);
-  bool check_function_summarization(namespacet &ns,
-                                goto_functionst &goto_functions);
+  bool process_goto_program(const optionst &);
+  bool get_goto_program(const optionst &);
+  bool check_function_summarization();
 
  // unsigned long report_mem(void) const;
  // unsigned long report_max_mem(unsigned long mem) const;
   
   void set_options(const cmdlinet &cmdline);
+  void eval_verbosity();
 
   optionst options;
   std::ofstream statfile;

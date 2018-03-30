@@ -7,6 +7,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Value Set (Flow Insensitive, Validity Regions)
+
 #ifndef CPROVER_POINTER_ANALYSIS_VALUE_SET_FIVRNS_H
 #define CPROVER_POINTER_ANALYSIS_VALUE_SET_FIVRNS_H
 
@@ -18,6 +21,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/mp_arith.h>
 #include <util/namespace.h>
 #include <util/reference_counting.h>
+#include <util/invariant.h>
 
 #include "object_numbering.h"
 
@@ -47,25 +51,13 @@ public:
 
   typedef irep_idt idt;
 
-  class objectt
+  /// Represents the offset into an object: either a unique integer offset,
+  /// or an unknown value, represented by `!offset`.
+  typedef optionalt<mp_integer> offsett;
+  bool offset_is_zero(offsett offset) const
   {
-  public:
-    objectt() :
-      offset_is_set(false)
-    {
-    }
-
-    explicit objectt(const mp_integer &_offset):
-      offset(_offset),
-      offset_is_set(true)
-    {
-    }
-
-    mp_integer offset;
-    bool offset_is_set;
-    bool offset_is_zero() const
-    { return offset_is_set && offset.is_zero(); }
-  };
+    return offset && offset->is_zero();
+  }
 
   class object_map_dt
   {
@@ -73,7 +65,7 @@ public:
     object_map_dt() {}
     static const object_map_dt blank;
 
-    typedef std::map<unsigned, objectt> objmapt;
+    typedef std::map<object_numberingt::number_type, offsett> objmapt;
     objmapt objmap;
 
     // NOLINTNEXTLINE(readability/identifiers)
@@ -81,27 +73,33 @@ public:
     // NOLINTNEXTLINE(readability/identifiers)
     typedef objmapt::iterator iterator;
 
-    const_iterator find(unsigned k) { return objmap.find(k); }
-    iterator begin(void) { return objmap.begin(); }
-    const_iterator begin(void) const { return objmap.begin(); }
-    iterator end(void) { return objmap.end(); }
-    const_iterator end(void) const { return objmap.end(); }
-    size_t size(void) const { return objmap.size(); }
-    void clear(void) { objmap.clear(); validity_ranges.clear(); }
+    const_iterator find(object_numberingt::number_type k)
+    {
+      return objmap.find(k);
+    }
+    iterator begin() { return objmap.begin(); }
+    const_iterator begin() const { return objmap.begin(); }
+    iterator end() { return objmap.end(); }
+    const_iterator end() const { return objmap.end(); }
+    size_t size() const { return objmap.size(); }
+    bool empty() const { return objmap.empty(); }
+    void clear() { objmap.clear(); validity_ranges.clear(); }
 
-    objectt &operator[](unsigned k)
+    offsett &operator[](object_numberingt::number_type k)
     {
       return objmap[k];
     }
 
     // operator[] is the only way to insert something!
-    std::pair<iterator, bool> insert(const std::pair<unsigned, objectt>&)
+    std::pair<iterator, bool>
+    insert(const std::pair<object_numberingt::number_type, offsett> &)
     {
-      assert(false);
+      UNREACHABLE;
     }
-    iterator insert(iterator, const std::pair<unsigned, objectt>&)
+    iterator
+    insert(iterator, const std::pair<object_numberingt::number_type, offsett> &)
     {
-      assert(false);
+      UNREACHABLE;
     }
 
     class validity_ranget
@@ -110,7 +108,7 @@ public:
       unsigned function;
       unsigned from, to;
 
-      validity_ranget(void):
+      validity_ranget():
         function(0), from(0), to(0)
       {
       }
@@ -150,25 +148,26 @@ public:
 
   bool insert_to(object_mapt &dest, const exprt &src) const
   {
-    return insert_to(dest, object_numbering.number(src), objectt());
+    return insert_to(dest, object_numbering.number(src), offsett());
   }
 
   bool insert_to(
     object_mapt &dest,
     const exprt &src,
-    const mp_integer &offset) const
+    const mp_integer &offset_value) const
   {
-    return insert_to(dest, object_numbering.number(src), objectt(offset));
+    return insert_to(dest, object_numbering.number(src), offsett(offset_value));
   }
-
-  bool insert_to(object_mapt &dest, unsigned n, const objectt &object) const;
 
   bool insert_to(
     object_mapt &dest,
-    const exprt &expr,
-    const objectt &object) const
+    object_numberingt::number_type n,
+    const offsett &offset) const;
+
+  bool
+  insert_to(object_mapt &dest, const exprt &expr, const offsett &offset) const
   {
-    return insert_to(dest, object_numbering.number(expr), object);
+    return insert_to(dest, object_numbering.number(expr), offset);
   }
 
   bool insert_from(object_mapt &dest, object_map_dt::const_iterator it) const
@@ -178,25 +177,27 @@ public:
 
   bool insert_from(object_mapt &dest, const exprt &src) const
   {
-    return insert_from(dest, object_numbering.number(src), objectt());
+    return insert_from(dest, object_numbering.number(src), offsett());
   }
 
   bool insert_from(
     object_mapt &dest,
     const exprt &src,
-    const mp_integer &offset) const
+    const mp_integer &offset_value) const
   {
-    return insert_from(dest, object_numbering.number(src), objectt(offset));
+    return insert_from(
+      dest, object_numbering.number(src), offsett(offset_value));
   }
-
-  bool insert_from(object_mapt &dest, unsigned n, const objectt &object) const;
 
   bool insert_from(
     object_mapt &dest,
-    const exprt &expr,
-    const objectt &object) const
+    object_numberingt::number_type n,
+    const offsett &offset) const;
+
+  bool
+  insert_from(object_mapt &dest, const exprt &expr, const offsett &offset) const
   {
-    return insert_from(dest, object_numbering.number(expr), object);
+    return insert_from(dest, object_numbering.number(expr), offset);
   }
 
   struct entryt
@@ -295,7 +296,7 @@ public:
   valuest values;
   valuest temporary_values;
 
-  // true = added s.th. new
+  // true = added something new
   bool make_union(
     object_mapt &dest,
     const object_mapt &src) const;
@@ -312,7 +313,7 @@ public:
     const exprt &code,
     const namespacet &ns);
 
-  bool handover(void);
+  bool handover();
 
   void assign(
     const exprt &lhs,

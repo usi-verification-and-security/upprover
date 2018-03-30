@@ -22,6 +22,7 @@
 #include "summarization_context.h"
 #include "utils/naming_helpers.h"
 #include "partitioning_target_equation.h"
+#include "hifrog.h"
 
 
 #ifdef DEBUG_SSA
@@ -51,7 +52,7 @@ symex_assertion_sumt::symex_assertion_sumt(
   unsigned int _max_unwind,
   bool partial_loops
 ) :
-  goto_symext(_ns, _new_symbol_table, _target),
+  goto_symext(_message_handler, _ns, _new_symbol_table, _target),
   summarization_context(_summarization_context),
   summary_info(_summary_info),
   current_summary_info(&_summary_info),
@@ -64,7 +65,6 @@ symex_assertion_sumt::symex_assertion_sumt(
   use_smt(_use_smt),
   max_unwind(_max_unwind)
 {
-  set_message_handler(_message_handler);
   options.set_option("partial-loops", partial_loops);
 }
 
@@ -98,10 +98,14 @@ symex_assertion_sumt::~symex_assertion_sumt() {
  * 
  * KE: DEAD CODE
 
+ * KE: not compiling, comment + assert(0);
+
 \*******************************************************************/
 
 void symex_assertion_sumt::loop_free_check(){
 # ifndef NDEBUG
+  assert(0); // Dead code
+/*
   forall_goto_program_instructions(it, goto_program)
     assert(!it->is_backwards_goto());
   forall_goto_functions(it, summarization_context.get_functions()) {
@@ -113,6 +117,7 @@ void symex_assertion_sumt::loop_free_check(){
       }
     }
   }
+*/
 # endif
 }
 
@@ -136,7 +141,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   // these are quick...
   if(assertion.is_trivially_true())
   {
-    status() << "ASSERTION IS TRUE" << eom;
+    log.statistics() << "ASSERTION IS TRUE" << log.eom;
     return true;
   }
 
@@ -276,26 +281,20 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
   }
   after=current_time();
 
-  status() << "SYMEX TIME: " << (after-before) << eom;
+  log.statistics() << "SYMEX TIME: " << (after-before) << log.eom;
 
   if(remaining_vccs!=0 || force_check)
   {
     if (use_slicing) {
       before=current_time();
-      status() << "All SSA steps: " << equation.SSA_steps.size() << eom;
+      log.statistics() << "All SSA steps: " << equation.SSA_steps.size() << log.eom;
       partitioning_slice(equation, summarization_context.get_summary_store(), use_smt);
-      status() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
+      log.statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << log.eom;
       after=current_time();
-      status() << "SLICER TIME: " << (after-before) << eom;
+      log.statistics() << "SLICER TIME: " << (after-before) << log.eom;
     }
-#ifdef DEBUG_SSA
-    print_SSA_steps(equation.SSA_steps, ns, std::cout);
-//    print_SSA_steps_in_order(equation.get_steps_exec_order(), ns, std::cout);
-#endif //DEBUG_SSA
-  }
-  else
-  {
-    status() << "Assertion(s) hold trivially." << eom;
+  } else {
+    log.statistics() << "Assertion(s) hold trivially." << log.eom;
     return true;
   }
   return false;
@@ -313,7 +312,11 @@ Function: symex_assertion_sumt::symex_step
  on the goto_symex, but it handles function calls differently. 
  Creation of expressions representing the calls is postponed, so that
  the formulas representing the function bodies can be passed to 
- an interpolating solver as separate conjuncts.
+ an interpolating solver as separate conjuncts.i
+
+
+Note: when upgrading Cprover, please also update the case-switch here
+follwoing the changes in symex_main.cpp
 
 \*******************************************************************/
 
@@ -321,9 +324,6 @@ void symex_assertion_sumt::symex_step(
   const goto_functionst &goto_functions,
   statet &state)
 {
-  assert(!state.threads.empty());
-  assert(!state.call_stack().empty());
-
 #ifdef DEBUG_PARTITIONING    
   std::cout << "\ninstruction type is " << state.source.pc->type << '\n';
   std::cout << "Location: " << state.source.pc->source_location << '\n';
@@ -331,7 +331,7 @@ void symex_assertion_sumt::symex_step(
   {
     std::cout << "Guard: " << from_expr(ns, "", state.guard.as_expr()) << '\n';
     std::cout << "Code: " << from_expr(ns, "", state.source.pc->code) << '\n';
-    std::cout << "Unwind: " << state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count << '\n';
+    std::cout << "Unwind: " << state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count << '\n';
     std::cout << "Unwind Info."
               << " unwind in last goto was " << prev_unwind_counter 
               << " a function " << (state.top().loop_iterations.empty() ? "with no" : "with") << " loops"
@@ -358,7 +358,7 @@ void symex_assertion_sumt::symex_step(
   case SKIP:
     if(!state.guard.is_false())
       target.location(state.guard.as_expr(), state.source);
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case END_FUNCTION:
@@ -366,13 +366,13 @@ void symex_assertion_sumt::symex_step(
     //decrement_unwinding_counter(); 
     store_return_value(state, get_current_deferred_function());
     end_symex(state);
-    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
+    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
     break;
   
   case LOCATION:
     if(!state.guard.is_false())
       target.location(state.guard.as_expr(), state.source);
-    state.source.pc++;
+    symex_transition(state);
     break;
   
   case GOTO:
@@ -387,7 +387,7 @@ void symex_assertion_sumt::symex_step(
             catch (const std::string &s) { str = ""; }
         }
       
-        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
+        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
         symex_goto(state); // Original code from Cprover follow with break
 
         if (do_guard_expl &&store_expln && !str.empty())
@@ -395,7 +395,7 @@ void symex_assertion_sumt::symex_step(
             guard_expln[state.guard.as_expr().get("identifier")] = str;
         }
     } else {
-        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
+        prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
         symex_goto(state); // Original code from Cprover follow with break
     }
         
@@ -410,7 +410,7 @@ void symex_assertion_sumt::symex_step(
       symex_assume(state, tmp);
     }
 
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case ASSERT:
@@ -467,7 +467,7 @@ void symex_assertion_sumt::symex_step(
       }
     }
 
-    state.source.pc++;
+    symex_transition(state);
     break;
     
   case RETURN:
@@ -476,14 +476,14 @@ void symex_assertion_sumt::symex_step(
       return_assignment(state);
     }
     
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case ASSIGN:      
     if(!state.guard.is_false()) 
       symex_assign_rec(state, to_code_assign(instruction.code));
           
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case FUNCTION_CALL:
@@ -494,27 +494,27 @@ void symex_assertion_sumt::symex_step(
       // Process the function call according to the call_summary
       handle_function_call(state, deref_code);
     }  
-    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;    
-    state.source.pc++;
+    prev_unwind_counter = state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
+    symex_transition(state);
     break;
 
   case OTHER:
     if(!state.guard.is_false())
       symex_other(goto_functions, state);
 
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case DECL:
     if(!state.guard.is_false())
       symex_decl(state);
 
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case DEAD:
     // ignore for now
-    state.source.pc++;
+    symex_transition(state);
     break;
 
   case START_THREAD:
@@ -527,13 +527,13 @@ void symex_assertion_sumt::symex_step(
       exprt tmp=state.guard.as_expr();
       target.assumption(state.guard.as_expr(), tmp, state.source);
     }
-    state.source.pc++;
+    symex_transition(state);
     break;
   
   case ATOMIC_BEGIN:
   case ATOMIC_END:
     // these don't have path semantics
-    state.source.pc++;
+    symex_transition(state);
     break;
   
   default:
@@ -610,7 +610,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   const irep_idt& function_id = current_summary_info->get_function_id();
   loc = current_summary_info->get_call_location();
 
-  status () <<  (std::string("Processing a deferred function: ") + function_id.c_str()) << eom;
+  log.statistics () <<  (std::string("Processing a deferred function: ") + function_id.c_str()) << log.eom;
 
   // Select symex target equation to produce formulas into the corresponding
   // partition
@@ -804,10 +804,11 @@ void symex_assertion_sumt::mark_argument_symbols(const code_typet & function_typ
     auto current_version = get_current_version(symbol);
     partition_iface.argument_symbols.push_back(current_version);
 
-#   ifdef DEBUG_PARTITIONING
+#   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
     expr_pretty_print(std::cout << "Marking argument symbol: ", current_version, "\n");
     std::cout << '\n';
 #   endif
+    assert(is_L2_SSA_symbol(current_version));
   }
 }
 
@@ -834,6 +835,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(const irep_idt & functio
     expr_pretty_print(std::cout << "Marking accessed global symbol: ", current_version, "\n");
     std::cout << '\n';
 #   endif
+    assert(is_L2_SSA_symbol(current_version));
   }
 }
 
@@ -849,7 +851,6 @@ void symex_assertion_sumt::mark_accessed_global_symbols(const irep_idt & functio
  symbol of the global variables for later use when processing the deferred 
  function
 
- FIXME: unify rename/SSA fabrication
 
 \*******************************************************************/
 void symex_assertion_sumt::modified_globals_assignment_and_mark(
@@ -865,8 +866,9 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     partition_iface.out_arg_symbols.push_back(ssa_expr);
 
 #   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
-    expr_pretty_print(std::cout << "Marking modified global symbol: ", symbol.symbol_expr());
+    expr_pretty_print(std::cout << "Marking modified global symbol: ", ssa_expr);
 #   endif
+    assert(is_L2_SSA_symbol(ssa_expr));
   }
 }
 
@@ -1159,14 +1161,14 @@ void symex_assertion_sumt::summarize_function_call(
 {
   // We should use an already computed summary as an abstraction
   // of the function body
-  status() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << eom;
+  log.statistics() << "*** SUMMARY abstraction used for function: " << function_id.c_str() << log.eom;
   
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
   produce_callsite_symbols(partition_iface, state);
   produce_callend_assumption(partition_iface, state);
 
-  status() << "Substituting interpolant" << eom;
+  log.statistics() << "Substituting interpolant" << log.eom;
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
   equation.fill_summary_partition(partition_id,
@@ -1194,7 +1196,7 @@ void symex_assertion_sumt::fill_inverted_summary(
   // of the function body
   const irep_idt& function_id = summary_info.get_function_id();
 
-  status() << "*** INVERTED SUMMARY used for function: " << function_id << eom;
+  log.statistics() << "*** INVERTED SUMMARY used for function: " << function_id << log.eom;
   
   partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION, 0);
   
@@ -1202,11 +1204,11 @@ void symex_assertion_sumt::fill_inverted_summary(
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
 
-  status() << "Substituting interpolant (part:" << partition_id << ")" << eom;
+  log.statistics() << "Substituting interpolant (part:" << partition_id << ")" << log.eom;
 
 //# ifdef DEBUG_PARTITIONING
-  status() << "   summaries available: " << summarization_context.get_summaries(function_id).size() << eom;
-  status() << "   summaries used: " << summary_info.get_used_summaries().size() << eom;
+  log.statistics() << "   summaries available: " << summarization_context.get_summaries(function_id).size() << log.eom;
+  log.statistics() << "   summaries used: " << summary_info.get_used_summaries().size() << log.eom;
 //# endif
 
   equation.fill_inverted_summary_partition(partition_id,
@@ -1231,7 +1233,7 @@ void symex_assertion_sumt::inline_function_call(
         const irep_idt& function_id)
 {
   // We should inline the body --> defer evaluation of the body for later
-  status() << (std::string("*** INLINING function: ") + function_id.c_str()) << eom;
+  log.statistics() << (std::string("*** INLINING function: ") + function_id.c_str()) << log.eom;
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
@@ -1259,7 +1261,7 @@ void symex_assertion_sumt::havoc_function_call(
 {
   // We should treat the function as nondeterministic, havocing
   // all data it touches.
-  status() << (std::string("*** NONDET abstraction used for function: ") + function_id.c_str()) << eom;
+  log.statistics() << (std::string("*** NONDET abstraction used for function: ") + function_id.c_str()) << log.eom;
 
   partition_ifacet &partition_iface = deferred_function.partition_iface;
 
@@ -1445,6 +1447,7 @@ Function: symex_assertion_sumt::phi_function
  Purpose: Modification of the goto_symext version. In contrast, we
  do not generate Phi functions for dead identifiers.
 
+ Note: to update check goto-symex::phi_function
 \*******************************************************************/
 void symex_assertion_sumt::phi_function(
   const statet::goto_statet &goto_state,
@@ -1618,13 +1621,13 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
     statet::framet &frame=state.top();
 
     unsigned int unwind_counter = // KE: for case 3. Not sure, can be the other option
-            state.top().loop_iterations[goto_programt::loop_id(state.source.pc)].count;
-    if (frame.loop_iterations[goto_programt::loop_id(state.source.pc)].count > 0)
+            state.top().loop_iterations[goto_programt::loop_id(*state.source.pc)].count;
+    if (frame.loop_iterations[goto_programt::loop_id(*state.source.pc)].count > 0)
     {
         // If we are opening the loop iterations, we are in a loop
         return true;
     } 
-    else if (frame.loop_iterations[goto_programt::loop_id(state.source.pc)].is_recursion)
+    else if (frame.loop_iterations[goto_programt::loop_id(*state.source.pc)].is_recursion)
     {
         // If we are in recursion - we are in a loop, return true
         return true;

@@ -6,24 +6,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution
+
+#include "precondition.h"
+#include "goto_symex_state.h"
+
 #include <util/find_symbols.h>
 
 #include <pointer-analysis/goto_program_dereference.h>
 
-#include "goto_symex_state.h"
-#include "precondition.h"
-
-/*******************************************************************\
-
-   Class: preconditiont
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <goto-programs/goto_model.h>
 
 class preconditiont
 {
@@ -57,18 +50,6 @@ protected:
   void compute_address_of(exprt &dest);
 };
 
-/*******************************************************************\
-
-Function: precondition
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void precondition(
   const namespacet &ns,
   value_setst &value_sets,
@@ -88,18 +69,6 @@ void precondition(
       return;
   }
 }
-
-/*******************************************************************\
-
-Function: preconditiont::compute_address_of
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void preconditiont::compute_address_of(exprt &dest)
 {
@@ -125,34 +94,10 @@ void preconditiont::compute_address_of(exprt &dest)
   }
 }
 
-/*******************************************************************\
-
-Function: preconditiont::compute
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void preconditiont::compute(exprt &dest)
 {
   compute_rec(dest);
 }
-
-/*******************************************************************\
-
-Function: preconditiont::compute_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void preconditiont::compute_rec(exprt &dest)
 {

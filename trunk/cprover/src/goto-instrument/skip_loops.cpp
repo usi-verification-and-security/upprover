@@ -8,27 +8,18 @@ Date: January 2016
 
 \*******************************************************************/
 
-#include <util/message.h>
-#include <util/string2int.h>
-
-#include <goto-programs/goto_functions.h>
+/// \file
+/// Skip over selected loops by adding gotos
 
 #include "skip_loops.h"
 
+#include <util/message.h>
+#include <util/string2int.h>
+
+#include <goto-programs/goto_model.h>
+
 typedef std::set<unsigned> loop_idst;
 typedef std::map<irep_idt, loop_idst> loop_mapt;
-
-/*******************************************************************\
-
-Function: skip_loops
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 static bool skip_loops(
   goto_programt &goto_program,
@@ -71,18 +62,6 @@ static bool skip_loops(
   return false;
 }
 
-/*******************************************************************\
-
-Function: skip_loops
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 static bool parse_loop_ids(
   const std::string &loop_ids,
   loop_mapt &loop_map)
@@ -111,20 +90,8 @@ static bool parse_loop_ids(
   return false;
 }
 
-/*******************************************************************\
-
-Function: skip_loops
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool skip_loops(
-  goto_functionst &goto_functions,
+  goto_modelt &goto_model,
   const std::string &loop_ids,
   message_handlert &message_handler)
 {
@@ -138,7 +105,7 @@ bool skip_loops(
   }
 
   loop_mapt::const_iterator it=loop_map.begin();
-  Forall_goto_functions(f_it, goto_functions)
+  Forall_goto_functions(f_it, goto_model.goto_functions)
   {
     if(it==loop_map.end() || it->first<f_it->first)
       break; // possible error handled below
@@ -157,7 +124,7 @@ bool skip_loops(
   }
 
   // update counters etc.
-  goto_functions.update();
+  goto_model.goto_functions.update();
 
   return false;
 }

@@ -1545,7 +1545,7 @@ gcc_attribute_list:
           gcc_attribute
         | gcc_attribute_list ',' gcc_attribute
         {
-          $$=merge($1, $2);
+          $$=merge($1, $3);
         }
         ;          
 
@@ -3065,7 +3065,9 @@ unary_identifier_declarator:
         {
           // the type_qualifier_list is for the pointer,
           // and not the identifier_declarator
-          stack_type($1).id(ID_pointer);
+          // The below is deliberately not using pointer_type();
+          // the width is added during conversion.
+          stack_type($1).id(ID_frontend_pointer);
           stack_type($1).subtype()=typet(ID_abstract);
           $2=merge($2, $1); // dest=$2
           make_subtype($3, $2); // dest=$3
@@ -3250,14 +3252,18 @@ unary_abstract_declarator:
           '*'
         {
           $$=$1;
-          set($$, ID_pointer);
+          // The below is deliberately not using pointer_type();
+          // the width is added during conversion.
+          stack_type($$).id(ID_frontend_pointer);
           stack_type($$).subtype()=typet(ID_abstract);
         }
         | '*' attribute_type_qualifier_list
         {
           // The type_qualifier_list belongs to the pointer,
           // not to the (missing) abstract declarator.
-          set($1, ID_pointer);
+          // The below is deliberately not using pointer_type();
+          // the width is added during conversion.
+          stack_type($1).id(ID_frontend_pointer);
           stack_type($1).subtype()=typet(ID_abstract);
           $$=merge($2, $1);
         }
@@ -3270,7 +3276,9 @@ unary_abstract_declarator:
         {
           // The type_qualifier_list belongs to the pointer,
           // not to the abstract declarator.
-          stack_type($1).id(ID_pointer);
+          // The below is deliberately not using pointer_type();
+          // the width is added during conversion.
+          stack_type($1).id(ID_frontend_pointer);
           stack_type($1).subtype()=typet(ID_abstract);
           $2=merge($2, $1); // dest=$2
           make_subtype($3, $2); // dest=$3
@@ -3290,14 +3298,18 @@ parameter_unary_abstract_declarator:
           '*'
         {
           $$=$1;
-          set($$, ID_pointer);
+          // The below is deliberately not using pointer_type();
+          // the width is added during conversion.
+          stack_type($$).id(ID_frontend_pointer);
           stack_type($$).subtype()=typet(ID_abstract);
         }
         | '*' attribute_type_qualifier_list
         {
           // The type_qualifier_list belongs to the pointer,
           // not to the (missing) abstract declarator.
-          set($1, ID_pointer);
+          // The below is deliberately not using pointer_type();
+          // the width is added during conversion.
+          stack_type($1).id(ID_frontend_pointer);
           stack_type($1).subtype()=typet(ID_abstract);
           $$=merge($2, $1);
         }
@@ -3310,7 +3322,9 @@ parameter_unary_abstract_declarator:
         {
           // The type_qualifier_list belongs to the pointer,
           // not to the (missing) abstract declarator.
-          stack($1).id(ID_pointer);
+          // The below is deliberately not using pointer_type();
+          // the width is added during conversion.
+          stack_type($1).id(ID_frontend_pointer);
           stack_type($1).subtype()=typet(ID_abstract);
           $2=merge($2, $1); // dest=$2
           make_subtype($3, $2); // dest=$3

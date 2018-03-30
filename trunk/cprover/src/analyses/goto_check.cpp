@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// GOTO Programs
+
+#include "goto_check.h"
+
 #include <algorithm>
 
 #include <util/simplify_expr.h>
@@ -24,7 +29,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/options.h>
 
 #include "local_bitvector_analysis.h"
-#include "goto_check.h"
 
 class goto_checkt
 {
@@ -33,7 +37,7 @@ public:
     const namespacet &_ns,
     const optionst &_options):
     ns(_ns),
-    local_bitvector_analysis(0)
+    local_bitvector_analysis(nullptr)
   {
     enable_bounds_check=_options.get_bool_option("bounds-check");
     enable_pointer_check=_options.get_bool_option("pointer-check");
@@ -142,18 +146,6 @@ protected:
   allocationst allocations;
 };
 
-/*******************************************************************\
-
-Function: goto_checkt::collect_allocations
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_checkt::collect_allocations(
   const goto_functionst &goto_functions)
 {
@@ -185,18 +177,6 @@ void goto_checkt::collect_allocations(
       allocations.push_back({args[0], args[1]});
     }
 }
-
-/*******************************************************************\
-
-Function: goto_checkt::invalidate
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_checkt::invalidate(const exprt &lhs)
 {
@@ -232,18 +212,6 @@ void goto_checkt::invalidate(const exprt &lhs)
   }
 }
 
-/*******************************************************************\
-
-Function: goto_checkt::div_by_zero_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_checkt::div_by_zero_check(
   const div_exprt &expr,
   const guardt &guard)
@@ -269,18 +237,6 @@ void goto_checkt::div_by_zero_check(
     expr,
     guard);
 }
-
-/*******************************************************************\
-
-Function: goto_checkt::undefined_shift_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_checkt::undefined_shift_check(
   const shift_exprt &expr,
@@ -330,20 +286,32 @@ void goto_checkt::undefined_shift_check(
       expr.find_source_location(),
       expr,
       guard);
+
+    if(op_type.id()==ID_signedbv && expr.id()==ID_shl)
+    {
+      binary_relation_exprt inequality(
+        expr.op(), ID_ge, from_integer(0, op_type));
+
+      add_guarded_claim(
+        inequality,
+        "shift operand is negative",
+        "undefined-shift",
+        expr.find_source_location(),
+        expr,
+        guard);
+    }
+  }
+  else
+  {
+    add_guarded_claim(
+      false_exprt(),
+      "shift of non-integer type",
+      "undefined-shift",
+      expr.find_source_location(),
+      expr,
+      guard);
   }
 }
-
-/*******************************************************************\
-
-Function: goto_checkt::mod_by_zero_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_checkt::mod_by_zero_check(
   const mod_exprt &expr,
@@ -370,18 +338,6 @@ void goto_checkt::mod_by_zero_check(
     expr,
     guard);
 }
-
-/*******************************************************************\
-
-Function: goto_checkt::conversion_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_checkt::conversion_check(
   const exprt &expr,
@@ -562,18 +518,6 @@ void goto_checkt::conversion_check(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_checkt::integer_overflow_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_checkt::integer_overflow_check(
   const exprt &expr,
   const guardt &guard)
@@ -652,7 +596,7 @@ void goto_checkt::integer_overflow_check(
     // The overflow checks are binary!
     // We break these up.
 
-    for(unsigned i=1; i<expr.operands().size(); i++)
+    for(std::size_t i=1; i<expr.operands().size(); i++)
     {
       exprt tmp;
 
@@ -694,18 +638,6 @@ void goto_checkt::integer_overflow_check(
       guard);
   }
 }
-
-/*******************************************************************\
-
-Function: goto_checkt::float_overflow_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_checkt::float_overflow_check(
   const exprt &expr,
@@ -829,18 +761,6 @@ void goto_checkt::float_overflow_check(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_checkt::nan_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_checkt::nan_check(
   const exprt &expr,
   const guardt &guard)
@@ -937,7 +857,7 @@ void goto_checkt::nan_check(
           equal_exprt(expr.op1(), minus_inf)));
   }
   else
-    assert(false);
+    UNREACHABLE;
 
   isnan.make_not();
 
@@ -949,18 +869,6 @@ void goto_checkt::nan_check(
     expr,
     guard);
 }
-
-/*******************************************************************\
-
-Function: goto_checkt::pointer_rel_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_checkt::pointer_rel_check(
   const exprt &expr,
@@ -992,18 +900,6 @@ void goto_checkt::pointer_rel_check(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_checkt::pointer_overflow_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_checkt::pointer_overflow_check(
   const exprt &expr,
   const guardt &guard)
@@ -1030,18 +926,6 @@ void goto_checkt::pointer_overflow_check(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_checkt::pointer_validity_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_checkt::pointer_validity_check(
   const dereference_exprt &expr,
   const guardt &guard,
@@ -1049,7 +933,7 @@ void goto_checkt::pointer_validity_check(
   const exprt &access_ub,
   const irep_idt &mode)
 {
-  if(mode!=ID_java && !enable_pointer_check)
+  if(!enable_pointer_check)
     return;
 
   const exprt &pointer=expr.op0();
@@ -1213,34 +1097,10 @@ void goto_checkt::pointer_validity_check(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_checkt::array_name
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string goto_checkt::array_name(const exprt &expr)
 {
   return ::array_name(ns, expr);
 }
-
-/*******************************************************************\
-
-Function: goto_checkt::bounds_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_checkt::bounds_check(
   const index_exprt &expr,
@@ -1397,18 +1257,6 @@ void goto_checkt::bounds_check(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_checkt::add_guarded_claim
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_checkt::add_guarded_claim(
   const exprt &_expr,
   const std::string &comment,
@@ -1455,18 +1303,6 @@ void goto_checkt::add_guarded_claim(
     t->source_location.set_property_class(property_class);
   }
 }
-
-/*******************************************************************\
-
-Function: goto_checkt::check_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_checkt::check_rec(
   const exprt &expr,
@@ -1606,6 +1442,9 @@ void goto_checkt::check_rec(
   else if(expr.id()==ID_shl || expr.id()==ID_ashr || expr.id()==ID_lshr)
   {
     undefined_shift_check(to_shift_expr(expr), guard);
+
+    if(expr.id()==ID_shl && expr.type().id()==ID_signedbv)
+      integer_overflow_check(expr, guard);
   }
   else if(expr.id()==ID_mod)
   {
@@ -1648,35 +1487,11 @@ void goto_checkt::check_rec(
       mode);
 }
 
-/*******************************************************************\
-
-Function: goto_checkt::check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_checkt::check(const exprt &expr, const irep_idt &mode)
 {
   guardt guard;
   check_rec(expr, guard, false, mode);
 }
-
-/*******************************************************************\
-
-Function: goto_checkt::goto_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_checkt::goto_check(
   goto_functiont &goto_function,
@@ -1773,7 +1588,7 @@ void goto_checkt::goto_check(
 
           add_guarded_claim(
             not_eq_null,
-            "this is null on method invokation",
+            "this is null on method invocation",
             "pointer dereference",
             i.source_location,
             pointer,
@@ -1902,21 +1717,25 @@ void goto_checkt::goto_check(
       {
         i_it->source_location.id(irep_idt());
 
-        if(it->source_location.get_file()!=irep_idt())
+        if(!it->source_location.get_file().empty())
           i_it->source_location.set_file(it->source_location.get_file());
 
-        if(it->source_location.get_line()!=irep_idt())
+        if(!it->source_location.get_line().empty())
           i_it->source_location.set_line(it->source_location.get_line());
 
-        if(it->source_location.get_function()!=irep_idt())
+        if(!it->source_location.get_function().empty())
           i_it->source_location.set_function(
             it->source_location.get_function());
 
-        if(it->source_location.get_column()!=irep_idt())
+        if(!it->source_location.get_column().empty())
           i_it->source_location.set_column(it->source_location.get_column());
+
+        if(!it->source_location.get_java_bytecode_index().empty())
+          i_it->source_location.set_java_bytecode_index(
+            it->source_location.get_java_bytecode_index());
       }
 
-      if(i_it->function==irep_idt())
+      if(i_it->function.empty())
         i_it->function=it->function;
     }
 
@@ -1931,38 +1750,15 @@ void goto_checkt::goto_check(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_check(
   const namespacet &ns,
   const optionst &options,
+  const irep_idt &mode,
   goto_functionst::goto_functiont &goto_function)
 {
   goto_checkt goto_check(ns, options);
-  goto_check.goto_check(goto_function, irep_idt());
+  goto_check.goto_check(goto_function, mode);
 }
-
-/*******************************************************************\
-
-Function: goto_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_check(
   const namespacet &ns,
@@ -1979,18 +1775,6 @@ void goto_check(
     goto_check.goto_check(it->second, mode);
   }
 }
-
-/*******************************************************************\
-
-Function: goto_check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_check(
   const optionst &options,

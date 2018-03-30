@@ -17,8 +17,8 @@
 #endif
 
 #include <list>
-#include <type.h>
-#include <symbol.h>
+#include <util/type.h>
+#include <util/symbol.h>
 
 #include "summary_info.h"
 #include "partition.h"

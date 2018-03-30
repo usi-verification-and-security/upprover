@@ -9,6 +9,9 @@ Date: August 2013
 
 \*******************************************************************/
 
+/// \file
+/// Field-Sensitive Program Dependence Analysis, Litvak et al., FSE 2010
+
 #ifndef CPROVER_ANALYSES_DEPENDENCE_GRAPH_H
 #define CPROVER_ANALYSES_DEPENDENCE_GRAPH_H
 
@@ -80,12 +83,13 @@ public:
     goto_programt::const_targett from,
     goto_programt::const_targett to,
     ai_baset &ai,
-    const namespacet &ns) final;
+    const namespacet &ns,
+    ai_domain_baset::edge_typet edge_type) final override;
 
   void output(
     std::ostream &out,
     const ai_baset &ai,
-    const namespacet &ns) const final;
+    const namespacet &ns) const final override;
 
   jsont output_json(
     const ai_baset &ai,
@@ -93,25 +97,51 @@ public:
 
   void make_top() final override
   {
-    assert(node_id!=std::numeric_limits<node_indext>::max());
+    DATA_INVARIANT(node_id!=std::numeric_limits<node_indext>::max(),
+                   "node_id must not be valid");
 
     has_values=tvt(true);
     control_deps.clear();
     data_deps.clear();
   }
 
-  void make_bottom() final
+  void make_bottom() final override
   {
-    assert(node_id!=std::numeric_limits<node_indext>::max());
+    DATA_INVARIANT(node_id!=std::numeric_limits<node_indext>::max(),
+                   "node_id must be valid");
 
     has_values=tvt(false);
     control_deps.clear();
     data_deps.clear();
   }
 
-  void make_entry() final
+  void make_entry() final override
   {
     make_top();
+  }
+
+  bool is_top() const final override
+  {
+    DATA_INVARIANT(node_id!=std::numeric_limits<node_indext>::max(),
+                   "node_id must be valid");
+
+    DATA_INVARIANT(!has_values.is_true() ||
+                   (control_deps.empty() && data_deps.empty()),
+                   "If the domain is top, it must have no dependencies");
+
+    return has_values.is_true();
+  }
+
+  bool is_bottom() const final override
+  {
+    DATA_INVARIANT(node_id!=std::numeric_limits<node_indext>::max(),
+                   "node_id must be valid");
+
+    DATA_INVARIANT(!has_values.is_false() ||
+                   (control_deps.empty() && data_deps.empty()),
+                   "If the domain is bottom, it must have no dependencies");
+
+    return has_values.is_false();
   }
 
   void set_node_id(node_indext id)
@@ -125,12 +155,20 @@ public:
     return node_id;
   }
 
+  void populate_dep_graph(
+    dependence_grapht &, goto_programt::const_targett) const;
+
 private:
   tvt has_values;
   node_indext node_id;
 
   typedef std::set<goto_programt::const_targett> depst;
   depst control_deps, data_deps;
+
+  friend const depst &
+    dependence_graph_test_get_control_deps(const dep_graph_domaint &);
+  friend const depst &
+    dependence_graph_test_get_data_deps(const dep_graph_domaint &);
 
   void control_dependencies(
     goto_programt::const_targett from,
@@ -175,6 +213,14 @@ public:
       const irep_idt id=goto_programt::get_function_id(goto_program);
       cfg_post_dominatorst &pd=post_dominators[id];
       pd(goto_program);
+    }
+  }
+
+  void finalize()
+  {
+    for(const auto &location_state : state_map)
+    {
+      location_state.second.populate_dep_graph(*this, location_state.first);
     }
   }
 

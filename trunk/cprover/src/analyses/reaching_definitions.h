@@ -9,9 +9,14 @@ Date: February 2013
 
 \*******************************************************************/
 
+/// \file
+/// Range-based reaching definitions analysis (following Field- Sensitive
+///   Program Dependence Analysis, Litvak et al., FSE 2010)
+
 #ifndef CPROVER_ANALYSES_REACHING_DEFINITIONS_H
 #define CPROVER_ANALYSES_REACHING_DEFINITIONS_H
 
+#include <util/base_exceptions.h>
 #include <util/threeval.h>
 
 #include "ai.h"
@@ -98,7 +103,7 @@ public:
   rd_range_domaint():
     ai_domain_baset(),
     has_values(false),
-    bv_container(0)
+    bv_container(nullptr)
   {
   }
 
@@ -112,17 +117,18 @@ public:
     locationt from,
     locationt to,
     ai_baset &ai,
-    const namespacet &ns) final;
+    const namespacet &ns,
+    ai_domain_baset::edge_typet edge_type) final override;
 
   void output(
     std::ostream &out,
     const ai_baset &ai,
-    const namespacet &ns) const final
+    const namespacet &ns) const final override
   {
     output(out);
   }
 
-  void make_top() final
+  void make_top() final override
   {
     values.clear();
     if(bv_container)
@@ -130,7 +136,7 @@ public:
     has_values=tvt(true);
   }
 
-  void make_bottom() final
+  void make_bottom() final override
   {
     values.clear();
     if(bv_container)
@@ -138,12 +144,26 @@ public:
     has_values=tvt(false);
   }
 
-  void make_entry() final
+  void make_entry() final override
   {
     make_top();
   }
 
-  // returns true iff there is s.th. new
+  bool is_top() const override final
+  {
+    DATA_INVARIANT(!has_values.is_true() || values.empty(),
+                   "If domain is top, the value map must be empty");
+    return has_values.is_true();
+  }
+
+  bool is_bottom() const override final
+  {
+    DATA_INVARIANT(!has_values.is_false() || values.empty(),
+                   "If domain is bottom, the value map must be empty");
+    return has_values.is_false();
+  }
+
+  // returns true iff there is something new
   bool merge(
     const rd_range_domaint &other,
     locationt from,
@@ -198,7 +218,8 @@ private:
     const namespacet &ns,
     locationt from,
     locationt to,
-    reaching_definitions_analysist &rd);
+    reaching_definitions_analysist &rd,
+    ai_domain_baset::edge_typet edge_type);
   void transform_end_function(
     const namespacet &ns,
     locationt from,
@@ -236,26 +257,22 @@ class reaching_definitions_analysist:
 {
 public:
   // constructor
-  explicit reaching_definitions_analysist(const namespacet &_ns):
-    concurrency_aware_ait<rd_range_domaint>(),
-    ns(_ns),
-    value_sets(0),
-    is_threaded(0),
-    is_dirty(0)
-  {
-  }
+  explicit reaching_definitions_analysist(const namespacet &_ns);
 
   virtual ~reaching_definitions_analysist();
 
   virtual void initialize(
-    const goto_functionst &goto_functions);
+    const goto_functionst &goto_functions) override;
 
-  virtual statet &get_state(goto_programt::const_targett l)
+  virtual statet &get_state(goto_programt::const_targett l) override
   {
     statet &s=concurrency_aware_ait<rd_range_domaint>::get_state(l);
 
     rd_range_domaint *rd_state=dynamic_cast<rd_range_domaint*>(&s);
-    assert(rd_state!=0);
+    INVARIANT_STRUCTURED(
+      rd_state!=nullptr,
+      bad_cast_exceptiont,
+      "rd_state has type rd_range_domaint");
 
     rd_state->set_bitvector_container(*this);
 
@@ -282,9 +299,9 @@ public:
 
 protected:
   const namespacet &ns;
-  value_setst * value_sets;
-  is_threadedt * is_threaded;
-  dirtyt * is_dirty;
+  std::unique_ptr<value_setst> value_sets;
+  std::unique_ptr<is_threadedt> is_threaded;
+  std::unique_ptr<dirtyt> is_dirty;
 };
 
 #endif // CPROVER_ANALYSES_REACHING_DEFINITIONS_H

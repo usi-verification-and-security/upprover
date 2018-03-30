@@ -6,10 +6,14 @@ Author: Thomas Kiley, thomas.kiley@diffblue.com
 
 \*******************************************************************/
 
+/// \file
+/// Util
+
 #ifndef CPROVER_UTIL_JSON_IREP_H
 #define CPROVER_UTIL_JSON_IREP_H
 
 #include <util/irep.h>
+
 class jsont;
 class json_objectt;
 
@@ -17,8 +21,8 @@ class json_irept
 {
 public:
   explicit json_irept(bool include_comments);
-  void convert_from_irep(const irept &irep, jsont &json) const;
-  void convert_from_json(const jsont &, irept &) const;
+  json_objectt convert_from_irep(const irept &) const;
+  irept convert_from_json(const jsont &) const;
 
 private:
   void convert_sub_tree(

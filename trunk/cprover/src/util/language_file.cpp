@@ -6,59 +6,29 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "language_file.h"
+
 #include <fstream>
 
 #include "language.h"
-#include "language_file.h"
-
-/*******************************************************************\
-
-Function: language_filet::language_filet
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 language_filet::language_filet(const language_filet &rhs):
   modules(rhs.modules),
-  language(rhs.language==NULL?NULL:rhs.language->new_language()),
+  language(rhs.language==nullptr?nullptr:rhs.language->new_language()),
   filename(rhs.filename)
 {
 }
 
-/*******************************************************************\
+/// To avoid compiler errors, the complete definition of a pointed-to type must
+/// be visible at the point at which the unique_ptr destructor is created.  In
+/// this case, the pointed-to type is forward-declared, so we have to place the
+/// destructor in the source file, where the full definition is availible.
+language_filet::~language_filet()=default;
 
-Function: language_filet::~language_filet
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-language_filet::~language_filet()
+language_filet::language_filet(const std::string &filename)
+  : filename(filename)
 {
-  if(language!=NULL)
-    delete language;
 }
-
-/*******************************************************************\
-
-Function: language_filet::get_modules
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void language_filet::get_modules()
 {
@@ -67,95 +37,68 @@ void language_filet::get_modules()
 
 void language_filet::convert_lazy_method(
   const irep_idt &id,
-  symbol_tablet &symbol_table)
+  symbol_table_baset &symbol_table)
 {
   language->convert_lazy_method(id, symbol_table);
 }
 
-/*******************************************************************\
-
-Function: language_filest::show_parse
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void language_filest::show_parse(std::ostream &out)
 {
-  for(file_mapt::iterator it=file_map.begin();
-      it!=file_map.end(); it++)
-    it->second.language->show_parse(out);
+  for(const auto &file : file_map)
+    file.second.language->show_parse(out);
 }
 
-/*******************************************************************\
-
-Function: language_filest::parse
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+/// Turn on or off stub generation for all the languages
+/// \param should_generate_stubs: Should stub generation be enabled
+void language_filest::set_should_generate_opaque_method_stubs(
+  bool stubs_enabled)
+{
+  for(file_mapt::value_type &language_file_entry : file_map)
+  {
+    auto &language=*language_file_entry.second.language;
+    language.set_should_generate_opaque_method_stubs(stubs_enabled);
+  }
+}
 
 bool language_filest::parse()
 {
-  for(file_mapt::iterator it=file_map.begin();
-      it!=file_map.end(); it++)
+  for(auto &file : file_map)
   {
     // open file
 
-    std::ifstream infile(it->first);
+    std::ifstream infile(file.first);
 
     if(!infile)
     {
-      error() << "Failed to open " << it->first << eom;
+      error() << "Failed to open " << file.first << eom;
       return true;
     }
 
     // parse it
 
-    languaget &language=*(it->second.language);
+    languaget &language=*(file.second.language);
 
-    if(language.parse(infile, it->first))
+    if(language.parse(infile, file.first))
     {
-      error() << "Parsing of " << it->first << " failed" << eom;
+      error() << "Parsing of " << file.first << " failed" << eom;
       return true;
     }
 
     // what is provided?
 
-    it->second.get_modules();
+    file.second.get_modules();
   }
 
   return false;
 }
 
-/*******************************************************************\
-
-Function: language_filest::typecheck
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool language_filest::typecheck(symbol_tablet &symbol_table)
 {
   // typecheck interfaces
 
-  for(file_mapt::iterator it=file_map.begin();
-      it!=file_map.end(); it++)
+  for(auto &file : file_map)
   {
-    if(it->second.language->interfaces(symbol_table))
+    if(file.second.language->interfaces(symbol_table))
       return true;
   }
 
@@ -163,11 +106,10 @@ bool language_filest::typecheck(symbol_tablet &symbol_table)
 
   unsigned collision_counter=0;
 
-  for(file_mapt::iterator fm_it=file_map.begin();
-      fm_it!=file_map.end(); fm_it++)
+  for(auto &file : file_map)
   {
     const language_filet::modulest &modules=
-      fm_it->second.modules;
+      file.second.modules;
 
     for(language_filet::modulest::const_iterator
         mo_it=modules.begin();
@@ -184,7 +126,7 @@ bool language_filest::typecheck(symbol_tablet &symbol_table)
       }
 
       language_modulet module;
-      module.file=&fm_it->second;
+      module.file=&file.second;
       module.name=module_name;
       module_map.insert(
         std::pair<std::string, language_modulet>(module.name, module));
@@ -193,99 +135,73 @@ bool language_filest::typecheck(symbol_tablet &symbol_table)
 
   // typecheck files
 
-  for(file_mapt::iterator it=file_map.begin();
-      it!=file_map.end(); it++)
+  for(auto &file : file_map)
   {
-    if(it->second.modules.empty())
+    if(file.second.modules.empty())
     {
-      if(it->second.language->typecheck(symbol_table, ""))
+      if(file.second.language->typecheck(symbol_table, ""))
         return true;
       // register lazy methods.
       // TODO: learn about modules and generalise this
       // to module-providing languages if required.
-      std::set<irep_idt> lazy_method_ids;
-      it->second.language->lazy_methods_provided(lazy_method_ids);
+      id_sett lazy_method_ids;
+      file.second.language->methods_provided(lazy_method_ids);
       for(const auto &id : lazy_method_ids)
-        lazy_method_map[id]=&it->second;
+        lazy_method_map[id]=&file.second;
     }
   }
 
   // typecheck modules
 
-  for(module_mapt::iterator it=module_map.begin();
-      it!=module_map.end(); it++)
+  for(auto &module : module_map)
   {
-    if(typecheck_module(symbol_table, it->second))
+    if(typecheck_module(symbol_table, module.second))
       return true;
   }
 
   return false;
 }
 
-/*******************************************************************\
-
-Function: language_filest::final
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-bool language_filest::final(
+bool language_filest::generate_support_functions(
   symbol_tablet &symbol_table)
 {
   std::set<std::string> languages;
 
-  for(file_mapt::iterator it=file_map.begin();
-      it!=file_map.end(); it++)
+  for(auto &file : file_map)
   {
-    if(languages.insert(it->second.language->id()).second)
-      if(it->second.language->final(symbol_table))
+    if(languages.insert(file.second.language->id()).second)
+      if(file.second.language->generate_support_functions(symbol_table))
         return true;
   }
 
   return false;
 }
 
-/*******************************************************************\
-
-Function: language_filest::interfaces
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-bool language_filest::interfaces(
-  symbol_tablet &symbol_table)
+bool language_filest::final(symbol_table_baset &symbol_table)
 {
-  for(file_mapt::iterator it=file_map.begin();
-      it!=file_map.end(); it++)
+  std::set<std::string> languages;
+
+  for(auto &file : file_map)
   {
-    if(it->second.language->interfaces(symbol_table))
-      return true;
+    if(languages.insert(file.second.language->id()).second)
+      if(file.second.language->final(symbol_table))
+        return true;
   }
 
   return false;
 }
 
-/*******************************************************************\
+bool language_filest::interfaces(
+  symbol_tablet &symbol_table)
+{
+  for(auto &file : file_map)
+  {
+    if(file.second.language->interfaces(symbol_table))
+      return true;
+  }
 
-Function: language_filest::typecheck_module
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+  return false;
+}
 
 bool language_filest::typecheck_module(
   symbol_tablet &symbol_table,
@@ -303,18 +219,6 @@ bool language_filest::typecheck_module(
 
   return typecheck_module(symbol_table, it->second);
 }
-
-/*******************************************************************\
-
-Function: language_filest::typecheck_module
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool language_filest::typecheck_module(
   symbol_tablet &symbol_table,

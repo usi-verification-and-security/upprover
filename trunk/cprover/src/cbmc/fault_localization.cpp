@@ -6,32 +6,26 @@ Author: Peter Schrammel
 
 \*******************************************************************/
 
+/// \file
+/// Fault Localization
+
+#include "fault_localization.h"
+
 #include <util/threeval.h>
 #include <util/arith_tools.h>
 #include <util/symbol.h>
 #include <util/std_expr.h>
 #include <util/message.h>
 #include <util/time_stopping.h>
+#include <util/xml_expr.h>
 
 #include <solvers/prop/minimize.h>
 #include <solvers/prop/literal_expr.h>
 
 #include <goto-symex/build_goto_trace.h>
+#include <goto-programs/xml_goto_trace.h>
 
-#include "fault_localization.h"
 #include "counterexample_beautification.h"
-
-/*******************************************************************\
-
-Function: fault_localizationt::freeze_guards
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void fault_localizationt::freeze_guards()
 {
@@ -44,18 +38,6 @@ void fault_localizationt::freeze_guards()
       bmc.prop_conv.set_frozen(step.cond_literal);
   }
 }
-
-/*******************************************************************\
-
-Function: fault_localizationt::collect_guards
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void fault_localizationt::collect_guards(lpointst &lpoints)
 {
@@ -80,18 +62,6 @@ void fault_localizationt::collect_guards(lpointst &lpoints)
   }
 }
 
-/*******************************************************************\
-
-Function: fault_localizationt::get_failed_property
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 symex_target_equationt::SSA_stepst::const_iterator
 fault_localizationt::get_failed_property()
 {
@@ -103,21 +73,9 @@ fault_localizationt::get_failed_property()
        bmc.prop_conv.l_get(it->cond_literal).is_false())
       return it;
 
-  assert(false);
+  UNREACHABLE;
   return bmc.equation.SSA_steps.end();
 }
-
-/*******************************************************************\
-
-Function: fault_localizationt::check
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool fault_localizationt::check(const lpointst &lpoints,
                                 const lpoints_valuet &value)
@@ -145,18 +103,6 @@ bool fault_localizationt::check(const lpointst &lpoints,
   return true;
 }
 
-/*******************************************************************\
-
-Function: fault_localizationt::update_scores
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void fault_localizationt::update_scores(lpointst &lpoints,
                                         const lpoints_valuet &value)
 {
@@ -173,18 +119,6 @@ void fault_localizationt::update_scores(lpointst &lpoints,
     }
   }
 }
-
-/*******************************************************************\
-
-Function: fault_localizationt::localize_linear
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void fault_localizationt::localize_linear(lpointst &lpoints)
 {
@@ -204,18 +138,6 @@ void fault_localizationt::localize_linear(lpointst &lpoints)
   }
 }
 
-/*******************************************************************\
-
-Function: fault_localizationt::run
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void fault_localizationt::run(irep_idt goal_id)
 {
   // find failed property
@@ -224,7 +146,7 @@ void fault_localizationt::run(irep_idt goal_id)
 
   if(goal_id==ID_nil)
     goal_id=failed->source.pc->source_location.get_property_id();
-  lpointst &lpoints = lpoints_map[goal_id];
+  lpointst &lpoints=lpoints_map[goal_id];
 
   // collect lpoints
   collect_guards(lpoints);
@@ -243,24 +165,12 @@ void fault_localizationt::run(irep_idt goal_id)
   bmc.prop_conv.set_assumptions(assumptions);
 }
 
-/*******************************************************************\
-
-Function: fault_localizationt::report()
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void fault_localizationt::report(irep_idt goal_id)
 {
   if(goal_id==ID_nil)
     goal_id=failed->source.pc->source_location.get_property_id();
 
-  lpointst &lpoints = lpoints_map[goal_id];
+  lpointst &lpoints=lpoints_map[goal_id];
 
   if(lpoints.empty())
   {
@@ -284,17 +194,40 @@ void fault_localizationt::report(irep_idt goal_id)
                    << eom;
 }
 
-/*******************************************************************\
+xmlt fault_localizationt::report_xml(irep_idt goal_id)
+{
+  xmlt xml_diagnosis("diagnosis");
+  xml_diagnosis.new_element("method").data="linear fault localization";
 
-Function: fault_localizationt::operator()
+  if(goal_id==ID_nil)
+    goal_id=failed->source.pc->source_location.get_property_id();
 
-  Inputs:
+  xml_diagnosis.set_attribute("property", id2string(goal_id));
 
- Outputs:
+  const lpointst &lpoints=lpoints_map[goal_id];
 
- Purpose:
+  if(lpoints.empty())
+  {
+    xml_diagnosis.new_element("result").data="unable to localize fault";
+    return xml_diagnosis;
+  }
 
-\*******************************************************************/
+  debug() << "Fault localization scores:" << eom;
+  const lpointt *max=&lpoints.begin()->second;
+  for(const auto &pair : lpoints)
+  {
+    const auto &value=pair.second;
+    debug() << value.target->source_location
+            << "\n  score: " << value.score << eom;
+    if(max->score<value.score)
+      max=&value;
+  }
+
+  xmlt xml_location=xml(max->target->source_location);
+  xml_diagnosis.new_element("result").new_element().swap(xml_location);
+
+  return xml_diagnosis;
+}
 
 safety_checkert::resultt fault_localizationt::operator()()
 {
@@ -303,18 +236,6 @@ safety_checkert::resultt fault_localizationt::operator()()
   else
     return bmc_all_propertiest::operator()();
 }
-
-/*******************************************************************\
-
-Function: fault_localizationt::run_decision_procedure
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 decision_proceduret::resultt
 fault_localizationt::run_decision_procedure(prop_convt &prop_conv)
@@ -346,18 +267,6 @@ fault_localizationt::run_decision_procedure(prop_convt &prop_conv)
   return dec_result;
 }
 
-/*******************************************************************\
-
-Function: fault_localizationt::stop_on_fail
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 safety_checkert::resultt fault_localizationt::stop_on_fail()
 {
   switch(run_decision_procedure(bmc.prop_conv))
@@ -378,8 +287,27 @@ safety_checkert::resultt fault_localizationt::stop_on_fail()
 
     // localize faults
     run(ID_nil);
-    status() << "\n** Most likely fault location:" << eom;
-    report(ID_nil);
+
+    switch(bmc.ui)
+    {
+    case ui_message_handlert::uit::PLAIN:
+    {
+      status() << "\n** Most likely fault location:" << eom;
+      report(ID_nil);
+      break;
+    }
+    case ui_message_handlert::uit::XML_UI:
+    {
+      xmlt dest("fault-localization");
+      xmlt xml_diagnosis=report_xml(ID_nil);
+      dest.new_element().swap(xml_diagnosis);
+      status() << dest;
+      break;
+    }
+    case ui_message_handlert::uit::JSON_UI:
+      // not implemented
+      break;
+    }
 
     bmc.report_failure();
     return safety_checkert::resultt::UNSAFE;
@@ -391,60 +319,36 @@ safety_checkert::resultt fault_localizationt::stop_on_fail()
   }
 }
 
-/*******************************************************************\
-
-Function: fault_localizationt::goal_covered
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void fault_localizationt::goal_covered(
   const cover_goalst::goalt &)
 {
-  for(auto &g : goal_map)
+  for(auto &goal_pair : goal_map)
   {
     // failed already?
-    if(g.second.status==goalt::statust::FAILURE)
+    if(goal_pair.second.status==goalt::statust::FAILURE)
       continue;
 
     // check whether failed
-    for(auto &c : g.second.instances)
+    for(auto &inst : goal_pair.second.instances)
     {
-      literalt cond=c->cond_literal;
+      literalt cond=inst->cond_literal;
 
       if(solver.l_get(cond).is_false())
       {
-        g.second.status=goalt::statust::FAILURE;
-        symex_target_equationt::SSA_stepst::iterator next=c;
+        goal_pair.second.status=goalt::statust::FAILURE;
+        symex_target_equationt::SSA_stepst::iterator next=inst;
         next++; // include the assertion
-        build_goto_trace(bmc.equation, next, solver, bmc.ns,
-                         g.second.goto_trace);
+        build_goto_trace(
+          bmc.equation, next, solver, bmc.ns, goal_pair.second.goto_trace);
 
         // localize faults
-        run(g.first);
+        run(goal_pair.first);
 
         break;
       }
     }
   }
 }
-
-/*******************************************************************\
-
-Function: fault_localizationt::report
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void fault_localizationt::report(
   const cover_goalst &cover_goals)
@@ -457,17 +361,29 @@ void fault_localizationt::report(
     if(cover_goals.number_covered()>0)
     {
       status() << "\n** Most likely fault location:" << eom;
-      for(auto &g : goal_map)
+      for(auto &goal_pair : goal_map)
       {
-        if(g.second.status!=goalt::statust::FAILURE)
+        if(goal_pair.second.status!=goalt::statust::FAILURE)
           continue;
-        report(g.first);
+        report(goal_pair.first);
       }
     }
     break;
   case ui_message_handlert::uit::XML_UI:
+    {
+      xmlt dest("fault-localization");
+      for(auto &goal_pair : goal_map)
+      {
+        if(goal_pair.second.status!=goalt::statust::FAILURE)
+          continue;
+        xmlt xml_diagnosis=report_xml(goal_pair.first);
+        dest.new_element().swap(xml_diagnosis);
+      }
+      status() << dest;
+    }
     break;
   case ui_message_handlert::uit::JSON_UI:
+    // not implemented
     break;
   }
 }

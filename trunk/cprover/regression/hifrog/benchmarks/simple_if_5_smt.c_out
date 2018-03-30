@@ -1,0 +1,5 @@
+Violated property:
+  file benchmarks/simple_if_5.c line 15 function main
+  assertion (double)z < 12.4
+  (double)z < 12.4
+VERIFICATION FAILED

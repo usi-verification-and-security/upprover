@@ -87,7 +87,7 @@ summaryt& summary_storet::find_summary(summary_idt new_id)
 
 
 void summary_storet::mark_used_summaries(summary_infot& summary_info, 
-        bool *used_mask)
+        std::vector<bool> & used_mask)
 {
   call_sitest& call_sites = summary_info.get_call_sites();
   
@@ -99,10 +99,8 @@ void summary_storet::mark_used_summaries(summary_infot& summary_info,
   
     // Collect the used summaries
     if (it->second.get_precision() != HAVOC) {
-      for (summary_ids_sett::const_iterator it2 = summaries.begin();
-              it2 != summaries.end(); ++it2)
-      {
-        used_mask[find_repr(*it2).repr_id] = true;
+      for (auto & summary : summaries){
+        used_mask[find_repr(summary).repr_id] = true;
       }
       
       // Propagate the call
@@ -112,7 +110,7 @@ void summary_storet::mark_used_summaries(summary_infot& summary_info,
 }
 
 void summary_storet::remap_used_summaries(summary_infot& summary_info, 
-        summary_idt *remap) 
+        std::vector<summary_idt> & remap)
 {
   call_sitest& call_sites = summary_info.get_call_sites();
   
@@ -155,9 +153,9 @@ void summary_storet::compact_store(summary_infot& summary_info,
         function_infost& function_infos)
 {
   // Mask unused representatives
-  bool used_mask[max_id];
-  memset(&used_mask, 0, sizeof(used_mask));
-  
+  std::vector<bool> used_mask;
+  used_mask.resize(max_id, false);
+
   mark_used_summaries(summary_info, used_mask);
   for (function_infost::iterator it = function_infos.begin();
           it != function_infos.end(); ++it) {
@@ -172,7 +170,8 @@ void summary_storet::compact_store(summary_infot& summary_info,
   }
   
   // Fill remap for the representatives
-  summary_idt remap[max_id];
+  std::vector<summary_idt> remap;
+  remap.resize(max_id);
   summary_idt new_id = 0;
   
   for (summary_idt i = 0; i < max_id; ++i) {
@@ -215,6 +214,5 @@ void summary_storet::compact_store(summary_infot& summary_info,
   max_id = new_id;
   repr_count = new_id;
   
-  return;
 }
 

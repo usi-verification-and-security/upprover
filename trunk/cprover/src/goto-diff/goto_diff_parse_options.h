@@ -6,13 +6,14 @@ Author: Peter Schrammel
 
 \*******************************************************************/
 
+/// \file
+/// GOTO-DIFF Command Line Option Processing
+
 #ifndef CPROVER_GOTO_DIFF_GOTO_DIFF_PARSE_OPTIONS_H
 #define CPROVER_GOTO_DIFF_GOTO_DIFF_PARSE_OPTIONS_H
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
-
-#include <langapi/language_ui.h>
 
 #include <goto-programs/goto_model.h>
 #include <goto-programs/show_goto_functions.h>

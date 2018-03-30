@@ -8,21 +8,16 @@ Date: January 2010
 
 \*******************************************************************/
 
+/// \file
+/// Detection for Uninitialized Local Variables
+
+#include "uninitialized.h"
+
 #include <util/std_code.h>
 #include <util/std_expr.h>
 #include <util/symbol_table.h>
 
 #include <analyses/uninitialized_domain.h>
-
-#include "uninitialized.h"
-
-/*******************************************************************\
-
-   Class: uninitializedt
-
- Purpose:
-
-\*******************************************************************/
 
 class uninitializedt
 {
@@ -47,19 +42,7 @@ protected:
   void get_tracking(goto_programt::const_targett i_it);
 };
 
-/*******************************************************************\
-
-Function: uninitializedt::get_tracking
-
-  Inputs:
-
- Outputs:
-
- Purpose: which variables need tracking,
-          i.e., are uninitialized and may be read?
-
-\*******************************************************************/
-
+/// which variables need tracking, i.e., are uninitialized and may be read?
 void uninitializedt::get_tracking(goto_programt::const_targett i_it)
 {
   std::list<exprt> objects=objects_read(*i_it);
@@ -79,18 +62,6 @@ void uninitializedt::get_tracking(goto_programt::const_targett i_it)
     }
   }
 }
-
-/*******************************************************************\
-
-Function: uninitializedt::add_assertions
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void uninitializedt::add_assertions(goto_programt &goto_program)
 {
@@ -122,7 +93,7 @@ void uninitializedt::add_assertions(goto_programt &goto_program)
     new_symbol.is_file_local=true;
     new_symbol.is_lvalue=true;
 
-    symbol_table.move(new_symbol);
+    symbol_table.insert(std::move(new_symbol));
   }
 
   Forall_goto_program_instructions(i_it, goto_program)
@@ -223,50 +194,23 @@ void uninitializedt::add_assertions(goto_programt &goto_program)
   }
 }
 
-/*******************************************************************\
-
-Function: add_uninitialized_locals_assertions
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void add_uninitialized_locals_assertions(
-  symbol_tablet &symbol_table,
-  goto_functionst &goto_functions)
+void add_uninitialized_locals_assertions(goto_modelt &goto_model)
 {
-  Forall_goto_functions(f_it, goto_functions)
+  Forall_goto_functions(f_it, goto_model.goto_functions)
   {
-    uninitializedt uninitialized(symbol_table);
+    uninitializedt uninitialized(goto_model.symbol_table);
 
     uninitialized.add_assertions(f_it->second.body);
   }
 }
 
-/*******************************************************************\
-
-Function: show_uninitialized
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void show_uninitialized(
-  const class symbol_tablet &symbol_table,
-  const goto_functionst &goto_functions,
+  const goto_modelt &goto_model,
   std::ostream &out)
 {
-  const namespacet ns(symbol_table);
+  const namespacet ns(goto_model.symbol_table);
 
-  forall_goto_functions(f_it, goto_functions)
+  forall_goto_functions(f_it, goto_model.goto_functions)
   {
     if(f_it->second.body_available())
     {

@@ -8,6 +8,11 @@ Author: Daniel Kroening
 
 \*******************************************************************/
 
+/// \file
+/// Traces of GOTO Programs
+
+#include "xml_goto_trace.h"
+
 #include <cassert>
 
 #include <util/xml_expr.h>
@@ -15,20 +20,6 @@ Author: Daniel Kroening
 
 #include <ansi-c/printf_formatter.h>
 #include <langapi/language_util.h>
-
-#include "xml_goto_trace.h"
-
-/*******************************************************************\
-
-Function: convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void convert(
   const namespacet &ns,

@@ -11,8 +11,8 @@
 #define CPROVER_SUMMARIZING_CHECKER_H
 
 #include <memory>
-#include <options.h>
-#include <ui_message.h>
+#include <util/options.h>
+#include <util/ui_message.h>
 #include "summarization_context.h"
 #include "summarization_context_fwd.h"
 #include "subst_scenario.h"

@@ -6,48 +6,30 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Bounded Model Checking for ANSI-C
+
+#include "symex_bmc.h"
+
 #include <limits>
 
 #include <util/source_location.h>
 #include <util/simplify_expr.h>
 
-#include "symex_bmc.h"
-
-/*******************************************************************\
-
-Function: symex_bmct::symex_bmct
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 symex_bmct::symex_bmct(
+  message_handlert &mh,
   const namespacet &_ns,
   symbol_tablet &_new_symbol_table,
-  symex_targett &_target):
-  goto_symext(_ns, _new_symbol_table, _target),
-  record_coverage(false),
-  max_unwind_is_set(false),
-  symex_coverage(_ns)
+  symex_targett &_target)
+  : goto_symext(mh, _ns, _new_symbol_table, _target),
+    record_coverage(false),
+    max_unwind(0),
+    max_unwind_is_set(false),
+    symex_coverage(_ns)
 {
 }
 
-/*******************************************************************\
-
-Function: symex_bmct::symex_step
-
-  Inputs:
-
- Outputs:
-
- Purpose: show progress
-
-\*******************************************************************/
-
+/// show progress
 void symex_bmct::symex_step(
   const goto_functionst &goto_functions,
   statet &state)
@@ -56,10 +38,9 @@ void symex_bmct::symex_step(
 
   if(!source_location.is_nil() && last_source_location!=source_location)
   {
-    //debug() << "BMC at file " << source_location.get_file()
-    //        << " line " << source_location.get_line()
-    //        << " function " << source_location.get_function()
-    //        << eom;
+  //  log.debug() << "BMC at file " << source_location.get_file() << " line "
+//<< source_location.get_line() << " function "
+    //            << source_location.get_function() << log.eom;
 
     last_source_location=source_location;
   }
@@ -71,15 +52,15 @@ void symex_bmct::symex_step(
      state.source.pc->is_assume() &&
      simplify_expr(state.source.pc->guard, ns).is_false())
   {
-    statistics() << "aborting path on assume(false) at "
-                 << state.source.pc->source_location
-                 << " thread " << state.source.thread_nr;
+    log.statistics() << "aborting path on assume(false) at "
+                     << state.source.pc->source_location << " thread "
+                     << state.source.thread_nr;
 
     const irep_idt &c=state.source.pc->source_location.get_comment();
     if(!c.empty())
-      statistics() << ": " << c;
+      log.statistics() << ": " << c;
 
-    statistics() << eom;
+    log.statistics() << log.eom;
   }
 
   goto_symext::symex_step(goto_functions, state);
@@ -104,18 +85,6 @@ void symex_bmct::symex_step(
   }
 }
 
-/*******************************************************************\
-
-Function: symex_bmct::merge_goto
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void symex_bmct::merge_goto(
   const statet::goto_statet &goto_state,
   statet &state)
@@ -125,7 +94,7 @@ void symex_bmct::merge_goto(
 
   goto_symext::merge_goto(goto_state, state);
 
-  assert(prev_pc->is_goto());
+  PRECONDITION(prev_pc->is_goto());
   if(record_coverage &&
      // could the branch possibly be taken?
      !prev_guard.is_false() &&
@@ -135,23 +104,11 @@ void symex_bmct::merge_goto(
     symex_coverage.covered(prev_pc, state.source.pc);
 }
 
-/*******************************************************************\
-
-Function: symex_bmct::get_unwind
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool symex_bmct::get_unwind(
   const symex_targett::sourcet &source,
   unsigned unwind)
 {
-  const irep_idt id=goto_programt::loop_id(source.pc);
+  const irep_idt id=goto_programt::loop_id(*source.pc);
 
   // We use the most specific limit we have,
   // and 'infinity' when we have none.
@@ -175,30 +132,17 @@ bool symex_bmct::get_unwind(
 
   bool abort=unwind>=this_loop_limit;
 
-  statistics() << (abort?"Not unwinding":"Unwinding")
-               << " loop " << id << " iteration "
-               << unwind;
+  log.statistics() << (abort ? "Not unwinding" : "Unwinding") << " loop " << id
+                   << " iteration " << unwind;
 
   if(this_loop_limit!=std::numeric_limits<unsigned>::max())
-    statistics() << " (" << this_loop_limit << " max)";
+    log.statistics() << " (" << this_loop_limit << " max)";
 
-  statistics() << " " << source.pc->source_location
-               << " thread " << source.thread_nr << eom;
+  log.statistics() << " " << source.pc->source_location << " thread "
+                   << source.thread_nr << log.eom;
 
   return abort;
 }
-
-/*******************************************************************\
-
-Function: symex_bmct::get_unwind_recursion
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool symex_bmct::get_unwind_recursion(
   const irep_idt &id,
@@ -231,37 +175,23 @@ bool symex_bmct::get_unwind_recursion(
   {
     const symbolt &symbol=ns.lookup(id);
 
-    statistics() << (abort?"Not unwinding":"Unwinding")
-                 << " recursion "
-                 << symbol.display_name()
-                 << " iteration " << unwind;
+    log.statistics() << (abort ? "Not unwinding" : "Unwinding") << " recursion "
+                     << symbol.display_name() << " iteration " << unwind;
 
     if(this_loop_limit!=std::numeric_limits<unsigned>::max())
-      statistics() << " (" << this_loop_limit << " max)";
+      log.statistics() << " (" << this_loop_limit << " max)";
 
-    statistics() << eom;
+    log.statistics() << log.eom;
   }
 
   return abort;
 }
 
-/*******************************************************************\
-
-Function: symex_bmct::no_body
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void symex_bmct::no_body(const irep_idt &identifier)
 {
   if(body_warnings.insert(identifier).second)
   {
-    warning() <<
-      "**** WARNING: no body for function " << identifier << eom;
+    log.warning() << "**** WARNING: no body for function " << identifier
+                  << log.eom;
   }
 }

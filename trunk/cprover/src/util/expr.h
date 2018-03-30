@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_UTIL_EXPR_H
 #define CPROVER_UTIL_EXPR_H
 
@@ -39,6 +40,10 @@ Author: Daniel Kroening, kroening@kroening.com
 #define Forall_expr_list(it, expr) \
   for(expr_listt::iterator it=(expr).begin(); \
       it!=(expr).end(); ++it)
+
+class depth_iteratort;
+class const_depth_iteratort;
+class const_unique_depth_iteratort;
 
 /*! \brief Base class for all expressions
 */
@@ -137,7 +142,6 @@ public:
   bool is_boolean() const;
 
   const std::string print_number_2smt() const; // hckd!!
-
   const source_locationt &find_source_location() const;
 
   const source_locationt &source_location() const
@@ -162,6 +166,17 @@ public:
 
   void visit(class expr_visitort &visitor);
   void visit(class const_expr_visitort &visitor) const;
+
+  depth_iteratort depth_begin();
+  depth_iteratort depth_end();
+  const_depth_iteratort depth_begin() const;
+  const_depth_iteratort depth_end() const;
+  const_depth_iteratort depth_cbegin() const;
+  const_depth_iteratort depth_cend() const;
+  const_unique_depth_iteratort unique_depth_begin() const;
+  const_unique_depth_iteratort unique_depth_end() const;
+  const_unique_depth_iteratort unique_depth_cbegin() const;
+  const_unique_depth_iteratort unique_depth_cend() const;
 };
 
 typedef std::list<exprt> expr_listt;

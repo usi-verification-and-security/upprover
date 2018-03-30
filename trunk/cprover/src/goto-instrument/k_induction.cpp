@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// k-induction
+
+#include "k_induction.h"
+
 #include <util/std_expr.h>
 
 #include <analyses/natural_loops.h>
@@ -15,7 +20,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include "unwind.h"
 #include "loop_utils.h"
-#include "k_induction.h"
 
 class k_inductiont
 {
@@ -48,18 +52,6 @@ protected:
     const goto_programt::targett loop_head,
     const loopt &);
 };
-
-/*******************************************************************\
-
-Function: k_inductiont::process_loop
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void k_inductiont::process_loop(
   const goto_programt::targett loop_head,
@@ -95,7 +87,7 @@ void k_inductiont::process_loop(
     modifiest modifies;
     get_modifies(local_may_alias, loop, modifies);
 
-    // build the havoc-ing code
+    // build the havocking code
     goto_programt havoc_code;
     build_havoc_code(loop_head, modifies, havoc_code);
 
@@ -146,18 +138,6 @@ void k_inductiont::process_loop(
   remove_skip(goto_function.body);
 }
 
-/*******************************************************************\
-
-Function: k_inductiont::k_induction
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void k_inductiont::k_induction()
 {
   // iterate over the (natural) loops in the function
@@ -169,23 +149,11 @@ void k_inductiont::k_induction()
     process_loop(l_it->first, l_it->second);
 }
 
-/*******************************************************************\
-
-Function: k_induction
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void k_induction(
-  goto_functionst &goto_functions,
+  goto_modelt &goto_model,
   bool base_case, bool step_case,
   unsigned k)
 {
-  Forall_goto_functions(it, goto_functions)
+  Forall_goto_functions(it, goto_model.goto_functions)
     k_inductiont(it->second, base_case, step_case, k);
 }

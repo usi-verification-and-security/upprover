@@ -6,21 +6,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/simplify_expr.h>
+/// \file
+/// Field-insensitive, location-sensitive escape analysis
 
 #include "escape_analysis.h"
 
-/*******************************************************************\
-
-Function: escape_domaint::is_tracked
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <util/simplify_expr.h>
 
 bool escape_domaint::is_tracked(const symbol_exprt &symbol)
 {
@@ -33,18 +24,6 @@ bool escape_domaint::is_tracked(const symbol_exprt &symbol)
 
   return true;
 }
-
-/*******************************************************************\
-
-Function: escape_domaint::get_function
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 irep_idt escape_domaint::get_function(const exprt &lhs)
 {
@@ -60,18 +39,6 @@ irep_idt escape_domaint::get_function(const exprt &lhs)
 
   return irep_idt();
 }
-
-/*******************************************************************\
-
-Function: escape_domaint::assign_lhs_cleanup
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void escape_domaint::assign_lhs_cleanup(
   const exprt &lhs,
@@ -91,18 +58,6 @@ void escape_domaint::assign_lhs_cleanup(
     }
   }
 }
-
-/*******************************************************************\
-
-Function: escape_domaint::assign_lhs_aliases
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void escape_domaint::assign_lhs_aliases(
   const exprt &lhs,
@@ -124,18 +79,6 @@ void escape_domaint::assign_lhs_aliases(
     }
   }
 }
-
-/*******************************************************************\
-
-Function: escape_domaint::get_rhs_cleanup
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void escape_domaint::get_rhs_cleanup(
   const exprt &rhs,
@@ -166,18 +109,6 @@ void escape_domaint::get_rhs_cleanup(
     get_rhs_cleanup(to_typecast_expr(rhs).op(), cleanup_functions);
   }
 }
-
-/*******************************************************************\
-
-Function: escape_domaint::get_rhs_aliases
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void escape_domaint::get_rhs_aliases(
   const exprt &rhs,
@@ -211,18 +142,6 @@ void escape_domaint::get_rhs_aliases(
   }
 }
 
-/*******************************************************************\
-
-Function: escape_domaint::get_rhs_aliases_address_of
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void escape_domaint::get_rhs_aliases_address_of(
   const exprt &rhs,
   std::set<irep_idt> &alias_set)
@@ -242,23 +161,12 @@ void escape_domaint::get_rhs_aliases_address_of(
   }
 }
 
-/*******************************************************************\
-
-Function: escape_domaint::transform
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void escape_domaint::transform(
   locationt from,
   locationt to,
   ai_baset &ai,
-  const namespacet &ns)
+  const namespacet &ns,
+  ai_domain_baset::edge_typet /*edge_type*/)
 {
   if(has_values.is_false())
     return;
@@ -346,18 +254,6 @@ void escape_domaint::transform(
   }
 }
 
-/*******************************************************************\
-
-Function: escape_domaint::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void escape_domaint::output(
   std::ostream &out,
   const ai_baset &ai,
@@ -404,39 +300,19 @@ void escape_domaint::output(
   }
 }
 
-/*******************************************************************\
-
-Function: escape_domaint::merge
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool escape_domaint::merge(
   const escape_domaint &b,
   locationt from,
   locationt to)
 {
-  if(b.has_values.is_false())
-    return false; // no change
-
-  if(has_values.is_false())
-  {
-    *this=b;
-    return true; // change
-  }
-
-  bool changed=false;
+  bool changed=has_values.is_false();
+  has_values=tvt::unknown();
 
   for(const auto &cleanup : b.cleanup_map)
   {
     const std::set<irep_idt> &b_cleanup=cleanup.second.cleanup_functions;
     std::set<irep_idt> &a_cleanup=cleanup_map[cleanup.first].cleanup_functions;
-    unsigned old_size=a_cleanup.size();
+    auto old_size=a_cleanup.size();
     a_cleanup.insert(b_cleanup.begin(), b_cleanup.end());
     if(a_cleanup.size()!=old_size)
       changed=true;
@@ -480,18 +356,6 @@ bool escape_domaint::merge(
   return changed;
 }
 
-/*******************************************************************\
-
-Function: escape_domaint::check_lhs
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void escape_domaint::check_lhs(
   const exprt &lhs,
   std::set<irep_idt> &cleanup_functions)
@@ -500,7 +364,7 @@ void escape_domaint::check_lhs(
   {
     const irep_idt &identifier=to_symbol_expr(lhs).get_identifier();
 
-    // pointer with aleanup function?
+    // pointer with cleanup function?
     const escape_domaint::cleanup_mapt::const_iterator m_it=
       cleanup_map.find(identifier);
 
@@ -508,7 +372,7 @@ void escape_domaint::check_lhs(
     {
       // count the aliases
 
-      unsigned count=0;
+      std::size_t count=0;
 
       for(const auto &alias : aliases)
       {
@@ -526,18 +390,6 @@ void escape_domaint::check_lhs(
     }
   }
 }
-
-/*******************************************************************\
-
-Function: escape_analysist::insert_cleanup
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void escape_analysist::insert_cleanup(
   goto_functionst::goto_functiont &goto_function,
@@ -576,23 +428,12 @@ void escape_analysist::insert_cleanup(
   }
 }
 
-/*******************************************************************\
-
-Function: escape_analysist::instrument
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void escape_analysist::instrument(
-  goto_functionst &goto_functions,
-  const namespacet &ns)
+  goto_modelt &goto_model)
 {
-  Forall_goto_functions(f_it, goto_functions)
+  const namespacet ns(goto_model.symbol_table);
+
+  Forall_goto_functions(f_it, goto_model.goto_functions)
   {
     Forall_goto_program_instructions(i_it, f_it->second.body)
     {

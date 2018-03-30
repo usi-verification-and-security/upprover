@@ -6,10 +6,10 @@
 
  \*******************************************************************/
 
+#include <util/std_expr.h>
 
 #include "smt_partitioning_target_equation.h"
 
-#include <std_expr.h>
 #include "solvers/smtcheck_opensmt2.h"
 #include "solvers/smt_itp.h"
 #include "partition_iface.h"

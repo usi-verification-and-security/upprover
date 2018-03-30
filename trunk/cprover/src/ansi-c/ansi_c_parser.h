@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_ANSI_C_ANSI_C_PARSER_H
 #define CPROVER_ANSI_C_ANSI_C_PARSER_H
 
@@ -28,7 +29,12 @@ public:
   ansi_c_parse_treet parse_tree;
 
   ansi_c_parsert():
-    cpp98(false), cpp11(false),
+    tag_following(false),
+    asm_block_following(false),
+    parenthesis_counter(0),
+    mode(modet::NONE),
+    cpp98(false),
+    cpp11(false),
     for_has_scope(false)
   {
   }
@@ -50,7 +56,7 @@ public:
     string_literal.clear();
     pragma_pack.clear();
 
-    // setup global scope
+    // set up global scope
     scopes.clear();
     scopes.push_back(scopet());
   }

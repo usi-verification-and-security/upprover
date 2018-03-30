@@ -6,6 +6,11 @@ Author: Michael Tautschnig
 
 \*******************************************************************/
 
+/// \file
+/// Assembler Mode
+
+#include "as_mode.h"
+
 #ifdef _WIN32
 #define EX_OK 0
 #define EX_USAGE 64
@@ -16,6 +21,7 @@ Author: Michael Tautschnig
 
 #include <fstream>
 #include <iostream>
+#include <cstring>
 
 #include <util/run.h>
 #include <util/string2int.h>
@@ -27,20 +33,6 @@ Author: Michael Tautschnig
 #include <cbmc/version.h>
 
 #include "compile.h"
-
-#include "as_mode.h"
-
-/*******************************************************************\
-
-Function: assembler_name
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 static std::string assembler_name(
   const cmdlinet &cmdline,
@@ -64,18 +56,6 @@ static std::string assembler_name(
   return result;
 }
 
-/*******************************************************************\
-
-Function: as_modet::as_modet
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 as_modet::as_modet(
   goto_cc_cmdlinet &_cmdline,
   const std::string &_base_name,
@@ -86,18 +66,7 @@ as_modet::as_modet(
 {
 }
 
-/*******************************************************************\
-
-Function: as_modet::doit
-
-  Inputs:
-
- Outputs:
-
- Purpose: does it.
-
-\*******************************************************************/
-
+/// does it.
 int as_modet::doit()
 {
   if(cmdline.isset('?') ||
@@ -205,11 +174,11 @@ int as_modet::doit()
       continue;
 
     // extract the preprocessed source from the file
-    std::ifstream is(arg_it->arg);
+    std::string infile=arg_it->arg=="-"?cmdline.stdin_file:arg_it->arg;
+    std::ifstream is(infile);
     if(!is.is_open())
     {
-      error() << "Failed to open input source " << arg_it->arg
-        << eom;
+      error() << "Failed to open input source " << infile << eom;
       return 1;
     }
 
@@ -237,7 +206,7 @@ int as_modet::doit()
 
         ++outputs;
         std::string new_name=
-          get_base_name(arg_it->arg, true)+"_"+
+          get_base_name(infile, true)+"_"+
           std::to_string(outputs)+".i";
         dest=temp_dir(new_name);
 
@@ -283,18 +252,7 @@ int as_modet::doit()
   return EX_OK;
 }
 
-/*******************************************************************\
-
-Function: as_modet::run_as
-
-  Inputs:
-
- Outputs:
-
- Purpose: run as or as86 with original command line
-
-\*******************************************************************/
-
+/// run as or as86 with original command line
 int as_modet::run_as()
 {
   assert(!cmdline.parsed_argv.empty());
@@ -318,18 +276,6 @@ int as_modet::run_as()
   return run(new_argv[0], new_argv, cmdline.stdin_file, "");
 }
 
-/*******************************************************************\
-
-Function: as_modet::as_hybrid_binary
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 int as_modet::as_hybrid_binary()
 {
   std::string output_file="a.out";
@@ -348,10 +294,16 @@ int as_modet::as_hybrid_binary()
           << " to generate hybrid binary" << eom;
 
   // save the goto-cc output file
-  rename(output_file.c_str(),
-         (output_file+".goto-cc-saved").c_str());
+  int result=rename(
+    output_file.c_str(),
+    (output_file+".goto-cc-saved").c_str());
+  if(result!=0)
+  {
+    error() << "Rename failed: " << std::strerror(errno) << eom;
+    return result;
+  }
 
-  int result=run_as();
+  result=run_as();
 
   // merge output from as with goto-binaries
   // using objcopy, or do cleanup if an earlier call failed
@@ -384,7 +336,14 @@ int as_modet::as_hybrid_binary()
     result=run(objcopy_argv[0], objcopy_argv, "", "");
   }
 
-  remove(saved.c_str());
+  int remove_result=remove(saved.c_str());
+  if(remove_result!=0)
+  {
+    error() << "Remove failed: " << std::strerror(errno) << eom;
+    if(result==0)
+      result=remove_result;
+  }
+
   #elif defined(__APPLE__)
   // Mac
   if(result==0)
@@ -404,7 +363,13 @@ int as_modet::as_hybrid_binary()
     result=run(lipo_argv[0], lipo_argv, "", "");
   }
 
-  remove(saved.c_str());
+  int remove_result=remove(saved.c_str());
+  if(remove_result!=0)
+  {
+    error() << "Remove failed: " << std::strerror(errno) << eom;
+    if(result==0)
+      result=remove_result;
+  }
 
   #else
   error() << "binary merging not implemented for this platform" << eom;
@@ -414,18 +379,7 @@ int as_modet::as_hybrid_binary()
   return result;
 }
 
-/*******************************************************************\
-
-Function: as_modet::help_mode
-
-  Inputs:
-
- Outputs:
-
- Purpose: display command line help
-
-\*******************************************************************/
-
+/// display command line help
 void as_modet::help_mode()
 {
   std::cout << "goto-as understands the options of as plus the following.\n\n";

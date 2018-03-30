@@ -6,18 +6,19 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_ANSI_C_ANSI_C_LANGUAGE_H
 #define CPROVER_ANSI_C_ANSI_C_LANGUAGE_H
 
 /*! \defgroup gr_ansi_c ANSI-C front-end */
 
+#include <memory>
+
 #include <util/language.h>
+#include <util/make_unique.h>
 
 #include "ansi_c_parse_tree.h"
 
-/*! \brief TO_BE_DOCUMENTED
-    \ingroup gr_ansi_c
-*/
 class ansi_c_languaget:public languaget
 {
 public:
@@ -30,12 +31,12 @@ public:
     std::istream &instream,
     const std::string &path) override;
 
+  bool generate_support_functions(
+    symbol_tablet &symbol_table) override;
+
   bool typecheck(
     symbol_tablet &symbol_table,
     const std::string &module) override;
-
-  bool final(
-    symbol_tablet &symbol_table) override;
 
   void show_parse(std::ostream &out) override;
 
@@ -63,8 +64,8 @@ public:
     exprt &expr,
     const namespacet &ns) override;
 
-  languaget *new_language() override
-  { return new ansi_c_languaget; }
+  std::unique_ptr<languaget> new_language() override
+  { return util_make_unique<ansi_c_languaget>(); }
 
   std::string id() const override { return "C"; }
   std::string description() const override { return "ANSI-C 99"; }
@@ -77,6 +78,6 @@ protected:
   std::string parse_path;
 };
 
-languaget *new_ansi_c_language();
+std::unique_ptr<languaget> new_ansi_c_language();
 
 #endif // CPROVER_ANSI_C_ANSI_C_LANGUAGE_H

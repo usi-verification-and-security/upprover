@@ -6,32 +6,24 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+#include "expr2java.h"
+
 #include <cassert>
+#include <sstream>
 
 #include <util/namespace.h>
 #include <util/std_types.h>
 #include <util/std_expr.h>
 #include <util/symbol.h>
+#include <util/unicode.h>
 #include <util/arith_tools.h>
+#include <util/ieee_float.h>
 
 #include <ansi-c/c_qualifiers.h>
 #include <ansi-c/c_misc.h>
 #include <ansi-c/expr2c_class.h>
 
 #include "java_types.h"
-#include "expr2java.h"
-
-/*******************************************************************\
-
-Function: expr2javat::convert_code_function_call
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string expr2javat::convert_code_function_call(
   const code_function_callt &src,
@@ -103,18 +95,6 @@ std::string expr2javat::convert_code_function_call(
   return dest;
 }
 
-/*******************************************************************\
-
-Function: expr2javat::convert_struct
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string expr2javat::convert_struct(
   const exprt &src,
   unsigned &precedence)
@@ -179,18 +159,6 @@ std::string expr2javat::convert_struct(
   return dest;
 }
 
-/*******************************************************************\
-
-Function: expr2javat::convert_constant
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string expr2javat::convert_constant(
   const constant_exprt &src,
   unsigned &precedence)
@@ -222,22 +190,9 @@ std::string expr2javat::convert_constant(
 
     mp_integer int_value;
     if(to_integer(src, int_value))
-      assert(false);
+      UNREACHABLE;
 
-    dest+="(char)'";
-
-    if(int_value>=' ' && int_value<127)
-      dest+=static_cast<char>(int_value.to_long());
-    else
-    {
-      std::string hex=integer2string(int_value, 16);
-      while(hex.size()<4) hex='0'+hex;
-      dest+='\\';
-      dest+='u';
-      dest+=hex;
-    }
-
-    dest+='\'';
+    dest += "(char)'" + utf16_little_endian_to_java(int_value.to_long()) + '\'';
     return dest;
   }
   else if(src.type()==java_byte_type())
@@ -245,7 +200,7 @@ std::string expr2javat::convert_constant(
     // No byte-literals in Java, so just cast:
     mp_integer int_value;
     if(to_integer(src, int_value))
-      assert(false);
+      UNREACHABLE;
     std::string dest="(byte)";
     dest+=integer2string(int_value);
     return dest;
@@ -255,7 +210,7 @@ std::string expr2javat::convert_constant(
     // No short-literals in Java, so just cast:
     mp_integer int_value;
     if(to_integer(src, int_value))
-      assert(false);
+      UNREACHABLE;
     std::string dest="(short)";
     dest+=integer2string(int_value);
     return dest;
@@ -265,26 +220,66 @@ std::string expr2javat::convert_constant(
     // long integer literals must have 'L' at the end
     mp_integer int_value;
     if(to_integer(src, int_value))
-      assert(false);
+      UNREACHABLE;
     std::string dest=integer2string(int_value);
     dest+='L';
     return dest;
   }
+  else if((src.type()==java_float_type()) ||
+          (src.type()==java_double_type()))
+  {
+    ieee_floatt ieee_repr(to_constant_expr(src));
+    std::string result;
+
+    bool is_java_float=(src.type()==java_float_type());
+    if(ieee_repr.is_zero())
+    {
+      if(ieee_repr.get_sign())
+        result+='-';
+      result+="0.0";
+      if(is_java_float)
+        result+='f';
+      return result;
+    }
+
+    if(ieee_repr.is_NaN())
+    {
+       if(is_java_float)
+         return "Float.NaN";
+       else
+         return "Double.NaN";
+    }
+
+    if(ieee_repr.is_infinity())
+    {
+      if(is_java_float)
+      {
+        if(ieee_repr.get_sign())
+          return "Float.NEGATIVE_INFINITY";
+        else
+          return "Float.POSITIVE_INFINITY";
+      }
+      else
+      {
+        if(ieee_repr.get_sign())
+          return "Double.NEGATIVE_INFINITY";
+        else
+          return "Double.POSITIVE_INFINITY";
+      }
+    }
+
+    std::stringstream buffer;
+    buffer << std::hexfloat;
+    if(is_java_float)
+      buffer << ieee_repr.to_float() << 'f';
+    else
+      buffer << ieee_repr.to_double();
+    return buffer.str();
+  }
+
 
   return expr2ct::convert_constant(src, precedence);
 }
-
-/*******************************************************************\
-
-Function: expr2javat::convert_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string expr2javat::convert_rec(
   const typet &src,
@@ -323,8 +318,8 @@ std::string expr2javat::convert_rec(
     const code_typet &code_type=to_code_type(src);
 
     // Java doesn't really have syntax for function types,
-    // so we make one up, loosley inspired by the syntax
-    // of lamda expressions.
+    // so we make one up, loosely inspired by the syntax
+    // of lambda expressions.
 
     std::string dest="";
 
@@ -360,36 +355,12 @@ std::string expr2javat::convert_rec(
     return expr2ct::convert_rec(src, qualifiers, declarator);
 }
 
-/*******************************************************************\
-
-Function: expr2javat::convert_java_this
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string expr2javat::convert_java_this(
   const exprt &src,
   unsigned precedence)
 {
   return "this";
 }
-
-/*******************************************************************\
-
-Function: expr2javat::convert_java_instanceof
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string expr2javat::convert_java_instanceof(
   const exprt &src,
@@ -403,18 +374,6 @@ std::string expr2javat::convert_java_instanceof(
 
   return convert(src.op0())+" instanceof "+convert(src.op1().type());
 }
-
-/*******************************************************************\
-
-Function: expr2javat::convert_java_new
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string expr2javat::convert_java_new(
   const exprt &src,
@@ -441,18 +400,6 @@ std::string expr2javat::convert_java_new(
   return dest;
 }
 
-/*******************************************************************\
-
-Function: expr2javat::convert_code_java_delete
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string expr2javat::convert_code_java_delete(
   const exprt &src,
   unsigned indent)
@@ -472,18 +419,6 @@ std::string expr2javat::convert_code_java_delete(
   return dest;
 }
 
-/*******************************************************************\
-
-Function: expr2javat::convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string expr2javat::convert_with_precedence(
   const exprt &src,
   unsigned &precedence)
@@ -499,6 +434,17 @@ std::string expr2javat::convert_with_precedence(
   else if(src.id()==ID_side_effect &&
           src.get(ID_statement)==ID_throw)
     return convert_function(src, "throw", precedence=16);
+  else if(src.id()==ID_code &&
+          to_code(src).get_statement()==ID_exception_landingpad)
+  {
+    const exprt &catch_expr=
+      to_code_landingpad(to_code(src)).catch_expr();
+    return "catch_landingpad("+
+      convert(catch_expr.type())+
+      ' '+
+      convert(catch_expr)+
+      ')';
+  }
   else if(src.id()==ID_unassigned)
     return "?";
   else if(src.id()=="pod_constructor")
@@ -519,18 +465,6 @@ std::string expr2javat::convert_with_precedence(
     return expr2ct::convert_with_precedence(src, precedence);
 }
 
-/*******************************************************************\
-
-Function: expr2javat::convert_code
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string expr2javat::convert_code(
   const codet &src,
   unsigned indent)
@@ -547,36 +481,12 @@ std::string expr2javat::convert_code(
   return expr2ct::convert_code(src, indent);
 }
 
-/*******************************************************************\
-
-Function: expr2java
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string expr2java(const exprt &expr, const namespacet &ns)
 {
   expr2javat expr2java(ns);
   expr2java.get_shorthands(expr);
   return expr2java.convert(expr);
 }
-
-/*******************************************************************\
-
-Function: type2java
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string type2java(const typet &type, const namespacet &ns)
 {

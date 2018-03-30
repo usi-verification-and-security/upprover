@@ -6,21 +6,12 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/symbol_table.h>
+/// \file
+/// Symbolic Execution of ANSI-C
 
 #include "symex_dereference_state.h"
 
-/*******************************************************************\
-
-Function: symex_dereference_statet::dereference_failure
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <util/symbol_table.h>
 
 void symex_dereference_statet::dereference_failure(
   const std::string &property,
@@ -28,18 +19,6 @@ void symex_dereference_statet::dereference_failure(
   const guardt &guard)
 {
 }
-
-/*******************************************************************\
-
-Function: symex_dereference_statet::has_failed_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool symex_dereference_statet::has_failed_symbol(
   const exprt &expr,
@@ -64,7 +43,7 @@ bool symex_dereference_statet::has_failed_symbol(
         !ns.lookup(failed_symbol, symbol))
     {
       symbolt sym=*symbol;
-      symbolt *sym_ptr=0;
+      symbolt *sym_ptr=nullptr;
       symbol_exprt sym_expr=sym.symbol_expr();
       state.rename(sym_expr, ns, goto_symex_statet::L1);
       sym.name=to_ssa_expr(sym_expr).get_identifier();
@@ -85,7 +64,7 @@ bool symex_dereference_statet::has_failed_symbol(
         !ns.lookup(failed_symbol, symbol))
     {
       symbolt sym=*symbol;
-      symbolt *sym_ptr=0;
+      symbolt *sym_ptr=nullptr;
       symbol_exprt sym_expr=sym.symbol_expr();
       state.rename(sym_expr, ns, goto_symex_statet::L1);
       sym.name=to_ssa_expr(sym_expr).get_identifier();
@@ -97,18 +76,6 @@ bool symex_dereference_statet::has_failed_symbol(
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: symex_dereference_statet::get_value_set
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void symex_dereference_statet::get_value_set(
   const exprt &expr,

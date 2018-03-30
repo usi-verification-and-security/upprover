@@ -8,6 +8,11 @@ Date: 2012
 
 \*******************************************************************/
 
+/// \file
+/// Turns a goto-program into an abstract event graph
+
+#include "goto2graph.h"
+
 #include <vector>
 #include <string>
 #include <fstream>
@@ -25,23 +30,11 @@ Date: 2012
 
 #include "../rw_set.h"
 #include "fence.h"
-#include "goto2graph.h"
 
 // #define PRINT_UNSAFES
 
 
-/*******************************************************************\
-
-Function: instrumentert::local
-
-  Inputs:
-
- Outputs:
-
- Purpose: is local variable?
-
-\*******************************************************************/
-
+/// is local variable?
 bool inline instrumentert::local(const irep_idt &id)
 {
   std::string identifier=id2string(id);
@@ -83,7 +76,7 @@ bool inline instrumentert::local(const irep_idt &id)
 
     return false;
   }
-  catch(std::string exception)
+  catch(const std::string &exception)
   {
     message.debug()<<"Exception: "<<exception << messaget::eom;
     return false;
@@ -95,20 +88,8 @@ bool inline instrumentert::cfg_visitort::local(const irep_idt &i)
   return instrumenter.local(i);
 }
 
-/*******************************************************************\
-
-Function: instrumentert::goto2graph_cfg
-
-  Inputs:
-
- Outputs:
-
- Purpose: goes through CFG and build a static abstract event
-          graph overapproximating the read/write relations for any
-          executions
-
-\*******************************************************************/
-
+/// goes through CFG and build a static abstract event graph overapproximating
+/// the read/write relations for any executions
 unsigned instrumentert::goto2graph_cfg(
   value_setst &value_sets,
   memory_modelt model,
@@ -168,18 +149,6 @@ unsigned instrumentert::goto2graph_cfg(
 
   return visitor.max_thread;
 }
-
-/*******************************************************************\
-
-Function: instrumentert::cfg_visitort::visit_cfg_function
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void instrumentert::cfg_visitort::visit_cfg_function(
     /* value_sets and options */
@@ -319,18 +288,6 @@ void instrumentert::cfg_visitort::visit_cfg_function(
   }
 }
 
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_propagate
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void inline instrumentert::cfg_visitort::visit_cfg_propagate(
   goto_programt::instructionst::iterator i_it)
 {
@@ -343,34 +300,11 @@ void inline instrumentert::cfg_visitort::visit_cfg_propagate(
         in_pos[i_it].insert(node);
 }
 
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_thread
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void instrumentert::cfg_visitort::visit_cfg_thread() const
 {
 }
 
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_reference_function
-
-  Inputs:
-
- Outputs:
-
- Purpose: references the first and last edges of the function
-
-\*******************************************************************/
-
+/// references the first and last edges of the function
 /* OBSOLETE */
 /* Note: can be merged with visit_cfg_body */
 /* Warning: we iterate here over the successive instructions of the
@@ -459,18 +393,6 @@ void inline instrumentert::cfg_visitort::visit_cfg_reference_function(
     std::make_pair(in_nodes, out_nodes);
 }
 
-/*******************************************************************\
-
-Function: alt_copy_segment
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 event_idt alt_copy_segment(wmm_grapht &alt_egraph,
   event_idt begin, event_idt end)
 {
@@ -479,18 +401,6 @@ event_idt alt_copy_segment(wmm_grapht &alt_egraph,
   alt_egraph.add_edge(end, begin);
   return end;
 }
-
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_visitort::contains_shared_array
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool instrumentert::cfg_visitort::contains_shared_array(
   goto_programt::const_targett targ,
@@ -540,18 +450,7 @@ bool instrumentert::cfg_visitort::contains_shared_array(
 }
 
 
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_visitort::visit_cfg_body
-
-  Inputs:
-
- Outputs:
-
- Purpose: strategy: fwd/bwd alternation
-
-\*******************************************************************/
-
+/// strategy: fwd/bwd alternation
 void inline instrumentert::cfg_visitort::visit_cfg_body(
   goto_programt::const_targett i_it,
   loop_strategyt replicate_body,
@@ -596,18 +495,6 @@ void inline instrumentert::cfg_visitort::visit_cfg_body(
     }
   }
 }
-
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_visitort::visit_cfg_duplicate
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void inline instrumentert::cfg_visitort::visit_cfg_duplicate(
   goto_programt::const_targett targ,
@@ -672,18 +559,7 @@ void inline instrumentert::cfg_visitort::visit_cfg_duplicate(
   }
 }
 
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_visitort::visit_cfg_backedge
-
-  Inputs:
-
- Outputs:
-
- Purpose: strategy: fwd/bwd alternation
-
-\*******************************************************************/
-
+/// strategy: fwd/bwd alternation
 void inline instrumentert::cfg_visitort::visit_cfg_backedge(
   goto_programt::const_targett targ,
   goto_programt::const_targett i_it)
@@ -750,18 +626,6 @@ void inline instrumentert::cfg_visitort::visit_cfg_backedge(
   }
 }
 
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_goto
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void instrumentert::cfg_visitort::visit_cfg_goto(
   goto_programt::instructionst::iterator i_it,
   loop_strategyt replicate_body,
@@ -790,18 +654,6 @@ void instrumentert::cfg_visitort::visit_cfg_goto(
     ); // NOLINT(whitespace/parens)
   }
 }
-
-/*******************************************************************\
-
-Function: intrumentert::visit_cfg_function_call
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void instrumentert::cfg_visitort::visit_cfg_function_call(
   value_setst &value_sets,
@@ -862,25 +714,13 @@ void instrumentert::cfg_visitort::visit_cfg_function_call(
     cur_fun=stack_fun.pop();
     #endif
   }
-  catch(std::string s)
+  catch(const std::string &s)
   {
     instrumenter.message.warning() << "sorry, doesn't handle recursion "
                                    << "(function " << fun_id << "; .cpp) "
                                    << s << messaget::eom;
   }
 }
-
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_lwfence
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void instrumentert::cfg_visitort::visit_cfg_lwfence(
   goto_programt::instructionst::iterator i_it)
@@ -913,18 +753,6 @@ void instrumentert::cfg_visitort::visit_cfg_lwfence(
   in_pos[i_it].insert(nodet(new_fence_node, new_fence_gnode));
   updated.insert(i_it);
 }
-
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_lwfence
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void instrumentert::cfg_visitort::visit_cfg_asm_fence(
   goto_programt::instructionst::iterator i_it)
@@ -965,18 +793,6 @@ void instrumentert::cfg_visitort::visit_cfg_asm_fence(
   in_pos[i_it].insert(nodet(new_fence_node, new_fence_gnode));
   updated.insert(i_it);
 }
-
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_assign
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void instrumentert::cfg_visitort::visit_cfg_assign(
   value_setst &value_sets,
@@ -1295,18 +1111,6 @@ void instrumentert::cfg_visitort::visit_cfg_assign(
   }
 }
 
-/*******************************************************************\
-
-Function: instrumentert::visit_cfg_fence
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void instrumentert::cfg_visitort::visit_cfg_fence(
   goto_programt::instructionst::iterator i_it)
 {
@@ -1342,35 +1146,11 @@ void instrumentert::cfg_visitort::visit_cfg_fence(
   updated.insert(i_it);
 }
 
-/*******************************************************************\
-
-Function: intrumentert::visit_cfg_skip
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void instrumentert::cfg_visitort::visit_cfg_skip(
   goto_programt::instructionst::iterator i_it)
 {
   visit_cfg_propagate(i_it);
 }
-
-/*******************************************************************\
-
-Function: intrumentert::add_instr_to_interleaving
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void inline instrumentert::add_instr_to_interleaving(
   goto_programt::instructionst::iterator it,
@@ -1404,18 +1184,6 @@ void inline instrumentert::add_instr_to_interleaving(
   current_instruction->swap(new_instruction);
 }
 
-/*******************************************************************\
-
-Function: instrumentert::is_cfg_spurious
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool instrumentert::is_cfg_spurious(const event_grapht::critical_cyclet &cyc)
 {
   message.debug() << "spurious by CFG? " << messaget::eom;
@@ -1430,7 +1198,7 @@ bool instrumentert::is_cfg_spurious(const event_grapht::critical_cyclet &cyc)
     const source_locationt &current_location=current_event.source_location;
 
     /* select relevant thread (po) -- or function contained in this thread */
-    goto_programt *current_po=0;
+    goto_programt *current_po=nullptr;
     bool thread_found=false;
 
     Forall_goto_functions(f_it, goto_functions)
@@ -1557,18 +1325,6 @@ bool instrumentert::is_cfg_spurious(const event_grapht::critical_cyclet &cyc)
   #endif
 }
 
-/*******************************************************************\
-
-Function: instrumentert::cfg_cycles_filter
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void instrumentert::cfg_cycles_filter()
 {
   if(!set_of_cycles.empty())
@@ -1615,18 +1371,6 @@ void instrumentert::cfg_cycles_filter()
   else
     message.status() << "No cycle to filter" << messaget::eom;
 }
-
-/*******************************************************************\
-
-Function: instrumentert::print_outputs
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void inline instrumentert::print_outputs_local(
   const std::set<event_grapht::critical_cyclet> &set,
@@ -1786,18 +1530,7 @@ void instrumentert::print_outputs(memory_modelt model, bool hide_internals)
   table.close();
 }
 
-/*******************************************************************\
-
-Function: instrumentert::collect_cycles_by_SCCs
-
-  Inputs:
-
- Outputs:
-
- Purpose: Note: can be distributed (#define DISTRIBUTED)
-
-\*******************************************************************/
-
+/// Note: can be distributed (#define DISTRIBUTED)
 #if 1
 // #ifdef _WIN32
 void instrumentert::collect_cycles_by_SCCs(memory_modelt model)

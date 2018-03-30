@@ -341,8 +341,8 @@ void deserialize_used_summaries(const std::string& line,
   
   if (line.length() == 0)
     return;
-  
-  char bfr[line.length()+1];
+
+  char *bfr = new char[line.length()+1];
   char *start, *end = bfr;
   strcpy(bfr, line.c_str());
   

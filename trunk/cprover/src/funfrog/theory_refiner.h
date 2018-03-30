@@ -2,8 +2,8 @@
 #define CPROVER_THEORY_REFINER_H
 
 #include <memory>
-#include <options.h>
-#include <ui_message.h>
+#include <util/options.h>
+#include <util/ui_message.h>
 #include "subst_scenario.h"
 #include "summarization_context.h"
 

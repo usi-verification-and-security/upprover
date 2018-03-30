@@ -6,37 +6,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cassert>
-
 #include "float_approximation.h"
 
-/*******************************************************************\
-
-Function: float_approximationt::~float_approximationt
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <cassert>
 
 float_approximationt::~float_approximationt()
 {
 }
-
-/*******************************************************************\
-
-Function: float_approximationt::round_fraction
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void float_approximationt::normalization_shift(bvt &fraction, bvt &exponent)
 {
@@ -66,7 +42,7 @@ void float_approximationt::normalization_shift(bvt &fraction, bvt &exponent)
     if(over_approximate)
       shifted_fraction=overapproximating_left_shift(fraction, i);
     else
-      shifted_fraction=bv_utils.shift(fraction, bv_utilst::LEFT, i);
+      shifted_fraction=bv_utils.shift(fraction, bv_utilst::shiftt::LEFT, i);
 
     bv_utils.cond_implies_equal(shift, shifted_fraction, new_fraction);
 
@@ -86,18 +62,6 @@ void float_approximationt::normalization_shift(bvt &fraction, bvt &exponent)
   fraction=new_fraction;
   exponent=new_exponent;
 }
-
-/*******************************************************************\
-
-Function: float_approximationt::overapproximating_left_shift
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bvt float_approximationt::overapproximating_left_shift(
   const bvt &src, unsigned dist)

@@ -8,24 +8,16 @@ Date:   April 2017
 
 \*******************************************************************/
 
+/// \file
+/// Perform Memory-mapped I/O instrumentation
+
+#include "mm_io.h"
+
 #include <util/pointer_predicates.h>
 #include <util/pointer_offset_size.h>
 #include <util/replace_expr.h>
 
 #include "remove_returns.h"
-#include "mm_io.h"
-
-/*******************************************************************\
-
-Function: collect_deref_expr
-
-Inputs:
-
-Outputs:
-
-Purpose: 
-
-\*******************************************************************/
 
 void collect_deref_expr(
   const exprt &src,
@@ -37,18 +29,6 @@ void collect_deref_expr(
   for(const auto & op : src.operands())
     collect_deref_expr(op, dest); // recursive call
 }
-
-/*******************************************************************\
-
-Function: mm_io
-
-Inputs:
-
-Outputs:
-
-Purpose: 
-
-\*******************************************************************/
 
 void mm_io(
   const exprt &mm_io_r,
@@ -74,6 +54,7 @@ void mm_io(
         {
           const dereference_exprt &d=*deref_expr_r.begin();
           source_locationt source_location=it->source_location;
+          irep_idt function=it->function;
           code_function_callt fc;
           const code_typet &ct=to_code_type(mm_io_r.type());
 
@@ -93,6 +74,7 @@ void mm_io(
           goto_function.body.insert_before_swap(it);
           it->make_function_call(fc);
           it->source_location=source_location;
+          it->function=function;
           it++;
         }
       }
@@ -103,6 +85,7 @@ void mm_io(
         {
           const dereference_exprt &d=to_dereference_expr(a.lhs());
           source_locationt source_location=it->source_location;
+          irep_idt function=it->function;
           code_function_callt fc;
           const code_typet &ct=to_code_type(mm_io_w.type());
           const typet &pt=ct.parameters()[0].type();
@@ -117,24 +100,13 @@ void mm_io(
           goto_function.body.insert_before_swap(it);
           it->make_function_call(fc);
           it->source_location=source_location;
+          it->function=function;
           it++;
         }
       }
     }
   }
 }
-
-/*******************************************************************\
-
-Function: mm_io
-
-Inputs:
-
-Outputs:
-
-Purpose: 
-
-\*******************************************************************/
 
 void mm_io(
   const symbol_tablet &symbol_table,
@@ -146,27 +118,17 @@ void mm_io(
   irep_idt id_r=CPROVER_PREFIX "mm_io_r";
   irep_idt id_w=CPROVER_PREFIX "mm_io_w";
 
-  if(symbol_table.has_symbol(id_r))
-    mm_io_r=symbol_table.lookup(id_r).symbol_expr();
+  auto maybe_symbol=symbol_table.lookup(id_r);
+  if(maybe_symbol)
+    mm_io_r=maybe_symbol->symbol_expr();
 
-  if(symbol_table.has_symbol(id_w))
-    mm_io_w=symbol_table.lookup(id_w).symbol_expr();
+  maybe_symbol=symbol_table.lookup(id_w);
+  if(maybe_symbol)
+    mm_io_w=maybe_symbol->symbol_expr();
 
   for(auto & f : goto_functions.function_map)
     mm_io(mm_io_r, mm_io_w, f.second, ns);
 }
-
-/*******************************************************************\
-
-Function: mm_io
-
-Inputs:
-
-Outputs:
-
-Purpose: 
-
-\*******************************************************************/
 
 void mm_io(goto_modelt &model)
 {

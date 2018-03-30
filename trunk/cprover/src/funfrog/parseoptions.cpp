@@ -9,7 +9,7 @@
 \*******************************************************************/
 #include "parseoptions.h"
 
-#include <config.h>
+#include <util/config.h>
 #include <iostream>
 #include <sys/time.h>
 #include <sys/stat.h>
@@ -19,35 +19,32 @@
 #include <io.h>
 #endif
 
-#include <std_expr.h>
-#include <arith_tools.h>
-#include <prefix.h>
-#include <time_stopping.h>
+#include <util/std_expr.h>
+#include <util/arith_tools.h>
+#include <util/prefix.h>
+#include <util/time_stopping.h>
 
 #include <goto-programs/goto_convert_functions.h>
 #include <goto-programs/remove_function_pointers.h>
-#include <goto-programs/remove_virtual_functions.h>
 #include <goto-programs/remove_instanceof.h>
+//#include <goto-programs/remove_returns.h> // KE: never remove it from comment!
 #include <goto-programs/remove_exceptions.h>
 #include <goto-programs/remove_vector.h>
 #include <goto-programs/remove_complex.h>
 #include <goto-programs/remove_asm.h>
 #include <goto-programs/remove_unused_functions.h>
 #include <goto-programs/remove_static_init_loops.h>
-#include <goto-programs/mm_io.h>
-#include <goto-programs/goto_inline.h>
-//#include <goto-programs/show_properties.h>
+#include <goto-programs/show_properties.h>
 #include <goto-programs/set_properties.h>
 #include <goto-programs/read_goto_binary.h>
 #include <goto-programs/string_abstraction.h>
 #include <goto-programs/string_instrumentation.h>
-#include <goto-programs/loop_ids.h>
-#include <goto-programs/link_to_library.h>
-#include <goto-programs/remove_skip.h>
-#include <goto-programs/show_goto_functions.h>
 
 #include <goto-symex/rewrite_union.h>
 #include <goto-symex/adjust_float_expressions.h>
+
+#include <goto-instrument/full_slicer.h>
+#include <goto-instrument/nondet_static.h>
 
 #include <pointer-analysis/add_failed_symbols.h>
 
@@ -56,6 +53,21 @@
 
 #include "check_claims.h"
 #include "version.h"
+#include "parseoptions.h"
+#include <goto-programs/link_to_library.h>
+#include <goto-programs/mm_io.h>
+#include <goto-programs/goto_inline.h>
+#include <goto-programs/remove_virtual_functions.h>
+#include <goto-programs/remove_skip.h>
+#include <goto-programs/goto_functions.h>
+#include <goto-programs/initialize_goto_model.h>
+#include <goto-programs/read_goto_binary.h>
+#include <goto-programs/instrument_preconditions.h>
+#include <util/string2int.h>
+#include <langapi/language_ui.h>
+#include <goto-programs/show_symbol_table.h>
+#include <goto-programs/show_goto_functions.h>
+#include <goto-programs/show_properties.h>
 #include <limits>
 
 /*******************************************************************
@@ -73,12 +85,15 @@
 funfrog_parseoptionst::funfrog_parseoptionst(int argc, const char **argv):
   parse_options_baset(FUNFROG_OPTIONS, argc, argv),
   xml_interfacet(cmdline),
-  //language_uit((std::string("FUNFROG") + FUNFROG_VERSION), cmdline)      
-  //language_uit(cmdline, *(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
-  language_uit(cmdline, *(new ui_message_handlert(cmdline, "FUNFROG " FUNFROG_VERSION)))
+  //messaget((std::string("FUNFROG") + FUNFROG_VERSION))
+  //messaget(*(new ui_message_handlert(ui_message_handlert::PLAIN, "FUNFROG" FUNFROG_VERSION)))
+  messaget(ui_message_handler),
+  ui_message_handler(cmdline, "FUNFROG " FUNFROG_VERSION)
 {
 }
 
+// KE: Comment out since there is no more ns object in the system!
+// Consider re-write but with proper documantation
 /*******************************************************************\
 
 Function: cbmc_parseoptionst::show_properties (show-claims)
@@ -91,6 +106,7 @@ Purpose: shows the info about each claim. This method is a modification to the
  show_properties() function in the goto-programs/show_properties.cpp.
 
 \*******************************************************************/
+/*
 namespace {
     void show_properties(
             const namespacet &ns,
@@ -112,24 +128,7 @@ namespace {
             irep_idt property_id = source_location.get_property_id();
 
             switch (ui) {
-                /*   case ui_message_handlert::uit::XML_UI:
-                   {
-                     // use me instead
-                     xmlt xml_property("property");
-                     xml_property.set_attribute("name", id2string(property_id));
-                     xml_property.set_attribute("class", id2string(property_class));
-
-                     xmlt &property_l=xml_property.new_element();
-                     property_l=xml(source_location);
-
-                     xml_property.new_element("description").data=id2string(description);
-                     xml_property.new_element("expression").data=
-                             from_expr(ns, identifier, ins.guard);
-
-                     std::cout << xml_property << '\n';
-                   }
-                         break;*/
-
+               
                 case ui_message_handlert::uit::JSON_UI:
                     assert(false);
                     break;
@@ -152,7 +151,9 @@ namespace {
     }
 
 }
+*/
 /*******************************************************************/
+/*
 namespace {
     void show_properties(
             const namespacet &ns,
@@ -164,6 +165,7 @@ namespace {
                     show_properties(ns, fct.first, ui, fct.second.body);
     }
 }
+*/
 /*******************************************************************
 
  Function: funfrog_parseoptionst::process_goto_program
@@ -176,20 +178,17 @@ namespace {
 
 \*******************************************************************/
 bool funfrog_parseoptionst::process_goto_program(
-  namespacet& ns,
-  optionst& options,
-  goto_functionst &goto_functions)
+        const optionst &options)
 {
   try
   {
     // KE: update  new cprover version - taken from: cbmc_parseoptionst::process_goto_program
     // Consider adding more optimizations as full slicing or non-det statics
-      
-    namespacet ns(symbol_table);
-    
+    //      
+
     // Remove inline assembler; this needs to happen before
     // adding the library.
-    remove_asm(symbol_table, goto_functions);
+    remove_asm(goto_model);
 
     // KE: Only to prop logic
     if(cmdline.isset("logic")) 
@@ -199,7 +198,7 @@ bool funfrog_parseoptionst::process_goto_program(
             // There is a message in the method, no need to print it twice
             
             // add the library
-            link_to_library(symbol_table, goto_functions, ui_message_handler);
+            link_to_library(goto_model, get_message_handler());
         } 
         else
         {
@@ -211,65 +210,71 @@ bool funfrog_parseoptionst::process_goto_program(
         cbmc_status_interface("Ignoring CPROVER library");
     }
   
-      
     if(cmdline.isset("string-abstraction"))
       string_instrumentation(
-        symbol_table, get_message_handler(), goto_functions);
+              goto_model, get_message_handler());
 
     status() << "Removal of function pointers and virtual functions" << eom;
     remove_function_pointers(
       get_message_handler(),
-      symbol_table,
-      goto_functions,
+      goto_model,
       false); // HiFrog doesn't have pointer check, set the flag to false always
     // Java virtual functions -> explicit dispatch tables:
-    remove_virtual_functions(symbol_table, goto_functions);
+    remove_virtual_functions(goto_model);
     // remove catch and throw
-    remove_exceptions(symbol_table, goto_functions);
+    remove_exceptions(goto_model);
     // Similar removal of RTTI inspection:
-    remove_instanceof(symbol_table, goto_functions);
+    remove_instanceof(goto_model);
     
-    mm_io(symbol_table, goto_functions);
+    mm_io(goto_model);
 
-    // do partial inlining
-    status() << "Partial Inlining" << eom;
-    goto_partial_inline(goto_functions, ns, ui_message_handler);
+    // instrument library preconditions
+    instrument_preconditions(goto_model);
 
     // remove returns, gcc vectors, complex
     // remove_returns(symbol_table, goto_functions); //KE: causes issues with theoref
-    remove_vector(symbol_table, goto_functions);
-    remove_complex(symbol_table, goto_functions);
-    rewrite_union(goto_functions, ns);
+    remove_vector(goto_model);
+    remove_complex(goto_model);
+    rewrite_union(goto_model);
 
     // add generic checks
     status() << "Generic Property Instrumentation" << eom;
-    goto_check(ns, options, goto_functions);
+    goto_check(options, goto_model);
+            
+    // HIFROG: We remove built-ins from smt logics
+    if(cmdline.isset("logic")) 
+    {
+        if (cmdline.get_value("logic") == "prop") 
+        {
+            // checks don't know about adjusted float expressions
+            adjust_float_expressions(goto_model);
+        }
+    }
 
-    // checks don't know about adjusted float expressions
-    adjust_float_expressions(goto_functions, ns);
-    
     if(cmdline.isset("string-abstraction"))
     {
       status() << "String Abstraction" << eom;
       string_abstraction(
-        symbol_table,
-        get_message_handler(),
-        goto_functions);
+        goto_model,
+        get_message_handler());
     }
 
     // add failed symbols
     // needs to be done before pointer analysis
-    add_failed_symbols(symbol_table);
+    add_failed_symbols(goto_model.symbol_table);
 
     // recalculate numbers, etc.
-    goto_functions.update();
+    goto_model.goto_functions.update();
 
     // add loop ids
-    goto_functions.compute_loop_numbers();
-    
+    goto_model.goto_functions.compute_loop_numbers();
+   
+
     // remove skips
-    remove_skip(goto_functions);
-    goto_functions.update();
+    remove_skip(goto_model);
+    goto_model.goto_functions.update();
+
+    label_properties(goto_model);
   }
 
   catch(const char *e)
@@ -300,7 +305,7 @@ bool funfrog_parseoptionst::process_goto_program(
 /*******************************************************************
 
  Function: funfrog_parseoptionst::get_goto_program
-
+   
  Inputs:
 
  Outputs:
@@ -309,79 +314,42 @@ bool funfrog_parseoptionst::process_goto_program(
 
 \*******************************************************************/
 bool funfrog_parseoptionst::get_goto_program(
-  const std::string &filename,
-  namespacet& ns,
-  optionst& options,
-  goto_functionst &goto_functions)
+        const optionst &options)
 {
-  if(cmdline.args.size()==0)
+
+  if(cmdline.args.empty())
   {
-    cbmc_error_interface("Please provide a program to verify");
+    error() << "Please provide a program to verify" << eom;
     return true;
   }
 
   try
   {
-    if(cmdline.args.size()==1 &&
-       is_goto_binary(filename))
-    {
-      cbmc_status_interface("Reading GOTO program from file");
+    goto_model=initialize_goto_model(cmdline, get_message_handler());
 
-      if(read_goto_binary(filename,
-           symbol_table, goto_functions, get_message_handler()))
-        return true;
-
-      config.set_from_symbol_table(symbol_table);
-
-      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
-      {
-        cbmc_error_interface("The goto binary has no entry point; please complete linking");
-        return true;
-      }
-    }
-    else
-    {
-      if(parse()) return true;
-      if(typecheck()) return true;
-      if(final()) return true;
-
-      // we no longer need any parse trees or language files
-      clear_parse();
-
-      if(symbol_table.symbols.find(goto_functionst::entry_point())==symbol_table.symbols.end())
-      {
-        cbmc_error_interface("No entry point; please provide a main function");
-        return true;
-      }
-
-      cbmc_status_interface("Generating GOTO Program");
-
-      goto_convert(symbol_table, goto_functions, ui_message_handler);
-
-    }
-
-    if(process_goto_program(ns, options, goto_functions))
+    if(process_goto_program(options))
       return true;
   }
 
   catch(const char *e)
   {
-    cbmc_error_interface(e);
+    error() << e << eom;
     return true;
   }
 
-  catch(const std::string e)
+  catch(const std::string &e)
   {
-    cbmc_error_interface(e);
+    error() << e << eom;
     return true;
   }
 
-  catch(int)
+  catch(int e)
   {
+    error() << "Numeric exception : " << e << eom;
     return true;
   }
 
-  catch(std::bad_alloc)
+  catch(const std::bad_alloc &)
   {
     cbmc_error_interface("Out of memory");
     return true;
@@ -399,7 +367,7 @@ bool funfrog_parseoptionst::get_goto_program(
 
  Purpose: invoke main modules
 
- \*******************************************************************/
+\*******************************************************************/
 
 int funfrog_parseoptionst::doit()
 {
@@ -421,13 +389,8 @@ int funfrog_parseoptionst::doit()
   //stream_message_handlert mh(std::cout);
   set_message_handler(ui_message_handler);
 
-  int verbosity=6;
-  if(cmdline.isset("v"))
-  {
-    verbosity=atoi(cmdline.get_value("v").c_str());
-    //set_verbosity(verbosity);
-    ui_message_handler.set_verbosity(verbosity);
-  }
+  eval_verbosity(); // KE: done is in cbmc code
+
 
   if(cmdline.args.size()==0)
   {
@@ -447,31 +410,33 @@ int funfrog_parseoptionst::doit()
     return 1;
   }
 
-  goto_functionst goto_functions;
-  namespacet ns(symbol_table);
+  //namespacet ns (symbol_table);
   absolute_timet before, after;
 
   cbmc_status_interface(std::string("Loading `")+cmdline.args[0]+"' ...");
   before=current_time();
   
-  if(get_goto_program(cmdline.args[0], ns, options, goto_functions))
+  if(get_goto_program(options))
     return 6;
 
   after=current_time();
   cbmc_status_interface(std::string("    LOAD Time: ") + (after-before).as_string() + std::string(" sec."));
 
 
-  label_properties(goto_functions);
-
   if (cmdline.isset("show-symbol-table"))
   {
-    show_symbol_table();
+    show_symbol_table(goto_model, ui_message_handler.get_ui());
     return true;
   }
 
-  if(cmdline.isset("show-program"))
+  if(cmdline.isset("show-goto-functions"))
   {
-    goto_functions.output(ns, std::cout);
+
+    show_goto_functions(
+            goto_model,
+            get_message_handler(),
+            ui_message_handler.get_ui(),
+            false);
     return true;
   }
 
@@ -480,7 +445,7 @@ int funfrog_parseoptionst::doit()
 //    return false;
 //  }
 
-  if(check_function_summarization(ns, goto_functions))
+  if(check_function_summarization())
     return 1;
 
   cbmc_status_interface("#X: Done.");
@@ -498,8 +463,7 @@ int funfrog_parseoptionst::doit()
 
  Purpose: display command line help
 
- \*******************************************************************/
-
+\*******************************************************************/
 void funfrog_parseoptionst::help()
 {
   std::cout <<"\n"
@@ -647,7 +611,7 @@ unsigned funfrog_parseoptionst::count(const goto_functionst &goto_functions) con
         it!=goto_functions.function_map.end();
         it++)
     {
-        c += it->second.body.instructions.size();
+      c += it->second.body.instructions.size();
     }
 
     std::cout << "    Instruction count: " << c << std::endl;
@@ -674,26 +638,21 @@ unsigned funfrog_parseoptionst::count(const goto_programt &goto_program) const
   return goto_program.instructions.size();
 }
 
-
-bool funfrog_parseoptionst::check_function_summarization(
-  namespacet &ns,
-  goto_functionst &goto_functions)
+// ns is changed to goto_model, if using ns check how to change it to goto_model
+bool funfrog_parseoptionst::check_function_summarization()
 {
-
     claim_mapt claim_map;
     claim_numberst claim_numbers;
     unsigned claim_nr=0;
 
-    get_claims(goto_functions, claim_map, claim_numbers);
+    get_claims(goto_model.goto_functions, claim_map, claim_numbers);
     cbmc_status_interface("Checking claims in program...(" + std::to_string(claim_numbers.size())+")");
 
-    if(cmdline.isset("show-claims")||
-	 cmdline.isset("show-properties")) {
-      const namespacet ns(symbol_table);
-        show_properties(ns, get_ui(), goto_functions);
-        cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
-        return 0;
-     }
+    if(cmdline.isset("show-claims") || cmdline.isset("show-properties")) {
+      show_properties(goto_model, ui_message_handler.get_ui());
+      cbmc_status_interface("#Total number of claims: " + std::to_string(claim_numbers.size()));
+      return 0;
+    }
     // perform standalone check (all the functionality remains the same)
   
     if(cmdline.isset("claim") &&
@@ -730,27 +689,27 @@ bool funfrog_parseoptionst::check_function_summarization(
     }
     
     if (cmdline.isset("claims-opt"))
-      store_claims(ns, claim_map, claim_numbers);
+      store_claims(claim_map, claim_numbers);
     
     // If we set bitwidth, check it sets right, it will be by defualt 8
     if (options.get_option("logic") == "qfcuf") // bitwidth exists only in cuf
     {
-        unsigned bitwidth = options.get_unsigned_int_option("bitwidth");  
-        if (!((bitwidth != 0) && !(bitwidth & (bitwidth - 1)))) {
-            cbmc_error_interface("Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
+      unsigned bitwidth = options.get_unsigned_int_option("bitwidth");  
+      if (!((bitwidth != 0) && !(bitwidth & (bitwidth - 1)))) {
+        cbmc_error_interface("Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
                 + ". Please re-run with bit-width parameter that is a pow of 2!");
-            exit(0);
-        } else if (bitwidth > 32) {
-            cbmc_status_interface("Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf");   
-        }  
+        exit(0);
+      } else if (bitwidth > 32) {
+        cbmc_status_interface("Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf");   
+      }  
     }
 
     // ID_main is the entry point that is now changed to be ID__start
     // KE: or is it goto_functionst::entry_point()?
     // So instead of c::main we have now _start (cbmc 5.5)
-    check_claims(ns,
-                goto_functions.function_map[goto_functionst::entry_point()].body,
-                goto_functions,
+    check_claims(goto_model.symbol_table,
+                goto_model.goto_functions.function_map[goto_functionst::entry_point()].body,
+                goto_model.goto_functions,
                 claim_map,
                 claim_numbers,
                 options,
@@ -770,7 +729,6 @@ bool funfrog_parseoptionst::check_function_summarization(
  Purpose: 
 
 \*******************************************************************/
-
 void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 {
   options.set_option("bounds-check", cmdline.isset("bounds-check"));
@@ -801,9 +759,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
     options.set_option("dump-query", true);
 
   if (cmdline.isset("dump-query-name")) {
-      options.set_option("dump-query-name", cmdline.get_value("dump-query-name"));
+    options.set_option("dump-query-name", cmdline.get_value("dump-query-name"));
   } else { // Set a default name in case no name was provided by user
-      options.set_option("dump-query-name", "_dump");
+    options.set_option("dump-query-name", "_dump");
   }  
   status() << "\n*** DEBUG MODE ON: QUERIES DUMP OPTIONS ARE ON (DDISABLE_OPTIMIZATIONS is on) ***\n" << eom;
 #else
@@ -846,8 +804,9 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
 
   
   // If not partitions - no itp too, going back to pure cbcm
-  if(cmdline.isset("no-partitions"))
-      options.set_option("no-itp", true);
+  if(cmdline.isset("no-partitions")) {
+    options.set_option("no-itp", true);
+  }
   
   if (cmdline.isset("check-itp")) {
     options.set_option("check-itp", cmdline.get_value("check-itp"));
@@ -946,3 +905,33 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   //  options.set_option("init-mode", cmdline.get_value("init-mode"));
   //}
 }
+
+/*******************************************************************\
+  
+ Function: 
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: 
+
+ Note: Taken from void cbmc_parse_optionst::eval_verbosity(), 
+       Update if needed (once upgrade cprover)
+
+\*******************************************************************/
+void funfrog_parseoptionst::eval_verbosity()
+{
+    // this is our default verbosity
+    unsigned int v=messaget::M_STATISTICS;
+
+    if(cmdline.isset("verbosity"))
+    {
+      v=unsafe_string2unsigned(cmdline.get_value("verbosity"));
+      if(v>10)
+        v=10;
+    }
+
+    ui_message_handler.set_verbosity(v);
+}
+

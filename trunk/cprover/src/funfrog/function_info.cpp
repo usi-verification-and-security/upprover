@@ -12,7 +12,7 @@
 #ifdef DISABLE_OPTIMIZATIONS
 #include "expr_pretty_print.h"
 #endif
-#include "time_stopping.h"
+#include "util/time_stopping.h"
 #include <fstream>
 
 #include "solvers/smtcheck_opensmt2.h"

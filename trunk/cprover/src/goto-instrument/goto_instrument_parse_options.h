@@ -6,13 +6,15 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Command Line Parsing
+
 #ifndef CPROVER_GOTO_INSTRUMENT_GOTO_INSTRUMENT_PARSE_OPTIONS_H
 #define CPROVER_GOTO_INSTRUMENT_GOTO_INSTRUMENT_PARSE_OPTIONS_H
 
 #include <util/ui_message.h>
 #include <util/parse_options.h>
 
-#include <langapi/language_ui.h>
 #include <goto-programs/goto_functions.h>
 #include <goto-programs/show_goto_functions.h>
 #include <goto-programs/remove_const_function_pointers.h>
@@ -23,7 +25,8 @@ Author: Daniel Kroening, kroening@kroening.com
   "(all)" \
   "(document-claims-latex)(document-claims-html)" \
   "(document-properties-latex)(document-properties-html)" \
-  "(dump-c)(dump-cpp)(use-system-headers)(dot)(xml)" \
+  "(dump-c)(dump-cpp)(no-system-headers)(use-all-headers)(dot)(xml)" \
+  "(harness)" \
   OPT_GOTO_CHECK \
   /* no-X-check are deprecated and ignored */ \
   "(no-bounds-check)(no-pointer-check)(no-div-by-zero-check)" \
@@ -40,7 +43,8 @@ Author: Daniel Kroening, kroening@kroening.com
   "(log):" \
   "(max-var):(max-po-trans):(ignore-arrays)" \
   "(cfg-kill)(no-dependencies)(force-loop-duplication)" \
-  "(call-graph)" \
+  "(call-graph)(reachable-call-graph)" \
+  "(class-hierarchy)" \
   "(no-po-rendering)(render-cluster-file)(render-cluster-function)" \
   "(nondet-volatile)(isr):" \
   "(stack-depth):(nondet-static)" \
@@ -57,6 +61,7 @@ Author: Daniel Kroening, kroening@kroening.com
   "(full-slice)(reachability-slice)(slice-global-inits)" \
   "(inline)(partial-inline)(function-inline):(log):(no-caching)" \
   OPT_REMOVE_CONST_FUNCTION_POINTERS \
+  "(print-internal-representation)" \
   "(remove-function-pointers)" \
   "(show-claims)(show-properties)(property):" \
   "(show-symbol-table)(show-points-to)(show-rw-set)" \
@@ -73,11 +78,13 @@ Author: Daniel Kroening, kroening@kroening.com
   "(horn)(skip-loops):(apply-code-contracts)(model-argc-argv):" \
   "(show-threaded)(list-calls-args)(print-path-lengths)" \
   "(undefined-function-is-assume-false)" \
-  "(remove-function-body):"
+  "(remove-function-body):"\
+  "(splice-call):" \
+
 
 class goto_instrument_parse_optionst:
   public parse_options_baset,
-  public language_uit
+  public messaget
 {
 public:
   virtual int doit();
@@ -85,7 +92,7 @@ public:
 
   goto_instrument_parse_optionst(int argc, const char **argv):
     parse_options_baset(GOTO_INSTRUMENT_OPTIONS, argc, argv),
-    language_uit(cmdline, ui_message_handler),
+    messaget(ui_message_handler),
     ui_message_handler(cmdline, "goto-instrument"),
     function_pointer_removal_done(false),
     partial_inlining_done(false),
@@ -111,7 +118,12 @@ protected:
   bool partial_inlining_done;
   bool remove_returns_done;
 
-  goto_functionst goto_functions;
+  goto_modelt goto_model;
+
+  ui_message_handlert::uit get_ui()
+  {
+    return ui_message_handler.get_ui();
+  }
 };
 
 #endif // CPROVER_GOTO_INSTRUMENT_GOTO_INSTRUMENT_PARSE_OPTIONS_H

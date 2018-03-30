@@ -6,9 +6,12 @@ Author: Matt Lewis
 
 \*******************************************************************/
 
-#include <iostream>
+/// \file
+/// Loop Acceleration
 
 #include "enumerating_loop_acceleration.h"
+
+#include <iostream>
 
 bool enumerating_loop_accelerationt::accelerate(
   path_acceleratort &accelerator)
@@ -29,7 +32,7 @@ bool enumerating_loop_accelerationt::accelerate(
         it!=path.end();
         ++it)
     {
-      goto_program.output_instruction(ns, "OMG", std::cout, it->loc);
+      goto_program.output_instruction(ns, "OMG", std::cout, *it->loc);
     }
 #endif
 

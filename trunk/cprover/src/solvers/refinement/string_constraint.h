@@ -1,7 +1,7 @@
 /*******************************************************************\
 
-Module: Defines string constraints. These are formulas talking about strings. 
-        We implemented two forms of constraints: `string_constraintt` 
+Module: Defines string constraints. These are formulas talking about strings.
+        We implemented two forms of constraints: `string_constraintt`
         are formulas of the form $\forall univ_var \in [lb,ub[. prem => body$,
         and not_contains_constraintt of the form:
         $\forall x in [lb,ub[. p(x) => \exists y in [lb,ub[. s1[x+y] != s2[y]$.
@@ -10,13 +10,48 @@ Author: Romain Brenguier, romain.brenguier@diffblue.com
 
 \*******************************************************************/
 
+/// \file
+/// Defines string constraints. These are formulas talking about strings.  We
+///   implemented two forms of constraints: `string_constraintt`  are formulas
+///   of the form \f$\forall univ\_var \in [lb,ub[. prem => body\f$, and
+///   not_contains_constraintt of the form: \f$\forall x \in [lb,ub[. p(x) =>
+///   \exists y \in [lb,ub[. s1[x+y] \ne s2[y]\f$.
+
 #ifndef CPROVER_SOLVERS_REFINEMENT_STRING_CONSTRAINT_H
 #define CPROVER_SOLVERS_REFINEMENT_STRING_CONSTRAINT_H
 
-#include <langapi/language_ui.h>
 #include <solvers/refinement/bv_refinement.h>
-#include <solvers/refinement/refined_string_type.h>
+#include <solvers/refinement/string_refinement_invariant.h>
+#include <util/refined_string_type.h>
+#include <util/string_expr.h>
+#include <langapi/language_util.h>
 
+///  ### Universally quantified string constraint
+///
+///  This represents a universally quantified string constraint as laid out in
+///  DOI: 10.1007/978-3-319-03077-7. The paper seems to specify a universal
+///  constraint as follows.
+///
+///  A universal constraint is of the form
+///  \f$ \forall i.\ PI(i) \Rightarrow  PV(i)\f$
+///  where \f$PI\f$ and \f$PV\f$ satisfies the following conditions:
+///
+///    * The predicate `PI` , called the index guard, must follow the grammar
+///      * \f$iguard : iguard \land iguard \mid iguard \lor iguard \mid
+///        iterm \le iterm \mid  iterm = iterm \f$
+///      * \f$iterm : integer\_constant1 \times i + integer\_constant2 \f$
+///
+///    * The predicate `PV` is called the value constraint.
+///      The index variable `i` can only be used in array read expressions of
+///      the form `a[i]`.
+///      ie. `PV` is of the form \f$P'(s_0[f_0(i)],\ldots, s_k[f_k(i)]
+///      )\f$, moreover when focusing on one specific string, all indices are
+///      the same [stated in a roundabout manner].
+///      \f$L(n)\f$ and \f$P(n, s_0,\ldots, s_k)\f$ may contain other (free)
+///      variables, but in \f$P\f$, \f$n\f$ can only occur as an argument to an
+///      \f$f\f$ [explicitly stated, implied].
+///
+/// \todo The fact that we follow this grammar is not enforced at the moment.
 class string_constraintt: public exprt
 {
 public:
@@ -47,7 +82,6 @@ public:
   {
     return operands()[4];
   }
-
 
  private:
   string_constraintt();
@@ -97,16 +131,34 @@ public:
 
 extern inline const string_constraintt &to_string_constraint(const exprt &expr)
 {
-  assert(expr.id()==ID_string_constraint && expr.operands().size()==5);
+  PRECONDITION(expr.id()==ID_string_constraint && expr.operands().size()==5);
   return static_cast<const string_constraintt &>(expr);
 }
 
 extern inline string_constraintt &to_string_constraint(exprt &expr)
 {
-  assert(expr.id()==ID_string_constraint && expr.operands().size()==5);
+  PRECONDITION(expr.id()==ID_string_constraint && expr.operands().size()==5);
   return static_cast<string_constraintt &>(expr);
 }
 
+/// Used for debug printing.
+/// \param [in] ns: namespace for `from_expr`
+/// \param [in] identifier: identifier for `from_expr`
+/// \param [in] expr: constraint to render
+/// \return rendered string
+inline std::string from_expr(
+  const namespacet &ns,
+  const irep_idt &identifier,
+  const string_constraintt &expr)
+{
+  return "forall "+from_expr(ns, identifier, expr.univ_var())+" in ["+
+    from_expr(ns, identifier, expr.lower_bound())+", "+
+    from_expr(ns, identifier, expr.upper_bound())+"). "+
+    from_expr(ns, identifier, expr.premise())+" => "+
+    from_expr(ns, identifier, expr.body());
+}
+
+/// Constraints to encode non containement of strings.
 class string_not_contains_constraintt: public exprt
 {
 public:
@@ -119,9 +171,9 @@ public:
     exprt premise,
     exprt exists_bound_inf,
     exprt exists_bound_sup,
-    const string_exprt &s0,
-    const string_exprt &s1):
-  exprt(ID_string_not_contains_constraint)
+    const array_string_exprt &s0,
+    const array_string_exprt &s1)
+    : exprt(ID_string_not_contains_constraint)
   {
     copy_to_operands(univ_lower_bound, univ_bound_sup, premise);
     copy_to_operands(exists_bound_inf, exists_bound_sup, s0);
@@ -153,30 +205,56 @@ public:
     return operands()[4];
   }
 
-  const string_exprt &s0() const
+  const array_string_exprt &s0() const
   {
-    return to_string_expr(operands()[5]);
+    return to_array_string_expr(operands()[5]);
   }
 
-  const string_exprt &s1() const
+  const array_string_exprt &s1() const
   {
-    return to_string_expr(operands()[6]);
+    return to_array_string_expr(operands()[6]);
   }
 };
+
+/// Used for debug printing.
+/// \param [in] ns: namespace for `from_expr`
+/// \param [in] identifier: identifier for `from_expr`
+/// \param [in] expr: constraint to render
+/// \return rendered string
+inline std::string from_expr(
+  const namespacet &ns,
+  const irep_idt &identifier,
+  const string_not_contains_constraintt &expr)
+{
+  return "forall x in ["+
+    from_expr(ns, identifier, expr.univ_lower_bound())+", "+
+    from_expr(ns, identifier, expr.univ_upper_bound())+"). "+
+    from_expr(ns, identifier, expr.premise())+" => ("+
+    "exists y in ["+from_expr(ns, identifier, expr.exists_lower_bound())+", "+
+    from_expr(ns, identifier, expr.exists_upper_bound())+"). "+
+    from_expr(ns, identifier, expr.s0())+"[x+y] != "+
+    from_expr(ns, identifier, expr.s1())+"[y])";
+}
 
 inline const string_not_contains_constraintt
 &to_string_not_contains_constraint(const exprt &expr)
 {
-  assert(expr.id()==ID_string_not_contains_constraint);
-  assert(expr.operands().size()==7);
+  PRECONDITION(expr.id()==ID_string_not_contains_constraint);
+  DATA_INVARIANT(
+    expr.operands().size()==7,
+    string_refinement_invariantt("string_not_contains_constraintt must have 7 "
+      "operands"));
   return static_cast<const string_not_contains_constraintt &>(expr);
 }
 
 inline string_not_contains_constraintt
 &to_string_not_contains_constraint(exprt &expr)
 {
-  assert(expr.id()==ID_string_not_contains_constraint);
-  assert(expr.operands().size()==7);
+  PRECONDITION(expr.id()==ID_string_not_contains_constraint);
+  DATA_INVARIANT(
+    expr.operands().size()==7,
+    string_refinement_invariantt("string_not_contains_constraintt must have 7 "
+      "operands"));
   return static_cast<string_not_contains_constraintt &>(expr);
 }
 

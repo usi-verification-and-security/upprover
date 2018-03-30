@@ -6,6 +6,9 @@ Author: Thomas Kiley
 
 \*******************************************************************/
 
+/// \file
+/// Goto Program
+
 #ifndef CPROVER_GOTO_PROGRAMS_SHOW_GOTO_FUNCTIONS_XML_H
 #define CPROVER_GOTO_PROGRAMS_SHOW_GOTO_FUNCTIONS_XML_H
 
@@ -17,7 +20,9 @@ class namespacet;
 class show_goto_functions_xmlt
 {
 public:
-  explicit show_goto_functions_xmlt(const namespacet &ns);
+  explicit show_goto_functions_xmlt(
+    const namespacet &_ns,
+    bool _list_only = false);
 
   xmlt convert(const goto_functionst &goto_functions);
   void operator()(
@@ -25,6 +30,7 @@ public:
 
 private:
   const namespacet &ns;
+  bool list_only;
 };
 
 #endif // CPROVER_GOTO_PROGRAMS_SHOW_GOTO_FUNCTIONS_XML_H

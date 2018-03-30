@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Abstract Interpretation
+
+#include "ai.h"
+
 #include <cassert>
 #include <memory>
 #include <sstream>
@@ -15,20 +20,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_code.h>
 
 #include "is_threaded.h"
-
-#include "ai.h"
-
-/*******************************************************************\
-
-Function: ai_domain_baset::output_json
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 jsont ai_domain_baset::output_json(
   const ai_baset &ai,
@@ -40,46 +31,25 @@ jsont ai_domain_baset::output_json(
   return json;
 }
 
-/*******************************************************************\
-
-Function: ai_domain_baset::output_xml
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 xmlt ai_domain_baset::output_xml(
   const ai_baset &ai,
   const namespacet &ns) const
 {
   std::ostringstream out;
   output(out, ai, ns);
-  xmlt xml("domain");
+  xmlt xml("abstract_state");
   xml.data=out.str();
   return xml;
 }
 
-/*******************************************************************\
-
-Function: variable_sensitivity_domaint::ai_simplify_lhs
-
-  Inputs:
-   condition - the expression to simplify
-   ns - the namespace
-
- Outputs: True if condition did not change. False otherwise. condition
-          will be updated with the simplified condition if it has worked
-
- Purpose: Use the information in the domain to simplify the expression
-          on the LHS of an assignment. This for example won't simplify symbols
-          to their values, but does simplify indices in arrays, members of
-          structs and dereferencing of pointers
-\*******************************************************************/
-
+/// Use the information in the domain to simplify the expression on the LHS of
+/// an assignment. This for example won't simplify symbols to their values, but
+/// does simplify indices in arrays, members of structs and dereferencing of
+/// pointers
+/// \param condition: the expression to simplify
+/// \param ns: the namespace
+/// \return True if condition did not change. False otherwise. condition will be
+///   updated with the simplified condition if it has worked
 bool ai_domain_baset::ai_simplify_lhs(
   exprt &condition, const namespacet &ns) const
 {
@@ -87,45 +57,37 @@ bool ai_domain_baset::ai_simplify_lhs(
   if(condition.id()==ID_index)
   {
     index_exprt ie=to_index_expr(condition);
-    bool changed=ai_simplify(ie.index(), ns);
-    if(changed)
+    bool no_simplification=ai_simplify(ie.index(), ns);
+    if(!no_simplification)
       condition=simplify_expr(ie, ns);
 
-    return !changed;
+    return no_simplification;
   }
   else if(condition.id()==ID_dereference)
   {
     dereference_exprt de=to_dereference_expr(condition);
-    bool changed=ai_simplify(de.pointer(), ns);
-    if(changed)
+    bool no_simplification=ai_simplify(de.pointer(), ns);
+    if(!no_simplification)
       condition=simplify_expr(de, ns);  // So *(&x) -> x
 
-    return !changed;
+    return no_simplification;
   }
   else if(condition.id()==ID_member)
   {
     member_exprt me=to_member_expr(condition);
-    bool changed=ai_simplify_lhs(me.compound(), ns); // <-- lhs!
-    if(changed)
+    // Since simplify_ai_lhs is required to return an addressable object
+    // (so remains a valid left hand side), to simplify
+    // `(something_simplifiable).b` we require that `something_simplifiable`
+    // must also be addressable
+    bool no_simplification=ai_simplify_lhs(me.compound(), ns);
+    if(!no_simplification)
       condition=simplify_expr(me, ns);
 
-    return !changed;
+    return no_simplification;
   }
   else
     return true;
 }
-
-/*******************************************************************\
-
-Function: ai_baset::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void ai_baset::output(
   const namespacet &ns,
@@ -146,18 +108,6 @@ void ai_baset::output(
   }
 }
 
-/*******************************************************************\
-
-Function: ai_baset::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void ai_baset::output(
   const namespacet &ns,
   const goto_programt &goto_program,
@@ -172,24 +122,15 @@ void ai_baset::output(
     find_state(i_it).output(out, *this, ns);
     out << "\n";
     #if 1
-    goto_program.output_instruction(ns, identifier, out, i_it);
+    goto_program.output_instruction(ns, identifier, out, *i_it);
     out << "\n";
     #endif
   }
 }
 
-/*******************************************************************\
-
-Function: ai_baset::output_json
-
-  Inputs: The namespace and goto_functions
-
- Outputs: The JSON object
-
- Purpose: Output the domains for the whole program as JSON
-
-\*******************************************************************/
-
+/// Output the domains for the whole program as JSON
+/// \par parameters: The namespace and goto_functions
+/// \return The JSON object
 jsont ai_baset::output_json(
   const namespacet &ns,
   const goto_functionst &goto_functions) const
@@ -212,18 +153,9 @@ jsont ai_baset::output_json(
   return result;
 }
 
-/*******************************************************************\
-
-Function: ai_baset::output_json
-
-  Inputs: The namespace, goto_program and it's identifier
-
- Outputs: The JSON object
-
- Purpose: Output the domains for a single function as JSON
-
-\*******************************************************************/
-
+/// Output the domains for a single function as JSON
+/// \par parameters: The namespace, goto_program and it's identifier
+/// \return The JSON object
 jsont ai_baset::output_json(
   const namespacet &ns,
   const goto_programt &goto_program,
@@ -238,11 +170,11 @@ jsont ai_baset::output_json(
       json_numbert(std::to_string(i_it->location_number));
     location["sourceLocation"]=
       json_stringt(i_it->source_location.as_string());
-    location["domain"]=find_state(i_it).output_json(*this, ns);
+    location["abstractState"]=find_state(i_it).output_json(*this, ns);
 
     // Ideally we need output_instruction_json
     std::ostringstream out;
-    goto_program.output_instruction(ns, identifier, out, i_it);
+    goto_program.output_instruction(ns, identifier, out, *i_it);
     location["instruction"]=json_stringt(out.str());
 
     contents.push_back(location);
@@ -251,18 +183,9 @@ jsont ai_baset::output_json(
   return contents;
 }
 
-/*******************************************************************\
-
-Function: ai_baset::output_xml
-
-  Inputs: The namespace and goto_functions
-
- Outputs: The XML object
-
- Purpose: Output the domains for the whole program as XML
-
-\*******************************************************************/
-
+/// Output the domains for the whole program as XML
+/// \par parameters: The namespace and goto_functions
+/// \return The XML object
 xmlt ai_baset::output_xml(
   const namespacet &ns,
   const goto_functionst &goto_functions) const
@@ -288,18 +211,9 @@ xmlt ai_baset::output_xml(
   return program;
 }
 
-/*******************************************************************\
-
-Function: ai_baset::output_xml
-
-  Inputs: The namespace, goto_program and it's identifier
-
- Outputs: The XML object
-
- Purpose: Output the domains for a single function as XML
-
-\*******************************************************************/
-
+/// Output the domains for a single function as XML
+/// \par parameters: The namespace, goto_program and it's identifier
+/// \return The XML object
 xmlt ai_baset::output_xml(
   const namespacet &ns,
   const goto_programt &goto_program,
@@ -321,7 +235,7 @@ xmlt ai_baset::output_xml(
 
     // Ideally we need output_instruction_xml
     std::ostringstream out;
-    goto_program.output_instruction(ns, identifier, out, i_it);
+    goto_program.output_instruction(ns, identifier, out, *i_it);
     location.set_attribute("instruction", out.str());
 
     function_body.new_element(location);
@@ -329,18 +243,6 @@ xmlt ai_baset::output_xml(
 
   return function_body;
 }
-
-/*******************************************************************\
-
-Function: ai_baset::entry_state
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void ai_baset::entry_state(const goto_functionst &goto_functions)
 {
@@ -353,52 +255,16 @@ void ai_baset::entry_state(const goto_functionst &goto_functions)
     entry_state(f_it->second.body);
 }
 
-/*******************************************************************\
-
-Function: ai_baset::entry_state
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void ai_baset::entry_state(const goto_programt &goto_program)
 {
   // The first instruction of 'goto_program' is the entry point
   get_state(goto_program.instructions.begin()).make_entry();
 }
 
-/*******************************************************************\
-
-Function: ai_baset::initialize
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void ai_baset::initialize(const goto_functionst::goto_functiont &goto_function)
 {
   initialize(goto_function.body);
 }
-
-/*******************************************************************\
-
-Function: ai_baset::initialize
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void ai_baset::initialize(const goto_programt &goto_program)
 {
@@ -408,35 +274,16 @@ void ai_baset::initialize(const goto_programt &goto_program)
     get_state(i_it).make_bottom();
 }
 
-/*******************************************************************\
-
-Function: ai_baset::initialize
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void ai_baset::initialize(const goto_functionst &goto_functions)
 {
   forall_goto_functions(it, goto_functions)
     initialize(it->second);
 }
 
-/*******************************************************************\
-
-Function: ai_baset::get_next
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+void ai_baset::finalize()
+{
+  // Nothing to do per default
+}
 
 ai_baset::locationt ai_baset::get_next(
   working_sett &working_set)
@@ -449,18 +296,6 @@ ai_baset::locationt ai_baset::get_next(
 
   return l;
 }
-
-/*******************************************************************\
-
-Function: ai_baset::fixedpoint
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool ai_baset::fixedpoint(
   const goto_programt &goto_program,
@@ -487,18 +322,6 @@ bool ai_baset::fixedpoint(
 
   return new_data;
 }
-
-/*******************************************************************\
-
-Function: ai_baset::visit
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool ai_baset::visit(
   locationt l,
@@ -542,7 +365,8 @@ bool ai_baset::visit(
       // initialize state, if necessary
       get_state(to_l);
 
-      new_values.transform(l, to_l, *this, ns);
+      new_values.transform(
+        l, to_l, *this, ns, ai_domain_baset::edge_typet::FUNCTION_LOCAL);
 
       if(merge(new_values, l, to_l))
         have_new_values=true;
@@ -557,18 +381,6 @@ bool ai_baset::visit(
 
   return new_data;
 }
-
-/*******************************************************************\
-
-Function: ai_baset::do_function_call
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool ai_baset::do_function_call(
   locationt l_call, locationt l_return,
@@ -587,7 +399,8 @@ bool ai_baset::do_function_call(
   {
     // if we don't have a body, we just do an edige call -> return
     std::unique_ptr<statet> tmp_state(make_temporary_state(get_state(l_call)));
-    tmp_state->transform(l_call, l_return, *this, ns);
+    tmp_state->transform(
+      l_call, l_return, *this, ns, ai_domain_baset::edge_typet::FUNCTION_LOCAL);
 
     return merge(*tmp_state, l_call, l_return);
   }
@@ -604,7 +417,8 @@ bool ai_baset::do_function_call(
 
     // do the edge from the call site to the beginning of the function
     std::unique_ptr<statet> tmp_state(make_temporary_state(get_state(l_call)));
-    tmp_state->transform(l_call, l_begin, *this, ns);
+    tmp_state->transform(
+      l_call, l_begin, *this, ns, ai_domain_baset::edge_typet::CALL);
 
     bool new_data=false;
 
@@ -625,25 +439,19 @@ bool ai_baset::do_function_call(
     assert(l_end->is_end_function());
 
     // do edge from end of function to instruction after call
-    std::unique_ptr<statet> tmp_state(make_temporary_state(get_state(l_end)));
-    tmp_state->transform(l_end, l_return, *this, ns);
+    const statet &end_state=get_state(l_end);
+
+    if(end_state.is_bottom())
+      return false; // function exit point not reachable
+
+    std::unique_ptr<statet> tmp_state(make_temporary_state(end_state));
+    tmp_state->transform(
+      l_end, l_return, *this, ns, ai_domain_baset::edge_typet::RETURN);
 
     // Propagate those
     return merge(*tmp_state, l_end, l_return);
   }
 }
-
-/*******************************************************************\
-
-Function: ai_baset::do_function_call_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool ai_baset::do_function_call_rec(
   locationt l_call, locationt l_return,
@@ -660,14 +468,6 @@ bool ai_baset::do_function_call_rec(
   {
     const irep_idt &identifier=function.get(ID_identifier);
 
-    if(recursion_set.find(identifier)!=recursion_set.end())
-    {
-      // recursion detected!
-      return new_data;
-    }
-    else
-      recursion_set.insert(identifier);
-
     goto_functionst::function_mapt::const_iterator it=
       goto_functions.function_map.find(identifier);
 
@@ -680,8 +480,6 @@ bool ai_baset::do_function_call_rec(
       it,
       arguments,
       ns);
-
-    recursion_set.erase(identifier);
   }
   else if(function.id()==ID_if)
   {
@@ -729,18 +527,6 @@ bool ai_baset::do_function_call_rec(
   return new_data;
 }
 
-/*******************************************************************\
-
-Function: ai_baset::sequential_fixedpoint
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void ai_baset::sequential_fixedpoint(
   const goto_functionst &goto_functions,
   const namespacet &ns)
@@ -751,18 +537,6 @@ void ai_baset::sequential_fixedpoint(
   if(f_it!=goto_functions.function_map.end())
     fixedpoint(f_it->second.body, goto_functions, ns);
 }
-
-/*******************************************************************\
-
-Function: ai_baset::concurrent_fixedpoint
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void ai_baset::concurrent_fixedpoint(
   const goto_functionst &goto_functions,

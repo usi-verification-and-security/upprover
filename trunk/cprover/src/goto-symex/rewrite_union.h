@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution
+
 #ifndef CPROVER_GOTO_SYMEX_REWRITE_UNION_H
 #define CPROVER_GOTO_SYMEX_REWRITE_UNION_H
 
@@ -18,6 +21,10 @@ class goto_modelt;
 
 void rewrite_union(
   exprt &expr,
+  const namespacet &ns);
+
+void rewrite_union(
+  goto_functionst::goto_functiont &goto_function,
   const namespacet &ns);
 
 void rewrite_union(

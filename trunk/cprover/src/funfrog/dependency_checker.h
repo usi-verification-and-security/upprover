@@ -1,9 +1,9 @@
 #ifndef CPROVER_DEPENDECY_CHECKER_H
 #define CPROVER_DEPENDECY_CHECKER_H
 
-#include <symbol.h>
-#include <ui_message.h>
-#include <time_stopping.h>
+#include <util/symbol.h>
+#include <util/ui_message.h>
+#include <util/time_stopping.h>
 
 #include <goto-symex/symex_target_equation.h>
 #include <goto-symex/slice.h>

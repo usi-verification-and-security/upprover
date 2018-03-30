@@ -6,26 +6,18 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+/// \file
+/// C++ Language Type Checking
+
+#include "cpp_declarator_converter.h"
+
 #include <util/source_location.h>
 #include <util/std_types.h>
 
 #include <util/c_types.h>
 
 #include "cpp_type2name.h"
-#include "cpp_declarator_converter.h"
 #include "cpp_typecheck.h"
-
-/*******************************************************************\
-
-Function: cpp_declarator_convertert::cpp_declarator_convertert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 cpp_declarator_convertert::cpp_declarator_convertert(
   class cpp_typecheckt &_cpp_typecheck):
@@ -34,21 +26,10 @@ cpp_declarator_convertert::cpp_declarator_convertert(
   is_template_parameter(false),
   is_friend(false),
   linkage_spec(_cpp_typecheck.current_linkage_spec),
-  cpp_typecheck(_cpp_typecheck)
+  cpp_typecheck(_cpp_typecheck),
+  is_code(false)
 {
 }
-
-/*******************************************************************\
-
-Function: cpp_declarator_convertert::convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 symbolt &cpp_declarator_convertert::convert(
   const typet &declaration_type,
@@ -110,17 +91,17 @@ symbolt &cpp_declarator_convertert::convert(
     // adjust template type
     if(final_type.id()==ID_template)
     {
-      assert(0);
+      UNREACHABLE;
       typet tmp;
       tmp.swap(final_type.subtype());
       final_type.swap(tmp);
     }
 
     // try static first
-    symbol_tablet::symbolst::iterator c_it=
-      cpp_typecheck.symbol_table.symbols.find(final_identifier);
+    auto maybe_symbol=
+      cpp_typecheck.symbol_table.get_writeable(final_identifier);
 
-    if(c_it==cpp_typecheck.symbol_table.symbols.end())
+    if(!maybe_symbol)
     {
       // adjust type if it's a non-static member function
       if(final_type.id()==ID_code)
@@ -130,9 +111,8 @@ symbolt &cpp_declarator_convertert::convert(
       get_final_identifier();
 
       // try again
-      c_it=cpp_typecheck.symbol_table.symbols.find(final_identifier);
-
-      if(c_it==cpp_typecheck.symbol_table.symbols.end())
+      maybe_symbol=cpp_typecheck.symbol_table.get_writeable(final_identifier);
+      if(!maybe_symbol)
       {
         cpp_typecheck.error().source_location=
           declarator.name().source_location();
@@ -144,9 +124,7 @@ symbolt &cpp_declarator_convertert::convert(
       }
     }
 
-    assert(c_it!=cpp_typecheck.symbol_table.symbols.end());
-
-    symbolt &symbol=c_it->second;
+    symbolt &symbol=*maybe_symbol;
 
     combine_types(declarator.name().source_location(), final_type, symbol);
     enforce_rules(symbol);
@@ -213,13 +191,11 @@ symbolt &cpp_declarator_convertert::convert(
     }
 
     // already there?
-    symbol_tablet::symbolst::iterator c_it=
-      cpp_typecheck.symbol_table.symbols.find(final_identifier);
-
-    if(c_it==cpp_typecheck.symbol_table.symbols.end())
+    const auto maybe_symbol=
+      cpp_typecheck.symbol_table.get_writeable(final_identifier);
+    if(!maybe_symbol)
       return convert_new_symbol(storage_spec, member_spec, declarator);
-
-    symbolt &symbol=c_it->second;
+    symbolt &symbol=*maybe_symbol;
 
     if(!storage_spec.is_extern())
       symbol.is_extern = false;
@@ -252,18 +228,6 @@ symbolt &cpp_declarator_convertert::convert(
   }
 }
 
-/*******************************************************************\
-
-Function: cpp_declarator_convertert::combine_types
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cpp_declarator_convertert::combine_types(
   const source_locationt &source_location,
   const typet &decl_type,
@@ -283,7 +247,7 @@ void cpp_declarator_convertert::combine_types(
     if(decl_code_type.return_type()==symbol_code_type.return_type() &&
        decl_code_type.parameters().size()==symbol_code_type.parameters().size())
     {
-      for(unsigned i=0; i<decl_code_type.parameters().size(); i++)
+      for(std::size_t i=0; i<decl_code_type.parameters().size(); i++)
       {
         const code_typet::parametert &decl_parameter=
           decl_code_type.parameters()[i];
@@ -346,18 +310,6 @@ void cpp_declarator_convertert::combine_types(
   throw 0;
 }
 
-/*******************************************************************\
-
-Function: cpp_declarator_convertert::enforce_rules
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cpp_declarator_convertert::enforce_rules(const symbolt &symbol)
 {
   // enforce rules for operator overloading
@@ -366,18 +318,6 @@ void cpp_declarator_convertert::enforce_rules(const symbolt &symbol)
   // enforce rules about main()
   main_function_rules(symbol);
 }
-
-/*******************************************************************\
-
-Function: cpp_declarator_convertert::handle_initializer
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_declarator_convertert::handle_initializer(
   symbolt &symbol,
@@ -431,18 +371,6 @@ void cpp_declarator_convertert::handle_initializer(
   }
 }
 
-/*******************************************************************\
-
-Function: cpp_declarator_convertert::get_final_identifier
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cpp_declarator_convertert::get_final_identifier()
 {
   std::string identifier=id2string(base_name);
@@ -488,18 +416,6 @@ void cpp_declarator_convertert::get_final_identifier()
     scope->prefix+
     identifier;
 }
-
-/*******************************************************************\
-
-Function: cpp_declarator_convertert::convert_new_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 symbolt &cpp_declarator_convertert::convert_new_symbol(
   const cpp_storage_spect &storage_spec,
@@ -641,18 +557,6 @@ symbolt &cpp_declarator_convertert::convert_new_symbol(
   return *new_symbol;
 }
 
-/*******************************************************************\
-
-Function: cpp_declarator_convertert::get_pretty_name
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 irep_idt cpp_declarator_convertert::get_pretty_name()
 {
   if(is_code)
@@ -680,34 +584,10 @@ irep_idt cpp_declarator_convertert::get_pretty_name()
   return scope->prefix+id2string(base_name);
 }
 
-/*******************************************************************\
-
-Function: cpp_declarator_convertert::operator_overloading_rules
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cpp_declarator_convertert::operator_overloading_rules(
   const symbolt &symbol)
 {
 }
-
-/*******************************************************************\
-
-Function: cpp_declarator_convertert::main_function_rules
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_declarator_convertert::main_function_rules(
   const symbolt &symbol)

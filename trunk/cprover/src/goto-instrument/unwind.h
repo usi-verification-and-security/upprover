@@ -7,12 +7,17 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Loop unwinding
+
 #ifndef CPROVER_GOTO_INSTRUMENT_UNWIND_H
 #define CPROVER_GOTO_INSTRUMENT_UNWIND_H
 
 #include <util/json.h>
 #include <util/json_expr.h>
-#include <goto-programs/goto_program.h>
+#include <goto-programs/goto_model.h>
+
+class goto_modelt;
 
 // -1: do not unwind loop
 typedef std::map<irep_idt, std::map<unsigned, int>> unwind_sett;
@@ -61,10 +66,29 @@ public:
   }
 
   void operator()(
-    goto_functionst &goto_functions,
+    goto_functionst &,
     const unwind_sett &unwind_set,
     const int k=-1, // -1: no global bound
     const unwind_strategyt unwind_strategy=unwind_strategyt::PARTIAL);
+
+  void operator()(
+    goto_modelt &goto_model,
+    const unsigned k, // global bound
+    const unwind_strategyt unwind_strategy=unwind_strategyt::PARTIAL)
+  {
+    const unwind_sett unwind_set;
+    operator()(goto_model.goto_functions, unwind_set, k, unwind_strategy);
+  }
+
+  void operator()(
+    goto_modelt &goto_model,
+    const unwind_sett &unwind_set,
+    const int k=-1, // -1: no global bound
+    const unwind_strategyt unwind_strategy=unwind_strategyt::PARTIAL)
+  {
+    operator()(
+      goto_model.goto_functions, unwind_set, k, unwind_strategy);
+  }
 
   // unwind log
 
@@ -95,7 +119,7 @@ public:
       const unsigned location_number)
     {
       auto r=location_map.insert(std::make_pair(target, location_number));
-      assert(r.second); // did not exist yet
+      INVARIANT(r.second, "target already exists");
     }
 
     typedef std::map<goto_programt::const_targett, unsigned> location_mapt;

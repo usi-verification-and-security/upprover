@@ -6,22 +6,14 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
-#include <ostream>
+/// \file
+/// C++ Language Type Checking
 
 #include "cpp_id.h"
+
+#include <ostream>
+
 #include "cpp_scope.h"
-
-/*******************************************************************\
-
-Function: cpp_idt::cpp_idt
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 cpp_idt::cpp_idt():
   is_member(false),
@@ -32,21 +24,9 @@ cpp_idt::cpp_idt():
   id_class(id_classt::UNKNOWN),
   this_expr(static_cast<const exprt &>(get_nil_irep())),
   compound_counter(0),
-  parent(NULL)
+  parent(nullptr)
 {
 }
-
-/*******************************************************************\
-
-Function: cpp_idt::print
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_idt::print(std::ostream &out, unsigned indent) const
 {
@@ -62,18 +42,6 @@ void cpp_idt::print(std::ostream &out, unsigned indent) const
     out << '\n';
   }
 }
-
-/*******************************************************************\
-
-Function: cpp_idt::print_fields
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_idt::print_fields(std::ostream &out, unsigned indent) const
 {
@@ -129,35 +97,11 @@ void cpp_idt::print_fields(std::ostream &out, unsigned indent) const
   out << "  id_class=" << id_class << '\n';
 }
 
-/*******************************************************************\
-
-Function: operator<<
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::ostream &operator<<(std::ostream &out, const cpp_idt &cpp_id)
 {
   cpp_id.print(out, 0);
   return out;
 }
-
-/*******************************************************************\
-
-Function: operator<<
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::ostream &operator<<(std::ostream &out, const cpp_idt::id_classt &id_class)
 {

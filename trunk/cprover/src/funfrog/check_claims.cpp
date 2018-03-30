@@ -7,9 +7,9 @@
 \*******************************************************************/
 
 #include <fstream>
-#include <ui_message.h>
-#include <xml.h>
-#include <xml_irep.h>
+#include <util/ui_message.h>
+#include <util/xml.h>
+#include <util/xml_irep.h>
 
 #include <ansi-c/expr2c.h>
 #include "summarizing_checker.h"
@@ -109,7 +109,7 @@ Function: check_claims
 \*******************************************************************/
 
 void check_claims(
-  const namespacet &ns,
+  const symbol_tablet &symbol_table,
   goto_programt &leaping_program,
   const goto_functionst &goto_functions,
   claim_mapt &claim_map,
@@ -158,7 +158,7 @@ void check_claims(
 
 
   symbol_tablet temp_table;
-  namespacet ns1(ns.get_symbol_table(), temp_table);
+  namespacet ns1(symbol_table, temp_table);
 
   if (options.get_bool_option("theoref")){
 
@@ -298,10 +298,11 @@ Function: get_claims
 
  Outputs:
 
- Purpose:
+ Purpose: Not in use
 
 \*******************************************************************/
 
+/*
 void show_claims(const namespacet &ns,
                  const claim_mapt &claim_map, 
                  const claim_numberst &claim_numbers,
@@ -382,9 +383,9 @@ void show_claims(const namespacet &ns,
     }
   }
 }
+*/
 
-void store_claims(const namespacet &ns,
-                 const claim_mapt &claim_map,
+void store_claims(const claim_mapt &claim_map,
                  const claim_numberst &claim_numbers)
 {
   std::ofstream mapping;

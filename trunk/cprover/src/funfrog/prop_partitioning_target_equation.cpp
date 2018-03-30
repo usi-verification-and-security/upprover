@@ -8,7 +8,7 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
-#include <std_expr.h>
+#include <util/std_expr.h>
 
 #include "prop_partitioning_target_equation.h"
 #include "solvers/sat/cnf.h"

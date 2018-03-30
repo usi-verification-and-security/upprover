@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// CBMC Main Module
+
 /*
 
   CBMC
@@ -14,25 +17,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 */
 
+#include "cbmc_parse_options.h"
+
 #include <util/unicode.h>
 
 #ifdef IREP_HASH_STATS
 #include <iostream>
 #endif
-
-#include "cbmc_parse_options.h"
-
-/*******************************************************************\
-
-Function: main / wmain
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 #ifdef IREP_HASH_STATS
 extern unsigned long long irep_hash_cnt;
@@ -43,7 +34,9 @@ extern unsigned long long irep_cmp_ne_cnt;
 #ifdef _MSC_VER
 int wmain(int argc, const wchar_t **argv_wide)
 {
-  const char **argv=narrow_argv(argc, argv_wide);
+  auto vec=narrow_argv(argc, argv_wide);
+  auto narrow=to_c_str_array(std::begin(vec), std::end(vec));
+  auto argv=narrow.data();
 #else
 int main(int argc, const char **argv)
 {

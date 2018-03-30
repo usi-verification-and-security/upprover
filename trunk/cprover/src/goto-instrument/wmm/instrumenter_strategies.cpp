@@ -8,28 +8,18 @@ Date: 2012
 
 \*******************************************************************/
 
-#include <string>
-#include <fstream>
-
+/// \file
+/// Strategies for picking the abstract events to instrument
 
 #include "goto2graph.h"
+
+#include <string>
+#include <fstream>
 
 #ifdef HAVE_GLPK
 #include <glpk.h>
 #include <cstdlib>
 #endif
-
-/*******************************************************************\
-
-Function: instrumentert::instrument_with_strategy
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void instrumentert::instrument_with_strategy(instrumentation_strategyt strategy)
 {
@@ -90,18 +80,6 @@ void instrumentert::instrument_with_strategy(instrumentation_strategyt strategy)
     message.debug() << "no cycles to instrument" << messaget::eom;
 }
 
-/*******************************************************************\
-
-Function: instrumentert::instrument_all_inserter
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void inline instrumentert::instrument_all_inserter(
   const std::set<event_grapht::critical_cyclet> &set_of_cycles)
 {
@@ -129,18 +107,6 @@ void inline instrumentert::instrument_all_inserter(
     }
   }
 }
-
-/*******************************************************************\
-
-Function: instrumentert::instrument_one_event_per_cycle
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void inline instrumentert::instrument_one_event_per_cycle_inserter(
   const std::set<event_grapht::critical_cyclet> &set_of_cycles)
@@ -170,10 +136,10 @@ void inline instrumentert::instrument_one_event_per_cycle_inserter(
       continue;
 
     /* instruments the first pair */
-    for(std::set<event_grapht::critical_cyclet::delayt>::iterator
-      p_it=it->unsafe_pairs.begin();
-      p_it!=it->unsafe_pairs.end(); ++p_it)
+    if(!it->unsafe_pairs.empty())
     {
+      std::set<event_grapht::critical_cyclet::delayt>::iterator
+        p_it=it->unsafe_pairs.begin();
       delayed.insert(*p_it);
       const abstract_eventt &first_ev=egraph[p_it->first];
       var_to_instr.insert(first_ev.variable);
@@ -188,22 +154,9 @@ void inline instrumentert::instrument_one_event_per_cycle_inserter(
           std::pair<irep_idt, source_locationt>(
             second_ev.variable, second_ev.source_location));
       }
-      break;
     }
   }
 }
-
-/*******************************************************************\
-
-Function: instrumentert::instrument_one_read_per_cycle
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void inline instrumentert::instrument_one_read_per_cycle_inserter(
   const std::set<event_grapht::critical_cyclet> &set_of_cycles)
@@ -212,18 +165,6 @@ void inline instrumentert::instrument_one_read_per_cycle_inserter(
   throw "read first strategy not implemented yet";
 }
 
-/*******************************************************************\
-
-Function: instrumentert::instrument_one_write_per_cycle
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void inline instrumentert::instrument_one_write_per_cycle_inserter(
   const std::set<event_grapht::critical_cyclet> &set_of_cycles)
 {
@@ -231,18 +172,7 @@ void inline instrumentert::instrument_one_write_per_cycle_inserter(
   throw "write first strategy not implemented yet";
 }
 
-/*******************************************************************\
-
-Function: instrumentert::cost
-
-  Inputs:
-
- Outputs:
-
- Purpose: cost function
-
-\*******************************************************************/
-
+/// cost function
 unsigned inline instrumentert::cost(
   const event_grapht::critical_cyclet::delayt &e)
 {
@@ -257,18 +187,6 @@ unsigned inline instrumentert::cost(
   else
     return 3;
 }
-
-/*******************************************************************\
-
-Function: instrumentert::instrument_minimum_interference
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void inline instrumentert::instrument_minimum_interference_inserter(
   const std::set<event_grapht::critical_cyclet> &set_of_cycles)
@@ -354,9 +272,9 @@ void inline instrumentert::instrument_minimum_interference_inserter(
   const std::size_t mat_size=set_of_cycles.size()*edges.size();
   message.debug() << "size of the system: " << mat_size
     << messaget::eom;
-  int *imat=new int[mat_size+1];
-  int *jmat=new int[mat_size+1];
-  double *vmat=new double[mat_size+1];
+  std::vector<int> imat(mat_size+1);
+  std::vector<int> jmat(mat_size+1);
+  std::vector<double> vmat(mat_size+1);
 
   /* fills the constraints coeff */
   /* tables read from 1 in glpk -- first row/column ignored */
@@ -425,26 +343,11 @@ void inline instrumentert::instrument_minimum_interference_inserter(
   }
 
   glp_delete_prob(lp);
-  delete[] imat;
-  delete[] jmat;
-  delete[] vmat;
 #else
   throw "sorry, minimum interference option requires glpk; "
         "please recompile goto-instrument with glpk";
 #endif
 }
-
-/*******************************************************************\
-
-Function: instrumentert::instrument_my_events_inserter
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void inline instrumentert::instrument_my_events_inserter(
   const std::set<event_grapht::critical_cyclet> &set,
@@ -478,18 +381,6 @@ void inline instrumentert::instrument_my_events_inserter(
   }
 }
 
-/*******************************************************************\
-
-Function: instrumentert::instrument_my_events
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void instrumentert::instrument_my_events(
   const std::set<event_idt> &my_events)
 {
@@ -507,18 +398,6 @@ void instrumentert::instrument_my_events(
   else
     message.debug() << "no cycles to instrument" << messaget::eom;
 }
-
-/*******************************************************************\
-
-Function: extract_my_events
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::set<event_idt> instrumentert::extract_my_events()
 {

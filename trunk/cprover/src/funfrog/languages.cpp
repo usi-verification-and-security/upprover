@@ -7,7 +7,6 @@ Author: Daniel Kroening, kroening@kroening.com
 \*******************************************************************/
 
 #include <langapi/mode.h>
-
 #include <ansi-c/ansi_c_language.h>
 #include <cpp/cpp_language.h>
 

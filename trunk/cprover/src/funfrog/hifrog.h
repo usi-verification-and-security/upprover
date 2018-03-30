@@ -11,7 +11,7 @@
 #ifndef HIFROG_H
 #define HIFROG_H
 
-#include <ssa_expr.h>
+#include <util/ssa_expr.h>
 
 // For now we have only one thread any hows
 #define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var"
@@ -20,6 +20,7 @@
 #define ROUNDING_MODE "__CPROVER_rounding_mode!"
 #define DYNAMIC_OBJ "symex_dynamic::dynamic_object"
 #define GOTO_GUARD "goto_symex::\\guard#"
+#define BUILT_IN "<built-in-additions>"
 
 #define NIL "nil"
 #define NONDETv1 "symex::" // Cprover nondet symbol
@@ -44,6 +45,11 @@ irep_idt get_symbol_name(const exprt &expr);
 std::string fix_symex_nondet_name(const exprt &expr);
 unsigned int get_dump_current_index();
 bool is_L2_SSA_symbol(const exprt& expr);
+
+static inline bool is_cprover_built_in_source(const std::string& str)
+{
+    return (str.find(BUILT_IN) != std::string::npos);
+}
 
 static inline bool is_cprover_rounding_mode_var(const std::string& str)
 {

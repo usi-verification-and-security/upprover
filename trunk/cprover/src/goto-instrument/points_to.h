@@ -6,23 +6,18 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Field-sensitive, location-insensitive points-to analysis
+
 #ifndef CPROVER_GOTO_INSTRUMENT_POINTS_TO_H
 #define CPROVER_GOTO_INSTRUMENT_POINTS_TO_H
 
 #include <iosfwd>
 
-#include <goto-programs/goto_functions.h>
+#include <goto-programs/goto_model.h>
 #include <goto-programs/cfg.h>
 
 #include "object_id.h"
-
-/*******************************************************************\
-
-   Class: points_tot
-
- Purpose:
-
-\*******************************************************************/
 
 class points_tot
 {
@@ -31,10 +26,10 @@ public:
   {
   }
 
-  void operator()(goto_functionst &goto_functions)
+  void operator()(goto_modelt &goto_model)
   {
     // build the CFG data structure
-    cfg(goto_functions);
+    cfg(goto_model.goto_functions);
 
     // iterate
     fixedpoint();

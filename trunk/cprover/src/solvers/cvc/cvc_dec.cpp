@@ -6,6 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "cvc_dec.h"
+
 #include <cstring>
 #include <cassert>
 #include <cstdlib> // for system()
@@ -27,20 +29,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/prefix.h>
 #include <util/string2int.h>
 
-#include "cvc_dec.h"
-
-/*******************************************************************\
-
-Function: cvc_temp_filet::cvc_temp_filet
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 cvc_temp_filet::cvc_temp_filet()
 {
   temp_out_filename="cvc_dec_out_"+std::to_string(getpid())+".tmp";
@@ -49,18 +37,6 @@ cvc_temp_filet::cvc_temp_filet()
     temp_out_filename.c_str(),
     std::ios_base::out | std::ios_base::trunc);
 }
-
-/*******************************************************************\
-
-Function: cvc_temp_filet::~cvc_temp_filet
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 cvc_temp_filet::~cvc_temp_filet()
 {
@@ -72,18 +48,6 @@ cvc_temp_filet::~cvc_temp_filet()
   if(temp_result_filename!="")
     unlink(temp_result_filename.c_str());
 }
-
-/*******************************************************************\
-
-Function: cvc_dect::dec_solve
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 decision_proceduret::resultt cvc_dect::dec_solve()
 {
@@ -99,24 +63,12 @@ decision_proceduret::resultt cvc_dect::dec_solve()
     "cvcl "+temp_out_filename+" > "+temp_result_filename+" 2>&1";
 
   int res=system(command.c_str());
-  assert(0==res);
+  CHECK_RETURN(0==res);
 
   status() << "Reading result from CVCL" << eom;
 
   return read_cvcl_result();
 }
-
-/*******************************************************************\
-
-Function: cvc_dect::read_assert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_dect::read_assert(std::istream &in, std::string &line)
 {
@@ -176,18 +128,6 @@ void cvc_dect::read_assert(std::istream &in, std::string &line)
     }
   }
 }
-
-/*******************************************************************\
-
-Function: cvc_dect::read_cvcl_result
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 decision_proceduret::resultt cvc_dect::read_cvcl_result()
 {

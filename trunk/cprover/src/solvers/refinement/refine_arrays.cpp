@@ -6,6 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "bv_refinement.h"
+
 #ifdef DEBUG
 #include <iostream>
 #include <langapi/language_util.h>
@@ -14,21 +16,10 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_expr.h>
 #include <util/find_symbols.h>
 
-#include "bv_refinement.h"
+#include <solvers/refinement/string_refinement_invariant.h>
 #include <solvers/sat/satcheck.h>
 
-/*******************************************************************\
-
-Function: bv_refinementt::post_process_arrays
-
-  Inputs:
-
- Outputs:
-
- Purpose: generate array constraints
-
-\*******************************************************************/
-
+/// generate array constraints
 void bv_refinementt::post_process_arrays()
 {
   collect_indices();
@@ -38,26 +29,15 @@ void bv_refinementt::post_process_arrays()
   update_index_map(true);
 
   // we don't actually add any constraints
-  lazy_arrays=do_array_refinement;
+  lazy_arrays=config_.refine_arrays;
   add_array_constraints();
   freeze_lazy_constraints();
 }
 
-/*******************************************************************\
-
-Function: bv_refinementt::arrays_overapproximated
-
-  Inputs:
-
- Outputs:
-
- Purpose: check whether counterexample is spurious
-
-\*******************************************************************/
-
+/// check whether counterexample is spurious
 void bv_refinementt::arrays_overapproximated()
 {
-  if(!do_array_refinement)
+  if(!config_.refine_arrays)
     return;
 
   unsigned nb_active=0;
@@ -76,7 +56,9 @@ void bv_refinementt::arrays_overapproximated()
     if(current.id()==ID_implies)
     {
       implies_exprt imp=to_implies_expr(current);
-      assert(imp.operands().size()==2);
+      DATA_INVARIANT(
+        imp.operands().size()==2,
+        string_refinement_invariantt("implies must have two operands"));
       exprt implies_simplified=get(imp.op0());
       if(implies_simplified==false_exprt())
       {
@@ -88,7 +70,9 @@ void bv_refinementt::arrays_overapproximated()
     if(current.id()==ID_or)
     {
       or_exprt orexp=to_or_expr(current);
-      assert(orexp.operands().size()==2);
+      INVARIANT(
+        orexp.operands().size()==2,
+        string_refinement_invariantt("only treats the case of a binary or"));
       exprt o1=get(orexp.op0());
       exprt o2=get(orexp.op1());
       if(o1==true_exprt() || o2 == true_exprt())
@@ -112,7 +96,13 @@ void bv_refinementt::arrays_overapproximated()
       lazy_array_constraints.erase(it++);
       break;
     default:
-      assert(false);
+      error() << "error in array over approximation check" << eom;
+      INVARIANT(
+        false,
+        string_refinement_invariantt("error in array over approximation "
+          "check"));
+      // Placeholder to tell the compiler we bail
+      throw 0;
     }
   }
 
@@ -125,33 +115,19 @@ void bv_refinementt::arrays_overapproximated()
 }
 
 
-/*******************************************************************\
-
-Function: bv_refinementt::freeze_lazy_constraints
-
-  Inputs:
-
- Outputs:
-
- Purpose: freeze symbols for incremental solving
-
-\*******************************************************************/
-
+/// freeze symbols for incremental solving
 void bv_refinementt::freeze_lazy_constraints()
 {
   if(!lazy_arrays)
     return;
 
-  for(std::list<lazy_constraintt>::iterator
-        l_it=lazy_array_constraints.begin();
-      l_it!=lazy_array_constraints.end(); ++l_it)
+  for(const auto &constraint : lazy_array_constraints)
   {
     std::set<symbol_exprt> symbols;
-    find_symbols(l_it->lazy, symbols);
-    for(std::set<symbol_exprt>::const_iterator it=symbols.begin();
-        it!=symbols.end(); ++it)
+    find_symbols(constraint.lazy, symbols);
+    for(const auto &symbol : symbols)
     {
-      bvt bv=convert_bv(l_it->lazy);
+      const bvt bv=convert_bv(symbol);
       forall_literals(b_it, bv)
         if(!b_it->is_constant())
           prop.set_frozen(*b_it);

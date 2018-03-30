@@ -6,21 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <iostream>
-
 #include "boolbv.h"
 
-/*******************************************************************\
-
-Function: boolbvt::convert_case
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <iostream>
 
 bvt boolbvt::convert_case(const exprt &expr)
 {

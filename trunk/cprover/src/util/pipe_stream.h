@@ -6,12 +6,16 @@ Author:
 
 \*******************************************************************/
 
+/// \file
+/// A stdin/stdout pipe as STL stream
+
 #ifndef CPROVER_UTIL_PIPE_STREAM_H
 #define CPROVER_UTIL_PIPE_STREAM_H
 
-#include <iosfwd>
+#include <iostream>
 #include <string>
 #include <list>
+#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -40,7 +44,7 @@ public:
 
 protected:
   HANDLE proc_in, proc_out;
-  char *in_buffer;
+  std::vector<char> in_buffer;
 
   int_type overflow(int_type);
   std::streamsize xsputn(const char *, std::streamsize);

@@ -6,22 +6,13 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/c_types.h>
-#include <ansi-c/string_constant.h>
-
 #include "thread_instrumentation.h"
 
-/*******************************************************************\
+#include <util/c_types.h>
 
-Function: has_start_thread
+#include <ansi-c/string_constant.h>
 
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <goto-programs/goto_model.h>
 
 static bool has_start_thread(const goto_programt &goto_program)
 {
@@ -31,18 +22,6 @@ static bool has_start_thread(const goto_programt &goto_program)
 
   return false;
 }
-
-/*******************************************************************\
-
-Function: thread_exit_instrumentation
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void thread_exit_instrumentation(goto_programt &goto_program)
 {
@@ -67,7 +46,7 @@ void thread_exit_instrumentation(goto_programt &goto_program)
   binary_exprt get_may("get_may");
 
   // NULL is any
-  get_may.op0()=null_pointer_exprt(to_pointer_type(pointer_type(empty_typet())));
+  get_may.op0()=null_pointer_exprt(pointer_type(empty_typet()));
   get_may.op1()=address_of_exprt(mutex_locked_string);
 
   end->make_assertion(not_exprt(get_may));
@@ -77,24 +56,12 @@ void thread_exit_instrumentation(goto_programt &goto_program)
   end->function=function;
 }
 
-/*******************************************************************\
-
-Function: thread_exit_instrumentation
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void thread_exit_instrumentation(goto_functionst &goto_functions)
+void thread_exit_instrumentation(goto_modelt &goto_model)
 {
   // we'll look for START THREAD
   std::set<irep_idt> thread_fkts;
 
-  forall_goto_functions(f_it, goto_functions)
+  forall_goto_functions(f_it, goto_model.goto_functions)
   {
     if(has_start_thread(f_it->second.body))
     {
@@ -113,22 +80,9 @@ void thread_exit_instrumentation(goto_functionst &goto_functions)
 
   // now instrument
   for(const auto &fkt : thread_fkts)
-  {
-    thread_exit_instrumentation(goto_functions.function_map[fkt].body);
-  }
+    thread_exit_instrumentation(
+      goto_model.goto_functions.function_map[fkt].body);
 }
-
-/*******************************************************************\
-
-Function: mutex_init_instrumentation
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void mutex_init_instrumentation(
   const symbol_tablet &symbol_table,
@@ -166,28 +120,14 @@ void mutex_init_instrumentation(
   }
 }
 
-/*******************************************************************\
-
-Function: mutex_init_instrumentation
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-void mutex_init_instrumentation(
-  const symbol_tablet &symbol_table,
-  goto_functionst &goto_functions)
+void mutex_init_instrumentation(goto_modelt &goto_model)
 {
   // get pthread_mutex_lock
 
   symbol_tablet::symbolst::const_iterator f_it=
-    symbol_table.symbols.find("pthread_mutex_lock");
+    goto_model.symbol_table.symbols.find("pthread_mutex_lock");
 
-  if(f_it==symbol_table.symbols.end())
+  if(f_it==goto_model.symbol_table.symbols.end())
     return;
 
   // get type of lock argument
@@ -200,7 +140,7 @@ void mutex_init_instrumentation(
   if(lock_type.id()!=ID_pointer)
     return;
 
-  Forall_goto_functions(f_it, goto_functions)
+  Forall_goto_functions(f_it, goto_model.goto_functions)
     mutex_init_instrumentation(
-      symbol_table, f_it->second.body, lock_type.subtype());
+      goto_model.symbol_table, f_it->second.body, lock_type.subtype());
 }

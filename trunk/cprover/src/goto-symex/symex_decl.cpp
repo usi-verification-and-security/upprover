@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution
+
+#include "goto_symex.h"
+
 #include <cassert>
 
 #include <util/rename.h>
@@ -13,21 +18,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <pointer-analysis/add_failed_symbols.h>
 
-//#include <analyses/dirty.h>
-
-#include "goto_symex.h"
-
-/*******************************************************************\
-
-Function: goto_symext::symex_decl
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+#include <analyses/dirty.h>
 
 void goto_symext::symex_decl(statet &state)
 {
@@ -46,18 +37,6 @@ void goto_symext::symex_decl(statet &state)
 
   symex_decl(state, to_symbol_expr(code.op0()));
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_decl
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_decl(statet &state, const symbol_exprt &expr)
 {
@@ -81,12 +60,7 @@ void goto_symext::symex_decl(statet &state, const symbol_exprt &expr)
     exprt rhs;
 
     if(failed.is_not_nil())
-    {
-      address_of_exprt address_of_expr;
-      address_of_expr.object()=failed;
-      address_of_expr.type()=expr.type();
-      rhs=address_of_expr;
-    }
+      rhs=address_of_exprt(failed, to_pointer_type(expr.type()));
     else
       rhs=exprt(ID_invalid);
 
@@ -124,12 +98,12 @@ void goto_symext::symex_decl(statet &state, const symbol_exprt &expr)
       symex_targett::assignment_typet::HIDDEN:
       symex_targett::assignment_typet::STATE);
 
-  //assert(state.dirty);
-  if(/*(*state.dirty)(ssa.get_object_name()) &&*/
+/*  assert(state.dirty);
+  if((*state.dirty)(ssa.get_object_name()) &&
      state.atomic_section_id==0)
     target.shared_write(
       state.guard.as_expr(),
       ssa,
       state.atomic_section_id,
-      state.source);
+      state.source);*/
 }

@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution of ANSI-C
+
+#include "rewrite_union.h"
+
 #include <util/arith_tools.h>
 #include <util/std_expr.h>
 #include <util/std_code.h>
@@ -14,20 +19,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/goto_model.h>
 
 #include <util/c_types.h>
-
-#include "rewrite_union.h"
-
-/*******************************************************************\
-
-Function: have_to_rewrite_union
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 static bool have_to_rewrite_union(
   const exprt &expr,
@@ -51,23 +42,42 @@ static bool have_to_rewrite_union(
   return false;
 }
 
-/*******************************************************************\
+// inside an address of (&x), unions can simply
+// be type casts and don't have to be re-written!
+void rewrite_union_address_of(
+  exprt &expr,
+  const namespacet &ns)
+{
+  if(!have_to_rewrite_union(expr, ns))
+    return;
 
-Function: rewrite_union
+  if(expr.id()==ID_index)
+  {
+    rewrite_union_address_of(to_index_expr(expr).array(), ns);
+    rewrite_union(to_index_expr(expr).index(), ns);
+  }
+  else if(expr.id()==ID_member)
+    rewrite_union_address_of(to_member_expr(expr).struct_op(), ns);
+  else if(expr.id()==ID_symbol)
+  {
+    // done!
+  }
+  else if(expr.id()==ID_dereference)
+    rewrite_union(to_dereference_expr(expr).pointer(), ns);
+}
 
-  Inputs:
-
- Outputs:
-
- Purpose: We rewrite u.c for unions u into byte_extract(u, 0),
-          and { .c = v } into byte_update(NIL, 0, v)
-
-\*******************************************************************/
-
+/// We rewrite u.c for unions u into byte_extract(u, 0), and { .c = v } into
+/// byte_update(NIL, 0, v)
 void rewrite_union(
   exprt &expr,
   const namespacet &ns)
 {
+  if(expr.id()==ID_address_of)
+  {
+    rewrite_union_address_of(to_address_of_expr(expr).object(), ns);
+    return;
+  }
+
   if(!have_to_rewrite_union(expr, ns))
     return;
 
@@ -97,19 +107,7 @@ void rewrite_union(
   }
 }
 
-/*******************************************************************\
-
-Function: rewrite_union
-
-Inputs:
-
-Outputs:
-
-Purpose:
-
-\*******************************************************************/
-
-static void rewrite_union(
+void rewrite_union(
   goto_functionst::goto_functiont &goto_function,
   const namespacet &ns)
 {
@@ -120,18 +118,6 @@ static void rewrite_union(
   }
 }
 
-/*******************************************************************\
-
-Function: rewrite_union
-
-Inputs:
-
-Outputs:
-
-Purpose:
-
-\*******************************************************************/
-
 void rewrite_union(
   goto_functionst &goto_functions,
   const namespacet &ns)
@@ -139,18 +125,6 @@ void rewrite_union(
   Forall_goto_functions(it, goto_functions)
     rewrite_union(it->second, ns);
 }
-
-/*******************************************************************\
-
-Function: rewrite_union
-
-Inputs:
-
-Outputs:
-
-Purpose:
-
-\*******************************************************************/
 
 void rewrite_union(goto_modelt &goto_model)
 {

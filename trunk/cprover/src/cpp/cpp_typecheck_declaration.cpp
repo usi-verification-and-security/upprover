@@ -6,20 +6,12 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \********************************************************************/
 
+/// \file
+/// C++ Language Type Checking
+
 #include "cpp_typecheck.h"
+
 #include "cpp_declarator_converter.h"
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_typecheckt::convert(cpp_declarationt &declaration)
 {
@@ -43,18 +35,6 @@ void cpp_typecheckt::convert(cpp_declarationt &declaration)
   typecheck_method_bodies(b);
   method_bodies.swap(old_method_bodies);
 }
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::convert_anonymous_union
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_typecheckt::convert_anonymous_union(
   cpp_declarationt &declaration,
@@ -94,7 +74,8 @@ void cpp_typecheckt::convert_anonymous_union(
   new_code.move_to_operands(decl_statement);
 
   // do scoping
-  symbolt union_symbol=symbol_table.symbols[follow(symbol.type).get(ID_name)];
+  symbolt union_symbol=
+    *symbol_table.get_writeable(follow(symbol.type).get(ID_name));
   const irept::subt &components=union_symbol.type.add(ID_components).get_sub();
 
   forall_irep(it, components)
@@ -124,23 +105,11 @@ void cpp_typecheckt::convert_anonymous_union(
     id.is_member=true;
   }
 
-  symbol_table.symbols[union_symbol.name].type.set(
+  symbol_table.get_writeable_ref(union_symbol.name).type.set(
     "#unnamed_object", symbol.base_name);
 
   code.swap(new_code);
 }
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::convert_non_template_declaration
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_typecheckt::convert_non_template_declaration(
   cpp_declarationt &declaration)

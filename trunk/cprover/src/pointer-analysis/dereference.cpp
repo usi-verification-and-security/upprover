@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Symbolic Execution of ANSI-C
+
+#include "dereference.h"
+
 #ifdef DEBUG
 #include <iostream>
 #include <langapi/language_util.h>
@@ -20,20 +25,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 #include <util/c_types.h>
 
-#include "dereference.h"
-
-/*******************************************************************\
-
-Function: dereferencet::operator()
-
-  Inputs: expression, to be dereferenced
-
- Outputs: returns object after dereferencing
-
- Purpose:
-
-\*******************************************************************/
-
+/// \par parameters: expression, to be dereferenced
+/// \return returns object after dereferencing
 exprt dereferencet::operator()(const exprt &pointer)
 {
   if(pointer.type().id()!=ID_pointer)
@@ -52,18 +45,6 @@ exprt dereferencet::operator()(const exprt &pointer)
     from_integer(0, index_type()), // offset
     type);
 }
-
-/*******************************************************************\
-
-Function: dereferencet::read_object
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt dereferencet::read_object(
   const exprt &object,
@@ -169,18 +150,6 @@ exprt dereferencet::read_object(
   return binary_exprt(object, byte_extract_id(), simplified_offset, dest_type);
 }
 
-/*******************************************************************\
-
-Function: dereferencet::dereference_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt dereferencet::dereference_rec(
   const exprt &address,
   const exprt &offset,
@@ -235,18 +204,6 @@ exprt dereferencet::dereference_rec(
   }
 }
 
-/*******************************************************************\
-
-Function: dereferencet::dereference_if
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt dereferencet::dereference_if(
   const if_exprt &expr,
   const exprt &offset,
@@ -258,18 +215,6 @@ exprt dereferencet::dereference_if(
 
   return if_exprt(expr.cond(), true_case, false_case);
 }
-
-/*******************************************************************\
-
-Function: dereferencet::dereference_plus
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt dereferencet::dereference_plus(
   const exprt &expr,
@@ -306,18 +251,6 @@ exprt dereferencet::dereference_plus(
   return dereference_rec(pointer, new_offset, type);
 }
 
-/*******************************************************************\
-
-Function: dereferencet::dereference_typecast
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 exprt dereferencet::dereference_typecast(
   const typecast_exprt &expr,
   const exprt &offset,
@@ -331,9 +264,9 @@ exprt dereferencet::dereference_typecast(
     return dereference_rec(op, offset, type); // just pass down
   else if(op_type.id()==ID_signedbv || op_type.id()==ID_unsignedbv)
   {
-    // We got an integer-typed address A. We turn this back (!)
-    // into *(type *)(A+offset), and then let some other layer
-    // worry about it.
+    // We got an integer-typed address A. We turn this
+    // into integer_dereference(A+offset),
+    // and then let some other layer worry about it.
 
     exprt integer=op;
 
@@ -341,26 +274,11 @@ exprt dereferencet::dereference_typecast(
       integer=
         plus_exprt(offset, typecast_exprt(op, offset.type()));
 
-    exprt new_typecast=
-      typecast_exprt(integer, pointer_typet(type));
-
-    return dereference_exprt(new_typecast, type);
+    return unary_exprt(ID_integer_dereference, integer, type);
   }
   else
     throw "dereferencet: unexpected cast";
 }
-
-/*******************************************************************\
-
-Function: dereferencet::type_compatible
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool dereferencet::type_compatible(
   const typet &object_type,
@@ -379,7 +297,7 @@ bool dereferencet::type_compatible(
   {
     if(to_struct_type(dereference_type).is_prefix_of(
          to_struct_type(object_type)))
-      return true; // ok, dreference_type is a prefix of object_type
+      return true; // ok, dereference_type is a prefix of object_type
   }
 
   // any code is ok

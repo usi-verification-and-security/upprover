@@ -6,6 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// C Language Conversion
+
+#include "convert_character_literal.h"
+
 #include <cassert>
 
 #include <util/arith_tools.h>
@@ -13,19 +18,6 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/std_expr.h>
 
 #include "unescape_string.h"
-#include "convert_character_literal.h"
-
-/*******************************************************************\
-
-Function: convert_character_literal
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt convert_character_literal(
   const std::string &src,

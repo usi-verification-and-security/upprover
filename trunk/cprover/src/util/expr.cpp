@@ -6,32 +6,25 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <cassert>
+/// \file
+/// Expression Representation
 
+#include "expr.h"
+#include <cassert>
 #include <stack>
 #include <sstream>
-
 #include "string2int.h"
 #include "mp_arith.h"
 #include "fixedbv.h"
 #include "ieee_float.h"
-#include "expr.h"
+#include "invariant.h"
+#include "expr_iterator.h"
 #include "rational.h"
 #include "rational_tools.h"
 #include "arith_tools.h"
 #include "std_expr.h"
 
-/*******************************************************************\
 
-Function: exprt::move_to_operands
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void exprt::move_to_operands(exprt &expr)
 {
@@ -39,18 +32,6 @@ void exprt::move_to_operands(exprt &expr)
   op.push_back(static_cast<const exprt &>(get_nil_irep()));
   op.back().swap(expr);
 }
-
-/*******************************************************************\
-
-Function: exprt::move_to_operands
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void exprt::move_to_operands(exprt &e1, exprt &e2)
 {
@@ -63,18 +44,6 @@ void exprt::move_to_operands(exprt &e1, exprt &e2)
   op.push_back(static_cast<const exprt &>(get_nil_irep()));
   op.back().swap(e2);
 }
-
-/*******************************************************************\
-
-Function: exprt::move_to_operands
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void exprt::move_to_operands(exprt &e1, exprt &e2, exprt &e3)
 {
@@ -90,34 +59,10 @@ void exprt::move_to_operands(exprt &e1, exprt &e2, exprt &e3)
   op.back().swap(e3);
 }
 
-/*******************************************************************\
-
-Function: exprt::copy_to_operands
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void exprt::copy_to_operands(const exprt &expr)
 {
   operands().push_back(expr);
 }
-
-/*******************************************************************\
-
-Function: exprt::copy_to_operands
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void exprt::copy_to_operands(const exprt &e1, const exprt &e2)
 {
@@ -128,18 +73,6 @@ void exprt::copy_to_operands(const exprt &e1, const exprt &e2)
   op.push_back(e1);
   op.push_back(e2);
 }
-
-/*******************************************************************\
-
-Function: exprt::copy_to_operands
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void exprt::copy_to_operands(
   const exprt &e1,
@@ -155,18 +88,6 @@ void exprt::copy_to_operands(
   op.push_back(e3);
 }
 
-/*******************************************************************\
-
-Function: exprt::make_typecast
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void exprt::make_typecast(const typet &_type)
 {
   exprt new_expr(ID_typecast);
@@ -176,18 +97,6 @@ void exprt::make_typecast(const typet &_type)
 
   swap(new_expr);
 }
-
-/*******************************************************************\
-
-Function: exprt::make_not
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void exprt::make_not()
 {
@@ -217,34 +126,10 @@ void exprt::make_not()
   swap(new_expr);
 }
 
-/*******************************************************************\
-
-Function: exprt::is_constant
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool exprt::is_constant() const
 {
   return id()==ID_constant;
 }
-
-/*******************************************************************\
-
-Function: exprt::is_true
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool exprt::is_true() const
 {
@@ -253,18 +138,6 @@ bool exprt::is_true() const
          get(ID_value)!=ID_false;
 }
 
-/*******************************************************************\
-
-Function: exprt::is_false
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool exprt::is_false() const
 {
   return is_constant() &&
@@ -272,35 +145,11 @@ bool exprt::is_false() const
          get(ID_value)==ID_false;
 }
 
-/*******************************************************************\
-
-Function: exprt::make_bool
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void exprt::make_bool(bool value)
 {
   *this=exprt(ID_constant, typet(ID_bool));
   set(ID_value, value?ID_true:ID_false);
 }
-
-/*******************************************************************\
-
-Function: exprt::make_true
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void exprt::make_true()
 {
@@ -308,35 +157,11 @@ void exprt::make_true()
   set(ID_value, ID_true);
 }
 
-/*******************************************************************\
-
-Function: exprt::make_false
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void exprt::make_false()
 {
   *this=exprt(ID_constant, typet(ID_bool));
   set(ID_value, ID_false);
 }
-
-/*******************************************************************\
-
-Function: exprt::negate
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void exprt::negate()
 {
@@ -381,7 +206,7 @@ void exprt::negate()
       else
       {
         make_nil();
-        assert(false);
+        UNREACHABLE;
       }
     }
     else
@@ -389,7 +214,8 @@ void exprt::negate()
       if(id()==ID_unary_minus)
       {
         exprt tmp;
-        assert(operands().size()==1);
+        DATA_INVARIANT(operands().size()==1,
+                       "Unary minus must have one operand");
         tmp.swap(op0());
         swap(tmp);
       }
@@ -403,34 +229,10 @@ void exprt::negate()
   }
 }
 
-/*******************************************************************\
-
-Function: exprt::is_boolean
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool exprt::is_boolean() const
 {
   return type().id()==ID_bool;
 }
-
-/*******************************************************************\
-
-Function: exprt::is_zero
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool exprt::is_zero() const
 {
@@ -447,7 +249,7 @@ bool exprt::is_zero() const
     {
       rationalt rat_value;
       if(to_rational(*this, rat_value))
-        assert(false);
+        CHECK_RETURN(false);
       return rat_value.is_zero();
     }
     else if(type_id==ID_unsignedbv ||
@@ -476,18 +278,6 @@ bool exprt::is_zero() const
   return false;
 }
 
-/*******************************************************************\
-
-Function: exprt::is_one
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool exprt::is_one() const
 {
   if(is_constant())
@@ -505,7 +295,7 @@ bool exprt::is_one() const
     {
       rationalt rat_value;
       if(to_rational(*this, rat_value))
-        assert(false);
+        CHECK_RETURN(false);
       return rat_value.is_one();
     }
     else if(type_id==ID_unsignedbv || type_id==ID_signedbv)
@@ -528,7 +318,6 @@ bool exprt::is_one() const
 
   return false;
 }
-
 /*******************************************************************\
 
 Function: exprt::print_number - hckd¬!!
@@ -553,16 +342,16 @@ const std::string exprt::print_number_2smt() const
       mp_integer int_value=string2integer(value);
       return integer2string(int_value);
     }
-    else if(type_id==ID_c_enum || type_id==ID_c_enum_tag) 
+    else if(type_id==ID_c_enum || type_id==ID_c_enum_tag)
     {
         const irep_idt helper_id= // Taken from cprover expr2.cpp
             type_id==ID_c_enum
                 ?to_c_enum_type(type()).subtype().id()
                 :to_c_enum_tag_type(type()).subtype().id();
-        
+
         mp_integer int_value=binary2integer(id2string(get_string(ID_value))
                                             , helper_id==ID_signedbv);
-        
+
         return integer2string(int_value);
     }
     else if(type_id==ID_rational)
@@ -579,21 +368,21 @@ const std::string exprt::print_number_2smt() const
           type_id==ID_c_bit_field ||
           type_id==ID_c_bool)
     { // from expre2c.cpp code
-      mp_integer int_value=binary2integer(id2string(value), 
+      mp_integer int_value=binary2integer(id2string(value),
               type_id==ID_signedbv);
       return integer2string(int_value);
-      
+
     }
-    else if (is_boolean()) 
+    else if (is_boolean())
     {
         if (is_true() || is_one())
             return "1";
-        else if (is_false() || is_zero()) 
+        else if (is_false() || is_zero())
             return "0";
-        else 
+        else
             return "";
     }
-    else 
+    else
     {
     	if (is_zero()) return "0";
     	if (is_one()) return "1";
@@ -601,7 +390,7 @@ const std::string exprt::print_number_2smt() const
     	// Else try to extract the number
     	std::string temp_try1(get(ID_C_member_name).c_str()); // KE: need testing!
     	if (temp_try1.size() > 0)
-    	{ 	
+    	{
             // WIll get here only for positive numbers, the rest will try differently
             return temp_try1;
     	}
@@ -696,18 +485,6 @@ bool exprt::sum(const exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function: exprt::mul
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool exprt::mul(const exprt &expr)
 {
   if(!is_constant() || !expr.is_constant())
@@ -761,18 +538,6 @@ bool exprt::mul(const exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function: exprt::subtract
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool exprt::subtract(const exprt &expr)
 {
   if(!is_constant() || !expr.is_constant())
@@ -812,18 +577,6 @@ bool exprt::subtract(const exprt &expr)
   return true;
 }
 
-/*******************************************************************\
-
-Function: exprt::find_source_location
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 const source_locationt &exprt::find_source_location() const
 {
   const source_locationt &l=source_location();
@@ -840,18 +593,6 @@ const source_locationt &exprt::find_source_location() const
 
   return static_cast<const source_locationt &>(get_nil_irep());
 }
-
-/*******************************************************************\
-
-Function: exprt::visit
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void exprt::visit(expr_visitort &visitor)
 {
@@ -871,18 +612,6 @@ void exprt::visit(expr_visitort &visitor)
   }
 }
 
-/*******************************************************************\
-
-Function: exprt::visit
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void exprt::visit(const_expr_visitort &visitor) const
 {
   std::stack<const exprt *> stack;
@@ -900,3 +629,25 @@ void exprt::visit(const_expr_visitort &visitor) const
       stack.push(&(*it));
   }
 }
+
+depth_iteratort exprt::depth_begin()
+{ return depth_iteratort(*this); }
+depth_iteratort exprt::depth_end()
+{ return depth_iteratort(); }
+const_depth_iteratort exprt::depth_begin() const
+{ return const_depth_iteratort(*this); }
+const_depth_iteratort exprt::depth_end() const
+{ return const_depth_iteratort(); }
+const_depth_iteratort exprt::depth_cbegin() const
+{ return const_depth_iteratort(*this); }
+const_depth_iteratort exprt::depth_cend() const
+{ return const_depth_iteratort(); }
+
+const_unique_depth_iteratort exprt::unique_depth_begin() const
+{ return const_unique_depth_iteratort(*this); }
+const_unique_depth_iteratort exprt::unique_depth_end() const
+{ return const_unique_depth_iteratort(); }
+const_unique_depth_iteratort exprt::unique_depth_cbegin() const
+{ return const_unique_depth_iteratort(*this); }
+const_unique_depth_iteratort exprt::unique_depth_cend() const
+{ return const_unique_depth_iteratort(); }

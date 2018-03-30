@@ -6,14 +6,17 @@ Author: Matt Lewis
 
 \*******************************************************************/
 
+/// \file
+/// Loop Acceleration
+
+#include "scratch_program.h"
+
 #include <util/fixedbv.h>
 #include <util/decision_procedure.h>
 
 #include <goto-symex/slice.h>
 
 #include <goto-programs/remove_skip.h>
-
-#include "scratch_program.h"
 
 #ifdef DEBUG
 #include <iostream>

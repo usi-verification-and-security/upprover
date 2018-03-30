@@ -103,7 +103,7 @@ protected:
     virtual bool is_smt_encoding() {return true;} // KE: Temp. Just to force virtual for compilation
 
     std::vector<exprt> exprs; // Expr to refine method
-private:
+public:
     // MB: FIXME: this field is not used! Why it is here?
     // KE: a good question, maybe Grigory will have an answer. It is also in the partition version
     std::vector<unsigned>& clauses;

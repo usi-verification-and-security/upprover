@@ -6,33 +6,21 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "cvc_conv.h"
+
 #include <cassert>
 #include <cctype>
 #include <string>
 
 #include <util/arith_tools.h>
+#include <util/c_types.h>
 #include <util/std_types.h>
 #include <util/std_expr.h>
-#include <util/config.h>
 #include <util/find_symbols.h>
 #include <util/pointer_offset_size.h>
 #include <util/string2int.h>
 
 #include <ansi-c/string_constant.h>
-
-#include "cvc_conv.h"
-
-/*******************************************************************\
-
-Function: cvc_convt::print_assignment
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_convt::print_assignment(std::ostream &out) const
 {
@@ -44,18 +32,6 @@ void cvc_convt::print_assignment(std::ostream &out) const
   // others
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::l_get
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 tvt cvc_convt::l_get(literalt l) const
 {
   if(l.is_true())
@@ -65,18 +41,6 @@ tvt cvc_convt::l_get(literalt l) const
   assert(l.var_no()<boolean_assignment.size());
   return tvt(boolean_assignment[l.var_no()]^l.sign());
 }
-
-/*******************************************************************\
-
-Function: cvc_convt::convert_binary_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_convt::convert_binary_expr(const exprt &expr, const exprt &op)
 {
@@ -159,18 +123,6 @@ void cvc_convt::convert_binary_expr(const exprt &expr, const exprt &op)
   }
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::convert_constant_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cvc_convt::convert_constant_expr(const exprt &expr)
 {
   if(expr.type().id()==ID_unsignedbv ||
@@ -207,8 +159,9 @@ void cvc_convt::convert_constant_expr(const exprt &expr)
     {
       out << "(# object:="
           << pointer_logic.get_null_object()
-          << ", offset:="
-          << bin_zero(config.ansi_c.pointer_width) << " #)";
+          << ", offset:=";
+      convert_expr(from_integer(0, size_type()));
+      out << " #)";
     }
     else
       throw "unknown pointer constant: "+id2string(value);
@@ -224,7 +177,9 @@ void cvc_convt::convert_constant_expr(const exprt &expr)
   }
   else if(expr.type().id()==ID_array)
   {
-    out << "ARRAY (i: " << array_index_type() << "):";
+    out << "ARRAY (i: ";
+    convert_type(index_type());
+    out << "):";
 
     assert(!expr.operands().empty());
 
@@ -236,7 +191,9 @@ void cvc_convt::convert_constant_expr(const exprt &expr)
       else
         out << "\n  ELSIF ";
 
-      out << "i=" << array_index(i) << " THEN ";
+      out << "i=";
+      convert_expr(from_integer(i, index_type()));
+      out << " THEN ";
       convert_array_value(*it);
       i++;
     }
@@ -254,18 +211,6 @@ void cvc_convt::convert_constant_expr(const exprt &expr)
   else
     throw "unknown constant: "+expr.type().id_string();
 }
-
-/*******************************************************************\
-
-Function: cvc_convt::convert_plus_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_convt::convert_plus_expr(const exprt &expr)
 {
@@ -307,7 +252,7 @@ void cvc_convt::convert_plus_expr(const exprt &expr)
       out << "(LET P: " << cvc_pointer_type() << " = ";
       convert_expr(*p);
       out << " IN P WITH .offset:=BVPLUS("
-          << config.ansi_c.pointer_width
+          << pointer_offset_bits(pointer_type(void_type()), ns)
           << ", P.offset, ";
       convert_expr(*i);
       out << "))";
@@ -322,18 +267,6 @@ void cvc_convt::convert_plus_expr(const exprt &expr)
   else
     assert(false);
 }
-
-/*******************************************************************\
-
-Function: cvc_convt::convert_typecast_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_convt::convert_typecast_expr(const exprt &expr)
 {
@@ -373,18 +306,6 @@ void cvc_convt::convert_typecast_expr(const exprt &expr)
     throw "todo typecast4 ? -> "+expr.type().id_string();
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::convert_struct_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cvc_convt::convert_struct_expr(const exprt &expr)
 {
   out << "(# ";
@@ -410,18 +331,6 @@ void cvc_convt::convert_struct_expr(const exprt &expr)
 
   out << " #)";
 }
-
-/*******************************************************************\
-
-Function: cvc_convt::convert_equality_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_convt::convert_equality_expr(const exprt &expr)
 {
@@ -452,18 +361,6 @@ void cvc_convt::convert_equality_expr(const exprt &expr)
     out << ")";
   }
 }
-
-/*******************************************************************\
-
-Function: cvc_convt::convert_comparison_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_convt::convert_comparison_expr(const exprt &expr)
 {
@@ -512,18 +409,6 @@ void cvc_convt::convert_comparison_expr(const exprt &expr)
   }
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::convert_minus_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cvc_convt::convert_minus_expr(const exprt &expr)
 {
   if(expr.operands().size()==2)
@@ -547,18 +432,6 @@ void cvc_convt::convert_minus_expr(const exprt &expr)
   else
     assert(false);
 }
-
-/*******************************************************************\
-
-Function: cvc_convt::convert_with_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_convt::convert_with_expr(const exprt &expr)
 {
@@ -603,18 +476,6 @@ void cvc_convt::convert_with_expr(const exprt &expr)
   }
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::convert_literal
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cvc_convt::convert_literal(const literalt l)
 {
   if(l==const_literal(false))
@@ -631,140 +492,28 @@ void cvc_convt::convert_literal(const literalt l)
     out << ")";
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::bin_zero
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-std::string cvc_convt::bin_zero(unsigned bits)
+std::string cvc_convt::cvc_pointer_type() const
 {
-  assert(bits!=0);
-  std::string result="0bin";
-  while(bits!=0)
-  {
-    result+='0';
-    bits--;
-  }
-  return result;
+  return
+    "[# object: INT, offset: BITVECTOR("+
+    std::to_string(
+      integer2size_t(
+        pointer_offset_bits(pointer_type(void_type()), ns)))+") #]";
 }
-
-/*******************************************************************\
-
-Function: cvc_convt::cvc_pointer_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-std::string cvc_convt::cvc_pointer_type()
-{
-  assert(config.ansi_c.pointer_width!=0);
-  return "[# object: INT, offset: BITVECTOR("+
-         std::to_string(config.ansi_c.pointer_width)+") #]";
-}
-
-/*******************************************************************\
-
-Function: cvc_convt::array_index_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-std::string cvc_convt::array_index_type()
-{
-  return std::string("BITVECTOR(")+
-         std::to_string(32)+")";
-}
-
-/*******************************************************************\
-
-Function: cvc_convt::gen_array_index_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-typet cvc_convt::gen_array_index_type()
-{
-  typet t(ID_signedbv);
-  t.set(ID_width, 32);
-  return t;
-}
-
-/*******************************************************************\
-
-Function: cvc_convt::array_index
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-std::string cvc_convt::array_index(unsigned i)
-{
-  return "0bin"+integer2binary(i, config.ansi_c.int_width);
-}
-
-/*******************************************************************\
-
-Function: cvc_convt::convert_array_index
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_convt::convert_array_index(const exprt &expr)
 {
-  if(expr.type()==gen_array_index_type())
+  if(expr.type()==index_type())
   {
     convert_expr(expr);
   }
   else
   {
-    exprt tmp(ID_typecast, gen_array_index_type());
+    exprt tmp(ID_typecast, index_type());
     tmp.copy_to_operands(expr);
     convert_expr(tmp);
   }
 }
-
-/*******************************************************************\
-
-Function: cvc_convt::convert_address_of_rec
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_convt::convert_address_of_rec(const exprt &expr)
 {
@@ -775,8 +524,9 @@ void cvc_convt::convert_address_of_rec(const exprt &expr)
     out
       << "(# object:="
       << pointer_logic.add_object(expr)
-      << ", offset:="
-      << bin_zero(config.ansi_c.pointer_width) << " #)";
+      << ", offset:=";
+    convert_expr(from_integer(0, size_type()));
+    out << " #)";
   }
   else if(expr.id()==ID_index)
   {
@@ -809,7 +559,7 @@ void cvc_convt::convert_address_of_rec(const exprt &expr)
         assert(false);
 
       out << " IN P WITH .offset:=BVPLUS("
-                   << config.ansi_c.pointer_width
+                   << pointer_offset_bits(pointer_type(void_type()), ns)
                    << ", P.offset, ";
       convert_expr(index);
       out << "))";
@@ -837,13 +587,10 @@ void cvc_convt::convert_address_of_rec(const exprt &expr)
       ns);
     assert(offset>=0);
 
-    typet index_type(ID_unsignedbv);
-    index_type.set(ID_width, config.ansi_c.pointer_width);
-
-    exprt index=from_integer(offset, index_type);
+    exprt index=from_integer(offset, size_type());
 
     out << " IN P WITH .offset:=BVPLUS("
-                 << config.ansi_c.pointer_width
+                 << pointer_offset_bits(pointer_type(void_type()), ns)
                  << ", P.offset, ";
     convert_expr(index);
     out << "))";
@@ -851,18 +598,6 @@ void cvc_convt::convert_address_of_rec(const exprt &expr)
   else
     throw "don't know how to take address of: "+expr.id_string();
 }
-
-/*******************************************************************\
-
-Function: cvc_convt::convert
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 literalt cvc_convt::convert(const exprt &expr)
 {
@@ -901,18 +636,6 @@ literalt cvc_convt::convert(const exprt &expr)
   return l;
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::convert_identifier
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cvc_convt::convert_identifier(const std::string &identifier)
 {
   for(std::string::const_iterator
@@ -949,18 +672,6 @@ void cvc_convt::convert_identifier(const std::string &identifier)
   }
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::convert_as_bv
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cvc_convt::convert_as_bv(const exprt &expr)
 {
   if(expr.type().id()==ID_bool)
@@ -980,34 +691,10 @@ void cvc_convt::convert_as_bv(const exprt &expr)
     convert_expr(expr);
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::convert_array_value
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cvc_convt::convert_array_value(const exprt &expr)
 {
   convert_as_bv(expr);
 }
-
-/*******************************************************************\
-
-Function: cvc_convt::convert_expr
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_convt::convert_expr(const exprt &expr)
 {
@@ -1323,7 +1010,9 @@ void cvc_convt::convert_expr(const exprt &expr)
   {
     assert(expr.type().id()==ID_array);
     assert(expr.operands().size()==1);
-    out << "(ARRAY (i: " << array_index_type() << "): ";
+    out << "(ARRAY (i: ";
+    convert_type(index_type());
+    out << "): ";
     convert_array_value(expr.op0());
     out << ")";
   }
@@ -1447,18 +1136,6 @@ void cvc_convt::convert_expr(const exprt &expr)
     throw "convert_expr: "+expr.id_string()+" is unsupported";
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::set_to
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cvc_convt::set_to(const exprt &expr, bool value)
 {
   if(value && expr.id()==ID_and)
@@ -1520,18 +1197,6 @@ void cvc_convt::set_to(const exprt &expr, bool value)
   out << ";\n\n";
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::find_symbols
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cvc_convt::find_symbols(const exprt &expr)
 {
   find_symbols(expr.type());
@@ -1579,26 +1244,15 @@ void cvc_convt::find_symbols(const exprt &expr)
   }
 }
 
-/*******************************************************************\
-
-Function: cvc_convt::convert_type
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void cvc_convt::convert_type(const typet &type)
 {
   if(type.id()==ID_array)
   {
     const array_typet &array_type=to_array_type(type);
 
-    out << "ARRAY " << array_index_type()
-                 << " OF ";
+    out << "ARRAY ";
+    convert_type(index_type());
+    out << " OF ";
 
     if(array_type.subtype().id()==ID_bool)
       out << "BITVECTOR(1)";
@@ -1632,8 +1286,7 @@ void cvc_convt::convert_type(const typet &type)
 
     out << " #]";
   }
-  else if(type.id()==ID_pointer ||
-          type.id()==ID_reference)
+  else if(type.id()==ID_pointer)
   {
     out << cvc_pointer_type();
   }
@@ -1662,18 +1315,6 @@ void cvc_convt::convert_type(const typet &type)
   else
     throw "unsupported type: "+type.id_string();
 }
-
-/*******************************************************************\
-
-Function: cvc_convt::find_symbols
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cvc_convt::find_symbols(const typet &type)
 {

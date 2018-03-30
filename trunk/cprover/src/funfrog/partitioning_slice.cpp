@@ -7,7 +7,7 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
-#include <std_expr.h>
+#include <util/std_expr.h>
 
 #include "partitioning_slice.h"
 #include "partition_iface.h"

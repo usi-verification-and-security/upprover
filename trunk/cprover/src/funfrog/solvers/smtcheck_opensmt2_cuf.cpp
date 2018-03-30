@@ -1,4 +1,4 @@
-/****logic***************************************************************\
+/*******************************************************************\
 
 Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 
@@ -44,13 +44,14 @@ void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
     osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
     osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)get_random_seed()), msg2);
     //if (msg2 != NULL) { free((char *)msg2);}
-
     // KE: Fix a strange bug can be related to the fact we are pushing
     // a struct into std::vector and use [] before any push_back
     literals.push_back(PTRef());
-    new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0]
+    literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0] - NEVER COMMENT THIS LINE!!!
     literals[0] = logic->getTerm_true(); // Which is .x =0
+    assert(l.var_no() != literalt::unused_var_no()); // KE: for cmake warnings
     // KE: End of fix
+    
 
     max_num.setPower2(bitwidth);  
 
@@ -850,7 +851,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     if (_id==ID_code) {
         
         ptl = unsupported2var_bv(expr); // stub for now
-        
+             
     } else if (_id==ID_symbol || _id==ID_nondet_symbol) {
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS A VAR" << endl;
@@ -1504,7 +1505,12 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
         
         l = lunsupported2var(expr);
         // No support to this data type
+
+    } else if (_id==ID_address_of) {
         
+        l = lunsupported2var(expr);
+        // NO support to this type
+             
     } else if (_id==ID_symbol || _id==ID_nondet_symbol) {
 #ifdef SMT_DEBUG
         cout << "; IT IS A VAR" << endl;
@@ -1955,6 +1961,12 @@ Function: smtcheck_opensmt2t_cuf::lvar
 \*******************************************************************/
 literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
 {
+    // IF code, set to be unsupported
+    if (expr.type().id()==ID_code) {
+        return lunsupported2var(expr);
+    }
+
+    // Else continue as before
     string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
     str = quote_varname(str);
 
@@ -2261,8 +2273,10 @@ Function: smtcheck_opensmt2t_cuf::refine_ce_mul
 bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::set<int>& is)
 {
     bool res = true;
+    int size = 0;
     for (auto it = is.begin(); it != is.end(); ++it){
-        if (exprs.size() <= *it) continue;
+        size = static_cast<int>(exprs.size()); // KE: cmake compilation error cast from int to unsinged
+        if (size <= *it) continue;
 
         refine_ce_one_iter(exprs, *it);
         res = false;

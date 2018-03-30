@@ -9,56 +9,41 @@ Date:   December 2014
 
 \*******************************************************************/
 
+/// \file
+/// Remove 'asm' statements by compiling into suitable standard code
+
+#include "remove_asm.h"
+
 #include <sstream>
 
+#include <util/c_types.h>
 #include <util/std_expr.h>
 
 #include <ansi-c/string_constant.h>
 #include <assembler/assembler_parser.h>
 
-#include "remove_asm.h"
-
 class remove_asmt
 {
 public:
-  inline remove_asmt(
-    symbol_tablet &_symbol_table,
-    goto_functionst &_goto_functions):
-    symbol_table(_symbol_table),
-    goto_functions(_goto_functions)
+  explicit remove_asmt(symbol_tablet &_symbol_table)
+    : symbol_table(_symbol_table)
   {
   }
 
-  void operator()();
+  void process_function(goto_functionst::goto_functiont &);
 
 protected:
   symbol_tablet &symbol_table;
-  goto_functionst &goto_functions;
 
   void process_instruction(
     goto_programt::instructiont &instruction,
     goto_programt &dest);
-
-  void process_function(
-    goto_functionst::goto_functiont &);
 
   void gcc_asm_function_call(
     const irep_idt &function_base_name,
     const codet &code,
     goto_programt &dest);
 };
-
-/*******************************************************************\
-
-Function: remove_asmt::gcc_asm_function_call
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void remove_asmt::gcc_asm_function_call(
   const irep_idt &function_base_name,
@@ -70,7 +55,8 @@ void remove_asmt::gcc_asm_function_call(
   code_function_callt function_call;
   function_call.lhs().make_nil();
 
-  const pointer_typet void_pointer=pointer_typet(void_typet());
+  const typet void_pointer=
+    pointer_type(void_typet());
 
   // outputs
   forall_operands(it, code.op1())
@@ -118,18 +104,7 @@ void remove_asmt::gcc_asm_function_call(
   }
 }
 
-/*******************************************************************\
-
-Function: remove_asmt::process_instruction
-
-Inputs:
-
-Outputs:
-
-Purpose: removes assembler
-
-\*******************************************************************/
-
+/// removes assembler
 void remove_asmt::process_instruction(
   goto_programt::instructiont &instruction,
   goto_programt &dest)
@@ -302,18 +277,7 @@ void remove_asmt::process_instruction(
   }
 }
 
-/*******************************************************************\
-
-Function: remove_asmt::process_function
-
-Inputs:
-
-Outputs:
-
-Purpose: removes assembler
-
-\*******************************************************************/
-
+/// removes assembler
 void remove_asmt::process_function(
   goto_functionst::goto_functiont &goto_function)
 {
@@ -333,58 +297,25 @@ void remove_asmt::process_function(
   }
 }
 
-/*******************************************************************\
-
-Function: remove_asmt:operator()
-
-Inputs:
-
-Outputs:
-
-Purpose: removes assembler
-
-\*******************************************************************/
-
-void remove_asmt::operator()()
-{
-  Forall_goto_functions(it, goto_functions)
-  {
-    process_function(it->second);
-  }
-}
-
-/*******************************************************************\
-
-Function: remove_asm
-
-Inputs:
-
-Outputs:
-
-Purpose: removes assembler
-
-\*******************************************************************/
-
+/// removes assembler
 void remove_asm(
-  symbol_tablet &symbol_table,
-  goto_functionst &goto_functions)
+  goto_functionst::goto_functiont &goto_function,
+  symbol_tablet &symbol_table)
 {
-  remove_asmt(symbol_table, goto_functions)();
+  remove_asmt rem(symbol_table);
+  rem.process_function(goto_function);
 }
 
-/*******************************************************************\
+/// removes assembler
+void remove_asm(goto_functionst &goto_functions, symbol_tablet &symbol_table)
+{
+  remove_asmt rem(symbol_table);
+  for(auto &f : goto_functions.function_map)
+    rem.process_function(f.second);
+}
 
-Function: remove_asm
-
-Inputs:
-
-Outputs:
-
-Purpose: removes assembler
-
-\*******************************************************************/
-
+/// removes assembler
 void remove_asm(goto_modelt &goto_model)
 {
-  remove_asmt(goto_model.symbol_table, goto_model.goto_functions)();
+  remove_asm(goto_model.goto_functions, goto_model.symbol_table);
 }

@@ -6,26 +6,19 @@ Author: Daniel Kroening, kroening@cs.cmu.edu
 
 \*******************************************************************/
 
+/// \file
+/// C++ Language Type Checking
+
+#include "cpp_typecheck.h"
+
+#include <util/base_exceptions.h>
 #include <util/simplify_expr.h>
 
 #include "cpp_type2name.h"
-#include "cpp_typecheck.h"
 #include "cpp_declarator_converter.h"
 #include "cpp_template_type.h"
 #include "cpp_convert_type.h"
 #include "cpp_template_args.h"
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::salvage_default_arguments
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_typecheckt::salvage_default_arguments(
   const template_typet &old_type,
@@ -47,18 +40,6 @@ void cpp_typecheckt::salvage_default_arguments(
     }
   }
 }
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::typecheck_class_template
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_typecheckt::typecheck_class_template(
   cpp_declarationt &declaration)
@@ -126,14 +107,12 @@ void cpp_typecheckt::typecheck_class_template(
 
   // check if we have it already
 
-  symbol_tablet::symbolst::iterator previous_symbol=
-    symbol_table.symbols.find(symbol_name);
-
-  if(previous_symbol!=symbol_table.symbols.end())
+  if(const auto maybe_symbol=symbol_table.get_writeable(symbol_name))
   {
     // there already
+    symbolt &previous_symbol=*maybe_symbol;
     cpp_declarationt &previous_declaration=
-      to_cpp_declaration(previous_symbol->second.type);
+      to_cpp_declaration(previous_symbol.type);
 
     bool previous_has_body=
       previous_declaration.type().find(ID_body).is_not_nil();
@@ -145,7 +124,7 @@ void cpp_typecheckt::typecheck_class_template(
       error() << "template struct `" << base_name
               << "' defined previously\n"
               << "location of previous definition: "
-              << previous_symbol->second.location << eom;
+              << previous_symbol.location << eom;
       throw 0;
     }
 
@@ -157,7 +136,7 @@ void cpp_typecheckt::typecheck_class_template(
         previous_declaration.template_type(),
         declaration.template_type());
 
-      previous_symbol->second.type.swap(declaration);
+      previous_symbol.type.swap(declaration);
 
       #if 0
       std::cout << "*****\n";
@@ -223,18 +202,7 @@ void cpp_typecheckt::typecheck_class_template(
          cpp_idt::id_classt::TEMPLATE_SCOPE);
 }
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::typecheck_function_template
-
-  Inputs:
-
- Outputs:
-
- Purpose: typecheck function templates
-
-\*******************************************************************/
-
+/// typecheck function templates
 void cpp_typecheckt::typecheck_function_template(
   cpp_declarationt &declaration)
 {
@@ -274,7 +242,7 @@ void cpp_typecheckt::typecheck_function_template(
 
   // check if we have it already
 
-  symbol_tablet::symbolst::iterator previous_symbol=
+  symbol_tablet::symbolst::const_iterator previous_symbol=
     symbol_table.symbols.find(symbol_name);
 
   if(previous_symbol!=symbol_table.symbols.end())
@@ -295,7 +263,7 @@ void cpp_typecheckt::typecheck_function_template(
 
     if(has_value)
     {
-      previous_symbol->second.type.swap(declaration);
+      symbol_table.get_writeable_ref(symbol_name).type.swap(declaration);
       cpp_scopes.id_map[symbol_name]=&template_scope;
     }
 
@@ -337,19 +305,7 @@ void cpp_typecheckt::typecheck_function_template(
   cpp_scopes.id_map[symbol_name] = &template_scope;
 }
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::typecheck_class_template_member
-
-  Inputs:
-
- Outputs:
-
- Purpose: typecheck class tempalte members;
-          these can be methods or static members
-
-\*******************************************************************/
-
+/// typecheck class template members; these can be methods or static members
 void cpp_typecheckt::typecheck_class_template_member(
   cpp_declarationt &declaration)
 {
@@ -380,9 +336,12 @@ void cpp_typecheckt::typecheck_class_template_member(
   else
   {
     return; // TODO
+
+#if 0
     error().source_location=cpp_name.source_location();
     error() << "bad template name" << eom;
     throw 0;
+#endif
   }
 
   // let's find the class template this function template belongs to.
@@ -423,7 +382,7 @@ void cpp_typecheckt::typecheck_class_template_member(
 
   const cpp_idt &cpp_id=**(id_set.begin());
   symbolt &template_symbol=
-    symbol_table.symbols.find(cpp_id.identifier)->second;
+    *symbol_table.get_writeable(cpp_id.identifier);
 
   exprt &template_methods=static_cast<exprt &>(
     template_symbol.value.add("template_methods"));
@@ -461,18 +420,6 @@ void cpp_typecheckt::typecheck_class_template_member(
     cpp_saved_scope.restore();
   }
 }
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::class_template_identifier
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 std::string cpp_typecheckt::class_template_identifier(
   const irep_idt &base_name,
@@ -533,18 +480,6 @@ std::string cpp_typecheckt::class_template_identifier(
   return identifier;
 }
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::function_template_identifier
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 std::string cpp_typecheckt::function_template_identifier(
   const irep_idt &base_name,
   const template_typet &template_type,
@@ -561,18 +496,6 @@ std::string cpp_typecheckt::function_template_identifier(
 
   return identifier;
 }
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::convert_class_template_specialization
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_typecheckt::convert_class_template_specialization(
   cpp_declarationt &declaration)
@@ -600,7 +523,7 @@ void cpp_typecheckt::convert_class_template_specialization(
     // currently we are more restrictive
     // than the standard
     error().source_location=cpp_name.source_location();
-    error() << "bad template-class-sepcialization name" << eom;
+    error() << "bad template-class-specialization name" << eom;
     throw 0;
   }
 
@@ -651,12 +574,12 @@ void cpp_typecheckt::convert_class_template_specialization(
     throw 0;
   }
 
-  symbol_tablet::symbolst::iterator s_it=
+  symbol_tablet::symbolst::const_iterator s_it=
     symbol_table.symbols.find((*id_set.begin())->identifier);
 
   assert(s_it!=symbol_table.symbols.end());
 
-  symbolt &template_symbol=s_it->second;
+  const symbolt &template_symbol=s_it->second;
 
   if(!template_symbol.type.get_bool(ID_is_template))
   {
@@ -694,18 +617,6 @@ void cpp_typecheckt::convert_class_template_specialization(
     typecheck_class_template(declaration);
   }
 }
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::convert_template_function_or_member_specialization
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_typecheckt::convert_template_function_or_member_specialization(
   cpp_declarationt &declaration)
@@ -807,18 +718,6 @@ void cpp_typecheckt::convert_template_function_or_member_specialization(
     convert_non_template_declaration(new_declaration);
   }
 }
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::typecheck_template_parameters
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 cpp_scopet &cpp_typecheckt::typecheck_template_parameters(
   template_typet &type)
@@ -951,18 +850,8 @@ cpp_scopet &cpp_typecheckt::typecheck_template_parameters(
   return template_scope;
 }
 
-/*******************************************************************\
-
-Function: cpp_typecheckt::typecheck_template_args
-
-  Inputs: location, non-typechecked template arguments
-
- Outputs: typechecked template arguments
-
- Purpose:
-
-\*******************************************************************/
-
+/// \par parameters: location, non-typechecked template arguments
+/// \return typechecked template arguments
 cpp_template_args_tct cpp_typecheckt::typecheck_template_args(
   const source_locationt &source_location,
   const symbolt &template_symbol,
@@ -1023,7 +912,8 @@ cpp_template_args_tct cpp_typecheckt::typecheck_template_args(
       // these need to be typechecked in the scope of the template,
       // not in the current scope!
       cpp_idt *template_scope=cpp_scopes.id_map[template_symbol.name];
-      assert(template_scope!=NULL);
+      INVARIANT_STRUCTURED(
+        template_scope!=nullptr, nullptr_exceptiont, "template_scope is null");
       cpp_scopes.go_to(*template_scope);
     }
 
@@ -1067,13 +957,16 @@ cpp_template_args_tct cpp_typecheckt::typecheck_template_args(
 
       typet type=parameter.type();
 
-      // First check the parameter type (might have ealier
+      // First check the parameter type (might have earlier
       // type parameters in it). Needs to be checked in scope
       // of template.
       {
         cpp_save_scopet cpp_saved_scope(cpp_scopes);
         cpp_idt *template_scope=cpp_scopes.id_map[template_symbol.name];
-        assert(template_scope!=NULL);
+        INVARIANT_STRUCTURED(
+          template_scope!=nullptr,
+          nullptr_exceptiont,
+          "template_scope is null");
         cpp_scopes.go_to(*template_scope);
         typecheck_type(type);
       }
@@ -1099,18 +992,6 @@ cpp_template_args_tct cpp_typecheckt::typecheck_template_args(
 
   return result;
 }
-
-/*******************************************************************\
-
-Function: cpp_typecheckt::convert_template_declaration
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void cpp_typecheckt::convert_template_declaration(
   cpp_declarationt &declaration)
@@ -1172,7 +1053,7 @@ void cpp_typecheckt::convert_template_declaration(
     typecheck_class_template(declaration);
     return;
   }
-  // maybe function template, maybe class template member, maye
+  // maybe function template, maybe class template member, maybe
   // template variable
   else
   {

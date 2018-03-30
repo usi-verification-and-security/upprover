@@ -6,7 +6,11 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <iostream>
+/// \file
+/// Symbolic Execution of ANSI-C
+
+#include "goto_symex.h"
+
 #include <sstream>
 #include <cassert>
 
@@ -21,20 +25,6 @@ Author: Daniel Kroening, kroening@kroening.com
 
 //#include <analyses/dirty.h>
 
-#include "goto_symex.h"
-
-/*******************************************************************\
-
-Function: goto_symext::get_unwind_recursion
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool goto_symext::get_unwind_recursion(
   const irep_idt &identifier,
   const unsigned thread_nr,
@@ -43,18 +33,6 @@ bool goto_symext::get_unwind_recursion(
   assert(0); // KE: when is it needed?
   return false;
 }
-
-/*******************************************************************\
-
-Function: goto_symext::parameter_assignments
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::parameter_assignments(
   const irep_idt function_identifier,
@@ -84,7 +62,7 @@ void goto_symext::parameter_assignments(
 
     const irep_idt &identifier=parameter.get_identifier();
 
-    if(identifier==irep_idt())
+    if(identifier.empty())
       throw "no identifier for function parameter";
 
     const symbolt &symbol=ns.lookup(identifier);
@@ -95,10 +73,13 @@ void goto_symext::parameter_assignments(
     // if you run out of actual arguments there was a mismatch
     if(it1==arguments.end())
     {
-      std::string warn=
-        "call to `"+id2string(function_identifier)+"': "
-        "not enough arguments, inserting non-deterministic value\n";
-      std::cerr << state.source.pc->source_location.as_string()+": "+warn;
+      log.warning() << state.source.pc->source_location.as_string()
+                    << ": "
+                       "call to `"
+                    << id2string(function_identifier)
+                    << "': "
+                       "not enough arguments, inserting non-deterministic value"
+                    << log.eom;
 
       rhs=side_effect_expr_nondett(parameter_type);
     }
@@ -160,8 +141,8 @@ void goto_symext::parameter_assignments(
   if(function_type.has_ellipsis())
   {
     // These are va_arg arguments; their types may differ from call to call
-    unsigned va_count=0;
-    const symbolt *va_sym=0;
+    std::size_t va_count=0;
+    const symbolt *va_sym=nullptr;
     while(!ns.lookup(
         id2string(function_identifier)+"::va_arg"+std::to_string(va_count),
         va_sym))
@@ -178,7 +159,7 @@ void goto_symext::parameter_assignments(
       symbol.base_name="va_arg"+std::to_string(va_count);
       symbol.type=it1->type();
 
-      new_symbol_table.move(symbol);
+      new_symbol_table.insert(std::move(symbol));
 
       symbol_exprt lhs=symbol_exprt(id, it1->type());
 
@@ -190,18 +171,6 @@ void goto_symext::parameter_assignments(
     // we got too many arguments, but we will just ignore them
   }
 }
-
-/*******************************************************************\
-
-Function: goto_symext::symex_function_call
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void goto_symext::symex_function_call(
   const goto_functionst &goto_functions,
@@ -220,18 +189,6 @@ void goto_symext::symex_function_call(
     throw "unexpected function for symex_function_call: "+function.id_string();
 }
 
-/*******************************************************************\
-
-Function: goto_symext::symex_function_call_symbol
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_symext::symex_function_call_symbol(
   const goto_functionst &goto_functions,
   statet &state,
@@ -239,7 +196,7 @@ void goto_symext::symex_function_call_symbol(
 {
   target.location(state.guard.as_expr(), state.source);
 
-  assert(code.function().id()==ID_symbol);
+  PRECONDITION(code.function().id() == ID_symbol);
 
   const irep_idt &identifier=
     to_symbol_expr(code.function()).get_identifier();
@@ -260,18 +217,7 @@ void goto_symext::symex_function_call_symbol(
     symex_function_call_code(goto_functions, state, code);
 }
 
-/*******************************************************************\
-
-Function: goto_symext::symex_function_call_code
-
-  Inputs:
-
- Outputs:
-
- Purpose: do function call by inlining
-
-\*******************************************************************/
-
+/// do function call by inlining
 void goto_symext::symex_function_call_code(
   const goto_functionst &goto_functions,
   statet &state,
@@ -311,7 +257,7 @@ void goto_symext::symex_function_call_code(
       state.guard.add(false_exprt());
     }
 
-    state.source.pc++;
+    symex_transition(state);
     return;
   }
 
@@ -333,17 +279,17 @@ void goto_symext::symex_function_call_code(
       symex_assign_rec(state, code);
     }
 
-    state.source.pc++;
+    symex_transition(state);
     return;
   }
 
   // read the arguments -- before the locality renaming
   exprt::operandst arguments=call.arguments();
-  for(unsigned i=0; i<arguments.size(); i++)
-    state.rename(arguments[i], ns);
+  for(auto &a : arguments)
+    state.rename(a, ns);
 
   // produce a new frame
-  assert(!state.call_stack().empty());
+  PRECONDITION(!state.call_stack().empty());
   goto_symex_statet::framet &frame=state.new_frame();
 
   // preserve locality of local variables
@@ -371,36 +317,25 @@ void goto_symext::symex_function_call_code(
   frame.loop_iterations[identifier].count++;
 
   state.source.is_set=true;
-  state.source.pc=goto_function.body.instructions.begin();
+  symex_transition(state, goto_function.body.instructions.begin());
 }
 
-/*******************************************************************\
-
-Function: goto_symext::pop_frame
-
-  Inputs:
-
- Outputs:
-
- Purpose: pop one call frame
-
-\*******************************************************************/
-
+/// pop one call frame
 void goto_symext::pop_frame(statet &state)
 {
-  assert(!state.call_stack().empty());
+  PRECONDITION(!state.call_stack().empty());
 
   {
     statet::framet &frame=state.top();
 
     // restore program counter
-    state.source.pc=frame.calling_location.pc;
+    symex_transition(state, frame.calling_location.pc);
 
     // restore L1 renaming
     state.level1.restore_from(frame.old_level1);
 
     // clear function-locals from L2 renaming
-    //assert(state.dirty);
+    //PRECONDITION(state.dirty);
     for(goto_symex_statet::renaming_levelt::current_namest::iterator
         c_it=state.level2.current_names.begin();
         c_it!=state.level2.current_names.end();
@@ -409,7 +344,7 @@ void goto_symext::pop_frame(statet &state)
       const irep_idt l1_o_id=c_it->second.first.get_l1_object_identifier();
       // could use iteration over local_objects as l1_o_id is prefix
       if(frame.local_objects.find(l1_o_id)==frame.local_objects.end() ||
-         (state.threads.size()>1 /*&&
+         (state.threads.size()>1 /* &&
           (*state.dirty)(c_it->second.first.get_object_name())*/))
       {
         ++c_it;
@@ -425,18 +360,7 @@ void goto_symext::pop_frame(statet &state)
   state.pop_frame();
 }
 
-/*******************************************************************\
-
-Function: goto_symext::symex_end_of_function
-
-  Inputs:
-
- Outputs:
-
- Purpose: do function call by inlining
-
-\*******************************************************************/
-
+/// do function call by inlining
 void goto_symext::symex_end_of_function(statet &state)
 {
   // first record the return
@@ -447,20 +371,8 @@ void goto_symext::symex_end_of_function(statet &state)
   pop_frame(state);
 }
 
-/*******************************************************************\
-
-Function: goto_symext::locality
-
-  Inputs:
-
- Outputs:
-
- Purpose: preserves locality of local variables of a given
-          function by applying L1 renaming to the local
-          identifiers
-
-\*******************************************************************/
-
+/// preserves locality of local variables of a given function by applying L1
+/// renaming to the local identifiers
 void goto_symext::locality(
   const irep_idt function_identifier,
   statet &state,
@@ -518,24 +430,12 @@ void goto_symext::locality(
   }
 }
 
-/*******************************************************************\
-
-Function: goto_symext::return_assignment
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void goto_symext::return_assignment(statet &state)
 {
   statet::framet &frame=state.top();
 
   const goto_programt::instructiont &instruction=*state.source.pc;
-  assert(instruction.is_return());
+  PRECONDITION(instruction.is_return());
   const code_returnt &code=to_code_return(instruction.code);
 
   target.location(state.guard.as_expr(), state.source);

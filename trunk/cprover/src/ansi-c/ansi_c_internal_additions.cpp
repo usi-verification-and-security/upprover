@@ -6,9 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
-#include <util/config.h>
-
 #include "ansi_c_internal_additions.h"
+
+#include <util/config.h>
 
 const char gcc_builtin_headers_generic[]=
 "# 1 \"gcc_builtin_headers_generic.h\"\n"
@@ -89,18 +89,6 @@ const char clang_builtin_headers[]=
 #include "clang_builtin_headers.inc"
 ; // NOLINT(whitespace/semicolon)
 
-/*******************************************************************\
-
-Function: architecture_string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 static std::string architecture_string(const std::string &value, const char *s)
 {
   return std::string("const char *__CPROVER_architecture_")+
@@ -108,36 +96,12 @@ static std::string architecture_string(const std::string &value, const char *s)
          "=\""+value+"\";\n";
 }
 
-/*******************************************************************\
-
-Function: architecture_string
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 static std::string architecture_string(int value, const char *s)
 {
   return std::string("const int __CPROVER_architecture_")+
          std::string(s)+
          "="+std::to_string(value)+";\n";
 }
-
-/*******************************************************************\
-
-Function: ansi_c_internal_additions
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void ansi_c_internal_additions(std::string &code)
 {
@@ -148,6 +112,9 @@ void ansi_c_internal_additions(std::string &code)
     "void __VERIFIER_assume(__CPROVER_bool assumption);\n"
     // NOLINTNEXTLINE(whitespace/line_length)
     "void __CPROVER_assert(__CPROVER_bool assertion, const char *description);\n"
+    // NOLINTNEXTLINE(whitespace/line_length)
+    "void __CPROVER_precondition(__CPROVER_bool precondition, const char *description);\n"
+    "void __CPROVER_havoc_object(void *);\n"
     "__CPROVER_bool __CPROVER_equal();\n"
     "__CPROVER_bool __CPROVER_same_object(const void *, const void *);\n"
     "__CPROVER_bool __CPROVER_invalid_pointer(const void *);\n"
@@ -193,7 +160,7 @@ void ansi_c_internal_additions(std::string &code)
     "void __CPROVER_allocated_memory(__CPROVER_size_t address, __CPROVER_size_t extent);\n"
 
     // malloc
-    "void *__CPROVER_malloc(__CPROVER_size_t size);\n"
+    "void *__CPROVER_allocate(__CPROVER_size_t size, __CPROVER_bool zero);\n"
     "const void *__CPROVER_deallocated=0;\n"
     "const void *__CPROVER_dead_object=0;\n"
     "const void *__CPROVER_malloc_object=0;\n"
@@ -232,6 +199,18 @@ void ansi_c_internal_additions(std::string &code)
     "long double __CPROVER_infl(void);\n"
     "int __CPROVER_thread_local __CPROVER_rounding_mode="+
       std::to_string(config.ansi_c.rounding_mode)+";\n"
+    "int __CPROVER_isgreaterf(float f, float g);\n"
+    "int __CPROVER_isgreaterd(double f, double g);\n"
+    "int __CPROVER_isgreaterequalf(float f, float g);\n"
+    "int __CPROVER_isgreaterequald(double f, double g);\n"
+    "int __CPROVER_islessf(float f, float g);\n"
+    "int __CPROVER_islessd(double f, double g);\n"
+    "int __CPROVER_islessequalf(float f, float g);\n"
+    "int __CPROVER_islessequald(double f, double g);\n"
+    "int __CPROVER_islessgreaterf(float f, float g);\n"
+    "int __CPROVER_islessgreaterd(double f, double g);\n"
+    "int __CPROVER_isunorderedf(float f, float g);\n"
+    "int __CPROVER_isunorderedd(double f, double g);\n"
 
     // absolute value
     "int __CPROVER_abs(int x);\n"
@@ -353,18 +332,6 @@ void ansi_c_internal_additions(std::string &code)
   // Architecture strings
   ansi_c_architecture_strings(code);
 }
-
-/*******************************************************************\
-
-Function: architecture_strings
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void ansi_c_architecture_strings(std::string &code)
 {

@@ -9,27 +9,31 @@ Date: February 2013
 
 \*******************************************************************/
 
+/// \file
+/// Range-based reaching definitions analysis (following Field- Sensitive
+///   Program Dependence Analysis, Litvak et al., FSE 2010)
+
+#include "reaching_definitions.h"
+
+#include <memory>
+
 #include <util/pointer_offset_size.h>
 #include <util/prefix.h>
+#include <util/make_unique.h>
 
 #include <pointer-analysis/value_set_analysis_fi.h>
 
 #include "is_threaded.h"
 #include "dirty.h"
 
-#include "reaching_definitions.h"
+reaching_definitions_analysist::reaching_definitions_analysist(
+  const namespacet &_ns):
+    concurrency_aware_ait<rd_range_domaint>(),
+    ns(_ns)
+{
+}
 
-/*******************************************************************\
-
-Function: rd_range_domaint::populate_cache
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
+reaching_definitions_analysist::~reaching_definitions_analysist()=default;
 
 void rd_range_domaint::populate_cache(const irep_idt &identifier) const
 {
@@ -51,27 +55,19 @@ void rd_range_domaint::populate_cache(const irep_idt &identifier) const
   }
 }
 
-/*******************************************************************\
-
-Function: rd_range_domaint::transform
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void rd_range_domaint::transform(
   locationt from,
   locationt to,
   ai_baset &ai,
-  const namespacet &ns)
+  const namespacet &ns,
+  ai_domain_baset::edge_typet edge_type)
 {
   reaching_definitions_analysist *rd=
     dynamic_cast<reaching_definitions_analysist*>(&ai);
-  assert(rd!=0);
+  INVARIANT_STRUCTURED(
+    rd!=nullptr,
+    bad_cast_exceptiont,
+    "ai has type reaching_definitions_analysist");
 
   assert(bv_container);
 
@@ -83,11 +79,11 @@ void rd_range_domaint::transform(
     transform_start_thread(ns, *rd);
   // do argument-to-parameter assignments
   else if(from->is_function_call())
-    transform_function_call(ns, from, to, *rd);
+    transform_function_call(ns, from, to, *rd, edge_type);
   // cleanup parameters
   else if(from->is_end_function())
     transform_end_function(ns, from, to, *rd);
-  // lhs assignements
+  // lhs assignments
   else if(from->is_assign())
     transform_assign(ns, from, from, *rd);
   // initial (non-deterministic) value
@@ -129,18 +125,6 @@ void rd_range_domaint::transform(
 #endif
 }
 
-/*******************************************************************\
-
-Function: rd_range_domaint::transform_dead
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void rd_range_domaint::transform_dead(
   const namespacet &ns,
   locationt from)
@@ -156,18 +140,6 @@ void rd_range_domaint::transform_dead(
     export_cache.erase(identifier);
   }
 }
-
-/*******************************************************************\
-
-Function: rd_range_domaint::transform_start_thread
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void rd_range_domaint::transform_start_thread(
   const namespacet &ns,
@@ -194,31 +166,17 @@ void rd_range_domaint::transform_start_thread(
   }
 }
 
-/*******************************************************************\
-
-Function: rd_range_domaint::transform_function_call
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void rd_range_domaint::transform_function_call(
   const namespacet &ns,
   locationt from,
   locationt to,
-  reaching_definitions_analysist &rd)
+  reaching_definitions_analysist &rd,
+  ai_domain_baset::edge_typet edge_type)
 {
   const code_function_callt &code=to_code_function_call(from->code);
 
-  goto_programt::const_targett next=from;
-  ++next;
-
   // only if there is an actual call, i.e., we have a body
-  if(next!=to)
+  if(edge_type != ai_domain_baset::edge_typet::FUNCTION_LOCAL)
   {
     for(valuest::iterator it=values.begin();
         it!=values.end();
@@ -268,18 +226,6 @@ void rd_range_domaint::transform_function_call(
       transform_assign(ns, from, from, rd);
   }
 }
-
-/*******************************************************************\
-
-Function: rd_range_domaint::transform_end_function
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void rd_range_domaint::transform_end_function(
   const namespacet &ns,
@@ -349,18 +295,6 @@ void rd_range_domaint::transform_end_function(
   }
 }
 
-/*******************************************************************\
-
-Function: rd_range_domaint::transform_assign
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void rd_range_domaint::transform_assign(
   const namespacet &ns,
   locationt from,
@@ -378,7 +312,10 @@ void rd_range_domaint::transform_assign(
     const symbolt *symbol_ptr;
     if(ns.lookup(identifier, symbol_ptr))
       continue;
-    assert(symbol_ptr!=0);
+    INVARIANT_STRUCTURED(
+      symbol_ptr!=nullptr,
+      nullptr_exceptiont,
+      "Symbol is in symbol table");
 
     const range_domaint &ranges=rw_set.get_ranges(it);
 
@@ -393,18 +330,6 @@ void rd_range_domaint::transform_assign(
       gen(from, identifier, range.first, range.second);
   }
 }
-
-/*******************************************************************\
-
-Function: rd_range_domaint::kill
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 void rd_range_domaint::kill(
   const irep_idt &identifier,
@@ -506,18 +431,6 @@ void rd_range_domaint::kill(
   }
 }
 
-/*******************************************************************\
-
-Function: rd_range_domaint::kill_inf
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void rd_range_domaint::kill_inf(
   const irep_idt &identifier,
   const range_spect &range_start)
@@ -551,18 +464,6 @@ void rd_range_domaint::kill_inf(
     }
 #endif
 }
-
-/*******************************************************************\
-
-Function: rd_range_domaint::gen
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 bool rd_range_domaint::gen(
   locationt from,
@@ -636,18 +537,6 @@ bool rd_range_domaint::gen(
   return true;
 }
 
-/*******************************************************************\
-
-Function: rd_range_domaint::output
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void rd_range_domaint::output(std::ostream &out) const
 {
   out << "Reaching definitions:\n";
@@ -687,18 +576,7 @@ void rd_range_domaint::output(std::ostream &out) const
   }
 }
 
-/*******************************************************************\
-
-Function: rd_range_domaint::merge_inner
-
-  Inputs:
-
- Outputs: returns true iff there is s.th. new
-
- Purpose:
-
-\*******************************************************************/
-
+/// \return returns true iff there is something new
 bool rd_range_domaint::merge_inner(
   values_innert &dest,
   const values_innert &other)
@@ -749,18 +627,7 @@ bool rd_range_domaint::merge_inner(
   return more;
 }
 
-/*******************************************************************\
-
-Function: rd_range_domaint::merge
-
-  Inputs:
-
- Outputs: returns true iff there is s.th. new
-
- Purpose:
-
-\*******************************************************************/
-
+/// \return returns true iff there is something new
 bool rd_range_domaint::merge(
   const rd_range_domaint &other,
   locationt from,
@@ -796,18 +663,7 @@ bool rd_range_domaint::merge(
   return changed;
 }
 
-/*******************************************************************\
-
-Function: rd_range_domaint::merge_shared
-
-  Inputs:
-
- Outputs: returns true iff there is s.th. new
-
- Purpose:
-
-\*******************************************************************/
-
+/// \return returns true iff there is something new
 bool rd_range_domaint::merge_shared(
   const rd_range_domaint &other,
   goto_programt::const_targett from,
@@ -857,18 +713,6 @@ bool rd_range_domaint::merge_shared(
   return changed;
 }
 
-/*******************************************************************\
-
-Function: rd_range_domaint::get
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 const rd_range_domaint::ranges_at_loct &rd_range_domaint::get(
   const irep_idt &identifier) const
 {
@@ -884,50 +728,16 @@ const rd_range_domaint::ranges_at_loct &rd_range_domaint::get(
     return entry->second;
 }
 
-/*******************************************************************\
-
-Function: reaching_definitions_analysist::~reaching_definitions_analysist
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
-reaching_definitions_analysist::~reaching_definitions_analysist()
-{
-  if(is_dirty)
-    delete is_dirty;
-  if(is_threaded)
-    delete is_threaded;
-  if(value_sets)
-    delete value_sets;
-}
-
-/*******************************************************************\
-
-Function: reaching_definitions_analysist::initialize
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void reaching_definitions_analysist::initialize(
   const goto_functionst &goto_functions)
 {
-  value_set_analysis_fit *value_sets_=new value_set_analysis_fit(ns);
+  auto value_sets_=util_make_unique<value_set_analysis_fit>(ns);
   (*value_sets_)(goto_functions);
-  value_sets=value_sets_;
+  value_sets=std::move(value_sets_);
 
-  is_threaded=new is_threadedt(goto_functions);
+  is_threaded=util_make_unique<is_threadedt>(goto_functions);
 
-  is_dirty=new dirtyt(goto_functions);
+  is_dirty=util_make_unique<dirtyt>(goto_functions);
 
   concurrency_aware_ait<rd_range_domaint>::initialize(goto_functions);
 }

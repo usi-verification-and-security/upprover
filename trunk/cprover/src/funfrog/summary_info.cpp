@@ -8,7 +8,7 @@
 
 \*******************************************************************/
 
-#include <std_expr.h>
+#include <util/std_expr.h>
 #include "summary_info.h"
 #include "summarization_context.h"
 

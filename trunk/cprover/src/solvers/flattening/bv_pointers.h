@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_SOLVERS_FLATTENING_BV_POINTERS_H
 #define CPROVER_SOLVERS_FLATTENING_BV_POINTERS_H
 
@@ -63,11 +64,6 @@ protected:
   postponed_listt postponed_list;
 
   void do_postponed(const postponedt &postponed);
-
-  static bool is_ptr(const typet &type)
-  {
-    return type.id()==ID_pointer || type.id()==ID_reference;
-  }
 };
 
 #endif // CPROVER_SOLVERS_FLATTENING_BV_POINTERS_H

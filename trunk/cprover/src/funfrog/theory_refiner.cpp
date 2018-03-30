@@ -238,8 +238,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       //   forward with multiple refinement
                       last = 0;
                       {
-                          while (last != -1 || last == exprs.size()){
-                            smtcheck_opensmt2t_cuf decider2(bw,
+                          while (last != -1 || last == (int) exprs.size()){
+                            smtcheck_opensmt2t_cuf decider2(bw, 
                                     options.get_unsigned_int_option("type-byte-constraints"),
                                     "forward multiple checker");
                             last = decider2.check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 0);
@@ -280,8 +280,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       //   forward with multiple refinement & dependencies
                       last = 0;
                       {
-                          while (last != -1 || last == exprs.size()){
-                            smtcheck_opensmt2t_cuf decider2(bw,
+                          while (last != -1 || last == (int) exprs.size()){
+                            smtcheck_opensmt2t_cuf decider2(bw, 
                                     options.get_unsigned_int_option("type-byte-constraints"),
                                     "Foward with multiple refinements & dependencies");
                             decider2.check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 1);
@@ -382,18 +382,18 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   return end;
 }
 
-///*******************************************************************\
-//
-//Function: theory_refinert::setup_unwind
-//
-//  Inputs:
-//
-// Outputs:
-//
-// Purpose: Setup the unwind bounds.
-//
-//\*******************************************************************/
-//
+
+/*******************************************************************\
+
+Function: theory_refinert::setup_unwind
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Setup the unwind bounds.
+
+\*******************************************************************/
 //void theory_refinert::setup_unwind(symex_assertion_sumt& symex)
 //{
 //  const std::string &set=options.get_option("unwindset");

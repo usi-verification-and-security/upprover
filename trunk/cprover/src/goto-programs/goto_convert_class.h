@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Program Transformation
+
 #ifndef CPROVER_GOTO_PROGRAMS_GOTO_CONVERT_CLASS_H
 #define CPROVER_GOTO_PROGRAMS_GOTO_CONVERT_CLASS_H
 
@@ -26,7 +29,7 @@ public:
   void goto_convert(const codet &code, goto_programt &dest);
 
   goto_convertt(
-    symbol_tablet &_symbol_table,
+    symbol_table_baset &_symbol_table,
     message_handlert &_message_handler):
     messaget(_message_handler),
     symbol_table(_symbol_table),
@@ -41,7 +44,7 @@ public:
   }
 
 protected:
-  symbol_tablet &symbol_table;
+  symbol_table_baset &symbol_table;
   namespacet ns;
   unsigned temporary_counter;
   std::string tmp_symbol_prefix;
@@ -94,9 +97,6 @@ protected:
     side_effect_exprt &expr,
     goto_programt &dest,
     bool result_is_used);
-  void remove_push_catch(
-    side_effect_exprt &expr,
-    goto_programt &dest);
   void remove_assignment(
     side_effect_exprt &expr,
     goto_programt &dest,
@@ -138,11 +138,6 @@ protected:
     goto_programt &dest);
 
   virtual void do_cpp_new(
-    const exprt &lhs,
-    const side_effect_exprt &rhs,
-    goto_programt &dest);
-
-  void do_java_new(
     const exprt &lhs,
     const side_effect_exprt &rhs,
     goto_programt &dest);
@@ -240,7 +235,6 @@ protected:
   void convert_msc_try_except(const codet &code, goto_programt &dest);
   void convert_msc_leave(const codet &code, goto_programt &dest);
   void convert_try_catch(const codet &code, goto_programt &dest);
-  void convert_java_try_catch(const codet &code, goto_programt &dest);
   void convert_CPROVER_try_catch(const codet &code, goto_programt &dest);
   void convert_CPROVER_try_finally(const codet &code, goto_programt &dest);
   void convert_CPROVER_throw(const codet &code, goto_programt &dest);
@@ -314,7 +308,11 @@ protected:
       continue_set(false),
       default_set(false),
       throw_set(false),
-      leave_set(false)
+      leave_set(false),
+      break_stack_size(0),
+      continue_stack_size(0),
+      throw_stack_size(0),
+      leave_stack_size(0)
     {
     }
 
@@ -504,6 +502,11 @@ protected:
     const irep_idt &id,
     std::list<exprt> &dest);
 
+  // START_THREAD; ... END_THREAD;
+  void generate_thread_block(
+    const code_blockt &thread_body,
+    goto_programt &dest);
+
   //
   // misc
   //
@@ -527,11 +530,6 @@ protected:
     const exprt &rhs,
     const exprt::operandst &arguments,
     goto_programt &dest);
-  void do_array_set(
-    const exprt &lhs,
-    const exprt &rhs,
-    const exprt::operandst &arguments,
-    goto_programt &dest);
   void do_array_equal(
     const exprt &lhs,
     const exprt &rhs,
@@ -540,7 +538,7 @@ protected:
   void do_array_op(
     const irep_idt &id,
     const exprt &lhs,
-    const exprt &rhs,
+    const exprt &function,
     const exprt::operandst &arguments,
     goto_programt &dest);
   void do_printf(

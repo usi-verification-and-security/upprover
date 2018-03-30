@@ -6,6 +6,7 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+
 #ifndef CPROVER_ANSI_C_EXPR2C_CLASS_H
 #define CPROVER_ANSI_C_EXPR2C_CLASS_H
 
@@ -84,6 +85,10 @@ protected:
     unsigned &precedence);
 
   std::string convert_binary(
+    const exprt &src, const std::string &symbol,
+    unsigned precedence, bool full_parentheses);
+
+  std::string convert_multi_ary(
     const exprt &src, const std::string &symbol,
     unsigned precedence, bool full_parentheses);
 
@@ -213,7 +218,7 @@ protected:
   std::string convert_function_application(const function_application_exprt &src, unsigned &precedence);
   // NOLINTNEXTLINE(whitespace/line_length)
   std::string convert_side_effect_expr_function_call(const side_effect_expr_function_callt &src, unsigned &precedence);
-  std::string convert_malloc(const exprt &src, unsigned &precedence);
+  std::string convert_allocate(const exprt &src, unsigned &precedence);
   std::string convert_nondet(const exprt &src, unsigned &precedence);
   std::string convert_prob_coin(const exprt &src, unsigned &precedence);
   std::string convert_prob_uniform(const exprt &src, unsigned &precedence);
@@ -226,7 +231,8 @@ protected:
   std::string convert_predicate_next_symbol(const exprt &src, unsigned &precedence);
   // NOLINTNEXTLINE(whitespace/line_length)
   std::string convert_predicate_passive_symbol(const exprt &src, unsigned &precedence);
-  std::string convert_nondet_symbol(const exprt &src, unsigned &precedence);
+  // NOLINTNEXTLINE(whitespace/line_length)
+  std::string convert_nondet_symbol(const nondet_symbol_exprt &, unsigned &precedence);
   std::string convert_quantified_symbol(const exprt &src, unsigned &precedence);
   std::string convert_nondet_bool(const exprt &src, unsigned &precedence);
   std::string convert_object_descriptor(const exprt &src, unsigned &precedence);

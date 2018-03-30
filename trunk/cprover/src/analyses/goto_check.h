@@ -6,6 +6,9 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+/// \file
+/// Program Transformation
+
 #ifndef CPROVER_ANALYSES_GOTO_CHECK_H
 #define CPROVER_ANALYSES_GOTO_CHECK_H
 
@@ -23,6 +26,7 @@ void goto_check(
 void goto_check(
   const namespacet &ns,
   const optionst &options,
+  const irep_idt &mode,
   goto_functionst::goto_functiont &goto_function);
 
 void goto_check(

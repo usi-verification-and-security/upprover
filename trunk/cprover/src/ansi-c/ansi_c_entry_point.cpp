@@ -6,6 +6,8 @@ Author: Daniel Kroening, kroening@kroening.com
 
 \*******************************************************************/
 
+#include "ansi_c_entry_point.h"
+
 #include <cassert>
 #include <cstdlib>
 
@@ -16,6 +18,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <util/config.h>
 #include <util/cprover_prefix.h>
 #include <util/prefix.h>
+#include <util/symbol.h>
 
 #include <util/c_types.h>
 #include <ansi-c/string_constant.h>
@@ -23,20 +26,7 @@ Author: Daniel Kroening, kroening@kroening.com
 #include <goto-programs/goto_functions.h>
 #include <linking/static_lifetime_init.h>
 
-#include "ansi_c_entry_point.h"
 #include "c_nondet_symbol_factory.h"
-
-/*******************************************************************\
-
-Function: build_function_environment
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
 
 exprt::operandst build_function_environment(
   const code_typet::parameterst &parameters,
@@ -68,18 +58,6 @@ exprt::operandst build_function_environment(
   return main_arguments;
 }
 
-/*******************************************************************\
-
-Function: record_function_outputs
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 void record_function_outputs(
   const symbolt &function,
   code_blockt &init_code,
@@ -94,7 +72,7 @@ void record_function_outputs(
     codet output(ID_output);
     output.operands().resize(2);
 
-    const symbolt &return_symbol=symbol_table.lookup("return'");
+    const symbolt &return_symbol=*symbol_table.lookup("return'");
 
     output.op0()=
       address_of_exprt(
@@ -141,21 +119,8 @@ void record_function_outputs(
   #endif
 }
 
-/*******************************************************************\
-
-Function: ansi_c_entry_point
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-
 bool ansi_c_entry_point(
   symbol_tablet &symbol_table,
-  const std::string &standard_main,
   message_handlert &message_handler)
 {
   // check if entry point is already there
@@ -202,7 +167,7 @@ bool ansi_c_entry_point(
     main_symbol=matches.front();
   }
   else
-    main_symbol=standard_main;
+    main_symbol=ID_main;
 
   // look it up
   symbol_tablet::symbolst::const_iterator s_it=
@@ -225,12 +190,29 @@ bool ansi_c_entry_point(
   if(static_lifetime_init(symbol_table, symbol.location, message_handler))
     return true;
 
+  return generate_ansi_c_start_function(symbol, symbol_table, message_handler);
+}
+
+
+/// Generate a _start function for a specific function
+/// \param symbol: The symbol for the function that should be
+///   used as the entry point
+/// \param symbol_table: The symbol table for the program. The new _start
+///   function symbol will be added to this table
+/// \param message_handler: The message handler
+/// \return Returns false if the _start method was generated correctly
+bool generate_ansi_c_start_function(
+  const symbolt &symbol,
+  symbol_tablet &symbol_table,
+  message_handlert &message_handler)
+{
+  PRECONDITION(!symbol.value.is_nil());
   code_blockt init_code;
 
   // build call to initialization function
 
   {
-    symbol_tablet::symbolst::iterator init_it=
+    symbol_tablet::symbolst::const_iterator init_it=
       symbol_table.symbols.find(INITIALIZE_FUNCTION);
 
     if(init_it==symbol_table.symbols.end())
@@ -272,7 +254,7 @@ bool ansi_c_entry_point(
   const code_typet::parameterst &parameters=
     to_code_type(symbol.type).parameters();
 
-  if(symbol.name==standard_main)
+  if(symbol.name==ID_main)
   {
     if(parameters.empty())
     {
@@ -340,7 +322,7 @@ bool ansi_c_entry_point(
           max=to_unsignedbv_type(envp_size_symbol.type).largest();
         }
         else
-          assert(false);
+          UNREACHABLE;
 
         exprt max_minus_one=from_integer(max-1, envp_size_symbol.type);
 
@@ -362,16 +344,13 @@ bool ansi_c_entry_point(
         zero_string.type().set(ID_size, "infinity");
         exprt index(ID_index, char_type());
         index.copy_to_operands(zero_string, from_integer(0, uint_type()));
-        exprt address_of("address_of", pointer_typet());
-        address_of.type().subtype()=char_type();
-        address_of.copy_to_operands(index);
+        exprt address_of=address_of_exprt(index, pointer_type(char_type()));
 
         if(argv_symbol.type.subtype()!=address_of.type())
           address_of.make_typecast(argv_symbol.type.subtype());
 
         // assign argv[*] to the address of a string-object
-        exprt array_of("array_of", argv_symbol.type);
-        array_of.copy_to_operands(address_of);
+        array_of_exprt array_of(address_of, argv_symbol.type);
 
         init_code.copy_to_operands(
           code_assignt(argv_symbol.symbol_expr(), array_of));
@@ -435,17 +414,18 @@ bool ansi_c_entry_point(
 
         {
           const exprt &arg1=parameters[1];
+          const pointer_typet &pointer_type=
+            to_pointer_type(arg1.type());
 
-          exprt index_expr(ID_index, arg1.type().subtype());
-          index_expr.copy_to_operands(
+          index_exprt index_expr(
             argv_symbol.symbol_expr(),
-            from_integer(0, index_type()));
+            from_integer(0, index_type()),
+            pointer_type.subtype());
 
           // disable bounds check on that one
           index_expr.set("bounds_check", false);
 
-          op1=exprt(ID_address_of, arg1.type());
-          op1.move_to_operands(index_expr);
+          op1=address_of_exprt(index_expr, pointer_type);
         }
 
         // do we need envp?
@@ -455,18 +435,20 @@ bool ansi_c_entry_point(
           exprt &op2=operands[2];
 
           const exprt &arg2=parameters[2];
+          const pointer_typet &pointer_type=
+            to_pointer_type(arg2.type());
 
-          exprt index_expr(ID_index, arg2.type().subtype());
-          index_expr.copy_to_operands(
-            envp_symbol.symbol_expr(), from_integer(0, index_type()));
+          index_exprt index_expr(
+            envp_symbol.symbol_expr(),
+            from_integer(0, index_type()),
+            pointer_type.subtype());
 
-          op2=exprt(ID_address_of, arg2.type());
-          op2.move_to_operands(index_expr);
+          op2=address_of_exprt(index_expr, pointer_type);
         }
       }
     }
     else
-      assert(false);
+      UNREACHABLE;
   }
   else
   {
@@ -496,11 +478,11 @@ bool ansi_c_entry_point(
   new_symbol.value.swap(init_code);
   new_symbol.mode=symbol.mode;
 
-  if(symbol_table.move(new_symbol))
+  if(!symbol_table.insert(std::move(new_symbol)).second)
   {
     messaget message;
     message.set_message_handler(message_handler);
-    message.error() << "failed to move main symbol" << messaget::eom;
+    message.error() << "failed to insert main symbol" << messaget::eom;
     return true;
   }
 
