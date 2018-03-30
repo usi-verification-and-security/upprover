@@ -593,11 +593,11 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         } else if(_id == ID_plus) {
             ptl = lralogic->mkRealPlus(args);
         } else if(_id == ID_minus) {
-            assert(args.size() <= 2); // KE: check before opensmt, to locate better errors
+            assert(args.size() == 2); // KE: check before opensmt, to locate better errors
             ptl = lralogic->mkRealMinus(args);
         } else if(_id == ID_unary_minus) {
-            assert(args.size() <= 2); // KE: check before opensmt, to locate better errors
-            ptl = lralogic->mkRealMinus(lralogic->mkConst("0"), args.last());
+            assert(args.size() == 1); // KE: check before opensmt, to locate better errors
+            ptl = lralogic->mkRealMinus(args);
         } else if(_id == ID_unary_plus) {
             ptl = lralogic->mkRealPlus(args);
         } else if(_id == ID_mult) {

@@ -25,8 +25,6 @@
 #include <util/options.h>
 #include <util/time_stopping.h>
 
-
-
 #include "../assertion_info.h"
 #include "smt_symex_target_equation.h"
 
@@ -38,22 +36,14 @@ public:
             smt_symex_target_equationt &_target,
             message_handlert &_message_handler,
             const goto_programt &_goto_program,
-            unsigned _last_assertion_loc,  
-            bool _single_assertion_check,
-            bool _use_slicing=true,
-	    bool _do_guard_expl=true,
-            bool _use_smt=true
+            bool _use_slicing=true
           ) :
           symex_bmct(_message_handler, _ns, _new_symbol_table, _target),
           equation(_target),
           goto_program(_goto_program),
-          current_assertion(NULL),
+          current_assertion(nullptr),
           loc(0),
           use_slicing(_use_slicing)
-//          last_assertion_loc(_last_assertion_loc),
-//          single_assertion_check(_single_assertion_check),
-//	      do_guard_expl(_do_guard_expl),
-//          use_smt(_use_smt)
           {}
     
     virtual ~symex_no_partitiont() {} // Here there are no partition to delete
@@ -94,19 +84,6 @@ private:
     unsigned loc;
 
     bool use_slicing;
-
-
-//    >> UNUSED private fields
-//    unsigned last_assertion_loc;
-//
-//
-//    bool single_assertion_check;
-//
-//
-//    bool do_guard_expl;
-//
-//    bool use_smt; // for slicing
-//    >> END OF UNUSED private fields
     
     bool process_planned(statet &state, const goto_functionst &goto_functions, bool force_check);
 
