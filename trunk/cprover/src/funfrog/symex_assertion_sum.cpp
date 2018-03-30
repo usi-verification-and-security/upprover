@@ -804,10 +804,11 @@ void symex_assertion_sumt::mark_argument_symbols(const code_typet & function_typ
     auto current_version = get_current_version(symbol);
     partition_iface.argument_symbols.push_back(current_version);
 
-#   ifdef DEBUG_PARTITIONING
+#   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
     expr_pretty_print(std::cout << "Marking argument symbol: ", current_version, "\n");
     std::cout << '\n';
 #   endif
+    assert(is_L2_SSA_symbol(current_version));
   }
 }
 
@@ -834,6 +835,7 @@ void symex_assertion_sumt::mark_accessed_global_symbols(const irep_idt & functio
     expr_pretty_print(std::cout << "Marking accessed global symbol: ", current_version, "\n");
     std::cout << '\n';
 #   endif
+    assert(is_L2_SSA_symbol(current_version));
   }
 }
 
@@ -849,7 +851,6 @@ void symex_assertion_sumt::mark_accessed_global_symbols(const irep_idt & functio
  symbol of the global variables for later use when processing the deferred 
  function
 
- FIXME: unify rename/SSA fabrication
 
 \*******************************************************************/
 void symex_assertion_sumt::modified_globals_assignment_and_mark(
@@ -862,13 +863,12 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
   for (const auto & global_id : globals_modified){
     const auto& symbol = get_normal_symbol(global_id);
     auto ssa_expr = get_next_version(symbol);
-    symbol_exprt symb_ex(ssa_expr);
-    partition_iface.out_arg_symbols.push_back(symb_ex);
+    partition_iface.out_arg_symbols.push_back(ssa_expr);
 
 #   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
-    expr_pretty_print(std::cout << "Marking modified global symbol: ", symb_ex);
+    expr_pretty_print(std::cout << "Marking modified global symbol: ", ssa_expr);
 #   endif
-    assert(is_L2_SSA_symbol(symb_ex)); // KE: avoid creating junk
+    assert(is_L2_SSA_symbol(ssa_expr));
   }
 }
 
