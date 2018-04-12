@@ -176,7 +176,7 @@ void check_claims(
     } 
 
     theory_refinert th_checker(leaping_program,
-	        goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
+	        goto_functions, ns1, temp_table, options, _message_handler);
 
     th_checker.initialize();
     th_checker.assertion_holds_smt(ass_ptr, true);

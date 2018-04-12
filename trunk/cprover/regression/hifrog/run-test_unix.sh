@@ -143,8 +143,6 @@ echo " - create dir for output data of the regression tests: $OUTDIR"
 # location, you may ignore this comment
 hifrog=./../../build/hifrog
 
-
-
 # Iterating over all the test cases - When result shall match the known results
 for filename in testcases/*.c_tc 
 do

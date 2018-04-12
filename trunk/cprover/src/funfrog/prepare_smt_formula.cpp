@@ -1,14 +1,14 @@
 /*******************************************************************
 
- Module: Propositional encoding of an SSA-form,
+ Module: Convert an SSA-form to smt,
          And checking of its satisfiability
 
- Author: Ondrej Sery
+ Author:
 
 \*******************************************************************/
 
 #include <util/time_stopping.h>
-#include "smt_assertion_sum.h"
+#include "prepare_smt_formula.h"
 #include "error_trace.h"
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2.h"
@@ -17,19 +17,17 @@ time_periodt global_satsolver_time;
 
 /*******************************************************************
 
- Function: smt_assertion_sumt::assertion_holds
+ Function: smt_formulat::convert_to_formula
 
  Inputs:
 
  Outputs:
 
- Purpose: Checks if the given assertion of the GP holds
+ Purpose: Converts SSA form to SMT formula
 
 \*******************************************************************/
-bool smt_assertion_sumt::assertion_holds(const assertion_infot &assertion, const namespacet &ns, smtcheck_opensmt2t& decider, interpolating_solvert& interpolator)
+void prepare_smt_formulat::convert_to_formula(smtcheck_opensmt2t &decider, interpolating_solvert &interpolator)
 {
-  bool sat=false;
-
   absolute_timet before, after;
   before=current_time();
   equation.convert(decider, interpolator);
@@ -37,18 +35,6 @@ bool smt_assertion_sumt::assertion_holds(const assertion_infot &assertion, const
   after=current_time();
 
   status() << "CONVERSION TIME: " << (after-before) << eom;
-
-  // Decides the equation
-  sat = is_satisfiable(decider);
-
-  if (!sat)
-  {
-    return true;
-  }
-  else
-  {
-    return false;
-  }
 }
 
 /*******************************************************************
@@ -63,30 +49,40 @@ bool smt_assertion_sumt::assertion_holds(const assertion_infot &assertion, const
 
 \*******************************************************************/
 
-bool smt_assertion_sumt::is_satisfiable(
+bool prepare_smt_formulat::is_satisfiable(
 		smtcheck_opensmt2t& decider)
 {
   absolute_timet before, after;
   before=current_time();
-  bool r = decider.solve();
+  bool is_sat = decider.solve();
   after=current_time();
-  solving_time = (after-before);
-  global_satsolver_time += (after-before);
   status() << "SOLVER TIME: " << (after-before) << eom;
   status() << "RESULT: ";
 
   // solve it
-  if (!r)
+  if (is_sat)
   {
-      status() << "UNSAT - it holds!" << eom;
-      return false;
-    } else {
-      status() << "SAT - doesn't hold" << eom;
-      return true;
-    }
+    status() << "SAT - doesn't hold" << eom;
+    return true;
+  }
+  else
+  {
+    status() << "UNSAT - it holds!" << eom;
+    return false;
+  }
+  //  return is_sat;
 }
+/*******************************************************************
 
-void smt_assertion_sumt::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns,
+ Function:
+ Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+void prepare_smt_formulat::error_trace(smtcheck_opensmt2t &decider, const namespacet &ns,
 		std::map<irep_idt, std::string>& guard_expln)
 {      
     // Only if can build an error trace - give notice to the user

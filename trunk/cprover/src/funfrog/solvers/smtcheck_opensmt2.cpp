@@ -619,6 +619,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     if (is_cprover_builtins_var(str)) {
     #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
         cout << "; " << str << " :: " << expr.id() << " - Should Not Add Cprover Built-ins\n" << expr.pretty() << endl;
+        assert(false); //KE: when found all reasons - uncomment
     #else
         cout << "EXIT WITH ERROR: Using CPROVER built-in variables not in propositional logic " << str << endl;
         //assert(false); //KE: when found all reasons - uncomment
@@ -628,13 +629,14 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     bool is_L2_symbol = is_L2_SSA_symbol(expr);
     // MB: the IO_CONST expressions does not follow normal versioning, but why NIL is here?
     bool is_nil_or_symex = (str.compare(NIL) == 0) || (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
-    if (!is_L2_symbol && !is_nil_or_symex)
+    if (!(is_L2_symbol || is_nil_or_symex))
     {
         // Error message before assert!
-        std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree(" 
+        std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree (" 
                 << str <<  " : " << expr.type().id().c_str() << ")\n";
         //std::cout << expr.pretty() << std::endl;
         //return create_new_unsupported_var(expr.type().id().c_str());
+        exit(1);
     }
     assert("Error: using non-SSA symbol in the SMT encoding"
          && (is_L2_symbol || is_nil_or_symex)); // KE: can be new type that we don't take care of yet

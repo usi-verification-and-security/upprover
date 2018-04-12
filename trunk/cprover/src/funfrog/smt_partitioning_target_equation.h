@@ -21,13 +21,11 @@ class smt_partitioning_target_equationt:public partitioning_target_equationt
 {
 public:
   smt_partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
-          _summarization_context, bool _upgrade_checking,
-          bool _store_summaries_with_assertion, coloring_modet _coloring_mode,
-          std::vector<unsigned>& _clauses)
+          _summarization_context,
+          bool _store_summaries_with_assertion)
             : partitioning_target_equationt(_ns, 
-                       _summarization_context, _upgrade_checking,
-                       _store_summaries_with_assertion, _coloring_mode,
-                       _clauses) {}
+                       _summarization_context,
+                       _store_summaries_with_assertion) {}
             
   // Convert all the SSA steps into the corresponding formulas in
   // the corresponding partitions

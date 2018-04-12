@@ -22,7 +22,7 @@ class smt_assertion_no_partitiont;
 class prop_partitioning_target_equationt;
 class smt_partitioning_target_equationt;
 class prop_assertion_sumt;
-class smt_assertion_sumt;
+class prepare_smt_formulat;
 class check_opensmt2t;
 class symex_bmct;
 class interpolating_solvert;
@@ -68,7 +68,8 @@ public:
     omega.serialize(options.get_option("save-omega"));
   };
 
-    void list_templates(smt_assertion_sumt &prop, smt_partitioning_target_equationt &equation);
+    // MB: not used at the moment, as of 13.2.2018
+    //void list_templates(prepare_smt_formulat &prop, smt_partitioning_target_equationt &equation);
 protected:
 
   const goto_programt &goto_program;
@@ -84,13 +85,13 @@ protected:
   
   void setup_unwind(symex_bmct& symex);
 #ifdef PRODUCE_PROOF  
-  void extract_interpolants_smt (smt_assertion_sumt& prop, smt_partitioning_target_equationt& equation);
+  void extract_interpolants_smt (prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation);
   void extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
             std::unique_ptr<prop_conv_solvert>& decider_prop, std::unique_ptr<interpolating_solvert>& interpolator);
 #endif
   void report_success();
   void report_failure();
-  void assertion_violated(smt_assertion_sumt& prop,
+  void assertion_violated(prepare_smt_formulat& prop,
 		  std::map<irep_idt, std::string> &guard_expln);
   void assertion_violated (smt_assertion_no_partitiont& prop,
                   std::map<irep_idt, std::string> &guard_expln);

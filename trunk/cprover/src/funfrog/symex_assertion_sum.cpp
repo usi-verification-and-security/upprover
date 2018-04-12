@@ -24,7 +24,6 @@
 #include "partitioning_target_equation.h"
 #include "hifrog.h"
 
-
 #ifdef DEBUG_SSA
 #include "utils/ssa_helpers.h"
 #endif // DEBUG_SSA
@@ -447,7 +446,7 @@ void symex_assertion_sumt::symex_step(
                 "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
                 "\n  " << from_expr(ns, "", state.source.pc->guard) <<
                 "\n  " << (is_exit ? "End before in location :" : "Current location ") 
-                       << loc << "(out of " << last_assertion_loc << ")" 
+                       << loc << " (out of " << last_assertion_loc << ")" 
                        << " is in loop? " << state.source.pc->loop_number // Check when this will become active
                        << std::endl;
             #endif 
@@ -768,12 +767,6 @@ void symex_assertion_sumt::assign_function_arguments(
     // Add return value assignment from a temporary variable and
     // store the temporary return value symbol somewhere (so that we can
     // use it later, when processing the deferred function).
-    // KE: the nil (function_call.lhs().is_nil()), changed into |return'!0|
-    // Fix the flag according to the string return'!0 or is_nil
-    // TODO: find what is the right symbol
-//    bool is_nil_or_ret = ((function_call.lhs().get(ID_identifier) == RETURN_NIL_CPROVER)
-//                          ||
-//                          (function_call.lhs().is_nil()));
     bool skip_assignment = function_call.lhs().is_nil();
     return_assignment_and_mark(goto_function.type, state, &(function_call.lhs()),
             partition_iface, skip_assignment);
@@ -867,8 +860,9 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
 
 #   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
     expr_pretty_print(std::cout << "Marking modified global symbol: ", ssa_expr);
+    std::cout << '\n';
 #   endif
-    assert(is_L2_SSA_symbol(ssa_expr));
+    assert(is_L2_SSA_symbol(ssa_expr)); // KE: avoid creating junk
   }
 }
 
@@ -921,6 +915,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
 # if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
   expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
 //      expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
+  std::cout << '\n';
 # endif
   partition_iface.retval_symbol = retval_symbol;
   partition_iface.returns_value = true;

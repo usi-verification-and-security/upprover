@@ -19,9 +19,7 @@ public:
     const namespacet &_ns,
     symbol_tablet &_symbol_table,
     const optionst& _options,
-    ui_message_handlert &_message_handler,
-
-    unsigned long &_max_memory_used
+    ui_message_handlert &_message_handler
     ) :
       goto_program(_goto_program),
       ns(_ns),
@@ -32,7 +30,6 @@ public:
                 options.get_unsigned_int_option("unwind")),
 
       message_handler (_message_handler),
-      max_memory_used(_max_memory_used),
       omega(summarization_context, goto_program)
   {
     set_message_handler(_message_handler);
@@ -51,7 +48,6 @@ private:
   const optionst &options;
   summarization_contextt summarization_context;
   ui_message_handlert &message_handler;
-  unsigned long &max_memory_used;
   smtcheck_opensmt2t_cuf* decider; // CUF solver
   subst_scenariot omega;
   

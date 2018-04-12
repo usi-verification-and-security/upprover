@@ -9,9 +9,10 @@
 #include "error_trace.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "symex_assertion_sum.h"
-#include "smt_assertion_sum.h"
+#include "prepare_smt_formula.h"
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
+#include <time_stopping.h>
 
 #define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
 theory_refinert::~theory_refinert()
@@ -83,11 +84,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   const bool single_assertion_check = omega.is_single_assertion_check();
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
 
-
-  std::vector<unsigned> ints;
-
-  smt_partitioning_target_equationt equation(ns, summarization_context, false,
-      store_summaries_with_assertion, coloring_modet::NO_COLORING, ints);
+  smt_partitioning_target_equationt equation(ns, summarization_context,
+      store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {
@@ -104,14 +102,19 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   //setup_unwind(symex);
 
-  smt_assertion_sumt prop = smt_assertion_sumt(summarization_context,
-          equation, message_handler, max_memory_used);
+  prepare_smt_formulat ssaTosmt = prepare_smt_formulat(equation, message_handler);
 
   bool end = symex.prepare_SSA(assertion);
 
-  if (!end) end = prop.assertion_holds(assertion, ns,
-          *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
-          *(dynamic_cast<interpolating_solvert *> (decider)));
+  if (!end)
+  {
+      //Converts SSA to SMT formula
+    ssaTosmt.convert_to_formula(*(dynamic_cast<smtcheck_opensmt2t *> (decider)), *(decider));
+
+      // Decides the equation
+    bool is_sat = ssaTosmt.is_satisfiable(*(dynamic_cast<smtcheck_opensmt2t *> (decider)));
+    end = !is_sat;
+  }
 
   if (end)
   {
@@ -121,7 +124,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 #endif
       status() << "ASSERTION HOLDS" << endl << eom;
       report_success();
-  } else {
+  } else {  //do refinement
 
       error_tracet error_trace;
       const std::string &log=options.get_option("logic");
