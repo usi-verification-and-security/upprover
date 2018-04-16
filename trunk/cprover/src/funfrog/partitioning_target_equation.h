@@ -28,7 +28,6 @@ Author: Ondrej Sery
 #include "solvers/interpolating_solver_fwd.h"
 #include "partition.h"
 
-class summarization_contextt;
 class partition_ifacet;
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
@@ -36,8 +35,8 @@ typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 class partitioning_target_equationt:public symex_target_equationt
 {
 public:
-  partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
-          _summarization_context, bool _store_summaries_with_assertion);
+  partitioning_target_equationt(const namespacet &_ns, summary_storet & summary_store,
+                                bool _store_summaries_with_assertion);
 
   // First this called and then the parent d'tor due to the use of virtual
   virtual ~partitioning_target_equationt() {
@@ -104,8 +103,6 @@ public:
 #endif
   
 protected:
-  // Current summarization context
-  summarization_contextt& summarization_context;
 
   // Id of the currently selected partition
   partition_idt current_partition_id;
@@ -173,7 +170,9 @@ protected:
     const exprt &guard,
     const exprt &cond,
     const sourcet &source) override {}
-  
+
+
+  summary_storet & summary_store;
   // Collection of all the partitions
   partitionst partitions;
 

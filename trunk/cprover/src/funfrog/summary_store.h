@@ -18,7 +18,7 @@ Author: Ondrej Sery
 #include "summary_store_fwd.h"
 
 class smtcheck_opensmt2t;
-class summary_infot;
+class call_tree_nodet;
 
 /*KE: Abstract class, has implementation as either prop_summary_storet or smt_summary_storet */
 class summary_storet
@@ -29,66 +29,62 @@ public:
 
   // Serialization
   virtual void serialize(std::ostream& out) const=0;
-  virtual void deserialize(const std::string& in, smtcheck_opensmt2t *decider = NULL)=0;
-  virtual void refresh_summaries_tterms(const std::string& in, smtcheck_opensmt2t *decider = NULL)=0;
+  virtual void deserialize(std::vector<std::string> fileNames) = 0;
 
-  // Compacts the store representation, only representatives are kept.
-  void compact_store(summary_infot& summary_info, 
-          function_infost& function_infos);
   
   // An already stored summary is implied by the new one - it is released
   // and represented by the stronger one, the id is still valid but represented
   // by the new one.
   void replace_summary(summary_idt old_summary_id, summary_idt replacement_id);
   // Inserts a new summary, the given summary is invalidated
-  virtual summary_idt insert_summary(summaryt& summary) =0;
+  virtual void insert_summary(summaryt *summary, const irep_idt &function_name) = 0;
   // Finds the representative of the given summary
-  summaryt& find_summary(summary_idt new_id);
+  summaryt& find_summary(summary_idt new_id) const;
   unsigned n_of_summaries() { return store.size(); }
   std::size_t get_next_id(const string &fname);
   
   // Reset the summary store
   void clear() { store.clear(); max_id = 0; repr_count = 0; }
 
-  virtual void deserialize(std::istream& in)=0;
-protected: 
+
+  bool has_summaries(irep_idt function_id) const {
+      return function_to_summaries.find(function_id) != function_to_summaries.end();
+  }
+
+  const summary_idst& get_summaries(irep_idt function_id) const{
+      return function_to_summaries.at(function_id);
+  }
+protected:
 
   // Union find node
   struct nodet {
-    // Note that the given summary is destroyed
-    nodet(summary_idt id, summaryt& _summary) : repr_id(id) {
-        summary = _summary.get_nodet();
-        summary->swap(_summary); 
-    }
     
-    nodet(summary_idt _repr_id) : summary(NULL), repr_id(_repr_id)  { }
+    nodet(summary_idt _repr_id) : summary{nullptr}, repr_id{_repr_id}  { }
+
+    nodet(summary_idt _repr_id, summaryt * summary) : summary{summary}, repr_id{_repr_id}  { }
+
+    nodet() : summary(nullptr), repr_id(0) {}
     
-    nodet(const nodet& other) : summary(other.summary), repr_id(other.repr_id) {
-      const_cast<nodet&>(other).summary = NULL;
-    }
+    ~nodet() = default;
+
+    nodet(const nodet& other) = delete;
+
+    nodet& operator=(const nodet& other) = delete;
+
+    nodet(nodet&& other) = default;
+    nodet& operator=(nodet&& other) = default;
     
-    nodet() : summary(NULL), repr_id(0) {}
-    
-    ~nodet() { if (summary != NULL) delete summary; }
-    
-    void operator=(nodet& other) {
-      repr_id = other.repr_id;
-      summary = other.summary;
-      other.summary = NULL;
-    }
-    
-    bool is_repr() const { return summary != NULL; }
+    bool is_repr() const { return summary == nullptr; }
     
     void update_repr(summary_idt _repr_id) {
       if (is_repr()) {
-        delete summary;
-        summary = NULL;
+        summary.reset(nullptr);
       }
       repr_id = _repr_id;
     }
     
     // The summary itself
-    summaryt* summary;
+    std::unique_ptr<summaryt> summary;
     // Keeps id of the representative (if the node is representative, than this
     // means its own id)
     summary_idt repr_id;
@@ -96,9 +92,7 @@ protected:
   
   std::map<std::string, std::size_t> next_ids;
 
-  nodet& find_repr(summary_idt id);
-  void mark_used_summaries(summary_infot& summary_info, std::vector<bool> & used_mask);
-  void remap_used_summaries(summary_infot& summary_info, std::vector<summary_idt> & remap);
+  const nodet& find_repr(summary_idt id) const;
   
   // Maximal used id
   summary_idt max_id;
@@ -106,6 +100,8 @@ protected:
           
   typedef std::vector<nodet> storet;
   storet store;
+
+  std::unordered_map<irep_idt, summary_idst, irep_id_hash> function_to_summaries;
 };
 
 #endif

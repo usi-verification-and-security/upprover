@@ -32,8 +32,7 @@
 goto_programt::const_targett claim_statst::find_assertion(
   const goto_programt::const_targett &start,
   const goto_functionst &goto_functions,
-  call_stackt &stack,
-  unsigned unwind)
+  call_stackt &stack)
 {
   goto_programt::const_targett it = start; it++;
 
@@ -51,8 +50,8 @@ goto_programt::const_targett claim_statst::find_assertion(
 
       if(f_it!=goto_functions.function_map.end() &&
          f_it->second.body.instructions.size()>0 &&
-         !is_unwinding_exceeded(unwind, name) &&
-         !is_recursion_unwinding(unwind, name))
+         !is_unwinding_exceeded(name) &&
+         !is_recursion_unwinding(name))
       {
         stack.push(it);
         it = f_it->second.body.instructions.begin();
@@ -119,7 +118,7 @@ void check_claims(
   unsigned claim_nr)
 {
   // precondition: the leaping program must be numbered correctly.
-  claim_statst res;  
+  claim_statst res {options.get_unsigned_int_option("unwind")};
   unsigned inlined_claims =   999;//count_inlined_claims(leaping_program,
                                   //                 goto_functions); //ToDO: fix it (add unwind)
   unsigned seen_claims = 0;
@@ -166,7 +165,7 @@ void check_claims(
     while(ass_ptr != leaping_program.instructions.end() &&
               (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
     {
-      ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_unsigned_int_option("unwind"));
+      ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     }
       
     if (ass_ptr == leaping_program.instructions.end()){
@@ -192,11 +191,11 @@ void check_claims(
     sum_checker.assertion_holds(assertion_infot(), true);
   } else while(true) {
     // Next assertion (or next occurrence of the same assertion)
-    ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_unsigned_int_option("unwind"));
+    ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     while(ass_ptr != leaping_program.instructions.end() && 
             (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
     {
-      ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack, options.get_unsigned_int_option("unwind"));
+      ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     }
     if (ass_ptr == leaping_program.instructions.end()){
       if (seen_claims == 0)

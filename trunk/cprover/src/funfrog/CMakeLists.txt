@@ -33,8 +33,8 @@ set(HIFROG_SOURCE_FILES
         error_trace.h
         expr_pretty_print.cpp
         expr_pretty_print.h
-        function_info.cpp
-        function_info.h
+#        function_info.cpp
+#        function_info.h
         hifrog.cpp
         hifrog.h
         languages.cpp
@@ -71,11 +71,11 @@ set(HIFROG_SOURCE_FILES
         smt_summary_store.h
         subst_scenario.cpp
         subst_scenario.h
-        summarization_context.h
+#        summarization_context.h
         summarizing_checker.cpp
         summarizing_checker.h
-        summary_info.cpp
-        summary_info.h
+    summary_info.cpp
+    summary_info.h
         summary_store.cpp
         summary_store.h
         #sumo.cpp

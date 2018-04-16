@@ -20,52 +20,50 @@
 #include "unwind.h"
 #include "summarization_context_fwd.h"
 
-class summary_infot;
+class call_tree_nodet;
 
 class subst_scenariot:public unwindt {
 public:
   subst_scenariot(
-      summarization_contextt &_summarization_context,
-      const goto_programt &goto_program):
-        summarization_context (_summarization_context),
-        functions_root (NULL, 0),
+      const goto_functionst &goto_functions, unsigned int max_unwind):
+        unwindt(max_unwind),
+        functions_root (nullptr, 0),
         default_precision (INLINE),
         global_loc (0),
-        proc_count(0)
+        goto_functions {goto_functions}
   {};
 
-  summary_infot& get_summary_info(){ return functions_root; };
+  call_tree_nodet& get_summary_info(){ return functions_root; };
 
   void get_unwinding_depth();
 
-  void refine_recursion_call(summary_infot& call);
+  void refine_recursion_call(call_tree_nodet& call);
 
   void process_goto_locations();
   void setup_default_precision(init_modet init);
-  std::vector<summary_infot*>& get_call_summaries() { return functions; }
+  std::vector<call_tree_nodet*>& get_call_summaries() { return functions; }
   unsigned get_summaries_count() { return get_precision_count(SUMMARY); }
   unsigned get_nondets_count() { return get_precision_count(HAVOC); }
 
-  unsigned get_summaries_count(summary_infot& summary) { return get_precision_count(summary, SUMMARY); }
-  unsigned get_nondets_count(summary_infot& summary) { return get_precision_count(summary, HAVOC); }
+  unsigned get_summaries_count(call_tree_nodet& summary) { return get_precision_count(summary, SUMMARY); }
+  unsigned get_nondets_count(call_tree_nodet& summary) { return get_precision_count(summary, HAVOC); }
 
   void initialize_summary_info
-      (summary_infot& summary_info, const goto_programt& code);
+      (call_tree_nodet& summary_info, const goto_programt& code);
 
   void set_initial_precision
-      (const assertion_infot& assertion)
+      (const assertion_infot& assertion, const summary_storet & summary_store)
   {
       setup_last_assertion_loc(assertion);
-      functions_root.set_initial_precision(default_precision, last_assertion_loc,
-          summarization_context, assertion);
+      assert(functions_root.is_root());
+      functions_root.set_initial_precision(default_precision, summary_store, last_assertion_loc);
   }
 
-  void serialize_xml(const std::string& file);
   void serialize(const std::string& file);
   void deserialize(const std::string& file, const goto_programt& code);
 
   void restore_summary_info(
-      summary_infot& summary_info, const goto_programt& code, std::vector<std::string>& data);
+      call_tree_nodet& summary_info, const goto_programt& code, std::vector<std::string>& data);
 
   unsigned get_assertion_location(goto_programt::const_targett ass)
                         { return (assertions_visited[ass]).begin()->first; }
@@ -86,6 +84,10 @@ public:
     return rec_count_max;
   }
 
+  const goto_functionst & get_goto_functions() const {
+      return goto_functions;
+  }
+
   void setup_last_assertion_loc(const assertion_infot& assertion);
   bool is_assertion_in_loop(const unsigned ass_loc);
   bool is_assertion_after_return(const unsigned return_loc);
@@ -93,30 +95,29 @@ public:
     return is_assertion_in_loop(get_assertion_location(tgt));
   }
 
-  unsigned get_invalid_count();
-
 private:
-  summarization_contextt &summarization_context;
-  summary_infot functions_root;
+  call_tree_nodet functions_root;
   summary_precisiont default_precision;
   location_visitedt assertions_visited;
 
-  std::vector<summary_infot*> functions;
+  std::vector<call_tree_nodet*> functions;
   std::vector<std::pair<unsigned, unsigned> > goto_ranges;
   std::vector<unsigned> goto_ranges_upwards;
   unsigned global_loc;
-  unsigned proc_count;
   unsigned last_assertion_loc;
   bool single_assertion_check;
 
   unsigned rec_count_max;
   unsigned rec_count_total;
 
-  void construct_xml_tree(xmlt& xml, summary_infot& summary);
-  unsigned get_precision_count(summary_precisiont precision);
-  unsigned get_precision_count(summary_infot& summary, summary_precisiont precision);
+  const goto_functionst & goto_functions;
 
-  void clone_children(summary_infot& call, summary_infot& parent);
+  const goto_functionst::goto_functiont& get_goto_function(irep_idt fun) const;
+
+  unsigned get_precision_count(summary_precisiont precision);
+  unsigned get_precision_count(call_tree_nodet& summary, summary_precisiont precision);
+
+  void clone_children(call_tree_nodet& call, call_tree_nodet& parent);
 
 };
 

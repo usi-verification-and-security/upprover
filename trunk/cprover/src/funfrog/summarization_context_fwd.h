@@ -19,6 +19,4 @@ enum class init_modet {
     // anything else?
 };
 
-class summarization_contextt;
-
 #endif //HIFROG_SUMMARIZATION_CONTEXT_FWD_H

@@ -1,8 +1,9 @@
 #ifndef USER_DEFINED_SUMMARYT_H
 #define USER_DEFINED_SUMMARYT_H
 
+#include <goto-programs/goto_program.h>
+#include <goto-programs/goto_functions.h>
 #include "prepare_smt_formula.h"
-#include "summarization_context.h"
 
 class check_opensmt2t;
 
@@ -22,7 +23,7 @@ public:
             const std::string& summary_file);
     
 private:    
-    check_opensmt2t* decider;
+    //check_opensmt2t* decider;
 };
 
 #endif /* USER_DEFINED_SUMMARYT_H */

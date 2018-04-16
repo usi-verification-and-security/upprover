@@ -5,7 +5,6 @@
 #include <util/options.h>
 #include <util/ui_message.h>
 #include "subst_scenario.h"
-#include "summarization_context.h"
 
 class smtcheck_opensmt2t_cuf;
 class symex_assertion_sumt;
@@ -25,12 +24,8 @@ public:
       ns(_ns),
       symbol_table(_symbol_table),
       options(_options),
-      summarization_context(
-                _goto_functions,
-                options.get_unsigned_int_option("unwind")),
-
       message_handler (_message_handler),
-      omega(summarization_context, goto_program)
+      omega(_goto_functions, options.get_unsigned_int_option("unwind"))
   {
     set_message_handler(_message_handler);
   };
@@ -46,7 +41,6 @@ private:
   const namespacet &ns;
   symbol_tablet &symbol_table;
   const optionst &options;
-  summarization_contextt summarization_context;
   ui_message_handlert &message_handler;
   smtcheck_opensmt2t_cuf* decider; // CUF solver
   subst_scenariot omega;

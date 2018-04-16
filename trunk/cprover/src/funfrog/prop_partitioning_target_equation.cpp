@@ -16,7 +16,7 @@ Author: Ondrej Sery
 #include "utils/naming_helpers.h"
 #include "partition_iface.h"
 #include "solvers/prop_itp.h"
-#include "summarization_context.h"
+#include "summary_store.h"
 
 //#define DEBUG_ITP // ITP of SAT - testing
 
@@ -221,7 +221,6 @@ void prop_partitioning_target_equationt::convert_partition_summary(
     prop_conv_solvert &prop_conv, partitiont& partition)
 {
   std::vector<symbol_exprt> common_symbs;
-  summary_storet* summary_store = summarization_context.get_summary_store();
   fill_common_symbols(partition, common_symbs);
   unsigned i = 0;
 
@@ -237,7 +236,7 @@ void prop_partitioning_target_equationt::convert_partition_summary(
           it != partition.applicable_summaries.end();
           ++it) {
 
-    prop_summaryt& summary = dynamic_cast <prop_summaryt&> (summary_store->find_summary(*it));
+    prop_summaryt& summary = dynamic_cast <prop_summaryt&> (this->summary_store.find_summary(*it));
 
     if (summary.is_valid() && (!is_recursive || last_summary == i++)){
 #   ifdef DEBUG_SSA
@@ -246,8 +245,6 @@ void prop_partitioning_target_equationt::convert_partition_summary(
       summary.substitute(prop_conv, common_symbs, partition.inverted_summary);
     }
   }
-  
-  summary_store = NULL;
 }
 
 /*******************************************************************\
@@ -716,13 +713,11 @@ Function: prop_partitioning_target_equationt::extract_interpolants
 
 \*******************************************************************/
 void prop_partitioning_target_equationt::extract_interpolants(
-  interpolating_solvert& interpolator, const prop_conv_solvert& decider,
-  interpolant_mapt& interpolant_map)
+  interpolating_solvert& interpolator, const prop_conv_solvert& decider)
 {
 #ifdef PRODUCE_PROOF     
   // Prepare the interpolation task. NOTE: ignore the root partition!
   unsigned valid_tasks = 0;
-  summary_storet* summary_store = summarization_context.get_summary_store();
 
   // Clear the used summaries
   for (unsigned i = 0; i < partitions.size(); ++i)
@@ -734,7 +729,7 @@ void prop_partitioning_target_equationt::extract_interpolants(
 
     // Mark the used summaries
     if (partition.summary && !(partition.ignore || partition.invalid)) {
-      for (summary_ids_sett::const_iterator it = 
+      for (auto it =
               partition.applicable_summaries.begin();
               it != partition.applicable_summaries.end(); ++it) {
         partition.get_iface().summary_info.add_used_summary(*it);
@@ -767,7 +762,6 @@ void prop_partitioning_target_equationt::extract_interpolants(
 
   // Interpret the result
   std::vector<symbol_exprt> common_symbs;
-  interpolant_map.reserve(valid_tasks);
   for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
     partitiont& partition = partitions[pid];
 
@@ -811,13 +805,10 @@ void prop_partitioning_target_equationt::extract_interpolants(
     }
 
     // Store the interpolant
-    summary_idt summary_id = summary_store->insert_summary(*itp);
+    summary_store.insert_summary(itp, partition.get_iface().function_id);
 
-    interpolant_map.push_back(interpolant_mapt::value_type(
-      &partition.get_iface(), summary_id));
   }
   
-  summary_store = NULL;
 #else
   assert(0);
 #endif

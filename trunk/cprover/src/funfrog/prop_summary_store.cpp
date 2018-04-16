@@ -45,15 +45,15 @@ void prop_summary_storet::deserialize(std::istream& in)
     summary_idt repr_id;
     bool is_repr;
     bool is_valid;
-    prop_summaryt summary;
+    prop_summaryt * summary = new prop_summaryt{};
     
     in >> repr_id >> is_repr;
     
     if (is_repr) {
       in >> is_valid;
-      summary.deserialize(in);
-      summary.set_valid(is_valid);
-      store.push_back(nodet(repr_id, summary));
+      summary->deserialize(in);
+      summary->set_valid(is_valid);
+      store.emplace_back(repr_id, summary);
       repr_count++;
     } else {
       store.push_back(nodet(repr_id));
@@ -62,10 +62,32 @@ void prop_summary_storet::deserialize(std::istream& in)
 }
 
 // Public deser method for propositional logic
-void prop_summary_storet::deserialize(const std::string& in, smtcheck_opensmt2t *decider)
+void prop_summary_storet::deserialize(const std::string& fileName)
 {
-   std::istringstream in_stream(in); 
-   deserialize(in_stream);
+    std::ifstream in;
+    in.open(fileName.c_str());
+
+    if (in.fail()) {
+        std::cerr << "Failed to deserialize function summaries (file: " << fileName <<
+                  " cannot be read)\n";
+        return;
+    }
+
+    this->deserialize(in);
+
+    if (in.fail()) {
+        std::cerr << "Error occured during deserializing function summaries\n";
+    }
+    in.close();
+}
+
+void prop_summary_storet::deserialize(std::vector<std::string> fileNames) {
+    if(fileNames.size() > 1) {
+        throw std::logic_error {"Propositional summary store can deserialize only single file"};
+    }
+    if(!fileNames.empty()) {
+        deserialize(fileNames[0]);
+    }
 }
 
 /*******************************************************************\
@@ -80,11 +102,10 @@ Function: summary_storet::insert_summary
 
 \*******************************************************************/
 
-summary_idt prop_summary_storet::insert_summary(summaryt& summary)
+void prop_summary_storet::insert_summary(summaryt *summary, const irep_idt &function_name)
 {
   summary_idt id = max_id++;
-  summary.set_valid(1);
-  store.push_back(nodet(id, summary));
+  store.emplace_back(id, summary);
   repr_count++;
-  return id;
+  function_to_summaries[function_name].push_back(id);
 }

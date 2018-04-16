@@ -17,7 +17,6 @@
 #include "smt_dependency_checker.h"
 #include "prop_dependency_checker.h"
 #include "nopartition/symex_no_partition.h"
-#include "prop_summary_store.h"
 #include "partition_iface.h"
 #include "nopartition/smt_assertion_no_partition.h"
 #include "prop_partitioning_target_equation.h"
@@ -26,7 +25,11 @@
 #include "prepare_smt_formula.h"
 #include "symex_assertion_sum.h"
 #include <solvers/flattening/bv_pointers.h>
+#include "smt_summary_store.h"
+#include "prop_summary_store.h"
 
+
+summarizing_checkert::~summarizing_checkert() = default;
 
 void summarizing_checkert::initialize_solver()
 {
@@ -98,24 +101,18 @@ void summarizing_checkert::initialize()
     // Prop and SMT have different mechanism to load/store summaries
     // TODO: unify this mechanism
     if (options.get_option("logic") == "prop")
-        summarization_context.set_summary_store(new prop_summary_storet());
-    else
-        summarization_context.set_summary_store(new smt_summary_storet());
-  
-    // Prepare the summarization context
-    summarization_context.analyze_functions(ns);
+        summary_store = std::unique_ptr<summary_storet>(new prop_summary_storet());
+    else{
+        auto smt_decider = dynamic_cast<smtcheck_opensmt2t*>(decider);
+        summary_store = std::unique_ptr<summary_storet>(new smt_summary_storet(smt_decider));
+    }
 
     // Load older summaries
     {
         //TODO: MB: How about checking if this file actually exists?
         const std::string& summary_file = options.get_option("load-summaries");
         if (!summary_file.empty()) {
-            // Prop and SMT have different mechanism to load/store summaries
-            // TODO: unify this mechanism
-            if (options.get_option("logic") == "prop")
-                summarization_context.deserialize_infos_prop(summary_file); // Prop load summary  
-            else
-                summarization_context.deserialize_infos_smt(summary_file, dynamic_cast <smtcheck_opensmt2t*> (decider)); // smt load summary
+            summary_store->deserialize({summary_file});
         }
     }
 
@@ -185,7 +182,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
   if (options.get_option("logic") == "prop")
     return assertion_holds_prop(assertion, store_summaries_with_assertion);
   else if (options.get_bool_option("no-partitions")) // BMC alike version
-    return assertion_holds_smt_no_partition(assertion, store_summaries_with_assertion); 
+    return assertion_holds_smt_no_partition(assertion);
   else 
     return assertion_holds_smt(assertion, store_summaries_with_assertion);
 }
@@ -214,14 +211,14 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
   const bool partial_loops = options.get_bool_option("partial-loops");
 
-  omega.set_initial_precision(assertion);
+  omega.set_initial_precision(assertion, *summary_store);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
 
   std::vector<unsigned> ints;
   get_ints(ints, options.get_option("part-itp"));
 
-  prop_partitioning_target_equationt equation(ns, summarization_context, store_summaries_with_assertion);
+  prop_partitioning_target_equationt equation(ns, *summary_store, store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {
@@ -230,9 +227,9 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
   }
 #endif
   
-  summary_infot& summary_info = omega.get_summary_info();
+  call_tree_nodet& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex {
-            summarization_context, summary_info, ns, symbol_table,
+            *summary_store, get_goto_functions(), summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, 
             false, unwind_bound, partial_loops };
@@ -240,12 +237,11 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 //  setup_unwind(symex);
 
   prop_refiner_assertion_sumt refiner = prop_refiner_assertion_sumt(
-              summarization_context, omega,
+              *summary_store, omega,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
 
-  prop_assertion_sumt prop = prop_assertion_sumt(summarization_context,
-          equation, message_handler, max_memory_used);
+  prop_assertion_sumt prop = prop_assertion_sumt(equation, message_handler);
   unsigned count = 0;
   bool end = false;
   std::cout <<"";
@@ -290,7 +286,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
         } else {
 #ifdef PRODUCE_PROOF            
           status() << ("Start generating interpolants...") << eom;
-          extract_interpolants_prop(prop, equation, decider_prop, interpolator);
+          extract_interpolants_prop(prop, equation, *decider_prop.get(), *interpolator.get());
 #else
           assert(0);
 #endif
@@ -421,11 +417,11 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
     const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
 
     // prepare omega
-    omega.set_initial_precision(assertion);
+    omega.set_initial_precision(assertion, *summary_store);
     const unsigned last_assertion_loc = omega.get_last_assertion_loc();
     const bool single_assertion_check = omega.is_single_assertion_check();
 
-    smt_partitioning_target_equationt equation(ns, summarization_context,
+    smt_partitioning_target_equationt equation(ns, *summary_store,
                                                 store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -435,15 +431,15 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
     }
 #endif
   
-    summary_infot& summary_info = omega.get_summary_info();
+    call_tree_nodet& summary_info = omega.get_summary_info();
     symex_assertion_sumt symex = symex_assertion_sumt(
-            summarization_context, summary_info, ns, symbol_table,
+            *summary_store, get_goto_functions(), summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound,
             options.get_bool_option("partial-loops"));
 
     smt_refiner_assertion_sumt refiner = smt_refiner_assertion_sumt(
-              summarization_context, omega,
+              *summary_store, omega,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
 
@@ -601,8 +597,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 \*******************************************************************/
 
 bool summarizing_checkert::assertion_holds_smt_no_partition(
-        const assertion_infot& assertion,
-        bool store_summaries_with_assertion)
+        const assertion_infot& assertion)
 {
   absolute_timet initial, final;
   initial=current_time();
@@ -610,7 +605,7 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
   const bool no_slicing_option = options.get_bool_option("no-slicing");
 //  const bool no_ce_option = options.get_bool_option("no-error-trace");
 
-  omega.set_initial_precision(assertion);
+  omega.set_initial_precision(assertion, *summary_store);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
 //  const bool single_assertion_check = omega.is_single_assertion_check();
 
@@ -635,7 +630,7 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
   
   // KE: I think this says the same
   smt_refiner_assertion_sumt refiner = smt_refiner_assertion_sumt(
-              summarization_context, omega,
+              *summary_store, omega,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc, true);
 
@@ -652,7 +647,7 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
   {
     count++;
     end = (count == 1) 
-            ? symex.prepare_SSA(assertion, summarization_context.get_functions()) 
+            ? symex.prepare_SSA(assertion, omega.get_goto_functions())
             : symex.refine_SSA (assertion, false); // Missing sets of refined functions, TODO
 
     //LA: good place?
@@ -812,33 +807,15 @@ Function: summarizing_checkert::extract_interpolants_smt
 \*******************************************************************/
 void summarizing_checkert::extract_interpolants_smt (prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation)
 {
-  summary_storet* summary_store = summarization_context.get_summary_store();
-  interpolant_mapt itp_map;
   absolute_timet before, after;
   before=current_time();
   
   smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-  equation.extract_interpolants(*decider_smt, itp_map);
+  equation.extract_interpolants(*decider_smt);
   decider_smt = nullptr;
 
   after=current_time();
   status() << "INTERPOLATION TIME: " << (after-before) << eom;
-
-  for (interpolant_mapt::iterator it = itp_map.begin();
-                  it != itp_map.end(); ++it) {
-    summary_infot& summary_info = it->first->summary_info;
-
-    function_infot& function_info =
-            summarization_context.get_function_info(
-            summary_info.get_function_id());
-
-    // MB TODO: check if this summary is not already in the store! (or do even more aggresive optimizations of the store
-    function_info.add_summary(*summary_store, it->second, false);
-           // !options.get_bool_option("no-summary-optimization"));
-    
-    summary_info.add_used_summary(it->second);
-    summary_info.set_summary();           // helpful flag for omega's (de)serialization
-  }
   
   // Store the summaries
   const std::string& summary_file = options.get_option("save-summaries");
@@ -846,7 +823,7 @@ void summarizing_checkert::extract_interpolants_smt (prepare_smt_formulat& prop,
     std::ofstream out;
     out.open(summary_file.c_str());
     decider->getLogic()->dumpHeaderToFile(out);
-    summarization_context.serialize_infos_smt(out, omega.get_summary_info());
+    summary_store->serialize(out);
   }
 }
 
@@ -862,38 +839,22 @@ Function: summarizing_checkert::extract_interpolants_prop
 
 \*******************************************************************/
 void summarizing_checkert::extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
-            std::unique_ptr<prop_conv_solvert>& decider_prop, std::unique_ptr<interpolating_solvert>& interpolator)
+            prop_conv_solvert& decider_prop, interpolating_solvert& interpolator)
 {
-  summary_storet* summary_store = summarization_context.get_summary_store();
-  interpolant_mapt itp_map;
   absolute_timet before, after;
   before=current_time();
 
-  equation.extract_interpolants(*(interpolator.get()), *(dynamic_cast<prop_conv_solvert *> (decider_prop.get())), itp_map); // KE: strange conversion after shift to cbmc 5.5 - I think the bv_pointerst is changed
+  equation.extract_interpolants(interpolator, decider_prop);
 
   after=current_time();
   status() << "INTERPOLATION TIME: " << (after-before) << eom;
-
-  for (interpolant_mapt::iterator it = itp_map.begin();
-                  it != itp_map.end(); ++it) {
-    summary_infot& summary_info = it->first->summary_info;
-
-    function_infot& function_info =
-            summarization_context.get_function_info(
-            summary_info.get_function_id());
-
-    function_info.add_summary(*summary_store, it->second, false);
-            //!options.get_bool_option("no-summary-optimization")*/);
-    
-    summary_info.add_used_summary(it->second);
-    summary_info.set_summary();           // helpful flag for omega's (de)serialization
-  }
   
   // Store the summaries
   const std::string& summary_file = options.get_option("save-summaries");
   if (!summary_file.empty()) {
-    summarization_context.serialize_infos_prop(summary_file, 
-        omega.get_summary_info());
+    std::ofstream out;
+    out.open(summary_file.c_str());
+    summary_store->serialize(out);
   }
 }
 #endif

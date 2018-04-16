@@ -33,8 +33,8 @@ bool prop_assertion_sumt::assertion_holds(const assertion_infot &assertion, cons
 
   bool sat=false;
 
-  message_handler.set_verbosity(10);
-  decider.set_message_handler(message_handler);
+  message_handler->set_verbosity(10);
+  decider.set_message_handler(*message_handler);
   //decider.set_verbosity(10);
 
   absolute_timet before, after;
@@ -267,24 +267,27 @@ void prop_assertion_sumt::error_trace(const prop_conv_solvert &prop_conv, const 
     }
   }
   #endif
+  ui_message_handlert * ui_message_handler = dynamic_cast<ui_message_handlert*>(message_handler);
+  assert(ui_message_handler);
+  if(ui_message_handler){
+      switch(ui_message_handler->get_ui())
+      {
+          case ui_message_handlert::uit::PLAIN:
+              result() << "\nCounterexample:" << eom;
+              show_goto_trace(result (), ns, goto_trace);
+              result () << eom;
+              break;
 
-  switch(message_handler.get_ui())
-  {
-    case ui_message_handlert::uit::PLAIN:
-    result() << "\nCounterexample:" << eom;
-    show_goto_trace(result (), ns, goto_trace);
-    result () << eom;
-    break;
+          case ui_message_handlert::uit::XML_UI:
+          {
+              xmlt xml;
+              convert(ns, goto_trace, xml);
+              result() << xml << eom;
+          }
+              break;
 
-    case ui_message_handlert::uit::XML_UI:
-    {
-      xmlt xml;
-      convert(ns, goto_trace, xml);
-      result() << xml << eom;
-    }
-    break;
-
-  default:
-    assert(false);
+          default:
+              assert(false);
+      }
   }
 }

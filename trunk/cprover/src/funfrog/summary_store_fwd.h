@@ -11,7 +11,6 @@
 class itpt;
 class prop_itpt;
 class smt_itpt;
-class function_infot;
 
 typedef std::size_t summary_idt;
 typedef std::vector<summary_idt> summary_idst;
@@ -19,7 +18,6 @@ typedef std::unordered_set<summary_idt> summary_ids_sett;
 typedef itpt summaryt;
 typedef prop_itpt prop_summaryt;
 typedef smt_itpt smt_summaryt;
-typedef std::unordered_map<irep_idt, function_infot, irep_id_hash> function_infost;
 
 class summary_storet;
 

@@ -13,10 +13,10 @@
 #include <memory>
 #include <util/options.h>
 #include <util/ui_message.h>
-#include "summarization_context.h"
 #include "summarization_context_fwd.h"
 #include "subst_scenario.h"
-#include "utils/coloring_mode.h"
+//#include "utils/coloring_mode.h"
+#include "summary_store.h"
 
 class smt_assertion_no_partitiont;
 class prop_partitioning_target_equationt;
@@ -26,6 +26,7 @@ class prepare_smt_formulat;
 class check_opensmt2t;
 class symex_bmct;
 class interpolating_solvert;
+class prop_conv_solvert;
 
 class summarizing_checkert:public messaget
 {
@@ -44,17 +45,15 @@ public:
       ns(_ns),
       symbol_table(_symbol_table),
       options(_options),
-      summarization_context(
-                _goto_functions,
-                options.get_unsigned_int_option("unwind")),
-
       message_handler (_message_handler),
       max_memory_used(_max_memory_used),
-      omega(summarization_context, goto_program)
+      omega(_goto_functions, options.get_unsigned_int_option("unwind")),
+      summary_store{nullptr}
   {
     set_message_handler(_message_handler);
   };
 
+  ~summarizing_checkert() override;
   void initialize();
   void initialize_solver();
   void delete_and_initialize_solver(); // For replacing pop in the solver, remove once pop works
@@ -62,32 +61,29 @@ public:
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
   bool assertion_holds_prop(const assertion_infot& assertion, bool store_summaries_with_assertion);
   bool assertion_holds_smt(const assertion_infot& assertion, bool store_summaries_with_assertion);
-  bool assertion_holds_smt_no_partition(const assertion_infot& assertion, 
-          bool store_summaries_with_assertion); // BMC alike version
+  bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
   void serialize(){
     omega.serialize(options.get_option("save-omega"));
   };
 
-    // MB: not used at the moment, as of 13.2.2018
-    //void list_templates(prepare_smt_formulat &prop, smt_partitioning_target_equationt &equation);
 protected:
 
   const goto_programt &goto_program;
   const namespacet &ns;
   symbol_tablet &symbol_table;
   const optionst &options;
-  summarization_contextt summarization_context;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
   check_opensmt2t* decider; // Can be Prop, LRA or UF solver!!
   subst_scenariot omega;
   init_modet init;
+  std::unique_ptr<summary_storet> summary_store;
   
   void setup_unwind(symex_bmct& symex);
 #ifdef PRODUCE_PROOF  
   void extract_interpolants_smt (prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation);
   void extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
-            std::unique_ptr<prop_conv_solvert>& decider_prop, std::unique_ptr<interpolating_solvert>& interpolator);
+            prop_conv_solvert& decider_prop, interpolating_solvert& interpolator);
 #endif
   void report_success();
   void report_failure();
@@ -95,10 +91,15 @@ protected:
 		  std::map<irep_idt, std::string> &guard_expln);
   void assertion_violated (smt_assertion_no_partitiont& prop,
                   std::map<irep_idt, std::string> &guard_expln);
+
+    const goto_functionst & get_goto_functions() const {
+        return omega.get_goto_functions();
+    }
+
 };
 
 init_modet get_init_mode(const std::string& str);
 refinement_modet get_refine_mode(const std::string& str);
-coloring_modet get_coloring_mode(const std::string& str);
+
 
 #endif

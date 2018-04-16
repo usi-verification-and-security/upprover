@@ -11,10 +11,9 @@
 
 partitioning_target_equationt::partitioning_target_equationt(
   const namespacet & _ns,
-  summarization_contextt & _summarization_context,
+  summary_storet & summary_store,
   bool _store_summaries_with_assertion) :
   symex_target_equationt(_ns),
-  summarization_context(_summarization_context),
   current_partition_id(partitiont::NO_PARTITION),
 #         ifdef DISABLE_OPTIMIZATIONS
     dump_SSA_tree(false),
@@ -30,6 +29,7 @@ partitioning_target_equationt::partitioning_target_equationt(
     first_call_expr(0),
 #endif
   io_count_global(0),
+  summary_store{summary_store},
   store_summaries_with_assertion(_store_summaries_with_assertion)
   {
 #ifdef DISABLE_OPTIMIZATIONS

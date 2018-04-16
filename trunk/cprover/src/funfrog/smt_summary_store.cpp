@@ -14,7 +14,7 @@ Author: Ondrej Sery
 
 // Serialization SMT
 void smt_summary_storet::serialize(std::ostream &out) const {
-    for (storet::const_iterator it = store.begin();
+    for (auto it = store.begin();
          it != store.end();
          ++it) {
         if (it->is_repr()) {
@@ -23,46 +23,20 @@ void smt_summary_storet::serialize(std::ostream &out) const {
     }
 }
 
-// In case we re-create the solver, we need to refresh the tterms in OpenSMT
-void smt_summary_storet::refresh_summaries_tterms(const std::string &in, smtcheck_opensmt2t *decider) {
-    // KE: add support for many summary files for lattice refinement
-    std::set<std::string> summary_files;
-    get_files(summary_files, in);
-    for (auto it = summary_files.begin(); it != summary_files.end(); ++it) {
-        if (decider->getMainSolver()->readFormulaFromFile(it->c_str())) {
-            vec<Tterm> &functions = decider->getLogic()->getFunctions();
-            storet::iterator itr = store.begin();
-            for (int i = 0; i < functions.size(); ++i) {
-                Tterm &tterm = functions[i];
-
-                // Get the old summary and update it
-                itr->summary->setTterm(tterm);
-                itr->summary->setLogic(decider->getLogic());
-                itr->summary->setInterpolant(tterm.getBody());
-
-                // set for the next iteration
-                itr++;
-            }
-        }
-    }
-}
-
 // SMT logics deser
-void smt_summary_storet::deserialize(const std::string &in, smtcheck_opensmt2t *decider) {
-    repr_count = 0;
+void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
 
-    if (!decider)
+    if (!decider){
+        std::cerr << "Could not deresialize summary store, the solver handle was not set!\n";
         return;
-
+    }
+    repr_count = 0;
     store.clear();
 
-    // KE: add support for many summary files for lattice refinement
-    std::set<std::string> summary_files;
-    get_files(summary_files, in);
-    for (auto it = summary_files.begin(); it != summary_files.end(); ++it) {
-        if (decider->getMainSolver()->readFormulaFromFile(it->c_str())) {
+    for (const auto & fileName : fileNames) {
+        if (decider->getMainSolver()->readFormulaFromFile(fileName.c_str())) {
             vec<Tterm> &functions = decider->getLogic()->getFunctions();
-            for (std::size_t i = 0; i < (std::size_t)functions.size(); ++i) {
+            for (int i = 0; i < functions.size(); ++i) {
                 summaryt *itp = new smt_summaryt();
                 Tterm &tterm = functions[i];
                 std::string fname = tterm.getName();
@@ -74,15 +48,15 @@ void smt_summary_storet::deserialize(const std::string &in, smtcheck_opensmt2t *
                 itp->setLogic(decider->getLogic());
                 itp->setInterpolant(tterm.getBody());
                 itp->set_valid(true);
-                store.push_back(nodet(i, *itp));
+                // FIXME: when reading multiple files, this would assign the same ID to multiple summaries
+                store.emplace_back(i, itp);
                 repr_count++;
             }
 
             max_id += repr_count; // KE: We add new summaries so we need to inc the max
         }
     }
-
-    return;
+    //FIXME: update also map from function names to summary_ids
 }
 
 /*******************************************************************\
@@ -97,39 +71,22 @@ Function: summary_storet::insert_summary
 
 \*******************************************************************/
 
-summary_idt smt_summary_storet::insert_summary(summaryt &summary) {
+void smt_summary_storet::insert_summary(summaryt *summary, const irep_idt &function_name) {
     summary_idt id = max_id++;
-    summary.set_valid(true);
 
     // Here gets the function names
-    Tterm *tterm = summary.getTterm();
+    Tterm *tterm = summary->getTterm();
     assert(tterm);
     string fname = tterm->getName();
     // at this point, there should be just the name of the original function
     assert(!is_quoted(fname));
     assert(!fun_name_contains_counter(fname));
-    int next_idx = get_next_id(fname);
+    std::size_t next_idx = get_next_id(fname);
     // as name of the summary, store the quoted version with counter from the store
     std::string fixed_name = quote(add_counter_to_fun_name(fname, next_idx));
     tterm->setName(fixed_name);
 
-    store.push_back(nodet(id, summary));
+    store.emplace_back(id, summary);
+    function_to_summaries[function_name].push_back(id);
     repr_count++;
-    return id;
-}
-
-/*
- Returns a list of summary files
- */
-void get_files(std::set<std::string> &files, std::string set) {
-
-    int length = set.length();
-
-    for (int idx = 0; idx < length; idx++) {
-        std::string::size_type next = set.find(",", idx);
-        files.insert(set.substr(idx, next - idx));
-
-        if (next == std::string::npos) break;
-        idx = next;
-    }
 }

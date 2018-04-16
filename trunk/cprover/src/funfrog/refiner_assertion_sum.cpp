@@ -10,23 +10,34 @@
 
 #include "refiner_assertion_sum.h"
 
-#include "summarization_context.h"
 #include "subst_scenario.h"
+#include "summary_store.h"
 
 
 //#define DEBUG_REFINER
 
-void refiner_assertion_sumt::set_inline_sum(summary_infot& summary)
+namespace{
+    void set_valid_summaries(const summary_storet& store, const irep_idt& function_id, bool value){
+        const summary_idst& itps = store.get_summaries(function_id);
+        for (auto it = itps.begin();
+             it != itps.end(); ++it) {
+            summaryt& sum = store.find_summary(*it);
+            sum.set_valid(value);
+        }
+    }
+}
+
+void refiner_assertion_sumt::set_inline_sum(call_tree_nodet& summary)
 {
   if (summary.get_call_location() <= last_assertion_loc){
     status() << (std::string("*** REFINING function: ") + summary.get_function_id().c_str()) << eom;
     summary.set_inline();
     refined_functions.push_back(&summary);
   }
-  summarization_context.set_valid_summaries(summary.get_function_id(), valid);
+  set_valid_summaries(summary_store, summary.get_function_id(), valid);
 }
 
-void refiner_assertion_sumt::reset_inline(summary_infot& summary)
+void refiner_assertion_sumt::reset_inline(call_tree_nodet& summary)
 {
   for (call_sitest::iterator it = summary.get_call_sites().begin();
           it != summary.get_call_sites().end(); ++it)
@@ -43,7 +54,7 @@ void refiner_assertion_sumt::reset_inline(summary_infot& summary)
   }
 }
 
-void refiner_assertion_sumt::reset_random(summary_infot& summary)
+void refiner_assertion_sumt::reset_random(call_tree_nodet& summary)
 {
   unsigned summs_size = omega.get_summaries_count();
     for (call_sitest::iterator it = summary.get_call_sites().begin();
@@ -65,12 +76,12 @@ void refiner_assertion_sumt::reset_random(summary_infot& summary)
 }
 
 // something old
-void refiner_assertion_sumt::reset_depend_rec(std::vector<summary_infot*>& dep, summary_infot& summary)
+void refiner_assertion_sumt::reset_depend_rec(std::vector<call_tree_nodet*>& dep, call_tree_nodet& summary)
 {
   for (call_sitest::iterator it = summary.get_call_sites().begin();
           it != summary.get_call_sites().end(); ++it)
   {
-    summary_infot& call = it->second;
+    call_tree_nodet& call = it->second;
     if (call.get_precision() != INLINE){
       for (unsigned j = 0; j < dep.size(); j++){
         if (dep[j] == &call){

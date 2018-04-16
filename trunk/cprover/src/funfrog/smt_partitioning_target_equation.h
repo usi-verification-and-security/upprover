@@ -20,11 +20,9 @@ class interpolating_solvert;
 class smt_partitioning_target_equationt:public partitioning_target_equationt
 {
 public:
-  smt_partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
-          _summarization_context,
+  smt_partitioning_target_equationt(const namespacet &_ns, summary_storet & store,
           bool _store_summaries_with_assertion)
-            : partitioning_target_equationt(_ns, 
-                       _summarization_context,
+            : partitioning_target_equationt(_ns, store,
                        _store_summaries_with_assertion) {}
             
   // Convert all the SSA steps into the corresponding formulas in
@@ -34,7 +32,7 @@ public:
   void fill_function_templates(smtcheck_opensmt2t &decider, std::vector<summaryt*> &templates);
   
   // Extract interpolants corresponding to the created partitions
-  void extract_interpolants(smtcheck_opensmt2t& decider, interpolant_mapt& interpolant_map);
+  void extract_interpolants(smtcheck_opensmt2t& decider);
 
   std::vector<exprt>& get_exprs_to_refine () { return exprs; };
 

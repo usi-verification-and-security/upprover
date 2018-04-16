@@ -26,7 +26,7 @@
 class partition_ifacet {
 public:
 
-  partition_ifacet(summary_infot& _summary_info, partition_idt _parent_id, 
+  partition_ifacet(call_tree_nodet& _summary_info, partition_idt _parent_id, 
           unsigned _call_loc) :
           function_id(_summary_info.get_function_id()),
           summary_info(_summary_info),
@@ -43,7 +43,7 @@ public:
   // Represented function
   irep_idt function_id;
   // Represented function node in substitution scenario
-  summary_infot& summary_info;
+  call_tree_nodet& summary_info;
   
   // Filled during function call processing
   // TODO: Deprecate it! Split into iface vars and in_arg_symbols

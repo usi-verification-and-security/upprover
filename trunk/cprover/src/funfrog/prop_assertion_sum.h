@@ -11,18 +11,14 @@ class interpolating_solvert;
 class namespacet;
 class decision_proceduret;
 
-class prop_assertion_sumt : public assertion_sumt 
+class prop_assertion_sumt : public messaget
 {
 public:
     prop_assertion_sumt(
-            summarization_contextt& _summarization_context,
             prop_partitioning_target_equationt &_target,
-            ui_message_handlert &_message_handler,
-            unsigned long &_max_memory_used
-            ) 
-        : assertion_sumt(_summarization_context,
-                        _message_handler, 
-                        _max_memory_used), 
+            ui_message_handlert &_message_handler
+            )
+        : messaget(_message_handler),
           equation(_target) {};
       
     virtual ~prop_assertion_sumt() {}
