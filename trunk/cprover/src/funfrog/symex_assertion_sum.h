@@ -303,11 +303,14 @@ private:
   }
 
   using globalst = std::vector<irep_idt>;
+  // because of recursive functions, we create empty collections if they function is not there yet
   globalst get_modified_globals(irep_idt function_name){
-      return modified_globals.at(function_name);
+//      return modified_globals.at(function_name);
+      return modified_globals[function_name];
   }
   globalst get_accessed_globals(irep_idt function_name) {
-      return accessed_globals.at(function_name);
+//      return accessed_globals.at(function_name);
+      return accessed_globals[function_name];
   }
    
 protected:

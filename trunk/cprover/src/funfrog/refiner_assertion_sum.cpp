@@ -18,12 +18,15 @@
 
 namespace{
     void set_valid_summaries(const summary_storet& store, const irep_idt& function_id, bool value){
-        const summary_idst& itps = store.get_summaries(function_id);
-        for (auto it = itps.begin();
-             it != itps.end(); ++it) {
-            summaryt& sum = store.find_summary(*it);
-            sum.set_valid(value);
+        if(store.has_summaries(function_id)){
+            const summary_idst& itps = store.get_summaries(function_id);
+            for (auto it = itps.begin();
+                 it != itps.end(); ++it) {
+                summaryt& sum = store.find_summary(*it);
+                sum.set_valid(value);
+            }
         }
+
     }
 }
 
