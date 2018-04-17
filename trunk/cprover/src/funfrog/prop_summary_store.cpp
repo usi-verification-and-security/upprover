@@ -105,6 +105,7 @@ Function: summary_storet::insert_summary
 void prop_summary_storet::insert_summary(summaryt *summary, const irep_idt &function_name)
 {
   summary_idt id = max_id++;
+  summary->set_valid(true);
   store.emplace_back(id, summary);
   repr_count++;
   function_to_summaries[function_name].push_back(id);

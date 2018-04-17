@@ -85,7 +85,7 @@ void smt_summary_storet::insert_summary(summaryt *summary, const irep_idt &funct
     // as name of the summary, store the quoted version with counter from the store
     std::string fixed_name = quote(add_counter_to_fun_name(fname, next_idx));
     tterm->setName(fixed_name);
-
+    summary->set_valid(true);
     store.emplace_back(id, summary);
     function_to_summaries[function_name].push_back(id);
     repr_count++;
