@@ -1,12 +1,10 @@
 #ifndef ITP_H
 #define ITP_H
 
-#include <ostream>
 #include <util/std_expr.h>
 #include <solvers/prop/literal.h>
 #include <solvers/flattening/boolbv.h>
 #include <opensmt/opensmt2.h>
-#include <opensmt/Tterm.h>
 
 class prop_itpt;
 class smt_itpt;
