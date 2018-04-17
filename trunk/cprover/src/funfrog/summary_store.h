@@ -74,7 +74,7 @@ protected:
     nodet(nodet&& other) = default;
     nodet& operator=(nodet&& other) = default;
     
-    bool is_repr() const { return summary == nullptr; }
+    bool is_repr() const { return summary != nullptr; }
     
     void update_repr(summary_idt _repr_id) {
       if (is_repr()) {
