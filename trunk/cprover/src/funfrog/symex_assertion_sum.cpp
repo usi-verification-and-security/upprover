@@ -1833,6 +1833,7 @@ void symex_assertion_sumt::analyze_globals_rec(irep_idt function_to_analyze,
 
             const expr_listt tmp_w = objects_written(inst);
             for (const auto & expr : tmp_w) {
+                add_to_set_if_global(ns, expr, globals_read);
                 add_to_set_if_global(ns, expr, globals_written);
             }
         }
