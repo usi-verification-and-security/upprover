@@ -212,13 +212,11 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   solver.deleteProofGraph();
 
-  for(unsigned i = 0; i < itp_ptrefs.size(); ++i)
+  for(auto itp_ptref : itp_ptrefs)
   {
       itpt* itp = new prop_itpt();
-      itpt* itp_empty = new prop_itpt();
-      extract_itp(itp_ptrefs[i], *(dynamic_cast <prop_itpt*> (itp)));
-      interpolants.push_back(*&itp_empty);
-      interpolants.back()->swap(*itp);
+      extract_itp(itp_ptref, *(dynamic_cast <prop_itpt*> (itp)));
+      interpolants.push_back(itp);
   }
 }
 #endif

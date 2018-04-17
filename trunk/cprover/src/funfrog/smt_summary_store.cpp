@@ -37,7 +37,7 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
         if (decider->getMainSolver()->readFormulaFromFile(fileName.c_str())) {
             vec<Tterm> &functions = decider->getLogic()->getFunctions();
             for (int i = 0; i < functions.size(); ++i) {
-                summaryt *itp = new smt_summaryt();
+                auto itp = new smt_summaryt();
                 Tterm &tterm = functions[i];
                 std::string fname = tterm.getName();
                 clean_name(fname);
@@ -72,10 +72,15 @@ Function: summary_storet::insert_summary
 \*******************************************************************/
 
 void smt_summary_storet::insert_summary(summaryt *summary, const irep_idt &function_name) {
+    smt_summaryt * smt_summary = dynamic_cast<smt_summaryt*>(summary);
+    if(!smt_summary){
+        std::cerr << "Ignoring insertion of a summary into the summary store, not compatible type\n";
+        return;
+    }
     summary_idt id = max_id++;
 
     // Here gets the function names
-    Tterm *tterm = summary->getTterm();
+    Tterm *tterm = smt_summary->getTterm();
     assert(tterm);
     string fname = tterm->getName();
     // at this point, there should be just the name of the original function
@@ -85,8 +90,8 @@ void smt_summary_storet::insert_summary(summaryt *summary, const irep_idt &funct
     // as name of the summary, store the quoted version with counter from the store
     std::string fixed_name = quote(add_counter_to_fun_name(fname, next_idx));
     tterm->setName(fixed_name);
-    summary->set_valid(true);
-    store.emplace_back(id, summary);
+    smt_summary->set_valid(true);
+    store.emplace_back(id, smt_summary);
     function_to_summaries[function_name].push_back(id);
     repr_count++;
 }

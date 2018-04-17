@@ -28,20 +28,6 @@ public:
   virtual literalt lnot(literalt a) override;
   virtual void print(std::ostream& out) const override;
 
-  virtual void setTterm(Tterm& t) override { throw std::logic_error("Propositional interpolator does not deal with terms!"); }
-  virtual Tterm* getTterm() override { throw std::logic_error("Propositional interpolator does not deal with terms!"); }
-  
-  virtual void swap(itpt& other) override {other.swap(*this);}
-  virtual void swap(smt_itpt& other) override { throw std::logic_error("Cannot swap PROP and SMT interpolator"); }
-  virtual void swap(prop_itpt& other) override {
-    clauses.swap(other.clauses);
-    std::swap(_no_variables, other._no_variables);
-    std::swap(_no_orig_variables, other._no_orig_variables);
-    std::swap(root_literal, other.root_literal);
-    std::swap(symbol_mask, other.symbol_mask);
-    std::swap(valid, other.valid);
-  }
-
   // These 3 methods are needed in partitioning_target_equation (called from)
   static void reserve_variables(prop_conv_solvert& decider,
     		  const std::vector<symbol_exprt>& symbols, std::map<symbol_exprt, 

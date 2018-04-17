@@ -23,22 +23,10 @@ public:
   virtual literalt lnot(literalt a) override;
   virtual void print(std::ostream& out) const override;
 
-  virtual void setTterm(Tterm& t) override { tterm = &t; }
-  virtual Tterm* getTterm() override { return tterm; }
-  
-  virtual void swap(itpt& other) override {other.swap(*this);}
-  virtual void swap(prop_itpt& other) override { throw std::logic_error("Cannot swap SMT and PROP interpolator!"); }
-  virtual void swap(smt_itpt& other) override {
-    clauses.swap(other.clauses);
-    std::swap(_no_variables, other._no_variables);
-    std::swap(_no_orig_variables, other._no_orig_variables);
-    std::swap(root_literal, other.root_literal);
-    std::swap(symbol_mask, other.symbol_mask);
-    std::swap(valid, other.valid);
-    std::swap(tterm, other.tterm);
-    std::swap(logic, other.logic);
-    std::swap(interpolant, other.interpolant);
-  }
+  void setTterm(Tterm& t) { tterm = &t; }
+  Tterm* getTterm() { return tterm; }
+
+  void setLogic(Logic *_l) { logic = _l; }
 
   static void reserve_variables(prop_conv_solvert& decider,
     const std::vector<symbol_exprt>& symbols, std::map<symbol_exprt, std::vector<unsigned> >& symbol_vars);
@@ -70,8 +58,10 @@ protected:
   
   // Only for SMT version
   Tterm *tterm;
-  
-  // Mask for used symbols
+
+  Logic *logic;
+
+    // Mask for used symbols
   std::vector<bool> symbol_mask;
 
   void gate_and(literalt a, literalt b, literalt o);
