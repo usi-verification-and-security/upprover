@@ -6,7 +6,6 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
-#include <string.h>
 #include "solvers/prop_itp.h"
 #include "prop_summary_store.h"
 
@@ -15,16 +14,27 @@ void prop_summary_storet::serialize(std::ostream& out) const
 {
   out << max_id << std::endl;
 
-  for (storet::const_iterator it = store.begin();
-          it != store.end();
-          ++it) {
+    // serializing the summaries
+  for (const auto & summary_node : store) {
 
-    out << it->repr_id << " " << it->is_repr() << std::endl;
+    out << summary_node.repr_id << " " << summary_node.is_repr() << std::endl;
     
-    if (it->is_repr()) {
-      out << it->summary->is_valid() << std::endl;
-      it->summary->serialize(out);
+    if (summary_node.is_repr()) {
+      out << summary_node.summary->is_valid() << std::endl;
+        summary_node.summary->serialize(out);
     }
+  }
+
+  // serializing mapping of function names to summary ids
+  out << '\n';
+  out << this->function_to_summaries.size() << '\n';
+  for (const auto & summaries_for_function : this->function_to_summaries) {
+      out << summaries_for_function.first << ' ';
+      out << summaries_for_function.second.size() << '\n';
+      for (auto summary_id : summaries_for_function.second) {
+          out << summary_id << ' ';
+      }
+      out << '\n';
   }
 }
 
@@ -39,7 +49,8 @@ void prop_summary_storet::deserialize(std::istream& in)
 
   store.clear();
   store.reserve(max_id);
-  
+
+  // deserializing the summaries
   for (unsigned i = 0; i < max_id; ++i)
   {
     summary_idt repr_id;
@@ -58,6 +69,23 @@ void prop_summary_storet::deserialize(std::istream& in)
     } else {
       store.push_back(nodet(repr_id));
     }
+  }
+
+  function_to_summaries.clear();
+  // deserializing the map from function name to summary ids
+  unsigned int function_count;
+  in >> function_count;
+  for(unsigned int i = 0; i < function_count; ++i) {
+      std::string name;
+      in >> name;
+      unsigned int summary_count;
+      in >> summary_count;
+      auto & ids = function_to_summaries[name];
+      for (unsigned int j = 0; j < summary_count; ++j) {
+            unsigned int id;
+            in >> id;
+            ids.push_back(id);
+      }
   }
 }
 
