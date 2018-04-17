@@ -1743,8 +1743,24 @@ void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, con
 
 
 namespace{
+
+    bool dont_need_globals(const dstringt & fun_name){
+        std::string name {fun_name.c_str()};
+        return is_cprover_initialize_method(name) || is_main(name);
+    }
+
+    struct dstring_lex_ordering
+    {
+        bool operator()(const dstringt& s1, const dstringt& s2) const
+        {
+            return s1.compare(s2) < 0;
+        }
+    };
+
+    using irep_lex_set = std::set<irep_idt, dstring_lex_ordering>;
+
     void add_to_set_if_global( const namespacet& ns, const exprt& ex,
-        std::unordered_set<irep_idt, irep_id_hash> & globals)
+        irep_lex_set & globals)
     {
         if (ex.id() == ID_symbol) {
             // Directly a symbol - add to set if it is a static variable
@@ -1803,12 +1819,6 @@ namespace{
     }
 }
 
-namespace{
-    bool dont_need_globals(const dstringt & fun_name){
-        std::string name {fun_name.c_str()};
-        return is_cprover_initialize_method(name) || is_main(name);
-    }
-}
 
 void symex_assertion_sumt::analyze_globals() {
     std::unordered_set<irep_idt, irep_id_hash> analyzed_functions;
@@ -1819,8 +1829,8 @@ void symex_assertion_sumt::analyze_globals() {
 void symex_assertion_sumt::analyze_globals_rec(irep_idt function_to_analyze,
                                                std::unordered_set<irep_idt, irep_id_hash> & analyzed_functions) {
     const auto & body = goto_functions.function_map.at(function_to_analyze).body;
-    std::unordered_set<irep_idt, irep_id_hash> globals_read;
-    std::unordered_set<irep_idt, irep_id_hash> globals_written;
+    irep_lex_set globals_read;
+    irep_lex_set globals_written;
 
     // MB: skip body of __CPROVER_initialize and main function, we do not need their globals and they cause some problems
     bool skip = dont_need_globals(function_to_analyze);
@@ -1838,7 +1848,6 @@ void symex_assertion_sumt::analyze_globals_rec(irep_idt function_to_analyze,
             }
         }
     }
-
 
     analyzed_functions.insert(function_to_analyze);
     for (auto const & inst : body.instructions) {
@@ -1859,7 +1868,6 @@ void symex_assertion_sumt::analyze_globals_rec(irep_idt function_to_analyze,
             const auto & modified_globals = get_modified_globals(target_function);
             globals_written.insert(modified_globals.begin(), modified_globals.end());
         }
-
     }
     auto & accessed = accessed_globals[function_to_analyze];
     assert(accessed.empty());

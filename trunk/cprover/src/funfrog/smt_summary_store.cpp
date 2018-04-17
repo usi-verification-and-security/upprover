@@ -32,6 +32,7 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
     }
     repr_count = 0;
     store.clear();
+    function_to_summaries.clear();
 
     for (const auto & fileName : fileNames) {
         if (decider->getMainSolver()->readFormulaFromFile(fileName.c_str())) {
@@ -50,13 +51,14 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
                 itp->set_valid(true);
                 // FIXME: when reading multiple files, this would assign the same ID to multiple summaries
                 store.emplace_back(i, itp);
+                auto& summaries = function_to_summaries[fname];
+                summaries.push_back(store.size() - 1);
                 repr_count++;
             }
 
             max_id += repr_count; // KE: We add new summaries so we need to inc the max
         }
     }
-    //FIXME: update also map from function names to summary_ids
 }
 
 /*******************************************************************\

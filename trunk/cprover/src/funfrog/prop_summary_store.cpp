@@ -67,7 +67,7 @@ void prop_summary_storet::deserialize(std::istream& in)
       store.emplace_back(repr_id, summary);
       repr_count++;
     } else {
-      store.push_back(nodet(repr_id));
+      store.emplace_back(repr_id);
     }
   }
 
