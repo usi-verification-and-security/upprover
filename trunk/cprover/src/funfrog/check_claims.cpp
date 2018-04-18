@@ -182,7 +182,7 @@ void check_claims(
     return;
   }
 
-  summarizing_checkert sum_checker(leaping_program,
+  core_checkert sum_checker(leaping_program,
         goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
 
   sum_checker.initialize();

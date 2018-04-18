@@ -29,7 +29,7 @@
 #include "prop_summary_store.h"
 
 
-summarizing_checkert::summarizing_checkert(
+core_checkert::core_checkert(
         const goto_programt &_goto_program,
         const goto_functionst &_goto_functions,
         const namespacet &_ns,
@@ -50,9 +50,9 @@ summarizing_checkert::summarizing_checkert(
     set_message_handler(_message_handler);
 }
 
-summarizing_checkert::~summarizing_checkert() = default;
+core_checkert::~core_checkert() = default;
 
-void summarizing_checkert::initialize_solver()
+void core_checkert::initialize_solver()
 {
     string _logic = options.get_option("logic");
     int _type_constraints = options.get_unsigned_int_option("type-constraints");
@@ -114,7 +114,7 @@ void summarizing_checkert::initialize_solver()
 #endif  
 }
 
-void summarizing_checkert::initialize()
+void core_checkert::initialize()
 {
     initialize_solver();
   
@@ -164,7 +164,7 @@ void get_ints(std::vector<unsigned>& claims, std::string set){
 
 /*******************************************************************
 
- Function: summarizing_checkert::assertion_holds
+ Function: core_checkert::assertion_holds
 
  Inputs:
 
@@ -174,7 +174,7 @@ void get_ints(std::vector<unsigned>& claims, std::string set){
 
 \*******************************************************************/
 
-bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
+bool core_checkert::assertion_holds(const assertion_infot& assertion,
         bool store_summaries_with_assertion)
 {
   // Trivial case
@@ -210,7 +210,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 
 /*******************************************************************
 
- Function: summarizing_checkert::assertion_holds
+ Function: core_checkert::assertion_holds
 
  Inputs:
 
@@ -220,7 +220,7 @@ bool summarizing_checkert::assertion_holds(const assertion_infot& assertion,
 
 \*******************************************************************/
 
-bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion,
+bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
         bool store_summaries_with_assertion)
 {
   absolute_timet initial, final;
@@ -381,7 +381,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 }
 /*******************************************************************
 
- Function: summarizing_checkert::assertion_holds_smt
+ Function: core_checkert::assertion_holds_smt
 
  Inputs:
 
@@ -415,7 +415,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 }*/
 /*******************************************************************
 
- Function: summarizing_checkert::assertion_holds_smt
+ Function: core_checkert::assertion_holds_smt
 
  Inputs:
 
@@ -425,7 +425,7 @@ bool summarizing_checkert::assertion_holds_prop(const assertion_infot& assertion
 
 \*******************************************************************/
 
-bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
+bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
         bool store_summaries_with_assertion)
 {
     absolute_timet initial, final;
@@ -607,7 +607,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 
 /*******************************************************************
 
- Function: summarizing_checkert::assertion_holds_smt_no_partition
+ Function: core_checkert::assertion_holds_smt_no_partition
 
  Inputs:
 
@@ -617,7 +617,7 @@ bool summarizing_checkert::assertion_holds_smt(const assertion_infot& assertion,
 
 \*******************************************************************/
 
-bool summarizing_checkert::assertion_holds_smt_no_partition(
+bool core_checkert::assertion_holds_smt_no_partition(
         const assertion_infot& assertion)
 {
   absolute_timet initial, final;
@@ -758,7 +758,7 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
   
 /*******************************************************************
 
- Function: summarizing_checkert::assertion_violated
+ Function: core_checkert::assertion_violated
 
  Inputs:
 
@@ -767,7 +767,7 @@ bool summarizing_checkert::assertion_holds_smt_no_partition(
  Purpose: Prints the error trace for smt encoding
 
 \*******************************************************************/
-void summarizing_checkert::assertion_violated (prepare_smt_formulat& prop,
+void core_checkert::assertion_violated (prepare_smt_formulat& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
@@ -787,7 +787,7 @@ void summarizing_checkert::assertion_violated (prepare_smt_formulat& prop,
 
 /*******************************************************************
 
- Function: summarizing_checkert::assertion_violated
+ Function: core_checkert::assertion_violated
 
  Inputs:
 
@@ -796,7 +796,7 @@ void summarizing_checkert::assertion_violated (prepare_smt_formulat& prop,
  Purpose: Prints the error trace for smt encoding
 
 \*******************************************************************/
-void summarizing_checkert::assertion_violated (smt_assertion_no_partitiont& prop,
+void core_checkert::assertion_violated (smt_assertion_no_partitiont& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
@@ -817,7 +817,7 @@ void summarizing_checkert::assertion_violated (smt_assertion_no_partitiont& prop
 #ifdef PRODUCE_PROOF
 /*******************************************************************\
 
-Function: summarizing_checkert::extract_interpolants_smt
+Function: core_checkert::extract_interpolants_smt
 
   Inputs:
 
@@ -826,7 +826,7 @@ Function: summarizing_checkert::extract_interpolants_smt
  Purpose: Extract and store the interpolation summaries for smt only
 
 \*******************************************************************/
-void summarizing_checkert::extract_interpolants_smt (prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation)
+void core_checkert::extract_interpolants_smt (prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation)
 {
   absolute_timet before, after;
   before=current_time();
@@ -850,7 +850,7 @@ void summarizing_checkert::extract_interpolants_smt (prepare_smt_formulat& prop,
 
 /*******************************************************************\
 
-Function: summarizing_checkert::extract_interpolants_prop
+Function: core_checkert::extract_interpolants_prop
 
   Inputs:
 
@@ -859,7 +859,7 @@ Function: summarizing_checkert::extract_interpolants_prop
  Purpose: Extract and store the interpolation summaries for prop only
 
 \*******************************************************************/
-void summarizing_checkert::extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
+void core_checkert::extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
             prop_conv_solvert& decider_prop, interpolating_solvert& interpolator)
 {
   absolute_timet before, after;
@@ -882,7 +882,7 @@ void summarizing_checkert::extract_interpolants_prop (prop_assertion_sumt& prop,
 
 /*******************************************************************\
 
-Function: summarizing_checkert::setup_unwind
+Function: core_checkert::setup_unwind
 
   Inputs:
 
@@ -892,7 +892,7 @@ Function: summarizing_checkert::setup_unwind
 
 \*******************************************************************/
 
-void summarizing_checkert::setup_unwind(symex_bmct& symex)
+void core_checkert::setup_unwind(symex_bmct& symex)
 {
   const std::string &set=options.get_option("unwindset");
   unsigned int length=set.length();
@@ -982,7 +982,7 @@ coloring_modet get_coloring_mode(const std::string& str)
 
 /*******************************************************************\
 
-Function: summarizing_checkert::report_success
+Function: core_checkert::report_success
 
   Inputs:
 
@@ -992,7 +992,7 @@ Function: summarizing_checkert::report_success
 
 \*******************************************************************/
 
-void summarizing_checkert::report_success()
+void core_checkert::report_success()
 {
   //result() << ("VERIFICATION SUCCESSFUL");
 
@@ -1019,7 +1019,7 @@ void summarizing_checkert::report_success()
 
 /*******************************************************************\
 
-Function: summarizing_checkert::report_failure
+Function: core_checkert::report_failure
 
   Inputs:
 
@@ -1029,7 +1029,7 @@ Function: summarizing_checkert::report_failure
 
 \*******************************************************************/
 
-void summarizing_checkert::report_failure()
+void core_checkert::report_failure()
 {
   switch(message_handler.get_ui())
   {

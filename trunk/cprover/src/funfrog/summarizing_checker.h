@@ -25,10 +25,10 @@ class symex_bmct;
 class interpolating_solvert;
 class prop_conv_solvert;
 
-class summarizing_checkert:public messaget
+class core_checkert:public messaget
 {
 public:
-  summarizing_checkert(
+  core_checkert(
     const goto_programt &_goto_program,
     const goto_functionst &_goto_functions,
     const namespacet &_ns,
@@ -38,7 +38,7 @@ public:
     unsigned long &_max_memory_used
     );
 
-  ~summarizing_checkert() override;
+  ~core_checkert() override;
   void initialize();
   void initialize_solver();
   void delete_and_initialize_solver(); // For replacing pop in the solver, remove once pop works
