@@ -118,24 +118,3 @@ void prop_summary_storet::deserialize(std::vector<std::string> fileNames) {
         deserialize(fileNames[0]);
     }
 }
-
-/*******************************************************************\
-
-Function: summary_storet::insert_summary
-
-  Inputs:
-
- Outputs:
-
- Purpose: Inserts a new summary, the given summary is invalidated
-
-\*******************************************************************/
-
-void prop_summary_storet::insert_summary(summaryt *summary, const irep_idt &function_name)
-{
-  summary_idt id = max_id++;
-  summary->set_valid(true);
-  store.emplace_back(id, summary);
-  repr_count++;
-  function_to_summaries[function_name].push_back(id);
-}

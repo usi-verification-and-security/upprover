@@ -805,7 +805,7 @@ void prop_partitioning_target_equationt::extract_interpolants(
     }
 
     // Store the interpolant
-    summary_store.insert_summary(itp, partition.get_iface().function_id);
+    summary_store.insert_summary(itp, id2string(partition.get_iface().function_id));
 
   }
   

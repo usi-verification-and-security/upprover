@@ -17,7 +17,6 @@ class prop_summary_storet :public summary_storet
 public:
   virtual void serialize(std::ostream& out) const override;
   virtual void deserialize(std::vector<std::string> fileNames) override;
-  virtual void insert_summary(summaryt *summary, const irep_idt &function_name) override;
 
 protected:
   virtual void deserialize(std::istream& in);

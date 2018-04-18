@@ -1,7 +1,6 @@
 #ifndef ITP_H
 #define ITP_H
 
-#include <util/std_expr.h>
 #include <solvers/prop/literal.h>
 #include <solvers/flattening/boolbv.h>
 #include <opensmt/PTRef.h>

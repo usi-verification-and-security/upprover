@@ -14,11 +14,9 @@ Author: Ondrej Sery
 
 // Serialization SMT
 void smt_summary_storet::serialize(std::ostream &out) const {
-    for (auto it = store.begin();
-         it != store.end();
-         ++it) {
-        if (it->is_repr()) {
-            it->summary->serialize(out);
+    for (const auto & summary_node : store){
+        if(summary_node.is_repr()){
+            summary_node.summary->serialize(out);
         }
     }
 }
@@ -67,18 +65,16 @@ Function: summary_storet::insert_summary
 
  Outputs:
 
- Purpose: Inserts a new summary, the given summary is invalidated
+ Purpose: Inserts a new summary, summary store takes ownership of the pointer
 
 \*******************************************************************/
 
-void smt_summary_storet::insert_summary(summaryt *summary, const irep_idt &function_name) {
+void smt_summary_storet::insert_summary(summaryt *summary, const std::string & function_name) {
     smt_summaryt * smt_summary = dynamic_cast<smt_summaryt*>(summary);
     if(!smt_summary){
         std::cerr << "Ignoring insertion of a summary into the summary store, not compatible type\n";
         return;
     }
-    summary_idt id = max_id++;
-
     // Here gets the function names
     Tterm *tterm = smt_summary->getTterm();
     assert(tterm);
@@ -90,8 +86,7 @@ void smt_summary_storet::insert_summary(summaryt *summary, const irep_idt &funct
     // as name of the summary, store the quoted version with counter from the store
     std::string fixed_name = quote(add_counter_to_fun_name(fname, next_idx));
     tterm->setName(fixed_name);
-    smt_summary->set_valid(true);
-    store.emplace_back(id, smt_summary);
-    function_to_summaries[function_name].push_back(id);
-    repr_count++;
+
+    // call the base functionality
+    summary_storet::insert_summary(summary, function_name);
 }

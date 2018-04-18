@@ -38,7 +38,7 @@ public:
   // by the new one.
   void replace_summary(summary_idt old_summary_id, summary_idt replacement_id);
   // Inserts a new summary, the given summary is invalidated
-  virtual void insert_summary(summaryt *summary, const irep_idt &function_name) = 0;
+  virtual void insert_summary(summaryt *summary, const std::string & function_name);
   // Finds the representative of the given summary
   summaryt& find_summary(summary_idt new_id) const;
   unsigned n_of_summaries() { return store.size(); }
@@ -48,12 +48,12 @@ public:
   void clear() { store.clear(); max_id = 0; repr_count = 0; function_to_summaries.clear();}
 
 
-  bool has_summaries(irep_idt function_id) const {
-      return function_to_summaries.find(function_id) != function_to_summaries.end();
+  bool has_summaries(const std::string & function_name) const {
+      return function_to_summaries.find(function_name) != function_to_summaries.end();
   }
 
-  const summary_idst& get_summaries(irep_idt function_id) const{
-      return function_to_summaries.at(function_id);
+  const summary_idst& get_summaries(const std::string & function_name) const{
+      return function_to_summaries.at(function_name);
   }
 protected:
 
@@ -102,7 +102,7 @@ protected:
   using storet = std::vector<nodet>;
   storet store;
 
-  std::unordered_map<irep_idt, summary_idst, irep_id_hash> function_to_summaries;
+  std::unordered_map<std::string, summary_idst> function_to_summaries;
 };
 
 #endif

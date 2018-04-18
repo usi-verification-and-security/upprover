@@ -17,7 +17,7 @@
 //#define DEBUG_REFINER
 
 namespace{
-    void set_valid_summaries(const summary_storet& store, const irep_idt& function_id, bool value){
+    void set_valid_summaries(const summary_storet& store, const std::string& function_id, bool value){
         if(store.has_summaries(function_id)){
             const summary_idst& itps = store.get_summaries(function_id);
             for (auto it = itps.begin();
@@ -32,12 +32,13 @@ namespace{
 
 void refiner_assertion_sumt::set_inline_sum(call_tree_nodet& summary)
 {
+  std::string function_name = id2string(summary.get_function_id());
   if (summary.get_call_location() <= last_assertion_loc){
-    status() << (std::string("*** REFINING function: ") + summary.get_function_id().c_str()) << eom;
+    status() << (std::string("*** REFINING function: ") + function_name) << eom;
     summary.set_inline();
     refined_functions.push_back(&summary);
   }
-  set_valid_summaries(summary_store, summary.get_function_id(), valid);
+  set_valid_summaries(summary_store, function_name, valid);
 }
 
 void refiner_assertion_sumt::reset_inline(call_tree_nodet& summary)

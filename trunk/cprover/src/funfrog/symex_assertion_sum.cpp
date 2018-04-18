@@ -1159,7 +1159,7 @@ void symex_assertion_sumt::summarize_function_call(
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
   equation.fill_summary_partition(partition_id,
-          &summary_store.get_summaries(function_id));
+          &summary_store.get_summaries(id2string(function_id)));
 }
 
 /*******************************************************************
@@ -1193,13 +1193,14 @@ void symex_assertion_sumt::fill_inverted_summary(
 
   log.statistics() << "Substituting interpolant (part:" << partition_id << ")" << log.eom;
 
+  std::string function_name = id2string(function_id);
 //# ifdef DEBUG_PARTITIONING
-  log.statistics() << "   summaries available: " << summary_store.get_summaries(function_id).size() << log.eom;
+  log.statistics() << "   summaries available: " << summary_store.get_summaries(function_name).size() << log.eom;
   log.statistics() << "   summaries used: " << summary_info.get_used_summaries().size() << log.eom;
 //# endif
 
   equation.fill_inverted_summary_partition(partition_id,
-          &summary_store.get_summaries(function_id),
+          &summary_store.get_summaries(function_name),
           summary_info.get_used_summaries());
 }
 

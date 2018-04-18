@@ -21,7 +21,7 @@ void call_tree_nodet::set_initial_precision(
   for (auto & call_site : call_sites)
   {
     call_tree_nodet& function = call_site.second;
-    const irep_idt& function_id = function.get_function_id();
+    std::string function_id = id2string(function.get_function_id());
 
     if (function.is_recursion_nondet()){
       function.set_nondet();

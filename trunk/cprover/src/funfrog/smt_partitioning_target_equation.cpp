@@ -877,6 +877,10 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
             continue;
         }
 
+        if (itp->is_trivial()) {
+            continue;
+        }
+
         // Generalize the interpolant
         fill_common_symbols(partition, common_symbs);
 
@@ -890,17 +894,12 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
 
         std::cout << "Generalizing interpolant" << std::endl;
 #   endif
-
-        if (itp->is_trivial()) {
-            continue;
-        }
-
-        string fun_name = id2string(partition.get_iface().function_id);
+        std::string fun_name = id2string(partition.get_iface().function_id);
         //interpolator.adjust_function(*itp, common_symbs, fun_name);
         interpolator.generalize_summary(*itp, common_symbs, fun_name, true);
 
         // Store the interpolant; summary_store takes the ownership of the summary pointer itp
-        summary_store.insert_summary(itp, partition.get_iface().function_id);
+        summary_store.insert_summary(itp, fun_name);
     }
 #else
     assert(0);

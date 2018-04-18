@@ -15,7 +15,7 @@ Author: Ondrej Sery
 class smt_summary_storet :public summary_storet 
 {
 public:
-   smt_summary_storet(smtcheck_opensmt2t * decider):
+   explicit smt_summary_storet(smtcheck_opensmt2t * decider):
            summary_storet{},
            decider{decider}
    {}
@@ -24,7 +24,7 @@ public:
 
   virtual void serialize(std::ostream& out) const override;
   virtual void deserialize(std::vector<std::string> fileNames) override;
-  virtual void insert_summary(summaryt *summary, const irep_idt &function_name) override;
+  virtual void insert_summary(summaryt *summary, const std::string & function_name) override;
 
 protected:
 
