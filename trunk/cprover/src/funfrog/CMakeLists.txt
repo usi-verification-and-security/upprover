@@ -72,8 +72,8 @@ set(HIFROG_SOURCE_FILES
         subst_scenario.cpp
         subst_scenario.h
 #        summarization_context.h
-        summarizing_checker.cpp
-        summarizing_checker.h
+        core_checker.cpp
+        core_checker.h
         summary_info.cpp
         summary_info.h
         summary_store.cpp

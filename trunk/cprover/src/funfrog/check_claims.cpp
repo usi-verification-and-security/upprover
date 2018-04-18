@@ -12,7 +12,7 @@
 #include <util/xml_irep.h>
 
 #include <ansi-c/expr2c.h>
-#include "summarizing_checker.h"
+#include "core_checker.h"
 #include "theory_refiner.h"
 #include "check_claims.h"
 

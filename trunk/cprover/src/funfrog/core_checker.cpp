@@ -6,7 +6,7 @@
  Author: Ondrej Sery
 
 \*******************************************************************/
-#include "summarizing_checker.h"
+#include "core_checker.h"
 #include "dependency_checker.h"
 
 #include "solvers/smtcheck_opensmt2_lra.h"
