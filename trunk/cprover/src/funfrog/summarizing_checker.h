@@ -13,10 +13,7 @@
 #include <memory>
 #include <util/options.h>
 #include <util/ui_message.h>
-#include "summarization_context_fwd.h"
 #include "subst_scenario.h"
-//#include "utils/coloring_mode.h"
-#include "summary_store.h"
 
 class smt_assertion_no_partitiont;
 class prop_partitioning_target_equationt;
@@ -38,20 +35,8 @@ public:
     symbol_tablet &_symbol_table,
     const optionst& _options,
     ui_message_handlert &_message_handler,
-
     unsigned long &_max_memory_used
-    ) :
-      goto_program(_goto_program),
-      ns(_ns),
-      symbol_table(_symbol_table),
-      options(_options),
-      message_handler (_message_handler),
-      max_memory_used(_max_memory_used),
-      omega(_goto_functions, options.get_unsigned_int_option("unwind")),
-      summary_store{nullptr}
-  {
-    set_message_handler(_message_handler);
-  };
+    );
 
   ~summarizing_checkert() override;
   void initialize();

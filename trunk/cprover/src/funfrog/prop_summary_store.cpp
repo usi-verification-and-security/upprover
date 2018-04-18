@@ -9,6 +9,9 @@ Author: Ondrej Sery
 #include "solvers/prop_itp.h"
 #include "prop_summary_store.h"
 
+#include <fstream>
+#include <iostream>
+
 // Serialization Prop-logic
 void prop_summary_storet::serialize(std::ostream& out) const
 {

@@ -29,6 +29,27 @@
 #include "prop_summary_store.h"
 
 
+summarizing_checkert::summarizing_checkert(
+        const goto_programt &_goto_program,
+        const goto_functionst &_goto_functions,
+        const namespacet &_ns,
+        symbol_tablet &_symbol_table,
+        const optionst& _options,
+        ui_message_handlert &_message_handler,
+        unsigned long &_max_memory_used
+) :
+        goto_program(_goto_program),
+        ns(_ns),
+        symbol_table(_symbol_table),
+        options(_options),
+        message_handler (_message_handler),
+        max_memory_used(_max_memory_used),
+        omega(_goto_functions, options.get_unsigned_int_option("unwind")),
+        summary_store{nullptr}
+{
+    set_message_handler(_message_handler);
+};
+
 summarizing_checkert::~summarizing_checkert() = default;
 
 void summarizing_checkert::initialize_solver()

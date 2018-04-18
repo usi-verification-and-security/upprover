@@ -18,9 +18,6 @@ public:
 
   virtual  bool is_trivial() const override { return false; }
 
-  virtual literalt land(literalt a, literalt b) override;
-  virtual literalt lor(literalt a, literalt b) override;
-  virtual literalt lnot(literalt a) override;
   virtual void print(std::ostream& out) const override;
 
   void setTterm(Tterm& t) { tterm = &t; }
@@ -64,8 +61,6 @@ protected:
     // Mask for used symbols
   std::vector<bool> symbol_mask;
 
-  void gate_and(literalt a, literalt b, literalt o);
-  void gate_or(literalt a, literalt b, literalt o);
 };
 
 typedef smt_itpt smt_interpolantt;

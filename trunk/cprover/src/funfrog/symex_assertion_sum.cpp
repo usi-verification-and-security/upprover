@@ -25,6 +25,7 @@
 
 #include <memory>
 #include <algorithm>
+#include <iostream>
 
 #ifdef DEBUG_SSA
 #include "utils/ssa_helpers.h"

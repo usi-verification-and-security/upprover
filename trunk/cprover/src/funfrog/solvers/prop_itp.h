@@ -23,9 +23,9 @@ public:
 
   virtual bool is_trivial() const override { return root_literal.is_constant(); }
 
-  virtual literalt land(literalt a, literalt b) override;
-  virtual literalt lor(literalt a, literalt b) override;
-  virtual literalt lnot(literalt a) override;
+  literalt land(literalt a, literalt b);
+  literalt lor(literalt a, literalt b);
+  literalt lnot(literalt a);
   virtual void print(std::ostream& out) const override;
 
   // These 3 methods are needed in partitioning_target_equation (called from)

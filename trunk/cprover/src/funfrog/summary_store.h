@@ -9,13 +9,14 @@ Author: Ondrej Sery
 #ifndef CPROVER_SUMMARY_STORE_H
 #define CPROVER_SUMMARY_STORE_H
 
-#include <ostream>
-#include <unordered_set>
-#include <unordered_map>
-#include <map>
+
 #include "solvers/itp.h"
 
 #include "summary_store_fwd.h"
+#include <iosfwd>
+#include <unordered_set>
+#include <unordered_map>
+#include <map>
 
 class smtcheck_opensmt2t;
 class call_tree_nodet;
@@ -41,7 +42,7 @@ public:
   // Finds the representative of the given summary
   summaryt& find_summary(summary_idt new_id) const;
   unsigned n_of_summaries() { return store.size(); }
-  std::size_t get_next_id(const string &fname);
+  std::size_t get_next_id(const std::string &fname);
   
   // Reset the summary store
   void clear() { store.clear(); max_id = 0; repr_count = 0; function_to_summaries.clear();}
@@ -98,7 +99,7 @@ protected:
   summary_idt max_id;
   summary_idt repr_count;
           
-  typedef std::vector<nodet> storet;
+  using storet = std::vector<nodet>;
   storet store;
 
   std::unordered_map<irep_idt, summary_idst, irep_id_hash> function_to_summaries;

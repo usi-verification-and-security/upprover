@@ -4,10 +4,11 @@
 #include <util/std_expr.h>
 #include <solvers/prop/literal.h>
 #include <solvers/flattening/boolbv.h>
-#include <opensmt/opensmt2.h>
+#include <opensmt/PTRef.h>
 
 class prop_itpt;
 class smt_itpt;
+
 class itpt
 {
 public:
@@ -15,10 +16,6 @@ public:
   virtual ~itpt() {} // d'tor
 
   virtual bool is_trivial() const =0;
-
-  virtual literalt land(literalt a, literalt b) =0;
-  virtual literalt lor(literalt a, literalt b)=0;
-  virtual literalt lnot(literalt a)=0;
 
   virtual itpt* get_nodet() =0;
 

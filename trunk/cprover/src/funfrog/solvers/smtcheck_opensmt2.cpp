@@ -14,7 +14,7 @@ Author: Grigory Fedyukovich
 #include "../utils/naming_helpers.h"
 
 // Debug flags of this class:
-#define SMT_DEBUG
+//#define SMT_DEBUG
 //#define DEBUG_SSA_SMT
 //#define DEBUG_SSA_SMT_NUMERIC_CONV
 //#define DEBUG_SMT_ITP
