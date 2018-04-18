@@ -11,7 +11,7 @@
 #include "subst_scenario.h"
 #include <fstream>
 #include <iostream>
-
+#include <cstring>
 
 void subst_scenariot::setup_default_precision(init_modet init)
 {

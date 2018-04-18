@@ -48,7 +48,7 @@ summarizing_checkert::summarizing_checkert(
         summary_store{nullptr}
 {
     set_message_handler(_message_handler);
-};
+}
 
 summarizing_checkert::~summarizing_checkert() = default;
 

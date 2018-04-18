@@ -17,6 +17,7 @@ Author: Ondrej Sery
 #include <unordered_set>
 #include <unordered_map>
 #include <map>
+#include <memory>
 
 class smtcheck_opensmt2t;
 class call_tree_nodet;

@@ -1087,7 +1087,7 @@ PTRef smtcheck_opensmt2t::substitute(smt_itpt & itp, const std::vector<symbol_ex
   // one exception is if global variable is both on input and output, then the out argument was distinguished
 
   Map<PTRef, PtAsgn, PTRefHash> subst;
-  assert(symbols.size() == args.size());
+  assert(symbols.size() == static_cast<std::size_t>(args.size()));
   for(std::size_t i = 0; i < symbols.size(); ++i){
     std::string symbol_name { get_symbol_name(symbols[i]).c_str() };
     PTRef argument = args[i];
