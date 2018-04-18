@@ -33,8 +33,8 @@ set(HIFROG_SOURCE_FILES
         error_trace.h
         expr_pretty_print.cpp
         expr_pretty_print.h
-        function_info.cpp
-        function_info.h
+#        function_info.cpp
+#        function_info.h
         hifrog.cpp
         hifrog.h
         languages.cpp
@@ -59,8 +59,8 @@ set(HIFROG_SOURCE_FILES
         prop_summary_store.h
         refiner_assertion_sum.cpp
         refiner_assertion_sum.h
-        smt_assertion_sum.cpp
-        smt_assertion_sum.h
+        prepare_smt_formula.cpp
+        prepare_smt_formula.h
         smt_dependency_checker.cpp
         smt_dependency_checker.h
         smt_partitioning_target_equation.cpp
@@ -71,7 +71,7 @@ set(HIFROG_SOURCE_FILES
         smt_summary_store.h
         subst_scenario.cpp
         subst_scenario.h
-        summarization_context.h
+#        summarization_context.h
         summarizing_checker.cpp
         summarizing_checker.h
         summary_info.cpp
@@ -83,13 +83,14 @@ set(HIFROG_SOURCE_FILES
         symex_assertion_sum.h
         theory_refiner.cpp
         theory_refiner.h
+        UserDefinedSummary.cpp
+        UserDefinedSummary.h
         unwind.h
         version.h
         xml_interface.cpp
         xml_interface.h
         utils/naming_helpers.h
         utils/naming_helpers.cpp
-        partition_iface_fwd.h
         summary_store_fwd.h
         summarization_context_fwd.h
         utils/coloring_mode.h
@@ -97,7 +98,8 @@ set(HIFROG_SOURCE_FILES
         utils/ssa_helpers.h
         partition_fwd.h
         solvers/interpolating_solver_fwd.h
-    )
+        #reportt.cpp reportt.h
+        )
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modules/")
 

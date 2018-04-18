@@ -21,7 +21,7 @@
 class claim_statst:public messaget, public unwindt
 {
 public:
-  claim_statst(void) :
+  claim_statst(unsigned int max_unwind) : unwindt(max_unwind),
     total_claims(0),
     claims_passed(0),
     claims_failed(0),
@@ -47,8 +47,7 @@ public:
   goto_programt::const_targett find_assertion(
     const goto_programt::const_targett &start,
     const goto_functionst &goto_functions,
-    call_stackt &stack,
-    unsigned unwind);
+    call_stackt &stack);
 
 };
 

@@ -11,13 +11,9 @@
 
 partitioning_target_equationt::partitioning_target_equationt(
   const namespacet & _ns,
-  summarization_contextt & _summarization_context,
-  bool _upgrade_checking,
-  bool _store_summaries_with_assertion,
-  coloring_modet _coloring_mode,
-  std::vector<unsigned> & _clauses) :
+  summary_storet & summary_store,
+  bool _store_summaries_with_assertion) :
   symex_target_equationt(_ns),
-  summarization_context(_summarization_context),
   current_partition_id(partitiont::NO_PARTITION),
 #         ifdef DISABLE_OPTIMIZATIONS
     dump_SSA_tree(false),
@@ -33,10 +29,9 @@ partitioning_target_equationt::partitioning_target_equationt(
     first_call_expr(0),
 #endif
   io_count_global(0),
-  upgrade_checking(_upgrade_checking),
-  store_summaries_with_assertion(_store_summaries_with_assertion),
-  coloring_mode(_coloring_mode),
-  clauses(_clauses) {
+  summary_store{summary_store},
+  store_summaries_with_assertion(_store_summaries_with_assertion)
+  {
 #ifdef DISABLE_OPTIMIZATIONS
     partition_smt_decl = new std::map <std::string,exprt>();
     out_terms.rdbuf(&terms_buf);

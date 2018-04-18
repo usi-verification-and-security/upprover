@@ -28,7 +28,6 @@ Author: Ondrej Sery
 #include "solvers/interpolating_solver_fwd.h"
 #include "partition.h"
 
-class summarization_contextt;
 class partition_ifacet;
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
@@ -36,10 +35,8 @@ typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 class partitioning_target_equationt:public symex_target_equationt
 {
 public:
-  partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
-          _summarization_context, bool _upgrade_checking,
-          bool _store_summaries_with_assertion, coloring_modet _coloring_mode,
-          std::vector<unsigned>& _clauses);
+  partitioning_target_equationt(const namespacet &_ns, summary_storet & summary_store,
+                                bool _store_summaries_with_assertion);
 
   // First this called and then the parent d'tor due to the use of virtual
   virtual ~partitioning_target_equationt() {
@@ -95,16 +92,6 @@ public:
 
   partitionst& get_partitions() { return partitions; }
 
-//  MB: unused function
-//  bool any_applicable_summaries() {
-//    for (unsigned i = 0; i < partitions.size(); i++) {
-//      if (!partitions[i].applicable_summaries.empty()) {
-//        return true;
-//      }
-//    }
-//    return false;
-//  }
-
   unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
  
 #ifdef DISABLE_OPTIMIZATIONS  
@@ -116,13 +103,13 @@ public:
 #endif
   
 protected:
-  // Current summarization context
-  summarization_contextt& summarization_context;
 
   // Id of the currently selected partition
   partition_idt current_partition_id;
 
 #ifdef DISABLE_OPTIMIZATIONS  
+  // KE: shall go to the reporter class!
+  // FIXME: move to SSA_Reportert class
   bool dump_SSA_tree;
   std::string ssa_tree_file_name;
   
@@ -183,7 +170,9 @@ protected:
     const exprt &guard,
     const exprt &cond,
     const sourcet &source) override {}
-  
+
+
+  summary_storet & summary_store;
   // Collection of all the partitions
   partitionst partitions;
 
@@ -197,15 +186,9 @@ protected:
   // NOTE: Currently, the order is slightly broken by the glue variables
   SSA_steps_orderingt SSA_steps_exec_order;
 
-  // Mode of encoding. Are we doing upgrade check?
-  bool upgrade_checking;
   // Should we store summaries with assertion in subtree?
   // This is used in upgrade checking.
   bool store_summaries_with_assertion;
-
-  coloring_modet coloring_mode;
-
-  std::vector<unsigned>& clauses;
 
   friend class partitioning_slicet;
 };

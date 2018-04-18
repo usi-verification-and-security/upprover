@@ -12,22 +12,18 @@ Author: Ondrej Sery
 
 #include "partitioning_target_equation.h"
 #include "solvers/satcheck_opensmt2.h"
-#include "partition_iface_fwd.h"
 
 
 // Two classes for smt and prop   
-class partitioning_target_equationt;
-class prop_partitioning_target_equationt:public partitioning_target_equationt 
+class prop_partitioning_target_equationt:public partitioning_target_equationt
 {
 public:
-  prop_partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
-          _summarization_context, bool _upgrade_checking,
-          bool _store_summaries_with_assertion, coloring_modet _coloring_mode,
-          std::vector<unsigned>& _clauses)
-            : partitioning_target_equationt(_ns, 
-                       _summarization_context, _upgrade_checking,
-                       _store_summaries_with_assertion, _coloring_mode,
-                       _clauses) {}
+  prop_partitioning_target_equationt(const namespacet &_ns, summary_storet & store,
+          bool _store_summaries_with_assertion
+  )
+            : partitioning_target_equationt(_ns, store,
+                       _store_summaries_with_assertion
+                       ) {}
             
   // Convert all the SSA steps into the corresponding formulas in
   // the corresponding partitions
@@ -35,8 +31,7 @@ public:
   
   // Extract interpolants corresponding to the created partitions
   void extract_interpolants(
-    interpolating_solvert& interpolator, const prop_conv_solvert& decider,
-    interpolant_mapt& interpolant_map);
+    interpolating_solvert& interpolator, const prop_conv_solvert& decider);
 
 protected:
   // Convert a specific partition of SSA steps

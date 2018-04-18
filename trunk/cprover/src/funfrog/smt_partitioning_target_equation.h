@@ -11,7 +11,6 @@ Author: Ondrej Sery
 #define CPROVER_SMT_PARTITIONING_TARGET_EQUATION_H
 
 #include "partitioning_target_equation.h"
-#include "partition_iface_fwd.h"
 
 class smtcheck_opensmt2t;
 class interpolating_solvert;
@@ -20,14 +19,10 @@ class interpolating_solvert;
 class smt_partitioning_target_equationt:public partitioning_target_equationt
 {
 public:
-  smt_partitioning_target_equationt(const namespacet &_ns, summarization_contextt&
-          _summarization_context, bool _upgrade_checking,
-          bool _store_summaries_with_assertion, coloring_modet _coloring_mode,
-          std::vector<unsigned>& _clauses)
-            : partitioning_target_equationt(_ns, 
-                       _summarization_context, _upgrade_checking,
-                       _store_summaries_with_assertion, _coloring_mode,
-                       _clauses) {}
+  smt_partitioning_target_equationt(const namespacet &_ns, summary_storet & store,
+          bool _store_summaries_with_assertion)
+            : partitioning_target_equationt(_ns, store,
+                       _store_summaries_with_assertion) {}
             
   // Convert all the SSA steps into the corresponding formulas in
   // the corresponding partitions
@@ -36,7 +31,7 @@ public:
   void fill_function_templates(smtcheck_opensmt2t &decider, std::vector<summaryt*> &templates);
   
   // Extract interpolants corresponding to the created partitions
-  void extract_interpolants(smtcheck_opensmt2t& decider, interpolant_mapt& interpolant_map);
+  void extract_interpolants(smtcheck_opensmt2t& decider);
 
   std::vector<exprt>& get_exprs_to_refine () { return exprs; };
 

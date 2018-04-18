@@ -143,7 +143,7 @@ PTRef smtcheck_opensmt2t_cuf::var_bv(const exprt &expr)
                            (type_id==ID_range) ||
                            (type_id==ID_array) ||
                            (type_id==ID_pointer) ||
-                           (type_id==ID_code) ||
+                          // (type_id==ID_code) || // KE: add back only when support arrays/pointers
                            (type_id==ID_class))
                         );
     
@@ -848,7 +848,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     const irep_idt &_id=expr.id(); // KE: gets the id once for performance
     
     PTRef ptl;
-    if (_id==ID_code) {
+    if (_id==ID_code || expr.type().id()==ID_code) { //Init structs, arrays etc.
         
         ptl = unsupported2var_bv(expr); // stub for now
              
@@ -1501,7 +1501,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
     
     /* Check which case it is */
     literalt l;
-    if (_id==ID_code) {
+    if (_id==ID_code || expr.type().id()==ID_code) { //Init structs, arrays etc.
         
         l = lunsupported2var(expr);
         // No support to this data type

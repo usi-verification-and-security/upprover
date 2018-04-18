@@ -9,7 +9,6 @@
 
 #include "symex_assertion_sum.h"
 
-#include <memory>
 
 #include <util/expr_util.h>
 #include <goto-symex/goto_symex.h>
@@ -19,11 +18,14 @@
 
 #include "partitioning_slice.h"
 #include "partition_iface.h"
-#include "summarization_context.h"
 #include "utils/naming_helpers.h"
 #include "partitioning_target_equation.h"
 #include "hifrog.h"
+#include "summary_store.h"
 
+#include <memory>
+#include <algorithm>
+#include <iostream>
 
 #ifdef DEBUG_SSA
 #include "utils/ssa_helpers.h"
@@ -37,8 +39,9 @@
 
 \*******************************************************************/
 symex_assertion_sumt::symex_assertion_sumt(
-  summarization_contextt &_summarization_context,
-  summary_infot &_summary_info,
+  const summary_storet & _summary_store,
+  const goto_functionst & _goto_functions,
+  call_tree_nodet &_summary_info,
   const namespacet &_ns,
   symbol_tablet &_new_symbol_table,
   partitioning_target_equationt &_target,
@@ -53,7 +56,8 @@ symex_assertion_sumt::symex_assertion_sumt(
   bool partial_loops
 ) :
   goto_symext(_message_handler, _ns, _new_symbol_table, _target),
-  summarization_context(_summarization_context),
+  summary_store(_summary_store),
+  goto_functions(_goto_functions),
   summary_info(_summary_info),
   current_summary_info(&_summary_info),
   equation(_target),
@@ -66,6 +70,7 @@ symex_assertion_sumt::symex_assertion_sumt(
   max_unwind(_max_unwind)
 {
   options.set_option("partial-loops", partial_loops);
+  analyze_globals();
 }
 
 /*******************************************************************
@@ -193,8 +198,7 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
   fill_inverted_summary(summary_info, state, partition_iface);
 
   // Old: ??? state.value_set = value_sets;
-  state.source.pc = summarization_context.get_function(
-          partition_iface.function_id).body.instructions.begin();
+  state.source.pc = get_function(partition_iface.function_id).body.instructions.begin();
   
   // Plan the function for processing
   dequeue_deferred_function(state);
@@ -216,11 +220,11 @@ bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
 \*******************************************************************/
 
 bool symex_assertion_sumt::refine_SSA( 
-        const std::list<summary_infot*> &refined_functions, bool force_check)
+        const std::list<call_tree_nodet*> &refined_functions, bool force_check)
 {
   // Defer the functions
   for (const auto & refined_function : refined_functions)
-//  for (std::list<summary_infot*>::const_iterator it = refined_functions.begin();
+//  for (std::list<call_tree_nodet*>::const_iterator it = refined_functions.begin();
 //          it != refined_functions.end();
 //          ++it)
   {
@@ -277,7 +281,7 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
 #   if 0
     goto_program.output_instruction(ns, "", std::cout, state.source.pc);
 #   endif
-    symex_step(summarization_context.get_functions(), state);
+    symex_step(goto_functions, state);
   }
   after=current_time();
 
@@ -288,7 +292,7 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
     if (use_slicing) {
       before=current_time();
       log.statistics() << "All SSA steps: " << equation.SSA_steps.size() << log.eom;
-      partitioning_slice(equation, summarization_context.get_summary_store(), use_smt);
+      partitioning_slice(equation, summary_store, use_smt);
       log.statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << log.eom;
       after=current_time();
       log.statistics() << "SLICER TIME: " << (after-before) << log.eom;
@@ -379,7 +383,7 @@ void symex_assertion_sumt::symex_step(
     if (do_guard_expl)
     {
         bool store_expln;
-        string str;
+        std::string str;
 
         store_expln = state.source.pc->guard.has_operands();
         if (store_expln) {
@@ -447,7 +451,7 @@ void symex_assertion_sumt::symex_step(
                 "\n  " << ((state.source.pc->is_assert()) ? "assertion" : "code") <<
                 "\n  " << from_expr(ns, "", state.source.pc->guard) <<
                 "\n  " << (is_exit ? "End before in location :" : "Current location ") 
-                       << loc << "(out of " << last_assertion_loc << ")" 
+                       << loc << " (out of " << last_assertion_loc << ")" 
                        << " is in loop? " << state.source.pc->loop_number // Check when this will become active
                        << std::endl;
             #endif 
@@ -621,8 +625,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
 
   // Set pc to function entry point
   // NOTE: Here, we expect having the function body available
-  const goto_functionst::goto_functiont& function =
-    summarization_context.get_function(function_id);
+  const goto_functionst::goto_functiont& function = get_function(function_id);
   const goto_programt& body = function.body;
   state.source.pc = body.instructions.begin();
   state.top().end_of_function = --body.instructions.end();
@@ -685,12 +688,7 @@ void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
   const irep_idt &identifier = partition_iface.function_id;
 
   // find code in function map
-  auto it = summarization_context.get_functions().function_map.find(identifier);
-
-  if(it == summarization_context.get_functions().function_map.end())
-    throw "failed to find `"+id2string(identifier)+"' in function_map";
-
-  const goto_functionst::goto_functiont &goto_function=it->second;
+  const goto_functionst::goto_functiont &goto_function = get_function(identifier);
 
   // Callsite symbols
   produce_callsite_symbols(partition_iface, state);
@@ -738,13 +736,7 @@ void symex_assertion_sumt::assign_function_arguments(
 
 
   // find code in function map
-  const auto it = summarization_context.get_functions().function_map.find(identifier);
-
-  if(it == summarization_context.get_functions().function_map.end()) {
-    throw "failed to find `" + id2string(identifier) + "' in function_map";
-  }
-
-  const goto_functionst::goto_functiont & goto_function = it->second;
+  const goto_functionst::goto_functiont &goto_function = get_function(identifier);
 
   // Add parameters assignment
   bool old_cp = constant_propagation;
@@ -768,12 +760,6 @@ void symex_assertion_sumt::assign_function_arguments(
     // Add return value assignment from a temporary variable and
     // store the temporary return value symbol somewhere (so that we can
     // use it later, when processing the deferred function).
-    // KE: the nil (function_call.lhs().is_nil()), changed into |return'!0|
-    // Fix the flag according to the string return'!0 or is_nil
-    // TODO: find what is the right symbol
-//    bool is_nil_or_ret = ((function_call.lhs().get(ID_identifier) == RETURN_NIL_CPROVER)
-//                          ||
-//                          (function_call.lhs().is_nil()));
     bool skip_assignment = function_call.lhs().is_nil();
     return_assignment_and_mark(goto_function.type, state, &(function_call.lhs()),
             partition_iface, skip_assignment);
@@ -823,7 +809,7 @@ void symex_assertion_sumt::mark_argument_symbols(const code_typet & function_typ
 \*******************************************************************/
 void symex_assertion_sumt::mark_accessed_global_symbols(const irep_idt & function_id, partition_ifacet & partition_iface)
 {
-  const auto& globals_accessed = summarization_context.get_function_info(function_id).get_accessed_globals();
+  const auto& globals_accessed = get_accessed_globals(function_id);
 
   for (auto global_id : globals_accessed) {
     const auto & symbol = get_normal_symbol(global_id);
@@ -858,7 +844,7 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
     statet &state,
     partition_ifacet &partition_iface)
 {
-  const auto& globals_modified = summarization_context.get_function_info(function_id).get_modified_globals();
+  const auto& globals_modified = get_modified_globals(function_id);
 
   for (const auto & global_id : globals_modified){
     const auto& symbol = get_normal_symbol(global_id);
@@ -867,8 +853,9 @@ void symex_assertion_sumt::modified_globals_assignment_and_mark(
 
 #   if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
     expr_pretty_print(std::cout << "Marking modified global symbol: ", ssa_expr);
+    std::cout << '\n';
 #   endif
-    assert(is_L2_SSA_symbol(ssa_expr));
+    assert(is_L2_SSA_symbol(ssa_expr)); // KE: avoid creating junk
   }
 }
 
@@ -921,6 +908,7 @@ void symex_assertion_sumt::return_assignment_and_mark(
 # if defined(DEBUG_PARTITIONING) && defined(DISABLE_OPTIMIZATIONS)
   expr_pretty_print(std::cout << "Marking return symbol: ", retval_symbol);
 //      expr_pretty_print(std::cout << "Marking return tmp symbol: ", retval_tmp);
+  std::cout << '\n';
 # endif
   partition_iface.retval_symbol = retval_symbol;
   partition_iface.returns_value = true;
@@ -1051,7 +1039,7 @@ void symex_assertion_sumt::handle_function_call(
   // What are we supposed to do with this precise function call? 
 
   // get summary_info corresponding to the called function
-  summary_infot &summary_info = current_summary_info->get_call_sites().find(
+  call_tree_nodet &summary_info = current_summary_info->get_call_sites().find(
       state.source.pc)->second;
   assert(get_current_deferred_function().partition_iface.partition_id != partitiont::NO_PARTITION);
   // created a new deferred_function for this call
@@ -1073,8 +1061,7 @@ void symex_assertion_sumt::handle_function_call(
   }
 
   const irep_idt& function_id = function_call.function().get(ID_identifier);
-  const goto_functionst::goto_functiont &goto_function =
-    summarization_context.get_function(function_id);
+  const goto_functionst::goto_functiont &goto_function = get_function(function_id);
 
   // Do we have the body?
   if(!goto_function.body_available())
@@ -1172,7 +1159,7 @@ void symex_assertion_sumt::summarize_function_call(
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
   equation.fill_summary_partition(partition_id,
-          &summarization_context.get_summaries(function_id));
+          &summary_store.get_summaries(id2string(function_id)));
 }
 
 /*******************************************************************
@@ -1188,7 +1175,7 @@ void symex_assertion_sumt::summarize_function_call(
 
 \*******************************************************************/
 void symex_assertion_sumt::fill_inverted_summary(
-        summary_infot& summary_info,
+        call_tree_nodet& summary_info,
         statet& state,
         partition_ifacet& inlined_iface)
 {
@@ -1206,13 +1193,14 @@ void symex_assertion_sumt::fill_inverted_summary(
 
   log.statistics() << "Substituting interpolant (part:" << partition_id << ")" << log.eom;
 
+  std::string function_name = id2string(function_id);
 //# ifdef DEBUG_PARTITIONING
-  log.statistics() << "   summaries available: " << summarization_context.get_summaries(function_id).size() << log.eom;
+  log.statistics() << "   summaries available: " << summary_store.get_summaries(function_name).size() << log.eom;
   log.statistics() << "   summaries used: " << summary_info.get_used_summaries().size() << log.eom;
 //# endif
 
   equation.fill_inverted_summary_partition(partition_id,
-          &summarization_context.get_summaries(function_id),
+          &summary_store.get_summaries(function_name),
           summary_info.get_used_summaries());
 }
 
@@ -1658,7 +1646,7 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
  Purpose: Allocate new partition_interface
 
 \*******************************************************************/
-partition_ifacet& symex_assertion_sumt::new_partition_iface(summary_infot& summary_info,
+partition_ifacet& symex_assertion_sumt::new_partition_iface(call_tree_nodet& summary_info,
                                       partition_idt parent_id, unsigned call_loc) {
     auto item = new partition_ifacet(summary_info, parent_id, call_loc);
     partition_ifaces.push_back(item);
@@ -1753,4 +1741,142 @@ void symex_assertion_sumt::create_new_artificial_symbol(const irep_idt & id, con
   assert(state.level2.current_names.find(l1_id) == state.level2.current_names.end());
   // MB: it seems the CPROVER puts L1 ssa expression as the first of the pair, so we do the same, but I fail to see the reason
   state.level2.current_names[l1_id] = std::make_pair(l1_ssa,0);
+}
+
+
+namespace{
+
+    bool dont_need_globals(const dstringt & fun_name){
+        std::string name {fun_name.c_str()};
+        return is_cprover_initialize_method(name) || is_main(name);
+    }
+
+    struct dstring_lex_ordering
+    {
+        bool operator()(const dstringt& s1, const dstringt& s2) const
+        {
+            return s1.compare(s2) < 0;
+        }
+    };
+
+    using irep_lex_set = std::set<irep_idt, dstring_lex_ordering>;
+
+    void add_to_set_if_global( const namespacet& ns, const exprt& ex,
+        irep_lex_set & globals)
+    {
+        if (ex.id() == ID_symbol) {
+            // Directly a symbol - add to set if it is a static variable
+            irep_idt id = to_symbol_expr(ex).get_identifier();
+            const symbolt& symbol = ns.lookup(id);
+            if (symbol.is_static_lifetime && symbol.is_lvalue) {
+                globals.insert(id);
+            }
+        } else if (ex.id() == ID_index) {
+            // Indexing scheme
+            add_to_set_if_global(ns, to_index_expr(ex).array(), globals);
+            add_to_set_if_global(ns, to_index_expr(ex).index(), globals);
+
+        } else if (ex.id() == ID_member) {
+            // Structure member scheme
+            add_to_set_if_global(ns, to_member_expr(ex).struct_op(), globals);
+
+        } else if (ex.id() == ID_dereference) {
+            // Structure member scheme
+            add_to_set_if_global(ns, to_dereference_expr(ex).pointer(), globals);
+
+        } else if (ex.id() == ID_typecast || ex.id() == ID_floatbv_typecast) {
+            // Typecast
+            add_to_set_if_global(ns, to_typecast_expr(ex).op(), globals);
+
+        } else if (ex.id() == ID_constant) {
+            // Ignore constants
+
+        } else if (ex.id() == ID_plus) {
+            add_to_set_if_global(ns, to_plus_expr(ex).operands()[0], globals);
+            add_to_set_if_global(ns, to_plus_expr(ex).operands()[1], globals);
+
+        } else if (ex.id() == ID_minus) {
+            add_to_set_if_global(ns, to_minus_expr(ex).operands()[0], globals);
+            add_to_set_if_global(ns, to_minus_expr(ex).operands()[1], globals);
+
+        } else if (ex.id() == ID_mod) {
+            add_to_set_if_global(ns, to_mod_expr(ex).operands()[0], globals);
+            add_to_set_if_global(ns, to_mod_expr(ex).operands()[1], globals);
+
+        } else if (ex.id() == ID_div) {
+            add_to_set_if_global(ns, to_div_expr(ex).operands()[0], globals);
+            add_to_set_if_global(ns, to_div_expr(ex).operands()[1], globals);
+
+        } else if ((ex.id() == ID_shl) || (ex.id() == ID_ashr) || (ex.id() == ID_lshr)) { // ID_shl, ID_ashr, ID_lshr
+            add_to_set_if_global(ns, to_shift_expr(ex).operands()[0], globals);
+            add_to_set_if_global(ns, to_shift_expr(ex).operands()[1], globals);
+
+        } else {
+            std::cerr << "WARNING: Unsupported operator or index/member scheme - ignoring " << ex.id() << "." << std::endl;
+#if defined(DEBUG_GLOBALS) && defined(DISABLE_OPTIMIZATIONS)
+            expr_pretty_print(std::cerr << "Expr: ", ex);
+    throw "Unsupported indexing scheme.";
+#endif
+        }
+    }
+}
+
+
+void symex_assertion_sumt::analyze_globals() {
+    std::unordered_set<irep_idt, irep_id_hash> analyzed_functions;
+    analyze_globals_rec(goto_functionst::entry_point(), analyzed_functions);
+
+}
+
+void symex_assertion_sumt::analyze_globals_rec(irep_idt function_to_analyze,
+                                               std::unordered_set<irep_idt, irep_id_hash> & analyzed_functions) {
+    const auto & body = goto_functions.function_map.at(function_to_analyze).body;
+    irep_lex_set globals_read;
+    irep_lex_set globals_written;
+
+    // MB: skip body of __CPROVER_initialize and main function, we do not need their globals and they cause some problems
+    bool skip = dont_need_globals(function_to_analyze);
+    if (!skip) {
+        for (const auto & inst : body.instructions) {
+            const expr_listt tmp_r = objects_read(inst);
+            for (const auto & expr : tmp_r) {
+                add_to_set_if_global(ns, expr, globals_read);
+            }
+
+            const expr_listt tmp_w = objects_written(inst);
+            for (const auto & expr : tmp_w) {
+                add_to_set_if_global(ns, expr, globals_read);
+                add_to_set_if_global(ns, expr, globals_written);
+            }
+        }
+    }
+
+    analyzed_functions.insert(function_to_analyze);
+    for (auto const & inst : body.instructions) {
+        if (inst.type != FUNCTION_CALL) {
+            continue;
+        }
+
+        // NOTE: Expects the function call to be a standard symbol call
+        const irep_idt & target_function = to_symbol_expr(
+                to_code_function_call(inst.code).function()).get_identifier();
+
+        if (analyzed_functions.find(target_function) == analyzed_functions.end()) {
+            analyze_globals_rec(target_function, analyzed_functions);
+        }
+        if (!skip) {
+            const auto & accessed_globals = get_accessed_globals(target_function);
+            globals_read.insert(accessed_globals.begin(), accessed_globals.end());
+            const auto & modified_globals = get_modified_globals(target_function);
+            globals_written.insert(modified_globals.begin(), modified_globals.end());
+        }
+    }
+    auto & accessed = accessed_globals[function_to_analyze];
+    assert(accessed.empty());
+    std::copy(std::begin(globals_read), std::end(globals_read),
+              std::back_inserter(accessed));
+    auto & modified = modified_globals[function_to_analyze];
+    assert(modified.empty());
+    std::copy(std::begin(globals_written), std::end(globals_written),
+              std::back_inserter(modified));
 }

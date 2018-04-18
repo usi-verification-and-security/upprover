@@ -9,9 +9,11 @@
 #include "error_trace.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "symex_assertion_sum.h"
-#include "smt_assertion_sum.h"
+#include "prepare_smt_formula.h"
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
+#include <util/time_stopping.h>
+#include "smt_summary_store.h"
 
 #define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
 theory_refinert::~theory_refinert()
@@ -39,7 +41,6 @@ void theory_refinert::initialize()
       decider->set_dump_query_name(dump_query_name);
 #endif  
 
-  summarization_context.analyze_functions(ns);
   omega.initialize_summary_info (omega.get_summary_info(), goto_program);
   omega.setup_default_precision(init_modet::ALL_SUBSTITUTING);
 }
@@ -78,16 +79,15 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   absolute_timet initial, final;
   initial=current_time();
 
-  omega.set_initial_precision(assertion);
+    smt_summary_storet dummy;
+    omega.set_initial_precision(assertion, dummy);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
 
 
-  std::vector<unsigned> ints;
-
-  smt_partitioning_target_equationt equation(ns, summarization_context, false,
-      store_summaries_with_assertion, coloring_modet::NO_COLORING, ints);
+  smt_partitioning_target_equationt equation(ns, dummy,
+      store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {
@@ -96,32 +96,33 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   }
 #endif
 
-  summary_infot& summary_info = omega.get_summary_info();
+  call_tree_nodet& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex = symex_assertion_sumt(
-            summarization_context, summary_info, ns, symbol_table,
+            dummy, omega.get_goto_functions(), summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, true, true, true, unwind_bound);
 
   //setup_unwind(symex);
 
-  smt_assertion_sumt prop = smt_assertion_sumt(summarization_context,
-          equation, message_handler, max_memory_used);
+  prepare_smt_formulat ssaTosmt = prepare_smt_formulat(equation, message_handler);
 
   bool end = symex.prepare_SSA(assertion);
 
-  if (!end) end = prop.assertion_holds(assertion, ns,
-          *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
-          *(dynamic_cast<interpolating_solvert *> (decider)));
+  if (!end)
+  {
+      //Converts SSA to SMT formula
+    ssaTosmt.convert_to_formula(*(dynamic_cast<smtcheck_opensmt2t *> (decider)), *(decider));
+
+      // Decides the equation
+    bool is_sat = ssaTosmt.is_satisfiable(*(dynamic_cast<smtcheck_opensmt2t *> (decider)));
+    end = !is_sat;
+  }
 
   if (end)
   {
-#ifdef _NO_OPTIMIZATION
-      std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
-      if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
-#endif
       status() << "ASSERTION HOLDS" << endl << eom;
       report_success();
-  } else {
+  } else {  //do refinement
 
       error_tracet error_trace;
       const std::string &log=options.get_option("logic");
@@ -164,10 +165,6 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   status() << endl << "Custom refinement successful" << endl;
                   status() << "(" << exprs_ids.size() << " / "
                                   << exprs.size()  << " expressions bit-blasted)" << endl;
-#ifdef _NO_OPTIMIZATION
-                  std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
-                  if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
-#endif
                   status() << "ASSERTION HOLDS" << eom;
                   report_success();
               }
@@ -192,10 +189,6 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                   status() << endl << "Naive refinement successful" << endl;
                   status() << "(" << exprs.size() << " / "
                                   << exprs.size()  << " expressions bit-blasted)" << endl;
-#ifdef _NO_OPTIMIZATION
-                  std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
-                  if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
-#endif
                   status() << "ASSERTION HOLDS" << eom;
                   report_success();
               }
@@ -318,10 +311,6 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                           for (auto it = refined.begin(); it != refined.end(); ++it){
                               status() << *it << ",";
                           }
-#ifdef _NO_OPTIMIZATION
-                          std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
-                          if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
-#endif
                           status() << endl << "ASSERTION HOLDS" << eom;
                           report_success();
                           break;
@@ -350,10 +339,6 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       for (unsigned int i = 0; i < exprs.size(); i++){
                           status() << i << ",";
                       }
-#ifdef _NO_OPTIMIZATION
-                      std::string reason = unwindt::getWarningMessageForUnwondedCode(options.get_unsigned_int_option("unwind"));
-                      if (reason.size() > 0) status() << "\n\n(" << reason << ")" << endl;
-#endif
                       status() << endl << "ASSERTION HOLDS" << eom;
                       report_success();
                       break;
@@ -382,42 +367,6 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   return end;
 }
 
-
-/*******************************************************************\
-
-Function: theory_refinert::setup_unwind
-
-  Inputs:
-
- Outputs:
-
- Purpose: Setup the unwind bounds.
-
-\*******************************************************************/
-//void theory_refinert::setup_unwind(symex_assertion_sumt& symex)
-//{
-//  const std::string &set=options.get_option("unwindset");
-//  unsigned int length=set.length();
-//
-//  for(unsigned int idx=0; idx<length; idx++)
-//  {
-//    std::string::size_type next=set.find(",", idx);
-//    std::string val=set.substr(idx, next-idx);
-//
-//    if(val.rfind(":")!=std::string::npos)
-//    {
-//      std::string id=val.substr(0, val.rfind(":"));
-//      unsigned long uw=atol(val.substr(val.rfind(":")+1).c_str());
-//      //symex.unwind_set[id]=uw; // KE: changed in cbmc 5.5
-//      symex.set_unwind_thread_loop_limit(1,id,uw); //KE: No threads support, assume main is in thread 1
-//    }
-//
-//    if(next==std::string::npos) break;
-//    idx=next;
-//  }
-//
-//  symex.set_unwind_limit(options.get_unsigned_int_option("unwind"));
-//}
 
 /*******************************************************************\
 

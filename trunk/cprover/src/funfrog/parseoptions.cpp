@@ -68,6 +68,7 @@
 #include <goto-programs/show_symbol_table.h>
 #include <goto-programs/show_goto_functions.h>
 #include <goto-programs/show_properties.h>
+#include "UserDefinedSummary.h"
 #include <limits>
 
 /*******************************************************************
@@ -560,7 +561,7 @@ void funfrog_parseoptionst::help()
 
 #ifdef DISABLE_OPTIMIZATIONS   
   "\nDebug Options:(Options Valid Only in SMT-Based Verification)\n"
-  "--list-templates               dump the templates of the functions for user-defined summaries\n"
+  //"--list-templates               dump the templates of the functions for user-defined summaries\n"
   "--dump-SSA-tree                ask a dump of SSA form in smt2 format\n" //the default is __SSA__dump_1.smt2
   "--dump-pre-query               ask HiFrog to dump the smtlib query before sending to solver\n" //the default is __preq__dump_1.smt2
   "--dump-query                   ask OpenSMT to dump the smtlib query before solving\n" //by default dumps into _dump-1.smt2 file.
@@ -703,6 +704,33 @@ bool funfrog_parseoptionst::check_function_summarization()
         cbmc_status_interface("Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf");   
       }  
     }
+    
+    // FIXME: complete the code inside dump_list_templates
+    // KE: this is the right location, not working yet
+    // templates for user defined summaries
+    if(cmdline.isset("list-templates") && (options.get_option("logic") != "prop"))
+    {
+        cbmc_status_interface("Listing templates\n");
+        
+        // Create the basic formula
+        UserDefinedSummaryt user_defined_summary;
+        std::string logic = std::string(options.get_option("logic"));
+
+        // dump the summary into a file
+        assert(false); // MB: does not compile in this form, fix later
+//        user_defined_summary.dump_list_templates(ns,
+//                goto_functions.function_map[goto_functionst::entry_point()].body,
+//                goto_functions,
+//                options.get_unsigned_int_option("unwind"),
+//                logic,
+//                options.get_option("save-summaries"));
+        
+        return 0;
+    } else if (cmdline.isset("list-templates")) {
+        cbmc_error_interface("Error: invalid --bitwidth " + cmdline.get_value("bitwidth")
+                + ". Please re-run with bit-width parameter that is a pow of 2!");
+        exit(0);
+    }
 
     // ID_main is the entry point that is now changed to be ID__start
     // KE: or is it goto_functionst::entry_point()?
@@ -773,7 +801,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("tree-interpolants", cmdline.isset("tree-interpolants"));
   options.set_option("check-itp", cmdline.isset("check-itp"));
   options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
-  options.set_option("list-templates", cmdline.isset("list-templates"));
+  //options.set_option("list-templates", cmdline.isset("list-templates"));
   options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
   options.set_option("theoref", cmdline.isset("theoref"));
   options.set_option("force", cmdline.isset("force"));

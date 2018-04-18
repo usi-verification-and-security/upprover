@@ -8,7 +8,6 @@
 \*******************************************************************/
 
 #include "function_info.h"
-#include "summarization_context.h"
 #ifdef DISABLE_OPTIMIZATIONS
 #include "expr_pretty_print.h"
 #endif

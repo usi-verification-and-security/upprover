@@ -3,6 +3,7 @@
 
 class unwindt{
 protected:
+  unwindt(unsigned int max_unwind) : max_unwind{max_unwind} {}
 
   void increment_unwinding_counter(irep_idt target_function){
     rec_unwind[target_function]++;
@@ -12,38 +13,22 @@ protected:
     rec_unwind[target_function]--;
   }
 
-  bool is_unwinding_exceeded(unsigned max_unwind, irep_idt target_function)
+  bool is_unwinding_exceeded(irep_idt target_function)
   {
     unsigned unwind = rec_unwind[target_function];
-    return (!unwindt::is_default_max_unwind(max_unwind)) &&
-           unwind >= max_unwind;
+    return unwind > max_unwind;
   }
 
-  bool is_recursion_unwinding(unsigned max_unwind, irep_idt target_function)
+  bool is_recursion_unwinding(irep_idt target_function)
   {
     unsigned unwind = rec_unwind[target_function];
-    return unwindt::is_default_max_unwind(max_unwind) &&
-           unwind > 0;
+    return unwind > 0;
   }
   
 private:
   std::map<irep_idt, unsigned> rec_unwind;
-  
-  /* KE: max_unwind can be 0, -1 or 4294967295, or other default value marking
-   * the user didn't set any value for --unwind 
-   */
-  static bool is_default_max_unwind(unsigned max_unwind) 
-  {
-      return (max_unwind == 0 || max_unwind == 4294967295); // || max_unwind == (-1));
-      // KE: needs testing
-  } 
-public:
-  static std::string getWarningMessageForUnwondedCode(unsigned in_param) {
-    if (unwindt::is_default_max_unwind(in_param)) return "";
-      
-    return "Warning: Result holds **ONLY** in this bound (!) "
-            "Initial unwinding bound: " + std::to_string(in_param);
-  }
+  unsigned int max_unwind;
+
 };
 
 #endif

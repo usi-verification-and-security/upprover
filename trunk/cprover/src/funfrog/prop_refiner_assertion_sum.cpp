@@ -20,7 +20,7 @@
 \*******************************************************************/
 void prop_refiner_assertion_sumt::refine(
         const prop_conv_solvert &decider,
-        summary_infot &summary,
+        call_tree_nodet &summary,
         prop_partitioning_target_equationt &equation) {
     refined_functions.clear();
     switch (mode) {
@@ -41,9 +41,9 @@ void prop_refiner_assertion_sumt::refine(
 
 void prop_refiner_assertion_sumt::reset_depend(
         const prop_conv_solvert &decider,
-        summary_infot &summary,
+        call_tree_nodet &summary,
         prop_partitioning_target_equationt &equation) {
-    std::vector<summary_infot *> tmp;
+    std::vector<call_tree_nodet *> tmp;
 
     partitionst &parts = equation.get_partitions();
     for (unsigned i = 0; i < parts.size(); i++) {

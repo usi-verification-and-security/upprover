@@ -1,30 +1,21 @@
 #ifndef ITP_H
 #define ITP_H
 
-#include <ostream>
-#include <util/std_expr.h>
 #include <solvers/prop/literal.h>
 #include <solvers/flattening/boolbv.h>
-#include <opensmt/opensmt2.h>
-#include <opensmt/Tterm.h>
+#include <opensmt/PTRef.h>
 
 class prop_itpt;
 class smt_itpt;
+
 class itpt
 {
 public:
-  itpt() : logic(nullptr), _no_variables(1), _no_orig_variables(1) {}
+  itpt() :_no_variables(1), _no_orig_variables(1) {}
   virtual ~itpt() {} // d'tor
 
   virtual bool is_trivial() const =0;
 
-  virtual literalt land(literalt a, literalt b) =0;
-  virtual literalt lor(literalt a, literalt b)=0;
-  virtual literalt lnot(literalt a)=0;
-  virtual void swap(itpt& other)=0;
-  virtual void swap(prop_itpt& other)=0;
-  virtual void swap(smt_itpt& other)=0;
-  
   virtual itpt* get_nodet() =0;
 
   // For SAT & SMT code
@@ -48,11 +39,8 @@ public:
 
   // Getters & Setters
   PTRef getInterpolant() { return interpolant; }
-  virtual Tterm* getTterm() =0; // moved to smt_itp { return tterm; }
-  
   void setInterpolant(PTRef pt) { interpolant = pt; }
-  virtual void setTterm(Tterm& t) =0; // moved to smt_itp { tterm = &t; }
-  void setLogic(Logic *_l) { logic = _l; }
+
 
   bool is_valid(){ return valid; };
   void set_valid(bool _valid){ valid = _valid; };
@@ -66,7 +54,6 @@ public:
   literalt root_literal;
 protected:
   PTRef interpolant;
-  Logic *logic;
 
   bool valid;
 

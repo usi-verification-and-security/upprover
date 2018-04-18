@@ -19,21 +19,21 @@
 #include "summary_store_fwd.h"
 
 class summarization_contextt;
-class summary_infot;
+class call_tree_nodet;
 
 // Type of summarization applied at a specific call-site
 typedef enum {HAVOC, SUMMARY, INLINE} summary_precisiont;
 
-typedef std::map<goto_programt::const_targett, summary_infot> call_sitest;
+typedef std::map<goto_programt::const_targett, call_tree_nodet> call_sitest;
 typedef std::map<goto_programt::const_targett, unsigned> location_mapt;
 typedef std::map<goto_programt::const_targett, std::map<unsigned, bool> > location_visitedt;
 typedef std::set<goto_programt::const_targett> locationst;
 
 // Summary information for a body of a function
-class summary_infot {
+class call_tree_nodet {
 public:
 
-  summary_infot(summary_infot *_parent, unsigned _call_location)
+  call_tree_nodet(call_tree_nodet *_parent, unsigned _call_location)
           : function_id(ID_nil), parent(_parent), assertion_in_subtree(false),
             precision(HAVOC), call_location(_call_location),
             preserved_node(false), preserved_edge(false), unwind_exceeded(false), recursion_nondet(false), in_loop(false) { }
@@ -55,11 +55,10 @@ public:
 
   const irep_idt& get_function_id() const { return function_id; }
 
-  void set_initial_precision(
-      const summary_precisiont default_precision,
-      const unsigned last_assertion_loc,
-      const summarization_contextt& summarization_context,
-      const assertion_infot& assertion);
+    void set_initial_precision(
+        const summary_precisiont default_precision,
+        const summary_storet& summarization_summary_store,
+        const unsigned last_assertion_loc);
 
   bool mark_enabled_assertions(
         const assertion_infot& assertion, unsigned depth,
@@ -79,7 +78,7 @@ public:
     return enabled_assertions.find(assertion) != enabled_assertions.end();
   }
 
-  summary_infot& get_parent() { return *parent; }
+  call_tree_nodet& get_parent() { return *parent; }
   location_mapt& get_assertions() { return assertions; };
 
   void set_inline() { precision = INLINE; }
@@ -101,7 +100,7 @@ public:
   void set_preserved_node() { preserved_node = true; } // false by default
   void set_preserved_edge() { preserved_edge = true; } // false by default
 
-  unsigned get_subtree_size(const summarization_contextt& summarization_context);
+  //unsigned get_subtree_size(const goto_functionst &);
 
   bool is_recursive(){
     for (call_sitest::iterator it = call_sites.begin();
@@ -135,7 +134,7 @@ private:
   location_mapt assertions;
   locationst enabled_assertions;
   irep_idt function_id;
-  summary_infot *parent;
+  call_tree_nodet *parent;
   summary_ids_sett used_summaries;
   bool assertion_in_subtree;
   summary_precisiont precision;
@@ -147,9 +146,6 @@ private:
   bool recursion_nondet;
   bool in_loop;
   
-  void set_initial_precision(
-        summary_precisiont default_precision,
-        const summarization_contextt& summarization_context,
-        const unsigned last_assertion_loc);
+
 };
 #endif

@@ -15,15 +15,21 @@ Author: Ondrej Sery
 class smt_summary_storet :public summary_storet 
 {
 public:
-  virtual void serialize(std::ostream& out) const;
-  virtual void deserialize(const std::string& in, smtcheck_opensmt2t *decider = nullptr);
-  virtual void refresh_summaries_tterms(const std::string& in, smtcheck_opensmt2t *decider = nullptr);
-  virtual summary_idt insert_summary(summaryt& summary);
+   explicit smt_summary_storet(smtcheck_opensmt2t * decider):
+           summary_storet{},
+           decider{decider}
+   {}
+
+  smt_summary_storet() : smt_summary_storet(nullptr) {}
+
+  virtual void serialize(std::ostream& out) const override;
+  virtual void deserialize(std::vector<std::string> fileNames) override;
+  virtual void insert_summary(summaryt *summary, const std::string & function_name) override;
 
 protected:
-  virtual void deserialize(std::istream& in) {assert(0);} // must have the interface to opensmt2
-};
 
-void get_files(std::set<std::string>& files, std::string set);
+private:
+    smtcheck_opensmt2t * decider;
+};
 
 #endif

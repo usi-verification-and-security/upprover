@@ -13,9 +13,9 @@
 #include "solvers/smtcheck_opensmt2.h"
 #include "solvers/smt_itp.h"
 #include "partition_iface.h"
-#include "summarization_context.h"
 #include "utils/naming_helpers.h"
 #include "hifrog.h"
+#include "summary_store.h"
 
 //#define DEBUG_ITP_SMT // ITP of SMT - testing
 
@@ -208,7 +208,6 @@ void smt_partitioning_target_equationt::convert_partition(
 void smt_partitioning_target_equationt::convert_partition_summary(
   smtcheck_opensmt2t & decider, partitiont & partition) {
   std::vector<symbol_exprt> common_symbs;
-  summary_storet * summary_store = summarization_context.get_summary_store();
   fill_common_symbols(partition, common_symbs);
   unsigned i = 0;
 
@@ -222,7 +221,7 @@ void smt_partitioning_target_equationt::convert_partition_summary(
 
   for (auto summary_id : partition.applicable_summaries)
   {
-    smt_summaryt & summary = dynamic_cast<smt_summaryt &> (summary_store->find_summary(summary_id));
+    smt_summaryt & summary = dynamic_cast<smt_summaryt &> (summary_store.find_summary(summary_id));
     if (summary.is_valid() && (!is_recursive || last_summary == i++)) {
       // we do not want to actually change the summary, because we might need the template later,
       // we just get a PTRef to the substituted version
@@ -562,7 +561,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
     if (!bv.empty()) {
         assert(partition_iface.assertion_in_subtree);
 
-        if (partition.parent_id == partitiont::NO_PARTITION && !upgrade_checking) {
+        if (partition.parent_id == partitiont::NO_PARTITION) {
 #       ifdef DEBUG_SSA_SMT_CALL
             cout << "Before decider::const_var(error in ROOT) --> true" << endl;
             cout << "Before decider::land(error in ROOT)" << endl;
@@ -808,12 +807,10 @@ namespace{
  Purpose: Extract interpolants corresponding to the created partitions
 
  \*******************************************************************/
-void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t& interpolator,
-		interpolant_mapt& interpolant_map) {
+void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t& interpolator) {
 #ifdef PRODUCE_PROOF    
     // Prepare the interpolation task. NOTE: ignore the root partition!
     unsigned valid_tasks = 0;
-    summary_storet* summary_store = summarization_context.get_summary_store();
 
     // Clear the used summaries
     for (unsigned i = 0; i < partitions.size(); ++i)
@@ -857,7 +854,6 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
 
     // Interpret the result
     std::vector < symbol_exprt > common_symbs;
-    interpolant_map.reserve(valid_tasks);
     for (unsigned pid = 1, tid = 0; pid < partitions.size(); ++pid) {
         partitiont& partition = partitions[pid];
 
@@ -881,6 +877,10 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
             continue;
         }
 
+        if (itp->is_trivial()) {
+            continue;
+        }
+
         // Generalize the interpolant
         fill_common_symbols(partition, common_symbs);
 
@@ -894,19 +894,12 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
 
         std::cout << "Generalizing interpolant" << std::endl;
 #   endif
-
-        if (itp->is_trivial()) {
-            continue;
-        }
-
-        string fun_name = id2string(partition.get_iface().function_id);
+        std::string fun_name = id2string(partition.get_iface().function_id);
         //interpolator.adjust_function(*itp, common_symbs, fun_name);
         interpolator.generalize_summary(*itp, common_symbs, fun_name, true);
 
-        // Store the interpolant
-        summary_idt summary_id = summary_store->insert_summary(*itp);
-
-        interpolant_map.push_back(interpolant_mapt::value_type(&partition.get_iface(), summary_id));
+        // Store the interpolant; summary_store takes the ownership of the summary pointer itp
+        summary_store.insert_summary(itp, fun_name);
     }
 #else
     assert(0);

@@ -27,9 +27,11 @@ FUNFROG_SRC := \
       summary_info.cpp \
       subst_scenario.cpp \
       xml_interface.cpp \
+      UserDefinedSummary.cpp \
       parseoptions.cpp \
       languages.cpp \
       check_claims.cpp \
+      refinement/SatisfyingAssignment.cpp \
       refiner_assertion_sum.cpp \
       prop_refiner_assertion_sum.cpp \
       smt_refiner_assertion_sum.cpp \

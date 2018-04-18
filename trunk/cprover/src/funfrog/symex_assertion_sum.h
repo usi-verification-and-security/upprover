@@ -9,13 +9,12 @@
 #ifndef CPROVER_SYMEX_ASSERTION_SUM_H
 #define CPROVER_SYMEX_ASSERTION_SUM_H
 
-#include <queue>
 
 #include <util/symbol.h>
 #include <util/message.h>
 #include <goto-symex/goto_symex.h>
-#include "partition_iface_fwd.h"
 #include "partition_fwd.h"
+#include <queue>
 
 //#define DEBUG_PARTITIONING // Debug this class
 
@@ -23,17 +22,21 @@ class goto_programt;
 class goto_functionst;
 class namespacet;
 class assertion_infot;
-class summary_infot;
-class summarization_contextt;
+class call_tree_nodet;
 class partitioning_target_equationt;
+class partition_ifacet;
+class summary_storet;
+
+using partition_iface_ptrst = std::list<partition_ifacet*>;
 
 class symex_assertion_sumt : public goto_symext, messaget
 {
 public:
   // TODO: create some option class to group the options together, this starts to look ridiculous
   symex_assertion_sumt(
-          summarization_contextt &_summarization_context,
-          summary_infot &_summary_info,
+          const summary_storet & summary_store,
+          const goto_functionst & goto_functions,
+          call_tree_nodet &_summary_info,
           const namespacet &_ns,
           symbol_tablet &_new_symbol_table,
           partitioning_target_equationt &_target,
@@ -63,14 +66,14 @@ public:
   // Generate SSA statements for the refined program starting from the given 
   // set of functions.
   bool refine_SSA(
-          const std::list<summary_infot*> &refined_function,
+          const std::list<call_tree_nodet*> &refined_function,
           bool force_check = false);
   
   virtual void symex_step(
     const goto_functionst &goto_functions,
     statet &state) override;
   
-  const partition_iface_ptrst* get_partition_ifaces(summary_infot &summary_info) { 
+  const partition_iface_ptrst* get_partition_ifaces(call_tree_nodet &summary_info) {
     auto it = partition_iface_map.find(&summary_info);
     
     if (it == partition_iface_map.end())
@@ -90,30 +93,30 @@ private:
   void end_symex(statet &state);
 
   // Mapping from summary_info to the corresponding partition_iface
-  typedef std::unordered_map<const summary_infot*,partition_iface_ptrst> partition_iface_mapt;
+  typedef std::unordered_map<const call_tree_nodet*,partition_iface_ptrst> partition_iface_mapt;
   partition_iface_mapt partition_iface_map;
 
   class deferred_functiont {
   public:
 
-    deferred_functiont(summary_infot &_summary_info,
+    deferred_functiont(call_tree_nodet &_summary_info,
             partition_ifacet& _partition_iface) : summary_info(_summary_info),
             partition_iface(_partition_iface) { }
 
-    summary_infot& summary_info;
+    call_tree_nodet& summary_info;
     partition_ifacet& partition_iface;
   };
 
-  // Shared information about the program and summaries to be used during
-  // analysis
-  summarization_contextt &summarization_context;
+  const summary_storet & summary_store;
+
+  const goto_functionst& goto_functions;
 
   // Which functions should be summarized, abstracted from, and which inlined
-  summary_infot &summary_info;
+  call_tree_nodet &summary_info;
 
   // Summary info of the function being currently processed. Set to NULL when
   // no deferred function are left
-  summary_infot *current_summary_info;
+  call_tree_nodet *current_summary_info;
 
   // Wait queue for the deferred functions (for other partitions)
   std::queue<deferred_functiont> deferred_functions;
@@ -178,7 +181,7 @@ private:
     
   // Prepares a partition with an inverted summary. This is used
   // to verify that a function still implies its summary (in upgrade check).
-  void fill_inverted_summary(summary_infot& summary_info,
+  void fill_inverted_summary(call_tree_nodet& summary_info,
                              statet& state, partition_ifacet& inlined_iface);
 
   // Inlines the given function call
@@ -295,8 +298,23 @@ private:
   }
 
   // Allocate new partition_interface
-  partition_ifacet& new_partition_iface(summary_infot& summary_info,
+  partition_ifacet& new_partition_iface(call_tree_nodet& summary_info,
           partition_idt parent_id, unsigned call_loc);
+
+  const goto_functionst::goto_functiont & get_function(const irep_idt & function_id) const {
+      return goto_functions.function_map.at(function_id);
+  }
+
+  using globalst = std::vector<irep_idt>;
+  // because of recursive functions, we create empty collections if they function is not there yet
+  globalst get_modified_globals(irep_idt function_name){
+//      return modified_globals.at(function_name);
+      return modified_globals[function_name];
+  }
+  globalst get_accessed_globals(irep_idt function_name) {
+//      return accessed_globals.at(function_name);
+      return accessed_globals[function_name];
+  }
    
 protected:
   // KE: override from goto_symex.h
@@ -335,6 +353,13 @@ protected:
   #endif
 
 private:
+
+    std::unordered_map<irep_idt, globalst, irep_id_hash> accessed_globals;
+    std::unordered_map<irep_idt, globalst, irep_id_hash> modified_globals;
+
+    void analyze_globals();
+
+    void analyze_globals_rec(irep_idt function_to_analyze, std::unordered_set<irep_idt, irep_id_hash> & analyzed_functions);
 
   // Methods for manipulating symbols: creating new artifical symbols, getting the current L2 version of a symbol,
   // getting the next version of a symbol, etc.
