@@ -12,7 +12,6 @@ Author: Ondrej Sery
 
 #include "partitioning_target_equation.h"
 #include "solvers/satcheck_opensmt2.h"
-#include "partition_iface_fwd.h"
 
 
 // Two classes for smt and prop   

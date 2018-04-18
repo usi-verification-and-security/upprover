@@ -44,7 +44,7 @@ public:
   std::size_t get_next_id(const string &fname);
   
   // Reset the summary store
-  void clear() { store.clear(); max_id = 0; repr_count = 0; }
+  void clear() { store.clear(); max_id = 0; repr_count = 0; function_to_summaries.clear();}
 
 
   bool has_summaries(irep_idt function_id) const {

@@ -30,9 +30,7 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
         std::cerr << "Could not deresialize summary store, the solver handle was not set!\n";
         return;
     }
-    repr_count = 0;
-    store.clear();
-    function_to_summaries.clear();
+    this->clear();
 
     for (const auto & fileName : fileNames) {
         if (decider->getMainSolver()->readFormulaFromFile(fileName.c_str())) {

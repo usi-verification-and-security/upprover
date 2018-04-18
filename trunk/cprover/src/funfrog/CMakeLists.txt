@@ -74,8 +74,8 @@ set(HIFROG_SOURCE_FILES
 #        summarization_context.h
         summarizing_checker.cpp
         summarizing_checker.h
-    summary_info.cpp
-    summary_info.h
+        summary_info.cpp
+        summary_info.h
         summary_store.cpp
         summary_store.h
         #sumo.cpp
@@ -91,7 +91,6 @@ set(HIFROG_SOURCE_FILES
         xml_interface.h
         utils/naming_helpers.h
         utils/naming_helpers.cpp
-        partition_iface_fwd.h
         summary_store_fwd.h
         summarization_context_fwd.h
         utils/coloring_mode.h

@@ -41,13 +41,12 @@ void prop_summary_storet::serialize(std::ostream& out) const
 // Prop-logic deser
 void prop_summary_storet::deserialize(std::istream& in)
 {
-  repr_count = 0;
+  this->clear();
   in >> max_id;
 
   if (in.fail())
     return;
 
-  store.clear();
   store.reserve(max_id);
 
   // deserializing the summaries
@@ -71,7 +70,6 @@ void prop_summary_storet::deserialize(std::istream& in)
     }
   }
 
-  function_to_summaries.clear();
   // deserializing the map from function name to summary ids
   unsigned int function_count;
   in >> function_count;

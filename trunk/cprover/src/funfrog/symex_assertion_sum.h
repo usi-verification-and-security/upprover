@@ -9,13 +9,12 @@
 #ifndef CPROVER_SYMEX_ASSERTION_SUM_H
 #define CPROVER_SYMEX_ASSERTION_SUM_H
 
-#include <queue>
 
 #include <util/symbol.h>
 #include <util/message.h>
 #include <goto-symex/goto_symex.h>
-#include "partition_iface_fwd.h"
 #include "partition_fwd.h"
+#include <queue>
 
 //#define DEBUG_PARTITIONING // Debug this class
 
@@ -25,6 +24,10 @@ class namespacet;
 class assertion_infot;
 class call_tree_nodet;
 class partitioning_target_equationt;
+class partition_ifacet;
+class summary_storet;
+
+using partition_iface_ptrst = std::list<partition_ifacet*>;
 
 class symex_assertion_sumt : public goto_symext, messaget
 {
