@@ -23,7 +23,6 @@ Author: Ondrej Sery
 #endif
 
 #include <goto-symex/symex_target_equation.h>
-#include "utils/coloring_mode.h"
 #include "summary_store_fwd.h"
 #include "solvers/interpolating_solver_fwd.h"
 #include "partition.h"

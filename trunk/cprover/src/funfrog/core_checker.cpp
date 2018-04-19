@@ -28,6 +28,57 @@
 #include "smt_summary_store.h"
 #include "prop_summary_store.h"
 
+namespace{
+    /*******************************************************************\
+
+Function: get_refine_mode
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Determining the refinement mode from a string.
+
+\*******************************************************************/
+
+    refinement_modet get_refine_mode(const std::string& str)
+    {
+        if (str == "force-inlining" || str == "0"){
+            return refinement_modet::FORCE_INLINING;
+        } else if (str == "random-substitution" || str == "1"){
+            return refinement_modet::RANDOM_SUBSTITUTION;
+        } else if (str == "slicing-result" || str == "2"){
+            return refinement_modet::SLICING_RESULT;
+        } else {
+            // by default
+            return refinement_modet::SLICING_RESULT;
+        }
+    }
+
+/*******************************************************************\
+
+Function: get_initial_mode
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Determining the initial mode from a string.
+
+\*******************************************************************/
+
+    init_modet get_init_mode(const std::string& str)
+    {
+        if (str == "havoc-all" || str == "0"){
+            return init_modet::ALL_HAVOCING;
+        } else if (str == "use-summaries" || str == "1"){
+            return init_modet::ALL_SUBSTITUTING;
+        } else {
+            // by default
+            return init_modet::ALL_SUBSTITUTING;
+        }
+    }
+}
 
 core_checkert::core_checkert(
         const goto_programt &_goto_program,
@@ -915,69 +966,6 @@ void core_checkert::setup_unwind(symex_bmct& symex)
   }
 
   symex.set_unwind_limit(options.get_unsigned_int_option("unwind"));
-}
-
-/*******************************************************************\
-
-Function: get_refine_mode
-
-  Inputs:
-
- Outputs:
-
- Purpose: Determining the refinement mode from a string.
-
-\*******************************************************************/
-
-refinement_modet get_refine_mode(const std::string& str)
-{
-  if (str == "force-inlining" || str == "0"){
-    return refinement_modet::FORCE_INLINING;
-  } else if (str == "random-substitution" || str == "1"){
-    return refinement_modet::RANDOM_SUBSTITUTION;
-  } else if (str == "slicing-result" || str == "2"){
-    return refinement_modet::SLICING_RESULT;
-  } else {
-    // by default
-    return refinement_modet::SLICING_RESULT;
-  }
-}
-
-/*******************************************************************\
-
-Function: get_initial_mode
-
-  Inputs:
-
- Outputs:
-
- Purpose: Determining the initial mode from a string.
-
-\*******************************************************************/
-
-init_modet get_init_mode(const std::string& str)
-{
-  if (str == "havoc-all" || str == "0"){
-    return init_modet::ALL_HAVOCING;
-  } else if (str == "use-summaries" || str == "1"){
-    return init_modet::ALL_SUBSTITUTING;
-  } else {
-    // by default
-    return init_modet::ALL_SUBSTITUTING;
-  }
-}
-
-
-coloring_modet get_coloring_mode(const std::string& str)
-{
-  if (str == "0"){
-    return coloring_modet::RANDOM_COLORING;
-  } else if (str == "1"){
-    return coloring_modet::COLORING_FROM_FILE;
-  } else {
-    // by default
-    return coloring_modet::NO_COLORING;
-  }
 }
 
 /*******************************************************************\

@@ -33,8 +33,6 @@ set(HIFROG_SOURCE_FILES
         error_trace.h
         expr_pretty_print.cpp
         expr_pretty_print.h
-#        function_info.cpp
-#        function_info.h
         hifrog.cpp
         hifrog.h
         languages.cpp
@@ -71,7 +69,6 @@ set(HIFROG_SOURCE_FILES
         smt_summary_store.h
         subst_scenario.cpp
         subst_scenario.h
-#        summarization_context.h
         core_checker.cpp
         core_checker.h
         summary_info.cpp
@@ -92,8 +89,6 @@ set(HIFROG_SOURCE_FILES
         utils/naming_helpers.h
         utils/naming_helpers.cpp
         summary_store_fwd.h
-        summarization_context_fwd.h
-        utils/coloring_mode.h
         solvers/itp_fwd.h
         utils/ssa_helpers.h
         partition_fwd.h

@@ -18,9 +18,14 @@
 
 #include "summary_info.h"
 #include "unwind.h"
-#include "summarization_context_fwd.h"
 
 class call_tree_nodet;
+
+enum class init_modet {
+    ALL_SUBSTITUTING,
+    ALL_HAVOCING
+    // anything else?
+};
 
 class subst_scenariot:public unwindt {
 public:

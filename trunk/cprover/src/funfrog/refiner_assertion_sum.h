@@ -10,11 +10,17 @@
 #define CPROVER_REFINER_ASSERTION_SUM_H
 
 #include <util/message.h>
-#include "summarization_context_fwd.h"
 
 class summary_storet;
 class subst_scenariot;
 class call_tree_nodet;
+
+enum class refinement_modet{
+    FORCE_INLINING,
+    RANDOM_SUBSTITUTION,
+    SLICING_RESULT
+    // anything else?
+};
 
 class refiner_assertion_sumt:public messaget
 {

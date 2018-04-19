@@ -83,8 +83,4 @@ protected:
 
 };
 
-init_modet get_init_mode(const std::string& str);
-refinement_modet get_refine_mode(const std::string& str);
-
-
 #endif
