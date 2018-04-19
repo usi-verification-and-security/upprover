@@ -49,8 +49,10 @@ public:
   bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
   void serialize(){
     omega.serialize(options.get_option("save-omega"));
-  };
+  }
 
+    //  bool check_sum_theoref_single(const assertion_infot& assertion);
+    bool check_sum_theoref_single(const assertion_infot &assertion);
 protected:
 
   const goto_programt &goto_program;

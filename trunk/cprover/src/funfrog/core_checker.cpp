@@ -27,6 +27,7 @@
 #include <solvers/flattening/bv_pointers.h>
 #include "smt_summary_store.h"
 #include "prop_summary_store.h"
+#include "theory_refiner.h"
 
 namespace{
     /*******************************************************************\
@@ -1038,4 +1039,118 @@ void core_checkert::report_failure()
   default:
     assert(false);
   }
+}
+
+/*******************************************************************\
+
+Function: core_checkert::report_failure
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+namespace{
+    /*void update_lra_summary_store(summary_storet& uf_store, summary_storet& lra_store, smtcheck_opensmt2t_lra & lra_solver){
+        throw "Not implemented yet!";
+    }
+
+    void update_prop_summary_store(summary_storet& lra_store, prop_summary_storet& prop){
+        throw "Not implemented yet!";
+    }*/
+    void extract_and_store_summaries(smt_partitioning_target_equationt & equation, summary_storet & store,
+                                     smtcheck_opensmt2t & decider){
+        throw "Not implemented yet!";
+    }
+
+    void update_lra_summary_file(std::string file_name, summary_storet & store, smtcheck_opensmt2t & decider){
+        throw "Not implemented yet!";
+    }
+
+    void read_lra_summaries(summary_storet & store, std::string filename, smtcheck_opensmt2t & decider) {
+        throw "Not implemented yet!";
+    }
+
+    void clear_equation(smt_partitioning_target_equationt & eq) {
+        // TODO: this needs to clear partitions of eq (eq.partitions)
+        throw "Not implemented yet!";
+    }
+}
+/*******************************************************************\
+
+Function: core_checkert::check_sum_theoref_single
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: main method to make summary-ref and theory-ref work together
+
+\*******************************************************************/
+bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
+{
+    omega.set_initial_precision(assertion, *summary_store);
+
+    smt_partitioning_target_equationt equation {ns, *summary_store, false};
+    call_tree_nodet& summary_info = omega.get_summary_info();
+
+    symex_assertion_sumt symex {*summary_store,
+                                get_goto_functions(),
+                                summary_info,
+                                ns,
+                                symbol_table,
+                                equation,
+                                message_handler,
+                                goto_program,
+                                omega.get_last_assertion_loc(),
+                                omega.is_single_assertion_check(),
+                                !options.get_bool_option("no-slicing"),
+                                !options.get_bool_option("no-error-trace"),
+                                true,
+                                options.get_unsigned_int_option("unwind"),
+                                options.get_bool_option("partial-loops"),
+
+    };
+
+    bool assertion_holds = symex.prepare_SSA(assertion);
+    if (assertion_holds){
+        // Claim trivially satisfied -> go to next claim
+        return true;
+    }
+    std::string lra_summary_file_name {"lra_summaries"};
+    smtcheck_opensmt2t_uf uf_solver {"uf_solver"};
+    equation.convert(uf_solver, uf_solver);
+    bool is_sat = uf_solver.solve();
+    if (!is_sat) {
+        // interpolate if possible
+        extract_and_store_summaries(equation, *summary_store, uf_solver);
+        update_lra_summary_file(lra_summary_file_name, *summary_store, uf_solver);
+        return true; // claim verified -> go to next claim
+    }
+    // here the claim could not be verified with UF (possibly with summaries)
+    smtcheck_opensmt2t_lra lra_solver {0, "lra_solver"}; //TODO: type_constraints_level
+    read_lra_summaries(*summary_store, lra_summary_file_name, lra_solver);
+    clear_equation(equation);
+    equation.convert(lra_solver, lra_solver);
+    is_sat = lra_solver.solve();
+    if(!is_sat){
+        extract_and_store_summaries(equation, *summary_store, lra_solver);
+        // dump_summary_store_to_file
+        ofstream lra_summary_fstream{lra_summary_file_name};
+        summary_store->serialize(lra_summary_fstream);
+        // cannot update UF summaries
+        return true; // claim verified by LRA encoding -> go to next claim
+    }
+    // call theory refinement
+    symbol_tablet temp_table;
+    namespacet ns2 {ns.get_symbol_table(), temp_table};
+    theory_refinert th_checker(this->goto_program,
+                               get_goto_functions(),
+                               ns2,
+                               temp_table,
+                               options,
+                               message_handler);
+    return th_checker.assertion_holds_smt(assertion, false);
 }
