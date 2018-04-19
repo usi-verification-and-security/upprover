@@ -880,6 +880,7 @@ Function: core_checkert::extract_interpolants_smt
 \*******************************************************************/
 void core_checkert::extract_interpolants_smt (prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation)
 {
+  //SA & prop is not needed here; the entire class prepare_smt_formulat is useless.
   absolute_timet before, after;
   before=current_time();
   
@@ -1060,11 +1061,25 @@ namespace{
     void update_prop_summary_store(summary_storet& lra_store, prop_summary_storet& prop){
         throw "Not implemented yet!";
     }*/
-    void extract_and_store_summaries(smt_partitioning_target_equationt & equation, summary_storet & store,
-                                     smtcheck_opensmt2t & decider){
-        throw "Not implemented yet!";
-    }
+/*******************************************************************/
+//Purpose: extracts summaries after successful verification; and dumps the summaries
+// in a specific summary-file for uf and lra separately based on the solver.
 
+    void extract_and_store_summaries(smt_partitioning_target_equationt & equation, summary_storet & store,
+                                      smtcheck_opensmt2t & decider , string & summary_file_name){
+        equation.extract_interpolants(decider);
+
+        // Store the summaries
+        if (!summary_file_name.empty()) {
+        std::ofstream out;
+        out.open(summary_file_name.c_str());
+        decider.getLogic()->dumpHeaderToFile(out);
+        store.serialize(out);
+
+        }
+
+    }
+/*******************************************************************/
     void update_lra_summary_file(std::string file_name, summary_storet & store, smtcheck_opensmt2t & decider){
         throw "Not implemented yet!";
     }
@@ -1119,13 +1134,14 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         // Claim trivially satisfied -> go to next claim
         return true;
     }
-    std::string lra_summary_file_name {"lra_summaries"};
+    std::string lra_summary_file_name {"__summaries_lra"};
+    std::string uf_summary_file_name {"__summaries_uf"};
     smtcheck_opensmt2t_uf uf_solver {"uf_solver"};
     equation.convert(uf_solver, uf_solver);
     bool is_sat = uf_solver.solve();
     if (!is_sat) {
         // interpolate if possible
-        extract_and_store_summaries(equation, *summary_store, uf_solver);
+        extract_and_store_summaries(equation, *summary_store, uf_solver , uf_summary_file_name);
         update_lra_summary_file(lra_summary_file_name, *summary_store, uf_solver);
         return true; // claim verified -> go to next claim
     }
@@ -1136,7 +1152,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     equation.convert(lra_solver, lra_solver);
     is_sat = lra_solver.solve();
     if(!is_sat){
-        extract_and_store_summaries(equation, *summary_store, lra_solver);
+        extract_and_store_summaries(equation, *summary_store, lra_solver, lra_summary_file_name);
         // dump_summary_store_to_file
         ofstream lra_summary_fstream{lra_summary_file_name};
         summary_store->serialize(lra_summary_fstream);
