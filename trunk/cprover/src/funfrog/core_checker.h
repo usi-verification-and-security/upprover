@@ -24,9 +24,6 @@ class check_opensmt2t;
 class symex_bmct;
 class interpolating_solvert;
 class prop_conv_solvert;
-class smtcheck_opensmt2t_uf;
-class smtcheck_opensmt2t_lra;
-class prop_summary_storet;
 
 class core_checkert:public messaget
 {
