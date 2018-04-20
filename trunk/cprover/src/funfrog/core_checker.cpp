@@ -1195,5 +1195,6 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
                                temp_table,
                                options,
                                message_handler);
+    th_checker.initialize();
     return th_checker.assertion_holds_smt(assertion, false);
 }
