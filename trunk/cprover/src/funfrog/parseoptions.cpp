@@ -804,6 +804,7 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   //options.set_option("list-templates", cmdline.isset("list-templates"));
   options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
   options.set_option("theoref", cmdline.isset("theoref"));
+  options.set_option("sum-theoref", cmdline.isset("sum-theoref"));
   options.set_option("force", cmdline.isset("force"));
   options.set_option("custom", cmdline.get_value("custom"));
   options.set_option("heuristic", cmdline.get_value("heuristic"));

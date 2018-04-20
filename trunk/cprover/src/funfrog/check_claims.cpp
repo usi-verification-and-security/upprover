@@ -187,6 +187,19 @@ void check_claims(
 
   sum_checker.initialize();
 
+  if(options.get_bool_option("sum-theoref")){
+      while(ass_ptr != leaping_program.instructions.end()){
+          ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
+          if(ass_ptr == leaping_program.instructions.end()){
+              return;
+          }
+          assert(claim_map.find(ass_ptr) != claim_map.end());
+          bool single_res = sum_checker.check_sum_theoref_single(ass_ptr);
+          claim_map[ass_ptr] = std::make_pair(true, single_res);
+      }
+      // TODO: report results about claims, stored in claim_map
+  }
+
   if (options.get_bool_option("all-claims") || options.get_bool_option("claims-opt")){
     sum_checker.assertion_holds(assertion_infot(), true);
   } else while(true) {
