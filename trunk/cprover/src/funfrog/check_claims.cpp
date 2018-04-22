@@ -182,10 +182,10 @@ void check_claims(
     return;
   }
 
-  core_checkert sum_checker(leaping_program,
+  core_checkert core_checker(leaping_program,
         goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
 
-  sum_checker.initialize();
+  core_checker.initialize();
 
   if(options.get_bool_option("sum-theoref")){
       while(ass_ptr != leaping_program.instructions.end()){
@@ -194,14 +194,14 @@ void check_claims(
               return;
           }
           assert(claim_map.find(ass_ptr) != claim_map.end());
-          bool single_res = sum_checker.check_sum_theoref_single(ass_ptr);
+          bool single_res = core_checker.check_sum_theoref_single(ass_ptr);
           claim_map[ass_ptr] = std::make_pair(true, single_res);
       }
       // TODO: report results about claims, stored in claim_map
   }
 
   if (options.get_bool_option("all-claims") || options.get_bool_option("claims-opt")){
-    sum_checker.assertion_holds(assertion_infot(), true);
+    core_checker.assertion_holds(assertion_infot(), true);
   } else while(true) {
     // Next assertion (or next occurrence of the same assertion)
     ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
@@ -240,7 +240,7 @@ void check_claims(
         multi_assert_loc.push_back(ass_ptr);
       }
     } else {
-      pass = sum_checker.assertion_holds(assert_grouping ?
+      pass = core_checker.assertion_holds(assert_grouping ?
               assertion_infot(ass_ptr) : assertion_infot(stack, ass_ptr), false);
     }
 
@@ -265,7 +265,7 @@ void check_claims(
       }
     }
     res.status() << " in a multi_assertion mode.\r" << res.eom;
-    sum_checker.assertion_holds(assert_grouping ?
+    core_checker.assertion_holds(assert_grouping ?
                   assertion_infot(multi_assert_loc) : assertion_infot(stack, ass_ptr), false);
   }
 }

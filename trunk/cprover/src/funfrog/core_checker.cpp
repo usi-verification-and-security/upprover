@@ -29,6 +29,7 @@
 #include "prop_summary_store.h"
 #include "theory_refiner.h"
 
+
 namespace{
     /*******************************************************************\
 
@@ -1071,19 +1072,45 @@ namespace{
 
         // Store the summaries
         if (!summary_file_name.empty()) {
-        std::ofstream out;
-        out.open(summary_file_name.c_str());
-        decider.getLogic()->dumpHeaderToFile(out);
-        store.serialize(out);
+            std::ofstream out;
+            out.open(summary_file_name.c_str());
+            //dumps headers only into summary file
+            decider.getLogic()->dumpHeaderToFile(out);
+            //dumps define-fun()  into summary file
+            store.serialize(out);
 
         }
 
     }
 /*******************************************************************/
-    void update_lra_summary_file(std::string file_name, summary_storet & store, smtcheck_opensmt2t & decider){
-        throw "Not implemented yet!";
-    }
+// Purpose: Convertion of UF-summary into LRA-summary
+    void update_lra_sum_from_uf_sum() {
+        string data;
+        FILE * stream;
+        // creates a buffer,
+        const int max_buffer = 256;
+        char buffer[max_buffer];
+        std::string cmd = " sed 's/QF_UF/QF_LRA/g; s/UReal/Real/g' __summaries_uf > __summaries_lra ";
+        // opens up a read-only stream
+        stream = popen(cmd.c_str(), "r");
 
+        if (stream) {
+            while (!feof(stream))
+                if (fgets(buffer, max_buffer, stream) != NULL) data.append(buffer);
+            pclose(stream);
+        }
+       /* TODO add report:
+         status() << "*** Convertion of UF-summary into LRA-summary after checking claim #: "
+                  << std::to_string(claim_numbers[ass_ptr]) << endl;*/
+    }
+// other implementation for Convertion of UF-summary to LRA-summary; but system() seems to be problematic as it's platform specific.
+    /*void update_lra_sum_from_uf_sum(){
+       std::string cmd_to_execute = " sed 's/QF_UF/QF_LRA/g; s/UReal/Real/g' __summaries_uf > __summaries_lra ";
+       const char * ccmd = cmd_to_execute.c_str();
+       system(ccmd);
+   }*/
+/*******************************************************************/
+// Purpose:
     void read_lra_summaries(summary_storet & store, std::string filename, smtcheck_opensmt2t & decider) {
         throw "Not implemented yet!";
     }
@@ -1142,7 +1169,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     if (!is_sat) {
         // interpolate if possible
         extract_and_store_summaries(equation, *summary_store, uf_solver , uf_summary_file_name);
-        update_lra_summary_file(lra_summary_file_name, *summary_store, uf_solver);
+        update_lra_sum_from_uf_sum();
         return true; // claim verified -> go to next claim
     }
     // here the claim could not be verified with UF (possibly with summaries)
