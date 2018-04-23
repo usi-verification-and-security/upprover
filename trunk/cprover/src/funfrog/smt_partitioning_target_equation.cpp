@@ -206,7 +206,8 @@ void smt_partitioning_target_equationt::convert_partition(
  \*******************************************************************/
 
 void smt_partitioning_target_equationt::convert_partition_summary(
-  smtcheck_opensmt2t & decider, partitiont & partition) {
+  smtcheck_opensmt2t & decider, partitiont & partition)
+{
   std::vector<symbol_exprt> common_symbs;
   fill_common_symbols(partition, common_symbs);
   unsigned i = 0;

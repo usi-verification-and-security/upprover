@@ -732,12 +732,7 @@ bool funfrog_parseoptionst::check_function_summarization()
         exit(0);
     }
 
-    // ID_main is the entry point that is now changed to be ID__start
-    // KE: or is it goto_functionst::entry_point()?
-    // So instead of c::main we have now _start (cbmc 5.5)
-    check_claims(goto_model.symbol_table,
-                goto_model.goto_functions.function_map[goto_functionst::entry_point()].body,
-                goto_model.goto_functions,
+    check_claims(goto_model,
                 claim_map,
                 claim_numbers,
                 options,

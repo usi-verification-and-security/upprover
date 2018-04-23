@@ -85,14 +85,14 @@ Function: get_initial_mode
 core_checkert::core_checkert(
         const goto_programt &_goto_program,
         const goto_functionst &_goto_functions,
-        const namespacet &_ns,
-        symbol_tablet &_symbol_table,
+//        const namespacet &_ns,
+        const symbol_tablet &_symbol_table,
         const optionst& _options,
         ui_message_handlert &_message_handler,
         unsigned long &_max_memory_used
 ) :
         goto_program(_goto_program),
-        ns(_ns),
+//        ns(_ns),
         symbol_table(_symbol_table),
         options(_options),
         message_handler (_message_handler),
@@ -244,7 +244,7 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
             " line " << assertion.get_location()->source_location.get_line() <<
             " function " << assertion.get_location()->source_location.get_function() << 
             "\n  " << ((assertion.get_location()->is_assert()) ? "assertion" : "code") <<
-            "\n  " << from_expr(ns, "", assertion.get_location()->guard)  
+            "\n  " << from_expr(assertion.get_location()->guard)
             << eom;
 #endif
     
@@ -291,6 +291,8 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
 
   std::vector<unsigned> ints;
   get_ints(ints, options.get_option("part-itp"));
+  symbol_tablet temp_table;
+  namespacet ns{this->symbol_table, temp_table};
 
   prop_partitioning_target_equationt equation(ns, *summary_store, store_summaries_with_assertion);
 
@@ -303,7 +305,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
   
   call_tree_nodet& summary_info = omega.get_summary_info();
   symex_assertion_sumt symex {
-            *summary_store, get_goto_functions(), summary_info, ns, symbol_table,
+            *summary_store, get_goto_functions(), summary_info, ns, temp_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, 
             false, unwind_bound, partial_loops };
@@ -495,6 +497,8 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     const unsigned last_assertion_loc = omega.get_last_assertion_loc();
     const bool single_assertion_check = omega.is_single_assertion_check();
 
+    symbol_tablet temp_table;
+    namespacet ns{this->symbol_table, temp_table};
     smt_partitioning_target_equationt equation(ns, *summary_store,
                                                 store_summaries_with_assertion);
 
@@ -507,7 +511,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
   
     call_tree_nodet& summary_info = omega.get_summary_info();
     symex_assertion_sumt symex = symex_assertion_sumt(
-            *summary_store, get_goto_functions(), summary_info, ns, symbol_table,
+            *summary_store, get_goto_functions(), summary_info, ns, temp_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound,
             options.get_bool_option("partial-loops"));
@@ -689,7 +693,10 @@ bool core_checkert::assertion_holds_smt_no_partition(
   // KE:  remove the message once smt_symex_target_equationt supports interpolation
   // Notify that there is no support to interpolations
   status() << "--no-partition activates also --no-itp flag, as there is no (yet) support for summaries/interpolations in this version" << eom;
-  
+
+  symbol_tablet temp_table;
+  namespacet ns {this->symbol_table, temp_table};
+
   smt_symex_target_equationt equation(ns, ints);
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {
@@ -698,7 +705,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
   }
 #endif
   
-  symex_no_partitiont symex = symex_no_partitiont(ns, symbol_table, equation, message_handler, goto_program,!no_slicing_option);
+  symex_no_partitiont symex = symex_no_partitiont(ns, temp_table, equation, message_handler, goto_program,!no_slicing_option);
   
   setup_unwind(symex);
   
@@ -824,6 +831,7 @@ void core_checkert::assertion_violated (prepare_smt_formulat& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
+    namespacet ns{this->symbol_table};
 
     if (!options.get_bool_option("no-error-trace"))
         prop.error_trace(*decider_smt, ns, guard_expln);
@@ -853,7 +861,7 @@ void core_checkert::assertion_violated (smt_assertion_no_partitiont& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-
+    namespacet ns{this->symbol_table};
     if (!options.get_bool_option("no-error-trace"))
         prop.error_trace(*decider_smt, ns, guard_expln);
     if (decider_smt->has_unsupported_vars()){
@@ -1111,13 +1119,32 @@ namespace{
    }*/
 /*******************************************************************/
 // Purpose:
-    void read_lra_summaries(summary_storet & store, std::string filename, smtcheck_opensmt2t & decider) {
-        throw "Not implemented yet!";
+    void read_lra_summaries(smt_summary_storet & store, std::string filename, smtcheck_opensmt2t & decider) {
+        store.set_decider(&decider);
+        store.deserialize({filename});
     }
 
-    void clear_equation(smt_partitioning_target_equationt & eq) {
-        // TODO: this needs to clear partitions of eq (eq.partitions)
-        throw "Not implemented yet!";
+    void reset_partition_summary_info(smt_partitioning_target_equationt & eq, smt_summary_storet const & store) {
+        for (auto & partition : eq.get_partitions()){
+            // clear everything regarding summaries
+            if(partition.summary){
+                auto function_name = id2string(partition.get_iface().function_id);
+                // if it was summarized before but we do not have summaries now, that indicates an error, because we do not want to do symex again,
+                // we assume that everything that has summaries before, has summaries again
+                if(!store.has_summaries(function_name)){
+                    throw std::logic_error("During refinement we lost summaries for " + function_name);
+                }
+                // MB: not sure about these flags, so assert for now
+                assert(partition.invalid == false);
+                assert(partition.inverted_summary == false);
+                //assert(partition.ignore == false); MB: partition can be ignored, we probably do not need to update the information for those, but it does not hurt
+                partition.applicable_summaries.clear();
+                partition.summaries = nullptr;
+                partition.filled = false;
+                // fill the partition with new summaries
+                eq.fill_summary_partition(partition.get_iface().partition_id, &store.get_summaries(function_name));
+            }
+        }
     }
 }
 /*******************************************************************\
@@ -1133,16 +1160,24 @@ Function: core_checkert::check_sum_theoref_single
 \*******************************************************************/
 bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 {
-    omega.set_initial_precision(assertion, *summary_store);
+    std::string lra_summary_file_name {"__summaries_lra"};
+    std::string uf_summary_file_name {"__summaries_uf"};
+    smtcheck_opensmt2t_uf uf_solver {"uf_solver"};
 
-    smt_partitioning_target_equationt equation {ns, *summary_store, false};
+    smt_summary_storet summary_store {&uf_solver};
+    summary_store.deserialize({uf_summary_file_name});
+
+    omega.set_initial_precision(assertion, summary_store);
+    symbol_tablet temp_table;
+    namespacet ns{this->symbol_table, temp_table};
+    smt_partitioning_target_equationt equation {ns, summary_store, false};
     call_tree_nodet& summary_info = omega.get_summary_info();
 
-    symex_assertion_sumt symex {*summary_store,
+    symex_assertion_sumt symex {summary_store,
                                 get_goto_functions(),
                                 summary_info,
                                 ns,
-                                symbol_table,
+                                temp_table,
                                 equation,
                                 message_handler,
                                 goto_program,
@@ -1161,34 +1196,36 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         // Claim trivially satisfied -> go to next claim
         return true;
     }
-    std::string lra_summary_file_name {"__summaries_lra"};
-    std::string uf_summary_file_name {"__summaries_uf"};
-    smtcheck_opensmt2t_uf uf_solver {"uf_solver"};
+
     equation.convert(uf_solver, uf_solver);
     bool is_sat = uf_solver.solve();
     if (!is_sat) {
         // interpolate if possible
-        extract_and_store_summaries(equation, *summary_store, uf_solver , uf_summary_file_name);
+        extract_and_store_summaries(equation, summary_store, uf_solver , uf_summary_file_name);
         update_lra_sum_from_uf_sum();
         return true; // claim verified -> go to next claim
     }
     // here the claim could not be verified with UF (possibly with summaries)
     smtcheck_opensmt2t_lra lra_solver {0, "lra_solver"}; //TODO: type_constraints_level
-    read_lra_summaries(*summary_store, lra_summary_file_name, lra_solver);
-    clear_equation(equation);
+    read_lra_summaries(summary_store, lra_summary_file_name, lra_solver);
+    reset_partition_summary_info(equation, summary_store);
     equation.convert(lra_solver, lra_solver);
     is_sat = lra_solver.solve();
     if(!is_sat){
-        extract_and_store_summaries(equation, *summary_store, lra_solver, lra_summary_file_name);
+        extract_and_store_summaries(equation, summary_store, lra_solver, lra_summary_file_name);
         // dump_summary_store_to_file
         ofstream lra_summary_fstream{lra_summary_file_name};
-        summary_store->serialize(lra_summary_fstream);
+        if(lra_summary_fstream.good()){
+            summary_store.serialize(lra_summary_fstream);
+
+        }
         // cannot update UF summaries
         return true; // claim verified by LRA encoding -> go to next claim
     }
     // call theory refinement
-    symbol_tablet temp_table;
-    namespacet ns2 {ns.get_symbol_table(), temp_table};
+    // MB: not sure if we need new namespace and/or second symbol table
+    symbol_tablet temp_table2;
+    namespacet ns2 {ns.get_symbol_table(), temp_table2};
     theory_refinert th_checker(this->goto_program,
                                get_goto_functions(),
                                ns2,

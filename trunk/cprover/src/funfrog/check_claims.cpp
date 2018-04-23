@@ -108,9 +108,7 @@ Function: check_claims
 \*******************************************************************/
 
 void check_claims(
-  const symbol_tablet &symbol_table,
-  goto_programt &leaping_program,
-  const goto_functionst &goto_functions,
+  const goto_modelt & goto_model,
   claim_mapt &claim_map,
   claim_numberst &claim_numbers,
   const optionst& options,
@@ -146,8 +144,10 @@ void check_claims(
   res.set_message_handler(_message_handler);
   res.total_claims = claim_map.size();
 
+  const auto & goto_functions = goto_model.goto_functions;
+  const auto & main_body = goto_functions.function_map.at(goto_functionst::entry_point()).body;
   call_stackt stack;
-  goto_programt::const_targett ass_ptr = leaping_program.instructions.begin();
+  goto_programt::const_targett ass_ptr = main_body.instructions.begin();
   
   // NOTE: Not reimplemented yet
   // show_inlined_claimst show_inlined_claims(goto_functions,
@@ -156,25 +156,27 @@ void check_claims(
   //                                          ns);
 
 
-  symbol_tablet temp_table;
-  namespacet ns1(symbol_table, temp_table);
+
 
   if (options.get_bool_option("theoref")){
 
     // GF: currently works only for one assertion (either specified in --claim or the first one)
-    while(ass_ptr != leaping_program.instructions.end() &&
+    while(ass_ptr != main_body.instructions.end() &&
               (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
     {
       ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     }
       
-    if (ass_ptr == leaping_program.instructions.end()){
+    if (ass_ptr == main_body.instructions.end()){
       if (seen_claims == 0) // In case we set the multi assert mode working here
         res.status() << "\nAssertion is not reachable\n" << res.eom;
       return;
-    } 
+    }
 
-    theory_refinert th_checker(leaping_program,
+    symbol_tablet temp_table;
+    namespacet ns1(goto_model.symbol_table, temp_table);
+
+    theory_refinert th_checker(main_body,
 	        goto_functions, ns1, temp_table, options, _message_handler);
 
     th_checker.initialize();
@@ -182,15 +184,15 @@ void check_claims(
     return;
   }
 
-  core_checkert core_checker(leaping_program,
-        goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
+  core_checkert core_checker(main_body, goto_functions,
+                            goto_model.symbol_table, options, _message_handler, res.max_mem_used);
 
   core_checker.initialize();
 
   if(options.get_bool_option("sum-theoref")){
-      while(ass_ptr != leaping_program.instructions.end()){
+      while(ass_ptr != main_body.instructions.end()){
           ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
-          if(ass_ptr == leaping_program.instructions.end()){
+          if(ass_ptr == main_body.instructions.end()){
               return;
           }
           assert(claim_map.find(ass_ptr) != claim_map.end());
@@ -198,6 +200,7 @@ void check_claims(
           claim_map[ass_ptr] = std::make_pair(true, single_res);
       }
       // TODO: report results about claims, stored in claim_map
+      return;
   }
 
   if (options.get_bool_option("all-claims") || options.get_bool_option("claims-opt")){
@@ -205,12 +208,12 @@ void check_claims(
   } else while(true) {
     // Next assertion (or next occurrence of the same assertion)
     ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
-    while(ass_ptr != leaping_program.instructions.end() && 
+    while(ass_ptr != main_body.instructions.end() &&
             (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
     {
       ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     }
-    if (ass_ptr == leaping_program.instructions.end()){
+    if (ass_ptr == main_body.instructions.end()){
       if (seen_claims == 0)
         res.status() << "\nAssertion is not reachable\n" << res.eom;
       break;
