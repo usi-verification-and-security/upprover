@@ -1235,7 +1235,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     theory_refinert th_checker(this->goto_program,
                                get_goto_functions(),
                                ns2,
-                               temp_table,
+                               temp_table2,
                                options,
                                message_handler);
     th_checker.initialize();
