@@ -1083,7 +1083,7 @@ namespace{
             std::ofstream out;
             out.open(summary_file_name.c_str());
             //dumps headers only into summary file
-            decider.getLogic()->dumpHeaderToFile(out);
+//            decider.getLogic()->dumpHeaderToFile(out);
             //dumps define-fun()  into summary file
             store.serialize(out);
             //TODO just add a temp file and capture the summary body everytime.
@@ -1222,12 +1222,6 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     is_sat = lra_solver.solve();
     if(!is_sat){
         extract_and_store_summaries(equation, summary_store, lra_solver, lra_summary_file_name);
-        // dump_summary_store_to_file
-        ofstream lra_summary_fstream{lra_summary_file_name};
-        if(lra_summary_fstream.good()){
-            summary_store.serialize(lra_summary_fstream);
-
-        }
         // cannot update UF summaries
         // report results
         report_success();

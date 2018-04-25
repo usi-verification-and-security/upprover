@@ -13,7 +13,7 @@ Author: Grigory Fedyukovich
 // Debug flags of this class:
 //#define SMT_DEBUG
 
-const char* smtcheck_opensmt2t_uf::tk_sort_ureal = "UReal";
+const char* smtcheck_opensmt2t_uf::tk_sort_ureal = "Real";
 const char* smtcheck_opensmt2t_uf::tk_mult = "*";
 const char* smtcheck_opensmt2t_uf::tk_div = "/";
 const char* smtcheck_opensmt2t_uf::tk_plus = "+";
