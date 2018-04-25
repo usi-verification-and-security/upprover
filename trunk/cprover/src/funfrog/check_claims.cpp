@@ -193,13 +193,27 @@ void check_claims(
       while(ass_ptr != main_body.instructions.end()){
           ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
           if(ass_ptr == main_body.instructions.end()){
-              return;
+              break;
           }
           assert(claim_map.find(ass_ptr) != claim_map.end());
           bool single_res = core_checker.check_sum_theoref_single(ass_ptr);
           claim_map[ass_ptr] = std::make_pair(true, single_res);
       }
-      // TODO: report results about claims, stored in claim_map
+      // REPORT the results
+      for (const auto & entry : claim_map) {
+          auto claim_number = claim_numbers.at(entry.first);
+          bool checked = entry.second.first;
+          bool safe = entry.second.second;
+          if (checked){
+              res.status() << "Claim number " <<  claim_number << " has been checked with result " << (safe ? "SAFE" : "UNSAFE");
+              // TODO pretty print the information about the claim
+              res.status() << res.endl << "Assertion: " << entry.first->source_location.pretty();
+          }
+          else {
+              res.status() << "Claim number " <<  claim_number << " has not been checked!";
+          }
+          res.status() << res.eom;
+      }
       return;
   }
 
