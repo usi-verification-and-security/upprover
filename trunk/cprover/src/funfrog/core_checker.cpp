@@ -1086,7 +1086,10 @@ namespace{
             decider.getLogic()->dumpHeaderToFile(out);
             //dumps define-fun()  into summary file
             store.serialize(out);
-
+            //TODO just add a temp file and capture the summary body everytime.
+            // and later add that body to the rest of __summary_lra
+            //If there exists __summary_lra,  dont overwrite it with bash command anymore. Instead
+            //take only the body of summary from _tempfile and add it to the tail of __summary_lra
         }
 
     }
@@ -1128,7 +1131,7 @@ namespace{
         for (auto & partition : eq.get_partitions()){
             // clear everything regarding summaries
             if(partition.summary){
-                auto function_name = id2string(partition.get_iface().function_id);
+                auto function_name = id2string(partition.get_iface().function_id);  //for eg: function_name.c_str()="sub"
                 // if it was summarized before but we do not have summaries now, that indicates an error, because we do not want to do symex again,
                 // we assume that everything that has summaries before, has summaries again
                 if(!store.has_summaries(function_name)){
@@ -1193,7 +1196,10 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 
     bool assertion_holds = symex.prepare_SSA(assertion);
     if (assertion_holds){
+        // report results
+        report_success();
         // Claim trivially satisfied -> go to next claim
+        status() << ("Go to next assertion\n") << eom;
         return true;
     }
 
@@ -1203,6 +1209,9 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         // interpolate if possible
         extract_and_store_summaries(equation, summary_store, uf_solver , uf_summary_file_name);
         update_lra_sum_from_uf_sum();
+        // report results
+        report_success();
+        status() << ("Go to next assertion\n") << eom;
         return true; // claim verified -> go to next claim
     }
     // here the claim could not be verified with UF (possibly with summaries)
@@ -1220,6 +1229,9 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 
         }
         // cannot update UF summaries
+        // report results
+        report_success();
+        status() << ("Go to next assertion\n") << eom;
         return true; // claim verified by LRA encoding -> go to next claim
     }
     // call theory refinement
