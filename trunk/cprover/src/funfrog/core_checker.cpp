@@ -1129,14 +1129,12 @@ namespace{
 
     void reset_partition_summary_info(smt_partitioning_target_equationt & eq, smt_summary_storet const & store) {
         for (auto & partition : eq.get_partitions()){
-            // clear everything regarding summaries
-            if(partition.summary){
-                auto function_name = id2string(partition.get_iface().function_id);  //for eg: function_name.c_str()="sub"
-                // if it was summarized before but we do not have summaries now, that indicates an error, because we do not want to do symex again,
-                // we assume that everything that has summaries before, has summaries again
-                if(!store.has_summaries(function_name)){
-                    throw std::logic_error("During refinement we lost summaries for " + function_name);
-                }
+            // check if we have summary in the store for this partition
+            const auto & function_name = id2string(partition.get_iface().function_id);
+            bool has_summary = store.has_summaries(function_name);
+            bool was_summarized = partition.summary;
+            if(has_summary){
+                // clear the old information and load new information from the store
                 // MB: not sure about these flags, so assert for now
                 assert(partition.invalid == false);
                 assert(partition.inverted_summary == false);
@@ -1146,6 +1144,15 @@ namespace{
                 partition.filled = false;
                 // fill the partition with new summaries
                 eq.fill_summary_partition(partition.get_iface().partition_id, &store.get_summaries(function_name));
+                partition.summary = true;
+            }
+            else{
+                if(was_summarized){
+                    // if it was summarized before but we do not have summaries now, that indicates an error, because we do not want to do symex again,
+                    // we assume that everything that has summaries before, has summaries again
+                    throw std::logic_error("During refinement we lost summaries for " + function_name);
+
+                }
             }
         }
     }
@@ -1216,7 +1223,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     }
     // here the claim could not be verified with UF (possibly with summaries)
     smtcheck_opensmt2t_lra lra_solver {0, "lra_solver"}; //TODO: type_constraints_level
-    read_lra_summaries(summary_store, lra_summary_file_name, lra_solver);
+     read_lra_summaries(summary_store, lra_summary_file_name, lra_solver);
     reset_partition_summary_info(equation, summary_store);
     equation.convert(lra_solver, lra_solver);
     is_sat = lra_solver.solve();
@@ -1228,8 +1235,31 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         status() << ("Go to next assertion\n") << eom;
         return true; // claim verified by LRA encoding -> go to next claim
     }
+    // try pure LRA, without summaries
+
+    // clear summary store to get rid of summaries
+    summary_store.clear();
+    smt_refiner_assertion_sumt refiner{summary_store, omega, refinement_modet::FORCE_INLINING,
+                                   this->get_message_handler(), UINT_MAX, true};
+    refiner.refine(lra_solver, omega.get_call_tree_root(), equation);
+    if (!refiner.get_refined_functions().empty()) {
+        symex.refine_SSA(refiner.get_refined_functions());
+        // new lra_solver here, because of LRA incrementality problems
+        smtcheck_opensmt2t_lra lra_solver2 {0, "lra_solver 2"};
+        equation.convert(lra_solver2, lra_solver2);
+        is_sat = lra_solver2.solve();
+        if(!is_sat){
+            extract_and_store_summaries(equation, summary_store, lra_solver, lra_summary_file_name);
+            // report results
+            report_success();
+            status() << ("Go to next assertion\n") << eom;
+            return true; // claim verified by LRA encoding -> go to next claim
+        }
+    }
+
     // call theory refinement
-    // MB: not sure if we need new namespace and/or second symbol table
+    // MB: we need fresh secondary table for the symex in the theory refiner
+    // TODO: move the creation of the namespace inside the checker
     symbol_tablet temp_table2;
     namespacet ns2 {ns.get_symbol_table(), temp_table2};
     theory_refinert th_checker(this->goto_program,
