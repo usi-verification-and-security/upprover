@@ -13,17 +13,16 @@
 class smt_itpt: public itpt
 {
 public:
-  smt_itpt() :tterm(nullptr){}
-  ~smt_itpt() {} // d'tor
+  smt_itpt() = default;
+  ~smt_itpt() override = default;
 
   virtual  bool is_trivial() const override { return false; }
 
   virtual void print(std::ostream& out) const override;
 
-  void setTterm(Tterm& t) { tterm = &t; }
-  Tterm* getTterm() { return tterm; }
-
   void setLogic(Logic *_l) { logic = _l; }
+
+  Tterm & getTempl() {return templ;}
 
   static void reserve_variables(prop_conv_solvert& decider,
     const std::vector<symbol_exprt>& symbols, std::map<symbol_exprt, std::vector<unsigned> >& symbol_vars);
@@ -52,9 +51,9 @@ protected:
 
   // Clauses of the interpolant representation
   clausest clauses;
-  
-  // Only for SMT version
-  Tterm *tterm;
+
+  // TODO: figure out better way how to store the interpolants
+  Tterm templ;
 
   Logic *logic;
 

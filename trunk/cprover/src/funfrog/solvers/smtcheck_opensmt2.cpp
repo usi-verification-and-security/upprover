@@ -1007,15 +1007,14 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<s
                                             const std::string &fun_name, bool substitute)
 {
     // Right now the term is not set, hence the assert, but this should actually be set somewhere else
-    assert(interpolant.getTterm() == nullptr);
     if(is_cprover_initialize_method(fun_name)){
         throw std::logic_error("Summary generalize should not be called for CPROVER initialize method!");
     }
     // initialization of new Tterm, TODO: the basic should really be set already when interpolant object is created
-    Tterm* tt = new Tterm();
-    tt->setName(fun_name.c_str());
+    Tterm & tt = interpolant.getTempl();
+    tt.setName(fun_name.c_str());
     interpolant.setLogic(logic);
-    interpolant.setTterm(*tt);
+
 
     // prepare the substituition map how OpenSMT expects it
     Map<PTRef,PtAsgn,PTRefHash> subst;
@@ -1040,7 +1039,7 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<s
 //        std::cout << "; Original variable: " << logic->printTerm(original) << '\n';
 //        std::cout << "; New variable: " << logic->printTerm(new_var) << '\n';
         subst.insert(original, PtAsgn{ new_var, l_True });
-        tt->addArg(new_var);
+        tt.addArg(new_var);
     }
     //apply substituition to the interpolant
     PTRef old_root = interpolant.getInterpolant();
@@ -1054,7 +1053,7 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<s
 //    std::cout << "; Old formula: " << logic->printTerm(old_root) << '\n';
 //    std::cout << "; New formula " << logic->printTerm(new_root) << std::endl;
     interpolant.setInterpolant(new_root);
-    tt->setBody(new_root);
+    tt.setBody(new_root);
 }
 #endif // PRODUCE_PROOF
 
@@ -1075,10 +1074,10 @@ smtcheck_opensmt2t::quote_varname(const string& varname)
 }
 
 PTRef smtcheck_opensmt2t::substitute(smt_itpt & itp, const std::vector<symbol_exprt> & symbols) {
-  Tterm * tterm = itp.getTterm();
+  Tterm & tterm = itp.getTempl();
   assert(!itp.is_trivial());
-  assert(tterm && logic);
-  const vec<PTRef>& args = tterm->getArgs();
+  assert(logic);
+  const vec<PTRef>& args = tterm.getArgs();
 
   // summary is defined as a function over arguments to Bool
   // we need to match the arguments with the symbols and substitute
@@ -1107,7 +1106,7 @@ PTRef smtcheck_opensmt2t::substitute(smt_itpt & itp, const std::vector<symbol_ex
   }
 
   // do the actual substitution
-  PTRef old_root = tterm->getBody();
+  PTRef old_root = tterm.getBody();
   PTRef new_root;
   logic->varsubstitute(old_root, subst, new_root);
   return new_root;

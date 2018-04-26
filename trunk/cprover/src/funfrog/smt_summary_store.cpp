@@ -30,29 +30,27 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
     }
     this->clear();
 
+    int old_function_count = 0;
     for (const auto & fileName : fileNames) {
         if (decider->getMainSolver()->readFormulaFromFile(fileName.c_str())) {
             vec<Tterm> &functions = decider->getLogic()->getFunctions();
-            for (int i = 0; i < functions.size(); ++i) {
+            assert(old_function_count <= functions.size());
+            // MB: function in OpenSMT are added when a file is read, so we can safely skip the ones
+            // we have added previously; Also note that this will work onbly if functions in files have different names!
+            for (int i = old_function_count; i < functions.size(); ++i) {
                 auto itp = new smt_summaryt();
-                Tterm &tterm = functions[i];
+                // only copy assignment work correctly, copy constructor do not at the moment
+                itp->getTempl() = functions[i];
+                Tterm & tterm = itp->getTempl();
                 std::string fname = tterm.getName();
                 clean_name(fname);
-                auto next_idx = get_next_id(fname);
-                std::string summaryName = quote(add_counter_to_fun_name(fname, next_idx));
-                tterm.setName(summaryName);
-                itp->setTterm(tterm);
+                tterm.setName(fname);
                 itp->setLogic(decider->getLogic());
                 itp->setInterpolant(tterm.getBody());
                 itp->set_valid(true);
-                // FIXME: when reading multiple files, this would assign the same ID to multiple summaries
-                store.emplace_back(i, itp);
-                auto& summaries = function_to_summaries[fname];
-                summaries.push_back(store.size() - 1);
-                repr_count++;
+                this->insert_summary(itp, fname);
             }
-
-            max_id += repr_count; // KE: We add new summaries so we need to inc the max
+            old_function_count = functions.size();
         }
     }
 }
@@ -76,16 +74,16 @@ void smt_summary_storet::insert_summary(summaryt *summary, const std::string & f
         return;
     }
     // Here gets the function names
-    Tterm *tterm = smt_summary->getTterm();
-    assert(tterm);
-    string fname = tterm->getName();
+    Tterm & tterm = smt_summary->getTempl();
+    std::string fname = tterm.getName();
     // at this point, there should be just the name of the original function
+    assert(fname == function_name);
     assert(!is_quoted(fname));
     assert(!fun_name_contains_counter(fname));
     std::size_t next_idx = get_next_id(fname);
     // as name of the summary, store the quoted version with counter from the store
     std::string fixed_name = quote(add_counter_to_fun_name(fname, next_idx));
-    tterm->setName(fixed_name);
+    tterm.setName(fixed_name);
 
     // call the base functionality
     summary_storet::insert_summary(summary, function_name);

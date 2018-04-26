@@ -20,18 +20,8 @@ Author:
 bool
 smt_itpt::usesVar(symbol_exprt& symb, unsigned idx)
 {
-    assert(tterm != NULL && logic != NULL);
-    std::string var_name = get_symbol_name(symb).c_str();
-    const vec<PTRef>& args = tterm->getArgs();
-    for(int i = 0; i < args.size(); ++i)
-    {
-        string pname = logic->getSymName(args[i]);
-        if(isGlobalName(pname)){
-            pname = stripGlobalSuffix(pname);
-        }
-        if(pname == var_name) return true;
-    }
-    return false;
+    // TODO unify with prop, maybe store names of the arguments and flags which are actually used
+    return true;
 }
 
 /*******************************************************************\
@@ -201,9 +191,8 @@ Function: smt_itpt::serialize
 
 void smt_itpt::serialize(std::ostream& out) const
 {
-  assert(logic && tterm);
-  logic->dumpFunction(out, *tterm);
-  return; 
+  assert(logic);
+  logic->dumpFunction(out, templ);
 }
 
 /*******************************************************************\
