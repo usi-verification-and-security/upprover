@@ -122,6 +122,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   {
       status() << "ASSERTION HOLDS" << endl << eom;
       report_success();
+
   } else {  //do refinement
 
       error_tracet error_trace;
@@ -313,6 +314,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                           }
                           status() << endl << "ASSERTION HOLDS" << eom;
                           report_success();
+                          end = true;
                           break;
                       }
                   } else  if (decider->force_refine_ce(exprs, refined) ){ // TODO: comment once the bug with thoref is fixed
@@ -331,6 +333,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       }
 #endif
                       report_failure();
+                      end = false;
                       break;
                   } else {
                       status() << endl << "Naive refinement successful" << endl;
@@ -341,6 +344,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       }
                       status() << endl << "ASSERTION HOLDS" << eom;
                       report_success();
+                      end = true;
                       break;
                   }
               }
