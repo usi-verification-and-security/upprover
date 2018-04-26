@@ -1096,20 +1096,20 @@ namespace{
 /*******************************************************************/
 // Purpose: Convertion of UF-summary into LRA-summary
     void update_lra_sum_from_uf_sum() {
-        string data;
-        FILE * stream;
-        // creates a buffer,
-        const int max_buffer = 256;
-        char buffer[max_buffer];
-        std::string cmd = " sed 's/QF_UF/QF_LRA/g; s/UReal/Real/g' __summaries_uf > __summaries_lra ";
-        // opens up a read-only stream
-        stream = popen(cmd.c_str(), "r");
-
-        if (stream) {
-            while (!feof(stream))
-                if (fgets(buffer, max_buffer, stream) != NULL) data.append(buffer);
-            pclose(stream);
-        }
+//        string data;
+//        FILE * stream;
+//        // creates a buffer,
+//        const int max_buffer = 256;
+//        char buffer[max_buffer];
+//        std::string cmd = " sed 's/QF_UF/QF_LRA/g; s/UReal/Real/g' __summaries_uf > __summaries_lra ";
+//        // opens up a read-only stream
+//        stream = popen(cmd.c_str(), "r");
+//
+//        if (stream) {
+//            while (!feof(stream))
+//                if (fgets(buffer, max_buffer, stream) != NULL) data.append(buffer);
+//            pclose(stream);
+//        }
        /* TODO add report:
          status() << "*** Convertion of UF-summary into LRA-summary after checking claim #: "
                   << std::to_string(claim_numbers[ass_ptr]) << endl;*/
@@ -1122,9 +1122,9 @@ namespace{
    }*/
 /*******************************************************************/
 // Purpose:
-    void read_lra_summaries(smt_summary_storet & store, std::string filename, smtcheck_opensmt2t & decider) {
+    void read_lra_summaries(smt_summary_storet & store, std::vector<std::string> const & filenames, smtcheck_opensmt2t & decider) {
         store.set_decider(&decider);
-        store.deserialize({filename});
+        store.deserialize(filenames);
     }
 
     void reset_partition_summary_info(smt_partitioning_target_equationt & eq, smt_summary_storet const & store) {
@@ -1223,7 +1223,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     }
     // here the claim could not be verified with UF (possibly with summaries)
     smtcheck_opensmt2t_lra lra_solver {0, "lra_solver"}; //TODO: type_constraints_level
-     read_lra_summaries(summary_store, lra_summary_file_name, lra_solver);
+    read_lra_summaries(summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver);
     reset_partition_summary_info(equation, summary_store);
     equation.convert(lra_solver, lra_solver);
     is_sat = lra_solver.solve();
