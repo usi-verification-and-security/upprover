@@ -12,6 +12,7 @@
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
+#include "solvers/satcheck_opensmt2.h"
 #include "smt_refiner_assertion_sum.h"
 #include "prop_refiner_assertion_sum.h"
 #include "smt_dependency_checker.h"

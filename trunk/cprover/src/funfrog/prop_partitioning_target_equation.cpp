@@ -18,6 +18,7 @@ Author: Ondrej Sery
 #include "solvers/prop_itp.h"
 #include "summary_store.h"
 
+
 //#define DEBUG_ITP // ITP of SAT - testing
 
 #ifdef DISABLE_OPTIMIZATIONS
