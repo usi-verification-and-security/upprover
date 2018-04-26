@@ -331,8 +331,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
     
     // Init the next iteration context
     {
-        decider = (new satcheck_opensmt2t("sat checker"))->set_prop_conv_solver(
-                (dynamic_cast<prop_conv_solvert *> (decider_prop.get())));
+        decider = (new satcheck_opensmt2t("sat checker"));
 
         interpolator.reset(decider);
         bv_pointerst *deciderp = new bv_pointerst(ns, *(dynamic_cast<satcheck_opensmt2t *> (decider)));

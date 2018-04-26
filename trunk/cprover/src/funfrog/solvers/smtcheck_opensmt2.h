@@ -44,8 +44,6 @@ public:
 
   virtual ~smtcheck_opensmt2t(); // d'tor
 
-  virtual prop_conv_solvert* get_prop_conv_solver(){return NULL;} // Common to all
-
   bool solve(); // Common to all
 
   bool is_assignemt_true(literalt a) const; // Common to all
