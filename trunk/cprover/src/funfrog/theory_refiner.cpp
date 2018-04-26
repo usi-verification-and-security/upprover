@@ -41,7 +41,7 @@ void theory_refinert::initialize()
       decider->set_dump_query_name(dump_query_name);
 #endif  
 
-  omega.initialize_summary_info (omega.get_summary_info(), goto_program);
+  omega.initialize_summary_info (omega.get_call_tree_root(), goto_program);
   omega.setup_default_precision(init_modet::ALL_SUBSTITUTING);
 }
 
@@ -96,7 +96,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   }
 #endif
 
-  call_tree_nodet& summary_info = omega.get_summary_info();
+  call_tree_nodet& summary_info = omega.get_call_tree_root();
   symex_assertion_sumt symex = symex_assertion_sumt(
             dummy, omega.get_goto_functions(), summary_info, ns, symbol_table,
             equation, message_handler, goto_program, last_assertion_loc,

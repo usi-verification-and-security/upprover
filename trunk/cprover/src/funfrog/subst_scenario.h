@@ -38,7 +38,7 @@ public:
         goto_functions {goto_functions}
   {};
 
-  call_tree_nodet& get_summary_info(){ return functions_root; };
+  call_tree_nodet& get_call_tree_root(){ return functions_root; };
 
   void get_unwinding_depth();
 

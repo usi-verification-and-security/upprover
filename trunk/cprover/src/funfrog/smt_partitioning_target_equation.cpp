@@ -217,7 +217,7 @@ void smt_partitioning_target_equationt::convert_partition_summary(
               << std::endl;
 #   endif
 
-  bool is_recursive = partition.get_iface().summary_info.is_recursive(); //on_nondet();
+  bool is_recursive = partition.get_iface().call_tree_node.is_recursive(); //on_nondet();
   unsigned last_summary = partition.applicable_summaries.size() - 1;
 
   for (auto summary_id : partition.applicable_summaries)
@@ -793,7 +793,7 @@ namespace{
   bool skip_partition(partitiont & partition, bool store_summaries_with_assertion){
     return !partition.is_inline() ||
            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
-           partition.get_iface().summary_info.is_recursion_nondet() ||
+           partition.get_iface().call_tree_node.is_recursion_nondet() ||
            skip_partition_with_name(partition.get_iface().function_id.c_str());
   }
 }
@@ -815,7 +815,7 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
 
     // Clear the used summaries
     for (unsigned i = 0; i < partitions.size(); ++i)
-            partitions[i].get_iface().summary_info.clear_used_summaries();
+            partitions[i].get_iface().call_tree_node.clear_used_summaries();
 
     // Find partitions suitable for summary extraction
     for (unsigned i = 1; i < partitions.size(); ++i) {
@@ -826,7 +826,7 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
             for (summary_ids_sett::const_iterator it =
                     partition.applicable_summaries.begin(); it
                     != partition.applicable_summaries.end(); ++it) {
-                partition.get_iface().summary_info.add_used_summary(*it);
+                partition.get_iface().call_tree_node.add_used_summary(*it);
             }
         }
 
@@ -873,7 +873,7 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
             continue;
         }
 
-        if (partition.get_iface().summary_info.is_recursion_nondet()) {
+        if (partition.get_iface().call_tree_node.is_recursion_nondet()) {
             std::cout << "Skip interpolants for nested recursion calls.\n";
             continue;
         }

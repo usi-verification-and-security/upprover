@@ -74,13 +74,13 @@ void smt_refiner_assertion_sumt::reset_depend(
 #       ifdef DEBUG_REFINER
                 std::cout<< "    -- callstart literal is true" << std::endl;
 #       endif
-                if (ipart.summary_info.get_precision() != INLINE) {
-                    if (ipart.summary_info.is_recursion_nondet()) {
+                if (ipart.call_tree_node.get_precision() != INLINE) {
+                    if (ipart.call_tree_node.is_recursion_nondet()) {
                         status() << "Automatically increasing unwinding bound for "
-                                 << ipart.summary_info.get_function_id() << eom;
-                        omega.refine_recursion_call(ipart.summary_info);
+                                 << ipart.call_tree_node.get_function_id() << eom;
+                        omega.refine_recursion_call(ipart.call_tree_node);
                     }
-                    set_inline_sum(ipart.summary_info);
+                    set_inline_sum(ipart.call_tree_node);
                 }
             }
         }

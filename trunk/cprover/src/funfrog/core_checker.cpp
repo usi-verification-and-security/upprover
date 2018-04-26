@@ -195,7 +195,7 @@ void core_checkert::initialize()
   // i.e., all summaries are initialized as HAVOC, except those on the way
   // to the target assertion, which are marked depending on initial mode.
 
-  omega.initialize_summary_info (omega.get_summary_info(), goto_program);
+  omega.initialize_summary_info (omega.get_call_tree_root(), goto_program);
   //omega.process_goto_locations();
   init = get_init_mode(options.get_option("init-mode"));
   omega.setup_default_precision(init);
@@ -304,7 +304,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
   }
 #endif
   
-  call_tree_nodet& summary_info = omega.get_summary_info();
+  call_tree_nodet& summary_info = omega.get_call_tree_root();
   symex_assertion_sumt symex {
             *summary_store, get_goto_functions(), summary_info, ns, temp_table,
             equation, message_handler, goto_program, last_assertion_loc,
@@ -385,7 +385,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
             status() << "HAVOCING (of " << nondet_count
                    << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
           }
-          refiner.refine(*decider_prop, omega.get_summary_info(), equation);
+          refiner.refine(*decider_prop, omega.get_call_tree_root(), equation);
 
           if (refiner.get_refined_functions().size() == 0){
             prop.error_trace(*decider_prop, ns);
@@ -509,7 +509,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     }
 #endif
   
-    call_tree_nodet& summary_info = omega.get_summary_info();
+    call_tree_nodet& summary_info = omega.get_call_tree_root();
     symex_assertion_sumt symex = symex_assertion_sumt(
             *summary_store, get_goto_functions(), summary_info, ns, temp_table,
             equation, message_handler, goto_program, last_assertion_loc,
@@ -579,7 +579,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
             // END of REPORT
 
             // figure out functions that can be refined
-            refiner.refine(*(dynamic_cast <smtcheck_opensmt2t *> (decider)), omega.get_summary_info(), equation);
+            refiner.refine(*(dynamic_cast <smtcheck_opensmt2t *> (decider)), omega.get_call_tree_root(), equation);
             bool refined = !refiner.get_refined_functions().empty();
             if (!refined) {
                 // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
@@ -774,7 +774,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
             status() << "HAVOCING (of " << nondet_count
                    << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
           }
-          refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), omega.get_summary_info(), equation);
+          refiner.refine(*(dynamic_cast <smtcheck_opensmt2t*> (decider)), omega.get_call_tree_root(), equation);
 
           if (refiner.get_refined_functions().size() == 0){
             assertion_violated(prop, symex.guard_expln);
@@ -1174,7 +1174,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     symbol_tablet temp_table;
     namespacet ns{this->symbol_table, temp_table};
     smt_partitioning_target_equationt equation {ns, summary_store, false};
-    call_tree_nodet& summary_info = omega.get_summary_info();
+    call_tree_nodet& summary_info = omega.get_call_tree_root();
 
     symex_assertion_sumt symex {summary_store,
                                 get_goto_functions(),
