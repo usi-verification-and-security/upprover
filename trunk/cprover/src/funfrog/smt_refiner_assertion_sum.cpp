@@ -29,7 +29,7 @@
           Which function call to inline, which to summarize and which to havoc
 
 \*******************************************************************/
-void smt_refiner_assertion_sumt::refine(
+void smt_refiner_assertion_sumt::mark_sum_for_refine(
         const smtcheck_opensmt2t &decider,
         call_tree_nodet &summary,
         smt_partitioning_target_equationt &equation) {

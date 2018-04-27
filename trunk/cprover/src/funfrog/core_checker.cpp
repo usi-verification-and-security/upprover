@@ -579,7 +579,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
             // END of REPORT
 
             // figure out functions that can be refined
-            refiner.refine(*(dynamic_cast <smtcheck_opensmt2t *> (decider)), omega.get_call_tree_root(), equation);
+            refiner.mark_sum_for_refine(*(dynamic_cast <smtcheck_opensmt2t *> (decider)), omega.get_call_tree_root(), equation);
             bool refined = !refiner.get_refined_functions().empty();
             if (!refined) {
                 // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
@@ -1239,11 +1239,11 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 
     // clear summary store to get rid of summaries
     summary_store.clear();
-    smt_refiner_assertion_sumt refiner{summary_store, omega, refinement_modet::FORCE_INLINING,
+    smt_refiner_assertion_sumt localRefine{summary_store, omega, refinement_modet::FORCE_INLINING,
                                    this->get_message_handler(), UINT_MAX, true};
-    refiner.refine(lra_solver, omega.get_call_tree_root(), equation);
-    if (!refiner.get_refined_functions().empty()) {
-        symex.refine_SSA(refiner.get_refined_functions());
+    localRefine.mark_sum_for_refine(lra_solver, omega.get_call_tree_root(), equation);
+    if (!localRefine.get_refined_functions().empty()) {
+        symex.refine_SSA(localRefine.get_refined_functions());
         // new lra_solver here, because of LRA incrementality problems
         smtcheck_opensmt2t_lra lra_solver2 {0, "lra_solver 2"};
         equation.convert(lra_solver2, lra_solver2);
