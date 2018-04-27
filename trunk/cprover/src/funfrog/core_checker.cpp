@@ -1086,10 +1086,6 @@ namespace{
 //            decider.getLogic()->dumpHeaderToFile(out);
             //dumps define-fun()  into summary file
             store.serialize(out);
-            //TODO just add a temp file and capture the summary body everytime.
-            // and later add that body to the rest of __summary_lra
-            //If there exists __summary_lra,  dont overwrite it with bash command anymore. Instead
-            //take only the body of summary from _tempfile and add it to the tail of __summary_lra
         }
 
     }
@@ -1222,9 +1218,11 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         return true; // claim verified -> go to next claim
     }
     // here the claim could not be verified with UF (possibly with summaries)
+
     smtcheck_opensmt2t_lra lra_solver {0, "lra_solver"}; //TODO: type_constraints_level
     read_lra_summaries(summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver);
     reset_partition_summary_info(equation, summary_store);
+    omega.set_initial_precision(assertion, summary_store);
     equation.convert(lra_solver, lra_solver);
     is_sat = lra_solver.solve();
     if(!is_sat){
@@ -1235,26 +1233,29 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         status() << ("Go to next assertion\n") << eom;
         return true; // claim verified by LRA encoding -> go to next claim
     }
-    // try pure LRA, without summaries
 
-    // clear summary store to get rid of summaries
-    summary_store.clear();
-    smt_refiner_assertion_sumt localRefine{summary_store, omega, refinement_modet::FORCE_INLINING,
-                                   this->get_message_handler(), UINT_MAX, true};
+    // classic lra summary refinement
+    smt_refiner_assertion_sumt localRefine{summary_store, omega, refinement_modet::SLICING_RESULT,
+                                   this->get_message_handler(), omega.get_last_assertion_loc(), true};
     localRefine.mark_sum_for_refine(lra_solver, omega.get_call_tree_root(), equation);
-    if (!localRefine.get_refined_functions().empty()) {
+    bool can_refine = !localRefine.get_refined_functions().empty();
+    while(can_refine){
         symex.refine_SSA(localRefine.get_refined_functions());
-        // new lra_solver here, because of LRA incrementality problems
+        // new lra_solver here, because of LRA incrementality problems in OpenSMT
         smtcheck_opensmt2t_lra lra_solver2 {0, "lra_solver 2"};
+        // we have new solver, but summary store has references from the old solver, we need to reload
+        read_lra_summaries(summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver2);
         equation.convert(lra_solver2, lra_solver2);
         is_sat = lra_solver2.solve();
         if(!is_sat){
-            extract_and_store_summaries(equation, summary_store, lra_solver, lra_summary_file_name);
+            extract_and_store_summaries(equation, summary_store, lra_solver2, lra_summary_file_name);
             // report results
             report_success();
             status() << ("Go to next assertion\n") << eom;
             return true; // claim verified by LRA encoding -> go to next claim
         }
+        localRefine.mark_sum_for_refine(lra_solver2, omega.get_call_tree_root(), equation);
+        can_refine = !localRefine.get_refined_functions().empty();
     }
 
     // call theory refinement

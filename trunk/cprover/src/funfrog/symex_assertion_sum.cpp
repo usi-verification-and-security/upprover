@@ -1158,6 +1158,7 @@ void symex_assertion_sumt::summarize_function_call(
   log.statistics() << "Substituting interpolant" << log.eom;
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
+  assert(summary_store.has_summaries(id2string(function_id)));
   equation.fill_summary_partition(partition_id,
           &summary_store.get_summaries(id2string(function_id)));
 }
