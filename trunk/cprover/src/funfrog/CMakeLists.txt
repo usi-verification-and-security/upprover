@@ -117,7 +117,18 @@ target_compile_definitions(hifrog PRIVATE
     #-DDISABLE_OPTIMIZATIONS
     )
 
-target_link_libraries(hifrog -lopensmt2 ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
+find_library(OPENSMT2_LIB NAMES opensmt2 libopensm2)
+if(NOT OPENSMT2_LIB)
+	message(FATAL_ERROR "opensmt library not found")
+endif()
+
+find_path(OPENSMT2_INCLUDE opensmt/opensmt2.h)
+if(NOT OPENSMT2_INCLUDE)
+	message(FATAL_ERROR "opensmt header files not found")
+endif()
+
+target_include_directories(hifrog SYSTEM PUBLIC ${OPENSMT2_INCLUDE})
+target_link_libraries(hifrog ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
     )
 
 target_link_libraries(hifrog
