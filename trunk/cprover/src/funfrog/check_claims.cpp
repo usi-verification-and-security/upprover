@@ -201,20 +201,25 @@ void check_claims(
       }
       // REPORT the results
       res.status() << "\n--------- OVERAL VERIFICATION STATISTICS ---------\n" <<res.eom;
-      for (const auto & entry : claim_map) {
-          auto claim_number = claim_numbers.at(entry.first);
-          bool checked = entry.second.first;
-          bool safe = entry.second.second;
+      std::map<claim_numberst::mapped_type, claim_numberst::key_type> flipped;
+      for(const auto & entry : claim_numbers){
+          flipped[entry.second] = entry.first;
+      }
+      for (const auto & entry : flipped) {
+          auto claim_number = entry.first;
+          const auto & assertion = entry.second;
+          const auto & claim_res = claim_map.at(assertion);
+          bool checked = claim_res.first;
+          bool safe = claim_res.second;
           if (checked){
               res.status() << "Claim number # " <<  claim_number << " is " << (safe ? "SAFE" : "UNSAFE") << res.eom;
-              //res.status() << res.endl << "Assertion Info: " << entry.first->source_location.pretty();
 
               res.status()
-              <<" File: " << entry.first->source_location.get_file()
-              <<" \n Function: " << entry.first->source_location.get_function()
-              <<" \n Line: " << entry.first->source_location.get_line()
-              << "\n " << ((entry.first->is_assert()) ? "Guard: " : "Code") <<"( "
-              << from_expr(entry.first->guard) <<" ) \n";
+              <<" File: " << assertion->source_location.get_file()
+              <<" \n Function: " << assertion->source_location.get_function()
+              <<" \n Line: " << assertion->source_location.get_line()
+              << "\n " << ((assertion->is_assert()) ? "Guard: " : "Code") <<"( "
+              << from_expr(assertion->guard) <<" ) \n";
           }
           else {
               res.status() << "Claim number " <<  claim_number << " has not been checked!";
