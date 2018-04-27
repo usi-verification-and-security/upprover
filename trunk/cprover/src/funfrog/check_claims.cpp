@@ -7,6 +7,8 @@
 \*******************************************************************/
 
 #include <fstream>
+#include <iostream>
+
 #include <util/ui_message.h>
 #include <util/xml.h>
 #include <util/xml_irep.h>
@@ -15,8 +17,6 @@
 #include "core_checker.h"
 #include "theory_refiner.h"
 #include "check_claims.h"
-
-
 /*******************************************************************
 
  Function: find_assertion
@@ -196,18 +196,29 @@ void check_claims(
               break;
           }
           assert(claim_map.find(ass_ptr) != claim_map.end());
+          //SA:TODO find a better way to report without ostream
+          std::cout << std::endl << "checking the claim # " <<std::to_string(claim_numbers[ass_ptr]) <<std::endl;
           bool single_res = core_checker.check_sum_theoref_single(ass_ptr);
           claim_map[ass_ptr] = std::make_pair(true, single_res);
       }
       // REPORT the results
+      std::cout <<"\n"<< "--------- OVERAL VERIFICATION STATISTICS ---------" << "\n\n";
       for (const auto & entry : claim_map) {
           auto claim_number = claim_numbers.at(entry.first);
           bool checked = entry.second.first;
           bool safe = entry.second.second;
           if (checked){
-              res.status() << "Claim number " <<  claim_number << " has been checked with result " << (safe ? "SAFE" : "UNSAFE");
-              // TODO pretty print the information about the claim
-              res.status() << res.endl << "Assertion: " << entry.first->source_location.pretty();
+              std::cout << "Claim number # " <<  claim_number << " is " << (safe ? "SAFE" : "UNSAFE") <<"\n";
+              //res.status() << res.endl << "Assertion Info: " << entry.first->source_location.pretty();
+              // SA:in printing via res.status() the order gets messy
+
+              std::cout
+              <<" File: " << entry.first->source_location.get_file()
+              <<" \n Function: " << entry.first->source_location.get_function()
+              <<" \n Line: " << entry.first->source_location.get_line()
+              << "\n " << ((entry.first->is_assert()) ? "Guard: " : "Code") <<"( "
+              << from_expr(entry.first->guard) <<" )"
+              << std::endl;
           }
           else {
               res.status() << "Claim number " <<  claim_number << " has not been checked!";

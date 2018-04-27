@@ -647,7 +647,7 @@ bool funfrog_parseoptionst::check_function_summarization()
     unsigned claim_nr=0;
 
     get_claims(goto_model.goto_functions, claim_map, claim_numbers);
-    cbmc_status_interface("Checking claims in program...(" + std::to_string(claim_numbers.size())+")");
+    cbmc_status_interface("Total number of claims in program...(" + std::to_string(claim_numbers.size())+")");
 
     if(cmdline.isset("show-claims") || cmdline.isset("show-properties")) {
       show_properties(goto_model, ui_message_handler.get_ui());
