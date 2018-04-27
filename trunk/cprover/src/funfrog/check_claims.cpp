@@ -7,7 +7,6 @@
 \*******************************************************************/
 
 #include <fstream>
-#include <iostream>
 
 #include <util/ui_message.h>
 #include <util/xml.h>
@@ -196,29 +195,26 @@ void check_claims(
               break;
           }
           assert(claim_map.find(ass_ptr) != claim_map.end());
-          //SA:TODO find a better way to report without ostream
-          std::cout << std::endl << "checking the claim # " <<std::to_string(claim_numbers[ass_ptr]) <<std::endl;
+          res.status()  << " ---------checking the claim # " <<std::to_string(claim_numbers[ass_ptr]) <<" ---------"<< res.eom;
           bool single_res = core_checker.check_sum_theoref_single(ass_ptr);
           claim_map[ass_ptr] = std::make_pair(true, single_res);
       }
       // REPORT the results
-      std::cout <<"\n"<< "--------- OVERAL VERIFICATION STATISTICS ---------" << "\n\n";
+      res.status() << "\n--------- OVERAL VERIFICATION STATISTICS ---------\n" <<res.eom;
       for (const auto & entry : claim_map) {
           auto claim_number = claim_numbers.at(entry.first);
           bool checked = entry.second.first;
           bool safe = entry.second.second;
           if (checked){
-              std::cout << "Claim number # " <<  claim_number << " is " << (safe ? "SAFE" : "UNSAFE") <<"\n";
+              res.status() << "Claim number # " <<  claim_number << " is " << (safe ? "SAFE" : "UNSAFE") << res.eom;
               //res.status() << res.endl << "Assertion Info: " << entry.first->source_location.pretty();
-              // SA:in printing via res.status() the order gets messy
 
-              std::cout
+              res.status()
               <<" File: " << entry.first->source_location.get_file()
               <<" \n Function: " << entry.first->source_location.get_function()
               <<" \n Line: " << entry.first->source_location.get_line()
               << "\n " << ((entry.first->is_assert()) ? "Guard: " : "Code") <<"( "
-              << from_expr(entry.first->guard) <<" )"
-              << std::endl;
+              << from_expr(entry.first->guard) <<" ) \n";
           }
           else {
               res.status() << "Claim number " <<  claim_number << " has not been checked!";
