@@ -1202,7 +1202,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         // report results
         report_success();
         // Claim trivially satisfied -> go to next claim
-        status() << ("Go to next assertion\n") << eom;
+        status() << ("This assertion trivially holds, Go to next claim ...\n") << eom;
         return true;
     }
 
@@ -1214,11 +1214,11 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         update_lra_sum_from_uf_sum();
         // report results
         report_success();
-        status() << ("Go to next assertion\n") << eom;
+        status() << ("---Go to next assertion; Claim verified by EUF---\n") << eom;
         return true; // claim verified -> go to next claim
     }
     // here the claim could not be verified with UF (possibly with summaries)
-
+    status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
     smtcheck_opensmt2t_lra lra_solver {0, "lra_solver"}; //TODO: type_constraints_level
     read_lra_summaries(summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver);
     reset_partition_summary_info(equation, summary_store);
@@ -1230,11 +1230,11 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         // cannot update UF summaries
         // report results
         report_success();
-        status() << ("Go to next assertion\n") << eom;
+        status() << ("---Go to next assertion; Claim verified by LRA without any local refinement---\n") << eom;
         return true; // claim verified by LRA encoding -> go to next claim
     }
 
-    // classic lra summary refinement
+    status() << "\n---trying to locally refine the summary in LRA---\n" <<eom;
     smt_refiner_assertion_sumt localRefine{summary_store, omega, refinement_modet::SLICING_RESULT,
                                    this->get_message_handler(), omega.get_last_assertion_loc(), true};
     localRefine.mark_sum_for_refine(lra_solver, omega.get_call_tree_root(), equation);
@@ -1251,7 +1251,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
             extract_and_store_summaries(equation, summary_store, lra_solver2, lra_summary_file_name);
             // report results
             report_success();
-            status() << ("Go to next assertion\n") << eom;
+            status() << ("\n---Go to next assertion; claim verified by LRA local Refinement---\n") << eom;
             return true; // claim verified by LRA encoding -> go to next claim
         }
         localRefine.mark_sum_for_refine(lra_solver2, omega.get_call_tree_root(), equation);
@@ -1259,6 +1259,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     }
 
     // call theory refinement
+    status() << "\n---EUF and LRA were not enough; trying to refine with theory-refinement using CUF + BV ---\n" <<eom;
     // MB: we need fresh secondary table for the symex in the theory refiner
     // TODO: move the creation of the namespace inside the checker
     symbol_tablet temp_table2;

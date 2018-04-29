@@ -16,6 +16,7 @@
 #include "core_checker.h"
 #include "theory_refiner.h"
 #include "check_claims.h"
+#include <util/time_stopping.h>
 /*******************************************************************
 
  Function: find_assertion
@@ -195,9 +196,13 @@ void check_claims(
               break;
           }
           assert(claim_map.find(ass_ptr) != claim_map.end());
-          res.status()  << " ---------checking the claim # " <<std::to_string(claim_numbers[ass_ptr]) <<" ---------"<< res.eom;
+          res.status()  << "\n ---------checking claim # " <<std::to_string(claim_numbers[ass_ptr]) <<" ---------\n"<< res.eom;
+          absolute_timet initial, final;
+          initial=current_time();
           bool single_res = core_checker.check_sum_theoref_single(ass_ptr);
           claim_map[ass_ptr] = std::make_pair(true, single_res);
+          final = current_time();
+          res.status() << "-----Time for checking the claim "<<std::to_string(claim_numbers[ass_ptr]) <<" was: " << (final - initial) << res.eom;
       }
       // REPORT the results
       res.status() << "\n--------- OVERAL VERIFICATION STATISTICS ---------\n" <<res.eom;
@@ -222,7 +227,7 @@ void check_claims(
               << from_expr(assertion->guard) <<" ) \n";
           }
           else {
-              res.status() << "Claim number " <<  claim_number << " has not been checked!";
+              res.status() << "Claim number " <<  claim_number << " has not been checked!"; //assertion is not reachable
           }
           res.status() << res.eom;
       }
