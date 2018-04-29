@@ -187,7 +187,11 @@ void core_checkert::initialize()
         //TODO: MB: How about checking if this file actually exists?
         const std::string& summary_file = options.get_option("load-summaries");
         if (!summary_file.empty()) {
-            summary_store->deserialize({summary_file});
+            ifstream f(summary_file.c_str());
+            if (f.good()) {
+                summary_store->deserialize({summary_file});
+            }
+
         }
     }
 
