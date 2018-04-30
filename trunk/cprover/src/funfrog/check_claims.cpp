@@ -34,7 +34,8 @@ goto_programt::const_targett claim_statst::find_assertion(
   const goto_functionst &goto_functions,
   call_stackt &stack)
 {
-  goto_programt::const_targett it = start; it++;
+  auto it = start;
+  it++;
 
   while(it->type!=ASSERT)
   {
@@ -43,51 +44,40 @@ goto_programt::const_targett claim_statst::find_assertion(
       const code_function_callt &call =
         to_code_function_call(to_code(it->code));
 
-      const irep_idt &name = call.function().get("identifier");
+      const irep_idt &name = to_symbol_expr(call.function()).get_identifier();
 
-      goto_functionst::function_mapt::const_iterator f_it =
-        goto_functions.function_map.find(name);
+      auto f_it = goto_functions.function_map.find(name);
 
-      if(f_it!=goto_functions.function_map.end() &&
-         f_it->second.body.instructions.size()>0 &&
+      if(f_it != goto_functions.function_map.end() &&
+         !f_it->second.body.instructions.empty() &&
          !is_unwinding_exceeded(name) &&
          !is_recursion_unwinding(name))
       {
-        stack.push(it);
+        stack.push_back(it);
         it = f_it->second.body.instructions.begin();
         increment_unwinding_counter(name);
+        continue;
       }
-      else
-        it++; // just ignore it
-    }
-    else if(it->type==OTHER)
-    {
-      if(it->is_other() &&
-         it->code.get("statement")=="loop-summary")
-      {
-          // No loop summaries supported here
-          assert(false);
-      }
-      else
-        it++;
     }
     else if(it->type==END_FUNCTION)
     {
-      const irep_idt &name = (it->code).get("identifier");
+      const irep_idt &name = it->function;
       decrement_unwinding_counter(name);
-      if(stack.size()==0)
+      if(stack.empty())
       {
         // this must be the end. 
         return (++it);
       }
       else
       {
-        it = stack.top(); stack.pop();
-        it++;
+        it = stack.back();
+        stack.pop_back();
+        ++it;
+        continue;
       }
     }
-    else
-      it++;
+    // default case, ignore this instruction and move forward;
+    ++it;
   }
 
   // `it' now points to the assertion, while

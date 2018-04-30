@@ -15,11 +15,12 @@
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
 #include <util/ui_message.h>
-#include "assertion_info.h"
 #include "unwind.h"
+#include "call_stack.h"
 
 class claim_statst:public messaget, public unwindt
 {
+
 public:
   claim_statst(unsigned int max_unwind) : unwindt(max_unwind),
     total_claims(0),
