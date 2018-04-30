@@ -180,10 +180,20 @@ void check_claims(
   core_checker.initialize();
 
   if(options.get_bool_option("sum-theoref")){
+      if(!assert_grouping){
+          res.warning() << "Assertion grouping cannot be disabled in current mode!\n" << res.eom;
+          assert_grouping = true;
+      }
       while(ass_ptr != main_body.instructions.end()){
           ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
           if(ass_ptr == main_body.instructions.end()){
               break;
+          }
+          if(claim_map[ass_ptr].first) {
+              // this claim has already been checked;
+              // with assert_grouping all occurrences of the same claim are checked together so we can skip all other occurences
+              assert(assert_grouping);
+              continue;
           }
           assert(claim_map.find(ass_ptr) != claim_map.end());
           res.status()  << "\n ---------checking claim # " <<std::to_string(claim_numbers[ass_ptr]) <<" ---------\n"<< res.eom;
