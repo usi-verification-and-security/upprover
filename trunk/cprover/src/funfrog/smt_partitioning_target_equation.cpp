@@ -18,6 +18,7 @@
 #include "summary_store.h"
 
 //#define DEBUG_ITP_SMT // ITP of SMT - testing
+//#define DEBUG_ENCODING
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
@@ -123,13 +124,14 @@ void smt_partitioning_target_equationt::convert_partition(
 		partitiont& partition) {
     if (partition.ignore || partition.processed || partition.invalid) {
 #   ifdef DEBUG_ENCODING
+        std::cout << partition.get_iface().function_id;
         if (partition.invalid) {
-            std::cout << "  partition invalidated (refined)." << std::endl;
+            std::cout << "  partition invalidated (refined).\n";
         } else if (partition.ignore) {
             assert (!partition.get_iface().assertion_in_subtree);
-            std::cout << "  partition sliced out." << std::endl;
+            std::cout << "  partition sliced out.\n";
         } else if (partition.processed) {
-            std::cout << "  partition already processed." << std::endl;
+            std::cout << "  partition already processed.\n";
         }
 #	endif
         return;
@@ -148,7 +150,7 @@ void smt_partitioning_target_equationt::convert_partition(
     }
     if (partition.stub) {
 #       ifdef DEBUG_ENCODING
-        std::cout << "  partition havoced." << std::endl;
+        std::cout << "  partition havoced." << partition_iface.function_id << '\n';
 #	endif
         return;
     }
@@ -167,19 +169,17 @@ void smt_partitioning_target_equationt::convert_partition(
 
     // If this is a summary partition, apply the summary
     if (partition.summary) {
+#       ifdef DEBUG_ENCODING
+        std::cout << "  partition summarize." << partition_iface.function_id << '\n';
+#	endif
         convert_partition_summary(decider, partition);
         // FIXME: Only use in the incremental solver mode (not yet implemented)
         // partition.processed = true;
         return;
     }
-
-    // Reserve fresh variables for the partition boundary
-    std::vector < symbol_exprt > common_symbs;
-    fill_common_symbols(partition, common_symbs);
-
-    // GF: hack
-    //  smt_interpolantt::reserve_variables(decider, common_symbs, partition.get_iface().common_symbols);
-
+#       ifdef DEBUG_ENCODING
+    std::cout << "  partition inlined." << partition_iface.function_id << '\n';
+#	endif
     // Convert the corresponding SSA steps
     convert_partition_guards(decider, partition);
     convert_partition_assignments(decider, partition);
