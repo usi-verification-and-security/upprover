@@ -2,8 +2,6 @@
 
  Module: Call Stacks
 
- Author: CM Wintersteiger
-
  \*******************************************************************/
 
 #ifndef _CPROVER_LOOPFROG_CALL_STACK_H_

@@ -208,12 +208,14 @@ void check_claims(
       for(const auto & entry : claim_numbers){
           flipped[entry.second] = entry.first;
       }
+      bool finally_safe = true;
       for (const auto & entry : flipped) {
           auto claim_number = entry.first;
           const auto & assertion = entry.second;
           const auto & claim_res = claim_map.at(assertion);
           bool checked = claim_res.first;
           bool safe = claim_res.second;
+          if (!safe) finally_safe = false;
           if (checked){
               res.status() << "Claim number # " <<  claim_number << " is " << (safe ? "SAFE" : "UNSAFE") << res.eom;
 
@@ -225,10 +227,11 @@ void check_claims(
               << from_expr(assertion->guard) <<" ) \n";
           }
           else {
-              res.status() << "Claim number " <<  claim_number << " has not been checked!"; //assertion is not reachable
+              res.status() << "Claim number # " <<  claim_number << " is not reachable!\n"; //
           }
-          res.status() << res.eom;
+          res.status() <<res.eom;
       }
+      res.status()<< "Finally w.r.t all assertions, the program is " << (finally_safe ? "SAFE\n" : "UNSAFE\n") <<res.eom;
       return;
   }
 

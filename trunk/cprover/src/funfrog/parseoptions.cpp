@@ -2,10 +2,6 @@
 
  Module: Command Line Parsing
 
- Author: Daniel Kroening, kroening@kroening.com
-         CM Wintersteiger
-         Ondrej Sery
-
 \*******************************************************************/
 #include "parseoptions.h"
 
@@ -798,17 +794,26 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
   //options.set_option("list-templates", cmdline.isset("list-templates"));
   options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
-  options.set_option("theoref", cmdline.isset("theoref"));
+  options.set_option("partial-loops", cmdline.isset("partial-loops"));
+
   options.set_option("sum-theoref", cmdline.isset("sum-theoref"));
+
+  //theory refinement Options
+  options.set_option("theoref", cmdline.isset("theoref"));
   options.set_option("force", cmdline.isset("force"));
   options.set_option("custom", cmdline.get_value("custom"));
-  options.set_option("heuristic", cmdline.get_value("heuristic"));
-  options.set_option("partial-loops", cmdline.isset("partial-loops"));
+
   if (cmdline.isset("bitwidth")) {
     options.set_option("bitwidth", cmdline.get_value("bitwidth"));
   } else {
-    options.set_option("bitwidth", 8);
+    options.set_option("bitwidth", 8); //the default bit-width for theoref
   }
+
+  if (cmdline.isset("heuristic")) {
+      options.set_option("heuristic", cmdline.get_value("heuristic"));
+  } else {
+      options.set_option("heuristic", 4);
+  }//End of theory refinement Options
 
   // always check assertions
   options.set_option("assertions", true);
@@ -825,7 +830,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   } else { // Set to qfuf - defualt
     options.set_option("logic", "qfuf"); 
   }
-
   
   // If not partitions - no itp too, going back to pure cbcm
   if(cmdline.isset("no-partitions")) {
