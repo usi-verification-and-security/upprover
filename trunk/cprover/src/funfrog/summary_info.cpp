@@ -9,15 +9,14 @@
 \*******************************************************************/
 
 #include "summary_info.h"
-#include "summary_store.h"
 #include "assertion_info.h"
 #include <util/std_expr.h>
 
 
 void call_tree_nodet::set_initial_precision(
-    const summary_precisiont default_precision,
-    const summary_storet& summary_store,
-    const unsigned last_assertion_loc)
+        const summary_precisiont default_precision,
+        const std::function<bool(const std::string &)> & has_summary,
+        const unsigned last_assertion_loc)
 {
   for (auto & call_site : call_sites)
   {
@@ -39,7 +38,7 @@ void call_tree_nodet::set_initial_precision(
     }
     else 
     {
-      if (summary_store.has_summaries(function_id)) {
+      if (has_summary(function_id)) {
         // If summaries are present, we use them
         function.set_summary();
       }
@@ -51,7 +50,7 @@ void call_tree_nodet::set_initial_precision(
     
     // Recursive traversal of func (DFS) 
     function.set_initial_precision(
-            default_precision, summary_store, last_assertion_loc);
+            default_precision, has_summary, last_assertion_loc);
   }
 }
 

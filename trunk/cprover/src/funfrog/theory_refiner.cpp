@@ -80,13 +80,12 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   absolute_timet initial, final;
   initial=current_time();
 
-    smt_summary_storet dummy;
-    omega.set_initial_precision(assertion, dummy);
+  omega.set_initial_precision(assertion, [](const std::string & s) { return false; });
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
 
-
+  smt_summary_storet dummy;
   smt_partitioning_target_equationt equation(ns, dummy,
       store_summaries_with_assertion);
 

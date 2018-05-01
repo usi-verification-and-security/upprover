@@ -57,11 +57,11 @@ public:
       (call_tree_nodet& summary_info, const goto_programt& code);
 
   void set_initial_precision
-      (const assertion_infot& assertion, const summary_storet & summary_store)
+          (const assertion_infot & assertion, const std::function<bool(const std::string &)> & has_summary)
   {
       setup_last_assertion_loc(assertion);
       assert(functions_root.is_root());
-      functions_root.set_initial_precision(default_precision, summary_store, last_assertion_loc);
+      functions_root.set_initial_precision(default_precision, has_summary, last_assertion_loc);
   }
 
   void serialize(const std::string& file);

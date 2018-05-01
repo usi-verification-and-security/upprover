@@ -290,7 +290,11 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
   const bool partial_loops = options.get_bool_option("partial-loops");
 
-  omega.set_initial_precision(assertion, *summary_store);
+  const auto & const_summary_store = *summary_store;
+  auto has_summary = [&const_summary_store](const std::string & function_name){
+      return const_summary_store.has_summaries(function_name);
+  };
+  omega.set_initial_precision(assertion, has_summary);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
 
@@ -497,7 +501,11 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
 
     // prepare omega
-    omega.set_initial_precision(assertion, *summary_store);
+    const auto & const_summary_store = *summary_store;
+    auto has_summary = [&const_summary_store](const std::string & function_name){
+        return const_summary_store.has_summaries(function_name);
+    };
+    omega.set_initial_precision(assertion, has_summary);
     const unsigned last_assertion_loc = omega.get_last_assertion_loc();
     const bool single_assertion_check = omega.is_single_assertion_check();
 
@@ -687,7 +695,11 @@ bool core_checkert::assertion_holds_smt_no_partition(
   const bool no_slicing_option = options.get_bool_option("no-slicing");
 //  const bool no_ce_option = options.get_bool_option("no-error-trace");
 
-  omega.set_initial_precision(assertion, *summary_store);
+    const auto & const_summary_store = *summary_store;
+    auto has_summary = [&const_summary_store](const std::string & function_name){
+        return const_summary_store.has_summaries(function_name);
+    };
+  omega.set_initial_precision(assertion, has_summary);
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
 //  const bool single_assertion_check = omega.is_single_assertion_check();
 
@@ -1176,8 +1188,12 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 
     smt_summary_storet summary_store {&uf_solver};
     summary_store.deserialize({uf_summary_file_name});
-
-    omega.set_initial_precision(assertion, summary_store);
+    const auto & const_summary_store = summary_store;
+    auto has_summary = [&const_summary_store]
+            (const std::string & function_name){
+        return const_summary_store.has_summaries(function_name);
+    };
+    omega.set_initial_precision(assertion, has_summary);
     symbol_tablet temp_table;
     namespacet ns{this->symbol_table, temp_table};
     smt_partitioning_target_equationt equation {ns, summary_store, false};
@@ -1226,7 +1242,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     smtcheck_opensmt2t_lra lra_solver {0, "lra_solver"}; //TODO: type_constraints_level
     read_lra_summaries(summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver);
     reset_partition_summary_info(equation, summary_store);
-    omega.set_initial_precision(assertion, summary_store);
+    omega.set_initial_precision(assertion, has_summary);
     equation.convert(lra_solver, lra_solver);
     is_sat = lra_solver.solve();
     if(!is_sat){
