@@ -6,17 +6,18 @@
 
 \*******************************************************************/
 
-#include <fstream>
-
+#include "check_claims.h"
+#include "core_checker.h"
+#include "theory_refiner.h"
+#include "assertion_info.h"
 #include <util/ui_message.h>
 #include <util/xml.h>
 #include <util/xml_irep.h>
-
-#include <ansi-c/expr2c.h>
-#include "core_checker.h"
-#include "theory_refiner.h"
-#include "check_claims.h"
 #include <util/time_stopping.h>
+#include <ansi-c/expr2c.h>
+
+#include <fstream>
+
 /*******************************************************************
 
  Function: find_assertion
@@ -170,7 +171,7 @@ void check_claims(
 	        goto_functions, ns1, temp_table, options, _message_handler);
 
     th_checker.initialize();
-    th_checker.assertion_holds_smt(ass_ptr, true);
+    th_checker.assertion_holds_smt(assertion_infot{ass_ptr}, true);
     return;
   }
 
@@ -199,7 +200,7 @@ void check_claims(
           res.status()  << "\n ---------checking claim # " <<std::to_string(claim_numbers[ass_ptr]) <<" ---------\n"<< res.eom;
           absolute_timet initial, final;
           initial=current_time();
-          bool single_res = core_checker.check_sum_theoref_single(ass_ptr);
+          bool single_res = core_checker.check_sum_theoref_single(assertion_infot{ass_ptr});
           claim_map[ass_ptr] = std::make_pair(true, single_res);
           final = current_time();
           res.status() << "-----Time for checking the claim "<<std::to_string(claim_numbers[ass_ptr]) <<" was: " << (final - initial) << res.eom;

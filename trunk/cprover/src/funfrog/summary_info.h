@@ -15,11 +15,10 @@
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
 
-#include "assertion_info.h"
 #include "summary_store_fwd.h"
 
-class summarization_contextt;
 class call_tree_nodet;
+class assertion_infot;
 
 // Type of summarization applied at a specific call-site
 typedef enum {HAVOC, SUMMARY, INLINE} summary_precisiont;

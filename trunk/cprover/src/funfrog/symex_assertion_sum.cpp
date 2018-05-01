@@ -22,6 +22,7 @@
 #include "partitioning_target_equation.h"
 #include "hifrog.h"
 #include "summary_store.h"
+#include "assertion_info.h"
 
 #include <memory>
 #include <algorithm>

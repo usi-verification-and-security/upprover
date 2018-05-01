@@ -8,9 +8,10 @@
 
 \*******************************************************************/
 
-#include <util/std_expr.h>
 #include "summary_info.h"
 #include "summary_store.h"
+#include "assertion_info.h"
+#include <util/std_expr.h>
 
 
 void call_tree_nodet::set_initial_precision(

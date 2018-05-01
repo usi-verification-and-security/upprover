@@ -16,10 +16,10 @@
 // Unique identification of an assertion to be checked
 class assertion_infot {
 public:
-  assertion_infot() : matching_type(ANY), target_stack(NULL) {}
+  assertion_infot() : matching_type(ANY), target_stack(nullptr) {}
           
-  assertion_infot(const goto_programt::const_targett& _location):
-          matching_type(ASSERT_GROUPING), target_stack(NULL), 
+  explicit assertion_infot(const goto_programt::const_targett& _location):
+          matching_type(ASSERT_GROUPING), target_stack(nullptr),
           location(_location) {}
           
   assertion_infot(const call_stackt& _target_stack,
@@ -27,8 +27,8 @@ public:
           matching_type(NO_ASSERT_GROUPING), target_stack(&_target_stack), 
           location(_location) {}
 
-  assertion_infot(const std::vector <goto_programt::const_targett>& _multi_location):
-          matching_type(MULTI_ASSERT), target_stack(NULL),
+  explicit assertion_infot(const std::vector <goto_programt::const_targett>& _multi_location):
+          matching_type(MULTI_ASSERT), target_stack(nullptr),
           multi_location(_multi_location){}
 
   const call_stackt& get_target_stack() const {

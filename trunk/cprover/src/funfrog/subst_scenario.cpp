@@ -9,6 +9,7 @@
 \*******************************************************************/
 
 #include "subst_scenario.h"
+#include "assertion_info.h"
 #include <fstream>
 #include <iostream>
 #include <cstring>

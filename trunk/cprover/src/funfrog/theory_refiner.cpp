@@ -14,6 +14,7 @@
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include <util/time_stopping.h>
 #include "smt_summary_store.h"
+#include "assertion_info.h"
 
 #define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
 theory_refinert::~theory_refinert()
