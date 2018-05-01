@@ -86,14 +86,12 @@ Function: get_initial_mode
 core_checkert::core_checkert(
         const goto_programt &_goto_program,
         const goto_functionst &_goto_functions,
-//        const namespacet &_ns,
         const symbol_tablet &_symbol_table,
         const optionst& _options,
         ui_message_handlert &_message_handler,
         unsigned long &_max_memory_used
 ) :
         goto_program(_goto_program),
-//        ns(_ns),
         symbol_table(_symbol_table),
         options(_options),
         message_handler (_message_handler),
@@ -1281,13 +1279,9 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     // call theory refinement
     status() << "\n---EUF and LRA were not enough; trying to refine with theory-refinement using CUF + BV ---\n" <<eom;
     // MB: we need fresh secondary table for the symex in the theory refiner
-    // TODO: move the creation of the namespace inside the checker
-    symbol_tablet temp_table2;
-    namespacet ns2 {ns.get_symbol_table(), temp_table2};
     theory_refinert th_checker(this->goto_program,
                                get_goto_functions(),
-                               ns2,
-                               temp_table2,
+                               this->symbol_table,
                                options,
                                message_handler);
     th_checker.initialize();

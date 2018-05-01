@@ -164,11 +164,8 @@ void check_claims(
       return;
     }
 
-    symbol_tablet temp_table;
-    namespacet ns1(goto_model.symbol_table, temp_table);
-
     theory_refinert th_checker(main_body,
-	        goto_functions, ns1, temp_table, options, _message_handler);
+	        goto_functions, goto_model.symbol_table, options, _message_handler);
 
     th_checker.initialize();
     th_checker.assertion_holds_smt(assertion_infot{ass_ptr}, true);

@@ -86,6 +86,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
 
   smt_summary_storet dummy;
+  symbol_tablet temp_table;
+  namespacet ns{this->symbol_table, temp_table};
   smt_partitioning_target_equationt equation(ns, dummy,
       store_summaries_with_assertion);
 
@@ -98,7 +100,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   call_tree_nodet& summary_info = omega.get_call_tree_root();
   symex_assertion_sumt symex = symex_assertion_sumt(
-            dummy, omega.get_goto_functions(), summary_info, ns, symbol_table,
+            dummy, omega.get_goto_functions(), summary_info, ns, temp_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, true, true, true, unwind_bound);
 
