@@ -60,6 +60,7 @@ partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet&
     bool check = partition_map.insert(partition_mapt::value_type(
             partition_iface.callend_symbol.get_identifier(), new_id)).second;
     assert(check);
+    (void)check;
 
     if (parent_id != partitiont::NO_PARTITION) {
         partitions[parent_id].add_child_partition(new_id, partition_iface.call_loc);

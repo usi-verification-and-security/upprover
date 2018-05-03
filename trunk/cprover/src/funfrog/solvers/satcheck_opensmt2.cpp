@@ -143,8 +143,7 @@ literalt satcheck_opensmt2t::extract_itp_rec(PTRef ptref,
   }
   else
   {
-      Pterm& ptm = logic->getPterm(ptref);
-      assert(ptm.size() == 0);
+      assert(logic->getPterm(ptref).size() == 0);
       result.set(decode_id(logic->getSymName(ptref)), false);
   } 
    

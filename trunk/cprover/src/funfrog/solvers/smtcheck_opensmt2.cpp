@@ -187,6 +187,7 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     args.push(pl2);
     PTRef ans = logic->mkEq(args);
     literalt l = push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
+    (void)l;
     assert(l.var_no() != literalt::unused_var_no()); // KE: for cmake warnings
     
     assert(ans != PTRef_Undef);

@@ -48,6 +48,7 @@ void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
     // a struct into std::vector and use [] before any push_back
     literals.push_back(PTRef());
     literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0] - NEVER COMMENT THIS LINE!!!
+    (void)l;
     literals[0] = logic->getTerm_true(); // Which is .x =0
     assert(l.var_no() != literalt::unused_var_no()); // KE: for cmake warnings
     // KE: End of fix
@@ -132,8 +133,7 @@ Function: smtcheck_opensmt2t_cuf::var_bv
 \*******************************************************************/
 PTRef smtcheck_opensmt2t_cuf::var_bv(const exprt &expr)
 {
-    const irep_idt &_id=expr.id(); // KE: gets the id once for performance
-    assert(_id==ID_symbol || _id==ID_nondet_symbol); // Only for data types!!
+    assert(expr.id()==ID_symbol || expr.id()==ID_nondet_symbol); // Only for data types!!
     
    
     // Check if we suppose to have a support for this
