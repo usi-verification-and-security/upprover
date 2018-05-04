@@ -284,7 +284,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
   
   const bool no_slicing_option = options.get_bool_option("no-slicing");
   const bool no_ce_option = options.get_bool_option("no-error-trace");
-  assert(options.get_option("logic") == "prop");
+//  assert(options.get_option("logic") == "prop");
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
   const bool partial_loops = options.get_bool_option("partial-loops");
 
@@ -1291,139 +1291,10 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     status() << "\n---EUF and LRA were not enough; trying to use prop logic ---\n" <<eom;
     std::string prop_summary_filename {"__summaries_prop"};
 
-    //initialization
-    check_opensmt2t* prop_solver = new satcheck_opensmt2t("prop checker");
-    prop_solver->set_reduce_proof(options.get_bool_option("reduce-proof"));  //SA: make it to work; should be a nice optimization
-
-    prop_summary_storet prop_summary_store;
-
+    this->summary_store.reset(new prop_summary_storet());
     ifstream f(prop_summary_filename.c_str());
     if (f.good()) {
-        prop_summary_store.deserialize(std::vector<std::string>{prop_summary_filename});
+        this->summary_store->deserialize(std::vector<std::string>{prop_summary_filename});
     }
-
-    omega.initialize_summary_info (omega.get_call_tree_root(), goto_program);
-    init = get_init_mode(options.get_option("init-mode"));
-    omega.setup_default_precision(init);
-    //End of initialization
-
-    const auto & const_prop_summary_store = prop_summary_store;
-    auto prop_has_summary = [&const_prop_summary_store]
-            (const std::string & function_name){
-        return const_prop_summary_store.has_summaries(function_name);
-    };
-    omega.set_initial_precision(assertion, prop_has_summary);
-
-    symbol_tablet temp_table_prop;
-    namespacet ns_prop{this->symbol_table, temp_table_prop};
-
-    prop_partitioning_target_equationt prop_equation(ns_prop, prop_summary_store, false); //SA:I am not sure about store_summaries_with_assertion to be false
-
-    call_tree_nodet& prop_summary_info = omega.get_call_tree_root();
-
-    symex_assertion_sumt prop_symex {
-          prop_summary_store,
-          get_goto_functions(),
-          prop_summary_info,
-          ns_prop,
-          temp_table_prop,
-          prop_equation,
-          message_handler,
-          goto_program,
-          omega.get_last_assertion_loc(),
-          omega.is_single_assertion_check(),
-          !options.get_bool_option("no-slicing"),
-          !options.get_bool_option("no-error-trace"),
-          false,
-          options.get_unsigned_int_option("unwind"),
-          options.get_bool_option("partial-loops") };
-
-    prop_refiner_assertion_sumt prop_refiner{
-            prop_summary_store, omega,
-            get_refine_mode(options.get_option("refine-mode")),
-            message_handler, omega.get_last_assertion_loc(), true};
-
-    prop_assertion_sumt prop{prop_equation, message_handler}; //SA:fine an descriptive name for this object
-    unsigned count = 0;
-    bool end = false;
-
-    //SA: do we need these two pointers as unique_ptr?
-    std::unique_ptr<prop_conv_solvert> decider_prop;
-    std::unique_ptr<interpolating_solvert> interpolator;
-    while (!end)
-    {
-        count++;
-
-        // Init the next iteration context
-        {
-            prop_solver = (new satcheck_opensmt2t("sat checker"));
-
-            interpolator.reset(prop_solver);
-            bv_pointerst *deciderp = new bv_pointerst(ns_prop, *(dynamic_cast<satcheck_opensmt2t *> (prop_solver)));
-            deciderp->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;
-            decider_prop.reset(deciderp);
-        }
-
-        end = (count == 1) ? prop_symex.prepare_SSA(assertion) : prop_symex.refine_SSA (prop_refiner.get_refined_functions());
-
-        if (!end){
-
-            end = prop.assertion_holds(assertion, ns_prop, *(dynamic_cast<prop_conv_solvert *> (decider_prop.get())), *(interpolator.get()));
-            unsigned summaries_count = omega.get_summaries_count();
-            unsigned nondet_count = omega.get_nondets_count();
-
-            if (end && interpolator->can_interpolate())
-            {
-                status() << ("Start generating interpolants...") << eom;
-                extract_interpolants_prop(prop, prop_equation, *decider_prop.get(), *interpolator.get());
-
-
-                if (summaries_count == 0)
-                {
-                    status() << ("ASSERTION(S) HOLD(S) ") << eom;
-                } else {
-                    status() << "FUNCTION SUMMARIES (for " << summaries_count
-                             << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
-                }
-                report_success();
-                return true;
-            }
-            else
-            {
-                if (summaries_count > 0 || nondet_count > 0) {
-                    if (summaries_count > 0){
-                        status() << "FUNCTION SUMMARIES (for " << summaries_count
-                                 << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-                    }
-                    if (nondet_count > 0){
-                        status() << "HAVOCING (of " << nondet_count
-                                 << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-                    }
-                    prop_refiner.refine(*decider_prop, omega.get_call_tree_root(), prop_equation);
-
-                    if (prop_refiner.get_refined_functions().size() == 0){
-                        prop.error_trace(*decider_prop, ns_prop);
-                        status() << ("A real bug found.") << endl << eom;
-                        report_failure();
-                        return false;
-                    } else {
-                        //status("Counterexample is spurious");
-                        status() << ("Counterexample maybe spurious, Go to next iteration\n") << eom;
-                    }
-                }
-                else {
-                    prop.error_trace(*decider_prop, ns_prop);
-                    status() << ("A real bug found") << endl << eom;
-                    report_failure();
-                    return false;
-                }
-            }
-        }
-        else{
-            // end is true -> report success (It is needed when the assertion trivially holds)
-            report_success();
-            return true;
-        }
-    }
-    return end;
+    return this->assertion_holds_prop(assertion, false);
 }
