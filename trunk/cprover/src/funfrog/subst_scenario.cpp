@@ -490,5 +490,13 @@ void subst_scenariot::get_unwinding_depth()
 }
 
 const goto_functionst::goto_functiont& subst_scenariot::get_goto_function(irep_idt fun) const{
-    return this->goto_functions.function_map.at(fun);
+    if (this->goto_functions.function_map.count(fun) > 0)
+        return this->goto_functions.function_map.at(fun);
+    
+    // Old comment from: void function_infot::analyze_globals_rec
+    // This function id is missing from context (the data comes from cprover without this id)
+    // the function id was not loaded into summarization_contextt (in c'tor)
+    
+    std::cerr << "** Function ID " << fun << " is not in the context tables **" << std::endl;
+    assert(0); //Shouldn't get here
 }

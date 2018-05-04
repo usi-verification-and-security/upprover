@@ -185,7 +185,7 @@ bool funfrog_parseoptionst::process_goto_program(
 
     // Remove inline assembler; this needs to happen before
     // adding the library.
-    remove_asm(goto_model);
+    //remove_asm(goto_model);
 
     // KE: Only to prop logic
     if(cmdline.isset("logic")) 
