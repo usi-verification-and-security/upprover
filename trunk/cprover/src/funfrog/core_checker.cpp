@@ -947,7 +947,13 @@ void core_checkert::extract_interpolants_prop (prop_assertion_sumt& prop, prop_p
   status() << "INTERPOLATION TIME: " << (after-before) << eom;
   
   // Store the summaries
-  const std::string& summary_file = options.get_option("save-summaries");
+  std::string summary_file;
+  if(options.get_bool_option("sum-theoref")) {
+      summary_file = "__summaries_prop";
+  }
+  else {
+      summary_file = options.get_option("save-summaries");;
+  }
   if (!summary_file.empty()) {
     std::ofstream out;
     out.open(summary_file.c_str());
