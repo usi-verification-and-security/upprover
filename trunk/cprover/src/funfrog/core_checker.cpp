@@ -1083,14 +1083,6 @@ Function: core_checkert::report_failure
 
 \*******************************************************************/
 namespace{
-    /*void update_lra_summary_store(summary_storet& uf_store, summary_storet& lra_store, smtcheck_opensmt2t_lra & lra_solver){
-        throw "Not implemented yet!";
-    }
-
-    void update_prop_summary_store(summary_storet& lra_store, prop_summary_storet& prop){
-        throw "Not implemented yet!";
-    }*/
-/*******************************************************************/
 //Purpose: extracts summaries after successful verification; and dumps the summaries
 // in a specific summary-file for uf and lra separately based on the solver.
 
@@ -1110,39 +1102,15 @@ namespace{
 
     }
 /*******************************************************************/
-// Purpose: Convertion of UF-summary into LRA-summary
-    void update_lra_sum_from_uf_sum() {
-//        string data;
-//        FILE * stream;
-//        // creates a buffer,
-//        const int max_buffer = 256;
-//        char buffer[max_buffer];
-//        std::string cmd = " sed 's/QF_UF/QF_LRA/g; s/UReal/Real/g' __summaries_uf > __summaries_lra ";
-//        // opens up a read-only stream
-//        stream = popen(cmd.c_str(), "r");
-//
-//        if (stream) {
-//            while (!feof(stream))
-//                if (fgets(buffer, max_buffer, stream) != NULL) data.append(buffer);
-//            pclose(stream);
-//        }
-       /* TODO add report:
-         status() << "*** Convertion of UF-summary into LRA-summary after checking claim #: "
-                  << std::to_string(claim_numbers[ass_ptr]) << endl;*/
-    }
-// other implementation for Convertion of UF-summary to LRA-summary; but system() seems to be problematic as it's platform specific.
-    /*void update_lra_sum_from_uf_sum(){
-       std::string cmd_to_execute = " sed 's/QF_UF/QF_LRA/g; s/UReal/Real/g' __summaries_uf > __summaries_lra ";
-       const char * ccmd = cmd_to_execute.c_str();
-       system(ccmd);
-   }*/
-/*******************************************************************/
 // Purpose:
     void read_lra_summaries(smt_summary_storet & store, std::vector<std::string> const & filenames, smtcheck_opensmt2t & decider) {
         store.set_decider(&decider);
         store.deserialize(filenames);
     }
-
+/*******************************************************************/
+// Purpose: reset means changing the partition information according
+// to the current state of the summary store. so first we updated the
+// store using method read_lra_summaries(), then we update the summary information
     void reset_partition_summary_info(smt_partitioning_target_equationt & eq, smt_summary_storet const & store) {
         for (auto & partition : eq.get_partitions()){
             // check if we have summary in the store for this partition
@@ -1152,7 +1120,7 @@ namespace{
             if(has_summary){
                 // clear the old information and load new information from the store
                 // MB: not sure about these flags, so assert for now
-                assert(partition.invalid == false);
+//                assert(partition.invalid == false);
                 assert(partition.inverted_summary == false);
                 //assert(partition.ignore == false); MB: partition can be ignored, we probably do not need to update the information for those, but it does not hurt
                 partition.applicable_summaries.clear();
@@ -1191,6 +1159,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     smtcheck_opensmt2t_uf uf_solver {"uf_solver"};
 
     smt_summary_storet summary_store {&uf_solver};
+    //reading summary by uf
     summary_store.deserialize({uf_summary_file_name});
     const auto & const_summary_store = summary_store;
     auto has_summary = [&const_summary_store]
@@ -1218,7 +1187,6 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
                                 true,
                                 options.get_unsigned_int_option("unwind"),
                                 options.get_bool_option("partial-loops"),
-
     };
 
     bool assertion_holds = symex.prepare_SSA(assertion);
@@ -1235,13 +1203,37 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     if (!is_sat) {
         // interpolate if possible
         extract_and_store_summaries(equation, summary_store, uf_solver , uf_summary_file_name);
-        update_lra_sum_from_uf_sum();
         // report results
         report_success();
         status() << ("---Go to next assertion; Claim verified by EUF---\n") << eom;
         return true; // claim verified -> go to next claim
     }
-    // here the claim could not be verified with UF (possibly with summaries)
+//---------------------------------------------------------------------------
+    //UF summary refinement
+    status() << "\n---trying to locally refine the summary in UF---\n" <<eom;
+    smt_refiner_assertion_sumt localRefine{summary_store, omega,
+                                           refinement_modet::SLICING_RESULT,
+                                           this->get_message_handler(),
+                                           omega.get_last_assertion_loc(), true};
+
+
+    localRefine.mark_sum_for_refine(uf_solver, omega.get_call_tree_root(), equation);
+    bool can_refine = !localRefine.get_refined_functions().empty();
+    while(can_refine) {
+        symex.refine_SSA(localRefine.get_refined_functions());
+        equation.convert(uf_solver, uf_solver);
+        is_sat = uf_solver.solve();
+        if (!is_sat) {
+            extract_and_store_summaries(equation, summary_store, uf_solver, uf_summary_file_name);
+            // report results
+            report_success();
+            status() << ("\n---Go to next assertion; claim verified by UF local Refinement---\n") << eom;
+            return true; //->Uf was enough, go to next claim
+        }
+        localRefine.mark_sum_for_refine(uf_solver, omega.get_call_tree_root(), equation);
+        can_refine = !localRefine.get_refined_functions().empty();
+    }
+//---------------------------------------------------------------------------
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
     smtcheck_opensmt2t_lra lra_solver {0, "lra_solver"}; //TODO: type_constraints_level
     read_lra_summaries(summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver);
@@ -1257,12 +1249,11 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         status() << ("---Go to next assertion; Claim verified by LRA without any local refinement---\n") << eom;
         return true; // claim verified by LRA encoding -> go to next claim
     }
-
+//---------------------------------------------------------------------------
     status() << "\n---trying to locally refine the summary in LRA---\n" <<eom;
-    smt_refiner_assertion_sumt localRefine{summary_store, omega, refinement_modet::SLICING_RESULT,
-                                   this->get_message_handler(), omega.get_last_assertion_loc(), true};
+    // SA: I guess we can use previously generated object localRefine in UF refinement phase
     localRefine.mark_sum_for_refine(lra_solver, omega.get_call_tree_root(), equation);
-    bool can_refine = !localRefine.get_refined_functions().empty();
+    can_refine = !localRefine.get_refined_functions().empty();
     while(can_refine){
         symex.refine_SSA(localRefine.get_refined_functions());
         // new lra_solver here, because of LRA incrementality problems in OpenSMT
@@ -1281,7 +1272,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         localRefine.mark_sum_for_refine(lra_solver2, omega.get_call_tree_root(), equation);
         can_refine = !localRefine.get_refined_functions().empty();
     }
-
+//---------------------------------------------------------------------------
     // call theory refinement
   /*  status() << "\n---EUF and LRA were not enough; trying to refine with theory-refinement using CUF + BV ---\n" <<eom;
     // MB: we need fresh secondary table for the symex in the theory refiner

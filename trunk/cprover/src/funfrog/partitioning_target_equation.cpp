@@ -96,7 +96,7 @@ void partitioning_target_equationt::fill_summary_partition(
   partition_idt partition_id, const summary_idst* summaries, bool is_lattice_fact)
 {
     partitiont& sum_partition = partitions.at(partition_id);
-    assert(!sum_partition.filled);
+//    assert(!sum_partition.filled);
 
     sum_partition.filled = true;
     sum_partition.summary = true;
@@ -136,7 +136,7 @@ void partitioning_target_equationt::prepare_partitions() { // for hifrog only
 
     for (partitionst::iterator it = partitions.begin(); it != partitions.end(); ++it) {
 
-        assert(it->filled);
+ //       assert(it->filled);
         bool ignore = true;
 
         it->start_it = ssa_it;
