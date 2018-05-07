@@ -68,7 +68,7 @@ void smt_refiner_assertion_sumt::reset_depend(
       #       ifdef DEBUG_REFINER
               std::cout<< "    -- no applicable summaries" << std::endl;
       #       endif
-              tmp.push_back(&ipart.summary_info);
+              tmp.push_back(&ipart.call_tree_node);
             }*/
             if (decider.is_assignemt_true(ipart.callstart_literal)) {
 #       ifdef DEBUG_REFINER

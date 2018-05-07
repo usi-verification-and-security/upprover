@@ -229,7 +229,7 @@ bool symex_assertion_sumt::refine_SSA(
 //          it != refined_functions.end();
 //          ++it)
   {
-    const partition_iface_ptrst* partition_ifaces = get_partition_ifaces(*refined_function);
+    const partition_iface_ptrst* partition_ifaces = get_partition_ifaces(refined_function);
     assert(!refined_function->is_root());
 
     if (!(refined_function)->is_root()) {
@@ -421,7 +421,7 @@ void symex_assertion_sumt::symex_step(
   case ASSERT:
     if(!state.guard.is_false())
     {
-      if (get_current_deferred_function().summary_info.is_assertion_enabled(state.source.pc)) {
+      if (get_current_deferred_function().call_tree_node.is_assertion_enabled(state.source.pc)) {
           
         // Skip asserts that are not currently being checked
         if (current_assertion->assertion_matches(state.depth, state.source.pc))
@@ -442,7 +442,7 @@ void symex_assertion_sumt::symex_step(
                 bool is_exit = 
                  ((single_assertion_check  
                     && (!is_unwind_loop(state))
-                    && (!get_current_deferred_function().summary_info.is_in_loop())) 
+                    && (!get_current_deferred_function().call_tree_node.is_in_loop()))
                   || (loc >= last_assertion_loc && (max_unwind == 1)));
                 
                 std::cout << "Parsing Assert: " <<
@@ -462,7 +462,7 @@ void symex_assertion_sumt::symex_step(
             // KE: Use get_current_unwind(state), if greater than 0 it is inside a loop
             if ((single_assertion_check  
                     && (!is_unwind_loop(state))
-                    && (!get_current_deferred_function().summary_info.is_in_loop())) 
+                    && (!get_current_deferred_function().call_tree_node.is_in_loop()))
                || (loc >= last_assertion_loc && (max_unwind == 1))) // unwind exactly 1, see line 37 unwind.h to understand why
             {  
               end_symex(state);
@@ -611,7 +611,7 @@ void symex_assertion_sumt::dequeue_deferred_function(statet& state)
   // Set the current summary info to one of the deferred functions
   deferred_functiont &deferred_function = deferred_functions.front();
   partition_ifacet &partition_iface = deferred_function.partition_iface;
-  current_summary_info = &deferred_function.summary_info;
+  current_summary_info = &deferred_function.call_tree_node;
   const irep_idt& function_id = current_summary_info->get_function_id();
   loc = current_summary_info->get_call_location();
 
@@ -728,9 +728,9 @@ void symex_assertion_sumt::prepare_fresh_arg_symbols(statet& state,
 
 \*******************************************************************/
 void symex_assertion_sumt::assign_function_arguments(
-        statet &state,
-        code_function_callt &function_call,
-        deferred_functiont &deferred_function)
+        statet & state,
+        code_function_callt & function_call,
+        partition_ifacet & partition_iface)
 {
   const irep_idt &identifier=
     to_symbol_expr(function_call.function()).get_identifier();
@@ -745,7 +745,6 @@ void symex_assertion_sumt::assign_function_arguments(
   // parameter_assignments is CProver's goto_symex method
   parameter_assignments(identifier, goto_function, state, function_call.arguments());
 
-  partition_ifacet & partition_iface = deferred_function.partition_iface;
   // Store the argument renamed symbols somewhere (so that we can use
   // them later, when processing the deferred function).
   mark_argument_symbols(goto_function.type, partition_iface);
@@ -1039,7 +1038,7 @@ void symex_assertion_sumt::handle_function_call(
 {
   // What are we supposed to do with this precise function call? 
 
-  // get summary_info corresponding to the called function
+  // get call_tree_node corresponding to the called function
   call_tree_nodet &summary_info = current_summary_info->get_call_sites().find(
       state.source.pc)->second;
   assert(get_current_deferred_function().partition_iface.partition_id != partitiont::NO_PARTITION);
@@ -1083,25 +1082,16 @@ void symex_assertion_sumt::handle_function_call(
     }
     return;
   }
-
-//  MB: commented out, since is_exit was not used anywhere
-//  #ifdef DEBUG_PARTITIONING
-//    bool is_exit =
-//     ((single_assertion_check
-//        && (!is_unwind_loop(state))
-//        && (!get_current_deferred_function().summary_info.is_in_loop()))
-//      || (loc >= last_assertion_loc && (max_unwind == 1)));
-//  #endif
     
   // KE: to support loops, we not only checking the location,
   //     but also if we are in loop. E.g., while(1) { assert(x>5); func2updateX(x); }
   loc = summary_info.get_call_location();
   // Assign function parameters and return value
-  assign_function_arguments(state, function_call, deferred_function);
+  assign_function_arguments(state, function_call, deferred_function.partition_iface);
 
   // KE: need it for both cases, when we have the function, and when we don't have it
   bool is_deferred_func = (summary_info.get_call_location() < last_assertion_loc) ||
-                          ((is_unwind_loop(state) || get_current_deferred_function().summary_info.is_in_loop())
+                          ((is_unwind_loop(state) || get_current_deferred_function().call_tree_node.is_in_loop())
                            && (max_unwind != 1));
   if(is_deferred_func){
     switch (summary_info.get_precision()){
@@ -1124,7 +1114,7 @@ void symex_assertion_sumt::handle_function_call(
     }
   }
 
-  //      if(summary_info.is_unwind_exceeded())
+  //      if(call_tree_node.is_unwind_exceeded())
   //      {
   //        if(options.get_bool_option("unwinding-assertions"))
   //          claim(false_exprt(), "recursion unwinding assertion", state);
@@ -1648,16 +1638,15 @@ bool symex_assertion_sumt::is_unwind_loop(statet &state)
  Purpose: Allocate new partition_interface
 
 \*******************************************************************/
-partition_ifacet& symex_assertion_sumt::new_partition_iface(call_tree_nodet& summary_info,
+partition_ifacet& symex_assertion_sumt::new_partition_iface(call_tree_nodet& call_tree_node,
                                       partition_idt parent_id, unsigned call_loc) {
-    auto item = new partition_ifacet(summary_info, parent_id, call_loc);
+    auto item = new partition_ifacet(call_tree_node, parent_id, call_loc);
     partition_ifaces.push_back(item);
 
-    auto it = partition_iface_map.find(&summary_info);
-
+    auto it = partition_iface_map.find(&call_tree_node);
     if (it == partition_iface_map.end()) {
         it = partition_iface_map.insert(partition_iface_mapt::value_type(
-                &summary_info, partition_iface_ptrst())).first;
+                &call_tree_node, partition_iface_ptrst())).first;
     }
 
     it->second.push_back(item);

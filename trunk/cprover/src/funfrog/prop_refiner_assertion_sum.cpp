@@ -57,7 +57,7 @@ void prop_refiner_assertion_sumt::reset_depend(
       #       ifdef DEBUG_REFINER
               std::cout<< "    -- no applicable summaries" << std::endl;
       #       endif
-              tmp.push_back(&ipart.summary_info);
+              tmp.push_back(&ipart.call_tree_node);
             }*/
             if (decider.l_get(ipart.callstart_literal).is_true()) { // in the variant will do prop.lget
 #       ifdef DEBUG_REFINER

@@ -73,8 +73,8 @@ public:
     const goto_functionst &goto_functions,
     statet &state) override;
   
-  const partition_iface_ptrst* get_partition_ifaces(call_tree_nodet &summary_info) {
-    auto it = partition_iface_map.find(&summary_info);
+  const partition_iface_ptrst* get_partition_ifaces(const call_tree_nodet * call_tree_node) {
+    auto it = partition_iface_map.find(call_tree_node);
     
     if (it == partition_iface_map.end())
       return nullptr;
@@ -92,18 +92,18 @@ private:
 
   void end_symex(statet &state);
 
-  // Mapping from summary_info to the corresponding partition_iface
+  // Mapping from call_tree_node to the corresponding partition_iface
   typedef std::unordered_map<const call_tree_nodet*,partition_iface_ptrst> partition_iface_mapt;
   partition_iface_mapt partition_iface_map;
 
   class deferred_functiont {
   public:
 
-    deferred_functiont(call_tree_nodet &_summary_info,
-            partition_ifacet& _partition_iface) : summary_info(_summary_info),
+    deferred_functiont(call_tree_nodet &_call_tree_node,
+            partition_ifacet& _partition_iface) : call_tree_node(_call_tree_node),
             partition_iface(_partition_iface) { }
 
-    call_tree_nodet& summary_info;
+    call_tree_nodet& call_tree_node;
     partition_ifacet& partition_iface;
   };
 
@@ -206,9 +206,9 @@ private:
   // Assigns function arguments to new SSA symbols, also makes
   // assignment of the new SSA symbol of return value to the lhs of
   // the call site (if any)
-  void assign_function_arguments(statet &state,
-    code_function_callt &function_call,
-    deferred_functiont &deferred_function);
+  void assign_function_arguments(statet & state,
+                                 code_function_callt & function_call,
+                                 partition_ifacet & partition_iface);
   
   // Marks the SSA symbols of function arguments
   void mark_argument_symbols(const code_typet & function_type, partition_ifacet & partition_iface);
@@ -298,7 +298,7 @@ private:
   }
 
   // Allocate new partition_interface
-  partition_ifacet& new_partition_iface(call_tree_nodet& summary_info,
+  partition_ifacet& new_partition_iface(call_tree_nodet& call_tree_node,
           partition_idt parent_id, unsigned call_loc);
 
   const goto_functionst::goto_functiont & get_function(const irep_idt & function_id) const {
