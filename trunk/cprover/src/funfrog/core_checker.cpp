@@ -394,7 +394,8 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
           refiner.refine(*decider_prop, omega.get_call_tree_root(), equation);
 
           if (refiner.get_refined_functions().size() == 0){
-            prop.error_trace(*decider_prop, ns);
+            if (!options.get_bool_option("no-error-trace"))   
+              prop.error_trace(*decider_prop, ns);
             status() << ("A real bug found.") << endl << eom;
             report_failure();
             break;
@@ -403,7 +404,8 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
             status() << ("Go to next iteration\n") << eom;
           }
         } else {
-          prop.error_trace(*decider_prop, ns);
+          if (!options.get_bool_option("no-error-trace"))
+            prop.error_trace(*decider_prop, ns);
           status() << ("ASSERTION(S) DO(ES)N'T HOLD") << endl;
           status() << ("A real bug found") << endl << eom;
           report_failure();
