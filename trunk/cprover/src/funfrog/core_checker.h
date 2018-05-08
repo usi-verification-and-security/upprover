@@ -41,6 +41,7 @@ public:
   ~core_checkert() override;
   void initialize();
   void initialize_solver();
+  void initialize_solver_options(check_opensmt2t* _decider);
   void delete_and_initialize_solver(); // For replacing pop in the solver, remove once pop works
   bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);

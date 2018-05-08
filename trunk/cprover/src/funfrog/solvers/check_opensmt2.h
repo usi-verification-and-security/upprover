@@ -108,7 +108,10 @@ public:
         const char* msg=nullptr;
         osmt->getConfig().setOption(SMTConfig::o_dump_query, SMTOption(f), msg);
     }
+    
+    dump_queries = f;
   }
+  bool get_dump_queries() { return dump_queries;}
 
   void set_dump_query_name(const string& n)
   {
@@ -120,6 +123,7 @@ public:
   }
   
   void set_dump_pre_query(bool f) { dump_pre_queries = f;}
+  bool get_dump_pre_query() { return dump_pre_queries;}
 #endif
 
   MainSolver * getMainSolver() { return mainSolver; }
