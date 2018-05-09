@@ -122,18 +122,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 void smt_partitioning_target_equationt::convert_partition(
 		smtcheck_opensmt2t &decider, interpolating_solvert &interpolator,
 		partitiont& partition) {
-    if (partition.ignore || partition.processed || partition.invalid) {
-#   ifdef DEBUG_ENCODING
-        std::cout << partition.get_iface().function_id;
-        if (partition.invalid) {
-            std::cout << "  partition invalidated (refined).\n";
-        } else if (partition.ignore) {
-            assert (!partition.get_iface().assertion_in_subtree);
-            std::cout << "  partition sliced out.\n";
-        } else if (partition.processed) {
-            std::cout << "  partition already processed.\n";
-        }
-#	endif
+    if (partition.ignore) {
         return;
     }
 # ifdef DEBUG_SSA_SMT_CALL
@@ -155,15 +144,6 @@ void smt_partitioning_target_equationt::convert_partition(
         return;
     }
 
-    //  if ((partition.summary &&
-    //          partition.applicable_summaries.empty())) {
-    //    assert(!partition.inverted_summary);
-    //#   ifdef DEBUG_SSA
-    //    std::cout << "  no applicable summary." << std::endl;
-    //#	endif
-    //    return;
-    //  }
-
     // Tell the interpolator about the new partition.
     partition.set_fle_part_id(interpolator.new_partition());
 
@@ -173,8 +153,6 @@ void smt_partitioning_target_equationt::convert_partition(
         std::cout << "  partition summarize." << partition_iface.function_id << '\n';
 #	endif
         convert_partition_summary(decider, partition);
-        // FIXME: Only use in the incremental solver mode (not yet implemented)
-        // partition.processed = true;
         return;
     }
 #       ifdef DEBUG_ENCODING
@@ -191,8 +169,6 @@ void smt_partitioning_target_equationt::convert_partition(
     //   std::cout << "skipping converting assertions\n";
     // }
     convert_partition_io(decider, partition);
-    // FIXME: Only use in the incremental solver mode (not yet implemented)
-    // partition.processed = true;
 }
 /*******************************************************************
  Function: smt_partitioning_target_equationt::convert_partition_summary
@@ -486,7 +462,6 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
             if (target_partition && !target_partition->ignore) {
                 const partition_ifacet& target_partition_iface =
                                 target_partition->get_iface();
-                assert(!target_partition->invalid && !target_partition->processed);
 
 #		if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                 expr_ssa_print_smt_dbg(
@@ -822,7 +797,7 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
         partitiont& partition = partitions[i];
 
         // Mark the used summaries
-        if (partition.summary && !(partition.ignore || partition.invalid)) {
+        if (partition.summary && !(partition.ignore)) {
             for (summary_ids_sett::const_iterator it =
                     partition.applicable_summaries.begin(); it
                     != partition.applicable_summaries.end(); ++it) {

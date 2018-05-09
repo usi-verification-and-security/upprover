@@ -72,7 +72,7 @@ public:
   virtual void symex_step(
     const goto_functionst &goto_functions,
     statet &state) override;
-  
+
   const partition_iface_ptrst* get_partition_ifaces(const call_tree_nodet * call_tree_node) {
     auto it = partition_iface_map.find(call_tree_node);
     
@@ -92,8 +92,9 @@ private:
 
   void end_symex(statet &state);
 
-  // Mapping from call_tree_node to the corresponding partition_iface
-  typedef std::unordered_map<const call_tree_nodet*,partition_iface_ptrst> partition_iface_mapt;
+  // Mapping call_tree_nodes (i.e. call sites in goto program) to partition interfaces
+    // Single call_tree_node can map to multiple partitions (e.g. when the call site is inside a loop that is unwound multiple times
+  using partition_iface_mapt =  std::unordered_map<const call_tree_nodet*,partition_iface_ptrst>;
   partition_iface_mapt partition_iface_map;
 
   class deferred_functiont {
@@ -112,11 +113,11 @@ private:
   const goto_functionst& goto_functions;
 
   // Which functions should be summarized, abstracted from, and which inlined
-  call_tree_nodet &summary_info;
+  call_tree_nodet &call_tree_root;
 
   // Summary info of the function being currently processed. Set to NULL when
   // no deferred function are left
-  call_tree_nodet *current_summary_info;
+  call_tree_nodet *current_call_tree_node;
 
   // Wait queue for the deferred functions (for other partitions)
   std::queue<deferred_functiont> deferred_functions;
@@ -146,12 +147,12 @@ private:
   
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
-  void defer_function(const deferred_functiont &deferred_function);
+  void defer_function(const deferred_functiont &deferred_function, bool is_new = true);
 
   // Are there any more instructions in the current function or at least
   // a deferred function to dequeue?
   bool has_more_steps(const statet &state) {
-    return current_summary_info != nullptr;
+    return current_call_tree_node != nullptr;
   }
   
   // Processes current code (pointed to by the state member variable) as well

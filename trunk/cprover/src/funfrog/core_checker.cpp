@@ -529,9 +529,9 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     }
 #endif
   
-    call_tree_nodet& summary_info = omega.get_call_tree_root();
+    call_tree_nodet& call_tree_root = omega.get_call_tree_root();
     symex_assertion_sumt symex = symex_assertion_sumt(
-            *summary_store, get_goto_functions(), summary_info, ns, temp_table,
+            *summary_store, get_goto_functions(), call_tree_root, ns, temp_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound,
             options.get_bool_option("partial-loops"));
@@ -1107,6 +1107,7 @@ namespace{
             //dumps headers only into summary file
 //            decider.getLogic()->dumpHeaderToFile(out);
             //dumps define-fun()  into summary file
+
             store.serialize(out);
         }
 
@@ -1129,16 +1130,9 @@ namespace{
             bool was_summarized = partition.summary;
             if(has_summary){
                 // clear the old information and load new information from the store
-                // MB: not sure about these flags, so assert for now
-//                assert(partition.invalid == false);
-                assert(partition.inverted_summary == false);
-                //assert(partition.ignore == false); MB: partition can be ignored, we probably do not need to update the information for those, but it does not hurt
-                partition.applicable_summaries.clear();
-                partition.summaries = nullptr;
-                partition.filled = false;
                 // fill the partition with new summaries
-                eq.fill_summary_partition(partition.get_iface().partition_id, &store.get_summaries(function_name));
-                partition.summary = true;
+                eq.fill_summary_partition(partition.get_iface().partition_id, store.get_summaries(function_name));
+                assert(partition.summary);
             }
             else{
                 if(was_summarized){
@@ -1181,11 +1175,10 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     symbol_tablet temp_table;
     namespacet ns{this->symbol_table, temp_table};
     smt_partitioning_target_equationt equation {ns, summary_store, false};
-    call_tree_nodet& summary_info = omega.get_call_tree_root();
 
     symex_assertion_sumt symex {summary_store,
                                 get_goto_functions(),
-                                summary_info,
+                                omega.get_call_tree_root(),
                                 ns,
                                 temp_table,
                                 equation,

@@ -54,9 +54,10 @@ public:
   // generation to replace previously summarized partitions
   void invalidate_partition(partition_idt partition_id);
 
+    void refine_partition(partition_idt partition_id);
+
   // Fill the (reserved) partition with the given summaries.
-  void fill_summary_partition(partition_idt partition_id,
-    const summary_idst* summaries, bool is_lattice_fact=false);
+  void fill_summary_partition(partition_idt partition_id, const summary_idst & summaries);
 
   // Fill the (reserved) partition with the stub summary.
   void fill_stub_partition(partition_idt partition_id);
@@ -169,6 +170,8 @@ protected:
     const exprt &guard,
     const exprt &cond,
     const sourcet &source) override {}
+
+    void close_current_partition();
 
 
   summary_storet & summary_store;
