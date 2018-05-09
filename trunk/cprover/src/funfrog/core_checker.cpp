@@ -1126,9 +1126,11 @@ namespace{
         for (auto & partition : eq.get_partitions()){
             // check if we have summary in the store for this partition
             const auto & function_name = id2string(partition.get_iface().function_id);
-            bool has_summary = store.has_summaries(function_name);
+            bool should_summarize = partition.get_iface().call_tree_node.get_precision() == summary_precisiont::SUMMARY;
+            // should_summarize -> store.has_summaries
+            assert(!should_summarize || store.has_summaries(function_name));
             bool was_summarized = partition.summary;
-            if(has_summary){
+            if(should_summarize){
                 // clear the old information and load new information from the store
                 // fill the partition with new summaries
                 eq.fill_summary_partition(partition.get_iface().partition_id, store.get_summaries(function_name));
@@ -1242,8 +1244,8 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     smtcheck_opensmt2t_lra lra_solver {0, "lra checker"}; //TODO: type_constraints_level
     initialize_solver_options(&lra_solver);
     read_lra_summaries(summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver);
-    reset_partition_summary_info(equation, summary_store);
     omega.set_initial_precision(assertion, has_summary);
+    reset_partition_summary_info(equation, summary_store);
     equation.convert(lra_solver, lra_solver);
     is_sat = lra_solver.solve();
     if(!is_sat){
@@ -1255,7 +1257,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         return true; // claim verified by LRA encoding -> go to next claim
     }
 //---------------------------------------------------------------------------
-    status() << "\n---trying to locally refine the summary in LRA---\n" <<eom;
+    status() << "\n---trying to locally refine the summary in LRA---\n" << eom;
     // SA: I guess we can use previously generated object localRefine in UF refinement phase
     localRefine.mark_sum_for_refine(lra_solver, omega.get_call_tree_root(), equation);
     can_refine = !localRefine.get_refined_functions().empty();
