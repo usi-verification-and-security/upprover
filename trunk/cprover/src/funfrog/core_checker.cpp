@@ -1105,7 +1105,9 @@ namespace{
             std::ofstream out;
             out.open(summary_file_name.c_str());
             //dumps headers only into summary file
-//            decider.getLogic()->dumpHeaderToFile(out);
+            // MB: we need to dump header, otherwise, UF does not know about constants
+            // TODO: find out how to dump bear minimum
+            decider.getLogic()->dumpHeaderToFile(out);
             //dumps define-fun()  into summary file
 
             store.serialize(out);
