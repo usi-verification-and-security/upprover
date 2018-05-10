@@ -358,6 +358,9 @@ private:
     std::unordered_map<irep_idt, globalst, irep_id_hash> accessed_globals;
     std::unordered_map<irep_idt, globalst, irep_id_hash> modified_globals;
 
+    // Intended to let the state know about symbols that are not declared anywhere, like extern variables
+    void add_globals_to_state(statet & state);
+
     void analyze_globals();
 
     void analyze_globals_rec(irep_idt function_to_analyze, std::unordered_set<irep_idt, irep_id_hash> & analyzed_functions);

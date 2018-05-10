@@ -153,6 +153,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 
   // Clear the state
   reset_state();
+  add_globals_to_state(state);
 
   // Prepare the partitions and deferred functions
   partition_ifacet &partition_iface = new_partition_iface(call_tree_root, partitiont::NO_PARTITION, 0);
@@ -1657,6 +1658,8 @@ partition_ifacet& symex_assertion_sumt::new_partition_iface(call_tree_nodet& cal
 
  Note: Currently, this ensures the constant propagation is turned off for this symbol.
        Otherwise it could return retrieve the constant (current value) instead of current version of the symbol.
+       Should be used only in special circumstances, currently when processing interface of functions,
+       becuase we do not follow normal data flow there.
 
 \*******************************************************************/
 ssa_exprt symex_assertion_sumt::get_current_version(const symbolt & symbol) {
@@ -1809,6 +1812,33 @@ namespace{
         }
     }
 }
+
+
+void symex_assertion_sumt::add_globals_to_state(statet & state) {
+    // get globals
+    std::unordered_set<irep_idt, irep_id_hash> globals;
+    for (auto & entry : this->accessed_globals) {
+        for (auto const & global_id : entry.second) {
+            globals.insert(global_id);
+        }
+    }
+    for (auto const & global_id : globals) {
+        auto const & symbol = this->ns.lookup(global_id);
+        // let's try adding only extern symbols, see if it is enough
+        if (symbol.is_extern) {
+            // the following is taken from goto_symext::symex_decl
+            ssa_exprt ssa(symbol.symbol_expr());
+            state.rename(ssa, ns, goto_symex_statet::L1);
+            const auto & l1_identifier = ssa.get_identifier();
+            state.rename(ssa.type(), l1_identifier, ns);
+            ssa.update_type();
+            // end of section taken from CPROVER
+            assert(state.level2.current_names.find(l1_identifier) == state.level2.current_names.end());
+            state.level2.current_names[l1_identifier] = std::make_pair(ssa, 0);
+        }
+    }
+}
+
 
 
 void symex_assertion_sumt::analyze_globals() {
