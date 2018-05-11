@@ -1107,9 +1107,9 @@ namespace{
             //dumps headers only into summary file
             // MB: we need to dump header, otherwise, UF does not know about constants
             // TODO: find out how to dump bear minimum
-            decider.getLogic()->dumpHeaderToFile(out);
+            //decider.getLogic()->dumpHeaderToFile(out);
             //dumps define-fun()  into summary file
-
+            out << decider.getSimpleHeader();
             store.serialize(out);
         }
 
@@ -1169,6 +1169,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 
     smt_summary_storet summary_store {&uf_solver};
     //reading summary by uf
+    status() << "\n--Reading UF summary file: " << uf_summary_file_name << eom;
     summary_store.deserialize({uf_summary_file_name});
     const auto & const_summary_store = summary_store;
     auto has_summary = [&const_summary_store]
@@ -1245,6 +1246,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
     smtcheck_opensmt2t_lra lra_solver {0, "lra checker"}; //TODO: type_constraints_level
     initialize_solver_options(&lra_solver);
+    status() << "\n--Reading LRA summary file: " << lra_summary_file_name << eom;
     read_lra_summaries(summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver);
     omega.set_initial_precision(assertion, has_summary);
     reset_partition_summary_info(equation, summary_store);
@@ -1269,6 +1271,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         smtcheck_opensmt2t_lra lra_solver2 {0, "lra checker (in loop)"};
         initialize_solver_options(&lra_solver2);
         // we have new solver, but summary store has references from the old solver, we need to reload
+        status() << "\n--Reading LRA summary file: " << lra_summary_file_name << eom;
         read_lra_summaries(summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver2);
         equation.convert(lra_solver2, lra_solver2);
         is_sat = lra_solver2.solve();

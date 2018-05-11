@@ -131,8 +131,8 @@ public:
 
   // Common to all
   std::set<PTRef>* getVars(); // Get all variables from literals for the counter example phase
+  std::string getSimpleHeader(); // Get all the declarations without the variables
 
-public:
   literalt bind_var2refined_var(PTRef ptref_coarse, PTRef ptref_refined); // common to all
 
   SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
@@ -146,6 +146,8 @@ public:
 
 protected:
 
+  vec<SymRef> function_formulas;
+  
   vec<PTRef> top_level_formulas;
 
   bool is_var_constraints_empty;

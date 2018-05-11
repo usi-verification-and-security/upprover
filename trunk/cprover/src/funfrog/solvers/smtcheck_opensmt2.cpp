@@ -564,6 +564,79 @@ std::set<PTRef>* smtcheck_opensmt2t::getVars()
 
 /*******************************************************************\
 
+Function: smtcheck_opensmt2t::getSimpleHeader
+
+  Inputs: -
+
+ Outputs: a set of all declarations without variables that used in the smt formula
+
+ Purpose: for summary refinement between theories
+ * 
+ * TODO: shall work with logic->dumpFunctions(dump_functions); once not empty!
+
+\*******************************************************************/
+std::string smtcheck_opensmt2t::getSimpleHeader()
+{
+    // Never add twice the same declare
+    std::set<PTRef>* was = new std::set<PTRef>();
+
+    // This code if works, replace the remove variable section
+    //std::stringstream dump_functions;
+    //logic->dumpFunctions(dump_functions);
+    //std::cout << dump_functions.str() << std::endl;
+    //assert(dump_functions.str().empty()); // KE: show me when it happens!
+    
+    // Get the original header
+    std::stringstream dump;
+    logic->dumpHeaderToFile(dump);
+    if (dump.str().empty())
+        return "";
+ 
+    // Remove the Vars   
+    std::string line;
+    std::string ret = "";
+    // Skip the first line always!
+    std::getline(dump,line,'\n');
+    // take only const and function definitions
+    while(std::getline(dump,line,'\n')){
+        if (line.find(".oite")!=std::string::npos)
+            continue;
+        if (line.find("|nil|")!=std::string::npos)
+            continue;
+        if (line.find("nil () Bool")!=std::string::npos)
+            continue;
+        if (line.find(UNSUPPORTED_VAR_NAME)!=std::string::npos)
+            continue;
+        if (line.find("|")!=std::string::npos) 
+            continue;
+        if (line.find("declare-sort Real 0")!=std::string::npos) 
+            continue;
+        if (line.find("declare-const 0 () Real")!=std::string::npos) 
+            continue;
+        
+        ret += line + "\n";
+    }
+
+    // Add constants:
+    for(it_literals it = literals.begin(); it != literals.end(); it++)
+    {
+        if ((logic->isConstant(*it)) && (was->count(*it) < 1) 
+                && !logic->isFalse(*it) && !logic->isTrue(*it))
+        {
+            char* name = logic->printTerm(*it);
+            ret += "(declare-const " + std::string(name) + " () " 
+                    + std::string(logic->getSortName(logic->getSortRef(*it))) + ")\n";
+            free(name);
+            was->insert(*it);
+        }
+    }
+    
+    // Return the list of declares
+    return ret;
+}
+
+/*******************************************************************\
+
 Function: smtcheck_opensmt2t::extract_expr_str_number
 
   Inputs: expression that is a constant (+/-/int/float/rational)
