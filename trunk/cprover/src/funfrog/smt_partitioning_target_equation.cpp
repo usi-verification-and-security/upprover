@@ -87,7 +87,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
                 << it->get_iface().assertion_in_subtree << ")" << " - "
                 << it->get_iface().function_id.c_str() << " (loc: "
                 << it->get_iface().call_tree_node.get_call_location() << ", "
-                << ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
+                << ((it->summary) ?  "SUM"
                     : ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
 
         print_partition();

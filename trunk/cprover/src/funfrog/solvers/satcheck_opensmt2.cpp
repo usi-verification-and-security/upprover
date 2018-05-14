@@ -11,8 +11,6 @@ Author: Grigory Fedyukovich
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
-using namespace std;
-
 #include <iostream>
 #include "../hifrog.h"
 #endif
@@ -394,14 +392,14 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
       
       // Print body + ite's
       for(int i = 0; i < top_level_formulas.size(); ++i) {
-        out_sat_pre_query << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
+        out_sat_pre_query << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << '\n';
         char* s = logic->printTerm(top_level_formulas[i]);
-        out_sat_pre_query << "(assert (and \n" << s << "\n))" << endl;
+        out_sat_pre_query << "(assert (and \n" << s << "\n))\n";
         free(s);
       }
       
       // Close the file
-      out_sat_pre_query << "(check-sat)\n" << endl;
+      out_sat_pre_query << "(check-sat)\n" << std::endl;
       out_sat_pre_query.close();
   } 
 #endif 
