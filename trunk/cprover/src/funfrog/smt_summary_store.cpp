@@ -32,25 +32,31 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
 
     int old_function_count = 0;
     for (const auto & fileName : fileNames) {
-        if (decider->getMainSolver()->readFormulaFromFile(fileName.c_str())) {
-            vec<Tterm> &functions = decider->getLogic()->getFunctions();
-            assert(old_function_count <= functions.size());
-            // MB: function in OpenSMT are added when a file is read, so we can safely skip the ones
-            // we have added previously; Also note that this will work onbly if functions in files have different names!
-            for (int i = old_function_count; i < functions.size(); ++i) {
-                auto itp = new smt_summaryt();
-                // only copy assignment work correctly, copy constructor do not at the moment
-                itp->getTempl() = functions[i];
-                Tterm & tterm = itp->getTempl();
-                std::string fname = tterm.getName();
-                clean_name(fname);
-                tterm.setName(fname);
-                itp->setLogic(decider->getLogic());
-                itp->setInterpolant(tterm.getBody());
-                itp->set_valid(true);
-                this->insert_summary(itp, fname);
+        try {
+            if (decider->getMainSolver()->readFormulaFromFile(fileName.c_str())) {
+                vec<Tterm> & functions = decider->getLogic()->getFunctions();
+                assert(old_function_count <= functions.size());
+                // MB: function in OpenSMT are added when a file is read, so we can safely skip the ones
+                // we have added previously; Also note that this will work onbly if functions in files have different names!
+                for (int i = old_function_count; i < functions.size(); ++i) {
+                    auto itp = new smt_summaryt();
+                    // only copy assignment work correctly, copy constructor do not at the moment
+                    itp->getTempl() = functions[i];
+                    Tterm & tterm = itp->getTempl();
+                    std::string fname = tterm.getName();
+                    clean_name(fname);
+                    tterm.setName(fname);
+                    itp->setLogic(decider->getLogic());
+                    itp->setInterpolant(tterm.getBody());
+                    itp->set_valid(true);
+                    this->insert_summary(itp, fname);
+                }
+                old_function_count = functions.size();
             }
-            old_function_count = functions.size();
+        } catch (LRANonLinearException & e){
+            // OpenSMT with linear real arithmetic was trying to read a file with nonlinear operation in it
+            // Ignore this file.
+            std::cerr << "Non linear operation encounter in file " << fileName << ". Ignoring this file.\n";
         }
     }
 }
