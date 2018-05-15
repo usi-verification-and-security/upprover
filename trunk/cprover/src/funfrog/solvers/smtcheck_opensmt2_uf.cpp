@@ -41,7 +41,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   logic = &(osmt->getLogic());
   mainSolver = &(osmt->getMainSolver());
 
-  const char* msg2=NULL;
+  const char* msg2 = nullptr;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
   //if (msg2!=NULL) free((char *)msg2);
 
@@ -56,7 +56,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
 
   //Initialize the stuff to fake UF
   //Create new sort UReal
-  char* msg=NULL;
+  char* msg = nullptr;
   sort_ureal = logic->declareSort(tk_sort_ureal, &msg);
 
   vec<SRef> args;
@@ -83,11 +83,11 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   sdiv.setLeftAssoc();
   splus.setLeftAssoc();
   sminus.setLeftAssoc();
-//  MB: in UF we should not assume that these symbols are commutative!
-//  smult.setCommutes();
-//  sdiv.setCommutes();
-//  splus.setCommutes();
-//  sminus.setCommutes();
+
+    // MB: to handle flattening done by CPROVER for plus and multiplication expressions
+    // TODO: Ask Antti which property to set, noScoping, chainble, or pairwise
+    splus.setNoScoping();
+    smult.setNoScoping();
   
   //Declare relations
   s_lt = logic->declareFun(tk_lt, logic->getSort_bool(), args, &msg, true);
@@ -95,7 +95,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   s_gt = logic->declareFun(tk_gt, logic->getSort_bool(), args, &msg, true);
   s_ge = logic->declareFun(tk_ge, logic->getSort_bool(), args, &msg, true);
 
-  if (msg!=NULL) free(msg);
+  if (msg != nullptr) free(msg);
 }
 
 /*******************************************************************\
