@@ -796,8 +796,10 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
   options.set_option("partial-loops", cmdline.isset("partial-loops"));
 
+#ifdef PRODUCE_PROOF
   options.set_option("sum-theoref", cmdline.isset("sum-theoref"));
-
+#endif
+  
   //theory refinement Options
   options.set_option("theoref", cmdline.isset("theoref"));
   options.set_option("force", cmdline.isset("force"));

@@ -177,6 +177,7 @@ void check_claims(
 
   core_checker.initialize();
 
+#ifdef PRODUCE_PROOF
   if(options.get_bool_option("sum-theoref")){
       if(!assert_grouping){
           res.warning() << "Assertion grouping cannot be disabled in current mode!\n" << res.eom;
@@ -234,7 +235,8 @@ void check_claims(
       res.status()<< "Finally w.r.t all assertions, the program is " << (finally_safe ? "SAFE\n" : "UNSAFE\n") <<res.eom;
       return;
   }
-
+#endif
+  
   if (options.get_bool_option("all-claims") || options.get_bool_option("claims-opt")){
     core_checker.assertion_holds(assertion_infot(), true);
   } else while(true) {
