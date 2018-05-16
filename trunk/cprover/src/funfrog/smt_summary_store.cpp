@@ -33,6 +33,7 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
     int old_function_count = 0;
     for (const auto & fileName : fileNames) {
         try {
+            std::cout << "\n----Reading summary file: " << fileName << std::endl;
             if (decider->getMainSolver()->readFormulaFromFile(fileName.c_str())) {
                 vec<Tterm> & functions = decider->getLogic()->getFunctions();
                 assert(old_function_count <= functions.size());

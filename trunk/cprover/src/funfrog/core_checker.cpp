@@ -1141,6 +1141,11 @@ namespace{
                 // Get the old token we wish to abstract
                 char* token = prev_solver.getLogic()->printTerm(*nl);
                 string old_token(token);
+
+                // Add the declaration to in the solver
+                prev_solver.getLogic()->mkVar(prev_solver.getLogic()->getSortRef(*nl), (prev_solver.create_new_unsupported_var("_sumref", false)).c_str());
+                prev_solver.getLogic()->mkVar(prev_solver.getLogic()->getSortRef(*nl), (prev_solver.create_new_unsupported_var("_sumref", true)).c_str());
+                //decider.getLogic()->mkVar(decider.getLogic()->getSortRef(*nl), (decider.create_new_unsupported_var("_sumref", false)).c_str());
                 
                 // The symbol name in the old token
                 std::string::size_type n_before = 0;
@@ -1205,7 +1210,7 @@ namespace{
             store.deserialize(filenames_linear);
             
             // Remove the temp. file
-            remove( "__summaries_linear_temp" );
+            //remove( "__summaries_linear_temp" );
         } else {
             // Final stage:
             store.set_decider(&decider);

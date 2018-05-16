@@ -605,13 +605,15 @@ std::string smtcheck_opensmt2t::getSimpleHeader()
             continue;
         if (line.find("nil () Bool")!=std::string::npos)
             continue;
-        if (line.find(UNSUPPORTED_VAR_NAME)!=std::string::npos)
-            continue;
-        if (line.find("|")!=std::string::npos) 
-            continue;
-        if (line.find("declare-sort Real 0")!=std::string::npos) 
-            continue;
+        if (line.find(UNSUPPORTED_VAR_NAME)==std::string::npos)
+        {       
+            if (line.find("|")!=std::string::npos) 
+                continue;
+            if (line.find("declare-sort Real 0")!=std::string::npos) 
+                continue;
+        }
         
+        // Function declarations and unsupported vars only
         ret += line + "\n";
     }
 
