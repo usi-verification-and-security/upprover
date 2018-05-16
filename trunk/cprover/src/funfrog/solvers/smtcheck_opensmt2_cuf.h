@@ -112,6 +112,10 @@ protected:
   void add_constraints4chars_bv_bool(const exprt &expr, PTRef &var, int size, const irep_idt type_id);
   
   void add_constraints4chars_numeric(PTRef &var, int size, const irep_idt type_id);
+  
+  virtual bool can_have_non_linears() { return true; }
+  
+  virtual bool is_non_linear_operator(PTRef tr);
 };
 
 void getVarsInExpr(exprt& e, std::set<exprt>& vars);

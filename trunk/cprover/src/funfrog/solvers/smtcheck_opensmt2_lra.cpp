@@ -11,7 +11,7 @@ Author: Grigory Fedyukovich
 
 // Debug flags of this class:
 //#define SMT_DEBUG
-//#define SMT_DEBUG_VARS_BOUNDS // For debugging the option: type_constraints_level
+//#define SMT_DEBUG_VARS_BOdUNDS // For debugging the option: type_constraints_level
 
 /*******************************************************************\
 
@@ -1224,6 +1224,27 @@ bool smtcheck_opensmt2t_lra::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 
 	// Don't know
 	return true; // Probably missed cased of false, so once found please add it
+}
+
+// Check if a literal is non-linear in the solver side
+bool smtcheck_opensmt2t_lra::is_non_linear_operator(PTRef tr)
+{
+    if (!lralogic->isRealDiv(tr) && !lralogic->isRealTimes(tr))
+        return false;
+    
+    // Get the original vars
+    const Pterm& t = logic->getPterm(tr);
+    if (t.size() < 2)
+        return false;
+    
+    // If we have 2 or more, than we can check if all constant but one
+    int count_var = 0;
+    for (int i = 0; i < t.size(); i++) {
+        if (!logic->isConstant(t[i]) && !lralogic->isRealConst(t[i]))
+            count_var++;
+    }
+    
+    return (count_var > 1);
 }
 
 /*******************************************************************\

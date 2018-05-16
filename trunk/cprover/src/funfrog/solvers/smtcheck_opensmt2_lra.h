@@ -64,6 +64,10 @@ protected:
   PTRef runsupported2var(const exprt &expr);
 
   bool isLinearOp(const exprt &expr, vec<PTRef> &args); // Check if we don't do sth. like nondet*nondet, but only const*nondet (e.g.)
+  
+  virtual bool can_have_non_linears() { return false; }
+  
+  virtual bool is_non_linear_operator(PTRef tr);
 
   /* Set of functions that add constraints to take care of overflow and underflow */
   void add_constraints2type(const exprt &expr, PTRef& var); // add assume/assert on the data type

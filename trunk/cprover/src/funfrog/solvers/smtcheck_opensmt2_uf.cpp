@@ -834,3 +834,25 @@ SRef smtcheck_opensmt2t_uf::getSMTlibDatatype(const typet& type)
 
     throw std::logic_error("Unknown datatype encountered!");
 }
+
+// Check if a literal is non-linear in the solver side
+bool smtcheck_opensmt2t_uf::is_non_linear_operator(PTRef tr)
+{
+    SymRef sr = logic->getPterm(tr).symb(); 
+    if ((sr != this->s_mult) &&  (sr != this->s_div))
+        return false;
+    
+    // Get the original vars
+    const Pterm& t = logic->getPterm(tr);
+    if (t.size() < 2)
+        return false;
+    
+    // If we have 2 or more, than we can check if all constant but one
+    int count_var = 0;
+    for (int i = 0; i < t.size(); i++) {
+        if (!logic->isConstant(t[i]))
+            count_var++;
+    }
+    
+    return (count_var > 1);
+}

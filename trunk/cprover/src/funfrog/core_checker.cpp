@@ -29,7 +29,7 @@
 #include "smt_summary_store.h"
 #include "prop_summary_store.h"
 #include "theory_refiner.h"
-
+#include <stdio.h>
 
 namespace{
     /*******************************************************************\
@@ -107,7 +107,6 @@ core_checkert::~core_checkert() = default;
 void core_checkert::initialize_solver()
 {
     string _logic = options.get_option("logic");
-    int _type_constraints = options.get_unsigned_int_option("type-constraints");
     if(_logic == "qfuf") 
     {
         decider = new smtcheck_opensmt2t_uf("uf checker");
@@ -121,7 +120,7 @@ void core_checkert::initialize_solver()
     }
     else if(_logic == "qflra") 
     {
-        decider = new smtcheck_opensmt2t_lra(_type_constraints, "lra checker");
+        decider = new smtcheck_opensmt2t_lra(options.get_unsigned_int_option("type-constraints"), "lra checker");
         status() << ("Use QF_LRA logic.") << eom;
     }
     else if (_logic == "prop" && !options.get_bool_option("no-partitions"))
@@ -958,12 +957,16 @@ void core_checkert::extract_interpolants_prop (prop_assertion_sumt& prop, prop_p
   
   // Store the summaries
   std::string summary_file;
+#ifdef PRODUCE_PROOF  
   if(options.get_bool_option("sum-theoref")) {
       summary_file = "__summaries_prop";
   }
   else {
-      summary_file = options.get_option("save-summaries");;
+      summary_file = options.get_option("save-summaries");
   }
+#else
+  summary_file = options.get_option("save-summaries");
+#endif
   if (!summary_file.empty()) {
     std::ofstream out;
     out.open(summary_file.c_str());
@@ -1104,21 +1107,110 @@ namespace{
         if (!summary_file_name.empty()) {
             std::ofstream out;
             out.open(summary_file_name.c_str());
-            //dumps headers only into summary file
-            // MB: we need to dump header, otherwise, UF does not know about constants
             // TODO: find out how to dump bear minimum
-            //decider.getLogic()->dumpHeaderToFile(out);
             //dumps define-fun()  into summary file
             out << decider.getSimpleHeader();
             store.serialize(out);
+            out.close();
         }
 
     }
 /*******************************************************************/
 // Purpose:
-    void read_lra_summaries(smt_summary_storet & store, std::vector<std::string> const & filenames, smtcheck_opensmt2t & decider) {
-        store.set_decider(&decider);
-        store.deserialize(filenames);
+    void reload_summaries(const namespacet &ns,
+            smt_summary_storet & store, std::vector<std::string> const & filenames, 
+            smtcheck_opensmt2t & decider, smtcheck_opensmt2t & prev_solver) {
+        
+        // Detect if there are non-linear parts:
+        std::set<PTRef>* non_linears = prev_solver.get_non_linears();
+        if (non_linears->size() > 0)
+        {
+            // Notify the user
+            std::cerr << "Non linear operation encounter. Ignoring " << non_linears->size() << " expressions in the file.\n";
+            
+            // Fix the summaries
+            std::stringstream dump;
+            dump << decider.getSimpleHeader();
+            store.serialize(dump);
+            std::string sm = dump.str();
+            
+            // Replace all non-linear expressions in unsupported variable
+            string new_token = decider.create_new_unsupported_var("_sumref", true); // unsupported operator symbol name 
+            for(std::set<PTRef>::iterator nl = non_linears->begin(); nl != non_linears->end(); nl++)
+            {
+                // Get the old token we wish to abstract
+                char* token = prev_solver.getLogic()->printTerm(*nl);
+                string old_token(token);
+                
+                // The symbol name in the old token
+                std::string::size_type n_before = 0;
+                std::string::size_type n_after = 0;
+                while ( ( n_before = old_token.find( "|", n_after) ) != std::string::npos )
+                {
+                    if (( n_after = old_token.find( "|", n_before+1) ) != std::string::npos)
+                    {
+                        // Get SSA names in the old token
+                        std::string id_str_SSA = old_token.substr( n_before+1, n_after-n_before-1);
+                        std::string id_str_curr = id_str_SSA;
+                        irep_idt identifier = id_str_curr;
+                         
+                        // Get the symbol name of the SSA name:
+                        const symbolt *symbol =0;
+                        while (ns.lookup(identifier, symbol) && id_str_curr.size()>0)
+                        {
+                            id_str_curr = id_str_curr.substr(0,id_str_curr.size()-1);
+                            identifier = id_str_curr;
+                        }
+                        //std::cout << "** Replace : " << id_str_SSA << " in " << id_str_curr << std::endl;
+                        
+                        // Fix the old token to use symbols and not SSAs
+                        old_token.replace( n_before+1, id_str_SSA.size(), id_str_curr );
+                        n_before = old_token.find(id_str_curr, n_before) + id_str_curr.size()+1;
+                        n_after = n_before;                
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Create the abstract summary:
+                std::string::size_type n = 0;
+                while ( ( n = sm.find( old_token, n ) ) != std::string::npos )
+                {
+                    sm.replace( n, old_token.size(), new_token );
+                    n += new_token.size();
+                }
+                //std::cout << "Replacing " << old_token << " in " << new_token << std::endl;
+    
+                delete(token);
+            }
+            //std::cout << ";; Summary is " << sm << std::endl;
+            
+            // Clean the data in use
+            delete(non_linears);
+            
+            // Store to Temp. file
+            std::ofstream out;
+            out.open("__summaries_linear_temp");
+            // TODO: find out how to dump bear minimum
+            //dumps define-fun()  into summary file
+            out << prev_solver.getSimpleHeader() << sm;
+            out.close();
+            
+            std::vector<std::string> filenames_linear;
+            filenames_linear.insert(filenames_linear.begin(), filenames.begin(), filenames.end());
+            filenames_linear.push_back(std::string("__summaries_linear_temp"));
+            
+            // Final stage:
+            store.set_decider(&decider);
+            store.deserialize(filenames_linear);
+            
+            // Remove the temp. file
+            remove( "__summaries_linear_temp" );
+        } else {
+            // Final stage:
+            store.set_decider(&decider);
+            store.deserialize(filenames);
+        }    
     }
 /*******************************************************************/
 // Purpose: reset means changing the partition information according
@@ -1160,6 +1252,7 @@ Function: core_checkert::check_sum_theoref_single
  Purpose: main method to make summary-ref and theory-ref work together
 
 \*******************************************************************/
+#ifdef PRODUCE_PROOF
 bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 {
     std::string lra_summary_file_name {"__summaries_lra"};
@@ -1246,8 +1339,8 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
     smtcheck_opensmt2t_lra lra_solver {0, "lra checker"}; //TODO: type_constraints_level
     initialize_solver_options(&lra_solver);
-    status() << "\n--Reading LRA summary file: " << lra_summary_file_name << eom;
-    read_lra_summaries(summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver);
+    status() << "\n--Reading LRA summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
+    reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver, uf_solver );
     omega.set_initial_precision(assertion, has_summary);
     reset_partition_summary_info(equation, summary_store);
     equation.convert(lra_solver, lra_solver);
@@ -1271,8 +1364,8 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         smtcheck_opensmt2t_lra lra_solver2 {0, "lra checker (in loop)"};
         initialize_solver_options(&lra_solver2);
         // we have new solver, but summary store has references from the old solver, we need to reload
-        status() << "\n--Reading LRA summary file: " << lra_summary_file_name << eom;
-        read_lra_summaries(summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver2);
+        status() << "\n--Reading LRA summary file: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
+        reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver2, uf_solver);
         equation.convert(lra_solver2, lra_solver2);
         is_sat = lra_solver2.solve();
         if(!is_sat){
@@ -1308,3 +1401,4 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     }
     return this->assertion_holds_prop(assertion, false);
 }
+#endif

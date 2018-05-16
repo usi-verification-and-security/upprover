@@ -611,8 +611,6 @@ std::string smtcheck_opensmt2t::getSimpleHeader()
             continue;
         if (line.find("declare-sort Real 0")!=std::string::npos) 
             continue;
-        if (line.find("declare-const 0 () Real")!=std::string::npos) 
-            continue;
         
         ret += line + "\n";
     }
@@ -624,9 +622,16 @@ std::string smtcheck_opensmt2t::getSimpleHeader()
                 && !logic->isFalse(*it) && !logic->isTrue(*it))
         {
             char* name = logic->printTerm(*it);
-            ret += "(declare-const " + std::string(name) + " () " 
-                    + std::string(logic->getSortName(logic->getSortRef(*it))) + ")\n";
+            std::string line(name);
             free(name);
+            
+            if (line.compare("0") == 0) 
+                continue;
+            if (line.compare("(- 1)") == 0) 
+                continue;
+
+            ret += "(declare-const " + std::string(line) + " () " 
+                        + std::string(logic->getSortName(logic->getSortRef(*it))) + ")\n";
             was->insert(*it);
         }
     }
@@ -1074,6 +1079,32 @@ namespace {
         }
         return to_ssa_expr(expr).get_level_0().empty();
     }
+}
+
+// Returns all literals that are non-linear expressions
+std::set<PTRef>* smtcheck_opensmt2t::get_non_linears()
+{
+    std::set<PTRef>* ret = new std::set<PTRef>();
+    
+    // Only for theories that can have non-linear expressions
+    if (!can_have_non_linears()) return ret;
+    
+    // Go over all expressions and search for / or *
+    std::set<PTRef>* was = new std::set<PTRef>();
+    for(it_literals it = literals.begin(); it != literals.end(); it++)
+    {
+        if ((was->count(*it) < 1) && (ret->count(*it) < 1) && !(logic->isVar(*it)) && !(logic->isConstant(*it)))
+        {
+            if (is_non_linear_operator(*it))
+            {
+                ret->insert(*it);
+            }
+        }
+        was->insert(*it);
+    }
+
+    delete(was);
+    return ret;
 }
 
 // FIXME: move to smt_itpt class

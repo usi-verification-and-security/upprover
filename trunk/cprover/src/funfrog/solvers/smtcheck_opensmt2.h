@@ -105,6 +105,8 @@ public:
 
   void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
                           const std::string& fun_name, bool substitute);
+  
+  std::set<PTRef>* get_non_linears(); // Common to all, needed only if there are summaries!
 #endif
 
     static std::string quote_varname(const string& varname); // Common to all
@@ -191,6 +193,10 @@ protected:
   void setup_proof_transformation();
 
   void produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants); // Common to all
+  
+  virtual bool can_have_non_linears()=0;
+  
+  virtual bool is_non_linear_operator(PTRef tr)=0;
 #endif
 
   virtual void initializeSolver(const char*)=0;
