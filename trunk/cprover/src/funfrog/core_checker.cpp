@@ -1210,7 +1210,7 @@ namespace{
             store.deserialize(filenames_linear);
             
             // Remove the temp. file
-            //remove( "__summaries_linear_temp" );
+            remove( "__summaries_linear_temp" );
         } else {
             // Final stage:
             store.set_decider(&decider);
