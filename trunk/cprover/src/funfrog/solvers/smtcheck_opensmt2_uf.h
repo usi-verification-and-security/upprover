@@ -43,9 +43,9 @@ protected:
 
   virtual void initializeSolver(const char* name) override;
   
-  virtual bool can_have_non_linears() { return true; }
+  virtual bool can_have_non_linears() override { return true; }
   
-  virtual bool is_non_linear_operator(PTRef tr);
+  virtual bool is_non_linear_operator(PTRef tr) override;
   
   static const char *tk_sort_ureal;
   static const char *tk_mult;
