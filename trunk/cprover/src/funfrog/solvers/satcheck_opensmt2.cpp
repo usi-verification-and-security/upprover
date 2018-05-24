@@ -396,6 +396,7 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
         char* s = logic->printTerm(top_level_formulas[i]);
         out_sat_pre_query << "(assert (and \n" << s << "\n))\n";
         free(s);
+        s = NULL;
       }
       
       // Close the file

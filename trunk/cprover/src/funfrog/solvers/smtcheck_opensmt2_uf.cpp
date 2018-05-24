@@ -407,7 +407,7 @@ literalt smtcheck_opensmt2t_uf::type_cast(const exprt &expr) {
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
             //cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")" 
             //    << string(getPTermString(ptl)) << endl << s << endl;
-            free(s);            
+            free(s); s=NULL;            
         }
 #endif          
     	return push_variable(ptl); // Keeps the new literal + index it
@@ -481,7 +481,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif  
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
@@ -531,7 +531,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
                 {
                     char *s = logic->printTerm(logic->getTopLevelIte(ptl));
                     ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-                    free(s);    
+                    free(s); s=NULL;    
                 }
 #endif
             }
@@ -544,7 +544,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
             {
                 char *s = logic->printTerm(logic->getTopLevelIte(ptl));
                 ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-                free(s);
+                free(s); s=NULL;
             }
 #endif
         } else if(_id == ID_and) {
@@ -674,7 +674,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
     PTRef ptr = literals[l.var_no()];
     char *s = logic->printTerm(ptr);
     cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
     return l;
 }

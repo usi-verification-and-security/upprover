@@ -259,7 +259,7 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
               ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
               //cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")"
               //    << string(getPTermString(ptl)) << endl << s << endl;
-              free(s);
+              free(s); s=NULL;
             }
         }
 #endif        
@@ -447,7 +447,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     #ifdef SMT_DEBUG
         char* s = getPTermString(l);
         cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-        free(s);
+        free(s); s=NULL;
     #endif
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
     #ifdef SMT_DEBUG
@@ -517,7 +517,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                             str_expr2 = str_expr2.insert(7, SYMEX_NONDET);
                     assert(str_expr1.compare(str_expr2) == 0);
                 }
-                free(s);
+                free(s); s=NULL;
 #endif
             }
         }
@@ -551,7 +551,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                     ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
                     //cout << "; XXX oite symbol: (" << ite_map_str.size() << ")" 
                     //    << string(getPTermString(ptl)) << endl << s << endl;
-                    free(s);    
+                    free(s); s=NULL;    
                 }
 #endif
             }
@@ -566,7 +566,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                 ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
                 //cout << "; XXX oite symbol: (" << ite_map_str.size() << ")" 
                 //        << string(getPTermString(ptl)) << endl << s << endl;
-                free(s);    
+                free(s); s=NULL;    
             }
 #endif
         } else if(_id == ID_and) {
@@ -705,7 +705,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     PTRef ptr = literals[l.var_no()];
     char *s = logic->printTerm(ptr);
     cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
     return l;
 }
@@ -886,7 +886,7 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
         ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
         //cout << "; XXX oite symbol (labs):  (" << ite_map_str.size() << ")" 
         //            << string(getPTermString(ptl)) << endl << s << endl;
-        free(s);        
+        free(s); s=NULL;        
     }
 #endif
     
@@ -895,7 +895,7 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
 
     return l;
@@ -954,7 +954,7 @@ void smtcheck_opensmt2t_lra::push_assumes2type(
     char *s = logic->printTerm(ptr);
     cout << "; For Assume Constraints Created OpenSMT2 formula " << s << endl;
     cout << "; For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
 }
 
@@ -992,7 +992,7 @@ void smtcheck_opensmt2t_lra::push_asserts2type(
     char *s = logic->printTerm(ptr);
     cout << "; For Assert Constraints Created OpenSMT2 formula " << s << endl;
     cout << "; Pushed Formulat For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
 }
 
@@ -1266,7 +1266,7 @@ void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 	for (int i = 0; i < top_level_formulas.size(); i++){
                 char *s = logic->printTerm(top_level_formulas[i]);
 		cout << "\nCE:  " << s << endl;
-                free(s);
+                free(s); s=NULL;
 		mainSolver->insertFormula(top_level_formulas[i], &msg);
 		if (msg !=NULL) { free(msg); msg = NULL; }
 	}
@@ -1283,7 +1283,7 @@ void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 	    if (!res){
                 char *s = logic->printTerm(lp);
 	    	cout << "\n  Problem could be here: " << s << endl;
-                free(s);
+                free(s); s=NULL;
 	    }
 //	    mainSolver->pop();  // TODO: uncomment this line and comment "&& res" in the guard
 	    					// to get a segmfalut in the incremental solver

@@ -1189,8 +1189,7 @@ namespace{
                     n += new_token.size();
                 }
                 //std::cout << "Replacing " << old_token << " in " << new_token << std::endl;
-    
-                delete(token);
+                free(token); token = NULL;
             }
             //std::cout << ";; Summary is " << sm << std::endl;
             

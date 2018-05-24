@@ -387,7 +387,7 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 #ifdef DEBUG_SMT_ITP
     char *s = logic->printTerm(interpolants.back()->getInterpolant());
     cout << "Interpolant " << i << " = " << s << '\n';
-    free(s);
+    free(s); s=NULL;
 #endif
   }
 }
@@ -457,7 +457,7 @@ bool smtcheck_opensmt2t::solve() {
             out_smt << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
             char* s = logic->printTerm(top_level_formulas[i]);
             out_smt << "(assert (and \n" << s << "\n))" << endl;
-            free(s);
+            free(s); s=NULL;
         }
 #endif
         mainSolver->insertFormula(top_level_formulas[i], &msg);
@@ -518,7 +518,7 @@ void smtcheck_opensmt2t::close_partition()
 #ifdef DEBUG_SMT2SOLVER
       char* s= logic->printTerm(pand);
       cout << "; Pushing to solver: " << s << endl;
-      free(s);
+      free(s); s=NULL;
 #endif
       top_level_formulas.push(pand);
     } else if (current_partition->size() == 1){
@@ -527,7 +527,7 @@ void smtcheck_opensmt2t::close_partition()
       cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
       char* s= logic->printTerm(pand);
       cout << "; Pushing to solver: " << s << endl;
-      free(s);
+      free(s); s=NULL;
 #endif
       top_level_formulas.push(pand);
     } /*else {
@@ -625,7 +625,7 @@ std::string smtcheck_opensmt2t::getSimpleHeader()
         {
             char* name = logic->printTerm(*it);
             std::string line(name);
-            free(name);
+            free(name); name=NULL;
             
             if (line.compare("0") == 0) 
                 continue;
@@ -754,7 +754,7 @@ void smtcheck_opensmt2t::dump_on_error(std::string location)
         logic->conjoinExtras(top_level_formulas[i], tmp);
         char *s = logic->printTerm(tmp);
         cout << "; XXX Partition: " << i << endl << "    " << s << endl;
-        free(s);
+        free(s); s=NULL;
     }
 
     // If code - once needed uncomment this debug flag in the header
@@ -851,7 +851,7 @@ literalt smtcheck_opensmt2t::store_new_unsupported_var(const exprt& expr, const 
         cout << "Expression " << s << " will be refine the operator " 
               << _id << " with " << expr.operands().size() << " operands." 
               << endl;
-        free(s);
+        free(s); s=NULL;
     }
     
     if (push_var)

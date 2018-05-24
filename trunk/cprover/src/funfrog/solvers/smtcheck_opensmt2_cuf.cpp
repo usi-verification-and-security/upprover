@@ -99,7 +99,7 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
         PTRef ptrf = literals[l.var_no()];
         char *s = logic->printTerm(ptrf);
         str = std::string(s);
-        free(s);
+        free(s); s=NULL;
     } else {
         str = create_new_unsupported_var(expr.type().id().c_str());
     }
@@ -191,7 +191,7 @@ PTRef smtcheck_opensmt2t_cuf::get_bv_const(const char* val)
 #ifdef DEBUG_SMT_BB 
     char *s = logic->printTerm(lconst);
     std::cout << "Const " << val << " is in OpenSMT " << s << std::endl;
-    free(s);
+    free(s); s=NULL;
 #endif    
     return lconst;
 }
@@ -489,7 +489,7 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
 
     return ptl;
@@ -574,7 +574,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv_char(PTRef &var,
         char *s = logic->printTerm(ptl);
         cout <<  "\n;; Type Byte Constraints: (" << lower_bound << " to "
                 << upper_bound << ")\n" << s << endl;
-        free(s);
+        free(s); s=NULL;
 #endif 
  }
 
@@ -657,7 +657,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv_bool(
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(ptl);
     cout <<  "\n;; Type Byte Constraints for Bool: \n" << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
 }
 
@@ -757,7 +757,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_numeric(
     char *s = logic->printTerm(ptl);
     cout <<  "\n;; Type Byte Constraints: (" << lower_bound << " to "
                 << upper_bound << ")\n" << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif        
 }
 
@@ -864,7 +864,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB
         char* s = logic->printTerm(ptl);
         cout << "; CREATE A VAR in OPENSMT2 " << s << " of type " << expr.type().id_string() << endl;
-        free(s);
+        free(s); s=NULL;
 #endif
     } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) 
                                                 && !expr.operands().empty()) {
@@ -885,7 +885,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB
         char* s = logic->printTerm(ptl);
         cout << "; CREAT A CONSTANT in OPENSMT2 " << s << endl;
-        free(s);
+        free(s); s=NULL;
 #endif          
         
     } else if (_id == ID_abs) {
@@ -1172,7 +1172,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(ptl);
     cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
     
     return ptl;
@@ -1298,7 +1298,7 @@ exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
         std::cout << "Getting value for " << s 
                 << " which " << ((is_expr_bb)? "was bb" : "was not bb") 
                 << std::endl;
-        free(s);
+        free(s); s=NULL;
 #endif
         
         // Get the value of the PTRef
@@ -1457,7 +1457,7 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
             //cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")" 
             //    << string(getPTermString(ptl)) << endl << s << endl;
-            free(s);    
+            free(s); s=NULL;    
         }
 #endif          
         
@@ -1532,7 +1532,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
     } else if (_id==ID_typecast || _id==ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
@@ -1605,7 +1605,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
                 {
                     char *s = logic->printTerm(logic->getTopLevelIte(ptl));
                     ite_map_str.insert(make_pair(string(getPTermString(ptl)), std::string(s)));
-                    free(s);    
+                    free(s); s=NULL;    
                 }
 #endif
             }
@@ -1618,7 +1618,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             {
                 char *s = logic->printTerm(logic->getTopLevelIte(ptl));
                 ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-                free(s);
+                free(s); s=NULL;
             }
 #endif
         } else if (_id == ID_and) {
@@ -1818,7 +1818,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
     PTRef ptr = literals[l.var_no()];
     char *s = logic->printTerm(ptr);
     cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
     return l;
 }
@@ -2036,7 +2036,7 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
         PTRef old_bv = bitblaster->getBoundPTRef(pt1);
         std::cout << " -- Term " << s << " is already refined with "
               << s_old << " and so we skip " << std::endl;
-        free(s); free(s_old);
+        free(s); s=NULL; free(s_old);
 #endif
     } else {
         PTRef expr_bv = convert_bv(expr);
@@ -2045,7 +2045,7 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
         char *s = logic->printTerm(ptl);
         char *s_old = logic->printTerm(old_bv);
         std::cout << " -- Bind terms " << s << " and " << s_old << std::endl;
-        free(s); free(s_old);
+        free(s); s=NULL; free(s_old);
 #endif
 
         bitblaster->bindCUFToBV(pt1, expr_bv); // (PTRef cuf_tr, PTRef bv_tr)
@@ -2102,7 +2102,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const e
 #ifdef DEBUG_SMT_BB
             char *s = logic->printTerm(ce_term);
             cout <<  "  CE value: " << s << endl;
-            free(s);
+            free(s); s=NULL;
 #endif
         }
 
@@ -2113,7 +2113,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const e
 #ifdef DEBUG_SMT_BB
         char *s = logic->printTerm(lp);
         cout <<  "  Validating: [" << i << "]: " << s << endl;
-        free(s);
+        free(s); s=NULL;
 #endif
 
         BVRef tmp;
@@ -2219,7 +2219,7 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(lp);
     cout <<  "  Refining [" << i << "]: " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
 
     BVRef tmp;
@@ -2232,7 +2232,7 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
     } else {
         char *s = logic->printTerm(lp);
         cout <<  "; Skip Refining [" << i << "]: " << s << endl;
-        free(s);
+        free(s); s=NULL;
     }
 }
 

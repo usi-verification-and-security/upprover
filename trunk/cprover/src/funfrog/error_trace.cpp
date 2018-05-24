@@ -364,7 +364,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(smtcheck_opensmt2t 
                             cout << " = " << v1.val << "\n";
             }
     #endif
-            free(name);
+            free(name); name=NULL;
         }
 
         // Clear all vars list before quit
