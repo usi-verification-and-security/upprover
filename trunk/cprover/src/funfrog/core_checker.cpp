@@ -388,6 +388,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
         	   << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
         }
         report_success();
+        status() << ("\n---Go to next assertion; claim verified by prop logic ---\n") <<eom;
       } else {
         if (summaries_count > 0 || nondet_count > 0) {
           if (summaries_count > 0){
@@ -405,6 +406,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
               prop.error_trace(*decider_prop, ns);
             status() << ("A real bug found.") << endl << eom;
             report_failure();
+            status() << ("\n---Go to next assertion; claim checked by prop logic ---\n") <<eom;
             break;
           } else {
             //status("Counterexample is spurious");
@@ -416,6 +418,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
           status() << ("ASSERTION(S) DO(ES)N'T HOLD") << endl;
           status() << ("A real bug found") << endl << eom;
           report_failure();
+          status() << ("\n---Go to next assertion; claim checked by prop logic ---\n") <<eom;
           break;
         }
       }
@@ -423,6 +426,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
       else{
         // end is true -> report success (It is needed when the assertion trivially holds)
         report_success();
+        status() << ("\n---Go to next assertion; claim verified by prop logic ---\n") <<eom;
     }
   }
   final = current_time();
@@ -1032,7 +1036,7 @@ void core_checkert::report_success()
   {
   
     case ui_message_handlert::uit::PLAIN:
-	result() << "\n\nVERIFICATION SUCCESSFUL" << eom;
+	result() << "\nVERIFICATION SUCCESSFUL" << eom;
 	break;
 
     case ui_message_handlert::uit::XML_UI:
@@ -1067,7 +1071,7 @@ void core_checkert::report_failure()
   {
 
     case ui_message_handlert::uit::PLAIN:
-	result() << "\n\nVERIFICATION FAILED" << eom;;
+	result() << "\nVERIFICATION FAILED" << eom;;
 	break;
 
     case ui_message_handlert::uit::XML_UI:
@@ -1334,7 +1338,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
             extract_and_store_summaries(equation, summary_store, uf_solver, uf_summary_file_name);
             // report results
             report_success();
-            status() << ("\n---Go to next assertion; claim verified by UF local Refinement---\n") << eom;
+            status() << ("\n---Go to next assertion; claim verified by UF with some local Refinement---\n") << eom;
             return true; //->Uf was enough, go to next claim
         }
         localRefine.mark_sum_for_refine(uf_solver, omega.get_call_tree_root(), equation);
@@ -1344,7 +1348,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
     smtcheck_opensmt2t_lra lra_solver {0, "lra checker"}; //TODO: type_constraints_level
     initialize_solver_options(&lra_solver);
-    status() << "\n--Reading LRA summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
+    status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
     reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver, uf_solver );
     omega.set_initial_precision(assertion, has_summary);
     reset_partition_summary_info(equation, summary_store);
@@ -1369,7 +1373,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         smtcheck_opensmt2t_lra lra_solver2 {0, "lra checker (in loop)"};
         initialize_solver_options(&lra_solver2);
         // we have new solver, but summary store has references from the old solver, we need to reload
-        status() << "\n--Reading LRA summary file: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
+        status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
         reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver2, uf_solver);
         equation.convert(lra_solver2, lra_solver2);
         is_sat = lra_solver2.solve();
@@ -1377,7 +1381,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
             extract_and_store_summaries(equation, summary_store, lra_solver2, lra_summary_file_name);
             // report results
             report_success();
-            status() << ("\n---Go to next assertion; claim verified by LRA local Refinement---\n") << eom;
+            status() << ("\n---Go to next assertion; claim verified by LRA with some local Refinement---\n") << eom;
             return true; // claim verified by LRA encoding -> go to next claim
         }
         localRefine.mark_sum_for_refine(lra_solver2, omega.get_call_tree_root(), equation);
@@ -1402,6 +1406,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     this->summary_store.reset(new prop_summary_storet());
     ifstream f(prop_summary_filename.c_str());
     if (f.good()) {
+        status() << "\n--Reading Prop summary file: " << prop_summary_filename <<"\n" << eom;
         this->summary_store->deserialize(std::vector<std::string>{prop_summary_filename});
     }
     return this->assertion_holds_prop(assertion, false);
