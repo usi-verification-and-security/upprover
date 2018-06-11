@@ -288,12 +288,10 @@ void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const vector< vector<i
       // Set partitions[i] bit to 1 (starting from bit 1, bit 0 is untouched)
       setbit ( mask, configs[i][j] + 1);
     }
-
     solver.getSingleInterpolant(interpolants, mask);
   }
 }
 #endif
-
 
 // FIXME: move to smt_itpt class
 void
@@ -345,7 +343,7 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 {   
   assert(ready_to_interpolate);
   
-  const char* msg2=NULL;
+  const char* msg2 = nullptr;
   osmt->getConfig().setOption(SMTConfig::o_verbosity, verbosity, msg2);
   //if (msg2!=NULL) { free((char *)msg2); msg2=NULL; } // If there is an error consider printing the msg
   osmt->getConfig().setOption(SMTConfig::o_certify_inter, SMTOption(certify), msg2);
@@ -355,7 +353,7 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
   osmt->getConfig().setEUFInterpolationAlgorithm(itp_euf_algorithm);
   osmt->getConfig().setLRAInterpolationAlgorithm(itp_lra_algorithm);
-  if(itp_lra_factor != NULL) osmt->getConfig().setLRAStrengthFactor(itp_lra_factor);
+  if(itp_lra_factor != nullptr) osmt->getConfig().setLRAStrengthFactor(itp_lra_factor);
 
   SimpSMTSolver& solver = osmt->getSolver();
 
@@ -387,7 +385,7 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 #ifdef DEBUG_SMT_ITP
     char *s = logic->printTerm(interpolants.back()->getInterpolant());
     cout << "Interpolant " << i << " = " << s << '\n';
-    free(s); s=NULL;
+    free(s);
 #endif
   }
 }
@@ -449,22 +447,22 @@ bool smtcheck_opensmt2t::solve() {
   }
 #endif
 //  add_variables();
-    char *msg=NULL;
+    char *msg = nullptr;
     for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
 #ifdef DISABLE_OPTIMIZATIONS
         if (dump_pre_queries)
         {
             out_smt << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
             char* s = logic->printTerm(top_level_formulas[i]);
-            out_smt << "(assert (and \n" << s << "\n))" << endl;
-            free(s); s=NULL;
+            out_smt << "(assert \n" << s << "\n)\n";
+            free(s);
         }
 #endif
         mainSolver->insertFormula(top_level_formulas[i], &msg);
-	if (msg != NULL) {
+        if (msg != nullptr) {
             free(msg); // If there is an error, consider print msg
-	    msg=NULL;
-	}
+            msg = nullptr;
+        }
     }
  
 #ifdef DISABLE_OPTIMIZATIONS   

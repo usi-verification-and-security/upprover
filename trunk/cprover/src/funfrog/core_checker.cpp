@@ -102,7 +102,9 @@ core_checkert::core_checkert(
     set_message_handler(_message_handler);
 }
 
-core_checkert::~core_checkert() = default;
+core_checkert::~core_checkert(){
+    //delete decider;
+}
 
 void core_checkert::initialize_solver()
 {

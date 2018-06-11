@@ -19,7 +19,7 @@ public:
             : out(_out), is_prev_token(false), orig_indent(0), last(false), partition_smt_decl(partition_smt_decl),
               isAlreadyConverted(false) {}
 
-    virtual ~expr_pretty_printt() { partition_smt_decl = NULL; } // to assure nothing will happen to the map
+    virtual ~expr_pretty_printt() { partition_smt_decl = nullptr; } // to assure nothing will happen to the map
     virtual void operator()(const exprt &expr);
 
     void visit(const exprt &expr);

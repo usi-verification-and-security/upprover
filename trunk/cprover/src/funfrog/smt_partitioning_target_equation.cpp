@@ -67,8 +67,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 #endif
 
     decider.start_encoding_partitions();
-    for (partitionst::reverse_iterator it = partitions.rbegin(); it
-            != partitions.rend(); ++it) {
+    for (auto it = partitions.rbegin(); it != partitions.rend(); ++it) {
         convert_partition(decider, interpolator, *it);
         if (it->fle_part_id < 0) continue;
 

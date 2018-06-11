@@ -110,7 +110,7 @@ target_include_directories(hifrog PRIVATE ${PROJECT_SOURCE_DIR})
 target_compile_options(hifrog PRIVATE  -Wall)
 
 if(PRODUCE_PROOF)
-    message("Compiling with PRODUCE_PROOF")
+    #message("Compiling with PRODUCE_PROOF")
     target_compile_definitions(hifrog PUBLIC -DPRODUCE_PROOF)
 endif(PRODUCE_PROOF)
 
