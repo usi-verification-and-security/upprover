@@ -108,7 +108,7 @@ core_checkert::~core_checkert(){
 
 void core_checkert::initialize_solver()
 {
-    string _logic = options.get_option("logic");
+    std::string _logic = options.get_option("logic");
     if(_logic == "qfuf") 
     {
         decider = new smtcheck_opensmt2t_uf("uf checker");
@@ -192,7 +192,7 @@ void core_checkert::initialize()
         //TODO: MB: How about checking if this file actually exists?
         const std::string& summary_file = options.get_option("load-summaries");
         if (!summary_file.empty()) {
-            ifstream f(summary_file.c_str());
+            std::ifstream f(summary_file.c_str());
             if (f.good()) {
                 summary_store->deserialize({summary_file});
             }
@@ -1106,7 +1106,7 @@ namespace{
 // in a specific summary-file for uf and lra separately based on the solver.
 
     void extract_and_store_summaries(smt_partitioning_target_equationt & equation, summary_storet & store,
-                                      smtcheck_opensmt2t & decider , string & summary_file_name){
+                                      smtcheck_opensmt2t & decider , std::string & summary_file_name){
         equation.extract_interpolants(decider);
 
         // Store the summaries
@@ -1141,12 +1141,12 @@ namespace{
             std::string sm = dump.str();
             
             // Replace all non-linear expressions in unsupported variable
-            string new_token = decider.create_new_unsupported_var("_sumref", true); // unsupported operator symbol name 
-            for(std::set<PTRef>::iterator nl = non_linears->begin(); nl != non_linears->end(); nl++)
+            std::string new_token = decider.create_new_unsupported_var("_sumref", true); // unsupported operator symbol name
+            for(auto nl = non_linears->begin(); nl != non_linears->end(); nl++)
             {
                 // Get the old token we wish to abstract
                 char* token = prev_solver.getLogic()->printTerm(*nl);
-                string old_token(token);
+                std::string old_token(token);
 
                 // Add the declaration to in the solver
                 prev_solver.getLogic()->mkVar(prev_solver.getLogic()->getSortRef(*nl), (prev_solver.create_new_unsupported_var("_sumref", false)).c_str());
@@ -1405,7 +1405,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     std::string prop_summary_filename {"__summaries_prop"};
 
     this->summary_store.reset(new prop_summary_storet());
-    ifstream f(prop_summary_filename.c_str());
+    std::ifstream f(prop_summary_filename.c_str());
     if (f.good()) {
         status() << "\n--Reading Prop summary file: " << prop_summary_filename <<"\n" << eom;
         this->summary_store->deserialize(std::vector<std::string>{prop_summary_filename});

@@ -28,15 +28,15 @@ using namespace std;
 #endif
 
 void
-smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*>& templates)
+smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &decider, std::vector<summaryt*>& templates)
 {
 #ifdef PRODUCE_PROOF     
     for(partitionst::iterator it = partitions.begin(); it != partitions.end(); ++it)
     {
-        vector<symbol_exprt> common;
+        std::vector<symbol_exprt> common;
         fill_common_symbols(*it, common);
         smt_summaryt *sum = new smt_summaryt();
-        string fun_name = id2string(it->get_iface().function_id);
+        std::string fun_name = id2string(it->get_iface().function_id);
         //decider.adjust_function(*sum, common, fun_name, false);
         decider.generalize_summary(*sum, common, fun_name, false);
         sum->setLogic(decider.getLogic());
@@ -264,7 +264,7 @@ bool smt_partitioning_target_equationt::isRoundModelEq(const exprt &expr)
         return false;
 
     // Start checking if it is auto gen code for rounding model
-    string str = id2string((expr.operands()[0]).get(ID_identifier));
+    std::string str = id2string((expr.operands()[0]).get(ID_identifier));
     if (is_cprover_builtins_var(str))
         return true;
     

@@ -9,7 +9,7 @@
 #include "utils/naming_helpers.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 
-pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
+std::pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
   try{
   smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra(0, "implication checker", false);
@@ -27,22 +27,22 @@ pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft 
 
   status() << "SOLVER TIME FOR check_implication: " << duration << eom;
   // solve it
-  return make_pair(!r, duration);
+  return std::make_pair(!r, duration);
   
   } catch (const std::bad_alloc &e)
   {
     error ()  << "smth is wrong: " << e.what()  << eom;
-    return make_pair(true, (fine_timet)0);
+    return std::make_pair(true, (fine_timet)0);
   }
   catch (const char* e)
   {
     error () << "\nCaught exception: " << e << eom;
-    return make_pair(true, (fine_timet)0);
+    return std::make_pair(true, (fine_timet)0);
   }
   catch (const std::string &s)
   {
     error () << "\nCaught exception: " << s << eom;
-    return make_pair(true, (fine_timet)0);
+    return std::make_pair(true, (fine_timet)0);
   }
 }
 
@@ -58,7 +58,7 @@ long smt_dependency_checkert::find_implications()
   int checks=0;
   int impchecks=0;
 //  vector<bool> stronger(asserts.size(), false);
-  vector<bool> weaker(asserts.size(), false);
+  std::vector<bool> weaker(asserts.size(), false);
   
     /*
     cout << "Printing assertions before ordering." << std::endl;
@@ -78,7 +78,7 @@ long smt_dependency_checkert::find_implications()
     }
     */
 
-  ofstream hl_may_impl;
+  std::ofstream hl_may_impl;
   hl_may_impl.open ("__hl_may_impl");
 
   for (unsigned i = 0; i < asserts.size(); i++)
@@ -89,7 +89,7 @@ long smt_dependency_checkert::find_implications()
     for (unsigned j = i+1; j < asserts.size(); j++)
     {
       checks++;
-      pair<bool, fine_timet> checkres;
+      std::pair<bool, fine_timet> checkres;
       SSA_step_reft& assert_2 = asserts[j];
       if (compare_assertions(assert_1, assert_2)
           && assert_deps[assert_1][assert_2] == DEPT
@@ -158,7 +158,7 @@ long smt_dependency_checkert::find_implications()
   hl_may_impl.close();
 
 //  cout << "Discarded assertions: " << discarded << std::endl;
-  if (notdisc > 0) cout << "WARNING: " << notdisc << " true implications exceeded timeout!" << std::endl;
+  if (notdisc > 0) std::cout << "WARNING: " << notdisc << " true implications exceeded timeout!" << std::endl;
 
 //  cout << "Total number of implication checks: " << impchecks << std::endl;
 //  cout << "Total number of comparisons: " << checks << std::endl;

@@ -161,7 +161,8 @@ literalt satcheck_opensmt2t::extract_itp_rec(PTRef ptref,
 }
 
 // helper interpolation method taken from opensmt
-void satcheck_opensmt2t::produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants)
+void satcheck_opensmt2t::produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs,
+                                                          std::vector<PTRef> &interpolants)
 {
   SimpSMTSolver& solver = osmt->getSolver();
 
@@ -210,7 +211,7 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   // Create the proof graph
   solver.createProofGraph();
 
-  vector<PTRef> itp_ptrefs;
+  std::vector<PTRef> itp_ptrefs;
 
   // iterative call of getSingleInterpolant:
   produceConfigMatrixInterpolants(partition_ids, itp_ptrefs);

@@ -7,6 +7,7 @@ Author: Grigory Fedyukovich
 \*******************************************************************/
 #include "smtcheck_opensmt2_lra.h"
 #include <util/type.h>
+#include <funfrog/utils/naming_helpers.h>
 #include "../hifrog.h"
 
 // Debug flags of this class:
@@ -158,7 +159,7 @@ Function: smtcheck_opensmt2t_lra::const_var_Real
 \*******************************************************************/
 literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
 {
-    string num = extract_expr_str_number(expr);
+    std::string num = extract_expr_str_number(expr);
     PTRef rconst = PTRef_Undef;
     if(num.size() <= 0)
     {
@@ -749,7 +750,7 @@ PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt &expr) {
     }
 
     // Create a new unsupported var
-    const string str = create_new_unsupported_var(expr.type().id().c_str());
+    const std::string str = create_new_unsupported_var(expr.type().id().c_str());
     
     PTRef var;
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
@@ -782,7 +783,7 @@ literalt smtcheck_opensmt2t_lra::lunsupported2var(const exprt &expr)
         return converted_exprs[expr.hash()]; // TODO: might be buggy;
 
     // Create a new unsupported var
-    const string str = create_new_unsupported_var(expr.type().id().c_str());
+    const std::string str = create_new_unsupported_var(expr.type().id().c_str());
 
     PTRef var;
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
@@ -812,8 +813,8 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     }
 
     // Else continue as before
-    string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    str = quote_varname(str);
+    std::string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
+    str = quote_if_necessary(str);
 
     // Nil is a special case - don't create a var but a val of true
     if (str.compare(NIL) == 0) return const_var(true);
@@ -1261,14 +1262,14 @@ Function: smtcheck_opensmt2t_lra::check_ce
 void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 {
 	// this method is used for testing mostly
-	char *msg=NULL;
+	char *msg = nullptr;
 
 	for (int i = 0; i < top_level_formulas.size(); i++){
-                char *s = logic->printTerm(top_level_formulas[i]);
-		cout << "\nCE:  " << s << endl;
-                free(s); s=NULL;
+	    char *s = logic->printTerm(top_level_formulas[i]);
+		std::cout << "\nCE:  " << s << '\n';
+        free(s);
 		mainSolver->insertFormula(top_level_formulas[i], &msg);
-		if (msg !=NULL) { free(msg); msg = NULL; }
+		if (msg !=nullptr) { free(msg); msg = nullptr; }
 	}
 	mainSolver->push();
 
@@ -1278,12 +1279,12 @@ void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 	    literalt l = convert(exprs[i]);
 	    PTRef lp = literals[l.var_no()];
 	    mainSolver->insertFormula(lp, &msg);
-	    if (msg !=NULL) { free(msg); msg = NULL; }
+	    if (msg != nullptr) { free(msg); msg = nullptr; }
 	    res = (s_True == mainSolver->check());
 	    if (!res){
                 char *s = logic->printTerm(lp);
-	    	cout << "\n  Problem could be here: " << s << endl;
-                free(s); s=NULL;
+	    	std::cout << "\n  Problem could be here: " << s << '\n';
+                free(s);
 	    }
 //	    mainSolver->pop();  // TODO: uncomment this line and comment "&& res" in the guard
 	    					// to get a segmfalut in the incremental solver

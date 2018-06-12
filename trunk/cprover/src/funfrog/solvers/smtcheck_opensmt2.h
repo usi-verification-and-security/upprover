@@ -109,13 +109,11 @@ public:
   std::set<PTRef>* get_non_linears(); // Common to all, needed only if there are summaries!
 #endif
 
-    static std::string quote_varname(const string& varname); // Common to all
-
   // Common to all
   void start_encoding_partitions() {
 	if (partition_count > 0){
 #ifdef PRODUCE_PROOF
-            if (ready_to_interpolate) cout << "EXIT WITH ERROR: Try using --claim parameter" << std::endl;
+            if (ready_to_interpolate) std::cout << "EXIT WITH ERROR: Try using --claim parameter" << std::endl;
 		assert (!ready_to_interpolate); // GF: checking of previous assertion run was successful (unsat)
 #endif		  	  	  	  	  	  	  	  	  // TODO: reset opensmt context
 
@@ -126,9 +124,9 @@ public:
   /* The data: lhs, original function data */
   bool has_unsupported_info() const { return store_unsupported_info && has_unsupported_vars(); } // Common to all
   bool has_unsupported_vars() const { return (unsupported2var > 0); } // Common to all, affects several locations!
-  string create_new_unsupported_var(std::string type_name, bool no_rename=false); // Common to all
-  map<PTRef,exprt>::const_iterator get_itr_unsupported_info_map() const { return unsupported_info_map.begin(); }
-  map<PTRef,exprt>::const_iterator get_itr_end_unsupported_info_map() const { return unsupported_info_map.end(); }
+  std::string create_new_unsupported_var(std::string type_name, bool no_rename=false); // Common to all
+  std::map<PTRef,exprt>::const_iterator get_itr_unsupported_info_map() const { return unsupported_info_map.begin(); }
+  std::map<PTRef,exprt>::const_iterator get_itr_end_unsupported_info_map() const { return unsupported_info_map.end(); }
   /* End of unsupported data for refinement info and data */
 
   // Common to all
@@ -154,7 +152,7 @@ protected:
 
   bool is_var_constraints_empty;
 
-  map<size_t, literalt> converted_exprs;
+  std::map<size_t, literalt> converted_exprs;
 
   unsigned no_literals;
 
@@ -166,7 +164,7 @@ protected:
 
   static unsigned unsupported2var; // Create a new var hifrog::c::unsupported_op2var#i - smtcheck_opensmt2t::_unsupported_var_str
   bool store_unsupported_info;
-  map<PTRef,exprt> unsupported_info_map;
+  std::map<PTRef,exprt> unsupported_info_map;
   std::map<std::string,SymRef> decl_uninterperted_func;
 
   literalt store_new_unsupported_var(const exprt& expr, const PTRef var, bool push_var=true); // common to all
@@ -192,7 +190,7 @@ protected:
 
   void setup_proof_transformation();
 
-  void produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants); // Common to all
+  void produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs, std::vector<PTRef> &interpolants); // Common to all
   
   virtual bool can_have_non_linears()=0;
   

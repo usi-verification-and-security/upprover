@@ -9,6 +9,7 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2_uf.h"
 #include "../hifrog.h"
 #include <util/std_expr.h>
+#include <funfrog/utils/naming_helpers.h>
 
 // Debug flags of this class:
 //#define SMT_DEBUG
@@ -346,7 +347,7 @@ Function: smtcheck_opensmt2t_uf::const_var_Real
 literalt smtcheck_opensmt2t_uf::const_var_Real(const exprt &expr)
 {
     //TODO: Check this
-    string num = extract_expr_str_number(expr);
+    std::string num = extract_expr_str_number(expr);
     PTRef rconst = PTRef_Undef;
     if(num.size() <= 0)
     {
@@ -697,7 +698,7 @@ literalt smtcheck_opensmt2t_uf::lunsupported2var(const exprt &expr)
         return converted_exprs[expr.hash()]; // TODO: might be buggy;
 
     // Create a new unsupported var    
-    const string str = create_new_unsupported_var(expr.type().id().c_str());
+    const std::string str = create_new_unsupported_var(expr.type().id().c_str());
     
     PTRef var;
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
@@ -748,8 +749,8 @@ literalt smtcheck_opensmt2t_uf::lvar(const exprt &expr)
     }
 
     // Else continue as before
-    string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    str = quote_varname(str);
+    std::string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
+    str = quote_if_necessary(str);
 
     // Nil is a special case - don't create a var but a val of true
     if (str.compare(NIL) == 0) return const_var(true);

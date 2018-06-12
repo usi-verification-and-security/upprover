@@ -89,7 +89,7 @@ protected:
 
   mp_integer max_num; // w.r.t. current bitwidth
 
-  map<size_t, PTRef> converted_bitblasted_exprs;
+  std::map<size_t, PTRef> converted_bitblasted_exprs;
 
   irep_idt _fails_type_id; // Reason 2 fail of CUF theoref
         
