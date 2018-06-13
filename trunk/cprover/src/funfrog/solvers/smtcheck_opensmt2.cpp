@@ -479,6 +479,14 @@ bool smtcheck_opensmt2t::solve() {
     pushed_formulas = top_level_formulas.size();
     sstat r = mainSolver->check();
 
+    // Inc. Mode Info.
+    if ((no_literals_last_solved != 0) && (no_literals_last_solved < no_literals))
+        std::cout << ";; Using OpenSMT Incremental Mode with " 
+                  << (no_literals - no_literals_last_solved) << " additional literals" 
+                  << std::endl;
+    no_literals_last_solved = no_literals;
+ 
+    // Results from Solver
     if (r == s_True) {
         return true;
     } else if (r == s_False && has_unsupported_info()) {

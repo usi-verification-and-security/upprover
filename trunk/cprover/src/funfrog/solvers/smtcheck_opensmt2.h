@@ -38,6 +38,7 @@ public:
         check_opensmt2t(reduction, reduction_graph, reduction_loops),
         is_var_constraints_empty(true),
         no_literals(0),
+        no_literals_last_solved(0),
         pushed_formulas(0),
         store_unsupported_info(_store_unsupported_info)
   { /* No init of solver - done for inherit check_opensmt2 */}
@@ -155,6 +156,8 @@ protected:
   map<size_t, literalt> converted_exprs;
 
   unsigned no_literals;
+
+  unsigned no_literals_last_solved; // Check if in incremental solver mode
 
   //  Mapping from boolean variable indexes to their PTRefs
   std::vector<PTRef> literals;
