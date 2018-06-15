@@ -52,13 +52,13 @@ set_target_properties(
     #clobber
     #clobber-lib
     cpp
-#    driver
-#goto-analyzer
-#    goto-analyzer-lib
-#    goto-cc
-#    goto-cc-lib
-#    goto-diff
-#    goto-diff-lib
+    #driver
+    goto-analyzer
+    goto-analyzer-lib
+    goto-cc
+    goto-cc-lib
+    goto-diff
+    goto-diff-lib
     goto-instrument
     goto-instrument-lib
     goto-programs
@@ -66,7 +66,7 @@ set_target_properties(
     java_bytecode
 #    jbmc
 #    jbmc-lib
-#    jsil
+    jsil
     json
     langapi
     linking
