@@ -26,6 +26,7 @@
 #include "prepare_smt_formula.h"
 #include "symex_assertion_sum.h"
 #include <solvers/flattening/bv_pointers.h>
+#include <funfrog/utils/naming_helpers.h>
 #include "smt_summary_store.h"
 #include "prop_summary_store.h"
 #include "theory_refiner.h"
@@ -1113,7 +1114,6 @@ namespace{
         if (!summary_file_name.empty()) {
             std::ofstream out;
             out.open(summary_file_name.c_str());
-            // TODO: find out how to dump bear minimum
             //dumps define-fun()  into summary file
             out << decider.getSimpleHeader();
             store.serialize(out);
@@ -1122,106 +1122,148 @@ namespace{
 
     }
 /*******************************************************************/
-// Purpose:
-    void reload_summaries(const namespacet &ns,
-            smt_summary_storet & store, std::vector<std::string> const & filenames, 
-            smtcheck_opensmt2t & decider, smtcheck_opensmt2t & prev_solver) {
-        
-        // Detect if there are non-linear parts:
-        std::set<PTRef>* non_linears = prev_solver.get_non_linears();
-        if (non_linears->size() > 0)
-        {
-            // Notify the user
-            std::cerr << "Non linear operation encounter. Ignoring " << non_linears->size() << " expressions in the file.\n";
-            
-            // Fix the summaries
-            std::stringstream dump;
-            dump << decider.getSimpleHeader();
-            store.serialize(dump);
-            std::string sm = dump.str();
-            
-            // Replace all non-linear expressions in unsupported variable
-            std::string new_token = decider.create_new_unsupported_var("_sumref", true); // unsupported operator symbol name
-            for(auto nl = non_linears->begin(); nl != non_linears->end(); nl++)
-            {
-                // Get the old token we wish to abstract
-                char* token = prev_solver.getLogic()->printTerm(*nl);
-                std::string old_token(token);
-
-                // Add the declaration to in the solver
-                prev_solver.getLogic()->mkVar(prev_solver.getLogic()->getSortRef(*nl), (prev_solver.create_new_unsupported_var("_sumref", false)).c_str());
-                prev_solver.getLogic()->mkVar(prev_solver.getLogic()->getSortRef(*nl), (prev_solver.create_new_unsupported_var("_sumref", true)).c_str());
-                //decider.getLogic()->mkVar(decider.getLogic()->getSortRef(*nl), (decider.create_new_unsupported_var("_sumref", false)).c_str());
-                
-                // The symbol name in the old token
-                std::string::size_type n_before = 0;
-                std::string::size_type n_after = 0;
-                while ( ( n_before = old_token.find( "|", n_after) ) != std::string::npos )
-                {
-                    if (( n_after = old_token.find( "|", n_before+1) ) != std::string::npos)
-                    {
-                        // Get SSA names in the old token
-                        std::string id_str_SSA = old_token.substr( n_before+1, n_after-n_before-1);
-                        std::string id_str_curr = id_str_SSA;
-                        irep_idt identifier = id_str_curr;
-                         
-                        // Get the symbol name of the SSA name:
-                        const symbolt *symbol =0;
-                        while (ns.lookup(identifier, symbol) && id_str_curr.size()>0)
-                        {
-                            id_str_curr = id_str_curr.substr(0,id_str_curr.size()-1);
-                            identifier = id_str_curr;
-                        }
-                        //std::cout << "** Replace : " << id_str_SSA << " in " << id_str_curr << std::endl;
-                        
-                        // Fix the old token to use symbols and not SSAs
-                        old_token.replace( n_before+1, id_str_SSA.size(), id_str_curr );
-                        n_before = old_token.find(id_str_curr, n_before) + id_str_curr.size()+1;
-                        n_after = n_before;                
-                    } else {
-                        break;
-                    }
-                }
-                
-                // Create the abstract summary:
-                std::string::size_type n = 0;
-                while ( ( n = sm.find( old_token, n ) ) != std::string::npos )
-                {
-                    sm.replace( n, old_token.size(), new_token );
-                    n += new_token.size();
-                }
-                //std::cout << "Replacing " << old_token << " in " << new_token << std::endl;
-                free(token); token = NULL;
-            }
-            //std::cout << ";; Summary is " << sm << std::endl;
-            
-            // Clean the data in use
-            delete(non_linears);
-            
-            // Store to Temp. file
-            std::ofstream out;
-            out.open("__summaries_linear_temp");
-            // TODO: find out how to dump bear minimum
-            //dumps define-fun()  into summary file
-            out << prev_solver.getSimpleHeader() << sm;
-            out.close();
-            
-            std::vector<std::string> filenames_linear;
-            filenames_linear.insert(filenames_linear.begin(), filenames.begin(), filenames.end());
-            filenames_linear.push_back(std::string("__summaries_linear_temp"));
-            
-            // Final stage:
-            store.set_decider(&decider);
-            store.deserialize(filenames_linear);
-            
-            // Remove the temp. file
-            remove( "__summaries_linear_temp" );
-        } else {
-            // Final stage:
-            store.set_decider(&decider);
-            store.deserialize(filenames);
-        }    
+// Purpose: create non-linear fresh variable with a separate(independent) counter
+namespace {
+    std::string fresh_var_name_nonlinear(){
+        static int counter = 0;
+        return quote_if_necessary( HifrogStringConstants::UNSUPPORTED_VAR_NAME + std::string{"_sumtheoref_"} + std::to_string(counter++));
     }
+
+    std::vector<std::string> get_unsupported_funct_exprs(std::string const & text) {
+        std::vector<std::string> res;
+        const std::string UNS = "(uns_";
+        std::string::size_type last_pos = 0;
+        while ((last_pos = text.find(UNS, last_pos)) != std::string::npos) {
+            auto beg = last_pos;
+            auto current = beg + 1;
+            int counter = 0;
+            while (text[current] != ')' || counter > 0) {
+                if (text[current] == ')') { --counter; }
+                if (text[current] == '(') { ++counter; }
+                ++current;
+            }
+            auto end = current + 1;
+            res.push_back(text.substr(beg, end - beg));
+//                std::cout << res.back() << '\n';
+            last_pos = end;
+        }
+        return res;
+    }
+}
+
+/*******************************************************************/
+// Purpose:
+void reload_summaries(const namespacet &ns,
+                      smt_summary_storet & store, std::vector<std::string> const & filenames,
+                      smtcheck_opensmt2t_lra & decider, smtcheck_opensmt2t_uf & prev_solver) {
+
+    // Put the whole summary file in string
+    std::stringstream dump;
+    dump << decider.getSimpleHeader();  // gets all the declarations without the variables
+    store.serialize(dump);
+    std::string sm = dump.str();
+
+    // Detect unsupported functions
+    std::vector<std::string> unsupp_func = get_unsupported_funct_exprs(sm);
+
+    // Detect if there are non-linear parts (searching for non-linear / or *):
+    std::set<PTRef>* non_linears = prev_solver.get_non_linears();
+    if (non_linears->size() > 0 || !unsupp_func.empty())
+    {
+        const Logic& logic = *prev_solver.getLogic();
+        std::transform(non_linears->begin(), non_linears->end(), std::back_inserter(unsupp_func),
+                       [&logic](PTRef pt){ return std::string{logic.printTerm(pt)};});
+        // Notify the user
+        std::cerr << "Non linear operation encounter. Ignoring " << non_linears->size() << " expressions in the file.\n";
+
+        std::sort(unsupp_func.begin(), unsupp_func.end(), [](const std::string & first, const std::string & second){
+            return first.size() > second.size();
+        });
+
+        // Replace all non-linear expressions in unsupported variable
+        for(auto old_token : unsupp_func)
+        {
+            // Get the old token we wish to abstract
+//              std::string new_token = decider.create_new_unsupported_var("_sumref", false); // unsupported operator symbol name
+            std::string new_token = fresh_var_name_nonlinear();
+            //Add the declaration to in the solver
+//              prev_solver.getLogic()->mkVar(prev_solver.getLogic()->getSortRef(*nl), (prev_solver.create_new_unsupported_var("_sumref", false)).c_str());
+//              prev_solver.getLogic()->mkVar(prev_solver.getLogic()->getSortRef(*nl), (prev_solver.create_new_unsupported_var("_sumref", true)).c_str());
+            prev_solver.getLogic()->mkVar(prev_solver.getURealSortRef(), new_token.c_str());
+//              decider.getLogic()->mkVar(decider.getLogic()->getSortRef(*nl), (decider.create_new_unsupported_var("_sumref", false)).c_str());
+
+            // The symbol name in the old token
+            std::string::size_type n_before = 0;
+            std::string::size_type n_after = 0;
+            while ( ( n_before = old_token.find( "|", n_after) ) != std::string::npos )
+            {
+                if (( n_after = old_token.find( "|", n_before+1) ) != std::string::npos)
+                {
+                    // Get SSA names in the old token
+                    std::string id_str_SSA = old_token.substr( n_before+1, n_after-n_before-1);
+                    std::string id_str_curr = id_str_SSA;
+                    irep_idt identifier = id_str_curr;
+
+                    // Get the symbol name of the SSA name:
+                    const symbolt *symbol =0;
+                    while (ns.lookup(identifier, symbol) && id_str_curr.size()>0)
+                    {
+                        id_str_curr = id_str_curr.substr(0,id_str_curr.size()-1);
+                        identifier = id_str_curr;
+                    }
+//                        std::cout << "** Replace : " << id_str_SSA << " in " << id_str_curr << std::endl;
+
+                    // Fix the old token to use symbols and not SSAs
+                    old_token.replace( n_before+1, id_str_SSA.size(), id_str_curr );
+                    n_before = old_token.find(id_str_curr, n_before) + id_str_curr.size()+1;
+                    n_after = n_before;
+                } else {
+                    break;
+                }
+            }
+
+            // Create the abstract summary:
+            std::string::size_type n = 0;
+            while ( ( n = sm.find( old_token, n ) ) != std::string::npos )
+            {
+                sm.replace( n, old_token.size(), new_token );
+                n += new_token.size();
+            }
+//              std::cout << "Replacing " << old_token << " in " << new_token << std::endl;
+        }
+
+        // Clean the data in use
+        delete(non_linears);
+
+        // Store to Temp. file
+        std::ofstream out;
+        out.open("__summaries_linear_temp");
+        //dumps define-fun()  into summary file
+        out << prev_solver.getSimpleHeader() << sm;
+        out.close();
+
+        std::vector<std::string> filenames_linear;
+        for(auto const & filename : filenames){   //takes care of the cases that uf-file has only mod as a non-linear exp
+            if(filename != "__summaries_uf"){
+                filenames_linear.push_back(filename);
+            }
+        }
+//            filenames_linear.insert(filenames_linear.begin(), filenames.begin(), filenames.end());
+        filenames_linear.push_back(std::string("__summaries_linear_temp"));
+
+        // Final stage:
+        store.set_decider(&decider);
+        store.deserialize(filenames_linear);
+
+        // Remove the temp. file
+        remove( "__summaries_linear_temp" );
+    } else {
+        // Final stage:
+        store.set_decider(&decider);
+        store.deserialize(filenames);
+    }
+}
+
 /*******************************************************************/
 // Purpose: reset means changing the partition information according
 // to the current state of the summary store. so first we updated the

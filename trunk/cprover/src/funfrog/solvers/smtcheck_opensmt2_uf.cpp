@@ -662,6 +662,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
             
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
+            push_variable(var_eq); // storing also this PTRef in literals
             set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
 #endif
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
@@ -839,6 +840,10 @@ SRef smtcheck_opensmt2t_uf::getSMTlibDatatype(const typet& type)
 // Check if a literal is non-linear in the solver side
 bool smtcheck_opensmt2t_uf::is_non_linear_operator(PTRef tr)
 {
+    std::string symName{logic->getSymName(tr)};
+    if(symName.find("uns_") != std::string::npos){
+        return true;
+    }
     SymRef sr = logic->getPterm(tr).symb(); 
     if ((sr != this->s_mult) &&  (sr != this->s_div))
         return false;
