@@ -219,13 +219,12 @@ void check_claims(
           if (!safe) finally_safe = false;
           if (checked){
               res.status() << "Claim number # " <<  claim_number << " is " << (safe ? "SAFE" : "UNSAFE") << res.eom;
-
               res.status()
               <<" File: " << assertion->source_location.get_file()
               <<" \n Function: " << assertion->source_location.get_function()
               <<" \n Line: " << assertion->source_location.get_line()
               << "\n " << ((assertion->is_assert()) ? "Guard: " : "Code") <<"( "
-              << from_expr(assertion->guard) <<" ) \n";
+              << from_expr(namespacet{goto_model.symbol_table}, "", assertion->guard) <<" ) \n";
           }
           else {
               res.status() << "Claim number # " <<  claim_number << " is not reachable!\n"; //
