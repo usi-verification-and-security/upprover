@@ -31,6 +31,7 @@
 // SMT consts of datatypes, add/change here only if needed
 #define SMT_BOOL "Bool"
 #define SMT_REAL "Real"
+#define SMT_INT "Int"
 #define SMT_UREAL "UReal"
 #define SMT_UNKNOWN "?"
 

@@ -9,6 +9,7 @@
 #include "core_checker.h"
 #include "dependency_checker.h"
 
+#include "solvers/smtcheck_opensmt2_lia.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
@@ -123,6 +124,11 @@ void core_checkert::initialize_solver()
         decider = new smtcheck_opensmt2t_lra(_type_constraints, "lra checker");
         status() << ("Use QF_LRA logic.") << eom;
     }
+    else if(_logic == "qflia") 
+    {
+        decider = new smtcheck_opensmt2t_lia(_type_constraints, "lia checker");
+        status() << ("Use QF_LIA logic.") << eom;
+    }    
     else if (_logic == "prop" && !options.get_bool_option("no-partitions"))
     {
         decider = new satcheck_opensmt2t("prop checker");
@@ -597,20 +603,20 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     const bool is_verified = end;
     if (is_verified) {
         // produce and store the summaries
+        #ifdef PRODUCE_PROOF   
         if (!options.get_bool_option("no-itp")) {
-            if (decider->can_interpolate()) {
-            #ifdef PRODUCE_PROOF            
+            if (decider->can_interpolate()) {         
                 status() << ("Start generating interpolants...") << eom;
                 extract_interpolants_smt(ssaTosmt, equation);
-            #else
-                assert(0); // Cannot produce proof in that case!
-            #endif
             } else {
                 status() << ("Skip generating interpolants") << eom;
             }
         } else {
             status() << ("Skip generating interpolants") << eom;
         } // End Report interpolation gen.
+        #else
+            status() << ("Skip generating interpolants") << eom;
+        #endif
     
         // Report Summaries use
         if (summaries_used > 0)

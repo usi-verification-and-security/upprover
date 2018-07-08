@@ -69,7 +69,7 @@ public:
 
   literalt const_var(bool val); // Common to all
 
-  virtual literalt const_var_Real(const exprt &expr)=0;
+  virtual literalt const_var_Number(const exprt &expr)=0;
 
   virtual literalt type_cast(const exprt &expr)=0;
 
@@ -96,17 +96,15 @@ public:
   void close_partition(); // Common to all
 
 #ifdef PRODUCE_PROOF
-  void get_interpolant(const interpolation_taskt& partition_ids,
+  virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants); // Common to all
 
-  bool can_interpolate() const; // Common to all
+  virtual bool can_interpolate() const; // Common to all
 
   // Extract interpolant form OpenSMT files/data
-  void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
+  virtual void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
 
-//  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true); // Common to all
-
-  void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
+  virtual void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
                           const std::string& fun_name, bool substitute);
 #endif
 

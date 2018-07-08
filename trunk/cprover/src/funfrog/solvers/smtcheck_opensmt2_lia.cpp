@@ -5,7 +5,7 @@ Module: Wrapper for OpenSMT2. Based on satcheck_minisat.
 Author: Grigory Fedyukovich
 
 \*******************************************************************/
-#include "smtcheck_opensmt2_lra.h"
+#include "smtcheck_opensmt2_lia.h"
 #include <util/type.h>
 #include "../hifrog.h"
 
@@ -15,7 +15,7 @@ Author: Grigory Fedyukovich
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::initializeSolver
+Function: smtcheck_opensmt2t_lia::initializeSolver
 
   Inputs:
 
@@ -24,16 +24,17 @@ Function: smtcheck_opensmt2t_lra::initializeSolver
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t_lra::initializeSolver(const char* name)
+void smtcheck_opensmt2t_lia::initializeSolver(const char* name)
 {
-    osmt = new Opensmt(opensmt_logic::qf_lra, name);
-    lralogic = &(osmt->getLRALogic());
-    logic = &(osmt->getLRALogic());
+    osmt = new Opensmt(opensmt_logic::qf_lia, name);
+    lialogic = &(osmt->getLIALogic());
+    logic = &(osmt->getLIALogic());
     mainSolver = &(osmt->getMainSolver());
     
-    const char* msg=NULL;
-    osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
-    if (msg==NULL) free((char *)msg);
+    // KE: FIXME when OpenSMT has interpolation for LIA!
+    //const char* msg=NULL;
+    //osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
+    //if (msg==NULL) free((char *)msg);
 
     // KE: Fix a strange bug can be related to the fact we are pushing
     // a struct into std::vector and use [] before any push_back
@@ -43,7 +44,7 @@ void smtcheck_opensmt2t_lra::initializeSolver(const char* name)
     assert(l.var_no() != literalt::unused_var_no()); // KE: for cmake warnings
     // KE: End of fix
     
-    // To avoid issues with type constraints for LRA
+    // To avoid issues with type constraints for LIA
     if (type_constraints_level > 0)
         std::cout << "Adding Type Constraints (" << type_constraints_level << ")" 
                 << ((type_constraints_level == 1 ? " for type constraints on non-deterministic input" : ""))
@@ -54,7 +55,7 @@ void smtcheck_opensmt2t_lra::initializeSolver(const char* name)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::~smtcheck_opensmt2t_lra
+Function: smtcheck_opensmt2t_lia::~smtcheck_opensmt2t_lia
 
   Inputs:
 
@@ -63,14 +64,14 @@ Function: smtcheck_opensmt2t_lra::~smtcheck_opensmt2t_lra
  Purpose: Free all inner objects
 
 \*******************************************************************/
-smtcheck_opensmt2t_lra::~smtcheck_opensmt2t_lra()
+smtcheck_opensmt2t_lia::~smtcheck_opensmt2t_lia()
 {
     // Shall/When need to: freeSolver() ?
 }
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::get_value
+Function: smtcheck_opensmt2t_lia::get_value
 
   Inputs:
 
@@ -79,7 +80,7 @@ Function: smtcheck_opensmt2t_lra::get_value
  Purpose:
 
 \*******************************************************************/
-exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
+exprt smtcheck_opensmt2t_lia::get_value(const exprt &expr)
 {
     if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
         literalt l = converted_exprs[expr.hash()]; // TODO: might be buggy
@@ -146,7 +147,7 @@ exprt smtcheck_opensmt2t_lra::get_value(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::const_var_Number
+Function: smtcheck_opensmt2t_lia::const_var_Number
 
   Inputs:
 
@@ -155,7 +156,7 @@ Function: smtcheck_opensmt2t_lra::const_var_Number
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_lra::const_var_Number(const exprt &expr)
+literalt smtcheck_opensmt2t_lia::const_var_Number(const exprt &expr)
 {
     string num = extract_expr_str_number(expr);
     PTRef rconst = PTRef_Undef;
@@ -175,15 +176,15 @@ literalt smtcheck_opensmt2t_lra::const_var_Number(const exprt &expr)
         }
     }
     
-    rconst = lralogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
+    rconst = lialogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
     assert(rconst != PTRef_Undef);
 
     // Check the conversion from string to real was done properly - do not erase!
-    assert(!lralogic->isNumOne(rconst) || expr.is_one() || // Check the conversion works: One => one
+    assert(!lialogic->isNumOne(rconst) || expr.is_one() || // Check the conversion works: One => one
             (expr.type().id()==ID_c_enum || expr.type().id()==ID_c_enum_tag)); // Cannot check enums
     if(expr.is_constant() && (expr.is_boolean() || is_number(expr.type()))){
     	exprt temp_check = exprt(expr); temp_check.negate();
-        assert(!lralogic->isNumZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
+        assert(!lialogic->isNumZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
         // If there is a problem usually will fails on Zero => zero since space usually translated into zero :-)
     } else if (expr.type().id() == ID_pointer) {
         // when support pointers - change here too
@@ -201,7 +202,7 @@ literalt smtcheck_opensmt2t_lra::const_var_Number(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::const_from_str
+Function: smtcheck_opensmt2t_lia::const_from_str
 
   Inputs:
 
@@ -210,15 +211,15 @@ Function: smtcheck_opensmt2t_lra::const_from_str
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_lra::const_from_str(const char* num)
+literalt smtcheck_opensmt2t_lia::const_from_str(const char* num)
 {
-    PTRef rconst = lralogic->mkConst(num); // Can have a wrong conversion sometimes!
+    PTRef rconst = lialogic->mkConst(num); // Can have a wrong conversion sometimes!
     return push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
 }
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::type_cast
+Function: smtcheck_opensmt2t_lia::type_cast
 
   Inputs:
 
@@ -226,10 +227,12 @@ Function: smtcheck_opensmt2t_lra::type_cast
 
  Purpose:
  * 
- All is Real in LRA so suppose to work id number to number
+ All is Integer in LIA so suppose to work id number to number
 \*******************************************************************/
-literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr) 
+literalt smtcheck_opensmt2t_lia::type_cast(const exprt &expr) 
 {
+    std::cout << "*** BENCHMARK USES Type-CAST in LIA, test carefully! ***" << std::endl; // KE: remove after testing!
+    
     // KE: New Cprover code - patching
     bool is_expr_bool = (expr.is_boolean() || (expr.type().id() == ID_c_bool)); 
     bool is_operands_bool = ((expr.operands())[0].is_boolean() 
@@ -244,9 +247,9 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
     	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
     	return const_var(!val_const_zero);
     } else if (is_number(expr.type()) && is_operands_bool) {
-    	// Cast from Boolean to Real - Add
+    	// Cast from Boolean to Integer - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
-    	PTRef ptl = logic->mkIte(literals[lt.var_no()], lralogic->mkConst("1"), lralogic->mkConst("0"));
+    	PTRef ptl = logic->mkIte(literals[lt.var_no()], lialogic->mkConst("1"), lialogic->mkConst("0"));
       
 #ifdef DISABLE_OPTIMIZATIONS
         if (dump_pre_queries)
@@ -265,9 +268,9 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
         
     	return push_variable(ptl); // Keeps the new literal + index it
     } else if (is_expr_bool && is_number((expr.operands())[0].type())) {
-    	// Cast from Real to Boolean - Add
+    	// Cast from Integer to Boolean - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
-    	PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], lralogic->mkConst("0")));
+    	PTRef ptl = logic->mkNot(logic->mkEq(literals[lt.var_no()], lialogic->mkConst("0")));
     	return push_variable(ptl); // Keeps the new literal + index it
     } else { // All types of number to number, will take the inner value as the converted one
     	return convert((expr.operands())[0]);
@@ -276,7 +279,7 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::mult_real
+Function: smtcheck_opensmt2t_lia::mult_real
 
   Inputs:
 
@@ -285,12 +288,12 @@ Function: smtcheck_opensmt2t_lra::mult_real
  Purpose:
 
 \*******************************************************************/
-PTRef smtcheck_opensmt2t_lra::mult_real(const exprt &expr, vec<PTRef> &args) 
+PTRef smtcheck_opensmt2t_lia::mult_real(const exprt &expr, vec<PTRef> &args) 
 {
     bool is_lin_op = isLinearOp(expr,args);
     #ifdef SMT_DEBUG
         assert(is_lin_op);
-        ptl = lralogic->mkNumTimes(args);
+        ptl = lialogic->mkNumTimes(args);
     #else
         if (!is_lin_op)
         {
@@ -299,7 +302,7 @@ PTRef smtcheck_opensmt2t_lra::mult_real(const exprt &expr, vec<PTRef> &args)
             // Add new equation of an unknown function (acording to name)
             //PTRef var_eq = create_equation_for_unsupported(expr);
             //set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-            // Remove - consider again only when we have UF with LRA works
+            // Remove - consider again only when we have UF with LIA works
 
             return ptl_uns;
         }
@@ -308,7 +311,7 @@ PTRef smtcheck_opensmt2t_lra::mult_real(const exprt &expr, vec<PTRef> &args)
         PTRef ptl;
         try
         {
-            ptl = lralogic->mkNumTimes(args);
+            ptl = lialogic->mkNumTimes(args);
         }
         catch (...)
         { /* We catch and give a nice error message if it is not in debug mode
@@ -319,7 +322,7 @@ PTRef smtcheck_opensmt2t_lra::mult_real(const exprt &expr, vec<PTRef> &args)
             // Add new equation of an unknown function (acording to name)
             //PTRef var_eq = create_equation_for_unsupported(expr);
             //set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-            // Remove - consider again only when we have UF with LRA works            
+            // Remove - consider again only when we have UF with LIA works            
 
             return ptl_uns;
         }
@@ -330,7 +333,7 @@ PTRef smtcheck_opensmt2t_lra::mult_real(const exprt &expr, vec<PTRef> &args)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::div_real
+Function: smtcheck_opensmt2t_lia::div_real
 
   Inputs:
 
@@ -339,13 +342,13 @@ Function: smtcheck_opensmt2t_lra::div_real
  Purpose:
 
 \*******************************************************************/
-PTRef smtcheck_opensmt2t_lra::div_real(const exprt &expr, vec<PTRef> &args) 
+PTRef smtcheck_opensmt2t_lia::div_real(const exprt &expr, vec<PTRef> &args) 
 {
     bool is_lin_op = isLinearOp(expr,args);
-    bool is_of_legal_form2solver = lralogic->isNumTerm(args[0]) &&  logic->isConstant(args[1]);
+    bool is_of_legal_form2solver = lialogic->isNumTerm(args[0]) &&  logic->isConstant(args[1]);
     #ifdef SMT_DEBUG
         assert(is_lin_op);
-        ptl = lralogic->mkNumDiv(args);
+        ptl = lialogic->mkNumDiv(args);
     #else
         if ((!is_lin_op) || (!is_of_legal_form2solver))
         {
@@ -354,7 +357,7 @@ PTRef smtcheck_opensmt2t_lra::div_real(const exprt &expr, vec<PTRef> &args)
             // Add new equation of an unknown function (acording to name)
             //PTRef var_eq = create_equation_for_unsupported(expr);
             //set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-            // Remove - consider again only when we have UF with LRA works            
+            // Remove - consider again only when we have UF with LIA works            
 
             return ptl_uns;
         }
@@ -363,7 +366,7 @@ PTRef smtcheck_opensmt2t_lra::div_real(const exprt &expr, vec<PTRef> &args)
         PTRef ptl;
         try
         {
-            ptl = lralogic->mkNumDiv(args);
+            ptl = lialogic->mkNumDiv(args);
         }
         catch (...)
         { /* We catch and give a nice error message if it is not in debug mode
@@ -374,7 +377,7 @@ PTRef smtcheck_opensmt2t_lra::div_real(const exprt &expr, vec<PTRef> &args)
             // Add new equation of an unknown function (acording to name)
             //PTRef var_eq = create_equation_for_unsupported(expr);
             //set_to_true(logic->mkEq(ptl_uns,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-            // Remove - consider again only when we have UF with LRA works            
+            // Remove - consider again only when we have UF with LIA works            
 
             return ptl_uns;
         }
@@ -385,7 +388,7 @@ PTRef smtcheck_opensmt2t_lra::div_real(const exprt &expr, vec<PTRef> &args)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::convert
+Function: smtcheck_opensmt2t_lia::convert
 
   Inputs:
 
@@ -394,7 +397,7 @@ Function: smtcheck_opensmt2t_lra::convert
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
+literalt smtcheck_opensmt2t_lia::convert(const exprt &expr)
 {
 // GF: disabling hash for a while, since it leads to bugs at some particular cases,
 //     e.g., for (= |goto_symex::guard#3| (< |c::f::a!0#7| 10))
@@ -450,7 +453,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     #endif
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
     #ifdef SMT_DEBUG
-        cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")" << endl;
+        cout << "EXIT WITH ERROR: operator does not yet supported in the LIA version (token: " << _id << ")" << endl;
         assert(false); // Need to take care of - typecast no operands
     #else
         l = lunsupported2var(expr);
@@ -477,7 +480,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             if (is_div_wtrounding && i >= 2)
             {
             #ifdef SMT_DEBUG
-                cout << "EXIT WITH ERROR: * and / operators with more than 2 arguments have no support yet in the LRA version (token: "
+                cout << "EXIT WITH ERROR: * and / operators with more than 2 arguments have no support yet in the LIA version (token: "
                                 << _id << ")" << endl;
                 assert(false); // No support yet for rounding operator
             #else
@@ -528,7 +531,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             // Add new equation of an unknown function (acording to name)
             //PTRef var_eq = create_equation_for_unsupported(expr);
             //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-            // Remove - consider again only when we have UF with LRA works
+            // Remove - consider again only when we have UF with LIA works
         } else if (_id==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
         } else if(_id == ID_equal) {
@@ -580,26 +583,26 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             ptl = logic->mkImpl(args);
         } else if(_id == ID_ge) {
             assert(args.size() == 2); // KE: get errors before opensmt
-            ptl = lralogic->mkNumGeq(args);
+            ptl = lialogic->mkNumGeq(args);
         } else if(_id == ID_le) {
             assert(args.size() == 2); // KE: get errors before opensmt
-            ptl = lralogic->mkNumLeq(args);
+            ptl = lialogic->mkNumLeq(args);
         } else if(_id == ID_gt) {
             assert(args.size() == 2); // KE: get errors before opensmt 
-            ptl = lralogic->mkNumGt(args);
+            ptl = lialogic->mkNumGt(args);
         } else if(_id == ID_lt) {
             assert(args.size() == 2); // KE: get errors before opensmt
-            ptl = lralogic->mkNumLt(args);
+            ptl = lialogic->mkNumLt(args);
         } else if(_id == ID_plus) {
-            ptl = lralogic->mkNumPlus(args);
+            ptl = lialogic->mkNumPlus(args);
         } else if(_id == ID_minus) {
             assert(args.size() == 2); // KE: check before opensmt, to locate better errors
-            ptl = lralogic->mkNumMinus(args);
+            ptl = lialogic->mkNumMinus(args);
         } else if(_id == ID_unary_minus) {
             assert(args.size() == 1); // KE: check before opensmt, to locate better errors
-            ptl = lralogic->mkNumMinus(args);
+            ptl = lialogic->mkNumMinus(args);
         } else if(_id == ID_unary_plus) {
-            ptl = lralogic->mkNumPlus(args);
+            ptl = lialogic->mkNumPlus(args);
         } else if(_id == ID_mult) {
             ptl = mult_real(expr,args);
         } else if(_id == ID_div) {
@@ -611,17 +614,17 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         } else if(_id == ID_ieee_float_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
         } else if(_id == ID_floatbv_plus) {
-            ptl = lralogic->mkNumPlus(args);
+            ptl = lialogic->mkNumPlus(args);
         } else if(_id == ID_floatbv_minus) {
             assert(args.size() <= 2); // KE: check before opensmt, to locate better errors
-            ptl = lralogic->mkNumMinus(args);
+            ptl = lialogic->mkNumMinus(args);
         } else if(_id == ID_floatbv_div) {
             ptl = div_real(expr,args);
         } else if(_id == ID_floatbv_mult) {
             ptl = mult_real(expr,args);
         } else if(_id == ID_index) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LRA version (token: "
+            cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LIA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
@@ -630,11 +633,11 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             // Add new equation of an unknown function (acording to name)
             //PTRef var_eq = create_equation_for_unsupported(expr);
             //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
-            // Remove - consider again only when we have UF with LRA works 
+            // Remove - consider again only when we have UF with LIA works 
 #endif
         } else if((_id == ID_address_of) || (_id == ID_pointer_offset)) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LRA version (token: "
+            cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LIA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for address and pointers
 #else
@@ -643,11 +646,11 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             // Add new equation of an unknown function (acording to name)
             //PTRef var_eq = create_equation_for_unsupported(expr);
             //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
-            // Remove - consider again only when we have UF with LRA works 
+            // Remove - consider again only when we have UF with LIA works 
 #endif
         } else if (_id == ID_pointer_object) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LRA version (token: "
+            cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LIA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for pointers
 #else
@@ -656,7 +659,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 #endif
         } else if (_id==ID_array) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LRA version (token: "
+            cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LIA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
@@ -684,7 +687,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
         } else {
 #ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
             cout << _id << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
-            cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: "
+            cout << "EXIT WITH ERROR: operator does not yet supported in the LIA version (token: "
             		<< _id << ")" << endl;
             assert(false);
 #else
@@ -693,7 +696,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
             // Add new equation of an unknown function (acording to name)
             //PTRef var_eq = create_equation_for_unsupported(expr);
             //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-            // Remove - consider again only when we have UF with LRA works
+            // Remove - consider again only when we have UF with LIA works
 #endif
         }
         
@@ -711,7 +714,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::lnotequal
+Function: smtcheck_opensmt2t_lia::lnotequal
 
   Inputs:
 
@@ -720,7 +723,7 @@ Function: smtcheck_opensmt2t_lra::lnotequal
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_lra::lnotequal(literalt l1, literalt l2){
+literalt smtcheck_opensmt2t_lia::lnotequal(literalt l1, literalt l2){
     vec<PTRef> args;
     PTRef pl1 = literals[l1.var_no()];
     PTRef pl2 = literals[l2.var_no()];
@@ -732,7 +735,7 @@ literalt smtcheck_opensmt2t_lra::lnotequal(literalt l1, literalt l2){
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::runsupported2var
+Function: smtcheck_opensmt2t_lia::runsupported2var
 
   Inputs:
 
@@ -741,7 +744,7 @@ Function: smtcheck_opensmt2t_lra::runsupported2var
  Purpose:
 
 \*******************************************************************/
-PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt &expr) {
+PTRef smtcheck_opensmt2t_lia::runsupported2var(const exprt &expr) {
     if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
         literalt l = converted_exprs[expr.hash()];
         return literals[l.var_no()];
@@ -754,7 +757,7 @@ PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt &expr) {
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
         var = logic->mkBoolVar(str.c_str());
     else
-        var = lralogic->mkNumVar(str.c_str());
+        var = lialogic->mkIntVar(str.c_str());
    
     // Was taken from: literalt smtcheck_opensmt2t::store_new_unsupported_var
     // If need to register the abstracted functions - add it here
@@ -765,7 +768,7 @@ PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt &expr) {
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::lunsupported2var
+Function: smtcheck_opensmt2t_lia::lunsupported2var
 
   Inputs:
 
@@ -774,7 +777,7 @@ Function: smtcheck_opensmt2t_lra::lunsupported2var
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_lra::lunsupported2var(const exprt &expr) 
+literalt smtcheck_opensmt2t_lia::lunsupported2var(const exprt &expr) 
 {
     // Tries to map unsupported to another unsupported
     if (converted_exprs.find(expr.hash()) != converted_exprs.end())
@@ -787,14 +790,14 @@ literalt smtcheck_opensmt2t_lra::lunsupported2var(const exprt &expr)
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
         var = logic->mkBoolVar(str.c_str());
     else
-        var = lralogic->mkNumVar(str.c_str());
+        var = lialogic->mkNumVar(str.c_str());
     
     return store_new_unsupported_var(expr, var);
 }
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::lvar
+Function: smtcheck_opensmt2t_lia::lvar
 
   Inputs:
 
@@ -803,7 +806,7 @@ Function: smtcheck_opensmt2t_lra::lvar
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
+literalt smtcheck_opensmt2t_lia::lvar(const exprt &expr)
 {
     // IF code, set to be unsupported
     if (expr.type().id()==ID_code) {
@@ -825,12 +828,12 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     PTRef var;
     assert(str.size() > 0);
     if(is_number(expr.type()))
-    	var = lralogic->mkNumVar(str.c_str());
+    	var = lialogic->mkNumVar(str.c_str());
     else if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
     	var = logic->mkBoolVar(str.c_str());
     else { // Is a function with index, array, pointer
 #ifdef SMT_DEBUG
-    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LRA version (token: "
+    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LIA version (token: "
     			<< expr.type().id() << ")" << endl;
     	assert(false); // No support yet for arrays
 #else
@@ -860,7 +863,7 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::labs
+Function: smtcheck_opensmt2t_lia::labs
 
   Inputs:
 
@@ -869,13 +872,13 @@ Function: smtcheck_opensmt2t_lra::labs
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_lra::labs(const exprt &expr) 
+literalt smtcheck_opensmt2t_lia::labs(const exprt &expr) 
 {
     // ABS - all refers as real
     literalt lt = convert((expr.operands())[0]); // Create the inner part
     PTRef ptl = logic->mkIte(
-                        lralogic->mkNumLt(literals[lt.var_no()], lralogic->getTerm_NumZero()),  // IF
-                        lralogic->mkNumNeg(literals[lt.var_no()]),                 // Then
+                        lialogic->mkNumLt(literals[lt.var_no()], lialogic->getTerm_NumZero()),  // IF
+                        lialogic->mkNumNeg(literals[lt.var_no()]),                 // Then
                         literals[lt.var_no()]);                                     // Else
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -902,7 +905,7 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::create_constraints2type
+Function: smtcheck_opensmt2t_lia::create_constraints2type
 
   Inputs:
 
@@ -911,16 +914,16 @@ Function: smtcheck_opensmt2t_lra::create_constraints2type
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_lra::create_constraints2type(
+literalt smtcheck_opensmt2t_lia::create_constraints2type(
 		PTRef &var,
 		std::string lower_b,
 		std::string upper_b)
 {
     vec<PTRef> args;
-    vec<PTRef> args1; args1.push(lralogic->mkConst(lower_b.c_str())); args1.push(var);
-    vec<PTRef> args2; args2.push(var); args2.push(lralogic->mkConst(upper_b.c_str()));
-    PTRef ptl1 = lralogic->mkNumLeq(args1);
-    PTRef ptl2 = lralogic->mkNumLeq(args2);
+    vec<PTRef> args1; args1.push(lialogic->mkConst(lower_b.c_str())); args1.push(var);
+    vec<PTRef> args2; args2.push(var); args2.push(lialogic->mkConst(upper_b.c_str()));
+    PTRef ptl1 = lialogic->mkNumLeq(args1);
+    PTRef ptl2 = lialogic->mkNumLeq(args2);
     literalt l1 = push_variable(ptl1);
     literalt l2 = push_variable(ptl2);
 
@@ -929,7 +932,7 @@ literalt smtcheck_opensmt2t_lra::create_constraints2type(
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::push_assumes2type
+Function: smtcheck_opensmt2t_lia::push_assumes2type
 
   Inputs:
 
@@ -938,7 +941,7 @@ Function: smtcheck_opensmt2t_lra::push_assumes2type
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t_lra::push_assumes2type(
+void smtcheck_opensmt2t_lia::push_assumes2type(
 		PTRef &var,
 		std::string lower_b,
 		std::string upper_b)
@@ -959,7 +962,7 @@ void smtcheck_opensmt2t_lra::push_assumes2type(
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::push_asserts2type
+Function: smtcheck_opensmt2t_lia::push_asserts2type
 
   Inputs:
 
@@ -968,7 +971,7 @@ Function: smtcheck_opensmt2t_lra::push_asserts2type
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t_lra::push_asserts2type(
+void smtcheck_opensmt2t_lia::push_asserts2type(
 		PTRef &var,
 		std::string lower_b,
 		std::string upper_b)
@@ -997,7 +1000,7 @@ void smtcheck_opensmt2t_lra::push_asserts2type(
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::push_constraints2type
+Function: smtcheck_opensmt2t_lia::push_constraints2type
 
   Inputs:
 
@@ -1006,7 +1009,7 @@ Function: smtcheck_opensmt2t_lra::push_constraints2type
  Purpose:
 
 \*******************************************************************/
-bool smtcheck_opensmt2t_lra::push_constraints2type(
+bool smtcheck_opensmt2t_lia::push_constraints2type(
 		PTRef &var,
 		bool is_non_det,
 		std::string lower_b,
@@ -1022,7 +1025,7 @@ bool smtcheck_opensmt2t_lra::push_constraints2type(
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::add_constraints2type
+Function: smtcheck_opensmt2t_lia::add_constraints2type
 
   Inputs:
 
@@ -1031,7 +1034,7 @@ Function: smtcheck_opensmt2t_lra::add_constraints2type
  Purpose: If the expression is a number adds constraints
 
 \*******************************************************************/
-void smtcheck_opensmt2t_lra::add_constraints2type(const exprt &expr, PTRef& var)
+void smtcheck_opensmt2t_lia::add_constraints2type(const exprt &expr, PTRef& var)
 {
     typet var_type = expr.type(); // Get the current type
     const irep_idt type_id_c = var_type.get("#c_type");
@@ -1192,13 +1195,13 @@ Function: smtcheck_opensmt2t::isLinearOp
 
  Outputs: true if linear op else false
 
- Purpose: we cannot express x*x or nodet*nodet (any) in LRA - assure
+ Purpose: we cannot express x*x or nodet*nodet (any) in LIA - assure
           we are not trying to push such an expression to the solver
           In case we sent this to the solver we will get assertion
           violation!
 
 \*******************************************************************/
-bool smtcheck_opensmt2t_lra::isLinearOp(const exprt &expr, vec<PTRef> &args) {
+bool smtcheck_opensmt2t_lia::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 	// Must be true
 	if (!expr.has_operands()) return true;
 	if (expr.operands().size() < 2) return true;
@@ -1209,9 +1212,9 @@ bool smtcheck_opensmt2t_lra::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 	int count_var = 0;
 	for (int i=0; i< args.size(); i++) {
             bool is_linear = (logic->isConstant(args[i]) || 
-                                lralogic->isNumTerm(args[i]) || 
-                                lralogic->isNumPlus(args[i]) || 
-                                lralogic->isUF(args[i]));
+                                lialogic->isNumTerm(args[i]) || 
+                                lialogic->isNumPlus(args[i]) || 
+                                lialogic->isUF(args[i]));
             count_var += is_linear ? 0 : 1;
 	}
 	if (count_var > 1) {
@@ -1227,7 +1230,7 @@ bool smtcheck_opensmt2t_lra::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::check_ce
+Function: smtcheck_opensmt2t_lia::check_ce
 
   Inputs:
 
@@ -1236,7 +1239,7 @@ Function: smtcheck_opensmt2t_lra::check_ce
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
+void smtcheck_opensmt2t_lia::check_ce(std::vector<exprt>& exprs)
 {
 	// this method is used for testing mostly
 	char *msg=NULL;
@@ -1271,7 +1274,7 @@ void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::getStringSMTlibDatatype
+Function: smtcheck_opensmt2t_lia::getStringSMTlibDatatype
 
   Inputs:
 
@@ -1280,7 +1283,7 @@ Function: smtcheck_opensmt2t_lra::getStringSMTlibDatatype
  Purpose:
 
 \*******************************************************************/
-std::string smtcheck_opensmt2t_lra::getStringSMTlibDatatype(const typet& type)
+std::string smtcheck_opensmt2t_lia::getStringSMTlibDatatype(const typet& type)
 { 
     if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
         return SMT_BOOL;
@@ -1292,7 +1295,7 @@ std::string smtcheck_opensmt2t_lra::getStringSMTlibDatatype(const typet& type)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::getSMTlibDatatype
+Function: smtcheck_opensmt2t_lia::getSMTlibDatatype
 
   Inputs:
 
@@ -1301,12 +1304,12 @@ Function: smtcheck_opensmt2t_lra::getSMTlibDatatype
  Purpose:
 
 \*******************************************************************/
-SRef smtcheck_opensmt2t_lra::getSMTlibDatatype(const typet& type)
+SRef smtcheck_opensmt2t_lia::getSMTlibDatatype(const typet& type)
 { 
     if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
-        return lralogic->getSort_bool(); //SMT_BOOL
+        return lialogic->getSort_bool(); //SMT_BOOL
     if (is_number(type))
-        return lralogic->getSort_num(); // SMT_REAL
+        return lialogic->getSort_num(); // SMT_INT
 
     throw std::logic_error("Unknown datatype encountered!");
 }

@@ -683,6 +683,7 @@ void prop_partitioning_target_equationt::convert_partition_io(
     }
 }
 
+#ifdef PRODUCE_PROOF
 namespace{
   // helper methods for extract_interpolants
 
@@ -700,6 +701,7 @@ namespace{
     skip_partition_with_name(partition.get_iface().function_id.c_str());
   }
 }
+#endif
 
 /*******************************************************************\
 

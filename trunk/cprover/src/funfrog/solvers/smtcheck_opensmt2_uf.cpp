@@ -333,7 +333,7 @@ exprt smtcheck_opensmt2t_uf::get_value(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_uf::const_var_Real
+Function: smtcheck_opensmt2t_uf::const_var_Number
 
   Inputs:
 
@@ -342,7 +342,7 @@ Function: smtcheck_opensmt2t_uf::const_var_Real
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_uf::const_var_Real(const exprt &expr)
+literalt smtcheck_opensmt2t_uf::const_var_Number(const exprt &expr)
 {
     //TODO: Check this
     string num = extract_expr_str_number(expr);

@@ -4,22 +4,22 @@ Module: Wrapper for OpenSMT2
 
 \*******************************************************************/
 
-#ifndef CPROVER_SMTCHECK_OPENSMT2_LRA_H
-#define CPROVER_SMTCHECK_OPENSMT2_LRA_H
+#ifndef CPROVER_SMTCHECK_OPENSMT2_LIA_H
+#define CPROVER_SMTCHECK_OPENSMT2_LIA_H
 
 #include "smtcheck_opensmt2.h"
 
-class smtcheck_opensmt2t_lra : public smtcheck_opensmt2t
+class smtcheck_opensmt2t_lia : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_lra(int _type_constraints_level, const char* name, bool _store_unsupported_info=false) :
+  smtcheck_opensmt2t_lia(int _type_constraints_level, const char* name, bool _store_unsupported_info=false) :
           smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info),
           type_constraints_level(_type_constraints_level)
   {
     initializeSolver(name);
   }
       
-  virtual ~smtcheck_opensmt2t_lra(); // d'tor
+  virtual ~smtcheck_opensmt2t_lia(); // d'tor
 
   virtual exprt get_value(const exprt &expr) override;
 
@@ -47,13 +47,27 @@ public:
   
   virtual std::string getStringSMTlibDatatype(const typet& type) override;
   virtual SRef getSMTlibDatatype(const typet& type) override;
+  
+// KE: FIXME remove this code till the end of the endif after OpenSMT has support for LIA interpolation
+#ifdef PRODUCE_PROOF
+  virtual void get_interpolant(const interpolation_taskt& partition_ids,
+      interpolantst& interpolants) override {assert(0);}
+
+  virtual bool can_interpolate() const override {assert(0);}
+
+  // Extract interpolant form OpenSMT files/data
+  virtual void extract_itp(PTRef ptref, smt_itpt& target_itp) const override {assert(0);}
+
+  virtual void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
+                          const std::string& fun_name, bool substitute) override {assert(0);}
+#endif  
 
 protected:
-  LRALogic* lralogic; // Extra var, inner use only - Helps to avoid dynamic cast!
+  LIALogic* lialogic; // Extra var, inner use only - Helps to avoid dynamic cast!
 
   PTRef ptr_assert_var_constraints;
 
-  int type_constraints_level; // The level of checks in LRA for numerical checks of overflow
+  int type_constraints_level; // The level of checks in LIA for numerical checks of overflow
 
   virtual void initializeSolver(const char*) override;
 

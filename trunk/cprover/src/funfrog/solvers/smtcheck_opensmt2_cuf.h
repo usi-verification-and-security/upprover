@@ -29,7 +29,7 @@ public:
 
   virtual literalt convert(const exprt &expr) override;
 
-  virtual literalt const_var_Real(const exprt &expr) override;
+  virtual literalt const_var_Number(const exprt &expr) override;
 
   virtual literalt type_cast(const exprt &expr) override;
 
