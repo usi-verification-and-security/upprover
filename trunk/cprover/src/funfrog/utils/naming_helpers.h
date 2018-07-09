@@ -17,6 +17,7 @@ struct HifrogStringConstants {
   static const std::string CALLSTART_SYMBOL;
   static const std::string CALLEND_SYMBOL;
   static const std::string ERROR_SYMBOL;
+  static const std::string UNSUPPORTED_VAR_NAME;
 };
 
 struct CProverStringConstants {
@@ -29,6 +30,8 @@ inline std::string add_counter_to_fun_name(const std::string & name, size_t coun
 }
 
 void unquote_if_necessary(std::string & name);
+
+std::string quote_if_necessary(std::string const & s);
 
 std::string quote(const std::string & name);
 

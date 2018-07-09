@@ -30,21 +30,21 @@ namespace{
     }
 }
 
-void refiner_assertion_sumt::set_inline_sum(call_tree_nodet& summary)
+void refiner_assertion_sumt::set_inline_sum(call_tree_nodet& node)
 {
-  std::string function_name = id2string(summary.get_function_id());
-  if (summary.get_call_location() <= last_assertion_loc){
+  std::string function_name = id2string(node.get_function_id());
+  if (node.get_call_location() <= last_assertion_loc){
     status() << (std::string("*** REFINING function: ") + function_name) << eom;
-    summary.set_inline();
-    refined_functions.push_back(&summary);
+    node.set_inline();
+    refined_functions.push_back(&node);
   }
   set_valid_summaries(summary_store, function_name, valid);
 }
 
-void refiner_assertion_sumt::reset_inline(call_tree_nodet& summary)
+void refiner_assertion_sumt::reset_inline(call_tree_nodet& node)
 {
-  for (call_sitest::iterator it = summary.get_call_sites().begin();
-          it != summary.get_call_sites().end(); ++it)
+  for (call_sitest::iterator it = node.get_call_sites().begin();
+          it != node.get_call_sites().end(); ++it)
   {
     if ((it->second).get_precision() != INLINE){
       set_inline_sum(it->second);
@@ -58,11 +58,11 @@ void refiner_assertion_sumt::reset_inline(call_tree_nodet& summary)
   }
 }
 
-void refiner_assertion_sumt::reset_random(call_tree_nodet& summary)
+void refiner_assertion_sumt::reset_random(call_tree_nodet& node)
 {
   unsigned summs_size = omega.get_summaries_count();
-    for (call_sitest::iterator it = summary.get_call_sites().begin();
-            it != summary.get_call_sites().end(); ++it)
+    for (call_sitest::iterator it = node.get_call_sites().begin();
+            it != node.get_call_sites().end(); ++it)
     {
       summary_precisiont precision = (it->second).get_precision();
       if ((precision == SUMMARY) ||    // if there were some summaries,
@@ -80,10 +80,10 @@ void refiner_assertion_sumt::reset_random(call_tree_nodet& summary)
 }
 
 // something old
-void refiner_assertion_sumt::reset_depend_rec(std::vector<call_tree_nodet*>& dep, call_tree_nodet& summary)
+void refiner_assertion_sumt::reset_depend_rec(std::vector<call_tree_nodet*>& dep, call_tree_nodet& node)
 {
-  for (call_sitest::iterator it = summary.get_call_sites().begin();
-          it != summary.get_call_sites().end(); ++it)
+  for (call_sitest::iterator it = node.get_call_sites().begin();
+          it != node.get_call_sites().end(); ++it)
   {
     call_tree_nodet& call = it->second;
     if (call.get_precision() != INLINE){

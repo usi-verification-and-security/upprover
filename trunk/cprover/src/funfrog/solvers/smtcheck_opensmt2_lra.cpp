@@ -7,11 +7,12 @@ Author: Grigory Fedyukovich
 \*******************************************************************/
 #include "smtcheck_opensmt2_lra.h"
 #include <util/type.h>
+#include <funfrog/utils/naming_helpers.h>
 #include "../hifrog.h"
 
 // Debug flags of this class:
 //#define SMT_DEBUG
-//#define SMT_DEBUG_VARS_BOUNDS // For debugging the option: type_constraints_level
+//#define SMT_DEBUG_VARS_BOdUNDS // For debugging the option: type_constraints_level
 
 /*******************************************************************\
 
@@ -39,6 +40,7 @@ void smtcheck_opensmt2t_lra::initializeSolver(const char* name)
     // a struct into std::vector and use [] before any push_back
     literals.push_back(PTRef());
     literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0] - NEVER COMMENT THIS LINE!!!
+    (void)l;
     literals[0] = logic->getTerm_true(); // Which is .x =0
     assert(l.var_no() != literalt::unused_var_no()); // KE: for cmake warnings
     // KE: End of fix
@@ -157,7 +159,7 @@ Function: smtcheck_opensmt2t_lra::const_var_Real
 \*******************************************************************/
 literalt smtcheck_opensmt2t_lra::const_var_Real(const exprt &expr)
 {
-    string num = extract_expr_str_number(expr);
+    std::string num = extract_expr_str_number(expr);
     PTRef rconst = PTRef_Undef;
     if(num.size() <= 0)
     {
@@ -258,7 +260,7 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
               ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
               //cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")"
               //    << string(getPTermString(ptl)) << endl << s << endl;
-              free(s);
+              free(s); s=NULL;
             }
         }
 #endif        
@@ -446,7 +448,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     #ifdef SMT_DEBUG
         char* s = getPTermString(l);
         cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-        free(s);
+        free(s); s=NULL;
     #endif
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
     #ifdef SMT_DEBUG
@@ -516,7 +518,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                             str_expr2 = str_expr2.insert(7, SYMEX_NONDET);
                     assert(str_expr1.compare(str_expr2) == 0);
                 }
-                free(s);
+                free(s); s=NULL;
 #endif
             }
         }
@@ -550,7 +552,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                     ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
                     //cout << "; XXX oite symbol: (" << ite_map_str.size() << ")" 
                     //    << string(getPTermString(ptl)) << endl << s << endl;
-                    free(s);    
+                    free(s); s=NULL;    
                 }
 #endif
             }
@@ -565,7 +567,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
                 ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
                 //cout << "; XXX oite symbol: (" << ite_map_str.size() << ")" 
                 //        << string(getPTermString(ptl)) << endl << s << endl;
-                free(s);    
+                free(s); s=NULL;    
             }
 #endif
         } else if(_id == ID_and) {
@@ -704,7 +706,7 @@ literalt smtcheck_opensmt2t_lra::convert(const exprt &expr)
     PTRef ptr = literals[l.var_no()];
     char *s = logic->printTerm(ptr);
     cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
     return l;
 }
@@ -748,7 +750,7 @@ PTRef smtcheck_opensmt2t_lra::runsupported2var(const exprt &expr) {
     }
 
     // Create a new unsupported var
-    const string str = create_new_unsupported_var(expr.type().id().c_str());
+    const std::string str = create_new_unsupported_var(expr.type().id().c_str());
     
     PTRef var;
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
@@ -781,7 +783,7 @@ literalt smtcheck_opensmt2t_lra::lunsupported2var(const exprt &expr)
         return converted_exprs[expr.hash()]; // TODO: might be buggy;
 
     // Create a new unsupported var
-    const string str = create_new_unsupported_var(expr.type().id().c_str());
+    const std::string str = create_new_unsupported_var(expr.type().id().c_str());
 
     PTRef var;
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
@@ -811,8 +813,8 @@ literalt smtcheck_opensmt2t_lra::lvar(const exprt &expr)
     }
 
     // Else continue as before
-    string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    str = quote_varname(str);
+    std::string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
+    str = quote_if_necessary(str);
 
     // Nil is a special case - don't create a var but a val of true
     if (str.compare(NIL) == 0) return const_var(true);
@@ -885,7 +887,7 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
         ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
         //cout << "; XXX oite symbol (labs):  (" << ite_map_str.size() << ")" 
         //            << string(getPTermString(ptl)) << endl << s << endl;
-        free(s);        
+        free(s); s=NULL;        
     }
 #endif
     
@@ -894,7 +896,7 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
 
     return l;
@@ -953,7 +955,7 @@ void smtcheck_opensmt2t_lra::push_assumes2type(
     char *s = logic->printTerm(ptr);
     cout << "; For Assume Constraints Created OpenSMT2 formula " << s << endl;
     cout << "; For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
 }
 
@@ -991,7 +993,7 @@ void smtcheck_opensmt2t_lra::push_asserts2type(
     char *s = logic->printTerm(ptr);
     cout << "; For Assert Constraints Created OpenSMT2 formula " << s << endl;
     cout << "; Pushed Formulat For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
 }
 
@@ -1225,6 +1227,27 @@ bool smtcheck_opensmt2t_lra::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 	return true; // Probably missed cased of false, so once found please add it
 }
 
+// Check if a literal is non-linear in the solver side
+bool smtcheck_opensmt2t_lra::is_non_linear_operator(PTRef tr)
+{
+    if (!lralogic->isRealDiv(tr) && !lralogic->isRealTimes(tr))
+        return false;
+    
+    // Get the original vars
+    const Pterm& t = logic->getPterm(tr);
+    if (t.size() < 2)
+        return false;
+    
+    // If we have 2 or more, than we can check if all constant but one
+    int count_var = 0;
+    for (int i = 0; i < t.size(); i++) {
+        if (!logic->isConstant(t[i]) && !lralogic->isRealConst(t[i]))
+            count_var++;
+    }
+    
+    return (count_var > 1);
+}
+
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t_lra::check_ce
@@ -1239,14 +1262,14 @@ Function: smtcheck_opensmt2t_lra::check_ce
 void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 {
 	// this method is used for testing mostly
-	char *msg=NULL;
+	char *msg = nullptr;
 
 	for (int i = 0; i < top_level_formulas.size(); i++){
-                char *s = logic->printTerm(top_level_formulas[i]);
-		cout << "\nCE:  " << s << endl;
-                free(s);
+	    char *s = logic->printTerm(top_level_formulas[i]);
+		std::cout << "\nCE:  " << s << '\n';
+        free(s);
 		mainSolver->insertFormula(top_level_formulas[i], &msg);
-		if (msg !=NULL) { free(msg); msg = NULL; }
+		if (msg !=nullptr) { free(msg); msg = nullptr; }
 	}
 	mainSolver->push();
 
@@ -1256,11 +1279,11 @@ void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 	    literalt l = convert(exprs[i]);
 	    PTRef lp = literals[l.var_no()];
 	    mainSolver->insertFormula(lp, &msg);
-	    if (msg !=NULL) { free(msg); msg = NULL; }
+	    if (msg != nullptr) { free(msg); msg = nullptr; }
 	    res = (s_True == mainSolver->check());
 	    if (!res){
                 char *s = logic->printTerm(lp);
-	    	cout << "\n  Problem could be here: " << s << endl;
+	    	std::cout << "\n  Problem could be here: " << s << '\n';
                 free(s);
 	    }
 //	    mainSolver->pop();  // TODO: uncomment this line and comment "&& res" in the guard

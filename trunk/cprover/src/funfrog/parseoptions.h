@@ -50,6 +50,7 @@ class value_set_alloc_adaptort;
   "(show-pass)(suppress-fail)(no-progress)" \
   "(show-claims)(claims-count)(all-claims)(claims-opt):(claim):(claimset):" \
   "(theoref)(force)(custom):(heuristic):(bitwidth):" \
+  "(sum-theoref)" \
   "(save-queries)(save-change-impact):" \
   "(tree-interpolants)(proof-trans):(reduce-proof)(reduce-proof-time):(reduce-proof-loops):(reduce-proof-graph):(color-proof):" \
   "(random-seed):(no-partitions)(no-itp)(verbose-solver):" \

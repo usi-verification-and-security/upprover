@@ -278,7 +278,7 @@ bool smt_symex_target_equationt::isRoundModelEq(const exprt &expr)
         return false;
 
     // Start checking if it is auto gen code for rounding model
-    string str = id2string((expr.operands()[0]).get(ID_identifier));
+    std::string str = id2string((expr.operands()[0]).get(ID_identifier));
     if (is_cprover_builtins_var(str))
         return true;
     

@@ -26,6 +26,10 @@ public:
   virtual void deserialize(std::vector<std::string> fileNames) override;
   virtual void insert_summary(summaryt *summary, const std::string & function_name) override;
 
+  void set_decider(smtcheck_opensmt2t * decider) {
+      this->decider = decider;
+  }
+
 protected:
 
 private:

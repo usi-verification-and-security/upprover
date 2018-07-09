@@ -15,11 +15,10 @@
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
 
-#include "assertion_info.h"
 #include "summary_store_fwd.h"
 
-class summarization_contextt;
 class call_tree_nodet;
+class assertion_infot;
 
 // Type of summarization applied at a specific call-site
 typedef enum {HAVOC, SUMMARY, INLINE} summary_precisiont;
@@ -55,10 +54,19 @@ public:
 
   const irep_idt& get_function_id() const { return function_id; }
 
+  /*
+   * Marks current node and all nodes in its subtree with corresponding precision.
+   *
+   * Inputs:
+   * default_precision (if none of the rules matches the situation of the node
+   * has_summary - a predicate deciding by function name, if there is a summary for that function
+   * last_assertion_loc - position of last assertion
+   *
+   */
     void set_initial_precision(
-        const summary_precisiont default_precision,
-        const summary_storet& summarization_summary_store,
-        const unsigned last_assertion_loc);
+            summary_precisiont default_precision,
+            const std::function<bool(const std::string &)> & has_summary,
+            unsigned last_assertion_loc);
 
   bool mark_enabled_assertions(
         const assertion_infot& assertion, unsigned depth,

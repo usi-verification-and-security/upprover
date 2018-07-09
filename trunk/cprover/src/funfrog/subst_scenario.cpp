@@ -9,6 +9,7 @@
 \*******************************************************************/
 
 #include "subst_scenario.h"
+#include "assertion_info.h"
 #include <fstream>
 #include <iostream>
 #include <cstring>
@@ -489,5 +490,13 @@ void subst_scenariot::get_unwinding_depth()
 }
 
 const goto_functionst::goto_functiont& subst_scenariot::get_goto_function(irep_idt fun) const{
-    return this->goto_functions.function_map.at(fun);
+    auto it = this->goto_functions.function_map.find(fun);
+    if (it != this->goto_functions.function_map.end()){
+        return it->second;
+    }
+
+    // The function is not present in goto_functions we got from CProver
+    std::cerr << "** Function ID " << fun << " is not found among goto functions" << std::endl;
+    assert(0); //Shouldn't get here
+    throw std::logic_error("Asking for unknown goto function");
 }

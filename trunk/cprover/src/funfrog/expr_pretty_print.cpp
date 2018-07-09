@@ -6,12 +6,12 @@ Author: Ondrej Sery
 
 \*******************************************************************/
 
+#ifdef DISABLE_OPTIMIZATIONS
+
 #include "expr_pretty_print.h"
 
-#ifdef DISABLE_OPTIMIZATIONS
 #include <iostream>
 #include <sstream>
-#include <stdlib.h>
 #include "hifrog.h"
 
 #define EDGE_COLOR "\033[2;37m"
@@ -26,15 +26,15 @@ std::string
 expr_pretty_printt::addToDeclMap(const exprt &expr) 
 {
     /* Exit if we don't save the prints for out stream in the end */
-    if (partition_smt_decl == NULL) 
+    if (partition_smt_decl == nullptr)
     {
         return "";
     }
     
     // Fix the type - SSA type => SMT type
     std::string type_expr = expr.type().id().c_str();
-    type_expr[0] = toupper(type_expr[0]);
-    if (type_expr.compare("Signedbv") == 0) 
+    type_expr[0] = static_cast<char>(std::toupper(type_expr[0]));
+    if (type_expr == "Signedbv")
     {
         type_expr = SMT_REAL;
         type_expr += " ";
@@ -49,9 +49,8 @@ expr_pretty_printt::addToDeclMap(const exprt &expr)
     }
     
     // Create the output
-    std::ostream out_code(0);
     std::stringbuf code_buf;
-    out_code.rdbuf(&code_buf);
+    std::ostream out_code(&code_buf);
     out_code << SYMBOL_COLOR << "|" << name_expr.c_str() << "| () " << TYPE_COLOR << type_expr.c_str() << NORMAL_COLOR;
     std::string key = code_buf.str();
     
@@ -59,7 +58,7 @@ expr_pretty_printt::addToDeclMap(const exprt &expr)
     //std::cout << "** Debug ** " << key << std::endl;
     if (partition_smt_decl->find(key) == partition_smt_decl->end())
     {
-            partition_smt_decl->insert(make_pair(key,expr));
+        partition_smt_decl->insert(make_pair(key,expr));
     }
     
     // Return the clean expression name (SMT-LIB style)
@@ -77,7 +76,7 @@ expr_pretty_printt::convertBinaryIntoDec(const exprt &expr)
     }
 
     std::string test = expr.print_number_2smt();
-    if (test.size() > 0)
+    if (!test.empty())
     {
         return stod(test);
     }
@@ -250,7 +249,8 @@ expr_pretty_printt::visit_SSA(const exprt& expr)
             if (is_prev_token) 
                 out << " ";
             
-            out << "("; is_prev_token = true;
+            out << "(";
+            is_prev_token = true;
         }
 
         (*this)(expr);
@@ -302,11 +302,7 @@ bool expr_pretty_printt::isTypeCast2Convert(const exprt& expr)
 {
     if (!expr.has_operands()) return false;
     
-    
-    if (expr.id() == ID_typecast) return true;
-    if (expr.id() == ID_floatbv_typecast) return true; 
-    
-    return false;
+    return expr.id() == ID_typecast || expr.id() == ID_floatbv_typecast;
 }
 
 void expr_pretty_printt::convertTypecast(const exprt& expr)

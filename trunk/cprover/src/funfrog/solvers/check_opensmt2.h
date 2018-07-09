@@ -13,7 +13,6 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 #include <opensmt/opensmt2.h>
 #include "interpolating_solver.h"
 
-class prop_conv_solvert;
 class literalt;
 /*
  TODO: think how to generalize this class and interpolating_solvert to be 
@@ -28,9 +27,9 @@ class check_opensmt2t :  public interpolating_solvert
 {
 public:
   check_opensmt2t(bool reduction, int reduction_graph, int reduction_loops) :
-      osmt  (NULL),
-      logic (NULL),
-      mainSolver (NULL),
+      osmt  (nullptr),
+      logic (nullptr),
+      mainSolver (nullptr),
 #ifdef DISABLE_OPTIMIZATIONS                
       dump_queries(false),
       dump_pre_queries(false),
@@ -42,7 +41,7 @@ public:
       itp_algorithm(itp_alg_mcmillan),
       itp_euf_algorithm(itp_euf_alg_strong),
       itp_lra_algorithm(itp_lra_alg_strong),
-      itp_lra_factor(NULL),
+      itp_lra_factor(nullptr),
       reduction(reduction),
       reduction_graph(reduction_graph),
       reduction_loops(reduction_loops),
@@ -57,8 +56,6 @@ public:
       // KE: not created here, so don't free it here!
       // This is common to all logics: prop, lra, qfuf, qfcuf
   }
-
-  virtual prop_conv_solvert* get_prop_conv_solver()=0;
   
 
 #ifdef PRODUCE_PROOF  
@@ -91,10 +88,10 @@ public:
   void set_random_seed(unsigned int i)
   {
     random_seed = i;
-    if (osmt != NULL) {
-        const char* msg=NULL;
+    if (osmt != nullptr) {
+        const char* msg=nullptr;
         osmt->getConfig().setOption(SMTConfig::o_random_seed, SMTOption((int)random_seed), msg);
-        if (msg != NULL) free((char *)msg); // If there is an error consider printing the msg
+        if (msg != nullptr) free((char *)msg); // If there is an error consider printing the msg
     }
   }
 
@@ -107,15 +104,18 @@ public:
 #ifdef DISABLE_OPTIMIZATIONS  
   void set_dump_query(bool f)
   {
-    if (osmt != NULL) {
-        const char* msg=NULL;
+    if (osmt != nullptr) {
+        const char* msg=nullptr;
         osmt->getConfig().setOption(SMTConfig::o_dump_query, SMTOption(f), msg);
     }
+    
+    dump_queries = f;
   }
+  bool get_dump_queries() { return dump_queries;}
 
   void set_dump_query_name(const string& n)
   {
-      if (osmt != NULL) {
+      if (osmt != nullptr) {
           osmt->getConfig().set_dump_query_name(n.c_str());
       }
       
@@ -123,6 +123,7 @@ public:
   }
   
   void set_dump_pre_query(bool f) { dump_pre_queries = f;}
+  bool get_dump_pre_query() { return dump_pre_queries;}
 #endif
 
   MainSolver * getMainSolver() { return mainSolver; }

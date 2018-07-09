@@ -9,6 +9,12 @@ Author: Grigory Fedyukovich
 #include "satcheck_opensmt2.h"
 #include "prop_itp.h"
 
+#ifdef DISABLE_OPTIMIZATIONS
+#include <fstream>
+#include <iostream>
+#include "../hifrog.h"
+#endif
+
 void satcheck_opensmt2t::initializeSolver(const char* name)
 {
     osmt = new Opensmt(opensmt_logic::qf_bool, name);
@@ -143,8 +149,7 @@ literalt satcheck_opensmt2t::extract_itp_rec(PTRef ptref,
   }
   else
   {
-      Pterm& ptm = logic->getPterm(ptref);
-      assert(ptm.size() == 0);
+      assert(logic->getPterm(ptref).size() == 0);
       result.set(decode_id(logic->getSymName(ptref)), false);
   } 
    
@@ -156,7 +161,8 @@ literalt satcheck_opensmt2t::extract_itp_rec(PTRef ptref,
 }
 
 // helper interpolation method taken from opensmt
-void satcheck_opensmt2t::produceConfigMatrixInterpolants (const vector< vector<int> > &configs, vector<PTRef> &interpolants)
+void satcheck_opensmt2t::produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs,
+                                                          std::vector<PTRef> &interpolants)
 {
   SimpSMTSolver& solver = osmt->getSolver();
 
@@ -205,7 +211,7 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   // Create the proof graph
   solver.createProofGraph();
 
-  vector<PTRef> itp_ptrefs;
+  std::vector<PTRef> itp_ptrefs;
 
   // iterative call of getSingleInterpolant:
   produceConfigMatrixInterpolants(partition_ids, itp_ptrefs);
@@ -370,18 +376,36 @@ Function: satcheck_opensmt2t::prop_solve
 
 propt::resultt satcheck_opensmt2t::prop_solve() {
 
-#ifdef DISABLE_OPTIMIZATIONS    
+#ifdef DISABLE_OPTIMIZATIONS   
   if (dump_queries){
     char *msg=NULL;
     mainSolver->writeSolverState_smtlib2("__SAT_query", &msg);
     if (msg != NULL) free(msg); // If there is an error consider printing the msg
   }
   
-  // TODO
-  if (dump_pre_queries)
-      std::cerr << "** (dump_pre_queries) OPTION IS NOT AVAILABLE IN PROPOSITIONAL LOGIC **" << std::endl;
+  // Print Pre-query to file
+  if (dump_pre_queries) {
+      ofstream out_sat_pre_query;
+      out_sat_pre_query.open(pre_queries_file_name+"_"+std::to_string(get_dump_current_index())+".smt2");  
+      
+      // Print Header
+      mainSolver->getLogic().dumpHeaderToFile(out_sat_pre_query);
+      
+      // Print body + ite's
+      for(int i = 0; i < top_level_formulas.size(); ++i) {
+        out_sat_pre_query << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << '\n';
+        char* s = logic->printTerm(top_level_formulas[i]);
+        out_sat_pre_query << "(assert (and \n" << s << "\n))\n";
+        free(s);
+        s = NULL;
+      }
+      
+      // Close the file
+      out_sat_pre_query << "(check-sat)\n" << std::endl;
+      out_sat_pre_query.close();
+  } 
 #endif 
-
+  
   assert(status != statust::ERROR);
 #ifdef PRODUCE_PROOF  
   ready_to_interpolate = false;

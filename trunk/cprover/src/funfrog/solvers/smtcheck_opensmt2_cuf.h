@@ -89,7 +89,7 @@ protected:
 
   mp_integer max_num; // w.r.t. current bitwidth
 
-  map<size_t, PTRef> converted_bitblasted_exprs;
+  std::map<size_t, PTRef> converted_bitblasted_exprs;
 
   irep_idt _fails_type_id; // Reason 2 fail of CUF theoref
         
@@ -112,6 +112,10 @@ protected:
   void add_constraints4chars_bv_bool(const exprt &expr, PTRef &var, int size, const irep_idt type_id);
   
   void add_constraints4chars_numeric(PTRef &var, int size, const irep_idt type_id);
+  
+  virtual bool can_have_non_linears() override { return true; } ;
+  
+  virtual bool is_non_linear_operator(PTRef tr) override;
 };
 
 void getVarsInExpr(exprt& e, std::set<exprt>& vars);
