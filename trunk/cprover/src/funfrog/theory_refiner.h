@@ -15,13 +15,11 @@ public:
   theory_refinert(
     const goto_programt &_goto_program,
     const goto_functionst &_goto_functions,
-    const namespacet &_ns,
-    symbol_tablet &_symbol_table,
+    const symbol_tablet &_symbol_table,
     const optionst& _options,
     ui_message_handlert &_message_handler
     ) :
       goto_program(_goto_program),
-      ns(_ns),
       symbol_table(_symbol_table),
       options(_options),
       message_handler (_message_handler),
@@ -38,8 +36,7 @@ public:
   
 private:
   const goto_programt &goto_program;
-  const namespacet &ns;
-  symbol_tablet &symbol_table;
+  const symbol_tablet &symbol_table;
   const optionst &options;
   ui_message_handlert &message_handler;
   smtcheck_opensmt2t_cuf* decider; // CUF solver

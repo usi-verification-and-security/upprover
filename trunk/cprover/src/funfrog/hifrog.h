@@ -14,7 +14,6 @@
 #include <util/ssa_expr.h>
 
 // For now we have only one thread any hows
-#define UNSUPPORTED_VAR_NAME "hifrog::c::unsupported_op2var"
 
 #define CPROVER_BUILDINS "__CPROVER_"
 #define ROUNDING_MODE "__CPROVER_rounding_mode!"

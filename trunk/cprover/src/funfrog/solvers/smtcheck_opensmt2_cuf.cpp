@@ -9,6 +9,7 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2_cuf.h"
 #include "../hifrog.h"
 #include <opensmt/BitBlaster.h>
+#include <funfrog/utils/naming_helpers.h>
 
 // Debug flags of this class:
 //#define SMT_DEBUG
@@ -48,6 +49,7 @@ void smtcheck_opensmt2t_cuf::initializeSolver(const char* name)
     // a struct into std::vector and use [] before any push_back
     literals.push_back(PTRef());
     literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0] - NEVER COMMENT THIS LINE!!!
+    (void)l;
     literals[0] = logic->getTerm_true(); // Which is .x =0
     assert(l.var_no() != literalt::unused_var_no()); // KE: for cmake warnings
     // KE: End of fix
@@ -90,7 +92,7 @@ Function: smtcheck_opensmt2t_cuf::unsupported2var_bv
 \*******************************************************************/
 PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
 {
-    string str;
+    std::string str;
     
     // Tries to map unsupported to another unsupported
     if (converted_exprs.find(expr.hash()) != converted_exprs.end()) {
@@ -104,7 +106,7 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
     }
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS AN UNSUPPORTED VAR " << str 
-                << " of TYPE " << expr.type().id_string() << endl;
+                << " of TYPE " << expr.type().id_string() << std::endl;
 #endif   
         
     _fails_type_id = (((expr.id() == ID_nondet_symbol) || (expr.id() == ID_symbol)))
@@ -132,8 +134,7 @@ Function: smtcheck_opensmt2t_cuf::var_bv
 \*******************************************************************/
 PTRef smtcheck_opensmt2t_cuf::var_bv(const exprt &expr)
 {
-    const irep_idt &_id=expr.id(); // KE: gets the id once for performance
-    assert(_id==ID_symbol || _id==ID_nondet_symbol); // Only for data types!!
+    assert(expr.id()==ID_symbol || expr.id()==ID_nondet_symbol); // Only for data types!!
     
    
     // Check if we suppose to have a support for this
@@ -191,7 +192,7 @@ PTRef smtcheck_opensmt2t_cuf::get_bv_const(const char* val)
 #ifdef DEBUG_SMT_BB 
     char *s = logic->printTerm(lconst);
     std::cout << "Const " << val << " is in OpenSMT " << s << std::endl;
-    free(s);
+    free(s); s=NULL;
 #endif    
     return lconst;
 }
@@ -212,7 +213,7 @@ bool smtcheck_opensmt2t_cuf::convert_bv_eq_ite(const exprt &expr, PTRef& ptl)
     assert (expr.id() == ID_equal || expr.id() == ID_ieee_float_equal);
     
 #ifdef DEBUG_SMT_BB
-    cout << "; IT IS A EQ ITE " << expr.id() << endl;
+    cout << "; IT IS A EQ ITE " << expr.id() << std::endl;
 #endif
     
     exprt sing;
@@ -279,7 +280,7 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
     {
         // No inf values in toy models!
         if ((bitwidth != 32) && (bitwidth != 64) && (bitwidth != 128)) {
-            cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far (inf).\n\n";
+            std::cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far (inf).\n\n";
             exit(0);
         }
 
@@ -300,8 +301,8 @@ PTRef smtcheck_opensmt2t_cuf::lconst_bv(const exprt &expr)
         // Check if fits - using cprover information
         if (expr.type().get_unsigned_int("width") > this->bitwidth)
         {
-            cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-            cout << "\n  Data " << str << "(width " << expr.type().get_unsigned_int("width") << ")" << " is not in between " 
+            std::cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+            std::cout << "\n  Data " << str << "(width " << expr.type().get_unsigned_int("width") << ")" << " is not in between "
                     << (-max_num) << " and " << (max_num-1) << std::endl;
                 
             /* Report always, but only exit if must to */
@@ -401,8 +402,8 @@ PTRef smtcheck_opensmt2t_cuf::type_cast_bv(const exprt &expr)
         {
             if (expr.type().get_unsigned_int("width") > this->bitwidth)
             {
-                cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
-                cout << "\n  Data " << expr.print_number_2smt() << "(width " << expr.type().get_unsigned_int("width") << ")" << " is not in between " 
+                std::cout << "\nNo support for \"big\" (> " << bitwidth << " bit) integers so far.\n\n";
+                std::cout << "\n  Data " << expr.print_number_2smt() << "(width " << expr.type().get_unsigned_int("width") << ")" << " is not in between "
                         << (-max_num) << " and " << (max_num-1) << std::endl;
                 exit(0);
             }
@@ -488,8 +489,8 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
     
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
-    cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    std::cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
+    free(s); s=NULL;
 #endif
 
     return ptl;
@@ -519,7 +520,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv_char(PTRef &var,
     if (type_id_c == ID_signed_char)
     {
 #ifdef SMT_DEBUG_VARS_BOUNDS
-    	cout << "; Adding new constraint for char signed" << endl;
+    	std::cout << "; Adding new constraint for char signed" << std::endl;
 #endif
         // Is from -128 to 127
     	lower_bound = "-128";
@@ -528,7 +529,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv_char(PTRef &var,
     else if (type_id_c == ID_unsigned_char)
     {
 #ifdef SMT_DEBUG_VARS_BOUNDS
-    	cout << "; Adding new constraint for char unsigned" << endl;
+    	std::cout << "; Adding new constraint for char unsigned" << std::endl;
 #endif
         // Is from 0 to 255
     	lower_bound = "0";
@@ -538,7 +539,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv_char(PTRef &var,
     else if (type_id_c == ID_char)
     {
 #ifdef SMT_DEBUG_VARS_BOUNDS
-        cout << "; Adding new constraint for char " << ((type_id==ID_signedbv) ? "signed" : "unsigned") << endl;
+        std::cout << "; Adding new constraint for char " << ((type_id==ID_signedbv) ? "signed" : "unsigned") << std::endl;
 #endif
         // Is either from -128 to 127 or from 0 to 255;
         lower_bound = ((type_id==ID_signedbv) ? "-128" : "0");
@@ -572,9 +573,9 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv_char(PTRef &var,
     bitblaster->insertEq(lp, tmp);
 #ifdef DEBUG_SMT_BB
         char *s = logic->printTerm(ptl);
-        cout <<  "\n;; Type Byte Constraints: (" << lower_bound << " to "
-                << upper_bound << ")\n" << s << endl;
-        free(s);
+        std::cout <<  "\n;; Type Byte Constraints: (" << lower_bound << " to "
+                << upper_bound << ")\n" << s << std::endl;
+        free(s); s=NULL;
 #endif 
  }
 
@@ -603,7 +604,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv_bool(
     if (expr.is_boolean())
     {    
     #ifdef SMT_DEBUG_VARS_BOUNDS
-        cout << "; Adding new constraint for boolean" << endl;
+        std::cout << "; Adding new constraint for boolean" << std::endl;
     #endif
         
         ptl = bvlogic->mkBVLor(
@@ -614,7 +615,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv_bool(
     else if (expr.type().id() == ID_c_bool)
     {
     #ifdef SMT_DEBUG_VARS_BOUNDS
-        cout << "; Adding new constraint for C-bool" << endl;
+        std::cout << "; Adding new constraint for C-bool" << std::endl;
     #endif
         // The implementation contains support to: 16,32 and 64 bits only
         assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
@@ -656,8 +657,8 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv_bool(
 
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(ptl);
-    cout <<  "\n;; Type Byte Constraints for Bool: \n" << s << endl;
-    free(s);
+    std::cout <<  "\n;; Type Byte Constraints for Bool: \n" << s << std::endl;
+    free(s); s=NULL;
 #endif
 }
 
@@ -687,7 +688,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_numeric(
     if(type_id==ID_unsignedbv) // unsigned int = 32, unsigned long = 64
     {
     #ifdef SMT_DEBUG_VARS_BOUNDS
-        cout << "; Adding new constraint for unsigned " << ((size==32) ? "int" : "long") << endl;
+        std::cout << "; Adding new constraint for unsigned " << ((size==32) ? "int" : "long") << std::endl;
     #endif
         // The implementation contains support to: 16,32 and 64 bits only
         assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
@@ -703,7 +704,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_numeric(
     else if(type_id==ID_signedbv) // int = 32, long = 64
     {
     #ifdef SMT_DEBUG_VARS_BOUNDS
-        cout << "; Adding new constraint for " << ((size==32) ? "int" : "long") << endl;
+        std::cout << "; Adding new constraint for " << ((size==32) ? "int" : "long") << std::endl;
     #endif
         // The implementation contains support to: 16,32 and 64 bits only
         assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
@@ -717,7 +718,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_numeric(
     else if(type_id==ID_floatbv) // float = 32, double = 64
     {
     #ifdef SMT_DEBUG_VARS_BOUNDS
-        cout << "; Adding new constraint for unsigned " << ((size==32) ? "float" : "double") << endl;
+        std::cout << "; Adding new constraint for unsigned " << ((size==32) ? "float" : "double") << std::endl;
     #endif
         // The implementation contains support to: 32 and 64 bits only
         assert("Data numerical type constraints for bytes are valid for 32,64,128,256 bit-width or up" 
@@ -755,9 +756,9 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_numeric(
     bitblaster->insertEq(lp, tmp);
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(ptl);
-    cout <<  "\n;; Type Byte Constraints: (" << lower_bound << " to "
-                << upper_bound << ")\n" << s << endl;
-    free(s);
+    std::cout <<  "\n;; Type Byte Constraints: (" << lower_bound << " to "
+                << upper_bound << ")\n" << s << std::endl;
+    free(s); s=NULL;
 #endif        
 }
 
@@ -854,7 +855,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
              
     } else if (_id==ID_symbol || _id==ID_nondet_symbol) {
 #ifdef DEBUG_SMT_BB
-        cout << "; IT IS A VAR" << endl;
+        std::cout << "; IT IS A VAR" << std::endl;
 #endif
         ptl = var_bv(expr);
         
@@ -863,13 +864,13 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
        
 #ifdef DEBUG_SMT_BB
         char* s = logic->printTerm(ptl);
-        cout << "; CREATE A VAR in OPENSMT2 " << s << " of type " << expr.type().id_string() << endl;
-        free(s);
+        std::cout << "; CREATE A VAR in OPENSMT2 " << s << " of type " << expr.type().id_string() << std::endl;
+        free(s); s=NULL;
 #endif
     } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) 
                                                 && !expr.operands().empty()) {
 #ifdef DEBUG_SMT_BB
-        cout << "; IT IS A TYPE-CAST " << endl;
+        std::cout << "; IT IS A TYPE-CAST " << std::endl;
 #endif           
         ptl = type_cast_bv(expr);
 
@@ -879,13 +880,13 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
                 
     } else if (_id==ID_constant) {
 #ifdef DEBUG_SMT_BB
-        cout << "; IT IS A CONSTANT " << endl;
+        std::cout << "; IT IS A CONSTANT " << std::endl;
 #endif        
         ptl = lconst_bv(expr);
 #ifdef DEBUG_SMT_BB
         char* s = logic->printTerm(ptl);
-        cout << "; CREAT A CONSTANT in OPENSMT2 " << s << endl;
-        free(s);
+        std::cout << "; CREAT A CONSTANT in OPENSMT2 " << s << std::endl;
+        free(s); s=NULL;
 #endif          
         
     } else if (_id == ID_abs) {
@@ -983,7 +984,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
                (_id == ID_ieee_float_equal) || 
                (_id == ID_assign)) {
 #ifdef DEBUG_SMT_BB
-            cout << "; IT IS = " << endl;
+            std::cout << "; IT IS = " << std::endl;
 #endif         
         if (!convert_bv_eq_ite (expr, ptl))
             ptl = bvlogic->mkBVEq(
@@ -992,7 +993,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 
     } else if (_id == ID_not) {
 #ifdef DEBUG_SMT_BB
-            cout << "; IT IS ! " << endl;
+            std::cout << "; IT IS ! " << std::endl;
 #endif 
         ptl = bvlogic->mkBVNot(
                     convert_bv(expr.operands()[0]));
@@ -1000,7 +1001,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     } else if ((_id==ID_notequal) || 
                (_id == ID_ieee_float_notequal)) {
 #ifdef DEBUG_SMT_BB
-            cout << "; IT IS != " << endl;
+            std::cout << "; IT IS != " << std::endl;
 #endif       
         ptl = bvlogic->mkBVNot(
                     bvlogic->mkBVEq(convert_bv(expr.operands()[0]),
@@ -1028,7 +1029,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
         }
 
 #ifdef DEBUG_SMT_BB
-        cout << "; IT IS A " << _id.c_str() << endl;
+        std::cout << "; IT IS A " << _id.c_str() << std::endl;
 #endif
         if (_id == ID_if) {       
             if (args.size() == 2) {
@@ -1171,8 +1172,8 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
     
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(ptl);
-    cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    std::cout << "; For " << _id << " Created OpenSMT2 formula " << s << std::endl;
+    free(s); s=NULL;
 #endif
     
     return ptl;
@@ -1298,7 +1299,7 @@ exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
         std::cout << "Getting value for " << s 
                 << " which " << ((is_expr_bb)? "was bb" : "was not bb") 
                 << std::endl;
-        free(s);
+        free(s); s=NULL;
 #endif
         
         // Get the value of the PTRef
@@ -1385,7 +1386,7 @@ literalt smtcheck_opensmt2t_cuf::const_var_Number(const exprt &expr)
 {
     //TODO: Check this
     literalt l;
-    string num = extract_expr_str_number(expr);
+    std::string num = extract_expr_str_number(expr);
     PTRef rconst = PTRef_Undef;
     if (num.size() <= 0)
     {
@@ -1455,9 +1456,9 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
         {
             char *s = logic->printTerm(logic->getTopLevelIte(ptl));
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-            //cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")" 
-            //    << string(getPTermString(ptl)) << endl << s << endl;
-            free(s);    
+            //std::cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")"
+            //    << string(getPTermString(ptl)) << std::endl << s << std::endl;
+            free(s); s=NULL;    
         }
 #endif          
         
@@ -1494,7 +1495,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
 //        return converted_exprs[expr.hash()];
 
 #ifdef SMT_DEBUG
-    cout << "\n\n; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;
+    std::cout << "\n\n; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ std::endl;
 #endif
 
     const irep_idt &_id=expr.id(); // KE: gets the id once for performance
@@ -1513,30 +1514,30 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
              
     } else if (_id==ID_symbol || _id==ID_nondet_symbol) {
 #ifdef SMT_DEBUG
-        cout << "; IT IS A VAR" << endl;
+        std::cout << "; IT IS A VAR" << std::endl;
 #endif
         l = lvar(expr);
     } else if (_id==ID_constant) {
 #ifdef SMT_DEBUG
-        cout << "; IT IS A CONSTANT " << endl;
+        std::cout << "; IT IS A CONSTANT " << std::endl;
 #endif
         l = lconst(expr);
     } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) && expr.has_operands()) {
 #ifdef SMT_DEBUG
         bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
-        cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
+        std::cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << std::endl;
 #endif
         // KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
         l = type_cast(expr);
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
-    cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    std::cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
+    free(s); s=NULL;
 #endif
     } else if (_id==ID_typecast || _id==ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
-        cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << expr.id() << ")" << endl;
+        std::cout << "EXIT WITH ERROR: operator does not yet supported in the QF_UF version (token: " << expr.id() << ")" << std::endl;
         assert(false); // Need to take care of - typecast no operands
 #else
         l = lunsupported2var(expr);
@@ -1544,7 +1545,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
 #endif
     } else {
 #ifdef SMT_DEBUG
-        cout << "; IT IS AN OPERATOR" << endl;
+        std::cout << "; IT IS AN OPERATOR" << std::endl;
 #endif
         vec<PTRef> args;
         int i = 0;
@@ -1605,7 +1606,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
                 {
                     char *s = logic->printTerm(logic->getTopLevelIte(ptl));
                     ite_map_str.insert(make_pair(string(getPTermString(ptl)), std::string(s)));
-                    free(s);    
+                    free(s); s=NULL;    
                 }
 #endif
             }
@@ -1618,7 +1619,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             {
                 char *s = logic->printTerm(logic->getTopLevelIte(ptl));
                 ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-                free(s);
+                free(s); s=NULL;
             }
 #endif
         } else if (_id == ID_and) {
@@ -1807,8 +1808,8 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             PTRef var_eq = create_equation_for_unsupported(expr);
             set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
         } else {
-            cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
-                        << expr.id() << ")" << endl;
+            std::cout << "EXIT WITH ERROR: operator does not yet supported in the CUF version (token: "
+                        << expr.id() << ")" << std::endl;
             assert(false); // KE: tell me if you get here!
         }
         l = push_variable(ptl); // Keeps the new PTRef + create for it a new index/literal
@@ -1817,8 +1818,8 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
 #ifdef SMT_DEBUG
     PTRef ptr = literals[l.var_no()];
     char *s = logic->printTerm(ptr);
-    cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    std::cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
+    free(s); s=NULL;
 #endif
     return l;
 }
@@ -1967,14 +1968,14 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
     }
 
     // Else continue as before
-    string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    str = quote_varname(str);
+    std::string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
+    str = quote_if_necessary(str);
 
     // Nil is a special case - don't create a var but a val of true
     if (str.compare(NIL) == 0) return const_var(true);
 
 #ifdef SMT_DEBUG
-    cout << "; (lvar) Create " << str << endl;
+    std::cout << "; (lvar) Create " << str << std::endl;
 #endif
 
     // Else if it is really a var, continue and declare it!
@@ -1987,8 +1988,8 @@ literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
         var = logic->mkBoolVar(str.c_str());
     else { // Is a function with index, array, pointer
 #ifdef SMT_DEBUG
-        cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
-             << expr.type().id() << ")" << endl;
+        std::cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
+             << expr.type().id() << ")" << std::endl;
         assert(false); // No support yet for arrays
 #else
         literalt l_unsupported = lunsupported2var(expr);
@@ -2036,7 +2037,7 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
         PTRef old_bv = bitblaster->getBoundPTRef(pt1);
         std::cout << " -- Term " << s << " is already refined with "
               << s_old << " and so we skip " << std::endl;
-        free(s); free(s_old);
+        free(s); s=NULL; free(s_old);
 #endif
     } else {
         PTRef expr_bv = convert_bv(expr);
@@ -2045,7 +2046,7 @@ void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
         char *s = logic->printTerm(ptl);
         char *s_old = logic->printTerm(old_bv);
         std::cout << " -- Bind terms " << s << " and " << s_old << std::endl;
-        free(s); free(s_old);
+        free(s); s=NULL; free(s_old);
 #endif
 
         bitblaster->bindCUFToBV(pt1, expr_bv); // (PTRef cuf_tr, PTRef bv_tr)
@@ -2071,7 +2072,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const e
     assert((step == 1) == (end - start >= 0));
 
 #ifdef DEBUG_SMT_BB
-    cout << "Check CE for " <<exprs.size() << " terms " << std::endl;
+    std::cout << "Check CE for " <<exprs.size() << " terms " << std::endl;
 #endif
 
     std::set<exprt> encoded_vars;
@@ -2090,7 +2091,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const e
 
 #ifdef DEBUG_SMT_BB
             if (model.find(*it) == model.end()) {
-                cout << "No model for " << it->get("identifier") << "\n";
+                std::cout << "No model for " << it->get("identifier") << "\n";
                 assert(0);
             }
 #endif
@@ -2101,8 +2102,8 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const e
             encoded_vars.insert(*it);
 #ifdef DEBUG_SMT_BB
             char *s = logic->printTerm(ce_term);
-            cout <<  "  CE value: " << s << endl;
-            free(s);
+            std::cout <<  "  CE value: " << s << std::endl;
+            free(s); s=NULL;
 #endif
         }
 
@@ -2112,8 +2113,8 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const e
 
 #ifdef DEBUG_SMT_BB
         char *s = logic->printTerm(lp);
-        cout <<  "  Validating: [" << i << "]: " << s << endl;
-        free(s);
+        std::cout <<  "  Validating: [" << i << "]: " << s << std::endl;
+        free(s); s=NULL;
 #endif
 
         BVRef tmp;
@@ -2123,7 +2124,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const e
             bitblaster->insertEq(lp, tmp);
         } else if (bvlogic->isBVOne(lp)) {
 #ifdef DEBUG_SMT_BB            
-            cout << " " << (exprs[i]).pretty() << endl;
+            std::cout << " " << (exprs[i]).pretty() << std::endl;
 #endif
             // assert(0); // Probably true (as 0000..0001)
         } else if (bvlogic->isBVZero(lp)) {
@@ -2167,7 +2168,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const e
 
                     weak.insert(j);
 #ifdef DEBUG_SMT_BB
-                    cout << "Potentially weak statement encoding [" << j << "] found" << endl;
+                    std::cout << "Potentially weak statement encoding [" << j << "] found" << std::endl;
 #endif
                 }
             }
@@ -2192,7 +2193,7 @@ Function: smtcheck_opensmt2t_cuf::refine_ce_one_iter
 void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i)
 {
     if (!exprs[i].has_operands() || exprs[i].operands().size() < 2){
-        cout << "what should we do with it?" << endl;
+        std::cout << "what should we do with it?" << std::endl;
         return;
     }
 
@@ -2218,8 +2219,8 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
 
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(lp);
-    cout <<  "  Refining [" << i << "]: " << s << endl;
-    free(s);
+    std::cout <<  "  Refining [" << i << "]: " << s << std::endl;
+    free(s); s=NULL;
 #endif
 
     BVRef tmp;
@@ -2231,8 +2232,8 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
         ; // No action
     } else {
         char *s = logic->printTerm(lp);
-        cout <<  "; Skip Refining [" << i << "]: " << s << endl;
-        free(s);
+        std::cout <<  "; Skip Refining [" << i << "]: " << s << std::endl;
+        free(s); s=NULL;
     }
 }
 
@@ -2252,7 +2253,7 @@ bool smtcheck_opensmt2t_cuf::refine_ce_solo(std::vector<exprt>& exprs, int i)
     refine_ce_one_iter(exprs, i);
     
 #ifdef DEBUG_SMT_BB
-    cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
+    std::cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << std::endl;
 #endif     
     bitblaster->notifyEqualities();
 
@@ -2285,7 +2286,7 @@ bool smtcheck_opensmt2t_cuf::refine_ce_mul(std::vector<exprt>& exprs, std::set<i
     if (res) return res;
 
 #ifdef DEBUG_SMT_BB
-    cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
+    std::cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << std::endl;
 #endif     
     bitblaster->notifyEqualities();
 
@@ -2311,7 +2312,7 @@ bool smtcheck_opensmt2t_cuf::force_refine_ce(std::vector<exprt>& exprs, std::set
     }
     
 #ifdef DEBUG_SMT_BB
-    cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << endl;
+    std::cout <<  "  Before Notify Equalities for " << exprs.size() << " Equalities" << std::endl;
 #endif    
     bitblaster->notifyEqualities();
 
@@ -2389,4 +2390,25 @@ void getVarsInExpr(exprt& e, std::set<exprt>& vars)
             getVarsInExpr(e.operands()[i], vars);
         }
     }
+}
+
+// Check if a literal is non-linear in the solver side
+bool smtcheck_opensmt2t_cuf::is_non_linear_operator(PTRef tr)
+{
+    if (!uflogic->isCUFDiv(tr) && !uflogic->isCUFTimes(tr) && !uflogic->isCUFMod(tr))
+        return false;
+    
+    // Get the original vars
+    const Pterm& t = logic->getPterm(tr);
+    if (t.size() < 2)
+        return false;
+    
+    // If we have 2 or more, than we can check if all constant but one
+    int count_var = 0;
+    for (int i = 0; i < t.size(); i++) {
+        if (!logic->isConstant(t[i]) && !uflogic->isCUFNUMConst(tr))
+            count_var++;
+    }
+    
+    return (count_var > 1);
 }

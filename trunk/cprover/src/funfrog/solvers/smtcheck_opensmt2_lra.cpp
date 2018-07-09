@@ -7,6 +7,7 @@ Author: Grigory Fedyukovich
 \*******************************************************************/
 #include "smtcheck_opensmt2_lra.h"
 #include <util/type.h>
+#include <funfrog/utils/naming_helpers.h>
 #include "../hifrog.h"
 
 /*******************************************************************\
@@ -35,6 +36,7 @@ void smtcheck_opensmt2t_lra::initializeSolver(const char* name)
     // a struct into std::vector and use [] before any push_back
     literals.push_back(PTRef());
     literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0] - NEVER COMMENT THIS LINE!!!
+    (void)l;
     literals[0] = logic->getTerm_true(); // Which is .x =0
     assert(l.var_no() != literalt::unused_var_no()); // KE: for cmake warnings
     // KE: End of fix
@@ -106,7 +108,7 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
               ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
               //cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")"
               //    << string(getPTermString(ptl)) << endl << s << endl;
-              free(s);
+              free(s); s=NULL;
             }
         }
 #endif        
@@ -149,7 +151,7 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
         ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
         //cout << "; XXX oite symbol (labs):  (" << ite_map_str.size() << ")" 
         //            << string(getPTermString(ptl)) << endl << s << endl;
-        free(s);        
+        free(s); s=NULL;        
     }
 #endif
     
@@ -158,7 +160,7 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
 
     return l;
@@ -178,14 +180,14 @@ Function: smtcheck_opensmt2t_lra::check_ce
 void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 {
 	// this method is used for testing mostly
-	char *msg=NULL;
+	char *msg = nullptr;
 
 	for (int i = 0; i < top_level_formulas.size(); i++){
-                char *s = logic->printTerm(top_level_formulas[i]);
-		cout << "\nCE:  " << s << endl;
-                free(s);
+	    char *s = logic->printTerm(top_level_formulas[i]);
+		std::cout << "\nCE:  " << s << '\n';
+        free(s);
 		mainSolver->insertFormula(top_level_formulas[i], &msg);
-		if (msg !=NULL) { free(msg); msg = NULL; }
+		if (msg !=nullptr) { free(msg); msg = nullptr; }
 	}
 	mainSolver->push();
 
@@ -195,11 +197,11 @@ void smtcheck_opensmt2t_lra::check_ce(std::vector<exprt>& exprs)
 	    literalt l = convert(exprs[i]);
 	    PTRef lp = literals[l.var_no()];
 	    mainSolver->insertFormula(lp, &msg);
-	    if (msg !=NULL) { free(msg); msg = NULL; }
+	    if (msg != nullptr) { free(msg); msg = nullptr; }
 	    res = (s_True == mainSolver->check());
 	    if (!res){
                 char *s = logic->printTerm(lp);
-	    	cout << "\n  Problem could be here: " << s << endl;
+	    	std::cout << "\n  Problem could be here: " << s << '\n';
                 free(s);
 	    }
 //	    mainSolver->pop();  // TODO: uncomment this line and comment "&& res" in the guard

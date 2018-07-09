@@ -100,6 +100,8 @@ set(HIFROG_SOURCE_FILES
         #reportt.cpp reportt.h
         )
 
+option(PRODUCE_PROOF "" ON)
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modules/")
 
 find_package(GMP REQUIRED)
@@ -111,7 +113,10 @@ target_include_directories(hifrog PRIVATE ${PROJECT_SOURCE_DIR})
 
 target_compile_options(hifrog PRIVATE  -Wall)
 
-target_compile_definitions(hifrog PUBLIC -DPRODUCE_PROOF)
+if(PRODUCE_PROOF)
+    #message("Compiling with PRODUCE_PROOF")
+    target_compile_definitions(hifrog PUBLIC -DPRODUCE_PROOF)
+endif(PRODUCE_PROOF)
 
 target_compile_definitions(hifrog PRIVATE
     #-DDEBUG_PARTITIONING
@@ -121,7 +126,18 @@ target_compile_definitions(hifrog PRIVATE
     #-DDISABLE_OPTIMIZATIONS
     )
 
-target_link_libraries(hifrog -lopensmt2 ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
+find_library(OPENSMT2_LIB NAMES opensmt2 libopensm2)
+if(NOT OPENSMT2_LIB)
+	message(FATAL_ERROR "opensmt library not found")
+endif()
+
+find_path(OPENSMT2_INCLUDE opensmt/opensmt2.h)
+if(NOT OPENSMT2_INCLUDE)
+	message(FATAL_ERROR "opensmt header files not found")
+endif()
+
+target_include_directories(hifrog SYSTEM PUBLIC ${OPENSMT2_INCLUDE})
+target_link_libraries(hifrog ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
     )
 
 target_link_libraries(hifrog
@@ -137,4 +153,6 @@ target_link_libraries(hifrog
 set_target_properties(hifrog
 PROPERTIES
 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+CXX_STANDARD 11
+CXX_STANDARD_REQUIRED true
 )

@@ -27,6 +27,11 @@ void unquote_if_necessary(std::string & name) {
 }
 
 
+std::string quote_if_necessary(std::string const & s){
+    if(is_quoted(s)) return s;
+    return quote(s);
+}
+
 std::string quote(const std::string & name) {
   return HifrogStringConstants::SMTLIB_QUOTE + name + HifrogStringConstants::SMTLIB_QUOTE;
 }
@@ -71,6 +76,8 @@ const std::string HifrogStringConstants::TMP_RETURN{"$tmp::return_value"};
 const std::string HifrogStringConstants::CALLSTART_SYMBOL{"hifrog::fun_start"};
 const std::string HifrogStringConstants::CALLEND_SYMBOL{"hifrog::fun_end"};
 const std::string HifrogStringConstants::ERROR_SYMBOL{"hifrog::?err"};
+const std::string HifrogStringConstants::UNSUPPORTED_VAR_NAME {"hifrog::c::unsupported_op2var"};
 
 const std::string CProverStringConstants::INITIALIZE_METHOD{"__CPROVER_initialize"};
 const std::string CProverStringConstants::IO_CONST{"symex::io::"};
+

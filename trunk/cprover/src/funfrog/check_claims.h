@@ -15,11 +15,12 @@
 #include <goto-programs/goto_program.h>
 #include <goto-programs/goto_functions.h>
 #include <util/ui_message.h>
-#include "assertion_info.h"
 #include "unwind.h"
+#include "call_stack.h"
 
 class claim_statst:public messaget, public unwindt
 {
+
 public:
   claim_statst(unsigned int max_unwind) : unwindt(max_unwind),
     total_claims(0),
@@ -73,9 +74,7 @@ void store_claims(const claim_mapt &claim_map,
     const claim_numberst &claim_numbers);
 
 void check_claims(
-  const symbol_tablet &symbol_table,
-  goto_programt &leaping_program,
-  const goto_functionst &goto_functions,
+  const goto_modelt & goto_model,
   claim_mapt &claim_map,
   claim_numberst &claim_numbers,
   const optionst& options,

@@ -11,7 +11,7 @@
 #include <solvers/flattening/bv_pointers.h>
 #include "solvers/satcheck_opensmt2.h"
 
-pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
+std::pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
 {
   try{
 
@@ -44,12 +44,12 @@ delete opensmt;
     case decision_proceduret::resultt::D_UNSATISFIABLE:
     {
       if (VERBOSE) status() << ("UNSAT - it holds!") << eom;
-      return make_pair(true, duration);
+      return std::make_pair(true, duration);
     }
     case decision_proceduret::resultt::D_SATISFIABLE:
     {
       if (VERBOSE) status() << ("SAT - doesn't hold") << eom;
-      return make_pair(false, duration);
+      return std::make_pair(false, duration);
     }
 
     default:
@@ -58,17 +58,17 @@ delete opensmt;
   } catch (const std::bad_alloc &e)
   {
     error()  << "smth is wrong: " << e.what()  << eom;
-    return make_pair(true, fine_timet(0));
+    return std::make_pair(true, fine_timet(0));
   }
   catch (const char* e)
   {
     error() << "\nCaught exception: " << e << eom;
-    return make_pair(true, fine_timet(0));
+    return std::make_pair(true, fine_timet(0));
   }
   catch (const std::string &s)
   {
     error() << "\nCaught exception: " << s << eom;
-    return make_pair(true, fine_timet(0));
+    return std::make_pair(true, fine_timet(0));
   }
 }
 
@@ -104,7 +104,7 @@ long prop_dependency_checkert::find_implications()
     }
     */
 
-  ofstream hl_may_impl;
+  std::ofstream hl_may_impl;
   hl_may_impl.open ("__hl_may_impl");
 
   for (unsigned i = 0; i < asserts.size(); i++)
@@ -115,7 +115,7 @@ long prop_dependency_checkert::find_implications()
     for (unsigned j = i+1; j < asserts.size(); j++)
     {
       checks++;
-      pair<bool, fine_timet> checkres;
+      std::pair<bool, fine_timet> checkres;
       SSA_step_reft& assert_2 = asserts[j];
       if (compare_assertions(assert_1, assert_2)
           && assert_deps[assert_1][assert_2] == DEPT
@@ -133,7 +133,7 @@ long prop_dependency_checkert::find_implications()
         if (checkres.first == true)
         {
           true_time = true_time + checkres.second.get_t();
-          if (VERBOSE) {cout << "check_implication returned TRUE" << std::endl;}
+          if (VERBOSE) {std::cout << "check_implication returned TRUE" << std::endl;}
           if (checkres.second.get_t() <= impl_timeout)
           {
             assert_imps[assert_1][assert_2] = IMP;
@@ -200,8 +200,8 @@ long prop_dependency_checkert::find_implications()
 	  }
   }
   try{
-    ofstream hl_stronger;
-    ofstream hl_weaker;
+    std::ofstream hl_stronger;
+    std::ofstream hl_weaker;
     hl_stronger.open ("__hl_stronger");
     hl_weaker.open ("__hl_weaker");
     //int hldiscardable = 0;

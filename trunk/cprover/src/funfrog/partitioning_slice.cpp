@@ -96,7 +96,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
       it->applicable_summaries.clear();
       // We can only slice standard summaries, not inverted and not summaries
       // with assertion in subtree
-      if (it->inverted_summary || it->get_iface().assertion_in_subtree) {
+      if (it->get_iface().assertion_in_subtree) {
         mark_summary_symbols(summary_store, *it, use_smt);
         it->ignore = false;
       } else {
@@ -147,16 +147,14 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
     if (sum_it != summary_map.end()) {
       partitiont& partition = *(sum_it->second.first);
       partition_ifacet& partition_iface = partition.get_iface();
-      const summary_idst& itps = *partition.summaries;
+      assert(partition.summary);
+      const summary_idst& itps = partition.summaries;
       //unsigned symbol_idx = sum_it->second.second;
 
       // Any of the summaries can match, we need to go through all of them
       // (this may be optimized by precomputation)
-      for (summary_idst::const_iterator it = itps.begin();
-              it != itps.end(); ++it) 
-      {
-        summary_idt summary_id = *it;
-        // Already used summary
+      for (unsigned long summary_id : itps) {
+          // Already used summary
         if (partition.applicable_summaries.find(summary_id) != 
                 partition.applicable_summaries.end())
           continue;
@@ -185,26 +183,23 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
   }
   
   // Mark sliced out partitions
-  for(partitionst::iterator it = 
-          equation.get_partitions().begin();
-          it != equation.get_partitions().end();
-          ++it) {
+  for(auto & partition : equation.get_partitions()) {
     // Only care about real partitions
-    if (it->summary || it->invalid || it->ignore ||
-            it->get_iface().assertion_in_subtree)
+    if (partition.summary || partition.ignore || partition.stub ||
+            partition.get_iface().assertion_in_subtree)
       continue;
     
     bool ignore = true;
-    for(symex_target_equationt::SSA_stepst::iterator it2 = it->start_it;
-          it2 != it->end_it; ++it2) {
-      if (!it2->ignore) {
+    for(auto it = partition.start_it;
+          it != partition.end_it; ++it) {
+      if (!it->ignore) {
         ignore = false;
         break;
       }
     }
     if (ignore) {
-      std::cout << "Ignoring partition: " << it->parent_id << std::endl;
-      it->ignore = ignore;
+      std::cout << "Ignoring partition: " << partition.parent_id << std::endl;
+      partition.ignore = ignore;
     }
   }
 }
@@ -229,9 +224,6 @@ void partitioning_slicet::prepare_maps(partitioning_target_equationt &equation)
           it != equation.get_partitions().end();
           ++it)
   {
-    if (it->invalid)
-      continue;
-
     prepare_partition(*it);
     
     if (it->summary || it->stub)
@@ -364,8 +356,7 @@ void partitioning_slicet::prepare_partition(partitiont &partition)
   partition_ifacet & partition_iface = partition.get_iface();
   // For a standard summary without assertion_in_subtree, fill the summary table
   if (partition.summary) {
-    if (!partition.inverted_summary &&
-            !partition_iface.assertion_in_subtree) {
+    if (!partition_iface.assertion_in_subtree) {
       if (partition_iface.returns_value) {
         summary_map.insert(summary_mapt::value_type(
                 partition_iface.retval_symbol.get_identifier(),
@@ -422,30 +413,12 @@ void partitioning_slicet::mark_summary_symbols_sat(const summary_storet & summar
         partitiont &partition) {
   // Mark all used symbols as directly as dependent
   partition_ifacet& partition_iface = partition.get_iface();
-  const summary_idst& itps = *partition.summaries;
+  const summary_idst& itps = partition.summaries;
 
   // Mark all the used symbols in all summaries
   for (summary_idst::const_iterator it = itps.begin();
           it != itps.end(); ++it) {
     summary_idt summary_id = *it;
-    
-    // Skip summaries that were not used in the last verification run
-    if (partition.inverted_summary &&
-            partition.used_summaries.find(summary_id) ==
-            partition.used_summaries.end()) {
-      
-#     ifdef DEBUG_SLICER      
-      std::cerr << "Unused summary in inverted summary: " << summary_id << " (used: ";
-      for (summary_ids_sett::const_iterator it2 = partition.used_summaries.begin();
-              it2 != partition.used_summaries.end();
-              ++it2) {
-        std::cerr << *it2;
-      }
-      std::cerr << ")" << std::endl;
-#     endif
-      
-      continue;
-    }
 
     /* THIS CODE IS FOR PROP-LOGIC ONLY. IF Gets here with something else assert! */
     prop_summaryt& summary = dynamic_cast <prop_summaryt&> 
@@ -486,30 +459,12 @@ void partitioning_slicet::mark_summary_symbols_smt(const summary_storet & summar
         partitiont &partition) {
   // Mark all used symbols as directly as dependent
   partition_ifacet& partition_iface = partition.get_iface();
-  const summary_idst& itps = *partition.summaries;
+  const summary_idst& itps = partition.summaries;
 
   // Mark all the used symbols in all summaries
   for (summary_idst::const_iterator it = itps.begin();
           it != itps.end(); ++it) {
     summary_idt summary_id = *it;
-    
-    // Skip summaries that were not used in the last verification run
-    if (partition.inverted_summary &&
-            partition.used_summaries.find(summary_id) ==
-            partition.used_summaries.end()) {
-      
-#     ifdef DEBUG_SLICER      
-      std::cerr << "Unused summary in inverted summary: " << summary_id << " (used: ";
-      for (summary_ids_sett::const_iterator it2 = partition.used_summaries.begin();
-              it2 != partition.used_summaries.end();
-              ++it2) {
-        std::cerr << *it2;
-      }
-      std::cerr << ")" << std::endl;
-#     endif
-      
-      continue;
-    }
 
     smt_summaryt& summary = dynamic_cast <smt_summaryt&> 
             (summary_store.find_summary(summary_id));

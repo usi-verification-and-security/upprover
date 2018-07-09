@@ -8,6 +8,8 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2_la.h"
 #include <util/type.h>
 #include "../hifrog.h"
+#include <funfrog/utils/naming_helpers.h>
+
 
 // Debug flags of this class:
 //#define SMT_DEBUG
@@ -715,7 +717,7 @@ literalt smtcheck_opensmt2t_la::lvar(const exprt &expr)
 
     // Else continue as before
     string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    str = quote_varname(str);
+    str = quote(str);
 
     // Nil is a special case - don't create a var but a val of true
     if (str.compare(NIL) == 0) return const_var(true);
@@ -1084,4 +1086,25 @@ bool smtcheck_opensmt2t_la::isLinearOp(const exprt &expr, vec<PTRef> &args) {
 
 	// Don't know
 	return true; // Probably missed cased of false, so once found please add it
+}
+
+// Check if a literal is non-linear in the solver side
+bool smtcheck_opensmt2t_la::is_non_linear_operator(PTRef tr)
+{
+    if (!lalogic->isNumDiv(tr) && !lalogic->isNumTimes(tr))
+        return false;
+    
+    // Get the original vars
+    const Pterm& t = logic->getPterm(tr);
+    if (t.size() < 2)
+        return false;
+    
+    // If we have 2 or more, than we can check if all constant but one
+    int count_var = 0;
+    for (int i = 0; i < t.size(); i++) {
+        if (!logic->isConstant(t[i]) && !lalogic->isNumConst(t[i]))
+            count_var++;
+    }
+    
+    return (count_var > 1);
 }

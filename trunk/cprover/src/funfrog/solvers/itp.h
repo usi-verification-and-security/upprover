@@ -5,9 +5,6 @@
 #include <solvers/flattening/boolbv.h>
 #include <opensmt/PTRef.h>
 
-class prop_itpt;
-class smt_itpt;
-
 class itpt
 {
 public:

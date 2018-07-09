@@ -6,16 +6,17 @@
 
 \*******************************************************************/
 
-#include <fstream>
+#include "check_claims.h"
+#include "core_checker.h"
+#include "theory_refiner.h"
+#include "assertion_info.h"
 #include <util/ui_message.h>
 #include <util/xml.h>
 #include <util/xml_irep.h>
-
+#include <util/time_stopping.h>
 #include <ansi-c/expr2c.h>
-#include "core_checker.h"
-#include "theory_refiner.h"
-#include "check_claims.h"
 
+#include <fstream>
 
 /*******************************************************************
 
@@ -34,7 +35,8 @@ goto_programt::const_targett claim_statst::find_assertion(
   const goto_functionst &goto_functions,
   call_stackt &stack)
 {
-  goto_programt::const_targett it = start; it++;
+  auto it = start;
+  it++;
 
   while(it->type!=ASSERT)
   {
@@ -43,51 +45,40 @@ goto_programt::const_targett claim_statst::find_assertion(
       const code_function_callt &call =
         to_code_function_call(to_code(it->code));
 
-      const irep_idt &name = call.function().get("identifier");
+      const irep_idt &name = to_symbol_expr(call.function()).get_identifier();
 
-      goto_functionst::function_mapt::const_iterator f_it =
-        goto_functions.function_map.find(name);
+      auto f_it = goto_functions.function_map.find(name);
 
-      if(f_it!=goto_functions.function_map.end() &&
-         f_it->second.body.instructions.size()>0 &&
+      if(f_it != goto_functions.function_map.end() &&
+         !f_it->second.body.instructions.empty() &&
          !is_unwinding_exceeded(name) &&
          !is_recursion_unwinding(name))
       {
-        stack.push(it);
+        stack.push_back(it);
         it = f_it->second.body.instructions.begin();
         increment_unwinding_counter(name);
+        continue;
       }
-      else
-        it++; // just ignore it
-    }
-    else if(it->type==OTHER)
-    {
-      if(it->is_other() &&
-         it->code.get("statement")=="loop-summary")
-      {
-          // No loop summaries supported here
-          assert(false);
-      }
-      else
-        it++;
     }
     else if(it->type==END_FUNCTION)
     {
-      const irep_idt &name = (it->code).get("identifier");
+      const irep_idt &name = it->function;
       decrement_unwinding_counter(name);
-      if(stack.size()==0)
+      if(stack.empty())
       {
         // this must be the end. 
         return (++it);
       }
       else
       {
-        it = stack.top(); stack.pop();
-        it++;
+        it = stack.back();
+        stack.pop_back();
+        ++it;
+        continue;
       }
     }
-    else
-      it++;
+    // default case, ignore this instruction and move forward;
+    ++it;
   }
 
   // `it' now points to the assertion, while
@@ -108,9 +99,7 @@ Function: check_claims
 \*******************************************************************/
 
 void check_claims(
-  const symbol_tablet &symbol_table,
-  goto_programt &leaping_program,
-  const goto_functionst &goto_functions,
+  const goto_modelt & goto_model,
   claim_mapt &claim_map,
   claim_numberst &claim_numbers,
   const optionst& options,
@@ -146,8 +135,10 @@ void check_claims(
   res.set_message_handler(_message_handler);
   res.total_claims = claim_map.size();
 
+  const auto & goto_functions = goto_model.goto_functions;
+  const auto & main_body = goto_functions.function_map.at(goto_functionst::entry_point()).body;
   call_stackt stack;
-  goto_programt::const_targett ass_ptr = leaping_program.instructions.begin();
+  goto_programt::const_targett ass_ptr = main_body.instructions.begin();
   
   // NOTE: Not reimplemented yet
   // show_inlined_claimst show_inlined_claims(goto_functions,
@@ -156,48 +147,106 @@ void check_claims(
   //                                          ns);
 
 
-  symbol_tablet temp_table;
-  namespacet ns1(symbol_table, temp_table);
+
 
   if (options.get_bool_option("theoref")){
 
     // GF: currently works only for one assertion (either specified in --claim or the first one)
-    while(ass_ptr != leaping_program.instructions.end() &&
+    while(ass_ptr != main_body.instructions.end() &&
               (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
     {
       ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     }
       
-    if (ass_ptr == leaping_program.instructions.end()){
+    if (ass_ptr == main_body.instructions.end()){
       if (seen_claims == 0) // In case we set the multi assert mode working here
         res.status() << "\nAssertion is not reachable\n" << res.eom;
       return;
-    } 
+    }
 
-    theory_refinert th_checker(leaping_program,
-	        goto_functions, ns1, temp_table, options, _message_handler);
+    theory_refinert th_checker(main_body,
+	        goto_functions, goto_model.symbol_table, options, _message_handler);
 
     th_checker.initialize();
-    th_checker.assertion_holds_smt(ass_ptr, true);
+    th_checker.assertion_holds_smt(assertion_infot{ass_ptr}, true);
     return;
   }
 
-  core_checkert sum_checker(leaping_program,
-        goto_functions, ns1, temp_table, options, _message_handler, res.max_mem_used);
+  core_checkert core_checker(main_body, goto_functions,
+                            goto_model.symbol_table, options, _message_handler, res.max_mem_used);
 
-  sum_checker.initialize();
+  core_checker.initialize();
 
+#ifdef PRODUCE_PROOF
+  if(options.get_bool_option("sum-theoref")){
+      if(!assert_grouping){
+          res.warning() << "Assertion grouping cannot be disabled in current mode!\n" << res.eom;
+          assert_grouping = true;
+      }
+      while(ass_ptr != main_body.instructions.end()){
+          ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
+          if(ass_ptr == main_body.instructions.end()){
+              break;
+          }
+          if(claim_map[ass_ptr].first) {
+              // this claim has already been checked;
+              // with assert_grouping all occurrences of the same claim are checked together so we can skip all other occurences
+              assert(assert_grouping);
+              continue;
+          }
+          assert(claim_map.find(ass_ptr) != claim_map.end());
+          res.status()  << "\n ---------checking claim # " <<std::to_string(claim_numbers[ass_ptr]) <<" ---------\n"<< res.eom;
+          absolute_timet initial, final;
+          initial=current_time();
+          bool single_res = core_checker.check_sum_theoref_single(assertion_infot{ass_ptr});
+          claim_map[ass_ptr] = std::make_pair(true, single_res);
+          final = current_time();
+          res.status() << "-----Time for checking the claim "<<std::to_string(claim_numbers[ass_ptr]) <<" was: " << (final - initial) << res.eom;
+      }
+      // REPORT the results
+      res.status() << "\n--------- OVERAL VERIFICATION STATISTICS ---------\n" <<res.eom;
+      std::map<claim_numberst::mapped_type, claim_numberst::key_type> flipped;
+      for(const auto & entry : claim_numbers){
+          flipped[entry.second] = entry.first;
+      }
+      bool finally_safe = true;
+      for (const auto & entry : flipped) {
+          auto claim_number = entry.first;
+          const auto & assertion = entry.second;
+          const auto & claim_res = claim_map.at(assertion);
+          bool checked = claim_res.first;
+          bool safe = claim_res.second;
+          if (!safe) finally_safe = false;
+          if (checked){
+              res.status() << "Claim number # " <<  claim_number << " is " << (safe ? "SAFE" : "UNSAFE") << res.eom;
+              res.status()
+              <<" File: " << assertion->source_location.get_file()
+              <<" \n Function: " << assertion->source_location.get_function()
+              <<" \n Line: " << assertion->source_location.get_line()
+              << "\n " << ((assertion->is_assert()) ? "Guard: " : "Code") <<"( "
+              << from_expr(namespacet{goto_model.symbol_table}, "", assertion->guard) <<" ) \n";
+          }
+          else {
+              res.status() << "Claim number # " <<  claim_number << " is not reachable!\n"; //
+          }
+          res.status() <<res.eom;
+      }
+      res.status()<< "Finally w.r.t all assertions, the program is " << (finally_safe ? "SAFE\n" : "UNSAFE\n") <<res.eom;
+      return;
+  }
+#endif
+  
   if (options.get_bool_option("all-claims") || options.get_bool_option("claims-opt")){
-    sum_checker.assertion_holds(assertion_infot(), true);
+    core_checker.assertion_holds(assertion_infot(), true);
   } else while(true) {
     // Next assertion (or next occurrence of the same assertion)
     ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
-    while(ass_ptr != leaping_program.instructions.end() && 
+    while(ass_ptr != main_body.instructions.end() &&
             (claim_numbers[ass_ptr] != claim_nr) == (claim_nr != 0))
     {
       ass_ptr = res.find_assertion(ass_ptr, goto_functions, stack);
     }
-    if (ass_ptr == leaping_program.instructions.end()){
+    if (ass_ptr == main_body.instructions.end()){
       if (seen_claims == 0)
         res.status() << "\nAssertion is not reachable\n" << res.eom;
       break;
@@ -227,7 +276,7 @@ void check_claims(
         multi_assert_loc.push_back(ass_ptr);
       }
     } else {
-      pass = sum_checker.assertion_holds(assert_grouping ?
+      pass = core_checker.assertion_holds(assert_grouping ?
               assertion_infot(ass_ptr) : assertion_infot(stack, ass_ptr), false);
     }
 
@@ -252,7 +301,7 @@ void check_claims(
       }
     }
     res.status() << " in a multi_assertion mode.\r" << res.eom;
-    sum_checker.assertion_holds(assert_grouping ?
+    core_checker.assertion_holds(assert_grouping ?
                   assertion_infot(multi_assert_loc) : assertion_infot(stack, ass_ptr), false);
   }
 }

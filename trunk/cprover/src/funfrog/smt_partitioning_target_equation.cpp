@@ -18,6 +18,7 @@
 #include "summary_store.h"
 
 //#define DEBUG_ITP_SMT // ITP of SMT - testing
+//#define DEBUG_ENCODING
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
@@ -27,15 +28,15 @@ using namespace std;
 #endif
 
 void
-smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*>& templates)
+smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &decider, std::vector<summaryt*>& templates)
 {
 #ifdef PRODUCE_PROOF     
     for(partitionst::iterator it = partitions.begin(); it != partitions.end(); ++it)
     {
-        vector<symbol_exprt> common;
+        std::vector<symbol_exprt> common;
         fill_common_symbols(*it, common);
         smt_summaryt *sum = new smt_summaryt();
-        string fun_name = id2string(it->get_iface().function_id);
+        std::string fun_name = id2string(it->get_iface().function_id);
         //decider.adjust_function(*sum, common, fun_name, false);
         decider.generalize_summary(*sum, common, fun_name, false);
         sum->setLogic(decider.getLogic());
@@ -66,8 +67,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 #endif
 
     decider.start_encoding_partitions();
-    for (partitionst::reverse_iterator it = partitions.rbegin(); it
-            != partitions.rend(); ++it) {
+    for (auto it = partitions.rbegin(); it != partitions.rend(); ++it) {
         convert_partition(decider, interpolator, *it);
         if (it->fle_part_id < 0) continue;
 
@@ -75,7 +75,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
         cout << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
                 << it->get_iface().assertion_in_subtree << ")" << " - "
                 << it->get_iface().function_id.c_str() << " (loc: "
-                << it->get_iface().summary_info.get_call_location() << ", "
+                << it->get_iface().call_tree_node.get_call_location() << ", "
                 << ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
                     : ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
 #   endif
@@ -85,8 +85,8 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
         out_basic << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
                 << it->get_iface().assertion_in_subtree << ")" << " - "
                 << it->get_iface().function_id.c_str() << " (loc: "
-                << it->get_iface().summary_info.get_call_location() << ", "
-                << ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
+                << it->get_iface().call_tree_node.get_call_location() << ", "
+                << ((it->summary) ?  "SUM"
                     : ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
 
         print_partition();
@@ -121,17 +121,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 void smt_partitioning_target_equationt::convert_partition(
 		smtcheck_opensmt2t &decider, interpolating_solvert &interpolator,
 		partitiont& partition) {
-    if (partition.ignore || partition.processed || partition.invalid) {
-#   ifdef DEBUG_ENCODING
-        if (partition.invalid) {
-            std::cout << "  partition invalidated (refined)." << std::endl;
-        } else if (partition.ignore) {
-            assert (!partition.get_iface().assertion_in_subtree);
-            std::cout << "  partition sliced out." << std::endl;
-        } else if (partition.processed) {
-            std::cout << "  partition already processed." << std::endl;
-        }
-#	endif
+    if (partition.ignore) {
         return;
     }
 # ifdef DEBUG_SSA_SMT_CALL
@@ -148,38 +138,25 @@ void smt_partitioning_target_equationt::convert_partition(
     }
     if (partition.stub) {
 #       ifdef DEBUG_ENCODING
-        std::cout << "  partition havoced." << std::endl;
+        std::cout << "  partition havoced." << partition_iface.function_id << '\n';
 #	endif
         return;
     }
-
-    //  if ((partition.summary &&
-    //          partition.applicable_summaries.empty())) {
-    //    assert(!partition.inverted_summary);
-    //#   ifdef DEBUG_SSA
-    //    std::cout << "  no applicable summary." << std::endl;
-    //#	endif
-    //    return;
-    //  }
 
     // Tell the interpolator about the new partition.
     partition.set_fle_part_id(interpolator.new_partition());
 
     // If this is a summary partition, apply the summary
     if (partition.summary) {
+#       ifdef DEBUG_ENCODING
+        std::cout << "  partition summarize." << partition_iface.function_id << '\n';
+#	endif
         convert_partition_summary(decider, partition);
-        // FIXME: Only use in the incremental solver mode (not yet implemented)
-        // partition.processed = true;
         return;
     }
-
-    // Reserve fresh variables for the partition boundary
-    std::vector < symbol_exprt > common_symbs;
-    fill_common_symbols(partition, common_symbs);
-
-    // GF: hack
-    //  smt_interpolantt::reserve_variables(decider, common_symbs, partition.get_iface().common_symbols);
-
+#       ifdef DEBUG_ENCODING
+    std::cout << "  partition inlined." << partition_iface.function_id << '\n';
+#	endif
     // Convert the corresponding SSA steps
     convert_partition_guards(decider, partition);
     convert_partition_assignments(decider, partition);
@@ -191,8 +168,6 @@ void smt_partitioning_target_equationt::convert_partition(
     //   std::cout << "skipping converting assertions\n";
     // }
     convert_partition_io(decider, partition);
-    // FIXME: Only use in the incremental solver mode (not yet implemented)
-    // partition.processed = true;
 }
 /*******************************************************************
  Function: smt_partitioning_target_equationt::convert_partition_summary
@@ -206,7 +181,8 @@ void smt_partitioning_target_equationt::convert_partition(
  \*******************************************************************/
 
 void smt_partitioning_target_equationt::convert_partition_summary(
-  smtcheck_opensmt2t & decider, partitiont & partition) {
+  smtcheck_opensmt2t & decider, partitiont & partition)
+{
   std::vector<symbol_exprt> common_symbs;
   fill_common_symbols(partition, common_symbs);
   unsigned i = 0;
@@ -216,7 +192,7 @@ void smt_partitioning_target_equationt::convert_partition_summary(
               << std::endl;
 #   endif
 
-  bool is_recursive = partition.get_iface().summary_info.is_recursive(); //on_nondet();
+  bool is_recursive = partition.get_iface().call_tree_node.is_recursive(); //on_nondet();
   unsigned last_summary = partition.applicable_summaries.size() - 1;
 
   for (auto summary_id : partition.applicable_summaries)
@@ -288,7 +264,7 @@ bool smt_partitioning_target_equationt::isRoundModelEq(const exprt &expr)
         return false;
 
     // Start checking if it is auto gen code for rounding model
-    string str = id2string((expr.operands()[0]).get(ID_identifier));
+    std::string str = id2string((expr.operands()[0]).get(ID_identifier));
     if (is_cprover_builtins_var(str))
         return true;
     
@@ -485,7 +461,6 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
             if (target_partition && !target_partition->ignore) {
                 const partition_ifacet& target_partition_iface =
                                 target_partition->get_iface();
-                assert(!target_partition->invalid && !target_partition->processed);
 
 #		if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
                 expr_ssa_print_smt_dbg(
@@ -793,11 +768,13 @@ namespace{
   bool skip_partition(partitiont & partition, bool store_summaries_with_assertion){
     return !partition.is_inline() ||
            (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
-           partition.get_iface().summary_info.is_recursion_nondet() ||
+           partition.get_iface().call_tree_node.is_recursion_nondet() ||
            skip_partition_with_name(partition.get_iface().function_id.c_str());
   }
 }
-#endif
+
+#endif // PRODUCE_PROOF
+
 
 /*******************************************************************
  Function: smt_partitioning_target_equationt::extract_interpolants
@@ -816,18 +793,18 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
 
     // Clear the used summaries
     for (unsigned i = 0; i < partitions.size(); ++i)
-            partitions[i].get_iface().summary_info.clear_used_summaries();
+            partitions[i].get_iface().call_tree_node.clear_used_summaries();
 
     // Find partitions suitable for summary extraction
     for (unsigned i = 1; i < partitions.size(); ++i) {
         partitiont& partition = partitions[i];
 
         // Mark the used summaries
-        if (partition.summary && !(partition.ignore || partition.invalid)) {
+        if (partition.summary && !(partition.ignore)) {
             for (summary_ids_sett::const_iterator it =
                     partition.applicable_summaries.begin(); it
                     != partition.applicable_summaries.end(); ++it) {
-                partition.get_iface().summary_info.add_used_summary(*it);
+                partition.get_iface().call_tree_node.add_used_summary(*it);
             }
         }
 
@@ -874,7 +851,7 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
             continue;
         }
 
-        if (partition.get_iface().summary_info.is_recursion_nondet()) {
+        if (partition.get_iface().call_tree_node.is_recursion_nondet()) {
             std::cout << "Skip interpolants for nested recursion calls.\n";
             continue;
         }

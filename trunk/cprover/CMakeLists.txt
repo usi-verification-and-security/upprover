@@ -82,8 +82,6 @@ set_target_properties(
     util
     xml
 
-    hifrog
-
     PROPERTIES
     CXX_STANDARD 11
     CXX_STANDARD_REQUIRED true

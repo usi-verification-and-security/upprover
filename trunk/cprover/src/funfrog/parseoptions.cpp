@@ -2,10 +2,6 @@
 
  Module: Command Line Parsing
 
- Author: Daniel Kroening, kroening@kroening.com
-         CM Wintersteiger
-         Ondrej Sery
-
 \*******************************************************************/
 #include "parseoptions.h"
 
@@ -189,7 +185,7 @@ bool funfrog_parseoptionst::process_goto_program(
 
     // Remove inline assembler; this needs to happen before
     // adding the library.
-    remove_asm(goto_model);
+    //remove_asm(goto_model);
 
     // KE: Only to prop logic
     if(cmdline.isset("logic")) 
@@ -647,7 +643,7 @@ bool funfrog_parseoptionst::check_function_summarization()
     unsigned claim_nr=0;
 
     get_claims(goto_model.goto_functions, claim_map, claim_numbers);
-    cbmc_status_interface("Checking claims in program...(" + std::to_string(claim_numbers.size())+")");
+    cbmc_status_interface("Total number of claims in program...(" + std::to_string(claim_numbers.size())+")");
 
     if(cmdline.isset("show-claims") || cmdline.isset("show-properties")) {
       show_properties(goto_model, ui_message_handler.get_ui());
@@ -737,12 +733,7 @@ bool funfrog_parseoptionst::check_function_summarization()
         exit(0);
     }
 
-    // ID_main is the entry point that is now changed to be ID__start
-    // KE: or is it goto_functionst::entry_point()?
-    // So instead of c::main we have now _start (cbmc 5.5)
-    check_claims(goto_model.symbol_table,
-                goto_model.goto_functions.function_map[goto_functionst::entry_point()].body,
-                goto_model.goto_functions,
+    check_claims(goto_model,
                 claim_map,
                 claim_numbers,
                 options,
@@ -808,16 +799,28 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   options.set_option("no-error-trace", cmdline.isset("no-error-trace"));
   //options.set_option("list-templates", cmdline.isset("list-templates"));
   options.set_option("reduce-proof", cmdline.isset("reduce-proof"));
+  options.set_option("partial-loops", cmdline.isset("partial-loops"));
+
+#ifdef PRODUCE_PROOF
+  options.set_option("sum-theoref", cmdline.isset("sum-theoref"));
+#endif
+  
+  //theory refinement Options
   options.set_option("theoref", cmdline.isset("theoref"));
   options.set_option("force", cmdline.isset("force"));
   options.set_option("custom", cmdline.get_value("custom"));
-  options.set_option("heuristic", cmdline.get_value("heuristic"));
-  options.set_option("partial-loops", cmdline.isset("partial-loops"));
+
   if (cmdline.isset("bitwidth")) {
     options.set_option("bitwidth", cmdline.get_value("bitwidth"));
   } else {
-    options.set_option("bitwidth", 8);
+    options.set_option("bitwidth", 8); //the default bit-width for theoref
   }
+
+  if (cmdline.isset("heuristic")) {
+      options.set_option("heuristic", cmdline.get_value("heuristic"));
+  } else {
+      options.set_option("heuristic", 4);
+  }//End of theory refinement Options
 
   // always check assertions
   options.set_option("assertions", true);
@@ -834,7 +837,6 @@ void funfrog_parseoptionst::set_options(const cmdlinet &cmdline)
   } else { // Set to qfuf - defualt
     options.set_option("logic", "qfuf"); 
   }
-
   
   // If not partitions - no itp too, going back to pure cbcm
   if(cmdline.isset("no-partitions")) {

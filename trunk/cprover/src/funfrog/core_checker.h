@@ -31,8 +31,8 @@ public:
   core_checkert(
     const goto_programt &_goto_program,
     const goto_functionst &_goto_functions,
-    const namespacet &_ns,
-    symbol_tablet &_symbol_table,
+//    const namespacet &_ns,
+    const symbol_tablet &_symbol_table,
     const optionst& _options,
     ui_message_handlert &_message_handler,
     unsigned long &_max_memory_used
@@ -41,6 +41,7 @@ public:
   ~core_checkert() override;
   void initialize();
   void initialize_solver();
+  void initialize_solver_options(check_opensmt2t* _decider);
   void delete_and_initialize_solver(); // For replacing pop in the solver, remove once pop works
   bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
@@ -49,13 +50,15 @@ public:
   bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
   void serialize(){
     omega.serialize(options.get_option("save-omega"));
-  };
+  }
 
+    //  bool check_sum_theoref_single(const assertion_infot& assertion);
+    bool check_sum_theoref_single(const assertion_infot &assertion);
 protected:
 
   const goto_programt &goto_program;
-  const namespacet &ns;
-  symbol_tablet &symbol_table;
+//  const namespacet &ns;
+  const symbol_tablet &symbol_table;
   const optionst &options;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;

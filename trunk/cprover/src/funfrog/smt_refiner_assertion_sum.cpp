@@ -29,7 +29,7 @@
           Which function call to inline, which to summarize and which to havoc
 
 \*******************************************************************/
-void smt_refiner_assertion_sumt::refine(
+void smt_refiner_assertion_sumt::mark_sum_for_refine(
         const smtcheck_opensmt2t &decider,
         call_tree_nodet &summary,
         smt_partitioning_target_equationt &equation) {
@@ -59,7 +59,7 @@ void smt_refiner_assertion_sumt::reset_depend(
     partitionst &parts = equation.get_partitions();
     for (unsigned i = 0; i < parts.size(); i++) {
         partitiont part = parts[i];
-        if (!part.ignore && !part.lattice_fact && (part.summary || part.stub)) {
+        if (!part.ignore && (part.summary || part.stub)) {
             partition_ifacet ipart = part.get_iface();
 #     ifdef DEBUG_REFINER
             std::cout<< "*** checking " << ipart.function_id << ":" << std::endl;
@@ -68,19 +68,19 @@ void smt_refiner_assertion_sumt::reset_depend(
       #       ifdef DEBUG_REFINER
               std::cout<< "    -- no applicable summaries" << std::endl;
       #       endif
-              tmp.push_back(&ipart.summary_info);
+              tmp.push_back(&ipart.call_tree_node);
             }*/
             if (decider.is_assignemt_true(ipart.callstart_literal)) {
 #       ifdef DEBUG_REFINER
                 std::cout<< "    -- callstart literal is true" << std::endl;
 #       endif
-                if (ipart.summary_info.get_precision() != INLINE) {
-                    if (ipart.summary_info.is_recursion_nondet()) {
+                if (ipart.call_tree_node.get_precision() != INLINE) {
+                    if (ipart.call_tree_node.is_recursion_nondet()) {
                         status() << "Automatically increasing unwinding bound for "
-                                 << ipart.summary_info.get_function_id() << eom;
-                        omega.refine_recursion_call(ipart.summary_info);
+                                 << ipart.call_tree_node.get_function_id() << eom;
+                        omega.refine_recursion_call(ipart.call_tree_node);
                     }
-                    set_inline_sum(ipart.summary_info);
+                    set_inline_sum(ipart.call_tree_node);
                 }
             }
         }

@@ -72,9 +72,9 @@ public:
   virtual void symex_step(
     const goto_functionst &goto_functions,
     statet &state) override;
-  
-  const partition_iface_ptrst* get_partition_ifaces(call_tree_nodet &summary_info) {
-    auto it = partition_iface_map.find(&summary_info);
+
+  const partition_iface_ptrst* get_partition_ifaces(const call_tree_nodet * call_tree_node) {
+    auto it = partition_iface_map.find(call_tree_node);
     
     if (it == partition_iface_map.end())
       return nullptr;
@@ -92,18 +92,19 @@ private:
 
   void end_symex(statet &state);
 
-  // Mapping from summary_info to the corresponding partition_iface
-  typedef std::unordered_map<const call_tree_nodet*,partition_iface_ptrst> partition_iface_mapt;
+  // Mapping call_tree_nodes (i.e. call sites in goto program) to partition interfaces
+    // Single call_tree_node can map to multiple partitions (e.g. when the call site is inside a loop that is unwound multiple times
+  using partition_iface_mapt =  std::unordered_map<const call_tree_nodet*,partition_iface_ptrst>;
   partition_iface_mapt partition_iface_map;
 
   class deferred_functiont {
   public:
 
-    deferred_functiont(call_tree_nodet &_summary_info,
-            partition_ifacet& _partition_iface) : summary_info(_summary_info),
+    deferred_functiont(call_tree_nodet &_call_tree_node,
+            partition_ifacet& _partition_iface) : call_tree_node(_call_tree_node),
             partition_iface(_partition_iface) { }
 
-    call_tree_nodet& summary_info;
+    call_tree_nodet& call_tree_node;
     partition_ifacet& partition_iface;
   };
 
@@ -112,11 +113,11 @@ private:
   const goto_functionst& goto_functions;
 
   // Which functions should be summarized, abstracted from, and which inlined
-  call_tree_nodet &summary_info;
+  call_tree_nodet &call_tree_root;
 
   // Summary info of the function being currently processed. Set to NULL when
   // no deferred function are left
-  call_tree_nodet *current_summary_info;
+  call_tree_nodet *current_call_tree_node;
 
   // Wait queue for the deferred functions (for other partitions)
   std::queue<deferred_functiont> deferred_functions;
@@ -146,12 +147,12 @@ private:
   
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
-  void defer_function(const deferred_functiont &deferred_function);
+  void defer_function(const deferred_functiont &deferred_function, bool is_new = true);
 
   // Are there any more instructions in the current function or at least
   // a deferred function to dequeue?
   bool has_more_steps(const statet &state) {
-    return current_summary_info != nullptr;
+    return current_call_tree_node != nullptr;
   }
   
   // Processes current code (pointed to by the state member variable) as well
@@ -206,9 +207,9 @@ private:
   // Assigns function arguments to new SSA symbols, also makes
   // assignment of the new SSA symbol of return value to the lhs of
   // the call site (if any)
-  void assign_function_arguments(statet &state,
-    code_function_callt &function_call,
-    deferred_functiont &deferred_function);
+  void assign_function_arguments(statet & state,
+                                 code_function_callt & function_call,
+                                 partition_ifacet & partition_iface);
   
   // Marks the SSA symbols of function arguments
   void mark_argument_symbols(const code_typet & function_type, partition_ifacet & partition_iface);
@@ -298,7 +299,7 @@ private:
   }
 
   // Allocate new partition_interface
-  partition_ifacet& new_partition_iface(call_tree_nodet& summary_info,
+  partition_ifacet& new_partition_iface(call_tree_nodet& call_tree_node,
           partition_idt parent_id, unsigned call_loc);
 
   const goto_functionst::goto_functiont & get_function(const irep_idt & function_id) const {
@@ -356,6 +357,9 @@ private:
 
     std::unordered_map<irep_idt, globalst, irep_id_hash> accessed_globals;
     std::unordered_map<irep_idt, globalst, irep_id_hash> modified_globals;
+
+    // Intended to let the state know about symbols that are not declared anywhere, like extern variables
+    void add_globals_to_state(statet & state);
 
     void analyze_globals();
 

@@ -29,7 +29,7 @@ public:
   partition_ifacet(call_tree_nodet& _summary_info, partition_idt _parent_id, 
           unsigned _call_loc) :
           function_id(_summary_info.get_function_id()),
-          summary_info(_summary_info),
+          call_tree_node(_summary_info),
           callstart_symbol(ID_nil, typet(ID_bool)),
           callend_symbol(ID_nil, typet(ID_bool)),
           error_symbol(ID_nil, typet(ID_bool)),
@@ -43,7 +43,7 @@ public:
   // Represented function
   irep_idt function_id;
   // Represented function node in substitution scenario
-  call_tree_nodet& summary_info;
+  call_tree_nodet& call_tree_node;
   
   // Filled during function call processing
   // TODO: Deprecate it! Split into iface vars and in_arg_symbols

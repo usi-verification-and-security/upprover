@@ -69,7 +69,7 @@ void error_tracet::build_goto_trace (
        str.find(HifrogStringConstants::FUN_RETURN)!=std::string::npos)
         continue;
 
-    if (str.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
+    if (str.find(HifrogStringConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
@@ -201,7 +201,7 @@ void error_tracet::build_goto_trace_formula (
         continue;
 
 
-    if (str.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
+    if (str.find(HifrogStringConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
@@ -252,7 +252,7 @@ void error_tracet::build_goto_trace_formula (
     }
   }
   decider2.close_partition();
-  cout << "CE-formula constructed\n";
+  std::cout << "CE-formula constructed\n";
 }
 
 /**
@@ -347,7 +347,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(smtcheck_opensmt2t 
             // Print the var and its value
             char* name = logic->printTerm(*iter);
             std::string curr (name);
-            if (curr.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
+            if (curr.find(HifrogStringConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
                 isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
     #ifdef TRACE_DEBUG
             else if (curr.find(skip_debug_print) != std::string::npos)
@@ -364,7 +364,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(smtcheck_opensmt2t 
                             cout << " = " << v1.val << "\n";
             }
     #endif
-            free(name);
+            free(name); name=NULL;
         }
 
         // Clear all vars list before quit
@@ -402,8 +402,8 @@ void error_tracet::show_goto_trace(
 
     //if (is_trace_overapprox(decider)) {
     if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS) {
-        cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
-        cout << "         Use --logic with Different Logic to Try Creating an Error Trace. \n";
+        std::cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
+        std::cout << "         Use --logic with Different Logic to Try Creating an Error Trace. \n";
         return; // Cannot really print a trace
     }
 
@@ -702,7 +702,7 @@ void error_tracet::build_goto_trace (
        str.find(HifrogStringConstants::FUN_RETURN)!=std::string::npos)
         continue;
 
-    if (str.find(UNSUPPORTED_VAR_NAME) != std::string::npos)
+    if (str.find(HifrogStringConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)

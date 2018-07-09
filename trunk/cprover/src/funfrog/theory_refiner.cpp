@@ -14,6 +14,7 @@
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include <util/time_stopping.h>
 #include "smt_summary_store.h"
+#include "assertion_info.h"
 
 #define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
 theory_refinert::~theory_refinert()
@@ -41,7 +42,7 @@ void theory_refinert::initialize()
       decider->set_dump_query_name(dump_query_name);
 #endif  
 
-  omega.initialize_summary_info (omega.get_summary_info(), goto_program);
+  omega.initialize_summary_info (omega.get_call_tree_root(), goto_program);
   omega.setup_default_precision(init_modet::ALL_SUBSTITUTING);
 }
 
@@ -79,13 +80,14 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   absolute_timet initial, final;
   initial=current_time();
 
-    smt_summary_storet dummy;
-    omega.set_initial_precision(assertion, dummy);
+  omega.set_initial_precision(assertion, [](const std::string & s) { return false; });
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
 
-
+  smt_summary_storet dummy;
+  symbol_tablet temp_table;
+  namespacet ns{this->symbol_table, temp_table};
   smt_partitioning_target_equationt equation(ns, dummy,
       store_summaries_with_assertion);
 
@@ -96,9 +98,9 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   }
 #endif
 
-  call_tree_nodet& summary_info = omega.get_summary_info();
+  call_tree_nodet& summary_info = omega.get_call_tree_root();
   symex_assertion_sumt symex = symex_assertion_sumt(
-            dummy, omega.get_goto_functions(), summary_info, ns, symbol_table,
+            dummy, omega.get_goto_functions(), summary_info, ns, temp_table,
             equation, message_handler, goto_program, last_assertion_loc,
             single_assertion_check, true, true, true, unwind_bound);
 
@@ -122,6 +124,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   {
       status() << "ASSERTION HOLDS" << endl << eom;
       report_success();
+
   } else {  //do refinement
 
       error_tracet error_trace;
@@ -313,6 +316,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                           }
                           status() << endl << "ASSERTION HOLDS" << eom;
                           report_success();
+                          end = true;
                           break;
                       }
                   } else  if (decider->force_refine_ce(exprs, refined) ){ // TODO: comment once the bug with thoref is fixed
@@ -331,6 +335,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       }
 #endif
                       report_failure();
+                      end = false;
                       break;
                   } else {
                       status() << endl << "Naive refinement successful" << endl;
@@ -341,6 +346,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       }
                       status() << endl << "ASSERTION HOLDS" << eom;
                       report_success();
+                      end = true;
                       break;
                   }
               }

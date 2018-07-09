@@ -9,6 +9,9 @@
 #include "partitioning_target_equation.h"
 #include "partition_iface.h"
 
+#include <numeric>
+#include <algorithm>
+
 partitioning_target_equationt::partitioning_target_equationt(
   const namespacet & _ns,
   summary_storet & summary_store,
@@ -60,6 +63,7 @@ partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet&
     bool check = partition_map.insert(partition_mapt::value_type(
             partition_iface.callend_symbol.get_identifier(), new_id)).second;
     assert(check);
+    (void)check;
 
     if (parent_id != partitiont::NO_PARTITION) {
         partitions[parent_id].add_child_partition(new_id, partition_iface.call_loc);
@@ -79,34 +83,46 @@ partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet&
  Purpose:
 
  \*******************************************************************/
-void partitioning_target_equationt::invalidate_partition(partition_idt partition_id)
+//void partitioning_target_equationt::invalidate_partition(partition_idt partition_id)
+//{
+//    partitiont& partition = partitions[partition_id];
+//
+//    partition.invalid = true;
+//    partition_map.erase(partition.get_iface().callend_symbol.get_identifier());
+//
+//    if (partition.parent_id != partitiont::NO_PARTITION) {
+//        partitions[partition.parent_id].remove_child_partition(partition_id);
+//    }
+//}
+
+void partitioning_target_equationt::refine_partition(partition_idt partition_id)
 {
     partitiont& partition = partitions[partition_id];
 
-    partition.invalid = true;
-    partition_map.erase(partition.get_iface().callend_symbol.get_identifier());
-
-    if (partition.parent_id != partitiont::NO_PARTITION) {
-        partitions[partition.parent_id].remove_child_partition(partition_id);
+    if(! (partition.summary || partition.stub)){
+        throw std::logic_error{"Trying to refine a pertition that was not summarized or stubbed before!"};
     }
+    partition.summary = false;
+    partition.stub = false;
+    partition.summaries.clear();
+    partition.applicable_summaries.clear();
 }
 
-void partitioning_target_equationt::fill_summary_partition(
-  partition_idt partition_id, const summary_idst* summaries, bool is_lattice_fact)
-{
-    partitiont& sum_partition = partitions.at(partition_id);
-    assert(!sum_partition.filled);
 
-    sum_partition.filled = true;
+
+void partitioning_target_equationt::fill_summary_partition(partition_idt partition_id, const summary_idst & summaries)
+{
+    if(summaries.empty()){
+        throw std::logic_error{"Trying to set non-existent summaries to a partition"};
+    }
+    partitiont& sum_partition = partitions.at(partition_id);
+
     sum_partition.summary = true;
     sum_partition.summaries = summaries;
-    sum_partition.lattice_fact = is_lattice_fact;
 
     sum_partition.applicable_summaries.clear();
-    for (summary_idst::const_iterator it = summaries->begin();
-         it != summaries->end();
-         ++it) {
-        sum_partition.applicable_summaries.insert(*it);
+    for (unsigned long summary_id : summaries) {
+        sum_partition.applicable_summaries.insert(summary_id);
     }
 }
 
@@ -129,34 +145,33 @@ void partitioning_target_equationt::prepare_partitions() { // for hifrog only
     SSA_stepst::iterator ssa_it = SSA_steps.begin();
 
     // The last partition has an undefined end, fix it!
-    if (!partitions.empty()) {
-        partitions[current_partition_id].end_idx = SSA_steps.size();
-    }
+    close_current_partition();
 
-    for (partitionst::iterator it = partitions.begin(); it != partitions.end(); ++it) {
+    // we need to process the partitions in the order as they appear in SSA_steps
+    const auto & const_partitions = this->partitions;
+    std::vector<std::size_t> indices(partitions.size());
+    std::iota(indices.begin(), indices.end(), 0);
+    auto unprocessed_it = std::partition(indices.begin(), indices.end(),
+                                         [&const_partitions](std::size_t idx){return const_partitions[idx].processed;});
+    std::sort(indices.begin(), unprocessed_it, [&const_partitions](std::size_t i1, std::size_t i2){
+        return const_partitions[i1].start_idx < const_partitions[i2].start_idx;
+    });
 
-        assert(it->filled);
+    for (auto it = indices.begin(); it != unprocessed_it; ++it) {
+        auto & partition = partitions[*it];
+        assert(idx == partition.start_idx);
         bool ignore = true;
 
-        it->start_it = ssa_it;
+        partition.start_it = ssa_it;
 
-#   ifdef DEBUG_SSA
-        std::cout << "Partition SSA indices: " << idx << ", " << it->start_idx
-                    << ", " << it->end_idx << " size: " << partitions.size()
-                    << std::endl;
-#   endif
-
-        if (it->summary || it->stub)
-            continue;
-
-        while (idx != it->end_idx) {
+        while (idx != partition.end_idx) {
             assert(ssa_it != SSA_steps.end());
             ignore &= ssa_it->ignore;
             ++ssa_it;
             ++idx;
         }
-        it->end_it = ssa_it;
-        it->ignore = ignore & !it->get_iface().assertion_in_subtree;
+        partition.end_it = ssa_it;
+        partition.ignore = ignore & !partition.get_iface().assertion_in_subtree;
     }
 }
 
@@ -255,12 +270,11 @@ const partitiont* partitioning_target_equationt::find_target_partition(
         irep_idt id = step.cond_expr.id() == ID_symbol ? step.cond_expr.get(
                         ID_identifier) : step.cond_expr.op1().get(ID_identifier);
         partition_mapt::iterator pit = partition_map.find(id);
-
         if (pit != partition_map.end()) {
             return &partitions[pit->second];
         }
     }
-    return NULL;
+    return nullptr;
 }
 
 /*******************************************************************
@@ -277,13 +291,11 @@ void partitioning_target_equationt::fill_partition_ids(
 		partition_idt partition_id, fle_part_idst& part_ids) {
 
     partitiont& partition = partitions[partition_id];
-
     if (partition.stub) {
         return;
     }
 
-    assert( !partition.invalid &&  (!partition.get_iface().assertion_in_subtree
-                                           || store_summaries_with_assertion));
+    assert( (!partition.get_iface().assertion_in_subtree || store_summaries_with_assertion));
 
     if (partition.ignore) {
         assert(partition.child_ids.empty());
@@ -291,9 +303,7 @@ void partitioning_target_equationt::fill_partition_ids(
     }
 
     // Current partition id
-    for (unsigned int i = 0; i < partition.fle_part_ids.size(); i++){
-        part_ids.push_back(partition.fle_part_ids[i]);
-    }
+    part_ids.push_back(partition.fle_part_id);
 
     assert(partition.is_inline() || partition.child_ids.empty());
 
@@ -305,42 +315,40 @@ void partitioning_target_equationt::fill_partition_ids(
 }
 
 void partitioning_target_equationt::fill_stub_partition(partition_idt partition_id) {
-    partitiont & sum_partition = partitions.at(partition_id);
-    assert(!sum_partition.filled);
-
-    sum_partition.filled = true;
-    sum_partition.stub = true;
+    partitiont & partition = partitions.at(partition_id);
+    assert(! (partition.summary || partition.processed));
+    partition.stub = true;
 }
 
 void partitioning_target_equationt::select_partition(partition_idt partition_id) {
-    if (current_partition_id != partitiont::NO_PARTITION) {
-        get_current_partition().end_idx = SSA_steps.size();
-        assert(!partitions.at(partition_id).filled);
-    }
+    close_current_partition();
     // Select the new partition
     current_partition_id = partition_id;
     partitiont & new_partition = get_current_partition();
-    new_partition.filled = true;
+    assert(!new_partition.processed);
+    if(new_partition.processed){
+        throw std::logic_error("About to process partition that has been processed already!");
+    }
     new_partition.start_idx = SSA_steps.size();
 }
 
-void partitioning_target_equationt::fill_inverted_summary_partition(
-  partition_idt partition_id, const summary_idst * summaries, const summary_ids_sett & used_summaries) {
-    partitiont & sum_partition = partitions.at(partition_id);
-    assert(!sum_partition.filled);
-
-    sum_partition.filled = true;
-    sum_partition.summary = true;
-    sum_partition.inverted_summary = true;
-    sum_partition.summaries = summaries;
-    sum_partition.used_summaries = used_summaries;
-    sum_partition.applicable_summaries = used_summaries;
-
-//    Commented out for now to remove dependency on iostream, this method is not used at the moment anyway
-//    std::cerr << "  --- (" << partition_id <<
-//              ") sums: " << sum_partition.summaries->size() <<
-//              " used: " << sum_partition.used_summaries.size() << std::endl;
-}
+//void partitioning_target_equationt::fill_inverted_summary_partition(
+//  partition_idt partition_id, const summary_idst * summaries, const summary_ids_sett & used_summaries) {
+//    partitiont & sum_partition = partitions.at(partition_id);
+//    assert(!sum_partition.filled);
+//
+//    sum_partition.filled = true;
+//    sum_partition.summary = true;
+//    sum_partition.inverted_summary = true;
+//    sum_partition.summaries = summaries;
+//    sum_partition.used_summaries = used_summaries;
+//    sum_partition.applicable_summaries = used_summaries;
+//
+////    Commented out for now to remove dependency on iostream, this method is not used at the moment anyway
+////    std::cerr << "  --- (" << partition_id <<
+////              ") sums: " << sum_partition.summaries->size() <<
+////              " used: " << sum_partition.used_summaries.size() << std::endl;
+//}
 
 unsigned partitioning_target_equationt::count_partition_assertions(const partitiont & partition) const {
     unsigned i = 0;
@@ -349,6 +357,16 @@ unsigned partitioning_target_equationt::count_partition_assertions(const partiti
          it != partition.end_it; it++)
         if (it->is_assert()) i++;
     return i;
+}
+
+void partitioning_target_equationt::close_current_partition()  {
+    if (current_partition_id != partitiont::NO_PARTITION) {
+        auto & partition = get_current_partition();
+        partition.end_idx = SSA_steps.size();
+        assert(!partition.processed);
+        partition.processed = true;
+        current_partition_id = partitiont::NO_PARTITION;
+    }
 }
 
 /***************************************************************************/

@@ -18,6 +18,7 @@ Author: Ondrej Sery
 #include "solvers/prop_itp.h"
 #include "summary_store.h"
 
+
 //#define DEBUG_ITP // ITP of SAT - testing
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -62,7 +63,7 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
     cout << "XXX Partition: " << part_id <<
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
-            " (loc: " << it->get_iface().summary_info.get_call_location() << ", " <<
+            " (loc: " << it->get_iface().call_tree_node.get_call_location() << ", " <<
             ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM") :
                 ((it->stub) ? "TRU" : "INL")) << ")" <<
             std::endl;
@@ -72,8 +73,8 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
         out_basic << "XXX Partition: " << part_id <<
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
-            " (loc: " << it->get_iface().summary_info.get_call_location() << ", " <<
-            ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM") :
+            " (loc: " << it->get_iface().call_tree_node.get_call_location() << ", " <<
+            ((it->summary) ? "SUM" :
                 ((it->stub) ? "TRU" : "INL")) << ")" <<
             std::endl;
 #   endif
@@ -140,17 +141,7 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
 void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &prop_conv,
     interpolating_solvert &interpolator, partitiont& partition)
 {
-  if (partition.ignore || partition.processed || partition.invalid) {
-#   ifdef DEBUG_ENCODING
-    if (partition.invalid) {
-      std::cout << "  partition invalidated (refined)." << std::endl;
-    } else if (partition.ignore) {
-      assert (!partition.get_iface().assertion_in_subtree);
-      std::cout << "  partition sliced out." << std::endl;
-    } else if (partition.processed) {
-      std::cout << "  partition already processed." << std::endl;
-    }
-#   endif
+  if (partition.ignore) {
     return;
   }
   // Convert the assumption propagation symbols
@@ -166,15 +157,6 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
   if (partition.stub){
     return;
   }
-
-//  if ((partition.summary &&
-//          partition.applicable_summaries.empty())) {
-//    assert(!partition.inverted_summary);
-//#   ifdef DEBUG_SSA
-//    std::cout << "  no applicable summary." << std::endl;
-//#	endif
-//    return;
-//  }
 
   // Tell the interpolator about the new partition.
   partition.fle_part_id = interpolator.new_partition();
@@ -228,7 +210,7 @@ void prop_partitioning_target_equationt::convert_partition_summary(
     std::cout << "Candidate summaries: " << partition.summaries->size() << std::endl;
 #   endif
 
-  bool is_recursive = partition.get_iface().summary_info.is_recursive(); //on_nondet();
+  bool is_recursive = partition.get_iface().call_tree_node.is_recursive(); //on_nondet();
   unsigned last_summary = partition.applicable_summaries.size() - 1;
 
   for (summary_ids_sett::const_iterator it =
@@ -242,7 +224,7 @@ void prop_partitioning_target_equationt::convert_partition_summary(
 #   ifdef DEBUG_SSA
       std::cout << "Substituting summary #" << *it << std::endl;
 #   endif
-      summary.substitute(prop_conv, common_symbs, partition.inverted_summary);
+      summary.substitute(prop_conv, common_symbs);
     }
   }
 }
@@ -445,7 +427,6 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
 
       if (target_partition && !target_partition->ignore) {
         const partition_ifacet& target_partition_iface = target_partition->get_iface();
-        assert(!target_partition->invalid && !target_partition->processed);
 
         literalt tmp = prop_conv.prop.land(assumption_literal, it->guard_literal);
         prop_conv.prop.set_equal(tmp, target_partition_iface.callstart_literal);
@@ -697,11 +678,12 @@ namespace{
   bool skip_partition(partitiont & partition, bool store_summaries_with_assertion){
     return !partition.is_inline() ||
     (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
-    partition.get_iface().summary_info.is_recursion_nondet() ||
+    partition.get_iface().call_tree_node.is_recursion_nondet() ||
     skip_partition_with_name(partition.get_iface().function_id.c_str());
   }
 }
-#endif
+
+#endif // PRODUCE_PROOF
 
 /*******************************************************************\
 
@@ -723,18 +705,18 @@ void prop_partitioning_target_equationt::extract_interpolants(
 
   // Clear the used summaries
   for (unsigned i = 0; i < partitions.size(); ++i)
-    partitions[i].get_iface().summary_info.clear_used_summaries();
+    partitions[i].get_iface().call_tree_node.clear_used_summaries();
 
   // Find partitions suitable for summary extraction
   for (unsigned i = 1; i < partitions.size(); ++i) {
     partitiont& partition = partitions[i];
 
     // Mark the used summaries
-    if (partition.summary && !(partition.ignore || partition.invalid)) {
+    if (partition.summary && !(partition.ignore)) {
       for (auto it =
               partition.applicable_summaries.begin();
               it != partition.applicable_summaries.end(); ++it) {
-        partition.get_iface().summary_info.add_used_summary(*it);
+        partition.get_iface().call_tree_node.add_used_summary(*it);
       }
     }
     
@@ -781,7 +763,7 @@ void prop_partitioning_target_equationt::extract_interpolants(
       continue;
     }
 
-    if (partition.get_iface().summary_info.is_recursion_nondet()){
+    if (partition.get_iface().call_tree_node.is_recursion_nondet()){
       std::cout << "Skip interpolants for nested recursion calls." << std::endl;
       continue;
     }
@@ -837,8 +819,7 @@ void prop_partitioning_target_equationt::fill_partition_ids(
     return;
   }
 
-  assert(!partition.invalid &&
-          (!partition.get_iface().assertion_in_subtree || store_summaries_with_assertion));
+  assert((!partition.get_iface().assertion_in_subtree || store_summaries_with_assertion));
 
   if (partition.ignore) {
     assert(partition.child_ids.empty());

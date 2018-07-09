@@ -11,8 +11,10 @@ Author: Ondrej Sery
 #define CPROVER_PROP_PARTITIONING_TARGET_EQUATION_H
 
 #include "partitioning_target_equation.h"
-#include "solvers/satcheck_opensmt2.h"
 
+// forward declaration
+class prop_conv_solvert;
+class interpolating_solvert;
 
 // Two classes for smt and prop   
 class prop_partitioning_target_equationt:public partitioning_target_equationt

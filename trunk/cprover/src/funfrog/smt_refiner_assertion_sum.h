@@ -36,7 +36,8 @@ public:
 
           virtual ~smt_refiner_assertion_sumt() {}
     
-    void refine(const smtcheck_opensmt2t &decider, call_tree_nodet& summary, smt_partitioning_target_equationt &equation);
+    void mark_sum_for_refine(const smtcheck_opensmt2t &decider, call_tree_nodet &summary,
+                             smt_partitioning_target_equationt &equation);
   
 protected:
     void reset_depend(const smtcheck_opensmt2t &decider, call_tree_nodet& summary, smt_partitioning_target_equationt &equation);

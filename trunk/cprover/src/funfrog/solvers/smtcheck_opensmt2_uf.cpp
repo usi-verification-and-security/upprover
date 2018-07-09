@@ -9,11 +9,12 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2_uf.h"
 #include "../hifrog.h"
 #include <util/std_expr.h>
+#include <funfrog/utils/naming_helpers.h>
 
 // Debug flags of this class:
 //#define SMT_DEBUG
 
-const char* smtcheck_opensmt2t_uf::tk_sort_ureal = "UReal";
+const char* smtcheck_opensmt2t_uf::tk_sort_ureal = "Real";
 const char* smtcheck_opensmt2t_uf::tk_mult = "*";
 const char* smtcheck_opensmt2t_uf::tk_div = "/";
 const char* smtcheck_opensmt2t_uf::tk_plus = "+";
@@ -41,7 +42,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   logic = &(osmt->getLogic());
   mainSolver = &(osmt->getMainSolver());
 
-  const char* msg2=NULL;
+  const char* msg2 = nullptr;
   osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg2);
   //if (msg2!=NULL) free((char *)msg2);
 
@@ -49,13 +50,14 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   // a struct into std::vector and use [] before any push_back
   literals.push_back(PTRef());
   literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0] - NEVER COMMENT THIS LINE!!!
+  (void)l;
   literals[0] = logic->getTerm_true(); // Which is .x =0
   assert(l.var_no() != literalt::unused_var_no());  // KE: for cmake warnings
   // KE: End of fix
 
   //Initialize the stuff to fake UF
   //Create new sort UReal
-  char* msg=NULL;
+  char* msg = nullptr;
   sort_ureal = logic->declareSort(tk_sort_ureal, &msg);
 
   vec<SRef> args;
@@ -82,11 +84,11 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   sdiv.setLeftAssoc();
   splus.setLeftAssoc();
   sminus.setLeftAssoc();
-//  MB: in UF we should not assume that these symbols are commutative!
-//  smult.setCommutes();
-//  sdiv.setCommutes();
-//  splus.setCommutes();
-//  sminus.setCommutes();
+
+    // MB: to handle flattening done by CPROVER for plus and multiplication expressions
+    // TODO: Ask Antti which property to set, noScoping, chainble, or pairwise
+    splus.setNoScoping();
+    smult.setNoScoping();
   
   //Declare relations
   s_lt = logic->declareFun(tk_lt, logic->getSort_bool(), args, &msg, true);
@@ -94,7 +96,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   s_gt = logic->declareFun(tk_gt, logic->getSort_bool(), args, &msg, true);
   s_ge = logic->declareFun(tk_ge, logic->getSort_bool(), args, &msg, true);
 
-  if (msg!=NULL) free(msg);
+  if (msg != nullptr) free(msg);
 }
 
 /*******************************************************************\
@@ -345,7 +347,7 @@ Function: smtcheck_opensmt2t_uf::const_var_Number
 literalt smtcheck_opensmt2t_uf::const_var_Number(const exprt &expr)
 {
     //TODO: Check this
-    string num = extract_expr_str_number(expr);
+    std::string num = extract_expr_str_number(expr);
     PTRef rconst = PTRef_Undef;
     if(num.size() <= 0)
     {
@@ -406,7 +408,7 @@ literalt smtcheck_opensmt2t_uf::type_cast(const exprt &expr) {
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
             //cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")" 
             //    << string(getPTermString(ptl)) << endl << s << endl;
-            free(s);            
+            free(s); s=NULL;            
         }
 #endif          
     	return push_variable(ptl); // Keeps the new literal + index it
@@ -480,7 +482,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif  
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
@@ -530,7 +532,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
                 {
                     char *s = logic->printTerm(logic->getTopLevelIte(ptl));
                     ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-                    free(s);    
+                    free(s); s=NULL;    
                 }
 #endif
             }
@@ -543,7 +545,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
             {
                 char *s = logic->printTerm(logic->getTopLevelIte(ptl));
                 ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-                free(s);
+                free(s); s=NULL;
             }
 #endif
         } else if(_id == ID_and) {
@@ -660,6 +662,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
             
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
+            push_variable(var_eq); // storing also this PTRef in literals
             set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
 #endif
             // KE: Missing float op: ID_floatbv_sin, ID_floatbv_cos
@@ -673,7 +676,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
     PTRef ptr = literals[l.var_no()];
     char *s = logic->printTerm(ptr);
     cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    free(s); s=NULL;
 #endif
     return l;
 }
@@ -696,7 +699,7 @@ literalt smtcheck_opensmt2t_uf::lunsupported2var(const exprt &expr)
         return converted_exprs[expr.hash()]; // TODO: might be buggy;
 
     // Create a new unsupported var    
-    const string str = create_new_unsupported_var(expr.type().id().c_str());
+    const std::string str = create_new_unsupported_var(expr.type().id().c_str());
     
     PTRef var;
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
@@ -747,8 +750,8 @@ literalt smtcheck_opensmt2t_uf::lvar(const exprt &expr)
     }
 
     // Else continue as before
-    string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    str = quote_varname(str);
+    std::string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
+    str = quote_if_necessary(str);
 
     // Nil is a special case - don't create a var but a val of true
     if (str.compare(NIL) == 0) return const_var(true);
@@ -832,4 +835,30 @@ SRef smtcheck_opensmt2t_uf::getSMTlibDatatype(const typet& type)
         return sort_ureal; //SMT_UREAL;
 
     throw std::logic_error("Unknown datatype encountered!");
+}
+
+// Check if a literal is non-linear in the solver side
+bool smtcheck_opensmt2t_uf::is_non_linear_operator(PTRef tr)
+{
+    std::string symName{logic->getSymName(tr)};
+    if(symName.find("uns_") != std::string::npos){
+        return true;
+    }
+    SymRef sr = logic->getPterm(tr).symb(); 
+    if ((sr != this->s_mult) &&  (sr != this->s_div))
+        return false;
+    
+    // Get the original vars
+    const Pterm& t = logic->getPterm(tr);
+    if (t.size() < 2)
+        return false;
+    
+    // If we have 2 or more, than we can check if all constant but one
+    int count_var = 0;
+    for (int i = 0; i < t.size(); i++) {
+        if (!logic->isConstant(t[i]))
+            count_var++;
+    }
+    
+    return (count_var > 1);
 }
