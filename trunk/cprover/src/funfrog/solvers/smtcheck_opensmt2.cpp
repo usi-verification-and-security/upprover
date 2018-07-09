@@ -406,7 +406,7 @@ bool smtcheck_opensmt2t::can_interpolate() const
 {
   return ready_to_interpolate;
 }
-#endif
+#endif //PRODUCE PROOF
 
 /*******************************************************************\
 

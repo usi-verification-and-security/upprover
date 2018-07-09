@@ -578,13 +578,6 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
         
         end = !is_sat;
         if (is_sat) {
-        // check for possible refinement
-    //      MB: TODO: get this schema working
-    //      if(refiner.can_refine())
-    //      {
-    //        refiner.refine();
-    //      }
-
             // this refiner can refine if we have summary or havoc representation of a function
             // Else quit the loop! (shall move into a function)
             if (omega.get_summaries_count() == 0 && omega.get_nondets_count() == 0) 
@@ -630,16 +623,17 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     if (is_verified) {
         // produce and store the summaries
         if (!options.get_bool_option("no-itp")) {
+            #ifdef PRODUCE_PROOF
             if (decider->can_interpolate()) {
-            #ifdef PRODUCE_PROOF            
                 status() << ("Start generating interpolants...") << eom;
                 extract_interpolants_smt(ssaTosmt, equation);
-            #else
-                assert(0); // Cannot produce proof in that case!
-            #endif
             } else {
                 status() << ("Skip generating interpolants") << eom;
             }
+            #else
+                assert(0); // Cannot produce proof in that case!
+            #endif
+
         } else {
             status() << ("Skip generating interpolants") << eom;
         } // End Report interpolation gen.
@@ -1102,6 +1096,7 @@ Function: core_checkert::report_failure
  Purpose:
 
 \*******************************************************************/
+#ifdef PRODUCE_PROOF
 namespace{
 //Purpose: extracts summaries after successful verification; and dumps the summaries
 // in a specific summary-file for uf and lra separately based on the solver.
@@ -1123,7 +1118,6 @@ namespace{
     }
 /*******************************************************************/
 // Purpose: create non-linear fresh variable with a separate(independent) counter
-namespace {
     std::string fresh_var_name_nonlinear(){
         static int counter = 0;
         return quote_if_necessary( HifrogStringConstants::UNSUPPORTED_VAR_NAME + std::string{"_sumtheoref_"} + std::to_string(counter++));
@@ -1149,7 +1143,6 @@ namespace {
         }
         return res;
     }
-}
 
 /*******************************************************************/
 // Purpose:
@@ -1293,6 +1286,7 @@ void reload_summaries(const namespacet &ns,
         }
     }
 }
+#endif // PRODUCE_PROOF
 /*******************************************************************\
 
 Function: core_checkert::check_sum_theoref_single
