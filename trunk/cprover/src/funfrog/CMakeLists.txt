@@ -149,4 +149,6 @@ target_link_libraries(hifrog
 set_target_properties(hifrog
 PROPERTIES
 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+CXX_STANDARD 11
+CXX_STANDARD_REQUIRED true
 )
