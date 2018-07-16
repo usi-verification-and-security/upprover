@@ -78,8 +78,8 @@ fle_part_idt satcheck_opensmt2t::new_partition()
 {
 //Allowing partitions for havoced functions and fully slices ones
 
-  assert(partition_count == 0 || current_partition != NULL);
-  if (partition_count != 0 && current_partition == NULL) {
+  assert(partition_count == 0 || current_partition != nullptr);
+  if (partition_count != 0 && current_partition == nullptr) {
     std::cerr << "WARNING: last partition was empty (probably due to slicing)." << std::endl;
     // NOTE: The index is reused for the next partition, outer context must
     // ensure that the previously returned index is not used.
@@ -87,7 +87,7 @@ fle_part_idt satcheck_opensmt2t::new_partition()
   }
   
   // Finish the previous partition if any
-  if (current_partition != NULL)
+  if (current_partition != nullptr)
     close_partition();
 
   current_partition = new vec<PTRef>();
@@ -558,7 +558,7 @@ Function: satcheck_opensmt2t::close_partition
 
 void satcheck_opensmt2t::close_partition()
 {
-  assert(current_partition != NULL);
+  assert(current_partition != nullptr);
   if (partition_count > 0){
     if (current_partition->size() > 1){
       top_level_formulas.push(logic->mkAnd(*current_partition));
@@ -569,6 +569,6 @@ void satcheck_opensmt2t::close_partition()
       std::cout << "Empty partition (terms size = 0): " << partition_count << "\n";
     }
   }
-  current_partition = NULL;
+  current_partition = nullptr;
 }
 
