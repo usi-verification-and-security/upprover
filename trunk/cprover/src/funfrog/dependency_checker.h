@@ -8,7 +8,7 @@
 #include <goto-symex/symex_target_equation.h>
 #include <goto-symex/slice.h>
 
-#include <boost/pending/disjoint_sets.hpp>
+#include <funfrog/utils/UnionFind.h>
 #include <map>
 
 
@@ -24,10 +24,6 @@ class partitioning_target_equationt;
 #define NOTIMP false
 #define IMP true
 
-#define VERBOSE false
-
-#define IMIN(i, j) ((int)(i)<(int)(j))?(int)(i):(int)(j)
-#define IMAX(i, j) ((int)(i)<(int)(j))?(int)(j):(int)(i)
 
 class dependency_checkert : public messaget
 {
@@ -60,19 +56,12 @@ public:
   void do_it(partitioning_target_equationt &equation);
   void do_it(smt_symex_target_equationt &equation);
 
-  typedef std::list<symex_target_equationt::SSA_stept*> SSA_stepst;
-  typedef SSA_stepst::iterator SSA_step_reft;
+  using SSA_stepst = std::vector<symex_target_equationt::SSA_stept*> ;
+  using SSA_steps_it = SSA_stepst::iterator;
 
-  typedef std::map<std::string, size_t> rank_t;
-  typedef std::map<std::string, std::string> parent_t;
-
-  typedef boost::disjoint_sets<boost::associative_property_map<rank_t>,
-          boost::associative_property_map<parent_t>, boost::find_with_full_path_compression> str_disj_set;
-
-  void find_var_deps(str_disj_set &deps_ds, std::map<std::string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2);
+  void find_var_deps(UnionFind<std::string> &deps_ds, std::map<std::string, bool> &visited);
   void find_assert_deps();
   virtual long find_implications()=0;
-  void get_minimals();
 
 #ifdef DISABLE_OPTIMIZATIONS   
   void print_SSA_steps_infos();
@@ -86,8 +75,8 @@ public:
   std::string variable_name(dstringt name);
   void print_dependents(std::map<std::string,bool> dependents, std::ostream &out);
 
-  virtual std::pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2)=0;
-  bool compare_assertions(SSA_step_reft &a, SSA_step_reft &b);
+  virtual std::pair<bool, fine_timet> check_implication(SSA_steps_it c1, SSA_steps_it c2)=0;
+  bool compare_assertions(std::size_t idx1, std::size_t idx2);
 
 protected:
   const goto_programt &goto_program;
@@ -97,18 +86,19 @@ protected:
 
   int last_label;
   std::map<std::string,int*> label;
-  std::map<std::string,std::map<std::string,bool> > var_deps;
-  std::map<SSA_step_reft,std::map<SSA_step_reft,bool> > assert_deps;
-  std::map<SSA_step_reft,std::map<SSA_step_reft,bool> > assert_imps;
-  std::map<SSA_step_reft,bool> toCheck;
+  //std::map<std::string,std::map<std::string,bool> > var_deps;
+  std::map<std::size_t,std::map<std::size_t,bool> > assert_deps;
+  std::map<std::size_t,std::map<std::size_t,bool> > assert_imps;
+//  std::map<SSA_steps_it,bool> toCheck;
 
-  std::vector<SSA_step_reft> asserts;
-  std::map<std::string,int> instances;
+  /* Contain indices to SSA_steps */
+  std::vector<std::size_t> asserts;
+//  std::map<std::string,int> instances;
   unsigned treshold;
 
   SSA_stepst SSA_steps; // similar stuff to what symex_target_equationt has
   std::map<exprt, exprt> SSA_map;
-  std::vector<std::string> equation_symbols;
+//  std::vector<std::string> equation_symbols;
   unsigned long impl_timeout;
   
   void reconstruct_exec_SSA_order(partitioning_target_equationt &equation);

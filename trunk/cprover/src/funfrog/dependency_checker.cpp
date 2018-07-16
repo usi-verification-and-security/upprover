@@ -12,13 +12,10 @@
 #include <map>
 
 #include <util/language.h>
-#include <boost/pending/disjoint_sets.hpp>
 
 #include "nopartition/smt_symex_target_equation.h"
 #include "subst_scenario.h"
 #include "partitioning_target_equation.h"
-
-using namespace boost;
 
 //#include <iostream>
 
@@ -33,14 +30,16 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
   std::ofstream hl_list;
   hl_list.open ("__hl_list");
-    for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
+  std::size_t idx = 0; // index to ssa_steps
+    for(auto step : SSA_steps)
     {
-      if ((*it)->is_assert() && !omega.is_assertion_in_loop((*it)->source.pc)){
-        asserts.push_back(it);
+      if (step->is_assert() && !omega.is_assertion_in_loop(step->source.pc)){
+        asserts.push_back(idx);
         //cout << "ID: " << it->source.pc->location.get_claim() << " Condition: " << from_expr(ns, "", it->cond_expr) << '\n';
-        instances[(*it)->source.pc->source_location.get_property_id().c_str()]++;
-        hl_list << "Assertion: " << (*it)->source.pc->source_location.get_property_id().c_str() << '\n';
+//        instances[step->source.pc->source_location.get_property_id().c_str()]++;
+        hl_list << "Assertion: " << step->source.pc->source_location.get_property_id().c_str() << '\n';
       }
+      ++idx;
     }
 
     hl_list.close();
@@ -118,14 +117,16 @@ void dependency_checkert::do_it(smt_symex_target_equationt &equation){
 
     std::ofstream hl_list;
     hl_list.open ("__hl_list");
-    for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
+    std::size_t idx = 0;
+    for(auto step : SSA_steps)
     {
-      if ((*it)->is_assert() && !omega.is_assertion_in_loop((*it)->source.pc)){
-        asserts.push_back(it);
+      if (step->is_assert() && !omega.is_assertion_in_loop(step->source.pc)){
+        asserts.push_back(idx);
         //cout << "ID: " << it->source.pc->location.get_claim() << " Condition: " << from_expr(ns, "", it->cond_expr) << '\n';
-        instances[(*it)->source.pc->source_location.get_property_id().c_str()]++;
-        hl_list << "Assertion: " << (*it)->source.pc->source_location.get_property_id().c_str() << '\n';
+//        instances[step->source.pc->source_location.get_property_id().c_str()]++;
+        hl_list << "Assertion: " << step->source.pc->source_location.get_property_id().c_str() << '\n';
       }
+      ++idx;
     }
 
     hl_list.close();
@@ -167,39 +168,38 @@ void dependency_checkert::do_it(smt_symex_target_equationt &equation){
     just_dep.close();
 }
 
-void dependency_checkert::find_var_deps(str_disj_set &deps_ds, std::map<std::string, bool> &visited, SSA_step_reft &it1, SSA_step_reft &it2)
+void dependency_checkert::find_var_deps(UnionFind<std::string> &deps_ds, std::map<std::string, bool> &visited)
 {
 
     // ============ DISJOINT SETS EDITING BEGINS
 
-    for(SSA_stepst::iterator it = it1; it!=it2; ++it)
+    auto it = SSA_steps.begin() + asserts.front();
+    auto end = SSA_steps.begin() + asserts.back();
+    for( ; it != end; ++it)
     {
-      if ((*it)->is_assignment() || (*it)->is_assume() || (*it)->is_assert())
+        auto ass = *it;
+      if (ass->is_assignment() || ass->is_assume() || ass->is_assert())
       {
-//        if ((*it)->is_assert()){
-//          cout << "  ["<< (*it)->source.pc->location.get_line() <<"]\n";
-//        }
             symbol_sett all_symbols;
             symbol_sett guard_symbols;
 
-            //get_expr_symbols((*it)->guard, all_symbols);
-            get_expr_symbols((*it)->cond_expr, all_symbols);
-            get_expr_symbols(SSA_map[(*it)->cond_expr], all_symbols);
+            get_expr_symbols(ass->cond_expr, all_symbols);
+            get_expr_symbols(SSA_map[ass->cond_expr], all_symbols);
 
-            for (symbol_sett::iterator sym_it = all_symbols.begin(); sym_it != all_symbols.end(); ++sym_it){
-              if (as_string(*sym_it).find("\\guard") < 10000){ //dirty hack
-                 //cout <<"guard symbol: " << as_string(*sym_it)  << "\n";
-                  // all_symbols.erase(sym_it);
-                //get_expr_symbols(SSA_map[(*it)->cond_expr], all_symbols);
-              }
-            }
+//            for (symbol_sett::iterator sym_it = all_symbols.begin(); sym_it != all_symbols.end(); ++sym_it){
+//              if (as_string(*sym_it).find("\\guard") < 10000){ //dirty hack
+//                 //cout <<"guard symbol: " << as_string(*sym_it)  << "\n";
+//                  // all_symbols.erase(sym_it);
+//                //get_expr_symbols(SSA_map[(*it)->cond_expr], all_symbols);
+//              }
+//            }
             if (!all_symbols.empty())
             {
               std::string first_sym = as_string(*(all_symbols.begin()));
             	if (!visited[first_sym])
                 {
-                  deps_ds.make_set(first_sym);
-                  equation_symbols.push_back(first_sym);
+                  deps_ds.makeSet(first_sym);
+//                  equation_symbols.push_back(first_sym);
                   visited[first_sym] = true;
 //                  cout << "I have visited a variable: " << first_sym << " ["
 //                      << (visited[first_sym]?"true":"false") << "]" << '\n';
@@ -224,14 +224,14 @@ void dependency_checkert::find_var_deps(str_disj_set &deps_ds, std::map<std::str
               std::string next_sym = as_string(*sym_it);
             	if (!visited[next_sym])
               {
-                equation_symbols.push_back(next_sym);
-                deps_ds.make_set(next_sym);
+//                equation_symbols.push_back(next_sym);
+                deps_ds.makeSet(next_sym);
                 visited[next_sym] = true;
 //                cout << "I have visited a variable: " << next_sym << " ["
 //                    << (visited[next_sym]?"true":"false") << "]" << '\n';
               }
             	//cout << "Merging: " << as_string(*(all_symbols.begin())) << " and " <<  next_sym <<"\n";
-              deps_ds.union_set(as_string(*(all_symbols.begin())), next_sym);
+              deps_ds.merge(as_string(*(all_symbols.begin())), next_sym);
             	//string x = deps_ds->find_set(as_string(*sym_it));
             	//cout << "Printing test of variable: " << x << '\n';
             	//exit(1);
@@ -251,51 +251,43 @@ void dependency_checkert::find_assert_deps()
     int deps=0;
     int indeps=0;
     bool doubleforbreak;
-
-    rank_t rank_map;
-    parent_t parent_map;
-
-    associative_property_map<rank_t> rank_pmap(rank_map);
-    associative_property_map<parent_t> parent_pmap(parent_map);
-
-    str_disj_set deps_ds(rank_pmap, parent_pmap);
     std::map<std::string, bool> visited;
+    UnionFind<std::string> uf;
 
-    find_var_deps(deps_ds, visited, asserts[0], asserts[asserts.size()-1]);
+    find_var_deps(uf, visited);
 
     for (unsigned i = 0; i < asserts.size(); i++)
     {
-      SSA_step_reft& assert_1 = asserts[i];
+      auto assert1_idx = asserts[i];
+      auto & assert_1 = SSA_steps[assert1_idx];
       symbol_sett first_symbols;
-      get_expr_symbols((*assert_1)->guard, first_symbols);
-      get_expr_symbols((*assert_1)->cond_expr, first_symbols);
-
-      //unsigned int lend = IMIN(i + (treshold), asserts.size());
+      get_expr_symbols(assert_1->guard, first_symbols);
+      get_expr_symbols(assert_1->cond_expr, first_symbols);
 
       for (unsigned j = i + 1; j < asserts.size(); j++)
       {
         indeps++;
-        SSA_step_reft& assert_2 = asserts[j];
-        if (!compare_assertions(assert_1, assert_2))
+        auto assert2_idx = asserts[j];
+        auto & assert_2 = SSA_steps[assert2_idx];
+        if (!compare_assertions(assert1_idx, assert2_idx))
           continue;
 
         symbol_sett second_symbols;
-        get_expr_symbols((*assert_2)->guard, second_symbols);
-        get_expr_symbols((*assert_2)->cond_expr, second_symbols);
+        get_expr_symbols(assert_2->guard, second_symbols);
+        get_expr_symbols(assert_2->cond_expr, second_symbols);
         doubleforbreak = false;
-        for (symbol_sett::iterator first_symit = first_symbols.begin();
+        for (auto first_symit = first_symbols.begin();
             (first_symit != first_symbols.end() && (!doubleforbreak));
             ++first_symit)
           {
-        	for (symbol_sett::iterator second_symit = second_symbols.begin();
+        	for (auto second_symit = second_symbols.begin();
         	    (second_symit != second_symbols.end() && (!doubleforbreak));
         	    ++second_symit)
             {
         	    if (visited[as_string(*first_symit)] && visited[as_string(*second_symit)])
-                if (deps_ds.find_set(as_string(*first_symit)) == deps_ds.find_set(as_string(*second_symit)) )
+                if (uf.find(as_string(*first_symit)) == uf.find(as_string(*second_symit)) )
                 {
-                  assert_deps[assert_1][assert_2] = DEPT;
-                  //assert_deps[assert_2][assert_1] = DEPT;
+                  assert_deps[assert1_idx][assert2_idx] = true;
                   doubleforbreak = true;
                   deps++;
 //                  cout << "The following assertions are dependent!" << '\n';
@@ -317,25 +309,9 @@ void dependency_checkert::find_assert_deps()
 //	return (distance(a, b) < 0);
 //}
 
-bool dependency_checkert::compare_assertions(SSA_step_reft &a, SSA_step_reft &b){
-  return distance(a, b) < treshold;
-}
-
-void dependency_checkert::get_minimals()
-{
-  // TODO: it doesn't seem working
-  std::map<SSA_step_reft,int> inDegree;
-
-    for (std::map<SSA_step_reft,std::map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
-      for (std::map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
-        inDegree[dep_second_it->first]++;
-
-    std::map<SSA_step_reft, int>::iterator degree_it;
-    for (degree_it = inDegree.begin(); degree_it != inDegree.end(); degree_it++)
-    {
-      if (degree_it->second == 0) toCheck[degree_it->first] = true;
-    }
-
+bool dependency_checkert::compare_assertions(std::size_t idx1, std::size_t idx2){
+    assert(idx2 > idx1);
+    return (idx2 - idx1) < treshold;
 }
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -468,7 +444,7 @@ std::string dependency_checkert::variable_name(dstringt name)
 
 std::string dependency_checkert::variable_name(std::string name)
 {
-  return name.substr(name.find_last_of(":") + 1, 10);
+  return name.substr(name.find_last_of(':') + 1, 10);
 }
 
 void dependency_checkert::get_expr_symbols(const exprt &expr, symbol_sett& symbols)
@@ -493,9 +469,9 @@ void dependency_checkert::print_expr_symbols(std::ostream &out, exprt expr)
 
 void dependency_checkert::print_expr_symbols(std::ostream &out, symbol_sett& s)
 {
-    for (symbol_sett::iterator it = s.begin(); it != s.end(); ++it)
+    for (auto const & symbol : s)
     {
-      out << variable_name(*it) << " ";
+      out << variable_name(symbol) << " ";
     }
     //s.clear();
 }
@@ -534,12 +510,9 @@ void dependency_checkert::print_SSA_steps()
 // TODO: send equation as in parameter - requires no additional changes!
 void dependency_checkert::reconstruct_exec_SSA_order(partitioning_target_equationt &equation){
   const SSA_steps_orderingt& SSA_steps = equation.get_steps_exec_order();
-  for(SSA_steps_orderingt::const_iterator
-      it=SSA_steps.begin();
-      it!=SSA_steps.end();
-      it++)
+  for(auto ssa_step : SSA_steps)
   {
-    symex_target_equationt::SSA_stept& SSA_step=**it;
+    symex_target_equationt::SSA_stept& SSA_step = *ssa_step;
     this->SSA_steps.push_back(&SSA_step);
     SSA_map[SSA_step.ssa_full_lhs] = SSA_step.cond_expr;
   }

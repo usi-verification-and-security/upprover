@@ -94,7 +94,7 @@ set(HIFROG_SOURCE_FILES
         partition_fwd.h
         solvers/interpolating_solver_fwd.h
         #reportt.cpp reportt.h
-        )
+    utils/UnionFind.cpp utils/UnionFind.h)
 
 option(PRODUCE_PROOF "" ON)
 

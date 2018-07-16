@@ -9,13 +9,15 @@
 #include "utils/naming_helpers.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 
-std::pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
+#define VERBOSE false
+
+std::pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_steps_it it1, SSA_steps_it it2)
 {
   try{
   smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra(0, "implication checker", false);
   decider->new_partition();
 
-  convert_delta_SSA(*decider, c1, c2);
+  convert_delta_SSA(*decider, it1, it2);
 
   if (VERBOSE) status() << ("RESULT");
   time_periodt duration;
@@ -83,26 +85,28 @@ long smt_dependency_checkert::find_implications()
 
   for (unsigned i = 0; i < asserts.size(); i++)
   {
-    SSA_step_reft& assert_1 = asserts[i];
+    auto assert1_idx = asserts[i];
+    auto assert_1 = SSA_steps[assert1_idx];
     //unsigned int lstart = IMAX(0, i - (treshold - 1));
 	  //unsigned int lend = IMIN(i + (treshold), asserts.size());
     for (unsigned j = i+1; j < asserts.size(); j++)
     {
       checks++;
       std::pair<bool, fine_timet> checkres;
-      SSA_step_reft& assert_2 = asserts[j];
-      if (compare_assertions(assert_1, assert_2)
-          && assert_deps[assert_1][assert_2] == DEPT
+      auto assert2_idx = asserts[j];
+      auto assert_2 = SSA_steps[assert2_idx];
+      if (compare_assertions(assert1_idx, assert2_idx)
+          && assert_deps[assert1_idx][assert2_idx] == DEPT
           )
       {
         impchecks++;
         if (VERBOSE)
         {
           status () << "Comparing the assertions " <<
-            from_expr(ns, "", (*assert_1)->cond_expr) << " and " <<
-            from_expr(ns, "", (*assert_2)->cond_expr) << eom;
+            from_expr(ns, "", assert_1->cond_expr) << " and " <<
+            from_expr(ns, "", assert_2->cond_expr) << eom;
         }
-                checkres = check_implication(assert_1, assert_2);
+        checkres = check_implication(SSA_steps.begin() + assert1_idx, SSA_steps.begin() + assert2_idx);
 
         if (checkres.first == true)
         {
@@ -110,7 +114,7 @@ long smt_dependency_checkert::find_implications()
           if (VERBOSE) {status () << "check_implication returned TRUE" << eom;}
           if (checkres.second.get_t() <= impl_timeout)
           {
-            assert_imps[assert_1][assert_2] = IMP;
+            assert_imps[assert1_idx][assert2_idx] = IMP;
 //            if (VERBOSE)
 //            {
 //              std::cout << "Adding the assertion implication \n (" <<
@@ -120,10 +124,10 @@ long smt_dependency_checkert::find_implications()
 
             weaker[j] = true;
 //            stronger[j] = true;
-            hl_may_impl << (*assert_1)->source.pc->source_location.get_property_id() << " " <<
-                (*assert_2)->source.pc->source_location.get_property_id() << " " <<
-                distance(SSA_steps.begin(), assert_1) << " " <<
-                distance(SSA_steps.begin(), assert_2) << std::endl;
+            hl_may_impl << assert_1->source.pc->source_location.get_property_id() << " " <<
+                assert_2->source.pc->source_location.get_property_id() << " " <<
+                assert1_idx << " " <<
+                assert2_idx << std::endl;
 
             discarded++;
           }
@@ -151,8 +155,8 @@ long smt_dependency_checkert::find_implications()
   }
 
 //    std::cout << "Printing assertion implications:" << std::endl;
-//    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
-//      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
+//    for (map<SSA_steps_it,map<SSA_steps_it,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
+//      for (map<SSA_steps_it,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
 //      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
 
   hl_may_impl.close();
@@ -168,15 +172,15 @@ long smt_dependency_checkert::find_implications()
   {
     if (weaker[i] == true)
 	  {
-		  SSA_step_reft& removable = asserts[i];
+		  auto removable = SSA_steps[asserts[i]];
       warning () << "\nRedundant assertion at:\n" <<
-	  "  file \"" << (*removable)->source.pc->source_location.get_file() <<
-	  "\",\n  function \"" << (*removable)->source.pc->source_location.get_function() <<
-	  "\",\n  line " << (*removable)->source.pc->source_location.get_line() << ":\n  " <<
-          from_expr(ns, "", (*removable)->source.pc->guard) << "\n" << eom;
+	  "  file \"" << removable->source.pc->source_location.get_file() <<
+	  "\",\n  function \"" << removable->source.pc->source_location.get_function() <<
+	  "\",\n  line " << removable->source.pc->source_location.get_line() << ":\n  " <<
+          from_expr(ns, "", removable->source.pc->guard) << "\n" << eom;
 
 
-      (*removable)->ignore = true;
+      removable->ignore = true;
 	}
   }
 //  try{
@@ -185,7 +189,7 @@ long smt_dependency_checkert::find_implications()
 //    hl_stronger.open ("__hl_stronger");
 //    hl_weaker.open ("__hl_weaker");
 //    for (int i = asserts.size() - 1; i >= 0; i--){
-//      SSA_step_reft& ass = asserts[i];
+//      SSA_steps_it& ass = asserts[i];
 //      if (weaker[i] == true)
 //        hl_weaker << (*ass)->source.pc->location.get_claim().c_str() << std::endl;
 //      if (stronger[i] == true)
@@ -204,7 +208,7 @@ long smt_dependency_checkert::find_implications()
 }
 
 void smt_dependency_checkert::convert_delta_SSA(smtcheck_opensmt2t &decider,
-    SSA_step_reft &it1, SSA_step_reft &it2)
+    SSA_steps_it &it1, SSA_steps_it &it2)
 {
   convert_guards(decider, it1, it2);
   convert_assignments(decider, it1, it2);
@@ -244,9 +248,9 @@ void smt_dependency_checkert::set_guards_to_true(smtcheck_opensmt2t &decider, ex
 }
 
 void smt_dependency_checkert::convert_assignments(
-    smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2)
+    smtcheck_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2)
 {
-  SSA_step_reft it=it1;
+  SSA_steps_it it=it1;
   while(it!=it2){
     it++;
 
@@ -259,10 +263,10 @@ void smt_dependency_checkert::convert_assignments(
 }
 
 void smt_dependency_checkert::convert_guards(
-  smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2)
+  smtcheck_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2)
 {
-  SSA_step_reft it=it1;
-  SSA_step_reft it3=it2;
+  SSA_steps_it it=it1;
+  SSA_steps_it it3=it2;
   it3++;
 
   while(it!=it3){
@@ -279,9 +283,9 @@ void smt_dependency_checkert::convert_guards(
 }
 
 void smt_dependency_checkert::convert_assumptions(
-  smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2)
+  smtcheck_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2)
 {
-  SSA_step_reft it=it1;
+  SSA_steps_it it=it1;
   while(it!=it2)
   {
     if(((*it)->is_assume() || ((*it)->is_assert() && it != it2)) && !(*it)->ignore)
@@ -295,7 +299,7 @@ void smt_dependency_checkert::convert_assumptions(
 }
 
 void smt_dependency_checkert::convert_assertions(
-  smtcheck_opensmt2t &decider, SSA_step_reft &it2)
+  smtcheck_opensmt2t &decider, SSA_steps_it &it2)
 {
   assert((*it2)->is_assert());
   //std::cout << "convert assert :" << from_expr(ns, "", (*it2)->cond_expr) <<"\n";
@@ -304,11 +308,11 @@ void smt_dependency_checkert::convert_assertions(
 }
 
 void smt_dependency_checkert::convert_io(
-    smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2)
+    smtcheck_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2)
 {
   unsigned io_count=0;
-  SSA_step_reft it=it1;
-  SSA_step_reft it3=it2;
+  SSA_steps_it it=it1;
+  SSA_steps_it it3=it2;
   it3++;
 
   while (it!=it3){

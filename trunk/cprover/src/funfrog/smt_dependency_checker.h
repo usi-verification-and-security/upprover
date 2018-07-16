@@ -31,18 +31,18 @@ public:
           _message_handler, _goto_program, _omega,fraction,SSA_steps_size) {}
     virtual ~smt_dependency_checkert() {}
     
-    virtual std::pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2);
-    virtual long find_implications();
+    virtual std::pair<bool, fine_timet> check_implication(SSA_steps_it it1, SSA_steps_it it2) override;
+    virtual long find_implications() override;
 private:
   void deep_convert_guards(smtcheck_opensmt2t &decider, exprt exp);
   void set_guards_to_true(smtcheck_opensmt2t &decider, exprt exp);
 
-  void convert_delta_SSA(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assignments(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assumptions(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assertions(smtcheck_opensmt2t &decider, SSA_step_reft &it2);
-  void convert_guards(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_io(smtcheck_opensmt2t &decider, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_delta_SSA(smtcheck_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2);
+  void convert_assignments(smtcheck_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2);
+  void convert_assumptions(smtcheck_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2);
+  void convert_assertions(smtcheck_opensmt2t &decider, SSA_steps_it &it2);
+  void convert_guards(smtcheck_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2);
+  void convert_io(smtcheck_opensmt2t &decider, SSA_steps_it &it1, SSA_steps_it &it2);
 };
 
 #endif /* SMT_DEPENDENCY_CHECKERT_H */

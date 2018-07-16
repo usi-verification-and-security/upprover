@@ -11,12 +11,15 @@
 #include <solvers/flattening/bv_pointers.h>
 #include "solvers/satcheck_opensmt2.h"
 
-std::pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_step_reft &c1, SSA_step_reft &c2)
+#define VERBOSE false
+
+std::pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_steps_it c1, SSA_steps_it c2)
 {
   try{
 
   std::unique_ptr<prop_conv_solvert> decider;
   satcheck_opensmt2t* opensmt = new satcheck_opensmt2t("prop dependency checker");
+  opensmt->new_partition();
   bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
   deciderp->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;
   decider.reset(deciderp);
@@ -83,52 +86,34 @@ long prop_dependency_checkert::find_implications()
   unsigned discarded = 0;
   int checks=0;
   int impchecks=0;
-  std::vector<bool> stronger(asserts.size(), true);
-  std::vector<bool> weaker(asserts.size(), true);
-  
-    /*
-    cout << "Printing assertions before ordering." << std::endl;
-    for (it = asserts.begin(); it != asserts.end(); it++)
-    {
-    	cout << from_expr(ns, "", (*it)->cond_expr) << std::endl;
-    }
-    */
-
-    //sort(asserts.begin(), asserts.end(), compare_asserts);
-
-    /*
-    cout << "Printing assertions after ordering." << std::endl;
-    for (it = asserts.begin(); it != asserts.end(); it++)
-    {
-    	cout << from_expr(ns, "", (*it)->cond_expr) << std::endl;
-    }
-    */
+  std::vector<bool> stronger(asserts.size(), false);
+  std::vector<bool> weaker(asserts.size(), false);
 
   std::ofstream hl_may_impl;
   hl_may_impl.open ("__hl_may_impl");
 
   for (unsigned i = 0; i < asserts.size(); i++)
   {
-    SSA_step_reft& assert_1 = asserts[i];
-    //unsigned int lstart = IMAX(0, i - (treshold - 1));
-	  //unsigned int lend = IMIN(i + (treshold), asserts.size());
+    auto assert1_idx = asserts[i];
+    auto assert_1 = SSA_steps[assert1_idx];
     for (unsigned j = i+1; j < asserts.size(); j++)
     {
       checks++;
       std::pair<bool, fine_timet> checkres;
-      SSA_step_reft& assert_2 = asserts[j];
-      if (compare_assertions(assert_1, assert_2)
-          && assert_deps[assert_1][assert_2] == DEPT
+      auto assert2_idx = asserts[j];
+      auto assert_2 = SSA_steps[assert2_idx];
+      if (compare_assertions(assert1_idx, assert2_idx)
+          && assert_deps[assert1_idx][assert2_idx] == DEPT
           )
       {
         impchecks++;
         if (VERBOSE)
         {
           status() << "Comparing the assertions " <<
-            from_expr(ns, "", (*assert_1)->cond_expr) << " and " <<
-            from_expr(ns, "", (*assert_2)->cond_expr) << eom;
+            from_expr(ns, "", assert_1->cond_expr) << " and " <<
+            from_expr(ns, "", assert_2->cond_expr) << eom;
         }
-                checkres = check_implication(assert_1, assert_2);
+                checkres = check_implication(SSA_steps.begin() + assert1_idx, SSA_steps.begin() + assert2_idx);
 
         if (checkres.first == true)
         {
@@ -136,20 +121,20 @@ long prop_dependency_checkert::find_implications()
           if (VERBOSE) {std::cout << "check_implication returned TRUE" << std::endl;}
           if (checkres.second.get_t() <= impl_timeout)
           {
-            assert_imps[assert_1][assert_2] = IMP;
+            assert_imps[assert1_idx][assert2_idx] = IMP;
             if (VERBOSE)
             {
               status() << "Adding the assertion implication \n (" <<
-                from_expr(ns, "", (*assert_1)->cond_expr) << ") [" << (*assert_1)->source.pc->source_location.get_line() << "] [stronger] \n => \n (" <<
-                from_expr(ns, "", (*assert_2)->cond_expr) << ") [" << (*assert_2)->source.pc->source_location.get_line() << "] [weaker]" << eom;
+                from_expr(ns, "", assert_1->cond_expr) << ") [" << assert_1->source.pc->source_location.get_line() << "] [stronger] \n => \n (" <<
+                from_expr(ns, "", assert_2->cond_expr) << ") [" << assert_2->source.pc->source_location.get_line() << "] [weaker]" << eom;
             }
 
             weaker[i] = false;
             stronger[j] = false;
-            hl_may_impl << (*assert_1)->source.pc->source_location.get_property_id() << " " <<
-                (*assert_2)->source.pc->source_location.get_property_id() << " " <<
-                distance(SSA_steps.begin(), assert_1) << " " <<
-                distance(SSA_steps.begin(), assert_2) << std::endl;
+            hl_may_impl << assert_1->source.pc->source_location.get_property_id() << " " <<
+                assert_2->source.pc->source_location.get_property_id() << " " <<
+                assert1_idx << " " <<
+                assert2_idx << std::endl;
 
             discarded++;
           }
@@ -177,8 +162,8 @@ long prop_dependency_checkert::find_implications()
   }
 
 //    std::cout << "Printing assertion implications:" << std::endl;
-//    for (map<SSA_step_reft,map<SSA_step_reft,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
-//      for (map<SSA_step_reft,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
+//    for (map<SSA_steps_it,map<SSA_steps_it,bool> >::iterator dep_first_it = assert_imps.begin(); dep_first_it != assert_imps.end(); ++dep_first_it)
+//      for (map<SSA_steps_it,bool>::iterator dep_second_it = dep_first_it->second.begin(); dep_second_it != dep_first_it->second.end(); ++dep_second_it)
 //      std::cout << "(" << from_expr(ns, "", dep_first_it->first->cond_expr) << " => " << from_expr(ns, "", dep_second_it->first->cond_expr) << ")" << std::endl;
 
   hl_may_impl.close();
@@ -194,9 +179,9 @@ long prop_dependency_checkert::find_implications()
   {
     if (weaker[i] == true)
 	  {
-		  SSA_step_reft& removable = asserts[i];
-      status () << "Removing << " << (*removable)->source.pc->source_location.get_line() << eom;
-      (*removable)->ignore = true;
+		  auto removable = SSA_steps[asserts[i]];
+		  status () << "Removing << " << removable->source.pc->source_location.get_line() << eom;
+		  removable->ignore = true;
 	  }
   }
   try{
@@ -206,11 +191,11 @@ long prop_dependency_checkert::find_implications()
     hl_weaker.open ("__hl_weaker");
     //int hldiscardable = 0;
     for (int i = asserts.size() - 1; i >= 0; i--){
-      SSA_step_reft& ass = asserts[i];
+      auto ass = SSA_steps[asserts[i]];
       if (weaker[i] == true)
-        hl_weaker << (*ass)->source.pc->source_location.get_property_id().c_str() << std::endl;
+        hl_weaker << ass->source.pc->source_location.get_property_id().c_str() << std::endl;
       if (stronger[i] == true)
-        hl_stronger << (*ass)->source.pc->source_location.get_property_id().c_str() << std::endl;
+        hl_stronger << ass->source.pc->source_location.get_property_id().c_str() << std::endl;
     }
 
     hl_stronger.close();
@@ -225,7 +210,7 @@ long prop_dependency_checkert::find_implications()
 }
 
 void prop_dependency_checkert::convert_delta_SSA(prop_conv_solvert &decider,
-    SSA_step_reft &it1, SSA_step_reft &it2)
+    SSA_steps_it &it1, SSA_steps_it &it2)
 {
   convert_guards(decider, it1, it2);
   convert_assignments(decider, it1, it2);
@@ -265,9 +250,9 @@ void prop_dependency_checkert::set_guards_to_true(prop_conv_solvert &decider, ex
 }
 
 void prop_dependency_checkert::convert_assignments(
-    prop_conv_solvert &decider, SSA_step_reft &it1, SSA_step_reft &it2)
+    prop_conv_solvert &decider, SSA_steps_it &it1, SSA_steps_it &it2)
 {
-  SSA_step_reft it=it1;
+  SSA_steps_it it=it1;
   while(it!=it2){
     it++;
 
@@ -280,10 +265,10 @@ void prop_dependency_checkert::convert_assignments(
 }
 
 void prop_dependency_checkert::convert_guards(
-  prop_conv_solvert &decider, SSA_step_reft &it1, SSA_step_reft &it2)
+  prop_conv_solvert &decider, SSA_steps_it &it1, SSA_steps_it &it2)
 {
-  SSA_step_reft it=it1;
-  SSA_step_reft it3=it2;
+  SSA_steps_it it=it1;
+  SSA_steps_it it3=it2;
   it3++;
 
   while(it!=it3){
@@ -300,9 +285,9 @@ void prop_dependency_checkert::convert_guards(
 }
 
 void prop_dependency_checkert::convert_assumptions(
-  prop_conv_solvert &decider, SSA_step_reft &it1, SSA_step_reft &it2)
+  prop_conv_solvert &decider, SSA_steps_it &it1, SSA_steps_it &it2)
 {
-  SSA_step_reft it=it1;
+  SSA_steps_it it=it1;
   while(it!=it2)
   {
     // KE:  merge dev to master, not sure which line is the correct one
@@ -318,7 +303,7 @@ void prop_dependency_checkert::convert_assumptions(
 }
 
 void prop_dependency_checkert::convert_assertions(
-  prop_conv_solvert &decider, SSA_step_reft &it2)
+  prop_conv_solvert &decider, SSA_steps_it &it2)
 {
   assert((*it2)->is_assert());
   //std::cout << "convert assert :" << from_expr(ns, "", (*it2)->cond_expr) <<"\n";
@@ -327,11 +312,11 @@ void prop_dependency_checkert::convert_assertions(
 }
 
 void prop_dependency_checkert::convert_io(
-    prop_conv_solvert &decider, SSA_step_reft &it1, SSA_step_reft &it2)
+    prop_conv_solvert &decider, SSA_steps_it &it1, SSA_steps_it &it2)
 {
   unsigned io_count=0;
-  SSA_step_reft it=it1;
-  SSA_step_reft it3=it2;
+  SSA_steps_it it=it1;
+  SSA_steps_it it3=it2;
   it3++;
 
   while (it!=it3){
