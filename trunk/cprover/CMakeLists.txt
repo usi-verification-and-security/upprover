@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2)
+cmake_minimum_required(VERSION 3.3)
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -28,7 +28,7 @@ elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     #   config.inc doesn't seem to do that currently
 endif()
 
-set(enable_cbmc_tests on CACHE BOOL "Whether CBMC tests should be enabled")
+set(enable_cbmc_tests off CACHE BOOL "Whether CBMC tests should be enabled")
 
 set(sat_impl "minisat2" CACHE STRING
     "This setting controls the SAT library which is used. Valid values are 'minisat2' and 'glucose'"
@@ -38,8 +38,21 @@ add_subdirectory(src)
 
 if(${enable_cbmc_tests})
     enable_testing()
+    add_subdirectory(unit)
+    set_target_properties(
+        miniBDD
+        string_utils
+        testing_utils
+        unit
+        PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED true
+    XCODE_ATTRIBUTE_CODE_SIGN_IDENTITY "Developer ID Application: Daniel Kroening"
+    )
 endif()
-add_subdirectory(unit)
+if(enable_hifrog_tests)
+    enable_testing()
+endif(enable_hifrog_tests)
 #add_subdirectory(regression)
 
 set_target_properties(
@@ -70,15 +83,15 @@ set_target_properties(
     json
     langapi
     linking
-    miniBDD
+    #miniBDD
     miniz
     mmcc
     pointer-analysis
     solvers
-    string_utils
+    #string_utils
     test-bigint
-    testing-utils
-    unit
+    #testing-utils
+    #unit
     util
     xml
 

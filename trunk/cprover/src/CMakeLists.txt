@@ -82,6 +82,10 @@ macro(add_if_library target name)
     endif()
 endmacro(add_if_library)
 
+if(enable_hifrog_tests)
+    enable_testing()
+endif(enable_hifrog_tests)
+
 add_subdirectory(analyses)
 add_subdirectory(ansi-c)
 add_subdirectory(assembler)

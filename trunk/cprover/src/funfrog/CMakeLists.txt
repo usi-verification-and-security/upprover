@@ -96,6 +96,19 @@ set(HIFROG_SOURCE_FILES
         #reportt.cpp reportt.h
     utils/UnionFind.cpp utils/UnionFind.h)
 
+################# TESTING #############################################
+option(enable_hifrog_tests "Build the tests" OFF)
+if(enable_hifrog_tests)
+    if(CMAKE_VERSION VERSION_LESS 3.11)
+        MESSAGE(WARNING "Minimum CMAKE version for building tests is 3.11")
+    else(CMAKE_VERSION VERSION_LESS 3.11)
+        enable_testing()
+        add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/test)
+    endif(CMAKE_VERSION VERSION_LESS 3.11)
+endif()
+#########################################################################
+
+
 option(PRODUCE_PROOF "" ON)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modules/")
