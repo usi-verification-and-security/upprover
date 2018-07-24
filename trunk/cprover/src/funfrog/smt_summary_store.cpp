@@ -33,8 +33,8 @@ void smt_summary_storet::deserialize(std::vector<std::string> fileNames) {
     int old_function_count = 0;
     for (const auto & fileName : fileNames) {
         try {
-            std::cout << "\n----Reading summary file: " << fileName << std::endl;
             if (decider->getMainSolver()->readFormulaFromFile(fileName.c_str())) {
+                // std::cout << "\n----Read summary file: " << fileName << std::endl;
                 vec<Tterm> & functions = decider->getLogic()->getFunctions();
                 assert(old_function_count <= functions.size());
                 // MB: function in OpenSMT are added when a file is read, so we can safely skip the ones

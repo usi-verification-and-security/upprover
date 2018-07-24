@@ -27,6 +27,7 @@
 #include "symex_assertion_sum.h"
 #include <solvers/flattening/bv_pointers.h>
 #include <funfrog/utils/naming_helpers.h>
+#include <funfrog/utils/string_utils.h>
 #include "smt_summary_store.h"
 #include "prop_summary_store.h"
 #include "theory_refiner.h"
@@ -190,14 +191,10 @@ void core_checkert::initialize()
 
     // Load older summaries
     {
-        //TODO: MB: How about checking if this file actually exists?
-        const std::string& summary_file = options.get_option("load-summaries");
-        if (!summary_file.empty()) {
-            std::ifstream f(summary_file.c_str());
-            if (f.good()) {
-                summary_store->deserialize({summary_file});
-            }
-
+        const std::string& filenames = options.get_option("load-summaries");
+        std::vector<std::string> summaries_files = splitString(filenames, ',');
+        if (!summaries_files.empty()) {
+            summary_store->deserialize(summaries_files);
         }
     }
 
