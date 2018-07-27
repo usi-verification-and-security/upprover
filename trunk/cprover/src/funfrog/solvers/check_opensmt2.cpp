@@ -19,14 +19,16 @@ Function: check_opensmt2t::close_partition
 
 \*******************************************************************/
 void check_opensmt2t::close_partition() {
-    assert(!current_partition.empty());
-    if (partition_count > 0 && !current_partition.empty()) {
-        const PTRef pand = current_partition.size() > 1 ?
-                           logic->mkAnd(current_partition) : (current_partition)[0];
+    assert(!last_partition_closed);
+    if (!last_partition_closed) {
+        // opensmt can handle special cases like 0 or 1 argument properly
+        const PTRef pand = logic->mkAnd(current_partition);
         top_level_formulas.push(pand);
         assert(top_level_formulas.size() == partition_count);
+        current_partition.clear();
+        last_partition_closed = true;
 #ifdef DEBUG_SMT2SOLVER
-        if(current_partition->size() == 1){
+        if(current_partition.size() == 1){
           std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
       }
       char* s= logic->printTerm(pand);
@@ -50,21 +52,17 @@ Function: opensmt2t::new_partition
 
 \*******************************************************************/
 fle_part_idt check_opensmt2t::new_partition() {
-//Allowing partitions for havoced functions and fully slices ones
-
-    assert(partition_count == 0 || !current_partition.empty());
-    if (partition_count != 0 && current_partition.empty()) {
-        std::cerr << "WARNING: last partition was empty (probably due to slicing)." << std::endl;
-// NOTE: The index is reused for the next partition, outer context must
-// ensure that the previously returned index is not used.
-        partition_count--;
-    }
-
-// Finish the previous partition if any
-    if (!current_partition.empty()) {
+    // Finish the previous partition if any
+    if (!last_partition_closed) {
+        assert(partition_count != 0);
+        if(current_partition.empty()){
+            std::cerr << "WARNING: last partition was empty (probably due to slicing)." << std::endl;
+        }
+        // this is the important statement in this block; before is just checking
         close_partition();
-        current_partition.clear();
     }
+    // we are creating new partition which is not closed at the moment
+    last_partition_closed = false;
     return partition_count++;
 }
 
@@ -80,16 +78,24 @@ void check_opensmt2t::insert_top_level_formulas() {
         if (msg != nullptr) {
             free(msg); // If there is an error, consider print msg
         }
-#ifdef DISABLE_OPTIMIZATIONS
-        if (dump_pre_queries)
-        {
-            out_smt << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
-            char* s = logic->printTerm(top_level_formulas[i]);
-            out_smt << "(assert \n" << s << "\n)\n";
-            free(s);
-        }
-#endif
     }
     pushed_formulas = top_level_formulas.size();
+}
+
+void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vector<int> > & configs,
+                                                      std::vector<PTRef> & interpolants) {
+    SimpSMTSolver& solver = osmt->getSolver();
+
+    // First interpolant is true -> all partitions in B
+    for ( unsigned i = 0; i < configs.size(); i++ )
+    {
+        ipartitions_t mask = 0;
+        for (unsigned j = 0; j < configs[i].size(); j++)
+        {
+            setbit ( mask, configs[i][j]);
+        }
+        solver.getSingleInterpolant(interpolants, mask);
+    }
+
 }
 

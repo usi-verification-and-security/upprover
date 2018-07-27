@@ -74,8 +74,8 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             " (loc: " << it->get_iface().call_tree_node.get_call_location() << ", " <<
-            ((it->summary) ? "SUM" :
-                ((it->stub) ? "TRU" : "INL")) << ")" <<
+            (it->has_summary_representation() ? "SUM" :
+                ((it->is_stub()) ? "TRU" : "INL")) << ")" <<
             std::endl;
 #   endif
     
@@ -154,7 +154,7 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
     partition_iface.error_literal =
             prop_conv.convert(partition_iface.error_symbol);
   }
-  if (partition.stub){
+  if (partition.is_stub()){
     return;
   }
 
@@ -162,7 +162,7 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
   partition.fle_part_id = interpolator.new_partition();
 
   // If this is a summary partition, apply the summary
-  if (partition.summary) {
+  if (partition.has_summary_representation()) {
     convert_partition_summary(prop_conv, partition);
     // FIXME: Only use in the incremental solver mode (not yet implemented)
     // partition.processed = true;
@@ -676,10 +676,10 @@ namespace{
   }
 
   bool skip_partition(partitiont & partition, bool store_summaries_with_assertion){
-    return !partition.is_inline() ||
-    (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
-    partition.get_iface().call_tree_node.is_recursion_nondet() ||
-    skip_partition_with_name(partition.get_iface().function_id.c_str());
+      return !partition.is_real_ssa_partition() ||
+             (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
+             partition.get_iface().call_tree_node.is_recursion_nondet() ||
+             skip_partition_with_name(partition.get_iface().function_id.c_str());
   }
 }
 #endif // PRODUCE_PROOF
@@ -711,7 +711,7 @@ void prop_partitioning_target_equationt::extract_interpolants(
     partitiont& partition = partitions[i];
 
     // Mark the used summaries
-    if (partition.summary && !(partition.ignore)) {
+    if (partition.has_summary_representation() && !(partition.ignore)) {
       for (auto it =
               partition.applicable_summaries.begin();
               it != partition.applicable_summaries.end(); ++it) {
@@ -814,7 +814,7 @@ void prop_partitioning_target_equationt::fill_partition_ids(
 
   partitiont& partition = partitions[partition_id];
 
-  if (partition.stub){
+  if (partition.is_stub()){
     return;
   }
 
@@ -828,7 +828,7 @@ void prop_partitioning_target_equationt::fill_partition_ids(
   // Current partition id
   part_ids.push_back(partition.fle_part_id);
 
-  assert(partition.is_inline() || partition.child_ids.empty());
+  assert(partition.is_real_ssa_partition() || partition.child_ids.empty());
 
   // Child partition ids
   for (partition_idst::iterator it = partition.child_ids.begin()++;

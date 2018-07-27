@@ -59,7 +59,7 @@ void smt_refiner_assertion_sumt::reset_depend(
     partitionst &parts = equation.get_partitions();
     for (unsigned i = 0; i < parts.size(); i++) {
         partitiont part = parts[i];
-        if (!part.ignore && (part.summary || part.stub)) {
+        if (!part.ignore && (part.has_abstract_representation())) {
             partition_ifacet ipart = part.get_iface();
 #     ifdef DEBUG_REFINER
             std::cout<< "*** checking " << ipart.function_id << ":" << std::endl;

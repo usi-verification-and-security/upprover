@@ -83,8 +83,7 @@ protected:
   void setup_interpolation();
 
   void setup_proof_transformation();
-  
-   void produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs, std::vector<PTRef> &interpolants);
+
 #endif  
   
   // Initialize the OpenSMT context

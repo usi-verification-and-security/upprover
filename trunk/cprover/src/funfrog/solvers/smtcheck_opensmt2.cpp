@@ -248,24 +248,6 @@ void smtcheck_opensmt2t::extract_itp(PTRef ptref, smt_itpt& itp) const
   // KE : interpolant adjustments/remove var indices shall come here
   itp.setInterpolant(ptref);
 }
-
-// helper interpolation method taken from opensmt
-void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs, std::vector<PTRef> &interpolants)
-{
-  SimpSMTSolver& solver = osmt->getSolver();
-
-  // First interpolant is true -> all partitions in B
-  for ( unsigned i = 0; i < configs.size(); i++ )
-  {
-    ipartitions_t mask = 0;
-    for (unsigned j = 0; j < configs[i].size(); j++)
-    {
-      // Set partitions[i] bit to 1 (starting from bit 1, bit 0 is untouched)
-      setbit ( mask, configs[i][j] + 1);
-    }
-    solver.getSingleInterpolant(interpolants, mask);
-  }
-}
 #endif
 
 // FIXME: move to smt_itpt class
@@ -401,28 +383,32 @@ bool smtcheck_opensmt2t::solve() {
   ready_to_interpolate = false;
 #endif
   
-  if (!current_partition.empty()) {
+  if (!last_partition_closed) {
     close_partition();
   }
 
 #ifdef DISABLE_OPTIMIZATIONS
-  ofstream out_smt;
-  if (dump_pre_queries) {
-    out_smt.open(pre_queries_file_name+"_"+std::to_string(get_dump_current_index())+".smt2");  
-    logic->dumpHeaderToFile(out_smt);
-    
-    // Print the .oites terms
-    int size_oite = ite_map_str.size()-1; // since goes from 0-(n-1) 
-    int i = 0;
-    for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
-        out_smt << "; XXX oite symbol: (" << i << " out of " << size_oite << ") " 
-                << iterator->first << endl << "(assert "<< iterator->second << "\n)" << endl;
-        i++;
-    }
-  }
-#endif
-//  add_variables();
+    ofstream out_smt;
+    if (dump_pre_queries) {
+        out_smt.open(pre_queries_file_name + "_" + std::to_string(get_dump_current_index()) + ".smt2");
+        logic->dumpHeaderToFile(out_smt);
 
+        // Print the .oites terms
+        int size_oite = ite_map_str.size() - 1; // since goes from 0-(n-1)
+        int i = 0;
+        for (it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
+            out_smt << "; XXX oite symbol: (" << i << " out of " << size_oite << ") "
+                    << iterator->first << endl << "(assert " << iterator->second << "\n)" << endl;
+            i++;
+        }
+        for (int i = 0; i < top_level_formulas.size(); ++i) {
+            out_smt << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
+            char * s = logic->printTerm(top_level_formulas[i]);
+            out_smt << "(assert \n" << s << "\n)\n";
+            free(s);
+        }
+    }
+#endif
     insert_top_level_formulas();
 
 #ifdef DISABLE_OPTIMIZATIONS   

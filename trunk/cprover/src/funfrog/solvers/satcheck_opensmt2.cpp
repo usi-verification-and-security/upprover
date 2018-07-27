@@ -126,26 +126,6 @@ literalt satcheck_opensmt2t::extract_itp_rec(PTRef ptref,
   return result;
 }
 
-// helper interpolation method taken from opensmt
-void satcheck_opensmt2t::produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs,
-                                                          std::vector<PTRef> &interpolants)
-{
-  SimpSMTSolver& solver = osmt->getSolver();
-
-  // First interpolant is true -> all partitions in B
-  for ( unsigned i = 0; i < configs.size(); i++ )
-  {
-    ipartitions_t mask = 0;
-    for (unsigned j = 0; j < configs[i].size(); j++)
-    {
-      // Set partitions[i] bit to 1 (starting from bit 1, bit 0 is untouched)
-      setbit ( mask, configs[i][j] + 1);
-    }
-
-    solver.getSingleInterpolant(interpolants, mask);
-  }
-}
-
 /*******************************************************************\
 
 Function: satcheck_opensmt2t::get_interpolant
@@ -377,7 +357,7 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
   ready_to_interpolate = false;
 #endif
   
-  if (!current_partition.empty()) {
+  if (!last_partition_closed) {
     close_partition();
   }
 

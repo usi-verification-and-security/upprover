@@ -95,7 +95,6 @@ public:
     }
   }
 
-
   unsigned get_random_seed()
   {
       return random_seed;
@@ -145,6 +144,9 @@ public:
 protected:
     void insert_top_level_formulas();
 
+    void produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs,
+            std::vector<PTRef> &interpolants);
+
   // Initialize the OpenSMT context
   virtual void initializeSolver(const char*)=0;
 
@@ -168,6 +170,9 @@ protected:
 
   //  List of clauses that are part of this partition (a.k.a. assert in smt2lib)
   std::vector<PTRef> current_partition;
+
+  // Flag indicating if last partition has been closed properly
+  bool last_partition_closed = true;
 
     /** These correspond to partitions of OpenSMT (top-level assertions);
      * INVARIANT: top_level_formulas.size() == partition_count (after closing current partition)

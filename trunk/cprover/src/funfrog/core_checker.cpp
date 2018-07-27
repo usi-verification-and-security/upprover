@@ -1265,12 +1265,12 @@ void reload_summaries(const namespacet &ns,
             bool should_summarize = partition.get_iface().call_tree_node.get_precision() == summary_precisiont::SUMMARY;
             // should_summarize -> store.has_summaries
             assert(!should_summarize || store.has_summaries(function_name));
-            bool was_summarized = partition.summary;
+            bool was_summarized = partition.has_summary_representation();
             if(should_summarize){
                 // clear the old information and load new information from the store
                 // fill the partition with new summaries
                 eq.fill_summary_partition(partition.get_iface().partition_id, store.get_summaries(function_name));
-                assert(partition.summary);
+                assert(partition.has_summary_representation());
             }
             else{
                 if(was_summarized){

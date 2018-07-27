@@ -184,8 +184,6 @@ protected:
 
   void setup_proof_transformation();
 
-  void produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs, std::vector<PTRef> &interpolants); // Common to all
-
 #endif
 
   virtual bool can_have_non_linears()=0;

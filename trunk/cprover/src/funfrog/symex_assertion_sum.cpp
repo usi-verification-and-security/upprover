@@ -235,13 +235,13 @@ bool symex_assertion_sumt::refine_SSA(
             for(const auto & partition_iface : *partition_ifaces) {
                 if (partition_iface->partition_id != partitiont::NO_PARTITION) {
                     const auto & partition = equation.get_partitions()[partition_iface->partition_id];
-                    assert(partition.summary || partition.stub);
+                    assert(partition.has_abstract_representation());
                     std::cerr << "Refining partition: " << partition_iface->partition_id << '\n';
                     //equation.invalidate_partition(partition_iface->partition_id);
                     equation.refine_partition(partition_iface->partition_id);
                 }
                 auto const & partition = equation.get_partitions()[partition_iface->partition_id];
-                if (!partition.processed) {
+                if (!partition.has_ssa_representation()) {
                     defer_function(deferred_functiont(*refined_function, *partition_iface), false);
                 }
             }
