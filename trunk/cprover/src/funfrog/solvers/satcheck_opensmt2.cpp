@@ -61,40 +61,6 @@ void satcheck_opensmt2t::convert(const bvt &bv, vec<PTRef> &args)
   }
 }
 
-/*******************************************************************\
-
-Function: satcheck_opensmt2t::new_partition
-
-  Inputs:
-
- Outputs: returns a unique partition id
-
- Purpose: Begins a partition of formula for latter reference during
- interpolation extraction. All assertions made until
- next call of new_partition() will be part of this partition.
-
-\*******************************************************************/
-fle_part_idt satcheck_opensmt2t::new_partition()
-{
-//Allowing partitions for havoced functions and fully slices ones
-
-  assert(partition_count == 0 || current_partition != nullptr);
-  if (partition_count != 0 && current_partition == nullptr) {
-    std::cerr << "WARNING: last partition was empty (probably due to slicing)." << std::endl;
-    // NOTE: The index is reused for the next partition, outer context must
-    // ensure that the previously returned index is not used.
-    partition_count--;
-  }
-  
-  // Finish the previous partition if any
-  if (current_partition != nullptr)
-    close_partition();
-
-  current_partition = new vec<PTRef>();
-
-  return partition_count++;
-}
-
 #ifdef PRODUCE_PROOF
 void satcheck_opensmt2t::extract_itp(PTRef ptref,
   prop_itpt& target_itp) const
@@ -350,7 +316,7 @@ void satcheck_opensmt2t::lcnf(const bvt &bv)
   {
     std::cerr << "WARNING: Outputing an empty clause -> most probably an error due to pointers." << std::endl;
     PTRef tmp = logic->getTerm_false();
-    current_partition->push(tmp);
+    current_partition.push_back(tmp);
     return;
   }
 //
@@ -358,7 +324,7 @@ void satcheck_opensmt2t::lcnf(const bvt &bv)
   vec<PTRef> or_args;
   convert(new_bv, or_args);
 
-  current_partition->push(logic->mkOr(or_args));
+  current_partition.push_back(logic->mkOr(or_args));
   clause_counter++;
 }
 
@@ -411,16 +377,11 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
   ready_to_interpolate = false;
 #endif
   
-  if (current_partition != NULL) {
+  if (!current_partition.empty()) {
     close_partition();
   }
 
-  for(int i = 0; i < top_level_formulas.size(); ++i) {
-      char *msg=NULL;
-      mainSolver->insertFormula(top_level_formulas[i], &msg);
-      if (msg != NULL) { free(msg); msg = NULL;} 
-      // If there is an error consider printing the msg
-  }
+  insert_top_level_formulas();
 
   add_variables();
 
@@ -541,34 +502,5 @@ unsigned satcheck_opensmt2t::decode_id(const char* id) const
     base *= 'Z'-'A'+1;
   }
   return i-1;
-}
-
-/*******************************************************************\
-
-Function: satcheck_opensmt2t::close_partition
-
-  Inputs:
-
- Outputs:
-
- Purpose: Closes the interpolation partition by passing its CNF form
- (collected in current_partition) to the solver.
-
-\*******************************************************************/
-
-void satcheck_opensmt2t::close_partition()
-{
-  assert(current_partition != nullptr);
-  if (partition_count > 0){
-    if (current_partition->size() > 1){
-      top_level_formulas.push(logic->mkAnd(*current_partition));
-    } else if (current_partition->size() == 1){
-      std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
-      top_level_formulas.push((*current_partition)[0]);
-    } else {
-      std::cout << "Empty partition (terms size = 0): " << partition_count << "\n";
-    }
-  }
-  current_partition = nullptr;
 }
 

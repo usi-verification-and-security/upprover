@@ -39,7 +39,6 @@ public:
         is_var_constraints_empty(true),
         no_literals(0),
         no_literals_last_solved(0),
-        pushed_formulas(0),
         store_unsupported_info(_store_unsupported_info)
   { /* No init of solver - done for inherit check_opensmt2 */}
 
@@ -88,10 +87,6 @@ public:
   virtual literalt lvar(const exprt &expr)=0;
 
   literalt lconst(const exprt &expr); // Common to all
-
-  fle_part_idt new_partition(); // Common to all
-
-  void close_partition(); // Common to all
 
 #ifdef PRODUCE_PROOF
   void get_interpolant(const interpolation_taskt& partition_ids,
@@ -148,8 +143,6 @@ public:
 protected:
 
   vec<SymRef> function_formulas;
-  
-  vec<PTRef> top_level_formulas;
 
   bool is_var_constraints_empty;
 
@@ -162,8 +155,6 @@ protected:
   //  Mapping from boolean variable indexes to their PTRefs
   std::vector<PTRef> literals;
   typedef std::vector<PTRef>::iterator it_literals;
-
-  unsigned pushed_formulas;
 
   static unsigned unsupported2var; // Create a new var hifrog::c::unsupported_op2var#i - smtcheck_opensmt2t::_unsupported_var_str
   bool store_unsupported_info;

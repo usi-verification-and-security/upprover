@@ -36,7 +36,7 @@ public:
       pre_queries_file_name("__pre_query_default"), // .smt2 file
 #endif              
       partition_count(0),
-      current_partition(nullptr),
+      pushed_formulas(0),
 #ifdef PRODUCE_PROOF              
       itp_algorithm(itp_alg_mcmillan),
       itp_euf_algorithm(itp_euf_alg_strong),
@@ -133,12 +133,18 @@ public:
   void set_verbosity(int r) { verbosity = r; }
   
   void set_certify(int r) { certify = r; }
-  
-  /* General consts for prop version */
+
+    fle_part_idt new_partition() override;
+
+    void close_partition();
+
+    /* General consts for prop version */
   const char* false_str = "false";
   const char* true_str = "true";
   
 protected:
+    void insert_top_level_formulas();
+
   // Initialize the OpenSMT context
   virtual void initializeSolver(const char*)=0;
 
@@ -157,11 +163,19 @@ protected:
   std::string pre_queries_file_name;
 #endif  
 
-  // Count of the created partitions
+  // Count of the created partitions; This is used by HiFrog to id a partition; correspondence with OpenSMT partitions needs to be kept!
   unsigned partition_count;
 
   //  List of clauses that are part of this partition (a.k.a. assert in smt2lib)
-  vec<PTRef>* current_partition;
+  std::vector<PTRef> current_partition;
+
+    /** These correspond to partitions of OpenSMT (top-level assertions);
+     * INVARIANT: top_level_formulas.size() == partition_count (after closing current partition)
+     */
+    vec<PTRef> top_level_formulas;
+
+    // boundary index for top_level_formulas that has been pushed to solver already
+    unsigned pushed_formulas;
   
 #ifdef PRODUCE_PROOF   
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
