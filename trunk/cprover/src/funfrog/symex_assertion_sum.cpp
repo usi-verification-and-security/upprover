@@ -230,7 +230,7 @@ bool symex_assertion_sumt::refine_SSA(
       assert(!refined_function->is_root());
       const partition_iface_ptrst* partition_ifaces = get_partition_ifaces(refined_function);
 
-    if (!(refined_function)->is_root()) {
+    if (!refined_function->is_root()) {
         if (partition_ifaces) {
             for(const auto & partition_iface : *partition_ifaces) {
                 if (partition_iface->partition_id != partitiont::NO_PARTITION) {

@@ -60,9 +60,7 @@ protected:
   // Convert a specific partition gotos of SSA steps
   void convert_partition_goto_instructions(prop_conv_solvert &prop_conv,
     partitiont& partition);
-  
-  // Override
-  virtual void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
+
 };
 
 #endif

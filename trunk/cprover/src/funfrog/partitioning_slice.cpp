@@ -88,19 +88,17 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
     // We can only slice assignments
     it->ignore = it->is_assignment();
   }
-  for (partitionst::iterator it = equation.get_partitions().begin();
-          it != equation.get_partitions().end();
-          ++it)
+  for (auto & partition : equation.get_partitions())
   {
-    if (it->has_summary_representation()) {
-      it->applicable_summaries.clear();
+    if (partition.has_summary_representation()) {
+      partition.applicable_summaries.clear();
       // We can only slice standard summaries, not inverted and not summaries
       // with assertion in subtree
-      if (it->get_iface().assertion_in_subtree) {
-        mark_summary_symbols(summary_store, *it, use_smt);
-        it->ignore = false;
+      if (partition.get_iface().assertion_in_subtree) {
+        mark_summary_symbols(summary_store, partition, use_smt);
+        partition.ignore = false;
       } else {
-        it->ignore = true;
+        partition.ignore = true;
       }
     }
   }
@@ -137,8 +135,6 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
         get_symbols(it->second->guard, depends);
         get_symbols(it->second->cond_expr, depends);
         it->second->ignore = false;
-
-
       }
     }
     

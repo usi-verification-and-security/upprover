@@ -69,32 +69,9 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
     decider.start_encoding_partitions();
     for (auto it = partitions.rbegin(); it != partitions.rend(); ++it) {
         convert_partition(decider, interpolator, *it);
-        if (it->fle_part_id < 0) continue;
-
-#   ifdef DEBUG_SSA
-        cout << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
-                << it->get_iface().assertion_in_subtree << ")" << " - "
-                << it->get_iface().function_id.c_str() << " (loc: "
-                << it->get_iface().call_tree_node.get_call_location() << ", "
-                << ((it->summary) ? ((it->inverted_summary) ? "INV" : "SUM")
-                    : ((it->stub) ? "TRU" : "INL")) << ")" << std::endl;
-#   endif
-        
-// Print partition into a buffer after the headers: basic and code
-#   ifdef DISABLE_OPTIMIZATIONS
-        out_basic << "XXX Partition: " << it->fle_part_id << " (ass_in_subtree: "
-                << it->get_iface().assertion_in_subtree << ")" << " - "
-                << it->get_iface().function_id.c_str() << " (loc: "
-                << it->get_iface().call_tree_node.get_call_location() << ", "
-                << ((it->has_summary_representation()) ?  "SUM"
-                    : ((it->is_stub()) ? "TRU" : "INL")) << ")" << std::endl;
-
-        print_partition();
-#   endif        
-        
     }
 
-    #ifdef DISABLE_OPTIMIZATIONS
+#ifdef DISABLE_OPTIMIZATIONS
   if (dump_SSA_tree)
   {
     ofstream out_ssaT;
@@ -121,7 +98,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
 void smt_partitioning_target_equationt::convert_partition(
 		smtcheck_opensmt2t &decider, interpolating_solvert &interpolator,
 		partitiont& partition) {
-    if (partition.ignore || partition.converted) {
+    if (partition.ignore) {
         return;
     }
 # ifdef DEBUG_SSA_SMT_CALL
@@ -144,7 +121,7 @@ void smt_partitioning_target_equationt::convert_partition(
     }
 
     // Tell the interpolator about the new partition.
-    partition.set_fle_part_id(interpolator.new_partition());
+    partition.add_fle_part_id(interpolator.new_partition());
 
     // If this is a summary partition, apply the summary
     if (partition.has_summary_representation()) {
@@ -168,7 +145,6 @@ void smt_partitioning_target_equationt::convert_partition(
     //   std::cout << "skipping converting assertions\n";
     // }
     convert_partition_io(decider, partition);
-    partition.converted = true;
 }
 /*******************************************************************
  Function: smt_partitioning_target_equationt::convert_partition_summary
@@ -214,7 +190,6 @@ void smt_partitioning_target_equationt::convert_partition_summary(
       decider.set_to_true(substituted_template);
     }
   }
-  partition.converted = true;
 }
 
 /*******************************************************************

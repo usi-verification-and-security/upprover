@@ -159,7 +159,7 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
   }
 
   // Tell the interpolator about the new partition.
-  partition.fle_part_id = interpolator.new_partition();
+    partition.add_fle_part_id(interpolator.new_partition());
 
   // If this is a summary partition, apply the summary
   if (partition.has_summary_representation()) {
@@ -795,44 +795,4 @@ void prop_partitioning_target_equationt::extract_interpolants(
 #else
   assert(0);
 #endif
-}
-
-/*******************************************************************\
-
-Function: prop_partitioning_target_equationt::fill_partition_ids
-
-  Inputs:
-
- Outputs:
-
- Purpose: Fill in ids of all the child partitions
-
-\*******************************************************************/
-void prop_partitioning_target_equationt::fill_partition_ids(
-  partition_idt partition_id, fle_part_idst& part_ids)
-{
-
-  partitiont& partition = partitions[partition_id];
-
-  if (partition.is_stub()){
-    return;
-  }
-
-  assert((!partition.get_iface().assertion_in_subtree || store_summaries_with_assertion));
-
-  if (partition.ignore) {
-    assert(partition.child_ids.empty());
-    return;
-  }
-
-  // Current partition id
-  part_ids.push_back(partition.fle_part_id);
-
-  assert(partition.is_real_ssa_partition() || partition.child_ids.empty());
-
-  // Child partition ids
-  for (partition_idst::iterator it = partition.child_ids.begin()++;
-          it != partition.child_ids.end(); ++it) {
-    fill_partition_ids(*it, part_ids);
-  }
 }

@@ -105,8 +105,6 @@ void partitioning_target_equationt::refine_partition(partition_idt partition_id)
     partition.remove_abstract_representation();
     partition.summaries.clear();
     partition.applicable_summaries.clear();
-    // partition needs to be converted again
-    partition.converted = false;
 }
 
 
@@ -120,8 +118,6 @@ void partitioning_target_equationt::fill_summary_partition(partition_idt partiti
 
     sum_partition.add_summary_representation();
     sum_partition.summaries = summaries;
-    // partition got new summaries, it needs to be converted again
-    sum_partition.converted = false;
 
     sum_partition.applicable_summaries.clear();
     for (unsigned long summary_id : summaries) {
@@ -305,19 +301,19 @@ void partitioning_target_equationt::fill_partition_ids(
     assert(partition.is_real_ssa_partition() || partition.child_ids.empty());
 
     // Current partition id
-    part_ids.push_back(partition.fle_part_id);
+    for(auto id : partition.get_fle_part_ids()){
+        part_ids.push_back(id);
+    }
 
     // Child partition ids
-    for (partition_idst::iterator it = partition.child_ids.begin()++; it
-                    != partition.child_ids.end(); ++it) {
-        fill_partition_ids(*it, part_ids);
+    for (auto child_id : partition.child_ids) {
+        fill_partition_ids(child_id, part_ids);
     }
 }
 
 void partitioning_target_equationt::fill_stub_partition(partition_idt partition_id) {
     partitiont & partition = partitions.at(partition_id);
     assert(partition.has_no_representation());
-    assert(!partition.converted);
     partition.add_stub_representation();
 }
 
@@ -366,7 +362,6 @@ void partitioning_target_equationt::close_current_partition()  {
         partition.end_idx = SSA_steps.size();
         assert(!partition.has_ssa_representation());
         partition.add_ssa_representation();
-        assert(!partition.converted);
         current_partition_id = partitiont::NO_PARTITION;
     }
 }
