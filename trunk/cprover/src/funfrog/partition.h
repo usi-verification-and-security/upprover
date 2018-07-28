@@ -23,7 +23,6 @@ class partition_ifacet;
 
 class partitiont {
 public:
-  static const int NO_PARTITION = -1;
   
   partitiont(partition_idt _parent_id, partition_ifacet& _partition_iface) :
           ignore(false),
@@ -109,6 +108,8 @@ public:
   partition_idt parent_id;
   partition_idst child_ids;
   partition_locst child_locs;
+
+    inline bool has_parent() const { return parent_id != NO_PARTITION_ID; }
 
 private:
     partition_representation representation;

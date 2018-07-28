@@ -17,7 +17,7 @@ partitioning_target_equationt::partitioning_target_equationt(
   summary_storet & summary_store,
   bool _store_summaries_with_assertion) :
   symex_target_equationt(_ns),
-  current_partition_id(partitiont::NO_PARTITION),
+  current_partition_id(NO_PARTITION_ID),
 #         ifdef DISABLE_OPTIMIZATIONS
     dump_SSA_tree(false),
     ssa_tree_file_name("__ssa_tree.smt2"),
@@ -65,7 +65,7 @@ partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet&
     assert(check);
     (void)check;
 
-    if (parent_id != partitiont::NO_PARTITION) {
+    if (parent_id != NO_PARTITION_ID) {
         partitions[parent_id].add_child_partition(new_id, partition_iface.call_loc);
     }
     partition_iface.partition_id = new_id;
@@ -357,12 +357,12 @@ unsigned partitioning_target_equationt::count_partition_assertions(const partiti
 }
 
 void partitioning_target_equationt::close_current_partition()  {
-    if (current_partition_id != partitiont::NO_PARTITION) {
+    if (current_partition_id != NO_PARTITION_ID) {
         auto & partition = get_current_partition();
         partition.end_idx = SSA_steps.size();
         assert(!partition.has_ssa_representation());
         partition.add_ssa_representation();
-        current_partition_id = partitiont::NO_PARTITION;
+        current_partition_id = NO_PARTITION_ID;
     }
 }
 

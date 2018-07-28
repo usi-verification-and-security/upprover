@@ -156,7 +156,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
   add_globals_to_state(state);
 
   // Prepare the partitions and deferred functions
-  partition_ifacet &partition_iface = new_partition_iface(call_tree_root, partitiont::NO_PARTITION, 0);
+  partition_ifacet &partition_iface = new_partition_iface(call_tree_root, NO_PARTITION_ID, 0);
   defer_function(deferred_functiont(call_tree_root, partition_iface));
   equation.select_partition(partition_iface.partition_id);
 
@@ -233,7 +233,7 @@ bool symex_assertion_sumt::refine_SSA(
     if (!refined_function->is_root()) {
         if (partition_ifaces) {
             for(const auto & partition_iface : *partition_ifaces) {
-                if (partition_iface->partition_id != partitiont::NO_PARTITION) {
+                if (partition_iface->partition_id != NO_PARTITION_ID) {
                     const auto & partition = equation.get_partitions()[partition_iface->partition_id];
                     assert(partition.has_abstract_representation());
                     std::cerr << "Refining partition: " << partition_iface->partition_id << '\n';
@@ -1042,7 +1042,7 @@ void symex_assertion_sumt::handle_function_call(
   // get call_tree_node corresponding to the called function
   call_tree_nodet &call_tree_node = current_call_tree_node->get_call_sites().find(
       state.source.pc)->second;
-  assert(get_current_deferred_function().partition_iface.partition_id != partitiont::NO_PARTITION);
+  assert(get_current_deferred_function().partition_iface.partition_id != NO_PARTITION_ID);
 
   // Clean expressions in the arguments, function name, and lhs (if any)
   if (function_call.lhs().is_not_nil()) {

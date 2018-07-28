@@ -16,12 +16,13 @@
 #include "expr_pretty_print.h"
 #endif
 
-#include <list>
+#include "summary_info.h"
+#include "partition_fwd.h"
+
 #include <util/type.h>
 #include <util/symbol.h>
-
-#include "summary_info.h"
-#include "partition.h"
+#include <solvers/prop/literal.h>
+#include <list>
 
 class partition_ifacet {
 public:
@@ -35,7 +36,7 @@ public:
           error_symbol(ID_nil, typet(ID_bool)),
           assertion_in_subtree(_summary_info.has_assertion_in_subtree()),
           returns_value(false),
-          partition_id(partitiont::NO_PARTITION),
+          partition_id(NO_PARTITION_ID),
           parent_id(_parent_id),
           call_loc(_call_loc)
   {}

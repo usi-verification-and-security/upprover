@@ -479,7 +479,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
   if (!bv.empty()) {
     assert(partition_iface.assertion_in_subtree);
     
-    if (partition.parent_id == partitiont::NO_PARTITION)
+    if (!partition.has_parent())
     {
       prop_conv.prop.lcnf(bv);
       
@@ -584,7 +584,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
 //    #endif
 //  }
 
-  if (partition.parent_id != partitiont::NO_PARTITION) {  
+  if (partition.has_parent()) {
     assert(number_of_assumptions > 0);
     // Encode callend propagation formula for the partition:
     //

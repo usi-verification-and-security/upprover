@@ -16,4 +16,6 @@ typedef std::map<irep_idt, partition_idt> partition_mapt;
 typedef std::list<unsigned> partition_locst;
 typedef std::vector<partitiont> partitionst;
 
+const int NO_PARTITION_ID = -1;
+
 #endif //HIFROG_PARTITION_FWD_H
