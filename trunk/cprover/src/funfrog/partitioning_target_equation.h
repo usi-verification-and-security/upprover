@@ -28,6 +28,8 @@ Author: Ondrej Sery
 #include "partition.h"
 
 class partition_ifacet;
+class check_opensmt2t;
+class interpolating_solvert;
 
 typedef std::vector<symex_target_equationt::SSA_stept*> SSA_steps_orderingt;
 
@@ -89,6 +91,10 @@ public:
     }
     return SSA_steps_exec_order;
   }
+
+  virtual void extract_interpolants(check_opensmt2t& decider) = 0;
+
+  virtual void convert(check_opensmt2t &prop_conv, interpolating_solvert &interpolator) = 0;
 
   partitionst& get_partitions() { return partitions; }
 

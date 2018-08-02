@@ -16,13 +16,14 @@ Author: Grigory Fedyukovich
 #include "check_opensmt2.h"
 #include "interpolating_solver.h"
 #include <opensmt/opensmt2.h>
+#include <solvers/prop/prop_conv.h>
 
 class prop_itpt;
 class satcheck_opensmt2t:public cnf_solvert, public check_opensmt2t
 {
 public:
   satcheck_opensmt2t(const char* name) :
-      check_opensmt2t(false, 3, 2) // Is last always!
+      check_opensmt2t(false, 3, 2)
   {
     initializeSolver(name);
   }
@@ -31,25 +32,52 @@ public:
     freeSolver();
   }
 
-  virtual resultt prop_solve();
-  virtual tvt l_get(literalt a) const;
+  bool solve() override{
+      auto res = prop_solve();
+      switch (res){
+          case resultt ::P_SATISFIABLE:
+              return true;
+          case resultt ::P_UNSATISFIABLE:
+              return false;
+          case resultt ::P_ERROR:
+              throw "Error during solving!";
+      }
+  }
 
-  virtual void lcnf(const bvt &bv);
-  const virtual std::string solver_text();
-  virtual void set_assignment(literalt a, bool value);
+  bool is_overapproximating() const override {return false;}
+
+  virtual resultt prop_solve() override;
+  virtual tvt l_get(literalt a) const override;
+  bool is_assignment_true(literalt l) const override {
+      auto res = l_get(l);
+      return res.is_true();
+  }
+
+  exprt get_value(const exprt &expr) override {
+      return prop_convert->get(expr);
+  }
+
+  virtual void lcnf(const bvt &bv) override;
+  const virtual std::string solver_text() override;
+  virtual void set_assignment(literalt a, bool value) override;
   // extra MiniSat feature: solve with assumptions
-  virtual void set_assumptions(const bvt& _assumptions);
-  virtual bool is_in_conflict(literalt a) const;
+  virtual void set_assumptions(const bvt& _assumptions) override;
+  virtual bool is_in_conflict(literalt a) const override;
 
-  virtual bool has_set_assumptions() const { return true; }
+  virtual bool has_set_assumptions() const override { return true; }
 
-  virtual bool has_is_in_conflict() const { return true; }
+  virtual bool has_is_in_conflict() const override { return true; }
+
+  const prop_conv_solvert & get_prop_conv_solver() const {return *prop_convert;}
+  prop_conv_solvert & get_prop_conv_solver() {return *prop_convert;}
+
+  void set_prop_conv_solvert(std::unique_ptr<prop_conv_solvert> pcs) {prop_convert = std::move(pcs);}
 
 #ifdef PRODUCE_PROOF  
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants);
+      interpolantst& interpolants) const override;
   
-  virtual bool can_interpolate() const;
+  virtual bool can_interpolate() const override;
 
   // Extract interpolant form OpenSMT Egraph
   void extract_itp(PTRef ptref, prop_itpt& target_itp) const;
@@ -77,6 +105,10 @@ protected:
  
   void convert(const bvt &bv, vec<PTRef> &args);
 
+  literalt convert(const exprt& expr) override {
+      return prop_convert->convert(expr);
+  }
+
 #ifdef PRODUCE_PROOF  
   void setup_reduction();
 
@@ -87,14 +119,17 @@ protected:
 #endif  
   
   // Initialize the OpenSMT context
-  virtual void initializeSolver(const char*);
+  virtual void initializeSolver(const char*) override;
 
   // Free all resources related to PeRIPLO
-  virtual void freeSolver();
+  virtual void freeSolver() override;
 
   void add_variables();
   void increase_id();
   unsigned decode_id(const char* id) const;
+
+private:
+    std::unique_ptr<prop_conv_solvert> prop_convert;
 };
 
 #endif

@@ -44,17 +44,15 @@ public:
 
   virtual ~smtcheck_opensmt2t(); // d'tor
 
-  bool solve(); // Common to all
+  bool solve() override;
 
-  bool is_assignemt_true(literalt a) const; // Common to all
+  bool is_overapproximating() const override {return true;}
 
-  virtual exprt get_value(const exprt &expr)=0;
+  bool is_assignment_true(literalt a) const override; // Common to all
 
   virtual literalt lassert_var() = 0;
 
   bool is_exist_var_constraints() { return !is_var_constraints_empty;}
-
-  virtual literalt convert(const exprt &expr) =0;
 
   void set_to_false(const exprt &expr); // Common to all
   void set_to_true(const exprt &expr); // Common to all
@@ -90,9 +88,9 @@ public:
 
 #ifdef PRODUCE_PROOF
   void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants); // Common to all
+      interpolantst& interpolants) const override; // Common to all
 
-  bool can_interpolate() const; // Common to all
+  bool can_interpolate() const override; // Common to all
 
   // Extract interpolant form OpenSMT files/data
   void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
@@ -104,18 +102,6 @@ public:
 
 #endif
     std::set<PTRef>* get_non_linears(); // Common to all, needed only if there are summaries!
-
-  // Common to all
-  void start_encoding_partitions() {
-	if (partition_count > 0){
-#ifdef PRODUCE_PROOF
-            if (ready_to_interpolate) std::cout << "EXIT WITH ERROR: Try using --claim parameter" << std::endl;
-		assert (!ready_to_interpolate); // GF: checking of previous assertion run was successful (unsat)
-#endif		  	  	  	  	  	  	  	  	  // TODO: reset opensmt context
-
-		std::cout << "Incrementally adding partitions to the SMT solver\n";
-	}
-  }
 
   /* The data: lhs, original function data */
   bool has_unsupported_info() const { return store_unsupported_info && has_unsupported_vars(); } // Common to all
@@ -190,9 +176,7 @@ protected:
 
   virtual bool is_non_linear_operator(PTRef tr)=0;
 
-  virtual void initializeSolver(const char*)=0;
-
-  virtual void freeSolver(); // Common to all
+  virtual void freeSolver() override; // Common to all
 
   void fill_vars(PTRef, std::map<std::string, PTRef>&); // Common to all
 

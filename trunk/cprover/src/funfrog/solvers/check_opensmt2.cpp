@@ -83,7 +83,7 @@ void check_opensmt2t::insert_top_level_formulas() {
 }
 
 void check_opensmt2t::produceConfigMatrixInterpolants(const std::vector<std::vector<int> > & configs,
-                                                      std::vector<PTRef> & interpolants) {
+                                                      std::vector<PTRef> & interpolants) const {
     SimpSMTSolver& solver = osmt->getSolver();
 
     // First interpolant is true -> all partitions in B

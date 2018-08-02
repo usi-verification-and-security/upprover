@@ -16,8 +16,8 @@
 
 #include "refiner_assertion_sum.h"
 
-class smtcheck_opensmt2t;
-class smt_partitioning_target_equationt;
+class check_opensmt2t;
+class partitioning_target_equationt;
 
 class smt_refiner_assertion_sumt : public refiner_assertion_sumt 
 {
@@ -36,11 +36,11 @@ public:
 
           virtual ~smt_refiner_assertion_sumt() {}
     
-    void mark_sum_for_refine(const smtcheck_opensmt2t &decider, call_tree_nodet &summary,
-                             smt_partitioning_target_equationt &equation);
+    void mark_sum_for_refine(const check_opensmt2t &decider, call_tree_nodet &summary,
+                             partitioning_target_equationt &equation);
   
 protected:
-    void reset_depend(const smtcheck_opensmt2t &decider, call_tree_nodet& summary, smt_partitioning_target_equationt &equation);
+
     
 };
 

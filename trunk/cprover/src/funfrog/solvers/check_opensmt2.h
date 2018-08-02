@@ -14,6 +14,7 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 #include "interpolating_solver.h"
 
 class literalt;
+class exprt;
 /*
  TODO: think how to generalize this class and interpolating_solvert to be 
  * not related. Need also to change (split?) summarizing_checkert
@@ -56,7 +57,10 @@ public:
       // KE: not created here, so don't free it here!
       // This is common to all logics: prop, lra, qfuf, qfcuf
   }
-  
+
+    virtual literalt convert(const exprt & expr) = 0;
+    virtual bool solve() = 0;
+
 
 #ifdef PRODUCE_PROOF  
   /* General method to set OpenSMT2 */
@@ -137,6 +141,12 @@ public:
 
     void close_partition();
 
+    virtual bool is_overapproximating() const = 0;
+
+    virtual bool is_assignment_true(literalt a) const = 0;
+
+    virtual exprt get_value(const exprt &expr) = 0;
+
     /* General consts for prop version */
   const char* false_str = "false";
   const char* true_str = "true";
@@ -145,7 +155,7 @@ protected:
     void insert_top_level_formulas();
 
     void produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs,
-            std::vector<PTRef> &interpolants);
+            std::vector<PTRef> &interpolants) const;
 
   // Initialize the OpenSMT context
   virtual void initializeSolver(const char*)=0;

@@ -13,7 +13,7 @@ Author: Ondrej Sery
 #include "partitioning_target_equation.h"
 
 // forward declaration
-class prop_conv_solvert;
+class check_opensmt2t;
 class interpolating_solvert;
 
 // Two classes for smt and prop   
@@ -29,36 +29,35 @@ public:
             
   // Convert all the SSA steps into the corresponding formulas in
   // the corresponding partitions
-  void convert(prop_conv_solvert &prop_conv, interpolating_solvert &interpolator);
+  void convert(check_opensmt2t &prop_conv, interpolating_solvert &interpolator) override;
   
   // Extract interpolants corresponding to the created partitions
-  void extract_interpolants(
-    interpolating_solvert& interpolator, const prop_conv_solvert& decider);
+  void extract_interpolants(check_opensmt2t& decider) override;
 
 protected:
   // Convert a specific partition of SSA steps
-  void convert_partition(prop_conv_solvert &prop_conv_solvert,
+  void convert_partition(check_opensmt2t &prop_conv,
     interpolating_solvert &interpolator, partitiont& partition);
   // Convert a specific partition guards of SSA steps
-  void convert_partition_guards(prop_conv_solvert &prop_conv,
+  void convert_partition_guards(check_opensmt2t &prop_conv,
     partitiont& partition);
   // Convert a specific partition assignments of SSA steps
-  void convert_partition_assignments(prop_conv_solvert &prop_conv,
+  void convert_partition_assignments(check_opensmt2t &prop_conv,
     partitiont& partition);
   // Convert a specific partition assumptions of SSA steps
-  void convert_partition_assumptions(prop_conv_solvert &prop_conv,
+  void convert_partition_assumptions(check_opensmt2t &prop_conv,
     partitiont& partition);
   // Convert a specific partition assertions of SSA steps
-  void convert_partition_assertions(prop_conv_solvert &prop_conv,
+  void convert_partition_assertions(check_opensmt2t &prop_conv,
     partitiont& partition);
   // Convert a specific partition io of SSA steps
-  void convert_partition_io(prop_conv_solvert &prop_conv,
+  void convert_partition_io(check_opensmt2t &prop_conv,
     partitiont& partition);
   // Convert a summary partition (i.e., assert its summary)
-  void convert_partition_summary(prop_conv_solvert &prop_conv,
+  void convert_partition_summary(check_opensmt2t &prop_conv,
     partitiont& partition);
   // Convert a specific partition gotos of SSA steps
-  void convert_partition_goto_instructions(prop_conv_solvert &prop_conv,
+  void convert_partition_goto_instructions(check_opensmt2t &prop_conv,
     partitiont& partition);
 
 };

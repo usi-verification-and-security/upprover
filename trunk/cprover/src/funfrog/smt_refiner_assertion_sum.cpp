@@ -30,9 +30,9 @@
 
 \*******************************************************************/
 void smt_refiner_assertion_sumt::mark_sum_for_refine(
-        const smtcheck_opensmt2t &decider,
+        const check_opensmt2t &decider,
         call_tree_nodet &summary,
-        smt_partitioning_target_equationt &equation) {
+        partitioning_target_equationt &equation) {
     refined_functions.clear();
     switch (mode) {
         case refinement_modet::FORCE_INLINING:
@@ -51,9 +51,9 @@ void smt_refiner_assertion_sumt::mark_sum_for_refine(
 }
 
 void smt_refiner_assertion_sumt::reset_depend(
-        const smtcheck_opensmt2t &decider,
+        const check_opensmt2t &decider,
         call_tree_nodet &summary,
-        smt_partitioning_target_equationt &equation) {
+        partitioning_target_equationt &equation) {
     std::vector<call_tree_nodet *> tmp;
 
     partitionst &parts = equation.get_partitions();
@@ -70,7 +70,7 @@ void smt_refiner_assertion_sumt::reset_depend(
       #       endif
               tmp.push_back(&ipart.call_tree_node);
             }*/
-            if (decider.is_assignemt_true(ipart.callstart_literal)) {
+            if (decider.is_assignment_true(ipart.callstart_literal)) {
 #       ifdef DEBUG_REFINER
                 std::cout<< "    -- callstart literal is true" << std::endl;
 #       endif

@@ -41,7 +41,7 @@ using namespace std;
  the corresponding partitions
 
 \*******************************************************************/
-void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
+void prop_partitioning_target_equationt::convert(check_opensmt2t &prop_conv,
           interpolating_solvert &interpolator)
 {
 #ifdef DISABLE_OPTIMIZATIONS    
@@ -138,7 +138,7 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
  Purpose: Convert a specific partition of SSA steps
 
 \*******************************************************************/
-void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &prop_conv,
+void prop_partitioning_target_equationt::convert_partition(check_opensmt2t& decider,
     interpolating_solvert &interpolator, partitiont& partition)
 {
   if (partition.ignore) {
@@ -147,12 +147,12 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
   // Convert the assumption propagation symbols
   partition_ifacet &partition_iface = partition.get_iface();
   partition_iface.callstart_literal =
-          prop_conv.convert(partition_iface.callstart_symbol);
+          decider.convert(partition_iface.callstart_symbol);
   partition_iface.callend_literal =
-          prop_conv.convert(partition_iface.callend_symbol);
+          decider.convert(partition_iface.callend_symbol);
   if (partition_iface.assertion_in_subtree) {
     partition_iface.error_literal =
-            prop_conv.convert(partition_iface.error_symbol);
+            decider.convert(partition_iface.error_symbol);
   }
   if (partition.is_stub()){
     return;
@@ -163,7 +163,7 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
 
   // If this is a summary partition, apply the summary
   if (partition.has_summary_representation()) {
-    convert_partition_summary(prop_conv, partition);
+    convert_partition_summary(decider, partition);
     // FIXME: Only use in the incremental solver mode (not yet implemented)
     // partition.processed = true;
     return;
@@ -172,18 +172,18 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
   // Reserve fresh variables for the partition boundary
   std::vector<symbol_exprt> common_symbs;
   fill_common_symbols(partition, common_symbs);
-  prop_itpt::reserve_variables(prop_conv, common_symbs, partition.get_iface().common_symbols);
+  prop_itpt::reserve_variables(static_cast<satcheck_opensmt2t &>(decider).get_prop_conv_solver(), common_symbs, partition.get_iface().common_symbols);
   // Convert the corresponding SSA steps
-  convert_partition_guards(prop_conv, partition);
-  convert_partition_assignments(prop_conv, partition);
-  convert_partition_assumptions(prop_conv, partition);
+  convert_partition_guards(decider, partition);
+  convert_partition_assignments(decider, partition);
+  convert_partition_assumptions(decider, partition);
  // if (partition.get_iface().function_id.c_str() == "c::main"){
  //   std::cout << "converting assertions\n";
-    convert_partition_assertions(prop_conv, partition);
+    convert_partition_assertions(decider, partition);
  // } else {
  //   std::cout << "skipping converting assertions\n";
  // }
-  convert_partition_io(prop_conv, partition);
+  convert_partition_io(decider, partition);
   // FIXME: Only use in the incremental solver mode (not yet implemented)
   // partition.processed = true;
 }
@@ -200,7 +200,7 @@ Function: prop_partitioning_target_equationt::convert_partition_summary
 \*******************************************************************/
 
 void prop_partitioning_target_equationt::convert_partition_summary(
-    prop_conv_solvert &prop_conv, partitiont& partition)
+    check_opensmt2t &decider, partitiont& partition)
 {
   std::vector<symbol_exprt> common_symbs;
   fill_common_symbols(partition, common_symbs);
@@ -224,7 +224,7 @@ void prop_partitioning_target_equationt::convert_partition_summary(
 #   ifdef DEBUG_SSA
       std::cout << "Substituting summary #" << *it << std::endl;
 #   endif
-      summary.substitute(prop_conv, common_symbs);
+      summary.substitute(static_cast<satcheck_opensmt2t &>(decider).get_prop_conv_solver(), common_symbs);
     }
   }
 }
@@ -242,7 +242,7 @@ Function: prop_partitioning_target_equationt::convert_partition_assignments
 \*******************************************************************/
 
 void prop_partitioning_target_equationt::convert_partition_assignments(
-  prop_conv_solvert &prop_conv, partitiont& partition)
+  check_opensmt2t &decider, partitiont& partition)
 {
   for(SSA_stepst::const_iterator it = partition.start_it;
       it != partition.end_it; ++it)
@@ -256,7 +256,7 @@ void prop_partitioning_target_equationt::convert_partition_assignments(
       terms_counter++;
 #     endif
 
-      prop_conv.set_to_true(it->cond_expr);
+        static_cast<satcheck_opensmt2t&>(decider).get_prop_conv_solver().set_to_true(it->cond_expr);
     }
   }
 }
@@ -274,7 +274,7 @@ Function: prop_partitioning_target_equationt::convert_partition_guards
 \*******************************************************************/
 
 void prop_partitioning_target_equationt::convert_partition_guards(
-  prop_conv_solvert &prop_conv, partitiont& partition)
+  check_opensmt2t &prop_conv, partitiont& partition)
 {
   for(SSA_stepst::iterator it = partition.start_it;
       it != partition.end_it; ++it)
@@ -311,28 +311,18 @@ Function: prop_partitioning_target_equationt::convert_partition_assumptions
 \*******************************************************************/
 
 void prop_partitioning_target_equationt::convert_partition_assumptions(
-  prop_conv_solvert &prop_conv, partitiont& partition)
-{
-  for(SSA_stepst::iterator it = partition.start_it;
-      it != partition.end_it; ++it)
-  {
-    if(it->is_assume())
-    {
-      if(it->ignore)
-        it->cond_literal=const_literal(true);
-      else
-      {          
-        it->cond_literal=prop_conv.convert(it->cond_expr);
-                
+        check_opensmt2t & prop_conv, partitiont & partition) {
+    for (auto it = partition.start_it; it != partition.end_it; ++it) {
+        if (it->is_assume()) {
+            it->cond_literal = it->ignore ? const_literal(true) : prop_conv.convert(it->cond_expr);
 #	ifdef DISABLE_OPTIMIZATIONS // Only for prop version!
-        exprt tmp(it->cond_expr);  
-        //Print "ASSUME-OUT:"
-        expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
-        terms_counter++;
+            exprt tmp(it->cond_expr);
+            //Print "ASSUME-OUT:"
+            expr_ssa_print(out_terms << "    " , tmp, partition_smt_decl, false);
+            terms_counter++;
 #       endif
-      }
+        }
     }
-  }
 }
 
 /*******************************************************************
@@ -347,7 +337,7 @@ void prop_partitioning_target_equationt::convert_partition_assumptions(
  *  KE: added after the cprover upgrade
  \*******************************************************************/
 void prop_partitioning_target_equationt::convert_partition_goto_instructions(
-    prop_conv_solvert &prop_conv, partitiont& partition)
+    check_opensmt2t &prop_conv, partitiont& partition)
 {
     for(SSA_stepst::iterator it = partition.start_it;
       it != partition.end_it; ++it)
@@ -384,11 +374,12 @@ Function: prop_partitioning_target_equationt::convert_partition_assertions
 \*******************************************************************/
 
 void prop_partitioning_target_equationt::convert_partition_assertions(
-  prop_conv_solvert &prop_conv, partitiont& partition)
+  check_opensmt2t &decider, partitiont& partition)
 {
     unsigned number_of_assertions = count_partition_assertions(partition); 
     unsigned number_of_assumptions = 0;
     const partition_ifacet& partition_iface = partition.get_iface();
+    satcheck_opensmt2t & prop = static_cast<satcheck_opensmt2t &>(decider);
 
     bvt bv;
     if (partition_iface.assertion_in_subtree) {
@@ -410,8 +401,8 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
 #     endif
 
       // Collect ass \in assertions(f) in bv
-      literalt tmp_literal = prop_conv.convert(it->cond_expr);
-      it->cond_literal = prop_conv.prop.limplies(assumption_literal, tmp_literal);
+      literalt tmp_literal = decider.convert(it->cond_expr);
+      it->cond_literal = prop.limplies(assumption_literal, tmp_literal);
 
       bv.push_back(!it->cond_literal);
     }
@@ -428,8 +419,8 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
       if (target_partition && !target_partition->ignore) {
         const partition_ifacet& target_partition_iface = target_partition->get_iface();
 
-        literalt tmp = prop_conv.prop.land(assumption_literal, it->guard_literal);
-        prop_conv.prop.set_equal(tmp, target_partition_iface.callstart_literal);
+        literalt tmp = prop.land(assumption_literal, it->guard_literal);
+        prop.set_equal(tmp, target_partition_iface.callstart_literal);
       
         #ifdef DISABLE_OPTIMIZATIONS // Print of assert
         terms_counter++;
@@ -455,7 +446,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
       //
       //     assumption_literal = \land_{ass \in assumptions(f)} ass
       //
-      assumption_literal = prop_conv.prop.land(assumption_literal, it->cond_literal);
+      assumption_literal = prop.land(assumption_literal, it->cond_literal);
       number_of_assumptions++;
     } 
   }
@@ -481,7 +472,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
     
     if (!partition.has_parent())
     {
-      prop_conv.prop.lcnf(bv);
+      prop.lcnf(bv);
       
       #ifdef DISABLE_OPTIMIZATIONS // Root Encoding
 
@@ -527,8 +518,8 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
     } 
     else 
     {
-      literalt tmp = prop_conv.prop.lor(bv);
-      prop_conv.prop.set_equal(tmp, partition_iface.error_literal);
+      literalt tmp = prop.lor(bv);
+      prop.set_equal(tmp, partition_iface.error_literal);
       
       #ifdef DISABLE_OPTIMIZATIONS // XXX Encoding error_f: ",
       terms_counter++;
@@ -593,9 +584,9 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
     //
     // NOTE: callstart_f \in assumptions(f)
     //
-    literalt tmp = prop_conv.prop.limplies(partition_iface.callend_literal,
+    literalt tmp = prop.limplies(partition_iface.callend_literal,
             assumption_literal);
-    prop_conv.prop.l_set_to_true(tmp);
+    prop.l_set_to_true(tmp);
 
 #   ifdef DISABLE_OPTIMIZATIONS // "XXX Call END implication: \n";
     terms_counter++;
@@ -639,8 +630,9 @@ Function: prop_partitioning_target_equationt::convert_partition_io
 \*******************************************************************/
 
 void prop_partitioning_target_equationt::convert_partition_io(
-  prop_conv_solvert &prop_conv, partitiont& partition)
+  check_opensmt2t &decider, partitiont& partition)
 {
+    satcheck_opensmt2t & prop = static_cast<satcheck_opensmt2t &>(decider);
   for(SSA_stepst::iterator it = partition.start_it;
       it != partition.end_it; ++it)
     if(!it->ignore)
@@ -657,7 +649,7 @@ void prop_partitioning_target_equationt::convert_partition_io(
         else
         {
           symbol_exprt symbol((CProverStringConstants::IO_CONST + std::to_string(io_count_global++)), tmp.type());
-          prop_conv.set_to(equal_exprt(tmp, symbol), true);
+          prop.get_prop_conv_solver().set_to(equal_exprt(tmp, symbol), true);
           it->converted_io_args.push_back(symbol);
         }
       }
@@ -695,8 +687,7 @@ Function: prop_partitioning_target_equationt::extract_interpolants
  Purpose: Extract interpolants corresponding to the created partitions
 
 \*******************************************************************/
-void prop_partitioning_target_equationt::extract_interpolants(
-  interpolating_solvert& interpolator, const prop_conv_solvert& decider)
+void prop_partitioning_target_equationt::extract_interpolants(check_opensmt2t& decider)
 {
 #ifdef PRODUCE_PROOF     
   // Prepare the interpolation task. NOTE: ignore the root partition!
@@ -741,7 +732,7 @@ void prop_partitioning_target_equationt::extract_interpolants(
   // Interpolate...
   interpolantst itp_result;
   itp_result.reserve(valid_tasks);
-  interpolator.get_interpolant(itp_task, itp_result);
+  decider.get_interpolant(itp_task, itp_result);
 
   // Interpret the result
   std::vector<symbol_exprt> common_symbs;
@@ -781,7 +772,7 @@ void prop_partitioning_target_equationt::extract_interpolants(
     std::cout << "Generalizing interpolant" << std::endl;
 #   endif
 
-    itp->generalize(decider, common_symbs);
+    itp->generalize(dynamic_cast<satcheck_opensmt2t&>(decider).get_prop_conv_solver(), common_symbs);
 
     if (itp->is_trivial()) {
       continue;

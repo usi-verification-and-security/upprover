@@ -141,7 +141,7 @@ Function: satcheck_opensmt2t::get_interpolant
 \*******************************************************************/
 #ifdef PRODUCE_PROOF 
 void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids,
-    interpolantst& interpolants)
+    interpolantst& interpolants) const
 {
   assert(ready_to_interpolate);
 

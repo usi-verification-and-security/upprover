@@ -9,7 +9,7 @@
 #include "error_trace.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "symex_assertion_sum.h"
-#include "prepare_smt_formula.h"
+#include "prepare_formula.h"
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include <util/time_stopping.h>
@@ -106,7 +106,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
   //setup_unwind(symex);
 
-  prepare_smt_formulat ssaTosmt = prepare_smt_formulat(equation, message_handler);
+  prepare_formulat ssaTosmt = prepare_formulat(equation, message_handler);
 
   bool end = symex.prepare_SSA(assertion);
 

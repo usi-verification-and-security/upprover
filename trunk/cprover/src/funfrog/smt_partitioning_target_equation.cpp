@@ -60,15 +60,14 @@ smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &d
  the corresponding partitions
 
  \*******************************************************************/
-void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
+void smt_partitioning_target_equationt::convert(check_opensmt2t &decider,
 		interpolating_solvert &interpolator) {
 #ifdef DISABLE_OPTIMIZATIONS    
     getFirstCallExpr(); // Save the first call to the first function
 #endif
-
-    decider.start_encoding_partitions();
+    smtcheck_opensmt2t & smt_decider = static_cast<smtcheck_opensmt2t&>(decider);
     for (auto it = partitions.rbegin(); it != partitions.rend(); ++it) {
-        convert_partition(decider, interpolator, *it);
+        convert_partition(smt_decider, interpolator, *it);
     }
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -761,7 +760,7 @@ namespace{
  Purpose: Extract interpolants corresponding to the created partitions
 
  \*******************************************************************/
-void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t& interpolator) {
+void smt_partitioning_target_equationt::extract_interpolants(check_opensmt2t& decider) {
 #ifdef PRODUCE_PROOF    
     // Prepare the interpolation task. NOTE: ignore the root partition!
     unsigned valid_tasks = 0;
@@ -804,7 +803,7 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
     // Interpolate...
     interpolantst itp_result;
     itp_result.reserve(valid_tasks);
-    interpolator.get_interpolant(itp_task, itp_result);
+    decider.get_interpolant(itp_task, itp_result);
 
     // Interpret the result
     std::vector < symbol_exprt > common_symbs;
@@ -848,7 +847,7 @@ void smt_partitioning_target_equationt::extract_interpolants(smtcheck_opensmt2t&
         std::cout << "Generalizing interpolant" << std::endl;
 #   endif
         std::string fun_name = id2string(partition.get_iface().function_id);
-        interpolator.generalize_summary(*itp, common_symbs, fun_name, true);
+        (static_cast<smtcheck_opensmt2t&>(decider)).generalize_summary(*itp, common_symbs, fun_name, true);
 
         // Store the interpolant; summary_store takes the ownership of the summary pointer itp
         summary_store.insert_summary(itp, fun_name);

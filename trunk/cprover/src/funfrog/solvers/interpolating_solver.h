@@ -30,7 +30,7 @@ public:
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants)=0;
+      interpolantst& interpolants) const = 0;
 
 //  virtual void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true)
 //  {assert(0);} // Only SMT should use it!

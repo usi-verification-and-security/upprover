@@ -4,8 +4,10 @@
 #include <util/expr.h>
 #include <goto-programs/goto_trace.h>
 
+class check_opensmt2t;
 class smtcheck_opensmt2t;
 class smt_symex_target_equationt;
+class partitioning_target_equationt;
 class smt_partitioning_target_equationt;
 class smtcheck_opensmt2t_lra;
 
@@ -23,8 +25,8 @@ public:
 	virtual ~error_tracet() {}
 
 	void build_goto_trace(
-			  smt_partitioning_target_equationt &target,
-			  smtcheck_opensmt2t &decider);
+			  partitioning_target_equationt &target,
+			  check_opensmt2t &decider);
 
 	void build_goto_trace_formula (
 	  smt_partitioning_target_equationt &target,
@@ -41,12 +43,11 @@ public:
           smtcheck_opensmt2t &decider);
         
 	void show_goto_trace(
-	  smtcheck_opensmt2t &decider,
 	  std::ostream &out,
 	  const namespacet &ns,
 	  std::map<irep_idt, std::string> &guard_expln);
 
-	error_tracet::isOverAppoxt is_trace_overapprox(smtcheck_opensmt2t &decider);
+	error_tracet::isOverAppoxt is_trace_overapprox(check_opensmt2t &decider);
 
 private:
 	isOverAppoxt isOverAppox;

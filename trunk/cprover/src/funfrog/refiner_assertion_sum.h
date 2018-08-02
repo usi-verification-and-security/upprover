@@ -14,6 +14,8 @@
 class summary_storet;
 class subst_scenariot;
 class call_tree_nodet;
+class check_opensmt2t;
+class partitioning_target_equationt;
 
 enum class refinement_modet{
     FORCE_INLINING,
@@ -45,6 +47,9 @@ public:
   std::list<call_tree_nodet*>& get_refined_functions(){ return refined_functions; }
   void set_refine_mode(refinement_modet _mode){ mode = _mode; }
 
+  void mark_sum_for_refine(const check_opensmt2t &decider, call_tree_nodet &summary,
+                             partitioning_target_equationt &equation);
+
 protected:
   summary_storet & summary_store;
   // substituting scenario
@@ -68,8 +73,8 @@ protected:
   void reset_inline(call_tree_nodet& summary);
   void reset_random(call_tree_nodet& summary);
 
-  // not in use now
-  void reset_depend_rec(std::vector<call_tree_nodet*>& dep, call_tree_nodet& summary);
+
+    void reset_depend(const check_opensmt2t &decider, call_tree_nodet& summary, partitioning_target_equationt &equation);
 
   void set_inline_sum(call_tree_nodet& summary);
 };

@@ -84,7 +84,7 @@ literalt smtcheck_opensmt2t::push_variable(PTRef ptl) {
 }
 
 // TODO: enhance this to get assignments for any PTRefs, not only for Bool Vars.
-bool smtcheck_opensmt2t::is_assignemt_true(literalt a) const
+bool smtcheck_opensmt2t::is_assignment_true(literalt a) const
 {
   if (a.is_true())
     return true;
@@ -296,7 +296,7 @@ Function: smtcheck_opensmt2t::get_interpolant
  *      if the code is too long split to the method - extract_itp, which is now commented (its body).
 \*******************************************************************/
 #ifdef PRODUCE_PROOF 
-void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids, interpolantst& interpolants)
+void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_ids, interpolantst& interpolants) const
 {   
   assert(ready_to_interpolate);
   

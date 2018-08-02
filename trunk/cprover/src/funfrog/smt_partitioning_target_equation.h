@@ -26,12 +26,12 @@ public:
             
   // Convert all the SSA steps into the corresponding formulas in
   // the corresponding partitions
-  void convert(smtcheck_opensmt2t &decider, interpolating_solvert &interpolator);
+  void convert(check_opensmt2t &decider, interpolating_solvert &interpolator) override;
   
   void fill_function_templates(smtcheck_opensmt2t &decider, std::vector<summaryt*> &templates);
   
   // Extract interpolants corresponding to the created partitions
-  void extract_interpolants(smtcheck_opensmt2t& decider);
+  void extract_interpolants(check_opensmt2t& decider) override;
 
   std::vector<exprt>& get_exprs_to_refine () { return exprs; };
 

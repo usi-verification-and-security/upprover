@@ -16,10 +16,9 @@
 #include "subst_scenario.h"
 
 class smt_assertion_no_partitiont;
-class prop_partitioning_target_equationt;
-class smt_partitioning_target_equationt;
+class partitioning_target_equationt;
 class prop_assertion_sumt;
-class prepare_smt_formulat;
+class prepare_formulat;
 class check_opensmt2t;
 class symex_bmct;
 class interpolating_solvert;
@@ -69,13 +68,11 @@ protected:
   
   void setup_unwind(symex_bmct& symex);
 #ifdef PRODUCE_PROOF  
-  void extract_interpolants_smt (prepare_smt_formulat& prop, smt_partitioning_target_equationt& equation);
-  void extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
-            prop_conv_solvert& decider_prop, interpolating_solvert& interpolator);
+  void extract_interpolants(partitioning_target_equationt& equation);
 #endif
   void report_success();
   void report_failure();
-  void assertion_violated(prepare_smt_formulat& prop,
+  void assertion_violated(prepare_formulat& prop,
 		  std::map<irep_idt, std::string> &guard_expln);
   void assertion_violated (smt_assertion_no_partitiont& prop,
                   std::map<irep_idt, std::string> &guard_expln);
