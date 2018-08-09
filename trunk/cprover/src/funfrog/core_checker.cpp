@@ -1380,7 +1380,8 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     }
 //---------------------------------------------------------------------------
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
-    smtcheck_opensmt2t_lra lra_solver {0, "lra checker"}; //TODO: type_constraints_level
+    unsigned int _type_constraints_level = options.get_unsigned_int_option("type-constraints");
+    smtcheck_opensmt2t_lra lra_solver {_type_constraints_level, "lra checker"}; //TODO: type_constraints_level
     initialize_solver_options(&lra_solver);
     status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
     reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver, uf_solver );
@@ -1404,7 +1405,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     while(can_refine){
         symex.refine_SSA(localRefine.get_refined_functions());
         // new lra_solver here, because of LRA incrementality problems in OpenSMT
-        smtcheck_opensmt2t_lra lra_solver2 {0, "lra checker (in loop)"};
+        smtcheck_opensmt2t_lra lra_solver2 {_type_constraints_level, "lra checker (in loop)"};
         initialize_solver_options(&lra_solver2);
         // we have new solver, but summary store has references from the old solver, we need to reload
         status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
