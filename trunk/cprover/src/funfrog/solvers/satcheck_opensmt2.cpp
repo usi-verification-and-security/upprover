@@ -468,7 +468,7 @@ void satcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
     const prop_itpt & prop_itp = dynamic_cast<const prop_itpt &>(itp);
     // FIXME: Dirty cast.
     boolbv_mapt& map = const_cast<boolbv_mapt &>((dynamic_cast<boolbvt*>(this->prop_convert.get())->get_map()));
-    literalt* renaming = new literalt[_no_variables];
+    literalt* renaming = new literalt[prop_itp.get_no_variables()];
 
     // Fill the renaming table
     unsigned cannon_var_no = 1;
@@ -477,7 +477,7 @@ void satcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
         // Bool symbols are not in the boolbv_map and have to be treated separatelly
         if (symbol.type().id() == ID_bool) {
             literalt l = this->bool_expr_to_literal(symbol);
-            assert(cannon_var_no < _no_variables);
+            assert(cannon_var_no < prop_itp.get_no_original_variables());
             renaming[cannon_var_no++] = l;
             continue;
         }
@@ -488,7 +488,7 @@ void satcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
                 symbol.get_identifier(), symbol.type(), width, literals);
         for (unsigned i = 0; i < width; ++i) {
             literalt l = literals[i];
-            assert(cannon_var_no < _no_variables);
+            assert(cannon_var_no < prop_itp.get_no_original_variables());
             renaming[cannon_var_no++] = l;
         }
     }

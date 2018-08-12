@@ -37,7 +37,6 @@ set(HIFROG_SOURCE_FILES
         hifrog.cpp
         hifrog.h
         languages.cpp
-        main.cpp
         parseoptions.cpp
         parseoptions.h
         partition.h
@@ -112,19 +111,21 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/../cmake_modul
 
 find_package(GMP REQUIRED)
 
-add_executable(hifrog ${HIFROG_SOURCE_FILES}
+add_library(hifrog-lib ${HIFROG_SOURCE_FILES})
+
+add_executable(hifrog main.cpp
 )
 
-target_include_directories(hifrog PRIVATE ${PROJECT_SOURCE_DIR})
+target_include_directories(hifrog-lib PUBLIC ${PROJECT_SOURCE_DIR})
 
-target_compile_options(hifrog PRIVATE  -Wall)
+target_compile_options(hifrog-lib PUBLIC  -Wall)
 
 if(PRODUCE_PROOF)
     #message("Compiling with PRODUCE_PROOF")
-    target_compile_definitions(hifrog PUBLIC -DPRODUCE_PROOF)
+    target_compile_definitions(hifrog-lib PUBLIC -DPRODUCE_PROOF)
 endif(PRODUCE_PROOF)
 
-target_compile_definitions(hifrog PRIVATE
+target_compile_definitions(hifrog-lib PUBLIC
     #-DDEBUG_PARTITIONING
     #-DDEBUG_SSA
     #-DDEBUG_SSA_SMT_CALL
@@ -142,11 +143,11 @@ if(NOT OPENSMT2_INCLUDE)
 	message(FATAL_ERROR "opensmt header files not found")
 endif()
 
-target_include_directories(hifrog SYSTEM PUBLIC ${OPENSMT2_INCLUDE})
-target_link_libraries(hifrog ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
+target_include_directories(hifrog-lib SYSTEM PUBLIC ${OPENSMT2_INCLUDE})
+target_link_libraries(hifrog-lib ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRARIES}
     )
 
-target_link_libraries(hifrog
+target_link_libraries(hifrog-lib
     ansi-c
     cbmc-lib #this is here only because of no_partition, if that is done in a different way, remove this dependency
     cpp
@@ -156,7 +157,9 @@ target_link_libraries(hifrog
     xml
 )
 
-set_target_properties(hifrog
+target_link_libraries(hifrog hifrog-lib)
+
+set_target_properties(hifrog hifrog-lib
 PROPERTIES
 RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 CXX_STANDARD 11

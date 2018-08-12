@@ -21,7 +21,7 @@ class prop_itpt: public itpt
 public:
     typedef std::vector<bvt> clausest;
 
-  prop_itpt() :itpt() {}
+  prop_itpt() :itpt(), _no_variables(1), _no_orig_variables(1) {}
   ~prop_itpt() {} 
 
   virtual bool is_trivial() const override { return root_literal.is_constant(); }

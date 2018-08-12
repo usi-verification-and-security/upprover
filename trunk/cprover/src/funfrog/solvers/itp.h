@@ -3,7 +3,7 @@
 
 #include <solvers/prop/literal.h>
 #include <opensmt/PTRef.h>
-#include <symbol.h>
+#include <util/symbol.h>
 
 class itpt
 {
