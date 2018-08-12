@@ -14,7 +14,7 @@
 std::pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_steps_it it1, SSA_steps_it it2)
 {
   try{
-  smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra(0, "implication checker", false);
+  smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra(0, "implication checker");
   decider->new_partition();
 
   convert_delta_SSA(*decider, it1, it2);
@@ -227,7 +227,7 @@ void smt_dependency_checkert::deep_convert_guards(smtcheck_opensmt2t &decider, e
     // TODO: find a more clever way of identifying guards
     if ((from_expr(ns, "", exp)).find("guard") == 1){
       //std::cout << " -> converting " << from_expr(SSA_map[exp]) << "\n";
-      decider.convert(SSA_map[exp]);
+        decider.bool_expr_to_literal(SSA_map[exp]);
     }
   }
 }
@@ -243,6 +243,7 @@ void smt_dependency_checkert::set_guards_to_true(smtcheck_opensmt2t &decider, ex
     if ((from_expr(ns, "", exp)).find("guard") == 1){
       //std::cout << " -> set to true " << from_expr(SSA_map[exp]) << "\n";
       decider.set_to_true(SSA_map[exp]);
+
     }
   }
 }
@@ -275,7 +276,7 @@ void smt_dependency_checkert::convert_guards(
       }
       else {
         //std::cout << "convert guard: " << from_expr(ns, "", (*it)->cond_expr) <<"\n";
-        decider.convert((*it)->cond_expr);
+          decider.bool_expr_to_literal((*it)->cond_expr);
         //deep_convert_guards(decider, ((*it)->cond_expr));
       }
     it++;

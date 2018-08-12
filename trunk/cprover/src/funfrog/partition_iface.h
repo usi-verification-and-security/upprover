@@ -70,8 +70,7 @@ public:
   
   // SSA Location of the call
   unsigned call_loc;
-  
-  std::map<symbol_exprt, std::vector<unsigned> > common_symbols;
+
   std::vector<unsigned> A_vars;
   std::vector<unsigned> B_vars;
   std::vector<unsigned> AB_vars;

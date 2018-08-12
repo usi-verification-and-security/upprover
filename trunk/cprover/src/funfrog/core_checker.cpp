@@ -21,7 +21,6 @@
 #include "nopartition/smt_assertion_no_partition.h"
 #include "prop_partitioning_target_equation.h"
 #include "smt_partitioning_target_equation.h"
-#include "prop_assertion_sum.h"
 #include "prepare_formula.h"
 #include "symex_assertion_sum.h"
 #include <solvers/flattening/bv_pointers.h>
@@ -323,7 +322,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
 
   refiner_assertion_sumt refiner {*summary_store, omega,
               get_refine_mode(options.get_option("refine-mode")),
-              message_handler, last_assertion_loc, true};
+              message_handler, last_assertion_loc};
 
 
   bool end = symex.prepare_SSA(assertion);
@@ -513,7 +512,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     refiner_assertion_sumt refiner {
               *summary_store, omega,
               get_refine_mode(options.get_option("refine-mode")),
-              message_handler, last_assertion_loc, true};
+              message_handler, last_assertion_loc};
 
     prepare_formulat ssaToFormula = prepare_formulat(equation, message_handler);
 
@@ -705,7 +704,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
   refiner_assertion_sumt refiner{
               *summary_store, omega,
               get_refine_mode(options.get_option("refine-mode")),
-              message_handler, last_assertion_loc, true};
+              message_handler, last_assertion_loc};
 
 
   smt_assertion_no_partitiont prop = smt_assertion_no_partitiont(
@@ -1277,7 +1276,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     refiner_assertion_sumt localRefine{summary_store, omega,
                                            refinement_modet::SLICING_RESULT,
                                            this->get_message_handler(),
-                                           omega.get_last_assertion_loc(), true};
+                                           omega.get_last_assertion_loc()};
 
 
     localRefine.mark_sum_for_refine(uf_solver, omega.get_call_tree_root(), equation);

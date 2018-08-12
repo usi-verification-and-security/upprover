@@ -16,7 +16,7 @@
 
 #include <goto-symex/symex_target_equation.h>
 
-class smtcheck_opensmt2t;
+class check_opensmt2t;
 
 // No need to take anything from partition_target_equation, only from the
 // sub smt class of it
@@ -61,7 +61,7 @@ public:
 
     // Convert all the SSA steps into the corresponding formulas in
     // the corresponding partitions
-    void convert(smtcheck_opensmt2t &decider);
+    void convert(check_opensmt2t &decider);
   
     //void fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*> &templates)
     //{ /* TODO ! */ }
@@ -83,21 +83,21 @@ public:
   
 protected:
     // Convert a specific partition guards of SSA steps
-    void convert_guards(smtcheck_opensmt2t &decider);
+    void convert_guards(check_opensmt2t &decider);
     // Convert a specific partition assignments of SSA steps
-    void convert_assignments(smtcheck_opensmt2t &decider);
+    void convert_assignments(check_opensmt2t &decider);
     // Convert a specific partition assumptions of SSA steps
-    void convert_assumptions(smtcheck_opensmt2t &decider);
+    void convert_assumptions(check_opensmt2t &decider);
     // Convert a specific partition assertions of SSA steps
-    void convert_assertions(smtcheck_opensmt2t &decider);
+    void convert_assertions(check_opensmt2t &decider);
     // Convert a specific partition io of SSA steps
-    void convert_io(smtcheck_opensmt2t &decider);
+    void convert_io(check_opensmt2t &decider);
     // Convert a summary partition (i.e., assert its summary)
-    void convert_summary(smtcheck_opensmt2t &decider);
+    void convert_summary(check_opensmt2t &decider);
     // Convert Gotos of SSA steps
-    void convert_goto_instructions(smtcheck_opensmt2t &decider);
+    void convert_goto_instructions(check_opensmt2t &decider);
     // Convert constraints
-    void convert_constraints(smtcheck_opensmt2t &decider) const;  
+    void convert_constraints(check_opensmt2t &decider) const;
   
   
     virtual bool is_smt_encoding() {return true;} // KE: Temp. Just to force virtual for compilation

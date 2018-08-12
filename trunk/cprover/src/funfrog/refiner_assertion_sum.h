@@ -32,16 +32,14 @@ public:
           subst_scenariot &_omega,
           refinement_modet _mode,
           message_handlert &_message_handler,
-          const unsigned _last_assertion_loc,
-          bool _valid
+          const unsigned _last_assertion_loc
           ) :
           summary_store(summary_store),
           omega(_omega),
           mode(_mode),
           //out(_out),
           message_handler(_message_handler),
-          last_assertion_loc(_last_assertion_loc),
-          valid (_valid)
+          last_assertion_loc(_last_assertion_loc)
           {set_message_handler(_message_handler);};
 
   std::list<call_tree_nodet*>& get_refined_functions(){ return refined_functions; }
@@ -64,9 +62,6 @@ protected:
 
   // Location of the last assertion to be checked
   const unsigned last_assertion_loc;
-
-  // Mode of changing the summaries validity
-  bool valid;
 
   std::list<call_tree_nodet*> refined_functions;
 

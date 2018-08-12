@@ -24,7 +24,7 @@ using namespace std;
 #include "../expr_pretty_print.h"
 #endif
 
-void smt_symex_target_equationt::convert(smtcheck_opensmt2t &decider) 
+void smt_symex_target_equationt::convert(check_opensmt2t &decider)
 {
   // Open a single partition 
   decider.new_partition();
@@ -58,14 +58,14 @@ void smt_symex_target_equationt::convert(smtcheck_opensmt2t &decider)
 }
 
 // Convert a specific partition guards of SSA steps - GUARD-OUT
-void smt_symex_target_equationt::convert_guards(smtcheck_opensmt2t &decider)
+void smt_symex_target_equationt::convert_guards(check_opensmt2t &decider)
 {
     for(auto &step : SSA_steps) {
         if (step.ignore) {
 #       ifdef DEBUG_SSA_SMT_CALL
             cout << "Before decider::const_var(GUARD-OUT) --> false" << endl;
 #       endif
-            step.guard_literal = decider.const_var(false);
+            step.guard_literal = decider.get_const_literal(false);
         } else {
             exprt tmp(step.guard);
 #       ifdef DISABLE_OPTIMIZATIONS
@@ -77,13 +77,13 @@ void smt_symex_target_equationt::convert_guards(smtcheck_opensmt2t &decider)
             expr_ssa_print_smt_dbg(
                 cout << "Before decider::convert(GUARD-OUT) --> ", tmp,false);
 #	endif
-            step.guard_literal = decider.convert(tmp);
+            step.guard_literal = decider.bool_expr_to_literal(tmp);
         }
     }      
 }
 
 // Convert a specific partition assignments of SSA steps
-void smt_symex_target_equationt::convert_assignments(smtcheck_opensmt2t &decider)
+void smt_symex_target_equationt::convert_assignments(check_opensmt2t &decider)
 {
     for(auto &step : SSA_steps) {
         if (step.is_assignment() && !step.ignore) {
@@ -107,7 +107,7 @@ void smt_symex_target_equationt::convert_assignments(smtcheck_opensmt2t &decider
     }
 }
 
-void smt_symex_target_equationt::convert_constraints(smtcheck_opensmt2t &decider) const
+void smt_symex_target_equationt::convert_constraints(check_opensmt2t &decider) const
 {
   for(const auto &step : SSA_steps)
   {
@@ -122,7 +122,7 @@ void smt_symex_target_equationt::convert_constraints(smtcheck_opensmt2t &decider
 }
 
 // Convert a specific partition assumptions of SSA steps
-void smt_symex_target_equationt::convert_assumptions(smtcheck_opensmt2t &decider)
+void smt_symex_target_equationt::convert_assumptions(check_opensmt2t &decider)
 {
     for(auto &step : SSA_steps) {
         if (step.is_assume()) {
@@ -130,7 +130,7 @@ void smt_symex_target_equationt::convert_assumptions(smtcheck_opensmt2t &decider
 #           ifdef DEBUG_SSA_SMT_CALL
                 cout << "Before decider::const_var(ASSUME-OUT) --> true" << endl;
 #           endif
-                step.cond_literal = decider.const_var(true);
+                step.cond_literal = decider.get_const_literal(true);
                 // GF
             } else {
                 exprt tmp(step.cond_expr);
@@ -139,14 +139,14 @@ void smt_symex_target_equationt::convert_assumptions(smtcheck_opensmt2t &decider
                             cout << "Before decider::convert(ASSUME-OUT) --> ",
                             tmp, false);
 #               endif
-                step.cond_literal = decider.convert(tmp);
+                step.cond_literal = decider.bool_expr_to_literal(tmp);
             }
         }
     }
 }
 
 // Convert a specific partition assumptions of SSA steps
-void smt_symex_target_equationt::convert_goto_instructions(smtcheck_opensmt2t &decider)
+void smt_symex_target_equationt::convert_goto_instructions(check_opensmt2t &decider)
 {
     for(auto &step : SSA_steps) {
         if (step.is_goto()) {
@@ -154,7 +154,7 @@ void smt_symex_target_equationt::convert_goto_instructions(smtcheck_opensmt2t &d
 #           ifdef DEBUG_SSA_SMT_CALL
                 cout << "Before decider::const_var(GOTO-OUT) --> true" << endl;
 #           endif
-                step.cond_literal = decider.const_var(true);
+                step.cond_literal = decider.get_const_literal(true);
                 // GF
             } else {
                 exprt tmp(step.cond_expr);
@@ -163,14 +163,14 @@ void smt_symex_target_equationt::convert_goto_instructions(smtcheck_opensmt2t &d
                             cout << "Before decider::convert(GOTO-OUT) --> ",
                             tmp, false);
 #               endif
-                step.cond_literal = decider.convert(tmp);
+                step.cond_literal = decider.bool_expr_to_literal(tmp);
             }
         }
     }
 }
 
 // Convert a specific partition assertions of SSA steps
-void smt_symex_target_equationt::convert_assertions(smtcheck_opensmt2t &decider)
+void smt_symex_target_equationt::convert_assertions(check_opensmt2t &decider)
 {   
     unsigned number_of_assertions=count_assertions();
     if(number_of_assertions==0) return;
@@ -187,7 +187,7 @@ void smt_symex_target_equationt::convert_assertions(smtcheck_opensmt2t &decider)
             {
                 decider.set_to_false(step.cond_expr);
                 //step.cond_literal=const_literal(false);
-                step.cond_literal = decider.const_var(false);
+                step.cond_literal = decider.get_const_literal(false);
                 return; // prevent further assumptions!
             }
             else if(step.is_assume())
@@ -213,7 +213,7 @@ void smt_symex_target_equationt::convert_assertions(smtcheck_opensmt2t &decider)
                     step.cond_expr);
 
             // do the conversion
-            step.cond_literal=decider.convert(implication);
+            step.cond_literal= decider.bool_expr_to_literal(implication);
 
             // store disjunct
             disjuncts.push_back(literal_exprt(!step.cond_literal));
@@ -235,7 +235,7 @@ void smt_symex_target_equationt::convert_assertions(smtcheck_opensmt2t &decider)
 }
 
 // Convert a specific partition io of SSA steps
-void smt_symex_target_equationt::convert_io(smtcheck_opensmt2t &decider)
+void smt_symex_target_equationt::convert_io(check_opensmt2t &decider)
 {
     for(auto &step : SSA_steps) {
         if (!step.ignore) {
@@ -261,7 +261,7 @@ void smt_symex_target_equationt::convert_io(smtcheck_opensmt2t &decider)
 }
 
 // Convert a summary partition (i.e., assert its summary)
-void smt_symex_target_equationt::convert_summary(smtcheck_opensmt2t &decider)
+void smt_symex_target_equationt::convert_summary(check_opensmt2t &decider)
 {
     // TODO: if we extands this version to general cbmc with summaries, 
     // then we need to implement this method    

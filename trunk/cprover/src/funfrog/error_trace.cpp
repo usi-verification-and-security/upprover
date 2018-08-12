@@ -44,7 +44,7 @@ void error_tracet::build_goto_trace (
 
   for(auto ssa_step_ptr : SSA_steps)
   {
-    const symex_target_equationt::SSA_stept &SSA_step=*ssa_step_ptr;
+    const auto & SSA_step = *ssa_step_ptr;
     if(!decider.is_assignment_true(SSA_step.guard_literal))
       continue;
 
@@ -52,7 +52,7 @@ void error_tracet::build_goto_trace (
        SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)
       continue;
 
-    std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
+    std::string str(SSA_step.ssa_lhs.get(ID_identifier).c_str());
     if (is_cprover_rounding_mode_var(str))
     	continue;
 
@@ -217,17 +217,17 @@ void error_tracet::build_goto_trace_formula (
           if (non_interp_classes.find(val_val) == non_interp_classes.end()){
             non_interp_classes[val_val] = new std::vector<literalt>();
           }
-          non_interp_classes[val_val]->push_back(decider2.convert(SSA_step.ssa_lhs));
+          non_interp_classes[val_val]->push_back(decider2.bool_expr_to_literal(SSA_step.ssa_lhs));
           continue;
         } else if (val.get(ID_value) == "1"){
-          ltr = decider2.const_var(true);
+          ltr = decider2.get_const_literal(true);
         } else if (val.get(ID_value) == "0"){
-          ltr = decider2.const_var(false);
+          ltr = decider2.get_const_literal(false);
         } else {
           continue;
         }
 
-	decider2.set_equal(ltr, decider2.convert(SSA_step.ssa_lhs));
+	decider2.set_equal(ltr, decider2.bool_expr_to_literal(SSA_step.ssa_lhs));
     }
   }
   for (std::map<const irep_idt, std::vector<literalt>*>::iterator
@@ -324,7 +324,7 @@ error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(check_opensmt2t &de
     MainSolver *mainSolver = decider.getMainSolver();
 #endif
     smtcheck_opensmt2t & smt_decider = static_cast<smtcheck_opensmt2t&>(decider);
-    if (smt_decider.has_unsupported_vars() && !smt_decider.has_unsupported_info())
+    if (smt_decider.has_unsupported_vars())
     // KE: only if we used any unsupported var checks and only if we didn't
     // try to refine these expr - Need to find a better solution
     {

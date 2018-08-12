@@ -23,49 +23,22 @@ public:
           bool _store_summaries_with_assertion)
             : partitioning_target_equationt(_ns, store,
                        _store_summaries_with_assertion) {}
-            
-  // Convert all the SSA steps into the corresponding formulas in
-  // the corresponding partitions
-  void convert(check_opensmt2t &decider, interpolating_solvert &interpolator) override;
-  
-  void fill_function_templates(smtcheck_opensmt2t &decider, std::vector<summaryt*> &templates);
+
   
   // Extract interpolants corresponding to the created partitions
   void extract_interpolants(check_opensmt2t& decider) override;
 
   std::vector<exprt>& get_exprs_to_refine () { return exprs; };
 
-  void fill_common_symbols(const partitiont &partition,
-                           std::vector<symbol_exprt> &common_symbols) const override;
+  std::vector<symbol_exprt> fill_common_symbols(const partitiont & partition) const override;
 
 protected:
 
+    // TODO: remove this;
   std::vector<exprt> exprs;
 
   // Convert a specific partition of SSA steps
-  void convert_partition(smtcheck_opensmt2t &decider,
-    interpolating_solvert &interpolator, partitiont& partition);
-  // Convert a specific partition guards of SSA steps
-  void convert_partition_guards(smtcheck_opensmt2t &decider,
-    partitiont& partition);
-  // Convert a specific partition assignments of SSA steps
-  void convert_partition_assignments(smtcheck_opensmt2t &decider,
-    partitiont& partition);
-  // Convert a specific partition assumptions of SSA steps
-  void convert_partition_assumptions(smtcheck_opensmt2t &decider,
-    partitiont& partition);
-  // Convert a specific partition assertions of SSA steps
-  void convert_partition_assertions(smtcheck_opensmt2t &decider,
-    partitiont& partition);
-  // Convert a specific partition io of SSA steps
-  void convert_partition_io(smtcheck_opensmt2t &decider,
-    partitiont& partition);
-  // Convert a summary partition (i.e., assert its summary)
-  void convert_partition_summary(smtcheck_opensmt2t &decider,
-    partitiont& partition);
-  // Convert a specific partition gotos of SSA steps
-  void convert_partition_goto_instructions(smtcheck_opensmt2t &decider,
-    partitiont& partition);
+
   
 private:
   bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!

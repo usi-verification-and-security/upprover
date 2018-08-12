@@ -27,15 +27,13 @@ public:
 
   virtual exprt get_value(const exprt &expr) override;
 
-  virtual literalt convert(const exprt &expr) override;
+  virtual PTRef expression_to_ptref(const exprt & expr) override;
 
-  virtual literalt const_var_Real(const exprt &expr) override;
+  virtual PTRef numeric_constant(const exprt & expr) override;
 
-  virtual literalt type_cast(const exprt &expr) override;
+  virtual PTRef new_num_var(const std::string & var_name) override;
 
-  virtual literalt lnotequal(literalt l1, literalt l2) override;
-
-  virtual literalt lvar(const exprt &expr) override;
+  virtual PTRef type_cast(const exprt & expr) override;
 
   virtual literalt lassert_var() override { throw std::logic_error("Looks like this should not be called for this solver"); }
   
@@ -97,7 +95,7 @@ protected:
 
   void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
 
-  virtual literalt lunsupported2var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  virtual PTRef unsupported_to_var(const exprt & expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
   
   PTRef unsupported2var_bv(const exprt &expr); // for BVs
   

@@ -8,6 +8,9 @@
 
 #include "partitioning_target_equation.h"
 #include "partition_iface.h"
+#include "solvers/check_opensmt2.h"
+#include "utils/naming_helpers.h"
+#include "summary_store.h"
 
 #include <numeric>
 #include <algorithm>
@@ -184,9 +187,9 @@ void partitioning_target_equationt::prepare_partitions() { // for hifrog only
  Purpose:
 
  \*******************************************************************/
-void partitioning_target_equationt::fill_common_symbols(const partitiont& partition,
-                         std::vector<symbol_exprt>& common_symbols) const
+std::vector<symbol_exprt> partitioning_target_equationt::fill_common_symbols(const partitiont & partition) const
 {
+    std::vector<symbol_exprt> common_symbols;
     common_symbols.clear();
     const partition_ifacet& iface = partition.get_iface();
     common_symbols.reserve(iface.argument_symbols.size() +
@@ -203,6 +206,7 @@ void partitioning_target_equationt::fill_common_symbols(const partitiont& partit
     if (iface.returns_value) {
         common_symbols.push_back(iface.retval_symbol);
     }
+    return common_symbols;
 }
 
 /*******************************************************************
@@ -436,3 +440,501 @@ bool partitioning_target_equationt::isFirstCallExpr(const exprt& expr) {
     return (first_call_expr->pretty().compare(expr.pretty()) != 0);
 }
 #endif
+
+/*******************************************************************
+ Function: smt_partitioning_target_equationt::convert_partition_assertions
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Convert a specific partition assertions of SSA steps
+
+ \*******************************************************************/
+
+void partitioning_target_equationt::convert_partition_assertions(
+        check_opensmt2t &decider, partitiont& partition)
+{
+    unsigned number_of_assumptions = 0;
+    const partition_ifacet& partition_iface = partition.get_iface();
+
+    bvt error_lits;
+
+    literalt assumption_literal = decider.get_const_literal(true);
+    for (auto it = partition.start_it; it != partition.end_it; ++it) {
+        if(it->ignore) {continue;} // ignored instructions can be skippied
+        if (it->is_assert()) {
+
+            // Collect ass \in assertions(f) in bv
+            // FIXME add constraints
+//            literalt tmp_literal = (decider.is_exist_var_constraints()) ?
+//                                    decider.land(decider.convert(it->cond_expr), decider.lassert_var())
+//                                    :decider.convert(it->cond_expr);
+            literalt tmp_literal = decider.bool_expr_to_literal(it->cond_expr);
+            it->cond_literal = decider.limplies(assumption_literal, tmp_literal);
+            error_lits.push_back(!it->cond_literal); // negated literal
+        } else if (it->is_assume()) {
+            // If the assumption represents a call of the function g,
+            // encode callstart_g propagation formula:
+            //
+            // callstart_g <=>
+            //     path_cond \land
+            //     (\land_{ass \in {assumptions(f)}} ass)
+            //
+            const partitiont* target_partition = find_target_partition(*it);
+
+            if (target_partition && !target_partition->ignore) {
+                const partition_ifacet& target_partition_iface =
+                        target_partition->get_iface();
+
+                literalt tmp = decider.land(assumption_literal,it->guard_literal);
+                decider.set_equal(tmp, target_partition_iface.callstart_literal);
+
+#		ifdef DISABLE_OPTIMIZATIONS
+                //out_terms << "XXX Call START equality: \n";
+                    terms_counter++;
+                    std::ostream out_temp2(0);
+                    std::stringbuf temp2_buf;
+                    out_temp2.rdbuf(&temp2_buf); // Pre-order printing
+                    int assume_counter = 0;
+                    expr_ssa_print(out_terms << "    (= ",
+                        target_partition_iface.callstart_symbol, partition_smt_decl, false);
+
+                    for (SSA_stepst::iterator it2 = partition.start_it; it2 != it; ++it2) {
+                        if (it2->is_assume() && !it2->ignore) {
+                            assume_counter++;
+                            expr_ssa_print(out_temp2 << "        ", it2->cond_expr, partition_smt_decl, false);
+                        }
+                    }
+                    // If there are more than one term - add and
+                    switch (assume_counter) {
+                    case 0:
+                        out_terms << temp2_buf.str() << "        true\n" << "    )\n";
+                        break; // Shall be called only once at the beginning of the code
+                    case 1:
+                        out_terms << temp2_buf.str() << "    )\n";
+                        break;
+                    default:
+                        out_terms << "      (and \n" << temp2_buf.str() << "      )\n" << "    )\n";
+                        break;
+                    }
+#               endif
+            }
+
+            // Collect this assumption as:
+            //
+            //     assumption_literal = \land_{ass \in assumptions(f)} ass
+            //
+            assumption_literal = decider.land(assumption_literal, it->cond_literal);
+            number_of_assumptions++;
+        }
+    }
+
+    for (auto const & child_id : partition.child_ids) {
+        const partitiont& target_partition = partitions[child_id];
+        if (target_partition.get_iface().assertion_in_subtree) {
+            // Collect error_g, where g \in children(f) in bv
+            error_lits.push_back(target_partition.get_iface().error_literal);
+        }
+    }
+
+    // Encode the collected assertions:
+    //
+    // error_f <=>
+    //     (\lor_{g \in children(f)} error_g) \lor
+    //     (\lor_{ass \in assertions(f)} ass)
+    //
+    if (!error_lits.empty()) {
+        assert(partition_iface.assertion_in_subtree);
+
+        if (!partition.has_parent()) {
+            decider.lcnf(error_lits);
+
+#       ifdef DISABLE_OPTIMIZATIONS
+            //out_terms << "XXX Encoding error in ROOT: " << std::endl;
+
+            // Pre-order printing
+            std::ostream out_temp1(0);
+            std::stringbuf temp1_buf;
+            out_temp1.rdbuf(&temp1_buf);
+
+            int assert_counter = 0;
+            for (SSA_stepst::iterator it = partition.start_it; it
+                            != partition.end_it; ++it) {
+                if (it->is_assert() && !it->ignore) {
+                    assert_counter++;
+                    if (assert_counter == 1)
+                        expr_ssa_print(out_temp1, it->cond_expr,
+                                        partition_smt_decl, false);
+                    else
+                        expr_ssa_print(out_temp1 << "        ", it->cond_expr,
+                                        partition_smt_decl, false);
+                }
+            }
+            for (partition_idst::const_iterator it = partition.child_ids.begin();
+                    it != partition.child_ids.end(); ++it) {
+                const partitiont& target_partition = partitions[*it];
+                const partition_ifacet& target_partition_iface =
+                                                target_partition.get_iface();
+
+                if (!target_partition.ignore
+                                    && target_partition_iface.assertion_in_subtree) {
+                    assert_counter++;
+                    if (assert_counter == 1)
+                        expr_ssa_print(out_temp1, target_partition_iface.error_symbol,
+                                                partition_smt_decl, false);
+                    else
+                        expr_ssa_print(out_temp1 << "        ",
+                                                target_partition_iface.error_symbol,
+                                                partition_smt_decl, false);
+                }
+            }
+            if (assert_counter > 0) {
+                terms_counter++;
+                if (assert_counter == 1)
+                    out_terms << "    " << temp1_buf.str().substr(4);
+                else
+                    out_terms << "    (or \n      (" << temp1_buf.str()
+                                            << "      )\n" << "    )\n";
+            }
+#       endif
+        } else {
+            decider.set_equal(decider.lor(error_lits), partition_iface.error_literal);
+#ifdef DISABLE_OPTIMIZATIONS
+            //out_terms << "XXX Encoding error_f: \n";
+            terms_counter++;
+            expr_ssa_print(out_terms << "    (= ",
+                            partition_iface.error_symbol, partition_smt_decl, false);
+            std::ostream out_temp_assert(0);
+            std::stringbuf temp_assert_buf;
+            out_temp_assert.rdbuf(&temp_assert_buf); // Pre-order printing
+            int assert_counter = 0;
+            for (SSA_stepst::iterator it = partition.start_it; it
+                            != partition.end_it; ++it) {
+                if (it->is_assert() && !it->ignore) {
+                    assert_counter++;
+                    expr_ssa_print(out_temp_assert << "          ",
+                                it->cond_expr, partition_smt_decl, false);
+                }
+            }
+            for (partition_idst::const_iterator it = partition.child_ids.begin();
+                        it != partition.child_ids.end(); ++it) {
+                const partitiont& target_partition = partitions[*it];
+                const partition_ifacet& target_partition_iface = target_partition.get_iface();
+
+                if (!target_partition.ignore
+                                    && target_partition_iface.assertion_in_subtree) {
+                    assert_counter++;
+                    expr_ssa_print(out_temp_assert << "          ",
+                                        target_partition_iface.error_symbol,
+                                        partition_smt_decl, false);
+                }
+            }
+            std::ostream out_temp_assume(0);
+            std::stringbuf temp_assume_buf;
+            out_temp_assume.rdbuf(&temp_assume_buf); // Pre-order printing
+            int assume_counter = 0;
+            for (symex_target_equationt::SSA_stepst::iterator it2 = partition.start_it;
+                        it2 != partition.end_it; ++it2) {
+                if (it2->is_assume() && !it2->ignore) {
+                    assume_counter++;
+                    expr_ssa_print(out_temp_assume << "            ",
+                                    it2->cond_expr, partition_smt_decl, false);
+                }
+            }
+            std::string assume_code = "";
+            if (assume_counter > 1)
+                assume_code = "          (and \n" + temp_assume_buf.str() + "          )\n";
+            else
+                assume_code = temp_assume_buf.str();
+            if (assert_counter > 0) {
+                terms_counter++;
+                if (assert_counter == 1)
+                    out_terms << "      (not\n        (=>\n" << assume_code
+                                << temp_assert_buf.str()
+                                << "        )\n      )\n    )\n";
+                else
+                    out_terms << "      (not\n        (=>\n" << assume_code
+                                << "          (or \n  " << temp_assert_buf.str()
+                                << "          )\n        )\n      )\n    )\n";
+            }
+#endif
+        }
+    }
+
+    //  // Emit error_root = true for the ROOT partition
+    //  if (partition.parent_id == partitiont::NO_PARTITION) {
+    //    decider.prop.l_set_to_true(partition_iface.error_literal);
+    //    #if defined(DEBUG_SSA) && defined(DISABLE_OPTIMIZATIONS)
+    //    expr_pretty_print(std::cout << "XXX Asserting error_root: ",
+    //            partition_iface.error_symbol);
+    //    #endif
+    //  }
+
+    if (partition.has_parent()) {
+        assert(number_of_assumptions > 0);
+        // Encode callend propagation formula for the partition:
+        //
+        // callend_f =>
+        //     (\land_{ass \in assumptions(f)} ass)
+        //
+        // NOTE: callstart_f \in assumptions(f)
+        //
+
+        literalt tmp = decider.limplies(partition_iface.callend_literal, assumption_literal);
+        decider.assert_literal(tmp);
+
+#       ifdef DISABLE_OPTIMIZATIONS
+        //out_terms << "XXX Call END implication: \n";
+        terms_counter++;
+        expr_ssa_print(out_terms << "    (=> ", partition_iface.callend_symbol,
+                        partition_smt_decl, false, true);
+        std::ostream out_temp(0);
+        std::stringbuf temp_buf;
+        out_temp.rdbuf(&temp_buf); // Pre-order printing
+        int assume_counter = 0;
+        for (symex_target_equationt::SSA_stepst::iterator it2 =
+                        partition.start_it; it2 != partition.end_it; ++it2) {
+            if (it2->is_assume() && !it2->ignore) {
+                if (assume_counter == 0 && isFirstCallExpr(it2->cond_expr)) {
+                    assume_counter++;
+                    expr_ssa_print(out_temp << "        ", it2->guard,
+                                    partition_smt_decl, false);
+                }
+                assume_counter++;
+                expr_ssa_print(out_temp << "        ", it2->cond_expr,
+                                partition_smt_decl, false);
+            }
+        }
+        if (assume_counter > 1)
+            out_terms << "\n      (and \n" << temp_buf.str() << "      )\n" << "    )\n";
+        else
+            out_terms << "\n" << temp_buf.str() << "    )\n";
+#   endif
+    }
+}
+
+/*******************************************************************
+ Function: partitioning_target_equationt::convert_partition_goto_instructions
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Convert a specific partition go-tos of SSA steps
+
+ *  KE: added after the cprover upgrade
+ \*******************************************************************/
+void partitioning_target_equationt::convert_partition_goto_instructions(
+        check_opensmt2t &decider, partitiont& partition)
+{
+    for (auto it = partition.start_it; it != partition.end_it; ++it) {
+        if (it->is_goto()) {
+            it->cond_literal = it->ignore ? const_literal(true) : decider.bool_expr_to_literal(it->cond_expr);
+        }
+    }
+}
+
+/*******************************************************************
+ Function: partitioning_target_equationt::convert_partition_assumptions
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Convert a specific partition assumptions of SSA steps
+
+ \*******************************************************************/
+
+void partitioning_target_equationt::convert_partition_assumptions(
+        check_opensmt2t &decider, partitiont& partition) {
+    for (auto it = partition.start_it; it != partition.end_it; ++it) {
+        if (it->is_assume()) {
+            it->cond_literal = it->ignore ? const_literal(true) : decider.bool_expr_to_literal(it->cond_expr);
+        }
+    }
+}
+
+/*******************************************************************
+ Function: partitioning_target_equationt::convert_partition_guards
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Convert a specific partition guards of SSA steps
+
+ \*******************************************************************/
+
+void partitioning_target_equationt::convert_partition_guards(
+        check_opensmt2t &decider, partitiont& partition) {
+    for (auto it = partition.start_it; it != partition.end_it; ++it) {
+        it->guard_literal = it->ignore ? const_literal(false) : decider.bool_expr_to_literal(it->guard);;
+    }
+}
+
+/*******************************************************************\
+
+Function: partitioning_target_equationt::convert_partition_assignments
+
+  Inputs:
+
+ Outputs:
+
+ Purpose: Convert a specific partition assignments of SSA steps
+
+\*******************************************************************/
+
+void partitioning_target_equationt::convert_partition_assignments(
+        check_opensmt2t &decider, partitiont& partition)
+{
+    for(auto it = partition.start_it;
+        it != partition.end_it; ++it)
+    {
+        if(it->is_assignment() && !it->ignore)
+        {
+            decider.set_to_true(it->cond_expr);
+        }
+    }
+}
+
+/*******************************************************************
+ Function: partitioning_target_equationt::convert_partition_io
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Convert a specific partition io of SSA steps
+
+ \*******************************************************************/
+
+void partitioning_target_equationt::convert_partition_io(
+        check_opensmt2t & decider, partitiont & partition) {
+    for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
+        if (!it->ignore) {
+            for (std::list<exprt>::const_iterator o_it = it->io_args.begin(); o_it
+                                                                              != it->io_args.end(); ++o_it) {
+                exprt tmp = *o_it;
+                if (tmp.is_constant() || tmp.id() == ID_string_constant)
+                    it->converted_io_args.push_back(tmp);
+                else {
+                    symbol_exprt symbol((CProverStringConstants::IO_CONST + std::to_string(io_count_global++)),
+                                        tmp.type());
+                    decider.set_to_true(equal_exprt(tmp, symbol));
+                    it->converted_io_args.push_back(symbol);
+                }
+            }
+        }
+    }
+}
+
+/*******************************************************************
+ Function: smt_partitioning_target_equationt::convert_partition_summary
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Convert a summary partition (i.e., assert its summary)
+
+ \*******************************************************************/
+
+void partitioning_target_equationt::convert_partition_summary(
+        check_opensmt2t & decider, partitiont & partition)
+{
+    auto common_symbs = fill_common_symbols(partition);
+    unsigned i = 0;
+
+    bool is_recursive = partition.get_iface().call_tree_node.is_recursive(); //on_nondet();
+    unsigned last_summary = partition.applicable_summaries.size() - 1;
+
+    for (auto summary_id : partition.applicable_summaries)
+    {
+        auto & summary = summary_store.find_summary(summary_id);
+        if ((!is_recursive || last_summary == i++)) {
+            // we do not want to actually change the summary, because we might need the template later,
+            // we just get a PTRef to the substituted version
+            decider.insert_substituted(summary, common_symbs);
+        }
+    }
+}
+
+/*******************************************************************
+ Function: partitioning_target_equationt::convert_partition
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Convert a specific partition of SSA steps
+
+ \*******************************************************************/
+void partitioning_target_equationt::convert_partition(
+        check_opensmt2t & decider, interpolating_solvert & interpolator,
+        partitiont & partition) {
+    if (partition.ignore) {
+        return;
+    }
+    // Convert the assumption propagation symbols
+    partition_ifacet &partition_iface = partition.get_iface();
+    partition_iface.callstart_literal = decider.bool_expr_to_literal(
+            partition_iface.callstart_symbol);
+    partition_iface.callend_literal = decider.bool_expr_to_literal(
+            partition_iface.callend_symbol);
+    if (partition_iface.assertion_in_subtree) {
+        partition_iface.error_literal = decider.bool_expr_to_literal(partition_iface.error_symbol);
+    }
+    if (partition.is_stub()) {
+        return;
+    }
+
+    // Tell the interpolator about the new partition.
+    partition.add_fle_part_id(interpolator.new_partition());
+
+    // If this is a summary partition, apply the summary
+    if (partition.has_summary_representation()) {
+        convert_partition_summary(decider, partition);
+        return;
+    }
+    // Convert the corresponding SSA steps
+    convert_partition_guards(decider, partition);
+    convert_partition_assignments(decider, partition);
+    convert_partition_assumptions(decider, partition);
+    convert_partition_assertions(decider, partition);
+    convert_partition_io(decider, partition);
+}
+
+/*******************************************************************
+ Function: partitioning_target_equationt::convert
+
+ Inputs:
+
+ Outputs:
+
+ Purpose: Convert all the SSA steps into the corresponding formulas in
+ the corresponding partitions
+
+ \*******************************************************************/
+void partitioning_target_equationt::convert(check_opensmt2t &decider,
+                                                interpolating_solvert &interpolator) {
+#ifdef DISABLE_OPTIMIZATIONS
+    getFirstCallExpr(); // Save the first call to the first function
+#endif
+    for (auto it = partitions.rbegin(); it != partitions.rend(); ++it) {
+        convert_partition(decider, interpolator, *it);
+    }
+
+#ifdef DISABLE_OPTIMIZATIONS
+    if (dump_SSA_tree)
+      {
+        ofstream out_ssaT;
+        out_ssaT.open(ssa_tree_file_name+"_"+std::to_string(get_dump_current_index())+".smt2");
+
+        // Print all after the headers: decl and code
+        print_all_partition(out_ssaT);
+
+        out_ssaT.close();
+      }
+#endif
+}

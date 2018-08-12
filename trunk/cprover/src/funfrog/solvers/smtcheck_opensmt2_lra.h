@@ -12,36 +12,31 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_lra : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_lra(int _type_constraints_level, const char* name, bool _store_unsupported_info=false) :
-          smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info),
+  smtcheck_opensmt2t_lra(int _type_constraints_level, const char* name) :
+          smtcheck_opensmt2t(false, 3, 2),
           type_constraints_level(_type_constraints_level)
   {
     initializeSolver(name);
+    ptr_assert_var_constraints = logic->getTerm_true();
   }
       
   virtual ~smtcheck_opensmt2t_lra(); // d'tor
 
-  virtual exprt get_value(const exprt &expr) override;
-
-  virtual literalt convert(const exprt &expr) override;
+  virtual PTRef expression_to_ptref(const exprt & expr) override;
 
   virtual literalt const_from_str(const char* num);
 
-  virtual literalt const_var_Real(const exprt &expr) override;
+  virtual PTRef numeric_constant(const exprt & expr) override;
 
-  virtual literalt type_cast(const exprt &expr) override;
-  
-  virtual literalt lnotequal(literalt l1, literalt l2) override;
+  virtual PTRef type_cast(const exprt & expr) override;
 
   // for isnan, mod, arrays etc. that we have no support (or no support yet) create over-approx as nondet
-  virtual literalt lunsupported2var(const exprt &expr) override;
-
-  virtual literalt lvar(const exprt &expr) override;
+  virtual PTRef unsupported_to_var(const exprt &expr) override;
     
   virtual literalt lassert_var() override
 	{ literalt l; l = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); return l;}
   
-  literalt labs(const exprt &expr); // from convert for ID_abs
+  PTRef abs_to_ptref(const exprt & expr); // from convert for ID_abs
 
   void check_ce(std::vector<exprt>& exprs); // checking spuriousness of the error trace (not refinement here)
   
@@ -91,7 +86,9 @@ protected:
   literalt create_constraints2type(
   		PTRef &var,
   		std::string lower_b,
-  		std::string upper_b); // create a formula with the constraints
+  		std::string upper_b);
+
+  PTRef new_num_var(const std::string & var_name) override;
 };
 
 #endif

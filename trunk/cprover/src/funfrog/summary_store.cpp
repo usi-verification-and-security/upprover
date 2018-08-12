@@ -112,7 +112,6 @@ void summary_storet::insert_summary(summaryt * summary, const std::string & func
     }
     // TODO optimizations of summary store? Do we want to check for stronger summaries and replace the weaker ones?
     summary_idt id = max_id++;
-    summary->set_valid(true);
     store.emplace_back(id, summary);
     // this also creates the map entry if it is the first time we see this function_name
     function_to_summaries[function_name].push_back(id);

@@ -94,7 +94,7 @@ public:
 
   virtual void extract_interpolants(check_opensmt2t& decider) = 0;
 
-  virtual void convert(check_opensmt2t &prop_conv, interpolating_solvert &interpolator) = 0;
+  void convert(check_opensmt2t &prop_conv, interpolating_solvert &interpolator);
 
   partitionst& get_partitions() { return partitions; }
 
@@ -109,6 +109,29 @@ public:
 #endif
   
 protected:
+    void convert_partition(check_opensmt2t & decider,
+                           interpolating_solvert & interpolator, partitiont & partition);
+    // Convert a specific partition guards of SSA steps
+    void convert_partition_guards(check_opensmt2t &decider,
+                                  partitiont& partition);
+    // Convert a specific partition assignments of SSA steps
+    void convert_partition_assignments(check_opensmt2t &decider,
+                                       partitiont& partition);
+    // Convert a specific partition assumptions of SSA steps
+    void convert_partition_assumptions(check_opensmt2t &decider,
+                                       partitiont& partition);
+    // Convert a specific partition assertions of SSA steps
+    void convert_partition_assertions(check_opensmt2t &decider,
+                                      partitiont& partition);
+    // Convert a specific partition io of SSA steps
+    void convert_partition_io(check_opensmt2t &decider,
+                              partitiont& partition);
+    // Convert a summary partition (i.e., assert its summary)
+    void convert_partition_summary(check_opensmt2t & decider,
+                                   partitiont & partition);
+    // Convert a specific partition gotos of SSA steps
+    void convert_partition_goto_instructions(check_opensmt2t &decider,
+                                             partitiont& partition);
 
   // Id of the currently selected partition
   partition_idt current_partition_id;
@@ -156,8 +179,7 @@ protected:
 
   // Fills in the list of symbols that the partition has in common with its
   // environment
-  virtual void fill_common_symbols(const partitiont& partition,
-    std::vector<symbol_exprt>& common_symbols) const;
+  virtual std::vector<symbol_exprt> fill_common_symbols(const partitiont & partition) const;
 
   // Fill in ids of all the child partitions
   void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);

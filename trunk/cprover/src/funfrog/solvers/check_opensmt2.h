@@ -11,6 +11,8 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 
 #include <util/threeval.h>
 #include <opensmt/opensmt2.h>
+#include <util/std_expr.h>
+#include <solvers/prop/literal.h>
 #include "interpolating_solver.h"
 
 class literalt;
@@ -58,8 +60,61 @@ public:
       // This is common to all logics: prop, lra, qfuf, qfcuf
   }
 
-    virtual literalt convert(const exprt & expr) = 0;
+    virtual literalt bool_expr_to_literal(const exprt & expr) = 0;
     virtual bool solve() = 0;
+    virtual literalt land(literalt l1, literalt l2) = 0;
+    virtual literalt lor(literalt l1, literalt l2) = 0;
+    virtual literalt lor(const bvt & bv) = 0;
+
+    literalt limplies(literalt a, literalt b)
+    {
+        return lor(!a, b);
+    }
+    virtual void set_equal(literalt l1, literalt l2) = 0;
+
+    // assert this clause to the solver
+    virtual void lcnf(const std::vector<literalt> & lits) = 0;
+
+    template<typename Container>
+    void assert_literals(const Container& c){
+        for(auto lit : c){
+            assert_literal(lit);
+        }
+    }
+
+    virtual void assert_literal(literalt) = 0;
+
+    void set_to_true(const exprt &expr) {
+        literalt l = bool_expr_to_literal(expr);
+        assert_literal(l);
+    }
+
+    void set_to_false(const exprt &expr){
+        literalt l = bool_expr_to_literal(expr);
+        assert_literal(!l); // assert the negation
+    }
+
+    void convert(const std::vector<literalt> &bv, vec<PTRef> &args);
+
+    PTRef literalToPTRef(literalt l) {
+        if(l.is_constant()){
+            return l.is_true() ? getLogic()->getTerm_true() : getLogic()->getTerm_false();
+        }
+//        std::cout << "Literal: " << l << '\n';
+//        std::cout << "PTref size: " << ptrefs.size() << '\n';
+        assert(l.var_no() < ptrefs.size());
+        assert(l.var_no() != literalt::unused_var_no());
+        PTRef ptref = ptrefs[l.var_no()];
+        return l.sign() ? getLogic()->mkNot(ptref) : ptref;
+    }
+
+    literalt get_const_literal(bool val){
+        return const_literal(val);
+    }
+
+    //  Mapping from variable indices to their PTRefs in OpenSMT
+    std::vector<PTRef> ptrefs;
+
 
 
 #ifdef PRODUCE_PROOF  
@@ -146,6 +201,9 @@ public:
     virtual bool is_assignment_true(literalt a) const = 0;
 
     virtual exprt get_value(const exprt &expr) = 0;
+
+    virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) = 0;
+
 
     /* General consts for prop version */
   const char* false_str = "false";

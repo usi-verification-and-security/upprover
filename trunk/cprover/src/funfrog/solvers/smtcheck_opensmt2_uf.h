@@ -12,25 +12,24 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_uf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_uf(const char* name, bool _store_unsupported_info=false) :
-      smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info) // Is last always!
+  smtcheck_opensmt2t_uf(const char* name) :
+      smtcheck_opensmt2t(false, 3, 2) // Is last always!
   {
     initializeSolver(name);
   }
 
   virtual ~smtcheck_opensmt2t_uf(); // d'tor
+
+  virtual PTRef expression_to_ptref(const exprt & expr) override;
+
+  virtual PTRef numeric_constant(const exprt &expr) override;
   
-  virtual exprt get_value(const exprt &expr) override;
+  virtual PTRef type_cast(const exprt & expr) override;
 
-  virtual literalt convert(const exprt &expr) override;
+protected:
+    PTRef new_num_var(const std::string & var_name) override;
 
-  virtual literalt const_var_Real(const exprt &expr) override;
-  
-  virtual literalt type_cast(const exprt &expr) override;
-
-  virtual literalt lnotequal(literalt l1, literalt l2) override;
-
-  virtual literalt lvar(const exprt &expr) override;
+public:
 
   virtual literalt lassert_var() override { throw std::logic_error("Looks like this should not be called for this solver"); }
      
@@ -41,7 +40,7 @@ public:
 
 protected:
 
-  virtual literalt lunsupported2var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+  virtual PTRef unsupported_to_var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
   virtual void initializeSolver(const char* name) override;
   
