@@ -12,7 +12,7 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_lra : public smtcheck_opensmt2t_la
 {
 public:
-  smtcheck_opensmt2t_lra(int _type_constraints_level, const char* name, bool _store_unsupported_info=false) :
+  smtcheck_opensmt2t_lra(unsigned int _type_constraints_level, const char* name, bool _store_unsupported_info=false) :
           smtcheck_opensmt2t_la(_type_constraints_level, name, _store_unsupported_info)
   {
     initializeSolver(name);

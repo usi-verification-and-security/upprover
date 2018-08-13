@@ -12,7 +12,7 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_la : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_la(int _type_constraints_level, const char* name, bool _store_unsupported_info=false) :
+  smtcheck_opensmt2t_la(unsigned int _type_constraints_level, const char* name, bool _store_unsupported_info=false) :
           smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info),
           type_constraints_level(_type_constraints_level)
   { } // Virtual class
@@ -63,7 +63,7 @@ protected:
 
   PTRef ptr_assert_var_constraints;
 
-  int type_constraints_level; // The level of checks in LA for numerical checks of overflow
+  unsigned int type_constraints_level; // The level of checks in LA for numerical checks of overflow
 
   //virtual void initializeSolver(const char*)=0;
 
