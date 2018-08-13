@@ -31,18 +31,18 @@ public:
           _message_handler, _goto_program, _omega,fraction, SSA_steps_size) {}
     virtual ~prop_dependency_checkert() {}
     
-    virtual std::pair<bool, fine_timet> check_implication(SSA_step_reft &c1, SSA_step_reft &c2);
-    virtual long find_implications();
+    virtual std::pair<bool, fine_timet> check_implication(SSA_steps_it c1, SSA_steps_it c2) override;
+    virtual long find_implications() override;
 private:
   void deep_convert_guards(prop_conv_solvert &prop_conv, exprt exp);
   void set_guards_to_true(prop_conv_solvert &prop_conv, exprt exp);
 
-  void convert_delta_SSA(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assignments(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assumptions(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_assertions(prop_conv_solvert &prop_conv, SSA_step_reft &it2);
-  void convert_guards(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
-  void convert_io(prop_conv_solvert &prop_conv, SSA_step_reft &it1, SSA_step_reft &it2);
+  void convert_delta_SSA(prop_conv_solvert &prop_conv, SSA_steps_it &it1, SSA_steps_it &it2);
+  void convert_assignments(prop_conv_solvert &prop_conv, SSA_steps_it &it1, SSA_steps_it &it2);
+  void convert_assumptions(prop_conv_solvert &prop_conv, SSA_steps_it &it1, SSA_steps_it &it2);
+  void convert_assertions(prop_conv_solvert &prop_conv, SSA_steps_it &it2);
+  void convert_guards(prop_conv_solvert &prop_conv, SSA_steps_it &it1, SSA_steps_it &it2);
+  void convert_io(prop_conv_solvert &prop_conv, SSA_steps_it &it1, SSA_steps_it &it2);
 };
 
 #endif /* PROP_DEPENDENCY_CHECKERT_H */

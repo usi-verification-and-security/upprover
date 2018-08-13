@@ -36,7 +36,7 @@ public:
       pre_queries_file_name("__pre_query_default"), // .smt2 file
 #endif              
       partition_count(0),
-      current_partition(0),
+      current_partition(nullptr),
 #ifdef PRODUCE_PROOF              
       itp_algorithm(itp_alg_mcmillan),
       itp_euf_algorithm(itp_euf_alg_strong),
