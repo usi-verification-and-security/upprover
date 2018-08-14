@@ -35,14 +35,14 @@ public:
     freeSolver();
   }
 
-  bool solve() override{
-      auto res = prop_solve();
+  bool solve() override {
+      auto res = get_bv_converter().dec_solve();
       switch (res){
-          case resultt ::P_SATISFIABLE:
+          case decision_proceduret::resultt::D_SATISFIABLE:
               return true;
-          case resultt ::P_UNSATISFIABLE:
+          case decision_proceduret::resultt::D_UNSATISFIABLE:
               return false;
-          case resultt ::P_ERROR:
+          case decision_proceduret::resultt::D_ERROR:
               throw "Error during solving!";
       }
   }
