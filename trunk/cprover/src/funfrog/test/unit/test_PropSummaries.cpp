@@ -4,7 +4,6 @@
 
 #include <gtest/gtest.h>
 #include <funfrog/solvers/prop_itp.h>
-#include <fstream>
 
 bool operator==(prop_itpt const & itp1, prop_itpt const & itp2 ){
     if(itp1.get_clauses().size() != itp2.get_clauses().size()){

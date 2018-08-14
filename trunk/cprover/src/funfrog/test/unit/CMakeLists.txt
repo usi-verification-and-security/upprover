@@ -14,10 +14,16 @@ target_sources(PropSummariesTest
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/test_PropSummaries.cpp"
     )
 
+add_executable(SummaryStoreTest)
+target_sources(SummaryStoreTest
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/test_SummaryStore.cpp"
+    )
+
 set_target_properties(
     UnionFindTest
     StringUtilsTest
     PropSummariesTest
+    SummaryStoreTest
     gtest
     gtest_main
     gmock
@@ -34,6 +40,9 @@ target_link_libraries(StringUtilsTest gtest gtest_main)
 target_include_directories(StringUtilsTest PRIVATE ${PROJECT_SOURCE_DIR}/funfrog)
 
 target_link_libraries(PropSummariesTest hifrog-lib gtest gtest_main)
+
+target_link_libraries(SummaryStoreTest hifrog-lib gtest gtest_main)
+
 #target_include_directories(PropSummariesTest PRIVATE ${PROJECT_SOURCE_DIR})
 
 #gtest_add_tests(TARGET UnionFindTest
@@ -46,5 +55,7 @@ gtest_add_tests(TARGET StringUtilsTest
     )
 
 gtest_add_tests(TARGET PropSummariesTest)
+
+gtest_add_tests(TARGET SummaryStoreTest)
 
 #message("Discovered tests: " ${unionfindtests})
