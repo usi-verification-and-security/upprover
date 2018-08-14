@@ -11,7 +11,7 @@
 #include <ansi-c/printf_formatter.h>
 #include <funfrog/utils/naming_helpers.h>
 #include "nopartition/smt_symex_target_equation.h"
-#include "smt_partitioning_target_equation.h"
+#include "partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 
 //#define TRACE_DEBUG //Use it to debug the trace of an error build
@@ -146,7 +146,7 @@ void error_tracet::build_goto_trace (
  * (not in the theory-refinement algorithm)
  */
 void error_tracet::build_goto_trace_formula (
-  smt_partitioning_target_equationt &target,
+  partitioning_target_equationt &target,
   smtcheck_opensmt2t &decider,
   smtcheck_opensmt2t_lra &decider2)
 {

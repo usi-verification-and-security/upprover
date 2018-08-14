@@ -10,7 +10,7 @@
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "symex_assertion_sum.h"
 #include "prepare_formula.h"
-#include "smt_partitioning_target_equation.h"
+#include "partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include <util/time_stopping.h>
 #include "smt_summary_store.h"
@@ -88,7 +88,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   smt_summary_storet dummy;
   symbol_tablet temp_table;
   namespacet ns{this->symbol_table, temp_table};
-  smt_partitioning_target_equationt equation(ns, dummy,
+  partitioning_target_equationt equation(ns, dummy,
       store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS

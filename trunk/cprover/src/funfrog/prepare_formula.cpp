@@ -10,8 +10,8 @@
 #include <util/time_stopping.h>
 #include "prepare_formula.h"
 #include "error_trace.h"
-#include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2.h"
+#include "partitioning_target_equation.h"
 
 time_periodt global_satsolver_time;
 

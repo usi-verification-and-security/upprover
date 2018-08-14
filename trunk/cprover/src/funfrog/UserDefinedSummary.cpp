@@ -4,7 +4,6 @@
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
 #include "symex_assertion_sum.h"
-#include "smt_partitioning_target_equation.h"
 #include "partition_iface.h"
 #include "smt_summary_store.h"
 #include "subst_scenario.h"

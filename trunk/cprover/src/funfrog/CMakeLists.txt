@@ -54,8 +54,6 @@ set(HIFROG_SOURCE_FILES
         prepare_formula.h
         smt_dependency_checker.cpp
         smt_dependency_checker.h
-        smt_partitioning_target_equation.cpp
-        smt_partitioning_target_equation.h
         smt_summary_store.cpp
         smt_summary_store.h
         subst_scenario.cpp

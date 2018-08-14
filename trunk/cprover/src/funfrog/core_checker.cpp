@@ -20,7 +20,7 @@
 #include "nopartition/symex_no_partition.h"
 #include "partition_iface.h"
 #include "nopartition/smt_assertion_no_partition.h"
-#include "smt_partitioning_target_equation.h"
+#include "partitioning_target_equation.h"
 #include "prepare_formula.h"
 #include "symex_assertion_sum.h"
 #include <funfrog/utils/naming_helpers.h>
@@ -492,7 +492,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
 
     symbol_tablet temp_table;
     namespacet ns{this->symbol_table, temp_table};
-    smt_partitioning_target_equationt equation(ns, *summary_store,
+    partitioning_target_equationt equation(ns, *summary_store,
                                                 store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -1014,7 +1014,7 @@ namespace{
 //Purpose: extracts summaries after successful verification; and dumps the summaries
 // in a specific summary-file for uf and lra separately based on the solver.
 
-    void extract_and_store_summaries(smt_partitioning_target_equationt & equation, summary_storet & store,
+    void extract_and_store_summaries(partitioning_target_equationt & equation, summary_storet & store,
                                       smtcheck_opensmt2t & decider , std::string & summary_file_name){
         equation.extract_interpolants(decider);
 
@@ -1174,7 +1174,7 @@ void reload_summaries(const namespacet &ns,
 // Purpose: reset means changing the partition information according
 // to the current state of the summary store. so first we updated the
 // store using method read_lra_summaries(), then we update the summary information
-    void reset_partition_summary_info(smt_partitioning_target_equationt & eq, smt_summary_storet const & store) {
+    void reset_partition_summary_info(partitioning_target_equationt & eq, smt_summary_storet const & store) {
         for (auto & partition : eq.get_partitions()){
             // check if we have summary in the store for this partition
             const auto & function_name = id2string(partition.get_iface().function_id);
@@ -1231,7 +1231,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     omega.set_initial_precision(assertion, has_summary);
     symbol_tablet temp_table;
     namespacet ns{this->symbol_table, temp_table};
-    smt_partitioning_target_equationt equation {ns, summary_store, false};
+    partitioning_target_equationt equation {ns, summary_store, false};
 
     symex_assertion_sumt symex {summary_store,
                                 get_goto_functions(),
