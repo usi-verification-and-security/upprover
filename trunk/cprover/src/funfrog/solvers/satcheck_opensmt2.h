@@ -18,6 +18,7 @@ Author: Grigory Fedyukovich
 #include <opensmt/opensmt2.h>
 #include <solvers/prop/prop_conv.h>
 #include <funfrog/utils/expressions_utils.h>
+#include <solvers/flattening/boolbv.h>
 
 class prop_itpt;
 class boolbv_mapt;
@@ -57,7 +58,7 @@ public:
   }
 
   exprt get_value(const exprt &expr) override {
-      return prop_convert->get(expr);
+      return get_bv_converter().get(expr);
   }
 
   virtual void lcnf(const bvt &bv) override;
@@ -89,14 +90,16 @@ public:
 
   virtual void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
 
-  const prop_conv_solvert & get_prop_conv_solver() const {return *prop_convert;}
-  prop_conv_solvert & get_prop_conv_solver() {return *prop_convert;}
+  const boolbvt & get_bv_converter() const {return *boolbv_convert;}
+  boolbvt & get_bv_converter() {return *boolbv_convert;}
 
-  void set_prop_conv_solvert(std::unique_ptr<prop_conv_solvert> pcs) {prop_convert = std::move(pcs);}
+  void set_prop_conv_solvert(std::unique_ptr<boolbvt> converter) {boolbv_convert = std::move(converter);}
 
     void assert_literal(literalt lit) override{
       this->l_set_to_true(lit);
   }
+
+
 
 #ifdef PRODUCE_PROOF  
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
@@ -129,7 +132,7 @@ protected:
 
   literalt bool_expr_to_literal(const exprt & expr) override {
       assert(is_boolean(expr));
-      return prop_convert->convert(expr);
+      return get_bv_converter().convert(expr);
   }
 
 #ifdef PRODUCE_PROOF  
@@ -139,8 +142,16 @@ protected:
 
   void setup_proof_transformation();
 
-#endif  
-  
+#endif
+public:
+    literalt new_variable() override;
+
+protected:
+
+    std::vector<std::string> lits_names;
+
+    void set_variable_name(literalt a, const std::string & name) override;
+
   // Initialize the OpenSMT context
   virtual void initializeSolver(const char*) override;
 
@@ -152,7 +163,7 @@ protected:
   unsigned decode_id(const char* id) const;
 
 private:
-    std::unique_ptr<prop_conv_solvert> prop_convert;
+    std::unique_ptr<boolbvt> boolbv_convert;
 
 };
 

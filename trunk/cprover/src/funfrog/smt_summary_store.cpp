@@ -14,6 +14,7 @@ Author: Ondrej Sery
 
 // Serialization SMT
 void smt_summary_storet::serialize(std::ostream &out) const {
+    decider->getLogic()->dumpHeaderToFile(out);
     for (const auto & summary_node : store){
         if(summary_node.is_repr()){
             summary_node.summary->serialize(out);

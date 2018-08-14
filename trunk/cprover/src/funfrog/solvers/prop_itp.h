@@ -25,6 +25,7 @@ public:
   ~prop_itpt() {} 
 
   virtual bool is_trivial() const override { return root_literal.is_constant(); }
+  void set_trivial() {root_literal = const_literal(true);}
 
   literalt land(literalt a, literalt b);
   literalt lor(literalt a, literalt b);
@@ -63,6 +64,8 @@ public:
     }
 
     unsigned get_no_original_variables() const {return _no_orig_variables;}
+
+    bool equals(itpt * other) const override;
 
 protected:
   // Clauses of the interpolant representation

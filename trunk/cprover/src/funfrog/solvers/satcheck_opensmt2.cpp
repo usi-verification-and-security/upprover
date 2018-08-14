@@ -8,7 +8,7 @@ Author: Grigory Fedyukovich
 
 #include "satcheck_opensmt2.h"
 #include "prop_itp.h"
-#include <solvers/flattening/boolbv.h>
+#include "naming_boolbv.h"
 
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
@@ -22,15 +22,14 @@ void satcheck_opensmt2t::initializeSolver(const char* name)
     osmt = new Opensmt(opensmt_logic::qf_bool, name);
     logic = &(osmt->getLogic());
     mainSolver = &(osmt->getMainSolver());
-    const char* msg=NULL;
+    const char* msg = nullptr;
     osmt->getConfig().setOption(SMTConfig::o_produce_inter, SMTOption(true), msg);
-    //if (msg != NULL) free((char *)msg); // if finds an error consider to print it
 }
 
 // Free all resources related to OpenSMT2
 void satcheck_opensmt2t::freeSolver()
 {
-    if (osmt != NULL) delete osmt;
+    delete osmt;
 }
 
 /*******************************************************************\
@@ -145,6 +144,7 @@ void satcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
 
   for(auto itp_ptref : itp_ptrefs)
   {
+//      std::cout << "Computed interpolant:\n" << logic->printTerm(itp_ptref) << '\n' << '\n';
       itpt* itp = new prop_itpt();
       extract_itp(itp_ptref, *(dynamic_cast <prop_itpt*> (itp)));
       interpolants.push_back(itp);
@@ -243,12 +243,28 @@ Function: satcheck_opensmt2t::add_variables
 
 void satcheck_opensmt2t::add_variables()
 {
+//    ptrefs.reserve(_no_variables);
+//    while (ptrefs.size() < _no_variables) {
+//        increase_id();
+//        const char* vid = id_str.c_str();
+//        ptrefs.push_back(logic->mkBoolVar(vid));
+//    }
+
   ptrefs.reserve(_no_variables);
 
   while (ptrefs.size() < _no_variables) {
-    increase_id();
-    const char* vid = id_str.c_str();
-    ptrefs.push_back(logic->mkBoolVar(vid));
+      if(ptrefs.size() >= lits_names.size() || ptrefs.empty() || lits_names[ptrefs.size()].empty()){
+          increase_id();
+          set_variable_name(literalt{static_cast<unsigned>(ptrefs.size()), false}, id_str);
+      }
+      //assert(!lits_names[ptrefs.size()].empty());
+      if(lits_names[ptrefs.size()].empty()){
+         for(auto & name : lits_names){
+             std::cout << name << '\n';
+         }
+         assert(false);
+      }
+      ptrefs.push_back(logic->mkBoolVar(lits_names[ptrefs.size()].c_str()));
   }
 }
 
@@ -453,43 +469,32 @@ Function: satcheck_opensmt2t::decode_id
 
 unsigned satcheck_opensmt2t::decode_id(const char* id) const
 {
-  unsigned base = 1;
-  unsigned i = 0;
-
-  while (*id != 0) {
-    i += base * (*id++ - 'A' + 1);
-    base *= 'Z'-'A'+1;
-  }
-  return i-1;
+    std::string name{id};
+    auto it = std::find(lits_names.begin(), lits_names.end(), name);
+    assert(it != lits_names.end());
+    return it - lits_names.begin();
+//  unsigned base = 1;
+//  unsigned i = 0;
+//
+//  while (*id != 0) {
+//    i += base * (*id++ - 'A' + 1);
+//    base *= 'Z'-'A'+1;
+//  }
+//  return i-1;
 }
 
 void satcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) {
     assert(!itp.is_trivial());
     const prop_itpt & prop_itp = dynamic_cast<const prop_itpt &>(itp);
-    // FIXME: Dirty cast.
-    boolbv_mapt& map = const_cast<boolbv_mapt &>((dynamic_cast<boolbvt*>(this->prop_convert.get())->get_map()));
-    literalt* renaming = new literalt[prop_itp.get_no_variables()];
+    auto & bv_converter = this->get_bv_converter();
+    std::vector<literalt> renaming {prop_itp.get_no_variables(), literalt{}};
 
     // Fill the renaming table
     unsigned cannon_var_no = 1;
-    for (const auto & symbol : symbols)
-         {
-        // Bool symbols are not in the boolbv_map and have to be treated separatelly
-        if (symbol.type().id() == ID_bool) {
-            literalt l = this->bool_expr_to_literal(symbol);
-            assert(cannon_var_no < prop_itp.get_no_original_variables());
-            renaming[cannon_var_no++] = l;
-            continue;
-        }
-        bvt literals;
-        const unsigned width = map.get_map_entry(symbol.get_identifier(), symbol.type()).width;
-        literals.resize(width);
-        map.get_literals(
-                symbol.get_identifier(), symbol.type(), width, literals);
-        for (unsigned i = 0; i < width; ++i) {
-            literalt l = literals[i];
-            assert(cannon_var_no < prop_itp.get_no_original_variables());
-            renaming[cannon_var_no++] = l;
+    for (const auto & symbol : symbols) {
+        auto const & bv = bv_converter.convert_bv(symbol);
+        for (auto lit : bv) {
+            renaming[cannon_var_no++] = lit;
         }
     }
     // Allocate new variables for the auxiliary ones (present due to the Tseitin
@@ -508,6 +513,7 @@ void satcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
             // Rename
             bool sign = lit.sign();
             lit = renaming[lit.var_no()];
+            assert(literalt::unused_var_no() != lit.var_no());
             if (sign){
                 lit.invert();
             }
@@ -520,210 +526,105 @@ void satcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<
     // Handle the root
     bool sign = root_literal.sign();
     literalt new_root_literal = renaming[root_literal.var_no()];
+    assert(literalt::unused_var_no() != new_root_literal.var_no());
     if (sign)
         new_root_literal.invert();
 
     this->l_set_to_true(new_root_literal);
-
-    delete [] renaming;
 }
 
-struct min_max_numbers{
-    unsigned min;
-    unsigned max;
-};
-
-min_max_numbers
-compute_min_max_numbers_used(const boolbv_mapt::mappingt & mapping,
-                                                 const std::vector<symbol_exprt> & symbols, prop_conv_solvert prop) {
-    unsigned min_var = UINT_MAX;
-    unsigned max_var = 0;
-    // Get the bounds first
-    for (const symbol_exprt & symbol : symbols ) {
-        boolbv_mapt::mappingt::const_iterator pos = mapping.find(
-                symbol.get_identifier());
-
-        if (pos == mapping.end()) {
-            // Bool symbols are not in the boolbv_map and have to be treated separately
-            if (symbol.type().id() == ID_bool) {
-                literalt l;
-                if (!prop.literal(symbol, l)) {
-                    unsigned var_no = l.var_no();
-                    if (min_var > var_no) min_var = var_no;
-                    if (max_var < var_no) max_var = var_no;
-                }
-            }
-            continue;
-        }
-        const boolbv_mapt::map_entryt& entry = pos->second;
-
-        // Check there are no issues with SSA translation that leaked here:
-        // that it is always an SSA not an original symbol!
-        assert(is_ssa_symbol(symbol));
-
-        for (const auto & bit : entry.literal_map) {
-            if (!bit.is_set)
-                continue;
-
-            unsigned var_no = bit.l.var_no();
-
-            if (min_var > var_no) min_var = var_no;
-            if (max_var < var_no) max_var = var_no;
-        }
-    }
-    assert (min_var < UINT_MAX && max_var > 0);
-    min_max_numbers res;
-    res.min = min_var;
-    res.max = max_var;
-    return res;
-}
-
-void satcheck_opensmt2t::generalize_summary(prop_itpt & itp, const std::vector<symbol_exprt> & symbols) {
-    itp.get_symbol_mask().clear();
-    if (itp.is_trivial()) {
+void satcheck_opensmt2t::generalize_summary(prop_itpt & prop_itp, const std::vector<symbol_exprt> & symbols) {
+    prop_itp.get_symbol_mask().clear();
+    if (prop_itp.is_trivial()) {
         return;
     }
-    auto & prop = this->get_prop_conv_solver();
-    // FIXME: Dirty cast.
-    const boolbv_mapt::mappingt& mapping =
-            dynamic_cast<const boolbvt&>(prop).get_map().mapping;
-    auto min_max_var_no = compute_min_max_numbers_used(mapping, symbols, prop);
-
-    auto min_var = min_max_var_no.min;
-    auto max_var = min_max_var_no.max;
-
-    assert(max_var > min_var);
-    std::size_t var_count = (max_var - min_var) + 1;
-    std::vector<unsigned> renaming(var_count, UINT_MAX);
-    std::vector<unsigned> represented_symbol(var_count);
+    auto & bv_converter = this->get_bv_converter();
+    auto totalVars = prop_itp.get_no_variables();
+    auto originalVars = prop_itp.get_no_original_variables();
+    auto isTseitinVariable = [totalVars, originalVars](literalt lit){
+        (void)totalVars; // for compilation warning in Release mode
+        assert(lit.var_no() < totalVars);
+        return lit.var_no() >= originalVars;
+    };
+    std::unordered_map<literalt::var_not, literalt::var_not> renaming;
 
     // Fill the renaming table
     unsigned cannon_var_no = 1;
-    unsigned current_symbol_idx = 0;
+//    unsigned current_symbol_idx = 0;
     // do not forget to increment current_symbol
     for (auto const & symbol : symbols) {
-        auto pos = mapping.find(symbol.get_identifier());
-        if (pos == mapping.end()) {
-            // Bool symbols are not in the boolbv_map and have to be treated separatelly
-            if (symbol.type().id() == ID_bool) {
-                literalt l;
-                if (!prop.literal(symbol, l)) {
-                    // NOTE: We assume that the variables are unsigned and there are
-                    // no duplicates. This migh not hold if some optimizations are added
-                    // to the flattening process
-                    assert (!l.sign());
-                    // TODO: We need unique prop. variables only for the input parameters,
-                    // if there is duplication among output variables (due to unification
-                    // in symex), we just need to explicitly assert the unification by
-                    // adding new clauses.
-                    unsigned idx = l.var_no() - min_var;
-                    assert (renaming[idx] == UINT_MAX);
-                    renaming[idx] = cannon_var_no;
-                    represented_symbol[idx] = current_symbol_idx;
-                }
-            }
-//            else{
-//                std::cout << "Symbol which is not boolean not found in bv mapping!\n";
-//                std::cout << symbol.pretty() << '\n';
-//                assert(false);
-//            }
-            ++current_symbol_idx;
-            cannon_var_no++;
-            continue;
+        auto const & bv = bv_converter.convert_bv(symbol);
+        for(auto lit : bv){
+//            MB: it can happen that some of the interface symbols were never converted, e.g. because of some optimizations
+//            assert(lit.var_no() < originalVars);
+            assert(!lit.sign()); // Can it be negated literal?
+            renaming[lit.var_no()] = cannon_var_no++;
         }
-        const auto& entry = pos->second;
-
-        for(auto const & bit : entry.literal_map)
-        {
-            if (!bit.is_set) {
-                cannon_var_no++;
-                continue;
-            }
-
-            // NOTE: We assume that the variables are unsigned and there are
-            // no duplicates. This might not hold if some optimizations are added
-            // to the flattening process
-            unsigned idx = bit.l.var_no() - min_var;
-            assert(idx >= 0);
-            assert (renaming[idx] == UINT_MAX);
-            renaming[idx] = cannon_var_no++;
-            represented_symbol[idx] = current_symbol_idx;
-        }
-        ++current_symbol_idx;
     }
-
-# ifdef DEBUG_ITP
-    std::cout << "Renaming:" << std::endl;
-  for (unsigned i = 0; i < max_var - min_var + 1; ++i) {
-    if (i % 16 == 0) {
-      if (i != 0) std::cout << std::endl;
-    } else {
-      std::cout << " ";
-    }
-    std::cout << (renaming[i] == UINT_MAX ? -1 : (int)renaming[i]);
-  }
-  std::cout << "Before generalization: " << std::endl;
-  print(std::cout);
-# endif
-
+    const auto new_original_vars = cannon_var_no;
+    const auto & const_renaming = renaming;
     // Do the renaming itself
-    std::vector<bool> used_symbols;
-    used_symbols.resize(symbols.size(), false);
-    unsigned shift = itp.get_no_original_variables() - cannon_var_no;
-    for (auto & clause : itp.get_clauses()) {
+
+    for (auto & clause : prop_itp.get_clauses()) {
         for (auto & lit : clause) {
-            // Only shift the artificial variables (present due to the Tseitin
-            // encoding to CNF)
-            if (lit.var_no() > max_var) {
-                if (shift > lit.var_no()){
-                    std::cout << "Failed to generalize interpolant\n";
-                    // possibly, due to pointers
-                    itp.set_root_literal(const_literal(true));
+            if(const_renaming.find(lit.var_no()) != const_renaming.end()) // literal from interface symbol
+            {
+                lit.set(const_renaming.at(lit.var_no()), lit.sign());
+            }
+            else // literal NOT from interface symbol, should be literal corresponding to Tseitin encoding
+            {
+                if(!isTseitinVariable(lit)){ // it is not Tseiting variable
+                    // this can happen e.g. when function works with pointers
+                    // this interpolant cannot be generalized in meaningful way
+//                    warning() << "Propositional interpolant contained variables it should not caontain\n" << eom;
+                    prop_itp.set_trivial();
                     return;
                 }
-                lit.set(lit.var_no() - shift, lit.sign());
-                continue;
+                else // it is Tseitin variable
+                    {
+                    assert(lit.var_no() < prop_itp.get_no_variables());
+                    literalt renamed{cannon_var_no++, lit.sign()};
+                    renaming[lit.var_no()] = renamed.var_no();
+                    lit = renamed;
+                }
             }
-
-            int idx = lit.var_no() - min_var;
-            // Sanity check, all variables used in the interpolant should be mapped.
-            assert (idx >= 0 && "Failed to generalize interpolant; Index of represented_symbol is out of bound");
-            assert(renaming[idx] != UINT_MAX);
-            lit.set(renaming[idx], lit.sign());
-            used_symbols[represented_symbol[idx]] = true;
         }
     }
-    const literalt root_literal = itp.get_root_literal();
-    if (root_literal.var_no() > max_var) {
-        literalt new_root{root_literal.var_no() - shift, root_literal.sign()};
-        itp.set_root_literal(new_root);
-    } else {
-        unsigned idx = root_literal.var_no() - min_var;
-        // Sanity check, all variables used in the interpolant should be mapped.
-        assert(renaming[idx] != UINT_MAX);
-        literalt new_root{renaming[idx], root_literal.sign()};
-        itp.set_root_literal(new_root);
-        used_symbols[represented_symbol[idx]] = true;
-    }
 
-    // TODO: This line was broken - substitution could not guess variables, if some were not used
-    // _no_variables -= shift;
+    const literalt root_literal = prop_itp.get_root_literal();
+    const auto root_literal_var = root_literal.var_no();
+    if(const_renaming.find(root_literal_var) != const_renaming.end()){
+        prop_itp.set_root_literal(literalt{const_renaming.at(root_literal_var), root_literal.sign()});
+    }
+    else{
+        assert(false);
+        throw std::logic_error{"Root literal of propositional interpolant is unknown variable!"};
+    }
 
 //  std::cout << "_cannon_vars: " << cannon_var_no << std::endl;
 //  std::cout << "_no_vars: " << _no_variables << std::endl;
 //  std::cout << "_no_orig_vars: " << _no_orig_variables << std::endl;
-    itp.set_no_variables(cannon_var_no + (itp.get_no_variables() - itp.get_no_original_variables()));
-    itp.set_no_original_variables(cannon_var_no);
+    prop_itp.set_no_variables(cannon_var_no);
+    prop_itp.set_no_original_variables(new_original_vars);
 
-    auto & symbol_mask = itp.get_symbol_mask();
+    // TODO: we should probaly not consider used symbols at all
+    auto & symbol_mask = prop_itp.get_symbol_mask();
     symbol_mask.reserve(symbols.size());
     for (unsigned i = 0; i < symbols.size(); ++i) {
-        symbol_mask.push_back(used_symbols[i]);
+        symbol_mask.push_back(true);
     }
+}
 
-    // TODO: Should we force mapping of common symbols to fresh prop. variables
-    // in order to prevent unification?
+void satcheck_opensmt2t::set_variable_name(literalt a, const std::string & name) {
+    while(lits_names.size() <= a.var_no()){
+        lits_names.emplace_back("");
+    }
+    assert(lits_names[a.var_no()].empty());
+    assert(!name.empty());
+    lits_names[a.var_no()] = name;
+}
 
-
+literalt satcheck_opensmt2t::new_variable() {
+    return cnft::new_variable();
 }
 

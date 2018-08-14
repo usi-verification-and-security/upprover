@@ -98,10 +98,9 @@ Function: summary_storet::insert_summary
 void summary_storet::insert_summary(summaryt * summary, const std::string & function_name) {
     // Do not add summary if the same is already there
     if(has_summaries(function_name)) {
-        auto itp = summary->getInterpolant();
         const auto & summaries = get_summaries(function_name);
-        auto it = std::find_if(summaries.begin(), summaries.end(), [this, itp](summary_idt id){
-            return find_summary(id).getInterpolant() == itp;
+        auto it = std::find_if(summaries.begin(), summaries.end(), [this, summary](summary_idt id){
+            return find_summary(id).equals(summary);
         });
         if(it != summaries.end()){
             // the same summary for this function is already present in the store

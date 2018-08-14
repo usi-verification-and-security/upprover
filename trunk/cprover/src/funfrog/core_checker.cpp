@@ -14,6 +14,7 @@
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
 #include "solvers/satcheck_opensmt2.h"
+#include "solvers/naming_boolbv.h"
 #include "smt_dependency_checker.h"
 #include "prop_dependency_checker.h"
 #include "nopartition/symex_no_partition.h"
@@ -23,7 +24,6 @@
 #include "smt_partitioning_target_equation.h"
 #include "prepare_formula.h"
 #include "symex_assertion_sum.h"
-#include <solvers/flattening/bv_pointers.h>
 #include <funfrog/utils/naming_helpers.h>
 #include <funfrog/utils/string_utils.h>
 #include "smt_summary_store.h"
@@ -342,9 +342,10 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
     prepare_formulat ssaToFormula = prepare_formulat(equation, message_handler);
     auto sat_decider = dynamic_cast<satcheck_opensmt2t*>(decider);
     if(sat_decider){
-        auto bv_pointers = new bv_pointerst(ns, *sat_decider);
+        auto bv_pointers = new naming_boolbv(ns, *sat_decider);
+//        auto bv_pointers = new bv_pointerst(ns, *sat_decider);
         bv_pointers->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;
-        auto prop_conv_solver = std::unique_ptr<prop_conv_solvert>(bv_pointers);
+        auto prop_conv_solver = std::unique_ptr<boolbvt>(bv_pointers);
         sat_decider->set_prop_conv_solvert(std::move(prop_conv_solver));
     }
   while (!end)
@@ -884,7 +885,6 @@ void core_checkert::extract_interpolants (partitioning_target_equationt& equatio
   if (!summary_file.empty()) {
     std::ofstream out;
     out.open(summary_file.c_str());
-    decider->getLogic()->dumpHeaderToFile(out);
     summary_store->serialize(out);
   }
 }

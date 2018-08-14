@@ -28,6 +28,8 @@ public:
 
   virtual bool usesVar(symbol_exprt&, unsigned) override;
 
+  bool equals(itpt* other) const override;
+
 protected:
   // TODO: figure out better way how to store the interpolants
   Tterm templ;

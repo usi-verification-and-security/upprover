@@ -312,3 +312,8 @@ void prop_itpt::deserialize(std::istream& in)
     }
   }
 }
+
+bool prop_itpt::equals(itpt * other) const {
+    // TODO: how to effectively find if two propositional summaries are the same?
+    return false;
+}

@@ -14,13 +14,15 @@ public:
   virtual bool is_trivial() const =0;
 
   // New for OpenSMT code
-  virtual bool usesVar(symbol_exprt&, unsigned)=0;
+  virtual bool usesVar(symbol_exprt&, unsigned) = 0;
 
   // Serialization
-  virtual void serialize(std::ostream& out) const=0;
+  virtual void serialize(std::ostream& out) const = 0;
+
+  virtual bool equals(itpt* other) const = 0;
 
   // Getters & Setters
-  PTRef getInterpolant() { return interpolant; }
+  PTRef getInterpolant() const { return interpolant; }
   void setInterpolant(PTRef pt) { interpolant = pt; }
 
 protected:
