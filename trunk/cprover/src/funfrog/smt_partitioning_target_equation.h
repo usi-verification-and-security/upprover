@@ -27,7 +27,7 @@ public:
   
   std::vector<exprt>& get_exprs_to_refine () { return exprs; };
 
-  std::vector<symbol_exprt> fill_common_symbols(const partitiont & partition) const override;
+//  std::vector<symbol_exprt> fill_common_symbols(const partitiont & partition) const override;
 
 protected:
 

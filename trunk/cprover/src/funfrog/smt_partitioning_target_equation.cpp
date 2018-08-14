@@ -74,19 +74,22 @@ bool smt_partitioning_target_equationt::isTypeCastConst(const exprt &expr) {
 }
 #endif //DEBUG_SSA_SMT_CALL
 
-std::vector<symbol_exprt> smt_partitioning_target_equationt::fill_common_symbols(const partitiont & partition) const {
-    // call the base method, which fills the common_symbols according to computed interface of the function
-    auto common_symbols = partitioning_target_equationt::fill_common_symbols(partition);
-
-    // MB: In SMT mode, we do not care about CPROVER_rounding mode, that is needed only in PROP mode,
-    // we do not want it to leak into the signature of the summary.
-    // TODO: Would be nicer if caught earlier, e.g. do not consider it as an accessed global variable in the first place
-
-    // remove CPROVER_rounding_mode symbol from the vector, if it was part of the interface
-    common_symbols.erase(std::remove_if(common_symbols.begin(), common_symbols.end(), [](const symbol_exprt& expr){
-        return is_cprover_rounding_mode_var(expr);
-    }),
-    common_symbols.end());
-    return common_symbols;
-}
+//std::vector<symbol_exprt> smt_partitioning_target_equationt::fill_common_symbols(const partitiont & partition) const {
+//    // call the base method, which fills the common_symbols according to computed interface of the function
+//    auto common_symbols = partitioning_target_equationt::fill_common_symbols(partition);
+//
+//    // MB: In SMT mode, we do not care about CPROVER_rounding mode, that is needed only in PROP mode,
+//    // we do not want it to leak into the signature of the summary.
+//    // TODO: Would be nicer if caught earlier, e.g. do not consider it as an accessed global variable in the first place
+//
+//    // remove CPROVER_rounding_mode symbol from the vector, if it was part of the interface
+//    assert(std::find_if(common_symbols.begin(), common_symbols.end(), [](const symbol_exprt& expr){
+//        return is_cprover_rounding_mode_var(expr);
+//    }) == common_symbols.end());
+//    common_symbols.erase(std::remove_if(common_symbols.begin(), common_symbols.end(), [](const symbol_exprt& expr){
+//        return is_cprover_rounding_mode_var(expr);
+//    }),
+//    common_symbols.end());
+//    return common_symbols;
+//}
 
