@@ -20,7 +20,6 @@
 #include "nopartition/symex_no_partition.h"
 #include "partition_iface.h"
 #include "nopartition/smt_assertion_no_partition.h"
-#include "prop_partitioning_target_equation.h"
 #include "smt_partitioning_target_equation.h"
 #include "prepare_formula.h"
 #include "symex_assertion_sum.h"
@@ -302,7 +301,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
   symbol_tablet temp_table;
   namespacet ns{this->symbol_table, temp_table};
 
-  prop_partitioning_target_equationt equation(ns, *summary_store, store_summaries_with_assertion);
+  partitioning_target_equationt equation(ns, *summary_store, store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {

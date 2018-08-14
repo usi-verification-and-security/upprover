@@ -8,7 +8,6 @@ Author: Grigory Fedyukovich
 #include "smtcheck_opensmt2_lra.h"
 #include <util/type.h>
 #include <funfrog/utils/naming_helpers.h>
-#include "../hifrog.h"
 
 // Debug flags of this class:
 //#define SMT_DEBUG
@@ -1047,11 +1046,11 @@ Function: smtcheck_opensmt2t_lra::getStringSMTlibDatatype
 std::string smtcheck_opensmt2t_lra::getStringSMTlibDatatype(const typet& type)
 { 
     if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
-        return SMT_BOOL;
+        return SMTConstants::SMT_BOOL;
     if (is_number(type))
-        return SMT_REAL;
+        return SMTConstants::SMT_REAL;
     
-    return SMT_UNKNOWN; // Shall not get here 
+    return SMTConstants::SMT_UNKNOWN; // Shall not get here
 }
 
 /*******************************************************************\

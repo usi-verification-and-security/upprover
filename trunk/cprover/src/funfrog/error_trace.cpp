@@ -13,7 +13,6 @@
 #include "nopartition/smt_symex_target_equation.h"
 #include "smt_partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
-#include "hifrog.h"
 
 //#define TRACE_DEBUG //Use it to debug the trace of an error build
 
@@ -59,7 +58,7 @@ void error_tracet::build_goto_trace (
     if (is_cprover_builtins_var(str))
     	continue;
 
-    if (str.find(DYNAMIC_OBJ)!=std::string::npos)
+    if (str.find(CProverStringConstants::DYNAMIC_OBJ)!=std::string::npos)
         continue;
 
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
@@ -89,7 +88,7 @@ void error_tracet::build_goto_trace (
     goto_trace_step.identifier=SSA_step.identifier;
 
     if(SSA_step.ssa_lhs.is_not_nil()) {
-        if (str.find(GOTO_GUARD) == 0){
+        if (str.find(CProverStringConstants::GOTO_GUARD) == 0){
             goto_trace_step.lhs_object = SSA_step.ssa_lhs;
         } else {
             //goto_trace_step.lhs_object=SSA_step.original_lhs_object;
@@ -179,7 +178,7 @@ void error_tracet::build_goto_trace_formula (
     if (is_cprover_builtins_var(str))
     	continue;
 
-    if (str.find(DYNAMIC_OBJ)!=std::string::npos)
+    if (str.find(CProverStringConstants::DYNAMIC_OBJ)!=std::string::npos)
         continue;
 
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
@@ -608,7 +607,7 @@ void error_tracet::show_expr(
     if (is_removed) // only for the value check
         out << "(assignment removed)";
     else if (expr.id() == ID_nil)
-        out << NIL;
+        out << CProverStringConstants::NIL;
     else if (expr.id() == ID_constant)
         out << expr.get(ID_value);
     else
@@ -682,7 +681,7 @@ void error_tracet::build_goto_trace (
     if (is_cprover_builtins_var(str))
     	continue;
 
-    if (str.find(DYNAMIC_OBJ)!=std::string::npos)
+    if (str.find(CProverStringConstants::DYNAMIC_OBJ)!=std::string::npos)
         continue;
 
     if(SSA_step.ssa_lhs.id()==ID_symbol &&
@@ -712,7 +711,7 @@ void error_tracet::build_goto_trace (
     goto_trace_step.identifier=SSA_step.identifier;
 
     if(SSA_step.ssa_lhs.is_not_nil()) {
-        if (str.find(GOTO_GUARD) == 0){
+        if (str.find(CProverStringConstants::GOTO_GUARD) == 0){
             goto_trace_step.lhs_object=SSA_step.ssa_lhs;
         } else {
             //goto_trace_step.lhs_object=SSA_step.original_lhs_object;

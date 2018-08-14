@@ -112,6 +112,8 @@ public:
         return const_literal(val);
     }
 
+    virtual void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) = 0;
+
     //  Mapping from variable indices to their PTRefs in OpenSMT
     std::vector<PTRef> ptrefs;
 

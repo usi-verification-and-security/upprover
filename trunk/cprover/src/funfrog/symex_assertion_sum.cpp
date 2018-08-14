@@ -20,9 +20,9 @@
 #include "partition_iface.h"
 #include "utils/naming_helpers.h"
 #include "partitioning_target_equation.h"
-#include "hifrog.h"
 #include "summary_store.h"
 #include "assertion_info.h"
+#include "utils/expressions_utils.h"
 
 #include <memory>
 #include <algorithm>

@@ -35,8 +35,6 @@ set(HIFROG_SOURCE_FILES
         error_trace.h
         expr_pretty_print.cpp
         expr_pretty_print.h
-        hifrog.cpp
-        hifrog.h
         languages.cpp
         parseoptions.cpp
         parseoptions.h
@@ -48,8 +46,6 @@ set(HIFROG_SOURCE_FILES
         partitioning_target_equation.h
         prop_dependency_checker.cpp
         prop_dependency_checker.h
-        prop_partitioning_target_equation.cpp
-        prop_partitioning_target_equation.h
         prop_summary_store.cpp
         prop_summary_store.h
         refiner_assertion_sum.cpp

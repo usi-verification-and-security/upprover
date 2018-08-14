@@ -25,9 +25,6 @@ public:
                        _store_summaries_with_assertion) {}
 
   
-  // Extract interpolants corresponding to the created partitions
-  void extract_interpolants(check_opensmt2t& decider) override;
-
   std::vector<exprt>& get_exprs_to_refine () { return exprs; };
 
   std::vector<symbol_exprt> fill_common_symbols(const partitiont & partition) const override;

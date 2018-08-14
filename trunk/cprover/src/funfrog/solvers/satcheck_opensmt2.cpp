@@ -628,3 +628,11 @@ literalt satcheck_opensmt2t::new_variable() {
     return cnft::new_variable();
 }
 
+void satcheck_opensmt2t::generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) {
+    auto prop_itp = dynamic_cast<prop_itpt*>(interpolant);
+    if(!prop_itp){
+        throw std::logic_error{"SAT decider got non-propositional interpolant!"};
+    }
+    generalize_summary(*prop_itp, common_symbols);
+}
+

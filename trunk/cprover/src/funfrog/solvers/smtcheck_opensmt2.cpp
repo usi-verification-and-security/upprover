@@ -9,7 +9,6 @@ Author: Grigory Fedyukovich
 #include <unordered_set>
 
 #include "smtcheck_opensmt2.h"
-#include "../hifrog.h"
 #include "smt_itp.h"
 #include "../utils/naming_helpers.h"
 
@@ -486,7 +485,7 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
   
     bool is_L2_symbol = is_L2_SSA_symbol(expr);
     // MB: the IO_CONST expressions does not follow normal versioning, but why NIL is here?
-    bool is_nil_or_symex = (str.compare(NIL) == 0) || (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
+    bool is_nil_or_symex = (str.compare(CProverStringConstants::NIL) == 0) || (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
     if (!(is_L2_symbol || is_nil_or_symex))
     {
         // Error message before assert!
@@ -963,7 +962,7 @@ void smtcheck_opensmt2t::lcnf(const bvt & bv) {
 PTRef smtcheck_opensmt2t::symbol_to_ptref(const exprt & expr) {
     std::string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
     str = quote_if_necessary(str);
-    assert(str.compare(NIL) != 0);
+    assert(str.compare(CProverStringConstants::NIL) != 0);
     assert(!str.empty());
     PTRef symbol_ptref;
     if(is_number(expr.type()))
@@ -1061,4 +1060,12 @@ exprt smtcheck_opensmt2t::get_value(const exprt & expr) {
 
         return tmp;
     }
+}
+
+void smtcheck_opensmt2t::generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) {
+    auto smt_itp = dynamic_cast<smt_itpt*>(interpolant);
+    if(!smt_itp){
+        throw std::logic_error{"SMT decider got propositional interpolant!"};
+    }
+    generalize_summary(*smt_itp, common_symbols);
 }

@@ -12,7 +12,6 @@
  */
 
 #include "smt_symex_target_equation.h"
-#include "../hifrog.h"
 #include "../solvers/smtcheck_opensmt2.h"
 #include <solvers/prop/literal_expr.h>
 #include "../utils/naming_helpers.h"

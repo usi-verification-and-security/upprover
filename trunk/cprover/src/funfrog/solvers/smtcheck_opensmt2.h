@@ -89,6 +89,8 @@ public:
 
 //  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool insert_substituted = true); // Common to all
 
+  void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) override;
+
   void generalize_summary(smt_itpt & interpolant, std::vector<symbol_exprt> & common_symbols);
 
 #endif

@@ -92,7 +92,7 @@ public:
     return SSA_steps_exec_order;
   }
 
-  virtual void extract_interpolants(check_opensmt2t& decider) = 0;
+  void extract_interpolants(check_opensmt2t& decider);
 
   void convert(check_opensmt2t &prop_conv, interpolating_solvert &interpolator);
 

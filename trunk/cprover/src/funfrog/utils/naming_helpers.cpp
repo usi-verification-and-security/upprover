@@ -80,4 +80,19 @@ const std::string HifrogStringConstants::UNSUPPORTED_VAR_NAME {"hifrog::c::unsup
 
 const std::string CProverStringConstants::INITIALIZE_METHOD{"__CPROVER_initialize"};
 const std::string CProverStringConstants::IO_CONST{"symex::io::"};
+const std::string CProverStringConstants::ROUNDING_MODE{"__CPROVER_rounding_mode!"};
+const std::string CProverStringConstants::CPROVER_BUILDINS{"__CPROVER_"};
+const std::string CProverStringConstants::DYNAMIC_OBJ{"symex_dynamic::dynamic_object"};
+const std::string CProverStringConstants::GOTO_GUARD{"goto_symex::\\guard#"};
+const std::string CProverStringConstants::NIL{"nil"};
+const std::string CProverStringConstants::NONDETv1{"symex::"};
+const std::string CProverStringConstants::NONDETv2{"symex::nondet"};
+const std::string CProverStringConstants::SYMEX_NONDET{"nondet#"};
+
+const std::string SMTConstants::SMT_BOOL{"Bool"};
+const std::string SMTConstants::SMT_REAL{"Real"};
+const std::string SMTConstants::SMT_UREAL{"UReal"};
+const std::string SMTConstants::SMT_UNKNOWN{"?"};
+
+
 

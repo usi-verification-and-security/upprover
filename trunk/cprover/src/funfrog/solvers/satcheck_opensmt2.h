@@ -114,6 +114,8 @@ public:
   literalt extract_itp_rec(PTRef ptref, prop_itpt& target_itp,
     ptref_cachet& ptref_cache) const;
 
+  void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) override;
+
   void generalize_summary(prop_itpt& itp, const std::vector<symbol_exprt>& symbols);
 #endif
   

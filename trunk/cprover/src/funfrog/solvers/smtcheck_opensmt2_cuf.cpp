@@ -7,7 +7,6 @@ Author: Grigory Fedyukovich
 \*******************************************************************/
 
 #include "smtcheck_opensmt2_cuf.h"
-#include "../hifrog.h"
 #include <opensmt/BitBlaster.h>
 #include <funfrog/utils/naming_helpers.h>
 
@@ -2145,11 +2144,11 @@ Function: smtcheck_opensmt2t_cuf::getStringSMTlibDatatype
 std::string smtcheck_opensmt2t_cuf::getStringSMTlibDatatype(const typet& type)
 { 
     if ((type.id()==ID_bool) || (type.id() == ID_c_bool))
-        return SMT_BOOL;
+        return SMTConstants::SMT_BOOL;
     if (is_number(type))
-        return SMT_UREAL;
+        return SMTConstants::SMT_UREAL;
     
-    return SMT_UNKNOWN; // Shall not get here 
+    return SMTConstants::SMT_UNKNOWN; // Shall not get here
 }
 
 /*******************************************************************\
