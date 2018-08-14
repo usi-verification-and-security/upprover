@@ -17,27 +17,20 @@ std::pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_step
 {
   try{
 
-  std::unique_ptr<prop_conv_solvert> decider;
-  satcheck_opensmt2t* opensmt = new satcheck_opensmt2t("prop dependency checker");
+  satcheck_opensmt2t* opensmt = new satcheck_opensmt2t("prop dependency checker", ns);
   opensmt->new_partition();
-  bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
-  deciderp->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;
-  decider.reset(deciderp);
+  auto & decider = opensmt->get_bv_converter();
 
-  convert_delta_SSA(*decider, c1, c2);
+  convert_delta_SSA(decider, c1, c2);
 
   if (VERBOSE) status() << ("RESULT");
   time_periodt duration;
   absolute_timet initial, end;
   initial=current_time();
-  decision_proceduret::resultt r = (*decider).dec_solve();
+  decision_proceduret::resultt r = decider.dec_solve();
   end=current_time();
   duration = end - initial;
-#ifdef USE_PERIPLO
-//  // todo
-#else
-delete opensmt;
-#endif
+  delete opensmt;
 
   if (VERBOSE) {status() << ("SOLVER TIME FOR check_implication: ") << duration << eom;}
 

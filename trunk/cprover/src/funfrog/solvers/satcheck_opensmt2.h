@@ -26,11 +26,7 @@ class boolbv_mapt;
 class satcheck_opensmt2t:public cnf_solvert, public check_opensmt2t
 {
 public:
-  satcheck_opensmt2t(const char* name) :
-      check_opensmt2t(false, 3, 2)
-  {
-    initializeSolver(name);
-  }
+  satcheck_opensmt2t(const char* name, const namespacet & ns);
 
   virtual ~satcheck_opensmt2t() {
     freeSolver();
@@ -93,8 +89,6 @@ public:
   const boolbvt & get_bv_converter() const {return *boolbv_convert;}
   boolbvt & get_bv_converter() {return *boolbv_convert;}
 
-  void set_prop_conv_solvert(std::unique_ptr<boolbvt> converter) {boolbv_convert = std::move(converter);}
-
     void assert_literal(literalt lit) override{
       this->l_set_to_true(lit);
   }
@@ -136,6 +130,8 @@ protected:
       assert(is_boolean(expr));
       return get_bv_converter().convert(expr);
   }
+
+  void set_prop_conv_solvert(std::unique_ptr<boolbvt> converter) {boolbv_convert = std::move(converter);}
 
 #ifdef PRODUCE_PROOF  
   void setup_reduction();

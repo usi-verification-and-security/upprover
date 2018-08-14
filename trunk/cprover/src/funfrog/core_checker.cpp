@@ -7,14 +7,12 @@
 
 \*******************************************************************/
 #include "core_checker.h"
-#include "dependency_checker.h"
 
 #include "refiner_assertion_sum.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
 #include "solvers/satcheck_opensmt2.h"
-#include "solvers/naming_boolbv.h"
 #include "smt_dependency_checker.h"
 #include "prop_dependency_checker.h"
 #include "nopartition/symex_no_partition.h"
@@ -28,7 +26,6 @@
 #include "smt_summary_store.h"
 #include "prop_summary_store.h"
 #include "theory_refiner.h"
-#include <stdio.h>
 
 namespace{
     /*******************************************************************\
@@ -82,20 +79,14 @@ Function: get_initial_mode
     }
 }
 
-core_checkert::core_checkert(
-        const goto_programt &_goto_program,
-        const goto_functionst &_goto_functions,
-        const symbol_tablet &_symbol_table,
-        const optionst& _options,
-        ui_message_handlert &_message_handler,
-        unsigned long &_max_memory_used
-) :
-        goto_program(_goto_program),
-        symbol_table(_symbol_table),
+core_checkert::core_checkert(const goto_modelt & _goto_model, const optionst & _options,
+                             ui_message_handlert & _message_handler, unsigned long & _max_memory_used) :
+        goto_model{_goto_model},
+        ns{goto_model.symbol_table, new_symbol_table},
         options(_options),
         message_handler (_message_handler),
         max_memory_used(_max_memory_used),
-        omega(_goto_functions, options.get_unsigned_int_option("unwind")),
+        omega(_goto_model.goto_functions, options.get_unsigned_int_option("unwind")),
         summary_store{nullptr}
 {
     set_message_handler(_message_handler);
@@ -126,7 +117,7 @@ void core_checkert::initialize_solver()
     }
     else if (_logic == "prop" && !options.get_bool_option("no-partitions"))
     {
-        decider = new satcheck_opensmt2t("prop checker");
+        decider = new satcheck_opensmt2t("prop checker", ns);
         status() << ("Use propositional logic.") << eom;
     }
     else if (_logic == "prop" && options.get_bool_option("no-partitions"))
@@ -199,7 +190,7 @@ void core_checkert::initialize()
   // i.e., all summaries are initialized as HAVOC, except those on the way
   // to the target assertion, which are marked depending on initial mode.
 
-  omega.initialize_summary_info (omega.get_call_tree_root(), goto_program);
+  omega.initialize_summary_info (omega.get_call_tree_root(), get_main_function());
   //omega.process_goto_locations();
   init = get_init_mode(options.get_option("init-mode"));
   omega.setup_default_precision(init);
@@ -298,9 +289,6 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
 
-  symbol_tablet temp_table;
-  namespacet ns{this->symbol_table, temp_table};
-
   partitioning_target_equationt equation(ns, *summary_store, store_summaries_with_assertion);
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -312,8 +300,8 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
   
   call_tree_nodet& summary_info = omega.get_call_tree_root();
   symex_assertion_sumt symex {
-            *summary_store, get_goto_functions(), summary_info, ns, temp_table,
-            equation, message_handler, goto_program, last_assertion_loc,
+            *summary_store, get_goto_functions(), summary_info, ns, new_symbol_table,
+            equation, message_handler, get_main_function(), last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, 
             false, unwind_bound, partial_loops };
 
@@ -329,7 +317,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
     if(!end && options.get_bool_option("claims-opt")){
         prop_dependency_checkert(ns,
                                 message_handler,
-                                goto_program,
+                                get_main_function(),
                                 omega,
                                 options.get_unsigned_int_option("claims-opt"),
                                 equation.SSA_steps.size())
@@ -341,11 +329,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
     prepare_formulat ssaToFormula = prepare_formulat(equation, message_handler);
     auto sat_decider = dynamic_cast<satcheck_opensmt2t*>(decider);
     if(sat_decider){
-        auto bv_pointers = new naming_boolbv(ns, *sat_decider);
-//        auto bv_pointers = new bv_pointerst(ns, *sat_decider);
-        bv_pointers->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;
-        auto prop_conv_solver = std::unique_ptr<boolbvt>(bv_pointers);
-        sat_decider->set_prop_conv_solvert(std::move(prop_conv_solver));
+
     }
   while (!end)
   {
@@ -490,8 +474,6 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     const unsigned last_assertion_loc = omega.get_last_assertion_loc();
     const bool single_assertion_check = omega.is_single_assertion_check();
 
-    symbol_tablet temp_table;
-    namespacet ns{this->symbol_table, temp_table};
     partitioning_target_equationt equation(ns, *summary_store,
                                                 store_summaries_with_assertion);
 
@@ -504,8 +486,8 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
   
     call_tree_nodet& call_tree_root = omega.get_call_tree_root();
     symex_assertion_sumt symex = symex_assertion_sumt(
-            *summary_store, get_goto_functions(), call_tree_root, ns, temp_table,
-            equation, message_handler, goto_program, last_assertion_loc,
+            *summary_store, get_goto_functions(), call_tree_root, ns, new_symbol_table,
+            equation, message_handler, get_main_function(), last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound,
             options.get_bool_option("partial-loops"));
 
@@ -523,7 +505,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     if(!end && options.get_bool_option("claims-opt")){
         smt_dependency_checkert(ns, 
                     message_handler, 
-                    goto_program, 
+                    get_main_function(),
                     omega, 
                     options.get_unsigned_int_option("claims-opt"), 
                     equation.SSA_steps.size())
@@ -685,9 +667,6 @@ bool core_checkert::assertion_holds_smt_no_partition(
   // Notify that there is no support to interpolations
   status() << "--no-partition activates also --no-itp flag, as there is no (yet) support for summaries/interpolations in this version" << eom;
 
-  symbol_tablet temp_table;
-  namespacet ns {this->symbol_table, temp_table};
-
   smt_symex_target_equationt equation(ns, ints);
 #ifdef DISABLE_OPTIMIZATIONS
   if (options.get_bool_option("dump-SSA-tree")) {
@@ -696,7 +675,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
   }
 #endif
   
-  symex_no_partitiont symex = symex_no_partitiont(ns, temp_table, equation, message_handler, goto_program,!no_slicing_option);
+  symex_no_partitiont symex = symex_no_partitiont(ns, new_symbol_table, equation, message_handler, get_main_function(),!no_slicing_option);
   
   setup_unwind(symex);
   
@@ -731,7 +710,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
 
     if (!end){
       if (options.get_bool_option("claims-opt") && count == 1){
-        smt_dependency_checkert(ns, message_handler, goto_program, omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
+        smt_dependency_checkert(ns, message_handler, get_main_function(), omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
                 .do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
       }
@@ -821,8 +800,6 @@ bool core_checkert::assertion_holds_smt_no_partition(
 void core_checkert::assertion_violated (prepare_formulat& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
-    namespacet ns{this->symbol_table};
-
     if (!options.get_bool_option("no-error-trace"))
         prop.error_trace(*decider, ns, guard_expln);
     report_failure();
@@ -843,7 +820,6 @@ void core_checkert::assertion_violated (smt_assertion_no_partitiont& prop,
 				std::map<irep_idt, std::string> &guard_expln)
 {
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
-    namespacet ns{this->symbol_table};
     if (!options.get_bool_option("no-error-trace"))
         prop.error_trace(*decider_smt, ns, guard_expln);
     if (decider_smt->has_unsupported_vars()){
@@ -1229,18 +1205,16 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         return const_summary_store.has_summaries(function_name);
     };
     omega.set_initial_precision(assertion, has_summary);
-    symbol_tablet temp_table;
-    namespacet ns{this->symbol_table, temp_table};
     partitioning_target_equationt equation {ns, summary_store, false};
 
     symex_assertion_sumt symex {summary_store,
                                 get_goto_functions(),
                                 omega.get_call_tree_root(),
                                 ns,
-                                temp_table,
+                                new_symbol_table,
                                 equation,
                                 message_handler,
-                                goto_program,
+                                get_main_function(),
                                 omega.get_last_assertion_loc(),
                                 omega.is_single_assertion_check(),
                                 !options.get_bool_option("no-slicing"),

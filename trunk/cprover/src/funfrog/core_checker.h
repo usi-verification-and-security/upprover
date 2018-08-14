@@ -13,6 +13,7 @@
 #include <memory>
 #include <util/options.h>
 #include <util/ui_message.h>
+#include <goto-programs/goto_model.h>
 #include "subst_scenario.h"
 
 class smt_assertion_no_partitiont;
@@ -27,15 +28,8 @@ class prop_conv_solvert;
 class core_checkert:public messaget
 {
 public:
-  core_checkert(
-    const goto_programt &_goto_program,
-    const goto_functionst &_goto_functions,
-//    const namespacet &_ns,
-    const symbol_tablet &_symbol_table,
-    const optionst& _options,
-    ui_message_handlert &_message_handler,
-    unsigned long &_max_memory_used
-    );
+  core_checkert(const goto_modelt & _goto_model, const optionst & _options,
+                  ui_message_handlert & _message_handler, unsigned long & _max_memory_used);
 
   ~core_checkert() override;
   void initialize();
@@ -53,11 +47,11 @@ public:
 
     //  bool check_sum_theoref_single(const assertion_infot& assertion);
     bool check_sum_theoref_single(const assertion_infot &assertion);
-protected:
 
-  const goto_programt &goto_program;
-//  const namespacet &ns;
-  const symbol_tablet &symbol_table;
+protected:
+    const goto_modelt & goto_model;
+    symbol_tablet new_symbol_table;
+    const namespacet ns;
   const optionst &options;
   ui_message_handlert &message_handler;
   unsigned long &max_memory_used;
@@ -78,7 +72,11 @@ protected:
                   std::map<irep_idt, std::string> &guard_expln);
 
     const goto_functionst & get_goto_functions() const {
-        return omega.get_goto_functions();
+        return goto_model.goto_functions;
+    }
+
+    const goto_programt & get_main_function() const {
+        return get_goto_functions().function_map.at(goto_functionst::entry_point()).body;
     }
 
 };

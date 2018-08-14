@@ -636,3 +636,14 @@ void satcheck_opensmt2t::generalize_summary(itpt * interpolant, std::vector<symb
     generalize_summary(*prop_itp, common_symbols);
 }
 
+satcheck_opensmt2t::satcheck_opensmt2t(const char * name, const namespacet & ns)
+: check_opensmt2t(false, 3, 2)
+{
+    initializeSolver(name);
+    // TODO: move to separate method?
+    auto bv_pointers = new naming_boolbv(ns, *this);
+    bv_pointers->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;
+    auto prop_conv_solver = std::unique_ptr<boolbvt>(bv_pointers);
+    this->set_prop_conv_solvert(std::move(prop_conv_solver));
+}
+

@@ -172,8 +172,7 @@ void check_claims(
     return;
   }
 
-  core_checkert core_checker(main_body, goto_functions,
-                            goto_model.symbol_table, options, _message_handler, res.max_mem_used);
+  core_checkert core_checker(goto_model, options, _message_handler, res.max_mem_used);
 
   core_checker.initialize();
 
