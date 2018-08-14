@@ -141,7 +141,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 //                        *(dynamic_cast<smtcheck_opensmt2t_lra *> (decider2)));
           error_trace.build_goto_trace_formula(equation, *(dynamic_cast<smtcheck_opensmt2t *> (decider)), decider2);
 
-          std::vector<exprt>& exprs = equation.get_exprs_to_refine();
+          std::vector<exprt> exprs = equation.get_exprs_to_refine();
           decider2.check_ce(exprs);
 
       } else {
@@ -153,7 +153,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
           bool refine_all = options.get_bool_option("force");
 
-          std::vector<exprt>& exprs = equation.get_exprs_to_refine();
+          std::vector<exprt> exprs = equation.get_exprs_to_refine();
           std::set<int> refined;
 
           if (exprs_ids.size() > 0){

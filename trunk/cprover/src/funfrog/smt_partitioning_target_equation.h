@@ -24,23 +24,7 @@ public:
             : partitioning_target_equationt(_ns, store,
                        _store_summaries_with_assertion) {}
 
-  
-  std::vector<exprt>& get_exprs_to_refine () { return exprs; };
 
-//  std::vector<symbol_exprt> fill_common_symbols(const partitiont & partition) const override;
 
-protected:
-
-    // TODO: remove this;
-  std::vector<exprt> exprs;
-
-  // Convert a specific partition of SSA steps
-
-  
-private:
-  bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
-  
-  
-  bool isTypeCastConst(const exprt &expr); // Only for debugging typecast
 };
 #endif

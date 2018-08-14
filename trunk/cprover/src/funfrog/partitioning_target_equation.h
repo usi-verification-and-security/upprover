@@ -99,6 +99,9 @@ public:
   partitionst& get_partitions() { return partitions; }
 
   unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
+
+  // FIXME: implement this or deal with it in other way
+  std::vector<exprt> get_exprs_to_refine() {throw std::logic_error{"Not implemented!"};}
  
 #ifdef DISABLE_OPTIMIZATIONS  
   void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}
