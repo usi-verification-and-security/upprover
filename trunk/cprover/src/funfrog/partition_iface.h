@@ -86,6 +86,7 @@ public:
     error_symbol = other.error_symbol;
     returns_value = other.returns_value;
     call_loc = other.call_loc;
+
     
 #   if 0 && defined(DISABLE_OPTIMIZATIONS) // KE: unknown old debug code
     std::cerr << " === Sharing symbols:" << std::endl;
@@ -123,6 +124,7 @@ public:
     expr_pretty_print(std::cerr << "Error: ", error_symbol);
 #   endif
   }
+  std::vector<symbol_exprt> get_iface_symbols() const;
 
 };
 

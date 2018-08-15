@@ -46,7 +46,6 @@ public:
           bool _single_assertion_check,
           bool _use_slicing,
 	        bool _do_guard_expl,
-          bool _use_smt,
           unsigned int _max_unwind,
           bool partial_loops = false
           );
@@ -142,9 +141,7 @@ private:
   bool use_slicing;
 
   bool do_guard_expl;
-  
-  bool use_smt; // for slicing 
-  
+
   // Add function to the wait queue to be processed by symex later and to
   // create a separate partition for interpolation
   void defer_function(const deferred_functiont &deferred_function, bool is_new = true);

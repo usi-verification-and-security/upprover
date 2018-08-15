@@ -13,8 +13,9 @@ public:
 
   virtual bool is_trivial() const =0;
 
-  // New for OpenSMT code
-  virtual bool usesVar(symbol_exprt&, unsigned) = 0;
+  // TODO: think about how to do it, or wheter it is neccessary
+  bool usesVar(unsigned index)
+  { return true;}
 
   // Serialization
   virtual void serialize(std::ostream& out) const = 0;

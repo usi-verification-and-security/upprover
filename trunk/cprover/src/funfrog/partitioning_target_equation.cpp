@@ -178,38 +178,6 @@ void partitioning_target_equationt::prepare_partitions() { // for hifrog only
 }
 
 /*******************************************************************
- Function: partitioning_target_equationt::fill_common_symbols
-
- Inputs:
-
- Outputs:
-
- Purpose:
-
- \*******************************************************************/
-std::vector<symbol_exprt> partitioning_target_equationt::fill_common_symbols(const partitiont & partition) const
-{
-    std::vector<symbol_exprt> common_symbols;
-    common_symbols.clear();
-    const partition_ifacet& iface = partition.get_iface();
-    common_symbols.reserve(iface.argument_symbols.size() +
-                           iface.out_arg_symbols.size()+4);
-    common_symbols = iface.argument_symbols; // Add SSA instances of funcs
-    common_symbols.insert(common_symbols.end(),
-                          iface.out_arg_symbols.begin(),
-                          iface.out_arg_symbols.end()); // Add globals
-    common_symbols.push_back(iface.callstart_symbol);
-    common_symbols.push_back(iface.callend_symbol);
-    if (iface.assertion_in_subtree) {
-        common_symbols.push_back(iface.error_symbol);
-    }
-    if (iface.returns_value) {
-        common_symbols.push_back(iface.retval_symbol);
-    }
-    return common_symbols;
-}
-
-/*******************************************************************
  Function: partitioning_target_equationt::prepare_SSA_exec_order
 
  Inputs:
@@ -843,7 +811,7 @@ void partitioning_target_equationt::convert_partition_io(
 void partitioning_target_equationt::convert_partition_summary(
         check_opensmt2t & decider, partitiont & partition)
 {
-    auto common_symbs = fill_common_symbols(partition);
+    auto common_symbs = partition.get_iface().get_iface_symbols();
     unsigned i = 0;
 
     bool is_recursive = partition.get_iface().call_tree_node.is_recursive(); //on_nondet();
@@ -1028,7 +996,7 @@ void partitioning_target_equationt::extract_interpolants(check_opensmt2t & decid
         }
 
         // Generalize the interpolant
-        auto common_symbs = fill_common_symbols(partition);
+        auto common_symbs = partition.get_iface().get_iface_symbols();
 
 #   ifdef DEBUG_ITP
         std::cout << "Interpolant for function: " <<

@@ -40,6 +40,7 @@ set(HIFROG_SOURCE_FILES
         parseoptions.h
         partition.h
         partition_iface.h
+        partition_iface.cpp
         partitioning_slice.cpp
         partitioning_slice.h
         partitioning_target_equation.cpp
@@ -85,7 +86,8 @@ set(HIFROG_SOURCE_FILES
         #reportt.cpp reportt.h
         utils/UnionFind.cpp
         utils/UnionFind.h
-        utils/string_utils.h)
+        utils/string_utils.h
+       ) 
 
 ################# TESTING #############################################
 option(enable_hifrog_tests "Build the tests" OFF)

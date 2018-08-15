@@ -279,7 +279,6 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
   const bool no_ce_option = options.get_bool_option("no-error-trace");
 //  assert(options.get_option("logic") == "prop");
   const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
-  const bool partial_loops = options.get_bool_option("partial-loops");
 
   const auto & const_summary_store = *summary_store;
   auto has_summary = [&const_summary_store](const std::string & function_name){
@@ -298,12 +297,12 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
   }
 #endif
   
-  call_tree_nodet& summary_info = omega.get_call_tree_root();
+  call_tree_nodet& call_tree_root = omega.get_call_tree_root();
   symex_assertion_sumt symex {
-            *summary_store, get_goto_functions(), summary_info, ns, new_symbol_table,
+            *summary_store, get_goto_functions(), call_tree_root, ns, new_symbol_table,
             equation, message_handler, get_main_function(), last_assertion_loc,
             single_assertion_check, !no_slicing_option, !no_ce_option, 
-            false, unwind_bound, partial_loops };
+            unwind_bound, options.get_bool_option("partial-loops") };
 
 //  setup_unwind(symex);
 
@@ -327,10 +326,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
     unsigned summaries_used = 0;
     unsigned iteration_counter = 0;
     prepare_formulat ssaToFormula = prepare_formulat(equation, message_handler);
-    auto sat_decider = dynamic_cast<satcheck_opensmt2t*>(decider);
-    if(sat_decider){
 
-    }
   while (!end)
   {
     iteration_counter++;
@@ -438,7 +434,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
               << eom; 
 #endif
   
-  return end;
+  return is_verified;
 }
 
 /*******************************************************************
@@ -488,7 +484,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     symex_assertion_sumt symex = symex_assertion_sumt(
             *summary_store, get_goto_functions(), call_tree_root, ns, new_symbol_table,
             equation, message_handler, get_main_function(), last_assertion_loc,
-            single_assertion_check, !no_slicing_option, !no_ce_option, true, unwind_bound,
+            single_assertion_check, !no_slicing_option, !no_ce_option, unwind_bound,
             options.get_bool_option("partial-loops"));
 
     refiner_assertion_sumt refiner {
@@ -496,12 +492,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
               get_refine_mode(options.get_option("refine-mode")),
               message_handler, last_assertion_loc};
 
-    prepare_formulat ssaToFormula = prepare_formulat(equation, message_handler);
-
-    unsigned iteration_counter = 0;
-    // in this phase we create SSA from the goto program, possibly skipping over some functions based on information in omega
     bool end = symex.prepare_SSA(assertion);
-
     if(!end && options.get_bool_option("claims-opt")){
         smt_dependency_checkert(ns, 
                     message_handler, 
@@ -513,8 +504,11 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
     }
 
+
     // the checker main loop:
     unsigned summaries_used = 0;
+    unsigned iteration_counter = 0;
+    prepare_formulat ssaToFormula = prepare_formulat(equation, message_handler);
     while (!end) {
         iteration_counter++;
 
@@ -1219,7 +1213,6 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
                                 omega.is_single_assertion_check(),
                                 !options.get_bool_option("no-slicing"),
                                 !options.get_bool_option("no-error-trace"),
-                                true,
                                 options.get_unsigned_int_option("unwind"),
                                 options.get_bool_option("partial-loops"),
     };

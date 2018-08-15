@@ -7,21 +7,7 @@ Author:
 \*******************************************************************/
 
 #include "smt_itp.h"
-
-#include "../utils/naming_helpers.h"
-#include "../utils/naming_helpers.h"
-
-//#define DEBUG_ITP_SMT
-# ifdef DEBUG_ITP_SMT
 #include <iostream>
-#endif
-
-bool
-smt_itpt::usesVar(symbol_exprt& symb, unsigned idx)
-{
-    // TODO unify with prop, maybe store names of the arguments and flags which are actually used
-    return true;
-}
 
 /*******************************************************************\
 

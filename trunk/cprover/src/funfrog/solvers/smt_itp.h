@@ -1,14 +1,11 @@
 #ifndef SMT_ITP_H
 #define SMT_ITP_H
 
-#include <ostream>
-#include <util/std_expr.h>
-#include <solvers/prop/literal.h>
-#include <solvers/flattening/boolbv.h>
+#include "itp.h"
 
 #include <opensmt/opensmt2.h>
 #include <opensmt/Tterm.h>
-#include "itp.h"
+#include <iosfwd>
 
 class smt_itpt: public itpt
 {
@@ -25,8 +22,6 @@ public:
 
   // Serialization
   virtual void serialize(std::ostream& out) const override;
-
-  virtual bool usesVar(symbol_exprt&, unsigned) override;
 
   bool equals(itpt* other) const override;
 

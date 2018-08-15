@@ -52,7 +52,6 @@ symex_assertion_sumt::symex_assertion_sumt(
   bool _single_assertion_check,
   bool _use_slicing,
   bool _do_guard_expl,
-  bool _use_smt,
   unsigned int _max_unwind,
   bool partial_loops
 ) :
@@ -67,7 +66,6 @@ symex_assertion_sumt::symex_assertion_sumt(
   single_assertion_check(_single_assertion_check),
   use_slicing(_use_slicing),
   do_guard_expl(_do_guard_expl),
-  use_smt(_use_smt),
   max_unwind(_max_unwind)
 {
   options.set_option("partial-loops", partial_loops);
@@ -291,7 +289,7 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
     if (use_slicing) {
       before=current_time();
       log.statistics() << "All SSA steps: " << equation.SSA_steps.size() << log.eom;
-      partitioning_slice(equation, summary_store, use_smt);
+        partitioning_slice(equation, summary_store);
       log.statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << log.eom;
       after=current_time();
       log.statistics() << "SLICER TIME: " << (after-before) << log.eom;

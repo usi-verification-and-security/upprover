@@ -180,10 +180,6 @@ protected:
     return partitions[current_partition_id];
   }
 
-  // Fills in the list of symbols that the partition has in common with its
-  // environment
-  virtual std::vector<symbol_exprt> fill_common_symbols(const partitiont & partition) const;
-
   // Fill in ids of all the child partitions
   void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
 

@@ -36,11 +36,6 @@ public:
   virtual void serialize(std::ostream& out) const override;
   void deserialize(std::istream& in);
 
-  bool usesVar(symbol_exprt& symb, unsigned idx) override
-  { 
-      return get_symbol_mask()[idx];
-  }
-
   const clausest & get_clauses() const {return clauses;}
   clausest & get_clauses() {return clauses;}
 
