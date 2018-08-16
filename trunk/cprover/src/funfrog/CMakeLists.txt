@@ -45,16 +45,12 @@ set(HIFROG_SOURCE_FILES
         partitioning_slice.h
         partitioning_target_equation.cpp
         partitioning_target_equation.h
-        prop_dependency_checker.cpp
-        prop_dependency_checker.h
         prop_summary_store.cpp
         prop_summary_store.h
         refiner_assertion_sum.cpp
         refiner_assertion_sum.h
         prepare_formula.cpp
         prepare_formula.h
-        smt_dependency_checker.cpp
-        smt_dependency_checker.h
         smt_summary_store.cpp
         smt_summary_store.h
         subst_scenario.cpp
