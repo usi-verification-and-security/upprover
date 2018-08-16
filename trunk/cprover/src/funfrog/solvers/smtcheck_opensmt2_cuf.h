@@ -93,7 +93,7 @@ protected:
 
   irep_idt _fails_type_id; // Reason 2 fail of CUF theoref
         
-  void bindBB(const exprt& expr, PTRef pt1);
+  void bindBB(const exprt& expr, PTRef ptl);
 
   void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
 
