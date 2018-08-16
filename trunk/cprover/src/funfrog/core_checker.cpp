@@ -13,8 +13,7 @@
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
 #include "solvers/satcheck_opensmt2.h"
-#include "smt_dependency_checker.h"
-#include "prop_dependency_checker.h"
+#include "dependency_checker.h"
 #include "nopartition/symex_no_partition.h"
 #include "partition_iface.h"
 #include "nopartition/smt_assertion_no_partition.h"
@@ -314,7 +313,7 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
   bool end = symex.prepare_SSA(assertion);
 
     if(!end && options.get_bool_option("claims-opt")){
-        prop_dependency_checkert(ns,
+        dependency_checkert(ns,
                                 message_handler,
                                 get_main_function(),
                                 omega,
@@ -494,7 +493,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
 
     bool end = symex.prepare_SSA(assertion);
     if(!end && options.get_bool_option("claims-opt")){
-        smt_dependency_checkert(ns, 
+        dependency_checkert(ns,
                     message_handler, 
                     get_main_function(),
                     omega, 
@@ -704,7 +703,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
 
     if (!end){
       if (options.get_bool_option("claims-opt") && count == 1){
-        smt_dependency_checkert(ns, message_handler, get_main_function(), omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
+        dependency_checkert(ns, message_handler, get_main_function(), omega, options.get_unsigned_int_option("claims-opt"), equation.SSA_steps.size())
                 .do_it(equation);
         status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
       }
