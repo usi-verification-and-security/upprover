@@ -43,20 +43,6 @@ public:
 
   //virtual std::string getStringSMTlibDatatype(const typet& type)=0;
   //virtual SRef getSMTlibDatatype(const typet& type)=0;
-  
-// KE: FIXME remove this code till the end of the endif after OpenSMT has support for LA interpolation
-#ifdef PRODUCE_PROOF
-  virtual void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants) override {assert(0);}
-
-  virtual bool can_interpolate() const override {assert(0);}
-
-  // Extract interpolant form OpenSMT files/data
-  virtual void extract_itp(PTRef ptref, smt_itpt& target_itp) const override {assert(0);}
-
-  virtual void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
-                          const std::string& fun_name, bool substitute) override {assert(0);}
-#endif  
 
 protected:
   LALogic* lalogic; // Extra var, inner use only - Helps to avoid dynamic cast!
