@@ -26,7 +26,7 @@ class check_opensmt2t;
 #define IMP true
 
 
-class dependency_checkert : public messaget
+class dependency_checkert : private messaget
 {
 public:
     dependency_checkert(
@@ -40,7 +40,6 @@ public:
     ) :
           goto_program(_goto_program),
           ns(_ns),
-          message_handler (_message_handler),
           omega(_omega)
     {
           set_message_handler(_message_handler);
@@ -82,7 +81,6 @@ public:
 protected:
   const goto_programt &goto_program;
   const namespacet &ns;
-  ui_message_handlert &message_handler;
   subst_scenariot &omega;
 
   int last_label;
