@@ -11,9 +11,12 @@
 #include "solvers/check_opensmt2.h"
 #include "utils/naming_helpers.h"
 #include "summary_store.h"
+#include "conversion_utils.h"
 
 #include <numeric>
 #include <algorithm>
+
+using namespace hifrog;
 
 partitioning_target_equationt::partitioning_target_equationt(
   const namespacet & _ns,
@@ -724,49 +727,6 @@ void partitioning_target_equationt::convert_partition_assumptions(
 }
 
 /*******************************************************************
- Function: partitioning_target_equationt::convert_partition_guards
-
- Inputs:
-
- Outputs:
-
- Purpose: Convert a specific partition guards of SSA steps
-
- \*******************************************************************/
-
-void partitioning_target_equationt::convert_partition_guards(
-        check_opensmt2t &decider, partitiont& partition) {
-    for (auto it = partition.start_it; it != partition.end_it; ++it) {
-        it->guard_literal = it->ignore ? const_literal(false) : decider.bool_expr_to_literal(it->guard);;
-    }
-}
-
-/*******************************************************************\
-
-Function: partitioning_target_equationt::convert_partition_assignments
-
-  Inputs:
-
- Outputs:
-
- Purpose: Convert a specific partition assignments of SSA steps
-
-\*******************************************************************/
-
-void partitioning_target_equationt::convert_partition_assignments(
-        check_opensmt2t &decider, partitiont& partition)
-{
-    for(auto it = partition.start_it;
-        it != partition.end_it; ++it)
-    {
-        if(it->is_assignment() && !it->ignore)
-        {
-            decider.set_to_true(it->cond_expr);
-        }
-    }
-}
-
-/*******************************************************************
  Function: partitioning_target_equationt::convert_partition_io
 
  Inputs:
@@ -866,8 +826,10 @@ void partitioning_target_equationt::convert_partition(
         return;
     }
     // Convert the corresponding SSA steps
-    convert_partition_guards(decider, partition);
-    convert_partition_assignments(decider, partition);
+    auto partition_beg = partition.start_it;
+    auto partition_end = partition.end_it;
+    ::convert_guards(decider, partition_beg, partition_end);
+    ::convert_assignments(decider, partition_beg, partition_end);
     convert_partition_assumptions(decider, partition);
     convert_partition_assertions(decider, partition);
     convert_partition_io(decider, partition);

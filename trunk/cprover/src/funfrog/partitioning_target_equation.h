@@ -114,12 +114,6 @@ public:
 protected:
     void convert_partition(check_opensmt2t & decider,
                            interpolating_solvert & interpolator, partitiont & partition);
-    // Convert a specific partition guards of SSA steps
-    void convert_partition_guards(check_opensmt2t &decider,
-                                  partitiont& partition);
-    // Convert a specific partition assignments of SSA steps
-    void convert_partition_assignments(check_opensmt2t &decider,
-                                       partitiont& partition);
     // Convert a specific partition assumptions of SSA steps
     void convert_partition_assumptions(check_opensmt2t &decider,
                                        partitiont& partition);

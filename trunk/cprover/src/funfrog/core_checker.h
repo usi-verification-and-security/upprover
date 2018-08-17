@@ -25,7 +25,7 @@ class symex_bmct;
 class interpolating_solvert;
 class prop_conv_solvert;
 
-class core_checkert:public messaget
+class core_checkert : private messaget
 {
 public:
   core_checkert(const goto_modelt & _goto_model, const optionst & _options,

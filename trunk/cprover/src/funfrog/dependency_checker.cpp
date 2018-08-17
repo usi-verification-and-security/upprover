@@ -24,6 +24,8 @@
 
 #define VERBOSE false
 
+using namespace hifrog;
+
 void dependency_checkert::do_it(partitioning_target_equationt &equation){
 
   absolute_timet initial, temp_end;
