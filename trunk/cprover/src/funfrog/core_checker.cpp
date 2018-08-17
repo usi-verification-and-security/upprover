@@ -246,194 +246,10 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
     return true;
   }
   
-  // TODO: need to split this class and create a version for prop and smt
-  // Unless we wish to unify mechanism also for error_trace!
-  if (options.get_option("logic") == "prop")
-    return assertion_holds_prop(assertion, store_summaries_with_assertion);
-  else if (options.get_bool_option("no-partitions")) // BMC alike version
+  if (options.get_bool_option("no-partitions")) // BMC alike version
     return assertion_holds_smt_no_partition(assertion);
   else 
-    return assertion_holds_smt(assertion, store_summaries_with_assertion);
-}
-
-/*******************************************************************
-
- Function: core_checkert::assertion_holds
-
- Inputs:
-
- Outputs:
-
- Purpose: Checks if the given assertion of the GP holds for prop logic
-
-\*******************************************************************/
-
-bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
-        bool store_summaries_with_assertion)
-{
-  absolute_timet initial, final;
-  initial=current_time();
-  
-  const bool no_slicing_option = options.get_bool_option("no-slicing");
-  const bool no_ce_option = options.get_bool_option("no-error-trace");
-//  assert(options.get_option("logic") == "prop");
-  const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
-
-  const auto & const_summary_store = *summary_store;
-  auto has_summary = [&const_summary_store](const std::string & function_name){
-      return const_summary_store.has_summaries(function_name);
-  };
-  omega.set_initial_precision(assertion, has_summary);
-  const unsigned last_assertion_loc = omega.get_last_assertion_loc();
-  const bool single_assertion_check = omega.is_single_assertion_check();
-
-  partitioning_target_equationt equation(ns, *summary_store, store_summaries_with_assertion);
-
-#ifdef DISABLE_OPTIMIZATIONS
-  if (options.get_bool_option("dump-SSA-tree")) {
-    equation.set_dump_SSA_tree(true);
-    equation.set_dump_SSA_tree_name(options.get_option("dump-query-name"));
-  }
-#endif
-  
-  call_tree_nodet& call_tree_root = omega.get_call_tree_root();
-  symex_assertion_sumt symex {
-            *summary_store, get_goto_functions(), call_tree_root, ns, new_symbol_table,
-            equation, message_handler, get_main_function(), last_assertion_loc,
-            single_assertion_check, !no_slicing_option, !no_ce_option, 
-            unwind_bound, options.get_bool_option("partial-loops") };
-
-//  setup_unwind(symex);
-
-  refiner_assertion_sumt refiner {*summary_store, omega,
-              get_refine_mode(options.get_option("refine-mode")),
-              message_handler, last_assertion_loc};
-
-
-  bool end = symex.prepare_SSA(assertion);
-
-    if(!end && options.get_bool_option("claims-opt")){
-        dependency_checkert(ns,
-                                message_handler,
-                                get_main_function(),
-                                omega,
-                                options.get_unsigned_int_option("claims-opt"),
-                                equation.SSA_steps.size())
-                .do_it(equation);
-        status() << (std::string("Ignored SSA steps after dependency checker: ") + std::to_string(equation.count_ignored_SSA_steps())) << eom;
-    }
-    unsigned summaries_used = 0;
-    unsigned iteration_counter = 0;
-    prepare_formulat ssaToFormula = prepare_formulat(equation, message_handler);
-
-  while (!end)
-  {
-    iteration_counter++;
-    ssaToFormula.convert_to_formula(*decider, *decider);
-
-// decide the equation
-      bool is_sat = ssaToFormula.is_satisfiable(*decider);
-      summaries_used = omega.get_summaries_count();
-
-
-    end = !is_sat;
-
-    if (is_sat) {
-
-        // this refiner can refine if we have summary or havoc representation of a function
-        // Else quit the loop! (shall move into a function)
-        if (omega.get_summaries_count() == 0 && omega.get_nondets_count() == 0)
-            // nothing left to refine, cex is real -> break out of the refinement loop
-            break;
-        // Else, report and try to refine!
-
-        // REPORT part
-        if (summaries_used > 0){
-            status() << "FUNCTION SUMMARIES (for " << summaries_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-        }
-
-        const unsigned int nondet_used = omega.get_nondets_count();
-        if (nondet_used > 0){
-            status() << "HAVOCING (of " << nondet_used << " calls) AREN'T SUITABLE FOR CHECKING ASSERTION." << eom;
-        }
-        // END of REPORT
-
-        refiner.mark_sum_for_refine(*decider, omega.get_call_tree_root(), equation);
-        bool refined = !refiner.get_refined_functions().empty();
-        if (!refined) {
-            // nothing could be refined to rule out the cex, it is real -> break out of refinement loop
-            break;
-        } else {
-            // REPORT
-            status() << ("Go to next iteration\n") << eom;
-
-            // do the actual refinement of ssa
-            symex.refine_SSA(refiner.get_refined_functions());
-        }
-
-    }
-  }
-
-    const bool is_verified = end;
-    if (is_verified) {
-        // produce and store the summaries
-        if (!options.get_bool_option("no-itp")) {
-#ifdef PRODUCE_PROOF
-            if (decider->can_interpolate()) {
-                status() << ("Start generating interpolants...") << eom;
-                extract_interpolants(equation);
-            } else {
-                status() << ("Skip generating interpolants") << eom;
-            }
-#else
-            assert(0); // Cannot produce proof in that case!
-#endif
-
-        } else {
-            status() << ("Skip generating interpolants") << eom;
-        } // End Report interpolation gen.
-
-        // Report Summaries use
-        if (summaries_used > 0)
-        {
-            status() << "FUNCTION SUMMARIES (for " << summaries_used
-                     << " calls) WERE SUBSTITUTED SUCCESSFULLY." << eom;
-        } else {
-            status() << ("ASSERTION(S) HOLD(S) WITH FULL INLINE") << eom;
-        }
-
-        // report results
-        report_success();
-
-    } // End of UNSAT section
-    else // assertion was falsified
-    {
-        assertion_violated(ssaToFormula, symex.guard_expln);
-    }
-
-  final = current_time();
-  omega.get_unwinding_depth();
-
-  status() << "Initial unwinding bound: " << options.get_unsigned_int_option("unwind") << eom;
-  status() << "Total number of steps: " << iteration_counter << eom;
-  if (omega.get_recursive_total() > 0){
-    status() << "Unwinding depth: " <<  omega.get_recursive_max() << " (" << omega.get_recursive_total() << ")" << eom;
-  }
-  status() << "TOTAL TIME FOR CHECKING THIS CLAIM: " << (final - initial) << eom;
-  
-#ifdef PRODUCE_PROOF  
-    if (assertion.is_single_assert()) // If Any or Multi cannot use get_location())
-        status() << ((assertion.is_assert_grouping()) 
-                ? "\n\nMain Checked Assertion: " : "\n\nChecked Assertion: ") <<
-              "\n  file " << assertion.get_location()->source_location.get_file() <<
-              " line " << assertion.get_location()->source_location.get_line() <<
-              " function " << assertion.get_location()->source_location.get_function() << 
-              "\n  " << ((assertion.get_location()->is_assert()) ? "assertion" : "code") <<
-              "\n  " << from_expr(ns, "", assertion.get_location()->guard)  
-              << eom; 
-#endif
-  
-  return is_verified;
+    return assertion_holds_(assertion, store_summaries_with_assertion);
 }
 
 /*******************************************************************
@@ -448,8 +264,8 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
 
 \*******************************************************************/
 
-bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
-        bool store_summaries_with_assertion)
+bool core_checkert::assertion_holds_(const assertion_infot & assertion,
+                                     bool store_summaries_with_assertion)
 {
     absolute_timet initial, final;
     initial = current_time();
@@ -457,7 +273,6 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     // Init the objects:
     const bool no_slicing_option = options.get_bool_option("no-slicing");
     const bool no_ce_option = options.get_bool_option("no-error-trace");
-    assert(options.get_option("logic") != "prop");
     const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
 
     // prepare omega
@@ -1285,22 +1100,16 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     can_refine = !localRefine.get_refined_functions().empty();
     while(can_refine){
         symex.refine_SSA(localRefine.get_refined_functions());
-        // new lra_solver here, because of LRA incrementality problems in OpenSMT
-        smtcheck_opensmt2t_lra lra_solver2 {0, "lra checker (in loop)"};
-        initialize_solver_options(&lra_solver2);
-        // we have new solver, but summary store has references from the old solver, we need to reload
-        status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
-        reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver2, uf_solver);
-        equation.convert(lra_solver2, lra_solver2);
-        is_sat = lra_solver2.solve();
+        equation.convert(lra_solver, lra_solver);
+        is_sat = lra_solver.solve();
         if(!is_sat){
-            extract_and_store_summaries(equation, summary_store, lra_solver2, lra_summary_file_name);
+            extract_and_store_summaries(equation, summary_store, lra_solver, lra_summary_file_name);
             // report results
             report_success();
             status() << ("\n---Go to next assertion; claim verified by LRA with some local Refinement---\n") << eom;
             return true; // claim verified by LRA encoding -> go to next claim
         }
-        localRefine.mark_sum_for_refine(lra_solver2, omega.get_call_tree_root(), equation);
+        localRefine.mark_sum_for_refine(lra_solver, omega.get_call_tree_root(), equation);
         can_refine = !localRefine.get_refined_functions().empty();
     }
 //---------------------------------------------------------------------------
@@ -1325,6 +1134,10 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         status() << "\n--Reading Prop summary file: " << prop_summary_filename <<"\n" << eom;
         this->summary_store->deserialize(std::vector<std::string>{prop_summary_filename});
     }
-    return this->assertion_holds_prop(assertion, false);
+    // MB: workaround around assertion_holds_ expecting to have a decider set already
+    delete decider;
+    decider = new satcheck_opensmt2t{"prop checker", ns};
+    initialize_solver_options(decider);
+    return this->assertion_holds_(assertion, false);
 }
 #endif

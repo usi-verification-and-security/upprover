@@ -38,9 +38,6 @@ public:
   void delete_and_initialize_solver(); // For replacing pop in the solver, remove once pop works
   bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
-  bool assertion_holds_prop(const assertion_infot& assertion, bool store_summaries_with_assertion);
-  bool assertion_holds_smt(const assertion_infot& assertion, bool store_summaries_with_assertion);
-  bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
   void serialize(){
     omega.serialize(options.get_option("save-omega"));
   }
@@ -78,6 +75,9 @@ protected:
     const goto_programt & get_main_function() const {
         return get_goto_functions().function_map.at(goto_functionst::entry_point()).body;
     }
+
+    bool assertion_holds_(const assertion_infot & assertion, bool store_summaries_with_assertion);
+    bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
 
 };
 
