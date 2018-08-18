@@ -986,10 +986,11 @@ void partitioning_target_equationt::extract_interpolants(check_opensmt2t & decid
 std::vector<exprt> partitioning_target_equationt::get_exprs_to_refine() {
     std::vector<exprt> res;
     for (auto const & partition : partitions) {
-        if (partition.has_abstract_representation()) {continue;}
+        if (partition.ignore) {continue;}
+        assert(!partition.has_abstract_representation());
         auto partition_beg = partition.start_it;
         auto partition_end = partition.end_it;
-        for (auto it = partition_beg; it < partition_end; ++it) {
+        for (auto it = partition_beg; it != partition_end; ++it) {
             if (it->ignore) { continue; }
             if (it->is_assignment()) {
                 res.push_back(it->cond_expr);
