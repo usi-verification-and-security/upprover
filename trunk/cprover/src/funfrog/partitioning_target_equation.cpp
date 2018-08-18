@@ -982,3 +982,39 @@ void partitioning_target_equationt::extract_interpolants(check_opensmt2t & decid
     assert(0);
 #endif
 }
+
+std::vector<exprt> partitioning_target_equationt::get_exprs_to_refine() {
+    std::vector<exprt> res;
+    for (auto const & partition : partitions) {
+        if (partition.has_abstract_representation()) {continue;}
+        auto partition_beg = partition.start_it;
+        auto partition_end = partition.end_it;
+        for (auto it = partition_beg; it < partition_end; ++it) {
+            if (it->ignore) { continue; }
+            if (it->is_assignment()) {
+                res.push_back(it->cond_expr);
+            } else if (it->is_assert()) {
+                // MB: copied from previous version
+                exprt tmp(it->cond_expr);
+                exprt fl;
+                fl.make_false();
+                exprt op_ass = exprt(ID_equal);
+                if (tmp.id() == ID_implies) {
+                    exprt tr;
+                    tr.make_true();
+
+                    exprt op_gua = exprt(ID_equal); //
+                    op_gua.operands().push_back(tr);
+                    op_gua.operands().push_back(tmp.operands()[0]);
+                    res.push_back(op_gua);
+
+                    op_ass.operands().push_back(tmp.operands()[1]);
+                } else op_ass.operands().push_back(tmp);
+
+                op_ass.operands().push_back(fl);
+                res.push_back(op_ass);
+            }
+        }
+    }
+    return res;
+}

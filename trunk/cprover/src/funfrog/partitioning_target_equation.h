@@ -64,10 +64,6 @@ public:
   // Fill the (reserved) partition with the stub summary.
   void fill_stub_partition(partition_idt partition_id);
 
-  // Fill the (reserved) partition with the given summaries.
-  void fill_inverted_summary_partition(partition_idt partition_id,
-    const summary_idst* summaries, const summary_ids_sett& used_summaries);
-
   // Begin processing of the given (previously reserved) partition.
   // The following SSA statements will be part of the given partition until
   // a different partition is selected.
@@ -101,7 +97,7 @@ public:
   unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
 
   // FIXME: implement this or deal with it in other way
-  std::vector<exprt> get_exprs_to_refine() {throw std::logic_error{"Not implemented!"};}
+  std::vector<exprt> get_exprs_to_refine();
  
 #ifdef DISABLE_OPTIMIZATIONS  
   void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}
