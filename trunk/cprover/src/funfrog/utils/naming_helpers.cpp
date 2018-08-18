@@ -67,6 +67,12 @@ std::string stripGlobalSuffix(const std::string & name) {
   throw std::logic_error("stripGlobalSuffix called on a name that does not belong to global variable");
 }
 
+unsigned int get_unique_index() {
+    static unsigned int index = 0;
+    index += 1;
+    return index;
+}
+
 const std::string HifrogStringConstants::GLOBAL_OUT_SUFFIX{"#out"};
 const std::string HifrogStringConstants::GLOBAL_INPUT_SUFFIX{"#in"};
 const char HifrogStringConstants::SMTLIB_QUOTE = '|';

@@ -228,16 +228,12 @@ protected:
 
 #ifdef DISABLE_OPTIMIZATIONS
   std::map <std::string,std::string> ite_map_str;
-  std::set <std::string> var_set_str;
   typedef std::map<std::string,std::string>::iterator it_ite_map_str;
-  typedef std::set<std::string>::iterator it_var_set_str;
 
   std::string getVarData(const PTRef &var) {
 	  return string(logic->getSortName(logic->getSortRef(var)));
   }
 #endif
-  void dump_on_error(std::string location);
-
   // Basic prints for debug - KE: Hope I did it right :-)
   char* getPTermString(const PTRef &term) { return logic->printTerm(term);}
 

@@ -442,9 +442,9 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
 #ifdef          DISABLE_OPTIMIZATIONS
                 if (dump_pre_queries)
                 {
-                    char *s = logic->printTerm(logic->getTopLevelIte(ptef));
-                    ite_map_str.insert(make_pair(string(getPTermString(ptef)),std::string(s)));
-                    free(s); s=NULL;    
+                    char *s = logic->printTerm(logic->getTopLevelIte(ptref));
+                    ite_map_str.insert(make_pair(string(getPTermString(ptref)),std::string(s)));
+                    free(s);
                 }
 #endif
             }
@@ -457,7 +457,7 @@ PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
             {
                 char *s = logic->printTerm(logic->getTopLevelIte(ptref));
                 ite_map_str.insert(make_pair(string(getPTermString(ptref)),std::string(s)));
-                free(s); s=NULL;
+                free(s);
             }
 #endif
         } else if(_id == ID_and) {

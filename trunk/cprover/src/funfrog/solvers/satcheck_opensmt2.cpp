@@ -13,7 +13,6 @@ Author: Grigory Fedyukovich
 #ifdef DISABLE_OPTIMIZATIONS
 #include <fstream>
 #include <iostream>
-#include "../hifrog.h"
 #endif
 
 
@@ -327,7 +326,7 @@ propt::resultt satcheck_opensmt2t::prop_solve() {
   // Print Pre-query to file
   if (dump_pre_queries) {
       ofstream out_sat_pre_query;
-      out_sat_pre_query.open(pre_queries_file_name+"_"+std::to_string(get_dump_current_index())+".smt2");  
+      out_sat_pre_query.open(pre_queries_file_name+"_"+std::to_string(get_unique_index())+".smt2");
       
       // Print Header
       mainSolver->getLogic().dumpHeaderToFile(out_sat_pre_query);

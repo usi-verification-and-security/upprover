@@ -94,4 +94,6 @@ inline bool is_main(const std::string& name){
 
   std::string stripGlobalSuffix(const std::string& name);
 
+unsigned int get_unique_index();
+
 #endif //HIFROG_NAMING_HELPERS_H

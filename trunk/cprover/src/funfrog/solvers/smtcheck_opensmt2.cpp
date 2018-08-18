@@ -295,7 +295,7 @@ bool smtcheck_opensmt2t::solve() {
 #ifdef DISABLE_OPTIMIZATIONS
     ofstream out_smt;
     if (dump_pre_queries) {
-        out_smt.open(pre_queries_file_name + "_" + std::to_string(get_dump_current_index()) + ".smt2");
+        out_smt.open(pre_queries_file_name + "_" + std::to_string(get_unique_index()) + ".smt2");
         logic->dumpHeaderToFile(out_smt);
 
         // Print the .oites terms
@@ -498,52 +498,6 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
     assert("Error: using non-SSA symbol in the SMT encoding"
          && (is_L2_symbol || is_nil_or_symex)); // KE: can be new type that we don't take care of yet
     return str;
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t::dump_on_error
-
-  Inputs: location where the error happened
-
- Outputs: cout the current smt encoding (what did so far) to the cout
-
- Purpose: To know what is the problem while encoding the formula
-
-\*******************************************************************/
-void smtcheck_opensmt2t::dump_on_error(std::string location) 
-{
-    //If have problem with declaration of vars - uncommen this!
-#ifdef DISABLE_OPTIMIZATIONS
-    std::cout << "; XXX SMT-lib --> Current Logic Translation XXX" << std::endl;
-    std::cout << "; Declarations from two source: if there is no diff use only one for testing the output" << std::endl;
-    std::cout << "; Declarations from Hifrog :" << std::endl;
-    for(it_var_set_str iterator = var_set_str.begin(); iterator != var_set_str.end(); iterator++) {
-            std::cout << "(declare-fun " << *iterator << ")" << std::endl;
-    }
-    std::cout << "; Declarations from OpenSMT2 :" << std::endl;
-#endif
-    logic->dumpHeaderToFile(std::cout);
-    std::cout << "(assert\n  (and" << std::endl;
-    for(int i = 0; i < top_level_formulas.size(); ++i) {
-        PTRef tmp;
-        logic->conjoinExtras(top_level_formulas[i], tmp);
-        char *s = logic->printTerm(tmp);
-        std::cout << "; XXX Partition: " << i << std::endl << "    " << s << std::endl;
-        free(s); s=NULL;
-    }
-
-    // If code - once needed uncomment this debug flag in the header
-#ifdef DISABLE_OPTIMIZATIONS
-    int size_oite = ite_map_str.size()-1; // since goes from 0-(n-1) 
-    int i = 0;
-    for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
-        std::cout << "; XXX oite symbol: (" << i << " out of " << size_oite << ") "
-                << iterator->first << std::endl << iterator->second << std::endl;
-        i++;
-    }
-#endif
-    std::cout << "))" << std::endl << "(check-sat)" << std::endl;
 }
 
 /*******************************************************************\
@@ -972,13 +926,6 @@ PTRef smtcheck_opensmt2t::symbol_to_ptref(const exprt & expr) {
     else { // Is a function with index, array, pointer
         symbol_ptref = complex_symbol_to_ptref(expr);
     }
-
-#ifdef DISABLE_OPTIMIZATIONS
-    std::string add_var = str + " () " + getVarData(var);
-	if (var_set_str.end() == var_set_str.find(add_var)) {
-            var_set_str.insert(add_var);
-	}
-#endif
 
     return symbol_ptref;
 }

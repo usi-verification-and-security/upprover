@@ -509,7 +509,7 @@ void dependency_checkert::print_SSA_steps()
 {
     for(SSA_stepst::iterator it = SSA_steps.begin(); it!=SSA_steps.end(); ++it)
     {
-      (*it)->output(ns, std::cout);
+      it->output(ns, std::cout);
     }
 }
 #endif
