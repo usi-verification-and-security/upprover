@@ -51,10 +51,11 @@ public:
   }
 
   void add_fle_part_id(fle_part_idt _fle_part_id) {
-    this->fle_part_indices.insert(_fle_part_id);
+    assert(std::find(fle_part_indices.begin(), fle_part_indices.end(),_fle_part_id) == fle_part_indices.end());
+    this->fle_part_indices.push_back(_fle_part_id);
   }
 
-  const std::unordered_set<fle_part_idt>& get_fle_part_ids(){
+  const std::vector<fle_part_idt>& get_fle_part_ids(){
       return this->fle_part_indices;
   }
   
@@ -114,7 +115,7 @@ public:
 private:
     partition_representation representation;
     partition_ifacet * partition_iface;
-    std::unordered_set<fle_part_idt> fle_part_indices;
+    std::vector<fle_part_idt> fle_part_indices;
 
 };
 
