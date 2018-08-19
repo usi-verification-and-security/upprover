@@ -27,12 +27,6 @@ partitioning_target_equationt::partitioning_target_equationt(
 #         ifdef DISABLE_OPTIMIZATIONS
     dump_SSA_tree(false),
     ssa_tree_file_name("__ssa_tree.smt2"),
-    out_local_terms(0),
-    out_terms(out_local_terms),
-    out_local_basic(0),
-    out_basic(out_local_basic),
-    out_local_partition(0),
-    out_partition(out_local_partition),
     terms_counter(0),
     is_first_call(true),
     first_call_expr(0),
@@ -43,9 +37,6 @@ partitioning_target_equationt::partitioning_target_equationt(
   {
 #ifdef DISABLE_OPTIMIZATIONS
     partition_smt_decl = new std::map <std::string,exprt>();
-    out_terms.rdbuf(&terms_buf);
-    out_basic.rdbuf(&basic_buf);
-    out_partition.rdbuf(&partition_buf);
 #endif
 }
 
@@ -360,18 +351,22 @@ std::ostream& partitioning_target_equationt::print_decl_smt(std::ostream& out) {
 
 void partitioning_target_equationt::print_partition() {
     // When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
-    out_partition << "; " << basic_buf.str();
-    if (terms_buf.str().length() > 0) {
+    std::string basic_str = out_basic.str();
+    out_partition << "; " << basic_str;
+    std::string terms_str = out_terms.str();
+    if (terms_str.length() > 0) {
         out_partition << "(assert\n";
         if (terms_counter > 1)
-            out_partition << "  (and\n" << terms_buf.str() << "  )\n)" << '\n';
+            out_partition << "  (and\n" << terms_str << "  )\n)" << '\n';
         else
-            out_partition << terms_buf.str() << ")" << '\n';
+            out_partition << terms_str << ")" << '\n';
     }
 
     // Init for reuse
-    terms_buf.str("");
-    basic_buf.str("");
+    out_terms.str("");
+    out_terms.clear();
+    out_basic.str("");
+    out_basic.clear();
     terms_counter = 0;
 }
 
@@ -387,7 +382,8 @@ void partitioning_target_equationt::print_all_partition(std::ostream& out) {
 
     // When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
     print_decl_smt(out_decl); // print the symbol decl
-    out << decl_buf.str() << partition_buf.str() << "(check-sat)\n";
+    // print each partition
+    out << decl_buf.str() << out_partition.str() << "(check-sat)\n";
 }
 
 void partitioning_target_equationt::getFirstCallExpr() 
@@ -826,10 +822,9 @@ void partitioning_target_equationt::convert_partition(
         return;
     }
     // Convert the corresponding SSA steps
-    auto partition_beg = partition.start_it;
-    auto partition_end = partition.end_it;
-    ::convert_guards(decider, partition_beg, partition_end);
-    ::convert_assignments(decider, partition_beg, partition_end);
+
+    convert_partition_guards(decider, partition);
+    convert_partition_assignments(decider, partition);
     convert_partition_assumptions(decider, partition);
     convert_partition_assertions(decider, partition);
     convert_partition_io(decider, partition);
@@ -873,6 +868,16 @@ void partitioning_target_equationt::convert(check_opensmt2t &decider,
 #endif
     for (auto it = partitions.rbegin(); it != partitions.rend(); ++it) {
         convert_partition(decider, interpolator, *it);
+#   ifdef DISABLE_OPTIMIZATIONS
+        out_basic << "XXX Partition: " << it->get_fle_part_ids().back() << " (ass_in_subtree: "
+                  << it->get_iface().assertion_in_subtree << ")" << " - "
+                  << it->get_iface().function_id.c_str() << " (loc: "
+                  << it->get_iface().call_tree_node.get_call_location() << ", "
+                  << ((it->has_summary_representation()) ?  "SUM"
+                                    : ((it->is_stub()) ? "STUB" : "INL")) << ")" << std::endl;
+
+        print_partition();
+#   endif
     }
 
 #ifdef DISABLE_OPTIMIZATIONS
@@ -1018,4 +1023,27 @@ std::vector<exprt> partitioning_target_equationt::get_exprs_to_refine() {
         }
     }
     return res;
+}
+
+void partitioning_target_equationt::convert_partition_guards(check_opensmt2t & decider, partitiont & partition) {
+    ::convert_guards(decider, partition.start_it, partition.end_it);
+#ifdef DISABLE_OPTIMIZATIONS
+    for(auto it = partition.start_it; it != partition.end_it; ++it) {
+        if (it->ignore) { continue; }
+        expr_ssa_print_guard(out_terms, it->guard, partition_smt_decl);
+        if (!it->guard.is_boolean())
+            terms_counter++; // SSA -> SMT shall be all in a new function
+    }
+#endif
+
+}
+
+void partitioning_target_equationt::convert_partition_assignments(check_opensmt2t & decider, partitiont & partition) {
+    ::convert_assignments(decider, partition.start_it, partition.end_it);
+#     ifdef     DISABLE_OPTIMIZATIONS
+    for(auto it = partition.start_it; it != partition.end_it; ++it) {
+        expr_ssa_print(out_terms << "    ", it->cond_expr, partition_smt_decl, false);
+        terms_counter++;
+    }
+#     endif
 }

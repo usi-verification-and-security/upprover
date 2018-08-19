@@ -18,7 +18,7 @@ Author: Ondrej Sery
 
 #include <util/symbol.h>
 #ifdef DISABLE_OPTIMIZATIONS
-#include <iostream>
+#include <sstream>
 #include "expr_pretty_print.h"
 #endif
 
@@ -110,7 +110,13 @@ public:
 protected:
     void convert_partition(check_opensmt2t & decider,
                            interpolating_solvert & interpolator, partitiont & partition);
-    // Convert a specific partition assumptions of SSA steps
+    void convert_partition_guards(check_opensmt2t &decider,
+                                       partitiont& partition);
+
+    void convert_partition_assignments(check_opensmt2t &decider,
+                                       partitiont& partition);
+
+  // Convert a specific partition assumptions of SSA steps
     void convert_partition_assumptions(check_opensmt2t &decider,
                                        partitiont& partition);
     // Convert a specific partition assertions of SSA steps
@@ -137,17 +143,11 @@ protected:
   
   // For SMT-Lib Translation - Move it later to a new class
   std::map <std::string,exprt>* partition_smt_decl;
-  std::ostream out_local_terms; //for prints SSA - remove later
-  std::ostream& out_terms; // for prints SSA - remove later
-  std::stringbuf terms_buf; // for prints SSA - remove later
+  std::stringstream out_terms; // for prints SSA - remove later
 
-  std::ostream out_local_basic; //for prints SSA - remove later
-  std::ostream& out_basic; // for prints SSA - remove later
-  std::stringbuf basic_buf; // for prints SSA - remove later
+  std::stringstream out_basic; // for prints SSA - remove later
 
-  std::ostream out_local_partition; //for prints SSA - remove later
-  std::ostream& out_partition; // for prints SSA - remove later
-  std::stringbuf partition_buf; // for prints SSA - remove later
+  std::stringstream out_partition; // for prints SSA - remove later
 
   int terms_counter; // for prints SSA - remove later
   bool is_first_call; // for prints SSA - remove later
