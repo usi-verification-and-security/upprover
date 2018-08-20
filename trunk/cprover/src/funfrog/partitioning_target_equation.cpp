@@ -869,6 +869,7 @@ void partitioning_target_equationt::convert(check_opensmt2t &decider,
     for (auto it = partitions.rbegin(); it != partitions.rend(); ++it) {
         convert_partition(decider, interpolator, *it);
 #   ifdef DISABLE_OPTIMIZATIONS
+        if (it->get_fle_part_ids().empty()) { continue;} // NO conversion happend
         out_basic << "XXX Partition: " << it->get_fle_part_ids().back() << " (ass_in_subtree: "
                   << it->get_iface().assertion_in_subtree << ")" << " - "
                   << it->get_iface().function_id.c_str() << " (loc: "
@@ -991,8 +992,8 @@ void partitioning_target_equationt::extract_interpolants(check_opensmt2t & decid
 std::vector<exprt> partitioning_target_equationt::get_exprs_to_refine() {
     std::vector<exprt> res;
     for (auto const & partition : partitions) {
-        if (partition.ignore) {continue;}
-        assert(!partition.has_abstract_representation());
+        if (partition.ignore || partition.has_abstract_representation()) {continue;}
+        assert(partition.is_real_ssa_partition());
         auto partition_beg = partition.start_it;
         auto partition_end = partition.end_it;
         for (auto it = partition_beg; it != partition_end; ++it) {

@@ -47,8 +47,11 @@ public:
           bool _use_slicing,
 	        bool _do_guard_expl,
           unsigned int _max_unwind,
-          bool partial_loops = false
+          bool partial_loops
           );
+
+    symex_assertion_sumt(const summary_storet &, const goto_functionst &, call_tree_nodet &, const namespacet &, symbol_tablet&, partitioning_target_equationt&, message_handlert&,
+  const goto_programt&, unsigned , bool, bool, bool, bool, bool) = delete;
           
   virtual ~symex_assertion_sumt() override;
 
