@@ -576,31 +576,6 @@ void smtcheck_opensmt2t::store_new_unsupported_var(const exprt& expr, const PTRe
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::bind_var2refined_var
-
- Inputs: two ptref, one is a refined version of the other
-
- Outputs: (= refined coarse)
-
- Purpose: to connect the rest of the translation to the most refined version 
- * of expression. 
- * 
- * TODO: add pop incase we need to refine more than once!
-
-\*******************************************************************/
-literalt smtcheck_opensmt2t::bind_var2refined_var(PTRef ptref_coarse, PTRef ptref_refined) {
-    // Pop the old version 
-    // TODO logic->pop(ptref_coarse); // KE: or something like this or push prev ret of it
-
-    // Create the new refined version
-    PTRef ret = logic->mkEq(ptref_coarse, ptref_refined);
-    
-    // Keep the new ptref and return the new one
-    return push_variable(ret);
-}
-
-/*******************************************************************\
-
 Function: smtcheck_opensmt2t::get_smt_func_decl
 
  Inputs: name of the function and its signature
