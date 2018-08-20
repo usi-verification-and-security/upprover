@@ -111,7 +111,7 @@ add_executable(hifrog main.cpp
 
 target_include_directories(hifrog-lib PUBLIC ${PROJECT_SOURCE_DIR})
 
-target_compile_options(hifrog-lib PUBLIC  -Wall)
+target_compile_options(hifrog-lib PRIVATE -Wall)
 
 if(PRODUCE_PROOF)
     #message("Compiling with PRODUCE_PROOF")
