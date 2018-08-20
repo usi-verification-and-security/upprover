@@ -75,7 +75,6 @@ public:
 
   void assert_literal(literalt lit) override{
       set_to_true(literalToPTRef(lit));
-//      current_partition.push_back(literalToPTRef(lit));
   }
 
 #ifdef PRODUCE_PROOF

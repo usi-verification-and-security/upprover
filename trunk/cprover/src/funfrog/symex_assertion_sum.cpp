@@ -20,7 +20,6 @@
 #include "partition_iface.h"
 #include "utils/naming_helpers.h"
 #include "partitioning_target_equation.h"
-#include "summary_store.h"
 #include "assertion_info.h"
 #include "utils/expressions_utils.h"
 
@@ -39,24 +38,12 @@
  Constructor
 
 \*******************************************************************/
-symex_assertion_sumt::symex_assertion_sumt(
-  const summary_storet & _summary_store,
-  const goto_functionst & _goto_functions,
-  call_tree_nodet &_root,
-  const namespacet &_ns,
-  symbol_tablet &_new_symbol_table,
-  partitioning_target_equationt &_target,
-  message_handlert &_message_handler,
-  const goto_programt &_goto_program,
-  unsigned _last_assertion_loc,
-  bool _single_assertion_check,
-  bool _use_slicing,
-  bool _do_guard_expl,
-  unsigned int _max_unwind,
-  bool partial_loops
-) :
+symex_assertion_sumt::symex_assertion_sumt(const goto_functionst & _goto_functions, call_tree_nodet & _root, const namespacet & _ns,
+                                           symbol_tablet & _new_symbol_table, partitioning_target_equationt & _target,
+                                           message_handlert & _message_handler, const goto_programt & _goto_program,
+                                           unsigned _last_assertion_loc, bool _single_assertion_check, bool _use_slicing,
+                                           bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops) :
   goto_symext(_message_handler, _ns, _new_symbol_table, _target),
-  summary_store(_summary_store),
   goto_functions(_goto_functions),
   call_tree_root(_root),
   current_call_tree_node(&_root),
@@ -289,7 +276,7 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
     if (use_slicing) {
       before=current_time();
       log.statistics() << "All SSA steps: " << equation.SSA_steps.size() << log.eom;
-        partitioning_slice(equation, summary_store);
+        partitioning_slice(equation);
       log.statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << log.eom;
       after=current_time();
       log.statistics() << "SLICER TIME: " << (after-before) << log.eom;
@@ -1149,51 +1136,8 @@ void symex_assertion_sumt::summarize_function_call(
   log.statistics() << "Substituting interpolant" << log.eom;
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
-  assert(summary_store.has_summaries(id2string(function_id)));
-    equation.fill_summary_partition(partition_id, summary_store.get_summaries(id2string(function_id)));
+    equation.fill_summary_partition(partition_id, id2string(function_id));
 }
-
-/*******************************************************************
-
- Function: symex_assertion_sumt::fill_inverted_summary
-
- Inputs:
-
- Outputs:
-
- Purpose: Prepares a partition with an inverted summary. This is used
- to verify that a function still implies its summary (in upgrade check).
-
-\*******************************************************************/
-//void symex_assertion_sumt::fill_inverted_summary(
-//        call_tree_nodet& summary_info,
-//        statet& state,
-//        partition_ifacet& inlined_iface)
-//{
-//  // We should use an already computed summary as an abstraction
-//  // of the function body
-//  const irep_idt& function_id = summary_info.get_function_id();
-//
-//  log.statistics() << "*** INVERTED SUMMARY used for function: " << function_id << log.eom;
-//
-//  partition_ifacet &partition_iface = new_partition_iface(summary_info, partitiont::NO_PARTITION, 0);
-//
-//  partition_iface.share_symbols(inlined_iface);
-//
-//  partition_idt partition_id = equation.reserve_partition(partition_iface);
-//
-//  log.statistics() << "Substituting interpolant (part:" << partition_id << ")" << log.eom;
-//
-//  std::string function_name = id2string(function_id);
-////# ifdef DEBUG_PARTITIONING
-//  log.statistics() << "   summaries available: " << summary_store.get_summaries(function_name).size() << log.eom;
-//  log.statistics() << "   summaries used: " << summary_info.get_used_summaries().size() << log.eom;
-////# endif
-//
-//  equation.fill_inverted_summary_partition(partition_id,
-//          &summary_store.get_summaries(function_name),
-//          summary_info.get_used_summaries());
-//}
 
 /*******************************************************************
 

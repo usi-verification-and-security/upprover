@@ -59,7 +59,7 @@ public:
     void refine_partition(partition_idt partition_id);
 
   // Fill the (reserved) partition with the given summaries.
-  void fill_summary_partition(partition_idt partition_id, const summary_idst & summaries);
+  void fill_summary_partition(partition_idt partition_id, const std::string & function_id);
 
   // Fill the (reserved) partition with the stub summary.
   void fill_stub_partition(partition_idt partition_id);
@@ -96,8 +96,9 @@ public:
 
   unsigned get_SSA_steps_count() const { return SSA_steps.size(); }
 
-  // FIXME: implement this or deal with it in other way
   std::vector<exprt> get_exprs_to_refine();
+
+  const summary_storet & get_summary_store() const { return summary_store; }
  
 #ifdef DISABLE_OPTIMIZATIONS  
   void set_dump_SSA_tree(bool f) { dump_SSA_tree = f;}

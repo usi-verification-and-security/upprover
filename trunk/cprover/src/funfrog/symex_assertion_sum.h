@@ -25,7 +25,6 @@ class assertion_infot;
 class call_tree_nodet;
 class partitioning_target_equationt;
 class partition_ifacet;
-class summary_storet;
 
 using partition_iface_ptrst = std::list<partition_ifacet*>;
 
@@ -33,24 +32,14 @@ class symex_assertion_sumt : public goto_symext, messaget
 {
 public:
   // TODO: create some option class to group the options together, this starts to look ridiculous
-  symex_assertion_sumt(
-          const summary_storet & summary_store,
-          const goto_functionst & goto_functions,
-          call_tree_nodet &_summary_info,
-          const namespacet &_ns,
-          symbol_tablet &_new_symbol_table,
-          partitioning_target_equationt &_target,
-          message_handlert &_message_handler,
-          const goto_programt &_goto_program,
-          unsigned _last_assertion_loc,
-          bool _single_assertion_check,
-          bool _use_slicing,
-	        bool _do_guard_expl,
-          unsigned int _max_unwind,
-          bool partial_loops
-          );
+  symex_assertion_sumt(const goto_functionst & goto_functions, call_tree_nodet & _summary_info,
+                       const namespacet & _ns, symbol_tablet & _new_symbol_table,
+                       partitioning_target_equationt & _target, message_handlert & _message_handler,
+                       const goto_programt & _goto_program, unsigned _last_assertion_loc,
+                       bool _single_assertion_check, bool _use_slicing, bool _do_guard_expl, unsigned int _max_unwind,
+                       bool partial_loops);
 
-    symex_assertion_sumt(const summary_storet &, const goto_functionst &, call_tree_nodet &, const namespacet &, symbol_tablet&, partitioning_target_equationt&, message_handlert&,
+    symex_assertion_sumt(const goto_functionst &, call_tree_nodet &, const namespacet &, symbol_tablet&, partitioning_target_equationt&, message_handlert&,
   const goto_programt&, unsigned , bool, bool, bool, bool, bool) = delete;
           
   virtual ~symex_assertion_sumt() override;
@@ -109,8 +98,6 @@ private:
     call_tree_nodet& call_tree_node;
     partition_ifacet& partition_iface;
   };
-
-  const summary_storet & summary_store;
 
   const goto_functionst& goto_functions;
 

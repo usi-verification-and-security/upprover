@@ -295,11 +295,12 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
 #endif
   
     call_tree_nodet& call_tree_root = omega.get_call_tree_root();
-    symex_assertion_sumt symex = symex_assertion_sumt(
-            *summary_store, get_goto_functions(), call_tree_root, ns, new_symbol_table,
-            equation, message_handler, get_main_function(), last_assertion_loc,
-            single_assertion_check, !no_slicing_option, !no_ce_option, unwind_bound,
-            options.get_bool_option("partial-loops"));
+    symex_assertion_sumt symex = symex_assertion_sumt(get_goto_functions(), call_tree_root, ns, new_symbol_table,
+                                                      equation,
+                                                      message_handler, get_main_function(), last_assertion_loc,
+                                                      single_assertion_check, !no_slicing_option, !no_ce_option,
+                                                      unwind_bound,
+                                                      options.get_bool_option("partial-loops"));
 
     refiner_assertion_sumt refiner {
               *summary_store, omega,
@@ -969,7 +970,7 @@ void reload_summaries(const namespacet &ns,
             if(should_summarize){
                 // clear the old information and load new information from the store
                 // fill the partition with new summaries
-                eq.fill_summary_partition(partition.get_iface().partition_id, store.get_summaries(function_name));
+                eq.fill_summary_partition(partition.get_iface().partition_id, function_name);
                 assert(partition.has_summary_representation());
             }
             else{
@@ -1015,20 +1016,19 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     omega.set_initial_precision(assertion, has_summary);
     partitioning_target_equationt equation {ns, summary_store, false};
 
-    symex_assertion_sumt symex {summary_store,
-                                get_goto_functions(),
-                                omega.get_call_tree_root(),
-                                ns,
-                                new_symbol_table,
-                                equation,
-                                message_handler,
-                                get_main_function(),
-                                omega.get_last_assertion_loc(),
-                                omega.is_single_assertion_check(),
-                                !options.get_bool_option("no-slicing"),
-                                !options.get_bool_option("no-error-trace"),
-                                options.get_unsigned_int_option("unwind"),
-                                options.get_bool_option("partial-loops"),
+    symex_assertion_sumt symex{get_goto_functions(),
+                               omega.get_call_tree_root(),
+                               ns,
+                               new_symbol_table,
+                               equation,
+                               message_handler,
+                               get_main_function(),
+                               omega.get_last_assertion_loc(),
+                               omega.is_single_assertion_check(),
+                               !options.get_bool_option("no-slicing"),
+                               !options.get_bool_option("no-error-trace"),
+                               options.get_unsigned_int_option("unwind"),
+                               options.get_bool_option("partial-loops"),
     };
 
     bool assertion_holds = symex.prepare_SSA(assertion);

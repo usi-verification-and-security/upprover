@@ -422,8 +422,8 @@ Function: partitioning_slice
 
 \*******************************************************************/
 
-void partitioning_slice(partitioning_target_equationt & equation, const summary_storet & summary_store)
+void partitioning_slice(partitioning_target_equationt & equation)
 {
   partitioning_slicet slice;
-    slice.slice(equation, summary_store);
+    slice.slice(equation, equation.get_summary_store());
 }

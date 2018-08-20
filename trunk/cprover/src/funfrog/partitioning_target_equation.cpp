@@ -106,11 +106,15 @@ void partitioning_target_equationt::refine_partition(partition_idt partition_id)
 
 
 
-void partitioning_target_equationt::fill_summary_partition(partition_idt partition_id, const summary_idst & summaries)
+void partitioning_target_equationt::fill_summary_partition(partition_idt partition_id, const string & function_id)
 {
-    if(summaries.empty()){
-        throw std::logic_error{"Trying to set non-existent summaries to a partition"};
+    assert(summary_store.has_summaries(function_id));
+    if(!summary_store.has_summaries(function_id)){
+        throw std::logic_error{"Trying to set non-existent summaries to a partition for " + function_id};
     }
+    auto const & summaries = summary_store.get_summaries(function_id);
+    assert(!summaries.empty());
+
     partitiont& sum_partition = partitions.at(partition_id);
 
     sum_partition.add_summary_representation();

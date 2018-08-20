@@ -99,10 +99,10 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 #endif
 
   call_tree_nodet& summary_info = omega.get_call_tree_root();
-  symex_assertion_sumt symex {
-            dummy, omega.get_goto_functions(), summary_info, ns, temp_table,
-            equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, true, true, unwind_bound, false};
+  symex_assertion_sumt symex{
+          omega.get_goto_functions(), summary_info, ns, temp_table,
+          equation, message_handler, goto_program, last_assertion_loc,
+          single_assertion_check, true, true, unwind_bound, false};
 
   //setup_unwind(symex);
 

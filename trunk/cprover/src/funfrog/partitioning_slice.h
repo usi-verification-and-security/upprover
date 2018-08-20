@@ -49,6 +49,6 @@ protected:
 };
 
 // Slice an equation with respect to the assertions contained therein
-void partitioning_slice(partitioning_target_equationt & equation, const summary_storet & summary_store);
+void partitioning_slice(partitioning_target_equationt & equation);
 
 #endif
