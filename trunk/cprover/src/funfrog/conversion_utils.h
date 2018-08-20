@@ -37,7 +37,7 @@ template<typename Iter>
 void convert_assumptions(check_opensmt2t & decider, Iter const & beg, Iter const & end) {
     for (auto it = beg; it != end; ++it) {
         if (it->is_assume() && !it->ignore) {
-            it->cond_literal = it->ignore ? const_literal(true) : decider.bool_expr_to_literal(it->cond_expr);
+            it->cond_literal = it->ignore ? const_literal(true) : convert_expr(decider, it->cond_expr);
         }
     }
 }

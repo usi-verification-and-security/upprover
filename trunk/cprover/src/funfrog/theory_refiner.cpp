@@ -102,7 +102,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   symex_assertion_sumt symex {
             dummy, omega.get_goto_functions(), summary_info, ns, temp_table,
             equation, message_handler, goto_program, last_assertion_loc,
-            single_assertion_check, true, true, unwind_bound, true};
+            single_assertion_check, true, true, unwind_bound, false};
 
   //setup_unwind(symex);
 

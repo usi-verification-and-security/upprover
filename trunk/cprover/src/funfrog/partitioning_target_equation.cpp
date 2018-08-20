@@ -1041,10 +1041,12 @@ void partitioning_target_equationt::convert_partition_guards(check_opensmt2t & d
 
 void partitioning_target_equationt::convert_partition_assignments(check_opensmt2t & decider, partitiont & partition) {
     ::convert_assignments(decider, partition.start_it, partition.end_it);
-#     ifdef     DISABLE_OPTIMIZATIONS
+#ifdef DISABLE_OPTIMIZATIONS
     for(auto it = partition.start_it; it != partition.end_it; ++it) {
-        expr_ssa_print(out_terms << "    ", it->cond_expr, partition_smt_decl, false);
-        terms_counter++;
+        if(it->is_assignment() && !it->ignore){
+            expr_ssa_print(out_terms << "    ", it->cond_expr, partition_smt_decl, false);
+            terms_counter++;
+        }
     }
-#     endif
+# endif
 }
