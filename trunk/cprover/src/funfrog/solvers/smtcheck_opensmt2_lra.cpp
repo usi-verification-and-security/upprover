@@ -42,6 +42,7 @@ void smtcheck_opensmt2t_lra::initializeSolver(const char* name)
     // KE: End of fix
     
     // To avoid issues with type constraints for LRA
+    ptr_assert_var_constraints = logic->getTerm_true();
     if (type_constraints_level > 0)
         std::cout << "Adding Type Constraints (" << type_constraints_level << ")" 
                 << ((type_constraints_level == 1 ? " for type constraints on non-deterministic input" : ""))
@@ -68,7 +69,7 @@ smtcheck_opensmt2t_lra::~smtcheck_opensmt2t_lra()
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lra::type_cast
+Function: smtcheck_opensmt2t_lra::ltype_cast
 
   Inputs:
 
@@ -78,7 +79,7 @@ Function: smtcheck_opensmt2t_lra::type_cast
  * 
  All is Real in LRA so suppose to work id number to number
 \*******************************************************************/
-literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr) 
+literalt smtcheck_opensmt2t_lra::ltype_cast(const exprt &expr) 
 {
     // KE: New Cprover code - patching
     bool is_expr_bool = (expr.is_boolean() || (expr.type().id() == ID_c_bool)); 
@@ -92,7 +93,7 @@ literalt smtcheck_opensmt2t_lra::type_cast(const exprt &expr)
     } else if (is_expr_bool && (expr.operands())[0].is_constant()) {
     	std::string val = extract_expr_str_number((expr.operands())[0]);
     	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
-    	return const_var(!val_const_zero);
+    	return lconst(!val_const_zero);
     } else if (is_number(expr.type()) && is_operands_bool) {
     	// Cast from Boolean to Real - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
@@ -151,7 +152,7 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
         ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
         //cout << "; XXX oite symbol (labs):  (" << ite_map_str.size() << ")" 
         //            << string(getPTermString(ptl)) << endl << s << endl;
-        free(s); s=NULL;        
+        free(s); s=nullptr;        
     }
 #endif
     
@@ -159,8 +160,8 @@ literalt smtcheck_opensmt2t_lra::labs(const exprt &expr)
 
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
-    cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s); s=NULL;
+    std::cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    free(s); s=nullptr;
 #endif
 
     return l;

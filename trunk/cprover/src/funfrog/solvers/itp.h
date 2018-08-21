@@ -4,6 +4,10 @@
 #include <solvers/prop/literal.h>
 #include <solvers/flattening/boolbv.h>
 #include <opensmt/PTRef.h>
+#include <opensmt/Tterm.h>
+#include <opensmt/opensmt2.h>
+
+class check_opensmt2t;
 
 class itpt
 {
@@ -12,8 +16,6 @@ public:
   virtual ~itpt() {} // d'tor
 
   virtual bool is_trivial() const =0;
-
-  virtual itpt* get_nodet() =0;
 
   // For SAT & SMT code
   literalt new_variable() {
@@ -32,12 +34,11 @@ public:
   virtual void serialize(std::ostream& out) const=0;
   virtual void deserialize(std::istream& in)=0;
   
-  virtual bool check_implies(const itpt& second) const=0;
-
   // Getters & Setters
   PTRef getInterpolant() { return interpolant; }
   void setInterpolant(PTRef pt) { interpolant = pt; }
-
+  virtual void setTterm(Tterm& t) =0; // moved to smt_itp { tterm = &t; }
+  virtual void setDecider(check_opensmt2t *_s) =0; // moved to smt_itp { logic = _l; }
 
   bool is_valid(){ return valid; };
   void set_valid(bool _valid){ valid = _valid; };

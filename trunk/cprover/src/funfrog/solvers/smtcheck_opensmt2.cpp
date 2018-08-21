@@ -27,17 +27,11 @@ using namespace std;
 #include <iostream>
 #endif
 
-unsigned smtcheck_opensmt2t::unsupported2var = 0; // Count how many instance of unsupported we have for all deciders
-
-// Free all resources related to OpenSMT2
-void smtcheck_opensmt2t::freeSolver()
-{
-    delete osmt;
-}
-
 // Free all inner objects
 smtcheck_opensmt2t::~smtcheck_opensmt2t()
 {
+    top_level_formulas.reset();
+    assert(top_level_formulas.size() == 0);
     freeSolver();
 }
 
@@ -58,7 +52,7 @@ fle_part_idt smtcheck_opensmt2t::new_partition()
 {
 
   // Finish the previous partition if any
-  if (current_partition != NULL)
+  if (current_partition != nullptr)
     close_partition();
 
   current_partition = new vec<PTRef>();
@@ -131,7 +125,7 @@ PTRef smtcheck_opensmt2t::convert_symbol(const exprt &expr)
     return literals[l.var_no()];
 }
 
-literalt smtcheck_opensmt2t::const_var(bool val)
+literalt smtcheck_opensmt2t::lconst(bool val)
 {
     PTRef c = val ? logic->getTerm_true() : logic->getTerm_false();
     return push_variable(c); // Keeps the new PTRef + create for it a new index/literal
@@ -156,13 +150,6 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
 
     assert(tlp != PTRef_Undef);
     current_partition->push(tlp);
-}
-
-void smtcheck_opensmt2t::set_to_true(literalt refined_l)
-{
-    literalt l = refined_l;
-    PTRef lp = literals[l.var_no()];
-    set_to_true(lp);
 }
 
 void smtcheck_opensmt2t::set_to_false(const exprt &expr)
@@ -256,14 +243,14 @@ literalt smtcheck_opensmt2t::lnot(literalt l){
 
 literalt smtcheck_opensmt2t::lconst(const exprt &expr){
     if (expr.is_boolean()) {
-        return const_var(expr.is_true());
+        return lconst(expr.is_true());
     } else if (expr.type().id() == ID_c_bool) { // KE: New Cprover code - patching
         std::string num(expr.get_string(ID_value));
         assert(num.size() == 8); // if not 8, but longer, please add the case
-        return const_var(num.compare("00000000") != 0);
+        return lconst(num.compare("00000000") != 0);
         //std::cout << "Check? " << (num.compare("00000000") != 0) << " for string " << num << std::endl;
     } else {
-        return const_var_Number(expr); // KE: FIXME!
+        return lconst_number(expr);
     }
 }
 
@@ -293,36 +280,6 @@ void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const std::vector< std
 }
 #endif
 
-// FIXME: move to smt_itpt class
-void
-smtcheck_opensmt2t::fill_vars(PTRef itp, std::map<std::string, PTRef>& subst)
-{
-#ifdef PRODUCE_PROOF
-    std::set<PTRef> visited;
-    std::queue<PTRef> q;
-    q.push(itp);
-    while(!q.empty())
-    {
-        PTRef p = q.front();
-        q.pop();
-        if(visited.find(p) != visited.end())
-            continue;
-        if(logic->isVar(p))
-            subst[logic->getSymName(p)] = p;
-        else
-        {
-            Pterm& pt = logic->getPterm(p);
-            for(int i = 0; i < pt.size(); ++i)
-                q.push(pt[i]);
-        }
-        visited.insert(p);
-    }
-#else
-    assert(0);
-#endif
-}
-
-
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t::get_interpolant
@@ -345,9 +302,9 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
   
   const char* msg2 = nullptr;
   osmt->getConfig().setOption(SMTConfig::o_verbosity, verbosity, msg2);
-  //if (msg2!=NULL) { free((char *)msg2); msg2=NULL; } // If there is an error consider printing the msg
+  //if (msg2!=nullptr) { free((char *)msg2); msg2=nullptr; } // If there is an error consider printing the msg
   osmt->getConfig().setOption(SMTConfig::o_certify_inter, SMTOption(certify), msg2);
-  //if (msg2!=NULL) free((char *)msg2); // If there is an error consider printing the msg
+  //if (msg2!=nullptr) free((char *)msg2); // If there is an error consider printing the msg
   
   // Set labeling functions
   osmt->getConfig().setBooleanInterpolationAlgorithm(itp_algorithm);
@@ -386,6 +343,7 @@ void smtcheck_opensmt2t::get_interpolant(const interpolation_taskt& partition_id
     char *s = logic->printTerm(interpolants.back()->getInterpolant());
     std::cout << "Interpolant " << i << " = " << s << '\n';
     free(s);
+    s=nullptr;
 #endif
   }
 }
@@ -432,8 +390,10 @@ bool smtcheck_opensmt2t::solve() {
 
 #ifdef DISABLE_OPTIMIZATIONS
   ofstream out_smt;
+  std::string file;
   if (dump_pre_queries) {
-    out_smt.open(pre_queries_file_name+"_"+std::to_string(get_dump_current_index())+".smt2");  
+    file=pre_queries_file_name+"_"+std::to_string(get_dump_current_index())+".smt2";
+    out_smt.open(file); 
     logic->dumpHeaderToFile(out_smt);
     
     // Print the .oites terms
@@ -456,6 +416,7 @@ bool smtcheck_opensmt2t::solve() {
             char* s = logic->printTerm(top_level_formulas[i]);
             out_smt << "(assert \n" << s << "\n)\n";
             free(s);
+            s=nullptr;
         }
 #endif
         mainSolver->insertFormula(top_level_formulas[i], &msg);
@@ -471,24 +432,21 @@ bool smtcheck_opensmt2t::solve() {
         out_smt.close();
     }
 #endif    
-//#ifdef DISABLE_OPTIMIZATIONS // Use if there are issues with the variables
-//    dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
-//#endif
 
     pushed_formulas = top_level_formulas.size();
     sstat r = mainSolver->check();
 
     // Inc. Mode Info.
     if ((no_literals_last_solved != 0) && (no_literals_last_solved < no_literals))
-        std::cout << ";; Using OpenSMT Incremental Mode with " 
-                  << (no_literals - no_literals_last_solved) << " additional literals" 
+        std::cout << ";; Using OpenSMT Incremental Mode with "
+                  << (no_literals - no_literals_last_solved) << " additional literals"
                   << std::endl;
     no_literals_last_solved = no_literals;
- 
+
     // Results from Solver
     if (r == s_True) {
         return true;
-    } else if (r == s_False && has_unsupported_info()) {
+    } else if (r == s_False && has_overappox_mapping()) {
         // skip 
     } else if (r == s_False) {
 #ifdef PRODUCE_PROOF       
@@ -500,7 +458,6 @@ bool smtcheck_opensmt2t::solve() {
 
     return false;
 }
-
 
 /*******************************************************************\
 
@@ -517,14 +474,14 @@ Function: smtcheck_opensmt2t::close_partition
 
 void smtcheck_opensmt2t::close_partition()
 {
-  assert(current_partition != NULL);
+  assert(current_partition != nullptr);
   if (partition_count > 0){
     if (current_partition->size() > 1){
       PTRef pand = logic->mkAnd(*current_partition);
 #ifdef DEBUG_SMT2SOLVER
       char* s= logic->printTerm(pand);
       std::cout << "; Pushing to solver: " << s << endl;
-      free(s); s=NULL;
+      free(s); s=nullptr;
 #endif
       top_level_formulas.push(pand);
     } else if (current_partition->size() == 1){
@@ -533,7 +490,7 @@ void smtcheck_opensmt2t::close_partition()
       std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
       char* s= logic->printTerm(pand);
       std::cout << "; Pushing to solver: " << s << endl;
-      free(s); s=NULL;
+      free(s); s=nullptr;
 #endif
       top_level_formulas.push(pand);
     } /*else {
@@ -542,30 +499,7 @@ void smtcheck_opensmt2t::close_partition()
     } */
   }
 
-  current_partition = NULL;
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t::getVars
-
-  Inputs: -
-
- Outputs: a set of all variables that used in the smt formula
-
- Purpose: get all the vars to create later on the counter example path
-
-\*******************************************************************/
-std::set<PTRef>* smtcheck_opensmt2t::getVars()
-{
-    std::set<PTRef>* ret = new std::set<PTRef>();
-    for(it_literals it = literals.begin(); it != literals.end(); it++)
-    {
-        if ((logic->isVar(*it)) && (ret->count(*it) < 1))
-            ret->insert(*it);
-    }
-
-    return ret;
+  current_partition = nullptr;
 }
 
 /*******************************************************************\
@@ -611,7 +545,7 @@ std::string smtcheck_opensmt2t::getSimpleHeader()
             continue;
         if (line.find("nil () Bool")!=std::string::npos)
             continue;
-        if (line.find(HifrogStringConstants::UNSUPPORTED_VAR_NAME)==std::string::npos)
+        if (line.find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME)==std::string::npos)
         {       
             if (line.find("|")!=std::string::npos) 
                 continue;
@@ -631,7 +565,7 @@ std::string smtcheck_opensmt2t::getSimpleHeader()
         {
             char* name = logic->printTerm(*it);
             std::string line(name);
-            free(name); name=NULL;
+            free(name); name=nullptr;
             
             if (line.compare("0") == 0) 
                 continue;
@@ -650,36 +584,6 @@ std::string smtcheck_opensmt2t::getSimpleHeader()
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::extract_expr_str_number
-
-  Inputs: expression that is a constant (+/-/int/float/rational)
-
- Outputs: a string of the number
-
- Purpose: assure we are extracting the number correctly.
-
- expr.get(ID_C_cformat).c_str() - doesn't work for negative numbers!
- * And thanks god (the starts and mother nature) that this option 
- * is NOT in new Cprover framework
-
-\*******************************************************************/
-std::string smtcheck_opensmt2t::extract_expr_str_number(const exprt &expr)
-{
-    std::string const_val = expr.print_number_2smt(); // DO NOT CHANGE TO cprover util code as it works only for positive or unsigned!
-    //(unless upgrade, please keep the checks/assert!)
-    // If can be that we missed more cases... use the debug prints to check conversions!!
-#ifdef DEBUG_SSA_SMT_NUMERIC_CONV
-    std::cout << "; EXTRACTING NUMBER " << const_val
-            << " (ORIG-EXPR " << expr.get(ID_value) 
-            << " :: " << expr.type().id() << ")" << endl;
-    //std::cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << " with TYPE " << expr.type().id_string() << endl;
-#endif
-
-    return const_val;
-}
-
-/*******************************************************************\
-
 Function: smtcheck_opensmt2t::extract_expr_str_name
 
   Inputs: expression that is a var
@@ -691,42 +595,18 @@ Function: smtcheck_opensmt2t::extract_expr_str_name
 \*******************************************************************/
 std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 {
-    std::string str = fix_symex_nondet_name(expr);
-    str.erase(std::remove(str.begin(),str.end(),'\\'),str.end());
-    if (is_cprover_rounding_mode_var(str)) 
-    {
-    #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
-        std::cout << "; " << str << " :: " << expr.id() << " - Should Not Add Rounding Model\n" << expr.pretty() << std::endl;
-    #else
-        std::cout << "EXIT WITH ERROR: Using Rounding Model not in propositional logic " << str << std::endl;
-        assert(false);
-    #endif
-    }
-
-    if (is_cprover_builtins_var(str)) {
-    #ifdef DEBUG_SSA_SMT // KE - Remove assert if you wish to have debug info
-        std::cout << "; " << str << " :: " << expr.id() << " - Should Not Add Cprover Built-ins\n" << expr.pretty() << std::endl;
-        assert(false); //KE: when found all reasons - uncomment
-    #else
-        std::cout << "EXIT WITH ERROR: Using CPROVER built-in variables not in propositional logic " << str << std::endl;
-        //assert(false); //KE: when found all reasons - uncomment
-    #endif
-    }
-  
-    bool is_L2_symbol = is_L2_SSA_symbol(expr);
+    std::string str = normalize_name(expr);
+    
+    //////////////////// TEST TO ASSURE THE NAME IS VALID! /////////////////////
+    assert(!is_cprover_rounding_mode_var(str) && !is_cprover_builtins_var(str));    
     // MB: the IO_CONST expressions does not follow normal versioning, but why NIL is here?
     bool is_nil_or_symex = (str.compare(NIL) == 0) || (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
-    if (!(is_L2_symbol || is_nil_or_symex))
-    {
-        // Error message before assert!
-        std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree (" 
-                << str <<  " : " << expr.type().id().c_str() << ")\n";
-        //std::cout << expr.pretty() << std::endl;
-        //return create_new_unsupported_var(expr.type().id().c_str());
-        exit(1);
-    }
     assert("Error: using non-SSA symbol in the SMT encoding"
-         && (is_L2_symbol || is_nil_or_symex)); // KE: can be new type that we don't take care of yet
+         && (is_L2_SSA_symbol(expr) || is_nil_or_symex)); // KE: can be new type that we don't take care of yet
+    // If appears - please fix the code in smt_partition_target_euqationt
+    // DO NOT COMMNET OUT!!! 
+    ////////////////////////////////////////////////////////////////////////////
+
     return str;
 }
 
@@ -760,7 +640,7 @@ void smtcheck_opensmt2t::dump_on_error(std::string location)
         logic->conjoinExtras(top_level_formulas[i], tmp);
         char *s = logic->printTerm(tmp);
         std::cout << "; XXX Partition: " << i << std::endl << "    " << s << std::endl;
-        free(s); s=NULL;
+        free(s); s=nullptr;
     }
 
     // If code - once needed uncomment this debug flag in the header
@@ -798,43 +678,7 @@ std::string smtcheck_opensmt2t::create_bound_string(std::string base, int exp)
 }
 
 /*******************************************************************\
-
-Function: smtcheck_opensmt2t::create_new_unsupported_var
-
- Inputs: 
-
- Outputs: New unsupported global SSA name
-
- Purpose:
-
- FIXME: shall fabricate propperly the name as SSA expression
- fabricate with l2, and return the name with l2
-
-\*******************************************************************/
-std::string smtcheck_opensmt2t::create_new_unsupported_var(std::string type_name, bool no_rename)
-{
-    // Create a new unsupported va
-    std::string str = HifrogStringConstants::UNSUPPORTED_VAR_NAME + type_name;
-    if (!no_rename)
-    {
-    	// FIXME: SSA fabrication + rename
-    	std::string prefix = "!0#" + std::to_string(unsupported2var++);
-    	str += prefix;
-    }
-
-    str = quote_if_necessary(str);
-    
-    assert(str.size() > 0);
-    
-#ifdef SMT_DEBUG
-        std::cout << "; IT IS AN UNSUPPORTED VAR " << str << std::endl;
-#endif
-        
-    return str;
-}
-
-/*******************************************************************\
-
+ * 
 Function: smtcheck_opensmt2t::store_new_unsupported_var
 
  Inputs: 
@@ -845,50 +689,21 @@ Function: smtcheck_opensmt2t::store_new_unsupported_var
  * the smt encoding
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t::store_new_unsupported_var(const exprt& expr, const PTRef var, bool push_var) {        
-    // If need to register the abstracted functions - add it here
-    const irep_idt &_id=expr.id(); // KE: gets the id once for performance
-    if ((store_unsupported_info) && (_id!=ID_symbol && _id!=ID_nondet_symbol && _id!=ID_constant))
-    {
-        // Map the expression to its unsupported abstracted vat (in opensmt)
-        unsupported_info_map.insert(std::pair<PTRef, exprt> (var, expr));
-        std::cout << "**** Saved function as a candidate for lattice refinement. ";
-        char *s = logic->printTerm(var);
-        std::cout << "Expression " << s << " will be refine the operator "
-              << _id << " with " << expr.operands().size() << " operands." 
-              << std::endl;
-        free(s); s=NULL;
-    }
-    
+literalt smtcheck_opensmt2t::store_new_unsupported_var(const exprt& expr, const PTRef var, bool push_var) { 
+    char *s = logic->printTerm(var);
+    unsupported_info.store_new_unsupported_var(expr,std::string(s));  
+    #ifdef DEBUG_LATTICE // Debug only - in if for better performance     
+        cout << "Expression " << s << " will be refine the operator " 
+              << expr.id() << " with " << expr.operands().size() << " operands." 
+              << endl;
+    #endif
+    free(s);
+    s=nullptr;
+        
     if (push_var)
         return push_variable(var);
     else 
         return const_literal(true);
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t::bind_var2refined_var
-
- Inputs: two ptref, one is a refined version of the other
-
- Outputs: (= refined coarse)
-
- Purpose: to connect the rest of the translation to the most refined version 
- * of expression. 
- * 
- * TODO: add pop incase we need to refine more than once!
-
-\*******************************************************************/
-literalt smtcheck_opensmt2t::bind_var2refined_var(PTRef ptref_coarse, PTRef ptref_refined) {
-    // Pop the old version 
-    // TODO logic->pop(ptref_coarse); // KE: or something like this or push prev ret of it
-
-    // Create the new refined version
-    PTRef ret = logic->mkEq(ptref_coarse, ptref_refined);
-    
-    // Keep the new ptref and return the new one
-    return push_variable(ret);
 }
 
 /*******************************************************************\
@@ -903,9 +718,9 @@ Function: smtcheck_opensmt2t::get_smt_func_decl
 
 \*******************************************************************/
 SymRef smtcheck_opensmt2t::get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt) {
-    char *msg=NULL;
+    char *msg=nullptr;
     SymRef ret = logic->declareFun(op, in_dt, out_dt, &msg, true);
-    if (msg != NULL) free(msg);
+    if (msg != nullptr) free(msg);
 
     return ret;    
 }
@@ -970,7 +785,10 @@ SymRef smtcheck_opensmt2t::get_unsupported_op_func(const exprt &expr, const vec<
         args_decl.push(logic->getSortRef(args[i]));
         key_func += "," + std::string(logic->getSortName(logic->getSortRef(args[i])));
     }
-     
+    
+    // Keep the list of already declared
+    static std::map<std::string,SymRef> decl_uninterperted_func; // Inner use only
+    
     // Define the function if needed and check it is OK
     SymRef decl = SymRef_Undef;
     if (decl_uninterperted_func.count(key_func) == 0) {
@@ -1023,9 +841,9 @@ Function: smtcheck_opensmt2t::mkFun
 \*******************************************************************/
 PTRef smtcheck_opensmt2t::mkFun(SymRef decl, const vec<PTRef>& args)
 {
-    char *msg=NULL;
+    char *msg=nullptr;
     PTRef ret = logic->mkFun(decl, args, &msg);
-    if (msg != NULL) free(msg);  
+    if (msg != nullptr) free(msg);  
     
     return ret;
 }
@@ -1070,12 +888,10 @@ SRef smtcheck_opensmt2t::getSMTlibDatatype(const exprt& expr)
     typet var_type = expr.type(); // Get the current type
     if ((var_type.id()==ID_bool) || (var_type.id() == ID_c_bool) || (is_number(var_type)))
         return getSMTlibDatatype(var_type);
-    else {
-        literalt l_unsupported = lunsupported2var(expr);
-        PTRef var = literals[l_unsupported.var_no()];
-        
-        return logic->getSortRef(var);
-    }
+
+    literalt l_unsupported = lunsupported2var(expr);
+    PTRef var = literals[l_unsupported.var_no()];
+    return logic->getSortRef(var);
 }
 
 // FIXME: move to hifrog or util in hifrog
@@ -1116,9 +932,11 @@ std::set<PTRef>* smtcheck_opensmt2t::get_non_linears()
 }
 
 // FIXME: move to smt_itpt class
-void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<symbol_exprt> &common_symbols,
+void smtcheck_opensmt2t::generalize_summary(itpt &interpolant_in, std::vector<symbol_exprt> &common_symbols,
                                             const std::string &fun_name, bool substitute)
 {
+    auto & interpolant = static_cast<smt_itpt &> (interpolant_in);
+    
     // Right now the term is not set, hence the assert, but this should actually be set somewhere else
     if(is_cprover_initialize_method(fun_name)){
         throw std::logic_error("Summary generalize should not be called for CPROVER initialize method!");
@@ -1126,7 +944,7 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<s
     // initialization of new Tterm, TODO: the basic should really be set already when interpolant object is created
     Tterm & tt = interpolant.getTempl();
     tt.setName(fun_name.c_str());
-    interpolant.setLogic(logic);
+    interpolant.setDecider(this);
 
 
     // prepare the substituition map how OpenSMT expects it
@@ -1170,14 +988,16 @@ void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant, std::vector<s
 }
 #endif // PRODUCE_PROOF
 
-PTRef smtcheck_opensmt2t::substitute(smt_itpt & itp, const std::vector<symbol_exprt> & symbols) {
-  Tterm & tterm = itp.getTempl();
-  assert(!itp.is_trivial());
+void smtcheck_opensmt2t::insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) {
   assert(logic);
+  auto const & smt_itp = static_cast<smt_itpt const &> (itp);
+  assert(!smt_itp.is_trivial());
+  
+  const Tterm & tterm = smt_itp.getTemplConst();
   const vec<PTRef>& args = tterm.getArgs();
 
   // summary is defined as a function over arguments to Bool
-  // we need to match the arguments with the symbols and substitute
+  // we need to match the arguments with the symbols and insert_substituted
   // the assumption is that arguments' names correspond to the base names of the symbols
   // and they are in the same order
   // one exception is if global variable is both on input and output, then the out argument was distinguished
@@ -1206,5 +1026,66 @@ PTRef smtcheck_opensmt2t::substitute(smt_itpt & itp, const std::vector<symbol_ex
   PTRef old_root = tterm.getBody();
   PTRef new_root;
   logic->varsubstitute(old_root, subst, new_root);
-  return new_root;
+  this->set_to_true(new_root);
+}
+
+/*******************************************************************\
+
+Function: smtcheck_opensmt2t::lvar
+
+  Inputs:
+
+ Outputs:
+
+ Purpose:
+
+\*******************************************************************/
+literalt smtcheck_opensmt2t::lvar(const exprt &expr)
+{
+    // IF code, set to be unsupported
+    if (expr.type().id()==ID_code) {
+        return lunsupported2var(expr);
+    }
+
+    // Else continue as before
+    
+    // NOTE: any changes to name - please added it to general method!
+    std::string str = quote_if_necessary(extract_expr_str_name(expr)); 
+    assert(str.size() > 0);
+
+    // Nil is a special case - don't create a var but a val of true
+    if (str.compare(NIL) == 0) return lconst(true);
+    if (str.compare(QUOTE_NIL) == 0) return lconst(true);
+    if (expr.type().is_nil()) return lconst(true);
+
+#ifdef SMT_DEBUG
+	cout << "; (lvar) Create " << str << endl;
+#endif
+             
+    // Else if it is really a var, continue and declare it!
+    bool is_defined = (is_number(expr.type()) || (expr.is_boolean()) || (expr.type().id() == ID_c_bool));
+    PTRef var = is_defined ? evar(expr, str) : literals[lunsupported2var(expr).var_no()];
+    literalt l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
+    
+    if (!is_defined) // Is a function with index, array, pointer
+    {   
+#ifdef SMT_DEBUG
+    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
+    			<< expr.type().id() << ")" << endl;
+    	assert(false); // No support yet for arrays
+#else
+        // TODO: make it work for unsupported data types
+        // Add new equation of an unknown function (acording to name)
+        //PTRef var_eq = create_equation_for_unsupported(expr);
+        //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+#endif
+    }
+
+#ifdef DISABLE_OPTIMIZATIONS
+    std::string add_var = str + " () " + string(logic->getSortName(logic->getSortRef(var)));
+    if (var_set_str.end() == var_set_str.find(add_var)) 
+        var_set_str.insert(add_var);
+#endif
+
+    return l;
 }

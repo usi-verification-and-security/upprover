@@ -12,10 +12,34 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_uf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_uf(const char* name, bool _store_unsupported_info=false) :
-      smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info) // Is last always!
+  smtcheck_opensmt2t_uf(const char* name, 
+#ifdef PRODUCE_PROOF   
+        unsigned int _itp_uf_algorithm,
+        bool _reduction, 
+        unsigned int _reduction_graph, 
+        unsigned int _reduction_loops,   
+#endif
+#ifdef DISABLE_OPTIMIZATIONS          
+        bool _dump_queries, bool _dump_pre_queries, std::string _dump_query_name,
+#endif          
+        bool _store_unsupported_info=false) :
+    smtcheck_opensmt2t(
+#ifdef PRODUCE_PROOF  
+        _reduction, _reduction_graph, _reduction_loops 
+#else
+        false, 3, 2
+#endif // Is last always!
+#ifdef DISABLE_OPTIMIZATIONS
+        , _dump_queries, _dump_pre_queries, _dump_query_name 
+#endif    
+    , _store_unsupported_info)
   {
     initializeSolver(name);
+    
+// Init of Interpolation
+#ifdef PRODUCE_PROOF
+    itp_euf_algorithm.x = _itp_uf_algorithm;
+#endif    
   }
 
   virtual ~smtcheck_opensmt2t_uf(); // d'tor
@@ -23,32 +47,32 @@ public:
   virtual exprt get_value(const exprt &expr) override;
 
   virtual literalt convert(const exprt &expr) override;
-
-  virtual literalt const_var_Number(const exprt &expr) override;
-  
-  virtual literalt type_cast(const exprt &expr) override;
-
-  virtual literalt lnotequal(literalt l1, literalt l2) override;
-
-  virtual literalt lvar(const exprt &expr) override;
-
-  virtual literalt lassert_var() override { throw std::logic_error("Looks like this should not be called for this solver"); }
-     
+       
   virtual std::string getStringSMTlibDatatype(const typet& type) override;
   virtual SRef getSMTlibDatatype(const typet& type) override;
-
   SRef getURealSortRef() const {return sort_ureal;}
-
+  
 protected:
+  
+    virtual void initializeSolver(const char* name) override;
+    
+    virtual literalt lconst_number(const exprt &expr) override;
 
-  virtual literalt lunsupported2var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
+    virtual literalt ltype_cast(const exprt &expr) override;
+  
+    virtual PTRef evar(const exprt &expr, std::string var_name) override;
+    
+    virtual literalt lunsupported2var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
 
-  virtual void initializeSolver(const char* name) override;
+    virtual PTRef make_var(const std::string name) override
+    { return logic->mkVar(sort_ureal, name.c_str()); }
   
-  virtual bool can_have_non_linears() override { return true; }
+    virtual bool can_have_non_linears() override { return true; }
   
-  virtual bool is_non_linear_operator(PTRef tr) override;
-  
+     virtual bool is_non_linear_operator(PTRef tr) override;
+ 
+private:  
+
   static const char *tk_sort_ureal;
   static const char *tk_mult;
   static const char *tk_div;

@@ -33,6 +33,7 @@
 #include "prop_summary_store.h"
 #include "theory_refiner.h"
 #include <stdio.h>
+#include "utils/unsupported_operations.h"
 
 namespace{
     /*******************************************************************\
@@ -114,34 +115,28 @@ void core_checkert::initialize_solver()
     std::string _logic = options.get_option("logic");
     if(_logic == "qfuf") 
     {
-        decider = new smtcheck_opensmt2t_uf("uf checker");
+        decider = initialize__euf_solver(); 
         status() << ("Use QF_UF logic.") << eom;
     }
     else if(_logic == "qfcuf")
     {
-        decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"), 
-                options.get_unsigned_int_option("type-byte-constraints"), "cuf checker");
+        decider = initialize__cuf_solver();
         status() << ("Use QF_CUF logic.") << eom;
     }
     else if(_logic == "qflra") 
     {
-        decider = new smtcheck_opensmt2t_lra(options.get_unsigned_int_option("type-constraints"), "lra checker");
+        decider = initialize__lra_solver();
         status() << ("Use QF_LRA logic.") << eom;
     }
     else if(_logic == "qflia") 
     {
-        decider = new smtcheck_opensmt2t_lia(options.get_unsigned_int_option("type-constraints"), "lia checker");
+        decider = initialize__lia_solver();
         status() << ("Use QF_LIA logic.") << eom;
-    }    
-    else if (_logic == "prop" && !options.get_bool_option("no-partitions"))
-    {
-        decider = new satcheck_opensmt2t("prop checker");
-        status() << ("Use propositional logic.") << eom;
     }
-    else if (_logic == "prop" && options.get_bool_option("no-partitions"))
+    else if (_logic == "prop")
     {
-        error() << ("--no-partitions option is not supported in theory: " +  _logic + "\n") << eom;
-        exit(0); //Unsupported 
+        decider = initialize__prop_solver();
+        status() << ("Use propositional logic.") << eom;
     }
     else 
     {
@@ -152,33 +147,109 @@ void core_checkert::initialize_solver()
     initialize_solver_options(decider); // Init all options in the solver
 }
 
+// Generic creation for any solver - euf
+check_opensmt2t* core_checkert::initialize__euf_solver()
+{
+    return new smtcheck_opensmt2t_uf("uf checker",
+#ifdef PRODUCE_PROOF                 
+                options.get_unsigned_int_option("itp-uf-algorithm"),
+                options.get_bool_option("reduce-proof"),
+                options.get_unsigned_int_option("reduce-proof-graph"),
+                options.get_unsigned_int_option("reduce-proof-loops"),
+#endif 
+#ifdef DISABLE_OPTIMIZATIONS  
+                options.get_bool_option("dump-query"),
+                options.get_bool_option("dump-pre-query"),
+                options.get_option("dump-query-name"),
+#endif                
+                false);
+    
+}
+
+// Only for OpenSMT solver - cuf
+check_opensmt2t* core_checkert::initialize__cuf_solver()
+{
+    return new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"), 
+                options.get_unsigned_int_option("type-byte-constraints"), "cuf checker"
+#ifdef DISABLE_OPTIMIZATIONS  
+                , options.get_bool_option("dump-query")
+                , options.get_bool_option("dump-pre-query")
+                , options.get_option("dump-query-name")
+#endif                
+                );
+}
+  
+// Generic creation for any solver - lra
+check_opensmt2t* core_checkert::initialize__lra_solver()
+{
+    return new smtcheck_opensmt2t_lra(options.get_unsigned_int_option("type-constraints"), "lra checker", 
+#ifdef PRODUCE_PROOF                 
+                options.get_unsigned_int_option("itp-lra-algorithm"),
+                ((options.get_option("itp-lra-factor").size() > 0) ? options.get_option("itp-lra-factor").c_str() : nullptr),
+                options.get_bool_option("reduce-proof"),
+                options.get_unsigned_int_option("reduce-proof-graph"),
+                options.get_unsigned_int_option("reduce-proof-loops"),
+#endif
+#ifdef DISABLE_OPTIMIZATIONS  
+                options.get_bool_option("dump-query"),
+                options.get_bool_option("dump-pre-query"),
+                options.get_option("dump-query-name"),
+#endif                
+                false);
+}
+
+// Generic creation for any solver - lra
+check_opensmt2t* core_checkert::initialize__lia_solver()
+{
+    return new smtcheck_opensmt2t_lia(options.get_unsigned_int_option("type-constraints"), "lia checker", 
+#ifdef PRODUCE_PROOF                 
+                options.get_bool_option("reduce-proof"),
+                options.get_unsigned_int_option("reduce-proof-graph"),
+                options.get_unsigned_int_option("reduce-proof-loops"),
+#endif
+#ifdef DISABLE_OPTIMIZATIONS  
+                options.get_bool_option("dump-query"),
+                options.get_bool_option("dump-pre-query"),
+                options.get_option("dump-query-name"),
+#endif                
+                false);
+}
+
+// Only for OpenSMT solver - prop
+check_opensmt2t* core_checkert::initialize__prop_solver()
+{
+    if (options.get_bool_option("no-partitions")) {
+        error() << ("--no-partitions option is not supported in theory: " +  options.get_option("logic") + "\n") << eom;
+        exit(0); //Unsupported 
+    }
+
+    // If all OK, create the decider
+    return new satcheck_opensmt2t("prop checker"
+#ifdef PRODUCE_PROOF                 
+                , options.get_unsigned_int_option("itp-algorithm")
+                , options.get_bool_option("reduce-proof")
+                , options.get_unsigned_int_option("reduce-proof-graph")
+                , options.get_unsigned_int_option("reduce-proof-loops")
+#endif
+#ifdef DISABLE_OPTIMIZATIONS  
+                , options.get_bool_option("dump-query")
+                , options.get_bool_option("dump-pre-query")
+                , options.get_option("dump-query-name")
+#endif                
+                );
+}
+
 void core_checkert::initialize_solver_options(check_opensmt2t* _decider)
 {
   // Set all the rest of the option - KE: check what to shift to the part of SMT only
-
   _decider->set_verbosity(options.get_unsigned_int_option("verbose-solver"));
+  
+  if(options.get_unsigned_int_option("random-seed")) 
+      _decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
+
 #ifdef PRODUCE_PROOF   
-  _decider->set_itp_bool_alg(options.get_unsigned_int_option("itp-algorithm"));
-  _decider->set_itp_euf_alg(options.get_unsigned_int_option("itp-uf-algorithm"));
-  _decider->set_itp_lra_alg(options.get_unsigned_int_option("itp-lra-algorithm"));
-  if(options.get_option("itp-lra-factor").size() > 0) 
-      _decider->set_itp_lra_factor(options.get_option("itp-lra-factor").c_str());
   _decider->set_certify(options.get_unsigned_int_option("check-itp"));
-  if(options.get_bool_option("reduce-proof"))
-  {
-    _decider->set_reduce_proof(options.get_bool_option("reduce-proof"));
-    if(options.get_unsigned_int_option("reduce-proof-graph")) _decider->set_reduce_proof_graph(options.get_unsigned_int_option("reduce-proof-graph"));
-    if(options.get_unsigned_int_option("reduce-proof-loops")) _decider->set_reduce_proof_loops(options.get_unsigned_int_option("reduce-proof-loops"));
-  }
 #endif
-  if(options.get_unsigned_int_option("random-seed")) _decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
-#ifdef DISABLE_OPTIMIZATIONS  
-  if (options.get_bool_option("dump-query"))
-      _decider->set_dump_query(true);
-  if (options.get_bool_option("dump-pre-query"))
-      _decider->set_dump_pre_query(true);
-  _decider->set_dump_query_name(options.get_option("dump-query-name"));
-#endif  
 }
 
 void core_checkert::initialize()
@@ -349,7 +420,19 @@ bool core_checkert::assertion_holds_prop(const assertion_infot& assertion,
     // Init the next iteration context
     {
         assert(!options.get_bool_option("no-partitions")); // Cannot work with no-partition
-        decider = (new satcheck_opensmt2t("prop checker"));
+        decider = (new satcheck_opensmt2t("prop checker"
+#ifdef PRODUCE_PROOF                 
+                , options.get_unsigned_int_option("itp-algorithm")
+                , options.get_bool_option("reduce-proof")
+                , options.get_unsigned_int_option("reduce-proof-graph")
+                , options.get_unsigned_int_option("reduce-proof-loops")
+#endif                
+#ifdef DISABLE_OPTIMIZATIONS  
+                , options.get_bool_option("dump-query")
+                , options.get_bool_option("dump-pre-query")
+                , options.get_option("dump-query-name")
+#endif                 
+        ));                
         initialize_solver_options(decider);
 
         interpolator.reset(decider);
@@ -862,7 +945,7 @@ void core_checkert::assertion_violated (prepare_smt_formulat& prop,
 
     if (!options.get_bool_option("no-error-trace"))
         prop.error_trace(*decider_smt, ns, guard_expln);
-    if (decider_smt->has_unsupported_vars()){
+    if (decider_smt->is_overapprox_encoding()){
     	status() << "\nA bug found." << endl;
     	status() << "WARNING: Possibly due to the Theory conversion." << eom;
     } else {
@@ -891,7 +974,7 @@ void core_checkert::assertion_violated (smt_assertion_no_partitiont& prop,
     namespacet ns{this->symbol_table};
     if (!options.get_bool_option("no-error-trace"))
         prop.error_trace(*decider_smt, ns, guard_expln);
-    if (decider_smt->has_unsupported_vars()){
+    if (decider_smt->is_overapprox_encoding()){
     	status() << "\nA bug found." << endl;
     	status() << "WARNING: Possibly due to the Theory conversion." << eom;
     } else {
@@ -932,7 +1015,7 @@ void core_checkert::extract_interpolants_smt (prepare_smt_formulat& prop, smt_pa
   if (!summary_file.empty()) {
     std::ofstream out;
     out.open(summary_file.c_str());
-    decider->getLogic()->dumpHeaderToFile(out);
+    decider->dump_header_to_file(out);
     summary_store->serialize(out);
   }
 }
@@ -1119,33 +1202,6 @@ namespace{
         }
 
     }
-/*******************************************************************/
-// Purpose: create non-linear fresh variable with a separate(independent) counter
-    std::string fresh_var_name_nonlinear(){
-        static int counter = 0;
-        return quote_if_necessary( HifrogStringConstants::UNSUPPORTED_VAR_NAME + std::string{"_sumtheoref_"} + std::to_string(counter++));
-    }
-
-    std::vector<std::string> get_unsupported_funct_exprs(std::string const & text) {
-        std::vector<std::string> res;
-        const std::string UNS = "(uns_";
-        std::string::size_type last_pos = 0;
-        while ((last_pos = text.find(UNS, last_pos)) != std::string::npos) {
-            auto beg = last_pos;
-            auto current = beg + 1;
-            int counter = 0;
-            while (text[current] != ')' || counter > 0) {
-                if (text[current] == ')') { --counter; }
-                if (text[current] == '(') { ++counter; }
-                ++current;
-            }
-            auto end = current + 1;
-            res.push_back(text.substr(beg, end - beg));
-//                std::cout << res.back() << '\n';
-            last_pos = end;
-        }
-        return res;
-    }
 
 /*******************************************************************/
 // Purpose:
@@ -1306,7 +1362,17 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 {
     std::string lra_summary_file_name {"__summaries_lra"};
     std::string uf_summary_file_name {"__summaries_uf"};
-    smtcheck_opensmt2t_uf uf_solver {"uf checker"};
+    smtcheck_opensmt2t_uf uf_solver {"uf checker",
+            options.get_unsigned_int_option("itp-uf-algorithm"),
+            options.get_bool_option("reduce-proof"),
+            options.get_unsigned_int_option("reduce-proof-graph"),
+            options.get_unsigned_int_option("reduce-proof-loops")
+#ifdef DISABLE_OPTIMIZATIONS  
+            , options.get_bool_option("dump-query")
+            , options.get_bool_option("dump-pre-query")
+            , options.get_option("dump-query-name")
+#endif  
+    };
     initialize_solver_options(&uf_solver);
 
     smt_summary_storet summary_store {&uf_solver};
@@ -1387,7 +1453,18 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 //---------------------------------------------------------------------------
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
     unsigned int _type_constraints_level = options.get_unsigned_int_option("type-constraints");
-    smtcheck_opensmt2t_lra lra_solver {_type_constraints_level, "lra checker"}; //TODO: type_constraints_level
+    smtcheck_opensmt2t_lra lra_solver {_type_constraints_level, "lra checker",
+            options.get_unsigned_int_option("itp-lra-algorithm"),
+            ((options.get_option("itp-lra-factor").size() > 0) ? options.get_option("itp-lra-factor").c_str() : nullptr),
+            options.get_bool_option("reduce-proof"),
+            options.get_unsigned_int_option("reduce-proof-graph"),
+            options.get_unsigned_int_option("reduce-proof-loops")
+#ifdef DISABLE_OPTIMIZATIONS  
+            , options.get_bool_option("dump-query")
+            , options.get_bool_option("dump-pre-query")
+            , options.get_option("dump-query-name")
+#endif     
+    };
     initialize_solver_options(&lra_solver);
     status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
     reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver, uf_solver );
@@ -1411,7 +1488,18 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     while(can_refine){
         symex.refine_SSA(localRefine.get_refined_functions());
         // new lra_solver here, because of LRA incrementality problems in OpenSMT
-        smtcheck_opensmt2t_lra lra_solver2 {_type_constraints_level, "lra checker (in loop)"};
+        smtcheck_opensmt2t_lra lra_solver2 {_type_constraints_level, "lra checker (in loop)",
+            options.get_unsigned_int_option("itp-lra-algorithm"),
+            ((options.get_option("itp-lra-factor").size() > 0) ? options.get_option("itp-lra-factor").c_str() : nullptr),
+            options.get_bool_option("reduce-proof"),
+            options.get_unsigned_int_option("reduce-proof-graph"),
+            options.get_unsigned_int_option("reduce-proof-loops")
+#ifdef DISABLE_OPTIMIZATIONS  
+            , options.get_bool_option("dump-query")
+            , options.get_bool_option("dump-pre-query")
+            , options.get_option("dump-query-name")
+#endif         
+        };
         initialize_solver_options(&lra_solver2);
         // we have new solver, but summary store has references from the old solver, we need to reload
         status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;

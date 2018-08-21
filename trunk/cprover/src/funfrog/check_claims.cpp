@@ -147,8 +147,6 @@ void check_claims(
   //                                          ns);
 
 
-
-
   if (options.get_bool_option("theoref")){
 
     // GF: currently works only for one assertion (either specified in --claim or the first one)

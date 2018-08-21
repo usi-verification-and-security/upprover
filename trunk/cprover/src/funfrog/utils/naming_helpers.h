@@ -17,7 +17,6 @@ struct HifrogStringConstants {
   static const std::string CALLSTART_SYMBOL;
   static const std::string CALLEND_SYMBOL;
   static const std::string ERROR_SYMBOL;
-  static const std::string UNSUPPORTED_VAR_NAME;
 };
 
 struct CProverStringConstants {

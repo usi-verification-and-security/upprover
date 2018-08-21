@@ -12,6 +12,7 @@ Author: Ondrej Sery
 
 #include <iostream>
 #include <sstream>
+#include "utils/unsupported_operations.h"
 #include "hifrog.h"
 
 #define EDGE_COLOR "\033[2;37m"
@@ -41,7 +42,7 @@ expr_pretty_printt::addToDeclMap(const exprt &expr)
     }
     
     // Fix Variable name - sometimes "nondet" name is missing, add it for these cases
-    std::string name_expr = fix_symex_nondet_name(expr);
+    std::string name_expr = normalize_name(expr);
     if (is_cprover_rounding_mode_var(name_expr))
     {
         // We don't save __cprover built-ins
@@ -97,10 +98,12 @@ expr_pretty_printt::operator()(const exprt &expr)
     } else if (expr.id() == ID_symbol) {
         if (is_prev_token) out << " ";
         out << SYMBOL_COLOR << "|" << expr.get(ID_identifier) << "|" << NORMAL_COLOR;
+#ifdef DEBUG_SSA_SMT_INFO
         if (!is_L2_SSA_symbol(expr)) {
             std::cerr << "\nWARNING: Using Symbol or L1 name instead of the L2 name in the SSA tree (" 
                     << expr.get(ID_identifier) << " : " << expr.type().id().c_str() << ")\n" ;
         }
+#endif
         is_prev_token = true;
         addToDeclMap(expr); // Add the symbol to the symbol table
     } else if (expr.id() == ID_constant) {

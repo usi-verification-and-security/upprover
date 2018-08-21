@@ -29,31 +29,22 @@ class core_checkert:public messaget
 {
 public:
   core_checkert(
-    const goto_programt &_goto_program,
-    const goto_functionst &_goto_functions,
-//    const namespacet &_ns,
-    const symbol_tablet &_symbol_table,
-    const optionst& _options,
-    ui_message_handlert &_message_handler,
-    unsigned long &_max_memory_used
-    );
+      const goto_programt &_goto_program,
+      const goto_functionst &_goto_functions,
+      const symbol_tablet &_symbol_table,
+      const optionst& _options,
+      ui_message_handlert &_message_handler,
+      unsigned long &_max_memory_used
+      );
 
   ~core_checkert() override;
+
   void initialize();
-  void initialize_solver();
-  void initialize_solver_options(check_opensmt2t* _decider);
-  void delete_and_initialize_solver(); // For replacing pop in the solver, remove once pop works
-  bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
-  bool assertion_holds_prop(const assertion_infot& assertion, bool store_summaries_with_assertion);
-  bool assertion_holds_smt(const assertion_infot& assertion, bool store_summaries_with_assertion);
-  bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
-  void serialize(){
-    omega.serialize(options.get_option("save-omega"));
-  }
 
     //  bool check_sum_theoref_single(const assertion_infot& assertion);
     bool check_sum_theoref_single(const assertion_infot &assertion);
+    
 protected:
 
   const goto_programt &goto_program;
@@ -66,6 +57,14 @@ protected:
   subst_scenariot omega;
   init_modet init;
   std::unique_ptr<summary_storet> summary_store;
+
+  void initialize_solver();
+  void initialize_solver_options(check_opensmt2t* _decider);
+  check_opensmt2t* initialize__euf_solver();
+  check_opensmt2t* initialize__cuf_solver();
+  check_opensmt2t* initialize__lra_solver();
+  check_opensmt2t* initialize__lia_solver();
+  check_opensmt2t* initialize__prop_solver();
   
   void setup_unwind(symex_bmct& symex);
 #ifdef PRODUCE_PROOF  
@@ -73,6 +72,11 @@ protected:
   void extract_interpolants_prop (prop_assertion_sumt& prop, prop_partitioning_target_equationt& equation,
             prop_conv_solvert& decider_prop, interpolating_solvert& interpolator);
 #endif
+
+  bool assertion_holds_prop(const assertion_infot& assertion, bool store_summaries_with_assertion);
+  bool assertion_holds_smt(const assertion_infot& assertion, bool store_summaries_with_assertion);
+  bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
+
   void report_success();
   void report_failure();
   void assertion_violated(prepare_smt_formulat& prop,
@@ -83,6 +87,9 @@ protected:
     const goto_functionst & get_goto_functions() const {
         return omega.get_goto_functions();
     }
+    
+    // FIXME
+    void delete_and_initialize_solver();
 
 };
 

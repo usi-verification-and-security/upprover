@@ -9,7 +9,6 @@
 
 #include "symex_assertion_sum.h"
 
-
 #include <util/expr_util.h>
 #include <goto-symex/goto_symex.h>
 #include <pointer-analysis/add_failed_symbols.h>
@@ -227,8 +226,8 @@ bool symex_assertion_sumt::refine_SSA(
   // Defer the functions
   for (const auto & refined_function : refined_functions)
   {
-      assert(!refined_function->is_root());
-      const partition_iface_ptrst* partition_ifaces = get_partition_ifaces(refined_function);
+    assert(!refined_function->is_root());
+    const partition_iface_ptrst* partition_ifaces = get_partition_ifaces(refined_function);
 
     if (!(refined_function)->is_root()) {
         if (partition_ifaces) {
@@ -296,6 +295,9 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
       after=current_time();
       log.statistics() << "SLICER TIME: " << (after-before) << log.eom;
     }
+#ifdef DEBUG_SSA
+    print_SSA_steps(equation.SSA_steps, ns, std::cout);
+#endif //DEBUG_SSA
   } else {
     log.statistics() << "Assertion(s) hold trivially." << log.eom;
     return true;
@@ -1152,7 +1154,7 @@ void symex_assertion_sumt::summarize_function_call(
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
   assert(summary_store.has_summaries(id2string(function_id)));
-    equation.fill_summary_partition(partition_id, summary_store.get_summaries(id2string(function_id)));
+  equation.fill_summary_partition(partition_id, summary_store.get_summaries(id2string(function_id)));
 }
 
 /*******************************************************************

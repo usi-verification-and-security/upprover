@@ -1,7 +1,6 @@
 #include "hifrog.h"
-#include <string.h>
 #include <algorithm>
-//#include <iostream> // Comment only for debug
+#include "utils/naming_helpers.h"
 
 /* Get the name of an SSA expression without the instance number 
  *    
@@ -11,54 +10,9 @@ irep_idt get_symbol_name(const exprt &expr) {
     //std::cout << "Get symbol name called for:\n" << expr.pretty() << '\n';
     return to_ssa_expr(expr).get_original_name();
 }
-//
-//
-//bool is_hifrog_inner_symbol_name(const exprt &expr) {
-//    std::string test4inned_hifrog = id2string(expr.get(ID_identifier));
-//    if (test4inned_hifrog.find(CALLSTART_SYMBOL) != std::string::npos)
-//        return true;
-//    if (test4inned_hifrog.find(CALLEND_SYMBOL) != std::string::npos)
-//        return true;
-//    if (test4inned_hifrog.find(ERROR_SYMBOL) != std::string::npos)
-//        return true;
-//
-//    return false;
-//}
-//
-//irep_idt extract_hifrog_inner_symbol_name(const exprt &expr){
-//    std::string test4inned_hifrog = id2string(expr.get(ID_identifier));
-//    if (test4inned_hifrog.find(CALLSTART_SYMBOL) != std::string::npos)
-//        return CALLSTART_SYMBOL;
-//    if (test4inned_hifrog.find(CALLEND_SYMBOL) != std::string::npos)
-//        return CALLEND_SYMBOL;
-//    if (test4inned_hifrog.find(ERROR_SYMBOL) != std::string::npos)
-//        return ERROR_SYMBOL;
-//
-////    assert(0); // Add constants if needed
-//    throw std::logic_error("Unknown symbol encountered!");
-//}
-//
-//unsigned get_symbol_L2_counter(const exprt &expr) {
-//    if (is_hifrog_inner_symbol_name(expr))
-//        return extract_hifrog_inner_symbol_L2_counter(expr);
-//
-//    return atoi(to_ssa_expr(expr).get_level_2().c_str());
-//}
-//
-//unsigned extract_hifrog_inner_symbol_L2_counter(const exprt &expr){
-//    std::string test4inned_hifrog = id2string(expr.get(ID_identifier));
-//    size_t pos = extract_hifrog_inner_symbol_name(expr).size();
-//    if ((test4inned_hifrog.find(CALLSTART_SYMBOL) != std::string::npos) ||
-//        (test4inned_hifrog.find(CALLEND_SYMBOL) != std::string::npos) ||
-//        (test4inned_hifrog.find(ERROR_SYMBOL) != std::string::npos))
-//        return atoi(test4inned_hifrog.substr(pos+1).c_str());
-//
-//    throw std::logic_error("Unknown symbol encountered!");
-//    //assert(0); // Add constants if needed
-//}
 
 /* Assure the name is always symex::nondet#number */
-std::string fix_symex_nondet_name(const exprt &expr) {
+std::string normalize_name(const exprt &expr) {
     // Fix Variable name - sometimes "nondet" name is missing, add it for these cases
     
     std::string name_expr = id2string(expr.get(ID_identifier));
@@ -71,7 +25,9 @@ std::string fix_symex_nondet_name(const exprt &expr) {
             name_expr = name_expr.insert(7, SYMEX_NONDET);
         }  
     }
-    
+       
+    name_expr.erase(std::remove(name_expr.begin(),name_expr.end(),'\\'),name_expr.end());
+
     return name_expr;
 }
 
@@ -103,4 +59,68 @@ bool is_L2_SSA_symbol(const exprt& expr)
     }
     
     return true;
+}
+
+// For CUF algorithm - helper to extract CEX
+void getVarsInExpr(exprt& e, std::set<exprt>& vars)
+{
+    if(e.id()==ID_symbol){
+        if (is_cprover_builtins_var(e))
+        {
+            // Skip rounding_mode or any other builtins vars
+        }
+        else
+        {
+            vars.insert(e);
+        }
+    } else if (e.has_operands()){
+        for (unsigned int i = 0; i < e.operands().size(); i++){
+            getVarsInExpr(e.operands()[i], vars);
+        }
+    }
+}
+
+/*******************************************************************\
+
+Function: extract_expr_str_number
+
+  Inputs: expression that is a constant (+/-/int/float/rational)
+
+ Outputs: a string of the number
+
+ Purpose: assure we are extracting the number correctly.
+
+ expr.get(ID_C_cformat).c_str() - doesn't work for negative numbers!
+ * And thanks god (the starts and mother nature) that this option 
+ * is NOT in new Cprover framework
+
+\*******************************************************************/
+std::string extract_expr_str_number(const exprt &expr)
+{
+    std::string const_val = expr.print_number_2smt(); // DO NOT CHANGE TO cprover util code as it works only for positive or unsigned!
+    //(unless upgrade, please keep the checks/assert!)
+    // If can be that we missed more cases... use the debug prints to check conversions!!
+#ifdef DEBUG_SSA_SMT_NUMERIC_CONV
+    std::cout << "; EXTRACTING NUMBER " << const_val
+            << " (ORIG-EXPR " << expr.get(ID_value) 
+            << " :: " << expr.type().id() << ")" << endl;
+    //std::cout << "; TEST FOR EXP C FORMAT GIVES " << expr.get(ID_C_cformat).c_str() << " with TYPE " << expr.type().id_string() << endl;
+#endif
+    
+    // Special cases for eNum in Cprover
+    if(const_val.size() <= 0)
+    {
+        if (expr.type().id() == ID_c_enum)
+        {
+            const_val = expr.type().find(ID_tag).pretty();
+        }
+        else if (expr.type().id() == ID_c_enum_tag)
+        {
+            const_val = id2string(to_constant_expr(expr).get_value());
+        }
+        // TODO: add more cases if the asesrt below fails!
+    }
+    assert(const_val.size() > 0);
+
+    return const_val;
 }

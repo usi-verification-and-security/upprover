@@ -16,15 +16,38 @@ Author: Grigory Fedyukovich
 #include "check_opensmt2.h"
 #include "interpolating_solver.h"
 #include <opensmt/opensmt2.h>
+#include "../utils/unsupported_operations.h"
 
 class prop_itpt;
 class satcheck_opensmt2t:public cnf_solvert, public check_opensmt2t
 {
 public:
-  satcheck_opensmt2t(const char* name) :
-      check_opensmt2t(false, 3, 2) // Is last always!
+  satcheck_opensmt2t(const char* _name
+#ifdef PRODUCE_PROOF   
+    , int _itp_algorithm
+    , bool _reduction, unsigned int _reduction_graph, unsigned int _reduction_loops  
+#endif
+#ifdef DISABLE_OPTIMIZATIONS          
+    , bool _dump_queries, bool _dump_pre_queries, std::string _dump_query_name
+#endif  
+  ) : 
+    check_opensmt2t(
+#ifdef PRODUCE_PROOF  
+        _reduction, _reduction_graph, _reduction_loops   
+#else
+        false, 3, 2
+#endif // Is last always!
+#ifdef DISABLE_OPTIMIZATIONS
+        , _dump_queries, _dump_pre_queries, _dump_query_name
+#endif
+    )
   {
-    initializeSolver(name);
+    initializeSolver(_name);
+    
+    // Init of Interpolation - TODO: move into initializeSolver    
+#ifdef PRODUCE_PROOF
+    itp_algorithm.x = _itp_algorithm;
+#endif
   }
 
   virtual ~satcheck_opensmt2t() {
@@ -32,6 +55,7 @@ public:
   }
 
   virtual resultt prop_solve();
+  virtual bool solve() { return prop_solve() == resultt::P_SATISFIABLE; } // To create single solver interface
   virtual tvt l_get(literalt a) const;
 
   virtual void lcnf(const bvt &bv);
@@ -68,9 +92,6 @@ public:
   
   const std::string& get_last_var() { return id_str; }
 
-  const char* false_str = "false";
-  const char* true_str = "true";
-
 protected:
   // Use in the convert from SSA -> SMT-prop encoding
 
@@ -106,6 +127,10 @@ protected:
   void increase_id();
   unsigned decode_id(const char* id) const;
   void close_partition();
+  
+    // No over-approximation for propositional logic!
+    virtual bool has_overappox_mapping() const override { return false; }
+    virtual bool has_unsupported_vars() const override { return false; }
 };
 
 #endif

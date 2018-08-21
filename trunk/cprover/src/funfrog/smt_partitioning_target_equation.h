@@ -68,7 +68,7 @@ protected:
     partitiont& partition);
   
 private:
-  bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
+  bool isPropBuiltinEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
   
   
   bool isTypeCastConst(const exprt &expr); // Only for debugging typecast

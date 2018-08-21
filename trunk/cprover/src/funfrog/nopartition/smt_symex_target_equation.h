@@ -1,16 +1,9 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /* 
  * File:   smt_symex_target_equation.h
  * Author: karinek
  *
  * Created on 21 April 2017, 11:33
  */
-
 #ifndef SMT_SYMEX_TARGET_EQUATIONT_H
 #define SMT_SYMEX_TARGET_EQUATIONT_H
 
@@ -63,14 +56,6 @@ public:
     // the corresponding partitions
     void convert(smtcheck_opensmt2t &decider);
   
-    //void fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*> &templates)
-    //{ /* TODO ! */ }
-  
-    // Extract interpolants corresponding to the created partitions
-    //void extract_interpolants(
-    //    interpolating_solvert& interpolator, const smtcheck_opensmt2t& decider)
-    //{ /* TODO ! */ }
-
     std::vector<exprt>& get_exprs_to_refine () { return exprs; }; 
     
 #ifdef DISABLE_OPTIMIZATIONS  
@@ -108,8 +93,6 @@ public:
     // KE: a good question, maybe Grigory will have an answer. It is also in the partition version
     std::vector<unsigned>& clauses;
     
-    bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
-
 #ifdef DISABLE_OPTIMIZATIONS 
     bool dump_SSA_tree;
     std::string ssa_tree_file_name;
@@ -140,6 +123,8 @@ public:
     bool isFirstCallExpr(const exprt& expr);
 #endif
        
+    bool isPropBuiltinEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
+    
     unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
 };
 

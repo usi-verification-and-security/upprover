@@ -25,15 +25,14 @@ public:
   // returns a unique partition id
   virtual fle_part_idt new_partition()=0;
 
+  virtual void set_certify(int r)=0;
+
 #ifdef PRODUCE_PROOF  
   // Extracts the symmetric interpolant of the specified set of
   // partitions. This method can be called only after solving the
   // the formula with an UNSAT result
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants)=0;
-
-//  virtual void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool substitute = true)
-//  {assert(0);} // Only SMT should use it!
 
   // Is the solver ready for interpolation? I.e., the solver was used to decide
   // a problem and the result was UNSAT

@@ -18,7 +18,15 @@ std::pair<bool, fine_timet> prop_dependency_checkert::check_implication(SSA_step
   try{
 
   std::unique_ptr<prop_conv_solvert> decider;
-  satcheck_opensmt2t* opensmt = new satcheck_opensmt2t("prop dependency checker");
+  satcheck_opensmt2t* opensmt = new satcheck_opensmt2t("prop dependency checker"
+#ifdef PRODUCE_PROOF             
+          , 0 // Not using interpolation
+          , false, 3, 2 // default values
+#endif
+#ifdef DISABLE_OPTIMIZATIONS  
+          , false, false, ""  // No dumps
+#endif           
+          );
   opensmt->new_partition();
   bv_pointerst *deciderp = new bv_pointerst(ns, *opensmt);
   deciderp->unbounded_array = bv_pointerst::unbounded_arrayt::U_AUTO;

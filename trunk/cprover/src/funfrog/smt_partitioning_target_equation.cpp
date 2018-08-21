@@ -27,6 +27,7 @@ using namespace std;
 #include "expr_pretty_print.h"
 #endif
 
+/*
 void
 smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &decider, std::vector<summaryt*>& templates)
 {
@@ -47,7 +48,7 @@ smt_partitioning_target_equationt::fill_function_templates(smtcheck_opensmt2t &d
     assert(0);
 #endif
 }
-
+*/
 
 /*******************************************************************
  Function: smt_partitioning_target_equationt::convert
@@ -94,7 +95,7 @@ void smt_partitioning_target_equationt::convert(smtcheck_opensmt2t &decider,
         
     }
 
-    #ifdef DISABLE_OPTIMIZATIONS
+#ifdef DISABLE_OPTIMIZATIONS
   if (dump_SSA_tree)
   {
     ofstream out_ssaT;
@@ -199,18 +200,14 @@ void smt_partitioning_target_equationt::convert_partition_summary(
   {
     smt_summaryt & summary = dynamic_cast<smt_summaryt &> (summary_store.find_summary(summary_id));
     if (summary.is_valid() && (!is_recursive || last_summary == i++)) {
-      // we do not want to actually change the summary, because we might need the template later,
-      // we just get a PTRef to the substituted version
-      PTRef substituted_template = decider.substitute(summary, common_symbs);
-
+        decider.insert_substituted(summary, common_symbs);
+        
+      // Debug
 #           ifdef DISABLE_OPTIMIZATIONS
       out_terms << ";;; Substituting summary #" << summary_id << "\n";
-      out_terms << std::string {decider.getLogic()->printTerm(substituted_template)};
-      //summary.print(out_terms);
-      //summary.print(std::cout);
+      summary.print(out_terms);
+      summary.print(std::cout);
 #           endif
-      // do not forget to include the summary in the program formula
-      decider.set_to_true(substituted_template);
     }
   }
 }
@@ -235,7 +232,7 @@ void smt_partitioning_target_equationt::convert_partition_assignments(
             exprt tmp(it->cond_expr);
 
             // Only if not an assignment to rounding model print it + add it to LRA statements
-            if (!isRoundModelEq(tmp)) {
+            if (!isPropBuiltinEq(tmp)) {
 #     if        defined(DEBUG_SSA) && defined(DISABLE_OPTIMIZATIONS)
                 expr_pretty_print(std::cout << "\nASSIGN-OUT:" << std::endl, tmp, 2);
                 //expr_ssa_print_test(&partition_smt_decl, out_code << "(assign ", tmp);
@@ -256,7 +253,7 @@ void smt_partitioning_target_equationt::convert_partition_assignments(
     }
 }
 
-bool smt_partitioning_target_equationt::isRoundModelEq(const exprt &expr)
+bool smt_partitioning_target_equationt::isPropBuiltinEq(const exprt &expr) 
 {
     if (!expr.has_operands())
         return false;
@@ -264,15 +261,9 @@ bool smt_partitioning_target_equationt::isRoundModelEq(const exprt &expr)
         return false;
 
     // Start checking if it is auto gen code for rounding model
-    std::string str = id2string((expr.operands()[0]).get(ID_identifier));
-    if (is_cprover_builtins_var(str))
-        return true;
-    
+    if (is_cprover_builtins_var((expr.operands()[0]))) return true;
     if (expr.operands().size() < 2) return false;
-    
-    str = id2string((expr.operands()[1]).get(ID_identifier));
-    if (is_cprover_builtins_var(str))
-        return true;
+    if (is_cprover_builtins_var((expr.operands()[1]))) return true;
 
     return false;
 }
@@ -295,7 +286,7 @@ void smt_partitioning_target_equationt::convert_partition_guards(
 #       ifdef DEBUG_SSA_SMT_CALL
         cout << "Before decider::const_var(GUARD-OUT) --> false" << endl;
 #       endif
-            it->guard_literal = decider.const_var(false);
+            it->guard_literal = decider.lconst(false);
         } else {		
 #       ifdef DISABLE_OPTIMIZATIONS
             exprt tmp(it->guard);
@@ -334,7 +325,7 @@ void smt_partitioning_target_equationt::convert_partition_assumptions(
 #               ifdef DEBUG_SSA_SMT_CALL
                 cout << "Before decider::const_var(ASSUME-OUT) --> true" << endl;
 #               endif
-                it->cond_literal = decider.const_var(true);
+                it->cond_literal = decider.lconst(true);
                 // GF
             } else {
                 it->cond_literal = decider.convert(it->cond_expr);
@@ -369,7 +360,7 @@ void smt_partitioning_target_equationt::convert_partition_goto_instructions(
 #           ifdef DEBUG_SSA_SMT_CALL
                 cout << "Before decider::const_var(GOTO-OUT) --> true" << endl;
 #           endif
-                it->cond_literal = decider.const_var(true);
+                it->cond_literal = decider.lconst(true);
                 // GF
             } else {
 #               if defined(DEBUG_SSA_SMT_CALL) && defined(DISABLE_OPTIMIZATIONS)
@@ -410,7 +401,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
 # ifdef DEBUG_SSA_SMT_CALL
     cout << "Before decider::const_var(ASSERT-OUT) --> true" << endl;
 # endif
-    literalt assumption_literal = decider.const_var(true);
+    literalt assumption_literal = decider.lconst(true);
     for (SSA_stepst::iterator it = partition.start_it; it != partition.end_it; ++it) {
 
         if ((it->is_assert()) && !(it->ignore)) {
@@ -443,9 +434,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
                     << (test ? "w/t " : "no ") << "TYPECAST --> ", it->cond_expr, true);
 #           endif
             // Collect ass \in assertions(f) in bv
-            literalt tmp_literal = (decider.is_exist_var_constraints()) ?
-                                    decider.land(decider.convert(it->cond_expr), decider.lassert_var())
-                                    :decider.convert(it->cond_expr);
+            literalt tmp_literal = decider.lassert(it->cond_expr);
             it->cond_literal = decider.limplies(assumption_literal, tmp_literal);
             bv.push_back(decider.lnot(it->cond_literal));
         } else if (it->is_assume() && !it->ignore) {
@@ -541,7 +530,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
             cout << "Before decider::const_var(error in ROOT) --> true" << endl;
             cout << "Before decider::land(error in ROOT)" << endl;
 #	endif
-            decider.set_equal(decider.land(bv), decider.const_var(true));
+            decider.set_equal(decider.land(bv), decider.lconst(true));
 
 #       ifdef DISABLE_OPTIMIZATIONS
             //out_terms << "XXX Encoding error in ROOT: " << std::endl;
@@ -686,7 +675,7 @@ void smt_partitioning_target_equationt::convert_partition_assertions(
 #	endif
         
         literalt tmp_end = decider.limplies(partition_iface.callend_literal, assumption_literal);
-        decider.set_equal(tmp_end, decider.const_var(true)); // KE: maybe that's the missing call?
+        decider.set_equal(tmp_end, decider.lconst(true)); // KE: maybe that's the missing call?
 
 #       ifdef DISABLE_OPTIMIZATIONS
         //out_terms << "XXX Call END implication: \n";

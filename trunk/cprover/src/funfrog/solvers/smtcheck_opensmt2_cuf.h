@@ -9,16 +9,25 @@ Module: Wrapper for OpenSMT2
 
 #include "smtcheck_opensmt2.h"
 #include <util/mp_arith.h>
+#include "../hifrog.h"
 
 class BitBlaster;
 
 class smtcheck_opensmt2t_cuf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_cuf(unsigned bitwidth, int _type_constraints_level, const char* name) :
-        smtcheck_opensmt2t(false, 3, 2), // Is last always!
+  smtcheck_opensmt2t_cuf(unsigned bitwidth, int _type_constraints_level, const char* name
+#ifdef DISABLE_OPTIMIZATIONS          
+        , bool _dump_queries, bool _dump_pre_queries, std::string _dump_query_name
+#endif
+  ) :
+        smtcheck_opensmt2t(false, 3, 2
+#ifdef DISABLE_OPTIMIZATIONS
+        , _dump_queries, _dump_pre_queries, _dump_query_name 
+#endif         
+        ), // Is last always! // TODO: pass parameters once itp works for CUF
         bitwidth(bitwidth),
-        type_constraints_level(_type_constraints_level)
+        type_constraints_level(_type_constraints_level)      
   {
     initializeSolver(name);
   }
@@ -28,30 +37,9 @@ public:
   virtual exprt get_value(const exprt &expr) override;
 
   virtual literalt convert(const exprt &expr) override;
-
-  virtual literalt const_var_Number(const exprt &expr) override;
-
-  virtual literalt type_cast(const exprt &expr) override;
-
-  virtual literalt lnotequal(literalt l1, literalt l2) override;
-
-  virtual literalt lvar(const exprt &expr) override;
-
-  virtual literalt lassert_var() override { throw std::logic_error("Looks like this should not be called for this solver"); }
   
-  PTRef var_bv(const exprt &expr); // lvar for bv logic
-  
-  PTRef get_bv_var(const char* name);
-
-  PTRef get_bv_const(const char* val);
-
-  PTRef convert_bv(const exprt &expr);
-
-  bool convert_bv_eq_ite(const exprt &expr, PTRef& ptl);
-  
-  PTRef type_cast_bv(const exprt &expr);
-  
-  PTRef labs_bv(const exprt &expr); // from convert for ID_abs
+  virtual std::string getStringSMTlibDatatype(const typet& type) override;
+  virtual SRef getSMTlibDatatype(const typet& type) override;
 
   int check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model,
                std::set<int>& refined, std::set<int>& weak, int start, int end, int step, int do_dep);
@@ -62,21 +50,8 @@ public:
 
   bool force_refine_ce(std::vector<exprt>& exprs, std::set<int>& refined); // refine all from exprs, but already refined
 
-  PTRef split_exprs(irep_idt id, vec<PTRef>& args);
-  PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
-
-  std::string get_refinement_failure_reason() {
-      if (unsupported2var == 0) {
-          return ""; // No unsupported functions, no reason
-      }
-      
-      return "Cannot refine due to " + std::to_string(unsupported2var) + 
-              " unsupported operators;e.g., " + id2string(_fails_type_id);
-  }
+  std::string get_refinement_failure_reason() { return unsupported_info.get_failure_reason(id2string(_fails_type_id)); } 
   
-  virtual std::string getStringSMTlibDatatype(const typet& type) override;
-  virtual SRef getSMTlibDatatype(const typet& type) override;
-
 protected:
   BVLogic* bvlogic; // Extra var, inner use only - Helps to avoid dynamic cast!
   CUFLogic* uflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
@@ -92,19 +67,11 @@ protected:
   std::map<size_t, PTRef> converted_bitblasted_exprs;
 
   irep_idt _fails_type_id; // Reason 2 fail of CUF theoref
-        
-  void bindBB(const exprt& expr, PTRef ptl);
-
-  void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
-
+          
+  virtual void initializeSolver(const char*) override;  
+  
   virtual literalt lunsupported2var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
-  
-  PTRef unsupported2var_bv(const exprt &expr); // for BVs
-  
-  PTRef lconst_bv(const exprt &expr); // For bv only!
-  
-  virtual void initializeSolver(const char*) override;
-  
+
   void add_constraints4chars_bv(const exprt &expr, PTRef &var);
   
   void add_constraints4chars_bv_char(PTRef &var, const irep_idt type_id_c, const irep_idt type_id);
@@ -113,19 +80,43 @@ protected:
   
   void add_constraints4chars_numeric(PTRef &var, int size, const irep_idt type_id);
   
+  virtual PTRef make_var(const std::string name) override
+  { return uflogic->mkCUFNumVar(name.c_str()); }
+
   virtual bool can_have_non_linears() override { return true; } ;
   
   virtual bool is_non_linear_operator(PTRef tr) override;
+  
+  virtual literalt lconst_number(const exprt &expr) override;
+
+  virtual literalt ltype_cast(const exprt &expr) override;
+ 
+  virtual PTRef evar(const exprt &expr, std::string var_name) override;
+  
+  PTRef split_exprs(irep_idt id, vec<PTRef>& args);
+  PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
+  
+  void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
+
+  void bindBB(const exprt& expr, PTRef ptl);
+
+  PTRef unsupported2var_bv(const exprt &expr); // for BVs
+  
+  PTRef lconst_bv(const exprt &expr); // For bv only!
+  
+  PTRef var_bv(const exprt &expr); // lvar for bv logic
+  
+  PTRef get_bv_var(const char* name);
+
+  PTRef get_bv_const(const char* val);
+
+  PTRef convert_bv(const exprt &expr);
+
+  bool convert_bv_eq_ite(const exprt &expr, PTRef& ptl);
+  
+  PTRef type_cast_bv(const exprt &expr);
+  
+  PTRef labs_bv(const exprt &expr); // from convert for ID_abs
 };
 
-void getVarsInExpr(exprt& e, std::set<exprt>& vars);
-
-// Taken from cprover framework: integer2unsigned, mp_arith.cpp
-inline int mp_integer2int(const mp_integer &n)
-{
-  mp_integer::llong_t ll=n.to_long();
-  assert("Framework currently does not support numbers larger than ints" && ll <= std::numeric_limits<int>::max());
-  assert("Framework currently does not support numbers smaller than ints" && ll >= std::numeric_limits<int>::min());
-  return (int)ll;
-}
 #endif

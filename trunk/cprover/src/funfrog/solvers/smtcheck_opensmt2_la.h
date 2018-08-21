@@ -12,9 +12,27 @@ Module: Wrapper for OpenSMT2
 class smtcheck_opensmt2t_la : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_la(unsigned int _type_constraints_level, const char* name, bool _store_unsupported_info=false) :
-          smtcheck_opensmt2t(false, 3, 2, _store_unsupported_info),
-          type_constraints_level(_type_constraints_level)
+  smtcheck_opensmt2t_la(unsigned int _type_constraints_level, 
+#ifdef PRODUCE_PROOF   
+        bool _reduction, 
+        unsigned int _reduction_graph, 
+        unsigned int _reduction_loops,  
+#endif
+#ifdef DISABLE_OPTIMIZATIONS          
+        bool _dump_queries, bool _dump_pre_queries, std::string _dump_query_name,
+#endif          
+        bool _store_unsupported_info=false) :
+    smtcheck_opensmt2t(
+#ifdef PRODUCE_PROOF  
+        _reduction, _reduction_graph, _reduction_loops
+#else
+        false, 3, 2
+#endif // Is last always!
+#ifdef DISABLE_OPTIMIZATIONS
+        , _dump_queries, _dump_pre_queries, _dump_query_name 
+#endif  
+        , _store_unsupported_info),
+    type_constraints_level(_type_constraints_level)
   { } // Virtual class
       
   virtual ~smtcheck_opensmt2t_la(); // d'tor
@@ -23,39 +41,21 @@ public:
 
   virtual literalt convert(const exprt &expr) override;
 
-  virtual literalt const_from_str(const char* num);
+  virtual literalt const_from_str(const char* num); // needed for error_trace
 
-  virtual literalt const_var_Number(const exprt &expr) override;
-
-  //virtual literalt type_cast(const exprt &expr)=0;
+  virtual literalt lassert(const exprt &expr) override;
   
   virtual literalt labs(const exprt &expr)=0;
   
-  virtual literalt lnotequal(literalt l1, literalt l2) override;
-
-  // for isnan, mod, arrays etc. that we have no support (or no support yet) create over-approx as nondet
-  virtual literalt lunsupported2var(const exprt &expr) override;
-
-  virtual literalt lvar(const exprt &expr) override;
-    
-  virtual literalt lassert_var() override
-	{ literalt l; l = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); return l;}
-
-  //virtual std::string getStringSMTlibDatatype(const typet& type)=0;
-  //virtual SRef getSMTlibDatatype(const typet& type)=0;
-
 protected:
-  LALogic* lalogic; // Extra var, inner use only - Helps to avoid dynamic cast!
-
-  PTRef ptr_assert_var_constraints;
-
-  unsigned int type_constraints_level; // The level of checks in LA for numerical checks of overflow
-
-  //virtual void initializeSolver(const char*)=0;
+  virtual void initializeSolver(const char*)=0;
 
   PTRef mult_numbers(const exprt &expr, vec<PTRef> &args);
 
   PTRef div_numbers(const exprt &expr, vec<PTRef> &args);
+
+  // for isnan, mod, arrays etc. that we have no support (or no support yet) create over-approx as nondet
+  virtual literalt lunsupported2var(const exprt &expr) override;
 
   PTRef runsupported2var(const exprt &expr);
 
@@ -88,6 +88,21 @@ protected:
   		PTRef &var,
   		std::string lower_b,
   		std::string upper_b); // create a formula with the constraints
+  
+  virtual PTRef make_var(const std::string name) override
+  { return lalogic->mkNumVar(name.c_str()); }
+  
+  virtual literalt lconst_number(const exprt &expr) override;
+
+  virtual literalt ltype_cast(const exprt &expr)=0;
+  
+  virtual PTRef evar(const exprt &expr, std::string var_name) override;
+
+  LALogic* lalogic; // Extra var, inner use only - Helps to avoid dynamic cast!
+
+  PTRef ptr_assert_var_constraints;
+
+  unsigned int type_constraints_level; // The level of checks in LRA for numerical checks of overflow
 };
 
 #endif

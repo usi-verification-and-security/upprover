@@ -30,8 +30,6 @@ public:
       this->decider = decider;
   }
 
-protected:
-
 private:
     smtcheck_opensmt2t * decider;
 };

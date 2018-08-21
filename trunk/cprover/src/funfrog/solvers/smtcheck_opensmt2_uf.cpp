@@ -14,7 +14,7 @@ Author: Grigory Fedyukovich
 // Debug flags of this class:
 //#define SMT_DEBUG
 
-const char* smtcheck_opensmt2t_uf::tk_sort_ureal = "Real";
+const char* smtcheck_opensmt2t_uf::tk_sort_ureal = "Real"; // Not to collide with the sort definitions in the solver
 const char* smtcheck_opensmt2t_uf::tk_mult = "*";
 const char* smtcheck_opensmt2t_uf::tk_div = "/";
 const char* smtcheck_opensmt2t_uf::tk_plus = "+";
@@ -50,8 +50,7 @@ void smtcheck_opensmt2t_uf::initializeSolver(const char* name)
   // a struct into std::vector and use [] before any push_back
   literals.push_back(PTRef());
   literalt l = new_variable(); // Shall be location 0, i.e., [l.var_no()] is [0] - NEVER COMMENT THIS LINE!!!
-  (void)l;
-  literals[0] = logic->getTerm_true(); // Which is .x =0
+  (void)l;  literals[0] = logic->getTerm_true(); // Which is .x =0
   assert(l.var_no() != literalt::unused_var_no());  // KE: for cmake warnings
   // KE: End of fix
 
@@ -253,7 +252,7 @@ Function: smtcheck_opensmt2t_uf::~smtcheck_opensmt2t_uf
 // Free all inner objects
 smtcheck_opensmt2t_uf::~smtcheck_opensmt2t_uf()
 {
-    // Shall/When need to: freeSolver() ?
+    // free solver in smtcheck_opensmt2t
 }
 
 /*******************************************************************\
@@ -335,7 +334,7 @@ exprt smtcheck_opensmt2t_uf::get_value(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_uf::const_var_Number
+Function: smtcheck_opensmt2t_uf::const_var_Real
 
   Inputs:
 
@@ -344,28 +343,11 @@ Function: smtcheck_opensmt2t_uf::const_var_Number
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_uf::const_var_Number(const exprt &expr)
+literalt smtcheck_opensmt2t_uf::lconst_number(const exprt &expr)
 {
     //TODO: Check this
     std::string num = extract_expr_str_number(expr);
-    PTRef rconst = PTRef_Undef;
-    if(num.size() <= 0)
-    {
-        if (expr.type().id() == ID_c_enum)
-        {
-            num = expr.type().find(ID_tag).pretty();
-        }
-        else if (expr.type().id() == ID_c_enum_tag)
-        {
-            num = id2string(to_constant_expr(expr).get_value());
-        }
-        else
-        {
-            assert(0);
-        }
-    }
-    
-    rconst = logic->mkConst(sort_ureal, num.c_str());
+    PTRef rconst = logic->mkConst(sort_ureal, num.c_str());
     assert(rconst != PTRef_Undef);
 
     return push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
@@ -382,7 +364,7 @@ Function: smtcheck_opensmt2t_uf::type_cast
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_uf::type_cast(const exprt &expr) {
+literalt smtcheck_opensmt2t_uf::ltype_cast(const exprt &expr) {
     // KE: New Cprover code - patching
     bool is_expr_bool = (expr.is_boolean() || (expr.type().id() == ID_c_bool)); 
     bool is_operands_bool = ((expr.operands())[0].is_boolean() 
@@ -395,7 +377,7 @@ literalt smtcheck_opensmt2t_uf::type_cast(const exprt &expr) {
     } else if (is_expr_bool && (expr.operands())[0].is_constant()) {
     	std::string val = extract_expr_str_number((expr.operands())[0]);
     	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
-    	return const_var(!val_const_zero);
+    	return lconst(!val_const_zero);
     } else if (is_number(expr.type()) && is_operands_bool) {
     	// Cast from Boolean to Real - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
@@ -408,7 +390,7 @@ literalt smtcheck_opensmt2t_uf::type_cast(const exprt &expr) {
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
             //cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")" 
             //    << string(getPTermString(ptl)) << endl << s << endl;
-            free(s); s=NULL;            
+            free(s); s=nullptr;            
         }
 #endif          
     	return push_variable(ptl); // Keeps the new literal + index it
@@ -477,12 +459,12 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
 #endif
     // KE: Take care of type cast - recursion of convert take care of it anyhow
     // Unless it is constant bool, that needs different code:
-    l = type_cast(expr);
+    l = ltype_cast(expr);
 
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s); s=NULL;
+    free(s); s=nullptr;
 #endif  
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
@@ -498,6 +480,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
 #endif
         vec<PTRef> args;
         int i = 0;
+        bool is_expr_has_unsupported = false;
         forall_operands(it, expr)
         {	
             // KE: recursion in case the expr is not simple - shall be in a visitor
@@ -509,9 +492,18 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
                 assert(cp != PTRef_Undef);
                 args.push(cp);
                 i++; // Only if really add an item to mult/div inc the counter
+                
+                char* s_trm = logic->printTerm(cp);
+                if (std::string(s_trm).find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
+                    is_expr_has_unsupported = true;
+                free(s_trm); s_trm=NULL;
             }
         }
 
+        // Add to the list of unsupported expressions
+        if (is_expr_has_unsupported)
+            unsupported_info.unsupported_info_equations.push_back(expr); // Currently only for lattice refinement
+        
         PTRef ptl;
         if (_id==ID_notequal) {
             ptl = logic->mkNot(logic->mkEq(args));
@@ -532,7 +524,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
                 {
                     char *s = logic->printTerm(logic->getTopLevelIte(ptl));
                     ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-                    free(s); s=NULL;    
+                    free(s); s=nullptr;    
                 }
 #endif
             }
@@ -608,7 +600,6 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
             ptl = this->mkURealMult(args);
         } else if((_id == ID_member) || 
                 (_id == ID_C_member_name) ||
-                (_id == ID_with) ||
                 (_id == ID_member_name)) {
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR:member operator has no support yet in the UF version (token: "
@@ -618,7 +609,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
             ptl = literals[lunsupported2var(expr).var_no()];
             // TODO
 #endif
-        } else if(_id == ID_index) {
+        } else if ((_id == ID_index) || (_id == ID_with)) {
 #ifdef SMT_DEBUG
             cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
                 << _id << ")" << endl;
@@ -628,7 +619,9 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
             
             // Add new equation of an unknown function (acording to name)
             PTRef var_eq = create_equation_for_unsupported(expr);
-            set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
+            PTRef var_call = logic->mkEq(ptl,var_eq);
+            set_to_true(var_call); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
+            current_partition->push(var_call);
 #endif
         } else if((_id == ID_address_of) || (_id == ID_pointer_offset)) {
 #ifdef SMT_DEBUG
@@ -699,7 +692,7 @@ literalt smtcheck_opensmt2t_uf::lunsupported2var(const exprt &expr)
         return converted_exprs[expr.hash()]; // TODO: might be buggy;
 
     // Create a new unsupported var    
-    const std::string str = create_new_unsupported_var(expr.type().id().c_str());
+    const std::string str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
     
     PTRef var;
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
@@ -712,7 +705,7 @@ literalt smtcheck_opensmt2t_uf::lunsupported2var(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_uf::lnotequal
+Function: smtcheck_opensmt2t_uf::evar
 
   Inputs:
 
@@ -721,79 +714,12 @@ Function: smtcheck_opensmt2t_uf::lnotequal
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_uf::lnotequal(literalt l1, literalt l2){
-    vec<PTRef> args;
-    PTRef pl1 = literals[l1.var_no()];
-    PTRef pl2 = literals[l2.var_no()];
-    args.push(pl1);
-    args.push(pl2);
-    PTRef ans = logic->mkNot(logic->mkEq(args));
-    return push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t_uf::lvar
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-literalt smtcheck_opensmt2t_uf::lvar(const exprt &expr)
+PTRef smtcheck_opensmt2t_uf::evar(const exprt &expr, std::string var_name)
 {
-    // IF code, set to be unsupported
-    if (expr.type().id()==ID_code) {
-        return lunsupported2var(expr);
-    }
-
-    // Else continue as before
-    std::string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    str = quote_if_necessary(str);
-
-    // Nil is a special case - don't create a var but a val of true
-    if (str.compare(NIL) == 0) return const_var(true);
-
-#ifdef SMT_DEBUG
-	cout << "; (lvar) Create " << str << endl;
-#endif
-
-    // Else if it is really a var, continue and declare it!
-    PTRef var;
-    assert(str.size() > 0);
-    if(is_number(expr.type()))
-        //TODO: Check this
-    	var = logic->mkVar(sort_ureal, str.c_str());
-    else if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
-    	var = logic->mkBoolVar(str.c_str());
-    else { // Is a function with index, array, pointer
-#ifdef SMT_DEBUG
-    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
-    			<< expr.type().id() << ")" << endl;
-    	assert(false); // No support yet for arrays
-#else
-    	var = literals[lunsupported2var(expr).var_no()];
-        
-        // TODO: make it work for unsupported data types
-        // Add new equation of an unknown function (acording to name)
-        //PTRef var_eq = create_equation_for_unsupported(expr);
-        //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-#endif
-    }
-
-    literalt l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
-
-#ifdef DISABLE_OPTIMIZATIONS
-    std::string add_var = str + " () " + getVarData(var);
-    if (var_set_str.end() == var_set_str.find(add_var)) 
-        var_set_str.insert(add_var);
-#endif
-
-    return l;
+    assert(var_name.size() > 0);
+    return ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
+            ? logic->mkBoolVar(var_name.c_str()) : logic->mkVar(sort_ureal, var_name.c_str());
 }
-
 
 /*******************************************************************\
 

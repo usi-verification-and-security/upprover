@@ -76,7 +76,7 @@ smtcheck_opensmt2t_cuf::~smtcheck_opensmt2t_cuf()
 {
     if (bitblaster)
         delete bitblaster;
-    // Shall/When need to: freeSolver() ?
+    // free solver in smtcheck_opensmt2t
 }
 
 /*******************************************************************\
@@ -101,8 +101,9 @@ PTRef smtcheck_opensmt2t_cuf::unsupported2var_bv(const exprt &expr)
         char *s = logic->printTerm(ptrf);
         str = std::string(s);
         free(s);
+        s=nullptr;
     } else {
-        str = create_new_unsupported_var(expr.type().id().c_str());
+        str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
     }
 #ifdef DEBUG_SMT_BB
         cout << "; IT IS AN UNSUPPORTED VAR " << str 
@@ -192,7 +193,7 @@ PTRef smtcheck_opensmt2t_cuf::get_bv_const(const char* val)
 #ifdef DEBUG_SMT_BB 
     char *s = logic->printTerm(lconst);
     std::cout << "Const " << val << " is in OpenSMT " << s << std::endl;
-    free(s); s=NULL;
+    free(s); s=nullptr;
 #endif    
     return lconst;
 }
@@ -490,7 +491,7 @@ PTRef smtcheck_opensmt2t_cuf::labs_bv(const exprt &expr)
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     std::cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
-    free(s); s=NULL;
+    free(s); s=nullptr;
 #endif
 
     return ptl;
@@ -575,7 +576,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv_char(PTRef &var,
         char *s = logic->printTerm(ptl);
         std::cout <<  "\n;; Type Byte Constraints: (" << lower_bound << " to "
                 << upper_bound << ")\n" << s << std::endl;
-        free(s); s=NULL;
+        free(s); s=nullptr;
 #endif 
  }
 
@@ -658,7 +659,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_bv_bool(
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(ptl);
     std::cout <<  "\n;; Type Byte Constraints for Bool: \n" << s << std::endl;
-    free(s); s=NULL;
+    free(s); s=nullptr;
 #endif
 }
 
@@ -758,7 +759,7 @@ void smtcheck_opensmt2t_cuf::add_constraints4chars_numeric(
     char *s = logic->printTerm(ptl);
     std::cout <<  "\n;; Type Byte Constraints: (" << lower_bound << " to "
                 << upper_bound << ")\n" << s << std::endl;
-    free(s); s=NULL;
+    free(s); s=nullptr;
 #endif        
 }
 
@@ -865,7 +866,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB
         char* s = logic->printTerm(ptl);
         std::cout << "; CREATE A VAR in OPENSMT2 " << s << " of type " << expr.type().id_string() << std::endl;
-        free(s); s=NULL;
+        free(s); s=nullptr;
 #endif
     } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) 
                                                 && !expr.operands().empty()) {
@@ -886,7 +887,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB
         char* s = logic->printTerm(ptl);
         std::cout << "; CREAT A CONSTANT in OPENSMT2 " << s << std::endl;
-        free(s); s=NULL;
+        free(s); s=nullptr;
 #endif          
         
     } else if (_id == ID_abs) {
@@ -1173,7 +1174,7 @@ PTRef smtcheck_opensmt2t_cuf::convert_bv(const exprt &expr)
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(ptl);
     std::cout << "; For " << _id << " Created OpenSMT2 formula " << s << std::endl;
-    free(s); s=NULL;
+    free(s); s=nullptr;
 #endif
     
     return ptl;
@@ -1299,7 +1300,7 @@ exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
         std::cout << "Getting value for " << s 
                 << " which " << ((is_expr_bb)? "was bb" : "was not bb") 
                 << std::endl;
-        free(s); s=NULL;
+        free(s); s=nullptr;
 #endif
         
         // Get the value of the PTRef
@@ -1373,7 +1374,7 @@ exprt smtcheck_opensmt2t_cuf::get_value(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_cuf::const_var_Number
+Function: smtcheck_opensmt2t_cuf::const_var_Real
 
   Inputs:
 
@@ -1382,29 +1383,12 @@ Function: smtcheck_opensmt2t_cuf::const_var_Number
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_cuf::const_var_Number(const exprt &expr)
+literalt smtcheck_opensmt2t_cuf::lconst_number(const exprt &expr)
 {
     //TODO: Check this
     literalt l;
     std::string num = extract_expr_str_number(expr);
-    PTRef rconst = PTRef_Undef;
-    if (num.size() <= 0)
-    {
-        if (expr.type().id() == ID_c_enum)
-        {
-            num = expr.type().find(ID_tag).pretty();
-        }
-        else if (expr.type().id() == ID_c_enum_tag)
-        {
-            num = id2string(to_constant_expr(expr).get_value());
-        }
-        else
-        {
-            assert(0);
-        }
-    }
-
-    rconst = uflogic->mkCUFConst(atoi(num.c_str())); // uflogic To avoid dynamic cast 
+    PTRef rconst = uflogic->mkCUFConst(atoi(num.c_str())); // uflogic To avoid dynamic cast 
     assert(rconst != PTRef_Undef);
 
     l = push_variable(rconst); // Keeps the new PTRef + create for it a new index/literal
@@ -1429,7 +1413,7 @@ Function: smtcheck_opensmt2t_cuf::type_cast
 //    (RegionAllocator<T>::Ref) const [with T = unsigned int; 
 //     RegionAllocator<T>::Ref = unsigned int]: Assertion `r < sz' failed.
 \*******************************************************************/
-literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
+literalt smtcheck_opensmt2t_cuf::ltype_cast(const exprt &expr) {
     // KE: New Cprover code - patching
     bool is_expr_bool = (expr.is_boolean() || (expr.type().id() == ID_c_bool)); 
     bool is_operands_bool = ((expr.operands())[0].is_boolean() 
@@ -1445,7 +1429,7 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
 #ifdef SMT_DEBUG       
         std::cout << " IS THIS ZERO? :" << val_const_zero << std::endl;
 #endif
-        return const_var(!val_const_zero);
+        return lconst(!val_const_zero);
     } else if (is_number(expr.type()) && is_operands_bool) {
         // Cast from Boolean to Real - Add
         literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
@@ -1458,7 +1442,7 @@ literalt smtcheck_opensmt2t_cuf::type_cast(const exprt &expr) {
             ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
             //std::cout << "; XXX oite symbol (type-cast): (" << ite_map_str.size() << ")"
             //    << string(getPTermString(ptl)) << std::endl << s << std::endl;
-            free(s); s=NULL;    
+            free(s); s=nullptr;    
         }
 #endif          
         
@@ -1529,11 +1513,11 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
 #endif
         // KE: Take care of type cast - recursion of convert take care of it anyhow
         // Unless it is constant bool, that needs different code:
-        l = type_cast(expr);
+        l = ltype_cast(expr);
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
     std::cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
-    free(s); s=NULL;
+    free(s); s=nullptr;
 #endif
     } else if (_id==ID_typecast || _id==ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
@@ -1606,7 +1590,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
                 {
                     char *s = logic->printTerm(logic->getTopLevelIte(ptl));
                     ite_map_str.insert(make_pair(string(getPTermString(ptl)), std::string(s)));
-                    free(s); s=NULL;    
+                    free(s); s=nullptr;    
                 }
 #endif
             }
@@ -1619,7 +1603,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
             {
                 char *s = logic->printTerm(logic->getTopLevelIte(ptl));
                 ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
-                free(s); s=NULL;
+                free(s); s=nullptr;
             }
 #endif
         } else if (_id == ID_and) {
@@ -1819,7 +1803,7 @@ literalt smtcheck_opensmt2t_cuf::convert(const exprt &expr)
     PTRef ptr = literals[l.var_no()];
     char *s = logic->printTerm(ptr);
     std::cout << "; For " << expr.id() << " Created OpenSMT2 formula " << s << std::endl;
-    free(s); s=NULL;
+    free(s); s=nullptr;
 #endif
     return l;
 }
@@ -1916,7 +1900,7 @@ literalt smtcheck_opensmt2t_cuf::lunsupported2var(const exprt &expr)
     
     
     // Create a new unsupported var
-    std::string str = create_new_unsupported_var(expr.type().id().c_str());
+    std::string str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
     
     // Create the correct type in opensmt
     PTRef var;
@@ -1930,7 +1914,7 @@ literalt smtcheck_opensmt2t_cuf::lunsupported2var(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_cuf::lnotequal
+Function: smtcheck_opensmt2t_cuf::evar
 
   Inputs:
 
@@ -1939,81 +1923,12 @@ Function: smtcheck_opensmt2t_cuf::lnotequal
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_cuf::lnotequal(literalt l1, literalt l2){
-    vec<PTRef> args;
-    PTRef pl1 = literals[l1.var_no()];
-    PTRef pl2 = literals[l2.var_no()];
-    args.push(pl1);
-    args.push(pl2);
-    PTRef ans = uflogic->mkCUFNeq(args); // uflogic to avoid dynamic cast
-    return push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
-}
 
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t_cuf::lvar
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-literalt smtcheck_opensmt2t_cuf::lvar(const exprt &expr)
+PTRef smtcheck_opensmt2t_cuf::evar(const exprt &expr, std::string var_name)
 {
-    // IF code, set to be unsupported
-    if (expr.type().id()==ID_code) {
-        return lunsupported2var(expr);
-    }
-
-    // Else continue as before
-    std::string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    str = quote_if_necessary(str);
-
-    // Nil is a special case - don't create a var but a val of true
-    if (str.compare(NIL) == 0) return const_var(true);
-
-#ifdef SMT_DEBUG
-    std::cout << "; (lvar) Create " << str << std::endl;
-#endif
-
-    // Else if it is really a var, continue and declare it!
-    PTRef var;
-    assert(str.size() > 0);
-    if(is_number(expr.type()))
-        //TODO: Check this
-        var = uflogic->mkCUFNumVar(str.c_str());//Main CufNumVar, for symbols
-    else if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool))    
-        var = logic->mkBoolVar(str.c_str());
-    else { // Is a function with index, array, pointer
-#ifdef SMT_DEBUG
-        std::cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the UF version (token: "
-             << expr.type().id() << ")" << std::endl;
-        assert(false); // No support yet for arrays
-#else
-        literalt l_unsupported = lunsupported2var(expr);
-        var = literals[l_unsupported.var_no()];
-        
-        // TODO           
-        // Add new equation of an unknown function (acording to name)
-        //PTRef var_eq = create_equation_for_unsupported(expr);
-        //set_to_true(logic->mkEq(ptl,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-        
-        return l_unsupported; // No need to push it again, so return here
-#endif
-    }
-
-    literalt l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
-
-#ifdef DISABLE_OPTIMIZATIONS
-    std::string add_var = str + " () " + getVarData(var);
-    if (var_set_str.end() == var_set_str.find(add_var)) {
-        var_set_str.insert(add_var);
-    }
-#endif
-
-    return l;
+    assert(var_name.size() > 0);
+    return  ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
+            ? logic->mkBoolVar(var_name.c_str()) : uflogic->mkCUFNumVar(var_name.c_str());
 }
 
 /*******************************************************************\
@@ -2103,7 +2018,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const e
 #ifdef DEBUG_SMT_BB
             char *s = logic->printTerm(ce_term);
             std::cout <<  "  CE value: " << s << std::endl;
-            free(s); s=NULL;
+            free(s); s=nullptr;
 #endif
         }
 
@@ -2114,7 +2029,7 @@ int smtcheck_opensmt2t_cuf::check_ce(std::vector<exprt>& exprs, std::map<const e
 #ifdef DEBUG_SMT_BB
         char *s = logic->printTerm(lp);
         std::cout <<  "  Validating: [" << i << "]: " << s << std::endl;
-        free(s); s=NULL;
+        free(s); s=nullptr;
 #endif
 
         BVRef tmp;
@@ -2220,7 +2135,7 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
 #ifdef DEBUG_SMT_BB
     char *s = logic->printTerm(lp);
     std::cout <<  "  Refining [" << i << "]: " << s << std::endl;
-    free(s); s=NULL;
+    free(s); s=nullptr;
 #endif
 
     BVRef tmp;
@@ -2233,7 +2148,7 @@ void smtcheck_opensmt2t_cuf::refine_ce_one_iter(std::vector<exprt>& exprs, int i
     } else {
         char *s = logic->printTerm(lp);
         std::cout <<  "; Skip Refining [" << i << "]: " << s << std::endl;
-        free(s); s=NULL;
+        free(s); s=nullptr;
     }
 }
 
@@ -2360,36 +2275,6 @@ SRef smtcheck_opensmt2t_cuf::getSMTlibDatatype(const typet& type)
     
     //assert(0); // Shall not get here
     throw std::logic_error("Unknown datatype encountered!");
-}
-
-/*******************************************************************\
-
-Function: getVarsInExpr
-
-  Inputs:
-
- Outputs:
-
- Purpose: For CUF algorithm
-
- * Fixme: remove to util/hifrog 
-\*******************************************************************/
-void getVarsInExpr(exprt& e, std::set<exprt>& vars)
-{
-    if(e.id()==ID_symbol){
-        if (is_cprover_builtins_var(e))
-        {
-            // Skip rounding_mode or any other builtins vars
-        }
-        else
-        {
-            vars.insert(e);
-        }
-    } else if (e.has_operands()){
-        for (unsigned int i = 0; i < e.operands().size(); i++){
-            getVarsInExpr(e.operands()[i], vars);
-        }
-    }
 }
 
 // Check if a literal is non-linear in the solver side

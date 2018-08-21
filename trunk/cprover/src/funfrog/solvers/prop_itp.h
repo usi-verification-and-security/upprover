@@ -51,9 +51,9 @@ public:
       return get_symbol_mask()[idx];
   }
   
-  virtual bool check_implies(const itpt& second) const override;
-  
-  virtual itpt* get_nodet() override { return new prop_itpt(); }
+  // Only for SMT logics
+  virtual void setTterm(Tterm& t) override {}
+  virtual void setDecider(check_opensmt2t *_s) override {}
 
 protected:
   typedef std::vector<bvt> clausest;

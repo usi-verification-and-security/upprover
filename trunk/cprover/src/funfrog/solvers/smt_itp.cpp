@@ -7,8 +7,6 @@ Author:
 \*******************************************************************/
 
 #include "smt_itp.h"
-
-#include "../utils/naming_helpers.h"
 #include "../hifrog.h"
 #include "../utils/naming_helpers.h"
 
@@ -173,7 +171,7 @@ void smt_itpt::print(std::ostream& out) const
         out << ";; SMT. interpolant (#v: " 
             << _no_variables << ", #c: " << clauses.size() << ",root: "
             << root_literal.dimacs() << "):" << std::endl
-            << logic->printTerm(interpolant) << std::endl;
+            << m_decider->getPTermString(interpolant) << std::endl;
     }
 }
 
@@ -191,8 +189,8 @@ Function: smt_itpt::serialize
 
 void smt_itpt::serialize(std::ostream& out) const
 {
-  assert(logic);
-  logic->dumpFunction(out, templ);
+  assert(m_decider);
+  m_decider->dump_function(out, templ);
 }
 
 /*******************************************************************\

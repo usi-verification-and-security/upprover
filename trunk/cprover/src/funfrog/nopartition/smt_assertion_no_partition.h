@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /* 
  * File:   smt_assertion_no_partition.h
  * Author: karinek
@@ -21,6 +15,7 @@
 
 #include "../assertion_info.h"
 #include "smt_symex_target_equation.h"
+#include "../partitioning_target_equation.h"
 
 extern time_periodt global_satsolver_time;
 
@@ -41,14 +36,20 @@ public:
     virtual ~smt_assertion_no_partitiont() {}    
           
     bool assertion_holds(smtcheck_opensmt2t& decider);
+   
+    bool is_satisfiable(smtcheck_opensmt2t& decider); 
 
     void error_trace(smtcheck_opensmt2t& decider, const namespacet &ns, std::map<irep_idt, std::string>& guard_expln);
+    
+    const SSA_steps_orderingt get_steps_exec_order() {
+        SSA_steps_orderingt ret; ret.reserve(equation.SSA_steps.size());
+        for(symex_target_equationt::SSA_stepst::iterator it=equation.SSA_steps.begin(); it!=equation.SSA_steps.end(); it++)
+            ret.push_back(&*it);;
+        return ret;
+    }
 
-public:
     // Store for the symex result
     smt_symex_target_equationt &equation;
-    
-    bool is_satisfiable(smtcheck_opensmt2t& decider);
     
     // SAT solving time
     time_periodt solving_time;
@@ -57,6 +58,5 @@ public:
 
     unsigned long &max_memory_used;
 };
-
 #endif /* SMT_ASSERTION_NO_PARTITION_H */
 

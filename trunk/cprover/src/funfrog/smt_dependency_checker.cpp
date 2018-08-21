@@ -14,7 +14,15 @@
 std::pair<bool, fine_timet> smt_dependency_checkert::check_implication(SSA_steps_it it1, SSA_steps_it it2)
 {
   try{
-  smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra(0, "implication checker", false);
+  smtcheck_opensmt2t* decider = new smtcheck_opensmt2t_lra(0, "implication checker", 
+#ifdef PRODUCE_PROOF
+          0, nullptr, // Not using interpolation
+          false, 3, 2, // default values
+#endif   
+#ifdef DISABLE_OPTIMIZATIONS  
+          false, false, "",  // No dumps
+#endif           
+          false);
   decider->new_partition();
 
   convert_delta_SSA(*decider, it1, it2);

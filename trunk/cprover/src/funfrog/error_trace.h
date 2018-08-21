@@ -3,6 +3,7 @@
 
 #include <util/expr.h>
 #include <goto-programs/goto_trace.h>
+#include "partitioning_target_equation.h"
 
 class smtcheck_opensmt2t;
 class smt_symex_target_equationt;
@@ -23,30 +24,28 @@ public:
 	virtual ~error_tracet() {}
 
 	void build_goto_trace(
-			  smt_partitioning_target_equationt &target,
+			  const SSA_steps_orderingt& SSA_steps,
 			  smtcheck_opensmt2t &decider);
+        
+	void show_goto_trace(
+	  std::ostream &out,
+	  const namespacet &ns,
+	  std::map<irep_idt, std::string> &guard_expln); // MAIN: from prepare_smt_formula
 
+        error_tracet::isOverAppoxt is_trace_overapprox(smtcheck_opensmt2t &decider, const SSA_steps_orderingt& SSA_steps);
+
+
+        ////////////////////////////////////////////
+        // Versions for Specific paper(s): 
 	void build_goto_trace_formula (
 	  smt_partitioning_target_equationt &target,
 	  smtcheck_opensmt2t &decider,
-	  smtcheck_opensmt2t_lra &decider2);
+	  smtcheck_opensmt2t_lra &decider2); // Theoref lra version
 
 	void build_goto_trace_formula (
 	  std::vector<exprt>& exprs,
 	  std::map<const exprt, int>& model,
-	  smtcheck_opensmt2t &decider);
-
-        void build_goto_trace (
-          smt_symex_target_equationt &target,
-          smtcheck_opensmt2t &decider);
-        
-	void show_goto_trace(
-	  smtcheck_opensmt2t &decider,
-	  std::ostream &out,
-	  const namespacet &ns,
-	  std::map<irep_idt, std::string> &guard_expln);
-
-	error_tracet::isOverAppoxt is_trace_overapprox(smtcheck_opensmt2t &decider);
+	  smtcheck_opensmt2t &decider); // theoref cuf version / Build CEX
 
 private:
 	isOverAppoxt isOverAppox;

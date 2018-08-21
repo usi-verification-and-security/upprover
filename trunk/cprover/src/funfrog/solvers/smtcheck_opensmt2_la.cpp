@@ -109,7 +109,7 @@ exprt smtcheck_opensmt2t_la::get_value(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_la::const_var_Number
+Function: smtcheck_opensmt2t_la::lconst_number
 
   Inputs:
 
@@ -118,32 +118,15 @@ Function: smtcheck_opensmt2t_la::const_var_Number
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_la::const_var_Number(const exprt &expr)
+literalt smtcheck_opensmt2t_la::lconst_number(const exprt &expr)
 {
-    string num = extract_expr_str_number(expr);
-    PTRef rconst = PTRef_Undef;
-    if(num.size() <= 0)
-    {
-        if (expr.type().id() == ID_c_enum)
-        {
-            num = expr.type().find(ID_tag).pretty();
-        }
-        else if (expr.type().id() == ID_c_enum_tag)
-        {
-            num = id2string(to_constant_expr(expr).get_value());
-        }
-        else
-        {
-            assert(0);
-        }
-    }
-    
-    rconst = lalogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
+    std::string num = extract_expr_str_number(expr);
+    PTRef rconst = lalogic->mkConst(num.c_str()); // Can have a wrong conversion sometimes!
     assert(rconst != PTRef_Undef);
 
     // Check the conversion from string to real was done properly - do not erase!
     assert(!lalogic->isNumOne(rconst) || expr.is_one() || // Check the conversion works: One => one
-            (expr.type().id()==ID_c_enum || expr.type().id()==ID_c_enum_tag)); // Cannot check enums
+            (expr.type().id()==ID_c_enum || expr.type().id()==ID_c_enum_tag || expr.type().id()==ID_c_bit_field)); // Cannot check enums
     if(expr.is_constant() && (expr.is_boolean() || is_number(expr.type()))){
     	exprt temp_check = exprt(expr); temp_check.negate();
         assert(!lalogic->isNumZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
@@ -346,7 +329,7 @@ literalt smtcheck_opensmt2t_la::convert(const exprt &expr)
         cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
     #endif
         
-        l = type_cast(expr);
+        l = ltype_cast(expr);
         
     #ifdef SMT_DEBUG
         char* s = getPTermString(l);
@@ -400,7 +383,7 @@ literalt smtcheck_opensmt2t_la::convert(const exprt &expr)
 
 #ifdef SMT_DEBUG
                 char *s = logic->printTerm(cp);
-                cout << "; On inner iteration " << i
+                std::cout << "; On inner iteration " << i
                     << " Op to command is var no " << cl.var_no()
                     << " inner index " << cp.x
                     << " with hash code " << (*it).full_hash()
@@ -455,7 +438,7 @@ literalt smtcheck_opensmt2t_la::convert(const exprt &expr)
                     ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
                     //cout << "; XXX oite symbol: (" << ite_map_str.size() << ")" 
                     //    << string(getPTermString(ptl)) << endl << s << endl;
-                    free(s);    
+                    free(s); s=nullptr;   
                 }
 #endif
             }
@@ -526,7 +509,7 @@ literalt smtcheck_opensmt2t_la::convert(const exprt &expr)
             ptl = mult_numbers(expr,args);
         } else if(_id == ID_index) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LIA version (token: "
+            std::cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LIA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
@@ -539,7 +522,7 @@ literalt smtcheck_opensmt2t_la::convert(const exprt &expr)
 #endif
         } else if((_id == ID_address_of) || (_id == ID_pointer_offset)) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LIA version (token: "
+            std::cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LIA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for address and pointers
 #else
@@ -552,7 +535,7 @@ literalt smtcheck_opensmt2t_la::convert(const exprt &expr)
 #endif
         } else if (_id == ID_pointer_object) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LIA version (token: "
+            std::cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LIA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for pointers
 #else
@@ -561,7 +544,7 @@ literalt smtcheck_opensmt2t_la::convert(const exprt &expr)
 #endif
         } else if (_id==ID_array) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LIA version (token: "
+            std::cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LIA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
@@ -588,8 +571,8 @@ literalt smtcheck_opensmt2t_la::convert(const exprt &expr)
 #endif            
         } else {
 #ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
-            cout << _id << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
-            cout << "EXIT WITH ERROR: operator does not yet supported in the LIA version (token: "
+            std::cout << _id << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
+            std::cout << "EXIT WITH ERROR: operator does not yet supported in the LIA version (token: "
             		<< _id << ")" << endl;
             assert(false);
 #else
@@ -608,31 +591,10 @@ literalt smtcheck_opensmt2t_la::convert(const exprt &expr)
 #ifdef SMT_DEBUG
     PTRef ptr = literals[l.var_no()];
     char *s = logic->printTerm(ptr);
-    cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    std::cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
+    free(s); s=nullptr;
 #endif
     return l;
-}
-
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t_la::lnotequal
-
-  Inputs:
-
- Outputs:
-
- Purpose:
-
-\*******************************************************************/
-literalt smtcheck_opensmt2t_la::lnotequal(literalt l1, literalt l2){
-    vec<PTRef> args;
-    PTRef pl1 = literals[l1.var_no()];
-    PTRef pl2 = literals[l2.var_no()];
-    args.push(pl1);
-    args.push(pl2);
-    PTRef ans = logic->mkNot(logic->mkEq(args));
-    return push_variable(ans); // Keeps the new PTRef + create for it a new index/literal
 }
 
 /*******************************************************************\
@@ -653,7 +615,7 @@ PTRef smtcheck_opensmt2t_la::runsupported2var(const exprt &expr) {
     }
 
     // Create a new unsupported var
-    const string str = create_new_unsupported_var(expr.type().id().c_str());
+    const std::string str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
     
     PTRef var;
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
@@ -686,7 +648,7 @@ literalt smtcheck_opensmt2t_la::lunsupported2var(const exprt &expr)
         return converted_exprs[expr.hash()]; // TODO: might be buggy;
 
     // Create a new unsupported var
-    const string str = create_new_unsupported_var(expr.type().id().c_str());
+    const std::string str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
 
     PTRef var;
     if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
@@ -699,7 +661,7 @@ literalt smtcheck_opensmt2t_la::lunsupported2var(const exprt &expr)
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_la::lvar
+Function: smtcheck_opensmt2t_la::evar
 
   Inputs:
 
@@ -708,59 +670,32 @@ Function: smtcheck_opensmt2t_la::lvar
  Purpose:
 
 \*******************************************************************/
-literalt smtcheck_opensmt2t_la::lvar(const exprt &expr)
+PTRef smtcheck_opensmt2t_la::evar(const exprt &expr, std::string var_name)
 {
-    // IF code, set to be unsupported
-    if (expr.type().id()==ID_code) {
-        return lunsupported2var(expr);
-    }
+    assert(var_name.size() > 0);
+    return ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
+            ? logic->mkBoolVar(var_name.c_str()) : lalogic->mkNumVar(var_name.c_str());
+}
 
-    // Else continue as before
-    string str = extract_expr_str_name(expr); // NOTE: any changes to name - please added it to general method!
-    str = quote(str);
+/*******************************************************************\
 
-    // Nil is a special case - don't create a var but a val of true
-    if (str.compare(NIL) == 0) return const_var(true);
+Function: smtcheck_opensmt2t_la::lassert
 
-#ifdef SMT_DEBUG
-    cout << "; (lvar) Create " << str << endl;
-#endif
+  Inputs:
 
-    // Else if it is really a var, continue and declare it!
-    PTRef var;
-    assert(str.size() > 0);
-    if(is_number(expr.type()))
-    	var = lalogic->mkNumVar(str.c_str());
-    else if ((expr.is_boolean()) || (expr.type().id() == ID_c_bool)) 
-    	var = logic->mkBoolVar(str.c_str());
-    else { // Is a function with index, array, pointer
-#ifdef SMT_DEBUG
-    	cout << "EXIT WITH ERROR: Arrays and index of an array operator have no support yet in the LIA version (token: "
-    			<< expr.type().id() << ")" << endl;
-    	assert(false); // No support yet for arrays
-#else
-    	var = runsupported2var(expr);
-   
-        // TODO: 
-        // Add new equation of an unknown function (acording to name)
-        //PTRef var_eq = create_equation_for_unsupported(expr);
-        //set_to_true(logic->mkEq(var,var_eq)); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1)) 
-#endif
-    }
+ Outputs:
 
-    literalt l = push_variable(var); // Keeps the new PTRef + create for it a new index/literal
+ Purpose:
 
-    if (type_constraints_level > 0)
-    	add_constraints2type(expr, var);
-
-#ifdef DISABLE_OPTIMIZATIONS
-	std::string add_var = str + " () " + getVarData(var);
-	if (var_set_str.end() == var_set_str.find(add_var)) {
-            var_set_str.insert(add_var);
-	}
-#endif
-
-	return l;
+\*******************************************************************/
+literalt smtcheck_opensmt2t_la::lassert(const exprt &expr)
+{ 
+    literalt lconstraints; 
+    lconstraints = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); 
+    
+    literalt l;
+    l = land(convert(expr), lconstraints);
+    return l;
 }
 
 /*******************************************************************\
@@ -814,9 +749,9 @@ void smtcheck_opensmt2t_la::push_assumes2type(
 
 #ifdef SMT_DEBUG_VARS_BOUNDS
     char *s = logic->printTerm(ptr);
-    cout << "; For Assume Constraints Created OpenSMT2 formula " << s << endl;
-    cout << "; For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
-    free(s);
+    std::cout << "; For Assume Constraints Created OpenSMT2 formula " << s << endl;
+    std::cout << "; For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
+    free(s); s=nullptr;
 #endif
 }
 
@@ -841,20 +776,13 @@ void smtcheck_opensmt2t_la::push_asserts2type(
     // Else add the checks
     literalt l = create_constraints2type(var, lower_b, upper_b); 
     PTRef ptr = literals[l.var_no()];
-
-    if (is_var_constraints_empty)
-    {
-        is_var_constraints_empty = false;
-        ptr_assert_var_constraints = ptr;
-    }
-    else
-        ptr_assert_var_constraints = logic->mkAnd(ptr_assert_var_constraints, ptr);
+    ptr_assert_var_constraints = logic->mkAnd(ptr_assert_var_constraints, ptr);
 
 #ifdef SMT_DEBUG_VARS_BOUNDS
     char *s = logic->printTerm(ptr);
-    cout << "; For Assert Constraints Created OpenSMT2 formula " << s << endl;
-    cout << "; Pushed Formulat For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
-    free(s);
+    std::cout << "; For Assert Constraints Created OpenSMT2 formula " << s << endl;
+    std::cout << "; Pushed Formula For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
+    free(s); s=nullptr;
 #endif
 }
 
@@ -914,7 +842,7 @@ void smtcheck_opensmt2t_la::add_constraints2type(const exprt &expr, PTRef& var)
 
     // Start building the constraints
 #ifdef SMT_DEBUG_VARS_BOUNDS
-    cout << "; For variable " << expr.get(ID_identifier) << " in partition " << partition_count
+    std::cout << "; For variable " << expr.get(ID_identifier) << " in partition " << partition_count
 			<< " try to identify this type "<< var_type.pretty()
 			<< ((expr.id() == ID_nondet_symbol) ? " that is non-det symbol" : " that is a regular symbol")
 			<< endl;

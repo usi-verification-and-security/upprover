@@ -41,6 +41,7 @@ void smtcheck_opensmt2t_lia::initializeSolver(const char* name)
     // KE: End of fix
     
     // To avoid issues with type constraints for LIA
+    ptr_assert_var_constraints = logic->getTerm_true();
     if (type_constraints_level > 0)
         std::cout << "Adding Type Constraints (" << type_constraints_level << ")" 
                 << ((type_constraints_level == 1 ? " for type constraints on non-deterministic input" : ""))
@@ -67,7 +68,7 @@ smtcheck_opensmt2t_lia::~smtcheck_opensmt2t_lia()
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t_lia::type_cast
+Function: smtcheck_opensmt2t_lia::ltype_cast
 
   Inputs:
 
@@ -77,7 +78,7 @@ Function: smtcheck_opensmt2t_lia::type_cast
  * 
  All is Integer in LIA so suppose to work id number to number
 \*******************************************************************/
-literalt smtcheck_opensmt2t_lia::type_cast(const exprt &expr) 
+literalt smtcheck_opensmt2t_lia::ltype_cast(const exprt &expr) 
 {
     std::cout << "*** BENCHMARK USES Type-CAST in LIA, test carefully! ***" << std::endl; // KE: remove after testing!
     
@@ -93,7 +94,7 @@ literalt smtcheck_opensmt2t_lia::type_cast(const exprt &expr)
     } else if (is_expr_bool && (expr.operands())[0].is_constant()) {
     	std::string val = extract_expr_str_number((expr.operands())[0]);
     	bool val_const_zero = (val.size()==0) || (stod(val)==0.0);
-    	return const_var(!val_const_zero);
+    	return lconst(!val_const_zero);
     } else if (is_number(expr.type()) && is_operands_bool) {
     	// Cast from Boolean to Integer - Add
     	literalt lt = convert((expr.operands())[0]); // Creating the Bool expression
@@ -152,7 +153,7 @@ literalt smtcheck_opensmt2t_lia::labs(const exprt &expr)
         ite_map_str.insert(make_pair(string(getPTermString(ptl)),std::string(s)));
         //cout << "; XXX oite symbol (labs):  (" << ite_map_str.size() << ")" 
         //            << string(getPTermString(ptl)) << endl << s << endl;
-        free(s);        
+        free(s); s=nullptr;     
     }
 #endif
     
@@ -160,8 +161,8 @@ literalt smtcheck_opensmt2t_lia::labs(const exprt &expr)
 
 #ifdef SMT_DEBUG
     char* s = getPTermString(l);
-    cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
-    free(s);
+    std::cout << "; (ABS) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+    free(s); s=nullptr;
 #endif
 
     return l;

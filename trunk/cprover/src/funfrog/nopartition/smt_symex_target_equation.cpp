@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /* 
  * File:   smt_symex_target_equationt.cpp
  * Author: karinek
@@ -65,7 +59,7 @@ void smt_symex_target_equationt::convert_guards(smtcheck_opensmt2t &decider)
 #       ifdef DEBUG_SSA_SMT_CALL
             cout << "Before decider::const_var(GUARD-OUT) --> false" << endl;
 #       endif
-            step.guard_literal = decider.const_var(false);
+            step.guard_literal = decider.lconst(false);
         } else {
             exprt tmp(step.guard);
 #       ifdef DISABLE_OPTIMIZATIONS
@@ -90,7 +84,7 @@ void smt_symex_target_equationt::convert_assignments(smtcheck_opensmt2t &decider
             exprt tmp(step.cond_expr);
 
             // Only if not an assignment to rounding model print it + add it to LRA statements
-            if (!isRoundModelEq(tmp)) {
+            if (!isPropBuiltinEq(tmp)) {
 #           ifdef DISABLE_OPTIMIZATIONS
                 expr_ssa_print(out_terms << "    ", tmp, partition_smt_decl, false);
                 terms_counter++;
@@ -130,7 +124,7 @@ void smt_symex_target_equationt::convert_assumptions(smtcheck_opensmt2t &decider
 #           ifdef DEBUG_SSA_SMT_CALL
                 cout << "Before decider::const_var(ASSUME-OUT) --> true" << endl;
 #           endif
-                step.cond_literal = decider.const_var(true);
+                step.cond_literal = decider.lconst(true);
                 // GF
             } else {
                 exprt tmp(step.cond_expr);
@@ -154,7 +148,7 @@ void smt_symex_target_equationt::convert_goto_instructions(smtcheck_opensmt2t &d
 #           ifdef DEBUG_SSA_SMT_CALL
                 cout << "Before decider::const_var(GOTO-OUT) --> true" << endl;
 #           endif
-                step.cond_literal = decider.const_var(true);
+                step.cond_literal = decider.lconst(true);
                 // GF
             } else {
                 exprt tmp(step.cond_expr);
@@ -187,7 +181,7 @@ void smt_symex_target_equationt::convert_assertions(smtcheck_opensmt2t &decider)
             {
                 decider.set_to_false(step.cond_expr);
                 //step.cond_literal=const_literal(false);
-                step.cond_literal = decider.const_var(false);
+                step.cond_literal = decider.lconst(false);
                 return; // prevent further assumptions!
             }
             else if(step.is_assume())
@@ -270,7 +264,7 @@ void smt_symex_target_equationt::convert_summary(smtcheck_opensmt2t &decider)
     //if (!is_summary) return;
 }
 
-bool smt_symex_target_equationt::isRoundModelEq(const exprt &expr) 
+bool smt_symex_target_equationt::isPropBuiltinEq(const exprt &expr) 
 {
     if (!expr.has_operands())
         return false;
@@ -278,15 +272,9 @@ bool smt_symex_target_equationt::isRoundModelEq(const exprt &expr)
         return false;
 
     // Start checking if it is auto gen code for rounding model
-    std::string str = id2string((expr.operands()[0]).get(ID_identifier));
-    if (is_cprover_builtins_var(str))
-        return true;
-    
+    if (is_cprover_builtins_var((expr.operands()[0]))) return true;
     if (expr.operands().size() < 2) return false;
-    
-    str = id2string((expr.operands()[1]).get(ID_identifier));
-    if (is_cprover_builtins_var(str))
-        return true;
+    if (is_cprover_builtins_var((expr.operands()[1]))) return true;
 
     return false;
 }

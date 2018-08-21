@@ -6,6 +6,7 @@ set(HIFROG_SOURCE_FILES
         nopartition/symex_no_partition.cpp
         nopartition/symex_no_partition.h
         solvers/check_opensmt2.h
+        solvers/check_opensmt2.cpp
         solvers/interpolating_solver.h
         solvers/itp.h
         solvers/prop_itp.cpp
@@ -92,6 +93,8 @@ set(HIFROG_SOURCE_FILES
         xml_interface.h
         utils/naming_helpers.h
         utils/naming_helpers.cpp
+        utils/unsupported_operations.h
+        utils/unsupported_operations.cpp
         summary_store_fwd.h
         solvers/itp_fwd.h
         utils/ssa_helpers.h

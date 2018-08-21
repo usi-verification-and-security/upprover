@@ -45,7 +45,7 @@ public:
           unsigned _last_assertion_loc,
           bool _single_assertion_check,
           bool _use_slicing,
-	        bool _do_guard_expl,
+	  bool _do_guard_expl,
           bool _use_smt,
           unsigned int _max_unwind,
           bool partial_loops = false
@@ -82,8 +82,8 @@ public:
   };
 
   std::map<irep_idt, std::string> guard_expln;
-  
-private:
+
+protected:
   
   // Symex state holding the renaming levels
   statet state;
