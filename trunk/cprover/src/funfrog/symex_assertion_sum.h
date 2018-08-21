@@ -11,7 +11,6 @@
 
 
 #include <util/symbol.h>
-#include <util/message.h>
 #include <goto-symex/goto_symex.h>
 #include "partition_fwd.h"
 #include <queue>
@@ -28,7 +27,7 @@ class partition_ifacet;
 
 using partition_iface_ptrst = std::list<partition_ifacet*>;
 
-class symex_assertion_sumt : public goto_symext, private messaget
+class symex_assertion_sumt : public goto_symext
 {
 public:
   symex_assertion_sumt(const goto_functionst & goto_functions, call_tree_nodet & _summary_info,

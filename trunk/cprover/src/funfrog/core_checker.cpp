@@ -478,8 +478,7 @@ bool core_checkert::assertion_holds_smt_no_partition(
 #endif
   
   symex_no_partitiont symex = symex_no_partitiont(ns, new_symbol_table, equation, message_handler, get_main_function(),!no_slicing_option);
-  
-  setup_unwind(symex);
+  symex.setup_unwind(options.get_unsigned_int_option(HiFrogOptions::UNWIND));
 
 
   smt_assertion_no_partitiont prop = smt_assertion_no_partitiont(
@@ -660,43 +659,6 @@ void core_checkert::extract_interpolants (partitioning_target_equationt& equatio
   }
 }
 #endif
-
-/*******************************************************************\
-
-Function: core_checkert::setup_unwind
-
-  Inputs:
-
- Outputs:
-
- Purpose: Setup the unwind bounds.
-
-\*******************************************************************/
-
-void core_checkert::setup_unwind(symex_bmct& symex)
-{
-  const std::string &set=options.get_option("unwindset");
-  unsigned int length=set.length();
-
-  for(unsigned int idx=0; idx<length; idx++)
-  {
-    std::string::size_type next=set.find(",", idx);
-    std::string val=set.substr(idx, next-idx);
-
-    if(val.rfind(":")!=std::string::npos)
-    {
-      std::string id=val.substr(0, val.rfind(":"));
-      unsigned long uw=atol(val.substr(val.rfind(":")+1).c_str());
-      //symex.unwind_set[id]=uw; // KE: changed in cbmc 5.5
-      symex.set_unwind_thread_loop_limit(1,id,uw); //KE: No threads support, assume main is in thread 1
-    }
-    
-    if(next==std::string::npos) break;
-    idx=next;
-  }
-
-  symex.set_unwind_limit(options.get_unsigned_int_option("unwind"));
-}
 
 /*******************************************************************\
 
