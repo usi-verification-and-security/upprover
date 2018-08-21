@@ -29,7 +29,7 @@ public:
 
   virtual literalt convert(const exprt &expr) override;
 
-  virtual literalt const_var_Real(const exprt &expr) override;
+  virtual literalt const_var_Number(const exprt &expr) override;
 
   virtual literalt type_cast(const exprt &expr) override;
 
@@ -93,7 +93,7 @@ protected:
 
   irep_idt _fails_type_id; // Reason 2 fail of CUF theoref
         
-  void bindBB(const exprt& expr, PTRef pt1);
+  void bindBB(const exprt& expr, PTRef ptl);
 
   void refine_ce_one_iter(std::vector<exprt>& exprs, int i);
 

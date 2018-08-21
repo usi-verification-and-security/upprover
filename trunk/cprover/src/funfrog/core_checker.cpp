@@ -9,6 +9,7 @@
 #include "core_checker.h"
 #include "dependency_checker.h"
 
+#include "solvers/smtcheck_opensmt2_lia.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
@@ -127,6 +128,11 @@ void core_checkert::initialize_solver()
         decider = new smtcheck_opensmt2t_lra(options.get_unsigned_int_option("type-constraints"), "lra checker");
         status() << ("Use QF_LRA logic.") << eom;
     }
+    else if(_logic == "qflia") 
+    {
+        decider = new smtcheck_opensmt2t_lia(options.get_unsigned_int_option("type-constraints"), "lia checker");
+        status() << ("Use QF_LIA logic.") << eom;
+    }    
     else if (_logic == "prop" && !options.get_bool_option("no-partitions"))
     {
         decider = new satcheck_opensmt2t("prop checker");
@@ -618,7 +624,7 @@ bool core_checkert::assertion_holds_smt(const assertion_infot& assertion,
     // the assertion has been successfully verified if we have (end == true)
     const bool is_verified = end;
     if (is_verified) {
-        // produce and store the summaries
+        // produce and store the summaries   
         if (!options.get_bool_option("no-itp")) {
             #ifdef PRODUCE_PROOF
             if (decider->can_interpolate()) {
@@ -1380,7 +1386,8 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     }
 //---------------------------------------------------------------------------
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
-    smtcheck_opensmt2t_lra lra_solver {0, "lra checker"}; //TODO: type_constraints_level
+    unsigned int _type_constraints_level = options.get_unsigned_int_option("type-constraints");
+    smtcheck_opensmt2t_lra lra_solver {_type_constraints_level, "lra checker"}; //TODO: type_constraints_level
     initialize_solver_options(&lra_solver);
     status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
     reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver, uf_solver );
@@ -1404,7 +1411,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     while(can_refine){
         symex.refine_SSA(localRefine.get_refined_functions());
         // new lra_solver here, because of LRA incrementality problems in OpenSMT
-        smtcheck_opensmt2t_lra lra_solver2 {0, "lra checker (in loop)"};
+        smtcheck_opensmt2t_lra lra_solver2 {_type_constraints_level, "lra checker (in loop)"};
         initialize_solver_options(&lra_solver2);
         // we have new solver, but summary store has references from the old solver, we need to reload
         status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;

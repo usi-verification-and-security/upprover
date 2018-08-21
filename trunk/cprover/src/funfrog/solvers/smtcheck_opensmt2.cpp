@@ -238,7 +238,7 @@ literalt smtcheck_opensmt2t::lconst(const exprt &expr){
         return const_var(num.compare("00000000") != 0);
         //std::cout << "Check? " << (num.compare("00000000") != 0) << " for string " << num << std::endl;
     } else {
-        return const_var_Real(expr);
+        return const_var_Number(expr); // KE: FIXME!
     }
 }
 

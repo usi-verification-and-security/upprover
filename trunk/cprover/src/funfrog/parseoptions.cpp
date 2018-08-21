@@ -498,7 +498,7 @@ void funfrog_parseoptionst::help()
   "                               and check stronger claims at once\n"
   "--unwind <bound>               loop unwind bound\n"
   "--partial-loops                do not forbid paths with unsufficient loop unwinding (due to unwind bound)\n"
-  "--type-constraints             LRA's basic constraints on numerical data type\n"
+  "--type-constraints             LRA's and LIA's basic constraints on numerical data type\n"
   "                                 0 - no additional constraints,\n"
   "                                 1 - type constraints on non-deterministic input\n"
   "                                 2 - type constraints on all variables according to their data-type\n"
@@ -534,7 +534,7 @@ void funfrog_parseoptionst::help()
 
 #ifdef PRODUCE_PROOF
   "\nSMT, Interpolation, and Proof Reduction options:\n"
-  "--logic <logic>                [qfuf, qfcuf, qflra, prop] if not present qfuf is used\n"
+  "--logic <logic>                [qfuf, qfcuf, qflra, qflia, prop] if not present qfuf is used\n"
 
   "--itp-algorithm                propositional interpolation algorithm: \n"
   "                                 0 - McMillan_s,\n"
@@ -699,6 +699,11 @@ bool funfrog_parseoptionst::check_function_summarization()
       } else if (bitwidth > 32) {
         cbmc_status_interface("Warrning: --bitwidth larger than 32-bits has only partial support in qfcuf");   
       }  
+    }
+    
+    // For now till create a proper solution in OpenSMT
+    if (options.get_option("logic") == "qflia") {
+        options.set_option("no-itp", true);
     }
     
     // FIXME: complete the code inside dump_list_templates

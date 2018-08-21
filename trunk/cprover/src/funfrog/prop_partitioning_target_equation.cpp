@@ -682,6 +682,7 @@ namespace{
              skip_partition_with_name(partition.get_iface().function_id.c_str());
   }
 }
+
 #endif // PRODUCE_PROOF
 
 /*******************************************************************\
