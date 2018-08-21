@@ -141,7 +141,6 @@ target_link_libraries(hifrog-lib ${OPENSMT2_LIB} ${GMP_LIBRARIES} ${GMPXX_LIBRAR
 
 target_link_libraries(hifrog-lib
     ansi-c
-    cbmc-lib #this is here only because of no_partition, if that is done in a different way, remove this dependency
     cpp
     goto-symex
     solvers

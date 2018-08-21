@@ -60,8 +60,8 @@ set_target_properties(
     ansi-c
     assembler
     big-int
-    cbmc
-    cbmc-lib
+    #cbmc
+    #cbmc-lib
     #clobber
     #clobber-lib
     cpp
@@ -85,7 +85,7 @@ set_target_properties(
     linking
     #miniBDD
     miniz
-    mmcc
+    #mmcc
     pointer-analysis
     solvers
     #string_utils

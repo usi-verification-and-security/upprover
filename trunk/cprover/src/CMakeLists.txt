@@ -86,27 +86,27 @@ if(enable_hifrog_tests)
     enable_testing()
 endif(enable_hifrog_tests)
 
-add_subdirectory(analyses)
-add_subdirectory(ansi-c)
-add_subdirectory(assembler)
-add_subdirectory(big-int)
-add_subdirectory(cpp)
-add_subdirectory(goto-programs)
-add_subdirectory(goto-symex)
-add_subdirectory(jsil)
-add_subdirectory(json)
-add_subdirectory(langapi)
-add_subdirectory(linking)
-add_subdirectory(memory-models)
-add_subdirectory(pointer-analysis)
-add_subdirectory(solvers)
-add_subdirectory(util)
-add_subdirectory(xmllang)
-add_subdirectory(java_bytecode)
-add_subdirectory(miniz)
+add_subdirectory(analyses) # needed from goto-programs
+add_subdirectory(ansi-c) #explicitly needed from HiFrog
+add_subdirectory(assembler) # needed from ansi-c
+add_subdirectory(big-int) # needed from util
+add_subdirectory(cpp) #explicitly needed from HiFrog
+add_subdirectory(goto-programs) # needed from ansi-c
+add_subdirectory(goto-symex) #explicitly needed from HiFrog
+add_subdirectory(jsil) # needed from goto-analyzer
+add_subdirectory(json) # needed from java_bytecode
+add_subdirectory(langapi) # needed from goto-programs
+add_subdirectory(linking) # needed from ansi-c
+#add_subdirectory(memory-models)
+add_subdirectory(pointer-analysis) # needed from analyses
+add_subdirectory(solvers) #explicitly needed from HiFrog
+add_subdirectory(util) #explicitly needed from HiFrog
+add_subdirectory(xmllang) #explicitly needed from HiFrog
+add_subdirectory(java_bytecode) # needed for solvers (!)
+add_subdirectory(miniz) # needed from java_bytecode
 #add_subdirectory(clobber)
 
-add_subdirectory(cbmc)
+#add_subdirectory(cbmc)
 #add_subdirectory(jbmc)
 add_subdirectory(goto-cc)
 add_subdirectory(goto-instrument)
