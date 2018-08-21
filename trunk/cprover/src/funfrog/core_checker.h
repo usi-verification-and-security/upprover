@@ -24,6 +24,7 @@ class check_opensmt2t;
 class symex_bmct;
 class interpolating_solvert;
 class prop_conv_solvert;
+class symex_assertion_sumt;
 
 class core_checkert : private messaget
 {
@@ -78,6 +79,9 @@ protected:
 
     bool assertion_holds_(const assertion_infot & assertion, bool store_summaries_with_assertion);
     bool assertion_holds_smt_no_partition(const assertion_infot& assertion); // BMC alike version
+    void slice_target(partitioning_target_equationt&);
+    bool prepareSSA(symex_assertion_sumt& symex);
+    bool refineSSA(symex_assertion_sumt & symex, const std::list<call_tree_nodet *> & functions_to_refine);
 
 };
 

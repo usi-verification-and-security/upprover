@@ -100,5 +100,10 @@ const std::string SMTConstants::SMT_REAL{"Real"};
 const std::string SMTConstants::SMT_UREAL{"UReal"};
 const std::string SMTConstants::SMT_UNKNOWN{"?"};
 
+const std::string HiFrogOptions::UNWIND{"unwind"};
+const std::string HiFrogOptions::NO_SLICING{"no-slicing"};
+const std::string HiFrogOptions::NO_ERROR_TRACE{"no-error-trace"};
+const std::string HiFrogOptions::LOGIC{"logic"};
+
 
 

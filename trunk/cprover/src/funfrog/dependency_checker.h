@@ -12,7 +12,7 @@
 #include <map>
 
 
-class smt_symex_target_equationt;
+class hifrog_symex_target_equationt;
 class goto_programt;
 class namespacet;
 class subst_scenariot;
@@ -54,7 +54,7 @@ public:
     }
 
   void do_it(partitioning_target_equationt &equation);
-  void do_it(smt_symex_target_equationt &equation);
+  void do_it(hifrog_symex_target_equationt &equation);
 
   using SSA_stepst = std::vector<symex_target_equationt::SSA_stept> ;
   using SSA_steps_it = SSA_stepst::iterator;

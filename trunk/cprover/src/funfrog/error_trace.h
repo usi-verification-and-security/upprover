@@ -6,7 +6,7 @@
 
 class check_opensmt2t;
 class smtcheck_opensmt2t;
-class smt_symex_target_equationt;
+class hifrog_symex_target_equationt;
 class partitioning_target_equationt;
 class smtcheck_opensmt2t_lra;
 
@@ -38,7 +38,7 @@ public:
 	  smtcheck_opensmt2t &decider);
 
         void build_goto_trace (
-          smt_symex_target_equationt &target,
+          hifrog_symex_target_equationt &target,
           smtcheck_opensmt2t &decider);
         
 	void show_goto_trace(

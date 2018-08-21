@@ -42,7 +42,7 @@ public:
           last_assertion_loc(_last_assertion_loc)
           {set_message_handler(_message_handler);};
 
-  std::list<call_tree_nodet*>& get_refined_functions(){ return refined_functions; }
+  const std::list<call_tree_nodet*>& get_refined_functions() const { return refined_functions; }
   void set_refine_mode(refinement_modet _mode){ mode = _mode; }
 
   void mark_sum_for_refine(const check_opensmt2t &decider, call_tree_nodet &summary,

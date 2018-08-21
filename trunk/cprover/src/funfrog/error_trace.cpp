@@ -655,7 +655,7 @@ Function: error_trace::build_exec_order_goto_trace - for NO PARTITON VERISION
 
 \*******************************************************************/
 void error_tracet::build_goto_trace (
-  smt_symex_target_equationt &target,
+  hifrog_symex_target_equationt &target,
   smtcheck_opensmt2t &decider)
 {
 

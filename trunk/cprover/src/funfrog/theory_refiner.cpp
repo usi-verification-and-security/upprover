@@ -15,6 +15,7 @@
 #include <util/time_stopping.h>
 #include "smt_summary_store.h"
 #include "assertion_info.h"
+#include "partitioning_slice.h"
 
 #define _NO_OPTIMIZATION /* Keep on to have reason of SAFE/UNSAFE result */
 theory_refinert::~theory_refinert()
@@ -83,7 +84,7 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   omega.set_initial_precision(assertion, [](const std::string & s) { return false; });
   const unsigned last_assertion_loc = omega.get_last_assertion_loc();
   const bool single_assertion_check = omega.is_single_assertion_check();
-  const unsigned int unwind_bound = options.get_unsigned_int_option("unwind");
+  const unsigned int unwind_bound = options.get_unsigned_int_option(HiFrogOptions::UNWIND);
 
   smt_summary_storet dummy;
   symbol_tablet temp_table;
@@ -102,16 +103,16 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
   symex_assertion_sumt symex{
           omega.get_goto_functions(), summary_info, ns, temp_table,
           equation, message_handler, goto_program, last_assertion_loc,
-          single_assertion_check, true, true, unwind_bound, false};
-
-  //setup_unwind(symex);
+          single_assertion_check, true, unwind_bound, false};
+  symex.set_assertion_info_to_verify(&assertion);
 
   prepare_formulat ssaTosmt = prepare_formulat(equation, message_handler);
 
-  bool end = symex.prepare_SSA(assertion);
+  bool end = symex.prepare_SSA();
 
   if (!end)
   {
+    slice_target(symex.get_target_equation());
       //Converts SSA to SMT formula
     ssaTosmt.convert_to_formula(*(dynamic_cast<smtcheck_opensmt2t *> (decider)), *(decider));
 
@@ -409,6 +410,15 @@ void theory_refinert::report_success()
   default:
     assert(false);
   }
+}
+
+void theory_refinert::slice_target(partitioning_target_equationt & equation) {
+    auto before = current_time();
+    statistics() << "All SSA steps: " << equation.SSA_steps.size() << eom;
+    partitioning_slice(equation);
+    statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << eom;
+    auto after = current_time();
+    statistics() << "SLICER TIME: " << (after - before) << eom;
 }
 
 /*******************************************************************\

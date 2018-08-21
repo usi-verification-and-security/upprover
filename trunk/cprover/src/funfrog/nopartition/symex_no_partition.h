@@ -33,7 +33,7 @@ public:
     symex_no_partitiont(
             const namespacet &_ns,
             symbol_tablet &_new_symbol_table,
-            smt_symex_target_equationt &_target,
+            hifrog_symex_target_equationt &_target,
             message_handlert &_message_handler,
             const goto_programt &_goto_program,
             bool _use_slicing=true
@@ -71,7 +71,7 @@ public:
 
 private:
     // Store for the symex result
-    smt_symex_target_equationt &equation;
+    hifrog_symex_target_equationt &equation;
     
     const goto_programt &goto_program;
 

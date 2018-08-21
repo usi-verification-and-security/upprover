@@ -104,7 +104,7 @@ void dependency_checkert::do_it(partitioning_target_equationt &equation){
 }
 
 // For no partition version
-void dependency_checkert::do_it(smt_symex_target_equationt &equation){
+void dependency_checkert::do_it(hifrog_symex_target_equationt &equation){
 
     absolute_timet initial, temp_end;
     time_periodt duration, durationto;

@@ -8,6 +8,7 @@
 
 class smtcheck_opensmt2t_cuf;
 class symex_assertion_sumt;
+class partitioning_target_equationt;
 
 class theory_refinert:public messaget
 {
@@ -33,6 +34,7 @@ public:
   
   void initialize();
   bool assertion_holds_smt(const assertion_infot& assertion, bool store_summaries_with_assertion);
+    void slice_target(partitioning_target_equationt & equation);
   
 private:
   const goto_programt &goto_program;

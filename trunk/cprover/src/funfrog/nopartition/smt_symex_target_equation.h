@@ -18,15 +18,11 @@
 
 class check_opensmt2t;
 
-// No need to take anything from partition_target_equation, only from the
-// sub smt class of it
-class smt_symex_target_equationt:public symex_target_equationt 
+class hifrog_symex_target_equationt:public symex_target_equationt
 {
 public:
-    smt_symex_target_equationt(const namespacet &_ns,
-            std::vector<unsigned>& _clauses) :
+    hifrog_symex_target_equationt(const namespacet &_ns) :
         symex_target_equationt(_ns),
-        clauses(_clauses),
 #       ifdef DISABLE_OPTIMIZATIONS
         dump_SSA_tree(false),
         ssa_tree_file_name("__ssa_tree_default"),
@@ -50,7 +46,7 @@ public:
 #endif            
     }
         
-    virtual ~smt_symex_target_equationt() 
+    virtual ~hifrog_symex_target_equationt()
     {
 #         ifdef DISABLE_OPTIMIZATIONS        
 	  partition_smt_decl->clear();
@@ -62,14 +58,6 @@ public:
     // Convert all the SSA steps into the corresponding formulas in
     // the corresponding partitions
     void convert(check_opensmt2t &decider);
-  
-    //void fill_function_templates(smtcheck_opensmt2t &decider, vector<summaryt*> &templates)
-    //{ /* TODO ! */ }
-  
-    // Extract interpolants corresponding to the created partitions
-    //void extract_interpolants(
-    //    interpolating_solvert& interpolator, const smtcheck_opensmt2t& decider)
-    //{ /* TODO ! */ }
 
     std::vector<exprt>& get_exprs_to_refine () { return exprs; }; 
     
@@ -98,16 +86,9 @@ protected:
     void convert_goto_instructions(check_opensmt2t &decider);
     // Convert constraints
     void convert_constraints(check_opensmt2t &decider) const;
-  
-  
-    virtual bool is_smt_encoding() {return true;} // KE: Temp. Just to force virtual for compilation
 
     std::vector<exprt> exprs; // Expr to refine method
 public:
-    // MB: FIXME: this field is not used! Why it is here?
-    // KE: a good question, maybe Grigory will have an answer. It is also in the partition version
-    std::vector<unsigned>& clauses;
-    
     bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
 
 #ifdef DISABLE_OPTIMIZATIONS 

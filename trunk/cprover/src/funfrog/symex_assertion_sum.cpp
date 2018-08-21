@@ -9,14 +9,12 @@
 
 #include "symex_assertion_sum.h"
 
-
 #include <util/expr_util.h>
 #include <goto-symex/goto_symex.h>
 #include <pointer-analysis/add_failed_symbols.h>
 #include <util/time_stopping.h>
 #include <util/base_type.h>
 
-#include "partitioning_slice.h"
 #include "partition_iface.h"
 #include "utils/naming_helpers.h"
 #include "partitioning_target_equation.h"
@@ -38,10 +36,11 @@
  Constructor
 
 \*******************************************************************/
-symex_assertion_sumt::symex_assertion_sumt(const goto_functionst & _goto_functions, call_tree_nodet & _root, const namespacet & _ns,
-                                           symbol_tablet & _new_symbol_table, partitioning_target_equationt & _target,
+symex_assertion_sumt::symex_assertion_sumt(const goto_functionst & _goto_functions, call_tree_nodet & _root,
+                                           const namespacet & _ns, symbol_tablet & _new_symbol_table,
+                                           partitioning_target_equationt & _target,
                                            message_handlert & _message_handler, const goto_programt & _goto_program,
-                                           unsigned _last_assertion_loc, bool _single_assertion_check, bool _use_slicing,
+                                           unsigned _last_assertion_loc, bool _single_assertion_check,
                                            bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops) :
   goto_symext(_message_handler, _ns, _new_symbol_table, _target),
   goto_functions(_goto_functions),
@@ -51,7 +50,6 @@ symex_assertion_sumt::symex_assertion_sumt(const goto_functionst & _goto_functio
   goto_program(_goto_program),
   last_assertion_loc(_last_assertion_loc),
   single_assertion_check(_single_assertion_check),
-  use_slicing(_use_slicing),
   do_guard_expl(_do_guard_expl),
   max_unwind(_max_unwind)
 {
@@ -79,41 +77,6 @@ symex_assertion_sumt::~symex_assertion_sumt() {
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::loop_free_check
-
- Inputs:
-
- Outputs:
-
- Purpose: Sanity check, we expect loop-free programs only.
- * 
- * KE: DEAD CODE
-
- * KE: not compiling, comment + assert(0);
-
-\*******************************************************************/
-
-void symex_assertion_sumt::loop_free_check(){
-# ifndef NDEBUG
-  assert(0); // Dead code
-/*
-  forall_goto_program_instructions(it, goto_program)
-    assert(!it->is_backwards_goto());
-  forall_goto_functions(it, summarization_context.get_functions()) {
-    forall_goto_program_instructions(it2, it->second.body) {
-      if (it2->is_backwards_goto()) {
-        std::cerr << "ERROR: Backward goto (i.e., a loop) in function: " << it->first << std::endl;
-        goto_program.output_instruction(ns, "", std::cout, it2);
-        // assert(!it2->is_backwards_goto());
-      }
-    }
-  }
-*/
-# endif
-}
-
-/*******************************************************************
-
  Function: symex_assertion_sumt::prepare_SSA
 
  Inputs:
@@ -125,12 +88,10 @@ void symex_assertion_sumt::loop_free_check(){
 
 \*******************************************************************/
 
-bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
+bool symex_assertion_sumt::prepare_SSA()
 {
-  current_assertion = &assertion;
-
   // these are quick...
-  if(assertion.is_trivially_true())
+  if(current_assertion == nullptr || current_assertion->is_trivially_true())
   {
     log.statistics() << "ASSERTION IS TRUE" << log.eom;
     return true;
@@ -206,8 +167,7 @@ bool symex_assertion_sumt::prepare_SSA(const assertion_infot &assertion)
 
 \*******************************************************************/
 
-bool symex_assertion_sumt::refine_SSA( 
-        const std::list<call_tree_nodet*> &refined_functions, bool force_check)
+bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refined_functions)
 {
   // Defer the functions
   for (const auto & refined_function : refined_functions)
@@ -221,7 +181,7 @@ bool symex_assertion_sumt::refine_SSA(
                 if (partition_iface->partition_id != NO_PARTITION_ID) {
                     const auto & partition = equation.get_partitions()[partition_iface->partition_id];
                     assert(partition.has_abstract_representation());
-                    std::cerr << "Refining partition: " << partition_iface->partition_id << '\n';
+                    status() << "Refining partition: " << partition_iface->partition_id << eom;
                     //equation.invalidate_partition(partition_iface->partition_id);
                     equation.refine_partition(partition_iface->partition_id);
                 }
@@ -231,9 +191,9 @@ bool symex_assertion_sumt::refine_SSA(
                 }
             }
         } else {
-          std::cerr << "WARNING: Invalid call to refine_SSA <- " << 
+          warning() << "WARNING: Invalid call to refine_SSA <- " <<
                   "refining previously unseen call \"" << 
-                  refined_function->get_function_id().c_str() << "\" (skipped)" << std::endl;
+                  refined_function->get_function_id().c_str() << "\" (skipped)" << eom;
         }
     }
   }
@@ -241,7 +201,7 @@ bool symex_assertion_sumt::refine_SSA(
   // Plan the function for processing
   dequeue_deferred_function(state);
   
-  return process_planned(state, force_check);
+  return process_planned(state);
 }
 
 /*******************************************************************\
@@ -256,8 +216,8 @@ Function: symex_assertion_sumt::process_planned
  as well as all the deferred functions
 
 \*******************************************************************/
- 
-bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
+
+bool symex_assertion_sumt::process_planned(statet & state)
 {
   // Proceed with symbolic execution
   absolute_timet before, after;
@@ -271,19 +231,10 @@ bool symex_assertion_sumt::process_planned(statet &state, bool force_check)
 
   log.statistics() << "SYMEX TIME: " << (after-before) << log.eom;
 
-  if(remaining_vccs!=0 || force_check)
+  if(remaining_vccs == 0)
   {
-    if (use_slicing) {
-      before=current_time();
-      log.statistics() << "All SSA steps: " << equation.SSA_steps.size() << log.eom;
-        partitioning_slice(equation);
-      log.statistics() << "Ignored SSA steps after slice: " << equation.count_ignored_SSA_steps() << log.eom;
-      after=current_time();
-      log.statistics() << "SLICER TIME: " << (after-before) << log.eom;
-    }
-  } else {
-    log.statistics() << "Assertion(s) hold trivially." << log.eom;
-    return true;
+      log.statistics() << "Assertion(s) hold trivially." << log.eom;
+      return true;
   }
   return false;
 }

@@ -28,37 +28,30 @@ class partition_ifacet;
 
 using partition_iface_ptrst = std::list<partition_ifacet*>;
 
-class symex_assertion_sumt : public goto_symext, messaget
+class symex_assertion_sumt : public goto_symext, private messaget
 {
 public:
-  // TODO: create some option class to group the options together, this starts to look ridiculous
   symex_assertion_sumt(const goto_functionst & goto_functions, call_tree_nodet & _summary_info,
                        const namespacet & _ns, symbol_tablet & _new_symbol_table,
-                       partitioning_target_equationt & _target, message_handlert & _message_handler,
-                       const goto_programt & _goto_program, unsigned _last_assertion_loc,
-                       bool _single_assertion_check, bool _use_slicing, bool _do_guard_expl, unsigned int _max_unwind,
-                       bool partial_loops);
+                       partitioning_target_equationt & _target,
+                       message_handlert & _message_handler, const goto_programt & _goto_program,
+                       unsigned _last_assertion_loc, bool _single_assertion_check,
+                       bool _do_guard_expl, unsigned int _max_unwind, bool partial_loops);
 
-    symex_assertion_sumt(const goto_functionst &, call_tree_nodet &, const namespacet &, symbol_tablet&, partitioning_target_equationt&, message_handlert&,
-  const goto_programt&, unsigned , bool, bool, bool, bool, bool) = delete;
+    symex_assertion_sumt(const goto_functionst &, call_tree_nodet &, const namespacet &,
+            symbol_tablet&, partitioning_target_equationt&, message_handlert&,
+  const goto_programt&, unsigned int,
+  bool, bool, bool, bool) = delete; // MB: to prevent passing arguments in wrong order, since int is implicitly convertible to bool
           
   virtual ~symex_assertion_sumt() override;
 
-  void loop_free_check();
-
   // Generate SSA statements for the program starting from the root 
   // stored in goto_program.
-  bool prepare_SSA(const assertion_infot &assertion);
-
-  // Generate SSA statements for the subtree of a specific function and
-  // compare to its summary
-  bool prepare_subtree_SSA(const assertion_infot &assertion);
+  bool prepare_SSA();
 
   // Generate SSA statements for the refined program starting from the given 
   // set of functions.
-  bool refine_SSA(
-          const std::list<call_tree_nodet*> &refined_function,
-          bool force_check = false);
+  bool refine_SSA(const std::list<call_tree_nodet *> & refined_function);
   
   virtual void symex_step(
     const goto_functionst &goto_functions,
@@ -72,7 +65,15 @@ public:
     return &(it->second);
   };
 
+  partitioning_target_equationt & get_target_equation(){
+      return equation;
+  }
+
   std::map<irep_idt, std::string> guard_expln;
+
+  void set_assertion_info_to_verify(const assertion_infot* assertion_info){
+      current_assertion = assertion_info;
+  }
   
 private:
   
@@ -128,8 +129,6 @@ private:
 
   bool single_assertion_check;
 
-  bool use_slicing;
-
   bool do_guard_expl;
 
   // Add function to the wait queue to be processed by symex later and to
@@ -144,7 +143,7 @@ private:
   
   // Processes current code (pointed to by the state member variable) as well
   // as all the deferred functions
-  bool process_planned(statet &state, bool force_check = false);
+  bool process_planned(statet & state);
 
   // Take a deferred function from the queue and prepare it for symex
   // processing. This would also mark a corresponding partition in

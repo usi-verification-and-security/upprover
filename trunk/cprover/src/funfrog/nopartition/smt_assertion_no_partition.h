@@ -29,7 +29,7 @@ class smt_assertion_no_partitiont:public messaget
     
 public:
     smt_assertion_no_partitiont(
-            smt_symex_target_equationt &_target,
+            hifrog_symex_target_equationt &_target,
             ui_message_handlert &_message_handler,
             unsigned long &_max_memory_used) 
         : equation(_target),
@@ -46,7 +46,7 @@ public:
 
 public:
     // Store for the symex result
-    smt_symex_target_equationt &equation;
+    hifrog_symex_target_equationt &equation;
     
     bool is_satisfiable(smtcheck_opensmt2t& decider);
     

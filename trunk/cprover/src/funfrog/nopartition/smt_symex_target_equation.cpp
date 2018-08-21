@@ -5,7 +5,7 @@
  */
 
 /* 
- * File:   smt_symex_target_equationt.cpp
+ * File:   hifrog_symex_target_equationt.cpp
  * Author: karinek
  * 
  * Created on 21 April 2017, 11:33
@@ -23,11 +23,8 @@ using namespace std;
 #include "../expr_pretty_print.h"
 #endif
 
-void smt_symex_target_equationt::convert(check_opensmt2t &decider)
+void hifrog_symex_target_equationt::convert(check_opensmt2t &decider)
 {
-  // Open a single partition 
-  decider.new_partition();
-
   // Do convert to all program at once
   convert_guards(decider);
   convert_assignments(decider);
@@ -57,7 +54,7 @@ void smt_symex_target_equationt::convert(check_opensmt2t &decider)
 }
 
 // Convert a specific partition guards of SSA steps - GUARD-OUT
-void smt_symex_target_equationt::convert_guards(check_opensmt2t &decider)
+void hifrog_symex_target_equationt::convert_guards(check_opensmt2t &decider)
 {
     for(auto &step : SSA_steps) {
         if (step.ignore) {
@@ -82,7 +79,7 @@ void smt_symex_target_equationt::convert_guards(check_opensmt2t &decider)
 }
 
 // Convert a specific partition assignments of SSA steps
-void smt_symex_target_equationt::convert_assignments(check_opensmt2t &decider)
+void hifrog_symex_target_equationt::convert_assignments(check_opensmt2t &decider)
 {
     for(auto &step : SSA_steps) {
         if (step.is_assignment() && !step.ignore) {
@@ -106,7 +103,7 @@ void smt_symex_target_equationt::convert_assignments(check_opensmt2t &decider)
     }
 }
 
-void smt_symex_target_equationt::convert_constraints(check_opensmt2t &decider) const
+void hifrog_symex_target_equationt::convert_constraints(check_opensmt2t &decider) const
 {
   for(const auto &step : SSA_steps)
   {
@@ -121,7 +118,7 @@ void smt_symex_target_equationt::convert_constraints(check_opensmt2t &decider) c
 }
 
 // Convert a specific partition assumptions of SSA steps
-void smt_symex_target_equationt::convert_assumptions(check_opensmt2t &decider)
+void hifrog_symex_target_equationt::convert_assumptions(check_opensmt2t &decider)
 {
     for(auto &step : SSA_steps) {
         if (step.is_assume()) {
@@ -145,7 +142,7 @@ void smt_symex_target_equationt::convert_assumptions(check_opensmt2t &decider)
 }
 
 // Convert a specific partition assumptions of SSA steps
-void smt_symex_target_equationt::convert_goto_instructions(check_opensmt2t &decider)
+void hifrog_symex_target_equationt::convert_goto_instructions(check_opensmt2t &decider)
 {
     for(auto &step : SSA_steps) {
         if (step.is_goto()) {
@@ -169,7 +166,7 @@ void smt_symex_target_equationt::convert_goto_instructions(check_opensmt2t &deci
 }
 
 // Convert a specific partition assertions of SSA steps
-void smt_symex_target_equationt::convert_assertions(check_opensmt2t &decider)
+void hifrog_symex_target_equationt::convert_assertions(check_opensmt2t &decider)
 {   
     unsigned number_of_assertions=count_assertions();
     if(number_of_assertions==0) return;
@@ -234,7 +231,7 @@ void smt_symex_target_equationt::convert_assertions(check_opensmt2t &decider)
 }
 
 // Convert a specific partition io of SSA steps
-void smt_symex_target_equationt::convert_io(check_opensmt2t &decider)
+void hifrog_symex_target_equationt::convert_io(check_opensmt2t &decider)
 {
     for(auto &step : SSA_steps) {
         if (!step.ignore) {
@@ -260,7 +257,7 @@ void smt_symex_target_equationt::convert_io(check_opensmt2t &decider)
 }
 
 // Convert a summary partition (i.e., assert its summary)
-void smt_symex_target_equationt::convert_summary(check_opensmt2t &decider)
+void hifrog_symex_target_equationt::convert_summary(check_opensmt2t &decider)
 {
     // TODO: if we extands this version to general cbmc with summaries, 
     // then we need to implement this method    
@@ -269,7 +266,7 @@ void smt_symex_target_equationt::convert_summary(check_opensmt2t &decider)
     //if (!is_summary) return;
 }
 
-bool smt_symex_target_equationt::isRoundModelEq(const exprt &expr) 
+bool hifrog_symex_target_equationt::isRoundModelEq(const exprt &expr)
 {
     if (!expr.has_operands())
         return false;
@@ -291,7 +288,7 @@ bool smt_symex_target_equationt::isRoundModelEq(const exprt &expr)
 }
 
 #ifdef DISABLE_OPTIMIZATIONS
-std::ostream& smt_symex_target_equationt::print_decl_smt(std::ostream& out) {
+std::ostream& hifrog_symex_target_equationt::print_decl_smt(std::ostream& out) {
     if (partition_smt_decl->empty())
         return out;
     else {
@@ -307,7 +304,7 @@ std::ostream& smt_symex_target_equationt::print_decl_smt(std::ostream& out) {
     }
 }
 
-void smt_symex_target_equationt::print_partition() {
+void hifrog_symex_target_equationt::print_partition() {
     // When creating the real formula - do not add the assert here, check first if OpenSMT2 does it
     out_partition << "; " << basic_buf.str();
     if (terms_buf.str().length() > 0) {
@@ -324,7 +321,7 @@ void smt_symex_target_equationt::print_partition() {
     terms_counter = 0;
 }
 
-void smt_symex_target_equationt::print_all_partition(std::ostream& out) {
+void hifrog_symex_target_equationt::print_all_partition(std::ostream& out) {
     // Print only if the flag is on!
     // Print header - not part of temp debug print!
     out << "\nXXX SSA --> SMT-lib Translation XXX\n";
@@ -339,7 +336,7 @@ void smt_symex_target_equationt::print_all_partition(std::ostream& out) {
     out << decl_buf.str() << partition_buf.str() << "(check-sat)\n";
 }
 
-void smt_symex_target_equationt::saveFirstCallExpr(const exprt& expr) {
+void hifrog_symex_target_equationt::saveFirstCallExpr(const exprt& expr) {
     if (!is_first_call)
         return;
     
@@ -347,7 +344,7 @@ void smt_symex_target_equationt::saveFirstCallExpr(const exprt& expr) {
     first_call_expr = &expr;
 }
 
-bool smt_symex_target_equationt::isFirstCallExpr(const exprt& expr) {
+bool hifrog_symex_target_equationt::isFirstCallExpr(const exprt& expr) {
     if (is_first_call)
         return false;
 

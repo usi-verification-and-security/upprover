@@ -40,6 +40,13 @@ struct CProverStringConstants {
     static const std::string SYMEX_NONDET;
 };
 
+struct HiFrogOptions {
+    static const std::string NO_SLICING;
+    static const std::string NO_ERROR_TRACE;
+    static const std::string UNWIND;
+    static const std::string LOGIC;
+};
+
 inline std::string add_counter_to_fun_name(const std::string & name, size_t counter) {
   return name + HifrogStringConstants::COUNTER_SEP + std::to_string(counter);
 }
