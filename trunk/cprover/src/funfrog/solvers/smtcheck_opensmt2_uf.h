@@ -30,9 +30,6 @@ protected:
     PTRef new_num_var(const std::string & var_name) override;
 
 public:
-
-  virtual literalt lassert_var() override { throw std::logic_error("Looks like this should not be called for this solver"); }
-     
   virtual std::string getStringSMTlibDatatype(const typet& type) override;
   virtual SRef getSMTlibDatatype(const typet& type) override;
 

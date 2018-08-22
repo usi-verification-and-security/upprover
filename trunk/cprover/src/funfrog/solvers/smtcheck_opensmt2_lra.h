@@ -32,9 +32,6 @@ public:
 
   // for isnan, mod, arrays etc. that we have no support (or no support yet) create over-approx as nondet
   virtual PTRef unsupported_to_var(const exprt &expr) override;
-    
-  virtual literalt lassert_var() override
-	{ literalt l; l = smtcheck_opensmt2t::push_variable(ptr_assert_var_constraints); return l;}
   
   PTRef abs_to_ptref(const exprt & expr); // from convert for ID_abs
 

@@ -34,8 +34,6 @@ public:
   virtual PTRef new_num_var(const std::string & var_name) override;
 
   virtual PTRef type_cast(const exprt & expr) override;
-
-  virtual literalt lassert_var() override { throw std::logic_error("Looks like this should not be called for this solver"); }
   
   PTRef var_bv(const exprt &expr); // lvar for bv logic
   

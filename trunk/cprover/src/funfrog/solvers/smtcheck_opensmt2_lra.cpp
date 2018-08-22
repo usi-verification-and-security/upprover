@@ -37,12 +37,14 @@ void smtcheck_opensmt2t_lra::initializeSolver(const char* name)
     assert(strcmp(msg, "ok") == 0);
 
     // To avoid issues with type constraints for LRA
+#ifndef NDEBUG
     if (type_constraints_level > 0)
         std::cout << "Adding Type Constraints (" << type_constraints_level << ")" 
                 << ((type_constraints_level == 1 ? " for type constraints on non-deterministic input" : ""))
                 << ((type_constraints_level == 2 ? " for type constraints on variables" : ""))
                 << ((type_constraints_level >= 3  ? " ** ERROR ** Unknown Option" : ""))
                 << std::endl;
+#endif // NDEBUG not defined
 }
 
 /*******************************************************************\

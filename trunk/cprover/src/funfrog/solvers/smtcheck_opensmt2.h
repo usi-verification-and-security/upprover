@@ -47,8 +47,6 @@ public:
 
   bool is_assignment_true(literalt a) const override; // Common to all
 
-  virtual literalt lassert_var() = 0;
-
   using check_opensmt2t::set_to_true;
   void set_to_true(PTRef); // Common to all
 
