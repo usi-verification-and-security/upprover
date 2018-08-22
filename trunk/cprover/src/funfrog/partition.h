@@ -83,7 +83,7 @@ public:
     bool is_stub() const {
       return representation == partition_representation ::STUB;}
     bool has_summary_representation () const {
-        return representation == partition_representation ::SUMMARY;}
+        return (representation & partition_representation::SUMMARY) != partition_representation::NONE;}
 
   void remove_abstract_representation(){
       representation = representation & ~(partition_representation::STUB | partition_representation::SUMMARY);
