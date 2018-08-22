@@ -25,6 +25,7 @@ struct SMTConstants{
     static const std::string SMT_REAL;
     static const std::string SMT_UREAL;
     static const std::string SMT_UNKNOWN;
+    static const std::string SMT_INT;
 };
 
 struct CProverStringConstants {

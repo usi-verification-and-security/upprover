@@ -9,6 +9,7 @@
 #include "core_checker.h"
 
 #include "refiner_assertion_sum.h"
+#include "solvers/smtcheck_opensmt2_lia.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include "solvers/smtcheck_opensmt2_uf.h"
@@ -115,6 +116,11 @@ void core_checkert::initialize_solver()
         decider = new smtcheck_opensmt2t_lra(options.get_unsigned_int_option("type-constraints"), "lra checker");
         status() << ("Use QF_LRA logic.") << eom;
     }
+    else if(_logic == "qflia") 
+    {
+        decider = new smtcheck_opensmt2t_lia(options.get_unsigned_int_option("type-constraints"), "lia checker");
+        status() << ("Use QF_LIA logic.") << eom;
+    }    
     else if (_logic == "prop" && !options.get_bool_option("no-partitions"))
     {
         decider = new satcheck_opensmt2t("prop checker", ns);
@@ -379,7 +385,7 @@ bool core_checkert::assertion_holds_(const assertion_infot & assertion,
     // the assertion has been successfully verified if we have (end == true)
     const bool is_verified = end;
     if (is_verified) {
-        // produce and store the summaries
+        // produce and store the summaries   
         if (!options.get_bool_option("no-itp")) {
             #ifdef PRODUCE_PROOF
             if (decider->can_interpolate()) {
@@ -1026,7 +1032,8 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     }
 //---------------------------------------------------------------------------
     status() << "\n---EUF was not enough, lets change the encoding to LRA---\n" <<eom;
-    smtcheck_opensmt2t_lra lra_solver {0, "lra checker"}; //TODO: type_constraints_level
+    unsigned int _type_constraints_level = options.get_unsigned_int_option("type-constraints");
+    smtcheck_opensmt2t_lra lra_solver {_type_constraints_level, "lra checker"};
     initialize_solver_options(&lra_solver);
     status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
     reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver, uf_solver );
@@ -1061,18 +1068,6 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
         localRefine.mark_sum_for_refine(lra_solver, omega.get_call_tree_root(), equation);
         can_refine = !localRefine.get_refined_functions().empty();
     }
-//---------------------------------------------------------------------------
-    // call theory refinement
-  /*  status() << "\n---EUF and LRA were not enough; trying to refine with theory-refinement using CUF + BV ---\n" <<eom;
-    // MB: we need fresh secondary table for the symex in the theory refiner
-    theory_refinert th_checker(this->goto_program,
-                               get_goto_functions(),
-                               this->symbol_table,
-                               options,
-                               message_handler);
-    th_checker.initialize();
-    return th_checker.assertion_holds_smt(assertion, false);*/
-
     //cal prop --------------------------------------------------------------------------
     status() << "\n---EUF and LRA were not enough; trying to use prop logic ---\n" <<eom;
     std::string prop_summary_filename {"__summaries_prop"};

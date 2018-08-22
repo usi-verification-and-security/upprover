@@ -98,6 +98,7 @@ const std::string CProverStringConstants::SYMEX_NONDET{"nondet#"};
 const std::string SMTConstants::SMT_BOOL{"Bool"};
 const std::string SMTConstants::SMT_REAL{"Real"};
 const std::string SMTConstants::SMT_UREAL{"UReal"};
+const std::string SMTConstants::SMT_INT{"Int"};
 const std::string SMTConstants::SMT_UNKNOWN{"?"};
 
 const std::string HiFrogOptions::UNWIND{"unwind"};

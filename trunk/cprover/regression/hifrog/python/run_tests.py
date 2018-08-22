@@ -158,8 +158,9 @@ def run_test_case(path_to_exec, testdir, configfile):
 def should_success(expected):
     if expected in ['success','succes', 'sucess']:
         return True
-    if expected == 'fail':
+    if expected in ['fail', 'failed']:
         return False
+    error('Incorrect expected result in config file: ' + expected)
     assert False, 'Unknown expect status'
 #-------------------------------------------------------
 #collects and dumps the verification results into a collected*.txt file 

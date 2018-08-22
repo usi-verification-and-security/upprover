@@ -321,10 +321,7 @@ bool smtcheck_opensmt2t::solve() {
         out_smt << "(check-sat)\n" << endl;
         out_smt.close();
     }
-#endif    
-//#ifdef DISABLE_OPTIMIZATIONS // Use if there are issues with the variables
-//    dump_on_error("smtcheck_opensmt2t::solve::1082"); // To print current code in the solver
-//#endif
+#endif
 
     sstat r = mainSolver->check();
  

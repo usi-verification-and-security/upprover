@@ -19,6 +19,10 @@ set(HIFROG_SOURCE_FILES
         solvers/smtcheck_opensmt2.h
         solvers/smtcheck_opensmt2_cuf.cpp
         solvers/smtcheck_opensmt2_cuf.h
+        solvers/smtcheck_opensmt2_la.cpp
+        solvers/smtcheck_opensmt2_la.h
+        solvers/smtcheck_opensmt2_lia.cpp
+        solvers/smtcheck_opensmt2_lia.h
         solvers/smtcheck_opensmt2_lra.cpp
         solvers/smtcheck_opensmt2_lra.h
         solvers/smtcheck_opensmt2_uf.cpp

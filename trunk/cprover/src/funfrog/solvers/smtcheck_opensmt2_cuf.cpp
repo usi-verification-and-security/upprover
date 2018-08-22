@@ -1838,29 +1838,29 @@ Function: smtcheck_opensmt2t_cuf::bindBB
  Purpose:
 
 \*******************************************************************/
-void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef pt1)
+void smtcheck_opensmt2t_cuf::bindBB(const exprt& expr, PTRef ptl)
 {
-    if (bitblaster->isBound(pt1))
+    if (bitblaster->isBound(ptl))
     {
 #ifdef DEBUG_SMT_BB
         char *s = logic->printTerm(ptl);
+        PTRef old_bv = bitblaster->getBoundPTRef(ptl);
         char *s_old = logic->printTerm(old_bv);
-        PTRef old_bv = bitblaster->getBoundPTRef(pt1);
         std::cout << " -- Term " << s << " is already refined with "
               << s_old << " and so we skip " << std::endl;
-        free(s); s=NULL; free(s_old);
+        free(s); free(s_old);
 #endif
     } else {
         PTRef expr_bv = convert_bv(expr);
 
 #ifdef DEBUG_SMT_BB
         char *s = logic->printTerm(ptl);
-        char *s_old = logic->printTerm(old_bv);
+        char *s_old = logic->printTerm(expr_bv);
         std::cout << " -- Bind terms " << s << " and " << s_old << std::endl;
-        free(s); s=NULL; free(s_old);
+        free(s); free(s_old);
 #endif
 
-        bitblaster->bindCUFToBV(pt1, expr_bv); // (PTRef cuf_tr, PTRef bv_tr)
+        bitblaster->bindCUFToBV(ptl, expr_bv); // (PTRef cuf_tr, PTRef bv_tr)
         converted_bitblasted_exprs[expr.hash()] = expr_bv;
   }
 }

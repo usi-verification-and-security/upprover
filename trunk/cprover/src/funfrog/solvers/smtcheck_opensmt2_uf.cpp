@@ -258,6 +258,7 @@ Function: smtcheck_opensmt2t_uf::numeric_constant
 
 \*******************************************************************/
 PTRef smtcheck_opensmt2t_uf::numeric_constant(const exprt &expr)
+
 {
     //TODO: Check this
     std::string num = extract_expr_str_number(expr);
@@ -347,12 +348,6 @@ Function: smtcheck_opensmt2t_uf::convert
 \*******************************************************************/
 PTRef smtcheck_opensmt2t_uf::expression_to_ptref(const exprt & expr)
 {
-// GF: disabling hash for a while, since it leads to bugs at some particular cases,
-//     e.g., for (= |goto_symex::guard#3| (< |c::f::a!0#7| 10))
-//           and (= |goto_symex::guard#4| (< |c::f::a!0#11| 10))
-//
-//    if(converted_exprs.find(expr.hash()) != converted_exprs.end())
-//        return converted_exprs[expr.hash()];
 
 #ifdef SMT_DEBUG
     cout << "\n\n; ON PARTITION " << partition_count << " CONVERTING with " << expr.has_operands() << " operands "<< /*expr.pretty() << */ endl;

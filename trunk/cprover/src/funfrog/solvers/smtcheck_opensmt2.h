@@ -52,8 +52,6 @@ public:
 
   void set_equal(literalt l1, literalt l2) override; // Common to all
 
-  // PTRef convert_symbol(const exprt &expr); // Common to all
-
   virtual literalt bool_expr_to_literal(const exprt & expr) override{
       assert(is_boolean(expr));
       const PTRef ptref = expression_to_ptref(expr);
@@ -76,15 +74,13 @@ public:
   }
 
 #ifdef PRODUCE_PROOF
-  void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants) const override; // Common to all
+  virtual void get_interpolant(const interpolation_taskt& partition_ids,
+      interpolantst& interpolants) const override;
 
-  bool can_interpolate() const override; // Common to all
+  virtual bool can_interpolate() const override;
 
   // Extract interpolant form OpenSMT files/data
-  void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
-
-//  void adjust_function(smt_itpt& itp, std::vector<symbol_exprt>& common_symbols, std::string fun_name, bool insert_substituted = true); // Common to all
+  virtual void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
 
   void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) override;
 
