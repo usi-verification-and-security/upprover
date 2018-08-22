@@ -597,7 +597,10 @@ std::string smtcheck_opensmt2t::extract_expr_str_name(const exprt &expr)
 {
     std::string str = normalize_name(expr);
     
-    //////////////////// TEST TO ASSURE THE NAME IS VALID! /////////////////////
+    if (is_cprover_builtins_var(str))
+        str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
+    
+    //////////////////// TEST TO ASSURE THE NAME IS VALID! ///////////////////// 
     assert(!is_cprover_rounding_mode_var(str) && !is_cprover_builtins_var(str));    
     // MB: the IO_CONST expressions does not follow normal versioning, but why NIL is here?
     bool is_nil_or_symex = (str.compare(NIL) == 0) || (str.find(CProverStringConstants::IO_CONST) != std::string::npos);
