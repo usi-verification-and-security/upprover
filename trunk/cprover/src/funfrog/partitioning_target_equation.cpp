@@ -432,16 +432,13 @@ void partitioning_target_equationt::convert_partition_assertions(
     bvt error_lits;
 
     literalt assumption_literal = decider.get_const_literal(true);
+    literalt var_constraints_lit = decider.get_and_clear_var_constraints();
     for (auto it = partition.start_it; it != partition.end_it; ++it) {
         if(it->ignore) {continue;} // ignored instructions can be skippied
         if (it->is_assert()) {
 
             // Collect ass \in assertions(f) in bv
-            // FIXME add constraints
-//            literalt tmp_literal = (decider.is_exist_var_constraints()) ?
-//                                    decider.land(decider.convert(it->cond_expr), decider.lassert_var())
-//                                    :decider.convert(it->cond_expr);
-            literalt tmp_literal = decider.bool_expr_to_literal(it->cond_expr);
+            literalt tmp_literal = decider.land(decider.bool_expr_to_literal(it->cond_expr), var_constraints_lit);
             it->cond_literal = decider.limplies(assumption_literal, tmp_literal);
             error_lits.push_back(!it->cond_literal); // negated literal
         } else if (it->is_assume()) {

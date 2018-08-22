@@ -15,7 +15,9 @@ public:
   smtcheck_opensmt2t_la(unsigned int _type_constraints_level, const char* name) :
           smtcheck_opensmt2t(false, 3, 2),
           type_constraints_level(_type_constraints_level)
-  { } // abstract class
+  {
+
+  }
       
     virtual ~smtcheck_opensmt2t_la(); // d'tor
 
@@ -25,12 +27,26 @@ public:
 
     virtual PTRef numeric_constant(const exprt & expr) override;
 
+    virtual literalt get_and_clear_var_constraints() override
+    {
+        literalt res = push_variable(ptr_assert_var_constraints);
+        ptr_assert_var_constraints = logic->getTerm_true();
+        return res;
+    }
+
 protected:
   LALogic* lalogic; // Extra var, inner use only - Helps to avoid dynamic cast!
 
+  // TODO: investigate if constraints should not be handled differently
   PTRef ptr_assert_var_constraints;
 
   unsigned int type_constraints_level; // The level of checks in LA for numerical checks of overflow
+
+    virtual void add_symbol_constraints(const exprt &expr, const PTRef var) override {
+        if(type_constraints_level > 0){
+            add_constraints2type(expr, var);
+        }
+    }
 
     virtual PTRef type_cast(const exprt & expr) override;
 
@@ -51,7 +67,7 @@ protected:
   virtual bool is_non_linear_operator(PTRef tr) override;
 
   /* Set of functions that add constraints to take care of overflow and underflow */
-  void add_constraints2type(const exprt &expr, PTRef& var); // add assume/assert on the data type
+  void add_constraints2type(const exprt & expr, const PTRef var); // add assume/assert on the data type
 
   void push_constraints2type(
           const PTRef var,

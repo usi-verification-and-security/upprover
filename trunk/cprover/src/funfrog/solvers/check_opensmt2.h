@@ -65,6 +65,7 @@ public:
     virtual literalt land(literalt l1, literalt l2) = 0;
     virtual literalt lor(literalt l1, literalt l2) = 0;
     virtual literalt lor(const bvt & bv) = 0;
+    virtual literalt get_and_clear_var_constraints() { return const_literal(true); }
 
     literalt limplies(literalt a, literalt b)
     {

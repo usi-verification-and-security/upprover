@@ -898,7 +898,7 @@ PTRef smtcheck_opensmt2t::symbol_to_ptref(const exprt & expr) {
     else { // Is a function with index, array, pointer
         symbol_ptref = complex_symbol_to_ptref(expr);
     }
-
+    add_symbol_constraints(expr, symbol_ptref);
     return symbol_ptref;
 }
 

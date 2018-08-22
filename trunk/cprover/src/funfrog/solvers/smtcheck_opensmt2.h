@@ -137,6 +137,8 @@ protected:
 
     virtual PTRef numeric_constant(const exprt &expr) = 0;
 
+    virtual void add_symbol_constraints(const exprt &expr, const PTRef var) {}
+
   /* ***************************************************************************************************************/
 
 

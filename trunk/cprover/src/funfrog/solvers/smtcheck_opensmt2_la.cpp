@@ -641,7 +641,7 @@ Function: smtcheck_opensmt2t_la::add_constraints2type
  Purpose: If the expression is a number adds constraints
 
 \*******************************************************************/
-void smtcheck_opensmt2t_la::add_constraints2type(const exprt &expr, PTRef& var)
+void smtcheck_opensmt2t_la::add_constraints2type(const exprt & expr, const PTRef var)
 {
     typet var_type = expr.type(); // Get the current type
     const irep_idt type_id_c = var_type.get("#c_type");
