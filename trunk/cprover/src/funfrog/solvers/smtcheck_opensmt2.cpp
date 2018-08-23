@@ -757,21 +757,12 @@ SRef smtcheck_opensmt2t::getSMTlibDatatype(const exprt& expr)
     }
 }
 
-// FIXME: move to hifrog or util in hifrog
 #ifdef PRODUCE_PROOF
-namespace {
-    bool is_global(const exprt& expr){
-        if(!expr.get_bool(ID_C_SSA_symbol)){
-            return false;
-        }
-        return to_ssa_expr(expr).get_level_0().empty();
-    }
-}
 
 // Returns all literals that are non-linear expressions
-std::set<PTRef>* smtcheck_opensmt2t::get_non_linears()
+set<PTRef> smtcheck_opensmt2t::get_non_linears()
 {
-    std::set<PTRef>* ret = new std::set<PTRef>();
+    std::set<PTRef> ret;
     
     // Only for theories that can have non-linear expressions
     if (!can_have_non_linears()) return ret;
@@ -780,11 +771,11 @@ std::set<PTRef>* smtcheck_opensmt2t::get_non_linears()
     std::set<PTRef> was;
     for(const PTRef ptref : ptrefs)
     {
-        if ((was.count(ptref) < 1) && (ret->count(ptref) < 1) && !(logic->isVar(ptref)) && !(logic->isConstant(ptref)))
+        if ((was.count(ptref) < 1) && (ret.count(ptref) < 1) && !(logic->isVar(ptref)) && !(logic->isConstant(ptref)))
         {
             if (is_non_linear_operator(ptref))
             {
-                ret->insert(ptref);
+                ret.insert(ptref);
             }
         }
         was.insert(ptref);

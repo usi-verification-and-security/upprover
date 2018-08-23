@@ -21,6 +21,13 @@ inline bool is_ssa_symbol(const exprt & expr) {
     return is_symbol(expr) && expr.get_bool(ID_C_SSA_symbol);
 }
 
+inline bool is_global(const exprt& expr){
+    if(!expr.get_bool(ID_C_SSA_symbol)){
+        return false;
+    }
+    return to_ssa_expr(expr).get_level_0().empty();
+}
+
 /*******************************************************************\
 
 Function: smtcheck_opensmt2t::extract_expr_str_number

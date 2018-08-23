@@ -813,14 +813,14 @@ void reload_summaries(const namespacet &ns,
     std::vector<std::string> unsupp_func = get_unsupported_funct_exprs(sm);
 
     // Detect if there are non-linear parts (searching for non-linear / or *):
-    std::set<PTRef>* non_linears = prev_solver.get_non_linears();
-    if (non_linears->size() > 0 || !unsupp_func.empty())
+    std::set<PTRef> non_linears = prev_solver.get_non_linears();
+    if (non_linears.size() > 0 || !unsupp_func.empty())
     {
         const Logic& logic = *prev_solver.getLogic();
-        std::transform(non_linears->begin(), non_linears->end(), std::back_inserter(unsupp_func),
+        std::transform(non_linears.begin(), non_linears.end(), std::back_inserter(unsupp_func),
                        [&logic](PTRef pt){ return std::string{logic.printTerm(pt)};});
         // Notify the user
-        std::cerr << "Non linear operation encounter. Ignoring " << non_linears->size() << " expressions in the file.\n";
+        std::cerr << "Non linear operation encounter. Ignoring " << non_linears.size() << " expressions in the file.\n";
 
         std::sort(unsupp_func.begin(), unsupp_func.end(), [](const std::string & first, const std::string & second){
             return first.size() > second.size();
@@ -877,9 +877,6 @@ void reload_summaries(const namespacet &ns,
             }
 //              std::cout << "Replacing " << old_token << " in " << new_token << std::endl;
         }
-
-        // Clean the data in use
-        delete(non_linears);
 
         // Store to Temp. file
         std::ofstream out;

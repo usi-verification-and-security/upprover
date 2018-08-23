@@ -86,8 +86,8 @@ public:
 
   void generalize_summary(smt_itpt & interpolant, std::vector<symbol_exprt> & common_symbols);
 
+  set<PTRef> get_non_linears(); // Common to all, needed only if there are summaries!
 #endif
-    std::set<PTRef>* get_non_linears(); // Common to all, needed only if there are summaries!
 
   /* The data: lhs, original function data */
   bool has_unsupported_vars() const { return (unsupported2var > 0); } // Common to all, affects several locations!
@@ -180,7 +180,7 @@ protected:
 
 #endif
 
-  virtual bool can_have_non_linears()=0;
+  virtual bool can_have_non_linears() {return true;}
 
   virtual bool is_non_linear_operator(PTRef tr)=0;
 
