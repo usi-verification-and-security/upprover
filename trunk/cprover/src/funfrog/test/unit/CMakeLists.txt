@@ -4,9 +4,10 @@ target_sources(UnionFindTest
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/test_UnionFind.cpp"
     )
 
-add_executable(StringUtilsTest)
-target_sources(StringUtilsTest
+add_executable(UtilsTest)
+target_sources(UtilsTest
     PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/test_StringUtils.cpp"
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/test_ContainersUtils.cpp"
     )
 
 add_executable(PropSummariesTest)
@@ -21,7 +22,7 @@ target_sources(SummaryStoreTest
 
 set_target_properties(
     UnionFindTest
-    StringUtilsTest
+    UtilsTest
     PropSummariesTest
     SummaryStoreTest
     gtest
@@ -36,8 +37,8 @@ set_target_properties(
 target_link_libraries(UnionFindTest gtest gtest_main)
 target_include_directories(UnionFindTest PRIVATE ${PROJECT_SOURCE_DIR}/funfrog)
 
-target_link_libraries(StringUtilsTest gtest gtest_main)
-target_include_directories(StringUtilsTest PRIVATE ${PROJECT_SOURCE_DIR}/funfrog)
+target_link_libraries(UtilsTest gtest gtest_main)
+target_include_directories(UtilsTest PRIVATE ${PROJECT_SOURCE_DIR}/funfrog)
 
 target_link_libraries(PropSummariesTest hifrog-lib gtest gtest_main)
 
@@ -51,7 +52,7 @@ target_link_libraries(SummaryStoreTest hifrog-lib gtest gtest_main)
 gtest_add_tests(TARGET UnionFindTest
     )
 
-gtest_add_tests(TARGET StringUtilsTest
+gtest_add_tests(TARGET UtilsTest
     )
 
 gtest_add_tests(TARGET PropSummariesTest)

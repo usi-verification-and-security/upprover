@@ -86,7 +86,7 @@ set(HIFROG_SOURCE_FILES
         utils/UnionFind.cpp
         utils/UnionFind.h
         utils/string_utils.h
-    conversion_utils.cpp conversion_utils.h)
+    conversion_utils.cpp conversion_utils.h utils/containers_utils.h)
 
 ################# TESTING #############################################
 option(enable_hifrog_tests "Build the tests" OFF)
