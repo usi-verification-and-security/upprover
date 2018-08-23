@@ -911,8 +911,9 @@ void reload_summaries(const namespacet &ns,
 // Purpose: reset means changing the partition information according
 // to the current state of the summary store. so first we updated the
 // store using method read_lra_summaries(), then we update the summary information
-    void reset_partition_summary_info(partitioning_target_equationt & eq, smt_summary_storet const & store) {
+    void reset_partition_info(partitioning_target_equationt & eq, smt_summary_storet const & store) {
         for (auto & partition : eq.get_partitions()){
+            partition.event_solver_reseted();
             // check if we have summary in the store for this partition
             const auto & function_name = id2string(partition.get_iface().function_id);
             bool should_summarize = partition.get_iface().call_tree_node.get_precision() == summary_precisiont::SUMMARY;
@@ -951,6 +952,7 @@ Function: core_checkert::check_sum_theoref_single
 #ifdef PRODUCE_PROOF
 bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
 {
+    new_symbol_table.clear(); // MB: this needs to be empty before use in symex
     std::string lra_summary_file_name {"__summaries_lra"};
     std::string uf_summary_file_name {"__summaries_uf"};
     smtcheck_opensmt2t_uf uf_solver {"uf checker"};
@@ -1035,7 +1037,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     status() << "\n--Reading LRA and UF summary files: " << uf_summary_file_name << "," << lra_summary_file_name << eom;
     reload_summaries(ns, summary_store, {uf_summary_file_name, lra_summary_file_name}, lra_solver, uf_solver );
     omega.set_initial_precision(assertion, has_summary);
-    reset_partition_summary_info(equation, summary_store);
+    reset_partition_info(equation, summary_store);
     equation.convert(lra_solver, lra_solver);
     is_sat = lra_solver.solve();
     if(!is_sat){
@@ -1079,6 +1081,7 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     delete decider;
     decider = new satcheck_opensmt2t{"prop checker", ns};
     initialize_solver_options(decider);
+    new_symbol_table.clear();
     return this->assertion_holds_(assertion, false);
 }
 
