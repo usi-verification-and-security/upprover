@@ -621,7 +621,7 @@ literalt smtcheck_opensmt2t_uf::convert(const exprt &expr)
             PTRef var_eq = create_equation_for_unsupported(expr);
             PTRef var_call = logic->mkEq(ptl,var_eq);
             set_to_true(var_call); // (= |hifrog::c::unsupported_op2var#0| (op operand0 operand1))
-            current_partition->push(var_call);
+            current_partition.push_back(var_call);
 #endif
         } else if((_id == ID_address_of) || (_id == ID_pointer_offset)) {
 #ifdef SMT_DEBUG

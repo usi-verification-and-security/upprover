@@ -403,29 +403,6 @@ bool smtcheck_opensmt2t::solve() {
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::getVars
-
-  Inputs: -
-
- Outputs: a set of all variables that used in the smt formula
-
- Purpose: get all the vars to create later on the counter example path
-
-\*******************************************************************/
-std::set<PTRef>* smtcheck_opensmt2t::getVars()
-{
-    std::set<PTRef>* ret = new std::set<PTRef>();
-    for(it_literals it = literals.begin(); it != literals.end(); it++)
-    {
-        if ((logic->isVar(*it)) && (ret->count(*it) < 1))
-            ret->insert(*it);
-    }
-
-    return ret;
-}
-
-/*******************************************************************\
-
 Function: smtcheck_opensmt2t::getSimpleHeader
 
   Inputs: -

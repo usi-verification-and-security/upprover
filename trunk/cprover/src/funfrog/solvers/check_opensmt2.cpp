@@ -96,7 +96,7 @@ void check_opensmt2t::close_partition() {
         // opensmt can handle special cases like 0 or 1 argument properly
         const PTRef pand = logic->mkAnd(current_partition);
         top_level_formulas.push(pand);
-        assert(top_level_formulas.size() == partition_count);
+        assert((unsigned)top_level_formulas.size() == partition_count);
         current_partition.clear();
         last_partition_closed = true;
 #ifdef DEBUG_SMT2SOLVER
@@ -139,7 +139,7 @@ fle_part_idt check_opensmt2t::new_partition() {
 }
 
 void check_opensmt2t::insert_top_level_formulas() {
-    for(auto i = pushed_formulas; i < top_level_formulas.size(); ++i) {
+    for(auto i = pushed_formulas; i < (unsigned)top_level_formulas.size(); ++i) {
         char *msg = nullptr;
 #ifdef PRODUCE_PROOF
         mainSolver->insertFormula(top_level_formulas[i], i, &msg);
