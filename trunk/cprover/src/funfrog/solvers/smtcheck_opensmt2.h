@@ -79,9 +79,9 @@ public:
   
 #ifdef PRODUCE_PROOF
   void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants); // Common to all
+      interpolantst& interpolants) override; // Common to all
 
-  bool can_interpolate() const; // Common to all
+  bool can_interpolate() const override; // Common to all
 
   // Extract interpolant form OpenSMT files/data
   void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
@@ -142,8 +142,8 @@ protected:
 
   unsupported_operationst unsupported_info;
   
-  virtual bool has_unsupported_vars() const override { return unsupported_info.has_unsupported_vars(); }
-  virtual bool has_overappox_mapping() const { return unsupported_info.has_unsupported_info(); }
+  bool has_unsupported_vars() const override { return unsupported_info.has_unsupported_vars(); }
+  bool has_overappox_mapping() const override { return unsupported_info.has_unsupported_info(); }
   virtual void init_unsupported_counter() { unsupported_info.init_unsupported_counter(); }
   virtual unsupported_operationst get_unsupported_info() { return unsupported_info;}
 
@@ -190,7 +190,7 @@ protected:
 
   virtual bool is_non_linear_operator(PTRef tr)=0;
 
-  virtual void initializeSolver(const char*)=0;
+  void initializeSolver(const char*) override;
 
   // Common to all
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var

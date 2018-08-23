@@ -48,7 +48,7 @@ public:
   virtual literalt labs(const exprt &expr)=0;
   
 protected:
-  virtual void initializeSolver(const char*)=0;
+  void initializeSolver(const char*) override;
 
   PTRef mult_numbers(const exprt &expr, vec<PTRef> &args);
 
@@ -94,7 +94,7 @@ protected:
   
   virtual literalt lconst_number(const exprt &expr) override;
 
-  virtual literalt ltype_cast(const exprt &expr)=0;
+  literalt ltype_cast(const exprt &expr) override;
   
   virtual PTRef evar(const exprt &expr, std::string var_name) override;
 

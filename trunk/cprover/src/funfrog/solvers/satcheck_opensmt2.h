@@ -54,26 +54,26 @@ public:
     freeSolver();
   }
 
-  virtual resultt prop_solve();
+  resultt prop_solve() override;
   virtual bool solve() { return prop_solve() == resultt::P_SATISFIABLE; } // To create single solver interface
-  virtual tvt l_get(literalt a) const;
+  tvt l_get(literalt a) const override;
 
-  virtual void lcnf(const bvt &bv);
-  const virtual std::string solver_text();
-  virtual void set_assignment(literalt a, bool value);
+  void lcnf(const bvt &bv) override;
+  const virtual std::string solver_text() override;
+  void set_assignment(literalt a, bool value) override;
   // extra MiniSat feature: solve with assumptions
-  virtual void set_assumptions(const bvt& _assumptions);
-  virtual bool is_in_conflict(literalt a) const;
+  void set_assumptions(const bvt& _assumptions) override;
+  bool is_in_conflict(literalt a) const override;
 
-  virtual bool has_set_assumptions() const { return true; }
+  bool has_set_assumptions() const override { return true; }
 
-  virtual bool has_is_in_conflict() const { return true; }
+  bool has_is_in_conflict() const override { return true; }
 
 #ifdef PRODUCE_PROOF  
-  virtual void get_interpolant(const interpolation_taskt& partition_ids,
-      interpolantst& interpolants);
+  void get_interpolant(const interpolation_taskt& partition_ids,
+      interpolantst& interpolants) override;
   
-  virtual bool can_interpolate() const;
+  bool can_interpolate() const override;
 
   // Extract interpolant form OpenSMT Egraph
   void extract_itp(PTRef ptref, prop_itpt& target_itp) const;
@@ -108,10 +108,10 @@ protected:
 #endif  
   
   // Initialize the OpenSMT context
-  virtual void initializeSolver(const char*);
+  void initializeSolver(const char*) override;
 
   // Free all resources related to PeRIPLO
-  virtual void freeSolver();
+  void freeSolver() override;
 
   void add_variables();
   void increase_id();

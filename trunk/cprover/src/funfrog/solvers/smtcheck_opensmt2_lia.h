@@ -53,7 +53,7 @@ public:
   // Extract interpolant form OpenSMT files/data
   virtual void extract_itp(PTRef ptref, smt_itpt& target_itp) const {assert(0);}
 
-  virtual void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
+  void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
                           const std::string& fun_name, bool substitute) {assert(0);}
 #endif  
 
