@@ -14,7 +14,7 @@ Author: Grigory Fedyukovich
 #include <solvers/sat/cnf.h>
 #include <util/threeval.h>
 #include "check_opensmt2.h"
-#include "interpolating_solver.h"
+#include "funfrog/interface/solver/interpolating_solver.h"
 #include <opensmt/opensmt2.h>
 #include "../utils/unsupported_operations.h"
 
@@ -55,7 +55,7 @@ public:
   }
 
   resultt prop_solve() override;
-  virtual bool solve() { return prop_solve() == resultt::P_SATISFIABLE; } // To create single solver interface
+  bool solve() override { return prop_solve() == resultt::P_SATISFIABLE; } // To create single solver interface
   tvt l_get(literalt a) const override;
 
   void lcnf(const bvt &bv) override;

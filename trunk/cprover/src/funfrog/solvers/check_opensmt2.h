@@ -11,15 +11,14 @@ Module: Wrapper for OpenSMT2 - General one for SAT and SMT
 
 #include <util/threeval.h>
 #include <opensmt/opensmt2.h>
-#include "interpolating_solver.h"
-
-class literalt;
+#include "funfrog/interface/solver/interpolating_solver.h"
+#include "funfrog/interface/solver/solver.h"
 
 // Cache of already visited interpolant ptrefs
 typedef std::map<PTRef, literalt> ptref_cachet;
 
 // General interface for OPENSMT2 calls
-class check_opensmt2t :  public interpolating_solvert
+class check_opensmt2t :  public interpolating_solvert, public solvert
 {
 public:
   check_opensmt2t(bool _reduction, unsigned int _reduction_graph, unsigned int _reduction_loops

@@ -47,7 +47,7 @@ public:
 
   virtual void freeSolver() override { if (osmt != nullptr) delete osmt; }
  
-  virtual bool solve(); // Common to all
+  bool solve() override; // Common to all
 
   virtual bool is_assignemt_true(literalt a) const; // Common to all, refiner+error_trace
 

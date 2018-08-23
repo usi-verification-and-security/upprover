@@ -7,7 +7,6 @@ set(HIFROG_SOURCE_FILES
         nopartition/symex_no_partition.h
         solvers/check_opensmt2.h
         solvers/check_opensmt2.cpp
-        solvers/interpolating_solver.h
         solvers/itp.h
         solvers/prop_itp.cpp
         solvers/prop_itp.h
@@ -103,7 +102,10 @@ set(HIFROG_SOURCE_FILES
         #reportt.cpp reportt.h
         utils/UnionFind.cpp
         utils/UnionFind.h
-        utils/string_utils.h)
+        utils/string_utils.h
+        interface/solver/solver.h
+        interface/solver/interpolating_solver.h
+        interface/convertor.h )
 
 ################# TESTING #############################################
 option(enable_hifrog_tests "Build the tests" OFF)

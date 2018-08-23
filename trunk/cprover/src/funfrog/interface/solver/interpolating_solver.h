@@ -10,8 +10,8 @@ Author: Ondrej Sery
 #ifndef CPROVER_interpolating_solver_H
 #define CPROVER_interpolating_solver_H
 
-#include "itp_fwd.h"
-#include "interpolating_solver_fwd.h"
+#include <funfrog/solvers/itp_fwd.h>
+#include "funfrog/solvers/interpolating_solver_fwd.h"
 
 class interpolating_solvert
 {
