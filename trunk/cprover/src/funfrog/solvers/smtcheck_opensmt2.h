@@ -190,7 +190,7 @@ protected:
 
   virtual bool is_non_linear_operator(PTRef tr)=0;
 
-  void initializeSolver(const char*) override;
+  //void initializeSolver(const char*);  //commented out because no implementation found here, and also caused compilation error.
 
   // Common to all
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
