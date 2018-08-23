@@ -154,7 +154,7 @@ protected:
     std::vector<symbol_exprt>& common_symbols) const;
 
   // Fill in ids of all the child partitions
-  virtual void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
+  void fill_partition_ids(partition_idt partition_id, fle_part_idst& part_ids);
 
   // Fills in the SSA_steps_exec_order holding pointers to SSA steps ordered
   // in the order of program execution (i.e., as they would be normally

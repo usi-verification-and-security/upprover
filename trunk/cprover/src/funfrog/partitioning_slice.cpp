@@ -88,19 +88,17 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
     // We can only slice assignments
     it->ignore = it->is_assignment();
   }
-  for (partitionst::iterator it = equation.get_partitions().begin();
-          it != equation.get_partitions().end();
-          ++it)
+  for (auto & partition : equation.get_partitions())
   {
-    if (it->summary) {
-      it->applicable_summaries.clear();
+    if (partition.has_summary_representation()) {
+      partition.applicable_summaries.clear();
       // We can only slice standard summaries, not inverted and not summaries
       // with assertion in subtree
-      if (it->get_iface().assertion_in_subtree) {
-        mark_summary_symbols(summary_store, *it, use_smt);
-        it->ignore = false;
+      if (partition.get_iface().assertion_in_subtree) {
+        mark_summary_symbols(summary_store, partition, use_smt);
+        partition.ignore = false;
       } else {
-        it->ignore = true;
+        partition.ignore = true;
       }
     }
   }
@@ -137,8 +135,6 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
         get_symbols(it->second->guard, depends);
         get_symbols(it->second->cond_expr, depends);
         it->second->ignore = false;
-
-
       }
     }
     
@@ -147,7 +143,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
     if (sum_it != summary_map.end()) {
       partitiont& partition = *(sum_it->second.first);
       partition_ifacet& partition_iface = partition.get_iface();
-      assert(partition.summary);
+      assert(partition.has_summary_representation());
       const summary_idst& itps = partition.summaries;
       //unsigned symbol_idx = sum_it->second.second;
 
@@ -185,7 +181,7 @@ void partitioning_slicet::slice(partitioning_target_equationt &equation,
   // Mark sliced out partitions
   for(auto & partition : equation.get_partitions()) {
     // Only care about real partitions
-    if (partition.summary || partition.ignore || partition.stub ||
+    if (partition.has_abstract_representation()|| partition.ignore ||
             partition.get_iface().assertion_in_subtree)
       continue;
     
@@ -226,7 +222,7 @@ void partitioning_slicet::prepare_maps(partitioning_target_equationt &equation)
   {
     prepare_partition(*it);
     
-    if (it->summary || it->stub)
+    if (it->has_abstract_representation())
       continue;
 
     // Analyze the SSA steps
@@ -355,7 +351,7 @@ void partitioning_slicet::prepare_partition(partitiont &partition)
 {
   partition_ifacet & partition_iface = partition.get_iface();
   // For a standard summary without assertion_in_subtree, fill the summary table
-  if (partition.summary) {
+  if (partition.has_summary_representation()) {
     if (!partition_iface.assertion_in_subtree) {
       if (partition_iface.returns_value) {
         summary_map.insert(summary_mapt::value_type(

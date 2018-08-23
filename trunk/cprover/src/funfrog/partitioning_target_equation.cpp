@@ -17,7 +17,7 @@ partitioning_target_equationt::partitioning_target_equationt(
   summary_storet & summary_store,
   bool _store_summaries_with_assertion) :
   symex_target_equationt(_ns),
-  current_partition_id(partitiont::NO_PARTITION),
+  current_partition_id(NO_PARTITION_ID),
 #         ifdef DISABLE_OPTIMIZATIONS
     dump_SSA_tree(false),
     ssa_tree_file_name("__ssa_tree.smt2"),
@@ -65,7 +65,7 @@ partition_idt partitioning_target_equationt::reserve_partition(partition_ifacet&
     assert(check);
     (void)check;
 
-    if (parent_id != partitiont::NO_PARTITION) {
+    if (parent_id != NO_PARTITION_ID) {
         partitions[parent_id].add_child_partition(new_id, partition_iface.call_loc);
     }
     partition_iface.partition_id = new_id;
@@ -99,11 +99,10 @@ void partitioning_target_equationt::refine_partition(partition_idt partition_id)
 {
     partitiont& partition = partitions[partition_id];
 
-    if(! (partition.summary || partition.stub)){
+    if(! partition.has_abstract_representation()){
         throw std::logic_error{"Trying to refine a pertition that was not summarized or stubbed before!"};
     }
-    partition.summary = false;
-    partition.stub = false;
+    partition.remove_abstract_representation();
     partition.summaries.clear();
     partition.applicable_summaries.clear();
 }
@@ -117,7 +116,7 @@ void partitioning_target_equationt::fill_summary_partition(partition_idt partiti
     }
     partitiont& sum_partition = partitions.at(partition_id);
 
-    sum_partition.summary = true;
+    sum_partition.add_summary_representation();
     sum_partition.summaries = summaries;
 
     sum_partition.applicable_summaries.clear();
@@ -152,7 +151,7 @@ void partitioning_target_equationt::prepare_partitions() { // for hifrog only
     std::vector<std::size_t> indices(partitions.size());
     std::iota(indices.begin(), indices.end(), 0);
     auto unprocessed_it = std::partition(indices.begin(), indices.end(),
-                                         [&const_partitions](std::size_t idx){return const_partitions[idx].processed;});
+                                         [&const_partitions](std::size_t idx){return const_partitions[idx].has_ssa_representation();});
     std::sort(indices.begin(), unprocessed_it, [&const_partitions](std::size_t i1, std::size_t i2){
         return const_partitions[i1].start_idx < const_partitions[i2].start_idx;
     });
@@ -230,7 +229,7 @@ void partitioning_target_equationt::prepare_SSA_exec_order(
             // Process the call first
             const partitiont& partition = partitions[*id_it];
 
-            if (!partition.summary && !partition.stub)
+            if (partition.is_real_ssa_partition())
                 prepare_SSA_exec_order(partition);
 
             ++loc_it;
@@ -243,7 +242,7 @@ void partitioning_target_equationt::prepare_SSA_exec_order(
         // Process the call first
         const partitiont& partition = partitions[*id_it];
 
-        if (!partition.summary && !partition.stub)
+        if (partition.is_real_ssa_partition())
             prepare_SSA_exec_order(partition);
 
         ++loc_it;
@@ -291,33 +290,31 @@ void partitioning_target_equationt::fill_partition_ids(
 		partition_idt partition_id, fle_part_idst& part_ids) {
 
     partitiont& partition = partitions[partition_id];
-    if (partition.stub) {
+    if (partition.is_stub()) {
         return;
     }
-
     assert( (!partition.get_iface().assertion_in_subtree || store_summaries_with_assertion));
-
     if (partition.ignore) {
         assert(partition.child_ids.empty());
         return;
     }
+    assert(partition.is_real_ssa_partition() || partition.child_ids.empty());
 
     // Current partition id
-    part_ids.push_back(partition.fle_part_id);
-
-    assert(partition.is_inline() || partition.child_ids.empty());
+    for(auto id : partition.get_fle_part_ids()){
+        part_ids.push_back(id);
+    }
 
     // Child partition ids
-    for (partition_idst::iterator it = partition.child_ids.begin()++; it
-                    != partition.child_ids.end(); ++it) {
-        fill_partition_ids(*it, part_ids);
+    for (auto child_id : partition.child_ids) {
+        fill_partition_ids(child_id, part_ids);
     }
 }
 
 void partitioning_target_equationt::fill_stub_partition(partition_idt partition_id) {
     partitiont & partition = partitions.at(partition_id);
-    assert(! (partition.summary || partition.processed));
-    partition.stub = true;
+    assert(partition.has_no_representation());
+    partition.add_stub_representation();
 }
 
 void partitioning_target_equationt::select_partition(partition_idt partition_id) {
@@ -325,8 +322,8 @@ void partitioning_target_equationt::select_partition(partition_idt partition_id)
     // Select the new partition
     current_partition_id = partition_id;
     partitiont & new_partition = get_current_partition();
-    assert(!new_partition.processed);
-    if(new_partition.processed){
+    assert(!new_partition.has_ssa_representation());
+    if(new_partition.has_ssa_representation()){
         throw std::logic_error("About to process partition that has been processed already!");
     }
     new_partition.start_idx = SSA_steps.size();
@@ -360,12 +357,12 @@ unsigned partitioning_target_equationt::count_partition_assertions(const partiti
 }
 
 void partitioning_target_equationt::close_current_partition()  {
-    if (current_partition_id != partitiont::NO_PARTITION) {
+    if (current_partition_id != NO_PARTITION_ID) {
         auto & partition = get_current_partition();
         partition.end_idx = SSA_steps.size();
-        assert(!partition.processed);
-        partition.processed = true;
-        current_partition_id = partitiont::NO_PARTITION;
+        assert(!partition.has_ssa_representation());
+        partition.add_ssa_representation();
+        current_partition_id = NO_PARTITION_ID;
     }
 }
 

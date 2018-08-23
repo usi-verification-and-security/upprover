@@ -40,7 +40,6 @@ public:
         ),
         no_literals(0),
         no_literals_last_solved(0),
-        pushed_formulas(0),
         unsupported_info(unsupported_operationst(_store_unsupported_info))
   { /* No init of solver - done for inherit check_opensmt2 */}
 
@@ -78,10 +77,6 @@ public:
   virtual literalt lassert(const exprt &expr)
   { return convert(expr); }
   
-  fle_part_idt new_partition(); // Common to all
-
-  void close_partition(); // Common to all
-
 #ifdef PRODUCE_PROOF
   void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants); // Common to all
@@ -133,7 +128,7 @@ public:
 /////////////////////////////////// Protected //////////////////////////////////  
 protected:
 
-  vec<PTRef> top_level_formulas;
+  vec<SymRef> function_formulas;
 
   std::map<size_t, literalt> converted_exprs;
 
@@ -144,8 +139,6 @@ protected:
   //  Mapping from boolean variable indexes to their PTRefs
   std::vector<PTRef> literals;
   typedef std::vector<PTRef>::iterator it_literals;
-
-  unsigned pushed_formulas;
 
   unsupported_operationst unsupported_info;
   
@@ -190,8 +183,6 @@ protected:
   void setup_interpolation();
 
   void setup_proof_transformation();
-
-  void produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs, std::vector<PTRef> &interpolants); // Common to all
 
 #endif
 

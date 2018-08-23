@@ -38,36 +38,45 @@ public:
   
   virtual  void set_certify(int r) override { certify = r; }
   
-  virtual bool read_formula_from_file(std::string fileName) 
-  { return mainSolver->readFormulaFromFile(fileName.c_str()); }
+    virtual bool read_formula_from_file(std::string fileName) // KE: Sepideh, this shall be renamed according to the new interface
+    { return mainSolver->readFormulaFromFile(fileName.c_str()); }
   
-  virtual void dump_header_to_file(std::ostream& dump_out) 
-  { logic->dumpHeaderToFile(dump_out); }
+    virtual void dump_header_to_file(std::ostream& dump_out) 
+    { logic->dumpHeaderToFile(dump_out); }
   
-  virtual bool is_overapprox_encoding() const
-  { return (has_unsupported_vars() && !has_overappox_mapping());}
-  
+    virtual bool is_overapprox_encoding() const
+    { return (has_unsupported_vars() && !has_overappox_mapping());}
+
+    fle_part_idt new_partition() override;
+
+    void close_partition();
+    
   /* General consts for prop version */
   static const char* false_str;
   static const char* true_str;
-  
-protected:
-  // Initialize the OpenSMT context
-  virtual void initializeSolver(const char*)=0;
 
-  // Free context/data in OpenSMT
-  virtual void freeSolver()=0;
- 
+protected:
   // Common Data members
   Opensmt* osmt;
   Logic* logic;
   MainSolver* mainSolver; 
 
-  // Count of the created partitions
+  // Count of the created partitions; This is used by HiFrog to id a partition; correspondence with OpenSMT partitions needs to be kept!
   unsigned partition_count;
 
   //  List of clauses that are part of this partition (a.k.a. assert in smt2lib)
-  vec<PTRef>* current_partition;
+  std::vector<PTRef> current_partition;
+
+  // Flag indicating if last partition has been closed properly
+  bool last_partition_closed = true;
+
+    /** These correspond to partitions of OpenSMT (top-level assertions);
+     * INVARIANT: top_level_formulas.size() == partition_count (after closing current partition)
+     */
+    vec<PTRef> top_level_formulas;
+
+    // boundary index for top_level_formulas that has been pushed to solver already
+    unsigned pushed_formulas;
   
 #ifdef PRODUCE_PROOF   
   // 1 - stronger, 2 - weaker (GF: not working at the moment)
@@ -106,8 +115,19 @@ protected:
   void set_dump_query_name(const string& n);
 #endif 
   
-  virtual bool has_unsupported_vars() const=0;
-  virtual bool has_overappox_mapping() const=0;
+    void insert_top_level_formulas();
+
+    void produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs,
+            std::vector<PTRef> &interpolants);
+
+    // Initialize the OpenSMT context
+    virtual void initializeSolver(const char*)=0;
+
+    // Free context/data in OpenSMT
+    virtual void freeSolver()=0;
+  
+    virtual bool has_unsupported_vars() const=0;
+    virtual bool has_overappox_mapping() const=0;
 };
 
 #endif

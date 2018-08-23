@@ -69,13 +69,6 @@ public:
 
   virtual bool has_is_in_conflict() const { return true; }
 
-  // Begins a partition of formula for latter reference during
-  // interpolation extraction. All assertions made until
-  // next call of new_partition() will be part of this partition.
-  //
-  // returns a unique partition id
-  virtual fle_part_idt new_partition();
-
 #ifdef PRODUCE_PROOF  
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants);
@@ -100,8 +93,6 @@ protected:
   // Mapping from variable indices to their E-nodes in PeRIPLO
   std::string id_str;
 
-  vec<PTRef> top_level_formulas;
-
 //  Mapping from variable indices to their PTRefs in OpenSMT
   std::vector<PTRef> ptrefs;
  
@@ -113,8 +104,7 @@ protected:
   void setup_interpolation();
 
   void setup_proof_transformation();
-  
-   void produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs, std::vector<PTRef> &interpolants);
+
 #endif  
   
   // Initialize the OpenSMT context
@@ -126,8 +116,7 @@ protected:
   void add_variables();
   void increase_id();
   unsigned decode_id(const char* id) const;
-  void close_partition();
-  
+
     // No over-approximation for propositional logic!
     virtual bool has_overappox_mapping() const override { return false; }
     virtual bool has_unsupported_vars() const override { return false; }

@@ -74,8 +74,8 @@ void prop_partitioning_target_equationt::convert(prop_conv_solvert &prop_conv,
             " (ass_in_subtree: " << it->get_iface().assertion_in_subtree << ")" << 
             " - " << it->get_iface().function_id.c_str() <<
             " (loc: " << it->get_iface().call_tree_node.get_call_location() << ", " <<
-            ((it->summary) ? "SUM" :
-                ((it->stub) ? "TRU" : "INL")) << ")" <<
+            (it->has_summary_representation() ? "SUM" :
+                ((it->is_stub()) ? "TRU" : "INL")) << ")" <<
             std::endl;
 #   endif
     
@@ -154,15 +154,15 @@ void prop_partitioning_target_equationt::convert_partition(prop_conv_solvert &pr
     partition_iface.error_literal =
             prop_conv.convert(partition_iface.error_symbol);
   }
-  if (partition.stub){
+  if (partition.is_stub()){
     return;
   }
 
   // Tell the interpolator about the new partition.
-  partition.fle_part_id = interpolator.new_partition();
+    partition.add_fle_part_id(interpolator.new_partition());
 
   // If this is a summary partition, apply the summary
-  if (partition.summary) {
+  if (partition.has_summary_representation()) {
     convert_partition_summary(prop_conv, partition);
     // FIXME: Only use in the incremental solver mode (not yet implemented)
     // partition.processed = true;
@@ -479,7 +479,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
   if (!bv.empty()) {
     assert(partition_iface.assertion_in_subtree);
     
-    if (partition.parent_id == partitiont::NO_PARTITION)
+    if (!partition.has_parent())
     {
       prop_conv.prop.lcnf(bv);
       
@@ -584,7 +584,7 @@ void prop_partitioning_target_equationt::convert_partition_assertions(
 //    #endif
 //  }
 
-  if (partition.parent_id != partitiont::NO_PARTITION) {  
+  if (partition.has_parent()) {
     assert(number_of_assumptions > 0);
     // Encode callend propagation formula for the partition:
     //
@@ -676,10 +676,10 @@ namespace{
   }
 
   bool skip_partition(partitiont & partition, bool store_summaries_with_assertion){
-    return !partition.is_inline() ||
-    (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
-    partition.get_iface().call_tree_node.is_recursion_nondet() ||
-    skip_partition_with_name(partition.get_iface().function_id.c_str());
+      return !partition.is_real_ssa_partition() ||
+             (partition.get_iface().assertion_in_subtree && !store_summaries_with_assertion) ||
+             partition.get_iface().call_tree_node.is_recursion_nondet() ||
+             skip_partition_with_name(partition.get_iface().function_id.c_str());
   }
 }
 
@@ -712,7 +712,7 @@ void prop_partitioning_target_equationt::extract_interpolants(
     partitiont& partition = partitions[i];
 
     // Mark the used summaries
-    if (partition.summary && !(partition.ignore)) {
+    if (partition.has_summary_representation() && !(partition.ignore)) {
       for (auto it =
               partition.applicable_summaries.begin();
               it != partition.applicable_summaries.end(); ++it) {
@@ -796,44 +796,4 @@ void prop_partitioning_target_equationt::extract_interpolants(
 #else
   assert(0);
 #endif
-}
-
-/*******************************************************************\
-
-Function: prop_partitioning_target_equationt::fill_partition_ids
-
-  Inputs:
-
- Outputs:
-
- Purpose: Fill in ids of all the child partitions
-
-\*******************************************************************/
-void prop_partitioning_target_equationt::fill_partition_ids(
-  partition_idt partition_id, fle_part_idst& part_ids)
-{
-
-  partitiont& partition = partitions[partition_id];
-
-  if (partition.stub){
-    return;
-  }
-
-  assert((!partition.get_iface().assertion_in_subtree || store_summaries_with_assertion));
-
-  if (partition.ignore) {
-    assert(partition.child_ids.empty());
-    return;
-  }
-
-  // Current partition id
-  part_ids.push_back(partition.fle_part_id);
-
-  assert(partition.is_inline() || partition.child_ids.empty());
-
-  // Child partition ids
-  for (partition_idst::iterator it = partition.child_ids.begin()++;
-          it != partition.child_ids.end(); ++it) {
-    fill_partition_ids(*it, part_ids);
-  }
 }

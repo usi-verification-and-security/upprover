@@ -35,31 +35,6 @@ smtcheck_opensmt2t::~smtcheck_opensmt2t()
     freeSolver();
 }
 
-/*******************************************************************\
-
-Function: smtcheck_opensmt2t::new_partition
-
-  Inputs:
-
- Outputs: returns a unique partition id
-
- Purpose: Begins a partition of formula for latter reference during
- interpolation extraction. All assertions made until
- next call of new_partition() will be part of this partition.
-
-\*******************************************************************/
-fle_part_idt smtcheck_opensmt2t::new_partition()
-{
-
-  // Finish the previous partition if any
-  if (current_partition != nullptr)
-    close_partition();
-
-  current_partition = new vec<PTRef>();
-
-  return partition_count++;
-}
-
 literalt smtcheck_opensmt2t::new_variable()
 {
   literalt l;
@@ -135,7 +110,7 @@ void smtcheck_opensmt2t::set_to_true(PTRef ptr)
 {
     push_variable(ptr); // Keeps the new PTRef + create for it a new index/literal
     assert(ptr != PTRef_Undef);
-    current_partition->push(ptr);
+    current_partition.push_back(ptr);
 }
 
 void smtcheck_opensmt2t::set_to_true(const exprt &expr)
@@ -149,7 +124,7 @@ void smtcheck_opensmt2t::set_to_true(const exprt &expr)
     PTRef tlp = logic->mkEq(args);
 
     assert(tlp != PTRef_Undef);
-    current_partition->push(tlp);
+    current_partition.push_back(tlp);
 }
 
 void smtcheck_opensmt2t::set_to_false(const exprt &expr)
@@ -163,7 +138,7 @@ void smtcheck_opensmt2t::set_to_false(const exprt &expr)
     PTRef tlp = logic->mkEq(args);
 
     assert(tlp != PTRef_Undef);
-    current_partition->push(tlp);
+    current_partition.push_back(tlp);
 }
 
 void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
@@ -178,7 +153,7 @@ void smtcheck_opensmt2t::set_equal(literalt l1, literalt l2){
     assert(l.var_no() != literalt::unused_var_no()); // KE: for cmake warnings
     
     assert(ans != PTRef_Undef);
-    current_partition->push(ans);
+    current_partition.push_back(ans);
 }
 
 literalt smtcheck_opensmt2t::limplies(literalt l1, literalt l2){
@@ -259,24 +234,6 @@ void smtcheck_opensmt2t::extract_itp(PTRef ptref, smt_itpt& itp) const
 {
   // KE : interpolant adjustments/remove var indices shall come here
   itp.setInterpolant(ptref);
-}
-
-// helper interpolation method taken from opensmt
-void smtcheck_opensmt2t::produceConfigMatrixInterpolants (const std::vector< std::vector<int> > &configs, std::vector<PTRef> &interpolants)
-{
-  SimpSMTSolver& solver = osmt->getSolver();
-
-  // First interpolant is true -> all partitions in B
-  for ( unsigned i = 0; i < configs.size(); i++ )
-  {
-    ipartitions_t mask = 0;
-    for (unsigned j = 0; j < configs[i].size(); j++)
-    {
-      // Set partitions[i] bit to 1 (starting from bit 1, bit 0 is untouched)
-      setbit ( mask, configs[i][j] + 1);
-    }
-    solver.getSingleInterpolant(interpolants, mask);
-  }
 }
 #endif
 
@@ -384,56 +341,41 @@ bool smtcheck_opensmt2t::solve() {
   ready_to_interpolate = false;
 #endif
   
-  if (current_partition != nullptr) {
+  if (!last_partition_closed) {
     close_partition();
   }
+  
+  insert_top_level_formulas();
 
+  // Dump pre-queries if needed
 #ifdef DISABLE_OPTIMIZATIONS
-  ofstream out_smt;
-  std::string file;
-  if (dump_pre_queries) {
-    file=pre_queries_file_name+"_"+std::to_string(get_dump_current_index())+".smt2";
-    out_smt.open(file); 
-    logic->dumpHeaderToFile(out_smt);
-    
-    // Print the .oites terms
-    int size_oite = ite_map_str.size()-1; // since goes from 0-(n-1) 
-    int i = 0;
-    for(it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
-        out_smt << "; XXX oite symbol: (" << i << " out of " << size_oite << ") " 
-                << iterator->first << endl << "(assert "<< iterator->second << "\n)" << endl;
-        i++;
-    }
-  }
-#endif
-//  add_variables();
-    char *msg = nullptr;
-    for(int i = pushed_formulas; i < top_level_formulas.size(); ++i) {
-#ifdef DISABLE_OPTIMIZATIONS
-        if (dump_pre_queries)
-        {
+    ofstream out_smt;
+    if (dump_pre_queries) {
+        out_smt.open(pre_queries_file_name + "_" + std::to_string(get_dump_current_index()) + ".smt2");
+        logic->dumpHeaderToFile(out_smt);
+
+        // Print the .oites terms
+        int size_oite = ite_map_str.size() - 1; // since goes from 0-(n-1)
+        int i = 0;
+        for (it_ite_map_str iterator = ite_map_str.begin(); iterator != ite_map_str.end(); iterator++) {
+            out_smt << "; XXX oite symbol: (" << i << " out of " << size_oite << ") "
+                    << iterator->first << endl << "(assert " << iterator->second << "\n)" << endl;
+            i++;
+        }
+        for (int i = 0; i < top_level_formulas.size(); ++i) {
             out_smt << "; XXX Partition: " << (top_level_formulas.size() - i - 1) << endl;
-            char* s = logic->printTerm(top_level_formulas[i]);
+            char * s = logic->printTerm(top_level_formulas[i]);
             out_smt << "(assert \n" << s << "\n)\n";
             free(s);
             s=nullptr;
         }
-#endif
-        mainSolver->insertFormula(top_level_formulas[i], &msg);
-        if (msg != nullptr) {
-            free(msg); // If there is an error, consider print msg
-            msg = nullptr;
-        }
-    }
- 
-#ifdef DISABLE_OPTIMIZATIONS   
+    } 
     if (dump_pre_queries) {
         out_smt << "(check-sat)\n" << endl;
         out_smt.close();
     }
 #endif    
 
-    pushed_formulas = top_level_formulas.size();
     sstat r = mainSolver->check();
 
     // Inc. Mode Info.
@@ -461,45 +403,25 @@ bool smtcheck_opensmt2t::solve() {
 
 /*******************************************************************\
 
-Function: smtcheck_opensmt2t::close_partition
+Function: smtcheck_opensmt2t::getVars
 
-  Inputs:
+  Inputs: -
 
- Outputs:
+ Outputs: a set of all variables that used in the smt formula
 
- Purpose: Closes the interpolation partition by passing its CNF form
- (collected in current_partition) to the solver.
+ Purpose: get all the vars to create later on the counter example path
 
 \*******************************************************************/
-
-void smtcheck_opensmt2t::close_partition()
+std::set<PTRef>* smtcheck_opensmt2t::getVars()
 {
-  assert(current_partition != nullptr);
-  if (partition_count > 0){
-    if (current_partition->size() > 1){
-      PTRef pand = logic->mkAnd(*current_partition);
-#ifdef DEBUG_SMT2SOLVER
-      char* s= logic->printTerm(pand);
-      std::cout << "; Pushing to solver: " << s << endl;
-      free(s); s=nullptr;
-#endif
-      top_level_formulas.push(pand);
-    } else if (current_partition->size() == 1){
-      PTRef pand = (*current_partition)[0];
-#ifdef DEBUG_SMT2SOLVER
-      std::cout << "Trivial partition (terms size = 1): " << partition_count << "\n";
-      char* s= logic->printTerm(pand);
-      std::cout << "; Pushing to solver: " << s << endl;
-      free(s); s=nullptr;
-#endif
-      top_level_formulas.push(pand);
-    } /*else {
-      // GF: adding (assert true) for debugging only
-      top_level_formulas.push(logic->getTerm_true());
-    } */
-  }
+    std::set<PTRef>* ret = new std::set<PTRef>();
+    for(it_literals it = literals.begin(); it != literals.end(); it++)
+    {
+        if ((logic->isVar(*it)) && (ret->count(*it) < 1))
+            ret->insert(*it);
+    }
 
-  current_partition = nullptr;
+    return ret;
 }
 
 /*******************************************************************\
