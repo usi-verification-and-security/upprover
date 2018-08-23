@@ -86,7 +86,7 @@ public:
   // Extract interpolant form OpenSMT files/data
   void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
 
-  virtual void generalize_summary(itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
+  virtual void generalize_summary(smt_itpt& interpolant, std::vector<symbol_exprt>& common_symbols,
                           const std::string& fun_name, bool substitute);
 #endif
   std::set<PTRef>* get_non_linears(); // Common to all, needed only if there are summaries!

@@ -834,11 +834,11 @@ std::set<PTRef>* smtcheck_opensmt2t::get_non_linears()
 }
 
 // FIXME: move to smt_itpt class
-void smtcheck_opensmt2t::generalize_summary(itpt &interpolant_in, std::vector<symbol_exprt> &common_symbols,
+void smtcheck_opensmt2t::generalize_summary(smt_itpt &interpolant_in, std::vector<symbol_exprt> &common_symbols,
                                             const std::string &fun_name, bool substitute)
 {
     auto & interpolant = static_cast<smt_itpt &> (interpolant_in);
-    
+
     // Right now the term is not set, hence the assert, but this should actually be set somewhere else
     if(is_cprover_initialize_method(fun_name)){
         throw std::logic_error("Summary generalize should not be called for CPROVER initialize method!");
