@@ -1,16 +1,9 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /* 
  * File:   smt_symex_target_equation.h
  * Author: karinek
  *
  * Created on 21 April 2017, 11:33
  */
-
 #ifndef SMT_SYMEX_TARGET_EQUATIONT_H
 #define SMT_SYMEX_TARGET_EQUATIONT_H
 
@@ -89,8 +82,6 @@ protected:
 
     std::vector<exprt> exprs; // Expr to refine method
 public:
-    bool isRoundModelEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
-
 #ifdef DISABLE_OPTIMIZATIONS 
     bool dump_SSA_tree;
     std::string ssa_tree_file_name;
@@ -121,6 +112,8 @@ public:
     bool isFirstCallExpr(const exprt& expr);
 #endif
        
+    bool isPropBuiltinEq(const exprt &expr); // Detect the case of added round var for rounding model- not needed in LRA!
+    
     unsigned io_count_global; // KE: for Inputs in SSA expression - new CProver version can have more than one input entry
 };
 

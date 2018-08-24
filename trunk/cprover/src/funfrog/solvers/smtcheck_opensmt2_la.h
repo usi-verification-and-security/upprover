@@ -16,7 +16,6 @@ public:
           smtcheck_opensmt2t(false, 3, 2),
           type_constraints_level(_type_constraints_level)
   {
-
   }
       
     virtual ~smtcheck_opensmt2t_la(); // d'tor
@@ -89,6 +88,7 @@ protected:
           const PTRef var,
           std::string lower_b,
           std::string upper_b); // create a formula with the constraints
+
 };
 
 #endif

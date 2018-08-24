@@ -83,7 +83,6 @@ summaryt& summary_storet::find_summary(summary_idt new_id) const
   return *(node.summary);
 }
 
-
 /*******************************************************************\
 
 Function: summary_storet::insert_summary
@@ -116,6 +115,3 @@ void summary_storet::insert_summary(summaryt * summary, const std::string & func
     function_to_summaries[function_name].push_back(id);
     repr_count++;
 }
-
-
-

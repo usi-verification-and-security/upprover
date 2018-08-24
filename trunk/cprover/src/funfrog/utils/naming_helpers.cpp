@@ -82,10 +82,10 @@ const std::string HifrogStringConstants::TMP_RETURN{"$tmp::return_value"};
 const std::string HifrogStringConstants::CALLSTART_SYMBOL{"hifrog::fun_start"};
 const std::string HifrogStringConstants::CALLEND_SYMBOL{"hifrog::fun_end"};
 const std::string HifrogStringConstants::ERROR_SYMBOL{"hifrog::?err"};
-const std::string HifrogStringConstants::UNSUPPORTED_VAR_NAME {"hifrog::c::unsupported_op2var"};
 
 const std::string CProverStringConstants::INITIALIZE_METHOD{"__CPROVER_initialize"};
 const std::string CProverStringConstants::IO_CONST{"symex::io::"};
+
 const std::string CProverStringConstants::ROUNDING_MODE{"__CPROVER_rounding_mode!"};
 const std::string CProverStringConstants::CPROVER_BUILDINS{"__CPROVER_"};
 const std::string CProverStringConstants::DYNAMIC_OBJ{"symex_dynamic::dynamic_object"};
@@ -105,6 +105,3 @@ const std::string HiFrogOptions::UNWIND{"unwind"};
 const std::string HiFrogOptions::NO_SLICING{"no-slicing"};
 const std::string HiFrogOptions::NO_ERROR_TRACE{"no-error-trace"};
 const std::string HiFrogOptions::LOGIC{"logic"};
-
-
-

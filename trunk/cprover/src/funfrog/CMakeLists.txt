@@ -7,7 +7,6 @@ set(HIFROG_SOURCE_FILES
         nopartition/symex_no_partition.h
         solvers/check_opensmt2.h
         solvers/check_opensmt2.cpp
-        solvers/interpolating_solver.h
         solvers/itp.h
         solvers/prop_itp.cpp
         solvers/prop_itp.h
@@ -32,6 +31,8 @@ set(HIFROG_SOURCE_FILES
         call_stack.h
         check_claims.cpp
         check_claims.h
+        conversion_utils.h
+        conversion_utils.cpp
         dependency_checker.cpp
         dependency_checker.h
         error_trace.cpp
@@ -77,6 +78,8 @@ set(HIFROG_SOURCE_FILES
         xml_interface.h
         utils/naming_helpers.h
         utils/naming_helpers.cpp
+        utils/unsupported_operations.h
+        utils/unsupported_operations.cpp
         summary_store_fwd.h
         solvers/itp_fwd.h
         utils/ssa_helpers.h
@@ -86,7 +89,10 @@ set(HIFROG_SOURCE_FILES
         utils/UnionFind.cpp
         utils/UnionFind.h
         utils/string_utils.h
-    conversion_utils.cpp conversion_utils.h utils/containers_utils.h)
+        utils/containers_utils.h
+        interface/solver/solver.h
+        interface/solver/interpolating_solver.h
+        interface/convertor.h utils/expressions_utils.cpp)
 
 ################# TESTING #############################################
 option(enable_hifrog_tests "Build the tests" OFF)

@@ -73,8 +73,9 @@ public:
   void set_assertion_info_to_verify(const assertion_infot* assertion_info){
       current_assertion = assertion_info;
   }
-  
-private:
+
+protected:
+
   
   // Symex state holding the renaming levels
   statet state;
@@ -379,10 +380,6 @@ private:
   void stop_constant_propagation_for(const irep_idt & id) {
     state.propagation.remove(id);
   }
-
-//  ssa_exprt get_current_version(const irep_idt& id){
-//    return get_current_version(get_artificial_symbol_expr(id));
-//  }
 
   // this works only for identifiers of artificial symbols
   ssa_exprt get_next_version(const irep_idt& id) {

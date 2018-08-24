@@ -162,7 +162,6 @@ void partitioning_slicet::slice(partitioning_target_equationt & equation, const 
         // Yes it is relevant, add only symbols constrained by the summary
         partition.applicable_summaries.insert(summary_id);
         for (unsigned idx = 0; idx < partition_iface.argument_symbols.size(); ++idx) {
-            // SAT checks idx, SMT checks it2
             if(summary.usesVar(idx))
             {
                 get_symbols(partition_iface.argument_symbols[idx], depends);
@@ -189,7 +188,7 @@ void partitioning_slicet::slice(partitioning_target_equationt & equation, const 
       }
     }
     if (ignore) {
-      std::cout << "Ignoring partition: " << partition.parent_id << std::endl;
+      //std::cout << "Ignoring partition: " << partition.parent_id << std::endl;
       partition.ignore = ignore;
     }
   }

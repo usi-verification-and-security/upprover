@@ -33,15 +33,9 @@ public:
                   ui_message_handlert & _message_handler, unsigned long & _max_memory_used);
 
   ~core_checkert() override;
+
   void initialize();
-  void initialize_solver();
-  void initialize_solver_options(check_opensmt2t* _decider);
-  void delete_and_initialize_solver(); // For replacing pop in the solver, remove once pop works
-  bool last_assertion_holds();
   bool assertion_holds(const assertion_infot& assertion, bool store_summaries_with_assertion);
-  void serialize(){
-    omega.serialize(options.get_option("save-omega"));
-  }
 
     //  bool check_sum_theoref_single(const assertion_infot& assertion);
     bool check_sum_theoref_single(const assertion_infot &assertion);
@@ -57,11 +51,20 @@ protected:
   subst_scenariot omega;
   init_modet init;
   std::unique_ptr<summary_storet> summary_store;
+
+  void initialize_solver();
+  void initialize_solver_options(check_opensmt2t* _decider);
+  check_opensmt2t* initialize__euf_solver();
+  check_opensmt2t* initialize__cuf_solver();
+  check_opensmt2t* initialize__lra_solver();
+  check_opensmt2t* initialize__lia_solver();
+  check_opensmt2t* initialize__prop_solver();
   
   void setup_unwind(symex_bmct& symex);
 #ifdef PRODUCE_PROOF  
   void extract_interpolants(partitioning_target_equationt& equation);
 #endif
+
   void report_success();
   void report_failure();
   void assertion_violated(prepare_formulat& prop,

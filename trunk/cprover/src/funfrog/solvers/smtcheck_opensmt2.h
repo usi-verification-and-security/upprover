@@ -10,6 +10,7 @@ Module: Wrapper for OpenSMT2
 #include <map>
 #include <vector>
 
+#include "../utils/unsupported_operations.h" // KE: shall move all the code of unsupported here
 #include "check_opensmt2.h"
 #include <funfrog/utils/expressions_utils.h>
 #include <util/expr.h>
@@ -22,21 +23,14 @@ class symbol_exprt;
 // Cache of already visited interpolant literals
 typedef std::map<PTRef, literalt> ptref_cachet;
 
-// FIXME: add inheritance for class messaget, and replace couts in status/warning/error
-// This shall be to all smt interface classes
 class smtcheck_opensmt2t : public check_opensmt2t
 {
 public:
-  // Defualt C'tor
-  smtcheck_opensmt2t() :
-    smtcheck_opensmt2t(false, 3, 2)
-  {
-    /* No init of solver - done for inherit check_opensmt2 */
-  }
-
   // C'tor to pass the value to main interface check_opensmt2
-  smtcheck_opensmt2t(bool reduction, int reduction_graph, int reduction_loops) :
-        check_opensmt2t(reduction, reduction_graph, reduction_loops)
+  smtcheck_opensmt2t(bool _reduction, int _reduction_graph, int _reduction_loops,
+          bool _store_unsupported_info=false) :
+        check_opensmt2t(_reduction, _reduction_graph, _reduction_loops),
+        unsupported_info(unsupported_operationst(_store_unsupported_info))
   { /* No init of solver - done for inherit check_opensmt2 */}
 
   virtual ~smtcheck_opensmt2t(); // d'tor
@@ -61,7 +55,7 @@ public:
 
   literalt land(literalt l1, literalt l2) override; // Common to all
 
-  literalt land(bvt b); // Common to all
+  virtual literalt land(bvt b); // Common to all
 
   literalt lor(literalt l1, literalt l2) override; // Common to all
 
@@ -72,7 +66,7 @@ public:
   void assert_literal(literalt lit) override{
       set_to_true(literalToPTRef(lit));
   }
-
+  
 #ifdef PRODUCE_PROOF
   virtual void get_interpolant(const interpolation_taskt& partition_ids,
       interpolantst& interpolants) const override;
@@ -80,7 +74,7 @@ public:
   virtual bool can_interpolate() const override;
 
   // Extract interpolant form OpenSMT files/data
-  virtual void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
+  void extract_itp(PTRef ptref, smt_itpt& target_itp) const; // Common to all
 
   void generalize_summary(itpt * interpolant, std::vector<symbol_exprt> & common_symbols) override;
 
@@ -90,18 +84,13 @@ public:
   void get_non_linears_rec(PTRef current_ptref, std::set<PTRef> & res, std::set<PTRef> & seen); // TODO: use one template for these recursion calls
 #endif
 
-  /* The data: lhs, original function data */
-  bool has_unsupported_vars() const { return (unsupported2var > 0); } // Common to all, affects several locations!
-  std::string create_new_unsupported_var(std::string type_name, bool no_rename=false); // Common to all
-  /* End of unsupported data for refinement info and data */
-
   // Common to all
   std::set<PTRef> getVars() const; // Get all variables from literals for the counter example phase
   void get_vars_rec(PTRef, std::set<PTRef> &,std::set<PTRef>&) const;
+
   std::string getSimpleHeader(); // Get all the declarations without the variables
   std::set<PTRef> get_constants() const;
   void get_constants_rec(PTRef, std::set<PTRef> &,std::set<PTRef>&) const; // TODO: use one template for these recursion calls
-
 
   SymRef get_smt_func_decl(const char* op, SRef& in_dt, vec<SRef>& out_dt); // common to all
 
@@ -112,8 +101,15 @@ public:
 
   virtual exprt get_value(const exprt &expr) override;
 
-  /****************** Conversion methods - methods for converting expressions to OpenSMT's PTRefs ***************/
+  void dump_function(std::ostream& out, const Tterm& templ) {
+      logic->dumpFunction(out, templ);
+  }
+
+    virtual bool is_overapprox_encoding() const override
+    { return (has_unsupported_vars() && !has_overappox_mapping());}
+
 protected:
+    /****************** Conversion methods - methods for converting expressions to OpenSMT's PTRefs ***************/
     virtual PTRef expression_to_ptref(const exprt& expr) = 0;
 
     PTRef get_from_cache(const exprt& expr) const;
@@ -145,8 +141,6 @@ protected:
   /* ***************************************************************************************************************/
 
 
-protected:
-
   vec<SymRef> function_formulas;
 
   using expr_hasht = irep_hash;
@@ -154,8 +148,13 @@ protected:
   std::unordered_map<exprt, PTRef, expr_hasht> unsupported_expr2ptrefMap;
   std::unordered_map<exprt, PTRef, expr_hasht> expression_to_ptref_map;
 
-  unsigned unsupported2var = 0; // Create a new var hifrog::c::unsupported_op2var#i - smtcheck_opensmt2t::_unsupported_var_str
-  std::map<std::string,SymRef> decl_uninterperted_func;
+  unsupported_operationst unsupported_info;
+  
+  bool has_unsupported_vars() const { return unsupported_info.has_unsupported_vars(); }
+  bool has_overappox_mapping() const { return unsupported_info.has_unsupported_info(); }
+
+  virtual void init_unsupported_counter() { unsupported_info.init_unsupported_counter(); }
+  virtual unsupported_operationst get_unsupported_info() { return unsupported_info;}
 
   void store_new_unsupported_var(const exprt& expr, const PTRef var); // common to all
 
@@ -172,8 +171,6 @@ protected:
 
   PTRef mkFun(SymRef decl, const vec<PTRef>& args); // Common to all
 
-
-
 #ifdef PRODUCE_PROOF
   void setup_reduction();
 
@@ -186,10 +183,6 @@ protected:
   virtual bool can_have_non_linears() {return true;}
 
   virtual bool is_non_linear_operator(PTRef tr)=0;
-
-  virtual void freeSolver() override; // Common to all
-
-  void fill_vars(PTRef, std::map<std::string, PTRef>&); // Common to all
 
   // Common to all
   std::string extract_expr_str_name(const exprt &expr); // General method for extracting the name of the var
@@ -237,14 +230,9 @@ protected:
   std::string create_bound_string(std::string base, int exp);
 
 public:
-//  char* getPTermString(const literalt &l) { return getPTermString(ptrefs[l.var_no()]); }
-//  char* getPTermString(const exprt &expr) {
-//	  if(converted_exprs.find(expr.hash()) != converted_exprs.end())
-//		  return getPTermString(converted_exprs[expr.hash()]);
-//	  return 0;
-//  }
 
   void insert_substituted(const itpt & itp, const std::vector<symbol_exprt> & symbols) override;
+
 };
 
 #endif

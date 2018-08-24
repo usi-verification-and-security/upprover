@@ -90,7 +90,7 @@ void prepare_formulat::error_trace(check_opensmt2t &decider, const namespacet &n
     
     error_tracet error_trace;
     
-    error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(decider);
+    error_tracet::isOverAppoxt isOverAppox = error_trace.is_trace_overapprox(decider, equation.get_steps_exec_order());
     if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS)
     {
         // Same as in funfrog/error_tracet::show_goto_trace
@@ -99,7 +99,7 @@ void prepare_formulat::error_trace(check_opensmt2t &decider, const namespacet &n
         return; // Cannot really print a trace
     }
 
-    error_trace.build_goto_trace(equation, decider);
+    error_trace.build_goto_trace(equation.get_steps_exec_order(), decider);
 
     message.result () << "\nCounterexample:\n";
     error_trace.show_goto_trace(message.result(), ns, guard_expln);

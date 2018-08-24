@@ -15,10 +15,11 @@ class BitBlaster;
 class smtcheck_opensmt2t_cuf : public smtcheck_opensmt2t
 {
 public:
-  smtcheck_opensmt2t_cuf(unsigned bitwidth, int _type_constraints_level, const char* name) :
-        smtcheck_opensmt2t(false, 3, 2), // Is last always!
+  smtcheck_opensmt2t_cuf(unsigned bitwidth, int _type_constraints_level, const char* name
+  ) :
+        smtcheck_opensmt2t(false, 3, 2),
         bitwidth(bitwidth),
-        type_constraints_level(_type_constraints_level)
+        type_constraints_level(_type_constraints_level)      
   {
     initializeSolver(name);
   }
@@ -47,7 +48,8 @@ public:
   
   PTRef type_cast_bv(const exprt &expr);
   
-  PTRef labs_bv(const exprt &expr); // from convert for ID_abs
+  virtual std::string getStringSMTlibDatatype(const typet& type) override;
+  virtual SRef getSMTlibDatatype(const typet& type) override;
 
   int check_ce(std::vector<exprt>& exprs, std::map<const exprt, int>& model,
                std::set<int>& refined, std::set<int>& weak, int start, int end, int step, int do_dep);
@@ -58,21 +60,8 @@ public:
 
   bool force_refine_ce(std::vector<exprt>& exprs, std::set<int>& refined); // refine all from exprs, but already refined
 
-  PTRef split_exprs(irep_idt id, vec<PTRef>& args);
-  PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
-
-  std::string get_refinement_failure_reason() {
-      if (unsupported2var == 0) {
-          return ""; // No unsupported functions, no reason
-      }
-      
-      return "Cannot refine due to " + std::to_string(unsupported2var) + 
-              " unsupported operators;e.g., " + id2string(_fails_type_id);
-  }
+  std::string get_refinement_failure_reason() { return unsupported_info.get_failure_reason(id2string(_fails_type_id)); } 
   
-  virtual std::string getStringSMTlibDatatype(const typet& type) override;
-  virtual SRef getSMTlibDatatype(const typet& type) override;
-
 protected:
   BVLogic* bvlogic; // Extra var, inner use only - Helps to avoid dynamic cast!
   CUFLogic* uflogic; // Extra var, inner use only - Helps to avoid dynamic cast!
@@ -100,7 +89,7 @@ protected:
   PTRef lconst_bv(const exprt &expr); // For bv only!
   
   virtual void initializeSolver(const char*) override;
-  
+
   void add_constraints4chars_bv(const exprt &expr, PTRef &var);
   
   void add_constraints4chars_bv_char(PTRef &var, const irep_idt type_id_c, const irep_idt type_id);
@@ -108,18 +97,13 @@ protected:
   void add_constraints4chars_bv_bool(const exprt &expr, PTRef &var, int size, const irep_idt type_id);
   
   void add_constraints4chars_numeric(PTRef &var, int size, const irep_idt type_id);
-  
+
   virtual bool is_non_linear_operator(PTRef tr) override;
+  
+  PTRef split_exprs(irep_idt id, vec<PTRef>& args);
+  PTRef split_exprs_bv(irep_idt id, vec<PTRef>& args);
+  
+  PTRef labs_bv(const exprt &expr); // from convert for ID_abs
 };
 
-void getVarsInExpr(exprt& e, std::set<exprt>& vars);
-
-// Taken from cprover framework: integer2unsigned, mp_arith.cpp
-inline int mp_integer2int(const mp_integer &n)
-{
-  mp_integer::llong_t ll=n.to_long();
-  assert("Framework currently does not support numbers larger than ints" && ll <= std::numeric_limits<int>::max());
-  assert("Framework currently does not support numbers smaller than ints" && ll >= std::numeric_limits<int>::min());
-  return (int)ll;
-}
 #endif

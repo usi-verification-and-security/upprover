@@ -27,21 +27,10 @@ void theory_refinert::initialize()
 {
   decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"),
           options.get_unsigned_int_option("type-byte-constraints"),
-          "theory refiner");
+          "theory refiner"
+          );
 
   if (options.get_unsigned_int_option("random-seed")) decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
-
-#ifdef DISABLE_OPTIMIZATIONS  
-  if (options.get_bool_option("dump-query"))
-      decider->set_dump_query(true);
-
-  if (options.get_bool_option("dump-pre-query"))
-      decider->set_dump_pre_query(true);
-  
-  const std::string& dump_query_name = options.get_option("dump-query-name");
-  if (dump_query_name != "")
-      decider->set_dump_query_name(dump_query_name);
-#endif  
 
   omega.initialize_summary_info (omega.get_call_tree_root(), goto_program);
   omega.setup_default_precision(init_modet::ALL_SUBSTITUTING);
@@ -135,7 +124,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
 
           status() << "Checking if the error trace is spurious (for testing only) with LRA" << eom;
 
-          smtcheck_opensmt2t_lra decider2(0, "Checking if the error trace is spurious (for testing only) with LRA");
+          smtcheck_opensmt2t_lra decider2(0, "Checking if the error trace is spurious (for testing only) with LRA"
+          );
 
 //          error_trace.build_goto_trace_formula(equation,
 //                *(dynamic_cast<smtcheck_opensmt2t *> (decider)),
@@ -218,7 +208,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       {
                           smtcheck_opensmt2t_cuf decider2(bw,
                                   options.get_unsigned_int_option("type-byte-constraints"),
-                                  "forward checker");
+                                  "forward checker"
+                          );
                           decider2.check_ce(exprs, model, refined, weak, 0, exprs.size(), 1, 0);
                       }
                       break;
@@ -227,7 +218,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       {
                           smtcheck_opensmt2t_cuf decider2(bw,
                                   options.get_unsigned_int_option("type-byte-constraints"),
-                                  "backward checker");
+                                  "backward checker"
+                          );
                           decider2.check_ce(exprs, model, refined, weak, exprs.size()-1, -1, -1, 0);
                       }
                       break;
@@ -238,7 +230,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                           while (last != -1 || last == (int) exprs.size()){
                             smtcheck_opensmt2t_cuf decider2(bw, 
                                     options.get_unsigned_int_option("type-byte-constraints"),
-                                    "forward multiple checker");
+                                    "forward multiple checker"
+                            );
                             last = decider2.check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 0);
                           }
                       }
@@ -250,7 +243,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                           while (last >= 0){
                             smtcheck_opensmt2t_cuf decider2(bw,
                                     options.get_unsigned_int_option("type-byte-constraints"),
-                                    "backward multiple refiner");
+                                    "backward multiple refiner"
+                            );
                             last = decider2.check_ce(exprs, model, refined, weak, last, -1, -1, 0);
                           }
                       }
@@ -260,7 +254,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       {
                           smtcheck_opensmt2t_cuf decider2(bw,
                                   options.get_unsigned_int_option("type-byte-constraints"),
-                                  "Forward dependency checker");
+                                  "Forward dependency checker"
+                          );
                           decider2.check_ce(exprs, model, refined, weak, 0, exprs.size(), 1, 1);
                       }
                       break;
@@ -269,7 +264,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                       {
                           smtcheck_opensmt2t_cuf decider2(bw,
                                   options.get_unsigned_int_option("type-byte-constraints"),
-                                  "Backward dependency checker");
+                                  "Backward dependency checker"
+                          );
                           decider2.check_ce(exprs, model, refined, weak, exprs.size()-1, -1, -1, 1);
                       }
                       break;
@@ -280,7 +276,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                           while (last != -1 || last == (int) exprs.size()){
                             smtcheck_opensmt2t_cuf decider2(bw, 
                                     options.get_unsigned_int_option("type-byte-constraints"),
-                                    "Foward with multiple refinements & dependencies");
+                                    "Foward with multiple refinements & dependencies"
+                            );
                             decider2.check_ce(exprs, model, refined, weak, last, exprs.size(), 1, 1);
                           }
                       }
@@ -292,7 +289,8 @@ bool theory_refinert::assertion_holds_smt(const assertion_infot& assertion,
                           while (last >= 0){
                             smtcheck_opensmt2t_cuf decider2(bw,
                                     options.get_unsigned_int_option("type-byte-constraints"),
-                                    "backward with multiple refinement & dependencies");
+                                    "backward with multiple refinement & dependencies"
+                            );
                             decider2.check_ce(exprs, model, refined, weak, last, -1, -1, 1);
                           }
                       }

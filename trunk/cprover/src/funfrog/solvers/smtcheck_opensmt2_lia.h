@@ -27,9 +27,6 @@ public:
 
     virtual bool can_interpolate() const override { return false; }
 
-    // Extract interpolant form OpenSMT files/data
-    virtual void extract_itp(PTRef ptref, smt_itpt & target_itp) const override { assert(0); }
-
 #endif
 protected:
 

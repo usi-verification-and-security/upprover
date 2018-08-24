@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 /* 
  * File:   hifrog_symex_target_equationt.cpp
  * Author: karinek
@@ -86,7 +80,7 @@ void hifrog_symex_target_equationt::convert_assignments(check_opensmt2t &decider
             exprt tmp(step.cond_expr);
 
             // Only if not an assignment to rounding model print it + add it to LRA statements
-            if (!isRoundModelEq(tmp)) {
+            if (!isPropBuiltinEq(tmp)) {
 #           ifdef DISABLE_OPTIMIZATIONS
                 expr_ssa_print(out_terms << "    ", tmp, partition_smt_decl, false);
                 terms_counter++;
@@ -266,7 +260,7 @@ void hifrog_symex_target_equationt::convert_summary(check_opensmt2t &decider)
     //if (!is_summary) return;
 }
 
-bool hifrog_symex_target_equationt::isRoundModelEq(const exprt &expr)
+bool hifrog_symex_target_equationt::isPropBuiltinEq(const exprt &expr)
 {
     if (!expr.has_operands())
         return false;
@@ -274,15 +268,9 @@ bool hifrog_symex_target_equationt::isRoundModelEq(const exprt &expr)
         return false;
 
     // Start checking if it is auto gen code for rounding model
-    std::string str = id2string((expr.operands()[0]).get(ID_identifier));
-    if (is_cprover_builtins_var(str))
-        return true;
-    
+    if (is_cprover_builtins_var((expr.operands()[0]))) return true;
     if (expr.operands().size() < 2) return false;
-    
-    str = id2string((expr.operands()[1]).get(ID_identifier));
-    if (is_cprover_builtins_var(str))
-        return true;
+    if (is_cprover_builtins_var((expr.operands()[1]))) return true;
 
     return false;
 }

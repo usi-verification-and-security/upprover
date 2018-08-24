@@ -14,8 +14,9 @@ Author: Grigory Fedyukovich
 #include <solvers/sat/cnf.h>
 #include <util/threeval.h>
 #include "check_opensmt2.h"
-#include "interpolating_solver.h"
+#include "funfrog/interface/solver/interpolating_solver.h"
 #include <opensmt/opensmt2.h>
+
 #include <solvers/prop/prop_conv.h>
 #include <funfrog/utils/expressions_utils.h>
 #include <solvers/flattening/boolbv.h>
@@ -32,7 +33,9 @@ public:
     freeSolver();
   }
 
-  bool solve() override {
+    bool is_overapprox_encoding() const override;
+
+    bool solve() override {
       auto res = get_bv_converter().dec_solve();
       switch (res){
           case decision_proceduret::resultt::D_SATISFIABLE:
@@ -115,9 +118,6 @@ public:
   
   const std::string& get_last_var() { return id_str; }
 
-  const char* false_str = "false";
-  const char* true_str = "true";
-
 protected:
   // Use in the convert from SSA -> SMT-prop encoding
 
@@ -153,8 +153,6 @@ protected:
   // Initialize the OpenSMT context
   virtual void initializeSolver(const char*) override;
 
-  // Free all resources related to PeRIPLO
-  virtual void freeSolver() override;
 
   void add_variables();
   void increase_id();
@@ -162,7 +160,6 @@ protected:
 
 private:
     std::unique_ptr<boolbvt> boolbv_convert;
-
 };
 
 #endif

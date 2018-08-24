@@ -9,6 +9,8 @@
 #include <util/ssa_expr.h>
 #include "naming_helpers.h"
 
+#include <set>
+
 inline bool is_boolean(const exprt & expr){
     return expr.is_boolean() || expr.type().id() == ID_c_bool;
 }
@@ -98,7 +100,7 @@ inline bool is_L2_SSA_symbol(const exprt& expr)
     return true;
 }
 
-inline std::string fix_symex_nondet_name(const exprt &expr) {
+inline std::string normalize_name(const exprt & expr) {
     // Fix Variable name - sometimes "nondet" name is missing, add it for these cases
 
     std::string name_expr = id2string(expr.get(ID_identifier));
@@ -112,7 +114,12 @@ inline std::string fix_symex_nondet_name(const exprt &expr) {
         }
     }
 
+    // TODO: check if this is necessary
+    name_expr.erase(std::remove(name_expr.begin(),name_expr.end(),'\\'),name_expr.end());
+
     return name_expr;
 }
+
+void getVarsInExpr(exprt& e, std::set<exprt>& vars);
 
 #endif //PROJECT_EXPRESSIONS_UTILS_H

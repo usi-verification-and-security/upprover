@@ -23,6 +23,7 @@ public:
 
     virtual std::string getStringSMTlibDatatype(const typet & type) override;
 
+
     virtual SRef getSMTlibDatatype(const typet & type) override;
 
 protected:

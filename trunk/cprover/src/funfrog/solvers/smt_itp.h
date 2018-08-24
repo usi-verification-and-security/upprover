@@ -3,9 +3,10 @@
 
 #include "itp.h"
 
-#include <opensmt/opensmt2.h>
 #include <opensmt/Tterm.h>
 #include <iosfwd>
+
+class smtcheck_opensmt2t;
 
 class smt_itpt: public itpt
 {
@@ -15,10 +16,11 @@ public:
 
   virtual  bool is_trivial() const override { return false; }
 
-  void setLogic(Logic *_l) { logic = _l; }
+  void setDecider(check_opensmt2t *_s);
+  void setTterm(Tterm& t) { templ = t; }
 
-  const Tterm & getTempl() const {return templ;}
   Tterm & getTempl() {return templ;}
+  const Tterm & getTempl() const {return templ;}
 
   // Serialization
   virtual void serialize(std::ostream& out) const override;
@@ -29,7 +31,7 @@ protected:
   // TODO: figure out better way how to store the interpolants
   Tterm templ;
 
-  Logic *logic;
+  smtcheck_opensmt2t *m_decider;
 
 };
 

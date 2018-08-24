@@ -115,47 +115,6 @@ bool symex_assertion_sumt::prepare_SSA()
 
 /*******************************************************************
 
- Function: symex_assertion_sumt::prepare_subtree_SSA
-
- Inputs:
-
- Outputs:
-
- Purpose: Generate SSA statements for the subtree of a specific function and
- compare to its summary
-
-\*******************************************************************/
-
-//bool symex_assertion_sumt::prepare_subtree_SSA(const assertion_infot &assertion)
-//{
-//  current_assertion = &assertion;
-//
-//  // Clear the state
-//  reset_state();
-//
-//  // Prepare a partition for the ROOT function and defer
-//  partition_ifacet &partition_iface = new_partition_iface(call_tree_root, partitiont::NO_PARTITION, 0);
-//  call_tree_root.set_inline();
-//  defer_function(deferred_functiont(call_tree_root, partition_iface));
-//
-//  // Make all the interface symbols shared between
-//  // the inverted summary and the function.
-//  prepare_fresh_arg_symbols(state, partition_iface);
-//
-//  // Prepare a partition for the inverted SUMMARY
-//  fill_inverted_summary(call_tree_root, state, partition_iface);
-//
-//  // Old: ??? state.value_set = value_sets;
-//  state.source.pc = get_function(partition_iface.function_id).body.instructions.begin();
-//
-//  // Plan the function for processing
-//  dequeue_deferred_function(state);
-//
-//  return process_planned(state, true);
-//}
-
-/*******************************************************************
-
  Function: symex_assertion_sumt::refine_SSA
 
  Inputs:
@@ -172,8 +131,8 @@ bool symex_assertion_sumt::refine_SSA(const std::list<call_tree_nodet *> & refin
   // Defer the functions
   for (const auto & refined_function : refined_functions)
   {
-      assert(!refined_function->is_root());
-      const partition_iface_ptrst* partition_ifaces = get_partition_ifaces(refined_function);
+    assert(!refined_function->is_root());
+    const partition_iface_ptrst* partition_ifaces = get_partition_ifaces(refined_function);
 
     if (!refined_function->is_root()) {
         if (partition_ifaces) {
@@ -230,6 +189,10 @@ bool symex_assertion_sumt::process_planned(statet & state)
   after=current_time();
 
   log.statistics() << "SYMEX TIME: " << (after-before) << log.eom;
+
+#ifdef DEBUG_SSA
+    print_SSA_steps(equation.SSA_steps, ns, std::cout);
+#endif //DEBUG_SSA
 
   if(remaining_vccs == 0)
   {
@@ -1087,7 +1050,8 @@ void symex_assertion_sumt::summarize_function_call(
   log.statistics() << "Substituting interpolant" << log.eom;
 
   partition_idt partition_id = equation.reserve_partition(partition_iface);
-    equation.fill_summary_partition(partition_id, id2string(function_id));
+
+  equation.fill_summary_partition(partition_id, id2string(function_id));
 }
 
 /*******************************************************************

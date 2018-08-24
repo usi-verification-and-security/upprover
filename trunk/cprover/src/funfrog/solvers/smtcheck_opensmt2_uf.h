@@ -32,9 +32,8 @@ protected:
 public:
   virtual std::string getStringSMTlibDatatype(const typet& type) override;
   virtual SRef getSMTlibDatatype(const typet& type) override;
-
   SRef getURealSortRef() const {return sort_ureal;}
-
+  
 protected:
 
   virtual PTRef unsupported_to_var(const exprt &expr) override; // for isnan, mod, arrays ect. that we have no support (or no support yet) create over-approx as nondet
@@ -42,7 +41,9 @@ protected:
   virtual void initializeSolver(const char* name) override;
   
   virtual bool is_non_linear_operator(PTRef tr) override;
-  
+ 
+private:  
+
   static const char *tk_sort_ureal;
   static const char *tk_mult;
   static const char *tk_div;

@@ -34,6 +34,7 @@ void smtcheck_opensmt2t_lra::initializeSolver(const char* name)
 
 #ifndef NDEBUG
     // To avoid issues with type constraints for LRA
+    ptr_assert_var_constraints = logic->getTerm_true();
     if (type_constraints_level > 0)
         std::cout << "Adding Type Constraints (" << type_constraints_level << ")" 
                 << ((type_constraints_level == 1 ? " for type constraints on non-deterministic input" : ""))
@@ -60,7 +61,6 @@ smtcheck_opensmt2t_lra::~smtcheck_opensmt2t_lra()
 }
 
 /*******************************************************************\
-
 Function: smtcheck_opensmt2t_lra::check_ce
 
   Inputs:

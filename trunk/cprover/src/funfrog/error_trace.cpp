@@ -10,8 +10,6 @@
 #include "solvers/smtcheck_opensmt2_cuf.h"
 #include <ansi-c/printf_formatter.h>
 #include <funfrog/utils/naming_helpers.h>
-#include "nopartition/smt_symex_target_equation.h"
-#include "partitioning_target_equation.h"
 #include "solvers/smtcheck_opensmt2_lra.h"
 
 //#define TRACE_DEBUG //Use it to debug the trace of an error build
@@ -33,13 +31,11 @@ Function: error_trace::build_exec_order_goto_trace
 
 \*******************************************************************/
 void error_tracet::build_goto_trace (
-  partitioning_target_equationt &target,
+  const SSA_steps_orderingt& SSA_steps,
   check_opensmt2t &decider)
 {
 
   unsigned step_nr=0;
-
-  const SSA_steps_orderingt& SSA_steps = target.get_steps_exec_order();
 
   for(auto ssa_step_ptr : SSA_steps)
   {
@@ -65,7 +61,7 @@ void error_tracet::build_goto_trace (
        str.find(HifrogStringConstants::FUN_RETURN)!=std::string::npos)
         continue;
 
-    if (str.find(HifrogStringConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
+    if (str.find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
@@ -186,7 +182,7 @@ void error_tracet::build_goto_trace_formula (
         continue;
 
 
-    if (str.find(HifrogStringConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
+    if (str.find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
         continue;
 
     if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
@@ -243,6 +239,8 @@ void error_tracet::build_goto_trace_formula (
 /**
  * CUF-version of the CE-formula
  * used in the theory-refinement algorithm
+ * 
+ * CEX extraction
  */
 void error_tracet::build_goto_trace_formula (
   std::vector<exprt>& exprs,
@@ -312,52 +310,30 @@ Function: error_trace::show_trace_vars_value
  Purpose: To check that it is really a full concrete path
 
 \*******************************************************************/
-error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(check_opensmt2t &decider)
+error_tracet::isOverAppoxt error_tracet::is_trace_overapprox(check_opensmt2t &decider, const SSA_steps_orderingt& SSA_steps)
 {
-    if(!decider.is_overapproximating()){
-        isOverAppox = error_tracet::isOverAppoxt::REAL;
-        return isOverAppox;
-    }
-    /* Basic print of the error trace as all variables values */
-#ifdef TRACE_DEBUG
-    MainSolver *mainSolver = decider.getMainSolver();
-#endif
-    smtcheck_opensmt2t & smt_decider = static_cast<smtcheck_opensmt2t&>(decider);
-    if (smt_decider.has_unsupported_vars())
-    // KE: only if we used any unsupported var checks and only if we didn't
-    // try to refine these expr - Need to find a better solution
+    if (decider.is_overapprox_encoding())
     {
-        Logic *logic = decider.getLogic();
-        auto vars = smt_decider.getVars();
-        //std::string overapprox_str (smtcheck_opensmt2t::_unsupported_var_str);
-        //std::string skip_debug_print ("hifrog::?call"); // Skip the print of this value due to assertion
-        // violation in opensmt2 - worth debuging one day: Cnfizer.C:891: lbool Cnfizer::getTermValue(PTRef) const: Assertion `val != (lbool((uint8_t)2))' failed.
-        for(const PTRef ptref : vars)
+        // Check the error trace symbols, 
+        for(SSA_steps_orderingt::const_iterator
+            it=SSA_steps.begin();
+            it!=SSA_steps.end();
+            it++)
         {
-            // Print the var and its value
-            char* name = logic->printTerm(ptref);
-            std::string curr (name);
-            if (curr.find(HifrogStringConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
+            const symex_target_equationt::SSA_stept &SSA_step=**it;
+            if(!decider.is_assignment_true(SSA_step.guard_literal))
+                continue;
+            if(SSA_step.is_assignment() && SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)
+                continue;
+       
+            std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
+            if (str.find(HifrogStringUnsupportOpConstants::UNSUPPORTED_VAR_NAME) != std::string::npos) {
                 isOverAppox = error_tracet::isOverAppoxt::SPURIOUS;
-    #ifdef TRACE_DEBUG
-            else if (curr.find(skip_debug_print) != std::string::npos)
-            {
-                    // Skip print
+                break;
             }
-            else
-            {
-                    cout << " \\ " << name ;
-                    ValPair v1 = mainSolver->getValue(*iter);
-                    if (logic->isIteVar((*iter)))
-                            cout << ": (" << logic->printTerm(logic->getTopLevelIte(*iter)) << ")" << " = " << ((v1.val != 0) ? "true" : "false") << "\n";
-                    else
-                            cout << " = " << v1.val << "\n";
-            }
-    #endif
-            free(name);
         }
     }
-
+    
     if (isOverAppox != error_tracet::isOverAppoxt::SPURIOUS)
     	isOverAppox = error_tracet::isOverAppoxt::REAL;
 
@@ -386,7 +362,6 @@ void error_tracet::show_goto_trace(
     // In case we use over approximate to verify this example - gives a warning to the user!
     assert (isOverAppox != error_tracet::isOverAppoxt::UNKNOWN);
 
-    //if (is_trace_overapprox(decider)) {
     if (isOverAppox == error_tracet::isOverAppoxt::SPURIOUS) {
         std::cout << "\nWARNING: Use over approximation. Cannot create an error trace. \n";
         std::cout << "         Use --logic with Different Logic to Try Creating an Error Trace. \n";
@@ -634,138 +609,4 @@ bool error_tracet::is_index_member_symbol(const exprt &src)
       return true;
     else
       return false;
-}
-
-/*******************************************************************\
-
-Function: error_trace::build_exec_order_goto_trace - for NO PARTITON VERISION
-
-  Inputs: SSA translation of the code and solver
-
- Outputs: a concrete trace (error trace with value)
-
- Purpose: To create a concrete error trace with concrete values
-
- Note: Copied from build_goto_tarce.cpp
- *
- * ANY PROBLEMS with values, you should start look for here!
-
-\*******************************************************************/
-void error_tracet::build_goto_trace (
-  hifrog_symex_target_equationt &target,
-  smtcheck_opensmt2t &decider)
-{
-
-  unsigned step_nr=0;
-
-  for(symex_target_equationt::SSA_stepst::iterator
-      it=target.SSA_steps.begin();
-      it!=target.SSA_steps.end();
-      it++)
-  {
-    const symex_target_equationt::SSA_stept &SSA_step=(*it);
-    if(!decider.is_assignment_true(SSA_step.guard_literal))
-      continue;
-
-    if(SSA_step.is_assignment() &&
-       SSA_step.assignment_type==symex_target_equationt::assignment_typet::HIDDEN)
-      continue;
-
-    std::string str(SSA_step.ssa_lhs.get("identifier").c_str());
-    if (is_cprover_rounding_mode_var(str))
-    	continue;
-
-    if (is_cprover_builtins_var(str))
-    	continue;
-
-    if (str.find(CProverStringConstants::DYNAMIC_OBJ)!=std::string::npos)
-        continue;
-
-    if(SSA_step.ssa_lhs.id()==ID_symbol &&
-       str.find(HifrogStringConstants::FUN_RETURN)!=std::string::npos)
-        continue;
-
-    if (str.find(HifrogStringConstants::UNSUPPORTED_VAR_NAME) != std::string::npos)
-        continue;
-
-    if (SSA_step.ssa_lhs.get(ID_type)==ID_array)
-        continue;
-
-    step_nr++;
-
-    goto_trace.steps.push_back(goto_trace_stept());
-    goto_trace_stept &goto_trace_step=goto_trace.steps.back();
-
-    goto_trace_step.thread_nr=SSA_step.source.thread_nr;
-    goto_trace_step.pc=SSA_step.source.pc;
-    goto_trace_step.comment=SSA_step.comment;
-    goto_trace_step.type=SSA_step.type;
-    goto_trace_step.hidden=SSA_step.hidden;
-    goto_trace_step.step_nr=step_nr;
-    goto_trace_step.format_string=SSA_step.format_string;
-    goto_trace_step.io_id=SSA_step.io_id;
-    goto_trace_step.formatted=SSA_step.formatted;
-    goto_trace_step.identifier=SSA_step.identifier;
-
-    if(SSA_step.ssa_lhs.is_not_nil()) {
-        if (str.find(CProverStringConstants::GOTO_GUARD) == 0){
-            goto_trace_step.lhs_object=SSA_step.ssa_lhs;
-        } else {
-            //goto_trace_step.lhs_object=SSA_step.original_lhs_object;
-            goto_trace_step.lhs_object=ssa_exprt(SSA_step.ssa_lhs.get_original_expr());
-        }
-    } else {
-        goto_trace_step.lhs_object.make_nil();
-    }
-
-    if(SSA_step.ssa_full_lhs.is_not_nil())
-    {
-    	exprt val;
-        if(is_index_member_symbol(SSA_step.ssa_full_lhs)){
-            val=decider.get_value(SSA_step.ssa_full_lhs);
-        }
-        else {
-            val=decider.get_value(SSA_step.ssa_lhs);
-        }
-        goto_trace_step.full_lhs_value=val;
-
-    }
-
-    /* Print nice return value info */
-    if (str.find(HifrogStringConstants::FUN_RETURN) < str.size() ||
-	str.find(HifrogStringConstants::TMP_RETURN) < str.size())
-    {
-        goto_trace_step.format_string = "function return value";
-    } else {
-        goto_trace_step.format_string=SSA_step.format_string;
-    }
-
-    for(std::list<exprt>::const_iterator
-        j=SSA_step.converted_io_args.begin();
-        j!=SSA_step.converted_io_args.end();
-        j++)
-    {
-      const exprt &arg=*j;
-      if(arg.is_constant() ||
-         arg.id()==ID_string_constant)
-        goto_trace_step.io_args.push_back(arg);
-      else
-      {
-        exprt tmp=decider.get_value(arg);
-        goto_trace_step.io_args.push_back(tmp);
-      }
-    }
-
-    // Stop condition + adding data to assume and assert steps
-    if(SSA_step.is_assert() || SSA_step.is_assume())
-    {
-      goto_trace_step.cond_expr=SSA_step.cond_expr;
-      goto_trace_step.cond_value=
-    		  decider.is_assignment_true(SSA_step.cond_literal);
-
-      // we stop after a violated assertion
-      if(SSA_step.is_assert() && !goto_trace_step.cond_value)
-    	  break;
-    }
-  }
 }

@@ -27,6 +27,9 @@
 #include "prop_summary_store.h"
 #include "theory_refiner.h"
 #include "partitioning_slice.h"
+#include "utils/unsupported_operations.h"
+
+#include <stdio.h>
 
 namespace{
     /*******************************************************************\
@@ -102,23 +105,22 @@ void core_checkert::initialize_solver()
     std::string _logic = options.get_option(HiFrogOptions::LOGIC);
     if(_logic == "qfuf") 
     {
-        decider = new smtcheck_opensmt2t_uf("uf checker");
+        decider = initialize__euf_solver(); 
         status() << ("Use QF_UF logic.") << eom;
     }
     else if(_logic == "qfcuf")
     {
-        decider = new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"), 
-                options.get_unsigned_int_option("type-byte-constraints"), "cuf checker");
+        decider = initialize__cuf_solver();
         status() << ("Use QF_CUF logic.") << eom;
     }
     else if(_logic == "qflra") 
     {
-        decider = new smtcheck_opensmt2t_lra(options.get_unsigned_int_option("type-constraints"), "lra checker");
+        decider = initialize__lra_solver();
         status() << ("Use QF_LRA logic.") << eom;
     }
     else if(_logic == "qflia") 
     {
-        decider = new smtcheck_opensmt2t_lia(options.get_unsigned_int_option("type-constraints"), "lia checker");
+        decider = initialize__lia_solver();
         status() << ("Use QF_LIA logic.") << eom;
     }    
     else if (_logic == "prop" && !options.get_bool_option("no-partitions"))
@@ -126,10 +128,10 @@ void core_checkert::initialize_solver()
         decider = new satcheck_opensmt2t("prop checker", ns);
         status() << ("Use propositional logic.") << eom;
     }
-    else if (_logic == "prop" && options.get_bool_option("no-partitions"))
+    else if (_logic == "prop")
     {
-        error() << ("--no-partitions option is not supported in theory: " +  _logic + "\n") << eom;
-        exit(0); //Unsupported 
+        decider = initialize__prop_solver();
+        status() << ("Use propositional logic.") << eom;
     }
     else 
     {
@@ -140,33 +142,55 @@ void core_checkert::initialize_solver()
     initialize_solver_options(decider); // Init all options in the solver
 }
 
+// Generic creation for any solver - euf
+check_opensmt2t* core_checkert::initialize__euf_solver()
+{
+    return new smtcheck_opensmt2t_uf("uf checker");
+    
+}
+
+// Only for OpenSMT solver - cuf
+check_opensmt2t* core_checkert::initialize__cuf_solver()
+{
+    return new smtcheck_opensmt2t_cuf(options.get_unsigned_int_option("bitwidth"), 
+                options.get_unsigned_int_option("type-byte-constraints"), "cuf checker");
+}
+  
+// Generic creation for any solver - lra
+check_opensmt2t* core_checkert::initialize__lra_solver()
+{
+    return new smtcheck_opensmt2t_lra(options.get_unsigned_int_option("type-constraints"), "lra checker");
+}
+
+// Generic creation for any solver - lra
+check_opensmt2t* core_checkert::initialize__lia_solver()
+{
+    return new smtcheck_opensmt2t_lia(options.get_unsigned_int_option("type-constraints"), "lia checker");
+}
+
+// Only for OpenSMT solver - prop
+check_opensmt2t* core_checkert::initialize__prop_solver()
+{
+    if (options.get_bool_option("no-partitions")) {
+        error() << ("--no-partitions option is not supported in theory: " +  options.get_option("logic") + "\n") << eom;
+        exit(0); //Unsupported 
+    }
+
+    // If all OK, create the decider
+    return new satcheck_opensmt2t("prop checker", ns);
+}
+
 void core_checkert::initialize_solver_options(check_opensmt2t* _decider)
 {
   // Set all the rest of the option - KE: check what to shift to the part of SMT only
-
   _decider->set_verbosity(options.get_unsigned_int_option("verbose-solver"));
+  
+  if(options.get_unsigned_int_option("random-seed")) 
+      _decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
+
 #ifdef PRODUCE_PROOF   
-  _decider->set_itp_bool_alg(options.get_unsigned_int_option("itp-algorithm"));
-  _decider->set_itp_euf_alg(options.get_unsigned_int_option("itp-uf-algorithm"));
-  _decider->set_itp_lra_alg(options.get_unsigned_int_option("itp-lra-algorithm"));
-  if(options.get_option("itp-lra-factor").size() > 0) 
-      _decider->set_itp_lra_factor(options.get_option("itp-lra-factor").c_str());
   _decider->set_certify(options.get_unsigned_int_option("check-itp"));
-  if(options.get_bool_option("reduce-proof"))
-  {
-    _decider->set_reduce_proof(options.get_bool_option("reduce-proof"));
-    if(options.get_unsigned_int_option("reduce-proof-graph")) _decider->set_reduce_proof_graph(options.get_unsigned_int_option("reduce-proof-graph"));
-    if(options.get_unsigned_int_option("reduce-proof-loops")) _decider->set_reduce_proof_loops(options.get_unsigned_int_option("reduce-proof-loops"));
-  }
 #endif
-  if(options.get_unsigned_int_option("random-seed")) _decider->set_random_seed(options.get_unsigned_int_option("random-seed"));
-#ifdef DISABLE_OPTIMIZATIONS  
-  if (options.get_bool_option("dump-query"))
-      _decider->set_dump_query(true);
-  if (options.get_bool_option("dump-pre-query"))
-      _decider->set_dump_pre_query(true);
-  _decider->set_dump_query_name(options.get_option("dump-query-name"));
-#endif  
 }
 
 void core_checkert::initialize()
@@ -255,13 +279,13 @@ bool core_checkert::assertion_holds(const assertion_infot& assertion,
   
   if (options.get_bool_option("no-partitions")) // BMC alike version
     return assertion_holds_smt_no_partition(assertion);
-  else 
+  else
     return assertion_holds_(assertion, store_summaries_with_assertion);
 }
 
 /*******************************************************************
 
- Function: core_checkert::assertion_holds_smt
+ Function: core_checkert::assertion_holds_
 
  Inputs:
 
@@ -603,6 +627,12 @@ void core_checkert::assertion_violated (prepare_formulat& prop,
 {
     if (!options.get_bool_option("no-error-trace"))
         prop.error_trace(*decider, ns, guard_expln);
+    if (decider->is_overapprox_encoding()){
+    	status() << "\nA bug found." << eom;
+    	status() << "WARNING: Possibly due to the Theory conversion." << eom;
+    } else {
+    	status() << "A real bug found." << eom;
+    }
     report_failure();
 }
 
@@ -623,7 +653,7 @@ void core_checkert::assertion_violated (smt_assertion_no_partitiont& prop,
     smtcheck_opensmt2t* decider_smt = dynamic_cast <smtcheck_opensmt2t*> (decider);
     if (!options.get_bool_option("no-error-trace"))
         prop.error_trace(*decider_smt, ns, guard_expln);
-    if (decider_smt->has_unsupported_vars()){
+    if (decider_smt->is_overapprox_encoding()){
     	status() << "\nA bug found." << endl;
     	status() << "WARNING: Possibly due to the Theory conversion." << eom;
     } else {
@@ -768,33 +798,6 @@ namespace{
             out.close();
         }
 
-    }
-/*******************************************************************/
-// Purpose: create non-linear fresh variable with a separate(independent) counter
-    std::string fresh_var_name_nonlinear(){
-        static int counter = 0;
-        return quote_if_necessary( HifrogStringConstants::UNSUPPORTED_VAR_NAME + std::string{"_sumtheoref_"} + std::to_string(counter++));
-    }
-
-    std::vector<std::string> get_unsupported_funct_exprs(std::string const & text) {
-        std::vector<std::string> res;
-        const std::string UNS = "(uns_";
-        std::string::size_type last_pos = 0;
-        while ((last_pos = text.find(UNS, last_pos)) != std::string::npos) {
-            auto beg = last_pos;
-            auto current = beg + 1;
-            int counter = 0;
-            while (text[current] != ')' || counter > 0) {
-                if (text[current] == ')') { --counter; }
-                if (text[current] == '(') { ++counter; }
-                ++current;
-            }
-            auto end = current + 1;
-            res.push_back(text.substr(beg, end - beg));
-//                std::cout << res.back() << '\n';
-            last_pos = end;
-        }
-        return res;
     }
 
 /*******************************************************************/
@@ -955,7 +958,8 @@ bool core_checkert::check_sum_theoref_single(const assertion_infot &assertion)
     new_symbol_table.clear(); // MB: this needs to be empty before use in symex
     std::string lra_summary_file_name {"__summaries_lra"};
     std::string uf_summary_file_name {"__summaries_uf"};
-    smtcheck_opensmt2t_uf uf_solver {"uf checker"};
+    smtcheck_opensmt2t_uf uf_solver {"uf checker",
+    };
     initialize_solver_options(&uf_solver);
 
     smt_summary_storet summary_store {&uf_solver};

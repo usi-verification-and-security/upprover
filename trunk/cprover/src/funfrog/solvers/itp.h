@@ -5,6 +5,9 @@
 #include <opensmt/PTRef.h>
 #include <util/symbol.h>
 
+
+class check_opensmt2t;
+
 class itpt
 {
 public:

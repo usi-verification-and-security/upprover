@@ -66,7 +66,7 @@ PTRef smtcheck_opensmt2t_la::numeric_constant(const exprt & expr)
 
     // Check the conversion from string to real was done properly - do not erase!
     assert(!lalogic->isNumOne(rconst) || expr.is_one() || // Check the conversion works: One => one
-           (expr.type().id()==ID_c_enum || expr.type().id()==ID_c_enum_tag)); // Cannot check enums
+            (expr.type().id()==ID_c_enum || expr.type().id()==ID_c_enum_tag || expr.type().id()==ID_c_bit_field)); // Cannot check enums
     if(expr.is_constant() && (expr.is_boolean() || is_number(expr.type()))){
         exprt temp_check = exprt(expr); temp_check.negate();
         assert(!lalogic->isNumZero(rconst) || (expr.is_zero() || temp_check.is_zero())); // Check the conversion works: Zero => zero
@@ -254,6 +254,13 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
 
     } else if ((_id == ID_typecast || _id == ID_floatbv_typecast) && expr.has_operands()) {
         ptref = type_cast(expr);
+    #ifdef SMT_DEBUG
+        bool is_const =(expr.operands())[0].is_constant(); // Will fail for assert(0) if code changed here not carefully!
+        cout << "; IT IS A TYPECAST OF " << (is_const? "CONST " : "") << expr.type().id() << endl;
+        char* s = getPTermString(l);
+        cout << "; (TYPE_CAST) For " << expr.id() << " Created OpenSMT2 formula " << s << endl;
+        free(s);
+    #endif
     } else if (_id == ID_typecast || _id == ID_floatbv_typecast) {
 #ifdef SMT_DEBUG
         std::cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: " << _id << ")\n";
@@ -299,7 +306,7 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
                 i++; // Only if really add an item to mult/div inc the counter
 #ifdef SMT_DEBUG
                 char *s = logic->printTerm(cp);
-                cout << "; On inner iteration " << i
+                std::cout << "; On inner iteration " << i
                     << " Op to command is var no " << cl.var_no()
                     << " inner index " << cp.x
                     << " with hash code " << (*it).full_hash()
@@ -353,7 +360,7 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
                     ite_map_str.insert(make_pair(string(getPTermString(ptref)),std::string(s)));
                     //cout << "; XXX oite symbol: (" << ite_map_str.size() << ")"
                     //    << string(getPTermString(ptref)) << endl << s << endl;
-                    free(s); s=NULL;
+                    free(s);
                 }
 #endif
             }
@@ -424,7 +431,7 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
             ptref = mult_numbers(expr,args);
         } else if(_id == ID_index) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LRA version (token: "
+            std::cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
@@ -437,7 +444,7 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
 #endif
         } else if((_id == ID_address_of) || (_id == ID_pointer_offset)) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LRA version (token: "
+            std::cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for address and pointers
 #else
@@ -450,7 +457,7 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
 #endif
         } else if (_id == ID_pointer_object) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LRA version (token: "
+            std::cout << "EXIT WITH ERROR: Address and references of, operators have no support yet in the LA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for pointers
 #else
@@ -459,7 +466,7 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
 #endif
         } else if (_id==ID_array) {
 #ifdef SMT_DEBUG
-            cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LRA version (token: "
+            std::cout << "EXIT WITH ERROR: Arrays and index of an array operators have no support yet in the LA version (token: "
                             << _id << ")" << endl;
             assert(false); // No support yet for arrays
 #else
@@ -481,8 +488,8 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
 #endif
         } else {
 #ifdef SMT_DEBUG // KE - Remove assert if you wish to have debug info
-            cout << _id << ";Don't really know how to deal with this operation:\n" << expr.pretty() << endl;
-            cout << "EXIT WITH ERROR: operator does not yet supported in the LRA version (token: "
+            std::cout << _id << ";Don't really know how to deal with this operation:\n" << expr.pretty() << std::endl;
+            std::cout << "EXIT WITH ERROR: operator does not yet supported in the LA version (token: "
             		<< _id << ")" << endl;
             assert(false);
 #else
@@ -495,6 +502,11 @@ PTRef smtcheck_opensmt2t_la::expression_to_ptref(const exprt & expr)
 #endif
         }
     }
+#ifdef SMT_DEBUG
+    char *s = logic->printTerm(ptref);
+    std::cout << "; For " << _id << " Created OpenSMT2 formula " << s << endl;
+    free(s);
+#endif
     assert(ptref != PTRef_Undef);
     store_to_cache(expr, ptref);
     return ptref;
@@ -516,12 +528,13 @@ PTRef smtcheck_opensmt2t_la::unsupported_to_var(const exprt &expr)
     auto it = unsupported_expr2ptrefMap.find(expr);
     if( it != unsupported_expr2ptrefMap.end()) { return it->second;}
     // Create a new unsupported var
-    const std::string str = create_new_unsupported_var(expr.type().id().c_str());
+    const std::string str = unsupported_info.create_new_unsupported_var(expr.type().id().c_str());
 
     const PTRef var = is_boolean(expr) ? logic->mkBoolVar(str.c_str()) : new_num_var(str);
     store_new_unsupported_var(expr, var);
     return var;
 }
+
 
 /*******************************************************************\
 
@@ -570,9 +583,9 @@ void smtcheck_opensmt2t_la::push_assumes2type(
 
 #ifdef SMT_DEBUG_VARS_BOUNDS
     char *s = logic->printTerm(ptr);
-    cout << "; For Assume Constraints Created OpenSMT2 formula " << s << endl;
-    cout << "; For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
-    free(s);
+    std::cout << "; For Assume Constraints Created OpenSMT2 formula " << s << endl;
+    std::cout << "; For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
+    free(s); s=nullptr;
 #endif
 }
 
@@ -595,15 +608,14 @@ void smtcheck_opensmt2t_la::push_asserts2type(
     if (type_constraints_level < 2) return;
 
     // Else add the checks
-
     PTRef ptr = create_constraints2type(var, lower_b, upper_b);;
     ptr_assert_var_constraints = logic->mkAnd(ptr_assert_var_constraints, ptr);
 
 #ifdef SMT_DEBUG_VARS_BOUNDS
     char *s = logic->printTerm(ptr);
-    cout << "; For Assert Constraints Created OpenSMT2 formula " << s << endl;
-    cout << "; Pushed Formulat For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
-    free(s);
+    std::cout << "; For Assert Constraints Created OpenSMT2 formula " << s << endl;
+    std::cout << "; Pushed Formula For Bounds " << lower_b.c_str() << " and " << upper_b.c_str() << endl;
+    free(s); s=nullptr;
 #endif
 }
 
@@ -661,7 +673,7 @@ void smtcheck_opensmt2t_la::add_constraints2type(const exprt & expr, const PTRef
 
     // Start building the constraints
 #ifdef SMT_DEBUG_VARS_BOUNDS
-    cout << "; For variable " << expr.get(ID_identifier) << " in partition " << partition_count
+    std::cout << "; For variable " << expr.get(ID_identifier) << " in partition " << partition_count
 			<< " try to identify this type "<< var_type.pretty()
 			<< ((expr.id() == ID_nondet_symbol) ? " that is non-det symbol" : " that is a regular symbol")
 			<< endl;
