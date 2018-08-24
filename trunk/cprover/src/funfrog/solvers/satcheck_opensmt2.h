@@ -46,7 +46,8 @@ public:
           case decision_proceduret::resultt::D_ERROR:
               throw "Error during solving!";
       }
-    }
+      throw std::logic_error("Unreachable");
+  }
 
   bool is_overapproximating() const override {return false;}
 
