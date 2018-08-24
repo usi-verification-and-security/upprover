@@ -18,8 +18,7 @@
       assert(z == x);  //claim1 verifiable by EUF
 
       int c = sub(z,x);
-      assert(c == 1);  //claim2 verifiable by LRA solver with adjusted adapted EUF sum
-
+      assert(c == 1);  //claim2 UNSAFE 
       unsigned int zz = add(y,y);
       unsigned int xx = add(y,y);
       assert(zz == xx);  //claim3 verifiable by EUF
